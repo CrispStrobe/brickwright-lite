@@ -144,8 +144,12 @@ export const parseModel = (text, {catalog} = {}) => {
     // State for main model
     let pendingPort = null; // string or null
     let pendingId = null;
+    let pendingGroup = null; // groupId or null
     let seenIds = new Set();
     let nextId = 1;
+    const groupsById = new Map(); // id -> {id, name, parts: []}
+    const groupOrder = []; // to preserve order
+    const partToGroup = new Map(); // partId -> groupId (for checking duplicate part in two groups)
 
     // For sub-model flattening, we need to track line index path for ids
     // We will define recursive function to flatten a sub-model file
@@ -320,6 +324,44 @@ export const parseModel = (text, {catalog} = {}) => {
             }
             continue;
         }
+        if (/^0\s+!BW\s+GROUP(\s|$)/i.test(trimmed)) {
+            const m = trimmed.match(/^0\s+!BW\s+GROUP\s+(\S+)\s+(.+?)\s*$/i);
+            if (!m) {
+                refusals.push({line: lineNo, code: 'bad-group', message: `Bad GROUP at line ${lineNo}`});
+            } else {
+                const gid = m[1].trim();
+                const gname = m[2].trim();
+                if (!gid || !gname) {
+                    refusals.push({line: lineNo, code: 'bad-group', message: `Bad GROUP at line ${lineNo}`});
+                } else if (groupsById.has(gid)) {
+                    refusals.push({line: lineNo, code: 'duplicate-group', message: `Duplicate group '${gid}' at line ${lineNo}`});
+                } else {
+                    const g = {id: gid, name: gname, parts: []};
+                    groupsById.set(gid, g);
+                    groupOrder.push(gid);
+                }
+            }
+            continue;
+        }
+        if (/^0\s+!BW\s+IN(\s|$)/i.test(trimmed)) {
+            const m = trimmed.match(/^0\s+!BW\s+IN\s+(\S+)\s*$/i);
+            if (!m) {
+                refusals.push({line: lineNo, code: 'bad-group', message: `Bad IN at line ${lineNo}`});
+                pendingGroup = null;
+            } else {
+                const gid = m[1].trim();
+                if (!gid) {
+                    refusals.push({line: lineNo, code: 'bad-group', message: `Bad IN at line ${lineNo}`});
+                    pendingGroup = null;
+                } else if (!groupsById.has(gid)) {
+                    refusals.push({line: lineNo, code: 'unknown-group', message: `Unknown group '${gid}' at line ${lineNo}`});
+                    pendingGroup = null;
+                } else {
+                    pendingGroup = gid;
+                }
+            }
+            continue;
+        }
         // Check for FILE/NOFILE already handled, but in mainLines they shouldn't appear except as part of MPD sections? In mainLines we already filtered to main section, so no FILE markers should be here.
         // Try parse type-1
         const parsed = parseType1(line);
@@ -383,6 +425,21 @@ export const parseModel = (text, {catalog} = {}) => {
             } else {
                 pendingPort = null;
             }
+            // Handle pendingGroup
+            if (pendingGroup) {
+                const g = groupsById.get(pendingGroup);
+                if (g) {
+                    if (partToGroup.has(id)) {
+                        refusals.push({line: lineNo, code: 'bad-group', message: `Part '${id}' is in two groups at line ${lineNo}`});
+                    } else {
+                        g.parts.push(id);
+                        partToGroup.set(id, pendingGroup);
+                    }
+                }
+                pendingGroup = null;
+            } else {
+                pendingGroup = null;
+            }
             parts.push(part);
             continue;
         }
@@ -411,6 +468,11 @@ export const parseModel = (text, {catalog} = {}) => {
     }
 
     const model = {version: 1, parts};
+    if (groupOrder.length > 0) {
+        model.groups = groupOrder.map(gid => groupsById.get(gid));
+        // Remove empty groups (should not happen, but for safety, filter out groups with 0 parts? But spec says groups with <2 dissolve, but parser should keep whatever was defined, even if empty, and let validator catch it)
+        // We keep all groups as defined, even if empty, so that malformed ones are visible
+    }
     return {model, refusals};
 };
 
@@ -426,8 +488,24 @@ export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright 
     lines.push(`0 Name: ${name}`);
     lines.push(`0 Author: Brickwright`);
     lines.push(`0 !LDRAW_ORG Unofficial_Model`);
+    // Groups: output 0 !BW GROUP lines first
+    if (model.groups) {
+        for (const g of model.groups) {
+            // Escape name? For now, just output as is, but need to handle that name may contain spaces, we output as is
+            lines.push(`0 !BW GROUP ${g.id} ${g.name}`);
+        }
+    }
+    // Build a map from part id to group id for quick lookup
+    const partGroupMap = new Map();
+    if (model.groups) {
+        for (const g of model.groups) {
+            for (const pid of g.parts) partGroupMap.set(pid, g.id);
+        }
+    }
     for (const p of model.parts) {
         lines.push(`0 !BW ID ${p.id}`);
+        const gid = partGroupMap.get(p.id);
+        if (gid) lines.push(`0 !BW IN ${gid}`);
         if (p.port) lines.push(`0 !BW PORT ${p.port}`);
         const x = formatNumber(p.position[0]);
         const y = formatNumber(p.position[1]);

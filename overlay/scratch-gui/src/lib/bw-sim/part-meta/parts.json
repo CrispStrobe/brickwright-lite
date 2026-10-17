@@ -435,7 +435,7 @@
      ]
     }
    ],
-   "friction": 1.0,
+   "friction": 1,
    "nameDe": "Rad 56 x 14 with medium azure tyre (SPIKE Prime)"
   },
   {
@@ -3781,6 +3781,1049 @@
      -1
     ]
    }
+  },
+  {
+   "part": "32526.dat",
+   "name": "Technic beam 3 x 5 L-shaped",
+   "nameDe": "Technic Winkelbalken 3 x 5",
+   "category": "beam",
+   "massGrams": 2,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      20
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      40
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      60
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h4",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      80
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h5",
+     "type": "pinhole",
+     "position": [
+      20,
+      0,
+      80
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h6",
+     "type": "pinhole",
+     "position": [
+      40,
+      0,
+      80
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      29,
+      10,
+      49
+     ],
+     "position": [
+      20,
+      0,
+      40
+     ]
+    }
+   ]
+  },
+  {
+   "part": "32140.dat",
+   "name": "Technic beam 2 x 4 L-shaped",
+   "nameDe": "Technic Winkelbalken 2 x 4",
+   "category": "beam",
+   "massGrams": 1.5,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      20
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      40
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      60
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h4",
+     "type": "pinhole",
+     "position": [
+      20,
+      0,
+      60
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      19,
+      10,
+      39
+     ],
+     "position": [
+      10,
+      0,
+      30
+     ]
+    }
+   ]
+  },
+  {
+   "part": "64179.dat",
+   "name": "Technic frame 5 x 7 open centre",
+   "nameDe": "Technic Rahmen 5 x 7 offen",
+   "category": "beam",
+   "massGrams": 4,
+   "connectors": [
+    {
+     "id": "y0",
+     "type": "pinhole",
+     "position": [
+      40,
+      0,
+      60
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y1",
+     "type": "pinhole",
+     "position": [
+      40,
+      0,
+      20
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y2",
+     "type": "pinhole",
+     "position": [
+      -40,
+      0,
+      60
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y3",
+     "type": "pinhole",
+     "position": [
+      -40,
+      0,
+      20
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y4",
+     "type": "pinhole",
+     "position": [
+      40,
+      0,
+      -60
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y5",
+     "type": "pinhole",
+     "position": [
+      40,
+      0,
+      -20
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y6",
+     "type": "pinhole",
+     "position": [
+      -40,
+      0,
+      -60
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y7",
+     "type": "pinhole",
+     "position": [
+      -40,
+      0,
+      -20
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      50,
+      10,
+      70
+     ]
+    }
+   ]
+  },
+  {
+   "part": "39794.dat",
+   "name": "Technic frame 5 x 11 open centre",
+   "nameDe": "Technic Rahmen 5 x 11 offen",
+   "category": "beam",
+   "massGrams": 6,
+   "connectors": [
+    {
+     "id": "y0",
+     "type": "pinhole",
+     "position": [
+      60,
+      0,
+      100
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y1",
+     "type": "pinhole",
+     "position": [
+      60,
+      0,
+      60
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y2",
+     "type": "pinhole",
+     "position": [
+      60,
+      0,
+      20
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y3",
+     "type": "pinhole",
+     "position": [
+      60,
+      0,
+      -20
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y4",
+     "type": "pinhole",
+     "position": [
+      60,
+      0,
+      -60
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y5",
+     "type": "pinhole",
+     "position": [
+      60,
+      0,
+      -100
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y6",
+     "type": "pinhole",
+     "position": [
+      -60,
+      0,
+      100
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y7",
+     "type": "pinhole",
+     "position": [
+      -60,
+      0,
+      60
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y8",
+     "type": "pinhole",
+     "position": [
+      -60,
+      0,
+      20
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y9",
+     "type": "pinhole",
+     "position": [
+      -60,
+      0,
+      -20
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y10",
+     "type": "pinhole",
+     "position": [
+      -60,
+      0,
+      -60
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y11",
+     "type": "pinhole",
+     "position": [
+      -60,
+      0,
+      -100
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y12",
+     "type": "pinhole",
+     "position": [
+      20,
+      0,
+      100
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y13",
+     "type": "pinhole",
+     "position": [
+      -20,
+      0,
+      100
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y14",
+     "type": "pinhole",
+     "position": [
+      20,
+      0,
+      -100
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y15",
+     "type": "pinhole",
+     "position": [
+      -20,
+      0,
+      -100
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      70,
+      10,
+      110
+     ]
+    }
+   ]
+  },
+  {
+   "part": "6536.dat",
+   "name": "Technic axle and pin connector perpendicular",
+   "nameDe": "Technic Achs- und Stiftverbinder senkrecht",
+   "category": "connector",
+   "massGrams": 0.4,
+   "connectors": [
+    {
+     "id": "a",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "p",
+     "type": "pinhole",
+     "position": [
+      0,
+      20,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      10,
+      10
+     ],
+     "position": [
+      0,
+      10,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "part": "32184.dat",
+   "name": "Technic axle and pin connector perpendicular 3L with centre pin hole",
+   "nameDe": "Technic Achs- und Stiftverbinder senkrecht 3L mit mittlerem Stiftloch",
+   "category": "connector",
+   "massGrams": 0.6,
+   "connectors": [
+    {
+     "id": "a1",
+     "type": "axlehole",
+     "position": [
+      0,
+      -20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "a2",
+     "type": "axlehole",
+     "position": [
+      0,
+      20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "p",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      29,
+      10
+     ]
+    }
+   ]
+  },
+  {
+   "part": "32039.dat",
+   "name": "Technic axle connector with axle hole",
+   "nameDe": "Technic Achsverbinder mit Achsloch",
+   "category": "connector",
+   "massGrams": 0.5,
+   "connectors": [
+    {
+     "id": "a",
+     "type": "axle",
+     "position": [
+      0,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      9,
+      19.5
+     ],
+     "position": [
+      0,
+      0,
+      -5
+     ]
+    }
+   ]
+  },
+  {
+   "part": "42003.dat",
+   "name": "Technic axle and pin connector perpendicular 3L with 2 pin holes",
+   "nameDe": "Technic Achs- und Stiftverbinder senkrecht 3L mit 2 Stiftl\u00f6chern",
+   "category": "connector",
+   "massGrams": 0.7,
+   "connectors": [
+    {
+     "id": "a",
+     "type": "axlehole",
+     "position": [
+      0,
+      -20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "p0",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "p1",
+     "type": "pinhole",
+     "position": [
+      0,
+      20,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      29,
+      10
+     ]
+    }
+   ]
+  },
+  {
+   "part": "6632.dat",
+   "name": "Technic thin liftarm 1 x 3",
+   "nameDe": "Technic d\u00fcnner Liftarm 1 x 3",
+   "category": "beam",
+   "massGrams": 0.5,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      20
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "h2",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      40
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 10
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      9,
+      5,
+      29
+     ]
+    }
+   ]
+  },
+  {
+   "part": "32449.dat",
+   "name": "Technic thin liftarm 1 x 4",
+   "nameDe": "Technic d\u00fcnner Liftarm 1 x 4",
+   "category": "beam",
+   "massGrams": 0.7,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      -30
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "h3",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      30
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 10
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      9,
+      5,
+      39
+     ]
+    }
+   ]
+  },
+  {
+   "part": "49295p01.dat",
+   "name": "Wheel 88 x 14 with medium azure tyre (SPIKE Prime large)",
+   "nameDe": "Rad 88 x 14 mit Reifen medium azure (SPIKE Prime gro\u00df)",
+   "category": "wheel",
+   "massGrams": 18,
+   "friction": 1,
+   "connectors": [
+    {
+     "id": "c",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 18
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "cylinder",
+     "radius": 109.76,
+     "halfHeight": 17.5,
+     "rotation": [
+      0.7071067811865476,
+      0,
+      0,
+      0.7071067811865476
+     ]
+    }
+   ]
   }
  ]
 }
