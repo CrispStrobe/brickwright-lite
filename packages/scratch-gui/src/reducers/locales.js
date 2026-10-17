@@ -1,7 +1,9 @@
 import {addLocaleData} from 'react-intl';
 
 import {localeData, isRtl} from 'scratch-l10n';
-import editorMessages from 'scratch-l10n/locales/editor-msgs';
+import baseEditorMessages from 'scratch-l10n/locales/editor-msgs';
+import {withChromeMessages} from '../lib/bw-chrome-messages.js';
+const editorMessages = withChromeMessages(baseEditorMessages);
 
 addLocaleData(localeData);
 
@@ -25,13 +27,15 @@ const reducer = function (state, action) {
             messagesByLocale: state.messagesByLocale,
             messages: state.messagesByLocale[action.locale]
         });
-    case UPDATE_LOCALES:
+    case UPDATE_LOCALES: {
+        const messagesByLocale = withChromeMessages(action.messagesByLocale);
         return Object.assign({}, state, {
             isRtl: state.isRtl,
             locale: state.locale,
-            messagesByLocale: action.messagesByLocale,
-            messages: action.messagesByLocale[state.locale]
+            messagesByLocale,
+            messages: messagesByLocale[state.locale]
         });
+    }
     default:
         return state;
     }

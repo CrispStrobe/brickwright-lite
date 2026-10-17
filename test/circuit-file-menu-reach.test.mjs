@@ -20,6 +20,7 @@
 // already up — which is precisely the state in which this bug is invisible.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {scopeAfter} from './helpers/js-scope.mjs';
 import {readFileSync} from 'node:fs';
 
 const read = p => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
@@ -84,9 +85,6 @@ test('the cold-start listener is registered unconditionally, and replays what it
         'no queue for the action that arrived before the receiver existed');
     assert.match(tab, /bwReplay/,
         'the replay carries no marker, so the wake handler would re-queue its own echo');
-    assert.match(tab, /if \(this\.state\.Designer \|\| this\.state\.error\) return;/,
-        'the wake handler does not stand down once the vendored receiver is mounted, ' +
-        'so a File-menu action would be handled twice');
     assert.match(tab, /removeEventListener\('bw-circuit-file'/,
         'the listener is never removed on unmount');
 });
@@ -125,4 +123,83 @@ test('the deployed export proof uses ScopePanel actual channel label', () => {
         'the deployed journey must load the named, time-varying scope fixture');
     assert.match(proof, /getByRole\('radio', \{name: 'Sim mode'\}\)\.click/,
         'a pure circuit only advances and captures trace data in simulation mode');
+});
+
+function wakeFixture (text = read(CIRCUIT_TAB), mounted = false) {
+    const calls = [];
+    const host = {state: {Designer: function CachedDesigner () {}, error: null},
+        _boxRef: {current: mounted ? {} : null},
+        props: {onShowCircuit: () => calls.push('show')},
+        load: options => calls.push(options)};
+    const wake = new Function('e', scopeAfter(text, '_circuitFileWake (e)')).bind(host);
+    return {host, calls, wake};
+}
+
+test('cached designer code without a mounted receiver wakes the real Circuit tab for every File action', () => {
+    for (const action of ['save', 'load', 'import', 'export']) {
+        const {host, calls, wake} = wakeFixture();
+        wake({detail: {action}});
+        assert.deepEqual(calls, ['show', {explicit: true}], action);
+        assert.equal(host._circuitFilePending, action);
+    }
+});
+
+test('a mounted receiver owns direct delivery; a replay never queues itself', () => {
+    const live = wakeFixture(undefined, true);
+    live.wake({detail: {action: 'save'}});
+    assert.deepEqual(live.calls, []);
+    const hidden = wakeFixture();
+    hidden.wake({detail: {action: 'save', bwReplay: true}});
+    assert.deepEqual(hidden.calls, []);
+});
+
+function replayJourney (text = read(CIRCUIT_TAB)) {
+    const frames = [], events = [];
+    const host = {_boxRef: {current: null}, _circuitFilePending: 'save', _circuitFileReplayFrame: null};
+    const replay = new Function('requestAnimationFrame', 'window', 'CustomEvent',
+        scopeAfter(text, '_replayCircuitFile ()')).bind(host,
+        fn => {frames.push(fn); return frames.length;},
+        {dispatchEvent: event => events.push(event)}, class {constructor (type, options) {this.type = type; this.detail = options.detail;}});
+    replay();
+    assert.equal(frames.length, 0);
+    host._boxRef.current = {};
+    replay(); replay();
+    assert.equal(frames.length, 1);
+    assert.equal(events.length, 0);
+    frames[0]();
+    assert.equal(host._circuitFilePending, null);
+    assert.equal(host._circuitFileReplayFrame, null);
+    assert.deepEqual(events.map(event => ({type: event.type, detail: event.detail})),
+        [{type: 'bw-circuit-file', detail: {action: 'save', bwReplay: true}}]);
+    replay();
+    assert.equal(frames.length, 1);
+}
+
+test('replay waits for a receiver and coalesces updates until its frame fires', () => replayJourney());
+
+test('omitting the actual replay fails the same queued-command journey', () => {
+    const text = read(CIRCUIT_TAB);
+    const body = scopeAfter(text, '_replayCircuitFile ()');
+    const mutant = text.replace(body, body.replace('window.dispatchEvent(', 'void ('));
+    assert.notEqual(mutant, text);
+    assert.throws(() => replayJourney(mutant), /deep-equal/);
+});
+
+test('omitting tab activation fails the cached-receiver wake journey', () => {
+    const text = read(CIRCUIT_TAB);
+    const mutant = text.replace('this.props.onShowCircuit?.();', '/* omitted */');
+    assert.notEqual(mutant, text);
+    const {calls, wake} = wakeFixture(mutant);
+    wake({detail: {action: 'save'}});
+    assert.notDeepEqual(calls, ['show', {explicit: true}]);
+});
+
+test('a hidden receiver preserves the actual current circuit before changing tabs', () => {
+    const {host, calls, wake} = wakeFixture();
+    const saved = {parts: [{id: 'authored', kind: 'resistor', params: {ohms: 1234}}], wires: []};
+    host.state.circuit = {toJSON: () => saved};
+    host.setState = patch => {Object.assign(host.state, patch); calls.push('snapshot');};
+    wake({detail: {action: 'save'}});
+    assert.deepEqual(calls, ['snapshot', 'show', {explicit: true}]);
+    assert.equal(host.state.circuitData, saved);
 });
