@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Brickwright contributors
 /**
  * The Sim Lab with its physics in the worker (ROADMAP §4.9,
- * overlay/scratch-gui/src/lib/bw-sim/physics/sim-worker-protocol.js) gives the
+ * overlay/scratch-gui/src/lib/bw-sim/sim-worker-protocol.js) gives the
  * SAME numbers as the physics on the main thread — not close: equal, to the
  * last bit — through a real worker thread (node's worker_threads running the
  * same physics-host.js the browser's Web Worker runs).
