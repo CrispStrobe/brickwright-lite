@@ -107,6 +107,14 @@ export async function verifyEditorChrome (browser, url, evidence, check) {
             for (const compact of [false, true]) {
                 if ((await toggle.getAttribute('aria-pressed')) !== String(compact)) await toggle.tap();
                 await settle();
+                const icon = await toggle.locator('svg').evaluate(element => {
+                    const box = element.getBoundingClientRect();
+                    const drawing = element.getBBox();
+                    return {width: box.width, height: box.height,
+                        drawingWidth: drawing.width, drawingHeight: drawing.height};
+                });
+                assert.ok(icon.width >= 20 && icon.height >= 20 &&
+                    icon.drawingWidth > 0 && icon.drawingHeight > 0, JSON.stringify(icon));
                 const geometry = await page.locator('[role="tablist"]').evaluate(list => {
                     const items = [list, ...list.querySelectorAll('[role="tab"],button')];
                     return {layoutWidth: innerWidth, items: items.map(element => {

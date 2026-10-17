@@ -6032,3 +6032,10 @@ The full-power LED implementation is included: this observed clone's physical A
 requires logical B, 100%, reversed polarity. No additional brightness defect or
 buzzer success is claimed. Source PR1050 and the earlier integration ownership
 still require final enabled exact-head hosted qualification before main landing.
+
+The user confirmed that the delivered tabs are much better, but reported a blank
+collapse button on iPad. Replace both font glyphs with explicit centered SVG
+chevron/dots, preserving the localized button name, pressed state and hit target.
+The browser reader now requires a visible 20px SVG with nonempty drawing bounds
+in both states. Qualify the rendering and send a fresh native candidate; physical
+icon acceptance remains pending that delivery.
