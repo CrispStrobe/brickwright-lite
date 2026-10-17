@@ -12,7 +12,7 @@
  *
  * The model first: the S1 driving base plus a distance sensor looking ahead,
  * held by real connections (two beams pinned to the hub's top holes, a cross
- * beam pinned across them, the sensor hung under it on two 3L pins). No two
+ * beam pinned across them, the sensor hung under it on two pins in its blind side holes). No two
  * solid parts overlap (editor/overlap.js's solidOverlaps, the Build editor's
  * rule), and the compiler puts the sensor in the hub's body.
  *

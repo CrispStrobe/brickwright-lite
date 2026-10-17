@@ -46,6 +46,7 @@
       "test/bw-sim-line-follower-program.test.mjs",
       "test/bw-sim-line-follower.test.mjs",
       "test/bw-sim-model-insight.test.mjs",
+      "test/bw-sim-models-solid.test.mjs",
       "test/bw-sim-models.test.mjs",
       "test/bw-sim-persist.test.mjs",
       "test/bw-sim-physics-cast-ray.test.mjs",
