@@ -6120,3 +6120,8 @@ Reconciled H1–H3 controls: 113 passed, zero failures/skips. Initial stale gene
 ### Delivery handoff — 2026-10-17
 
 See [current integration status and scoped next actions](docs/WEDO-IPAD-INTEGRATION-HANDOFF.md). Completed work is committed; source integration PR1017 requires reconciliation with the latest H1–H3 main changes before final CI/landing, followed by A13 source qualification. No hardware acceptance is claimed. Private machine/device details and continuation receipts are only in ignored local `CLAUDE.md`; all peer claims remain owned.
+
+## WeDo connection recovery adoption — 2026-10-17
+
+CLAIMED — Codex root, branch `docs/wedo-recovery-adoption-20261017`.
+Adopt the published WeDo supplier connection-recovery commit `98eca46ed343ffe186e737062fdc68716f28ca6c` (upstream PR50 merged as `c0223a134d1be45dbe939a3f078224f22229b71f`). Own only the `wedo2unified` pin, its canonical generated extension wrapper, focused recovery/LED/tone conformance controls, and the associated public delivery/protocol records. Merge this claim to remote main before implementation. Use the supplier sync workflow; never hand-edit the bundled wrapper or other suppliers' pins. Qualify exact source freshness, failed-connect cleanup, bounded waits, concurrent attempts, retry without app restart, and existing light/tone commands. Native Bluetooth readiness/session ownership work remains separately scoped; do not claim physical connection or buzzer success from these deterministic controls. Compose this adoption with the owned iPad chrome fixes after their CI failures are resolved, qualify enabled exact-head CI, then build/sign/install an identified current-main candidate. Keep local paths, device identifiers, screenshots and raw receipts in ignored handoffs.
