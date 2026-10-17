@@ -5,10 +5,17 @@ are worked **one after the other**. Each task is claimed in `LANES.md` (a merged
 claim-only commit, per the protocol there) **before** its implementation starts,
 and this file records the claim and, when it lands, the result.
 
-Owner: VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`.
+Owner: VPS Claude (opus).
 
 Status values: `queued` → `CLAIMED <date>` → `DONE <date>` (with PR/commit and
 the evidence), or `HELD` (waiting for an owner decision).
+
+Before resuming a row, refresh main, its named PRs and current `LANES.md`
+ownership. A dated `queued` label is not an unclaimed lane. Historical partial
+umbrellas B1/B5 point to their named follow-ups; they do not define a new
+implementation scope. Reconcile old pins with current release metadata. A new
+claim must name affected files, prerequisites and the row's observable acceptance;
+preserve existing owners and qualification limits.
 
 Upstream-first applies (see `docs/VENDORING-REGIME.md`): work that belongs in
 `bw-board`, `bw-circuit-ui`, `sb3-creator`, the extensions repo or `labwired`
