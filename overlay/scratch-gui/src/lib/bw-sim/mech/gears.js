@@ -264,7 +264,8 @@ export const buildGears = (nodes, islands, joints, catalogMap, diagnostics = [],
             }
             const ratio = meshRatio(g1, pair[0], g2, pair[1], contact.P);
             if (ratio === null) continue;
-            gears.push({id: '', type: 'gear', joint1: pair[0].joint.id, joint2: pair[1].joint.id, ratio});
+            // `parts`: the two meshing gears (g1 on joint1), so a view can show which gears couple.
+            gears.push({id: '', type: 'gear', joint1: pair[0].joint.id, joint2: pair[1].joint.id, ratio, parts: [g1.partId, g2.partId]});
         }
     }
 

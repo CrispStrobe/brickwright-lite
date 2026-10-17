@@ -72,6 +72,8 @@ import {
     placeCopies, rotatePoses, selectionPivot, snapDelta, translatePoses, worldAxisRotation
 } from './transform-math.js';
 import {portsForCopies} from './editor-state.js';
+import {portItems} from '../mech/insight.js';
+import {createInsightLayer, tintMaterial} from '../view/insight-layer.js';
 
 /** Default LDraw colour of a newly placed part (Light Bluish Grey). */
 export const DEFAULT_COLOR = 71;
@@ -115,9 +117,13 @@ let clipboard = [];
  * @param {(status: {kind: string}) => void} [options.onStatus] what is happening / will happen
  * @param {(part: string|null) => void} [options.onTool] the placing tool started or ended
  * @param {(mode: 'move'|'rotate') => void} [options.onMode] gizmo mode changed
+ * @param {(item: {id: string, part: string, kind: string, port: string|null}) => string} [options.portLabel]
+ *        the accessible name of a motor's or sensor's port badge
+ * @param {(id: string, rect: DOMRect) => void} [options.onPortLabel] a port badge was clicked
  */
 export const createEditorView3D = ({container, read, colors, catalog, editor,
-    onSelect = () => {}, onChange = () => {}, onStatus = () => {}, onTool = () => {}, onMode = () => {}}) => {
+    onSelect = () => {}, onChange = () => {}, onStatus = () => {}, onTool = () => {}, onMode = () => {},
+    portLabel = () => '', onPortLabel = null}) => {
     const renderer = new WebGLRenderer({antialias: true});
     const canvas = renderer.domElement;
     canvas.dataset.testid = 'bw-sim-lab-editor-canvas';
@@ -304,12 +310,47 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             for (const m of [].concat(mesh.material)) {
                 m.emissive?.setHex(glow);
                 // Blocked: the part itself turns red (a tint over its own colour is too faint on grey).
-                if (!m.color) continue;
-                if (!m.userData.baseColor) m.userData.baseColor = m.color.clone();
-                if (red.has(id)) m.color.setHex(0xef4444);
-                else m.color.copy(m.userData.baseColor);
+                // "Show how it moves": its body's pastel.
+                const tint = partTints && insight.shown.motion ? partTints.get(id) : null;
+                tintMaterial(m, red.has(id) ? 0xef4444 : (tint || null));
             }
         }
+    };
+
+    // ---- seeing the model: port badges, hinge axes, gear pairs, body tints ---------------
+    // (view/insight-layer.js). Port badges come straight from the model, so they change with
+    // a port at once; the motion overlay comes from the pane's debounced compile (setMotion).
+    const insight = createInsightLayer({container, scene: s, onPortClick: onPortLabel});
+    let partTints = null;
+    const partCentre = id => {
+        const local = new Vector3();
+        let geometry = null;
+        return () => {
+            const mesh = meshes.get(id);
+            if (!mesh) return null;
+            if (mesh.geometry !== geometry) {
+                geometry = mesh.geometry;
+                if (!geometry.boundingBox) geometry.computeBoundingBox();
+                geometry.boundingBox.getCenter(local);
+            }
+            return local.clone().applyMatrix4(mesh.matrixWorld);
+        };
+    };
+    const refreshPorts = () => insight.setPorts(portItems(editor.model, catalogMap)
+        .map(item => ({...item, label: portLabel(item), anchor: partCentre(item.id)})));
+    const fixed = p => (p ? () => new Vector3(...p) : () => null);
+    const setMotion = ({joints = [], gears = [], tints = null} = {}) => {
+        insight.setMotion({
+            axes: joints.filter(j => j.type === 'hinge').map(j => ({motor: j.motor, from: fixed(j.from), to: fixed(j.to)})),
+            balls: joints.filter(j => j.type === 'ball').map(j => ({at: fixed(j.point)})),
+            gears: gears.map(g => ({text: g.text, from: fixed(g.from), to: fixed(g.to)}))
+        });
+        partTints = tints;
+        drawOutlines();
+    };
+    const setOverlay = shown => {
+        insight.setVisible(shown);
+        drawOutlines();
     };
 
     const rebuild = () => {
@@ -344,6 +385,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         if (hovered && !meshes.has(hovered)) hovered = null;
         placeMeshes();
         updateGizmo();
+        refreshPorts();
     };
 
     // ---- selection -----------------------------------------------------------
@@ -1201,11 +1243,16 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     const render = () => {
         resize();
         fitGizmo();
+        s.updateMatrixWorld();
+        camera.updateMatrixWorld();
+        const size = renderer.getSize(new Vector2());
+        insight.update(camera, size.x, size.y);
         renderer.render(s, camera);
     };
     const dispose = () => {
         unsubscribe();
         if (paletteDrag) detachPaletteDrag();
+        insight.dispose();
         canvas.removeEventListener('pointermove', onMove);
         canvas.removeEventListener('pointerup', onUp);
         canvas.removeEventListener('pointercancel', onUp);
@@ -1255,6 +1302,10 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         select: ids => setSelection([].concat(ids || [])),
         selectAll: () => setSelection(editor.model.parts.map(p => p.id)),
         deleteSelection, duplicate, copy, paste, undo, redo, view, fitSelection, groupSelection, ungroupSelection,
+        setMotion, setOverlay,
+        /** What the overlay shows now (for the browser gate). */
+        overlayStats: () => ({...insight.stats(),
+            tinted: [...meshes.values()].filter(m => [].concat(m.material).some(x => x.userData.baseColor && !x.color.equals(x.userData.baseColor))).length}),
         turn: (axis, direction = 1) => turnSelection(axis, direction),
         /** World position (metres) of a point on a part (LDU, part frame) or of the gizmo, for the browser gate to aim at. */
         debugPoint: (id, local = [0, 0, 0]) => {

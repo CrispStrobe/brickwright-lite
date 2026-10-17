@@ -11,6 +11,7 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {parseLDConfig} from './ldraw-colors.js';
 import {buildSimScene, applySnapshot} from './sim-scene3d.js';
 import {addPartLights} from './part-style.js';
+import {createInsightLayer, createPulse, tintMaterial} from './insight-layer.js';
 
 export class WebGLUnavailableError extends Error {
     constructor (reason) {
@@ -120,6 +121,58 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     // Follow: the camera and its orbit target move with the model's centre, so
     // the robot stays in view while the learner can still orbit around it.
     let followed = null;
+    // ---- seeing the model (mech/insight.js data, view/insight-layer.js) -------------
+    const insight = createInsightLayer({container, scene: built.scene});
+    const pulse = createPulse();
+    const bodyStart = new Map(mechanism.bodies.map(b => [b.id, new Vector3(...b.position)]));
+    /** An anchor on a body: a world point at t = 0, carried along by the body's pose now. */
+    const onBody = (bodyId, world) => {
+        const group = built.bodyGroups.get(bodyId);
+        if (!group || !world) return () => null;
+        // Bodies start at their origin with no rotation, so the local point is an offset.
+        const local = new Vector3(...world).sub(bodyStart.get(bodyId));
+        return () => group.localToWorld(local.clone());
+    };
+    const partCentre = id => {
+        const mesh = built.partMeshes.get(id);
+        if (!mesh) return () => null;
+        if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+        const local = mesh.geometry.boundingBox.getCenter(new Vector3());
+        return () => mesh.localToWorld(local.clone());
+    };
+    const allMeshes = () => [...built.partMeshes.values(), ...built.hubMeshes.values()];
+    let tints = null;
+    const paintTints = () => {
+        const on = tints && insight.shown.motion;
+        for (const mesh of allMeshes()) {
+            const tint = on ? tints.get(mesh.parent && mesh.parent.name) : null;
+            for (const m of [].concat(mesh.material)) tintMaterial(m, tint || null);
+        }
+    };
+    /** Port badges: items {id, port, label} (motors and sensors). */
+    const setPorts = items => insight.setPorts(items.map(item => ({...item, anchor: partCentre(item.id)})));
+    /** Hinge axes, gear pairs and body tints from insightOf(runModel, mechanism, …). */
+    const setMotion = ({joints = [], gears = [], tints: bodyTintMap = null} = {}) => {
+        insight.setMotion({
+            axes: joints.filter(j => j.type === 'hinge').map(j => ({motor: j.motor, from: onBody(j.body1, j.from), to: onBody(j.body1, j.to)})),
+            balls: joints.filter(j => j.type === 'ball').map(j => ({at: onBody(j.body1, j.point)})),
+            gears: gears.map(g => ({text: g.text, from: onBody(g.bodies[0], g.from), to: onBody(g.bodies[1], g.to)}))
+        });
+        tints = bodyTintMap;
+        paintTints();
+    };
+    const setOverlay = shown => {
+        insight.setVisible(shown);
+        paintTints();
+    };
+    /** Pulse these parts for `ms` (a motor's drive hub too). */
+    const highlight = (ids, ms = 3000) => {
+        const want = new Set(ids);
+        const meshes = allMeshes().filter(m => want.has(m.name.replace(/#hub$/, '')));
+        pulse.start(meshes, ms, performance.now());
+        return meshes.length;
+    };
+
     const render = snapshot => {
         resize();
         if (snapshot) applySnapshot(built, snapshot);
@@ -132,10 +185,16 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
             controls.update();
         }
         followed = centre;
+        pulse.tick(performance.now());
+        built.scene.updateMatrixWorld();
+        camera.updateMatrixWorld();
+        const size = renderer.getSize(new Vector2());
+        insight.update(camera, size.x, size.y);
         renderer.render(built.scene, camera);
     };
 
     const dispose = () => {
+        insight.dispose();
         if (grid) {
             grid.geometry.dispose();
             grid.material.dispose();
@@ -153,5 +212,8 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         followed = null;
         resetCamera();
     };
-    return {canvas, render, resize, resetCamera: recentre, dispose};
+    return {canvas, render, resize, resetCamera: recentre, dispose, setPorts, setMotion, setOverlay, highlight,
+        /** What the overlay shows now, plus the parts pulsing (for the browser gate). */
+        overlayStats: () => ({...insight.stats(), pulsing: pulse.count,
+            tinted: allMeshes().filter(m => [].concat(m.material).some(x => x.userData.baseColor && !x.color.equals(x.userData.baseColor))).length})};
 };

@@ -103,6 +103,15 @@ Without WebGL the pane says so and the simulation still runs (encoders and yaw k
 
 **Saved with the project.** “Save to your computer” stores the model the Lab shows (the Build scene, or the model being simulated) inside the `.sb3`, as its LDraw text, in the `simLab` section of the Brickwright bundle (`lib/bw-project-bundle.js`; record in `bw-sim/model/sim-lab-persist.js`). Opening the project restores it byte-for-byte; a project without one opens the reference driving base. Vanilla Scratch ignores the entry.
 
+## Seeing the model
+
+Kids cannot read `motor-without-port`; the Lab shows what a model is made of and what is wrong with it (`bw-sim/mech/insight.js` computes it, `bw-sim/view/insight-layer.js` draws it, the words are in `components/tw-pseudocode/sim-lab-insight-text.js`, EN and DE):
+
+- **Notes about this model** lists every issue as a sentence for children ("SPIKE medium angular motor is not plugged into the hub yet: click here, then choose a port (A–F) on its label"). An issue that names parts (`parts` on the diagnostic or refusal) is a link: in Build it selects those parts and frames them, in Simulate they pulse orange for 3 s. In Build the list comes from compiling the editor's model 150 ms after the last edit (about 8 ms for 72 parts).
+- **Before you press Run:** a box above the view says when no motor is plugged in, there is no hub, or the model falls apart (two or more loose groups, or loose parts that are a quarter of the model). A part is **loose** (`loose-part`) when no joint links its body, directly or through others, to the hub's body.
+- **Show ports** (on by default): a badge next to every motor and sensor with its hub port, or **?** when it has none. In Build a click on a badge selects the part and opens a port picker (none, A–F).
+- **Show how it moves** (off by default): every rigid body in its own pastel colour (parts in one colour move together), each hinge axis as a thin arrow (red: a motor's, blue: a free hinge), a blue dot at a ball joint, and a violet line between meshing gears with their tooth ratio ("1:3"). In Simulate the marks ride on the moving bodies.
+
 ## Build mode
 
 Build is a small CAD editor (`bw-sim/editor/editor-view3d.js`; arithmetic in `editor/transform-math.js`). Every change goes through the editor command stack; a change to several parts is one `moveMany`/`batch` command, so one Ctrl+Z undoes it.
@@ -218,7 +227,7 @@ Part geometry is a curated subset of the official **LDraw Parts Library** (CC BY
 
 ## Checks
 
-**Unit (bw-sim):** 26 files in `test/bw-sim-*.test.mjs`, each a pure check of one area:
+**Unit (bw-sim):** 27 files in `test/bw-sim-*.test.mjs`, each a pure check of one area:
 - `bw-sim-contracts.test.mjs` — PlacedModel, CompiledMechanism and CompiledModel validators.
 - `bw-sim-editor-overlap.test.mjs` — build moves/turns/places that would intersect are refused; pins/axles/ball may sit inside.
 - `bw-sim-editor-ports.test.mjs` — copies of motors/sensors keep a sensible port (free keeps, taken gets first free, six full → none, three at once distinct, beam none, undo restores).
@@ -231,6 +240,7 @@ Part geometry is a curated subset of the official **LDraw Parts Library** (CC BY
 - `bw-sim-line-follower.test.mjs` — line-oval colour readings along the centre line.
 - `bw-sim-mats.test.mjs` — mat sizes, colours and reflection for the three mats.
 - `bw-sim-mech.test.mjs` — compiler: islands, hinges, gears, sensors, locked-hinge merging.
+- `bw-sim-model-insight.test.mjs` — every issue code in the sources has an EN and DE sentence; issues name their parts (motor without a port, gear-on-frame, a loose part); body tints, hinge-axis segments and gear ratios against the compiled mechanism; compile time for 72 parts.
 - `bw-sim-overlap.test.mjs` — primitive SAT for box/cylinder/sphere colliders.
 - `bw-sim-part-meta.test.mjs` — every connector and collider against its LDraw mesh.
 - `bw-sim-persist.test.mjs` — sim-lab LDraw text saved with the project and reopened byte-identically.
@@ -250,4 +260,5 @@ Plus `test/bw-sim-persist.test.mjs` ↔ `test/project-bundle-archive.test.mjs` (
 
 **Browser (after a GUI build):**
 - `npm run verify:sim-lab` — `scripts/verify-sim-lab-browser.mjs` loads the reference driving base with a WebGL view, runs with no program (hint shown, robot stays put, Drive pad moves it), chooses the line-oval mat (robot on the line), checks palette place/snap/undo, palette pictures (drawn, lazily), search, drag from the palette onto the floor and onto a beam hole, Esc cancelling a drag, Build→Simulate compile, a green-flag Scratch program drives with physical encoders, saved model reopens byte-identical, project load replaces the model, no-WebGL fallback still runs.
+- `scripts/lib/sim-lab-insight-gate.mjs` — port badges in both views, "Show how it moves" (overlay objects and red axis pixels) in both, unplugging a motor from its badge lists the issue, the issue selects the motor, the badge's picker plugs it back in, "Before you press Run" with no motor, the issue pulses the motors in Simulate.
 - `scripts/lib/sim-lab-cad-gate.mjs` — `npm run test:sim-lab-cad` places a part on the floor, drags the gizmo, turns with R/ring, slides on the work plane, Shift+multi-select and box-select, groups/ungroups, pins snap from above and beams stack, pushing into the hub is refused.

@@ -248,8 +248,8 @@ export const parseModel = (text, {catalog} = {}) => {
                 let id;
                 if (localPendingId) {
                     if (seenIds.has(localPendingId)) {
-                        refusals.push({line: lineNo, code: 'duplicate-id', message: `Duplicate id '${localPendingId}' at line ${lineNo}`});
                         id = `p${path.join('_')}_${i + 1}`;
+                        refusals.push({line: lineNo, code: 'duplicate-id', message: `Duplicate id '${localPendingId}' at line ${lineNo}`, parts: [id]});
                         // Need to ensure this generated id is unique and not duplicate? It should be unique because path is unique.
                     } else {
                         id = localPendingId;
@@ -262,7 +262,7 @@ export const parseModel = (text, {catalog} = {}) => {
                     // But need to check if this path id already exists (should not, as path is unique)
                     if (seenIds.has(id)) {
                         // Should not happen, but handle
-                        refusals.push({line: lineNo, code: 'duplicate-id', message: `Duplicate id '${id}' at line ${lineNo}`});
+                        refusals.push({line: lineNo, code: 'duplicate-id', message: `Duplicate id '${id}' at line ${lineNo}`, parts: [id]});
                         // Generate sequential fallback? But path is deterministic, duplicate means same path used twice (e.g., sub-model placed twice with same path? But each instance has different main line index, so path differs)
                     } else {
                         seenIds.add(id);
@@ -405,9 +405,9 @@ export const parseModel = (text, {catalog} = {}) => {
             let id;
             if (pendingId) {
                 if (seenIds.has(pendingId)) {
-                    refusals.push({line: lineNo, code: 'duplicate-id', message: `Duplicate id '${pendingId}' at line ${lineNo}`});
                     id = `p${nextId}`;
                     nextId++;
+                    refusals.push({line: lineNo, code: 'duplicate-id', message: `Duplicate id '${pendingId}' at line ${lineNo}`, parts: [id]});
                 } else {
                     id = pendingId;
                     seenIds.add(id);
@@ -430,7 +430,7 @@ export const parseModel = (text, {catalog} = {}) => {
                 const g = groupsById.get(pendingGroup);
                 if (g) {
                     if (partToGroup.has(id)) {
-                        refusals.push({line: lineNo, code: 'bad-group', message: `Part '${id}' is in two groups at line ${lineNo}`});
+                        refusals.push({line: lineNo, code: 'bad-group', message: `Part '${id}' is in two groups at line ${lineNo}`, parts: [id]});
                     } else {
                         g.parts.push(id);
                         partToGroup.set(id, pendingGroup);

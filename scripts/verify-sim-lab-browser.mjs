@@ -38,7 +38,12 @@
 //   8. the Colour explorer likewise on the Colour Zones mat: at rest, its
 //      drive-axle midpoint and colour-sensor spot are inside the red square
 //      (both judged after a span of simulated time, not wall time);
-//   9. no page errors.
+//   9. seeing the model (scripts/lib/sim-lab-insight-gate.mjs): port badges A/B or "?"
+//      in both views, "Show how it moves" draws the hinge axes and body tints in both,
+//      unplugging a motor from its badge lists the issue, clicking the issue selects the
+//      motor, the "?" badge's picker plugs it back in, and "Before you press Run" warns
+//      when no motor is plugged in;
+//  10. no page errors.
 //
 // Run after the integrated GUI build:  node scripts/verify-sim-lab-browser.mjs
 import {chromium} from 'playwright';
@@ -49,6 +54,7 @@ import {resolve, extname, sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import assert from 'node:assert/strict';
 import {cadInteractions} from './lib/sim-lab-cad-gate.mjs';
+import {insightInteractions} from './lib/sim-lab-insight-gate.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const build = resolve(process.env.BW_BUILD || `${root}/packages/scratch-gui/build`);
@@ -510,6 +516,14 @@ try {
         console.log(`PASS the ${example.name}'s example program, loaded from the pane, ${example.judge(rec)}`);
         await ex.close();
     }
+
+    // 9. Seeing the model: port badges, issues that show their parts, "Show how it moves".
+    const see = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+    see.on('pageerror', error => errors.push(error.message));
+    see.on('dialog', dialog => dialog.accept());
+    await openSimLab(see, {program: null});
+    await insightInteractions(see, {shotsDir: artifacts});
+    await see.close();
 
     const fallback = await browser.newPage({viewport: {width: 1400, height: 900}, serviceWorkers: 'block'});
     fallback.on('pageerror', error => errors.push(error.message));
