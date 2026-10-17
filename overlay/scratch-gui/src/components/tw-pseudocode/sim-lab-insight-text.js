@@ -17,6 +17,8 @@ export const INSIGHT_TEXT = {
         issues: {
             'motor-without-port': '{parts} is not plugged into the hub yet: click here, then choose a port (A–F) on its label.',
             'sensor-without-port': '{parts} is not plugged into the hub yet: click here, then choose a port (A–F) on its label.',
+            'motor-without-device': '{parts} is a motor the Robot Lab has no numbers for yet, so it cannot drive it.',
+            'port-hub-unknown': '{parts} is plugged into a part that is not a hub, so it uses the first hub instead.',
             'no-motor': 'No motor is plugged into the hub, so the robot cannot move by itself. Give a motor a port (A–F).',
             'no-hub': 'There is no SPIKE hub in this model, so no program can run it. Add the hub from the parts list.',
             'falls-apart': 'This robot falls apart: some parts are not connected to the rest. Click here to see them, then fix them with pins or axles.',
@@ -38,6 +40,7 @@ export const INSIGHT_TEXT = {
             'bad-group': 'A group on line {line} is not written right, so it is left out.',
             'duplicate-group': 'A group on line {line} has the same name as another group, so it is left out.',
             'unknown-group': 'A part on line {line} belongs to a group that does not exist, so it is left ungrouped.',
+            'cycle': 'A sub-model in the file is built from itself, so that copy is left out.',
             'project-model-unreadable': 'The robot saved in this project could not be read, so the standard robot is shown.'
         },
         fallbackIssue: 'Something about this model needs a look.',
@@ -54,6 +57,8 @@ export const INSIGHT_TEXT = {
         issues: {
             'motor-without-port': '{parts} steckt noch nicht im Hub: hier klicken, dann an seinem Schild einen Port (A–F) wählen.',
             'sensor-without-port': '{parts} steckt noch nicht im Hub: hier klicken, dann an seinem Schild einen Port (A–F) wählen.',
+            'motor-without-device': '{parts} ist ein Motor, für den das Roboter-Labor noch keine Werte kennt, darum kann es ihn nicht antreiben.',
+            'port-hub-unknown': '{parts} steckt in einem Teil, das kein Hub ist, darum nimmt es den ersten Hub.',
             'no-motor': 'Kein Motor steckt im Hub, darum kann sich der Roboter nicht von selbst bewegen. Gib einem Motor einen Port (A–F).',
             'no-hub': 'In diesem Modell ist kein SPIKE-Hub, darum kann kein Programm es steuern. Füge den Hub aus der Teileliste hinzu.',
             'falls-apart': 'Dieser Roboter fällt auseinander: Einige Teile hängen nicht am Rest. Hier klicken zeigt sie, dann mit Pins oder Achsen befestigen.',
@@ -75,6 +80,7 @@ export const INSIGHT_TEXT = {
             'bad-group': 'Eine Gruppe in Zeile {line} ist nicht richtig geschrieben, darum wird sie weggelassen.',
             'duplicate-group': 'Eine Gruppe in Zeile {line} hat denselben Namen wie eine andere Gruppe, darum wird sie weggelassen.',
             'unknown-group': 'Ein Teil in Zeile {line} gehört zu einer Gruppe, die es nicht gibt, darum bleibt es ohne Gruppe.',
+            'cycle': 'Ein Teilmodell in der Datei ist aus sich selbst gebaut, darum wird diese Kopie weggelassen.',
             'project-model-unreadable': 'Der in diesem Projekt gespeicherte Roboter konnte nicht gelesen werden, darum wird der Standard-Roboter gezeigt.'
         },
         fallbackIssue: 'Etwas an diesem Modell solltest du dir ansehen.',

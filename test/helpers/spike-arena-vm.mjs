@@ -135,7 +135,8 @@ const settle = async () => { for (let i = 0; i < 3; i++) await new Promise(resol
  * @param {function} [options.bridgeFor] (hub) => the world the program drives
  *   instead of the arena: anything with the arena bridge's run interface,
  *   `verdict` and `tick(ms)` returning the verdict ({status: 'running'} while
- *   it runs), optionally `reset()` and `snapshot()`. The Robot Lab's run
+ *   it runs) or a promise of it (awaited before the next frame: the Robot Lab
+ *   with its physics in a worker), optionally `reset()` and `snapshot()`. The Robot Lab's run
  *   (test/helpers/sim-lab-vm.mjs) passes its physics session here; `world`
  *   then only gives the time limit (world.timeLimitMs).
  */
@@ -231,9 +232,9 @@ export async function runOnArena (source, world, {extraMs = 0, record = false, v
             }
             if (pane) {
                 const now = clock.now;
-                verdict = bridge.tick(frameSimMs(paneClock, lastFrame, now));
+                verdict = await bridge.tick(frameSimMs(paneClock, lastFrame, now));
                 lastFrame = now;
-            } else verdict = bridge.tick(FRAME_MS);
+            } else verdict = await bridge.tick(FRAME_MS);
             if (onFrame) onFrame(bridge, frames);
             frames++;
             if (peripheralState.lastUnsupportedPythonTunnel && !unsupported.includes(peripheralState.lastUnsupportedPythonTunnel)) {

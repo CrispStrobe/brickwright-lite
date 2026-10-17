@@ -47,7 +47,26 @@
 //      opens step 1 of the driving base with its new parts in the highlight orange
 //      and a "parts needed" callout counting them; Next and → / ← turn the pages; the
 //      last page is the parts list; "Print / Save as PDF" opens one picture per step;
-//  11. no page errors.
+//  11. a school tablet (scripts/lib/sim-lab-touch-gate.mjs), a 1024×768 touch page and real
+//      touch input only: tap a tile then the floor places a part, one finger drags a part by
+//      grid steps, drags a tile out of the palette, a long press adds to the selection, a long
+//      press then drag on open floor box-selects, a finger drags the gizmo's X arrow, the build
+//      bar's Select all / Copy / Paste / Turn ↺ / Undo, one finger orbits and two pinch-zoom
+//      (Build and Simulate), and holding ▲ drives with lifting the finger stopping both motors;
+//  12. the layout at school-device sizes (scripts/lib/sim-lab-layout-gate.mjs): at 1024×768,
+//      1280×800, 1366×768, 1600×1050 and 1920×1080, in Simulate and Build, the 3D view is at
+//      least 300 px and half the pane tall, wholly visible with nothing scrolled; Run, Reset,
+//      Build/Simulate, Drive ▲, Move/Turn, Undo and the palette are on screen and on top; the
+//      pane never scrolls sideways; the palette (a drawer when compact) places a part, Undo
+//      takes it away, the compact "More…" menu works, and "open large" goes full screen;
+//  13. no page errors.
+//
+// Every Sim Lab here runs its physics in the Web Worker (ROADMAP §4.9): each load
+// asserts `window.__bwSimLab.worker === true`, so the line-follower lap, the wall
+// stopper and the colour explorer — the checks most sensitive to a step of lag
+// between a sensor, an encoder and the motion — judge the worker. The instruments
+// sample after every advance of simulated time (session.onAdvance: on the worker,
+// when a batch has reached the hub), not inside tick(), which only sends the batch.
 //
 // Run after the integrated GUI build:  node scripts/verify-sim-lab-browser.mjs
 import {chromium} from 'playwright';
@@ -60,6 +79,8 @@ import assert from 'node:assert/strict';
 import {cadInteractions} from './lib/sim-lab-cad-gate.mjs';
 import {insightInteractions} from './lib/sim-lab-insight-gate.mjs';
 import {instructionsInteractions} from './lib/sim-lab-instructions-gate.mjs';
+import {touchInteractions} from './lib/sim-lab-touch-gate.mjs';
+import {layoutInteractions, MIN_CANVAS_PX} from './lib/sim-lab-layout-gate.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const build = resolve(process.env.BW_BUILD || `${root}/packages/scratch-gui/build`);
@@ -140,9 +161,11 @@ const openSimLab = async (page, {noWebgl = false, typed = false, program = PROGR
     await page.getByTestId('bw-spike-simulator-tab-simLab').click();
     await page.waitForFunction(() => ['ready', 'failed'].includes(window.__bwSimLab?.status), null, {timeout: 90000});
     const state = await page.evaluate(() => ({status: window.__bwSimLab.status, issues: window.__bwSimLab.issues,
-        view3d: window.__bwSimLab.view3d, message: document.querySelector('[data-testid="bw-sim-lab-message"]')?.textContent || ''}));
+        view3d: window.__bwSimLab.view3d, message: document.querySelector('[data-testid="bw-sim-lab-message"]')?.textContent || '',
+        worker: window.__bwSimLab.worker, workerError: window.__bwSimLab.workerError}));
     assert.equal(state.status, 'ready', `Sim Lab did not load: ${JSON.stringify(state)}`);
     assert.deepEqual(state.issues.filter(i => i.severity === 'error'), [], 'error issues on the reference model');
+    assert.equal(state.worker, true, `the physics runs in the Web Worker: ${JSON.stringify(state)}`);
     return state;
 };
 
@@ -157,10 +180,10 @@ const reading = page => page.evaluate(() => {
     return {pos: [b[i * 7], b[i * 7 + 1], b[i * 7 + 2]], a: motors[0].position, b: motors[1].position, time: s.time};
 });
 
-// One gate, three CI steps (each within the per-step budget, gen-gate-budgets.mjs):
-// `--part=core|examples|ui` runs one section; no flag runs all of them.
+// One gate, five CI steps (each within the per-step budget, gen-gate-budgets.mjs):
+// `--part=core|examples|ui|tablet|layout` runs one section; no flag runs all of them.
 const PART = (process.argv.find(a => a.startsWith('--part=')) || '--part=all').slice('--part='.length);
-const PARTS = ['core', 'examples', 'ui'];
+const PARTS = ['core', 'examples', 'ui', 'tablet', 'layout'];
 if (PART !== 'all' && !PARTS.includes(PART)) throw new Error(`--part must be one of ${PARTS.join(', ')} (got ${PART})`);
 const want = part => PART === 'all' || PART === part;
 
@@ -307,7 +330,11 @@ try {
         await cadInteractions(page, beam.id, {shotsDir: artifacts});
         const builtInEditor = await count();
         await page.getByTestId('bw-sim-lab-mode-simulate').click();
-        await page.waitForFunction(() => window.__bwSimLab.mode === 'simulate' && window.__bwSimLab.status === 'ready', null, {timeout: 60000});
+        await page.waitForFunction(() => window.__bwSimLab.mode === 'simulate' && ['ready', 'failed'].includes(window.__bwSimLab.status), null, {timeout: 60000});
+        const simulated = await page.evaluate(() => ({status: window.__bwSimLab.status, worker: window.__bwSimLab.worker, workerError: window.__bwSimLab.workerError,
+            message: document.querySelector('[data-testid="bw-sim-lab-message"]')?.textContent || ''}));
+        assert.equal(simulated.status, 'ready', `Simulate after Build: ${JSON.stringify(simulated)}`);
+        assert.equal(simulated.worker, true, `the built model runs in the physics worker: ${JSON.stringify(simulated)}`);
         const built = await page.evaluate(() => window.__bwSimLab._pane.session.model.parts.length);
         assert.equal(built, builtInEditor, 'the built model is what Simulate runs');
         console.log('PASS Build → Simulate compiles and runs the built model');
@@ -408,10 +435,8 @@ try {
                 return [ix * w - iw * x - iy * z + iz * y, iy * w - iw * y - iz * x + ix * z, iz * w - iw * z - ix * y + iy * x];
             };
             const length = createMat('line-oval').centreLineLengthM;
-            const lap = window.__bwLineLap = {start: null, next: 1, passed: 0, maxOff: 0, lapMs: null, samples: 0};
-            const tick = s.tick.bind(s);
-            s.tick = ms => {
-                tick(ms);
+            const lap = window.__bwLineLap = {start: null, next: 1, passed: 0, maxOff: 0, lapMs: null, samples: 0, worker: s.worker};
+            s.onAdvance(() => {
                 if (lap.start === null || lap.lapMs !== null) return;
                 const pose = s.core.bodyPose(hubId);
                 const p = rotate(pose.rotation, axle0.map((v, i) => v - hub0[i])).map((v, i) => v + pose.position[i]);
@@ -426,14 +451,15 @@ try {
                     if (k === 100 && lap.passed >= 95) lap.lapMs = s.time - lap.start;
                     break;
                 }
-            };
+            });
             lap.start = s.time;
         });
         await lf.getByTestId('bw-sim-lab-run').click();
         // Simulated time decides: the lap, or 60 s of simulated time without one.
         await lf.waitForFunction(() => window.__bwLineLap.lapMs !== null || window.__bwSimLab._pane.session.time - window.__bwLineLap.start > 60000,
             null, {timeout: 240000});
-        const lapResult = await lf.evaluate(() => window.__bwLineLap);
+        const lapResult = await lf.evaluate(() => ({...window.__bwLineLap, stats: window.__bwSimLab._pane.session.stats}));
+        assert.equal(lapResult.worker, true, 'the line follower ran its physics in the worker');
         await lf.screenshot({path: resolve(artifacts, 'sim-lab-line-follower.png'), fullPage: true});
         assert.ok(lapResult.lapMs !== null && lapResult.lapMs <= 60000, `no lap in 60 s of simulated time: ${JSON.stringify(lapResult)}`);
         assert.ok(lapResult.passed >= 95, `checkpoints: ${JSON.stringify(lapResult)}`);
@@ -441,6 +467,12 @@ try {
         console.log(`PASS the Line follower's example program, loaded from the pane, follows the Line Oval once round: ` +
             `${lapResult.passed}/100 checkpoints in ${(lapResult.lapMs / 1000).toFixed(1)} s simulated, ` +
             `at most ${(lapResult.maxOff * 1000).toFixed(1)} mm off the centre line`);
+        const st = lapResult.stats;
+        assert.equal(st.diverged, 0, `the main thread's motor controller commanded what the worker's mirror did: ${JSON.stringify(st)}`);
+        console.log(`PASS the lap ran in the physics worker: ${st.batches} batches of ${(st.steps / st.batches).toFixed(1)} steps, ` +
+            `round trip ${(st.roundTripMs / st.batches).toFixed(2)} ms mean (max ${st.maxRoundTripMs.toFixed(1)}), ` +
+            `worker ${(st.workerMs / st.batches).toFixed(2)} ms and main thread ${(st.mainMs / st.batches).toFixed(2)} ms per batch, ` +
+            `${st.redos} batches redone for a command in flight, ${st.droppedMs} ms dropped`);
         await lf.close();
 
         // 7. The Wall stopper and 8. the Colour explorer, through the UI only: choose the model,
@@ -504,16 +536,15 @@ try {
                 const wall = s.mechanism.bodies.find(b => b.id === 'obstacle:wall');
                 const rec = window.__bwExample = {start: s.time, samples: [], closestGap: Infinity,
                     faceX: wall ? wall.position[0] - wall.colliders[0].halfExtents[0] : null};
-                const tick = s.tick.bind(s);
-                s.tick = ms => {
-                    tick(ms);
+                rec.worker = s.worker;
+                s.onAdvance(() => {
                     const sample = {t: s.time - rec.start, axle: carried(hubId, axle0), spot: carried(sensor.body, sensor.origin)};
                     if (wall) {
                         sample.front = Math.max(...robot.flatMap(b => b.colliders.map(c => reachX(b.id, c))));
                         rec.closestGap = Math.min(rec.closestGap, rec.faceX - sample.front);
                     }
                     rec.samples.push(sample);
-                };
+                });
             }, {sensor: example.sensor});
             await ex.getByTestId('bw-sim-lab-run').click();
             // Simulated time decides: the run is judged after example.simMs of it, however long that takes in wall time.
@@ -522,11 +553,14 @@ try {
                 const r = window.__bwExample;
                 const last = r.samples.at(-1);
                 const before = r.samples.find(p => p.t >= last.t - 1000);
-                return {faceX: r.faceX, closestGap: r.closestGap, last, samples: r.samples.length,
+                const pane = window.__bwSimLab._pane;
+                return {worker: r.worker, stats: pane.session.stats, motors: pane.props.hubState.data.motors.slice(0, 2),
+                    sensors: pane.props.hubState.data.sensors.slice(2, 4), faceX: r.faceX, closestGap: r.closestGap, last, samples: r.samples.length,
                     restMm: 1000 * Math.hypot(last.axle[0] - before.axle[0], last.axle[2] - before.axle[2]),
                     startAxle: r.samples[0].axle};
             });
             await ex.screenshot({path: resolve(artifacts, `sim-lab-${example.file.replace('.ldr', '')}.png`), fullPage: true});
+            assert.equal(rec.worker, true, `the ${example.name} ran its physics in the worker`);
             assert.ok(rec.restMm < 2, `the ${example.name} is not at rest: ${JSON.stringify(rec)}`);
             console.log(`PASS the ${example.name}'s example program, loaded from the pane, ${example.judge(rec)}`);
             await ex.close();
@@ -560,6 +594,24 @@ try {
         await fallback.waitForFunction(t => window.__bwSimLab._pane.session.time > t + 500, f0.time, {timeout: 30000});
         console.log('PASS without WebGL the pane says so and the simulation still runs');
         await fallback.close();
+    }
+
+    if (want('tablet')) { // a 1024×768 touch page, real fingers only
+        // 11. A school tablet: a 1024×768 touch page, real fingers only (scripts/lib/sim-lab-touch-gate.mjs).
+        const tablet = await browser.newPage({viewport: {width: 1024, height: 768}, hasTouch: true, serviceWorkers: 'block'});
+        tablet.on('pageerror', error => errors.push(error.message));
+        tablet.on('dialog', dialog => dialog.accept());
+        await openSimLab(tablet, {program: null});
+        await touchInteractions(tablet, {shotsDir: artifacts});
+        await tablet.close();
+    }
+
+    if (want('layout')) { // the pane's layout at five window sizes, Simulate and Build
+        // 12. The layout at five window sizes, Simulate and Build.
+        const layout = await layoutInteractions(browser, {open: openSimLab, shotsDir: artifacts, errors});
+        for (const row of layout) {
+            console.log(`PASS layout ${row.size} ${row.mode}: ${row.layout} pane ${row.pane.join('×')}, 3D view ${row.canvas.join('×')} px (≥ ${MIN_CANVAS_PX} and half the pane), controls on screen`);
+        }
     }
 
     assert.deepEqual(errors, [], `page errors: ${errors.join('\n')}`);

@@ -12,7 +12,7 @@
  *
  * The model first: the S1 driving base plus a colour sensor looking down,
  * centred ahead of the drive axle, held by real connections (a beam pinned
- * across the hub's front holes, the sensor on two 3L pins through it). No two
+ * across the hub's front holes, the sensor on two pins through it, in its blind side holes). No two
  * solid parts overlap (editor/overlap.js's solidOverlaps), and the compiler
  * puts the sensor in the hub's body.
  *

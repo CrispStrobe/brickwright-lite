@@ -3,8 +3,13 @@
 //
 // Jolt physics core for Sim Lab (overlay/scratch-gui/src/lib/bw-sim/physics/).
 //
-// Runs a CompiledMechanism in Jolt under node --test. No worker, no DOM,
-// no three.js. The worker wrapper will call this module.
+// Runs a CompiledMechanism (v2; a v1 one is lifted by contracts.js
+// upgradeMechanismV1, so every hand-built v1 mechanism runs unchanged) in Jolt
+// under node --test. It reads joints, `actuators` (a motorised hinge's torque
+// and speed limits) and `couplings`, never the v1 view (`joint.motor`,
+// `gears`). No worker, no DOM, no three.js. In the app it runs inside the physics worker
+// (../physics-worker.js, ../sim-worker-protocol.js), or on the main thread where
+// there is no worker (sim-session.js).
 //
 // Bodies: one Jolt body per mechanism body, shape = compound of colliders
 // (box / cylinder local +y / sphere), mass overridden to massKg.
@@ -15,8 +20,7 @@
 // Motors: velocity / position (as velocity controller for unwrapped angle)
 // / coast / brake / hold, torque limited to ±maxTorqueNm.
 
-import { validateCompiledMechanism } from '../contracts.js';
-import initJolt from 'jolt-physics/wasm-compat';
+import { validateCompiledMechanism, upgradeMechanismV1 } from '../contracts.js';
 
 let joltPromise = null;
 
@@ -24,8 +28,18 @@ let joltPromise = null;
 export const LEGO_SPECULATIVE_CONTACT_M = 0.002;
 export const LEGO_PENETRATION_SLOP_M = 0.0002;
 
+/**
+ * Jolt's WebAssembly (3 MB of JavaScript) is imported here, on first use, and not at the
+ * top of this module: the Sim Lab's main thread imports createPhysicsCore through
+ * sim-session.js, and when the physics runs in the worker (physics-worker.js) the main
+ * thread never needs Jolt at all, so its chunk must not carry it
+ * (scripts/verify-boot-payload.mjs, "Jolt physics").
+ */
 export const loadJolt = async () => {
-    if (!joltPromise) joltPromise = initJolt();
+    if (!joltPromise) {
+        joltPromise = import(/* webpackChunkName: "bw-sim-jolt" */ 'jolt-physics/wasm-compat')
+            .then(m => (m.default || m)());
+    }
     return joltPromise;
 };
 
@@ -73,9 +87,12 @@ const boxConvexRadius = halfExtents => Math.min(0.0005, 0.25 * Math.min(...halfE
  */
 const GEAR_VELOCITY_STEPS = 30;
 
-export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
-    const problems = validateCompiledMechanism(mechanism);
+export const createPhysicsCore = (J, compiled, { stepHz = 120 } = {}) => {
+    const problems = validateCompiledMechanism(compiled);
     if (problems.length) throw new Error(problems.join('\n'));
+    const mechanism = upgradeMechanismV1(compiled);
+    /** joint id -> its actuator (CompiledMechanism v2): the motorised hinges */
+    const actuatorOf = new Map(mechanism.actuators.map(a => [a.joint, a]));
     const dtFixed = 1 / stepHz;
     const LAYER_DYNAMIC = 0;
     const LAYER_STATIC = 1;
@@ -151,6 +168,9 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
     let destroyed = false;
     let timeSteps = 0;
     let acc = 0;
+    /** checkpoint()/rollback(): Jolt's recorded state and this core's own. */
+    let recorder = null;
+    let saved = null;
 
     const ensureAlive = () => { if (destroyed) throw new Error('core destroyed'); };
 
@@ -250,9 +270,10 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
             const perp = perpForAxis(j.axis);
             hs.mNormalAxis1 = new J.Vec3(...perp);
             hs.mNormalAxis2 = new J.Vec3(...perp);
-            if (j.motor) {
-                hs.mMotorSettings.mMinTorqueLimit = -j.motor.maxTorqueNm;
-                hs.mMotorSettings.mMaxTorqueLimit = j.motor.maxTorqueNm;
+            const actuator = actuatorOf.get(j.id);
+            if (actuator) {
+                hs.mMotorSettings.mMinTorqueLimit = -actuator.maxTorqueNm;
+                hs.mMotorSettings.mMaxTorqueLimit = actuator.maxTorqueNm;
             } else {
                 hs.mMotorSettings.mMinTorqueLimit = -1e6;
                 hs.mMotorSettings.mMaxTorqueLimit = 1e6;
@@ -281,7 +302,7 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
             };
             const localAxis1 = toLocal(j.body1, j.axis);
             const localAxis2 = toLocal(j.body2, j.axis);
-            const isMotor = !!j.motor;
+            const isMotor = !!actuator;
             hingeMap.set(j.id, {
                 hinge, constraint, bodyA, bodyB,
                 bodyAID: getBodyIDForId(j.body1),
@@ -289,8 +310,8 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
                 axis: [...j.axis], point: [...j.point], perp: [...perp],
                 localAxis1, localAxis2,
                 rawPrev: 0, unwrapped: 0, velocity: 0,
-                maxTorque: j.motor ? j.motor.maxTorqueNm : 10,
-                maxSpeed: j.motor ? j.motor.maxSpeedRadPerSec : 30,
+                maxTorque: actuator ? actuator.maxTorqueNm : 10,
+                maxSpeed: actuator ? actuator.maxSpeedRadPerSec : 30,
                 mode: 'coast', target: 0, targetSpeed: null, kp: 10, isMotor,
             });
             hinge.SetMotorState(J.EMotorState_Off);
@@ -345,8 +366,8 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
     // standing still); on a frame that itself turns about them the coupling is
     // off by that frame rate (documented in docs/SIM-LAB.md).
     const gearInfos = [];
-    for (const g of mechanism.gears) {
-        if (g.type === 'gear') {
+    for (const g of mechanism.couplings) {
+        if (g.kind === 'gear') {
             const j1 = jointMap.get(g.joint1);
             const j2 = jointMap.get(g.joint2);
             if (!j1 || !j2) throw new Error(`gear ${g.id} joint not found`);
@@ -373,9 +394,9 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
             allConstraints.push(constraint);
             J.destroy(gs);
             gearInfos.push({ type: 'gear', id: g.id, joint1: g.joint1, joint2: g.joint2, ratio: g.ratio });
-        } else if (g.type === 'rackAndPinion') {
-            gearInfos.push(g);
-        }
+        } else if (g.kind === 'rackAndPinion') {
+            gearInfos.push(g); // accepted, not built yet (R3)
+        } else throw new Error(`no physics builder for coupling kind '${g.kind}' (${g.id})`);
     }
 
     try { physicsSystem.OptimizeBroadPhase(); } catch (_) {}
@@ -648,9 +669,38 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
             J.destroy(shapeFilter);
             return result;
         },
+        /**
+         * Remember the whole simulation state (Jolt's bodies, contacts and constraints, and
+         * this core's own clock, unwrapped hinge angles and motor commands). rollback()
+         * returns to it, and stepping again with the same commands gives bit-identical
+         * results (test/bw-sim-physics-worker-session.test.mjs). The physics worker
+         * checkpoints before every batch so a batch computed from motor commands that
+         * changed while it was in flight can be redone (sim-worker-protocol.js, beside physics/).
+         */
+        checkpoint() {
+            ensureAlive();
+            if (!recorder) recorder = new J.StateRecorderImpl();
+            recorder.Clear();
+            physicsSystem.SaveState(recorder, J.EStateRecorderState_All);
+            const hinges = [];
+            for (const [, e] of hingeMap) hinges.push([e.rawPrev, e.unwrapped, e.velocity, e.mode, e.target, e.targetSpeed]);
+            saved = { acc, timeSteps, hinges };
+        },
+        rollback() {
+            ensureAlive();
+            if (!saved) throw new Error('rollback without a checkpoint');
+            recorder.Rewind();
+            if (!physicsSystem.RestoreState(recorder)) throw new Error('Jolt could not restore the checkpoint');
+            ({ acc, timeSteps } = saved);
+            let i = 0;
+            for (const [, e] of hingeMap) {
+                [e.rawPrev, e.unwrapped, e.velocity, e.mode, e.target, e.targetSpeed] = saved.hinges[i++];
+            }
+        },
         destroy() {
             if (destroyed) return;
             destroyed = true;
+            if (recorder) { J.destroy(recorder); recorder = null; }
             for (const c of allConstraints) physicsSystem.RemoveConstraint(c);
             for (const bid of allBodyIDs) { bodyInterface.RemoveBody(bid); bodyInterface.DestroyBody(bid); }
             J.destroy(joltInterface);

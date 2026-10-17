@@ -9,6 +9,7 @@
 // where a part rests on a surface.
 
 import {placedGearsMesh} from '../mech/gears.js';
+import {solidColliders} from '../kinds/pin-axle.js';
 import {mat3MulVec3, vecAdd, vecSub, vecScale, vecDot, vecCross, vecLen, vecNormalize} from '../mech/vec.js';
 
 // Transform a point from part local to model LDraw frame
@@ -178,19 +179,24 @@ export const primitivesOverlap = (a, b, tolerance = 1) => {
     return false;
 };
 
-export const partOverlaps = (model, catalog, placedPart, {ignore = []} = {}) => {
+export const partOverlaps = (model, catalog, placedPart, {ignore = [], colliders = (meta => meta.colliders.map((_, i) => i))} = {}) => {
     const catalogMap = catalog instanceof Map ? catalog : new Map(Object.entries(catalog || {}));
     const meta = catalogMap.get(placedPart.part);
     if (!meta) return [];
     const ignoreSet = new Set(ignore);
-    const myPrims = collidersOf(placedPart, meta);
+    const pick = (pl, m) => {
+        const prims = collidersOf(pl, m);
+        return colliders(m).map(i => prims[i]);
+    };
+    const myPrims = pick(placedPart, meta);
     const result = [];
+    if (!myPrims.length) return result;
     for (const other of model.parts) {
         if (other.id === placedPart.id) continue;
         if (ignoreSet.has(other.id)) continue;
         const otherMeta = catalogMap.get(other.part);
         if (!otherMeta) continue;
-        const otherPrims = collidersOf(other, otherMeta);
+        const otherPrims = pick(other, otherMeta);
         let maxDepth = 0;
         let overlaps = false;
         for (const a of myPrims) {
@@ -209,32 +215,33 @@ export const partOverlaps = (model, catalog, placedPart, {ignore = []} = {}) => 
 
 // ---- solid parts, moves, rays, resting ---------------------------------------
 
-/** Connector types of parts that legitimately sit inside another part's hole or socket. */
-const SHAFT_TYPES = new Set(['pin', 'axle', 'ball']);
+// The region rule (which colliders of a part are shaft, which solid) is the v1 connector
+// kinds' (kinds/pin-axle.js), re-exported here where the editor and the tests read it.
+export {SHAFT_REGIONS, solidColliders} from '../kinds/pin-axle.js';
 const asMap = catalog => (catalog instanceof Map ? catalog : new Map(Object.entries(catalog || {})));
 
 /**
- * True for a part that is made to sit INSIDE another one: pins and axles (in
- * holes) and the castor ball (in its socket) — every connector is a shaft or a
- * ball. Everything else is solid and must not share volume with another solid.
+ * True for a part that is made to sit wholly INSIDE other ones: no solid
+ * collider (solidColliders) — pins and axles (in holes), the castor ball (in its
+ * socket). Everything else has a solid volume.
  * @param {object} meta PartMeta
  */
-export const sitsInside = meta => Boolean(meta && meta.connectors && meta.connectors.length &&
-    meta.connectors.every(c => SHAFT_TYPES.has(c.type)));
+export const sitsInside = meta => Boolean(meta && meta.connectors && meta.connectors.length && solidColliders(meta).length === 0);
 
 /**
- * The solid parts a placed part pushes into: none for a pin/axle/ball; for a
- * solid part every other solid part whose colliders overlap it.
+ * The solid parts a placed part pushes into: its solid colliders against every
+ * other part's solid colliders (solidColliders). Shaft regions — a pin, the pin
+ * ends of 87082, an axle — may sit inside anything; meshing gears interleave
+ * their teeth.
  * @returns {{part: string, depth: number}[]}
  */
 export const solidOverlaps = (model, catalog, placedPart, {ignore = []} = {}) => {
     const catalogMap = asMap(catalog);
-    if (sitsInside(catalogMap.get(placedPart.part))) return [];
     const myMeta = catalogMap.get(placedPart.part);
-    // Pins/axles/balls sit inside holes; gears that mesh interleave their teeth.
-    const skip = model.parts.filter(p => p.id !== placedPart.id && (sitsInside(catalogMap.get(p.part)) ||
+    if (solidColliders(myMeta).length === 0) return [];
+    const skip = model.parts.filter(p => p.id !== placedPart.id && (solidColliders(catalogMap.get(p.part)).length === 0 ||
         placedGearsMesh(placedPart, myMeta, p, catalogMap.get(p.part)))).map(p => p.id);
-    return partOverlaps(model, catalogMap, placedPart, {ignore: [...ignore, ...skip]});
+    return partOverlaps(model, catalogMap, placedPart, {ignore: [...ignore, ...skip], colliders: solidColliders});
 };
 
 /**

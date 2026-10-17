@@ -11,7 +11,7 @@
 // and drawn by the Build and Simulate views (view/insight-layer.js).
 
 import {compile} from './compile.js';
-import {lduToWorld} from '../contracts.js';
+import {lduToWorld, isPortPart, partMotorJoint, partHubProfile, portRefOf} from '../contracts.js';
 import {mat3MulVec3, vecAdd} from './vec.js';
 
 /** Pastel tints, one per rigid body, in body order; more bodies than these get golden-angle hues. */
@@ -127,8 +127,8 @@ export const gearOverlay = (mechanism, model, catalog) => {
  */
 export const portItems = (model, catalog) => model.parts
     .map(p => ({p, meta: catalogGet(catalog, p.part)}))
-    .filter(({meta}) => meta && (meta.motor || meta.sensor))
-    .map(({p, meta}) => ({id: p.id, part: p.part, kind: meta.motor ? 'motor' : 'sensor', port: p.port || null}));
+    .filter(({meta}) => meta && isPortPart(meta))
+    .map(({p, meta}) => ({id: p.id, part: p.part, kind: partMotorJoint(meta) ? 'motor' : 'sensor', port: portRefOf(p)?.port || null}));
 
 /**
  * The issues a compiled mechanism adds to the model's own refusals: its
@@ -156,7 +156,7 @@ export const runBlockers = (issues, model, catalog) => {
     const out = [];
     if (issues.some(i => i.code === 'empty-model')) return [{code: 'empty-model', parts: []}];
     const parts = model.parts.filter(p => catalogGet(catalog, p.part));
-    if (parts.length && !parts.some(p => catalogGet(catalog, p.part).hub)) out.push({code: 'no-hub', parts: []});
+    if (parts.length && !parts.some(p => partHubProfile(catalogGet(catalog, p.part)))) out.push({code: 'no-hub', parts: []});
     const noMotor = issues.find(i => i.code === 'no-motor');
     if (noMotor) out.push({code: 'no-motor', parts: noMotor.parts || []});
     const loose = issues.filter(i => i.code === 'loose-part');

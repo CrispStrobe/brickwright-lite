@@ -25,7 +25,7 @@ import {parseModel, serializeModel} from '../overlay/scratch-gui/src/lib/bw-sim/
 import {MODELS, MODELS_BASE, catalogFrom} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {buildGraph} from '../overlay/scratch-gui/src/lib/bw-sim/mech/graph.js';
 import {createEditor} from '../overlay/scratch-gui/src/lib/bw-sim/editor/editor-state.js';
-import {buildSteps, stepView, partsList, partLength, STEP_MAX} from '../overlay/scratch-gui/src/lib/bw-sim/instructions/steps.js';
+import {buildSteps, stepView, partsList, partLength, STEP_MAX, mirrorPairs, partAdjacency} from '../overlay/scratch-gui/src/lib/bw-sim/instructions/steps.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const GUI = path.join(ROOT, 'overlay/scratch-gui');
@@ -144,6 +144,61 @@ for (const {name, text} of MODELS_UNDER_TEST) {
     });
 }
 
+/**
+ * Mirrored sub-assemblies go on together, as in a LEGO manual: the two drive motors in one step,
+ * the two wheels in one step, "2x" in the callout. Judged here from the placements alone: two
+ * structural parts (not pins or axles) with the same part number and colour, at the same height
+ * and depth, on either side of the hub's centre plane x = hub.x.
+ */
+const mirroredStructural = model => {
+    const hub = model.parts.find(p => CATALOG.get(p.part).hubProfile);
+    const out = [];
+    for (const a of model.parts) {
+        if (['pin', 'axle'].includes(category(model, a.id)) || a.position[0] <= hub.position[0]) continue;
+        const b = model.parts.find(o => o.part === a.part && o.color === a.color &&
+            Math.abs(o.position[0] - (2 * hub.position[0] - a.position[0])) < 1e-6 &&
+            o.position[1] === a.position[1] && o.position[2] === a.position[2]);
+        if (b) out.push([a.id, b.id]);
+    }
+    return out;
+};
+
+for (const {name, text} of MODELS_UNDER_TEST) {
+    test(`${name}: mirrored pairs go on in one step, counted 2x in its callout`, () => {
+        const model = load(text);
+        const plan = buildSteps(model, CATALOG);
+        const at = stepIndex(plan);
+        const pairs = mirroredStructural(model);
+        const ids = pairs.flat();
+        for (const want of ['motorL', 'motorR', 'wheelL', 'wheelR']) assert.ok(ids.includes(want), `${name}: ${want} has a mirror image`);
+        for (const [a, b] of pairs) {
+            assert.equal(at.get(a), at.get(b), `${name}: ${a} and ${b} in one step`);
+            const row = partsList(model, CATALOG, plan.steps[at.get(a)].parts)
+                .find(r => r.part === model.parts.find(p => p.id === a).part);
+            assert.ok(row.count >= 2, `${name}: ${a}'s callout says ${row.count}x`);
+        }
+        // And what holds them: each wheel's axle and each motor's pin in that same step.
+        assert.equal(at.get('axleL'), at.get('wheelL'));
+        assert.equal(at.get('axleR'), at.get('wheelR'));
+        assert.equal(at.get('pinL'), at.get('motorL'));
+        assert.equal(at.get('pinR'), at.get('motorR'));
+    });
+}
+
+test('a pair is mirrored only when it is held the same way: without its pin, the left motor is not', () => {
+    const model = load(read('test/fixtures/bw-sim/driving-base.ldr'));
+    const pairs = mirrorPairs(model, CATALOG, partAdjacency(model, CATALOG));
+    assert.equal(pairs.get('motorR'), 'motorL');
+    assert.equal(pairs.get('wheelL'), 'wheelR');
+    assert.ok(!pairs.has('hub') && !pairs.has('frontBeam') && !pairs.has('castor'), 'parts on the plane are their own image');
+    const unpinned = {...model, parts: model.parts.filter(p => p.id !== 'pinL')};
+    const without = mirrorPairs(unpinned, CATALOG, partAdjacency(unpinned, CATALOG));
+    assert.ok(!without.has('motorR') && !without.has('motorL'), 'the right motor is pinned to the hub, the left one to nothing');
+    // A wheel with no counterpart (the left one moved off its axle) is not paired either.
+    const moved = {...model, parts: model.parts.map(p => (p.id === 'wheelL' ? {...p, position: [-170, 10, 300]} : p))};
+    assert.ok(!mirrorPairs(moved, CATALOG, partAdjacency(moved, CATALOG)).has('wheelR'));
+});
+
 test('lengths a manual prints: an axle 4 in a circle, a 7-hole beam, a 3L pin; none for a hub', () => {
     assert.equal(partLength(CATALOG.get('3705.dat')), 4);
     assert.equal(partLength(CATALOG.get('3707.dat')), 8);
@@ -165,7 +220,7 @@ test('a file with 0 STEP lines is built in its own steps, and they survive a sav
     const model = load(text);
     // The fixture's four steps (the second ends with a ROTSTEP line), as written.
     const expected = [['hub'], ['motorR', 'pinR', 'motorL', 'pinL'],
-        ['frontBeam', 'frontPin1', 'frontPin2', 'castor', 'castorPin1', 'castorPin2', 'ball'], ['axleR', 'wheelR', 'axleL', 'wheelL']];
+        ['frontBeam', 'frontPin1', 'frontPin2', 'castor', 'ball'], ['axleR', 'wheelR', 'axleL', 'wheelL']];
     assert.deepEqual(model.steps, expected);
     const plan = buildSteps(model, CATALOG);
     assert.equal(plan.source, 'meta');
@@ -194,8 +249,8 @@ test('a file with 0 STEP lines is built in its own steps, and they survive a sav
 
 test('an editor group is a sub-assembly: built on its own first, then attached in one step', () => {
     const model = load(read('test/fixtures/bw-sim/driving-base.ldr'));
-    // The castor, its ball and the two pins that will hold it on the front beam... the pins also touch the
-    // front beam, so the group is the castor and its ball; the wheel assembly is a second group.
+    // The castor and its ball (the 3L pins that hold it also hold the front beam on the hub, so they are
+    // not in the group); the wheel assembly is a second group.
     model.groups = [{id: 'g1', name: 'Castor', parts: ['castor', 'ball']}, {id: 'g2', name: 'Right wheel', parts: ['axleR', 'wheelR']}];
     const plan = buildSteps(model, CATALOG);
     assert.deepEqual(plan.groups.map(g => g.id), ['g1', 'g2']);
@@ -220,9 +275,11 @@ test('an editor group is a sub-assembly: built on its own first, then attached i
         assert.ok(attaching.built.includes('hub'));
     }
     assertBuildable('grouped driving base', model, plan);
-    // The castor's pins go on with it, in the attaching step (they join the castor to the front beam).
-    const attachCastor = plan.steps.find(s => s.attach.includes('g1'));
-    assert.deepEqual(attachCastor.parts.slice().sort(), ['castorPin1', 'castorPin2']);
+    // The castor slides onto the two 3L pins that already hold the front beam on the hub: its attaching
+    // step adds no loose parts, and the pins come before it.
+    const attachCastor = plan.steps.findIndex(s => s.attach.includes('g1'));
+    assert.deepEqual(plan.steps[attachCastor].parts, []);
+    for (const pin of ['frontPin1', 'frontPin2']) assert.ok(at.get(pin) < attachCastor, `${pin} is in before the castor`);
 });
 
 test('a group that does not hold together on its own is not a sub-assembly; a part touching nothing is loose', () => {
@@ -254,6 +311,6 @@ test('the print page has one picture per step, in order, then the parts list; na
     assert.match(html, /<html lang="de">/);
     assert.match(html, /<title>Fahrbasis &lt;1&gt;<\/title>/);
     assert.ok(html.indexOf('data-bom') > html.lastIndexOf('class="shot"'), 'the parts list comes after the steps');
-    assert.match(html, /16 Teile/);
+    assert.match(html, /14 Teile/);
     assert.match(html, /Technic-Achse 4/);
 });

@@ -10,7 +10,8 @@
 //
 // Frames: sensor origin/direction are in the part's LDraw frame (LDU) in
 // PartMeta, converted to world frame at t=0 (metres) by the compiler and
-// stored in CompiledMechanism.sensors[].origin/direction. At run time the
+// stored in CompiledMechanism v2 devices[].probe (v1: sensors[].origin/direction;
+// sensorsOf reads either). At run time the
 // body may have moved, so the t=0 local offset is carried through the
 // body's pose: local = t0World − t0Body, world = bodyPose + q·local.
 //
@@ -75,8 +76,29 @@ const faceUpFromQuat = q => {
     return best.id;
 };
 
-export const imuFromBody = (pose, angVelWorld, linVelWorld, prevLinVelWorld, dt, gravityWorld) => {
-    const q = pose.rotation;
+/**
+ * The hub body's linear acceleration in world, m/s², without gravity: (v - v_prev) / dt,
+ * zero without a previous velocity. The physics side computes it (hub-bridge.js puts it
+ * in the HubPoseReading); the SPIKE IMU below turns it into milli-g.
+ */
+export const linearAcceleration = (linVelWorld, prevLinVelWorld, dt) => {
+    let linAccWorld = [0, 0, 0];
+    if (prevLinVelWorld && dt > 1e-9) {
+        linAccWorld = [
+            (linVelWorld[0] - prevLinVelWorld[0]) / dt,
+            (linVelWorld[1] - prevLinVelWorld[1]) / dt,
+            (linVelWorld[2] - prevLinVelWorld[2]) / dt,
+        ];
+    }
+    return linAccWorld;
+};
+
+/**
+ * The SPIKE IMU's values from a HubPoseReading's parts (hubs/spike/spike-virtual-hub.js):
+ * pitch, roll, faceUp from the orientation; angular velocity (deg/s) and proper
+ * acceleration (milli-g) in SPIKE's axes.
+ */
+export const imuFromPose = (q, angVelWorld, linAccWorld, gravityWorld) => {
     const pitch = pitchFromQuat(q);
     const roll = rollFromQuat(q);
     const faceUp = faceUpFromQuat(q);
@@ -90,15 +112,6 @@ export const imuFromBody = (pose, angVelWorld, linVelWorld, prevLinVelWorld, dt,
         y: spikeAng[1] * 180 / Math.PI,
         z: spikeAng[2] * 180 / Math.PI,
     };
-    // Linear acceleration: (curr - prev)/dt, plus gravity
-    let linAccWorld = [0, 0, 0];
-    if (prevLinVelWorld && dt > 1e-9) {
-        linAccWorld = [
-            (linVelWorld[0] - prevLinVelWorld[0]) / dt,
-            (linVelWorld[1] - prevLinVelWorld[1]) / dt,
-            (linVelWorld[2] - prevLinVelWorld[2]) / dt,
-        ];
-    }
     // Proper acceleration = linAcc - gravity (gravity is [0,-9.81,0] down, so -gravity is up)
     const properWorld = [
         linAccWorld[0] - gravityWorld[0],
@@ -141,15 +154,30 @@ const vecSub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const vecAdd = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
 
 /**
+ * A mechanism's sensors as {port, kind, body, origin, direction, hub}: CompiledMechanism
+ * v2's sensor devices (hub: the hub they plug into, null = the scene's one hub), or v1's
+ * `sensors` (hub null).
+ */
+export const sensorsOf = mechanism => {
+    if (!mechanism) return [];
+    if (mechanism.version === 2) {
+        return mechanism.devices.filter(d => d.sensor).map(d => ({port: d.port, kind: d.sensor, body: d.body,
+            origin: d.probe.origin, direction: d.probe.direction, hub: d.hub}));
+    }
+    return Array.isArray(mechanism.sensors) ? mechanism.sensors.map(s => ({...s, hub: null})) : [];
+};
+
+/**
  * Read all sensors of a mechanism at the core's current time.
  * @param {object} core a physics core from createPhysicsCore (with bodyPose, castRay)
  * @param {object} mechanism the CompiledMechanism the core runs
  * @param {string[]} robotBodies body ids to ignore (the robot's own bodies)
+ * @param {object[]} [sensors] which of them (sensorsOf entries; default all): one hub's
  * @returns {Object<string, object>} port -> {kind, ...values} (without deviceId)
  */
-export const readSensors = (core, mechanism, robotBodies = []) => {
+export const readSensors = (core, mechanism, robotBodies = [], sensors = sensorsOf(mechanism)) => {
     const out = {};
-    if (!mechanism || !Array.isArray(mechanism.sensors) || mechanism.sensors.length === 0) return out;
+    if (!mechanism || !Array.isArray(sensors) || sensors.length === 0) return out;
 
     // Ground colour in S1: uniform mat. compile.js puts it on the ground body
     // as `color` (default 10 white). Fallback to white if absent.
@@ -168,7 +196,7 @@ export const readSensors = (core, mechanism, robotBodies = []) => {
     const initialMap = new Map(mechanism.bodies.map(b => [b.id, b]));
     const ignoreBodies = Array.isArray(robotBodies) ? robotBodies : [];
 
-    for (const sensor of mechanism.sensors) {
+    for (const sensor of sensors) {
         const initialBody = initialMap.get(sensor.body);
         if (!initialBody) continue;
         let pose;
