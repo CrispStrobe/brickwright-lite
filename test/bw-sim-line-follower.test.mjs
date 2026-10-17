@@ -101,7 +101,7 @@ const THRESHOLD = 40;
 const PERIOD_MS = 20;
 const MAX_SPEED = 1110;
 
-test('line follower completes one lap within 90 s, stays within 3 cm of line, deterministic', async () => {
+test('line follower completes one lap within 90 s, stays within 3 cm of line, deterministic', async t => {
     const J = await loadJolt();
     const mat = createMat(FIXTURE.mat);
     const mech = compile(placeModel(FIXTURE.model, mat.startPose, AXLE_MID_LDU), CATALOG, {mat: FIXTURE.mat});
@@ -174,6 +174,6 @@ test('line follower completes one lap within 90 s, stays within 3 cm of line, de
     const r2 = runOnce();
     assert.equal(r2.lapMs, r1.lapMs, 'deterministic lap time');
     assert.equal(r2.maxAxle, r1.maxAxle, 'deterministic path');
-    console.log(`lap ${r1.lapMs / 1000} s, travelled ${r1.travelled.toFixed(3)} m of ${centreLength.toFixed(3)}, ` +
+    t.diagnostic(`lap ${r1.lapMs / 1000} s, travelled ${r1.travelled.toFixed(3)} m of ${centreLength.toFixed(3)}, ` +
         `max off-line: axle ${(r1.maxAxle * 1000).toFixed(1)} mm, sensor ${(r1.maxSensor * 1000).toFixed(1)} mm`);
 });
