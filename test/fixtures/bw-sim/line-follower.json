@@ -1,5 +1,5 @@
 {
- "$comment": "Line follower: the S1 driving base (test/fixtures/bw-sim/driving-base.json, parts copied unchanged, castor included) plus a SPIKE colour sensor on port C. LDraw frame (-y up), forward = LDraw +z, as authored; the test places it at the mat start. The sensor hangs IN FRONT of the drive axle (axle z=80, sensor z=152, 2.9 cm ahead) from a vertical beam 3 (holes along z) pinned into the hub front holes z17 (40,-10,100) and z19 (40,-30,100); a third pin from the beam bottom hole (40,10,120) into the sensor hole (40,10,140). Sensor centre x=+20 (8 mm right of centre), looking down from LDraw y=59: 21 LDU = 8.4 mm above the floor (y=80).",
+ "$comment": "Line follower: the S1 driving base (test/fixtures/bw-sim/driving-base.json, parts copied unchanged, castor included) plus a SPIKE colour sensor on port C. LDraw frame (-y up), forward = LDraw +z, as authored; the test places it at the mat start. The sensor hangs IN FRONT of the drive axle (axle z=80, sensor z=160, 3.2 cm ahead) from a vertical beam 3 (holes along z) pinned into the hub front holes z17 (40,-10,100) and z19 (40,-30,100); a third pin from the beam bottom hole (40,10,120) into the sensor's blind side hole (centre (40,10,140), bore z 130..148), so the sensor's side face rests on the beam's face at z=130 (until 2026-10-17 the sensor sat at z=152, 8 LDU inside the beam, placed by a pinhole connector measured at the bottom of the blind hole). Sensor centre x=+20 (8 mm right of centre), looking down from LDraw y=59: 21 LDU = 8.4 mm above the floor (y=80).",
  "mat": "line-oval",
  "model": {
   "version": 1,
@@ -286,7 +286,7 @@
     "position": [
      20,
      10,
-     152
+     160
     ],
     "rotation": [
      0,

@@ -52,7 +52,7 @@ WHEN flag clicked:
   stop movement
 ```
 
-The model is the driving base plus the distance sensor, held by real connections: two 15-hole beams pinned to the hub's four top holes, a 7-hole beam pinned across their front ends, and the sensor hung under that beam on two 3L pins. No two solid parts overlap, and the sensor is welded into the hub's body. `test/bw-sim-wall-stopper-program.test.mjs` runs exactly this text through the Scratch VM, the spikeprime extension and the virtual hub, and judges the robot's geometry, not the sensor's reading: at rest its foremost point and the sensor's ray origin are both 9.3 cm from the wall's face, and it never touched the wall. The same program with `< 1` stops 4.4 cm out (the sensor reads nothing closer than 5 cm, which the block reports as 0, and 0 is less than 1); with `< 0` it drives into the wall. *Challenge:* make it stop 20 cm before the wall.
+The model is the driving base plus the distance sensor, held by real connections: two 15-hole beams pinned to the hub's four top holes, a 7-hole beam pinned across their front ends, and the sensor hung under that beam on two pins seated in its blind side holes. No two solid parts overlap, and the sensor is welded into the hub's body. `test/bw-sim-wall-stopper-program.test.mjs` runs exactly this text through the Scratch VM, the spikeprime extension and the virtual hub, and judges the robot's geometry, not the sensor's reading: at rest its foremost point and the sensor's ray origin are both 9.3 cm from the wall's face, and it never touched the wall. The same program with `< 1` stops 4.4 cm out (the sensor reads nothing closer than 5 cm, which the block reports as 0, and 0 is less than 1); with `< 0` it drives into the wall. *Challenge:* make it stop 20 cm before the wall.
 
 **The colour explorer, ready to run.** Choose **Colour explorer** in the Model list, press **Load example program** (the robot moves onto the **Colour Zones** mat), then press **Run**. The robot turns to face the red corner, drives until its colour sensor sees red, rolls on into the square and lights the hub red. The program (`static/sim-lab/programs/colour-explorer.bw`):
 
@@ -76,7 +76,7 @@ WHEN flag clicked:
   set center button light to red
 ```
 
-The model is the driving base plus the colour sensor, looking down 16 mm above the floor and centred 32 mm ahead of the drive axle: a 5-hole beam pinned across the hub's front holes, the sensor on two 3L pins through it. `test/bw-sim-colour-explorer-program.test.mjs` runs exactly this text and checks that, at rest, both the drive-axle midpoint and the sensor's spot are inside the red square (measured: axle at (-0.28, -0.31), spot at (-0.30, -0.33)); the same program waiting for blue drives over the red square and on. *Challenge:* make it find the green square (it is at (-0.35, 0.35): turn the other way).
+The model is the driving base plus the colour sensor, looking down 16 mm above the floor and centred 32 mm ahead of the drive axle: a 5-hole beam pinned across the hub's front holes, the sensor on two pins through it, seated in the sensor's blind side holes. `test/bw-sim-colour-explorer-program.test.mjs` runs exactly this text and checks that, at rest, both the drive-axle midpoint and the sensor's spot are inside the red square (measured: axle at (-0.28, -0.31), spot at (-0.30, -0.33)); the same program waiting for blue drives over the red square and on. *Challenge:* make it find the green square (it is at (-0.35, 0.35): turn the other way).
 
 `scripts/verify-sim-lab-browser.mjs` runs both examples through the pane's buttons in the built app and judges them the same way.
 
@@ -236,7 +236,9 @@ From `overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json` (grouped by `cate
 - **sensor (3):** SPIKE colour sensor (37308.dat), SPIKE distance sensor (37316.dat), SPIKE force sensor (37312.dat)
 - **wheel (2):** Wheel 56×14 with medium azure tyre (SPIKE Prime) (39367p01.dat), Wheel 88×14 with medium azure tyre (SPIKE Prime large) (49295p01.dat)
 
-Every connector in that file is checked against the part's LDraw mesh by `test/bw-sim-part-meta.test.mjs`.
+Every connector in that file is checked against the part's LDraw mesh by `test/bw-sim-part-meta.test.mjs`, including where a pin seats: a pin-hole connector's two ends must be where its bore opens and ends (±2 LDU).
+
+**Sensor pin holes, measured (2026-10-17).** The SPIKE colour, force and distance sensors have *blind* side holes (LDraw `p/connhol3.dat`, "Technic Connector Hole One-Sided"): the bore opens on the side face at |x| = 30 LDU (distance sensor: 70) and ends 18 LDU in, at |x| = 12 (52). Their connectors used to sit at the bottom of the bore (|x| = 12 / 52) instead of the middle of the pin seat (|x| = 20 / 60), so a pin through a beam pulled the sensor 8 LDU (3.2 mm) into the beam: the shipped Line follower's sensor was inside its mounting beam, and the Wall stopper and Colour explorer used 3L pins to reach, which would end 12 LDU (Wall stopper) and 20 LDU (Colour explorer) past the bottom of the sensor's blind hole, inside its body. The large motor (54675.dat) had the same error on its side holes (bore |x| 32..50, connector at 32) and two end holes on the wrong end of the housing (z = +12, where there is no bore; the bore is z 132..150). All are now at the measured seat; the Line follower's sensor moved 8 LDU forward (z 152 → 160, still 8.4 mm above the floor) to rest on its beam, and the two examples use ordinary 2L pins. `test/bw-sim-models-solid.test.mjs` checks every shipped model and fixture against the real meshes (no point of a solid part inside another, no pin reaching past its hole).
 
 Adding a part: add it to `parts.json` (measure it with `bw-sim/ldraw/ldraw-geometry.js`; never copy connectivity data from BrickLink Studio, LDCad or another database), then run `npm run sync:ldraw -- --from <extracted complete.zip> --source-sha256 <hash> --source-date <date>` and `npm run sync:ldraw:check`.
 
@@ -246,7 +248,7 @@ Part geometry is a curated subset of the official **LDraw Parts Library** (CC BY
 
 ## Checks
 
-**Unit (bw-sim):** 27 files in `test/bw-sim-*.test.mjs`, each a pure check of one area:
+**Unit (bw-sim):** 34 files in `test/bw-sim-*.test.mjs`, each a pure check of one area:
 - `bw-sim-contracts.test.mjs` — PlacedModel, CompiledMechanism and CompiledModel validators.
 - `bw-sim-editor-overlap.test.mjs` — build moves/turns/places that would intersect are refused; pins/axles/ball may sit inside.
 - `bw-sim-editor-ports.test.mjs` — copies of motors/sensors keep a sensible port (free keeps, taken gets first free, six full → none, three at once distinct, beam none, undo restores).
@@ -262,6 +264,7 @@ Part geometry is a curated subset of the official **LDraw Parts Library** (CC BY
 - `bw-sim-model-insight.test.mjs` — every issue code in the sources has an EN and DE sentence; issues name their parts (motor without a port, gear-on-frame, a loose part); body tints, hinge-axis segments and gear ratios against the compiled mechanism; compile time for 72 parts.
 - `bw-sim-overlap.test.mjs` — primitive SAT for box/cylinder/sphere colliders.
 - `bw-sim-part-meta.test.mjs` — every connector and collider against its LDraw mesh.
+- `bw-sim-models-solid.test.mjs` — every shipped model and model fixture is buildable: no collider overlap, no point of a solid part's LDraw mesh inside another's (generalised winding number), no pin or axle reaching past its hole.
 - `bw-sim-persist.test.mjs` — sim-lab LDraw text saved with the project and reopened byte-identically.
 - `bw-sim-physics-cast-ray.test.mjs` — raycast for sensors and distance.
 - `bw-sim-physics-core.test.mjs` — Jolt body and hinge creation, stepping.
