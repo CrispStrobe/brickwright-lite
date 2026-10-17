@@ -1217,3 +1217,20 @@ for the parts and kinds that exist).
 | Performance with many bodies (excavator, 2 hubs, tracks): today 42 bodies ≈ 50 ms work per simulated second (SIM-LAB-PLAN §4.9 table) | per-slice bench line in `scripts/bench-sim-lab-worker.mjs`; real-time factor shown in the pane |
 | Part metadata volume (rack, clutch, pneumatics, turntables are complex meshes) | the existing geometric validator (`test/bw-sim-part-meta.test.mjs`) extended per new connector kind before parts are added |
 | Scope: 15+ hub families | profiles are data; only R5 (RCX) and R8 (LWP3) are needed to prove the boundary; the rest is demand-driven |
+
+### Owner decisions (2026-10-17)
+
+- **D2 → everything collides.** Robot–load contact AND robot self-collision. Bodies joined by a
+  joint (hinge, slider, ball, the motor's housing/output pair) and parts sitting in each other's
+  holes must not collide with each other — R3 builds a pair filter from the compiled joints and
+  connector edges (not a blanket group rule), measures the cost on the S1 base and the gear
+  trains, and re-tunes where contacts change behaviour, stating each changed expectation.
+- **D4 → clean-room VMs from LEGO's published specifications; NXT may use the hosted NXC
+  compiler** until a local WASM build exists.
+- **D5 → the DC-motor model for SPIKE too.** SPIKE's controller drives a `pwm` DC model like
+  every other hub (the ideal servo stays only as a test fixture). This is its own slice after
+  R3: arena and Robot Lab numbers will differ from today's; every changed expectation is
+  re-derived and named in the commit, never silently loosened.
+- **D7 → the XY plotter on SPIKE first (R10), and later the 1990 set 8094 (Control Center)
+  plotter** with the Technic Control interface (R14).
+- D1, D3, D6: open (not yet needed).
