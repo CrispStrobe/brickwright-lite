@@ -397,7 +397,7 @@ try {
         await reopen.close();
     }
 
-    if (want('examples')) { // the three example robots run their programs to the end
+    if (want('examples')) { // the example robots run their programs to the end
         // 6. The line follower: model, mat, example program, Run — a lap on the line.
         const lf = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
         lf.on('pageerror', error => errors.push(error.message));
@@ -565,6 +565,42 @@ try {
             console.log(`PASS the ${example.name}'s example program, loaded from the pane, ${example.judge(rec)}`);
             await ex.close();
         }
+
+        // 8b. The Forklift (R4): choose it, "Load example program" (it puts the robot on the Warehouse
+        // mat with its pallet), Run, and judge the pallet's height from its body's pose: up 40 mm, held,
+        // and back down — a rack and pinion and a world load, through the worker.
+        const fl = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+        fl.on('pageerror', error => errors.push(error.message));
+        fl.on('dialog', dialog => dialog.accept());
+        await openSimLab(fl, {program: null});
+        await fl.getByTestId('bw-sim-lab-model').selectOption('forklift.ldr');
+        await fl.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.modelFile === 'forklift.ldr' &&
+            window.__bwSimLab._pane.session, null, {timeout: 60000});
+        await fl.getByRole('button', {name: 'Load example program'}).click();
+        await fl.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
+            null, {timeout: 60000});
+        assert.match(await fl.locator('.cm-content').first().textContent(), /run motor C clockwise 573 degrees/, 'the Forklift\'s example is in the Code tab');
+        await fl.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.session?.mat === 'warehouse', null, {timeout: 60000});
+        await fl.evaluate(() => {
+            const s = window.__bwSimLab._pane.session;
+            const rec = window.__bwForklift = {start: s.time, y0: s.core.bodyPose('load:pallet').position[1], max: 0, last: 0, worker: s.worker,
+                loads: s.mechanism.bodies.filter(b => b.role === 'load').map(b => b.id)};
+            s.onAdvance(() => {
+                const dy = s.core.bodyPose('load:pallet').position[1] - rec.y0;
+                rec.max = Math.max(rec.max, dy);
+                rec.last = dy;
+            });
+        });
+        await fl.getByTestId('bw-sim-lab-run').click();
+        await fl.waitForFunction(() => window.__bwSimLab._pane.session.time - window.__bwForklift.start > 14000, null, {timeout: 240000});
+        const lift = await fl.evaluate(() => window.__bwForklift);
+        await fl.screenshot({path: resolve(artifacts, 'sim-lab-forklift.png'), fullPage: true});
+        assert.equal(lift.worker, true, 'the Forklift ran its physics in the worker');
+        assert.deepEqual(lift.loads, ['load:pallet'], 'the Warehouse mat put its pallet in the scene');
+        assert.ok(Math.abs(lift.max - 0.04) <= 0.001, `the pallet rose ${lift.max} m, not 40 mm: ${JSON.stringify(lift)}`);
+        assert.ok(Math.abs(lift.last) <= 0.001, `the pallet ended ${lift.last} m up: ${JSON.stringify(lift)}`);
+        console.log(`PASS the Forklift's example program, loaded from the pane, lifts the pallet ${(lift.max * 1000).toFixed(2)} mm and sets it down (${(lift.last * 1000).toFixed(2)} mm)`);
+        await fl.close();
     }
 
     if (want('ui')) { // seeing the model, instructions, no-WebGL fallback
