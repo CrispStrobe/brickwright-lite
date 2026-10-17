@@ -41,6 +41,7 @@
   "jolt-physics/wasm-compat": {
     "tests": [
       "test/bw-sim-colour-explorer-program.test.mjs",
+      "test/bw-sim-dc-motor.test.mjs",
       "test/bw-sim-gear-trains.test.mjs",
       "test/bw-sim-hub-boundary.test.mjs",
       "test/bw-sim-imu.test.mjs",
