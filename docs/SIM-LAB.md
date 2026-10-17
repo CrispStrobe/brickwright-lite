@@ -14,6 +14,25 @@ How it is built, and what comes next, is in `docs/SIM-LAB-PLAN.md`.
 2. Open the SPIKE simulator (**SPIKE arena** button in the Code tab) and pick the **Robot Lab (beta)** tab.
 3. Press **Run**. As the arena's Start does, Run connects the program to the virtual hub and starts it on the green flag. **Pause** stops the program and the clock; **Reset** reloads the model.
 
+**The line follower, ready to run.** Choose **Line follower** in the Model list and **Line Oval** in the Mat list, press **Load example program** (the pane offers it while no SPIKE program is loaded; it puts the program into the Code tab and builds the blocks, and moves the robot onto the Line Oval if it is not there yet), then press **Run**. The robot follows the black line round the whole oval, in about 23 s of simulated time. The program (`static/sim-lab/programs/line-follower.bw`):
+
+```
+DEVICE SPIKE
+
+# Robot Lab: follow the black line around the Line Oval mat.
+# Model: Line follower (wheels on A and B, colour sensor on C).
+# The sensor rides the line's outer edge: on black steer right, on white steer left.
+WHEN flag clicked:
+  set movement motors A B
+  FOREVER:
+    IF spike color C is black THEN:
+      start tank 30 15
+    ELSE:
+      start tank 15 30
+```
+
+It is a two-state follower: the colour sensor on C rides the line's outer edge, steering right while it sees black and left while it sees white. `test/bw-sim-line-follower-program.test.mjs` runs exactly this text through the Scratch VM, the spikeprime extension and the virtual hub on the shipped model and mat (100 of 100 centre-line checkpoints in order, lap in 22.6 s, at most 2.3 mm off the centre line); `scripts/verify-sim-lab-browser.mjs` does the same through the pane's buttons in the built app. Swapping the two `start tank` lines also works: the robot then follows the line's other edge.
+
 If no SPIKE program is loaded when you press Run, the pane shows: *“No SPIKE program is loaded yet, so nothing tells the motors to turn. Write one in the Code tab and press ⇦ To blocks (or build it with blocks), then press Run — or drive the robot with the arrows below.”* The clock still runs, and the Drive pad works.
 
 **Drive pad.** Below the 3D view, four arrow buttons ▲ ▼ ◀ ▶ and a **Speed** slider (10–100 %, step 10) drive the movement pair (A left, B right, as set in the hub) even with no program. Hold an arrow (or the keyboard arrow keys) to drive; the hub readouts show motor positions and sensor values. The slider sets the percent the pad uses for `percentToDps`.
