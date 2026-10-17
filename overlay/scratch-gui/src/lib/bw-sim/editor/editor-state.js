@@ -2,6 +2,11 @@
 // Copyright (c) 2026 Brickwright contributors
 //
 // Editor state: commands, undo/redo, palette (C7 + C4, pure). Pure, no DOM, no three.
+//
+// One user action is one undo step. Moving or turning a multi-part selection,
+// or pasting several parts, is a `moveMany` / `batch` command: its steps run
+// against a scratch copy, and only when every one of them is valid does the
+// model change, with a single history entry (all or nothing).
 
 import {validatePlacedModel} from '../contracts.js';
 import {placePart as snapPlacePart} from './snap.js';
@@ -22,11 +27,16 @@ export const createEditor = ({model, catalog}) => {
     const redoStack = [];
     const subs = new Set();
 
+    // > 0 while a batch runs its steps: they neither notify nor record history.
+    let batching = 0;
+
     const notify = () => {
+        if (batching) return;
         for (const fn of subs) fn(cloneModel(current));
     };
 
     const pushHistory = prev => {
+        if (batching) return;
         undoStack.push(cloneModel(prev));
         redoStack.length = 0;
     };
@@ -40,6 +50,7 @@ export const createEditor = ({model, catalog}) => {
             return () => subs.delete(fn);
         },
         apply(cmd) {
+            if (cmd && (cmd.type === 'batch' || cmd.type === 'moveMany')) return applyBatch(cmd);
             const prev = cloneModel(current);
             let next;
             if (cmd.type === 'place') {
@@ -137,6 +148,34 @@ export const createEditor = ({model, catalog}) => {
             notify();
             return cloneModel(current);
         }
+    };
+
+    /**
+     * `{type: 'batch', commands: [...]}` or `{type: 'moveMany', moves: [{id, position, rotation}]}`:
+     * all steps or none, one undo entry, one notification.
+     */
+    const applyBatch = cmd => {
+        const steps = cmd.type === 'moveMany' ?
+            (Array.isArray(cmd.moves) ? cmd.moves.map(m => ({...m, type: 'move'})) : null) :
+            (Array.isArray(cmd.commands) ? cmd.commands : null);
+        if (!steps || !steps.length) throw new Error(`${cmd.type}: needs at least one step`);
+        if (cmd.type === 'moveMany') {
+            const ids = steps.map(s => s.id);
+            if (new Set(ids).size !== ids.length) throw new Error('moveMany: a part is moved twice');
+        }
+        const prev = cloneModel(current);
+        batching++;
+        try {
+            for (const step of steps) editor.apply(step);
+        } catch (error) {
+            current = prev;
+            throw error;
+        } finally {
+            batching--;
+        }
+        pushHistory(prev);
+        notify();
+        return cloneModel(current);
     };
 
     return editor;
