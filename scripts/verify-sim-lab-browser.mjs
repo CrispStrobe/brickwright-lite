@@ -31,7 +31,14 @@
 //      blocks), Run — and the robot follows the line once round the oval:
 //      ≥ 95 of 100 centre-line checkpoints in order, within 4 cm, inside 60 s
 //      of simulated time, never more than 5 cm off the line (sim-time waits);
-//   7. no page errors.
+//   7. the Wall stopper, through the UI only: its model, "Load example program"
+//      (which also puts it on the Wall mat), Run — it comes to rest 8–12 cm
+//      before the wall (its foremost collider point and the distance sensor's
+//      ray origin, against the compiled wall's face) and never touches it;
+//   8. the Colour explorer likewise on the Colour Zones mat: at rest, its
+//      drive-axle midpoint and colour-sensor spot are inside the red square
+//      (both judged after a span of simulated time, not wall time);
+//   9. no page errors.
 //
 // Run after the integrated GUI build:  node scripts/verify-sim-lab-browser.mjs
 import {chromium} from 'playwright';
@@ -68,6 +75,30 @@ const url = `http://127.0.0.1:${server.address().port}/`;
 const JSZip = createRequire(new URL('../packages/scratch-gui/package.json', import.meta.url))('jszip');
 
 const PROGRAM = 'DEVICE SPIKE\nWHEN flag clicked:\n  set movement motors A B\n  move forward 20 cm\n';
+
+/** docs/SIM-LAB.md: the Colour Zones mat's red square, 0.3 m, centred at (-0.35, -0.35). */
+const inRed = ([x, , z]) => Math.abs(x + 0.35) <= 0.15 && Math.abs(z + 0.35) <= 0.15;
+const at = p => `(${p[0].toFixed(3)}, ${p[2].toFixed(3)})`;
+/** The Robot Lab's other example robots: model, its mat, what lands in the Code tab, and how the outcome is judged. */
+const EXAMPLES = [
+    {name: 'Wall stopper', file: 'wall-stopper.ldr', mat: 'wall', sensor: 'distance', simMs: 10000,
+        code: /wait until \(spike distance D\) < 10/, goal: /stop before the wall/,
+        judge: r => {
+            const frontGap = r.faceX - r.last.front;
+            const rayGap = r.faceX - r.last.spot[0];
+            assert.ok(r.faceX - r.startAxle[0] > 0.5, `the wall was not ahead: ${JSON.stringify(r)}`);
+            assert.ok(r.closestGap > 0, `the robot touched the wall: ${JSON.stringify(r)}`);
+            assert.ok(frontGap >= 0.08 && frontGap <= 0.12 && rayGap >= 0.08 && rayGap <= 0.12, `stopped ${frontGap} m from the wall: ${JSON.stringify(r)}`);
+            return `stops ${(frontGap * 100).toFixed(1)} cm before the wall (ray origin ${(rayGap * 100).toFixed(1)} cm), never touching it`;
+        }},
+    {name: 'Colour explorer', file: 'colour-explorer.ldr', mat: 'colour-zones', sensor: 'color', simMs: 15000,
+        code: /wait until spike color C is red/, goal: /find the red square/,
+        judge: r => {
+            assert.ok(!inRed(r.startAxle), 'it started outside the red square');
+            assert.ok(inRed(r.last.axle) && inRed(r.last.spot), `not at rest inside the red square: ${JSON.stringify(r)}`);
+            return `comes to rest inside the red square: axle ${at(r.last.axle)}, sensor spot ${at(r.last.spot)}`;
+        }}
+];
 
 const openSimLab = async (page, {noWebgl = false, typed = false, program = PROGRAM} = {}) => {
     await page.addInitScript(force => {
@@ -390,6 +421,95 @@ try {
         `${lapResult.passed}/100 checkpoints in ${(lapResult.lapMs / 1000).toFixed(1)} s simulated, ` +
         `at most ${(lapResult.maxOff * 1000).toFixed(1)} mm off the centre line`);
     await lf.close();
+
+    // 7. The Wall stopper and 8. the Colour explorer, through the UI only: choose the model,
+    // "Load example program" (it lands in the Code tab, becomes blocks, and puts the robot on
+    // the example's mat by itself), Run, and judge where the robot comes to rest.
+    for (const example of EXAMPLES) {
+        const ex = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+        ex.on('pageerror', error => errors.push(error.message));
+        ex.on('dialog', dialog => dialog.accept());
+        await openSimLab(ex, {program: null});
+        await ex.getByTestId('bw-sim-lab-model').selectOption(example.file);
+        await ex.waitForFunction(file => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.modelFile === file &&
+            window.__bwSimLab._pane.session, example.file, {timeout: 60000});
+        const info = ex.getByTestId('bw-sim-lab-info');
+        await info.waitFor({timeout: 10000});
+        assert.match(await info.textContent(), /Load example program/, `with no program loaded, the ${example.name} offers its example`);
+        await ex.getByRole('button', {name: 'Load example program'}).click();
+        await ex.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
+            null, {timeout: 60000});
+        assert.match(await ex.locator('.cm-content').first().textContent(), example.code, `the ${example.name}'s example is in the Code tab`);
+        assert.ok(await ex.evaluate(() => window.__bwSimLab._pane.spikeLoaded()), 'the example became SPIKE blocks');
+        assert.match(await info.textContent(), example.goal);
+        // Loading the example put the robot on its mat (with the mat's obstacles compiled in).
+        await ex.waitForFunction(mat => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.session?.mat === mat,
+            example.mat, {timeout: 60000});
+        assert.equal(await ex.getByTestId('bw-sim-lab-mat').inputValue(), example.mat, 'the Mat list shows the example\'s mat');
+        // Read-only instrument: after every simulated tick, where the robot is, from the bodies' poses.
+        await ex.evaluate(mode => {
+            const s = window.__bwSimLab._pane.session;
+            const rotate = ([x, y, z, w], v) => {
+                const ix = w * v[0] + y * v[2] - z * v[1];
+                const iy = w * v[1] + z * v[0] - x * v[2];
+                const iz = w * v[2] + x * v[1] - y * v[0];
+                const iw = -x * v[0] - y * v[1] - z * v[2];
+                return [ix * w - iw * x - iy * z + iz * y, iy * w - iw * y - iz * x + ix * z, iz * w - iw * z - ix * y + iy * x];
+            };
+            const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+            const bodies = new Map(s.mechanism.bodies.map(b => [b.id, b]));
+            /** A point fixed to a body at t = 0, where the body has carried it now. */
+            const carried = (bodyId, p0) => {
+                const pose = s.core.bodyPose(bodyId);
+                const b0 = bodies.get(bodyId).position;
+                return rotate(pose.rotation, p0.map((v, i) => v - b0[i])).map((v, i) => v + pose.position[i]);
+            };
+            /** How far a collider reaches along +x at its body's pose. */
+            const reachX = (bodyId, c) => {
+                const pose = s.core.bodyPose(bodyId);
+                const q = c.rotation || [0, 0, 0, 1];
+                const axis = v => rotate(pose.rotation, rotate(q, v));
+                const centre = rotate(pose.rotation, c.position || [0, 0, 0]).map((v, i) => v + pose.position[i]);
+                if (c.shape === 'sphere') return centre[0] + c.radius;
+                if (c.shape === 'box') return centre[0] + [[1, 0, 0], [0, 1, 0], [0, 0, 1]].reduce((sum, a, i) => sum + Math.abs(axis(a)[0]) * c.halfExtents[i], 0);
+                const a = Math.abs(axis([0, 1, 0])[0]);
+                return centre[0] + a * c.halfHeight + Math.sqrt(Math.max(0, 1 - a * a)) * c.radius;
+            };
+            const hubId = s.bridge.hubBody;
+            const hinges = s.mechanism.joints.filter(j => j.motor);
+            const axle0 = [0, 1, 2].map(i => (hinges[0].point[i] + hinges[1].point[i]) / 2);
+            const sensor = s.mechanism.sensors.find(x => x.kind === mode.sensor);
+            const robot = s.mechanism.bodies.filter(b => b.motion === 'dynamic');
+            const wall = s.mechanism.bodies.find(b => b.id === 'obstacle:wall');
+            const rec = window.__bwExample = {start: s.time, samples: [], closestGap: Infinity,
+                faceX: wall ? wall.position[0] - wall.colliders[0].halfExtents[0] : null};
+            const tick = s.tick.bind(s);
+            s.tick = ms => {
+                tick(ms);
+                const sample = {t: s.time - rec.start, axle: carried(hubId, axle0), spot: carried(sensor.body, sensor.origin)};
+                if (wall) {
+                    sample.front = Math.max(...robot.flatMap(b => b.colliders.map(c => reachX(b.id, c))));
+                    rec.closestGap = Math.min(rec.closestGap, rec.faceX - sample.front);
+                }
+                rec.samples.push(sample);
+            };
+        }, {sensor: example.sensor});
+        await ex.getByTestId('bw-sim-lab-run').click();
+        // Simulated time decides: the run is judged after example.simMs of it, however long that takes in wall time.
+        await ex.waitForFunction(ms => window.__bwSimLab._pane.session.time - window.__bwExample.start > ms, example.simMs, {timeout: 240000});
+        const rec = await ex.evaluate(() => {
+            const r = window.__bwExample;
+            const last = r.samples.at(-1);
+            const before = r.samples.find(p => p.t >= last.t - 1000);
+            return {faceX: r.faceX, closestGap: r.closestGap, last, samples: r.samples.length,
+                restMm: 1000 * Math.hypot(last.axle[0] - before.axle[0], last.axle[2] - before.axle[2]),
+                startAxle: r.samples[0].axle};
+        });
+        await ex.screenshot({path: resolve(artifacts, `sim-lab-${example.file.replace('.ldr', '')}.png`), fullPage: true});
+        assert.ok(rec.restMm < 2, `the ${example.name} is not at rest: ${JSON.stringify(rec)}`);
+        console.log(`PASS the ${example.name}'s example program, loaded from the pane, ${example.judge(rec)}`);
+        await ex.close();
+    }
 
     const fallback = await browser.newPage({viewport: {width: 1400, height: 900}, serviceWorkers: 'block'});
     fallback.on('pageerror', error => errors.push(error.message));
