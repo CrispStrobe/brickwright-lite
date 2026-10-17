@@ -24,24 +24,30 @@ import {SIM_LAB_STORAGE_KEY, simLabRecordFromText, readSimLabStorage, isStorable
 
 const TEXT = {
     en: {
-        title: 'Sim Lab (beta)',
+        title: 'Robot Lab (beta)',
         intro: 'A model from real LEGO® Technic parts with physics. Write a SPIKE Prime program (ports A and B drive the wheels) and press Run: it starts on the green flag.',
         model: 'Model', importModel: 'Open .ldr…', run: 'Run', pause: 'Pause', reset: 'Reset',
         loading: 'Loading the model and the physics engine…', ready: 'Ready', running: 'Running', paused: 'Paused',
         failed: 'Could not load the model: {error}', noWebgl: 'This browser cannot show the 3D view ({error}). The simulation still runs.',
         connectFailed: 'Could not connect the program to the virtual hub: {error}',
+        noProgram: 'No SPIKE program is loaded yet, so nothing tells the motors to turn. Write one in the Code tab and press ⇦ To blocks (or build it with blocks), then press Run — or drive the robot with the arrows below.',
+        drive: 'Drive', forward: 'Forward', back: 'Back', left: 'Left', right: 'Right', stop: 'Stop', speed: 'Speed',
+        driveHelp: 'Hold an arrow (or use the arrow keys) to drive with motors A and B.', readout: 'Hub',
         issues: 'Notes about this model', time: 'Simulated time: {s} s', canvasLabel: '3D view of the simulated model',
         simulate: 'Simulate', build: 'Build', parts: 'Parts', undo: 'Undo', redo: 'Redo', remove: 'Delete',
         save: 'Save .ldr', port: 'Port', none: 'none', placing: 'Placing {part}: click to place, R turns, Esc stops',
         buildHelp: 'Pick a part, move it over the model: it snaps green onto a matching hole or axle, blue on the floor. Click a part to select it.'
     },
     de: {
-        title: 'Sim-Labor (Beta)',
+        title: 'Roboter-Labor (Beta)',
         intro: 'Ein Modell aus echten LEGO®-Technic-Teilen mit Physik. Schreibe ein SPIKE-Prime-Programm (Ports A und B treiben die Räder an) und drücke Start: es beginnt mit der grünen Flagge.',
         model: 'Modell', importModel: '.ldr öffnen…', run: 'Start', pause: 'Pause', reset: 'Zurücksetzen',
         loading: 'Modell und Physik-Engine werden geladen…', ready: 'Bereit', running: 'Läuft', paused: 'Pausiert',
         failed: 'Das Modell konnte nicht geladen werden: {error}', noWebgl: 'Dieser Browser kann die 3D-Ansicht nicht zeigen ({error}). Die Simulation läuft trotzdem.',
         connectFailed: 'Das Programm konnte nicht mit dem virtuellen Hub verbunden werden: {error}',
+        noProgram: 'Es ist noch kein SPIKE-Programm geladen, darum dreht sich kein Motor. Schreibe eins im Code-Tab und drücke ⇦ Zu Blöcken (oder baue es aus Blöcken), dann Start — oder fahre den Roboter mit den Pfeilen unten.',
+        drive: 'Fahren', forward: 'Vorwärts', back: 'Rückwärts', left: 'Links', right: 'Rechts', stop: 'Stopp', speed: 'Tempo',
+        driveHelp: 'Halte einen Pfeil gedrückt (oder nutze die Pfeiltasten), um mit den Motoren A und B zu fahren.', readout: 'Hub',
         issues: 'Hinweise zu diesem Modell', time: 'Simulierte Zeit: {s} s', canvasLabel: '3D-Ansicht des simulierten Modells',
         simulate: 'Simulieren', build: 'Bauen', parts: 'Teile', undo: 'Rückgängig', redo: 'Wiederholen', remove: 'Löschen',
         save: '.ldr speichern', port: 'Port', none: 'keiner', placing: '{part} platzieren: klicken setzt, R dreht, Esc beendet',
@@ -52,7 +58,7 @@ const TEXT = {
 /** Longest step the pane hands the physics per frame: a backgrounded tab must not jump seconds ahead. */
 const MAX_FRAME_MS = 50;
 /** The `0 <title>` line every model the pane writes carries (it is not parsed back, so it must not vary). */
-const MODEL_TITLE = 'Sim Lab model';
+const MODEL_TITLE = 'Robot Lab model';
 
 class SimLabPane extends React.Component {
     constructor (props) {
@@ -60,7 +66,7 @@ class SimLabPane extends React.Component {
         const locale = pickLocale(props.locale || browserLocale(), TEXT);
         this.locale = locale;
         this.text = TEXT[locale];
-        this.state = {status: 'loading', message: '', issues: [], modelFile: null, simMs: 0, view3d: 'loading',
+        this.state = {status: 'loading', message: '', info: '', driveSpeed: 50, issues: [], modelFile: null, simMs: 0, view3d: 'loading',
             mode: 'simulate', placing: null, selected: null, editorTick: 0, mat: null};
         this.box = React.createRef();
         this.file = React.createRef();
@@ -308,7 +314,13 @@ class SimLabPane extends React.Component {
         hubState.setSimulationEnabled(true);
         this.setState({status: 'running'});
         const vm = this.props.vm;
-        if (!this.spikeLoaded()) return;
+        // Without a SPIKE program the clock still runs (the arrows below drive the motors),
+        // but say plainly why nothing moves on its own.
+        if (!this.spikeLoaded()) {
+            this.setState({info: this.text.noProgram});
+            return;
+        }
+        this.setState({info: ''});
         const peripheral = vm.runtime.peripheralExtensions && vm.runtime.peripheralExtensions.spikeprime;
         try {
             const {connectVirtualSpike} = this.lib;
@@ -325,6 +337,37 @@ class SimLabPane extends React.Component {
         }
         if (this.state.status === 'running') vm.greenFlag();
     }
+    /** Hold-to-drive with the movement pair (A left, mounted mirrored; B right), as the arena's drive pad. */
+    drive (direction) {
+        if (!this.session || !this.session.bridge) return;
+        const hub = this.props.hubState;
+        hub.setSimulationEnabled(true);
+        if (this.state.status !== 'running') this.setState({status: 'running'});
+        const [left, right] = hub.movementPair || ['A', 'B'];
+        const pct = this.state.driveSpeed;
+        const dps = port => hub.motors.percentToDps(port, pct);
+        const set = (l, r) => {
+            if (l === 0) hub.motors.stop(left); else hub.motors.runAtSpeed(left, -l * dps(left));
+            if (r === 0) hub.motors.stop(right); else hub.motors.runAtSpeed(right, r * dps(right));
+        };
+        // Wheel-forward is left counter-clockwise (negative), right clockwise (positive).
+        if (direction === 'forward') set(1, 1);
+        else if (direction === 'back') set(-1, -1);
+        else if (direction === 'left') set(-0.6, 0.6);
+        else if (direction === 'right') set(0.6, -0.6);
+        else set(0, 0);
+        this.driving = direction === 'stop' ? null : direction;
+    }
+
+    onDriveKey (event, down) {
+        const map = {ArrowUp: 'forward', ArrowDown: 'back', ArrowLeft: 'left', ArrowRight: 'right'};
+        const dir = map[event.key];
+        if (!dir || this.state.mode !== 'simulate') return;
+        event.preventDefault();
+        if (down && this.driving !== dir) this.drive(dir);
+        if (!down && this.driving === dir) this.drive('stop');
+    }
+
     pause () {
         if (!this.session) return;
         if (this.spikeLoaded()) { try { this.props.vm.stopAll(); } catch { /* the VM may be mid-load */ } }
@@ -339,6 +382,46 @@ class SimLabPane extends React.Component {
         const shipped = this.lib.MODELS.find(m => m.file === name);
         if (shipped) await this.openShipped(shipped.file);
         else if (this.lastText) await this.openText(this.lastText, name);
+    }
+
+    renderDrive (button) {
+        const hold = dir => ({
+            onPointerDown: e => { e.currentTarget.setPointerCapture?.(e.pointerId); this.drive(dir); },
+            onPointerUp: () => this.drive('stop'),
+            onPointerCancel: () => this.drive('stop'),
+            onLostPointerCapture: () => this.driving === dir && this.drive('stop')
+        });
+        const arrow = {...button, minWidth: 34, fontSize: 15, lineHeight: '18px', userSelect: 'none', touchAction: 'none'};
+        const hub = this.props.hubState.data;
+        const ports = [...new Set(this.session.mechanism.joints.filter(j => j.motor).map(j => j.motor.port))].sort();
+        const sensorPorts = (this.session.mechanism.sensors || []).map(s => s.port).sort();
+        const fmt = (port, s) => {
+            if (!s) return '–';
+            if (s.kind === 'distance') return s.distance < 0 ? '–' : `${s.distance} mm`;
+            if (s.kind === 'color') return `${s.color} · ${s.reflection} %`;
+            if (s.kind === 'force') return `${s.force} %${s.pressed ? ' ●' : ''}`;
+            return s.kind;
+        };
+        return (
+            <div data-testid="bw-sim-lab-drive" tabIndex={0} onKeyDown={e => this.onDriveKey(e, true)} onKeyUp={e => this.onDriveKey(e, false)}
+                style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, fontSize: 12, outline: 'none'}}>
+                <span style={{fontWeight: 600}}>{this.text.drive}</span>
+                <button type="button" style={arrow} data-testid="bw-sim-lab-drive-left" aria-label={this.text.left} {...hold('left')}>◀</button>
+                <button type="button" style={arrow} data-testid="bw-sim-lab-drive-forward" aria-label={this.text.forward} {...hold('forward')}>▲</button>
+                <button type="button" style={arrow} data-testid="bw-sim-lab-drive-back" aria-label={this.text.back} {...hold('back')}>▼</button>
+                <button type="button" style={arrow} data-testid="bw-sim-lab-drive-right" aria-label={this.text.right} {...hold('right')}>▶</button>
+                <label>{this.text.speed}{' '}
+                    <input type="range" min={10} max={100} step={10} value={this.state.driveSpeed} data-testid="bw-sim-lab-drive-speed"
+                        onChange={e => this.setState({driveSpeed: Number(e.target.value)})} style={{verticalAlign: 'middle', width: 90}} />
+                    {' '}{this.state.driveSpeed} %
+                </label>
+                <span data-testid="bw-sim-lab-readout" style={{color: '#475569'}} title={this.text.driveHelp}>
+                    {this.text.readout}: {ports.map(p => `${p} ${Math.round(hub.motors['ABCDEF'.indexOf(p)].position)}°`).join(' · ')}
+                    {sensorPorts.length ? ' · ' + sensorPorts.map(p => `${p} ${fmt(p, hub.sensors['ABCDEF'.indexOf(p)])}`).join(' · ') : ''}
+                    {hub.imu ? ` · yaw ${Math.round(hub.imu.yaw)}°` : ''}
+                </span>
+            </div>
+        );
     }
 
     renderPalette () {
@@ -438,6 +521,10 @@ class SimLabPane extends React.Component {
                     </span>
                 </div>}
                 {message && <div role="alert" data-testid="bw-sim-lab-message" style={{fontSize: 12, color: '#b91c1c'}}>{message}</div>}
+                {this.state.info && this.state.mode === 'simulate' && (
+                    <div role="status" data-testid="bw-sim-lab-info" style={{fontSize: 12, color: '#1e3a8a', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 6, padding: '6px 8px'}}>{this.state.info}</div>
+                )}
+                {this.state.mode === 'simulate' && this.session && this.session.bridge && this.renderDrive(button)}
                 {this.state.mode === 'build' && this.renderBuildBar(button)}
                 <div style={{display: 'flex', flex: '1 1 auto', minHeight: 240, gap: 8}}>
                     {this.state.mode === 'build' && this.renderPalette()}

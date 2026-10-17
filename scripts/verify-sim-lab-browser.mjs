@@ -52,7 +52,7 @@ const JSZip = createRequire(new URL('../packages/scratch-gui/package.json', impo
 
 const PROGRAM = 'DEVICE SPIKE\nWHEN flag clicked:\n  set movement motors A B\n  move forward 20 cm\n';
 
-const openSimLab = async (page, {noWebgl = false} = {}) => {
+const openSimLab = async (page, {noWebgl = false, typed = false} = {}) => {
     await page.addInitScript(force => {
         localStorage.clear();
         sessionStorage.clear();
@@ -63,9 +63,19 @@ const openSimLab = async (page, {noWebgl = false} = {}) => {
     await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 90000});
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
     await page.getByTestId('bw-device-select').waitFor({timeout: 60000});
-    await page.evaluate(code => window.dispatchEvent(new CustomEvent('bw-load-pseudocode', {detail: {code, source: 'sim-lab-proof'}})), PROGRAM);
-    await page.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
-        null, {timeout: 60000});
+    if (typed) {
+        // As a person does it: type the program into the editor. Typing does NOT load it into
+        // blocks — that takes the "⇦ To blocks" button, which the flow below presses later.
+        await page.locator('.cm-content').first().click();
+        await page.keyboard.press('ControlOrMeta+a');
+        // Paste it (insertText), as a person pasting the example would: typing it key by key
+        // fights the editor's auto-indent and indents the last line twice.
+        await page.keyboard.insertText(PROGRAM);
+    } else {
+        await page.evaluate(code => window.dispatchEvent(new CustomEvent('bw-load-pseudocode', {detail: {code, source: 'sim-lab-proof'}})), PROGRAM);
+        await page.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
+            null, {timeout: 60000});
+    }
     await page.getByTestId('bw-open-spike-arena').click();
     await page.getByTestId('bw-spike-simulator').waitFor({timeout: 60000});
     await page.getByTestId('bw-spike-simulator-tab-simLab').click();
@@ -96,7 +106,7 @@ try {
     const page = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
     page.on('pageerror', error => errors.push(error.message));
     page.on('dialog', dialog => dialog.accept());
-    const state = await openSimLab(page);
+    const state = await openSimLab(page, {typed: true});
     assert.equal(state.view3d, 'webgl', `3D view: ${JSON.stringify(state)}`);
     const canvas = page.getByTestId('bw-sim-lab-3d-canvas');
     await canvas.waitFor({timeout: 30000});
@@ -105,8 +115,41 @@ try {
     // The canvas drew something: not one flat colour.
     const shot = await canvas.screenshot();
     assert.ok(new Set(shot.subarray(shot.length - 40000)).size > 20, '3D canvas looks blank');
-    console.log('PASS the Sim Lab tab loads the reference driving base with a WebGL view');
+    console.log('PASS the Robot Lab tab loads the reference driving base with a WebGL view');
 
+    // 1. A typed program that was never loaded into blocks: Run says so, and nothing drives by itself.
+    const idle = await reading(page);
+    await page.getByTestId('bw-sim-lab-run').click();
+    await page.getByTestId('bw-sim-lab-info').waitFor({timeout: 10000});
+    assert.match(await page.getByTestId('bw-sim-lab-info').textContent(), /To blocks/);
+    await page.waitForFunction(t => window.__bwSimLab._pane.session.time > t + 1000, idle.time, {timeout: 20000});
+    const still = await reading(page);
+    assert.ok(Math.hypot(still.pos[0] - idle.pos[0], still.pos[2] - idle.pos[2]) < 0.01, 'without a program the robot stays put');
+    console.log('PASS Run without a loaded program says how to load one, and the robot stays put');
+
+    // 2. The drive pad moves it with no program at all: hold ▲.
+    const drivePad = await reading(page);
+    const fwd = page.getByTestId('bw-sim-lab-drive-forward');
+    const fb = await fwd.boundingBox();
+    await page.mouse.move(fb.x + fb.width / 2, fb.y + fb.height / 2);
+    await page.mouse.down();
+    await page.waitForFunction(t => window.__bwSimLab._pane.session.time > t + 1500, drivePad.time, {timeout: 20000});
+    await page.mouse.up();
+    const driven = await reading(page);
+    assert.ok(driven.pos[2] < drivePad.pos[2] - 0.03, `holding ▲ drove forward: ${JSON.stringify({drivePad, driven})}`);
+    assert.match(await page.getByTestId('bw-sim-lab-readout').textContent(), /A -?\d+°/);
+    console.log(`PASS holding ▲ drives the robot ${((drivePad.pos[2] - driven.pos[2]) * 100).toFixed(1)} cm with no program`);
+
+    // 3. Load the typed program with "⇦ To blocks" (as a person would), then Run: the program drives it.
+    await page.getByRole('button', {name: '⇦ To blocks'}).first().click();
+    if (process.env.SIM_DEBUG) {
+        await page.screenshot({path: resolve(artifacts, 'to-blocks.png'), fullPage: true});
+        console.log('DEBUG to-blocks', await page.getByRole('button', {name: '⇦ To blocks'}).count(),
+            JSON.stringify(await page.evaluate(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent || '(none)')));
+    }
+    await page.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
+        null, {timeout: 60000});
+    await page.getByTestId('bw-sim-lab-pause').click();
     const before = await reading(page);
     // Run starts the program on the green flag, as the arena's Start does.
     await page.getByTestId('bw-sim-lab-run').click();
@@ -126,6 +169,7 @@ try {
         return Math.hypot(b[i * 7] - start[0], b[i * 7 + 2] - start[2]) > 0.1;
     }, before.pos, {timeout: 60000});
     const after = await reading(page);
+    assert.equal(await page.getByTestId('bw-sim-lab-info').count(), 0, 'the no-program note is gone once a program runs');
     assert.ok(after.pos[2] < before.pos[2] - 0.1, `the robot did not drive forward: ${JSON.stringify({before, after})}`);
     assert.ok(Math.abs(after.a - before.a) > 90 && Math.abs(after.b - before.b) > 90, `encoders: ${JSON.stringify({before, after})}`);
     await page.screenshot({path: resolve(artifacts, 'sim-lab-driving.png'), fullPage: true});

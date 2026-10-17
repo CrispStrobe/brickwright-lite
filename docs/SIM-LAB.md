@@ -1,6 +1,8 @@
-# Sim Lab (beta) — LEGO® Technic models with physics
+# Robot Lab (beta) — LEGO® Technic models with physics
 
-The Sim Lab simulates a model built from real LEGO Technic parts and lets a
+(Internally the code and files say "Sim Lab" — `lib/bw-sim/`, `sim-lab-pane.jsx` — the name users see is **Robot Lab** / **Roboter-Labor**, chosen to stay clearly distinct from Tinkercad's "Sim Lab".)
+
+The Robot Lab simulates a model built from real LEGO Technic parts and lets a
 program drive it through the **virtual SPIKE Prime hub**, the same hub the
 SPIKE arena uses. Scratch blocks, DEVICE SPIKE pseudocode and imported SPIKE 3
 programs reach it unchanged: they cannot tell the hub is simulated.
@@ -14,13 +16,13 @@ How it is built, and what comes next, is in `docs/SIM-LAB-PLAN.md`.
    like the arena's driving base, so `set movement motors A B` and
    `move forward 20 cm` work as they do in the arena.
 2. Open the SPIKE simulator (**SPIKE arena** button in the Code tab) and pick
-   the **Sim Lab (beta)** tab.
+   the **Robot Lab (beta)** tab.
 3. Press **Run**. As the arena's Start does, Run connects the program to the
    virtual hub and starts it on the green flag. **Pause** stops the program
    and the clock; **Reset** reloads the model.
 
 **Open .ldr…** loads your own model, made in any LDraw editor (LeoCAD,
-BrickLink Studio's LDraw export). Parts the Sim Lab does not know yet, loose
+BrickLink Studio's LDraw export). Parts the Robot Lab does not know yet, loose
 geometry and mirrored parts are listed under "Notes about this model" and
 skipped; the rest still runs. A motor is bound to a hub port by a meta line
 before its part line:
@@ -79,7 +81,7 @@ the LEGO Group, which does not sponsor, authorize or endorse this project.
 
 - Unit: `test/bw-sim-*.test.mjs` (contracts, part metadata against meshes,
   compiler, physics core and worker, model I/O, session, 3D scene).
-- Browser: `npm run verify:sim-lab` (after a GUI build) — the Sim Lab tab loads
+- Browser: `npm run verify:sim-lab` (after a GUI build) — the Robot Lab tab loads
   the reference model with a WebGL view, a green-flag program drives it
   forward with physical encoders, a built model saved with the project
   reopens byte-identical, and the no-WebGL fallback still runs.
