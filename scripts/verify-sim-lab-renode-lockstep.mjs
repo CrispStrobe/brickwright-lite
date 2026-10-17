@@ -14,8 +14,9 @@
 //     <- SpikeFirmwareVirtualHub (hubs/spike/spike-firmware-hub.js, unchanged)
 //     <- SimSession in-thread, one physics step per exchange (runner.js)
 //
-// ONE Scratch program — "drive forward": tank 30 % on A/B for 1.08 s (≈ 360° of
-// wheel at the nominal 333 °/s), then stop — runs through both routes:
+// ONE Scratch program — the plan's R13e program (§4): both wheels forward at 300 °/s
+// (tank 27 %) for 2 s, then stop — runs through both routes (BW_SIMLAB_SPEED_PCT and
+// BW_SIMLAB_DRIVE_S change it; 30 % for 1.08 s is "≈ 360° of wheel"):
 //   firmware: SB3Creator -> compileFirmwareProgram (the desktop's own Scratch-to-
 //             firmware compiler) -> program ABI v1 -> NuttX program packets
 //             (uploaded before lockstep, STARTed inside it: deferred control) ->
@@ -51,7 +52,7 @@ const RENODE = process.env.BW_RENODE || DEFAULT_RENODE;
 const PACKAGE = process.env.BW_SIMLAB_NUTTX_PACKAGE || DEFAULT_PACKAGE;
 const jsonOut = process.argv.includes('--json') ? process.argv[process.argv.indexOf('--json') + 1] : null;
 const BUDGET_MS = Number(process.env.BW_SIMLAB_BUDGET_MS || 6000);
-const SPEED_PCT = 30;
+const SPEED_PCT = Number(process.env.BW_SIMLAB_SPEED_PCT || 27);
 
 const skip = why => {
     console.log(`SKIP verify-sim-lab-renode-lockstep: ${why}`);
@@ -90,7 +91,7 @@ const scratchDps = (() => {
     hub.data.sensors[0] = {kind: 'motor', deviceId: 48};
     return Math.round(hub.backend.percentToDps(0, SPEED_PCT));
 })();
-const DRIVE_S = +(360 / scratchDps).toFixed(2);
+const DRIVE_S = Number(process.env.BW_SIMLAB_DRIVE_S || 2);
 const SCRATCH_BODY = `  start tank ${SPEED_PCT} ${SPEED_PCT}\n  wait ${DRIVE_S} seconds\n  stop movement\n`;
 /** The block tree as the VM deserializes it (literal tuples -> shadow blocks), for compileFirmwareProgram. */
 const asVm = source => {
@@ -158,7 +159,7 @@ const launchRenode = async () => {
     return {child, monitorPort, statePort, bootWallMs: now() - started, tail: () => tail};
 };
 
-/** One monitor command over Renode's telnet monitor (`start`); returns once the prompt returns. */
+/** `start` over Renode's telnet monitor; returns once the emulation has started. */
 const monitorCommand = (port, command) => new Promise((resolve, reject) => {
     const s = net.connect(port, '127.0.0.1');
     let out = '';
@@ -166,8 +167,9 @@ const monitorCommand = (port, command) => new Promise((resolve, reject) => {
     const timer = setTimeout(() => { s.destroy(); reject(new Error(`monitor '${command}' timed out: ${out}`)); }, 30000);
     s.on('data', d => {
         out += d.toString('latin1').replace(/\x1b\[[0-9;]*m/g, '');
-        if (!sent && /\)\s*$/.test(out)) { sent = true; out = ''; s.write(`${command}\n`); return; }
-        if (sent && /\(machine-0\)\s*$/.test(out)) { clearTimeout(timer); s.destroy(); resolve(out); }
+        // The state service may print between prompts (a probe connection it dropped): match, never anchor.
+        if (!sent && /\(machine-0\)/.test(out)) { sent = true; out = ''; s.write(`${command}\n`); return; }
+        if (sent && /Starting emulation[\s\S]*\(machine-0\)/.test(out)) { clearTimeout(timer); s.destroy(); resolve(out); }
     });
     s.on('error', e => { clearTimeout(timer); reject(e); });
 });
@@ -279,6 +281,9 @@ const rotate = ([x, y, z, w], v) => {
     return [ix * w - iw * x - iy * z + iz * y, iy * w - iw * y - iz * x + ix * z, iz * w - iw * z - ix * y + iy * x];
 };
 const along = (a, b) => Math.hypot(b[0] - a[0], b[2] - a[2]);
+/** Heading (degrees about the vertical) of a pose's forward axis. */
+const yaw = q => { const f = rotate(q, [1, 0, 0]); return Math.atan2(-f[2], f[0]) * DEG; };
+const turn = (q0, q1) => ((yaw(q1) - yaw(q0) + 540) % 360) - 180;
 const percentile = (xs, p) => { const s = [...xs].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(p * s.length))]; };
 
 const report = {renode: RENODE, package: PACKAGE, program: PROGRAM, scratchDps};
@@ -339,6 +344,7 @@ try {
         return rotate(pose.rotation, [0, 1, 2].map(i => axle0[i] - hubBody.position[i])).map((v, i) => v + pose.position[i]);
     };
     const start = axle();
+    const pose0 = session.core.bodyPose(hubBody.id).rotation;
     const steps = [];
     const wall0 = now();
     let state = null;
@@ -355,7 +361,7 @@ try {
             angles: Object.fromEntries([...byPort].map(([port, joint]) => [port, (session.core.jointState(joint).angle - angle0.get(port)) * DEG])),
             guest: Object.fromEntries(hub.read.motors.map(m => [m.port, m.position])),
             firmware: {A: p.positions[0], B: p.positions[1]},
-            duty: {A: p.duties[0], B: p.duties[1]},
+            duty: {A: p.duties[0], B: p.duties[1]}, fwClockMs: p.clockMs, clockNs: hub.read.clockNs,
             drives: hub.readDrives(), state});
         // After the program ends, 300 ms more so the base comes to rest (the Scratch run does too).
         if (seenRunning && state !== PROGRAM_STATE.RUNNING && (doneAt ??= session.time) <= session.time - 300) break;
@@ -366,6 +372,7 @@ try {
     }
     const wallMs = now() - wall0;
     const end = axle();
+    report.firmwareHeadingDeg = +turn(pose0, session.core.bodyPose(hubBody.id).rotation).toFixed(2);
     await driver.end();
     session.dispose();
 
@@ -393,10 +400,16 @@ try {
         stepWallMs: {median: +percentile(exch, 0.5).toFixed(1), p90: +percentile(exch, 0.9).toFixed(1), max: +Math.max(...exch).toFixed(1)},
         wheels: {A: +last.angles.A.toFixed(2), B: +last.angles.B.toFixed(2)},
         worstShaftVsPhysicsDeg: +worstShaft.toFixed(4), worstGuestVsPhysicsDeg: +worstGuest.toFixed(4), worstFirmwarePosVsPhysicsDeg: +worstFirmware.toFixed(3),
+        // The firmware's own millisecond clock against Renode's virtual time over the run.
+        firmwareClockRate: +((last.fwClockMs - steps[0].fwClockMs) / ((last.clockNs - steps[0].clockNs) / 1e6)).toFixed(5),
+        // Steady wheel speed over the middle half of the drive (physics), against the commanded one.
         maxDuty: Math.max(...steps.map(s => Math.max(Math.abs(s.duty.A), Math.abs(s.duty.B)))),
         firmwareDistanceMm: +(firmwareDistance * 1000).toFixed(1), validated: transport.validated});
     console.log(`${steps.length} steps (${last.t} ms simulated) in ${(wallMs / 1000).toFixed(1)} s wall: real-time factor ${report.realTimeFactor}; ` +
         `step wall median ${report.stepWallMs.median} ms, p90 ${report.stepWallMs.p90} ms`);
+    const mid = steps.filter(x => x.t >= DRIVE_S * 250 && x.t <= DRIVE_S * 750);
+    report.steadySpeedDps = +((mid.at(-1).angles.B - mid[0].angles.B) / ((mid.at(-1).t - mid[0].t) / 1000)).toFixed(1);
+    console.log(`firmware clock ${report.firmwareClockRate} ms per virtual ms; steady wheel speed ${report.steadySpeedDps} °/s (commanded ${PROGRAM.instructions[1][2]})`);
     console.log(`wheels A ${report.wheels.A}°, B ${report.wheels.B}°; firmware program state ${state}; distance ${report.firmwareDistanceMm} mm`);
     check(seenRunning && state === PROGRAM_STATE.COMPLETE, `the firmware program ran and completed (final state ${state})`);
     check(worstShaft <= 0.0005 + 1e-9, `shafts sent = physics hinge angles to the milli-degree (worst ${worstShaft.toFixed(5)}°)`);
@@ -405,9 +418,12 @@ try {
     check(Math.abs(last.angles.A + last.angles.B) <= 0.05 * Math.abs(last.angles.B), `both wheels turned alike (A ${last.angles.A.toFixed(1)}°, B ${last.angles.B.toFixed(1)}°)`);
     check(transport.validated.step === steps.length, 'every step request passed the desktop broker\'s validator');
 
-    const {track} = await runOnSimLab(`DEVICE SPIKE\nWHEN flag clicked:\n${SCRATCH_BODY}`, {modelText: MODEL_TEXT, timeLimitMs: 4000});
+    const {track, hubId} = await runOnSimLab(`DEVICE SPIKE\nWHEN flag clicked:\n${SCRATCH_BODY}`, {modelText: MODEL_TEXT, timeLimitMs: DRIVE_S * 1000 + 2000});
     const scratch = along(track[0].axle, track.at(-1).axle);
     report.scratchDistanceMm = +(scratch * 1000).toFixed(1);
+    report.scratchHeadingDeg = +turn(track[0].bodies[hubId].rotation, track.at(-1).bodies[hubId].rotation).toFixed(2);
+    check(Math.abs(report.firmwareHeadingDeg - report.scratchHeadingDeg) <= 3,
+        `heading firmware ${report.firmwareHeadingDeg}° vs Scratch ${report.scratchHeadingDeg}° (within 3°)`);
     // The Scratch route's wheel angles (its virtual hub's controller), to separate controller from physics.
     const scratchMech = (await import(path.join(SIM, 'sim-session.js'))).prepareModel(MODEL_TEXT, CATALOG, {mat: null}).mechanism;
     const jointOf = new Map(scratchMech.actuators.map(a => [a.port, a.joint]));
@@ -423,7 +439,7 @@ try {
     // The R13e acceptance: the same program's distance within 5 %. A miss here with the line above
     // passing is the two motor controllers (firmware PI + 2000 °/s² ramp vs the virtual hub's), not the physics.
     check(Math.abs(report.distanceRatio - 1) < 0.05, `distance firmware ${report.firmwareDistanceMm} mm vs Scratch ${report.scratchDistanceMm} mm: ratio ${report.distanceRatio} (within 5 %)`);
-    report.trace = steps.filter((_, k) => k % 10 === 0 || k === steps.length - 1).map(s => ({t: s.t, angles: s.angles, guest: s.guest, firmware: s.firmware, duty: s.duty, state: s.state}));
+    report.trace = steps.filter((_, k) => k % 10 === 0 || k === steps.length - 1).map(s => ({t: s.t, angles: s.angles, guest: s.guest, firmware: s.firmware, duty: s.duty, state: s.state, fwClockMs: s.fwClockMs}));
 } catch (error) {
     failures.push(error.message);
     console.error(`FAIL ${error.stack}`);
