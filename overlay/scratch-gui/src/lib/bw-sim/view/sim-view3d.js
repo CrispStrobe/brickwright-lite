@@ -65,7 +65,9 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     const canvas = renderer.domElement;
     canvas.dataset.testid = 'bw-sim-lab-3d-canvas';
     canvas.setAttribute('role', 'img');
-    Object.assign(canvas.style, {width: '100%', height: '100%', display: 'block', borderRadius: '6px', touchAction: 'none'});
+    // touch-action none: one finger orbits, two pinch and pan (OrbitControls), the page does not scroll or zoom instead.
+    Object.assign(canvas.style, {width: '100%', height: '100%', display: 'block', borderRadius: '6px', touchAction: 'none',
+        userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none'});
     container.appendChild(canvas);
 
     const built = buildSimScene({model, mechanism, read, colors: parseLDConfig(config), catalog});
@@ -213,6 +215,10 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         resetCamera();
     };
     return {canvas, render, resize, resetCamera: recentre, dispose, setPorts, setMotion, setOverlay, highlight,
+        /** The camera now (for the browser gate to read what a gesture did): position, target, distance (metres). */
+        get camera () {
+            return {position: camera.position.toArray(), target: controls.target.toArray(), distance: camera.position.distanceTo(controls.target)};
+        },
         /** What the overlay shows now, plus the parts pulsing (for the browser gate). */
         overlayStats: () => ({...insight.stats(), pulsing: pulse.count,
             tinted: allMeshes().filter(m => [].concat(m.material).some(x => x.userData.baseColor && !x.color.equals(x.userData.baseColor))).length})};
