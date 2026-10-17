@@ -8,6 +8,7 @@ import {proveClassCallableSource,classMethodSourceSignature,classConstructorSour
 import {withClassResultFlowProof} from '../overlay/scratch-gui/src/lib/bw-makecode/class-callable-result-flow-proof.js';
 import {createClassCallableDescriptors} from '../overlay/scratch-gui/src/lib/bw-makecode/callable-class-descriptors.js';
 import {validateClassCallablePlan} from '../overlay/scratch-gui/src/lib/bw-makecode/class-callable-plan.js';
+import {classCallableExportTypes} from '../overlay/scratch-gui/src/lib/bw-makecode/class-callable-export-types.js';
 import {ordinaryConstructorParameterProperties} from '../overlay/scratch-gui/src/lib/bw-makecode/class-parameter-property-source.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
@@ -86,6 +87,11 @@ test('reflection transfers hidden parser roles and shared metadata without prein
  assert.equal(signature.parameters[1].type.kind,'callable');assert.equal(signature.parameters[1].type.result.name,'number');
  assert.deepEqual(owner.ctor.bwClassCallableSignature,signature);signature.parameters[1].type.result.name='string';
  assert.equal(classConstructorSourceSignature(proof,program,cls(program)).parameters[1].type.result.name,'number');
+ // An ordinary user class named callable retains its existing named codec;
+ // only the explicit signature selects the function resource domain.
+ const types=classCallableExportTypes(new Map([['callable',{name:'callable',parent:null}]]));
+ assert.equal(types.parameter({name:'value',type:'callable',optional:false}),'callable');
+ assert.match(types.parameter({name:'value',type:'callable',optional:false,callableSignature:classConstructorSourceSignature(proof,program,cls(program)).parameters[1].type}),/=>\s*number/);
  assert.deepEqual(owner.ctor.body,cls(program).ctor.body);
  assert.ok(owner.fields.filter(field=>field.parameterProperty).every(field=>field.init===null));
  assert.equal(proveClassCallableSource(lowered).eligible,true);

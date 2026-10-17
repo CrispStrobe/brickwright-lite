@@ -49,7 +49,7 @@ export function classCallableExportTypes(classes,builtinNames=new Set()) {
         return {generics:[...generics],parameters:method.callableSignature.parameters.map(parameter=>renderCallableType(parameter.type)),result:renderCallableType(method.callableSignature.result)};
     };
     const parameter=parameter=>{
-        if(parameter.type==='callable'||parameter.callableSignature!==undefined) {
+        if(parameter.callableSignature!==undefined) {
             if(!keys(parameter,['name','type','optional','callableSignature'])||parameter.type!=='callable'||
                 parameter.optional!==false||parameter.sdkType!==undefined||parameter.callableSignature?.kind!=='callable')
                 fail('invalid explicit callable constructor parameter');
