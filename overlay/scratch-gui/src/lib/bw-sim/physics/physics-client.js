@@ -3,22 +3,9 @@
 //
 // Main-thread client for the physics worker. Wraps a Worker-like port
 // with postMessage/onmessage and correlates replies by id. Also exports
-// interpolate() for rendering between snapshots, and startPhysicsWorker(),
-// the one place the worker is started (sim-lab.js, for the Sim Lab pane).
-
-/**
- * Starts physics-worker.js in a Web Worker (webpack emits it as its own chunk, and
- * Jolt with it), or returns null where there are no workers (node, an old browser):
- * the Sim Lab then runs its physics on the main thread (sim-session.js).
- */
-export const startPhysicsWorker = () => {
-    if (typeof Worker !== 'function') return null;
-    try {
-        return new Worker(/* webpackChunkName: "bw-sim-physics-worker" */ new URL('./physics-worker.js', import.meta.url));
-    } catch (_) {
-        return null;
-    }
-};
+// interpolate() for rendering between snapshots. The worker itself is started
+// by sim-lab.js (startPhysicsWorker): its entry wires the hub families in, and
+// physics/ imports no hub.
 
 /**
  * Linear interpolation for positions, nlerp for quaternions, linear for joint angles.
@@ -151,24 +138,26 @@ export class PhysicsClient {
     }
 
     /**
-     * Load a Sim Lab scene (sim-worker-protocol.js): the physics and the hub bridge's
-     * mirror. Resolves to the poses and sensor readings at t = 0 and the scene's id (batches name it).
-     * @param {{mechanism: object, hubBody: string|null, stepMs: number}} scene
-     * @returns {Promise<{scene: number, t: number, bodies: Float64Array, joints: Float64Array}>}
+     * Load a Sim Lab scene (../sim-worker-protocol.js): the physics and the hub bridge's
+     * mirror hubs. Resolves to the poses and the hubs' readings at t = 0 (by hub id) and
+     * the scene's id (batches name it).
+     * @param {{mechanism: object, hubs: {id: string, profile: string, body: string}[], stepMs: number}} scene
+     * @returns {Promise<{scene: number, t: number, bodies: Float64Array, joints: Float64Array, readings: object}>}
      */
-    async simLoad({ mechanism, hubBody, stepMs }) {
-        const reply = await this._request({ type: 'sim-load', mechanism, hubBody, stepMs });
+    async simLoad({ mechanism, hubs = [], stepMs }) {
+        const reply = await this._request({ type: 'sim-load', mechanism, hubs, stepMs });
         if (reply.type !== 'sim-loaded') throw new Error(reply.message ?? 'sim load failed');
-        return { scene: reply.id, t: reply.t, bodies: reply.bodies, joints: reply.joints, sensors: reply.sensors ?? [] };
+        return { scene: reply.id, t: reply.t, bodies: reply.bodies, joints: reply.joints, readings: reply.readings ?? {} };
     }
 
     /**
      * Run one batch of fixed steps.
-     * @param {{scene: number, steps?: number, ticks?: number[], hub?: object, redo?: boolean}} batch
+     * @param {{scene: number, steps?: number, ticks?: number[], hubs?: object, redo?: boolean}} batch
+     *        hubs: each hub's exportState() by hub id
      * @returns {Promise<{frames: object[], t: number, bodies: Float64Array, joints: Float64Array, workMs: number}>}
      */
-    async simBatch({ scene, steps = 0, ticks = [], hub = null, redo = false }) {
-        const reply = await this._request({ type: 'sim-batch', scene, steps, ticks, hub, redo });
+    async simBatch({ scene, steps = 0, ticks = [], hubs = {}, redo = false }) {
+        const reply = await this._request({ type: 'sim-batch', scene, steps, ticks, hubs, redo });
         if (reply.type !== 'sim-frames') throw new Error(reply.message ?? 'sim batch failed');
         return reply;
     }

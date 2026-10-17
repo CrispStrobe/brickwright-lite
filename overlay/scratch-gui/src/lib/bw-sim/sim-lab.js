@@ -12,7 +12,7 @@
 
 import PARTS from './part-meta/parts.json';
 import {catalogFrom} from './sim-session.js';
-import {PhysicsClient, startPhysicsWorker} from './physics/physics-client.js';
+import {PhysicsClient} from './physics/physics-client.js';
 
 export {SimSession, prepareModel, MODELS, MODELS_BASE, PROGRAMS_BASE} from './sim-session.js';
 export {fetchLDrawClosure, LDRAW_BASE} from './ldraw/ldraw-fetch.js';
@@ -32,6 +32,20 @@ export {instructionsPrintHtml} from './instructions/print-page.js';
 export {createInstructionsView, INSTRUCTIONS_TESTID, HIGHLIGHT as INSTRUCTIONS_HIGHLIGHT} from './view/instructions-view.js';
 
 export const CATALOG = catalogFrom(PARTS);
+
+/**
+ * Starts physics-worker.js in a Web Worker (webpack emits it as its own chunk, and
+ * Jolt with it), or returns null where there are no workers (node, an old browser):
+ * the Sim Lab then runs its physics on the main thread (sim-session.js).
+ */
+const startPhysicsWorker = () => {
+    if (typeof Worker !== 'function') return null;
+    try {
+        return new Worker(/* webpackChunkName: "bw-sim-physics-worker" */ new URL('./physics-worker.js', import.meta.url));
+    } catch (_) {
+        return null;
+    }
+};
 
 /**
  * The physics worker for the pane's sessions (SimSession.fromText's `worker`), or null

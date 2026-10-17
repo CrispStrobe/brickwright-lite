@@ -97,7 +97,7 @@ const LAZY = [
         why: 'loadJolt\'s dynamic import in overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js (webpackChunkName "bw-sim-jolt")'},
     {what: 'the Sim Lab physics worker', marker: 'sim batch before sim load', chunk: 'bw-sim-physics-worker',
         notInChunks: ['bw-spike-simulator', 'bw-sim-lab'],
-        why: 'startPhysicsWorker in overlay/scratch-gui/src/lib/bw-sim/physics/physics-client.js (new Worker(new URL(…)), webpackChunkName "bw-sim-physics-worker")'},
+        why: 'startPhysicsWorker in overlay/scratch-gui/src/lib/bw-sim/sim-lab.js (new Worker(new URL(…)), webpackChunkName "bw-sim-physics-worker")'},
     {what: 'the Sim Lab 3D view', marker: 'bw-sim-lab-3d-canvas', chunk: 'bw-sim-lab',
         notInChunks: ['bw-spike-simulator'],
         why: 'the dynamic import in sim-lab-pane.jsx (webpackChunkName "bw-sim-lab")'},

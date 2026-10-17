@@ -75,8 +75,29 @@ const faceUpFromQuat = q => {
     return best.id;
 };
 
-export const imuFromBody = (pose, angVelWorld, linVelWorld, prevLinVelWorld, dt, gravityWorld) => {
-    const q = pose.rotation;
+/**
+ * The hub body's linear acceleration in world, m/s², without gravity: (v - v_prev) / dt,
+ * zero without a previous velocity. The physics side computes it (hub-bridge.js puts it
+ * in the HubPoseReading); the SPIKE IMU below turns it into milli-g.
+ */
+export const linearAcceleration = (linVelWorld, prevLinVelWorld, dt) => {
+    let linAccWorld = [0, 0, 0];
+    if (prevLinVelWorld && dt > 1e-9) {
+        linAccWorld = [
+            (linVelWorld[0] - prevLinVelWorld[0]) / dt,
+            (linVelWorld[1] - prevLinVelWorld[1]) / dt,
+            (linVelWorld[2] - prevLinVelWorld[2]) / dt,
+        ];
+    }
+    return linAccWorld;
+};
+
+/**
+ * The SPIKE IMU's values from a HubPoseReading's parts (hubs/spike/spike-virtual-hub.js):
+ * pitch, roll, faceUp from the orientation; angular velocity (deg/s) and proper
+ * acceleration (milli-g) in SPIKE's axes.
+ */
+export const imuFromPose = (q, angVelWorld, linAccWorld, gravityWorld) => {
     const pitch = pitchFromQuat(q);
     const roll = rollFromQuat(q);
     const faceUp = faceUpFromQuat(q);
@@ -90,15 +111,6 @@ export const imuFromBody = (pose, angVelWorld, linVelWorld, prevLinVelWorld, dt,
         y: spikeAng[1] * 180 / Math.PI,
         z: spikeAng[2] * 180 / Math.PI,
     };
-    // Linear acceleration: (curr - prev)/dt, plus gravity
-    let linAccWorld = [0, 0, 0];
-    if (prevLinVelWorld && dt > 1e-9) {
-        linAccWorld = [
-            (linVelWorld[0] - prevLinVelWorld[0]) / dt,
-            (linVelWorld[1] - prevLinVelWorld[1]) / dt,
-            (linVelWorld[2] - prevLinVelWorld[2]) / dt,
-        ];
-    }
     // Proper acceleration = linAcc - gravity (gravity is [0,-9.81,0] down, so -gravity is up)
     const properWorld = [
         linAccWorld[0] - gravityWorld[0],

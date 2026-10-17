@@ -3,7 +3,8 @@
 //
 // One Sim Lab run: LDraw text → PlacedModel (model/ldraw-model.js) →
 // CompiledMechanism (mech/compile.js) → physics core (physics/jolt-core.js) →
-// the virtual SPIKE hub (hub-bridge.js). The Sim Lab pane owns one session
+// the model's hub, as a VirtualHub of its family (hubs/, through the port
+// boundary in hub-bridge.js). The Sim Lab pane owns one session
 // at a time; everything here is DOM-free so the same sequence runs headless
 // in tests.
 //
@@ -14,8 +15,8 @@
 //
 // Where the physics runs (ROADMAP §4.9, docs/SIM-LAB-PLAN.md "§4.9 The physics
 // worker"): given a PhysicsClient for physics/physics-worker.js, in that Web
-// Worker — the hub state and its motor controller stay here, and each tick's
-// steps come back as frames the hub replays (physics/sim-worker-protocol.js);
+// Worker — the hubs and their controllers stay here, and each tick's
+// steps come back as frames the hubs replay (sim-worker-protocol.js);
 // otherwise (node, no Worker, the worker could not load Jolt) on the main
 // thread, as before. Both give the same numbers; `worker` says which one runs.
 
@@ -24,7 +25,8 @@ import {compile} from './mech/compile.js';
 import {mechanismIssues} from './mech/insight.js';
 import {loadJolt, createPhysicsCore} from './physics/jolt-core.js';
 import {SimHubBridge, HubReplay, STEP_MS} from './hub-bridge.js';
-import {exportMotorState, motorStateKey, MirrorCore} from './physics/sim-worker-protocol.js';
+import {MirrorCore} from './sim-worker-protocol.js';
+import {hubRegistry, DEFAULT_HUB_PROFILE} from './hubs/index.js';
 import {createMat} from './world/mats.js';
 import {placeOnStart, driveAnchor} from './world/place.js';
 
@@ -82,11 +84,22 @@ export const prepareModel = (text, catalog, {mat = null} = {}) => {
     return {model, runModel, mechanism, issues};
 };
 
-/** The body that carries the SPIKE hub (its pose is the IMU), or null. */
-export const hubBodyOf = (model, mechanism, catalog) => {
-    const hubIds = new Set(model.parts.filter(p => catalog.get(p.part)?.hub).map(p => p.id));
-    return mechanism.bodies.find(b => b.parts.some(id => hubIds.has(id)))?.id ?? null;
+/**
+ * The model's hubs as the bridge and the worker take them: [{id, profile, body}] — the
+ * hub part's id, its family's profile id (the part metadata's `hub.profile`; SPIKE Prime
+ * when it names none) and the body that carries it (its pose is the IMU). R1 binds one:
+ * the hub on the first body that has one (v1 ports name no hub; several are R2).
+ */
+export const hubsOf = (model, mechanism, catalog) => {
+    const hubParts = new Map(model.parts.filter(p => catalog.get(p.part)?.hub).map(p => [p.id, catalog.get(p.part).hub]));
+    const body = mechanism.bodies.find(b => b.parts.some(id => hubParts.has(id)));
+    if (!body) return [];
+    const id = body.parts.find(partId => hubParts.has(partId));
+    return [{id, profile: hubParts.get(id).profile || DEFAULT_HUB_PROFILE, body: body.id}];
 };
+
+/** The body that carries the (first) hub, or null. */
+export const hubBodyOf = (model, mechanism, catalog) => hubsOf(model, mechanism, catalog)[0]?.body ?? null;
 
 /**
  * At most this much simulated time per worker batch. When the worker cannot keep up
@@ -98,7 +111,9 @@ export const MAX_BATCH_STEPS = 20;
 export class SimSession {
     /**
      * @param {object} options
-     * @param {object} options.hubState a VirtualSpikeHubState (shared with the arena and the program routes)
+     * @param {object} options.hubState the hub's state (SPIKE: a VirtualSpikeHubState, shared with the arena
+     *        and the program routes), wrapped by its family's VirtualHub adapter
+     * @param {object} [options.registry] the hub registry (default: the built-in families)
      * @param {object} options.model a PlacedModel
      * @param {object} options.mechanism its CompiledMechanism
      * @param {Map} options.catalog part catalog (catalogFrom(parts.json))
@@ -106,14 +121,17 @@ export class SimSession {
      * @param {object} [options.worker] a PhysicsClient whose worker has loaded this mechanism
      *        (simLoad), with `loaded` its reply: the physics runs in the worker
      */
-    constructor ({hubState, model, runModel = model, mechanism, catalog, mat = null, J = null, worker = null, loaded = null}) {
+    constructor ({hubState, model, runModel = model, mechanism, catalog, mat = null, J = null, worker = null, loaded = null,
+        registry = hubRegistry}) {
         this.model = model;
         /** The model where it stands on the mat — what the physics runs and the view draws. */
         this.runModel = runModel;
         this.mat = mat;
         this.mechanism = mechanism;
         this.hubState = hubState;
-        const hubBody = hubBodyOf(model, mechanism, catalog);
+        /** [{id, profile, body, hub}]: the model's hubs, each a VirtualHub (hubs/hub-profile.js). */
+        this.hubs = hubsOf(model, mechanism, catalog).map(h => ({...h, hub: registry.create(h.profile, {id: h.id, hubState})}));
+        const hubs = this.hubs.map(({hub, body}) => ({hub, body}));
         this.time = 0;
         this.listeners = new Set();
         /** Why a worker was offered but the physics runs here (fromText), or null. */
@@ -123,7 +141,7 @@ export class SimSession {
             this.client = worker;
             this.scene = loaded.scene;
             this.core = new MirrorCore(mechanism, loaded);
-            this.bridge = hubBody ? new HubReplay({hubState, mechanism, hubBody, sensors: loaded.sensors || []}) : null;
+            this.bridge = hubs.length ? new HubReplay({hubs, mechanism, readings: loaded.readings || {}}) : null;
             this._steps = 0;
             this._ticks = [];
             this._pendingMs = 0;
@@ -136,7 +154,7 @@ export class SimSession {
         } else {
             this.core = createPhysicsCore(J, mechanism, {stepHz: 1000 / STEP_MS});
             // Without a hub there is nothing to drive, but the model still falls and settles.
-            this.bridge = hubBody ? new SimHubBridge({hubState, core: this.core, mechanism, hubBody}) : null;
+            this.bridge = hubs.length ? new SimHubBridge({hubs, core: this.core, mechanism}) : null;
         }
     }
 
@@ -145,20 +163,20 @@ export class SimSession {
      * With `worker` (a PhysicsClient) the physics runs there; if the worker cannot load the
      * scene, it runs on this thread and `session.workerError` says why.
      */
-    static async fromText (text, {hubState, catalog, mat = null, worker = null}) {
+    static async fromText (text, {hubState, catalog, mat = null, worker = null, registry = hubRegistry}) {
         const {model, runModel, mechanism, issues} = prepareModel(text, catalog, {mat});
         if (!mechanism) return {session: null, issues, model, runModel};
         let workerError = null;
         if (worker) {
             try {
-                const loaded = await worker.simLoad({mechanism, hubBody: hubBodyOf(model, mechanism, catalog), stepMs: STEP_MS});
-                return {session: new SimSession({hubState, model, runModel, mechanism, catalog, mat, worker, loaded}), issues, model, runModel};
+                const loaded = await worker.simLoad({mechanism, hubs: hubsOf(model, mechanism, catalog), stepMs: STEP_MS});
+                return {session: new SimSession({hubState, model, runModel, mechanism, catalog, mat, worker, loaded, registry}), issues, model, runModel};
             } catch (error) {
                 workerError = error.message || String(error);
             }
         }
         const J = await loadJolt();
-        const session = new SimSession({hubState, model, runModel, mechanism, catalog, mat, J});
+        const session = new SimSession({hubState, model, runModel, mechanism, catalog, mat, J, registry});
         session.workerError = workerError;
         return {session, issues, model, runModel};
     }
@@ -221,8 +239,8 @@ export class SimSession {
                 ms = steps * STEP_MS;
             }
             this._steps = 0;
-            const hub = exportMotorState(this.hubState);
-            Object.assign(batch, {steps, hub, key: motorStateKey(hub)});
+            const hubs = this._exportHubs();
+            Object.assign(batch, {steps, hubs, key: this._hubsKey(hubs)});
         } else {
             batch.ticks = this._ticks;
             this._ticks = [];
@@ -234,7 +252,7 @@ export class SimSession {
 
     _post (batch, redo) {
         const sent = this._inFlight = {batch, at: now()};
-        this.client.simBatch({scene: this.scene, steps: batch.steps, ticks: batch.ticks, hub: batch.hub, redo}).then(
+        this.client.simBatch({scene: this.scene, steps: batch.steps, ticks: batch.ticks, hubs: batch.hubs, redo}).then(
             reply => { if (this._inFlight === sent) this._receive(sent, reply); },
             error => { if (this._inFlight === sent) this._fail(error); });
     }
@@ -250,13 +268,13 @@ export class SimSession {
         stats.workerMs += reply.workMs || 0;
         if (this.bridge) {
             // Something set a motor while the batch was in flight: in-thread, that command
-            // would have reached the controller before these steps. Redo them from the
-            // worker's checkpoint with the controller as it is now.
-            const hub = exportMotorState(this.hubState);
-            const key = motorStateKey(hub);
+            // would have reached the hub before these steps. Redo them from the worker's
+            // checkpoint with the hubs as they are now.
+            const hubs = this._exportHubs();
+            const key = this._hubsKey(hubs);
             if (key !== batch.key) {
                 stats.redos++;
-                Object.assign(batch, {hub, key});
+                Object.assign(batch, {hubs, key});
                 stats.mainMs += now() - start;
                 this._post(batch, true);
                 return;
@@ -271,6 +289,18 @@ export class SimSession {
         stats.mainMs += now() - start;
         this._advanced();
         this._send();
+    }
+
+    /** Every hub's exportState(), by hub id (what a batch carries to the worker's mirrors). */
+    _exportHubs () {
+        const out = {};
+        for (const {id, hub} of this.hubs) out[id] = hub.exportState();
+        return out;
+    }
+
+    /** One comparable key for all hubs' states: equal keys, identical drives. */
+    _hubsKey (states) {
+        return this.hubs.map(({id, hub}) => hub.stateKey(states[id])).join('\n');
     }
 
     _settle () {
