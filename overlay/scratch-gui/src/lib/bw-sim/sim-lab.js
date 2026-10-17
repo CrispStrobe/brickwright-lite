@@ -11,7 +11,7 @@
 import PARTS from './part-meta/parts.json';
 import {catalogFrom} from './sim-session.js';
 
-export {SimSession, prepareModel, MODELS, MODELS_BASE} from './sim-session.js';
+export {SimSession, prepareModel, MODELS, MODELS_BASE, PROGRAMS_BASE} from './sim-session.js';
 export {fetchLDrawClosure, LDRAW_BASE} from './ldraw/ldraw-fetch.js';
 export {connectVirtualSpike} from '../virtual-hub/connect-virtual-spike.js';
 export {createSimView3D, WebGLUnavailableError, webglAvailable} from './view/sim-view3d.js';

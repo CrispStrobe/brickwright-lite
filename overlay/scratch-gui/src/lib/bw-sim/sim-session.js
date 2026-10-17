@@ -30,11 +30,18 @@ import {placeOnStart, driveAnchor} from './world/place.js';
  */
 export const catalogFrom = partsJson => new Map(partsJson.parts.map(p => [p.part, p]));
 
-/** Reference models shipped in static/sim-lab/models/ (file name → titles). */
+/**
+ * Reference models shipped in static/sim-lab/models/ (file name → titles). A model
+ * may name an example program in static/sim-lab/programs/ (DEVICE SPIKE text) and
+ * the mat it is meant for: the pane offers to load it into the Code tab.
+ */
 export const MODELS = Object.freeze([
-    {file: 'driving-base.ldr', title: {en: 'SPIKE driving base', de: 'SPIKE-Fahrbasis'}}
+    {file: 'driving-base.ldr', title: {en: 'SPIKE driving base', de: 'SPIKE-Fahrbasis'}},
+    {file: 'line-follower.ldr', title: {en: 'Line follower', de: 'Linienfolger'},
+        example: 'line-follower.bw', mat: 'line-oval'}
 ]);
 export const MODELS_BASE = 'static/sim-lab/models/';
+export const PROGRAMS_BASE = 'static/sim-lab/programs/';
 
 /**
  * Parse and compile LDraw text. Never throws for bad user input: problems
