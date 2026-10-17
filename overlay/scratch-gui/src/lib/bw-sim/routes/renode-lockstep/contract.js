@@ -179,7 +179,9 @@ export const readSnapshot = frame => {
     if (!Number.isSafeInteger(frame.seq) || frame.seq < 0 || !Number.isSafeInteger(frame.clockNs) || frame.clockNs < 0) {
         throw new LockstepContractError('the snapshot has no valid seq/clockNs');
     }
-    if (!Array.isArray(frame.ports) || !frame.ports.every(p => isPlain(p) && PORTS.includes(p.id) && typeof p.attached === 'boolean' && typeof p.kind === 'string')) {
+    // An empty port reports `kind: null` (the Runtime's state service: port F of the default topology).
+    if (!Array.isArray(frame.ports) || !frame.ports.every(p => isPlain(p) && PORTS.includes(p.id) && typeof p.attached === 'boolean' &&
+        (typeof p.kind === 'string' || (p.kind === null && !p.attached)))) {
         throw new LockstepContractError('the snapshot has no valid ports[]');
     }
     if (!Array.isArray(frame.motors)) throw new LockstepContractError('the snapshot has no motors[]');
