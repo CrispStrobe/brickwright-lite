@@ -53,7 +53,10 @@ const TEXT = {
             gizmoArrow: 'Drag the {color} arrow to move along {axis}', gizmoPlane: 'Drag the square to move in the {axis} plane',
             gizmoRing: 'Drag the {color} ring to turn (90° steps, Shift: 15°)', red: 'red', green: 'green', blue: 'blue',
             nothingSelected: 'Select a part first (click it).', clipboardEmpty: 'Nothing copied yet: select parts and press Ctrl+C.',
-            nothingToUndo: 'Nothing to undo.', nothingToRedo: 'Nothing to redo.', invalid: 'That does not work here: {detail}'
+            nothingToUndo: 'Nothing to undo.', nothingToRedo: 'Nothing to redo.', invalid: 'That does not work here: {detail}',
+            blocked: 'Would go into {target}: let go and it stays where it was',
+            overlapMove: 'Not moved: it would go into {target}.', overlapPlace: 'Not placed: it would go into {target}.',
+            overlapTurn: 'Not turned: it would go into {target}.'
         }
     },
     de: {
@@ -86,7 +89,10 @@ const TEXT = {
             gizmoArrow: 'Ziehe den {color} Pfeil, um entlang {axis} zu schieben', gizmoPlane: 'Ziehe das Quadrat, um in der {axis}-Ebene zu schieben',
             gizmoRing: 'Ziehe den {color} Ring zum Drehen (90°-Schritte, Umschalt: 15°)', red: 'roten', green: 'grünen', blue: 'blauen',
             nothingSelected: 'Wähle zuerst ein Teil aus (anklicken).', clipboardEmpty: 'Noch nichts kopiert: Teile auswählen und Strg+C drücken.',
-            nothingToUndo: 'Nichts rückgängig zu machen.', nothingToRedo: 'Nichts zu wiederholen.', invalid: 'Das geht hier nicht: {detail}'
+            nothingToUndo: 'Nichts rückgängig zu machen.', nothingToRedo: 'Nichts zu wiederholen.', invalid: 'Das geht hier nicht: {detail}',
+            blocked: 'Würde in {target} hineinragen: loslassen lässt es, wo es war',
+            overlapMove: 'Nicht verschoben: Es würde in {target} hineinragen.', overlapPlace: 'Nicht gesetzt: Es würde in {target} hineinragen.',
+            overlapTurn: 'Nicht gedreht: Es würde in {target} hineinragen.'
         }
     }
 };
@@ -524,7 +530,8 @@ class SimLabPane extends React.Component {
         case 'moving': return fill(T.moving, {x: st.delta[0], y: -st.delta[1], z: -st.delta[2]});
         case 'turning': return fill(T.turning, {deg: st.degrees});
         case 'placed': return fill(T.placed, {part: name(st.part)});
-        case 'refused': return fill(T[st.reason] || T.invalid, {detail: st.detail || ''});
+        case 'blocked': return fill(T.blocked, {target: name(st.target)});
+        case 'refused': return fill(T[st.reason] || T.invalid, {detail: st.detail || '', target: st.target ? name(st.target) : ''});
         default: return T[st.kind] ? fill(T[st.kind], {n: st.count}) : T.idle;
         }
     }
@@ -547,6 +554,7 @@ class SimLabPane extends React.Component {
         const pressed = on => ({...small, background: on ? '#dbeafe' : '#fff', borderColor: on ? '#2563eb' : '#94a3b8', fontWeight: on ? 600 : 400});
         const st = this.state.buildStatus || {};
         const refused = st.kind === 'refused';
+        const blocked = st.kind === 'blocked';
         const T = this.text;
         return (
             <div style={{display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12}}>
@@ -598,7 +606,7 @@ class SimLabPane extends React.Component {
                         </label>
                     )}
                     <span role="status" data-testid="bw-sim-lab-build-status" data-kind={st.kind || 'idle'}
-                        style={{color: refused ? '#b91c1c' : '#475569', fontWeight: refused ? 600 : 400}}>
+                        style={{color: refused || blocked ? '#b91c1c' : '#475569', fontWeight: refused ? 600 : 400}}>
                         {this.buildStatusText()}
                     </span>
                 </div>

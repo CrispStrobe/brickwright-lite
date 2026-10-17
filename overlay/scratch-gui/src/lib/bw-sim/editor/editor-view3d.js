@@ -12,7 +12,8 @@
 //   Shift+click           add / remove a part;   click on empty space: clear
 //   Shift+drag on empty   box-select
 //   drag a part           slide it on the surface under the pointer (floor or
-//                         the top of another part), grid-snapped
+//                         the top of another part), grid-snapped; the pressed
+//                         point stays under the pointer
 //   gizmo arrows/planes   move along world axes (W);  rings: turn (E),
 //                         90° steps, 15° while Shift is held
 //   R / Shift+R           turn 90° about the vertical (about the connection's
@@ -20,6 +21,21 @@
 //   T / Shift+T           tip 90° about the horizontal axis facing the camera
 //   magnet                a lone part moved near a matching hole or axle shows
 //                         a green ghost and snaps there on release (Alt: off)
+//   overlap               a move, turn or placement that would push a solid part
+//                         into another one shows red, the status line names the
+//                         part, and it is refused on release (overlap.js
+//                         `moveVerdict`); pins, axles and the castor ball may sit
+//                         inside holes and sockets, and a magnet snap is a
+//                         legitimate connection
+//   aiming                the pointer ray also hits the parts' colliders, which
+//                         are solid: aiming into a beam's hole aims at the beam,
+//                         not at the floor below it, so a part rests on the face
+//                         the pointer is on; the magnet first tries the part
+//                         centred on the pointer, so it takes the hole pointed
+//                         at, from the side the pointer is on
+//   gizmo                 sized to the selection (transform-math.js `gizmoSize`);
+//                         a press on a part next to a handle, but not on the
+//                         handle's visible shape, goes to the part
 //   Delete, Ctrl+D, Ctrl+C/V, Ctrl+A, Esc, Ctrl+Z / Ctrl+Y (Shift+Ctrl+Z), F
 //   camera                left-drag on empty space or right-drag: orbit;
 //                         middle-drag or Shift+right-drag: pan; wheel: zoom
@@ -45,8 +61,9 @@ import {LDU_M, lduToWorld} from '../contracts.js';
 import {partGeometry, partVisual} from '../view/part-geometry.js';
 import {PART_SURFACE, addEdgeLines, addPartLights, edgeMaterials} from '../view/part-style.js';
 import {snapCandidates, rotateAboutSnap} from './snap.js';
+import {moveVerdict, rayHitParts, restingPosition, solidOverlaps} from './overlap.js';
 import {
-    DEFAULT_GRID, GRID_STEPS, HOLE_PITCH, IDENTITY, cleanRotation, expandToGroups, facingAxis, mul3, mulVec3,
+    DEFAULT_GRID, GRID_STEPS, HOLE_PITCH, IDENTITY, cleanRotation, expandToGroups, facingAxis, gizmoSize, mul3, mulVec3,
     placeCopies, rotatePoses, selectionPivot, snapDelta, translatePoses, worldAxisRotation
 } from './transform-math.js';
 
@@ -60,6 +77,8 @@ export const DEFAULT_COLOR = 71;
 export const MAGNET_RADIUS = 32;
 /** Pointer travel (px) below which a press is a click, not a drag. */
 const CLICK_PX = 4;
+/** How near (px) the pointer must be to a gizmo handle's visible shape for a press to grab it rather than a part. */
+const HANDLE_PX = 8;
 const QUARTER = Math.PI / 2;
 
 /** A placed pose (LDraw) as a world Matrix4. */
@@ -154,13 +173,32 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         raycaster.setFromCamera(pointer, camera);
         return raycaster;
     };
+    /**
+     * The ray against the parts' colliders (overlap.js), nearest first, with world
+     * points and distances. Colliders are solid where the mesh has holes: aiming
+     * into a hole hits the part around it.
+     */
+    const colliderHits = (ray, exclude = []) => {
+        const {origin, direction} = ray.ray;
+        return rayHitParts(editor.model, catalogMap, worldToLdu(origin), [direction.x, -direction.y, -direction.z], {exclude})
+            .filter(h => meshes.has(h.part))
+            .map(h => ({...h, world: new Vector3(...lduToWorld(h.point)), distance: h.t * LDU_M}));
+    };
+    /** The part under the pointer: its mesh or its collider, whichever the ray meets first. */
     const partUnder = event => {
-        const hits = pick(event).intersectObjects([...meshes.values()], false);
-        return hits.length ? hits[0] : null;
+        const ray = pick(event);
+        const hits = ray.intersectObjects([...meshes.values()], false);
+        const mesh = hits.length ? hits[0] : null;
+        const solid = colliderHits(ray)[0];
+        if (solid && (!mesh || solid.distance < mesh.distance)) {
+            return {object: meshes.get(solid.part), point: solid.world, distance: solid.distance};
+        }
+        return mesh;
     };
     /**
      * The surface under the pointer that a part would rest on: the top face of
-     * a part (not one of `exclude`) or the floor.
+     * a part (not one of `exclude`) — of its mesh or its collider, whichever is
+     * nearer, so a hole counts as the face around it — or the floor.
      * @returns {{point: Vector3, part: string|null}|null}
      */
     const surfaceUnder = (event, exclude = []) => {
@@ -168,11 +206,19 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         const skip = new Set(exclude);
         const hits = ray.intersectObjects([...meshes.values()].filter(m => !skip.has(m.name)), false);
         const n = new Vector3();
+        let best = null;
         for (const h of hits) {
             if (!h.face) continue;
             n.copy(h.face.normal).transformDirection(h.object.matrixWorld);
-            if (n.y > 0.7 && h.point.y >= floorY - 1e-6) return {point: h.point.clone(), part: h.object.name};
+            if (n.y > 0.7 && h.point.y >= floorY - 1e-6) {
+                best = {point: h.point.clone(), part: h.object.name, distance: h.distance};
+                break;
+            }
         }
+        // LDraw is -y up: an upward face has a normal with negative y.
+        const top = colliderHits(ray, exclude).find(h => h.normal[1] < -0.7 && h.world.y >= floorY - 1e-6);
+        if (top && (!best || top.distance < best.distance)) best = {point: top.world, part: top.part};
+        if (best) return {point: best.point, part: best.part};
         const p = ray.ray.intersectPlane(floor, new Vector3());
         return p ? {point: p, part: null} : null;
     };
@@ -196,7 +242,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         return lineMaterials.get(color);
     };
     const ghostMaterial = tone => [0, 1].map(() => new MeshStandardMaterial({
-        color: tone === 'snap' ? '#22c55e' : '#3b82f6', transparent: true, opacity: 0.55, depthWrite: false
+        color: {snap: '#22c55e', blocked: '#ef4444'}[tone] || '#3b82f6', transparent: true, opacity: 0.55, depthWrite: false
     }));
     const edges = new Map();
     const edgesFor = part => {
@@ -209,6 +255,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     const selectedLine = new LineBasicMaterial({color: 0xf59e0b});
     const selectedHidden = new LineBasicMaterial({color: 0xf59e0b, depthTest: false, transparent: true, opacity: 0.22});
     const hoverLine = new LineBasicMaterial({color: 0x38bdf8});
+    // A move that would push a part into another: red, like the status line.
+    const blockedLine = new LineBasicMaterial({color: 0xdc2626});
 
     const posesOverride = () => (preview ? new Map(preview.moves.map(m => [m.id, m])) : new Map());
     const placeMeshes = () => {
@@ -223,10 +271,11 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     };
     const drawOutlines = () => {
         outlineGroup.clear();
+        const red = preview && preview.blocked ? new Set(preview.moves.map(m => m.id)) : new Set();
         const add = (id, material) => {
             const mesh = meshes.get(id);
             if (!mesh) return;
-            const line = new LineSegments(edgesFor(mesh.userData.part), material);
+            const line = new LineSegments(edgesFor(mesh.userData.part), red.has(id) ? blockedLine : material);
             line.matrixAutoUpdate = false;
             line.matrix.copy(mesh.matrix);
             line.renderOrder = material === selectedLine ? 10 : 5;
@@ -243,7 +292,15 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         for (const id of selection) add(id, selectedLine);
         for (const [id, mesh] of meshes) {
             const on = selection.includes(id);
-            for (const m of [].concat(mesh.material)) m.emissive?.setHex(on ? 0x1e3a8a : (id === hovered ? 0x0c4a6e : 0x000000));
+            const glow = red.has(id) ? 0x7f1d1d : (on ? 0x1e3a8a : (id === hovered ? 0x0c4a6e : 0x000000));
+            for (const m of [].concat(mesh.material)) {
+                m.emissive?.setHex(glow);
+                // Blocked: the part itself turns red (a tint over its own colour is too faint on grey).
+                if (!m.color) continue;
+                if (!m.userData.baseColor) m.userData.baseColor = m.color.clone();
+                if (red.has(id)) m.color.setHex(0xef4444);
+                else m.color.copy(m.userData.baseColor);
+            }
         }
     };
 
@@ -318,18 +375,84 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     controls.update();
 
     const pivotLdu = () => selectionPivot(selectedParts(), gridStep);
+    let selectionRadius = 0;
+    /** Sizes the gizmo to the selection as seen now (every frame: the camera moves). */
+    const fitGizmo = () => {
+        if (!transform.object || !selectionRadius) return;
+        const size = gizmoSize({radius: selectionRadius, distance: camera.position.distanceTo(pivotObject.position),
+            fov: camera.fov, viewHeightPx: canvas.clientHeight});
+        if (Math.abs(size - transform.size) > 0.01) transform.setSize(size);
+    };
     const updateGizmo = () => {
         if (!selection.length || tool) {
             transform.detach();
             return;
         }
         if (gesture && gesture.kind === 'gizmo') return;
+        modelGroup.updateMatrixWorld(true);
+        selectionRadius = modelBox(selection).getBoundingSphere(new Sphere()).radius;
         pivotObject.position.fromArray(lduToWorld(pivotLdu()));
         pivotObject.quaternion.identity();
         pivotObject.updateMatrixWorld(true);
         transform.attach(pivotObject);
         transform.setMode(mode === 'rotate' ? 'rotate' : 'translate');
+        fitGizmo();
     };
+
+    // Where the pointer is on screen (px in the canvas) and the 2D distance to a triangle.
+    const segmentDistance = (p, a, b) => {
+        const dx = b[0] - a[0], dy = b[1] - a[1];
+        const len = dx * dx + dy * dy;
+        const t = len ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / len)) : 0;
+        return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
+    };
+    const triangleDistance = (p, a, b, c) => {
+        const side = (u, v) => (v[0] - u[0]) * (p[1] - u[1]) - (v[1] - u[1]) * (p[0] - u[0]);
+        const s1 = side(a, b), s2 = side(b, c), s3 = side(c, a);
+        if ((s1 >= 0 && s2 >= 0 && s3 >= 0) || (s1 <= 0 && s2 <= 0 && s3 <= 0)) return 0;
+        return Math.min(segmentDistance(p, a, b), segmentDistance(p, b, c), segmentDistance(p, c, a));
+    };
+    /**
+     * Whether the pointer is on the VISIBLE shape of the gizmo handle the picker
+     * found (within HANDLE_PX). TransformControls picks with fat invisible shapes
+     * that reach over neighbouring parts; a press there on a part is meant for
+     * the part.
+     */
+    const onHandleShape = event => {
+        const gizmo = transform._gizmo && transform._gizmo.gizmo && transform._gizmo.gizmo[transform.mode];
+        if (!gizmo) return true; // three's internals changed: trust the picker
+        const rect = canvas.getBoundingClientRect();
+        const p = [event.clientX - rect.left, event.clientY - rect.top];
+        const v = new Vector3();
+        for (const handle of gizmo.children) {
+            if (handle.name !== transform.axis || !handle.visible || !handle.geometry) continue;
+            const pos = handle.geometry.attributes.position;
+            const screen = [];
+            for (let i = 0; i < pos.count; i++) {
+                v.fromBufferAttribute(pos, i).applyMatrix4(handle.matrixWorld).project(camera);
+                screen.push([(v.x + 1) / 2 * rect.width, (1 - v.y) / 2 * rect.height]);
+            }
+            const index = handle.geometry.index;
+            const n = index ? index.count : pos.count;
+            for (let i = 0; i + 2 < n; i += 3) {
+                const [a, b, c] = [0, 1, 2].map(k => screen[index ? index.getX(i + k) : i + k]);
+                if (triangleDistance(p, a, b, c) <= HANDLE_PX) return true;
+            }
+        }
+        return false;
+    };
+    /** The gizmo handle a press here would grab: the picker's, unless a part is under the pointer off the handle's shape. */
+    const gizmoGrab = event => {
+        if (!transform.object) return null;
+        // The handles as they are now (size and pose change between frames), not as last drawn.
+        transform.getHelper().updateMatrixWorld(true);
+        transform.pointerHover(ndc(event));
+        if (transform.axis === null) return null;
+        if (onHandleShape(event) || !partUnder(event)) return transform.axis;
+        transform.axis = null; // the handle does not light up either
+        return null;
+    };
+    let gizmoHover = null;
 
     transform.addEventListener('mouseDown', () => {
         controls.enabled = false;
@@ -351,9 +474,11 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             const k = [Math.abs(a.x), Math.abs(a.y), Math.abs(a.z)].reduce((best, v, i, all) => (v > all[best] ? i : best), 0);
             const angle = transform.rotationAngle * Math.sign(a.getComponent(k) || 1);
             const r = worldAxisRotation(axes[k], angle);
-            preview = {moves: rotatePoses(gesture.start, r, gesture.pivot), candidate: null};
+            const moves = rotatePoses(gesture.start, r, gesture.pivot);
+            preview = {moves, candidate: null, blocked: blockedBy(moves)};
             placeMeshes();
-            status({kind: 'turning', degrees: Math.round(angle * 180 / Math.PI)});
+            if (preview.blocked) status({kind: 'blocked', target: preview.blocked.target});
+            else status({kind: 'turning', degrees: Math.round(angle * 180 / Math.PI)});
         }
     });
     transform.addEventListener('mouseUp', () => {
@@ -365,14 +490,42 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     });
 
     /** Preview a moved selection; a lone part is offered to the magnet. */
-    const showMove = (start, moves, delta) => {
+    /**
+     * `aimed`: for a drag with the pointer on a part, the lone part's pose with
+     * its origin AT the pointer (resting on that face). The magnet tries it
+     * first, so the hole the pointer is on wins, from the side the pointer is
+     * on — as when placing from the palette.
+     */
+    const showMove = (start, moves, delta, aimed = null) => {
         let found = null;
-        if (moves.length === 1 && !modifiers.alt) found = magnetFor(moves[0], start[0]);
-        preview = {moves: found ? [{id: moves[0].id, position: found.position, rotation: found.rotation}] : moves, candidate: found};
+        if (moves.length === 1 && !modifiers.alt) found = (aimed && magnetFor(aimed, start[0])) || magnetFor(moves[0], start[0]);
+        const shown = found ? [{id: moves[0].id, position: found.position, rotation: found.rotation}] : moves;
+        // A magnet snap is a connection: the parts it joins may touch the moved one.
+        const blocked = blockedBy(shown, found ? found.pairs.map(pair => pair.fixed.part) : []);
+        preview = {moves: shown, candidate: found, blocked};
         placeMeshes();
         showMagnet(found, start[0]);
-        if (found) status(snapStatus(found));
+        if (blocked) status({kind: 'blocked', target: blocked.target});
+        else if (found) status(snapStatus(found));
         else status({kind: 'moving', delta: delta.map(tidy)});
+    };
+
+    /**
+     * What a move would push a solid part into (overlap.js `moveVerdict`), or
+     * null when it may go there. `target` is the part's type, for the status line.
+     */
+    const blockedBy = (moves, connected = []) => {
+        const verdict = moveVerdict({model: editor.model, catalog: catalogMap, moves, connected});
+        if (verdict.ok) return null;
+        const into = partsById().get(verdict.into);
+        return {part: verdict.part, into: verdict.into, target: into ? into.part : null};
+    };
+    /** The same for a new part placed at `pose`. */
+    const placeBlockedBy = (part, pose) => {
+        const placed = {id: '__placing__', part, position: pose.position, rotation: pose.rotation};
+        const hit = solidOverlaps({...editor.model, parts: [...editor.model.parts, placed]}, catalogMap, placed)[0];
+        const into = hit && partsById().get(hit.part);
+        return hit ? {part: placed.id, into: hit.part, target: into ? into.part : null} : null;
     };
 
     /** The model without some parts (what a moving part may attach to). */
@@ -480,6 +633,12 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             placeMeshes();
             return;
         }
+        if (p.blocked) {
+            // Refused, never silently: the parts go back and the status says why.
+            placeMeshes();
+            status({kind: 'refused', reason: 'overlapMove', target: p.blocked.target});
+            return;
+        }
         if (run({type: 'moveMany', moves: changed}, {moved: changed.length, snapped: Boolean(p.candidate)})) {
             status(p.candidate ? {...snapStatus(p.candidate), kind: 'snapped'} : {kind: 'moved', count: changed.length});
         } else {
@@ -488,9 +647,17 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     };
 
     // ---- the placing tool (palette) ---------------------------------------------
-    /** Where a part rests on a surface at a world point: upright, turned, its footprint centred on the point. */
+    /**
+     * Where a part rests on a surface at a world point: upright, turned, its
+     * footprint centred on the point, its colliders' bottom ON the surface
+     * (overlap.js `restingPosition`), x/z on the grid.
+     */
     const restingPose = (part, point, turns) => {
         const rotation = worldAxisRotation('y', (((turns % 4) + 4) % 4) * QUARTER);
+        const meta = catalogMap.get(part);
+        if (meta && meta.colliders && meta.colliders.length) {
+            return {position: restingPosition({meta, rotation, point: worldToLdu(point), grid: gridStep}), rotation};
+        }
         const geom = partGeometry(part, read, colors);
         geom.computeBoundingBox();
         const probe = new Box3().copy(geom.boundingBox).applyMatrix4(worldMatrix([0, 0, 0], rotation));
@@ -501,6 +668,11 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         return {position: [Math.round(ldu[0] / gridStep) * gridStep, Math.round(ldu[1]), Math.round(ldu[2] / gridStep) * gridStep].map(tidy), rotation};
     };
 
+    /** The palette ghost's free pose, and what it would push into. */
+    const setFreePose = pose => {
+        freePose = pose ? {...pose, blocked: placeBlockedBy(tool.part, pose)} : null;
+        if (freePose) showGhost(tool.part, freePose.position, freePose.rotation, freePose.blocked ? 'blocked' : 'free');
+    };
     const updateGhost = event => {
         if (!tool) return;
         const hit = partUnder(event);
@@ -520,15 +692,19 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         candidate = null;
         const surface = surfaceUnder(event);
         if (!surface) return;
-        freePose = restingPose(tool.part, surface.point, tool.turns);
-        showGhost(tool.part, freePose.position, freePose.rotation, 'free');
+        setFreePose(restingPose(tool.part, surface.point, tool.turns));
         const on = surface.part && partsById().get(surface.part);
-        status(on ? {kind: 'onTop', target: on.part} : {kind: 'floor'});
+        if (freePose.blocked) status({kind: 'blocked', target: freePose.blocked.target});
+        else status(on ? {kind: 'onTop', target: on.part} : {kind: 'floor'});
     };
 
     const place = ({keepTool = false} = {}) => {
         const pose = candidate || freePose;
         if (!tool || !pose) return null;
+        if (!candidate && freePose.blocked) {
+            status({kind: 'refused', reason: 'overlapPlace', target: freePose.blocked.target});
+            return null;
+        }
         const snapped = Boolean(candidate);
         const part = tool.part;
         if (!run({type: 'place', part, position: pose.position, rotation: pose.rotation, color: DEFAULT_COLOR})) return null;
@@ -580,8 +756,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
                 candidate.rotation = cleanRotation(candidate.rotation);
                 showMagnet(candidate, null, tool.part);
             } else if (freePose) {
-                freePose = {...freePose, rotation: cleanRotation(mul3(worldAxisRotation('y', direction * QUARTER), freePose.rotation))};
-                showGhost(tool.part, freePose.position, freePose.rotation, 'free');
+                setFreePose({position: freePose.position, rotation: cleanRotation(mul3(worldAxisRotation('y', direction * QUARTER), freePose.rotation))});
+                if (freePose.blocked) status({kind: 'blocked', target: freePose.blocked.target});
             }
             return;
         }
@@ -592,6 +768,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             if (on) {
                 const turned = rotateAboutSnap(on, direction);
                 const move = {id: parts[0].id, position: turned.position.map(v => tidy(Math.round(v * 1e6) / 1e6)), rotation: cleanRotation(turned.rotation)};
+                const blocked = blockedBy([move], on.pairs.map(pair => pair.fixed.part));
+                if (blocked) { status({kind: 'refused', reason: 'overlapTurn', target: blocked.target}); return; }
                 if (run({type: 'moveMany', moves: [move]}, {turned: 1})) status({...snapStatus(on), kind: 'turnedAbout'});
                 return;
             }
@@ -599,6 +777,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         let worldAxis = 'y';
         if (axis === 'facing') worldAxis = facingAxis(camera.getWorldDirection(new Vector3()));
         const moves = rotatePoses(parts, worldAxisRotation(worldAxis, direction * QUARTER), selectionPivot(parts, gridStep));
+        const blocked = blockedBy(moves);
+        if (blocked) { status({kind: 'refused', reason: 'overlapTurn', target: blocked.target}); return; }
         if (run({type: 'moveMany', moves}, {turned: moves.length})) status({kind: 'turned', count: moves.length});
     };
     const deleteSelection = () => {
@@ -717,17 +897,16 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         readModifiers(event);
         canvas.focus();
         if (event.button !== 0) { gesture = null; return; }
-        // The gizmo gets the press when the pointer is on one of its handles.
-        if (transform.object) {
-            transform.pointerHover(ndc(event));
-            if (transform.axis !== null) { controls.enabled = false; return; }
-        }
+        // The gizmo gets the press when the pointer is on one of its handles (on a
+        // part, only on the handle's visible shape: the picker reaches further).
+        if (gizmoGrab(event)) { controls.enabled = false; return; }
         const base = {x: event.clientX, y: event.clientY, pointerId: event.pointerId};
         if (tool) { gesture = {...base, kind: 'tool'}; return; }
         const hit = partUnder(event);
         if (event.shiftKey) {
             // Shift: click toggles a part, drag on anything draws a selection box.
             controls.enabled = false;
+            transform.enabled = false; // even when the gizmo's picker reaches over the part
             gesture = {...base, kind: 'box', hit: hit ? hit.object.name : null};
             canvas.setPointerCapture(event.pointerId);
             return;
@@ -737,8 +916,12 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             if (!selection.includes(id)) setSelection([id]);
             controls.enabled = false;
             transform.enabled = false;
-            const surface0 = surfaceUnder(event, selection);
-            gesture = {...base, kind: 'part', start: selectedParts(), surface0, started: false};
+            // The pressed point on the part, and how high above the part's own bottom it is:
+            // while dragging, that point stays under the pointer and the bottom rests on
+            // the surface under it.
+            modelGroup.updateMatrixWorld(true);
+            const bottom = modelBox(selection).min.y;
+            gesture = {...base, kind: 'part', start: selectedParts(), grab: hit.point.clone(), bottom, started: false};
             canvas.setPointerCapture(event.pointerId);
             return;
         }
@@ -750,8 +933,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         if (tool && (!gesture || travelled(event, gesture) <= CLICK_PX)) { updateGhost(event); return; }
         if (!gesture) {
             if (transform.dragging) return;
-            if (transform.object && transform.axis) {
-                // The gizmo's own pointermove listener ran first and lit the handle up.
+            gizmoHover = gizmoGrab(event);
+            if (gizmoHover) {
                 if (hovered !== `gizmo:${transform.axis}`) {
                     hovered = null;
                     drawOutlines();
@@ -775,11 +958,23 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             if (!gesture.started && travelled(event, gesture) <= CLICK_PX) return;
             gesture.started = true;
             const surface = surfaceUnder(event, selection);
-            if (!surface || !gesture.surface0) return;
-            const d = worldDeltaToLdu(surface.point.clone().sub(gesture.surface0.point));
+            if (!surface) return;
+            // Where the pressed point would be: on the pointer's ray, as high above the
+            // surface as it was above the part's bottom.
+            const ray = raycaster.ray;
+            const height = surface.point.y + (gesture.grab.y - gesture.bottom);
+            const t = Math.abs(ray.direction.y) > 1e-6 ? (height - ray.origin.y) / ray.direction.y : -1;
+            const at = t > 0 ? ray.at(t, new Vector3()) : surface.point.clone();
+            const d = worldDeltaToLdu(new Vector3(at.x - gesture.grab.x, surface.point.y - gesture.bottom, at.z - gesture.grab.z));
             const delta = [Math.round(d[0] / gridStep) * gridStep, Math.round(d[1]), Math.round(d[2] / gridStep) * gridStep].map(tidy);
-            showMove(gesture.start, translatePoses(gesture.start, delta), delta);
-            if (!preview.candidate) {
+            let aimed = null;
+            if (surface.part && gesture.start.length === 1) {
+                const p = worldToLdu(surface.point);
+                const s0 = gesture.start[0];
+                aimed = {id: s0.id, position: [p[0], s0.position[1] + delta[1], p[2]], rotation: s0.rotation};
+            }
+            showMove(gesture.start, translatePoses(gesture.start, delta), delta, aimed);
+            if (!preview.candidate && !preview.blocked) {
                 const on = surface.part && partsById().get(surface.part);
                 status(on ? {kind: 'onTop', target: on.part, delta} : {kind: 'floor', delta});
             }
@@ -900,6 +1095,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     };
     const render = () => {
         resize();
+        fitGizmo();
         renderer.render(s, camera);
     };
     const dispose = () => {
@@ -918,6 +1114,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         selectedLine.dispose();
         selectedHidden.dispose();
         hoverLine.dispose();
+        blockedLine.dispose();
         markerGeometry.dispose();
         markerMaterials.fixed.dispose();
         markerMaterials.moving.dispose();
@@ -942,7 +1139,9 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         get mode () { return mode; },
         get grid () { return gridStep; },
         /** The gizmo handle under the pointer ('X', 'Y', 'XY', …) or null: what a press would grab. */
-        get gizmoAxis () { return transform.object ? transform.axis : null; },
+        get gizmoAxis () { return transform.object ? gizmoHover : null; },
+        /** While a move is previewed: the part it would push into (shown red), else null. */
+        get blockedInto () { return preview && preview.blocked ? preview.blocked.into : null; },
         setGrid (step) { if (GRID_STEPS.includes(step)) gridStep = step; },
         setMode,
         select: ids => setSelection([].concat(ids || [])),
@@ -970,7 +1169,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             const found = snapCandidates({model: editor.model, catalog: catalogMap, part, pose: {position: worldToLdu(p), rotation: IDENTITY}});
             candidate = found.length ? {...rotateAboutSnap(found[0], turns)} : null;
             if (candidate) candidate.rotation = cleanRotation(candidate.rotation);
-            freePose = candidate ? null : restingPose(part, new Vector3(p.x, floorY, p.z), turns);
+            setFreePose(candidate ? null : restingPose(part, new Vector3(p.x, floorY, p.z), turns));
             const done = place();
             return {snapped: Boolean(done && done.snapped)};
         }

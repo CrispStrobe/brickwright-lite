@@ -219,3 +219,30 @@ export const connectorNumber = connectorId => {
     const m = /^[a-z](\d+)$/.exec(connectorId || '');
     return m ? Number(m[1]) + 1 : null;
 };
+
+/** The range of the move/turn gizmo's `size` (three.js TransformControls; 1 is its default). */
+export const GIZMO_SIZE = Object.freeze({min: 0.35, max: 1.25});
+/**
+ * How far (in TransformControls' own units per `size`) the arrow tips reach from
+ * the gizmo's centre: an arrow at 0.5 plus half its 0.1 cone, scaled by size/4.
+ */
+const ARROW_REACH = 0.55 / 4;
+
+/**
+ * The gizmo's `size` for a selection: big enough that the arrows reach out of
+ * the selection (1.6 × its bounding radius) and stay a grabbable `minPx` long on
+ * screen, but no bigger, so near a small part it does not cover its
+ * neighbours. TransformControls keeps a constant screen size: in a perspective
+ * view it scales by distance · 1.9 · tan(fov/2), which this inverts.
+ * @param {{radius: number, distance: number, fov: number, viewHeightPx: number, minPx?: number}} args
+ *   radius and distance in the same unit (world metres), fov in degrees (vertical)
+ * @returns {number}
+ */
+export const gizmoSize = ({radius, distance, fov, viewHeightPx, minPx = 44}) => {
+    const tanHalf = Math.tan(fov * Math.PI / 360);
+    const reachPerSize = ARROW_REACH * 1.9 * tanHalf * distance;
+    // On screen, half the view height is distance · tan(fov/2) world units.
+    const minWorld = minPx / (Math.max(1, viewHeightPx) / 2) * tanHalf * distance;
+    const size = Math.max(1.6 * radius, minWorld) / reachPerSize;
+    return Math.min(GIZMO_SIZE.max, Math.max(GIZMO_SIZE.min, size));
+};

@@ -27,7 +27,7 @@ import {compile} from '../overlay/scratch-gui/src/lib/bw-sim/mech/compile.js';
 import {loadJolt, createPhysicsCore} from '../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js';
 import {SimHubBridge, STEP_MS} from '../overlay/scratch-gui/src/lib/bw-sim/hub-bridge.js';
 import VirtualSpikeHubState from '../overlay/scratch-gui/src/lib/virtual-hub/spike-hub-state.js';
-import {partOverlaps} from '../overlay/scratch-gui/src/lib/bw-sim/editor/overlap.js';
+import {sitsInside, solidOverlaps} from '../overlay/scratch-gui/src/lib/bw-sim/editor/overlap.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const json = p => JSON.parse(readFileSync(path.join(ROOT, p), 'utf8'));
@@ -144,12 +144,13 @@ test('no two solid parts of the driving base overlap; only pins and axles sit in
     // compiler accepted it (the parts were pinned together), the picture showed it. Connected or not,
     // solid parts must not share volume; shafts (pins, axles) and the castor ball (inside its socket)
     // are the parts that legitimately sit inside another part.
-    const inside = new Set(['2780.dat', '3673.dat', '6558.dat', '43093.dat', '3705.dat', '4519.dat', '32073.dat', '3706.dat', '3707.dat', '32062.dat', '52629.dat']);
-    const ignore = MODEL.parts.filter(p => inside.has(p.part)).map(p => p.id);
+    // The rule is the build editor's (editor/overlap.js `solidOverlaps`, which refuses such moves);
+    // these are the parts it lets sit inside another one.
+    const inside = ['2780.dat', '3673.dat', '6558.dat', '43093.dat', '3705.dat', '4519.dat', '32073.dat', '3706.dat', '3707.dat', '32062.dat', '52629.dat'];
+    assert.deepEqual([...CATALOG.values()].filter(sitsInside).map(m => m.part).sort(), inside.slice().sort());
     const found = [];
     for (const p of MODEL.parts) {
-        if (inside.has(p.part)) continue;
-        for (const o of partOverlaps(MODEL, CATALOG, p, {ignore})) if (o.part !== p.id) found.push(`${p.id} ↔ ${o.part}`);
+        for (const o of solidOverlaps(MODEL, CATALOG, p)) found.push(`${p.id} ↔ ${o.part}`);
     }
     assert.deepEqual(found, []);
 });
