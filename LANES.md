@@ -6059,3 +6059,14 @@ actual tab list. Explicitly hide the portaled control in stage fullscreen.
 Qualify both icon states, tab scrolling, hit targets, label fit and fullscreen
 entry/exit, then capture the installed iPad toolbar directly to check the
 result. Direct screenshots and machine-specific capture tooling stay ignored.
+
+Delivery checkpoint: candidate `bc5685b9e` normally composes this portal fix
+with the existing A13 candidate and is installed and launched on the physical
+iPad over WLAN. Strict signing/platform/fresh-frontend checks pass; app size
+remains 84.05 MiB. Eight EN/DE Chromium/WebKit icon paint checks pass with forced
+tab-strip clipping/scrolling and fullscreen entry/exit, plus twelve actual
+Chromium responsive tab/menu observations. Direct device screenshots now work.
+The post-install screenshot has a floating video covering the toggle, so final
+physical chevron acceptance is pending an unobstructed expanded toolbar capture.
+This is an installed candidate; final hosted source qualification/main landing
+remains separate. No connection-recovery supplier adoption is included.
