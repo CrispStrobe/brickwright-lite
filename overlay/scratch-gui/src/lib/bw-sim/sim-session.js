@@ -52,7 +52,8 @@ export const PROGRAMS_BASE = 'static/sim-lab/programs/';
  * @param {string} text LDraw
  * @param {Map} catalog
  * @param {{mat?: string}} [options] a mat id (bw-sim/world/mats.js): the floor shows it, the colour
- *        sensor reads it, and a mat with a start pose gets the model placed on that pose
+ *        sensor reads it, a mat with a start pose gets the model placed on that pose, and a mat's
+ *        obstacles (a wall) become static bodies the robot and the distance sensor meet
  * @returns {{model, runModel, mechanism, issues}} `model` is the model as authored (what Build edits
  *          and the project saves); `runModel` is where it stands on the mat (what is simulated and drawn)
  */
@@ -63,9 +64,11 @@ export const prepareModel = (text, catalog, {mat = null} = {}) => {
         issues.push({severity: 'error', code: 'empty-model', message: 'The model has no parts the Sim Lab knows.'});
         return {model, runModel: model, mechanism: null, issues};
     }
-    const start = mat ? createMat(mat).startPose : null;
+    const matDef = mat ? createMat(mat) : null;
+    const start = matDef ? matDef.startPose : null;
     const runModel = start ? placeOnStart(model, start, driveAnchor(model, catalog)) : model;
-    const mechanism = compile(runModel, catalog, mat ? {mat} : {});
+    // A mat's obstacles (a wall) are static bodies of the scene, compiled with the model.
+    const mechanism = compile(runModel, catalog, matDef ? {mat, ...(matDef.obstacles.length ? {obstacles: matDef.obstacles} : {})} : {});
     issues.push(...mechanism.diagnostics);
     const motors = mechanism.joints.filter(j => j.motor).length;
     if (motors === 0) {

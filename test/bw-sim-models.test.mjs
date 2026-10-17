@@ -16,7 +16,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {parseModel, serializeModel} from '../overlay/scratch-gui/src/lib/bw-sim/model/ldraw-model.js';
 import {MODELS, MODELS_BASE, PROGRAMS_BASE, prepareModel, catalogFrom} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
-import {MATS} from '../overlay/scratch-gui/src/lib/bw-sim/world/mats.js';
+import {MATS, createMat} from '../overlay/scratch-gui/src/lib/bw-sim/world/mats.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const GUI = path.join(ROOT, 'overlay/scratch-gui');
@@ -51,4 +51,31 @@ test('the shipped line follower is the lap-tested fixture, byte for byte as seri
     const {mechanism} = prepareModel(text, CATALOG, {mat: 'line-oval'});
     assert.deepEqual(mechanism.sensors.map(s => [s.port, s.kind]), [['C', 'color']]);
     assert.equal(MODELS.find(m => m.file === 'line-follower.ldr').mat, FIXTURE.mat);
+});
+
+test('a mat can carry obstacles: the Wall mat puts a wall in the scene, ahead of its start pose', () => {
+    const wall = createMat('wall');
+    assert.equal(wall.obstacles.length, 1);
+    const [obstacle] = wall.obstacles;
+    const text = readFileSync(path.join(GUI, MODELS_BASE, 'driving-base.ldr'), 'utf8');
+    const {mechanism, issues} = prepareModel(text, CATALOG, {mat: 'wall'});
+    assert.deepEqual(issues.filter(i => i.severity === 'error'), []);
+    const body = mechanism.bodies.find(b => b.id === `obstacle:${obstacle.id}`);
+    assert.ok(body && body.motion === 'static', 'the wall is a static body');
+    assert.deepEqual(body.colliders[0].halfExtents, obstacle.size.map(v => v / 2));
+    // It stands on the floor: its bottom face is the ground body's top face.
+    const ground = mechanism.bodies.find(b => b.id === 'ground');
+    const groundTop = ground.position[1] + ground.colliders[0].halfExtents[1];
+    assert.ok(Math.abs(body.position[1] - obstacle.size[1] / 2 - groundTop) < 1e-9);
+    // Ahead of the start pose along its heading, inside the mat.
+    const {x, z, heading} = wall.startPose;
+    const h = heading * Math.PI / 180;
+    const ahead = (body.position[0] - x) * Math.cos(h) + (body.position[2] - z) * Math.sin(h);
+    assert.ok(ahead > 0.5, `the wall is ${ahead} m ahead of the start`);
+    assert.ok(Math.abs(body.position[0]) + obstacle.size[0] / 2 <= wall.sizeM[0] / 2, 'inside the mat');
+    // Mats without obstacles compile none.
+    for (const id of ['plain', 'line-oval', 'colour-zones']) {
+        assert.deepEqual(createMat(id).obstacles, []);
+        assert.equal(prepareModel(text, CATALOG, {mat: id}).mechanism.bodies.filter(b => b.id.startsWith('obstacle:')).length, 0, id);
+    }
 });

@@ -18,7 +18,8 @@ const col = id => COLORS[id];
 export const MATS = [
     {id: 'plain', title: {en: 'Plain', de: 'Einfach'}},
     {id: 'line-oval', title: {en: 'Line Oval', de: 'Linien-Oval'}},
-    {id: 'colour-zones', title: {en: 'Colour Zones', de: 'Farbzonen'}}
+    {id: 'colour-zones', title: {en: 'Colour Zones', de: 'Farbzonen'}},
+    {id: 'wall', title: {en: 'Wall', de: 'Wand'}}
 ];
 
 // Plain mat: white 1.2x0.8 (same as line-oval, but could be any, we choose 1.2x0.8 to match line-oval)
@@ -176,8 +177,24 @@ const colourZones = {
     }
 };
 
+// Wall: the plain white floor with a wall across it. A mat may carry static
+// obstacles (the compile option `obstacles`, world metres: x/z on the floor,
+// y the height of the box's bottom above it): choosing the mat in the pane is
+// how a wall gets into the scene. The robot starts 0.7 m from the wall, heading
+// at it (+x); the wall's face toward it is at x = WALL.faceX.
+export const WALL = Object.freeze({x: 0.4, thickness: 0.04, height: 0.15, width: 0.6, faceX: 0.4 - 0.04 / 2});
+
+const wall = {
+    id: 'wall',
+    sizeM: plain.sizeM,
+    startPose: {x: -0.3, z: 0, heading: 0},
+    obstacles: [{id: 'wall', shape: 'box', size: [WALL.thickness, WALL.height, WALL.width], position: [WALL.x, 0, 0], color: 3}],
+    colorAt: plain.colorAt,
+    paint: plain.paint
+};
+
 export const createMat = id => {
-    const mat = {plain, 'line-oval': lineOval, 'colour-zones': colourZones}[id];
+    const mat = {plain, 'line-oval': lineOval, 'colour-zones': colourZones, wall}[id];
     if (!mat) throw new Error(`unknown mat '${id}'`);
     return {
         id: mat.id,
@@ -185,6 +202,7 @@ export const createMat = id => {
         colorAt: mat.colorAt.bind(mat),
         paint: mat.paint.bind(mat),
         startPose: mat.startPose ? {...mat.startPose} : undefined,
-        centreLineLengthM: mat.centreLineLengthM
+        centreLineLengthM: mat.centreLineLengthM,
+        obstacles: (mat.obstacles || []).map(o => ({...o, size: o.size.slice(), position: o.position.slice()}))
     };
 };
