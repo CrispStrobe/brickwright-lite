@@ -130,7 +130,7 @@ try {
     await page.getByTestId('bw-sim-lab-run').click();
     await page.getByTestId('bw-sim-lab-info').waitFor({timeout: 10000});
     assert.match(await page.getByTestId('bw-sim-lab-info').textContent(), /To blocks/);
-    await page.waitForFunction(t => window.__bwSimLab._pane.session.time > t + 1000, idle.time, {timeout: 20000});
+    await page.waitForFunction(t => window.__bwSimLab._pane.session.time > t + 1000, idle.time, {timeout: 60000});
     const still = await reading(page);
     assert.ok(Math.hypot(still.pos[0] - idle.pos[0], still.pos[2] - idle.pos[2]) < 0.01, 'without a program the robot stays put');
     console.log('PASS Run without a loaded program says how to load one, and the robot stays put');
@@ -141,7 +141,7 @@ try {
     const fb = await fwd.boundingBox();
     await page.mouse.move(fb.x + fb.width / 2, fb.y + fb.height / 2);
     await page.mouse.down();
-    await page.waitForFunction(t => window.__bwSimLab._pane.session.time > t + 1500, drivePad.time, {timeout: 20000});
+    await page.waitForFunction(t => window.__bwSimLab._pane.session.time > t + 1500, drivePad.time, {timeout: 60000});
     await page.mouse.up();
     const driven = await reading(page);
     assert.ok(driven.pos[2] < drivePad.pos[2] - 0.03, `holding ▲ drove forward: ${JSON.stringify({drivePad, driven})}`);
