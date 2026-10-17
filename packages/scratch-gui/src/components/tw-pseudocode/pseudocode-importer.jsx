@@ -5415,7 +5415,7 @@ class PseudocodeImporter extends React.Component {
                     {this.L.loadExample}
                 </button>
                 {open && (
-                    <div style={{position: 'absolute', top: '100%', right: 0, zIndex: 60, marginTop: 4,
+                    <div style={{position: 'absolute', top: '100%', ...(this.state.actionsAlignLeft ? {left: 0} : {right: 0}), zIndex: 60, marginTop: 4,
                         width: 340, maxHeight: 380, display: 'flex', flexDirection: 'column',
                         background: '#fff', border: '1px solid #cbd5e1', borderRadius: 8,
                         boxShadow: '0 8px 24px rgba(15,23,42,.18)', textAlign: 'left'}}
@@ -5500,13 +5500,16 @@ class PseudocodeImporter extends React.Component {
         return (
             <details style={{position: 'relative', alignSelf: 'center'}} data-testid="bw-code-actions"
                 onToggle={event => {
-                    this.setState({actionsOpen: event.currentTarget.open});
+                    // The menu and its catalog open leftwards from the ⋯; with too
+                    // little room on the left (a narrow row), open them rightwards.
+                    const right = event.currentTarget.getBoundingClientRect().right;
+                    this.setState({actionsOpen: event.currentTarget.open, actionsAlignLeft: right < 360});
                 }}>
                 <summary style={{...csel, cursor: 'pointer', listStyle: 'none', border: '1px solid #cbd5e1',
                     background: '#f1f5f9', whiteSpace: 'nowrap'}} title={L10N[pickLocale(this.props.locale)].fileMenuTitle}>
                     ⋯
                 </summary>
-                <div style={{position: 'absolute', top: '100%', right: 0, zIndex: 70, marginTop: 4,
+                <div style={{position: 'absolute', top: '100%', ...(this.state.actionsAlignLeft ? {left: 0} : {right: 0}), zIndex: 70, marginTop: 4,
                     width: 220, padding: 6, background: '#fff', border: '1px solid #cbd5e1', borderRadius: 8,
                     boxShadow: '0 8px 24px rgba(15,23,42,.2)', display: 'flex', flexDirection: 'column', gap: 2}}>
                     <label style={item} title={this.L.openFileTitle(`${CODE_ACCEPT},${IMPORT_ACCEPT}`)}
