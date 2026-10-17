@@ -1302,3 +1302,37 @@ for the parts and kinds that exist).
 - **D7 → the XY plotter on SPIKE first (R10), and later the 1990 set 8094 (Control Center)
   plotter** with the Technic Control interface (R14).
 - D1, D3, D6: open (not yet needed).
+
+### D5 as built (2026-10-17, `lane/simlab-dc-20261017`)
+
+- **Drive.** `hubs/spike/profile.js` `drive: 'pwm'`. The SPIKE controller is two layers:
+  the unchanged `spike-sim/independent-backend.js` (shared with the kinematic arena) is the
+  **trajectory generator** (ramps, run for degrees/time, run to position, hold, stop actions),
+  run by `SpikeVirtualHub.advanceTo` on a *reference* angle; `hubs/spike/spike-motor-controller.js`
+  is the **feedback loop** on the physics encoder: `duty = ωr/ω0 + (Kp·e + Ki·∫e + Kd·(ωr − ω))/τs`
+  (Pybricks' structure: track a reference angle, so a slowed motor catches up), anti-windup,
+  reference drag at 1.5·τs of P, stall = saturated and < 20 °/s for 200 ms (reported to the
+  backend as its load input). Gains are torques (8, 40, 0.3 of duty for the medium motor),
+  grid-searched on the DC model with the 5 ms hold over 2.5e-4…3e-3 kg·m²; above ~5e-3 the
+  loop rings during ramps. Brake/coast are passive H-bridge states (duty 0); hold is the loop
+  on a fixed angle. A position command completes when the shaft is within 1° and slower than
+  30 °/s (backend hook `positionSettled`, unset in the arena).
+- **DC model.** `physics/actuators.js` `pwm` → core `torque` mode `τ = τs·u − (τs/ω0)·ω`, solved
+  implicitly by Jolt as one soft position motor (backward Euler; a braked flywheel decays 7 %
+  slower than the continuous exponential at τ = 33 ms). Duty is clamped to ±1, `u = duty·V/V_nom`
+  is not (a 9 V port runs a 7.2 V motor faster). Coast: Jolt hinge friction = gearbox friction.
+  The rotor's reflected inertia J is added about the axis to both moving bodies of the hinge
+  (`setRotorInertia`; exact unless both turn together about the axis). As a term in the motor
+  constraint instead, the gear constraint could not hold a light 24T against a wall (measured).
+- **Numbers** (`devices/dc-motors.js`, each with `sources`): ω0, τs at 7.2 V and the 360-count
+  encoder from LEGO's fact sheets (medium 185 rpm / 18 N·cm, large 175 rpm / 25 N·cm; the 7.2 V
+  test supply is stated on the medium sheet and assumed for the large); gearbox friction
+  (0.021 / 0.023 N·m) and rotor inertia (3.0e-4 / 1.2e-3 kg·m²) from Pybricks' identified
+  observer models (community measurement). Pybricks' model puts the large motor's stall torque
+  at 0.45 N·m (LEGO: 0.25; `parts.json`: 0.38) — for D6. Not modelled: hub current limit,
+  battery sag, backlash, speed-dependent friction.
+- **Core fix found on the way.** Jolt gives a body with principal moments under 1e-6 kg·m² the
+  inertia of a 1 m sphere (0.4·m): gears, the castor ball, small arms were ~1000× too heavy
+  rotationally (the ideal servo hid it; with real torques the castor ball's spin drove a braked
+  base). `jolt-core.js fixSmallInertia` restores the shape's inertia; gear bodies are floored
+  at 3e-5 kg·m² and gear islands get 10 position iterations (solver conditioning, measured).
