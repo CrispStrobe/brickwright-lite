@@ -21,7 +21,17 @@ const clean=(value,required)=>{
  for(const name of Object.getOwnPropertyNames(value))if(/unsupported|warn|error|unparsed|diagnostic|refus|netAttempts/i.test(name)){const d=Object.getOwnPropertyDescriptor(value,name);assert.ok(Object.hasOwn(d,'value')&&Array.isArray(d.value),name);assert.deepEqual(d.value,[],name);}
 };
 const project=()=>{const imported=arcadeToPseudocode({'main.ts':source});clean(imported,['unsupported','warnings']);const creator=new Creator();creator.parse(imported.code);clean(creator,['errors','warnings','unparsed']);return creator.project;};
-const metadataSlot=(project,name)=>{const rows=project.targets.flatMap(target=>Object.values(target.blocks).filter(block=>block.opcode==='arcade_declareClass').map(block=>({target,block})));assert.equal(rows.length,1);const {target,block}=rows[0],slot=block.inputs[name][1];assert.equal(typeof slot,'string');const child=target.blocks[slot];assert.equal(child.opcode,'text');return {get:()=>JSON.parse(child.fields.TEXT[0]),set:value=>{child.fields.TEXT[0]=JSON.stringify(value);}};};
+const metadataSlot=(project,name)=>{
+ const rows=project.targets.flatMap(target=>Object.entries(target.blocks).filter(([,block])=>block.opcode==='arcade_declareClass').map(([id,block])=>({target,id,block})));assert.equal(rows.length,1);
+ const {target,id,block}=rows[0],input=block.inputs[name];assert.ok(Array.isArray(input));assert.equal(input.length,2);assert.equal(input[0],1);const slot=input[1];
+ let read,write;
+ if(Array.isArray(slot)){
+  assert.equal(slot.length,2);assert.equal(slot[0],10);assert.equal(typeof slot[1],'string');read=()=>slot[1];write=value=>{slot[1]=value;};
+ }else{
+  assert.equal(typeof slot,'string');const child=target.blocks[slot];assert.ok(child);assert.equal(child.opcode,'text');assert.equal(child.shadow,true);assert.equal(child.parent,id);assert.ok(Array.isArray(child.fields.TEXT));assert.equal(child.fields.TEXT.length,1);assert.equal(typeof child.fields.TEXT[0],'string');read=()=>child.fields.TEXT[0];write=value=>{child.fields.TEXT[0]=value;};
+ }
+ return {get:()=>JSON.parse(read()),set:value=>{write(JSON.stringify(value));}};
+};
 // Real heap/callable/provider services with a modeled managed dispatcher. No
 // native VM is imported or allocated by this focused source/control module.
 const fixture=()=>{
