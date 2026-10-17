@@ -151,7 +151,7 @@ for (const {name, text} of MODELS_UNDER_TEST) {
  * and depth, on either side of the hub's centre plane x = hub.x.
  */
 const mirroredStructural = model => {
-    const hub = model.parts.find(p => CATALOG.get(p.part).hub);
+    const hub = model.parts.find(p => CATALOG.get(p.part).hubProfile);
     const out = [];
     for (const a of model.parts) {
         if (['pin', 'axle'].includes(category(model, a.id)) || a.position[0] <= hub.position[0]) continue;

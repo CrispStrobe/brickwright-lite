@@ -270,20 +270,24 @@ test('the castor ball sits where LDraw\'s castor assembly puts it, and is a sphe
 test('a motor\'s output connectors belong to its drive hub, its housing connectors do not', () => {
     for (const [motor, hub] of Object.entries(DRIVE_HUB)) {
         const meta = META.parts.find(p => p.part === motor);
+        // PartMeta v2: the motor's turning output is the internal joint its device drives.
+        const shaft = meta.internalJoints.find(j => j.actuatedBy === 'device');
         const hubPrims = subtree(motor, hub);
         const hubLines = [...boreLines(hubPrims), ...axleLines(hubPrims)];
+        // The joint turns about the drive hub's own axle line.
+        assert.ok(onLine({position: shaft.point, axis: shaft.axis}, hubLines).length > 0, `${motor}: the motor joint's axis is not the drive hub's`);
         for (const c of meta.connectors) {
             const onHub = onLine(c, hubLines).some(l => {
                 const t = dot(c.position, l.axis);
                 return t >= l.lo - SPAN_EPS && t <= l.hi + SPAN_EPS;
             });
-            if (meta.motor.output.includes(c.id)) assert.ok(onHub, `${motor} ${c.id} is an output but not on the drive hub`);
+            if (shaft.movingConnectors.includes(c.id)) assert.ok(onHub, `${motor} ${c.id} is an output but not on the drive hub`);
             else assert.ok(!onHub, `${motor} ${c.id} is housing but lies on the drive hub`);
         }
         // The output collider is the drive hub's: inside the hub sub-assembly's extent.
         const hubBox = bounds(flattenPart(hub, read).polys);
         const ref = parseLDraw(read(`parts/${motor}`)).refs.find(r => r.file.toLowerCase() === hub);
-        for (const i of meta.motor.outputColliders) {
+        for (const i of shaft.movingColliders) {
             const col = meta.colliders[i];
             const y = col.position?.[1] ?? 0;
             assert.ok(y - col.halfHeight >= hubBox.min[1] + ref.x.t[1] - 2 && y + col.halfHeight <= hubBox.max[1] + ref.x.t[1] + 2,
@@ -447,8 +451,10 @@ test('colliders enclose the part: ≥ 98 % of mesh vertices inside one, total vo
 });
 
 test('sensor origin lies on the mesh box surface and direction points outward', () => {
-    for (const p of META.parts.filter(q => q.sensor)) {
-        const {origin, direction} = p.sensor;
+    const sensors = META.parts.filter(q => q.probe);
+    assert.ok(sensors.length >= 3, 'the colour, distance and force sensors have probes');
+    for (const p of sensors) {
+        const {origin, direction} = p.probe;
         const b = bounds(flat.get(p.part).polys);
         // Distance from origin to the closest face of the axis-aligned bounding box.
         const d = Math.min(

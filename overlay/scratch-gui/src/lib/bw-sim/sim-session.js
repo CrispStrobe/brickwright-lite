@@ -26,7 +26,8 @@ import {mechanismIssues} from './mech/insight.js';
 import {loadJolt, createPhysicsCore} from './physics/jolt-core.js';
 import {SimHubBridge, HubReplay, STEP_MS} from './hub-bridge.js';
 import {MirrorCore} from './sim-worker-protocol.js';
-import {hubRegistry, DEFAULT_HUB_PROFILE} from './hubs/index.js';
+import {hubRegistry} from './hubs/index.js';
+import {upgradePartMeta, partHubProfile} from './contracts.js';
 import {createMat} from './world/mats.js';
 import {placeOnStart, driveAnchor} from './world/place.js';
 
@@ -34,8 +35,10 @@ import {placeOnStart, driveAnchor} from './world/place.js';
  * The part catalog from part-meta/parts.json's parsed content. The caller
  * imports the JSON (webpack bundles it into the Sim Lab chunk; tests read the
  * file), so this module stays loadable by node --test without JSON modules.
+ * Every entry comes out as PartMeta v2: a v1 file (a user's catalog, an old
+ * fixture) is upgraded entry by entry (contracts.js upgradePartMeta).
  */
-export const catalogFrom = partsJson => new Map(partsJson.parts.map(p => [p.part, p]));
+export const catalogFrom = partsJson => new Map(partsJson.parts.map(p => [p.part, upgradePartMeta(p)]));
 
 /**
  * Reference models shipped in static/sim-lab/models/ (file name → titles). A model
@@ -79,23 +82,26 @@ export const prepareModel = (text, catalog, {mat = null} = {}) => {
     const start = matDef ? matDef.startPose : null;
     const runModel = start ? placeOnStart(model, start, driveAnchor(model, catalog)) : model;
     // A mat's obstacles (a wall) are static bodies of the scene, compiled with the model.
-    const mechanism = compile(runModel, catalog, matDef ? {mat, ...(matDef.obstacles.length ? {obstacles: matDef.obstacles} : {})} : {});
+    const mechanism = compile(runModel, catalog, {version: 2, ...(matDef ? {mat, ...(matDef.obstacles.length ? {obstacles: matDef.obstacles} : {})} : {})});
     issues.push(...mechanismIssues(mechanism));
     return {model, runModel, mechanism, issues};
 };
 
 /**
  * The model's hubs as the bridge and the worker take them: [{id, profile, body}] — the
- * hub part's id, its family's profile id (the part metadata's `hub.profile`; SPIKE Prime
- * when it names none) and the body that carries it (its pose is the IMU). R1 binds one:
- * the hub on the first body that has one (v1 ports name no hub; several are R2).
+ * hub part's id, its family's profile id (PartMeta v2 `hubProfile`; a v1 hub part: its
+ * `hub.profile`, else SPIKE Prime) and the body that carries it (its pose is the IMU).
+ * The scene still runs ONE: the hub on the first body that has one (CompiledMechanism
+ * v2's hubs[0]). The data carries every hub and each binding's {hub, port}, and the
+ * bridge binds several hubs by those (hub-bridge.js hubBindings); running a model's
+ * second hub is the multi-hub slice's (R16: a hub picker, a route per hub).
  */
 export const hubsOf = (model, mechanism, catalog) => {
-    const hubParts = new Map(model.parts.filter(p => catalog.get(p.part)?.hub).map(p => [p.id, catalog.get(p.part).hub]));
+    const hubParts = new Map(model.parts.filter(p => partHubProfile(catalog.get(p.part))).map(p => [p.id, partHubProfile(catalog.get(p.part))]));
     const body = mechanism.bodies.find(b => b.parts.some(id => hubParts.has(id)));
     if (!body) return [];
     const id = body.parts.find(partId => hubParts.has(partId));
-    return [{id, profile: hubParts.get(id).profile || DEFAULT_HUB_PROFILE, body: body.id}];
+    return [{id, profile: hubParts.get(id), body: body.id}];
 };
 
 /** The body that carries the (first) hub, or null. */

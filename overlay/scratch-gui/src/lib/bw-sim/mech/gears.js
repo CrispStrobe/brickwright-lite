@@ -30,16 +30,10 @@
 // (equal tooth speed at P). Spur: u = unit component of c2 − c1 normal to a1;
 // bevel: u = unit(c2 − O).
 
-import {COS_1_DEG, SIN_1_DEG, vecAdd, vecSub, vecDot, vecCross, vecLen, vecScale, vecNormalize, vecDist, lineDistance, lineClosestMidpoint, mat3MulVec3} from './vec.js';
+import {vecAdd, vecSub, vecDot, vecLen, vecScale, vecNormalize, mat3MulVec3} from './vec.js';
 import {pitchRadiusLdu, dirToWorld, LDU_M} from '../contracts.js';
-
-const COS_1 = COS_1_DEG;
-const SIN_1 = SIN_1_DEG;
-/** Positional tolerance, LDU. */
-const TOL = 0.5;
-
-const parallelAxes = (a1, a2) => Math.abs(vecDot(a1, a2)) >= COS_1 - 1e-12;
-const perpendicularAxes = (a1, a2) => Math.abs(vecDot(a1, a2)) <= SIN_1 + 1e-12;
+import {BUILTIN_KINDS} from '../kinds/index.js';
+import {TOL, parallelAxes, meshRatio} from '../kinds/gear-mesh.js';
 
 /** World point (metres) back to the LDraw model frame (LDU): the inverse of lduToWorld. */
 const worldToLdu = p => [p[0] / LDU_M, -p[1] / LDU_M, -p[2] / LDU_M];
@@ -71,51 +65,6 @@ const gearHinges = (gear, joints) => {
     }
     out.sort((a, b) => a.joint.id.localeCompare(b.joint.id));
     return out;
-};
-
-/**
- * Signed contract ratio ω(h2) = ratio · ω(h1) for a mesh with contact point P.
- * @returns {number|null} null when degenerate
- */
-const meshRatio = (g1, h1, g2, h2, P) => {
-    const a1 = vecScale(vecNormalize(dirToWorld(h1.joint.axis)), h1.sign);
-    const a2 = vecScale(vecNormalize(dirToWorld(h2.joint.axis)), h2.sign);
-    const cross1 = vecCross(a1, vecSub(P, g1.centerLdu));
-    const cross2 = vecCross(a2, vecSub(P, g2.centerLdu));
-    const t = vecNormalize(cross1);
-    if (vecLen(t) < 1e-9) return null;
-    const den = vecDot(cross2, t);
-    if (Math.abs(den) < 1e-12) return null;
-    return vecDot(cross1, t) / den;
-};
-
-/**
- * Where two gears touch, or null when they do not mesh.
- * @returns {{P: Vec3}|null} contact point P on gear 1's pitch circle (LDU)
- */
-const meshContact = (g1, g2) => {
-    if (g1.type === 'spur' && g2.type === 'spur') {
-        if (!parallelAxes(g1.axisLdu, g2.axisLdu)) return null;
-        const delta = vecSub(g2.centerLdu, g1.centerLdu);
-        const axial = vecDot(delta, g1.axisLdu);
-        const perpVec = vecSub(delta, vecScale(g1.axisLdu, axial));
-        if (Math.abs(vecLen(perpVec) - (g1.r + g2.r)) > TOL + 1e-9) return null;
-        if (Math.abs(axial) > 4 + 1e-9) return null;
-        const u = vecNormalize(perpVec);
-        if (vecLen(u) < 1e-9) return null;
-        return {P: vecAdd(g1.centerLdu, vecScale(u, g1.r))};
-    }
-    if (g1.type === 'bevel' && g2.type === 'bevel') {
-        if (!perpendicularAxes(g1.axisLdu, g2.axisLdu)) return null;
-        if (lineDistance(g1.centerLdu, g1.axisLdu, g2.centerLdu, g2.axisLdu) > TOL + 1e-9) return null;
-        const {mid: O} = lineClosestMidpoint(g1.centerLdu, g1.axisLdu, g2.centerLdu, g2.axisLdu);
-        if (Math.abs(vecDist(g1.centerLdu, O) - g2.r) > 1 + 1e-9) return null;
-        if (Math.abs(vecDist(g2.centerLdu, O) - g1.r) > 1 + 1e-9) return null;
-        const uVec = vecSub(g2.centerLdu, O);
-        if (vecLen(uVec) < 1e-9) return null;
-        return {P: vecAdd(g1.centerLdu, vecScale(vecNormalize(uVec), g1.r))};
-    }
-    return null;
 };
 
 /** A readable name for a gear: "the 8-tooth gear (g8)". */
@@ -158,18 +107,19 @@ const holderName = (hinge, gear, jointEntries, nodes) => {
  * @param {object} metaB its PartMeta
  * @returns {boolean}
  */
-export const placedGearsMesh = (a, metaA, b, metaB) => {
+export const placedGearsMesh = (a, metaA, b, metaB, kinds = BUILTIN_KINDS) => {
     if (!metaA?.gear || !metaB?.gear || metaA.gear.type !== metaB.gear.type) return false;
-    if (metaA.gear.type !== 'spur' && metaA.gear.type !== 'bevel') return false;
+    const module = kinds.couplings.meshFor(metaA.gear.type, metaB.gear.type);
+    if (!module) return false;
     const info = (p, meta) => ({
         type: meta.gear.type, teeth: meta.gear.teeth, r: pitchRadiusLdu(meta.gear.teeth),
         centerLdu: vecAdd(mat3MulVec3(p.rotation, meta.gear.center), p.position),
         axisLdu: vecNormalize(mat3MulVec3(p.rotation, meta.gear.axis))
     });
-    return Boolean(meshContact(info(a, metaA), info(b, metaB)));
+    return Boolean(module.mesh.contact(info(a, metaA), info(b, metaB)));
 };
 
-export const buildGears = (nodes, islands, joints, catalogMap, diagnostics = [], jointEntries = null) => {
+export const buildGears = (nodes, islands, joints, catalogMap, diagnostics = [], jointEntries = null, kinds = BUILTIN_KINDS) => {
     const {nodeToBody} = islands;
 
     // Every placed gear part with its centre/axis in the model frame (LDU).
@@ -218,15 +168,16 @@ export const buildGears = (nodes, islands, joints, catalogMap, diagnostics = [],
             if (g1.islandId === g2.islandId) continue; // one rigid body: nothing to couple
 
             const t1 = g1.type; const t2 = g2.type;
-            if (t1 === 'worm' || t2 === 'worm' || t1 === 'rack' || t2 === 'rack') {
-                diagnostics.push({severity: 'warning', code: 'unsupported-gear', message: `Worm/rack gear pair ${g1.partId}–${g2.partId} unsupported`, parts: [g1.partId, g2.partId]});
+            // The coupling registry's tooth meshes (kinds/spur.js, kinds/bevel.js, …) say which pairs mesh.
+            const module = kinds.couplings.meshFor(t1, t2);
+            if (!module) {
+                let message = `Gear pair ${g1.partId}(${t1})–${g2.partId}(${t2}) unsupported`;
+                if (t1 === 'worm' || t2 === 'worm' || t1 === 'rack' || t2 === 'rack') message = `Worm/rack gear pair ${g1.partId}–${g2.partId} unsupported`;
+                else if (t1 !== t2) message = `Mismatched gear types ${g1.partId}(${t1})–${g2.partId}(${t2})`;
+                diagnostics.push({severity: 'warning', code: 'unsupported-gear', message, parts: [g1.partId, g2.partId]});
                 continue;
             }
-            if (t1 !== t2) {
-                diagnostics.push({severity: 'warning', code: 'unsupported-gear', message: `Mismatched gear types ${g1.partId}(${t1})–${g2.partId}(${t2})`, parts: [g1.partId, g2.partId]});
-                continue;
-            }
-            const contact = meshContact(g1, g2);
+            const contact = module.mesh.contact(g1, g2);
             if (!contact) continue;
 
             // Gear-on-frame: one gear is rigidly part of the frame the other turns in.
@@ -262,10 +213,10 @@ export const buildGears = (nodes, islands, joints, catalogMap, diagnostics = [],
                 });
                 continue;
             }
-            const ratio = meshRatio(g1, pair[0], g2, pair[1], contact.P);
+            const ratio = (module.mesh.ratio || meshRatio)(g1, pair[0], g2, pair[1], contact.P);
             if (ratio === null) continue;
             // `parts`: the two meshing gears (g1 on joint1), so a view can show which gears couple.
-            gears.push({id: '', type: 'gear', joint1: pair[0].joint.id, joint2: pair[1].joint.id, ratio, parts: [g1.partId, g2.partId]});
+            gears.push({id: '', type: module.kind, joint1: pair[0].joint.id, joint2: pair[1].joint.id, ratio, parts: [g1.partId, g2.partId]});
         }
     }
 

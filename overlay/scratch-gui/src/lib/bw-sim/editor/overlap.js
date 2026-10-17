@@ -9,6 +9,7 @@
 // where a part rests on a surface.
 
 import {placedGearsMesh} from '../mech/gears.js';
+import {solidColliders} from '../kinds/pin-axle.js';
 import {mat3MulVec3, vecAdd, vecSub, vecScale, vecDot, vecCross, vecLen, vecNormalize} from '../mech/vec.js';
 
 // Transform a point from part local to model LDraw frame
@@ -214,32 +215,10 @@ export const partOverlaps = (model, catalog, placedPart, {ignore = [], colliders
 
 // ---- solid parts, moves, rays, resting ---------------------------------------
 
-/** Connector types of parts that legitimately sit inside another part's hole or socket. */
-const SHAFT_TYPES = new Set(['pin', 'axle', 'ball']);
-/**
- * Collider `region`s that are a shaft: the volume of a pin, axle or ball that sits
- * inside another part's hole or socket. A collider without a region is solid.
- */
-export const SHAFT_REGIONS = Object.freeze(['pin', 'axle', 'ball']);
+// The region rule (which colliders of a part are shaft, which solid) is the v1 connector
+// kinds' (kinds/pin-axle.js), re-exported here where the editor and the tests read it.
+export {SHAFT_REGIONS, solidColliders} from '../kinds/pin-axle.js';
 const asMap = catalog => (catalog instanceof Map ? catalog : new Map(Object.entries(catalog || {})));
-
-/**
- * Indices of a part's SOLID colliders: the volume that must not share space with
- * another part's solid volume. A part that is partly shaft and partly solid
- * (87082: two pin ends and a centre with a pin hole; 32054: a pin and its stop
- * bush) tags its shaft colliders `region: 'pin'|'axle'|'ball'`; the rest are
- * solid. A part that tags none is wholly shaft when every connector is a pin,
- * axle or ball (a plain pin or axle, the castor ball), else wholly solid.
- * @param {object} meta PartMeta
- * @returns {number[]}
- */
-export const solidColliders = meta => {
-    if (!meta || !Array.isArray(meta.colliders)) return [];
-    const all = meta.colliders.map((_, i) => i);
-    if (meta.colliders.some(c => c.region !== undefined)) return all.filter(i => !SHAFT_REGIONS.includes(meta.colliders[i].region));
-    const allShaft = Array.isArray(meta.connectors) && meta.connectors.length > 0 && meta.connectors.every(c => SHAFT_TYPES.has(c.type));
-    return allShaft ? [] : all;
-};
 
 /**
  * True for a part that is made to sit wholly INSIDE other ones: no solid

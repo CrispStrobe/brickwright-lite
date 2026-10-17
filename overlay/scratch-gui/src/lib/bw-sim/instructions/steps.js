@@ -36,6 +36,7 @@
 // Parts that do not connect to the rest at all start a step marked `loose`.
 
 import {buildGraph} from '../mech/graph.js';
+import {partHubProfile} from '../contracts.js';
 
 /** Parts per derived step the walk aims for, and the most it puts in one (unless one part brings more fasteners). */
 export const STEP_TARGET = 4;
@@ -301,7 +302,7 @@ const deriveUnits = ({ids, adjacency, metaOf: meta, index, built = new Set(), gr
     const byOrder = (a, b) => a.order - b.order;
     const mass = unit => unit.parts.reduce((sum, id) => sum + (meta(id)?.massGrams || 0), 0);
     const pickRoot = remaining => {
-        const hub = remaining.find(u => u.parts.some(id => meta(id)?.hub));
+        const hub = remaining.find(u => u.parts.some(id => partHubProfile(meta(id))));
         if (hub) return hub;
         return remaining.slice().sort((a, b) => mass(b) - mass(a) || byOrder(a, b))[0];
     };
