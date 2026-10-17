@@ -6127,3 +6127,7 @@ Preserve the current Code-tab error recovery, matrix reach popover and TypeScrip
 Reconciled H1–H3 controls: 113 passed, zero failures/skips. Initial stale generated lazy-loader check was retained as negative evidence; canonical integration regenerated the ignored installed copy. Assertions unchanged; final exact-head hosted CI still gates merge.
 
 A13 H1–H3 local composition: 134 combined controls pass, zero failures/skips, including CPX face, File reach, matrix/lazy-loader and simulator controls. Supplier pins unchanged; prior candidate production proof remains retained with its original source identity. New final-source hosted qualification is still required after PR1017 lands.
+
+### Delivery handoff — 2026-10-17
+
+See [current integration status and scoped next actions](docs/WEDO-IPAD-INTEGRATION-HANDOFF.md). Completed work is committed; source integration PR1017 requires reconciliation with the latest H1–H3 main changes before final CI/landing, followed by A13 source qualification. No hardware acceptance is claimed. Private machine/device details and continuation receipts are only in ignored local `CLAUDE.md`; all peer claims remain owned.
