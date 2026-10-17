@@ -19,7 +19,9 @@ export const MATS = [
     {id: 'plain', title: {en: 'Plain', de: 'Einfach'}},
     {id: 'line-oval', title: {en: 'Line Oval', de: 'Linien-Oval'}},
     {id: 'colour-zones', title: {en: 'Colour Zones', de: 'Farbzonen'}},
-    {id: 'wall', title: {en: 'Wall', de: 'Wand'}}
+    {id: 'wall', title: {en: 'Wall', de: 'Wand'}},
+    {id: 'sumo', title: {en: 'Sumo ring', de: 'Sumo-Ring'}},
+    {id: 'maze', title: {en: 'Maze', de: 'Labyrinth'}}
 ];
 
 // Plain mat: white 1.2x0.8 (same as line-oval, but could be any, we choose 1.2x0.8 to match line-oval)
@@ -193,8 +195,147 @@ const wall = {
     paint: plain.paint
 };
 
+// Sumo ring: white 1.0x1.0 with a black ring band centred on the mat. Outer
+// diameter 0.77 m, band 0.05 m wide — so inner radius = 0.77/2 - 0.05 = 0.335 m,
+// outer radius = 0.77/2 = 0.385 m (hand-derived; SUMO carries the same numbers).
+// A robot starts at the centre and stays inside the ring by reading black at
+// the band. Outside the ring the floor would be grey; COLORS has no grey id
+// (only 0/3/6/7/9/10), so it reads white — see the sumo mat tests.
+export const SUMO = Object.freeze({outerDiameter: 0.77, bandWidth: 0.05});
+
+const sumo = {
+    id: 'sumo',
+    sizeM: [1.0, 1.0],
+    startPose: {x: 0, z: 0, heading: 0},
+    colorAt(x, z) {
+        const [w, d] = this.sizeM;
+        if (Math.abs(x) > w / 2 || Math.abs(z) > d / 2) return {color: 10, reflection: 100, rgb: [1024, 1024, 1024]};
+        const r = Math.hypot(x, z);
+        if (r >= SUMO.outerDiameter / 2 - SUMO.bandWidth && r <= SUMO.outerDiameter / 2) {
+            return {color: 0, reflection: 5, rgb: [60, 60, 60]}; // the band: same printed-black rgb as the line-oval line
+        }
+        return {color: 10, reflection: 100, rgb: [1024, 1024, 1024]};
+    },
+    paint(imageData, pxPerM) {
+        for (let y = 0; y < imageData.height; y++) {
+            for (let x = 0; x < imageData.width; x++) {
+                const mx = (x - imageData.width / 2 + 0.5) / pxPerM;
+                const mz = (y - imageData.height / 2 + 0.5) / pxPerM;
+                const c = this.colorAt(mx, mz);
+                const idx = (y * imageData.width + x) * 4;
+                imageData.data[idx] = Math.round(c.rgb[0] / 4);
+                imageData.data[idx + 1] = Math.round(c.rgb[1] / 4);
+                imageData.data[idx + 2] = Math.round(c.rgb[2] / 4);
+                imageData.data[idx + 3] = 255;
+            }
+        }
+    }
+};
+
+// Maze: white 1.2x1.2 (a 4x4 grid of 0.3 m cells) with walls as static boxes,
+// the `wall` mat's obstacle format: each wall spans one cell edge (0.3 m long),
+// 0.02 m thick, 0.04 m high, sitting on its grid line. The closed interior
+// edges below are hand-drawn; the sketch reads with +x right and +z up,
+// S = start cell (0,0), G = goal cell (3,0), · = an open edge:
+//
+//   z=+0.45|#   ·   · |   ·   row j=3
+//          +---+---+---+
+//   z=+0.15| · | · | · | ·   row j=2       primary route (10 cells):
+//          +---+   +   +        S(0,0) - (0,1) - (1,1) - (1,2) - (1,3)
+//   z=-0.15| · | · | · | ·   row j=1       - (2,3) - (2,2) - (2,1) - (2,0) - G
+//          +---+---+   +
+//   z=-0.45| S ·   · | G   row j=0       the side branches are dead ends, so
+//          +---+---+---+---+             every cell is reachable from S.
+//            x=-0.45 ... x=+0.45  (i = 0..3, west to east)
+//
+// The outer boundary is inset 0.01 m so every wall lies inside the mat (four
+// corner walls overlap their neighbours by 0.02x0.02 — static boxes, harmless).
+// Robot start pose: the start cell's centre (-0.45, -0.45), heading 90
+// (place.js: heading degrees from world +x toward +z) — north is the open
+// corridor. The goal cell's floor is green so a colour sensor knows it arrived;
+// the walls cover their own footprint with dark grey rgb (SPIKE 'black', the
+// nearest representable id).
+export const MAZE = Object.freeze({
+    cell: 0.3, n: 4,                    // line(n) = -0.6 + 0.3*n, with -0.6 = -(4*0.3)/2
+    thickness: 0.02, height: 0.04,
+    startCell: [0, 0], goalCell: [3, 0],
+    heading: 90
+});
+
+const mazeLine = n => Math.round((-0.6 + MAZE.cell * n) * 1e12) / 1e12;   // grid line n = 0..4, float-noise-free
+const cellCentre = (i, j) => {
+    const round = v => Math.round(v * 1e12) / 1e12;
+    return [round(mazeLine(i) + MAZE.cell / 2), round(mazeLine(j) + MAZE.cell / 2)];
+};
+
+// Closed interior edges. wall-v-i-j sits on line(i)=x between cells (i-1,j)
+// and (i,j); wall-h-i-j sits on line(j)=z between cells (i,j-1) and (i,j).
+const mazeClosedV = [[1, 0], [2, 0], [2, 1], [2, 2]];
+const mazeClosedH = [[0, 2], [0, 3], [3, 1], [3, 2], [3, 3]];
+
+const mazeWallList = [];
+for (const [i, j] of mazeClosedV) {
+    mazeWallList.push({id: `wall-v-${i}-${j}`, size: [MAZE.thickness, MAZE.height, MAZE.cell], position: [mazeLine(i), 0, mazeLine(j) + MAZE.cell / 2]});
+}
+for (const [i, j] of mazeClosedH) {
+    mazeWallList.push({id: `wall-h-${i}-${j}`, size: [MAZE.cell, MAZE.height, MAZE.thickness], position: [mazeLine(i) + MAZE.cell / 2, 0, mazeLine(j)]});
+}
+// The boundary: one wall per rim cell edge, inset 0.01 m inward on its outward
+// side so the outer face is the mat edge (-0.6 / +0.6).
+for (let i = 0; i < MAZE.n; i++) {
+    mazeWallList.push({id: `wall-s-${i}`, size: [MAZE.cell, MAZE.height, MAZE.thickness], position: [mazeLine(i) + MAZE.cell / 2, 0, mazeLine(0) + MAZE.thickness / 2]});
+    mazeWallList.push({id: `wall-n-${i}`, size: [MAZE.cell, MAZE.height, MAZE.thickness], position: [mazeLine(i) + MAZE.cell / 2, 0, mazeLine(MAZE.n) - MAZE.thickness / 2]});
+}
+for (let j = 0; j < MAZE.n; j++) {
+    mazeWallList.push({id: `wall-w-${j}`, size: [MAZE.thickness, MAZE.height, MAZE.cell], position: [mazeLine(0) + MAZE.thickness / 2, 0, mazeLine(j) + MAZE.cell / 2]});
+    mazeWallList.push({id: `wall-e-${j}`, size: [MAZE.thickness, MAZE.height, MAZE.cell], position: [mazeLine(MAZE.n) - MAZE.thickness / 2, 0, mazeLine(j) + MAZE.cell / 2]});
+}
+
+// The floor under a wall is covered by the wall body; below it stays white
+// except the goal cell, which is green (colour id 6).
+const mazeFloorColor = (x, z) => {
+    if (x >= 0.3 && x <= 0.6 && z >= -0.6 && z <= -0.3) {
+        return {color: 6, reflection: 50, rgb: [0, 200, 0]};    // goal cell, green
+    }
+    return {color: 10, reflection: 100, rgb: [1024, 1024, 1024]};
+};
+
+const maze = {
+    id: 'maze',
+    sizeM: [MAZE.n * MAZE.cell, MAZE.n * MAZE.cell],
+    startPose: {x: cellCentre(...MAZE.startCell)[0], z: cellCentre(...MAZE.startCell)[1], heading: MAZE.heading},
+    obstacles: mazeWallList.map(w => ({id: w.id, shape: 'box', size: w.size.slice(), position: w.position.slice(), color: 0})),
+    colorAt(x, z) {
+        const [w, d] = this.sizeM;
+        if (Math.abs(x) > w / 2 || Math.abs(z) > d / 2) return {color: 10, reflection: 100, rgb: [1024, 1024, 1024]};
+        // A wall's footprint paints the floor dark grey: the wall body stands there.
+        for (const wseg of mazeWallList) {
+            const [sx, , sz] = wseg.size;
+            const [px, , pz] = wseg.position;
+            if (x >= px - sx / 2 && x <= px + sx / 2 && z >= pz - sz / 2 && z <= pz + sz / 2) {
+                return {color: 0, reflection: 5, rgb: [60, 60, 60]}; // dark grey, read as SPIKE black
+            }
+        }
+        return mazeFloorColor(x, z);
+    },
+    paint(imageData, pxPerM) {
+        for (let y = 0; y < imageData.height; y++) {
+            for (let x = 0; x < imageData.width; x++) {
+                const mx = (x - imageData.width / 2 + 0.5) / pxPerM;
+                const mz = (y - imageData.height / 2 + 0.5) / pxPerM;
+                const c = this.colorAt(mx, mz);
+                const idx = (y * imageData.width + x) * 4;
+                imageData.data[idx] = Math.round(c.rgb[0] / 4);
+                imageData.data[idx + 1] = Math.round(c.rgb[1] / 4);
+                imageData.data[idx + 2] = Math.round(c.rgb[2] / 4);
+                imageData.data[idx + 3] = 255;
+            }
+        }
+    }
+};
+
 export const createMat = id => {
-    const mat = {plain, 'line-oval': lineOval, 'colour-zones': colourZones, wall}[id];
+    const mat = {plain, 'line-oval': lineOval, 'colour-zones': colourZones, wall, sumo, maze}[id];
     if (!mat) throw new Error(`unknown mat '${id}'`);
     return {
         id: mat.id,
