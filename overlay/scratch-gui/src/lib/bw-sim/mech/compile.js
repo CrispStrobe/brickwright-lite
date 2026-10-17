@@ -5,7 +5,8 @@
 // PlacedModel + catalog into a CompiledMechanism (pure data in, pure data
 // out). Runs validateCompiledMechanism on output and throws on bug.
 
-import {validatePlacedModel, validateCompiledMechanism, GROUND_FRICTION, LDU_M, lduToWorld} from '../contracts.js';
+import {validatePlacedModel, validateCompiledMechanism, GROUND_FRICTION, LDU_M, lduToWorld, dirToWorld} from '../contracts.js';
+import {mat3MulVec3, vecAdd} from './vec.js';
 import {buildGraph} from './graph.js';
 import {buildIslands} from './islands.js';
 import {buildJoints} from './joints.js';
@@ -31,7 +32,7 @@ const quatRotateVec = (q, v) => {
  * @param {Array} bodies dynamic bodies already built
  * @returns {object} ground body
  */
-const makeGround = bodies => {
+const makeGround = (bodies, opts = {}) => {
     let lowest = Infinity;
     for (const b of bodies) {
         for (const col of b.colliders) {
@@ -71,6 +72,8 @@ const makeGround = bodies => {
         colliders: [{shape: 'box', halfExtents: [1, halfThick, 1]}],
         parts: [],
         friction: GROUND_FRICTION,
+        color: opts.groundColor !== undefined ? opts.groundColor : 10,
+        ...(opts.mat ? {mat: opts.mat} : {}),
     };
 };
 
@@ -166,15 +169,91 @@ export const compile = (model, catalog, opts = {}) => {
     // Bodies final list: islands.bodies plus ground
     const bodies = [...islands.bodies];
     if (opts.ground !== false) {
-        const ground = makeGround(bodies);
+        const ground = makeGround(bodies, opts);
         // Insert ground first to match example ordering (ground first)
         bodies.unshift(ground);
+    }
+
+    // Obstacles: each becomes a STATIC body sitting on the floor (bottom at ground top)
+    if (Array.isArray(opts.obstacles)) {
+        const seenIds = new Set();
+        let groundTop = 0;
+        if (bodies.length > 0) {
+            const g = bodies.find(b => b.id === 'ground');
+            if (g) groundTop = g.position[1] + 0.01;
+            else {
+                // No ground? Use lowest as 0 fallback already
+                groundTop = 0;
+            }
+        }
+        for (const obs of opts.obstacles) {
+            const id = obs && typeof obs.id === 'string' ? obs.id : '';
+            let bad = null;
+            if (!id) bad = `obstacle id missing`;
+            else if (seenIds.has(id)) bad = `duplicate obstacle id '${id}'`;
+            else if (obs.shape !== 'box') bad = `obstacle '${id}' shape must be 'box'`;
+            else if (!Array.isArray(obs.size) || obs.size.length !== 3 || !obs.size.every(v => typeof v === 'number' && Number.isFinite(v) && v > 0)) bad = `obstacle '${id}' size must be three positive numbers`;
+            else if (!Array.isArray(obs.position) || obs.position.length !== 3 || !obs.position.every(v => typeof v === 'number' && Number.isFinite(v))) bad = `obstacle '${id}' position must be Vec3`;
+            else if (obs.yawDeg !== undefined && !(typeof obs.yawDeg === 'number' && Number.isFinite(obs.yawDeg))) bad = `obstacle '${id}' yawDeg must be a number`;
+            else if (obs.color !== undefined && !(Number.isInteger(obs.color) && obs.color >= 0 && obs.color <= 10)) bad = `obstacle '${id}' color must be 0..10`;
+            // Also check size positive already, but also need to check duplicate id tracking even if bad due to other reason? We already.
+            if (bad) {
+                diagnostics.push({severity: 'error', code: 'bad-obstacle', message: bad, parts: []});
+                if (id) seenIds.add(id);
+                continue;
+            }
+            // Valid: record id
+            seenIds.add(id);
+            const size = obs.size;
+            const pos = obs.position;
+            const yawDeg = obs.yawDeg || 0;
+            const yawRad = yawDeg * Math.PI / 180;
+            const half = yawRad / 2;
+            const qy = Math.sin(half);
+            const qw = Math.cos(half);
+            // rotation about Y: [0, sin(yaw/2), 0, cos(yaw/2)]
+            const rot = [0, qy, 0, qw];
+            const h = size[1];
+            const bottomY = groundTop + pos[1];
+            const centerY = bottomY + h / 2;
+            const body = {
+                id: `obstacle:${id}`,
+                motion: 'static',
+                position: [pos[0], centerY, pos[2]],
+                rotation: rot,
+                massKg: 0,
+                colliders: [{shape: 'box', halfExtents: [size[0] / 2, size[1] / 2, size[2] / 2]}],
+                parts: [],
+            };
+            if (obs.color !== undefined) body.color = obs.color;
+            bodies.push(body);
+        }
     }
 
     // Sort bodies deterministically: ground first (if present), then b0,b1... already sorted by smallest part id, but ground is 'ground' should stay first.
     // Our islands bodies are already b0... sorted. We'll keep ground at front.
 
     // Sort joints already deterministic from buildJoints (j0..), gears deterministic.
+
+    // Sensors: from placed parts whose catalog entry has a sensor.
+    const sensors = [];
+    for (const pl of knownParts) {
+        const meta = catalogMap.get(pl.part);
+        if (!meta || !meta.sensor) continue;
+        if (!pl.port) {
+            diagnostics.push({severity: 'warning', code: 'sensor-without-port', message: 'Sensor ' + pl.id + ' has no port', parts: [pl.id]});
+            continue;
+        }
+        let bodyId = islands.nodeToBody.get(pl.id);
+        if (!bodyId) bodyId = islands.nodeToBody.get(pl.id + '#out');
+        if (!bodyId) continue;
+        const lduOrigin = vecAdd(mat3MulVec3(pl.rotation, meta.sensor.origin), pl.position);
+        const worldOrigin = lduToWorld(lduOrigin);
+        const lduDir = mat3MulVec3(pl.rotation, meta.sensor.direction);
+        const worldDir = dirToWorld(lduDir);
+        sensors.push({port: pl.port, kind: meta.sensor.kind, body: bodyId, origin: worldOrigin, direction: worldDir});
+    }
+    sensors.sort((a, b) => a.port.localeCompare(b.port));
 
     // Diagnostics: ensure deterministic order? Sort by code then message
     diagnostics.sort((a, b) => {
@@ -195,6 +274,7 @@ export const compile = (model, catalog, opts = {}) => {
         gears,
         diagnostics,
     };
+    if (sensors.length > 0) mechanism.sensors = sensors;
 
     const problemsOut = validateCompiledMechanism(mechanism);
     if (problemsOut.length > 0) {

@@ -23,6 +23,7 @@
   "three": {
     "tests": [
       "test/bw-sim-scene3d.test.mjs",
+      "test/bw-sim-world.test.mjs",
       "test/spike-arena-3d-pane.test.mjs",
       "test/spike-arena-3d.test.mjs"
     ],
@@ -36,11 +37,15 @@
   },
   "jolt-physics/wasm-compat": {
     "tests": [
+      "test/bw-sim-persist.test.mjs",
+      "test/bw-sim-physics-cast-ray.test.mjs",
       "test/bw-sim-physics-core.test.mjs",
       "test/bw-sim-physics-worker.test.mjs",
       "test/bw-sim-s1-driving-base.test.mjs",
       "test/bw-sim-scene3d.test.mjs",
-      "test/bw-sim-session.test.mjs"
+      "test/bw-sim-sensors.test.mjs",
+      "test/bw-sim-session.test.mjs",
+      "test/bw-sim-world.test.mjs"
     ],
     "why": "the Sim Lab physics core (overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js) runs a CompiledMechanism in Jolt, a GUI-package dependency; its own test and the S1 end-to-end driving-base test run it headless via the wasm-compat build"
   }

@@ -115,6 +115,10 @@ const server = createServer((req, res) => {
         if (state.gone.has(chunk[1])) return send(404, 'text/plain', 'not found');
         return send(200, 'text/javascript', chunkBody(chunk[1]));
     }
+    if (path === '/chunks/importer.js') {
+        // An unhashed lazy chunk: same URL in every build, body names the build.
+        return send(200, 'text/javascript', `window.__importer = ${JSON.stringify(state.hash)};\n`);
+    }
     if (/^\/chunks\/poison\.[a-f0-9]+\.js$/.test(path)) {
         return send(200, 'text/javascript', 'window.__poison = "fresh";\n');
     }
@@ -324,6 +328,36 @@ const SCENARIOS = {
     }
 };
 
+// (e) is added below SCENARIOS' literal so (a)-(d) read in their original order.
+SCENARIOS['unhashed-chunk-after-deploy'] = async (browser) => {
+    /** An unhashed lazy chunk (`chunks/[name].js`) keeps its URL across builds.
+     *  After a deploy the page must get the NEW build's copy on the first request,
+     *  not the cached old one: an old chunk under a new entry is how React.lazy
+     *  resolved to an undefined default in the Code tab (#306, 2026-10-16). */
+    const context = await freshContext(browser, {hash: '1111111aaaaaaaaa'});
+    try {
+        const page = await openControlled(context);
+        const load = () => page.evaluate(async (u) => {
+            const r = await fetch(u);
+            return r.ok ? (await r.text()) : `status ${r.status}`;
+        }, `${ORIGIN}/chunks/importer.js`);
+        const before = await load();
+        await load();
+        if (!before.includes('1111111aaaaaaaaa')) {
+            throw new Error(`could not load the unhashed chunk before the deploy (${before}); ` +
+                'the scenario would pass vacuously');
+        }
+        state.hash = '2222222bbbbbbbbb';
+        const after = await load();
+        if (!after.includes('2222222bbbbbbbbb')) {
+            throw new Error(`after a deploy the unhashed chunk came back as ${JSON.stringify(after.trim())}: ` +
+                'the worker served the old build\'s copy, the stale-chunk #306 path.');
+        }
+    } finally {
+        await context.close();
+    }
+};
+
 // ---------------------------------------------------------------------------
 // Mutations. Each names the scenario it must break.
 // ---------------------------------------------------------------------------
@@ -369,6 +403,15 @@ const MUTATIONS = [
         why: 'the `.ok` guard on the cache-first branch is defeated if the ' +
             'revalidate branch below it will hand back the same non-ok entry.',
         apply: (src) => src.replace('if (cached && cached.ok) {', 'if (cached) {')
+    },
+    {
+        name: 'unhashed-chunks-stale-while-revalidate',
+        scenario: 'unhashed-chunk-after-deploy',
+        why: 'without the network-first branch an unhashed chunk is served from the ' +
+            'cache after a deploy, so the new entry runs an old build\'s module.',
+        apply: (src) => src.replace(
+            "if (url.pathname.includes('/chunks/') && !HASHED.test(url.pathname)) {",
+            'if (false) {')
     }
 ];
 

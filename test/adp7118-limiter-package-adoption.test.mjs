@@ -99,7 +99,7 @@ async function installedCircuit(R,C){
 test('limiter adoption selects the exact pinned installed package rather than a board override',()=>{
     const pins=JSON.parse(readFileSync(path.join(root,'vendor-pins.json'),'utf8'));
     assert.equal(pins['bw-board'],boardPin);
-    assert.equal(pins['bw-circuit-ui'],'625a374e01452d5c2061485a427f4a508fd43c83');
+    assert.equal(pins['bw-circuit-ui'],'055930ec51300e0d71466c696ce1bf76284bde38');
     const pkg=JSON.parse(readFileSync(path.join(root,'package.json'),'utf8'));
     assert.equal(pkg.devDependencies['bw-board'],packageSpec);
     const lock=JSON.parse(readFileSync(path.join(root,'package-lock.json'),'utf8'));
