@@ -471,10 +471,11 @@ export const placePart = (model, {part, position, rotation, id, port}) => {
     }
     const newPart = {id: finalId, part, position: position.slice(), rotation: rotation.slice()};
     if (port) newPart.port = port;
-    // Deep copy model
+    // Deep copy model (including groups)
     const newModel = {
         version: model.version,
         parts: [...model.parts.map(p => ({...p, position: p.position.slice(), rotation: p.rotation.slice()})), newPart]
     };
+    if (model.groups) newModel.groups = model.groups.map(g => ({id: g.id, name: g.name, parts: g.parts.slice()}));
     return newModel;
 };

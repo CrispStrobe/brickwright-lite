@@ -6,14 +6,52 @@
 import {validatePlacedModel} from '../contracts.js';
 import {placePart as snapPlacePart} from './snap.js';
 
-const cloneModel = model => ({
-    version: model.version,
-    parts: model.parts.map(p => ({
-        ...p,
-        position: p.position.slice(),
-        rotation: p.rotation.slice()
-    }))
-});
+const cloneModel = model => {
+    const out = {
+        version: model.version,
+        parts: model.parts.map(p => ({
+            ...p,
+            position: p.position.slice(),
+            rotation: p.rotation.slice()
+        }))
+    };
+    if (model.groups) out.groups = model.groups.map(g => ({id: g.id, name: g.name, parts: g.parts.slice()}));
+    return out;
+};
+
+export const groupOf = (model, partId) => {
+    if (!model.groups) return null;
+    for (const g of model.groups) if (g.parts.includes(partId)) return g;
+    return null;
+};
+
+export const expandSelection = (model, ids) => {
+    if (!model.groups || !ids.length) return ids.slice();
+    const set = new Set(ids);
+    for (const id of ids) {
+        const g = groupOf(model, id);
+        if (g) for (const pid of g.parts) set.add(pid);
+    }
+    return [...set];
+};
+
+const isProperRotation = m => {
+    const det = m[0] * (m[4] * m[8] - m[5] * m[7]) - m[1] * (m[3] * m[8] - m[5] * m[6]) + m[2] * (m[3] * m[7] - m[4] * m[6]);
+    return Math.abs(det - 1) < 1e-6;
+};
+
+const nextGroupId = model => {
+    let n = 1;
+    const ids = new Set((model.groups || []).map(g => g.id));
+    while (ids.has(`g${n}`)) n++;
+    return `g${n}`;
+};
+
+const dissolveSmallGroups = model => {
+    if (!model.groups) return;
+    model.groups = model.groups.filter(g => g.parts.length >= 2);
+    if (model.groups.length === 0) delete model.groups;
+};
 
 export const createEditor = ({model, catalog}) => {
     const catalogMap = catalog instanceof Map ? catalog : new Map(Object.entries(catalog || {}));
@@ -78,6 +116,14 @@ export const createEditor = ({model, catalog}) => {
                 if (idx === -1) throw new Error(`unknown id '${id}'`);
                 next = cloneModel(current);
                 next.parts.splice(idx, 1);
+                // Remove from groups, dissolve small
+                if (next.groups) {
+                    for (const g of next.groups) {
+                        const i = g.parts.indexOf(id);
+                        if (i !== -1) g.parts.splice(i, 1);
+                    }
+                    dissolveSmallGroups(next);
+                }
             } else if (cmd.type === 'clone') {
                 const {id, offset} = cmd;
                 const orig = current.parts.find(p => p.id === id);
@@ -89,6 +135,123 @@ export const createEditor = ({model, catalog}) => {
                 const last = next.parts[next.parts.length - 1];
                 if (orig.color !== undefined) last.color = orig.color;
                 if (orig.port) last.port = orig.port;
+                // If original was in a group, clones currently not in group; but single clone doesn't create new group (needs >=2)
+                // So we don't handle group for single clone here; cloneMany will handle multi
+            } else if (cmd.type === 'group') {
+                const {ids, name} = cmd;
+                if (!Array.isArray(ids) || ids.length < 2) throw new Error('group needs at least 2 parts');
+                for (const pid of ids) if (!current.parts.some(p => p.id === pid)) throw new Error(`unknown id '${pid}'`);
+                next = cloneModel(current);
+                // Collect all parts that should be in the new group: ids plus any parts from old groups that contain any of ids (merge)
+                const toMerge = new Set(ids);
+                const oldGroupsToRemove = new Set();
+                if (next.groups) {
+                    for (const g of next.groups) {
+                        if (g.parts.some(pid => ids.includes(pid))) {
+                            for (const pid of g.parts) toMerge.add(pid);
+                            oldGroupsToRemove.add(g.id);
+                        }
+                    }
+                    if (oldGroupsToRemove.size) next.groups = next.groups.filter(g => !oldGroupsToRemove.has(g.id));
+                }
+                const newParts = [...toMerge];
+                const gid = nextGroupId(next);
+                const gname = name || `Group ${gid}`;
+                if (!next.groups) next.groups = [];
+                next.groups.push({id: gid, name: gname, parts: newParts});
+            } else if (cmd.type === 'ungroup') {
+                const {id} = cmd;
+                if (!current.groups || !current.groups.some(g => g.id === id)) throw new Error(`unknown group '${id}'`);
+                next = cloneModel(current);
+                next.groups = next.groups.filter(g => g.id !== id);
+                if (next.groups.length === 0) delete next.groups;
+            } else if (cmd.type === 'renameGroup') {
+                const {id, name} = cmd;
+                if (!current.groups || !current.groups.some(g => g.id === id)) throw new Error(`unknown group '${id}'`);
+                if (typeof name !== 'string' || !name) throw new Error('bad name');
+                next = cloneModel(current);
+                const g = next.groups.find(x => x.id === id);
+                g.name = name;
+            } else if (cmd.type === 'moveMany') {
+                const {ids, delta, poses} = cmd;
+                if (!Array.isArray(ids) || ids.length === 0) throw new Error('moveMany needs ids');
+                for (const pid of ids) if (!current.parts.some(p => p.id === pid)) throw new Error(`unknown id '${pid}'`);
+                if (delta !== undefined) {
+                    if (!Array.isArray(delta) || delta.length !== 3) throw new Error('bad delta');
+                }
+                if (poses !== undefined) {
+                    if (!Array.isArray(poses)) throw new Error('bad poses');
+                    for (const po of poses) {
+                        if (!po.id || !Array.isArray(po.position) || po.position.length !== 3) throw new Error('bad pose position');
+                        if (!Array.isArray(po.rotation) || po.rotation.length !== 9) throw new Error('bad pose rotation');
+                        if (!isProperRotation(po.rotation)) throw new Error('bad rotation det');
+                        if (!ids.includes(po.id)) throw new Error(`pose id '${po.id}' not in ids`);
+                    }
+                }
+                if (delta === undefined && poses === undefined) throw new Error('moveMany needs delta or poses');
+                next = cloneModel(current);
+                if (poses) {
+                    for (const po of poses) {
+                        const idx = next.parts.findIndex(p => p.id === po.id);
+                        next.parts[idx].position = po.position.slice();
+                        next.parts[idx].rotation = po.rotation.slice();
+                    }
+                } else {
+                    for (const pid of ids) {
+                        const idx = next.parts.findIndex(p => p.id === pid);
+                        next.parts[idx].position = [next.parts[idx].position[0] + delta[0], next.parts[idx].position[1] + delta[1], next.parts[idx].position[2] + delta[2]];
+                    }
+                }
+            } else if (cmd.type === 'deleteMany') {
+                const {ids} = cmd;
+                if (!Array.isArray(ids) || ids.length === 0) throw new Error('deleteMany needs ids');
+                for (const pid of ids) if (!current.parts.some(p => p.id === pid)) throw new Error(`unknown id '${pid}'`);
+                next = cloneModel(current);
+                const delSet = new Set(ids);
+                next.parts = next.parts.filter(p => !delSet.has(p.id));
+                if (next.groups) {
+                    for (const g of next.groups) g.parts = g.parts.filter(pid => !delSet.has(pid));
+                    dissolveSmallGroups(next);
+                }
+            } else if (cmd.type === 'cloneMany') {
+                const {ids, offset} = cmd;
+                if (!Array.isArray(ids) || ids.length === 0) throw new Error('cloneMany needs ids');
+                for (const pid of ids) if (!current.parts.some(p => p.id === pid)) throw new Error(`unknown id '${pid}'`);
+                const off = offset || [40, 0, 0];
+                if (!Array.isArray(off) || off.length !== 3) throw new Error('bad offset');
+                next = cloneModel(current);
+                // Map from original id to new cloned part
+                const clones = [];
+                const origToCloneId = new Map();
+                for (const pid of ids) {
+                    const orig = current.parts.find(p => p.id === pid);
+                    const newPos = [orig.position[0] + off[0], orig.position[1] + off[1], orig.position[2] + off[2]];
+                    const cloned = snapPlacePart(next, {part: orig.part, position: newPos, rotation: orig.rotation.slice(), color: orig.color, port: orig.port});
+                    const last = cloned.parts[cloned.parts.length - 1];
+                    if (orig.color !== undefined) last.color = orig.color;
+                    if (orig.port) last.port = orig.port;
+                    // snapPlacePart already set next to cloned, but we need to track new id
+                    // The new part is the last in cloned.parts
+                    const newId = last.id;
+                    clones.push({origId: pid, newId});
+                    origToCloneId.set(pid, newId);
+                    next = cloned;
+                }
+                // Handle groups: clones keep their group structure, a cloned group becomes a new group
+                if (current.groups) {
+                    // Find groups that are touched by the cloned ids
+                    const touchedGroups = current.groups.filter(g => g.parts.some(pid => ids.includes(pid)));
+                    for (const og of touchedGroups) {
+                        const clonedParts = og.parts.filter(pid => ids.includes(pid)).map(pid => origToCloneId.get(pid));
+                        if (clonedParts.length >= 2) {
+                            const newGid = nextGroupId(next);
+                            if (!next.groups) next.groups = [];
+                            next.groups.push({id: newGid, name: og.name, parts: clonedParts});
+                        } else if (clonedParts.length === 1) {
+                            // Single cloned part from a group doesn't form a group (needs >=2), so leave ungrouped
+                        }
+                    }
+                }
             } else if (cmd.type === 'recolor') {
                 const {id, color} = cmd;
                 const idx = current.parts.findIndex(p => p.id === id);
