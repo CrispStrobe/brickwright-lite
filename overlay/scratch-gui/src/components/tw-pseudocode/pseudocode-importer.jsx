@@ -176,7 +176,7 @@ const L10N = {
         catalogUnavailable: e => `Example catalog unavailable (${e})`,
         infoTitle: 'Click for info', infoAria: 'About the Code tab',
         matrixTitle: 'What runs where: every language on every chip, native or lowered, simulator or silicon',
-        matrixAria: 'Show the language and device matrix',
+        matrixAria: 'Show the language and device matrix', matrixInfoAria: 'Reach of this language on this board',
         matrixHeading: 'What runs where',
         matrixLegend: 'native = the language itself runs on the chip · lowered = read into the dialect and re-emitted as something the chip runs · sim / silicon = where the result can go · open = a named task, not yet',
         matrixCurrent: 'current choice',
@@ -507,7 +507,7 @@ const L10N = {
         catalogUnavailable: e => `Beispiel-Katalog nicht verfügbar (${e})`,
         infoTitle: 'Für Infos klicken', infoAria: 'Über den Code-Tab',
         matrixTitle: 'Was läuft wo: jede Sprache auf jedem Chip, nativ oder übersetzt, Simulator oder Hardware',
-        matrixAria: 'Sprach- und Geräte-Matrix anzeigen',
+        matrixAria: 'Sprach- und Geräte-Matrix anzeigen', matrixInfoAria: 'Reichweite dieser Sprache auf diesem Board',
         matrixHeading: 'Was läuft wo',
         matrixLegend: 'nativ = die Sprache selbst läuft auf dem Chip · übersetzt = in den Dialekt gelesen und als etwas ausgegeben, das der Chip nativ ausführt · Sim / Hardware = wohin das Ergebnis kann · offen = eine benannte Aufgabe, noch nicht',
         matrixCurrent: 'aktuelle Wahl',
@@ -5785,7 +5785,8 @@ class PseudocodeImporter extends React.Component {
                                 {/* The reach summary is long; keep it behind an (i) button. */}
                                 <button type="button" data-testid="bw-matrix-badge"
                                     aria-expanded={this.state.matrixInfoOpen ? 'true' : 'false'}
-                                    aria-label={matrixSummary(this.state.lang, this.currentDevice(), pickLocale(this.props.locale))}
+                                    aria-label={this.L.matrixInfoAria}
+                                    data-summary={matrixSummary(this.state.lang, this.currentDevice(), pickLocale(this.props.locale))}
                                     title={matrixExplain(this.state.lang, this.currentDevice(), pickLocale(this.props.locale))}
                                     onClick={() => this.setState(state => ({matrixInfoOpen: !state.matrixInfoOpen}))}
                                     style={{width: 20, height: 20, padding: 0, borderRadius: '50%', fontSize: 11,
