@@ -3,8 +3,11 @@
 //
 // Jolt physics core for Sim Lab (overlay/scratch-gui/src/lib/bw-sim/physics/).
 //
-// Runs a CompiledMechanism in Jolt under node --test. No worker, no DOM,
-// no three.js. In the app it runs inside the physics worker
+// Runs a CompiledMechanism (v2; a v1 one is lifted by contracts.js
+// upgradeMechanismV1, so every hand-built v1 mechanism runs unchanged) in Jolt
+// under node --test. It reads joints, `actuators` (a motorised hinge's torque
+// and speed limits) and `couplings`, never the v1 view (`joint.motor`,
+// `gears`). No worker, no DOM, no three.js. In the app it runs inside the physics worker
 // (../physics-worker.js, ../sim-worker-protocol.js), or on the main thread where
 // there is no worker (sim-session.js).
 //
@@ -17,7 +20,7 @@
 // Motors: velocity / position (as velocity controller for unwrapped angle)
 // / coast / brake / hold, torque limited to ±maxTorqueNm.
 
-import { validateCompiledMechanism } from '../contracts.js';
+import { validateCompiledMechanism, upgradeMechanismV1 } from '../contracts.js';
 
 let joltPromise = null;
 
@@ -84,9 +87,12 @@ const boxConvexRadius = halfExtents => Math.min(0.0005, 0.25 * Math.min(...halfE
  */
 const GEAR_VELOCITY_STEPS = 30;
 
-export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
-    const problems = validateCompiledMechanism(mechanism);
+export const createPhysicsCore = (J, compiled, { stepHz = 120 } = {}) => {
+    const problems = validateCompiledMechanism(compiled);
     if (problems.length) throw new Error(problems.join('\n'));
+    const mechanism = upgradeMechanismV1(compiled);
+    /** joint id -> its actuator (CompiledMechanism v2): the motorised hinges */
+    const actuatorOf = new Map(mechanism.actuators.map(a => [a.joint, a]));
     const dtFixed = 1 / stepHz;
     const LAYER_DYNAMIC = 0;
     const LAYER_STATIC = 1;
@@ -264,9 +270,10 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
             const perp = perpForAxis(j.axis);
             hs.mNormalAxis1 = new J.Vec3(...perp);
             hs.mNormalAxis2 = new J.Vec3(...perp);
-            if (j.motor) {
-                hs.mMotorSettings.mMinTorqueLimit = -j.motor.maxTorqueNm;
-                hs.mMotorSettings.mMaxTorqueLimit = j.motor.maxTorqueNm;
+            const actuator = actuatorOf.get(j.id);
+            if (actuator) {
+                hs.mMotorSettings.mMinTorqueLimit = -actuator.maxTorqueNm;
+                hs.mMotorSettings.mMaxTorqueLimit = actuator.maxTorqueNm;
             } else {
                 hs.mMotorSettings.mMinTorqueLimit = -1e6;
                 hs.mMotorSettings.mMaxTorqueLimit = 1e6;
@@ -295,7 +302,7 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
             };
             const localAxis1 = toLocal(j.body1, j.axis);
             const localAxis2 = toLocal(j.body2, j.axis);
-            const isMotor = !!j.motor;
+            const isMotor = !!actuator;
             hingeMap.set(j.id, {
                 hinge, constraint, bodyA, bodyB,
                 bodyAID: getBodyIDForId(j.body1),
@@ -303,8 +310,8 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
                 axis: [...j.axis], point: [...j.point], perp: [...perp],
                 localAxis1, localAxis2,
                 rawPrev: 0, unwrapped: 0, velocity: 0,
-                maxTorque: j.motor ? j.motor.maxTorqueNm : 10,
-                maxSpeed: j.motor ? j.motor.maxSpeedRadPerSec : 30,
+                maxTorque: actuator ? actuator.maxTorqueNm : 10,
+                maxSpeed: actuator ? actuator.maxSpeedRadPerSec : 30,
                 mode: 'coast', target: 0, targetSpeed: null, kp: 10, isMotor,
             });
             hinge.SetMotorState(J.EMotorState_Off);
@@ -359,8 +366,8 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
     // standing still); on a frame that itself turns about them the coupling is
     // off by that frame rate (documented in docs/SIM-LAB.md).
     const gearInfos = [];
-    for (const g of mechanism.gears) {
-        if (g.type === 'gear') {
+    for (const g of mechanism.couplings) {
+        if (g.kind === 'gear') {
             const j1 = jointMap.get(g.joint1);
             const j2 = jointMap.get(g.joint2);
             if (!j1 || !j2) throw new Error(`gear ${g.id} joint not found`);
@@ -387,9 +394,9 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
             allConstraints.push(constraint);
             J.destroy(gs);
             gearInfos.push({ type: 'gear', id: g.id, joint1: g.joint1, joint2: g.joint2, ratio: g.ratio });
-        } else if (g.type === 'rackAndPinion') {
-            gearInfos.push(g);
-        }
+        } else if (g.kind === 'rackAndPinion') {
+            gearInfos.push(g); // accepted, not built yet (R3)
+        } else throw new Error(`no physics builder for coupling kind '${g.kind}' (${g.id})`);
     }
 
     try { physicsSystem.OptimizeBroadPhase(); } catch (_) {}

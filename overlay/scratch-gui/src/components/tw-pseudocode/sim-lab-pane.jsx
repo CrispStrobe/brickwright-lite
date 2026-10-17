@@ -896,7 +896,7 @@ class SimLabPane extends React.Component {
         const selection = this.state.selection.map(id => parts.find(p => p.id === id)).filter(Boolean);
         const sel = selection.length === 1 ? selection[0] : null;
         const meta = sel ? this.lib.CATALOG.get(sel.part) : null;
-        const portable = meta && (meta.motor || meta.sensor);
+        const portable = meta && this.lib.isPortPart(meta);
         const tick = () => this.setState(s => ({editorTick: s.editorTick + 1}));
         const compact = this.compact();
         const narrow = this.narrow();

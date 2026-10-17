@@ -7,10 +7,10 @@
 // Ground added unless opts.ground===false.
 
 import {vecAdd, vecSub, mat3MulVec3, quatMul, quatFromLDrawMat, quatNormalize} from './vec.js';
-import {LDU_M, PART_FRICTION, lduToWorld} from '../contracts.js';
+import {LDU_M, PART_FRICTION, lduToWorld, partMotorJoint} from '../contracts.js';
 
-/** Fraction of a motor's mass that belongs to the output (turning) body. */
-export const MOTOR_OUTPUT_MASS_FRACTION = 0.15; // housing gets 85%
+/** Fraction of a v1 motor's mass that belongs to the output (turning) body (PartMeta v2: internalJoints[].massFraction). */
+export {MOTOR_OUTPUT_MASS_FRACTION} from '../contracts.js';
 
 const EPS = 1e-9;
 
@@ -101,9 +101,10 @@ export const buildIslands = (nodes, edges, catalogMap, diagnostics = [], opts = 
             const nodesForPart = nodeIdsInGroup.filter(nid => nodes.get(nid).partId === pid);
             for (const nid of nodesForPart) {
                 const meta = nodes.get(nid).meta;
-                if (meta.motor) {
+                const shaft = partMotorJoint(meta);
+                if (shaft) {
                     const isOut = nid.endsWith('#out');
-                    totalMassGrams += meta.massGrams * (isOut ? MOTOR_OUTPUT_MASS_FRACTION : (1 - MOTOR_OUTPUT_MASS_FRACTION));
+                    totalMassGrams += meta.massGrams * (isOut ? shaft.massFraction : (1 - shaft.massFraction));
                 } else {
                     // Non-motor: include once per distinct part (nodesForPart length should be 1)
                     if (nid !== nodesForPart[0]) continue;
@@ -124,9 +125,10 @@ export const buildIslands = (nodes, edges, catalogMap, diagnostics = [], opts = 
                     const placed = node.placed;
                     const wPos = partWorldPos(placed);
                     let mass = meta.massGrams;
-                    if (meta.motor) {
+                    const shaft = partMotorJoint(meta);
+                    if (shaft) {
                         const isOut = nid.endsWith('#out');
-                        mass *= isOut ? MOTOR_OUTPUT_MASS_FRACTION : (1 - MOTOR_OUTPUT_MASS_FRACTION);
+                        mass *= isOut ? shaft.massFraction : (1 - shaft.massFraction);
                     } else {
                         if (nid !== nodesForPart[0]) continue;
                     }
@@ -148,7 +150,7 @@ export const buildIslands = (nodes, edges, catalogMap, diagnostics = [], opts = 
         const origin = [comX, comY, comZ];
 
         // Colliders: each node's meta colliders transformed, but need to respect motor outputColliders split
-        // For motor parts, meta.motor.outputColliders indicates indices that belong to output node (partId#out). Housing node gets the rest.
+        // For motor parts, the internal joint's movingColliders (v1 meta.motor.outputColliders) indicate indices that belong to output node (partId#out). Housing node gets the rest.
         const colliders = [];
         // For each distinct partId, determine which colliders belong to this island
         for (const pid of parts) {
@@ -161,11 +163,12 @@ export const buildIslands = (nodes, edges, catalogMap, diagnostics = [], opts = 
                 const node = nodes.get(nid);
                 const meta = node.meta;
                 const placed = node.placed;
-                const isMotor = !!meta.motor;
+                const shaft = partMotorJoint(meta);
+                const isMotor = !!shaft;
                 const isOutNode = nid.endsWith('#out');
                 let colliderIndices;
                 if (isMotor) {
-                    const outSet = new Set(meta.motor.outputColliders || []);
+                    const outSet = new Set(shaft.movingColliders || []);
                     if (isOutNode) colliderIndices = [...outSet];
                     else colliderIndices = meta.colliders.map((_, idx) => idx).filter(idx => !outSet.has(idx));
                 } else {

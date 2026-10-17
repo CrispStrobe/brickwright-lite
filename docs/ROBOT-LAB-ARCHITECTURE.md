@@ -1,7 +1,8 @@
 # Robot Lab architecture — from one driving base to every LEGO Technic machine and hub
 
-Status: **design; slice R1 built** (2026-10-17, `lane/simlab-r1-20261017` — see "R1 as built" in
-§7 for where the code deviates from the interfaces below and why). Written 2026-10-17 on
+Status: **design; slices R1 and R2 built** (2026-10-17, `lane/simlab-r1-20261017`,
+`lane/simlab-r2-20261017` — see "R1 as built" and "R2 as built" in §7 for where the code deviates
+from the interfaces below and why). Written 2026-10-17 on
 `lane/simlab-arch-20261017`, after reading the S1 code as it stands on `main` (`268c6e118`).
 Owner of record: unclaimed. Claim slices in `LANES.md` as usual.
 
@@ -1123,6 +1124,85 @@ sensor→device, hub→hubProfile) with v1 upgrade in the loader.
 hand-built v1 mechanisms in `bw-sim-physics-core.test.mjs` give identical snapshots through
 the upgrade; a schema test that every `parts.json` entry is v2-valid and that the
 migration of the v1 file is idempotent.
+
+*R2 as built (2026-10-17, `lane/simlab-r2-20261017`).* Files: `contracts.js` (PartMeta v2 and
+CompiledMechanism v2 typedefs, `upgradePartMeta`, `upgradeMechanismV1`, `mechanismV1`, the v2
+validators, the `part*` accessors every reader uses), `devices/catalog.js` (the five SPIKE devices),
+`registry/kinds.js` (`ConnectorKindRegistry`, `CouplingKindRegistry`, `JointKindRegistry`),
+`kinds/pin-axle.js` (`edgeKind`, `shaftEngagement` with the short-shaft and blind-hole rules,
+the ball/stud distance tests, `solidColliders` and the collider regions — moved from
+`mech/graph.js` and `editor/overlap.js`, which re-export them), `kinds/spur.js`, `kinds/bevel.js`,
+`kinds/gear-mesh.js` (today's `meshContact` branches and `meshRatio`, moved), `kinds/index.js`
+(`BUILTIN_KINDS`, `withKinds`), `scripts/migrate-parts-v2.mjs`; `parts.json` is `version: 2`.
+The compiler takes `opts.kinds`; the physics core reads `actuators`/`couplings` only (a v1
+mechanism is lifted on entry); the bridge binds by `{hub, port}`. Accepted by: every bw-sim test
+green; per-step hashes of every pose and joint of every physics core every bw-sim test creates
+(112 cores), the R1 session hashes (four shipped models in-thread and in the worker, a raw-bridge
+run, the line follower's VM program) and the compiler's output for the shipped models and all
+fixtures, equal before and after (with the v1 and with the migrated v2 `parts.json`);
+`test/bw-sim-parts-v2.test.mjs`, `test/bw-sim-mechanism-v2.test.mjs`,
+`test/bw-sim-kinds-registry.test.mjs` (a toy connector kind and a toy `belt` coupling from
+`test/fixtures/bw-sim/toy-kinds.mjs`, compiled without touching `mech/`). Where the code
+deviates from §5.3–§5.7/§6.2–§6.3, and why:
+
+- **`compile()` emits v1 unless asked for v2** (`{version: 2}`; `prepareModel`, i.e. the app, asks).
+  The golden compiler tests pin a v1 mechanism's top-level keys (`bw-sim-mech` "clean output"),
+  and they are R2's acceptance. Internally there is one pipeline; v1 is the v2 result's v1 view.
+- **CompiledMechanism v2 keeps the v1 fields** (`gears`, `sensors`, `joint.motor`) as a derived
+  view (`mechanismV1Aliases`), checked by the v2 validator to agree with `couplings`, `devices`
+  and `actuators`. Views, insight, the pane and many tests read them; the core and the bridge do
+  not. A reader moves to the v2 fields when it needs something v1 cannot say (a hub, a new kind).
+- **`hubs: [{id, profile, body}]`** is a v2 field §5.3 did not list: an actuator's `hub` must
+  name something. `hubs[0]` (the first body carrying a hub, as `hubsOf`) is the hub a port without
+  one means; with no hub part, `hub` is `null` (the scene's one hub drives it, as in v1).
+- **`ActuatorV2` carries the device's numbers resolved** — `maxTorqueNm` (stall torque),
+  `maxSpeedRadPerSec` (servo top speed), `ids` — beside `device`, so the core and the worker need
+  no device catalogue. `device` is `null` for a lifted v1 motor that names no catalogue device.
+- **Devices** are `devices/catalog.js` (a JS module: node tests read it without JSON modules),
+  and hold only what PartMeta v1 held: `motor.{stallTorqueNm, servoMaxDegPerSec}`, `ids`,
+  `sensor.{kind, encoder}`. The DC-motor fields of §5.2 are optional until sourced (D6) — the D5
+  slice adds them. **A probe's geometry stays in PartMeta** (`probe: {kind: 'ray', origin,
+  direction}`), not in `DeviceModel.sensor.probe`: it is where *this part* senses from (v1
+  fixtures have their own origins). `devices[]` in the mechanism are the sensors only (motors are
+  `actuators`), with `sensor` = the v1 measurement `sensors.js` makes.
+- **PartMeta v2 `device` may be an inline DeviceModel**: `upgradePartMeta` maps a v1 motor to the
+  catalogue device whose numbers are exactly its own, else keeps its numbers inline (a v1 test
+  motor at 600 °/s is no catalogue device). The shipped file names catalogue ids only (schema test).
+- **`internalJoints[].point/axis` are optional**: the migration copies the output axlehole's
+  (the compiler then transforms them exactly as it transformed the connector); absent, the v1
+  centroid rule applies. The compiler builds one device-actuated hinge per part (the motor); other
+  internal joints come with the parts that need them (LA, turntable). `gear` stays single
+  (`gears[]`, `fluid`, `rope` arrive with the first part that needs them).
+- **Registries are instances** (as `HubRegistry`): `kinds/index.js` `BUILTIN_KINDS` and
+  `withKinds(base, {connectors, couplings, joints})`. A connector pair rule lives on the shaft
+  kind (`pairs: [{with, edge, match}]`; the registry tries a as the shaft, then b — v1's order).
+  Coupling modules are keyed by `id` (spur and bevel both emit `kind: 'gear'`) and are either a
+  **`mesh`** (tooth types → contact; `mech/gears.js` applies the shared common-frame /
+  gear-on-frame rules) or a free **`detect(ctx)`** run after the meshes (welds re-run the
+  fixpoint). The core's builders are not registry-driven yet (R3: it builds `gear`, accepts
+  `rackAndPinion`, refuses other kinds); the joint registry is validation-only. The editor's snap
+  still calls the verbatim `edgeKind` (registry-driven snapping is R16).
+- **Collision data for D2**: bodies get `role` (`robot`, `frame` — a static body of parts, the
+  clamped gearbox — `ground`, `obstacle`) and `collisionGroup` (`model` | `world`), and the
+  mechanism a **`noCollide`** list: sorted body pairs joined by a joint, plus the two gear bodies of
+  each coupling (a registered kind may say `bodies(c, joints)`). R3 builds its pair filter from it.
+- **Multi-hub data**: PlacedModel `version: 2` allows `port: {hub, port}` (any port id: the hub's
+  `plug` refuses one its profile lacks); a `hub` naming a non-hub part is the `port-hub-unknown`
+  warning. The bridge binds each hub's actuators and sensors by `{hub, port}` (one hub: everything,
+  as R1) and no longer refuses several hubs; `SimSession`/`hubsOf` still run the first hub, and the
+  LDraw `!BW PORT … HUB` meta is R16's — so two-hub models exist in memory and in tests, not yet in
+  files or the pane.
+- **Tests changed** (expectations unchanged): `bw-sim-mech`'s large-motor test read the device id
+  from the raw file's `motor.deviceId`, which v2 no longer has — it reads the catalogue id the
+  part's `device` names; `bw-sim-part-meta` checks the motor's `internalJoints` and the sensors'
+  `probe` against the meshes (and that the probe check sees all three sensors, since a v1 filter
+  would now pass vacuously); `bw-sim-instructions` finds the hub by `hubProfile`.
+
+What R3 should know: read `actuators` (not `joint.motor`) and `couplings`; `noCollide` + `role` +
+`collisionGroup` are the D2 inputs; a coupling kind's physics builder is the missing half of the
+coupling registry (`rackAndPinion` first); `upgradeMechanismV1` is the entry for every hand-built
+v1 mechanism, so the v1 tests keep exercising the v2 path. The D5 DC model reads the motor's
+device from `actuators[].device` → `devices/catalog.js`, where the DC fields are optional today.
 
 **R3 (C) — Physics core v2: sliders, limits, friction, collision groups, state registry,
 DC-motor actuator.** Slider state/motor/limits/friction in the core and protocol;

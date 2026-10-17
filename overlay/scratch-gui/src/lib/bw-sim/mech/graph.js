@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 //
-// Connector matching (D1). Between connectors of DIFFERENT parts/graph nodes:
-// pin+pinhole (friction), axle+axlehole, axle+pinhole, stud+antistud,
-// ball+ballsocket. Geometry in LDU model frame. Motors split into two graph
-// nodes with an internal hinge.
+// Connector matching (D1). Between connectors of DIFFERENT parts/graph nodes,
+// the connector kind registry (registry/kinds.js; the v1 kinds are
+// kinds/pin-axle.js: pin+pinhole (friction), axle+axlehole, axle+pinhole,
+// stud+antistud, ball+ballsocket) says whether they join and with which edge.
+// Geometry in LDU model frame. A part with an internal joint its device drives
+// (a motor: PartMeta v2 internalJoints) splits into two graph nodes with an
+// internal hinge.
 
-import {COS_1_DEG} from './vec.js';
-import {mat3MulVec3, vecAdd, vecSub, vecDot, vecCross, vecLen, vecScale, vecDist, vecNormalize} from './vec.js';
+import {mat3MulVec3, vecAdd, vecNormalize} from './vec.js';
+import {upgradePartMeta, partMotorJoint, partMotor, portRefOf} from '../contracts.js';
+import {BUILTIN_KINDS} from '../kinds/index.js';
 
-const I3 = [1, 0, 0, 0, 1, 0, 0, 0, 1];
-
-const isI3 = m => m.length === 9 && m.every((v, i) => v === I3[i]);
-
-const EPS = 1e-9;
-const TOL = 0.5 + 1e-9;
-const COS_1 = COS_1_DEG;
+// The v1 connector rules live in kinds/pin-axle.js (the connector kind registry's first
+// modules); they are re-exported here for the editor and the tests that always read them here.
+export {edgeKind, MIN_ENGAGE_LDU, shaftEngagement, isShaftTypeExport, isHoleTypeExport} from '../kinds/pin-axle.js';
 
 /** Transform a connector from part frame to LDraw model frame (LDU). */
 const transformConnector = (conn, pos, rot) => {
@@ -27,89 +27,18 @@ const transformConnector = (conn, pos, rot) => {
     return out;
 };
 
-const isShaftType = t => t === 'axle' || t === 'pin' || t === 'stud';
-const isHoleType = t => t === 'pinhole' || t === 'axlehole' || t === 'antistud';
-
-export const isShaftTypeExport = isShaftType;
-export const isHoleTypeExport = isHoleType;
-
-/**
- * Determine the edge kind for a shaft/hole pair. Returns 'rigid'|'hinge'|'ball'|null.
- */
-export const edgeKind = (shaft, hole) => {
-    if (shaft.type === 'pin' && hole.type === 'pinhole') {
-        return shaft.friction === false ? 'hinge' : 'rigid';
-    }
-    if (shaft.type === 'axle' && hole.type === 'axlehole') return 'rigid';
-    if (shaft.type === 'axle' && hole.type === 'pinhole') return 'hinge';
-    if (shaft.type === 'stud' && hole.type === 'antistud') return 'rigid';
-    if (shaft.type === 'ball' && hole.type === 'ballsocket') return 'ball';
-    if (shaft.type === 'ballsocket' && hole.type === 'ball') return 'ball'; // symmetric, caller normalises
-    return null;
-};
-
-/**
- * How far a shaft must reach into a hole to be held, in LDU (along their common axis).
- *
- * Technic lengths come on a 10 LDU lattice (a pin half and a beam's hole are 20, a thin
- * liftarm's hole, a half bush and a bevel gear's hub 10), so a real seat engages 10, 20,
- * ... LDU; a shaft that ends at a hole's face engages 0. A partly inserted axle still holds
- * in reality (the towball 2736's 17.5 LDU stub in a 20 LDU hole), so a shaft seats when it
- * engages at least 8 LDU: 2 LDU of slack under the shortest real seat (a 10 LDU hole), far
- * above the ±0.5 LDU of a face-to-face contact. A hole or shaft shorter than that seats on
- * its full length.
- */
-export const MIN_ENGAGE_LDU = 8;
-
-/**
- * Engaged length of a shaft connector in a hole connector (both in one frame, LDU), or
- * null when the shaft does not seat: axes parallel (1°) and coaxial (0.5 LDU), the two
- * segments (`length` along `axis`, centred on `position`) overlapping by at least
- * min(MIN_ENGAGE_LDU, shaft length, hole length), and — for a blind hole (`closedEnd`
- * ±1: which end of the hole's segment, along its axis, is the bottom) — the shaft not
- * reaching past the bottom (0.5 LDU tolerance). Applies to every shaft length alike
- * (pins, half pins, 3L pins, axles, axle pins, stubs).
- * @param {{position: number[], axis: number[], length?: number}} shaft
- * @param {{position: number[], axis: number[], length?: number, closedEnd?: number}} hole
- * @returns {number|null}
- */
-export const shaftEngagement = (shaft, hole) => {
-    const dot = vecDot(shaft.axis, hole.axis);
-    if (Math.abs(dot) < COS_1 - 1e-12) return null;
-    const delta = vecSub(hole.position, shaft.position);
-    const axial = vecDot(delta, shaft.axis);
-    const perp = vecSub(delta, vecScale(shaft.axis, axial));
-    if (vecLen(perp) > TOL) return null;
-    const Ls = shaft.length; const Lh = hole.length;
-    if (Ls === undefined || Lh === undefined) return null;
-    // Along the shaft's axis: shaft [-Ls/2, Ls/2], hole [axial - Lh/2, axial + Lh/2].
-    const engaged = Math.min(Ls / 2, axial + Lh / 2) - Math.max(-Ls / 2, axial - Lh / 2);
-    if (engaged < Math.min(MIN_ENGAGE_LDU, Ls, Lh) - 1e-9) return null;
-    if (hole.closedEnd === 1 || hole.closedEnd === -1) {
-        const bottomSide = hole.closedEnd * Math.sign(dot);
-        const bottom = axial + bottomSide * Lh / 2;
-        if (bottomSide > 0 ? Ls / 2 > bottom + 0.5 + 1e-9 : -Ls / 2 < bottom - 0.5 - 1e-9) return null;
-    }
-    return engaged;
-};
-
-/**
- * Check if shaft/hole geometry matches (shaft types except stud/antistud already handled,
- * ball handled separately).
- * @param {object} shaft transformed shaft connector (model LDU)
- * @param {object} hole transformed hole connector (model LDU)
- * @returns {boolean}
- */
-const geometryMatchesShaftHole = (shaft, hole) => shaftEngagement(shaft, hole) !== null;
-
 /**
  * Build the connection graph from a PlacedModel and catalog.
  * @param {object} model PlacedModel (already filtered for unknown parts)
  * @param {Map<string,object>|object} catalog Map or record partName -> PartMeta
  * @param {Array} diagnostics array to push warnings into (motor-without-port)
+ * @param {object} [kinds] the kind registries (kinds/index.js): which connectors pair, and how
  * @returns {{nodes: Map<string,object>, edges: Array}}
+ *   A node's `meta` is the part's PartMeta v2 (upgradePartMeta). A motor's internal edge
+ *   carries `motor` (the v1 joint motor: port, numbers, device id) and `actuator`
+ *   ({port: {hub, port}, device}: what compile.js turns into the v2 actuator).
  */
-export const buildGraph = (model, catalog, diagnostics = []) => {
+export const buildGraph = (model, catalog, diagnostics = [], kinds = BUILTIN_KINDS) => {
     const catalogMap = catalog instanceof Map ? catalog : new Map(Object.entries(catalog || {}));
     /** @type {Map<string, object>} nodeId -> {id, partId, placed, meta, connectors: Array} */
     const nodes = new Map();
@@ -118,11 +47,12 @@ export const buildGraph = (model, catalog, diagnostics = []) => {
 
     // Create nodes, handle motors
     for (const pl of model.parts) {
-        const meta = catalogMap.get(pl.part);
+        const meta = upgradePartMeta(catalogMap.get(pl.part));
         if (!meta) continue; // unknown, caller handles diagnostic
         const rot = pl.rotation;
-        if (meta.motor) {
-            const outIds = new Set(meta.motor.output || []);
+        const shaftJoint = partMotorJoint(meta);
+        if (shaftJoint) {
+            const outIds = new Set(shaftJoint.movingConnectors || []);
             const housingConns = meta.connectors.filter(c => !outIds.has(c.id));
             const outConns = meta.connectors.filter(c => outIds.has(c.id));
 
@@ -143,7 +73,11 @@ export const buildGraph = (model, catalog, diagnostics = []) => {
                 let point;
                 let axis;
                 const axleHoleOut = outTrans.filter(c => c.type === 'axlehole');
-                if (axleHoleOut.length > 0) {
+                if (shaftJoint.point && shaftJoint.axis) {
+                    // PartMeta v2 names the shaft (the v1 upgrade copies the output axlehole's).
+                    point = vecAdd(mat3MulVec3(rot, shaftJoint.point), pl.position);
+                    axis = vecNormalize(mat3MulVec3(rot, shaftJoint.axis));
+                } else if (axleHoleOut.length > 0) {
                     point = axleHoleOut[0].position.slice();
                     axis = axleHoleOut[0].axis.slice();
                 } else {
@@ -166,10 +100,16 @@ export const buildGraph = (model, catalog, diagnostics = []) => {
                     _aNode: housingNodeId,
                     _bNode: outNodeId,
                 };
-                if (pl.port) {
-                    const maxSpeedRadPerSec = meta.motor.maxSpeedDegPerSec * Math.PI / 180;
-                    edge.motor = {port: pl.port, maxTorqueNm: meta.motor.maxTorqueNm, maxSpeedRadPerSec};
-                    if (Number.isInteger(meta.motor.deviceId)) edge.motor.deviceId = meta.motor.deviceId;
+                const ref = portRefOf(pl);
+                const motor = partMotor(meta);
+                if (ref && motor) {
+                    const {device} = motor;
+                    const maxSpeedRadPerSec = device.motor.servoMaxDegPerSec * Math.PI / 180;
+                    edge.motor = {port: ref.port, maxTorqueNm: device.motor.stallTorqueNm, maxSpeedRadPerSec};
+                    if (device.ids && Number.isInteger(device.ids.lpf2)) edge.motor.deviceId = device.ids.lpf2;
+                    edge.actuator = {port: ref, device: device.id};
+                } else if (ref) {
+                    diagnostics.push({severity: 'warning', code: 'motor-without-device', message: `Motor ${pl.id} names no motor device`, parts: [pl.id]});
                 } else {
                     diagnostics.push({severity: 'warning', code: 'motor-without-port', message: `Motor ${pl.id} has no port`, parts: [pl.id]});
                 }
@@ -196,52 +136,13 @@ export const buildGraph = (model, catalog, diagnostics = []) => {
             if (nA.partId === nB.partId) continue;
             for (const cA of nA.connectors) {
                 for (const cB of nB.connectors) {
-                    let shaft; let hole; let shaftNode; let holeNode;
-                    let pairKind = null;
-
-                    // Check both orderings
-                    const tryPair = (s, sNode, h, hNode) => {
-                        const k = edgeKind(s, h);
-                        if (!k) return false;
-                        // Ball is special: distance only, no axis geometry
-                        if (k === 'ball') {
-                            if (vecDist(s.position, h.position) > TOL) return false;
-                            // ball match
-                            pairKind = 'ball';
-                            shaft = s; hole = h; shaftNode = sNode; holeNode = hNode;
-                            return true;
-                        }
-                        if (s.type === 'stud' && h.type === 'antistud') {
-                            if (vecDist(s.position, h.position) > TOL) return false;
-                            pairKind = k; shaft = s; hole = h; shaftNode = sNode; holeNode = hNode;
-                            return true;
-                        }
-                        // Shaft/hole with length check
-                        if (!geometryMatchesShaftHole(s, h)) return false;
-                        pairKind = k; shaft = s; hole = h; shaftNode = sNode; holeNode = hNode;
-                        return true;
-                    };
-
-                    const aIsShaft = isShaftType(cA.type) || cA.type === 'ball' || cA.type === 'ballsocket';
-                    // We need to try cA as shaft vs cB as hole, and vice versa
-                    // Determine candidate shaft/hole based on types
-                    let matched = false;
-                    // cA shaft, cB hole
-                    if ((isShaftType(cA.type) && isHoleType(cB.type)) || (cA.type === 'ball' && cB.type === 'ballsocket') || (cA.type === 'stud' && cB.type === 'antistud')) {
-                        matched = tryPair(cA, nA, cB, nB);
-                    }
-                    if (!matched && ((isShaftType(cB.type) && isHoleType(cA.type)) || (cB.type === 'ball' && cA.type === 'ballsocket') || (cB.type === 'stud' && cA.type === 'antistud'))) {
-                        matched = tryPair(cB, nB, cA, nA);
-                    }
-                    // Also handle ball ballsocket swapped already above, but also need ball as shaft vs socket as hole logic: we considered stud etc. The generic edgeKind handles ball as shaft vs hole. Ensure we handle both permutations.
-                    // The above covers ball->ballsocket one way; the second call covers opposite.
-
-                    if (!matched) continue;
-
-                    // Create edge: a = hole side (for non-ball, point/axis = hole's), b = shaft side
-                    // For ball, point is ball centre, body1 = socket island, body2 = ball island per spec
-                    // So for ball, hole = ballsocket, shaft = ball -> body1 socket, body2 ball
-                    // Our holeNode is socket, shaftNode is ball already
+                    // The connector kind registry: cA tried as the shaft first, then cB (v1's order).
+                    const pair = kinds.connectors.pair(cA, cB);
+                    if (!pair) continue;
+                    const {shaft, hole, kind: pairKind} = pair;
+                    const [shaftNode, holeNode] = shaft === cA ? [nA, nB] : [nB, nA];
+                    // Edge: a = hole side (point/axis are the hole's), b = shaft side. A ball joint
+                    // (a = socket, b = ball) takes its point from the ball (joints.js).
                     const edge = {
                         a: {part: holeNode.id, connector: hole.id},
                         b: {part: shaftNode.id, connector: shaft.id},
@@ -249,8 +150,6 @@ export const buildGraph = (model, catalog, diagnostics = []) => {
                         point: hole.position.slice(),
                         axis: hole.axis.slice(),
                     };
-                    // For ball, axis not used but contracts store only point for ball joints; we still provide axis from hole (socket opening direction) but islands/joints will ignore it for ball joints. We'll keep it but joints will not use.
-                    // However spec says ball connectors have axis (socket opening) not used for matching. We store hole axis but joint builder will ignore.
                     edges.push(edge);
                 }
             }

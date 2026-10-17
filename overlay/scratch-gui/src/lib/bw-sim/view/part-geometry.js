@@ -24,6 +24,7 @@
 
 import {BufferGeometry, Color, Float32BufferAttribute} from 'three';
 import {SEARCH_DIRS, apply, bounds, flattenPart, parseLDraw, refKey} from '../ldraw/ldraw-geometry.js';
+import {partMotorJoint} from '../contracts.js';
 
 const LDU_M = 0.0004;
 
@@ -214,11 +215,11 @@ export const partVisual = (name, read, colors, piece = null) => {
  * the centres of all output colliders, the smallest one if several do.
  * @param {string} name e.g. '54696p01.dat'
  * @param {(path: string) => string|undefined} read
- * @param {object} meta the part's PartMeta (with motor and colliders)
+ * @param {object} meta the part's PartMeta (a motor: its turning joint's movingColliders)
  * @returns {number} the reference's index in file order, or -1
  */
 export const driveHubRef = (name, read, meta) => {
-    const centres = (meta?.motor?.outputColliders || []).map(i => meta.colliders[i]?.position).filter(Boolean);
+    const centres = (partMotorJoint(meta)?.movingColliders || []).map(i => meta.colliders[i]?.position).filter(Boolean);
     if (!centres.length) return -1;
     let text;
     for (const dir of SEARCH_DIRS) {
