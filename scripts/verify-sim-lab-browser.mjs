@@ -104,7 +104,6 @@ try {
     // Run starts the program on the green flag, as the arena's Start does.
     await page.getByTestId('bw-sim-lab-run').click();
     if (process.env.SIM_DEBUG) {
-        await page.waitForTimeout(3000);
         console.log('DEBUG', JSON.stringify(await page.evaluate(() => {
             const h = window.__bwSimLab._pane.props.hubState;
             return {connected: h.data.connected, sim: h.data.simulationEnabled, motors: h.data.motors.slice(0, 2), last: h.data.lastCommand,
