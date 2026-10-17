@@ -1,6 +1,6 @@
 {
- "$comment": "Sim Lab part metadata v1 (docs/SIM-LAB-PLAN.md B3a). Authored by hand for this project from the official LDraw geometry, measured with bw-sim/ldraw/ldraw-geometry.js; never copied from BrickLink Studio, LDCad or any other connectivity database (plan D4). LDraw frame and units (LDU, -y up). test/bw-sim-part-meta.test.mjs checks every connector against the part mesh. Masses are estimates to +-20% (no published per-part masses); motor torque is LEGO's published stall torque for the medium angular motor (18 Ncm) and speed is the SPIKE 3 velocity limit used by docs/SPIKE-ARENA.md.",
- "version": 1,
+ "$comment": "Sim Lab part metadata v2 (docs/SIM-LAB-PLAN.md B3a; PartMeta v2 in bw-sim/contracts.js, docs/ROBOT-LAB-ARCHITECTURE.md §5.4: a motor or sensor names its device, whose numbers are in bw-sim/devices/catalog.js). Authored by hand for this project from the official LDraw geometry, measured with bw-sim/ldraw/ldraw-geometry.js; never copied from BrickLink Studio, LDCad or any other connectivity database (plan D4). LDraw frame and units (LDU, -y up). test/bw-sim-part-meta.test.mjs checks every connector against the part mesh. Masses are estimates to +-20% (no published per-part masses); motor torque is LEGO's published stall torque for the medium angular motor (18 Ncm) and speed is the SPIKE 3 velocity limit used by docs/SPIKE-ARENA.md.",
+ "version": 2,
  "references": [
   "39370c01.dat"
  ],
@@ -1064,21 +1064,35 @@
      ]
     }
    ],
-   "motor": {
-    "output": [
-     "out",
-     "out0",
-     "out1",
-     "out2",
-     "out3"
-    ],
-    "outputColliders": [
-     1
-    ],
-    "maxTorqueNm": 0.18,
-    "maxSpeedDegPerSec": 1110,
-    "deviceId": 48
-   },
+   "internalJoints": [
+    {
+     "id": "motor",
+     "type": "hinge",
+     "point": [
+      0,
+      -40,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "movingConnectors": [
+      "out",
+      "out0",
+      "out1",
+      "out2",
+      "out3"
+     ],
+     "movingColliders": [
+      1
+     ],
+     "massFraction": 0.15,
+     "actuatedBy": "device"
+    }
+   ],
+   "device": "spike-medium-angular",
    "nameDe": "Mittlerer Motor"
   },
   {
@@ -1807,16 +1821,7 @@
      ]
     }
    ],
-   "hub": {
-    "ports": [
-     "A",
-     "B",
-     "C",
-     "D",
-     "E",
-     "F"
-    ]
-   },
+   "hubProfile": "spike-prime",
    "nameDe": "SPIKE Prime Hub"
   },
   {
@@ -3554,21 +3559,35 @@
      ]
     }
    ],
-   "motor": {
-    "output": [
-     "out",
-     "out0",
-     "out1",
-     "out2",
-     "out3"
-    ],
-    "outputColliders": [
-     1
-    ],
-    "maxTorqueNm": 0.38,
-    "maxSpeedDegPerSec": 1050,
-    "deviceId": 49
-   },
+   "internalJoints": [
+    {
+     "id": "motor",
+     "type": "hinge",
+     "point": [
+      0,
+      -40,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "movingConnectors": [
+      "out",
+      "out0",
+      "out1",
+      "out2",
+      "out3"
+     ],
+     "movingColliders": [
+      1
+     ],
+     "massFraction": 0.15,
+     "actuatedBy": "device"
+    }
+   ],
+   "device": "spike-large-angular",
    "nameDe": "Großer Motor"
   },
   {
@@ -3658,8 +3677,9 @@
     }
    ],
    "nameDe": "Farbsensor",
-   "sensor": {
-    "kind": "color",
+   "device": "spike-color",
+   "probe": {
+    "kind": "ray",
     "origin": [
      0,
      0,
@@ -3759,8 +3779,9 @@
     }
    ],
    "nameDe": "Abstandssensor",
-   "sensor": {
-    "kind": "distance",
+   "device": "spike-distance",
+   "probe": {
+    "kind": "ray",
     "origin": [
      0,
      0,
@@ -3860,8 +3881,9 @@
     }
    ],
    "nameDe": "Kraftsensor",
-   "sensor": {
-    "kind": "force",
+   "device": "spike-force",
+   "probe": {
+    "kind": "ray",
     "origin": [
      0,
      0,

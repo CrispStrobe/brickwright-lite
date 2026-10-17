@@ -76,6 +76,8 @@ on:
     # left under the `!docs/*.md` negation — so editing the doc those two
     # read would not have rebuilt or retested them. Caught by
     # test/build-trigger-paths.test.mjs, which is the whole point of it.
+    # 2026-10-17: ROBOT-LAB-ARCHITECTURE.md, named by
+    # scripts/migrate-parts-v2.mjs and parts.json's $comment (Robot Lab R2).
     #
     # A skipped run means no Pages deploy for that push. That is correct: the
     # app is byte-identical, and deploy-daily republishes regardless.
@@ -109,6 +111,7 @@ on:
       - 'docs/PICO-KALUMA-BOOT.md'
       - 'docs/PEERS-SECURITY-REVIEW.md'
       - 'docs/RCX-FIRMWARE.md'
+      - 'docs/ROBOT-LAB-ARCHITECTURE.md'
       - 'docs/SPIKE-CONSOLIDATION.md'
       - 'docs/SIM-LAB-PLAN.md'
       - 'docs/SPIKE-ARENA.md'

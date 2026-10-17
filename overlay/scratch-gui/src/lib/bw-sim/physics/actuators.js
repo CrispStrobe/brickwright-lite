@@ -74,8 +74,8 @@ export const attachMotor = (core, jointId, device) => {
  * @param {object} core a physics core (jolt-core.js)
  * @param {string} jointId the motorised hinge the port is bound to
  * @param {object} drive a PortDrive
- * @param {{maxSpeedRadPerSec: number, maxTorqueNm: number, deviceId?: number}} motor the joint's `motor` (CompiledMechanism)
- * @param {{device?: object, supplyVolts?: number}} [port] the motor's DeviceModel (default: by its
+ * @param {{maxSpeedRadPerSec: number, maxTorqueNm: number, device?: string|null, ids?: {lpf2?: number}}} motor the hinge's actuator (CompiledMechanism v2 `actuators[]`)
+ * @param {{device?: object, supplyVolts?: number}} [port] the motor's DeviceModel (default: its
  *        device id, devices/dc-motors.js) and the port's supply voltage (hub profile)
  * @returns {boolean} whether the drive moved a joint
  */

@@ -123,7 +123,7 @@ export class SpikeVirtualHub {
             this.motorPorts.set(b.port, index);
             const deviceId = b.ids?.lpf2 ?? MEDIUM_MOTOR;
             hubState.data.sensors[index] = {kind: 'motor', deviceId};
-            this.devices.set(index, b.device || dcMotorFor({deviceId}));
+            this.devices.set(index, b.dcMotor || dcMotorFor({device: b.device ?? null, ids: {lpf2: deviceId}}));
             this.dc.set(index, {...freshPortState(), refDeg: 0, measuredDeg: 0, lastWritten: null,
                 passive: 'brake', stalled: false, duty: 0, decay: 'brake'});
             hubState.motors.resetPosition(b.port, 0);

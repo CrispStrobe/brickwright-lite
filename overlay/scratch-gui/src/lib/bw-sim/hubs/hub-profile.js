@@ -51,17 +51,19 @@
 /** @typedef {{device: string, port: string, body: 'hub'}} InternalDevice */
 
 /**
- * What the compiled model plugs into a port (the bridge derives these from the
- * CompiledMechanism). R1 note: the device registry (§5.2) does not exist yet, so
- * a binding carries the identity the hub REPORTS for the device (`ids`, as
- * DeviceModel.ids will) instead of a DeviceModel id.
+ * What the compiled model plugs into a port (the bridge derives these from
+ * CompiledMechanism v2's actuators and devices, hub-bridge.js hubBindings). It
+ * carries the identity the hub REPORTS for the device (`ids`) beside the
+ * device's id (devices/catalog.js), so an adapter needs no device catalogue.
  * @typedef {object} PortBinding
  * @property {string} port
  * @property {'motor'|'sensor'} class
  * @property {{lpf2?: number}} ids       e.g. {lpf2: 49} for the SPIKE large motor; {} = the hub's default
  * @property {string} [sensor]           for class 'sensor': the v1 sensor kind ('color', 'distance', 'force')
- * @property {object} [device]           for class 'motor': the DeviceModel physics drives (devices/dc-motors.js),
- *                                       so a hub's controller can regulate the same DC model
+ * @property {string|null} [hub]         the hub the mechanism binds it to (null: the scene's first hub)
+ * @property {string|null} [device]      the DeviceModel id (null: a v1 motor that names no catalogue device)
+ * @property {object} [dcMotor]          for class 'motor': the DC model physics drives (devices/dc-motors.js),
+ *                                       so a hub's controller can regulate the same motor
  */
 
 /**

@@ -20,8 +20,8 @@
 //      decides what each port drives during it (zero-order hold);
 //   2. hub.readDrives(): those drives become the motorised hinges' commands
 //      (physics/actuators.js: pwm = a duty into the motor's DC model — its
-//      DeviceModel from devices/dc-motors.js, the port's supply voltage from
-//      the hub profile — so a blocked wheel really stalls at the motor's
+//      catalogue device, devices/dc-motors.js, and the port's supply voltage
+//      from the hub profile — so a blocked wheel really stalls at the motor's
 //      torque; servo = an ideal velocity target, kept as a test fixture);
 //   3. physics steps;
 //   4. readings: each driven hinge's MEASURED rotation as an encoder reading
@@ -35,12 +35,16 @@
 // worker sends frames back to the main thread, where HubReplay (below)
 // replays the real hub against them (sim-worker-protocol.js).
 //
-// R1 limits: a scene binds every motorised hinge and sensor to its one hub
-// (CompiledMechanism v1 ports name no hub; multi-hub binding is R2's
-// `{hub, port}`), and sensor probes carry sensors.js's v1 readings (the
-// device registry is a later slice).
+// BINDING (R2): what plugs into which hub's port is CompiledMechanism v2's
+// `actuators` and sensor `devices`, each on {hub, port} (a v1 mechanism is
+// lifted by upgradeMechanismV1: its ports name no hub). A scene with ONE hub
+// binds everything to it, whatever hub the data names (as R1 did); with
+// several, each binds what names it, and what names none goes to the first.
+// Sensor probes carry sensors.js's v1 readings (the probe/encoder split of
+// §5.2 is a later slice).
 
-import {readSensors, linearAcceleration} from './sensors.js';
+import {upgradeMechanismV1} from './contracts.js';
+import {readSensors, sensorsOf, linearAcceleration} from './sensors.js';
 import {applyDrive, attachMotor} from './physics/actuators.js';
 import {dcMotorFor} from './devices/dc-motors.js';
 import {hubRegistry, DEFAULT_HUB_PROFILE} from './hubs/index.js';
@@ -51,22 +55,39 @@ const DEG = 180 / Math.PI;
 export const STEP_MS = 5;
 
 /**
- * What the compiled model plugs into its hub's ports (PortBinding[]): every motorised
- * hinge, then every sensor, in the mechanism's order.
- * @param {object} mechanism a CompiledMechanism (v1)
+ * Whether something bound to `hub` (an id, or null: the model's first hub) plugs into
+ * the scene's hub number `index` of `count`.
  */
-export const portBindings = mechanism => {
-    const bindings = [];
-    for (const j of mechanism.joints) {
-        if (j.type !== 'hinge' || !j.motor) continue;
-        // The DC model physics drives (devices/dc-motors.js), so a hub's controller regulates
-        // the same motor the hinge is.
-        bindings.push({port: j.motor.port, class: 'motor', ids: j.motor.deviceId == null ? {} : {lpf2: j.motor.deviceId},
-            device: dcMotorFor(j.motor)});
-    }
-    for (const s of mechanism.sensors || []) bindings.push({port: s.port, class: 'sensor', ids: {}, sensor: s.kind});
-    return bindings;
+const bindsTo = (hub, h, index, count) => count === 1 || hub === h || (hub === null && index === 0);
+
+/**
+ * What the compiled model plugs into one hub's ports: its actuators (motorised hinges, in
+ * joint order) and its sensors, with the joint each actuator drives.
+ * @param {object} mechanism a CompiledMechanism (v1 or v2)
+ * @param {string} [hubId] the hub (omitted: everything, as for a scene's only hub)
+ * @param {number} [index] the hub's place among the scene's hubs
+ * @param {number} [count] how many hubs the scene has
+ */
+export const hubBindings = (mechanism, hubId = null, index = 0, count = 1) => {
+    const m = upgradeMechanismV1(mechanism);
+    const actuators = m.actuators.filter(a => bindsTo(a.hub, hubId, index, count));
+    const sensors = sensorsOf(m).filter(s => bindsTo(s.hub, hubId, index, count));
+    const devices = m.devices.filter(d => d.sensor && bindsTo(d.hub, hubId, index, count));
+    /** PortBinding[]: every actuator, then every sensor. */
+    const bindings = [
+        // dcMotor: the DC model physics drives, so a hub's controller regulates the same motor.
+        ...actuators.map(a => ({port: a.port, class: 'motor', ids: {...a.ids}, hub: a.hub, device: a.device, dcMotor: dcMotorFor(a)})),
+        ...devices.map(d => ({port: d.port, class: 'sensor', ids: {}, sensor: d.sensor, hub: d.hub, device: d.device}))
+    ];
+    return {actuators, sensors, bindings};
 };
+
+/**
+ * What the compiled model plugs into its hub's ports (PortBinding[]) when the scene has
+ * one hub: every motorised hinge, then every sensor, in the mechanism's order.
+ * @param {object} mechanism a CompiledMechanism (v1 or v2)
+ */
+export const portBindings = mechanism => hubBindings(mechanism).bindings;
 
 /** Equal drive lists (the replay's check that the main thread's hub chose what the worker's mirror did). */
 export const sameDrives = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -77,11 +98,11 @@ export const sameDrives = (a, b) => JSON.stringify(a) === JSON.stringify(b);
  */
 const resolveHubs = ({hubs, hubState, hubBody, profile, registry, mechanism}) => {
     const list = hubs || [{hub: registry.create(profile, {hubState}), body: hubBody}];
-    if (list.length > 1) throw new Error('a scene with several hubs needs ports that name their hub (CompiledMechanism v2, slice R2)');
+    if (new Set(list.map(({hub}) => hub.id)).size !== list.length) throw new Error('two hubs of a scene have one id');
     for (const {body} of list) {
         if (!mechanism.bodies.some(b => b.id === body)) throw new Error(`unknown hub body '${body}'`);
     }
-    return list.map(({hub, body}) => ({id: hub.id, hub, body}));
+    return list.map(({hub, body}, index) => ({id: hub.id, hub, body, ...hubBindings(mechanism, hub.id, index, list.length)}));
 };
 
 /** Plugs the model into a hub; a refusal (a port the hub does not have) stops the scene. */
@@ -115,31 +136,32 @@ export class SimHubBridge {
         this.hubs = resolveHubs({hubs, hubState, hubBody, profile, registry, mechanism});
         /** The (first) hub's body, as before R1. */
         this.hubBody = this.hubs.length ? this.hubs[0].body : null;
-        const bindings = portBindings(mechanism);
         for (const h of this.hubs) {
-            /** port -> {joint, motor, device (DC model), supplyVolts, angle (rad, last measured)} */
+            /**
+             * port -> {joint, motor (its actuator: the torque and speed limits), device (its DC model),
+             * supplyVolts (the hub port's), angle (rad, last measured)}
+             */
             h.motors = new Map();
             const ports = (h.hub.profile && h.hub.profile.ports) || [];
-            for (const j of mechanism.joints) {
-                if (j.type !== 'hinge' || !j.motor) continue;
-                if (h.motors.has(j.motor.port)) throw new Error(`two motorised hinges on port ${j.motor.port}`);
-                const port = ports.find(p => p.id === j.motor.port);
-                const device = dcMotorFor(j.motor);
-                attachMotor(core, j.id, device);
-                h.motors.set(j.motor.port, {joint: j.id, motor: j.motor, device,
-                    supplyVolts: port ? port.supplyVolts : undefined, angle: core.jointState(j.id).angle});
+            for (const a of h.actuators) {
+                if (h.motors.has(a.port)) throw new Error(`two motorised hinges on port ${a.port}`);
+                const port = ports.find(p => p.id === a.port);
+                const device = dcMotorFor(a);
+                attachMotor(core, a.joint, device);
+                h.motors.set(a.port, {joint: a.joint, motor: a, device, supplyVolts: port ? port.supplyVolts : undefined,
+                    angle: core.jointState(a.joint).angle});
             }
             // Heading reference: the hub's forward direction at t = 0, flattened onto the ground.
             h.forward0 = this._forward(h.body);
             h.heading = 0;
             h.prevLinVel = null;
-            plugInto(h.hub, bindings);
+            plugInto(h.hub, h.bindings);
         }
         // The sensors read the scene from the start, not from the first step: a port must not
         // keep a reading from the previous model (a "nothing ahead" -1 would end a program's
         // `wait until distance < 10` before the robot moved).
         for (const h of this.hubs) {
-            const probes = this.probeReadings();
+            const probes = this.probeReadings(h);
             if (probes.length) {
                 h.hub.writeReadings(probes);
                 h.hub.publish();
@@ -147,10 +169,10 @@ export class SimHubBridge {
         }
     }
 
-    /** Every sensor's probe now, as PortReadings (sensors.js measures; the hub labels). */
-    probeReadings () {
+    /** Every sensor's probe now, as PortReadings (sensors.js measures; the hub labels); `h`: only that hub's. */
+    probeReadings (h = this.hubs[0]) {
         const out = [];
-        const readings = readSensors(this.core, this.mechanism, this.robotBodies);
+        const readings = readSensors(this.core, this.mechanism, this.robotBodies, h ? h.sensors : undefined);
         for (const [port, reading] of Object.entries(readings)) {
             const {kind, ...raw} = reading;
             out.push({port, kind: 'probe', device: kind, raw});
@@ -161,7 +183,7 @@ export class SimHubBridge {
     /** Initial readings per hub id (what a worker's scene reports at load). */
     initialReadings () {
         const out = {};
-        for (const h of this.hubs) out[h.id] = this.probeReadings();
+        for (const h of this.hubs) out[h.id] = this.probeReadings(h);
         return out;
     }
 
@@ -191,7 +213,7 @@ export class SimHubBridge {
         this.timeMs = t;
         const frame = {t, hubs: {}};
         this.hubs.forEach((h, i) => {
-            const readings = this._encoders(h).concat(this.probeReadings());
+            const readings = this._encoders(h).concat(this.probeReadings(h));
             const pose = this._pose(h);
             h.hub.writeReadings(readings, pose);
             frame.hubs[h.id] = {drives: drives[i], readings, pose};
@@ -293,8 +315,7 @@ export class HubReplay {
         this.hubBody = this.hubs.length ? this.hubs[0].body : null;
         this.stepMs = stepMs;
         this.accumulator = 0;
-        const bindings = portBindings(mechanism);
-        for (const h of this.hubs) plugInto(h.hub, bindings);
+        for (const h of this.hubs) plugInto(h.hub, h.bindings);
         for (const h of this.hubs) {
             const initial = readings[h.id] || [];
             if (initial.length) {
