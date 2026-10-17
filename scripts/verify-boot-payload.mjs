@@ -84,6 +84,17 @@ const LAZY = [
     {what: 'the arena 3D view', marker: 'bw-spike-arena-3d-canvas', chunk: 'bw-arena-3d',
         notInChunks: ['bw-spike-simulator'],
         why: 'the dynamic import in spike-arena-pane.jsx (webpackChunkName "bw-arena-3d")'},
+    // The Sim Lab (docs/SIM-LAB-PLAN.md §0): Jolt's WebAssembly physics, the part
+    // catalog and the scene code arrive when a learner opens the Sim Lab tab,
+    // never with the simulator pane (chunk bw-spike-simulator), never at boot.
+    // Jolt's marker is one of its emscripten binding names; the view's is its
+    // canvas test id.
+    {what: 'Jolt physics (the Sim Lab engine)', marker: 'JoltInterface_GetPhysicsSystem_', chunk: 'bw-sim-lab',
+        sharedLazy: true, notInChunks: ['bw-spike-simulator'],
+        why: 'the dynamic import in overlay/scratch-gui/src/components/tw-pseudocode/sim-lab-pane.jsx (webpackChunkName "bw-sim-lab")'},
+    {what: 'the Sim Lab 3D view', marker: 'bw-sim-lab-3d-canvas', chunk: 'bw-sim-lab',
+        notInChunks: ['bw-spike-simulator'],
+        why: 'the dynamic import in sim-lab-pane.jsx (webpackChunkName "bw-sim-lab")'},
     {what: 'lesson waves', marker: '"journeyId":"lesson-waves', altMarkers: ['journeyId:"lesson-waves'], chunk: 'guided-lessons',
         why: 'React.lazy(GuidedLessons) in src/components/gui/gui.jsx',
         // The core lessons.json IS eager (gui.jsx needs it for journey routing), so the

@@ -101,6 +101,8 @@ export async function runCpxExtension (driver, {ms = 3000, at = [], inputs = [],
             if ('light' in input) ext.setLightLevel(input.light);
             if ('temperature' in input) ext.setTemperature(input.temperature);
             if ('sound' in input) ext.setSoundLevel(input.sound);
+            if (input.acceleration) ext.setAcceleration(...input.acceleration);
+            if (input.gesture) ext.gesture(input.gesture);
         }, input.t);
     }
 

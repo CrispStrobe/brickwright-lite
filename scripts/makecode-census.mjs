@@ -61,7 +61,11 @@
  * Needs the synced runtime (npm run sync:makecode). Writes
  * docs/generated/MAKECODE-CENSUS.md and test-results/makecode-census.json.
  *
- *   node scripts/makecode-census.mjs [--snippets] [--limit N] [--only makecode|lite|ev3] [--match REGEX]
+ * A fourth corpus, CPX, accounts for every pinned pxt-adafruit documentation
+ * fence against parsed CPX blocks. Its section is import-only: re-export is
+ * explicitly unavailable. `--only adafruit` updates just that generated section.
+ *
+ *   node scripts/makecode-census.mjs [--snippets] [--limit N] [--only makecode|lite|ev3|adafruit] [--match REGEX]
  * (--match keeps only the programs whose id matches, and writes the report to
  * test-results/ only — a partial census is not the generated doc.)
  */
@@ -71,6 +75,8 @@ import vm from 'node:vm';
 import util from 'node:util';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath, pathToFileURL} from 'node:url';
+import {adafruitCensus, adafruitCensusMarkdown} from './lib/makecode-adafruit-corpus.mjs';
+import {compileAdafruit} from './lib/makecode-adafruit-sim.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const STATIC = path.join(ROOT, 'packages/scratch-gui/static/makecode');
@@ -92,6 +98,29 @@ const argVal = (name, dflt) => { const i = process.argv.indexOf(name); return i 
 const LIMIT = Number(argVal('--limit', 0)) || Infinity;
 const ONLY = argVal('--only', null);
 const MATCH = argVal('--match', null) ? new RegExp(argVal('--match')) : null;
+
+// The CPX import census is independent of micro:bit execution/export. A CPX
+// section update preserves every previously generated target section exactly.
+if (ONLY === 'adafruit') {
+    const result = await adafruitCensus({compile: compileAdafruit, match: MATCH, limit: LIMIT});
+    const report = adafruitCensusMarkdown(result);
+    const dir = path.join(ROOT, 'test-results');
+    fs.mkdirSync(dir, {recursive: true});
+    fs.writeFileSync(path.join(dir, 'makecode-adafruit-census.json'), `${JSON.stringify(result, null, 2)}\n`);
+    fs.writeFileSync(path.join(dir, 'makecode-adafruit-census.md'), report);
+    if (!MATCH && LIMIT === Infinity) {
+        const file = path.join(ROOT, 'docs/generated/MAKECODE-CENSUS.md');
+        const old = fs.readFileSync(file, 'utf8');
+        const marker = '\n## Circuit Playground Express import census (pxt-adafruit 1.6.8)';
+        const start = old.indexOf(marker);
+        const end = start < 0 ? -1 : old.indexOf('\n## ', start + marker.length);
+        const prefix = start < 0 ? old.replace(/\s*$/, '\n\n') : old.slice(0, start + 1);
+        const suffix = end < 0 ? '' : old.slice(end);
+        fs.writeFileSync(file, prefix + report + suffix);
+    }
+    console.log(JSON.stringify({target: result.target, total: result.total, tally: result.tally}));
+    process.exit(result.rows.some(r => ['silent-loss', 'import-or-parse-error'].includes(r.stage)) ? 1 : 0);
+}
 
 if (!fs.existsSync(path.join(STATIC, 'microbit/pxtworker.js'))) {
     console.error('MakeCode runtime not synced: run `npm run sync:makecode` first');
@@ -506,6 +535,7 @@ if (!ONLY || ONLY === 'ev3') {
 }
 
 // ── report ──────────────────────────────────────────────────────────────
+if (!ONLY) results.adafruit = await adafruitCensus({compile: compileAdafruit, match: MATCH, limit: LIMIT});
 const tally = rows => rows.reduce((m, r) => ((m[r.stage] = (m[r.stage] || 0) + 1), m), {});
 const hist = (rows, key, norm) => {
     const m = {};
@@ -609,6 +639,7 @@ if (results.ev3) {
         ''
     );
 }
+if (results.adafruit) lines.push(adafruitCensusMarkdown(results.adafruit));
 fs.mkdirSync(path.join(ROOT, 'test-results'), {recursive: true});
 // A partial census (--match, or the EV3 section alone) is not the generated doc.
 const partial = MATCH || ONLY === 'ev3';
