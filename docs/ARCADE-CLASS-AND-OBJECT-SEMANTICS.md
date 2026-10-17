@@ -52,6 +52,11 @@ receiver: the statement proof uses the existing current class producer and
 all-writer checks. A known conflicting result still refuses. All actual local
 initializations and complete bodies remain subject to lexical validation; no
 receiver value type is added to the partial typer by discarding the result.
+At the source module root, the same sink proof can retain a zero-argument call
+to an actual current module-level declaration with a Void signature and matching
+physical definition and formals. Its complete body must still validate. This
+admits a statement, not a general function-call value producer; parameterized
+declaration calls and unknown targets are outside this narrow root route.
 
 This does not admit Void as a stored value or arbitrary unknown calls. Existing
 conditional and field-mutation proofs remain separate. Code, current blocks and

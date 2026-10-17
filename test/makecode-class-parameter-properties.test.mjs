@@ -154,6 +154,72 @@ test('reflection transfers hidden parser roles and shared metadata without prein
   else (mode==='foreign-global-writer'?f.stage:f.target).blocks.otherWriter={opcode:'data_setvariableto',fields:{VARIABLE:['box','boxID']},inputs:{VALUE:[1,[10,'wrong']]}};
   assert.equal(p.unusedVoidStatement(f.target.blocks.sink,f.owner),null,mode);
  }
+ const moduleDiscarded=()=>{
+  const f=discarded(),owner={id:'work',kind:'declaration',parent:'module',sourceName:'performEffect',procedure:'performEffect',signature:{kind:'callable',parameters:[],result:{kind:'named',name:'void'}},parameters:[],defaults:[]};
+  f.plan.owners.push(owner);f.target.blocks.definition.next=null;
+  Object.assign(f.target.blocks,{
+   root:{opcode:'arcade_whenSourceStarts',topLevel:true,next:'sink'},
+   work:{opcode:'procedures_definition',next:null,inputs:{custom_block:[1,'workProto']}},
+   workProto:{opcode:'procedures_prototype',parent:'work',mutation:{proccode:'performEffect',argumentnames:'[]'}}
+  });
+  f.target.blocks.sink.parent='root';f.target.blocks.call={opcode:'arcade_callFunction',parent:'sink',inputs:{NAME:[1,[10,'performEffect']],ARGS:[1,[10,'[]']]}};
+  f.definitions.set('performEffect',{target:f.target,code:'performEffect',block:f.target.blocks.work,parameters:[]});
+  return {...f,owner,root:f.target.blocks.root};
+ };
+ {
+  const f=moduleDiscarded(),p=f.issue(),context=p.contextForModuleRoot(f.root,{},new Set());
+  assert.ok(context,'source root with a current declaration call needs no direct constructor/callable factory');
+  assert.equal(context.discardLocal('sink'),true);assert.equal(context.generatedLocal('sink'),null,'Void call is not a value local');
+  const certificate=p.unusedVoidStatement(f.target.blocks.sink,{rootBlock:f.root});
+  f.target.blocks.work.next='changed';assert.equal(certificate.current(),false);f.target.blocks.work.next=null;
+  assert.equal(certificate.current(),false);assert.equal(context.discardLocal('sink'),false);
+  assert.equal(f.issue().contextForModuleRoot(f.root,{},new Set()).discardLocal('sink'),true);
+ }
+ {
+  const f=moduleDiscarded();
+  f.target.blocks.nameText={opcode:'text',parent:'call',shadow:true,inputs:{},fields:{TEXT:['performEffect']}};
+  f.target.blocks.argsText={opcode:'text',parent:'call',shadow:true,inputs:{},fields:{TEXT:['[]']}};
+  f.target.blocks.call.inputs.NAME=[1,'nameText'];f.target.blocks.call.inputs.ARGS=[1,'argsText'];
+  assert.equal(f.issue().contextForModuleRoot(f.root,{},new Set()).discardLocal('sink'),true,'canonical literal text shadows retain exact declaration/empty-argument codec');
+ }
+ {
+  const f=moduleDiscarded(),p=f.issue();let invoked=0;
+  f.target.blocks.call.inputs.NAME=[1,[10,{toString(){invoked++;throw Error('must not coerce');}}]];
+  assert.equal(p.unusedVoidStatement(f.target.blocks.sink,{rootBlock:f.root}),null);assert.equal(invoked,0);
+ }
+ for(const mode of ['procedure','signature','formals','arguments','reader','global-writer']){
+  const f=moduleDiscarded(),p=f.issue();
+  if(mode==='procedure')f.target.blocks.call.inputs.NAME=[1,[10,'unknown']];
+  if(mode==='signature')f.owner.signature.result={kind:'named',name:'number'};
+  if(mode==='formals')f.target.blocks.workProto.mutation.argumentnames='["unexpected"]';
+  if(mode==='arguments'){f.target.blocks.call.inputs.ARGS=[1,'argument'];f.target.blocks.argument={opcode:'arcade_functionArgument',parent:'call',inputs:{VALUE:[1,[4,'1']],REST:[1,[10,'[]']]}};}
+  if(mode==='reader')f.target.blocks.read={opcode:'arcade_getLocal',inputs:{NAME:[1,[10,'unusedResult']]}};
+  if(mode==='global-writer')f.target.variables.collision=['unusedResult',0];
+  assert.equal(p.unusedVoidStatement(f.target.blocks.sink,{rootBlock:f.root}),null,mode);
+  assert.equal(p.contextForModuleRoot(f.root,{},new Set()),null,mode);
+ }
+ // Observe expiry only through the real context consumers. An early opcode,
+ // physical-identity or root-admission refusal must not hide stale evidence.
+ for(const mode of ['opcode','replacement','throw','root-admission']){
+  const f=moduleDiscarded(),p=f.issue(),context=p.contextForModuleRoot(f.root,{},new Set());assert.equal(context.discardLocal('sink'),true);
+  let restore;
+  if(mode==='opcode'){f.target.blocks.sink.opcode='text';restore=()=>{f.target.blocks.sink.opcode='arcade_setLocal';};}
+  if(mode==='replacement'){const old=f.target.blocks.sink;f.target.blocks.sink={...old};restore=()=>{f.target.blocks.sink=old;};}
+  if(mode==='root-admission'){f.root.topLevel=false;restore=()=>{f.root.topLevel=true;};}
+  if(mode==='throw'){
+   const error=Error('consumer currentness observation');Object.defineProperty(f.target.blocks,'observation',{configurable:true,enumerable:true,get(){throw error;}});
+   assert.throws(()=>context.discardLocal('sink'),actual=>actual===error);restore=()=>{delete f.target.blocks.observation;};
+  }else if(mode==='root-admission')assert.equal(p.contextForModuleRoot(f.root,{},new Set()),null);
+  else assert.equal(context.discardLocal('sink'),false);
+  restore();assert.equal(context.discardLocal('sink'),false,mode);assert.equal(p.contextForModuleRoot(f.root,{},new Set()),null,mode);
+  assert.equal(f.issue().contextForModuleRoot(f.root,{},new Set()).discardLocal('sink'),true,'fresh provider may reprove restored source');
+ }
+ {
+  const f=discarded();f.target.blocks.definition.next=null;f.target.blocks.method.next='sink';f.target.blocks.sink.parent='method';
+  const p=f.issue(),context=p.contextForMethod('touch %s');assert.equal(context.discardLocal('sink'),true);
+  f.target.blocks.sink.opcode='text';assert.equal(context.discardLocal('sink'),false);f.target.blocks.sink.opcode='arcade_setLocal';
+  assert.equal(context.discardLocal('sink'),false);assert.equal(f.issue().contextForMethod('touch %s').discardLocal('sink'),true);
+ }
  {
   const f=discarded(),p=f.issue(),sink=f.target.blocks.sink,certificate=p.unusedVoidStatement(sink,f.owner);
   assert.equal(certificate.current(),true);
@@ -361,8 +427,24 @@ test('parameter property public Code and two actual SB3 projects export and reim
   }
   const result=projectToArcade(edited);record({stage:'parameter-property-edited-Void-producer-refusal',mode,project:edited,result});assert.ok(result.unsupported.length,mode);
  }
+ const game=secondProject.targets.find(target=>target.name===unusedCalls[0].target.name),roots=Object.values(game.blocks).filter(block=>block.opcode==='arcade_whenSourceStarts');assert.equal(roots.length,1);
+ const entries=[];let entryID=roots[0].next;const entrySeen=new Set();
+ while(entryID){assert.ok(!entrySeen.has(entryID));entrySeen.add(entryID);const block=game.blocks[entryID],value=game.blocks[block.inputs?.VALUE?.[1]];if(block.opcode==='arcade_setLocal'&&value?.opcode==='arcade_callFunction')entries.push({sink:entryID,call:value});entryID=block.next;}
+ assert.equal(entries.length,1);const entryCode=literal(game,entries[0].call,'NAME'),envelopes=Object.values(game.blocks).filter(block=>block.opcode==='arcade_declareCallable').map(block=>JSON.parse(literal(game,block,'METADATA'))),entryOwners=envelopes[0].plan.owners.filter(owner=>owner.kind==='declaration'&&owner.procedure===entryCode);assert.equal(entryOwners.length,1);
+ assert.equal(entryOwners[0].signature.result.name,'void');assert.deepEqual(entryOwners[0].signature.parameters,[]);
+ {
+  const edited=structuredClone(secondProject),target=edited.targets.find(target=>target.name===game.name),prototypes=Object.values(target.blocks).filter(block=>block.opcode==='procedures_prototype'&&block.mutation.proccode===entryCode);assert.equal(prototypes.length,1);
+  const definitionID=prototypes[0].parent,definition=target.blocks[definitionID],prior=definition.next;assert.ok(prior);
+  let id='editedVoidReturn';while(target.blocks[id])id+='_';
+  target.blocks[id]={opcode:'arcade_returnValue',parent:definitionID,next:prior,inputs:{VALUE:[1,[4,'1']]},fields:{},shadow:false,topLevel:false};
+  definition.next=id;target.blocks[prior].parent=id;
+  const result=projectToArcade(edited);record({stage:'parameter-property-edited-module-Void-refusal',mode:'body-number-return',project:edited,result});assert.ok(result.unsupported.length,'declared Void metadata cannot excuse the actual Number-returning body');
+ }
  const final=projectToArcade(secondProject);record({stage:'parameter-property-second-export',result:final});clean(final,['unsupported','warnings']);
  assert.equal([...final.ts.matchAll(/\.bump\(\)/g)].length,1,'discarding a Void result neither drops nor duplicates the actual call');
  const reconstructed=parse(final.ts),finalProof=proveClassCallableSource(reconstructed);exportArrowBindings(reconstructed,finalProof,'second',final.ts);
+ const entryCalls=[];const visitEntry=(value,parent=null)=>{if(!value||typeof value!=='object')return;if(Array.isArray(value)){value.forEach(child=>visitEntry(child,parent));return;}if(value.type==='Call'&&value.callee.type==='Identifier'&&value.callee.name===entryOwners[0].sourceName)entryCalls.push({call:value,parent});for(const child of Object.values(value))visitEntry(child,value);};visitEntry(reconstructed);
+ record({stage:'parameter-property-module-Void-call-binding',sourceName:entryOwners[0].sourceName,signature:entryOwners[0].signature,calls:entryCalls});
+ assert.equal(entryCalls.length,1,'module declaration executes once');assert.equal(entryCalls[0].parent.type,'ExpressionStatement');assert.equal(entryCalls[0].parent.expr,entryCalls[0].call,'Void module call stays a statement without a value sink');
  assert.match(final.ts,/Counter/);assert.match(final.ts,/trace/);assert.match(final.ts,/step/);assert.match(final.ts,/tick/);
 });

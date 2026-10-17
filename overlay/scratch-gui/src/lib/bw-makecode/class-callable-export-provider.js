@@ -281,14 +281,44 @@ export function createClassCallableExportProvider({target,project,classes,defini
             if(!actual)fail(imageOperation?'current Image operation lacks its actual owned receiver, exact shape and Number operands':'current class field write differs from its concrete signature');
         }
     };
+    // This is a statement-only module entry, not a callFunction value type.
+    // The actual declaration body remains subject to complete lexical/body
+    // validation before the exporter installs this provider's root context.
+    const declaredModuleVoidCall=block=>{
+        if(block?.opcode!=='arcade_callFunction'||Object.keys(block.inputs||{}).sort().join(',')!=='ARGS,NAME')return false;
+        const callIDs=Object.entries(target.blocks).filter(([,value])=>value===block);if(callIDs.length!==1)return false;
+        const code=block.inputs.NAME[1],text=typeof code==='string'&&target.blocks[code];
+        const name=Array.isArray(code)?code.length===2&&code[0]===10&&typeof code[1]==='string'?code[1]:null:
+            text?.opcode==='text'&&text.shadow===true&&text.parent===callIDs[0][0]&&Object.keys(text.inputs||{}).length===0&&
+            Object.keys(text.fields||{}).join(',')==='TEXT'&&typeof text.fields.TEXT?.[0]==='string'&&!text.next?text.fields.TEXT[0]:null;
+        const owners=plan?.owners.filter(row=>row.kind==='declaration'&&row.parent===plan.module&&row.procedure===name);
+        if(owners?.length!==1||/%[sbn]/.test(name))return false;
+        const owner=owners[0];if(owner.parameters.length||owner.signature.parameters.length||owner.defaults.length||owner.signature.result.kind!=='named'||owner.signature.result.name!=='void')return false;
+        const def=definitions.get(key(target,name));if(!def||def.target!==target||def.code!==name||def.parameters.length||def.block?.opcode!=='procedures_definition')return false;
+        const ids=Object.entries(target.blocks).filter(([,value])=>value===def.block);if(ids.length!==1)return false;
+        const protoID=def.block.inputs?.custom_block?.[1],proto=typeof protoID==='string'&&target.blocks[protoID];
+        if(proto?.opcode!=='procedures_prototype'||proto.parent!==ids[0][0]||proto.mutation?.proccode!==name||typeof proto.mutation.argumentnames!=='string')return false;
+        let names;try{names=JSON.parse(proto.mutation.argumentnames);}catch(_){return false;}
+        if(!Array.isArray(names)||names.length)return false;
+        const args=block.inputs.ARGS[1],end=typeof args==='string'&&target.blocks[args];
+        return Array.isArray(args)?args.length===2&&args[0]===10&&args[1]==='[]':
+            end?.opcode==='text'&&end.shadow===true&&end.parent===callIDs[0][0]&&
+            Object.keys(end.inputs||{}).length===0&&Object.keys(end.fields||{}).join(',')==='TEXT'&&end.fields.TEXT?.[0]==='[]'&&!end.next;
+    };
     // A discarded Void call has no value binding. Its destination must be
     // unobservable in the complete current project, not just absent from the
     // retained lexical plan. The same physical proof serves ordinary roots,
     // nonlexical methods and actual lexical owners.
-    const unusedVoidProofs=new WeakMap();
+    const unusedVoidProofs=new WeakMap(),issuedUnusedVoidProofs=new Map();
+    const observeUnusedVoidProofs=()=>{
+        let current=true;
+        for(const proof of issuedUnusedVoidProofs.values())if(!proof.current())current=false;
+        return current;
+    };
+    const observeUnusedVoidAt=id=>{const proof=issuedUnusedVoidProofs.get(id);return !proof||proof.current();};
     const unusedVoidStatement=(block,owner)=>{
+        if(!observeUnusedVoidProofs())return null;
         const cached=block&&typeof block==='object'?unusedVoidProofs.get(block):null;
-        if(cached&&!cached.current())return null;
         if(!plan||block?.opcode!=='arcade_setLocal'||!project.targets.includes(target))return null;
         const ids=Object.entries(target.blocks).filter(([,value])=>value===block);if(ids.length!==1)return null;
         const [id]=ids[0],actualOwner=scope(block);let root=block;const parents=new Set();
@@ -309,8 +339,9 @@ export function createClassCallableExportProvider({target,project,classes,defini
         // class/callback call. Other Void-producing operations do not acquire
         // a statement permission from this sink.
         if(owner.id&&!['arcade_callObjectMethod','arcade_callCallable'].includes(value.opcode))return null;
-        verifyWriters();const type=slotType(valueId,actualOwner);
-        if(type?.kind!=='named'||type.name!=='void')return null;
+        const moduleVoid=owner.rootBlock?.opcode==='arcade_whenSourceStarts'&&actualOwner.rootBlock===owner.rootBlock&&declaredModuleVoidCall(value);
+        verifyWriters();const type=moduleVoid?null:slotType(valueId,actualOwner);
+        if(!moduleVoid&&(type?.kind!=='named'||type.name!=='void'))return null;
         const issuedPlan=plan,state=()=>JSON.stringify([plan,project.targets.map(other=>[other.variables,other.blocks]),
             [...classes].map(([name,row])=>[name,{...row,target:project.targets.indexOf(row.target)}]),
             [...definitions].map(([name,row])=>[name,row.code,row.parameters,project.targets.indexOf(row.target),Object.entries(row.target.blocks).filter(([,value])=>value===row.block).map(([id])=>id)])]),snapshot=state();let expired=false;
@@ -321,7 +352,7 @@ export function createClassCallableExportProvider({target,project,classes,defini
                 return true;
             }catch(error){expired=true;throw error;}
         }});
-        unusedVoidProofs.set(block,proof);return proof;
+        unusedVoidProofs.set(block,proof);issuedUnusedVoidProofs.set(id,proof);return proof;
     };
     return Object.freeze({
         validateCurrentPlan(candidate,actualTarget){
@@ -424,6 +455,7 @@ export function createClassCallableExportProvider({target,project,classes,defini
             return Object.freeze({name,type:structuredClone(type),first:!earlier});
         },
         contextForModuleRoot(root,callableEmitter,moduleCreates){
+            if(!observeUnusedVoidProofs())return null;
             if(!plan||!Object.values(target.blocks).includes(root)||!root.topLevel||!['arcade_whenSourceStarts','event_whenflagclicked','procedures_definition'].includes(root.opcode))return null;
             const definition={block:root};
             const owner={kind:'module',rootBlock:root},cells=new Map();
@@ -436,13 +468,16 @@ export function createClassCallableExportProvider({target,project,classes,defini
                 const type=slotType(id,scope(block)),cls=type?.kind==='named'&&classes.get(type.name);
                 return !!cls&&cls.target===target&&!cls.intrinsic&&plan.classes.some(row=>row.name===cls.name);
             });
-            if(![...moduleCreates].some(id=>contains(definition.block,id))&&!constructor)return null;
+            const declaredVoid=Object.entries(target.blocks).some(([id,block])=>block.opcode==='arcade_setLocal'&&contains(root,id)&&
+                declaredModuleVoidCall(target.blocks[block.inputs?.VALUE?.[1]])&&unusedVoidStatement(block,owner)?.current());
+            if(![...moduleCreates].some(id=>contains(definition.block,id))&&!constructor&&!declaredVoid)return null;
             verifyWriters();
             const provider=this;
             return {
                 statementTerminator:true,
                 generatedLocal(id){const block=target.blocks[id],proof=provider.localAssignment(block,owner);if(proof)cells.set(proof.name,proof.type);return proof;},
                 discardLocal(id){
+                    if(!observeUnusedVoidAt(id))return false;
                     const block=target.blocks[id];if(block?.opcode!=='arcade_setLocal'||!contains(root,id))return false;
                     const proof=unusedVoidStatement(block,owner);return !!proof&&proof.current();
                 },
@@ -452,6 +487,7 @@ export function createClassCallableExportProvider({target,project,classes,defini
             };
         },
         contextForMethod(code){
+            if(!observeUnusedVoidProofs())return null;
             const cls=[...classes.values()].find(row=>row.target===target&&row.methods.some(method=>method.procedure===code&&method.callableSignature));
             const method=cls?.methods.find(row=>row.procedure===code),definition=definitions.get(key(target,code));if(!plan||!method||!definition)return null;
             const owner={className:cls.name,receiverParameter:definition.parameters[0],parameters:method.parameters,procedure:code};
@@ -467,6 +503,7 @@ export function createClassCallableExportProvider({target,project,classes,defini
                     return null;
                 },
                 discardLocal(id){
+                    if(!observeUnusedVoidAt(id))return false;
                     const block=target.blocks[id];if(block?.opcode!=='arcade_setLocal')return false;
                     const name=literal(target,block,'NAME');if(name===owner.receiverParameter||owner.parameters.some(row=>row.name===name))return false;
                     const branch=conditional(owner);
