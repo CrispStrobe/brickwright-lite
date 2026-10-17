@@ -5898,3 +5898,37 @@ Existing component receipts remain bounded; physical device acceptance,
 release versions/tag, upload, both TestFlight groups and Beta App Review stay
 separate prerequisites. No new mobile or release event is performed by this
 documentation-only ownership claim.
+
+## iPad chrome fit, menu localization and WeDo acceptance — 2026-10-17
+
+CLAIMED — Codex root, branch `docs/ipad-chrome-wedo-claim-20261017`.
+User reports cramped touch-screen editor tabs, invisible collapsed-toolbar
+ellipsis, untranslated menus, dim 88005 and silent clone piezo after installing
+the qualified local candidate. Preserve the completed H1–H5 Code-toolbar owner
+changes; no edits to their pseudocode toolbar/status/Animation implementation.
+
+Own bounded editor chrome in `components/gui/{gui.jsx,chrome-toggle.jsx,compact-chrome.css}`,
+`lib/phone-chrome.js`, narrowly necessary menu labels in `components/menu-bar/`
+and their EN/DE catalog entries, canonical generated mirrors, and the existing
+touch/chrome/menu localization tests and actual responsive browser gate. Tab
+labels remain visible when they fit, otherwise real icons with localized
+accessible names/tooltips; keep every tab and the expand control reachable,
+32px minimum touch targets, no hidden overflow or overlap with menu actions.
+Use the selected app locale, not an independent browser-language guess.
+Qualify portrait/landscape iPad and wide/narrow desktop, expanded/collapsed,
+English/German, including actual tab switching and menu activation. Localized
+labels must not change actions, serialized settings or extension identifiers.
+No engine, supplier pin, workflow budget, Code-toolbar takeover or release.
+Merge this claim before product edits; qualify final enabled source-head checks
+before normal matching-head source merge and a fresh signed iPad build.
+
+WeDo hardware diagnostics use the already owned LED/piezo acceptance scope:
+connect from the Mac only after the iPad releases BLE; inspect battery and
+known IO announcements, compare documented full-power versus dimmed light,
+and run the bounded acknowledged short-note pattern with quiet gaps on the
+announced piezo port. Record actual user light/audibility observations. No
+unbounded output, unknown-port experiment, firmware flash or silent host-audio
+substitution. Any demonstrated extension fix belongs upstream first, with a
+separate exact-pin adoption claim if necessary. All machine/device details
+and raw receipts stay in ignored local context. Acknowledge a working external
+LED separately from hub RGB; current user reports LED works but is too dim.
