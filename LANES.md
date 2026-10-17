@@ -2434,6 +2434,39 @@ work. G01–G07 definitions do not imply full completion; claim a lane below bef
 source changes. The checkpoint preserves earlier failures and package boundaries.
 This documentation-only handover owns no actuator or firmware implementation.
 
+## Stratified CLI instrument regression harness — 2026-10-17
+
+CLAIMED — Codex circuit instruments owner, isolated branch
+`lane/instrument-regression-20261017`, exact base
+`e2225bb05eb2464e31100de3a8060f59ab6f3062`. The user explicitly permits
+preparing this harness in parallel with iOS release work. Execution of the
+actual campaign remains after TestFlight; no mobile/release ownership takeover.
+
+Bounded envelope: this ledger; `PLAN.md`;
+`.github/workflows/circuit-instrument-regression.yml`;
+`scripts/circuit-instrument-regression.mjs`;
+`scripts/lib/instrument-regression-cases.mjs`;
+`scripts/lib/instrument-regression-compare.mjs`;
+`test/circuit-instrument-regression.test.mjs`;
+`docs/CIRCUIT-INSTRUMENT-REGRESSION.md`. No package, lock, pin, production model,
+GUI, existing workflow, iOS helper, private corpus payload or deployment edit.
+
+Implement a deterministic manifest of 312 parameter cases across 12 authored
+topology templates: resistive 64, RC 64, RL 64, explicit diode DC 48, explicit
+NPN DC 24, nominal LM741 24 and ADP7118 startup 24. Preserve distinct direct
+ngspice (264) and analytic model (48) reference classes. These are planned
+parameter cases, not 312 imported schematics, predicted passes or physical
+accuracy evidence. Freeze clocks, signs, selectors, model cards and tolerances
+before results; preserve all refused, failed and not-run cases in denominators.
+
+Use the actual installed consumer CLI and independently verified pinned package
+sources, never a sibling checkout override. Keep raw input/reference/output
+and source/work receipts. Pure tests must reject numerical, current-sign,
+clock, missing/duplicate observation and aggregate denominator mutations, not
+merely unrelated parser refusals. Manual-only hosted campaign; no automatic
+campaign or dispatch during preparation. Merge this claim before implementation;
+require focused controls and all enabled exact-head qualification before landing.
+
 ## The protocol
 
 ### Two regimes — do not confuse them
@@ -5853,35 +5886,35 @@ App Review receipts from the existing workflows. A queued workflow, unsigned
 build or App Store submission is not a delivery or approval claim. Keep the
 ordered five-task circuit campaign contract independent and unchanged.
 
-## Stratified CLI instrument regression harness — 2026-10-17
+## iOS mobile workflow resource preparation — 2026-10-17
 
-CLAIMED — Codex circuit instruments owner, isolated branch
-`lane/instrument-regression-20261017`, exact base
-`e2225bb05eb2464e31100de3a8060f59ab6f3062`. The user explicitly permits
-preparing this harness in parallel with iOS release work. Execution of the
-actual campaign remains after TestFlight; no mobile/release ownership takeover.
+CLAIMED — Codex integration owner, branch
+`docs/ios-workflow-resource-preparation-20261017`, base
+`e2225bb05eb2464e31100de3a8060f59ab6f3062`. The release ownership claim
+PR1011 is merged. PR1020's generated-project resource preparation is reached
+through the local device-build npm hook; the current mobile workflow invokes
+the Tauri CLI directly and does not execute that preparation. Its local signed
+archive and simulator results do not automatically qualify the workflow path.
 
-Bounded envelope: this ledger; `PLAN.md`;
-`.github/workflows/circuit-instrument-regression.yml`;
-`scripts/circuit-instrument-regression.mjs`;
-`scripts/lib/instrument-regression-cases.mjs`;
-`scripts/lib/instrument-regression-compare.mjs`;
-`test/circuit-instrument-regression.test.mjs`;
-`docs/CIRCUIT-INSTRUMENT-REGRESSION.md`. No package, lock, pin, production model,
-GUI, existing workflow, iOS helper, private corpus payload or deployment edit.
+Own only `.github/workflows/mobile.yml`, focused workflow call-path controls,
+this ledger and narrowly necessary packaging documentation. Connect the
+existing reviewed preparation to the simulator, App Store signed and device
+IPA build paths after project initialization, with explicit ordering controls.
+Preserve the preparation implementation from PR1020, embedded frontend inputs,
+all other resources and static linker inputs, the Tauri CLI targets/export
+methods, privacy/icon/signing/provisioning checks and existing CI bounds.
+No application/runtime/firmware/dependency, version, tag, signing policy, secret
+handling or unrelated workflow change belongs in this lane. Coordinate any
+required helper implementation change as a separate envelope before editing.
 
-Implement a deterministic manifest of 312 parameter cases across 12 authored
-topology templates: resistive 64, RC 64, RL 64, explicit diode DC 48, explicit
-NPN DC 24, nominal LM741 24 and ADP7118 startup 24. Preserve distinct direct
-ngspice (264) and analytic model (48) reference classes. These are planned
-parameter cases, not 312 imported schematics, predicted passes or physical
-accuracy evidence. Freeze clocks, signs, selectors, model cards and tolerances
-before results; preserve all refused, failed and not-run cases in denominators.
-
-Use the actual installed consumer CLI and independently verified pinned package
-sources, never a sibling checkout override. Keep raw input/reference/output
-and source/work receipts. Pure tests must reject numerical, current-sign,
-clock, missing/duplicate observation and aggregate denominator mutations, not
-merely unrelated parser refusals. Manual-only hosted campaign; no automatic
-campaign or dispatch during preparation. Merge this claim before implementation;
-require focused controls and all enabled exact-head qualification before landing.
+Merge this claim before implementation. Require nonvacuous call-path and
+ordering controls, every enabled exact-head check, and affected actual clean
+iOS qualification on the final combined source before merging implementation.
+Independently inspect source-bound unsigned app and actual signed IPA resource
+inventories, including duplicate frontend folders and unintended static
+archives; source checks or fresh initialization alone are not absence proof.
+Preserve embedded offline frontend, frameworks, privacy, icons and signatures.
+Existing component receipts remain bounded; physical device acceptance,
+release versions/tag, upload, both TestFlight groups and Beta App Review stay
+separate prerequisites. No new mobile or release event is performed by this
+documentation-only ownership claim.

@@ -839,7 +839,15 @@ export const CELLS = Object.freeze({
             native: open('uf2', 'arm-none-eabi-as', 'hosted', null, {note: 'silicon only; no emulator'}),
             lowered: []
         },
-        micropython: {native: CPY, lowered: [TS]}
+        micropython: {native: CPY, lowered: [TS]},
+        // Not a Code-tab language: the landing cell the TS lowerings above
+        // reach. Its artefact runs in the Arcade simulator, so Arcade and
+        // PyBadge read "lowered via ts · sim"; UF2 to silicon stays open (L4).
+        ts: {
+            native: shipped('ts', 'PXT (MakeCode) static TypeScript', 'hosted',
+                {evidence: EVIDENCE.DECLARED, tier: '3'}),
+            lowered: []
+        }
     }
 });
 
