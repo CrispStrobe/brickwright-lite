@@ -907,3 +907,41 @@ test('a gear turning on an axle fixed in the frame (gear = hinge body1) gets the
     const expected = g.joint1 === j8.id ? 1 / 3 : 3;
     assert.ok(Math.abs(g.ratio - expected) < 1e-9, `ratio ${g.ratio} vs ${expected}`);
 });
+
+test('pin 3L joins two beams side by side into one body', async () => {
+    const {readFileSync} = await import('node:fs');
+    const catalog = new Map(JSON.parse(readFileSync('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json','utf8')).parts.map(p=>[p.part,p]));
+    const I3 = [1,0,0,0,1,0,0,0,1];
+    const ROT_Z_90 = [0,-1,0,1,0,0,0,0,1];
+    const model = {
+        version: 1,
+        parts: [
+            {id:'b1', part:'32524.dat', position:[0,0,0], rotation:I3.slice()},
+            {id:'b2', part:'32524.dat', position:[0,0,0], rotation:I3.slice()},
+            {id:'pin', part:'6558.dat', position:[0,0,0], rotation:ROT_Z_90.slice()},
+        ]
+    };
+    const {compile} = await import('../overlay/scratch-gui/src/lib/bw-sim/mech/compile.js');
+    const {validateCompiledMechanism} = await import('../overlay/scratch-gui/src/lib/bw-sim/contracts.js');
+    const mech = compile(model, catalog, {ground:false});
+    assert.equal(validateCompiledMechanism(mech).length, 0);
+    assert.equal(mech.bodies.length, 1);
+});
+
+test('axle pin turns in beam hole (hinge)', async () => {
+    const {readFileSync} = await import('node:fs');
+    const catalog = new Map(JSON.parse(readFileSync('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json','utf8')).parts.map(p=>[p.part,p]));
+    const I3 = [1,0,0,0,1,0,0,0,1];
+    const model = {
+        version: 1,
+        parts: [
+            {id:'beam', part:'60483.dat', position:[0,0,0], rotation:I3.slice()},
+            {id:'axlePin', part:'3749.dat', position:[0,0,0], rotation:I3.slice()},
+        ]
+    };
+    const {compile} = await import('../overlay/scratch-gui/src/lib/bw-sim/mech/compile.js');
+    const {validateCompiledMechanism} = await import('../overlay/scratch-gui/src/lib/bw-sim/contracts.js');
+    const mech = compile(model, catalog, {ground:false});
+    assert.equal(validateCompiledMechanism(mech).length, 0);
+    assert.ok(mech.bodies.length >= 1);
+});
