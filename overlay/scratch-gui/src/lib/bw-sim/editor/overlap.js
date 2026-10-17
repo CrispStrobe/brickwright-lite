@@ -8,6 +8,7 @@
 // what a pointer ray hits (holes count as the part: colliders are solid), and
 // where a part rests on a surface.
 
+import {placedGearsMesh} from '../mech/gears.js';
 import {mat3MulVec3, vecAdd, vecSub, vecScale, vecDot, vecCross, vecLen, vecNormalize} from '../mech/vec.js';
 
 // Transform a point from part local to model LDraw frame
@@ -229,7 +230,10 @@ export const sitsInside = meta => Boolean(meta && meta.connectors && meta.connec
 export const solidOverlaps = (model, catalog, placedPart, {ignore = []} = {}) => {
     const catalogMap = asMap(catalog);
     if (sitsInside(catalogMap.get(placedPart.part))) return [];
-    const skip = model.parts.filter(p => p.id !== placedPart.id && sitsInside(catalogMap.get(p.part))).map(p => p.id);
+    const myMeta = catalogMap.get(placedPart.part);
+    // Pins/axles/balls sit inside holes; gears that mesh interleave their teeth.
+    const skip = model.parts.filter(p => p.id !== placedPart.id && (sitsInside(catalogMap.get(p.part)) ||
+        placedGearsMesh(placedPart, myMeta, p, catalogMap.get(p.part)))).map(p => p.id);
     return partOverlaps(model, catalogMap, placedPart, {ignore: [...ignore, ...skip]});
 };
 

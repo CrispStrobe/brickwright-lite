@@ -148,6 +148,27 @@ const holderName = (hinge, gear, jointEntries, nodes) => {
  * @returns {{gears: Array, lockedPairs: Array<[string, string]>}} lockedPairs: [frame body, gear body]
  *   pairs a gear-on-frame mesh locks together; compile.js merges them and runs again
  */
+/**
+ * Whether two placed gear parts mesh where they stand (same rule as the
+ * compiler: tooth types match, pitch circles touch). The build editor uses it
+ * to let meshing gears share volume, since their teeth interleave.
+ * @param {{part: string, position: number[], rotation: number[]}} a placed part
+ * @param {object} metaA its PartMeta
+ * @param {{part: string, position: number[], rotation: number[]}} b placed part
+ * @param {object} metaB its PartMeta
+ * @returns {boolean}
+ */
+export const placedGearsMesh = (a, metaA, b, metaB) => {
+    if (!metaA?.gear || !metaB?.gear || metaA.gear.type !== metaB.gear.type) return false;
+    if (metaA.gear.type !== 'spur' && metaA.gear.type !== 'bevel') return false;
+    const info = (p, meta) => ({
+        type: meta.gear.type, teeth: meta.gear.teeth, r: pitchRadiusLdu(meta.gear.teeth),
+        centerLdu: vecAdd(mat3MulVec3(p.rotation, meta.gear.center), p.position),
+        axisLdu: vecNormalize(mat3MulVec3(p.rotation, meta.gear.axis))
+    });
+    return Boolean(meshContact(info(a, metaA), info(b, metaB)));
+};
+
 export const buildGears = (nodes, islands, joints, catalogMap, diagnostics = [], jointEntries = null) => {
     const {nodeToBody} = islands;
 

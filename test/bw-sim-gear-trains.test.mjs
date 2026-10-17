@@ -35,7 +35,7 @@ import {LDU_M} from '../overlay/scratch-gui/src/lib/bw-sim/contracts.js';
 import {loadJolt, createPhysicsCore} from '../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js';
 import {SimHubBridge, STEP_MS} from '../overlay/scratch-gui/src/lib/bw-sim/hub-bridge.js';
 import VirtualSpikeHubState from '../overlay/scratch-gui/src/lib/virtual-hub/spike-hub-state.js';
-import {solidOverlaps} from '../overlay/scratch-gui/src/lib/bw-sim/editor/overlap.js';
+import {partOverlaps, sitsInside, solidOverlaps} from '../overlay/scratch-gui/src/lib/bw-sim/editor/overlap.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const json = p => JSON.parse(readFileSync(path.join(ROOT, p), 'utf8'));
@@ -114,11 +114,17 @@ test('the gearbox fixtures are real builds: only meshing gears share volume', ()
     };
     for (const [name, pairs] of Object.entries(meshing)) {
         const model = fixture(name);
+        // Raw colliders: solid parts touch only where gears mesh (pins and axles sit in holes)...
         const found = new Set();
-        for (const p of model.parts) {
-            for (const o of solidOverlaps(model, CATALOG, p)) found.add([p.id, o.part].sort().join('|'));
+        const solid = model.parts.filter(p => !sitsInside(CATALOG.get(p.part)));
+        for (const p of solid) {
+            for (const o of partOverlaps(model, CATALOG, p)) {
+                if (solid.some(q => q.id === o.part)) found.add([p.id, o.part].sort().join('|'));
+            }
         }
         assert.deepEqual([...found].sort(), pairs.map(pr => pr.slice().sort().join('|')).sort(), name);
+        // ...and the build editor's rule accepts exactly those as meshing, so it reports no collision.
+        for (const p of model.parts) assert.deepEqual(solidOverlaps(model, CATALOG, p), [], `${name}: ${p.id}`);
     }
 });
 
