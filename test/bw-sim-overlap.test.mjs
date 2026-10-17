@@ -156,8 +156,5 @@ test('6. S1 driving base: no part overlaps any part it is not connected to', () 
         const overlaps = partOverlaps(model, CATALOG, part, {ignore});
         if (overlaps.length) overlapsFound.push({part: part.id, overlaps});
     }
-    if (overlapsFound.length) {
-        console.log('Overlaps found in driving base (should be none, reporting as per task):', JSON.stringify(overlapsFound, null, 2));
-    }
-    assert.equal(overlapsFound.length, 0, `driving base should have no non-connected overlaps, found ${overlapsFound.length}`);
+    assert.equal(overlapsFound.length, 0, `driving base should have no non-connected overlaps, found ${overlapsFound.length}: ${JSON.stringify(overlapsFound)}`);
 });
