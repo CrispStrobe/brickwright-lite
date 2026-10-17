@@ -62,6 +62,9 @@ const TEXT = {
         selectedOne: 'Selected: {name}', selectedMany: 'Selected: {n} parts',
         more: 'More…', moreHelp: 'More actions', large: 'Open the Robot Lab large (full screen)', timeShort: '{s} s',
         partsToggle: 'Show or hide the parts', infoToggle: 'Show or hide the whole note',
+        route: 'Program', routeScratch: 'SPIKE blocks', routeFirmware: 'SPIKE firmware (desktop)',
+        routeUnavailable: 'Not available: this build has no managed Renode runtime with lockstep.',
+        realTime: '{f}× real time', firmwareFailed: 'Could not start the SPIKE firmware: {error}',
         st: {
             idle: 'Click a part to select it. Drag it to move it; Shift+click adds parts; drag empty space to look around.',
             hover: '{part}: click to select, drag to move', hoverSelected: '{part}: drag to move, R turns, Delete removes',
@@ -119,6 +122,9 @@ const TEXT = {
         selectedOne: 'Ausgewählt: {name}', selectedMany: 'Ausgewählt: {n} Teile',
         more: 'Mehr…', moreHelp: 'Weitere Aktionen', large: 'Roboter-Labor groß öffnen (Vollbild)', timeShort: '{s} s',
         partsToggle: 'Teile zeigen oder ausblenden', infoToggle: 'Den ganzen Hinweis zeigen oder einklappen',
+        route: 'Programm', routeScratch: 'SPIKE-Blöcke', routeFirmware: 'SPIKE-Firmware (Desktop)',
+        routeUnavailable: 'Nicht verfügbar: Dieser Build hat keine verwaltete Renode-Laufzeit mit Lockstep.',
+        realTime: '{f}× Echtzeit', firmwareFailed: 'Die SPIKE-Firmware konnte nicht starten: {error}',
         st: {
             idle: 'Klicke ein Teil an, um es auszuwählen. Ziehen verschiebt es; Umschalt+Klick wählt mehr Teile; Ziehen auf leerer Fläche dreht die Ansicht.',
             hover: '{part}: klicken wählt aus, ziehen verschiebt', hoverSelected: '{part}: ziehen verschiebt, R dreht, Entf löscht',
@@ -202,7 +208,7 @@ class SimLabPane extends React.Component {
             mode: 'simulate', placing: null, selection: [], editorTick: 0, mat: null,
             buildStatus: {kind: 'idle'}, gizmoMode: 'move', grid: 10, recent: [], thumbTick: 0,
             showPorts: true, showMotion: false, blockers: [], portPicker: null, instructions: null, coarse: false,
-            paneWidth: 0, more: false, drawer: false, paletteDragging: false, infoOpen: false};
+            paneWidth: 0, more: false, drawer: false, paletteDragging: false, infoOpen: false, route: 'scratch'};
         this.root = React.createRef();
         this.moreRef = React.createRef();
         this.viewWrap = React.createRef();
@@ -574,17 +580,31 @@ class SimLabPane extends React.Component {
 
     async openText (text, name, shipped = null) {
         const token = this.loadToken = {};
+        this.opened = {text, name};
         this.teardown();
         this.setState({status: 'loading', message: '', issues: [], blockers: [], modelFile: name, shipped, simMs: 0, view3d: 'loading'});
         const {SimSession, fetchLDrawClosure, createSimView3D, CATALOG} = this.lib;
+        // The SPIKE firmware route (desktop): the emulated hub starts first; the scene then runs
+        // in lockstep with it (lib/bw-sim/routes/renode-lockstep).
+        let firmware = null;
+        if (this.state.route === 'firmware') {
+            try {
+                firmware = await this.lib.openFirmwareRoute({capabilities: this.renodeCapabilities(), hubState: this.props.hubState});
+            } catch (error) {
+                if (token === this.loadToken) this.setState({status: 'failed', message: this.t('firmwareFailed', {error: error.message})});
+                return;
+            }
+        }
         let result;
         try {
             result = await SimSession.fromText(text, {hubState: this.props.hubState, catalog: CATALOG, mat: this.state.mat,
-                worker: this.physicsClient()});
+                worker: this.physicsClient(), ...(firmware ? {createHub: firmware.createHub} : {})});
         } catch (error) {
+            firmware?.driver.end().catch(() => {});
             if (token === this.loadToken) this.setState({status: 'failed', message: this.t('failed', {error: error.message})});
             return;
         }
+        if (!result.session) firmware?.driver.end().catch(() => {});
         if (token !== this.loadToken || this.disposed) { result.session?.dispose(); return; }
         const {session, issues, model, runModel} = result;
         if (!session) {
@@ -596,7 +616,7 @@ class SimLabPane extends React.Component {
         this.session = session;
         // The worker could not run the scene (no WebAssembly in workers, say): the physics runs
         // here, and later models do not try the worker again.
-        if (session.workerError && this.physics) { this.physics.terminate(); this.physics = false; }
+        if (session.workerError && this.physics && !session.lockstep) { this.physics.terminate(); this.physics = false; }
         let view3d = 'webgl';
         try {
             const {read} = await fetchLDrawClosure([...new Set(model.parts.map(p => p.part))], {withConfig: true});
@@ -621,6 +641,28 @@ class SimLabPane extends React.Component {
     physicsClient () {
         if (this.physics === undefined) this.physics = this.lib.startPhysicsClient();
         return this.physics || null;
+    }
+
+    /** In the desktop app (or with injected capabilities): the SPIKE firmware route can be offered. */
+    desktop () {
+        return Boolean(this.props.renodeCapabilities || (typeof window !== 'undefined' && window.__TAURI_INTERNALS__));
+    }
+
+    /** The desktop app's native Renode capabilities (made once), or the injected ones. */
+    renodeCapabilities () {
+        if (this.props.renodeCapabilities) return this.props.renodeCapabilities;
+        if (this._renodeCapabilities === undefined) this._renodeCapabilities = this.lib.desktopRenodeCapabilities(window);
+        return this._renodeCapabilities;
+    }
+
+    /** Switches the program route and reloads the model on it (the firmware route starts the emulator). */
+    setRoute (route) {
+        if (route === this.state.route) return;
+        const opened = this.opened;
+        if (this.state.status === 'running') this.pause();
+        this.setState({route}, () => {
+            if (opened) this.openText(opened.text, opened.name);
+        });
     }
 
     frame (now) {
@@ -650,6 +692,8 @@ class SimLabPane extends React.Component {
     /** As the arena's Start: connect the spikeprime blocks to the shared virtual hub, then green flag. */
     async run () {
         if (!this.session) return;
+        // The firmware runs its own program in the emulator: the clock is all Run starts.
+        if (this.session.lockstep) { this.setState({status: 'running', info: ''}); return; }
         const hubState = this.props.hubState;
         hubState.setSimulationEnabled(true);
         this.setState({status: 'running'});
@@ -1156,7 +1200,19 @@ class SimLabPane extends React.Component {
         const T = this.text;
         const simulate = this.state.mode === 'simulate';
         const running = status === 'running';
-        const statusText = `${busy ? T.loading : T[status] || ''}${this.session ? ` · ${compact ? this.t('timeShort', {s: (simMs / 1000).toFixed(1)}) : this.t('time', {s: (simMs / 1000).toFixed(1)})}` : ''}`;
+        const rtf = this.session?.lockstep ? this.session.realTimeFactor : null;
+        const statusText = `${busy ? T.loading : T[status] || ''}${this.session ? ` · ${compact ? this.t('timeShort', {s: (simMs / 1000).toFixed(1)}) : this.t('time', {s: (simMs / 1000).toFixed(1)})}` : ''}` +
+            (rtf !== null && running ? ` · ${this.t('realTime', {f: rtf < 0.1 ? rtf.toFixed(3) : rtf.toFixed(2)})}` : '');
+        // Desktop only (the web build has no managed Renode runtime): the program route.
+        const firmwareReady = this.lib && this.desktop() && this.lib.lockstepAvailable(this.renodeCapabilities());
+        const routeSelect = this.lib && this.desktop() && (
+            <label style={{fontSize: 12}}>{T.route}{': '}
+                <select data-testid="bw-sim-lab-route" disabled={busy} value={this.state.route} onChange={e => this.setRoute(e.target.value)}>
+                    <option value="scratch">{T.routeScratch}</option>
+                    <option value="firmware" disabled={!firmwareReady} title={firmwareReady ? undefined : T.routeUnavailable}>{T.routeFirmware}</option>
+                </select>
+            </label>
+        );
         const modelSelect = (
             <select data-testid="bw-sim-lab-model" disabled={busy || !this.lib} value={shipped || ''}
                 aria-label={compact ? T.model : undefined} title={compact ? T.model : undefined}
@@ -1233,6 +1289,7 @@ class SimLabPane extends React.Component {
                     <label style={{fontSize: 12}}>{T.model}{': '}{modelSelect}</label>
                     {importButton}
                     <label style={{fontSize: 12}}>{T.mat}{': '}{matSelect}</label>
+                    {routeSelect}
                     {runButton}
                     {resetButton}
                     {exampleButton}
@@ -1253,13 +1310,14 @@ class SimLabPane extends React.Component {
                         <div style={{display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, flexWrap: narrow && exampleButton ? 'wrap' : 'nowrap'}}>
                             {modelSelect}
                             {matSelect}
+                            {routeSelect}
                             {exampleButton}
                         </div>
                     </React.Fragment>
                 )}
                 {message && <div role="alert" data-testid="bw-sim-lab-message" style={{fontSize: 12, color: '#b91c1c'}}>{message}</div>}
                 {this.renderInfo()}
-                {simulate && this.session && this.session.bridge && this.renderDrive(button)}
+                {simulate && this.session && this.session.bridge && !this.session.lockstep && this.renderDrive(button)}
                 {this.state.mode === 'build' && this.renderBuildBar(button)}
                 {this.lib && !compact && this.renderInsightBar()}
                 {this.renderBlockers()}
