@@ -61,6 +61,7 @@
       "test/bw-sim-scene3d.test.mjs",
       "test/bw-sim-sensors.test.mjs",
       "test/bw-sim-session.test.mjs",
+      "test/bw-sim-sumo-program.test.mjs",
       "test/bw-sim-wall-stopper-program.test.mjs",
       "test/bw-sim-world.test.mjs"
     ],
