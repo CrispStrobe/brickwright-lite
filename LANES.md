@@ -6079,7 +6079,7 @@ documentation-only ownership claim.
 
 ## iPad chrome fit, menu localization and WeDo acceptance — 2026-10-17
 
-CLAIMED — Codex root, branch `docs/ipad-chrome-wedo-claim-20261017`.
+SOURCE LANDED — Codex root, claim branch `docs/ipad-chrome-wedo-claim-20261017`; implementation PR1050 merged as `fc385cada4d2ff6aab21e22bdcc38dc696d9c787`. Signed delivery and physical acceptance remain in this lane.
 User reports cramped touch-screen editor tabs, invisible collapsed-toolbar
 ellipsis, untranslated menus, dim 88005 and silent clone piezo after installing
 the qualified local candidate. Preserve the completed H1–H5 Code-toolbar owner
@@ -6218,7 +6218,7 @@ See [current integration status and scoped next actions](docs/WEDO-IPAD-INTEGRAT
 
 ## WeDo connection recovery adoption — 2026-10-17
 
-CLAIMED — Codex root, branch `docs/wedo-recovery-adoption-20261017`.
+SOURCE LANDED — Codex root, claim branch `docs/wedo-recovery-adoption-20261017`; immutable adoption merged in PR1050 as `fc385cada4d2ff6aab21e22bdcc38dc696d9c787`. Native/device follow-ups retain the boundaries below.
 Adopt the published WeDo supplier connection-recovery commit `98eca46ed343ffe186e737062fdc68716f28ca6c` (upstream PR50 merged as `c0223a134d1be45dbe939a3f078224f22229b71f`). Own only the `wedo2unified` pin, its canonical generated extension wrapper, focused recovery/LED/tone conformance controls, and the associated public delivery/protocol records. Merge this claim to remote main before implementation. Use the supplier sync workflow; never hand-edit the bundled wrapper or other suppliers' pins. Qualify exact source freshness, failed-connect cleanup, bounded waits, concurrent attempts, retry without app restart, and existing light/tone commands. Native Bluetooth readiness/session ownership work remains separately scoped; do not claim physical connection or buzzer success from these deterministic controls. Compose this adoption with the owned iPad chrome fixes after their CI failures are resolved, qualify enabled exact-head CI, then build/sign/install an identified current-main candidate. Keep local paths, device identifiers, screenshots and raw receipts in ignored handoffs.
 
 ### Reconciled UI and recovery follow-through
@@ -6248,3 +6248,19 @@ acceptance tasks and explicit native Bluetooth, buzzer, D13 and size follow-ups.
 The installed earlier candidate does not yet establish current-main delivery
 or physical caret acceptance. Other owners' nondefault/dirty repository
 checkouts are preserved; no blanket rebase or supplier bump is claimed.
+
+### Integrated-main native checkpoint — 2026-10-18
+
+PR1050 is landed and every enabled exact-head gate passed. Current-main
+`fc385cada4d2ff6aab21e22bdcc38dc696d9c787` production frontend, unchanged
+startup ownership budget, eight EN/DE Chromium/WebKit painted-icon controls,
+responsive actions and physical-iOS compilation pass. Signing stopped with
+`errSecInternalComponent` while the Mac screen was locked; direct signing
+confirmed that remaining block. No new iPad installation is claimed. The
+private continuation verifies the compiled app, waits for unlock, then signs
+and verifies before attempting WLAN delivery; it does not rebuild unchanged
+sources or take unsolicited screenshots of other foreground apps. The
+previous installed candidate and receipts are preserved. Remaining native
+readiness, physical toolbar/connection/LED acceptance and clone buzzer tasks
+are bounded in the current handoff; no additional native or firmware work
+is implicitly claimed.
