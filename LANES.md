@@ -1,7 +1,9 @@
 ## C9 — AVR instruction-cost layout investigation — 2026-10-17
 
-CLAIMED — Codex, branch `lane/c9-avr-layout-20261017` in the owned
-LabWired Core fork. This is the C9 measurement/explanation lane, independent
+HANDOFF READY — diagnostic producer delivery is complete; a fresh agent may
+continue C9.1–C9.2 within this scope. Keep qualified controller branch
+`lane/c9-avr-layout-20261017` frozen in the owned LabWired Core fork. This is the C9 measurement/explanation
+lane, independent
 of A13, the SAMD replacement work and the existing C10/STM32 adoption owners.
 
 Own only a diagnostic profile producer and its pure controls under
@@ -26,6 +28,19 @@ profile optimization. A proposed implementation needs a separately reviewed
 precise scope and must improve both prescribed source trees without worsening
 any existing baseline row beyond its unchanged tolerance. No per-chip waiver,
 rebaselining, repeated unchanged run or release/physical-timing claim.
+
+### C9 continuation — 2026-10-17
+
+Diagnostic source delivered in [Core PR248](https://github.com/CrispStrobe/labwired-core/pull/248),
+merge `5b470d61`; investigation remains open. Continue only
+[run 39001605287](https://github.com/CrispStrobe/labwired-core/actions/runs/39001605287) at qualified controller `2201716d`.
+At the 06:19 UTC checkpoint, pre-sync and sync succeeded; current was running
+and retained upstream was queued. Refresh event and all children before intake. Do not
+redispatch, replay a guest, or reacquire a successful original. Reuse retained
+originals and the frozen independent reader; preserve failures and admit all
+four sources before comparison. Follow the [Core C9.1–C9.3 handoff](https://github.com/CrispStrobe/labwired-core/blob/main/docs/engineering/avr-layout-cost.md#pending-tasks-and-acceptance)
+for exact intake, attribution and decision acceptance. No optimization, baseline,
+profile, engine release or Lite pin change is included in this delivered phase.
 
 ## H1–H7 — Code tab crash, layout, badge and language reach — 2026-10-16
 
@@ -60,7 +75,7 @@ in S1.
 
 ## iOS embedded frontend packaging — 2026-10-16
 
-DONE candidate — Codex root, isolated `/tmp/brickwright-ios-assets-20261016`, branch
+DONE candidate — Codex root, branch
 `lane/ios-embedded-assets-only-20261016`, base main `664a37b57`.
 The user requested a smaller iPad build and continued coding. The signed
 192.21 MiB app contains an 82.45 MiB executable (76.21 MB of __const) plus
@@ -91,7 +106,7 @@ exact-head hosted checks remain required before source merge.
 
 ## Compose STM32 PR975 after circuit PR965 — 2026-10-16
 
-CLAIMED — Codex root, isolated `/tmp/brickwright-stm32-compose-20261016`,
+CLAIMED — Codex root,
 branch `lane/stm32-compose-20261016`, base main `5cb83052330b400b48293315260cb4293b4f6bcf`.
 The user explicitly requested completion of these integrations in order. PR965
 is now merged; a read-only merge of PR975 `943d540c7` reports thirteen conflicts.
@@ -117,7 +132,7 @@ candidate; no installed or physical validation is inferred.
 
 ## A13 — CPX live circuit face adoption — 2026-10-16
 
-CLAIMED — Codex root, isolated `/tmp/brickwright-lite-a13-20261016`, branch
+CLAIMED — Codex root, branch
 `lane/a13-cpx-face-adoption-20261016`. User requested this after the iOS and
 existing integrations. Supplier: bw-circuit-ui PR85, published claim 796bd2c.
 Preserve PR965/975's serialized dependency ownership and all newer main pins.
@@ -490,8 +505,7 @@ local production compilation is qualified separately.
 
 ## iOS redundant static archive packaging — 2026-10-15
 
-DONE — Codex, isolated `fix/ios-static-archive-resources-20261015` in
-`/tmp/brickwright-ios-size-fix`, base `86daec14c`. User requested shrinking the
+DONE — Codex, isolated `fix/ios-static-archive-resources-20261015`, base `86daec14c`. User requested shrinking the
 current iPad app. Measured signed bundle: 371.43 MiB, including 151.98 MiB
 `libapp.a` copied as a resource despite already being linked into the executable.
 
@@ -509,8 +523,7 @@ archive; signature verification passes.
 
 ## iOS shared validator compilation blocker — 2026-10-15
 
-CLAIMED — Codex, isolated `fix/ios-shared-validators-20261015` in
-`/tmp/brickwright-ios-validator-fix`, base `10edc699d`. Bounded build repair
+CLAIMED — Codex, isolated `fix/ios-shared-validators-20261015`, base `10edc699d`. Bounded build repair
 found while fulfilling the user-requested current iPad deployment.
 
 Envelope: this ledger and only the module declarations for `arena_inputs` and
@@ -518,8 +531,8 @@ Envelope: this ledger and only the module declarations for `arena_inputs` and
 pure JSON validators already called by the shared `native_policy` core; their
 current desktop gates cause eight E0433 errors on `aarch64-apple-ios`. Keep all
 native commands, adapters, supervisors and platform integrations gated exactly
-as before. Verify by the real signed iOS build, whose baseline failure is in
-`/tmp/brickwright-rust-prebuild.log`. No simulator behavior or policy admission
+as before. Verify by the real signed iOS build, whose baseline failure is retained in operator diagnostics.
+No simulator behavior or policy admission
 rules change. Claim lands before implementation.
 
 ## WeDo 88005 lights and piezo note adoption — 2026-10-15
@@ -5606,7 +5619,7 @@ execution, mode-aware disassembler, physical timing, whole-OS or release claim.
 
 ## A13 CPX production browser gate registration — 2026-10-16
 
-CLAIMED — Codex, isolated worktree `/tmp/brickwright-lite-a13-20261016`,
+CLAIMED — Codex,
 branch `lane/a13-cpx-face-adoption-20261016`; amendment based on canonical
 `d544efb23`. Merge this claim before implementation. Extend the existing A13
 claim only to `.github/workflows/build.yml` for a standalone light-shard CPX
@@ -5627,8 +5640,7 @@ changes no runtime semantics, and claims no physical hardware acceptance.
 
 ## STM32 composition: original 386 boot register reader — 2026-10-16
 
-CLAIMED — Codex root, branch `lane/stm32-compose-20261016`, isolated
-`/tmp/brickwright-stm32-compose-20261016`, amendment based on main `e1e5bc30b`.
+CLAIMED — Codex root, branch `lane/stm32-compose-20261016`, amendment based on main `e1e5bc30b`.
 Merge this claim before changing the existing synthetic boot assertion in
 `scripts/verify-i80386-local-hdd-gui.mjs`: read the selected supplier's `edi`
 instead of absent `di`, retaining equality to42, exact halted/PC/canvas checks
@@ -5649,7 +5661,7 @@ and all enabled final-head source checks must pass before integration merge.
 
 ## CPX translator qualification diagnostic transport — 2026-10-16
 
-RELEASED — completed by the existing CPX owner; verified by Codex root, isolated `/tmp/brickwright-cpx-compose-20261016`,
+RELEASED — completed by the existing CPX owner; verified by Codex root,
 branch `lane/cpx-qualification-compose-20261016`, supplier consumer source
 PR1009 at `9fbc8d97e87c6c6c9ee74d71c7ceae96996d5d4a`, base main `8fe41c722`.
 The user requested continued coding through the ordered integrations. Preserve
@@ -5681,15 +5693,14 @@ unchanged executable tree passes all74 focused CPX/import/export checks under
 genuine Node22.23.3 and the actual TAP plus census reporters. All15 behaviour
 cases are accounted for, zero raw stdout bytes or skips, and all108 diagnostic
 lines are byte-for-byte identical to the proposed repair's passing trace.
-Receipts: `/tmp/brickwright-cpx-owner-diagnostics.tap` and
-`/tmp/brickwright-cpx-owner-diagnostics-census.json`. Hosted final-head CI still
+Original diagnostic trace and census are retained by the operator.
+Hosted final-head CI still
 qualifies PR1009; five documented timing limits remain limits, not parity.
 This narrow diagnostic claim is released; no translator ownership is retained.
 
 ## A13 local combined graph preparation — 2026-10-16
 
 CLAIMED — Codex root, existing isolated A13 worktree and branch
-`/tmp/brickwright-lite-a13-20261016`,
 `lane/a13-cpx-face-adoption-20261016`, base canonical main `9052eee43`.
 The user again requested continued implementation. Extend only the timing of
 local candidate preparation: normally compose the unchanged existing STM32
@@ -5732,7 +5743,7 @@ no library/game or corpus promotion follows from a foundational holder control.
 
 ## Circuit File actions with a cached but unmounted designer — 2026-10-16
 
-CLAIMED — Codex root, isolated `/tmp/brickwright-circuit-file-wake-20261016`,
+CLAIMED — Codex root,
 branch `fix/circuit-file-wake-20261016`, claim base canonical main `7ce90fc38`.
 Prepare the implementation on the already qualified local combined A13 graph
 `6681f1868`, then reconcile current main, including the independent Sim Lab
