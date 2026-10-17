@@ -280,6 +280,9 @@ export function createCallableLexicalEmitter(graph, compileCurrentBody) {
         },
         discardLocal: blockId=>{
             const proof=discardedMutationProofs.get(graph)?.get(blockId),block=graph.target.blocks[blockId];
+            // Observe the whole-project sink dependency before other early
+            // returns; a false/throw observation permanently expires this fact.
+            if(proof?.unusedVoidStatement&&!proof.unusedVoidStatement.current())return false;
             return !!proof && proof.owner===owner.id && block===proof.block &&
                 block.inputs?.VALUE?.[1]===proof.valueId && graph.target.blocks[proof.valueId]===proof.value &&
                 mutationSnapshot(graph,blockId)===proof.snapshot;
@@ -461,12 +464,13 @@ export function validateCallableCurrentBodyTypes(graph,literalInput) {
                         generated.set(id,proof);generatedNames.set(identity,proof);
                     } else {
                     const valueId=block.inputs?.VALUE?.[1],value=blocks[valueId];
-                    if(value?.opcode!=='arcade_assignObjectField'||typeof graph.classProvider.statementType!=='function'||
+                    const unusedVoidStatement=actual?.kind==='named'&&actual.name==='void'?graph.classProvider.unusedVoidStatement?.(block,owner):null;
+                    if(!unusedVoidStatement&&(value?.opcode!=='arcade_assignObjectField'||typeof graph.classProvider.statementType!=='function'||
                         graph.classProvider.statementType(value,owner,{
                             inputType:name=>typeOf(value.inputs?.[name]?.[1],owner),argsType:()=>argsType(value,owner,new Set()),
                             localType:name=>owner.receiverParameter===name?named(owner.className):plan.bindings.find(row=>row.owner===owner.id&&row.nativeName===name)?.type
-                        })!==true)fail('unowned local assignment is not a validated current field mutation');
-                    discarded.set(id,{owner:owner.id,block,valueId,value,snapshot:mutationSnapshot(graph,id)});
+                        })!==true))fail('unowned local assignment is not a validated current field mutation');
+                    discarded.set(id,{owner:owner.id,block,valueId,value,snapshot:mutationSnapshot(graph,id),...(unusedVoidStatement?{unusedVoidStatement}:{})});
                     }
                 } else {
                     if(!binding||!actual||(!same(binding.type,actual)&&!initialUndefined))fail('edited current assignment differs from its concrete lexical signature');

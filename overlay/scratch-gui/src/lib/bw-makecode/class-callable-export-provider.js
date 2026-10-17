@@ -281,6 +281,48 @@ export function createClassCallableExportProvider({target,project,classes,defini
             if(!actual)fail(imageOperation?'current Image operation lacks its actual owned receiver, exact shape and Number operands':'current class field write differs from its concrete signature');
         }
     };
+    // A discarded Void call has no value binding. Its destination must be
+    // unobservable in the complete current project, not just absent from the
+    // retained lexical plan. The same physical proof serves ordinary roots,
+    // nonlexical methods and actual lexical owners.
+    const unusedVoidProofs=new WeakMap();
+    const unusedVoidStatement=(block,owner)=>{
+        const cached=block&&typeof block==='object'?unusedVoidProofs.get(block):null;
+        if(cached&&!cached.current())return null;
+        if(!plan||block?.opcode!=='arcade_setLocal'||!project.targets.includes(target))return null;
+        const ids=Object.entries(target.blocks).filter(([,value])=>value===block);if(ids.length!==1)return null;
+        const [id]=ids[0],actualOwner=scope(block);let root=block;const parents=new Set();
+        while(root.parent){if(parents.has(root))return null;parents.add(root);root=target.blocks[root.parent];if(!root)return null;}
+        if(owner.id?actualOwner.id!==owner.id:owner.rootBlock?root!==owner.rootBlock:!owner.procedure||actualOwner.procedure!==owner.procedure)return null;
+        if(cached)return cached;
+        const name=literal(target,block,'NAME');
+        if(!/^[A-Za-z_]\w*$/.test(name||'')||name===actualOwner.receiverParameter||classes.has(name))return null;
+        if(plan.bindings.some(row=>row.nativeName===name||row.sourceName===name))return null;
+        if([...definitions.values()].some(row=>row.parameters.includes(name)))return null;
+        if(project.targets.some(other=>Object.values(other.variables||{}).some(variable=>variable[0]===name)))return null;
+        for(const other of project.targets)for(const current of Object.values(other.blocks||{})){
+            if(['arcade_declareLocal','arcade_getLocal','arcade_getCaptured','arcade_setLocal','arcade_setCaptured'].includes(current.opcode)&&literal(other,current,'NAME')===name&&!(other===target&&current===block))return null;
+            if(/^argument_reporter_/.test(current.opcode)&&current.fields?.VALUE?.[0]===name)return null;
+        }
+        const valueId=block.inputs?.VALUE?.[1],value=typeof valueId==='string'&&target.blocks[valueId];if(!value||value.parent!==id)return null;
+        // A lexical declaration's new route is specifically an existing owned
+        // class/callback call. Other Void-producing operations do not acquire
+        // a statement permission from this sink.
+        if(owner.id&&!['arcade_callObjectMethod','arcade_callCallable'].includes(value.opcode))return null;
+        verifyWriters();const type=slotType(valueId,actualOwner);
+        if(type?.kind!=='named'||type.name!=='void')return null;
+        const issuedPlan=plan,state=()=>JSON.stringify([plan,project.targets.map(other=>[other.variables,other.blocks]),
+            [...classes].map(([name,row])=>[name,{...row,target:project.targets.indexOf(row.target)}]),
+            [...definitions].map(([name,row])=>[name,row.code,row.parameters,project.targets.indexOf(row.target),Object.entries(row.target.blocks).filter(([,value])=>value===row.block).map(([id])=>id)])]),snapshot=state();let expired=false;
+        const proof=Object.freeze({current(){
+            if(expired)return false;
+            try {
+                if(plan!==issuedPlan||!project.targets.includes(target)||target.blocks[id]!==block||block.inputs?.VALUE?.[1]!==valueId||target.blocks[valueId]!==value||state()!==snapshot){expired=true;return false;}
+                return true;
+            }catch(error){expired=true;throw error;}
+        }});
+        unusedVoidProofs.set(block,proof);return proof;
+    };
     return Object.freeze({
         validateCurrentPlan(candidate,actualTarget){
             plan=null;let accepted=false;
@@ -358,6 +400,7 @@ export function createClassCallableExportProvider({target,project,classes,defini
             return reads.length>0&&reads.every(block=>variableType({fields:{VARIABLE:['',id]}},block)?.kind==='sdk');
         },
         localType:local,
+        unusedVoidStatement,
         localAssignment(block,owner){
             if(!plan||block?.opcode!=='arcade_setLocal'||!Object.values(target.blocks).includes(block))return null;
             const name=literal(target,block,'NAME');if(!/^[A-Za-z_]\w*$/.test(name||'')||name===owner.receiverParameter)return null;
@@ -401,9 +444,7 @@ export function createClassCallableExportProvider({target,project,classes,defini
                 generatedLocal(id){const block=target.blocks[id],proof=provider.localAssignment(block,owner);if(proof)cells.set(proof.name,proof.type);return proof;},
                 discardLocal(id){
                     const block=target.blocks[id];if(block?.opcode!=='arcade_setLocal'||!contains(root,id))return false;
-                    const name=literal(target,block,'NAME');
-                    if(Object.values(target.blocks).some(read=>read.opcode==='arcade_getLocal'&&literal(target,read,'NAME')===name&&contains(root,Object.entries(target.blocks).find(([,row])=>row===read)?.[0])))return false;
-                    return slotType(block.inputs.VALUE?.[1],owner)?.name==='void';
+                    const proof=unusedVoidStatement(block,owner);return !!proof&&proof.current();
                 },
                 local(name){if(!cells.has(name))fail('module procedure reads a local before its proved assignment');return name;},
                 capture(){fail('module procedure has no lexical capture');},
@@ -430,8 +471,7 @@ export function createClassCallableExportProvider({target,project,classes,defini
                     const name=literal(target,block,'NAME');if(name===owner.receiverParameter||owner.parameters.some(row=>row.name===name))return false;
                     const branch=conditional(owner);
                     if(branch)return branch.followups.includes(target.blocks[block.inputs.VALUE?.[1]]);
-                    if(Object.values(target.blocks).some(read=>scope(read).procedure===owner.procedure&&read.opcode==='arcade_getLocal'&&literal(target,read,'NAME')===name))return false;
-                    return slotType(block.inputs.VALUE?.[1],owner)?.name==='void';
+                    const proof=unusedVoidStatement(block,owner);return !!proof&&proof.current();
                 },
                 local(name,write=false){
                     const branch=conditional(owner);

@@ -38,6 +38,22 @@ does not establish compatibility with a complete retained library. Existing
 raw class and callable authoring vocabulary is reused; no dedicated constructor
 parameter-property editor or installed GUI qualification is claimed.
 
+### Unused ordinary Void calls during current export
+
+An actual owned class or callback call returning Void may remain an expression
+statement when lowering stores its unused result in a local sink. Export must
+prove the exact current receiver and arguments and the sink's physical owner.
+The sink must have no value binding, formal, capture, reader or other writer in
+the current project; its spelling supplies no authority. The call remains once
+in its original position, with its effects and possible exceptions preserved.
+Currentness failure expires this statement proof even if edited data is restored.
+
+This does not admit Void as a stored value or arbitrary unknown calls. Existing
+conditional and field-mutation proofs remain separate. Code, current blocks and
+saved-project export controls cover this narrow representation; dedicated GUI
+authoring, affected native execution and complete-game qualification remain
+separate acceptance requirements.
+
 ## Why a separate reference model is needed
 
 Before this lane, Arcade refused ordinary source classes. The shared translator has a

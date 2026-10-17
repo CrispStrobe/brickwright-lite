@@ -9,6 +9,7 @@ import {withClassResultFlowProof} from '../overlay/scratch-gui/src/lib/bw-makeco
 import {createClassCallableDescriptors} from '../overlay/scratch-gui/src/lib/bw-makecode/callable-class-descriptors.js';
 import {validateClassCallablePlan} from '../overlay/scratch-gui/src/lib/bw-makecode/class-callable-plan.js';
 import {classCallableExportTypes} from '../overlay/scratch-gui/src/lib/bw-makecode/class-callable-export-types.js';
+import {createClassCallableExportProvider} from '../overlay/scratch-gui/src/lib/bw-makecode/class-callable-export-provider.js';
 import {ordinaryConstructorParameterProperties} from '../overlay/scratch-gui/src/lib/bw-makecode/class-parameter-property-source.js';
 import {lowerStaticCallbackHelpers} from '../overlay/scratch-gui/src/lib/bw-makecode/static-callback-helpers.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
@@ -102,6 +103,73 @@ test('reflection transfers hidden parser roles and shared metadata without prein
  assert.ok(legacy.program.loweredStaticCallbacks);
  const escaped=lowerStaticCallbackHelpers(parse('let stored=0;function save(handler:()=>number){stored=handler}save(function(){return 3})'));
  assert.ok(escaped.unsupported.some(message=>/escapes/.test(message)));
+
+ // Exercise the shared statement certificate independently of the whole
+ // exporter, so a sink-use mutation cannot pass through an earlier refusal.
+ const discarded=()=>{
+  const named=name=>({kind:'named',name}),signature={kind:'callable',parameters:[],result:named('void')};
+  const target={name:'Game',variables:{},blocks:{
+   definition:{opcode:'procedures_definition',next:'sink'},
+   sink:{opcode:'arcade_setLocal',parent:'definition',next:null,inputs:{NAME:[1,[10,'unusedResult']],VALUE:[1,'call']}},
+   call:{opcode:'arcade_callObjectMethod',parent:'sink',inputs:{OBJECT:[1,'self'],METHOD:[1,[10,'touch']],ARGS:[1,[10,'[]']]}},
+   self:{opcode:'arcade_getLocal',parent:'call',inputs:{NAME:[1,[10,'self']]}},
+   method:{opcode:'procedures_definition',next:null}
+  }},project={targets:[target]};
+  const method={name:'touch',procedure:'touch %s',parameters:[],typeParameters:[],callableSignature:structuredClone(signature)};
+  const box={name:'Box',parent:null,target,fields:[],methods:[method],constructor:'ctor %s',parameters:[]};
+  const owner={id:'ctor',kind:'constructor',parent:'module',sourceName:'constructor',procedure:box.constructor,signature,parameters:[],defaults:[],className:'Box',memberName:null,receiver:'receiver',receiverParameter:'self',typeParameters:[]};
+  const plan={schema:'bw-class-callable-lexical',version:2,module:'module',classes:[{name:'Box',parent:null}],owners:[{id:'module',kind:'module',parent:null},owner],bindings:[{id:'receiver',owner:'ctor',sourceName:'this',nativeName:'receiverCell',kind:'receiver',type:named('Box'),written:false}],sites:[]};
+  const definitions=new Map([[box.constructor,{target,code:box.constructor,block:target.blocks.definition,parameters:['self']}],[method.procedure,{target,code:method.procedure,block:target.blocks.method,parameters:['self']}]]);
+  const provider=()=>createClassCallableExportProvider({target,project,classes:new Map([['Box',box]]),definitions,valueTypes:()=>new Set(),literal:(_target,block,name)=>block.inputs?.[name]?.[1]?.[1]??null,key:(_target,code)=>code,builtinNames:new Set()});
+  const issue=()=>{const p=provider();assert.equal(p.validateCurrentPlan(plan,target),true);return p;};
+  return {target,project,plan,owner,method,issue};
+ };
+ {
+  const f=discarded(),p=f.issue(),sink=f.target.blocks.sink,certificate=p.unusedVoidStatement(sink,f.owner);
+  assert.equal(certificate.current(),true);
+  assert.equal(p.unusedVoidStatement({...sink},f.owner),null);
+  assert.equal(p.unusedVoidStatement(sink,{id:'foreign'}),null);
+  assert.equal(p.unusedVoidStatement(sink,{procedure:'ctor %s'}),certificate,'nonlexical constructor owner remains supported');
+  f.target.blocks.read={opcode:'arcade_getCaptured',inputs:{NAME:[1,[10,'unusedResult']]}};
+  assert.equal(certificate.current(),false);delete f.target.blocks.read;
+  assert.equal(certificate.current(),false);assert.equal(p.unusedVoidStatement(sink,f.owner),null);
+  assert.equal(f.issue().unusedVoidStatement(sink,f.owner).current(),true);
+ }
+ {
+  const f=discarded();
+  f.target.blocks.root={opcode:'arcade_whenSourceStarts',next:'sink'};
+  f.target.blocks.definition.next=null;f.target.blocks.sink.parent='root';
+  f.target.blocks.self={opcode:'arcade_createObject',parent:'call',inputs:{CLASS:[1,[10,'Box']],ARGS:[1,[10,'[]']]}};
+  const p=f.issue();assert.equal(p.unusedVoidStatement(f.target.blocks.sink,{rootBlock:f.target.blocks.root}).current(),true,'actual ordinary module root needs no lexical id');
+ }
+ {
+  const f=discarded(),p=f.issue(),certificate=p.unusedVoidStatement(f.target.blocks.sink,f.owner);
+  f.method.callableSignature.result={kind:'named',name:'number'};
+  assert.equal(certificate.current(),false);f.method.callableSignature.result={kind:'named',name:'void'};
+  assert.equal(certificate.current(),false,'method metadata restoration cannot revive a consumed Void proof');
+ }
+ for(const change of [
+  f=>{f.target.blocks.read={opcode:'arcade_getLocal',inputs:{NAME:[1,[10,'unusedResult']]}};},
+  f=>{f.target.blocks.capture={opcode:'arcade_getCaptured',inputs:{NAME:[1,[10,'unusedResult']]}};},
+  f=>{f.target.blocks.writer={opcode:'arcade_setLocal',inputs:{NAME:[1,[10,'unusedResult']],VALUE:[1,[4,'0']]}};},
+  f=>{f.target.blocks.declaration={opcode:'arcade_declareLocal',inputs:{NAME:[1,[10,'unusedResult']]}};},
+  f=>{f.target.variables.exposed=['unusedResult',0];},
+  f=>{f.target.blocks.sink.inputs.VALUE=[1,[4,'2']];},
+  f=>{f.target.blocks.call.parent='definition';},
+  f=>{f.target.blocks.call.inputs.OBJECT=[1,[10,'not a receiver']];},
+  f=>{f.target.blocks.call.inputs.ARGS=[1,'argument'];f.target.blocks.argument={opcode:'arcade_functionArgument',parent:'call',inputs:{VALUE:[1,[4,'1']],REST:[1,[10,'[]']]}};}
+ ]){
+  const f=discarded(),p=f.issue();change(f);
+  let result=null;try{result=p.unusedVoidStatement(f.target.blocks.sink,f.owner);}catch(error){assert.match(error.message,/current|argument|signature/);}
+  assert.equal(result,null);
+ }
+ {
+  const f=discarded(),p=f.issue(),certificate=p.unusedVoidStatement(f.target.blocks.sink,f.owner),failure=Error('currentness observation');
+  Object.defineProperty(f.target.blocks,'observation',{configurable:true,enumerable:true,get(){throw failure;}});
+  assert.throws(()=>certificate.current(),error=>error===failure);delete f.target.blocks.observation;
+  assert.equal(certificate.current(),false);assert.equal(p.unusedVoidStatement(f.target.blocks.sink,f.owner),null);
+  assert.equal(f.issue().unusedVoidStatement(f.target.blocks.sink,f.owner).current(),true);
+ }
 
  assert.equal(proveClassCallableSource(lowered).eligible,true);
  owner.ctor.bwClassCallableSignature.parameters[1].type.result.name='string';
@@ -235,7 +303,12 @@ test('parameter property public Code and two actual SB3 projects export and reim
  const second=new Creator();second.parse(again.code);record({stage:'parameter-property-second-Creator',project:second.project,errors:second.errors,warnings:second.warnings,unparsed:second.unparsed});clean(second,['errors','warnings','unparsed']);
  const secondBytes=Buffer.from(await(await second.generateSB3()).arrayBuffer()),secondZip=await JSZip.loadAsync(secondBytes),secondProject=JSON.parse(await secondZip.file('project.json').async('string'));
  record({stage:'parameter-property-second-SB3',bytes:secondBytes.toString('base64'),project:secondProject});assert.deepEqual(secondProject,second.project);constructorBindings(secondProject);
+ const unusedCalls=secondProject.targets.flatMap(target=>Object.entries(target.blocks).filter(([,block])=>block.opcode==='arcade_callObjectMethod'&&literal(target,block,'METHOD')==='bump').map(([id,block])=>({target,id,block,sink:target.blocks[block.parent]})));
+ record({stage:'parameter-property-unused-Void-statement',calls:unusedCalls.map(({target,id,block,sink})=>({target:target.name,id,block,sink}))});
+ assert.equal(unusedCalls.length,1,'the authored effectful call remains exactly once');
+ assert.equal(unusedCalls[0].sink.opcode,'arcade_setLocal');assert.equal(unusedCalls[0].sink.inputs.VALUE[1],unusedCalls[0].id);
  const final=projectToArcade(secondProject);record({stage:'parameter-property-second-export',result:final});clean(final,['unsupported','warnings']);
+ assert.equal([...final.ts.matchAll(/\.bump\(\)/g)].length,1,'discarding a Void result neither drops nor duplicates the actual call');
  const reconstructed=parse(final.ts),finalProof=proveClassCallableSource(reconstructed);exportArrowBindings(reconstructed,finalProof,'second',final.ts);
  assert.match(final.ts,/Counter/);assert.match(final.ts,/trace/);assert.match(final.ts,/step/);assert.match(final.ts,/tick/);
 });
