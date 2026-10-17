@@ -61,6 +61,7 @@
       "test/bw-sim-physics-worker-session.test.mjs",
       "test/bw-sim-physics-worker.test.mjs",
       "test/bw-sim-render-quality.test.mjs",
+      "test/bw-sim-renode-lockstep-program.test.mjs",
       "test/bw-sim-renode-lockstep.test.mjs",
       "test/bw-sim-s1-driving-base.test.mjs",
       "test/bw-sim-scene3d.test.mjs",

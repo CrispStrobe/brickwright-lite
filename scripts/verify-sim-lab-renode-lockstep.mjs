@@ -10,16 +10,21 @@
 //   desktop supervisor's own monitor commands)
 //     <- state service TCP (newline JSON, exactly as BrickStateFeed speaks it)
 //     <- StateServiceTransport (below)  {call(op, args)} with the broker op names
-//     <- RenodeLockstepDriver (routes/renode-lockstep/driver.js, unchanged)
+//     <- openLockstepRoute (routes/renode-lockstep/route.js) — THE GUI's route code:
+//        compileRouteProgram → LockstepProgram.upload (program.packet BEGIN/CHUNK/COMMIT,
+//        guest free-running) → RenodeLockstepDriver.begin → START/STOP through
+//        program.control.submit, the replies read from the step snapshots
 //     <- SpikeFirmwareVirtualHub (hubs/spike/spike-firmware-hub.js, unchanged)
 //     <- SimSession in-thread, one physics step per exchange (runner.js)
+// Only the session's lifecycle differs from the pane: this script launched Renode
+// itself (manageSession: false), where the pane's driver calls session.start/run.
 //
 // ONE Scratch program — the plan's R13e program (§4): both wheels forward at 300 °/s
 // (tank 27 %) for 2 s, then stop — runs through both routes (BW_SIMLAB_SPEED_PCT and
 // BW_SIMLAB_DRIVE_S change it; 30 % for 1.08 s is "≈ 360° of wheel"):
-//   firmware: SB3Creator -> compileFirmwareProgram (the desktop's own Scratch-to-
-//             firmware compiler) -> program ABI v1 -> NuttX program packets
-//             (uploaded before lockstep, STARTed inside it: deferred control) ->
+//   firmware: SB3Creator -> compileRouteProgram (the pane's call of the desktop's own
+//             Scratch-to-firmware compiler) -> program ABI v1 -> the route's upload
+//             (before lockstep) and START (inside it: deferred control) ->
 //             the firmware's PI speed loop on the encoders, which ARE the physics;
 //   Scratch:  test/helpers/sim-lab-vm.mjs (VM + spikeprime extension + virtual hub).
 // (A two-wheel "run 360 degrees" has no firmware form: ABI op 6 moves one motor
@@ -67,17 +72,14 @@ for (const f of ['nuttx.resc', 'nuttx-kernel.elf', 'nuttx-user.elf', 'state-conf
 
 const {SimSession, catalogFrom, MODELS_BASE} = await import(path.join(SIM, 'sim-session.js'));
 const {loadJolt} = await import(path.join(SIM, 'physics/jolt-core.js'));
-const {RenodeLockstepDriver} = await import(path.join(SIM, 'routes/renode-lockstep/driver.js'));
+const {openLockstepRoute, compileRouteProgram} = await import(path.join(SIM, 'routes/renode-lockstep/route.js'));
 const {LOCKSTEP_OPS} = await import(path.join(SIM, 'routes/renode-lockstep/contract.js'));
-const {SpikeFirmwareVirtualHub} = await import(path.join(SIM, 'hubs/spike/spike-firmware-hub.js'));
 const {default: VirtualSpikeHubState} = await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/virtual-hub/spike-hub-state.js'));
-const {encodeInstructions, encodeBegin, encodeChunk, encodeCommand, crc32, decodeReply, PROGRAM_STATE} =
-    await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/spike-nuttx/upload-protocol.js'));
+const {PROGRAM_STATE, PROGRAM_OP} = await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/spike-nuttx/upload-protocol.js'));
 const {default: SB3Creator} = await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/sb3-creator.js'));
-const {compileFirmwareProgram} = await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/spike-arena/firmware-program.js'));
 const {runOnSimLab} = await import(path.join(ROOT, 'test/helpers/sim-lab-vm.mjs'));
 const require_ = createRequire(import.meta.url);
-const {validLockstepBegin, validLockstepStep, validLockstepEnd, validNuttxProgramControl} =
+const {validLockstepBegin, validLockstepStep, validLockstepEnd, validNuttxProgramControl, validNuttxPacket} =
     require_(path.join(ROOT, 'overlay/scratch-vm/src/extension-support/arena-inputs.js'));
 
 const CATALOG = catalogFrom(JSON.parse(readFileSync(path.join(SIM, 'part-meta/parts.json'), 'utf8')));
@@ -92,7 +94,12 @@ const scratchDps = (() => {
     return Math.round(hub.backend.percentToDps(0, SPEED_PCT));
 })();
 const DRIVE_S = Number(process.env.BW_SIMLAB_DRIVE_S || 2);
-const SCRATCH_BODY = `  start tank ${SPEED_PCT} ${SPEED_PCT}\n  wait ${DRIVE_S} seconds\n  stop movement\n`;
+// BW_SIMLAB_FORM=move: the same drive as the pseudocode's `move forward … seconds` (the
+// compiler's movement form, at `set movement speed`), instead of `start tank` + `wait`.
+const FORM = process.env.BW_SIMLAB_FORM || 'tank';
+const SCRATCH_BODY = FORM === 'move' ?
+    `  set movement speed ${SPEED_PCT}\n  move forward ${DRIVE_S} seconds\n` :
+    `  start tank ${SPEED_PCT} ${SPEED_PCT}\n  wait ${DRIVE_S} seconds\n  stop movement\n`;
 /** The block tree as the VM deserializes it (literal tuples -> shadow blocks), for compileFirmwareProgram. */
 const asVm = source => {
     const creator = new SB3Creator();
@@ -114,7 +121,9 @@ const asVm = source => {
     });
     return {runtime: {targets}};
 };
-const PROGRAM = compileFirmwareProgram(asVm(`DEVICE SPIKE\nWHEN flag clicked:\n${SCRATCH_BODY}`));
+const COMPILED = compileRouteProgram(asVm(`DEVICE SPIKE\nWHEN flag clicked:\n${SCRATCH_BODY}`));
+if (COMPILED.error) throw COMPILED.error;
+const PROGRAM = COMPILED.program;
 
 const freePort = () => new Promise((resolve, reject) => {
     const s = net.createServer();
@@ -187,7 +196,11 @@ class StateServiceTransport {
         this.waiters = [];
         this.latest = null;
         this.next = 1;
-        this.validated = {begin: 0, step: 0, end: 0, control: 0};
+        this.validated = {begin: 0, step: 0, end: 0, control: 0, packet: 0};
+        /** One command at a time, as the native capability queue sends them. */
+        this.tail = Promise.resolve();
+        /** Every operation the route sent, in order (steps folded): the GUI route's sequence. */
+        this.ops = [];
     }
 
     async connect () {
@@ -235,8 +248,16 @@ class StateServiceTransport {
         return {result, snapshot};
     }
 
-    /** The lockstep transport ({call(op, args)}) the driver uses. */
-    async call (operation, args) {
+    /** The lockstep transport ({call(op, args)}) the route uses: serialized like the broker's queue. */
+    call (operation, args) {
+        if (this.ops.at(-1)?.op !== operation || operation !== LOCKSTEP_OPS.step) this.ops.push({op: operation, n: 0});
+        this.ops.at(-1).n++;
+        const next = this.tail.then(() => this._call(operation, args));
+        this.tail = next.catch(() => {});
+        return next;
+    }
+
+    async _call (operation, args) {
         switch (operation) {
         case LOCKSTEP_OPS.stateRead: return this.latest;
         case LOCKSTEP_OPS.begin:
@@ -251,21 +272,22 @@ class StateServiceTransport {
             if (!validLockstepEnd(args)) throw new Error('the broker would refuse this lockstep.end');
             this.validated.end++;
             return (await this.command('lockstep.end', args)).result.data;
+        // renode.spike.program.packet: one NuttX program packet, acknowledged by the running
+        // firmware; the broker returns the snapshot after it (renode_debugger.rs spike_program_packet).
+        case LOCKSTEP_OPS.programPacket:
+            if (!validNuttxPacket(args)) throw new Error('the broker would refuse this program packet');
+            this.validated.packet++;
+            return (await this.command('nuttx.program.packet', args, 15000)).snapshot;
+        // renode.spike.program.control.submit: START/STOP that returns at once (inside lockstep);
+        // the broker returns {snapshot, data: {requestSeq}} (spike_program_control).
+        case LOCKSTEP_OPS.programControl: {
+            if (!validNuttxProgramControl(args)) throw new Error('the broker would refuse this program control');
+            this.validated.control++;
+            const {result, snapshot} = await this.command('nuttx.program.control.submit', args);
+            return {snapshot, data: result.data};
+        }
         default: throw new Error(`no '${operation}' in the headless transport`);
         }
-    }
-
-    /** renode.spike.program.packet: one NuttX program packet, acknowledged by the running firmware. */
-    async packet (bytes) {
-        return this.command('nuttx.program.packet', {bytes: [...bytes]}, 15000);
-    }
-
-    /** renode.spike.program.control.submit: START/STOP that returns at once (inside lockstep). */
-    async control (bytes) {
-        const args = {bytes: [...bytes]};
-        if (!validNuttxProgramControl(args)) throw new Error('the broker would refuse this program control');
-        this.validated.control++;
-        return this.command('nuttx.program.control.submit', args);
     }
 
     close () {
@@ -307,31 +329,26 @@ try {
     check(first.target.capabilities.includes('lockstep/v1') && first.target.capabilities.includes('nuttx-program-deferred-start/v1'),
         'the running target advertises lockstep/v1 and nuttx-program-deferred-start/v1');
 
-    // Upload while the guest runs (the firmware acknowledges each packet), as the arena does.
-    const id = 1;
-    const payload = encodeInstructions(PROGRAM);
+    // The GUI's route: upload while the guest runs (BEGIN/CHUNK/COMMIT through
+    // program.packet), then lockstep.begin; the S1 scene on the route's createHub.
     const uploadStarted = now();
-    const ack = async packet => {
-        const {snapshot} = await transport.packet(packet);
-        return snapshot;
-    };
-    await ack(encodeBegin(id, payload.length / 16, crc32(payload)));
-    for (let o = 0; o < payload.length; o += 10) await ack(encodeChunk(id, o, payload.subarray(o, o + 10)));
-    const committed = await ack(encodeCommand(2, id));
-    report.uploadWallMs = Math.round(now() - uploadStarted);
-    check(committed.lifecycle.nuttxProgram.state === PROGRAM_STATE.READY, `program uploaded and committed (state ${committed.lifecycle.nuttxProgram.state}, ${report.uploadWallMs} ms wall)`);
-
-    // Lockstep: the driver (unmanaged session: this script owns the process) and the S1 scene.
-    const driver = new RenodeLockstepDriver({transport, manageSession: false});
-    const beginFrame = await driver.begin();
-    report.t0Ns = beginFrame.clockNs;
+    let uploadWallMs = null;
     let hub = null;
+    const route = await openLockstepRoute({transport, manageSession: false, program: PROGRAM});
+    const {driver, program} = route;
+    uploadWallMs = Math.round(now() - uploadStarted);
+    report.uploadWallMs = uploadWallMs;
+    report.t0Ns = driver.t0Ns;
+    const packets = transport.ops.filter(o => o.op === LOCKSTEP_OPS.programPacket).reduce((n, o) => n + o.n, 0);
+    check(program.uploaded && program.stateName === 'ready' && packets === 2 + Math.ceil(PROGRAM.instructions.length * 16 / 10),
+        `the route uploaded the compiled program before lockstep: ${packets} packets, state ${program.stateName} (${uploadWallMs} ms wall incl. lockstep.begin)`);
     const {session, issues} = await SimSession.fromText(MODEL_TEXT, {hubState: null, catalog: CATALOG,
-        createHub: def => (hub = new SpikeFirmwareVirtualHub({id: def.id, driver}))});
+        createHub: def => (hub = route.createHub(def))});
     check(session.lockstep === true && hub !== null, `the S1 scene runs in-thread in lockstep (issues: ${issues.filter(i => i.severity === 'error').length} errors)`);
     hub.sent = [];
-    const {snapshot: startSnap} = await transport.control(encodeCommand(3, id));
-    report.startRequestSeq = startSnap.lifecycle?.nuttxProgramReply ?? null;
+    // Run: the route's START (program.control.submit, deferred inside lockstep).
+    await program.start();
+    report.startRequestSeq = program.sent[0]?.requestSeq ?? null;
 
     const mech = session.mechanism;
     const hubBody = mech.bodies.find(b => b.id === session.hubs[0].body);
@@ -356,6 +373,7 @@ try {
         await session.idle();
         const p = hub.read.frame.lifecycle.nuttxProgram;
         state = p.state;
+        if (state !== program.state) throw new Error(`the route's program state ${program.state} is not the snapshot's ${state}`);
         if (state === PROGRAM_STATE.RUNNING) seenRunning = true;
         steps.push({t: session.time, wallMs: now() - t0,
             angles: Object.fromEntries([...byPort].map(([port, joint]) => [port, (session.core.jointState(joint).angle - angle0.get(port)) * DEG])),
@@ -373,8 +391,36 @@ try {
     const wallMs = now() - wall0;
     const end = axle();
     report.firmwareHeadingDeg = +turn(pose0, session.core.bodyPose(hubBody.id).rotation).toFixed(2);
+    check(program.sent.length === 1 && program.sent[0].op === PROGRAM_OP.START && program.lastReplyOp === PROGRAM_OP.START && !program.failed,
+        'the firmware answered the route\'s START (reply read from a step snapshot)');
+
+    // Run again, then Pause mid-drive, as the pane does: START after a completed run goes out
+    // as STOP + START (one mailbox request at a time, told apart by their operation), and
+    // Pause is STOP with the clock running until the firmware has taken it.
+    await program.start();
+    let again = 0;
+    while (program.state !== PROGRAM_STATE.RUNNING && again < 100) { session.tick(5); await session.idle(); again++; }
+    const runningAgain = program.state === PROGRAM_STATE.RUNNING;
+    for (let k = 0; k < 60; k++) { session.tick(5); await session.idle(); }
+    const before = {...hub.read.motors.reduce((o, m) => ({...o, [m.port]: m.position}), {})};
+    await program.stop();
+    let stopSteps = 0;
+    while (!(program.idle && program.state === PROGRAM_STATE.STOPPED) && stopSteps < 100) { session.tick(5); await session.idle(); stopSteps++; }
+    for (let k = 0; k < 60; k++) { session.tick(5); await session.idle(); }
+    const after = hub.read.motors.reduce((o, m) => ({...o, [m.port]: m.position}), {});
+    report.rerun = {stepsToRunning: again, stepsToStopped: stopSteps, controls: program.sent.map(c => c.op),
+        coastAfterStopDeg: Object.fromEntries(Object.keys(after).map(port => [port, +(after[port] - before[port]).toFixed(1)])),
+        finalWheelSpeedDps: Object.fromEntries(hub.read.motors.map(m => [m.port, +m.speedDps.toFixed(1)])),
+        finalDrives: hub.read.drives.map(d => ({port: d.port, meanDrive: d.meanDrive, brakingTicks: d.brakingTicks, ticks: d.ticks}))};
+    check(runningAgain && program.state === PROGRAM_STATE.STOPPED && program.sent.map(c => c.op).join(',') === '3,4,3,4' &&
+        hub.read.drives.every(d => d.meanDrive === 0 && d.brakingTicks === d.ticks),
+        `Run again + Pause: controls ${report.rerun.controls.join(',')} (START, STOP, START, STOP), RUNNING after ${again} steps, STOPPED after ${stopSteps}; ` +
+        `the firmware brakes both bridges (wheel speed 300 ms later ${JSON.stringify(report.rerun.finalWheelSpeedDps)} °/s)`);
     await driver.end();
     session.dispose();
+    // The route's sequence of broker operations, steps folded.
+    report.routeSequence = transport.ops.map(o => (o.n > 1 ? `${o.op.replace('renode.spike.', '')}×${o.n}` : o.op.replace('renode.spike.', '')));
+    console.log(`route sequence: ${report.routeSequence.join(' → ')}`);
 
     // Encoder = physics: the emulator's motor position at the end of quantum k (its external
     // shaft, anchored at the physics angle sent at t_k, extrapolated by the sent speed) vs the
@@ -416,7 +462,8 @@ try {
     check(worstGuest <= 1, `emulator encoders follow the physics within 1° (worst ${worstGuest.toFixed(4)}°)`);
     console.log(`     (the firmware's own LPF2 POS reading while running, integer degrees reported every 10 ms: worst ${worstFirmware.toFixed(2)}° from the physics)`);
     check(Math.abs(last.angles.A + last.angles.B) <= 0.05 * Math.abs(last.angles.B), `both wheels turned alike (A ${last.angles.A.toFixed(1)}°, B ${last.angles.B.toFixed(1)}°)`);
-    check(transport.validated.step === steps.length, 'every step request passed the desktop broker\'s validator');
+    check(transport.validated.step === hub.exchanges && transport.validated.packet === transport.ops.filter(o => o.op === LOCKSTEP_OPS.programPacket).reduce((n, o) => n + o.n, 0),
+        `every step (${hub.exchanges}), program packet (${transport.validated.packet}) and control (${transport.validated.control}) request passed the desktop broker's validator`);
 
     const {track, hubId} = await runOnSimLab(`DEVICE SPIKE\nWHEN flag clicked:\n${SCRATCH_BODY}`, {modelText: MODEL_TEXT, timeLimitMs: DRIVE_S * 1000 + 2000});
     const scratch = along(track[0].axle, track.at(-1).axle);
