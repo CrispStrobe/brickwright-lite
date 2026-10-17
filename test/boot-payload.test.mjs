@@ -25,7 +25,9 @@ test('boot payload accepts shared lazy engine bytes but rejects eager, absent an
             'bw-circuit-ui': 'Check the address decode wiring on the breadboard. Could not recognise this file',
             'bw-board': 'entry', 'guided-lessons': 'optional', '8933.hash': marker,
             // The arena's 3D view: its own chunk, three in a shared lazy chunk, and the arena pane's chunk without either.
-            'bw-arena-3d': 'bw-spike-arena-3d-canvas', '1380.hash': three, 'bw-spike-simulator': 'the 2D arena pane'
+            'bw-arena-3d': 'bw-spike-arena-3d-canvas', '1380.hash': three, 'bw-spike-simulator': 'the 2D arena pane',
+            // The Sim Lab: its own chunk (the view's canvas id), Jolt in a shared lazy chunk.
+            'bw-sim-lab': 'bw-sim-lab-3d-canvas', '2470.hash': 'JoltInterface_GetPhysicsSystem_'
         })) put(`chunks/${name}.js`, bytes);
         let result = run();
         assert.equal(result.status, 0, result.stdout + result.stderr);
@@ -63,11 +65,12 @@ test('boot payload accepts shared lazy engine bytes but rejects eager, absent an
     } finally {rmSync(build, {recursive: true, force: true});}
 });
 
-test('3D isolation checks name the simulator chunk the GUI actually imports', () => {
+test('3D and physics isolation checks name the simulator chunk the GUI actually imports', () => {
     const gui = readFileSync('overlay/scratch-gui/src/components/gui/gui.jsx', 'utf8');
     const script = readFileSync('scripts/verify-boot-payload.mjs', 'utf8');
     const name = gui.match(/webpackChunkName: "([^"]+)" \*\/ '\.\.\/tw-pseudocode\/spike-simulator-pane\.jsx'/)?.[1];
     assert.equal(name, 'bw-spike-simulator');
-    assert.equal(script.split(`notInChunks: ['${name}']`).length - 1, 2,
-        'both three.js and the 3D view must be excluded from the actual simulator chunk');
+    // three.js, the arena 3D view, Jolt and the Sim Lab view: all four stay out of the simulator pane's chunk.
+    assert.equal(script.split(`notInChunks: ['${name}']`).length - 1, 4,
+        'three.js, the arena 3D view, Jolt and the Sim Lab view must all be excluded from the actual simulator chunk');
 });
