@@ -7,7 +7,9 @@
 // fixture the lap test drives (test/bw-sim-line-follower.test.mjs), written
 // out by serializeModel, so the shipped model is the one that was proven; its
 // example program (static/sim-lab/programs/) is a DEVICE SPIKE text, run for a
-// lap by test/bw-sim-line-follower-program.test.mjs.
+// lap by test/bw-sim-line-follower-program.test.mjs. The Wall stopper's and the
+// Colour explorer's examples are run by test/bw-sim-wall-stopper-program.test.mjs
+// and test/bw-sim-colour-explorer-program.test.mjs.
 
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
@@ -24,7 +26,7 @@ const CATALOG = catalogFrom(JSON.parse(readFileSync(path.join(GUI, 'src/lib/bw-s
 const FIXTURE = JSON.parse(readFileSync(path.join(ROOT, 'test/fixtures/bw-sim/line-follower.json'), 'utf8'));
 
 test('every model in the list is a shipped file that compiles cleanly, motors and sensors on ports', () => {
-    assert.deepEqual(MODELS.map(m => m.file), ['driving-base.ldr', 'line-follower.ldr']);
+    assert.deepEqual(MODELS.map(m => m.file), ['driving-base.ldr', 'line-follower.ldr', 'wall-stopper.ldr', 'colour-explorer.ldr']);
     for (const entry of MODELS) {
         assert.ok(entry.title.en && entry.title.de && entry.title.en !== entry.title.de, `${entry.file}: EN and DE titles`);
         const text = readFileSync(path.join(GUI, MODELS_BASE, entry.file), 'utf8');

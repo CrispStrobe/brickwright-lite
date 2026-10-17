@@ -18,6 +18,9 @@
  * What it reports is a TRACK: after every frame, where the drive-axle
  * midpoint and the colour sensor's spot are on the floor. The points are
  * carried by the hub body's pose from where the compiler put them at t = 0.
+ * Every sensor's ray origin is carried the same way (`points`, by port), next
+ * to what the hub reads on that port (`readings`), and every robot body's pose
+ * is kept (`bodies`, by body id) for judges that need the whole robot.
  */
 import {readFileSync} from 'node:fs';
 import path from 'node:path';
@@ -51,7 +54,8 @@ const quatRotate = ([x, y, z, w], v) => {
  * @param {string|null} [options.mat] mat id, as the pane's Mat selector sets it
  * @param {number} options.timeLimitMs simulated time budget
  * @param {function} [options.stopWhen] (track) => true ends the run early
- * @returns {Promise<{track: {t: number, axle: number[], sensor: number[], reflection: number, color: number}[], issues, run}>}
+ * @returns {Promise<{track: {t: number, axle: number[], sensor: number[], reflection: number, color: number,
+ *          points: Object<string, number[]>, readings: Object<string, object>, bodies: Object<string, object>}[], issues, run, mechanism, hubId}>}
  */
 export async function runOnSimLab (source, {modelText, mat = null, timeLimitMs, stopWhen = null}) {
     const {model, runModel, mechanism, issues} = prepareModel(modelText, CATALOG, {mat});
@@ -63,6 +67,8 @@ export async function runOnSimLab (source, {modelText, mat = null, timeLimitMs, 
     const axle0 = [0, 1, 2].map(i => hinges.reduce((sum, j) => sum + j.point[i], 0) / hinges.length);
     const sensor = (mechanism.sensors || []).find(s => s.kind === 'color');
     const port = sensor ? 'ABCDEF'.indexOf(sensor.port) : -1;
+    const allSensors = mechanism.sensors || [];
+    const robotIds = mechanism.bodies.filter(b => b.motion === 'dynamic').map(b => b.id);
     const track = [];
     let session = null;
     const bridgeFor = hub => {
@@ -78,15 +84,26 @@ export async function runOnSimLab (source, {modelText, mat = null, timeLimitMs, 
             tick (ms) {
                 session.tick(ms);
                 const reading = port >= 0 ? hub.data.sensors[port] : {};
+                const points = {};
+                const readings = {};
+                for (const s of allSensors) {
+                    points[s.port] = carried(s.origin);
+                    readings[s.port] = {...hub.data.sensors['ABCDEF'.indexOf(s.port)]};
+                }
+                const bodies = {};
+                for (const id of robotIds) {
+                    const p = session.core.bodyPose(id);
+                    bodies[id] = {position: [...p.position], rotation: [...p.rotation]};
+                }
                 track.push({t: session.time, axle: carried(axle0), sensor: sensor ? carried(sensor.origin) : null,
-                    reflection: reading.reflection, color: reading.color});
+                    reflection: reading.reflection, color: reading.color, points, readings, bodies});
                 return stopWhen && stopWhen(track) ? {status: 'done'} : running;
             }
         };
     };
     try {
         const run = await runOnArena(source, {timeLimitMs}, {bridgeFor});
-        return {track, issues, run};
+        return {track, issues, run, mechanism, hubId};
     } finally {
         session?.dispose();
     }

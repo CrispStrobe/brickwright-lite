@@ -38,7 +38,11 @@ export const catalogFrom = partsJson => new Map(partsJson.parts.map(p => [p.part
 export const MODELS = Object.freeze([
     {file: 'driving-base.ldr', title: {en: 'SPIKE driving base', de: 'SPIKE-Fahrbasis'}},
     {file: 'line-follower.ldr', title: {en: 'Line follower', de: 'Linienfolger'},
-        example: 'line-follower.bw', mat: 'line-oval'}
+        example: 'line-follower.bw', mat: 'line-oval'},
+    {file: 'wall-stopper.ldr', title: {en: 'Wall stopper', de: 'Wandstopper'},
+        example: 'wall-stopper.bw', mat: 'wall'},
+    {file: 'colour-explorer.ldr', title: {en: 'Colour explorer', de: 'Farbentdecker'},
+        example: 'colour-explorer.bw', mat: 'colour-zones'}
 ]);
 export const MODELS_BASE = 'static/sim-lab/models/';
 export const PROGRAMS_BASE = 'static/sim-lab/programs/';
