@@ -1404,12 +1404,13 @@ for the parts and kinds that exist).
   The rotor's reflected inertia J is added about the axis to both moving bodies of the hinge
   (`setRotorInertia`; exact unless both turn together about the axis). As a term in the motor
   constraint instead, the gear constraint could not hold a light 24T against a wall (measured).
-- **Numbers** (`devices/dc-motors.js`, each with `sources`): ω0, τs at 7.2 V and the 360-count
-  encoder from LEGO's fact sheets (medium 185 rpm / 18 N·cm, large 175 rpm / 25 N·cm; the 7.2 V
-  test supply is stated on the medium sheet and assumed for the large); gearbox friction
+- **Numbers** (the v2 device catalogue `devices/catalog.js`, each field with `sources`;
+  `devices/dc-motors.js` resolves an actuator's DC model): ω0 at 7.2 V and the 360-count encoder
+  from LEGO's fact sheets (medium 185 rpm, large 175 rpm; the 7.2 V test supply is stated on the
+  medium sheet and assumed for the large); τs medium 18 N·cm (LEGO); gearbox friction
   (0.021 / 0.023 N·m) and rotor inertia (3.0e-4 / 1.2e-3 kg·m²) from Pybricks' identified
-  observer models (community measurement). Pybricks' model puts the large motor's stall torque
-  at 0.45 N·m (LEGO: 0.25; `parts.json`: 0.38) — for D6. Not modelled: hub current limit,
+  observer models (community measurement). The large motor's τs stays R2's 0.38 N·m (the v2
+  migration pins it), marked estimated: LEGO's sheet says 0.25, Pybricks' model 0.45 — for D6. Not modelled: hub current limit,
   battery sag, backlash, speed-dependent friction.
 - **Core fix found on the way.** Jolt gives a body with principal moments under 1e-6 kg·m² the
   inertia of a 1 m sphere (0.4·m): gears, the castor ball, small arms were ~1000× too heavy
