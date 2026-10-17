@@ -38,6 +38,7 @@ export const INSIGHT_TEXT = {
             'bad-group': 'A group on line {line} is not written right, so it is left out.',
             'duplicate-group': 'A group on line {line} has the same name as another group, so it is left out.',
             'unknown-group': 'A part on line {line} belongs to a group that does not exist, so it is left ungrouped.',
+            'cycle': 'A sub-model in the file is built from itself, so that copy is left out.',
             'project-model-unreadable': 'The robot saved in this project could not be read, so the standard robot is shown.'
         },
         fallbackIssue: 'Something about this model needs a look.',
@@ -75,6 +76,7 @@ export const INSIGHT_TEXT = {
             'bad-group': 'Eine Gruppe in Zeile {line} ist nicht richtig geschrieben, darum wird sie weggelassen.',
             'duplicate-group': 'Eine Gruppe in Zeile {line} hat denselben Namen wie eine andere Gruppe, darum wird sie weggelassen.',
             'unknown-group': 'Ein Teil in Zeile {line} gehört zu einer Gruppe, die es nicht gibt, darum bleibt es ohne Gruppe.',
+            'cycle': 'Ein Teilmodell in der Datei ist aus sich selbst gebaut, darum wird diese Kopie weggelassen.',
             'project-model-unreadable': 'Der in diesem Projekt gespeicherte Roboter konnte nicht gelesen werden, darum wird der Standard-Roboter gezeigt.'
         },
         fallbackIssue: 'Etwas an diesem Modell solltest du dir ansehen.',
