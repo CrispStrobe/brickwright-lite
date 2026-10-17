@@ -257,6 +257,8 @@ class SimLabPane extends React.Component {
             /** Whether the physics runs in the Web Worker (false: on the main thread, see workerError). */
             get worker () { return this._pane.session ? this._pane.session.worker : null; },
             get workerError () { return this._pane.session ? this._pane.session.workerError : null; },
+            /** The hub state a scene drives (it owns that hub's clock: spike3-python-run.js leaves it alone), or null. */
+            get hubState () { return this._pane.session ? this._pane.session.hubState : null; },
             get view3d () { return this._pane.state.view3d; },
             get mode () { return this._pane.state.mode; },
             get editor () { return this._pane.editor || null; },
