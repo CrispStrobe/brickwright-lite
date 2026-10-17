@@ -18,6 +18,9 @@
    In compact mode the positioning is removed (below) so it flows
    inline as the first item in the tab row — the hamburger icon. */
 .chrome-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     position: fixed;
     top: 6px;
     right: 8px;
@@ -32,6 +35,11 @@
     font-size: 15px;
     line-height: 1;
     cursor: pointer;
+    flex-shrink: 0;
+}
+
+.chrome-toggle > svg {
+    display: block;
     flex-shrink: 0;
 }
 

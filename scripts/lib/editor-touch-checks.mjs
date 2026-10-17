@@ -79,8 +79,10 @@ export async function verifyEditorTouch (browser, url, evidence, check) {
 
 /** Real tab/menu actions, including an app locale different from the browser's. */
 export async function verifyEditorChrome (browser, url, evidence, check) {
-    for (const language of ['en', 'de']) {
-        const context = await browser.newContext({viewport: {width: 1024, height: 768},
+    const cases = ['en', 'de'].flatMap(language =>
+        [{width: 1024, height: 768}, {width: 768, height: 1024}].map(viewport => ({language, viewport})));
+    for (const {language, viewport} of cases) {
+        const context = await browser.newContext({viewport,
             isMobile: true, hasTouch: true, locale: 'en-US', serviceWorkers: 'block'});
         const page = await context.newPage();
         const errors = [];
@@ -90,6 +92,8 @@ export async function verifyEditorChrome (browser, url, evidence, check) {
             await page.addInitScript(() => localStorage.setItem('bw-starter-v1-complete', '1'));
             await page.goto(url, {waitUntil: 'domcontentloaded'});
             const settings = page.getByTestId('bw-settings-menu-trigger');
+            // WebKit can mount the chrome while the project-loading overlay still covers it.
+            await page.getByRole('tab', {name: 'Blocks', exact: true}).tap();
             await page.waitForFunction(() => document.querySelector('[role="tablist"]')?.style
                 .getPropertyValue('--bw-tab-available'));
             if (language === 'de') {
@@ -100,50 +104,55 @@ export async function verifyEditorChrome (browser, url, evidence, check) {
             const names = language === 'de' ? ['Blöcke', 'Kostüme', 'Klänge', 'Skripte', 'Schaltung'] :
                 ['Blocks', 'Costumes', 'Sounds', 'Code', 'Circuit'];
             const toggle = page.getByTestId('bw-chrome-toggle');
-            for (const viewport of [{width: 1024, height: 768}, {width: 768, height: 1024}]) {
-                await page.setViewportSize(viewport);
-                for (const compact of [false, true]) {
-                    if ((await toggle.getAttribute('aria-pressed')) !== String(compact)) await toggle.tap();
-                    await settle();
-                    const geometry = await page.locator('[role="tablist"]').evaluate(list => {
-                        const items = [list, ...list.querySelectorAll('[role="tab"],button')];
-                        return {layoutWidth: innerWidth, items: items.map(element => {
-                            const r = element.getBoundingClientRect();
-                            const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
-                            const content = Array.from(element.querySelectorAll('[data-bw-tab-label], [data-bw-tab-icon]'))
-                                .filter(child => getComputedStyle(child).display !== 'none')
-                                .map(child => {
-                                    const box = child.getBoundingClientRect();
-                                    return {x: box.x, right: box.right, top: box.top, bottom: box.bottom};
-                                });
-                            return {label: element.getAttribute('aria-label') || element.textContent,
-                                x: r.x, right: r.right, width: r.width, height: r.height,
-                                top: r.top, bottom: r.bottom, content,
-                                scroll: element.scrollWidth, client: element.clientWidth,
-                                hit: element === list || element.contains(hit)};
-                        })};
-                    });
-                    for (const item of geometry.items) {
-                        assert.ok(item.x >= 0 && item.right <= geometry.layoutWidth + 1, JSON.stringify(item));
-                        assert.ok(item.height >= 44 && item.width >= 44, JSON.stringify(item));
-                        assert.ok(item.scroll <= item.client + 2, JSON.stringify(item));
-                        assert.ok(item.hit, JSON.stringify(item));
-                        for (const content of item.content) {
-                            assert.ok(content.x >= item.x && content.right <= item.right + 1 &&
-                                content.top >= item.top && content.bottom <= item.bottom + 1, JSON.stringify(item));
-                        }
-                        if (item.content.length === 2) {
-                            assert.ok(item.content[0].right <= item.content[1].x + 1, JSON.stringify(item));
-                        }
+            for (const compact of [false, true]) {
+                if ((await toggle.getAttribute('aria-pressed')) !== String(compact)) await toggle.tap();
+                await settle();
+                const icon = await toggle.locator('svg').evaluate(element => {
+                    const box = element.getBoundingClientRect();
+                    const drawing = element.getBBox();
+                    return {width: box.width, height: box.height,
+                        drawingWidth: drawing.width, drawingHeight: drawing.height};
+                });
+                assert.ok(icon.width >= 20 && icon.height >= 20 &&
+                    icon.drawingWidth > 0 && icon.drawingHeight > 0, JSON.stringify(icon));
+                const geometry = await page.locator('[role="tablist"]').evaluate(list => {
+                    const items = [list, ...list.querySelectorAll('[role="tab"],button')];
+                    return {layoutWidth: innerWidth, items: items.map(element => {
+                        const r = element.getBoundingClientRect();
+                        const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+                        const content = Array.from(element.querySelectorAll('[data-bw-tab-label], [data-bw-tab-icon]'))
+                            .filter(child => getComputedStyle(child).display !== 'none')
+                            .map(child => {
+                                const box = child.getBoundingClientRect();
+                                return {x: box.x, right: box.right, top: box.top, bottom: box.bottom};
+                            });
+                        return {label: element.getAttribute('aria-label') || element.textContent,
+                            x: r.x, right: r.right, width: r.width, height: r.height,
+                            top: r.top, bottom: r.bottom, content,
+                            scroll: element.scrollWidth, client: element.clientWidth,
+                            hit: element === list || element.contains(hit)};
+                    })};
+                });
+                for (const item of geometry.items) {
+                    assert.ok(item.x >= 0 && item.right <= geometry.layoutWidth + 1, JSON.stringify(item));
+                    assert.ok(item.height >= 44 && item.width >= 44, JSON.stringify(item));
+                    assert.ok(item.scroll <= item.client + 2, JSON.stringify(item));
+                    assert.ok(item.hit, JSON.stringify(item));
+                    for (const content of item.content) {
+                        assert.ok(content.x >= item.x && content.right <= item.right + 1 &&
+                            content.top >= item.top && content.bottom <= item.bottom + 1, JSON.stringify(item));
                     }
-                    for (const name of names) {
-                        const tab = page.getByRole('tab', {name, exact: true});
-                        await tab.tap();
-                        assert.equal(await tab.getAttribute('aria-selected'), 'true');
+                    if (item.content.length === 2) {
+                        assert.ok(item.content[0].right <= item.content[1].x + 1, JSON.stringify(item));
                     }
-                    await page.screenshot({path: `${evidence}/chrome-${language}-${viewport.width}-${compact ? 'compact' : 'expanded'}.png`});
-                    check(`chrome ${language} ${viewport.width}: ${compact ? 'collapsed' : 'expanded'} tabs and expand control fit and switch`, geometry);
                 }
+                for (const name of names) {
+                    const tab = page.getByRole('tab', {name, exact: true});
+                    await tab.tap();
+                    assert.equal(await tab.getAttribute('aria-selected'), 'true');
+                }
+                await page.screenshot({path: `${evidence}/chrome-${language}-${viewport.width}-${compact ? 'compact' : 'expanded'}.png`});
+                check(`chrome ${language} ${viewport.width}: ${compact ? 'collapsed' : 'expanded'} tabs and expand control fit and switch`, geometry);
             }
             if ((await toggle.getAttribute('aria-pressed')) === 'true') await toggle.tap();
             await settings.click();
