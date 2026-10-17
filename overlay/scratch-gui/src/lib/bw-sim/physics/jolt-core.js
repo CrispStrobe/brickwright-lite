@@ -5,7 +5,7 @@
 //
 // Runs a CompiledMechanism in Jolt under node --test. No worker, no DOM,
 // no three.js. In the app it runs inside the physics worker
-// (physics-worker.js, sim-worker-protocol.js), or on the main thread where
+// (../physics-worker.js, ../sim-worker-protocol.js), or on the main thread where
 // there is no worker (sim-session.js).
 //
 // Bodies: one Jolt body per mechanism body, shape = compound of colliders
@@ -668,7 +668,7 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
          * returns to it, and stepping again with the same commands gives bit-identical
          * results (test/bw-sim-physics-worker-session.test.mjs). The physics worker
          * checkpoints before every batch so a batch computed from motor commands that
-         * changed while it was in flight can be redone (physics/sim-worker-protocol.js).
+         * changed while it was in flight can be redone (sim-worker-protocol.js, beside physics/).
          */
         checkpoint() {
             ensureAlive();

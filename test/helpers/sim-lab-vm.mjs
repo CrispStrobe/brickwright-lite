@@ -28,7 +28,7 @@ import {REPO} from './bw-integrated.mjs';
 import {runOnArena, FRAME_MS} from './spike-arena-vm.mjs';
 
 const SIM = path.join(REPO, 'overlay', 'scratch-gui', 'src', 'lib', 'bw-sim');
-const {SimSession, prepareModel, catalogFrom, hubBodyOf} = await import(path.join(SIM, 'sim-session.js'));
+const {SimSession, prepareModel, catalogFrom, hubBodyOf, hubsOf} = await import(path.join(SIM, 'sim-session.js'));
 const {loadJolt} = await import(path.join(SIM, 'physics', 'jolt-core.js'));
 const {STEP_MS} = await import(path.join(SIM, 'hub-bridge.js'));
 
@@ -65,7 +65,7 @@ export async function runOnSimLab (source, {modelText, mat = null, timeLimitMs, 
     if (!mechanism) throw new Error(`the model does not compile: ${JSON.stringify(issues)}`);
     const J = worker ? null : await loadJolt();
     const hubId = hubBodyOf(model, mechanism, CATALOG);
-    const loaded = worker ? await worker.simLoad({mechanism, hubBody: hubId, stepMs: STEP_MS}) : null;
+    const loaded = worker ? await worker.simLoad({mechanism, hubs: hubsOf(model, mechanism, CATALOG), stepMs: STEP_MS}) : null;
     const hubDef = mechanism.bodies.find(b => b.id === hubId);
     const hinges = mechanism.joints.filter(j => j.motor);
     const axle0 = [0, 1, 2].map(i => hinges.reduce((sum, j) => sum + j.point[i], 0) / hinges.length);

@@ -98,6 +98,13 @@ Apache-2.0: ship its licence and NOTICE if it is ever adopted.
 
 ### §4.9 The physics worker — 2026-10-17 (ROADMAP §4.9)
 
+*Since Robot Lab slice R1 (`docs/ROBOT-LAB-ARCHITECTURE.md` §6.5, "R1 as built")* the protocol
+below is generic over hubs: the worker entry and the protocol are `bw-sim/physics-worker.js` and
+`bw-sim/sim-worker-protocol.js` (out of `physics/`), a batch carries `hubs: {id: exportState()}`
+of each `VirtualHub` (SPIKE's adapter exports exactly the controller state listed in step 1),
+and a frame is `{t, hubs: {id: {drives, readings, pose}}}`, replayed through the hub's
+`advanceTo`/`readDrives`/`writeReadings`. The SPIKE numbers are unchanged to the bit.
+
 **Where the physics runs.** In the app, in a Web Worker (`physics/physics-worker.js`, its own
 chunk `bw-sim-physics-worker`; Jolt in chunk `bw-sim-jolt`, which the main thread fetches only
 when it has no worker). In node, without `Worker`, or when the worker cannot load the scene

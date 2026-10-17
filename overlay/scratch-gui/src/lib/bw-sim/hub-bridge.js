@@ -1,103 +1,163 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 //
-// Couples a running physics scene (bw-sim/physics/jolt-core.js) to the
-// virtual SPIKE hub (lib/virtual-hub/spike-hub-state.js) — plan task A6 in
-// its S1 form (docs/SIM-LAB-PLAN.md §0). Like the arena's bridge
-// (lib/spike-arena/arena-hub-bridge.js) it goes through the hub state only,
-// so every programming route (Scratch blocks, SPIKE 3 Python, the
-// independent motor controller's waits and promises) drives the model
-// without knowing it is simulated.
+// Couples a running physics scene (bw-sim/physics/jolt-core.js) to the hubs
+// that drive it, through the port boundary of docs/ROBOT-LAB-ARCHITECTURE.md
+// §3 and §5.1: every hub is a VirtualHub (hubs/hub-profile.js), and nothing
+// but plain port data crosses — drives one way, readings and the hub body's
+// pose the other. This bridge knows no hub family: SPIKE's controller, port
+// letters, device ids and IMU axes are in hubs/spike/spike-virtual-hub.js,
+// and any other family's adapter plugs in the same way (the registry,
+// registry/hubs.js). Every programming route — Scratch blocks, SPIKE 3
+// Python, later an RCX bytecode VM or an emulated firmware — ends at its
+// hub's ports and drives the model without knowing it is simulated.
 //
-// ONE CLOCK (docs/SPIKE-ARENA.md, "The hub contract"). While a scene runs,
-// this bridge is the clock owner: tick(ms) advances in fixed steps, and each
-// step is
+// ONE CLOCK (docs/SPIKE-ARENA.md, "The hub contract"; §3.3). While a scene
+// runs, this bridge is the clock owner: tick(ms) advances in fixed steps, and
+// each step k (from t_k to t_k+1 = t_k + 5 ms) is
 //
-//   1. read each motor port's position (it may have been reset by a program
-//      since the last step: that becomes the new base);
-//   2. hubState.stepMotors(step) — the hub's own motor CONTROLLER runs
-//      unchanged and decides the commanded velocity (ramps, holds,
-//      run-to-position, stop actions) into data.motors[i].degPerSec;
-//   3. that velocity becomes the motorised hinge's target (torque limited by
-//      the motor's metadata, so a blocked wheel really does not turn);
-//   4. physics steps;
-//   5. the hinge's MEASURED rotation replaces the controller's kinematic
-//      integration: position = base + Δangle. So the encoder reads what the
-//      wheel did, and run-to-position finishes on the real angle;
-//   6. the hub body's heading becomes the IMU yaw (setHeading), and one
-//      hubState.changed() publishes a consistent frame.
+//   1. hub.advanceTo(t_k+1): the route runs its controller for the step and
+//      decides what each port drives during it (zero-order hold);
+//   2. hub.readDrives(): those drives become the motorised hinges' commands
+//      (physics/actuators.js: servo = velocity target, pwm = the R1 DC
+//      stand-in), torque limited by the motor's metadata, so a blocked wheel
+//      really does not turn;
+//   3. physics steps;
+//   4. readings: each driven hinge's MEASURED rotation as an encoder reading
+//      (angle, change over the step, speed), each sensor's probe, and the hub
+//      body's pose (continuous heading, orientation, rates, acceleration) —
+//      hub.writeReadings() turns them into what that hub reports;
+//   5. after the batch, one hub.publish() per hub.
 //
-// Signs. A hinge's angle is body2 relative to body1 about the joint axis
-// (contracts.js); the compiler takes a motor's axis from its output
-// connector, which the part metadata points INTO the motor from its face —
-// so a positive hinge angle is clockwise seen from the motor's face, SPIKE's
-// own sign. Degrees = radians · 180/π, nothing else.
+// The step returns its FRAME — the drives the hub chose and the readings it
+// was given, per hub id, as plain structured-clone-safe data. The physics
+// worker sends frames back to the main thread, where HubReplay (below)
+// replays the real hub against them (sim-worker-protocol.js).
 //
-// Not in S1: sensors other than the IMU yaw (E2), stall detection from the
-// physical tracking error (the controller's stall timer still works from its
-// own load input), a coasting stop (a stopped motor brakes), multi-hub scenes.
+// R1 limits: a scene binds every motorised hinge and sensor to its one hub
+// (CompiledMechanism v1 ports name no hub; multi-hub binding is R2's
+// `{hub, port}`), and sensor probes carry sensors.js's v1 readings (the
+// device registry is a later slice).
 
-import {readSensors, SENSOR_DEVICE, imuFromBody} from './sensors.js';
-const PORTS = 'ABCDEF';
+import {readSensors, linearAcceleration} from './sensors.js';
+import {applyDrive} from './physics/actuators.js';
+import {hubRegistry, DEFAULT_HUB_PROFILE} from './hubs/index.js';
+
 const DEG = 180 / Math.PI;
 
-/** Fixed step, ms: the arena's STEP_MS, so the motor controller sees the same cadence in both worlds. */
+/** Fixed step, ms: the arena's STEP_MS, so a hub's controller sees the same cadence in both worlds. */
 export const STEP_MS = 5;
 
-/** LEGO device id the hub reports for a motor port when the part does not say (SPIKE medium angular motor). */
-const MEDIUM_MOTOR = 48;
+/**
+ * What the compiled model plugs into its hub's ports (PortBinding[]): every motorised
+ * hinge, then every sensor, in the mechanism's order.
+ * @param {object} mechanism a CompiledMechanism (v1)
+ */
+export const portBindings = mechanism => {
+    const bindings = [];
+    for (const j of mechanism.joints) {
+        if (j.type !== 'hinge' || !j.motor) continue;
+        bindings.push({port: j.motor.port, class: 'motor', ids: j.motor.deviceId == null ? {} : {lpf2: j.motor.deviceId}});
+    }
+    for (const s of mechanism.sensors || []) bindings.push({port: s.port, class: 'sensor', ids: {}, sensor: s.kind});
+    return bindings;
+};
+
+/** Equal drive lists (the replay's check that the main thread's hub chose what the worker's mirror did). */
+export const sameDrives = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+/**
+ * The hubs a bridge or replay drives: `hubs` as given ([{hub: VirtualHub, body}]), or —
+ * the form every caller used before R1 — one hub state of the default family on `hubBody`.
+ */
+const resolveHubs = ({hubs, hubState, hubBody, profile, registry, mechanism}) => {
+    const list = hubs || [{hub: registry.create(profile, {hubState}), body: hubBody}];
+    if (list.length > 1) throw new Error('a scene with several hubs needs ports that name their hub (CompiledMechanism v2, slice R2)');
+    for (const {body} of list) {
+        if (!mechanism.bodies.some(b => b.id === body)) throw new Error(`unknown hub body '${body}'`);
+    }
+    return list.map(({hub, body}) => ({id: hub.id, hub, body}));
+};
+
+/** Plugs the model into a hub; a refusal (a port the hub does not have) stops the scene. */
+const plugInto = (hub, bindings) => {
+    const refusals = hub.plug(bindings).filter(d => d.severity === 'error');
+    if (refusals.length) throw new Error(refusals.map(d => d.message).join('; '));
+};
 
 export class SimHubBridge {
     /**
      * @param {object} options
-     * @param {object} options.hubState a VirtualSpikeHubState
      * @param {object} options.core a physics core from createPhysicsCore (stepHz must be 1000 / STEP_MS)
      * @param {object} options.mechanism the CompiledMechanism the core runs
-     * @param {string} options.hubBody id of the body that carries the hub (its pose is the IMU)
+     * @param {{hub: object, body: string}[]} [options.hubs] the VirtualHubs and the bodies that carry them
+     * @param {object} [options.hubState] instead of `hubs`: one hub state of `profile`'s family
+     *        (default SPIKE Prime: a VirtualSpikeHubState), wrapped by that family's adapter
+     * @param {string} [options.hubBody] with `hubState`: the body that carries the hub (its pose is the IMU)
+     * @param {string} [options.profile] with `hubState`: the hub profile id
+     * @param {object} [options.registry] the hub registry (default: the built-in families)
      * @param {number} [options.stepMs]
      */
-    constructor ({hubState, core, mechanism, hubBody, stepMs = STEP_MS}) {
-        this.hubState = hubState;
+    constructor ({core, mechanism, hubs = null, hubState = null, hubBody = null, profile = DEFAULT_HUB_PROFILE,
+        registry = hubRegistry, stepMs = STEP_MS}) {
         this.core = core;
         this.stepMs = stepMs;
-        this.hubBody = hubBody;
         this.mechanism = mechanism;
         this.robotBodies = mechanism.bodies.filter(b => b.motion === 'dynamic').map(b => b.id);
-        this._prevLinVel = null;
         this.accumulator = 0;
-        /** port index -> {joint, angle (rad, last measured)} */
-        this.motors = new Map();
-        for (const j of mechanism.joints) {
-            if (j.type !== 'hinge' || !j.motor) continue;
-            const index = PORTS.indexOf(j.motor.port);
-            if (this.motors.has(index)) throw new Error(`two motorised hinges on port ${j.motor.port}`);
-            this.motors.set(index, {joint: j.id, angle: core.jointState(j.id).angle});
+        /** Simulated time since the hubs were plugged, ms (the end of the last step). */
+        this.timeMs = 0;
+        this.hubs = resolveHubs({hubs, hubState, hubBody, profile, registry, mechanism});
+        /** The (first) hub's body, as before R1. */
+        this.hubBody = this.hubs.length ? this.hubs[0].body : null;
+        const bindings = portBindings(mechanism);
+        for (const h of this.hubs) {
+            /** port -> {joint, motor, angle (rad, last measured)} */
+            h.motors = new Map();
+            for (const j of mechanism.joints) {
+                if (j.type !== 'hinge' || !j.motor) continue;
+                if (h.motors.has(j.motor.port)) throw new Error(`two motorised hinges on port ${j.motor.port}`);
+                h.motors.set(j.motor.port, {joint: j.id, motor: j.motor, angle: core.jointState(j.id).angle});
+            }
+            // Heading reference: the hub's forward direction at t = 0, flattened onto the ground.
+            h.forward0 = this._forward(h.body);
+            h.heading = 0;
+            h.prevLinVel = null;
+            plugInto(h.hub, bindings);
         }
-        if (!mechanism.bodies.some(b => b.id === hubBody)) throw new Error(`unknown hub body '${hubBody}'`);
-        // Heading reference: the hub's forward direction at t = 0, flattened onto the ground.
-        this.forward0 = this._forward();
-        this.heading = 0;
-        this.previousOwner = plugMotors(hubState, mechanism);
         // The sensors read the scene from the start, not from the first step: a port must not
         // keep a reading from the previous model (a "nothing ahead" -1 would end a program's
         // `wait until distance < 10` before the robot moved).
-        publishSensors(hubState, this.sensorReadings());
+        for (const h of this.hubs) {
+            const probes = this.probeReadings();
+            if (probes.length) {
+                h.hub.writeReadings(probes);
+                h.hub.publish();
+            }
+        }
     }
 
-    /** Every sensor port's reading now, as [port, kind, values] (what updateSensor takes). */
-    sensorReadings () {
-        const sensors = [];
+    /** Every sensor's probe now, as PortReadings (sensors.js measures; the hub labels). */
+    probeReadings () {
+        const out = [];
         const readings = readSensors(this.core, this.mechanism, this.robotBodies);
         for (const [port, reading] of Object.entries(readings)) {
-            const {kind, ...values} = reading;
-            sensors.push([port, kind, {deviceId: SENSOR_DEVICE[kind], ...values}]);
+            const {kind, ...raw} = reading;
+            out.push({port, kind: 'probe', device: kind, raw});
         }
-        return sensors;
+        return out;
     }
 
-    /** The hub body's local -z axis (LDraw +z, the robot's forward) in world, on the ground plane. */
-    _forward () {
-        const [x, y, z, w] = this.core.bodyPose(this.hubBody).rotation;
+    /** Initial readings per hub id (what a worker's scene reports at load). */
+    initialReadings () {
+        const out = {};
+        for (const h of this.hubs) out[h.id] = this.probeReadings();
+        return out;
+    }
+
+    /** A body's local -z axis (LDraw +z, the robot's forward) in world, on the ground plane. */
+    _forward (body) {
+        const [x, y, z, w] = this.core.bodyPose(body).rotation;
         // Rotate (0, 0, -1) by the quaternion.
         const fx = -(2 * (x * z + w * y));
         const fz = -(1 - 2 * (x * x + y * y));
@@ -105,82 +165,83 @@ export class SimHubBridge {
         return [fx / n, fz / n];
     }
 
-    /** One fixed step (see the header). Returns the step's frame (what it wrote into the hub). */
+    /** One fixed step (see the header). Returns the step's frame. */
     step () {
-        const {base, commanded} = this._command();
+        const t = this.timeMs + this.stepMs;
+        const drives = this.hubs.map(h => {
+            h.hub.advanceTo(t);
+            const chosen = h.hub.readDrives();
+            for (const drive of chosen) {
+                const m = h.motors.get(drive.port);
+                if (m) applyDrive(this.core, m.joint, drive, m.motor);
+            }
+            return chosen;
+        });
         this.core.step(this.stepMs / 1000);
-        const frame = this._measure(base, commanded);
-        applyFrame(this.hubState, frame);
+        this.timeMs = t;
+        const frame = {t, hubs: {}};
+        this.hubs.forEach((h, i) => {
+            const readings = this._encoders(h).concat(this.probeReadings());
+            const pose = this._pose(h);
+            h.hub.writeReadings(readings, pose);
+            frame.hubs[h.id] = {drives: drives[i], readings, pose};
+        });
         return frame;
     }
 
-    /** Steps 1-3: the hub's motor controller runs, its velocities become the hinges' targets. */
-    _command () {
-        const data = this.hubState.data.motors;
-        const base = new Map();
-        for (const [index] of this.motors) base.set(index, Number(data[index].position) || 0);
-        this.hubState.stepMotors(this.stepMs);
-        const commanded = new Map();
-        for (const [index, m] of this.motors) {
-            // Zero commanded velocity holds the shaft (brake); coast is not modelled in S1.
-            const degPerSec = Number(data[index].degPerSec) || 0;
-            commanded.set(index, degPerSec);
-            this.core.setMotor(m.joint, {mode: 'velocity', radPerSec: degPerSec / DEG});
-        }
-        return {base, commanded};
-    }
-
-    /**
-     * Steps 5-6 after the physics stepped: everything the hub is told about this step, as a
-     * plain, structured-clone-safe FRAME (applyFrame writes it). The physics worker sends
-     * these back one per step (physics/sim-worker-protocol.js).
-     */
-    _measure (base, commanded) {
-        const motors = [];
-        for (const [index, m] of this.motors) {
+    /** Each driven hinge's measured rotation over the step. */
+    _encoders (h) {
+        const out = [];
+        for (const [port, m] of h.motors) {
             const {angle, velocity} = this.core.jointState(m.joint);
-            motors.push([index, base.get(index) + (angle - m.angle) * DEG, velocity * DEG, commanded.get(index)]);
+            out.push({port, kind: 'encoder', angleRad: angle, deltaRad: angle - m.angle, radPerSec: velocity});
             m.angle = angle;
         }
+        return out;
+    }
+
+    /** The hub body's HubPoseReading after the step. */
+    _pose (h) {
         // Heading: clockwise positive seen from above (y up), continuous.
-        const [fx, fz] = this._forward();
-        const [gx, gz] = this.forward0;
+        const [fx, fz] = this._forward(h.body);
+        const [gx, gz] = h.forward0;
         // Angle from forward0 to forward, counter-clockwise seen from above, is atan2(cross_y, dot)
         // with cross_y = g_z f_x − g_x f_z; clockwise is its negative.
         const ccw = Math.atan2(gz * fx - gx * fz, gx * fx + gz * fz) * DEG;
         const clockwise = -ccw;
         // Unwrap so a robot spinning in place does not jump at ±180.
-        let delta = clockwise - (((this.heading % 360) + 540) % 360 - 180);
+        let delta = clockwise - (((h.heading % 360) + 540) % 360 - 180);
         if (delta > 180) delta -= 360;
         if (delta < -180) delta += 360;
         const rate = delta / (this.stepMs / 1000);
-        this.heading += delta;
-        // Full IMU: pitch, roll, angular velocity, acceleration, faceUp from the hub body.
-        let imu = null;
+        h.heading += delta;
+        const pose = {headingDeg: h.heading, rateDegPerSec: rate};
         try {
-            const pose = this.core.bodyPose(this.hubBody);
-            const angVelWorld = this.core.bodyAngularVelocity(this.hubBody);
-            const linVelWorld = this.core.bodyLinearVelocity(this.hubBody);
-            const dt = this.stepMs / 1000;
-            const {pitch, roll, angularVelocity, acceleration, faceUp} =
-                imuFromBody(pose, angVelWorld, linVelWorld, this._prevLinVel, dt, this.mechanism.gravity);
-            this._prevLinVel = linVelWorld.slice();
-            imu = {pitch, roll, angularVelocity, acceleration, faceUp};
+            const {rotation} = this.core.bodyPose(h.body);
+            const angVel = this.core.bodyAngularVelocity(h.body);
+            const linVel = this.core.bodyLinearVelocity(h.body);
+            const linAcc = linearAcceleration(linVel, h.prevLinVel, this.stepMs / 1000);
+            h.prevLinVel = linVel.slice();
+            Object.assign(pose, {quat: rotation, angVel, linAcc, gravity: this.mechanism.gravity});
         } catch (_) {}
-        return {motors, heading: this.heading, rate, imu, sensors: this.sensorReadings()};
+        return pose;
     }
 
-    /** What step() carries from one step to the next besides the physics (for a worker's rollback). */
+    /** What step() carries from one step to the next besides the physics and the hubs (for a worker's rollback). */
     saveState () {
-        return {heading: this.heading, prevLinVel: this._prevLinVel && this._prevLinVel.slice(),
-            angles: [...this.motors.values()].map(m => m.angle)};
+        return {timeMs: this.timeMs, hubs: this.hubs.map(h => ({heading: h.heading,
+            prevLinVel: h.prevLinVel && h.prevLinVel.slice(), angles: [...h.motors.values()].map(m => m.angle)}))};
     }
 
-    restoreState ({heading, prevLinVel, angles}) {
-        this.heading = heading;
-        this._prevLinVel = prevLinVel && prevLinVel.slice();
-        let i = 0;
-        for (const m of this.motors.values()) m.angle = angles[i++];
+    restoreState ({timeMs, hubs}) {
+        this.timeMs = timeMs;
+        this.hubs.forEach((h, k) => {
+            const {heading, prevLinVel, angles} = hubs[k];
+            h.heading = heading;
+            h.prevLinVel = prevLinVel && prevLinVel.slice();
+            let i = 0;
+            for (const m of h.motors.values()) m.angle = angles[i++];
+        });
     }
 
     /** Advance by ms of simulated time in fixed steps; publish once. */
@@ -192,80 +253,45 @@ export class SimHubBridge {
             this.step();
             stepped = true;
         }
-        if (stepped) this.hubState.changed();
+        if (stepped) for (const h of this.hubs) h.hub.publish();
         return stepped;
     }
 
     /** Hand the clock back (sensor/motor authority returns to whoever had it). */
     dispose () {
-        this.hubState.clockOwner = this.previousOwner;
+        for (const h of this.hubs) h.hub.dispose();
     }
 }
 
 /**
- * Plug the model's motors into the hub, as the arena's bridge does for its driving
- * base: the extension sees a motor on each driven port, at position 0; the hub's motor
- * clock becomes 'native' (stepped by whoever steps the scene). Returns the previous clock owner.
- */
-export const plugMotors = (hubState, mechanism) => {
-    for (const j of mechanism.joints) {
-        if (j.type !== 'hinge' || !j.motor) continue;
-        const index = PORTS.indexOf(j.motor.port);
-        hubState.data.sensors[index] = {kind: 'motor', deviceId: j.motor.deviceId ?? MEDIUM_MOTOR};
-        hubState.motors.resetPosition(j.motor.port, 0);
-        hubState.motors.stop(j.motor.port);
-    }
-    hubState.motorPairDefined = false;
-    const previousOwner = hubState.clockOwner;
-    hubState.clockOwner = 'native';
-    hubState.resetHeading(0);
-    return previousOwner;
-};
-
-/** Writes sensor readings ([port, kind, values], SimHubBridge.sensorReadings) and publishes them. */
-export const publishSensors = (hubState, sensors) => {
-    for (const [port, kind, values] of sensors) hubState.updateSensor(port, kind, values);
-    if (sensors.length) hubState.changed();
-};
-
-/** Writes one step's frame (SimHubBridge._measure) into the hub: encoders, heading, IMU, sensors. */
-export const applyFrame = (hubState, frame) => {
-    const data = hubState.data.motors;
-    for (const [index, position, measuredDegPerSec] of frame.motors) {
-        data[index].position = position;
-        data[index].measuredDegPerSec = measuredDegPerSec;
-    }
-    hubState.setHeading(frame.heading, {rate: frame.rate});
-    if (frame.imu) {
-        const imuData = hubState.data.imu;
-        imuData.pitch = frame.imu.pitch;
-        imuData.roll = frame.imu.roll;
-        imuData.angularVelocity = frame.imu.angularVelocity;
-        imuData.acceleration = frame.imu.acceleration;
-        imuData.faceUp = frame.imu.faceUp;
-    }
-    for (const [port, kind, values] of frame.sensors) hubState.updateSensor(port, kind, values);
-};
-
-/**
- * The hub's side of a scene whose physics runs in the worker (sim-session.js, worker
- * mode). The hub state and its motor controller stay here, on the main thread, where
- * the VM reads and writes them synchronously; the worker runs the SAME SimHubBridge
- * against a mirror of the controller and returns one frame per step. replay() then
- * runs the real controller step by step — waits and run-for-degrees promises finish
- * on the step they finish on — and writes each step's frame, checking that the
- * controller commanded exactly the velocity the worker's mirror did.
+ * The hubs' side of a scene whose physics runs in the worker (sim-session.js, worker
+ * mode). The hubs and their controllers stay here, on the main thread, where the VM
+ * reads and writes them synchronously; the worker runs the SAME SimHubBridge against
+ * mirrors of them and returns one frame per step. replay() then runs each real hub
+ * step by step — waits and run-for-degrees promises finish on the step they finish
+ * on — and writes each step's readings, checking that the hub chose exactly the
+ * drives the worker's mirror did.
  */
 export class HubReplay {
-    /** @param {object} options ... sensors: the worker bridge's sensorReadings() at t = 0 */
-    constructor ({hubState, mechanism, hubBody, stepMs = STEP_MS, sensors = []}) {
-        if (!mechanism.bodies.some(b => b.id === hubBody)) throw new Error(`unknown hub body '${hubBody}'`);
-        this.hubState = hubState;
-        this.hubBody = hubBody;
+    /**
+     * @param {object} options as SimHubBridge's (hubs, or hubState + hubBody + profile; mechanism; stepMs),
+     *        and readings: the worker bridge's initialReadings() at t = 0, by hub id
+     */
+    constructor ({mechanism, hubs = null, hubState = null, hubBody = null, profile = DEFAULT_HUB_PROFILE,
+        registry = hubRegistry, stepMs = STEP_MS, readings = {}}) {
+        this.hubs = resolveHubs({hubs, hubState, hubBody, profile, registry, mechanism});
+        this.hubBody = this.hubs.length ? this.hubs[0].body : null;
         this.stepMs = stepMs;
         this.accumulator = 0;
-        this.previousOwner = plugMotors(hubState, mechanism);
-        publishSensors(hubState, sensors);
+        const bindings = portBindings(mechanism);
+        for (const h of this.hubs) plugInto(h.hub, bindings);
+        for (const h of this.hubs) {
+            const initial = readings[h.id] || [];
+            if (initial.length) {
+                h.hub.writeReadings(initial);
+                h.hub.publish();
+            }
+        }
     }
 
     /** As SimHubBridge.tick's loop: how many fixed steps ms more of simulated time makes due. */
@@ -280,22 +306,26 @@ export class HubReplay {
     }
 
     /**
-     * Applies a batch of frames, one controller step each. Returns the number of steps
-     * whose commanded velocity differed from the worker's (0 unless the two diverged).
+     * Applies a batch of frames, one route step each. Returns the number of steps in
+     * which some hub chose other drives than the worker's mirror (0 unless they diverged).
      */
     replay (frames) {
-        const data = this.hubState.data.motors;
         let diverged = 0;
         for (const frame of frames) {
-            this.hubState.stepMotors(this.stepMs);
-            if (frame.motors.some(([index, , , cmd]) => (Number(data[index].degPerSec) || 0) !== cmd)) diverged++;
-            applyFrame(this.hubState, frame);
+            let differs = false;
+            for (const h of this.hubs) {
+                const f = frame.hubs[h.id];
+                h.hub.advanceTo(frame.t);
+                if (!sameDrives(h.hub.readDrives(), f.drives)) differs = true;
+                h.hub.writeReadings(f.readings, f.pose);
+            }
+            if (differs) diverged++;
         }
-        if (frames.length) this.hubState.changed();
+        if (frames.length) for (const h of this.hubs) h.hub.publish();
         return diverged;
     }
 
     dispose () {
-        this.hubState.clockOwner = this.previousOwner;
+        for (const h of this.hubs) h.hub.dispose();
     }
 }

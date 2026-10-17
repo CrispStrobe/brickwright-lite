@@ -26,11 +26,11 @@ const load = p => import(path.join(SIM, p));
 if (!isMainThread) {
     const {createPhysicsHost} = await load('physics/physics-host.js');
     const {loadJolt, createPhysicsCore} = await load('physics/jolt-core.js');
-    const {createSimRunner} = await load('physics/sim-worker-protocol.js');
+    const {createSimRunner} = await load('sim-worker-protocol.js');
     const host = createPhysicsHost({loadJolt, createPhysicsCore, createSimRunner, post: (m, t) => parentPort.postMessage(m, t)});
     parentPort.on('message', m => host.handle(m));
 } else {
-    const {SimSession, prepareModel, catalogFrom, hubBodyOf} = await load('sim-session.js');
+    const {SimSession, prepareModel, catalogFrom, hubsOf} = await load('sim-session.js');
     const {compile} = await load('mech/compile.js');
     const {loadJolt} = await load('physics/jolt-core.js');
     const {PhysicsClient} = await load('physics/physics-client.js');
@@ -84,7 +84,7 @@ if (!isMainThread) {
         const hubState = new HubState();
         let session;
         if (worker) {
-            const loaded = await worker.simLoad({mechanism: scene.mechanism, hubBody: hubBodyOf(scene.model, scene.mechanism, scene.catalog), stepMs: 5});
+            const loaded = await worker.simLoad({mechanism: scene.mechanism, hubs: hubsOf(scene.model, scene.mechanism, scene.catalog), stepMs: 5});
             session = new SimSession({hubState, ...scene, worker, loaded});
         } else {
             session = new SimSession({hubState, ...scene, J: await loadJolt()});
