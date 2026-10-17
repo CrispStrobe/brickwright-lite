@@ -11,12 +11,17 @@
 //      drives the simulated robot through the virtual SPIKE hub: after Run the
 //      hub body has moved forward and the drive motors' encoders have turned;
 //   3. with WebGL forced off the pane says so and the simulation still runs;
-//   4. no page errors.
+//   4. the model saved with the project comes back (C8): "Save to your computer"
+//      writes the built model's LDraw text into the .sb3's Brickwright bundle,
+//      and loading that file restores it byte for byte, both into a Sim Lab
+//      opened afterwards and into one that is already open;
+//   5. no page errors.
 //
 // Run after the integrated GUI build:  node scripts/verify-sim-lab-browser.mjs
 import {chromium} from 'playwright';
 import {createServer} from 'node:http';
 import {readFile, mkdir} from 'node:fs/promises';
+import {createRequire} from 'node:module';
 import {resolve, extname, sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import assert from 'node:assert/strict';
@@ -42,6 +47,8 @@ const server = createServer(async (request, response) => {
 await new Promise(done => server.listen(0, '127.0.0.1', done));
 await mkdir(artifacts, {recursive: true});
 const url = `http://127.0.0.1:${server.address().port}/`;
+
+const JSZip = createRequire(new URL('../packages/scratch-gui/package.json', import.meta.url))('jszip');
 
 const PROGRAM = 'DEVICE SPIKE\nWHEN flag clicked:\n  set movement motors A B\n  move forward 20 cm\n';
 
@@ -104,7 +111,6 @@ try {
     // Run starts the program on the green flag, as the arena's Start does.
     await page.getByTestId('bw-sim-lab-run').click();
     if (process.env.SIM_DEBUG) {
-        await page.waitForTimeout(3000);
         console.log('DEBUG', JSON.stringify(await page.evaluate(() => {
             const h = window.__bwSimLab._pane.props.hubState;
             return {connected: h.data.connected, sim: h.data.simulationEnabled, motors: h.data.motors.slice(0, 2), last: h.data.lastCommand,
@@ -178,7 +184,62 @@ try {
     assert.equal(built, start + 3, 'the built model is what Simulate runs');
     console.log('PASS Build → Simulate compiles and runs the built model');
     console.log(`PASS a green-flag Scratch program drives the simulated robot (${(before.pos[2] - after.pos[2]).toFixed(3)} m, encoders A ${after.a.toFixed(0)}°, B ${after.b.toFixed(0)}°)`);
+
+    // C8: the built model is saved inside the project and comes back.
+    const shown = await page.evaluate(() => window.__bwSimLab.projectRecord);
+    assert.ok(shown && /^1 /m.test(shown.ldraw), 'the pane reports the model it shows');
+    await page.getByText('File', {exact: true}).click();
+    const download = page.waitForEvent('download', {timeout: 30000});
+    await page.getByText('Save to your computer', {exact: true}).click();
+    const savedPath = resolve(artifacts, 'sim-lab-model.sb3');
+    await (await download).saveAs(savedPath);
+    const sidecar = JSON.parse(await (await JSZip.loadAsync(await readFile(savedPath))).file('brickwright/state.json').async('text'));
+    assert.deepEqual(sidecar.state.simLab, shown, 'the saved .sb3 carries the model the pane showed');
+    assert.equal((sidecar.state.simLab.ldraw.match(/^1 /gm) || []).length, built, 'every built part is in the file');
     await page.close();
+
+    const reopen = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+    reopen.on('pageerror', error => errors.push(error.message));
+    reopen.on('dialog', dialog => dialog.accept());
+    await reopen.addInitScript(() => {
+        localStorage.clear();
+        sessionStorage.clear();
+        localStorage.setItem('bw-starter-v1-complete', '1');
+        localStorage.setItem('bw-right-pane-hidden', '0');
+    });
+    await reopen.goto(url, {waitUntil: 'domcontentloaded', timeout: 90000});
+    const loadSaved = async () => {
+        await reopen.getByText('File', {exact: true}).click();
+        await reopen.getByText('Load from your computer', {exact: true}).click();
+        await reopen.locator('body > input[type="file"][accept*=".sb3"]').setInputFiles(savedPath);
+    };
+    // Loaded BEFORE the Sim Lab is open: the pane finds the model on mount.
+    await loadSaved();
+    await reopen.waitForFunction(() => localStorage.getItem('bw-sim-lab-model-v1'), null, {timeout: 60000});
+    await reopen.getByRole('tab', {name: 'Code', exact: true}).click();
+    await reopen.getByTestId('bw-open-spike-arena').click();
+    await reopen.getByTestId('bw-spike-simulator').waitFor({timeout: 60000});
+    await reopen.getByTestId('bw-spike-simulator-tab-simLab').click();
+    await reopen.waitForFunction(() => window.__bwSimLab?.status === 'ready' && window.__bwSimLab._pane.session, null, {timeout: 90000});
+    const restored = await reopen.evaluate(() => window.__bwSimLab.projectRecord);
+    assert.equal(restored.ldraw, shown.ldraw, 'reopened model text is byte-identical to the saved one');
+    assert.deepEqual(restored, shown);
+    console.log(`PASS the model saved with the project reopens byte-identical (${built} parts, ${shown.ldraw.length} bytes)`);
+
+    // Loaded while the Sim Lab is OPEN: change the model, load the file again, the saved one is back.
+    await reopen.getByTestId('bw-sim-lab-mode-build').click();
+    await reopen.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab.editor, null, {timeout: 60000});
+    await reopen.evaluate(() => {
+        const editor = window.__bwSimLab.editor;
+        editor.apply({type: 'delete', id: editor.model.parts.at(-1).id});
+    });
+    assert.notEqual((await reopen.evaluate(() => window.__bwSimLab.projectRecord)).ldraw, shown.ldraw);
+    await loadSaved();
+    await reopen.waitForFunction(() => window.__bwSimLab.mode === 'simulate' && window.__bwSimLab.status === 'ready' &&
+        window.__bwSimLab._pane.session, null, {timeout: 90000});
+    await reopen.waitForFunction(text => window.__bwSimLab.projectRecord?.ldraw === text, shown.ldraw, {timeout: 30000});
+    console.log('PASS loading a project into an open Sim Lab replaces the model with the saved one');
+    await reopen.close();
 
     const fallback = await browser.newPage({viewport: {width: 1400, height: 900}, serviceWorkers: 'block'});
     fallback.on('pageerror', error => errors.push(error.message));
