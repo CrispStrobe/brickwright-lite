@@ -35,6 +35,16 @@ const perpDist = (p, origin, dir) => {
  * @returns {{joints:Array, lockedPairs:Array, lockedParts:Array}} lockedPairs = list of [bodyIdA, bodyIdB] that need merging;
  *   lockedParts[i] = the placed parts whose hinges lock pair i
  */
+/**
+ * The joint's motor from the graph edge's: every field the contract names, the device id
+ * included — the hub reports it (48 medium, 49 large angular motor) and scales speeds by it.
+ */
+const motorOf = m => {
+    const motor = {port: m.port, maxTorqueNm: m.maxTorqueNm, maxSpeedRadPerSec: m.maxSpeedRadPerSec};
+    if (Number.isInteger(m.deviceId)) motor.deviceId = m.deviceId;
+    return motor;
+};
+
 export const buildJoints = (nodes, edges, islands, diagnostics = []) => {
     const {nodeToBody, bodyMap} = islands;
     // Collect hinge and ball edges that are between different islands
@@ -130,7 +140,7 @@ export const buildJoints = (nodes, edges, islands, diagnostics = []) => {
                 point: g.pointWorld,
                 axis: g.axisWorld,
             };
-            if (g.motor) joint.motor = {port: g.motor.port, maxTorqueNm: g.motor.maxTorqueNm, maxSpeedRadPerSec: g.motor.maxSpeedRadPerSec};
+            if (g.motor) joint.motor = motorOf(g.motor);
             joints.push({joint, groupKey: key, members: group});
         } else {
             // Check collinearity among all members
@@ -166,7 +176,7 @@ export const buildJoints = (nodes, edges, islands, diagnostics = []) => {
                 };
                 // If any member has motor, include it (should not happen for hinge group >1)
                 const motorMember = group.find(g => g.motor);
-                if (motorMember) joint.motor = {port: motorMember.motor.port, maxTorqueNm: motorMember.motor.maxTorqueNm, maxSpeedRadPerSec: motorMember.motor.maxSpeedRadPerSec};
+                if (motorMember) joint.motor = motorOf(motorMember.motor);
                 joints.push({joint, groupKey: key, members: group});
             } else {
                 // Locked: non-collinear hinges between same pair lock it

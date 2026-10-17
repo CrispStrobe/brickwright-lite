@@ -951,3 +951,20 @@ test('an axle pin (no friction) turns in a pin hole and is held fast in an axle 
     assert.equal(validateCompiledMechanism(fixed).length, 0);
     assert.equal(fixed.bodies.length, 1, JSON.stringify(fixed.bodies.map(b => b.parts)));
 });
+
+test('a motor joint keeps its device id: the large angular motor is not reported as the medium one', () => {
+    // The S1 driving base with its two medium motors swapped for large ones (54675, deviceId 49 in parts.json).
+    const base = JSON.parse(readFileSyncTop('test/fixtures/bw-sim/driving-base.json', 'utf8'));
+    const parts = JSON.parse(readFileSyncTop('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json', 'utf8')).parts;
+    const REAL = new Map(parts.map(p => [p.part, p]));
+    const deviceOf = file => REAL.get(file).motor.deviceId;
+    const medium = compile(base, REAL);
+    const motors = medium.joints.filter(j => j.motor);
+    assert.equal(motors.length, 2);
+    for (const j of motors) assert.equal(j.motor.deviceId, deviceOf('54696p01.dat'), `${j.id} medium`);
+    const large = {...base, parts: base.parts.map(p => (p.part === '54696p01.dat' ? {...p, part: '54675.dat'} : p))};
+    const compiled = compile(large, REAL);
+    const largeMotors = compiled.joints.filter(j => j.motor);
+    assert.ok(largeMotors.length >= 1, 'the large motors still drive');
+    for (const j of largeMotors) assert.equal(j.motor.deviceId, deviceOf('54675.dat'), `${j.id} large`);
+});
