@@ -57,7 +57,13 @@ const parseType1 = line => {
     const tokens = trimmed.split(/\s+/);
     if (tokens[0] !== '1') return null;
     if (tokens.length < 15) return {error: 'too few tokens'};
-    const color = parseInt(tokens[1], 10);
+    const colorStr = tokens[1].trim();
+    let color;
+    if (/^0x/i.test(colorStr)) {
+        color = Number.parseInt(colorStr, 16);
+    } else {
+        color = Number.parseInt(colorStr, 10);
+    }
     if (!Number.isFinite(color)) return {error: 'bad color'};
     const nums = tokens.slice(2, 14).map(s => parseFloat(s));
     if (nums.some(n => !Number.isFinite(n))) return {error: 'bad numbers'};
@@ -153,8 +159,14 @@ export const parseModel = (text, {catalog} = {}) => {
 
     // For sub-model flattening, we need to track line index path for ids
     // We will define recursive function to flatten a sub-model file
-    const flattenSubModel = (subFileName, parentPos, parentRot, path) => {
-        const sec = fileSections.get(normalizeFile(subFileName));
+    const flattenSubModel = (subFileName, parentPos, parentRot, path, visited = new Set()) => {
+        const norm = normalizeFile(subFileName);
+        if (visited.has(norm)) {
+            refusals.push({line: 0, code: 'cycle', message: `Cycle detected at '${subFileName}'`});
+            return [];
+        }
+        visited.add(norm);
+        const sec = fileSections.get(norm);
         if (!sec) return [];
         const result = [];
         let localPendingPort = null;
@@ -219,7 +231,7 @@ export const parseModel = (text, {catalog} = {}) => {
                         refusals.push({line: lineNo, code: 'bad-matrix', message: `Bad matrix at line ${lineNo} det=${det3(parsed.rotation).toFixed(4)}`});
                         continue;
                     }
-                    const nestedParts = flattenSubModel(parsed.file, composedPos2, composedRot, nestedPath);
+                    const nestedParts = flattenSubModel(parsed.file, composedPos2, composedRot, nestedPath, new Set(visited));
                     result.push(...nestedParts);
                     continue;
                 }
@@ -249,7 +261,7 @@ export const parseModel = (text, {catalog} = {}) => {
                 if (localPendingId) {
                     if (seenIds.has(localPendingId)) {
                         refusals.push({line: lineNo, code: 'duplicate-id', message: `Duplicate id '${localPendingId}' at line ${lineNo}`});
-                        id = `p${path.join('_')}_${i + 1}`;
+                        id = `${normalizeFile(subFileName)}#${path.join('_')}_${i + 1}`;
                         // Need to ensure this generated id is unique and not duplicate? It should be unique because path is unique.
                     } else {
                         id = localPendingId;
@@ -257,7 +269,7 @@ export const parseModel = (text, {catalog} = {}) => {
                     }
                     localPendingId = null;
                 } else {
-                    id = `p${path.join('_')}_${i + 1}`;
+                    id = `${normalizeFile(subFileName)}#${path.join('_')}_${i + 1}`;
                     // Ensure uniqueness (if by chance explicit ID used same as path, but path is unique, so fine)
                     // But need to check if this path id already exists (should not, as path is unique)
                     if (seenIds.has(id)) {
@@ -384,7 +396,7 @@ export const parseModel = (text, {catalog} = {}) => {
                     pendingId = null;
                 }
                 pendingPort = null;
-                const subParts = flattenSubModel(parsed.file, parsed.position, parsed.rotation, [idx + 1]);
+                const subParts = flattenSubModel(parsed.file, parsed.position, parsed.rotation, [idx + 1], new Set([normalizeFile(firstFileName)]));
                 parts.push(...subParts);
                 continue;
             }
