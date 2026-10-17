@@ -1281,6 +1281,61 @@ forks (no relative slip > 2 mm over the cycle). **Worm**: with a 24T worm wheel 
 loaded 0.05 N·m, the arm turns `θ_worm/24 ± 1 %` when driven, and when the motor coasts it
 does not move by more than 0.5° in 5 s.
 
+*R4 as built (2026-10-17, `lane/simlab-r4-20261017`).* Files: `kinds/slide.js` (connector
+`slide-bore`), `kinds/worm.js` (connector `worm`, coupling `worm`), `kinds/rack.js` (connector
+`rack-teeth`, coupling `rackAndPinion`), `kinds/tooth-parts.js`; `mech/joints.js` (slider joints from
+slider edges), `mech/compile.js` (detector `limits`, loads), `physics/jolt-core.js` (the `worm`
+builder), `world/objects.js` (loads, the pallet), `world/mats.js` (`warehouse`), the Forklift example
+(`static/sim-lab/models/forklift.ldr`, `programs/forklift.bw`). Parts: racks 64781 (1×13) and 3743
+(1×4), smooth toggle joint 48496, fork 2823; 4716's `gear: {type: worm}` became a `worm` connector.
+Accepted by `test/bw-sim-forklift.test.mjs` (T4 through the VM, the SPIKE controller and the DC model:
+pallet +39.82 mm, r·θ 40.03 mm — the 0.2 mm is the pockets' clearance over the tines —, held 5 s
+drifting 0.012 mm, back to −0.01 mm, slip 0.00 mm; negative controls), `test/bw-sim-worm.test.mjs`
+(driven 1/23.93; coasting 0.0004° in 5 s, braked 0°; hold 0: falls 75.7°), `test/bw-sim-slide-rack.test.mjs`,
+the part-meta checks of the new connectors, and the browser `examples` gate. Where it deviates, and why:
+
+- **No `rack-slot`; the guide is a `slide-bore` on an axle.** LEGO has no beam slot a rack runs in that
+  the compiler could see; the smooth toggle joint's eyes are made for an axle to run free in. A
+  `slide-bore` on an axle is a `slider` edge; one slider joint per body pair, its travel measured from the
+  connectors (each bore stays on its axle — one per axle is enough —, and stops at any other part seated
+  on that axle), then narrowed by the rack to its teeth. The slider locks the bore's turn about the axle
+  (a cylindrical pair, §5.3, is not built): exact on two guides, an approximation on one (the Forklift
+  has one guide; the pinion holds the rack's other side).
+- **The worm's self-lock** is a GearConstraint (1/teeth, signed by the thread's hand, measured from the
+  mesh) plus a hold on the WHEEL's hinge, decided per step: while the motor that drives the worm (its own
+  hinge's, or the first actuated hinge a chain of gear couplings reaches) commands motion, no hold; while
+  it coasts or brakes, or nothing drives the worm, friction `holdTorqueNm/|ratio|` on the wheel's hinge
+  (Jolt applies hinge friction while the hinge's own motor is off: the wheel has none). Physics: a LEGO
+  worm's lead angle (≈ 7°) is below plastic's friction angle (11°–19°), so its back-efficiency is
+  negative — no wheel torque turns it; a torque on the worm does. `WORM_HOLD_TORQUE_NM` = 0.1 N·m at the
+  worm (2.4 N·m at a 24T) is an estimate, above anything a SPIKE motor puts through a train. Forward
+  efficiency (real worms 40–60 %) is not modelled. The hold is per-step state (`worms`, rollback-exact).
+  A worm island gets 120 velocity iterations: with 30 a 0.05 N·m arm on a worm-driven 24T ran 1.49 % fast
+  over 1.6 s (the plain `gear` kind too), with 120 0.28 %.
+- **Rack topology limit**: Jolt's RackAndPinionConstraint couples WORLD rates; the coupling is exact while
+  the pinion's frame neither turns about the pinion axis nor moves along the rack — a fixed motor driving
+  a moving rack (the Forklift). A pinion climbing a fixed rack (motor on the carriage) is not that case.
+- **The 8T and the rack are half a hole apart**: a 64781's pitch line is 5 LDU from its face, so with an
+  8T (r 10) the rack's centre plane is 15 LDU from the pinion's axis — every part on the carriage sits
+  5 LDU off the frame's grid. The Forklift bridges it the way builders do, with an axle connector (32039)
+  placed along an axle (`guideTee` on `guideStub`), which holds the guide axle at the carriage's offset.
+- **Loads** are a mat's, like obstacles (`warehouse` carries the pallet where the Forklift's tines are
+  on its start pose); bodies with `role: 'load'`, drawn in their body's group. `withBodyRoles` keeps a
+  role the compiler set.
+- **One part's own two pins** in two holes (48496: LDraw draws them frictionless) lock as before but
+  without the `locked-hinges` warning: a mount, not a hinge the builder meant to turn.
+- **Measured for R3's note**: a held, loaded rack (the motor in SPIKE hold, 45 g on the carriage)
+  drifts 0.012 mm in 5 s — no drift correction needed; `SetConstraints` stays unused.
+
+What R6/R7 should know: couplings that are connectors (`worm`, `rack-teeth`) are free detectors in
+`kinds/` that reuse `gearHinges` (now in `kinds/gear-mesh.js`) for the frame rules; a detector may bound a
+joint's travel (`limits`); the core's coupling builders are still an if-chain in `jolt-core.js`
+(`buildGearConstraint` is the shared gear part). A worm-driven turntable (R7 slewing) and a worm winch get
+the self-lock for free; the hold acts on the wheel's hinge, so a wheel that is itself motorised is not
+handled. A clutch (R6) is a per-step decision like the worm hold: register its state with
+`core.registerState` and act before `Step` (see `applyWormHolds`). The editor's snap still uses the v1
+edge rule (no snapping onto slide-bores yet, R16).
+
 **R5 — The emulated-route proof: RCX bytecode VM + RCX profile.** `routes/rcx-vm/`
 (clean-room interpreter of the standard-firmware opcodes NQC emits for RCX2: tasks, vars,
 timers, `SetOutput/OnFwd/Off/Float/SetPower`, sensors type/mode, `Wait`), `hubs/rcx/`
