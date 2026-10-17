@@ -77,19 +77,22 @@ export class SimHubBridge {
         // Heading reference: the hub's forward direction at t = 0, flattened onto the ground.
         this.forward0 = this._forward();
         this.heading = 0;
-        // Plug the model's motors into the hub, as the arena's bridge does for its
-        // driving base: the extension sees a motor on each driven port, at position 0.
-        for (const j of mechanism.joints) {
-            if (j.type !== 'hinge' || !j.motor) continue;
-            const index = PORTS.indexOf(j.motor.port);
-            hubState.data.sensors[index] = {kind: 'motor', deviceId: j.motor.deviceId ?? MEDIUM_MOTOR};
-            hubState.motors.resetPosition(j.motor.port, 0);
-            hubState.motors.stop(j.motor.port);
+        this.previousOwner = plugMotors(hubState, mechanism);
+        // The sensors read the scene from the start, not from the first step: a port must not
+        // keep a reading from the previous model (a "nothing ahead" -1 would end a program's
+        // `wait until distance < 10` before the robot moved).
+        publishSensors(hubState, this.sensorReadings());
+    }
+
+    /** Every sensor port's reading now, as [port, kind, values] (what updateSensor takes). */
+    sensorReadings () {
+        const sensors = [];
+        const readings = readSensors(this.core, this.mechanism, this.robotBodies);
+        for (const [port, reading] of Object.entries(readings)) {
+            const {kind, ...values} = reading;
+            sensors.push([port, kind, {deviceId: SENSOR_DEVICE[kind], ...values}]);
         }
-        hubState.motorPairDefined = false;
-        this.previousOwner = hubState.clockOwner;
-        hubState.clockOwner = 'native';
-        hubState.resetHeading(0);
+        return sensors;
     }
 
     /** The hub body's local -z axis (LDraw +z, the robot's forward) in world, on the ground plane. */
@@ -102,22 +105,41 @@ export class SimHubBridge {
         return [fx / n, fz / n];
     }
 
-    /** One fixed step (see the header). */
+    /** One fixed step (see the header). Returns the step's frame (what it wrote into the hub). */
     step () {
+        const {base, commanded} = this._command();
+        this.core.step(this.stepMs / 1000);
+        const frame = this._measure(base, commanded);
+        applyFrame(this.hubState, frame);
+        return frame;
+    }
+
+    /** Steps 1-3: the hub's motor controller runs, its velocities become the hinges' targets. */
+    _command () {
         const data = this.hubState.data.motors;
         const base = new Map();
         for (const [index] of this.motors) base.set(index, Number(data[index].position) || 0);
         this.hubState.stepMotors(this.stepMs);
+        const commanded = new Map();
         for (const [index, m] of this.motors) {
             // Zero commanded velocity holds the shaft (brake); coast is not modelled in S1.
             const degPerSec = Number(data[index].degPerSec) || 0;
+            commanded.set(index, degPerSec);
             this.core.setMotor(m.joint, {mode: 'velocity', radPerSec: degPerSec / DEG});
         }
-        this.core.step(this.stepMs / 1000);
+        return {base, commanded};
+    }
+
+    /**
+     * Steps 5-6 after the physics stepped: everything the hub is told about this step, as a
+     * plain, structured-clone-safe FRAME (applyFrame writes it). The physics worker sends
+     * these back one per step (physics/sim-worker-protocol.js).
+     */
+    _measure (base, commanded) {
+        const motors = [];
         for (const [index, m] of this.motors) {
             const {angle, velocity} = this.core.jointState(m.joint);
-            data[index].position = base.get(index) + (angle - m.angle) * DEG;
-            data[index].measuredDegPerSec = velocity * DEG;
+            motors.push([index, base.get(index) + (angle - m.angle) * DEG, velocity * DEG, commanded.get(index)]);
             m.angle = angle;
         }
         // Heading: clockwise positive seen from above (y up), continuous.
@@ -133,28 +155,32 @@ export class SimHubBridge {
         if (delta < -180) delta += 360;
         const rate = delta / (this.stepMs / 1000);
         this.heading += delta;
-        this.hubState.setHeading(this.heading, {rate});
         // Full IMU: pitch, roll, angular velocity, acceleration, faceUp from the hub body.
+        let imu = null;
         try {
             const pose = this.core.bodyPose(this.hubBody);
             const angVelWorld = this.core.bodyAngularVelocity(this.hubBody);
             const linVelWorld = this.core.bodyLinearVelocity(this.hubBody);
             const dt = this.stepMs / 1000;
-            const imu = imuFromBody(pose, angVelWorld, linVelWorld, this._prevLinVel, dt, this.mechanism.gravity);
+            const {pitch, roll, angularVelocity, acceleration, faceUp} =
+                imuFromBody(pose, angVelWorld, linVelWorld, this._prevLinVel, dt, this.mechanism.gravity);
             this._prevLinVel = linVelWorld.slice();
-            const imuData = this.hubState.data.imu;
-            imuData.pitch = imu.pitch;
-            imuData.roll = imu.roll;
-            imuData.angularVelocity = imu.angularVelocity;
-            imuData.acceleration = imu.acceleration;
-            imuData.faceUp = imu.faceUp;
+            imu = {pitch, roll, angularVelocity, acceleration, faceUp};
         } catch (_) {}
-        const readings = readSensors(this.core, this.mechanism, this.robotBodies);
-        for (const [port, reading] of Object.entries(readings)) {
-            const {kind, ...values} = reading;
-            const deviceId = SENSOR_DEVICE[kind];
-            this.hubState.updateSensor(port, kind, {deviceId, ...values});
-        }
+        return {motors, heading: this.heading, rate, imu, sensors: this.sensorReadings()};
+    }
+
+    /** What step() carries from one step to the next besides the physics (for a worker's rollback). */
+    saveState () {
+        return {heading: this.heading, prevLinVel: this._prevLinVel && this._prevLinVel.slice(),
+            angles: [...this.motors.values()].map(m => m.angle)};
+    }
+
+    restoreState ({heading, prevLinVel, angles}) {
+        this.heading = heading;
+        this._prevLinVel = prevLinVel && prevLinVel.slice();
+        let i = 0;
+        for (const m of this.motors.values()) m.angle = angles[i++];
     }
 
     /** Advance by ms of simulated time in fixed steps; publish once. */
@@ -171,6 +197,104 @@ export class SimHubBridge {
     }
 
     /** Hand the clock back (sensor/motor authority returns to whoever had it). */
+    dispose () {
+        this.hubState.clockOwner = this.previousOwner;
+    }
+}
+
+/**
+ * Plug the model's motors into the hub, as the arena's bridge does for its driving
+ * base: the extension sees a motor on each driven port, at position 0; the hub's motor
+ * clock becomes 'native' (stepped by whoever steps the scene). Returns the previous clock owner.
+ */
+export const plugMotors = (hubState, mechanism) => {
+    for (const j of mechanism.joints) {
+        if (j.type !== 'hinge' || !j.motor) continue;
+        const index = PORTS.indexOf(j.motor.port);
+        hubState.data.sensors[index] = {kind: 'motor', deviceId: j.motor.deviceId ?? MEDIUM_MOTOR};
+        hubState.motors.resetPosition(j.motor.port, 0);
+        hubState.motors.stop(j.motor.port);
+    }
+    hubState.motorPairDefined = false;
+    const previousOwner = hubState.clockOwner;
+    hubState.clockOwner = 'native';
+    hubState.resetHeading(0);
+    return previousOwner;
+};
+
+/** Writes sensor readings ([port, kind, values], SimHubBridge.sensorReadings) and publishes them. */
+export const publishSensors = (hubState, sensors) => {
+    for (const [port, kind, values] of sensors) hubState.updateSensor(port, kind, values);
+    if (sensors.length) hubState.changed();
+};
+
+/** Writes one step's frame (SimHubBridge._measure) into the hub: encoders, heading, IMU, sensors. */
+export const applyFrame = (hubState, frame) => {
+    const data = hubState.data.motors;
+    for (const [index, position, measuredDegPerSec] of frame.motors) {
+        data[index].position = position;
+        data[index].measuredDegPerSec = measuredDegPerSec;
+    }
+    hubState.setHeading(frame.heading, {rate: frame.rate});
+    if (frame.imu) {
+        const imuData = hubState.data.imu;
+        imuData.pitch = frame.imu.pitch;
+        imuData.roll = frame.imu.roll;
+        imuData.angularVelocity = frame.imu.angularVelocity;
+        imuData.acceleration = frame.imu.acceleration;
+        imuData.faceUp = frame.imu.faceUp;
+    }
+    for (const [port, kind, values] of frame.sensors) hubState.updateSensor(port, kind, values);
+};
+
+/**
+ * The hub's side of a scene whose physics runs in the worker (sim-session.js, worker
+ * mode). The hub state and its motor controller stay here, on the main thread, where
+ * the VM reads and writes them synchronously; the worker runs the SAME SimHubBridge
+ * against a mirror of the controller and returns one frame per step. replay() then
+ * runs the real controller step by step — waits and run-for-degrees promises finish
+ * on the step they finish on — and writes each step's frame, checking that the
+ * controller commanded exactly the velocity the worker's mirror did.
+ */
+export class HubReplay {
+    /** @param {object} options ... sensors: the worker bridge's sensorReadings() at t = 0 */
+    constructor ({hubState, mechanism, hubBody, stepMs = STEP_MS, sensors = []}) {
+        if (!mechanism.bodies.some(b => b.id === hubBody)) throw new Error(`unknown hub body '${hubBody}'`);
+        this.hubState = hubState;
+        this.hubBody = hubBody;
+        this.stepMs = stepMs;
+        this.accumulator = 0;
+        this.previousOwner = plugMotors(hubState, mechanism);
+        publishSensors(hubState, sensors);
+    }
+
+    /** As SimHubBridge.tick's loop: how many fixed steps ms more of simulated time makes due. */
+    due (ms) {
+        this.accumulator += Math.max(0, Number(ms) || 0);
+        let steps = 0;
+        while (this.accumulator >= this.stepMs - 1e-9) {
+            this.accumulator -= this.stepMs;
+            steps++;
+        }
+        return steps;
+    }
+
+    /**
+     * Applies a batch of frames, one controller step each. Returns the number of steps
+     * whose commanded velocity differed from the worker's (0 unless the two diverged).
+     */
+    replay (frames) {
+        const data = this.hubState.data.motors;
+        let diverged = 0;
+        for (const frame of frames) {
+            this.hubState.stepMotors(this.stepMs);
+            if (frame.motors.some(([index, , , cmd]) => (Number(data[index].degPerSec) || 0) !== cmd)) diverged++;
+            applyFrame(this.hubState, frame);
+        }
+        if (frames.length) this.hubState.changed();
+        return diverged;
+    }
+
     dispose () {
         this.hubState.clockOwner = this.previousOwner;
     }

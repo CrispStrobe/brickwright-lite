@@ -36,7 +36,7 @@ This section overrides the sections below where they disagree.
   8/16/24/40T spur and 12/20T bevel gears), each connector checked against
   the mesh by `test/bw-sim-part-meta.test.mjs` (`ldraw/ldraw-geometry.js`).
 - D1-D4: `bw-sim/mech/` compiler; C8 data half: `bw-sim/model/ldraw-model.js`.
-- D5 core: `bw-sim/physics/jolt-core.js` (worker wrapper still to do). Jolt
+- D5 core: `bw-sim/physics/jolt-core.js` (in the worker since 2026-10-17: "§4.9" below). Jolt
   contact tolerances are set for millimetre parts: the defaults (2 cm) made
   the driving base drive 15 % slower than its wheels.
 - A6 (S1 form): `bw-sim/hub-bridge.js` - the unchanged virtual SPIKE hub
@@ -95,6 +95,87 @@ parts are excluded. Trademark: "LEGO®" appears only as an adjective, never in
 a product name or logo, with the standard not-endorsed disclaimer; no
 official instructions, box art or catalogue images. Rapier (fallback) is
 Apache-2.0: ship its licence and NOTICE if it is ever adopted.
+
+### §4.9 The physics worker — 2026-10-17 (ROADMAP §4.9)
+
+**Where the physics runs.** In the app, in a Web Worker (`physics/physics-worker.js`, its own
+chunk `bw-sim-physics-worker`; Jolt in chunk `bw-sim-jolt`, which the main thread fetches only
+when it has no worker). In node, without `Worker`, or when the worker cannot load the scene
+(no WebAssembly in workers), on the main thread as before; `session.workerError` says why.
+`session.worker` says which; the browser gate asserts `true`.
+
+**What stays on the main thread.** The hub state and its motor controller
+(`VirtualSpikeHubState` and the independent backend): the VM reads and writes them
+synchronously, and a run-for-degrees promise or a wait must finish there.
+
+**Why not "send motor targets, get poses back".** Within one 5 ms step the controller and
+the hinge are a closed loop: the controller's velocity drives the hinge, the hinge's measured
+angle is the next step's encoder (run-to-position, holds). Splitting that across the message
+boundary adds a step of latency to every encoder reading, and sensors would read a different
+step's pose than the encoders. So the loop runs where the physics is.
+
+**Protocol** (`physics/sim-worker-protocol.js`; one batch = the steps one `tick()` makes due):
+
+1. main → worker: `{scene, steps, hub: exportMotorState(hub)}` — everything the controller
+   reads when it steps (per-port controllers minus their promise resolvers, motor data, port
+   devices, simulated ms, clock owner).
+2. worker: `core.checkpoint()` (Jolt `SaveState` + the core's own unwrapped angles and motor
+   commands + the bridge's heading/IMU memory), import the state into a **mirror** hub, run the
+   unchanged `SimHubBridge.step()` N times — controller, hinge targets, physics step, encoders,
+   heading, IMU, sensor rays — and record each step's **frame** (what that step writes into the hub).
+3. worker → main: the frames and every body's pose / joint state after the last step (Float64).
+4. main: if the controller state is still the one sent, **replay**: per frame, the real
+   controller steps once (`stepMotors(5)`; its waits and promises finish on that step), then
+   `applyFrame` writes the frame exactly as the in-thread bridge does; then one `changed()`.
+   Each frame carries the velocity the mirror commanded; the replay checks the real controller
+   commanded the same (`stats.diverged`, always 0).
+5. If the controller state changed while the batch was in flight (the VM set a motor, the drive
+   pad, Pause): re-send with `redo: true` — the worker `rollback()`s to the checkpoint and runs the
+   batch with the new state. In-thread a tick is atomic, so that command reached the controller
+   before the tick; the redone batch is exactly that. A command that changes nothing the
+   controller reads (the same speed again) is not a conflict.
+
+**One clock.** The hub's simulated time, `session.time`, the encoders, the sensors and the poses
+all advance together when a batch is applied; nothing the VM can see moves while a batch is in
+flight. The cost is one round trip between a tick and its result. A batch is at most
+`MAX_BATCH_STEPS` (20 = 100 ms); when the worker cannot keep up, the rest is dropped
+(`stats.droppedMs`), as the pane's 50 ms frame clamp drops it on the main thread.
+
+**Determinism.** Jolt's checkpoint → rollback → step with the same commands is bit-identical
+(measured), so the worker gives the in-thread numbers to the last bit, not approximately:
+`test/bw-sim-physics-worker-session.test.mjs` runs both side by side on a real worker thread
+(driving base forward, turning, run-for-degrees; distance and colour sensors on their mats;
+encoders of the same step as the mirrored poses; a redone batch; a hub-less model; the line
+follower's example program through the real VM, frame for frame).
+
+**Consumers.** `session.core` on the worker is a `MirrorCore`: `snapshot()` (Float32, as the
+core's), `bodyPose()` and `jointState()` at full precision, from the last applied batch;
+`castRay`/`step`/`setMotor` throw (they run in the worker, inside their step). The 3D view and
+the pane use `snapshot()`; sensors.js runs in the worker; instruments that sample "after every
+step" use `session.onAdvance(fn)`; headless code that ticks in lockstep awaits `session.idle()`.
+
+**Measured** (`node --import ./scripts/lib/register-gui-scope.mjs scripts/bench-sim-lab-worker.mjs`,
+node worker_threads, 10 s simulated at 60 fps, lockstep; Apple Silicon Mac, 2026-10-17, with other
+jobs running, so ±30 %):
+
+| model | main thread, physics here | main thread, physics in worker | work in the worker | round trip |
+|---|---|---|---|---|
+| S1 driving base (16 parts, 5 bodies) | 12.1 ms / sim s | 5.7 ms / sim s | 14.4 ms / sim s | 0.37 ms mean, 3.8 max |
+| gear train (144 parts, 42 bodies, 18 gear meshes, 6 motors) | 38.4 ms / sim s | 7.1 ms / sim s | 50.3 ms / sim s | 1.0 ms mean, 8.0 max |
+
+The main thread keeps what does not grow with the model (export, compare, replay, mirror);
+the work in the worker is 1.2–1.3× the in-thread physics: the per-batch Jolt checkpoint and the
+frame records are the price of exact redo. In the browser gate (headless Chromium, SwiftShader)
+the line-follower lap ran 457 batches of ~10 steps: 1.3–1.5 ms per batch in the worker,
+0.16 ms per batch on the main thread, round trip 3–5 ms mean (single stalls up to ~1 s when the
+page's main thread is busy rendering; simulated time simply waits, nothing is lost).
+
+**A race this exposed (fixed for both modes).** A new session used to leave each sensor port's
+reading from the previous model until the first step; with the worker that window is a round
+trip, and a stale "nothing ahead" (−1) ended the Wall stopper's `wait until distance < 10` before
+the robot moved (seen once in the gate under load, reproduced on purpose). Both the in-thread
+bridge and the worker's load now publish the sensors' t = 0 readings when the session is made.
+
 
 ---
 

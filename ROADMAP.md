@@ -1921,22 +1921,27 @@ Note that the RCX extension already transpiles ITS OWN blocks to NQC. `generateN
 thing — a whole Scratch project, not one extension's vocabulary — and the two should not be
 confused when someone picks this up.
 
-### 4.9 The Sim Lab physics worker waits for the hub bridge to move off-thread (2026-10-16)
+### 4.9 The Sim Lab physics worker — CLOSED 2026-10-17, the physics runs in it
 
-`overlay/scratch-gui/src/lib/bw-sim/physics/physics-worker.js` (the Web Worker entry) and
-`physics-client.js` (its main-thread side) are built and tested —
-`test/bw-sim-physics-worker.test.mjs` runs the same `physics-host.js` on a Node worker thread and
-gets byte-identical snapshots — but nothing in the app imports them yet. The Sim Lab pane steps the
-physics core on the main thread, because `bw-sim/hub-bridge.js` reads every motorised joint's angle
-synchronously on each 5 ms step and feeds it back to the hub's motor controller before the next
-step. Splitting that across a message boundary would add a step of latency to every encoder
-reading.
+Was: `physics/physics-worker.js` and `physics-client.js` were built and tested but imported by
+nothing, because `bw-sim/hub-bridge.js` reads every motorised joint's angle synchronously on each
+5 ms step and feeds it to the hub's motor controller before the next step, and splitting that
+loop across a message boundary would add a step of latency to every encoder reading.
 
-What it takes: move the bridge INTO the worker (the hub's motor commands go in per frame, encoder
-positions and the IMU yaw come back with each snapshot), then switch `sim-session.js` to
-`physics-client.js`. Worth doing when a model is heavy enough that stepping it costs a visible frame
-(the S1 driving base steps in well under 1 ms per 5 ms). The two files leave KNOWN_DEAD in that
-commit (`test/no-dead-overlay-modules.test.mjs`).
+Done without splitting the loop: the controller stays on the main thread (the VM needs it
+synchronously), and the worker runs the SAME bridge step against a mirror of the controller's
+state, one batch per tick, returning one frame per step (encoders, IMU, sensor rays of that
+step). The main thread replays the real controller over those frames, so waits and
+run-for-degrees promises finish on their step; a command that changes the controller while a
+batch is in flight makes the worker redo the batch from a Jolt checkpoint. Results are
+bit-identical to the main-thread physics (`test/bw-sim-physics-worker-session.test.mjs`); the
+design is docs/SIM-LAB-PLAN.md "§4.9 The physics worker". The browser gate runs every Sim Lab
+check with the worker in use. Both files left KNOWN_DEAD in the commit that wired them
+(`test/no-dead-overlay-modules.test.mjs`).
+
+Still open, named: `castRay` from the main thread (nothing needs it today; it would be an async
+query); `interpolate()` in physics-client.js is unused (the view draws the last batch's poses);
+Jolt in the worker is single-threaded.
 
 ### 5.1 The stc12 extension lite ships is missing 8 opcodes the emitter emits — FIXED
 

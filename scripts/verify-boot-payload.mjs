@@ -84,14 +84,20 @@ const LAZY = [
     {what: 'the arena 3D view', marker: 'bw-spike-arena-3d-canvas', chunk: 'bw-arena-3d',
         notInChunks: ['bw-spike-simulator'],
         why: 'the dynamic import in spike-arena-pane.jsx (webpackChunkName "bw-arena-3d")'},
-    // The Sim Lab (docs/SIM-LAB-PLAN.md §0): Jolt's WebAssembly physics, the part
-    // catalog and the scene code arrive when a learner opens the Sim Lab tab,
-    // never with the simulator pane (chunk bw-spike-simulator), never at boot.
-    // Jolt's marker is one of its emscripten binding names; the view's is its
-    // canvas test id.
-    {what: 'Jolt physics (the Sim Lab engine)', marker: 'JoltInterface_GetPhysicsSystem_', chunk: 'bw-sim-lab',
-        sharedLazy: true, notInChunks: ['bw-spike-simulator'],
-        why: 'the dynamic import in overlay/scratch-gui/src/components/tw-pseudocode/sim-lab-pane.jsx (webpackChunkName "bw-sim-lab")'},
+    // The Sim Lab (docs/SIM-LAB-PLAN.md §0): the part catalog and the scene code
+    // arrive when a learner opens the Sim Lab tab, never with the simulator pane
+    // (chunk bw-spike-simulator), never at boot. Jolt's WebAssembly physics is
+    // lazier still (ROADMAP §4.9): the physics worker (its own chunk) loads it, and
+    // the Sim Lab's main-thread chunk must not carry it — the main thread fetches
+    // it only where there is no worker. Jolt's marker is one of its emscripten
+    // binding names; the view's is its canvas test id; the worker's is a refusal
+    // only its message host (physics-host.js) says.
+    {what: 'Jolt physics (the Sim Lab engine)', marker: 'JoltInterface_GetPhysicsSystem_', chunk: 'bw-sim-jolt',
+        sharedLazy: true, notInChunks: ['bw-spike-simulator', 'bw-sim-lab'],
+        why: 'loadJolt\'s dynamic import in overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js (webpackChunkName "bw-sim-jolt")'},
+    {what: 'the Sim Lab physics worker', marker: 'sim batch before sim load', chunk: 'bw-sim-physics-worker',
+        notInChunks: ['bw-spike-simulator', 'bw-sim-lab'],
+        why: 'startPhysicsWorker in overlay/scratch-gui/src/lib/bw-sim/physics/physics-client.js (new Worker(new URL(…)), webpackChunkName "bw-sim-physics-worker")'},
     {what: 'the Sim Lab 3D view', marker: 'bw-sim-lab-3d-canvas', chunk: 'bw-sim-lab',
         notInChunks: ['bw-spike-simulator'],
         why: 'the dynamic import in sim-lab-pane.jsx (webpackChunkName "bw-sim-lab")'},

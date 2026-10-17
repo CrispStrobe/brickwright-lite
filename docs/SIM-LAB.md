@@ -269,6 +269,7 @@ Part geometry is a curated subset of the official **LDraw Parts Library** (CC BY
 - `bw-sim-physics-cast-ray.test.mjs` — raycast for sensors and distance.
 - `bw-sim-physics-core.test.mjs` — Jolt body and hinge creation, stepping.
 - `bw-sim-physics-worker.test.mjs` — worker message protocol.
+- `bw-sim-physics-worker-session.test.mjs` — the physics in the worker gives the main-thread numbers bit for bit (driving, sensors, a command in flight, the line follower's program through the VM).
 - `bw-sim-render-quality.test.mjs` — part-geometry and material fidelity.
 - `bw-sim-s1-driving-base.test.mjs` — the S1 driving base drives, turns and hits a wall.
 - `bw-sim-scene3d.test.mjs` — Sim Lab 3D view, mat texture and obstacle meshes.
@@ -278,7 +279,7 @@ Part geometry is a curated subset of the official **LDraw Parts Library** (CC BY
 - `bw-sim-snap.test.mjs` — snap candidates (pins, axles, studs, ball).
 - `bw-sim-world.test.mjs` — mats and obstacles in the compiled mechanism and scene.
 
-Plus `test/bw-sim-persist.test.mjs` ↔ `test/project-bundle-archive.test.mjs` (real bundle writer/reader) and `scripts/verify-boot-payload.mjs` (Jolt and the Sim Lab view stay out of the first load, chunk `bw-sim-lab`).
+Plus `test/bw-sim-persist.test.mjs` ↔ `test/project-bundle-archive.test.mjs` (real bundle writer/reader) and `scripts/verify-boot-payload.mjs` (the Sim Lab view stays out of the first load, chunk `bw-sim-lab`; Jolt and the physics worker stay out of that chunk too, chunks `bw-sim-jolt` and `bw-sim-physics-worker`).
 
 **Browser (after a GUI build):**
 - `npm run verify:sim-lab` — `scripts/verify-sim-lab-browser.mjs` loads the reference driving base with a WebGL view, runs with no program (hint shown, robot stays put, Drive pad moves it), chooses the line-oval mat (robot on the line), checks palette place/snap/undo, palette pictures (drawn, lazily), search, drag from the palette onto the floor and onto a beam hole, Esc cancelling a drag, Build→Simulate compile, a green-flag Scratch program drives with physical encoders, saved model reopens byte-identical, project load replaces the model, no-WebGL fallback still runs.

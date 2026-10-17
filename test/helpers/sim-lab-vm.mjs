@@ -30,6 +30,7 @@ import {runOnArena, FRAME_MS} from './spike-arena-vm.mjs';
 const SIM = path.join(REPO, 'overlay', 'scratch-gui', 'src', 'lib', 'bw-sim');
 const {SimSession, prepareModel, catalogFrom, hubBodyOf} = await import(path.join(SIM, 'sim-session.js'));
 const {loadJolt} = await import(path.join(SIM, 'physics', 'jolt-core.js'));
+const {STEP_MS} = await import(path.join(SIM, 'hub-bridge.js'));
 
 export const CATALOG = catalogFrom(JSON.parse(readFileSync(path.join(SIM, 'part-meta', 'parts.json'), 'utf8')));
 export {FRAME_MS};
@@ -54,14 +55,17 @@ const quatRotate = ([x, y, z, w], v) => {
  * @param {string|null} [options.mat] mat id, as the pane's Mat selector sets it
  * @param {number} options.timeLimitMs simulated time budget
  * @param {function} [options.stopWhen] (track) => true ends the run early
+ * @param {object} [options.worker] a PhysicsClient: the session runs its physics in that
+ *        worker (ROADMAP §4.9), and each frame waits for its batch to reach the hub
  * @returns {Promise<{track: {t: number, axle: number[], sensor: number[], reflection: number, color: number,
  *          points: Object<string, number[]>, readings: Object<string, object>, bodies: Object<string, object>}[], issues, run, mechanism, hubId}>}
  */
-export async function runOnSimLab (source, {modelText, mat = null, timeLimitMs, stopWhen = null}) {
+export async function runOnSimLab (source, {modelText, mat = null, timeLimitMs, stopWhen = null, worker = null}) {
     const {model, runModel, mechanism, issues} = prepareModel(modelText, CATALOG, {mat});
     if (!mechanism) throw new Error(`the model does not compile: ${JSON.stringify(issues)}`);
-    const J = await loadJolt();
+    const J = worker ? null : await loadJolt();
     const hubId = hubBodyOf(model, mechanism, CATALOG);
+    const loaded = worker ? await worker.simLoad({mechanism, hubBody: hubId, stepMs: STEP_MS}) : null;
     const hubDef = mechanism.bodies.find(b => b.id === hubId);
     const hinges = mechanism.joints.filter(j => j.motor);
     const axle0 = [0, 1, 2].map(i => hinges.reduce((sum, j) => sum + j.point[i], 0) / hinges.length);
@@ -72,7 +76,7 @@ export async function runOnSimLab (source, {modelText, mat = null, timeLimitMs, 
     const track = [];
     let session = null;
     const bridgeFor = hub => {
-        session = new SimSession({hubState: hub, model, runModel, mechanism, catalog: CATALOG, mat, J});
+        session = new SimSession({hubState: hub, model, runModel, mechanism, catalog: CATALOG, mat, J, worker, loaded});
         const carried = p0 => {
             const pose = session.core.bodyPose(hubId);
             const w = quatRotate(pose.rotation, [0, 1, 2].map(i => p0[i] - hubDef.position[i]));
@@ -81,8 +85,9 @@ export async function runOnSimLab (source, {modelText, mat = null, timeLimitMs, 
         const running = {status: 'running'};
         return {
             verdict: running,
-            tick (ms) {
+            async tick (ms) {
                 session.tick(ms);
+                await session.idle();
                 const reading = port >= 0 ? hub.data.sensors[port] : {};
                 const points = {};
                 const readings = {};
@@ -103,7 +108,7 @@ export async function runOnSimLab (source, {modelText, mat = null, timeLimitMs, 
     };
     try {
         const run = await runOnArena(source, {timeLimitMs}, {bridgeFor});
-        return {track, issues, run, mechanism, hubId};
+        return {track, issues, run, mechanism, hubId, stats: session?.stats ?? null};
     } finally {
         session?.dispose();
     }

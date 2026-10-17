@@ -31,7 +31,7 @@ const TEXT = {
         intro: 'A model from real LEGO® Technic parts with physics. Write a SPIKE Prime program (ports A and B drive the wheels) and press Run: it starts on the green flag.',
         model: 'Model', importModel: 'Open .ldr…', run: 'Run', pause: 'Pause', reset: 'Reset',
         loading: 'Loading the model and the physics engine…', ready: 'Ready', running: 'Running', paused: 'Paused',
-        failed: 'Could not load the model: {error}', noWebgl: 'This browser cannot show the 3D view ({error}). The simulation still runs.',
+        failed: 'Could not load the model: {error}', physicsFailed: 'The physics stopped: {error}. Press Reset to start again.', noWebgl: 'This browser cannot show the 3D view ({error}). The simulation still runs.',
         connectFailed: 'Could not connect the program to the virtual hub: {error}',
         noProgram: 'No SPIKE program is loaded yet, so nothing tells the motors to turn. Write one in the Code tab and press ⇦ To blocks (or build it with blocks), then press Run — or drive the robot with the arrows below.',
         example: 'Load example program', exampleOffer: 'This robot comes with an example program. Press Load example program to put it in the Code tab, then press Run.',
@@ -80,7 +80,7 @@ const TEXT = {
         intro: 'Ein Modell aus echten LEGO®-Technic-Teilen mit Physik. Schreibe ein SPIKE-Prime-Programm (Ports A und B treiben die Räder an) und drücke Start: es beginnt mit der grünen Flagge.',
         model: 'Modell', importModel: '.ldr öffnen…', run: 'Start', pause: 'Pause', reset: 'Zurücksetzen',
         loading: 'Modell und Physik-Engine werden geladen…', ready: 'Bereit', running: 'Läuft', paused: 'Pausiert',
-        failed: 'Das Modell konnte nicht geladen werden: {error}', noWebgl: 'Dieser Browser kann die 3D-Ansicht nicht zeigen ({error}). Die Simulation läuft trotzdem.',
+        failed: 'Das Modell konnte nicht geladen werden: {error}', physicsFailed: 'Die Physik ist stehen geblieben: {error}. Mit Zurücksetzen geht es neu los.', noWebgl: 'Dieser Browser kann die 3D-Ansicht nicht zeigen ({error}). Die Simulation läuft trotzdem.',
         connectFailed: 'Das Programm konnte nicht mit dem virtuellen Hub verbunden werden: {error}',
         noProgram: 'Es ist noch kein SPIKE-Programm geladen, darum dreht sich kein Motor. Schreibe eins im Code-Tab und drücke ⇦ Zu Blöcken (oder baue es aus Blöcken), dann Start — oder fahre den Roboter mit den Pfeilen unten.',
         example: 'Beispielprogramm laden', exampleOffer: 'Zu diesem Roboter gibt es ein Beispielprogramm. Drücke Beispielprogramm laden, dann steht es im Code-Tab, und drücke Start.',
@@ -173,6 +173,9 @@ class SimLabPane extends React.Component {
             get status () { return this._pane.state.status; },
             get issues () { return this._pane.state.issues; },
             get snapshot () { return this._pane.session ? this._pane.session.snapshot() : null; },
+            /** Whether the physics runs in the Web Worker (false: on the main thread, see workerError). */
+            get worker () { return this._pane.session ? this._pane.session.worker : null; },
+            get workerError () { return this._pane.session ? this._pane.session.workerError : null; },
             get view3d () { return this._pane.state.view3d; },
             get mode () { return this._pane.state.mode; },
             get editor () { return this._pane.editor || null; },
@@ -206,6 +209,8 @@ class SimLabPane extends React.Component {
         cancelAnimationFrame(this.raf);
         this.teardown();
         this.teardownEditor();
+        if (this.physics) this.physics.terminate();
+        this.physics = null;
         if (window.__bwSimLab && window.__bwSimLab._pane === this) delete window.__bwSimLab;
     }
 
@@ -466,7 +471,8 @@ class SimLabPane extends React.Component {
         const {SimSession, fetchLDrawClosure, createSimView3D, CATALOG} = this.lib;
         let result;
         try {
-            result = await SimSession.fromText(text, {hubState: this.props.hubState, catalog: CATALOG, mat: this.state.mat});
+            result = await SimSession.fromText(text, {hubState: this.props.hubState, catalog: CATALOG, mat: this.state.mat,
+                worker: this.physicsClient()});
         } catch (error) {
             if (token === this.loadToken) this.setState({status: 'failed', message: this.t('failed', {error: error.message})});
             return;
@@ -480,6 +486,9 @@ class SimLabPane extends React.Component {
         }
         const insight = this.lib.insightOf(runModel, session.mechanism, CATALOG, issues);
         this.session = session;
+        // The worker could not run the scene (no WebAssembly in workers, say): the physics runs
+        // here, and later models do not try the worker again.
+        if (session.workerError && this.physics) { this.physics.terminate(); this.physics = false; }
         let view3d = 'webgl';
         try {
             const {read} = await fetchLDrawClosure([...new Set(model.parts.map(p => p.part))], {withConfig: true});
@@ -497,17 +506,30 @@ class SimLabPane extends React.Component {
         this.setState({status: 'ready', issues, blockers: insight.blockers, view3d});
     }
 
+    /**
+     * One physics worker for every model this pane opens (Jolt loads once), started on
+     * first use; null where there are no workers, or once the worker has failed.
+     */
+    physicsClient () {
+        if (this.physics === undefined) this.physics = this.lib.startPhysicsClient();
+        return this.physics || null;
+    }
+
     frame (now) {
         this.raf = requestAnimationFrame(this.frame);
         const dt = this.last === null ? 0 : Math.min(MAX_FRAME_MS, now - this.last);
         this.last = now;
         if (this.editView) { this.drawThumbs(); this.editView.render(); return; }
         if (!this.session) return;
+        if (this.session.failed && this.state.status !== 'failed') {
+            this.setState({status: 'failed', message: this.t('physicsFailed', {error: this.session.failed.message})});
+        }
         if (this.state.status === 'running' && dt > 0) {
             this.session.tick(dt);
-            if (Math.floor(this.session.time / 100) !== Math.floor((this.session.time - dt) / 100)) {
-                this.setState({simMs: this.session.time});
-            }
+        }
+        // With the physics in the worker, simulated time advances when a batch comes back.
+        if (Math.floor(this.session.time / 100) !== Math.floor(this.state.simMs / 100)) {
+            this.setState({simMs: this.session.time});
         }
         if (this.view) this.view.render(this.session.snapshot());
     }
