@@ -239,3 +239,21 @@ test('a group that does not hold together on its own is not a sub-assembly; a pa
     assert.deepEqual(strayStep.parts, ['stray']);
     assert.equal(plan.steps.filter(s => s.loose).length, 1);
 });
+
+test('the print page has one picture per step, in order, then the parts list; names are escaped', async () => {
+    const {instructionsPrintHtml} = await import('../overlay/scratch-gui/src/lib/bw-sim/instructions/print-page.js');
+    const model = load(read('test/fixtures/bw-sim/driving-base.ldr'));
+    const plan = buildSteps(model, CATALOG);
+    const row = r => ({thumb: null, count: r.count, length: r.length, name: r.name.de, part: r.part});
+    const html = instructionsPrintHtml({lang: 'de', title: 'Fahrbasis <1>',
+        text: {step: 'Schritt {n} / {total}', partsNeeded: 'Teile', partsList: 'Teileliste', total: '{n} Teile', attach: 'Ansetzen: {name}', subassembly: 'Zuerst: {name}'},
+        steps: plan.steps.map((s, i) => ({image: `data:image/png;base64,STEP${i}`, parts: partsList(model, CATALOG, s.parts).map(row), attach: [], subassembly: null})),
+        bom: partsList(model, CATALOG).map(row)});
+    const shots = [...html.matchAll(/<img class="shot" data-step="(\d+)" src="data:image\/png;base64,STEP(\d+)"/g)];
+    assert.deepEqual(shots.map(m => [Number(m[1]), Number(m[2])]), plan.steps.map((_, i) => [i + 1, i]));
+    assert.match(html, /<html lang="de">/);
+    assert.match(html, /<title>Fahrbasis &lt;1&gt;<\/title>/);
+    assert.ok(html.indexOf('data-bom') > html.lastIndexOf('class="shot"'), 'the parts list comes after the steps');
+    assert.match(html, /16 Teile/);
+    assert.match(html, /Technic-Achse 4/);
+});

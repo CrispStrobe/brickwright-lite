@@ -9,6 +9,8 @@
 // category opened); a picture is kept as a PNG data URL per part, so it is drawn
 // once per page however often the palette is re-rendered or Build is reopened.
 // Without WebGL `createPartThumbnails` returns null and the palette shows names.
+// The building instructions' "parts needed" callouts use the same pictures, each
+// in the colour the part has in the model (`render(part, color)`).
 
 import {Mesh, MeshStandardMaterial, PerspectiveCamera, Scene, WebGLRenderer} from 'three';
 import {partGeometry, partVisual} from './part-geometry.js';
@@ -28,9 +30,10 @@ const drawn = new Map();
  * @param {object} options
  * @param {Function} options.read LDraw file reader
  * @param {Map} options.colors LDraw colours (parseLDConfig)
- * @param {number} options.color LDraw colour code the parts are drawn in
+ * @param {number} options.color LDraw colour code the parts are drawn in unless a call names another
  * @param {number} [options.size] pixels per side
- * @returns {{get: (part: string) => string|null, render: (part: string) => string|null, dispose: () => void}|null}
+ * @returns {{get: (part: string, color?: number) => string|null, has: (part: string, color?: number) => boolean,
+ *            render: (part: string, color?: number) => string|null, dispose: () => void}|null}
  *          null when this browser has no WebGL 2
  */
 export const createPartThumbnails = ({read, colors, color, size = THUMBNAIL_PX}) => {
@@ -48,18 +51,25 @@ export const createPartThumbnails = ({read, colors, color, size = THUMBNAIL_PX})
     const scene = new Scene();
     addPartLights(scene);
     const camera = new PerspectiveCamera(30, 1, 0.001, 10);
-    const info = colors.get(color) || colors.get(16);
     const faces = [
-        new MeshStandardMaterial({color: info ? info.value : '#cccccc', ...PART_SURFACE}),
+        new MeshStandardMaterial({color: '#cccccc', ...PART_SURFACE}),
         new MeshStandardMaterial({color: '#ffffff', ...PART_SURFACE, vertexColors: true})
     ];
-    const lines = edgeMaterials(color, colors);
-    const key = part => `${part}@${color}`;
+    /** Edge-line materials per colour drawn so far. */
+    const lineSets = new Map();
+    const linesFor = code => {
+        if (!lineSets.has(code)) lineSets.set(code, edgeMaterials(code, colors));
+        return lineSets.get(code);
+    };
+    const key = (part, code) => `${part}@${code}`;
 
-    const render = part => {
-        if (drawn.has(key(part))) return drawn.get(key(part));
+    const render = (part, code = color) => {
+        if (drawn.has(key(part, code))) return drawn.get(key(part, code));
         let url = null;
         try {
+            const info = colors.get(code) || colors.get(16);
+            faces[0].color.set(info ? info.value : '#cccccc');
+            const lines = linesFor(code);
             const geometry = partGeometry(part, read, colors);
             if (!geometry.boundingBox) geometry.computeBoundingBox();
             const box = geometry.boundingBox;
@@ -79,16 +89,17 @@ export const createPartThumbnails = ({read, colors, color, size = THUMBNAIL_PX})
         } catch {
             url = null; // a part whose files are missing keeps its name only
         }
-        drawn.set(key(part), url);
+        drawn.set(key(part, code), url);
         return url;
     };
 
     return {
-        get: part => drawn.get(key(part)) ?? null,
-        has: part => drawn.has(key(part)),
+        get: (part, code = color) => drawn.get(key(part, code)) ?? null,
+        has: (part, code = color) => drawn.has(key(part, code)),
         render,
         dispose () {
-            for (const m of [...faces, ...lines.edges, ...lines.conditional]) m.dispose();
+            for (const m of faces) m.dispose();
+            for (const lines of lineSets.values()) for (const m of [...lines.edges, ...lines.conditional]) m.dispose();
             renderer.dispose();
             renderer.forceContextLoss();
         }

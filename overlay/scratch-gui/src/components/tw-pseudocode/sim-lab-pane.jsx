@@ -22,6 +22,7 @@ import React from 'react';
 import {pickLocale, browserLocale} from '../../lib/bw-i18n.js';
 import {SIM_LAB_STORAGE_KEY, simLabRecordFromText, readSimLabStorage, isStorableName} from '../../lib/bw-sim/model/sim-lab-persist.js';
 import SimLabPalette from './sim-lab-palette.jsx';
+import SimLabInstructions from './sim-lab-instructions.jsx';
 import {INSIGHT_TEXT, issueSentence, fillText} from './sim-lab-insight-text.js';
 
 const TEXT = {
@@ -46,6 +47,7 @@ const TEXT = {
         issues: 'Notes about this model', time: 'Simulated time: {s} s', canvasLabel: '3D view of the simulated model',
         simulate: 'Simulate', build: 'Build', parts: 'Parts', undo: 'Undo', redo: 'Redo', remove: 'Delete',
         save: 'Save .ldr', port: 'Port', none: 'none',
+        instructions: 'Instructions', instructionsHelp: 'Step-by-step building instructions for this robot, to build it from real LEGO® parts',
         search: 'Search parts', searchHint: 'Search: name or number', clearSearch: 'Clear the search', recent: 'Recently used',
         noMatches: 'No part matches “{q}”.', partTitle: '{name} · part {number}',
         paletteHelp: 'Click a part, then click in the view. Or drag it into the view.',
@@ -94,6 +96,7 @@ const TEXT = {
         issues: 'Hinweise zu diesem Modell', time: 'Simulierte Zeit: {s} s', canvasLabel: '3D-Ansicht des simulierten Modells',
         simulate: 'Simulieren', build: 'Bauen', parts: 'Teile', undo: 'Rückgängig', redo: 'Wiederholen', remove: 'Löschen',
         save: '.ldr speichern', port: 'Port', none: 'keiner',
+        instructions: 'Bauanleitung', instructionsHelp: 'Bauanleitung für diesen Roboter, Schritt für Schritt, zum Nachbauen mit echten LEGO®-Teilen',
         search: 'Teile suchen', searchHint: 'Suche: Name oder Nummer', clearSearch: 'Suche löschen', recent: 'Zuletzt benutzt',
         noMatches: 'Kein Teil passt zu „{q}“.', partTitle: '{name} · Teil {number}',
         paletteHelp: 'Klicke ein Teil an, dann in die Ansicht. Oder zieh es in die Ansicht.',
@@ -142,7 +145,7 @@ class SimLabPane extends React.Component {
         this.state = {status: 'loading', message: '', info: '', driveSpeed: 50, issues: [], modelFile: null, simMs: 0, view3d: 'loading',
             mode: 'simulate', placing: null, selection: [], editorTick: 0, mat: null,
             buildStatus: {kind: 'idle'}, gizmoMode: 'move', grid: 10, recent: [], thumbTick: 0,
-            showPorts: true, showMotion: false, blockers: [], portPicker: null};
+            showPorts: true, showMotion: false, blockers: [], portPicker: null, instructions: null};
         this.viewWrap = React.createRef();
         this.box = React.createRef();
         this.file = React.createRef();
@@ -883,7 +886,17 @@ class SimLabPane extends React.Component {
                             {this.text[mode]}
                         </button>
                     ))}
+                    <button type="button" style={button} data-testid="bw-sim-lab-instructions" title={this.text.instructionsHelp}
+                        disabled={busy || !this.lib || !(this.editor ? this.editor.model : this.session?.model)?.parts.length}
+                        onClick={() => this.setState({instructions: this.editor ? this.editor.model : this.session.model})}>
+                        {this.text.instructions}
+                    </button>
                 </div>
+                {this.state.instructions && (
+                    <SimLabInstructions lib={this.lib} model={this.state.instructions} locale={this.locale}
+                        title={this.editor ? null : this.shippedModel()?.title[this.locale] || this.state.modelFile}
+                        onClose={() => this.setState({instructions: null})} />
+                )}
                 {this.state.mode === 'simulate' && <div style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6}}>
                     <label style={{fontSize: 12}}>{this.text.model}{': '}
                         <select data-testid="bw-sim-lab-model" disabled={busy || !this.lib} value={this.lib?.MODELS.some(m => m.file === modelFile) ? modelFile : ''}
