@@ -90,6 +90,10 @@ impl NativePolicyState {
                     Operation::RenodeSpikeBreakpointSet,
                     Resource::RenodeSpikePrime,
                 ),
+                (Operation::RenodeSpikeLockstepBegin, Resource::RenodeSpikePrime),
+                (Operation::RenodeSpikeLockstepStep, Resource::RenodeSpikePrime),
+                (Operation::RenodeSpikeLockstepEnd, Resource::RenodeSpikePrime),
+                (Operation::RenodeSpikeProgramControlSubmit, Resource::RenodeSpikePrime),
                 (
                     Operation::RenodeSpikeBreakpointClear,
                     Resource::RenodeSpikePrime,
@@ -213,6 +217,10 @@ pub(crate) enum Operation {
     RenodeSpikeProgramStorageSubmit,
     RenodeSpikeBreakpointSet,
     RenodeSpikeBreakpointClear,
+    RenodeSpikeLockstepBegin,
+    RenodeSpikeLockstepStep,
+    RenodeSpikeLockstepEnd,
+    RenodeSpikeProgramControlSubmit,
     RenodeEv3Start,
     RenodeEv3Close,
     RenodeEv3Run,
@@ -251,6 +259,10 @@ impl Operation {
             "renode.spike.program.storage.submit" => Some(Self::RenodeSpikeProgramStorageSubmit),
             "renode.spike.breakpoint.set" => Some(Self::RenodeSpikeBreakpointSet),
             "renode.spike.breakpoint.clear" => Some(Self::RenodeSpikeBreakpointClear),
+            "renode.spike.lockstep.begin" => Some(Self::RenodeSpikeLockstepBegin),
+            "renode.spike.lockstep.step" => Some(Self::RenodeSpikeLockstepStep),
+            "renode.spike.lockstep.end" => Some(Self::RenodeSpikeLockstepEnd),
+            "renode.spike.program.control.submit" => Some(Self::RenodeSpikeProgramControlSubmit),
             "renode.ev3.session.start" => Some(Self::RenodeEv3Start),
             "renode.ev3.session.close" => Some(Self::RenodeEv3Close),
             "renode.ev3.run" => Some(Self::RenodeEv3Run),
@@ -281,6 +293,10 @@ impl Operation {
             Self::RenodeSpikeUartWrite => crate::spike_program_uart_contract::parse_request("micropython.uart.write", args).is_ok(),
             Self::RenodeSpikeUartClose => crate::spike_program_uart_contract::parse_request("micropython.uart.close", args).is_ok(),
             Self::RenodeSpikeProgramStorageSubmit => crate::arena_inputs::valid_nuttx_storage_submit(args),
+            Self::RenodeSpikeLockstepBegin => crate::arena_inputs::valid_lockstep_begin(args),
+            Self::RenodeSpikeLockstepStep => crate::arena_inputs::valid_lockstep_step(args),
+            Self::RenodeSpikeLockstepEnd => crate::arena_inputs::valid_lockstep_end(args),
+            Self::RenodeSpikeProgramControlSubmit => crate::arena_inputs::valid_nuttx_program_control(args),
             Self::RenodeEv3ButtonSet => {
                 map.len() == 2
                     && map.get("button").and_then(Value::as_str).is_some_and(|v| {
@@ -490,6 +506,10 @@ impl RedactedAuditRow {
                 Operation::RenodeSpikeProgramStorageSubmit => "renode.spike.program.storage.submit",
                 Operation::RenodeSpikeBreakpointSet => "renode.spike.breakpoint.set",
                 Operation::RenodeSpikeBreakpointClear => "renode.spike.breakpoint.clear",
+                Operation::RenodeSpikeLockstepBegin => "renode.spike.lockstep.begin",
+                Operation::RenodeSpikeLockstepStep => "renode.spike.lockstep.step",
+                Operation::RenodeSpikeLockstepEnd => "renode.spike.lockstep.end",
+                Operation::RenodeSpikeProgramControlSubmit => "renode.spike.program.control.submit",
                 Operation::RenodeEv3Start => "renode.ev3.session.start",
                 Operation::RenodeEv3Close => "renode.ev3.session.close",
                 Operation::RenodeEv3Run => "renode.ev3.run",
@@ -1308,6 +1328,42 @@ mod tests {
             assert!(state.consume_broker_call(BROKER_LABEL,lease,0,&operation,"renode/spike-prime",&args).is_err());
         }
         assert!(Operation::parse("renode.spike.micropython.uart.attach").is_none());
+    }
+
+    #[test]
+    fn lockstep_operations_parse_round_trip_and_are_declared_for_spike_only() {
+        let step = json!({"quantumUs":5000,"expectClockNs":0,
+            "shafts":[{"port":"A","positionMdeg":0,"speedMdps":0}],
+            "sensors":[{"port":"D","kind":"distance","values":{"distanceMillimeters":120}}]});
+        for (index, (name, operation, args)) in [
+            ("renode.spike.lockstep.begin", Operation::RenodeSpikeLockstepBegin, json!({"quantumUs":5000})),
+            ("renode.spike.lockstep.step", Operation::RenodeSpikeLockstepStep, step.clone()),
+            ("renode.spike.lockstep.end", Operation::RenodeSpikeLockstepEnd, empty()),
+            ("renode.spike.program.control.submit", Operation::RenodeSpikeProgramControlSubmit,
+                json!({"bytes":[112,1,3,0,1,0,0,0]})),
+        ].into_iter().enumerate() {
+            assert_eq!(Operation::parse(name), Some(operation));
+            let mut core = PolicyCore::new(limits());
+            core.record(0, None, Some(operation), None, None, Decision::Allowed);
+            let row = RedactedAuditRow::from_event(core.audit().next().unwrap());
+            assert_eq!(row.operation, Some(name), "audit name must round-trip");
+            assert!(operation.valid_args(&args));
+            let mut extra = args.clone();
+            extra["monitor"] = json!("start");
+            assert!(!operation.valid_args(&extra));
+            let state = NativePolicyState::new();
+            let lease = state.issue_broker_lease(BROKER_LABEL, 7, id(index as u8 + 40)).unwrap();
+            assert_eq!(state.consume_broker_call(BROKER_LABEL, lease, 0, name, "renode/ev3", &args),
+                Err(StateError::Denied(Denial::Undeclared)));
+            let lease = state.issue_broker_lease(BROKER_LABEL, 7, id(index as u8 + 50)).unwrap();
+            assert!(state.consume_broker_call(BROKER_LABEL, lease, 0, name, "renode/spike-prime", &args).is_ok());
+        }
+        assert!(!Operation::RenodeSpikeLockstepStep.valid_args(&json!({"quantumUs":7500,
+            "expectClockNs":0,"shafts":[],"sensors":[]})));
+        assert!(!Operation::RenodeSpikeLockstepBegin.valid_args(&empty()));
+        for name in ["renode.spike.lockstep", "renode.spike.lockstep.run", "renode.ev3.lockstep.step"] {
+            assert!(Operation::parse(name).is_none());
+        }
     }
 
 }
