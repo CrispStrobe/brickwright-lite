@@ -164,7 +164,34 @@ test('parameter property public Code and two actual SB3 projects export and reim
  };
  constructorBindings(firstProject);
  const exported=projectToArcade(firstProject);record({stage:'parameter-property-export',result:exported});clean(exported,['unsupported','warnings']);
- assert.match(exported.ts,/\(value: number\) =>/);assert.doesNotMatch(exported.ts,/__bwBinaryAdd/,'actual Number operands keep numeric Arrow inference');
+ const unparen=node=>node?.type==='Parenthesized'?unparen(node.expression):node;
+ const exportArrowBindings=(program,proof,phase,sourceText)=>{
+  const constructions=program.body.flatMap(node=>node.type==='FunctionDeclaration'?node.body:[node])
+   .filter(node=>node.type==='Declaration').flatMap(node=>node.decls.map(decl=>unparen(decl.init)))
+   .filter(node=>node?.type==='Call'&&node.isNew&&node.callee.type==='Identifier'&&node.callee.name==='Counter');
+  const numberArrow=constructions[0]?.args[1],voidArrow=constructions[0]?.args[2],
+   numberSignature=numberArrow&&proof.flow.signature(proof.flow.profiles.get(numberArrow)),
+   voidSignature=voidArrow&&proof.flow.signature(proof.flow.profiles.get(voidArrow)),
+   assignment=unparen(voidArrow?.body?.[0]?.expr),fallback=unparen(assignment?.right),
+   helper=fallback?.callee?.type==='Identifier'&&program.body.find(node=>node.type==='FunctionDeclaration'&&node.name===fallback.callee.name);
+  record({stage:'parameter-property-export-arrow-bindings',phase,sourceText,program,eligible:proof.eligible,unsupported:proof.unsupported,constructionCount:constructions.length,numberArrow,numberSignature,voidArrow,voidSignature,helper});
+  assert.equal(proof.eligible,true,proof.unsupported.join('\n'));assert.equal(constructions.length,1);
+  assert.equal(numberArrow.type,'FunctionExpression');assert.equal(numberArrow.functionKind,'arrow');assert.deepEqual(numberArrow.params,['value']);
+  assert.equal(numberSignature.parameters[0].type.name,'number');assert.equal(numberSignature.result.kind,'named');assert.equal(numberSignature.result.name,'number');
+  assert.equal(numberArrow.body.length,1);assert.equal(numberArrow.body[0].type,'Return');
+  const returned=unparen(numberArrow.body[0].value);assert.equal(returned.type,'Binary');assert.equal(returned.op,'+');
+  assert.equal(unparen(returned.left).type,'Identifier');assert.equal(unparen(returned.left).name,numberArrow.params[0]);
+  const increment=unparen(returned.right);assert.equal(increment.type,'Binary');assert.equal(increment.op,'+');assert.equal(unparen(increment.left).type,'Number');assert.equal(unparen(increment.right).type,'Number');assert.equal(unparen(increment.left).value,'0');assert.equal(unparen(increment.right).value,'3');
+  // The separately unproved captured global stays on its generic path. The
+  // Number Arrow's success must not grant that Void callback a Number fact.
+  assert.equal(voidArrow.type,'FunctionExpression');assert.equal(voidArrow.functionKind,'arrow');assert.deepEqual(voidArrow.params,[]);assert.equal(voidSignature.result.name,'void');
+  assert.equal(assignment.type,'Assignment');assert.equal(assignment.op,'=');assert.equal(assignment.left.name,'seen');assert.equal(fallback.type,'Call');
+  assert.ok(helper);assert.match(helper.name,/^__bwBinaryAdd_*$/);assert.deepEqual(helper.params,['left','right']);
+  assert.equal(helper.paramTypes.left.text,'any');assert.equal(helper.paramTypes.right.text,'any');assert.equal(helper.returnType,'any');
+  assert.equal(helper.body.length,1);const operation=unparen(helper.body[0].value);assert.equal(operation.type,'Binary');assert.equal(operation.op,'+');
+  assert.equal(operation.left.name,helper.params[0]);assert.equal(operation.right.name,helper.params[1]);
+ };
+ const exportedProgram=parse(exported.ts),exportedProof=proveClassCallableSource(exportedProgram);exportArrowBindings(exportedProgram,exportedProof,'first',exported.ts);
  const actual=declaration(firstProject),parameters=JSON.parse(literal(actual.target,actual.block,'PARAMETERS'));
  assert.deepEqual(parameters.map(parameter=>parameter.type),['number','callable','callable']);
  assert.equal(parameters[1].callableSignature.result.name,'number');assert.equal(parameters[2].callableSignature.result.name,'void');
@@ -209,6 +236,6 @@ test('parameter property public Code and two actual SB3 projects export and reim
  const secondBytes=Buffer.from(await(await second.generateSB3()).arrayBuffer()),secondZip=await JSZip.loadAsync(secondBytes),secondProject=JSON.parse(await secondZip.file('project.json').async('string'));
  record({stage:'parameter-property-second-SB3',bytes:secondBytes.toString('base64'),project:secondProject});assert.deepEqual(secondProject,second.project);constructorBindings(secondProject);
  const final=projectToArcade(secondProject);record({stage:'parameter-property-second-export',result:final});clean(final,['unsupported','warnings']);
- const reconstructed=parse(final.ts);assert.equal(proveClassCallableSource(reconstructed).eligible,true);
+ const reconstructed=parse(final.ts),finalProof=proveClassCallableSource(reconstructed);exportArrowBindings(reconstructed,finalProof,'second',final.ts);
  assert.match(final.ts,/Counter/);assert.match(final.ts,/trace/);assert.match(final.ts,/step/);assert.match(final.ts,/tick/);
 });
