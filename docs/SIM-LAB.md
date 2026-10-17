@@ -67,6 +67,13 @@ Build is a small CAD editor (`bw-sim/editor/editor-view3d.js`; arithmetic in `ed
 - **Magnet:** a single part dragged or placed near a matching hole or axle shows a green ghost and snaps there on release (all connector pairs that would connect are counted). **Hold Alt** to turn the magnet off. A pin must be within 0.5 LDU sideways and centred along the shaft; a placed part that would overlap another is refused (see below).
 - **Camera:** left-drag on empty space or right-drag orbits; middle-drag or Shift+right-drag pans; wheel zooms toward the pointer.
 
+**Palette (`components/tw-pseudocode/sim-lab-palette.jsx`)** — after Tinkercad's shape panel.
+- Each part is a **tile with a picture** drawn from its real LDraw geometry in the placed colour (Light Bluish Grey), edges on, from the front-right above (`view/part-thumbnails.js`: one offscreen WebGL renderer, a picture per part drawn when its tile scrolls into view or its category is opened, a few ms per frame, kept as a data URL for the page's life). Without WebGL the tiles show names only. The tooltip gives the full name and the part number.
+- **Search** filters by EN and DE name and part number, ignoring case and umlaut spelling (`zahnrad`, `zaehne`, `beam 7`, `Lochbalken 7`, `3647`); a number matches a whole number in the name (`beam 7` is not `beam 17`), three digits or more also the start of a part number (`editor/palette.js` `searchPalette`).
+- **Recently used** — the last six parts placed this session, newest first.
+- **Click a tile, then click in the view** to place (Shift+click keeps the tool), or **press a tile and drag it into the view**: the same ghost (magnet, resting on top, overlap refusal) follows the pointer and letting go places the part. Letting go outside the view, or **Esc** during the drag, places nothing.
+- Categories are collapsible and keep their open state across a search.
+
 **Keyboard (onKey)**
 - **R / Shift+R** — turn 90° about the vertical (world Y). If the selection is a single part sitting on a pin or axle, it turns about that connection's axis instead.
 - **T / Shift+T** — tip 90° about the horizontal axis facing the camera (the closer of world X or Z).
@@ -193,5 +200,5 @@ Part geometry is a curated subset of the official **LDraw Parts Library** (CC BY
 Plus `test/bw-sim-persist.test.mjs` ↔ `test/project-bundle-archive.test.mjs` (real bundle writer/reader) and `scripts/verify-boot-payload.mjs` (Jolt and the Sim Lab view stay out of the first load, chunk `bw-sim-lab`).
 
 **Browser (after a GUI build):**
-- `npm run verify:sim-lab` — `scripts/verify-sim-lab-browser.mjs` loads the reference driving base with a WebGL view, runs with no program (hint shown, robot stays put, Drive pad moves it), chooses the line-oval mat (robot on the line), checks palette place/snap/undo, Build→Simulate compile, a green-flag Scratch program drives with physical encoders, saved model reopens byte-identical, project load replaces the model, no-WebGL fallback still runs.
+- `npm run verify:sim-lab` — `scripts/verify-sim-lab-browser.mjs` loads the reference driving base with a WebGL view, runs with no program (hint shown, robot stays put, Drive pad moves it), chooses the line-oval mat (robot on the line), checks palette place/snap/undo, palette pictures (drawn, lazily), search, drag from the palette onto the floor and onto a beam hole, Esc cancelling a drag, Build→Simulate compile, a green-flag Scratch program drives with physical encoders, saved model reopens byte-identical, project load replaces the model, no-WebGL fallback still runs.
 - `scripts/lib/sim-lab-cad-gate.mjs` — `npm run test:sim-lab-cad` places a part on the floor, drags the gizmo, turns with R/ring, slides on the work plane, Shift+multi-select and box-select, groups/ungroups, pins snap from above and beams stack, pushing into the hub is refused.
