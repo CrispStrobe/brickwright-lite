@@ -93,9 +93,10 @@ try {
     await device.selectOption('pico');
     const badge = page.getByTestId('bw-matrix-badge');
     await badge.waitFor({state: 'visible', timeout: 15000});
-    // The badge is an (i) button: the summary is its accessible name, the
+    // The badge is an (i) button with a fixed accessible name (so it never
+    // matches a language tab's name): the summary is its data-summary, the
     // sentence its title, and a click opens a popover showing both.
-    const pseudoPico = (await badge.getAttribute('aria-label')) || '';
+    const pseudoPico = (await badge.getAttribute('data-summary')) || '';
     check('badge for pseudocode on the Pico says lowered', /lowered via/.test(pseudoPico), pseudoPico);
     const title = (await badge.getAttribute('title')) || '';
     check('badge title is the full sentence', /Pseudocode on Raspberry Pi Pico:/.test(title), title.slice(0, 80));
