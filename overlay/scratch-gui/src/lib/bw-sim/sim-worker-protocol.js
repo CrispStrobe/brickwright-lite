@@ -46,7 +46,8 @@ import {SimHubBridge} from './hub-bridge.js';
 import {hubRegistry} from './hubs/index.js';
 
 /**
- * Every body's pose and every joint's state, in the core's snapshot order, at full
+ * Every body's pose and every joint's state (a hinge's angle and rate, a slider's position
+ * and rate; a ball joint: zeros), in the core's snapshot order, at full
  * precision (the core's own snapshot() is Float32; the mirror on the main thread
  * answers bodyPose/jointState with the doubles the in-thread core would return).
  */
@@ -59,10 +60,15 @@ export const posesOf = (core, mechanism) => {
     });
     const joints = new Float64Array(mechanism.joints.length * 2);
     mechanism.joints.forEach((j, i) => {
-        if (j.type !== 'hinge') return;
-        const {angle, velocity} = core.jointState(j.id);
-        joints[i * 2] = angle;
-        joints[i * 2 + 1] = velocity;
+        if (j.type === 'hinge') {
+            const {angle, velocity} = core.jointState(j.id);
+            joints[i * 2] = angle;
+            joints[i * 2 + 1] = velocity;
+        } else if (j.type === 'slider') {
+            const {position, velocity} = core.jointState(j.id);
+            joints[i * 2] = position;
+            joints[i * 2 + 1] = velocity;
+        }
     });
     return {t: core.time, bodies, joints};
 };
@@ -127,6 +133,7 @@ export class MirrorCore {
         this.bodyIndex = new Map(this.bodyIds.map((id, i) => [id, i]));
         this.jointIndex = new Map(this.jointIds.map((id, i) => [id, i]));
         this.hinges = new Set(mechanism.joints.filter(j => j.type === 'hinge').map(j => j.id));
+        this.sliders = new Set(mechanism.joints.filter(j => j.type === 'slider').map(j => j.id));
         this.update({t, bodies, joints});
     }
 
@@ -153,7 +160,8 @@ export class MirrorCore {
     jointState (jointId) {
         const i = this.jointIndex.get(jointId);
         if (i === undefined) throw new Error(`unknown joint ${jointId}`);
-        if (!this.hinges.has(jointId)) throw new Error(`joint ${jointId} is not a hinge`);
+        if (this.sliders.has(jointId)) return {position: this.joints[i * 2], velocity: this.joints[i * 2 + 1]};
+        if (!this.hinges.has(jointId)) throw new Error(`joint ${jointId} is not a hinge or a slider`);
         return {angle: this.joints[i * 2], velocity: this.joints[i * 2 + 1]};
     }
 

@@ -361,12 +361,23 @@ export const compile = (model, catalog, opts = {}) => {
     const couplings = [...gears.map(({id, type, ...rest}) => ({id, kind: type, ...rest})),
         ...detected.couplings.map((c, i) => ({...c, id: `c${i}`}))];
     const mechanismV2 = {...mechanism, version: 2, bodies: withBodyRoles(mechanism.bodies), hubs: v2.hubs, actuators: v2.actuators,
-        couplings, devices: v2.devices, noCollide: noCollidePairs(joints, couplings, kinds)};
+        couplings, devices: v2.devices, noCollide: noCollidePairs(joints, couplings, kinds, seatedBodyPairs(graphEdges, islands))};
     const problemsV2 = validateCompiledMechanism(mechanismV2, {kinds});
     if (problemsV2.length > 0) {
         throw new Error(`compile produced invalid mechanism v2: ${problemsV2.join('; ')}`);
     }
     return mechanismV2;
+};
+
+/** Body pairs a connector edge joins (a shaft seated in a hole of another body, a motor's housing and output). */
+const seatedBodyPairs = (edges, islands) => {
+    const out = [];
+    for (const e of edges) {
+        const a = islands.nodeToBody.get(e._aNode || e.a.part);
+        const b = islands.nodeToBody.get(e._bNode || e.b.part);
+        if (a && b && a !== b) out.push([a, b]);
+    }
+    return out;
 };
 
 /** Every registered coupling detector, in registration order (registry/kinds.js CouplingKindRegistry). */

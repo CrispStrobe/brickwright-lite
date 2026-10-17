@@ -16,16 +16,24 @@
 // Joints: hinge / slider at point/axis (world at t=0), body2:'world' fixed.
 // Gears: contract ratio ω(joint2)=ratio·ω(joint1) mapped to a Jolt
 // GearConstraint between the two gear bodies, r = -1/ratio (see GearConstraint.h).
-// Collisions v1: dynamic-dynamic disabled, dynamic-static enabled.
+// Collisions (owner decision D2, R3): EVERYTHING collides — robot parts with the
+// world, with loads and with each other — except the body pairs in the
+// mechanism's `noCollide` list (bodies joined by a joint or a coupling, parts
+// seated in each other's holes: contracts.js noCollidePairs). The pairs are a
+// Jolt GroupFilterTable (one group, a sub-group per body), checked in C++ when
+// the broad phase pairs two bodies: no JavaScript runs per contact.
 // Motors: velocity / position (as velocity controller for unwrapped angle)
 // / coast / brake / hold, torque limited to ±maxTorqueNm; and `torque`, the
 // DC-motor actuator's command (physics/actuators.js): τ = T − c·ω on the
 // hinge, a drive torque and a viscous damper on the relative speed, solved
 // IMPLICITLY by Jolt as one soft motor constraint (applyHingeTorque), so it
 // stays stable however light the driven parts are; and setRotorInertia, the
-// motor's rotor reflected through its gearbox.
+// motor's rotor reflected through its gearbox. Sliders are driven the same
+// way in metres (velocity / position / coast / brake / hold), force limited.
+// Per-step JavaScript state is in the state registry (state-registry.js).
 
 import { validateCompiledMechanism, upgradeMechanismV1 } from '../contracts.js';
+import { createStateRegistry } from './state-registry.js';
 
 let joltPromise = null;
 
@@ -155,7 +163,14 @@ const quatFromColumns = ([c0, c1, c2]) => {
     return q.map(x => x / n);
 };
 
-export const createPhysicsCore = (J, compiled, { stepHz = 120 } = {}) => {
+/**
+ * @param {object} J the Jolt namespace (loadJolt())
+ * @param {object} compiled a CompiledMechanism, v1 or v2
+ * @param {{stepHz?: number, recordContacts?: boolean}} [options]
+ *        recordContacts: count contacts per body pair (contactPairs()); a JavaScript
+ *        callback per contact, so for tests and benches only, never the app
+ */
+export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = false } = {}) => {
     const problems = validateCompiledMechanism(compiled);
     if (problems.length) throw new Error(problems.join('\n'));
     const mechanism = upgradeMechanismV1(compiled);
@@ -165,9 +180,10 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120 } = {}) => {
     const LAYER_DYNAMIC = 0;
     const LAYER_STATIC = 1;
     // A static body made of model parts is the machine's own fixed frame (a
-    // gearbox clamped to the bench): like two moving parts of one machine, it
-    // does not collide with the machine's moving parts (an axle turns inside the
-    // frame's hole). The ground and obstacles carry no parts and stay LAYER_STATIC.
+    // gearbox clamped to the bench). Since D2 (R3) it collides with the machine's
+    // moving parts like any other body, except those jointed to it (an axle turns
+    // inside the frame's hole: noCollide). It stays a layer of its own so the
+    // ground and obstacles (LAYER_STATIC, no parts) remain distinguishable.
     const LAYER_FRAME = 2;
     const NUM_OBJECT_LAYERS = 3;
 
@@ -178,12 +194,22 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120 } = {}) => {
     joltSettings.mMaxContactConstraints = Math.max(1024, maxBodies * 8);
 
     const objectLayerPairFilter = new J.ObjectLayerPairFilterTable(NUM_OBJECT_LAYERS);
-    objectLayerPairFilter.DisableCollision(LAYER_DYNAMIC, LAYER_DYNAMIC);
+    objectLayerPairFilter.EnableCollision(LAYER_DYNAMIC, LAYER_DYNAMIC);
     objectLayerPairFilter.EnableCollision(LAYER_DYNAMIC, LAYER_STATIC);
     objectLayerPairFilter.DisableCollision(LAYER_STATIC, LAYER_STATIC);
-    objectLayerPairFilter.DisableCollision(LAYER_FRAME, LAYER_DYNAMIC);
+    objectLayerPairFilter.EnableCollision(LAYER_FRAME, LAYER_DYNAMIC);
     objectLayerPairFilter.DisableCollision(LAYER_FRAME, LAYER_STATIC);
     objectLayerPairFilter.DisableCollision(LAYER_FRAME, LAYER_FRAME);
+
+    // The pairs that must not collide (D2): one collision group for the whole scene,
+    // sub-group = the body's index, and the noCollide pairs disabled in the table.
+    // Jolt keeps the filter alive by reference from every body's CollisionGroup.
+    const bodyIndex = new Map(mechanism.bodies.map((b, i) => [b.id, i]));
+    let groupFilter = null;
+    if (mechanism.noCollide.length > 0) {
+        groupFilter = new J.GroupFilterTable(mechanism.bodies.length);
+        for (const [a, b] of mechanism.noCollide) groupFilter.DisableCollision(bodyIndex.get(a), bodyIndex.get(b));
+    }
 
     const bpInterface = new J.BroadPhaseLayerInterfaceTable(NUM_OBJECT_LAYERS, 2);
     bpInterface.MapObjectToBroadPhaseLayer(LAYER_DYNAMIC, new J.BroadPhaseLayer(0));
@@ -339,6 +365,11 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120 } = {}) => {
         const bcs = new J.BodyCreationSettings(shape, posR, rotQ, motionType, layer);
         J.destroy(posR);
         J.destroy(rotQ);
+        if (groupFilter) {
+            const group = new J.CollisionGroup(groupFilter, 0, bodyIndex.get(b.id));
+            bcs.mCollisionGroup = group;
+            J.destroy(group);
+        }
         if (b.motion === 'dynamic') {
             bcs.mOverrideMassProperties = J.EOverrideMassProperties_CalculateInertia;
             const mp = bcs.mMassPropertiesOverride;
@@ -372,6 +403,25 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120 } = {}) => {
         return e ? e.bodyID : null;
     };
 
+    /** A world direction in a body's frame at t = 0 (the body's start rotation inverted). */
+    const toLocal = (bodyIdStr, worldAxis) => {
+        if (bodyIdStr === 'world') return [...worldAxis];
+        const bd = mechanism.bodies.find(x => x.id === bodyIdStr);
+        if (!bd) return [...worldAxis];
+        const q = bd.rotation;
+        const qx = -q[0], qy = -q[1], qz = -q[2], qw = q[3];
+        const vx = worldAxis[0], vy = worldAxis[1], vz = worldAxis[2];
+        const ix = qy * vz - qz * vy;
+        const iy = qz * vx - qx * vz;
+        const iz = qx * vy - qy * vx;
+        const ix2 = qy * iz - qz * iy;
+        const iy2 = qz * ix - qx * iz;
+        const iz2 = qx * iy - qy * ix;
+        const rx = vx + 2 * (qw * ix + ix2);
+        const ry = vy + 2 * (qw * iy + iy2);
+        const rz = vz + 2 * (qw * iz + iz2);
+        return [rx, ry, rz];
+    };
     for (const j of mechanism.joints) {
         jointMap.set(j.id, j);
         const bodyA = getBodyForId(j.body1);
@@ -394,28 +444,14 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120 } = {}) => {
                 hs.mMotorSettings.mMinTorqueLimit = -1e6;
                 hs.mMotorSettings.mMaxTorqueLimit = 1e6;
             }
+            // Joint v2 (R3): end stops in rad from the start pose, and bearing friction
+            // (Jolt applies it while the motor is off: a coasting or unpowered hinge).
+            if (j.limits) { hs.mLimitsMin = j.limits[0]; hs.mLimitsMax = j.limits[1]; }
+            if (typeof j.frictionNm === 'number') hs.mMaxFrictionTorque = j.frictionNm;
             const constraint = hs.Create(bodyA, bodyB);
             physicsSystem.AddConstraint(constraint);
             allConstraints.push(constraint);
             const hinge = J.castObject(constraint, J.HingeConstraint);
-            const toLocal = (bodyIdStr, worldAxis) => {
-                if (bodyIdStr === 'world') return [...worldAxis];
-                const bd = mechanism.bodies.find(x => x.id === bodyIdStr);
-                if (!bd) return [...worldAxis];
-                const q = bd.rotation;
-                const qx = -q[0], qy = -q[1], qz = -q[2], qw = q[3];
-                const vx = worldAxis[0], vy = worldAxis[1], vz = worldAxis[2];
-                const ix = qy * vz - qz * vy;
-                const iy = qz * vx - qx * vz;
-                const iz = qx * vy - qy * vx;
-                const ix2 = qy * iz - qz * iy;
-                const iy2 = qz * ix - qx * iz;
-                const iz2 = qx * iy - qy * ix;
-                const rx = vx + 2 * (qw * ix + ix2);
-                const ry = vy + 2 * (qw * iy + iy2);
-                const rz = vz + 2 * (qw * iz + iz2);
-                return [rx, ry, rz];
-            };
             const localAxis1 = toLocal(j.body1, j.axis);
             const localAxis2 = toLocal(j.body2, j.axis);
             const isMotor = !!actuator;
@@ -430,6 +466,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120 } = {}) => {
                 maxSpeed: actuator ? actuator.maxSpeedRadPerSec : 30,
                 mode: 'coast', target: 0, targetSpeed: null, kp: 10, isMotor,
                 driveTorque: 0, damping: 0, rotorInertia: 0,
+                frictionNm: typeof j.frictionNm === 'number' ? j.frictionNm : 0,
             });
             hinge.SetMotorState(J.EMotorState_Off);
             J.destroy(hs);
@@ -443,12 +480,29 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120 } = {}) => {
             const perp = perpForAxis(j.axis);
             ss.mNormalAxis1 = new J.Vec3(...perp);
             ss.mNormalAxis2 = new J.Vec3(...perp);
-            ss.mLimitsMin = -1e6;
-            ss.mLimitsMax = 1e6;
+            // Joint v2 (R3): end stops in m from the start pose (none: ±1e6, as before),
+            // and sliding friction (applied by Jolt while the motor is off).
+            ss.mLimitsMin = j.limits ? j.limits[0] : -1e6;
+            ss.mLimitsMax = j.limits ? j.limits[1] : 1e6;
+            if (typeof j.frictionN === 'number') ss.mMaxFrictionForce = j.frictionN;
+            const maxForce = typeof j.maxForceN === 'number' ? j.maxForceN : 0;
+            ss.mMotorSettings.mMinForceLimit = -maxForce;
+            ss.mMotorSettings.mMaxForceLimit = maxForce;
             const constraint = ss.Create(bodyA, bodyB);
             physicsSystem.AddConstraint(constraint);
             allConstraints.push(constraint);
-            sliderMap.set(j.id, { constraint, bodyA, bodyB, axis: [...j.axis], point: [...j.point] });
+            const slider = J.castObject(constraint, J.SliderConstraint);
+            slider.SetMotorState(J.EMotorState_Off);
+            sliderMap.set(j.id, {
+                slider, constraint, bodyA, bodyB,
+                bodyAID: getBodyIDForId(j.body1),
+                bodyBID: getBodyIDForId(j.body2),
+                axis: [...j.axis], point: [...j.point],
+                localAxis1: toLocal(j.body1, j.axis), localAxis2: toLocal(j.body2, j.axis),
+                position: 0, velocity: 0,
+                maxForce, maxSpeed: typeof j.maxSpeedMPerSec === 'number' ? j.maxSpeedMPerSec : Infinity,
+                mode: 'coast', target: 0, targetSpeed: null, kp: 10,
+            });
             J.destroy(ss);
         } else if (j.type === 'ball') {
             const ps2 = new J.PointConstraintSettings();
@@ -536,7 +590,37 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120 } = {}) => {
             gearInfos.push({ type: 'gear', id: g.id, joint1: g.joint1, joint2: g.joint2, ratio: g.ratio });
             for (const id of [A.side.body, B.side.body]) floorInertia(id);
         } else if (g.kind === 'rackAndPinion') {
-            gearInfos.push(g); // accepted, not built yet (R3)
+            // A Jolt RackAndPinionConstraint between the pinion body (the hinge's side
+            // not shared with the slider) and the rack body (the slider's other side),
+            // signed the way the gear's axes are. Contract: v(slider) = ratio·ω(hinge),
+            // m/s per rad/s; Jolt's part is ω1·a = r·v2·b (rad/s per m/s), so r = 1/|ratio|
+            // and the ratio's sign goes into the slider axis b. Like a gear it couples
+            // WORLD rates: exact while the frame holding both does not turn about the
+            // pinion axis. Measured in test/bw-sim-sliders.test.mjs (both signs).
+            const jh = jointMap.get(g.hingeJoint);
+            const js = jointMap.get(g.sliderJoint);
+            if (!jh || !js) throw new Error(`rack and pinion ${g.id} joint not found`);
+            if (jh.type !== 'hinge' || js.type !== 'slider') throw new Error(`rack and pinion ${g.id} must couple a hinge and a slider`);
+            const shared = [jh.body1, jh.body2].find(b => b === js.body1 || b === js.body2);
+            const sideOf = j => {
+                if (shared === undefined) return { body: j.body2, sign: 1 };
+                return j.body2 === shared ? { body: j.body1, sign: -1 } : { body: j.body2, sign: 1 };
+            };
+            const pinion = sideOf(jh);
+            const rack = sideOf(js);
+            const rs = new J.RackAndPinionConstraintSettings();
+            rs.mSpace = J.EConstraintSpace_WorldSpace;
+            rs.mHingeAxis = new J.Vec3(...jh.axis.map(v => v * pinion.sign));
+            rs.mSliderAxis = new J.Vec3(...js.axis.map(v => v * rack.sign * Math.sign(g.ratio)));
+            rs.mRatio = 1 / Math.abs(g.ratio);
+            rs.mNumVelocityStepsOverride = GEAR_VELOCITY_STEPS;
+            rs.mNumPositionStepsOverride = GEAR_POSITION_STEPS;
+            floorInertia(pinion.body);
+            const constraint = rs.Create(getBodyForId(pinion.body), getBodyForId(rack.body));
+            physicsSystem.AddConstraint(constraint);
+            allConstraints.push(constraint);
+            J.destroy(rs);
+            gearInfos.push({ type: 'rackAndPinion', id: g.id, hingeJoint: g.hingeJoint, sliderJoint: g.sliderJoint, ratio: g.ratio });
         } else throw new Error(`no physics builder for coupling kind '${g.kind}' (${g.id})`);
     }
 
@@ -616,6 +700,37 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120 } = {}) => {
             spring.mDamping = damping / 2;
         }
     };
+    /**
+     * A slider's rate: body2's velocity minus body1's, both at body2's centre of mass,
+     * along the slider axis as body1 carries it. The slider locks the two bodies'
+     * relative rotation, so the point chosen does not change the result (the ω×d terms
+     * cancel along the axis): it is d/dt of GetCurrentPosition().
+     */
+    const sliderVelocity = entry => {
+        let worldAxis = entry.axis;
+        if (entry.bodyAID) {
+            const rot = bodyInterface.GetRotation(entry.bodyAID);
+            worldAxis = quatRotateVec([rot.GetX(), rot.GetY(), rot.GetZ(), rot.GetW()], entry.localAxis1);
+        } else if (entry.bodyBID) {
+            const rot = bodyInterface.GetRotation(entry.bodyBID);
+            worldAxis = quatRotateVec([rot.GetX(), rot.GetY(), rot.GetZ(), rot.GetW()], entry.localAxis2);
+        }
+        let vB = [0, 0, 0];
+        let vA = [0, 0, 0];
+        if (entry.bodyBID) {
+            const v = bodyInterface.GetLinearVelocity(entry.bodyBID);
+            vB = [v.GetX(), v.GetY(), v.GetZ()];
+            if (entry.bodyAID) {
+                const com = entry.bodyB.GetCenterOfMassPosition();
+                const va = bodyInterface.GetPointVelocity(entry.bodyAID, com);
+                vA = [va.GetX(), va.GetY(), va.GetZ()];
+            }
+        } else if (entry.bodyAID) {
+            const v = bodyInterface.GetLinearVelocity(entry.bodyAID);
+            vA = [v.GetX(), v.GetY(), v.GetZ()];
+        }
+        return (vB[0] - vA[0]) * worldAxis[0] + (vB[1] - vA[1]) * worldAxis[1] + (vB[2] - vA[2]) * worldAxis[2];
+    };
     const updateJointStates = () => {
         for (const [, entry] of hingeMap) {
             const raw = entry.hinge.GetCurrentAngle();
@@ -624,8 +739,129 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120 } = {}) => {
             entry.rawPrev = raw;
             entry.velocity = computeVelocity(entry);
         }
+        for (const [, entry] of sliderMap) {
+            entry.position = entry.slider.GetCurrentPosition();
+            entry.velocity = sliderVelocity(entry);
+        }
     };
     updateJointStates();
+
+    /** A slider motor's force limit: in Jolt's MotorSettings, which SaveState does not record. */
+    const applySliderForce = (entry, maxForce) => {
+        entry.maxForce = maxForce;
+        const ms = entry.slider.GetMotorSettings();
+        ms.mMinForceLimit = -maxForce;
+        ms.mMaxForceLimit = maxForce;
+    };
+
+    // Optional contact log (tests, benches): contacts per body pair, Jolt's
+    // OnContactAdded/OnContactPersisted per manifold per step.
+    const bodyIdOfIndex = new Map();
+    for (const [id, e] of bodyMap) bodyIdOfIndex.set(e.bodyID.GetIndexAndSequenceNumber(), id);
+    let contactLog = null;
+    let contactListener = null;
+    if (recordContacts) {
+        contactLog = { pairs: new Map(), manifolds: 0 };
+        contactListener = new J.ContactListenerJS();
+        const note = (body1Ptr, body2Ptr) => {
+            const b1 = J.wrapPointer(body1Ptr, J.Body);
+            const b2 = J.wrapPointer(body2Ptr, J.Body);
+            const a = bodyIdOfIndex.get(b1.GetID().GetIndexAndSequenceNumber()) || '?';
+            const b = bodyIdOfIndex.get(b2.GetID().GetIndexAndSequenceNumber()) || '?';
+            const key = a < b ? `${a}|${b}` : `${b}|${a}`;
+            contactLog.pairs.set(key, (contactLog.pairs.get(key) || 0) + 1);
+            contactLog.manifolds += 1;
+        };
+        contactListener.OnContactValidate = () => J.ValidateResult_AcceptAllContactsForThisBodyPair;
+        contactListener.OnContactAdded = (b1, b2) => note(b1, b2);
+        contactListener.OnContactPersisted = (b1, b2) => note(b1, b2);
+        contactListener.OnContactRemoved = () => {};
+        physicsSystem.SetContactListener(contactListener);
+    }
+
+
+    // The per-step state registry (§6.4): everything a step carries to the next that
+    // Jolt's SaveState does not record (it records bodies, contacts and each
+    // constraint's motor state and targets, not its MotorSettings or friction).
+    // Couplings with per-step logic register here too (core.registerState).
+    const stateRegistry = createStateRegistry();
+    stateRegistry.register('clock', {
+        save: () => [acc, timeSteps],
+        restore: ([a, t]) => { acc = a; timeSteps = t; }
+    });
+    stateRegistry.register('hinges', {
+        save: () => [...hingeMap.values()].map(e => [e.rawPrev, e.unwrapped, e.velocity, e.mode, e.target, e.targetSpeed, e.driveTorque, e.damping,
+            e.hinge.GetMaxFrictionTorque(), e.rotorInertia]),
+        restore: saved => {
+            let i = 0;
+            for (const [id, e] of hingeMap) {
+                let friction, rotorInertia;
+                [e.rawPrev, e.unwrapped, e.velocity, e.mode, e.target, e.targetSpeed, e.driveTorque, e.damping, friction, rotorInertia] = saved[i++];
+                // Motor settings are not part of Jolt's saved state: put back the checkpoint's.
+                if (e.isMotor) {
+                    setMotorSettings(e, e.mode === 'torque' ? {limit: 1e6, damping: e.damping} : {limit: e.maxTorque});
+                    e.hinge.SetMaxFrictionTorque(friction);
+                    if (rotorInertia !== e.rotorInertia) core.setRotorInertia(id, rotorInertia);
+                }
+            }
+        }
+    });
+    stateRegistry.register('sliders', {
+        save: () => [...sliderMap.values()].map(e => [e.position, e.velocity, e.mode, e.target, e.targetSpeed, e.maxForce]),
+        restore: saved => {
+            let i = 0;
+            for (const [, e] of sliderMap) {
+                let maxForce;
+                [e.position, e.velocity, e.mode, e.target, e.targetSpeed, maxForce] = saved[i++];
+                applySliderForce(e, maxForce);
+            }
+        }
+    });
+    // The collision filter (noCollide) is fixed when the scene is built: no per-step
+    // state. The contact log, when kept, is.
+    if (contactLog) {
+        stateRegistry.register('contacts', {
+            save: () => [[...contactLog.pairs], contactLog.manifolds],
+            restore: ([pairs, manifolds]) => { contactLog.pairs = new Map(pairs); contactLog.manifolds = manifolds; }
+        });
+    }
+
+    /**
+     * A slider's motor (R3): velocity {mPerSec}, position {m, mPerSec?} (the hinge's
+     * P-controller on the measured position), coast, brake, hold. The force limit is the
+     * joint's `maxForceN`, or the command's `maxForceN` (kept for later commands); a
+     * slider with neither cannot be driven.
+     */
+    const setSliderMotor = (jointId, entry, cmd) => {
+        if (!cmd || typeof cmd.mode !== 'string') throw new Error(`invalid motor command for ${jointId}`);
+        if (cmd.maxForceN !== undefined) {
+            if (typeof cmd.maxForceN !== 'number' || !Number.isFinite(cmd.maxForceN) || cmd.maxForceN < 0) throw new Error(`maxForceN must be a non-negative number`);
+            applySliderForce(entry, cmd.maxForceN);
+        }
+        if (cmd.mode !== 'coast' && !(entry.maxForce > 0)) throw new Error(`slider ${jointId} has no motor force: give the joint maxForceN or the command maxForceN`);
+        const s = entry.slider;
+        switch (cmd.mode) {
+            case 'velocity': {
+                if (typeof cmd.mPerSec !== 'number' || !Number.isFinite(cmd.mPerSec)) throw new Error(`velocity needs mPerSec`);
+                const v = clamp(cmd.mPerSec, -entry.maxSpeed, entry.maxSpeed);
+                entry.mode = 'velocity'; entry.targetSpeed = v;
+                s.SetMotorState(J.EMotorState_Velocity);
+                s.SetTargetVelocity(v); break;
+            }
+            case 'position': {
+                if (typeof cmd.m !== 'number' || !Number.isFinite(cmd.m)) throw new Error(`position needs m`);
+                let lim = entry.maxSpeed;
+                if (typeof cmd.mPerSec === 'number' && Number.isFinite(cmd.mPerSec)) lim = clamp(cmd.mPerSec, 0, entry.maxSpeed);
+                entry.mode = 'position'; entry.target = cmd.m; entry.targetSpeed = lim;
+                s.SetMotorState(J.EMotorState_Velocity);
+                s.SetTargetVelocity(clamp((entry.target - entry.position) * entry.kp, -lim, lim)); break;
+            }
+            case 'coast': entry.mode = 'coast'; s.SetMotorState(J.EMotorState_Off); break;
+            case 'brake': entry.mode = 'brake'; s.SetMotorState(J.EMotorState_Velocity); s.SetTargetVelocity(0); break;
+            case 'hold': entry.mode = 'position'; entry.target = entry.position; entry.targetSpeed = entry.maxSpeed; s.SetMotorState(J.EMotorState_Velocity); s.SetTargetVelocity(0); break;
+            default: throw new Error(`unknown motor mode ${cmd.mode}`);
+        }
+    };
 
     const core = {
         get time() { ensureAlive(); return timeSteps * dtFixed; },
@@ -643,6 +879,12 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120 } = {}) => {
                     if (entry.hinge.GetMotorState() !== J.EMotorState_Velocity) entry.hinge.SetMotorState(J.EMotorState_Velocity);
                 }
                 for (const [, entry] of hingeMap) if (entry.mode === 'torque') applyHingeTorque(entry);
+                for (const [, entry] of sliderMap) if (entry.mode === 'position') {
+                    const err = entry.target - entry.position;
+                    const lim = entry.targetSpeed !== null && entry.targetSpeed !== undefined ? entry.targetSpeed : entry.maxSpeed;
+                    entry.slider.SetTargetVelocity(clamp(err * entry.kp, -lim, lim));
+                    if (entry.slider.GetMotorState() !== J.EMotorState_Velocity) entry.slider.SetMotorState(J.EMotorState_Velocity);
+                }
                 joltInterface.Step(dtFixed, 1);
                 timeSteps += 1;
                 acc -= dtFixed;
@@ -654,6 +896,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120 } = {}) => {
         },
         setMotor(jointId, cmd) {
             ensureAlive();
+            if (sliderMap.has(jointId)) return setSliderMotor(jointId, sliderMap.get(jointId), cmd);
             const entry = hingeMap.get(jointId);
             if (!entry) {
                 const j = jointMap.get(jointId);
@@ -687,8 +930,9 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120 } = {}) => {
                     entry.hinge.SetTargetAngularVelocity(clamp(err * entry.kp, -lim, lim)); break;
                 }
                 case 'coast': {
-                    // Optional friction (N·m) while the motor is off: a gearbox's drag.
-                    const friction = typeof cmd.frictionNm === 'number' && Number.isFinite(cmd.frictionNm) ? Math.max(0, cmd.frictionNm) : 0;
+                    // Optional friction (N·m) while the motor is off: a gearbox's drag (default:
+                    // the joint's own bearing friction, frictionNm).
+                    const friction = typeof cmd.frictionNm === 'number' && Number.isFinite(cmd.frictionNm) ? Math.max(0, cmd.frictionNm) : entry.frictionNm;
                     entry.mode = 'coast'; entry.hinge.SetMotorState(J.EMotorState_Off);
                     entry.hinge.SetMaxFrictionTorque(friction); break;
                 }
@@ -744,12 +988,34 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120 } = {}) => {
             }
             entry.rotorInertia = I;
         },
+        /** A hinge: {angle, velocity} (rad, rad/s); a slider: {position, velocity} (m, m/s), body2 relative to body1 along the axis, zero at t = 0. */
         jointState(jointId) {
             ensureAlive();
+            const slider = sliderMap.get(jointId);
+            if (slider) return { position: slider.position, velocity: slider.velocity };
             const entry = hingeMap.get(jointId);
-            if (!entry) { const j = jointMap.get(jointId); if (!j) throw new Error(`unknown joint ${jointId}`); throw new Error(`joint ${jointId} is not a hinge`); }
+            if (!entry) { const j = jointMap.get(jointId); if (!j) throw new Error(`unknown joint ${jointId}`); throw new Error(`joint ${jointId} is not a hinge or a slider`); }
             return { angle: entry.unwrapped, velocity: entry.velocity };
         },
+        /**
+         * Contacts per body pair since the start (only with {recordContacts: true}):
+         * {pairs: {'a|b': manifold-steps}, manifolds}. Rolled back with the checkpoint.
+         */
+        contactPairs() {
+            ensureAlive();
+            if (!contactLog) throw new Error('contacts are recorded only with createPhysicsCore(…, {recordContacts: true})');
+            return { pairs: Object.fromEntries(contactLog.pairs), manifolds: contactLog.manifolds };
+        },
+        /**
+         * Registers per-step JavaScript state with the checkpoint (§6.4): a coupling or
+         * device module that keeps state from one step to the next.
+         */
+        registerState(key, registrant) {
+            ensureAlive();
+            stateRegistry.register(key, registrant);
+        },
+        /** The registered state keys, in checkpoint order. */
+        stateKeys() { return stateRegistry.keys(); },
         bodyPose(bodyId) {
             ensureAlive();
             const e = bodyMap.get(bodyId);
@@ -789,7 +1055,9 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120 } = {}) => {
             let jiIdx = 0;
             for (const id of jointOrder) {
                 const h = hingeMap.get(id);
+                const sl = h ? null : sliderMap.get(id);
                 if (h) { joints[jiIdx++] = h.unwrapped; joints[jiIdx++] = h.velocity; }
+                else if (sl) { joints[jiIdx++] = sl.position; joints[jiIdx++] = sl.velocity; }
                 else { joints[jiIdx++] = 0; joints[jiIdx++] = 0; }
             }
             return { t, bodyIds: [...bodyOrder], jointIds: [...jointOrder], bodies, joints };
@@ -923,26 +1191,14 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120 } = {}) => {
             if (!recorder) recorder = new J.StateRecorderImpl();
             recorder.Clear();
             physicsSystem.SaveState(recorder, J.EStateRecorderState_All);
-            const hinges = [];
-            for (const [, e] of hingeMap) hinges.push([e.rawPrev, e.unwrapped, e.velocity, e.mode, e.target, e.targetSpeed, e.driveTorque, e.damping, e.hinge.GetMaxFrictionTorque()]);
-            saved = { acc, timeSteps, hinges };
+            saved = stateRegistry.save();
         },
         rollback() {
             ensureAlive();
             if (!saved) throw new Error('rollback without a checkpoint');
             recorder.Rewind();
             if (!physicsSystem.RestoreState(recorder)) throw new Error('Jolt could not restore the checkpoint');
-            ({ acc, timeSteps } = saved);
-            let i = 0;
-            for (const [, e] of hingeMap) {
-                let friction;
-                [e.rawPrev, e.unwrapped, e.velocity, e.mode, e.target, e.targetSpeed, e.driveTorque, e.damping, friction] = saved.hinges[i++];
-                // Motor settings are not part of Jolt's saved state: put back the checkpoint's.
-                if (e.isMotor) {
-                    setMotorSettings(e, e.mode === 'torque' ? {limit: 1e6, damping: e.damping} : {limit: e.maxTorque});
-                    e.hinge.SetMaxFrictionTorque(friction);
-                }
-            }
+            stateRegistry.restore(saved);
         },
         destroy() {
             if (destroyed) return;
@@ -951,6 +1207,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120 } = {}) => {
             for (const c of allConstraints) physicsSystem.RemoveConstraint(c);
             for (const bid of allBodyIDs) { bodyInterface.RemoveBody(bid); bodyInterface.DestroyBody(bid); }
             J.destroy(joltInterface);
+            if (contactListener) { J.destroy(contactListener); contactListener = null; }
             bodyMap.clear(); hingeMap.clear(); sliderMap.clear(); ballMap.clear(); jointMap.clear();
         },
     };
