@@ -345,9 +345,13 @@ test('a box arm swinging into a static box stops where they first touch', async 
     assert.ok(settled > firstTouch - 1 && settled < firstTouch + 6, `arm settled at ${settled.toFixed(1)}°, first touch ${firstTouch.toFixed(1)}°`);
 });
 
-test('a static body made of model parts is the machine frame: it does not push the machine\'s moving parts', async () => {
-    // An axle turns inside a clamped frame's hole; the floor and obstacles (no parts) still collide.
-    const run = async parts => {
+test('a static body made of model parts is the machine frame: it pushes the parts not joined to it (D2), never the ones joined', async () => {
+    // Owner decision D2 (R3): everything collides except the bodies joined by a joint.
+    // Until R3 a frame (a static body with parts) collided with no moving part at all, so
+    // this test asserted that an UNJOINED body overlapping the frame stayed where it was;
+    // now only a joined one does (an axle sliding in the frame's hole), and an unjoined one
+    // is pushed out like an obstacle (no parts) pushes it.
+    const run = async (parts, joined) => {
         const mech = {
             version: 1, gravity: [0, 0, 0],
             bodies: [
@@ -355,7 +359,9 @@ test('a static body made of model parts is the machine frame: it does not push t
                 // Overlapping the fixed box by 1 mm on its +x face.
                 { id: 'axle', motion: 'dynamic', position: [0.019, 0, 0], rotation: [0, 0, 0, 1], massKg: 0.001, colliders: [{ shape: 'box', halfExtents: [0.01, 0.002, 0.002] }], parts: ['axle'] },
             ],
-            joints: [], gears: [], diagnostics: [],
+            // A slider along x leaves the axle free to be pushed out along x, if anything pushes.
+            joints: joined ? [{ id: 's', type: 'slider', body1: 'fixed', body2: 'axle', point: [0.019, 0, 0], axis: [1, 0, 0] }] : [],
+            gears: [], diagnostics: [],
         };
         const core = createPhysicsCore(J, mech, { stepHz: 200 });
         for (let i = 0; i < 40; i++) core.step(1 / 200);
@@ -363,9 +369,11 @@ test('a static body made of model parts is the machine frame: it does not push t
         core.destroy();
         return x;
     };
-    const inFrame = await run(['beam']);
-    const inObstacle = await run([]);
-    assert.ok(Math.abs(inFrame - 0.019) < 1e-6, `a frame (model parts) leaves the axle where it is: ${inFrame}`);
+    const joinedToFrame = await run(['beam'], true);
+    const looseInFrame = await run(['beam'], false);
+    const inObstacle = await run([], false);
+    assert.ok(Math.abs(joinedToFrame - 0.019) < 1e-6, `a frame leaves the axle sliding in its hole where it is: ${joinedToFrame}`);
+    assert.ok(looseInFrame > 0.0195, `a frame pushes out a part not joined to it: ${looseInFrame}`);
     assert.ok(inObstacle > 0.0195, `an obstacle (no parts) pushes it out: ${inObstacle}`);
 });
 
