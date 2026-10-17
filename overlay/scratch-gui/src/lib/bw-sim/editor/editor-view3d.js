@@ -36,6 +36,11 @@
 //   gizmo                 sized to the selection (transform-math.js `gizmoSize`);
 //                         a press on a part next to a handle, but not on the
 //                         handle's visible shape, goes to the part
+//   palette               click a part, then click in the view to place it; or
+//                         press on a part in the palette and drag it into the
+//                         view: the same ghost (magnet, resting on top, overlap)
+//                         follows the pointer and letting go places it; let go
+//                         outside the view, or Esc, and nothing is placed
 //   Delete, Ctrl+D, Ctrl+C/V, Ctrl+A, Esc, Ctrl+Z / Ctrl+Y (Shift+Ctrl+Z), F
 //   camera                left-drag on empty space or right-drag: orbit;
 //                         middle-drag or Shift+right-drag: pan; wheel: zoom
@@ -144,6 +149,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     let mode = 'move';
     let gridStep = DEFAULT_GRID;
     let tool = null; // {part, turns}
+    let paletteDrag = null; // a part pressed in the palette: {part, x, y, pointerId, dragging, onEnd}
     let candidate = null; // palette ghost: magnet candidate
     let freePose = null; // palette ghost: pose on a surface
     let floorY = null;
@@ -157,7 +163,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         const byId = partsById();
         return selection.map(id => byId.get(id)).filter(Boolean);
     };
-    const status = info => onStatus(info);
+    let lastStatus = {kind: 'idle'};
+    const status = info => { lastStatus = info; onStatus(info); };
 
     // ---- pointer, raycasts ---------------------------------------------------
     const pointer = new Vector2();
@@ -708,7 +715,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         }
         const snapped = Boolean(candidate);
         const part = tool.part;
-        if (!run({type: 'place', part, position: pose.position, rotation: pose.rotation, color: DEFAULT_COLOR})) return null;
+        if (!run({type: 'place', part, position: pose.position, rotation: pose.rotation, color: DEFAULT_COLOR}, {placed: part})) return null;
         const placed = editor.model.parts[editor.model.parts.length - 1];
         status(snapped ? {...snapStatus(candidate), kind: 'snapped'} : {kind: 'placed', part});
         if (!keepTool) {
@@ -720,6 +727,11 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     };
 
     const setTool = part => {
+        // Esc, the palette or Build closing: a drag of another part (or any) is over.
+        if (paletteDrag && (!part || part !== paletteDrag.part)) {
+            const d = detachPaletteDrag();
+            d.onEnd({dragged: d.dragging, placed: null});
+        }
         tool = part ? {part, turns: 0} : null;
         candidate = null;
         freePose = null;
@@ -731,6 +743,87 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         }
         updateGizmo();
         onTool(part || null);
+    };
+
+    // ---- dragging a part out of the palette -------------------------------------------
+    // The press is on the palette (a DOM element outside the canvas), so the drag is
+    // followed on the window. Once the pointer has travelled CLICK_PX it is a drag: the
+    // placing tool starts, and over the canvas the ghost follows the pointer through the
+    // same updateGhost (magnet, resting on top, overlap) as a click-armed tool's. A
+    // press that never travels is a click: the palette arms the tool itself.
+    const insideCanvas = event => {
+        const rect = canvas.getBoundingClientRect();
+        return event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
+    };
+    const onPaletteMove = event => {
+        const d = paletteDrag;
+        if (!d || event.pointerId !== d.pointerId) return;
+        if (!d.dragging) {
+            if (travelled(event, d) <= CLICK_PX) return;
+            d.dragging = true;
+            setTool(d.part);
+        }
+        readModifiers(event);
+        if (insideCanvas(event)) {
+            updateGhost(event);
+        } else {
+            candidate = null;
+            freePose = null;
+            clearGhost();
+            status({kind: 'dragging', part: d.part});
+        }
+    };
+    const onPaletteUp = event => {
+        const d = paletteDrag;
+        if (!d || event.pointerId !== d.pointerId) return;
+        detachPaletteDrag();
+        let placed = null;
+        if (d.dragging) {
+            if (insideCanvas(event) && event.type === 'pointerup') {
+                readModifiers(event);
+                updateGhost(event);
+                placed = place(); // null: refused (overlap, said in the status) or nothing under the pointer
+            }
+            if (tool) {
+                // Not placed: the tool ends with the drag (a click arms it; a drag only carries it).
+                const refused = lastStatus.kind === 'refused';
+                setTool(null);
+                if (!refused) status({kind: 'idle'});
+            }
+        }
+        d.onEnd({dragged: d.dragging, placed});
+    };
+    const onPaletteKey = event => {
+        if (event.key !== 'Escape' || !paletteDrag) return;
+        event.preventDefault();
+        const d = detachPaletteDrag();
+        if (d.dragging) {
+            setTool(null);
+            status({kind: 'idle'});
+        }
+        d.onEnd({dragged: d.dragging, placed: null});
+    };
+    function detachPaletteDrag () {
+        const d = paletteDrag;
+        paletteDrag = null;
+        window.removeEventListener('pointermove', onPaletteMove, true);
+        window.removeEventListener('pointerup', onPaletteUp, true);
+        window.removeEventListener('pointercancel', onPaletteUp, true);
+        window.removeEventListener('keydown', onPaletteKey, true);
+        return d;
+    }
+    /**
+     * A press on a palette part. Returns at once; `onEnd({dragged, placed})` reports how
+     * it ended: `dragged` false for a click (the palette then arms the tool), `placed`
+     * the new part's {id, snapped} when a drag dropped it in the view.
+     */
+    const pressPalettePart = (part, event, onEnd = () => {}) => {
+        if (paletteDrag) detachPaletteDrag();
+        paletteDrag = {part, x: event.clientX, y: event.clientY, pointerId: event.pointerId, dragging: false, onEnd};
+        window.addEventListener('pointermove', onPaletteMove, true);
+        window.addEventListener('pointerup', onPaletteUp, true);
+        window.addEventListener('pointercancel', onPaletteUp, true);
+        window.addEventListener('keydown', onPaletteKey, true);
     };
 
     // ---- selection actions -----------------------------------------------------------
@@ -941,6 +1034,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
 
     const onMove = event => {
         readModifiers(event);
+        if (paletteDrag && paletteDrag.dragging) return; // onPaletteMove follows it
         if (tool && (!gesture || travelled(event, gesture) <= CLICK_PX)) { updateGhost(event); return; }
         if (!gesture) {
             if (transform.dragging) return;
@@ -1111,6 +1205,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     };
     const dispose = () => {
         unsubscribe();
+        if (paletteDrag) detachPaletteDrag();
         canvas.removeEventListener('pointermove', onMove);
         canvas.removeEventListener('pointerup', onUp);
         canvas.removeEventListener('pointercancel', onUp);
@@ -1144,7 +1239,9 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     frameModel();
     status({kind: 'idle'});
     return {
-        canvas, render, resize, dispose, setTool, frameModel,
+        canvas, render, resize, dispose, setTool, frameModel, pressPalettePart,
+        /** Whether a part from the palette is being dragged right now. */
+        get draggingFromPalette () { return Boolean(paletteDrag && paletteDrag.dragging); },
         get selected () { return selection[0] || null; },
         get selection () { return selection.slice(); },
         get mode () { return mode; },
@@ -1164,6 +1261,12 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             if (id === 'gizmo') return transform.object ? pivotObject.position.toArray() : null;
             const p = partsById().get(id);
             return p ? lduToWorld(mulVec3(p.rotation, local).map((v, i) => v + p.position[i])) : null;
+        },
+        /** The floor point (LDU) under a client pixel, or null (for the browser gate to read where a drop aimed). */
+        floorPointAt: (clientX, clientY) => {
+            const ray = pick({clientX, clientY});
+            const p = ray.ray.intersectPlane(floor, new Vector3());
+            return p ? worldToLdu(p).map(tidy) : null;
         },
         /** Projects a world point to client pixels (for the browser gate). */
         toScreen: worldPoint => {

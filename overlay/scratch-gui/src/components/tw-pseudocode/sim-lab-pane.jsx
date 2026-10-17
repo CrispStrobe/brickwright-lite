@@ -21,6 +21,7 @@
 import React from 'react';
 import {pickLocale, browserLocale} from '../../lib/bw-i18n.js';
 import {SIM_LAB_STORAGE_KEY, simLabRecordFromText, readSimLabStorage, isStorableName} from '../../lib/bw-sim/model/sim-lab-persist.js';
+import SimLabPalette from './sim-lab-palette.jsx';
 
 const TEXT = {
     en: {
@@ -39,6 +40,9 @@ const TEXT = {
         issues: 'Notes about this model', time: 'Simulated time: {s} s', canvasLabel: '3D view of the simulated model',
         simulate: 'Simulate', build: 'Build', parts: 'Parts', undo: 'Undo', redo: 'Redo', remove: 'Delete',
         save: 'Save .ldr', port: 'Port', none: 'none',
+        search: 'Search parts', searchHint: 'Search: name or number', clearSearch: 'Clear the search', recent: 'Recently used',
+        noMatches: 'No part matches “{q}”.', partTitle: '{name} · part {number}',
+        paletteHelp: 'Click a part, then click in the view. Or drag it into the view.',
         move: 'Move (W)', turn: 'Turn (E)', grid: 'Grid', ldu: 'LDU', turnUp: 'Turn ↻ (R)', tip: 'Tip (T)',
         duplicate: 'Duplicate', group: 'Group', ungroup: 'Ungroup', groupKey: 'Ctrl+G', ungroupKey: 'Ctrl+Shift+G', home: 'Home', fit: 'Fit (F)', top: 'Top', front: 'Front', side: 'Side',
         selectedOne: 'Selected: {name}', selectedMany: 'Selected: {n} parts',
@@ -46,6 +50,7 @@ const TEXT = {
             idle: 'Click a part to select it. Drag it to move it; Shift+click adds parts; drag empty space to look around.',
             hover: '{part}: click to select, drag to move', hoverSelected: '{part}: drag to move, R turns, Delete removes',
             placing: 'Placing {part}: click to place, R turns, Alt: no magnet, Esc stops',
+            dragging: 'Drag {part} into the view and let go to place it (Esc cancels)',
             snap: 'Snaps to {target} hole {hole}', snapNoHole: 'Snaps to {target}', snapped: 'Snapped to {target} hole {hole}', snappedNoHole: 'Snapped to {target}',
             floor: 'On the floor', onTop: 'On top of {target}', moving: 'Moving x {x}, y {y}, z {z} LDU (1 hole = 20)',
             turning: 'Turning {deg}° (hold Shift for 15° steps)', turned: 'Turned 90°', turnedAbout: 'Turned about its connection to {target}',
@@ -78,6 +83,9 @@ const TEXT = {
         issues: 'Hinweise zu diesem Modell', time: 'Simulierte Zeit: {s} s', canvasLabel: '3D-Ansicht des simulierten Modells',
         simulate: 'Simulieren', build: 'Bauen', parts: 'Teile', undo: 'Rückgängig', redo: 'Wiederholen', remove: 'Löschen',
         save: '.ldr speichern', port: 'Port', none: 'keiner',
+        search: 'Teile suchen', searchHint: 'Suche: Name oder Nummer', clearSearch: 'Suche löschen', recent: 'Zuletzt benutzt',
+        noMatches: 'Kein Teil passt zu „{q}“.', partTitle: '{name} · Teil {number}',
+        paletteHelp: 'Klicke ein Teil an, dann in die Ansicht. Oder zieh es in die Ansicht.',
         move: 'Schieben (W)', turn: 'Drehen (E)', grid: 'Raster', ldu: 'LDU', turnUp: 'Drehen ↻ (R)', tip: 'Kippen (T)',
         duplicate: 'Verdoppeln', group: 'Gruppieren', ungroup: 'Gruppe lösen', groupKey: 'Strg+G', ungroupKey: 'Strg+Umschalt+G', home: 'Start', fit: 'Einpassen (F)', top: 'Oben', front: 'Vorne', side: 'Seite',
         selectedOne: 'Ausgewählt: {name}', selectedMany: 'Ausgewählt: {n} Teile',
@@ -85,6 +93,7 @@ const TEXT = {
             idle: 'Klicke ein Teil an, um es auszuwählen. Ziehen verschiebt es; Umschalt+Klick wählt mehr Teile; Ziehen auf leerer Fläche dreht die Ansicht.',
             hover: '{part}: klicken wählt aus, ziehen verschiebt', hoverSelected: '{part}: ziehen verschiebt, R dreht, Entf löscht',
             placing: '{part} platzieren: klicken setzt, R dreht, Alt: ohne Magnet, Esc beendet',
+            dragging: 'Zieh {part} in die Ansicht und lass los, um es zu setzen (Esc bricht ab)',
             snap: 'Rastet an {target} Loch {hole} ein', snapNoHole: 'Rastet an {target} ein', snapped: 'An {target} Loch {hole} eingerastet', snappedNoHole: 'An {target} eingerastet',
             floor: 'Auf dem Boden', onTop: 'Oben auf {target}', moving: 'Verschieben x {x}, y {y}, z {z} LDU (1 Loch = 20)',
             turning: 'Drehen {deg}° (Umschalt halten: 15°-Schritte)', turned: 'Um 90° gedreht', turnedAbout: 'Um die Verbindung zu {target} gedreht',
@@ -116,7 +125,7 @@ class SimLabPane extends React.Component {
         this.text = TEXT[locale];
         this.state = {status: 'loading', message: '', info: '', driveSpeed: 50, issues: [], modelFile: null, simMs: 0, view3d: 'loading',
             mode: 'simulate', placing: null, selection: [], editorTick: 0, mat: null,
-            buildStatus: {kind: 'idle'}, gizmoMode: 'move', grid: 10};
+            buildStatus: {kind: 'idle'}, gizmoMode: 'move', grid: 10, recent: [], thumbTick: 0};
         this.box = React.createRef();
         this.file = React.createRef();
         this.lib = null;
@@ -125,6 +134,12 @@ class SimLabPane extends React.Component {
         this.frame = this.frame.bind(this);
         this.onBundleCollect = this.onBundleCollect.bind(this);
         this.onBundleLoaded = this.onBundleLoaded.bind(this);
+        this.requestThumb = this.requestThumb.bind(this);
+        this.armPart = this.armPart.bind(this);
+        this.pressPart = this.pressPart.bind(this);
+        /** Palette parts waiting for their picture (drawn a few per frame in `frame`). */
+        this.thumbQueue = new Set();
+        this.thumbs = null;
         this.last = null;
     }
 
@@ -174,11 +189,15 @@ class SimLabPane extends React.Component {
         if (this.editView) { try { this.editView.dispose(); } catch { /* a lost context may already be gone */ } }
         this.editView = null;
         this.editor = null;
+        // The pictures stay drawn (part-thumbnails.js keeps them); only the renderer goes.
+        if (this.thumbs) { try { this.thumbs.dispose(); } catch { /* a lost context may already be gone */ } }
+        this.thumbs = null;
+        this.thumbQueue.clear();
     }
 
     /** Build mode: the current model (or an empty one) in the editor. */
     async enterBuild () {
-        const {createEditor, createEditorView3D, fetchLDrawClosure, parseLDConfig, CATALOG} = this.lib;
+        const {createEditor, createEditorView3D, createPartThumbnails, fetchLDrawClosure, parseLDConfig, CATALOG, DEFAULT_COLOR} = this.lib;
         const model = this.session ? this.session.model : {version: 1, parts: []};
         this.pause();
         this.teardown();
@@ -189,15 +208,19 @@ class SimLabPane extends React.Component {
         if (this.disposed) return;
         const {read} = this.catalogFiles;
         this.editor = createEditor({model, catalog: CATALOG});
+        const colors = parseLDConfig(read('ldconfig.ldr'));
         try {
-            this.editView = createEditorView3D({container: this.box.current, read, colors: parseLDConfig(read('ldconfig.ldr')),
+            this.editView = createEditorView3D({container: this.box.current, read, colors,
                 catalog: CATALOG, editor: this.editor,
                 onSelect: selection => this.setState({selection}),
-                onChange: () => this.setState(s => ({editorTick: s.editorTick + 1})),
+                onChange: (model, info) => this.setState(s => ({editorTick: s.editorTick + 1,
+                    recent: info && info.placed ? this.lib.pushRecent(s.recent, info.placed) : s.recent})),
                 onStatus: buildStatus => this.setState({buildStatus}),
                 onTool: placing => this.setState({placing}),
                 onMode: gizmoMode => this.setState({gizmoMode})});
             this.editView.setGrid(this.state.grid);
+            // Palette pictures: null without WebGL (the palette then shows names only).
+            this.thumbs = createPartThumbnails({read, colors, color: DEFAULT_COLOR});
         } catch (error) {
             this.setState({status: 'failed', message: this.t('noWebgl', {error: error.message})});
             return;
@@ -375,7 +398,7 @@ class SimLabPane extends React.Component {
         this.raf = requestAnimationFrame(this.frame);
         const dt = this.last === null ? 0 : Math.min(MAX_FRAME_MS, now - this.last);
         this.last = now;
-        if (this.editView) { this.editView.render(); return; }
+        if (this.editView) { this.drawThumbs(); this.editView.render(); return; }
         if (!this.session) return;
         if (this.state.status === 'running' && dt > 0) {
             this.session.tick(dt);
@@ -516,30 +539,44 @@ class SimLabPane extends React.Component {
         );
     }
 
+    /** A palette tile came into view: its picture is drawn in a coming frame. */
+    requestThumb (part) {
+        if (this.thumbs && !this.thumbs.has(part)) this.thumbQueue.add(part);
+    }
+
+    /** Draws waiting palette pictures for at most a few milliseconds per frame, so opening Build stays smooth. */
+    drawThumbs () {
+        if (!this.thumbs || !this.thumbQueue.size) return;
+        const start = performance.now();
+        for (const part of this.thumbQueue) {
+            this.thumbQueue.delete(part);
+            this.thumbs.render(part);
+            if (performance.now() - start > 6) break;
+        }
+        this.setState(s => ({thumbTick: s.thumbTick + 1}));
+    }
+
+    /** A click on a palette tile arms (or disarms) the placing tool, unless the press was dragged out. */
+    armPart (part) {
+        if (this.paletteDragged) { this.paletteDragged = false; return; }
+        const next = this.state.placing === part ? null : part;
+        this.editView?.setTool(next);
+        this.setState({placing: next});
+    }
+
+    /** A press on a palette tile: the editor view follows it; dragged into the view, it places the part there. */
+    pressPart (part, event) {
+        this.paletteDragged = false;
+        if (event.button !== 0 || !this.editView) return;
+        event.preventDefault(); // no text selection or native image drag while it is dragged out
+        this.editView.pressPalettePart(part, event, ({dragged}) => { this.paletteDragged = dragged; });
+    }
+
     renderPalette () {
-        const groups = this.lib.paletteFrom(this.lib.CATALOG, {locale: this.locale});
         return (
-            <div data-testid="bw-sim-lab-palette" style={{width: 190, flex: '0 0 190px', overflow: 'auto', fontSize: 12, borderRight: '1px solid #e2e8f0', paddingRight: 6}}>
-                <div style={{fontWeight: 600, marginBottom: 4}}>{this.text.parts}</div>
-                {groups.map(g => (
-                    <details key={g.category} open={['hub', 'motor', 'beam', 'pin', 'axle', 'wheel'].includes(g.category)}>
-                        <summary>{g.label}</summary>
-                        {[...g.parts].sort((x, y) => x.name.localeCompare(y.name, this.locale, {numeric: true})).map(p => (
-                            <button key={p.part} type="button" data-testid={`bw-sim-lab-part-${p.part}`}
-                                aria-pressed={this.state.placing === p.part}
-                                style={{display: 'block', width: '100%', textAlign: 'left', margin: '2px 0', padding: '3px 6px', borderRadius: 4, cursor: 'pointer',
-                                    border: '1px solid ' + (this.state.placing === p.part ? '#2563eb' : '#e2e8f0'), background: this.state.placing === p.part ? '#dbeafe' : '#fff'}}
-                                onClick={() => {
-                                    const next = this.state.placing === p.part ? null : p.part;
-                                    this.editView?.setTool(next);
-                                    this.setState({placing: next});
-                                }}>
-                                {p.name}
-                            </button>
-                        ))}
-                    </details>
-                ))}
-            </div>
+            <SimLabPalette key={this.thumbs ? 'pictures' : 'names'} text={this.text} lib={this.lib} locale={this.locale}
+                placing={this.state.placing} recent={this.state.recent} thumbs={this.thumbs} thumbTick={this.state.thumbTick}
+                requestThumb={this.requestThumb} onArm={this.armPart} onPress={this.pressPart} />
         );
     }
 
@@ -553,6 +590,7 @@ class SimLabPane extends React.Component {
         switch (st.kind) {
         case 'hover': return fill(st.selected ? T.hoverSelected : T.hover, {part: name(st.part)});
         case 'placing': return fill(T.placing, {part: name(st.part)});
+        case 'dragging': return fill(T.dragging, {part: name(st.part)});
         case 'snap': case 'snapped': case 'turnedAbout': {
             const target = st.target ? name(st.target) : '';
             if (st.kind === 'turnedAbout') return fill(T.turnedAbout, {target});
