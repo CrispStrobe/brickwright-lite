@@ -33,7 +33,12 @@ const TEXT = {
         connectFailed: 'Could not connect the program to the virtual hub: {error}',
         noProgram: 'No SPIKE program is loaded yet, so nothing tells the motors to turn. Write one in the Code tab and press ⇦ To blocks (or build it with blocks), then press Run — or drive the robot with the arrows below.',
         example: 'Load example program', exampleOffer: 'This robot comes with an example program. Press Load example program to put it in the Code tab, then press Run.',
-        exampleLoaded: 'The example program is in the Code tab now. Press Run and watch the robot follow the black line.',
+        exampleLoaded: 'The example program is in the Code tab now. Press Run.',
+        exampleGoal: {
+            'line-follower.bw': 'The example program is in the Code tab now. Press Run and watch the robot follow the black line.',
+            'wall-stopper.bw': 'The example program is in the Code tab now. Press Run and watch the robot stop before the wall. Challenge: make it stop 20 cm away.',
+            'colour-explorer.bw': 'The example program is in the Code tab now. Press Run and watch the robot find the red square. Challenge: make it find the green one.'
+        },
         exampleFailed: 'Could not load the example program: {error}',
         mat: 'Mat', drive: 'Drive', forward: 'Forward', back: 'Back', left: 'Left', right: 'Right', stop: 'Stop', speed: 'Speed',
         driveHelp: 'Hold an arrow (or use the arrow keys) to drive with motors A and B.', readout: 'Hub',
@@ -76,7 +81,12 @@ const TEXT = {
         connectFailed: 'Das Programm konnte nicht mit dem virtuellen Hub verbunden werden: {error}',
         noProgram: 'Es ist noch kein SPIKE-Programm geladen, darum dreht sich kein Motor. Schreibe eins im Code-Tab und drücke ⇦ Zu Blöcken (oder baue es aus Blöcken), dann Start — oder fahre den Roboter mit den Pfeilen unten.',
         example: 'Beispielprogramm laden', exampleOffer: 'Zu diesem Roboter gibt es ein Beispielprogramm. Drücke Beispielprogramm laden, dann steht es im Code-Tab, und drücke Start.',
-        exampleLoaded: 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start und schau zu, wie der Roboter der schwarzen Linie folgt.',
+        exampleLoaded: 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start.',
+        exampleGoal: {
+            'line-follower.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start und schau zu, wie der Roboter der schwarzen Linie folgt.',
+            'wall-stopper.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start und schau zu, wie der Roboter vor der Wand anhält. Aufgabe: Lass ihn 20 cm vor der Wand anhalten.',
+            'colour-explorer.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start und schau zu, wie der Roboter das rote Feld findet. Aufgabe: Lass ihn das grüne finden.'
+        },
         exampleFailed: 'Das Beispielprogramm konnte nicht geladen werden: {error}',
         mat: 'Matte', drive: 'Fahren', forward: 'Vorwärts', back: 'Rückwärts', left: 'Links', right: 'Rechts', stop: 'Stopp', speed: 'Tempo',
         driveHelp: 'Halte einen Pfeil gedrückt (oder nutze die Pfeiltasten), um mit den Motoren A und B zu fahren.', readout: 'Hub',
@@ -349,7 +359,7 @@ class SimLabPane extends React.Component {
         if (this.disposed) return;
         if (this.state.status === 'running') this.pause();
         window.dispatchEvent(new CustomEvent('bw-load-pseudocode', {detail: {code, source: `sim-lab:${entry.file}`}}));
-        this.setState({info: this.text.exampleLoaded});
+        this.setState({info: this.text.exampleGoal[entry.example] || this.text.exampleLoaded});
         if (entry.mat && this.state.mat !== entry.mat) await this.setMat(entry.mat);
     }
 
