@@ -12,6 +12,24 @@ import {ordinaryPlayerScoreNumberCalls} from './ordinary-primitive-sdk-number-so
 import {ordinarySceneClockNumberCalls} from './ordinary-scene-clock-number-source.js';
 import {controllerButtonEventNumberLeaves} from './controller-button-event-number-source.js';
 
+const spriteAyArrayPrototype=Array.prototype,spriteAyDescriptor=Object.getOwnPropertyDescriptor;
+const spriteAyKeys=Reflect.ownKeys,spriteAyPrototype=Object.getPrototypeOf,spriteAySame=Object.is,spriteAyHasOwn=Object.hasOwn;
+const spriteAyArrayKeys=spriteAyKeys(spriteAyArrayPrototype),spriteAyArrayFields=[];
+const spriteAyArrayParent=spriteAyPrototype(spriteAyArrayPrototype);
+for(let i=0;i<spriteAyArrayKeys.length;i++)spriteAyArrayFields[i]=spriteAyDescriptor(spriteAyArrayPrototype,spriteAyArrayKeys[i]);
+const spriteAyArrayCurrent=()=>{
+    const keys=spriteAyKeys(spriteAyArrayPrototype);
+    if(keys.length!==spriteAyArrayKeys.length||spriteAyPrototype(spriteAyArrayPrototype)!==spriteAyArrayParent)return false;
+    for(let i=0;i<keys.length;i++){
+        if(keys[i]!==spriteAyArrayKeys[i])return false;
+        const before=spriteAyArrayFields[i],now=spriteAyDescriptor(spriteAyArrayPrototype,keys[i]);
+        if(!now||now.enumerable!==before.enumerable||now.configurable!==before.configurable||
+            spriteAyHasOwn(now,'value')!==spriteAyHasOwn(before,'value')||
+            (spriteAyHasOwn(before,'value')?now.writable!==before.writable||!spriteAySame(now.value,before.value):now.get!==before.get||now.set!==before.set))return false;
+    }
+    return true;
+};
+
 export function analyseSourceValueProducers(program,options={}) {
     if(options.normalCompletion&&!sourceNormalCompletionFor(program,options.normalCompletion))throw new Error('Source completion proof must belong to the actual Program');
     const containsThrow=node=>node&&typeof node==='object'&&(node.type==='ThrowStatement'||Object.values(node).some(value=>Array.isArray(value)?value.some(containsThrow):containsThrow(value)));
@@ -25,7 +43,7 @@ export function analyseSourceValueProducers(program,options={}) {
 
 // Analyze actual lexical producers and all writers without rewriting the AST.
 // Source annotations constrain consumers; they never seed producer authority.
-function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,normalCompletion=null,physicalUpdateSource=null}={}) {
+function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,normalCompletion=null,physicalUpdateSource=null}={},privateSpriteAyProof=null) {
     const physicalEntry=physicalUpdateSource?physicalUpdateSourceRecord(program,physicalUpdateSource):null;
     if(physicalUpdateSource&&!physicalEntry)throw new Error('Physical update source proof must belong to the actual current Program');
     const loopEntry=arrayLoopEntries?proveDenseArrayLoopEntries(program,()=>analyseGraph(program,{parenthesized:true,unboundIsOpaque:true})):null;
@@ -58,6 +76,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         return initialized(node.index);
     };
     const ordinaryNumbers=ordinaryPrimitiveSdkNumbers?ordinaryPlayerScoreNumberCalls(program,safeClockIndex):null;
+    const spriteAyNumbers=privateSpriteAyProof||(ordinaryPrimitiveSdkNumbers?ordinarySpriteAyNumberReads(program):null);
     const sceneNumbers=sceneClockNumbers?ordinarySceneClockNumberCalls(program,safeClockIndex):null;
     let screenWritten=false;
     const scanScreenWrites=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(scanScreenWrites);return;}const target=node.type==='Assignment'?node.left:node.type==='Update'?node.argument:null;if(target?.type==='Identifier'&&target.name==='screen'&&sdk.has(target))screenWritten=true;Object.values(node).forEach(scanScreenWrites);};scanScreenWrites(program);
@@ -145,7 +164,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         else if(node.type==='Member'&&['width','height'].includes(node.name))edges.push([cell(node.object),current,'imageDimension',node.name]);
         else if(node.type==='Member'&&fields.has(node.name))edges.push([cell(node.object),current,'field',node.name]);
         else if(['Undefined','Null','String','Number','Boolean'].includes(node.type))add(current,node.type);
-        else if(ordinaryNumbers?.has(node)||sceneNumbers?.has(node)||buttonEventNumbers?.has(node))add(current,'Number');
+        else if(ordinaryNumbers?.has(node)||sceneNumbers?.has(node)||buttonEventNumbers?.has(node)||spriteAyNumbers?.has(node))add(current,'Number');
         else if(node.type==='Call'&&sdk.has(node.callee)&&path(node.callee)==='game.askForString')add(current,'String');
         else {add(current,'Opaque');if(arrayValues&&node.type==='Call'&&node.callee?.type==='Member')for(const value of [node.callee.object,...node.args])arrayOperations.push({kind:'escape',receiver:cell(value)});}
     };
@@ -243,7 +262,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         return fn&&declarations.get(id)?.size===1&&!classWrites.has(id)?fn.node:null;
     };
     const immutableFunction=node=>{const fn=unchangedFunction(node);return fn&&!cyclic(knownBinding(fn))?fn:null;};
-    const currentTypes=value=>new Set((!callbackEntry||callbackEntry.current())&&(!loopEntry||loopEntry.current())?types.get(value)||[]:[]);
+    const currentTypes=value=>new Set((!callbackEntry||callbackEntry.current())&&(!loopEntry||loopEntry.current())&&(!spriteAyNumbers||spriteAyNumbers.current())?types.get(value)||[]:[]);
     // Copies prevent a consumer from changing another consumer's proof facts.
     // Binding facts do not discharge initialization at an expression occurrence.
     return Object.freeze({
@@ -451,6 +470,262 @@ export function sourceImageArrayCloneEffects(program,sourceContext=null) {
     return proveImageArrayCloneEffectEntries(program,()=>analyseSourceValueProducers(program,{
         arrayValues:true,arrayEffectSites:true,parenthesized:true,unboundIsOpaque:true,declaredLocalUndefined:true,initializationEntries:true,ordinaryPrimitiveSdkNumbers:true
     }),sourceContext);
+}
+
+// This private primitive producer does not publish Sprite or Array types. Its
+// allocation tokens describe only the receivers of exact physical ay reads.
+// In particular, the translator's annotation-seeded reference sets are not used.
+function ordinarySpriteAyNumberReads(program) {
+    if(!spriteAyArrayCurrent())return null;
+    // Necessary syntax only: a negative result skips this optional analysis,
+    // never supplies a type or an eligibility fact. Do not invoke getters.
+    const syntaxSeen=new Set();
+    const possible=value=>{
+        if(!value||typeof value!=='object'||syntaxSeen.has(value))return false;syntaxSeen.add(value);
+        const type=Object.getOwnPropertyDescriptor(value,'type'),name=Object.getOwnPropertyDescriptor(value,'name');
+        if(type&&Object.hasOwn(type,'value')&&type.value==='Member'&&name&&Object.hasOwn(name,'value')&&name.value==='ay')return true;
+        for(const key of Reflect.ownKeys(value)) {
+            if(metadata.has(key))continue;const row=Object.getOwnPropertyDescriptor(value,key);
+            if(row?.enumerable&&Object.hasOwn(row,'value')&&possible(row.value))return true;
+        }
+        return false;
+    };
+    try {if(!possible(program))return null;}catch {return null;}
+    let initial;
+    try {initial=physicalUpdateSourceSnapshot(program);} catch {return null;}
+    const nodes=[],parents=new WeakMap(),owners=new WeakMap(),seen=new Set();let valid=true;
+    const visit=(value,parent=null,owner=program)=>{
+        if(!value||typeof value!=='object')return;
+        if(seen.has(value)){valid=false;return;}seen.add(value);
+        parents.set(value,parent);owners.set(value,owner);if(!Array.isArray(value))nodes.push(value);
+        for(const key of Reflect.ownKeys(value)) {
+            if(metadata.has(key))continue;
+            const row=Object.getOwnPropertyDescriptor(value,key);
+            if(typeof key!=='string'||!row||!Object.hasOwn(row,'value')||typeof row.value==='function'){valid=false;continue;}
+            visit(row.value,value,['FunctionDeclaration','FunctionExpression'].includes(value.type)&&key==='body'?value:owner);
+        }
+    };
+    visit(program);
+    if(!initial||!valid||program?.type!=='Program'||!Array.isArray(program.body))return null;
+    const graph=analyseGraph(program,{parenthesized:true,unboundIsOpaque:true,initializationEntries:true});
+    const binding=(node,name=node?.name)=>graph.bindingOf(node,name);
+    const root=node=>{let current=node;while(current&&parents.get(current)!==program.body)current=parents.get(current);return current;};
+    const rank=node=>program.body.indexOf(root(node));
+    const all=(items,predicate)=>{for(let i=0;i<items.length;i++)if(!predicate(items[i],i))return false;return true;};
+    const any=(items,predicate)=>{for(let i=0;i<items.length;i++)if(predicate(items[i],i))return true;return false;};
+    const schema=fn=>Array.isArray(fn.params)&&all(fn.params,name=>typeof name==='string')&&new Set(fn.params).size===fn.params.length&&
+        !fn.restParam&&!fn.typeParameters?.length&&all(['optionalParams','parameterDefaults','parameterProperties'],name=>
+            (!fn[name]||Array.isArray(fn[name])&&!fn[name].length)&&(!fn.params[name]||Array.isArray(fn.params[name])&&!fn.params[name].length));
+    for(const node of nodes) {
+        if(['Unknown','Class','Object'].includes(node.type)||node.type==='Unary'&&node.op==='delete'||
+            node.type==='Identifier'&&['this','globalThis','global','window','self','eval','Function','Reflect','Object','arguments'].includes(node.name)||
+            node.type==='Member'&&['constructor','prototype','__proto__'].includes(node.name))return null;
+        if(['FunctionDeclaration','FunctionExpression'].includes(node.type)&&!schema(node))return null;
+        if(node.name==='img'||node.decls&&any(node.decls,row=>row.name==='img')||node.params?.includes('img'))return null;
+        if(node.type==='Assignment'&&graph.isSdkNamespace(node.left)||node.type==='Update'&&graph.isSdkNamespace(node.argument))return null;
+    }
+    // Existing PXT image decoding pads shorter rows with transparency. Validate
+    // each authored row with the exact palette codec; do not replace the source
+    // or reject legitimate ragged images as though they were rectangular-only.
+    const imageLiteral=node=>{
+        if(node?.type!=='Template'||node.tag!=='img'||typeof node.value!=='string')return false;
+        const rows=node.value.split(/\r?\n/);let pixels=false;
+        for(let i=0;i<rows.length;i++){
+            if(!rows[i].trim())continue;
+            if(!parseExactImgLiteral('img`'+rows[i]+'`'))return false;pixels=true;
+        }
+        return pixels;
+    };
+    const factories=new Set(),arrays=new Set(),writes=new Map(),values=new Map(),loops=[],pushes=[];
+    const write=(key,value,site)=>{if(!writes.has(key))writes.set(key,[]);writes.get(key).push({value,site});};
+    for(const node of nodes) {
+        if(node.type==='Array'&&Array.isArray(node.items)&&node.items.length===0)arrays.add(node);
+        if(node.type==='Call'&&!node.isNew&&!node.constructorCall&&!node.optional&&!node.typeArguments?.length&&node.callee?.type==='Member'&&!node.callee.optional&&
+            path(node.callee)==='sprites.create'&&graph.isSdkNamespace(node.callee)&&Array.isArray(node.args)&&node.args.length===1&&
+            imageLiteral(node.args[0]))factories.add(node);
+        if(node.type==='Declaration')for(const row of node.decls||[])if(row.init)write(binding(node,row.name),row.init,row);
+        if(node.type==='Assignment'&&node.left?.type==='Identifier')write(binding(node.left),node.op==='='?node.right:null,node);
+        if(node.type==='Update'&&node.argument?.type==='Identifier')write(binding(node.argument),null,node);
+        if(node.type==='ForOf'&&Array.isArray(node.body)&&node.body.length)loops.push(node);
+        if(node.type==='Call'&&node.callee?.type==='Member'&&node.callee.name==='push')pushes.push(node);
+    }
+    for(const node of nodes)if(node.type==='Identifier'&&node.name==='sprites'&&graph.isSdkNamespace(node)) {
+        const member=parents.get(node),call=parents.get(member);
+        if(member?.type!=='Member'||member.object!==node||member.name!=='create'||call?.callee!==member||!factories.has(call))return null;
+    }
+    // The ordinary public route lowers for-of before constraint analysis.
+    // Reprove the actual dense loop, without trusting generated names or an
+    // earlier source receipt. Only its physical prefix Index gets element
+    // provenance; no generic Index value or type domain is published.
+    const denseElements=new Map(),denseLengths=new Set();
+    for(const loop of nodes)if(loop.type==='For'){
+        const declaration=loop.init,row=declaration?.decls?.[0],test=loop.test,update=loop.update;
+        const prefix=loop.body?.[0],element=prefix?.decls?.[0],read=element?.init;
+        if(declaration?.type!=='Declaration'||declaration.kind!=='let'||declaration.decls.length!==1||row.init?.type!=='Number'||
+            !['string','number'].includes(typeof row.init.value)||Number(row.init.value)!==0||
+            test?.type!=='Binary'||test.op!=='<'||test.left?.type!=='Identifier'||
+            test.right?.type!=='Member'||test.right.name!=='length'||test.right.object?.type!=='Identifier'||
+            update?.type!=='Update'||update.op!=='++'||update.argument?.type!=='Identifier'||
+            prefix?.type!=='Declaration'||!['let','const'].includes(prefix.kind)||prefix.decls.length!==1||read?.type!=='Index'||
+            read.object?.type!=='Identifier'||read.index?.type!=='Identifier')continue;
+        const index=binding(declaration,row.name),array=binding(test.right.object);
+        if(!index||!array||graph.declarationCountAt(declaration,row.name)!==1||
+            binding(test.left)!==index||binding(update.argument)!==index||binding(read.index)!==index||
+            binding(read.object)!==array)continue;
+        const allowed=new Set([test.left,update.argument,read.index]);let closed=true;
+        for(const node of nodes)if(node.type==='Identifier'&&binding(node)===index&&!allowed.has(node)){closed=false;break;}
+        // Plain `=` destinations and declaration rows have no read node in
+        // the allowed set, so every extra write, alias or capture is refused.
+        if(!closed)continue;
+        denseElements.set(read,loop);denseLengths.add(test.right);
+    }
+    const value=node=>{
+        if(node?.type==='Parenthesized')return value(node.expression);
+        if(factories.has(node)||arrays.has(node))return new Set([node]);
+        if(node?.type==='Identifier')return values.get(binding(node));
+        if(denseElements.has(node)){
+            const tokens=new Set();for(const receiver of value(node.object)||[])for(const item of elements.get(receiver)||[])tokens.add(item);
+            return tokens.size?tokens:null;
+        }
+        return null;
+    };
+    const add=(key,tokens)=>{
+        if(!tokens?.size)return false;
+        if(!values.has(key))values.set(key,new Set());let changed=false;
+        for(const token of tokens)if(!values.get(key).has(token)){values.get(key).add(token);changed=true;}return changed;
+    };
+    const elements=new Map([...arrays].map(site=>[site,new Set()]));
+    let changed=true,steps=0;
+    while(changed) {
+        if(++steps>nodes.length+1)return null;changed=false;
+        for(const [key,rows]of writes)for(const row of rows)changed=add(key,value(row.value))||changed;
+        for(const call of pushes) {
+            const receivers=value(call.callee.object),items=call.args?.length===1?value(call.args[0]):null;
+            if(!receivers?.size||!items?.size)continue;
+            for(const receiver of receivers)if(elements.has(receiver))for(const token of items)if(!elements.get(receiver).has(token)){elements.get(receiver).add(token);changed=true;}
+        }
+        for(const loop of loops)for(const receiver of value(loop.iterable)||[])changed=add(binding(loop.body[0],loop.name),elements.get(receiver))||changed;
+    }
+    const sprites=tokens=>tokens?.size&&all([...tokens],token=>factories.has(token));
+    const collections=tokens=>tokens?.size&&all([...tokens],token=>arrays.has(token));
+    const loopBindings=new Map();
+    for(const loop of loops) {
+        const key=binding(loop.body[0],loop.name);
+        if(graph.declarationCountAt(loop.body[0],loop.name)!==0||loopBindings.has(key))return null;
+        loopBindings.set(key,loop);
+    }
+    const usedArrays=new Set(),candidates=new Set();
+    for(const node of nodes)if(node.type==='Member'&&node.name==='ay'&&sprites(value(node.object)))candidates.add(node);
+    if(!candidates.size)return null;
+    // No unknown writer may be hidden behind a compatible later assignment.
+    for(const [key,tokens]of values) {
+        const rows=writes.get(key)||[];
+        for(const row of rows)if(!value(row.value)?.size||any([...value(row.value)],token=>!tokens.has(token)))return null;
+        for(const node of nodes)if(node.type==='Identifier'&&binding(node)===key&&graph.declarationCountAt(node)>1)return null;
+    }
+    const aliasUse=(node,parent)=>parent?.type==='Assignment'&&parent.op==='='&&parent.right===node&&parent.left?.type==='Identifier'||
+        parent&&parent.init===node&&Array.isArray(parents.get(parent))&&parents.get(parents.get(parent))?.type==='Declaration';
+    const argumentCall=node=>{const args=parents.get(node),call=parents.get(args);return Array.isArray(args)&&call?.type==='Call'&&call.args===args?call:null;};
+    for(const node of nodes) {
+        const tokens=value(node);if(!tokens?.size)continue;
+        const parent=parents.get(node);
+        if(collections(tokens)) {
+            for(const token of tokens)usedArrays.add(token);
+            if(arrays.has(node)&&parent?.init===node)continue;
+            if(aliasUse(node,parent)||parent?.type==='Assignment'&&parent.left===node&&parent.op==='=')continue;
+            if(parent?.type==='ForOf'&&parent.iterable===node)continue;
+            if(parent?.type==='Index'&&parent.object===node&&denseElements.has(parent)||parent?.type==='Member'&&parent.object===node&&denseLengths.has(parent))continue;
+            if(parent?.type==='Member'&&parent.object===node&&parent.name==='push') {
+                const call=parents.get(parent);
+                if(call?.type==='Call'&&call.callee===parent&&!call.isNew&&!call.optional&&!call.typeArguments?.length&&call.args?.length===1&&sprites(value(call.args[0])))continue;
+            }
+            return null;
+        }
+        if(sprites(tokens)) {
+            if((factories.has(node)||denseElements.has(node))&&parent?.init===node)continue;
+            if(aliasUse(node,parent)||parent?.type==='Assignment'&&parent.left===node&&parent.op==='=')continue;
+            const call=argumentCall(node);
+            if(call?.callee?.type==='Member'&&call.callee.name==='push'&&call.args.length===1&&call.args[0]===node&&collections(value(call.callee.object)))continue;
+            if(parent?.type==='Member'&&parent.object===node&&['x','y','vx','vy','ax','ay','fx','fy','left','right','top','bottom','width','height','image','overlapsWith'].includes(parent.name))continue;
+            if(call?.callee?.type==='Member'&&call.callee.name==='overlapsWith'&&call.args.length===1&&call.args[0]===node&&sprites(value(call.callee.object)))continue;
+            return null;
+        }
+        return null;
+    }
+    // Each relevant global allocation must precede every actual root call and
+    // registration that can reach its users. Callback execution counts are not
+    // simulated: the complete writer/use invariant holds at every repetition.
+    const callers=new Map();
+    for(const node of nodes)if(node.type==='Identifier'&&graph.bindingKindsAt(node).has('function')) {
+        const parent=parents.get(node),fn=graph.immutableFunctionAt(node);
+        if(!fn||parent?.type!=='Call'||parent.callee!==node)return null;
+        if(!callers.has(fn))callers.set(fn,[]);callers.get(fn).push(parent);
+    }
+    const dominates=(owner,position,active=new Set())=>{
+        if(owner===program)return true;
+        if(active.has(owner))return false;const next=new Set(active);next.add(owner);
+        if(owner.type==='FunctionDeclaration') {
+            const sites=callers.get(owner)||[];
+            return sites.length>0&&all(sites,call=>owners.get(call)===program?rank(call)>position:dominates(owners.get(call),position,next));
+        }
+        const call=argumentCall(owner);
+        return owner.type==='FunctionExpression'&&!owner.params.length&&call?.type==='Call'&&call.args?.length===1&&call.args[0]===owner&&
+            !call.isNew&&!call.constructorCall&&!call.optional&&!call.typeArguments?.length&&call.callee?.type==='Member'&&!call.callee.optional&&path(call.callee)==='game.onUpdate'&&
+            graph.isSdkNamespace(call.callee)&&owners.get(call)===program&&rank(call)>position&&root(call)?.type==='ExpressionStatement';
+    };
+    const globalInitializers=new Map();
+    for(const statement of program.body)if(statement.type==='Declaration')for(const row of statement.decls||[]) {
+        const key=binding(statement,row.name);
+        if(row.init&&value(row.init)?.size&&graph.declarationCountAt(statement,row.name)===1)globalInitializers.set(key,statement);
+    }
+    const inside=(node,container)=>{for(let at=node;at;at=parents.get(at))if(at===container)return true;return false;};
+    for(const node of nodes)if(node.type==='Identifier'&&value(node)?.size) {
+        const parent=parents.get(node);
+        if(parent?.type==='Assignment'&&parent.left===node&&parent.op==='=')continue;
+        if(graph.isInitializedAt(node))continue;
+        const key=binding(node),loop=loopBindings.get(key);
+        if(loop&&inside(node,loop.body))continue;
+        const declaration=globalInitializers.get(key),owner=owners.get(node),position=declaration?rank(declaration):-1;
+        if(!declaration||owner===program&&rank(node)<=position||!dominates(owner,position))return null;
+    }
+    for(const site of usedArrays) {
+        const row=parents.get(site),decl=parents.get(parents.get(row));
+        if(row?.init!==site||decl?.type!=='Declaration'||owners.get(site)!==program||rank(site)<0)return null;
+        const position=rank(site);
+        for(const node of nodes)if(collections(value(node))&&value(node).has(site)) {
+            const owner=owners.get(node);
+            if(owner===program&&node!==site&&rank(node)<position||!dominates(owner,position))return null;
+        }
+    }
+    // A native ay read has a Number result independently of the declared
+    // formal's type. Use that already established result only inside this
+    // private validation graph, then require every actual ay writer to agree.
+    // No caller-supplied option or annotation can seed this graph.
+    const writerGraph=analyseGraph(program,{parenthesized:true,unboundIsOpaque:true},
+        {has:node=>candidates.has(node),current:()=>true});
+    for(const node of nodes) {
+        const lhs=node.type==='Assignment'?node.left:node.type==='Update'?node.argument:null;
+        if(!candidates.has(lhs))continue;
+        if(node.type==='Update') {if(!['++','--'].includes(node.op))return null;continue;}
+        if(!['=','+=','-=','*=','/=','%='].includes(node.op))return null;
+        const types=writerGraph.typesAt(node.right);
+        if(types.size!==1||!types.has('Number'))return null;
+    }
+    let expired=false;
+    const current=()=>{
+        if(expired)return false;
+        try {
+            if(!spriteAyArrayCurrent())expired=true;
+            else {
+                const now=physicalUpdateSourceSnapshot(program);
+                if(!now||now.shape!==initial.shape||now.objects.length!==initial.objects.length||now.opaque.length!==initial.opaque.length)expired=true;
+                if(!expired)for(let i=0;i<now.objects.length;i++)if(now.objects[i]!==initial.objects[i]){expired=true;break;}
+                if(!expired)for(let i=0;i<now.opaque.length;i++)if(now.opaque[i]!==initial.opaque[i]){expired=true;break;}
+            }
+        }catch(error){expired=true;throw error;}
+        return !expired;
+    };
+    return Object.freeze({has:node=>candidates.has(node)&&current(),current});
 }
 
 const metadata=new Set(['originalBody','parameterDefaults','paramTypes','typeParameters','returnType','assertedType','bwProcedureConstraintSource','optionalParams','parameterProperties','sourceReferenceDeclarations','sourceCallableDeclarations','sourceScalarDeclarations']);

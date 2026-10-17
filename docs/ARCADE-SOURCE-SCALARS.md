@@ -93,3 +93,29 @@ source. They cover:
 Keep every failed control. Parsing or a warning-free import is insufficient.
 Browser user flows, frame cadence and complete games remain separate acceptance
 boundaries.
+
+## Owned Sprite acceleration reads
+
+The primitive producer profile can prove an actual `Sprite.ay` read as Number
+when its receiver comes from the existing unshadowed `sprites.create(img)`
+producer. A private allocation census follows actual aliases and empty Arrays
+filled only with those Sprite values, including `for...of` receivers in an
+ordinary `game.onUpdate` callback. The public importer also reproves its actual
+lowered dense `for` loop: zero index, strict length test, unit increment and
+the matching first element binding. No generated name or earlier source receipt
+can grant an Index result. Every receiver read must follow mandatory
+initialization; every Array, alias and acceleration writer must remain within
+the proved graph. The same invariant applies to every callback invocation.
+Observed source or physical identity changes permanently expire that proof.
+
+This proof supplies only the primitive read result. Sprite annotations, Array
+annotations and factory names alone grant no receiver or collection authority.
+Unknown writers, escapes, incompatible values and reads before initialization
+remain unsupported. Other Sprite properties and unrelated numeric producer gaps
+need their own proof. Native property reads retain their evaluation, errors and
+effects.
+
+The focused source controls cover the producer and public Code/Creator/SB3
+route. Their qualification, affected native execution and direct visual editor
+authoring remain separate acceptance steps. Existing raw Sprite property blocks
+are reused; this change introduces no new editor control.
