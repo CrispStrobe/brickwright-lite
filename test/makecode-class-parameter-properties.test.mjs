@@ -164,6 +164,7 @@ test('parameter property public Code and two actual SB3 projects export and reim
  };
  constructorBindings(firstProject);
  const exported=projectToArcade(firstProject);record({stage:'parameter-property-export',result:exported});clean(exported,['unsupported','warnings']);
+ assert.match(exported.ts,/\(value: number\) =>/);assert.doesNotMatch(exported.ts,/__bwBinaryAdd/,'actual Number operands keep numeric Arrow inference');
  const actual=declaration(firstProject),parameters=JSON.parse(literal(actual.target,actual.block,'PARAMETERS'));
  assert.deepEqual(parameters.map(parameter=>parameter.type),['number','callable','callable']);
  assert.equal(parameters[1].callableSignature.result.name,'number');assert.equal(parameters[2].callableSignature.result.name,'void');
@@ -180,6 +181,29 @@ test('parameter property public Code and two actual SB3 projects export and reim
   }assert.equal(count,2);},
  ];
  for(let index=0;index<edits.length;index++){const edited=structuredClone(firstProject);edits[index](edited);const result=projectToArcade(edited);record({stage:'parameter-property-edited-constructor-refusal',index,project:edited,result});assert.ok(result.unsupported.length,index);}
+ // Neither a callable declaration nor a Number parameter may rescue an
+ // edited physical operand or captured global writer.
+ for(const mode of ['callback-operand','captured-global-writer']){
+  const edited=structuredClone(firstProject),game=edited.targets.find(target=>target.name==='Game');
+  if(mode==='callback-operand'){
+   const prototypes=Object.values(game.blocks).filter(block=>block.opcode==='procedures_prototype'&&JSON.stringify(JSON.parse(block.mutation.argumentnames))==='["value"]');assert.equal(prototypes.length,1);
+   const definition=game.blocks[prototypes[0].parent],ret=game.blocks[definition.next];assert.equal(ret.opcode,'arcade_returnValue');
+   const add=game.blocks[ret.inputs.VALUE[1]];assert.equal(add.opcode,'arrays_valueBinary');assert.equal(add.fields.OP[0],'+');
+   const prior=add.inputs.RIGHT[1],number=game.blocks[prior];assert.equal(number.opcode,'operator_add');assert.ok(Object.values(number.inputs).every(input=>Array.isArray(input[1])));delete game.blocks[prior];
+   add.inputs.RIGHT=[1,[10,'wrong']];
+  }else{
+   const owners=edited.targets.flatMap(target=>Object.entries(target.variables).filter(([,value])=>value[0]==='seen').map(([id])=>({target,id})));assert.equal(owners.length,1);
+   const writers=Object.values(game.blocks).filter(block=>block.opcode==='data_setvariableto'&&block.fields.VARIABLE[1]===owners[0].id);assert.ok(writers.length);
+   // Change the actual dominating source startup writer, keeping the same ID
+   // and all declarations/captures/other writers intact.
+   const starts=Object.values(game.blocks).filter(block=>block.opcode==='arcade_whenSourceStarts');assert.equal(starts.length,1);
+   let current=starts[0].next;const visited=new Set();while(current&&!writers.includes(game.blocks[current])){assert.ok(!visited.has(current));visited.add(current);current=game.blocks[current].next;}assert.ok(current);
+   const writer=game.blocks[current],prior=writer.inputs.VALUE[1],number=game.blocks[prior];assert.equal(number.opcode,'operator_add');assert.ok(Object.values(number.inputs).every(input=>Array.isArray(input[1])));delete game.blocks[prior];
+   writer.inputs.VALUE=[1,[10,'wrong']];
+  }
+  const result=projectToArcade(edited);record({stage:'parameter-property-edited-numeric-refusal',mode,project:edited,result});assert.ok(result.unsupported.length,mode);
+ }
+
  const again=arcadeToPseudocode(exported.files);record({stage:'parameter-property-reimport',result:again});clean(again,['unsupported','warnings']);
  const second=new Creator();second.parse(again.code);record({stage:'parameter-property-second-Creator',project:second.project,errors:second.errors,warnings:second.warnings,unparsed:second.unparsed});clean(second,['errors','warnings','unparsed']);
  const secondBytes=Buffer.from(await(await second.generateSB3()).arrayBuffer()),secondZip=await JSZip.loadAsync(secondBytes),secondProject=JSON.parse(await secondZip.file('project.json').async('string'));

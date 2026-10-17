@@ -1380,6 +1380,18 @@ class ArcadeEmitter {
             const op=this.field(b,'OP') || this.literalInput(b,'OP'),unary=b.opcode==='arrays_valueUnary',compare=b.opcode==='arrays_valueCompare';
             const names={'+':'Add','-':'Subtract','*':'Multiply','/':'Divide','%':'Remainder','**':'Power','&':'BitAnd','|':'BitOr','^':'BitXor','<<':'ShiftLeft','>>':'ShiftRight','>>>':'UnsignedShiftRight','~':'BitNot','==':'Equal','!=':'NotEqual','===':'StrictEqual','!==':'StrictNotEqual','<':'Less','>':'Greater','<=':'LessEqual','>=':'GreaterEqual'};
             if(!names[op] || unary && !['+','-','~'].includes(op)){this.note(`unsupported value operation ${op}`);return this.na();}
+            // A qualified class-callable graph can retain primitive Number
+            // addition directly. Generic Any helpers lose the Arrow's actual
+            // result signature on source reparse; declarations alone cannot
+            // select this path, and unproved operands keep the old helper.
+            if(!unary&&!compare&&op==='+'&&this.callableExports?.get(this.target)?.graph.plan.version===2){
+                try {
+                    const provider=this.objectClassExport.classCallableProvider(this.target),
+                        left=provider.currentInputType(b,'LEFT'),right=provider.currentInputType(b,'RIGHT');
+                    if(left?.kind==='named'&&left.name==='number'&&right?.kind==='named'&&right.name==='number')
+                        return `(${this.arrayValue(b,'LEFT')} + ${this.arrayValue(b,'RIGHT')})`;
+                }catch(error){this.note(error.message);}
+            }
             const key=(unary?'Unary':compare?'Compare':'Binary')+names[op];
             if(!this.valueOperationHelpers.has(key)){
                 let name='__bw'+key;
