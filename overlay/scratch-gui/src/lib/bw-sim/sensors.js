@@ -25,7 +25,96 @@
 //     force = 100·(1 − d/0.002) (clamped), pressed when >10.
 
 /** LEGO device ids, matching lib/spike-arena/arena-hub-bridge.js. */
+import {createMat} from './world/mats.js';
 export const SENSOR_DEVICE = Object.freeze({color: 61, distance: 62, force: 63});
+
+
+/**
+ * SPIKE IMU helpers — pitch/roll/faceUp from a hub body's world pose.
+ *
+ * SPIKE convention (documented by the nose-up test): when the hub lies
+ * flat with its display (top) up, pitch = 0, roll = 0, faceUp = top (0),
+ * and acceleration reads (0, 0, 1000) milli-g on the axis through its face.
+ * The hub's local axes in world when the body is at identity are:
+ *   +X = right (east), +Y = up, +Z = south; the hub's forward is -Z (north)
+ *   and its face (display) normal is +Y (up). SPIKE's IMU axes are:
+ *   X = right (+X body), Y = forward (-Z body), Z = up (+Y body).
+ * Pitch is rotation about X (right), positive when the nose (forward) lifts
+ * up; roll is about Y (forward), positive when the right side lifts up.
+ * This matches the test that tilts the hub nose-up and expects positive pitch.
+ */
+const pitchFromQuat = q => {
+    const bodyZ = quatRotateVec(q, [0, 0, 1]);
+    const spikeY = [-bodyZ[0], -bodyZ[1], -bodyZ[2]]; // forward
+    return Math.atan2(spikeY[1], Math.hypot(spikeY[0], spikeY[2])) * 180 / Math.PI;
+};
+const rollFromQuat = q => {
+    const bodyX = quatRotateVec(q, [1, 0, 0]);
+    // roll positive when right side up: right vector's Y positive
+    return Math.atan2(bodyX[1], Math.hypot(bodyX[0], bodyX[2])) * 180 / Math.PI;
+};
+const faceUpFromQuat = q => {
+    const bodyX = quatRotateVec(q, [1, 0, 0]);
+    const bodyY = quatRotateVec(q, [0, 1, 0]);
+    const bodyZ = quatRotateVec(q, [0, 0, 1]);
+    const spikeX = bodyX;
+    const spikeY = [-bodyZ[0], -bodyZ[1], -bodyZ[2]];
+    const spikeZ = bodyY;
+    const up = [0, 1, 0];
+    const dot = (a, b) => a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+    const faces = [
+        {id: 0, vec: spikeZ},
+        {id: 1, vec: spikeZ.map(v=>-v)},
+        {id: 2, vec: spikeY},
+        {id: 3, vec: spikeY.map(v=>-v)},
+        {id: 4, vec: spikeX},
+        {id: 5, vec: spikeX.map(v=>-v)},
+    ];
+    let best = faces[0], bestDot = dot(faces[0].vec, up);
+    for (const f of faces) { const d = dot(f.vec, up); if (d > bestDot) { bestDot = d; best = f; } }
+    return best.id;
+};
+
+export const imuFromBody = (pose, angVelWorld, linVelWorld, prevLinVelWorld, dt, gravityWorld) => {
+    const q = pose.rotation;
+    const pitch = pitchFromQuat(q);
+    const roll = rollFromQuat(q);
+    const faceUp = faceUpFromQuat(q);
+    // Angular velocity: world -> spike local
+    const invQ = quatConj(q);
+    const angBody = quatRotateVec(invQ, angVelWorld);
+    // spike axes: X=bodyX, Y=-bodyZ, Z=bodyY
+    const spikeAng = [angBody[0], -angBody[2], angBody[1]];
+    const angularVelocity = {
+        x: spikeAng[0] * 180 / Math.PI,
+        y: spikeAng[1] * 180 / Math.PI,
+        z: spikeAng[2] * 180 / Math.PI,
+    };
+    // Linear acceleration: (curr - prev)/dt, plus gravity
+    let linAccWorld = [0, 0, 0];
+    if (prevLinVelWorld && dt > 1e-9) {
+        linAccWorld = [
+            (linVelWorld[0] - prevLinVelWorld[0]) / dt,
+            (linVelWorld[1] - prevLinVelWorld[1]) / dt,
+            (linVelWorld[2] - prevLinVelWorld[2]) / dt,
+        ];
+    }
+    // Proper acceleration = linAcc - gravity (gravity is [0,-9.81,0] down, so -gravity is up)
+    const properWorld = [
+        linAccWorld[0] - gravityWorld[0],
+        linAccWorld[1] - gravityWorld[1],
+        linAccWorld[2] - gravityWorld[2],
+    ];
+    const properBody = quatRotateVec(invQ, properWorld);
+    const spikeAcc = [properBody[0], -properBody[2], properBody[1]];
+    const toMilliG = v => v * 1000 / 9.81;
+    const acceleration = {
+        x: toMilliG(spikeAcc[0]),
+        y: toMilliG(spikeAcc[1]),
+        z: toMilliG(spikeAcc[2]),
+    };
+    return {pitch, roll, angularVelocity, acceleration, faceUp};
+};
 
 const quatConj = q => [0 - q[0], 0 - q[1], 0 - q[2], q[3]];
 
@@ -119,17 +208,68 @@ export const readSensors = (core, mechanism, robotBodies = []) => {
                 out[sensor.port] = {kind: 'color', color: -1, reflection: 0, red: 0, green: 0, blue: 0};
             } else {
                 const d = hit.distance;
-                const reflection = Math.round(baseReflection * (1 - d / 0.032));
-                const clampedReflection = Math.max(0, Math.min(100, reflection));
-                const rgb = isWhite ? whiteRgb : blackRgb;
-                out[sensor.port] = {
-                    kind: 'color',
-                    color: groundColor,
-                    reflection: clampedReflection,
-                    red: rgb[0],
-                    green: rgb[1],
-                    blue: rgb[2],
-                };
+                let hitColor = groundColor;
+                let useMat = false;
+                let matReflection = 100;
+                let matRgb = whiteRgb;
+                let otherBodyColor = null;
+                if (hit.bodyId === 'ground' && ground && typeof ground.mat === 'string') {
+                    const mat = createMat(ground.mat);
+                    if (mat) {
+                        const v = mat.colorAt(hit.point[0], hit.point[2]);
+                        hitColor = v.color;
+                        matReflection = v.reflection;
+                        matRgb = v.rgb;
+                        useMat = true;
+                    }
+                } else if (hit.bodyId && hit.bodyId !== 'ground') {
+                    const hitBody = mechanism.bodies.find(b => b.id === hit.bodyId);
+                    if (hitBody && typeof hitBody.color === 'number') {
+                        hitColor = hitBody.color;
+                        otherBodyColor = hitBody.color;
+                    } else {
+                        out[sensor.port] = {kind: 'color', color: -1, reflection: 0, red: 0, green: 0, blue: 0};
+                        continue;
+                    }
+                }
+                if (useMat) {
+                    const reflection = Math.round(matReflection * (1 - d / 0.032));
+                    const clampedReflection = Math.max(0, Math.min(100, reflection));
+                    out[sensor.port] = {
+                        kind: 'color',
+                        color: hitColor,
+                        reflection: clampedReflection,
+                        red: matRgb[0],
+                        green: matRgb[1],
+                        blue: matRgb[2],
+                    };
+                } else if (otherBodyColor !== null) {
+                    const isOtherWhite = otherBodyColor !== 0;
+                    const reflBase = isOtherWhite ? 100 : 5;
+                    const rgbOther = isOtherWhite ? whiteRgb : blackRgb;
+                    const reflection = Math.round(reflBase * (1 - d / 0.032));
+                    const clampedReflection = Math.max(0, Math.min(100, reflection));
+                    out[sensor.port] = {
+                        kind: 'color',
+                        color: hitColor,
+                        reflection: clampedReflection,
+                        red: rgbOther[0],
+                        green: rgbOther[1],
+                        blue: rgbOther[2],
+                    };
+                } else {
+                    const reflection = Math.round(baseReflection * (1 - d / 0.032));
+                    const clampedReflection = Math.max(0, Math.min(100, reflection));
+                    const rgb = isWhite ? whiteRgb : blackRgb;
+                    out[sensor.port] = {
+                        kind: 'color',
+                        color: hitColor,
+                        reflection: clampedReflection,
+                        red: rgb[0],
+                        green: rgb[1],
+                        blue: rgb[2],
+                    };
+                }
             }
         } else if (sensor.kind === 'force') {
             // Tip probe: cast up to 5 mm, but only 0..2 mm counts.

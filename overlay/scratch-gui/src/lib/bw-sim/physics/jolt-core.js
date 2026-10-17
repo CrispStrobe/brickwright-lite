@@ -443,6 +443,20 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
             const res = { position: [pos.GetX(), pos.GetY(), pos.GetZ()], rotation: [rot.GetX(), rot.GetY(), rot.GetZ(), rot.GetW()] };
             return res;
         },
+        bodyLinearVelocity(bodyId) {
+            ensureAlive();
+            const e = bodyMap.get(bodyId);
+            if (!e) throw new Error(`unknown body ${bodyId}`);
+            const v = bodyInterface.GetLinearVelocity(e.bodyID);
+            return [v.GetX(), v.GetY(), v.GetZ()];
+        },
+        bodyAngularVelocity(bodyId) {
+            ensureAlive();
+            const e = bodyMap.get(bodyId);
+            if (!e) throw new Error(`unknown body ${bodyId}`);
+            const v = bodyInterface.GetAngularVelocity(e.bodyID);
+            return [v.GetX(), v.GetY(), v.GetZ()];
+        },
         snapshot() {
             ensureAlive();
             const t = timeSteps * dtFixed;

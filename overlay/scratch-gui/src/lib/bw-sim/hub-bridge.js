@@ -37,7 +37,7 @@
 // physical tracking error (the controller's stall timer still works from its
 // own load input), a coasting stop (a stopped motor brakes), multi-hub scenes.
 
-import {readSensors, SENSOR_DEVICE} from './sensors.js';
+import {readSensors, SENSOR_DEVICE, imuFromBody} from './sensors.js';
 const PORTS = 'ABCDEF';
 const DEG = 180 / Math.PI;
 
@@ -63,6 +63,7 @@ export class SimHubBridge {
         this.hubBody = hubBody;
         this.mechanism = mechanism;
         this.robotBodies = mechanism.bodies.filter(b => b.motion === 'dynamic').map(b => b.id);
+        this._prevLinVel = null;
         this.accumulator = 0;
         /** port index -> {joint, angle (rad, last measured)} */
         this.motors = new Map();
@@ -133,6 +134,21 @@ export class SimHubBridge {
         const rate = delta / (this.stepMs / 1000);
         this.heading += delta;
         this.hubState.setHeading(this.heading, {rate});
+        // Full IMU: pitch, roll, angular velocity, acceleration, faceUp from the hub body.
+        try {
+            const pose = this.core.bodyPose(this.hubBody);
+            const angVelWorld = this.core.bodyAngularVelocity(this.hubBody);
+            const linVelWorld = this.core.bodyLinearVelocity(this.hubBody);
+            const dt = this.stepMs / 1000;
+            const imu = imuFromBody(pose, angVelWorld, linVelWorld, this._prevLinVel, dt, this.mechanism.gravity);
+            this._prevLinVel = linVelWorld.slice();
+            const imuData = this.hubState.data.imu;
+            imuData.pitch = imu.pitch;
+            imuData.roll = imu.roll;
+            imuData.angularVelocity = imu.angularVelocity;
+            imuData.acceleration = imu.acceleration;
+            imuData.faceUp = imu.faceUp;
+        } catch (_) {}
         const readings = readSensors(this.core, this.mechanism, this.robotBodies);
         for (const [port, reading] of Object.entries(readings)) {
             const {kind, ...values} = reading;
