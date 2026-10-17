@@ -258,7 +258,7 @@ test('gear pairs: the working 8-24 gearbox draws one coupling, centre to centre,
     assert.ok(['3:5', '5:3'].includes(bev[0].text), bev[0].text);
 });
 
-test('the Build overlay compile is quick on a ~70-part model', () => {
+test('the Build overlay compile is quick on a ~70-part model', t => {
     // Four driving bases side by side plus a few loose beams: 72 parts, every kind of joint.
     const {model} = parseModel(DRIVING_BASE, {catalog: CATALOG});
     const parts = [];
@@ -277,7 +277,7 @@ test('the Build overlay compile is quick on a ~70-part model', () => {
     }
     runs.sort((a, b) => a - b);
     const median = runs[2];
-    console.log(`modelInsight on ${big.parts.length} parts: median ${median.toFixed(1)} ms (runs ${runs.map(r => r.toFixed(1)).join(', ')})`);
+    t.diagnostic(`modelInsight on ${big.parts.length} parts: median ${median.toFixed(1)} ms (runs ${runs.map(r => r.toFixed(1)).join(', ')})`);
     // What it found is the four robots: 4 bodies with a hub each → the strays and three robots are loose.
     assert.equal(result.joints.filter(j => j.motor).length, 8);
     assert.equal(result.ports.length, 8);
