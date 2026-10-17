@@ -48,6 +48,7 @@ import {
     DEFAULT_GRID, GRID_STEPS, HOLE_PITCH, IDENTITY, cleanRotation, expandToGroups, facingAxis, mul3, mulVec3,
     placeCopies, rotatePoses, selectionPivot, snapDelta, translatePoses, worldAxisRotation
 } from './transform-math.js';
+import {portsForCopies} from './editor-state.js';
 
 /** Default LDraw colour of a newly placed part (Light Bluish Grey). */
 export const DEFAULT_COLOR = 71;
@@ -606,7 +607,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     };
     const pasteParts = (parts, offset) => {
         const before = editor.model.parts.length;
-        if (!run({type: 'batch', commands: placeCopies(parts, offset)}, {pasted: parts.length})) return;
+        const ports = portsForCopies(editor.model, catalog, parts);
+        if (!run({type: 'batch', commands: placeCopies(parts, offset, ports)}, {pasted: parts.length})) return;
         setSelection(editor.model.parts.slice(before).map(p => p.id));
         status({kind: 'pasted', count: parts.length});
     };

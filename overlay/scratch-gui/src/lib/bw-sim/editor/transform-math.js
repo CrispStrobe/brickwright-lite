@@ -208,9 +208,10 @@ export const facingAxis = viewDir => (Math.abs(viewDir.x) > Math.abs(viewDir.z) 
  * @param {number[]} offset
  * @returns {object[]} place commands
  */
-export const placeCopies = (parts, offset) => parts.map(p => {
-    const cmd = {type: 'place', part: p.part, position: p.position.map((v, i) => tidy(v + offset[i])), rotation: p.rotation.slice()};
+export const placeCopies = (parts, offset, ports) => parts.map((p, i) => {
+    const cmd = {type: 'place', part: p.part, position: p.position.map((v, j) => tidy(v + offset[j])), rotation: p.rotation.slice()};
     if (p.color !== undefined) cmd.color = p.color;
+    if (ports && ports[i]) cmd.port = ports[i];
     return cmd;
 });
 
