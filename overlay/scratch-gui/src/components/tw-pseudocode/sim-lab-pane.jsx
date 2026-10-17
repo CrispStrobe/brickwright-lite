@@ -37,7 +37,7 @@ const TEXT = {
         simulate: 'Simulate', build: 'Build', parts: 'Parts', undo: 'Undo', redo: 'Redo', remove: 'Delete',
         save: 'Save .ldr', port: 'Port', none: 'none',
         move: 'Move (W)', turn: 'Turn (E)', grid: 'Grid', ldu: 'LDU', turnUp: 'Turn ↻ (R)', tip: 'Tip (T)',
-        duplicate: 'Duplicate', group: 'Group', ungroup: 'Ungroup', home: 'Home', fit: 'Fit (F)', top: 'Top', front: 'Front', side: 'Side',
+        duplicate: 'Duplicate', group: 'Group', ungroup: 'Ungroup', groupKey: 'Ctrl+G', ungroupKey: 'Ctrl+Shift+G', home: 'Home', fit: 'Fit (F)', top: 'Top', front: 'Front', side: 'Side',
         selectedOne: 'Selected: {name}', selectedMany: 'Selected: {n} parts',
         st: {
             idle: 'Click a part to select it. Drag it to move it; Shift+click adds parts; drag empty space to look around.',
@@ -73,7 +73,7 @@ const TEXT = {
         simulate: 'Simulieren', build: 'Bauen', parts: 'Teile', undo: 'Rückgängig', redo: 'Wiederholen', remove: 'Löschen',
         save: '.ldr speichern', port: 'Port', none: 'keiner',
         move: 'Schieben (W)', turn: 'Drehen (E)', grid: 'Raster', ldu: 'LDU', turnUp: 'Drehen ↻ (R)', tip: 'Kippen (T)',
-        duplicate: 'Verdoppeln', group: 'Gruppieren', ungroup: 'Gruppe lösen', home: 'Start', fit: 'Einpassen (F)', top: 'Oben', front: 'Vorne', side: 'Seite',
+        duplicate: 'Verdoppeln', group: 'Gruppieren', ungroup: 'Gruppe lösen', groupKey: 'Strg+G', ungroupKey: 'Strg+Umschalt+G', home: 'Start', fit: 'Einpassen (F)', top: 'Oben', front: 'Vorne', side: 'Seite',
         selectedOne: 'Ausgewählt: {name}', selectedMany: 'Ausgewählt: {n} Teile',
         st: {
             idle: 'Klicke ein Teil an, um es auszuwählen. Ziehen verschiebt es; Umschalt+Klick wählt mehr Teile; Ziehen auf leerer Fläche dreht die Ansicht.',
@@ -573,10 +573,10 @@ class SimLabPane extends React.Component {
                     <button type="button" style={small} data-testid="bw-sim-lab-turn" disabled={!selection.length} onClick={() => view?.turn('up', 1)}>{T.turnUp}</button>
                     <button type="button" style={small} data-testid="bw-sim-lab-tip" disabled={!selection.length} onClick={() => view?.turn('facing', 1)}>{T.tip}</button>
                     <button type="button" style={small} data-testid="bw-sim-lab-group" disabled={selection.length < 2}
-                        title="Ctrl+G" onClick={() => { view?.groupSelection(); tick(); }}>{T.group}</button>
+                        title={T.groupKey} onClick={() => { view?.groupSelection(); tick(); }}>{T.group}</button>
                     <button type="button" style={small} data-testid="bw-sim-lab-ungroup"
                         disabled={!(editor?.model.groups || []).some(g => g.parts.some(id => this.state.selection.includes(id)))}
-                        title="Ctrl+Shift+G" onClick={() => { view?.ungroupSelection(); tick(); }}>{T.ungroup}</button>
+                        title={T.ungroupKey} onClick={() => { view?.ungroupSelection(); tick(); }}>{T.ungroup}</button>
                     <button type="button" style={small} data-testid="bw-sim-lab-duplicate" disabled={!selection.length} onClick={() => view?.duplicate()}>{T.duplicate}</button>
                     <button type="button" style={small} data-testid="bw-sim-lab-delete" disabled={!selection.length} onClick={() => view?.deleteSelection()}>{T.remove}</button>
                     <span style={{width: 6}} />
