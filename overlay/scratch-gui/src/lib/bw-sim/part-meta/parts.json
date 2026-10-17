@@ -598,13 +598,39 @@
     {
      "shape": "box",
      "halfExtents": [
-      28,
-      29.5,
+      10,
+      24.5,
       49
      ],
      "position": [
       0,
-      0.5,
+      -4.5,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      19.8,
+      5,
+      49
+     ],
+     "position": [
+      0,
+      25,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      28,
+      14,
+      28
+     ],
+     "position": [
+      0,
+      44,
       0
      ]
     }
@@ -2899,7 +2925,13 @@
     {
      "shape": "cylinder",
      "radius": 9,
-     "halfHeight": 10
+     "halfHeight": 10,
+     "rotation": [
+      0.7071067811865476,
+      0,
+      0,
+      0.7071067811865476
+     ]
     }
    ],
    "nameDe": "Technic bush"
@@ -2930,7 +2962,13 @@
     {
      "shape": "cylinder",
      "radius": 9,
-     "halfHeight": 5
+     "halfHeight": 5,
+     "rotation": [
+      0.7071067811865476,
+      0,
+      0,
+      0.7071067811865476
+     ]
     }
    ],
    "nameDe": "Technic half bush"
@@ -3069,6 +3107,11 @@
       0,
       0,
       0.7071067811865476
+     ],
+     "position": [
+      0,
+      0,
+      2
      ]
     }
    ],
@@ -3120,6 +3163,11 @@
       0,
       0,
       0.7071067811865476
+     ],
+     "position": [
+      0,
+      0,
+      -2
      ]
     }
    ],

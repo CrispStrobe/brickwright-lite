@@ -1,5 +1,5 @@
 {
- "$comment": "S1 reference driving base built from the pilot parts (docs/SIM-LAB-PLAN.md section 0). LDraw frame (-y up). Wheel and castor-ball bottoms both rest at LDraw y = 80. Ports as the arena driving base: left motor A (mounted mirrored), right motor B. Each motor hangs on ONE friction pin: rigid in the v1 compiler, flimsy on a real table.",
+ "$comment": "S1 reference driving base from real parts (docs/SIM-LAB-PLAN.md \u00a70). LDraw frame (-y up). Ports as the arena driving base: left motor A (mounted mirrored), right motor B; each motor hangs on one friction pin in a hub side hole. The ball castor hangs from a Technic beam 7 that stands across the hub's front face on two friction pins; its ball bottom rests at LDraw y = 80 like the wheels. No two solid parts overlap (test/bw-sim-s1-driving-base.test.mjs).",
  "version": 1,
  "parts": [
   {
@@ -194,13 +194,76 @@
    ]
   },
   {
+   "id": "frontBeam",
+   "part": "32524.dat",
+   "color": 71,
+   "position": [
+    0,
+    -10,
+    -120
+   ],
+   "rotation": [
+    0,
+    0,
+    1,
+    1,
+    0,
+    0,
+    0,
+    1,
+    0
+   ]
+  },
+  {
+   "id": "frontPin1",
+   "part": "2780.dat",
+   "color": 0,
+   "position": [
+    40,
+    -10,
+    -110
+   ],
+   "rotation": [
+    0,
+    0,
+    -1,
+    0,
+    1,
+    0,
+    1,
+    0,
+    0
+   ]
+  },
+  {
+   "id": "frontPin2",
+   "part": "2780.dat",
+   "color": 0,
+   "position": [
+    -40,
+    -10,
+    -110
+   ],
+   "rotation": [
+    0,
+    0,
+    -1,
+    0,
+    1,
+    0,
+    1,
+    0,
+    0
+   ]
+  },
+  {
    "id": "castor",
    "part": "39370.dat",
    "color": 71,
    "position": [
     0,
     10,
-    -100
+    -140
    ],
    "rotation": [
     0,
@@ -219,20 +282,20 @@
    "part": "2780.dat",
    "color": 0,
    "position": [
-    20,
-    0,
-    -100
+    40,
+    -10,
+    -130
    ],
    "rotation": [
+    0,
     0,
     -1,
     0,
     1,
     0,
+    1,
     0,
-    0,
-    0,
-    1
+    0
    ]
   },
   {
@@ -240,20 +303,20 @@
    "part": "2780.dat",
    "color": 0,
    "position": [
-    -20,
-    0,
-    -100
+    -40,
+    -10,
+    -130
    ],
    "rotation": [
+    0,
     0,
     -1,
     0,
     1,
     0,
+    1,
     0,
-    0,
-    0,
-    1
+    0
    ]
   },
   {
@@ -263,7 +326,7 @@
    "position": [
     0,
     56,
-    -100
+    -140
    ],
    "rotation": [
     1,

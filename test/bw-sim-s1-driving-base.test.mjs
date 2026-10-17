@@ -27,6 +27,7 @@ import {compile} from '../overlay/scratch-gui/src/lib/bw-sim/mech/compile.js';
 import {loadJolt, createPhysicsCore} from '../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js';
 import {SimHubBridge, STEP_MS} from '../overlay/scratch-gui/src/lib/bw-sim/hub-bridge.js';
 import VirtualSpikeHubState from '../overlay/scratch-gui/src/lib/virtual-hub/spike-hub-state.js';
+import {partOverlaps} from '../overlay/scratch-gui/src/lib/bw-sim/editor/overlap.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const json = p => JSON.parse(readFileSync(path.join(ROOT, p), 'utf8'));
@@ -79,7 +80,7 @@ test('the driving base compiles to chassis + two motorised wheels + castor ball'
     assert.equal(dynamic.length, 4, `bodies: ${JSON.stringify(dynamic.map(b => b.parts))}`);
     const chassis = bodyOf(mech, 'hub');
     // A motor is in two bodies: its housing here, its output with the wheel.
-    for (const p of ['motorL', 'motorR', 'pinL', 'pinR', 'castor', 'castorPin1', 'castorPin2']) {
+    for (const p of ['motorL', 'motorR', 'pinL', 'pinR', 'frontBeam', 'frontPin1', 'frontPin2', 'castor', 'castorPin1', 'castorPin2']) {
         assert.ok(chassis.parts.includes(p), `${p} is rigid with the hub`);
     }
     for (const side of ['L', 'R']) {
@@ -136,4 +137,19 @@ test('the same commands give the same run', async () => {
     const b = await run({left: -HALF_SPEED, right: HALF_SPEED / 2, seconds: 1});
     assert.equal(a.snapshot, b.snapshot);
     assert.equal(a.posA, b.posA);
+});
+
+test('no two solid parts of the driving base overlap; only pins and axles sit inside holes', () => {
+    // A castor once 'hung' from the hub's bottom holes while its frame cut 8 mm into the hub: the
+    // compiler accepted it (the parts were pinned together), the picture showed it. Connected or not,
+    // solid parts must not share volume; shafts (pins, axles) and the castor ball (inside its socket)
+    // are the parts that legitimately sit inside another part.
+    const inside = new Set(['2780.dat', '3673.dat', '6558.dat', '43093.dat', '3705.dat', '4519.dat', '32073.dat', '3706.dat', '3707.dat', '32062.dat', '52629.dat']);
+    const ignore = MODEL.parts.filter(p => inside.has(p.part)).map(p => p.id);
+    const found = [];
+    for (const p of MODEL.parts) {
+        if (inside.has(p.part)) continue;
+        for (const o of partOverlaps(MODEL, CATALOG, p, {ignore})) if (o.part !== p.id) found.push(`${p.id} ↔ ${o.part}`);
+    }
+    assert.deepEqual(found, []);
 });
