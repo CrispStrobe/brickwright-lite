@@ -54,13 +54,19 @@ for (const action of ['select', 'setSandbox', 'openUnit', 'manualDrive']) {
             const f = fixture();
             const task = invoke(f.pane, action);
             assert.equal(f.pane.firmwareSession, null);
-            if (lifecycle === 'disposed') { f.pane.disposed = true; await f.pane.stopProgram(); }
-            if (lifecycle === 'stopped') await f.pane.stopProgram();
-            if (lifecycle === 'newer-action') { await invoke(f.pane, action, true); await Promise.resolve(); }
+            let newer;
+            if (lifecycle === 'disposed') { f.pane.disposed = true; newer = f.pane.stopProgram(); }
+            if (lifecycle === 'stopped') newer = f.pane.stopProgram();
+            if (lifecycle === 'newer-action') newer = invoke(f.pane, action, true);
             if (lifecycle === 'foreign-bridge') f.pane.bridge = new f.Bridge({world: {id: 'foreign'}});
             const bridge = f.pane.bridge, state = JSON.stringify(f.pane.state), mark = f.events.length;
-            f.release(); await task; await Promise.resolve();
-            if (lifecycle !== 'live') {
+            f.release(); await Promise.all([task, newer]); await Promise.resolve();
+            if (lifecycle === 'newer-action') {
+                const expected = fixture(); expected.pane.firmwareSession = null;
+                await invoke(expected.pane, action, true);
+                assert.deepEqual(f.events.slice(mark), expected.events, 'Only the newer action may publish or drive after teardown');
+                assert.deepEqual(f.pane.state, expected.pane.state);
+            } else if (lifecycle !== 'live') {
                 assert.deepEqual(f.events.slice(mark), [], 'Old action must not publish, persist, construct a world or drive motors');
                 assert.equal(f.pane.bridge, bridge);
                 assert.equal(JSON.stringify(f.pane.state), state);

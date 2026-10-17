@@ -203,6 +203,11 @@ export async function runAdafruitSim (code, {ms = 3000, at = [], inputs = []} = 
         if ('light' in input) b.lightSensorState.setLevel(input.light);
         if ('temperature' in input) b.thermometerState.setLevel(input.temperature);
         if ('sound' in input) b.microphoneState.setLevel(input.sound);
+        if (input.acceleration) b.accelerometerState.accelerometer.update(...input.acceleration);
+        // pxt-adafruit 1.6.8's own Shake widget queues this same event on
+        // the original simulator bus (sim/sim.js: DEVICE_ID_GESTURE = 13).
+        if (input.gesture === 'shake') b.bus.queue(13, 11);
+        else if ('gesture' in input) throw new Error(`Unsupported test gesture: ${input.gesture}`);
     };
     for (const input of inputs) later(() => apply(input), input.t, false);
 

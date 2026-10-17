@@ -88,11 +88,12 @@ export const GROUND_FRICTION = 0.8;
  *   colliders: Collider[],
  *   gear?: {type: string, teeth: number, axis: Vec3, center: Vec3},
  *        gear axis/center are in the part frame; the pitch radius is pitchRadiusLdu(teeth)
- *   motor?: {output: string[], outputColliders: number[], maxTorqueNm: number, maxSpeedDegPerSec: number},
+ *   motor?: {output: string[], outputColliders: number[], maxTorqueNm: number, maxSpeedDegPerSec: number, deviceId?: number},
  *        output: ids of connectors that turn with the shaft; outputColliders:
  *        indices into `colliders` of the turning part (the drive hub) — they
  *        belong to the output body, every other collider to the housing.
- *        Both bodies must end up with at least one collider.
+ *        Both bodies must end up with at least one collider. deviceId: the LEGO
+ *        device type the hub reports on the motor's port (48 medium, 49 large angular).
  *   hub?: {ports: string[]}
  * }} PartMeta
  */
@@ -139,7 +140,7 @@ export const GROUND_FRICTION = 0.8;
  *            massKg: number, com?: Vec3, colliders: Collider[], parts: string[],
  *            friction?: number, restitution?: number}[],
  *   joints: ({id: string, type: 'hinge', body1: string, body2: string, point: Vec3, axis: Vec3,
- *             motor?: {port: string, maxTorqueNm: number, maxSpeedRadPerSec: number}} |
+ *             motor?: {port: string, maxTorqueNm: number, maxSpeedRadPerSec: number, deviceId?: number}} |
  *            {id: string, type: 'slider', body1: string, body2: string, point: Vec3, axis: Vec3} |
  *            {id: string, type: 'ball', body1: string, body2: string, point: Vec3})[],
  *   gears: ({id: string, type: 'gear', joint1: string, joint2: string, ratio: number} |
