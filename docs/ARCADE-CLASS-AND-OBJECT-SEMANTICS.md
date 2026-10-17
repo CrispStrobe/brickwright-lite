@@ -8,6 +8,30 @@ Ordinary inheritance and virtual/super dispatch have focused controls. Accessors
 statics, instanceof, captured callables and installed editor closure remain
 separate steps; this contract does not claim full class compatibility.
 
+## Ordinary constructor parameter properties
+
+The source candidate for stored class callbacks accepts ordinary constructor
+parameter properties only when the parser's hidden parameter metadata and
+constructor metadata share the same array, the field declarations agree on
+type and visibility, and the actual constructor body starts with the matching
+ordered assignments. The existing producer proof still checks every argument,
+field write, callback invocation and constructor completion. An annotation does
+not initialize a field. Readonly writes and private or protected access retain
+their existing restrictions.
+
+Lowering preserves the hidden descriptors and shared metadata references. A
+completed proof that observes changed metadata expires permanently; restoring
+the old values requires a fresh proof. Defaults, optional parameters,
+inheritance and native Sprite or scene callback domains are outside this new
+correspondence rule.
+
+Focused controls cover ordinary Number and Void callbacks and the current
+Code, Blocks, SB3 and source export/reimport routes. Their execution and
+affected native guest qualification remain pending for this candidate. This
+does not establish compatibility with a complete retained library. Existing
+raw class and callable authoring vocabulary is reused; no dedicated constructor
+parameter-property editor or installed GUI qualification is claimed.
+
 ## Why a separate reference model is needed
 
 Before this lane, Arcade refused ordinary source classes. The shared translator has a

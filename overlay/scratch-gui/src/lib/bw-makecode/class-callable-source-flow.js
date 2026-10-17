@@ -5,30 +5,41 @@ import {createSdkImageSourceProducers} from './sdk-image-source-producers.js';
 import {analyseCallableFlow} from './callable-flow.js';
 import {instantiateCallableSignature} from './callable-signatures.js';
 import {alternatives,joinProducedValues,presenceAlternatives} from './class-callable-branch-values.js';
+import {ordinaryConstructorParameterProperties,requestsConstructorParameterProperties} from './class-parameter-property-source.js';
+import {physicalUpdateSourceSnapshot} from './physical-update-source-snapshot.js';
 const completedResultProofs=new WeakMap();
+const currentResultProof=(record,program)=>{
+    if(!record||record.program!==program)return false;
+    if(record.parameterPropertySnapshot) {
+        if(record.expired)return false;
+        try {if(!record.parameterPropertySnapshot.current()){record.expired=true;return false;}}
+        catch(error){record.expired=true;throw error;}
+    }
+    return JSON.stringify(program)===record.source;
+};
 export function classResultFlowCertificate(proof,program,method) {
     const record=completedResultProofs.get(proof);
-    if(!record||record.program!==program||JSON.stringify(program)!==record.source)throw Error('Class result flow requires its actual unchanged source proof');
+    if(!currentResultProof(record,program))throw Error('Class result flow requires its actual unchanged source proof');
     const flow=record.methods.get(method);return flow?structuredClone(flow.resultFlow):null;
 }
 export function classMethodSourceSignature(proof,program,method) {
     const record=completedResultProofs.get(proof);
-    if(!record||record.program!==program||JSON.stringify(program)!==record.source)throw Error('Class method requires its actual unchanged source proof');
+    if(!currentResultProof(record,program))throw Error('Class method requires its actual unchanged source proof');
     const row=record.methods.get(method);return row?structuredClone(row.signature):null;
 }
 export function classSdkImageRoles(proof,program,cls) {
     const record=completedResultProofs.get(proof);
-    if(!record||record.program!==program||JSON.stringify(program)!==record.source)throw Error('SDK Image roles require their actual unchanged source proof');
+    if(!currentResultProof(record,program))throw Error('SDK Image roles require their actual unchanged source proof');
     const roles=record.sdkRoles.get(cls);return roles?structuredClone(roles):null;
 }
 export function classSdkImageValue(proof,program,node) {
     const record=completedResultProofs.get(proof);
-    if(!record||record.program!==program||JSON.stringify(program)!==record.source)throw Error('SDK Image value requires its actual unchanged source proof');
+    if(!currentResultProof(record,program))throw Error('SDK Image value requires its actual unchanged source proof');
     return record.sdkExpressions.get(node)?.size===1&&record.sdkExpressions.get(node).has('Image');
 }
 export function classCallableReflectionSource(proof,program,node) {
     const record=completedResultProofs.get(proof);
-    if(!record||record.program!==program||JSON.stringify(program)!==record.source)throw Error('Class reflection requires its actual unchanged source proof');
+    if(!currentResultProof(record,program))throw Error('Class reflection requires its actual unchanged source proof');
     return record.reflections.has(node);
 }
 
@@ -36,6 +47,17 @@ export function classCallableReflectionSource(proof,program,node) {
 // interpreter for source values. Annotations constrain produced values but
 // never create an allocation, initialized field, closure or return value.
 export function proveClassCallableSource(program,{sdkImagePrototype=false}={}) {
+    let parameterPropertySnapshot=null;
+    if(requestsConstructorParameterProperties(program)) {
+        // This must precede lexical traversal and any serializer. Syntax data
+        // and hidden parser roles may not supply getters or callable objects.
+        try {parameterPropertySnapshot=physicalUpdateSourceSnapshot(program);}catch{}
+        if(!parameterPropertySnapshot||parameterPropertySnapshot.opaque.some(value=>typeof value==='function'||typeof value==='bigint')||
+            parameterPropertySnapshot.objects.some(value=>Array.isArray(value)&&
+                (Object.getPrototypeOf(value)!==Array.prototype||Reflect.ownKeys(value).some(key=>
+                    key!=='length'&&Object.hasOwn(Array.prototype,key)))))
+            return {eligible:false,unsupported:['Class callable source: constructor parameter properties require an own-data syntax graph']};
+    }
     const flow=analyseCallableFlow(program,{sdkImagePrototype}),{lexical}=flow;
     const classes=new Map(),errors=[],visited=new Set(),constructed=new Set(),resultFlows=new WeakMap(),reflectedClosures=new Map(),reflections=new WeakSet();
     const fail=message=>{throw Error('Class callable source: '+message);};
@@ -356,12 +378,23 @@ export function proveClassCallableSource(program,{sdkImagePrototype=false}={}) {
         if(![...classes.values()].some(cls=>cls.fields.some(f=>annotation(f.typeName)?.kind==='callable')))
             return {eligible:false,unsupported:[],flow};
         for(const cls of classes.values()) {
+            const properties=Object.getOwnPropertyDescriptor(cls.ctor||{},'parameterProperties');
+            if(properties&&(!Object.hasOwn(properties,'value')||!Array.isArray(properties.value)))
+                fail('constructor parameter properties require actual data metadata');
+            if(properties?.value.length) {
+                parameterPropertySnapshot ||= physicalUpdateSourceSnapshot(program);
+                if(!parameterPropertySnapshot)fail('constructor parameter properties require an own-data source graph');
+                if(!ordinaryConstructorParameterProperties(cls))
+                    fail('constructor parameter properties require matching parser roles and ordered actual writes');
+            } else if(cls.ctor?.params?.parameterProperties?.length||cls.fields.some(field=>field.parameterProperty))
+                fail('constructor parameter property roles differ');
             if(cls.base||!cls.ctor||cls.unsupported?.some(reason=>reason!=='generic class methods'))fail('default classes require explicit ordinary constructors without inheritance');
             const fields=new Set();for(const f of cls.fields){if(fields.has(f.name)||f.isStatic||!supportedType(annotation(f.typeName)))fail('unqualified field catalogue');fields.add(f.name);if(f.init&&annotation(f.typeName)?.kind==='callable')fail('callable field initializers require their own receiver/lexical ABI');}
             for(const node of [cls.ctor,...cls.methods]) {
                 if(new Set(node.params||[]).size!==(node.params||[]).length)fail('duplicate actual parameters');
                 if((node.params||[]).some(name=>!supportedType(annotation(node.paramTypes?.[name],node),new Set((node.typeParameters||[]).map(p=>p.name)))))fail('unresolved parameter constraints');
-                if(node.isStatic||node.kind&&node.kind!=='method'||node.optionalParams?.length||node.parameterDefaults?.length||node.parameterProperties?.length)
+                if(node.isStatic||node.kind&&node.kind!=='method'||node.optionalParams?.length||node.parameterDefaults?.length||
+                    (node!==cls.ctor&&(node.parameterProperties?.length||node.params?.parameterProperties?.length)))
                     fail('unqualified method, defaults or parameter properties');
                 if(node.typeParameters?.length>1||node.typeParameters?.some(p=>p.constraint||p.defaultType))fail('unqualified generic method');
             }
@@ -403,6 +436,6 @@ export function proveClassCallableSource(program,{sdkImagePrototype=false}={}) {
         const proof={eligible:true,unsupported:[],flow,resultFlows};
         const methods=new Map();for(const cls of classes.values())for(const method of cls.methods)methods.set(method,{signature:structuredClone(signature(method)),resultFlow:resultFlows.get(method)?structuredClone(resultFlows.get(method)):null});
         const sdkRoles=new Map();if(sdkImagePrototype)for(const cls of classes.values()){const roles=sdkImageRolesForClass(cls,annotation,signature);if(roles)sdkRoles.set(cls,roles);}
-        completedResultProofs.set(proof,{program,source:JSON.stringify(program),methods,reflections,sdkRoles,sdkExpressions});return proof;
+        completedResultProofs.set(proof,{program,source:JSON.stringify(program),methods,reflections,sdkRoles,sdkExpressions,parameterPropertySnapshot,expired:false});return proof;
     } catch(error) {errors.push(error.message);return {eligible:false,unsupported:errors,flow};}
 }
