@@ -4,10 +4,21 @@
 
 Follow the [current plan](PLAN.md#current-circuitinstrument-campaign--2026-10-15)
 and upstream [acceptance contract](https://github.com/CrispStrobe/bw-circuit-ui/blob/master/docs/CIRCUIT-INSTRUMENT-NEXT.md):
-qualified LM741 source → installed-consumer adoption → stratified measurement
-regression → demonstrated causal repairs → bounded instrument-realism proof.
-The upstream six-case precision proof is complete; later steps require their
-own installed identities, raw results and actual GUI qualification. Do not count
+qualified LM741 source → installed-consumer adoption and TestFlight release →
+stratified measurement regression → demonstrated causal repairs → bounded
+instrument-realism proof. As reconciled on 2026-10-17, upstream qualification
+and consumer adoption PR965 are complete; TestFlight delivery is not established.
+PR1011 is a merged ownership claim, not a released build. The existing iOS
+workflow-resource lane owns the remaining workflow integration.
+
+The [CLI instrument handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md) scopes the
+unimplemented harness, 312 planned parameter cases across 12 templates,
+independent reference classes, causal repair triage and a bounded GUI realism
+follow-up. Harness preparation may proceed while release work continues, but
+the actual campaign remains after TestFlight. Claim ownership before coding;
+the preparation session is closing without reserving implementation. Later
+steps require their own installed identities, raw results and actual GUI
+qualification. Do not count
 historical corpus totals as a fresh sweep or parameter variants as distinct
 topologies. `LANES.md`, not historical session names below, controls ownership.
 
