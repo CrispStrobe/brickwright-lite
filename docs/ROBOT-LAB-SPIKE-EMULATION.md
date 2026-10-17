@@ -580,6 +580,13 @@ Questions:
   route assumes; and whether NuttX should get an IMU input (firmware lane).
 - **Q4**: the browser L2 MicroPython-WASM SPIKE API route (§3): wanted, and when?
 
+**Owner answers (2026-10-17):** Q1/D3 — yes: scenes with an emulated hub run physics on the
+main thread, one step per exchange, no snapshots. Slow emulator — ship the L3 route as an
+"exact, slow-motion" mode with the real-time factor shown; speed-up work follows with the
+Infra/Runtime owners. Q4 — yes, the browser MicroPython-WASM SPIKE 3 API route comes next
+after R13. Coordination — post the LANES.md claim and deliver the per-owner messages (§6) as
+GitHub issues on the owners' repositories.
+
 ---
 
 ## 6. Coordination
