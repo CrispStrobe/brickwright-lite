@@ -6013,3 +6013,22 @@ contract now checks the localized descriptor while retaining the stored `solo`
 value; the initial failed hosted receipts remain part of the record. About and
 8086 menu labels are localized too. Final production size/browser/native receipts
 and exact-head hosted qualification remain required for this follow-up.
+
+Delivery checkpoint: candidate `f869cb229` normally composes GUI `5aeddbc12`
+with the published A13 CPX/File candidate. Its production frontend passed with
+zero errors and two size warnings; initial JavaScript is 4,464,144 bytes against
+the unchanged 4,467,136-byte production ownership limit. The physical iOS archive
+passed strict signature/platform checks, contains the fresh frontend entrypoint,
+and contains neither duplicate frontend resources nor a bundled static archive.
+All 97 focused controls and 20 Chromium observations passed, including fresh
+iPad-sized contexts, EN/DE menus, visible-content containment and actual tab
+switching. The browser reader now waits for project-loading coverage to clear
+and creates fresh contexts for each orientation. WebKit's scaled automation
+coordinates require separate qualification; do not call its full matrix passed.
+
+The candidate was installed successfully over WLAN. Its launch command was
+blocked by the locked iPad; visible UI and hardware acceptance remain pending.
+The full-power LED implementation is included: this observed clone's physical A
+requires logical B, 100%, reversed polarity. No additional brightness defect or
+buzzer success is claimed. Source PR1050 and the earlier integration ownership
+still require final enabled exact-head hosted qualification before main landing.
