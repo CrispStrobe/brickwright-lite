@@ -318,10 +318,67 @@ are composed in [draft PR1013](https://github.com/CrispStrobe/brickwright-lite/p
 under their merged ownership, with canonical manifest admission corrected.
 That source checkpoint keeps the selected dependency unchanged and is not an
 installed qualification.
-The [proposed acceptance extension](../LANES.md#386-gui-hdd-and-forward-debug-hosted-acceptance--2026-10-16)
+The [merged acceptance claim](../LANES.md#386-gui-hdd-and-forward-debug-hosted-acceptance--2026-10-16)
 adds only one hosted entry controller, one standalone original reader, focused
-inert controls and a separate workflow seam around the existing probe. Merge
-that claim before implementing its new files.
+inert controls and a separate workflow around the existing probe. Ownership
+was merged in [PR1014](https://github.com/CrispStrobe/brickwright-lite/pull/1014)
+before implementation; the hosted acceptance remains unfinished.
+
+The [acceptance source checkpoint](https://github.com/CrispStrobe/brickwright-lite/commit/37cf9a63cb6da453145b031fc682880e448dbb11)
+implements the controller, standalone reader, workflow and two probe scenarios
+in the same draft composition. The HDD scenario uses genuine
+browser downloads and a fresh chooser session. The separate self-authored boot
+image exercises existing breakpoint, instruction-step, full-width register,
+physical readonly-memory and pane-retention controls. Source controls pass 59
+Node tests, including 33 embedded Python original-byte controls; they include a
+complete controller-to-reader mocked attempt and coherently rehashed negatives.
+Twenty targeted source cuts are detected. They are not an executed browser or
+guest result. The independent reader also
+grades captured rendered memory and register text, not only target values.
+Both actual and inventory source/workflow guards remain false.
+
+Continue within the already claimed five implementation paths; dependency
+writers and other workflows remain outside this lane. Next tasks are:
+
+1. Close the known activation limits in `scripts/run-i80386-hdd-gui-actual.py`
+   and its independent reader: bound proc reads and census iteration before
+   allocation, and represent loader directory aliases explicitly with bounded
+   resolution to selected runtime descendants. Add coherent overflow/alias
+   negatives and preserve first errors. Keep existing caps and all UI predicates.
+2. Review the fixed `bw.gui-hdd.inventory-template.v1` path roster (or a separately
+   reviewed explicit version for directory aliases) against the
+   locked Playwright package and selected Node/Python/tool closure. Select the
+   real pinned headless-shell executable; do not substitute a larger browser or
+   silently raise the file cap. The template must contain no operator paths.
+   After separate source review, enable only the metadata inventory guards and
+   admit one own-PR `x86-hdd-gui-inventory` event. Acquire its official originals
+   once, independently audit source/event/job and observed selected files,
+   aliases and installed packages, then freeze the reviewed immutable input.
+   The inventory is an observation, not automatic actual approval or a complete
+   host attestation. Preserve any mismatch; do not install a fallback.
+3. Independently admit the official frontend Build checkout log, full source
+   head/tree/selected closure and producing workflow before selecting its ZIP
+   digest from official metadata. The actual controller acquires that original
+   once and derives bounded member inventories from authenticated bytes; the
+   reader recomputes them. Freeze the `bw.gui-hdd.actual-request.v1` identity
+   separately from the producer, including the prior inventory admission.
+4. Review final source, exact official event/job/step/artifact joins and resource
+   margin before the separate actual activation. The HDD and forward scenarios
+   keep 1250/180-second bounds under the 1800-second controller and 35-minute job;
+   package/browser setup consumes that same job budget. Per-process limits do
+   not prove aggregate containment or continuous process-group ownership.
+   After every enabled final-head check passes, admit one bounded actual event
+   and audit its original packet with `scripts/read-i80386-hdd-gui-originals.py`,
+   without producer imports or browser/guest replay. Preserve failures.
+5. Only qualified original evidence plus all enabled final-head checks can
+   close the component/composition merge gates. Refresh ownership and normal
+   merge parents/tree before merging; source controls alone do not qualify it.
+
+The dependency-free focused check is:
+
+```sh
+node --test test/i80386-hdd-gui-actual.test.mjs test/i80386-hdd-download.test.mjs
+```
 
 The earlier handoff proposal above is a dated snapshot. Read-only source
 observations on 2026-10-16 found PR975 head `e553bb7a` selecting Board `f00f8ff5`,
@@ -332,15 +389,17 @@ module graph matches the retained CLI source anchor, while an unrelated
 labwired source change means the entire supplier source tree is not identical.
 Source equality does not qualify an installed browser or transfer ownership.
 
-Use the live [Board/SB3 owner PR975](https://github.com/CrispStrobe/brickwright-lite/pull/975)
-and [CUI/shared-writer owner PR965](https://github.com/CrispStrobe/brickwright-lite/pull/965)
-for coordination; preserve the existing merge hold. Immediately before source
-and actual admission, refresh their exact heads and canonical package, lock
-and vendor-pin declarations, then admit the complete selected installed graph
-and its qualification. The root manifest's authoritative Board field is
-`devDependencies`; the GUI manifest's is `dependencies`. Require both exact
-identities and refuse missing, conflicting or duplicate declarations rather
-than accepting an arbitrary fallback. No pin or lock handoff is implied.
+At the 2026-10-18 refresh, [PR975](https://github.com/CrispStrobe/brickwright-lite/pull/975)
+has merged. Canonical main selects Board
+`f84ba60ead0a90deb9830f0c1468839c293ecf05`, CUI
+`055930ec51300e0d71466c696ce1bf76284bde38` and SB3
+`a13f92b8bc4b06f0cb9ffec22bab71f06db7ac76`. Historical proposal holds above
+are superseded by the merged adoption, not a transfer of dependency writers.
+Refresh canonical package, lock and vendor-pin declarations immediately before
+source and actual admission. Independently admit the complete installed graph;
+a merged pin alone does not qualify these GUI scenarios. The root manifest's
+authoritative Board field is `devDependencies`; the GUI manifest's is
+`dependencies`. Refuse missing, conflicting or duplicate declarations.
 
 After qualified adoption and source/build admission, run the existing genuine
 download/reload scenario with its fixed free floppy and 306×4×17 data image.
@@ -350,6 +409,17 @@ and terminal process/resource/cleanup observations. Freeze a standalone reader
 and the attempt-1 official event/job/step/artifact joins before execution.
 Preserve all current predicates and limits; source controls cannot replace an
 original or justify an automatic retry.
+
+The candidate user flow is **Code → device selector → Manage machines… →
+FreeDOS VGA (named 386 profile)**. Select the boot floppy and a type-1 HDD
+(306×4×17), then **Boot FreeDOS VGA**. After the guest closes its files, pause
+and use **Download HDD image + JSON**. To reopen it, start a fresh machine with
+the same floppy and the downloaded image in the HDD chooser. This is an
+explicit exported copy; the original selected file is not an automatic save
+destination. The download action is still in the unmerged composition, and
+its installed browser acceptance is the task above. Optional AT BIOS and VGA
+ROM choosers and the bundled free firmware remain existing profile choices;
+other disk geometries and ISO/CD images are outside this acceptance.
 
 A separate bounded forward-debug scenario must demonstrate actual UI pause,
 code breakpoint, instruction step, full-width register and read-only physical
