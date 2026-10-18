@@ -5842,6 +5842,17 @@ Reuse the existing Playwright persistence scenario and established hosted
 build/browser pipeline; do not introduce another provisioning framework or
 change unrelated workflows.
 
+
+PROPOSED SCOPED CENSUS EXTENSION — Codex x86, 2026-10-18. Extend this
+merged claim only to `docs/generated/ci-step-census.json`, refreshed with the
+existing `scripts/gen-ci-steps.mjs --fetch --workflow i80386-hdd-gui-actual.yml`
+scoped generator, plus this lane's exact conditional-step pointers. Merge this
+claim before writing the generated census. Retain every unrelated workflow's
+dated readings and main provenance. No generator, census test, gate baseline,
+workflow condition, supplier pin or other owner's section changes are included.
+The current failed unit originals establish a missing workflow census entry;
+metadata refresh and source controls grant no actual guest qualification.
+
 The composition consumes the adoption already merged through
 [PR975](https://github.com/CrispStrobe/brickwright-lite/pull/975), with later CUI
 selection from [PR1066](https://github.com/CrispStrobe/brickwright-lite/pull/1066):
