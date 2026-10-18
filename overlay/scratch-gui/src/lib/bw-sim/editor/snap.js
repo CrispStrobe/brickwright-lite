@@ -7,6 +7,7 @@
 
 import {mat3MulVec3, vecAdd, vecSub, vecScale, vecDot, vecCross, vecLen, vecNormalize, vecDist, mat3MulMat3, quatFromMat3, quatMul, quatNormalize} from '../mech/vec.js';
 import {edgeKind, shaftEngagement} from '../mech/graph.js';
+import {BUILTIN_KINDS} from '../kinds/index.js';
 import {validatePlacedModel, det3} from '../contracts.js';
 import {partOverlaps} from './overlap.js';
 
@@ -20,6 +21,17 @@ const transformAxis = (rot, localAxis) => vecNormalize(mat3MulVec3(rot, localAxi
 // One seating rule with the compiler (mech/graph.js shaftEngagement): a partly inserted
 // shaft holds, a blind hole's bottom stops it.
 const shaftHoleGeometryOk = (shaft, hole) => shaftEngagement(shaft, hole) !== null;
+
+/**
+ * A registered connector kind the magnet seats by putting the two connectors on each other
+ * (kinds/stud.js 'tube': a stud in an underside tube), for `a` going into `b`: its rule, or null.
+ * The v1 kinds keep their own branches below (edgeKind).
+ */
+const coincideRule = (a, b) => {
+    const m = BUILTIN_KINDS.connectors.get(a.type);
+    const r = m && m.coincide ? BUILTIN_KINDS.connectors.rule(a.type, b.type) : null;
+    return r && r.edge(a, b) ? r : null;
+};
 
 // Compute the world AABB for a part's colliders after a transform
 const partAABB = (meta, pos, rot) => {
@@ -210,8 +222,9 @@ export const snapCandidates = ({model, catalog, part, pose, radius = RADIUS_DEFA
             // The table is symmetric for our purposes: we need to try both orderings
             let shaft, hole, shaftIsMoving;
             let kind = null;
+            const coincide = coincideRule(movConn, fixed) || coincideRule(fixed, movConn);
             // Try mov as shaft, fixed as hole
-            const try1 = edgeKind({type: movConn.type, friction: movConn.friction}, {type: fixed.type, friction: fixed.friction});
+            const try1 = coincide ? coincide.edge() : edgeKind({type: movConn.type, friction: movConn.friction}, {type: fixed.type, friction: fixed.friction});
             if (try1) {
                 kind = try1;
                 shaft = movConn; hole = fixed; shaftIsMoving = true;
@@ -253,7 +266,7 @@ export const snapCandidates = ({model, catalog, part, pose, radius = RADIUS_DEFA
                 // So position' = fixedPos - newRot*movLocalPos
                 const rotatedLocal = mat3MulVec3(newRot, movLocalPos);
                 newPos = vecSub(fixedPos, rotatedLocal);
-            } else if (movConn.type === 'stud' && fixed.type === 'antistud' || movConn.type === 'antistud' && fixed.type === 'stud') {
+            } else if (coincide || movConn.type === 'stud' && fixed.type === 'antistud' || movConn.type === 'antistud' && fixed.type === 'stud') {
                 // Stud/antistud: position coincidence
                 const rotatedLocal = mat3MulVec3(newRot, movLocalPos);
                 newPos = vecSub(fixedPos, rotatedLocal);
@@ -322,6 +335,13 @@ export const snapCandidates = ({model, catalog, part, pose, radius = RADIUS_DEFA
             }));
             for (const mw of movingWorldConns) {
                 for (const sc of sceneConnectors) {
+                    const co = coincideRule(mw, sc) ? [mw, sc] : coincideRule(sc, mw) ? [sc, mw] : null;
+                    if (co) {
+                        if (coincideRule(co[0], co[1]).match(co[0], co[1])) {
+                            allPairs.push({moving: mw.id, fixed: {part: sc.partId, connector: sc.connectorId}, kind: coincideRule(co[0], co[1]).edge(co[0], co[1])});
+                        }
+                        continue;
+                    }
                     let k = edgeKind({type: mw.type, friction: mw.friction}, {type: sc.type, friction: sc.friction});
                     let shaftW, holeW;
                     if (k) {

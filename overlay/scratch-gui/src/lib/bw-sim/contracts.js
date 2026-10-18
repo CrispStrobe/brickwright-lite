@@ -84,9 +84,10 @@ export const GROUND_FRICTION = 0.8;
  * A collision primitive. In PartMeta it is in the part's LDraw frame (LDU);
  * in a CompiledMechanism body it is in that body's local frame (metres).
  * A cylinder's axis is its local +y before `rotation` is applied.
- * `region` ('pin'|'axle'|'ball', PartMeta only) marks a collider as the shaft
- * part of a part that is also solid elsewhere (87082's pin ends, 32054's pin):
- * it may sit inside another part's hole; untagged colliders are solid
+ * `region` ('pin'|'axle'|'ball'|'stud', PartMeta only) marks a collider as the shaft
+ * part of a part that is also solid elsewhere (87082's pin ends, 32054's pin, a
+ * brick's studs): it may sit inside another part's hole or hollow underside;
+ * untagged colliders are solid
  * (editor/overlap.js solidColliders).
  * @typedef {(
  *   {shape: 'box', halfExtents: Vec3, position?: Vec3, rotation?: Quat, region?: string} |
@@ -121,7 +122,7 @@ export const GROUND_FRICTION = 0.8;
  *   part: string,                 e.g. '3713.dat'
  *   name: string,
  *   nameDe?: string,
- *   category: string,             'beam' | 'axle' | 'pin' | 'gear' | 'wheel' | 'motor' | 'hub' | 'sensor' | 'other'
+ *   category: string,             a palette category (editor/palette.js PALETTE_CATEGORIES): 'beam' | 'axle' | 'pin' | 'gear' | 'wheel' | 'motor' | 'hub' | 'sensor' | 'brick' | 'plate' | 'tile' | 'slope' | 'other'
  *   massGrams: number,
  *   friction?: number,            Coulomb friction coefficient of the part surface, 0..2;
  *                                 default PART_FRICTION (hard plastic). A tyred wheel is ~1.
@@ -252,7 +253,7 @@ const checkCollider = (c, where, out) => {
     if (c.rotation !== undefined && !(isVec(c.rotation, 4) && Math.abs(norm(c.rotation) - 1) < 1e-4)) {
         out.push(`${where}.rotation: not a unit quaternion`);
     }
-    if (c.region !== undefined && !['pin', 'axle', 'ball'].includes(c.region)) out.push(`${where}.region: '${c.region}' is not pin|axle|ball`);
+    if (c.region !== undefined && !['pin', 'axle', 'ball', 'stud'].includes(c.region)) out.push(`${where}.region: '${c.region}' is not pin|axle|ball|stud`);
     if (c.shape === 'box') {
         if (!isVec(c.halfExtents) || !c.halfExtents.every(h => h > 0)) out.push(`${where}.halfExtents: need three positive numbers`);
     } else if (c.shape === 'cylinder') {
