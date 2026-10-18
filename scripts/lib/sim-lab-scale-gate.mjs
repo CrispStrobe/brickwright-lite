@@ -12,6 +12,9 @@ import {readFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {stressModel} from './sim-lab-stress-model.mjs';
 
+/** Two animation frames: the renderer has drawn what the page now holds (a condition, not a sleep). */
+const nextFrames = page => page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
+
 /** Open a model file through the pane's "Open…" file input; resolves with the wall time until it is ready. */
 export const openFile = async (page, {name, buffer, mimeType = 'application/octet-stream', timeout = 120000}) => {
     const started = Date.now();
@@ -100,7 +103,7 @@ export const scaleInteractions = async (page, {root, shotsDir, JSZip}) => {
     assert.equal(state.status, 'ready', `the stress model did not load: ${JSON.stringify(state)}`);
     assert.ok(state.parts > 2000, `${state.parts} parts`);
     assert.ok(results.openMs < OPEN_BUDGET_MS, `opening 2,054 parts took ${results.openMs} ms (budget ${OPEN_BUDGET_MS})`);
-    await page.waitForTimeout(500);
+    await nextFrames(page);
     results.colours = await assertDrew(page, 'the stress model');
     const frames = await frameTimes(page, 3);
     results.frame = {median: frames.median, p90: frames.p90};
@@ -118,7 +121,7 @@ export const scaleInteractions = async (page, {root, shotsDir, JSZip}) => {
     await page.waitForFunction(() => window.__bwSimLab.editView && window.__bwSimLab.mode === 'build', null, {timeout: BUILD_BUDGET_MS, polling: 250});
     results.buildMs = Date.now() - buildStart;
     assert.ok(results.buildMs < BUILD_BUDGET_MS, `Build took ${results.buildMs} ms to open (budget ${BUILD_BUDGET_MS})`);
-    await page.waitForTimeout(500);
+    await nextFrames(page);
     results.buildColours = await assertDrew(page, 'Build on the one-tile model', 'bw-sim-lab-editor-canvas');
     assert.ok(results.buildParts >= 200, `${results.buildParts} parts: Build draws them instanced`);
     const buildFrames = await frameTimes(page, 3, 'build');

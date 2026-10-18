@@ -21,6 +21,9 @@ import {resolve, extname, sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {openFile, stressText, frameTimes, loopFps} from './lib/sim-lab-scale-gate.mjs';
 
+/** Two animation frames: the renderer has drawn what the page now holds (a condition, not a sleep). */
+const nextFrames = page => page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
+
 const root = fileURLToPath(new URL('../', import.meta.url));
 const build = resolve(process.env.BW_BUILD || `${root}/packages/scratch-gui/build`);
 const types = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
@@ -66,7 +69,7 @@ const measure = async (browser, instancing) => {
     await page.waitForFunction(() => window.__bwSimLab?.status === 'ready', null, {timeout: 120000});
     const heapBefore = await heapMb(page);
     const openMs = await openFile(page, {name: 'stress-model.ldr', buffer: Buffer.from(text), mimeType: 'text/plain', timeout: 600000});
-    await page.waitForTimeout(1000);
+    await nextFrames(page);
     const frame = await frameTimes(page, 10);
     const fps = await loopFps(page, 3000); // instanced: idle frames are not redrawn (sim-view3d.js), so this is the page's idle rate
     const heap = await heapMb(page);
@@ -74,7 +77,7 @@ const measure = async (browser, instancing) => {
     await page.getByTestId('bw-sim-lab-mode-build').click({timeout: 600000});
     await page.waitForFunction(() => window.__bwSimLab.editView && window.__bwSimLab.mode === 'build', null, {timeout: 600000});
     const buildMs = Date.now() - buildStart;
-    await page.waitForTimeout(500);
+    await nextFrames(page);
     const buildFrame = await frameTimes(page, 10, 'build');
     const buildFps = await loopFps(page, 3000);
     await page.close();

@@ -91,7 +91,7 @@ test('an .io line placing a Studio-only part (CustomParts/) is refused as such; 
     const ldr = ['0 Studio-shaped test model', '0 Name: model.ldr',
         '1 71 0 0 0 1 0 0 0 1 0 0 0 1 32523.dat',
         '1 4 0 -20 0 1 0 0 0 1 0 0 0 1 m1234abcd_studio.dat',
-        '1 4 0 -40 0 1 0 0 0 1 0 0 0 1 3001.dat', ''].join('\r\n');
+        '1 4 0 -40 0 1 0 0 0 1 0 0 0 1 973.dat', ''].join('\r\n'); // a minifig torso: not a Robot Lab part
     zip.file('model.ldr', ldr);
     zip.file('model2.ldr', 'not read');
     zip.file('CustomParts/parts/m1234abcd_studio.dat', '0 a Studio part\r\n');
@@ -99,6 +99,7 @@ test('an .io line placing a Studio-only part (CustomParts/) is refused as such; 
     const io = await readStudioIo(await zip.generateAsync({type: 'uint8array'}));
     assert.equal(io.text, ldr);
     assert.deepEqual(io.refusals.map(r => [r.code, r.line]), [['studio-only-part', 4]]);
+    assert.ok(!CATALOG.has('973.dat'), 'the test needs a part the catalogue does not have');
     const parsed = parseModel(io.text, {catalog: CATALOG});
     assert.deepEqual(parsed.model.parts.map(p => p.part), ['32523.dat']);
     assert.deepEqual(parsed.refusals.map(r => [r.code, r.line]), [['unknown-part', 4], ['unknown-part', 5]]);
