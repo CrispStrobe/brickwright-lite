@@ -5802,6 +5802,14 @@ metadata inventory, and freeze the externally selected actual request and full
 frontend-source admission. Setup consumes the same 35-minute job budget; its
 sufficiency remains unqualified. Follow the matching guide's completion gates.
 
+The startup follow-up versions actual request/reader as v3 while holding the
+v2 inventory handler and workflow section. An exclusive empty prefix precedes
+isolated no-site CPython entry; original install/flags/path/directory and official
+step joins have 50 Python controls and nine detected cuts. Actual remains false.
+The separately reviewed first metadata event is consumed at source `671702949`;
+[run 39106669518](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39106669518)
+is pending at publication. Do not repeat its label or original acquisition.
+
 ## A13 CPX production browser gate registration — 2026-10-16
 
 CLAIMED — Codex,
@@ -6281,11 +6289,3 @@ previous installed candidate and receipts are preserved. Remaining native
 readiness, physical toolbar/connection/LED acceptance and clone buzzer tasks
 are bounded in the current handoff; no additional native or firmware work
 is implicitly claimed.
-
-The startup follow-up versions actual request/reader as v3 while holding the
-v2 inventory handler and workflow section. An exclusive empty prefix precedes
-isolated no-site CPython entry; original install/flags/path/directory and official
-step joins have 50 Python controls and nine detected cuts. Actual remains false.
-The separately reviewed first metadata event is consumed at source `671702949`;
-[run 39106669518](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39106669518)
-is pending at publication. Do not repeat its label or original acquisition.
