@@ -1266,8 +1266,230 @@ def verify_font_discovery(original_raw,request_raw,expected):
       'baselineMissing':value['baselineMissing'],'firstFailure':value['firstFailure'],'actualRequestSupported':False}
 
 
+FONT_DELIVERY_CAP = 32 << 20
+FONT_WORKFLOW_PATH = '.github/workflows/i80386-hdd-gui-actual.yml'
+FONT_PROCESS_ROOT = 'font-discovery-original-process-originals/'
+
+
+def font_delivery_expected(expected):
+    fields(expected,'schema source request archive runId jobId artifactId prNumber workflow metadata')
+    need(expected['schema']=='bw.gui-hdd.font-discovery-delivery-expectation.v1','explicit observation delivery policy')
+    for key in ('runId','jobId','artifactId','prNumber'):integer(expected[key],1,2**63-1)
+    source=expected['source'];fields(source,'head tree files');digest(source['head'],40);digest(source['tree'],40)
+    rows(source['files']);need(set(source['files'])==SOURCE,'externally selected delivery source21')
+    for key,cap in (('request',JSON_CAP),('archive',FONT_DELIVERY_CAP)):
+        fields(expected[key],'byteLength sha256');integer(expected[key]['byteLength'],1,cap);digest(expected[key]['sha256'])
+    metadata=expected['metadata'];fields(metadata,'run job artifact workflowProof')
+    for row in metadata.values():fields(row,'byteLength sha256');integer(row['byteLength'],1,JSON_CAP);digest(row['sha256'])
+    workflow=expected['workflow'];fields(workflow,'commit base tree blob byteLength sha256')
+    for key in ('commit','base','tree','blob'):digest(workflow[key],40)
+    integer(workflow['byteLength'],1,65536);digest(workflow['sha256'])
+    need(workflow['commit']!=source['head'] and workflow['base']!=source['head'],'separate executing merge workflow and selected source/base')
+    need(encode(source['files'][FONT_WORKFLOW_PATH])==encode({k:workflow[k] for k in ('byteLength','sha256')}),'executing workflow content joins reviewed source21 workflow')
+
+
+def font_delivery_pin(raw,row):
+    need(type(raw) is bytes and len(raw)==row['byteLength'] and sha(raw)==row['sha256'],'separately frozen delivery original extent/hash')
+
+
+def font_delivery_workflow(proof_raw,workflow_raw,expected):
+    # API originals are a separately reviewed metadata boundary. Only the blob's
+    # Git object hash is reconstructed; complete commit/tree IDs are not rebuilt.
+    selected=expected['workflow'];font_delivery_pin(proof_raw,expected['metadata']['workflowProof'])
+    need(type(workflow_raw) is bytes and len(workflow_raw)==selected['byteLength'] and sha(workflow_raw)==selected['sha256'] and
+         hashlib.sha1(b'blob '+str(len(workflow_raw)).encode()+b'\0'+workflow_raw).hexdigest()==selected['blob'],'independently selected executing workflow Git blob')
+    proof=decode(proof_raw);fields(proof,'schema commit tree');need(proof['schema']=='bw.gui-hdd.workflow-api-proof.v1' and encode(proof)==proof_raw,'canonical pinned workflow API proof wrapper')
+    commit=decode(font_original_blob(proof['commit'],JSON_CAP));tree=decode(font_original_blob(proof['tree'],JSON_CAP))
+    need(commit.get('sha')==selected['commit'] and commit.get('tree',{}).get('sha')==selected['tree'] and tree.get('sha')==selected['tree'] and tree.get('truncated') is False,'selected commit/tree API observation joins')
+    parents=commit.get('parents');need(type(parents) is list and len(parents)==2,'executing pull-request merge has two observed parents')
+    for parent in parents:digest(parent.get('sha'),40)
+    need([p['sha'] for p in parents]==[selected['base'],expected['source']['head']],'executing merge includes independently selected source and base')
+    entries=tree.get('tree');need(type(entries) is list and len(entries)<=65536,'bounded recursive workflow tree observation')
+    names=set();matches=[]
+    for entry in entries:
+        path=entry.get('path');need(type(path) is str and 0<len(path)<=1024 and '\x00' not in path and not path.startswith('/') and str(PurePosixPath(path))==path and '..' not in PurePosixPath(path).parts and path not in names,'unique canonical Git tree paths')
+        names.add(path)
+        if path==FONT_WORKFLOW_PATH:matches.append(entry)
+    need(len(matches)==1,'one executing workflow tree entry');item=matches[0];integer(item.get('size'),1,65536)
+    need(item.get('mode')=='100644' and item.get('type')=='blob' and item.get('sha')==selected['blob'] and item['size']==selected['byteLength'],'fixed workflow path/mode/blob/extent')
+
+
+def font_delivery_archive(raw):
+    need(type(raw) is bytes and 0<len(raw)<=FONT_DELIVERY_CAP,'bounded font delivery ZIP')
+    top={'guard.stdout','guard.stderr','npm.stdout','npm.stderr','chromium-install.stdout','chromium-install.stderr',
+         'input-install.stdout','input-install.stderr','request.json','controller.stdout','controller.stderr','font-discovery-original.json'}
+    headers=[];names=set();total=0;prefix=None
+    with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+        items=archive.infolist();need(len(items)<=96,'bounded delivery ZIP entry census')
+        for item in items:
+            name=item.filename;need(item.orig_filename==name and '\x00' not in name,'exact untruncated ZIP member name');relative(name.rstrip('/') if item.is_dir() else name)
+            need(name not in names and not item.flag_bits&1 and item.compress_type in (zipfile.ZIP_STORED,zipfile.ZIP_DEFLATED),'unique unencrypted stored/deflated ZIP entries');names.add(name)
+            mode=stat.S_IFMT(item.external_attr>>16)
+            need(mode in ((0,stat.S_IFDIR) if item.is_dir() else (0,stat.S_IFREG)),'regular font delivery members; no links or special files')
+            if item.is_dir():
+                need(item.file_size==0,'known directory roles carry no ignored payload')
+                need(name in ('gui-font-discovery/',FONT_PROCESS_ROOT,'gui-font-discovery/'+FONT_PROCESS_ROOT),'fixed delivery directory roles');continue
+            current='gui-font-discovery/' if name.startswith('gui-font-discovery/') else ''
+            if prefix is None:prefix=current
+            need(current==prefix,'one uniform upload root');inner=name.removeprefix(current)
+            if inner in top:
+                cap=JSON_CAP if inner in ('request.json','font-discovery-original.json','npm.stdout','npm.stderr','chromium-install.stdout','chromium-install.stderr') else 16384
+            else:
+                need(inner.startswith(FONT_PROCESS_ROOT),'fixed delivery raw-process root');leaf=inner[len(FONT_PROCESS_ROOT):]
+                match=re.fullmatch(r'(git-([0-9]+)|font-packages|font-owners|font-manifests)\.(stdout|stderr|process\.json)',leaf)
+                need(match is not None and (match[2] is None or 0<=int(match[2])<2+len(SOURCE) and str(int(match[2]))==match[2]),'fixed finite process roles before inflate')
+                cap=JSON_CAP if match[3]=='process.json' else STREAM_CAP if match[1].startswith('git-') else FONT_STREAM_CAP
+            need(type(item.file_size) is int and 0<=item.file_size<=cap,'delivery role extent before inflate');total+=item.file_size
+            need(total<=FONT_DELIVERY_CAP and len(headers)<96,'inflated delivery aggregate/file cap before inflate');headers.append((inner,item))
+        need(top<={name for name,item in headers},'complete request/observation delivery required; early failures retained externally')
+        # No member is inflated until the ENTIRE role/extent census has passed.
+        return {name:archive.read(item) for name,item in headers}
+
+
+def font_delivery_identity(value,descendant=False):
+    base=set('pid state parentPid pgid sessionId startTicks'.split())
+    need(type(value) is dict and (set(value)==base or descendant and base<=set(value)<=base|{'executable','executableIdentity'}),'closed raw process identity')
+    for key in base-{'state'}:integer(value[key],1,2**63-1)
+    need(type(value['state']) is str and re.fullmatch('[A-Za-z]',value['state']),'raw process state')
+    if 'executable' in value:need(value['executable'] is None or type(value['executable']) is str and 0<len(value['executable'])<=4096 and '\x00' not in value['executable'],'bounded observed executable path')
+    if 'executableIdentity' in value:
+        fields(value['executableIdentity'],'dev ino');need(type(value.get('executable')) is str,'executable identity has observed path')
+        for item in value['executableIdentity'].values():integer(item,0,2**64-1)
+
+
+def font_delivery_process(raw,stdout,stderr,argv):
+    process=decode(raw);fields(process,'argv environment identity descendantSamples remainingDescendants startedNs endedNs exitCode streams overflowObservedBytes firstFailure secondaryFailures sameProcessGroupCleanupContinuousOwnershipQualified')
+    need(encode(process['argv'])==encode(argv) and encode(process['environment'])==encode({'LANG':'C.UTF-8','HOME':'/nonexistent','PATH':'/usr/bin:/bin','GIT_CONFIG_NOSYSTEM':'1','GIT_CONFIG_GLOBAL':'/dev/null','GIT_NO_LAZY_FETCH':'1','GIT_TERMINAL_PROMPT':'0'}),'exact raw process descriptor/environment')
+    integer(process['startedNs'],1,2**63-1);integer(process['endedNs'],1,2**63-1);integer(process['exitCode'],-255,255)
+    need(0<process['endedNs']-process['startedNs']<=20*10**9 and process['sameProcessGroupCleanupContinuousOwnershipQualified'] is False,'finite raw child interval; no continuous ownership claim')
+    font_delivery_identity(process['identity']);identity_=process['identity'];need(identity_['pid']==identity_['pgid']==identity_['sessionId'] and identity_['parentPid']!=identity_['pid'],'raw fresh child session and distinct parent')
+    fields(process['streams'],'stdout stderr')
+    for key,value in (('stdout',stdout),('stderr',stderr)):
+        need(encode(process['streams'][key])==encode({'byteLength':len(value),'sha256':sha(value)}),'retained raw stream/process identity')
+    need(type(process['descendantSamples']) is list and len(process['descendantSamples'])<=64 and type(process['remainingDescendants']) is list and len(process['remainingDescendants'])<=256,'bounded raw descendant observations')
+    sample_times=[]
+    for sample in process['descendantSamples']:
+        fields(sample,'atNs descendants');integer(sample['atNs'],process['startedNs'],process['endedNs'])
+        need(type(sample['descendants']) is list and len(sample['descendants'])<=256,'bounded raw descendant sample')
+        sample_times.append(sample['atNs'])
+        for row in sample['descendants']:font_delivery_identity(row,True)
+        need(len({row['pid'] for row in sample['descendants']})==len(sample['descendants']),'unique PIDs in each raw descendant sample')
+    need(sample_times==sorted(sample_times),'monotonic raw descendant sample append order')
+    for row in process['remainingDescendants']:font_delivery_identity(row)
+    need(len({row['pid'] for row in process['remainingDescendants']})==len(process['remainingDescendants']),'unique raw terminal-census PIDs')
+    need(process['firstFailure'] is None or type(process['firstFailure']) is str and len(process['firstFailure'].encode())<=16384,'bounded raw primary refusal')
+    need(type(process['secondaryFailures']) is list and len(process['secondaryFailures'])<=128,'bounded raw secondary refusals')
+    for row in process['secondaryFailures']:
+        fields(row,'phase name message');need(all(type(value) is str and len(value.encode())<=16384 for value in row.values()),'typed raw secondary refusal')
+    need(type(process['overflowObservedBytes']) is dict and set(process['overflowObservedBytes'])<=set(('stdout','stderr')),'closed raw overflow observations')
+    for count in process['overflowObservedBytes'].values():integer(count,1,2**63-1)
+    if process['exitCode']!=0 or process['overflowObservedBytes'] or process['remainingDescendants'] or process['secondaryFailures']:
+        need(type(process['firstFailure']) is str,'known raw process refusal preserves its primary')
+    return process
+
+
+def font_delivery_raw(value,files,request):
+    selected={};prior_end=0;parent=None;identities=set()
+    for index,command in enumerate(value['sourceCommands']):selected['git-'+str(index)]=('git',command)
+    for command in value['commands']:selected[command['role']]=('package',command)
+    names={FONT_PROCESS_ROOT+role+'.'+suffix for role in selected for suffix in ('stdout','stderr','process.json')}
+    need({name for name in files if name.startswith(FONT_PROCESS_ROOT)}==names,'exact asserted raw triples; missing/extra failed prefixes refuse')
+    for role,(kind,command) in selected.items():
+        prefix=FONT_PROCESS_ROOT+role;stdout=files[prefix+'.stdout'];stderr=files[prefix+'.stderr']
+        process=font_delivery_process(files[prefix+'.process.json'],stdout,stderr,command['argv'])
+        need(process['startedNs']>=prior_end,'source-to-package serial monotonic chronology');prior_end=process['endedNs']
+        current=process['identity'];need(parent is None or parent==current['parentPid'],'same observed controller parent across raw commands');parent=current['parentPid']
+        key=(current['pid'],current['startTicks']);need(key not in identities,'distinct observed child identities');identities.add(key)
+        if kind=='git':
+            need(process['exitCode']==0 and process['firstFailure'] is None and process['secondaryFailures']==[] and process['remainingDescendants']==[] and
+                 process['overflowObservedBytes']=={} and not stderr,'successful asserted source raw process')
+            need(encode(command['stdout'])==encode(process['streams']['stdout']) and encode(command['stderr'])==encode(process['streams']['stderr']) and
+                 type(command['exitCode']) is int and command['exitCode']==process['exitCode'],'source summary joins raw original')
+        else:
+            need(encode(process)==encode(command['process']) and stdout==font_original_blob(command['stdout'],FONT_STREAM_CAP) and stderr==font_original_blob(command['stderr'],FONT_STREAM_CAP),'embedded package observations join raw originals')
+            if process['firstFailure'] is not None:
+                need(value['firstFailure']['phase']==role and value['firstFailure']['path'] is None and value['firstFailure']['message']==process['firstFailure'][:512],'failed raw package primary retained unchanged')
+
+
+def font_delivery_time(value):
+    import datetime
+    need(type(value) is str and re.fullmatch(r'[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z',value),'official UTC timestamp')
+    return datetime.datetime.strptime(value,'%Y-%m-%dT%H:%M:%SZ')
+
+
+def font_delivery_official(metadata,expected):
+    for key,raw in metadata.items():font_delivery_pin(raw,expected['metadata'][key])
+    run=decode(metadata['run']);job=decode(metadata['job']);artifact=decode(metadata['artifact'])
+    if set(artifact)=={'total_count','artifacts'}:
+        integer(artifact['total_count'],1,1);need(type(artifact['artifacts']) is list and len(artifact['artifacts'])==1,'one selected official artifact wrapper');artifact=artifact['artifacts'][0]
+    for value,key,selected in ((run,'id','runId'),(job,'id','jobId'),(artifact,'id','artifactId')):
+        integer(value.get(key),1,2**63-1);need(value[key]==expected[selected],'exact official delivery IDs')
+    for value in (run,job):integer(value.get('run_attempt'),1,1)
+    integer(job.get('run_id'),1,2**63-1);integer(artifact.get('workflow_run',{}).get('id'),1,2**63-1);integer(artifact.get('size_in_bytes'),1,FONT_DELIVERY_CAP)
+    need(run.get('event')=='pull_request' and run.get('head_sha')==expected['source']['head'] and run.get('repository',{}).get('full_name')==REPOSITORY and
+         run.get('head_repository',{}).get('full_name')==REPOSITORY and run.get('head_repository',{}).get('fork') is False and
+         run.get('actor',{}).get('login')=='CrispStrobe' and run.get('triggering_actor',{}).get('login')=='CrispStrobe' and run.get('path')==FONT_WORKFLOW_PATH,'owned official source/event/actor/workflow run')
+    need(run.get('status') in ('queued','in_progress','completed','waiting','pending','requested') and (run.get('conclusion') is None or type(run['conclusion']) is str),'observed whole-run state, not unrelated job success')
+    prs=run.get('pull_requests');need(type(prs) is list and 1<=len(prs)<=32,'bounded run PR association')
+    for pr in prs:integer(pr.get('number'),1,2**63-1)
+    need(sum(pr['number']==expected['prNumber'] for pr in prs)==1,'official PR number association; moving nested head is not authority')
+    integer(job.get('runner_id'),1,2**63-1);need(type(job.get('runner_name')) is str and 0<len(job['runner_name'])<=256 and encode(job.get('labels'))==encode(['ubuntu-24.04']),'assigned selected hosted runner observations')
+    need(job['run_id']==expected['runId'] and job.get('head_sha')==expected['source']['head'] and job.get('name')=='font-discovery' and job.get('status')=='completed' and job.get('conclusion') in ('success','failure'),'selected producing job terminal')
+    need(artifact.get('name')=='i80386-hdd-gui-font-discovery-'+str(expected['runId'])+'-1' and artifact.get('expired') is False and
+         artifact['size_in_bytes']==expected['archive']['byteLength'] and artifact.get('digest')=='sha256:'+expected['archive']['sha256'] and
+         artifact['workflow_run']['id']==expected['runId'] and artifact['workflow_run'].get('head_sha')==expected['source']['head'],'official artifact/run/source/name/extent/digest joins; no job-ID field inferred')
+    began=font_delivery_time(job.get('started_at'));ended=font_delivery_time(job.get('completed_at'));need(began<=ended,'official terminal job chronology')
+    steps=job.get('steps');need(type(steps) is list and len(steps)<=64,'bounded official producing steps');numbers=[]
+    for step in steps:integer(step.get('number'),1,128);numbers.append(step['number'])
+    need(numbers==sorted(set(numbers)),'strict unique ordered official step numbers')
+    required=['Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262','Refuse unreviewed discovery before setup or input retrieval',
+      'Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020','Install unchanged selected packages and Chromium for font observation',
+      'Install externally selected immutable discovery request','Record bounded read-only font discovery without credentials',
+      'Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02']
+    previous=began;positions=[]
+    for name in required:
+        matches=[(index,step) for index,step in enumerate(steps) if step.get('name')==name];need(len(matches)==1,'one official producing step for each reviewed role')
+        index,step=matches[0];need(step.get('status')=='completed' and step.get('conclusion')==(job['conclusion'] if name.startswith('Record bounded') else 'success'),'terminal official guard/setup/input/collector/upload step')
+        start=font_delivery_time(step.get('started_at'));end=font_delivery_time(step.get('completed_at'));need(previous<=start<=end<=ended,'official producing step chronology');previous=end;positions.append(index)
+    need(positions==sorted(set(positions)),'official guard precedes setup, input, collection and upload')
+    return job['conclusion']
+
+
+def verify_font_delivery(archive_raw,request_raw,expected,metadata,workflow_raw):
+    font_delivery_expected(expected);fields(metadata,'run job artifact workflowProof')
+    font_delivery_pin(archive_raw,expected['archive']);font_delivery_pin(request_raw,expected['request'])
+    conclusion=font_delivery_official(metadata,expected);font_delivery_workflow(metadata['workflowProof'],workflow_raw,expected)
+    request,baseline=font_request(request_raw,expected['request']['sha256']);need(encode(request['source'])==encode(expected['source']),'outer selected source21/request join')
+    files=font_delivery_archive(archive_raw);need(files['request.json']==request_raw,'exact installed request original')
+    original=files['font-discovery-original.json'];value=decode(original)
+    inner={'schema':'bw.gui-hdd.font-discovery-expectation.v1','source':expected['source'],'request':expected['request'],
+      'original':{'byteLength':len(original),'sha256':sha(original)},'runId':expected['runId'],'workflowSha':expected['workflow']['commit']}
+    verdict=verify_font_discovery(original,request_raw,inner)
+    event=decode(font_original_blob(value['event'],256<<10));need(event['number']==expected['prNumber'],'raw retained event joins official selected PR')
+    font_delivery_raw(value,files,request)
+    need(all(files[name]==b'' for name in ('guard.stdout','guard.stderr','input-install.stderr','controller.stdout','controller.stderr')),'complete normal control streams; retention/early failures stay unqualified')
+    installed={'byteLength':len(request_raw),'sha256':sha(request_raw),'gitBlob':hashlib.sha1(b'blob '+str(len(request_raw)).encode()+b'\0'+request_raw).hexdigest()}
+    need(files['input-install.stdout']==encode(installed),'immutable input installer witness joins exact request bytes')
+    if conclusion=='success':need(value['complete'] is True and value['firstFailure'] is None,'successful producing job requires complete observation')
+    else:need(value['complete'] is False and value['firstFailure'] is not None,'failed producing job retains its observed primary, never promoted')
+    return {'schema':'bw.gui-hdd.font-discovery-delivery-reader.v1','observationOnly':True,'candidate':False,'qualified':False,'activeFontSelectionProved':False,
+      'actualRequestSupported':False,'actual':False,'producingConclusion':conclusion,'complete':value['complete'],'sourceHead':expected['source']['head'],
+      'workflowCommit':expected['workflow']['commit'],'runId':expected['runId'],'jobId':expected['jobId'],'artifactId':expected['artifactId'],
+      'firstFailure':value['firstFailure'],'observation':verdict}
+
+
 def main(argv=None):
     raw_args=list(sys.argv[1:] if argv is None else argv)
+    if raw_args[:1]==['--font-discovery-delivery']:
+        parser=argparse.ArgumentParser(description='Independent font-delivery original admission',allow_abbrev=False)
+        names=('font-discovery-delivery','request','expected','run','job','artifact','workflow-proof','workflow')
+        for name in names:parser.add_argument('--'+name,required=True)
+        need(len(raw_args)==16 and all(raw_args.count('--'+name)==1 for name in names),'exact delivery audit inputs')
+        args=parser.parse_args(raw_args);expected=decode(bounded_input(args.expected,JSON_CAP));font_delivery_expected(expected)
+        archive=bounded_input(args.font_discovery_delivery,expected['archive']['byteLength']);request=bounded_input(args.request,expected['request']['byteLength'])
+        metadata={key:bounded_input(getattr(args,'workflow_proof' if key=='workflowProof' else key),expected['metadata'][key]['byteLength']) for key in ('run','job','artifact','workflowProof')}
+        workflow=bounded_input(args.workflow,expected['workflow']['byteLength'])
+        print(encode(verify_font_delivery(archive,request,expected,metadata,workflow)).decode(),end='');return 0
     if raw_args[:1]==['--font-discovery']:
         parser=argparse.ArgumentParser(description='Independent bounded font discovery audit',allow_abbrev=False)
         for name in ('font-discovery','request','expected'):parser.add_argument('--'+name,required=True)

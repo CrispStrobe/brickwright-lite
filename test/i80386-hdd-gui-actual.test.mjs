@@ -1427,6 +1427,166 @@ class Originals(unittest.TestCase):
             self.assertIsNotNone(value['firstFailure']);self.assertFalse(value['complete']);self.assertFalse(value['sourceCommands']);self.assertFalse(value['commands'])
             self.assertFalse(any(op in ('git','probe') for op,arg in events))
 
+    def font_delivery_fixture(self,partial=False):
+        value,request_raw,old_expected,events=self.font_discovery_fixture(partial=partial);request=D(request_raw)
+        # A manufactured future executing workflow selection, distinct from its
+        # source commit. It is never an official event or activation evidence.
+        workflow=(root/'.github/workflows/i80386-hdd-gui-actual.yml').read_bytes()
+        prefix,job=workflow.split(b'\n  font-discovery:\n');workflow=prefix+b'\n  font-discovery:\n'+job.replace(b'$'+b'{{ false &&',b'$'+b'{{ true &&',1)
+        request['source']['files'][r.FONT_WORKFLOW_PATH]=ROW(workflow);request_raw=E(request)
+        value['request']=c.font_blob(request_raw);event=D(base64.b64decode(value['event']['base64']));event['pull_request']['body']='<!-- BW_GUI_HDD_FONT_DISCOVERY_SHA256='+H(request_raw)+' -->';value['event']=c.font_blob(E(event))
+        files={name:b'' for name in ('guard.stdout','guard.stderr','npm.stdout','npm.stderr','chromium-install.stdout','chromium-install.stderr','input-install.stdout','input-install.stderr','controller.stdout','controller.stderr')}
+        files['request.json']=request_raw;files['input-install.stdout']=E(dict(ROW(request_raw),gitBlob=hashlib.sha1(b'blob '+str(len(request_raw)).encode()+b'\0'+request_raw).hexdigest()))
+        ordinal=0
+        def raw_process(argv,stdout,stderr=b''):
+            nonlocal ordinal
+            ordinal+=1;pid=1000+ordinal;process=proc(argv,stdout,stderr,c.clean_env(),seconds=.001)
+            process['identity'].update(pid=pid,pgid=pid,sessionId=pid,parentPid=900,state='S')
+            process.update(startedNs=ordinal*10000000,endedNs=ordinal*10000000+1000);return process
+        for index,command in enumerate(value['sourceCommands']):
+            if index<2:stdout=(request['source']['head' if index==0 else 'tree']+'\n').encode()
+            else:
+                path=sorted(r.SOURCE)[index-2];stdout=workflow if path==r.FONT_WORKFLOW_PATH else ('source:'+path).encode()
+            command['stdout']=ROW(stdout);process=raw_process(command['argv'],stdout)
+            for suffix,raw in (('stdout',stdout),('stderr',b''),('process.json',E(process))):files[r.FONT_PROCESS_ROOT+'git-'+str(index)+'.'+suffix]=raw
+        for command in value['commands']:
+            stdout=base64.b64decode(command['stdout']['base64']);stderr=base64.b64decode(command['stderr']['base64']);process=raw_process(command['argv'],stdout,stderr)
+            if command['process']['firstFailure'] is not None:
+                process.update(exitCode=1,firstFailure='child nonzero exit');value['firstFailure']['message']='child nonzero exit'
+            command['process']=process
+            for suffix,raw in (('stdout',stdout),('stderr',stderr),('process.json',E(process))):files[r.FONT_PROCESS_ROOT+command['role']+'.'+suffix]=raw
+        files['font-discovery-original.json']=E(value);archive=zip_(files);blob=hashlib.sha1(b'blob '+str(len(workflow)).encode()+b'\0'+workflow).hexdigest()
+        expected={'schema':'bw.gui-hdd.font-discovery-delivery-expectation.v1','source':request['source'],'request':ROW(request_raw),'archive':ROW(archive),
+          'runId':200,'jobId':201,'artifactId':202,'prNumber':123,'workflow':{'commit':'d'*40,'base':'e'*40,'tree':'f'*40,'blob':blob,**ROW(workflow)}}
+        proof=E({'schema':'bw.gui-hdd.workflow-api-proof.v1','commit':c.font_blob(E({'sha':'d'*40,'tree':{'sha':'f'*40},'parents':[{'sha':'e'*40},{'sha':'a'*40}]})),
+          'tree':c.font_blob(E({'sha':'f'*40,'truncated':False,'tree':[{'path':r.FONT_WORKFLOW_PATH,'type':'blob','mode':'100644','sha':blob,'size':len(workflow)}]}))})
+        run={'id':200,'run_attempt':1,'head_sha':'a'*40,'event':'pull_request','repository':{'full_name':r.REPOSITORY},'head_repository':{'full_name':r.REPOSITORY,'fork':False},
+          'actor':{'login':'CrispStrobe'},'triggering_actor':{'login':'CrispStrobe'},'path':r.FONT_WORKFLOW_PATH,'status':'in_progress','conclusion':None,'pull_requests':[{'number':123,'head':{'sha':'9'*40}}]}
+        names=['Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262','Refuse unreviewed discovery before setup or input retrieval',
+          'Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020','Install unchanged selected packages and Chromium for font observation',
+          'Install externally selected immutable discovery request','Record bounded read-only font discovery without credentials','Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02']
+        job={'id':201,'run_id':200,'run_attempt':1,'head_sha':'a'*40,'runner_id':300,'runner_name':'Manufactured hosted runner','labels':['ubuntu-24.04'],'name':'font-discovery','status':'completed','conclusion':'failure' if partial else 'success',
+          'started_at':'2026-10-18T00:00:00Z','completed_at':'2026-10-18T00:01:00Z','steps':[
+          {'number':index+1,'name':name,'status':'completed','conclusion':'failure' if partial and index==5 else 'success',
+          'started_at':'2026-10-18T00:00:'+str(index*2).zfill(2)+'Z','completed_at':'2026-10-18T00:00:'+str(index*2+1).zfill(2)+'Z'} for index,name in enumerate(names)]}
+        artifact={'total_count':1,'artifacts':[{'id':202,'name':'i80386-hdd-gui-font-discovery-200-1','expired':False,'size_in_bytes':len(archive),'digest':'sha256:'+H(archive),'workflow_run':{'id':200,'head_sha':'a'*40}}]}
+        metadata={'run':E(run),'job':E(job),'artifact':E(artifact),'workflowProof':proof};expected['metadata']={key:ROW(raw) for key,raw in metadata.items()}
+        return files,request_raw,expected,metadata,workflow
+    def rebind_font_delivery(self,files,expected,metadata):
+        archive=zip_(files);expected['archive']=ROW(archive);artifact=D(metadata['artifact']);item=artifact['artifacts'][0] if 'artifacts' in artifact else artifact
+        item.update(size_in_bytes=len(archive),digest='sha256:'+H(archive));metadata['artifact']=E(artifact);expected['metadata']={key:ROW(raw) for key,raw in metadata.items()};return archive
+    def test_font_delivery_complete_official_envelope_and_cli_without_whole_run_success(self):
+        files,request,expected,metadata,workflow=self.font_delivery_fixture();archive=self.rebind_font_delivery(files,expected,metadata)
+        verdict=r.verify_font_delivery(archive,request,expected,metadata,workflow)
+        self.assertTrue(verdict['complete']);self.assertEqual(verdict['producingConclusion'],'success');self.assertIsNone(verdict['firstFailure'])
+        self.assertFalse(verdict['candidate']);self.assertFalse(verdict['qualified']);self.assertFalse(verdict['activeFontSelectionProved']);self.assertFalse(verdict['actualRequestSupported'])
+        self.assertNotEqual(verdict['sourceHead'],verdict['workflowCommit'])
+        mapping={'/archive':archive,'/request':request,'/expected':E(expected),'/workflow':workflow,**{'/'+key:raw for key,raw in metadata.items()}}
+        def read(path,cap):self.assertLessEqual(len(mapping[path]),cap);return mapping[path]
+        args=['--font-discovery-delivery','/archive','--request','/request','--expected','/expected','--run','/run','--job','/job','--artifact','/artifact','--workflow-proof','/workflowProof','--workflow','/workflow']
+        with patch.object(r,'bounded_input',read),patch.object(r.sys,'stdout',io.StringIO()) as stdout:self.assertEqual(r.main(args),0)
+        self.assertEqual(D(stdout.getvalue().encode()),verdict)
+    def test_font_delivery_failed_partial_retains_primary_and_cannot_promote(self):
+        files,request,expected,metadata,workflow=self.font_delivery_fixture(True);archive=self.rebind_font_delivery(files,expected,metadata)
+        verdict=r.verify_font_delivery(archive,request,expected,metadata,workflow)
+        self.assertEqual(verdict['producingConclusion'],'failure');self.assertFalse(verdict['complete']);self.assertEqual(verdict['firstFailure']['message'],'child nonzero exit')
+        job=D(metadata['job']);job['conclusion']='success';job['steps'][5]['conclusion']='success';metadata['job']=E(job);archive=self.rebind_font_delivery(files,expected,metadata)
+        with self.assertRaisesRegex(ValueError,'successful producing job requires complete'):r.verify_font_delivery(archive,request,expected,metadata,workflow)
+        files,request,expected,metadata,workflow=self.font_delivery_fixture();job=D(metadata['job']);job['conclusion']='failure';job['steps'][5]['conclusion']='failure';metadata['job']=E(job);archive=self.rebind_font_delivery(files,expected,metadata)
+        with self.assertRaisesRegex(ValueError,'failed producing job retains'):r.verify_font_delivery(archive,request,expected,metadata,workflow)
+    def test_font_delivery_coherent_official_metadata_and_workflow_refusals(self):
+        for cut in ('run-id','run-float','run-head','repo','actor','job-id','job-queued','job-attempt','job-name','job-clock','step-type','step-order','step-status','artifact-id','artifact-head','artifact-name','artifact-expired','artifact-digest','artifact-size','pr-number','workflow-pin','workflow-parent','workflow-tree','workflow-path','workflow-mode','workflow-blob','workflow-truncated','triggering-actor','runner-id','runner-name','runner-label','parent-order'):
+            files,request,expected,metadata,workflow=self.font_delivery_fixture();run=D(metadata['run']);job=D(metadata['job']);artifact=D(metadata['artifact']);item=artifact['artifacts'][0];proof=D(metadata['workflowProof']);commit=D(base64.b64decode(proof['commit']['base64']));tree=D(base64.b64decode(proof['tree']['base64']))
+            if cut=='run-id':run['id']+=1
+            elif cut=='run-float':run['id']=float(run['id'])
+            elif cut=='run-head':run['head_sha']='9'*40
+            elif cut=='repo':run['repository']['full_name']='foreign/repo'
+            elif cut=='actor':run['actor']['login']='foreign'
+            elif cut=='job-id':job['id']+=1
+            elif cut=='job-queued':job['status']='queued'
+            elif cut=='job-attempt':job['run_attempt']=True
+            elif cut=='job-name':job['name']='actual'
+            elif cut=='job-clock':job['completed_at']='2026-10-17T23:59:00Z'
+            elif cut=='step-type':job['steps'][0]['number']=True
+            elif cut=='step-order':job['steps'][0],job['steps'][1]=job['steps'][1],job['steps'][0]
+            elif cut=='step-status':job['steps'][4]['conclusion']='failure'
+            elif cut=='artifact-id':item['id']+=1
+            elif cut=='artifact-head':item['workflow_run']['head_sha']='9'*40
+            elif cut=='artifact-name':item['name']='i80386-hdd-gui-200-1'
+            elif cut=='artifact-expired':item['expired']=True
+            elif cut=='artifact-digest':item['digest']='sha256:'+'0'*64
+            elif cut=='artifact-size':item['size_in_bytes']=float(item['size_in_bytes'])
+            elif cut=='pr-number':run['pull_requests'][0]['number']=124
+            elif cut=='workflow-pin':workflow+=b'\n'
+            elif cut=='workflow-parent':commit['parents'][1]['sha']='9'*40
+            elif cut=='workflow-tree':tree['sha']='9'*40
+            elif cut=='workflow-path':tree['tree'][0]['path']='.github/workflows/foreign.yml'
+            elif cut=='workflow-mode':tree['tree'][0]['mode']='100755'
+            elif cut=='workflow-blob':tree['tree'][0]['sha']='9'*40
+            elif cut=='workflow-truncated':tree['truncated']=True
+            elif cut=='triggering-actor':run['triggering_actor']['login']='foreign'
+            elif cut=='runner-id':job['runner_id']=True
+            elif cut=='runner-name':job['runner_name']=''
+            elif cut=='runner-label':job['labels']=['ubuntu-latest']
+            else:commit['parents'].reverse()
+            proof.update(commit=c.font_blob(E(commit)),tree=c.font_blob(E(tree)));metadata.update(run=E(run),job=E(job),artifact=E(artifact),workflowProof=E(proof))
+            # Preserve intentionally conflicting official artifact identity/size.
+            archive=zip_(files);expected['metadata']={key:ROW(raw) for key,raw in metadata.items()}
+            with self.assertRaises((ValueError,KeyError),msg=cut):r.verify_font_delivery(archive,request,expected,metadata,workflow)
+    def test_font_delivery_coherent_raw_stream_process_source_clock_refusals(self):
+        for cut in ('source-summary','source-clock','source-raw','stream-float','stderr-bool','parent','identity-bool','process-extra','embedded','missing-triple','unknown-role','request','event-head','primary','self-parent','source-package-clock','cleared-primary','sample-order','sample-duplicate','terminal-duplicate'):
+            files,request,expected,metadata,workflow=self.font_delivery_fixture(partial=cut in ('primary','cleared-primary','terminal-duplicate'));value=D(files['font-discovery-original.json']);role=r.FONT_PROCESS_ROOT+'git-0';process=D(files[role+'.process.json'])
+            if cut=='source-summary':value['sourceCommands'][0]['stdout']['sha256']='0'*64
+            elif cut=='source-clock':process['startedNs']=process['endedNs']+1
+            elif cut=='source-raw':files[role+'.stdout']=b'wrong source\n';process['streams']['stdout']=ROW(files[role+'.stdout'])
+            elif cut=='stream-float':process['streams']['stdout']['byteLength']=float(process['streams']['stdout']['byteLength'])
+            elif cut=='stderr-bool':process['streams']['stderr']['byteLength']=False
+            elif cut=='parent':process['identity']['parentPid']+=1
+            elif cut=='identity-bool':process['identity']['startTicks']=True
+            elif cut=='process-extra':process['invented']=True
+            elif cut=='embedded':value['commands'][0]['process']['identity']['pid']+=1
+            elif cut=='missing-triple':files.pop(r.FONT_PROCESS_ROOT+'git-1.stderr')
+            elif cut=='unknown-role':files['unexpected.json']=b'{}'
+            elif cut=='request':files['request.json']=b'{}\n'
+            elif cut=='event-head':
+                event=D(base64.b64decode(value['event']['base64']));event['pull_request']['head']['sha']='9'*40;value['event']=c.font_blob(E(event))
+            elif cut=='primary':value['firstFailure']['message']='INVENTED_PRIMARY'
+            elif cut=='self-parent':process['identity']['parentPid']=process['identity']['pid']
+            elif cut=='source-package-clock':
+                for index,command in enumerate(value['commands']):
+                    command['process'].update(startedNs=index*10000000+1,endedNs=index*10000000+1000)
+                    files[r.FONT_PROCESS_ROOT+command['role']+'.process.json']=E(command['process'])
+            elif cut=='cleared-primary':
+                command=value['commands'][-1];command['process']['firstFailure']=None;files[r.FONT_PROCESS_ROOT+command['role']+'.process.json']=E(command['process'])
+            elif cut=='sample-order':process['descendantSamples']=[{'atNs':process['endedNs'],'descendants':[]},{'atNs':process['startedNs'],'descendants':[]}]
+            elif cut=='sample-duplicate':process['descendantSamples']=[{'atNs':process['startedNs'],'descendants':[copy.deepcopy(process['identity']),copy.deepcopy(process['identity'])]}]
+            elif cut=='terminal-duplicate':
+                command=value['commands'][-1];command['process']['remainingDescendants']=[copy.deepcopy(command['process']['identity']),copy.deepcopy(command['process']['identity'])];files[r.FONT_PROCESS_ROOT+command['role']+'.process.json']=E(command['process'])
+            files[role+'.process.json']=E(process);files['font-discovery-original.json']=E(value);archive=self.rebind_font_delivery(files,expected,metadata)
+            with self.assertRaises((ValueError,KeyError),msg=cut):r.verify_font_delivery(archive,request,expected,metadata,workflow)
+    def test_font_delivery_zip_preinflate_role_caps_and_early_missing_refuse(self):
+        files,request,expected,metadata,workflow=self.font_delivery_fixture()
+        for cut in ('unknown','duplicate','symlink','special','encrypted','oversize','path','early','missing-original','nul','directory-payload'):
+            data=io.BytesIO()
+            with zipfile.ZipFile(data,'w',compression=zipfile.ZIP_STORED) as archive:
+                for name,raw in files.items():
+                    if cut=='early' and name not in ('guard.stdout','guard.stderr'):continue
+                    if cut=='missing-original' and name=='font-discovery-original.json':continue
+                    if cut=='nul' and name=='guard.stdout':name='guard.stdoutXjunk'
+                    if cut=='oversize' and name=='controller.stdout':raw=b'x'*16385
+                    info=zipfile.ZipInfo(name)
+                    if cut in ('symlink','special') and name=='guard.stdout':info.external_attr=(stat.S_IFLNK|0o777 if cut=='symlink' else stat.S_IFIFO|0o600)<<16
+                    archive.writestr(info,raw)
+                if cut in ('unknown','duplicate','path','directory-payload'):
+                    name='unexpected' if cut=='unknown' else 'guard.stdout' if cut=='duplicate' else '../escape' if cut=='path' else r.FONT_PROCESS_ROOT
+                    archive.writestr(name,b'x')
+            raw=data.getvalue()
+            if cut=='nul':raw=raw.replace(b'guard.stdoutXjunk',b'guard.stdout\x00junk')
+            if cut=='encrypted':
+                raw=bytearray(raw);at=raw.find(b'PK\x01\x02');raw[at+8:at+10]=(1).to_bytes(2,'little');raw=bytes(raw)
+            with patch.object(r.zipfile.ZipFile,'read',side_effect=AssertionError('must refuse full census before inflate')):
+                with self.assertRaises(ValueError,msg=cut):r.font_delivery_archive(raw)
+
 suite=unittest.defaultTestLoader.loadTestsFromTestCase(Originals)
 result=unittest.TextTestRunner(verbosity=2).run(suite)
 print(json.dumps({'controls':result.testsRun,'failures':len(result.failures),'errors':len(result.errors)}))
