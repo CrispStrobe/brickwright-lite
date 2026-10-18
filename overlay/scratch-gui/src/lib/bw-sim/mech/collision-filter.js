@@ -176,6 +176,34 @@ const perpendiculars = a => {
     return [u, [a[1] * u[2] - a[2] * u[1], a[2] * u[0] - a[0] * u[2], a[0] * u[1] - a[1] * u[0]]];
 };
 
+/** A collider as an oriented box in world frame (a cylinder or sphere as its bounding box). */
+const obbOf = (body, c) => {
+    const q = c.rotation || [0, 0, 0, 1];
+    const half = c.shape === 'box' ? c.halfExtents : c.shape === 'cylinder' ? [c.radius, c.halfHeight, c.radius] : [c.radius, c.radius, c.radius];
+    return {centre: (c.position || [0, 0, 0]).map((v, i) => v + body.position[i]), axes: [[1, 0, 0], [0, 1, 0], [0, 0, 1]].map(v => rotate(q, v)), half};
+};
+
+/**
+ * Whether two parts' colliders interpenetrate at t = 0 by more than the contact slop (separating-axis
+ * test of their boxes). A machine built this way has one part NESTED in the other's collider — a
+ * differential's side gears and planets inside its casing's solid envelope, an axle through it — and
+ * they cannot be meant to collide: each contact would push them apart from the first step.
+ */
+const nested = (bA, cA, bB, cB) => cA.some(x => cB.some(y => {
+    const a = obbOf(bA, x);
+    const b = obbOf(bB, y);
+    const d = a.centre.map((v, i) => b.centre[i] - v);
+    const cross = (u, v) => [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+    const axes = [...a.axes, ...b.axes, ...a.axes.flatMap(u => b.axes.map(v => cross(u, v)))];
+    return axes.every(n => {
+        const len = Math.hypot(...n);
+        if (len < 1e-9) return true;
+        const u = n.map(v => v / len);
+        const r = box => box.axes.reduce((s, ax, i) => s + box.half[i] * Math.abs(dot(ax, u)), 0);
+        return r(a) + r(b) - Math.abs(dot(d, u)) > APART_M;
+    });
+}));
+
 /** Touching counts as apart: faces in contact at zero gap (0.5 LDU = 0.2 mm, the contact slop) never interpenetrate. */
 const APART_M = 0.0002;
 const apart = (x, y) => x[1] <= y[0] + APART_M || y[1] <= x[0] + APART_M;
@@ -186,6 +214,9 @@ const apart = (x, y) => x[1] <= y[0] + APART_M || y[1] <= x[0] + APART_M;
  * excluded here; otherwise it filters just the listed part pairs (a Jolt SimShapeFilter) and the
  * rest collide — an arm on a motor's output swinging into a post fixed on the motor's housing.
  * A part pair is excluded when
+ *   - the two parts already interpenetrate at t = 0 (`nested`: a part inside a hollow part's solid
+ *     collider, as a differential's gears in its casing — joints a coupling kind makes have no
+ *     connector edge to say they are seated), or
  *   - the two parts are seated on one connector axis (axisGroups: a pin and the beams on it, the motor's
  *     output and its housing, an arm pinned into the output and the housing those holes sit in), or
  *   - the bodies turn about one line (their joint is a hinge, or they share a hinge axis group) and
@@ -289,10 +320,11 @@ export const localNoCollide = (bodies, joints, noCollide, coupled, edges, island
             });
             if (agree) motion = {kind, point, axis: a0};
         }
-        // A slider pair stays filtered whole, as before: the shipped Forklift's left tine sits on its
-        // guide axle's line, 13 LDU under the guide's T holder (32039), and with local filtering it
-        // jams after 5.2 mm of its 65.6 mm travel. That is the model's to fix (its owner decides;
-        // docs/ROBOT-LAB-VALIDATION.md); until then sliders keep the per-body filter.
+        // A slider pair stays filtered whole: the shipped Forklift's left tine sits on its guide axle's
+        // line (x −60, z 155 LDU), under the guide's T holder (13 LDU) and the guide itself (32 LDU), so
+        // filtered locally it jams after 5.2 mm of its 40 mm lift; moving the tines off that line breaks
+        // their 40 LDU spacing for the pallet in this carriage (docs/ROBOT-LAB-VALIDATION.md). Until the
+        // carriage is redesigned, sliders keep the per-body filter.
         if (motion && motion.kind === 'slider') continue;
         // Parts the motion can never bring together: what it keeps fixed separates them.
         const never = (cx, cy) => {
@@ -310,7 +342,8 @@ export const localNoCollide = (bodies, joints, noCollide, coupled, edges, island
         for (const x of pa) {
             const cx = bA.colliders.filter(c => c.part === x);
             for (const y of pb) {
-                if (seatedHere.has(`${x}\n${y}`) || never(cx, bB.colliders.filter(c => c.part === y))) excluded.push([x, y]);
+                const cy = bB.colliders.filter(c => c.part === y);
+                if (seatedHere.has(`${x}\n${y}`) || never(cx, cy) || nested(bA, cx, bB, cy)) excluded.push([x, y]);
                 else all = false;
             }
         }

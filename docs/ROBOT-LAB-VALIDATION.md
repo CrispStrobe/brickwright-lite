@@ -87,15 +87,29 @@ unchanged. Step costs are node medians at 200 Hz (min of 5 runs); `docs/ROBOT-LA
    `noCollideParts` and is filtered per sub-shape by a Jolt SimShapeFilter (installed only
    then; no shipped example needs it, step time unchanged). Arm stops at 93.53°.
 
-## Open: the Forklift's guide holder (for the lead)
+## Open: the Forklift's carriage (for the lead)
 
 Slider pairs keep the per-body filter. Filtered locally, the shipped `forklift.ldr` jams: its
-left tine (2823 at x −60) and the 3L pin under it sit on the guide axle's line, 13 LDU below the
-guide's T holder (32039 at LDraw y −70) that the carriage straddles (the slide is above the
-holder, the forks below). The rack test then rose 5.4 mm of 37.6 mm and the Forklift's 40 mm
-lift could not happen; the slider's connector-derived travel (65.6 mm) does not see the holder.
-The model needs its guide held where the forks do not pass (or the forks moved off the guide's
-line); then slider pairs can be local too (`collision-filter.js`, one line).
+left tine (2823 at x −60) and the 3L pin under it sit on the guide axle's own line (x −60, z 155),
+13 LDU below the guide's T holder (32039 at LDraw y −70) and 32 LDU below the guide axle itself.
+The rack test then rose 5.4 mm of 37.6 mm and the 40 mm lift cannot happen. Moving the holder is
+not enough (the guide is in the way too), and moving the tines off the line in this carriage
+breaks their 40 LDU spacing, which the pallet's pockets need: with the 3L pin offset in the fork
+arm the tines are 20 LDU apart (tried: the pallet is pushed at rest and lifts 41.0 mm against
+r·θ 40.0); any 40 LDU placement collides with the upright (it takes the toggle's pins) or the
+rack. The carriage needs a redesign with the mast behind the forks; then slider pairs can be
+local too (`collision-filter.js`, one line).
+
+## Integration with the gearbox lane (2026-10-19)
+
+Merged with the gearbox lane, local filtering failed three gearbox tests: (1) the differential's
+side gears, right axle and planets sit inside the casing's and cover's solid colliders, joined by
+the carrier joints that kind makes without connector edges, so nothing said they were seated —
+parts that interpenetrate at t = 0 are now excluded as nested; (2) the shipped `gearbox.ldr`'s
+pointer (a thin 1 × 3 on the output axle at LDraw y −20) swept through the drive motor's housing
+(its far end reaches 49 LDU from the axle, the housing is 10 LDU away), so the output could not
+turn — it now sits at the top of a 12L output axle (3708, y −170), 25 LDU above the 16T gears.
+Gearbox program: output/motor −0.3333 / −1.0000 (tooth ratios), the differential tests pass.
 
 Minor, recorded by the passing tests: Jolt's default linear damping (0.05 s⁻¹, not set by
 `jolt-core.js`) acts as a weak, velocity-proportional air drag (−0.4 % on free fall at 0.15 s).

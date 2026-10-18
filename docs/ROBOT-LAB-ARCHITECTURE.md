@@ -1633,7 +1633,9 @@ numbers per machine); all 22 of its tests pass with their original expectations 
   `noCollide`, jointed or not: two beams on a frictionless pin are hinged to the pin, not to each
   other, and rubbed face to face. (2) *Local exclusion* (`localNoCollide`): for each noCollide body
   pair the compiler lists the PART pairs to keep apart — parts seated in one axis group (a motor's
-  two halves count as one part), and parts the pair's relative motion can never bring together: a
+  two halves count as one part), parts that already interpenetrate at t = 0 by more than the contact
+  slop (`nested`: a differential's side gears and planets inside its casing's solid envelope; a
+  coupling kind's carrier joint has no connector edge to say they are seated), and parts the pair's relative motion can never bring together: a
   hinge keeps each part's interval along its line and its distance band from it (exact for boxes:
   the corners projected across the line), a ball keeps distance from its point. If that is every
   part pair the body pair stays whole in the `GroupFilterTable` (C++, broad phase); otherwise it is
