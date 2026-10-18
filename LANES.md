@@ -5766,6 +5766,11 @@ All 63 source controls pass; actual guards and required-font selection stay held
 Failure-only v2 additionally retains bounded exact event bytes and has a standalone
 reader that joins them against external pins; 65 embedded Python controls pass.
 Successful inventory/actual formats and positive executable size checks stay held.
+Metadata-only v3 now has a separately typed empty Python-source map and standalone
+original reader; 74 Python controls and 17 targeted mutations pass. Actual v4
+mapping remains pending. The explicit consumer CUI expectation now follows main
+PR1066 at `fe89e3425bf323b1acd9e3f98df6a7383e9b836b`; no dependency writer changed.
+
 
 
 
@@ -5785,9 +5790,10 @@ build/browser pipeline; do not introduce another provisioning framework or
 change unrelated workflows.
 
 The composition consumes the adoption already merged through
-[PR975](https://github.com/CrispStrobe/brickwright-lite/pull/975): Board
-`f84ba60ead0a90deb9830f0c1468839c293ecf05`, CUI
-`055930ec51300e0d71466c696ce1bf76284bde38` and SB3
+[PR975](https://github.com/CrispStrobe/brickwright-lite/pull/975), with later CUI
+selection from [PR1066](https://github.com/CrispStrobe/brickwright-lite/pull/1066):
+Board `f84ba60ead0a90deb9830f0c1468839c293ecf05`, CUI
+`fe89e3425bf323b1acd9e3f98df6a7383e9b836b` and SB3
 `a13f92b8bc4b06f0cb9ffec22bab71f06db7ac76` at the 2026-10-18 refresh.
 These are source selections, not this scenario's installed qualification.
 Refresh canonical declarations before admission; refuse missing dedicated
