@@ -6513,3 +6513,14 @@ Only reviewed runtime fields and inventory length/hash are exported. No simulato
 lifecycle operation or app launch occurs; device/runtime-architecture/loadability/
 process-resource/cleanup qualification remain open. This phase never authorizes a
 launch. Original jobs, build/upload ordering, delivery and signing guards remain.
+
+The claimed workflow now also contains an unwired owned-simulator transaction
+core, with focused authored adapter controls. No entry-point phase invokes it.
+It snapshots the plan, refuses pre-existing created UUIDs, verifies owned identity
+before targeted operations, and preserves primary failures plus independent cleanup
+failures. A late bounded observation stays partial; cleanup has a separate budget
+and continues after an earlier command failure. Bounds at callback returns are
+cooperative, not process containment. Supplied plan flags do not authenticate an
+admission. Real adapters, runtime/device/resource admission and installed-code/
+receipt joins remain required before wiring an actual launch. Existing workflow
+steps, default inputs, delivery/signing guards and native hook remain unchanged.

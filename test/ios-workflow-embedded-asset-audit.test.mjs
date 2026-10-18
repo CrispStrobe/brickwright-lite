@@ -288,7 +288,9 @@ test('runtime admission is an optional guarded inventory step after retained pro
     assert.match(workflow, /if: always\(\) && inputs.ios_audit_runtime != '' && \(github.event_name/);
     assert.ok(workflow.indexOf('Retain unsigned iOS products after build') < workflow.indexOf('Admit installed unsigned iOS runtime candidate'));
     assert.match(workflow, /name: brickwright-ios-runtime-admission/);
-    assert.doesNotMatch(retention, /'simctl', '(?:create|boot|install|launch|shutdown|delete)'/);
+    const runtimeBody = retention.slice(retention.indexOf('def runtime_admission()'), retention.indexOf('def owned_simulator_transaction('));
+    assert.doesNotMatch(runtimeBody, /owned_simulator_transaction|(?:create|boot|install|launch|shutdown|delete)\(/);
+    assert.equal((retention.match(/owned_simulator_transaction\(/g) || []).length, 1, 'definition only; no workflow caller');
 });
 
 test('actual runtime admission binds authored simulator header and retained inputs without launching', () => withRuntime(f => {
@@ -358,4 +360,175 @@ test('runtime mutations demonstrate build and simulator-platform guards are live
     withRuntime(f => { succeeded(f.runtime({BW_IOS_AUDIT_RUNTIME_BUILD: '22A9999'})); }, retention.replace(buildGuard, ''));
     const platformGuard = 'platform_id == 7 and ';assert.ok(retention.includes(platformGuard));
     withRuntime(f => { succeeded(f.runtime()); }, retention.replace(platformGuard, ''), macho({platform: 2}));
+});
+
+const lifecycleControls = String.raw`
+import copy
+import unittest
+NEW = '11111111-1111-1111-1111-111111111111'
+OLD = '22222222-2222-2222-2222-222222222222'
+RUNTIME = 'com.apple.CoreSimulator.SimRuntime.iOS-18-0'
+TYPE = 'com.apple.CoreSimulator.SimDeviceType.iPhone-16'
+PLAN = {'schema':'brickwright.ios-owned-simulator-plan.v1','runtimeIdentifier':RUNTIME,
+        'deviceTypeIdentifier':TYPE,'name':'bw-asset-audit-'+'a'*32,'bundleIdentifier':'com.example.authored',
+        'appPath':'AUTHORED-PRIVATE-APP-PATH','sourceSHA256':'b'*64,'executableSHA256':'c'*64,
+        'runtimeArchitectureAdmitted':True,'deviceModelAdmitted':True,'processEnvelopeAdmitted':True}
+RAW = b'{"authoredOnly":true,"notAnAppObservation":true}'
+class World:
+    def __init__(self):
+        self.time=0.;self.commands=[];self.fail=set();self.after_fail=set();self.created=NEW
+        self.devices={OLD:{'udid':OLD,'name':'AUTHORED-OTHER-DEVICE','deviceTypeIdentifier':TYPE,'state':'Booted','isAvailable':True}}
+        self.observer=lambda:RAW;self.bad_create=None;self.huge=False
+    def now(self):return self.time
+    def invoke(self,args,*,deadline,output_limit):
+        assert self.time < deadline and output_limit==1024*1024
+        self.time+=0.001;self.commands.append(args);op=args[0]
+        if op in self.fail:raise RuntimeError('AUTHORED-PRIVATE-ERROR')
+        value=b''
+        if op=='list':
+            value=json.dumps({'devices':{RUNTIME:list(self.devices.values())}}).encode()
+            if self.huge:value=b'x'*(1024*1024+1)
+        elif op=='create':
+            self.devices[self.created]={'udid':self.created,'name':args[1],'deviceTypeIdentifier':args[2],'state':'Shutdown','isAvailable':True}
+            value=(self.bad_create or self.created).encode()
+        else:
+            assert args[1] in self.devices and args[1] not in ('all','booted','unavailable')
+            if op=='boot':self.devices[args[1]]['state']='Booted'
+            elif op=='shutdown':self.devices[args[1]]['state']='Shutdown'
+            elif op=='delete':del self.devices[args[1]]
+            elif op=='launch':value=b'com.example.authored: 1234\n'
+            else:assert op in ('bootstatus','install','terminate')
+        if op in self.after_fail:raise RuntimeError('AUTHORED-PRIVATE-ERROR-AFTER-EFFECT')
+        return value
+    def observe(self,device,pid,*,deadline,output_limit):
+        assert device==NEW and pid==1234 and self.time<deadline and output_limit==8*1024*1024
+        return self.observer()
+    def run(self,fn=owned_simulator_transaction,plan=None):
+        return fn(copy.deepcopy(PLAN) if plan is None else plan,self.invoke,self.observe,self.now)
+    def ops(self):return [a[0] for a in self.commands]
+class LifecycleControls(unittest.TestCase):
+    def test_normal_transaction_keeps_other_device_and_limited_claims(self):
+        w=World();old=copy.deepcopy(w.devices[OLD]);r,raw=w.run()
+        self.assertEqual(r['status'],'observed-transaction-only');self.assertEqual(raw,RAW)
+        self.assertEqual(r['observationSHA256'],hashlib.sha256(RAW).hexdigest())
+        self.assertEqual(w.devices,{OLD:old});self.assertTrue(r['cleanupAbsenceObserved'])
+        self.assertLessEqual(r['activeCommands'],32);self.assertEqual(r['cleanupCommands'],7)
+        for key in ('suppliedAdmissionAuthenticated','callbackBoundsQualified','resourceLifetimeQualified','actualAppQualified'):self.assertIs(r[key],False)
+        self.assertEqual([op for op in w.ops() if op!='list'],['create','boot','bootstatus','install','launch','terminate','shutdown','delete'])
+        self.assertNotIn('AUTHORED-PRIVATE',json.dumps(r));self.assertNotIn(NEW,json.dumps(r))
+    def test_unadmitted_or_malformed_plan_never_calls_an_adapter(self):
+        for field in ('runtimeArchitectureAdmitted','deviceModelAdmitted','processEnvelopeAdmitted'):
+            for value in (False,1,None,'true'):
+                w=World();p=copy.deepcopy(PLAN);p[field]=value
+                with self.assertRaises(ValueError):w.run(plan=p)
+                self.assertEqual(w.commands,[])
+        for field,value in (('sourceSHA256','x'),('name','all'),('bundleIdentifier','../bad'),('appPath','bad\npath')):
+            w=World();p=copy.deepcopy(PLAN);p[field]=value
+            with self.assertRaises(ValueError):w.run(plan=p)
+            self.assertEqual(w.commands,[])
+    def test_unknown_or_reused_created_identity_never_becomes_a_cleanup_target(self):
+        for identifier in ('all','booted','unavailable','invalid'):
+            w=World();w.bad_create=identifier;r,_=w.run()
+            self.assertTrue(r['creationUncertain']);self.assertNotIn('delete',w.ops());self.assertFalse(r['ownershipEstablished'])
+        w=World();w.created=OLD;r,_=w.run()
+        self.assertEqual(r['primaryFailure'],'create');self.assertNotIn('boot',w.ops());self.assertNotIn('delete',w.ops())
+    def test_name_collision_refuses_before_create(self):
+        w=World();w.devices[OLD]['name']=PLAN['name'];r,_=w.run()
+        self.assertFalse(r['creationAttempted']);self.assertEqual(w.ops(),['list'])
+    def test_failed_create_acknowledgement_retains_ownership_uncertainty(self):
+        w=World();w.after_fail={'create'};r,_=w.run()
+        self.assertEqual(r['primaryFailure'],'create');self.assertIn(NEW,w.devices)
+        self.assertTrue(r['creationUncertain']);self.assertNotIn('delete',w.ops())
+    def test_primary_failures_still_attempt_owned_cleanup(self):
+        for op in ('boot','bootstatus','install','launch'):
+            w=World();w.after_fail={op};r,raw=w.run()
+            self.assertEqual(r['primaryFailure'],{'bootstatus':'boot-ready'}.get(op,op))
+            self.assertIsNone(raw);self.assertTrue(r['cleanupAbsenceObserved']);self.assertNotIn(NEW,w.devices)
+            self.assertEqual(w.devices[OLD]['name'],'AUTHORED-OTHER-DEVICE')
+            if op=='launch':self.assertIn('terminate',w.ops())
+    def test_cleanup_failures_do_not_skip_later_cleanup_or_erase_observation(self):
+        for op in ('terminate','shutdown','delete'):
+            w=World();w.fail={op};r,raw=w.run()
+            self.assertEqual(r['status'],'partial');self.assertIn(op,r['cleanupFailures']);self.assertIsNone(r['primaryFailure'])
+            self.assertEqual(raw,RAW);self.assertIn('delete',w.ops())
+            self.assertEqual(r['cleanupAbsenceObserved'],op!='delete')
+    def test_primary_and_cleanup_failures_are_both_preserved(self):
+        w=World();w.fail={'terminate'}
+        def fail():raise RuntimeError('AUTHORED-PRIVATE-OBSERVE-ERROR')
+        w.observer=fail;r,raw=w.run();self.assertEqual(r['primaryFailure'],'observe')
+        self.assertIn('terminate',r['cleanupFailures']);self.assertIsNone(raw);self.assertIn('delete',w.ops())
+    def test_changed_identity_refuses_each_destructive_cleanup_operation(self):
+        w=World()
+        def replace():w.devices[NEW]['name']='AUTHORED-OTHER-OWNER';return RAW
+        w.observer=replace;r,raw=w.run()
+        self.assertEqual(raw,RAW);self.assertFalse(r['cleanupAbsenceObserved'])
+        self.assertEqual([op for op in w.ops() if op in ('terminate','shutdown','delete')],[])
+        self.assertEqual(r['cleanupFailures'],['terminate','shutdown','delete','absence-readback'])
+    def test_late_observation_is_retained_as_partial_and_cleanup_has_its_own_budget(self):
+        w=World()
+        def late():w.time=91.;return RAW
+        w.observer=late;r,raw=w.run();self.assertEqual(raw,RAW);self.assertEqual(r['primaryFailure'],'observe')
+        self.assertTrue(r['cleanupAbsenceObserved']);self.assertEqual(r['status'],'partial')
+    def test_backward_and_nonfinite_clocks_refuse_further_mutation(self):
+        for tick in (-1.,float('nan'),float('inf')):
+            w=World()
+            def broken():w.time=tick;return RAW
+            w.observer=broken;r,raw=w.run();self.assertEqual(r['primaryFailure'],'observe')
+            self.assertIn('cleanup-clock',r['cleanupFailures']);self.assertNotIn('delete',w.ops())
+            self.assertFalse(r['cleanupAbsenceObserved']);self.assertEqual(raw,RAW)
+    def test_caller_mutation_cannot_retarget_cleanup(self):
+        w=World();p=copy.deepcopy(PLAN)
+        def mutate():p['name']='OTHER';p['bundleIdentifier']='other.app';return RAW
+        w.observer=mutate;r,_=w.run(plan=p);self.assertTrue(r['cleanupAbsenceObserved'])
+        self.assertIn(('terminate',NEW,'com.example.authored'),w.commands)
+    def test_oversized_catalog_or_observation_remains_partial(self):
+        w=World();w.huge=True;r,_=w.run();self.assertFalse(r['creationAttempted'])
+        w=World();w.observer=lambda:b'x'*(8*1024*1024+1);r,raw=w.run()
+        self.assertEqual(r['primaryFailure'],'observe');self.assertIsNone(raw);self.assertTrue(r['cleanupAbsenceObserved'])
+    def test_adapter_deadlines_are_checked_on_return(self):
+        w=World();original=w.invoke
+        def late(args,**kwargs):
+            raw=original(args,**kwargs);w.time=16.;return raw
+        w.invoke=late;r,_=w.run();self.assertEqual(r['primaryFailure'],'initial-catalog')
+        self.assertFalse(r['creationAttempted'])
+        w=World()
+        def late_observation():w.time=31.;return RAW
+        w.observer=late_observation;r,raw=w.run();self.assertEqual(raw,RAW)
+        self.assertEqual(r['primaryFailure'],'observe');self.assertTrue(r['cleanupAbsenceObserved'])
+    def test_keyboard_interrupt_propagates_after_owned_cleanup(self):
+        w=World()
+        def interrupt():raise KeyboardInterrupt()
+        w.observer=interrupt
+        with self.assertRaises(KeyboardInterrupt):w.run()
+        self.assertNotIn(NEW,w.devices);self.assertIn(OLD,w.devices)
+    def test_runtime_mutants_expose_identity_guard_and_cleanup_continuation(self):
+        source=SOURCE_PREFIX
+        cut='need(identifier not in before)';self.assertIn(cut,source)
+        namespace={};exec(compile(source.replace(cut,'need(True)'),'authored-mutant','exec'),namespace)
+        w=World();w.created=OLD
+        # The intentionally bad create callback already changed its row; the core
+        # must still refuse to boot/delete a UUID that existed before this attempt.
+        w.observe=lambda *a,**k:RAW
+        r,_=w.run(namespace['owned_simulator_transaction']);self.assertNotIn(OLD,w.devices)
+        self.assertTrue(r['ownershipEstablished'])
+        cut="except Exception:\n                        result['cleanupFailures'].append(command)";self.assertTrue(cut in source,'cleanup continuation mutation anchor')
+        namespace={};exec(compile(source.replace(cut,cut+'\n                        break'),'authored-mutant','exec'),namespace)
+        w=World();w.fail={'terminate'};r,raw=w.run(namespace['owned_simulator_transaction'])
+        self.assertNotIn('delete',w.ops());self.assertFalse(r['cleanupAbsenceObserved']);self.assertEqual(raw,RAW)
+unittest.main(argv=['authored-lifecycle-controls'],verbosity=2)
+`;
+
+test('unwired owned simulator transaction core preserves identity, failures and cleanup', () => {
+    const end = retention.lastIndexOf('\ntry:\n');
+    assert.ok(end > 0, 'exclude the actual workflow entry point');
+    const prefix = retention.slice(0, end);
+    const dir = mkdtempSync(join(tmpdir(), 'bw-ios-owned-core-'));
+    try {
+        const result = spawnSync('/usr/bin/python3', ['-c', `${prefix}\nSOURCE_PREFIX = ${JSON.stringify(prefix)}\n${lifecycleControls}`], {
+            env: {...process.env, GITHUB_WORKSPACE: dir, RUNNER_TEMP: dir}, encoding: 'utf8', timeout: 15000
+        });
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        assert.match(result.stderr, /Ran 16 tests/);
+        assert.match(result.stderr, /OK/);
+    } finally { rmSync(dir, {recursive: true, force: true}); }
 });

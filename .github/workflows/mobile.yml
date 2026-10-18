@@ -514,6 +514,182 @@ jobs:
               print('iOS runtime candidate recorded; app launch remains refused')
 
 
+          def owned_simulator_transaction(plan, invoke, observe, now=time.monotonic):
+              """Unwired transaction core. Adapters must enforce command/observation bounds.
+
+              Supplied admission fields are not authenticated capabilities. No workflow phase
+              invokes this core until runtime/device/resource admission and adapters qualify.
+              """
+              import math
+              import re
+              keys = {'schema', 'runtimeIdentifier', 'deviceTypeIdentifier', 'name', 'bundleIdentifier',
+                      'appPath', 'sourceSHA256', 'executableSHA256', 'runtimeArchitectureAdmitted',
+                      'deviceModelAdmitted', 'processEnvelopeAdmitted'}
+              need(type(plan) is dict and plan.keys() == keys)
+              plan = dict(plan)  # Caller mutation during an adapter call cannot retarget ownership.
+              need(plan['schema'] == 'brickwright.ios-owned-simulator-plan.v1')
+              for field, expression in (
+                  ('runtimeIdentifier', r'com\.apple\.CoreSimulator\.SimRuntime\.iOS-[0-9-]+'),
+                  ('deviceTypeIdentifier', r'com\.apple\.CoreSimulator\.SimDeviceType\.[A-Za-z0-9-]+'),
+                  ('name', r'bw-asset-audit-[a-f0-9]{32}'),
+                  ('bundleIdentifier', r'[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+'),
+                  ('sourceSHA256', r'[a-f0-9]{64}'), ('executableSHA256', r'[a-f0-9]{64}')):
+                  need(type(plan[field]) is str and re.fullmatch(expression, plan[field]) is not None)
+              need(type(plan['appPath']) is str and 0 < len(plan['appPath'].encode()) <= 4096 and
+                   not any(ord(c) < 32 or ord(c) == 127 for c in plan['appPath']))
+              need(all(plan[key] is True for key in ('runtimeArchitectureAdmitted',
+                   'deviceModelAdmitted', 'processEnvelopeAdmitted')))
+              limits = {'activeSeconds': 90, 'cleanupSeconds': 20, 'commandSeconds': 15,
+                        'maxActiveCommands': 32, 'maxCleanupCommands': 8,
+                        'commandBytes': 1024*1024, 'receiptBytes': 8*1024*1024, 'observationSeconds': 30}
+              result = {'schema': 'brickwright.ios-owned-simulator-transaction.v1', 'status': 'partial',
+                        'primaryFailure': None, 'cleanupFailures': [], 'trace': [], 'limits': limits.copy(),
+                        'creationAttempted': False, 'ownershipEstablished': False, 'creationUncertain': False,
+                        'observationRetained': False, 'cleanupAbsenceObserved': False,
+                        'suppliedAdmissionAuthenticated': False, 'callbackBoundsQualified': False,
+                        'resourceLifetimeQualified': False, 'actualAppQualified': False}
+              last = None
+              broken_clock = False
+              def tick():
+                  nonlocal last, broken_clock
+                  value = now()
+                  if (broken_clock or type(value) not in (int, float) or not math.isfinite(value) or
+                          (last is not None and value < last)):
+                      broken_clock = True
+                      raise ValueError('transaction clock refused')
+                  last = value
+                  return value
+              start = tick()
+              deadline = start + limits['activeSeconds']
+              counts = [0, 0]
+              def call(args, cleanup=False):
+                  current = tick()
+                  need(current < deadline)
+                  slot = int(cleanup)
+                  maximum = limits['maxCleanupCommands'] if cleanup else limits['maxActiveCommands']
+                  need(counts[slot] < maximum)
+                  counts[slot] += 1
+                  command_deadline = min(deadline, current+limits['commandSeconds'])
+                  value = invoke(tuple(args), deadline=command_deadline, output_limit=limits['commandBytes'])
+                  need(tick() < command_deadline and type(value) is bytes and len(value) <= limits['commandBytes'])
+                  return value
+              def catalog(cleanup=False):
+                  def unique(pairs):
+                      value = {}
+                      for key, item in pairs:
+                          need(key not in value)
+                          value[key] = item
+                      return value
+                  raw = call(('list', 'devices', '--json'), cleanup)
+                  devices = json.loads(raw, object_pairs_hook=unique, parse_constant=lambda _: need(False))['devices']
+                  need(type(devices) is dict and len(devices) <= 128)
+                  rows = {}
+                  for runtime, entries in devices.items():
+                      need(type(entries) is list and len(entries) <= 1024)
+                      for entry in entries:
+                          identifier = entry['udid']
+                          need(type(identifier) is str and re.fullmatch(r'[A-Fa-f0-9]{8}(?:-[A-Fa-f0-9]{4}){3}-[A-Fa-f0-9]{12}', identifier) is not None)
+                          key = identifier.upper()
+                          need(key not in rows and len(rows) < 4096)
+                          rows[key] = (runtime, entry)
+                  return rows
+              owned = None
+              boot_attempted = False
+              launch_attempted = False
+              observation = None
+              stage = 'initial-catalog'
+              def verify(cleanup=False):
+                  rows = catalog(cleanup)
+                  need(owned is not None and owned in rows)
+                  runtime, row = rows[owned]
+                  need(runtime == plan['runtimeIdentifier'] and row['name'] == plan['name'] and
+                       row['deviceTypeIdentifier'] == plan['deviceTypeIdentifier'])
+                  return row
+              def operation(command, *arguments, cleanup=False):
+                  row = verify(cleanup)
+                  if not cleanup:
+                      need(row['isAvailable'] is True)
+                      if command == 'boot':
+                          need(row['state'] == 'Shutdown')
+                      elif command in ('install', 'launch'):
+                          need(row['state'] == 'Booted')
+                  return call((command, owned, *arguments), cleanup)
+              try:
+                  before = catalog()
+                  need(not any(row['name'] == plan['name'] for _, row in before.values()))
+                  stage = 'create'
+                  result['creationAttempted'] = True
+                  raw = call(('create', plan['name'], plan['deviceTypeIdentifier'], plan['runtimeIdentifier']))
+                  identifier = raw.decode('ascii').strip().upper()
+                  need(re.fullmatch(r'[A-F0-9]{8}(?:-[A-F0-9]{4}){3}-[A-F0-9]{12}', identifier) is not None)
+                  need(identifier not in before)
+                  stage = 'created-identity'
+                  after = catalog()
+                  need(identifier in after)
+                  runtime, row = after[identifier]
+                  need(runtime == plan['runtimeIdentifier'] and row['name'] == plan['name'] and
+                       row['deviceTypeIdentifier'] == plan['deviceTypeIdentifier'] and
+                       row['state'] == 'Shutdown' and row['isAvailable'] is True)
+                  owned = identifier
+                  result['ownershipEstablished'] = True
+                  result['trace'].append('created-identity')
+                  stage = 'boot'
+                  boot_attempted = True
+                  operation('boot')
+                  stage = 'boot-ready'
+                  operation('bootstatus', '-b')
+                  need(verify()['state'] == 'Booted')
+                  stage = 'install'
+                  operation('install', plan['appPath'])
+                  stage = 'launch'
+                  launch_attempted = True
+                  raw = operation('launch', plan['bundleIdentifier'])
+                  match = re.fullmatch(re.escape(plan['bundleIdentifier']) + r': ([1-9][0-9]{0,9})\s*', raw.decode('ascii'))
+                  need(match is not None and int(match[1]) <= 2147483647)
+                  stage = 'observe'
+                  need(verify()['state'] == 'Booted')
+                  current = tick()
+                  need(current < deadline)
+                  # Adapter owns environment binding, installed-code/readback, PID/RSS checks,
+                  # bounded waiting and original retention; this core cannot invent those facts.
+                  observation_deadline = min(deadline, current+limits['observationSeconds'])
+                  observation = observe(owned, int(match[1]), deadline=observation_deadline,
+                                        output_limit=limits['receiptBytes'])
+                  need(type(observation) is bytes and 0 < len(observation) <= limits['receiptBytes'])
+                  result['observationRetained'] = True
+                  result['observationSHA256'] = hashlib.sha256(observation).hexdigest()
+                  result['observationBytes'] = len(observation)
+                  need(tick() < observation_deadline)
+              except Exception:
+                  result['primaryFailure'] = stage  # No exception payload, args, paths, UUIDs or device names.
+              finally:
+                  result['creationUncertain'] = result['creationAttempted'] and not result['ownershipEstablished']
+                  if owned is not None:
+                      try:
+                          deadline = tick() + limits['cleanupSeconds']
+                      except Exception:
+                          result['cleanupFailures'].append('cleanup-clock')
+                      for command, arguments, required in (
+                              ('terminate', (plan['bundleIdentifier'],), launch_attempted),
+                              ('shutdown', (), boot_attempted), ('delete', (), True)):
+                          if required:
+                              try:
+                                  operation(command, *arguments, cleanup=True)
+                                  result['trace'].append(command)
+                              except Exception:
+                                  result['cleanupFailures'].append(command)
+                      try:
+                          need(owned not in catalog(cleanup=True))
+                          result['cleanupAbsenceObserved'] = True
+                      except Exception:
+                          result['cleanupFailures'].append('absence-readback')
+              result['activeCommands'] = counts[0]
+              result['cleanupCommands'] = counts[1]
+              if result['primaryFailure'] is None and not result['cleanupFailures'] and result['observationRetained']:
+                  result['status'] = 'observed-transaction-only'
+              return result, observation if result['observationRetained'] else None
+
+
           def main():
               global ROWS, USED
               need(os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch' and

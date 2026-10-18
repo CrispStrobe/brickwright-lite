@@ -120,6 +120,18 @@ Next actions and completion criteria:
    cleanup and actual app observation are not qualified. No device is created,
    booted, installed or launched. This is the admission stage of the controller.
 
+   An unwired owned-device transaction core now defines create/identity/boot/ready/
+   install/launch/observe/cleanup sequencing. It refuses previously existing UUIDs,
+   rechecks the created device identity before every targeted operation, and attempts
+   later cleanup after an earlier cleanup failure. Primary and cleanup failures stay
+   separate; late bounded observations remain partial. Command/observation deadlines,
+   counts and byte caps are checked at adapter returns, with a separate cleanup
+   budget. These cooperative checks cannot interrupt a blocking adapter or enforce
+   app memory use. Supplied admission fields are not authenticated capabilities.
+   There is no workflow caller, launch input or path from runtime admission into
+   this core. Qualify its bounded adapters, device/runtime compatibility, resource
+   monitoring and installed-code/receipt bindings before enabling actual execution.
+
    Next, independently join the complete retained source/web/configuration/toolchain/
    executable and official job/artifact identities. Distinguish referenced codegen
    outputs from stale cache candidates without guessing Rust map layout. Toolchain
