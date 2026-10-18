@@ -477,6 +477,11 @@ try {
     const wheel = (entry, port) => entry.joints[jointOf.get(port)].angle * DEG;
     report.scratchWheels = Object.fromEntries(['A', 'B'].map(port => [port, +(wheel(track.at(-1), port) - wheel(track[0], port)).toFixed(2)]));
     report.scratchTrace = track.filter((_, i) => i % 3 === 0).map(e => ({t: Math.round(e.t), A: +(wheel(e, 'A') - wheel(track[0], 'A')).toFixed(1), B: +(wheel(e, 'B') - wheel(track[0], 'B')).toFixed(1)}));
+    // The Scratch route's own steady wheel speed over the same middle half: a distance ratio
+    // compares two controllers AND two readings of the program's speed, so print both.
+    const scratchMid = track.filter(e => e.t - track[0].t >= DRIVE_S * 250 && e.t - track[0].t <= DRIVE_S * 750);
+    report.scratchSteadySpeedDps = +((wheel(scratchMid.at(-1), 'B') - wheel(scratchMid[0], 'B')) / ((scratchMid.at(-1).t - scratchMid[0].t) / 1000)).toFixed(1);
+    console.log(`steady wheel speed: firmware ${report.steadySpeedDps} °/s (commanded ${PROGRAM.instructions[1][2]}), Scratch route ${report.scratchSteadySpeedDps} °/s`);
     const perDeg = (mm, w) => mm / ((Math.abs(w.A) + Math.abs(w.B)) / 2);
     report.mmPerWheelDegree = {firmware: +perDeg(report.firmwareDistanceMm, report.wheels).toFixed(4), scratch: +perDeg(report.scratchDistanceMm, report.scratchWheels).toFixed(4)};
     console.log(`Scratch route: wheels A ${report.scratchWheels.A}°, B ${report.scratchWheels.B}°; mm per wheel degree firmware ${report.mmPerWheelDegree.firmware}, Scratch ${report.mmPerWheelDegree.scratch}`);

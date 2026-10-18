@@ -762,6 +762,85 @@ expects −1/1).
   `run` and before `lockstep.begin` (as the headless script does), START via
   `program.control.submit` on Run. Until then a manual desktop run can only show the route
   opening and lockstep stepping.
+  **Done in §7.4.**
+
+### 7.4 The GUI route runs the user's program (branch `lane/simlab-fwroute-20261018`)
+
+**The route as built** (`routes/renode-lockstep/route.js`, `program.js`; the pane in
+`sim-lab-pane.jsx`):
+
+| Pane | Broker operations |
+|---|---|
+| route opens (model loads, or route chosen) | compile the Code tab's blocks (`compileRouteProgram` → the SPIKE arena's `compileFirmwareProgram`) → `session.start` → `state.read` (lockstep/v1?) → `run` → `program.packet` BEGIN, CHUNK…, COMMIT (the arena's `NuttXProgramClient`, `start: false`, guest free-running) → `lockstep.begin` |
+| Run | compile again; same instructions → `program.control.submit` START; changed → the route reopens with the new program (packets cannot cross during lockstep), then START |
+| (clock) | `lockstep.step` per 5 ms; every snapshot's `lifecycle.nuttxProgram` / `nuttxProgramReply` updates the route's program state |
+| Pause | STOP; the clock keeps running until the firmware has taken it (status "Stopping…"), so the robot brakes in the physics; then paused |
+| Run again | START from the beginning; after a START (program completed) it goes out as STOP + START: the mailbox takes one request at a time and a reply carries only its operation |
+| Reset / route change / close | STOP (if running or a START is in line) → `lockstep.end` → `session.close` |
+
+**Unsupported blocks**: the compiler's refusals are `FirmwareProgramError`s with a `code`, the
+block as the pseudocode line it reads as (`move forward 10 cm`), its id and opcode. The route
+still opens without a program (the robot stands; nothing is uploaded) and the pane says which
+block and why, in English or German (`sim-lab-firmware-text.js`, one sentence per code; the
+unit test fails on a code without both). Run re-compiles and says it again — never a silent
+stand-still. Refused controls (`the firmware refused START (−22)`) and a program FAULT are shown too.
+
+**Compiler / ABI findings.**
+
+- `move forward/backward N seconds`: refused only because the movement block's `DIRECTION`
+  is the menu word (`forward`/`backward`) and the compiler read it as the motor blocks' ±1.
+  Fixed in the compiler; the form is ops 1 + 1 + 2 + stop, byte-identical to
+  `start tank` + `wait` + `stop movement`. No ABI change.
+- **Two motors by an amount (`move forward 360 degrees`, `… cm`, `… rotations`, a block's
+  `run motor AB … degrees`) has no form in ABI v1, and the compiler keeps refusing it.**
+  Issue-ready (Firmware, `CrispStrobe/brickwright-spike-prime-fw`, `apps/hubprogram`):
+  *ABI v1 has one position instruction, op 6 `{port, degrees, speed}`, and `program.c`
+  (`bw_program_tick`, case 6, l. 152–156) makes it blocking: it sets `p->moving` and the
+  interpreter returns until `io.done(port)`, so two op-6 rows move the wheels one after the
+  other (measured in §7.2: B 365°, A 656°, the base curved). The device layer is already
+  non-blocking (`device.c position()`, l. 112–123, only arms `bw_motor_position`), and no
+  predicate can wait on a motor (ops 3/5 read sensor selectors only), so the form cannot be
+  composed from v1 either; a time-based approximation (speed × seconds) would not stop at
+  the angle the program asked for. Proposal (ABI v2, additive): op 7 = op 6 without waiting
+  (same `a, b, c` bounds), op 8 `{mask}` = wait until every motor in the port bitmask is done
+  (`io.done`, as `ending` already loops over `p->owned`). Validators to extend together:
+  `program.c bw_program_validate`, `upload-protocol.js encodeInstructions`,
+  `arena_inputs.rs valid_program`, `arena-inputs.js validArenaProgram`; then the compiler
+  emits `[7, A, −deg, v], [7, B, +deg, v], [8, 0b11, 0, 0]` for a movement pair. (The fake
+  emulator's op 7 in `test/bw-sim-renode-lockstep-fake.mjs` is exactly that op, fake-only.)*
+
+**Real Renode, through the route's own code path** (`npm run verify:sim-lab-renode`, Mac,
+stock Renode 1.16.1, restaged package of §7.1). The headless script now opens
+`openLockstepRoute` with its state-service transport (`manageSession: false`: it launched
+Renode itself — the only difference from the pane), with the program compiled by
+`compileRouteProgram` from a VM block tree built by the converter (SB3Creator), and drives
+START/STOP through the route's `LockstepProgram`:
+
+Two programs, the same compiled instructions `[[1,0,−300,0],[1,1,300,0],[2,2000,0,0],[1,0,0,0],[1,1,0,0],[0,0,0,0]]`
+(default: `start tank 27 27` / `wait 2 seconds` / `stop movement`; `BW_SIMLAB_FORM=move`:
+`set movement speed 27` / `move forward 2 seconds`, newly compilable):
+
+| Measure | tank + wait | move forward … seconds |
+|---|---|---|
+| Route sequence (both) | `state.read → program.packet ×12 → lockstep.begin → program.control.submit (START) → lockstep.step ×486 → STOP → step → START → step ×62 → STOP → step ×62 → lockstep.end` | same |
+| Upload (12 packets: BEGIN, 10 CHUNK, COMMIT) + lockstep.begin | 0.80–0.89 s wall; program READY | same |
+| Lockstep, 486 steps (2.43 s simulated) | 17.2 s wall, RTF 0.141; per step median 34.9 ms, p90 38 ms | 18.8 s, RTF 0.129 |
+| **Emulator encoder vs physics, every step** | **≤ 0.160°** ✓ (≤ 1°) | ≤ 0.160° ✓ |
+| START answered in a step snapshot; program | RUNNING in the first step, COMPLETE at ≈ 2.05 s | same |
+| Run again + Pause (STOP+START, then STOP) | RUNNING after 3 steps, STOPPED 1 step after Pause; both bridges braking (mean drive 0, 5/5 braking ticks) | same |
+| Wheels A/B; steady speed | −563.4° / +563.4°; 290.2 °/s against 300 commanded | −563.3° / +563.3°; 290.1 °/s |
+| mm per wheel degree, firmware vs Scratch | 0.4884 vs 0.4890 ✓ (one physics) | same |
+| Scratch route (same text, virtual hub) | wheels ±610.7°, 299.1 °/s | wheels ±540.3°, 299.1 °/s |
+| **Distance firmware vs Scratch route** | **275.1 vs 298.6 mm, ratio 0.922 ✗** (check stays at 5 %) | 275.1 vs 264.2 mm, ratio 1.041 ✓ |
+
+The tank program's 7.8 % shortfall is the firmware's speed loop of §7.2 (effectively P-only,
+plus the 2000 °/s² ramp), unchanged by this lane and expected until the firmware fix lands;
+the script keeps failing on it rather than widening its tolerance. **The `move` form's pass is
+not a fixed firmware**: the firmware runs the identical instructions (275.1 mm both times);
+the Scratch route's own `move forward 2 seconds` drives ≈ 0.24 s shorter than its
+`start tank` + `wait 2` + `stop movement` (540° vs 611° at the same 299 °/s), so two
+discrepancies of opposite sign meet. That Scratch-route difference (the virtual hub's
+motor-pair `move … seconds` against `wait`) is outside this lane and not investigated here.
 
 ---
 
