@@ -21,7 +21,7 @@ export {fetchLDrawClosure, LDRAW_BASE} from './ldraw/ldraw-fetch.js';
 export {connectVirtualSpike} from '../virtual-hub/connect-virtual-spike.js';
 export {createSimView3D, WebGLUnavailableError, webglAvailable} from './view/sim-view3d.js';
 export {openFirmwareRoute, desktopRenodeCapabilities, lockstepAvailable, firmwareRouteReady, compileRouteProgram} from './routes/renode-lockstep/index.js';
-export {createEditor} from './editor/editor-state.js';
+export {createEditor, partsByIdOf} from './editor/editor-state.js';
 export {colorPalette, rotationToDegrees, degreesToRotation} from './editor/editor-parity.js';
 export {selectionPivot} from './editor/transform-math.js';
 export {createEditorView3D, DEFAULT_COLOR} from './editor/editor-view3d.js';

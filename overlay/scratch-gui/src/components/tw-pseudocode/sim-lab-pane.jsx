@@ -547,7 +547,8 @@ class SimLabPane extends React.Component {
     /** A placed part's name in the learner's language, from its id in the model on show. */
     partNameById (id) {
         const model = this.editor ? this.editor.model : this.session?.model;
-        const placed = model && model.parts.find(p => p.id === id);
+        // The editor's model is frozen: its id map is built once (lib partsByIdOf), not a scan per issue.
+        const placed = model && (Object.isFrozen(model.parts) ? this.lib.partsByIdOf(model).get(id) : model.parts.find(p => p.id === id));
         return placed ? this.partName(placed.part) : fillText(this.itext.part, {id});
     }
 
@@ -1235,7 +1236,8 @@ class SimLabPane extends React.Component {
         const editor = this.editor;
         const view = this.editView;
         const parts = editor ? editor.model.parts : [];
-        const selection = this.state.selection.map(id => parts.find(p => p.id === id)).filter(Boolean);
+        const byId = editor ? this.lib.partsByIdOf(editor.model) : new Map();
+        const selection = this.state.selection.map(id => byId.get(id)).filter(Boolean);
         const sel = selection.length === 1 ? selection[0] : null;
         const meta = sel ? this.lib.CATALOG.get(sel.part) : null;
         const portable = meta && this.lib.isPortPart(meta);
