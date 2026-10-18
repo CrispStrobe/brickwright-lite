@@ -612,7 +612,12 @@ test('standalone original reader: complete manufactured packet and coherent nega
 });
 
 const probe=fs.readFileSync(new URL('../scripts/verify-i80386-local-hdd-gui.mjs',import.meta.url),'utf8');
-const extract=name=>probe.slice(probe.indexOf(`function ${name} (`),probe.indexOf('\n}',probe.indexOf(`function ${name} (`))+2);
+const extract=name=>{
+    const declaration=probe.indexOf(`function ${name} (`);
+    assert.ok(declaration>=0,`probe declaration ${name}`);
+    const start=probe.slice(declaration-6,declaration)==='async ' ? declaration-6 : declaration;
+    return probe.slice(start,probe.indexOf('\n}',declaration)+2);
+};
 const context=vm.createContext({assert,Buffer});
 vm.runInContext(`${extract('forwardBootDisk')}\n${extract('forwardStepTransition')}`,context);
 test('authored forward boot is finite and preserves full-width register setup',()=>{
@@ -632,4 +637,106 @@ test('selected browser path reaches both new Chromium launch descriptors',()=>{
     assert.equal((probe.match(/chromium\.launch\(\{headless:true,executablePath\}\)/g)||[]).length,1);
     assert.equal((probe.match(/await admittedBrowser\(/g)||[]).length,2);
     assert.match(probe,/PROOF_BROWSER_SHA256/);assert.match(probe,/sameAsOriginal:await second.evaluate/);
+});
+
+// The product handlers run verbatim against delayed browser File/prompt and
+// React commit boundaries. No target, session or guest behavior is simulated.
+const manager=fs.readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/machine-manager.jsx',import.meta.url),'utf8');
+const drawer=fs.readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/debug-drawer.jsx',import.meta.url),'utf8');
+const between=(source,start,end)=>{
+    const from=source.indexOf(start);assert.ok(from>=0);
+    const to=source.indexOf(end,from);assert.ok(to>from);return source.slice(from,to);
+};
+const deferred=()=>{let resolve;const promise=new Promise(yes=>{resolve=yes;});return {promise,resolve};};
+const tick=()=>new Promise(resolve=>setImmediate(resolve));
+
+test('forward Boot waits for actual MachineManager asynchronous conf state, without blocking File selection',async()=>{
+    const inputHandler=between(manager,'const file = e.target.files?.[0];','}} />');
+    let rendered='',pending='',bootText=null,changed,release;
+    const scope=vm.createContext({assert,Buffer,setText:value=>{pending=value;},document:{querySelector:()=>({value:rendered})}});
+    vm.runInContext(`const actualConfChange=async e=>{${inputHandler}};${extract('forwardLocalMedia')}`,scope);
+    const page={
+        getByTestId:name=>({
+            setInputFiles:async input=>{
+                if(name==='bw-mm-local-conf'){
+                    release=deferred();changed=scope.actualChange({target:{files:[{text:()=>release.promise}]}});
+                    // A real input's dispatched event does not await its async listener.
+                    assert.equal(rendered,'');
+                } else assert.equal(name,'bw-mm-local-disk');
+            },
+            click:async()=>{assert.equal(name,'bw-mm-local-run');bootText=rendered;},
+            waitFor:async()=>{assert.equal(name,'bw-machine-manager');}
+        }),
+        waitForFunction:async(predicate,expected,options)=>{
+            assert.equal(options.timeout,10000);assert.equal(bootText,null);
+            assert.equal(vm.runInContext('('+predicate.toString()+')(expected)',Object.assign(scope,{expected})),false);
+            release.resolve(expected);await changed;
+            assert.equal(rendered,'');assert.equal(bootText,null);rendered=pending;
+            assert.equal(vm.runInContext('('+predicate.toString()+')(expected)',scope),true);
+        }
+    };
+    scope.actualChange=vm.runInContext('actualConfChange',scope);scope.page=page;
+    await vm.runInContext('forwardLocalMedia(page,Buffer.alloc(34816))',scope);
+    assert.match(bootText,/imgmount c "forward-owned.img" -t hdd -size 512,17,4,1/);
+    // The pre-fix ordering demonstrably booted while the actual handler was pending.
+    rendered='';pending='';bootText=null;
+    await page.getByTestId('bw-mm-local-conf').setInputFiles({});await page.getByTestId('bw-mm-local-run').click();
+    assert.equal(bootText,'');release.resolve('eventually-read');await changed;assert.equal(pending,'eventually-read');
+});
+
+test('physical memory waits for actual async jump and rendered address, not the preexisting read-only label',async()=>{
+    const {memoryJump,memorySessionCurrent}=await import('../overlay/scratch-gui/src/lib/bw-debug/memory-view.js');
+    const jumpHandler=between(drawer,"const raw = await promptAsync('Memory address (hex)', address(start));",'}}>Go to address');
+    const answer=deferred(),committed=deferred();let listener,renderedPage=0,pendingPage,handler,done=false;
+    const capabilities={},runner={},session={runner,capabilities,spacesDeclared:true};
+    const scope=vm.createContext({assert,Promise,promptAsync:()=>answer.promise,address:()=> '00000000',start:0,
+        memorySessionCurrent,session,current:()=>({...session,mounted:true}),memoryJump,
+        spec:{id:'mem',addressMin:0,addressMax:0xffffffff,maxReadBytes:1048576},
+        component:{setState:state=>{pendingPage=state.page;}}});
+    vm.runInContext(`const actualJump=async function(){${jumpHandler}};${extract('forwardMemoryPage')}`,scope);
+    const panel={getByRole:()=>({click:async()=>{
+        handler=vm.runInContext('actualJump.call(component)',scope);
+        listener({type:()=> 'prompt',message:()=> 'Memory address (hex)',accept:async value=>{assert.equal(value,'7C00');answer.resolve(value);}});
+    }}),locator:selector=>({waitFor:async options=>{
+        assert.equal(selector,'[title="00007C00 — read-only"]');assert.equal(options.timeout,10000);
+        await handler;assert.equal(pendingPage,0x7c00/128);assert.equal(renderedPage,0);
+        // The old Read-only label has remained visible, while count() for the
+        // requested cell would still be zero until this separate commit.
+        await committed.promise;assert.equal(renderedPage,pendingPage);
+    }})};
+    scope.page={waitForEvent:async name=>{assert.equal(name,'dialog');return new Promise(resolve=>{listener=resolve;});}};scope.panel=panel;
+    const operation=vm.runInContext('forwardMemoryPage(page,panel)',scope).then(()=>{done=true;});
+    await tick();assert.equal(done,false);assert.equal(renderedPage,0);assert.equal(pendingPage,248);
+    renderedPage=pendingPage;committed.resolve();await operation;assert.equal(done,true);
+});
+
+test('drawer and register readiness follow actual React toggle and full-width formatting before inspection',async()=>{
+    const toggle=between(drawer,'toggle () {','\n\n    /**');
+    let pendingOpen,open=false,opened=false,registersReady=false,rendered='EAX 12345677 EDI 89ABCDEF';
+    const drawerCommit=deferred(),registerCommit=deferred();
+    const scope=vm.createContext({assert,component:{state:{open:false},setState:update=>{pendingOpen=update({open:false}).open;}},
+        document:{querySelector:()=>({innerText:rendered})}});
+    vm.runInContext(`const actualToggle={${toggle}};${extract('forwardOpenDrawer')}\n${extract('forwardRegistersReady')}`,scope);
+    const panel={getByRole:(role,options)=>({
+        click:async()=>{assert.match(String(options.name),/Under the hood/);vm.runInContext('actualToggle.toggle.call(component)',scope);},
+        waitFor:async settings=>{
+            assert.equal(options.name,'Step instruction');assert.equal(settings.timeout,10000);
+            assert.equal(pendingOpen,true);assert.equal(open,false);await drawerCommit.promise;assert.equal(open,true);
+        }
+    })};
+    scope.panel=panel;
+    const opening=vm.runInContext('forwardOpenDrawer(panel)',scope).then(()=>{opened=true;});
+    await tick();assert.equal(opened,false);open=pendingOpen;drawerCommit.resolve();await opening;
+    const formatExpression=between(drawer,"{typeof v === 'boolean' ?",'\n                            </span>').trim();
+    const format=new Function('v','k','hex8','hex16','WIDE','return '+formatExpression.slice(1,-1));
+    const eax=format(0x12345678,'eax');const edi=format(0x89abcdef,'edi');
+    assert.equal(eax,'12345678');assert.equal(edi,'89ABCDEF');
+    scope.page={waitForFunction:async(predicate,expected,options)=>{
+        assert.equal(expected,0x12345678);assert.equal(options.timeout,10000);scope.expected=expected;
+        const check=()=>vm.runInContext('('+predicate.toString()+')(expected)',scope);
+        assert.equal(check(),false);await registerCommit.promise;
+        rendered='EAX '+eax+' EDI '+edi;assert.equal(check(),true);
+    }};
+    const reading=vm.runInContext('forwardRegistersReady(page,0x12345678)',scope).then(()=>{registersReady=true;});
+    await tick();assert.equal(registersReady,false);registerCommit.resolve();await reading;
 });

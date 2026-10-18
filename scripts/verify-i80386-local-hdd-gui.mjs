@@ -515,6 +515,39 @@ function forwardReadOnlyState () {
         state:target.state(), phase:document.querySelector('[data-debug-panel]')?.getAttribute('data-debug-phase'),
         sameTarget:target === window.__forwardOriginalTarget};
 }
+async function forwardLocalMedia (page, disk) {
+    const configuration='[cpu]\ncputype=auto\n[autoexec]\nimgmount c "forward-owned.img" -t hdd -size 512,17,4,1\n';
+    await page.getByTestId('bw-mm-local-disk').setInputFiles({name:'forward-owned.img',mimeType:'application/octet-stream',buffer:disk});
+    await page.getByTestId('bw-mm-local-conf').setInputFiles({name:'forward-owned.conf',mimeType:'text/plain',buffer:Buffer.from(configuration)});
+    // Input change dispatch does not await File.text(). The import textarea
+    // renders the same React text state consumed by MachineManager.runLocal.
+    await page.waitForFunction(expected => document.querySelector('[data-testid="bw-mm-import-text"]')?.value===expected,
+        configuration,{timeout:10000});
+    await page.getByTestId('bw-mm-local-run').click();
+    await page.getByTestId('bw-machine-manager').waitFor({state:'detached'});
+}
+async function forwardMemoryPage (page, panel) {
+    // Browser promptAsync awaits the native prompt; accepting it still precedes
+    // React's memory-page commit. The read-only label exists on the old page.
+    const answered=page.waitForEvent('dialog',{timeout:10000}).then(async dialog => {
+        assert.equal(dialog.type(),'prompt');assert.equal(dialog.message(),'Memory address (hex)');
+        await dialog.accept('7C00');
+    });
+    await Promise.all([answered,panel.getByRole('button',{name:'Go to address',exact:true}).click()]);
+    await panel.locator('[title="00007C00 — read-only"]').waitFor({state:'visible',timeout:10000});
+}
+async function forwardOpenDrawer (panel) {
+    await panel.getByRole('button',{name:/Under the hood/}).click();
+    // The toggle's React setState does not return its render completion.
+    await panel.getByRole('button',{name:'Step instruction',exact:true}).waitFor({state:'visible',timeout:10000});
+}
+async function forwardRegistersReady (page, eax) {
+    await page.waitForFunction(expected => {
+        const rendered=document.querySelector('[data-debug-panel]')?.innerText || '';
+        return new RegExp('EAX\\s+'+expected.toString(16).toUpperCase().padStart(8,'0')).test(rendered) &&
+            /EDI\s+89ABCDEF/.test(rendered);
+    },eax,{timeout:10000});
+}
 async function runForwardGui () {
     assert.ok(process.env.PROOF_ADMISSION && process.env.PROOF_OUTPUT,'reviewed manifest and fresh output required');
     const fs = await import('node:fs'), path = await import('node:path');
@@ -560,10 +593,7 @@ async function runForwardGui () {
         await page.getByTestId('bw-device-select').selectOption('__manage__');
         await page.getByTestId('bw-machine-manager').waitFor();
         const disk=forwardBootDisk();save('authored-boot.sha256',Buffer.from(persistenceSha(disk)+'\n'));
-        await page.getByTestId('bw-mm-local-disk').setInputFiles({name:'forward-owned.img',mimeType:'application/octet-stream',buffer:disk});
-        await page.getByTestId('bw-mm-local-conf').setInputFiles({name:'forward-owned.conf',mimeType:'text/plain',
-            buffer:Buffer.from('[cpu]\ncputype=auto\n[autoexec]\nimgmount c "forward-owned.img" -t hdd -size 512,17,4,1\n')});
-        await page.getByTestId('bw-mm-local-run').click();await page.getByTestId('bw-machine-manager').waitFor({state:'detached'});
+        await forwardLocalMedia(page,disk);
         await page.waitForFunction(() => {
             const r=window.__benchTarget?.regs?.();return r?.edi===0x89abcdef && [0x7c11,0x7c13].includes(r.pc);
         },undefined,{timeout:30000});
@@ -579,7 +609,7 @@ async function runForwardGui () {
         await panel.getByRole('button',{name:/Pause|⏸/}).click();
         await page.locator('[data-debug-panel][data-debug-phase="paused"]').waitFor();
         const paused=await snap('pause');
-        await panel.getByRole('button',{name:/Under the hood/}).click();
+        await forwardOpenDrawer(panel);
         // Normalize only through the real single-instruction button so the
         // future breakpoint is visible in the existing forward-only listing.
         const alignStep=paused.regs.pc===0x7c13;
@@ -603,13 +633,13 @@ async function runForwardGui () {
         const hit=await snap('breakpoint-hit',{breakpointAddress:0x7c13});
         await panel.getByRole('button',{name:'Step instruction',exact:true}).click();const one=await snap('step-1');forwardStepTransition(hit,one);
         await panel.getByRole('button',{name:'Step instruction',exact:true}).click();const two=await snap('step-2');forwardStepTransition(one,two);
+        await forwardRegistersReady(page,two.regs.eax);
         const rendered=await panel.innerText();
         assert.match(rendered,new RegExp(`EAX\\s+${two.regs.eax.toString(16).toUpperCase().padStart(8,'0')}`));
         assert.match(rendered,/EDI\s+89ABCDEF/);
         const memorySelect=panel.locator('select').filter({has:page.locator('option[value="mem"]')});
         assert.equal(await memorySelect.count(),1);await memorySelect.selectOption('mem');
-        page.once('dialog',dialog => dialog.accept('7C00'));
-        await panel.getByRole('button',{name:'Go to address',exact:true}).click();
+        await forwardMemoryPage(page,panel);
         await panel.getByText('Read-only memory',{exact:true}).waitFor();
         const cells=[];
         for(let i=0;i<21;i++) {
