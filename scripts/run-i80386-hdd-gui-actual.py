@@ -163,13 +163,61 @@ def runtime_alias_policy(runtime):
     return aliases
 
 
+PYTHON_EXECUTABLE = '/usr/bin/python3.12'
+PYTHON_CACHE = '/home/runner/work/_temp/bw-gui-hdd-python-cache'
+PYTHON_OPTIONS = [PYTHON_EXECUTABLE, '-I', '-S', '-B', '-X', 'pycache_prefix='+PYTHON_CACHE]
+PYTHON_PATH = ['/usr/lib/python312.zip', '/usr/lib/python3.12', '/usr/lib/python3.12/lib-dynload']
+STARTUP_STEPS = ('Install empty Python cache prefix and refuse unreviewed actual source',
+ 'Install externally admitted request and refuse runtime/source drift',
+ 'One official frontend acquisition and two serial genuine UI scenarios')
+
+
+def startup_policy():
+    # This selects startup mechanics, not a complete imported/native runtime graph.
+    return {'schema':'bw.gui-hdd.python-startup.v1','executable':PYTHON_EXECUTABLE,
+      'options':PYTHON_OPTIONS[1:],'path':PYTHON_PATH,'cachePrefix':PYTHON_CACHE,
+      'sourceImportClosureQualified':False,'nativeImportClosureQualified':False}
+
+
+def startup_installation(raw):
+    need(type(raw) is bytes and len(raw)<=4096,'bounded outside Python startup original')
+    lines=raw.decode('ascii').splitlines()
+    need(len(lines)==5 and raw==('\n'.join(lines)+'\n').encode() and lines[:4]==[
+      'bw.gui-hdd.python-startup-install.v1',PYTHON_CACHE,'created-exclusive','empty-before-entry'],
+      'fixed outside Python exclusive installation original')
+    tokens=lines[4].split(' ')
+    need(len(tokens)==8 and all(re.fullmatch('[0-9]+',x) for i,x in enumerate(tokens) if i!=2) and
+         re.fullmatch('[0-9a-f]+',tokens[2]),'canonical stat installation fields')
+    values=[int(x,16 if i==2 else 10) for i,x in enumerate(tokens)]
+    need(tokens==[format(x,'x') if i==2 else str(x) for i,x in enumerate(values)],'canonical installation stat numbers')
+    need(values[2]==stat.S_IFDIR|0o555 and values[1]>0 and all(0<=x<2**63 for x in values),
+         'fresh readonly directory installation identity')
+    return dict(zip(('dev','ino','mode','uid','gid','nlink','size','mtimeSeconds'),values))
+
+
+def validate_startup(snapshot, installed, mode, arguments):
+    fields(snapshot,'schema options arguments flags dontWriteBytecode path cachePrefix xoptions prefix zipAbsent')
+    need(snapshot['schema']=='bw.gui-hdd.python-startup-observation.v1' and snapshot['options']==PYTHON_OPTIONS and
+         snapshot['arguments']==['scripts/run-i80386-hdd-gui-actual.py',mode]+arguments and
+         encode(snapshot['flags'])==encode({'isolated':1,'no_site':1,'no_user_site':1,'dont_write_bytecode':1,'ignore_environment':1,'safe_path':True,'optimize':0}) and
+         snapshot['dontWriteBytecode'] is True and snapshot['path']==PYTHON_PATH and
+         snapshot['cachePrefix']==PYTHON_CACHE and snapshot['xoptions']=={'pycache_prefix':PYTHON_CACHE} and
+         snapshot['zipAbsent'] is True,'fixed isolated no-site no-bytecode startup observations')
+    prefix=snapshot['prefix'];fields(prefix,'dev ino mode uid gid nlink size mtimeNs empty')
+    for key in ('dev','ino','mode','uid','gid','nlink','size','mtimeNs'):integer(prefix[key],0,2**63-1)
+    need(prefix['empty'] is True and all(prefix[key]==installed[key] for key in installed if key!='mtimeSeconds') and
+         prefix['mtimeNs']//1000000000==installed['mtimeSeconds'],'outside installation/empty held prefix identity join')
+    return snapshot
+
+
 def parse_request(raw, expected):
     digest(expected); need(type(raw) is bytes and 0 < len(raw) <= JSON_CAP and sha(raw) == expected,
                            'independently selected request digest')
     request = decode(raw)
-    fields(request, 'schema repository pullRequest source build criticalFiles installedFiles runtime inventoryAdmission inputs')
-    need(encode(request) == raw and request['schema'] == 'bw.gui-hdd.actual-request.v2' and
+    fields(request, 'schema repository pullRequest source build criticalFiles installedFiles runtime inventoryAdmission inputs pythonStartup')
+    need(encode(request) == raw and request['schema'] == 'bw.gui-hdd.actual-request.v3' and
          request['repository'] == REPOSITORY, 'canonical owned approval request')
+    need(encode(request['pythonStartup'])==encode(startup_policy()) and request['runtime']['python']==PYTHON_EXECUTABLE,'explicit v3 startup policy and selected CPython')
     integer(request['pullRequest'], 1, 2**31-1)
     source = request['source']; fields(source, 'head tree files'); digest(source['head'], 40); digest(source['tree'], 40)
     rows(source['files']); need(set(source['files']) == SOURCE, 'exact tracked source closure')
@@ -596,6 +644,36 @@ def directory_identity(path):
             if first is None:raise
 
 
+def empty_python_prefix():
+    path=Path(PYTHON_CACHE)
+    need(str(path.resolve(strict=True))==PYTHON_CACHE,'canonical startup prefix and ancestors')
+    before=os.lstat(path);fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK|os.O_DIRECTORY);first=None
+    try:
+        held=os.fstat(fd);need(identity(before)==identity(held) and held.st_mode==stat.S_IFDIR|0o555,'held readonly startup prefix')
+        with os.scandir(fd) as entries:need(next(entries,None) is None,'startup cache prefix must remain empty')
+        need(identity(os.fstat(fd))==identity(held)==identity(os.lstat(path)),'empty prefix readback identity')
+        return {'dev':held.st_dev,'ino':held.st_ino,'mode':held.st_mode,'uid':held.st_uid,'gid':held.st_gid,
+          'nlink':held.st_nlink,'size':held.st_size,'mtimeNs':held.st_mtime_ns,'empty':True}
+    except BaseException as error:first=error;raise
+    finally:
+        try:os.close(fd)
+        except BaseException:
+            if first is None:raise
+
+
+def observe_python_startup(root,mode,arguments):
+    raw=regular(Path(root)/'gui-setup/python-startup.original.txt',4096);installed=startup_installation(raw)
+    snapshot={'schema':'bw.gui-hdd.python-startup-observation.v1','options':list(sys.orig_argv[:6]),
+      'arguments':list(sys.orig_argv[6:]),'flags':{key:getattr(sys.flags,key) for key in
+       ('isolated','no_site','no_user_site','dont_write_bytecode','ignore_environment','safe_path','optimize')},
+      'dontWriteBytecode':sys.dont_write_bytecode,'path':list(sys.path),'cachePrefix':sys.pycache_prefix,
+      'xoptions':dict(sys._xoptions),'prefix':empty_python_prefix(),'zipAbsent':not os.path.lexists(PYTHON_PATH[0])}
+    need(sys.executable==PYTHON_EXECUTABLE and str(Path('/proc/self/exe').resolve(strict=True))==PYTHON_EXECUTABLE,
+         'actual selected startup executable')
+    validate_startup(snapshot,installed,mode,arguments)
+    return raw,snapshot
+
+
 def observe_runtime(request):
     runtime = request['runtime']; aliases=runtime_alias_policy(runtime)
     facts = {'files': {}, 'aliases': {},'directoryAliases':{},'directoryIdentities':{},'identities':{}}
@@ -647,6 +725,10 @@ def execute(request_raw, expected, root, output_path, env, factory=Hosted, prefl
         result['pass']=False
     output.save('request.original.json', request_raw)
     try:
+        startup_mode='preflight' if preflight else 'actual'
+        startup_args=['--request',str(Path(root)/'gui-inputs/request.json'),'--expected-sha256',expected,'--output',str(output_path)]
+        startup_raw,startup_before=observe_python_startup(root,startup_mode,startup_args)
+        output.save('python-startup.original.txt',startup_raw);output.save('python-startup.before.json',encode(startup_before))
         hosted = factory(root, output, env)
         event_raw = regular(env['GITHUB_EVENT_PATH'], JSON_CAP); bind_event(event_raw, request, expected, env)
         output.save('event.original.json', event_raw)
@@ -717,6 +799,9 @@ def execute(request_raw, expected, root, output_path, env, factory=Hosted, prefl
             need(inventory(build_root) == build_files, 'served build changed after scenarios')
             for role, row in request['inputs'].items(): check_file(Path(root)/row['path'], row)
             result['pass'] = True
+        startup_after_raw,startup_after=observe_python_startup(root,startup_mode,startup_args)
+        need(startup_after_raw==startup_raw and startup_after==startup_before,'startup prefix and flags after attempt unchanged')
+        output.save('python-startup.after.json',encode(startup_after))
     except BaseException as error:
         retain(error,'attempt')
     finally:
@@ -842,6 +927,9 @@ def main(argv=None):
         need(ACTUAL_ENABLED is True,'GUI actual disabled pending exact source/input/event/resource admission')
     if args.mode in ('inventory-guard','inventory'):
         need(INVENTORY_ENABLED is True,'GUI inventory disabled pending exact source/template/event admission')
+    if args.mode=='guard':observe_python_startup(Path.cwd(),'guard',[])
+    if args.mode=='install-input' and Path('gui-setup/python-startup.original.txt').exists():
+        observe_python_startup(Path.cwd(),'install-input',raw[1:])
     if args.mode in ('guard','inventory-guard'):return 0
     need(args.expected_sha256 and args.output,'fixed independent digest and output required')
     env=dict(os.environ)

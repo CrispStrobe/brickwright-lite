@@ -112,8 +112,30 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
-      - name: Refuse unreviewed actual source before setup or acquisition
-        run: /usr/bin/python3 -B scripts/run-i80386-hdd-gui-actual.py guard
+      - name: Install empty Python cache prefix and refuse unreviewed actual source
+        run: |
+          set -euo pipefail
+          export LC_ALL=C
+          umask 022
+          prefix=/home/runner/work/_temp/bw-gui-hdd-python-cache
+          for parent in / /home /home/runner /home/runner/work /home/runner/work/_temp; do
+            test -d "$parent" && test ! -L "$parent"
+            test "$(realpath -e "$parent")" = "$parent"
+          done
+          mkdir gui-setup
+          mkdir -m 0555 "$prefix"
+          entry_marker="$(find "$prefix" -mindepth 1 -maxdepth 1 -printf x -quit)"
+          test -z "$entry_marker"
+          set -o noclobber
+          {
+            echo bw.gui-hdd.python-startup-install.v1
+            echo "$prefix"
+            echo created-exclusive
+            echo empty-before-entry
+            stat -c '%d %i %f %u %g %h %s %Y' "$prefix"
+          } > gui-setup/python-startup.original.txt
+          chmod 0444 gui-setup/python-startup.original.txt
+          /usr/bin/python3.12 -I -S -B -X pycache_prefix=/home/runner/work/_temp/bw-gui-hdd-python-cache scripts/run-i80386-hdd-gui-actual.py guard
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22.23.3
@@ -129,12 +151,21 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          mkdir gui-inputs gui-originals gui-setup
-          /usr/bin/python3 -B scripts/run-i80386-hdd-gui-actual.py install-input \
+          mkdir gui-inputs gui-originals
+          python_actual() {
+            local prefix=/home/runner/work/_temp/bw-gui-hdd-python-cache
+            test "$(realpath -e "$prefix")" = "$prefix" && test ! -L "$prefix"
+            test "$(LC_ALL=C stat -c '%d %i %f %u %g %h %s %Y' "$prefix")" = "$(tail -n 1 gui-setup/python-startup.original.txt)"
+            local entry_marker
+            entry_marker="$(find "$prefix" -mindepth 1 -maxdepth 1 -printf x -quit)"
+            test -z "$entry_marker"
+            /usr/bin/python3.12 -I -S -B -X pycache_prefix=/home/runner/work/_temp/bw-gui-hdd-python-cache "$@"
+          }
+          python_actual scripts/run-i80386-hdd-gui-actual.py install-input \
             --blob "$BW_REQUEST_BLOB" --expected-sha256 "$BW_REQUEST_SHA256" \
             --output "$GITHUB_WORKSPACE/gui-inputs/request.json" \
             > gui-setup/input-install.stdout 2> gui-setup/input-install.stderr
-          /usr/bin/python3 -B scripts/run-i80386-hdd-gui-actual.py preflight \
+          python_actual scripts/run-i80386-hdd-gui-actual.py preflight \
             --request "$GITHUB_WORKSPACE/gui-inputs/request.json" --expected-sha256 "$BW_REQUEST_SHA256" \
             --output "$GITHUB_WORKSPACE/gui-setup/preflight" \
             > gui-setup/preflight.stdout 2> gui-setup/preflight.stderr
@@ -157,7 +188,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          /usr/bin/python3 -B scripts/run-i80386-hdd-gui-actual.py actual \
+          python_actual() {
+            local prefix=/home/runner/work/_temp/bw-gui-hdd-python-cache
+            test "$(realpath -e "$prefix")" = "$prefix" && test ! -L "$prefix"
+            test "$(LC_ALL=C stat -c '%d %i %f %u %g %h %s %Y' "$prefix")" = "$(tail -n 1 gui-setup/python-startup.original.txt)"
+            local entry_marker
+            entry_marker="$(find "$prefix" -mindepth 1 -maxdepth 1 -printf x -quit)"
+            test -z "$entry_marker"
+            /usr/bin/python3.12 -I -S -B -X pycache_prefix=/home/runner/work/_temp/bw-gui-hdd-python-cache "$@"
+          }
+          python_actual scripts/run-i80386-hdd-gui-actual.py actual \
             --request "$GITHUB_WORKSPACE/gui-inputs/request.json" --expected-sha256 "$BW_REQUEST_SHA256" \
             --output "$GITHUB_WORKSPACE/gui-originals/originals" \
             > gui-originals/controller.stdout 2> gui-originals/controller.stderr

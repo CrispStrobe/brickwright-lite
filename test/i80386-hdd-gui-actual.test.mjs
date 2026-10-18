@@ -47,8 +47,8 @@ def fixture():
     critical={name:source['files'].get(name,ROW(name.encode())) for name in r.CRITICAL}
     installed={name+'/package.json':ROW(name.encode()) for name in ('node_modules/bw-board','node_modules/playwright','node_modules/playwright-core')}
     runtime={'files':{'/node':{'byteLength':124827920,'sha256':'fde6a4bf8d0562f7751d1a2d6cb9b417c4cfe107bbcb0aa3e9a24e125e348f48'},
-      '/python':ROW(b'python'),'/usr/lib/libselected.so':ROW(b'selected-library'),'/chrome':ROW(b'chrome'),'/usr/bin/git':ROW(b'git'),'/usr/bin/gh':ROW(b'gh')},
-      'aliases':{'/python-link':{'linkText':'python','target':'/python'}},'directoryAliases':{'/runtime-lib':{'linkText':'usr/lib','target':'/usr/lib'}},'node':'/node','python':'/python','chromium':'/chrome',
+      '/usr/bin/python3.12':ROW(b'python'),'/usr/lib/libselected.so':ROW(b'selected-library'),'/chrome':ROW(b'chrome'),'/usr/bin/git':ROW(b'git'),'/usr/bin/gh':ROW(b'gh')},
+      'aliases':{'/python-link':{'linkText':'/usr/bin/python3.12','target':'/usr/bin/python3.12'}},'directoryAliases':{'/runtime-lib':{'linkText':'usr/lib','target':'/usr/lib'}},'node':'/node','python':'/usr/bin/python3.12','chromium':'/chrome',
       'tools':{'git':'/usr/bin/git','gh':'/usr/bin/gh'},'resources':{'jobMinutes':35,'controllerSeconds':1800,
        'scenarioSeconds':{'freedos-hdd-persistence':1250,'forward-debug':180},'perProcessCoreBytes':0,
        'perProcessFileBytes':r.FILE_CAP,'perProcessOpenFiles':256,'aggregateContainmentQualified':False}}
@@ -66,8 +66,8 @@ def fixture():
       'workflow':{'commit':'a'*40,'path':'.github/workflows/build.yml','sha256':'8'*64}}
     build={'runId':100,'attempt':1,'head':'a'*40,'jobId':101,'jobName':'build','artifactId':102,'name':'github-pages',
       'metadataBytes':len(frontend),'zipBytes':len(frontend),'sha256':H(frontend),'checkoutHead':'a'*40,'sourceFiles':source['files'],'sourceAdmission':admission}
-    request={'schema':'bw.gui-hdd.actual-request.v2','repository':r.REPOSITORY,'pullRequest':123,'source':source,'build':build,
-      'criticalFiles':critical,'installedFiles':installed,'runtime':runtime,'inventoryAdmission':{
+    request={'schema':'bw.gui-hdd.actual-request.v3','repository':r.REPOSITORY,'pullRequest':123,'source':source,'build':build,
+      'pythonStartup':r.startup_policy(),'criticalFiles':critical,'installedFiles':installed,'runtime':runtime,'inventoryAdmission':{
        'schema':'bw.gui-hdd.inventory-admission.v2','sourceHead':'a'*40,'runId':90,'jobId':91,'artifactId':92,'artifactSha256':'7'*64,
        'original':ROW(prior_raw),'templateSha256':'9'*64,'workflow':{'commit':'d'*40,'path':'.github/workflows/i80386-hdd-gui-actual.yml','sha256':'6'*64}},
       'inputs':{name:dict(ROW(b'ignored'),path='gui-inputs/'+name) for name in r.INPUTS}}
@@ -133,12 +133,20 @@ def fixture():
     files['forward-debug/proof.json']=E({'ok':True,'scenario':'forward-debug','reverseExecutionQualified':False,'modeAwareDisassemblyQualified':False})
     for scenario in r.SCENARIOS:
         proof=D(files[scenario+'/proof.json']);proof.update(sourceHead=source['head'],boardPin=r.BOARD,admissionSha256=H(files['probe-admission.json']));files[scenario+'/proof.json']=E(proof)
+    installed_stat={'dev':4,'ino':123,'mode':stat.S_IFDIR|0o555,'uid':1001,'gid':1001,'nlink':2,'size':4096,'mtimeNs':1700000000000000000,'empty':True}
+    install=('bw.gui-hdd.python-startup-install.v1\n'+r.PYTHON_CACHE+'\ncreated-exclusive\nempty-before-entry\n4 123 416d 1001 1001 2 4096 1700000000\n').encode()
+    startup={'schema':'bw.gui-hdd.python-startup-observation.v1','options':r.PYTHON_OPTIONS,
+      'arguments':['scripts/run-i80386-hdd-gui-actual.py','actual','--request','/checkout/gui-inputs/request.json','--expected-sha256',pin,'--output','/checkout/gui-originals/originals'],
+      'flags':{'isolated':1,'no_site':1,'no_user_site':1,'dont_write_bytecode':1,'ignore_environment':1,'safe_path':True,'optimize':0},
+      'dontWriteBytecode':True,'path':r.PYTHON_PATH,'cachePrefix':r.PYTHON_CACHE,'xoptions':{'pycache_prefix':r.PYTHON_CACHE},'prefix':installed_stat,'zipAbsent':True}
+    files['python-startup.original.txt']=install
+    for stage in ('before','after'):files['python-startup.'+stage+'.json']=E(startup)
     expected={'requestSha256':pin,'buildSourceAdmissionSha256':H(E(admission)),
       'inventoryOriginal':dict(ROW(prior_raw),base64=base64.b64encode(prior_raw).decode()),'sourceHead':'a'*40,'runId':200,'jobId':201,'artifactId':202,
       'artifactName':'i80386-hdd-gui-200-1','artifactBytes':1,'artifactSha256':'0'*64,
       'run':{'id':200,'run_attempt':1,'status':'completed','conclusion':'success','event':'pull_request','head_sha':'a'*40,
        'repository':repo,'path':'.github/workflows/i80386-hdd-gui-actual.yml','actor':{'login':'CrispStrobe'}},
-      'job':{'id':201,'run_id':200,'name':'actual','status':'completed','conclusion':'success'},
+      'job':{'id':201,'run_id':200,'name':'actual','status':'completed','conclusion':'success','steps':[{'name':name,'status':'completed','conclusion':'success'} for name in r.STARTUP_STEPS]},
       'artifact':{'id':202,'name':'i80386-hdd-gui-200-1','expired':False,'size_in_bytes':1,
        'workflow_run':{'id':200,'head_sha':'a'*40},'digest':'sha256:'+'0'*64}}
     return files,expected
@@ -275,6 +283,78 @@ class Originals(unittest.TestCase):
                 self.assertEqual(read(path,2),b'ok')
                 with self.assertRaises(ValueError):read(path,1)
                 with self.assertRaises(ValueError):read(link,2)
+    def test_startup_v3_explicit_policy_and_old_actual_schema_refusal(self):
+        request=D(self.files['request.original.json'])
+        for module in (c,r):
+            self.assertEqual(module.startup_policy(),request['pythonStartup'])
+            for version in ('v1','v2'):
+                changed=copy.deepcopy(request);changed['schema']='bw.gui-hdd.actual-request.'+version;raw=E(changed)
+                with self.assertRaises(ValueError):module.parse_request(raw,H(raw))
+            changed=copy.deepcopy(request);changed['pythonStartup']['sourceImportClosureQualified']=True;raw=E(changed)
+            with self.assertRaises(ValueError):module.parse_request(raw,H(raw))
+    def test_rehashed_startup_observations_do_not_replace_fixed_expectation(self):
+        mutations=(('options',r.PYTHON_OPTIONS[:2]+['-B']),('cachePrefix','/different'),('path',r.PYTHON_PATH+['/checkout']),
+          ('flags',dict(D(self.files['python-startup.before.json'])['flags'],no_site=0)),('dontWriteBytecode',False),
+          ('zipAbsent',False),('xoptions',{'pycache_prefix':'/different'}),('arguments',['invented','actual']))
+        self.assertTrue(r.audit(*sealed(*self.fresh()))['pass'])
+        for key,value in mutations:
+            files,expected=self.fresh()
+            for stage in ('before','after'):
+                row=D(files['python-startup.'+stage+'.json']);row[key]=value;files['python-startup.'+stage+'.json']=E(row)
+            with self.assertRaisesRegex(ValueError,'startup'):r.audit(*sealed(files,expected))
+    def test_rehashed_nonempty_replaced_prefix_and_original_stat_refuse(self):
+        for key,value in (('empty',False),('ino',999),('mode',stat.S_IFDIR|0o755),('mtimeNs',1800000000000000000)):
+            files,expected=self.fresh()
+            for stage in ('before','after'):
+                row=D(files['python-startup.'+stage+'.json']);row['prefix'][key]=value;files['python-startup.'+stage+'.json']=E(row)
+            with self.assertRaises(ValueError):r.audit(*sealed(files,expected))
+        for raw in (self.files['python-startup.original.txt'].replace(b'created-exclusive',b'adopted-existing'),
+          self.files['python-startup.original.txt'].replace(b'4 123',b'04 123'),b'x'*4097):
+            for module in (c,r):
+                with self.assertRaises(ValueError):module.startup_installation(raw)
+    def test_official_startup_steps_are_external_ordered_successful_joins(self):
+        for action in ('missing','order','failed','duplicate'):
+            files,expected=self.fresh();steps=expected['job']['steps']
+            if action=='missing':steps.pop(0)
+            elif action=='order':steps.reverse()
+            elif action=='failed':steps[0]['conclusion']='failure'
+            else:steps.append(copy.deepcopy(steps[0]))
+            with self.assertRaisesRegex(ValueError,'startup'):r.audit(*sealed(files,expected))
+    def test_startup_capture_executes_real_validator_with_mocked_host_edges(self):
+        row=D(self.files['python-startup.before.json']);arguments=row['arguments'][2:]
+        class Flags:
+            isolated=1;no_site=1;no_user_site=1;dont_write_bytecode=1;ignore_environment=1;safe_path=True;optimize=0
+        with patch.object(c,'regular',return_value=self.files['python-startup.original.txt']),patch.object(c,'empty_python_prefix',return_value=row['prefix']),patch.object(c.sys,'orig_argv',row['options']+row['arguments']),patch.object(c.sys,'executable',c.PYTHON_EXECUTABLE),patch.object(c.sys,'flags',Flags()),patch.object(c.sys,'dont_write_bytecode',True),patch.object(c.sys,'path',c.PYTHON_PATH),patch.object(c.sys,'pycache_prefix',c.PYTHON_CACHE),patch.object(c.sys,'_xoptions',{'pycache_prefix':c.PYTHON_CACHE}),patch.object(c.Path,'resolve',return_value=pathlib.Path(c.PYTHON_EXECUTABLE)),patch.object(c.os.path,'lexists',return_value=False):
+            self.assertEqual(c.observe_python_startup('/checkout','actual',arguments)[1],row)
+            with patch.object(c.sys,'dont_write_bytecode',False):
+                with self.assertRaises(ValueError):c.observe_python_startup('/checkout','actual',arguments)
+    def test_empty_prefix_real_helper_held_checks_and_close_first_failure(self):
+        class Info:
+            st_dev=4;st_ino=123;st_mode=stat.S_IFDIR|0o555;st_uid=1001;st_gid=1001;st_nlink=2;st_size=4096;st_mtime_ns=1700000000000000000
+            st_ctime_ns=1700000000000000000
+        class Entries:
+            def __init__(self,items):self.items=iter(items)
+            def __enter__(self):return self.items
+            def __exit__(self,*args):pass
+        with patch.object(c.Path,'resolve',return_value=pathlib.Path(c.PYTHON_CACHE)),patch.object(c.os,'lstat',return_value=Info()),patch.object(c.os,'open',return_value=77) as opened,patch.object(c.os,'fstat',return_value=Info()),patch.object(c.os,'scandir',return_value=Entries([])),patch.object(c.os,'close') as closed:
+            self.assertTrue(c.empty_python_prefix()['empty']);self.assertEqual(opened.call_args.args[1],c.os.O_RDONLY|c.os.O_NOFOLLOW|c.os.O_NONBLOCK|c.os.O_DIRECTORY);closed.assert_called_once_with(77)
+            with patch.object(c.Path,'resolve',return_value=pathlib.Path('/different')):
+                with self.assertRaisesRegex(ValueError,'canonical'):c.empty_python_prefix()
+            changed=Info();changed.st_ino=999
+            with patch.object(c.os,'lstat',side_effect=[Info(),changed]),patch.object(c.os,'scandir',return_value=Entries([])):
+                with self.assertRaisesRegex(ValueError,'readback'):c.empty_python_prefix()
+            with patch.object(c.os,'scandir',return_value=Entries(['unexpected'])),patch.object(c.os,'close',side_effect=OSError('close-secondary')):
+                with self.assertRaisesRegex(ValueError,'remain empty'):c.empty_python_prefix()
+            with patch.object(c.os,'scandir',return_value=Entries([])),patch.object(c.os,'close',side_effect=OSError('close-only')):
+                with self.assertRaisesRegex(OSError,'close-only'):c.empty_python_prefix()
+    def test_actual_shell_startup_is_before_first_python_and_inventory_is_held(self):
+        workflow=(root/'.github/workflows/i80386-hdd-gui-actual.yml').read_text();actual=workflow.split('  actual:',1)[1]
+        self.assertIn('if: >-\n      '+chr(36)+'{{ false &&',actual)
+        self.assertLess(actual.index('mkdir -m 0555 "$prefix"'),actual.index('/usr/bin/python3.12 -I -S -B -X'))
+        self.assertNotIn('/usr/bin/python3 -B',actual)
+        self.assertEqual(actual.count('/usr/bin/python3.12 -I -S -B -X pycache_prefix='+r.PYTHON_CACHE),3)
+        self.assertIn('test "$(realpath -e "$parent")" = "$parent"',actual)
+        self.assertNotIn('rm ',actual)
     def test_metadata_before_acquisition(self):
         request=D(self.files['request.original.json']);args=[D(self.files[name+'.original.json']) for name in ('build-run','build-job','build-artifact')]
         c.admit_build_metadata(request,*args)
@@ -303,6 +383,9 @@ class Originals(unittest.TestCase):
                     return {k.removeprefix(name+'/'):v for k,v in request['installedFiles'].items() if k.startswith(name+'/')}
                 return original_inventory(path,*args)
             def runtime(request):order.append('runtime');return D(files['runtime.before.json'])
+            def startup(where,mode,args):
+                observation=D(files['python-startup.before.json']);observation['arguments']=['scripts/run-i80386-hdd-gui-actual.py',mode]+args
+                return files['python-startup.original.txt'],observation
             class Fake:
                 def __init__(self,where,output,environment):self.output=output;self.attempts=set()
                 def git(self,args):
@@ -332,7 +415,7 @@ class Originals(unittest.TestCase):
                     child=D(files[role+'.process.json']);child['argv']=argv;child['environment']=environment
                     for stream in ('stdout','stderr'):self.output.save(role+'.'+stream,b'')
                     self.output.save(role+'.process.json',E(child));return b''
-            with patch.object(c,'regular',side_effect=regular),patch.object(c,'check_file',side_effect=check_file),patch.object(c,'inventory',side_effect=inventory),patch.object(c,'observe_runtime',side_effect=runtime):
+            with patch.object(c,'regular',side_effect=regular),patch.object(c,'check_file',side_effect=check_file),patch.object(c,'inventory',side_effect=inventory),patch.object(c,'observe_runtime',side_effect=runtime),patch.object(c,'observe_python_startup',side_effect=startup):
                 status=c.execute(files['request.original.json'],expected['requestSha256'],checkout,checkout/'gui-originals/originals',env,factory=Fake)
             self.assertEqual(status,0);self.assertEqual(order[0],'runtime');self.assertEqual(order.count('frontend-acquisition'),1)
             self.assertLess(order.index('api'),order.index('frontend-acquisition'));self.assertLess(order.index(r.SCENARIOS[0]),order.index(r.SCENARIOS[1]))
@@ -404,7 +487,10 @@ class Originals(unittest.TestCase):
                 def runtime(request):
                     if fail_runtime:raise ValueError('runtime-primary')
                     return D(files['runtime.before.json'])
-                with patch.object(c,'regular',side_effect=regular),patch.object(c,'check_file',side_effect=lambda path,row:('source:'+str(path).removeprefix(str(checkout)+'/')).encode()),patch.object(c,'inventory',side_effect=inventory),patch.object(c,'observe_runtime',side_effect=runtime),patch.object(c.Originals,'seal',autospec=True,side_effect=seal),patch.object(c.sys,'stderr',io.StringIO()):
+                def startup(where,mode,args):
+                    observation=D(files['python-startup.before.json']);observation['arguments']=['scripts/run-i80386-hdd-gui-actual.py',mode]+args
+                    return files['python-startup.original.txt'],observation
+                with patch.object(c,'regular',side_effect=regular),patch.object(c,'check_file',side_effect=lambda path,row:('source:'+str(path).removeprefix(str(checkout)+'/')).encode()),patch.object(c,'inventory',side_effect=inventory),patch.object(c,'observe_runtime',side_effect=runtime),patch.object(c.Originals,'seal',autospec=True,side_effect=seal),patch.object(c.sys,'stderr',io.StringIO()),patch.object(c,'observe_python_startup',side_effect=startup):
                     status=c.execute(files['request.original.json'],expected['requestSha256'],checkout,checkout/('preflight-'+str(number)),env,factory=Fake,preflight=True)
                 self.assertEqual(status,1 if fail_seal or fail_runtime else 0);self.assertEqual(len(captured),1)
                 if fail_runtime:
@@ -417,7 +503,7 @@ class Originals(unittest.TestCase):
             self.assertEqual((output.root/'frontend.partial.zip').read_bytes(),b'123')
             with self.assertRaises(ValueError):output.save('ordinary.stdout',b'123')
     def test_explicit_v2_schema_and_independent_directory_originals(self):
-        request=D(self.files['request.original.json']);self.assertEqual(request['schema'],'bw.gui-hdd.actual-request.v2')
+        request=D(self.files['request.original.json']);self.assertEqual(request['schema'],'bw.gui-hdd.actual-request.v3')
         request['schema']='bw.gui-hdd.actual-request.v1';raw=E(request)
         for module in (r,c):
             with self.assertRaises(ValueError):module.parse_request(raw,H(raw))
@@ -437,7 +523,7 @@ class Originals(unittest.TestCase):
             module.runtime_alias_policy(runtime)
             changed=copy.deepcopy(runtime);changed['directoryAliases']['/runtime-lib']={'linkText':'unselected','target':'/unselected'}
             with self.assertRaisesRegex(ValueError,'descendants'):module.runtime_alias_policy(changed)
-            changed=copy.deepcopy(runtime);changed['aliases']={'/a'+str(i):{'linkText':'python','target':'/python'} for i in range(255)}
+            changed=copy.deepcopy(runtime);changed['aliases']={'/a'+str(i):{'linkText':'/usr/bin/python3.12','target':'/usr/bin/python3.12'} for i in range(255)}
             changed['directoryAliases']['/second']={'linkText':'usr/lib','target':'/usr/lib'}
             with self.assertRaisesRegex(ValueError,'bounded'):module.runtime_alias_policy(changed)
     def test_observed_alias_walk_refuses_undeclared_links_and_cycles(self):

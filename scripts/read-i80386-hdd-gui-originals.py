@@ -151,13 +151,61 @@ def runtime_alias_policy(runtime):
     return aliases
 
 
+PYTHON_EXECUTABLE = '/usr/bin/python3.12'
+PYTHON_CACHE = '/home/runner/work/_temp/bw-gui-hdd-python-cache'
+PYTHON_OPTIONS = [PYTHON_EXECUTABLE, '-I', '-S', '-B', '-X', 'pycache_prefix='+PYTHON_CACHE]
+PYTHON_PATH = ['/usr/lib/python312.zip', '/usr/lib/python3.12', '/usr/lib/python3.12/lib-dynload']
+STARTUP_STEPS = ('Install empty Python cache prefix and refuse unreviewed actual source',
+ 'Install externally admitted request and refuse runtime/source drift',
+ 'One official frontend acquisition and two serial genuine UI scenarios')
+
+
+def startup_policy():
+    # This selects startup mechanics, not a complete imported/native runtime graph.
+    return {'schema':'bw.gui-hdd.python-startup.v1','executable':PYTHON_EXECUTABLE,
+      'options':PYTHON_OPTIONS[1:],'path':PYTHON_PATH,'cachePrefix':PYTHON_CACHE,
+      'sourceImportClosureQualified':False,'nativeImportClosureQualified':False}
+
+
+def startup_installation(raw):
+    need(type(raw) is bytes and len(raw)<=4096,'bounded outside Python startup original')
+    lines=raw.decode('ascii').splitlines()
+    need(len(lines)==5 and raw==('\n'.join(lines)+'\n').encode() and lines[:4]==[
+      'bw.gui-hdd.python-startup-install.v1',PYTHON_CACHE,'created-exclusive','empty-before-entry'],
+      'fixed outside Python exclusive installation original')
+    tokens=lines[4].split(' ')
+    need(len(tokens)==8 and all(re.fullmatch('[0-9]+',x) for i,x in enumerate(tokens) if i!=2) and
+         re.fullmatch('[0-9a-f]+',tokens[2]),'canonical stat installation fields')
+    values=[int(x,16 if i==2 else 10) for i,x in enumerate(tokens)]
+    need(tokens==[format(x,'x') if i==2 else str(x) for i,x in enumerate(values)],'canonical installation stat numbers')
+    need(values[2]==stat.S_IFDIR|0o555 and values[1]>0 and all(0<=x<2**63 for x in values),
+         'fresh readonly directory installation identity')
+    return dict(zip(('dev','ino','mode','uid','gid','nlink','size','mtimeSeconds'),values))
+
+
+def validate_startup(snapshot, installed, mode, arguments):
+    fields(snapshot,'schema options arguments flags dontWriteBytecode path cachePrefix xoptions prefix zipAbsent')
+    need(snapshot['schema']=='bw.gui-hdd.python-startup-observation.v1' and snapshot['options']==PYTHON_OPTIONS and
+         snapshot['arguments']==['scripts/run-i80386-hdd-gui-actual.py',mode]+arguments and
+         encode(snapshot['flags'])==encode({'isolated':1,'no_site':1,'no_user_site':1,'dont_write_bytecode':1,'ignore_environment':1,'safe_path':True,'optimize':0}) and
+         snapshot['dontWriteBytecode'] is True and snapshot['path']==PYTHON_PATH and
+         snapshot['cachePrefix']==PYTHON_CACHE and snapshot['xoptions']=={'pycache_prefix':PYTHON_CACHE} and
+         snapshot['zipAbsent'] is True,'fixed isolated no-site no-bytecode startup observations')
+    prefix=snapshot['prefix'];fields(prefix,'dev ino mode uid gid nlink size mtimeNs empty')
+    for key in ('dev','ino','mode','uid','gid','nlink','size','mtimeNs'):integer(prefix[key],0,2**63-1)
+    need(prefix['empty'] is True and all(prefix[key]==installed[key] for key in installed if key!='mtimeSeconds') and
+         prefix['mtimeNs']//1000000000==installed['mtimeSeconds'],'outside installation/empty held prefix identity join')
+    return snapshot
+
+
 def parse_request(raw, expected):
     digest(expected); need(type(raw) is bytes and 0 < len(raw) <= JSON_CAP and sha(raw) == expected,
                            'independently selected request digest')
     request = decode(raw)
-    fields(request, 'schema repository pullRequest source build criticalFiles installedFiles runtime inventoryAdmission inputs')
-    need(encode(request) == raw and request['schema'] == 'bw.gui-hdd.actual-request.v2' and
+    fields(request, 'schema repository pullRequest source build criticalFiles installedFiles runtime inventoryAdmission inputs pythonStartup')
+    need(encode(request) == raw and request['schema'] == 'bw.gui-hdd.actual-request.v3' and
          request['repository'] == REPOSITORY, 'canonical owned approval request')
+    need(encode(request['pythonStartup'])==encode(startup_policy()) and request['runtime']['python']==PYTHON_EXECUTABLE,'explicit v3 startup policy and selected CPython')
     integer(request['pullRequest'], 1, 2**31-1)
     source = request['source']; fields(source, 'head tree files'); digest(source['head'], 40); digest(source['tree'], 40)
     rows(source['files']); need(set(source['files']) == SOURCE, 'exact tracked source closure')
@@ -299,7 +347,7 @@ def expected_policy(expected):
 
 
 def allowed_role(name):
-    top={'inventory.json','result.json','request.original.json','event.original.json','source.before.json','source.after.json',
+    top={'python-startup.original.txt','python-startup.before.json','python-startup.after.json','inventory.json','result.json','request.original.json','event.original.json','source.before.json','source.after.json',
       'runtime.before.json','runtime.after.json','installed.before.json','installed.after.json','build-run.original.json',
       'build-job.original.json','build-artifact.original.json','frontend.original.zip','frontend.partial.zip',
       'frontend.members.json','build.inventory.json','probe-admission.json','frontend-acquisition.stderr','frontend-acquisition.process.json'}
@@ -448,6 +496,13 @@ def official_joins(request, originals, expected):
          run.get('path') == '.github/workflows/i80386-hdd-gui-actual.yml', 'independently admitted official actual run')
     need(job.get('id') == expected['jobId'] and job.get('run_id') == expected['runId'] and
          job.get('name') == 'actual' and job.get('status') == 'completed' and job.get('conclusion') == 'success', 'official actual job')
+    steps=job.get('steps');need(type(steps) is list and len(steps)<=64,'bounded official startup steps')
+    positions=[]
+    for name in STARTUP_STEPS:
+        matches=[(i,item) for i,item in enumerate(steps) if item.get('name')==name]
+        need(len(matches)==1 and matches[0][1].get('status')=='completed' and matches[0][1].get('conclusion')=='success','successful unique official startup/preflight/actual steps')
+        positions.append(matches[0][0])
+    need(positions==sorted(set(positions)),'outside startup precedes preflight and actual')
     need(artifact.get('id') == expected['artifactId'] and artifact.get('name') == expected['artifactName'] ==
          'i80386-hdd-gui-'+str(expected['runId'])+'-1' and artifact.get('expired') is False and
          artifact.get('size_in_bytes') == expected['artifactBytes'] and artifact.get('workflow_run',{}).get('id') == expected['runId'] and
@@ -620,6 +675,10 @@ def audit(files, expected):
     build_root=admission['buildRoot'];need(type(build_root) is str and build_root.startswith('/') and '..' not in Path(build_root).parts and
          build_root.endswith('/originals-build'),'fixed fresh actual build root')
     checkout=build_root.removesuffix('/gui-originals/originals-build')
+    installed=startup_installation(files['python-startup.original.txt'])
+    startup_arguments=['--request',checkout+'/gui-inputs/request.json','--expected-sha256',expected['requestSha256'],'--output',checkout+'/gui-originals/originals']
+    for stage in ('before','after'):validate_startup(decode(files['python-startup.'+stage+'.json']),installed,'actual',startup_arguments)
+    need(files['python-startup.before.json']==files['python-startup.after.json'],'unchanged startup observations across both scenarios')
     need(checkout!=build_root and admission['inputPaths']=={name:checkout+'/'+row['path'] for name,row in request['inputs'].items()},
          'fixed controller input path delivery')
     need(decode(files['frontend.members.json'])==observed_members and
@@ -645,7 +704,7 @@ def audit(files, expected):
         identity_before=decode(files['runtime.before.json'])['identities'][request['runtime']['chromium']]
         need(any(item.get('executable')==request['runtime']['chromium'] and item.get('executableIdentity')==identity_before
              for sample in child['descendantSamples'] for item in sample['descendants']), 'actual observed browser process executable identity')
-    return {'pass':True,'schema':'bw.gui-hdd.reader.v2','sourceHead':request['source']['head'],
+    return {'pass':True,'schema':'bw.gui-hdd.reader.v3','sourceHead':request['source']['head'],
         'hdd':check_hdd(files),'forwardDebug':check_forward(files),'aggregateContainmentQualified':False,
         'fullOsQualified':False,'physicalTimingQualified':False,'reverseExecutionQualified':False}
 
