@@ -37,6 +37,7 @@ import {validatePartMeta, pitchRadiusLdu} from '../overlay/scratch-gui/src/lib/b
 import {check as checkVendored} from '../scripts/sync-ldraw-parts.mjs';
 import {solidColliders} from '../overlay/scratch-gui/src/lib/bw-sim/editor/overlap.js';
 import {BUILTIN_KINDS} from '../overlay/scratch-gui/src/lib/bw-sim/kinds/index.js';
+import {PALETTE_CATEGORIES} from '../overlay/scratch-gui/src/lib/bw-sim/editor/palette.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const LIB = path.join(ROOT, 'overlay/scratch-gui/static/ldraw');
@@ -86,11 +87,12 @@ const onLine = (c, lines) => lines.filter(l => {
     return perp <= POS_EPS;
 });
 const coversAxially = (c, lines) => {
+    // Every line's extent along ONE direction: lines on one bore may run either way
+    // (39790 draws a hole's two ends with opposite y columns).
     const axis = lines[0].axis;
     const t = dot(c.position, axis);
-    const lo = Math.min(...lines.map(l => l.lo));
-    const hi = Math.max(...lines.map(l => l.hi));
-    return t >= lo - SPAN_EPS && t <= hi + SPAN_EPS;
+    const ends = lines.flatMap(l => [dot(l.p0, axis), dot(apply(l.x, [0, 1, 0]), axis)]);
+    return t >= Math.min(...ends) - SPAN_EPS && t <= Math.max(...ends) + SPAN_EPS;
 };
 
 /** Flatten the subtree of `parent` that comes from the type-1 line referencing `child`. */
@@ -414,6 +416,8 @@ test('the SPIKE wheel is 56 mm across', () => {
  * own body until 2026-10-17: the mesh there reaches 13 LDU out; its two features are axle holes).
  */
 const SHAFT_R = 8.5;
+/** A stud is 6 LDU in radius (4.8 mm across), 4 LDU (1.6 mm) tall. */
+const STUD_R = 6;
 const radialFrom = (c, v) => {
     const d = sub(v, c.position);
     const along = dot(d, c.axis);
@@ -437,6 +441,112 @@ test('a pin or axle connector is a shaft: the mesh along it stays within a pin\'
         }
     }
     assert.deepEqual(wrong, []);
+});
+
+/**
+ * Studs, anti-studs and tubes (System clutch, kinds/stud.js), measured from the LDraw file:
+ *   - a stud connector is a top stud LDraw draws (p/stud.dat and its open/logo variants): at
+ *     the primitive's origin (the stud's base centre), pointing out of the stud (its -y); a
+ *     part with studs lists every one;
+ *   - an anti-stud is at the part's bottom face, where a stud fits (no mesh within 5.5 LDU of
+ *     its axis over the 4 LDU a stud reaches in: no vertex inside, no triangle across the axis)
+ *     and is gripped (a wall, tube or rod comes within 8.6 LDU of its axis there);
+ *   - a tube connector is the bottom centre of an open underside tube (p/stud4*.dat).
+ */
+const TOP_STUD = /\/(stud|studa|stud2|stud2a|stud-logo\d?|stud2-logo\d?|studp01|stud9|stud6a?|stud10|stud13|stud15|stud17a?|stud26|studel|studh[lr]?)\.dat$/;
+const OPEN_TUBE = /\/stud4(a|f\d[nsw]|h|o|od|oda|s|s2)?\.dat$/;
+/** A stud drawn inside another stud primitive is part of it; one inside a stud group (stug-1x4.dat) is a stud. */
+const nestedInStud = q => q.via.some(f => /\/(stud\w*|stu2\w*)\.dat$/.test(f));
+const unitOf = v => v.map(x => x / len(v));
+
+test('a stud connector is a stud LDraw draws, and a part with studs lists them all', () => {
+    const wrong = [];
+    let checked = 0;
+    for (const p of META.parts) {
+        const studs = p.connectors.filter(c => c.type === 'stud');
+        if (!studs.length) continue;
+        const prims = flat.get(p.part).primitives.filter(q => TOP_STUD.test(q.file) && !nestedInStud(q));
+        for (const c of studs) {
+            checked++;
+            const at = prims.find(q => len(sub(q.x.t, c.position)) <= POS_EPS);
+            if (!at) wrong.push(`${p.part} ${c.id}: no LDraw stud at ${c.position}`);
+            else if (dot(unitOf(column(at.x, 1).map(v => -v)), c.axis) < PARALLEL) wrong.push(`${p.part} ${c.id}: points ${c.axis}, the stud ${unitOf(column(at.x, 1).map(v => -v))}`);
+        }
+        for (const q of prims) if (!studs.some(c => len(sub(q.x.t, c.position)) <= POS_EPS)) wrong.push(`${p.part}: the stud at ${q.x.t} has no connector`);
+    }
+    assert.deepEqual(wrong, []);
+    assert.ok(checked >= 500, `only ${checked} studs checked`);
+});
+
+/** Does the segment p→p+d cross triangle [a, b, c]? */
+const crosses = (p, d, [a, b, c]) => {
+    const e1 = sub(b, a); const e2 = sub(c, a);
+    const q = [d[1] * e2[2] - d[2] * e2[1], d[2] * e2[0] - d[0] * e2[2], d[0] * e2[1] - d[1] * e2[0]];
+    const det = dot(e1, q);
+    if (Math.abs(det) < 1e-12) return false;
+    const sv = sub(p, a);
+    const u = dot(sv, q) / det;
+    if (u < 0 || u > 1) return false;
+    const r = [sv[1] * e1[2] - sv[2] * e1[1], sv[2] * e1[0] - sv[0] * e1[2], sv[0] * e1[1] - sv[1] * e1[0]];
+    const v = dot(d, r) / det;
+    if (v < 0 || u + v > 1) return false;
+    const t = dot(e2, r) / det;
+    return t >= 0 && t <= 1;
+};
+
+/** Distance in the x/z plane from (x, z) to the footprint of triangle t (0 inside it). */
+const footprintGap = (x, z, t) => {
+    const [a, b, c] = t.map(v => [v[0], v[2]]);
+    const side = (o, p, q) => (p[0] - o[0]) * (q[1] - o[1]) - (p[1] - o[1]) * (q[0] - o[0]);
+    const s1 = side(a, b, [x, z]); const s2 = side(b, c, [x, z]); const s3 = side(c, a, [x, z]);
+    if ((s1 >= 0 && s2 >= 0 && s3 >= 0) || (s1 <= 0 && s2 <= 0 && s3 <= 0)) return 0;
+    const seg = (p, q) => {
+        const d = [q[0] - p[0], q[1] - p[1]];
+        const l2 = d[0] ** 2 + d[1] ** 2;
+        const u = l2 ? Math.max(0, Math.min(1, ((x - p[0]) * d[0] + (z - p[1]) * d[1]) / l2)) : 0;
+        return Math.hypot(x - p[0] - u * d[0], z - p[1] - u * d[1]);
+    };
+    return Math.min(seg(a, b), seg(b, c), seg(c, a));
+};
+
+test('an anti-stud is a cell of the bottom face where a stud fits and is gripped; a tube is an open tube\'s bottom', () => {
+    const wrong = [];
+    let cells = 0;
+    let tubes = 0;
+    for (const p of META.parts) {
+        const holes = p.connectors.filter(c => c.type === 'antistud' || c.type === 'tube');
+        if (!holes.length) continue;
+        const f = flat.get(p.part);
+        const vs = f.polys.flat();
+        const yb = bounds(f.polys).max[1];
+        const tris = f.polys.flatMap(q => q.slice(1, -1).map((_, i) => [q[0], q[i + 1], q[i + 2]]));
+        for (const c of holes) {
+            if (Math.abs(c.position[1] - yb) > 0.01 || dot(c.axis, [0, -1, 0]) < PARALLEL) {
+                wrong.push(`${p.part} ${c.id}: not on the bottom face (y ${yb}) pointing up`);
+                continue;
+            }
+            const radial = v => Math.hypot(v[0] - c.position[0], v[2] - c.position[2]);
+            if (c.type === 'antistud') {
+                cells++;
+                if (vs.some(v => v[1] > yb - 3.6 && v[1] < yb - 0.3 && radial(v) < 5.5)) wrong.push(`${p.part} ${c.id}: mesh inside the stud's place`);
+                else if (tris.some(t => crosses([c.position[0], yb - 3.6, c.position[2]], [0, 3.3, 0], t))) wrong.push(`${p.part} ${c.id}: a face across the stud's place`);
+                // Gripped: a face in the 4 LDU above the bottom face comes within 5.4..8.6 LDU of the
+                // cell's axis (seen from below: the distance to the face's footprint).
+                const grips = tris.some(t => {
+                    if (Math.max(...t.map(v => v[1])) < yb - 4.01 || Math.min(...t.map(v => v[1])) > yb + 0.01) return false;
+                    const d = footprintGap(c.position[0], c.position[2], t);
+                    return d >= 5.4 && d <= 8.6;
+                });
+                if (!grips) wrong.push(`${p.part} ${c.id}: nothing grips a stud there`);
+            } else {
+                tubes++;
+                const at = f.primitives.find(q => OPEN_TUBE.test(q.file) && len(sub(apply(q.x, [0, -4, 0]), c.position)) <= POS_EPS);
+                if (!at) wrong.push(`${p.part} ${c.id}: no open tube ends at ${c.position}`);
+            }
+        }
+    }
+    assert.deepEqual(wrong, []);
+    assert.ok(cells >= 500 && tubes >= 50, `only ${cells} anti-studs and ${tubes} tubes checked`);
 });
 
 /** Is point v (part frame) inside collider c (part frame)? */
@@ -468,8 +578,23 @@ test('shaft regions are shafts, and no shaft runs through a solid collider', () 
     for (const p of META.parts) {
         const solid = new Set(solidColliders(p));
         const shafts = p.connectors.filter(k => k.type === 'pin' || k.type === 'axle');
+        const studs = p.connectors.filter(k => k.type === 'stud');
         p.colliders.forEach((col, i) => {
             if (solid.has(i) || !col.region) return;
+            if (col.region === 'stud') {
+                // The stud layer: every corner within the studs' height above their bases and
+                // within the footprint the studs cover (their centres ± a stud's radius).
+                const corners = col.shape === 'box' ? [-1, 1].flatMap(a => [-1, 1].flatMap(b => [-1, 1].map(c =>
+                    quatRotate(col.rotation || [0, 0, 0, 1], [a * col.halfExtents[0], b * col.halfExtents[1], c * col.halfExtents[2]])
+                        .map((x, k) => x + (col.position || [0, 0, 0])[k])))) : [];
+                const layer = studs.length > 0 && corners.length > 0 && corners.every(v => studs.some(s => {
+                    const along = dot(sub(v, s.position), s.axis);
+                    return along >= -0.5 && along <= (s.length ?? 4) + 0.5;
+                })) && [0, 1, 2].every(k => corners.every(v => v[k] >= Math.min(...studs.map(s => s.position[k])) - STUD_R - 0.5 &&
+                    v[k] <= Math.max(...studs.map(s => s.position[k])) + STUD_R + 0.5));
+                if (!layer) wrong.push(`${p.part} collider ${i} (region stud) is not the layer of its studs`);
+                return;
+            }
             const corners = col.shape === 'box'
                 ? [-1, 1].flatMap(a => [-1, 1].flatMap(b => [-1, 1].map(c => [a * col.halfExtents[0], b * col.halfExtents[1], c * col.halfExtents[2]])))
                     .map(v => quatRotate(col.rotation || [0, 0, 0, 1], v).map((x, k) => x + (col.position || [0, 0, 0])[k]))
@@ -551,8 +676,8 @@ test('sensor origin lies on the mesh box surface and direction points outward', 
 });
 
 test('every part has name, nameDe and a palette category, and nameDe is unique', () => {
-    // Allowed categories from palette.js
-    const allowed = new Set(['hub','motor','sensor','beam','axle','pin','connector','gear','wheel','other']);
+    // The palette's categories (editor/palette.js), which group the Build palette.
+    const allowed = new Set(PALETTE_CATEGORIES.map(c => c.id));
     const seenDe = new Set();
     for (const p of META.parts) {
         assert.ok(typeof p.name === 'string' && p.name.trim().length > 0, `${p.part}: missing name`);

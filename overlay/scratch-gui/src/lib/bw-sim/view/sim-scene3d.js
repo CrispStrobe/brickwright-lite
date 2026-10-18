@@ -5,12 +5,18 @@
 // meshes of the parts in it (with their LDraw edge lines as children), so a
 // physics snapshot moves whole bodies. A motor's drive hub is drawn in its
 // output body, so it turns while the housing stays put.
+//
+// A big model (INSTANCE_FROM parts or more, view/instanced-parts.js) is drawn
+// instanced: the per-part meshes stay in their body groups as invisible
+// proxies (so everything that reads a part's mesh works as before) and one
+// InstancedMesh per part geometry draws them all, mirrored once per frame.
 
 import {
     Scene, Group, Mesh, MeshStandardMaterial, BoxGeometry, PlaneGeometry, DataTexture, SRGBColorSpace, Matrix4, Quaternion, Vector3
 } from 'three';
 import {driveHubRef, partVisual} from './part-geometry.js';
 import {PART_SURFACE, addEdgeLines, edgeMaterials} from './part-style.js';
+import {createInstancedParts, useInstancing} from './instanced-parts.js';
 import {lduToWorld, partMotorJoint} from '../contracts.js';
 import {quatFromMat3} from '../mech/vec.js';
 import {createMat} from '../world/mats.js';
@@ -42,14 +48,18 @@ const spikeColorToHex = id => {
 /**
  * Build a headless three.js scene for the Sim Lab.
  * @param {{model: any, mechanism: any, read: (p:string)=>string|undefined, colors: Map<number,{value:string,edge:string,alpha:number}>,
- *          catalog?: Map<string, object>|Record<string, object>}} opts  without the part catalog a motor is
- *          drawn as one mesh in its housing body (its drive hub does not turn)
+ *          catalog?: Map<string, object>|Record<string, object>, instancing?: boolean|'auto'}} opts  without the part
+ *          catalog a motor is drawn as one mesh in its housing body (its drive hub does not turn); `instancing`
+ *          'auto' (the default, unless the page overrides it) draws a model of INSTANCE_FROM parts or more
+ *          instanced, true/false force it
  * @returns {{scene: Scene, bodyGroups: Map<string,Group>, partMeshes: Map<string,Mesh>, hubMeshes: Map<string,Mesh>,
- *            ground: Mesh|null, dispose: ()=>void}}
+ *            ground: Mesh|null, dispose: ()=>void, instanced: object|null}}
  *          partMeshes: one per placed part (a motor's housing); hubMeshes: motor id → its drive hub's mesh
+ *          (invisible proxies when instanced); instanced: the createInstancedParts mirror, or null
  */
-export const buildSimScene = ({model, mechanism, read, colors, catalog = null}) => {
+export const buildSimScene = ({model, mechanism, read, colors, catalog = null, instancing = undefined}) => {
     const scene = new Scene();
+    const instanced = useInstancing(model.parts.length, instancing) ? createInstancedParts({colors}) : null;
     const bodyGroups = new Map();
     const partMeshes = new Map();
     const hubMeshes = new Map();
@@ -113,7 +123,8 @@ export const buildSimScene = ({model, mechanism, read, colors, catalog = null}) 
         bodyInverse.copy(group.matrix).invert();
         bodyInverse.multiply(partWorld).decompose(mesh.position, mesh.quaternion, mesh.scale);
         mesh.layers.set(0);
-        addEdgeLines(mesh, visual, linesFor(pl.color ?? 16));
+        if (instanced) instanced.add(mesh, visual, pl.color ?? 16);
+        else addEdgeLines(mesh, visual, linesFor(pl.color ?? 16));
         group.add(mesh);
         return mesh;
     };
@@ -143,6 +154,14 @@ export const buildSimScene = ({model, mechanism, read, colors, catalog = null}) 
         } else {
             partMeshes.set(pl.id, addPartMesh(pl, body, partVisual(pl.part, read, colors), material, pl.id));
         }
+    }
+
+    if (instanced) {
+        scene.updateMatrixWorld(true);
+        instanced.build();
+        scene.add(instanced.object);
+        // After three updates the world matrices and before it draws: the instances follow the bodies.
+        scene.onBeforeRender = () => instanced.sync();
     }
 
     // Ground plane at ground body's top
@@ -258,6 +277,7 @@ export const buildSimScene = ({model, mechanism, read, colors, catalog = null}) 
     }
 
     const dispose = () => {
+        if (instanced) instanced.dispose();
         // Dispose ground geometry/material and per-mesh materials; part geometries are cached
         if (ground) {
             ground.geometry.dispose();
@@ -281,7 +301,7 @@ export const buildSimScene = ({model, mechanism, read, colors, catalog = null}) 
         scene.clear();
     };
 
-    return {scene, bodyGroups, partMeshes, hubMeshes, ground, dispose, matTexture, matMesh, obstacleMeshes, loadMeshes};
+    return {scene, bodyGroups, partMeshes, hubMeshes, ground, dispose, matTexture, matMesh, obstacleMeshes, loadMeshes, instanced};
 };
 
 /**

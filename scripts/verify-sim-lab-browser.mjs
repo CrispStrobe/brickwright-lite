@@ -59,7 +59,19 @@
 //      Build/Simulate, Drive ▲, Move/Turn, Undo and the palette are on screen and on top; the
 //      pane never scrolls sideways; the palette (a drawer when compact) places a part, Undo
 //      takes it away, the compact "More…" menu works, and "open large" goes full screen;
-//  13. no page errors.
+//  13. the build editor's Studio/LeoCAD tools (scripts/lib/sim-lab-editor-parity-gate.mjs, `--part=editor`),
+//      real mouse and keys: a colour swatch paints a part (its pixels turn red) and the eyedropper copies
+//      a colour, hide / isolate / show all (kept through Simulate), mirror puts a bent liftarm's holes on
+//      their mirror images, align lines two beams up, the tape measures 120 LDU between a beam's end
+//      holes, a double click edits inside a group, Ctrl+C / Ctrl+V carry LDraw text between models (and
+//      from Studio), and ? opens the shortcut sheet;
+//  14. big models and model files (scripts/lib/sim-lab-scale-gate.mjs, --part=scale): the 2,054-part
+//      stress model opened through "Open…" is ready within 120 s, drawn instanced in at most 150 draw
+//      calls and not blank, a frame finishes within 1 s; Build opens on a 269-part instanced model and
+//      a click on a grid beam selects that beam; the hand-made .lxf opens with its unknown parts listed; a password-protected
+//      .io is refused with the model left as it was; "Save as… → .io" downloads a ZIP whose model.ldr
+//      is the model's LDraw text and reopens to it;
+//  14. no page errors.
 //
 // Every Sim Lab here runs its physics in the Web Worker (ROADMAP §4.9): each load
 // asserts `window.__bwSimLab.worker === true`, so the line-follower lap, the wall
@@ -81,6 +93,8 @@ import {insightInteractions} from './lib/sim-lab-insight-gate.mjs';
 import {instructionsInteractions} from './lib/sim-lab-instructions-gate.mjs';
 import {touchInteractions} from './lib/sim-lab-touch-gate.mjs';
 import {layoutInteractions, MIN_CANVAS_PX} from './lib/sim-lab-layout-gate.mjs';
+import {editorParityInteractions} from './lib/sim-lab-editor-parity-gate.mjs';
+import {scaleInteractions, OPEN_BUDGET_MS, DRAW_CALL_BUDGET} from './lib/sim-lab-scale-gate.mjs';
 import {brakingBound, judgeWallStop} from './lib/sim-lab-wall-stopper-judge.mjs';
 import {STEP_MS} from '../overlay/scratch-gui/src/lib/bw-sim/hub-bridge.js';
 
@@ -227,10 +241,10 @@ const reading = page => page.evaluate(() => {
     return {pos: [b[i * 7], b[i * 7 + 1], b[i * 7 + 2]], a: motors[0].position, b: motors[1].position, time: s.time};
 });
 
-// One gate, five CI steps (each within the per-step budget, gen-gate-budgets.mjs):
-// `--part=core|examples|ui|tablet|layout` runs one section; no flag runs all of them.
+// One gate, six CI steps (each within the per-step budget, gen-gate-budgets.mjs):
+// `--part=core|examples|ui|tablet|layout|editor|scale` runs one section; no flag runs all of them.
 const PART = (process.argv.find(a => a.startsWith('--part=')) || '--part=all').slice('--part='.length);
-const PARTS = ['core', 'examples', 'ui', 'tablet', 'layout'];
+const PARTS = ['core', 'examples', 'ui', 'tablet', 'layout', 'editor', 'scale'];
 if (PART !== 'all' && !PARTS.includes(PART)) throw new Error(`--part must be one of ${PARTS.join(', ')} (got ${PART})`);
 const want = part => PART === 'all' || PART === part;
 
@@ -815,6 +829,31 @@ try {
         for (const row of layout) {
             console.log(`PASS layout ${row.size} ${row.mode}: ${row.layout} pane ${row.pane.join('×')}, 3D view ${row.canvas.join('×')} px (≥ ${MIN_CANVAS_PX} and half the pane), controls on screen`);
         }
+    }
+
+    if (want('editor')) { // the build editor's Studio/LeoCAD tools, real mouse and keys
+        // 13. Colour, hide / isolate, mirror, align, measure, edit inside a group, LDraw clipboard, shortcut sheet.
+        const studio = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block',
+            permissions: ['clipboard-read', 'clipboard-write']});
+        studio.on('pageerror', error => errors.push(error.message));
+        studio.on('dialog', dialog => dialog.accept());
+        await openSimLab(studio, {program: null});
+        await editorParityInteractions(studio, {shotsDir: artifacts});
+        await studio.close();
+    }
+    if (want('scale')) { // a 2,054-part model, instanced, and the .lxf/.io model files
+        const page = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block', acceptDownloads: true});
+        page.on('pageerror', error => errors.push(error.message));
+        page.on('dialog', dialog => dialog.accept());
+        await openSimLab(page, {program: null});
+        const r = await scaleInteractions(page, {root, shotsDir: artifacts, JSZip});
+        console.log(`PASS a ${r.stats.parts}-part model opens in ${(r.openMs / 1000).toFixed(1)} s (budget ${OPEN_BUDGET_MS / 1000} s), drawn instanced: ` +
+            `${r.stats.calls} draw calls (budget ${DRAW_CALL_BUDGET}), ${r.stats.instanced.drawObjects} instanced objects, a frame ${r.frame.median.toFixed(1)} ms ` +
+            `(p90 ${r.frame.p90.toFixed(1)}), not blank (${r.colours} byte values)`);
+        console.log(`PASS Build opens on a ${r.buildParts}-part instanced model in ${(r.buildMs / 1000).toFixed(1)} s (frame ${r.buildFrame.median.toFixed(1)} ms) and a click on grid beam ${r.picked} selects it`);
+        console.log('PASS the hand-made .lxf opens with its unknown, mirrored and uncoloured parts listed; a password-protected .io is refused and the model stays');
+        console.log('PASS Save as… → BrickLink Studio (.io) downloads a ZIP whose model.ldr is the model\'s LDraw text, and it reopens to it');
+        await page.close();
     }
 
     assert.deepEqual(errors, [], `page errors: ${errors.join('\n')}`);

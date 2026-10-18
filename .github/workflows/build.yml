@@ -1744,6 +1744,16 @@ jobs:
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
         run: npm run verify:sim-lab -- --part=layout
 
+      - name: Browser gate — Robot Lab build editor Studio tools (colour, hide, mirror, align, measure, groups, clipboard)
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
+        run: npm run verify:sim-lab -- --part=editor
+
+      - name: Browser gate — Robot Lab scale, a 2,054-part model drawn instanced, and .lxf/.io model files
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
+        run: npm run verify:sim-lab -- --part=scale
+
       - name: Browser gate — ESP8266 image runs on the esp8266 debug kind with serial
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}

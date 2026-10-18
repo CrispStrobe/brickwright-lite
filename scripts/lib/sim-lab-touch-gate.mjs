@@ -290,6 +290,8 @@ export const touchInteractions = async (page, {shotsDir}) => {
     await page.getByTestId('bw-sim-lab-copy').tap();
     const n3 = await countOf(page);
     await page.getByTestId('bw-sim-lab-paste').tap();
+    // Paste may read the system clipboard first (asynchronous): wait for it, then check.
+    await page.waitForFunction(n => window.__bwSimLab.editor.model.parts.length >= n + 1, n3, {timeout: 5000});
     assert.equal(await countOf(page), n3 + 1, 'Paste adds the copied part');
     await page.getByTestId('bw-sim-lab-undo').tap();
     assert.equal(await countOf(page), n3, 'Undo takes the copy away');
