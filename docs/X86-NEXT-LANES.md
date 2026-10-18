@@ -384,8 +384,7 @@ diagnostic attempt without claiming per-read preemption or job sufficiency.
 The earlier missing-font roster remains mandatory in a distinct diagnostic
 selection; actual execution remains disabled.
 
-The [candidate source checkpoint](https://github.com/CrispStrobe/brickwright-lite/commit/f0c113556)
-uses `bw.gui-hdd.inventory-failure.v2` for failed inventory: exact raw event
+Failure-only inventory now uses `bw.gui-hdd.inventory-failure.v2`: exact raw event
 bytes are embedded with a 256 KiB cap, separate hash/extent and reserved diagnostic
 budget. Unavailable originals or incomplete path diagnostics remain explicit
 failures. The standalone reader recomputes event/template/source-head and
@@ -456,18 +455,11 @@ writers and other workflows remain outside this lane. Next tasks are:
    zero-length named Python source account for the refusals. Git observation
    was not reached; no successful runtime inventory exists.
 
-   Two concrete follow-ups remain within the owned paths. First retain bounded
-   exact event bytes in the failure format and independently join them to the
-   expected source/template and official run; a hash alone cannot supply that
-   missing original. Second version an explicit policy for selected empty Python
-   source files, starting with `/usr/lib/python3.12/urllib/__init__.py`. Its
-   regular0644, size-zero named stat was observed; its content hash was not.
-   Require exact declared source role/path, zero extent, empty-content digest,
-   held-file readback and independent reader agreement. Keep executable/library
-   positive-size checks and generic file reads intact. A typed exception must
-   be explicit in the versioned template, inventory and actual-request contracts,
-   with wrong-role/path/hash and nonempty-substitution adversaries; do not simply
-   lower the generic minimum size. Review any future package-derived font roster
+   Two source prerequisites are now delivered: exact raw-event failure retention
+   and the explicit metadata-only empty Python-source policy described below.
+   The earlier original still has only named0644, size-zero stat for the empty
+   path, with no observed content hash. Actual-request v4 mapping remains pending;
+   existing v3 must not accept the new typed map. Review any package-derived font roster
    as a distinct declared scope, retaining the old failed selection and explaining
    every changed row. Do not delete failed entries solely to obtain green.
 3. Independently admit the official frontend Build checkout log, full source
@@ -487,6 +479,47 @@ writers and other workflows remain outside this lane. Next tasks are:
 5. Only qualified original evidence plus all enabled final-head checks can
    close the component/composition merge gates. Refresh ownership and normal
    merge parents/tree before merging; source controls alone do not qualify it.
+
+The [typed metadata checkpoint](https://github.com/CrispStrobe/brickwright-lite/commit/1f8565a7a)
+delivers template, successful-original, failure and admission v3 with a separate
+`emptyPythonSources` map. Only `/usr/lib/python3.12/urllib/__init__.py` is admitted
+under the declared `python-empty-package-source` role: root-owned0644, zero
+extent, exact empty digest, held one-byte EOF read, four strict metadata snapshots
+and successful close. Positive and typed entries share the existing 512-file
+limit. Generic file reads and executable/library positive-size checks stay held.
+All 63 Node tests and 74 Python controls pass; 17 source mutations are detected,
+and the legacy v2 success fixture is byte-identical. These are mocked source
+controls, not an observed hosted empty-file result.
+
+For a future externally pinned v3 metadata original, the independent endpoint is:
+
+```sh
+/usr/bin/python3 -B scripts/read-i80386-hdd-gui-originals.py \
+  --inventory-original gui-inventory/inventory-original.json \
+  --template gui-inventory/runtime-template.json \
+  --expected reviewed-metadata-policy.json
+```
+
+The policy schema is `bw.gui-hdd.inventory-admission.v3`: supply source21,
+original/template byte lengths and hashes, official run ID and workflow SHA.
+Its verdict keeps `candidate` and `qualified` false and explicitly reports
+`actualRequestSupported: false`. Existing template/inventory v2, failure v2 and
+actual request/reader v3 stay distinct; this metadata map is not accepted by
+actual v3. The next actual integration needs an explicit v4 request/reader:
+retain and independently grade typed EOF/hash/readback/close before and after
+the guest, preserve the isolated Python startup envelope, caps and first errors,
+and reject old-version mixing, wrong-role/path/hash and coherent nonempty data.
+Keep actual execution disabled until that source, runtime, Build and event review
+plus affected guest qualification are complete. The 34 missing font/configuration
+inputs remain unresolved; no new inventory event or roster change was made.
+
+Main [PR1066](https://github.com/CrispStrobe/brickwright-lite/pull/1066) advanced
+CUI from `055930e` to `fe89e3425bf323b1acd9e3f98df6a7383e9b836b`.
+The [separate consumer update](https://github.com/CrispStrobe/brickwright-lite/commit/d07be38c7)
+explicitly matches that canonical selection without writing dependencies. The
+four CUI commits change five module-label/layout and supporting files; existing
+386 target/API source is unchanged. Full rendering and this scenario's browser
+acceptance still need their own qualification. Board and SB3 selections stay held.
 
 The dependency-free focused check is:
 
