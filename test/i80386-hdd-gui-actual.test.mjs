@@ -297,6 +297,118 @@ class Originals(unittest.TestCase):
                 info=tarfile.TarInfo(name);info.size=len(raw);archive.addfile(info,io.BytesIO(raw))
         raw=zip_({'artifact.tar':out.getvalue()});self.assertEqual(c.frontend_files(raw)[:2],r.read_frontend(raw))
         with self.assertRaises(ValueError):r.read_frontend(zip_({'../index.html':b'escape'}))
+    def frontend_zip_profile(self,cut=None,contents=None,compression=zipfile.ZIP_STORED):
+        contents=contents or {'index.html':b'<html>manufactured</html>','brickwright-build.json':E({'commit':'a'*7})}
+        out=io.BytesIO()
+        with zipfile.ZipFile(out,'w',compression=compression) as archive:
+            for name,raw in contents.items():
+                info=zipfile.ZipInfo(name+'XXhidden' if name=='index.html' and cut=='nul-name' else name);info.create_system=3;info.compress_type=compression
+                info.external_attr=((stat.S_IFIFO if name=='index.html' and cut=='fifo' else stat.S_IFREG)|0o644)<<16
+                if cut=='mode-zero':info.external_attr=0o600<<16
+                archive.writestr(info,raw)
+            if cut not in (None,'nul-name','fifo','mode-zero'):
+                directory=cut in ('empty-directory','directory-payload','file-directory','symlink-directory','double-slash-directory','duplicate-directory')
+                name='assets/' if directory else '../late.txt' if cut=='path' else 'index.html' if cut=='duplicate-file' else 'late.txt'
+                if cut=='double-slash-directory':name='assets//'
+                info=zipfile.ZipInfo(name);info.create_system=3;info.compress_type=compression
+                kind={'late-fifo':stat.S_IFIFO,'socket':stat.S_IFSOCK,'block':stat.S_IFBLK,'directory-file':stat.S_IFDIR,'file-directory':stat.S_IFREG,'symlink-directory':stat.S_IFLNK}.get(cut,stat.S_IFDIR if directory else stat.S_IFREG)
+                info.external_attr=(kind|0o644)<<16
+                import warnings
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore',UserWarning);archive.writestr(info,b'payload' if cut=='directory-payload' or not directory else b'')
+                    if cut=='duplicate-directory':archive.writestr(info,b'')
+        raw=out.getvalue()
+        if cut=='nul-name':raw=raw.replace(b'index.htmlXXhidden',b'index.html\x00Xhidden')
+        if cut in ('encrypted','compression','extent'):
+            raw=bytearray(raw)
+            for marker,flag,method,size in ((b'PK\x03\x04',6,8,22),(b'PK\x01\x02',8,10,24)):
+                start=raw.rfind(marker);self.assertGreaterEqual(start,0)
+                if cut=='encrypted':raw[start+flag:start+flag+2]=(1).to_bytes(2,'little')
+                elif cut=='compression':raw[start+method:start+method+2]=(99).to_bytes(2,'little')
+                else:raw[start+size:start+size+4]=(r.FILE_CAP+1).to_bytes(4,'little')
+            raw=bytes(raw)
+        return raw
+    def test_frontend_zip_header_policy_preserves_direct_and_pages_positives(self):
+        for cut,compression in ((None,zipfile.ZIP_STORED),('mode-zero',zipfile.ZIP_STORED),('empty-directory',zipfile.ZIP_DEFLATED)):
+            raw=self.frontend_zip_profile(cut,compression=compression);observed=c.frontend_files(raw)
+            self.assertEqual(observed[:2],r.read_frontend(raw));self.assertEqual(set(observed[2]),{'index.html','brickwright-build.json'})
+            if cut=='empty-directory':
+                with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+                    info=archive.getinfo('assets/');self.assertEqual(info.file_size,0);self.assertGreater(info.compress_size,0)
+        out=io.BytesIO()
+        with tarfile.open(fileobj=out,mode='w') as archive:
+            for name,raw in {'index.html':b'index','brickwright-build.json':b'{}'}.items():
+                info=tarfile.TarInfo(name);info.size=len(raw);archive.addfile(info,io.BytesIO(raw))
+        raw=zip_({'artifact.tar':out.getvalue()});self.assertEqual(c.frontend_files(raw)[:2],r.read_frontend(raw))
+    def test_frontend_zip_all_headers_refuse_before_any_inflate(self):
+        for cut in ('nul-name','fifo','late-fifo','socket','block','directory-file','file-directory','symlink-directory','directory-payload',
+          'double-slash-directory','duplicate-directory','duplicate-file','path','encrypted','compression','extent'):
+            raw=self.frontend_zip_profile(cut)
+            for gate in (c.frontend_files,r.read_frontend):
+                with patch.object(zipfile.ZipFile,'read',side_effect=AssertionError('no inflation before complete header census')) as inflated:
+                    with self.assertRaises(ValueError,msg=(cut,gate.__name__)):gate(raw)
+                    inflated.assert_not_called()
+    def test_frontend_zip_rehashed_actual_v4_packet_refuses_hidden_names_and_types(self):
+        for cut in ('nul-name','fifo','directory-payload'):
+            files,expected=fixture_v4()
+            with zipfile.ZipFile(io.BytesIO(files['frontend.original.zip'])) as source:contents={item.filename:source.read(item) for item in source.infolist()}
+            frontend=self.frontend_zip_profile(cut,contents);files['frontend.original.zip']=frontend
+            request=D(files['request.original.json']);request['build'].update(metadataBytes=len(frontend),zipBytes=len(frontend),sha256=H(frontend));refresh_v4_request(files,expected,request)
+            artifact=D(files['build-artifact.original.json']);artifact.update(size_in_bytes=len(frontend),digest='sha256:'+H(frontend));files['build-artifact.original.json']=E(artifact)
+            process=D(files['frontend-acquisition.process.json']);process['streams']['stdout']=ROW(frontend);files['frontend-acquisition.process.json']=E(process)
+            with self.assertRaisesRegex(ValueError,'frontend ZIP',msg=cut):r.audit(*sealed(files,expected))
+    def original_zip_profile(self,files,prefixed=False,cut=None):
+        contents={name:raw for name,raw in files.items() if name!='inventory.json'}
+        contents['inventory.json']=E({'schema':'bw.gui-hdd.originals.v1','files':{name:ROW(raw) for name,raw in contents.items()}})
+        out=io.BytesIO()
+        with zipfile.ZipFile(out,'w') as archive:
+            for name,raw in sorted(contents.items()):
+                header=('originals/' if prefixed else '')+name+('XXhidden' if name=='result.json' and cut=='nul-name' else '')
+                info=zipfile.ZipInfo(header);info.create_system=3;info.compress_type=zipfile.ZIP_DEFLATED
+                info.external_attr=((stat.S_IFIFO if name=='result.json' and cut=='fifo' else stat.S_IFREG)|0o644)<<16
+                if cut=='mode-zero':info.external_attr=0o600<<16
+                archive.writestr(info,raw)
+            if prefixed:
+                archive.writestr('controller.stdout',b'');archive.writestr('controller.stderr',b'')
+            if cut not in (None,'fifo','nul-name','mode-zero'):
+                directory=cut in ('empty-directory','directory-payload','symlink-directory','file-directory','duplicate-directory')
+                name='late/' if directory else '../result.json' if cut=='path' else 'result.json' if cut=='duplicate-file' else 'unexpected' if cut=='unknown-role' else 'controller.stdout'
+                info=zipfile.ZipInfo(name);info.create_system=3;info.compress_type=zipfile.ZIP_DEFLATED
+                kind={'late-fifo':stat.S_IFIFO,'socket':stat.S_IFSOCK,'file-directory':stat.S_IFREG,'symlink-directory':stat.S_IFLNK}.get(cut,stat.S_IFDIR if directory else stat.S_IFREG)
+                info.external_attr=(kind|0o644)<<16
+                import warnings
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore',UserWarning);archive.writestr(info,b'payload' if cut=='directory-payload' or not directory else b'')
+                    if cut=='duplicate-directory':archive.writestr(info,b'')
+        raw=out.getvalue()
+        if cut=='nul-name':raw=raw.replace(b'result.jsonXXhidden',b'result.json\x00Xhidden')
+        if cut in ('encrypted','compression','extent'):
+            raw=bytearray(raw)
+            for marker,flag,method,size in ((b'PK\x03\x04',6,8,22),(b'PK\x01\x02',8,10,24)):
+                start=raw.rfind(marker);self.assertGreaterEqual(start,0)
+                if cut=='encrypted':raw[start+flag:start+flag+2]=(1).to_bytes(2,'little')
+                elif cut=='compression':raw[start+method:start+method+2]=(99).to_bytes(2,'little')
+                else:raw[start+size:start+size+4]=(r.FILE_CAP+1).to_bytes(4,'little')
+            raw=bytes(raw)
+        return raw
+    def original_zip_expectation(self,raw,expected):
+        expected=copy.deepcopy(expected);expected.update(artifactBytes=len(raw),artifactSha256=H(raw))
+        expected['artifact'].update(size_in_bytes=len(raw),digest='sha256:'+H(raw));return expected
+    def test_actual_original_zip_preserves_prefixed_unprefixed_v3_v4_packets(self):
+        for version,factory in ((3,fixture),(4,fixture_v4)):
+            files,expected=factory()
+            for prefixed in (False,True):
+                raw=self.original_zip_profile(files,prefixed,cut='empty-directory');parsed=r.archive_originals(raw)
+                verdict=r.audit(parsed,self.original_zip_expectation(raw,expected));self.assertTrue(verdict['pass']);self.assertEqual(verdict['schema'],'bw.gui-hdd.reader.v'+str(version))
+            raw=self.original_zip_profile(files,cut='mode-zero');self.assertTrue(r.audit(r.archive_originals(raw),self.original_zip_expectation(raw,expected))['pass'])
+    def test_actual_original_zip_rehashed_header_failures_never_inflate(self):
+        files,expected=fixture_v4()
+        for cut in ('fifo','nul-name','directory-payload','late-fifo','socket','file-directory','symlink-directory','duplicate-directory',
+          'duplicate-file','path','unknown-role','encrypted','compression','extent'):
+            raw=self.original_zip_profile(files,cut=cut);selected=self.original_zip_expectation(raw,expected)
+            with patch.object(zipfile.ZipFile,'read',side_effect=AssertionError('outer header census before any inflation')) as inflated:
+                with self.assertRaises(ValueError,msg=cut):r.audit(r.archive_originals(raw),selected)
+                inflated.assert_not_called()
     def test_closed_request_schemas_numeric_alias(self):
         request=D(self.files['request.original.json'])
         for field,value in (('attempt',True),('attempt',1.0),('runId',True)):

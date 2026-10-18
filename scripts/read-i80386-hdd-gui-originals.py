@@ -420,12 +420,19 @@ def role_policy(names):
 
 def read_frontend(raw):
     with zipfile.ZipFile(io.BytesIO(raw)) as archive:
-        need(len(archive.infolist())<=16384,'frontend ZIP census cap');members={};total=0
+        need(len(archive.infolist())<=16384,'frontend ZIP census cap');members={};total=0;names=set();selected=[]
         for item in archive.infolist():
-            if item.is_dir():relative(item.filename.rstrip('/'));continue
-            name=relative(item.filename);need(name not in members and not stat.S_ISLNK(item.external_attr>>16),'frontend ZIP regular unique path')
+            need(item.orig_filename==item.filename and '\x00' not in item.orig_filename,'untruncated frontend ZIP name')
+            need(not item.flag_bits&1 and item.compress_type in (zipfile.ZIP_STORED,zipfile.ZIP_DEFLATED),'unencrypted stored/deflated frontend ZIP')
+            directory=item.is_dir();name=relative(item.filename[:-1] if directory else item.filename)
+            need(name not in names,'unique frontend ZIP header path');names.add(name)
+            mode=stat.S_IFMT(item.external_attr>>16)
+            need(mode in ((0,stat.S_IFDIR) if directory else (0,stat.S_IFREG)),'regular frontend ZIP file/directory types')
+            if directory:need(item.file_size==0,'empty frontend ZIP directory');continue
             need(0<item.file_size<=(BUILD_CAP if name=='artifact.tar' else FILE_CAP),'frontend ZIP bound before inflate')
-            total+=item.file_size;need(total<=BUILD_CAP,'frontend aggregate bound');members[name]=archive.read(item)
+            total+=item.file_size;need(total<=BUILD_CAP,'frontend aggregate bound');selected.append((name,item))
+        # The standalone reader also closes the entire header census first.
+        for name,item in selected:members[name]=archive.read(item)
     if set(members)=={'artifact.tar'}:
         build={};total=0;count=0
         with tarfile.open(fileobj=io.BytesIO(members['artifact.tar']),mode='r:') as archive:
@@ -444,19 +451,25 @@ def read_frontend(raw):
 
 def archive_originals(raw):
     need(type(raw) is bytes and 0 < len(raw) <= 384 << 20, 'bounded official original artifact')
-    files = {}; total = 0
+    files = {}; total = 0; names=set(); selected=[]
     with zipfile.ZipFile(io.BytesIO(raw)) as archive:
         need(len(archive.infolist()) <= 160, 'closed original artifact census')
         for item in archive.infolist():
-            if item.is_dir():relative(item.filename.rstrip('/'));continue
-            name = relative(item.filename)
+            need(item.orig_filename==item.filename and '\x00' not in item.orig_filename,'untruncated original ZIP name')
+            need(not item.flag_bits&1 and item.compress_type in (zipfile.ZIP_STORED,zipfile.ZIP_DEFLATED),'unencrypted stored/deflated original ZIP')
+            directory=item.is_dir();name=relative(item.filename[:-1] if directory else item.filename)
+            need(name not in names,'unique original ZIP header path');names.add(name)
+            mode=stat.S_IFMT(item.external_attr>>16)
+            need(mode in ((0,stat.S_IFDIR) if directory else (0,stat.S_IFREG)),'regular original ZIP file/directory types')
+            if directory:need(item.file_size==0,'empty original ZIP directory');continue
             inner=name.removeprefix('originals/')
             need(allowed_role(inner) or name in ('controller.stdout','controller.stderr'),'fixed original role BEFORE inflate')
-            need(name not in files and not stat.S_ISLNK(item.external_attr >> 16), 'regular unique original')
             cap = ARCHIVE_CAP if name.endswith('frontend.original.zip') else FILE_CAP
             need(0 <= item.file_size <= cap, 'original member size before inflate')
             total += item.file_size; need(total <= 384 << 20, 'aggregate original extent')
-            files[name] = archive.read(item)
+            selected.append((name,item))
+        # A late invalid header must not allow any earlier original to inflate.
+        for name,item in selected:files[name]=archive.read(item)
     # upload-artifact may retain the explicitly selected originals/ prefix.
     prefixed = [name for name in files if name.startswith('originals/')]
     if prefixed:

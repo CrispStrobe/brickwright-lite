@@ -402,13 +402,20 @@ def frontend_files(archive):
     reader apply their own finite path/type/extent policy to those exact bytes.
     """
     with zipfile.ZipFile(io.BytesIO(archive)) as source:
-        need(len(source.infolist())<=16384,'bounded ZIP census');members={};total=0
+        need(len(source.infolist())<=16384,'bounded ZIP census');members={};total=0;names=set();selected=[]
         for info in source.infolist():
-            if info.is_dir():relative(info.filename.rstrip('/'));continue
-            name=relative(info.filename);need(name not in members and not stat.S_ISLNK(info.external_attr>>16),'regular unique ZIP member')
+            need(info.orig_filename==info.filename and '\x00' not in info.orig_filename,'untruncated frontend ZIP name')
+            need(not info.flag_bits&1 and info.compress_type in (zipfile.ZIP_STORED,zipfile.ZIP_DEFLATED),'unencrypted stored/deflated frontend ZIP')
+            directory=info.is_dir();name=relative(info.filename[:-1] if directory else info.filename)
+            need(name not in names,'unique frontend ZIP header path');names.add(name)
+            mode=stat.S_IFMT(info.external_attr>>16)
+            need(mode in ((0,stat.S_IFDIR) if directory else (0,stat.S_IFREG)),'regular frontend ZIP file/directory types')
+            if directory:need(info.file_size==0,'empty frontend ZIP directory');continue
             limit=BUILD_CAP if name=='artifact.tar' else FILE_CAP
             need(0<info.file_size<=limit,'ZIP member bound BEFORE inflate');total+=info.file_size;need(total<=BUILD_CAP,'ZIP aggregate extent')
-            members[name]=source.read(info)
+            selected.append((name,info))
+        # Admit every header before inflating any selected member.
+        for name,info in selected:members[name]=source.read(info)
     if set(members)=={'artifact.tar'}:
         files={};total=0;entries=0
         with tarfile.open(fileobj=io.BytesIO(members['artifact.tar']),mode='r:') as source:
