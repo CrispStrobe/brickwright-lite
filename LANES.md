@@ -5804,6 +5804,11 @@ API originals whose v1 base64 wrapper exceeds the held proof cap. Exact original
 v1 support, JSON/proof limits and all workflow identity joins remain held. This
 reader change requires a fresh source21/request and explicit consumer selection;
 no hosted discovery or actual qualification is inferred.
+Actual frontend and original-delivery ZIP admission now rejects NUL-truncated
+names, special file types and ignored directory payloads before any inflation.
+The complete header census preserves existing limits, required files, TAR and
+actual v3/v4 semantics. This is a source repair; clean affected GUI/guest
+qualification remains pending.
 The explicit consumer CUI expectation now follows main
 PR1066 at `fe89e3425bf323b1acd9e3f98df6a7383e9b836b`; no dependency writer changed.
 
