@@ -528,9 +528,11 @@ until complete runtime, Build, source and event admission plus affected clean
 browser/guest qualification. The 34 missing font/configuration inputs remain
 unresolved; no new inventory event or roster change was made.
 
-The separate font-discovery source continuation is disabled by
-`FONT_DISCOVERY_ENABLED = False` and a literal false guard on its distinct
-`font-discovery` workflow job. Its `bw.gui-hdd.font-discovery-request.v1` pins source21 and
+The separate font-discovery source candidate now sets
+`FONT_DISCOVERY_ENABLED = True` and enables its distinct conditional
+`font-discovery` workflow job. This source activation grants no event or runtime
+admission: the request remains unpublished, no discovery event has been sent,
+and `ACTUAL_ENABLED = False` remains held. Its `bw.gui-hdd.font-discovery-request.v1` pins source21 and
 embeds the unchanged baseline template. It collects fixed configuration and
 font-directory censuses, held file hash/extent/EOF/identity/close observations,
 raw configuration bytes and at most three read-only `dpkg-query` probes:
@@ -548,7 +550,9 @@ The token-free recording step runs isolated Python with a four-minute ceiling
 around the collector's 180-second cooperative budget. The sixteen-minute job
 backstop includes setup and upload; these limits do not prove measured
 sufficiency, syscall preemption or aggregate containment. Existing metadata and
-actual jobs remain unchanged; no new event is enabled by this source delivery.
+actual jobs remain unchanged. The job still requires the selected own-repository
+actor, label, first attempt, base/fork conditions and exact request/source/event
+joins; source activation alone admits no event.
 
 The delivery controls pass 64 Node tests, including 91 embedded Python controls.
 All 88 earlier Python test bodies remain unchanged. Twenty-six workflow drift
@@ -641,11 +645,20 @@ mutations and 27 independent re-pinned counterexamples are detected. Separate
 offline CLI controls cover complete and failed partial manufactured artifacts;
 these controls do not establish an actual hosted observation or guest result.
 
+The activation checkpoint passes 64 Node tests including 98 Python controls.
+It adds two controls for enabled-default refusal boundaries and changes only
+three earlier guard/fixture methods to model the intentional activation; the
+remaining 108 earlier methods stay held. Twenty-six workflow drift cases and
+seven activation mutations are detected, with six independent controls and
+three independent mutation cuts. Guards perform no input or runtime work. These
+source results establish no hosted font observation or guest qualification.
+
 A fresh agent can finish this work in the following bounded steps:
 
-1. Review the delivered disabled job, finite caps, selected system tools and
-   exact source. Separately review activation, then rebuild the request from
-   that final source head and tree: changing either guard changes source21.
+1. Freeze the activated source candidate, finite caps and selected system tools.
+   Require every enabled final-head check to succeed. Rebuild the canonical
+   request from that final source head and tree, embedding the unchanged retained
+   baseline: either guard or a later source integration changes source21.
    Freeze the executing workflow SHA, event, source checkout, original roles
    and resource bounds before any one-shot metadata event. Repository variables
    transport selected immutable blob and digest values; they grant no approval.
