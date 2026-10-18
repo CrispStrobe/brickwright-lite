@@ -66,7 +66,9 @@ export const MODELS = Object.freeze([
     {id: 'sumo', file: 'colour-explorer.ldr', title: {en: 'Sumo ring', de: 'Sumo-Ring'},
         example: 'sumo.bw', mat: 'sumo'},
     {file: 'forklift.ldr', title: {en: 'Forklift', de: 'Gabelstapler'},
-        example: 'forklift.bw', mat: 'warehouse'}
+        example: 'forklift.bw', mat: 'warehouse'},
+    {file: 'maze-runner.ldr', title: {en: 'Maze runner', de: 'Labyrinth-Läufer'},
+        example: 'maze.bw', mat: 'maze'}
 ]);
 export const MODELS_BASE = 'static/sim-lab/models/';
 export const PROGRAMS_BASE = 'static/sim-lab/programs/';

@@ -52,6 +52,7 @@
       "test/bw-sim-line-follower-program.test.mjs",
       "test/bw-sim-line-follower.test.mjs",
       "test/bw-sim-mats-b.test.mjs",
+      "test/bw-sim-maze-program.test.mjs",
       "test/bw-sim-mechanism-v2.test.mjs",
       "test/bw-sim-model-insight.test.mjs",
       "test/bw-sim-models-solid.test.mjs",
