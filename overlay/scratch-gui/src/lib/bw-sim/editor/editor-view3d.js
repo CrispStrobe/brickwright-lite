@@ -86,6 +86,7 @@ import {TransformControls} from 'three/addons/controls/TransformControls.js';
 import {LDU_M, lduToWorld} from '../contracts.js';
 import {partGeometry, partVisual} from '../view/part-geometry.js';
 import {PART_SURFACE, addEdgeLines, addPartLights, edgeMaterials} from '../view/part-style.js';
+import {createInstancedParts, useInstancing} from '../view/instanced-parts.js';
 import {snapCandidates, rotateAboutSnap} from './snap.js';
 import {freeOffset, moveVerdict, rayHitParts, restingPosition, solidOverlaps} from './overlap.js';
 import {
@@ -420,13 +421,23 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         drawOutlines();
     };
 
+    // A big model is drawn instanced (view/instanced-parts.js): the meshes below stay as the
+    // parts' invisible proxies, so picking, highlights and tints read and write them as before.
+    let instanced = null;
+    s.onBeforeRender = () => instanced?.sync();
     const rebuild = () => {
         for (const mesh of meshes.values()) {
             modelGroup.remove(mesh);
             for (const m of [].concat(mesh.material)) m.dispose();
         }
         meshes.clear();
+        if (instanced) {
+            s.remove(instanced.object);
+            instanced.dispose();
+            instanced = null;
+        }
         const model = editor.model;
+        const mirror = useInstancing(model.parts.length) ? createInstancedParts({colors}) : null;
         for (const p of model.parts) {
             // Each mesh gets its own material pair so a highlight is per part.
             const mats = materialsFor(p.color ?? DEFAULT_COLOR).map(m => m.clone());
@@ -435,9 +446,16 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             mesh.matrix.copy(worldMatrix(p.position, p.rotation));
             mesh.name = p.id;
             mesh.userData.part = p.part;
-            addEdgeLines(mesh, partVisual(p.part, read, colors), linesFor(p.color ?? DEFAULT_COLOR));
+            if (mirror) mirror.add(mesh, partVisual(p.part, read, colors), p.color ?? DEFAULT_COLOR);
+            else addEdgeLines(mesh, partVisual(p.part, read, colors), linesFor(p.color ?? DEFAULT_COLOR));
             modelGroup.add(mesh);
             meshes.set(p.id, mesh);
+        }
+        if (mirror) {
+            modelGroup.updateMatrixWorld(true);
+            mirror.build();
+            s.add(mirror.object);
+            instanced = mirror;
         }
         // The floor is fixed where the model stood when the editor opened, so lifting
         // the lowest part does not move the floor away under it; it only ever goes down.
@@ -1867,6 +1885,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         measureDiv.remove();
         clearGhost();
         for (const mesh of meshes.values()) for (const m of [].concat(mesh.material)) m.dispose();
+        if (instanced) instanced.dispose();
         for (const pair of materials.values()) for (const m of pair) m.dispose();
         for (const set of lineMaterials.values()) for (const m of [...set.edges, ...set.conditional]) m.dispose();
         for (const g of edges.values()) g.dispose();
