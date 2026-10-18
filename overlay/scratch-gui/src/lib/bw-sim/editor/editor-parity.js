@@ -13,6 +13,16 @@
 // validatePlacedModel refuses an improper rotation (det −1) outright. So a
 // mirrored selection is built from proper rotations only, part by part:
 //
+//   0. MEASURED (`meta.mirrorOf`, written by scripts/derive-canonical-frames.mjs
+//      from the part geometry, part-meta/canonical-frame.js): `{part, transform:
+//      {m, t}}` says the counterpart's shape is this part's under p ↦ m·p + t
+//      (m improper). The counterpart — the part itself when it is its own
+//      mirror image — goes in its place turned R' = M·R·mᵀ at P' = M(P) − R'·t,
+//      exactly the mirror image of the placed part (a part that is its own
+//      mirror image lists its other improper symmetries in `others`; the
+//      one nearest the world mirror at the part's pose is used). `mirrorOf: null` was
+//      measured too: no catalog part is its mirror image (case 3).
+//   Parts without the measurement (a catalog built elsewhere) fall back to:
 //   1. the part has a mirror counterpart (`meta.mirror`, or a catalog part whose
 //      name is the same with Left↔Right / Side A↔Side B swapped): the
 //      counterpart goes in its place, turned R' = M·R·N, where M is the
@@ -27,10 +37,11 @@
 //      mirrored direction, but keeps its own handedness (it is the same part,
 //      not a mirrored one). The command reports these as `kept`.
 //
-// Each of M·R·N, M·R·S and M·R·M has det (−1)·(+1)·(−1) = +1.
+// Each of M·R·mᵀ, M·R·N, M·R·S and M·R·M has det (−1)·(+1)·(−1) = +1.
 
 import {collidersOf} from './overlap.js';
 import {DEFAULT_GRID, IDENTITY, cleanRotation, det3, isProperRotation, mul3, mulVec3, worldAxisRotation} from './transform-math.js';
+import {transpose} from '../part-meta/canonical-frame.js';
 import {parseModel, serializeModel} from '../model/ldraw-model.js';
 
 /** 1 LDU is 0.4 mm; a stud (and a Technic hole) is 20 LDU = 8 mm. */
@@ -92,17 +103,35 @@ const swapName = name => {
     return changed ? out : null;
 };
 
+/**
+ * The measured mirror image of a part (`meta.mirrorOf`, header case 0): the
+ * entry when its counterpart is in the catalog and its map is improper, null when
+ * the measurement says there is none, undefined when the part was not measured.
+ * @returns {{part: string, transform: {m: number[], t: number[]}}|null|undefined}
+ */
+export const measuredMirror = (meta, catalog) => {
+    if (!meta || meta.mirrorOf === undefined) return undefined;
+    const mo = meta.mirrorOf;
+    if (mo === null) return null;
+    const ok = mo && mo.transform && Array.isArray(mo.transform.m) && mo.transform.m.length === 9 &&
+        Array.isArray(mo.transform.t) && mo.transform.t.length === 3 && det3(mo.transform.m) < 0;
+    return ok && asMap(catalog).has(mo.part) ? mo : undefined;
+};
+
 const counterparts = new WeakMap();
 /**
- * A part's mirror counterpart in the catalog: `meta.mirror` (a part number, or
- * `{part, axis}`), else the part whose name is this one's with Left↔Right or
- * Side A↔Side B swapped. Null when the part has none.
- * @returns {{part: string, axis: 'x'|'y'|'z'}|null}
+ * A part's mirror counterpart in the catalog: the measured one (`meta.mirrorOf`,
+ * with its transform), else `meta.mirror` (a part number, or `{part, axis}`), else
+ * the part whose name is this one's with Left↔Right or Side A↔Side B swapped.
+ * Null when the part has none — or is its own mirror image.
+ * @returns {{part: string, axis?: 'x'|'y'|'z', transform?: {m: number[], t: number[]}}|null}
  */
 export const mirrorCounterpart = (part, catalog) => {
     const map = asMap(catalog);
     const meta = map.get(part);
     if (!meta) return null;
+    const measured = measuredMirror(meta, map);
+    if (measured !== undefined) return measured && measured.part !== part ? {part: measured.part, transform: measured.transform} : null;
     if (meta.mirror) {
         const m = typeof meta.mirror === 'string' ? {part: meta.mirror} : meta.mirror;
         if (m.part && map.has(m.part)) return {part: m.part, axis: REFLECTIONS[m.axis] ? m.axis : 'x'};
@@ -193,6 +222,27 @@ export const mirrorPoses = (parts, catalog, axis, pivot = 0) => {
     return parts.map(p => {
         const position = p.position.map((v, i) => tidy(i === k ? 2 * pivot - v : v));
         const mr = reflectRows(M, p.rotation);
+        const measured = measuredMirror(map.get(p.part), map);
+        if (measured) {
+            // R' = M·R·mᵀ, P' = M(P) − R'·t (header case 0). A part that is its own mirror image may
+            // have several improper symmetries (a beam: three mirror planes); all give the mirror
+            // image, and the one that best matches the world mirror at this pose (R·m·Rᵀ nearest M)
+            // moves the part least — a beam mirrored across its own plane stays as it was, and
+            // mirroring twice returns to the same pose.
+            let g = measured.transform;
+            if (measured.part === p.part && Array.isArray(measured.others)) {
+                const score = c => {
+                    const W = mul3(mul3(p.rotation, c.m), transpose(p.rotation));
+                    return M[0] * W[0] + M[1] * W[4] + M[2] * W[8];
+                };
+                for (const c of measured.others) if (c && Array.isArray(c.m) && det3(c.m) < 0 && score(c) > score(g) + 1e-9) g = c;
+            }
+            const rotation = cleanRotation(mul3(mr, transpose(g.m)));
+            if (!isProperRotation(rotation, 1e-6)) throw new Error(`mirror: ${p.id} would get an improper rotation (det ${det3(rotation)})`);
+            const shift = mulVec3(rotation, g.t);
+            return {id: p.id, part: measured.part, position: position.map((v, i) => tidy(v - shift[i])), rotation,
+                how: measured.part === p.part ? 'mirrored' : 'swapped'};
+        }
         const pair = mirrorCounterpart(p.part, map);
         let part = p.part;
         let how;
@@ -202,7 +252,8 @@ export const mirrorPoses = (parts, catalog, axis, pivot = 0) => {
             rotation = reflectCols(mr, REFLECTIONS[pair.axis]);
             how = 'swapped';
         } else {
-            const s = partSymmetry(map.get(p.part));
+            // Measured chiral with no counterpart (mirrorOf: null): the mesh has the last word.
+            const s = measured === null ? null : partSymmetry(map.get(p.part));
             rotation = reflectCols(mr, s ? REFLECTIONS[s] : M);
             how = s ? 'mirrored' : 'kept';
         }

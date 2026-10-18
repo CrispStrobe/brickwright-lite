@@ -119,8 +119,8 @@ kept as they are; every difference is explained below (a derived connector the h
 | plate | 47 |
 | tile | 17 |
 | slope | 18 |
-| other | 2 |
-| **total** | **236** (and 56 listed parts already measured by hand) |
+| other | 8 |
+| **total** | **242** (and 56 listed parts already measured by hand) |
 
 <details><summary>Every derived part</summary>
 
@@ -362,6 +362,12 @@ kept as they are; every difference is explained below (a derived connector the h
 | 73507.dat | Technic beam 11 with alternating holes | beam | 2.93 | 11 pinhole | 1 |
 | 71710.dat | Technic beam 15 with alternating holes | beam | 4.0600000000000005 | 15 pinhole | 1 |
 | 2719.dat | Technic plate 1 x 10 with holes | plate | 1.71 | 2 pinhole, 8 stud, 8 antistud | 2 |
+| 41769a.dat | Wing 2 x 4 right without chamfer | other | 1.03 | 4 stud, 6 antistud | 2 |
+| 41770a.dat | Wing 2 x 4 left without chamfer | other | 1.03 | 4 stud, 6 antistud | 2 |
+| 43722a.dat | Wing 2 x 3 right without chamfer | other | 0.78 | 3 stud, 5 antistud | 2 |
+| 43723a.dat | Wing 2 x 3 left without chamfer | other | 0.78 | 3 stud, 5 antistud | 2 |
+| 32190.dat | Technic panel fairing #1 | other | 3.7800000000000002 | 4 pinhole | 1 |
+| 32191.dat | Technic panel fairing #2 | other | 3.7800000000000002 | 4 pinhole | 1 |
 
 </details>
 
@@ -407,7 +413,7 @@ other; a clutch gear slips); racks and worms are derived when their teeth measur
 
 ## Size
 
-parts.json is 1111792 bytes as written (one-space JSON) and 506259 bytes minified (39576 gzipped) in
+parts.json is 1122351 bytes as written (one-space JSON) and 511384 bytes minified (39962 gzipped) in
 the lazy Sim Lab chunk. If the library grows by another few hundred parts, split it: keep the hand-measured parts (motors, hub,
 sensors, the examples' parts) in parts.json and move the derived ones to a second file the palette fetches on first open.
 

@@ -95,6 +95,7 @@ import {
     placeCopies, rotatePoses, selectionPivot, snapDelta, translatePoses, worldAxisRotation
 } from './transform-math.js';
 import {portsForCopies} from './editor-state.js';
+import {defaultRotation} from '../part-meta/canonical-frame.js';
 import {
     alignMoves, clipboardText, distributeMoves, gridMoves, measureBetween, measurePoint, mirrorPivot, mirrorPoses, partsFromClipboard
 } from './editor-parity.js';
@@ -926,13 +927,15 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
 
     // ---- the placing tool (palette) ---------------------------------------------
     /**
-     * Where a part rests on a surface at a world point: upright, turned, its
+     * Where a part rests on a surface at a world point: in its default placement
+     * (part-meta/canonical-frame.js defaultRotation: studs up, a beam along x with its
+     * holes horizontal, a shaft along x, a gear on a horizontal axle), turned, its
      * footprint centred on the point, its colliders' bottom ON the surface
      * (overlap.js `restingPosition`), x/z on the grid.
      */
     const restingPose = (part, point, turns) => {
-        const rotation = worldAxisRotation('y', (((turns % 4) + 4) % 4) * QUARTER);
         const meta = catalogMap.get(part);
+        const rotation = cleanRotation(mul3(worldAxisRotation('y', (((turns % 4) + 4) % 4) * QUARTER), defaultRotation(meta)));
         if (meta && meta.colliders && meta.colliders.length) {
             return {position: restingPosition({meta, rotation, point: worldToLdu(point), grid: gridStep}), rotation};
         }

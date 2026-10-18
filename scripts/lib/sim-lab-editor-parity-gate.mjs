@@ -32,7 +32,17 @@ const partOf = (page, id) => page.evaluate(i => window.__bwSimLab.editor.model.p
 const selectionOf = page => page.evaluate(() => window.__bwSimLab.editView.selection.slice().sort());
 const statusText = page => page.getByTestId('bw-sim-lab-build-status').textContent();
 /** Where a point of a part (LDU, its own frame) is on screen right now. */
-const screenOf = (page, id, local = [0, 0, 0]) => page.evaluate(([i, l]) => {
+const screenOf = (page, id, local = [0, 0, 0]) => page.evaluate(([i, local]) => {
+    // `local` is [across, height, along] of the part as it lies: its y is taken along the world
+    // vertical (LDraw -y up), whatever the part's turn — a beam the palette stands on edge
+    // (canonical-frame.js defaultRotation) has its top where a flat one has it.
+    const part = window.__bwSimLab.editor.model.parts.find(p => p.id === i);
+    const R = part ? part.rotation : [1, 0, 0, 0, 1, 0, 0, 0, 1];
+    const up = [R[3], R[4], R[5]]; // the part-frame direction of world LDraw +y
+    const vert = Math.abs(up[1]) > 0.99 ? 1 : Math.abs(up[0]) > 0.99 ? 0 : 2;
+    const l = local ? local.slice() : [0, 0, 0];
+    if (local && vert !== 1) { const h = l[1]; l[1] = l[vert]; l[vert] = h * Math.sign(up[vert]); }
+    else if (local) l[1] = local[1] * Math.sign(up[1]);
     const v = window.__bwSimLab.editView;
     const w = v.debugPoint(i, l);
     return w && v.toScreen(w);
@@ -148,7 +158,11 @@ const checks = async (page, {shotsDir}) => {
     await page.waitForFunction(() => window.__bwSimLab.mode === 'build' && window.__bwSimLab.status === 'ready' && window.__bwSimLab.editView);
     const canvas = page.getByTestId('bw-sim-lab-editor-canvas');
 
-    // Set-up only: a beam 7, a beam 5 and a bent liftarm on open floor beside the robot.
+    // Set-up only: a beam 7, a beam 5 and a bent liftarm on open floor beside the robot, each
+    // the beams given a quarter turn from their palette pose (a beam stands on edge along x
+    // there, canonical-frame.js defaultRotation): side by side along z, far enough apart that
+    // the upright beams do not cover each other on screen. The liftarm keeps its palette pose,
+    // its bend in the x-y plane, so mirroring across x is not its own symmetry (step 3).
     const setup = await page.evaluate(() => {
         const v = window.__bwSimLab.editView;
         const parts = window.__bwSimLab.editor.model.parts;
@@ -157,8 +171,8 @@ const checks = async (page, {shotsDir}) => {
         const zs = parts.map(p => v.debugPoint(p.id)[2]);
         const z0 = (Math.min(...zs) + Math.max(...zs)) / 2;
         const out = {};
-        for (const [name, part, dx, dz] of [['a', '32524.dat', 0, 0], ['b', '32316.dat', 0.05, 0.03], ['l', '32348.dat', 0.12, -0.02]]) {
-            v.placeAt(part, [x0 + dx, 0, z0 + dz]);
+        for (const [name, part, dx, dz, turns] of [['a', '32524.dat', 0, 0, 1], ['b', '32316.dat', 0.05, 0.09, 1], ['l', '32348.dat', 0.12, -0.02, 0]]) {
+            v.placeAt(part, [x0 + dx, 0, z0 + dz], turns);
             out[name] = window.__bwSimLab.editor.model.parts.at(-1).id;
         }
         v.select([]);
