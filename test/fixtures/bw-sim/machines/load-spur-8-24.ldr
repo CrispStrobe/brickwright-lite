@@ -1,0 +1,27 @@
+0 load-spur-8-24 (Brickwright Robot Lab validation machine)
+0 Name: load-spur-8-24.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 // Spur back-drive rig (Robot Lab validation, test/bw-sim-validation.test.mjs).
+0 // The 8:24 bench (8T on the motor, 24T on an 8L axle in the frame beam, 40 LDU apart) with a thin liftarm
+0 // 6632 on the 24T's axle above the gear, the whole build turned 90 degrees about z: the gear axles lie
+0 // horizontal (along x) and the arm points along +z, so gravity loads it with its full moment.
+0 !BW ID motor
+0 !BW PORT A
+1 71 0 0 0 0 -1 0 1 0 0 0 0 1 54696p01.dat
+0 !BW ID frame
+1 72 -40 0 0 0 -1 0 0 0 1 -1 0 0 32524.dat
+0 !BW ID framePin1
+1 0 -30 20 0 -1 0 0 0 1 0 0 0 -1 2780.dat
+0 !BW ID framePin2
+1 0 -30 -20 0 -1 0 0 0 1 0 0 0 -1 2780.dat
+0 !BW ID axleIn
+1 4 60 0 0 -1 0 0 0 1 0 0 0 -1 4519.dat
+0 !BW ID g8
+1 16 60 0 0 0 0 -1 1 0 0 0 -1 0 3647.dat
+0 !BW ID axleOut
+1 4 10 40 0 -1 0 0 0 1 0 0 0 -1 3707.dat
+0 !BW ID g24
+1 16 60 40 0 0 0 -1 1 0 0 0 -1 0 3648.dat
+0 !BW ID arm
+1 4 85 40 0 0 -1 0 1 0 0 0 0 1 6632.dat
