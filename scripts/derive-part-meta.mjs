@@ -1602,8 +1602,11 @@ export const coverageMarkdown = ({added, rejected, measured, compare, partsBytes
         '| Part | LDraw description | Why |', '|---|---|---|');
     for (const r of rejected) lines.push(`| ${r.part} | ${r.name} | ${r.why.join('; ').replace(/\|/g, '/')} |`);
     lines.push('', 'Not attempted: ball sockets, steering arms and links, click hinges, rubber/flex parts, panels, Bionicle/Hero Factory, Duplo.',
-        'Turntables, clutch gears, crown and knob gears need a coupling model of their own (a turntable is two parts that turn on each',
-        'other; a clutch gear slips); racks and worms are derived when their teeth measure cleanly.', '');
+        'Clutch gears, crown and knob gears need a coupling model of their own (a clutch gear slips); racks and worms are derived when',
+        'their teeth measure cleanly. Turntables (kinds/turntable.js: a ring and a race at the origin LDraw assembles them on, the top',
+        'half\'s teeth a spur gear) and the small linear actuator (kinds/screw.js: bearing, spindle thread, guide bore, rod and nut, the',
+        'stroke from LDraw\'s contracted and extended assemblies, the lead from the measured turns of a full stroke) have derivations of',
+        'their own (deriveTurntable, deriveLinearActuator); the excavator bucket\'s colliders are slabs across its depth.', '');
     lines.push('## Size', '', `parts.json is ${partsBytes.pretty} bytes as written (one-space JSON) and ${partsBytes.min} bytes minified (${partsBytes.gz} gzipped) in`,
         'the lazy Sim Lab chunk. If the library grows by another few hundred parts, split it: keep the hand-measured parts (motors, hub,',
         'sensors, the examples\' parts) in parts.json and move the derived ones to a second file the palette fetches on first open.', '');

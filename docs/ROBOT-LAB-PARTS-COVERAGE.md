@@ -412,8 +412,11 @@ Listed parts the deriver could not admit, with the reason. They are not in parts
 | 4589.dat | Cone 1 x 1 | x0: a 6 LDU axlehole is shallower than the seat rule's 8 LDU |
 
 Not attempted: ball sockets, steering arms and links, click hinges, rubber/flex parts, panels, Bionicle/Hero Factory, Duplo.
-Turntables, clutch gears, crown and knob gears need a coupling model of their own (a turntable is two parts that turn on each
-other; a clutch gear slips); racks and worms are derived when their teeth measure cleanly.
+Clutch gears, crown and knob gears need a coupling model of their own (a clutch gear slips); racks and worms are derived when
+their teeth measure cleanly. Turntables (kinds/turntable.js: a ring and a race at the origin LDraw assembles them on, the top
+half's teeth a spur gear) and the small linear actuator (kinds/screw.js: bearing, spindle thread, guide bore, rod and nut, the
+stroke from LDraw's contracted and extended assemblies, the lead from the measured turns of a full stroke) have derivations of
+their own (deriveTurntable, deriveLinearActuator); the excavator bucket's colliders are slabs across its depth.
 
 ## Size
 
