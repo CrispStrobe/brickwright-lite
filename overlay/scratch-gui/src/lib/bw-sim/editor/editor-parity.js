@@ -18,7 +18,9 @@
 //      {m, t}}` says the counterpart's shape is this part's under p ↦ m·p + t
 //      (m improper). The counterpart — the part itself when it is its own
 //      mirror image — goes in its place turned R' = M·R·mᵀ at P' = M(P) − R'·t,
-//      exactly the mirror image of the placed part. `mirrorOf: null` was
+//      exactly the mirror image of the placed part (a part that is its own
+//      mirror image lists its other improper symmetries in `others`; the
+//      one nearest the world mirror at the part's pose is used). `mirrorOf: null` was
 //      measured too: no catalog part is its mirror image (case 3).
 //   Parts without the measurement (a catalog built elsewhere) fall back to:
 //   1. the part has a mirror counterpart (`meta.mirror`, or a catalog part whose
@@ -222,10 +224,22 @@ export const mirrorPoses = (parts, catalog, axis, pivot = 0) => {
         const mr = reflectRows(M, p.rotation);
         const measured = measuredMirror(map.get(p.part), map);
         if (measured) {
-            // R' = M·R·mᵀ, P' = M(P) − R'·t (header case 0).
-            const rotation = cleanRotation(mul3(mr, transpose(measured.transform.m)));
+            // R' = M·R·mᵀ, P' = M(P) − R'·t (header case 0). A part that is its own mirror image may
+            // have several improper symmetries (a beam: three mirror planes); all give the mirror
+            // image, and the one that best matches the world mirror at this pose (R·m·Rᵀ nearest M)
+            // moves the part least — a beam mirrored across its own plane stays as it was, and
+            // mirroring twice returns to the same pose.
+            let g = measured.transform;
+            if (measured.part === p.part && Array.isArray(measured.others)) {
+                const score = c => {
+                    const W = mul3(mul3(p.rotation, c.m), transpose(p.rotation));
+                    return M[0] * W[0] + M[1] * W[4] + M[2] * W[8];
+                };
+                for (const c of measured.others) if (c && Array.isArray(c.m) && det3(c.m) < 0 && score(c) > score(g) + 1e-9) g = c;
+            }
+            const rotation = cleanRotation(mul3(mr, transpose(g.m)));
             if (!isProperRotation(rotation, 1e-6)) throw new Error(`mirror: ${p.id} would get an improper rotation (det ${det3(rotation)})`);
-            const shift = mulVec3(rotation, measured.transform.t);
+            const shift = mulVec3(rotation, g.t);
             return {id: p.id, part: measured.part, position: position.map((v, i) => tidy(v - shift[i])), rotation,
                 how: measured.part === p.part ? 'mirrored' : 'swapped'};
         }

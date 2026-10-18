@@ -312,6 +312,10 @@ export const validatePartMeta = (meta, {connectorKinds = null} = {}) => {
                 out.push(`${p}.mirrorOf.transform.m: must be an orthogonal reflection (det −1), not det ${d}`);
             }
         }
+        if (mo?.others !== undefined && !(Array.isArray(mo.others) && mo.part === meta.part &&
+            mo.others.every(o => Array.isArray(o?.m) && o.m.length === 9 && o.m.every(isNum) && Array.isArray(o?.t) && o.t.length === 3 && o.t.every(isNum)))) {
+            out.push(`${p}.mirrorOf.others: only on a part that is its own mirror image, a list of {m, t}`);
+        }
     }
     if (meta.friction !== undefined && !(isNum(meta.friction) && meta.friction >= 0 && meta.friction <= 2)) {
         out.push(`${p}.friction: need a number in 0..2`);

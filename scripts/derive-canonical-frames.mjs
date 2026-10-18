@@ -8,7 +8,8 @@
 //
 //   parts.json            `mirrorOf` on every catalogue part: {part, transform: {m, t}} — the
 //                         part whose shape is this one's under p ↦ m·p + t (m improper; the
-//                         part itself when it is its own mirror image) — or null (chiral, no
+//                         part itself when it is its own mirror image, then with its `others`
+//                         improper symmetries) — or null (chiral, no
 //                         counterpart in the catalogue). The editor's mirror command reads it
 //                         (editor/editor-parity.js mirrorPoses).
 //   canonical-frames.json per part: frame (centroid, principal axes, moments), connector
@@ -73,7 +74,10 @@ export const mirrorOfAll = (catalogue, pairs) => {
     const out = new Map();
     for (const a of catalogue) {
         const s = mirrorSymmetry(a.group);
-        out.set(a.meta.part, s ? {part: a.meta.part, transform: {m: s.m, t: vec(s.t)}} : null);
+        // The part's other improper symmetries: the editor mirrors with the one that best matches
+        // the world mirror at the part's pose, so a beam mirrored across its own plane stays put.
+        const others = a.group.elements.filter(e => !e.proper && e !== s).map(e => ({m: e.m, t: vec(e.t)}));
+        out.set(a.meta.part, s ? {part: a.meta.part, transform: {m: s.m, t: vec(s.t)}, ...(others.length ? {others} : {})} : null);
     }
     for (const {a, b, transform} of pairs.mirrors) {
         // Each side's map is the other's inverse, so mirroring twice is the identity.

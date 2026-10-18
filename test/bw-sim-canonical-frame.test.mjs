@@ -48,7 +48,8 @@ const key = v => v.map(x => Math.round(x * 100) / 100 + 0).join(',');
 const apply = (g, v) => mulV(g.m, v).map((x, i) => x + g.t[i]);
 /** A connector as a comparable string: type, position, unsigned axis direction. */
 const connKey = (c, g = {m: I3, t: [0, 0, 0]}) => {
-    const a = mulV(g.m, c.axis || [0, 0, 0]).map(x => Math.round(x * 1000) / 1000 + 0);
+    // A ball's axis is the socket's opening, not used for matching (contracts.js): left out.
+    const a = c.type === 'ball' || c.type === 'ballsocket' ? [0, 0, 0] : mulV(g.m, c.axis || [0, 0, 0]).map(x => Math.round(x * 1000) / 1000 + 0);
     const k = a.findIndex(x => x !== 0);
     const sense = c.type === 'stud' || c.type === 'antistud' || c.type === 'tube' || k < 0 || a[k] > 0 ? 1 : -1;
     return `${c.type}@${key(apply(g, c.position))}/${key(a.map(x => x * sense))}`;
@@ -168,8 +169,12 @@ test('every catalogue part carries its measured mirrorOf, valid and consistent w
         if (!p.mirrorOf) continue;
         const other = CATALOG.get(p.mirrorOf.part);
         assert.ok(other, `${p.part}: counterpart ${p.mirrorOf.part} is in the catalogue`);
-        // Connectors map exactly (this file's comparison).
+        // Connectors map exactly (this file's comparison), under every listed symmetry.
         assert.deepEqual(connSet(p, p.mirrorOf.transform), connSet(other), `${p.part} → ${p.mirrorOf.part}`);
+        for (const o of p.mirrorOf.others || []) {
+            assert.ok(det(o.m) < 0);
+            assert.deepEqual(connSet(p, o), connSet(p), `${p.part}: another improper symmetry`);
+        }
         if (other !== p) {
             // The counterpart points back with the inverse map, so mirroring twice is the identity.
             const back = other.mirrorOf.transform;
@@ -247,6 +252,24 @@ test('through the editor: one undo step, twice gives the left part back where it
         const q = ed.model.parts.find(x => x.id === p.id);
         assert.equal(q.part, p.part);
         assert.ok(close(q.position, p.position, 1e-9) && close(q.rotation, p.rotation, 1e-12), `${p.id} is back`);
+    }
+});
+
+test('a beam mirrored across its own plane stays put; across any plane, twice is where it was', () => {
+    // A beam 7 standing along world z (a quarter turn about y): world x is its width direction, a
+    // mirror plane of the beam, so its mirror image across x is itself where it stands.
+    const R = axisAngle([0, 1, 0], Math.PI / 2).map(v => Math.round(v) + 0);
+    const placed = {id: 'b', part: '32524.dat', position: [0, -20, 40], rotation: R};
+    const [m] = mirrorPoses([placed], CATALOG, 'x', 0);
+    assert.equal(m.how, 'mirrored');
+    assert.ok(close(m.rotation, R) && close(m.position, placed.position), JSON.stringify(m));
+    for (const rotation of [R, axisAngle([1, 1, 0], 0.4), axisAngle([0, 0, 1], Math.PI / 2).map(v => Math.round(v) + 0)]) {
+        for (const axis of ['x', 'z']) {
+            const p0 = {id: 'b', part: '32348.dat', position: [10, -20, 40], rotation};
+            const [once] = mirrorPoses([p0], CATALOG, axis, 30);
+            const [twice] = mirrorPoses([{...once, id: 'b'}], CATALOG, axis, 30);
+            assert.ok(close(twice.rotation, rotation, 1e-9) && close(twice.position, p0.position, 1e-9), `${axis}: back where it was`);
+        }
     }
 });
 

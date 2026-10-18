@@ -296,14 +296,17 @@ const connectorMaps = (c, o, g) => {
  * (Kuhn's augmenting paths: two connectors closer than the tolerance must not
  * steal each other's partner, as a greedy pass would).
  */
-export const connectorsMap = (a, b, g) => {
-    if (a.length !== b.length) return false;
+export const connectorsMap = (a, b, g) => Boolean(connectorMatching(a, b, g));
+
+/** The one-to-one matching behind connectorsMap: partner[i] is b's index for a[i], or null. */
+export const connectorMatching = (a, b, g) => {
+    if (a.length !== b.length) return null;
     const options = a.map(c => {
         const list = [];
         for (let j = 0; j < b.length; j++) if (connectorMaps(c, b[j], g)) list.push(j);
         return list;
     });
-    if (options.some(o => !o.length)) return false;
+    if (options.some(o => !o.length)) return null;
     const owner = new Int32Array(b.length).fill(-1);
     const augment = (i, seen) => {
         for (const j of options[i]) {
@@ -313,8 +316,60 @@ export const connectorsMap = (a, b, g) => {
         }
         return false;
     };
-    for (let i = 0; i < a.length; i++) if (!augment(i, new Uint8Array(b.length))) return false;
-    return true;
+    for (let i = 0; i < a.length; i++) if (!augment(i, new Uint8Array(b.length))) return null;
+    const partner = new Array(a.length);
+    owner.forEach((i, j) => { partner[i] = j; });
+    return partner;
+};
+
+/**
+ * The orthogonal map (det = `sign`) that best takes points `src` onto `dst` in least squares
+ * (Kabsch / orthogonal Procrustes, via the eigen-decomposition of HᵀH). Null when the points
+ * do not pin it down (fewer than three independent directions after centring).
+ */
+export const orthoFit = (src, dst, sign) => {
+    const n = src.length;
+    const cs = scale(src.reduce(add, [0, 0, 0]), 1 / n);
+    const cd = scale(dst.reduce(add, [0, 0, 0]), 1 / n);
+    const H = new Array(9).fill(0); // Σ (d − cd)(s − cs)ᵀ
+    for (let i = 0; i < n; i++) {
+        const a = sub(src[i], cs); const b = sub(dst[i], cd);
+        for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) H[3 * r + c] += b[r] * a[c];
+    }
+    const {values, vectors: V} = eigenSym3(mul(transpose(H), H));
+    if (!(values[1] > 1e-9 * Math.max(values[0], 1e-12))) return null;
+    const v = [0, 1, 2].map(i => columnOf(V, i));
+    const u0 = unit(mulVec(H, v[0])); const u1 = unit(mulVec(H, v[1]));
+    // The third direction from the other two, with the sense that gives det = sign.
+    const vz = cross(v[0], v[1]);
+    const uz = scale(cross(u0, u1), sign * Math.sign(dot(vz, v[2]) || 1) * Math.sign(det(fromColumns(...v)) || 1));
+    const U = fromColumns(u0, u1, uz);
+    const m = mul(U, transpose(fromColumns(v[0], v[1], vz)));
+    return {m: clean(m), t: sub(cd, mulVec(clean(m), cs))};
+};
+
+/**
+ * A map found in a numerically measured (unaligned) frame, re-fitted exactly to the
+ * connector pairs it matched: positions and positions + 10·axis (axis sense taken from
+ * the partner), so a bent liftarm's 53° mirror plane comes out as 0.6 / 0.8, not 0.59996.
+ */
+const refine = (g, a, b) => {
+    if (SIGNED_PERMUTATIONS.some(q => q.every((v, i) => v === g.m[i]))) return g;
+    const partner = connectorMatching(a, b, g);
+    if (!partner || a.length < 2) return g;
+    const src = []; const dst = [];
+    a.forEach((c, i) => {
+        const o = b[partner[i]];
+        src.push(c.position); dst.push(o.position);
+        if (c.axis && o.axis) {
+            const s = Math.sign(dot(mulVec(g.m, c.axis), o.axis)) || 1;
+            src.push(add(c.position, scale(unit(c.axis), 10))); dst.push(add(o.position, scale(unit(o.axis), 10 * s)));
+        }
+    });
+    const f = orthoFit(src, dst, Math.sign(det(g.m)));
+    if (!f) return g;
+    const err = Math.max(...src.map((p, i) => len(sub(add(mulVec(f.m, p), f.t), dst[i]))));
+    return err < 1e-6 && connectorsMap(a, b, f) ? f : g;
 };
 
 const typeCounts = connectors => {
@@ -500,7 +555,8 @@ export const symmetryGroup = (meta, stats, {index, frame} = {}) => {
         if (!connectorsMap(connectors, connectors, g)) continue;
         const off = areaOffSurface(stats, g, idx, AREA_TOL);
         if (!off.ok) continue;
-        elements.push({m: g.m, t: roundT(g.t), proper: det(g.m) > 0, what: describe(g.m), missedArea: roundFrac(off.missed)});
+        const r = refine(g, connectors, connectors);
+        elements.push({m: r.m, t: roundT(r.t), proper: det(g.m) > 0, what: describe(g.m), missedArea: roundFrac(off.missed)});
     }
     // n-fold turns about a frame axis whose perpendicular moments are equal (a necessary condition for n ≥ 3).
     const axial = [];
@@ -579,7 +635,8 @@ export const matchParts = (A, B, {proper, exact = false} = {}) => {
             if (!ba || !ba.ok) continue;
             missedArea = roundFrac(Math.max(ab.missed, ba.missed));
         }
-        out.push({m: g.m, t: roundT(g.t), proper: isProper, missedArea});
+        const r = withConnectors ? refine(g, A.meta.connectors || [], B.meta.connectors || []) : g;
+        out.push({m: r.m, t: roundT(r.t), proper: isProper, missedArea});
     }
     return out;
 };
