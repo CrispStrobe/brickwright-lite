@@ -31,8 +31,15 @@
 // and blocks, and compileFirmwareProgram refuses two-motor position moves.)
 //
 // Measures and checks: encoder (the emulator's external shaft) vs physics per
-// step (≤ 1°), the firmware's own LPF2 POS reading vs physics, distance vs the
-// Scratch route (within 5 %), boot time, real-time factor. Every request is also
+// step (≤ 1°), the firmware's own LPF2 POS reading vs physics, boot time,
+// real-time factor, and the cross-route acceptance (owner decision 2026-10-18):
+//   timed drive (default form): steady wheel speed over the middle half within
+//     1 % of the Scratch route's; the distance ratio is printed, not checked —
+//     it depends on each controller's acceleration profile;
+//   BW_SIMLAB_FORM=degrees: `run motor A forward N degrees` (BW_SIMLAB_DEGREES,
+//     default 360) — the motor's end angle within ±2° of the Scratch route's.
+// Both forms are the acceptance (npm run verify:sim-lab-renode and
+// verify:sim-lab-renode:degrees). Every request is also
 // passed through the desktop broker's closed validator (arena-inputs.js).
 //
 // Opt-in: needs a Renode executable and a lockstep-capable NuttX package
@@ -97,8 +104,10 @@ const DRIVE_S = Number(process.env.BW_SIMLAB_DRIVE_S || 2);
 // BW_SIMLAB_FORM=move: the same drive as the pseudocode's `move forward … seconds` (the
 // compiler's movement form, at `set movement speed`), instead of `start tank` + `wait`.
 const FORM = process.env.BW_SIMLAB_FORM || 'tank';
+const DEGREES = Number(process.env.BW_SIMLAB_DEGREES || 360);
 const SCRATCH_BODY = FORM === 'move' ?
     `  set movement speed ${SPEED_PCT}\n  move forward ${DRIVE_S} seconds\n` :
+    FORM === 'degrees' ? `  run motor A forward ${DEGREES} degrees\n` :
     `  start tank ${SPEED_PCT} ${SPEED_PCT}\n  wait ${DRIVE_S} seconds\n  stop movement\n`;
 /** The block tree as the VM deserializes it (literal tuples -> shadow blocks), for compileFirmwareProgram. */
 const asVm = source => {
@@ -413,7 +422,8 @@ try {
         finalWheelSpeedDps: Object.fromEntries(hub.read.motors.map(m => [m.port, +m.speedDps.toFixed(1)])),
         finalDrives: hub.read.drives.map(d => ({port: d.port, meanDrive: d.meanDrive, brakingTicks: d.brakingTicks, ticks: d.ticks}))};
     check(runningAgain && program.state === PROGRAM_STATE.STOPPED && program.sent.map(c => c.op).join(',') === '3,4,3,4' &&
-        hub.read.drives.every(d => d.meanDrive === 0 && d.brakingTicks === d.ticks),
+        // The degrees form drives port A only; an untouched port's bridge stays coasting.
+        hub.read.drives.filter(d => FORM !== 'degrees' || d.port === 'A').every(d => d.meanDrive === 0 && d.brakingTicks === d.ticks),
         `Run again + Pause: controls ${report.rerun.controls.join(',')} (START, STOP, START, STOP), RUNNING after ${again} steps, STOPPED after ${stopSteps}; ` +
         `the firmware brakes both bridges (wheel speed 300 ms later ${JSON.stringify(report.rerun.finalWheelSpeedDps)} °/s)`);
     await driver.end();
@@ -455,13 +465,22 @@ try {
         `step wall median ${report.stepWallMs.median} ms, p90 ${report.stepWallMs.p90} ms`);
     const mid = steps.filter(x => x.t >= DRIVE_S * 250 && x.t <= DRIVE_S * 750);
     report.steadySpeedDps = +((mid.at(-1).angles.B - mid[0].angles.B) / ((mid.at(-1).t - mid[0].t) / 1000)).toFixed(1);
-    console.log(`firmware clock ${report.firmwareClockRate} ms per virtual ms; steady wheel speed ${report.steadySpeedDps} °/s (commanded ${PROGRAM.instructions[1][2]})`);
+    // Overshoot: the peak 50 ms-mean wheel speed over the commanded one (timed drive).
+    const commandedDps = Math.abs(PROGRAM.instructions[1]?.[2] ?? 0);
+    if (FORM !== 'degrees' && commandedDps) {
+        let peak = 0;
+        for (let k = 10; k < steps.length; k++) peak = Math.max(peak, Math.abs(steps[k].angles.B - steps[k - 10].angles.B) / ((steps[k].t - steps[k - 10].t) / 1000));
+        report.peakSpeedDps = +peak.toFixed(1);
+        report.overshootPct = +((peak / commandedDps - 1) * 100).toFixed(2);
+    }
+    console.log(`firmware clock ${report.firmwareClockRate} ms per virtual ms; steady wheel speed ${report.steadySpeedDps} °/s (commanded ${PROGRAM.instructions[1]?.[2]}); ` +
+        `peak (50 ms mean) ${report.peakSpeedDps ?? '-'} °/s, overshoot ${report.overshootPct ?? '-'} %`);
     console.log(`wheels A ${report.wheels.A}°, B ${report.wheels.B}°; firmware program state ${state}; distance ${report.firmwareDistanceMm} mm`);
     check(seenRunning && state === PROGRAM_STATE.COMPLETE, `the firmware program ran and completed (final state ${state})`);
     check(worstShaft <= 0.0005 + 1e-9, `shafts sent = physics hinge angles to the milli-degree (worst ${worstShaft.toFixed(5)}°)`);
     check(worstGuest <= 1, `emulator encoders follow the physics within 1° (worst ${worstGuest.toFixed(4)}°)`);
     console.log(`     (the firmware's own LPF2 POS reading while running, integer degrees reported every 10 ms: worst ${worstFirmware.toFixed(2)}° from the physics)`);
-    check(Math.abs(last.angles.A + last.angles.B) <= 0.05 * Math.abs(last.angles.B), `both wheels turned alike (A ${last.angles.A.toFixed(1)}°, B ${last.angles.B.toFixed(1)}°)`);
+    if (FORM !== 'degrees') check(Math.abs(last.angles.A + last.angles.B) <= 0.05 * Math.abs(last.angles.B), `both wheels turned alike (A ${last.angles.A.toFixed(1)}°, B ${last.angles.B.toFixed(1)}°)`);
     check(transport.validated.step === hub.exchanges && transport.validated.packet === transport.ops.filter(o => o.op === LOCKSTEP_OPS.programPacket).reduce((n, o) => n + o.n, 0),
         `every step (${hub.exchanges}), program packet (${transport.validated.packet}) and control (${transport.validated.control}) request passed the desktop broker's validator`);
 
@@ -469,8 +488,11 @@ try {
     const scratch = along(track[0].axle, track.at(-1).axle);
     report.scratchDistanceMm = +(scratch * 1000).toFixed(1);
     report.scratchHeadingDeg = +turn(track[0].bodies[hubId].rotation, track.at(-1).bodies[hubId].rotation).toFixed(2);
-    check(Math.abs(report.firmwareHeadingDeg - report.scratchHeadingDeg) <= 3,
+    // The degrees form pivots the base on its undriven wheel B, which each route leaves
+    // passive differently (the end angles of B are reported below): heading is informational there.
+    if (FORM !== 'degrees') check(Math.abs(report.firmwareHeadingDeg - report.scratchHeadingDeg) <= 3,
         `heading firmware ${report.firmwareHeadingDeg}° vs Scratch ${report.scratchHeadingDeg}° (within 3°)`);
+    else console.log(`     (informational: heading firmware ${report.firmwareHeadingDeg}° vs Scratch ${report.scratchHeadingDeg}°)`);
     // The Scratch route's wheel angles (its virtual hub's controller), to separate controller from physics.
     const scratchMech = (await import(path.join(SIM, 'sim-session.js'))).prepareModel(MODEL_TEXT, CATALOG, {mat: null}).mechanism;
     const jointOf = new Map(scratchMech.actuators.map(a => [a.port, a.joint]));
@@ -486,11 +508,22 @@ try {
     report.mmPerWheelDegree = {firmware: +perDeg(report.firmwareDistanceMm, report.wheels).toFixed(4), scratch: +perDeg(report.scratchDistanceMm, report.scratchWheels).toFixed(4)};
     console.log(`Scratch route: wheels A ${report.scratchWheels.A}°, B ${report.scratchWheels.B}°; mm per wheel degree firmware ${report.mmPerWheelDegree.firmware}, Scratch ${report.mmPerWheelDegree.scratch}`);
     report.distanceRatio = +(firmwareDistance / scratch).toFixed(4);
-    check(Math.abs(report.mmPerWheelDegree.firmware / report.mmPerWheelDegree.scratch - 1) < 0.01,
-        'the physics is one physics: distance per wheel degree agrees within 1 % across the routes');
-    // The R13e acceptance: the same program's distance within 5 %. A miss here with the line above
-    // passing is the two motor controllers (firmware PI + 2000 °/s² ramp vs the virtual hub's), not the physics.
-    check(Math.abs(report.distanceRatio - 1) < 0.05, `distance firmware ${report.firmwareDistanceMm} mm vs Scratch ${report.scratchDistanceMm} mm: ratio ${report.distanceRatio} (within 5 %)`);
+    if (FORM !== 'degrees') {
+        check(Math.abs(report.mmPerWheelDegree.firmware / report.mmPerWheelDegree.scratch - 1) < 0.01,
+            'the physics is one physics: distance per wheel degree agrees within 1 % across the routes');
+        // Cross-route acceptance (owner decision 2026-10-18): the steady-state speed within 1 %.
+        // The timed distance also integrates each controller's acceleration profile, so it is
+        // informational only.
+        report.steadySpeedRatio = +(report.steadySpeedDps / report.scratchSteadySpeedDps).toFixed(4);
+        check(Math.abs(report.steadySpeedRatio - 1) <= 0.01,
+            `steady wheel speed firmware ${report.steadySpeedDps} °/s vs Scratch ${report.scratchSteadySpeedDps} °/s: ratio ${report.steadySpeedRatio} (within 1 %)`);
+        console.log(`     (informational: distance firmware ${report.firmwareDistanceMm} mm vs Scratch ${report.scratchDistanceMm} mm, ratio ${report.distanceRatio})`);
+    } else {
+        // Run-for-degrees: the motor's end angle within ±2° of the Scratch route's.
+        report.endAngleDeg = {firmware: report.wheels.A, scratch: report.scratchWheels.A, target: DEGREES};
+        check(Math.abs(report.wheels.A - report.scratchWheels.A) <= 2,
+            `run for ${DEGREES} degrees: end angle firmware ${report.wheels.A}° vs Scratch ${report.scratchWheels.A}° (within ±2°)`);
+    }
     report.trace = steps.filter((_, k) => k % 10 === 0 || k === steps.length - 1).map(s => ({t: s.t, angles: s.angles, guest: s.guest, firmware: s.firmware, duty: s.duty, state: s.state, fwClockMs: s.fwClockMs}));
 } catch (error) {
     failures.push(error.message);
