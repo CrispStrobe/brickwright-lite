@@ -11,9 +11,11 @@ How it is built, and what comes next, is in `docs/SIM-LAB-PLAN.md`.
 1. Write a SPIKE Prime program in the Code tab (blocks or DEVICE SPIKE text). The reference model drives its wheels with ports **A (left, mounted mirrored) and B (right)**, like the arena's driving base, so `set movement motors A B` and `move forward 20 cm` work as in the arena.
    The **Model** list has the **SPIKE driving base**, the **Line follower** (the same base with a
    colour sensor on port **C** just ahead of the drive axle, for the Line Oval mat), the **Wall stopper**
-   (the base with a distance sensor on port **D** looking ahead, for the Wall mat) and the **Colour
+   (the base with a distance sensor on port **D** looking ahead, for the Wall mat), the **Colour
    explorer** (the base with a colour sensor on port **C** centred ahead of the axle, for the Colour
-   Zones mat). Each of the last three comes with an example program: the examples are below.
+   Zones mat) and the **Maze runner** (the base with a distance sensor on port **D** looking ahead and a
+   colour sensor on port **C** looking down, for the Maze mat). Each of the last four comes with an
+   example program: the examples are below.
 2. Open the SPIKE simulator (**SPIKE arena** button in the Code tab) and pick the **Robot Lab (beta)** tab.
 3. Press **Run**. As the arena's Start does, Run connects the program to the virtual hub and starts it on the green flag. **Pause** stops the program and the clock; **Reset** reloads the model.
    The program's clock is the simulation's: `wait 2 seconds` is 2 s of simulated time on every computer. When a computer cannot simulate in real time, the whole program runs slower and the status line says how fast, e.g. *“0.40× real time”* (*“0,40× Echtzeit”*); what the robot does stays the same.
@@ -103,6 +105,68 @@ WHEN flag clicked:
 
 The Model list keys its entries by the model's file name (one example per model), so it cannot offer a second example for the Colour explorer — the program is loaded from the code above instead. `test/bw-sim-sumo-program.test.mjs` runs exactly this text through the Scratch VM, the spikeprime extension and the virtual hub on the shipped model and mat, for 40 s of simulated time: the drive-axle midpoint never leaves the 0.385 m ring edge, the robot reaches the band more than three times and travels more than 6 m; the same program waiting for a colour the mat does not have (blue) rolls straight out of the ring in seconds. *Challenge:* make the turn angle random so the robot explores the whole ring.
 
+**The maze runner, ready to run.** Choose **Maze runner** in the Model list, press **Load example program** (it puts the program into the Code tab, builds the blocks and moves the robot onto the **Maze** mat), then press **Run**. The robot keeps its left hand on the wall: in every square it turns a quarter to look left with the distance sensor, then ahead, then right, and drives one cell into the first open way (left, then ahead, then right, then back); the colour sensor looking down stops the robot the moment the floor under it is the goal cell's green. From the start it reaches the goal in about 70 s of simulated time. The program (`static/sim-lab/programs/maze.bw`):
+
+```
+DEVICE SPIKE
+
+# Robot Lab: find your way through the maze to the green square.
+# Model: Maze runner (wheels on A and B, a distance sensor on D looking ahead,
+# a colour sensor on C looking down).
+# Keep your left hand on the wall: at every square look left first, then
+# ahead, then right, and drive that way when it is open. The colour sensor
+# stops the robot the moment the floor under it is green.
+WHEN flag clicked:
+  set movement motors A B
+  set movement speed 30
+  reset yaw
+  REPEAT UNTIL spike color C is green:
+    # Look left: turn a quarter to the left and take a reading.
+    reset yaw
+    start tank -20 20
+    wait until (spike angle yaw) < -83
+    stop movement
+    wait 0.5 seconds
+    IF (spike distance D) > 25 THEN:
+      move forward 30 cm
+      wait 1.5 seconds
+    ELSE:
+      # Left is a wall. Face ahead again and take a reading.
+      reset yaw
+      start tank 20 -20
+      wait until (spike angle yaw) > 83
+      stop movement
+      wait 0.5 seconds
+      IF (spike distance D) > 25 THEN:
+        move forward 30 cm
+        wait 1.5 seconds
+      ELSE:
+        # Ahead is a wall too. Face right and take a reading.
+        reset yaw
+        start tank 20 -20
+        wait until (spike angle yaw) > 83
+        stop movement
+        wait 0.5 seconds
+        IF (spike distance D) > 25 THEN:
+          move forward 30 cm
+          wait 1.5 seconds
+        ELSE:
+          # Only the way back is open: face it and drive.
+          reset yaw
+          start tank 20 -20
+          wait until (spike angle yaw) > 83
+          stop movement
+          wait 0.5 seconds
+          move forward 30 cm
+          wait 1.5 seconds
+  # Home: the floor is green. Stop, light the hub and beep.
+  stop movement
+  set center button light to green
+  play beep 440 0.3
+```
+
+The two waits are what make the moves repeatable: `stop movement` shorts the motors and the robot rolls on for a moment, so each turn stops a little past the 83° the block waits for and settles on 90°, and each one-cell drive runs on a moment after its block returns. The 25 cm threshold sits between the two readings that matter: a wall on the edge ahead has its near face 0.15 - 0.01 = 0.14 m from the cell centre and the sensor's ray starts 44 mm ahead of the axle, so it reads about 96 mm, while the nearest open corridor (one cell, then the rim wall's near face at 0.15 + 0.3 - 0.01 = 0.44 m) reads 440 - 44 = 396 mm. The model is the driving base plus the wall stopper's distance-sensor mount and the colour explorer's colour-sensor mount on the same base: two 15-hole beams on the hub's top holes carry a cross beam, the distance sensor (ray 36 mm up) hangs under it on two pins seated in its blind side holes, and the colour sensor sits on a 3-hole beam on the right, held on two pins, looking down 16 mm above the floor. No two solid parts overlap, and the compiler welds both sensors into the hub's body. `test/bw-sim-maze-program.test.mjs` runs exactly this text through the Scratch VM, the spikeprime extension and the virtual hub on the shipped model and mat, for 120 s of simulated time: the colour sensor first sees the goal's green at 70 s, and at rest the drive-axle midpoint (0.49, -0.44) and the sensor's spot (0.52, -0.41) are both on the goal cell's green floor (read from `createMat('maze')`, x 0.3–0.6, z -0.6 to -0.3), and the axle midpoint never crosses a wall's centre plane. The same program waiting for blue (which the mat does not have) never stops. *Challenge:* put the goal behind a wall the left hand alone will not pass, and see the program miss it.
+
 
 `scripts/verify-sim-lab-browser.mjs` runs both examples through the pane's buttons in the built app and judges them the same way.
 
@@ -119,8 +183,10 @@ If no SPIKE program is loaded when you press Run, the pane shows: *“No SPIKE p
 
 - **Sumo ring** (`sumo`, 1.0 × 1.0 m) — a white disc with a 5 cm black ring band centred on the mat (inner radius 0.335 m, outer radius 0.385 m — outer diameter 0.77 m). The robot starts at the ring centre, heading +x, ready for a stay-in-the-ring robot.
 
+- **Maze** (`maze`, 1.2 × 1.2 m) — a 4 × 4 grid of 0.3 m cells with 2 cm grey walls standing on the grid lines at -0.6 + 0.3 k; the goal cell (3,0) has a green floor (colour id 6), the other cells are white. The robot starts at the start cell's centre (-0.45, -0.45) heading +z, ready for a wall-follower. The walls are the mat's obstacles, so the distance sensor sees them.
 
-Choosing the line-oval mat puts the robot on the line, the wall mat puts its drive axle 0.68 m before the wall face; the other mats start at (0,0) heading 0.
+
+Choosing the line-oval mat puts the robot on the line, the wall mat puts its drive axle 0.68 m before the wall face, the maze mat puts it at the start cell's centre heading into the maze; the other mats start at (0,0) heading 0.
 
 **Open .ldr…** loads your own model from any LDraw editor (LeoCAD, BrickLink Studio's LDraw export, including MPD files with `0 FILE` submodels; Studio meta like `0 STEP`, `!LDCAD`, `!STUDIO`/`PE_TEX` and `0x2RRGGBB` direct colours are ignored). Parts the Robot Lab does not know, loose geometry and mirrored parts are listed under **Notes about this model** and skipped; the rest still runs. A motor or sensor is bound to a hub port by a meta line before its part line:
 ```

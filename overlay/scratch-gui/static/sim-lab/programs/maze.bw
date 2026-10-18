@@ -1,0 +1,55 @@
+DEVICE SPIKE
+
+# Robot Lab: find your way through the maze to the green square.
+# Model: Maze runner (wheels on A and B, a distance sensor on D looking ahead,
+# a colour sensor on C looking down).
+# Keep your left hand on the wall: at every square look left first, then
+# ahead, then right, and drive that way when it is open. The colour sensor
+# stops the robot the moment the floor under it is green.
+WHEN flag clicked:
+  set movement motors A B
+  set movement speed 30
+  reset yaw
+  REPEAT UNTIL spike color C is green:
+    # Look left: turn a quarter to the left and take a reading.
+    reset yaw
+    start tank -20 20
+    wait until (spike angle yaw) < -83
+    stop movement
+    wait 0.5 seconds
+    IF (spike distance D) > 25 THEN:
+      move forward 30 cm
+      wait 1.5 seconds
+    ELSE:
+      # Left is a wall. Face ahead again and take a reading.
+      reset yaw
+      start tank 20 -20
+      wait until (spike angle yaw) > 83
+      stop movement
+      wait 0.5 seconds
+      IF (spike distance D) > 25 THEN:
+        move forward 30 cm
+        wait 1.5 seconds
+      ELSE:
+        # Ahead is a wall too. Face right and take a reading.
+        reset yaw
+        start tank 20 -20
+        wait until (spike angle yaw) > 83
+        stop movement
+        wait 0.5 seconds
+        IF (spike distance D) > 25 THEN:
+          move forward 30 cm
+          wait 1.5 seconds
+        ELSE:
+          # Only the way back is open: face it and drive.
+          reset yaw
+          start tank 20 -20
+          wait until (spike angle yaw) > 83
+          stop movement
+          wait 0.5 seconds
+          move forward 30 cm
+          wait 1.5 seconds
+  # Home: the floor is green. Stop, light the hub and beep.
+  stop movement
+  set center button light to green
+  play beep 440 0.3
