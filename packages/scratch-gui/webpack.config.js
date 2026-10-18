@@ -130,6 +130,14 @@ const baseConfig = new ScratchWebpackConfigBuilder(
             }
         }
     })
+    // The Robot Lab part catalogue in two pieces (parts-subset-loader.js): `parts.json?core` in
+    // the Sim Lab chunk, `parts.json?derived` in its own (src/lib/bw-sim/sim-lab.js loadFullCatalog).
+    .addModuleRule({
+        test: /[\\/]part-meta[\\/]parts\.json$/,
+        resourceQuery: /^\?(core|derived)$/,
+        type: 'javascript/auto',
+        use: path.resolve(__dirname, 'parts-subset-loader.js')
+    })
     .addModuleRule({
         test: /\.(svg|png|wav|mp3|gif|jpg)$/,
         resourceQuery: /^$/, // reject any query string

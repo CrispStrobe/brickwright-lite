@@ -395,6 +395,7 @@ class SimLabPane extends React.Component {
         if (this.editView) { try { this.editView.dispose(); } catch { /* a lost context may already be gone */ } }
         this.editView = null;
         this.editor = null;
+        this.editorDrawn = false;
         if (!this.disposed) this.setState({editGroup: null, pick: null, measurement: null, shortcuts: false});
         // The pictures stay drawn (part-thumbnails.js keeps them); only the renderer goes.
         if (this.thumbs) { try { this.thumbs.dispose(); } catch { /* a lost context may already be gone */ } }
@@ -931,7 +932,13 @@ class SimLabPane extends React.Component {
             }
         }
         this.last = now;
-        if (this.editView) { this.drawThumbs(); this.editView.render(); return; }
+        if (this.editView) {
+            // The model first; palette pictures (each a GPU read-back, slow on a software GPU) are drawn
+            // in frames the build view did not need to redraw, once it has drawn the model.
+            if (this.editView.render()) this.editorDrawn = true;
+            else if (this.editorDrawn) this.drawThumbs();
+            return;
+        }
         if (!this.session) return;
         if (this.session.failed && this.state.status !== 'failed') {
             this.setState({status: 'failed', message: this.t('physicsFailed', {error: this.session.failed.message})});

@@ -202,13 +202,16 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     const onDemand = Boolean(built.instanced);
     let dirty = true;
     let lastBodies = null;
-    const lastCamera = new Float32Array(16);
+    // Float64: the camera matrix is doubles, and a float32 copy differs from it in nearly every
+    // element, so "the camera moved" was true every frame and an idle big model was redrawn forever
+    // (seconds a frame on a software GPU, queueing up behind whatever comes next).
+    const lastCamera = new Float64Array(16);
     const lastSize = new Vector2();
     const changed = (snapshot, size) => {
         let moved = false;
         const bodies = snapshot && snapshot.bodies;
         if (bodies && (!lastBodies || lastBodies.length !== bodies.length || bodies.some((v, i) => v !== lastBodies[i]))) {
-            lastBodies = Float32Array.from(bodies);
+            lastBodies = Float64Array.from(bodies);
             moved = true;
         }
         camera.updateMatrixWorld();
@@ -281,7 +284,9 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
             return {position: camera.position.toArray(), target: controls.target.toArray(), distance: camera.position.distanceTo(controls.target)};
         },
         /** What the last frame cost: three's draw calls and triangles, GPU objects, and the instancing (scale gate). */
+        // `frames`: frames drawn so far (three counts each render), so a gate can see an idle big model is not redrawn.
         renderStats: () => ({calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, lines: renderer.info.render.lines,
+            frames: renderer.info.render.frame,
             geometries: renderer.info.memory.geometries, programs: renderer.info.programs?.length ?? null,
             parts: model.parts.length, instanced: built.instanced ? built.instanced.stats() : null}),
         /** What the overlay shows now, plus the parts pulsing (for the browser gate). */
