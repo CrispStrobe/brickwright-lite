@@ -18,7 +18,7 @@ import {validatePlacedModel, validateCompiledMechanism, GROUND_FRICTION, LDU_M, 
 import {BUILTIN_KINDS} from '../kinds/index.js';
 import {mat3MulVec3, vecAdd} from './vec.js';
 import {buildGraph} from './graph.js';
-import {buildIslands} from './islands.js';
+import {buildIslands, freeSpinnerWelds} from './islands.js';
 import {buildJoints} from './joints.js';
 import {buildGears} from './gears.js';
 import {sharedAxisBodyPairs} from './collision-filter.js';
@@ -176,7 +176,8 @@ export const compile = (model, catalog, opts = {}) => {
     // mesh partner turns in (gear-on-frame, gears.js). Each pass rebuilds islands,
     // joints and gears from the graph plus the welds found so far; the gear pass's
     // other diagnostics are kept from the final pass only.
-    const extraRigidPairs = [];
+    // Free spinners (a frictionless pin between two beams) are welded to a neighbour from the start.
+    const extraRigidPairs = freeSpinnerWelds(nodes, graphEdges);
     const firstNodeOf = (islandsNow, bodyId) => {
         for (const [nid, bid] of islandsNow.nodeToBody.entries()) if (bid === bodyId) return nid;
         return null;
