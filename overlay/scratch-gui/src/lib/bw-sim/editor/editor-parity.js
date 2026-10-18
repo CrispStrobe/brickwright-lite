@@ -414,6 +414,9 @@ export const degreesToRotation = ([x, y, z]) => {
 
 // ---- the clipboard as LDraw text ---------------------------------------------------------
 
+/** The `0 <title>` line of copied parts: file content (LDraw's model title), not UI text. */
+const CLIPBOARD_TITLE = 'Brickwright parts';
+
 /**
  * Some parts of a model as LDraw text: plain type-1 lines BrickLink Studio and
  * LeoCAD paste, with Brickwright's `0 !BW` meta lines (ids, ports, the groups
@@ -423,7 +426,7 @@ export const clipboardText = (model, ids) => {
     const want = new Set(ids);
     const parts = model.parts.filter(p => want.has(p.id));
     const groups = (model.groups || []).filter(g => g.parts.every(m => want.has(m)));
-    return serializeModel({version: 1, parts, ...(groups.length ? {groups} : {})}, {name: 'clipboard.ldr', title: 'Brickwright parts'});
+    return serializeModel({version: 1, parts, ...(groups.length ? {groups} : {})}, {name: 'clipboard.ldr', title: CLIPBOARD_TITLE});
 };
 
 /**
