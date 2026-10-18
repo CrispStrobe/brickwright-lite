@@ -24,7 +24,10 @@ const PERSISTENCE_CRITICAL = Object.freeze([
         `${base}/scratch-gui/src/lib/bw-debug/debug-runner.js`,
         `${base}/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx`
     ]),
-    'overlay/scratch-gui/src/lib/bw-machines/raw-hdd-download.js'
+    'overlay/scratch-gui/src/lib/bw-machines/raw-hdd-download.js',
+    'overlay/scratch-gui/src/components/tw-pseudocode/debug-drawer.jsx',
+    'overlay/scratch-gui/src/lib/bw-debug/debug-capabilities.js',
+    'overlay/scratch-gui/src/lib/bw-debug/memory-view.js'
 ]);
 const persistenceSha = bytes => createHash('sha256').update(bytes).digest('hex');
 function persistenceClosed (value, keys) {
@@ -267,6 +270,15 @@ async function persistencePreflight (manifestPath) {
     assert.equal(inputs.hdd.includes(Buffer.from('BWKEEP  TXT', 'ascii')), false, 'preseeded marker refused');
     return {admission, admissionBytes, admissionSha256: persistenceSha(admissionBytes), inputs, buildFile, regular};
 }
+async function admittedBrowser (regular, save) {
+    const executablePath=process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
+    assert.ok(executablePath && executablePath.startsWith('/'),'independently admitted Chromium executable required');
+    const bytes=regular(executablePath,256*1024*1024);
+    assert.equal(persistenceSha(bytes),process.env.PROOF_BROWSER_SHA256,'selected browser executable digest');
+    save('browser-launch.json',Buffer.from(JSON.stringify({executablePath,byteLength:bytes.length,
+        sha256:persistenceSha(bytes),headless:true})));
+    return chromium.launch({headless:true,executablePath});
+}
 async function runPersistenceGui () {
     assert.ok(process.env.PROOF_ADMISSION, 'PROOF_ADMISSION reviewed local manifest required');
     assert.ok(process.env.PROOF_OUTPUT, 'PROOF_OUTPUT new owned directory required');
@@ -300,7 +312,7 @@ async function runPersistenceGui () {
     await new Promise((resolve, reject) => {server.once('error', reject); server.listen(0, '127.0.0.1', resolve);});
     let browser, primary, proof;
     const baseUrl = `http://127.0.0.1:${server.address().port}`;
-    const contexts = [], pages = [], observations = [];
+    const contexts = [], pages = [], observations = [], actions = [];
     const previous = new WeakMap();
     const deadline = Date.now() + 1250000;
     const marker = 'bw-hdd-persist-ok';
@@ -395,17 +407,24 @@ async function runPersistenceGui () {
         return page;
     };
     try {
-        browser = await chromium.launch({headless:true});
+        browser = await admittedBrowser(regular,save);
         const first = await boot(inputs.hdd);
+        actions.push({action:'write-marker',page:1});
         await send(first, 'echo bw-hdd-persist-ok>c:\\bwkeep.txt');
         await stable(first, state => response(state.text, 'echo bw-hdd-persist-ok>c:\\bwkeep.txt'));
+        actions.push({action:'read-original',page:1});
         await send(first, 'type c:\\bwkeep.txt');
         await stable(first, state => response(state.text, 'type c:\\bwkeep.txt', true));
+        actions.push({action:'pause',page:1});
         await first.locator('[data-debug-panel]').getByRole('button',{name:/Pause|⏸/}).click();
         await first.locator('[data-debug-panel][data-debug-phase="paused"]').waitFor();
         const pausedBoundary = await observe(first);
         assert.ok(Number.isSafeInteger(pausedBoundary.machineCycles) && pausedBoundary.machineCycles >= 0);
         await first.evaluate(() => {window.__hddProofOriginalTarget = window.__benchTarget;});
+        const witness = async () => ({...await observe(first),sameTarget:await first.evaluate(() =>
+            window.__benchTarget === window.__hddProofOriginalTarget)});
+        const paused = await witness();
+        actions.push({action:'download',page:1});
         const downloads = await persistenceDownloads(first,
             () => first.locator('[data-debug-hdd-download]').click(), bounded);
         const bodies = {};
@@ -430,7 +449,10 @@ async function runPersistenceGui () {
         assert.deepEqual(metadata.geometry,{cylinders:306,heads:4,sectors:17});
         assert.equal(metadata.boundaryMeaning,'settled-detached-copy');
         assert.equal(metadata.guestCompletionQualified,false); assert.equal(metadata.crashDurabilityQualified,false);
+        const downloaded = await witness();
+        actions.push({action:'reload-export',page:2});
         const second = await boot(exported);
+        actions.push({action:'read-reloaded',page:2});
         await send(second, 'type c:\\bwkeep.txt');
         await stable(second, state => response(state.text, 'type c:\\bwkeep.txt', true));
         assert.equal(await first.evaluate(() => window.__benchTarget === window.__hddProofOriginalTarget), true, 'original session retained');
@@ -438,6 +460,10 @@ async function runPersistenceGui () {
         const retainedBoundary = await observe(first);
         assert.equal(retainedBoundary.cpuCycles,pausedBoundary.cpuCycles);
         assert.equal(retainedBoundary.machineCycles,pausedBoundary.machineCycles);
+        actions.push({action:'retain-original',page:1});
+        save('session-witnesses.json',Buffer.from(JSON.stringify({paused,downloaded,retained:await witness(),
+            reloaded:{page:2,sameAsOriginal:await second.evaluate(() =>
+                window.__benchTarget === window.__hddProofOriginalTarget)},actions})));
         for (const [role, expected] of Object.entries(PERSISTENCE_INPUTS)) {
             assert.equal(persistenceSha(regular(admission.inputPaths[role], expected.byteLength)), originalHashes[role]);
             assert.equal(persistenceSha(inputs[role]), originalHashes[role]);
@@ -467,8 +493,172 @@ async function runPersistenceGui () {
     console.log(JSON.stringify(proof));
 }
 
+
+// Authored ordinary real-mode loop. EDI's upper half is deliberate: a 16-bit
+// alias or truncated UI cannot pass. This is not a mode-aware disassembler test.
+function forwardBootDisk () {
+    const bytes = Buffer.alloc(512 * 4 * 17);
+    Buffer.from('fa31c08ed866b87856341266bfefcdab896640ebfc','hex').copy(bytes);
+    bytes[510] = 0x55; bytes[511] = 0xaa;
+    return bytes;
+}
+function forwardStepTransition (before, after) {
+    assert.ok([0x7c11,0x7c13].includes(before.regs.pc));
+    assert.equal(after.regs.pc,before.regs.pc === 0x7c11 ? 0x7c13 : 0x7c11);
+    assert.equal(after.regs.eax,(before.regs.eax + (before.regs.pc === 0x7c11 ? 1 : 0)) >>> 0);
+    assert.equal(after.regs.edi,0x89abcdef);
+    assert.equal(after.phase,'paused'); assert.ok(after.cpuCycles > before.cpuCycles);
+}
+function forwardReadOnlyState () {
+    const target = window.__benchTarget, regs = target.regs();
+    return {regs, cpuCycles:regs.cpuCycles, machineCycles:regs.cycles, timeNs:Number(target.timeNs()),
+        state:target.state(), phase:document.querySelector('[data-debug-panel]')?.getAttribute('data-debug-phase'),
+        sameTarget:target === window.__forwardOriginalTarget};
+}
+async function runForwardGui () {
+    assert.ok(process.env.PROOF_ADMISSION && process.env.PROOF_OUTPUT,'reviewed manifest and fresh output required');
+    const fs = await import('node:fs'), path = await import('node:path');
+    const save = persistenceOutput(process.env.PROOF_OUTPUT,fs,path), trace = [];
+    let server, browser, context, page, primary;
+    const deadline = Date.now()+180000;
+    const bounded = async operation => {
+        let timer;
+        try {return await Promise.race([operation,new Promise((_,reject) => {
+            timer=setTimeout(() => reject(new Error('bounded forward-debug operation expired')),
+                Math.max(1,Math.min(30000,deadline-Date.now())));
+        })]);} finally {clearTimeout(timer);}
+    };
+    try {
+        const preflight = await persistencePreflight(process.env.PROOF_ADMISSION);
+        save('admission.json',preflight.admissionBytes);
+        const {createServer} = await import('node:http');
+        server=createServer((req,res) => {
+            try {
+                assert.equal(req.method,'GET');
+                const name=decodeURIComponent(new URL(req.url,'http://127.0.0.1').pathname).replace(/^\//,'') || 'index.html';
+                persistenceRelative(name);const bytes=preflight.buildFile(name);
+                const extension=name.split('.').pop();
+                res.writeHead(200,{'content-type':({html:'text/html',js:'text/javascript',css:'text/css',
+                    json:'application/json',wasm:'application/wasm',png:'image/png',svg:'image/svg+xml'})[extension] || 'application/octet-stream'});
+                res.end(bytes);
+            } catch {res.writeHead(404);res.end('unadmitted build route');}
+        });
+        await bounded(new Promise((resolve,reject) => {server.once('error',reject);server.listen(0,'127.0.0.1',resolve);}));
+        const base=`http://127.0.0.1:${server.address().port}`;
+        browser=await admittedBrowser(preflight.regular,save);
+        context=await browser.newContext({viewport:{width:1600,height:1200},serviceWorkers:'block',locale:'en-US'});
+        await context.route('**/*',route => route.request().url().startsWith(base+'/') ||
+            /^(blob:|data:)/.test(route.request().url()) ? route.continue() : route.abort());
+        page=await context.newPage();page.on('pageerror',error => {primary ||= error;});page.on('crash',() => {primary ||= new Error('forward browser crashed');});
+        await page.addInitScript(() => {localStorage.clear();localStorage.setItem('bw-starter-v1-complete','1');});
+        await page.goto(base,{waitUntil:'domcontentloaded',timeout:30000});
+        const dismiss=page.getByTestId('bw-starter-backdrop').getByRole('button',{name:'Not now'});
+        if (await dismiss.count()) await dismiss.click();
+        await page.getByRole('tab',{name:'Code',exact:true}).click();
+        const toggle=page.locator('[data-right-pane-toggle]');
+        if (await toggle.count() && await toggle.getAttribute('aria-pressed')==='false') await toggle.click();
+        await page.getByTestId('bw-device-select').selectOption('__manage__');
+        await page.getByTestId('bw-machine-manager').waitFor();
+        const disk=forwardBootDisk();save('authored-boot.sha256',Buffer.from(persistenceSha(disk)+'\n'));
+        await page.getByTestId('bw-mm-local-disk').setInputFiles({name:'forward-owned.img',mimeType:'application/octet-stream',buffer:disk});
+        await page.getByTestId('bw-mm-local-conf').setInputFiles({name:'forward-owned.conf',mimeType:'text/plain',
+            buffer:Buffer.from('[cpu]\ncputype=auto\n[autoexec]\nimgmount c "forward-owned.img" -t hdd -size 512,17,4,1\n')});
+        await page.getByTestId('bw-mm-local-run').click();await page.getByTestId('bw-machine-manager').waitFor({state:'detached'});
+        await page.waitForFunction(() => {
+            const r=window.__benchTarget?.regs?.();return r?.edi===0x89abcdef && [0x7c11,0x7c13].includes(r.pc);
+        },undefined,{timeout:30000});
+        await page.evaluate(() => {window.__forwardOriginalTarget=window.__benchTarget;});
+        const panel=page.locator('[data-debug-panel]');
+        const snap=async (action,extra={}) => {
+            assert.ok(Date.now()<deadline,'total forward-debug wall bound');if(primary)throw primary;
+            const state=await page.evaluate(forwardReadOnlyState);persistenceCounter(state);
+            assert.ok(state.sameTarget);assert.equal(state.regs.edi,0x89abcdef);
+            for(const name of ['eax','edi','eip','eflags'])assert.ok(Number.isSafeInteger(state.regs[name]) && state.regs[name]>=0 && state.regs[name]<=0xffffffff);
+            const item={action,...state,...extra};trace.push(item);return item;
+        };
+        await panel.getByRole('button',{name:/Pause|⏸/}).click();
+        await page.locator('[data-debug-panel][data-debug-phase="paused"]').waitFor();
+        const paused=await snap('pause');
+        await panel.getByRole('button',{name:/Under the hood/}).click();
+        // Normalize only through the real single-instruction button so the
+        // future breakpoint is visible in the existing forward-only listing.
+        const alignStep=paused.regs.pc===0x7c13;
+        if(alignStep)await panel.getByRole('button',{name:'Step instruction',exact:true}).click();
+        const aligned=await snap('align',{stepPerformed:alignStep});
+        if(alignStep)forwardStepTransition(paused,aligned);else assert.equal(aligned.cpuCycles,paused.cpuCycles);
+        assert.equal(aligned.regs.pc,0x7c11);
+        const codeRows=panel.locator('[title="Click to pause here"]');
+        let selected;
+        for(const row of await codeRows.all()) {
+            const address=await row.locator('span').nth(1).innerText();
+            if(parseInt(address,16)===0x7c13){selected=row;break;}
+        }
+        assert.ok(selected,'actual code row for authored loop breakpoint is available');
+        await selected.click();await snap('breakpoint-add',{breakpointAddress:0x7c13});
+        await panel.locator('[data-debug-run]').click();
+        await page.waitForFunction(before => {
+            const r=window.__benchTarget?.regs?.();return r?.pc===0x7c13 && r.cpuCycles>before &&
+                document.querySelector('[data-debug-panel]')?.getAttribute('data-debug-phase')==='paused';
+        },aligned.cpuCycles,{timeout:30000});
+        const hit=await snap('breakpoint-hit',{breakpointAddress:0x7c13});
+        await panel.getByRole('button',{name:'Step instruction',exact:true}).click();const one=await snap('step-1');forwardStepTransition(hit,one);
+        await panel.getByRole('button',{name:'Step instruction',exact:true}).click();const two=await snap('step-2');forwardStepTransition(one,two);
+        const rendered=await panel.innerText();
+        assert.match(rendered,new RegExp(`EAX\\s+${two.regs.eax.toString(16).toUpperCase().padStart(8,'0')}`));
+        assert.match(rendered,/EDI\s+89ABCDEF/);
+        const memorySelect=panel.locator('select').filter({has:page.locator('option[value="mem"]')});
+        assert.equal(await memorySelect.count(),1);await memorySelect.selectOption('mem');
+        page.once('dialog',dialog => dialog.accept('7C00'));
+        await panel.getByRole('button',{name:'Go to address',exact:true}).click();
+        await panel.getByText('Read-only memory',{exact:true}).waitFor();
+        const cells=[];
+        for(let i=0;i<21;i++) {
+            const address=(0x7c00+i).toString(16).toUpperCase().padStart(8,'0');
+            const cell=panel.locator(`[title="${address} — read-only"]`);assert.equal(await cell.count(),1);
+            const text=await cell.innerText(),role=await cell.getAttribute('role');assert.notEqual(role,'button');
+            cells.push({address:0x7c00+i,text,role});
+        }
+        const bytes=cells.map(cell => parseInt(cell.text,16));
+        assert.deepEqual(bytes,[...Buffer.from('fa31c08ed866b87856341266bfefcdab896640ebfc','hex')]);
+        const unsupported={stepOver:await panel.getByRole('button',{name:'Step over',exact:true}).isDisabled(),
+            stepOut:await panel.getByRole('button',{name:'Step out',exact:true}).isDisabled(),
+            reverseStep:await panel.locator('[data-debug-reverse-step]').isDisabled(),
+            reverseCycle:await panel.locator('[data-debug-reverse-cycle]').isDisabled(),
+            reverseContinue:await panel.locator('[data-debug-reverse-continue]').isDisabled()};
+        assert.ok(Object.values(unsupported).every(Boolean));
+        const memory=await snap('physical-memory',{space:'mem',address:0x7c00,bytes,cells,readOnly:true,unsupported,renderedRegisters:rendered});
+        assert.equal(memory.cpuCycles,two.cpuCycles);
+        const removeRows=panel.locator('[title="Click to pause here"]');
+        assert.equal(parseInt(await removeRows.first().locator('span').nth(1).innerText(),16),0x7c13);
+        await removeRows.first().click();await snap('breakpoint-remove',{breakpointAddress:0x7c13});
+        await panel.locator('[data-debug-run]').click();
+        await page.waitForFunction(before => window.__benchTarget.regs().cpuCycles>before &&
+            document.querySelector('[data-debug-panel]')?.getAttribute('data-debug-phase')==='running',two.cpuCycles,{timeout:30000});
+        await snap('resume');await panel.getByRole('button',{name:/Pause|⏸/}).click();
+        await page.locator('[data-debug-panel][data-debug-phase="paused"]').waitFor();const finalPause=await snap('pause-after-resume');
+        await page.getByRole('tab',{name:'Circuits',exact:true}).click();await snap('circuits');
+        await page.getByRole('tab',{name:'Code',exact:true}).click();const retained=await snap('code-retained');
+        assert.deepEqual(retained.regs,finalPause.regs);assert.equal(retained.cpuCycles,finalPause.cpuCycles);
+        save('forward-debug.png',await bounded(panel.screenshot()));
+        save('proof.json',Buffer.from(JSON.stringify({ok:true,scenario:'forward-debug',sourceHead:preflight.admission.sourceHead,
+            admissionSha256:preflight.admissionSha256,boardPin:preflight.admission.boardPin,
+            reverseExecutionQualified:false,modeAwareDisassemblyQualified:false,fullOsQualified:false})));
+    } catch(error) {
+        primary ||= error;
+        try{save('failure.json',Buffer.from(JSON.stringify({scenario:'forward-debug',firstFailure:String(primary)})));}catch{}
+    } finally {
+        if(context)try{await bounded(context.close());}catch(error){primary ||= error;}
+        if(browser)try{await bounded(browser.close());}catch(error){primary ||= error;}
+        if(server)try{await persistenceCloseServer(server,bounded);}catch(error){primary ||= error;}
+        try{save('forward-trace.json',Buffer.from(JSON.stringify(trace)));}catch(error){primary ||= error;}
+    }
+    if(primary)throw primary;
+}
+
 if (process.env.PROOF_SCENARIO === 'freedos-hdd-persistence') {
     await runPersistenceGui();
+} else if (process.env.PROOF_SCENARIO === 'forward-debug') {
+    await runForwardGui();
 } else {
     assert.ok(!process.env.PROOF_SCENARIO, 'unknown proof scenario');
 const url = process.env.PROOF_URL || 'http://127.0.0.1:8777/';
