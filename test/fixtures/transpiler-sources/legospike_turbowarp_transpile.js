@@ -6422,11 +6422,18 @@ continuous_sensor_loop()
       const starts = ports
         .map((port) => ({ port, start: this._countedPosition(port) }))
         .filter((entry) => entry.start !== null);
-      // Without readings the estimate is the whole wait, as in motorRunFor.
-      // With them it is only a safety net, so it is looser: the estimate is
-      // a guess at the hub's speed scale and must not cut a real move short.
+      // Without readings the estimate is the whole wait.
+      // With them the move ends when the encoders arrive. The safety net is
+      // then NOT a deadline in wall time: a deadline cuts a move short
+      // whenever the motor runs slower than the estimate in wall time -- a
+      // loaded motor, or a simulated hub whose physics runs slower than real
+      // time (the Robot Lab drops simulated time when its worker cannot keep
+      // up), where the next block's command then overrode the move mid-way.
+      // It is a lack of progress: no encoder moving for STALL_MS (a blocked
+      // motor the hub has given up on), with a long absolute cap.
+      const STALL_MS = 2000;
       const fallbackMs = starts.length
-        ? Math.min(estimateMs * 2 + 1000, 30000)
+        ? 120000
         : Math.min(estimateMs + 500, 10000);
       return new Promise((resolve) => {
         let poll = null;
@@ -6437,13 +6444,22 @@ continuous_sensor_loop()
         };
         const timeout = setTimeout(done, fallbackMs);
         if (!starts.length) return;
-        const arrived = () =>
-          starts.every(({ port, start }) => {
-            const now = this._countedPosition(port);
-            return now !== null && Math.abs(now - start) >= target - 5;
-          });
+        const positions = () =>
+          starts.map(({ port }) => this._countedPosition(port));
+        const arrived = (now) =>
+          starts.every(
+            ({ start }, k) =>
+              now[k] !== null && Math.abs(now[k] - start) >= target - 5
+          );
+        let last = positions();
+        let lastChange = Date.now();
         poll = setInterval(() => {
-          if (arrived()) done();
+          const now = positions();
+          if (arrived(now)) return done();
+          if (now.some((p, k) => p !== last[k])) {
+            last = now;
+            lastChange = Date.now();
+          } else if (Date.now() - lastChange >= STALL_MS) done();
         }, 20);
       });
     }
@@ -6540,25 +6556,26 @@ continuous_sensor_loop()
         "color: #44aaff;"
       );
 
-      const promises = ports.map((port) => {
+      let slowest = 0;
+      ports.forEach((port) => {
         const setting = this._peripheral.motorSettings[port];
         const speed = setting.speed * direction;
+        slowest =
+          slowest === 0 ? Math.abs(speed) : Math.min(slowest, Math.abs(speed));
 
         // We use Python directly to avoid the JSON-RPC "KP7G" hang
         this._peripheral.sendPythonCommand(
           `import hub; hub.port.${port}.motor.run_for_degrees(${Math.floor(degrees)}, ${speed})`
         );
-
-        // To make the yellow border disappear properly without deadlocking,
-        // we "simulate" the wait time based on speed/degrees plus a small buffer.
-        return new Promise((resolve) => {
-          const estimatedTimeMs =
-            (Math.abs(degrees) / (Math.abs(speed) * 6)) * 1000 + 500;
-          setTimeout(resolve, Math.min(estimatedTimeMs, 10000)); // Cap at 10s safety
-        });
       });
 
-      return Promise.all(promises);
+      // Wait for the move to end, as move forward does: until the encoders
+      // have turned the degrees (an estimate from the speed only when the hub
+      // sends no positions). A wait estimated in wall time ended early whenever
+      // the motor was slower than the estimate -- under load, or on a
+      // simulated hub running slower than real time -- and the next block's
+      // command then overrode the move part-way.
+      return this._waitForMovement(ports, Math.floor(degrees), slowest);
     }
 
     motorRunToPosition(args) {
