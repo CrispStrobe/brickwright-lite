@@ -1319,14 +1319,42 @@ class Originals(unittest.TestCase):
             graph=module.font_config_links({'/etc/fonts/fonts.conf':config},{},{},{})
             self.assertEqual(graph['cycles'],[['/etc/fonts/fonts.conf','/etc/fonts/fonts.conf']])
     def test_font_discovery_retention_primary_and_close_are_not_success(self):
+        value,request,expected,events=self.font_discovery_fixture();written=[]
+        class Complete:
+            def write(self,raw):written.append(raw);return len(raw)
+            def close(self):written.append('closed')
+        with patch.object(c.Path,'open',return_value=Complete()):self.assertEqual(c.retain_font_discovery(value,'/out/fonts.json'),0)
+        self.assertEqual(written,[E(value),'closed'])
+        class CloseOnly(Complete):
+            def close(self):raise OSError('CLOSE_ONLY')
+        with patch.object(c.Path,'open',return_value=CloseOnly()),patch.object(c.sys,'stderr',io.StringIO()):self.assertEqual(c.retain_font_discovery(value,'/out/fonts.json'),1)
+        self.assertEqual(value['firstFailure']['message'],'CLOSE_ONLY');self.assertEqual(value['firstFailure']['phase'],'retention-close')
         value,request,expected,events=self.font_discovery_fixture(partial=True)
         class Sink:
             def write(self,raw):raise OSError('WRITE_LATER')
             def close(self):raise OSError('CLOSE_LAST')
         with patch.object(c.Path,'open',return_value=Sink()),patch.object(c.sys,'stderr',io.StringIO()) as stderr:
             self.assertEqual(c.retain_font_discovery(value,'/out/fonts.json'),1)
-        self.assertEqual(value['firstFailure']['message'],'OWNERS_PARTIAL_FIRST');self.assertEqual({row['message'] for row in value['secondary']},{'WRITE_LATER','CLOSE_LAST'})
+        self.assertEqual(value['firstFailure']['message'],'OWNERS_PARTIAL_FIRST');self.assertEqual([row['message'] for row in value['secondary']],['WRITE_LATER','CLOSE_LAST'])
         self.assertIn('OWNERS_PARTIAL_FIRST',stderr.getvalue())
+        value,request,expected,events=self.font_discovery_fixture(partial=True)
+        with patch.object(c,'JSON_CAP',1),patch.object(c.Path,'open',side_effect=AssertionError('oversize must not open')),patch.object(c.sys,'stderr',io.StringIO()) as stderr:
+            self.assertEqual(c.retain_font_discovery(value,'/out/fonts.json'),1)
+        self.assertEqual(value['firstFailure']['message'],'OWNERS_PARTIAL_FIRST');self.assertIn('bounded discovery original',value['secondary'][0]['message'])
+        self.assertIn('OWNERS_PARTIAL_FIRST',stderr.getvalue());self.assertLessEqual(len(stderr.getvalue().encode()),8192)
+        value,request,expected,events=self.font_discovery_fixture(partial=True)
+        encode_calls=[0];original_encode=c.encode
+        def fail_first_encode(item):
+            encode_calls[0]+=1
+            if encode_calls[0]==1:raise ValueError('ENCODE_LATER')
+            return original_encode(item)
+        with patch.object(c,'encode',fail_first_encode),patch.object(c.sys,'stderr',io.StringIO()) as stderr:
+            self.assertEqual(c.retain_font_discovery(value,'/out/fonts.json'),1)
+        self.assertEqual(value['firstFailure']['message'],'OWNERS_PARTIAL_FIRST');self.assertEqual(value['secondary'][0]['message'],'ENCODE_LATER')
+        value,request,expected,events=self.font_discovery_fixture(partial=True)
+        with patch.object(c.Path,'open',side_effect=OSError('OPEN_LATER')),patch.object(c.sys.stderr,'write',side_effect=OSError('DIAGNOSTIC_LAST')):
+            self.assertEqual(c.retain_font_discovery(value,'/out/fonts.json'),1)
+        self.assertEqual(value['firstFailure']['message'],'OWNERS_PARTIAL_FIRST');self.assertEqual([row['message'] for row in value['secondary']],['OPEN_LATER','DIAGNOSTIC_LAST'])
 
 suite=unittest.defaultTestLoader.loadTestsFromTestCase(Originals)
 result=unittest.TextTestRunner(verbosity=2).run(suite)

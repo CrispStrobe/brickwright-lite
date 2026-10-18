@@ -1408,21 +1408,27 @@ def font_manifest(raw):
 
 def retain_font_discovery(value,path):
     need(value['candidate'] is False and value['qualified'] is False and value['activeFontSelectionProved'] is False,'discovery cannot qualify')
-    raw=encode(value);need(len(raw)<=JSON_CAP,'bounded discovery original');stream=None;first=None
+    stream=None;first=None;phase='retention';later=[]
     try:
+        raw=encode(value);need(len(raw)<=JSON_CAP,'bounded discovery original')
         stream=Path(path).open('xb');need(stream.write(raw)==len(raw),'complete exclusive discovery original')
     except BaseException as exc:first=exc
     finally:
         if stream is not None:
             try:stream.close()
             except BaseException as exc:
-                if first is None:first=exc
-                else:value['secondary'].append({'phase':'retention-close','path':None,'name':type(exc).__name__,'message':str(exc)[:512]})
+                if first is None:first=exc;phase='retention-close'
+                else:later.append({'phase':'retention-close','path':None,'name':type(exc).__name__,'message':str(exc)[:512]})
     if first is not None:
-        item={'phase':'retention','path':None,'name':type(first).__name__,'message':str(first)[:512]}
+        item={'phase':phase,'path':None,'name':type(first).__name__,'message':str(first)[:512]}
         if value['firstFailure'] is None:value['firstFailure']=item
         else:value['secondary'].append(item)
-        sys.stderr.write(encode({'firstFailure':value['firstFailure'],'secondary':value['secondary'][-4:]}).decode());return 1
+        value['secondary'].extend(later)
+        try:
+            diagnostic=encode({'firstFailure':value['firstFailure'],'secondary':value['secondary'][-4:]})
+            sys.stderr.write(diagnostic[:8192].decode('utf-8','replace'))
+        except BaseException as exc:value['secondary'].append({'phase':'retention-diagnostic','path':None,'name':type(exc).__name__,'message':str(exc)[:512]})
+        return 1
     return 0 if value['complete'] is True and value['firstFailure'] is None else 1
 
 
