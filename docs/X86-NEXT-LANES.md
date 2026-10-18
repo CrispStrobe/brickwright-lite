@@ -528,6 +528,52 @@ until complete runtime, Build, source and event admission plus affected clean
 browser/guest qualification. The 34 missing font/configuration inputs remain
 unresolved; no new inventory event or roster change was made.
 
+The separate font-discovery source continuation is disabled by
+`FONT_DISCOVERY_ENABLED = False`; the workflow is unchanged and has no delivery
+job for this mode. Its `bw.gui-hdd.font-discovery-request.v1` pins source21 and
+embeds the unchanged baseline template. It collects fixed configuration and
+font-directory censuses, held file hash/extent/EOF/identity/close observations,
+raw configuration bytes and at most three read-only `dpkg-query` probes:
+installed packages, path ownership and the selected owners' manifest union.
+The combined manifest output proves union membership only, not individual
+package boundaries. Root-owned nonwritable selected system tools are an explicit
+platform trust boundary; this is not complete tool/runtime attestation.
+
+The distinct `bw.gui-hdd.font-discovery-original.v1` preserves partial probe
+streams and the first refusal. Its standalone reader accepts independently
+selected source/request/original/run/workflow identities through
+`bw.gui-hdd.font-discovery-expectation.v1`. It recomputes structural XML
+include/directory references and cycles from bounded raw originals. It never
+executes Fontconfig, loads a DTD or proves native traversal/active font selection.
+Unsupported syntax and incomplete observations remain explicit. The verdict
+always keeps `candidate`, `qualified`, `activeFontSelectionProved` and
+`actualRequestSupported` false, including after a complete discovery.
+
+To audit an admitted discovery original without executing its producer:
+
+```sh
+/usr/bin/python3 -B scripts/read-i80386-hdd-gui-originals.py \
+  --font-discovery font-discovery.original.json \
+  --request reviewed-font-request.json \
+  --expected reviewed-font-expectation.json
+```
+
+A fresh agent can finish this work in the following bounded steps:
+
+1. Review the disabled source, finite caps, selected system tools and externally
+   frozen request. Deliver a distinct guarded metadata job within the existing
+   claimed workflow; independently review its executing workflow SHA, event,
+   source checkout, original roles and resource bounds before activation.
+2. Admit one official metadata-producing job and acquire its originals once.
+   Audit them independently, preserving partial package ownership and all old
+   font failures. A discovery result does not approve a successful runtime roster.
+3. Establish the native Fontconfig include/alias/selection closure separately,
+   then review a new versioned runtime template. Do not subtract failed baseline
+   paths or infer ownership from filenames.
+4. Admit the complete runtime and frontend Build/source/archive graph, then
+   qualify actual HDD persistence and forward debugging with clean affected
+   browser/guest runs. Every enabled exact-head source check remains mandatory.
+
 For the next font-roster task, admit package ownership and the active fontconfig
 include/alias closure independently before selecting a new versioned template.
 The retained diagnostic establishes missing paths, not package ownership or a
