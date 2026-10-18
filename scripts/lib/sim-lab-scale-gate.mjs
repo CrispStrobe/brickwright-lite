@@ -134,14 +134,17 @@ export const OPEN_BUDGET_MS = 120000;
 // that draws the model twice over or falls back to thousands of meshes, not a smoothness claim.
 export const FRAME_BUDGET_MS = 20000;
 export const DRAW_CALL_BUDGET = 150;
-// Build on the full 2,054-part model, measured 2026-10-18 on an 8-core Mac under heavy load (load
-// average 12-20) with SwiftShader (scripts/measure-sim-lab-scale.mjs prints the same numbers):
-//   open (click to ready and a first frame drawn)  21-32 s, before this change 98 s and click-select never;
-//   an idle frame                                  16.7 ms (a 60 Hz animation frame: nothing is redrawn),
+// Build on the full 2,054-part model, measured 2026-10-18 on an 8-core Mac shared with other jobs
+// (load average 8-20), SwiftShader, this gate:
+//   open (click to ready and a first frame drawn)  13.1 s at load 8, 21-28 s at load 12-20; before this
+//                                                  change 98 s, and a click never selected within 180 s;
+//   an idle frame                                  16.7 ms (one animation frame: nothing is redrawn),
 //                                                  before 4,650 ms (the model redrawn every frame);
-//   a pointer move's handlers (hover, gizmo drag)  median 11-15 ms, max 42 ms, before 8,200 ms.
-// Budgets: twice the worst open seen; the task's 100 ms for an idle frame (six times the measured);
-// a pointer move's median within 100 ms (seven times the worst median measured: CI runners are slower).
+//   a pointer move's handlers                      hover 11-18 ms, gizmo drag 12-54 ms (medians; max 60),
+//                                                  before 8,200 ms;
+//   a forced full Build frame                      3.1-4.6 s (raster on the CPU, as Simulate's).
+// Budgets: open about twice the worst seen; an idle frame and a pointer move's median within the
+// task's 100 ms (six and two times the worst measured under load; a real GPU leaves far more room).
 export const BUILD_OPEN_BUDGET_MS = 65000;
 export const IDLE_FRAME_BUDGET_MS = 100;
 export const POINTER_MOVE_BUDGET_MS = 100;
