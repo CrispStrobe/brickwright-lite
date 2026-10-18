@@ -22,6 +22,14 @@ on:
         description: Retain bounded unsigned iOS build inputs for independent audit; does not launch the app.
         type: boolean
         default: false
+      ios_audit_runtime:
+        description: Optional exact installed iOS runtime identifier for admission only; never launches an app.
+        type: string
+        default: ''
+      ios_audit_runtime_build:
+        description: Exact installed runtime build required when ios_audit_runtime is set.
+        type: string
+        default: ''
   push:
     tags: ['v*']
 
@@ -349,6 +357,163 @@ jobs:
                   json.dump(value, stream, sort_keys=True)
 
 
+          def bounded_inventory():
+              # Only an inventory request; never boot, create, install or launch a device.
+              import selectors
+              import signal
+              process = subprocess.Popen(['xcrun', 'simctl', 'list', 'runtimes', '--json'],
+                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
+              output = bytearray()
+              used = 0
+              selector = selectors.DefaultSelector()
+              deadline = time.monotonic() + 15
+              try:
+                  for pipe in (process.stdout, process.stderr):
+                      os.set_blocking(pipe.fileno(), False)
+                      selector.register(pipe, selectors.EVENT_READ)
+                  while selector.get_map():
+                      clock()
+                      need(time.monotonic() < deadline)
+                      for key, _ in selector.select(min(0.1, max(0, deadline-time.monotonic()))):
+                          raw = os.read(key.fileobj.fileno(), 65536)
+                          if not raw:
+                              selector.unregister(key.fileobj)
+                              continue
+                          used += len(raw)
+                          need(used <= 1024*1024)
+                          if key.fileobj is process.stdout:
+                              output.extend(raw)
+                  need(process.wait(timeout=max(0.001, deadline-time.monotonic())) == 0)
+                  clock()
+                  return bytes(output)
+              finally:
+                  # Only this newly owned command group; never a simulator service or device.
+                  try:
+                      os.killpg(process.pid, signal.SIGKILL)
+                  except ProcessLookupError:
+                      pass
+                  process.wait(timeout=2)
+                  selector.close()
+                  process.stdout.close()
+                  process.stderr.close()
+
+
+          def version(text):
+              import re
+              need(type(text) is str and re.fullmatch(r'[0-9]{1,3}(\.[0-9]{1,3}){0,2}', text) is not None)
+              parts = tuple(int(n) for n in text.split('.'))
+              need(parts[0] > 0 and all(n <= 255 for n in parts[1:]))
+              return parts + (0,)*(3-len(parts))
+
+
+          def simulator_header(raw):
+              import struct
+              # Independently read only the thin ARM64 header/build metadata. This is not
+              # a loader or a dependency-graph/signature/authenticity validator. Format:
+              # https://github.com/apple-oss-distributions/cctools/blob/7a5450708479bbff61527d5e0c32a3f7b7e4c1d0/include/mach-o/loader.h
+              need(len(raw) >= 32)
+              magic, cpu, subtype, kind, count, size, flags, reserved = struct.unpack_from('<8I', raw)
+              need(magic == 0xfeedfacf and cpu == 0x0100000c and subtype == 0 and kind == 2 and reserved == 0)
+              need(0 < count <= 4096 and 8*count <= size <= 1024*1024 and 32+size <= len(raw))
+              offset = 32
+              builds = []
+              for _ in range(count):
+                  need(offset+8 <= 32+size)
+                  command_id, length = struct.unpack_from('<2I', raw, offset)
+                  need(length >= 8 and length % 8 == 0 and offset+length <= 32+size)
+                  # Legacy minimum-version commands do not establish the simulator platform.
+                  need(command_id not in (0x24, 0x25, 0x2f, 0x30))
+                  if command_id == 0x32:
+                      need(length >= 24)
+                      platform_id, minimum, sdk, tools = struct.unpack_from('<4I', raw, offset+8)
+                      need(platform_id == 7 and length == 24+8*tools and tools <= 64)
+                      unpack = lambda v: (v >> 16, (v >> 8) & 255, v & 255)
+                      need(0 < unpack(minimum)[0] <= unpack(sdk)[0] and unpack(minimum) <= unpack(sdk))
+                      builds.append(unpack(minimum))
+                  offset += length
+              need(offset == 32+size and len(builds) == 1)
+              return builds[0]
+
+
+          def runtime_admission():
+              import platform
+              import re
+              directory = Path(os.environ['RUNNER_TEMP']) / 'bw-ios-runtime-admission'
+              directory.mkdir(exist_ok=False)
+              value = {'schema': 'brickwright.ios-runtime-candidate.v1', 'status': 'partial',
+                  'refusal': 'runtime-admission-incomplete', 'launchAllowed': False,
+                  'actualAppObserved': False, 'deviceAdmitted': False,
+                  'runtimeArchitectureQualified': False, 'resourceLifetimeQualified': False,
+                  'executableLoadabilityQualified': False, 'officialArtifactAuthenticated': False}
+              try:
+                  value['refusal'] = 'runtime-request'
+                  requested = os.environ.get('BW_IOS_AUDIT_RUNTIME', '')
+                  build = os.environ.get('BW_IOS_AUDIT_RUNTIME_BUILD', '')
+                  need(re.fullmatch(r'com\.apple\.CoreSimulator\.SimRuntime\.iOS-[0-9]{1,3}-[0-9]{1,3}(?:-[0-9]{1,3})?', requested) is not None)
+                  need(re.fullmatch(r'[0-9]{1,3}[A-Z][0-9]{1,5}[a-z]?', build) is not None)
+                  value['refusal'] = 'host-architecture'
+                  need(platform.system() == 'Darwin' and platform.machine() == 'arm64')
+                  value['refusal'] = 'retained-identity'
+                  original = read_file(OUT/'completed.json', 8*1024*1024)
+                  manifest = json.loads(original)
+                  need(manifest['status'] == 'retained-candidates-only')
+                  for field, env in (('commit', 'GITHUB_SHA'), ('runID', 'GITHUB_RUN_ID'),
+                                     ('attempt', 'GITHUB_RUN_ATTEMPT'), ('job', 'GITHUB_JOB'), ('ref', 'GITHUB_REF')):
+                      need(manifest[field] == os.environ[env])
+                  need(manifest['commit'] == command(['git', 'rev-parse', 'HEAD']).decode().strip() and
+                       manifest['tree'] == command(['git', 'rev-parse', 'HEAD^{tree}']).decode().strip())
+                  need(all(manifest[key] is False for key in ('completeBuildInputGraphQualified',
+                      'effectiveConfigurationJoined', 'compilerUsedInputsProved', 'activeCodegenReferencesJoined',
+                      'actualAppObserved', 'signedTargetJoined', 'resourceLifetimeQualified')))
+                  rows = manifest['entries']
+                  need(type(rows) is list and 0 < len(rows) <= COUNT)
+                  need(len({r['path'].casefold() for r in rows}) == len(rows))
+                  originals = {}
+                  for name, cap in (('native/executable', 256*1024*1024), ('native/Info.plist', 1024*1024), ('producer/capture.py', FILE)):
+                      row, = [r for r in rows if r['path'] == name]
+                      raw = read_file(OUT/name, cap)
+                      need(type(row['bytes']) is int and row['bytes'] == len(raw) and row['sha256'] == hashlib.sha256(raw).hexdigest())
+                      originals[name] = raw
+                  need(originals['producer/capture.py'] == read_file(Path(__file__)))
+                  value['refusal'] = 'simulator-executable-metadata'
+                  info = plistlib.loads(originals['native/Info.plist'])
+                  need(info['CFBundleSupportedPlatforms'] == ['iPhoneSimulator'])
+                  minimum = simulator_header(originals['native/executable'])
+                  need(minimum == version(info['MinimumOSVersion']))
+                  value['refusal'] = 'runtime-inventory'
+                  inventory = bounded_inventory()
+                  def unique(pairs):
+                      result = {}
+                      for k, v in pairs:
+                          need(k not in result)
+                          result[k] = v
+                      return result
+                  parsed = json.loads(inventory, object_pairs_hook=unique,
+                      parse_constant=lambda _: need(False))
+                  value['refusal'] = 'runtime-selection'
+                  runtimes = parsed['runtimes']
+                  need(type(runtimes) is list and len(runtimes) <= 128)
+                  runtime, = [r for r in runtimes if r.get('identifier') == requested]
+                  need(runtime.get('isAvailable') is True and not runtime.get('availabilityError'))
+                  need(runtime['buildversion'] == build and version(runtime['version']) >= minimum)
+                  need(version(requested.rsplit('.iOS-', 1)[1].replace('-', '.')) == version(runtime['version']))
+                  value.update(status='runtime-candidate-only-launch-refused', refusal='device-resource-launch-admission-required',
+                      commit=manifest['commit'], tree=manifest['tree'], runID=manifest['runID'],
+                      attempt=manifest['attempt'], job=manifest['job'], ref=manifest['ref'],
+                      retainedManifestSHA256=hashlib.sha256(original).hexdigest(),
+                      producerSHA256=hashlib.sha256(originals['producer/capture.py']).hexdigest(),
+                      executableSHA256=hashlib.sha256(originals['native/executable']).hexdigest(),
+                      plistSHA256=hashlib.sha256(originals['native/Info.plist']).hexdigest(),
+                      inventorySHA256=hashlib.sha256(inventory).hexdigest(), inventoryBytes=len(inventory),
+                      runtimeIdentifier=requested, runtimeBuild=build, runtimeVersion=runtime['version'],
+                      executableMinimumOS=list(minimum), executableArchitecture='arm64', hostArchitecture='arm64')
+              finally:
+                  # The inventory can contain host paths; retain only its digest and reviewed fields.
+                  with (directory/'candidate.json').open('x') as stream:
+                      json.dump(value, stream, sort_keys=True)
+              print('iOS runtime candidate recorded; app launch remains refused')
+
+
           def main():
               global ROWS, USED
               need(os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch' and
@@ -358,7 +523,10 @@ jobs:
                    os.environ.get('BW_RETAIN_IOS_INPUTS') == 'true' and
                    os.environ.get('BW_SIGN_IOS') == 'false' and os.environ.get('BW_DEVICE_IPA') == 'false')
               phase = sys.argv[1]
-              need(phase in ('before', 'after'))
+              need(phase in ('before', 'after', 'runtime'))
+              if phase == 'runtime':
+                  runtime_admission()
+                  return
               if phase == 'before':
                   OUT.mkdir(exist_ok=False)
                   record_sources()
@@ -533,6 +701,28 @@ jobs:
         run: |
           set -euo pipefail
           python3 "$RUNNER_TEMP/bw-ios-audit-capture.py" after
+
+      - name: Admit installed unsigned iOS runtime candidate
+        if: (github.event_name == 'workflow_dispatch' && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/lane/ios-active-asset-source-20261018')) && inputs.ios_audit_runtime != ''
+        timeout-minutes: 3
+        env:
+          BW_RETAIN_IOS_INPUTS: ${{ inputs.retain_ios_audit_inputs }}
+          BW_SIGN_IOS: ${{ inputs.sign_ios }}
+          BW_DEVICE_IPA: ${{ inputs.device_ipa }}
+          BW_IOS_AUDIT_RUNTIME: ${{ inputs.ios_audit_runtime }}
+          BW_IOS_AUDIT_RUNTIME_BUILD: ${{ inputs.ios_audit_runtime_build }}
+        run: |
+          set -euo pipefail
+          python3 "$RUNNER_TEMP/bw-ios-audit-capture.py" runtime
+
+      - name: Upload unsigned iOS runtime admission
+        if: always() && inputs.ios_audit_runtime != '' && (github.event_name == 'workflow_dispatch' && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'))
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: brickwright-ios-runtime-admission
+          path: ${{ runner.temp }}/bw-ios-runtime-admission
+          if-no-files-found: error
+          retention-days: 3
 
       - name: Upload retained unsigned iOS inputs
         if: always() && (github.event_name == 'workflow_dispatch' && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'))

@@ -107,6 +107,19 @@ Next actions and completion criteria:
    are installed candidate observations, not proof of compiler use, SDK contents or
    a complete toolchain closure. The existing input-manifest format is preserved.
 
+   Optional `ios_audit_runtime` and `ios_audit_runtime_build` inputs now prepare
+   runtime admission after retained products, under the same unsigned/branch guards.
+   Empty runtime input makes no inventory request. A requested exact installed
+   runtime/build must be available and meet both retained plist and thin ARM64
+   simulator Mach-O minimum versions. The host must be Darwin ARM64. One bounded
+   inventory request retains only reviewed fields and the raw inventory hash/length;
+   runtime paths and device identifiers are omitted. Hashes bind the retained
+   manifest, producer, executable, plist and current job/source identities.
+   The separate artifact remains `runtime-candidate-only-launch-refused`: runtime
+   architecture support, device selection, executable loadability, process resources,
+   cleanup and actual app observation are not qualified. No device is created,
+   booted, installed or launched. This is the admission stage of the controller.
+
    Next, independently join the complete retained source/web/configuration/toolchain/
    executable and official job/artifact identities. Distinguish referenced codegen
    outputs from stale cache candidates without guessing Rust map layout. Toolchain

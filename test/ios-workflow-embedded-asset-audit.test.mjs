@@ -88,6 +88,10 @@ if name=='git':
  else: sys.exit(38)
 elif name=='cargo' and args[0]=='metadata': print(json.dumps({'target_directory':str(pathlib.Path(os.environ['GITHUB_WORKSPACE'])/'target')}))
 elif name=='rustup': print(str(pathlib.Path(os.environ['GITHUB_WORKSPACE'])/'authored-tools'/args[1]))
+elif name=='xcrun' and args==['simctl','list','runtimes','--json']:
+ import time
+ time.sleep(float(os.environ.get('AUTHORED_INVENTORY_DELAY','0')))
+ sys.stdout.write('x'*(2*1024*1024) if os.environ.get('AUTHORED_INVENTORY_OVERSIZED') else os.environ.get('AUTHORED_RUNTIME_JSON','{}'))
 elif name=='xcrun' and '--find' in args: print(str(pathlib.Path(os.environ['GITHUB_WORKSPACE'])/'authored-tools'/args[-1]))
 elif name=='xcrun' and '--show-sdk-path' in args: print(str(pathlib.Path(os.environ['GITHUB_WORKSPACE'])/'authored-sdk'))
 elif name=='rustc': print('rustc authored\\nhost: authored-target')
@@ -136,7 +140,8 @@ test('retention input defaults off and every optional step has the unsigned exac
     assert.match(ios, /name: brickwright-ios-toolchain-inputs/);
     assert.ok(ios.indexOf('name: brickwright-ios-sim') < ios.indexOf('Retain unsigned iOS products after build'));
     assert.match(ios, /name: brickwright-ios-audit-inputs[\s\S]*?include-hidden-files: true[\s\S]*?if-no-files-found: error/);
-    assert.doesNotMatch(retention, /simctl|devicectl|downloadPlatform|BW_EMBEDDED_ASSET_AUDIT_PATH/);
+    assert.doesNotMatch(retention, /devicectl|downloadPlatform|BW_EMBEDDED_ASSET_AUDIT_PATH/);
+    assert.match(retention, /\['xcrun', 'simctl', 'list', 'runtimes', '--json'\]/);
 });
 
 test('actual embedded producer retains authored inputs and products with limited claims', () => withRetention(f => {
@@ -252,4 +257,105 @@ test('runtime mutations expose changed-web and signing guard defects', () => {
     }, retention.replace(old, 'need(True)'));
     const guard = "os.environ.get('BW_SIGN_IOS') == 'false'"; assert.ok(retention.includes(guard));
     withRetention(f => { succeeded(f.run('before', {BW_SIGN_IOS: 'true'})); }, retention.replace(guard, 'True'));
+});
+
+const runtimeID = 'com.apple.CoreSimulator.SimRuntime.iOS-18-0';
+const runtimeRecord = {identifier: runtimeID, version: '18.0', buildversion: '22A3354', isAvailable: true,
+    bundlePath: 'AUTHORED-PRIVATE-RUNTIME-PATH'};
+function macho({cpu = 0x0100000c, platform = 7, minimum = 0x120000, commandSize = 24, count = 1} = {}) {
+    const bytes = Buffer.alloc(56);
+    [0xfeedfacf, cpu, 0, 2, count, 24, 0, 0, 0x32, commandSize, platform, minimum, 0x120000, 0]
+        .forEach((n, index) => bytes.writeUInt32LE(n, index * 4));
+    return bytes;
+}
+function withRuntime(body, source = retention, executable = macho()) {
+    withRetention(f => {
+        writeFileSync(join(f.dir, 'platform.py'), 'def system(): return "Darwin"\ndef machine(): return "arm64"\n');
+        f.put(`${f.app}/authored`, executable);
+        f.put(`${f.app}/Info.plist`, readFileSync(join(f.root, f.app, 'Info.plist'), 'utf8')
+            .replace('</dict>', '<key>MinimumOSVersion</key><string>18.0</string></dict>'));
+        succeeded(f.run('before')); succeeded(f.run('after'));
+        const runtime = (overrides = {}) => f.run('runtime', {BW_IOS_AUDIT_RUNTIME: runtimeID,
+            BW_IOS_AUDIT_RUNTIME_BUILD: '22A3354', AUTHORED_RUNTIME_JSON: JSON.stringify({runtimes: [runtimeRecord]}), ...overrides});
+        const candidate = () => JSON.parse(readFileSync(join(f.temp, 'bw-ios-runtime-admission/candidate.json')));
+        body({...f, runtime, candidate});
+    }, source);
+}
+
+test('runtime admission is an optional guarded inventory step after retained products', () => {
+    assert.match(workflow, /ios_audit_runtime:\n[\s\S]*?type: string\n        default: ''/);
+    assert.match(workflow, /if: \(github.event_name[^\n]+inputs.ios_audit_runtime != ''/);
+    assert.match(workflow, /if: always\(\) && inputs.ios_audit_runtime != '' && \(github.event_name/);
+    assert.ok(workflow.indexOf('Retain unsigned iOS products after build') < workflow.indexOf('Admit installed unsigned iOS runtime candidate'));
+    assert.match(workflow, /name: brickwright-ios-runtime-admission/);
+    assert.doesNotMatch(retention, /'simctl', '(?:create|boot|install|launch|shutdown|delete)'/);
+});
+
+test('actual runtime admission binds authored simulator header and retained inputs without launching', () => withRuntime(f => {
+    succeeded(f.runtime());
+    const value = f.candidate();
+    assert.equal(value.status, 'runtime-candidate-only-launch-refused');
+    assert.equal(value.runtimeIdentifier, runtimeID);
+    assert.equal(value.runtimeBuild, '22A3354');
+    assert.equal(value.executableSHA256, createHash('sha256').update(macho()).digest('hex'));
+    assert.deepEqual(value.executableMinimumOS, [18, 0, 0]);
+    for (const key of ['launchAllowed', 'actualAppObserved', 'deviceAdmitted', 'runtimeArchitectureQualified',
+        'resourceLifetimeQualified', 'executableLoadabilityQualified', 'officialArtifactAuthenticated']) assert.equal(value[key], false);
+    assert.doesNotMatch(JSON.stringify(value), /AUTHORED-PRIVATE|bundlePath/);
+    const commands = readFileSync(f.commandLog, 'utf8');
+    assert.equal(commands.split("['simctl', 'list', 'runtimes', '--json']").length - 1, 1);
+    assert.doesNotMatch(commands, /'launch'|'install'|'boot'|'create'|'delete'|'shutdown'/);
+    refused(f.runtime()); // Existing admission originals are never overwritten.
+}));
+
+test('runtime admission rejects missing, duplicate, unavailable, changed-build and too-old runtimes', () => {
+    for (const runtimes of [[], [runtimeRecord, runtimeRecord], [{...runtimeRecord, isAvailable: false}],
+        [{...runtimeRecord, isAvailable: 1}], [{...runtimeRecord, availabilityError: 'AUTHORED-PRIVATE-ERROR'}],
+        [{...runtimeRecord, buildversion: '22A9999'}], [{...runtimeRecord, version: '17.0'}], [{...runtimeRecord, version: '19.0'}]]) {
+        withRuntime(f => { refused(f.runtime({AUTHORED_RUNTIME_JSON: JSON.stringify({runtimes})})); assert.equal(f.candidate().status, 'partial'); });
+    }
+    withRuntime(f => refused(f.runtime({AUTHORED_RUNTIME_JSON: '{"runtimes":[],"runtimes":[]}'})));
+    withRuntime(f => refused(f.runtime({AUTHORED_RUNTIME_JSON: 'not-json'})));
+});
+
+test('runtime admission rejects malformed requests and incompatible or malformed executable metadata', () => {
+    for (const overrides of [{BW_IOS_AUDIT_RUNTIME: ''}, {BW_IOS_AUDIT_RUNTIME: '../unreviewed'},
+        {BW_IOS_AUDIT_RUNTIME_BUILD: ''}, {BW_IOS_AUDIT_RUNTIME_BUILD: 'AUTHORED-PRIVATE'}]) {
+        withRuntime(f => { refused(f.runtime(overrides)); assert.doesNotMatch(readFileSync(f.commandLog, 'utf8'), /'simctl'/); });
+    }
+    for (const binary of [Buffer.from('not-a-Mach-O'), macho({cpu: 0x01000007}), macho({platform: 2}),
+        macho({commandSize: 8}), macho({count: 2}), macho({minimum: 0x110000})]) {
+        withRuntime(f => { refused(f.runtime()); assert.doesNotMatch(readFileSync(f.commandLog, 'utf8'), /'simctl'/); }, retention, binary);
+    }
+});
+
+test('runtime admission refuses changed originals, manifest identity, host architecture and failed inventory', () => {
+    for (const name of ['native/executable', 'native/Info.plist', 'producer/capture.py']) {
+        withRuntime(f => { writeFileSync(join(f.output, name), 'changed'); refused(f.runtime()); });
+    }
+    withRuntime(f => {
+        const file = join(f.output, 'completed.json');const value = JSON.parse(readFileSync(file));
+        value.job = 'other';writeFileSync(file, JSON.stringify(value));refused(f.runtime());
+    });
+    withRuntime(f => {
+        writeFileSync(join(f.dir, 'platform.py'), 'def system(): return "Darwin"\ndef machine(): return "x86_64"\n');
+        refused(f.runtime());
+    });
+    withRuntime(f => {
+        const result = f.runtime({AUTHORED_FAIL: 'xcrun'});refused(result);
+        assert.doesNotMatch(result.stdout + result.stderr + JSON.stringify(f.candidate()), /PRIVATE-ERROR-MUST-NOT-LEAK/);
+    });
+});
+
+test('bounded runtime inventory refuses oversized command output', () => {
+    withRuntime(f => refused(f.runtime({AUTHORED_INVENTORY_OVERSIZED: 'true'})));
+    withRuntime(f => refused(f.runtime({AUTHORED_INVENTORY_DELAY: '0.5'})),
+        retention.replace('deadline = time.monotonic() + 15', 'deadline = time.monotonic() + 0.05'));
+});
+
+test('runtime mutations demonstrate build and simulator-platform guards are live', () => {
+    const buildGuard = "runtime['buildversion'] == build and ";assert.ok(retention.includes(buildGuard));
+    withRuntime(f => { succeeded(f.runtime({BW_IOS_AUDIT_RUNTIME_BUILD: '22A9999'})); }, retention.replace(buildGuard, ''));
+    const platformGuard = 'platform_id == 7 and ';assert.ok(retention.includes(platformGuard));
+    withRuntime(f => { succeeded(f.runtime()); }, retention.replace(platformGuard, ''), macho({platform: 2}));
 });

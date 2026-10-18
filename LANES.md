@@ -6503,3 +6503,13 @@ collector production bytes and context/Ready/provider boundaries remain intact.
 Oversized serialized envelopes now emit an explicit bounded refusal with the
 candidate length/hash and no map body, instead of leaving an empty receipt. The
 8 MiB output cap is unchanged; allocation and process lifetime remain unqualified.
+
+The optional unsigned controller now has a preparation-only runtime admission
+phase in the already claimed workflow and focused control file. Explicit runtime
+identifier/build inputs default empty. After retained products, a bounded installed
+runtime inventory request joins exact source/job/manifest/producer/executable/plist
+identities and checks the thin ARM64 simulator build header and minimum OS version.
+Only reviewed runtime fields and inventory length/hash are exported. No simulator
+lifecycle operation or app launch occurs; device/runtime-architecture/loadability/
+process-resource/cleanup qualification remain open. This phase never authorizes a
+launch. Original jobs, build/upload ordering, delivery and signing guards remain.
