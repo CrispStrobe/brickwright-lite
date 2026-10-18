@@ -479,11 +479,9 @@ const leverStart = model => {
     return {alpha: moments(b => b.mass), alphaOneDensity: moments(b => total * b.volume / volume)};
 };
 
-test('balance, unequal: the heavier arm (three beams, 9 g) goes down against the bulkier lighter one (sensor, 8 g)', {
-    todo: 'Jolt puts a body\'s centre of mass at its colliders\' VOLUME centroid (one density for the whole ' +
-        'body), not at the parts\' masses: the big light sensor wins and the lever tips the wrong way; and the ' +
-        'pin chain does not hold the lever on its axis'
-}, t => {
+test('balance, unequal: the heavier arm (three beams, 9 g) goes down against the bulkier lighter one (sensor, 8 g)', t => {
+    // Each collider carries its share of its part's mass (mech/islands.js) and jolt-core.js gives each
+    // sub-shape that density: the body's centre of mass and inertia are the parts', not the colliders' volume's.
     const {core, lever, angle} = balance('balance-unequal.ldr');
     const {alpha, alphaOneDensity} = leverStart(machine('balance-unequal.ldr'));
     // Over the first 0.05 s the angle is ½·α0·t² (t small: the lever turns < 2°).

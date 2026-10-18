@@ -247,6 +247,14 @@ const isVec = (v, n = 3) => Array.isArray(v) && v.length === n && v.every(isNum)
 const norm = v => Math.hypot(...v);
 const UNIT_EPS = 1e-6;
 
+/** A collider's volume (any unit cubed: the units it is given in). */
+export const colliderVolume = c => {
+    if (c.shape === 'box') return 8 * c.halfExtents[0] * c.halfExtents[1] * c.halfExtents[2];
+    if (c.shape === 'cylinder') return 2 * Math.PI * c.radius * c.radius * c.halfHeight;
+    if (c.shape === 'sphere') return 4 / 3 * Math.PI * c.radius ** 3;
+    return 0;
+};
+
 const checkCollider = (c, where, out) => {
     if (!c || typeof c !== 'object') return out.push(`${where}: not an object`);
     if (c.position !== undefined && !isVec(c.position)) out.push(`${where}.position: not a Vec3`);
