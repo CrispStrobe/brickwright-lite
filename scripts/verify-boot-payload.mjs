@@ -98,6 +98,13 @@ const LAZY = [
     {what: 'the Sim Lab physics worker', marker: 'sim batch before sim load', chunk: 'bw-sim-physics-worker',
         notInChunks: ['bw-spike-simulator', 'bw-sim-lab'],
         why: 'startPhysicsWorker in overlay/scratch-gui/src/lib/bw-sim/sim-lab.js (new Worker(new URL(…)), webpackChunkName "bw-sim-physics-worker")'},
+    // The Robot Lab editor itself (its pane and icon toolbar): its own editor tab loads it when the tab
+    // is first shown (robot-lab-tab.jsx, React.lazy), so it is neither in the boot scripts nor in the
+    // arena pane's chunk any more (the arena only offers "Open in Robot Lab"). The marker is the
+    // toolbar's test id, which only sim-lab-toolbar.jsx carries.
+    {what: 'the Robot Lab editor (pane and toolbar)', marker: 'bw-sim-lab-toolbar', chunk: 'bw-robot-lab',
+        notInChunks: ['bw-spike-simulator'],
+        why: 'React.lazy in overlay/scratch-gui/src/components/tw-pseudocode/robot-lab-tab.jsx (webpackChunkName "bw-robot-lab")'},
     {what: 'the Sim Lab 3D view', marker: 'bw-sim-lab-3d-canvas', chunk: 'bw-sim-lab',
         notInChunks: ['bw-spike-simulator'],
         why: 'the dynamic import in sim-lab-pane.jsx (webpackChunkName "bw-sim-lab")'},
