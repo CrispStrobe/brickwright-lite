@@ -215,3 +215,89 @@ jobs:
           path: gui-setup
           if-no-files-found: error
           retention-days: 14
+
+  # Observation delivery only. Source and job guards need separate activation.
+  # Variables transport a separately reviewed immutable request, never approval.
+  font-discovery:
+    if: >-
+      ${{ false && github.event_name == 'pull_request' && github.event.action == 'labeled' &&
+          github.event.label.name == 'x86-hdd-gui-font-discovery' && github.actor == 'CrispStrobe' &&
+          github.repository == 'CrispStrobe/brickwright-lite' && github.run_attempt == 1 &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.event.pull_request.head.repo.fork == false && github.event.pull_request.base.ref == 'main' }}
+    runs-on: ubuntu-24.04
+    # Separate diagnostic backstop; setup sufficiency has not been observed.
+    timeout-minutes: 16
+    env:
+      BW_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+      BW_FONT_DISCOVERY_BLOB: ${{ vars.BW_GUI_HDD_FONT_DISCOVERY_BLOB }}
+      BW_FONT_DISCOVERY_SHA256: ${{ vars.BW_GUI_HDD_FONT_DISCOVERY_SHA256 }}
+      NODE_OPTIONS: ''
+      NODE_PATH: ''
+      NODE_V8_COVERAGE: ''
+      LD_PRELOAD: ''
+      LD_AUDIT: ''
+      LD_LIBRARY_PATH: ''
+      PYTHONPATH: ''
+      PYTHONHOME: ''
+      PYTHONSTARTUP: ''
+      PYTHONUSERBASE: ''
+      PYTHONINSPECT: ''
+      PYTHONPYCACHEPREFIX: ''
+      BASH_ENV: ''
+      ENV: ''
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Refuse unreviewed discovery before setup or input retrieval
+        run: |
+          set -euo pipefail
+          set -o noclobber
+          mkdir gui-font-discovery
+          /usr/bin/python3 -I -B scripts/run-i80386-hdd-gui-actual.py font-discovery-guard \
+            > gui-font-discovery/guard.stdout 2> gui-font-discovery/guard.stderr
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22.23.3
+      - name: Install unchanged selected packages and Chromium for font observation
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          set -o noclobber
+          npm ci --ignore-scripts --no-audit --no-fund \
+            > gui-font-discovery/npm.stdout 2> gui-font-discovery/npm.stderr
+          node node_modules/playwright/cli.js install --with-deps chromium \
+            > gui-font-discovery/chromium-install.stdout 2> gui-font-discovery/chromium-install.stderr
+      - name: Install externally selected immutable discovery request
+        timeout-minutes: 1
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          set -o noclobber
+          /usr/bin/python3 -I -B scripts/run-i80386-hdd-gui-actual.py install-input \
+            --blob "$BW_FONT_DISCOVERY_BLOB" --expected-sha256 "$BW_FONT_DISCOVERY_SHA256" \
+            --output "$GITHUB_WORKSPACE/gui-font-discovery/request.json" \
+            > gui-font-discovery/input-install.stdout 2> gui-font-discovery/input-install.stderr
+      - name: Record bounded read-only font discovery without credentials
+        timeout-minutes: 4
+        env:
+          GH_TOKEN: ''
+          GITHUB_TOKEN: ''
+        run: |
+          set -euo pipefail
+          set -o noclobber
+          /usr/bin/python3 -I -B scripts/run-i80386-hdd-gui-actual.py font-discovery \
+            --request "$GITHUB_WORKSPACE/gui-font-discovery/request.json" \
+            --expected-sha256 "$BW_FONT_DISCOVERY_SHA256" \
+            --output "$GITHUB_WORKSPACE/gui-font-discovery/font-discovery-original.json" \
+            > gui-font-discovery/controller.stdout 2> gui-font-discovery/controller.stderr
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: i80386-hdd-gui-font-discovery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: gui-font-discovery
+          if-no-files-found: error
+          retention-days: 14

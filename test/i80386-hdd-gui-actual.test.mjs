@@ -1356,6 +1356,77 @@ class Originals(unittest.TestCase):
             self.assertEqual(c.retain_font_discovery(value,'/out/fonts.json'),1)
         self.assertEqual(value['firstFailure']['message'],'OWNERS_PARTIAL_FIRST');self.assertEqual([row['message'] for row in value['secondary']],['OPEN_LATER','DIAGNOSTIC_LAST'])
 
+    def test_font_workflow_installer_cli_and_standalone_reader_positive(self):
+        with self.font_discovery_edges() as (request_raw,env,events):pass
+        stages=[]
+        with patch.object(c,'FONT_DISCOVERY_ENABLED',True):self.assertEqual(c.main(['font-discovery-guard']),0)
+        stages.extend(['guard','setup-mock'])
+        blob=hashlib.sha1(b'blob '+str(len(request_raw)).encode()+b'\0'+request_raw).hexdigest();installed=[];calls=[]
+        response=E({'sha':blob,'encoding':'base64','size':len(request_raw),'content':base64.b64encode(request_raw).decode()})
+        def api(edge,route):
+            self.assertEqual(route,'/git/blobs/'+blob);self.assertEqual(edge.env['GH_TOKEN'],'installer-only');calls.append(('api',route));return response
+        def open_(target,flags,mode):
+            self.assertEqual(str(target),'/inputs/request.json');self.assertEqual(flags,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW);self.assertEqual(mode,0o600);calls.append(('open',));return 70
+        def write_(fd,raw):self.assertEqual(fd,70);installed.append(raw);return len(raw)
+        def chmod_(fd,mode):self.assertEqual((fd,mode),(70,0o444));calls.append(('readonly',))
+        def close_(fd):self.assertEqual(fd,70);calls.append(('close',))
+        with patch.object(c.Hosted,'api',api),patch.object(c.Path,'resolve',lambda path,strict=True:path),patch.object(c.Path,'exists',return_value=False),\
+          patch.object(c.os,'open',open_),patch.object(c.os,'write',write_),patch.object(c.os,'fchmod',chmod_),patch.object(c.os,'close',close_),patch.object(c,'regular',return_value=request_raw):
+            result=c.install_input(blob,H(request_raw),'/inputs/request.json',{'GH_TOKEN':'installer-only'})
+        self.assertEqual(result,dict(ROW(request_raw),gitBlob=blob));self.assertEqual(installed,[request_raw]);self.assertEqual([call[0] for call in calls],['api','open','readonly','close']);stages.append('install')
+        captured=[]
+        class Sink:
+            def write(self,raw):captured.append(raw);return len(raw)
+            def close(self):pass
+        with self.font_discovery_edges() as (request,env,events):
+            self.assertEqual(request,installed[0]);previous=c.regular
+            def read(path,cap):return installed[0] if str(path)=='/inputs/request.json' else previous(path,cap)
+            with patch.object(c,'FONT_DISCOVERY_ENABLED',True),patch.object(c.Path,'cwd',return_value=pathlib.Path('/checkout')),patch.dict(c.os.environ,dict(env,GH_TOKEN='',GITHUB_TOKEN=''),clear=True),\
+              patch.object(c,'regular',read),patch.object(c.Path,'open',return_value=Sink()):
+                self.assertEqual(c.main(['font-discovery','--request','/inputs/request.json','--expected-sha256',H(request),'--output','/out/fonts.json']),0)
+        stages.extend(['collect','always-upload-mock']);self.assertEqual(stages,['guard','setup-mock','install','collect','always-upload-mock'])
+        self.assertEqual(len(captured),1);value=D(captured[0]);self.assertTrue(value['complete']);self.assertIsNone(value['firstFailure'])
+        self.assertTrue(all('GH_TOKEN' not in command['process']['environment'] and 'GITHUB_TOKEN' not in command['process']['environment'] for command in value['commands']))
+        expected={'schema':'bw.gui-hdd.font-discovery-expectation.v1','source':D(request)['source'],'request':ROW(request),'original':ROW(captured[0]),'runId':200,'workflowSha':'d'*40}
+        verdict=r.verify_font_discovery(captured[0],request,expected);self.assertFalse(verdict['candidate']);self.assertFalse(verdict['qualified'])
+    def test_font_workflow_guard_refusal_and_partial_collector_always_retain(self):
+        stages=[];status=0
+        # Model only the finite workflow ordering; the source guard is real.
+        try:
+            with patch.object(c,'regular',side_effect=AssertionError('guard must precede input')),patch.object(c.Path,'cwd',side_effect=AssertionError('guard must precede setup')):
+                c.main(['font-discovery-guard'])
+            stages.extend(['setup','input'])
+        except ValueError:status=1
+        finally:stages.append('always-upload-mock')
+        self.assertEqual(status,1);self.assertEqual(stages,['always-upload-mock'])
+        retained=[];captures=[];uploaded=[]
+        class Sink:
+            def write(self,raw):retained.append(raw);return len(raw)
+            def close(self):pass
+        with self.font_discovery_edges(partial=True) as (request,env,events):
+            output_class=c.Originals
+            class RememberOutput(output_class):
+                def __init__(self,*args):super().__init__(*args);captures.append(self)
+            previous=c.regular
+            def read(path,cap):return request if str(path)=='/inputs/request.json' else previous(path,cap)
+            try:
+                with patch.object(c,'FONT_DISCOVERY_ENABLED',True),patch.object(c.Path,'cwd',return_value=pathlib.Path('/checkout')),patch.dict(c.os.environ,dict(env,GH_TOKEN='',GITHUB_TOKEN=''),clear=True),                  patch.object(c,'regular',read),patch.object(c.Path,'open',return_value=Sink()),patch.object(c,'Originals',RememberOutput):
+                    self.assertEqual(c.main(['font-discovery-guard']),0)
+                    status=c.main(['font-discovery','--request','/inputs/request.json','--expected-sha256',H(request),'--output','/out/fonts.json'])
+            finally:
+                # The reviewed upload path includes the complete auxiliary tree.
+                uploaded.extend(str(output.root/name) for output in captures for name in output.files)
+        self.assertEqual(status,1);value=D(retained[0]);self.assertEqual(value['firstFailure']['message'],'OWNERS_PARTIAL_FIRST')
+        for suffix in ('stdout','stderr','process.json'):self.assertIn('/out/fonts-process-originals/font-owners.'+suffix,uploaded)
+        self.assertTrue(base64.b64decode(value['commands'][-1]['stdout']['base64']).startswith(b'fonts-mock: '));self.assertFalse(value['complete'])
+        self.assertFalse(any(name.endswith('/font-manifests.process.json') for name in uploaded))
+    def test_font_workflow_event_refusal_precedes_source_and_package_edges(self):
+        for key,replacement in (('GITHUB_RUN_ATTEMPT','2'),('GITHUB_JOB','inventory'),('BW_EXPECTED_HEAD','f'*40),('GITHUB_ACTOR','foreign')):
+            with self.font_discovery_edges() as (request,env,events):
+                env[key]=replacement;value=c.collect_font_discovery(request,H(request),pathlib.Path('/checkout'),env,'/out/fonts.json')
+            self.assertIsNotNone(value['firstFailure']);self.assertFalse(value['complete']);self.assertFalse(value['sourceCommands']);self.assertFalse(value['commands'])
+            self.assertFalse(any(op in ('git','probe') for op,arg in events))
+
 suite=unittest.defaultTestLoader.loadTestsFromTestCase(Originals)
 result=unittest.TextTestRunner(verbosity=2).run(suite)
 print(json.dumps({'controls':result.testsRun,'failures':len(result.failures),'errors':len(result.errors)}))
@@ -1363,8 +1434,8 @@ sys.exit(not result.wasSuccessful())
 `;
 
 test('standalone original reader: complete manufactured packet and coherent negative controls', () => {
-    const result = spawnSync('/usr/bin/python3',['-B','-c',controls,root],{cwd:root,encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
-    assert.equal(result.status,0,`${result.stdout}\n${result.stderr}`);
+    const result = spawnSync('/usr/bin/python3',['-B','-',root],{input:controls,cwd:root,encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
+    assert.equal(result.status,0,`${result.error?.stack || ""}\nsignal=${result.signal}\n${result.stdout}\n${result.stderr}`);
     const summary=JSON.parse(result.stdout.trim().split('\n').at(-1));
     assert.ok(summary.controls>=25); assert.equal(summary.failures,0); assert.equal(summary.errors,0);
 });
@@ -1511,4 +1582,133 @@ test('metadata diagnostic step and job budgets contain the collector without wid
     assert.ok(jobMinutes>=setupMinutes+recordMinutes+1,'metadata job includes setup, record and finite overhead margin');
     assert.match(workflow.split('  actual:')[1],/false &&/);assert.match(workflow.split('  actual:')[1],/timeout-minutes: 35/);
     assert.match(controller,/ACTUAL_ENABLED = False/);
+});
+
+// The command/event/resource contract is distinct from font selection or runtime
+// approval. These checks are also applied to coherent workflow drift examples.
+function fontDiscoveryWorkflowContract (workflow, controller) {
+    const marker='\n  font-discovery:\n';
+    assert.equal(workflow.split(marker).length,2,'one discovery job');
+    const job=workflow.split(marker)[1];
+    const [header,...steps]=job.split(/\n      - /);
+    assert.match(header,/\$\{\{ false &&/,'job stays disabled');
+    const conditions=["github.event_name == 'pull_request'","github.event.action == 'labeled'",
+        "github.event.label.name == 'x86-hdd-gui-font-discovery'","github.actor == 'CrispStrobe'",
+        "github.repository == 'CrispStrobe/brickwright-lite'","github.run_attempt == 1",
+        'github.event.pull_request.head.repo.full_name == github.repository',
+        'github.event.pull_request.head.repo.fork == false',"github.event.pull_request.base.ref == 'main'"];
+    const predicate=header.split('    if: >-\n')[1]?.split('\n    runs-on:')[0].trim().replace(/\s+/g,' ');
+    assert.equal(predicate,'${{ false && '+conditions.join(' && ')+' }}','one exact non-bypassable predicate');
+    const headerKeys=[...header.matchAll(/^    ([a-z-]+):/gm)].map(match=>match[1]);
+    assert.deepEqual(headerKeys,['if','runs-on','timeout-minutes','env','steps'],'closed unique job fields');
+    const scalarMap=(text,indent)=>{
+        const out={};
+        for(const line of text.trimEnd().split('\n')){
+            const match=line.match(new RegExp('^'+' '.repeat(indent)+'([A-Za-z_][A-Za-z_0-9-]*): (.+)$'));
+            assert.ok(match,'plain fixed YAML scalar row');assert.ok(!Object.hasOwn(out,match[1]),'duplicate YAML key');out[match[1]]=match[2];
+        }
+        return out;
+    };
+    const envText=header.split('    env:\n')[1]?.split('    steps:')[0];
+    const jobEnv=scalarMap(envText,6);
+    const expectedEnv={BW_EXPECTED_HEAD:'${{ github.event.pull_request.head.sha }}',BW_FONT_DISCOVERY_BLOB:'${{ vars.BW_GUI_HDD_FONT_DISCOVERY_BLOB }}',
+        BW_FONT_DISCOVERY_SHA256:'${{ vars.BW_GUI_HDD_FONT_DISCOVERY_SHA256 }}'};
+    for(const key of ['NODE_OPTIONS','NODE_PATH','NODE_V8_COVERAGE','LD_PRELOAD','LD_AUDIT','LD_LIBRARY_PATH','PYTHONPATH','PYTHONHOME',
+        'PYTHONSTARTUP','PYTHONUSERBASE','PYTHONINSPECT','PYTHONPYCACHEPREFIX','BASH_ENV','ENV'])expectedEnv[key]="''";
+    assert.deepEqual(jobEnv,expectedEnv,'closed scrubbed job environment');
+    assert.match(header,/runs-on: ubuntu-24\.04/);
+    assert.match(header,/BW_EXPECTED_HEAD: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/);
+    assert.match(header,/BW_FONT_DISCOVERY_BLOB: \$\{\{ vars\.BW_GUI_HDD_FONT_DISCOVERY_BLOB \}\}/);
+    assert.match(header,/BW_FONT_DISCOVERY_SHA256: \$\{\{ vars\.BW_GUI_HDD_FONT_DISCOVERY_SHA256 \}\}/);
+    assert.doesNotMatch(header,/GH_TOKEN|GITHUB_TOKEN/,'no job-wide credentials');
+    for(const key of ['NODE_OPTIONS','NODE_PATH','NODE_V8_COVERAGE','LD_PRELOAD','LD_AUDIT','LD_LIBRARY_PATH','PYTHONPATH','PYTHONHOME',
+        'PYTHONSTARTUP','PYTHONUSERBASE','PYTHONINSPECT','PYTHONPYCACHEPREFIX','BASH_ENV','ENV']){
+        assert.match(header,new RegExp('^      '+key+": ''$",'m'),'scrub '+key);
+    }
+    assert.equal(steps.length,7,'finite checkout/guard/Node/setup/install/collect/upload sequence');
+    const [checkout,guard,node,setup,install,collect,upload]=steps;
+    for(const step of steps){
+        const keys=[step.split(':',1)[0],...[...step.matchAll(/^        ([a-z-]+):/gm)].map(match=>match[1])];
+        assert.equal(keys.length,new Set(keys).size,'no duplicate step fields');
+        assert.ok(keys.every(key=>['uses','name','with','run','timeout-minutes','env','if'].includes(key)),'closed finite step keys');
+        const pieces=step.split('\n        env:\n');assert.ok(pieces.length<=2,'single step environment');
+        if(pieces.length===2){
+            const env=scalarMap(pieces[1].split('\n        run:')[0],10);
+            assert.deepEqual(env,step===install?{GH_TOKEN:'${{ github.token }}'}:{GH_TOKEN:"''",GITHUB_TOKEN:"''"},'exact credential scope');
+            assert.ok(step===install||step===collect,'environment only on input and collector steps');
+        }
+    }
+    assert.deepEqual(scalarMap(checkout.split('\n        with:\n')[1],10),{ref:'${{ github.event.pull_request.head.sha }}','persist-credentials':'false'});
+    assert.deepEqual(scalarMap(node.split('\n        with:\n')[1],10),{'node-version':'22.23.3'});
+    assert.deepEqual(scalarMap(upload.split('\n        with:\n')[1],10),{name:'i80386-hdd-gui-font-discovery-${{ github.run_id }}-${{ github.run_attempt }}',
+        path:'gui-font-discovery','if-no-files-found':'error','retention-days':'14'});
+    assert.match(checkout,/^uses: actions\/checkout@11d5960a326750d5838078e36cf38b85af677262\n/);
+    assert.match(checkout,/ref: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/,'checkout exact immutable head');
+    assert.match(checkout,/persist-credentials: false/);
+    assert.match(guard,/scripts\/run-i80386-hdd-gui-actual\.py font-discovery-guard/,'source guard precedes Node setup and retrieval');
+    assert.match(node,/^uses: actions\/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020\n/);
+    assert.match(node,/node-version: 22\.23\.3/);
+    assert.match(setup,/npm ci --ignore-scripts --no-audit --no-fund/);
+    assert.match(setup,/node node_modules\/playwright\/cli\.js install --with-deps chromium/);
+    assert.doesNotMatch(job,/npm (?:run )?build|fc-list|fc-cache|apt(?:-get)? /,'no frontend build, extra font tools or package fallback');
+    assert.match(guard,/mkdir gui-font-discovery\n/,'exclusive observation root');assert.doesNotMatch(guard,/mkdir -p/);
+    for(const step of [guard,setup,install,collect]){
+        assert.match(step,/set -euo pipefail/);assert.match(step,/set -o noclobber/,'never overwrite an original');
+        assert.doesNotMatch(step,/\|\||set \+e|continue-on-error|exit 0|;\s*true/,'collector refusal cannot be masked');
+    }
+    assert.equal(job.split('GH_TOKEN: ${{ github.token }}').length,2,'only one credential-bearing step');
+    assert.match(install,/GH_TOKEN: \$\{\{ github\.token \}\}/);assert.doesNotMatch(guard+node+setup+upload,/GH_TOKEN|GITHUB_TOKEN/);
+    assert.match(collect,/GH_TOKEN: ''/);assert.match(collect,/GITHUB_TOKEN: ''/);assert.doesNotMatch(collect,/github\.token/);
+    for(const [step,mode] of [[guard,'font-discovery-guard'],[install,'install-input'],[collect,'font-discovery']]){
+        assert.match(step,new RegExp('/usr/bin/python3 -I -B scripts/run-i80386-hdd-gui-actual\\.py '+mode+'(?: \\\\|\\n)'),'isolated system Python invocation');
+    }
+    assert.match(install,/--blob "\$BW_FONT_DISCOVERY_BLOB" --expected-sha256 "\$BW_FONT_DISCOVERY_SHA256"/);
+    assert.match(install,/--output "\$GITHUB_WORKSPACE\/gui-font-discovery\/request\.json"/);
+    assert.match(collect,/--request "\$GITHUB_WORKSPACE\/gui-font-discovery\/request\.json"/);
+    assert.match(collect,/--expected-sha256 "\$BW_FONT_DISCOVERY_SHA256"/);
+    assert.match(collect,/--output "\$GITHUB_WORKSPACE\/gui-font-discovery\/font-discovery-original\.json"/);
+    for(const [step,name] of [[guard,'guard'],[install,'input-install'],[collect,'controller']]){
+        assert.ok(step.includes('> gui-font-discovery/'+name+'.stdout 2> gui-font-discovery/'+name+'.stderr'),'retain '+name+' streams');
+    }
+    assert.match(upload,/^uses: actions\/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02\n/);
+    assert.match(upload,/if: always\(\)/,'retain refusal and child originals after failure');
+    assert.match(upload,/path: gui-font-discovery\n/,'retain entire tree including process originals');
+    assert.match(upload,/name: i80386-hdd-gui-font-discovery-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/);
+    assert.match(upload,/if-no-files-found: error/);assert.match(upload,/retention-days: 14/);
+    const minutes=part=>Number(part.match(/timeout-minutes: (\d+)/)[1]);
+    const definition=controller.split('def collect_font_discovery(')[1].split('\n\ndef font_packages(')[0];
+    const seconds=Number(definition.match(/deadline=time\.monotonic\(\)\+(\d+)/)[1]);
+    assert.equal(seconds,180);assert.ok(minutes(collect)*60>=seconds+60,'collector leaves terminal retention margin');
+    assert.equal(minutes(setup),10);assert.equal(minutes(install),1);assert.equal(minutes(collect),4);assert.equal(minutes(header),16);
+    assert.ok(minutes(header)>=minutes(setup)+minutes(install)+minutes(collect)+1,'separate finite job backstop includes overhead');
+    assert.match(controller,/FONT_DISCOVERY_ENABLED = False/);assert.match(controller,/ACTUAL_ENABLED = False/);
+}
+
+test('disabled font-discovery workflow delivers pinned inputs to the finite observation contract',()=>{
+    const workflow=fs.readFileSync(new URL('../.github/workflows/i80386-hdd-gui-actual.yml',import.meta.url),'utf8');
+    const controller=fs.readFileSync(new URL('../scripts/run-i80386-hdd-gui-actual.py',import.meta.url),'utf8');
+    fontDiscoveryWorkflowContract(workflow,controller);
+    const marker='\n  font-discovery:\n',prefix=workflow.split(marker)[0]+marker,job=workflow.split(marker)[1];
+    const shift=(from,to)=>{assert.ok(job.includes(from),from);return prefix+job.replace(from,to);};
+    const variants=[
+        shift('> gui-font-discovery/controller.stdout 2> gui-font-discovery/controller.stderr','> gui-font-discovery/controller.stdout 2> gui-font-discovery/controller.stderr || true'),
+        shift('name: Record bounded read-only font discovery without credentials','name: Record bounded read-only font discovery without credentials\n        continue-on-error: true'),
+        shift("github.event.pull_request.base.ref == 'main' }}","github.event.pull_request.base.ref == 'main' || true }}"),
+        shift("GH_TOKEN: ''","GH_TOKEN: ''\n          GH_TOKEN: ${{ github.token }}"),
+        shift("NODE_OPTIONS: ''","NODE_OPTIONS: ''\n      NODE_OPTIONS: '--eval=unreviewed'"),
+        shift("        env:\n          GH_TOKEN: ''","        GH_TOKEN: ${{ github.token }}\n        env:\n          GH_TOKEN: ''"),
+        shift('${{ false &&','${{ true &&'),shift('x86-hdd-gui-font-discovery','x86-hdd-gui-inventory'),
+        shift('github.run_attempt == 1','github.run_attempt == 2'),shift('github.event.pull_request.head.repo.fork == false','true'),
+        shift('ref: ${{ github.event.pull_request.head.sha }}','ref: ${{ github.sha }}'),shift('node-version: 22.23.3','node-version: 22'),
+        shift('actions/checkout@11d5960a326750d5838078e36cf38b85af677262','actions/checkout@v4'),
+        shift("GH_TOKEN: ''",'GH_TOKEN: ${{ github.token }}'),shift('BW_EXPECTED_HEAD:', 'GH_TOKEN: ${{ github.token }}\n      BW_EXPECTED_HEAD:'),
+        shift('if: always()','if: success()'),shift('path: gui-font-discovery\n','path: gui-font-discovery/font-discovery-original.json\n'),
+        shift('timeout-minutes: 4','timeout-minutes: 2'),shift('npm ci --ignore-scripts','npm ci'),
+        shift('mkdir gui-font-discovery\n','mkdir -p gui-font-discovery\n'),shift('set -o noclobber\n','true\n'),
+        shift("NODE_OPTIONS: ''","NODE_OPTIONS: '--eval=unreviewed'"),shift('/usr/bin/python3 -I -B','/usr/bin/python3 -B'),
+        shift('--blob "$BW_FONT_DISCOVERY_BLOB"','--blob "$UNREVIEWED_BLOB"'),
+        shift('--output "$GITHUB_WORKSPACE/gui-font-discovery/font-discovery-original.json"','--output "$GITHUB_WORKSPACE/elsewhere.json"')
+    ];
+    const parts=job.split(/\n      - /);const swapped=[parts[0],parts[1],parts[3],parts[2],...parts.slice(4)].join('\n      - ');variants.push(prefix+swapped);
+    for(const changed of variants)assert.throws(()=>fontDiscoveryWorkflowContract(changed,controller));
 });
