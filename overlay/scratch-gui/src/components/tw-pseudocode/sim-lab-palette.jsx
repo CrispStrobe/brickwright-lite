@@ -96,7 +96,7 @@ class SimLabPalette extends React.Component {
         const grid = {display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 4, margin: '4px 0 6px'};
         return (
             <div data-testid="bw-sim-lab-palette" ref={this.scroller}
-                style={{width: 214, flex: '0 0 214px', overflow: 'auto', fontSize: 12, borderRight: '1px solid #e2e8f0', paddingRight: 6}}>
+                style={{width: '100%', minWidth: 0, flex: '1 1 auto', overflow: 'auto', fontSize: 12, paddingRight: 6, boxSizing: 'border-box'}}>
                 <div style={{fontWeight: 600, marginBottom: 4}}>{T.parts}</div>
                 <div style={{display: 'flex', gap: 4, marginBottom: 6}}>
                     <input type="search" data-testid="bw-sim-lab-search" value={query} placeholder={T.searchHint} aria-label={T.search}

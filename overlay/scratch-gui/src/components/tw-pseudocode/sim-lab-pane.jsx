@@ -32,16 +32,18 @@ import {firmwareRefusalSentence} from './sim-lab-firmware-text.js';
 import {EDITOR_TEXT} from './sim-lab-editor-text.js';
 import SimLabProperties from './sim-lab-properties.jsx';
 import SimLabShortcuts from './sim-lab-shortcuts.jsx';
+import PaneDivider from '../gui/pane-divider.jsx';
+import {Icon, Popup, Separator, ToolButton, splitToolbar, toolStyles, tooltipOf} from './sim-lab-toolbar.jsx';
+import {TOOLBAR_TEXT} from './sim-lab-toolbar-text.js';
+import {sharedSpikeHubState} from '../../lib/virtual-hub/shared-spike-hub.js';
+import {ROBOT_LAB_EVENTS} from '../../lib/robot-lab-events.js';
 
 /** A MODELS entry's key: its `id` when one model file is listed more than once, else its file. */
 const modelKey = m => m.id || m.file;
 
 const TEXT = {
     en: {
-        title: 'Robot Lab (beta)',
-        intro: 'A model from real LEGO® Technic parts with physics. Write a SPIKE Prime program (ports A and B drive the wheels) and press Run: it starts on the green flag.',
-        model: 'Model', importModel: 'Open…', importHelp: 'Open a model: LDraw (.ldr, .mpd), BrickLink Studio (.io) or LEGO Digital Designer (.lxf)', run: 'Run', pause: 'Pause', reset: 'Reset',
-        loading: 'Loading the model and the physics engine…', ready: 'Ready', running: 'Running', paused: 'Paused',
+        model: 'Model', importHelp: 'Open a model: LDraw (.ldr, .mpd), BrickLink Studio (.io) or LEGO Digital Designer (.lxf)', loading: 'Loading the model and the physics engine…', ready: 'Ready', running: 'Running', paused: 'Paused',
         failed: 'Could not load the model: {error}', physicsFailed: 'The physics stopped: {error}. Press Reset to start again.', noWebgl: 'This browser cannot show the 3D view ({error}). The simulation still runs.',
         connectFailed: 'Could not connect the program to the virtual hub: {error}',
         noProgram: 'No SPIKE program is loaded yet, so nothing tells the motors to turn. Write one in the Code tab and press ⇦ To blocks (or build it with blocks), then press Run — or drive the robot with the arrows below.',
@@ -57,8 +59,7 @@ const TEXT = {
         mat: 'Mat', drive: 'Drive', forward: 'Forward', back: 'Back', left: 'Left', right: 'Right', stop: 'Stop', speed: 'Speed',
         driveHelp: 'Hold an arrow (or use the arrow keys) to drive with motors A and B.', readout: 'Hub',
         issues: 'Notes about this model', time: 'Simulated time: {s} s', canvasLabel: '3D view of the simulated model',
-        simulate: 'Simulate', build: 'Build', parts: 'Parts', undo: 'Undo', redo: 'Redo', remove: 'Delete',
-        save: 'Save as…', saveHelp: 'Save the model as a file', port: 'Port', none: 'none',
+        parts: 'Parts', saveHelp: 'Save the model as a file', port: 'Port', none: 'none',
         saveFormats: {ldr: 'LDraw (.ldr)', mpd: 'LDraw multi-part (.mpd)', io: 'BrickLink Studio (.io)'},
         fileFailed: 'Could not open {name}: {error}',
         fileErrors: {
@@ -71,16 +72,12 @@ const TEXT = {
             'lxf-version': 'this LEGO Digital Designer file is from a version the Robot Lab cannot read (only LDD 4).',
             'unsupported-format': 'the Robot Lab opens .ldr, .mpd, .io and .lxf files.'
         },
-        instructions: 'Instructions', instructionsHelp: 'Step-by-step building instructions for this robot, to build it from real LEGO® parts',
+        instructionsHelp: 'Step-by-step building instructions for this robot, to build it from real LEGO® parts',
         search: 'Search parts', searchHint: 'Search: name or number', clearSearch: 'Clear the search', recent: 'Recently used',
         noMatches: 'No part matches “{q}”.', partTitle: '{name} · part {number}',
         paletteHelp: 'Click a part, then click in the view. Or drag it into the view.',
-        move: 'Move (W)', turn: 'Turn (E)', grid: 'Grid', ldu: 'LDU', turnUp: 'Turn ↻ (R)', tip: 'Tip (T)',
-        turnBack: 'Turn ↺ (Shift+R)', copy: 'Copy', paste: 'Paste', selectAll: 'Select all', cancel: 'Cancel (Esc)',
-        copyKey: 'Ctrl+C', pasteKey: 'Ctrl+V', selectAllKey: 'Ctrl+A',
-        duplicate: 'Duplicate', group: 'Group', ungroup: 'Ungroup', groupKey: 'Ctrl+G', ungroupKey: 'Ctrl+Shift+G', home: 'Home', fit: 'Fit (F)', top: 'Top', front: 'Front', side: 'Side',
         selectedOne: 'Selected: {name}', selectedMany: 'Selected: {n} parts',
-        more: 'More…', moreHelp: 'More actions', large: 'Open the Robot Lab large (full screen)', timeShort: '{s} s',
+        timeShort: '{s} s',
         partsToggle: 'Show or hide the parts', infoToggle: 'Show or hide the whole note',
         route: 'Program', routeScratch: 'SPIKE blocks', routeFirmware: 'SPIKE firmware (desktop)',
         routeUnavailable: 'Not available: this build has no managed Renode runtime with lockstep.',
@@ -114,10 +111,7 @@ const TEXT = {
         }
     },
     de: {
-        title: 'Roboter-Labor (Beta)',
-        intro: 'Ein Modell aus echten LEGO®-Technic-Teilen mit Physik. Schreibe ein SPIKE-Prime-Programm (Ports A und B treiben die Räder an) und drücke Start: es beginnt mit der grünen Flagge.',
-        model: 'Modell', importModel: 'Öffnen…', importHelp: 'Ein Modell öffnen: LDraw (.ldr, .mpd), BrickLink Studio (.io) oder LEGO Digital Designer (.lxf)', run: 'Start', pause: 'Pause', reset: 'Zurücksetzen',
-        loading: 'Modell und Physik-Engine werden geladen…', ready: 'Bereit', running: 'Läuft', paused: 'Pausiert',
+        model: 'Modell', importHelp: 'Ein Modell öffnen: LDraw (.ldr, .mpd), BrickLink Studio (.io) oder LEGO Digital Designer (.lxf)', loading: 'Modell und Physik-Engine werden geladen…', ready: 'Bereit', running: 'Läuft', paused: 'Pausiert',
         failed: 'Das Modell konnte nicht geladen werden: {error}', physicsFailed: 'Die Physik ist stehen geblieben: {error}. Mit Zurücksetzen geht es neu los.', noWebgl: 'Dieser Browser kann die 3D-Ansicht nicht zeigen ({error}). Die Simulation läuft trotzdem.',
         connectFailed: 'Das Programm konnte nicht mit dem virtuellen Hub verbunden werden: {error}',
         noProgram: 'Es ist noch kein SPIKE-Programm geladen, darum dreht sich kein Motor. Schreibe eins im Code-Tab und drücke ⇦ Zu Blöcken (oder baue es aus Blöcken), dann Start — oder fahre den Roboter mit den Pfeilen unten.',
@@ -133,8 +127,7 @@ const TEXT = {
         mat: 'Matte', drive: 'Fahren', forward: 'Vorwärts', back: 'Rückwärts', left: 'Links', right: 'Rechts', stop: 'Stopp', speed: 'Tempo',
         driveHelp: 'Halte einen Pfeil gedrückt (oder nutze die Pfeiltasten), um mit den Motoren A und B zu fahren.', readout: 'Hub',
         issues: 'Hinweise zu diesem Modell', time: 'Simulierte Zeit: {s} s', canvasLabel: '3D-Ansicht des simulierten Modells',
-        simulate: 'Simulieren', build: 'Bauen', parts: 'Teile', undo: 'Rückgängig', redo: 'Wiederholen', remove: 'Löschen',
-        save: 'Speichern unter…', saveHelp: 'Das Modell als Datei speichern', port: 'Port', none: 'keiner',
+        parts: 'Teile', saveHelp: 'Das Modell als Datei speichern', port: 'Port', none: 'keiner',
         saveFormats: {ldr: 'LDraw (.ldr)', mpd: 'LDraw mehrteilig (.mpd)', io: 'BrickLink Studio (.io)'},
         fileFailed: '{name} konnte nicht geöffnet werden: {error}',
         fileErrors: {
@@ -147,16 +140,12 @@ const TEXT = {
             'lxf-version': 'Diese LEGO-Digital-Designer-Datei stammt aus einer Version, die das Roboter-Labor nicht lesen kann (nur LDD 4).',
             'unsupported-format': 'Das Roboter-Labor öffnet .ldr-, .mpd-, .io- und .lxf-Dateien.'
         },
-        instructions: 'Bauanleitung', instructionsHelp: 'Bauanleitung für diesen Roboter, Schritt für Schritt, zum Nachbauen mit echten LEGO®-Teilen',
+        instructionsHelp: 'Bauanleitung für diesen Roboter, Schritt für Schritt, zum Nachbauen mit echten LEGO®-Teilen',
         search: 'Teile suchen', searchHint: 'Suche: Name oder Nummer', clearSearch: 'Suche löschen', recent: 'Zuletzt benutzt',
         noMatches: 'Kein Teil passt zu „{q}“.', partTitle: '{name} · Teil {number}',
         paletteHelp: 'Klicke ein Teil an, dann in die Ansicht. Oder zieh es in die Ansicht.',
-        move: 'Schieben (W)', turn: 'Drehen (E)', grid: 'Raster', ldu: 'LDU', turnUp: 'Drehen ↻ (R)', tip: 'Kippen (T)',
-        turnBack: 'Drehen ↺ (Umschalt+R)', copy: 'Kopieren', paste: 'Einfügen', selectAll: 'Alle wählen', cancel: 'Abbrechen (Esc)',
-        copyKey: 'Strg+C', pasteKey: 'Strg+V', selectAllKey: 'Strg+A',
-        duplicate: 'Verdoppeln', group: 'Gruppieren', ungroup: 'Gruppe lösen', groupKey: 'Strg+G', ungroupKey: 'Strg+Umschalt+G', home: 'Start', fit: 'Einpassen (F)', top: 'Oben', front: 'Vorne', side: 'Seite',
         selectedOne: 'Ausgewählt: {name}', selectedMany: 'Ausgewählt: {n} Teile',
-        more: 'Mehr…', moreHelp: 'Weitere Aktionen', large: 'Roboter-Labor groß öffnen (Vollbild)', timeShort: '{s} s',
+        timeShort: '{s} s',
         partsToggle: 'Teile zeigen oder ausblenden', infoToggle: 'Den ganzen Hinweis zeigen oder einklappen',
         route: 'Programm', routeScratch: 'SPIKE-Blöcke', routeFirmware: 'SPIKE-Firmware (Desktop)',
         routeUnavailable: 'Nicht verfügbar: Dieser Build hat keine verwaltete Renode-Laufzeit mit Lockstep.',
@@ -215,7 +204,7 @@ const MODEL_TITLE = 'Robot Lab model';
  * the pane is compact: icon toolbars with a "More…" menu, the parts palette as a drawer over
  * the view, notes folded to one line, so the 3D view keeps most of the height.
  */
-const COMPACT_BELOW_PX = 640;
+const COMPACT_BELOW_PX = 720;
 /** Below this pane width the compact toolbars show glyphs only (a 1024 px tablet's side pane). */
 const NARROW_BELOW_PX = 420;
 /** From this pane width the properties panel stands beside the 3D view; narrower, it opens over the view's right edge. */
@@ -223,34 +212,15 @@ const DOCK_PROPERTIES_PX = 1280;
 /** What is hidden in Build stays hidden for the browser session (view state, not the model). */
 const HIDDEN_STORAGE_KEY = 'bw-sim-lab-hidden';
 
-/** The compact toolbars' faces: drawn, not font glyphs, so every school device shows the same icon. */
-const ICONS = {
-    parts: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
-    move: 'M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3',
-    rotate: 'M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5',
-    turn: 'M18 12a6 6 0 1 1-1.8-4.3M18 5v4h-4',
-    reset: 'M4 12a8 8 0 1 0 2.3-5.7M4 4v5h5',
-    undo: 'M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3',
-    redo: 'M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3',
-    delete: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
-    cancel: 'M6 6l12 12M18 6L6 18',
-    run: 'M7 4l13 8-13 8z',
-    pause: 'M8 5v14M16 5v14',
-    more: 'M5 12h.01M12 12h.01M19 12h.01',
-    large: 'M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7'
-};
-const drawIcon = name => (
-    <svg aria-hidden="true" width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"
-        strokeWidth={name === 'more' ? 3.5 : 2} style={{display: 'block', flex: '0 0 auto'}}>
-        <path d={ICONS[name]} />
-    </svg>
-);
-/** A button's face: an icon, and words beside it when there is room. */
-const face = (name, words) => (
-    <span style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4, whiteSpace: 'nowrap'}}>
-        {drawIcon(name)}{words}
-    </span>
-);
+/**
+ * From this pane width the toolbar may take a second row and shows every action; narrower, it
+ * keeps one row and what does not fit goes to its More menu (sim-lab-toolbar.jsx splitToolbar).
+ */
+const WRAP_TOOLBAR_PX = 1000;
+/** From this pane width the mode switch shows its words beside the icons. */
+const MODE_WORDS_PX = 760;
+/** Never wider than this share of the pane, the parts panel (dragged by its divider). */
+const MAX_PANEL_SHARE = 0.45;
 
 class SimLabPane extends React.Component {
     constructor (props) {
@@ -260,14 +230,18 @@ class SimLabPane extends React.Component {
         this.text = TEXT[locale];
         this.itext = INSIGHT_TEXT[locale] || INSIGHT_TEXT.en;
         this.etext = EDITOR_TEXT[locale] || EDITOR_TEXT.en;
+        this.ttext = TOOLBAR_TEXT[locale] || TOOLBAR_TEXT.en;
+        // The project's hub (docs/ROBOT-LAB-ARCHITECTURE.md R1: the VirtualHub boundary): the one the
+        // SPIKE arena shares (lib/virtual-hub/shared-spike-hub.js), unless a host hands one in.
+        this.hub = props.hubState || sharedSpikeHubState();
         this.state = {status: 'loading', message: '', info: '', driveSpeed: 50, issues: [], modelFile: null, shipped: null, simMs: 0, rtf: null, view3d: 'loading',
             mode: 'simulate', placing: null, selection: [], editorTick: 0, mat: null,
             buildStatus: {kind: 'idle'}, gizmoMode: 'move', grid: 10, recent: [], thumbTick: 0,
             showPorts: true, showMotion: false, blockers: [], portPicker: null, instructions: null, coarse: false,
-            paneWidth: 0, more: false, drawer: false, paletteDragging: false, infoOpen: false, route: 'scratch', saveMenu: false,
+            paneWidth: 0, menu: null, drawer: false, paletteDragging: false, infoOpen: false, route: 'scratch',
+            paletteOpen: true, paletteShare: null, propsShare: null, propsDocked: true,
             hidden: [], editGroup: null, pick: null, measurement: null, placeColor: null, propsOpen: false, shortcuts: false};
         this.root = React.createRef();
-        this.moreRef = React.createRef();
         this.viewWrap = React.createRef();
         this.box = React.createRef();
         this.file = React.createRef();
@@ -310,9 +284,16 @@ class SimLabPane extends React.Component {
         return this.state.paneWidth > 0 && this.state.paneWidth < NARROW_BELOW_PX;
     }
 
-    /** A press outside the open "More…" menu closes it. */
+    /** A press outside the open pop-up (More, File, Help) closes it. */
     onOutsidePress (event) {
-        if (this.state.more && this.moreRef.current && !this.moreRef.current.contains(event.target)) this.setState({more: false});
+        const open = this.state.menu;
+        if (!open) return;
+        const inside = event.target && event.target.closest && event.target.closest(`[data-sim-lab-popup="${open}"]`);
+        if (!inside) this.setState({menu: null});
+    }
+
+    toggleMenu (id) {
+        this.setState(s => ({menu: s.menu === id ? null : id}));
     }
 
     /** A number as the learner's language writes it (German: decimal comma). */
@@ -346,6 +327,8 @@ class SimLabPane extends React.Component {
             get insight () { return this._pane.lastInsight || null; },
             _pane: this
         };
+        // The SPIKE arena stands aside while this session drives the shared hub (lib/robot-lab-events.js).
+        window.dispatchEvent(new CustomEvent(ROBOT_LAB_EVENTS.owner, {detail: {active: true}}));
         window.addEventListener('bw-project-bundle-collect', this.onBundleCollect);
         window.addEventListener('bw-project-bundle-loaded', this.onBundleLoaded);
         // A tablet (a finger is the main pointer): bigger buttons and touch wording.
@@ -372,9 +355,13 @@ class SimLabPane extends React.Component {
     }
 
     componentWillUnmount () {
-        // Flush first: a Build-mode edit made just before switching to the arena
-        // tab must still be in the next save.
+        // Flush first: a Build-mode edit made just before handing the hub to the
+        // arena must still be in the next save.
         this.onBundleCollect();
+        // A running program lets go of the hub before the arena takes it.
+        if (this.session && (this.state.status === 'running' || this.state.status === 'stopping')) {
+            try { this.pause(); } catch { /* the session may be half gone */ }
+        }
         window.removeEventListener('bw-project-bundle-collect', this.onBundleCollect);
         window.removeEventListener('bw-project-bundle-loaded', this.onBundleLoaded);
         window.removeEventListener('pointerdown', this.onOutsidePress, true);
@@ -387,7 +374,10 @@ class SimLabPane extends React.Component {
         this.teardownEditor();
         if (this.physics) this.physics.terminate();
         this.physics = null;
-        if (window.__bwSimLab && window.__bwSimLab._pane === this) delete window.__bwSimLab;
+        if (window.__bwSimLab && window.__bwSimLab._pane === this) {
+            delete window.__bwSimLab;
+            window.dispatchEvent(new CustomEvent(ROBOT_LAB_EVENTS.owner, {detail: {active: false}}));
+        }
     }
 
     teardownEditor () {
@@ -633,7 +623,7 @@ class SimLabPane extends React.Component {
 
     /** "Save as…": the model on show (built or simulated) as a .ldr, .mpd or .io file (lib/bw-sim/model/model-file.js). */
     async saveAs (format) {
-        this.setState({saveMenu: false});
+        this.setState({menu: null});
         const model = this.editor ? this.editor.model : this.session?.model;
         if (!model || !this.lib) return;
         const name = !this.editor && isStorableName(this.state.modelFile) ? this.state.modelFile : 'my-model.ldr';
@@ -644,22 +634,6 @@ class SimLabPane extends React.Component {
         a.download = filename;
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
-    }
-
-    /** The "Save as…" button and, while it is open, one button per format. */
-    renderSaveAs (style, disabled) {
-        const T = this.text;
-        const open = this.state.saveMenu && !disabled;
-        return (
-            <span key="save-as" style={{display: 'inline-flex', alignItems: 'center', gap: 4, flexWrap: 'wrap'}}>
-                <button type="button" style={style} data-testid="bw-sim-lab-save" disabled={disabled} title={T.saveHelp}
-                    aria-haspopup="true" aria-expanded={open} onClick={() => this.setState(s => ({saveMenu: !s.saveMenu}))}>{T.save}</button>
-                {open && SAVE_FORMATS.map(format => (
-                    <button key={format} type="button" style={style} data-testid={`bw-sim-lab-save-${format}`}
-                        onClick={() => this.saveAs(format)}>{T.saveFormats[format]}</button>
-                ))}
-            </span>
-        );
     }
 
     /**
@@ -776,7 +750,7 @@ class SimLabPane extends React.Component {
             const compiled = this.compileFirmware();
             refusal = compiled.error;
             try {
-                firmware = await this.lib.openFirmwareRoute({capabilities: this.renodeCapabilities(), hubState: this.props.hubState,
+                firmware = await this.lib.openFirmwareRoute({capabilities: this.renodeCapabilities(), hubState: this.hub,
                     program: compiled.program, onProgramChange: control => this.onFirmwareProgram(control)});
             } catch (error) {
                 if (token !== this.loadToken) return;
@@ -794,7 +768,7 @@ class SimLabPane extends React.Component {
             // A model naming a part beyond the catalogue's core (sim-lab.js) loads the rest first.
             await this.lib.catalogFor(text);
             if (token !== this.loadToken || this.disposed) { firmware?.driver.end().catch(() => {}); return; }
-            result = await SimSession.fromText(text, {hubState: this.props.hubState, catalog: CATALOG, mat: this.state.mat,
+            result = await SimSession.fromText(text, {hubState: this.hub, catalog: CATALOG, mat: this.state.mat,
                 worker: this.physicsClient(), ...(firmware ? {createHub: firmware.createHub} : {})});
         } catch (error) {
             firmware?.driver.end().catch(() => {});
@@ -966,7 +940,7 @@ class SimLabPane extends React.Component {
     async run () {
         if (!this.session) return;
         if (this.session.lockstep) { await this.runFirmware(); return; }
-        const hubState = this.props.hubState;
+        const hubState = this.hub;
         hubState.setSimulationEnabled(true);
         // Connecting runs on wall time (its timeouts are the browser's); the program clock goes in
         // just before the green flag, so the program's first `wait` starts on the world's clock.
@@ -1011,7 +985,7 @@ class SimLabPane extends React.Component {
     /** Hold-to-drive with the movement pair (A left, mounted mirrored; B right), as the arena's drive pad. */
     drive (direction) {
         if (!this.session || !this.session.bridge) return;
-        const hub = this.props.hubState;
+        const hub = this.hub;
         hub.setSimulationEnabled(true);
         if (this.state.status !== 'running') {
             this.startClock();
@@ -1046,14 +1020,14 @@ class SimLabPane extends React.Component {
         if (!this.session) return;
         if (this.session.lockstep) { this.pauseFirmware(); return; }
         if (this.spikeLoaded()) { try { this.props.vm.stopAll(); } catch { /* the VM may be mid-load */ } }
-        this.props.hubState.backend.cancel();
+        this.hub.backend.cancel();
         this.stopClock();
         this.setState({status: 'paused'});
     }
 
     async reset () {
         if (!this.session) return;
-        this.props.hubState.stopAll?.();
+        this.hub.stopAll?.();
         const name = this.state.modelFile;
         if (this.state.shipped) await this.openShipped(this.state.shipped);
         else if (this.lastText) await this.openText(this.lastText, name);
@@ -1082,7 +1056,7 @@ class SimLabPane extends React.Component {
         const compact = this.compact();
         const arrow = {...button, minWidth: this.state.coarse ? 48 : 34, fontSize: 15, lineHeight: '18px', userSelect: 'none',
             WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'none', ...(compact ? {padding: '4px 6px', flex: '0 0 auto'} : {})};
-        const hub = this.props.hubState.data;
+        const hub = this.hub.data;
         const ports = [...new Set(this.session.mechanism.joints.filter(j => j.motor).map(j => j.motor.port))].sort();
         const sensorPorts = (this.session.mechanism.sensors || []).map(s => s.port).sort();
         const fmt = (port, s) => {
@@ -1208,32 +1182,6 @@ class SimLabPane extends React.Component {
         return m ? ((this.locale === 'de' && m.nameDe) || m.name) : part;
     }
 
-    /**
-     * The "More…" menu: the actions a compact toolbar has no room for, with their full
-     * labels (and the same test ids as on the wide toolbar). Picking an action closes it.
-     */
-    renderMore (button, children) {
-        const open = this.state.more;
-        return (
-            <div ref={this.moreRef} style={{position: 'relative', flex: '0 0 auto'}}>
-                <button type="button" style={{...button, marginRight: 0}} data-testid="bw-sim-lab-more" aria-haspopup="true" aria-expanded={open}
-                    aria-label={this.text.moreHelp} title={this.text.moreHelp} onClick={() => this.setState(s => ({more: !s.more}))}>
-                    {this.narrow() ? face('more') : this.text.more}
-                </button>
-                {open && (
-                    <div role="group" aria-label={this.text.moreHelp} data-testid="bw-sim-lab-more-menu"
-                        onKeyDown={e => { if (e.key === 'Escape') this.setState({more: false}); }}
-                        onClick={e => { if (e.target.closest('button')) this.setState({more: false}); }}
-                        style={{position: 'absolute', right: 0, top: 'calc(100% + 4px)', zIndex: 30, width: 260, maxWidth: '80vw', maxHeight: '60vh',
-                            overflowY: 'auto', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 4, padding: 8, fontSize: 12,
-                            background: '#fff', border: '1px solid #94a3b8', borderRadius: 8, boxShadow: '0 6px 18px rgba(15, 23, 42, 0.25)', boxSizing: 'border-box'}}>
-                        {children}
-                    </div>
-                )}
-            </div>
-        );
-    }
-
     /** Wide enough for the properties panel to stand beside the 3D view. */
     dockProperties () {
         return this.state.paneWidth >= DOCK_PROPERTIES_PX;
@@ -1249,168 +1197,6 @@ class SimLabPane extends React.Component {
                 pick={this.state.pick} editGroup={this.state.editGroup} partName={part => this.partName(part)} tick={this.state.editorTick}
                 onColour={code => this.pickColour(code)} onTick={() => this.setState(s => ({editorTick: s.editorTick + 1}))}
                 onClose={docked ? null : () => this.setState({propsOpen: false})} button={button} field={field} docked={docked} />
-        );
-    }
-
-    renderBuildBar (button) {
-        const editor = this.editor;
-        const view = this.editView;
-        const parts = editor ? editor.model.parts : [];
-        const byId = editor ? this.lib.partsByIdOf(editor.model) : new Map();
-        const selection = this.state.selection.map(id => byId.get(id)).filter(Boolean);
-        const sel = selection.length === 1 ? selection[0] : null;
-        const meta = sel ? this.lib.CATALOG.get(sel.part) : null;
-        const portable = meta && this.lib.isPortPart(meta);
-        const tick = () => this.setState(s => ({editorTick: s.editorTick + 1}));
-        const compact = this.compact();
-        const narrow = this.narrow();
-        const small = {...button, padding: this.state.coarse ? '6px 10px' : '3px 8px', marginRight: 0};
-        const icon = {...small, padding: this.state.coarse ? '4px 6px' : '3px 6px', minWidth: this.state.coarse ? 40 : 32, minHeight: this.state.coarse ? 40 : 30};
-        const field = this.state.coarse ? {minHeight: 40} : undefined;
-        const pressed = (on, base = small) => ({...base, background: on ? '#dbeafe' : '#fff', borderColor: on ? '#2563eb' : '#94a3b8', fontWeight: on ? 600 : 400});
-        const st = this.state.buildStatus || {};
-        const refused = st.kind === 'refused';
-        const blocked = st.kind === 'blocked';
-        const T = this.text;
-        const E = this.etext;
-        const docked = this.dockProperties();
-        const nothing = !selection.length && !this.state.placing;
-        /** Every Build action once: id, label, what it does; `glyph` is its face on the compact toolbar. */
-        const act = {
-            turn: {label: T.turnUp, glyph: 'turn', words: '90°', disabled: nothing, run: () => view?.turn('up', 1)},
-            'turn-back': {label: T.turnBack, disabled: nothing, run: () => view?.turn('up', -1)},
-            tip: {label: T.tip, disabled: !selection.length, run: () => view?.turn('facing', 1)},
-            group: {label: T.group, title: T.groupKey, disabled: selection.length < 2, run: () => { view?.groupSelection(); tick(); }},
-            ungroup: {label: T.ungroup, title: T.ungroupKey,
-                disabled: !(editor?.model.groups || []).some(g => g.parts.some(id => this.state.selection.includes(id))),
-                run: () => { view?.ungroupSelection(); tick(); }},
-            duplicate: {label: T.duplicate, disabled: !selection.length, run: () => view?.duplicate()},
-            delete: {label: T.remove, glyph: 'delete', disabled: !selection.length, run: () => view?.deleteSelection()},
-            copy: {label: T.copy, title: T.copyKey, disabled: !selection.length, run: () => view?.copy()},
-            paste: {label: T.paste, title: T.pasteKey, run: () => view?.paste()},
-            'select-all': {label: T.selectAll, title: T.selectAllKey, disabled: !parts.length, run: () => view?.selectAll()},
-            cancel: {label: T.cancel, glyph: 'cancel', disabled: nothing, run: () => view?.escape()},
-            undo: {label: T.undo, glyph: 'undo', disabled: !editor?.canUndo, run: () => { view?.undo(); tick(); }},
-            redo: {label: T.redo, glyph: 'redo', disabled: !editor?.canRedo, run: () => { view?.redo(); tick(); }},
-            'view-home': {label: T.home, run: () => view?.view('home')},
-            'view-fit': {label: T.fit, run: () => view?.fitSelection()},
-            'view-top': {label: T.top, run: () => view?.view('top')},
-            'view-front': {label: T.front, run: () => view?.view('front')},
-            'view-side': {label: T.side, run: () => view?.view('side')},
-            // Studio's tools (sim-lab-editor-text.js): mirror, hide / isolate, measure, eyedropper, properties, shortcuts.
-            'mirror-x': {label: E.mirrorX, title: E.mirrorXHelp, disabled: !selection.length, run: () => { view?.mirror('x'); tick(); }},
-            'mirror-z': {label: E.mirrorZ, title: E.mirrorZHelp, disabled: !selection.length, run: () => { view?.mirror('z'); tick(); }},
-            hide: {label: E.hide, disabled: !selection.length, run: () => view?.hideSelection()},
-            isolate: {label: E.isolate, disabled: !selection.length, run: () => view?.isolate()},
-            'show-all': {label: E.showAll, disabled: !this.state.hidden.length, run: () => view?.showAll()},
-            measure: {label: E.measure, pressed: this.state.pick === 'measure', run: () => view?.setPick('measure')},
-            eyedropper: {label: E.eyedropper, title: E.eyedropperHelp, pressed: this.state.pick === 'color', run: () => view?.setPick('color')},
-            properties: {label: E.properties, title: E.propertiesHelp, pressed: this.state.propsOpen, run: () => this.setState(s => ({propsOpen: !s.propsOpen}))},
-            shortcuts: {label: E.shortcuts, title: E.shortcutsHelp, run: () => this.setState({shortcuts: true})}
-        };
-        const full = id => {
-            const a = act[id];
-            return (
-                <button key={id} type="button" style={a.pressed === undefined ? small : pressed(a.pressed)} data-testid={`bw-sim-lab-${id}`}
-                    disabled={a.disabled} title={a.title} aria-pressed={a.pressed} onClick={a.run}>{a.label}</button>
-            );
-        };
-        // On the compact toolbar a glyph carries the action; its name is the accessible name and the tooltip.
-        const glyph = id => {
-            const a = act[id];
-            return (
-                <button key={id} type="button" style={icon} data-testid={`bw-sim-lab-${id}`} disabled={a.disabled}
-                    aria-label={a.label} title={a.title ? `${a.label} · ${a.title}` : a.label} onClick={a.run}>{face(a.glyph, a.words)}</button>
-            );
-        };
-        const gap = key => <span key={key} style={{width: 6}} />;
-        const modes = [['move', T.move], ['rotate', T.turn]].map(([m, label]) => (
-            <button key={m} type="button" style={pressed(this.state.gizmoMode === m, compact ? icon : small)} data-testid={`bw-sim-lab-mode-${m}`}
-                aria-pressed={this.state.gizmoMode === m} aria-label={compact ? label : undefined} title={compact ? label : undefined}
-                onClick={() => view?.setMode(m)}>{compact ? face(m) : label}</button>
-        ));
-        const grid = (
-            <label key="grid" style={{marginLeft: compact ? 0 : 4}}>{T.grid}{' '}
-                <select data-testid="bw-sim-lab-grid" value={this.state.grid} style={field}
-                    onChange={e => { const g = Number(e.target.value); view?.setGrid(g); this.setState({grid: g}); }}>
-                    {[1, 5, 10, 20].map(g => <option key={g} value={g}>{g} {T.ldu}</option>)}
-                </select>
-            </label>
-        );
-        const oneLine = compact ? {flexWrap: 'nowrap', minWidth: 0} : {flexWrap: 'wrap'};
-        return (
-            <div style={{display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, minWidth: 0}}>
-                {compact ? (
-                    <div data-testid="bw-sim-lab-build-bar" style={{display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap'}}>
-                        <button type="button" style={pressed(this.state.drawer, icon)} data-testid="bw-sim-lab-parts-toggle"
-                            aria-expanded={this.state.drawer} aria-label={T.partsToggle} title={T.partsToggle}
-                            onClick={() => this.setState(s => ({drawer: !s.drawer}))}>{face('parts', narrow && this.state.coarse ? null : T.parts)}</button>
-                        {modes}
-                        {glyph('turn')}
-                        {/* While a part is armed there is nothing to delete; the same place stops placing. */}
-                        {this.state.placing ? glyph('cancel') : glyph('delete')}
-                        {glyph('undo')}
-                        {!narrow && glyph('redo')}
-                        <span style={{flex: '1 1 0'}} />
-                        {this.renderMore(button, [
-                            grid,
-                            ...[...(narrow ? ['redo'] : []), 'turn-back', 'tip', 'duplicate', 'copy', 'paste', 'select-all', 'group', 'ungroup',
-                                ...(this.state.placing ? ['delete'] : ['cancel']),
-                                'mirror-x', 'mirror-z', 'hide', 'isolate', 'show-all', 'measure', 'eyedropper', 'properties',
-                                'view-home', 'view-fit', 'view-top', 'view-front', 'view-side', 'shortcuts'].map(full),
-                            this.renderSaveAs(small, !editor),
-                            this.renderInsightBar()
-                        ])}
-                    </div>
-                ) : (
-                    <div data-testid="bw-sim-lab-build-bar" style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4}}>
-                        {modes}
-                        {grid}
-                        {gap('g1')}
-                        {['turn', 'turn-back', 'tip', 'group', 'ungroup', 'duplicate', 'delete', 'copy', 'paste', 'select-all', 'cancel'].map(full)}
-                        {gap('g2')}
-                        {['undo', 'redo'].map(full)}
-                        {gap('g3')}
-                        {['view-home', 'view-fit', 'view-top', 'view-front', 'view-side'].map(full)}
-                        {gap('g4')}
-                        {this.renderSaveAs(small, !editor)}
-                        {gap('g5')}
-                        {['mirror-x', 'mirror-z', 'hide', 'isolate', 'show-all', 'measure', 'eyedropper', ...(docked ? [] : ['properties']), 'shortcuts'].map(full)}
-                    </div>
-                )}
-                <div style={{display: 'flex', alignItems: 'center', gap: 8, minHeight: 22, ...oneLine}}>
-                    {this.state.hidden.length > 0 && (
-                        <button type="button" data-testid="bw-sim-lab-hidden-count" title={E.showAll} onClick={() => view?.showAll()}
-                            style={{...small, padding: '1px 6px', background: '#f1f5f9', whiteSpace: 'nowrap'}}>
-                            {E.hiddenCount.replace('{n}', this.state.hidden.length)}
-                        </button>
-                    )}
-                    {this.state.editGroup && (
-                        <span data-testid="bw-sim-lab-group-edit-chip" style={{whiteSpace: 'nowrap', color: '#5b21b6', fontWeight: 600}}>
-                            {E.groupBanner.replace('{name}', this.state.editGroup.name)}
-                        </span>
-                    )}
-                    {selection.length > 0 && (
-                        <span data-testid="bw-sim-lab-selection" style={{fontWeight: 600, color: '#1e3a8a', whiteSpace: compact ? 'nowrap' : undefined}}>
-                            {sel ? this.t('selectedOne', {name: this.partName(sel.part)}) : this.t('selectedMany', {n: selection.length})}
-                        </span>
-                    )}
-                    {portable && (
-                        <label style={{whiteSpace: 'nowrap'}}>{T.port}{': '}
-                            <select data-testid="bw-sim-lab-port" value={sel.port || ''} style={field}
-                                onChange={e => { editor.apply({type: 'setPort', id: sel.id, port: e.target.value || null}); tick(); }}>
-                                <option value="">{T.none}</option>
-                                {['A', 'B', 'C', 'D', 'E', 'F'].map(p => <option key={p} value={p}>{p}</option>)}
-                            </select>
-                        </label>
-                    )}
-                    <span role="status" data-testid="bw-sim-lab-build-status" data-kind={st.kind || 'idle'} title={compact ? this.buildStatusText() : undefined}
-                        style={{color: refused || blocked ? '#b91c1c' : '#475569', fontWeight: refused ? 600 : 400,
-                            ...(compact ? {flex: '1 1 0', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'} : {})}}>
-                        {this.buildStatusText()}
-                    </span>
-                </div>
-            </div>
         );
     }
 
@@ -1462,23 +1248,6 @@ class SimLabPane extends React.Component {
         );
     }
 
-    /** The overlay switches: port badges, and "show how it moves" (tints, axes, gear pairs). */
-    renderInsightBar () {
-        const T = this.itext;
-        return (
-            <div data-testid="bw-sim-lab-insight-bar" style={{display: 'flex', alignItems: 'center', gap: 12, fontSize: 12}}>
-                <label title={T.showPortsHelp}>
-                    <input type="checkbox" data-testid="bw-sim-lab-show-ports" checked={this.state.showPorts}
-                        onChange={e => this.setOverlay({showPorts: e.target.checked})} />{' '}{T.showPorts}
-                </label>
-                <label title={T.showMotionHelp}>
-                    <input type="checkbox" data-testid="bw-sim-lab-show-motion" checked={this.state.showMotion}
-                        onChange={e => this.setOverlay({showMotion: e.target.checked})} />{' '}{T.showMotion}
-                </label>
-            </div>
-        );
-    }
-
     /** Build: the ports offered next to a clicked port badge. */
     renderPortPicker (button) {
         const picker = this.state.portPicker;
@@ -1526,18 +1295,290 @@ class SimLabPane extends React.Component {
         );
     }
 
-    render () {
-        const {status, message, issues, simMs, modelFile, shipped} = this.state;
+    /** The Build view or the Simulate view, whichever is on show (both take the camera actions). */
+    camera3d () {
+        return this.state.mode === 'build' ? this.editView : this.view;
+    }
+
+    /**
+     * Every toolbar action once: id (its test id is `bw-sim-lab-<id>`, its tooltip's shortcut is
+     * TOOLBAR_TEXT.keys[id]), label, icon, what it does, and its priority on a narrow bar
+     * (pri 1 stays, 2 and 3 go to the More menu first).
+     */
+    actions () {
+        const A = this.ttext.actions;
+        const T = this.text;
+        const I = this.itext;
+        const editor = this.editor;
+        const view = this.editView;
+        const parts = editor ? editor.model.parts : [];
+        const selection = this.state.selection;
+        const nothing = !selection.length && !this.state.placing;
+        const tick = () => this.setState(s => ({editorTick: s.editorTick + 1}));
+        const busy = this.state.status === 'loading';
+        const running = this.state.status === 'running';
+        const narrow = this.narrow();
+        const cam = this.camera3d();
+        const noCam = !cam || busy;
+        const docked = this.dockProperties();
+        const s = toolStyles(this.state.coarse);
+        return {
+            run: running ?
+                {id: 'pause', label: A.pause, icon: 'pause', words: narrow ? null : A.pause, style: s.stop, run: () => this.pause(), pri: 1} :
+                {id: 'run', label: A.run, icon: 'run', words: narrow ? null : A.run, style: s.primary, pri: 1,
+                    disabled: !this.session || busy || this.state.status === 'stopping', run: () => this.run()},
+            reset: {id: 'reset', label: A.reset, disabled: !this.session || busy, run: () => this.reset(), pri: 1},
+            'mode-move': {id: 'mode-move', label: A['mode-move'], pressed: this.state.gizmoMode === 'move', run: () => view?.setMode('move'), pri: 1},
+            'mode-rotate': {id: 'mode-rotate', label: A['mode-rotate'], pressed: this.state.gizmoMode === 'rotate', run: () => view?.setMode('rotate'), pri: 1},
+            turn: {id: 'turn', label: A.turn, disabled: nothing, run: () => view?.turn('up', 1), pri: 1},
+            'turn-back': {id: 'turn-back', label: A['turn-back'], disabled: nothing, run: () => view?.turn('up', -1), pri: 3},
+            tip: {id: 'tip', label: A.tip, disabled: !selection.length, run: () => view?.turn('facing', 1), pri: 3},
+            group: {id: 'group', label: A.group, disabled: selection.length < 2, run: () => { view?.groupSelection(); tick(); }, pri: 3},
+            ungroup: {id: 'ungroup', label: A.ungroup, pri: 3,
+                disabled: !(editor?.model.groups || []).some(g => g.parts.some(id => selection.includes(id))),
+                run: () => { view?.ungroupSelection(); tick(); }},
+            duplicate: {id: 'duplicate', label: A.duplicate, disabled: !selection.length, run: () => view?.duplicate(), pri: 3},
+            delete: {id: 'delete', label: A.delete, disabled: !selection.length, run: () => view?.deleteSelection(), pri: 1},
+            cancel: {id: 'cancel', label: A.cancel, disabled: nothing, run: () => view?.escape(), pri: 1},
+            copy: {id: 'copy', label: A.copy, disabled: !selection.length, run: () => view?.copy(), pri: 3},
+            paste: {id: 'paste', label: A.paste, run: () => view?.paste(), pri: 3},
+            'select-all': {id: 'select-all', label: A['select-all'], disabled: !parts.length, run: () => view?.selectAll(), pri: 3},
+            undo: {id: 'undo', label: A.undo, disabled: !editor?.canUndo, run: () => { view?.undo(); tick(); }, pri: 1},
+            redo: {id: 'redo', label: A.redo, disabled: !editor?.canRedo, run: () => { view?.redo(); tick(); }, pri: 2},
+            'view-home': {id: 'view-home', label: A['view-home'], disabled: noCam, run: () => cam?.view?.('home'), pri: 2},
+            'view-fit': {id: 'view-fit', label: A['view-fit'], disabled: noCam,
+                run: () => (this.state.mode === 'build' ? view?.fitSelection() : this.view?.fit?.()), pri: 2},
+            'view-top': {id: 'view-top', label: A['view-top'], disabled: noCam, run: () => cam?.view?.('top'), pri: 3},
+            'view-front': {id: 'view-front', label: A['view-front'], disabled: noCam, run: () => cam?.view?.('front'), pri: 3},
+            'view-side': {id: 'view-side', label: A['view-side'], disabled: noCam, run: () => cam?.view?.('side'), pri: 3},
+            'show-ports': {id: 'show-ports', label: I.showPorts, title: I.showPortsHelp, kind: 'switch', pressed: this.state.showPorts,
+                run: () => this.setOverlay({showPorts: !this.state.showPorts}), pri: 3},
+            'show-motion': {id: 'show-motion', label: I.showMotion, title: I.showMotionHelp, kind: 'switch', pressed: this.state.showMotion,
+                run: () => this.setOverlay({showMotion: !this.state.showMotion}), pri: 3},
+            'mirror-x': {id: 'mirror-x', label: A['mirror-x'], disabled: !selection.length, run: () => { view?.mirror('x'); tick(); }, pri: 3},
+            'mirror-z': {id: 'mirror-z', label: A['mirror-z'], disabled: !selection.length, run: () => { view?.mirror('z'); tick(); }, pri: 3},
+            hide: {id: 'hide', label: A.hide, disabled: !selection.length, run: () => view?.hideSelection(), pri: 3},
+            isolate: {id: 'isolate', label: A.isolate, disabled: !selection.length, run: () => view?.isolate(), pri: 3},
+            'show-all': {id: 'show-all', label: A['show-all'], disabled: !this.state.hidden.length, run: () => view?.showAll(), pri: 3},
+            measure: {id: 'measure', label: A.measure, pressed: this.state.pick === 'measure', run: () => view?.setPick('measure'), pri: 3},
+            eyedropper: {id: 'eyedropper', label: A.eyedropper, title: this.etext.eyedropperHelp, pressed: this.state.pick === 'color',
+                run: () => view?.setPick('color'), pri: 3},
+            'parts-toggle': {id: 'parts-toggle', label: A['parts-toggle'], title: T.partsToggle, pri: 1,
+                pressed: this.compact() ? this.state.drawer : this.state.paletteOpen,
+                words: this.compact() && !narrow && !this.state.coarse ? A['parts-toggle'] : null,
+                run: () => this.setState(st => (this.compact() ? {drawer: !st.drawer} : {paletteOpen: !st.paletteOpen}))},
+            properties: {id: 'properties', label: A.properties, title: this.etext.propertiesHelp, pri: 2,
+                pressed: docked ? this.state.propsDocked : this.state.propsOpen,
+                run: () => this.setState(st => (docked ? {propsDocked: !st.propsDocked} : {propsOpen: !st.propsOpen}))},
+            shortcuts: {id: 'shortcuts', label: A.shortcuts, title: this.etext.shortcutsHelp, run: () => this.setState({shortcuts: true, menu: null}), pri: 3},
+            grid: {id: 'grid', label: A.grid, pri: 3, width: 96, render: inMenu => this.renderGrid(inMenu)},
+            file: {id: 'file-menu', label: A['file-menu'], pri: 2, width: 46, render: inMenu => this.renderFile(inMenu)}
+        };
+    }
+
+    /** The toolbar's groups after the mode switch, for the mode on show. */
+    toolbarGroups () {
+        const a = this.actions();
+        const G = this.ttext.groups;
+        const pick = (id, label, ids) => ({id, label, items: ids.map(k => (typeof k === 'string' ? a[k] : k))});
+        if (this.state.mode === 'build') {
+            return [
+                pick('edit', G.edit, ['mode-move', 'mode-rotate', 'turn', 'turn-back', 'tip']),
+                // While a part is armed there is nothing to delete: Cancel takes Delete's place up front.
+                pick('arrange', G.arrange, [this.state.placing ? 'cancel' : 'delete', 'duplicate', 'copy', 'paste', 'select-all', 'group', 'ungroup',
+                    {...a[this.state.placing ? 'delete' : 'cancel'], pri: 3}]),
+                pick('history', G.edit, ['undo', 'redo']),
+                pick('view', G.view, ['view-home', 'view-fit', 'view-top', 'view-front', 'view-side', 'grid']),
+                pick('show', G.show, ['show-ports', 'show-motion']),
+                pick('tools', G.tools, ['mirror-x', 'mirror-z', 'hide', 'isolate', 'show-all', 'measure', 'eyedropper']),
+                pick('panels', G.panels, ['parts-toggle', 'properties', 'shortcuts']),
+                pick('file', G.file, ['file'])
+            ];
+        }
+        return [
+            pick('run', G.run, ['run', 'reset']),
+            pick('view', G.view, ['view-home', 'view-fit', 'view-top', 'view-front', 'view-side']),
+            pick('show', G.show, ['show-ports', 'show-motion']),
+            pick('file', G.file, ['file'])
+        ];
+    }
+
+    /** One toolbar entry: a button, or a control of its own (the grid step, the File menu). */
+    renderTool (item, inMenu) {
+        if (item.render) return <React.Fragment key={item.id}>{item.render(inMenu)}</React.Fragment>;
+        return <ToolButton key={item.id} item={item} T={this.ttext} coarse={this.state.coarse} inMenu={inMenu} />;
+    }
+
+    /** Build's grid step: an icon and a list. */
+    renderGrid (inMenu) {
+        const A = this.ttext.actions;
+        const field = this.state.coarse ? {minHeight: 40} : {height: 28};
+        return (
+            <label title={A.grid} style={{display: 'inline-flex', alignItems: 'center', gap: 4, padding: inMenu ? '0 8px' : '0 4px', fontSize: 12, flex: '0 0 auto'}}>
+                <Icon name="grid" />
+                {inMenu ? <span style={{flex: '1 1 auto'}}>{A.grid}</span> : null}
+                <select data-testid="bw-sim-lab-grid" aria-label={A.grid} value={this.state.grid} style={field}
+                    onChange={e => { const g = Number(e.target.value); this.editView?.setGrid(g); this.setState({grid: g}); }}>
+                    {[1, 5, 10, 20].map(g => <option key={g} value={g}>{this.ttext.gridValue.replace('{n}', g)}</option>)}
+                </select>
+            </label>
+        );
+    }
+
+    /** "Open…" and "Save as" the three formats: a File menu on the bar, rows in the More menu. */
+    renderFile (inMenu) {
+        const A = this.ttext.actions;
+        const T = this.text;
+        const busy = this.state.status === 'loading';
+        const model = this.editor ? this.editor.model : this.session?.model;
+        const rows = [
+            {id: 'open', label: A.open, title: T.importHelp, icon: 'open', disabled: busy || !this.lib, run: () => this.file.current.click()},
+            ...SAVE_FORMATS.map(format => ({id: `save-${format}`, label: `${A.save} ${T.saveFormats[format]}`, title: T.saveHelp, icon: 'save',
+                disabled: busy || !model, run: () => this.saveAs(format)}))
+        ];
+        const items = rows.map(item => <ToolButton key={item.id} item={item} T={this.ttext} coarse={this.state.coarse} inMenu />);
+        if (inMenu) return items;
+        const s = toolStyles(this.state.coarse);
+        return (
+            <Popup id="file" open={this.state.menu === 'file'} label={A['file-menu']} width={250} testId="bw-sim-lab-file-list"
+                onToggle={() => this.toggleMenu('file')} onClose={() => this.setState({menu: null})}
+                button={(
+                    <button type="button" data-testid="bw-sim-lab-file-menu" aria-label={A['file-menu']} title={A['file-menu']} style={s.button}>
+                        <Icon name="file-menu" /><Icon name="caret" size={12} />
+                    </button>
+                )}>
+                {items}
+            </Popup>
+        );
+    }
+
+    /** Help: what the Lab is (the sentence that used to sit above everything) and how the view moves. */
+    renderHelp () {
+        const TT = this.ttext;
+        const s = toolStyles(this.state.coarse);
+        const rows = list => (
+            <table style={{borderCollapse: 'collapse', width: '100%', margin: '2px 0 8px'}}>
+                <tbody>
+                    {list.map(([keys, what]) => (
+                        <tr key={keys} style={{borderTop: '1px solid #e2e8f0'}}>
+                            <td style={{padding: '3px 6px 3px 0', width: '45%', verticalAlign: 'top', fontWeight: 600}}>{keys}</td>
+                            <td style={{padding: '3px 0', color: '#334155'}}>{what}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        );
+        return (
+            <Popup id="help" open={this.state.menu === 'help'} label={TT.actions.help} width={360} align="right" closeOnPick
+                onToggle={() => this.toggleMenu('help')} onClose={() => this.setState({menu: null})}
+                button={(
+                    <button type="button" data-testid="bw-sim-lab-help" aria-label={TT.actions.help} title={TT.actions.help} style={s.button}>
+                        <Icon name="help" />
+                    </button>
+                )}>
+                <div data-testid="bw-sim-lab-help-popover" style={{padding: 4, lineHeight: 1.4}}>
+                    <strong style={{fontSize: 13}}>{TT.helpTitle}</strong>
+                    <p style={{margin: '4px 0 8px', color: '#334155'}}>{TT.helpIntro}</p>
+                    <strong>{TT.cameraTitle}</strong>
+                    {rows(TT.camera)}
+                    {this.state.mode === 'build' && <strong>{TT.buildTitle}</strong>}
+                    {this.state.mode === 'build' && rows(TT.build)}
+                    {this.state.mode === 'build' && (
+                        <button type="button" data-testid="bw-sim-lab-help-shortcuts" style={{...s.button, border: '1px solid #94a3b8'}}
+                            onClick={() => this.setState({shortcuts: true})}>{TT.allShortcuts}</button>
+                    )}
+                </div>
+            </Popup>
+        );
+    }
+
+    /** Simulate | Build | Instructions, as one segmented control. */
+    renderModeSwitch () {
+        const A = this.ttext.actions;
+        const busy = this.state.status === 'loading';
+        const words = this.modeWords();
+        const model = this.editor ? this.editor.model : this.session?.model;
+        const s = toolStyles(this.state.coarse);
+        const seg = on => ({...s.button, borderRadius: 6, padding: words ? '0 9px' : '0 6px', fontWeight: on ? 600 : 400,
+            ...(on ? {background: '#fff', borderColor: '#6366f1', color: '#312e81', boxShadow: '0 1px 2px rgba(15, 23, 42, 0.18)'} : {})});
+        const items = [
+            {id: 'mode-simulate', icon: 'simulate', label: A.simulate, on: this.state.mode === 'simulate', disabled: busy || !this.lib,
+                run: () => this.state.mode !== 'simulate' && this.exitBuild()},
+            {id: 'mode-build', icon: 'build', label: A.build, on: this.state.mode === 'build', disabled: busy || !this.lib,
+                run: () => this.state.mode !== 'build' && this.enterBuild()},
+            {id: 'instructions', icon: 'instructions', label: A.instructions, on: Boolean(this.state.instructions), title: this.text.instructionsHelp,
+                disabled: busy || !this.lib || !model?.parts.length, run: () => this.setState({instructions: model})}
+        ];
+        return (
+            <div role="group" aria-label={this.ttext.groups.mode} data-testid="bw-sim-lab-mode-switch"
+                style={{display: 'inline-flex', gap: 2, padding: 2, borderRadius: 8, background: '#e2e8f0', flex: '0 0 auto'}}>
+                {items.map(item => (
+                    <button key={item.id} type="button" data-testid={`bw-sim-lab-${item.id}`} aria-pressed={item.on} disabled={item.disabled}
+                        aria-label={item.label} title={tooltipOf(this.ttext, item.id, item.label, item.title)} onClick={item.run}
+                        style={{...seg(item.on), opacity: item.disabled ? 0.45 : 1}}>
+                        <Icon name={item.icon} />{words ? <span>{item.label}</span> : null}
+                    </button>
+                ))}
+            </div>
+        );
+    }
+
+    /** Whether the mode switch has room for its words. */
+    modeWords () {
+        return !this.state.paneWidth || this.state.paneWidth >= MODE_WORDS_PX;
+    }
+
+    /** The icon toolbar: the mode switch, the groups that fit, Help, and More for the rest. */
+    renderToolbar () {
+        const coarse = this.state.coarse;
+        const s = toolStyles(coarse);
+        const groups = this.toolbarGroups();
+        const wrap = !this.state.paneWidth || this.state.paneWidth >= WRAP_TOOLBAR_PX;
+        const modeWidth = this.modeWords() ? 330 : 3 * (s.size + 2) + 6;
+        const {bar, more} = splitToolbar(groups, {width: this.state.paneWidth - 20, coarse, reserved: modeWidth + s.size + 4, wrap});
+        const TT = this.ttext;
+        return (
+            <div role="toolbar" aria-label={TT.toolbar} data-testid="bw-sim-lab-toolbar"
+                style={{display: 'flex', alignItems: 'center', gap: 2, flexWrap: wrap ? 'wrap' : 'nowrap', minWidth: 0, rowGap: 4}}>
+                {this.renderModeSwitch()}
+                {bar.map(g => (
+                    <React.Fragment key={g.id}>
+                        <Separator coarse={coarse} />
+                        <div role="group" aria-label={g.label} data-testid={`bw-sim-lab-group-${g.id}`} style={{display: 'flex', alignItems: 'center', gap: 2}}>
+                            {g.items.map(item => this.renderTool(item, false))}
+                        </div>
+                    </React.Fragment>
+                ))}
+                <span style={{flex: '1 1 0', minWidth: 0}} />
+                {this.renderHelp()}
+                {more.length > 0 && (
+                    <Popup id="more" open={this.state.menu === 'more'} label={TT.actions.more} width={270} align="right"
+                        onToggle={() => this.toggleMenu('more')} onClose={() => this.setState({menu: null})}
+                        button={(
+                            <button type="button" data-testid="bw-sim-lab-more" aria-label={TT.actions.more} title={TT.actions.more} style={s.button}>
+                                <Icon name="more" />
+                            </button>
+                        )}>
+                        {more.map(g => (
+                            <div key={g.id} role="group" aria-label={g.label} style={{display: 'flex', flexDirection: 'column', gap: 1, paddingBottom: 3,
+                                marginBottom: 3, borderBottom: '1px solid #e2e8f0'}}>
+                                {g.items.map(item => this.renderTool(item, true))}
+                            </div>
+                        ))}
+                    </Popup>
+                )}
+            </div>
+        );
+    }
+
+    /** Below the toolbar in Simulate: the model, the mat, the program route, the example, and the status. */
+    renderSimulateRow () {
+        const {status, simMs, modelFile, shipped} = this.state;
         const busy = status === 'loading';
         const compact = this.compact();
-        const narrow = this.narrow();
-        const button = {padding: compact ? '4px 8px' : '4px 10px', marginRight: compact ? 0 : 6, borderRadius: 6, border: '1px solid #94a3b8', background: '#fff', cursor: 'pointer',
-            // Under a finger: at least 40 px each way.
-            ...(this.state.coarse ? {minHeight: 40, minWidth: 40, padding: compact ? '6px 8px' : '6px 12px'} : {})};
-        const icon = {...button, minWidth: this.state.coarse ? 40 : 32, minHeight: this.state.coarse ? 40 : 30, padding: this.state.coarse ? '4px 6px' : '3px 6px'};
         const T = this.text;
-        const simulate = this.state.mode === 'simulate';
         const running = status === 'running';
+        const field = {minWidth: 0, maxWidth: compact ? 'none' : 260, flex: compact ? '1 1 0' : '0 1 auto', ...(this.state.coarse ? {minHeight: 40} : {height: 28})};
         // The firmware route's emulator pace (always shown); the program clock's only when the world holds
         // the program back (sim-clock.js): on a machine that keeps up there is nothing to say.
         const programRtf = this.state.rtf !== null && this.state.rtf !== undefined && this.state.rtf < SHOW_RTF_BELOW ? this.state.rtf : null;
@@ -1547,81 +1588,166 @@ class SimLabPane extends React.Component {
         // Desktop only (the web build has no managed Renode runtime): the program route.
         const firmwareReady = this.lib && this.desktop() &&
             this.lib.firmwareRouteReady(this.renodeCapabilities(), {unsupported: this.state.firmwareUnsupported});
-        const routeSelect = this.lib && this.desktop() && (
-            <label style={{fontSize: 12}}>{T.route}{': '}
-                <select data-testid="bw-sim-lab-route" disabled={busy} value={this.state.route} onChange={e => this.setRoute(e.target.value)}>
-                    <option value="scratch">{T.routeScratch}</option>
-                    <option value="firmware" disabled={!firmwareReady} title={firmwareReady ? undefined : T.routeUnavailable}>{T.routeFirmware}</option>
-                </select>
-            </label>
-        );
-        const modelSelect = (
-            <select data-testid="bw-sim-lab-model" disabled={busy || !this.lib} value={shipped || ''}
-                aria-label={compact ? T.model : undefined} title={compact ? T.model : undefined}
-                style={compact ? {flex: '1 1 0', minWidth: 0, ...(this.state.coarse ? {minHeight: 40} : {})} : undefined}
-                onChange={e => e.target.value && this.openShipped(e.target.value)}>
-                {this.lib && this.lib.MODELS.map(m => <option key={modelKey(m)} value={modelKey(m)}>{m.title[this.locale] || m.title.en}</option>)}
-                {modelFile && !shipped && <option value="">{modelFile}</option>}
-            </select>
-        );
-        const matSelect = (
-            <select data-testid="bw-sim-lab-mat" disabled={busy || !this.session} value={this.state.mat || 'plain'}
-                aria-label={compact ? T.mat : undefined} title={compact ? T.mat : undefined}
-                style={compact ? {flex: '1 1 0', minWidth: 0, ...(this.state.coarse ? {minHeight: 40} : {})} : undefined}
-                onChange={e => this.setMat(e.target.value === 'plain' ? null : e.target.value)}>
-                {this.lib && this.lib.MATS.map(m => <option key={m.id} value={m.id}>{m.title[this.locale] || m.title.en}</option>)}
-            </select>
-        );
-        const importButton = (
-            <button key="import" type="button" style={button} data-testid="bw-sim-lab-open" title={T.importHelp} disabled={busy || !this.lib}
-                onClick={() => this.file.current.click()}>{T.importModel}</button>
-        );
-        const saveAsControl = this.renderSaveAs(button, busy || !this.session);
-        const runButton = running ?
-            <button type="button" style={button} data-testid="bw-sim-lab-pause" onClick={() => this.pause()}>{compact ? face('pause', T.pause) : T.pause}</button> :
-            <button type="button" style={button} data-testid="bw-sim-lab-run" disabled={!this.session || busy || status === 'stopping'} onClick={() => this.run()}>{compact ? face('run', T.run) : T.run}</button>;
-        const resetButton = (
-            <button type="button" style={compact ? icon : button} data-testid="bw-sim-lab-reset" disabled={!this.session || busy}
-                aria-label={compact ? T.reset : undefined} title={compact ? T.reset : undefined} onClick={() => this.reset()}>
-                {compact ? face('reset') : T.reset}
-            </button>
-        );
-        const exampleButton = this.shippedModel()?.example && (
-            <button type="button" style={button} data-testid="bw-sim-lab-example" disabled={busy} onClick={() => this.loadExample()}>{T.example}</button>
-        );
-        const statusLine = (
-            <span role="status" data-testid="bw-sim-lab-status"
-                style={{fontSize: 12, color: '#475569', ...(compact ? {flex: '1 1 0', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'} : {})}}>
-                {statusText}
-            </span>
-        );
-        const large = compact && this.props.onEnterFullScreen && !this.props.isFullScreen;
+        const icon = name => <span style={{color: '#475569'}}><Icon name={name} size={16} /></span>;
+        const labelled = {display: 'inline-flex', alignItems: 'center', gap: 4, minWidth: 0, flex: compact ? '1 1 0' : '0 1 auto'};
         return (
-            <div ref={this.root} data-testid="bw-sim-lab" data-status={status} data-layout={compact ? 'compact' : 'wide'}
-                style={{position: 'relative', display: 'flex', flexDirection: 'column', gap: compact ? 6 : 8, padding: compact ? 8 : 10, height: '100%', boxSizing: 'border-box', minWidth: 0}}>
-                {!compact && <div style={{fontSize: 12, color: '#334155'}}>{T.intro}</div>}
-                <div style={{display: 'flex', alignItems: 'center', gap: 4, minWidth: 0}}>
-                    <div role="tablist" style={{display: 'flex', gap: 4}}>
-                        {['simulate', 'build'].map(mode => (
-                            <button key={mode} type="button" role="tab" aria-selected={this.state.mode === mode} disabled={busy || !this.lib}
-                                data-testid={`bw-sim-lab-mode-${mode}`} style={{...button, marginRight: 0, fontWeight: this.state.mode === mode ? 600 : 400,
-                                    ...(this.state.mode === mode ? {background: '#e0e7ff', borderColor: '#4f46e5'} : {})}}
-                                onClick={() => (mode === 'build' ? this.state.mode !== 'build' && this.enterBuild() : this.state.mode !== 'simulate' && this.exitBuild())}>
-                                {T[mode]}
-                            </button>
-                        ))}
-                    </div>
-                    <button type="button" style={button} data-testid="bw-sim-lab-instructions" title={T.instructionsHelp}
-                        disabled={busy || !this.lib || !(this.editor ? this.editor.model : this.session?.model)?.parts.length}
-                        onClick={() => this.setState({instructions: this.editor ? this.editor.model : this.session.model})}>
-                        {T.instructions}
+            <div data-testid="bw-sim-lab-context" style={{display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minWidth: 0, fontSize: 12}}>
+                <label style={labelled} title={T.model}>{icon('build')}
+                    <select data-testid="bw-sim-lab-model" disabled={busy || !this.lib} value={shipped || ''} aria-label={T.model} style={field}
+                        onChange={e => e.target.value && this.openShipped(e.target.value)}>
+                        {this.lib && this.lib.MODELS.map(m => <option key={modelKey(m)} value={modelKey(m)}>{m.title[this.locale] || m.title.en}</option>)}
+                        {modelFile && !shipped && <option value="">{modelFile}</option>}
+                    </select>
+                </label>
+                <label style={labelled} title={T.mat}>{icon('grid')}
+                    <select data-testid="bw-sim-lab-mat" disabled={busy || !this.session} value={this.state.mat || 'plain'} aria-label={T.mat} style={field}
+                        onChange={e => this.setMat(e.target.value === 'plain' ? null : e.target.value)}>
+                        {this.lib && this.lib.MATS.map(m => <option key={m.id} value={m.id}>{m.title[this.locale] || m.title.en}</option>)}
+                    </select>
+                </label>
+                {this.lib && this.desktop() && (
+                    <label style={labelled} title={T.route}>{icon('run')}
+                        <select data-testid="bw-sim-lab-route" disabled={busy} value={this.state.route} aria-label={T.route} style={field}
+                            onChange={e => this.setRoute(e.target.value)}>
+                            <option value="scratch">{T.routeScratch}</option>
+                            <option value="firmware" disabled={!firmwareReady} title={firmwareReady ? undefined : T.routeUnavailable}>{T.routeFirmware}</option>
+                        </select>
+                    </label>
+                )}
+                {this.shippedModel()?.example && (
+                    <button type="button" data-testid="bw-sim-lab-example" disabled={busy} onClick={() => this.loadExample()}
+                        style={{...toolStyles(this.state.coarse).button, border: '1px solid #94a3b8', background: '#fff'}}>
+                        <Icon name="example" size={16} /><span>{T.example}</span>
                     </button>
-                    {large && <span style={{flex: '1 1 0'}} />}
-                    {large && (
-                        <button type="button" data-testid="bw-sim-lab-large" aria-label={T.large} title={T.large} onClick={() => this.props.onEnterFullScreen()}
-                            style={{...icon, background: '#4f46e5', borderColor: '#4338ca', color: '#fff'}}>{face('large')}</button>
-                    )}
+                )}
+                <span role="status" data-testid="bw-sim-lab-status"
+                    style={{marginLeft: 'auto', color: '#475569', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
+                    {statusText}
+                </span>
+            </div>
+        );
+    }
+
+    /** Below the toolbar in Build: the selection as a chip, its port, what is hidden, and a one-line hint. */
+    renderBuildRow () {
+        const editor = this.editor;
+        const view = this.editView;
+        const TT = this.ttext;
+        const T = this.text;
+        const E = this.etext;
+        const byId = editor ? this.lib.partsByIdOf(editor.model) : new Map();
+        const selection = this.state.selection.map(id => byId.get(id)).filter(Boolean);
+        const sel = selection.length === 1 ? selection[0] : null;
+        const meta = sel ? this.lib.CATALOG.get(sel.part) : null;
+        const portable = meta && this.lib.isPortPart(meta);
+        const st = this.state.buildStatus || {};
+        const refused = st.kind === 'refused';
+        const blocked = st.kind === 'blocked';
+        const field = this.state.coarse ? {minHeight: 40} : {height: 26};
+        const chip = {display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap', padding: '2px 8px', borderRadius: 999, fontSize: 12};
+        const hint = this.buildStatusText();
+        const selectionText = sel ? TT.selectedOne.replace('{name}', this.partName(sel.part)) : TT.selectedMany.replace('{n}', selection.length);
+        return (
+            <div data-testid="bw-sim-lab-context" style={{display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, minHeight: 26, fontSize: 12}}>
+                {selection.length > 0 && (
+                    <span data-testid="bw-sim-lab-selection" title={sel ? this.t('selectedOne', {name: this.partName(sel.part)}) : this.t('selectedMany', {n: selection.length})}
+                        style={{...chip, background: '#dbeafe', color: '#1e3a8a', fontWeight: 600, maxWidth: '40%', overflow: 'hidden', textOverflow: 'ellipsis'}}>
+                        <Icon name="select-all" size={14} />{selectionText}
+                    </span>
+                )}
+                {portable && (
+                    <label style={{...chip, padding: 0}}>{T.port}{': '}
+                        <select data-testid="bw-sim-lab-port" value={sel.port || ''} style={field}
+                            onChange={e => { editor.apply({type: 'setPort', id: sel.id, port: e.target.value || null}); this.setState(s => ({editorTick: s.editorTick + 1})); }}>
+                            <option value="">{T.none}</option>
+                            {['A', 'B', 'C', 'D', 'E', 'F'].map(p => <option key={p} value={p}>{p}</option>)}
+                        </select>
+                    </label>
+                )}
+                {this.state.hidden.length > 0 && (
+                    <button type="button" data-testid="bw-sim-lab-hidden-count" title={E.showAll} onClick={() => view?.showAll()}
+                        style={{...chip, border: '1px solid #cbd5e1', background: '#f1f5f9', cursor: 'pointer', font: 'inherit', fontSize: 12}}>
+                        <Icon name="hide" size={14} />{E.hiddenCount.replace('{n}', this.state.hidden.length)}
+                    </button>
+                )}
+                {this.state.editGroup && (
+                    <span data-testid="bw-sim-lab-group-edit-chip" style={{...chip, background: '#ede9fe', color: '#5b21b6', fontWeight: 600}}>
+                        {E.groupBanner.replace('{name}', this.state.editGroup.name)}
+                    </span>
+                )}
+                <span role="status" data-testid="bw-sim-lab-build-status" data-kind={st.kind || 'idle'} title={hint}
+                    style={{color: refused || blocked ? '#b91c1c' : '#475569', fontWeight: refused ? 600 : 400,
+                        flex: '1 1 0', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
+                    {hint}
+                </span>
+            </div>
+        );
+    }
+
+    /** Build: the parts panel (beside the view, resizable, closable) or, compact, the drawer over the view. */
+    renderPalettePanel () {
+        if (this.state.mode !== 'build') return null;
+        if (this.compact()) {
+            // The palette as a drawer over the view's left edge; it stays mounted (search and open
+            // categories survive), and steps aside while a part is carried out of it.
+            return (
+                <div data-testid="bw-sim-lab-palette-drawer" style={{position: 'absolute', left: 0, top: 0, bottom: 0, zIndex: 6, width: 230,
+                    display: this.state.drawer ? 'flex' : 'none', visibility: this.state.paletteDragging ? 'hidden' : 'visible',
+                    maxWidth: 'calc(100% - 48px)', background: '#fff', padding: '6px 0 6px 6px', borderRadius: '0 8px 8px 0',
+                    boxShadow: '4px 0 14px rgba(15, 23, 42, 0.25)', boxSizing: 'border-box'}}>
+                    {this.renderPalette()}
                 </div>
+            );
+        }
+        if (!this.state.paletteOpen) return null;
+        const share = this.state.paletteShare;
+        return (
+            <React.Fragment>
+                <div data-testid="bw-sim-lab-palette-panel"
+                    style={{display: 'flex', minWidth: 160, minHeight: 0, flex: share ? `0 0 ${(share * 100).toFixed(2)}%` : '0 0 224px'}}>
+                    {this.renderPalette()}
+                </div>
+                <PaneDivider sizedSide="previous" share={share || 'm'} label={this.ttext.resizeParts} title={this.ttext.resizeTip}
+                    testId="bw-sim-lab-palette-divider"
+                    onResize={f => this.setState({paletteShare: Math.min(MAX_PANEL_SHARE, f)})}
+                    onCollapseToggle={() => this.setState({paletteOpen: false})} />
+            </React.Fragment>
+        );
+    }
+
+    /** Build, wide: the properties panel docked beside the view, resizable and closable. */
+    renderDockedProperties (button) {
+        if (this.state.mode !== 'build' || !this.dockProperties() || !this.state.propsDocked) return null;
+        const share = this.state.propsShare;
+        return (
+            <React.Fragment>
+                <PaneDivider share={share || 'm'} label={this.ttext.resizeProperties} title={this.ttext.resizeTip}
+                    testId="bw-sim-lab-properties-divider"
+                    onResize={f => this.setState({propsShare: Math.min(MAX_PANEL_SHARE, f)})}
+                    onCollapseToggle={() => this.setState({propsDocked: false})} />
+                <div data-testid="bw-sim-lab-properties-dock"
+                    style={{display: 'flex', minHeight: 0, minWidth: 180, flex: share ? `0 0 ${(share * 100).toFixed(2)}%` : '0 0 240px'}}>
+                    {this.renderProperties(button, true)}
+                </div>
+            </React.Fragment>
+        );
+    }
+
+    render () {
+        const {status, message, issues} = this.state;
+        const compact = this.compact();
+        const coarse = this.state.coarse;
+        const button = {padding: compact ? '4px 8px' : '4px 10px', marginRight: compact ? 0 : 6, borderRadius: 6, border: '1px solid #94a3b8', background: '#fff', cursor: 'pointer',
+            // Under a finger: at least 40 px each way.
+            ...(coarse ? {minHeight: 40, minWidth: 40, padding: compact ? '6px 8px' : '6px 12px'} : {})};
+        const T = this.text;
+        const simulate = this.state.mode === 'simulate';
+        const build = this.state.mode === 'build';
+        return (
+            <div ref={this.root} data-testid="bw-sim-lab" data-status={status} data-layout={compact ? 'compact' : 'wide'} data-mode={this.state.mode}
+                style={{position: 'relative', display: 'flex', flexDirection: 'column', gap: 6, padding: compact ? 6 : 8, height: '100%', width: '100%',
+                    flex: '1 1 auto', boxSizing: 'border-box', minWidth: 0, minHeight: 0, background: '#f8fafc'}}>
+                {this.renderToolbar()}
                 {this.state.instructions && (
                     <SimLabInstructions lib={this.lib} model={this.state.instructions} locale={this.locale}
                         title={this.editor ? null : this.shippedModel()?.title[this.locale] || this.state.modelFile}
@@ -1629,70 +1755,28 @@ class SimLabPane extends React.Component {
                 )}
                 <input ref={this.file} type="file" accept={OPEN_ACCEPT} style={{display: 'none'}} data-testid="bw-sim-lab-file"
                     onChange={e => this.openImported(e)} />
-                {simulate && !compact && <div style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6}}>
-                    <label style={{fontSize: 12}}>{T.model}{': '}{modelSelect}</label>
-                    {importButton}
-                    {saveAsControl}
-                    <label style={{fontSize: 12}}>{T.mat}{': '}{matSelect}</label>
-                    {routeSelect}
-                    {runButton}
-                    {resetButton}
-                    {exampleButton}
-                    {statusLine}
-                </div>}
-                {simulate && compact && (
-                    <React.Fragment>
-                        <div style={{display: 'flex', alignItems: 'center', gap: 4, minWidth: 0}}>
-                            {runButton}
-                            {resetButton}
-                            {statusLine}
-                            {this.renderMore(button, [
-                                <div key="intro" style={{fontSize: 12, color: '#334155', flex: '1 1 100%'}}>{T.intro}</div>,
-                                importButton,
-                                saveAsControl,
-                                this.lib ? <div key="insight" style={{flex: '1 1 100%'}}>{this.renderInsightBar()}</div> : null
-                            ])}
-                        </div>
-                        <div style={{display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, flexWrap: narrow && exampleButton ? 'wrap' : 'nowrap'}}>
-                            {modelSelect}
-                            {matSelect}
-                            {routeSelect}
-                            {exampleButton}
-                        </div>
-                    </React.Fragment>
-                )}
+                {simulate && this.renderSimulateRow()}
+                {build && this.editor && this.renderBuildRow()}
                 {message && <div role="alert" data-testid="bw-sim-lab-message" style={{fontSize: 12, color: '#b91c1c'}}>{message}</div>}
                 {this.renderInfo()}
-                {simulate && this.session && this.session.bridge && !this.session.lockstep && this.renderDrive(button)}
-                {this.state.mode === 'build' && this.renderBuildBar(button)}
-                {this.lib && !compact && this.renderInsightBar()}
                 {this.renderBlockers()}
-                <div style={{display: 'flex', flex: '1 1 auto', minHeight: compact ? 220 : 240, gap: 8, position: 'relative'}}>
-                    {this.state.mode === 'build' && (compact ? (
-                        // The palette as a drawer over the view's left edge; it stays mounted (search and open
-                        // categories survive), and steps aside while a part is carried out of it.
-                        <div data-testid="bw-sim-lab-palette-drawer" style={{position: 'absolute', left: 0, top: 0, bottom: 0, zIndex: 6,
-                            display: this.state.drawer ? 'flex' : 'none', visibility: this.state.paletteDragging ? 'hidden' : 'visible',
-                            maxWidth: 'calc(100% - 48px)', background: '#fff', padding: '6px 0 6px 6px', borderRadius: '0 8px 8px 0',
-                            boxShadow: '4px 0 14px rgba(15, 23, 42, 0.25)', boxSizing: 'border-box'}}>
-                            {this.renderPalette()}
-                        </div>
-                    ) : this.renderPalette())}
-                    <div ref={this.viewWrap} style={{flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative', display: 'flex'}}>
+                <div data-testid="bw-sim-lab-main" style={{display: 'flex', flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative'}}>
+                    {this.renderPalettePanel()}
+                    <div ref={this.viewWrap} style={{flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative', display: 'flex',
+                        background: '#fff', borderRadius: 6}}>
                         <div ref={this.box} data-testid="bw-sim-lab-view" style={{flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative'}} />
                         {this.renderPortPicker(button)}
-                        {this.state.mode === 'build' && !this.dockProperties() && this.state.propsOpen && (
+                        {build && !this.dockProperties() && this.state.propsOpen && (
                             <div data-testid="bw-sim-lab-properties-drawer" style={{position: 'absolute', right: 0, top: 0, bottom: 0, zIndex: 6, maxWidth: 'calc(100% - 48px)',
                                 display: 'flex', boxShadow: '-4px 0 14px rgba(15, 23, 42, 0.25)', borderRadius: '8px 0 0 8px'}}>
                                 {this.renderProperties(button, false)}
                             </div>
                         )}
                     </div>
-                    {this.state.mode === 'build' && this.dockProperties() && (
-                        <div style={{flex: '0 0 auto', display: 'flex', minHeight: 0}}>{this.renderProperties(button, true)}</div>
-                    )}
+                    {this.renderDockedProperties(button)}
                 </div>
-                {this.state.mode === 'build' && this.state.shortcuts && (
+                {simulate && this.session && this.session.bridge && !this.session.lockstep && this.renderDrive(button)}
+                {build && this.state.shortcuts && (
                     <SimLabShortcuts T={this.etext} onClose={() => {
                         this.setState({shortcuts: false});
                         this.editView?.canvas.focus();
@@ -1700,10 +1784,10 @@ class SimLabPane extends React.Component {
                 )}
                 {issues.length > 0 && (
                     <details data-testid="bw-sim-lab-issues" style={{fontSize: 12}} open={!compact}>
-                        <summary style={compact ? {whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer'} : undefined}>
+                        <summary style={compact ? {whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer'} : {cursor: 'pointer'}}>
                             {T.issues} ({issues.length})
                         </summary>
-                        <ul style={{margin: '4px 0', paddingLeft: 18}}>{issues.map((i, n) => this.renderIssue(i, n))}</ul>
+                        <ul style={{margin: '4px 0', paddingLeft: 18, maxHeight: 120, overflowY: 'auto'}}>{issues.map((i, n) => this.renderIssue(i, n))}</ul>
                     </details>
                 )}
             </div>
