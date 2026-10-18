@@ -5774,6 +5774,11 @@ The candidate passes 63 Node tests including 80 embedded Python controls; the
 74 earlier Python test bodies and legacy v3 packet verdict remain unchanged;
 22 source mutations and eight independent packet counterexamples are detected.
 Actual activation and clean browser/guest qualification remain pending.
+A separately guarded font-discovery source continuation now collects bounded
+read-only package, configuration, alias and font-file observations. Its own
+request/original/independent-reader formats remain observation-only; activation
+and workflow delivery are unfinished. The original required roster and missing
+paths remain held. See the matching guide for selection and qualification gates.
 The explicit consumer CUI expectation now follows main
 PR1066 at `fe89e3425bf323b1acd9e3f98df6a7383e9b836b`; no dependency writer changed.
 
