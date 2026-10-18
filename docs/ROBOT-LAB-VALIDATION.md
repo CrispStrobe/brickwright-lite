@@ -106,3 +106,80 @@ None in product code. Every discrepancy lies in `jolt-core.js`, `contracts.js`/`
 (the collision policy) or `joints.js`/`islands.js` (the body model). Those are shared, and
 other lanes are extending the core with new kinds. The two one-line fixes measured above (4, 5)
 are recorded with their effect for the owners to apply.
+
+## Round 2: more machines
+
+`test/bw-sim-validation-2.test.mjs`, fixtures `test/fixtures/bw-sim/machines-2/*.ldr` (each header
+says how it is built) and four shipped models (`driving-base.ldr`, `wall-stopper.ldr`,
+`colour-explorer.ldr`, `forklift.ldr`). The method is round 1's: real parts, real builds (the fixtures
+pass `bw-sim-models-solid`; the suite's first test checks they compile with no diagnostics except
+the loose parts that are the point of a machine), the real pipeline, and expected values derived in
+the test from catalogue geometry and documented physics. The suite takes about 4 s (17 tests).
+Measured at 200 Hz on 2026-10-19.
+
+| # | Machine (fixture) | What it tests | Expected (derivation) | Measured | Tolerance (why) | Verdict |
+|---|---|---|---|---|---|---|
+| 12 | `gear-train-243.ldr` | five 8:24 stages | (−8/24)^5 = −1/243; same ratio over both halves of 10 s; no creep while held | −1/242.999 (both halves); held 2 s: output 0.00000° | 0.5 % (exact kinematics) | pass |
+| 13 | `worm-then-spur.ldr` | worm direction from the thread's hand, then 8:8 | right-hand thread: wheel = −k/((a_w × (P − C))·a) · worm, k = 1.25 LDU/rad; then −1: +1/24 about the output's axis | +0.04167 | 0.5 % | pass |
+| 14 | `dyno-direct.ldr` (slip clutch held by its mesh) | DC motor on its torque–speed line | Philo's 9 V points → R, k_t, k_e → at 7.2 V τs 10.44 N·cm, ω0 18.46 rad/s; load 3.75 N·cm (the clutch's catalogue rating): ω = ω0(1 − τL/τs) = 11.832 rad/s | 11.800 rad/s (−0.27 %) at duty 1 | 1 % | pass |
+| 15 | `dyno-geared.ldr` (8T drives the clutch gear, its axle held) | torque through a mesh | load at the motor 3.75/3 N·cm → 16.253 rad/s | 11.796 rad/s — the direct bench's speed; ring/motor 0.3333 | 1 % | **todo** |
+| 16 | `dyno-geared.ldr` | mesh efficiency | ideal spur gears: P_out/P_in = 1 | η = 0.332 (444.7 mW in, 147.5 mW out) | 3 % | **todo** |
+| 17 | shipped `forklift.ldr`, hub clamped | force through rack and pinion (control for 15) | hold torque m·g·r = 14.8 g · g · 4 mm = 0.579 mN·m | carriage sinks at 0.9×, rises at 1.1× | ±10 % bracket | pass |
+| 18 | shipped `driving-base.ldr`, A −300 °/s, B 150 °/s | differential steering on a circle | from the encoders: Ω = (v_R − v_L)/t = −30.882 °/s, R = t/2·(v_R + v_L)/(v_R − v_L) = 204.00 mm (outer/inner 2.000) | Ω −30.882 °/s, R 203.98 mm | 1 % | pass |
+| 19 | the same run | hub yaw, gyro, encoder | yaw (cw) = −geometric yaw; ∫gyro z = geometric yaw; encoder A = the wheel's turn in the chassis | 92.646° vs −92.646°; −92.645°; −899.998° vs −899.998° | 0.1°, 0.5 %, 0.1° | pass |
+| 20 | shipped `wall-stopper.ldr` + a 2 cm wall | distance sensor | ray distance D/cos ψ, mm; −1 outside 50 … 2000 mm: 30 mm → −1, 100, 300, 319.3 (20°), 391.6 (40°), 800, 1732.1 (1.5 m at 30°), 2.2 m → −1 | 100, 300, 319, 392, 800, 1732, −1 / −1 | 1 mm | pass |
+| 21 | shipped `colour-explorer.ldr` on `colour-zones` | colour sensor | mat layout: white 10, red 9, yellow 7, green 6, blue 3, border black 0, off-mat white; white reflection 100·(1 − h/32 mm), h = 16.4 mm → 48.8 | all colours right; reflection 48 | exact; ±2 | pass |
+| 22 | `tilt-table-tower.ldr` | tower tips at tan θ = (b/2)/h | COM 72.75 LDU above the table (catalogue colliders), half base 10 LDU: θc = 7.83° | tips at 10.00° one way, 6.45° the other | 0.5° (the 0.5° steps) | **todo** |
+| 23 | `carts.ldr` (robot pushes cart 1 into cart 2) | momentum in a collision | Σ m·v conserved (masses from the catalogue: 54.6 g each) | 7.413 → 7.387 g·m/s (−0.35 %) | 1 % (damping, 50 ms) | pass |
+| 24 | `carts.ldr` | restitution | no body sets one: Jolt's 0, the carts leave together | e = 0.669 | e ≤ 0.05 | **todo** |
+| 24c | `carts.ldr`, all mass in the bumper bodies (control) | the same | e = 0 | e = 0.010 | e ≤ 0.05 | pass |
+| 25 | `carts.ldr`, cart 2 coasting | rolling resistance | a ≥ c_rr·g, c_rr ≥ 0.005 (rubber on a hard floor) | a = 0.0054 m/s² = 0.05·v (Jolt's default damping only) | — | **todo** |
+| 26 | universal joint | ω2/ω1 = cos β/(1 − sin²β cos²θ) | — | not buildable: no cross/fork connector or coupling kind | — | **todo** |
+
+Not built in this round: a crank-slider (needs a frame that holds the smooth toggle joint's
+slide bores at the coupler's height), a scissor lift, a Watt's linkage, and a spur–bevel–worm train
+over three axis directions (the motor's housing gives bearings along y and x only; a third needs a
+Technic-brick frame). The stepped table of row 22 is the quasi-static form of the brief's "tilting
+platform"; the arena still has no slope (round 1, 7d).
+
+### Discrepancies and diagnoses (round 2)
+
+7. **Gears pass torque 1:1 (15, 16). New, and the largest.** A gear constraint makes the driven
+   gear turn at the tooth ratio, but the torque it passes is not scaled by that ratio: a load torque
+   on the driven gear reaches the driver unchanged, whatever the teeth. Energy is not conserved: in
+   row 16 the motor puts 3× the power into the 8:24 mesh that the slipping clutch takes out. So a
+   reduction gear gives no torque gain — a crane's 1:243 lifts no more than its motor shaft could.
+   *Minimal repro* (no motor, no hub): two wheels on hinges, a `GearConstraint` with mRatio 3, a weight
+   on each at the same radius. Physics balances them at m2 = 3·m1; Jolt balances them at m2 = m1
+   (raw JoltPhysics.js 1.1.0, measured), as does the compiled 8:24 bench, with any ratio either way.
+   *Diagnosis:* Jolt's `GearConstraintPart` puts the ratio into the constraint (ω1 + r·ω2 = 0) and
+   into the effective mass (r²), but applies λ, not r·λ, to body 2 (`ApplyVelocityStep`; upstream
+   master reads the same). `jolt-core.js buildGearConstraint` uses it for every 'gear', 'worm' and
+   non-carrier 'relativeGear' coupling. The `RackAndPinionConstraint` is correct (row 17). *Possible
+   fixes:* build meshes as the planet-carrier path already does (a SixDOF tooth-point constraint,
+   kinds/relative-gear.js, which is exact for forces), or patch the gear part upstream. Not made here:
+   `jolt-core.js` is another lane's. Round 1 and the gear suites missed it because they measure
+   kinematics only.
+8. **A tower on a small footprint rocks and tips early or late (22).** The table stopped at 5–6°
+   leaves the tower leaning 1.5°: the loaded edge sinks into Jolt's 0.2 mm penetration slop
+   (`LEGO_PENETRATION_SLOP_M`), and on an 8 mm footprint that is atan(0.2/8) = 1.4°. With the table
+   still and gravity tilted instead, it tips between 6° and 7° (θc 7.83°). The table's steps then set
+   it rocking ±2°, so the tip angle depends on the direction (6.45° / 10.00°). *Possible fixes:* a
+   smaller slop for small bodies, or more contact points per face. Not made here (`jolt-core.js`).
+9. **A light body between hinges springs back (24).** Each cart's bumper is a 4.8 g beam hinged to
+   two 25 g wheel sets. On impact the hinge chain stores the energy and returns it: e = 0.67 with
+   restitution 0. With the carts' mass moved into the bumper body (control 24c) e = 0.01. Momentum
+   is conserved either way (23). This is round 1's bug 2 (soft pin chains), seen in a collision.
+10. **No rolling resistance (25).** A free cart loses only Jolt's default 0.05 s⁻¹ damping
+    (a = 0.05·v, a c_rr of about 0.0006 at 0.11 m/s), 10× less than a tyre on a hard floor. A coasting
+    robot rolls about 10× too far. This is a model gap: rolling resistance would need a per-tyre
+    torque (or wheel-body damping) in the core.
+11. **No universal joint (26).** The catalogue has the U-joint's ends but no part or connector for the
+    cross, and no coupling kind joins two ends. This needs a new connector kind (a cross in two forks:
+    two perpendicular hinges through one body, or a Jolt `SixDOF` with two rotations free).
+
+Passing rows 12–14, 17–21 and 23 check the gear kinematics (including the worm's direction), the DC
+motor model's operating point against Philo's numbers, rack force transmission, differential
+steering, the IMU's yaw and gyro, the encoders, and the distance and colour sensor models. No product
+code was changed in round 2. Every discrepancy is in `jolt-core.js` (7, 8, 10), in the body model
+(9: `joints.js`/`islands.js`), or in the catalogue and kinds (11), and other lanes own all of them.
