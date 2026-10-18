@@ -374,6 +374,51 @@ actual v3 guards remain held. Sixty-two Node tests, including 58 Python controls
 pass; eight diagnostic source mutations are detected. These are source controls,
 not actual browser or guest qualification.
 
+The collector's cooperative selected-path budget is now 180 seconds, inside the
+unchanged four-minute recording step and fifteen-minute metadata job. Remaining
+paths are explicitly `unvisited-deadline` with `attempted: false`; an expired
+read remains an attempted failure. The original first failure stays primary.
+The cross-layer timeout control and all 63 Node tests pass, including 58 Python
+controls; three targeted timeout/status mutations are detected. This bounds the
+diagnostic attempt without claiming per-read preemption or job sufficiency.
+The earlier missing-font roster remains mandatory in a distinct diagnostic
+selection; actual execution remains disabled.
+
+Failure-only inventory now uses `bw.gui-hdd.inventory-failure.v2`: exact raw event
+bytes are embedded with a 256 KiB cap, separate hash/extent and reserved diagnostic
+budget. Unavailable originals or incomplete path diagnostics remain explicit
+failures. The standalone reader recomputes event/template/source-head and
+run/workflow joins against an independently frozen policy. It never imports the
+producer or converts a failed observation into a runtime candidate. Successful
+inventory v2, actual request v3, executable size rules and actual guards remain
+unchanged. The 63 Node tests include 65 Python controls for this continuation.
+
+For a future v2 failure original, after official artifact and source metadata
+admission, audit the selected original files from the repository root:
+
+```sh
+/usr/bin/python3 -B scripts/read-i80386-hdd-gui-originals.py \
+  --inventory-failure gui-inventory/inventory-failure.json \
+  --template gui-inventory/runtime-template.json \
+  --expected reviewed-failure-policy.json
+```
+
+The policy schema is `bw.gui-hdd.inventory-failure-expectation.v2`: supply
+independently selected source21 `head`/`tree`/`files`, template and failure
+`byteLength`/`sha256`, official `runId` and executing `workflowSha`. Consult the
+reader's closed field checks; do not derive these pins from the untrusted
+failure payload itself. A successful audit still reports `candidate: false`
+and `qualified: false`. Earlier failure v1 originals lack the raw event and
+cannot gain this joined-event result retroactively.
+
+Preserve the previous head's separate [native test failure](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39111138775/job/117627344977):
+`renode_brick_state::tests::lockstep_steps_land_exactly_one_quantum_apart_without_polling`
+failed while 252 tests passed and ten were ignored. Its cause is unestablished;
+do not relabel it as flaky or lower the timing threshold. Coordinate diagnosis
+with the native/Renode owner in `apps/tauri/src-tauri/src/renode_brick_state.rs`;
+that source is outside this five-path lane. Every enabled final-head check still
+has to succeed before source integration.
+
 Continue within the already claimed five implementation paths; dependency
 writers and other workflows remain outside this lane. Next tasks are:
 
@@ -403,6 +448,20 @@ writers and other workflows remain outside this lane. Next tasks are:
    freezing any complete runtime input.
    The inventory is an observation, not automatic actual approval or a complete
    host attestation. Preserve any mismatch; do not install a fallback.
+   The distinct [diagnostic run39111308927](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39111308927)
+   is now consumed and its original acquired once: 288/306 selected files,
+   84/101 file aliases and all three directory aliases were observed, with
+   no unvisited paths. Thirty-four missing font/configuration paths and one
+   zero-length named Python source account for the refusals. Git observation
+   was not reached; no successful runtime inventory exists.
+
+   Two source prerequisites are now delivered: exact raw-event failure retention
+   and the explicit metadata-only empty Python-source policy described below.
+   The earlier original still has only named0644, size-zero stat for the empty
+   path, with no observed content hash. Actual-request v4 mapping remains pending;
+   existing v3 must not accept the new typed map. Review any package-derived font roster
+   as a distinct declared scope, retaining the old failed selection and explaining
+   every changed row. Do not delete failed entries solely to obtain green.
 3. Independently admit the official frontend Build checkout log, full source
    head/tree/selected closure and producing workflow before selecting its ZIP
    digest from official metadata. The actual controller acquires that original
@@ -420,6 +479,263 @@ writers and other workflows remain outside this lane. Next tasks are:
 5. Only qualified original evidence plus all enabled final-head checks can
    close the component/composition merge gates. Refresh ownership and normal
    merge parents/tree before merging; source controls alone do not qualify it.
+
+The [typed metadata checkpoint](https://github.com/CrispStrobe/brickwright-lite/commit/1f8565a7a)
+delivers template, successful-original, failure and admission v3 with a separate
+`emptyPythonSources` map. Only `/usr/lib/python3.12/urllib/__init__.py` is admitted
+under the declared `python-empty-package-source` role: root-owned0644, zero
+extent, exact empty digest, held one-byte EOF read, four strict metadata snapshots
+and successful close. Positive and typed entries share the existing 512-file
+limit. Generic file reads and executable/library positive-size checks stay held.
+All 63 Node tests and 74 Python controls pass; 17 source mutations are detected,
+and the legacy v2 success fixture is byte-identical. These are mocked source
+controls, not an observed hosted empty-file result.
+
+For a future externally pinned v3 metadata original, the independent endpoint is:
+
+```sh
+/usr/bin/python3 -B scripts/read-i80386-hdd-gui-originals.py \
+  --inventory-original gui-inventory/inventory-original.json \
+  --template gui-inventory/runtime-template.json \
+  --expected reviewed-metadata-policy.json
+```
+
+The policy schema is `bw.gui-hdd.inventory-admission.v3`: supply source21,
+original/template byte lengths and hashes, official run ID and workflow SHA.
+Its verdict keeps `candidate` and `qualified` false and explicitly reports
+`actualRequestSupported: false`. Existing template/inventory v2, failure v2 and
+actual request/reader v3 stay distinct; this metadata map is not accepted by
+actual v3. The new source candidate explicitly maps that role through actual
+request/reader v4. Its `bw.gui-hdd.actual-inventory-reference.v1` contains the
+unchanged metadata admission v3 descriptor plus independently selected producing
+job, artifact and workflow identities. A separately versioned
+`bw.gui-hdd.actual-expectation.v4` pins the reference and exact retained metadata
+original/template; the independent reader rechecks the metadata observations.
+The metadata-only verdict continues to report `actualRequestSupported: false`:
+it cannot authorize an actual run.
+
+The actual v4 runtime observations retain and independently grade typed EOF,
+empty digest, four strict identity snapshots and close before and after the
+guest. They preserve the isolated Python startup envelope, generic positive
+file predicates, caps and first/secondary errors. Request/expectation/schema
+mixing, wrong role/path/hash, coherent nonempty data and failed readback/close
+must refuse. The source candidate passes 63 Node tests including 80 embedded Python controls.
+The 74 earlier Python test bodies and the old actual v3 packet verdict remain
+unchanged; 22 source mutations and eight independent packet counterexamples
+are detected. These tests use manufactured inputs and mocked OS boundaries.
+Legacy actual v3 remains separate. Actual execution stays disabled
+until complete runtime, Build, source and event admission plus affected clean
+browser/guest qualification. The 34 missing font/configuration inputs remain
+unresolved; no new inventory event or roster change was made.
+
+The separate font-discovery source candidate now sets
+`FONT_DISCOVERY_ENABLED = True` and enables its distinct conditional
+`font-discovery` workflow job. This source activation grants no event or runtime
+admission: the request remains unpublished, no discovery event has been sent,
+and `ACTUAL_ENABLED = False` remains held. Its `bw.gui-hdd.font-discovery-request.v1` pins source21 and
+embeds the unchanged baseline template. It collects fixed configuration and
+font-directory censuses, held file hash/extent/EOF/identity/close observations,
+raw configuration bytes and at most three read-only `dpkg-query` probes:
+installed packages, path ownership and the selected owners' manifest union.
+The combined manifest output proves union membership only, not individual
+package boundaries. Root-owned nonwritable selected system tools are an explicit
+platform trust boundary; this is not complete tool/runtime attestation.
+
+The new job uses the held Ubuntu 24.04, Node 22.23.3 and action selections.
+A source guard runs before package setup or input retrieval. Setup installs the
+unchanged selected packages and Chromium without building the frontend; it has
+a ten-minute ceiling. A separate one-minute input step uses the existing
+immutable own-repository blob transport. Only that run step receives the API token in its environment.
+The token-free recording step runs isolated Python with a four-minute ceiling
+around the collector's 180-second cooperative budget. The sixteen-minute job
+backstop includes setup and upload; these limits do not prove measured
+sufficiency, syscall preemption or aggregate containment. Existing metadata and
+actual jobs remain unchanged. The job still requires the selected own-repository
+actor, label, first attempt, base/fork conditions and exact request/source/event
+joins; source activation alone admits no event.
+
+The delivery controls pass 64 Node tests, including 91 embedded Python controls.
+All 88 earlier Python test bodies remain unchanged. Twenty-six workflow drift
+variants and independent mocked input/event/token counterexamples refuse. The
+Python test wrapper now sends its controls through stdin to avoid the operating
+system's single-argument limit; assertions and timeouts remain unchanged. These
+are source controls, not hosted setup, font-selection or browser qualification.
+
+The upload step runs after failure and retains the outputs actually created:
+guard/setup/input/collector diagnostics, the request when installed, and separate
+process originals when collected. An early refusal does not invent missing
+request or collection evidence. A failure stays a failure. Admit the producing
+job and artifact metadata independently
+before acquiring the original once; do not infer executing workflow identity
+from the source run head or retry a consumed event.
+
+The distinct `bw.gui-hdd.font-discovery-original.v1` preserves partial probe
+streams and the first refusal. Its standalone reader accepts independently
+selected source/request/original/run/workflow identities through
+`bw.gui-hdd.font-discovery-expectation.v1`. It recomputes structural XML
+include/directory references and cycles from bounded raw originals. It never
+executes Fontconfig, loads a DTD or proves native traversal/active font selection.
+Unsupported syntax and incomplete observations remain explicit. The verdict
+always keeps `candidate`, `qualified`, `activeFontSelectionProved` and
+`actualRequestSupported` false, including after a complete discovery.
+
+To audit an admitted discovery original without executing its producer:
+
+```sh
+/usr/bin/python3 -B scripts/read-i80386-hdd-gui-originals.py \
+  --font-discovery font-discovery.original.json \
+  --request reviewed-font-request.json \
+  --expected reviewed-font-expectation.json
+```
+
+The distinct `bw.gui-hdd.font-discovery-delivery-expectation.v1` adds a
+read-only delivery envelope around that observation audit. Independently select
+the source21/request/archive identities, official run/job/artifact IDs and raw
+metadata, plus the executing workflow proof and bytes. The reader checks the
+bounded ZIP without extraction, closes its role roster, and joins raw process
+and stream originals to the embedded observations. It refuses duplicate,
+traversing, symbolic-link, encrypted, oversized or unexpected members before
+using their contents. Archive and aggregate member limits are each 32 MiB,
+with at most 96 entries; per-role limits apply before inflation.
+
+A terminal producing job is required; unrelated queued jobs do not require the
+whole workflow to have concluded successfully. The artifact joins the selected
+run, source head, name, digest and size. Historical source is checked against
+the retained event and immutable run/job/artifact head fields. A later PR
+association may show another head, so its moving nested head is not historical
+source authority. The executing workflow commit remains separate from that
+source head. Its independently pinned official commit/tree observations join
+the workflow entry and raw blob SHA1/SHA256 to source21. Official metadata
+provenance is an external admission boundary, not a self-issued payload flag;
+the reader does not recompute the complete Git commit/tree object graph.
+
+This first delivery reader requires the original request and discovery
+observation, including their asserted raw process/stream roles. It conservatively
+refuses early artifacts missing them; preserve those failure originals outside
+this reader without inventing observations. A supported terminal failed partial
+collection retains its original primary error and producing conclusion. This
+initial profile supports success or ordinary collector failure with completed
+predecessor/upload steps; cancellation, timeout and other incomplete deliveries
+refuse. Every verdict remains observation-only and grants no runtime,
+font-selection or actual execution approval. Admit official metadata before acquiring the selected ZIP
+once, then audit the retained bytes; this tool never fetches or replays anything.
+
+Audit the already retained delivery without fetching or extracting it:
+
+```sh
+/usr/bin/python3 -B scripts/read-i80386-hdd-gui-originals.py \
+  --font-discovery-delivery gui-font-discovery.zip \
+  --request reviewed-font-request.json \
+  --expected reviewed-font-delivery-expectation.json \
+  --run metadata/run.json --job metadata/job.json \
+  --artifact metadata/artifact.json \
+  --workflow-proof metadata/workflow-proof.json \
+  --workflow metadata/executing-workflow.yml
+```
+
+The expectation pins each metadata original and the complete ZIP independently.
+The canonical `bw.gui-hdd.workflow-api-proof.v1` wrapper contains the retained
+commit and recursive-tree API original bytes with their exact extents and hashes.
+Freeze those originals and executing workflow content separately; never derive
+the trusted expectation from an untrusted archive's own declarations.
+
+The separate `bw.gui-hdd.workflow-api-proof.v2` carries those exact API originals
+as bounded zlib streams. A recursive tree original can fit its own 4 MiB limit
+while its v1 base64 wrapper exceeds the separate 4 MiB proof limit; preserve that
+refusal and the retained originals. The v2 representation addresses this size
+gap without truncating the tree, fetching it again or increasing either limit.
+Each `commit` and `tree` role has closed `codec`, `original` and `compressed`
+fields: codec `zlib`, the original extent/hash, and the compressed extent/hash/
+canonical base64. Validate both declared bounds and the compressed bytes before
+inflation. Decode at most the declared original extent plus one sentinel byte,
+then require the exact extent/hash, stream EOF, no unconsumed data and no trailing
+or concatenated stream. No flush allocates additional output. The same strict
+JSON, ordered parents, complete tree and workflow-blob joins then apply. The v1
+format remains supported unchanged. Neither representation authenticates API
+provenance or reconstructs the complete Git commit/tree object graph.
+
+The proof-v2 checkpoint passes 76 Node tests, including 102 embedded Python
+controls and 12 held snapshot controls. All 98 earlier Python test bodies stay
+unchanged. Seven source mutations and 23 independent codec/API counterexamples
+are detected; complete and failed-partial offline CLI verdicts preserve v1
+behavior. A manufactured 12057-entry recursive tree exercises the size gap.
+These are source and original-format controls, not hosted or guest qualification.
+
+Changing the reader changes source21. Rebuild the final canonical request and
+explicitly review any private consumer's reader selection; an earlier request or
+historical merge proof cannot authorize the new source. Offline tests using
+retained API bytes establish format compatibility only, not a new hosted event.
+
+
+The envelope checkpoint passes 64 Node tests including 96 embedded Python
+controls, preserving all 91 earlier Python test bodies. Nineteen source
+mutations and 27 independent re-pinned counterexamples are detected. Separate
+offline CLI controls cover complete and failed partial manufactured artifacts;
+these controls do not establish an actual hosted observation or guest result.
+
+The activation checkpoint passes 64 Node tests including 98 Python controls.
+It adds two controls for enabled-default refusal boundaries and changes only
+three earlier guard/fixture methods to model the intentional activation; the
+remaining 108 earlier methods stay held. Twenty-six workflow drift cases and
+seven activation mutations are detected, with six independent controls and
+three independent mutation cuts. Guards perform no input or runtime work. These
+source results establish no hosted font observation or guest qualification.
+
+The actual frontend and original-delivery ZIP readers now validate the complete
+header census before inflating any member. They require exact untruncated names,
+unique paths, regular file or directory types, empty directory payloads, and
+unencrypted stored/deflated entries under the held role and aggregate limits.
+This closes manufactured packets previously accepted with NUL-truncated names,
+special-file types or ignored directory payloads. Both the controller and the
+independent frontend reader apply this policy; the original-delivery reader
+retains its own prefix, role and inventory checks. Ordinary frontend ZIP, Pages
+TAR delivery, and prefixed/unprefixed actual originals remain supported. Positive
+file-size predicates, TAR policy, v3/v4 schemas and actual guards are unchanged.
+These are source counterexamples and controls, not observed hosted guest results.
+The ZIP repair passes nine Node tests including 107 Python controls; all 102
+earlier Python test bodies stay unchanged. Twelve source mutations and 21
+independent coherent header counterexamples are detected. Valid frontend formats
+and both actual versions retain their earlier prefixed/unprefixed verdicts.
+
+A fresh agent can finish this work in the following bounded steps:
+
+1. Freeze the activated source candidate, finite caps and selected system tools.
+   Require every enabled final-head check to succeed. Rebuild the canonical
+   request from that final source head and tree, embedding the unchanged retained
+   baseline: either guard or a later source integration changes source21.
+   Freeze the executing workflow SHA, event, source checkout, original roles
+   and resource bounds before any one-shot metadata event. Repository variables
+   transport selected immutable blob and digest values; they grant no approval.
+   The separate transport names are `BW_GUI_HDD_FONT_DISCOVERY_BLOB` and
+   `BW_GUI_HDD_FONT_DISCOVERY_SHA256`; preserve the previous inventory variables
+   and consumed-event markers.
+2. Admit one official metadata-producing job and acquire its originals once.
+   Audit them independently, preserving partial package ownership and all old
+   font failures. A discovery result does not approve a successful runtime roster.
+3. Establish the native Fontconfig include/alias/selection closure separately,
+   then review a new versioned runtime template. Do not subtract failed baseline
+   paths or infer ownership from filenames.
+4. Admit the complete runtime and frontend Build/source/archive graph, then
+   qualify actual HDD persistence and forward debugging with clean affected
+   browser/guest runs. Every enabled exact-head source check remains mandatory.
+
+For the next font-roster task, admit package ownership and the active fontconfig
+include/alias closure independently before selecting a new versioned template.
+The retained diagnostic establishes missing paths, not package ownership or a
+complete active font census. Do not derive a successful roster by subtracting
+its failed paths, relax generic file checks, install alternate fonts or reuse
+the consumed event. Review exact source/template/workflow and a distinct
+metadata event; acquire its originals once and grade every selected path with
+the standalone reader. Preserve all earlier font failures until the new
+selection and affected browser qualification are independently established.
+
+Main [PR1066](https://github.com/CrispStrobe/brickwright-lite/pull/1066) advanced
+CUI from `055930e` to `fe89e3425bf323b1acd9e3f98df6a7383e9b836b`.
+The [separate consumer update](https://github.com/CrispStrobe/brickwright-lite/commit/d07be38c7)
+explicitly matches that canonical selection without writing dependencies. The
+four CUI commits change five module-label/layout and supporting files; existing
+386 target/API source is unchanged. Full rendering and this scenario's browser
+acceptance still need their own qualification. Board and SB3 selections stay held.
 
 The dependency-free focused check is:
 

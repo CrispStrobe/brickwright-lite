@@ -5774,6 +5774,46 @@ fixes wait for real GUI state commits and retain bounded failure-only inventory
 diagnostics. Required files, successful schemas and actual guards remain held.
 The matching guide scopes the distinct diagnostic selection and later affected
 browser/guest qualification; source controls alone cannot satisfy that gate.
+The subsequent diagnostic collector uses a 180-second cooperative budget inside
+the held four-minute step/fifteen-minute job, explicitly marking unvisited paths.
+All 63 source controls pass; actual guards and required-font selection stay held.
+Failure-only v2 additionally retains bounded exact event bytes and has a standalone
+reader that joins them against external pins; 65 embedded Python controls pass.
+Successful inventory/actual formats and positive executable size checks stay held.
+Metadata-only v3 now has a separately typed empty Python-source map and standalone
+original reader; that checkpoint passed 74 Python controls and 17 targeted mutations.
+The next source candidate adds explicit actual v4 typed-source mapping, a separately
+named prior-observation reference and before/after EOF/hash/identity/close checks.
+The candidate passes 63 Node tests including 80 embedded Python controls; the
+74 earlier Python test bodies and legacy v3 packet verdict remain unchanged;
+22 source mutations and eight independent packet counterexamples are detected.
+Actual activation and clean browser/guest qualification remain pending.
+A separately guarded font-discovery source continuation now collects bounded
+read-only package, configuration, alias and font-file observations. Its own
+request/original/independent-reader formats remain observation-only. A distinct
+conditional hosted job now enables that collector in the source candidate.
+Its final-head request/event admission and original observations remain pending;
+the request is unpublished, no discovery event was sent, and actual stays disabled. The original required roster and missing
+paths remain held. See the matching guide for selection and qualification gates.
+A separate delivery reader now joins externally selected official metadata,
+workflow proof and the bounded original ZIP before grading a retained discovery
+observation. Missing request/observation or raw evidence refuses. This is
+original admission only; it cannot activate discovery or approve a runtime.
+A separately versioned bounded compressed workflow proof now addresses recursive
+API originals whose v1 base64 wrapper exceeds the held proof cap. Exact originals,
+v1 support, JSON/proof limits and all workflow identity joins remain held. This
+reader change requires a fresh source21/request and explicit consumer selection;
+no hosted discovery or actual qualification is inferred.
+Actual frontend and original-delivery ZIP admission now rejects NUL-truncated
+names, special file types and ignored directory payloads before any inflation.
+The complete header census preserves existing limits, required files, TAR and
+actual v3/v4 semantics. This is a source repair; clean affected GUI/guest
+qualification remains pending.
+The explicit consumer CUI expectation now follows main
+PR1066 at `fe89e3425bf323b1acd9e3f98df6a7383e9b836b`; no dependency writer changed.
+
+
+
 
 SOURCE IMPLEMENTED; ACTUAL PENDING — Codex x86; ownership claim [PR1014](https://github.com/CrispStrobe/brickwright-lite/pull/1014)
 merged before implementation. Serialized after the existing media/debugger lane.
@@ -5791,9 +5831,10 @@ build/browser pipeline; do not introduce another provisioning framework or
 change unrelated workflows.
 
 The composition consumes the adoption already merged through
-[PR975](https://github.com/CrispStrobe/brickwright-lite/pull/975): Board
-`f84ba60ead0a90deb9830f0c1468839c293ecf05`, CUI
-`055930ec51300e0d71466c696ce1bf76284bde38` and SB3
+[PR975](https://github.com/CrispStrobe/brickwright-lite/pull/975), with later CUI
+selection from [PR1066](https://github.com/CrispStrobe/brickwright-lite/pull/1066):
+Board `f84ba60ead0a90deb9830f0c1468839c293ecf05`, CUI
+`fe89e3425bf323b1acd9e3f98df6a7383e9b836b` and SB3
 `a13f92b8bc4b06f0cb9ffec22bab71f06db7ac76` at the 2026-10-18 refresh.
 These are source selections, not this scenario's installed qualification.
 Refresh canonical declarations before admission; refuse missing dedicated
