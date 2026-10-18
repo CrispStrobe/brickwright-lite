@@ -16,6 +16,7 @@ How it is built, and what comes next, is in `docs/SIM-LAB-PLAN.md`.
    Zones mat). Each of the last three comes with an example program: the examples are below.
 2. Open the SPIKE simulator (**SPIKE arena** button in the Code tab) and pick the **Robot Lab (beta)** tab.
 3. Press **Run**. As the arena's Start does, Run connects the program to the virtual hub and starts it on the green flag. **Pause** stops the program and the clock; **Reset** reloads the model.
+   The program's clock is the simulation's: `wait 2 seconds` is 2 s of simulated time on every computer. When a computer cannot simulate in real time, the whole program runs slower and the status line says how fast, e.g. *“0.40× real time”* (*“0,40× Echtzeit”*); what the robot does stays the same.
 
 **The line follower, ready to run.** Choose **Line follower** in the Model list and **Line Oval** in the Mat list, press **Load example program** (the pane offers it while no SPIKE program is loaded; it puts the program into the Code tab and builds the blocks, and moves the robot onto the Line Oval if it is not there yet), then press **Run**. The robot follows the black line round the whole oval, in about 23 s of simulated time. The program (`static/sim-lab/programs/line-follower.bw`):
 
@@ -317,6 +318,7 @@ Part geometry is a curated subset of the official **LDraw Parts Library** (CC BY
 - `bw-sim-physics-core.test.mjs` — Jolt body and hinge creation, stepping.
 - `bw-sim-physics-worker.test.mjs` — worker message protocol.
 - `bw-sim-physics-worker-session.test.mjs` — the physics in the worker gives the main-thread numbers bit for bit (driving, sensors, a command in flight, the line follower's program through the VM).
+- `bw-sim-program-clock.test.mjs` — one clock (docs/SIM-LAB-PLAN.md §4.9): the browser's path in real time with a worker 200 ms away; program time equals simulated time at every VM step, a 1 s drive lasts 1 s simulated and covers the same distance as with a fast worker; the previous wall-clock loop fails it.
 - `bw-sim-render-quality.test.mjs` — part-geometry and material fidelity.
 - `bw-sim-s1-driving-base.test.mjs` — the S1 driving base drives, turns and hits a wall.
 - `bw-sim-scene3d.test.mjs` — Sim Lab 3D view, mat texture and obstacle meshes.

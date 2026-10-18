@@ -9,7 +9,11 @@
 //
 // One clock (docs/SPIKE-ARENA.md): while the Sim Lab runs, its session owns
 // the hub's motor clock; the arena is not mounted at the same time (the
-// simulator pane shows one or the other).
+// simulator pane shows one or the other). And the program's clock is the
+// world's (docs/SIM-LAB-PLAN.md §4.9, lib/bw-sim/sim-clock.js): while it runs,
+// each VM step buys one step of simulated time and the VM waits for the world,
+// so a slow machine runs the whole program slower (the status line shows the
+// real-time factor) instead of letting the program's `wait`s outrun the world.
 //
 // The model is saved with the project (C8) the way every other Brickwright
 // surface is (lib/bw-project-bundle.js): one localStorage key, carried as the
@@ -24,6 +28,7 @@ import {SIM_LAB_STORAGE_KEY, simLabRecordFromText, readSimLabStorage, isStorable
 import SimLabPalette from './sim-lab-palette.jsx';
 import SimLabInstructions from './sim-lab-instructions.jsx';
 import {INSIGHT_TEXT, issueSentence, fillText} from './sim-lab-insight-text.js';
+import {firmwareRefusalSentence} from './sim-lab-firmware-text.js';
 
 /** A MODELS entry's key: its `id` when one model file is listed more than once, else its file. */
 const modelKey = m => m.id || m.file;
@@ -65,6 +70,10 @@ const TEXT = {
         route: 'Program', routeScratch: 'SPIKE blocks', routeFirmware: 'SPIKE firmware (desktop)',
         routeUnavailable: 'Not available: this build has no managed Renode runtime with lockstep.',
         realTime: '{f}× real time', firmwareFailed: 'Could not start the SPIKE firmware: {error}',
+        stopping: 'Stopping the program…',
+        firmwareReloading: 'The program changed: starting the emulated hub again with the new program…',
+        firmwareFault: 'The program on the SPIKE firmware stopped with an error ({error}). Press Run to start it again.',
+        firmwareControlFailed: 'The SPIKE firmware did not take the command: {error}',
         st: {
             idle: 'Click a part to select it. Drag it to move it; Shift+click adds parts; drag empty space to look around.',
             hover: '{part}: click to select, drag to move', hoverSelected: '{part}: drag to move, R turns, Delete removes',
@@ -125,6 +134,10 @@ const TEXT = {
         route: 'Programm', routeScratch: 'SPIKE-Blöcke', routeFirmware: 'SPIKE-Firmware (Desktop)',
         routeUnavailable: 'Nicht verfügbar: Dieser Build hat keine verwaltete Renode-Laufzeit mit Lockstep.',
         realTime: '{f}× Echtzeit', firmwareFailed: 'Die SPIKE-Firmware konnte nicht starten: {error}',
+        stopping: 'Das Programm hält an…',
+        firmwareReloading: 'Das Programm hat sich geändert: Der emulierte Hub startet neu mit dem neuen Programm…',
+        firmwareFault: 'Das Programm auf der SPIKE-Firmware hat mit einem Fehler angehalten ({error}). Drücke Ausführen, um es neu zu starten.',
+        firmwareControlFailed: 'Die SPIKE-Firmware hat den Befehl nicht angenommen: {error}',
         st: {
             idle: 'Klicke ein Teil an, um es auszuwählen. Ziehen verschiebt es; Umschalt+Klick wählt mehr Teile; Ziehen auf leerer Fläche dreht die Ansicht.',
             hover: '{part}: klicken wählt aus, ziehen verschiebt', hoverSelected: '{part}: ziehen verschiebt, R dreht, Entf löscht',
@@ -151,8 +164,13 @@ const TEXT = {
     }
 };
 
-/** Longest step the pane hands the physics per frame: a backgrounded tab must not jump seconds ahead. */
+/**
+ * Longest step the pane hands the physics per frame, on the paths that tick by wall time (the
+ * firmware route, or a VM whose step hook is inert): a backgrounded tab must not jump seconds ahead.
+ */
 const MAX_FRAME_MS = 50;
+/** The real-time factor is shown below this (a timer's jitter keeps a machine that keeps up near 1). */
+const SHOW_RTF_BELOW = 0.95;
 /** Build mode recompiles the model this long after the last edit (ms), for the issues and the motion overlay. */
 const INSIGHT_DEBOUNCE_MS = 150;
 /** How long "show me these parts" pulses them in Simulate (ms). */
@@ -204,7 +222,7 @@ class SimLabPane extends React.Component {
         this.locale = locale;
         this.text = TEXT[locale];
         this.itext = INSIGHT_TEXT[locale] || INSIGHT_TEXT.en;
-        this.state = {status: 'loading', message: '', info: '', driveSpeed: 50, issues: [], modelFile: null, shipped: null, simMs: 0, view3d: 'loading',
+        this.state = {status: 'loading', message: '', info: '', driveSpeed: 50, issues: [], modelFile: null, shipped: null, simMs: 0, rtf: null, view3d: 'loading',
             mode: 'simulate', placing: null, selection: [], editorTick: 0, mat: null,
             buildStatus: {kind: 'idle'}, gizmoMode: 'move', grid: 10, recent: [], thumbTick: 0,
             showPorts: true, showMotion: false, blockers: [], portPicker: null, instructions: null, coarse: false,
@@ -229,6 +247,8 @@ class SimLabPane extends React.Component {
         this.thumbQueue = new Set();
         this.thumbs = null;
         this.last = null;
+        /** The program clock (lib/bw-sim/sim-clock.js), made when the chunk is in; installed while running. */
+        this.clock = null;
     }
 
     onPointerKind () {
@@ -256,6 +276,11 @@ class SimLabPane extends React.Component {
         if (this.state.more && this.moreRef.current && !this.moreRef.current.contains(event.target)) this.setState({more: false});
     }
 
+    /** A number as the learner's language writes it (German: decimal comma). */
+    decimal (text) {
+        return this.locale === 'de' ? String(text).replace('.', ',') : String(text);
+    }
+
     t (key, values = {}) {
         return this.text[key].replace(/\{(\w+)\}/g, (_, k) => String(values[k] ?? ''));
     }
@@ -276,6 +301,8 @@ class SimLabPane extends React.Component {
             get editView () { return this._pane.editView || null; },
             get projectRecord () { return this._pane.currentRecord(); },
             get blockers () { return this._pane.state.blockers; },
+            /** The firmware route's program on the emulated hub: its state name ('ready', 'running', …) or null. */
+            get firmwareProgram () { return this._pane.firmware?.program?.stateName ?? null; },
             /** The last Build-mode compile for the issues and the overlay: {ms, parts}. */
             get insight () { return this._pane.lastInsight || null; },
             _pane: this
@@ -316,6 +343,7 @@ class SimLabPane extends React.Component {
         if (this.coarseQuery && this.coarseQuery.removeEventListener) this.coarseQuery.removeEventListener('change', this.onPointerKind);
         this.disposed = true;
         cancelAnimationFrame(this.raf);
+        this.stopClock();
         this.teardown();
         this.teardownEditor();
         if (this.physics) this.physics.terminate();
@@ -519,7 +547,24 @@ class SimLabPane extends React.Component {
         setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
+    /**
+     * Puts the VM on the session's clock (sim-clock.js). Not for the firmware route: its emulated
+     * hub runs the program and paces the scene itself (routes/renode-lockstep).
+     */
+    startClock () {
+        const vm = this.props.vm;
+        if (!this.session || this.session.lockstep || !vm || !vm.runtime || this.clockInert) return;
+        if (!this.clock) this.clock = new this.lib.SimLabClock();
+        this.clock.install(vm.runtime, this.session);
+    }
+
+    /** Back to wall time (Pause, a new model, the pane closing). */
+    stopClock () {
+        if (this.clock) this.clock.uninstall();
+    }
+
     teardown () {
+        this.stopClock();
         if (this.view) { try { this.view.dispose(); } catch { /* a lost context may already be gone */ } }
         this.view = null;
         if (this.session) this.session.dispose();
@@ -582,14 +627,22 @@ class SimLabPane extends React.Component {
         const token = this.loadToken = {};
         this.opened = {text, name};
         this.teardown();
-        this.setState({status: 'loading', message: '', issues: [], blockers: [], modelFile: name, shipped, simMs: 0, view3d: 'loading'});
+        this.setState({status: 'loading', message: '', issues: [], blockers: [], modelFile: name, shipped, simMs: 0, rtf: null, view3d: 'loading'});
         const {SimSession, fetchLDrawClosure, createSimView3D, CATALOG} = this.lib;
         // The SPIKE firmware route (desktop): the emulated hub starts first; the scene then runs
         // in lockstep with it (lib/bw-sim/routes/renode-lockstep).
         let firmware = null;
+        let refusal = null;
+        this.firmware = null;
         if (this.state.route === 'firmware') {
+            // The program the emulated hub runs: the Code tab's blocks, compiled by the SPIKE
+            // arena's firmware compiler and uploaded before lockstep. A block it cannot express
+            // is named in the pane; the route still opens, with no program (the robot stands).
+            const compiled = this.compileFirmware();
+            refusal = compiled.error;
             try {
-                firmware = await this.lib.openFirmwareRoute({capabilities: this.renodeCapabilities(), hubState: this.props.hubState});
+                firmware = await this.lib.openFirmwareRoute({capabilities: this.renodeCapabilities(), hubState: this.props.hubState,
+                    program: compiled.program, onProgramChange: control => this.onFirmwareProgram(control)});
             } catch (error) {
                 if (token !== this.loadToken) return;
                 // The packaged runtime has no lockstep/v1: not a failure, an unavailable route.
@@ -612,6 +665,10 @@ class SimLabPane extends React.Component {
         }
         if (!result.session) firmware?.driver.end().catch(() => {});
         if (token !== this.loadToken || this.disposed) { result.session?.dispose(); return; }
+        if (result.session && firmware) {
+            this.firmware = firmware;
+            if (refusal) this.setState({message: firmwareRefusalSentence(this.locale, refusal)});
+        }
         const {session, issues, model, runModel} = result;
         if (!session) {
             this.setState({status: 'failed', issues, blockers: this.lib.runBlockers(issues, model, CATALOG),
@@ -671,21 +728,87 @@ class SimLabPane extends React.Component {
         });
     }
 
+    /** The Code tab's program for the firmware route: {program} or {error} (which block, why). */
+    compileFirmware () {
+        return this.lib.compileRouteProgram(this.props.vm, {topology: 'default'});
+    }
+
+    /**
+     * Run on the firmware route: the program as it is now (a changed one restarts the
+     * emulated hub with it: program packets cannot cross during lockstep), then START.
+     */
+    async runFirmware () {
+        const compiled = this.compileFirmware();
+        if (compiled.error) {
+            this.setState({message: firmwareRefusalSentence(this.locale, compiled.error)});
+            return;
+        }
+        const key = JSON.stringify(compiled.program.instructions);
+        if (this.firmware?.program?.key !== key) {
+            this.setState({info: this.text.firmwareReloading});
+            const opened = this.opened;
+            if (!opened) return;
+            await this.openText(opened.text, opened.name, this.state.shipped);
+            if (this.disposed || this.firmware?.program?.key !== key) return;
+        }
+        const program = this.firmware.program;
+        this.setState({status: 'running', info: '', message: ''});
+        try {
+            await program.start();
+        } catch (error) {
+            this.setState({status: 'paused', message: this.t('firmwareControlFailed', {error: error.message})});
+        }
+    }
+
+    /** Pause on the firmware route: STOP, and the clock runs on until the hub has taken it (the robot brakes). */
+    pauseFirmware () {
+        const program = this.firmware?.program;
+        if (!program || (!program.running && program.idle)) { this.setState({status: 'paused'}); return; }
+        this.setState({status: 'stopping'});
+        program.stop().catch(error => this.setState({status: 'paused', message: this.t('firmwareControlFailed', {error: error.message})}));
+    }
+
+    /** The emulated hub's program changed state (lib/bw-sim/routes/renode-lockstep/program.js onChange). */
+    onFirmwareProgram (control) {
+        if (this.disposed || this.firmware?.program !== control) return;
+        if (control.failed) {
+            this.setState({status: this.state.status === 'stopping' ? 'paused' : this.state.status,
+                message: this.t('firmwareControlFailed', {error: control.failed.message})});
+            return;
+        }
+        if (control.fault !== null && control.stateName === 'fault') {
+            this.setState({message: this.t('firmwareFault', {error: control.fault})});
+        }
+        if (this.state.status === 'stopping' && !control.running && control.idle) this.setState({status: 'paused'});
+    }
+
     frame (now) {
         this.raf = requestAnimationFrame(this.frame);
         const dt = this.last === null ? 0 : Math.min(MAX_FRAME_MS, now - this.last);
+        const clocked = Boolean(this.clock && this.clock.installed);
+        if (clocked) {
+            this.clock.noteFrame();
+            // The VM steps around the hook (arena-clock.js isInert): fall back to wall time, loudly in
+            // behaviour rather than freezing the world and every wait with it.
+            if (this.clock.inert) {
+                this.stopClock();
+                this.clockInert = true;
+            }
+        }
         this.last = now;
         if (this.editView) { this.drawThumbs(); this.editView.render(); return; }
         if (!this.session) return;
         if (this.session.failed && this.state.status !== 'failed') {
             this.setState({status: 'failed', message: this.t('physicsFailed', {error: this.session.failed.message})});
         }
-        if (this.state.status === 'running' && dt > 0) {
+        // 'stopping': the firmware route keeps its clock until the emulated hub has taken STOP.
+        // With the program clock installed the VM's steps tick the world (sim-clock.js), not frames.
+        if ((this.state.status === 'running' || this.state.status === 'stopping') && dt > 0 && !(this.clock && this.clock.installed)) {
             this.session.tick(dt);
         }
         // With the physics in the worker, simulated time advances when a batch comes back.
         if (Math.floor(this.session.time / 100) !== Math.floor(this.state.simMs / 100)) {
-            this.setState({simMs: this.session.time});
+            this.setState({simMs: this.session.time, rtf: this.clock && this.clock.installed ? this.clock.realTimeFactor : null});
         }
         if (this.view) this.view.render(this.session.snapshot());
     }
@@ -698,15 +821,18 @@ class SimLabPane extends React.Component {
     /** As the arena's Start: connect the spikeprime blocks to the shared virtual hub, then green flag. */
     async run () {
         if (!this.session) return;
-        // The firmware runs its own program in the emulator: the clock is all Run starts.
-        if (this.session.lockstep) { this.setState({status: 'running', info: ''}); return; }
+        if (this.session.lockstep) { await this.runFirmware(); return; }
         const hubState = this.props.hubState;
         hubState.setSimulationEnabled(true);
+        // Connecting runs on wall time (its timeouts are the browser's); the program clock goes in
+        // just before the green flag, so the program's first `wait` starts on the world's clock.
+        this.stopClock();
         this.setState({status: 'running'});
         const vm = this.props.vm;
         // Without a SPIKE program the clock still runs (the arrows below drive the motors),
         // but say plainly why nothing moves on its own.
         if (!this.spikeLoaded()) {
+            this.startClock();
             this.setState({info: this.shippedModel()?.example ? `${this.text.noProgram} ${this.text.exampleOffer}` : this.text.noProgram});
             return;
         }
@@ -725,7 +851,10 @@ class SimLabPane extends React.Component {
             this.setState({message: this.t('connectFailed', {error: error.message})});
             return;
         }
-        if (this.state.status === 'running') vm.greenFlag();
+        if (this.state.status === 'running') {
+            this.startClock();
+            vm.greenFlag();
+        }
     }
     /** Puts the current model on another mat (its start pose, if the mat has one) and reloads it. */
     async setMat (mat) {
@@ -740,7 +869,10 @@ class SimLabPane extends React.Component {
         if (!this.session || !this.session.bridge) return;
         const hub = this.props.hubState;
         hub.setSimulationEnabled(true);
-        if (this.state.status !== 'running') this.setState({status: 'running'});
+        if (this.state.status !== 'running') {
+            this.startClock();
+            this.setState({status: 'running'});
+        }
         const [left, right] = hub.movementPair || ['A', 'B'];
         const pct = this.state.driveSpeed;
         const dps = port => hub.motors.percentToDps(port, pct);
@@ -768,8 +900,10 @@ class SimLabPane extends React.Component {
 
     pause () {
         if (!this.session) return;
+        if (this.session.lockstep) { this.pauseFirmware(); return; }
         if (this.spikeLoaded()) { try { this.props.vm.stopAll(); } catch { /* the VM may be mid-load */ } }
         this.props.hubState.backend.cancel();
+        this.stopClock();
         this.setState({status: 'paused'});
     }
 
@@ -1206,9 +1340,12 @@ class SimLabPane extends React.Component {
         const T = this.text;
         const simulate = this.state.mode === 'simulate';
         const running = status === 'running';
-        const rtf = this.session?.lockstep ? this.session.realTimeFactor : null;
+        // The firmware route's emulator pace (always shown); the program clock's only when the world holds
+        // the program back (sim-clock.js): on a machine that keeps up there is nothing to say.
+        const programRtf = this.state.rtf !== null && this.state.rtf !== undefined && this.state.rtf < SHOW_RTF_BELOW ? this.state.rtf : null;
+        const rtf = this.session?.lockstep ? this.session.realTimeFactor : programRtf;
         const statusText = `${busy ? T.loading : T[status] || ''}${this.session ? ` · ${compact ? this.t('timeShort', {s: (simMs / 1000).toFixed(1)}) : this.t('time', {s: (simMs / 1000).toFixed(1)})}` : ''}` +
-            (rtf !== null && running ? ` · ${this.t('realTime', {f: rtf < 0.1 ? rtf.toFixed(3) : rtf.toFixed(2)})}` : '');
+            (rtf !== null && running ? ` · ${this.t('realTime', {f: this.decimal(rtf < 0.1 ? rtf.toFixed(3) : rtf.toFixed(2))})}` : '');
         // Desktop only (the web build has no managed Renode runtime): the program route.
         const firmwareReady = this.lib && this.desktop() &&
             this.lib.firmwareRouteReady(this.renodeCapabilities(), {unsupported: this.state.firmwareUnsupported});
@@ -1242,7 +1379,7 @@ class SimLabPane extends React.Component {
         );
         const runButton = running ?
             <button type="button" style={button} data-testid="bw-sim-lab-pause" onClick={() => this.pause()}>{compact ? face('pause', T.pause) : T.pause}</button> :
-            <button type="button" style={button} data-testid="bw-sim-lab-run" disabled={!this.session || busy} onClick={() => this.run()}>{compact ? face('run', T.run) : T.run}</button>;
+            <button type="button" style={button} data-testid="bw-sim-lab-run" disabled={!this.session || busy || status === 'stopping'} onClick={() => this.run()}>{compact ? face('run', T.run) : T.run}</button>;
         const resetButton = (
             <button type="button" style={compact ? icon : button} data-testid="bw-sim-lab-reset" disabled={!this.session || busy}
                 aria-label={compact ? T.reset : undefined} title={compact ? T.reset : undefined} onClick={() => this.reset()}>

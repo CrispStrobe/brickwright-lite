@@ -1116,7 +1116,8 @@ fn verify_arena_manifest(root: &Path, manifest: &Path) -> Result<(), String> {
         "tools/spike_arena_mailbox.py",
     ];
     verify_support_manifest(root, manifest, REQUIRED,
-        &["licenses/renode-MIT.txt", "licenses/arena-BSD-3-Clause.txt", "tools/spike_nuttx_mailbox.py", "tools/spike_program_uart.py"], 32)
+        &["licenses/renode-MIT.txt", "licenses/arena-BSD-3-Clause.txt", "tools/spike_nuttx_mailbox.py", "tools/spike_program_uart.py",
+          "tools/spike_lockstep.py"], 33)
 }
 fn verify_nuttx_manifest(root: &Path, manifest: &Path) -> Result<(), String> {
     verify_support_manifest(root, manifest, &[
@@ -1132,7 +1133,8 @@ fn verify_nuttx_manifest(root: &Path, manifest: &Path) -> Result<(), String> {
         "licenses/firmware-source-NOTICES.txt", "licenses/MicroPython-MIT.txt", "licenses/hubprogram-BSD-3-Clause.txt",
         "licenses/Apache-2.0.txt", "licenses/firmware-NuttX-NOTICE.txt", "licenses/NuttX-Apps-NOTICE.txt",
         "licenses/firmware-Brickwright-BSD-3-Clause.txt", "licenses/NuttX-Tickless-BSD-3-Clause.txt",
-        "licenses/Simulation-Firmware-NOTICES.txt", "initial-flash.bin", "tools/spike_program_uart.py"], 34)
+        "licenses/Simulation-Firmware-NOTICES.txt", "initial-flash.bin", "tools/spike_program_uart.py",
+        "tools/spike_lockstep.py"], 35)
 }
 fn verify_support_manifest(root: &Path, manifest: &Path, required: &[&str], allowed: &[&str], max_files: usize) -> Result<(), String> {
     if !manifest.starts_with(root) {
@@ -1163,6 +1165,11 @@ fn verify_support_manifest(root: &Path, manifest: &Path, required: &[&str], allo
         if service.windows(import.len()).any(|part| part == import)
             && !map.contains_key("tools/spike_program_uart.py") {
             return Err("program UART helper is missing from manifest".into());
+        }
+        // Robot Lab lockstep (renode-spike-prime#59): the service imports it unconditionally.
+        if service.split(|&b| b == b'\n').any(|line| line == b"import spike_lockstep")
+            && !map.contains_key("tools/spike_lockstep.py") {
+            return Err("lockstep helper is missing from manifest".into());
         }
     }
     let backport_notices = ["licenses/Apache-2.0.txt", "licenses/firmware-NuttX-NOTICE.txt",
@@ -2067,6 +2074,17 @@ mod tests {
         let helper = root.join("tools/spike_program_uart.py");
         std::fs::write(&helper, b"synthetic UART helper").unwrap();
         map.insert("tools/spike_program_uart.py".to_owned(), sha256(&helper).unwrap().into());
+        std::fs::write(&manifest, serde_json::to_vec(&map).unwrap()).unwrap();
+        assert!(verify_arena_manifest(&root, &manifest).is_ok());
+        // A service that imports the lockstep helper (renode-spike-prime#59) needs it packaged.
+        std::fs::write(&service, b"from spike_program_uart import ProgramUartBinding\nimport spike_lockstep\n").unwrap();
+        map.insert("scripts/spike-state-server.py".to_owned(), sha256(&service).unwrap().into());
+        std::fs::write(&manifest, serde_json::to_vec(&map).unwrap()).unwrap();
+        assert_eq!(verify_arena_manifest(&root, &manifest).unwrap_err(),
+            "lockstep helper is missing from manifest");
+        let lockstep = root.join("tools/spike_lockstep.py");
+        std::fs::write(&lockstep, b"synthetic lockstep helper").unwrap();
+        map.insert("tools/spike_lockstep.py".to_owned(), sha256(&lockstep).unwrap().into());
         std::fs::write(&manifest, serde_json::to_vec(&map).unwrap()).unwrap();
         assert!(verify_arena_manifest(&root, &manifest).is_ok());
         std::fs::write(&helper, b"changed UART helper").unwrap();
