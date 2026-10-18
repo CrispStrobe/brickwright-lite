@@ -35,6 +35,7 @@
 import { validateCompiledMechanism, upgradeMechanismV1 } from '../contracts.js';
 import { BUILTIN_KINDS } from '../kinds/index.js';
 import { createStateRegistry } from './state-registry.js';
+import { createScrewDrives } from './screw.js';
 
 let joltPromise = null;
 
@@ -603,6 +604,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     };
     /** Self-locking worms (built below): {wormJoint, wheel (hinge entry), holdNm, driver (hinge entry|null), held}. */
     const worms = [];
+    /** Linear actuators' screw couplings (physics/screw.js drives them). */
+    const screwCouplings = [];
     for (const g of mechanism.couplings) {
         if (g.kind === 'gear') {
             buildGearConstraint(g.id, jointMap.get(g.joint1), jointMap.get(g.joint2), g.ratio);
@@ -647,6 +650,13 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             allConstraints.push(constraint);
             J.destroy(rs);
             gearInfos.push({ type: 'rackAndPinion', id: g.id, hingeJoint: g.hingeJoint, sliderJoint: g.sliderJoint, ratio: g.ratio });
+        } else if (g.kind === 'screw') {
+            // A linear actuator (kinds/screw.js): the slider is driven from the spindle's relative
+            // rotation by physics/screw.js, once the joint states are known (below).
+            screwCouplings.push(g);
+            gearInfos.push({ type: 'screw', id: g.id, hingeJoint: g.hingeJoint, sliderJoint: g.sliderJoint, ratio: g.ratio });
+        } else if (g.kind === 'turntable') {
+            // kinds/turntable.js emits none; a hand-built mechanism naming the kind has nothing to build.
         } else throw new Error(`no physics builder for coupling kind '${g.kind}' (${g.id})`);
     }
 
@@ -813,6 +823,10 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         }
     };
     updateJointStates();
+    const screws = screwCouplings.length
+        ? createScrewDrives({ J, couplings: screwCouplings, hingeMap, sliderMap, jointMap, bodyInterface, bodyIdOf: getBodyIDForId, dt: dtFixed })
+        : null;
+    if (screws) for (const d of screws.drives) floorInertia(mechanism.joints.find(j => j.id === d.c.hingeJoint)[d.sign > 0 ? 'body2' : 'body1']);
 
     /** A slider motor's force limit: in Jolt's MotorSettings, which SaveState does not record. */
     const applySliderForce = (entry, maxForce) => {
@@ -892,6 +906,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             restore: saved => worms.forEach((w, i) => setWormHold(w, saved[i]))
         });
     }
+    // A linear actuator's pairing of spindle angle and piston position (physics/screw.js).
+    if (screws) stateRegistry.register('screws', screws.registrant);
     // The collision filter (noCollide) is fixed when the scene is built: no per-step
     // state. The contact log, when kept, is.
     if (contactLog) {
@@ -961,6 +977,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                     if (entry.slider.GetMotorState() !== J.EMotorState_Velocity) entry.slider.SetMotorState(J.EMotorState_Velocity);
                 }
                 if (worms.length) applyWormHolds();
+                if (screws) screws.beforeStep();
                 joltInterface.Step(dtFixed, 1);
                 timeSteps += 1;
                 acc -= dtFixed;
@@ -1284,6 +1301,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             for (const bid of allBodyIDs) { bodyInterface.RemoveBody(bid); bodyInterface.DestroyBody(bid); }
             J.destroy(joltInterface);
             if (contactListener) { J.destroy(contactListener); contactListener = null; }
+            if (screws) screws.destroy();
             bodyMap.clear(); hingeMap.clear(); sliderMap.clear(); ballMap.clear(); jointMap.clear();
         },
     };
