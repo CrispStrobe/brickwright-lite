@@ -16,17 +16,23 @@
  * solid parts overlap (editor/overlap.js's solidOverlaps, the Build editor's
  * rule), and the compiler puts the sensor in the hub's body.
  *
- * The outcome is judged on geometry alone, not on the sensor's reading: the
- * wall face is where the compiled wall body is (its centre minus its half
- * thickness), the robot's front is the foremost point of any of its bodies'
- * colliders at their simulated poses, and the sensor's ray origin is carried
- * by the hub body's pose. At rest the front and the ray origin must both be
- * 8–12 cm from the wall face, and the front must never have reached it.
+ * The outcome is judged on the run's own record and the model, not on a fixed
+ * window (scripts/lib/sim-lab-wall-stopper-judge.mjs, shared with the browser
+ * gate): the wall face is where the compiled wall body is (its centre minus its
+ * half thickness), the robot's front is the foremost point of any of its bodies'
+ * colliders at their simulated poses, and the sensor's ray origin is carried by
+ * the hub body's pose. (a) The front never reaches the wall face; (b) the drive
+ * motors stop within two VM frames and one sensor period after the hub's reading
+ * first goes below 10 cm, and not before; (c) the ray origin runs on after that
+ * crossing no more than the crossing speed times that budget plus the braking
+ * distance of the shorted DC motors from the program's 30 %, computed from the
+ * catalogue and the compiled model. Expected from those numbers: ≈ 8 cm.
  *
  * The judge is shown able to fail twice: the same program with a threshold of
  * 1 cm (the sensor reads nothing under 5 cm, which the extension reports as
- * 0, so it stops about 4 cm out: too close), and with a threshold the reading
- * never goes below (< 0: it drives into the wall and touches it).
+ * 0, so it stops about 4 cm out: long after the reading passed 10 cm), and with
+ * a threshold the reading never goes below (< 0: it drives into the wall and
+ * touches it).
  */
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
@@ -44,9 +50,11 @@ const CATALOG = catalogFrom(JSON.parse(readFileSync(path.join(SIM, 'part-meta/pa
 const ENTRY = MODELS.find(m => m.file === 'wall-stopper.ldr');
 const MODEL_TEXT = readFileSync(path.join(GUI, MODELS_BASE, ENTRY.file), 'utf8');
 const PROGRAM = readFileSync(path.join(GUI, PROGRAMS_BASE, ENTRY.example), 'utf8');
+const {brakingBound, judgeWallStop} = await import(path.join(REPO, 'scripts', 'lib', 'sim-lab-wall-stopper-judge.mjs'));
+const {STEP_MS} = await import(path.join(SIM, 'hub-bridge.js'));
 const BUDGET_MS = 15000;
-const NEAR_M = 0.08;
-const FAR_M = 0.12;
+/** The example's threshold, as the hub reports distance: `wait until (spike distance D) < 10` (cm). */
+const THRESHOLD_MM = 100;
 
 /** Rotate v by the unit quaternion [x, y, z, w]. */
 const rotate = ([x, y, z, w], v) => {
@@ -84,18 +92,26 @@ const wallFace = mechanism => {
     return wall.position[0] - wall.colliders[0].halfExtents[0];
 };
 
-/** Per frame: the robot's foremost point along +x and the distance sensor's ray origin. */
-const judge = ({track, mechanism}) => {
+/** The program's movement speed (%), read from its text: the braking bound starts from it. */
+const speedOf = source => Number(/set movement speed (\d+)/.exec(source)[1]);
+
+/** The record as the shared judge reads it, judged: (a) no touch, (b) stopped because of the reading, (c) bounded overrun. */
+const judge = ({track, mechanism, hubId}, source, frameMs) => {
     const faceX = wallFace(mechanism);
     const robot = mechanism.bodies.filter(b => b.motion === 'dynamic');
-    const front = p => Math.max(...robot.flatMap(b => b.colliders.map(c => reach(c, p.bodies[b.id], [1, 0, 0]))));
-    const fronts = track.map(front);
+    const ports = (mechanism.actuators || []).map(a => a.port);
+    const samples = track.map(p => ({
+        t: p.t,
+        front: Math.max(...robot.flatMap(b => b.colliders.map(c => reach(c, p.bodies[b.id], [1, 0, 0])))),
+        ray: p.points.D[0],
+        reading: p.readings.D.distance,
+        driving: ports.every(port => p.busy[port])
+    }));
+    const brake = brakingBound(mechanism, {speedPercent: speedOf(source), hubBody: hubId});
+    const verdict = judgeWallStop(samples, {faceX, thresholdMm: THRESHOLD_MM, frameMs, sensorMs: STEP_MS, brakeM: brake.brakeM});
     const last = track.at(-1);
     return {
-        faceX,
-        closestGap: faceX - Math.max(...fronts),
-        frontGap: faceX - fronts.at(-1),
-        rayGap: faceX - last.points.D[0],
+        ...verdict, faceX, brake,
         // At rest: the last second of simulated time moved the robot less than 2 mm.
         settled: Math.hypot(...[0, 2].map(i => last.axle[i] - track.find(p => p.t >= last.t - 1000).axle[i])) < 0.002,
         reading: last.readings.D.distance
@@ -126,10 +142,17 @@ if (!existsSync(missing)) {
         assert.fail(`missing ${path.relative(REPO, missing)} — run \`cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps\``);
     });
 } else {
-    const {runOnSimLab} = await import('./helpers/sim-lab-vm.mjs');
-    const run = source => runOnSimLab(source, {modelText: MODEL_TEXT, mat: ENTRY.mat, timeLimitMs: BUDGET_MS});
+    const {runOnSimLab, FRAME_MS} = await import('./helpers/sim-lab-vm.mjs');
+    const runJudged = async source => {
+        const result = await runOnSimLab(source, {modelText: MODEL_TEXT, mat: ENTRY.mat, timeLimitMs: BUDGET_MS});
+        return {result, r: judge(result, source, FRAME_MS)};
+    };
     const report = r => `front ${(r.frontGap * 100).toFixed(1)} cm, ray origin ${(r.rayGap * 100).toFixed(1)} cm, ` +
-        `closest ${(r.closestGap * 100).toFixed(1)} cm from the wall face; hub reads ${r.reading} mm`;
+        `closest ${(r.closestGap * 100).toFixed(1)} cm from the wall face; hub reads ${r.reading} mm; ` +
+        `stop began ${r.reactionMs?.toFixed(1)} ms after the reading went below ${THRESHOLD_MM} mm (budget ${r.budgetMs.toFixed(1)}), ` +
+        `ran on ${r.overrunM === null ? '-' : (r.overrunM * 100).toFixed(2)} cm (bound ${r.overrunBoundM === null ? '-' : (r.overrunBoundM * 100).toFixed(2)}: ` +
+        `${r.vCross?.toFixed(3)} m/s at the crossing, braking ${(r.brake.brakeM * 100).toFixed(2)} cm)` +
+        (r.failures.length ? `; ${r.failures.join('; ')}` : '');
 
     test('the example program is the one the pane offers for the Wall stopper on the Wall mat', () => {
         assert.equal(ENTRY.example, 'wall-stopper.bw');
@@ -138,36 +161,46 @@ if (!existsSync(missing)) {
         assert.match(PROGRAM, /wait until \(spike distance D\) < 10/);
     });
 
-    test('the example program stops the Wall stopper 8–12 cm before the wall without touching it', async t => {
-        const result = await run(PROGRAM);
+    test('the braking bound comes from the catalogue and the model: the shorted motors, the robot\'s mass, no skid', () => {
+        const {mechanism, model} = prepareModel(MODEL_TEXT, CATALOG, {mat: ENTRY.mat});
+        const brake = brakingBound(mechanism, {speedPercent: speedOf(PROGRAM), hubBody: hubBodyOf(model, mechanism, CATALOG)});
+        // 30 % of the medium motor's 1110 °/s on a 28 mm tyre; back-EMF damping only (no ramp: D5).
+        assert.ok(brake.speedMps > 0.15 && brake.speedMps < 0.17, JSON.stringify(brake));
+        assert.ok(brake.noSlip, `the brake would skid the tyres: ${JSON.stringify(brake)}`);
+        assert.ok(brake.brakeM > 0.005 && brake.brakeM < 0.02, `braking distance ${brake.brakeM} m: ${JSON.stringify(brake)}`);
+    });
+
+    test('the example program stops the Wall stopper because of the reading, without touching the wall', async t => {
+        const {result, r} = await runJudged(PROGRAM);
         assert.deepEqual(result.issues, []);
         assert.deepEqual(result.run.unsupported, [], 'every command the program sent was understood by the hub');
         assert.ok(result.run.calls.get('getDistance') > 10 && result.run.calls.get('stopMovement') === 1,
             `the program read the sensor and stopped: ${JSON.stringify([...result.run.calls])}`);
-        const r = judge(result);
         t.diagnostic(report(r));
         // It started far away and drove: the wall was more than half a metre ahead at t = 0.
         assert.ok(r.faceX - result.track[0].points.D[0] > 0.5, 'the robot starts well away from the wall');
         assert.ok(r.settled, 'the robot has come to rest');
-        assert.ok(r.closestGap > 0, `the robot touched the wall (closest ${r.closestGap} m)`);
-        assert.ok(r.frontGap >= NEAR_M && r.frontGap <= FAR_M, `front ${r.frontGap} m from the wall`);
-        assert.ok(r.rayGap >= NEAR_M && r.rayGap <= FAR_M, `ray origin ${r.rayGap} m from the wall`);
+        assert.deepEqual(r.failures, [], report(r));
+        assert.ok(r.ok);
     });
 
-    test('the judge can fail: a 1 cm threshold stops too close (the sensor reads nothing under 5 cm)', async t => {
+    test('the judge can fail: a 1 cm threshold stops too late (the sensor reads nothing under 5 cm)', async t => {
         const close = PROGRAM.replace('(spike distance D) < 10', '(spike distance D) < 1');
         assert.notEqual(close, PROGRAM);
-        const r = judge(await run(close));
+        const {r} = await runJudged(close);
         t.diagnostic(`threshold 1 cm: ${report(r)}`);
-        assert.ok(!(r.frontGap >= NEAR_M && r.frontGap <= FAR_M), `a 1 cm threshold still stopped ${r.frontGap} m out`);
+        assert.equal(r.ok, false, `a 1 cm threshold passed the judge: ${report(r)}`);
+        assert.ok(r.failures.some(f => f.startsWith('(b)')), `not judged late: ${report(r)}`);
+        assert.ok(r.rayGap < 0.06, `a 1 cm threshold stopped ${r.rayGap} m out`);
     });
 
     test('the judge can fail: a threshold the reading never passes drives into the wall', async t => {
         const blind = PROGRAM.replace('(spike distance D) < 10', '(spike distance D) < 0');
         assert.notEqual(blind, PROGRAM);
-        const r = judge(await run(blind));
+        const {r} = await runJudged(blind);
         t.diagnostic(`threshold 0 cm: ${report(r)}`);
+        assert.equal(r.ok, false);
         assert.ok(r.closestGap <= 0.001, `the blind program kept ${r.closestGap} m off the wall`);
-        assert.ok(!(r.frontGap >= NEAR_M && r.frontGap <= FAR_M));
+        assert.ok(r.failures.some(f => f.startsWith('(a)')), report(r));
     });
 }

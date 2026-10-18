@@ -21,7 +21,8 @@
  * Every sensor's ray origin is carried the same way (`points`, by port), next
  * to what the hub reads on that port (`readings`), and every robot body's pose
  * is kept (`bodies`, by body id: every dynamic body, a world load too) for judges that
- * need the whole robot, with every hinge's and slider's state (`joints`, by joint id).
+ * need the whole robot, with every hinge's and slider's state (`joints`, by joint id) and
+ * whether the hub's controller is driving each motor port (`busy`, by port).
  */
 import {readFileSync} from 'node:fs';
 import path from 'node:path';
@@ -101,10 +102,13 @@ export async function runOnSimLab (source, {modelText, mat = null, timeLimitMs, 
                     const p = session.core.bodyPose(id);
                     bodies[id] = {position: [...p.position], rotation: [...p.rotation]};
                 }
+                // Which motor ports the hub's controller is driving (hubState.motors.busy: speed, position, time).
+                const busy = {};
+                for (const a of mechanism.actuators || []) busy[a.port] = hub.motors.busy(a.port);
                 const joints = {};
                 for (const j of mechanism.joints) if (j.type === 'hinge' || j.type === 'slider') joints[j.id] = {...session.core.jointState(j.id)};
                 track.push({t: session.time, axle: carried(axle0), sensor: sensor ? carried(sensor.origin) : null,
-                    reflection: reading.reflection, color: reading.color, points, readings, bodies, joints});
+                    reflection: reading.reflection, color: reading.color, points, readings, bodies, joints, busy});
                 return stopWhen && stopWhen(track) ? {status: 'done'} : running;
             }
         };
