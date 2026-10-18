@@ -129,7 +129,6 @@ WHEN flag clicked:
     wait 0.5 seconds
     IF (spike distance D) > 25 THEN:
       move forward 30 cm
-      wait 1.5 seconds
     ELSE:
       # Left is a wall. Face ahead again and take a reading.
       reset yaw
@@ -139,7 +138,6 @@ WHEN flag clicked:
       wait 0.5 seconds
       IF (spike distance D) > 25 THEN:
         move forward 30 cm
-        wait 1.5 seconds
       ELSE:
         # Ahead is a wall too. Face right and take a reading.
         reset yaw
@@ -149,7 +147,6 @@ WHEN flag clicked:
         wait 0.5 seconds
         IF (spike distance D) > 25 THEN:
           move forward 30 cm
-          wait 1.5 seconds
         ELSE:
           # Only the way back is open: face it and drive.
           reset yaw
@@ -158,7 +155,6 @@ WHEN flag clicked:
           stop movement
           wait 0.5 seconds
           move forward 30 cm
-          wait 1.5 seconds
   # Home: the floor is green. Stop, light the hub and beep.
   stop movement
   set center button light to green
