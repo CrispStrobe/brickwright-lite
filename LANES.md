@@ -5767,8 +5767,14 @@ Failure-only v2 additionally retains bounded exact event bytes and has a standal
 reader that joins them against external pins; 65 embedded Python controls pass.
 Successful inventory/actual formats and positive executable size checks stay held.
 Metadata-only v3 now has a separately typed empty Python-source map and standalone
-original reader; 74 Python controls and 17 targeted mutations pass. Actual v4
-mapping remains pending. The explicit consumer CUI expectation now follows main
+original reader; that checkpoint passed 74 Python controls and 17 targeted mutations.
+The next source candidate adds explicit actual v4 typed-source mapping, a separately
+named prior-observation reference and before/after EOF/hash/identity/close checks.
+The candidate passes 63 Node tests including 80 embedded Python controls; the
+74 earlier Python test bodies and legacy v3 packet verdict remain unchanged;
+22 source mutations and eight independent packet counterexamples are detected.
+Actual activation and clean browser/guest qualification remain pending.
+The explicit consumer CUI expectation now follows main
 PR1066 at `fe89e3425bf323b1acd9e3f98df6a7383e9b836b`; no dependency writer changed.
 
 
