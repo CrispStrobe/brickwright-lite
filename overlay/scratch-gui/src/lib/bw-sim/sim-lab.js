@@ -27,6 +27,7 @@ export {snapCandidates} from './editor/snap.js';
 export {paletteFrom, searchPalette, pushRecent, partNumber} from './editor/palette.js';
 export {createPartThumbnails} from './view/part-thumbnails.js';
 export {serializeModel, parseModel} from './model/ldraw-model.js';
+export {openModelFile, saveModelFile, mergeImportIssues, OPEN_ACCEPT, SAVE_FORMATS} from './model/model-file.js';
 export {modelInsight, insightOf, portItems, runBlockers} from './mech/insight.js';
 export {parseLDConfig} from './view/ldraw-colors.js';
 export {MATS, createMat, ovalCentreAt, distanceToOvalCentre} from './world/mats.js';
