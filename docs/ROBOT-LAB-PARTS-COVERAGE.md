@@ -114,13 +114,13 @@ kept as they are; every difference is explained below (a derived connector the h
 | axle | 15 |
 | pin | 18 |
 | connector | 33 |
-| gear | 10 |
+| gear | 14 |
 | brick | 49 |
 | plate | 47 |
 | tile | 17 |
 | slope | 18 |
-| other | 8 |
-| **total** | **242** (and 56 listed parts already measured by hand) |
+| other | 12 |
+| **total** | **250** (and 56 listed parts already measured by hand) |
 
 <details><summary>Every derived part</summary>
 
@@ -220,6 +220,10 @@ kept as they are; every difference is explained below (a derived connector the h
 | 6592.dat | Technic gear rack 1 x 10 with holes | gear | 1.83 | 2 pinhole, 1 rack-teeth | 1 |
 | 32132.dat | Technic gear rack 1 x 12 with holes | gear | 2.19 | 2 pinhole, 1 rack-teeth | 17 |
 | 32185.dat | Technic gear rack 1 x 14 with holes | gear | 2.5500000000000003 | 2 pinhole, 1 rack-teeth | 1 |
+| 99009.dat | Technic turntable 28 tooth bottom | gear | 1.29 | 1 turntable-race | 4 |
+| 99010.dat | Technic turntable 28 tooth top | gear | 1.8 | 1 turntable-ring | 4 |
+| 18939.dat | Technic turntable 60 tooth bottom | gear | 5.3500000000000005 | 1 turntable-race | 3 |
+| 18938.dat | Technic turntable 60 tooth top | gear | 8.15 | 1 turntable-ring | 4 |
 | 62520.dat | Technic universal joint 3L end | connector | 0.19 | 1 axlehole | 1 |
 | 3712.dat | Technic universal joint 4L end with bush end | connector | 0.29 | 1 axlehole | 1 |
 | 575.dat | Technic universal joint 4L end with slotted end | connector | 0.37 | 1 axlehole | 1 |
@@ -368,6 +372,10 @@ kept as they are; every difference is explained below (a derived connector the h
 | 43723a.dat | Wing 2 x 3 left without chamfer | other | 0.78 | 3 stud, 5 antistud | 2 |
 | 32190.dat | Technic panel fairing #1 | other | 3.7800000000000002 | 4 pinhole | 1 |
 | 32191.dat | Technic panel fairing #2 | other | 3.7800000000000002 | 4 pinhole | 1 |
+| 92693c01.dat | Technic linear actuator 4 x 1 x 1 body assembly | other | 1.53 | 4 pinhole, 1 la-bore, 1 screw-bearing | 5 |
+| 92695.dat | Technic linear actuator 4 x 1 x 1 axle actuator | other | 0.28 | 1 axle, 1 screw-spindle | 2 |
+| 92696.dat | Technic linear actuator 4 x 1 x 1 piston | other | 0.38 | 1 pinhole, 1 la-rod, 1 screw-nut | 2 |
+| 24120.dat | Technic excavator bucket 4 x 5 | other | 9.38 | 3 pinhole | 7 |
 
 </details>
 
@@ -395,10 +403,6 @@ Listed parts the deriver could not admit, with the reason. They are not in parts
 | 32198b.dat | Technic Gear 20 Tooth Bevel with Four Axlehole Slots | x0: a 7 LDU axlehole is shallower than the seat rule's 8 LDU |
 | 27938.dat | Technic Worm Gear 1L | worm pitch radius 15.47: does not mesh a 24T 40 LDU away |
 | 87761.dat | Technic Gear Rack 1 x 7 with Pegholes and Axleholes | a gear-category part without derivable gear data (no clean rack teeth or worm thread; crown, clutch, turntable, knob) |
-| 99009.dat | Technic Turntable 28 Tooth Bottom | a gear-category part without derivable gear data (no clean rack teeth or worm thread; crown, clutch, turntable, knob) |
-| 99010.dat | Technic Turntable 28 Tooth Top | a gear-category part without derivable gear data (no clean rack teeth or worm thread; crown, clutch, turntable, knob) |
-| 18939.dat | Technic Turntable 60 Tooth Bottom | a gear-category part without derivable gear data (no clean rack teeth or worm thread; crown, clutch, turntable, knob) |
-| 18938.dat | Technic Turntable 60 Tooth Top | a gear-category part without derivable gear data (no clean rack teeth or worm thread; crown, clutch, turntable, knob) |
 | 48452.dat | Technic Turntable Type 2 Base | a gear-category part without derivable gear data (no clean rack teeth or worm thread; crown, clutch, turntable, knob) |
 | 48168.dat | Technic Turntable Type 2 Top | a gear-category part without derivable gear data (no clean rack teeth or worm thread; crown, clutch, turntable, knob) |
 | 62519.dat | Technic Universal Joint 3L Centre | no connector found |
@@ -413,7 +417,7 @@ other; a clutch gear slips); racks and worms are derived when their teeth measur
 
 ## Size
 
-parts.json is 1122351 bytes as written (one-space JSON) and 511384 bytes minified (39962 gzipped) in
+parts.json is 1181794 bytes as written (one-space JSON) and 530950 bytes minified (41839 gzipped) in
 the lazy Sim Lab chunk. If the library grows by another few hundred parts, split it: keep the hand-measured parts (motors, hub,
 sensors, the examples' parts) in parts.json and move the derived ones to a second file the palette fetches on first open.
 
