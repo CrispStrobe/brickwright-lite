@@ -5753,6 +5753,14 @@ Implement only after this ownership amendment qualifies and merges.
 
 ## 386 GUI HDD and forward-debug hosted acceptance — 2026-10-16
 
+The first metadata run [39106669518](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39106669518)
+failed on its required Droid font configuration; its sole original is already
+acquired. Do not repeat it or infer a runtime candidate. Subsequent owned source
+fixes wait for real GUI state commits and retain bounded failure-only inventory
+diagnostics. Required files, successful schemas and actual guards remain held.
+The matching guide scopes the distinct diagnostic selection and later affected
+browser/guest qualification; source controls alone cannot satisfy that gate.
+
 SOURCE IMPLEMENTED; ACTUAL PENDING — Codex x86; ownership claim [PR1014](https://github.com/CrispStrobe/brickwright-lite/pull/1014)
 merged before implementation. Serialized after the existing media/debugger lane.
 The existing merged claims cover the source in PR986, PR987 and PR989; their normal local composition
