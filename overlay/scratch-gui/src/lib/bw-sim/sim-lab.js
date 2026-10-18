@@ -9,9 +9,17 @@
 // when it has to run the physics itself (physics/jolt-core.js loadJolt).
 // Bundling parts.json here is the one place a JSON module is imported; the
 // pieces below stay loadable by node --test on their own.
+//
+// The catalogue comes in two pieces (webpack.config.js's parts-subset-loader):
+// `?core`, the hand-made parts — every shipped model, the motors, hubs and
+// sensors — rides in this chunk; `?derived`, the 200-odd System and Technic parts
+// scripts/derive-part-meta.mjs measured from LDraw, is its own chunk
+// ("bw-sim-parts"), fetched when Build (the palette) first opens or a model names
+// a part the core lacks (catalogFor). Both land in the one CATALOG Map.
 
-import PARTS from './part-meta/parts.json';
+import CORE_PARTS from './part-meta/parts.json?core';
 import {catalogFrom} from './sim-session.js';
+import {createLazyCatalog} from './model/lazy-catalog.js';
 import {PhysicsClient} from './physics/physics-client.js';
 
 export {SimSession, prepareModel, MODELS, MODELS_BASE, PROGRAMS_BASE} from './sim-session.js';
@@ -37,7 +45,16 @@ export {buildSteps, stepView, partsList} from './instructions/steps.js';
 export {instructionsPrintHtml} from './instructions/print-page.js';
 export {createInstructionsView, INSTRUCTIONS_TESTID, HIGHLIGHT as INSTRUCTIONS_HIGHLIGHT} from './view/instructions-view.js';
 
-export const CATALOG = catalogFrom(PARTS);
+const parts = createLazyCatalog({
+    core: catalogFrom(CORE_PARTS),
+    loadRest: () => import(/* webpackChunkName: "bw-sim-parts" */ './part-meta/parts.json?derived').then(m => catalogFrom(m.default || m))
+});
+/** The part catalogue: the core at first, every part once loadFullCatalog has run (it fills this Map in place). */
+export const CATALOG = parts.catalog;
+/** Loads the rest of the catalogue into CATALOG, once: Build (the palette) calls it when it opens. */
+export const loadFullCatalog = parts.loadFullCatalog;
+/** CATALOG holding every part an LDraw text names (the rest loaded first when one is not in the core). */
+export const catalogFor = parts.catalogFor;
 
 /**
  * Starts physics-worker.js in a Web Worker (webpack emits it as its own chunk, and

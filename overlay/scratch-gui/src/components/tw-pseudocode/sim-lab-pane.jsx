@@ -410,7 +410,15 @@ class SimLabPane extends React.Component {
         this.teardown();
         this.teardownEditor();
         this.setState({mode: 'build', status: 'loading', message: '', placing: null, selection: [], buildStatus: {kind: 'idle'}, gizmoMode: 'move', portPicker: null});
-        // Any palette part may be placed, so load the whole catalog's geometry once.
+        // Any palette part may be placed: the whole catalogue (its second piece is fetched the first
+        // time Build opens, sim-lab.js loadFullCatalog), then its geometry, once.
+        try {
+            await this.lib.loadFullCatalog();
+        } catch (error) {
+            if (!this.disposed) this.setState({status: 'failed', message: this.t('failed', {error: error.message})});
+            return;
+        }
+        if (this.disposed) return;
         if (!this.catalogFiles) this.catalogFiles = await fetchLDrawClosure([...CATALOG.keys()], {withConfig: true});
         if (this.disposed) return;
         const {read} = this.catalogFiles;
@@ -780,6 +788,9 @@ class SimLabPane extends React.Component {
         }
         let result;
         try {
+            // A model naming a part beyond the catalogue's core (sim-lab.js) loads the rest first.
+            await this.lib.catalogFor(text);
+            if (token !== this.loadToken || this.disposed) { firmware?.driver.end().catch(() => {}); return; }
             result = await SimSession.fromText(text, {hubState: this.props.hubState, catalog: CATALOG, mat: this.state.mat,
                 worker: this.physicsClient(), ...(firmware ? {createHub: firmware.createHub} : {})});
         } catch (error) {
