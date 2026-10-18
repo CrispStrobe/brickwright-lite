@@ -45,7 +45,11 @@ export const LOCKSTEP_OPS = Object.freeze({
     run: 'renode.spike.run',
     begin: 'renode.spike.lockstep.begin',
     step: 'renode.spike.lockstep.step',
-    end: 'renode.spike.lockstep.end'
+    end: 'renode.spike.lockstep.end',
+    /** One NuttX program packet, answered by the free-running firmware (upload, before begin). */
+    programPacket: 'renode.spike.program.packet',
+    /** START/STOP that returns at once; the firmware's reply shows in later step snapshots (§2.6). */
+    programControl: 'renode.spike.program.control.submit'
 });
 
 /** Target capabilities a lockstep session needs (§4 R13b). */
@@ -179,7 +183,9 @@ export const readSnapshot = frame => {
     if (!Number.isSafeInteger(frame.seq) || frame.seq < 0 || !Number.isSafeInteger(frame.clockNs) || frame.clockNs < 0) {
         throw new LockstepContractError('the snapshot has no valid seq/clockNs');
     }
-    if (!Array.isArray(frame.ports) || !frame.ports.every(p => isPlain(p) && PORTS.includes(p.id) && typeof p.attached === 'boolean' && typeof p.kind === 'string')) {
+    // An empty port reports `kind: null` (the Runtime's state service: port F of the default topology).
+    if (!Array.isArray(frame.ports) || !frame.ports.every(p => isPlain(p) && PORTS.includes(p.id) && typeof p.attached === 'boolean' &&
+        (typeof p.kind === 'string' || (p.kind === null && !p.attached)))) {
         throw new LockstepContractError('the snapshot has no valid ports[]');
     }
     if (!Array.isArray(frame.motors)) throw new LockstepContractError('the snapshot has no motors[]');
