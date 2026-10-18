@@ -29,10 +29,12 @@ const edgesBetween = (parts, a, b) => buildGraph({version: 1, parts}, CATALOG).e
     .map(e => `${e.a.part}.${e.a.connector}<-${e.b.part}.${e.b.connector}:${e.kind}`);
 
 test('the rule\'s threshold sits between a face contact and the shortest real seat', () => {
-    // Shortest hole in the catalogue (thin liftarm, half bush, bevel gear hub): 10 LDU.
+    // Shortest hole in the catalogue: a Technic plate's, through its 8 LDU (3.2 mm) thickness
+    // (the thin liftarm, half bush and bevel gear hub are 10). The part deriver
+    // (scripts/derive-part-meta.mjs selfCheck) admits no shallower hole.
     const shortest = Math.min(...[...CATALOG.values()].flatMap(m => m.connectors)
         .filter(c => c.type === 'pinhole' || c.type === 'axlehole').map(c => c.length));
-    assert.equal(shortest, 10);
+    assert.equal(shortest, 8);
     assert.ok(MIN_ENGAGE_LDU > 0.5 && MIN_ENGAGE_LDU <= shortest);
 });
 
