@@ -6580,3 +6580,22 @@ A source-only reproduction found Stop during the final sample could still accept
 a header. The receiver now rechecks Stop after callbacks and final readback; bounded
 original bytes remain partial. A runtime cut removing these boundary checks
 reproduces the stale acceptance. No actual app or G02 lifecycle claim follows.
+
+The unwired transaction core now requires preparation after installation and
+before launch. A returned opaque context is passed unchanged to observation and
+released once, including late or null returns, primary failures and interrupts.
+The preparation callback owns any resources it acquires before raising; the core
+cannot release an object it never received. Preparation has a 15 s cooperative
+return fence; release is attempted even with a broken clock and checked against
+a separate 5 s return fence when possible. Release errors stay separate from the
+primary failure, and bounded observation bytes remain retained. These checks do
+not interrupt blocked callbacks or authenticate supplied contexts.
+
+The release runs in a nested finally after device cleanup, so an interrupt from
+device cleanup still closes the returned context. An interrupt can still leave
+device cleanup incomplete; it is propagated, not reported as successful cleanup.
+Focused controls join this hook to the actual file-descriptor receiver on owned
+files with an authored launch and process samples. They detect omitted preparation,
+late-return fencing and release. There is still no workflow caller, real container
+resolver, admitted launch environment or Darwin sampler. Actual platform/runtime/
+namespace/resource admission and candidate-bound observation remain prerequisites.

@@ -690,7 +690,7 @@ jobs:
               print('iOS runtime candidate recorded; app launch remains refused')
 
 
-          def owned_simulator_transaction(plan, invoke, observe, now=time.monotonic):
+          def owned_simulator_transaction(plan, invoke, observe, now=time.monotonic, *, prepare, release):
               """Unwired transaction core. Adapters must enforce command/observation bounds.
 
               Supplied admission fields are not authenticated capabilities. No workflow phase
@@ -701,6 +701,7 @@ jobs:
               keys = {'schema', 'runtimeIdentifier', 'deviceTypeIdentifier', 'name', 'bundleIdentifier',
                       'appPath', 'sourceSHA256', 'executableSHA256', 'runtimeArchitectureAdmitted',
                       'deviceModelAdmitted', 'processEnvelopeAdmitted'}
+              need(all(callable(callback) for callback in (invoke, observe, now, prepare, release)))
               need(type(plan) is dict and plan.keys() == keys)
               plan = dict(plan)  # Caller mutation during an adapter call cannot retarget ownership.
               need(plan['schema'] == 'brickwright.ios-owned-simulator-plan.v1')
@@ -717,11 +718,13 @@ jobs:
                    'deviceModelAdmitted', 'processEnvelopeAdmitted')))
               limits = {'activeSeconds': 90, 'cleanupSeconds': 20, 'commandSeconds': 15,
                         'maxActiveCommands': 32, 'maxCleanupCommands': 8,
-                        'commandBytes': 1024*1024, 'receiptBytes': 8*1024*1024, 'observationSeconds': 30}
+                        'commandBytes': 1024*1024, 'receiptBytes': 8*1024*1024, 'observationSeconds': 30,
+                        'preparationSeconds': 15, 'releaseSeconds': 5}
               result = {'schema': 'brickwright.ios-owned-simulator-transaction.v1', 'status': 'partial',
                         'primaryFailure': None, 'cleanupFailures': [], 'trace': [], 'limits': limits.copy(),
                         'creationAttempted': False, 'ownershipEstablished': False, 'creationUncertain': False,
                         'observationRetained': False, 'cleanupAbsenceObserved': False,
+                        'preparationReturned': False, 'preparationReleased': False,
                         'suppliedAdmissionAuthenticated': False, 'callbackBoundsQualified': False,
                         'resourceLifetimeQualified': False, 'actualAppQualified': False}
               last = None
@@ -773,6 +776,8 @@ jobs:
               boot_attempted = False
               launch_attempted = False
               observation = None
+              prepared = None
+              preparation_returned = False
               stage = 'initial-catalog'
               def verify(cleanup=False):
                   rows = catalog(cleanup)
@@ -817,6 +822,19 @@ jobs:
                   need(verify()['state'] == 'Booted')
                   stage = 'install'
                   operation('install', plan['appPath'])
+                  stage = 'prepare-observation'
+                  need(verify()['state'] == 'Booted')
+                  current = tick()
+                  need(current < deadline)
+                  preparation_deadline = min(deadline, current+limits['preparationSeconds'])
+                  # Adapter discovers the installed containers and prepares an absent output
+                  # here, BEFORE launch. It owns cleanup if it raises before returning.
+                  prepared = prepare(owned, deadline=preparation_deadline,
+                                     output_limit=limits['receiptBytes'])
+                  preparation_returned = True
+                  result['preparationReturned'] = True
+                  need(prepared is not None and tick() < preparation_deadline)
+                  result['trace'].append('prepared-before-launch')
                   stage = 'launch'
                   launch_attempted = True
                   raw = operation('launch', plan['bundleIdentifier'])
@@ -829,7 +847,7 @@ jobs:
                   # Adapter owns environment binding, installed-code/readback, PID/RSS checks,
                   # bounded waiting and original retention; this core cannot invent those facts.
                   observation_deadline = min(deadline, current+limits['observationSeconds'])
-                  observation = observe(owned, int(match[1]), deadline=observation_deadline,
+                  observation = observe(owned, int(match[1]), prepared=prepared, deadline=observation_deadline,
                                         output_limit=limits['receiptBytes'])
                   need(type(observation) is bytes and 0 < len(observation) <= limits['receiptBytes'])
                   result['observationRetained'] = True
@@ -840,25 +858,41 @@ jobs:
                   result['primaryFailure'] = stage  # No exception payload, args, paths, UUIDs or device names.
               finally:
                   result['creationUncertain'] = result['creationAttempted'] and not result['ownershipEstablished']
-                  if owned is not None:
-                      try:
-                          deadline = tick() + limits['cleanupSeconds']
-                      except Exception:
-                          result['cleanupFailures'].append('cleanup-clock')
-                      for command, arguments, required in (
-                              ('terminate', (plan['bundleIdentifier'],), launch_attempted),
-                              ('shutdown', (), boot_attempted), ('delete', (), True)):
-                          if required:
+                  try:
+                      if owned is not None:
+                          try:
+                              deadline = tick() + limits['cleanupSeconds']
+                          except Exception:
+                              result['cleanupFailures'].append('cleanup-clock')
+                          for command, arguments, required in (
+                                  ('terminate', (plan['bundleIdentifier'],), launch_attempted),
+                                  ('shutdown', (), boot_attempted), ('delete', (), True)):
+                              if required:
+                                  try:
+                                      operation(command, *arguments, cleanup=True)
+                                      result['trace'].append(command)
+                                  except Exception:
+                                      result['cleanupFailures'].append(command)
+                          try:
+                              need(owned not in catalog(cleanup=True))
+                              result['cleanupAbsenceObserved'] = True
+                          except Exception:
+                              result['cleanupFailures'].append('absence-readback')
+                  finally:
+                      if preparation_returned:
+                          # Close the returned context exactly once, including None/late values.
+                          # Device cleanup runs first, so a release interrupt cannot skip it.
+                          try:
                               try:
-                                  operation(command, *arguments, cleanup=True)
-                                  result['trace'].append(command)
+                                  release_deadline = tick() + limits['releaseSeconds']
                               except Exception:
-                                  result['cleanupFailures'].append(command)
-                      try:
-                          need(owned not in catalog(cleanup=True))
-                          result['cleanupAbsenceObserved'] = True
-                      except Exception:
-                          result['cleanupFailures'].append('absence-readback')
+                                  release_deadline = None
+                              value = release(prepared)  # Must close even if the clock is broken.
+                              need(value is None)
+                              result['preparationReleased'] = True
+                              need(release_deadline is not None and tick() < release_deadline)
+                          except Exception:
+                              result['cleanupFailures'].append('preparation-release')
               result['activeCommands'] = counts[0]
               result['cleanupCommands'] = counts[1]
               if result['primaryFailure'] is None and not result['cleanupFailures'] and result['observationRetained']:

@@ -161,8 +161,19 @@ Next actions and completion criteria:
    after the final sample. Stop is rechecked after callbacks and final readback, so
    a request during those boundaries keeps the capture partial. No workflow caller,
    process sampler or launch-environment
-   binding is supplied by this receiver. A pre-launch preparation hook, actual
-   container/code/PID bindings and independent runtime-image admission remain open.
+   binding is supplied by this receiver. The transaction core now requires a
+   preparation callback after installation and before launch, passes its opaque
+   context to observation, and releases each returned context once. A 15 s
+   preparation return fence refuses late preparation; release is attempted even
+   with a broken clock and has a separate 5 s cooperative return check. Preparation
+   adapters must clean their own partial acquisition if they raise before returning.
+   Release failures remain separate, and a nested finally preserves release when
+   device cleanup is interrupted. An interrupt may leave device cleanup incomplete;
+   no callback interruption or containment is claimed. Owned-file controls join the
+   actual receiver to an authored launch, without observing an Apple app.
+   The real preparation adapter still needs container discovery, installed-code
+   joins and admitted launch environment; actual PID/process bindings and independent
+   runtime-image admission remain open. No workflow phase calls this core.
 
    Next, independently join the complete retained source/web/configuration/toolchain/
    executable and official job/artifact identities. Distinguish referenced codegen

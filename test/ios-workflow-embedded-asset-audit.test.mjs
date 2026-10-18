@@ -365,6 +365,7 @@ test('runtime mutations demonstrate build and simulator-platform guards are live
 const lifecycleControls = String.raw`
 import copy
 import unittest
+import math
 NEW = '11111111-1111-1111-1111-111111111111'
 OLD = '22222222-2222-2222-2222-222222222222'
 RUNTIME = 'com.apple.CoreSimulator.SimRuntime.iOS-18-0'
@@ -379,6 +380,7 @@ class World:
         self.time=0.;self.commands=[];self.fail=set();self.after_fail=set();self.created=NEW
         self.devices={OLD:{'udid':OLD,'name':'AUTHORED-OTHER-DEVICE','deviceTypeIdentifier':TYPE,'state':'Booted','isAvailable':True}}
         self.observer=lambda:RAW;self.bad_create=None;self.huge=False
+        self.context=object();self.preparations=[];self.releases=[];self.preparer=lambda:self.context;self.releaser=lambda:None
     def now(self):return self.time
     def invoke(self,args,*,deadline,output_limit):
         assert self.time < deadline and output_limit==1024*1024
@@ -400,16 +402,26 @@ class World:
             else:assert op in ('bootstatus','install','terminate')
         if op in self.after_fail:raise RuntimeError('AUTHORED-PRIVATE-ERROR-AFTER-EFFECT')
         return value
-    def observe(self,device,pid,*,deadline,output_limit):
+    def prepare(self,device,*,deadline,output_limit):
+        assert device==NEW and self.time<deadline and output_limit==8*1024*1024
+        assert 'install' in self.ops() and 'launch' not in self.ops()
+        self.preparations.append(device);return self.preparer()
+    def release(self,prepared):
+        assert 'delete' in self.ops() or self.after_fail or self.fail or self.time<0 or not math.isfinite(self.time) or self.devices[NEW]['name']!=PLAN['name']
+        self.releases.append(prepared);return self.releaser()
+    def observe(self,device,pid,*,prepared,deadline,output_limit):
         assert device==NEW and pid==1234 and self.time<deadline and output_limit==8*1024*1024
+        assert prepared is self.context
         return self.observer()
     def run(self,fn=owned_simulator_transaction,plan=None):
-        return fn(copy.deepcopy(PLAN) if plan is None else plan,self.invoke,self.observe,self.now)
+        return fn(copy.deepcopy(PLAN) if plan is None else plan,self.invoke,self.observe,self.now,prepare=self.prepare,release=self.release)
     def ops(self):return [a[0] for a in self.commands]
 class LifecycleControls(unittest.TestCase):
     def test_normal_transaction_keeps_other_device_and_limited_claims(self):
         w=World();old=copy.deepcopy(w.devices[OLD]);r,raw=w.run()
         self.assertEqual(r['status'],'observed-transaction-only');self.assertEqual(raw,RAW)
+        self.assertEqual(w.preparations,[NEW]);self.assertEqual(w.releases,[w.context])
+        self.assertTrue(r['preparationReturned']);self.assertTrue(r['preparationReleased'])
         self.assertEqual(r['observationSHA256'],hashlib.sha256(RAW).hexdigest())
         self.assertEqual(w.devices,{OLD:old});self.assertTrue(r['cleanupAbsenceObserved'])
         self.assertLessEqual(r['activeCommands'],32);self.assertEqual(r['cleanupCommands'],7)
@@ -501,6 +513,83 @@ class LifecycleControls(unittest.TestCase):
         w.observer=interrupt
         with self.assertRaises(KeyboardInterrupt):w.run()
         self.assertNotIn(NEW,w.devices);self.assertIn(OLD,w.devices)
+    def test_preparation_refuses_launch_on_failure_none_or_late_return(self):
+        for mode in ('raise','none','late'):
+            w=World()
+            def prepare():
+                if mode=='raise':raise ValueError('AUTHORED-PRIVATE-PREPARE')
+                if mode=='none':return None
+                w.time=16.;return w.context
+            w.preparer=prepare;r,raw=w.run()
+            self.assertEqual(r['primaryFailure'],'prepare-observation');self.assertIsNone(raw)
+            self.assertNotIn('launch',w.ops());self.assertTrue(r['cleanupAbsenceObserved'])
+            self.assertEqual(w.releases,[] if mode=='raise' else [None if mode=='none' else w.context])
+    def test_preparation_interrupt_cleanup_and_returned_context_release(self):
+        w=World()
+        def interrupt():raise KeyboardInterrupt()
+        w.preparer=interrupt
+        with self.assertRaises(KeyboardInterrupt):w.run()
+        self.assertNotIn(NEW,w.devices);self.assertEqual(w.releases,[])
+        w=World();w.observer=interrupt
+        with self.assertRaises(KeyboardInterrupt):w.run()
+        self.assertNotIn(NEW,w.devices);self.assertEqual(w.releases,[w.context])
+        w=World();w.releaser=interrupt
+        with self.assertRaises(KeyboardInterrupt):w.run()
+        self.assertNotIn(NEW,w.devices);self.assertEqual(w.releases,[w.context])
+        w=World();original=w.invoke
+        def cleanup_interrupt(args,**kwargs):
+            raw=original(args,**kwargs)
+            if args[0]=='delete':raise KeyboardInterrupt()
+            return raw
+        w.invoke=cleanup_interrupt
+        with self.assertRaises(KeyboardInterrupt):w.run()
+        self.assertNotIn(NEW,w.devices);self.assertEqual(w.releases,[w.context])
+    def test_release_failure_lateness_and_bad_clock_preserve_context_and_primary(self):
+        for mode in ('raise','late','return'):
+            w=World()
+            def release():
+                if mode=='raise':raise RuntimeError('AUTHORED-PRIVATE-RELEASE')
+                if mode=='late':w.time+=6
+                return 1 if mode=='return' else None
+            w.releaser=release;r,raw=w.run()
+            self.assertEqual(r['status'],'partial');self.assertEqual(raw,RAW)
+            self.assertEqual(r['cleanupFailures'],['preparation-release']);self.assertEqual(w.releases,[w.context])
+            self.assertTrue(r['cleanupAbsenceObserved'])
+        w=World()
+        def broken():w.time=float('nan');raise ValueError('AUTHORED-PRIVATE-OBSERVE')
+        w.observer=broken;r,raw=w.run()
+        self.assertEqual(r['primaryFailure'],'observe');self.assertIsNone(raw)
+        self.assertEqual(w.releases,[w.context]);self.assertIn('preparation-release',r['cleanupFailures'])
+    def test_preparation_and_release_callbacks_are_required_before_mutation(self):
+        w=World()
+        for key in ('prepare','release'):
+            callbacks={'prepare':w.prepare,'release':w.release};callbacks[key]=None
+            with self.assertRaises(ValueError):owned_simulator_transaction(copy.deepcopy(PLAN),w.invoke,w.observe,w.now,**callbacks)
+        self.assertEqual(w.commands,[])
+    def test_preparation_cannot_retarget_the_frozen_plan(self):
+        w=World();plan=copy.deepcopy(PLAN)
+        def prepare():plan['bundleIdentifier']='other.app';plan['name']='OTHER';return w.context
+        w.preparer=prepare;r,raw=w.run(plan=plan)
+        self.assertEqual(r['status'],'observed-transaction-only')
+        self.assertIn(('launch',NEW,PLAN['bundleIdentifier']),w.commands)
+        self.assertIn(('terminate',NEW,PLAN['bundleIdentifier']),w.commands)
+    def test_runtime_mutants_expose_missing_preparation_and_release(self):
+        source=SOURCE_PREFIX
+        cut="prepared = prepare(owned, deadline=preparation_deadline,\n                           output_limit=limits['receiptBytes'])"
+        self.assertIn(cut,source)
+        namespace={};exec(compile(source.replace(cut,'prepared = object()'),'authored-no-prepare','exec'),namespace)
+        w=World();w.observe=lambda *a,**k:RAW;r,raw=w.run(namespace['owned_simulator_transaction'])
+        self.assertEqual(w.preparations,[]);self.assertEqual(r['status'],'observed-transaction-only')
+        cut='need(prepared is not None and tick() < preparation_deadline)';self.assertIn(cut,source)
+        namespace={};exec(compile(source.replace(cut,'need(prepared is not None)'),'authored-late-prepare','exec'),namespace)
+        w=World()
+        def late():w.time=16.;return w.context
+        w.preparer=late;r,raw=w.run(namespace['owned_simulator_transaction'])
+        self.assertIn('launch',w.ops());self.assertIsNone(r['primaryFailure'])
+        cut='value = release(prepared)';self.assertIn(cut,source)
+        namespace={};exec(compile(source.replace(cut,'value = None'),'authored-no-release','exec'),namespace)
+        w=World();r,raw=w.run(namespace['owned_simulator_transaction'])
+        self.assertEqual(w.releases,[]);self.assertTrue(r['preparationReleased'])
     def test_runtime_mutants_expose_identity_guard_and_cleanup_continuation(self):
         source=SOURCE_PREFIX
         cut='need(identifier not in before)';self.assertIn(cut,source)
@@ -511,8 +600,8 @@ class LifecycleControls(unittest.TestCase):
         w.observe=lambda *a,**k:RAW
         r,_=w.run(namespace['owned_simulator_transaction']);self.assertNotIn(OLD,w.devices)
         self.assertTrue(r['ownershipEstablished'])
-        cut="except Exception:\n                        result['cleanupFailures'].append(command)";self.assertTrue(cut in source,'cleanup continuation mutation anchor')
-        namespace={};exec(compile(source.replace(cut,cut+'\n                        break'),'authored-mutant','exec'),namespace)
+        cut="except Exception:\n                            result['cleanupFailures'].append(command)";self.assertTrue(cut in source,'cleanup continuation mutation anchor')
+        namespace={};exec(compile(source.replace(cut,cut+'\n                            break'),'authored-mutant','exec'),namespace)
         w=World();w.fail={'terminate'};r,raw=w.run(namespace['owned_simulator_transaction'])
         self.assertNotIn('delete',w.ops());self.assertFalse(r['cleanupAbsenceObserved']);self.assertEqual(raw,RAW)
 unittest.main(argv=['authored-lifecycle-controls'],verbosity=2)
@@ -530,7 +619,7 @@ test('unwired owned simulator transaction core preserves identity, failures and 
             env: {...process.env, GITHUB_WORKSPACE: dir, RUNNER_TEMP: dir}, encoding: 'utf8', timeout: 15000
         });
         assert.equal(result.status, 0, result.stdout + result.stderr);
-        assert.match(result.stderr, /Ran 16 tests/);
+        assert.match(result.stderr, /Ran 22 tests/);
         assert.match(result.stderr, /OK/);
     } finally { rmSync(dir, {recursive: true, force: true}); }
 });
@@ -721,7 +810,7 @@ class AdapterControls(unittest.TestCase):
             'bundleIdentifier':'com.example.authored','appPath':str(self.root/'Authored.app'),'sourceSHA256':'d'*64,
             'executableSHA256':'e'*64,'runtimeArchitectureAdmitted':True,'deviceModelAdmitted':True,'processEnvelopeAdmitted':True}
         result,raw=owned_simulator_transaction(plan,functools.partial(bounded_simulator_command,device_set=self.directory),
-            lambda *a,**k:b'{"authoredOnly":true}')
+            lambda *a,**k:b'{"authoredOnly":true}',prepare=lambda *a,**k:object(),release=lambda context:None)
         self.assertEqual(result['status'],'observed-transaction-only');self.assertEqual(raw,b'{"authoredOnly":true}')
         self.assertTrue(result['cleanupAbsenceObserved']);self.assertIs(result['actualAppQualified'],False)
         self.assertEqual(json.loads((self.root/'state.json').read_text()),{})
@@ -942,5 +1031,67 @@ test('unwired installed observation receiver binds real file descriptors and sup
         assert.match(result.stderr, /Ran 17 tests/);
         assert.match(result.stderr, /OK/);
         assert.equal((retention.match(/PreparedInstalledObservation\(/g) || []).length, 0, 'no receiver constructor caller');
+    } finally { rmSync(dir, {recursive: true, force: true}); }
+});
+
+const prelaunchJoinControls = String.raw`
+class PrelaunchJoinControls(unittest.TestCase):
+    def test_real_receiver_is_prepared_before_authored_launch_and_released(self):
+        fixture=ReceiverControls();fixture.setUp();before=len(os.listdir('/dev/fd'))
+        try:
+            w=World();events=[];original=w.invoke;captured={}
+            def prepare(device,*,deadline,output_limit):
+                self.assertEqual(device,NEW);self.assertFalse(fixture.target.exists())
+                self.assertIn('install',w.ops());self.assertNotIn('launch',w.ops())
+                events.append('prepare')
+                return PreparedInstalledObservation(fixture.spec,deadline=deadline,now=w.now)
+            def invoke(args,**kwargs):
+                raw=original(args,**kwargs)
+                if args[0]=='launch':events.append('launch');fixture.write()
+                return raw
+            def observe(device,pid,*,prepared,deadline,output_limit):
+                self.assertEqual(events,['prepare','launch'])
+                meta,raw=prepared.capture(pid,'e'*64,fixture.sample,deadline=deadline,output_limit=output_limit,
+                    pause=lambda seconds:setattr(w,'time',w.time+seconds))
+                captured.update(meta);return raw
+            released=[]
+            def release(prepared):
+                self.assertNotIn(NEW,w.devices);released.append(prepared)
+                self.assertEqual(prepared.close(),())
+            result,raw=owned_simulator_transaction(copy.deepcopy(PLAN),invoke,observe,w.now,prepare=prepare,release=release)
+            self.assertEqual(result['status'],'observed-transaction-only');self.assertEqual(len(released),1)
+            self.assertEqual(captured['status'],'captured-header-only');self.assertEqual(raw,fixture.target.read_bytes())
+            self.assertIs(captured['actualAppQualified'],False);self.assertIs(result['actualAppQualified'],False)
+            self.assertEqual(len(os.listdir('/dev/fd')),before)
+        finally:fixture.tearDown()
+    def test_preexisting_output_refuses_before_launch_with_actual_receiver(self):
+        fixture=ReceiverControls();fixture.setUp();before=len(os.listdir('/dev/fd'))
+        try:
+            fixture.target.write_bytes(b'AUTHORED-OLD-OUTPUT');w=World();released=[]
+            def prepare(device,*,deadline,output_limit):
+                return PreparedInstalledObservation(fixture.spec,deadline=deadline,now=w.now)
+            result,raw=owned_simulator_transaction(copy.deepcopy(PLAN),w.invoke,w.observe,w.now,
+                prepare=prepare,release=lambda context:released.append(context))
+            self.assertEqual(result['primaryFailure'],'prepare-observation');self.assertNotIn('launch',w.ops())
+            self.assertEqual(released,[]);self.assertIsNone(raw);self.assertTrue(result['cleanupAbsenceObserved'])
+            self.assertEqual(fixture.target.read_bytes(),b'AUTHORED-OLD-OUTPUT')
+            self.assertEqual(len(os.listdir('/dev/fd')),before)
+        finally:fixture.tearDown()
+unittest.main(argv=['PrelaunchJoinControls'],defaultTest='PrelaunchJoinControls',verbosity=2)
+`;
+
+test('unwired pre-launch hook joins the real receipt receiver before authored launch', () => {
+    const prefix = retention.slice(0, retention.lastIndexOf('\ntry:\n'));
+    const controls = lifecycleControls.replace(/^unittest.main.*$/m, '') + receiverControls.replace(/^unittest.main.*$/m, '') + prelaunchJoinControls;
+    const dir = mkdtempSync(join(tmpdir(), 'bw-ios-prelaunch-join-'));
+    try {
+        const controller = join(dir, 'controls.py');
+        writeFileSync(controller, `${prefix}\nSOURCE_PREFIX = ${JSON.stringify(prefix)}\n${controls}`);
+        const result = spawnSync('/usr/bin/python3', [controller], {
+            env: {...process.env, GITHUB_WORKSPACE: dir, RUNNER_TEMP: dir, TMPDIR: dir}, encoding: 'utf8', timeout: 15000
+        });
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        assert.match(result.stderr, /Ran 2 tests/);
+        assert.match(result.stderr, /OK/);
     } finally { rmSync(dir, {recursive: true, force: true}); }
 });
