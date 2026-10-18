@@ -171,7 +171,10 @@ class Originals(unittest.TestCase):
         self.rejects(cut)
     def test_step_mutation(self):
         def cut(f,e):
-            trace=D(f['forward-debug/forward-trace.json']);trace[5]['regs']['eax']-=1;f['forward-debug/forward-trace.json']=E(trace)
+            trace=D(f['forward-debug/forward-trace.json'])
+            for item in trace[5:]:item['regs']['eax']-=1
+            trace[6]['renderedRegisters']='EAX '+format(trace[5]['regs']['eax'],'08X')+' EDI 89ABCDEF'
+            f['forward-debug/forward-trace.json']=E(trace)
         self.rejects(cut)
     def test_resumed_original_not_retained(self):
         def cut(f,e):
