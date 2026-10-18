@@ -5776,8 +5776,9 @@ The candidate passes 63 Node tests including 80 embedded Python controls; the
 Actual activation and clean browser/guest qualification remain pending.
 A separately guarded font-discovery source continuation now collects bounded
 read-only package, configuration, alias and font-file observations. Its own
-request/original/independent-reader formats remain observation-only; activation
-and workflow delivery are unfinished. The original required roster and missing
+request/original/independent-reader formats remain observation-only. A distinct
+disabled hosted job now delivers that collector; activation and original runtime
+observations remain unfinished. The original required roster and missing
 paths remain held. See the matching guide for selection and qualification gates.
 The explicit consumer CUI expectation now follows main
 PR1066 at `fe89e3425bf323b1acd9e3f98df6a7383e9b836b`; no dependency writer changed.

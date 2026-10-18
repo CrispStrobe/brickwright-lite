@@ -529,8 +529,8 @@ browser/guest qualification. The 34 missing font/configuration inputs remain
 unresolved; no new inventory event or roster change was made.
 
 The separate font-discovery source continuation is disabled by
-`FONT_DISCOVERY_ENABLED = False`; the workflow is unchanged and has no delivery
-job for this mode. Its `bw.gui-hdd.font-discovery-request.v1` pins source21 and
+`FONT_DISCOVERY_ENABLED = False` and a literal false guard on its distinct
+`font-discovery` workflow job. Its `bw.gui-hdd.font-discovery-request.v1` pins source21 and
 embeds the unchanged baseline template. It collects fixed configuration and
 font-directory censuses, held file hash/extent/EOF/identity/close observations,
 raw configuration bytes and at most three read-only `dpkg-query` probes:
@@ -538,6 +538,32 @@ installed packages, path ownership and the selected owners' manifest union.
 The combined manifest output proves union membership only, not individual
 package boundaries. Root-owned nonwritable selected system tools are an explicit
 platform trust boundary; this is not complete tool/runtime attestation.
+
+The new job uses the held Ubuntu 24.04, Node 22.23.3 and action selections.
+A source guard runs before package setup or input retrieval. Setup installs the
+unchanged selected packages and Chromium without building the frontend; it has
+a ten-minute ceiling. A separate one-minute input step uses the existing
+immutable own-repository blob transport. Only that run step receives the API token in its environment.
+The token-free recording step runs isolated Python with a four-minute ceiling
+around the collector's 180-second cooperative budget. The sixteen-minute job
+backstop includes setup and upload; these limits do not prove measured
+sufficiency, syscall preemption or aggregate containment. Existing metadata and
+actual jobs remain unchanged; no new event is enabled by this source delivery.
+
+The delivery controls pass 64 Node tests, including 91 embedded Python controls.
+All 88 earlier Python test bodies remain unchanged. Twenty-six workflow drift
+variants and independent mocked input/event/token counterexamples refuse. The
+Python test wrapper now sends its controls through stdin to avoid the operating
+system's single-argument limit; assertions and timeouts remain unchanged. These
+are source controls, not hosted setup, font-selection or browser qualification.
+
+The upload step runs after failure and retains the outputs actually created:
+guard/setup/input/collector diagnostics, the request when installed, and separate
+process originals when collected. An early refusal does not invent missing
+request or collection evidence. A failure stays a failure. Admit the producing
+job and artifact metadata independently
+before acquiring the original once; do not infer executing workflow identity
+from the source run head or retry a consumed event.
 
 The distinct `bw.gui-hdd.font-discovery-original.v1` preserves partial probe
 streams and the first refusal. Its standalone reader accepts independently
@@ -560,10 +586,15 @@ To audit an admitted discovery original without executing its producer:
 
 A fresh agent can finish this work in the following bounded steps:
 
-1. Review the disabled source, finite caps, selected system tools and externally
-   frozen request. Deliver a distinct guarded metadata job within the existing
-   claimed workflow; independently review its executing workflow SHA, event,
-   source checkout, original roles and resource bounds before activation.
+1. Review the delivered disabled job, finite caps, selected system tools and
+   exact source. Separately review activation, then rebuild the request from
+   that final source head and tree: changing either guard changes source21.
+   Freeze the executing workflow SHA, event, source checkout, original roles
+   and resource bounds before any one-shot metadata event. Repository variables
+   transport selected immutable blob and digest values; they grant no approval.
+   The separate transport names are `BW_GUI_HDD_FONT_DISCOVERY_BLOB` and
+   `BW_GUI_HDD_FONT_DISCOVERY_SHA256`; preserve the previous inventory variables
+   and consumed-event markers.
 2. Admit one official metadata-producing job and acquire its originals once.
    Audit them independently, preserving partial package ownership and all old
    font failures. A discovery result does not approve a successful runtime roster.
