@@ -13,6 +13,66 @@ rule is wired into the `.lxf` importer, and it marks every part it places with a
 Technic, minifigure and decorative parts follow LDD conventions that the geometry does not
 determine, such as which end of an asymmetric part is the origin, and the roll of a pin.
 
+## In plain words: what this is about, and what it is not
+
+**Our part geometry is exact and does not depend on any of this.** Every part's shape,
+holes, studs, axles and pins come from the LDraw `.dat` files themselves (official parts
+carry `0 !LICENSE` CC BY 4.0, older ones CCAL 2.0; both allow use, change and commercial
+use with attribution, which `THIRD-PARTY-NOTICES.md` and the About dialog give as "The
+LDraw Parts Library", the attribution LDraw.org's legal page names as sufficient — see
+<https://www.ldraw.org/legal-info>). Frames, symmetry, mirror pairs and default
+orientations (`bw-sim/part-meta/canonical-frame.js`) are computed from that geometry.
+Inside the Robot Lab a part's origin is bookkeeping only: physics, snapping and
+collisions use the holes, studs and colliders.
+
+**The origin matters only when reading another program's file.** A LEGO Digital Designer
+`.lxf` stores no geometry, only "design 3001 at position p, rotated by R". That p is LDD's
+own origin for 3001, a point LDD's makers chose per part (a 2 × 4 brick: a corner stud
+cell at the bottom; a beam: its end hole; some parts: an inner cell), with axes they also
+chose (which way a bent liftarm or a pin's roll faces). Were it always the mathematical
+centre, it could be computed from the geometry. It is not, so placing an LDD part
+needs LDD's per-part offset — the table `ldraw.xml` holds. This page measured how much of
+that table can be predicted from geometry alone.
+
+**What "rule" and "learned" mean here.** A *rule* is a hand-written guess at LDD's habit
+for a family of parts ("studded parts: origin at the bottom of the first stud cell").
+*Learned* overstates it: the rules were written while looking at a training half of the
+table and then scored, unchanged, on the other half. No machine learning. The 33 % says
+how predictable LDD's conventions are; it says nothing about the correctness of our
+LDraw geometry.
+
+## Later: two better ways to open LDD files (owner, 2026-10-18: do both later)
+
+LDD has been discontinued since about 2022; BrickLink Studio's `.io` (supported) is what
+people use now, so neither is urgent.
+
+1. **Snap to connections (physical facts, no table).** An LDD model is a built model:
+   its parts are connected. Place every part roughly from the file (off by at most a
+   part's own size, since the unknown is only where the origin sits inside the part),
+   then solve each part's pose so its studs sit in the tubes, pins in the holes and
+   axles in the axle holes of its neighbours, using our exact connector geometry
+   (`derive-part-meta.mjs`) and the editor's snap code. Correct for every part the
+   library has; only parts that touch nothing stay approximate (and are flagged). The
+   evaluator here (`scripts/eval-ldd-frames.mjs`) can score it the same way: against
+   `ldraw.xml` as the oracle, locally.
+2. **The user's own `ldraw.xml`.** An "Use my ldraw.xml…" button: the user picks a copy
+   they have, the app reads its rows in the browser for that conversion only and keeps
+   it in the user's local storage; nothing is shipped, uploaded or cached on a server.
+   Where to get one: it is installed with LDD itself (Windows: `%APPDATA%\LEGO Company\LEGO Digital
+   Designer\ldraw.xml`; macOS: `~/Library/Application Support/LEGO Company/LEGO Digital
+   Designer/ldraw.xml`), and LeoCAD publishes a
+   maintained copy at <https://github.com/leozide/leocad/blob/master/resources/ldraw.xml>.
+   Rows from the user's file override the derived rules; the 27-row table stays as the
+   built-in minimum.
+   *Licence view (not legal advice):* the file states no licence, so we must not
+   distribute it — but we would not: the user brings their own copy, the same way LeoCAD
+   and Studio users use the one their LDD installed. Linking to where it is published is
+   not distributing it. What it holds is a table of numeric offsets for interoperability,
+   read locally. The 27 recorded rows in `ldd-parts.js` (numbers only, cited) remain the
+   only figures from it in this repository.
+3. **Already possible today:** LDD 4.3 itself exports LDraw (`File → Export → LDraw`),
+   using its own `ldraw.xml`; the Robot Lab opens that `.ldr` with every library part.
+
 ## The oracle
 
 - `ldraw.xml` from LeoCAD: <https://github.com/leozide/leocad>, file `resources/ldraw.xml`,
