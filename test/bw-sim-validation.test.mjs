@@ -703,10 +703,10 @@ test('stall: a motor arm driven into a fixed obstacle stops at first touch and t
     }
 });
 
-test('self-collision: an arm turned into its own machine\'s frame (the post on the motor housing) is stopped', {
-    todo: 'noCollide is per body: the arm (motor output body) and the post (housing body) are joined by the ' +
-        'motor\'s hinge, so the whole pair never collides and the arm sweeps through its own frame'
-}, async t => {
+test('self-collision: an arm turned into its own machine\'s frame (the post on the motor housing) is stopped', async t => {
+    // The motor's hinge joins the housing body (with the post) and the output body (with the arm). The filter
+    // between them is local (mech/collision-filter.js localNoCollide, jolt-core.js SimShapeFilter): only parts
+    // seated together or kept apart by the turn are excluded; the arm and the post collide.
     const r = await swingArm({mode: 'frame', direction: 1});
     t.diagnostic(`first touch ${r.expected.toFixed(2)}°: arm at ${r.angle.toFixed(2)}° after 3 s, stalled ${r.stalled}`);
     assert.ok(Math.abs(r.angle - r.expected) <= 3, `arm at ${r.angle}° vs first touch ${r.expected}°`);

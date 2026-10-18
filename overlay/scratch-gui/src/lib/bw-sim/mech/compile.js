@@ -14,14 +14,14 @@
 // body roles and the no-collide pairs; the default is the v1 mechanism.
 
 import {validatePlacedModel, validateCompiledMechanism, GROUND_FRICTION, LDU_M, lduToWorld, dirToWorld,
-    partHubProfile, partSensor, portRefOf, withBodyRoles, noCollidePairs, V1_COUPLING_KINDS} from '../contracts.js';
+    partHubProfile, partSensor, portRefOf, withBodyRoles, noCollidePairs, couplingBodyPairs, V1_COUPLING_KINDS} from '../contracts.js';
 import {BUILTIN_KINDS} from '../kinds/index.js';
 import {mat3MulVec3, vecAdd} from './vec.js';
 import {buildGraph} from './graph.js';
 import {buildIslands, freeSpinnerWelds} from './islands.js';
 import {buildJoints} from './joints.js';
 import {buildGears} from './gears.js';
-import {sharedAxisBodyPairs} from './collision-filter.js';
+import {sharedAxisBodyPairs, localNoCollide} from './collision-filter.js';
 import {validateLoad, loadBody} from '../world/objects.js';
 import {quatMul, quatConj} from './vec.js';
 
@@ -399,6 +399,8 @@ export const compile = (model, catalog, opts = {}) => {
     const mechanismV2 = {...mechanism, version: 2, bodies: withBodyRoles(mechanism.bodies), hubs: v2.hubs, actuators: v2.actuators,
         couplings, devices: v2.devices, noCollide: noCollidePairs(joints, couplings, kinds,
             [...seatedBodyPairs(graphEdges, islands), ...sharedAxisBodyPairs(graphEdges, islands)])};
+    const local = localNoCollide(mechanismV2.bodies, joints, mechanismV2.noCollide, couplingBodyPairs(joints, couplings, kinds), graphEdges, islands, nodes);
+    if (local.length) mechanismV2.noCollideParts = local;
     const problemsV2 = validateCompiledMechanism(mechanismV2, {kinds});
     if (problemsV2.length > 0) {
         throw new Error(`compile produced invalid mechanism v2: ${problemsV2.join('; ')}`);

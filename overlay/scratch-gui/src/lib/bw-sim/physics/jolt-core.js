@@ -240,11 +240,14 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     // The pairs that must not collide (D2): one collision group for the whole scene,
     // sub-group = the body's index, and the noCollide pairs disabled in the table.
     // Jolt keeps the filter alive by reference from every body's CollisionGroup.
+    // A pair in `noCollideParts` (mech/collision-filter.js) is filtered PART BY PART instead: it stays
+    // enabled here and the SimShapeFilter below drops only its listed part pairs' sub-shape contacts.
     const bodyIndex = new Map(mechanism.bodies.map((b, i) => [b.id, i]));
+    const localPairs = new Map((mechanism.noCollideParts || []).map(([a, b, parts]) => [`${a}|${b}`, parts]));
     let groupFilter = null;
     if (mechanism.noCollide.length > 0) {
         groupFilter = new J.GroupFilterTable(mechanism.bodies.length);
-        for (const [a, b] of mechanism.noCollide) groupFilter.DisableCollision(bodyIndex.get(a), bodyIndex.get(b));
+        for (const [a, b] of mechanism.noCollide) if (!localPairs.has(`${a}|${b}`)) groupFilter.DisableCollision(bodyIndex.get(a), bodyIndex.get(b));
     }
 
     const bpInterface = new J.BroadPhaseLayerInterfaceTable(NUM_OBJECT_LAYERS, 2);
@@ -418,7 +421,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                     shapeSettings = new J.SphereShapeSettings(col.radius);
                 } else throw new Error(`unknown collider shape ${col.shape}`);
                 if (byMass) shapeSettings.mDensity = col.massKg / colliderVolume(col);
-                compoundSettings.AddShape(pos, rot, shapeSettings, 0);
+                compoundSettings.AddShape(pos, rot, shapeSettings, b.colliders.indexOf(col));
             }
             const shapeResult = compoundSettings.Create();
             if (shapeResult.HasError()) {
@@ -471,6 +474,59 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         allBodyIDs.push(bodyID);
         J.destroy(bcs);
         for (const o of releaseAfterBody) J.destroy(o);
+    }
+
+    // Self-collision is local (D2, mech/collision-filter.js localNoCollide): for a body pair in
+    // noCollideParts, Jolt asks this filter about every pair of their sub-shapes whose bounds meet, and
+    // it refuses only the listed part pairs (an arm and its motor's housing touch; the arm and a post
+    // on that housing collide). It is JavaScript per sub-shape pair of EVERY body pair in the narrow
+    // phase, so it is installed only when the mechanism has such a pair (measured: 0.19 µs a call, ~2,000
+    // calls a step on the 2,054-part stress model, +28 % — which has none).
+    let simShapeFilter = null;
+    if (localPairs.size) {
+        const byPtr = new Map();
+        for (const b of mechanism.bodies) {
+            const e = bodyMap.get(b.id);
+            const shape = e.body.GetShape();
+            const info = { parts: b.colliders.map(c => c.part), shapePtr: J.getPointer(shape), compound: false, mask: 0, collider: null, local: null };
+            // One offset collider becomes a RotatedTranslatedShape, not a compound (Jolt's StaticCompoundShapeSettings).
+            if (shape.GetSubType() === J.EShapeSubType_StaticCompound) {
+                const compound = J.castObject(shape, J.CompoundShape);
+                const n = compound.GetNumSubShapes();
+                info.compound = true;
+                info.mask = n > 1 ? (2 ** (32 - Math.clz32(n - 1))) - 1 : 0;
+                info.collider = Int32Array.from({ length: n }, (_, i) => compound.GetSubShape(i).mUserData);
+            }
+            byPtr.set(J.getPointer(e.body), info);
+            e.filterInfo = info;
+        }
+        for (const [key, parts] of localPairs) {
+            const [a, b] = key.split('|');
+            const ia = bodyMap.get(a).filterInfo;
+            const ib = bodyMap.get(b).filterInfo;
+            const pa = J.getPointer(bodyMap.get(a).body);
+            const pb = J.getPointer(bodyMap.get(b).body);
+            (ia.local || (ia.local = new Map())).set(pb, new Set(parts.map(([x, y]) => `${x}\n${y}`)));
+            (ib.local || (ib.local = new Map())).set(pa, new Set(parts.map(([x, y]) => `${y}\n${x}`)));
+        }
+        /** The collider index of a sub-shape pointer pair, or −1 for the whole compound (Jolt asks before descending). */
+        const colliderOf = (info, shapePtr, subIdPtr) => {
+            if (!info.compound) return 0;
+            if (shapePtr === info.shapePtr) return -1;
+            return info.collider[(J.HEAPU32[subIdPtr >> 2] & info.mask) >>> 0];
+        };
+        simShapeFilter = new J.SimShapeFilterJS();
+        simShapeFilter.ShouldCollide = (body1, shape1, sub1, body2, shape2, sub2) => {
+            const i1 = byPtr.get(body1);
+            const parts = i1 && i1.local && i1.local.get(body2);
+            if (!parts) return true;
+            const c1 = colliderOf(i1, shape1, sub1);
+            const i2 = byPtr.get(body2);
+            const c2 = colliderOf(i2, shape2, sub2);
+            if (c1 < 0 || c2 < 0) return true;
+            return !parts.has(`${i1.parts[c1]}\n${i2.parts[c2]}`);
+        };
+        physicsSystem.SetSimShapeFilter(simShapeFilter);
     }
 
     const getBodyForId = id => {
@@ -1360,6 +1416,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             for (const bid of allBodyIDs) { bodyInterface.RemoveBody(bid); bodyInterface.DestroyBody(bid); }
             J.destroy(joltInterface);
             if (contactListener) { J.destroy(contactListener); contactListener = null; }
+            if (simShapeFilter) { J.destroy(simShapeFilter); simShapeFilter = null; }
             bodyMap.clear(); hingeMap.clear(); sliderMap.clear(); ballMap.clear(); jointMap.clear();
         },
     };
