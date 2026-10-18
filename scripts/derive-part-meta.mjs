@@ -1309,6 +1309,8 @@ export const nameOf = desc => desc.replace(/\s+/g, ' ').trim().split(' ').map((w
 const DE_PHRASES = [
     ['Technic Beam', 'Technic-Lochbalken'], ['Technic Liftarm', 'Technic-Liftarm'], ['Technic Axle Pin', 'Technic-Achspin'],
     ['Technic Axle Joiner', 'Technic-Achsverbinder'], ['Technic Axle', 'Technic-Achse'], ['Technic Pin', 'Technic-Pin'],
+    ['Technic Linear Actuator', 'Technic-Linearantrieb'], ['Body Assembly', 'Gehäuse'], ['Axle Actuator', 'Spindel'],
+    ['Technic Excavator Bucket', 'Technic-Baggerschaufel'],
     ['Technic Bush', 'Technic-Buchse'], ['Technic Worm Gear', 'Technic-Schnecke'], ['Technic Gear Rack', 'Technic-Zahnstange'],
     ['Technic Gear', 'Technic-Zahnrad'], ['Technic Angle Connector', 'Technic-Winkelverbinder'], ['Technic Cross Block', 'Technic-Kreuzblock'],
     ['Technic Connector', 'Technic-Verbinder'], ['Technic Turntable', 'Technic-Drehkranz'], ['Technic Universal Joint', 'Technic-Kardangelenk'],
@@ -1324,7 +1326,7 @@ const DE_WORDS = {
     Tooth: 'Zähne', Teeth: 'Zähne', Bevel: 'Kegel', Double: 'doppelt', with: 'mit', without: 'ohne', and: 'und', Holes: 'Löchern',
     Hole: 'Loch', Axlehole: 'Achsloch', Axleholes: 'Achslöchern', Pegholes: 'Pinlöchern', Peghole: 'Pinloch', Round: 'rund',
     Smooth: 'glatt', Reinforced: 'verstärkt', Clutch: 'Kupplung', Knob: 'Knauf', Worm: 'Schnecke', Rack: 'Zahnstange',
-    Turntable: 'Drehkranz', Top: 'Oberteil', Bottom: 'Unterteil', Base: 'Basis', Notched: 'mit Kerbe', Long: 'lang', Thin: 'dünn',
+    Turntable: 'Drehkranz', Piston: 'Kolben', Top: 'Oberteil', Bottom: 'Unterteil', Base: 'Basis', Notched: 'mit Kerbe', Long: 'lang', Thin: 'dünn',
     Bent: 'gebogen', Triangle: 'Dreieck', 'H-shaped': 'H-förmig', 'T-shaped': 'T-förmig', 'C-shaped': 'C-förmig', Groove: 'Rille',
     Inverted: 'umgekehrt', Convex: 'konvex', Connector: 'Verbinder', Joiner: 'Verbinder', Perpendicular: 'senkrecht', Liftarm: 'Liftarm',
     Friction: 'Reibung', Stop: 'Anschlag', Bush: 'Buchse', Centre: 'Mitte', Center: 'Mitte', Middle: 'mittig', Crown: 'Krone',

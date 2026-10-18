@@ -21,6 +21,7 @@ import {buildGraph} from './graph.js';
 import {buildIslands} from './islands.js';
 import {buildJoints} from './joints.js';
 import {buildGears} from './gears.js';
+import {freePinWelds} from './free-pins.js';
 import {validateLoad, loadBody} from '../world/objects.js';
 import {quatMul, quatConj} from './vec.js';
 
@@ -203,6 +204,13 @@ export const compile = (model, catalog, opts = {}) => {
                 }
                 weld(islands, bA, bB);
             });
+            continue;
+        }
+        // A free pin (mech/free-pins.js) is welded to one of the two parts it joins: one hinge, no
+        // light body between two constraints.
+        const freePins = freePinWelds(nodes, islands, jointsResult.joints);
+        if (freePins.length > 0) {
+            for (const [bA, bB] of freePins) weld(islands, bA, bB);
             continue;
         }
         gearDiagnostics = [];

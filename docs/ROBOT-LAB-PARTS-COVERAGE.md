@@ -417,7 +417,7 @@ other; a clutch gear slips); racks and worms are derived when their teeth measur
 
 ## Size
 
-parts.json is 1181794 bytes as written (one-space JSON) and 530950 bytes minified (41839 gzipped) in
+parts.json is 1181773 bytes as written (one-space JSON) and 530929 bytes minified (41859 gzipped) in
 the lazy Sim Lab chunk. If the library grows by another few hundred parts, split it: keep the hand-measured parts (motors, hub,
 sensors, the examples' parts) in parts.json and move the derived ones to a second file the palette fetches on first open.
 

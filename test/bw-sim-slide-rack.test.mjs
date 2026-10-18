@@ -29,7 +29,8 @@ const close = (a, b, eps = 1e-9) => Math.abs(a - b) <= eps;
 
 test('the built-in registries hold the R4 kinds: slide-bore, worm and rack-teeth connectors; worm and rack detectors', () => {
     for (const k of ['slide-bore', 'worm', 'rack-teeth']) assert.ok(BUILTIN_KINDS.connectors.has(k), k);
-    assert.deepEqual(BUILTIN_KINDS.couplings.detectors().map(m => m.id), ['worm', 'rack']);
+    // Later kinds come after them (kinds/screw.js, kinds/turntable.js).
+    assert.deepEqual(BUILTIN_KINDS.couplings.detectors().map(m => m.id).slice(0, 2), ['worm', 'rack']);
     assert.equal(BUILTIN_KINDS.couplings.ofKind('rackAndPinion').id, 'rack');
     // A connector kind checks its data.
     assert.ok(BUILTIN_KINDS.connectors.get('rack-teeth').validate({type: 'rack-teeth', position: [0, 0, 0], axis: [1, 0, 0], length: 10, data: {normal: [1, 0, 0], widthLdu: 20}}).length > 0,

@@ -110477,7 +110477,7 @@
   {
    "part": "92693c01.dat",
    "name": "Technic linear actuator 4 x 1 x 1 body assembly",
-   "nameDe": "Technic Linear Actuator 4 x 1 x 1 Body Assembly",
+   "nameDe": "Technic-Linearantrieb 4 x 1 x 1 Gehäuse",
    "nameDeGenerated": true,
    "category": "other",
    "massGrams": 1.53,
@@ -110686,7 +110686,7 @@
   {
    "part": "92695.dat",
    "name": "Technic linear actuator 4 x 1 x 1 axle actuator",
-   "nameDe": "Technic Linear Actuator 4 x 1 x 1 Achse Actuator",
+   "nameDe": "Technic-Linearantrieb 4 x 1 x 1 Spindel",
    "nameDeGenerated": true,
    "category": "other",
    "massGrams": 0.28,
@@ -110804,7 +110804,7 @@
   {
    "part": "92696.dat",
    "name": "Technic linear actuator 4 x 1 x 1 piston",
-   "nameDe": "Technic Linear Actuator 4 x 1 x 1 Piston",
+   "nameDe": "Technic-Linearantrieb 4 x 1 x 1 Kolben",
    "nameDeGenerated": true,
    "category": "other",
    "massGrams": 0.38,
@@ -110923,7 +110923,7 @@
   {
    "part": "24120.dat",
    "name": "Technic excavator bucket 4 x 5",
-   "nameDe": "Technic Excavator Bucket 4 x 5",
+   "nameDe": "Technic-Baggerschaufel 4 x 5",
    "nameDeGenerated": true,
    "category": "other",
    "massGrams": 9.38,
