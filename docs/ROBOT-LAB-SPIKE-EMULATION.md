@@ -738,6 +738,46 @@ has no firmware form — `compileFirmwareProgram` refuses it, and it also cannot
 DSL's `move forward … seconds` (its DIRECTION field is the text `forward`, the compiler
 expects −1/1).
 
+### 7.2a Cross-route acceptance, revised (2026-10-18), and the fixed firmware speed loop
+
+**New acceptance** (owner decision 2026-10-18). The firmware route is judged against the Scratch
+route on two numbers:
+- **Steady-state wheel speed** over the middle half of the timed drive, within 1 %.
+- **Run-for-degrees end angle** (`run motor A forward 360 degrees`), within ±2°.
+
+The 2 s timed-drive distance is now printed for information only. It integrates each
+controller's acceleration profile.
+
+The script runs one form per invocation, and both forms make up the acceptance:
+`npm run verify:sim-lab-renode` (timed drive) and `npm run verify:sim-lab-renode:degrees`.
+
+**Firmware.** brickwright-spike-prime-fw PR #55 (`feat/robot-lab-speed-loop`, `ae88d39`) has
+a plant-derived PI with battery compensation and no overshoot from the integral.
+- Built locally with the repo's Docker build, `simulation` profile, on arm64.
+- The post-build input gate rejects the arm64 container's `libgcc.a` hash, which is pinned
+  to the x86-64 CI runner. This is a provenance gate, not a functional one.
+- Packaged with `prepare-spike-nuttx-package.mjs` and restaged with
+  `restage-spike-nuttx-package.mjs` onto Runtime `7d4a79a2` and Infrastructure `181d9d45`.
+- User ELF `fc09edcf…`.
+
+| Measure (Mac, Renode 1.16.1) | old firmware `1935e06d…` | PR #55 `fc09edcf…` | Scratch route |
+|---|---|---|---|
+| Steady wheel speed, 300 °/s command | 290.3 °/s (ratio 0.971 ✗) | **301.4 °/s (ratio 1.008 ✓)** | 299.1 °/s |
+| Peak 50 ms-mean speed / overshoot | 293.2 °/s / −2.3 % | 309.7 °/s / **+3.2 %** | — |
+| Run for 360°: end angle of A | 354.8°, program never completes in 6 s ✗ | **358.7° ✓**, completes at ≈ 2.4 s | 359.2° |
+| Timed-drive distance (informational) | 275.1 mm (0.921) | 294.1 mm (0.985) | 298.6 mm |
+| Wheels after the 2 s drive | ±563.3° | ±602.2° | ±610.7° |
+| Max duty | 3148 | 3723 (degrees form: 7820) | — |
+
+All checks of both forms pass with the PR #55 firmware. The old firmware fails the speed check
+in the timed form. In the degrees form it fails twice: the program never completes, and the
+end angle misses by 4.4°. Its proportional-only loop stalls 5° short.
+
+In the degrees form, heading is informational. The base pivots on its undriven wheel B, and
+the two routes leave that motor passive differently: B ends at −0.2° on the firmware route and
+−22.5° on the Scratch route. The "Run again + Pause" bridge check therefore covers only the
+driven port A in that form.
+
 ### 7.3 Desktop app
 
 - `npm run build:gui` and `cargo build` (pins: the package's `alongside-pins.json`,
