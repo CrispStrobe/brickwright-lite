@@ -1052,16 +1052,23 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         status({kind: 'copied', count: clipboard.length});
         const text = clipboardText(editor.model, selection);
         lastCopied = text;
+        // Until the copy is known to be on the system clipboard, what is there is older than it.
+        systemHasCopy = false;
         try {
-            navigator.clipboard?.writeText(text)?.catch(() => {});
+            const written = navigator.clipboard?.writeText(text);
+            if (written) written.then(() => { if (lastCopied === text) systemHasCopy = true; }, () => {});
         } catch { /* no clipboard access: the copy above still pastes here */ }
         return text;
     };
     /** Pastes LDraw text (from the system clipboard), or what was copied here when it has no parts. */
     let lastCopied = null;
+    let systemHasCopy = false;
     const pasteText = text => {
         // Our own copy, read back from the system clipboard: pasted like the copy kept here (beside it).
-        const fromText = text && text === lastCopied ? null : partsFromClipboard(text, catalogMap);
+        // A copy made here that never reached the system clipboard (no permission) is newer than
+        // whatever text is there, so it wins; once it did reach it, other text there came later.
+        const stale = clipboard.length && lastCopied !== null && !systemHasCopy;
+        const fromText = !text || stale || text === lastCopied ? null : partsFromClipboard(text, catalogMap);
         if (fromText && fromText.parts.length) {
             // Parts from elsewhere go where they were in their model, when that spot is free.
             // Fresh ids: the text's own may name parts of this model, which the overlap test would skip.
@@ -1076,6 +1083,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         return true;
     };
     const paste = async () => {
+        // Our copy is the newest thing to paste and is here already: no need to wait for the system clipboard.
+        if (clipboard.length && !systemHasCopy) return pasteText(null);
         let text = null;
         try {
             text = navigator.clipboard && navigator.clipboard.readText ? await navigator.clipboard.readText() : null;
@@ -1340,7 +1349,10 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     let pendingPaste = null;
     const onCopyEvent = event => {
         if (copyText === null) return;
-        event.clipboardData?.setData('text/plain', copyText);
+        if (event.clipboardData) {
+            event.clipboardData.setData('text/plain', copyText);
+            systemHasCopy = true;
+        }
         event.preventDefault();
         copyText = null;
     };

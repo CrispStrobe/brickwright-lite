@@ -189,7 +189,7 @@ const COMPACT_BELOW_PX = 640;
 /** Below this pane width the compact toolbars show glyphs only (a 1024 px tablet's side pane). */
 const NARROW_BELOW_PX = 420;
 /** From this pane width the properties panel stands beside the 3D view; narrower, it opens over the view's right edge. */
-const DOCK_PROPERTIES_PX = 1000;
+const DOCK_PROPERTIES_PX = 1280;
 /** What is hidden in Build stays hidden for the browser session (view state, not the model). */
 const HIDDEN_STORAGE_KEY = 'bw-sim-lab-hidden';
 
