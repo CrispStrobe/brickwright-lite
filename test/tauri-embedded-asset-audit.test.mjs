@@ -18,6 +18,8 @@ function boundary(module, entry) {
     assert.match(module, /let resolver = app\.asset_resolver\(\)/);
     assert.match(module, /collect\(\s*resolver\.iter\(\),/);
     assert.match(module, /resolver\.get\(key\)/);
+    assert.match(module, /asset_config_projection\(config\.as_deref\(\)\)/);
+    assert.match(module, /brickwright\.installed-asset-envelope\.v2/);
     assert.doesNotMatch(module, /generate_context!|tauri::Context::|std::fs::read\(/);
     assert.match(entry, /#\[cfg\(all\(target_os = "ios", target_abi = "sim", not\(dev\)\)\)\]\s*if matches!\(&_event, tauri::RunEvent::Ready\) \{\s*embedded_asset_audit::observe\(_app\);/);
     assert.equal((entry.match(/generate_context!\(\)/g) || []).length, 1);
@@ -48,10 +50,11 @@ test('actual Rust collector controls compile and execute without building Tauri'
         const result = spawnSync('cargo', args, {encoding: 'utf8', timeout: 110000,
             env: {...process.env, CARGO_TARGET_DIR: join(dir, 'target'), CARGO_BUILD_JOBS: '1'}, maxBuffer: 1024 * 1024});
         assert.equal(result.status, 0, `${result.error || ''}\n${result.stdout}\n${result.stderr}`);
-        assert.match(result.stdout, /8 passed; 0 failed/);
+        assert.match(result.stdout, /12 passed; 0 failed/);
         for (const [anchor, replacement] of [
             ['Ok(format!("{:x}", digest.finalize()))', 'Ok("0".repeat(64))'],
-            ['!canonical_key(&key)', 'false']
+            ['!canonical_key(&key)', 'false'],
+            ['if !absent(security, "csp")', 'if false']
         ]) {
             assert.equal(source.split(anchor).length, 2, 'actual source mutation anchor');
             writeFileSync(join(dir, 'src/lib.rs'), source.replace(anchor, replacement));

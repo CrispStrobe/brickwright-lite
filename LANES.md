@@ -6437,3 +6437,16 @@ are exported; binaries and host paths are excluded. Changed observations refuse.
 The separate artifact preserves the existing retained-input manifest format and
 all original jobs/build/upload ordering. Toolchain use, complete SDK/toolchain
 closure and expanded effective configuration remain unproved; no app is launched.
+
+Runtime asset receipts now use an explicit v2 envelope. A pure helper projects
+only the reviewed asset-related settings from the actual typed configuration,
+with a hash of its full serialization; unsupported settings preserve a partial
+refusal. Frontend paths, plugin values and raw configuration are not emitted.
+Independent readers require a separately admitted exact typed projection. This
+is a limited configuration observation, not a full-configuration/compiler-input,
+installed-map, resource, signed-target or release qualification. The original
+collector production bytes and context/Ready/provider boundaries remain intact.
+
+Oversized serialized envelopes now emit an explicit bounded refusal with the
+candidate length/hash and no map body, instead of leaving an empty receipt. The
+8 MiB output cap is unchanged; allocation and process lifetime remain unqualified.

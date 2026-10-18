@@ -89,6 +89,17 @@ Next actions and completion criteria:
    upload remains before the optional product capture. Missing or partial retention
    fails and cannot qualify an app; retained partial inputs remain inspectable.
    Entry/file/total/time caps and link/alias checks constrain retention, not the app.
+   The runtime receipt now uses envelope v2 and retains a narrow asset-configuration
+   projection from the actual typed `app.config()`, tied to its full serialization
+   hash. The admitted profile requires absent development URL/CSP/development CSP,
+   brownfield pattern, disabled prototype freezing/CSP-modification override and
+   disabled asset protocol. Unsupported or malformed profiles remain partial.
+   Oversized envelopes retain a bounded explicit refusal with candidate length/hash;
+   they cannot be mistaken for complete maps. This does not bound serialization RSS.
+   No frontend path, plugin value or raw configuration is emitted. An independent
+   reader compares these typed values to a separately admitted profile and keeps
+   the full-configuration, compiler-input and actual-installed claims false.
+
    A separate `brickwright-ios-toolchain-inputs` artifact now observes installed
    Rust compiler/Cargo, Apple Clang/Xcode build executable and simulator SDK-settings
    file identities before and after the build. It retains role, length and SHA-256
@@ -99,8 +110,8 @@ Next actions and completion criteria:
    Next, independently join the complete retained source/web/configuration/toolchain/
    executable and official job/artifact identities. Distinguish referenced codegen
    outputs from stale cache candidates without guessing Rust map layout. Toolchain
-   version strings are not compiler-binary identity, and the expanded effective
-   configuration and complete input graph still need qualification. Before a new
+   version strings are not compiler-binary identity. The projection does not prove
+   the rest of the expanded configuration or the complete input graph. Before a new
    actual observation, admit an already installed simulator runtime and explicit
    process/memory/output/time limits; add the optional launch controller without
    runtime downloads. Require one fresh candidate-bound unsigned observation.

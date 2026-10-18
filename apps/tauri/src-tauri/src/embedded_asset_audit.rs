@@ -192,6 +192,137 @@ where
     result
 }
 
+const CONFIG_BYTES: usize = 1024 * 1024;
+const CONFIG_PROFILE: &str = "tauri-2.11.5-utils-2.9.3-codegen-2.6.3-asset-config.v1";
+
+#[derive(Serialize)]
+struct AssetConfigValues {
+    dev_url_absent: bool,
+    csp_absent: bool,
+    dev_csp_absent: bool,
+    pattern: &'static str,
+    freeze_prototype: bool,
+    disable_asset_csp_modification: bool,
+    asset_protocol_enabled: bool,
+}
+
+#[derive(Serialize)]
+struct AssetConfigProjection {
+    schema: &'static str,
+    status: &'static str,
+    refusal: Option<&'static str>,
+    profile: &'static str,
+    runtime_config_sha256: Option<String>,
+    values: Option<AssetConfigValues>,
+    full_configuration_joined: bool,
+    raw_configuration_exposed: bool,
+    compiler_inputs_proved: bool,
+}
+
+fn asset_config_projection(raw: Option<&[u8]>) -> AssetConfigProjection {
+    let mut result = AssetConfigProjection {
+        schema: "brickwright.asset-config-projection.v1",
+        status: "partial",
+        refusal: None,
+        profile: CONFIG_PROFILE,
+        runtime_config_sha256: None,
+        values: None,
+        full_configuration_joined: false,
+        raw_configuration_exposed: false,
+        compiler_inputs_proved: false,
+    };
+    let run = (|| -> Result<AssetConfigValues, &'static str> {
+        let raw = raw.ok_or("config-serialization")?;
+        if raw.len() > CONFIG_BYTES {
+            return Err("config-byte-budget");
+        }
+        result.runtime_config_sha256 = Some(format!("{:x}", Sha256::digest(raw)));
+        let value: serde_json::Value = serde_json::from_slice(raw).map_err(|_| "config-json")?;
+        let build = value
+            .get("build")
+            .and_then(|v| v.as_object())
+            .ok_or("config-build")?;
+        let security = value
+            .get("app")
+            .and_then(|v| v.get("security"))
+            .and_then(|v| v.as_object())
+            .ok_or("config-security")?;
+        let absent = |map: &serde_json::Map<String, serde_json::Value>, key: &str| {
+            map.get(key).map_or(true, |value| value.is_null())
+        };
+        if !absent(build, "devUrl") {
+            return Err("configured-dev-url");
+        }
+        if !absent(security, "csp") {
+            return Err("configured-csp");
+        }
+        if !absent(security, "devCsp") {
+            return Err("configured-dev-csp");
+        }
+        let pattern = security
+            .get("pattern")
+            .and_then(|v| v.as_object())
+            .ok_or("config-pattern")?;
+        if pattern.len() != 1 || pattern.get("use").and_then(|v| v.as_str()) != Some("brownfield") {
+            return Err("unsupported-pattern");
+        }
+        if security.get("freezePrototype").and_then(|v| v.as_bool()) != Some(false) {
+            return Err("unsupported-freeze-prototype");
+        }
+        if security
+            .get("dangerousDisableAssetCspModification")
+            .and_then(|v| v.as_bool())
+            != Some(false)
+        {
+            return Err("unsupported-csp-modification");
+        }
+        if security
+            .get("assetProtocol")
+            .and_then(|v| v.get("enable"))
+            .and_then(|v| v.as_bool())
+            != Some(false)
+        {
+            return Err("unsupported-asset-protocol");
+        }
+        Ok(AssetConfigValues {
+            dev_url_absent: true,
+            csp_absent: true,
+            dev_csp_absent: true,
+            pattern: "brownfield",
+            freeze_prototype: false,
+            disable_asset_csp_modification: false,
+            asset_protocol_enabled: false,
+        })
+    })();
+    match run {
+        Ok(values) => {
+            result.status = "complete-projection-only";
+            result.values = Some(values);
+        }
+        Err(code) => result.refusal = Some(code),
+    }
+    result
+}
+
+fn encode_envelope(envelope: &serde_json::Value) -> Vec<u8> {
+    let (code, length, digest) = match serde_json::to_vec(envelope) {
+        Ok(bytes) if bytes.len() <= OUTPUT_BYTES => return bytes,
+        Ok(bytes) => (
+            "envelope-output-budget",
+            Some(bytes.len()),
+            Some(format!("{:x}", Sha256::digest(&bytes))),
+        ),
+        Err(_) => ("envelope-serialization", None, None),
+    };
+    // Retain an explicit bounded refusal, not an empty file or a truncated map.
+    serde_json::to_vec(&serde_json::json!({
+        "schema": "brickwright.installed-asset-refusal.v1",
+        "status": "partial", "refusal": code,
+        "candidate_output_bytes": length, "candidate_output_sha256": digest,
+        "map_body_retained": false, "actual_app_qualified": false
+    })).unwrap_or_else(|_| br#"{"schema":"brickwright.installed-asset-refusal.v1","status":"partial","refusal":"refusal-serialization"}"#.to_vec())
+}
+
 // No runtime trigger exists on desktop, devices or development builds.
 #[cfg(all(target_os = "ios", target_abi = "sim", not(dev)))]
 pub(crate) fn observe<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
@@ -216,8 +347,11 @@ pub(crate) fn observe<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
         || started.elapsed().as_nanos().min(u64::MAX as u128) as u64,
     );
     let config = serde_json::to_vec(app.config()).ok();
+    let projection = asset_config_projection(config.as_deref());
     let envelope = serde_json::json!({
+        "schema": "brickwright.installed-asset-envelope.v2",
         "observation": observation,
+        "asset_config_projection": projection,
         "source_label": option_env!("GITHUB_SHA"),
         "source_label_is_build_proof": false,
         "effective_config_sha256": config.map(|bytes| format!("{:x}", Sha256::digest(bytes))),
@@ -228,16 +362,128 @@ pub(crate) fn observe<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
         "signed_target_map_joined": false,
         "resource_and_process_lifetime_admitted": false
     });
-    if let Ok(bytes) = serde_json::to_vec(&envelope) {
-        if bytes.len() <= OUTPUT_BYTES {
-            let _ = file.write_all(&bytes).and_then(|_| file.sync_all());
-        }
-    }
+    let bytes = encode_envelope(&envelope);
+    let _ = file.write_all(&bytes).and_then(|_| file.sync_all());
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn typed_config() -> serde_json::Value {
+        serde_json::json!({
+            "build": {"devUrl": null, "frontendDist": "AUTHORED-PRIVATE-PATH"},
+            "app": {"windows": [{"width": 1280.0}], "security": {
+                "csp": null, "devCsp": null, "pattern": {"use": "brownfield"},
+                "freezePrototype": false, "dangerousDisableAssetCspModification": false,
+                "assetProtocol": {"enable": false, "scope": ["AUTHORED-PRIVATE-PATH"]}
+            }},
+            "plugins": {"authored": "AUTHORED-PRIVATE-TOKEN"}
+        })
+    }
+
+    #[test]
+    fn runtime_config_projection_is_narrow_and_private_values_are_not_emitted() {
+        let raw = serde_json::to_vec(&typed_config()).unwrap();
+        let result = asset_config_projection(Some(&raw));
+        assert_eq!(result.status, "complete-projection-only");
+        assert!(result.refusal.is_none());
+        assert_eq!(
+            result.runtime_config_sha256,
+            Some(format!("{:x}", Sha256::digest(&raw)))
+        );
+        let output = String::from_utf8(serde_json::to_vec(&result).unwrap()).unwrap();
+        assert!(!output.contains("AUTHORED-PRIVATE"));
+        assert!(
+            !result.full_configuration_joined
+                && !result.raw_configuration_exposed
+                && !result.compiler_inputs_proved
+        );
+        let values = result.values.unwrap();
+        assert!(values.csp_absent && values.dev_csp_absent && values.dev_url_absent);
+        assert_eq!(values.pattern, "brownfield");
+        assert!(
+            !values.freeze_prototype
+                && !values.disable_asset_csp_modification
+                && !values.asset_protocol_enabled
+        );
+    }
+
+    #[test]
+    fn runtime_config_projection_preserves_unsupported_profiles_as_refusals() {
+        for (pointer, replacement) in [
+            (
+                "/build/devUrl",
+                serde_json::json!("https://authored.invalid"),
+            ),
+            ("/app/security/csp", serde_json::json!("default-src 'none'")),
+            (
+                "/app/security/devCsp",
+                serde_json::json!({"default-src": ["'none'"]}),
+            ),
+            (
+                "/app/security/pattern",
+                serde_json::json!({"use": "isolation"}),
+            ),
+            ("/app/security/freezePrototype", serde_json::json!(true)),
+            (
+                "/app/security/dangerousDisableAssetCspModification",
+                serde_json::json!([]),
+            ),
+            (
+                "/app/security/assetProtocol/enable",
+                serde_json::json!(true),
+            ),
+        ] {
+            let mut config = typed_config();
+            *config.pointer_mut(pointer).unwrap() = replacement;
+            let result = asset_config_projection(Some(&serde_json::to_vec(&config).unwrap()));
+            assert_eq!(result.status, "partial", "{pointer}");
+            assert!(result.refusal.is_some() && result.values.is_none());
+        }
+    }
+
+    #[test]
+    fn runtime_config_projection_refuses_missing_malformed_and_over_budget_inputs() {
+        for raw in [None, Some(&b"not json"[..]), Some(&b"{}"[..])] {
+            let result = asset_config_projection(raw);
+            assert_eq!(result.status, "partial");
+            assert!(result.refusal.is_some() && result.values.is_none());
+        }
+        let raw = vec![b' '; CONFIG_BYTES + 1];
+        let result = asset_config_projection(Some(&raw));
+        assert_eq!(result.refusal, Some("config-byte-budget"));
+        assert!(result.runtime_config_sha256.is_none());
+        let mut config = typed_config();
+        config["app"]["security"]
+            .as_object_mut()
+            .unwrap()
+            .remove("freezePrototype");
+        assert_eq!(
+            asset_config_projection(Some(&serde_json::to_vec(&config).unwrap())).status,
+            "partial"
+        );
+    }
+
+    #[test]
+    fn envelope_output_budget_is_an_explicit_refusal_not_a_truncated_success() {
+        let small = serde_json::json!({"authored": true});
+        assert_eq!(encode_envelope(&small), serde_json::to_vec(&small).unwrap());
+        let large = serde_json::json!({"authored": "x".repeat(OUTPUT_BYTES)});
+        let original = serde_json::to_vec(&large).unwrap();
+        let encoded = encode_envelope(&large);
+        assert!(encoded.len() <= OUTPUT_BYTES);
+        let refusal: serde_json::Value = serde_json::from_slice(&encoded).unwrap();
+        assert_eq!(refusal["schema"], "brickwright.installed-asset-refusal.v1");
+        assert_eq!(refusal["refusal"], "envelope-output-budget");
+        assert_eq!(refusal["candidate_output_bytes"], original.len());
+        assert_eq!(
+            refusal["candidate_output_sha256"],
+            format!("{:x}", Sha256::digest(&original))
+        );
+        assert_eq!(refusal["map_body_retained"], false);
+        assert_eq!(refusal["actual_app_qualified"], false);
+    }
+
     fn assets(
         rows: &[(&'static str, &'static [u8])],
     ) -> impl Iterator<Item = (Cow<'static, str>, Cow<'static, [u8]>)> {
