@@ -1,4 +1,4 @@
-# Integration handoff — 2026-10-17
+# Integration handoff — 2026-10-18
 
 Refresh PR heads, checks and `LANES.md` before acting. This file records the
 integration owner's remaining work; other lanes retain their own ownership.
@@ -22,10 +22,10 @@ Historical results qualify their named source and artifact, not later builds.
 ### 1. Qualify and integrate the iOS workflow resource preparation
 
 Candidate: draft [PR1044](https://github.com/CrispStrobe/brickwright-lite/pull/1044),
-head `c85bcbfad27357a1c4446d0c26e373a581d0d8ce`, branch
-`lane/ios-workflow-resource-preparation-20261017`. Source CI is pending at this
-checkpoint; `ci:full` has already been applied. Do not apply it again merely
-to start another run.
+head `0fce34bef3467a8d9a5722d483611217ff11ee81`, branch
+`lane/ios-workflow-resource-preparation-20261017`. Fourteen source checks passed;
+conditional delivery jobs skipped as declared. `ci:full` has already been
+applied. Do not apply it again merely to start another run.
 
 Scope: `.github/workflows/mobile.yml`,
 `test/ios-workflow-resource-preparation.test.mjs`, and the owning ledger entry.
@@ -45,6 +45,20 @@ negative controls. Run them with:
 node --test test/ios-workflow-resource-preparation.test.mjs test/ios-device-build-command.test.mjs test/workflow-step-shape.test.mjs
 ```
 
+The separately admitted [mobile event 39105125520](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39105125520)
+completed on this exact source. Four official web/iOS artifact digests and job
+joins match. Independent unsigned simulator, App Store and ad-hoc resource
+inventories passed, without copied root frontend folders or static archives.
+Profile CMS signatures, profile/export fields and the original CI codesign
+verification passed. Certificate-chain verification and physical-device
+acceptance remain unestablished. Android was not acquired or independently
+qualified; these results do not establish a whole-event pass.
+
+The remaining blocker is **active embedded frontend identity**. The component
+conjunction passed, but archive identity and native resource absence do not
+prove which asset map the running executable serves. Do not infer that join
+from stripped-symbol searches or byte-presence tests.
+
 Next actions and completion criteria:
 
 1. Admit the final source head and successful enabled checks, including the
@@ -54,14 +68,20 @@ Next actions and completion criteria:
    tested combined source, frontend inputs, native package inputs and actual
    workflow/job/artifact boundaries. Refresh the candidate if needed, using a
    normal merge and fresh checks.
-3. Qualify clean unsigned simulator and actual signed device IPA outputs on
-   that source. Inspect resource inventories independently: no duplicate root
-   frontend folder or unintended static archive, while embedded offline frontend,
-   ordinary resources, frameworks, privacy, icons and signatures remain valid.
-   Keep App Store and sideloadable export/profile acceptance distinct. No device
-   acceptance follows from simulator success.
-4. Establish source-to-embedded-frontend identity; matching archive digests or
-   passing JavaScript source tests alone do not establish this join.
+3. Reuse the retained successful component originals and independent results.
+   Keep unsigned simulator, App Store and sideloadable export acceptance distinct;
+   no device acceptance follows from simulator success. A changed candidate needs
+   its own admitted affected qualification; historical results keep their identity.
+4. Merge the separate active-asset observation claim in `LANES.md` before source
+   implementation. Observe the actual installed App resolver after Ready, with
+   complete ordered keys, served lengths/hashes and explicit finite budgets.
+   Account for iterator compression, resolver fallback and HTML/CSP transformations
+   without changing production security or context construction. Add authored
+   negative controls for incomplete maps, wrong bytes, fallback and budget refusal.
+   Bind the actual executable and frontend inputs independently. An unsigned
+   observation alone cannot establish signed-target map identity; demonstrate that
+   join separately. Keep the workflow audit optional and default off, preserve
+   delivery guards, and print device counts/status instead of device identifiers.
 5. Merge only after actual affected qualification and every enabled final-head
    check succeeds. Use a matched-head normal merge and verify landed tree/parents.
 

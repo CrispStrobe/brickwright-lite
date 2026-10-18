@@ -15,12 +15,19 @@
 // `configurationOwner` before it starts the emulator, as the SPIKE arena's
 // RenodeArenaSession does, so neither can start while the other owns it; the
 // claim is released when the driver ends.
+//
+// The program (§2.6, §7.4): the pane compiles the VM's blocks with the SPIKE
+// arena's firmware-program compiler (compileRouteProgram) and hands the result to
+// the route, which uploads it before lockstep.begin and STARTs/STOPs it inside
+// lockstep (program.js). The route itself is route.js, over any transport — the
+// headless real-Renode proof (scripts/verify-sim-lab-renode-lockstep.mjs) opens it
+// with its own state-service transport; this file adds only the desktop's.
 
 import {createNativeRenodeCapabilities} from 'scratch-vm/src/extension-support/native-renode-capability.js';
-import {RenodeLockstepDriver, capabilityTransport, lockstepAvailable} from './driver.js';
-import {SpikeFirmwareVirtualHub} from '../../hubs/spike/spike-firmware-hub.js';
+import {capabilityTransport, lockstepAvailable} from './driver.js';
+import {openLockstepRoute, compileRouteProgram} from './route.js';
 
-export {lockstepAvailable};
+export {lockstepAvailable, compileRouteProgram};
 
 /**
  * Whether the pane offers the firmware route: the desktop runtime has the lockstep ops,
@@ -37,39 +44,13 @@ export const desktopRenodeCapabilities = (host = globalThis) => {
 };
 
 /**
- * Starts the emulated hub and enters lockstep; resolves to {driver, createHub} for
- * SimSession.fromText. The firmware route runs a model's (first) hub; a second hub
- * waits for the multi-hub slice (R16).
+ * Starts the emulated hub, uploads the program and enters lockstep, over the desktop's
+ * native capabilities; see route.js openLockstepRoute for the options and the result.
  * @param {object} options
  * @param {object} options.capabilities the native capability object (desktopRenodeCapabilities())
- * @param {object} [options.hubState] the pane's VirtualSpikeHubState, to show the hub
- * @param {'nuttx'|'micropython'} [options.backend]
- * @param {'default'|'six-motors'|'dual-ultrasonic'} [options.topology]
  */
-export const openFirmwareRoute = async ({capabilities, hubState = null, backend = 'nuttx', topology = 'default'}) => {
+export const openFirmwareRoute = ({capabilities, ...options}) => {
     const transport = capabilityTransport(capabilities);
-    if (!transport) throw new Error('This build has no managed Renode runtime with lockstep.');
-    if (hubState?.configurationOwner) throw new Error('Hub configuration is owned by another session (the SPIKE arena?).');
-    const release = () => {
-        if (hubState?.configurationOwner === driver) {
-            hubState.configurationOwner = null;
-            hubState.changed?.();
-        }
-    };
-    const driver = new RenodeLockstepDriver({transport, backend, topology, onEnd: release});
-    if (hubState) {
-        hubState.configurationOwner = driver;
-        hubState.changed?.();
-    }
-    try {
-        await driver.begin();
-    } catch (error) {
-        await driver.end().catch(() => {});
-        throw error;
-    }
-    const createHub = def => {
-        if (def.index > 0) throw new Error('The SPIKE firmware route runs a model with one hub.');
-        return new SpikeFirmwareVirtualHub({id: def.id, driver, hubState});
-    };
-    return {driver, createHub};
+    if (!transport) return Promise.reject(new Error('This build has no managed Renode runtime with lockstep.'));
+    return openLockstepRoute({transport, ...options});
 };
