@@ -505,13 +505,38 @@ original/template byte lengths and hashes, official run ID and workflow SHA.
 Its verdict keeps `candidate` and `qualified` false and explicitly reports
 `actualRequestSupported: false`. Existing template/inventory v2, failure v2 and
 actual request/reader v3 stay distinct; this metadata map is not accepted by
-actual v3. The next actual integration needs an explicit v4 request/reader:
-retain and independently grade typed EOF/hash/readback/close before and after
-the guest, preserve the isolated Python startup envelope, caps and first errors,
-and reject old-version mixing, wrong-role/path/hash and coherent nonempty data.
-Keep actual execution disabled until that source, runtime, Build and event review
-plus affected guest qualification are complete. The 34 missing font/configuration
-inputs remain unresolved; no new inventory event or roster change was made.
+actual v3. The new source candidate explicitly maps that role through actual
+request/reader v4. Its `bw.gui-hdd.actual-inventory-reference.v1` contains the
+unchanged metadata admission v3 descriptor plus independently selected producing
+job, artifact and workflow identities. A separately versioned
+`bw.gui-hdd.actual-expectation.v4` pins the reference and exact retained metadata
+original/template; the independent reader rechecks the metadata observations.
+The metadata-only verdict continues to report `actualRequestSupported: false`:
+it cannot authorize an actual run.
+
+The actual v4 runtime observations retain and independently grade typed EOF,
+empty digest, four strict identity snapshots and close before and after the
+guest. They preserve the isolated Python startup envelope, generic positive
+file predicates, caps and first/secondary errors. Request/expectation/schema
+mixing, wrong role/path/hash, coherent nonempty data and failed readback/close
+must refuse. The source candidate passes 63 Node tests including 80 embedded Python controls.
+The 74 earlier Python test bodies and the old actual v3 packet verdict remain
+unchanged; 22 source mutations and eight independent packet counterexamples
+are detected. These tests use manufactured inputs and mocked OS boundaries.
+Legacy actual v3 remains separate. Actual execution stays disabled
+until complete runtime, Build, source and event admission plus affected clean
+browser/guest qualification. The 34 missing font/configuration inputs remain
+unresolved; no new inventory event or roster change was made.
+
+For the next font-roster task, admit package ownership and the active fontconfig
+include/alias closure independently before selecting a new versioned template.
+The retained diagnostic establishes missing paths, not package ownership or a
+complete active font census. Do not derive a successful roster by subtracting
+its failed paths, relax generic file checks, install alternate fonts or reuse
+the consumed event. Review exact source/template/workflow and a distinct
+metadata event; acquire its originals once and grade every selected path with
+the standalone reader. Preserve all earlier font failures until the new
+selection and affected browser qualification are independently established.
 
 Main [PR1066](https://github.com/CrispStrobe/brickwright-lite/pull/1066) advanced
 CUI from `055930e` to `fe89e3425bf323b1acd9e3f98df6a7383e9b836b`.
