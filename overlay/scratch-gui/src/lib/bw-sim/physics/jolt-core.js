@@ -384,6 +384,12 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             J.destroy(group);
         }
         if (b.motion === 'dynamic') {
+            // Continuous collision (LinearCast) for every moving body: with Discrete, a brick dropped
+            // 50 cm (3.1 m/s, 16 mm per 5 ms step) passed through an 8 mm beam (measured). Jolt casts
+            // only a body that moves more than mLinearCastThreshold (0.25, below) of its inner radius
+            // in one step, so a slow body costs one comparison; measured cost in
+            // docs/ROBOT-LAB-ARCHITECTURE.md ("Motion quality").
+            bcs.mMotionQuality = J.EMotionQuality_LinearCast;
             bcs.mOverrideMassProperties = J.EOverrideMassProperties_CalculateInertia;
             const mp = bcs.mMassPropertiesOverride;
             mp.mMass = b.massKg;

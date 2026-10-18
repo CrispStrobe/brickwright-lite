@@ -539,11 +539,9 @@ for (const h of [0.05, 0.2]) {
     });
 }
 
-test('drop from 50 cm and 1 m: the brick does not tunnel through the 8 mm beams', {
-    todo: 'tunnelling: at 3–4.4 m/s the brick moves 16–22 mm per 5 ms step, more than the beams are thick, and ' +
-        'every body is Jolt\'s Discrete motion quality (jolt-core.js: no EMotionQuality_LinearCast), so it passes ' +
-        'through the beams to the floor'
-}, t => {
+test('drop from 50 cm and 1 m: the brick does not tunnel through the 8 mm beams', t => {
+    // At 3–4.4 m/s the brick moves 16–22 mm per 5 ms step, more than the beams are thick: only continuous
+    // collision (jolt-core.js: every dynamic body is EMotionQuality_LinearCast) stops it on them.
     const out = [];
     for (const h of [0.5, 1]) {
         const {core, body, y0} = dropFrom(h);
