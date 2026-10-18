@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-07T20:07:49.943Z",
+ "generatedAt": "2026-10-18T19:48:04.507Z",
  "repo": "CrispStrobe/brickwright-lite",
  "headSha": "a87a7b447",
  "newestMainRun": 36409366028,
@@ -1797,6 +1797,120 @@
    "workflow": "i80386-freedos-circuits-direct-actual.yml",
    "branch": "lane/x86-direct-circuits-20261007",
    "sha": "93dd86bd2"
+  },
+  {
+   "run": 39156700861,
+   "workflow": "i80386-hdd-gui-actual.yml",
+   "branch": "lane/386-hdd-composition-20261016",
+   "sha": "624d436e0"
+  },
+  {
+   "run": 39148925457,
+   "workflow": "i80386-hdd-gui-actual.yml",
+   "branch": "lane/386-hdd-composition-20261016",
+   "sha": "f0d38a16a"
+  },
+  {
+   "run": 39142758198,
+   "workflow": "i80386-hdd-gui-actual.yml",
+   "branch": "lane/386-hdd-composition-20261016",
+   "sha": "42d6126de"
+  },
+  {
+   "run": 39140319200,
+   "workflow": "i80386-hdd-gui-actual.yml",
+   "branch": "lane/386-hdd-composition-20261016",
+   "sha": "e292f67af"
+  },
+  {
+   "run": 39136104401,
+   "workflow": "i80386-hdd-gui-actual.yml",
+   "branch": "lane/386-hdd-composition-20261016",
+   "sha": "42f43b178"
+  },
+  {
+   "run": 39126871419,
+   "workflow": "i80386-hdd-gui-actual.yml",
+   "branch": "lane/386-hdd-composition-20261016",
+   "sha": "70227c51a"
+  },
+  {
+   "run": 39124041359,
+   "workflow": "i80386-hdd-gui-actual.yml",
+   "branch": "lane/386-hdd-composition-20261016",
+   "sha": "47be38d87"
+  },
+  {
+   "run": 39122739145,
+   "workflow": "i80386-hdd-gui-actual.yml",
+   "branch": "lane/386-hdd-composition-20261016",
+   "sha": "746594ee2"
+  },
+  {
+   "run": 39122458591,
+   "workflow": "i80386-hdd-gui-actual.yml",
+   "branch": "lane/386-hdd-composition-20261016",
+   "sha": "819d4fa05"
+  },
+  {
+   "run": 39119052096,
+   "workflow": "i80386-hdd-gui-actual.yml",
+   "branch": "lane/386-hdd-composition-20261016",
+   "sha": "2ab3367e6"
+  },
+  {
+   "run": 39116464169,
+   "workflow": "i80386-hdd-gui-actual.yml",
+   "branch": "lane/386-hdd-composition-20261016",
+   "sha": "b5c2921a0"
+  },
+  {
+   "run": 39114108417,
+   "workflow": "i80386-hdd-gui-actual.yml",
+   "branch": "lane/386-hdd-composition-20261016",
+   "sha": "ff253b1e5"
+  },
+  {
+   "run": 39111308927,
+   "workflow": "i80386-hdd-gui-actual.yml",
+   "branch": "lane/386-hdd-composition-20261016",
+   "sha": "59a41df87"
+  },
+  {
+   "run": 39111138893,
+   "workflow": "i80386-hdd-gui-actual.yml",
+   "branch": "lane/386-hdd-composition-20261016",
+   "sha": "59a41df87"
+  },
+  {
+   "run": 39110581756,
+   "workflow": "i80386-hdd-gui-actual.yml",
+   "branch": "lane/386-hdd-composition-20261016",
+   "sha": "16484f108"
+  },
+  {
+   "run": 39107642173,
+   "workflow": "i80386-hdd-gui-actual.yml",
+   "branch": "lane/386-hdd-composition-20261016",
+   "sha": "964c535bf"
+  },
+  {
+   "run": 39107615364,
+   "workflow": "i80386-hdd-gui-actual.yml",
+   "branch": "lane/386-hdd-composition-20261016",
+   "sha": "9c05b0629"
+  },
+  {
+   "run": 39106669518,
+   "workflow": "i80386-hdd-gui-actual.yml",
+   "branch": "lane/386-hdd-composition-20261016",
+   "sha": "671702949"
+  },
+  {
+   "run": 39106463062,
+   "workflow": "i80386-hdd-gui-actual.yml",
+   "branch": "lane/386-hdd-composition-20261016",
+   "sha": "671702949"
   }
  ],
  "workflowsInTree": [
@@ -1811,6 +1925,7 @@
   "deploy-daily.yml",
   "deploy-watchdog.yml",
   "i80386-freedos-circuits-direct-actual.yml",
+  "i80386-hdd-gui-actual.yml",
   "i8086-execution.yml",
   "makecode-arcade-bases.yml",
   "mobile.yml",
@@ -6541,11 +6656,125 @@
     }
    },
    "sourceSha": "428c00934"
+  },
+  "i80386-hdd-gui-actual.yml": {
+   "runs": 19,
+   "stepsInFile": [
+    "Source and manufactured-original controls only",
+    "Refuse unreviewed inventory before setup or input retrieval",
+    "Install unchanged selected packages and Chromium without frontend build",
+    "Install externally selected immutable template and record observations",
+    "Install empty Python cache prefix and refuse unreviewed actual source",
+    "Repeat inventory installation exactly, without frontend build",
+    "Install externally admitted request and refuse runtime/source drift",
+    "Prepare unchanged authenticated free media once",
+    "One official frontend acquisition and two serial genuine UI scenarios",
+    "Refuse unreviewed discovery before setup or input retrieval",
+    "Install unchanged selected packages and Chromium for font observation",
+    "Install externally selected immutable discovery request",
+    "Record bounded read-only font discovery without credentials"
+   ],
+   "inFileInNoRun": [
+    "Install empty Python cache prefix and refuse unreviewed actual source",
+    "Repeat inventory installation exactly, without frontend build",
+    "Install externally admitted request and refuse runtime/source drift",
+    "Prepare unchanged authenticated free media once",
+    "One official frontend acquisition and two serial genuine UI scenarios",
+    "Refuse unreviewed discovery before setup or input retrieval",
+    "Install unchanged selected packages and Chromium for font observation",
+    "Install externally selected immutable discovery request",
+    "Record bounded read-only font discovery without credentials"
+   ],
+   "steps": {
+    "Source and manufactured-original controls only": {
+     "existed": 17,
+     "ran": 17,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "controls"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Refuse unreviewed inventory before setup or input retrieval": {
+     "existed": 2,
+     "ran": 2,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "inventory"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Install unchanged selected packages and Chromium without frontend build": {
+     "existed": 2,
+     "ran": 2,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "inventory"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Install externally selected immutable template and record observations": {
+     "existed": 2,
+     "ran": 2,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "inventory"
+     ],
+     "clause": null,
+     "class": "always"
+    }
+   },
+   "jobs": {
+    "controls": {
+     "existed": 19,
+     "ran": 17,
+     "existedMain": 0,
+     "ranMain": 0,
+     "class": "sometimes"
+    },
+    "actual": {
+     "existed": 19,
+     "ran": 0,
+     "existedMain": 0,
+     "ranMain": 0,
+     "class": "never"
+    },
+    "font-discovery": {
+     "existed": 7,
+     "ran": 0,
+     "existedMain": 0,
+     "ranMain": 0,
+     "class": "never"
+    },
+    "inventory": {
+     "existed": 19,
+     "ran": 2,
+     "existedMain": 0,
+     "ranMain": 0,
+     "class": "sometimes"
+    }
+   },
+   "sourceSha": "624d436e0"
   }
  },
  "lastRefresh": {
-  "workflow": "i80386-freedos-circuits-direct-actual.yml",
-  "at": "2026-10-07T20:07:49.943Z",
-  "sourceSha": "428c00934"
+  "workflow": "i80386-hdd-gui-actual.yml",
+  "at": "2026-10-18T19:48:04.507Z",
+  "sourceSha": "624d436e0"
  }
 }
