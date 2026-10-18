@@ -6346,3 +6346,41 @@ isolated module closure and both semantic mutants, run compiler-heavy gallery
 checks in hosted CI, and require every enabled final-head check before normal
 matched-head merge. This test-fixture repair does not close the six PR888
 failures or qualify its broader source foundation, runtime, GUI or corpus.
+## iOS qualification: active embedded asset identity — 2026-10-18
+
+CLAIMED — integration owner, branch
+`docs/ios-active-asset-proof-claim-20261018`. This follows the resource-preparation
+claim and PR1044; its qualified resource inventories and signatures leave the
+active embedded frontend identity open.
+
+Own a new `apps/tauri/src-tauri/src/embedded_asset_audit.rs`, narrowly additive
+module declaration and Ready-event observation in `apps/tauri/src-tauri/src/lib.rs`,
+an optional default-off unsigned simulator audit in `.github/workflows/mobile.yml`,
+focused controls in `test/tauri-embedded-asset-audit.test.mjs` and
+`test/ios-workflow-embedded-asset-audit.test.mjs`, and this ledger/task handoff.
+Coordinate shared workflow edits with the existing iOS owner. Preserve the real
+context creation, `run_with_context` signature, setup/build/run sequence, current
+event handlers, native operations, CLI ownership and CSP. No second generated
+context or invented asset provider may stand in for the installed app's resolver.
+
+The audit must retain canonical ordered asset keys, served byte lengths and
+SHA-256 identities, complete source/configuration/executable/artifact joins, and
+explicit terminal or partial failure. Review actual iterator compression,
+resolver fallback and HTML/CSP transformations independently before comparing
+outputs. Reject development filesystem fallback. Admit finite entry, per-file,
+total-byte, output, time and resource budgets before an actual observation.
+Do not download simulator runtimes implicitly or expose a public diagnostic UI
+or remote trigger. Unsigned observation alone does not prove a signed target's
+embedded map; require a separate demonstrated signed-source/map join.
+
+Preserve helper ordering, targets, export methods, signing/provisioning checks,
+privacy/icons and branch/tag/release/TestFlight guards. Replace the existing
+device-list diagnostic with count/status output while preserving its assertions;
+retain historical originals privately. No guest, dependency/pin, delivery event,
+physical-device, G02 or release acceptance is included.
+
+Merge this docs-only claim before implementation. Require nonvacuous focused
+controls, every enabled exact-head source check, and fresh admitted actual
+candidate qualification before integrating source. Never repeat a successful
+original acquisition, reader or run merely to inspect it. See
+[the integration handoff](docs/INTEGRATION-NEXT-STEPS.md) for the remaining join.
