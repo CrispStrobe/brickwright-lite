@@ -107,12 +107,56 @@ def rows(value, *, required=(), count=16384, total=BUILD_CAP, file_cap=FILE_CAP)
     return value
 
 
+def runtime_path(value):
+    need(type(value) is str and 1<len(value)<=512 and re.fullmatch('/[A-Za-z0-9_./@+-]+',value) and
+         not value.startswith('//') and str(Path(value))==value and '..' not in Path(value).parts,'canonical selected absolute runtime path')
+    return value
+
+
+def declared_alias_resolution(path,aliases):
+    pending=path.split('/');resolved=[];seen=set();steps=0
+    while pending:
+        steps+=1;need(steps<=4096,'finite alias component resolution')
+        part=pending.pop(0)
+        if part in ('','.'):continue
+        if part=='..':
+            need(resolved,'alias cannot escape filesystem root');resolved.pop();continue
+        current='/'+('/'.join(resolved+[part]))
+        if current in aliases:
+            need(current not in seen and len(seen)<256,'finite acyclic declared alias resolution');seen.add(current)
+            text=aliases[current]['linkText']
+            if text.startswith('/'):resolved=[]
+            pending=text.split('/')+pending
+        else:resolved.append(part)
+    return '/'+('/'.join(resolved))
+
+
+def runtime_alias_policy(runtime):
+    files=runtime['files'];file_aliases=runtime['aliases'];directories=runtime['directoryAliases']
+    need(type(file_aliases) is dict and type(directories) is dict and len(file_aliases)+len(directories)<=256 and
+         not set(file_aliases)&set(directories),'one bounded disjoint file/directory alias roster')
+    aliases=dict(file_aliases,**directories)
+    for name in files:runtime_path(name)
+    for name,row in aliases.items():
+        runtime_path(name);fields(row,'linkText target');runtime_path(row['target'])
+        need(type(row['linkText']) is str and 0<len(row['linkText'])<=512 and
+             re.fullmatch('[A-Za-z0-9_./@+-]+',row['linkText']),'bounded literal alias link text')
+    for name,row in aliases.items():
+        need(declared_alias_resolution(name,aliases)==row['target'] and
+             declared_alias_resolution(row['target'],aliases)==row['target'],'declared aliases reach exact canonical targets')
+        if name in file_aliases:need(row['target'] in files,'file alias reaches selected regular file')
+        else:need(any(path.startswith(row['target']+'/') for path in set(files)|set(file_aliases)),
+                  'directory alias target contains selected file descendants')
+    for path in files:need(declared_alias_resolution(path,aliases)==path,'selected file paths already canonical')
+    return aliases
+
+
 def parse_request(raw, expected):
     digest(expected); need(type(raw) is bytes and 0 < len(raw) <= JSON_CAP and sha(raw) == expected,
                            'independently selected request digest')
     request = decode(raw)
     fields(request, 'schema repository pullRequest source build criticalFiles installedFiles runtime inventoryAdmission inputs')
-    need(encode(request) == raw and request['schema'] == 'bw.gui-hdd.actual-request.v1' and
+    need(encode(request) == raw and request['schema'] == 'bw.gui-hdd.actual-request.v2' and
          request['repository'] == REPOSITORY, 'canonical owned approval request')
     integer(request['pullRequest'], 1, 2**31-1)
     source = request['source']; fields(source, 'head tree files'); digest(source['head'], 40); digest(source['tree'], 40)
@@ -138,7 +182,7 @@ def parse_request(raw, expected):
     rows(request['installedFiles'])
     need(any(x.startswith('node_modules/bw-board/') for x in request['installedFiles']) and
          any(x.startswith('node_modules/playwright-core/') for x in request['installedFiles']), 'complete selected supplier/browser package inventories required')
-    runtime = request['runtime']; fields(runtime, 'files aliases node python chromium tools resources')
+    runtime = request['runtime']; fields(runtime, 'files aliases directoryAliases node python chromium tools resources')
     need(type(runtime['files']) is dict and 1 <= len(runtime['files']) <= 512, 'bounded independently admitted runtime graph')
     for name, item in runtime['files'].items():
         need(type(name) is str and name.startswith('/') and '..' not in Path(name).parts, 'absolute runtime file')
@@ -150,6 +194,7 @@ def parse_request(raw, expected):
              type(item['linkText']) is str and 0<len(item['linkText'])<=512 and '\0' not in item['linkText'] and
              type(item['target']) is str and item['target'].startswith('/') and '..' not in Path(item['target']).parts and
              item['target'] in runtime['files'], 'bounded actual symlink text and selected canonical target')
+    runtime_alias_policy(runtime)
     fields(runtime['tools'],'git gh')
     need(runtime['tools']=={'git':'/usr/bin/git','gh':'/usr/bin/gh'} and
          all(path in runtime['files'] for path in runtime['tools'].values()), 'required selected Git and gh runtime files')
@@ -163,7 +208,7 @@ def parse_request(raw, expected):
          'aggregateContainmentQualified':False}), 'fixed finite hosted envelope; no aggregate containment claim')
     prior_inventory=request['inventoryAdmission']
     fields(prior_inventory,'schema sourceHead runId jobId artifactId artifactSha256 original templateSha256 workflow')
-    need(prior_inventory['schema']=='bw.gui-hdd.inventory-admission.v1','separately reviewed prior inventory admission')
+    need(prior_inventory['schema']=='bw.gui-hdd.inventory-admission.v2','separately reviewed prior inventory admission')
     digest(prior_inventory['sourceHead'],40);digest(prior_inventory['artifactSha256']);digest(prior_inventory['templateSha256'])
     for key in ('runId','jobId','artifactId'):integer(prior_inventory[key],1,2**63-1)
     fields(prior_inventory['original'],'byteLength sha256');integer(prior_inventory['original']['byteLength'],1,JSON_CAP);digest(prior_inventory['original']['sha256'])
@@ -377,7 +422,7 @@ def official_joins(request, originals, expected):
     need(sha(encode(prior_inventory))==request['inventoryAdmission']['original']['sha256'] and
          len(encode(prior_inventory))==request['inventoryAdmission']['original']['byteLength'],'externally reviewed prior inventory identity')
     admission=request['inventoryAdmission'];platform=prior_inventory.get('platform',{})
-    need(prior_inventory.get('schema')=='bw.gui-hdd.inventory-original.v1' and prior_inventory.get('observationOnly') is True and
+    need(prior_inventory.get('schema')=='bw.gui-hdd.inventory-original.v2' and prior_inventory.get('observationOnly') is True and
          prior_inventory.get('templateSha256')==admission['templateSha256'] and
          platform.get('GITHUB_RUN_ID')==str(admission['runId']) and platform.get('GITHUB_RUN_ATTEMPT')=='1' and
          platform.get('GITHUB_JOB')=='inventory' and platform.get('GITHUB_REPOSITORY')==REPOSITORY and
@@ -390,7 +435,8 @@ def official_joins(request, originals, expected):
     bind_inventory_event(event_raw,admission['sourceHead'],admission['templateSha256'],platform)
     need(prior_inventory['source']['head']==request['inventoryAdmission']['sourceHead'] and
          prior_inventory['installedFiles']==request['installedFiles'] and prior_inventory['runtime']['files']==request['runtime']['files'] and
-         prior_inventory['runtime']['aliases']==request['runtime']['aliases'],'request graph joins independently supplied prior inventory original')
+         prior_inventory['runtime']['aliases']==request['runtime']['aliases'] and
+         prior_inventory['runtime']['directoryAliases']==request['runtime']['directoryAliases'],'request graph joins independently supplied prior inventory original')
     digest(expected['buildSourceAdmissionSha256']);need(sha(encode(request['build']['sourceAdmission']))==expected['buildSourceAdmissionSha256'],'independent prior Build source admission original selection')
     digest(expected['requestSha256']); digest(expected['sourceHead'], 40); digest(expected['artifactSha256'])
     for key in ('runId','jobId','artifactId','artifactBytes'):integer(expected[key],1,2**63-1)
@@ -543,8 +589,13 @@ def audit(files, expected):
         need(encode(decode(files['source.'+stage+'.json'])) == encode(request['source']), 'source original external expectation')
         need(encode(decode(files['installed.'+stage+'.json'])) == encode(request['installedFiles']), 'installed graph original external expectation')
         runtime = decode(files['runtime.'+stage+'.json']);need(runtime['files'] == request['runtime']['files'] and
-             runtime['aliases'] == request['runtime']['aliases'] and runtime['resources'] == request['runtime']['resources'] and
+             runtime['aliases'] == request['runtime']['aliases'] and runtime['directoryAliases']==request['runtime']['directoryAliases'] and runtime['resources'] == request['runtime']['resources'] and
              runtime['aggregateContainmentQualified'] is False, 'runtime external graph/caps and honest containment boundary')
+        targets={row['target'] for row in request['runtime']['directoryAliases'].values()}
+        need(type(runtime.get('directoryIdentities')) is dict and set(runtime['directoryIdentities'])==targets,'exact observed directory target census')
+        for target,row in runtime['directoryIdentities'].items():
+            fields(row,'dev ino mode');integer(row['dev'],0,2**63-1);integer(row['ino'],1,2**63-1);integer(row['mode'],0,2**32-1)
+            need(stat.S_ISDIR(row['mode']),'observed selected directory target is directory')
     build = request['build'];run = decode(files['build-run.original.json']);job = decode(files['build-job.original.json']);artifact = decode(files['build-artifact.original.json']);typed_metadata(run,job,artifact)
     need(run.get('id') == build['runId'] and run.get('run_attempt') == 1 and run.get('repository',{}).get('full_name')==REPOSITORY and run.get('head_sha') == build['head'] and
          run.get('path') == '.github/workflows/build.yml' and run.get('status') == 'completed' and run.get('conclusion') == 'success', 'external frontend official run')
@@ -594,7 +645,7 @@ def audit(files, expected):
         identity_before=decode(files['runtime.before.json'])['identities'][request['runtime']['chromium']]
         need(any(item.get('executable')==request['runtime']['chromium'] and item.get('executableIdentity')==identity_before
              for sample in child['descendantSamples'] for item in sample['descendants']), 'actual observed browser process executable identity')
-    return {'pass':True,'schema':'bw.gui-hdd.reader.v1','sourceHead':request['source']['head'],
+    return {'pass':True,'schema':'bw.gui-hdd.reader.v2','sourceHead':request['source']['head'],
         'hdd':check_hdd(files),'forwardDebug':check_forward(files),'aggregateContainmentQualified':False,
         'fullOsQualified':False,'physicalTimingQualified':False,'reverseExecutionQualified':False}
 

@@ -11,6 +11,7 @@ const root = fileURLToPath(new URL('../',import.meta.url));
 const controls = String.raw`
 import ast,base64,copy,hashlib,importlib.util,io,json,os,pathlib,stat,sys,tarfile,tempfile,unittest,zipfile
 from unittest.mock import patch
+from types import SimpleNamespace
 root=pathlib.Path(sys.argv[1])
 def load(name,path):
     spec=importlib.util.spec_from_file_location(name,root/path);module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module);return module
@@ -46,12 +47,12 @@ def fixture():
     critical={name:source['files'].get(name,ROW(name.encode())) for name in r.CRITICAL}
     installed={name+'/package.json':ROW(name.encode()) for name in ('node_modules/bw-board','node_modules/playwright','node_modules/playwright-core')}
     runtime={'files':{'/node':{'byteLength':124827920,'sha256':'fde6a4bf8d0562f7751d1a2d6cb9b417c4cfe107bbcb0aa3e9a24e125e348f48'},
-      '/python':ROW(b'python'),'/chrome':ROW(b'chrome'),'/usr/bin/git':ROW(b'git'),'/usr/bin/gh':ROW(b'gh')},
-      'aliases':{'/python-link':{'linkText':'python','target':'/python'}},'node':'/node','python':'/python','chromium':'/chrome',
+      '/python':ROW(b'python'),'/usr/lib/libselected.so':ROW(b'selected-library'),'/chrome':ROW(b'chrome'),'/usr/bin/git':ROW(b'git'),'/usr/bin/gh':ROW(b'gh')},
+      'aliases':{'/python-link':{'linkText':'python','target':'/python'}},'directoryAliases':{'/runtime-lib':{'linkText':'usr/lib','target':'/usr/lib'}},'node':'/node','python':'/python','chromium':'/chrome',
       'tools':{'git':'/usr/bin/git','gh':'/usr/bin/gh'},'resources':{'jobMinutes':35,'controllerSeconds':1800,
        'scenarioSeconds':{'freedos-hdd-persistence':1250,'forward-debug':180},'perProcessCoreBytes':0,
        'perProcessFileBytes':r.FILE_CAP,'perProcessOpenFiles':256,'aggregateContainmentQualified':False}}
-    prior={'schema':'bw.gui-hdd.inventory-original.v1','observationOnly':True,'templateSha256':'9'*64,'source':source,
+    prior={'schema':'bw.gui-hdd.inventory-original.v2','observationOnly':True,'templateSha256':'9'*64,'source':source,
       'installedFiles':installed,'runtime':runtime,'commands':[],'platform':{'GITHUB_RUN_ID':'90','GITHUB_RUN_ATTEMPT':'1',
        'GITHUB_JOB':'inventory','GITHUB_REPOSITORY':r.REPOSITORY,'GITHUB_WORKFLOW_SHA':'d'*40,'GITHUB_EVENT_NAME':'pull_request','GITHUB_ACTOR':'CrispStrobe','BW_EXPECTED_HEAD':'a'*40}}
     prior_event=E({'action':'labeled','label':{'name':'x86-hdd-gui-inventory'},'sender':{'login':'CrispStrobe'},'repository':{'full_name':r.REPOSITORY},'number':123,
@@ -65,9 +66,9 @@ def fixture():
       'workflow':{'commit':'a'*40,'path':'.github/workflows/build.yml','sha256':'8'*64}}
     build={'runId':100,'attempt':1,'head':'a'*40,'jobId':101,'jobName':'build','artifactId':102,'name':'github-pages',
       'metadataBytes':len(frontend),'zipBytes':len(frontend),'sha256':H(frontend),'checkoutHead':'a'*40,'sourceFiles':source['files'],'sourceAdmission':admission}
-    request={'schema':'bw.gui-hdd.actual-request.v1','repository':r.REPOSITORY,'pullRequest':123,'source':source,'build':build,
+    request={'schema':'bw.gui-hdd.actual-request.v2','repository':r.REPOSITORY,'pullRequest':123,'source':source,'build':build,
       'criticalFiles':critical,'installedFiles':installed,'runtime':runtime,'inventoryAdmission':{
-       'schema':'bw.gui-hdd.inventory-admission.v1','sourceHead':'a'*40,'runId':90,'jobId':91,'artifactId':92,'artifactSha256':'7'*64,
+       'schema':'bw.gui-hdd.inventory-admission.v2','sourceHead':'a'*40,'runId':90,'jobId':91,'artifactId':92,'artifactSha256':'7'*64,
        'original':ROW(prior_raw),'templateSha256':'9'*64,'workflow':{'commit':'d'*40,'path':'.github/workflows/i80386-hdd-gui-actual.yml','sha256':'6'*64}},
       'inputs':{name:dict(ROW(b'ignored'),path='gui-inputs/'+name) for name in r.INPUTS}}
     for name,(size,digest) in r.INPUTS.items():request['inputs'][name]={'path':{'floppy':'gui-inputs/floppy.img','hdd':'gui-inputs/hdd.img','bios':'gui-inputs/bios.bin','vgaRom':'gui-inputs/vga.bin'}[name],'byteLength':size,'sha256':digest}
@@ -75,7 +76,7 @@ def fixture():
     event={'action':'labeled','label':{'name':r.LABEL},'sender':{'login':'CrispStrobe'},'repository':repo,'number':123,
       'pull_request':{'number':123,'state':'open','head':{'sha':'a'*40,'repo':repo},'base':{'ref':'main','repo':repo},
        'body':'<!-- BW_GUI_HDD_REQUEST_SHA256='+pin+' -->'}}
-    observed=dict(runtime,identities={'/chrome':{'dev':4,'ino':5}},aggregateContainmentQualified=False)
+    observed=dict(runtime,identities={'/chrome':{'dev':4,'ino':5}},directoryIdentities={'/usr/lib':{'dev':4,'ino':6,'mode':stat.S_IFDIR|0o755}},aggregateContainmentQualified=False)
     files={'request.original.json':raw,'event.original.json':E(event),'source.before.json':E(source),'source.after.json':E(source),
       'installed.before.json':E(installed),'installed.after.json':E(installed),'runtime.before.json':E(observed),'runtime.after.json':E(observed),
       'frontend.original.zip':frontend,'frontend.members.json':E(r.read_frontend(frontend)[0]),'build.inventory.json':E(r.read_frontend(frontend)[1]),
@@ -404,6 +405,89 @@ class Originals(unittest.TestCase):
             output=c.Originals(pathlib.Path(temporary)/'originals');output.save('frontend.partial.zip',b'123')
             self.assertEqual((output.root/'frontend.partial.zip').read_bytes(),b'123')
             with self.assertRaises(ValueError):output.save('ordinary.stdout',b'123')
+    def test_explicit_v2_schema_and_independent_directory_originals(self):
+        request=D(self.files['request.original.json']);self.assertEqual(request['schema'],'bw.gui-hdd.actual-request.v2')
+        request['schema']='bw.gui-hdd.actual-request.v1';raw=E(request)
+        for module in (r,c):
+            with self.assertRaises(ValueError):module.parse_request(raw,H(raw))
+        def cut(f,e):
+            observed=D(f['runtime.after.json']);observed['directoryIdentities']['/usr/lib']['mode']=stat.S_IFREG|0o644;f['runtime.after.json']=E(observed)
+        self.rejects(cut)
+    def test_declared_alias_relative_directory_chain_and_cycles(self):
+        aliases={'/lib':{'linkText':'usr/lib','target':'/usr/lib'},'/usr/lib/selected':{'linkText':'libselected.so','target':'/usr/lib/libselected.so'}}
+        for module in (r,c):
+            self.assertEqual(module.declared_alias_resolution('/lib/selected',aliases),'/usr/lib/libselected.so')
+            cycle={'/a':{'linkText':'b','target':'/b'},'/b':{'linkText':'a','target':'/a'}}
+            with self.assertRaisesRegex(ValueError,'acyclic'):module.declared_alias_resolution('/a',cycle)
+            with self.assertRaises(ValueError):module.declared_alias_resolution('/a',{'/a':{'linkText':'../escape','target':'/escape'}})
+    def test_directory_alias_requires_selected_descendants_and_combined_cap(self):
+        runtime=D(self.files['request.original.json'])['runtime']
+        for module in (r,c):
+            module.runtime_alias_policy(runtime)
+            changed=copy.deepcopy(runtime);changed['directoryAliases']['/runtime-lib']={'linkText':'unselected','target':'/unselected'}
+            with self.assertRaisesRegex(ValueError,'descendants'):module.runtime_alias_policy(changed)
+            changed=copy.deepcopy(runtime);changed['aliases']={'/a'+str(i):{'linkText':'python','target':'/python'} for i in range(255)}
+            changed['directoryAliases']['/second']={'linkText':'usr/lib','target':'/usr/lib'}
+            with self.assertRaisesRegex(ValueError,'bounded'):module.runtime_alias_policy(changed)
+    def test_observed_alias_walk_refuses_undeclared_links_and_cycles(self):
+        aliases={'/lib':{'linkText':'usr/lib','target':'/usr/lib'},'/usr/lib/selected':{'linkText':'libselected.so','target':'/usr/lib/libselected.so'}}
+        def info(mode,ino=3):return SimpleNamespace(st_dev=1,st_ino=ino,st_mode=mode,st_uid=0,st_gid=0,st_nlink=1,st_size=0,st_mtime_ns=1)
+        def lstat(path):
+            if path in aliases:return info(stat.S_IFLNK|0o777)
+            return info(stat.S_IFREG|0o444 if path.endswith('.so') else stat.S_IFDIR|0o755)
+        with patch.object(c.os,'lstat',side_effect=lstat),patch.object(c.os,'readlink',side_effect=lambda name:aliases[name]['linkText']):
+            self.assertEqual(c.observed_alias_resolution('/lib/selected',aliases),'/usr/lib/libselected.so')
+            with self.assertRaisesRegex(ValueError,'declared'):c.observed_alias_resolution('/lib/selected',{'/lib':aliases['/lib']})
+        cycle={'/a':{'linkText':'a','target':'/a'}}
+        with patch.object(c.os,'lstat',return_value=info(stat.S_IFLNK|0o777)),patch.object(c.os,'readlink',return_value='a'):
+            with self.assertRaisesRegex(ValueError,'finite'):c.observed_alias_resolution('/a',cycle)
+    def test_directory_target_nofollow_readback_and_close(self):
+        def info(mode=stat.S_IFDIR|0o755,ino=3):return SimpleNamespace(st_dev=1,st_ino=ino,st_mode=mode,st_uid=0,st_gid=0,st_nlink=1,st_size=0,st_mtime_ns=1)
+        for scenario in ('positive','file','changed','close'):
+            held=info(stat.S_IFREG|0o644) if scenario=='file' else info()
+            fstats=[held,info(ino=4) if scenario=='changed' else held]
+            with patch.object(c.os,'lstat',return_value=held),patch.object(c.os,'open',return_value=91) as opened,patch.object(c.os,'fstat',side_effect=fstats),patch.object(c.os,'close',side_effect=OSError('close-only') if scenario=='close' else None) as closed:
+                if scenario=='positive':self.assertEqual(c.directory_identity('/usr/lib')['ino'],3)
+                else:
+                    with self.assertRaises((ValueError,OSError)):c.directory_identity('/usr/lib')
+                self.assertTrue(opened.call_args.args[1]&os.O_DIRECTORY);self.assertTrue(opened.call_args.args[1]&os.O_NOFOLLOW);closed.assert_called_once_with(91)
+    def test_proc_stat_zero_size_bounded_held_identity_and_pid(self):
+        raw=b'400 (owned ) name) '+b' '.join([b'R',b'1',b'400',b'400']+[b'0']*15+[b'8'])
+        info=SimpleNamespace(st_dev=1,st_ino=2,st_mode=stat.S_IFREG|0o444,st_size=0)
+        position=0
+        def read(fd,count):
+            nonlocal position
+            value=raw[position:position+count];position+=len(value);return value
+        with patch.object(c.os,'open',return_value=92) as opened,patch.object(c.os,'fstat',return_value=info),patch.object(c.os,'read',side_effect=read),patch.object(c.os,'close') as closed:
+            self.assertEqual(c.process_identity(400)['startTicks'],8);closed.assert_called_once_with(92)
+            self.assertTrue(opened.call_args.args[1]&os.O_NOFOLLOW)
+        with patch.object(c,'proc_stat',return_value=raw):
+            with self.assertRaisesRegex(ValueError,'PID'):c.process_identity(401)
+    def test_proc_stat_overflow_retains_primary_on_close_error(self):
+        info=SimpleNamespace(st_dev=1,st_ino=2,st_mode=stat.S_IFREG|0o444,st_size=0);remaining=5000;reads=[]
+        def read(fd,count):
+            nonlocal remaining
+            reads.append(count);amount=min(count,remaining);remaining-=amount;return b'x'*amount
+        with patch.object(c.os,'open',return_value=92),patch.object(c.os,'fstat',return_value=info),patch.object(c.os,'read',side_effect=read),patch.object(c.os,'close',side_effect=OSError('close-secondary')) as closed:
+            with self.assertRaisesRegex(ValueError,'cap'):c.proc_stat(400)
+            self.assertEqual(sum(reads),4097);closed.assert_called_once_with(92)
+    def test_both_proc_censuses_are_lazy_capped_and_close(self):
+        for operation in (lambda:c.descendants(400),lambda:c.remaining_processes(400,{})):
+            consumed=[];closed=[]
+            class Entries:
+                def __enter__(self):return self
+                def __exit__(self,*args):closed.append(True)
+                def __iter__(self):
+                    for i in range(9000):consumed.append(i);yield SimpleNamespace(name='non-pid')
+            with patch.object(c.os,'scandir',return_value=Entries()),patch.object(c,'process_identity',side_effect=AssertionError('nonpid must not read stat')):
+                with self.assertRaisesRegex(ValueError,'census'):operation()
+            self.assertEqual(len(consumed),8193);self.assertEqual(closed,[True])
+    def test_remaining_escaped_descendant_keeps_start_identity(self):
+        row={'pid':450,'state':'R','parentPid':1,'pgid':999,'sessionId':999,'startTicks':7}
+        with patch.object(c,'proc_pids',return_value=iter([450])),patch.object(c,'process_identity',return_value=row):
+            self.assertEqual(c.remaining_processes(400,{450:dict(row)}),[row])
+        with patch.object(c,'proc_pids',return_value=iter([450])),patch.object(c,'process_identity',return_value=dict(row,startTicks=8)):
+            self.assertEqual(c.remaining_processes(400,{450:dict(row)}),[])
     def test_reader_has_no_producer_or_execution_import(self):
         tree=ast.parse((root/'scripts/read-i80386-hdd-gui-originals.py').read_text());names=[]
         for node in ast.walk(tree):

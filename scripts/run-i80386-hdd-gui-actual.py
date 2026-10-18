@@ -119,12 +119,56 @@ def rows(value, *, required=(), count=16384, total=BUILD_CAP, file_cap=FILE_CAP)
     return value
 
 
+def runtime_path(value):
+    need(type(value) is str and 1<len(value)<=512 and re.fullmatch('/[A-Za-z0-9_./@+-]+',value) and
+         not value.startswith('//') and str(Path(value))==value and '..' not in Path(value).parts,'canonical selected absolute runtime path')
+    return value
+
+
+def declared_alias_resolution(path,aliases):
+    pending=path.split('/');resolved=[];seen=set();steps=0
+    while pending:
+        steps+=1;need(steps<=4096,'finite alias component resolution')
+        part=pending.pop(0)
+        if part in ('','.'):continue
+        if part=='..':
+            need(resolved,'alias cannot escape filesystem root');resolved.pop();continue
+        current='/'+('/'.join(resolved+[part]))
+        if current in aliases:
+            need(current not in seen and len(seen)<256,'finite acyclic declared alias resolution');seen.add(current)
+            text=aliases[current]['linkText']
+            if text.startswith('/'):resolved=[]
+            pending=text.split('/')+pending
+        else:resolved.append(part)
+    return '/'+('/'.join(resolved))
+
+
+def runtime_alias_policy(runtime):
+    files=runtime['files'];file_aliases=runtime['aliases'];directories=runtime['directoryAliases']
+    need(type(file_aliases) is dict and type(directories) is dict and len(file_aliases)+len(directories)<=256 and
+         not set(file_aliases)&set(directories),'one bounded disjoint file/directory alias roster')
+    aliases=dict(file_aliases,**directories)
+    for name in files:runtime_path(name)
+    for name,row in aliases.items():
+        runtime_path(name);fields(row,'linkText target');runtime_path(row['target'])
+        need(type(row['linkText']) is str and 0<len(row['linkText'])<=512 and
+             re.fullmatch('[A-Za-z0-9_./@+-]+',row['linkText']),'bounded literal alias link text')
+    for name,row in aliases.items():
+        need(declared_alias_resolution(name,aliases)==row['target'] and
+             declared_alias_resolution(row['target'],aliases)==row['target'],'declared aliases reach exact canonical targets')
+        if name in file_aliases:need(row['target'] in files,'file alias reaches selected regular file')
+        else:need(any(path.startswith(row['target']+'/') for path in set(files)|set(file_aliases)),
+                  'directory alias target contains selected file descendants')
+    for path in files:need(declared_alias_resolution(path,aliases)==path,'selected file paths already canonical')
+    return aliases
+
+
 def parse_request(raw, expected):
     digest(expected); need(type(raw) is bytes and 0 < len(raw) <= JSON_CAP and sha(raw) == expected,
                            'independently selected request digest')
     request = decode(raw)
     fields(request, 'schema repository pullRequest source build criticalFiles installedFiles runtime inventoryAdmission inputs')
-    need(encode(request) == raw and request['schema'] == 'bw.gui-hdd.actual-request.v1' and
+    need(encode(request) == raw and request['schema'] == 'bw.gui-hdd.actual-request.v2' and
          request['repository'] == REPOSITORY, 'canonical owned approval request')
     integer(request['pullRequest'], 1, 2**31-1)
     source = request['source']; fields(source, 'head tree files'); digest(source['head'], 40); digest(source['tree'], 40)
@@ -150,7 +194,7 @@ def parse_request(raw, expected):
     rows(request['installedFiles'])
     need(any(x.startswith('node_modules/bw-board/') for x in request['installedFiles']) and
          any(x.startswith('node_modules/playwright-core/') for x in request['installedFiles']), 'complete selected supplier/browser package inventories required')
-    runtime = request['runtime']; fields(runtime, 'files aliases node python chromium tools resources')
+    runtime = request['runtime']; fields(runtime, 'files aliases directoryAliases node python chromium tools resources')
     need(type(runtime['files']) is dict and 1 <= len(runtime['files']) <= 512, 'bounded independently admitted runtime graph')
     for name, item in runtime['files'].items():
         need(type(name) is str and name.startswith('/') and '..' not in Path(name).parts, 'absolute runtime file')
@@ -162,6 +206,7 @@ def parse_request(raw, expected):
              type(item['linkText']) is str and 0<len(item['linkText'])<=512 and '\0' not in item['linkText'] and
              type(item['target']) is str and item['target'].startswith('/') and '..' not in Path(item['target']).parts and
              item['target'] in runtime['files'], 'bounded actual symlink text and selected canonical target')
+    runtime_alias_policy(runtime)
     fields(runtime['tools'],'git gh')
     need(runtime['tools']=={'git':'/usr/bin/git','gh':'/usr/bin/gh'} and
          all(path in runtime['files'] for path in runtime['tools'].values()), 'required selected Git and gh runtime files')
@@ -175,7 +220,7 @@ def parse_request(raw, expected):
          'aggregateContainmentQualified':False}), 'fixed finite hosted envelope; no aggregate containment claim')
     prior_inventory=request['inventoryAdmission']
     fields(prior_inventory,'schema sourceHead runId jobId artifactId artifactSha256 original templateSha256 workflow')
-    need(prior_inventory['schema']=='bw.gui-hdd.inventory-admission.v1','separately reviewed prior inventory admission')
+    need(prior_inventory['schema']=='bw.gui-hdd.inventory-admission.v2','separately reviewed prior inventory admission')
     digest(prior_inventory['sourceHead'],40);digest(prior_inventory['artifactSha256']);digest(prior_inventory['templateSha256'])
     for key in ('runId','jobId','artifactId'):integer(prior_inventory[key],1,2**63-1)
     fields(prior_inventory['original'],'byteLength sha256');integer(prior_inventory['original']['byteLength'],1,JSON_CAP);digest(prior_inventory['original']['sha256'])
@@ -442,19 +487,45 @@ class Hosted:
         return self.run('git-'+str(len(self.attempts)), argv, clean_env(), 15)
 
 
+def proc_stat(pid):
+    integer(pid,1,2**31-1);path='/proc/'+str(pid)+'/stat';descriptor=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK)
+    first=None;raw=bytearray()
+    try:
+        before=os.fstat(descriptor);need(stat.S_ISREG(before.st_mode),'regular held proc stat observation')
+        while len(raw)<=4096:
+            part=os.read(descriptor,min(1024,4097-len(raw)))
+            if not part:break
+            raw.extend(part)
+        need(0<len(raw)<=4096,'proc stat cap before parsing')
+        after=os.fstat(descriptor)
+        need((before.st_dev,before.st_ino,before.st_mode)==(after.st_dev,after.st_ino,after.st_mode),'held proc stat identity')
+        return bytes(raw)
+    except BaseException as error:first=error;raise
+    finally:
+        try:os.close(descriptor)
+        except BaseException:
+            if first is None:raise
+
+
+def proc_pids():
+    count=0
+    with os.scandir('/proc') as entries:
+        for entry in entries:
+            count+=1;need(count<=8192,'bounded lazy host process census')
+            if re.fullmatch('[1-9][0-9]{0,9}',entry.name):yield int(entry.name)
+
+
 def process_identity(pid):
-    raw = (Path('/proc')/str(pid)/'stat').read_bytes()
-    need(len(raw)<=4096, 'bounded process identity')
-    fields_ = raw.rsplit(b')',1)[1].split()
+    raw=proc_stat(pid);need(raw.startswith(str(pid).encode()+b' ('),'proc stat exact PID binding')
+    fields_=raw.rsplit(b')',1)[1].split();need(len(fields_)>=20,'complete bounded proc stat fields')
     return {'pid':pid,'state':fields_[0].decode(),'parentPid':int(fields_[1]),
             'pgid':int(fields_[2]),'sessionId':int(fields_[3]),'startTicks':int(fields_[19])}
 
 
 def descendants(parent):
-    all_ = {}; entries = list(Path('/proc').iterdir()); need(len(entries)<=8192, 'bounded host process census')
-    for path in entries:
-        if not path.name.isdigit():continue
-        try:all_[int(path.name)] = process_identity(int(path.name))
+    all_ = {}
+    for pid in proc_pids():
+        try:all_[pid] = process_identity(pid)
         except (FileNotFoundError,ProcessLookupError):continue
     selected = {parent}; found = []
     for _ in range(32):
@@ -474,9 +545,8 @@ def descendants(parent):
 
 def remaining_processes(leader,known):
     out={}
-    for path in Path('/proc').iterdir():
-        if not path.name.isdigit():continue
-        try:item=process_identity(int(path.name))
+    for pid in proc_pids():
+        try:item=process_identity(pid)
         except (FileNotFoundError,ProcessLookupError):continue
         if item['state']=='Z':continue
         retained=known.get(item['pid'])
@@ -491,18 +561,56 @@ def clean_env():
             'GIT_CONFIG_NOSYSTEM': '1', 'GIT_CONFIG_GLOBAL': '/dev/null', 'GIT_NO_LAZY_FETCH': '1', 'GIT_TERMINAL_PROMPT': '0'}
 
 
+def observed_alias_resolution(path,aliases):
+    pending=path.split('/');resolved=[];seen=set();snapshots=[];steps=0
+    while pending:
+        steps+=1;need(steps<=4096,'finite observed alias component resolution')
+        part=pending.pop(0)
+        if part in ('','.'):continue
+        if part=='..':
+            need(resolved,'observed alias cannot escape filesystem root');resolved.pop();continue
+        current='/'+('/'.join(resolved+[part]));before=os.lstat(current)
+        if stat.S_ISLNK(before.st_mode):
+            need(current in aliases and current not in seen and len(seen)<256,'declared finite observed symlink chain')
+            seen.add(current);text=os.readlink(current);need(text==aliases[current]['linkText'],'actual selected alias text')
+            snapshots.append((current,identity(before)))
+            if text.startswith('/'):resolved=[]
+            pending=text.split('/')+pending
+        else:
+            if pending:need(stat.S_ISDIR(before.st_mode),'runtime alias parent directory')
+            resolved.append(part)
+    for name,before in snapshots:need(identity(os.lstat(name))==before,'observed alias path identity after resolution')
+    return '/'+('/'.join(resolved))
+
+
+def directory_identity(path):
+    before=os.lstat(path);descriptor=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK|os.O_DIRECTORY);first=None
+    try:
+        held=os.fstat(descriptor);need(stat.S_ISDIR(held.st_mode) and identity(before)==identity(held),'held canonical directory target')
+        need(identity(os.fstat(descriptor))==identity(held)==identity(os.lstat(path)),'directory target snapshot readback')
+        return {'dev':held.st_dev,'ino':held.st_ino,'mode':held.st_mode}
+    except BaseException as error:first=error;raise
+    finally:
+        try:os.close(descriptor)
+        except BaseException:
+            if first is None:raise
+
+
 def observe_runtime(request):
-    runtime = request['runtime']; facts = {'files': {}, 'aliases': {},'identities':{}}
+    runtime = request['runtime']; aliases=runtime_alias_policy(runtime)
+    facts = {'files': {}, 'aliases': {},'directoryAliases':{},'directoryIdentities':{},'identities':{}}
     need(str(Path('/proc/self/exe').resolve(strict=True))==runtime['python']==str(Path(sys.executable).resolve(strict=True)),
          'selected actual executing CPython identity')
     for path, row in runtime['files'].items():
+        need(observed_alias_resolution(path,aliases)==path,'actual canonical selected runtime file')
         raw = check_file(path, row); facts['files'][path] = {'byteLength': len(raw), 'sha256': sha(raw)}
         info=Path(path).stat();facts['identities'][path]={'dev':info.st_dev,'ino':info.st_ino}
-    for path, item in runtime['aliases'].items():
-        before=Path(path).lstat();need(stat.S_ISLNK(before.st_mode),'actual runtime alias is symlink')
-        need(os.readlink(path)==item['linkText'] and str(Path(path).resolve(strict=True))==item['target'] and
-             identity(Path(path).lstat())==identity(before),'held runtime alias text/target identity')
-        facts['aliases'][path]=dict(item)
+    for path,item in aliases.items():
+        before=os.lstat(path);need(stat.S_ISLNK(before.st_mode),'actual selected alias is symlink')
+        need(os.readlink(path)==item['linkText'] and observed_alias_resolution(path,aliases)==item['target'] and
+             identity(os.lstat(path))==identity(before),'selected alias snapshot text/target identity')
+        role='directoryAliases' if path in runtime['directoryAliases'] else 'aliases';facts[role][path]=dict(item)
+        if role=='directoryAliases':facts['directoryIdentities'][item['target']]=directory_identity(item['target'])
     facts['resources'] = runtime['resources']
     facts['availableCpus'] = sorted(os.sched_getaffinity(0))
     facts['rlimits'] = {str(key):list(resource.getrlimit(key)) for key in (resource.RLIMIT_CORE,resource.RLIMIT_FSIZE,resource.RLIMIT_NOFILE)}
@@ -665,22 +773,29 @@ def install_input(blob,expected,target,env):
 def inventory_observation(template_raw,expected,root,env,output_path):
     """Metadata only. No browser/tool probe/guest, and never self-approval."""
     digest(expected);need(sha(template_raw)==expected,'independently selected inventory template')
-    template=decode(template_raw);fields(template,'schema sourceHead files aliases node python chromium tools')
-    need(encode(template)==template_raw and template['schema']=='bw.gui-hdd.inventory-template.v1','canonical bounded inventory template')
+    template=decode(template_raw);fields(template,'schema sourceHead files aliases directoryAliases node python chromium tools')
+    need(encode(template)==template_raw and template['schema']=='bw.gui-hdd.inventory-template.v2','canonical bounded inventory template')
     event_raw=regular(env['GITHUB_EVENT_PATH'],JSON_CAP);bind_inventory_event(event_raw,template['sourceHead'],expected,env)
     need(type(template['files']) is list and 1<=len(template['files'])<=512 and len(set(template['files']))==len(template['files']) and
-         type(template['aliases']) is list and len(template['aliases'])<=256 and len(set(template['aliases']))==len(template['aliases']), 'closed independently selected runtime path roster')
-    runtime={'files':{},'aliases':{},'node':template['node'],'python':template['python'],'chromium':template['chromium'],
+         type(template['aliases']) is list and len(template['aliases'])<=256 and len(set(template['aliases']))==len(template['aliases']) and type(template['directoryAliases']) is list and
+         len(set(template['directoryAliases']))==len(template['directoryAliases']) and len(template['aliases'])+len(template['directoryAliases'])<=256,
+         'closed independently selected runtime path roster')
+    runtime={'files':{},'aliases':{},'directoryAliases':{},'node':template['node'],'python':template['python'],'chromium':template['chromium'],
         'tools':template['tools'],'resources':{'jobMinutes':35,'controllerSeconds':1800,
         'scenarioSeconds':{'freedos-hdd-persistence':1250,'forward-debug':180},'perProcessCoreBytes':0,
         'perProcessFileBytes':FILE_CAP,'perProcessOpenFiles':256,'aggregateContainmentQualified':False}}
     for path in template['files']:
         need(type(path) is str and path.startswith('/') and '..' not in Path(path).parts,'fixed absolute inventory path')
         raw=regular(path,256<<20);runtime['files'][path]={'byteLength':len(raw),'sha256':sha(raw)}
-    for path in template['aliases']:
-        need(type(path) is str and path.startswith('/') and '..' not in Path(path).parts and Path(path).is_symlink(),'selected actual inventory symlink')
-        runtime['aliases'][path]={'linkText':os.readlink(path),'target':str(Path(path).resolve(strict=True))}
-        need(runtime['aliases'][path]['target'] in runtime['files'],'selected alias target belongs to complete file roster')
+    all_aliases={}
+    for role in ('aliases','directoryAliases'):
+        for path in template[role]:
+            runtime_path(path);before=os.lstat(path);need(stat.S_ISLNK(before.st_mode),'selected inventory alias is symlink')
+            text=os.readlink(path);need(type(text) is str and 0<len(text)<=512,'bounded selected inventory link text')
+            need(identity(os.lstat(path))==identity(before),'inventory alias snapshot readback')
+            row={'linkText':text,'target':None};runtime[role][path]=row;need(path not in all_aliases,'disjoint alias template rosters');all_aliases[path]=row
+    for path,row in all_aliases.items():row['target']=declared_alias_resolution(path,all_aliases)
+    runtime_alias_policy(runtime)
     for name in ('node','python','chromium'):need(runtime[name] in runtime['files'],'selected inventory executable')
     need(runtime['files'][runtime['node']]=={'byteLength':124827920,'sha256':'fde6a4bf8d0562f7751d1a2d6cb9b417c4cfe107bbcb0aa3e9a24e125e348f48'},'known independently admitted Node identity')
     fields(runtime['tools'],'git gh');need(runtime['tools']=={'git':'/usr/bin/git','gh':'/usr/bin/gh'} and
@@ -708,7 +823,7 @@ def inventory_observation(template_raw,expected,root,env,output_path):
     installed={}
     for prefix in ('node_modules/bw-board','node_modules/playwright','node_modules/playwright-core'):
         for path,row in inventory(Path(root)/prefix).items():installed[prefix+'/'+path]=row
-    return {'schema':'bw.gui-hdd.inventory-original.v1','observationOnly':True,'templateSha256':expected,
+    return {'schema':'bw.gui-hdd.inventory-original.v2','observationOnly':True,'templateSha256':expected,
         'source':{'head':head,'tree':tree,'files':files},'installedFiles':installed,'runtime':runtime,
         'event':{'byteLength':len(event_raw),'sha256':sha(event_raw),'base64':base64.b64encode(event_raw).decode()},
         'commands':commands,'platform':{name:env.get(name) for name in ('GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_JOB',
