@@ -6410,3 +6410,15 @@ prepare an opt-in unsigned simulator controller that admits an already available
 runtime and finite process/resource/output boundaries without implicit downloads;
 then qualify the exact candidate once. Preserve separate signed-map admission
 and release/TestFlight guards. Do not merge this source on pure collector tests.
+
+Optional unsigned input retention now uses the claimed mobile workflow and focused
+control file, without adding public script paths. `retain_ios_audit_inputs` defaults
+off and excludes tag, signing and device-IPA requests; only main and the owned
+source branch are admitted. Capture preserves the real build and app upload,
+retains exact selected tracked sources, downloaded web bytes and toolchain version
+observations, then checks source/web stability and retains all observed codegen
+candidates and one simulator executable/plist. It never launches an app. Partial
+retention fails; retained candidates are not proof of active codegen references,
+compiler input use, expanded configuration, complete input graph or process bounds.
+Independent joins, existing-runtime/resource admission, actual affected observation
+and all final-head checks remain prerequisites. Signed map and release holds remain.

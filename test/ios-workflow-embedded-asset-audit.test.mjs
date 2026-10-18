@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync, writeFileSync, mkdtempSync, rmSync} from 'node:fs';
+import {readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync, symlinkSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
@@ -42,4 +42,169 @@ test('actual device-count shell keeps assertions and does not print authored ide
     } finally {
         rmSync(dir, {recursive: true, force: true});
     }
+});
+
+const retentionBlock = workflow.match(/# BEGIN IOS INPUT RETENTION\n          cat > "\$RUNNER_TEMP\/bw-ios-audit-capture.py" <<'PY'\n([\s\S]*?)          PY\n          # END IOS INPUT RETENTION/);
+assert.ok(retentionBlock, 'exact embedded retention producer');
+const retention = retentionBlock[1].replace(/^          /gm, '');
+const enabled = "github.event_name == 'workflow_dispatch' && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/lane/ios-active-asset-source-20261018')";
+
+function authoredRetention(source = retention) {
+    const dir = mkdtempSync(join(tmpdir(), 'bw-ios-retention-'));
+    const root = join(dir, 'checkout');
+    const temp = join(dir, 'scratch');
+    const bin = join(dir, 'bin');
+    for (const path of [root, temp, bin]) mkdirSync(path);
+    const put = (path, raw) => {
+        const file = join(root, path);
+        mkdirSync(join(file, '..'), {recursive: true});
+        writeFileSync(file, raw);
+    };
+    const originals = {'apps/tauri/src-tauri/Cargo.lock': 'authored-lock', 'apps/tauri/src-tauri/src/lib.rs': 'authored-source'};
+    for (const [path, raw] of Object.entries(originals)) put(path, raw);
+    put('packages/scratch-gui/build/index.html', '<html>authored</html>');
+    const app = 'apps/tauri/src-tauri/gen/apple/build/Authored.app';
+    const plist = '<?xml version="1.0"?><plist version="1.0"><dict><key>CFBundleExecutable</key><string>authored</string><key>CFBundleSupportedPlatforms</key><array><string>iPhoneSimulator</string></array></dict></plist>';
+    put(`${app}/Info.plist`, plist);
+    put(`${app}/authored`, 'AUTHORED-NOT-A-REAL-EXECUTABLE');
+    const codegen = 'target/aarch64-apple-ios-sim/release/build/brickwright-tauri-authored/out/tauri-codegen-assets';
+    put(`${codegen}/authored.html`, 'AUTHORED-COMPRESSED-BYTES-NOT-ACTUAL-CODEGEN');
+    const shim = `#!/usr/bin/python3
+import json,os,pathlib,sys
+name=pathlib.Path(sys.argv[0]).name
+args=sys.argv[1:]
+with open(os.environ['AUTHORED_COMMAND_LOG'],'a') as stream: stream.write(name+' '+str(args)+'\\n')
+if os.environ.get('AUTHORED_FAIL') == name:
+ print('PRIVATE-ERROR-MUST-NOT-LEAK',file=sys.stderr);sys.exit(37)
+originals=json.loads(${JSON.stringify(JSON.stringify(originals))})
+if name=='git':
+ if args[0]=='ls-files': sys.stdout.buffer.write(('\\0'.join(sorted(originals))+'\\0').encode())
+ elif args[0]=='show': sys.stdout.write(originals[args[1][5:]])
+ elif args==['rev-parse','HEAD']: print('a'*40)
+ elif args==['rev-parse','HEAD^{tree}']: print('b'*40)
+ else: sys.exit(38)
+elif name=='cargo' and args[0]=='metadata': print(json.dumps({'target_directory':str(pathlib.Path(os.environ['GITHUB_WORKSPACE'])/'target')}))
+elif name=='rustc': print('rustc authored\\nhost: authored-target')
+elif name=='cargo': print('cargo authored')
+elif name=='xcodebuild': print('Xcode authored\\nBuild version authored')
+elif name=='xcrun': print('18.0')
+else: sys.exit(39)
+`;
+    for (const name of ['git', 'cargo', 'rustc', 'xcodebuild', 'xcrun']) {
+        writeFileSync(join(bin, name), shim, {mode: 0o755});
+    }
+    const script = join(dir, 'capture.py'); writeFileSync(script, source);
+    const commandLog = join(dir, 'commands.log');
+    const env = {...process.env, PATH: `${bin}:${process.env.PATH}`, GITHUB_WORKSPACE: root, RUNNER_TEMP: temp,
+        GITHUB_EVENT_NAME: 'workflow_dispatch', GITHUB_REPOSITORY: 'CrispStrobe/brickwright-lite',
+        GITHUB_REF: 'refs/heads/lane/ios-active-asset-source-20261018', GITHUB_SHA: 'a'.repeat(40),
+        GITHUB_RUN_ID: '100', GITHUB_RUN_ATTEMPT: '2', GITHUB_JOB: 'ios', BW_RETAIN_IOS_INPUTS: 'true',
+        BW_SIGN_IOS: 'false', BW_DEVICE_IPA: 'false', AUTHORED_COMMAND_LOG: commandLog};
+    const run = (phase, overrides = {}) => spawnSync('/usr/bin/python3', [script, phase], {
+        env: {...env, ...overrides}, encoding: 'utf8', timeout: 15000
+    });
+    return {dir, root, temp, app, codegen, put, run, commandLog, script,
+        output: join(temp, 'bw-ios-audit-inputs'), clean: () => rmSync(dir, {recursive: true, force: true})};
+}
+
+function withRetention(body, source) {
+    const fixture = authoredRetention(source);
+    try { return body(fixture); } finally { fixture.clean(); }
+}
+
+function succeeded(result) {
+    assert.equal(result.status, 0, result.stderr + result.stdout);
+}
+function refused(result) {
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout, /input retention refused/);
+    assert.doesNotMatch(result.stdout + result.stderr, /PRIVATE-ERROR-MUST-NOT-LEAK/);
+}
+
+test('retention input defaults off and every optional step has the unsigned exact-branch guard', () => {
+    assert.match(workflow, /retain_ios_audit_inputs:\n[\s\S]*?type: boolean\n        default: false/);
+    assert.equal(workflow.split(`if: ${enabled}`).length - 1, 2);
+    assert.equal(workflow.split(`if: always() && (${enabled})`).length - 1, 1);
+    const ios = workflow.slice(workflow.indexOf('\n  ios:\n'), workflow.indexOf('\n  ios-signed:\n'));
+    assert.ok(ios.indexOf('Retain unsigned iOS inputs before build') < ios.indexOf('npx tauri ios init --ci'));
+    assert.ok(ios.indexOf('name: brickwright-ios-sim') < ios.indexOf('Retain unsigned iOS products after build'));
+    assert.match(ios, /name: brickwright-ios-audit-inputs[\s\S]*?include-hidden-files: true[\s\S]*?if-no-files-found: error/);
+    assert.doesNotMatch(retention, /simctl|devicectl|downloadPlatform|BW_EMBEDDED_ASSET_AUDIT_PATH/);
+});
+
+test('actual embedded producer retains authored inputs and products with limited claims', () => withRetention(f => {
+    succeeded(f.run('before')); succeeded(f.run('after'));
+    const manifest = JSON.parse(readFileSync(join(f.output, 'completed.json')));
+    assert.equal(manifest.status, 'retained-candidates-only');
+    assert.equal(manifest.rawCodegenCandidates, 1);
+    assert.equal(manifest.rawCodegenFiles, 1);
+    assert.equal(manifest.commit, 'a'.repeat(40));
+    for (const field of ['completeBuildInputGraphQualified', 'effectiveConfigurationJoined', 'compilerUsedInputsProved',
+        'activeCodegenReferencesJoined', 'actualAppObserved', 'signedTargetJoined', 'resourceLifetimeQualified']) {
+        assert.equal(manifest[field], false, field);
+    }
+    assert.ok(manifest.entries.some(row => row.path === 'native/executable'));
+    assert.equal(readFileSync(join(f.output, 'web/index.html'), 'utf8'), '<html>authored</html>');
+    assert.doesNotMatch(JSON.stringify(manifest), new RegExp(f.dir));
+}));
+
+test('disabled, signing, device, wrong-repository and tag requests refuse before reading inputs', () => {
+    for (const overrides of [{BW_RETAIN_IOS_INPUTS: 'false'}, {BW_SIGN_IOS: 'true'}, {BW_DEVICE_IPA: 'true'},
+        {GITHUB_EVENT_NAME: 'push'}, {GITHUB_REPOSITORY: 'upstream/repo'}, {GITHUB_REF: 'refs/tags/v0.0.0'},
+        {GITHUB_REF: 'refs/heads/unreviewed'}]) {
+        withRetention(f => {
+            refused(f.run('before', overrides));
+            assert.throws(() => readFileSync(f.commandLog));
+        });
+    }
+});
+
+test('retention refuses overwrite, command failure and changed or extra build inputs', () => {
+    withRetention(f => { succeeded(f.run('before')); refused(f.run('before')); });
+    withRetention(f => { refused(f.run('before', {AUTHORED_FAIL: 'rustc'})); });
+    for (const [path, raw] of [['packages/scratch-gui/build/index.html', 'changed'],
+        ['packages/scratch-gui/build/extra.js', 'new'], ['apps/tauri/src-tauri/src/lib.rs', 'changed']]) {
+        withRetention(f => { succeeded(f.run('before')); f.put(path, raw); refused(f.run('after')); });
+    }
+});
+
+test('missing, linked, ambiguous and non-simulator outputs refuse', () => {
+    for (const edit of ['missing', 'symlink', 'directory-link', 'two-apps', 'device']) {
+        withRetention(f => {
+            succeeded(f.run('before'));
+            if (edit === 'missing') rmSync(join(f.root, 'target'), {recursive: true});
+            if (edit === 'symlink') symlinkSync(join(f.root, f.app, 'authored'), join(f.root, f.codegen, 'linked'));
+            if (edit === 'directory-link') symlinkSync(join(f.root, f.codegen), join(f.root, f.codegen, 'linked-directory'));
+            if (edit === 'two-apps') f.put('apps/tauri/src-tauri/gen/apple/build/Other.app/unused', 'x');
+            if (edit === 'device') f.put(`${f.app}/Info.plist`, readFileSync(join(f.root, f.app, 'Info.plist'), 'utf8').replace('iPhoneSimulator', 'iPhoneOS'));
+            refused(f.run('after'));
+        });
+    }
+});
+
+test('changed manifests, hidden private inputs and authored byte caps refuse', () => {
+    withRetention(f => {
+        succeeded(f.run('before'));
+        const file = join(f.output, 'manifest.json');
+        const manifest = JSON.parse(readFileSync(file)); manifest.actualAppObserved = true;
+        writeFileSync(file, JSON.stringify(manifest)); refused(f.run('after'));
+    });
+    withRetention(f => { f.put('packages/scratch-gui/build/.env', 'AUTHORED-PRIVATE'); refused(f.run('before')); });
+    withRetention(f => { refused(f.run('before')); }, retention.replace('TOTAL = 512 * 1024 * 1024', 'TOTAL = 8'));
+});
+
+test('post-build retention refuses changed launched producer bytes', () => withRetention(f => {
+    succeeded(f.run('before'));
+    writeFileSync(f.script, readFileSync(f.script, 'utf8') + '\n# authored changed controller\n');
+    refused(f.run('after'));
+}));
+
+test('runtime mutations expose changed-web and signing guard defects', () => {
+    const old = 'need(read_file(local) == original)'; assert.ok(retention.includes(old));
+    withRetention(f => {
+        succeeded(f.run('before')); f.put('packages/scratch-gui/build/index.html', 'changed');
+        succeeded(f.run('after'));
+    }, retention.replace(old, 'need(True)'));
+    const guard = "os.environ.get('BW_SIGN_IOS') == 'false'"; assert.ok(retention.includes(guard));
+    withRetention(f => { succeeded(f.run('before', {BW_SIGN_IOS: 'true'})); }, retention.replace(guard, 'True'));
 });

@@ -73,27 +73,33 @@ Next actions and completion criteria:
    no device acceptance follows from simulator success. A changed candidate needs
    its own admitted affected qualification; historical results keep their identity.
 4. The separate active-asset observation claim in `LANES.md` merged in PR1070.
-   Its first source candidate uses the running app's resolver from Ready, stays
+   Its source candidate uses the running app's resolver from Ready, stays
    default-off and release-simulator-only, and distinguishes embedded storage
-   bytes from served bytes and HTML/CSP handling. It does not yet wire or qualify
-   an actual workflow observation. The resource-preparation parent is preserved.
-   Before admitting a new event, finish the independently frozen expected-map
-   reader and exact source/configuration/executable/artifact joins, admit an
-   already installed simulator runtime and explicit process/memory/output/time
-   limits, and prepare the optional controller without runtime downloads.
-   Require one fresh candidate-bound unsigned observation; signed-target map
-   identity remains a separate join. Pure Rust tests do not qualify the Apple
-   adapter, decompression allocation, callback lifetime or installed package.
-   Retain this source scope in `LANES.md` before further
-   implementation. Observe the actual installed App resolver after Ready, with
-   complete ordered keys, served lengths/hashes and explicit finite budgets.
-   Account for iterator compression, resolver fallback and HTML/CSP transformations
-   without changing production security or context construction. Add authored
-   negative controls for incomplete maps, wrong bytes, fallback and budget refusal.
-   Bind the actual executable and frontend inputs independently. An unsigned
-   observation alone cannot establish signed-target map identity; demonstrate that
-   join separately. Keep the workflow audit optional and default off, preserve
-   delivery guards, and print device counts/status instead of device identifiers.
+   bytes from served bytes and HTML/CSP handling. It preserves resource preparation
+   and all three helper call paths. Authored independent content and Git/artifact
+   readers now cover their limited input contracts; they do not prove compiler
+   input use, an actual installed map or a complete build-input graph.
+
+   Optional `retain_ios_audit_inputs` preparation is off by default. It is restricted
+   to manual unsigned requests on main or the owned source branch, with both signed
+   and device IPA requests excluded. It retains selected exact tracked sources,
+   downloaded web originals and toolchain version observations before the build;
+   afterward it refuses changed source/web inputs and retains all observed package
+   codegen candidates plus the one simulator executable and plist. Existing app
+   upload remains before the optional product capture. Missing or partial retention
+   fails and cannot qualify an app; retained partial inputs remain inspectable.
+   Entry/file/total/time caps and link/alias checks constrain retention, not the app.
+
+   Next, independently join the complete retained source/web/configuration/toolchain/
+   executable and official job/artifact identities. Distinguish referenced codegen
+   outputs from stale cache candidates without guessing Rust map layout. Toolchain
+   version strings are not compiler-binary identity, and the expanded effective
+   configuration and complete input graph still need qualification. Before a new
+   actual observation, admit an already installed simulator runtime and explicit
+   process/memory/output/time limits; add the optional launch controller without
+   runtime downloads. Require one fresh candidate-bound unsigned observation.
+   Signed-target map identity remains separate. Pure controls do not qualify the
+   Apple adapter, decompression allocation, callback lifetime or installed package.
 5. Merge only after actual affected qualification and every enabled final-head
    check succeeds. Use a matched-head normal merge and verify landed tree/parents.
 

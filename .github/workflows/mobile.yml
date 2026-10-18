@@ -18,6 +18,10 @@ on:
           so `xcrun devicectl device install app` accepts it.
         type: boolean
         default: false
+      retain_ios_audit_inputs:
+        description: Retain bounded unsigned iOS build inputs for independent audit; does not launch the app.
+        type: boolean
+        default: false
   push:
     tags: ['v*']
 
@@ -167,6 +171,253 @@ jobs:
       # survive project regeneration, so there is nothing to patch here. Anything
       # this step would have to fix up belongs in one of those two files instead,
       # or local builds silently differ from CI.
+      - name: Retain unsigned iOS inputs before build
+        if: github.event_name == 'workflow_dispatch' && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/lane/ios-active-asset-source-20261018')
+        timeout-minutes: 3
+        env:
+          BW_RETAIN_IOS_INPUTS: ${{ inputs.retain_ios_audit_inputs }}
+          BW_SIGN_IOS: ${{ inputs.sign_ios }}
+          BW_DEVICE_IPA: ${{ inputs.device_ipa }}
+        run: |
+          set -euo pipefail
+          set -o noclobber
+          # BEGIN IOS INPUT RETENTION
+          cat > "$RUNNER_TEMP/bw-ios-audit-capture.py" <<'PY'
+          """Retain bounded unsigned build inputs; never start an app or claim active use."""
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import plistlib
+          import stat
+          import subprocess
+          import sys
+          import time
+
+          FILE = 64 * 1024 * 1024
+          TOTAL = 512 * 1024 * 1024
+          COUNT = 8192
+          START = time.monotonic()
+          LAST = START
+          ROOT = Path(os.environ['GITHUB_WORKSPACE'])
+          OUT = Path(os.environ['RUNNER_TEMP']) / 'bw-ios-audit-inputs'
+          ROWS = []
+          USED = 0
+
+
+          def need(ok):
+              if not ok:
+                  raise ValueError('input retention refused')
+
+
+          def clock():
+              global LAST
+              tick = time.monotonic()
+              need(tick >= LAST and tick-START <= 120)
+              LAST = tick
+
+
+          def command(args, cwd=ROOT):
+              clock()
+              result = subprocess.run(args, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                      timeout=15, check=True)
+              need(len(result.stdout) <= 4*1024*1024)
+              clock()
+              return result.stdout
+
+
+          def canonical(name):
+              need(type(name) is str and 0 < len(name.encode()) <= 512 and
+                   all(p not in ('', '.', '..') for p in name.split('/')) and
+                   not any(ord(c) < 32 or ord(c) == 127 or c in '\\:' for c in name) and
+                   all(part not in ('CLAUDE.md', 'AGENTS.md', '.env') and not part.startswith('.env.')
+                       for part in name.split('/')))
+
+
+          def read_file(file, cap=FILE):
+              clock()
+              # Refuse links in every component, not only the final name.
+              for part in [file, *file.parents]:
+                  need(not part.is_symlink())
+              before = file.stat()
+              need(stat.S_ISREG(before.st_mode) and before.st_size <= cap)
+              fd = os.open(file, os.O_RDONLY | os.O_NOFOLLOW)
+              with os.fdopen(fd, 'rb') as stream:
+                  opened = os.fstat(stream.fileno())
+                  need((opened.st_dev, opened.st_ino) == (before.st_dev, before.st_ino))
+                  raw = stream.read(cap+1)
+                  after = os.fstat(stream.fileno())
+              need(len(raw) == before.st_size and len(raw) <= cap and
+                   (before.st_size, before.st_mtime_ns, before.st_ctime_ns) ==
+                   (after.st_size, after.st_mtime_ns, after.st_ctime_ns))
+              clock()
+              return raw
+
+
+          def retain(name, raw):
+              global USED
+              canonical(name)
+              cap = 256*1024*1024 if name == 'native/executable' else FILE
+              need(len(ROWS) < COUNT and len(raw) <= cap and USED+len(raw) <= TOTAL and
+                   name.casefold() not in {r['path'].casefold() for r in ROWS})
+              file = OUT / name
+              file.parent.mkdir(parents=True, exist_ok=True)
+              with file.open('xb') as stream:
+                  stream.write(raw)
+              ROWS.append({'path': name, 'bytes': len(raw), 'sha256': hashlib.sha256(raw).hexdigest()})
+              USED += len(raw)
+
+
+          def sources():
+              raw = command(['git', 'ls-files', '-z', '--', 'apps/tauri/src-tauri',
+                             'apps/tauri/scripts', 'apps/tauri/package.json', 'apps/tauri/package-lock.json',
+                             '.github/workflows/mobile.yml', 'vendor-pins.json'])
+              names = sorted(raw.decode().rstrip('\0').split('\0'))
+              need(0 < len(names) <= COUNT)
+              return names
+
+
+          def web_files():
+              web = ROOT/'packages/scratch-gui/build'
+              names = []
+              for base, dirs, files in os.walk(web, followlinks=False):
+                  clock()
+                  for name in dirs:
+                      need(not (Path(base)/name).is_symlink())
+                  for name in files:
+                      file = Path(base)/name
+                      relative = file.relative_to(web).as_posix()
+                      canonical(relative)
+                      names.append(relative)
+                      need(len(names) <= COUNT)
+              need(names)
+              return sorted(names)
+
+
+          def record_sources():
+              for name in sources():
+                  canonical(name)
+                  raw = read_file(ROOT/name)
+                  # Capture only exact tracked source bytes, not an uncommitted mutation.
+                  need(raw == command(['git', 'show', 'HEAD:'+name]))
+                  retain('source/'+name, raw)
+              for name in web_files():
+                  retain('web/'+name, read_file(ROOT/'packages/scratch-gui/build'/name))
+
+
+          def main():
+              global ROWS, USED
+              need(os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch' and
+                   os.environ.get('GITHUB_REPOSITORY') == 'CrispStrobe/brickwright-lite' and
+                   os.environ.get('GITHUB_REF') in ('refs/heads/main',
+                       'refs/heads/lane/ios-active-asset-source-20261018') and
+                   os.environ.get('BW_RETAIN_IOS_INPUTS') == 'true' and
+                   os.environ.get('BW_SIGN_IOS') == 'false' and os.environ.get('BW_DEVICE_IPA') == 'false')
+              phase = sys.argv[1]
+              need(phase in ('before', 'after'))
+              if phase == 'before':
+                  OUT.mkdir(exist_ok=False)
+                  record_sources()
+                  retain('producer/capture.py', read_file(Path(__file__)))
+                  toolchain = {}
+                  for name, args in (
+                      ('rustc', ['rustc', '-Vv']), ('cargo', ['cargo', '--version']),
+                      ('xcode', ['xcodebuild', '-version']),
+                      ('simulatorSDK', ['xcrun', '--sdk', 'iphonesimulator', '--show-sdk-version'])):
+                      text = command(args).decode().strip()
+                      need(len(text.encode()) <= 65536 and not any(x in text for x in ('/Users/', '/home/', '/mnt/')))
+                      toolchain[name] = text
+                  retain('toolchain/versions.json', (json.dumps(toolchain, sort_keys=True)+'\n').encode())
+                  commit = command(['git', 'rev-parse', 'HEAD']).decode().strip()
+                  need(commit == os.environ['GITHUB_SHA'])
+                  manifest = {'schema': 'brickwright.ios-retained-inputs.v1', 'status': 'before-build-inputs-only',
+                      'commit': commit, 'tree': command(['git', 'rev-parse', 'HEAD^{tree}']).decode().strip(),
+                      'runID': os.environ['GITHUB_RUN_ID'], 'attempt': os.environ['GITHUB_RUN_ATTEMPT'],
+                      'job': os.environ['GITHUB_JOB'], 'ref': os.environ['GITHUB_REF'], 'entries': ROWS,
+                      'totalBytes': USED, 'completeBuildInputGraphQualified': False,
+                      'effectiveConfigurationJoined': False, 'compilerUsedInputsProved': False,
+                      'activeCodegenReferencesJoined': False, 'actualAppObserved': False,
+                      'signedTargetJoined': False, 'resourceLifetimeQualified': False}
+                  with (OUT/'manifest.json').open('x') as stream:
+                      json.dump(manifest, stream, sort_keys=True)
+              else:
+                  manifest = json.loads(read_file(OUT/'manifest.json', 8*1024*1024))
+                  need(manifest['status'] == 'before-build-inputs-only' and
+                       manifest['commit'] == os.environ['GITHUB_SHA'] and
+                       manifest['runID'] == os.environ['GITHUB_RUN_ID'] and
+                       manifest['attempt'] == os.environ['GITHUB_RUN_ATTEMPT'])
+                  need(manifest['commit'] == command(['git', 'rev-parse', 'HEAD']).decode().strip() and
+                       all(manifest[key] is False for key in ('completeBuildInputGraphQualified',
+                           'effectiveConfigurationJoined', 'compilerUsedInputsProved',
+                           'activeCodegenReferencesJoined', 'actualAppObserved', 'signedTargetJoined',
+                           'resourceLifetimeQualified')))
+                  ROWS = manifest['entries']
+                  need(type(ROWS) is list and 0 < len(ROWS) <= COUNT)
+                  for row in ROWS:
+                      canonical(row['path'])
+                      need(type(row['bytes']) is int and 0 <= row['bytes'] <= FILE and
+                           type(row['sha256']) is str and len(row['sha256']) == 64)
+                  need(len({row['path'].casefold() for row in ROWS}) == len(ROWS))
+                  USED = sum(row['bytes'] for row in ROWS)
+                  need(USED == manifest['totalBytes'] and USED <= TOTAL)
+                  expected_sources = sorted(row['path'][7:] for row in ROWS if row['path'].startswith('source/'))
+                  expected_web = sorted(row['path'][4:] for row in ROWS if row['path'].startswith('web/'))
+                  need(sources() == expected_sources and web_files() == expected_web)
+                  for row in ROWS:
+                      original = read_file(OUT/row['path'])
+                      need(len(original) == row['bytes'] and hashlib.sha256(original).hexdigest() == row['sha256'])
+                      if row['path'] == 'producer/capture.py':
+                          need(read_file(Path(__file__)) == original)
+                      if row['path'].startswith(('source/', 'web/')):
+                          local = ROOT/row['path'][7:] if row['path'].startswith('source/') else ROOT/'packages/scratch-gui/build'/row['path'][4:]
+                          need(read_file(local) == original)
+                  metadata = json.loads(command(['cargo', 'metadata', '--no-deps', '--format-version', '1',
+                                                 '--locked', '--offline'], ROOT/'apps/tauri/src-tauri'))
+                  target = Path(metadata['target_directory'])/'aarch64-apple-ios-sim/release/build'
+                  candidates = sorted(target.glob('brickwright-tauri-*/out/tauri-codegen-assets'))
+                  need(0 < len(candidates) <= 32)
+                  count = 0
+                  for candidate in candidates:
+                      # Retain all observed candidates, including stale ones. No active-use inference.
+                      for base, dirs, files in os.walk(candidate, followlinks=False):
+                          clock()
+                          need(not Path(base).is_symlink())
+                          for name in dirs:
+                              need(not (Path(base)/name).is_symlink())
+                          for name in sorted(files):
+                              file = Path(base)/name
+                              relative = file.relative_to(target).as_posix()
+                              retain('codegen/'+relative, read_file(file))
+                              count += 1
+                  need(count > 0)
+                  apps = list((ROOT/'apps/tauri/src-tauri/gen/apple/build').rglob('*.app'))
+                  need(len(apps) == 1)
+                  app = apps[0]
+                  plist = read_file(app/'Info.plist', 1024*1024)
+                  info = plistlib.loads(plist)
+                  name = info['CFBundleExecutable']
+                  canonical(name)
+                  need('/' not in name and info['CFBundleSupportedPlatforms'] == ['iPhoneSimulator'])
+                  retain('native/Info.plist', plist)
+                  retain('native/executable', read_file(app/name, 256*1024*1024))
+                  manifest.update(status='retained-candidates-only', entries=ROWS, totalBytes=USED,
+                                  rawCodegenCandidates=len(candidates), rawCodegenFiles=count,
+                                  rawCodegenSelection='all-observed-package-output-candidates; active-reference-join-required')
+                  with (OUT/'completed.json').open('x') as stream:
+                      json.dump(manifest, stream, sort_keys=True)
+              print('iOS input retention: '+phase+' complete; no app launched')
+
+
+          try:
+              main()
+          except Exception:
+              # No exception payloads, tool stderr, host paths or environment dumps in CI.
+              print('::error::iOS input retention refused; retained partial inputs are not qualification')
+              sys.exit(1)
+          PY
+          # END IOS INPUT RETENTION
+          python3 "$RUNNER_TEMP/bw-ios-audit-capture.py" before
+
       - name: Build iOS app (simulator, unsigned)
         working-directory: apps/tauri
         run: |
@@ -226,6 +477,27 @@ jobs:
           path: apps/tauri/src-tauri/gen/apple/build/**/*.app
           if-no-files-found: warn
           retention-days: 7
+
+      - name: Retain unsigned iOS products after build
+        if: github.event_name == 'workflow_dispatch' && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/lane/ios-active-asset-source-20261018')
+        timeout-minutes: 3
+        env:
+          BW_RETAIN_IOS_INPUTS: ${{ inputs.retain_ios_audit_inputs }}
+          BW_SIGN_IOS: ${{ inputs.sign_ios }}
+          BW_DEVICE_IPA: ${{ inputs.device_ipa }}
+        run: |
+          set -euo pipefail
+          python3 "$RUNNER_TEMP/bw-ios-audit-capture.py" after
+
+      - name: Upload retained unsigned iOS inputs
+        if: always() && (github.event_name == 'workflow_dispatch' && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'))
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: brickwright-ios-audit-inputs
+          path: ${{ runner.temp }}/bw-ios-audit-inputs
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 3
 
   # Signed, App-Store-shaped IPA. Opt-in — runs on a version tag, or on a manual
   # dispatch with sign_ios=true.
