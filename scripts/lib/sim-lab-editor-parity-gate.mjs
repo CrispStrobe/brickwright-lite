@@ -166,13 +166,17 @@ const checks = async (page, {shotsDir}) => {
     });
     const {a, b, l} = setup;
     assert.ok(a && b && l && new Set([a, b, l]).size === 3, `three parts placed: ${JSON.stringify(setup)}`);
-    await page.getByTestId('bw-sim-lab-view-home').click();
+    await page.evaluate(() => window.__bwSimLab.editView.view('home')); // framing only, not under test
 
     // 1. Colour: select beam A with a click, paint it red from the panel.
-    const redBefore = await redPixels(page, await screenOf(page, a, ON_BEAM));
-    const aAt = await screenOf(page, a, ON_BEAM);
-    await click(page, aAt);
+    // Close up on the beam (F frames the selection), so its pixels are many; measured unselected.
+    await clickPart(page, a);
     assert.deepEqual(await selectionOf(page), [a], 'a click selects the beam');
+    await page.keyboard.press('f');
+    await page.keyboard.press('Escape');
+    const redBefore = await redPixels(page, await screenOf(page, a, ON_BEAM), 40);
+    await clickPart(page, a);
+    assert.deepEqual(await selectionOf(page), [a]);
     await openProperties(page);
     assert.match(await page.getByTestId('bw-sim-lab-prop-name').textContent(), /Technic beam 7/);
     assert.match(await page.getByTestId('bw-sim-lab-prop-name').textContent(), /Part 32524/);
@@ -185,14 +189,15 @@ const checks = async (page, {shotsDir}) => {
     // Unselected (a selected part glows blue), as it was before.
     await canvas.focus();
     await page.keyboard.press('Escape');
-    const redAfter = await redPixels(page, await screenOf(page, a, ON_BEAM));
-    assert.ok(redBefore < 10 && redAfter > 60, `the beam turned red on screen: ${redBefore} → ${redAfter} red pixels`);
+    const redAfter = await redPixels(page, await screenOf(page, a, ON_BEAM), 40);
+    assert.ok(redBefore < 10 && redAfter > 600, `the beam turned red on screen: ${redBefore} → ${redAfter} red pixels`);
     await page.screenshot({path: resolve(shotsDir, 'sim-lab-editor-colour.png'), fullPage: true});
     await page.keyboard.press('ControlOrMeta+z');
     assert.equal((await partOf(page, a)).color, 71, 'Ctrl+Z takes the colour back');
-    assert.ok(await redPixels(page, await screenOf(page, a, ON_BEAM)) < 10, 'and the red is gone from the screen');
+    assert.ok(await redPixels(page, await screenOf(page, a, ON_BEAM), 40) < 10, 'and the red is gone from the screen');
     await page.keyboard.press('ControlOrMeta+y');
     assert.equal((await partOf(page, a)).color, 4);
+    await page.evaluate(() => window.__bwSimLab.editView.view('home')); // framing only, not under test
     // Eyedropper: select beam B, K, click the red beam: B is painted red.
     await clickPart(page, b);
     assert.deepEqual(await selectionOf(page), [b]);
@@ -233,7 +238,7 @@ const checks = async (page, {shotsDir}) => {
     console.log('PASS editor: H hides (not drawn, not clickable, kept through Simulate), I isolates, Show all brings everything back');
 
     // 3. Mirror the bent liftarm left ↔ right: its holes land on the mirror images of the old ones.
-    await page.getByTestId('bw-sim-lab-view-home').click();
+    await page.evaluate(() => window.__bwSimLab.editView.view('home')); // framing only, not under test
     const lAt = await screenOf(page, l, [0, -10, 0]);
     await click(page, lAt);
     if (!(await selectionOf(page)).includes(l)) await click(page, await screenOf(page, l, [0, -10, 20]));
