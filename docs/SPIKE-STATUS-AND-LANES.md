@@ -6,6 +6,27 @@ physical SPIKE qualification. Repository-relative paths below belong to the
 named owner. Operational locations, reference images and raw transcripts are
 not public documentation inputs.
 
+## Current integration checkpoint — 2026-10-17
+
+The newer [integration handoff](INTEGRATION-NEXT-STEPS.md) scopes the remaining
+work, qualification gates and release prerequisites. Older dated sections below
+retain their original source and observation boundaries.
+
+[PR990](https://github.com/CrispStrobe/brickwright-lite/pull/990) is merged as
+`6d9dfeb1d50139de517cfbdf302055b71eab125f`. Finite installed Linux Stop,
+held teardown-return, cleanup and two own-NuttX startup cases passed. This does
+not qualify two actual UI Stops or close G02. The later generation diagnostic
+refused readiness before an armed native run; its 4.809-second capture does not
+qualify the required 250 ms cadence. The bounded collector/reader source
+controls remain unwired and require independent review before live admission.
+
+Next: complete actual source-bound G02 generation/chooser/final-sampling,
+late-poll, deferred-storage and two-UI-Stop coverage without weakening the
+original observation, resource, ownership, cleanup or recovery requirements.
+G03 usability, G05 provenance/distribution and physical/reference behavior remain
+separate. Mobile packaging and TestFlight gates are listed in the handoff;
+Linux component success does not satisfy them.
+
 ## Pending native Stop serialization — 2026-10-15
 
 A direct second pane Stop can arrive after session detachment but before native

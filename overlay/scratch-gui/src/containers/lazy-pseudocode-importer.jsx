@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 import React from 'react';
+import {hardReload} from '../lib/hard-reload.js';
 
 let importerRequest = null;
 const loadPseudocodeImporter = () => {
@@ -108,7 +109,9 @@ class LazyPseudocodeImporter extends React.Component {
         this.Importer = createLazyImporter();
         this.setState(state => ({componentStack: null, error: null, generation: state.generation + 1, importerReady: false}));
     };
-    handleReload = () => window.location.reload();
+    // A plain reload is not enough: the service worker can hand back the same
+    // stale chunk. hardReload clears caches and the worker first.
+    handleReload = () => hardReload();
     render () {
         if (!this.state.activated) return null;
         if (this.state.error) {

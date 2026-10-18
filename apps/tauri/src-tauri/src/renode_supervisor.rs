@@ -22,6 +22,35 @@ use std::time::{Duration, Instant};
 
 const MAX_OUTPUT_BYTES: usize = 1024 * 1024;
 const MAX_SESSION_TIME: Duration = Duration::from_secs(120);
+/// Robot Lab lockstep (docs/ROBOT-LAB-SPIKE-EMULATION.md §2.7, R13a): the emulator then
+/// advances only in quanta at a real-time factor far below 1, so 120 s of wall time is a
+/// few seconds of simulated time. A session that BEGAN lockstep gets this bound instead;
+/// every other session keeps `MAX_SESSION_TIME`. Build-time `BW_RENODE_LOCKSTEP_SESSION_SECS`
+/// (120..=3600) overrides the default.
+const DEFAULT_LOCKSTEP_SESSION_SECS: u64 = 600;
+
+fn lockstep_session_time() -> Duration {
+    Duration::from_secs(
+        option_env!("BW_RENODE_LOCKSTEP_SESSION_SECS")
+            .and_then(|value| value.parse::<u64>().ok())
+            .filter(|value| (120..=3600).contains(value))
+            .unwrap_or(DEFAULT_LOCKSTEP_SESSION_SECS),
+    )
+}
+
+/// Fixed host environment for every Renode session on this platform. On macOS the packaged
+/// NuttX machine overflows the .NET default thread stack in the SPI-flash DMA path and never
+/// boots (renode-spike-prime#59); a 64 MiB default stack fixes it. A constant, never input.
+const RENODE_PLATFORM_ENV: &[(&str, &str)] = if cfg!(target_os = "macos") {
+    &[("DOTNET_DefaultStackSize", "0x4000000")]
+} else {
+    &[]
+};
+
+/// The wall bound the session worker enforces right now.
+fn session_bound(launch: Duration, lockstep: bool) -> Duration {
+    if lockstep { launch.max(lockstep_session_time()) } else { launch }
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum TeardownReason {
@@ -63,6 +92,8 @@ struct LaunchBounds {
 struct SessionControl {
     stop: Arc<AtomicBool>,
     done: Arc<(Mutex<bool>, Condvar)>,
+    /// Set once the session began Robot Lab lockstep; selects the lockstep wall bound.
+    lockstep: Arc<AtomicBool>,
 }
 
 impl SessionControl {
@@ -821,6 +852,7 @@ impl RenodeSupervisor {
         command
             .env_remove("BW_SPIKE_FLASH_JOB_DIR")
             .env_remove("BW_SPIKE_FLASH_IMAGE_SHA256");
+        command.envs(RENODE_PLATFORM_ENV.iter().copied());
         if let Some(job) = &checkpoint {
             command
                 .env("BW_SPIKE_FLASH_JOB_DIR", &job.directory)
@@ -867,13 +899,15 @@ impl RenodeSupervisor {
         let overflow = Arc::new(AtomicBool::new(false));
         let total = Arc::new(AtomicUsize::new(0));
         let done = Arc::new((Mutex::new(false), Condvar::new()));
+        let lockstep = Arc::new(AtomicBool::new(false));
         let worker_stop = Arc::clone(&stop);
         let worker_done = Arc::clone(&done);
+        let worker_lockstep = Arc::clone(&lockstep);
         let worker_uart_evidence = uart_evidence.clone();
         let (ready_sender, ready_receiver) = std::sync::mpsc::sync_channel::<Result<(), String>>(1);
         // Register ownership before starting the worker. A timed-out launch
         // remains registered until its child and private resources are cleaned.
-        let control = SessionControl { stop, done };
+        let control = SessionControl { stop, done, lockstep };
         *slot = Some(control.clone());
         thread::spawn(move || {
             let fail_start = |message: &str| {
@@ -930,7 +964,8 @@ impl RenodeSupervisor {
             loop {
                 let terminate = worker_stop.load(Ordering::SeqCst)
                     || overflow.load(Ordering::SeqCst)
-                    || started.elapsed() >= bounds.timeout;
+                    || started.elapsed()
+                        >= session_bound(bounds.timeout, worker_lockstep.load(Ordering::SeqCst));
                 if terminate {
                     let _ = child.kill();
                     let _ = child.wait();
@@ -975,6 +1010,19 @@ impl RenodeSupervisor {
             token,
             uart_evidence,
         })
+    }
+
+    /// Gives the active session the lockstep wall bound (`lockstep_session_time`). False when
+    /// no live session exists. Never shortens a bound and never touches other sessions.
+    pub(crate) fn extend_for_lockstep(&self) -> bool {
+        let Ok(slot) = self.session.lock() else { return false; };
+        match slot.as_ref() {
+            Some(session) if !session.finished() && !session.stop.load(Ordering::SeqCst) => {
+                session.lockstep.store(true, Ordering::SeqCst);
+                true
+            }
+            _ => false,
+        }
     }
 
     pub(crate) fn teardown(&self, _reason: TeardownReason) {
@@ -1663,6 +1711,7 @@ mod tests {
         let control = SessionControl {
             stop: Arc::new(AtomicBool::new(false)),
             done: Arc::new((Mutex::new(false), Condvar::new())),
+            lockstep: Arc::new(AtomicBool::new(false)),
         };
         *supervisor.session.lock().unwrap() = Some(control.clone());
         let (sender, receiver) = std::sync::mpsc::sync_channel(1);
@@ -1767,6 +1816,58 @@ mod tests {
         thread::sleep(Duration::from_millis(100));
         assert_eq!(unsafe {libc::getpgid(pid)}, pid, "session worker must keep the child alive");
         supervisor.teardown(TeardownReason::Reset);
+    }
+
+    #[test]
+    fn only_lockstep_sessions_get_the_longer_wall_bound() {
+        assert_eq!(lockstep_session_time(), Duration::from_secs(DEFAULT_LOCKSTEP_SESSION_SECS));
+        assert_eq!(session_bound(MAX_SESSION_TIME, false), Duration::from_secs(120));
+        assert_eq!(session_bound(MAX_SESSION_TIME, true), Duration::from_secs(600));
+        // Never shorter than the launch bound it replaces.
+        assert_eq!(session_bound(Duration::from_secs(4000), true), Duration::from_secs(4000));
+        assert!(!RenodeSupervisor::new().extend_for_lockstep(), "no session, nothing to extend");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn renode_sessions_get_the_fixed_platform_environment() {
+        assert_eq!(RENODE_PLATFORM_ENV.iter().any(|(name, value)|
+            *name == "DOTNET_DefaultStackSize" && *value == "0x4000000"), cfg!(target_os = "macos"));
+        let fixture = FlashFixture::new();
+        let executable = PathBuf::from("/bin/sh");
+        let supervisor = RenodeSupervisor::new();
+        supervisor.start_verified(&executable, &sha256(&executable).unwrap(),
+            &["-c".into(), "printf '%s' \"${DOTNET_DefaultStackSize-unset}\" > stack.env; sleep 30".into()],
+            &fixture.0, Duration::from_secs(10), 1024).unwrap();
+        let deadline = Instant::now() + Duration::from_secs(3);
+        let observed = loop {
+            if let Ok(value) = std::fs::read_to_string(fixture.0.join("stack.env")) {
+                if !value.is_empty() { break value; }
+            }
+            assert!(Instant::now() < deadline, "the launched process did not report its environment");
+            thread::sleep(Duration::from_millis(10));
+        };
+        supervisor.teardown(TeardownReason::Reset);
+        if cfg!(target_os = "macos") { assert_eq!(observed, "0x4000000"); }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_lockstep_session_outlives_the_ordinary_bound_and_others_do_not() {
+        let executable = PathBuf::from("/bin/sh");
+        let digest = sha256(&executable).unwrap();
+        for lockstep in [false, true] {
+            let supervisor = RenodeSupervisor::new();
+            supervisor.start_verified(&executable, &digest, &["-c".into(), "sleep 30".into()],
+                Path::new("."), Duration::from_millis(300), 1024).unwrap();
+            if lockstep { assert!(supervisor.extend_for_lockstep()); }
+            thread::sleep(Duration::from_millis(900));
+            let finished = supervisor.session.lock().unwrap().as_ref().unwrap().finished();
+            assert_eq!(finished, !lockstep, "lockstep={lockstep}");
+            supervisor.teardown(TeardownReason::Reset);
+            assert!(supervisor.session.lock().unwrap().is_none());
+            assert!(!supervisor.extend_for_lockstep());
+        }
     }
 
     #[cfg(unix)]

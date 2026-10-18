@@ -91,7 +91,9 @@ const makePositionMech = () => ({
 const makeHingeSignMech = (axis) => ({
     version: 1, gravity: [0, 0, 0],
     bodies: [
-        { id: 'frame', motion: 'static', position: [0, 0, 0], rotation: [0, 0, 0, 1], massKg: 0, colliders: [{ shape: 'box', halfExtents: [0.1, 0.1, 0.1] }], parts: [] },
+        // The arm turns inside the frame's volume: the frame is a machine part (parts named),
+        // which the machine's moving parts do not collide with.
+        { id: 'frame', motion: 'static', position: [0, 0, 0], rotation: [0, 0, 0, 1], massKg: 0, colliders: [{ shape: 'box', halfExtents: [0.1, 0.1, 0.1] }], parts: ['frame'] },
         { id: 'arm', motion: 'dynamic', position: [0, 0, 0], rotation: [0, 0, 0, 1], massKg: 0.02, colliders: [{ shape: 'box', halfExtents: [0.05, 0.01, 0.01] }], parts: [] },
     ],
     joints: [
@@ -264,6 +266,115 @@ test('gear ratio +2', async () => {
     const ratio = a2 / a1;
     assert.ok(Math.abs(ratio - 2) / 2 < TOL_GEAR, `gear ratio ${ratio} vs 2`);
     core.destroy();
+});
+
+test('gear on its hinge\'s body1: the contract ratio holds for the hinge as written', async () => {
+    // The driven gear is the hinge's body1 (the frame is body2), as a gear turning on an
+    // axle fixed in the frame compiles. ω(j2) is then the FRAME relative to the gear, minus
+    // the gear's own rate: for ratio +1/3 the gear itself turns at −1/3 of the driver, and
+    // the hinge reads +1/3.
+    const mech = makeGearMech(1 / 3, [0, 1, 0], [0, 1, 0]);
+    mech.joints[1] = { ...mech.joints[1], body1: 'g2', body2: 'base' };
+    const core = createPhysicsCore(J, mech, { stepHz: 120 });
+    core.setMotor('j1', { mode: 'velocity', radPerSec: 6 });
+    for (let i = 0; i < 180; i++) core.step(1 / 120);
+    const a1 = core.jointState('j1').angle;
+    const ratio = core.jointState('j2').angle / a1;
+    assert.ok(Math.abs(ratio - 1 / 3) / (1 / 3) < TOL_GEAR, `hinge ratio ${ratio} vs +1/3`);
+    // The gear body itself turns the other way round the shared +y axis.
+    const w2 = core.bodyAngularVelocity('g2')[1];
+    const w1 = core.bodyAngularVelocity('g1')[1];
+    assert.ok(Math.abs(w2 / w1 - (-1 / 3)) < 0.01, `body rates ${w1} ${w2}`);
+    core.destroy();
+});
+
+test('gear ratios above 1 and of both signs stay stable (−3, +5, −5/3)', async () => {
+    // Jolt's gear constraint diverged for r < 1 or r < 0 before the core ordered the pair.
+    for (const ratio of [-3, 5, -5 / 3]) {
+        const mech = makeGearMech(ratio, [0, 1, 0], [0, 1, 0]);
+        const core = createPhysicsCore(J, mech, { stepHz: 120 });
+        core.setMotor('j1', { mode: 'velocity', radPerSec: 3 });
+        for (let i = 0; i < 180; i++) core.step(1 / 120);
+        const a1 = core.jointState('j1').angle;
+        const measured = core.jointState('j2').angle / a1;
+        assert.ok(Math.abs(a1 - 4.5) < 0.1, `driver ${a1} rad (ratio ${ratio})`);
+        assert.ok(Math.abs(measured - ratio) / Math.abs(ratio) < TOL_GEAR, `gear ratio ${measured} vs ${ratio}`);
+        core.destroy();
+    }
+});
+
+test('a box arm swinging into a static box stops where they first touch', async () => {
+    // A thin liftarm-sized box (58 x 4 x 18 mm... in LDU 58 x 10 x 18) turning about +y into a
+    // static 8 mm block. Box colliders once had no convex radius and met only when deep inside
+    // each other: this arm passed 45° into the block first.
+    //
+    // First touch, from the geometry: whichever comes first of (a) the block's near corner
+    // (0.012, −0.008) reaching the arm's leading long edge, r·sin(φ − θ) = W, θ = 19.2°, and
+    // (b) the arm's tip corner (0.0196, −W) reaching the block's face z = −0.008 (inside its
+    // x range 0.012..0.020: the tip is then at x = 0.0183): 0.0196·sin θ + W·cos θ = 0.008, θ = 13.3°. It is (b). Until
+    // 2026-10-17 this test expected (a) and passed because the core gave this 3 g arm the
+    // inertia of a 1 m sphere (Jolt's fallback for principal moments under 1e-6 kg·m²,
+    // jolt-core.js fixSmallInertia): ~4000× too heavy, it pushed ~6° into the block.
+    const W = 0.0036; // arm half width (m)
+    const corner = [0.012, -0.008]; // nearest block corner (x, z) from the pivot
+    const r = Math.hypot(...corner);
+    const cornerOnEdge = Math.atan2(-corner[1], corner[0]) - Math.asin(W / r);
+    // Tip on face: L·sin θ + W·cos θ = d, i.e. hypot(L, W)·sin(θ + atan2(W, L)) = d.
+    const L = 0.0196, d = -corner[1];
+    const tipOnFace = Math.asin(d / Math.hypot(L, W)) - Math.atan2(W, L);
+    const firstTouch = Math.min(cornerOnEdge, tipOnFace) * 180 / Math.PI;
+    const mech = {
+        version: 1, gravity: [0, 0, 0],
+        bodies: [
+            { id: 'arm', motion: 'dynamic', position: [0, 0, 0], rotation: [0, 0, 0, 1], massKg: 0.003, colliders: [{ shape: 'box', halfExtents: [0.0116, 0.002, W], position: [0.008, 0, 0] }], parts: [] },
+            { id: 'block', motion: 'static', position: [0.016, 0, -0.012], rotation: [0, 0, 0, 1], massKg: 0, colliders: [{ shape: 'box', halfExtents: [0.004, 0.0046, 0.004] }], parts: [] },
+        ],
+        // body1 = arm, body2 = world: a positive hinge rate turns the arm towards -z.
+        joints: [{ id: 'j', type: 'hinge', body1: 'arm', body2: 'world', point: [0, 0, 0], axis: [0, -1, 0], motor: { port: 'A', maxTorqueNm: 0.18, maxSpeedRadPerSec: 20 } }],
+        gears: [], diagnostics: [],
+    };
+    const core = createPhysicsCore(J, mech, { stepHz: 200 });
+    core.setMotor('j', { mode: 'velocity', radPerSec: 1.5 });
+    let sum = 0;
+    for (let i = 0; i < 300; i++) {
+        core.step(1 / 200);
+        if (i >= 200) sum += core.jointState('j').angle;
+    }
+    const settled = sum / 100 * 180 / Math.PI;
+    core.destroy();
+    assert.ok(settled > firstTouch - 1 && settled < firstTouch + 6, `arm settled at ${settled.toFixed(1)}°, first touch ${firstTouch.toFixed(1)}°`);
+});
+
+test('a static body made of model parts is the machine frame: it pushes the parts not joined to it (D2), never the ones joined', async () => {
+    // Owner decision D2 (R3): everything collides except the bodies joined by a joint.
+    // Until R3 a frame (a static body with parts) collided with no moving part at all, so
+    // this test asserted that an UNJOINED body overlapping the frame stayed where it was;
+    // now only a joined one does (an axle sliding in the frame's hole), and an unjoined one
+    // is pushed out like an obstacle (no parts) pushes it.
+    const run = async (parts, joined) => {
+        const mech = {
+            version: 1, gravity: [0, 0, 0],
+            bodies: [
+                { id: 'fixed', motion: 'static', position: [0, 0, 0], rotation: [0, 0, 0, 1], massKg: 0, colliders: [{ shape: 'box', halfExtents: [0.01, 0.01, 0.01] }], parts },
+                // Overlapping the fixed box by 1 mm on its +x face.
+                { id: 'axle', motion: 'dynamic', position: [0.019, 0, 0], rotation: [0, 0, 0, 1], massKg: 0.001, colliders: [{ shape: 'box', halfExtents: [0.01, 0.002, 0.002] }], parts: ['axle'] },
+            ],
+            // A slider along x leaves the axle free to be pushed out along x, if anything pushes.
+            joints: joined ? [{ id: 's', type: 'slider', body1: 'fixed', body2: 'axle', point: [0.019, 0, 0], axis: [1, 0, 0] }] : [],
+            gears: [], diagnostics: [],
+        };
+        const core = createPhysicsCore(J, mech, { stepHz: 200 });
+        for (let i = 0; i < 40; i++) core.step(1 / 200);
+        const x = core.bodyPose('axle').position[0];
+        core.destroy();
+        return x;
+    };
+    const joinedToFrame = await run(['beam'], true);
+    const looseInFrame = await run(['beam'], false);
+    const inObstacle = await run([], false);
+    assert.ok(Math.abs(joinedToFrame - 0.019) < 1e-6, `a frame leaves the axle sliding in its hole where it is: ${joinedToFrame}`);
+    assert.ok(looseInFrame > 0.0195, `a frame pushes out a part not joined to it: ${looseInFrame}`);
+    assert.ok(inObstacle > 0.0195, `an obstacle (no parts) pushes it out: ${inObstacle}`);
 });
 
 test('free fall ½gt² ±2% after 0.5 s', async () => {

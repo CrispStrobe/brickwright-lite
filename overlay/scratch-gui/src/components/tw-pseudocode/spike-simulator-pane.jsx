@@ -6,8 +6,8 @@ import SimLabPane from './sim-lab-pane.jsx';
 import VirtualSpikeHubState from '../../lib/virtual-hub/spike-hub-state.js';
 import {pickLocale, browserLocale} from '../../lib/bw-i18n.js';
 const TABS = {
-    en: {arena: 'Arena', simLab: 'Sim Lab (beta)'},
-    de: {arena: 'Arena', simLab: 'Sim-Labor (Beta)'}
+    en: {arena: 'Arena', simLab: 'Robot Lab (beta)'},
+    de: {arena: 'Arena', simLab: 'Roboter-Labor (Beta)'}
 };
 const TEXT = {
     en: 'Virtual SPIKE Prime · Run Scratch blocks, DEVICE SPIKE programs or imported LEGO SPIKE 3 programs with Start in the arena.',
@@ -37,10 +37,13 @@ class SpikeSimulatorPane extends React.Component {
         return (
             <div data-testid="bw-spike-simulator" data-backend="native"
                 style={{height: '100%', display: 'flex', flexDirection: 'column', overflow: 'auto', background: '#f8fafc'}}>
-                <div role="status" data-testid="bw-spike-backend-hint" style={{padding: 10, fontSize: 12}}>
-                    {TEXT[pickLocale(this.props.locale || browserLocale(), TEXT)]}
-                </div>
-                <div role="tablist" style={{display: 'flex', gap: 4, padding: '0 10px'}}>
+                {/* About the arena; the Robot Lab says what it is itself, and needs the height for its 3D view. */}
+                {this.state.tab === 'arena' && (
+                    <div role="status" data-testid="bw-spike-backend-hint" style={{padding: 10, fontSize: 12}}>
+                        {TEXT[pickLocale(this.props.locale || browserLocale(), TEXT)]}
+                    </div>
+                )}
+                <div role="tablist" style={{display: 'flex', gap: 4, padding: this.state.tab === 'arena' ? '0 10px' : '6px 10px 0'}}>
                     {['arena', 'simLab'].map(tab => (
                         <button key={tab} type="button" role="tab" aria-selected={this.state.tab === tab}
                             data-testid={`bw-spike-simulator-tab-${tab}`} onClick={() => this.setTab(tab)}
@@ -53,7 +56,8 @@ class SpikeSimulatorPane extends React.Component {
                 <div style={{flex: '1 0 400px', minHeight: 300, background: '#fff'}}>
                     {this.state.tab === 'arena' ?
                         <SpikeArenaPane ref={this.arena} vm={this.props.vm} locale={this.props.locale} hubState={this.hubState} /> :
-                        <SimLabPane vm={this.props.vm} locale={this.props.locale} hubState={this.hubState} />}
+                        <SimLabPane vm={this.props.vm} locale={this.props.locale} hubState={this.hubState}
+                            isFullScreen={this.props.isFullScreen} onEnterFullScreen={this.props.onEnterFullScreen} />}
                 </div>
             </div>
         );

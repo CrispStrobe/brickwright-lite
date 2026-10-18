@@ -27,6 +27,7 @@ import {compile} from '../overlay/scratch-gui/src/lib/bw-sim/mech/compile.js';
 import {loadJolt, createPhysicsCore} from '../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js';
 import {SimHubBridge, STEP_MS} from '../overlay/scratch-gui/src/lib/bw-sim/hub-bridge.js';
 import VirtualSpikeHubState from '../overlay/scratch-gui/src/lib/virtual-hub/spike-hub-state.js';
+import {sitsInside, solidOverlaps} from '../overlay/scratch-gui/src/lib/bw-sim/editor/overlap.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const json = p => JSON.parse(readFileSync(path.join(ROOT, p), 'utf8'));
@@ -79,7 +80,7 @@ test('the driving base compiles to chassis + two motorised wheels + castor ball'
     assert.equal(dynamic.length, 4, `bodies: ${JSON.stringify(dynamic.map(b => b.parts))}`);
     const chassis = bodyOf(mech, 'hub');
     // A motor is in two bodies: its housing here, its output with the wheel.
-    for (const p of ['motorL', 'motorR', 'pinL', 'pinR', 'castor', 'castorPin1', 'castorPin2']) {
+    for (const p of ['motorL', 'motorR', 'pinL', 'pinR', 'frontBeam', 'frontPin1', 'frontPin2', 'castor']) {
         assert.ok(chassis.parts.includes(p), `${p} is rigid with the hub`);
     }
     for (const side of ['L', 'R']) {
@@ -102,8 +103,10 @@ test('the driving base compiles to chassis + two motorised wheels + castor ball'
     assert.ok(mech.bodies.some(b => b.motion === 'static'), 'a ground');
 });
 
-test('A negative, B positive drives straight forward; encoders read the wheels', async () => {
+test('A negative, B positive drives straight forward; encoders read the wheels', async t => {
     const r = await run({left: -HALF_SPEED, right: HALF_SPEED, seconds: 2});
+    t.diagnostic(`2 s at ${HALF_SPEED} °/s: ${r.dz.toFixed(3)} m along z, ${r.dx.toFixed(4)} m sideways, yaw ${r.yaw}°, ` +
+        `encoders ${r.posA.toFixed(1)}° / ${r.posB.toFixed(1)}°`);
     // Forward is away from the castor: LDraw +z, world -z.
     assert.ok(r.dz < -0.3, `moved ${r.dz.toFixed(3)} m along z (expected forward, -z)`);
     assert.ok(Math.abs(r.dx) < 0.05 * Math.abs(r.dz), `drifted ${r.dx.toFixed(3)} m sideways`);
@@ -115,18 +118,20 @@ test('A negative, B positive drives straight forward; encoders read the wheels',
     assert.ok(r.posA < 0 && r.posB > 0, 'A turned negative, B positive');
 });
 
-test('both motors positive turns in place to the left: negative yaw', async () => {
+test('both motors positive turns in place to the left: negative yaw', async t => {
     const r = await run({left: HALF_SPEED / 2, right: HALF_SPEED / 2, seconds: 1.5});
+    t.diagnostic(`yaw ${r.yaw}°, the centre moved ${r.moved.toFixed(4)} m`);
     assert.ok(r.yaw < -30, `yaw ${r.yaw}`);
     assert.ok(r.moved < 0.06, `the centre moved ${r.moved.toFixed(3)} m`);
 });
 
-test('run_for_degrees completes on the physical angle', async () => {
+test('run_for_degrees completes on the physical angle', async t => {
     let outcome;
     const r = await run({seconds: 2, setup: hub => {
         hub.motors.runForDegrees('B', 360, 500).then(v => { outcome = v; });
     }});
     await new Promise(resolve => setImmediate(resolve));
+    t.diagnostic(`B ended at ${r.posB.toFixed(2)}°`);
     assert.equal(outcome, 'completed');
     assert.ok(Math.abs(r.posB - 360) < 3, `B ended at ${r.posB}°`);
 });
@@ -136,4 +141,30 @@ test('the same commands give the same run', async () => {
     const b = await run({left: -HALF_SPEED, right: HALF_SPEED / 2, seconds: 1});
     assert.equal(a.snapshot, b.snapshot);
     assert.equal(a.posA, b.posA);
+});
+
+test('no two solid parts of the driving base overlap; only pins and axles sit inside holes', () => {
+    // A castor once 'hung' from the hub's bottom holes while its frame cut 8 mm into the hub: the
+    // compiler accepted it (the parts were pinned together), the picture showed it. Connected or not,
+    // solid parts must not share volume; shafts (pins, axles) and the castor ball (inside its socket)
+    // are the parts that legitimately sit inside another part.
+    // The rule is the build editor's (editor/overlap.js `solidOverlaps`, which refuses such moves);
+    // these are the parts it lets sit inside another one.
+    // (3749 axle pin, 32002 pin 3/4, 2736 towball: an axle in a hole and a ball in a socket.)
+    // 3708/3737 axles 12/10 and 87083 axle 4 with stop are the newly catalogued shafts
+    // (oc-parts.md): like 3705 they are single axle connectors, so they too sit inside holes.
+    const inside = ['2780.dat', '3673.dat', '6558.dat', '43093.dat', '3705.dat', '4519.dat', '32073.dat', '3706.dat', '3707.dat', '32062.dat', '52629.dat',
+        '3749.dat', '32002.dat', '2736.dat',
+        '3708.dat', '3737.dat', '87083.dat'];
+    assert.deepEqual([...CATALOG.values()].filter(sitsInside).map(m => m.part).sort(), inside.slice().sort());
+    // Partly shaft, partly solid: only their tagged shaft regions may sit inside another part
+    // (32054's stop bush stays outside the hole; 87082's centre, with its pin hole, between two beams;
+    // 48496, the smooth toggle joint of R4: its two pins in a beam, its eyes and bar outside).
+    const partly = [...CATALOG.values()].filter(m => !sitsInside(m) && m.colliders.some(c => c.region)).map(m => m.part).sort();
+    assert.deepEqual(partly, ['32054.dat', '48496.dat', '87082.dat']);
+    const found = [];
+    for (const p of MODEL.parts) {
+        for (const o of solidOverlaps(MODEL, CATALOG, p)) found.push(`${p.id} ↔ ${o.part}`);
+    }
+    assert.deepEqual(found, []);
 });

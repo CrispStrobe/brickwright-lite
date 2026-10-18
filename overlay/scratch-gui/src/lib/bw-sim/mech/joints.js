@@ -7,7 +7,8 @@
 // Also handles ball joints (point constraint).
 
 import {COS_1_DEG, vecAdd, vecSub, vecDot, vecCross, vecLen, vecScale, vecNormalize, vecDist, lineDistance} from './vec.js';
-import {lduToWorld, dirToWorld} from '../contracts.js';
+import {lduToWorld, dirToWorld, LDU_M} from '../contracts.js';
+import {MIN_ENGAGE_LDU} from '../kinds/pin-axle.js';
 
 const COS_1 = COS_1_DEG;
 const TOL = 0.5 + 1e-9;
@@ -32,8 +33,123 @@ const perpDist = (p, origin, dir) => {
  * @param {Array} edges from graph (rigid/hinge/ball including motor internal)
  * @param {{bodies:Array, nodeToBody:Map, bodyMap:Map}} islands
  * @param {Array} diagnostics
- * @returns {{joints:Array, lockedPairs:Array}} lockedPairs = list of [bodyIdA, bodyIdB] that need merging
+ * @returns {{joints:Array, lockedPairs:Array, lockedParts:Array}} lockedPairs = list of [bodyIdA, bodyIdB] that need merging;
+ *   lockedParts[i] = the placed parts whose hinges lock pair i
  */
+/**
+ * The joint's motor from the graph edge's: every field the contract names, the device id
+ * included — the hub reports it (48 medium, 49 large angular motor) and scales speeds by it.
+ */
+const motorOf = m => {
+    const motor = {port: m.port, maxTorqueNm: m.maxTorqueNm, maxSpeedRadPerSec: m.maxSpeedRadPerSec};
+    if (Number.isInteger(m.deviceId)) motor.deviceId = m.deviceId;
+    return motor;
+};
+
+/** Every member of a locked hinge group is a pin of one and the same placed part (the shaft side, edge b). */
+const isPinMount = (group, nodes) => {
+    const owners = new Set();
+    for (const g of group) {
+        const node = nodes.get(g.edge.b.part);
+        const c = node ? node.connectors.find(k => k.id === g.edge.b.connector) : null;
+        if (!c || c.type !== 'pin' || g.edge._isMotorInternal) return false;
+        owners.add(node.partId);
+    }
+    return owners.size === 1;
+};
+
+/** A connector of a graph node by id (LDraw model frame, LDU), or null. */
+const connectorOf = (nodes, end) => {
+    const node = nodes.get(end.part);
+    return node ? node.connectors.find(c => c.id === end.connector) || null : null;
+};
+
+/** A connector's segment along unit direction u: [lo, hi] (LDU). */
+const segmentAlong = (c, u) => {
+    const t = vecDot(c.position, u);
+    const h = (c.length || 0) / 2 * Math.abs(vecDot(c.axis, u));
+    return [t - h, t + h];
+};
+
+/**
+ * Slider edges grouped by island pair (unordered key, as hinges). A member: {edge, body1 (the
+ * shaft's island, edge a), body2 (the bore's), axisLdu (the shaft's), boreWorld (the bore's
+ * centre, m)}.
+ */
+const sliderGroups = (edges, nodeToBody) => {
+    const groups = new Map();
+    for (const e of edges) {
+        if (e.kind !== 'slider') continue;
+        const b1 = nodeToBody.get(e.a.part);
+        const b2 = nodeToBody.get(e.b.part);
+        if (!b1 || !b2 || b1 === b2) continue;
+        const key = [b1, b2].sort().join('|');
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push({edge: e, body1: b1, body2: b2, axisLdu: vecNormalize(e.axis), boreWorld: null});
+    }
+    return groups;
+};
+
+/**
+ * How far a slider joint can travel, in LDU along the joint's axis (body2 relative to body1,
+ * zero at the start pose): [min ≤ 0, max ≥ 0]. Measured from the connectors, per edge
+ * (one bore on one shaft):
+ *   - engagement: the bore stays on its shaft by at least min(MIN_ENGAGE_LDU, both lengths) —
+ *     the seat rule of kinds/pin-axle.js, so a bore that slides off the axle's end stops there.
+ *     On one shaft it is enough that ONE of the moving part's bores stays on (union per shaft:
+ *     a carriage riding two eyes of a toggle keeps running while the lower eye leaves the axle);
+ *   - stops: no bore passes through another part's connector on the same shaft (a beam or a
+ *     connector the axle is fixed in, a bush) — any bore of the moving part meeting one stops it
+ *     (intersection over every bore).
+ * Across shafts (two guide axles) the travel is the intersection. Parts that touch the moving
+ * part away from its shafts are not seen here (jointed bodies never collide, R3): a stop that is
+ * not on a shaft is a limit only if a coupling gives one (kinds/rack.js: the rack's teeth).
+ */
+const sliderTravel = (group, ref, nodes, edges, nodeToBody) => {
+    const u = ref.axisLdu;
+    let lo = -Infinity;
+    let hi = Infinity;
+    const byShaft = new Map();
+    for (const g of group) {
+        const shaft = connectorOf(nodes, g.edge.a);
+        const bore = connectorOf(nodes, g.edge.b);
+        g.boreWorld = lduToWorld(bore.position);
+        // The joint moves body2 relative to body1 along u; this edge's bore moves relative to its
+        // shaft along u by sign·d (its shaft may be on body2: a carriage axle through a frame bore).
+        const sign = g.body1 === ref.body1 ? 1 : -1;
+        const [s0, s1] = segmentAlong(shaft, u);
+        const [b0, b1] = segmentAlong(bore, u);
+        const need = Math.min(MIN_ENGAGE_LDU, s1 - s0, b1 - b0);
+        const engage = [s0 - b1 + need, s1 - b0 - need].map(v => sign * v).sort((p, q) => p - q);
+        const key = `${g.edge.a.part}|${g.edge.a.connector}`;
+        const prev = byShaft.get(key);
+        byShaft.set(key, prev ? [Math.min(prev[0], engage[0]), Math.max(prev[1], engage[1])] : engage);
+        // Stops: every other connector seated on this shaft, unless it moves with the bore.
+        const moving = nodeToBody.get(g.edge.b.part);
+        for (const e of edges) {
+            let other = null;
+            if (e.a.part === g.edge.a.part && e.a.connector === g.edge.a.connector) other = e.b;
+            else if (e.b.part === g.edge.a.part && e.b.connector === g.edge.a.connector) other = e.a;
+            if (!other || nodeToBody.get(other.part) === moving) continue;
+            const c = connectorOf(nodes, other);
+            if (!c) continue;
+            const [o0, o1] = segmentAlong(c, u);
+            if (o0 >= b1 - 1e-6) {
+                const stop = sign * (o0 - b1);
+                if (sign > 0) hi = Math.min(hi, stop); else lo = Math.max(lo, stop);
+            } else if (o1 <= b0 + 1e-6) {
+                const stop = sign * (o1 - b0);
+                if (sign > 0) lo = Math.max(lo, stop); else hi = Math.min(hi, stop);
+            }
+        }
+    }
+    for (const [a, b] of byShaft.values()) {
+        lo = Math.max(lo, a);
+        hi = Math.min(hi, b);
+    }
+    return [Math.min(0, lo), Math.max(0, hi)];
+};
+
 export const buildJoints = (nodes, edges, islands, diagnostics = []) => {
     const {nodeToBody, bodyMap} = islands;
     // Collect hinge and ball edges that are between different islands
@@ -114,6 +230,8 @@ export const buildJoints = (nodes, edges, islands, diagnostics = []) => {
 
     const joints = [];
     const lockedPairs = []; // list of [bodyIdA, bodyIdB] that are locked
+    const lockedParts = []; // per locked pair: the placed parts whose hinges lock (for the diagnostic)
+    const lockedMounts = []; // per locked pair: true when it is one part's own pins (isPinMount)
 
     // Process hinge groups
     for (const [key, group] of hingeGroups.entries()) {
@@ -128,7 +246,7 @@ export const buildJoints = (nodes, edges, islands, diagnostics = []) => {
                 point: g.pointWorld,
                 axis: g.axisWorld,
             };
-            if (g.motor) joint.motor = {port: g.motor.port, maxTorqueNm: g.motor.maxTorqueNm, maxSpeedRadPerSec: g.motor.maxSpeedRadPerSec};
+            if (g.motor) joint.motor = motorOf(g.motor);
             joints.push({joint, groupKey: key, members: group});
         } else {
             // Check collinearity among all members
@@ -164,12 +282,24 @@ export const buildJoints = (nodes, edges, islands, diagnostics = []) => {
                 };
                 // If any member has motor, include it (should not happen for hinge group >1)
                 const motorMember = group.find(g => g.motor);
-                if (motorMember) joint.motor = {port: motorMember.motor.port, maxTorqueNm: motorMember.motor.maxTorqueNm, maxSpeedRadPerSec: motorMember.motor.maxSpeedRadPerSec};
+                if (motorMember) joint.motor = motorOf(motorMember.motor);
                 joints.push({joint, groupKey: key, members: group});
             } else {
                 // Locked: non-collinear hinges between same pair lock it
                 const [bA, bB] = key.split('|');
                 lockedPairs.push([bA, bB]);
+                const ids = new Set();
+                for (const g of group) {
+                    for (const end of [g.edge.a, g.edge.b]) {
+                        const node = nodes.get(end.part);
+                        if (node) ids.add(node.partId);
+                    }
+                }
+                lockedParts.push([...ids].sort());
+                // A part held by two of its OWN frictionless pins in two holes (the toggle joint 48496,
+                // whose pins LDraw draws as plain connect.dat) is mounted rigidly by design: the lock is
+                // the mount, not a hinge the builder meant to turn, so compile.js says nothing about it.
+                lockedMounts.push(isPinMount(group, nodes));
                 // No joint created; will be merged and diagnostic added by compile.js
             }
         }
@@ -224,6 +354,40 @@ export const buildJoints = (nodes, edges, islands, diagnostics = []) => {
         }
     }
 
+    // Slider edges (an axle through a slide-bore, kinds/slide.js): every slider edge between
+    // one island pair is ONE slider joint — the bores of a carriage on one or two guide axles.
+    // Edges along different directions lock the pair (as non-collinear hinges do), and so does
+    // a pair that also has a hinge between it (a turn and a slide along one pair of bodies).
+    for (const [key, group] of sliderGroups(edges, nodeToBody).entries()) {
+        const ref = group[0];
+        const crossing = group.some(g => !parallel(ref.axisLdu, g.axisLdu));
+        if (crossing || hingeGroups.has(key)) {
+            lockedPairs.push(key.split('|'));
+            const ids = new Set();
+            for (const g of [...group, ...(hingeGroups.get(key) || [])]) {
+                for (const end of [g.edge.a, g.edge.b]) {
+                    const node = nodes.get(end.part);
+                    if (node) ids.add(node.partId);
+                }
+            }
+            lockedParts.push([...ids].sort());
+            lockedMounts.push(false);
+            continue;
+        }
+        const travel = sliderTravel(group, ref, nodes, edges, nodeToBody);
+        const mid = [0, 1, 2].map(i => group.reduce((s, g) => s + g.boreWorld[i], 0) / group.length);
+        const joint = {
+            id: '',
+            type: 'slider',
+            body1: ref.body1,
+            body2: ref.body2,
+            point: mid,
+            axis: vecNormalize(dirToWorld(ref.axisLdu)),
+            limits: [travel[0] * LDU_M, travel[1] * LDU_M]
+        };
+        joints.push({joint, groupKey: key, members: group});
+    }
+
     // Deterministic sort of joints by body1, body2, point, axis
     joints.sort((A, B) => {
         const a = A.joint; const b = B.joint;
@@ -249,5 +413,5 @@ export const buildJoints = (nodes, edges, islands, diagnostics = []) => {
     // Unwrap to list of joint objects
     const jointList = joints.map(e => e.joint);
 
-    return {joints: jointList, lockedPairs, jointEntries: joints};
+    return {joints: jointList, lockedPairs, lockedParts, lockedMounts, jointEntries: joints};
 };

@@ -5,6 +5,9 @@
 // Pure text <-> PlacedModel, no DOM. Handles .ldr and .mpd (first FILE is
 // main, type-1 lines referencing other FILE sections are flattened with
 // composed transforms). Generates refusals for lossy or malformed lines.
+// `0 STEP` lines in the main model become `model.steps` (part ids per building
+// step, for instructions/steps.js); a model without them has no `steps` key and
+// is written back exactly as before.
 
 import {det3} from '../contracts.js';
 
@@ -57,7 +60,13 @@ const parseType1 = line => {
     const tokens = trimmed.split(/\s+/);
     if (tokens[0] !== '1') return null;
     if (tokens.length < 15) return {error: 'too few tokens'};
-    const color = parseInt(tokens[1], 10);
+    const colorStr = tokens[1].trim();
+    let color;
+    if (/^0x/i.test(colorStr)) {
+        color = Number.parseInt(colorStr, 16);
+    } else {
+        color = Number.parseInt(colorStr, 10);
+    }
     if (!Number.isFinite(color)) return {error: 'bad color'};
     const nums = tokens.slice(2, 14).map(s => parseFloat(s));
     if (nums.some(n => !Number.isFinite(n))) return {error: 'bad numbers'};
@@ -144,13 +153,27 @@ export const parseModel = (text, {catalog} = {}) => {
     // State for main model
     let pendingPort = null; // string or null
     let pendingId = null;
+    let pendingGroup = null; // groupId or null
     let seenIds = new Set();
     let nextId = 1;
+    const groupsById = new Map(); // id -> {id, name, parts: []}
+    const groupOrder = []; // to preserve order
+    const partToGroup = new Map(); // partId -> groupId (for checking duplicate part in two groups)
+    // Building steps: `0 STEP` (or `0 ROTSTEP …`) in the main model ends a step (instructions/steps.js).
+    const steps = [];
+    let stepParts = [];
+    let sawStep = false;
 
     // For sub-model flattening, we need to track line index path for ids
     // We will define recursive function to flatten a sub-model file
-    const flattenSubModel = (subFileName, parentPos, parentRot, path) => {
-        const sec = fileSections.get(normalizeFile(subFileName));
+    const flattenSubModel = (subFileName, parentPos, parentRot, path, visited = new Set()) => {
+        const norm = normalizeFile(subFileName);
+        if (visited.has(norm)) {
+            refusals.push({line: 0, code: 'cycle', message: `Cycle detected at '${subFileName}'`});
+            return [];
+        }
+        visited.add(norm);
+        const sec = fileSections.get(norm);
         if (!sec) return [];
         const result = [];
         let localPendingPort = null;
@@ -215,7 +238,7 @@ export const parseModel = (text, {catalog} = {}) => {
                         refusals.push({line: lineNo, code: 'bad-matrix', message: `Bad matrix at line ${lineNo} det=${det3(parsed.rotation).toFixed(4)}`});
                         continue;
                     }
-                    const nestedParts = flattenSubModel(parsed.file, composedPos2, composedRot, nestedPath);
+                    const nestedParts = flattenSubModel(parsed.file, composedPos2, composedRot, nestedPath, new Set(visited));
                     result.push(...nestedParts);
                     continue;
                 }
@@ -244,8 +267,8 @@ export const parseModel = (text, {catalog} = {}) => {
                 let id;
                 if (localPendingId) {
                     if (seenIds.has(localPendingId)) {
-                        refusals.push({line: lineNo, code: 'duplicate-id', message: `Duplicate id '${localPendingId}' at line ${lineNo}`});
-                        id = `p${path.join('_')}_${i + 1}`;
+                        id = `${normalizeFile(subFileName)}#${path.join('_')}_${i + 1}`;
+                        refusals.push({line: lineNo, code: 'duplicate-id', message: `Duplicate id '${localPendingId}' at line ${lineNo}`, parts: [id]});
                         // Need to ensure this generated id is unique and not duplicate? It should be unique because path is unique.
                     } else {
                         id = localPendingId;
@@ -253,12 +276,12 @@ export const parseModel = (text, {catalog} = {}) => {
                     }
                     localPendingId = null;
                 } else {
-                    id = `p${path.join('_')}_${i + 1}`;
+                    id = `${normalizeFile(subFileName)}#${path.join('_')}_${i + 1}`;
                     // Ensure uniqueness (if by chance explicit ID used same as path, but path is unique, so fine)
                     // But need to check if this path id already exists (should not, as path is unique)
                     if (seenIds.has(id)) {
                         // Should not happen, but handle
-                        refusals.push({line: lineNo, code: 'duplicate-id', message: `Duplicate id '${id}' at line ${lineNo}`});
+                        refusals.push({line: lineNo, code: 'duplicate-id', message: `Duplicate id '${id}' at line ${lineNo}`, parts: [id]});
                         // Generate sequential fallback? But path is deterministic, duplicate means same path used twice (e.g., sub-model placed twice with same path? But each instance has different main line index, so path differs)
                     } else {
                         seenIds.add(id);
@@ -297,6 +320,12 @@ export const parseModel = (text, {catalog} = {}) => {
         const {text: line, lineNo} = mainLines[idx];
         const trimmed = line.trim();
         if (!trimmed) continue;
+        if (/^0\s+(?:STEP|ROTSTEP)(?:\s|$)/i.test(trimmed)) {
+            if (stepParts.length) steps.push(stepParts);
+            stepParts = [];
+            sawStep = true;
+            continue;
+        }
         // Check for !BW PORT
         if (/^0\s+!BW\s+PORT\s+/i.test(trimmed)) {
             const m = trimmed.match(/^0\s+!BW\s+PORT\s+(.+?)\s*$/i);
@@ -317,6 +346,44 @@ export const parseModel = (text, {catalog} = {}) => {
                 pendingId = null;
             } else {
                 pendingId = val;
+            }
+            continue;
+        }
+        if (/^0\s+!BW\s+GROUP(\s|$)/i.test(trimmed)) {
+            const m = trimmed.match(/^0\s+!BW\s+GROUP\s+(\S+)\s+(.+?)\s*$/i);
+            if (!m) {
+                refusals.push({line: lineNo, code: 'bad-group', message: `Bad GROUP at line ${lineNo}`});
+            } else {
+                const gid = m[1].trim();
+                const gname = m[2].trim();
+                if (!gid || !gname) {
+                    refusals.push({line: lineNo, code: 'bad-group', message: `Bad GROUP at line ${lineNo}`});
+                } else if (groupsById.has(gid)) {
+                    refusals.push({line: lineNo, code: 'duplicate-group', message: `Duplicate group '${gid}' at line ${lineNo}`});
+                } else {
+                    const g = {id: gid, name: gname, parts: []};
+                    groupsById.set(gid, g);
+                    groupOrder.push(gid);
+                }
+            }
+            continue;
+        }
+        if (/^0\s+!BW\s+IN(\s|$)/i.test(trimmed)) {
+            const m = trimmed.match(/^0\s+!BW\s+IN\s+(\S+)\s*$/i);
+            if (!m) {
+                refusals.push({line: lineNo, code: 'bad-group', message: `Bad IN at line ${lineNo}`});
+                pendingGroup = null;
+            } else {
+                const gid = m[1].trim();
+                if (!gid) {
+                    refusals.push({line: lineNo, code: 'bad-group', message: `Bad IN at line ${lineNo}`});
+                    pendingGroup = null;
+                } else if (!groupsById.has(gid)) {
+                    refusals.push({line: lineNo, code: 'unknown-group', message: `Unknown group '${gid}' at line ${lineNo}`});
+                    pendingGroup = null;
+                } else {
+                    pendingGroup = gid;
+                }
             }
             continue;
         }
@@ -342,8 +409,9 @@ export const parseModel = (text, {catalog} = {}) => {
                     pendingId = null;
                 }
                 pendingPort = null;
-                const subParts = flattenSubModel(parsed.file, parsed.position, parsed.rotation, [idx + 1]);
+                const subParts = flattenSubModel(parsed.file, parsed.position, parsed.rotation, [idx + 1], new Set([normalizeFile(firstFileName)]));
                 parts.push(...subParts);
+                stepParts.push(...subParts.map(p => p.id));
                 continue;
             }
             // Real part
@@ -363,9 +431,9 @@ export const parseModel = (text, {catalog} = {}) => {
             let id;
             if (pendingId) {
                 if (seenIds.has(pendingId)) {
-                    refusals.push({line: lineNo, code: 'duplicate-id', message: `Duplicate id '${pendingId}' at line ${lineNo}`});
                     id = `p${nextId}`;
                     nextId++;
+                    refusals.push({line: lineNo, code: 'duplicate-id', message: `Duplicate id '${pendingId}' at line ${lineNo}`, parts: [id]});
                 } else {
                     id = pendingId;
                     seenIds.add(id);
@@ -383,7 +451,23 @@ export const parseModel = (text, {catalog} = {}) => {
             } else {
                 pendingPort = null;
             }
+            // Handle pendingGroup
+            if (pendingGroup) {
+                const g = groupsById.get(pendingGroup);
+                if (g) {
+                    if (partToGroup.has(id)) {
+                        refusals.push({line: lineNo, code: 'bad-group', message: `Part '${id}' is in two groups at line ${lineNo}`, parts: [id]});
+                    } else {
+                        g.parts.push(id);
+                        partToGroup.set(id, pendingGroup);
+                    }
+                }
+                pendingGroup = null;
+            } else {
+                pendingGroup = null;
+            }
             parts.push(part);
+            stepParts.push(id);
             continue;
         }
         // Check for loose geometry
@@ -411,6 +495,16 @@ export const parseModel = (text, {catalog} = {}) => {
     }
 
     const model = {version: 1, parts};
+    if (groupOrder.length > 0) {
+        model.groups = groupOrder.map(gid => groupsById.get(gid));
+        // Remove empty groups (should not happen, but for safety, filter out groups with 0 parts? But spec says groups with <2 dissolve, but parser should keep whatever was defined, even if empty, and let validator catch it)
+        // We keep all groups as defined, even if empty, so that malformed ones are visible
+    }
+    if (sawStep) {
+        // Parts after the last STEP line are the last step; steps with no parts are dropped.
+        if (stepParts.length) steps.push(stepParts);
+        if (steps.length) model.steps = steps;
+    }
     return {model, refusals};
 };
 
@@ -426,8 +520,36 @@ export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright 
     lines.push(`0 Name: ${name}`);
     lines.push(`0 Author: Brickwright`);
     lines.push(`0 !LDRAW_ORG Unofficial_Model`);
+    // Groups: output 0 !BW GROUP lines first
+    if (model.groups) {
+        for (const g of model.groups) {
+            // Escape name? For now, just output as is, but need to handle that name may contain spaces, we output as is
+            lines.push(`0 !BW GROUP ${g.id} ${g.name}`);
+        }
+    }
+    // Build a map from part id to group id for quick lookup
+    const partGroupMap = new Map();
+    if (model.groups) {
+        for (const g of model.groups) {
+            for (const pid of g.parts) partGroupMap.set(pid, g.id);
+        }
+    }
+    // Building steps: a `0 STEP` line after each step's last part (only for a model that has steps,
+    // so a model without them is written exactly as before).
+    const stepOf = new Map();
+    if (Array.isArray(model.steps) && model.steps.length) {
+        model.steps.forEach((ids, n) => { for (const id of ids) if (!stepOf.has(id)) stepOf.set(id, n); });
+    }
+    let previousStep;
     for (const p of model.parts) {
+        if (stepOf.size) {
+            const step = stepOf.has(p.id) ? stepOf.get(p.id) : -1;
+            if (previousStep !== undefined && step !== previousStep) lines.push('0 STEP');
+            previousStep = step;
+        }
         lines.push(`0 !BW ID ${p.id}`);
+        const gid = partGroupMap.get(p.id);
+        if (gid) lines.push(`0 !BW IN ${gid}`);
         if (p.port) lines.push(`0 !BW PORT ${p.port}`);
         const x = formatNumber(p.position[0]);
         const y = formatNumber(p.position[1]);
@@ -444,5 +566,6 @@ export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright 
         const color = p.color ?? 16;
         lines.push(`1 ${color} ${x} ${y} ${z} ${a} ${b} ${c} ${d} ${e} ${f} ${g} ${h} ${i} ${p.part}`);
     }
+    if (stepOf.size && previousStep !== undefined) lines.push('0 STEP');
     return lines.join('\r\n') + '\r\n';
 };
