@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
 import {readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync, symlinkSync} from 'node:fs';
 import {tmpdir} from 'node:os';
@@ -69,6 +70,8 @@ function authoredRetention(source = retention) {
     put(`${app}/authored`, 'AUTHORED-NOT-A-REAL-EXECUTABLE');
     const codegen = 'target/aarch64-apple-ios-sim/release/build/brickwright-tauri-authored/out/tauri-codegen-assets';
     put(`${codegen}/authored.html`, 'AUTHORED-COMPRESSED-BYTES-NOT-ACTUAL-CODEGEN');
+    for (const name of ['rustc', 'cargo', 'clang', 'xcodebuild']) put(`authored-tools/${name}`, `AUTHORED-${name}`);
+    put('authored-sdk/SDKSettings.json', '{"Version":"18.0"}');
     const shim = `#!/usr/bin/python3
 import json,os,pathlib,sys
 name=pathlib.Path(sys.argv[0]).name
@@ -84,13 +87,16 @@ if name=='git':
  elif args==['rev-parse','HEAD^{tree}']: print('b'*40)
  else: sys.exit(38)
 elif name=='cargo' and args[0]=='metadata': print(json.dumps({'target_directory':str(pathlib.Path(os.environ['GITHUB_WORKSPACE'])/'target')}))
+elif name=='rustup': print(str(pathlib.Path(os.environ['GITHUB_WORKSPACE'])/'authored-tools'/args[1]))
+elif name=='xcrun' and '--find' in args: print(str(pathlib.Path(os.environ['GITHUB_WORKSPACE'])/'authored-tools'/args[-1]))
+elif name=='xcrun' and '--show-sdk-path' in args: print(str(pathlib.Path(os.environ['GITHUB_WORKSPACE'])/'authored-sdk'))
 elif name=='rustc': print('rustc authored\\nhost: authored-target')
 elif name=='cargo': print('cargo authored')
 elif name=='xcodebuild': print('Xcode authored\\nBuild version authored')
 elif name=='xcrun': print('18.0')
 else: sys.exit(39)
 `;
-    for (const name of ['git', 'cargo', 'rustc', 'xcodebuild', 'xcrun']) {
+    for (const name of ['git', 'cargo', 'rustc', 'rustup', 'xcodebuild', 'xcrun']) {
         writeFileSync(join(bin, name), shim, {mode: 0o755});
     }
     const script = join(dir, 'capture.py'); writeFileSync(script, source);
@@ -124,9 +130,10 @@ function refused(result) {
 test('retention input defaults off and every optional step has the unsigned exact-branch guard', () => {
     assert.match(workflow, /retain_ios_audit_inputs:\n[\s\S]*?type: boolean\n        default: false/);
     assert.equal(workflow.split(`if: ${enabled}`).length - 1, 2);
-    assert.equal(workflow.split(`if: always() && (${enabled})`).length - 1, 1);
+    assert.equal(workflow.split(`if: always() && (${enabled})`).length - 1, 2);
     const ios = workflow.slice(workflow.indexOf('\n  ios:\n'), workflow.indexOf('\n  ios-signed:\n'));
     assert.ok(ios.indexOf('Retain unsigned iOS inputs before build') < ios.indexOf('npx tauri ios init --ci'));
+    assert.match(ios, /name: brickwright-ios-toolchain-inputs/);
     assert.ok(ios.indexOf('name: brickwright-ios-sim') < ios.indexOf('Retain unsigned iOS products after build'));
     assert.match(ios, /name: brickwright-ios-audit-inputs[\s\S]*?include-hidden-files: true[\s\S]*?if-no-files-found: error/);
     assert.doesNotMatch(retention, /simctl|devicectl|downloadPlatform|BW_EMBEDDED_ASSET_AUDIT_PATH/);
@@ -198,6 +205,44 @@ test('post-build retention refuses changed launched producer bytes', () => withR
     writeFileSync(f.script, readFileSync(f.script, 'utf8') + '\n# authored changed controller\n');
     refused(f.run('after'));
 }));
+
+test('toolchain observations retain hashes only and bind stable before/after identities', () => withRetention(f => {
+    succeeded(f.run('before')); succeeded(f.run('after'));
+    const directory = join(f.temp, 'bw-ios-toolchain-inputs');
+    const raw = readFileSync(join(directory, 'before.json'));
+    const before = JSON.parse(raw);
+    const after = JSON.parse(readFileSync(join(directory, 'after.json')));
+    assert.equal(after.beforeSHA256, createHash('sha256').update(raw).digest('hex'));
+    assert.equal(after.phase, 'after'); assert.equal(before.phase, 'before');
+    assert.deepEqual(Object.keys(before.tools).sort(), ['appleClang', 'cargo', 'rustc', 'simulatorSDKSettings', 'xcodeBuild']);
+    for (const [role, file] of [['rustc', 'authored-tools/rustc'], ['cargo', 'authored-tools/cargo'],
+        ['appleClang', 'authored-tools/clang'], ['xcodeBuild', 'authored-tools/xcodebuild'],
+        ['simulatorSDKSettings', 'authored-sdk/SDKSettings.json']]) {
+        const bytes = readFileSync(join(f.root, file));
+        assert.deepEqual(before.tools[role], {bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex')});
+    }
+    assert.deepEqual(before.tools, after.tools);
+    for (const flag of ['compilerUsedInputsProved', 'completeToolchainClosureQualified', 'sdkContentsQualified',
+        'effectiveConfigurationJoined', 'actualAppObserved', 'resourceLifetimeQualified']) {
+        assert.equal(before[flag], false); assert.equal(after[flag], false);
+    }
+    const manifest = JSON.parse(readFileSync(join(f.output, 'completed.json')));
+    assert.equal(before.producerSHA256, manifest.entries.find(r => r.path === 'producer/capture.py').sha256);
+    assert.doesNotMatch(raw.toString(), new RegExp(f.dir));
+}));
+
+test('changed tools, SDK settings, before identities and failed resolution refuse', () => {
+    for (const path of ['authored-tools/rustc', 'authored-tools/clang', 'authored-sdk/SDKSettings.json']) {
+        withRetention(f => { succeeded(f.run('before')); f.put(path, 'changed'); refused(f.run('after')); });
+    }
+    withRetention(f => {
+        succeeded(f.run('before'));
+        const file = join(f.temp, 'bw-ios-toolchain-inputs/before.json');
+        const value = JSON.parse(readFileSync(file)); value.compilerUsedInputsProved = true;
+        writeFileSync(file, JSON.stringify(value)); refused(f.run('after'));
+    });
+    withRetention(f => { refused(f.run('before', {AUTHORED_FAIL: 'rustup'})); });
+});
 
 test('runtime mutations expose changed-web and signing guard defects', () => {
     const old = 'need(read_file(local) == original)'; assert.ok(retention.includes(old));

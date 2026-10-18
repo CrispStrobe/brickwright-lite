@@ -89,6 +89,12 @@ Next actions and completion criteria:
    upload remains before the optional product capture. Missing or partial retention
    fails and cannot qualify an app; retained partial inputs remain inspectable.
    Entry/file/total/time caps and link/alias checks constrain retention, not the app.
+   A separate `brickwright-ios-toolchain-inputs` artifact now observes installed
+   Rust compiler/Cargo, Apple Clang/Xcode build executable and simulator SDK-settings
+   file identities before and after the build. It retains role, length and SHA-256
+   only, with an exact before/after chain; no binary contents or host paths. These
+   are installed candidate observations, not proof of compiler use, SDK contents or
+   a complete toolchain closure. The existing input-manifest format is preserved.
 
    Next, independently join the complete retained source/web/configuration/toolchain/
    executable and official job/artifact identities. Distinguish referenced codegen

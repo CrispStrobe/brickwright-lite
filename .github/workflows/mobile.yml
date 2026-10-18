@@ -305,6 +305,50 @@ jobs:
                   retain('web/'+name, read_file(ROOT/'packages/scratch-gui/build'/name))
 
 
+          def toolchain_observation(phase, manifest):
+              # Observe installed candidates only. No binaries or host paths are published.
+              directory = Path(os.environ['RUNNER_TEMP']) / 'bw-ios-toolchain-inputs'
+              if phase == 'before':
+                  directory.mkdir(exist_ok=False)
+              else:
+                  need(directory.is_dir() and not directory.is_symlink())
+              def installed(args):
+                  value = command(args).decode().strip()
+                  need(value and '\n' not in value)
+                  return Path(value).resolve(strict=True)
+              paths = {
+                  'rustc': installed(['rustup', 'which', 'rustc']),
+                  'cargo': installed(['rustup', 'which', 'cargo']),
+                  'appleClang': installed(['xcrun', '--sdk', 'iphonesimulator', '--find', 'clang']),
+                  'xcodeBuild': installed(['xcrun', '--find', 'xcodebuild']),
+                  'simulatorSDKSettings': installed(['xcrun', '--sdk', 'iphonesimulator', '--show-sdk-path']) / 'SDKSettings.json'
+              }
+              identities = {}
+              for role, file in paths.items():
+                  raw = read_file(file, 256*1024*1024 if role != 'simulatorSDKSettings' else 1024*1024)
+                  need(raw)
+                  identities[role] = {'bytes': len(raw), 'sha256': hashlib.sha256(raw).hexdigest()}
+              value = {
+                  'schema': 'brickwright.ios-toolchain-observations.v1', 'phase': phase,
+                  'commit': manifest['commit'], 'tree': manifest['tree'],
+                  'runID': manifest['runID'], 'attempt': manifest['attempt'],
+                  'job': manifest['job'], 'ref': manifest['ref'],
+                  'producerSHA256': hashlib.sha256(read_file(Path(__file__))).hexdigest(),
+                  'tools': identities, 'compilerUsedInputsProved': False,
+                  'completeToolchainClosureQualified': False, 'sdkContentsQualified': False,
+                  'effectiveConfigurationJoined': False, 'actualAppObserved': False,
+                  'resourceLifetimeQualified': False
+              }
+              if phase == 'after':
+                  original = read_file(directory / 'before.json', 1024*1024)
+                  before = json.loads(original)
+                  expected = dict(value, phase='before')
+                  need(before == expected)
+                  value['beforeSHA256'] = hashlib.sha256(original).hexdigest()
+              with (directory / (phase+'.json')).open('x') as stream:
+                  json.dump(value, stream, sort_keys=True)
+
+
           def main():
               global ROWS, USED
               need(os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch' and
@@ -405,6 +449,7 @@ jobs:
                                   rawCodegenSelection='all-observed-package-output-candidates; active-reference-join-required')
                   with (OUT/'completed.json').open('x') as stream:
                       json.dump(manifest, stream, sort_keys=True)
+              toolchain_observation(phase, manifest)
               print('iOS input retention: '+phase+' complete; no app launched')
 
 
@@ -496,6 +541,15 @@ jobs:
           name: brickwright-ios-audit-inputs
           path: ${{ runner.temp }}/bw-ios-audit-inputs
           include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Upload unsigned iOS toolchain observations
+        if: always() && (github.event_name == 'workflow_dispatch' && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'))
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: brickwright-ios-toolchain-inputs
+          path: ${{ runner.temp }}/bw-ios-toolchain-inputs
           if-no-files-found: error
           retention-days: 3
 

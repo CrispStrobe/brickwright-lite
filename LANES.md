@@ -6430,3 +6430,10 @@ retention fails; retained candidates are not proof of active codegen references,
 compiler input use, expanded configuration, complete input graph or process bounds.
 Independent joins, existing-runtime/resource admission, actual affected observation
 and all final-head checks remain prerequisites. Signed map and release holds remain.
+
+The normally composed candidate also retains separate before/after installed
+compiler/tool/SDK-settings identity observations. Only role, byte length and hash
+are exported; binaries and host paths are excluded. Changed observations refuse.
+The separate artifact preserves the existing retained-input manifest format and
+all original jobs/build/upload ordering. Toolchain use, complete SDK/toolchain
+closure and expanded effective configuration remain unproved; no app is launched.
