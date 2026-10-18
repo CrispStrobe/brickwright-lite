@@ -6599,3 +6599,30 @@ files with an authored launch and process samples. They detect omitted preparati
 late-return fencing and release. There is still no workflow caller, real container
 resolver, admitted launch environment or Darwin sampler. Actual platform/runtime/
 namespace/resource admission and candidate-bound observation remain prerequisites.
+
+The unwired preparation adapter now uses only explicit-device, explicit-bundle
+`get_app_container` queries for `app` and `data`. It copies a closed typed plan,
+holds device-set/device/data-root and returned-container descriptors during
+preparation, rejects noncanonical or outside-device paths, overlapping containers,
+changed identities and changed query readbacks, then prepares the pinned installed
+receiver at an absent fixed filename in the existing Documents directory. No
+folder creation, output overwrite, launch or environment forwarding is added.
+The two paths are queried again after preparation under one 15 s cooperative
+budget; command output is capped at 4097 bytes. Invocation owns private originals.
+
+A release adapter translates receiver close uncertainty into explicit refusal.
+Directory and receiver close interrupts attempt the other owned closes before
+propagating; uncertain descriptor numbers are never retried. Focused controls use
+real owned files/FDs and authored container commands, including the real bounded
+subprocess adapter and five runtime mutations. Directory identity snapshots and
+path containment are not an authenticated namespace lease or bundle-data binding.
+No workflow phase invokes preparation, release or the transaction core. Actual
+Xcode/container semantics, launch-path/environment binding, Darwin sampling,
+runtime-image/model/namespace/resource admission and affected qualification remain
+open. Stronger installed-code/content/whole-event/release claims stay false.
+
+The container adapter also rechecks Stop and deadline after its temporary directory
+FDs close, before returning the receiver. A source-only reproduction accepted a
+receiver when either boundary changed during close; the final check now refuses
+and closes the receiver. The original reproduction and pre-fix test pass remain
+separate from final-source evidence. A runtime mutation removes this final check.

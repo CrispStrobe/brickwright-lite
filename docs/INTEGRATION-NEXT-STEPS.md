@@ -171,9 +171,21 @@ Next actions and completion criteria:
    device cleanup is interrupted. An interrupt may leave device cleanup incomplete;
    no callback interruption or containment is claimed. Owned-file controls join the
    actual receiver to an authored launch, without observing an Apple app.
-   The real preparation adapter still needs container discovery, installed-code
-   joins and admitted launch environment; actual PID/process bindings and independent
-   runtime-image admission remain open. No workflow phase calls this core.
+   The unwired preparation adapter now queries app and data containers for the
+   explicit device and bundle, holds directory identities during preparation, and
+   confines canonical returned paths to that device's data tree. It refuses changed
+   paths, overlapping containers, stale output and wrong executable/plist pins,
+   then repeats both queries after receiver preparation. A release adapter reports
+   close uncertainty; close interrupts attempt the remaining owned descriptors
+   before propagating. These are path/readback checks, not authenticated namespace
+   ownership or a proven bundle-to-data-container binding. Current Xcode behavior
+   and actual container semantics still need admission. Invocation must retain
+   private command originals. Stop and deadline are rechecked after directory
+   cleanup before publishing the receiver; a late boundary keeps preparation
+   refused and closes the receiver. No directory creation, launch or environment
+   forwarding is added. Launch-path/environment binding, actual PID/process
+   monitoring and independent runtime-image admission remain open. No workflow
+   phase calls these adapters or the core.
 
    Next, independently join the complete retained source/web/configuration/toolchain/
    executable and official job/artifact identities. Distinguish referenced codegen

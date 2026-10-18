@@ -1030,7 +1030,7 @@ test('unwired installed observation receiver binds real file descriptors and sup
         assert.equal(result.status, 0, result.stdout + result.stderr);
         assert.match(result.stderr, /Ran 17 tests/);
         assert.match(result.stderr, /OK/);
-        assert.equal((retention.match(/PreparedInstalledObservation\(/g) || []).length, 0, 'no receiver constructor caller');
+        assert.equal((retention.match(/PreparedInstalledObservation\(/g) || []).length, 1, 'constructor only inside unwired preparation adapter');
     } finally { rmSync(dir, {recursive: true, force: true}); }
 });
 
@@ -1093,5 +1093,214 @@ test('unwired pre-launch hook joins the real receipt receiver before authored la
         assert.equal(result.status, 0, result.stdout + result.stderr);
         assert.match(result.stderr, /Ran 2 tests/);
         assert.match(result.stderr, /OK/);
+    } finally { rmSync(dir, {recursive: true, force: true}); }
+});
+
+const containerControls = String.raw`
+import functools
+NEW='11111111-1111-1111-1111-111111111111'
+OTHER='22222222-2222-2222-2222-222222222222'
+class ContainerControls(unittest.TestCase):
+    def setUp(self):
+        self.f=ReceiverControls();self.f.setUp();self.time=0.;self.calls=[];self.change=lambda:None
+        self.directory=self.f.root/('bw-ios-assets-'+'a'*32+'.deviceset')
+        self.device_data=self.directory/NEW/'data';self.device_data.mkdir(parents=True)
+        self.app=self.device_data/'Bundle'/'Installed.app';self.app.parent.mkdir()
+        self.f.app.rename(self.app);self.f.app=self.app
+        self.data=self.device_data/'Data'/'Container';self.data.mkdir(parents=True)
+        self.f.parent.rename(self.data/'Documents');self.f.parent=self.data/'Documents';self.f.target=self.f.parent/'bw-embedded-asset-observation.json'
+        self.spec={k:v for k,v in self.f.spec.items() if k not in ('appDirectory','receiptPath')}
+        self.spec.update(schema='brickwright.ios-installed-container-plan.v1',deviceSet=str(self.directory))
+        self.paths={'app':self.app,'data':self.data}
+    def tearDown(self):self.f.tearDown()
+    def query(self,args,*,deadline,output_limit):
+        self.assertLess(self.time,deadline);self.assertEqual(output_limit,4097)
+        self.assertEqual(args[:3],('get_app_container',NEW,'com.example.authored'));self.assertIn(args[3],('app','data'))
+        self.calls.append(args);self.change()
+        return (str(self.paths[args[3]])+'\n').encode()
+    def prepare(self,fn=prepare_installed_observation,**kwargs):
+        options=dict(deadline=self.time+10,now=lambda:self.time);options.update(kwargs)
+        return fn(self.spec,NEW,self.query,**options)
+    def test_normal_discovery_rechecks_both_paths_and_never_launches(self):
+        before=len(os.listdir('/dev/fd'));receiver=self.prepare()
+        self.assertEqual([a[3] for a in self.calls],['app','data','app','data'])
+        self.assertFalse(self.f.target.exists());self.assertEqual(len(os.listdir('/dev/fd')),before+1)
+        self.f.write();meta,raw=self.f.capture(receiver)
+        self.assertEqual(meta['status'],'captured-header-only');self.assertIs(meta['actualAppQualified'],False)
+        release_installed_observation(receiver);release_installed_observation(receiver)
+        self.assertEqual(len(os.listdir('/dev/fd')),before)
+    def test_malformed_plan_and_device_refuse_before_query(self):
+        before=len(os.listdir('/dev/fd'))
+        for key,value in (('sourceCommit','bad'),('executableSHA256',True),('bundleIdentifier','../bad'),('deviceSet','relative')):
+            saved=self.spec[key];self.spec[key]=value
+            with self.assertRaises(InstalledPreparationRefused):self.prepare()
+            self.spec[key]=saved
+        for device in ('booted','all',OTHER.lower()+'x'):
+            with self.assertRaises(InstalledPreparationRefused):prepare_installed_observation(self.spec,device,self.query,deadline=10,now=lambda:0)
+        self.assertEqual(self.calls,[]);self.assertEqual(len(os.listdir('/dev/fd')),before)
+    def test_outside_or_other_device_container_is_refused(self):
+        for role in ('app','data'):
+            original=self.paths[role]
+            for path in (self.f.root, self.directory/OTHER/'data'):
+                path.mkdir(parents=True,exist_ok=True);self.paths[role]=path
+                with self.assertRaises(InstalledPreparationRefused):self.prepare()
+            self.paths[role]=original
+    def test_symlinked_container_or_namespace_is_refused(self):
+        alias=self.device_data/'Alias.app';alias.symlink_to(self.app,target_is_directory=True);self.paths['app']=alias
+        with self.assertRaises(InstalledPreparationRefused):self.prepare()
+        self.paths['app']=self.app;alias.unlink()
+        root_alias=self.f.root/'set-link';root_alias.symlink_to(self.directory,target_is_directory=True);self.spec['deviceSet']=str(root_alias)
+        with self.assertRaises(InstalledPreparationRefused):self.prepare()
+    def test_overlapping_paths_existing_output_and_wrong_pins_refuse(self):
+        self.paths['data']=self.app
+        with self.assertRaises(InstalledPreparationRefused):self.prepare()
+        self.paths['data']=self.data;self.f.target.write_bytes(b'OLD')
+        with self.assertRaises(InstalledPreparationRefused):self.prepare()
+        self.assertEqual(self.f.target.read_bytes(),b'OLD');self.f.target.unlink()
+        self.spec['executableSHA256']='0'*64
+        with self.assertRaises(InstalledPreparationRefused) as caught:self.prepare()
+        self.assertEqual(caught.exception.reason,'receiver-prepare');self.assertNotIn(str(self.f.root),str(caught.exception))
+    def test_non_path_multiline_invalid_or_oversized_outputs_refuse(self):
+        before=len(os.listdir('/dev/fd'))
+        for raw in (None,'path',b'',b'/bad\x00path',b'/bad\nextra\n',b'\xff',b'x'*4098,b' relative ',b'../relative'):
+            with self.assertRaises(InstalledPreparationRefused):prepare_installed_observation(self.spec,NEW,lambda *a,**k:raw,deadline=10,now=lambda:0)
+        self.assertEqual(len(os.listdir('/dev/fd')),before)
+    def test_changed_directory_or_readback_path_refuses_and_closes(self):
+        before=len(os.listdir('/dev/fd'));alternate=self.device_data/'Other';alternate.mkdir()
+        def change_path():
+            if len(self.calls)==4:self.paths['data']=alternate
+        self.change=change_path
+        with self.assertRaises(InstalledPreparationRefused):self.prepare()
+        self.paths['data']=self.data;self.calls=[]
+        def replace():
+            if len(self.calls)==3:self.data.rename(self.device_data/'OldData');self.data.mkdir()
+        self.change=replace
+        with self.assertRaises(InstalledPreparationRefused):self.prepare()
+        self.assertEqual(len(os.listdir('/dev/fd')),before)
+    def test_deadline_stop_and_interrupt_do_not_leak_prepared_receiver(self):
+        before=len(os.listdir('/dev/fd'))
+        def late():self.time=11.
+        self.change=late
+        with self.assertRaises(InstalledPreparationRefused) as caught:self.prepare()
+        self.assertEqual(caught.exception.reason,'deadline');self.time=0.;self.change=lambda:None;self.calls=[]
+        with self.assertRaises(InstalledPreparationRefused) as caught:self.prepare(stopped=lambda:len(self.calls)>=3)
+        self.assertEqual(caught.exception.reason,'stop');self.calls=[]
+        def interrupt():
+            if len(self.calls)==3:raise KeyboardInterrupt()
+        self.change=interrupt
+        with self.assertRaises(KeyboardInterrupt):self.prepare()
+        self.assertEqual(len(os.listdir('/dev/fd')),before)
+    def test_deadline_or_stop_during_directory_close_refuses_publication(self):
+        original=os.close;before=len(os.listdir('/dev/fd'))
+        for mode in ('deadline','stop'):
+            changed=[];flag=[False];self.time=0.;self.calls=[]
+            def close(fd):
+                info=os.fstat(fd);original(fd)
+                if stat.S_ISDIR(info.st_mode) and not changed:
+                    changed.append(True)
+                    if mode=='deadline':self.time=11.
+                    else:flag[0]=True
+            with mock.patch.object(os,'close',side_effect=close):
+                with self.assertRaises(InstalledPreparationRefused) as caught:self.prepare(stopped=lambda:flag[0])
+            self.assertEqual(caught.exception.reason,mode);self.assertEqual(len(os.listdir('/dev/fd')),before)
+    def test_caller_mutation_cannot_retarget_query_or_expected_pins(self):
+        def mutate():self.spec['bundleIdentifier']='other.app';self.spec['sourceCommit']='0'*40
+        self.change=mutate;receiver=self.prepare()
+        self.assertEqual(receiver._spec['bundleIdentifier'],'com.example.authored');self.assertEqual(receiver._spec['sourceCommit'],'a'*40)
+        release_installed_observation(receiver)
+    def test_directory_close_error_and_interrupt_continue_other_cleanup(self):
+        before=len(os.listdir('/dev/fd'));original=os.close
+        for exception in (OSError,KeyboardInterrupt):
+            called=[];failed=[]
+            def close(fd):
+                info=os.fstat(fd);original(fd);called.append(fd)
+                if stat.S_ISDIR(info.st_mode) and not failed:
+                    failed.append(fd);raise exception('AUTHORED-PRIVATE-CLOSE')
+            with mock.patch.object(os,'close',side_effect=close):
+                with self.assertRaises(InstalledPreparationRefused if exception is OSError else KeyboardInterrupt) as caught:self.prepare()
+            self.assertGreaterEqual(len(called),6);self.assertEqual(len(os.listdir('/dev/fd')),before)
+            if exception is OSError:self.assertIn('directory-close',caught.exception.cleanup_failures)
+    def test_receiver_close_interrupt_closes_remaining_fd_and_never_retries(self):
+        before=len(os.listdir('/dev/fd'));receiver=self.prepare();self.f.write();receiver._read_receipt(10,8*1024*1024)
+        original=os.close;called=[]
+        def close(fd):
+            original(fd);called.append(fd)
+            if len(called)==1:raise KeyboardInterrupt()
+        with mock.patch.object(os,'close',side_effect=close):
+            with self.assertRaises(KeyboardInterrupt):release_installed_observation(receiver)
+        self.assertEqual(len(called),2);self.assertTrue(receiver._closed)
+        with self.assertRaises(InstalledPreparationRefused) as caught:release_installed_observation(receiver)
+        self.assertEqual(caught.exception.cleanup_failures,('_receipt-close',));self.assertEqual(len(os.listdir('/dev/fd')),before)
+    def test_real_bounded_command_adapter_queries_authored_containers_only(self):
+        actor=self.f.root/'xcrun';actor.write_text('#!/usr/bin/python3\nimport sys\nfrom pathlib import Path\nassert sys.argv[4:7]==["get_app_container",'+repr(NEW)+',"com.example.authored"]\nassert sys.argv[7] in ("app","data")\nprint((Path(__file__).parent/(sys.argv[7]+"-path")).read_text())\n');actor.chmod(0o755)
+        for role in ('app','data'):(self.f.root/(role+'-path')).write_text(str(self.paths[role]))
+        with mock.patch.dict(os.environ,{'PATH':str(self.f.root)+os.pathsep+os.environ['PATH']}):
+            invoke=functools.partial(bounded_simulator_command,device_set=self.directory)
+            receiver=prepare_installed_observation(self.spec,NEW,invoke,deadline=time.monotonic()+10)
+        release_installed_observation(receiver)
+        for args in (('get_app_container','booted','com.example.authored','data'),('get_app_container',NEW,'com.example.authored','groups'),('get_app_container',NEW,'../bad','app')):
+            with mock.patch.object(subprocess,'Popen') as spawn:
+                with self.assertRaises(SimulatorCommandRefused):invoke(args,deadline=time.monotonic()+1,output_limit=4097)
+                spawn.assert_not_called()
+    def test_runtime_mutants_expose_containment_readback_and_close_uncertainty(self):
+        cut='path != device_data and device_data in path.parents';self.assertIn(cut,SOURCE_PREFIX)
+        outside=self.f.root/'Outside.app';self.app.rename(outside);self.paths['app']=outside
+        namespace={};exec(compile(SOURCE_PREFIX.replace(cut,'True'),'authored-containment-mutant','exec'),namespace)
+        receiver=self.prepare(namespace['prepare_installed_observation']);namespace['release_installed_observation'](receiver)
+        outside.rename(self.app);self.paths['app']=self.app
+        cut="need(container('app') == app and container('data') == data)";self.assertIn(cut,SOURCE_PREFIX)
+        namespace={};exec(compile(SOURCE_PREFIX.replace(cut,'need(True)'),'authored-readback-mutant','exec'),namespace)
+        self.calls=[];receiver=self.prepare(namespace['prepare_installed_observation']);self.assertEqual(len(self.calls),2)
+        namespace['release_installed_observation'](receiver)
+        cut="if errors:\n        raise InstalledPreparationRefused('receiver-close', errors)";self.assertIn(cut,SOURCE_PREFIX)
+        namespace={};exec(compile(SOURCE_PREFIX.replace(cut,'if False:\n        pass'),'authored-close-mutant','exec'),namespace)
+        receiver=self.prepare(namespace['prepare_installed_observation']);original=os.close
+        def fail_after_close(fd):original(fd);raise OSError('AUTHORED-UNCERTAIN-CLOSE')
+        with mock.patch.object(os,'close',side_effect=fail_after_close):
+            self.assertIsNone(namespace['release_installed_observation'](receiver))
+        self.assertEqual(receiver._close_errors,('_parent-close',))
+        cut="except BaseException as error:\n                        errors.append(attribute+'-close')";self.assertIn(cut,SOURCE_PREFIX)
+        namespace={};exec(compile(SOURCE_PREFIX.replace(cut,cut.replace('BaseException','Exception')),'authored-interrupt-close-mutant','exec'),namespace)
+        receiver=self.prepare(namespace['prepare_installed_observation']);self.f.write();receiver._read_receipt(10,8*1024*1024)
+        called=[]
+        def interrupt_after_close(fd):
+            original(fd);called.append(fd)
+            if len(called)==1:raise KeyboardInterrupt()
+        try:
+            with mock.patch.object(os,'close',side_effect=interrupt_after_close):
+                with self.assertRaises(KeyboardInterrupt):namespace['release_installed_observation'](receiver)
+            left_open=receiver._parent is not None and not receiver._closed
+        finally:
+            if receiver._parent is not None:original(receiver._parent);receiver._parent=None
+            receiver._closed=True
+        self.assertTrue(left_open);self.assertEqual(len(called),1)
+        cut='check()  # Final fence after directory cleanup.';self.assertIn(cut,SOURCE_PREFIX)
+        namespace={};exec(compile(SOURCE_PREFIX.replace(cut,'pass  # Removed final cleanup fence.'),'authored-late-close-mutant','exec'),namespace)
+        self.f.target.unlink();self.time=0.;changed=[];flag=[False]
+        def stop_after_close(fd):
+            info=os.fstat(fd);original(fd)
+            if stat.S_ISDIR(info.st_mode) and not changed:changed.append(True);flag[0]=True
+        with mock.patch.object(os,'close',side_effect=stop_after_close):
+            receiver=self.prepare(namespace['prepare_installed_observation'],stopped=lambda:flag[0])
+        self.assertTrue(flag[0]);namespace['release_installed_observation'](receiver)
+
+unittest.main(argv=['authored-container-controls'],defaultTest='ContainerControls',verbosity=2)
+`;
+
+test('unwired container preparation binds selected directories and installed receiver', () => {
+    const prefix = retention.slice(0, retention.lastIndexOf('\ntry:\n'));
+    const controls = receiverControls.replace(/^unittest.main.*$/m, '') + containerControls;
+    const dir = mkdtempSync(join(tmpdir(), 'bw-ios-container-controls-'));
+    try {
+        const controller = join(dir, 'controls.py');
+        writeFileSync(controller, `${prefix}\nSOURCE_PREFIX = ${JSON.stringify(prefix)}\n${controls}`);
+        const result = spawnSync('/usr/bin/python3', [controller], {
+            env: {...process.env, GITHUB_WORKSPACE: dir, RUNNER_TEMP: dir, TMPDIR: dir}, encoding: 'utf8', timeout: 15000
+        });
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        assert.match(result.stderr, /Ran 14 tests/);
+        assert.match(result.stderr, /OK/);
+        assert.equal((retention.match(/prepare_installed_observation\(/g) || []).length, 1, 'adapter definition only');
+        assert.equal((retention.match(/release_installed_observation\(/g) || []).length, 1, 'release definition only');
     } finally { rmSync(dir, {recursive: true, force: true}); }
 });

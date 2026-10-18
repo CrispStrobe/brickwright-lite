@@ -500,6 +500,11 @@ jobs:
                                          ('list', 'devicetypes', '--json')))
                   elif operation == 'runtime':
                       need(arguments == ('runtime', 'list', '--json'))
+                  elif operation == 'get_app_container':
+                      need(len(arguments) == 4 and
+                           re.fullmatch(r'[A-F0-9]{8}(?:-[A-F0-9]{4}){3}-[A-F0-9]{12}', arguments[1]) is not None and
+                           re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9-]*(?:\.[A-Za-z0-9][A-Za-z0-9-]*)+', arguments[2]) is not None and
+                           arguments[3] in ('app', 'data'))
                   elif operation == 'create':
                       need(len(arguments) == 4 and re.fullmatch(r'bw-asset-audit-[a-f0-9]{32}', arguments[1]) is not None and
                            re.fullmatch(r'com\.apple\.CoreSimulator\.SimDeviceType\.[A-Za-z0-9-]+', arguments[2]) is not None and
@@ -1170,17 +1175,175 @@ jobs:
               def close(self):
                   if not self._closed:
                       errors = []
+                      interrupt = None
                       for attribute in ('_receipt', '_parent'):
                           fd = getattr(self, attribute)
                           setattr(self, attribute, None)
                           if fd is not None:
                               try:
                                   os.close(fd)
-                              except Exception:
+                              except BaseException as error:
                                   errors.append(attribute+'-close')
+                                  if not isinstance(error, Exception) and interrupt is None:
+                                      interrupt = error
                       self._close_errors = tuple(errors)
                       self._closed = True
+                      if interrupt is not None:
+                          interrupt.add_note('installed receiver cleanup uncertain: '+','.join(errors))
+                          raise interrupt
                   return self._close_errors
+
+
+          class InstalledPreparationRefused(RuntimeError):
+              def __init__(self, reason, cleanup_failures=()):
+                  super().__init__('installed observation preparation refused')
+                  self.reason = reason
+                  self.cleanup_failures = tuple(cleanup_failures)
+
+
+          def prepare_installed_observation(spec, device, invoke, *, deadline, now=time.monotonic, stopped=None):
+              """Unwired container adapter; path snapshots are not authenticated ownership.
+
+              Invoke must target the separately admitted device set. It owns private command
+              originals. This function never forwards an environment or launches an app.
+              """
+              import math
+              import re
+              primary = None
+              stage = 'admission'
+              receiver = None
+              directories = []
+              cleanup = []
+              last = None
+              def check():
+                  nonlocal last, stage
+                  stage = 'deadline'
+                  tick = now()
+                  need(type(tick) in (int, float) and math.isfinite(tick) and
+                       (last is None or tick >= last) and tick < deadline)
+                  last = tick
+                  if stopped is not None:
+                      stage = 'stop'
+                      flag = stopped()
+                      need(type(flag) is bool and not flag)
+                  return tick
+              def pin_directory(path):
+                  need(path.is_absolute() and path.resolve(strict=True) == path)
+                  fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+                  # Record ownership before fstat/checks, so any failure still closes this FD.
+                  directories.append((path, fd, None))
+                  info = os.fstat(fd)
+                  need(stat.S_ISDIR(info.st_mode))
+                  directories[-1] = (path, fd, (info.st_dev, info.st_ino))
+              def same_directories():
+                  for path, fd, identity in directories:
+                      held = os.fstat(fd)
+                      current = path.stat(follow_symlinks=False)
+                      need(identity == (held.st_dev, held.st_ino) == (current.st_dev, current.st_ino) and
+                           stat.S_ISDIR(current.st_mode) and path.resolve(strict=True) == path)
+              def container(role):
+                  nonlocal stage
+                  check()
+                  stage = 'container-'+role
+                  same_directories()
+                  raw = invoke(('get_app_container', device, spec['bundleIdentifier'], role),
+                               deadline=deadline, output_limit=4097)
+                  check()
+                  stage = 'container-'+role
+                  same_directories()
+                  need(type(raw) is bytes and 0 < len(raw) <= 4097)
+                  value = (raw[:-1] if raw.endswith(b'\n') else raw).decode('utf-8', errors='strict')
+                  need(0 < len(value.encode('utf-8')) <= 4096 and value == value.strip() and
+                       not any(ord(c) < 32 or ord(c) == 127 for c in value))
+                  path = Path(value)
+                  need(path.is_absolute() and path.resolve(strict=True) == path and
+                       path != device_data and device_data in path.parents)
+                  return path
+              try:
+                  keys = {'schema', 'deviceSet', 'bundleIdentifier', 'sourceCommit',
+                          'executableSHA256', 'plistSHA256', 'baseConfigSHA256'}
+                  need(type(spec) is dict and spec.keys() == keys)
+                  spec = dict(spec)
+                  need(spec['schema'] == 'brickwright.ios-installed-container-plan.v1' and
+                       callable(invoke) and callable(now) and (stopped is None or callable(stopped)) and
+                       type(deadline) in (int, float) and math.isfinite(deadline) and
+                       type(device) is str and re.fullmatch(r'[A-F0-9]{8}(?:-[A-F0-9]{4}){3}-[A-F0-9]{12}', device) is not None)
+                  for key, pattern in (('bundleIdentifier', r'[A-Za-z0-9][A-Za-z0-9-]*(?:\.[A-Za-z0-9][A-Za-z0-9-]*)+'),
+                          ('sourceCommit', r'[a-f0-9]{40}'), ('executableSHA256', r'[a-f0-9]{64}'),
+                          ('plistSHA256', r'[a-f0-9]{64}'), ('baseConfigSHA256', r'[a-f0-9]{64}')):
+                      need(type(spec[key]) is str and re.fullmatch(pattern, spec[key]) is not None)
+                  need(0 < deadline-check() <= 15)
+                  stage = 'device-set'
+                  need(type(spec['deviceSet']) is str and 0 < len(spec['deviceSet'].encode()) <= 4096 and
+                       not any(ord(c) < 32 or ord(c) == 127 for c in spec['deviceSet']))
+                  device_set = Path(spec['deviceSet'])
+                  need(re.fullmatch(r'bw-ios-assets-[a-f0-9]{32}\.deviceset', device_set.name) is not None)
+                  device_data = device_set/device/'data'
+                  for directory in (device_set, device_set/device, device_data):
+                      pin_directory(directory)
+                  same_directories()
+                  app = container('app')
+                  data = container('data')
+                  stage = 'container-layout'
+                  need(app.name.endswith('.app') and app != data and app not in data.parents and data not in app.parents)
+                  pin_directory(app)
+                  pin_directory(data)
+                  same_directories()
+                  stage = 'receiver-prepare'
+                  receiver_spec = {key: spec[key] for key in ('bundleIdentifier', 'sourceCommit',
+                      'executableSHA256', 'plistSHA256', 'baseConfigSHA256')}
+                  receiver_spec.update(schema='brickwright.ios-installed-observation-plan.v1',
+                      appDirectory=str(app), receiptPath=str(data/'Documents'/'bw-embedded-asset-observation.json'))
+                  receiver = PreparedInstalledObservation(receiver_spec, deadline=deadline, now=now)
+                  check()
+                  stage = 'container-readback'
+                  need(container('app') == app and container('data') == data)
+                  check()
+                  stage = 'container-readback'
+                  same_directories()
+              except BaseException as error:
+                  primary = error
+                  reason = stage
+              finally:
+                  for _, fd, _ in reversed(directories):
+                      try:
+                          os.close(fd)
+                      except BaseException as error:
+                          cleanup.append('directory-close')
+                          if not isinstance(error, Exception):
+                              if primary is not None:
+                                  error.add_note('installed preparation primary failure: '+reason)
+                              primary, reason = error, 'directory-close'
+                  if primary is None and not cleanup:
+                      try:
+                          check()  # Final fence after directory cleanup.
+                      except BaseException as error:
+                          primary, reason = error, stage
+                  if receiver is not None and (primary is not None or cleanup):
+                      try:
+                          cleanup.extend(receiver.close())
+                      except BaseException as error:
+                          cleanup.extend(receiver._close_errors)
+                          if primary is not None:
+                              error.add_note('installed preparation primary failure: '+reason)
+                          primary, reason = error, 'receiver-close'
+              if primary is not None:
+                  if not isinstance(primary, Exception):
+                      if cleanup:
+                          primary.add_note('installed preparation cleanup uncertain: '+','.join(cleanup))
+                      raise primary
+                  raise InstalledPreparationRefused(reason, cleanup) from None
+              if cleanup:
+                  raise InstalledPreparationRefused('cleanup', cleanup)
+              return receiver
+
+
+          def release_installed_observation(receiver):
+              """Translate close uncertainty; never retry descriptor numbers after close."""
+              need(type(receiver) is PreparedInstalledObservation)
+              errors = receiver.close()
+              if errors:
+                  raise InstalledPreparationRefused('receiver-close', errors)
 
 
           def main():
