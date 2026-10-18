@@ -81,6 +81,8 @@ import {insightInteractions} from './lib/sim-lab-insight-gate.mjs';
 import {instructionsInteractions} from './lib/sim-lab-instructions-gate.mjs';
 import {touchInteractions} from './lib/sim-lab-touch-gate.mjs';
 import {layoutInteractions, MIN_CANVAS_PX} from './lib/sim-lab-layout-gate.mjs';
+import {brakingBound, judgeWallStop} from './lib/sim-lab-wall-stopper-judge.mjs';
+import {STEP_MS} from '../overlay/scratch-gui/src/lib/bw-sim/hub-bridge.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const build = resolve(process.env.BW_BUILD || `${root}/packages/scratch-gui/build`);
@@ -104,6 +106,8 @@ await new Promise(done => server.listen(0, '127.0.0.1', done));
 await mkdir(artifacts, {recursive: true});
 const url = `http://127.0.0.1:${server.address().port}/`;
 
+const WALL_STOPPER_PROGRAM = await readFile(resolve(root, 'overlay/scratch-gui/static/sim-lab/programs/wall-stopper.bw'), 'utf8');
+
 const JSZip = createRequire(new URL('../packages/scratch-gui/package.json', import.meta.url))('jszip');
 
 const PROGRAM = 'DEVICE SPIKE\nWHEN flag clicked:\n  set movement motors A B\n  move forward 20 cm\n';
@@ -115,13 +119,19 @@ const at = p => `(${p[0].toFixed(3)}, ${p[2].toFixed(3)})`;
 const EXAMPLES = [
     {name: 'Wall stopper', file: 'wall-stopper.ldr', mat: 'wall', sensor: 'distance', simMs: 10000,
         code: /wait until \(spike distance D\) < 10/, goal: /stop before the wall/,
+        // scripts/lib/sim-lab-wall-stopper-judge.mjs: (a) never touches the wall, (b) the stop begins within two VM
+        // frames and a sensor period after the reading first goes below 10 cm, (c) the overrun stays within the
+        // crossing speed times that budget plus the braking distance of the shorted motors, from the model.
         judge: r => {
-            const frontGap = r.faceX - r.last.front;
-            const rayGap = r.faceX - r.last.spot[0];
             assert.ok(r.faceX - r.startAxle[0] > 0.5, `the wall was not ahead: ${JSON.stringify(r)}`);
-            assert.ok(r.closestGap > 0, `the robot touched the wall: ${JSON.stringify(r)}`);
-            assert.ok(frontGap >= 0.08 && frontGap <= 0.12 && rayGap >= 0.08 && rayGap <= 0.12, `stopped ${frontGap} m from the wall: ${JSON.stringify(r)}`);
-            return `stops ${(frontGap * 100).toFixed(1)} cm before the wall (ray origin ${(rayGap * 100).toFixed(1)} cm), never touching it`;
+            const brake = brakingBound(r.mechanism, {speedPercent: Number(/set movement speed (\d+)/.exec(WALL_STOPPER_PROGRAM)[1]), hubBody: r.hubBody});
+            const v = judgeWallStop(r.wallSamples, {faceX: r.faceX, thresholdMm: 100, frameMs: r.frameMs, sensorMs: STEP_MS, brakeM: brake.brakeM});
+            const said = `front ${(v.frontGap * 100).toFixed(1)} cm, ray origin ${(v.rayGap * 100).toFixed(1)} cm from the wall; ` +
+                `stop began ${v.reactionMs?.toFixed(1)} ms after the reading went below 10 cm (budget ${v.budgetMs.toFixed(1)}), ` +
+                `ran on ${v.overrunM === null ? '-' : (v.overrunM * 100).toFixed(2)} cm (bound ${v.overrunBoundM === null ? '-' : (v.overrunBoundM * 100).toFixed(2)}, ` +
+                `braking ${(brake.brakeM * 100).toFixed(2)} cm)`;
+            assert.deepEqual(v.failures, [], `${said}: ${JSON.stringify({...r, mechanism: undefined, wallSamples: r.wallSamples.length})}`);
+            return `stops ${said}, never touching it`;
         }},
     {name: 'Colour explorer', file: 'colour-explorer.ldr', mat: 'colour-zones', sensor: 'color', simMs: 15000,
         code: /wait until spike color C is red/, goal: /find the red square/,
@@ -132,7 +142,35 @@ const EXAMPLES = [
         }}
 ];
 
+/**
+ * `--cpu-throttle=N` slows every page's CPU N-fold (CDP Emulation.setCPUThrottlingRate), as a busy
+ * CI runner does: the VM's wall-clock blocks and the worker's simulated time then drift apart, which
+ * is how the Forklift's lift was cut short in CI (run 39079251326). 1 (default) is no throttling.
+ */
+const CPU_THROTTLE = Number((process.argv.find(a => a.startsWith('--cpu-throttle=')) || '--cpu-throttle=1').slice('--cpu-throttle='.length));
+/**
+ * `--worker-latency=MS` delays every message the page posts to a Web Worker by MS of wall time: a
+ * physics worker that answers slowly, as on a loaded runner. The session sends at most
+ * MAX_BATCH_STEPS (100 ms) of simulated time per round trip and drops the rest, so simulated time
+ * then runs slower than the VM's wall clock — the case CI's CPU throttling of the page cannot make
+ * (it slows the VM and the ticks alike).
+ */
+const WORKER_LATENCY = Number((process.argv.find(a => a.startsWith('--worker-latency=')) || '--worker-latency=0').slice('--worker-latency='.length));
+/** `--examples=a,b` runs only those example robots in the examples part (line-follower, wall-stopper, colour-explorer, forklift). */
+const ONLY_EXAMPLES = (process.argv.find(a => a.startsWith('--examples=')) || '').slice('--examples='.length).split(',').filter(Boolean);
+const runExample = file => !ONLY_EXAMPLES.length || ONLY_EXAMPLES.includes(file.replace(/\.ldr$/, ''));
+
 const openSimLab = async (page, {noWebgl = false, typed = false, program = PROGRAM} = {}) => {
+    if (CPU_THROTTLE > 1) {
+        const cdp = await page.context().newCDPSession(page);
+        await cdp.send('Emulation.setCPUThrottlingRate', {rate: CPU_THROTTLE});
+    }
+    if (WORKER_LATENCY > 0) {
+        await page.addInitScript(ms => {
+            const post = Worker.prototype.postMessage;
+            Worker.prototype.postMessage = function (...args) { setTimeout(() => post.apply(this, args), ms); };
+        }, WORKER_LATENCY);
+    }
     await page.addInitScript(force => {
         localStorage.clear();
         sessionStorage.clear();
@@ -397,8 +435,9 @@ try {
         await reopen.close();
     }
 
-    if (want('examples')) { // the three example robots run their programs to the end
+    if (want('examples')) { // the example robots run their programs to the end
         // 6. The line follower: model, mat, example program, Run — a lap on the line.
+        if (runExample('line-follower.ldr')) {
         const lf = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
         lf.on('pageerror', error => errors.push(error.message));
         lf.on('dialog', dialog => dialog.accept());
@@ -474,11 +513,12 @@ try {
             `worker ${(st.workerMs / st.batches).toFixed(2)} ms and main thread ${(st.mainMs / st.batches).toFixed(2)} ms per batch, ` +
             `${st.redos} batches redone for a command in flight, ${st.droppedMs} ms dropped`);
         await lf.close();
+        }
 
         // 7. The Wall stopper and 8. the Colour explorer, through the UI only: choose the model,
         // "Load example program" (it lands in the Code tab, becomes blocks, and puts the robot on
         // the example's mat by itself), Run, and judge where the robot comes to rest.
-        for (const example of EXAMPLES) {
+        for (const example of EXAMPLES.filter(e => runExample(e.file))) {
             const ex = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
             ex.on('pageerror', error => errors.push(error.message));
             ex.on('dialog', dialog => dialog.accept());
@@ -537,11 +577,16 @@ try {
                 const rec = window.__bwExample = {start: s.time, samples: [], closestGap: Infinity,
                     faceX: wall ? wall.position[0] - wall.colliders[0].halfExtents[0] : null};
                 rec.worker = s.worker;
+                const hubState = window.__bwSimLab._pane.props.hubState;
+                const drivePorts = (s.mechanism.actuators || []).map(a => a.port);
                 s.onAdvance(() => {
                     const sample = {t: s.time - rec.start, axle: carried(hubId, axle0), spot: carried(sensor.body, sensor.origin)};
                     if (wall) {
                         sample.front = Math.max(...robot.flatMap(b => b.colliders.map(c => reachX(b.id, c))));
                         rec.closestGap = Math.min(rec.closestGap, rec.faceX - sample.front);
+                        // What the hub holds after this advance: the distance reading and whether both drive motors run.
+                        sample.reading = hubState.data.sensors['ABCDEF'.indexOf(sensor.port)].distance;
+                        sample.driving = drivePorts.every(port => hubState.motors.busy(port));
                     }
                     rec.samples.push(sample);
                 });
@@ -554,7 +599,11 @@ try {
                 const last = r.samples.at(-1);
                 const before = r.samples.find(p => p.t >= last.t - 1000);
                 const pane = window.__bwSimLab._pane;
+                const wall = r.faceX !== null;
                 return {worker: r.worker, stats: pane.session.stats, motors: pane.props.hubState.data.motors.slice(0, 2),
+                    mechanism: wall ? pane.session.mechanism : null, hubBody: pane.session.bridge.hubBody,
+                    frameMs: pane.props.vm.runtime.currentStepTime,
+                    wallSamples: wall ? r.samples.map(p => ({t: p.t, front: p.front, ray: p.spot[0], reading: p.reading, driving: p.driving})) : null,
                     sensors: pane.props.hubState.data.sensors.slice(2, 4), faceX: r.faceX, closestGap: r.closestGap, last, samples: r.samples.length,
                     restMm: 1000 * Math.hypot(last.axle[0] - before.axle[0], last.axle[2] - before.axle[2]),
                     startAxle: r.samples[0].axle};
@@ -564,6 +613,47 @@ try {
             assert.ok(rec.restMm < 2, `the ${example.name} is not at rest: ${JSON.stringify(rec)}`);
             console.log(`PASS the ${example.name}'s example program, loaded from the pane, ${example.judge(rec)}`);
             await ex.close();
+        }
+
+        if (runExample('forklift.ldr')) {
+        // 8b. The Forklift (R4): choose it, "Load example program" (it puts the robot on the Warehouse
+        // mat with its pallet), Run, and judge the pallet's height from its body's pose: up 40 mm, held,
+        // and back down — a rack and pinion and a world load, through the worker.
+        const fl = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+        fl.on('pageerror', error => errors.push(error.message));
+        fl.on('dialog', dialog => dialog.accept());
+        await openSimLab(fl, {program: null});
+        await fl.getByTestId('bw-sim-lab-model').selectOption('forklift.ldr');
+        await fl.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.modelFile === 'forklift.ldr' &&
+            window.__bwSimLab._pane.session, null, {timeout: 60000});
+        await fl.getByRole('button', {name: 'Load example program'}).click();
+        await fl.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
+            null, {timeout: 60000});
+        assert.match(await fl.locator('.cm-content').first().textContent(), /run motor C clockwise 573 degrees/, 'the Forklift\'s example is in the Code tab');
+        await fl.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.session?.mat === 'warehouse', null, {timeout: 60000});
+        await fl.evaluate(() => {
+            const s = window.__bwSimLab._pane.session;
+            const rec = window.__bwForklift = {start: s.time, y0: s.core.bodyPose('load:pallet').position[1], max: 0, last: 0, worker: s.worker,
+                loads: s.mechanism.bodies.filter(b => b.role === 'load').map(b => b.id)};
+            s.onAdvance(() => {
+                const dy = s.core.bodyPose('load:pallet').position[1] - rec.y0;
+                rec.max = Math.max(rec.max, dy);
+                rec.last = dy;
+            });
+        });
+        const wall0 = Date.now();
+        await fl.getByTestId('bw-sim-lab-run').click();
+        await fl.waitForFunction(() => window.__bwSimLab._pane.session.time - window.__bwForklift.start > 14000, null, {timeout: 240000});
+        console.log(`  (14 s simulated took ${((Date.now() - wall0) / 1000).toFixed(1)} s of wall time)`);
+        const lift = await fl.evaluate(() => ({...window.__bwForklift, stats: window.__bwSimLab._pane.session.stats}));
+        await fl.screenshot({path: resolve(artifacts, 'sim-lab-forklift.png'), fullPage: true});
+        assert.equal(lift.worker, true, 'the Forklift ran its physics in the worker');
+        assert.deepEqual(lift.loads, ['load:pallet'], 'the Warehouse mat put its pallet in the scene');
+        assert.ok(Math.abs(lift.max - 0.04) <= 0.001, `the pallet rose ${lift.max} m, not 40 mm: ${JSON.stringify(lift)}`);
+        assert.ok(Math.abs(lift.last) <= 0.001, `the pallet ended ${lift.last} m up: ${JSON.stringify(lift)}`);
+        console.log(`PASS the Forklift's example program, loaded from the pane, lifts the pallet ${(lift.max * 1000).toFixed(2)} mm and sets it down (${(lift.last * 1000).toFixed(2)} mm); ` +
+            `worker: ${lift.stats.batches} batches, round trip ${(lift.stats.roundTripMs / lift.stats.batches).toFixed(1)} ms mean, ${lift.stats.redos} redone, ${lift.stats.droppedMs} ms dropped`);
+        await fl.close();
         }
     }
 

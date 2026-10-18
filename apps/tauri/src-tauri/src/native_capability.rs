@@ -133,6 +133,27 @@ fn execute(
                 .spike_arena_inputs(args.clone())
                 .map(|value| value.to_string())
         }
+        Operation::RenodeSpikeLockstepBegin => {
+            spike()?;
+            let snapshot = debugger.spike_lockstep("lockstep.begin", args.clone())?;
+            // Only a session that actually began lockstep gets the longer wall bound.
+            if !supervisor.extend_for_lockstep() {
+                return Err("Renode session is not active".into());
+            }
+            Ok(snapshot.to_string())
+        }
+        Operation::RenodeSpikeProgramControlSubmit => {
+            spike()?;
+            debugger.spike_program_control(args.clone()).map(|value| value.to_string())
+        }
+        Operation::RenodeSpikeLockstepStep => {
+            spike()?;
+            debugger.spike_lockstep("lockstep.step", args.clone()).map(|value| value.to_string())
+        }
+        Operation::RenodeSpikeLockstepEnd => {
+            spike()?;
+            debugger.spike_lockstep("lockstep.end", args.clone()).map(|value| value.to_string())
+        }
         Operation::RenodeSpikeStateRead => {
             spike()?;
             debugger.state().map(|value| value.to_string())

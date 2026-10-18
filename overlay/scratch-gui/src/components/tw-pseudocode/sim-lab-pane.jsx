@@ -25,6 +25,9 @@ import SimLabPalette from './sim-lab-palette.jsx';
 import SimLabInstructions from './sim-lab-instructions.jsx';
 import {INSIGHT_TEXT, issueSentence, fillText} from './sim-lab-insight-text.js';
 
+/** A MODELS entry's key: its `id` when one model file is listed more than once, else its file. */
+const modelKey = m => m.id || m.file;
+
 const TEXT = {
     en: {
         title: 'Robot Lab (beta)',
@@ -39,7 +42,8 @@ const TEXT = {
         exampleGoal: {
             'line-follower.bw': 'The example program is in the Code tab now. Press Run and watch the robot follow the black line.',
             'wall-stopper.bw': 'The example program is in the Code tab now. Press Run and watch the robot stop before the wall. Challenge: make it stop 20 cm away.',
-            'colour-explorer.bw': 'The example program is in the Code tab now. Press Run and watch the robot find the red square. Challenge: make it find the green one.'
+            'colour-explorer.bw': 'The example program is in the Code tab now. Press Run and watch the robot find the red square. Challenge: make it find the green one.',
+            'sumo.bw': 'The example program is in the Code tab now. Press Run: the robot drives around and turns back whenever it sees the black ring. Challenge: make it turn the other way, or faster.'
         },
         exampleFailed: 'Could not load the example program: {error}',
         mat: 'Mat', drive: 'Drive', forward: 'Forward', back: 'Back', left: 'Left', right: 'Right', stop: 'Stop', speed: 'Speed',
@@ -58,6 +62,9 @@ const TEXT = {
         selectedOne: 'Selected: {name}', selectedMany: 'Selected: {n} parts',
         more: 'More…', moreHelp: 'More actions', large: 'Open the Robot Lab large (full screen)', timeShort: '{s} s',
         partsToggle: 'Show or hide the parts', infoToggle: 'Show or hide the whole note',
+        route: 'Program', routeScratch: 'SPIKE blocks', routeFirmware: 'SPIKE firmware (desktop)',
+        routeUnavailable: 'Not available: this build has no managed Renode runtime with lockstep.',
+        realTime: '{f}× real time', firmwareFailed: 'Could not start the SPIKE firmware: {error}',
         st: {
             idle: 'Click a part to select it. Drag it to move it; Shift+click adds parts; drag empty space to look around.',
             hover: '{part}: click to select, drag to move', hoverSelected: '{part}: drag to move, R turns, Delete removes',
@@ -95,7 +102,8 @@ const TEXT = {
         exampleGoal: {
             'line-follower.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start und schau zu, wie der Roboter der schwarzen Linie folgt.',
             'wall-stopper.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start und schau zu, wie der Roboter vor der Wand anhält. Aufgabe: Lass ihn 20 cm vor der Wand anhalten.',
-            'colour-explorer.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start und schau zu, wie der Roboter das rote Feld findet. Aufgabe: Lass ihn das grüne finden.'
+            'colour-explorer.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start und schau zu, wie der Roboter das rote Feld findet. Aufgabe: Lass ihn das grüne finden.',
+            'sumo.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start: Der Roboter fährt herum und kehrt um, sobald er den schwarzen Ring sieht. Aufgabe: Lass ihn andersherum oder schneller drehen.'
         },
         exampleFailed: 'Das Beispielprogramm konnte nicht geladen werden: {error}',
         mat: 'Matte', drive: 'Fahren', forward: 'Vorwärts', back: 'Rückwärts', left: 'Links', right: 'Rechts', stop: 'Stopp', speed: 'Tempo',
@@ -114,6 +122,9 @@ const TEXT = {
         selectedOne: 'Ausgewählt: {name}', selectedMany: 'Ausgewählt: {n} Teile',
         more: 'Mehr…', moreHelp: 'Weitere Aktionen', large: 'Roboter-Labor groß öffnen (Vollbild)', timeShort: '{s} s',
         partsToggle: 'Teile zeigen oder ausblenden', infoToggle: 'Den ganzen Hinweis zeigen oder einklappen',
+        route: 'Programm', routeScratch: 'SPIKE-Blöcke', routeFirmware: 'SPIKE-Firmware (Desktop)',
+        routeUnavailable: 'Nicht verfügbar: Dieser Build hat keine verwaltete Renode-Laufzeit mit Lockstep.',
+        realTime: '{f}× Echtzeit', firmwareFailed: 'Die SPIKE-Firmware konnte nicht starten: {error}',
         st: {
             idle: 'Klicke ein Teil an, um es auszuwählen. Ziehen verschiebt es; Umschalt+Klick wählt mehr Teile; Ziehen auf leerer Fläche dreht die Ansicht.',
             hover: '{part}: klicken wählt aus, ziehen verschiebt', hoverSelected: '{part}: ziehen verschiebt, R dreht, Entf löscht',
@@ -193,11 +204,11 @@ class SimLabPane extends React.Component {
         this.locale = locale;
         this.text = TEXT[locale];
         this.itext = INSIGHT_TEXT[locale] || INSIGHT_TEXT.en;
-        this.state = {status: 'loading', message: '', info: '', driveSpeed: 50, issues: [], modelFile: null, simMs: 0, view3d: 'loading',
+        this.state = {status: 'loading', message: '', info: '', driveSpeed: 50, issues: [], modelFile: null, shipped: null, simMs: 0, view3d: 'loading',
             mode: 'simulate', placing: null, selection: [], editorTick: 0, mat: null,
             buildStatus: {kind: 'idle'}, gizmoMode: 'move', grid: 10, recent: [], thumbTick: 0,
             showPorts: true, showMotion: false, blockers: [], portPicker: null, instructions: null, coarse: false,
-            paneWidth: 0, more: false, drawer: false, paletteDragging: false, infoOpen: false};
+            paneWidth: 0, more: false, drawer: false, paletteDragging: false, infoOpen: false, route: 'scratch'};
         this.root = React.createRef();
         this.moreRef = React.createRef();
         this.viewWrap = React.createRef();
@@ -484,7 +495,7 @@ class SimLabPane extends React.Component {
             this.lastText = record.ldraw;
             await this.openText(record.ldraw, record.name || 'my-model.ldr');
         } else {
-            await this.openShipped(this.lib.MODELS[0].file);
+            await this.openShipped(modelKey(this.lib.MODELS[0]));
         }
         if (refusals.length && !this.disposed) this.setState(s => ({issues: [...refusals, ...s.issues]}));
     }
@@ -515,20 +526,24 @@ class SimLabPane extends React.Component {
         this.session = null;
     }
 
-    async openShipped (file) {
+    /** Opens a MODELS entry by its key (`id`, else its file): one model file may be listed twice, with different examples. */
+    async openShipped (key) {
+        const entry = this.lib.MODELS.find(m => modelKey(m) === key);
+        if (!entry) return;
+        const file = entry.file;
         const response = await fetch(`${this.lib.MODELS_BASE}${file}`);
         if (!response.ok) {
             this.setState({status: 'failed', message: this.t('failed', {error: `HTTP ${response.status}`})});
             return;
         }
-        await this.openText(await response.text(), file);
+        await this.openText(await response.text(), file, key);
         // A model that comes with an example offers it while the Code tab has no SPIKE program.
         if (!this.disposed) this.setState({info: this.shippedModel()?.example && !this.spikeLoaded() ? this.text.exampleOffer : ''});
     }
 
     /** The MODELS entry of the model on show, or null for a built or imported one. */
     shippedModel () {
-        return this.lib?.MODELS.find(m => m.file === this.state.modelFile) || null;
+        return this.lib?.MODELS.find(m => modelKey(m) === this.state.shipped) || null;
     }
 
     /**
@@ -563,19 +578,39 @@ class SimLabPane extends React.Component {
         await this.openText(this.lastText, f.name);
     }
 
-    async openText (text, name) {
+    async openText (text, name, shipped = null) {
         const token = this.loadToken = {};
+        this.opened = {text, name};
         this.teardown();
-        this.setState({status: 'loading', message: '', issues: [], blockers: [], modelFile: name, simMs: 0, view3d: 'loading'});
+        this.setState({status: 'loading', message: '', issues: [], blockers: [], modelFile: name, shipped, simMs: 0, view3d: 'loading'});
         const {SimSession, fetchLDrawClosure, createSimView3D, CATALOG} = this.lib;
+        // The SPIKE firmware route (desktop): the emulated hub starts first; the scene then runs
+        // in lockstep with it (lib/bw-sim/routes/renode-lockstep).
+        let firmware = null;
+        if (this.state.route === 'firmware') {
+            try {
+                firmware = await this.lib.openFirmwareRoute({capabilities: this.renodeCapabilities(), hubState: this.props.hubState});
+            } catch (error) {
+                if (token !== this.loadToken) return;
+                // The packaged runtime has no lockstep/v1: not a failure, an unavailable route.
+                if (error.code === 'lockstep-unsupported') {
+                    this.setState({status: 'failed', route: 'scratch', firmwareUnsupported: true, message: this.text.routeUnavailable});
+                } else {
+                    this.setState({status: 'failed', message: this.t('firmwareFailed', {error: error.message})});
+                }
+                return;
+            }
+        }
         let result;
         try {
             result = await SimSession.fromText(text, {hubState: this.props.hubState, catalog: CATALOG, mat: this.state.mat,
-                worker: this.physicsClient()});
+                worker: this.physicsClient(), ...(firmware ? {createHub: firmware.createHub} : {})});
         } catch (error) {
+            firmware?.driver.end().catch(() => {});
             if (token === this.loadToken) this.setState({status: 'failed', message: this.t('failed', {error: error.message})});
             return;
         }
+        if (!result.session) firmware?.driver.end().catch(() => {});
         if (token !== this.loadToken || this.disposed) { result.session?.dispose(); return; }
         const {session, issues, model, runModel} = result;
         if (!session) {
@@ -587,7 +622,7 @@ class SimLabPane extends React.Component {
         this.session = session;
         // The worker could not run the scene (no WebAssembly in workers, say): the physics runs
         // here, and later models do not try the worker again.
-        if (session.workerError && this.physics) { this.physics.terminate(); this.physics = false; }
+        if (session.workerError && this.physics && !session.lockstep) { this.physics.terminate(); this.physics = false; }
         let view3d = 'webgl';
         try {
             const {read} = await fetchLDrawClosure([...new Set(model.parts.map(p => p.part))], {withConfig: true});
@@ -612,6 +647,28 @@ class SimLabPane extends React.Component {
     physicsClient () {
         if (this.physics === undefined) this.physics = this.lib.startPhysicsClient();
         return this.physics || null;
+    }
+
+    /** In the desktop app (or with injected capabilities): the SPIKE firmware route can be offered. */
+    desktop () {
+        return Boolean(this.props.renodeCapabilities || (typeof window !== 'undefined' && window.__TAURI_INTERNALS__));
+    }
+
+    /** The desktop app's native Renode capabilities (made once), or the injected ones. */
+    renodeCapabilities () {
+        if (this.props.renodeCapabilities) return this.props.renodeCapabilities;
+        if (this._renodeCapabilities === undefined) this._renodeCapabilities = this.lib.desktopRenodeCapabilities(window);
+        return this._renodeCapabilities;
+    }
+
+    /** Switches the program route and reloads the model on it (the firmware route starts the emulator). */
+    setRoute (route) {
+        if (route === this.state.route) return;
+        const opened = this.opened;
+        if (this.state.status === 'running') this.pause();
+        this.setState({route}, () => {
+            if (opened) this.openText(opened.text, opened.name);
+        });
     }
 
     frame (now) {
@@ -641,6 +698,8 @@ class SimLabPane extends React.Component {
     /** As the arena's Start: connect the spikeprime blocks to the shared virtual hub, then green flag. */
     async run () {
         if (!this.session) return;
+        // The firmware runs its own program in the emulator: the clock is all Run starts.
+        if (this.session.lockstep) { this.setState({status: 'running', info: ''}); return; }
         const hubState = this.props.hubState;
         hubState.setSimulationEnabled(true);
         this.setState({status: 'running'});
@@ -673,7 +732,7 @@ class SimLabPane extends React.Component {
         if (!this.session) return;
         const text = this.lib.serializeModel(this.session.model, {name: this.state.modelFile || 'model.ldr'});
         this.pause();
-        this.setState({mat: mat || null}, () => this.openText(text, this.state.modelFile));
+        this.setState({mat: mat || null}, () => this.openText(text, this.state.modelFile, this.state.shipped));
     }
 
     /** Hold-to-drive with the movement pair (A left, mounted mirrored; B right), as the arena's drive pad. */
@@ -718,8 +777,7 @@ class SimLabPane extends React.Component {
         if (!this.session) return;
         this.props.hubState.stopAll?.();
         const name = this.state.modelFile;
-        const shipped = this.lib.MODELS.find(m => m.file === name);
-        if (shipped) await this.openShipped(shipped.file);
+        if (this.state.shipped) await this.openShipped(this.state.shipped);
         else if (this.lastText) await this.openText(this.lastText, name);
     }
 
@@ -1137,7 +1195,7 @@ class SimLabPane extends React.Component {
     }
 
     render () {
-        const {status, message, issues, simMs, modelFile} = this.state;
+        const {status, message, issues, simMs, modelFile, shipped} = this.state;
         const busy = status === 'loading';
         const compact = this.compact();
         const narrow = this.narrow();
@@ -1148,14 +1206,27 @@ class SimLabPane extends React.Component {
         const T = this.text;
         const simulate = this.state.mode === 'simulate';
         const running = status === 'running';
-        const statusText = `${busy ? T.loading : T[status] || ''}${this.session ? ` · ${compact ? this.t('timeShort', {s: (simMs / 1000).toFixed(1)}) : this.t('time', {s: (simMs / 1000).toFixed(1)})}` : ''}`;
+        const rtf = this.session?.lockstep ? this.session.realTimeFactor : null;
+        const statusText = `${busy ? T.loading : T[status] || ''}${this.session ? ` · ${compact ? this.t('timeShort', {s: (simMs / 1000).toFixed(1)}) : this.t('time', {s: (simMs / 1000).toFixed(1)})}` : ''}` +
+            (rtf !== null && running ? ` · ${this.t('realTime', {f: rtf < 0.1 ? rtf.toFixed(3) : rtf.toFixed(2)})}` : '');
+        // Desktop only (the web build has no managed Renode runtime): the program route.
+        const firmwareReady = this.lib && this.desktop() &&
+            this.lib.firmwareRouteReady(this.renodeCapabilities(), {unsupported: this.state.firmwareUnsupported});
+        const routeSelect = this.lib && this.desktop() && (
+            <label style={{fontSize: 12}}>{T.route}{': '}
+                <select data-testid="bw-sim-lab-route" disabled={busy} value={this.state.route} onChange={e => this.setRoute(e.target.value)}>
+                    <option value="scratch">{T.routeScratch}</option>
+                    <option value="firmware" disabled={!firmwareReady} title={firmwareReady ? undefined : T.routeUnavailable}>{T.routeFirmware}</option>
+                </select>
+            </label>
+        );
         const modelSelect = (
-            <select data-testid="bw-sim-lab-model" disabled={busy || !this.lib} value={this.lib?.MODELS.some(m => m.file === modelFile) ? modelFile : ''}
+            <select data-testid="bw-sim-lab-model" disabled={busy || !this.lib} value={shipped || ''}
                 aria-label={compact ? T.model : undefined} title={compact ? T.model : undefined}
                 style={compact ? {flex: '1 1 0', minWidth: 0, ...(this.state.coarse ? {minHeight: 40} : {})} : undefined}
                 onChange={e => e.target.value && this.openShipped(e.target.value)}>
-                {this.lib && this.lib.MODELS.map(m => <option key={m.file} value={m.file}>{m.title[this.locale] || m.title.en}</option>)}
-                {modelFile && !this.lib?.MODELS.some(m => m.file === modelFile) && <option value="">{modelFile}</option>}
+                {this.lib && this.lib.MODELS.map(m => <option key={modelKey(m)} value={modelKey(m)}>{m.title[this.locale] || m.title.en}</option>)}
+                {modelFile && !shipped && <option value="">{modelFile}</option>}
             </select>
         );
         const matSelect = (
@@ -1225,6 +1296,7 @@ class SimLabPane extends React.Component {
                     <label style={{fontSize: 12}}>{T.model}{': '}{modelSelect}</label>
                     {importButton}
                     <label style={{fontSize: 12}}>{T.mat}{': '}{matSelect}</label>
+                    {routeSelect}
                     {runButton}
                     {resetButton}
                     {exampleButton}
@@ -1245,13 +1317,14 @@ class SimLabPane extends React.Component {
                         <div style={{display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, flexWrap: narrow && exampleButton ? 'wrap' : 'nowrap'}}>
                             {modelSelect}
                             {matSelect}
+                            {routeSelect}
                             {exampleButton}
                         </div>
                     </React.Fragment>
                 )}
                 {message && <div role="alert" data-testid="bw-sim-lab-message" style={{fontSize: 12, color: '#b91c1c'}}>{message}</div>}
                 {this.renderInfo()}
-                {simulate && this.session && this.session.bridge && this.renderDrive(button)}
+                {simulate && this.session && this.session.bridge && !this.session.lockstep && this.renderDrive(button)}
                 {this.state.mode === 'build' && this.renderBuildBar(button)}
                 {this.lib && !compact && this.renderInsightBar()}
                 {this.renderBlockers()}

@@ -59,8 +59,11 @@ export const DEFAULT_HUB_PROFILE = 'spike-prime';
 export const PART_META_VERSION = 2;
 /** Fraction of a motor's mass on its turning output (PartMeta v1 motors; v2: internalJoints[].massFraction). */
 export const MOTOR_OUTPUT_MASS_FRACTION = 0.15;
-/** CompiledMechanism v2 body roles (§4.1): the model's moving parts, its clamped frame, the floor, a static obstacle. */
-export const BODY_ROLES = Object.freeze(['robot', 'frame', 'ground', 'obstacle']);
+/**
+ * CompiledMechanism v2 body roles (§4.1): the model's moving parts, its clamped frame, the floor, a static
+ * obstacle, and a dynamic world object the model handles (a box, a pallet: §5.5 `load`).
+ */
+export const BODY_ROLES = Object.freeze(['robot', 'frame', 'ground', 'obstacle', 'load']);
 /** Joint types the physics core builds (registry/kinds.js JointKindRegistry adds more for v2 mechanisms). */
 export const JOINT_TYPES_V1 = Object.freeze(['hinge', 'slider', 'ball']);
 const INTERNAL_JOINT_TYPES = Object.freeze(['hinge', 'slider']);
@@ -226,6 +229,9 @@ export const portRefOf = placed => {
  *   joints: ({id: string, type: 'hinge', body1: string, body2: string, point: Vec3, axis: Vec3,
  *             motor?: {port: string, maxTorqueNm: number, maxSpeedRadPerSec: number, deviceId?: number}} |
  *            {id: string, type: 'slider', body1: string, body2: string, point: Vec3, axis: Vec3} |
+ *              (optional, R3: hinge `limits` [min, max] rad within [-π, π] and `frictionNm`; slider
+ *              `limits` [min, max] m, `frictionN`, `maxForceN` and `maxSpeedMPerSec` of its motor.
+ *              Limits are from the start pose (0), so min ≤ 0 ≤ max; friction acts while the motor is off.)
  *            {id: string, type: 'ball', body1: string, body2: string, point: Vec3})[],
  *   gears: ({id: string, type: 'gear', joint1: string, joint2: string, ratio: number} |
  *           {id: string, type: 'rackAndPinion', hingeJoint: string, sliderJoint: string, ratio: number})[],
@@ -298,6 +304,9 @@ export const validatePartMeta = (meta, {connectorKinds = null} = {}) => {
         meta.connectors.forEach((c, i) => {
             const w = `${p}.connectors[${c?.id ?? i}]`;
             if (!CONNECTOR_TYPES.includes(c?.type) && !(connectorKinds && connectorKinds.has(c?.type))) out.push(`${w}.type: '${c?.type}' is not one of ${CONNECTOR_TYPES.join('|')}`);
+            // A registered kind checks its own data (a worm's pitch radius and hand, a rack's normal).
+            const kindModule = connectorKinds && typeof connectorKinds.get === 'function' ? connectorKinds.get(c?.type) : null;
+            if (kindModule && typeof kindModule.validate === 'function' && c) for (const q of kindModule.validate(c)) out.push(`${w}: ${q}`);
             if (!isVec(c?.position)) out.push(`${w}.position: not a Vec3`);
             checkUnit(c?.axis, `${w}.axis`, out);
             if (c?.length !== undefined && !(isNum(c.length) && c.length > 0)) out.push(`${w}.length: need a positive number`);
@@ -426,13 +435,19 @@ const motorInternalJoint = meta => {
     return joint;
 };
 
-/** The catalogue device whose numbers ARE the v1 motor's, else the same numbers as an inline device. */
+/**
+ * The catalogue device whose numbers ARE the v1 motor's — today's, or the ones PartMeta v1 held
+ * for that device (`device.v1`: D6 replaced the SPIKE motors' stall torques, a v1 file still
+ * names the same motor) — else the same numbers as an inline device.
+ */
 const motorDevice = meta => {
     const m = meta.motor || {};
     const lpf2 = Number.isInteger(m.deviceId) ? m.deviceId : undefined;
+    const same = (n, torque, speed) => n.maxTorqueNm === torque && n.maxSpeedDegPerSec === speed;
     for (const d of deviceModels.values()) {
-        if (d.motor && lpf2 !== undefined && d.ids.lpf2 === lpf2 && d.motor.stallTorqueNm === m.maxTorqueNm &&
-            d.motor.servoMaxDegPerSec === m.maxSpeedDegPerSec) return d.id;
+        if (!d.motor || lpf2 === undefined || d.ids.lpf2 !== lpf2) continue;
+        if (same(m, d.motor.stallTorqueNm, d.motor.servoMaxDegPerSec) ||
+            (d.v1 && d.parts.includes(meta.part) && same(m, d.v1.maxTorqueNm, d.v1.maxSpeedDegPerSec))) return d.id;
     }
     return {id: `${meta.part}#motor`, class: 'motor', parts: [meta.part], ids: lpf2 === undefined ? {} : {lpf2},
         source: 'PartMeta v1 motor (inline device: no catalogue device has these numbers)',
@@ -598,6 +613,7 @@ const checkMechanismV1 = (m, out, v2 = false, jointTypes = JOINT_TYPES_V1) => {
         if (j?.body1 === j?.body2) out.push(`${w}: joins a body to itself`);
         if (!isVec(j?.point)) out.push(`${w}.point: not a Vec3`);
         if (v2 ? j?.type === 'hinge' || j?.type === 'slider' : j?.type !== 'ball') checkUnit(j?.axis, `${w}.axis`, out);
+        checkJointExtras(j, w, out);
         if (j?.motor) {
             if (j.type !== 'hinge') out.push(`${w}.motor: only hinges are motorised in v1`);
             if (v2 ? !isPortId(j.motor.port) : !HUB_PORTS.includes(j.motor.port)) out.push(`${w}.motor.port: '${j.motor.port}' is not ${HUB_PORTS.join('|')}`);
@@ -648,6 +664,28 @@ const checkMechanismV1 = (m, out, v2 = false, jointTypes = JOINT_TYPES_V1) => {
 };
 
 const isPortId = p => typeof p === 'string' && p !== '';
+
+/** A joint's optional R3 fields: end stops, friction, a slider motor's force and speed. */
+const checkJointExtras = (j, w, out) => {
+    if (!j) return;
+    if (j.limits !== undefined) {
+        if (j.type !== 'hinge' && j.type !== 'slider') out.push(`${w}.limits: only hinges and sliders have limits`);
+        else if (!(isVec(j.limits, 2) && j.limits[0] <= 0 && j.limits[1] >= 0)) out.push(`${w}.limits: need [min, max] with min ≤ 0 ≤ max (from the start pose)`);
+        else if (j.type === 'hinge' && !(j.limits[0] >= -Math.PI && j.limits[1] <= Math.PI)) out.push(`${w}.limits: a hinge's limits are within [-π, π]`);
+    }
+    const nonNegative = (key, type) => {
+        if (j[key] === undefined) return;
+        if (j.type !== type) out.push(`${w}.${key}: only a ${type} has ${key}`);
+        else if (!(isNum(j[key]) && j[key] >= 0)) out.push(`${w}.${key}: need a number ≥ 0`);
+    };
+    nonNegative('frictionNm', 'hinge');
+    nonNegative('frictionN', 'slider');
+    nonNegative('maxForceN', 'slider');
+    if (j.maxSpeedMPerSec !== undefined) {
+        if (j.type !== 'slider') out.push(`${w}.maxSpeedMPerSec: only a slider has maxSpeedMPerSec`);
+        else if (!(isNum(j.maxSpeedMPerSec) && j.maxSpeedMPerSec > 0)) out.push(`${w}.maxSpeedMPerSec: need a positive number`);
+    }
+};
 
 /**
  * @param {object} m a CompiledMechanism, v1 or v2
@@ -723,7 +761,8 @@ export const collisionGroupOf = role => (role === 'robot' || role === 'frame' ? 
 
 /** Bodies with `role` and `collisionGroup` (appended, so a v1 view drops them cleanly). */
 export const withBodyRoles = bodies => bodies.map(b => {
-    const role = bodyRole(b);
+    // A body the compiler made with its role (a world load, world/objects.js) keeps it.
+    const role = BODY_ROLES.includes(b.role) ? b.role : bodyRole(b);
     return {...b, role, collisionGroup: collisionGroupOf(role)};
 });
 
@@ -736,13 +775,18 @@ const coupledBodies = (ja, jb) => {
 };
 
 /**
- * Body pairs that must never collide (CompiledMechanismV2.noCollide).
+ * Body pairs that must never collide (CompiledMechanismV2.noCollide; owner decision D2: everything
+ * else does): bodies joined by a joint (hinge, slider, ball, a motor's housing and output), the two
+ * bodies a coupling ties (meshing gears, a rack and its pinion), and bodies whose parts are seated
+ * in each other's holes (`seated`: the compiler's connector edges between two bodies — the same
+ * pairs as the joints today, but an edge that makes no joint still keeps its parts apart).
  * @param {object[]} joints
  * @param {object[]} couplings
  * @param {object} [kinds] kind registries: a registered coupling kind's module may say `bodies(c, joints)`
+ * @param {[string, string][]} [seated] body pairs joined by a connector edge
  * @returns {[string, string][]}
  */
-export const noCollidePairs = (joints, couplings, kinds = null) => {
+export const noCollidePairs = (joints, couplings, kinds = null, seated = []) => {
     const byId = new Map(joints.map(j => [j.id, j]));
     const pairs = new Map();
     const add = (a, b) => {
@@ -751,6 +795,7 @@ export const noCollidePairs = (joints, couplings, kinds = null) => {
         pairs.set(pair.join('|'), pair);
     };
     for (const j of joints) add(j.body1, j.body2);
+    for (const [a, b] of seated) add(a, b);
     for (const c of couplings) {
         if (c.kind === 'gear') add(...coupledBodies(byId.get(c.joint1), byId.get(c.joint2)));
         else if (c.kind === 'rackAndPinion') add(...coupledBodies(byId.get(c.hingeJoint), byId.get(c.sliderJoint)));
@@ -762,7 +807,8 @@ export const noCollidePairs = (joints, couplings, kinds = null) => {
     return [...pairs.values()].sort((p, q) => p[0].localeCompare(q[0]) || p[1].localeCompare(q[1]));
 };
 
-const V1_COUPLING_KINDS = Object.freeze(['gear', 'rackAndPinion']);
+/** Coupling kinds the v1 contract has (its `gears` list): the v1 view keeps exactly these. */
+export const V1_COUPLING_KINDS = Object.freeze(['gear', 'rackAndPinion']);
 
 /** The v1 `joint.motor` an actuator is (graph.js/joints.js motorOf in v1). */
 const motorAlias = a => {

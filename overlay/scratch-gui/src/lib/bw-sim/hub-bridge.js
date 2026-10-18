@@ -19,9 +19,10 @@
 //   1. hub.advanceTo(t_k+1): the route runs its controller for the step and
 //      decides what each port drives during it (zero-order hold);
 //   2. hub.readDrives(): those drives become the motorised hinges' commands
-//      (physics/actuators.js: servo = velocity target, pwm = the R1 DC
-//      stand-in), torque limited by the motor's metadata, so a blocked wheel
-//      really does not turn;
+//      (physics/actuators.js: pwm = a duty into the motor's DC model — its
+//      catalogue device, devices/dc-motors.js, and the port's supply voltage
+//      from the hub profile — so a blocked wheel really stalls at the motor's
+//      torque; servo = an ideal velocity target, kept as a test fixture);
 //   3. physics steps;
 //   4. readings: each driven hinge's MEASURED rotation as an encoder reading
 //      (angle, change over the step, speed), each sensor's probe, and the hub
@@ -44,7 +45,8 @@
 
 import {upgradeMechanismV1} from './contracts.js';
 import {readSensors, sensorsOf, linearAcceleration} from './sensors.js';
-import {applyDrive} from './physics/actuators.js';
+import {applyDrive, attachMotor} from './physics/actuators.js';
+import {dcMotorFor} from './devices/dc-motors.js';
 import {hubRegistry, DEFAULT_HUB_PROFILE} from './hubs/index.js';
 
 const DEG = 180 / Math.PI;
@@ -73,7 +75,8 @@ export const hubBindings = (mechanism, hubId = null, index = 0, count = 1) => {
     const devices = m.devices.filter(d => d.sensor && bindsTo(d.hub, hubId, index, count));
     /** PortBinding[]: every actuator, then every sensor. */
     const bindings = [
-        ...actuators.map(a => ({port: a.port, class: 'motor', ids: {...a.ids}, hub: a.hub, device: a.device})),
+        // dcMotor: the DC model physics drives, so a hub's controller regulates the same motor.
+        ...actuators.map(a => ({port: a.port, class: 'motor', ids: {...a.ids}, hub: a.hub, device: a.device, dcMotor: dcMotorFor(a)})),
         ...devices.map(d => ({port: d.port, class: 'sensor', ids: {}, sensor: d.sensor, hub: d.hub, device: d.device}))
     ];
     return {actuators, sensors, bindings};
@@ -134,11 +137,19 @@ export class SimHubBridge {
         /** The (first) hub's body, as before R1. */
         this.hubBody = this.hubs.length ? this.hubs[0].body : null;
         for (const h of this.hubs) {
-            /** port -> {joint, motor (its actuator: the torque and speed limits), angle (rad, last measured)} */
+            /**
+             * port -> {joint, motor (its actuator: the torque and speed limits), device (its DC model),
+             * supplyVolts (the hub port's), angle (rad, last measured)}
+             */
             h.motors = new Map();
+            const ports = (h.hub.profile && h.hub.profile.ports) || [];
             for (const a of h.actuators) {
                 if (h.motors.has(a.port)) throw new Error(`two motorised hinges on port ${a.port}`);
-                h.motors.set(a.port, {joint: a.joint, motor: a, angle: core.jointState(a.joint).angle});
+                const port = ports.find(p => p.id === a.port);
+                const device = dcMotorFor(a);
+                attachMotor(core, a.joint, device);
+                h.motors.set(a.port, {joint: a.joint, motor: a, device, supplyVolts: port ? port.supplyVolts : undefined,
+                    angle: core.jointState(a.joint).angle});
             }
             // Heading reference: the hub's forward direction at t = 0, flattened onto the ground.
             h.forward0 = this._forward(h.body);
@@ -194,7 +205,7 @@ export class SimHubBridge {
             const chosen = h.hub.readDrives();
             for (const drive of chosen) {
                 const m = h.motors.get(drive.port);
-                if (m) applyDrive(this.core, m.joint, drive, m.motor);
+                if (m) applyDrive(this.core, m.joint, drive, m.motor, m);
             }
             return chosen;
         });

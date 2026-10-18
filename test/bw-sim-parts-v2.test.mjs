@@ -17,6 +17,7 @@ import {deviceModels, DEVICE_MODELS, validateDeviceModel} from '../overlay/scrat
 import {catalogFrom} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {compile} from '../overlay/scratch-gui/src/lib/bw-sim/mech/compile.js';
 import {migratePartsFile, partsFileText} from '../scripts/migrate-parts-v2.mjs';
+import {BUILTIN_KINDS} from '../overlay/scratch-gui/src/lib/bw-sim/kinds/index.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const TEXT = readFileSync(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json'), 'utf8');
@@ -52,20 +53,34 @@ const v1File = () => {
         version: 1, parts};
 };
 
-test('the device catalogue is valid and holds the numbers PartMeta v1 held', () => {
+test('the device catalogue is valid and still knows the numbers PartMeta v1 held', () => {
     for (const d of DEVICE_MODELS) assert.deepEqual(validateDeviceModel(d), [], d.id);
     for (const [part, v1] of Object.entries(V1_FIELDS)) {
         if (!v1.motor) continue;
         const d = [...deviceModels.values()].find(x => x.parts.includes(part));
-        assert.deepEqual([d.motor.stallTorqueNm, d.motor.servoMaxDegPerSec, d.ids.lpf2], [v1.motor.maxTorqueNm, v1.motor.maxSpeedDegPerSec, v1.motor.deviceId], part);
+        // Speed limit and id are v1's; the stall torque is Philo's fit since owner decision D6
+        // (test/bw-sim-motor-catalogue.test.mjs), v1's kept in `v1` so a v1 file names the same device.
+        assert.deepEqual([d.motor.servoMaxDegPerSec, d.ids.lpf2], [v1.motor.maxSpeedDegPerSec, v1.motor.deviceId], part);
+        assert.deepEqual(d.v1, {maxTorqueNm: v1.motor.maxTorqueNm, maxSpeedDegPerSec: v1.motor.maxSpeedDegPerSec}, part);
+        assert.notEqual(d.motor.stallTorqueNm, v1.motor.maxTorqueNm, `${part}: D6 replaced the v1 stall torque`);
     }
+});
+
+test('upgradePartMeta: only the SPIKE part with exactly its v1 numbers is the catalogue motor', () => {
+    const v1 = structuredClone(v1File().parts.find(p => p.part === '54696p01.dat'));
+    assert.equal(partMotor(v1).device.id, 'spike-medium-angular');
+    const edited = {...structuredClone(v1), motor: {...v1.motor, maxTorqueNm: 0.2}};
+    assert.deepEqual(partMotor(edited).device.motor, {stallTorqueNm: 0.2, servoMaxDegPerSec: 1110}, 'other numbers: an inline device');
+    const elsewhere = {...structuredClone(v1), part: 'my-motor.dat'};
+    assert.equal(partMotor(elsewhere).device.id, 'my-motor.dat#motor', 'the v1 numbers on another part: an inline device');
 });
 
 test('parts.json is PartMeta v2: version 2, every entry valid, no v1 field left, every device in the catalogue', () => {
     assert.equal(FILE.version, 2);
     assert.ok(FILE.parts.length >= 60, `${FILE.parts.length} parts`);
     for (const p of FILE.parts) {
-        assert.deepEqual(validatePartMeta(p), [], p.part);
+        // Connector kinds beyond v1's (a slide-bore, a worm's thread, a rack's teeth) are the built-in registry's.
+        assert.deepEqual(validatePartMeta(p, {connectorKinds: BUILTIN_KINDS.connectors}), [], p.part);
         for (const k of ['motor', 'sensor', 'hub']) assert.equal(p[k], undefined, `${p.part} still has v1 '${k}'`);
         if (p.device !== undefined) assert.equal(typeof p.device, 'string', `${p.part}: the shipped file names catalogue devices`);
     }

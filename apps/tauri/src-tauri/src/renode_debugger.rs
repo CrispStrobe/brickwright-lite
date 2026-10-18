@@ -716,6 +716,45 @@ impl RenodeDebugger {
         }
     }
 
+    /// START/STOP without waiting for guest time (`nuttx.program.control.submit`): the
+    /// firmware's reply appears later as `lifecycle.nuttxProgramReply`.
+    pub(crate) fn spike_program_control(&self, arguments: Value) -> Result<Value, String> {
+        let session = self.session.lock().map_err(|_| "Renode debugger unavailable")?;
+        let active = session.as_ref().ok_or("Renode debugger is not started")?;
+        match &active.state {
+            TargetState::Spike(feed) => {
+                let (snapshot, data) = feed.command_with_result("nuttx.program.control.submit", arguments)?;
+                let data = data.filter(|data| data.as_object().is_some_and(|fields| fields.len() == 1)
+                    && data["requestSeq"].as_u64().is_some_and(|seq| seq <= u64::from(u32::MAX)))
+                    .ok_or("SPIKE program control result unavailable")?;
+                Ok(json!({"snapshot":snapshot,"data":data}))
+            }
+            _ => Err("SPIKE program control target mismatch".into()),
+        }
+    }
+
+    /// Robot Lab lockstep: one closed `lockstep.begin|step|end` exchange on the active
+    /// SPIKE state connection; the reply is the brick-state/v1 snapshot after it.
+    pub(crate) fn spike_lockstep(&self, command: &str, arguments: Value) -> Result<Value, String> {
+        let session = self
+            .session
+            .lock()
+            .map_err(|_| "Renode debugger unavailable".to_owned())?;
+        let active = session
+            .as_ref()
+            .ok_or_else(|| "Renode debugger is not started".to_owned())?;
+        // The Runtime runs quanta only on a guest the debugger has not halted
+        // (renode-spike-prime#59): lockstep begins after `renode.spike.run`.
+        if command == "lockstep.begin" && !active.running.load(Ordering::Acquire) {
+            return Err("the emulated SPIKE hub is halted; run it before lockstep.begin".into());
+        }
+        match &active.state {
+            TargetState::Spike(feed) => serde_json::to_value(feed.lockstep(command, arguments)?)
+                .map_err(|_| "SPIKE snapshot unavailable".to_owned()),
+            _ => Err("SPIKE lockstep target mismatch".into()),
+        }
+    }
+
     pub(crate) fn ev3_input(&self, name: &str, arguments: Value) -> Result<Value, String> {
         let session = self
             .session

@@ -5978,6 +5978,26 @@
       1
      ],
      "length": 40
+    },
+    {
+     "id": "w",
+     "type": "worm",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 40,
+     "data": {
+      "pitchRadiusLdu": 10,
+      "hand": 1,
+      "starts": 1
+     }
     }
    ],
    "colliders": [
@@ -5992,21 +6012,7 @@
       0.7071067811865476
      ]
     }
-   ],
-   "gear": {
-    "type": "worm",
-    "teeth": 1,
-    "axis": [
-     0,
-     0,
-     1
-    ],
-    "center": [
-     0,
-     0,
-     0
-    ]
-   }
+   ]
   },
   {
    "part": "32063.dat",
@@ -6559,6 +6565,391 @@
      0
     ]
    }
+  },
+  {
+   "part": "64781.dat",
+   "name": "Technic gear rack 1 x 13 with holes",
+   "nameDe": "Technic-Zahnstange 1 x 13 mit Löchern",
+   "category": "gear",
+   "massGrams": 4,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      -120,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      120,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "a0",
+     "type": "axlehole",
+     "position": [
+      -100,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "a1",
+     "type": "axlehole",
+     "position": [
+      100,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "t",
+     "type": "rack-teeth",
+     "position": [
+      0,
+      -5,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 176,
+     "data": {
+      "normal": [
+       0,
+       -1,
+       0
+      ],
+      "widthLdu": 20
+     }
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      88,
+      8.75,
+      10
+     ],
+     "position": [
+      0,
+      1.25,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      21,
+      10,
+      10
+     ],
+     "position": [
+      -109,
+      0,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      21,
+      10,
+      10
+     ],
+     "position": [
+      109,
+      0,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "part": "3743.dat",
+   "name": "Technic gear rack 1 x 4",
+   "nameDe": "Technic-Zahnstange 1 x 4",
+   "category": "gear",
+   "massGrams": 1.5,
+   "connectors": [
+    {
+     "id": "t",
+     "type": "rack-teeth",
+     "position": [
+      0,
+      -3.5,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 80,
+     "data": {
+      "normal": [
+       0,
+       -1,
+       0
+      ],
+      "widthLdu": 20
+     }
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      40,
+      7,
+      10
+     ],
+     "position": [
+      0,
+      1,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "part": "48496.dat",
+   "name": "Technic toggle joint smooth, double, with 2 pins",
+   "nameDe": "Technic-Kippgelenk glatt, doppelt, mit 2 Pins",
+   "category": "connector",
+   "massGrams": 1.3,
+   "connectors": [
+    {
+     "id": "p0",
+     "type": "pin",
+     "position": [
+      0,
+      10.5,
+      -20
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 19,
+     "friction": false
+    },
+    {
+     "id": "p1",
+     "type": "pin",
+     "position": [
+      0,
+      10.5,
+      20
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 19,
+     "friction": false
+    },
+    {
+     "id": "e0",
+     "type": "slide-bore",
+     "position": [
+      0,
+      -30,
+      -25
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 10
+    },
+    {
+     "id": "e1",
+     "type": "slide-bore",
+     "position": [
+      0,
+      -30,
+      25
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 10
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      9,
+      9,
+      30
+     ],
+     "position": [
+      0,
+      -30,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      9,
+      5,
+      30
+     ],
+     "position": [
+      0,
+      -5,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      9,
+      5.5,
+      9
+     ],
+     "position": [
+      0,
+      -15.5,
+      -21
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      9,
+      5.5,
+      9
+     ],
+     "position": [
+      0,
+      -15.5,
+      21
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      8,
+      10,
+      8
+     ],
+     "position": [
+      0,
+      10,
+      -20
+     ],
+     "region": "pin"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      8,
+      10,
+      8
+     ],
+     "position": [
+      0,
+      10,
+      20
+     ],
+     "region": "pin"
+    }
+   ]
+  },
+  {
+   "part": "2823.dat",
+   "name": "Technic forklift fork",
+   "nameDe": "Technic-Gabelzinke",
+   "category": "other",
+   "massGrams": 2.8,
+   "connectors": [
+    {
+     "id": "h",
+     "type": "pinhole",
+     "position": [
+      0,
+      10,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 16
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      14,
+      20
+     ],
+     "position": [
+      0,
+      10,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      8,
+      60
+     ],
+     "position": [
+      0,
+      16,
+      -80
+     ]
+    }
+   ]
   }
  ]
 }
