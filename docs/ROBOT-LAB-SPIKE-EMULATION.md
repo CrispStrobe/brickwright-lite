@@ -668,6 +668,222 @@ keeps the route disabled. First slice R13-M (measurement), then R13a.
 
 ---
 
+## 7. R13e measured (Mac, 2026-10-18)
+
+Host: Apple M1, 8 cores, load ≈ 2. Stock Renode **1.16.1** (`tools/renode-1.16.1/Renode.app`,
+self-contained arm64). Branch `lane/simlab-r13e-20261018`.
+
+### 7.1 How the runtime and package were obtained — no Renode build
+
+- **No fork build is needed.** The desktop package loads the Infra models as C# source
+  (`include @models.cs`, compiled by Renode at startup: ≈ 1.2 s here) and the Runtime's state
+  service as IronPython. Both merged sides (Infra #38 at `181d9d45`, the Runtime's submodule
+  pin; Runtime #59, main `7d4a79a2`) therefore load into the stock 1.16.1 unchanged, through
+  the Runtime's own `tools/stage_prime_runtime.py` (source mode, `Brickwright*` type aliases).
+  The Runtime's CI publishes receipts only, no package.
+- **Firmware:** no NuttX build exists on the Mac and the firmware CI publishes no artefacts.
+  The NuttX ELFs (user `1935e06d…`, kernel `dcb7ed87…`), flash seed and notices were copied
+  read-only from the newest assembled desktop package on the VPS
+  (`spike-g02-pending-stop-f7b3-package-20261016/assembled/resources/nuttx`).
+- **`scripts/restage-spike-nuttx-package.mjs BASE RUNTIME INFRA RENODE OUT`** combines the two:
+  firmware side byte for byte from BASE, models/platforms/state service/helpers from the merged
+  sources, new manifest and `pins.json`/`alongside-pins.json`. Result (35 files):
+  `renode-lockstep-work/nuttx-pkg-lockstep`; the running target advertises `lockstep/v1`,
+  `motor-bridge-drive/v1`, `external-shaft/v1`, `nuttx-program-deferred-start/v1`.
+- **Gap found and fixed:** the #59 state service imports `spike_lockstep` unconditionally, but
+  the Lite staging scripts never copied `tools/spike_lockstep.py` and the supervisor refused it
+  (unsupported file; the NuttX manifest cap was 34). Fixed in the staging scripts, the
+  resource-profile freezer and `verify_*_manifest` (helper required when imported, caps +1).
+  The MicroPython support profile's closed file list does not carry it yet (R13f).
+
+### 7.2 Headless proof — `npm run verify:sim-lab-renode`
+
+`scripts/verify-sim-lab-renode-lockstep.mjs` (opt-in; skips without `BW_RENODE` /
+`BW_SIMLAB_NUTTX_PACKAGE`) launches Renode with the supervisor's NuttX monitor commands,
+talks to the state service as `BrickStateFeed` does, uploads the program with NuttX program
+packets while the guest runs, then runs the unchanged `RenodeLockstepDriver` +
+`SpikeFirmwareVirtualHub` + in-thread `SimSession` (S1 driving base, empty mat) and STARTs
+the program inside lockstep (`nuttx.program.control.submit`). Program: §4 R13e's — tank 27 %
+(300 °/s) for 2 s, stop — compiled from the same Scratch source by `compileFirmwareProgram`:
+`[[1,0,-300,0],[1,1,300,0],[2,2000,0,0],[1,0,0,0],[1,1,0,0],[0,0,0,0]]`.
+
+| Measure | Value |
+|---|---|
+| Renode start → state service up (C# compile + 1.0 s virtual boot) | 10.4–12.0 s wall (boot `RunFor "1.0"` alone ≈ 7.3 s) |
+| Program upload (8 packets, free-running guest) | ≈ 0.9 s wall |
+| Lockstep: 486 steps of 5 ms (2.43 s simulated) | 18.4–18.6 s wall, **RTF 0.131**; per step median 37.4 ms, p90 41 ms, max 64 ms |
+| Shafts sent vs physics hinge | ≤ 0.0005° (the wire's milli-degree) |
+| **Emulator encoder (`motors[].position`) vs physics, every step** | **≤ 0.16°** ✓ (≤ 1°) |
+| Firmware's own LPF2 POS reading vs physics (integer °, 10 ms reports) | ≤ 9.4° — report latency at 290 °/s, not error |
+| Firmware clock vs virtual time | 0.998 ms/ms |
+| Firmware program | RUNNING within the first step, COMPLETE at ≈ 2.05 s; peak duty 3148/10000; no oscillation |
+| Wheels A/B | −563.5° / +563.5°; heading change 0.01° (Scratch 0.01°) ✓ |
+| Distance per wheel degree, firmware vs Scratch route | 0.4884 vs 0.4890 mm/° (0.1 %) — one physics ✓ |
+| **Distance, firmware vs Scratch route** | **275.2 vs 298.6 mm, ratio 0.922 — misses 5 %** ✗ |
+
+**Why the distance misses — the firmware's controller, as §5 feared (not oscillation):**
+(a) steady speed **290.3 °/s against 300 commanded**: `motor.c` feeds forward
+`ref·10000/1110` and integrates `error·dt[ms]` but divides the integral by 1000, so the I-term
+gains ≈ 10 duty units per (°/s·s) — effectively P-only (Kp = 3); the DC model needs ≈ 3.4 %
+more duty than the 1110 °/s feed-forward assumes, and 3·10 °/s of error is the equilibrium.
+That is ≈ 19° of the 47° wheel gap. (b) the 2000 °/s² reference ramp plus START/first-report
+latency cost ≈ 28° at the start (the virtual hub's controller reaches speed faster). The fix
+belongs to the Firmware (a real integral gain, or a feed-forward calibrated against the
+model), not to the physics — the per-degree distance shows the physics agrees. The fake's
+R13d pass (ratio 0.995) used a fake firmware with an ideal speed loop.
+
+Second, exploratory program (A at speed, B a 360° position move, op 6): B ended 365° and
+A 656° (the robot curved; op 6 blocks and moves one motor), so a two-wheel "run 360 degrees"
+has no firmware form — `compileFirmwareProgram` refuses it, and it also cannot compile the
+DSL's `move forward … seconds` (its DIRECTION field is the text `forward`, the compiler
+expects −1/1).
+
+### 7.2a Cross-route acceptance, revised (2026-10-18), and the fixed firmware speed loop
+
+**New acceptance** (owner decision 2026-10-18). The firmware route is judged against the Scratch
+route on two numbers:
+- **Steady-state wheel speed** over the middle half of the timed drive, within 1 %.
+- **Run-for-degrees end angle** (`run motor A forward 360 degrees`), within ±2°.
+
+The 2 s timed-drive distance is now printed for information only. It integrates each
+controller's acceleration profile.
+
+The script runs one form per invocation, and both forms make up the acceptance:
+`npm run verify:sim-lab-renode` (timed drive) and `npm run verify:sim-lab-renode:degrees`.
+
+**Firmware.** brickwright-spike-prime-fw PR #55 (`feat/robot-lab-speed-loop`, `ae88d39`) has
+a plant-derived PI with battery compensation and no overshoot from the integral.
+- Built locally with the repo's Docker build, `simulation` profile, on arm64.
+- The post-build input gate rejects the arm64 container's `libgcc.a` hash, which is pinned
+  to the x86-64 CI runner. This is a provenance gate, not a functional one.
+- Packaged with `prepare-spike-nuttx-package.mjs` and restaged with
+  `restage-spike-nuttx-package.mjs` onto Runtime `7d4a79a2` and Infrastructure `181d9d45`.
+- User ELF `fc09edcf…`.
+
+| Measure (Mac, Renode 1.16.1) | old firmware `1935e06d…` | PR #55 `fc09edcf…` | Scratch route |
+|---|---|---|---|
+| Steady wheel speed, 300 °/s command | 290.3 °/s (ratio 0.971 ✗) | **301.4 °/s (ratio 1.008 ✓)** | 299.1 °/s |
+| Peak 50 ms-mean speed / overshoot | 293.2 °/s / −2.3 % | 309.7 °/s / **+3.2 %** | — |
+| Run for 360°: end angle of A | 354.8°, program never completes in 6 s ✗ | **358.7° ✓**, completes at ≈ 2.4 s | 359.2° |
+| Timed-drive distance (informational) | 275.1 mm (0.921) | 294.1 mm (0.985) | 298.6 mm |
+| Wheels after the 2 s drive | ±563.3° | ±602.2° | ±610.7° |
+| Max duty | 3148 | 3723 (degrees form: 7820) | — |
+
+All checks of both forms pass with the PR #55 firmware. The old firmware fails the speed check
+in the timed form. In the degrees form it fails twice: the program never completes, and the
+end angle misses by 4.4°. Its proportional-only loop stalls 5° short.
+
+In the degrees form, heading is informational. The base pivots on its undriven wheel B, and
+the two routes leave that motor passive differently: B ends at −0.2° on the firmware route and
+−22.5° on the Scratch route. The "Run again + Pause" bridge check therefore covers only the
+driven port A in that form.
+
+### 7.3 Desktop app
+
+- `npm run build:gui` and `cargo build` (pins: the package's `alongside-pins.json`,
+  `CARGO_TARGET_DIR=/Volumes/backups/code/cargo-target/brickwright-lite`) build the app.
+- The repo's live-app gates (`verify-native-*-e2e.mjs`) use tauri-driver/WebKitWebDriver,
+  Linux only; macOS has no WebDriver for WKWebView, so the GUI cannot be driven here without a
+  human.
+- **Native proof instead:** `native_capability::packaged_lockstep_tests` (ignored; needs the
+  pins) dispatches the route's broker operations as `native_broker_invoke` does after
+  admission (`Operation::parse` → `valid_args` → `execute`) on a real Renode:
+  `session.start {backend:nuttx}` (boot 20.2 s incl. GDB attach) → `run` → 8× `program.packet`
+  → `lockstep.begin` → `program.control.submit` START → 244 × `lockstep.step` (RTF 0.127) →
+  `lockstep.end` → `session.close`; program COMPLETE, encoder = injected shaft ≤ 0.0005°,
+  wheels ±336.5° on a first-order wheel. Run it with
+  `eval "$(jq -r 'to_entries[]|"export \(.key)=\(.value)"' PKG/alongside-pins.json)"; TMPDIR=<a non-symlinked dir> cargo test --lib packaged_nuttx_firmware -- --ignored --nocapture`
+  (macOS's `/var` → `/private/var` symlink breaks the existing manifest fixtures otherwise).
+- **Missing in the GUI route: program upload.** The pane's firmware route starts the session,
+  enters lockstep and runs the clock, but never sends a program (`sim-lab-pane.jsx` `run()`:
+  "the clock is all Run starts"), and `program.packet` is refused during lockstep. On the
+  desktop the S1 base would therefore stand still on a blank flash. Needed: compile the VM's
+  blocks with `compileFirmwareProgram` when the route opens, upload BEGIN/CHUNK/COMMIT after
+  `run` and before `lockstep.begin` (as the headless script does), START via
+  `program.control.submit` on Run. Until then a manual desktop run can only show the route
+  opening and lockstep stepping.
+  **Done in §7.4.**
+
+### 7.4 The GUI route runs the user's program (branch `lane/simlab-fwroute-20261018`)
+
+**The route as built** (`routes/renode-lockstep/route.js`, `program.js`; the pane in
+`sim-lab-pane.jsx`):
+
+| Pane | Broker operations |
+|---|---|
+| route opens (model loads, or route chosen) | compile the Code tab's blocks (`compileRouteProgram` → the SPIKE arena's `compileFirmwareProgram`) → `session.start` → `state.read` (lockstep/v1?) → `run` → `program.packet` BEGIN, CHUNK…, COMMIT (the arena's `NuttXProgramClient`, `start: false`, guest free-running) → `lockstep.begin` |
+| Run | compile again; same instructions → `program.control.submit` START; changed → the route reopens with the new program (packets cannot cross during lockstep), then START |
+| (clock) | `lockstep.step` per 5 ms; every snapshot's `lifecycle.nuttxProgram` / `nuttxProgramReply` updates the route's program state |
+| Pause | STOP; the clock keeps running until the firmware has taken it (status "Stopping…"), so the robot brakes in the physics; then paused |
+| Run again | START from the beginning; after a START (program completed) it goes out as STOP + START: the mailbox takes one request at a time and a reply carries only its operation |
+| Reset / route change / close | STOP (if running or a START is in line) → `lockstep.end` → `session.close` |
+
+**Unsupported blocks**: the compiler's refusals are `FirmwareProgramError`s with a `code`, the
+block as the pseudocode line it reads as (`move forward 10 cm`), its id and opcode. The route
+still opens without a program (the robot stands; nothing is uploaded) and the pane says which
+block and why, in English or German (`sim-lab-firmware-text.js`, one sentence per code; the
+unit test fails on a code without both). Run re-compiles and says it again — never a silent
+stand-still. Refused controls (`the firmware refused START (−22)`) and a program FAULT are shown too.
+
+**Compiler / ABI findings.**
+
+- `move forward/backward N seconds`: refused only because the movement block's `DIRECTION`
+  is the menu word (`forward`/`backward`) and the compiler read it as the motor blocks' ±1.
+  Fixed in the compiler; the form is ops 1 + 1 + 2 + stop, byte-identical to
+  `start tank` + `wait` + `stop movement`. No ABI change.
+- **Two motors by an amount (`move forward 360 degrees`, `… cm`, `… rotations`, a block's
+  `run motor AB … degrees`) has no form in ABI v1, and the compiler keeps refusing it.**
+  Issue-ready (Firmware, `CrispStrobe/brickwright-spike-prime-fw`, `apps/hubprogram`):
+  *ABI v1 has one position instruction, op 6 `{port, degrees, speed}`, and `program.c`
+  (`bw_program_tick`, case 6, l. 152–156) makes it blocking: it sets `p->moving` and the
+  interpreter returns until `io.done(port)`, so two op-6 rows move the wheels one after the
+  other (measured in §7.2: B 365°, A 656°, the base curved). The device layer is already
+  non-blocking (`device.c position()`, l. 112–123, only arms `bw_motor_position`), and no
+  predicate can wait on a motor (ops 3/5 read sensor selectors only), so the form cannot be
+  composed from v1 either; a time-based approximation (speed × seconds) would not stop at
+  the angle the program asked for. Proposal (ABI v2, additive): op 7 = op 6 without waiting
+  (same `a, b, c` bounds), op 8 `{mask}` = wait until every motor in the port bitmask is done
+  (`io.done`, as `ending` already loops over `p->owned`). Validators to extend together:
+  `program.c bw_program_validate`, `upload-protocol.js encodeInstructions`,
+  `arena_inputs.rs valid_program`, `arena-inputs.js validArenaProgram`; then the compiler
+  emits `[7, A, −deg, v], [7, B, +deg, v], [8, 0b11, 0, 0]` for a movement pair. (The fake
+  emulator's op 7 in `test/bw-sim-renode-lockstep-fake.mjs` is exactly that op, fake-only.)*
+
+**Real Renode, through the route's own code path** (`npm run verify:sim-lab-renode`, Mac,
+stock Renode 1.16.1, restaged package of §7.1). The headless script now opens
+`openLockstepRoute` with its state-service transport (`manageSession: false`: it launched
+Renode itself — the only difference from the pane), with the program compiled by
+`compileRouteProgram` from a VM block tree built by the converter (SB3Creator), and drives
+START/STOP through the route's `LockstepProgram`:
+
+Two programs, the same compiled instructions `[[1,0,−300,0],[1,1,300,0],[2,2000,0,0],[1,0,0,0],[1,1,0,0],[0,0,0,0]]`
+(default: `start tank 27 27` / `wait 2 seconds` / `stop movement`; `BW_SIMLAB_FORM=move`:
+`set movement speed 27` / `move forward 2 seconds`, newly compilable):
+
+| Measure | tank + wait | move forward … seconds |
+|---|---|---|
+| Route sequence (both) | `state.read → program.packet ×12 → lockstep.begin → program.control.submit (START) → lockstep.step ×486 → STOP → step → START → step ×62 → STOP → step ×62 → lockstep.end` | same |
+| Upload (12 packets: BEGIN, 10 CHUNK, COMMIT) + lockstep.begin | 0.80–0.89 s wall; program READY | same |
+| Lockstep, 486 steps (2.43 s simulated) | 17.2 s wall, RTF 0.141; per step median 34.9 ms, p90 38 ms | 18.8 s, RTF 0.129 |
+| **Emulator encoder vs physics, every step** | **≤ 0.160°** ✓ (≤ 1°) | ≤ 0.160° ✓ |
+| START answered in a step snapshot; program | RUNNING in the first step, COMPLETE at ≈ 2.05 s | same |
+| Run again + Pause (STOP+START, then STOP) | RUNNING after 3 steps, STOPPED 1 step after Pause; both bridges braking (mean drive 0, 5/5 braking ticks) | same |
+| Wheels A/B; steady speed | −563.4° / +563.4°; 290.2 °/s against 300 commanded | −563.3° / +563.3°; 290.1 °/s |
+| mm per wheel degree, firmware vs Scratch | 0.4884 vs 0.4890 ✓ (one physics) | same |
+| Scratch route (same text, virtual hub) | wheels ±610.7°, 299.1 °/s | wheels ±540.3°, 299.1 °/s |
+| **Distance firmware vs Scratch route** | **275.1 vs 298.6 mm, ratio 0.922 ✗** (check stays at 5 %) | 275.1 vs 264.2 mm, ratio 1.041 ✓ |
+
+The tank program's 7.8 % shortfall is the firmware's speed loop of §7.2 (effectively P-only,
+plus the 2000 °/s² ramp), unchanged by this lane and expected until the firmware fix lands;
+the script keeps failing on it rather than widening its tolerance. **The `move` form's pass is
+not a fixed firmware**: the firmware runs the identical instructions (275.1 mm both times);
+the Scratch route's own `move forward 2 seconds` drives ≈ 0.24 s shorter than its
+`start tank` + `wait 2` + `stop movement` (540° vs 611° at the same 299 °/s), so two
+discrepancies of opposite sign meet. That Scratch-route difference (the virtual hub's
+motor-pair `move … seconds` against `wait`) is outside this lane and not investigated here.
+
+---
+
 ## A. Measurement script
 
 The probe used for §1.7 (run with `nice`, in a private temp dir, against copies/read-only
