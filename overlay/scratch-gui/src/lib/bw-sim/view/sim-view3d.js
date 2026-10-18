@@ -111,7 +111,11 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     const resize = () => {
         const width = Math.max(1, container.clientWidth || 0);
         const height = Math.max(1, container.clientHeight || Math.round(width * 0.6));
-        renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+        // Only when it changes: setPixelRatio re-sizes the canvas, and assigning a canvas its size, even
+        // the same size, throws its drawing buffer away and waits for the GPU — every frame, a stall
+        // that scales with the model (most of a big model's frame time on a software renderer).
+        const ratio = Math.min(2, window.devicePixelRatio || 1);
+        if (renderer.getPixelRatio() !== ratio) renderer.setPixelRatio(ratio);
         const size = renderer.getSize(new Vector2());
         if (size.x !== width || size.y !== height) {
             renderer.setSize(width, height, false);
@@ -152,7 +156,10 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         }
     };
     /** Port badges: items {id, port, label} (motors and sensors). */
-    const setPorts = items => insight.setPorts(items.map(item => ({...item, anchor: partCentre(item.id)})));
+    const setPorts = items => {
+        insight.setPorts(items.map(item => ({...item, anchor: partCentre(item.id)})));
+        dirty = true;
+    };
     /** Hinge axes, gear pairs and body tints from insightOf(runModel, mechanism, …). */
     const setMotion = ({joints = [], gears = [], tints: bodyTintMap = null} = {}) => {
         insight.setMotion({
@@ -162,21 +169,61 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         });
         tints = bodyTintMap;
         paintTints();
+        dirty = true;
     };
     const setOverlay = shown => {
         insight.setVisible(shown);
         paintTints();
+        dirty = true;
     };
     /** Pulse these parts for `ms` (a motor's drive hub too). */
     const highlight = (ids, ms = 3000) => {
         const want = new Set(ids);
         const meshes = allMeshes().filter(m => want.has(m.name.replace(/#hub$/, '')));
         pulse.start(meshes, ms, performance.now());
+        dirty = true;
         return meshes.length;
     };
 
-    const render = snapshot => {
+    // A big (instanced) model is drawn on demand: a frame where no body moved, the camera stayed,
+    // the size and the overlay are the same and nothing pulses is not drawn again — the pane's
+    // animation loop asks every frame, and redrawing thousands of unchanged parts would keep the
+    // page busy for nothing. Small models are drawn every frame, as always.
+    const onDemand = Boolean(built.instanced);
+    let dirty = true;
+    let lastBodies = null;
+    const lastCamera = new Float32Array(16);
+    const lastSize = new Vector2();
+    const changed = (snapshot, size) => {
+        let moved = false;
+        const bodies = snapshot && snapshot.bodies;
+        if (bodies && (!lastBodies || lastBodies.length !== bodies.length || bodies.some((v, i) => v !== lastBodies[i]))) {
+            lastBodies = Float32Array.from(bodies);
+            moved = true;
+        }
+        camera.updateMatrixWorld();
+        const cam = camera.matrixWorld.elements;
+        if (cam.some((v, i) => v !== lastCamera[i])) {
+            lastCamera.set(cam);
+            moved = true;
+        }
+        if (!size.equals(lastSize)) {
+            lastSize.copy(size);
+            moved = true;
+        }
+        return moved || pulse.count > 0;
+    };
+    controls.addEventListener('change', () => { dirty = true; });
+
+    /**
+     * Draw the scene at this snapshot.
+     * @param {object} [snapshot] the physics snapshot
+     * @param {{force?: boolean}} [options] force: draw even when nothing changed (frame timing)
+     */
+    const render = (snapshot, {force = false} = {}) => {
         resize();
+        if (onDemand && !force && !dirty && !changed(snapshot, renderer.getSize(new Vector2()))) return;
+        dirty = false;
         if (snapshot) applySnapshot(built, snapshot);
         const centre = modelBox().getCenter(new Vector3());
         if (followed) {
@@ -212,6 +259,7 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     resetCamera();
     const recentre = () => {
         followed = null;
+        dirty = true;
         resetCamera();
     };
     return {canvas, render, resize, resetCamera: recentre, dispose, setPorts, setMotion, setOverlay, highlight,
