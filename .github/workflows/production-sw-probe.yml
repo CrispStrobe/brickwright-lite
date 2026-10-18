@@ -1,0 +1,135 @@
+name: production-sw-probe
+
+# #306: after each production deploy, check that a returning visitor's
+# service worker hands out the CURRENT lazy chunks. The browser profile seeded
+# after the previous deploy is restored, checked against the new deploy, and
+# a fresh profile is seeded for the next one. Reports, never deploys.
+on:
+  workflow_run:
+    workflows: ['Vercel production deploy', 'Build (permissive base)']
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: production-sw-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: pages
+            url: https://crispstrobe.github.io/brickwright-lite/
+          - target: vercel
+            url: https://brickwright-lite.vercel.app/
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          sparse-checkout: scripts/probe-production-sw.mjs
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Install Playwright (Lite's locked version)
+        # In its own directory: the repository's package.json must not be installed.
+        run: |
+          mkdir -p "$RUNNER_TEMP/probe" && cd "$RUNNER_TEMP/probe"
+          echo '{"private":true,"type":"module"}' > package.json
+          npm install --no-audit --no-fund playwright@1.62.1
+          npx playwright install --with-deps chromium
+          cp "$GITHUB_WORKSPACE/scripts/probe-production-sw.mjs" .
+      - name: Restore the previous seed
+        id: restore
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prev=$(gh run list -R "$GITHUB_REPOSITORY" -w production-sw-probe -s success -L 20 --json databaseId -q '.[].databaseId' | grep -vx "$GITHUB_RUN_ID" | head -1 || true)
+          if [ -n "$prev" ] && gh run download "$prev" -R "$GITHUB_REPOSITORY" -n "sw-profile-${{ matrix.target }}" -D profile-prev 2>/dev/null; then
+            echo "found=true" >> "$GITHUB_OUTPUT"; echo "restored seed from run $prev"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"; echo "no previous seed: this run only seeds"
+          fi
+      - name: Check the new deploy against the previous seed
+        if: steps.restore.outputs.found == 'true'
+        run: |
+          set +e
+          node "$RUNNER_TEMP/probe/probe-production-sw.mjs" check --url "${{ matrix.url }}" --profile profile-prev --json probe-${{ matrix.target }}.json
+          rc=$?
+          if [ "$rc" = 3 ]; then echo "::notice::${{ matrix.target }}: inconclusive (probed chunks unchanged since the seed)"; exit 0; fi
+          exit $rc
+      - name: Seed a fresh profile for the next deploy
+        if: ${{ !cancelled() }}
+        run: node "$RUNNER_TEMP/probe/probe-production-sw.mjs" seed --url "${{ matrix.url }}" --profile profile-next
+      - name: Drop the HTTP disk cache from the seed (the worker's Cache Storage stays)
+        if: ${{ !cancelled() }}
+        run: rm -rf profile-next/Default/Cache profile-next/Default/Code\ Cache profile-next/Default/GPUCache && du -sh profile-next
+      - name: Upload the new seed
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sw-profile-${{ matrix.target }}
+          path: profile-next/
+          include-hidden-files: true
+          retention-days: 14
+      - name: Upload the check result
+        if: ${{ !cancelled() && steps.restore.outputs.found == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: probe-result-${{ matrix.target }}
+          path: probe-${{ matrix.target }}.json
+          if-no-files-found: ignore
+
+  # Report, not a gate: which example parts the circuit editor draws with its
+  # generic module body (or a chip face), ranked by how many examples use them.
+  example-faces:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          sparse-checkout: |
+            vendor-pins.json
+            scripts/census-example-faces.mjs
+            overlay/scratch-gui/examples/
+          sparse-checkout-cone-mode: false
+      - name: Pinned bw-circuit-ui commit
+        id: pin
+        run: echo "sha=$(node -e "console.log(require('./vendor-pins.json')['bw-circuit-ui'])")" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: CrispStrobe/bw-circuit-ui
+          ref: ${{ steps.pin.outputs.sha }}
+          path: cui
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Install bw-circuit-ui and Chromium
+        working-directory: cui
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Draw every example kind in the real canvas
+        run: |
+          kinds=$(node scripts/census-example-faces.mjs kinds)
+          cd cui && node scripts/census-part-faces.mjs --kinds "$kinds" --json ../example-faces.json || echo "::warning::bw-circuit-ui census reported failures (see log); the report below still lists faces"
+      - name: Report
+        run: node scripts/census-example-faces.mjs report --census example-faces.json --md example-faces.md
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ !cancelled() }}
+        with:
+          name: example-faces
+          path: |
+            example-faces.json
+            example-faces.md
+          if-no-files-found: ignore
