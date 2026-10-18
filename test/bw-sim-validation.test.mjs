@@ -698,11 +698,9 @@ const swingArm = async ({mode, direction}) => {
     return r;
 };
 
-test('stall: a motor arm driven into a fixed obstacle stops at first touch and the hub reports the stall', {
-    todo: 'a motorised hinge island without gears keeps Jolt\'s default 10 velocity / 2 position iterations: the ' +
-        'DC motor pushes the arm through the static obstacle (with the gear islands\' 30/10 on the motor hinge it ' +
-        'stops within 1° of first touch, measured)'
-}, async t => {
+test('stall: a motor arm driven into a fixed obstacle stops at first touch and the hub reports the stall', async t => {
+    // With Jolt's default 10 velocity / 2 position iterations the DC motor pushed the arm through the block;
+    // a motorised hinge's island now solves with 60 / 5 (jolt-core.js MOTOR_VELOCITY_STEPS).
     const out = [];
     for (const direction of [1, -1]) out.push(await swingArm({mode: 'obstacle', direction}));
     t.diagnostic(out.map(r => `first touch ${r.expected.toFixed(2)}°: arm at ${r.angle.toFixed(2)}°, stalled ${r.stalled}`).join('; '));

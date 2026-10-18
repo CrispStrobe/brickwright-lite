@@ -110,6 +110,21 @@ const GEAR_VELOCITY_STEPS = 30;
 const GEAR_POSITION_STEPS = 10;
 
 /**
+ * Solver iterations for an island holding a motorised hinge (Jolt's defaults 10 / 2). The DC motor
+ * (applyHingeTorque) is a stiff implicit spring on the hinge; a load reaches it through motor → hinge →
+ * contact, the chain GEAR_VELOCITY_STEPS describes, without a gear in it. With the defaults a medium
+ * motor drove a beam-5 arm straight through a static block (test/bw-sim-validation.test.mjs, stall:
+ * first touch +92.35° / −33.52°, the arm stopped at +276.6° / −401°). Measured, arm stop minus first
+ * touch (+ / −), and the step time of the shipped examples (whole robot = one island, 51 µs before):
+ *   velocity/position  30/2: +3.5° / −2.1°, 53 µs   30/10: +2.9° / −0.8°, 103 µs
+ *                      60/2: +3.4° / −1.1°, 61 µs   60/5:  +1.4° / −0.9°,  78 µs   60/10: +1.1° / −0.7°, 111 µs
+ * The position steps are the cost (they re-solve every contact of the island) and the velocity steps the
+ * accuracy: 60/5 halves 30/10's overshoot for less time.
+ */
+const MOTOR_VELOCITY_STEPS = 60;
+const MOTOR_POSITION_STEPS = 5;
+
+/**
  * Solver velocity iterations for an island holding a worm (R4). A worm's 1:24 puts the wheel's
  * load on the worm 24 times smaller and the worm's inertia on the wheel 576 times larger, and the
  * gear constraint slips where the solve has not converged: a 102 g arm 5 cm out (0.05 N·m) on a
@@ -467,6 +482,11 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             // (Jolt applies it while the motor is off: a coasting or unpowered hinge).
             if (j.limits) { hs.mLimitsMin = j.limits[0]; hs.mLimitsMax = j.limits[1]; }
             if (typeof j.frictionNm === 'number') hs.mMaxFrictionTorque = j.frictionNm;
+            if (actuator) {
+                // A motorised hinge's island solves with more iterations than Jolt's default (MOTOR_VELOCITY_STEPS).
+                hs.mNumVelocityStepsOverride = MOTOR_VELOCITY_STEPS;
+                hs.mNumPositionStepsOverride = MOTOR_POSITION_STEPS;
+            }
             const constraint = hs.Create(bodyA, bodyB);
             physicsSystem.AddConstraint(constraint);
             allConstraints.push(constraint);
