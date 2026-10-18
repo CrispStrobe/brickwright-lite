@@ -361,6 +361,9 @@ jobs:
               # Only an inventory request; never boot, create, install or launch a device.
               import selectors
               import signal
+              need(callable(getattr(os, 'waitid', None)) and
+                   all(hasattr(os, name) for name in ('P_PID', 'WEXITED', 'WNOHANG', 'WNOWAIT', 'CLD_EXITED')) and
+                   signal.getsignal(signal.SIGCHLD) == signal.SIG_DFL)
               process = subprocess.Popen(['xcrun', 'simctl', 'list', 'runtimes', '--json'],
                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
               output = bytearray()
@@ -383,7 +386,14 @@ jobs:
                           need(used <= 1024*1024)
                           if key.fileobj is process.stdout:
                               output.extend(raw)
-                  need(process.wait(timeout=max(0.001, deadline-time.monotonic())) == 0)
+                  while True:
+                      clock()
+                      need(time.monotonic() < deadline)
+                      info = os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+                      if info is not None:
+                          need(info.si_pid == process.pid and info.si_code == os.CLD_EXITED and info.si_status == 0)
+                          break
+                      time.sleep(min(0.01, max(0, deadline-time.monotonic())))
                   clock()
                   return bytes(output)
               finally:
@@ -433,6 +443,172 @@ jobs:
                   offset += length
               need(offset == 32+size and len(builds) == 1)
               return builds[0]
+
+
+          class SimulatorCommandRefused(RuntimeError):
+              def __init__(self, reason, cleanup_failures=()):
+                  super().__init__('simulator command refused')
+                  self.reason = reason
+                  self.cleanup_failures = tuple(cleanup_failures)
+
+
+          def bounded_simulator_command(arguments, *, device_set, deadline, output_limit, stopped=None):
+              """Unwired simctl client adapter; not containment of delegated services/apps.
+
+              Requires non-reaping waitid (macOS Python 3.13+) and the default SIGCHLD
+              disposition. No concurrent child reaper may steal this direct child.
+              """
+              import math
+              import re
+              import selectors
+              import signal
+              stage = 'admission'
+              process = None
+              selector = None
+              directory_fd = None
+              primary = None
+              cleanup = []
+              output = bytearray()
+              last = None
+              def check():
+                  nonlocal last, stage
+                  stage = 'deadline'
+                  tick = time.monotonic()
+                  need(math.isfinite(tick) and (last is None or tick >= last) and tick < deadline)
+                  last = tick
+                  if stopped is not None:
+                      stage = 'stop'
+                      value = stopped()
+                      need(type(value) is bool and not value)
+                  return tick
+              try:
+                  need(type(deadline) in (int, float) and math.isfinite(deadline))
+                  need(type(output_limit) is int and 0 < output_limit <= 1024*1024)
+                  need(stopped is None or callable(stopped))
+                  need(callable(getattr(BaseException, 'add_note', None)))
+                  need(callable(getattr(os, 'waitid', None)) and
+                       all(hasattr(os, name) for name in ('P_PID', 'WEXITED', 'WNOHANG', 'WNOWAIT', 'CLD_EXITED')))
+                  need(signal.getsignal(signal.SIGCHLD) == signal.SIG_DFL)
+                  need(0 < deadline-check() <= 15)
+                  stage = 'arguments'
+                  need(type(arguments) is tuple and 0 < len(arguments) <= 4 and
+                       all(type(arg) is str and 0 < len(arg.encode()) <= 4096 and
+                           not any(ord(c) < 32 or ord(c) == 127 for c in arg) for arg in arguments))
+                  operation = arguments[0]
+                  if operation == 'list':
+                      need(arguments in (('list', 'devices', '--json'), ('list', 'runtimes', '--json'),
+                                         ('list', 'devicetypes', '--json')))
+                  elif operation == 'runtime':
+                      need(arguments == ('runtime', 'list', '--json'))
+                  elif operation == 'create':
+                      need(len(arguments) == 4 and re.fullmatch(r'bw-asset-audit-[a-f0-9]{32}', arguments[1]) is not None and
+                           re.fullmatch(r'com\.apple\.CoreSimulator\.SimDeviceType\.[A-Za-z0-9-]+', arguments[2]) is not None and
+                           re.fullmatch(r'com\.apple\.CoreSimulator\.SimRuntime\.iOS-[0-9]{1,3}-[0-9]{1,3}(?:-[0-9]{1,3})?', arguments[3]) is not None)
+                  else:
+                      need(operation in ('boot', 'bootstatus', 'install', 'launch', 'terminate', 'shutdown', 'delete'))
+                      expected = 2 if operation in ('boot', 'shutdown', 'delete') else 3
+                      need(len(arguments) == expected and re.fullmatch(r'[A-F0-9]{8}(?:-[A-F0-9]{4}){3}-[A-F0-9]{12}', arguments[1]) is not None)
+                      if operation == 'bootstatus':
+                          need(arguments[2] == '-b')
+                      elif operation == 'install':
+                          need(Path(arguments[2]).is_absolute() and arguments[2].endswith('.app'))
+                      elif operation in ('launch', 'terminate'):
+                          need(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9-]*(?:\.[A-Za-z0-9][A-Za-z0-9-]*)+', arguments[2]) is not None)
+                  stage = 'device-set'
+                  directory = Path(device_set)
+                  need(directory.is_absolute() and directory.resolve(strict=True) == directory and
+                       re.fullmatch(r'bw-ios-assets-[a-f0-9]{32}\.deviceset', directory.name) is not None)
+                  directory_fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+                  identity = os.fstat(directory_fd)
+                  need(stat.S_ISDIR(identity.st_mode))
+                  # Path snapshots are not an atomic namespace lease; actual ownership is
+                  # independently admitted before any future wiring of this adapter.
+                  def same_directory():
+                      current = directory.stat(follow_symlinks=False)
+                      need(stat.S_ISDIR(current.st_mode) and
+                           (current.st_dev, current.st_ino) == (identity.st_dev, identity.st_ino) and
+                           directory.resolve(strict=True) == directory)
+                  same_directory()
+                  check()
+                  stage = 'spawn'
+                  selector = selectors.DefaultSelector()
+                  environment = {key: value for key, value in os.environ.items() if key in (
+                      'PATH', 'HOME', 'TMPDIR', 'DEVELOPER_DIR', 'SDKROOT', 'LANG', 'LC_ALL', '__CF_USER_TEXT_ENCODING')}
+                  process = subprocess.Popen(['xcrun', 'simctl', '--set', str(directory), *arguments],
+                      stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                      start_new_session=True, close_fds=True, env=environment)
+                  for pipe in (process.stdout, process.stderr):
+                      os.set_blocking(pipe.fileno(), False)
+                      selector.register(pipe, selectors.EVENT_READ)
+                  used = 0
+                  while True:
+                      current = check()
+                      for key, _ in selector.select(min(0.05, deadline-current)):
+                          stage = 'read'
+                          raw = os.read(key.fileobj.fileno(), 65536)
+                          if not raw:
+                              selector.unregister(key.fileobj)
+                              continue
+                          used += len(raw)
+                          stage = 'output'
+                          need(used <= output_limit)
+                          if key.fileobj is process.stdout:
+                              output.extend(raw)
+                      stage = 'exit-observation'
+                      # Never poll()/wait() before the final killpg: retain the direct child
+                      # PID until signaling the group so its numeric identity cannot recycle.
+                      info = os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+                      if info is not None:
+                          need(info.si_pid == process.pid)
+                          if info.si_code != os.CLD_EXITED or info.si_status != 0:
+                              stage = 'exit'
+                              raise ValueError('command exit refused')
+                          if not selector.get_map():
+                              break
+                  check()
+                  stage = 'device-set'
+                  same_directory()
+              except BaseException as error:
+                  primary = error
+                  reason = stage
+              finally:
+                  if process is not None:
+                      # Signal only this newly created command session, before reaping its
+                      # leader. Descendants that leave the group/services are not contained.
+                      try:
+                          os.killpg(process.pid, signal.SIGKILL)
+                      except ProcessLookupError:
+                          pass
+                      except Exception:
+                          cleanup.append('group-signal')
+                      try:
+                          process.wait(timeout=2)
+                      except Exception:
+                          cleanup.append('leader-reap')
+                      for pipe in (process.stdout, process.stderr):
+                          try:
+                              pipe.close()
+                          except Exception:
+                              cleanup.append('pipe-close')
+                  if selector is not None:
+                      try:
+                          selector.close()
+                      except Exception:
+                          cleanup.append('selector-close')
+                  if directory_fd is not None:
+                      try:
+                          os.close(directory_fd)
+                      except Exception:
+                          cleanup.append('directory-close')
+              if primary is not None:
+                  if not isinstance(primary, Exception):
+                      if cleanup:
+                          primary.add_note('simulator command cleanup incomplete: '+','.join(cleanup))
+                      raise primary
+                  raise SimulatorCommandRefused(reason, cleanup) from None
+              if cleanup:
+                  raise SimulatorCommandRefused('cleanup', cleanup)
+              return bytes(output)
 
 
           def runtime_admission():

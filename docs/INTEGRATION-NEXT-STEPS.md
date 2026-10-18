@@ -132,6 +132,23 @@ Next actions and completion criteria:
    this core. Qualify its bounded adapters, device/runtime compatibility, resource
    monitoring and installed-code/receipt bindings before enabling actual execution.
 
+   The unwired command adapter now restricts command shapes and explicit device
+   UUIDs, requires a named device-set directory, and always passes that namespace.
+   It streams stdout and stderr under one byte limit, closes stdin and inherited
+   descriptors, filters inherited environment, and checks an absolute deadline and
+   stop predicate. It observes exit without reaping, signals its newly created
+   command group, then reaps the leader and closes owned pipes/selector/directory.
+   Primary and cleanup failures remain separate, including cancellation notes.
+   Non-reaping `waitid` and exception-note APIs are required before spawning; macOS
+   `waitid` support requires Python 3.13 or later, per the
+   [Python API documentation](https://docs.python.org/3/library/os.html#os.waitid).
+   The existing inventory helper also observes exit without reaping before group
+   signaling and now refuses missing APIs/default-signal admission before spawning.
+   Existing workflow Python setup is unchanged: the optional runtime phase refuses
+   an unsupported interpreter; ordinary build/input retention remain unaffected. Linux subprocess
+   controls do not qualify Darwin behavior, device-set ownership or path races,
+   process creation latency, escaped descendants, delegated services or app RSS.
+
    Next, independently join the complete retained source/web/configuration/toolchain/
    executable and official job/artifact identities. Distinguish referenced codegen
    outputs from stale cache candidates without guessing Rust map layout. Toolchain

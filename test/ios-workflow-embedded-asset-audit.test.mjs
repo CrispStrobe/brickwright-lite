@@ -532,3 +532,216 @@ test('unwired owned simulator transaction core preserves identity, failures and 
         assert.match(result.stderr, /OK/);
     } finally { rmSync(dir, {recursive: true, force: true}); }
 });
+
+const adapterControls = String.raw`
+import functools
+import tempfile
+import unittest
+from unittest import mock
+import shutil
+import signal
+ACTOR = r'''#!/usr/bin/python3
+import json,os,sys,time
+from pathlib import Path
+ROOT=Path(__file__).parent
+MODE=__MODE__
+(ROOT/'pid.json').write_text(json.dumps({'leader':os.getpid()}))
+if MODE in ('hang','orphan-pipes','orphan-closed'):
+ if MODE!='hang':
+  child=os.fork()
+  if child:
+   (ROOT/'pid.json').write_text(json.dumps({'leader':os.getpid(),'child':child}));os._exit(0)
+  if MODE=='orphan-closed':
+   os.close(1);os.close(2)
+ time.sleep(30)
+elif MODE=='exit':
+ sys.stderr.write('AUTHORED-PRIVATE-STDERR');sys.exit(37)
+elif MODE=='output':
+ sys.stdout.write('a'*40);sys.stdout.flush();sys.stderr.write('b'*40)
+elif MODE=='stdin':
+ assert sys.stdin.buffer.read()==b'';print('stdin-closed')
+elif MODE=='fd':
+ try:
+  info=os.fstat(__FD__);absent=(info.st_dev,info.st_ino)!=__IDENTITY__
+ except OSError:absent=True
+ print(json.dumps({'inheritedFileAbsent':absent}))
+elif MODE=='replace-set':
+ directory=Path(sys.argv[3]);directory.rename(directory.with_suffix('.old'));directory.mkdir();print('replaced')
+elif MODE=='lifecycle':
+ runtime='com.apple.CoreSimulator.SimRuntime.iOS-18-0';uid='11111111-1111-1111-1111-111111111111'
+ statefile=ROOT/'state.json';state=json.loads(statefile.read_text()) if statefile.exists() else {}
+ args=sys.argv[4:];command=args[0];out=''
+ if command=='list':out=json.dumps({'devices':{runtime:list(state.values())}})
+ elif command=='create':
+  state[uid]={'udid':uid,'name':args[1],'deviceTypeIdentifier':args[2],'state':'Shutdown','isAvailable':True};out=uid
+ elif command=='boot':state[uid]['state']='Booted'
+ elif command=='launch':out='com.example.authored: 1234'
+ elif command=='shutdown':state[uid]['state']='Shutdown'
+ elif command=='delete':del state[uid]
+ else:assert command in ('bootstatus','install','terminate')
+ statefile.write_text(json.dumps(state));sys.stdout.write(out)
+else:
+ print(json.dumps({'args':sys.argv[1:],'clean':all(x not in os.environ for x in ('SIMCTL_CHILD_AUTHORED_SECRET','BW_AUTHORED_SECRET'))}))
+'''
+ARGS=('list','devices','--json')
+class AdapterControls(unittest.TestCase):
+    def setUp(self):
+        self.root=Path(tempfile.mkdtemp(prefix='bw-ios-command-'))
+        self.directory=self.root/('bw-ios-assets-'+'a'*32+'.deviceset');self.directory.mkdir()
+        self.actor=self.root/'xcrun';self.write_actor('normal')
+        self.environment=mock.patch.dict(os.environ,{'PATH':str(self.root)+os.pathsep+os.environ['PATH'],
+            'SIMCTL_CHILD_AUTHORED_SECRET':'AUTHORED-SECRET','BW_AUTHORED_SECRET':'AUTHORED-SECRET'})
+        self.environment.start()
+    def tearDown(self):
+        self.environment.stop();shutil.rmtree(self.root)
+    def write_actor(self,mode):
+        self.actor.write_text(ACTOR.replace('__MODE__',repr(mode)).replace('__FD__',str(getattr(self,'inherited_fd',-1))).replace('__IDENTITY__',repr(getattr(self,'inherited_identity',(-1,-1)))));self.actor.chmod(0o755)
+    def run_command(self,args=ARGS,**kwargs):
+        options=dict(device_set=self.directory,deadline=time.monotonic()+2,output_limit=1024)
+        options.update(kwargs);return bounded_simulator_command(args,**options)
+    def inactive(self,pid):
+        # Linux test-host observation only: a zombie has stopped executing. Only
+        # the direct leader is ours to reap; this is not a whole-descendant census.
+        file=Path('/proc')/str(pid)/'stat'
+        if file.exists():return file.read_text().split(') ',1)[1][0]=='Z'
+        try:os.kill(pid,0)
+        except ProcessLookupError:return True
+        return False
+    def assert_child_stopped(self):
+        pid=json.loads((self.root/'pid.json').read_text())['child']
+        until=time.monotonic()+2
+        while time.monotonic()<until and not self.inactive(pid):time.sleep(0.01)
+        self.assertTrue(self.inactive(pid),'owned test-group child stopped')
+    def test_exact_namespace_argv_and_environment_filter(self):
+        raw=self.run_command();value=json.loads(raw)
+        self.assertEqual(value['args'],['simctl','--set',str(self.directory),*ARGS]);self.assertTrue(value['clean'])
+    def test_stdin_is_closed_and_fd_count_is_stable(self):
+        self.write_actor('stdin');before=len(os.listdir('/dev/fd'))
+        for _ in range(5):self.assertEqual(self.run_command(),b'stdin-closed\n')
+        self.assertEqual(len(os.listdir('/dev/fd')),before)
+        fd=os.open(self.root/'private-input',os.O_CREAT|os.O_RDWR,0o600)
+        try:
+            os.set_inheritable(fd,True);info=os.fstat(fd);self.inherited_fd=fd;self.inherited_identity=(info.st_dev,info.st_ino)
+            self.write_actor('fd');self.assertTrue(json.loads(self.run_command())['inheritedFileAbsent'])
+            namespace={};cut='close_fds=True, env=environment';self.assertTrue(cut in SOURCE_PREFIX)
+            exec(compile(SOURCE_PREFIX.replace(cut,'close_fds=False, env=environment'),'authored-fd-mutant','exec'),namespace)
+            raw=namespace['bounded_simulator_command'](ARGS,device_set=self.directory,deadline=time.monotonic()+2,output_limit=1024)
+            self.assertFalse(json.loads(raw)['inheritedFileAbsent'])
+        finally:os.close(fd)
+    def test_stdout_and_stderr_share_the_output_budget(self):
+        self.write_actor('output')
+        with self.assertRaises(SimulatorCommandRefused) as caught:self.run_command(output_limit=64)
+        self.assertEqual(caught.exception.reason,'output')
+    def test_exit_refusal_does_not_expose_stderr(self):
+        self.write_actor('exit')
+        with self.assertRaises(SimulatorCommandRefused) as caught:self.run_command()
+        self.assertEqual(caught.exception.reason,'exit');self.assertNotIn('AUTHORED-PRIVATE',str(caught.exception))
+    def test_absolute_deadline_kills_and_reaps_the_owned_leader(self):
+        self.write_actor('hang')
+        with self.assertRaises(SimulatorCommandRefused) as caught:self.run_command(deadline=time.monotonic()+0.3)
+        self.assertEqual(caught.exception.reason,'deadline');pid=json.loads((self.root/'pid.json').read_text())['leader']
+        with self.assertRaises(ChildProcessError):os.waitpid(pid,os.WNOHANG)
+        self.assertTrue(self.inactive(pid))
+    def test_exited_leader_with_inherited_pipes_still_times_out_and_cleans_group(self):
+        self.write_actor('orphan-pipes')
+        with self.assertRaises(SimulatorCommandRefused):self.run_command(deadline=time.monotonic()+0.4)
+        self.assert_child_stopped()
+    def test_same_group_child_is_signaled_even_after_both_pipes_close(self):
+        self.write_actor('orphan-closed');self.run_command();self.assert_child_stopped()
+    def test_group_signal_precedes_any_leader_reap(self):
+        original_popen=subprocess.Popen;original_killpg=os.killpg;children=[]
+        def spawn(*a,**k):
+            child=original_popen(*a,**k);children.append(child);return child
+        def signal_group(pid,sig):
+            self.assertIsNone(children[0].returncode)
+            os.waitid(os.P_PID,pid,os.WEXITED|os.WNOHANG|os.WNOWAIT)
+            return original_killpg(pid,sig)
+        with mock.patch.object(subprocess,'Popen',side_effect=spawn),mock.patch.object(os,'killpg',side_effect=signal_group):
+            self.run_command()
+        self.assertEqual(children[0].returncode,0)
+        children.clear()
+        with mock.patch.object(subprocess,'Popen',side_effect=spawn),mock.patch.object(os,'killpg',side_effect=signal_group):
+            bounded_inventory()
+        self.assertEqual(children[0].returncode,0)
+    def test_stop_and_keyboard_interrupt_still_release_owned_resources(self):
+        self.write_actor('hang');calls=[]
+        def stop():calls.append(True);return len(calls)>2
+        with self.assertRaises(SimulatorCommandRefused) as caught:self.run_command(stopped=stop)
+        self.assertEqual(caught.exception.reason,'stop')
+        original=selectors.DefaultSelector
+        class InterruptingSelector(original):
+            def select(self,*args,**kwargs):raise KeyboardInterrupt()
+        children=[];popen=subprocess.Popen
+        def spawn(*args,**kwargs):
+            child=popen(*args,**kwargs);children.append(child);return child
+        with mock.patch.object(selectors,'DefaultSelector',InterruptingSelector),mock.patch.object(subprocess,'Popen',side_effect=spawn):
+            with self.assertRaises(KeyboardInterrupt):self.run_command()
+        self.assertIsNotNone(children[0].returncode);self.assertTrue(children[0].stdout.closed)
+    def test_argument_capability_and_namespace_failures_happen_before_spawn(self):
+        for args in (('delete','all'),('boot','booted'),('erase','11111111-1111-1111-1111-111111111111'),('list','devices'),('launch','bad','com.example.authored')):
+            with mock.patch.object(subprocess,'Popen') as spawn:
+                with self.assertRaises(SimulatorCommandRefused):self.run_command(args)
+                spawn.assert_not_called()
+        for change in ({'output_limit':True},{'output_limit':1024*1024+1},{'deadline':float('nan')},
+                       {'deadline':time.monotonic()-1},{'deadline':time.monotonic()+100}):
+            with mock.patch.object(subprocess,'Popen') as spawn:
+                with self.assertRaises(SimulatorCommandRefused):self.run_command(**change)
+                spawn.assert_not_called()
+        link=self.root/('bw-ios-assets-'+'b'*32+'.deviceset');link.symlink_to(self.directory,target_is_directory=True)
+        with self.assertRaises(SimulatorCommandRefused):self.run_command(device_set=link)
+        with mock.patch.object(os,'waitid',None),mock.patch.object(subprocess,'Popen') as spawn:
+            with self.assertRaises(SimulatorCommandRefused):self.run_command()
+            spawn.assert_not_called()
+        with mock.patch.object(os,'waitid',create=True) as waitid:
+            with mock.patch.object(signal,'getsignal',return_value=signal.SIG_IGN),mock.patch.object(subprocess,'Popen') as spawn:
+                with self.assertRaises(SimulatorCommandRefused):self.run_command()
+                spawn.assert_not_called()
+        self.write_actor('replace-set')
+        with self.assertRaises(SimulatorCommandRefused) as caught:self.run_command()
+        self.assertEqual(caught.exception.reason,'device-set')
+    def test_primary_failure_survives_cleanup_failure(self):
+        self.write_actor('exit')
+        with mock.patch.object(os,'killpg',side_effect=PermissionError('AUTHORED-PRIVATE')):
+            with self.assertRaises(SimulatorCommandRefused) as caught:self.run_command()
+        self.assertEqual(caught.exception.reason,'exit');self.assertIn('group-signal',caught.exception.cleanup_failures)
+        original=os.waitid
+        def interrupt_after_exit(*args):
+            info=original(*args)
+            if info is not None:raise KeyboardInterrupt()
+            return info
+        with mock.patch.object(os,'waitid',side_effect=interrupt_after_exit),mock.patch.object(os,'killpg',side_effect=PermissionError('AUTHORED-PRIVATE')):
+            with self.assertRaises(KeyboardInterrupt) as caught:self.run_command()
+        self.assertIn('group-signal',caught.exception.__notes__[0])
+    def test_lifecycle_core_uses_real_subprocess_adapter_with_authored_commands_only(self):
+        self.write_actor('lifecycle')
+        plan={'schema':'brickwright.ios-owned-simulator-plan.v1','runtimeIdentifier':'com.apple.CoreSimulator.SimRuntime.iOS-18-0',
+            'deviceTypeIdentifier':'com.apple.CoreSimulator.SimDeviceType.iPhone-16','name':'bw-asset-audit-'+'c'*32,
+            'bundleIdentifier':'com.example.authored','appPath':str(self.root/'Authored.app'),'sourceSHA256':'d'*64,
+            'executableSHA256':'e'*64,'runtimeArchitectureAdmitted':True,'deviceModelAdmitted':True,'processEnvelopeAdmitted':True}
+        result,raw=owned_simulator_transaction(plan,functools.partial(bounded_simulator_command,device_set=self.directory),
+            lambda *a,**k:b'{"authoredOnly":true}')
+        self.assertEqual(result['status'],'observed-transaction-only');self.assertEqual(raw,b'{"authoredOnly":true}')
+        self.assertTrue(result['cleanupAbsenceObserved']);self.assertIs(result['actualAppQualified'],False)
+        self.assertEqual(json.loads((self.root/'state.json').read_text()),{})
+    def test_runtime_output_budget_mutant_is_detected(self):
+        namespace={};cut='need(used <= output_limit)';self.assertIn(cut,SOURCE_PREFIX)
+        exec(compile(SOURCE_PREFIX.replace(cut,'need(True)'),'authored-output-mutant','exec'),namespace)
+        self.write_actor('output')
+        raw=namespace['bounded_simulator_command'](ARGS,device_set=self.directory,deadline=time.monotonic()+2,output_limit=64)
+        self.assertEqual(len(raw),40) # Original rejects the 80 combined output bytes.
+unittest.main(argv=['authored-command-adapter-controls'],verbosity=2)
+`;
+
+test('unwired bounded simctl adapter controls execute real owned subprocesses', () => {
+    const prefix = retention.slice(0, retention.lastIndexOf('\ntry:\n'));
+    const dir = mkdtempSync(join(tmpdir(), 'bw-ios-adapter-controls-'));
+    try {
+        const result = spawnSync('/usr/bin/python3', ['-c', `${prefix}\nimport selectors\nSOURCE_PREFIX = ${JSON.stringify(prefix)}\n${adapterControls}`], {
+            env: {...process.env, GITHUB_WORKSPACE: dir, RUNNER_TEMP: dir, TMPDIR: dir}, encoding: 'utf8', timeout: 20000
+        });
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        assert.match(result.stderr, /Ran 13 tests/);
+        assert.match(result.stderr, /OK/);
+        assert.equal((retention.match(/bounded_simulator_command\(/g) || []).length, 1, 'adapter definition only');
+    } finally { rmSync(dir, {recursive: true, force: true}); }
+});

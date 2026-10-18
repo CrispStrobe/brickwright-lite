@@ -6524,3 +6524,21 @@ cooperative, not process containment. Supplied plan flags do not authenticate an
 admission. Real adapters, runtime/device/resource admission and installed-code/
 receipt joins remain required before wiring an actual launch. Existing workflow
 steps, default inputs, delivery/signing guards and native hook remain unchanged.
+
+The optional controller's unwired command adapter now runs only a closed simctl
+argument grammar against an explicit named device set. It bounds combined streamed
+output, checks absolute deadline/stop, filters environment and closes inherited
+FDs/stdin. Non-reaping exit observation retains the direct-child identity until
+owned group signaling; leader reap and pipe/selector/directory cleanup follow.
+It preserves primary and cleanup failures separately. Feature admission requires
+waitid/WNOWAIT and exception notes before spawn; no workflow Python setup changes.
+Real Linux subprocess controls use authored command shims and detect removed byte
+and descriptor guards. No workflow caller, Apple qualification, app launch, device
+set ownership lease, delegated-service containment or app-resource claim is added.
+
+The existing optional runtime-inventory helper now also uses non-reaping exit
+observation before group signaling, fixing its prior reap-before-signal ordering.
+It checks API/default-SIGCHLD availability before spawning. Its 15 s/1 MiB caps
+remain unchanged; unsupported interpreters refuse optional inventory. No Python
+provisioning/pin, ordinary build or retained-input phase is changed. A real owned
+process control checks signal-before-reap ordering in both helpers.
