@@ -395,6 +395,7 @@ class SimLabPane extends React.Component {
         if (this.editView) { try { this.editView.dispose(); } catch { /* a lost context may already be gone */ } }
         this.editView = null;
         this.editor = null;
+        this.editorDrawn = false;
         if (!this.disposed) this.setState({editGroup: null, pick: null, measurement: null, shortcuts: false});
         // The pictures stay drawn (part-thumbnails.js keeps them); only the renderer goes.
         if (this.thumbs) { try { this.thumbs.dispose(); } catch { /* a lost context may already be gone */ } }
@@ -410,7 +411,15 @@ class SimLabPane extends React.Component {
         this.teardown();
         this.teardownEditor();
         this.setState({mode: 'build', status: 'loading', message: '', placing: null, selection: [], buildStatus: {kind: 'idle'}, gizmoMode: 'move', portPicker: null});
-        // Any palette part may be placed, so load the whole catalog's geometry once.
+        // Any palette part may be placed: the whole catalogue (its second piece is fetched the first
+        // time Build opens, sim-lab.js loadFullCatalog), then its geometry, once.
+        try {
+            await this.lib.loadFullCatalog();
+        } catch (error) {
+            if (!this.disposed) this.setState({status: 'failed', message: this.t('failed', {error: error.message})});
+            return;
+        }
+        if (this.disposed) return;
         if (!this.catalogFiles) this.catalogFiles = await fetchLDrawClosure([...CATALOG.keys()], {withConfig: true});
         if (this.disposed) return;
         const {read} = this.catalogFiles;
@@ -547,7 +556,8 @@ class SimLabPane extends React.Component {
     /** A placed part's name in the learner's language, from its id in the model on show. */
     partNameById (id) {
         const model = this.editor ? this.editor.model : this.session?.model;
-        const placed = model && model.parts.find(p => p.id === id);
+        // The editor's model is frozen: its id map is built once (lib partsByIdOf), not a scan per issue.
+        const placed = model && (Object.isFrozen(model.parts) ? this.lib.partsByIdOf(model).get(id) : model.parts.find(p => p.id === id));
         return placed ? this.partName(placed.part) : fillText(this.itext.part, {id});
     }
 
@@ -779,6 +789,9 @@ class SimLabPane extends React.Component {
         }
         let result;
         try {
+            // A model naming a part beyond the catalogue's core (sim-lab.js) loads the rest first.
+            await this.lib.catalogFor(text);
+            if (token !== this.loadToken || this.disposed) { firmware?.driver.end().catch(() => {}); return; }
             result = await SimSession.fromText(text, {hubState: this.props.hubState, catalog: CATALOG, mat: this.state.mat,
                 worker: this.physicsClient(), ...(firmware ? {createHub: firmware.createHub} : {})});
         } catch (error) {
@@ -919,7 +932,13 @@ class SimLabPane extends React.Component {
             }
         }
         this.last = now;
-        if (this.editView) { this.drawThumbs(); this.editView.render(); return; }
+        if (this.editView) {
+            // The model first; palette pictures (each a GPU read-back, slow on a software GPU) are drawn
+            // in frames the build view did not need to redraw, once it has drawn the model.
+            if (this.editView.render()) this.editorDrawn = true;
+            else if (this.editorDrawn) this.drawThumbs();
+            return;
+        }
         if (!this.session) return;
         if (this.session.failed && this.state.status !== 'failed') {
             this.setState({status: 'failed', message: this.t('physicsFailed', {error: this.session.failed.message})});
@@ -1235,7 +1254,8 @@ class SimLabPane extends React.Component {
         const editor = this.editor;
         const view = this.editView;
         const parts = editor ? editor.model.parts : [];
-        const selection = this.state.selection.map(id => parts.find(p => p.id === id)).filter(Boolean);
+        const byId = editor ? this.lib.partsByIdOf(editor.model) : new Map();
+        const selection = this.state.selection.map(id => byId.get(id)).filter(Boolean);
         const sel = selection.length === 1 ? selection[0] : null;
         const meta = sel ? this.lib.CATALOG.get(sel.part) : null;
         const portable = meta && this.lib.isPortPart(meta);

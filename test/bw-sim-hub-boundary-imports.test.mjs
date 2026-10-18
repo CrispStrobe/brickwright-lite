@@ -36,7 +36,8 @@ const importsOf = file => {
     for (const m of text.matchAll(SPEC)) {
         const spec = m[1] || m[2] || m[3] || m[4];
         if (!spec.startsWith('.')) continue;
-        const target = path.resolve(path.dirname(file), spec);
+        // A webpack resource query (`parts.json?core`, overlay/scratch-gui/parts-subset-loader.js) names the same file.
+        const target = path.resolve(path.dirname(file), spec.replace(/\?.*$/, ''));
         assert.ok(existsSync(target), `${rel(file)} names '${spec}', which does not exist`);
         out.push(target);
     }

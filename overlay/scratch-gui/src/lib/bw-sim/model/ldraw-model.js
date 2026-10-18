@@ -82,6 +82,23 @@ const parseType1 = line => {
 };
 
 /**
+ * Every file name a model's type-1 lines refer to (normalised as parseModel looks them up in
+ * the catalog: trimmed, forward slashes, lower case) — parts and an MPD's own sub-models alike.
+ * The pane asks this before parsing, to load the rest of the part catalogue when a name is not
+ * in the part of it already loaded (sim-lab.js catalogFor).
+ * @param {string} text LDraw
+ * @returns {Set<string>}
+ */
+export const referencedFiles = text => {
+    const out = new Set();
+    for (const line of text.split(/\r?\n/)) {
+        const parsed = parseType1(line);
+        if (parsed && !parsed.error) out.add(parsed.file);
+    }
+    return out;
+};
+
+/**
  * Parse LDraw text into PlacedModel and refusals.
  * @param {string} text
  * @param {{catalog?: Map|object}} opts

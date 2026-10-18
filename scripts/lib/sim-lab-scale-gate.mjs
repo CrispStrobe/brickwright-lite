@@ -58,7 +58,7 @@ export const frameTimes = (page, n = 30, mode = 'simulate') => page.evaluate(([c
     const pixel = new Uint8Array(4);
     for (let i = 0; i < count; i++) {
         const t = performance.now();
-        if (which === 'build') view.render();
+        if (which === 'build') view.render({force: true}); // Build draws only when something changed (editor-view3d.js)
         else view.render(pane.session.snapshot(), {force: true}); // a big model is otherwise drawn only when something changed
         gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
         times.push(performance.now() - t);
@@ -90,22 +90,92 @@ export const assertDrew = async (page, what, testid = 'bw-sim-lab-3d-canvas') =>
     return colours;
 };
 
+/**
+ * Listener time per pointer event on the page: a capturing listener on the window starts the clock,
+ * a bubbling one on the window (the last to run) stops it, so the number is every handler's work
+ * for that event (the editor's hover, picking, gizmo, preview and overlap checks), not the frame.
+ */
+const timePointerEvents = page => page.evaluate(() => {
+    const times = window.__bwPointerMs = {move: [], down: [], up: []};
+    let start = 0;
+    for (const type of ['pointermove', 'pointerdown', 'pointerup']) {
+        window.addEventListener(type, () => { start = performance.now(); }, true);
+        window.addEventListener(type, () => { times[type.slice(7)].push(performance.now() - start); }, false);
+    }
+});
+/** The pointer-move times since the last call: {n, median, max} (ms), and a fresh list. */
+const pointerMoves = page => page.evaluate(() => {
+    const all = window.__bwPointerMs.move.slice().sort((a, b) => a - b);
+    window.__bwPointerMs.move.length = 0;
+    return {n: all.length, median: all[Math.floor(all.length / 2)] ?? 0, max: all.at(-1) ?? 0};
+});
+/** Intervals between animation frames over `ms` (Build idle: nothing to redraw). */
+const idleFrames = (page, ms = 1500) => page.evaluate(span => new Promise(done => {
+    const gaps = [];
+    let last = null;
+    const start = performance.now();
+    const tick = now => {
+        if (last !== null) gaps.push(now - last);
+        last = now;
+        if (now - start < span || gaps.length < 10) requestAnimationFrame(tick);
+        else {
+            gaps.sort((a, b) => a - b);
+            done({n: gaps.length, median: gaps[Math.floor(gaps.length / 2)], p90: gaps[Math.floor(gaps.length * 0.9)]});
+        }
+    };
+    requestAnimationFrame(tick);
+}), ms);
+
 /** Budgets for the gate (headless Chromium on SwiftShader, a CI runner): generous, and named. */
 export const OPEN_BUDGET_MS = 120000;
-export const BUILD_BUDGET_MS = 60000;
 // SwiftShader rasterises the stress model's 4.3 M triangles and 3.4 M line segments on the CPU: about
 // 3 s a frame here (2026-10-18, either way: instancing saves draw calls and memory, not raster work); a
 // real GPU draws it in ~20 ms (scripts/measure-sim-lab-scale.mjs --gpu=metal). A guard against a frame
 // that draws the model twice over or falls back to thousands of meshes, not a smoothness claim.
 export const FRAME_BUDGET_MS = 20000;
 export const DRAW_CALL_BUDGET = 150;
+// Build on the full 2,054-part model, measured 2026-10-18 on an 8-core Mac shared with other jobs
+// (load average 8-20), SwiftShader, this gate:
+//   open (click to ready and a first frame drawn)  13.1 s at load 8, 21-28 s at load 12-20; before this
+//                                                  change 98 s, and a click never selected within 180 s;
+//   an idle frame                                  16.7 ms (one animation frame: nothing is redrawn),
+//                                                  before 4,650 ms (the model redrawn every frame);
+//   a pointer move's handlers                      hover 11-18 ms, gizmo drag 12-54 ms (medians; max 60),
+//                                                  before 8,200 ms;
+//   a forced full Build frame                      3.1-4.6 s (raster on the CPU, as Simulate's).
+// Budgets: open about twice the worst seen; an idle frame and a pointer move's median within the
+// task's 100 ms (six and two times the worst measured under load; a real GPU leaves far more room).
+export const BUILD_OPEN_BUDGET_MS = 65000;
+export const IDLE_FRAME_BUDGET_MS = 100;
+export const POINTER_MOVE_BUDGET_MS = 100;
+
+/**
+ * Finds a gizmo handle the way a person does: move the pointer over the gizmo until that handle
+ * lights up (rings around its centre), as scripts/lib/sim-lab-cad-gate.mjs does on a small model.
+ */
+const findHandle = async (page, axis) => {
+    const centre = await page.evaluate(() => {
+        const v = window.__bwSimLab.editView;
+        return v.toScreen(v.debugPoint('gizmo'));
+    });
+    for (let radius = 20; radius <= 220; radius += 8) {
+        for (let a = 0; a < 360; a += 6) {
+            const x = centre[0] + radius * Math.cos(a * Math.PI / 180);
+            const y = centre[1] + radius * Math.sin(a * Math.PI / 180);
+            await page.mouse.move(x, y);
+            if (await page.evaluate(() => window.__bwSimLab.editView.gizmoAxis) === axis) return {at: [x, y], centre};
+        }
+    }
+    throw new Error(`no gizmo handle '${axis}' found`);
+};
 
 /**
  * The scale checks: the 2,054-part model opens within OPEN_BUDGET_MS, is drawn instanced in at most
- * DRAW_CALL_BUDGET draw calls and non-blank, a frame finishes within FRAME_BUDGET_MS; Build, on the
- * driving base with one grid tile (269 parts, still instanced: Build on the full model is held up by
- * the editor cloning its model on every read, not by drawing), opens within BUILD_BUDGET_MS and a
- * click on a grid beam selects exactly that beam; then the hand-made
+ * DRAW_CALL_BUDGET draw calls and non-blank, a frame finishes within FRAME_BUDGET_MS; Build opens on
+ * the SAME full model within BUILD_OPEN_BUDGET_MS (ready and a first frame drawn), an idle frame takes
+ * at most IDLE_FRAME_BUDGET_MS (nothing redrawn), a pointer move's handlers at most
+ * POINTER_MOVE_BUDGET_MS (median), a click on a grid beam selects exactly that beam, and dragging the
+ * gizmo's X arrow moves it along x by whole grid steps (one undo puts it back); then the hand-made
  * .lxf opens with its unknown parts listed, a password-protected .io is refused with the model
  * left as it was, and "Save as… → BrickLink Studio (.io)" downloads a ZIP whose model.ldr reopens.
  */
@@ -126,27 +196,39 @@ export const scaleInteractions = async (page, {root, shotsDir, JSZip}) => {
     assert.ok(frames.stats.instanced && frames.stats.instanced.instances >= state.parts, `drawn instanced: ${JSON.stringify(frames.stats)}`);
     assert.ok(frames.stats.calls <= DRAW_CALL_BUDGET, `${frames.stats.calls} draw calls (budget ${DRAW_CALL_BUDGET})`);
     assert.ok(frames.median < FRAME_BUDGET_MS, `a frame took ${frames.median.toFixed(1)} ms (budget ${FRAME_BUDGET_MS})`);
+    // Idle (nothing moves, the camera stays): the pane's animation loop asks for frames, the big model
+    // is not drawn again (sim-view3d.js draws it on demand) — else a software GPU queues seconds of
+    // frames that everything after (Build opening included) waits behind.
+    const drawnBefore = await page.evaluate(() => window.__bwSimLab._pane.view.renderStats().frames);
+    results.simIdle = await idleFrames(page, 1000);
+    results.simIdleDrawn = await page.evaluate(() => window.__bwSimLab._pane.view.renderStats().frames) - drawnBefore;
+    assert.equal(results.simIdleDrawn, 0, `an idle Simulate view redrew the big model ${results.simIdleDrawn} times in ${results.simIdle.n} frames`);
     await page.screenshot({path: resolve(shotsDir, 'sim-lab-scale-simulate.png'), timeout: 120000});
 
-    // Build: an instanced model (one tile, 269 parts), picked by clicking a part.
-    await openFile(page, {name: 'stress-one-tile.ldr', buffer: Buffer.from(await stressText(root, 1)), mimeType: 'text/plain'});
-    results.buildParts = await page.evaluate(() => window.__bwSimLab._pane.session.model.parts.length);
+    // Build on the full model: open, an idle frame, a pointer move, a click that selects, a gizmo drag.
+    await timePointerEvents(page);
+    results.buildParts = state.parts;
     const buildStart = Date.now();
     await clickWhenReady(page, 'bw-sim-lab-mode-build', OPEN_BUDGET_MS);
-    await page.waitForFunction(() => window.__bwSimLab.editView && window.__bwSimLab.mode === 'build', null, {timeout: BUILD_BUDGET_MS, polling: 250});
-    results.buildMs = Date.now() - buildStart;
-    assert.ok(results.buildMs < BUILD_BUDGET_MS, `Build took ${results.buildMs} ms to open (budget ${BUILD_BUDGET_MS})`);
+    await page.waitForFunction(() => window.__bwSimLab.editView && window.__bwSimLab.mode === 'build' && window.__bwSimLab.status === 'ready',
+        null, {timeout: BUILD_OPEN_BUDGET_MS, polling: 250});
     await nextFrames(page);
-    results.buildColours = await assertDrew(page, 'Build on the one-tile model', 'bw-sim-lab-editor-canvas');
-    assert.ok(results.buildParts >= 200, `${results.buildParts} parts: Build draws them instanced`);
-    const buildFrames = await frameTimes(page, 3, 'build');
+    results.buildMs = Date.now() - buildStart;
+    assert.equal(await page.evaluate(() => window.__bwSimLab.editor.model.parts.length), state.parts, 'Build holds the whole model');
+    assert.ok(results.buildMs < BUILD_OPEN_BUDGET_MS, `Build took ${results.buildMs} ms to open (budget ${BUILD_OPEN_BUDGET_MS})`);
+    results.buildColours = await assertDrew(page, 'Build on the 2,054-part model', 'bw-sim-lab-editor-canvas');
+    results.idle = await idleFrames(page);
+    assert.ok(results.idle.median < IDLE_FRAME_BUDGET_MS, `an idle Build frame took ${results.idle.median.toFixed(1)} ms (budget ${IDLE_FRAME_BUDGET_MS})`);
+    const buildFrames = await frameTimes(page, 2, 'build');
     results.buildFrame = {median: buildFrames.median, p90: buildFrames.p90};
-    // A beam on the upper layer of the first tile (p16..p30 are the first tile's upper beams), in the middle:
-    // it lies on top, so a click on its top face between two holes is a click on it and nothing else.
+    assert.ok(buildFrames.median < FRAME_BUDGET_MS, `a full Build frame took ${buildFrames.median.toFixed(1)} ms (budget ${FRAME_BUDGET_MS})`);
+    // A beam on the upper layer of the fourth tile (front row, on the camera's side of the robot, so nothing
+    // stands between it and the home view), in the middle: a click on its top face between two holes is a
+    // click on it and nothing else.
     const target = await page.evaluate(() => {
         const parts = window.__bwSimLab.editor.model.parts.filter(p => p.part === '32278.dat');
         const upper = parts.filter(p => p.rotation[2] === 1);
-        return upper[7].id;
+        return upper[3 * 15 + 7].id;
     });
     // Where the beam's top face is on screen, as a person sees it (reading only; the click below is a real click).
     const at = await page.evaluate(id => {
@@ -155,12 +237,46 @@ export const scaleInteractions = async (page, {root, shotsDir, JSZip}) => {
     }, target);
     const box = await page.getByTestId('bw-sim-lab-editor-canvas').boundingBox();
     assert.ok(at[0] > box.x && at[0] < box.x + box.width && at[1] > box.y && at[1] < box.y + box.height, `the beam is on screen: ${at}`);
+    // The pointer comes to the beam over the model (hover: picking and highlights on 2,054 parts).
+    await pointerMoves(page);
+    for (let i = 10; i >= 0; i--) await page.mouse.move(at[0] - i * 12, at[1] - i * 6);
+    results.hover = await pointerMoves(page);
+    assert.ok(results.hover.n >= 10 && results.hover.median < POINTER_MOVE_BUDGET_MS,
+        `a hovering pointer move took ${results.hover.median.toFixed(1)} ms (median of ${results.hover.n}, budget ${POINTER_MOVE_BUDGET_MS})`);
+    const clickStart = Date.now();
     await page.mouse.click(at[0], at[1]);
     await page.waitForFunction(id => window.__bwSimLab.editView.selection.length === 1 && window.__bwSimLab.editView.selection[0] === id, target, {timeout: OPEN_BUDGET_MS, polling: 250})
         .catch(async () => {
             throw new Error(`clicking beam ${target} selected ${JSON.stringify(await page.evaluate(() => window.__bwSimLab.editView.selection))}`);
         });
+    results.clickMs = Date.now() - clickStart;
     results.picked = target;
+    // The gizmo's X arrow, found by hovering as a person does, dragged along x: whole grid steps, only x.
+    const pose = () => page.evaluate(id => {
+        const p = window.__bwSimLab.editor.model.parts.find(x => x.id === id);
+        return {position: [...p.position], rotation: [...p.rotation]};
+    }, target);
+    const p0 = await pose();
+    const handle = await findHandle(page, 'X');
+    const dir = [handle.at[0] - handle.centre[0], handle.at[1] - handle.centre[1]];
+    const len = Math.hypot(...dir);
+    await pointerMoves(page);
+    await page.mouse.move(handle.at[0], handle.at[1]);
+    await page.mouse.down();
+    for (let i = 1; i <= 12; i++) await page.mouse.move(handle.at[0] + dir[0] / len * 10 * i, handle.at[1] + dir[1] / len * 10 * i);
+    results.drag = await pointerMoves(page);
+    await page.mouse.up();
+    const p1 = await pose();
+    const grid = await page.evaluate(() => window.__bwSimLab.editView.grid);
+    const dx = p1.position[0] - p0.position[0];
+    assert.ok(dx !== 0 && Number.isInteger(dx / grid), `the X arrow moved the beam by a grid multiple (${dx} LDU)`);
+    assert.deepEqual([p1.position[1], p1.position[2]], [p0.position[1], p0.position[2]], 'only x changed');
+    assert.deepEqual(p1.rotation, p0.rotation);
+    assert.ok(results.drag.n >= 12 && results.drag.median < POINTER_MOVE_BUDGET_MS,
+        `a gizmo-drag pointer move took ${results.drag.median.toFixed(1)} ms (median of ${results.drag.n}, budget ${POINTER_MOVE_BUDGET_MS})`);
+    results.dragged = dx;
+    await page.keyboard.press('Control+z');
+    assert.deepEqual(await pose(), p0, 'one undo puts the beam back');
     await page.screenshot({path: resolve(shotsDir, 'sim-lab-scale-build.png'), timeout: 120000});
     await clickWhenReady(page, 'bw-sim-lab-mode-simulate', OPEN_BUDGET_MS);
     await page.waitForFunction(() => window.__bwSimLab.mode === 'simulate' && window.__bwSimLab.status === 'ready', null, {timeout: OPEN_BUDGET_MS, polling: 250});
