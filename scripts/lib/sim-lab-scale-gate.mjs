@@ -287,12 +287,15 @@ export const scaleInteractions = async (page, {root, shotsDir, JSZip}) => {
     const opened = await page.evaluate(() => ({status: window.__bwSimLab.status, parts: window.__bwSimLab._pane.session?.model.parts.map(p => p.part),
         codes: window.__bwSimLab.issues.map(i => i.code)}));
     assert.equal(opened.status, 'ready', JSON.stringify(opened));
-    assert.deepEqual(opened.parts, ['32523.dat', '3705.dat', '32525.dat', '3648.dat']);
-    for (const code of ['lxf-unknown-design', 'lxf-bad-transform', 'lxf-unknown-material']) {
+    // 3001 (a 2 x 4 brick) is outside the 27-row table: with the catalogue the pane passes, the
+    // studded-part rule places it from its geometry and flags it (docs/ROBOT-LAB-LDD-FRAMES.md).
+    assert.deepEqual(opened.parts, ['32523.dat', '3705.dat', '32525.dat', '3648.dat', '3001.dat']);
+    for (const code of ['lxf-unknown-design', 'lxf-bad-transform', 'lxf-unknown-material', 'lxf-derived-frame']) {
         assert.ok(opened.codes.includes(code), `${code} listed: ${opened.codes}`);
     }
     const issuesText = await page.getByTestId('bw-sim-lab-issues').textContent();
-    assert.match(issuesText, /LEGO Digital Designer part 3001/);
+    assert.match(issuesText, /LEGO Digital Designer part 3001 was placed by measuring its studs/);
+    assert.match(issuesText, /LEGO Digital Designer part 54696/);
     results.lxf = opened;
 
     const encrypted = await readFile(resolve(root, 'test/fixtures/bw-sim/interop/studio-encrypted.io'));
