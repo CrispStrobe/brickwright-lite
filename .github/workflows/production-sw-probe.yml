@@ -35,6 +35,7 @@ jobs:
         with:
           sparse-checkout: |
             vendor-pins.json
+            scripts/ci-vendor-pins.mjs
             scripts/probe-production-sw.mjs
             scripts/census-example-faces.mjs
             overlay/scratch-gui/examples/
@@ -82,15 +83,17 @@ jobs:
 
       # Report, not a gate: which example parts the circuit editor draws with
       # its generic module body (or a chip face), ranked by example count.
-      - name: Pinned bw-circuit-ui commit
+      # The pinned bw-circuit-ui commit, through the same validator the other
+      # sibling checkouts use: a missing, short or moving SHA fails here.
+      - name: Pinned bw-circuit-ui commit (validated)
         if: ${{ !cancelled() && env.CENSUS == 'true' }}
-        id: pin
-        run: echo "sha=$(node -e "console.log(require('./vendor-pins.json')['bw-circuit-ui'])")" >> "$GITHUB_OUTPUT"
+        id: vendor_pins
+        run: node scripts/ci-vendor-pins.mjs >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         if: ${{ !cancelled() && env.CENSUS == 'true' }}
         with:
           repository: CrispStrobe/bw-circuit-ui
-          ref: ${{ steps.pin.outputs.sha }}
+          ref: ${{ steps.vendor_pins.outputs.bw-circuit-ui }}
           path: cui
       - name: Draw every example kind in the real canvas and report
         if: ${{ !cancelled() && env.CENSUS == 'true' }}
