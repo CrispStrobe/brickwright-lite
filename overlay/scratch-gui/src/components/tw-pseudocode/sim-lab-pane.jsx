@@ -9,7 +9,11 @@
 //
 // One clock (docs/SPIKE-ARENA.md): while the Sim Lab runs, its session owns
 // the hub's motor clock; the arena is not mounted at the same time (the
-// simulator pane shows one or the other).
+// simulator pane shows one or the other). And the program's clock is the
+// world's (docs/SIM-LAB-PLAN.md §4.9, lib/bw-sim/sim-clock.js): while it runs,
+// each VM step buys one step of simulated time and the VM waits for the world,
+// so a slow machine runs the whole program slower (the status line shows the
+// real-time factor) instead of letting the program's `wait`s outrun the world.
 //
 // The model is saved with the project (C8) the way every other Brickwright
 // surface is (lib/bw-project-bundle.js): one localStorage key, carried as the
@@ -160,8 +164,13 @@ const TEXT = {
     }
 };
 
-/** Longest step the pane hands the physics per frame: a backgrounded tab must not jump seconds ahead. */
+/**
+ * Longest step the pane hands the physics per frame, on the paths that tick by wall time (the
+ * firmware route, or a VM whose step hook is inert): a backgrounded tab must not jump seconds ahead.
+ */
 const MAX_FRAME_MS = 50;
+/** The real-time factor is shown below this (a timer's jitter keeps a machine that keeps up near 1). */
+const SHOW_RTF_BELOW = 0.95;
 /** Build mode recompiles the model this long after the last edit (ms), for the issues and the motion overlay. */
 const INSIGHT_DEBOUNCE_MS = 150;
 /** How long "show me these parts" pulses them in Simulate (ms). */
@@ -213,7 +222,7 @@ class SimLabPane extends React.Component {
         this.locale = locale;
         this.text = TEXT[locale];
         this.itext = INSIGHT_TEXT[locale] || INSIGHT_TEXT.en;
-        this.state = {status: 'loading', message: '', info: '', driveSpeed: 50, issues: [], modelFile: null, shipped: null, simMs: 0, view3d: 'loading',
+        this.state = {status: 'loading', message: '', info: '', driveSpeed: 50, issues: [], modelFile: null, shipped: null, simMs: 0, rtf: null, view3d: 'loading',
             mode: 'simulate', placing: null, selection: [], editorTick: 0, mat: null,
             buildStatus: {kind: 'idle'}, gizmoMode: 'move', grid: 10, recent: [], thumbTick: 0,
             showPorts: true, showMotion: false, blockers: [], portPicker: null, instructions: null, coarse: false,
@@ -238,6 +247,8 @@ class SimLabPane extends React.Component {
         this.thumbQueue = new Set();
         this.thumbs = null;
         this.last = null;
+        /** The program clock (lib/bw-sim/sim-clock.js), made when the chunk is in; installed while running. */
+        this.clock = null;
     }
 
     onPointerKind () {
@@ -263,6 +274,11 @@ class SimLabPane extends React.Component {
     /** A press outside the open "More…" menu closes it. */
     onOutsidePress (event) {
         if (this.state.more && this.moreRef.current && !this.moreRef.current.contains(event.target)) this.setState({more: false});
+    }
+
+    /** A number as the learner's language writes it (German: decimal comma). */
+    decimal (text) {
+        return this.locale === 'de' ? String(text).replace('.', ',') : String(text);
     }
 
     t (key, values = {}) {
@@ -327,6 +343,7 @@ class SimLabPane extends React.Component {
         if (this.coarseQuery && this.coarseQuery.removeEventListener) this.coarseQuery.removeEventListener('change', this.onPointerKind);
         this.disposed = true;
         cancelAnimationFrame(this.raf);
+        this.stopClock();
         this.teardown();
         this.teardownEditor();
         if (this.physics) this.physics.terminate();
@@ -530,7 +547,24 @@ class SimLabPane extends React.Component {
         setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
+    /**
+     * Puts the VM on the session's clock (sim-clock.js). Not for the firmware route: its emulated
+     * hub runs the program and paces the scene itself (routes/renode-lockstep).
+     */
+    startClock () {
+        const vm = this.props.vm;
+        if (!this.session || this.session.lockstep || !vm || !vm.runtime || this.clockInert) return;
+        if (!this.clock) this.clock = new this.lib.SimLabClock();
+        this.clock.install(vm.runtime, this.session);
+    }
+
+    /** Back to wall time (Pause, a new model, the pane closing). */
+    stopClock () {
+        if (this.clock) this.clock.uninstall();
+    }
+
     teardown () {
+        this.stopClock();
         if (this.view) { try { this.view.dispose(); } catch { /* a lost context may already be gone */ } }
         this.view = null;
         if (this.session) this.session.dispose();
@@ -593,7 +627,7 @@ class SimLabPane extends React.Component {
         const token = this.loadToken = {};
         this.opened = {text, name};
         this.teardown();
-        this.setState({status: 'loading', message: '', issues: [], blockers: [], modelFile: name, shipped, simMs: 0, view3d: 'loading'});
+        this.setState({status: 'loading', message: '', issues: [], blockers: [], modelFile: name, shipped, simMs: 0, rtf: null, view3d: 'loading'});
         const {SimSession, fetchLDrawClosure, createSimView3D, CATALOG} = this.lib;
         // The SPIKE firmware route (desktop): the emulated hub starts first; the scene then runs
         // in lockstep with it (lib/bw-sim/routes/renode-lockstep).
@@ -751,6 +785,16 @@ class SimLabPane extends React.Component {
     frame (now) {
         this.raf = requestAnimationFrame(this.frame);
         const dt = this.last === null ? 0 : Math.min(MAX_FRAME_MS, now - this.last);
+        const clocked = Boolean(this.clock && this.clock.installed);
+        if (clocked) {
+            this.clock.noteFrame();
+            // The VM steps around the hook (arena-clock.js isInert): fall back to wall time, loudly in
+            // behaviour rather than freezing the world and every wait with it.
+            if (this.clock.inert) {
+                this.stopClock();
+                this.clockInert = true;
+            }
+        }
         this.last = now;
         if (this.editView) { this.drawThumbs(); this.editView.render(); return; }
         if (!this.session) return;
@@ -758,12 +802,13 @@ class SimLabPane extends React.Component {
             this.setState({status: 'failed', message: this.t('physicsFailed', {error: this.session.failed.message})});
         }
         // 'stopping': the firmware route keeps its clock until the emulated hub has taken STOP.
-        if ((this.state.status === 'running' || this.state.status === 'stopping') && dt > 0) {
+        // With the program clock installed the VM's steps tick the world (sim-clock.js), not frames.
+        if ((this.state.status === 'running' || this.state.status === 'stopping') && dt > 0 && !(this.clock && this.clock.installed)) {
             this.session.tick(dt);
         }
         // With the physics in the worker, simulated time advances when a batch comes back.
         if (Math.floor(this.session.time / 100) !== Math.floor(this.state.simMs / 100)) {
-            this.setState({simMs: this.session.time});
+            this.setState({simMs: this.session.time, rtf: this.clock && this.clock.installed ? this.clock.realTimeFactor : null});
         }
         if (this.view) this.view.render(this.session.snapshot());
     }
@@ -779,11 +824,15 @@ class SimLabPane extends React.Component {
         if (this.session.lockstep) { await this.runFirmware(); return; }
         const hubState = this.props.hubState;
         hubState.setSimulationEnabled(true);
+        // Connecting runs on wall time (its timeouts are the browser's); the program clock goes in
+        // just before the green flag, so the program's first `wait` starts on the world's clock.
+        this.stopClock();
         this.setState({status: 'running'});
         const vm = this.props.vm;
         // Without a SPIKE program the clock still runs (the arrows below drive the motors),
         // but say plainly why nothing moves on its own.
         if (!this.spikeLoaded()) {
+            this.startClock();
             this.setState({info: this.shippedModel()?.example ? `${this.text.noProgram} ${this.text.exampleOffer}` : this.text.noProgram});
             return;
         }
@@ -802,7 +851,10 @@ class SimLabPane extends React.Component {
             this.setState({message: this.t('connectFailed', {error: error.message})});
             return;
         }
-        if (this.state.status === 'running') vm.greenFlag();
+        if (this.state.status === 'running') {
+            this.startClock();
+            vm.greenFlag();
+        }
     }
     /** Puts the current model on another mat (its start pose, if the mat has one) and reloads it. */
     async setMat (mat) {
@@ -817,7 +869,10 @@ class SimLabPane extends React.Component {
         if (!this.session || !this.session.bridge) return;
         const hub = this.props.hubState;
         hub.setSimulationEnabled(true);
-        if (this.state.status !== 'running') this.setState({status: 'running'});
+        if (this.state.status !== 'running') {
+            this.startClock();
+            this.setState({status: 'running'});
+        }
         const [left, right] = hub.movementPair || ['A', 'B'];
         const pct = this.state.driveSpeed;
         const dps = port => hub.motors.percentToDps(port, pct);
@@ -848,6 +903,7 @@ class SimLabPane extends React.Component {
         if (this.session.lockstep) { this.pauseFirmware(); return; }
         if (this.spikeLoaded()) { try { this.props.vm.stopAll(); } catch { /* the VM may be mid-load */ } }
         this.props.hubState.backend.cancel();
+        this.stopClock();
         this.setState({status: 'paused'});
     }
 
@@ -1284,9 +1340,12 @@ class SimLabPane extends React.Component {
         const T = this.text;
         const simulate = this.state.mode === 'simulate';
         const running = status === 'running';
-        const rtf = this.session?.lockstep ? this.session.realTimeFactor : null;
+        // The firmware route's emulator pace (always shown); the program clock's only when the world holds
+        // the program back (sim-clock.js): on a machine that keeps up there is nothing to say.
+        const programRtf = this.state.rtf !== null && this.state.rtf !== undefined && this.state.rtf < SHOW_RTF_BELOW ? this.state.rtf : null;
+        const rtf = this.session?.lockstep ? this.session.realTimeFactor : programRtf;
         const statusText = `${busy ? T.loading : T[status] || ''}${this.session ? ` · ${compact ? this.t('timeShort', {s: (simMs / 1000).toFixed(1)}) : this.t('time', {s: (simMs / 1000).toFixed(1)})}` : ''}` +
-            (rtf !== null && running ? ` · ${this.t('realTime', {f: rtf < 0.1 ? rtf.toFixed(3) : rtf.toFixed(2)})}` : '');
+            (rtf !== null && running ? ` · ${this.t('realTime', {f: this.decimal(rtf < 0.1 ? rtf.toFixed(3) : rtf.toFixed(2))})}` : '');
         // Desktop only (the web build has no managed Renode runtime): the program route.
         const firmwareReady = this.lib && this.desktop() &&
             this.lib.firmwareRouteReady(this.renodeCapabilities(), {unsupported: this.state.firmwareUnsupported});
