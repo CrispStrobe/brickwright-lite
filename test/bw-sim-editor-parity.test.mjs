@@ -393,11 +393,13 @@ test('copied parts are LDraw text that pastes back with colour, pose, port and g
 });
 
 test('LDraw text from another program pastes its known parts and counts the rest', () => {
-    // As BrickLink Studio puts parts on the clipboard: plain type-1 lines, a part we do not have.
-    const studio = '0 Untitled\r\n1 14 0 -24 0 1 0 0 0 1 0 0 0 1 32524.dat\r\n1 4 40 -8 0 1 0 0 0 1 0 0 0 1 3001.dat\r\n1 0 0 0 20 0 0 1 0 1 0 -1 0 0 2780.dat\r\n';
+    // As BrickLink Studio puts parts on the clipboard: plain type-1 lines, one part we do not have
+    // (a minifig torso, 973 — not a Robot Lab part; the 2×4 brick 3001 is, since the part import).
+    const studio = '0 Untitled\r\n1 14 0 -24 0 1 0 0 0 1 0 0 0 1 32524.dat\r\n1 4 40 -8 0 1 0 0 0 1 0 0 0 1 3001.dat\r\n1 0 0 0 20 0 0 1 0 1 0 -1 0 0 2780.dat\r\n1 1 0 -100 0 1 0 0 0 1 0 0 0 1 973.dat\r\n';
+    assert.ok(!CATALOG.has('973.dat'), 'the test needs a part the catalogue does not have');
     const got = partsFromClipboard(studio, CATALOG);
-    assert.deepEqual(got.parts.map(p => [p.part, p.color]), [['32524.dat', 14], ['2780.dat', 0]]);
-    assert.equal(got.refused, 1, 'the brick it does not know');
+    assert.deepEqual(got.parts.map(p => [p.part, p.color]), [['32524.dat', 14], ['3001.dat', 4], ['2780.dat', 0]]);
+    assert.equal(got.refused, 1, 'the torso it does not know');
     assert.equal(partsFromClipboard('just some words', CATALOG), null, 'no parts: not LDraw');
     assert.equal(partsFromClipboard('', CATALOG), null);
     const mirrored = partsFromClipboard('1 4 0 0 0 -1 0 0 0 1 0 0 0 1 32524.dat\r\n', CATALOG);
