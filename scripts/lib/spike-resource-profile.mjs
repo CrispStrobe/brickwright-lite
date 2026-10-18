@@ -23,8 +23,8 @@ export const profileFiles = Object.freeze({
 const backport = ['licenses/Apache-2.0.txt','licenses/firmware-NuttX-NOTICE.txt',
     'licenses/NuttX-Apps-NOTICE.txt','licenses/firmware-Brickwright-BSD-3-Clause.txt',
     'licenses/NuttX-Tickless-BSD-3-Clause.txt','licenses/Simulation-Firmware-NOTICES.txt'];
-const optional = {guest:['tools/spike_nuttx_mailbox.py','tools/spike_program_uart.py'],
-    nuttx:[...backport,'initial-flash.bin','tools/spike_program_uart.py']};
+const optional = {guest:['tools/spike_nuttx_mailbox.py','tools/spike_program_uart.py','tools/spike_lockstep.py'],
+    nuttx:[...backport,'initial-flash.bin','tools/spike_program_uart.py','tools/spike_lockstep.py']};
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const bounded = async (root,name,limit) => {
     const path=join(root,name), meta=await lstat(path), actual=await realpath(path);
@@ -58,6 +58,9 @@ export async function freezeResourceProfile (kind, sourceArg, outputArg, resourc
     }
     if (files['scripts/spike-state-server.py'].includes('from spike_program_uart import') && !files['tools/spike_program_uart.py']) {
         throw new Error('Missing program UART helper');
+    }
+    if (/^import spike_lockstep$/m.test(files['scripts/spike-state-server.py'].toString()) && !files['tools/spike_lockstep.py']) {
+        throw new Error('Missing lockstep helper');
     }
     if (backport.some(n=>files[n]) && (!backport.every(n=>files[n]) || !files['initial-flash.bin'])) {
         throw new Error('Incomplete firmware backport notices or flash seed');

@@ -11,7 +11,7 @@ import {
 } from 'three';
 import {driveHubRef, partVisual} from './part-geometry.js';
 import {PART_SURFACE, addEdgeLines, edgeMaterials} from './part-style.js';
-import {lduToWorld} from '../contracts.js';
+import {lduToWorld, partMotorJoint} from '../contracts.js';
 import {quatFromMat3} from '../mech/vec.js';
 import {createMat} from '../world/mats.js';
 import {MAT_COLORS as SPIKE_MAT_COLORS, COLOR_IDS as SPIKE_COLOR_IDS} from '../../spike-arena/arena-sim.js';
@@ -119,7 +119,7 @@ export const buildSimScene = ({model, mechanism, read, colors, catalog = null}) 
     };
 
     for (const pl of model.parts) {
-        const motor = catalog && catalogGet(catalog, pl.part)?.motor ? motorBodies(pl) : null;
+        const motor = catalog && partMotorJoint(catalogGet(catalog, pl.part)) ? motorBodies(pl) : null;
         const body = motor ? motor.housing : (bodiesOf.get(pl.id) || [])[0];
         if (!body || !bodyGroups.get(body.id)) continue;
         // Material with placed colour
@@ -230,6 +230,33 @@ export const buildSimScene = ({model, mechanism, read, colors, catalog = null}) 
         }
     }
 
+    // Loads (world/objects.js, a pallet): dynamic world bodies, one box mesh per collider inside the
+    // body's group, so a physics snapshot moves them like the model's bodies.
+    const loadMeshes = new Map();
+    for (const b of mechanism.bodies) {
+        if (b.role !== 'load' && !b.id.startsWith('load:')) continue;
+        const group = bodyGroups.get(b.id);
+        if (!group) continue;
+        const mat = new MeshStandardMaterial({color: b.loadColor || '#b5835a', roughness: 0.8});
+        createdMaterials.add(mat);
+        const meshes = [];
+        for (const col of b.colliders) {
+            if (col.shape !== 'box') continue;
+            const he = col.halfExtents;
+            const geo = new BoxGeometry(he[0] * 2, he[1] * 2, he[2] * 2);
+            createdGeometries.add(geo);
+            const mesh = new Mesh(geo, mat);
+            if (col.position) mesh.position.set(col.position[0], col.position[1], col.position[2]);
+            if (col.rotation) mesh.quaternion.set(col.rotation[0], col.rotation[1], col.rotation[2], col.rotation[3]);
+            mesh.name = `${b.id}#${meshes.length}`;
+            mesh.layers.set(0);
+            mesh.userData.bodyId = b.id;
+            group.add(mesh);
+            meshes.push(mesh);
+        }
+        loadMeshes.set(b.id, meshes);
+    }
+
     const dispose = () => {
         // Dispose ground geometry/material and per-mesh materials; part geometries are cached
         if (ground) {
@@ -246,6 +273,7 @@ export const buildSimScene = ({model, mechanism, read, colors, catalog = null}) 
             mesh.geometry.dispose();
             mesh.material.dispose();
         }
+        for (const meshes of loadMeshes.values()) for (const mesh of meshes) mesh.geometry.dispose();
         for (const m of createdMaterials) {
             // Materials for part meshes are per-mesh, dispose them
             if (m && typeof m.dispose === 'function') m.dispose();
@@ -253,7 +281,7 @@ export const buildSimScene = ({model, mechanism, read, colors, catalog = null}) 
         scene.clear();
     };
 
-    return {scene, bodyGroups, partMeshes, hubMeshes, ground, dispose, matTexture, matMesh, obstacleMeshes};
+    return {scene, bodyGroups, partMeshes, hubMeshes, ground, dispose, matTexture, matMesh, obstacleMeshes, loadMeshes};
 };
 
 /**

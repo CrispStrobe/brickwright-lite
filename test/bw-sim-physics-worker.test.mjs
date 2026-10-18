@@ -94,9 +94,9 @@ test('worker thread gives byte-identical snapshots', async () => {
     const hostSnap = hostMessages[hostMessages.length - 1].msg;
 
     // Worker thread run
-    // argv names this test inside the worker too, so the GUI-scope hook attributes the
-    // worker's jolt-physics import to it (scripts/lib/register-gui-scope.mjs reads argv).
-    const worker = new Worker(path.join(ROOT, 'test/fixtures/bw-sim/physics-worker-host.mjs'), {argv: [fileURLToPath(import.meta.url)]});
+    // Run the actual integrated worker and retain the test identity for the
+    // GUI-scope hook if a worker import ever crosses the package boundary.
+    const worker = new Worker(path.join(ROOT, 'scripts/lib/sim-physics-node-worker.mjs'), {argv: [fileURLToPath(import.meta.url)]});
     const port = {
         postMessage: (msg, transfer) => worker.postMessage(msg, transfer),
         on: (ev, fn) => worker.on(ev, fn),

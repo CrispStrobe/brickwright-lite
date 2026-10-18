@@ -215,3 +215,33 @@ test('applySnapshot never writes to snapshot', async () => {
         core.destroy();
     }
 });
+
+test('a load (the Warehouse pallet under the Forklift) is drawn in its own body\'s group, one box per collider, and moves with it', async () => {
+    const {prepareModel, catalogFrom} = await import('../overlay/scratch-gui/src/lib/bw-sim/sim-session.js');
+    const catalog = catalogFrom(json('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json'));
+    const text = readFileSync(path.join(ROOT, 'overlay/scratch-gui/static/sim-lab/models/forklift.ldr'), 'utf8');
+    const {runModel, mechanism} = prepareModel(text, catalog, {mat: 'warehouse'});
+    const built = buildSimScene({model: runModel, mechanism, read, colors, catalog});
+    try {
+        const pallet = mechanism.bodies.find(b => b.id === 'load:pallet');
+        const meshes = built.loadMeshes.get('load:pallet');
+        assert.equal(meshes.length, pallet.colliders.length);
+        const group = built.bodyGroups.get('load:pallet');
+        for (const [i, mesh] of meshes.entries()) {
+            assert.equal(mesh.parent, group);
+            const size = new Box3().setFromObject(mesh).getSize(new Vector3());
+            const he = pallet.colliders[i].halfExtents;
+            // The box (turned 90° about y with its body) keeps its height.
+            assert.ok(Math.abs(size.y - 2 * he[1]) < TOL, `mesh ${i} height ${size.y}`);
+        }
+        const before = new Box3().setFromObject(group).min.y;
+        const ids = mechanism.bodies.map(b => b.id);
+        const bodies = new Float32Array(ids.length * 7);
+        mechanism.bodies.forEach((b, i) => { bodies.set([...b.position, ...b.rotation], i * 7); });
+        bodies[ids.indexOf('load:pallet') * 7 + 1] += 0.04;
+        applySnapshot(built, {bodyIds: ids, bodies});
+        assert.ok(Math.abs(new Box3().setFromObject(group).min.y - before - 0.04) < 1e-5, 'lifted 4 cm with its body');
+    } finally {
+        built.dispose();
+    }
+});

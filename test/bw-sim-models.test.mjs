@@ -26,7 +26,13 @@ const CATALOG = catalogFrom(JSON.parse(readFileSync(path.join(GUI, 'src/lib/bw-s
 const FIXTURE = JSON.parse(readFileSync(path.join(ROOT, 'test/fixtures/bw-sim/line-follower.json'), 'utf8'));
 
 test('every model in the list is a shipped file that compiles cleanly, motors and sensors on ports', () => {
-    assert.deepEqual(MODELS.map(m => m.file), ['driving-base.ldr', 'line-follower.ldr', 'wall-stopper.ldr', 'colour-explorer.ldr', 'maze-runner.ldr']);
+    assert.deepEqual(MODELS.map(m => m.id || m.file), ['driving-base.ldr', 'line-follower.ldr', 'wall-stopper.ldr', 'colour-explorer.ldr', 'sumo', 'forklift.ldr', 'maze-runner.ldr']);
+    // The pane lists entries by key (id, else file): keys are unique, and a file listed twice needs an id.
+    const keys = MODELS.map(m => m.id || m.file);
+    assert.equal(new Set(keys).size, keys.length, `unique keys: ${keys}`);
+    for (const entry of MODELS.filter(m => m.example)) {
+        assert.ok(existsSync(path.join(GUI, 'static/sim-lab/programs', entry.example)), `${entry.example} is shipped`);
+    }
     for (const entry of MODELS) {
         assert.ok(entry.title.en && entry.title.de && entry.title.en !== entry.title.de, `${entry.file}: EN and DE titles`);
         const text = readFileSync(path.join(GUI, MODELS_BASE, entry.file), 'utf8');
@@ -35,7 +41,9 @@ test('every model in the list is a shipped file that compiles cleanly, motors an
         const {mechanism, issues} = prepareModel(text, CATALOG, {mat: entry.mat || null});
         assert.deepEqual(issues.filter(i => i.severity === 'error'), [], entry.file);
         assert.ok(model.parts.length > 5, entry.file);
-        assert.deepEqual(mechanism.joints.filter(j => j.motor).map(j => j.motor.port).sort(), ['A', 'B'], `${entry.file}: wheels on A and B`);
+        // The driving bases drive their wheels on A and B; the Forklift (R4) stands, its lift motor on C.
+        const ports = entry.file === 'forklift.ldr' ? ['C'] : ['A', 'B'];
+        assert.deepEqual(mechanism.joints.filter(j => j.motor).map(j => j.motor.port).sort(), ports, `${entry.file}: motors on ${ports}`);
         for (const s of mechanism.sensors || []) assert.match(s.port, /^[A-F]$/, `${entry.file}: sensor port`);
         if (entry.mat) assert.ok(MATS.some(m => m.id === entry.mat), `${entry.file}: mat ${entry.mat} exists`);
         if (entry.example) {

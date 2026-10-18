@@ -1,7 +1,8 @@
 # Robot Lab architecture — from one driving base to every LEGO Technic machine and hub
 
-Status: **design; slice R1 built** (2026-10-17, `lane/simlab-r1-20261017` — see "R1 as built" in
-§7 for where the code deviates from the interfaces below and why). Written 2026-10-17 on
+Status: **design; slices R1, R2 and R3 built** (2026-10-17, `lane/simlab-r1-20261017`,
+`lane/simlab-r2-20261017`, `lane/simlab-r3-20261017` — see "R1 as built", "R2 as built" and "R3 as built" in §7 for where the code deviates
+from the interfaces below and why). Written 2026-10-17 on
 `lane/simlab-arch-20261017`, after reading the S1 code as it stands on `main` (`268c6e118`).
 Owner of record: unclaimed. Claim slices in `LANES.md` as usual.
 
@@ -248,7 +249,7 @@ before a profile is written (§8 D6, D7).
 | **Boost Move Hub** (17101, 2017) | A, B internal motors (with encoders), C, D external; internal tilt | LPF2/LWP3 | internal motor (id 39), external interactive motor (id 38, 1° encoder), colour & distance (37), tilt (40) |
 | **Powered Up City hub** (88009) / **Technic hub / Control+** (88012) | 2 ports A, B / 4 ports A–D + internal IMU | LPF2/LWP3 | train motor (2), L (46), XL (47) Control+ motors with encoders; Technic medium/large angular (75/76); lights (8); colour & distance (37) |
 | **SPIKE Essential** (45609 small hub) | 2 ports A, B; internal IMU, RGB light | LPF2 + SPIKE 3 firmware | small angular motor (65, ~660 °/s, 1°), colour (61), 3×3 light matrix (64) |
-| **SPIKE Prime** (45601, 2019) / **Robot Inventor** (51515, 2020; same electronics) | 6 ports A–F; internal IMU, 5×5 matrix, speaker, buttons | LPF2, absolute encoders on angular motors | medium angular (48; RI uses the dark version 75), large angular (49), small (65); colour (61), distance (62), force (63) — `parts.json` has 48 at 0.18 N·m / 1110 °/s and 49 at 0.38 N·m / 1050 °/s |
+| **SPIKE Prime** (45601, 2019) / **Robot Inventor** (51515, 2020; same electronics) | 6 ports A–F; internal IMU, 5×5 matrix, speaker, buttons | LPF2, absolute encoders on angular motors | medium angular (48; RI uses the dark version 75), large angular (49), small (65); colour (61), distance (62), force (63) — `devices/catalog.js` has 48 at 0.104 N·m / 176 rpm and 49 at 0.264 N·m / 168 rpm at the hub's 7.2 V (Philo's measurements, D6; R2 had 0.18 / 0.38 N·m), controller limits 1110 / 1050 °/s |
 
 ### 2.2 In the repo
 
@@ -1124,6 +1125,85 @@ hand-built v1 mechanisms in `bw-sim-physics-core.test.mjs` give identical snapsh
 the upgrade; a schema test that every `parts.json` entry is v2-valid and that the
 migration of the v1 file is idempotent.
 
+*R2 as built (2026-10-17, `lane/simlab-r2-20261017`).* Files: `contracts.js` (PartMeta v2 and
+CompiledMechanism v2 typedefs, `upgradePartMeta`, `upgradeMechanismV1`, `mechanismV1`, the v2
+validators, the `part*` accessors every reader uses), `devices/catalog.js` (the five SPIKE devices),
+`registry/kinds.js` (`ConnectorKindRegistry`, `CouplingKindRegistry`, `JointKindRegistry`),
+`kinds/pin-axle.js` (`edgeKind`, `shaftEngagement` with the short-shaft and blind-hole rules,
+the ball/stud distance tests, `solidColliders` and the collider regions — moved from
+`mech/graph.js` and `editor/overlap.js`, which re-export them), `kinds/spur.js`, `kinds/bevel.js`,
+`kinds/gear-mesh.js` (today's `meshContact` branches and `meshRatio`, moved), `kinds/index.js`
+(`BUILTIN_KINDS`, `withKinds`), `scripts/migrate-parts-v2.mjs`; `parts.json` is `version: 2`.
+The compiler takes `opts.kinds`; the physics core reads `actuators`/`couplings` only (a v1
+mechanism is lifted on entry); the bridge binds by `{hub, port}`. Accepted by: every bw-sim test
+green; per-step hashes of every pose and joint of every physics core every bw-sim test creates
+(112 cores), the R1 session hashes (four shipped models in-thread and in the worker, a raw-bridge
+run, the line follower's VM program) and the compiler's output for the shipped models and all
+fixtures, equal before and after (with the v1 and with the migrated v2 `parts.json`);
+`test/bw-sim-parts-v2.test.mjs`, `test/bw-sim-mechanism-v2.test.mjs`,
+`test/bw-sim-kinds-registry.test.mjs` (a toy connector kind and a toy `belt` coupling from
+`test/fixtures/bw-sim/toy-kinds.mjs`, compiled without touching `mech/`). Where the code
+deviates from §5.3–§5.7/§6.2–§6.3, and why:
+
+- **`compile()` emits v1 unless asked for v2** (`{version: 2}`; `prepareModel`, i.e. the app, asks).
+  The golden compiler tests pin a v1 mechanism's top-level keys (`bw-sim-mech` "clean output"),
+  and they are R2's acceptance. Internally there is one pipeline; v1 is the v2 result's v1 view.
+- **CompiledMechanism v2 keeps the v1 fields** (`gears`, `sensors`, `joint.motor`) as a derived
+  view (`mechanismV1Aliases`), checked by the v2 validator to agree with `couplings`, `devices`
+  and `actuators`. Views, insight, the pane and many tests read them; the core and the bridge do
+  not. A reader moves to the v2 fields when it needs something v1 cannot say (a hub, a new kind).
+- **`hubs: [{id, profile, body}]`** is a v2 field §5.3 did not list: an actuator's `hub` must
+  name something. `hubs[0]` (the first body carrying a hub, as `hubsOf`) is the hub a port without
+  one means; with no hub part, `hub` is `null` (the scene's one hub drives it, as in v1).
+- **`ActuatorV2` carries the device's numbers resolved** — `maxTorqueNm` (stall torque),
+  `maxSpeedRadPerSec` (servo top speed), `ids` — beside `device`, so the core and the worker need
+  no device catalogue. `device` is `null` for a lifted v1 motor that names no catalogue device.
+- **Devices** are `devices/catalog.js` (a JS module: node tests read it without JSON modules),
+  and hold only what PartMeta v1 held: `motor.{stallTorqueNm, servoMaxDegPerSec}`, `ids`,
+  `sensor.{kind, encoder}`. The DC-motor fields of §5.2 are optional until sourced (D6) — the D5
+  slice adds them. **A probe's geometry stays in PartMeta** (`probe: {kind: 'ray', origin,
+  direction}`), not in `DeviceModel.sensor.probe`: it is where *this part* senses from (v1
+  fixtures have their own origins). `devices[]` in the mechanism are the sensors only (motors are
+  `actuators`), with `sensor` = the v1 measurement `sensors.js` makes.
+- **PartMeta v2 `device` may be an inline DeviceModel**: `upgradePartMeta` maps a v1 motor to the
+  catalogue device whose numbers are exactly its own, else keeps its numbers inline (a v1 test
+  motor at 600 °/s is no catalogue device). The shipped file names catalogue ids only (schema test).
+- **`internalJoints[].point/axis` are optional**: the migration copies the output axlehole's
+  (the compiler then transforms them exactly as it transformed the connector); absent, the v1
+  centroid rule applies. The compiler builds one device-actuated hinge per part (the motor); other
+  internal joints come with the parts that need them (LA, turntable). `gear` stays single
+  (`gears[]`, `fluid`, `rope` arrive with the first part that needs them).
+- **Registries are instances** (as `HubRegistry`): `kinds/index.js` `BUILTIN_KINDS` and
+  `withKinds(base, {connectors, couplings, joints})`. A connector pair rule lives on the shaft
+  kind (`pairs: [{with, edge, match}]`; the registry tries a as the shaft, then b — v1's order).
+  Coupling modules are keyed by `id` (spur and bevel both emit `kind: 'gear'`) and are either a
+  **`mesh`** (tooth types → contact; `mech/gears.js` applies the shared common-frame /
+  gear-on-frame rules) or a free **`detect(ctx)`** run after the meshes (welds re-run the
+  fixpoint). The core's builders are not registry-driven yet (R3: it builds `gear`, accepts
+  `rackAndPinion`, refuses other kinds); the joint registry is validation-only. The editor's snap
+  still calls the verbatim `edgeKind` (registry-driven snapping is R16).
+- **Collision data for D2**: bodies get `role` (`robot`, `frame` — a static body of parts, the
+  clamped gearbox — `ground`, `obstacle`) and `collisionGroup` (`model` | `world`), and the
+  mechanism a **`noCollide`** list: sorted body pairs joined by a joint, plus the two gear bodies of
+  each coupling (a registered kind may say `bodies(c, joints)`). R3 builds its pair filter from it.
+- **Multi-hub data**: PlacedModel `version: 2` allows `port: {hub, port}` (any port id: the hub's
+  `plug` refuses one its profile lacks); a `hub` naming a non-hub part is the `port-hub-unknown`
+  warning. The bridge binds each hub's actuators and sensors by `{hub, port}` (one hub: everything,
+  as R1) and no longer refuses several hubs; `SimSession`/`hubsOf` still run the first hub, and the
+  LDraw `!BW PORT … HUB` meta is R16's — so two-hub models exist in memory and in tests, not yet in
+  files or the pane.
+- **Tests changed** (expectations unchanged): `bw-sim-mech`'s large-motor test read the device id
+  from the raw file's `motor.deviceId`, which v2 no longer has — it reads the catalogue id the
+  part's `device` names; `bw-sim-part-meta` checks the motor's `internalJoints` and the sensors'
+  `probe` against the meshes (and that the probe check sees all three sensors, since a v1 filter
+  would now pass vacuously); `bw-sim-instructions` finds the hub by `hubProfile`.
+
+What R3 should know: read `actuators` (not `joint.motor`) and `couplings`; `noCollide` + `role` +
+`collisionGroup` are the D2 inputs; a coupling kind's physics builder is the missing half of the
+coupling registry (`rackAndPinion` first); `upgradeMechanismV1` is the entry for every hand-built
+v1 mechanism, so the v1 tests keep exercising the v2 path. The D5 DC model reads the motor's
+device from `actuators[].device` → `devices/catalog.js`, where the DC fields are optional today.
+
 **R3 (C) — Physics core v2: sliders, limits, friction, collision groups, state registry,
 DC-motor actuator.** Slider state/motor/limits/friction in the core and protocol;
 `RackAndPinionConstraint` built; `GroupFilterTable` (robot–robot off by default, robot–load
@@ -1137,6 +1217,60 @@ flywheel faster than with `coast` (both measured);
 contact works) while robot parts still do not collide with each other;
 (e) checkpoint/rollback bit-identity with sliders and rack.
 
+*R3 as built (2026-10-17, `lane/simlab-r3-20261017`; (c), the DC model, is D5's — see "D5 as
+built").* Files: `physics/jolt-core.js`, `physics/state-registry.js`, `contracts.js`
+(`BODY_ROLES` + `load`; joint fields; `noCollidePairs(…, seated)`), `mech/compile.js` (the
+connector edges into `noCollide`), `sim-worker-protocol.js` (slider states in the poses).
+Accepted by `test/bw-sim-sliders.test.mjs` and `test/bw-sim-collisions.test.mjs`. Where it
+deviates, and why:
+
+- **D2 overrides (d)'s "robot parts still do not collide"**: everything collides except the
+  `noCollide` pairs (joints, couplings, and the compiler's connector edges between two bodies,
+  i.e. parts seated in each other's holes). The filter is a Jolt `GroupFilterTable` — one
+  group, sub-group = body index — so it is decided in C++ in the broad phase, no JavaScript
+  per contact. Measured (5 ms steps, physics only, median of 5): S1 driving base 6.0 → 6.0 ms
+  per simulated second, 2.3 contact manifolds per step, none robot–robot; the 42-body gear
+  train 73.1 → 73.8 ms, 0 manifolds. A contact-listener filter (no pair filter, reject in
+  `OnContactValidate`) costs 6.0 → 11.1 ms on the base and 4.2× on the gear train, which
+  then computes 82 manifolds per step between jointed overlapping parts only to drop them.
+  **Limit (for R4+):** the filter is per BODY pair, as the owner decision states it; a part
+  cannot hit a body it is jointed to, anywhere (a one-link arm on a motor cannot hit the
+  chassis that holds the motor; a forearm on that arm can). A per-collider rule (seated
+  colliders at t = 0 + contact normal along the hinge axis) would need the listener path.
+- **Expectations changed:** `bw-sim-physics-core` "a static body made of model parts is the
+  machine frame" asserted that a frame does not push an overlapping *unjoined* moving body;
+  under D2 only a *joined* one is left alone (the test now checks both, plus the obstacle).
+  No other test changed: in the four shipped models and the gear fixtures every robot–robot
+  body pair is jointed or coupled, so no new contact exists (measured with the contact log).
+- **Joint fields** (optional, v1 and v2): hinge `limits` (rad, within [−π, π]) and `frictionNm`
+  (also the default coast friction of a motorised hinge); slider `limits` (m), `frictionN`,
+  `maxForceN`, `maxSpeedMPerSec`. Limits count from the start pose, so min ≤ 0 ≤ max.
+- **Slider motor**: `core.setMotor(slider, {mode: 'velocity'|'position'|'coast'|'brake'|'hold',
+  mPerSec, m, maxForceN})` — the force limit from the command or the joint; there is no slider
+  *actuator* (hub port) yet: `actuators[]` stays hinge-only until R9's linear actuator.
+  `jointState(slider)` = `{position, velocity}`; snapshots, `posesOf` and `MirrorCore` carry it.
+- **Rack and pinion**: body1 = the hinge's side not shared with the slider, body2 = the
+  slider's; `r = 1/|ratio|`, the ratio's sign in the slider axis; 30 velocity / 10 position
+  iterations like a gear, the pinion's inertia floored like a gear's. `SetConstraints` (Jolt's
+  position drift correction) is not called: Jolt reads the hinge angle and slider position in
+  their own sign conventions, which the signed axes here do not match. Measured drift over
+  10 cm: none at the reported precision (|v − r·ω| < 1e-5 relative); a loaded rack held for
+  a long time (R4's forklift) should measure it.
+- **State registry** (§6.4): `clock`, `hinges` (incl. D5's torque/damping/friction and the
+  rotor inertia), `sliders` (incl. the motor force limit, which Jolt's SaveState skips) and,
+  when recorded, `contacts`; `core.registerState(key, {save, restore})` for coupling modules.
+  The collision filter is fixed at construction and has no per-step state.
+- **Contact log** `createPhysicsCore(…, {recordContacts: true})` + `contactPairs()`: a JS
+  callback per contact, for tests and benches only.
+- The Technic rack 3743 is not in the vendored LDraw subset and the full library is not on
+  the build machine: R3's tests use primitive colliders (8T pinion r = module·z/2 = 4 mm).
+
+What R4 should know: the compiler must emit a `slider` joint (rack in `rack-slot`) and a
+`rackAndPinion` coupling with `ratio = ±r_pitch`; the core builds both and keeps the pair
+apart. Give the slider `limits` from the rack's length and the mast's stops. The fork–pallet
+contact works (D2); the forks and the mast are jointed, so they cannot collide with each
+other — model mast stops as slider limits, not as touching parts.
+
 **R4 — Worm and rack in the compiler; the forklift.** `worm.js` (worm–spur detection at 90°,
 ratio 1/teeth, self-lock hold friction), `rack.js` (rack-teeth vs pinion detection, slider
 from `rack-slot`), parts: racks, worm box, a fork, `slide-bore` axle connectors;
@@ -1146,6 +1280,61 @@ from `rack-slot`), parts: racks, worm box, a fork, `slide-bore` axle connectors;
 forks (no relative slip > 2 mm over the cycle). **Worm**: with a 24T worm wheel on an arm
 loaded 0.05 N·m, the arm turns `θ_worm/24 ± 1 %` when driven, and when the motor coasts it
 does not move by more than 0.5° in 5 s.
+
+*R4 as built (2026-10-17, `lane/simlab-r4-20261017`).* Files: `kinds/slide.js` (connector
+`slide-bore`), `kinds/worm.js` (connector `worm`, coupling `worm`), `kinds/rack.js` (connector
+`rack-teeth`, coupling `rackAndPinion`), `kinds/tooth-parts.js`; `mech/joints.js` (slider joints from
+slider edges), `mech/compile.js` (detector `limits`, loads), `physics/jolt-core.js` (the `worm`
+builder), `world/objects.js` (loads, the pallet), `world/mats.js` (`warehouse`), the Forklift example
+(`static/sim-lab/models/forklift.ldr`, `programs/forklift.bw`). Parts: racks 64781 (1×13) and 3743
+(1×4), smooth toggle joint 48496, fork 2823; 4716's `gear: {type: worm}` became a `worm` connector.
+Accepted by `test/bw-sim-forklift.test.mjs` (T4 through the VM, the SPIKE controller and the DC model:
+pallet +39.82 mm, r·θ 40.03 mm — the 0.2 mm is the pockets' clearance over the tines —, held 5 s
+drifting 0.012 mm, back to −0.01 mm, slip 0.00 mm; negative controls), `test/bw-sim-worm.test.mjs`
+(driven 1/23.93; coasting 0.0004° in 5 s, braked 0°; hold 0: falls 75.7°), `test/bw-sim-slide-rack.test.mjs`,
+the part-meta checks of the new connectors, and the browser `examples` gate. Where it deviates, and why:
+
+- **No `rack-slot`; the guide is a `slide-bore` on an axle.** LEGO has no beam slot a rack runs in that
+  the compiler could see; the smooth toggle joint's eyes are made for an axle to run free in. A
+  `slide-bore` on an axle is a `slider` edge; one slider joint per body pair, its travel measured from the
+  connectors (each bore stays on its axle — one per axle is enough —, and stops at any other part seated
+  on that axle), then narrowed by the rack to its teeth. The slider locks the bore's turn about the axle
+  (a cylindrical pair, §5.3, is not built): exact on two guides, an approximation on one (the Forklift
+  has one guide; the pinion holds the rack's other side).
+- **The worm's self-lock** is a GearConstraint (1/teeth, signed by the thread's hand, measured from the
+  mesh) plus a hold on the WHEEL's hinge, decided per step: while the motor that drives the worm (its own
+  hinge's, or the first actuated hinge a chain of gear couplings reaches) commands motion, no hold; while
+  it coasts or brakes, or nothing drives the worm, friction `holdTorqueNm/|ratio|` on the wheel's hinge
+  (Jolt applies hinge friction while the hinge's own motor is off: the wheel has none). Physics: a LEGO
+  worm's lead angle (≈ 7°) is below plastic's friction angle (11°–19°), so its back-efficiency is
+  negative — no wheel torque turns it; a torque on the worm does. `WORM_HOLD_TORQUE_NM` = 0.1 N·m at the
+  worm (2.4 N·m at a 24T) is an estimate, above anything a SPIKE motor puts through a train. Forward
+  efficiency (real worms 40–60 %) is not modelled. The hold is per-step state (`worms`, rollback-exact).
+  A worm island gets 120 velocity iterations: with 30 a 0.05 N·m arm on a worm-driven 24T ran 1.49 % fast
+  over 1.6 s (the plain `gear` kind too), with 120 0.28 %.
+- **Rack topology limit**: Jolt's RackAndPinionConstraint couples WORLD rates; the coupling is exact while
+  the pinion's frame neither turns about the pinion axis nor moves along the rack — a fixed motor driving
+  a moving rack (the Forklift). A pinion climbing a fixed rack (motor on the carriage) is not that case.
+- **The 8T and the rack are half a hole apart**: a 64781's pitch line is 5 LDU from its face, so with an
+  8T (r 10) the rack's centre plane is 15 LDU from the pinion's axis — every part on the carriage sits
+  5 LDU off the frame's grid. The Forklift bridges it the way builders do, with an axle connector (32039)
+  placed along an axle (`guideTee` on `guideStub`), which holds the guide axle at the carriage's offset.
+- **Loads** are a mat's, like obstacles (`warehouse` carries the pallet where the Forklift's tines are
+  on its start pose); bodies with `role: 'load'`, drawn in their body's group. `withBodyRoles` keeps a
+  role the compiler set.
+- **One part's own two pins** in two holes (48496: LDraw draws them frictionless) lock as before but
+  without the `locked-hinges` warning: a mount, not a hinge the builder meant to turn.
+- **Measured for R3's note**: a held, loaded rack (the motor in SPIKE hold, 45 g on the carriage)
+  drifts 0.012 mm in 5 s — no drift correction needed; `SetConstraints` stays unused.
+
+What R6/R7 should know: couplings that are connectors (`worm`, `rack-teeth`) are free detectors in
+`kinds/` that reuse `gearHinges` (now in `kinds/gear-mesh.js`) for the frame rules; a detector may bound a
+joint's travel (`limits`); the core's coupling builders are still an if-chain in `jolt-core.js`
+(`buildGearConstraint` is the shared gear part). A worm-driven turntable (R7 slewing) and a worm winch get
+the self-lock for free; the hold acts on the wheel's hinge, so a wheel that is itself motorised is not
+handled. A clutch (R6) is a per-step decision like the worm hold: register its state with
+`core.registerState` and act before `Step` (see `applyWormHolds`). The editor's snap still uses the v1
+edge rule (no snapping onto slide-bores yet, R16).
 
 **R5 — The emulated-route proof: RCX bytecode VM + RCX profile.** `routes/rcx-vm/`
 (clean-room interpreter of the standard-firmware opcodes NQC emits for RCX2: tasks, vars,
@@ -1301,4 +1490,91 @@ for the parts and kinds that exist).
   re-derived and named in the commit, never silently loosened.
 - **D7 → the XY plotter on SPIKE first (R10), and later the 1990 set 8094 (Control Center)
   plotter** with the Technic Control interface (R14).
-- D1, D3, D6: open (not yet needed).
+- **D6 → Philo's LEGO motor comparison** (https://philohome.com/motors/motorcomp.htm) is the
+  source for motor numbers; LEGO's sheets and Pybricks' identified models are kept as cross-checks.
+  See "D6 as built".
+- D1, D3: open (not yet needed).
+
+### D5 as built (2026-10-17, `lane/simlab-dc-20261017`)
+
+- **Drive.** `hubs/spike/profile.js` `drive: 'pwm'`. The SPIKE controller is two layers:
+  the unchanged `spike-sim/independent-backend.js` (shared with the kinematic arena) is the
+  **trajectory generator** (ramps, run for degrees/time, run to position, hold, stop actions),
+  run by `SpikeVirtualHub.advanceTo` on a *reference* angle; `hubs/spike/spike-motor-controller.js`
+  is the **feedback loop** on the physics encoder: `duty = ωr/ω0 + (Kp·e + Ki·∫e + Kd·(ωr − ω))/τs`
+  (Pybricks' structure: track a reference angle, so a slowed motor catches up), anti-windup,
+  reference drag at 1.5·τs of P, stall = saturated and < 20 °/s for 200 ms (reported to the
+  backend as its load input). Gains are torques (8, 40, 0.3 of duty for the medium motor),
+  grid-searched on the DC model with the 5 ms hold over 2.5e-4…3e-3 kg·m²; above ~5e-3 the
+  loop rings during ramps. Brake/coast are passive H-bridge states (duty 0); hold is the loop
+  on a fixed angle. A position command completes when the shaft is within 1° and slower than
+  30 °/s (backend hook `positionSettled`, unset in the arena).
+- **DC model.** `physics/actuators.js` `pwm` → core `torque` mode `τ = τs·u − (τs/ω0)·ω`, solved
+  implicitly by Jolt as one soft position motor (backward Euler; a braked flywheel decays 7 %
+  slower than the continuous exponential at τ = 33 ms). Duty is clamped to ±1, `u = duty·V/V_nom`
+  is not (a 9 V port runs a 7.2 V motor faster). Coast: Jolt hinge friction = gearbox friction.
+  The rotor's reflected inertia J is added about the axis to both moving bodies of the hinge
+  (`setRotorInertia`; exact unless both turn together about the axis). As a term in the motor
+  constraint instead, the gear constraint could not hold a light 24T against a wall (measured).
+- **Numbers** (superseded by "D6 as built" below; the v2 device catalogue `devices/catalog.js`, each field with `sources`;
+  `devices/dc-motors.js` resolves an actuator's DC model): ω0 at 7.2 V and the 360-count encoder
+  from LEGO's fact sheets (medium 185 rpm, large 175 rpm; the 7.2 V test supply is stated on the
+  medium sheet and assumed for the large); τs medium 18 N·cm (LEGO); gearbox friction
+  (0.021 / 0.023 N·m) and rotor inertia (3.0e-4 / 1.2e-3 kg·m²) from Pybricks' identified
+  observer models (community measurement). The large motor's τs stays R2's 0.38 N·m (the v2
+  migration pins it), marked estimated: LEGO's sheet says 0.25, Pybricks' model 0.45 — for D6. Not modelled: hub current limit,
+  battery sag, backlash, speed-dependent friction.
+- **Core fix found on the way.** Jolt gives a body with principal moments under 1e-6 kg·m² the
+  inertia of a 1 m sphere (0.4·m): gears, the castor ball, small arms were ~1000× too heavy
+  rotationally (the ideal servo hid it; with real torques the castor ball's spin drove a braked
+  base). `jolt-core.js fixSmallInertia` restores the shape's inertia; gear bodies are floored
+  at 3e-5 kg·m² and gear islands get 10 position iterations (solver conditioning, measured).
+
+### D6 as built (2026-10-17, `lane/simlab-motors-20261017`)
+
+- **Source.** Philo's page returns HTTP 403 to tools; it was read from the Internet Archive snapshot
+  `web.archive.org/web/20260918072225/…/motorcomp.htm` (SHA-1 digest `MCQCRRXD…`, the same
+  content in every 2026 snapshot). Every value is cited `philohome-motorcomp@2026-09-18`; only
+  measured numbers are recorded (`DeviceModel.measured.philo`), none of the page's prose.
+- **Model** (`devices/catalog.js`): `i = (u − k_e·ω)/R`, `τ = k_t·(i − i0)` at the output, so
+  `τs(V) = k_t·(V/R − i0)`, `ω0(V) = (V − R·i0)/k_e`, slope `k_t·k_e/R` independent of V.
+  `fitDcModel` takes R from the 9 V stall current, k_t from stall torque/(stall − no-load
+  current), k_e from the 9 V no-load point, τf = k_t·i0. `dcLineAt(motor, V)` gives the line at
+  any supply; `physics/actuators.js` drives `duty·τs(V_port)` with damping `k_t·k_e/R` (D5's
+  `u = duty·V/V_nom` scaling is gone: a 9 V port gives Philo's 9 V numbers, not 9/7.2 of the
+  7.2 V ones). The friction sits inside the driven line scaled by |duty| (exact at 0 and ±1).
+- **Supplies** (`HUB_SUPPLY_VOLTS`, all marked estimated): SPIKE 7.2 V (7.3 V Li-ion less the
+  H-bridge drop; LEGO's test supply; 8.3 V full adds 17–18 %); RCX, NXT, EV3, PF battery box,
+  Powered Up / Technic / Move hub 9 V (6 alkaline cells; their Li-ion/NiMH packs 7.2–7.4 V).
+- **SPIKE fits** (Philo 9 V: M 228 rpm, 0.10 A, 13.5 N·cm, 0.85 A; L 213 rpm, 0.11 A,
+  33.5 N·cm, 1.8 A): medium R 10.59 Ω, k_t 0.180 N·m/A, k_e 0.333 V·s/rad, τf 18.0 mN·m →
+  at 7.2 V τs 10.44 N·cm, ω0 176 rpm (R2: 18 N·cm, 185 rpm; −42 %); large R 5.00 Ω, k_t
+  0.198, k_e 0.379, τf 21.8 mN·m → 26.4 N·cm, 168 rpm (R2: 38 N·cm, 175 rpm; −31 %). Philo's
+  load points (4.48 / 8.47 N·cm, 4.5–12 V): speed residuals medium −4…+12 % (9 V: 152 vs 138 rpm,
+  +10 %), large −5…+2 %; currents over-predicted 9–31 % (k_t from the stall point is below what
+  the load points imply; he calls his stall torques "very imprecise"). LEGO's sheets at 7.2 V:
+  no-load speeds −5 / −4 %, max-efficiency speeds −13 / −14 % (sheet tolerance ±15 %); medium
+  stall torque 42 % below LEGO's 18 N·cm (Pybricks: 16 N·cm), large +5 %. Friction agrees with
+  Pybricks (18.0 vs 21.4, 21.8 vs 23.2 mN·m); rotor inertia stays Pybricks' (Philo has none).
+- **Other motors** (catalogue entries, no parts, for future hubs): 2838, 71427, 43362, 47154,
+  5292 (outer output, 1240 rpm), NXT, EV3 L/M, PF M/L/XL/Train, PUP medium (LPF2 1) and train (2),
+  Boost interactive (38) and Move-hub (39), Control+ L (46) and XL (47); Pybricks' inertia where it
+  has a model (NXT, EV3, Boost, Control+). At 9 V every one is within 15 % of its own load point
+  (worst Boost external −15 %); at 4.5 V the old motors fall far below the line (friction rises at
+  low speed). Not added: micromotor 2986 (the line through its points misses its load point by
+  56 %), E-motor, 9V/RC train motors (outside the motors named for D6).
+- **What changed in behaviour** (same checks, same bounds; measured old → new): DC tests (a) no-load
+  1108 → 1055 °/s medium, 1047 → 1002 large (ω0 1110 → 1058, 1050 → 1006); (b) τs 18 → 10.44,
+  38 → 26.36 N·cm; (c) brake to 10 % 85 → 130 ms, 145 → 195 ms (τ = I·ω0/τs grows), coast 245 →
+  280 ms, 845 → 860 ms; (e) hold deflection 1.72 → 1.06°, 4.11 → 3.06° (half the smaller τs);
+  (f) recovery 30 → 10 ms, 70 → 65 ms; (d), (g) unchanged. Wall stopper 9.0 → 8.6 cm (the brake's
+  back-EMF damping fell 39 %, the base rolls 4 mm further; window 8–12 cm). Line follower lap
+  22.5 s / 22.6 s unchanged (30 % speed, far from saturation), colour explorer red square at
+  4.7 → 4.8 s, gear ratios exact, 8-24 stall still stalls (blocked −0.24 → −0.06 °/s), R3
+  rack/slider tests do not use the DC model. The SPIKE motors at 7.2 V top out at 1058 / 1006 °/s,
+  below the API's 1110 / 1050 °/s: a 100 % command saturates the duty (a fresh 8.3 V battery
+  reaches 1247 / 1172 °/s).
+- **v1 files.** PartMeta v1 held 0.18 / 0.38 N·m; `DeviceModel.v1` keeps them, and the v1→v2
+  migration recognises exactly those numbers on exactly those parts as the catalogue motor.
+- Tests: `test/bw-sim-motor-catalogue.test.mjs` (self-consistency, Philo's 9 V numbers transcribed
+  independently, load-point residuals, LEGO cross-check with documented disagreements, sources).

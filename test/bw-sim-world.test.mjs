@@ -90,9 +90,14 @@ test('2. physics: driving base hits static box and stops (<1cm over next second)
 
     const {createPhysicsCore: cpc} = await import('../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js');
     // Use SimHubBridge like S1 test for driving
-    const {SimHubBridge} = await import('../overlay/scratch-gui/src/lib/bw-sim/hub-bridge.js');
+    const {SimHubBridge, STEP_MS} = await import('../overlay/scratch-gui/src/lib/bw-sim/hub-bridge.js');
     const VirtualSpikeHubState = (await import('../overlay/scratch-gui/src/lib/virtual-hub/spike-hub-state.js')).default;
-    const core = createPhysicsCore(J, mech, {stepHz: 1000 / 50});
+    // The bridge's contract: one physics step per hub step (stepHz = 1000 / STEP_MS). This test
+    // ran the core at 20 Hz (50 ms) under the 5 ms bridge, which the ideal servo tolerated; the
+    // SPIKE controller (owner decision D5) closes its loop on the encoder every 5 ms and would
+    // read the same stale angle nine steps in ten (measured: the base crawled 37 mm in 3 s with
+    // its wheels spinning at 400 °/s, never reaching the wall).
+    const core = createPhysicsCore(J, mech, {stepHz: 1000 / STEP_MS});
     const hubBody = mech.bodies.find(b => b.parts.includes('hub')).id;
     const hubState = new VirtualSpikeHubState();
     const bridge = new SimHubBridge({hubState, core, mechanism: mech, hubBody});

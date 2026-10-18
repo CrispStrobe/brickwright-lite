@@ -8,16 +8,21 @@
  * modifier class would be a far larger change than the feature is worth.
  */
 
-/* The toggle lives in the tab list DOM. In expanded mode it is pulled out
-   to the VIEWPORT top-right corner (above the menu bar). This must be
+/* The toggle is portaled to the body, outside the scrolling tab list.
+   Expanded, it occupies the viewport top-right corner above the menu bar.
+   This must be
    position:fixed — absolute resolved against the nearest positioned
    ancestor, which is the editor wrapper, landing the button exactly on
    top of the right-pane toggle at 1024px and eating its clicks (the
    red-CI streak of 2026-08-15: dead pane toggle, vanished stage-view
    buttons once the mis-click collapsed the chrome).
-   In compact mode the positioning is removed (below) so it flows
-   inline as the first item in the tab row — the hamburger icon. */
+   Compact mode anchors it at the left, with space reserved beside the tabs. */
 .chrome-toggle {
+    -webkit-appearance: none;
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     position: fixed;
     top: 6px;
     right: 8px;
@@ -35,9 +40,50 @@
     flex-shrink: 0;
 }
 
+.chrome-toggle > [data-bw-chrome-icon] {
+    display: block;
+    position: relative;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    pointer-events: none;
+}
+
+/* Plain borders and dots avoid SVG stroke/font rendering differences in the
+   physical iPad webview. Both states have their own visible painted shape. */
+.chrome-toggle > [data-bw-chrome-icon]::before {
+    content: '';
+    position: absolute;
+    box-sizing: border-box;
+}
+
+.chrome-toggle > [data-bw-chrome-icon="collapse"]::before {
+    width: 12px;
+    height: 12px;
+    top: 7px;
+    left: 4px;
+    border-top: 3px solid currentColor;
+    border-left: 3px solid currentColor;
+    transform: rotate(45deg);
+}
+
+.chrome-toggle > [data-bw-chrome-icon="expand"]::before {
+    width: 4px;
+    height: 4px;
+    top: 8px;
+    left: 2px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 6px 0 currentColor, 12px 0 currentColor;
+}
+
 .chrome-toggle:hover {
     background: #fff;
     border-color: rgba(0, 0, 0, 0.3);
+}
+
+.chrome-toggle[hidden] {
+    display: none;
 }
 
 /* ---- collapsed ---------------------------------------------------------- */
@@ -92,29 +138,49 @@
     display: none !important;
 }
 
-/* The tab row keeps every tab — capability, not permanence — but drops the
-   words. The icons and emoji stay, so nothing becomes unreachable.
-   position:relative + a stacking context above the editor body guarantees the
-   tabs AND the ⋯ toggle stay on top and clickable: with the menu bar gone the
-   strip was being overlaid by the body/workspace and swallowing every click. */
-:global(body.bw-compact-chrome) [class*="gui_tab-list"] {
-    height: 32px;
+/* Only tabs, never the tab list or expand button, receive tab styling. */
+.responsive-editor :global([role="tablist"]) {
+    padding: 0;
+    gap: 2px;
+}
+.responsive-editor :global([role="tab"]) {
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    min-width: 32px;
+    margin: 0 !important;
+    gap: 4px;
+}
+.responsive-editor :global([data-bw-tab-icon]) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 16px;
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+    margin: 0;
+}
+.responsive-editor :global([data-bw-tab-label]) {
+    font-size: 12px;
+}
+.responsive-editor :global([data-bw-tab-icons-only] [data-bw-tab-label]) {
+    display: none;
+}
+:global(body.bw-compact-chrome) .responsive-editor :global([role="tablist"]) {
+    height: auto;
+    min-height: 32px;
     position: relative;
+    left: auto;
+    right: auto;
     z-index: 600;
     pointer-events: auto;
 }
-
-:global(body.bw-compact-chrome) [class*="gui_tab"] {
-    padding: 0 10px !important;
-    font-size: 0;             /* hides the label text */
-    line-height: 32px;
+:global(html:not([data-bw-touch]) body.bw-compact-chrome) .responsive-editor :global([role="tablist"]) {
+    padding-left: 40px;
 }
-
-/* …but not the icon, which is a child element and needs its size back. */
-:global(body.bw-compact-chrome) [class*="gui_tab"] img,
-:global(body.bw-compact-chrome) [class*="gui_tab"] span {
-    font-size: 15px;
-    margin: 0;
+:global(body.bw-compact-chrome) .responsive-editor :global([role="tab"]) {
+    padding: 0 10px;
+    line-height: 32px;
 }
 
 /* The body takes back the entire menu-bar row. */
@@ -122,12 +188,12 @@
     height: calc(100% - 0px);
 }
 
-/* The hamburger toggle moves into the tab row in compact mode (positioned
-   by the JSX render that puts it in the tab list). In expanded mode it
-   stays in the top-right corner of the menu bar area. */
+/* The body-level portal stays outside the scrolling tab strip in both states. */
 :global(body.bw-compact-chrome) .chrome-toggle {
-    position: static;
-    z-index: auto;
-    margin-right: 4px;
+    position: fixed;
+    left: 8px;
+    right: auto;
+    z-index: 600;
+    margin: 0;
     flex-shrink: 0;
 }

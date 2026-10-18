@@ -4,13 +4,24 @@
 // Mechanism compiler entry: `compile(model, catalog, opts)` turns a
 // PlacedModel + catalog into a CompiledMechanism (pure data in, pure data
 // out). Runs validateCompiledMechanism on output and throws on bug.
+//
+// Registry-driven (docs/ROBOT-LAB-ARCHITECTURE.md §6.2, §6.3): which
+// connectors join (graph.js), which tooth sets mesh (gears.js) and which other
+// couplings exist (a module's `detect`) come from `opts.kinds` (default
+// kinds/index.js BUILTIN_KINDS), so a new kind is a module, not an edit here.
+// `opts.version: 2` emits CompiledMechanism v2 (contracts.js): the v1
+// mechanism plus hubs, actuators bound to {hub, port}, couplings, devices,
+// body roles and the no-collide pairs; the default is the v1 mechanism.
 
-import {validatePlacedModel, validateCompiledMechanism, GROUND_FRICTION, LDU_M, lduToWorld, dirToWorld} from '../contracts.js';
+import {validatePlacedModel, validateCompiledMechanism, GROUND_FRICTION, LDU_M, lduToWorld, dirToWorld,
+    partHubProfile, partSensor, portRefOf, withBodyRoles, noCollidePairs, V1_COUPLING_KINDS} from '../contracts.js';
+import {BUILTIN_KINDS} from '../kinds/index.js';
 import {mat3MulVec3, vecAdd} from './vec.js';
 import {buildGraph} from './graph.js';
 import {buildIslands} from './islands.js';
 import {buildJoints} from './joints.js';
 import {buildGears} from './gears.js';
+import {validateLoad, loadBody} from '../world/objects.js';
 import {quatMul, quatConj} from './vec.js';
 
 /** Rotate Vec3 v by unit quat q (xyzw) */
@@ -99,7 +110,7 @@ const looseGroups = (bodies, joints, catalogMap, nodes) => {
     }
     if (groups.size < 2) return [];
     const hubParts = new Set();
-    for (const node of nodes.values()) if (node.meta && node.meta.hub) hubParts.add(node.partId);
+    for (const node of nodes.values()) if (node.meta && partHubProfile(node.meta)) hubParts.add(node.partId);
     const list = [...groups.values()].map(set => [...set].sort((x, y) => x.localeCompare(y)));
     let main = list.findIndex(parts => parts.some(id => hubParts.has(id)));
     if (main < 0) {
@@ -122,12 +133,15 @@ const toCatalogMap = catalog => {
  * Compile a PlacedModel + catalog into a CompiledMechanism.
  * @param {object} model PlacedModel
  * @param {Map|object} catalog Map/record partName->PartMeta
- * @param {object} opts {ground?:boolean} ground===false disables ground body
+ * @param {object} opts {ground?:boolean} ground===false disables ground body;
+ *        {kinds?} the kind registries (kinds/index.js; default the built-in ones);
+ *        {version?: 1|2} which CompiledMechanism to emit (default 1)
  * @returns {object} CompiledMechanism
  */
 export const compile = (model, catalog, opts = {}) => {
     const diagnostics = [];
     const catalogMap = toCatalogMap(catalog);
+    const kinds = opts.kinds || BUILTIN_KINDS;
 
     // Validate input model (including catalog membership)
     const problems = validatePlacedModel(model, catalogMap);
@@ -153,7 +167,7 @@ export const compile = (model, catalog, opts = {}) => {
 
     // If filtered model has no valid parts, we still need to produce a mechanism with maybe ground only plus diagnostics
     // Build graph (even if empty)
-    const {nodes, edges: graphEdges} = buildGraph(filteredModel, catalogMap, diagnostics);
+    const {nodes, edges: graphEdges} = buildGraph(filteredModel, catalogMap, diagnostics, kinds);
 
     // Topology fixpoint. Islands come from rigid edges; two things can then
     // weld islands together and force a rebuild: hinges between one island pair
@@ -175,6 +189,7 @@ export const compile = (model, catalog, opts = {}) => {
     let jointsResult;
     let gearResult;
     let gearDiagnostics;
+    let detected = {couplings: [], diagnostics: [], limits: []};
     // Every weld merges two islands, so this settles in at most one pass per node.
     for (let pass = 0; pass <= nodes.size + 1; pass++) {
         islands = buildIslands(nodes, graphEdges, catalogMap, diagnostics, opts, extraRigidPairs);
@@ -182,14 +197,26 @@ export const compile = (model, catalog, opts = {}) => {
         if (jointsResult.lockedPairs.length > 0) {
             jointsResult.lockedPairs.forEach(([bA, bB], i) => {
                 const parts = (jointsResult.lockedParts && jointsResult.lockedParts[i]) || [];
-                diagnostics.push({severity: 'warning', code: 'locked-hinges', message: `Hinges between ${bA} and ${bB} lock, merging islands`, parts});
+                // One part mounted by its own two pins locks by design: welded, nothing to say (joints.js isPinMount).
+                if (!(jointsResult.lockedMounts && jointsResult.lockedMounts[i])) {
+                    diagnostics.push({severity: 'warning', code: 'locked-hinges', message: `Hinges between ${bA} and ${bB} lock, merging islands`, parts});
+                }
                 weld(islands, bA, bB);
             });
             continue;
         }
         gearDiagnostics = [];
-        gearResult = buildGears(nodes, islands, jointsResult.joints, catalogMap, gearDiagnostics, jointsResult.jointEntries);
-        if (gearResult.lockedPairs.length === 0) break;
+        gearResult = buildGears(nodes, islands, jointsResult.joints, catalogMap, gearDiagnostics, jointsResult.jointEntries, kinds);
+        if (gearResult.lockedPairs.length === 0) {
+            // Registered coupling detectors (kinds/worm.js, kinds/rack.js): their welds re-run the fixpoint too.
+            detected = detectCouplings(kinds, {nodes, islands, joints: jointsResult.joints, jointEntries: jointsResult.jointEntries, catalog: catalogMap});
+            if (detected.welds.length === 0) break;
+            // A lock a detector found (a worm or a rack fixed to its partner's frame) is said once, here.
+            for (const d of detected.diagnostics) if (d.code === 'gear-on-frame') diagnostics.push(d);
+            for (const [bA, bB] of detected.welds) weld(islands, bA, bB);
+            gearResult = null;
+            continue;
+        }
         for (const d of gearDiagnostics) if (d.code === 'gear-on-frame') diagnostics.push(d);
         for (const [bA, bB] of gearResult.lockedPairs) weld(islands, bA, bB);
         gearResult = null;
@@ -201,9 +228,21 @@ export const compile = (model, catalog, opts = {}) => {
         if (d.code === 'gear-not-on-hinge' && d.parts.every(p => lockedGears.has(p))) continue;
         diagnostics.push(d);
     }
+    diagnostics.push(...detected.diagnostics);
 
     const joints = jointsResult.joints;
-    const {gears} = gearResult;
+    // A coupling detector may bound a joint's travel (kinds/rack.js: the pinion stays on the
+    // rack's teeth): the joint keeps the narrower of its own limits and the coupling's.
+    for (const {joint, limits} of detected.limits) {
+        const j = joints.find(x => x.id === joint);
+        if (!j) continue;
+        j.limits = j.limits ? [Math.max(j.limits[0], limits[0]), Math.min(j.limits[1], limits[1])] : limits.slice();
+    }
+    // Detected couplings get ids after the gears'; those of a kind the v1 contract has
+    // (rackAndPinion) are in the v1 `gears` too, after the meshes (contracts.js mechanismV1Aliases).
+    const detectedCouplings = detected.couplings.map((c, i) => ({...c, id: `c${i}`}));
+    const gears = [...gearResult.gears, ...detectedCouplings.filter(c => V1_COUPLING_KINDS.includes(c.kind))
+        .map(({id, kind, ...rest}) => ({id, type: kind, ...rest}))];
 
     // Loose parts: bodies that no joint links, directly or through other bodies, to the
     // body carrying the hub (or, without a hub, to the largest connected group). They are
@@ -276,6 +315,24 @@ export const compile = (model, catalog, opts = {}) => {
         }
     }
 
+    // Loads (world/objects.js, §5.5): DYNAMIC world bodies the model moves by contact (a pallet),
+    // standing on the floor like the obstacles; a mat carries them as it carries its obstacles.
+    if (Array.isArray(opts.loads)) {
+        const ground = bodies.find(b => b.id === 'ground');
+        const groundTop = ground ? ground.position[1] + 0.01 : 0;
+        const seenIds = new Set();
+        for (const load of opts.loads) {
+            const problems = validateLoad(load);
+            if (!problems.length && seenIds.has(load.id)) problems.push(`duplicate load id '${load.id}'`);
+            if (load && typeof load.id === 'string') seenIds.add(load.id);
+            if (problems.length) {
+                diagnostics.push({severity: 'error', code: 'bad-load', message: problems.join('; '), parts: []});
+                continue;
+            }
+            bodies.push(loadBody(load, groundTop));
+        }
+    }
+
     // Sort bodies deterministically: ground first (if present), then b0,b1... already sorted by smallest part id, but ground is 'ground' should stay first.
     // Our islands bodies are already b0... sorted. We'll keep ground at front.
 
@@ -283,23 +340,31 @@ export const compile = (model, catalog, opts = {}) => {
 
     // Sensors: from placed parts whose catalog entry has a sensor.
     const sensors = [];
+    const sensorParts = new Map(); // a sensor entry -> {part, device, ref}
     for (const pl of knownParts) {
-        const meta = catalogMap.get(pl.part);
-        if (!meta || !meta.sensor) continue;
-        if (!pl.port) {
+        const sensor = partSensor(catalogMap.get(pl.part));
+        if (!sensor) continue;
+        const ref = portRefOf(pl);
+        if (!ref) {
             diagnostics.push({severity: 'warning', code: 'sensor-without-port', message: 'Sensor ' + pl.id + ' has no port', parts: [pl.id]});
             continue;
         }
         let bodyId = islands.nodeToBody.get(pl.id);
         if (!bodyId) bodyId = islands.nodeToBody.get(pl.id + '#out');
         if (!bodyId) continue;
-        const lduOrigin = vecAdd(mat3MulVec3(pl.rotation, meta.sensor.origin), pl.position);
+        const lduOrigin = vecAdd(mat3MulVec3(pl.rotation, sensor.probe.origin), pl.position);
         const worldOrigin = lduToWorld(lduOrigin);
-        const lduDir = mat3MulVec3(pl.rotation, meta.sensor.direction);
+        const lduDir = mat3MulVec3(pl.rotation, sensor.probe.direction);
         const worldDir = dirToWorld(lduDir);
-        sensors.push({port: pl.port, kind: meta.sensor.kind, body: bodyId, origin: worldOrigin, direction: worldDir});
+        const entry = {port: ref.port, kind: sensor.device.sensor.kind, body: bodyId, origin: worldOrigin, direction: worldDir};
+        sensors.push(entry);
+        sensorParts.set(entry, {part: pl.id, device: sensor.device, ref});
     }
     sensors.sort((a, b) => a.port.localeCompare(b.port));
+
+    // v2: the model's hubs, and what each motor and sensor plugs into ({hub, port}).
+    const v2 = opts.version === 2
+        ? bindings(model, knownParts, catalogMap, bodies, jointsResult.jointEntries, sensors, sensorParts, diagnostics) : null;
 
     // Diagnostics: ensure deterministic order? Sort by code then message
     diagnostics.sort((a, b) => {
@@ -326,6 +391,77 @@ export const compile = (model, catalog, opts = {}) => {
     if (problemsOut.length > 0) {
         throw new Error(`compile produced invalid mechanism: ${problemsOut.join('; ')}`);
     }
+    if (!v2) return mechanism;
 
-    return mechanism;
+    const couplings = [...gearResult.gears.map(({id, type, ...rest}) => ({id, kind: type, ...rest})), ...detectedCouplings];
+    const mechanismV2 = {...mechanism, version: 2, bodies: withBodyRoles(mechanism.bodies), hubs: v2.hubs, actuators: v2.actuators,
+        couplings, devices: v2.devices, noCollide: noCollidePairs(joints, couplings, kinds, seatedBodyPairs(graphEdges, islands))};
+    const problemsV2 = validateCompiledMechanism(mechanismV2, {kinds});
+    if (problemsV2.length > 0) {
+        throw new Error(`compile produced invalid mechanism v2: ${problemsV2.join('; ')}`);
+    }
+    return mechanismV2;
+};
+
+/** Body pairs a connector edge joins (a shaft seated in a hole of another body, a motor's housing and output). */
+const seatedBodyPairs = (edges, islands) => {
+    const out = [];
+    for (const e of edges) {
+        const a = islands.nodeToBody.get(e._aNode || e.a.part);
+        const b = islands.nodeToBody.get(e._bNode || e.b.part);
+        if (a && b && a !== b) out.push([a, b]);
+    }
+    return out;
+};
+
+/** Every registered coupling detector, in registration order (registry/kinds.js CouplingKindRegistry). */
+const detectCouplings = (kinds, ctx) => {
+    const out = {couplings: [], welds: [], diagnostics: [], limits: []};
+    for (const module of kinds.couplings.detectors()) {
+        const r = module.detect(ctx) || {};
+        for (const c of r.couplings || []) out.couplings.push({...c, kind: module.kind});
+        out.welds.push(...(r.welds || []));
+        out.diagnostics.push(...(r.diagnostics || []));
+        out.limits.push(...(r.limits || []));
+    }
+    return out;
+};
+
+/**
+ * CompiledMechanism v2's bindings: the hubs (hub parts in body order — hubs[0] is the hub
+ * a port without one means, the one hubsOf picks), an actuator per motorised joint and a
+ * device per sensor, each on {hub, port}. A port naming a part that is no hub is a warning
+ * and plugs into the first hub.
+ */
+const bindings = (model, knownParts, catalogMap, bodies, jointEntries, sensors, sensorParts, diagnostics) => {
+    const profiles = new Map();
+    for (const pl of knownParts) {
+        const profile = partHubProfile(catalogMap.get(pl.part));
+        if (profile) profiles.set(pl.id, profile);
+    }
+    const hubs = [];
+    for (const b of bodies) for (const id of b.parts) if (profiles.has(id)) hubs.push({id, profile: profiles.get(id), body: b.id});
+    const firstHub = hubs.length ? hubs[0].id : null;
+    const hubOf = (ref, partId) => {
+        if (ref.hub === null || ref.hub === undefined) return firstHub;
+        if (profiles.has(ref.hub)) return ref.hub;
+        diagnostics.push({severity: 'warning', code: 'port-hub-unknown', message: `${partId} plugs into '${ref.hub}', which is not a hub; it uses the first hub`, parts: [partId]});
+        return firstHub;
+    };
+    const actuators = [];
+    for (const {joint, members} of jointEntries) {
+        if (!joint.motor) continue;
+        const member = members.find(m => m.edge && m.edge.actuator);
+        const ref = member ? member.edge.actuator.port : {hub: null, port: joint.motor.port};
+        const partId = member ? member.edge.a.part : joint.id;
+        actuators.push({id: `a${actuators.length}`, joint: joint.id, hub: hubOf(ref, partId), port: joint.motor.port,
+            device: member ? member.edge.actuator.device : null, sign: 1, maxTorqueNm: joint.motor.maxTorqueNm,
+            maxSpeedRadPerSec: joint.motor.maxSpeedRadPerSec, ids: Number.isInteger(joint.motor.deviceId) ? {lpf2: joint.motor.deviceId} : {}});
+    }
+    const devices = sensors.map((s, i) => {
+        const {part, device, ref} = sensorParts.get(s);
+        return {id: `d${i}`, part, device: device.id, class: device.class, hub: hubOf(ref, part), port: s.port, body: s.body,
+            ids: {...device.ids}, sensor: s.kind, probe: {kind: 'ray', origin: s.origin, direction: s.direction}};
+    });
+    return {hubs, actuators, devices};
 };

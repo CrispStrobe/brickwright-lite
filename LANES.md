@@ -1,3 +1,20 @@
+## Robot Lab R13 — SPIKE firmware in Renode, lockstep (desktop) — 2026-10-17
+
+PROPOSED — Robot Lab lane. Plan: docs/ROBOT-LAB-SPIKE-EMULATION.md (on lane/simlab-next-20261017, PR #1049's follow-up). Owns new code only:
+`overlay/scratch-gui/src/lib/bw-sim/hubs/spike/spike-firmware-hub.js`,
+`overlay/scratch-gui/src/lib/bw-sim/routes/renode-lockstep/**`, `test/bw-sim-renode-lockstep*`,
+and, coordinated with the SPIKE native owners below, ADDITIVE native operations
+`renode.spike.lockstep.{begin,step,end}` (validator in `apps/tauri/src-tauri/src/arena_inputs.rs`,
+policy/capability entries, the lockstep wait in `renode_brick_state.rs`, the OPERATIONS map in
+`native-renode-capability.js`) behind the target capability `lockstep/v1`. Does not change the
+arena session/bridge, existing ops, frame formats, firmware, Runtime/model pins or packages.
+Consumes Runtime `lockstep/v1`, `motor-bridge-drive/v1`, `external-shaft/v1`,
+`nuttx-program-deferred-start/v1` only at reviewed exact pins. Desktop-only; the web build
+keeps the route disabled. First slice R13-M (measurement), then R13a.
+Coordination: renode-infrastructure-spike-prime#37 (external shaft), renode-spike-prime#58
+(lockstep command, profiling), brickwright-spike-prime-fw#54 (FYI), brickwright-lite#1055
+(broker ops, session bound — SPIKE G02 owners: please say whether you own the native part).
+
 ## C9 — AVR instruction-cost layout investigation — 2026-10-17
 
 HANDOFF READY — diagnostic producer delivery is complete; a fresh agent may
@@ -123,7 +140,7 @@ exact-head hosted checks remain required before source merge.
 
 ## Compose STM32 PR975 after circuit PR965 — 2026-10-16
 
-CLAIMED — Codex root,
+DONE candidate / QUALIFICATION PENDING — Codex root, isolated `local worktree/receipt (see ignored local handoff)`,
 branch `lane/stm32-compose-20261016`, base main `5cb83052330b400b48293315260cb4293b4f6bcf`.
 The user explicitly requested completion of these integrations in order. PR965
 is now merged; a read-only merge of PR975 `943d540c7` reports thirteen conflicts.
@@ -146,6 +163,97 @@ owner work rather than dropping it. Merge this claim to remote main before
 implementation. Require identity/notice/pin reader controls, affected STM32
 and circuit controls and all enabled exact-head CI before merging the combined
 candidate; no installed or physical validation is inferred.
+
+## bw-circuit-ui adoption 873f68b — taken over from A13 — 2026-10-17
+
+CLAIMED — Claude (Lite Code tab lane, H7), branch `lane/cui-pin-873f68b-20261017`,
+at the owner's direction while the A13 Codex lane is paused. Adopts
+bw-circuit-ui master 873f68b: A13's merged CPX live face (bw-circuit-ui #85),
+the STM32F030 chip body that replaces the LED-dimmer example's ghost outline
+(#88), and B20 ledger entries. bw-circuit-ui's dependencies are unchanged, so
+this is the same 16-surface SHA swap as earlier adoptions; history docs keep
+their recorded pins. A13's own Lite wiring (circuit-tab.jsx cpxState and
+onCpxInput) stays with A13 and is not part of this adoption.
+
+Composition receipts: claim PR1016 merged before implementation. All thirteen
+conflicts resolved without changing original assertions or supplier runtime;
+canonical package/lock/notice writers retain CUI1db, Boardf84 and SBCa13.
+Installed root and GUI provenance, metadata, notices and mirrored facts pass.
+Focused affected controls: 78 passed; the one source-identity skip was separately
+rerun against an isolated SBC checkout at a13 and passed all four controls with
+zero skips. Thirteen x86 reach/compiler/mutation controls also pass. The exact
+Board census, language matrix, 8086 report and part-profile readers pass; the
+matrix writer corrected a stale abbreviated Board label. The generic SBC sync
+check refuses an intentionally pinned checkout behind current supplier main;
+the exact-pin 19-file vendor-identity gate passes instead, with no bypass or pin
+expansion. The standard GUI build passes; explicit production build and browser
+qualification are in progress. All enabled final-head CI remains a landing gate.
+Original PR975 head rechecked unchanged at 943d540c7 before this candidate commit.
+
+STM32 composition reconciliation (2026-10-16): previous head7a82a14f passed
+every enabled hosted check in run38945321982. Current main6f2993d6b adds the
+qualified iOS packaging and independent Sim Lab slice, plus claims. Original
+PR975 advanced to4d0cabe24: its matrix label is already present; its register
+reader fix is incorporated with the explanatory comment while retaining this
+386-only gate's strict edi assertion and existing timeout, per the merged claim.
+Normal merges preserve both histories and all newer main changes. This changed
+combined head requires fresh exact-head CI before landing.
+
+Final integration reconciliation includes main8a63ad26f, preserving merged
+CPX1009, SPIKE pending-stop990 and the Arcade owner's new claim. The only
+conflict is ledger placement; keep this lane's receipts within its own section
+to avoid collisions with other appended claims. No supplier, assertion or
+workflow changes. Fresh exact-head full CI remains required on this composition.
+
+Implementation after claimPR1039 merged as8999ced4d: the new direct command
+`node scripts/verify-sim-physics.mjs` parses the actual reference LDraw model,
+compiles unchanged metadata, drives the unchanged hub/core and runs the actual
+physics-worker entry through a Node-only message adapter and original client.
+The two-second reference run moves0.491813m, with measured opposing encoders
+and negligible yaw. The worker advances100 fixed steps and returns measured
+wheel rotation. Unknown models/options fail with no successful output; all
+worker/core resources and clock ownership are released. Both original failing
+guards now pass without any allowlist or assertion change. Build includes only
+the missing governed plan path.
+
+Broader execution exposed an existing worker fixture's unlabelled root-to-GUI
+resolution. The original worker determinism test now uses the same adapter to
+the actual integrated worker, preserving every byte-identical snapshot assertion
+and protocol. This resolves through the GUI's native dependency scope, without
+new scope exemptions or suppressed diagnostics. All88 affected controls pass,
+zero skips/failures/raw stdout; the unchanged GUI boundary checker also passes.
+Retain original hosted failures and initial boundary log; final TAP+census are
+`local worktree/receipt (see ignored local handoff)`. Installed-source verification
+is in progress; final source-head CI still gates the integration merge.
+
+Main reconciliation (2026-10-17): compose the qualified Sim Lab GUI PR1030
+and release ownership claim PR1011 from main e2225bb05. Preserve both histories,
+all simulator runtime and browser controls, and the release owner's contract.
+The worker test keeps main's explicit test identity while exercising the actual
+integrated worker. Remove only the two newly added KNOWN_DEAD worker/client
+exceptions: the real headless command now consumes both, as the unchanged
+stale-exception assertion requires. Main already supplies the governed plan
+trigger, so retain its single entry rather than duplicating it. The original
+trigger and dead-module guards pass all14 controls, zero skips. Combined
+simulator execution and the fresh source-head qualification remain pending.
+
+Final reconciled controls: 100 passed, zero failures/skips/raw stdout; GUI
+dependency boundary passes. Fresh canonical dependency preparation and installed
+root/GUI exact-source provenance plus single-engine resolution pass. Retain
+`local worktree/receipt (see ignored local handoff)` and the
+provenance log. Internal npm scratch exhaustion was repaired using task-specific
+external npm cache/temporary directories; package pins and assertions unchanged.
+All enabled checks on this final composed source head remain required to land.
+
+## A13 CPX face Lite wiring — taken over — 2026-10-17
+
+CLAIMED — Claude (Lite Code tab lane), branch `lane/a13-cpx-face-takeover-20261017`,
+at the owner's direction while the A13 Codex lane is paused. Lands A13's
+Lite wiring as Codex left it on `lane/a13-cpx-face-adoption-20261016`
+(circuit-tab.jsx cpxState/onCpxInput forwarding, verify-cpx-circuit-face,
+cpx-circuit-face and file-menu tests, and their CI step), merged with
+current main. bw-circuit-ui stays at main's pin, which already contains the
+CPX face component. Heavy proofs run only in hosted CI.
 
 ## A13 — CPX live circuit face adoption — 2026-10-16
 
@@ -5700,7 +5808,8 @@ changes no runtime semantics, and claims no physical hardware acceptance.
 
 ## STM32 composition: original 386 boot register reader — 2026-10-16
 
-CLAIMED — Codex root, branch `lane/stm32-compose-20261016`, amendment based on main `e1e5bc30b`.
+DONE candidate — Codex root, branch `lane/stm32-compose-20261016`, isolated
+`local worktree/receipt (see ignored local handoff)`, amendment based on main `e1e5bc30b`.
 Merge this claim before changing the existing synthetic boot assertion in
 `scripts/verify-i80386-local-hdd-gui.mjs`: read the selected supplier's `edi`
 instead of absent `di`, retaining equality to42, exact halted/PC/canvas checks
@@ -5719,6 +5828,17 @@ No relaxed comparison, fallback register name, timeout increase, skipped gate,
 CI bypass or source rewrite is permitted. The corrected actual browser gate
 and all enabled final-head source checks must pass before integration merge.
 
+The original synthetic check now reads `edi` with all other comparisons and
+timeouts unchanged. The unchanged original failed locally at45000ms and in both
+hosted light jobs; those logs remain retained. The corrected production journey
+passes using the same selected Boardf84, owned disk SHA256
+`f9e63c15c20fc87058d053c3badbc0d146206543af0dc2af7a7e05537184474a`
+and unchanged config: halted PC31770, VGA720×400, actual guest pixels equal the
+video frame, nonblack marker and zero browser errors. Receipt and screenshot:
+`local worktree/receipt (see ignored local handoff)`, `local worktree/receipt (see ignored local handoff)`.
+The failed original is the regression negative; no duplicate source-spelling
+test is added for this one-line reader fix. One automatic fresh final-head CI
+set remains required before PR1017 merges; original PR975 remains untouched.
 ## CPX translator qualification diagnostic transport — 2026-10-16
 
 RELEASED — completed by the existing CPX owner; verified by Codex root,
@@ -5856,8 +5976,8 @@ handler/value claims confer no authority here.
 
 ## Sim Lab S1 headless consumer and integration guards — 2026-10-17
 
-CLAIMED — Codex root, source implementation to follow on the existing STM32
-composition branch after this claim merges. User requested continued software
+DONE candidate / QUALIFICATION PENDING — Codex root, implemented on the existing
+STM32 composition branch after claimPR1039 merged. User requested continued software
 integration. Hosted run38975443782 passes both browsers/build/corpus but unit2
 finds the Sim Lab plan missing from trigger paths and five S1 entry modules
 without a non-test consumer. Own only the already planned
@@ -5959,7 +6079,7 @@ documentation-only ownership claim.
 
 ## iPad chrome fit, menu localization and WeDo acceptance — 2026-10-17
 
-CLAIMED — Codex root, branch `docs/ipad-chrome-wedo-claim-20261017`.
+SOURCE LANDED — Codex root, claim branch `docs/ipad-chrome-wedo-claim-20261017`; implementation PR1050 merged as `fc385cada4d2ff6aab21e22bdcc38dc696d9c787`. Signed delivery and physical acceptance remain in this lane.
 User reports cramped touch-screen editor tabs, invisible collapsed-toolbar
 ellipsis, untranslated menus, dim 88005 and silent clone piezo after installing
 the qualified local candidate. Preserve the completed H1–H5 Code-toolbar owner
@@ -5990,3 +6110,157 @@ substitution. Any demonstrated extension fix belongs upstream first, with a
 separate exact-pin adoption claim if necessary. All machine/device details
 and raw receipts stay in ignored local context. Acknowledge a working external
 LED separately from hub RGB; current user reports LED works but is too dim.
+
+Implementation checkpoint: claim PR1048 merged as `1e8c271e2` before source
+edits; source branch `fix/ipad-chrome-l10n-20261017` is locally qualified.
+Tabs now use measured label fit, separate icons and localized accessible names;
+the collapsed touch strip keeps its ellipsis visible. Settings and native File
+labels use the selected app's EN/DE catalog, including regional German locales.
+The catalog is applied through the existing locales reducer and preserved on
+catalog replacement. No action or serialized setting values were changed.
+The production build passed with two existing size warnings. All 77 focused and
+integration controls passed, followed by the complete Chromium responsive gate:
+22 browser observations, zero page errors, including actual tab switching,
+portrait/landscape touch contexts, icon-only desktop keyboard reach and EN/DE
+Settings/File actions with an English browser locale. These receipts describe
+the locally built working tree; final published-head CI, source merge and a
+fresh signed native build/install remain pending. Keep the A13 CPX/File candidate
+when composing that native build; do not replace it with the older main pins.
+
+Physical acceptance remains separate: full reversed LED power on numeric port
+2 was visibly brighter, but the prior iPad brightness value is unknown. Correct
+legacy piezo writes with and without response remained silent. LWP3 endpoints
+were absent from complete discovery; no valid LWP3 tone was sent. The actual
+node-poweredup encoder matches those bytes. Its independent Bluetooth retry
+connected, discovered the piezo and sent its own short low/high/low sequence;
+the user again reported no sound. The earlier scan-only failure remains separate.
+See [protocol findings and bounded next experiments](docs/WEDO-HUB-PROTOCOL-NOTES.md).
+Hardware/model identification or a genuine-hub comparison remains open; do not
+claim a new buzzer fix or change supplier pins without demonstrated evidence.
+
+Touch-size follow-up: the previously delivered native app predates this source
+candidate. Touch tabs now require 44px targets, 20px icons and 14px labels;
+the browser gate checks that visible icon/text boxes remain within each tab.
+Layout measurement loads in a local deferred chunk, and English defaults stay
+in the actual message descriptors instead of a duplicate catalog. This addresses
+the original startup-size failure without relaxing its budget. The solo-dock
+contract now checks the localized descriptor while retaining the stored `solo`
+value; the initial failed hosted receipts remain part of the record. About and
+8086 menu labels are localized too. Final production size/browser/native receipts
+and exact-head hosted qualification remain required for this follow-up.
+
+Delivery checkpoint: candidate `f869cb229` normally composes GUI `5aeddbc12`
+with the published A13 CPX/File candidate. Its production frontend passed with
+zero errors and two size warnings; initial JavaScript is 4,464,144 bytes against
+the unchanged 4,467,136-byte production ownership limit. The physical iOS archive
+passed strict signature/platform checks, contains the fresh frontend entrypoint,
+and contains neither duplicate frontend resources nor a bundled static archive.
+All 97 focused controls and 20 Chromium observations passed, including fresh
+iPad-sized contexts, EN/DE menus, visible-content containment and actual tab
+switching. The browser reader now waits for project-loading coverage to clear
+and creates fresh contexts for each orientation. WebKit's scaled automation
+coordinates require separate qualification; do not call its full matrix passed.
+
+The candidate was installed successfully over WLAN. Its launch command was
+blocked by the locked iPad; visible UI and hardware acceptance remain pending.
+The full-power LED implementation is included: this observed clone's physical A
+requires logical B, 100%, reversed polarity. No additional brightness defect or
+buzzer success is claimed. Source PR1050 and the earlier integration ownership
+still require final enabled exact-head hosted qualification before main landing.
+
+The user confirmed that the delivered tabs are much better, but reported a blank
+collapse button on iPad. Replace both font glyphs with explicit centered SVG
+chevron/dots, preserving the localized button name, pressed state and hit target.
+The browser reader now requires a visible 20px SVG with nonempty drawing bounds
+in both states. Qualify the rendering and send a fresh native candidate; physical
+icon acceptance remains pending that delivery.
+
+Physical follow-up: SVG candidate `9ba9a2e89` was installed over WLAN, but the
+user still sees a blank collapse button with a small white bar. Its desktop
+WebKit/Chromium SVG checks do not establish physical iPad rendering success.
+Replace the icon with CSS border/box-shadow shapes and disable native button
+appearance, keeping both 20px icon states and the existing 44px touch target.
+The reader checks the actual pseudo-element, and the delivery proof must also
+inspect painted pixels in both states before building/installing the next
+identified candidate. Ask for physical confirmation after delivery; do not
+claim the cause or the visual defect resolved from geometry checks alone.
+
+Direct physical-screen evidence now shows the button's left edge clipped at
+the scrolling tab-list boundary, with its remaining area missing. Reopening
+the app did not change it. The CSS-only candidate was stopped before delivery.
+Portal the toggle to the document body, outside the overflow container, and
+reserve space beside the compact tabs; keep tab measurement attached to the
+actual tab list. Explicitly hide the portaled control in stage fullscreen.
+Qualify both icon states, tab scrolling, hit targets, label fit and fullscreen
+entry/exit, then capture the installed iPad toolbar directly to check the
+result. Direct screenshots and machine-specific capture tooling stay ignored.
+
+Delivery checkpoint: candidate `bc5685b9e` normally composes this portal fix
+with the existing A13 candidate and is installed and launched on the physical
+iPad over WLAN. Strict signing/platform/fresh-frontend checks pass; app size
+remains 84.05 MiB. Eight EN/DE Chromium/WebKit icon paint checks pass with forced
+tab-strip clipping/scrolling and fullscreen entry/exit, plus twelve actual
+Chromium responsive tab/menu observations. Direct device screenshots now work.
+The post-install screenshot has a floating video covering the toggle, so final
+physical chevron acceptance is pending an unobstructed expanded toolbar capture.
+This is an installed candidate; final hosted source qualification/main landing
+remains separate. No connection-recovery supplier adoption is included.
+
+### H1–H3 main reconciliation — 2026-10-17
+
+Preserve the current Code-tab error recovery, matrix reach popover and TypeScript landing cell. The normal merge had only two ledger conflicts (privacy cleanup versus completed candidate status); retain both facts without restoring private locations. No source conflict resolution was required. Fresh combined controls and exact-head hosted qualification are required before integration landing.
+
+Reconciled H1–H3 controls: 113 passed, zero failures/skips. Initial stale generated lazy-loader check was retained as negative evidence; canonical integration regenerated the ignored installed copy. Assertions unchanged; final exact-head hosted CI still gates merge.
+
+### Delivery handoff — 2026-10-17
+
+See [current integration status and scoped next actions](docs/WEDO-IPAD-INTEGRATION-HANDOFF.md). Completed work is committed; source integration PR1017 requires reconciliation with the latest H1–H3 main changes before final CI/landing, followed by A13 source qualification. No hardware acceptance is claimed. Private machine/device details and continuation receipts are only in ignored local `CLAUDE.md`; all peer claims remain owned.
+
+## WeDo connection recovery adoption — 2026-10-17
+
+SOURCE LANDED — Codex root, claim branch `docs/wedo-recovery-adoption-20261017`; immutable adoption merged in PR1050 as `fc385cada4d2ff6aab21e22bdcc38dc696d9c787`. Native/device follow-ups retain the boundaries below.
+Adopt the published WeDo supplier connection-recovery commit `98eca46ed343ffe186e737062fdc68716f28ca6c` (upstream PR50 merged as `c0223a134d1be45dbe939a3f078224f22229b71f`). Own only the `wedo2unified` pin, its canonical generated extension wrapper, focused recovery/LED/tone conformance controls, and the associated public delivery/protocol records. Merge this claim to remote main before implementation. Use the supplier sync workflow; never hand-edit the bundled wrapper or other suppliers' pins. Qualify exact source freshness, failed-connect cleanup, bounded waits, concurrent attempts, retry without app restart, and existing light/tone commands. Native Bluetooth readiness/session ownership work remains separately scoped; do not claim physical connection or buzzer success from these deterministic controls. Compose this adoption with the owned iPad chrome fixes after their CI failures are resolved, qualify enabled exact-head CI, then build/sign/install an identified current-main candidate. Keep local paths, device identifiers, screenshots and raw receipts in ignored handoffs.
+
+### Reconciled UI and recovery follow-through
+
+Upstream recovery PR50 is merged; adoption claim PR1059 is merged before the
+WeDo pin/wrapper update. This branch now normally composes current main,
+preserving the completed STM32/A13/SimLab work and both ledger sections.
+The previous browser failures were the 46px toolbar exceeding its 44px limit
+and startup JavaScript exceeding the unchanged ownership cap. Restore the row
+to 44px with 44px targets and load packaged About credits only when needed,
+with localized loading/retry states. Qualify the actual credits content after
+loading, the phone chrome geometry, vendor freshness/recovery/LED controls,
+and exact-head hosted CI before normal merge. Earlier installed candidates
+remain identified separately; no new physical hub or buzzer acceptance is implied.
+
+### Reconciled delivery checkpoint — 2026-10-18
+
+STM32 PR1017, A13 PR1015/PR1057 and SimLab PR1058 have landed. Earlier
+instructions to wait for or restart their integration controllers are historical.
+WeDo supplier PR50 merged as `c0223a134d1be45dbe939a3f078224f22229b71f`;
+Lite claim PR1059 preceded the immutable recovery adoption in PR1050.
+PR1050 source `8b7ae49e239cbfa2e790c50ca0efd48f62046c10` passed all
+enabled checks and merged normally as `fc385cada4d2ff6aab21e22bdcc38dc696d9c787`. The existing iPad/WeDo lane
+retains qualification, main composition and signed-app delivery ownership.
+See [the updated handoff](docs/WEDO-IPAD-INTEGRATION-HANDOFF.md) for bounded
+acceptance tasks and explicit native Bluetooth, buzzer, D13 and size follow-ups.
+The installed earlier candidate does not yet establish current-main delivery
+or physical caret acceptance. Other owners' nondefault/dirty repository
+checkouts are preserved; no blanket rebase or supplier bump is claimed.
+
+### Integrated-main native checkpoint — 2026-10-18
+
+PR1050 is landed and every enabled exact-head gate passed. Current-main
+`fc385cada4d2ff6aab21e22bdcc38dc696d9c787` production frontend, unchanged
+startup ownership budget, eight EN/DE Chromium/WebKit painted-icon controls,
+responsive actions and physical-iOS compilation pass. Signing stopped with
+`errSecInternalComponent` while the Mac screen was locked; direct signing
+confirmed that remaining block. No new iPad installation is claimed. The
+private continuation verifies the compiled app, waits for unlock, then signs
+and verifies before attempting WLAN delivery; it does not rebuild unchanged
+sources or take unsolicited screenshots of other foreground apps. The
+previous installed candidate and receipts are preserved. Remaining native
+readiness, physical toolbar/connection/LED acceptance and clone buzzer tasks
+are bounded in the current handoff; no additional native or firmware work
+is implicitly claimed.

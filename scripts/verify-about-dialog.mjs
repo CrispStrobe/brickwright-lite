@@ -39,11 +39,14 @@ const EXPECTED_ENTRIES = [
 
 async function verify() {
     const browser = await chromium.launch({ headless: true });
-    const page = await browser.newPage({viewport: {width: 1280, height: 720}});
+    const page = await browser.newPage({viewport: {width: 1280, height: 720}, serviceWorkers: 'block'});
     await page.addInitScript(() => localStorage.setItem('bw-starter-v1-complete', '1'));
     page.on('dialog', d => d.accept());
     const pageErrors = [];
     page.on('pageerror', error => pageErrors.push(String(error)));
+    let failCredits = true;
+    await page.route('**/*about-credits*.js', route =>
+        failCredits ? route.abort() : route.continue());
 
     let ok = true;
     const fail = msg => { ok = false; console.error(`  FAIL: ${msg}`); };
@@ -52,11 +55,11 @@ async function verify() {
     try {
         console.log(`Opening ${URL} ...`);
         await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
-        await page.getByText('Settings', {exact: true}).waitFor({state: 'visible', timeout: 60000});
+        await page.getByTestId('bw-settings-menu-trigger').waitFor({state: 'visible', timeout: 60000});
 
         // Use the labelled menu surface, not CSS-module class fragments shared
         // by unrelated settings content.
-        const settingsBtn = page.getByText('Settings', {exact: true});
+        const settingsBtn = page.getByTestId('bw-settings-menu-trigger');
         await settingsBtn.click();
 
         // The label is intentionally bilingual; this is the user-facing action.
@@ -67,6 +70,14 @@ async function verify() {
         // Check dialog is open
         const groups = page.getByTestId('about-licence-groups');
         await groups.waitFor({state: 'visible', timeout: 10000});
+        const retryCredits = groups.getByRole('button', {name: 'Load credits again', exact: true});
+        await retryCredits.waitFor({state: 'visible', timeout: 10000});
+        pass('failed credits load exposes a retry');
+        failCredits = false;
+        await retryCredits.click();
+        // Credits are a packaged lazy chunk: wait for its actual entries.
+        await groups.getByText(EXPECTED_ENTRIES[0], {exact: false}).first()
+            .waitFor({state: 'visible', timeout: 10000});
         pass('About dialog opened');
 
         const manifest = await page.evaluate(async () => {

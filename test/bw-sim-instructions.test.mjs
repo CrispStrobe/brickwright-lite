@@ -39,7 +39,9 @@ const load = text => {
 };
 const MODELS_UNDER_TEST = [
     {name: 'S1 driving base (test fixture)', text: read('test/fixtures/bw-sim/driving-base.ldr')},
-    ...MODELS.map(m => ({name: m.file, text: readFileSync(path.join(GUI, MODELS_BASE, m.file), 'utf8')}))
+    // One entry per model FILE: a robot listed twice in MODELS (e.g. the Colour explorer again as
+    // the Sumo example, keyed by its id) has one set of building instructions.
+    ...[...new Set(MODELS.map(m => m.file))].map(file => ({name: file, text: readFileSync(path.join(GUI, MODELS_BASE, file), 'utf8')}))
 ];
 
 /** Which parts touch which: the connector graph's edges, a motor's two nodes as one part. */
@@ -151,7 +153,7 @@ for (const {name, text} of MODELS_UNDER_TEST) {
  * and depth, on either side of the hub's centre plane x = hub.x.
  */
 const mirroredStructural = model => {
-    const hub = model.parts.find(p => CATALOG.get(p.part).hub);
+    const hub = model.parts.find(p => CATALOG.get(p.part).hubProfile);
     const out = [];
     for (const a of model.parts) {
         if (['pin', 'axle'].includes(category(model, a.id)) || a.position[0] <= hub.position[0]) continue;
@@ -163,7 +165,14 @@ const mirroredStructural = model => {
     return out;
 };
 
-for (const {name, text} of MODELS_UNDER_TEST) {
+/** The driving bases: a motor and a wheel either side of the hub (the Forklift has one lift motor). */
+const DRIVING_BASES = MODELS_UNDER_TEST.filter(m => /!BW ID motorL\b/.test(m.text));
+test('the mirrored-pair check covers the fixture and every shipped driving base', () => {
+    assert.deepEqual(DRIVING_BASES.map(m => m.name),
+        ['S1 driving base (test fixture)', 'driving-base.ldr', 'line-follower.ldr', 'wall-stopper.ldr', 'colour-explorer.ldr']);
+});
+
+for (const {name, text} of DRIVING_BASES) {
     test(`${name}: mirrored pairs go on in one step, counted 2x in its callout`, () => {
         const model = load(text);
         const plan = buildSteps(model, CATALOG);

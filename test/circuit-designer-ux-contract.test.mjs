@@ -115,7 +115,7 @@ test("debugger-only pane: dock 'solo' portals just the DebugPanel while coding",
     // 'solo' on the Circuit tab fell back to the tiny instruments dock.
     assert.match(header, /dock: 'right'/);
     assert.match(header, /debuggerFull/);
-    assert.match(settings, /\{value: 'solo', label: 'Full pane'\}/);
+    assert.match(settings, /\{value: 'solo', label: t\('gui\.workspace\.fullPane', 'Full pane'\)\}/);
 });
 
 test('Green Flag and Red Flag reach Circuit Designer even without MCU code', () => {

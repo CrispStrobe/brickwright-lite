@@ -8,7 +8,7 @@
 // against a scratch copy, and only when every one of them is valid does the
 // model change, with a single history entry (all or nothing).
 
-import {validatePlacedModel} from '../contracts.js';
+import {validatePlacedModel, partMotorJoint} from '../contracts.js';
 import {placePart as snapPlacePart} from './snap.js';
 
 const cloneModel = model => {
@@ -79,7 +79,7 @@ export const portsForCopies = (model, catalog, parts) => {
     const assigned = new Map();
     for (const part of sorted) {
         const meta = catalogMap.get(part.part);
-        const isMotor = !!(meta && meta.motor);
+        const isMotor = Boolean(partMotorJoint(meta));
         const isSensor = !!(meta && meta.category === 'sensor');
         if (!isMotor && !isSensor) {
             assigned.set(part.id, undefined);
@@ -171,7 +171,7 @@ export const createEditor = ({model, catalog}) => {
                 if (color !== undefined && !(Number.isInteger(color) && color >= 0)) throw new Error(`bad colour ${color}`);
                 if (port !== undefined && port !== null) {
                     const meta = catalogMap.get(part);
-                    const isMotor = !!meta.motor;
+                    const isMotor = Boolean(partMotorJoint(meta));
                     const isSensor = meta.category === 'sensor';
                     if (!isMotor && !isSensor) throw new Error(`port on non-motor/sensor part '${part}'`);
                     if (!['A','B','C','D','E','F'].includes(port)) throw new Error(`bad port '${port}'`);
@@ -356,7 +356,7 @@ export const createEditor = ({model, catalog}) => {
                 if (idx === -1) throw new Error(`unknown id '${id}'`);
                 const meta = catalogMap.get(current.parts[idx].part);
                 if (port !== null && port !== undefined) {
-                    const isMotor = !!meta.motor;
+                    const isMotor = Boolean(partMotorJoint(meta));
                     const isSensor = meta.category === 'sensor';
                     if (!isMotor && !isSensor) throw new Error(`port on non-motor/sensor part '${current.parts[idx].part}'`);
                     if (!['A','B','C','D','E','F'].includes(port)) throw new Error(`bad port '${port}'`);

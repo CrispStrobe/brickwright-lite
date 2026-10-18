@@ -1,6 +1,6 @@
 {
- "$comment": "Sim Lab part metadata v1 (docs/SIM-LAB-PLAN.md B3a). Authored by hand for this project from the official LDraw geometry, measured with bw-sim/ldraw/ldraw-geometry.js; never copied from BrickLink Studio, LDCad or any other connectivity database (plan D4). LDraw frame and units (LDU, -y up). test/bw-sim-part-meta.test.mjs checks every connector against the part mesh. Masses are estimates to +-20% (no published per-part masses); motor torque is LEGO's published stall torque for the medium angular motor (18 Ncm) and speed is the SPIKE 3 velocity limit used by docs/SPIKE-ARENA.md.",
- "version": 1,
+ "$comment": "Sim Lab part metadata v2 (docs/SIM-LAB-PLAN.md B3a; PartMeta v2 in bw-sim/contracts.js, docs/ROBOT-LAB-ARCHITECTURE.md §5.4: a motor or sensor names its device, whose numbers are in bw-sim/devices/catalog.js). Authored by hand for this project from the official LDraw geometry, measured with bw-sim/ldraw/ldraw-geometry.js; never copied from BrickLink Studio, LDCad or any other connectivity database (plan D4). LDraw frame and units (LDU, -y up). test/bw-sim-part-meta.test.mjs checks every connector against the part mesh. Masses are estimates to +-20% (no published per-part masses); motor torque is LEGO's published stall torque for the medium angular motor (18 Ncm) and speed is the SPIKE 3 velocity limit used by docs/SPIKE-ARENA.md.",
+ "version": 2,
  "references": [
   "39370c01.dat"
  ],
@@ -1064,21 +1064,35 @@
      ]
     }
    ],
-   "motor": {
-    "output": [
-     "out",
-     "out0",
-     "out1",
-     "out2",
-     "out3"
-    ],
-    "outputColliders": [
-     1
-    ],
-    "maxTorqueNm": 0.18,
-    "maxSpeedDegPerSec": 1110,
-    "deviceId": 48
-   },
+   "internalJoints": [
+    {
+     "id": "motor",
+     "type": "hinge",
+     "point": [
+      0,
+      -40,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "movingConnectors": [
+      "out",
+      "out0",
+      "out1",
+      "out2",
+      "out3"
+     ],
+     "movingColliders": [
+      1
+     ],
+     "massFraction": 0.15,
+     "actuatedBy": "device"
+    }
+   ],
+   "device": "spike-medium-angular",
    "nameDe": "Mittlerer Motor"
   },
   {
@@ -1807,16 +1821,7 @@
      ]
     }
    ],
-   "hub": {
-    "ports": [
-     "A",
-     "B",
-     "C",
-     "D",
-     "E",
-     "F"
-    ]
-   },
+   "hubProfile": "spike-prime",
    "nameDe": "SPIKE Prime Hub"
   },
   {
@@ -3554,21 +3559,35 @@
      ]
     }
    ],
-   "motor": {
-    "output": [
-     "out",
-     "out0",
-     "out1",
-     "out2",
-     "out3"
-    ],
-    "outputColliders": [
-     1
-    ],
-    "maxTorqueNm": 0.38,
-    "maxSpeedDegPerSec": 1050,
-    "deviceId": 49
-   },
+   "internalJoints": [
+    {
+     "id": "motor",
+     "type": "hinge",
+     "point": [
+      0,
+      -40,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "movingConnectors": [
+      "out",
+      "out0",
+      "out1",
+      "out2",
+      "out3"
+     ],
+     "movingColliders": [
+      1
+     ],
+     "massFraction": 0.15,
+     "actuatedBy": "device"
+    }
+   ],
+   "device": "spike-large-angular",
    "nameDe": "Großer Motor"
   },
   {
@@ -3658,8 +3677,9 @@
     }
    ],
    "nameDe": "Farbsensor",
-   "sensor": {
-    "kind": "color",
+   "device": "spike-color",
+   "probe": {
+    "kind": "ray",
     "origin": [
      0,
      0,
@@ -3759,8 +3779,9 @@
     }
    ],
    "nameDe": "Abstandssensor",
-   "sensor": {
-    "kind": "distance",
+   "device": "spike-distance",
+   "probe": {
+    "kind": "ray",
     "origin": [
      0,
      0,
@@ -3860,8 +3881,9 @@
     }
    ],
    "nameDe": "Kraftsensor",
-   "sensor": {
-    "kind": "force",
+   "device": "spike-force",
+   "probe": {
+    "kind": "ray",
     "origin": [
      0,
      0,
@@ -5956,6 +5978,26 @@
       1
      ],
      "length": 40
+    },
+    {
+     "id": "w",
+     "type": "worm",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 40,
+     "data": {
+      "pitchRadiusLdu": 10,
+      "hand": 1,
+      "starts": 1
+     }
     }
    ],
    "colliders": [
@@ -5970,21 +6012,7 @@
       0.7071067811865476
      ]
     }
-   ],
-   "gear": {
-    "type": "worm",
-    "teeth": 1,
-    "axis": [
-     0,
-     0,
-     1
-    ],
-    "center": [
-     0,
-     0,
-     0
-    ]
-   }
+   ]
   },
   {
    "part": "32063.dat",
@@ -6537,6 +6565,391 @@
      0
     ]
    }
+  },
+  {
+   "part": "64781.dat",
+   "name": "Technic gear rack 1 x 13 with holes",
+   "nameDe": "Technic-Zahnstange 1 x 13 mit Löchern",
+   "category": "gear",
+   "massGrams": 4,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      -120,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      120,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "a0",
+     "type": "axlehole",
+     "position": [
+      -100,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "a1",
+     "type": "axlehole",
+     "position": [
+      100,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "t",
+     "type": "rack-teeth",
+     "position": [
+      0,
+      -5,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 176,
+     "data": {
+      "normal": [
+       0,
+       -1,
+       0
+      ],
+      "widthLdu": 20
+     }
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      88,
+      8.75,
+      10
+     ],
+     "position": [
+      0,
+      1.25,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      21,
+      10,
+      10
+     ],
+     "position": [
+      -109,
+      0,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      21,
+      10,
+      10
+     ],
+     "position": [
+      109,
+      0,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "part": "3743.dat",
+   "name": "Technic gear rack 1 x 4",
+   "nameDe": "Technic-Zahnstange 1 x 4",
+   "category": "gear",
+   "massGrams": 1.5,
+   "connectors": [
+    {
+     "id": "t",
+     "type": "rack-teeth",
+     "position": [
+      0,
+      -3.5,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 80,
+     "data": {
+      "normal": [
+       0,
+       -1,
+       0
+      ],
+      "widthLdu": 20
+     }
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      40,
+      7,
+      10
+     ],
+     "position": [
+      0,
+      1,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "part": "48496.dat",
+   "name": "Technic toggle joint smooth, double, with 2 pins",
+   "nameDe": "Technic-Kippgelenk glatt, doppelt, mit 2 Pins",
+   "category": "connector",
+   "massGrams": 1.3,
+   "connectors": [
+    {
+     "id": "p0",
+     "type": "pin",
+     "position": [
+      0,
+      10.5,
+      -20
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 19,
+     "friction": false
+    },
+    {
+     "id": "p1",
+     "type": "pin",
+     "position": [
+      0,
+      10.5,
+      20
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 19,
+     "friction": false
+    },
+    {
+     "id": "e0",
+     "type": "slide-bore",
+     "position": [
+      0,
+      -30,
+      -25
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 10
+    },
+    {
+     "id": "e1",
+     "type": "slide-bore",
+     "position": [
+      0,
+      -30,
+      25
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 10
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      9,
+      9,
+      30
+     ],
+     "position": [
+      0,
+      -30,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      9,
+      5,
+      30
+     ],
+     "position": [
+      0,
+      -5,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      9,
+      5.5,
+      9
+     ],
+     "position": [
+      0,
+      -15.5,
+      -21
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      9,
+      5.5,
+      9
+     ],
+     "position": [
+      0,
+      -15.5,
+      21
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      8,
+      10,
+      8
+     ],
+     "position": [
+      0,
+      10,
+      -20
+     ],
+     "region": "pin"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      8,
+      10,
+      8
+     ],
+     "position": [
+      0,
+      10,
+      20
+     ],
+     "region": "pin"
+    }
+   ]
+  },
+  {
+   "part": "2823.dat",
+   "name": "Technic forklift fork",
+   "nameDe": "Technic-Gabelzinke",
+   "category": "other",
+   "massGrams": 2.8,
+   "connectors": [
+    {
+     "id": "h",
+     "type": "pinhole",
+     "position": [
+      0,
+      10,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 16
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      14,
+      20
+     ],
+     "position": [
+      0,
+      10,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      8,
+      60
+     ],
+     "position": [
+      0,
+      16,
+      -80
+     ]
+    }
+   ]
   }
  ]
 }

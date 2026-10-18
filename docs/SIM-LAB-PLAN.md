@@ -142,11 +142,84 @@ step's pose than the encoders. So the loop runs where the physics is.
    before the tick; the redone batch is exactly that. A command that changes nothing the
    controller reads (the same speed again) is not a conflict.
 
-**One clock.** The hub's simulated time, `session.time`, the encoders, the sensors and the poses
+**One clock — the world's.** The hub's simulated time, `session.time`, the encoders, the sensors and the poses
 all advance together when a batch is applied; nothing the VM can see moves while a batch is in
 flight. The cost is one round trip between a tick and its result. A batch is at most
 `MAX_BATCH_STEPS` (20 = 100 ms); when the worker cannot keep up, the rest is dropped
 (`stats.droppedMs`), as the pane's 50 ms frame clamp drops it on the main thread.
+
+**One clock — the program's too (2026-10-18, `bw-sim/sim-clock.js`).** Dropping time kept the
+world consistent with itself but not with the PROGRAM: the Scratch VM and the spikeprime
+extension ran on wall time (`wait 5 seconds`, `timer`, `move for 2 seconds`, the extension's
+`setTimeout`/`Date.now` waits, its send rate limiter), so on a machine whose physics ran below
+real time a timed block ended early in simulated time and the same program drove a shorter
+distance on a slow Chromebook than on a fast Mac. Measured in the browser gate with the worker
+slowed (`--worker-latency`, every message to the worker delayed): before, `wait 5` + `start
+moving` + `wait 2` + `stop` lasted 1.30 s of simulated time on a loaded Mac with no added
+latency, 0.30 s at 600 ms and 0.10 s at 1000 ms; the Sumo program left its ring at every latency
+(axle up to 390–405 mm from the centre, the edge is at 385); and the line follower, colour
+explorer and forklift ended differently with and without latency (rest poses apart by up to
+24 mm, the line follower 2.9 vs 9.1 mm off its line). Now the program's time IS simulated time:
+
+| when | what happens |
+|---|---|
+| VM step k | runs at program time T: `runtime.currentMSecs = epoch + T` (the clock replaces `updateCurrentMSecs` on the instance, so `wait`, every stack timer and the `timer` reporter read it); its commands reach the hub in the step's promise continuations |
+| flush (a macrotask later) | `session.tick(stepMs)`: the step buys exactly its nominal `runtime.currentStepTime` of simulated time |
+| applied (`session.idle()`) | program time becomes T + stepMs = `session.time` − its value at install; the extension's timers due by then fire |
+| VM step k + 1 | only now: a VM interval tick that came while the world was busy was held back (`stats.heldBack`) and runs as soon as the batch is applied (a macrotask, after the timers' continuations) |
+
+So the VM never runs ahead of the world: if the physics cannot keep up, the whole program slows
+down and the pane shows the real-time factor (`{f}× real time` / `{f}× Echtzeit`, below 0.95).
+A batch never exceeds one VM step (33 ms), so nothing is dropped any more on this path. The
+step counting reuses the SPIKE arena's `VmStepClock` (`spike-arena/arena-clock.js`, which gained
+optional `beforeStep`/`afterStep` hooks; the arena passes none and is unchanged), including its
+inertness check: if the VM ever steps around the hook, the pane falls back to wall-clock frames
+rather than freezing the world.
+
+*The extension's timers.* The CrispStrobe extension adapter (`scratch-vm
+extensions/crispstrobe/adapter.js`) runs every bundled extension's source with its own
+`setTimeout`, `clearTimeout`, `setInterval`, `clearInterval` and `Date` (only `Date.now`
+differs): while `runtime.bwProgramClock` is set (the Robot Lab, running) they schedule on program
+time, otherwise they are the browser's. The extension bundle itself stays byte-equal to upstream.
+`window.setTimeout` stays wall time on purpose (Bluetooth discovery). On Pause, a new model or
+the pane closing, the clock uninstalls and timers still pending move to the wall clock with the
+time they had left.
+
+*What is not on it.* The VM's stepping interval itself (wall time: it is the pace a fast
+machine keeps), and the virtual hub's transports, which deliver at once
+(`spike-prime-peripheral.js` notifies on every `hubState.changed()`, which a batch replay calls
+once). The SPIKE firmware route's main-thread scenes keep their own clock: the emulated hub runs
+the program and the lockstep runner steps one physics step per exchange
+(`routes/renode-lockstep`), so the pane installs no program clock there. The SPIKE arena counts
+VM steps for its world but its programs' `wait`s still read wall time (`currentMSecs`), so a
+starved VM there still sees a `wait` end early in mission time; this change does not touch it.
+
+**Measured** (`node scripts/verify-sim-lab-browser.mjs --part=examples --worker-latency=N`, headless
+Chromium on an Apple Silicon Mac, 2026-10-18), identical at every latency to the printed digit:
+
+| check | 0 ms | 600 ms | 1000 ms |
+|---|---|---|---|
+| timed drive: simulated span, distance | 2.033 s, 744.4 mm | 2.033 s, 744.4 mm | 2.033 s, 744.4 mm |
+| line follower lap, worst offset | 22.6 s, 2.4 mm | 22.6 s, 2.4 mm | 22.6 s, 2.4 mm |
+| wall stopper (front from the wall) | 8.6 cm | 8.6 cm | 8.6 cm |
+| colour explorer at rest (axle) | (−0.311, −0.282) | (−0.311, −0.282) | (−0.311, −0.282) |
+| forklift lift | 39.82 mm | 39.82 mm | 39.82 mm |
+| sumo, 20 s: furthest out, axle at 20.033 s | 338.1 mm, (−0.0361, 0.2964) | 338.1 mm, (−0.0361, 0.2964) | 338.1 mm, (−0.0361, 0.2964) |
+| real-time factor (timed drive) | ~1 | 0.055 | 0.033 |
+
+The drive's span is 2 s plus one VM frame (33 ms) at every latency: `start moving` reaches the hub
+in the step that runs it, and its promise lets the thread start `wait 2` one step later — the VM's
+behaviour, the same headless (`test/bw-sim-program-clock.test.mjs`: 1 s + 33 ms). Nothing is
+dropped and no batch is redone (commands now arrive between batches). The cost is wall time: one
+round trip per VM frame, so a worker 600 ms away runs the program at 0.055× real time, 1000 ms at 0.033×.
+
+The order is the one the headless runs always used (`test/helpers/spike-arena-vm.mjs`: timers,
+VM step, world tick, in fake time). `test/bw-sim-program-clock.test.mjs` runs the browser's path
+for real — the VM on its own `setInterval`, the adapter's timers, a real worker thread behind a
+transport that delays every message by 200 ms — and checks that at every VM step the time the
+program reads has advanced exactly as far as `session.time`, that a 1 s drive is 1 s of simulated
+time ± one VM frame with and without the delay, the same distance ± 1 %, and that the pane's
+previous wall-clock loop fails that judge.
 
 **Determinism.** Jolt's checkpoint → rollback → step with the same commands is bit-identical
 (measured), so the worker gives the in-thread numbers to the last bit, not approximately:

@@ -11,6 +11,7 @@ import {compile} from '../overlay/scratch-gui/src/lib/bw-sim/mech/compile.js';
 import {validateCompiledMechanism, LDU_M, pitchRadiusLdu} from '../overlay/scratch-gui/src/lib/bw-sim/contracts.js';
 import {makeCatalog} from './fixtures/bw-sim/test-catalog.mjs';
 import {readFileSync as readFileSyncTop} from 'node:fs';
+import {deviceModels} from '../overlay/scratch-gui/src/lib/bw-sim/devices/catalog.js';
 
 const I3 = [1, 0, 0, 0, 1, 0, 0, 0, 1];
 const ROT_Y_180 = [-1, 0, 0, 0, 1, 0, 0, 0, -1];
@@ -957,7 +958,8 @@ test('a motor joint keeps its device id: the large angular motor is not reported
     const base = JSON.parse(readFileSyncTop('test/fixtures/bw-sim/driving-base.json', 'utf8'));
     const parts = JSON.parse(readFileSyncTop('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json', 'utf8')).parts;
     const REAL = new Map(parts.map(p => [p.part, p]));
-    const deviceOf = file => REAL.get(file).motor.deviceId;
+    // parts.json is PartMeta v2: a motor names its device, the device the id the hub reports.
+    const deviceOf = file => deviceModels.get(REAL.get(file).device).ids.lpf2;
     const medium = compile(base, REAL);
     const motors = medium.joints.filter(j => j.motor);
     assert.equal(motors.length, 2);

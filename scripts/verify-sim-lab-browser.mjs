@@ -81,6 +81,8 @@ import {insightInteractions} from './lib/sim-lab-insight-gate.mjs';
 import {instructionsInteractions} from './lib/sim-lab-instructions-gate.mjs';
 import {touchInteractions} from './lib/sim-lab-touch-gate.mjs';
 import {layoutInteractions, MIN_CANVAS_PX} from './lib/sim-lab-layout-gate.mjs';
+import {brakingBound, judgeWallStop} from './lib/sim-lab-wall-stopper-judge.mjs';
+import {STEP_MS} from '../overlay/scratch-gui/src/lib/bw-sim/hub-bridge.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const build = resolve(process.env.BW_BUILD || `${root}/packages/scratch-gui/build`);
@@ -104,8 +106,12 @@ await new Promise(done => server.listen(0, '127.0.0.1', done));
 await mkdir(artifacts, {recursive: true});
 const url = `http://127.0.0.1:${server.address().port}/`;
 
+const WALL_STOPPER_PROGRAM = await readFile(resolve(root, 'overlay/scratch-gui/static/sim-lab/programs/wall-stopper.bw'), 'utf8');
+
 const JSZip = createRequire(new URL('../packages/scratch-gui/package.json', import.meta.url))('jszip');
 
+/** One clock (8c): a timed drive whose distance depends on the program's clock agreeing with the world's. */
+const TIMED_DRIVE = 'DEVICE SPIKE\nWHEN flag clicked:\n  set movement motors A B\n  wait 5 seconds\n  start moving steering 0\n  wait 2 seconds\n  stop movement\n';
 const PROGRAM = 'DEVICE SPIKE\nWHEN flag clicked:\n  set movement motors A B\n  move forward 20 cm\n';
 
 /** docs/SIM-LAB.md: the Colour Zones mat's red square, 0.3 m, centred at (-0.35, -0.35). */
@@ -115,13 +121,19 @@ const at = p => `(${p[0].toFixed(3)}, ${p[2].toFixed(3)})`;
 const EXAMPLES = [
     {name: 'Wall stopper', file: 'wall-stopper.ldr', mat: 'wall', sensor: 'distance', simMs: 10000,
         code: /wait until \(spike distance D\) < 10/, goal: /stop before the wall/,
+        // scripts/lib/sim-lab-wall-stopper-judge.mjs: (a) never touches the wall, (b) the stop begins within two VM
+        // frames and a sensor period after the reading first goes below 10 cm, (c) the overrun stays within the
+        // crossing speed times that budget plus the braking distance of the shorted motors, from the model.
         judge: r => {
-            const frontGap = r.faceX - r.last.front;
-            const rayGap = r.faceX - r.last.spot[0];
             assert.ok(r.faceX - r.startAxle[0] > 0.5, `the wall was not ahead: ${JSON.stringify(r)}`);
-            assert.ok(r.closestGap > 0, `the robot touched the wall: ${JSON.stringify(r)}`);
-            assert.ok(frontGap >= 0.08 && frontGap <= 0.12 && rayGap >= 0.08 && rayGap <= 0.12, `stopped ${frontGap} m from the wall: ${JSON.stringify(r)}`);
-            return `stops ${(frontGap * 100).toFixed(1)} cm before the wall (ray origin ${(rayGap * 100).toFixed(1)} cm), never touching it`;
+            const brake = brakingBound(r.mechanism, {speedPercent: Number(/set movement speed (\d+)/.exec(WALL_STOPPER_PROGRAM)[1]), hubBody: r.hubBody});
+            const v = judgeWallStop(r.wallSamples, {faceX: r.faceX, thresholdMm: 100, frameMs: r.frameMs, sensorMs: STEP_MS, brakeM: brake.brakeM});
+            const said = `front ${(v.frontGap * 100).toFixed(1)} cm, ray origin ${(v.rayGap * 100).toFixed(1)} cm from the wall; ` +
+                `stop began ${v.reactionMs?.toFixed(1)} ms after the reading went below 10 cm (budget ${v.budgetMs.toFixed(1)}), ` +
+                `ran on ${v.overrunM === null ? '-' : (v.overrunM * 100).toFixed(2)} cm (bound ${v.overrunBoundM === null ? '-' : (v.overrunBoundM * 100).toFixed(2)}, ` +
+                `braking ${(brake.brakeM * 100).toFixed(2)} cm)`;
+            assert.deepEqual(v.failures, [], `${said}: ${JSON.stringify({...r, mechanism: undefined, wallSamples: r.wallSamples.length})}`);
+            return `stops ${said}, never touching it`;
         }},
     {name: 'Colour explorer', file: 'colour-explorer.ldr', mat: 'colour-zones', sensor: 'color', simMs: 15000,
         code: /wait until spike color C is red/, goal: /find the red square/,
@@ -132,7 +144,42 @@ const EXAMPLES = [
         }}
 ];
 
+/**
+ * `--cpu-throttle=N` slows every page's CPU N-fold (CDP Emulation.setCPUThrottlingRate), as a busy
+ * CI runner does: the VM's wall-clock blocks and the worker's simulated time then drift apart, which
+ * is how the Forklift's lift was cut short in CI (run 39079251326). 1 (default) is no throttling.
+ */
+const CPU_THROTTLE = Number((process.argv.find(a => a.startsWith('--cpu-throttle=')) || '--cpu-throttle=1').slice('--cpu-throttle='.length));
+/**
+ * `--worker-latency=MS` delays every message the page posts to a Web Worker by MS of wall time: a
+ * physics worker that answers slowly, as on a loaded runner. The session sends at most
+ * MAX_BATCH_STEPS (100 ms) of simulated time per round trip and drops the rest, so simulated time
+ * then runs slower than the VM's wall clock — the case CI's CPU throttling of the page cannot make
+ * (it slows the VM and the ticks alike).
+ */
+const WORKER_LATENCY = Number((process.argv.find(a => a.startsWith('--worker-latency=')) || '--worker-latency=0').slice('--worker-latency='.length));
+/**
+ * Wall time to allow for `simMs` of simulated time. One clock (docs/SIM-LAB-PLAN.md §4.9): the VM
+ * steps only when the world has caught up, so every VM frame of simulated time costs at least one
+ * round trip to the worker (two when a command in flight redoes the batch): under --worker-latency
+ * the whole program slows down instead of running ahead of the world, and the wait has to allow it.
+ */
+const wallBudget = simMs => 240000 + Math.ceil(simMs / (1000 / 30)) * (2 * WORKER_LATENCY + 20);
+/** `--examples=a,b` runs only those example robots in the examples part (line-follower, wall-stopper, colour-explorer, forklift, sumo, timed-drive). */
+const ONLY_EXAMPLES = (process.argv.find(a => a.startsWith('--examples=')) || '').slice('--examples='.length).split(',').filter(Boolean);
+const runExample = file => !ONLY_EXAMPLES.length || ONLY_EXAMPLES.includes(file.replace(/\.ldr$/, ''));
+
 const openSimLab = async (page, {noWebgl = false, typed = false, program = PROGRAM} = {}) => {
+    if (CPU_THROTTLE > 1) {
+        const cdp = await page.context().newCDPSession(page);
+        await cdp.send('Emulation.setCPUThrottlingRate', {rate: CPU_THROTTLE});
+    }
+    if (WORKER_LATENCY > 0) {
+        await page.addInitScript(ms => {
+            const post = Worker.prototype.postMessage;
+            Worker.prototype.postMessage = function (...args) { setTimeout(() => post.apply(this, args), ms); };
+        }, WORKER_LATENCY);
+    }
     await page.addInitScript(force => {
         localStorage.clear();
         sessionStorage.clear();
@@ -397,8 +444,9 @@ try {
         await reopen.close();
     }
 
-    if (want('examples')) { // the three example robots run their programs to the end
+    if (want('examples')) { // the example robots run their programs to the end
         // 6. The line follower: model, mat, example program, Run — a lap on the line.
+        if (runExample('line-follower.ldr')) {
         const lf = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
         lf.on('pageerror', error => errors.push(error.message));
         lf.on('dialog', dialog => dialog.accept());
@@ -457,7 +505,7 @@ try {
         await lf.getByTestId('bw-sim-lab-run').click();
         // Simulated time decides: the lap, or 60 s of simulated time without one.
         await lf.waitForFunction(() => window.__bwLineLap.lapMs !== null || window.__bwSimLab._pane.session.time - window.__bwLineLap.start > 60000,
-            null, {timeout: 240000});
+            null, {timeout: wallBudget(60000)});
         const lapResult = await lf.evaluate(() => ({...window.__bwLineLap, stats: window.__bwSimLab._pane.session.stats}));
         assert.equal(lapResult.worker, true, 'the line follower ran its physics in the worker');
         await lf.screenshot({path: resolve(artifacts, 'sim-lab-line-follower.png'), fullPage: true});
@@ -474,11 +522,12 @@ try {
             `worker ${(st.workerMs / st.batches).toFixed(2)} ms and main thread ${(st.mainMs / st.batches).toFixed(2)} ms per batch, ` +
             `${st.redos} batches redone for a command in flight, ${st.droppedMs} ms dropped`);
         await lf.close();
+        }
 
         // 7. The Wall stopper and 8. the Colour explorer, through the UI only: choose the model,
         // "Load example program" (it lands in the Code tab, becomes blocks, and puts the robot on
         // the example's mat by itself), Run, and judge where the robot comes to rest.
-        for (const example of EXAMPLES) {
+        for (const example of EXAMPLES.filter(e => runExample(e.file))) {
             const ex = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
             ex.on('pageerror', error => errors.push(error.message));
             ex.on('dialog', dialog => dialog.accept());
@@ -537,24 +586,33 @@ try {
                 const rec = window.__bwExample = {start: s.time, samples: [], closestGap: Infinity,
                     faceX: wall ? wall.position[0] - wall.colliders[0].halfExtents[0] : null};
                 rec.worker = s.worker;
+                const hubState = window.__bwSimLab._pane.props.hubState;
+                const drivePorts = (s.mechanism.actuators || []).map(a => a.port);
                 s.onAdvance(() => {
                     const sample = {t: s.time - rec.start, axle: carried(hubId, axle0), spot: carried(sensor.body, sensor.origin)};
                     if (wall) {
                         sample.front = Math.max(...robot.flatMap(b => b.colliders.map(c => reachX(b.id, c))));
                         rec.closestGap = Math.min(rec.closestGap, rec.faceX - sample.front);
+                        // What the hub holds after this advance: the distance reading and whether both drive motors run.
+                        sample.reading = hubState.data.sensors['ABCDEF'.indexOf(sensor.port)].distance;
+                        sample.driving = drivePorts.every(port => hubState.motors.busy(port));
                     }
                     rec.samples.push(sample);
                 });
             }, {sensor: example.sensor});
             await ex.getByTestId('bw-sim-lab-run').click();
             // Simulated time decides: the run is judged after example.simMs of it, however long that takes in wall time.
-            await ex.waitForFunction(ms => window.__bwSimLab._pane.session.time - window.__bwExample.start > ms, example.simMs, {timeout: 240000});
+            await ex.waitForFunction(ms => window.__bwSimLab._pane.session.time - window.__bwExample.start > ms, example.simMs, {timeout: wallBudget(example.simMs)});
             const rec = await ex.evaluate(() => {
                 const r = window.__bwExample;
                 const last = r.samples.at(-1);
                 const before = r.samples.find(p => p.t >= last.t - 1000);
                 const pane = window.__bwSimLab._pane;
+                const wall = r.faceX !== null;
                 return {worker: r.worker, stats: pane.session.stats, motors: pane.props.hubState.data.motors.slice(0, 2),
+                    mechanism: wall ? pane.session.mechanism : null, hubBody: pane.session.bridge.hubBody,
+                    frameMs: pane.props.vm.runtime.currentStepTime,
+                    wallSamples: wall ? r.samples.map(p => ({t: p.t, front: p.front, ray: p.spot[0], reading: p.reading, driving: p.driving})) : null,
                     sensors: pane.props.hubState.data.sensors.slice(2, 4), faceX: r.faceX, closestGap: r.closestGap, last, samples: r.samples.length,
                     restMm: 1000 * Math.hypot(last.axle[0] - before.axle[0], last.axle[2] - before.axle[2]),
                     startAxle: r.samples[0].axle};
@@ -564,6 +622,151 @@ try {
             assert.ok(rec.restMm < 2, `the ${example.name} is not at rest: ${JSON.stringify(rec)}`);
             console.log(`PASS the ${example.name}'s example program, loaded from the pane, ${example.judge(rec)}`);
             await ex.close();
+        }
+
+        if (runExample('forklift.ldr')) {
+        // 8b. The Forklift (R4): choose it, "Load example program" (it puts the robot on the Warehouse
+        // mat with its pallet), Run, and judge the pallet's height from its body's pose: up 40 mm, held,
+        // and back down — a rack and pinion and a world load, through the worker.
+        const fl = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+        fl.on('pageerror', error => errors.push(error.message));
+        fl.on('dialog', dialog => dialog.accept());
+        await openSimLab(fl, {program: null});
+        await fl.getByTestId('bw-sim-lab-model').selectOption('forklift.ldr');
+        await fl.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.modelFile === 'forklift.ldr' &&
+            window.__bwSimLab._pane.session, null, {timeout: 60000});
+        await fl.getByRole('button', {name: 'Load example program'}).click();
+        await fl.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
+            null, {timeout: 60000});
+        assert.match(await fl.locator('.cm-content').first().textContent(), /run motor C clockwise 573 degrees/, 'the Forklift\'s example is in the Code tab');
+        await fl.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.session?.mat === 'warehouse', null, {timeout: 60000});
+        await fl.evaluate(() => {
+            const s = window.__bwSimLab._pane.session;
+            const rec = window.__bwForklift = {start: s.time, y0: s.core.bodyPose('load:pallet').position[1], max: 0, last: 0, worker: s.worker,
+                loads: s.mechanism.bodies.filter(b => b.role === 'load').map(b => b.id)};
+            s.onAdvance(() => {
+                const dy = s.core.bodyPose('load:pallet').position[1] - rec.y0;
+                rec.max = Math.max(rec.max, dy);
+                rec.last = dy;
+            });
+        });
+        const wall0 = Date.now();
+        await fl.getByTestId('bw-sim-lab-run').click();
+        await fl.waitForFunction(() => window.__bwSimLab._pane.session.time - window.__bwForklift.start > 14000, null, {timeout: wallBudget(14000)});
+        console.log(`  (14 s simulated took ${((Date.now() - wall0) / 1000).toFixed(1)} s of wall time)`);
+        const lift = await fl.evaluate(() => ({...window.__bwForklift, stats: window.__bwSimLab._pane.session.stats}));
+        await fl.screenshot({path: resolve(artifacts, 'sim-lab-forklift.png'), fullPage: true});
+        assert.equal(lift.worker, true, 'the Forklift ran its physics in the worker');
+        assert.deepEqual(lift.loads, ['load:pallet'], 'the Warehouse mat put its pallet in the scene');
+        assert.ok(Math.abs(lift.max - 0.04) <= 0.001, `the pallet rose ${lift.max} m, not 40 mm: ${JSON.stringify(lift)}`);
+        assert.ok(Math.abs(lift.last) <= 0.001, `the pallet ended ${lift.last} m up: ${JSON.stringify(lift)}`);
+        console.log(`PASS the Forklift's example program, loaded from the pane, lifts the pallet ${(lift.max * 1000).toFixed(2)} mm and sets it down (${(lift.last * 1000).toFixed(2)} mm); ` +
+            `worker: ${lift.stats.batches} batches, round trip ${(lift.stats.roundTripMs / lift.stats.batches).toFixed(1)} ms mean, ${lift.stats.redos} redone, ${lift.stats.droppedMs} ms dropped`);
+        await fl.close();
+        }
+
+        if (runExample('timed-drive.ldr')) {
+        // 8c. Program time IS simulated time (one clock, docs/SIM-LAB-PLAN.md §4.9): `wait 5 seconds`,
+        // `start moving`, `wait 2 seconds`, `stop movement` on the driving base. The drive must last
+        // 2.00 s of SIMULATED time (± one VM frame) and cover the same distance however slowly the
+        // physics worker answers (--worker-latency): a program's clock that ran on wall time ended the
+        // wait early in simulated time whenever the world could not keep up.
+        const td = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+        td.on('pageerror', error => errors.push(error.message));
+        td.on('dialog', dialog => dialog.accept());
+        await openSimLab(td, {program: TIMED_DRIVE});
+        await td.evaluate(() => {
+            const pane = window.__bwSimLab._pane;
+            const s = pane.session;
+            const hubState = pane.props.hubState;
+            const hub = s.bridge.hubBody;
+            const rec = window.__bwTimed = {start: s.time, samples: [], frameMs: pane.props.vm.runtime.currentStepTime};
+            s.onAdvance(() => {
+                const p = s.core.bodyPose(hub).position;
+                rec.samples.push({t: s.time - rec.start, x: p[0], z: p[2], driving: hubState.motors.busy('A') && hubState.motors.busy('B')});
+            });
+        });
+        const wallTd = Date.now();
+        await td.getByTestId('bw-sim-lab-run').click();
+        await td.waitForFunction(() => window.__bwSimLab._pane.session.time - window.__bwTimed.start > 9000, null, {timeout: wallBudget(9000)});
+        const timed = await td.evaluate(() => ({...window.__bwTimed, stats: window.__bwSimLab._pane.session.stats,
+            rtfShown: document.querySelector('[data-testid="bw-sim-lab-status"]')?.textContent || ''}));
+        const tdWallS = (Date.now() - wallTd) / 1000;
+        const ts = timed.samples;
+        const on = ts.findIndex(p => p.driving);
+        const off = on < 0 ? -1 : ts.findIndex((p, i) => i > on && !p.driving);
+        assert.ok(on > 0 && off > on, `the timed drive started and stopped: ${JSON.stringify({on, off, n: ts.length})}`);
+        // The command took effect from the sample BEFORE the one that first shows it (see sim-lab-wall-stopper-judge.mjs).
+        const startedMs = ts[on - 1].t;
+        const stoppedMs = ts[off - 1].t;
+        const spanMs = stoppedMs - startedMs;
+        const rest = ts.at(-1);
+        const origin = ts[on - 1];
+        const travelled = Math.hypot(rest.x - origin.x, rest.z - origin.z);
+        assert.ok(Math.abs(spanMs - 2000) <= timed.frameMs + 1, `the 2 s drive lasted ${spanMs} ms simulated: ${JSON.stringify({startedMs, stoppedMs, frameMs: timed.frameMs})}`);
+        // The distance is printed, not judged against a number: it must be the same at every --worker-latency
+        // (compare the PASS lines), which test/bw-sim-program-clock.test.mjs asserts headless (± 1 %).
+        assert.ok(travelled > 0.1, `the 2 s drive barely moved the robot: ${travelled} m`);
+        await td.screenshot({path: resolve(artifacts, 'sim-lab-timed-drive.png'), fullPage: true});
+        console.log(`PASS wait 5 s, start moving, wait 2 s, stop: moved at ${(startedMs / 1000).toFixed(3)} s simulated, drove ` +
+            `${(spanMs / 1000).toFixed(3)} s simulated and ${(travelled * 1000).toFixed(1)} mm (9 s simulated took ${tdWallS.toFixed(1)} s of wall time; ` +
+            `status "${timed.rtfShown}"; ${timed.stats.batches} batches, ${timed.stats.redos} redone, ${timed.stats.droppedMs} ms dropped)`);
+        await td.close();
+        }
+
+        if (runExample('sumo.ldr')) {
+        // 8d. The Sumo ring (the Colour explorer with sumo.bw): 20 s of simulated time, inside the ring, to
+        // the band and back (thresholds: test/bw-sim-sumo-program.test.mjs). The final pose is printed: one
+        // clock makes it the same at every --worker-latency.
+        const su = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+        su.on('pageerror', error => errors.push(error.message));
+        su.on('dialog', dialog => dialog.accept());
+        await openSimLab(su, {program: null});
+        await su.getByTestId('bw-sim-lab-model').selectOption('sumo');
+        await su.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.shipped === 'sumo' &&
+            window.__bwSimLab._pane.session, null, {timeout: 60000});
+        await su.getByRole('button', {name: 'Load example program'}).click();
+        await su.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
+            null, {timeout: 60000});
+        assert.match(await su.locator('.cm-content').first().textContent(), /wait until spike color C is black/, 'the sumo example is in the Code tab');
+        await su.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.session?.mat === 'sumo', null, {timeout: 60000});
+        await su.evaluate(() => {
+            const s = window.__bwSimLab._pane.session;
+            const hubId = s.bridge.hubBody;
+            const hinges = s.mechanism.joints.filter(j => j.motor);
+            const axle0 = [0, 1, 2].map(i => (hinges[0].point[i] + hinges[1].point[i]) / 2);
+            const hub0 = s.mechanism.bodies.find(b => b.id === hubId).position;
+            const rotate = ([x, y, z, w], v) => {
+                const ix = w * v[0] + y * v[2] - z * v[1];
+                const iy = w * v[1] + z * v[0] - x * v[2];
+                const iz = w * v[2] + x * v[1] - y * v[0];
+                const iw = -x * v[0] - y * v[1] - z * v[2];
+                return [ix * w - iw * x - iy * z + iz * y, iy * w - iw * y - iz * x + ix * z, iz * w - iw * z - ix * y + iy * x];
+            };
+            const rec = window.__bwSumo = {start: s.time, t: 0, maxR: 0, entries: 0, travel: 0, prev: null, axle: null};
+            s.onAdvance(() => {
+                if (rec.t >= 20000) return; // judged over the first 20 s of simulated time
+                const pose = s.core.bodyPose(hubId);
+                const p = rotate(pose.rotation, axle0.map((v, i) => v - hub0[i])).map((v, i) => v + pose.position[i]);
+                const r = Math.hypot(p[0], p[2]);
+                rec.maxR = Math.max(rec.maxR, r);
+                if (rec.prev) {
+                    rec.travel += Math.hypot(p[0] - rec.prev[0], p[2] - rec.prev[2]);
+                    if (Math.hypot(rec.prev[0], rec.prev[2]) < 0.3 && r >= 0.3) rec.entries++;
+                }
+                rec.prev = p;
+                rec.axle = p;
+                rec.t = s.time - rec.start;
+            });
+        });
+        await su.getByTestId('bw-sim-lab-run').click();
+        await su.waitForFunction(() => window.__bwSumo.t >= 20000, null, {timeout: wallBudget(20000)});
+        const sumo = await su.evaluate(() => window.__bwSumo);
+        assert.ok(sumo.maxR < 0.385, `the robot left the ring: ${JSON.stringify(sumo)}`);
+        assert.ok(sumo.entries >= 2, `it drove to the band only ${sumo.entries} times in 20 s: ${JSON.stringify(sumo)}`);
+        console.log(`PASS the Sumo example keeps the robot in the ring for 20 s simulated: at most ${(sumo.maxR * 1000).toFixed(1)} mm from the centre, ` +
+            `${sumo.entries} drives to the band, ${sumo.travel.toFixed(3)} m travelled, axle at (${sumo.axle[0].toFixed(4)}, ${sumo.axle[2].toFixed(4)}) at ${(sumo.t / 1000).toFixed(3)} s`);
+        await su.close();
         }
     }
 

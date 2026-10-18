@@ -1,0 +1,49 @@
+0 Forklift (Brickwright Robot Lab reference model)
+0 Name: forklift.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 !BW ID hub
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID topBeam
+1 71 60 -90 20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID topPinFront
+1 0 60 -80 100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID topPinBack
+1 0 60 -80 -100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID lift
+0 !BW PORT C
+1 71 60 -250 140 0 1 0 0 0 1 1 0 0 54696p01.dat
+0 !BW ID liftPin1
+1 0 60 -100 120 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID liftPin2
+1 0 60 -100 160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID pinionAxle
+1 4 10 -250 140 1 0 0 0 1 0 0 0 1 32062.dat
+0 !BW ID pinion
+1 71 0 -250 140 0 0 1 0 -1 0 1 0 0 3647.dat
+0 !BW ID rack
+1 71 0 -174 155 0 0 1 1 0 0 0 1 0 64781.dat
+0 !BW ID carriageAxle
+1 4 -20 -74 155 1 0 0 0 1 0 0 0 1 4519.dat
+0 !BW ID upright
+1 72 -20 -74 155 0 -1 0 0 0 -1 1 0 0 32140.dat
+0 !BW ID forkArm
+1 72 -40 -74 155 0 1 0 0 0 1 1 0 0 32140.dat
+0 !BW ID forkPin
+1 1 -40 -14 155 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID forkLeft
+1 0 -60 -24 155 -1 0 0 0 1 0 0 0 -1 2823.dat
+0 !BW ID forkRight
+1 0 -20 -24 155 -1 0 0 0 1 0 0 0 -1 2823.dat
+0 !BW ID slide
+1 72 -30 -114 155 0 1 0 0 0 1 1 0 0 48496.dat
+0 !BW ID guideHolder
+1 71 -60 -50 115 0 0 1 1 0 0 0 1 0 6632.dat
+0 !BW ID guideHolderPin
+1 0 -40 -50 110 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID guideStub
+1 4 -60 -50 140 0 1 0 0 0 1 1 0 0 4519.dat
+0 !BW ID guideTee
+1 71 -60 -70 155 0 -1 0 0 0 -1 1 0 0 32039.dat
+0 !BW ID guide
+1 4 -60 -160 155 0 -1 0 1 0 0 0 0 1 3737.dat
