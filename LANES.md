@@ -1,3 +1,27 @@
+## Production service-worker probe (#306) and example part-face census — 2026-10-18
+
+CLAIMED — Claude (circuit-editor lane). New files only:
+`scripts/probe-production-sw.mjs` and `.github/workflows/production-sw-probe.yml`
+(workflow_dispatch plus workflow_run after the production deploys). Stage `seed`
+loads a live site in a persistent Chromium profile and uploads it as an
+artifact; stage `check` restores that profile after a newer deploy, reloads,
+opens the lazy pseudocode importer and fails if any chunk fails to load or
+the importer chunk differs from the network copy. Targets: GitHub Pages and
+Vercel production. And `scripts/census-example-faces.mjs` run by the same new workflow:
+it loads every examples/*/circuit*.json in the circuit editor and lists parts
+drawn by the bw-circuit-ui generic module body (report, not a gate). No
+product source, pins or existing workflows change.
+
+## bw-circuit-ui pin bump for B21 pin labels — 2026-10-18
+
+CLAIMED — Claude (circuit-editor lane). Bump the bw-circuit-ui pin from 055930e to
+fe89e3425bf323b1acd9e3f98df6a7383e9b836b (bw-circuit-ui #91: pin names on the
+generic module body no longer overlap; the part-face census gates it). CUI
+dependencies are unchanged, so this is an exact SHA swap across the pin surfaces
+(vendor-pins.json, both package.json/package-lock.json, both
+bw-packages.sources.json, the i80386 circuits workflow and the
+*-package-adoption tests). No other source changes.
+
 ## Robot Lab R13 — SPIKE firmware in Renode, lockstep (desktop) — 2026-10-17
 
 PROPOSED — Robot Lab lane. Plan: docs/ROBOT-LAB-SPIKE-EMULATION.md (on lane/simlab-next-20261017, PR #1049's follow-up). Owns new code only:
@@ -5743,9 +5767,17 @@ Implement only after this ownership amendment qualifies and merges.
 
 ## 386 GUI HDD and forward-debug hosted acceptance — 2026-10-16
 
-PROPOSED CLAIM — Codex x86, serialized after the existing media/debugger lane.
-Merge this claim before creating the new acceptance files. The existing merged
-claims cover the source in PR986, PR987 and PR989; their normal local composition
+The first metadata run [39106669518](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39106669518)
+failed on its required Droid font configuration; its sole original is already
+acquired. Do not repeat it or infer a runtime candidate. Subsequent owned source
+fixes wait for real GUI state commits and retain bounded failure-only inventory
+diagnostics. Required files, successful schemas and actual guards remain held.
+The matching guide scopes the distinct diagnostic selection and later affected
+browser/guest qualification; source controls alone cannot satisfy that gate.
+
+SOURCE IMPLEMENTED; ACTUAL PENDING — Codex x86; ownership claim [PR1014](https://github.com/CrispStrobe/brickwright-lite/pull/1014)
+merged before implementation. Serialized after the existing media/debugger lane.
+The existing merged claims cover the source in PR986, PR987 and PR989; their normal local composition
 adds no supplier pin, lock, notice or other-owner change. This claim extends only
 the finite hosted acceptance boundary: new
 `scripts/run-i80386-hdd-gui-actual.py`,
@@ -5758,15 +5790,15 @@ Reuse the existing Playwright persistence scenario and established hosted
 build/browser pipeline; do not introduce another provisioning framework or
 change unrelated workflows.
 
-The source-only composition retains main's selected Board until its existing
-adoption owner supplies the reviewed installed dependency. It must refuse the
-actual persistence/debug scenario when the dedicated 386 target API is absent.
-Never inject supplier modules, fake a snapshot or infer installed support from
-a Board-only diagnostic. PR975's existing Board/SB3 owner retains its explicit
-**Not for agent merge** hold and all dependency writers; PR965 retains CUI/shared
-lock/notices ownership. This claim transfers no such surfaces. Record a handoff
-or wait for the existing owner's qualified adoption; any new adoption by this
-lane needs that handoff and a separately merged precise claim.
+The composition consumes the adoption already merged through
+[PR975](https://github.com/CrispStrobe/brickwright-lite/pull/975): Board
+`f84ba60ead0a90deb9830f0c1468839c293ecf05`, CUI
+`055930ec51300e0d71466c696ce1bf76284bde38` and SB3
+`a13f92b8bc4b06f0cb9ffec22bab71f06db7ac76` at the 2026-10-18 refresh.
+These are source selections, not this scenario's installed qualification.
+Refresh canonical declarations before admission; refuse missing dedicated
+386 target support. Never inject supplier modules or fake a snapshot.
+This claim transfers no dependency, package, lock or notice writers.
 
 Before a one-shot actual event, freeze the exact composed source, installed
 supplier/build graph, free inputs, browser/runtime identities, finite resource
@@ -5784,6 +5816,31 @@ enabled exact-head source check and separately admitted original-only actual
 result remains mandatory; acquire each official original once and never replay
 a guest for the reader. No ISO/ATAPI, generalized DOSBox, new CPU/device, reverse
 execution, mode-aware disassembler, physical timing, whole-OS or release claim.
+
+Source continuation is composed in [draft PR1013](https://github.com/CrispStrobe/brickwright-lite/pull/1013).
+The controller, standalone reader, two real-UI scenario implementations, focused
+manufactured-original controls and guarded workflow are implemented. This is
+source work: no browser/guest acceptance is inferred from the manufactured
+packets. A separately reviewed follow-up enables metadata inventory only;
+actual source/workflow guards remain false. Exact immutable template/source/event
+admission is still required. Selected metadata excludes locally assumed Python
+cache entries; selected system interpreter/native libraries are an explicit
+trusted platform boundary, not a complete import-authenticity claim.
+The v2 follow-up implements bounded held proc reads, lazy capped censuses and
+explicit directory aliases; 42 Python methods pass with all prior 33 bodies
+held, and thirteen targeted source cuts are detected. These are mock controls.
+Before activation, review the selected hosted runtime template, acquire and audit one separate
+metadata inventory, and freeze the externally selected actual request and full
+frontend-source admission. Setup consumes the same 35-minute job budget; its
+sufficiency remains unqualified. Follow the matching guide's completion gates.
+
+The startup follow-up versions actual request/reader as v3 while holding the
+v2 inventory handler and workflow section. An exclusive empty prefix precedes
+isolated no-site CPython entry; original install/flags/path/directory and official
+step joins have 50 Python controls and nine detected cuts. Actual remains false.
+The separately reviewed first metadata event is consumed at source `671702949`;
+[run 39106669518](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39106669518)
+is pending at publication. Do not repeat its label or original acquisition.
 
 ## A13 CPX production browser gate registration — 2026-10-16
 
@@ -6273,3 +6330,66 @@ failure, and detect removed, commented or moved calls. All 19 focused workflow
 and existing preparation controls pass. The preparation implementation and
 all other workflow bytes are preserved. This is source wiring evidence only;
 final combined unsigned app and signed IPA qualification remains pending.
+
+## Arcade foundation CI: isolated mutant import closure — 2026-10-18
+
+CLAIMED — integration owner, branch
+`docs/arcade-ci-fixture-closure-claim-20261018`, following the scoped Arcade
+handoff in PR1046. Own `test/i8086-reach-long-classifier.test.mjs` and
+`test/i8086-wait-reach.test.mjs`, this ledger and narrowly necessary task prose.
+The isolated mutant dependency lists must accommodate the real procedure
+parameter-constraints import when that source is present. Do not delete or
+replace the production import, bypass its validation or invent a substitute
+module. Preserve existing JSZip resolution and GUI attribution, every semantic
+mutation anchor, acceptance assertion and compiler/resource bound.
+
+Require explicit successful mutant module loading before either test evaluates
+the intended semantic mutation. A missing dependency is setup failure, never
+evidence that a mutation was detected. Preserve current-main behavior while
+supporting the later foundation dependency; adding a dangling unconditional
+module link is not a qualified solution. Product emitters, runtime, profiles,
+refusal census, pins, budgets and compiler semantics are outside this repair.
+
+Merge this documentation-only claim before implementation. Qualify the actual
+isolated module closure and both semantic mutants, run compiler-heavy gallery
+checks in hosted CI, and require every enabled final-head check before normal
+matched-head merge. This test-fixture repair does not close the six PR888
+failures or qualify its broader source foundation, runtime, GUI or corpus.
+## iOS qualification: active embedded asset identity — 2026-10-18
+
+CLAIMED — integration owner, branch
+`docs/ios-active-asset-proof-claim-20261018`. This follows the resource-preparation
+claim and PR1044; its qualified resource inventories and signatures leave the
+active embedded frontend identity open.
+
+Own a new `apps/tauri/src-tauri/src/embedded_asset_audit.rs`, narrowly additive
+module declaration and Ready-event observation in `apps/tauri/src-tauri/src/lib.rs`,
+an optional default-off unsigned simulator audit in `.github/workflows/mobile.yml`,
+focused controls in `test/tauri-embedded-asset-audit.test.mjs` and
+`test/ios-workflow-embedded-asset-audit.test.mjs`, and this ledger/task handoff.
+Coordinate shared workflow edits with the existing iOS owner. Preserve the real
+context creation, `run_with_context` signature, setup/build/run sequence, current
+event handlers, native operations, CLI ownership and CSP. No second generated
+context or invented asset provider may stand in for the installed app's resolver.
+
+The audit must retain canonical ordered asset keys, served byte lengths and
+SHA-256 identities, complete source/configuration/executable/artifact joins, and
+explicit terminal or partial failure. Review actual iterator compression,
+resolver fallback and HTML/CSP transformations independently before comparing
+outputs. Reject development filesystem fallback. Admit finite entry, per-file,
+total-byte, output, time and resource budgets before an actual observation.
+Do not download simulator runtimes implicitly or expose a public diagnostic UI
+or remote trigger. Unsigned observation alone does not prove a signed target's
+embedded map; require a separate demonstrated signed-source/map join.
+
+Preserve helper ordering, targets, export methods, signing/provisioning checks,
+privacy/icons and branch/tag/release/TestFlight guards. Replace the existing
+device-list diagnostic with count/status output while preserving its assertions;
+retain historical originals privately. No guest, dependency/pin, delivery event,
+physical-device, G02 or release acceptance is included.
+
+Merge this docs-only claim before implementation. Require nonvacuous focused
+controls, every enabled exact-head source check, and fresh admitted actual
+candidate qualification before integrating source. Never repeat a successful
+original acquisition, reader or run merely to inspect it. See
+[the integration handoff](docs/INTEGRATION-NEXT-STEPS.md) for the remaining join.

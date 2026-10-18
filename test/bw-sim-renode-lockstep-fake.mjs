@@ -227,9 +227,19 @@ class FakeFirmware {
         Object.assign(this.p, {state: 'fault', error});
     }
 
+    /** program.c bw_program_start: from READY or any terminal state; 0 or −errno. */
     start () {
-        if (this.p.state !== 'ready') return;
-        Object.assign(this.p, {state: 'running', pc: 0, owned: 0, moving: -1, waiting: false, ending: false, started: this.now});
+        if (this.p.state === 'running') return -16;
+        if (!['ready', 'complete', 'stopped', 'fault'].includes(this.p.state)) return -22;
+        Object.assign(this.p, {state: 'running', pc: 0, owned: 0, moving: -1, waiting: false, ending: false, started: this.now, error: 0});
+        return 0;
+    }
+
+    /** program.c bw_program_stop: brake what the program owns. */
+    stop () {
+        for (let i = 0; i < 6; i++) if (this.p.owned & (1 << i)) this.brake(i);
+        if (this.p.state !== 'empty') this.p.state = 'stopped';
+        return 0;
     }
 
     programTick () {
@@ -300,11 +310,27 @@ class FakeFirmware {
 
 const STATE_CODE = {empty: 0, ready: 1, running: 2, complete: 3, stopped: 4, fault: 5};
 
+/** A NuttX program reply (upload-protocol.js decodeReply's 20 bytes). */
+const programReply = (op, state, id, {result = 0, pc = 0, count = 0, received = 0} = {}) => {
+    const bytes = new Uint8Array(20);
+    const view = new DataView(bytes.buffer);
+    bytes.set([0x71, 1, op, state]);
+    view.setUint32(4, id, true);
+    view.setInt32(8, result, true);
+    view.setUint16(12, pc, true);
+    view.setUint16(14, count, true);
+    view.setUint16(16, received, true);
+    return [...bytes];
+};
+
 export class FakeSpikeRenode {
     /**
      * @param {object} [options]
      * @param {'default'|'six-motors'} [options.topology]
-     * @param {number[][]} [options.program] firmware-program ABI instructions (+ fake op 7), uploaded before begin
+     * @param {number[][]} [options.program] firmware-program ABI instructions (+ fake op 7), uploaded before
+     *        begin and started by itself at the first service tick (R13d's tests). Without it, a program
+     *        arrives by `program.packet` (BEGIN/CHUNK/COMMIT, guest running, outside lockstep) and runs on
+     *        `program.control.submit` START, taken at the next service tick inside lockstep (§2.6).
      * @param {object} [options.faults] {skewAtStep, skewNs, repeatSeqAtStep}
      * @param {number} [options.latencyMs] each exchange resolves this much later (a real timer)
      * @param {string[]} [options.capabilities]
@@ -315,6 +341,12 @@ export class FakeSpikeRenode {
         this.topology = topology;
         this.ports = [...PORTS].map(id => new FakePort(id, layout[id]));
         this.firmware = new FakeFirmware(this.ports, program);
+        this.autoStart = program !== null;
+        this.running = false;
+        /** The upload in progress: {id, count, crc, bytes} (packets before COMMIT). */
+        this.upload = null;
+        /** The firmware mailbox: one request at a time; the last reply, as the snapshot shows it. */
+        this.mailbox = {pending: null, reply: null, requestSeq: 0};
         this.faults = faults;
         this.latencyMs = latencyMs;
         this.capabilities = capabilities;
@@ -335,8 +367,9 @@ export class FakeSpikeRenode {
         return {schemaVersion: 1, type: 'snapshot', seq, clockNs,
             target: {board: 'spike-prime', firmware: 'brickwright-nuttx', transport: 'none', imageSha256: FAKE_IMAGE,
                 capabilities: [...this.capabilities], limitations: []},
-            lifecycle: {connectionGeneration: 1, nuttxProgram: {state: STATE_CODE[p.state], error: p.error}},
-            ports: this.ports.map(port => ({id: port.id, attached: port.kind !== 'none', kind: port.kind})),
+            lifecycle: {connectionGeneration: 1, nuttxProgram: {state: STATE_CODE[p.state], error: p.error},
+                ...(this.mailbox.reply ? {nuttxProgramReply: [...this.mailbox.reply]} : {})},
+            ports: this.ports.map(port => ({id: port.id, attached: port.kind !== 'none', kind: port.kind === 'none' ? null : port.kind})),
             motors: this.ports.filter(port => port.kind === 'motor').map(port => {
                 const position = port.positionAt(this.ms);
                 return {port: port.id, position, speedDps: port.anchor.dps, stalled: false,
@@ -358,11 +391,25 @@ export class FakeSpikeRenode {
             return JSON.stringify(this.snapshot());
         case 'renode.spike.run':
             if (!this.session) throw new Error('operation-failed');
+            this.running = true;
             return 'running';
         case 'renode.spike.session.close':
             this.session = false;
             this.lockstep = false;
+            this.running = false;
             return {ok: true};
+        case 'renode.spike.program.packet':
+            // The packet waits for the firmware's reply in wall time: a halted or lockstepped guest never answers.
+            if (!this.session || !this.running || this.lockstep || this.mailbox.pending) throw new Error('operation-failed');
+            this._packet(Uint8Array.from(args.bytes));
+            return JSON.stringify(this.snapshot());
+        case 'renode.spike.program.control.submit': {
+            const bytes = Uint8Array.from(args.bytes);
+            if (!this.session || bytes.length !== 8 || ![3, 4].includes(bytes[2]) || this.mailbox.pending) throw new Error('operation-failed');
+            this.mailbox.pending = {op: bytes[2], id: new DataView(bytes.buffer).getUint32(4, true)};
+            const requestSeq = this.mailbox.requestSeq += 2;
+            return JSON.stringify({snapshot: this.snapshot(), data: {requestSeq}});
+        }
         case 'renode.spike.lockstep.begin':
             if (!this.session || this.lockstep) throw new Error('operation-failed');
             this.lockstep = true;
@@ -393,7 +440,8 @@ export class FakeSpikeRenode {
             this.ms++;
             for (const port of this.ports) port.tick(this.ms);
             if (this.ms % 10 === 0) {
-                if (this.firmware.p.state === 'ready') this.firmware.start();
+                if (this.autoStart && this.firmware.p.state === 'ready') this.firmware.start();
+                this._takeControl();
                 this.firmware.service(this.ms);
             }
         }
@@ -402,6 +450,37 @@ export class FakeSpikeRenode {
         if (this.faults.skewAtStep === this.steps) clockNs += this.faults.skewNs ?? 1;
         const seq = this.faults.repeatSeqAtStep === this.steps ? this.seq : ++this.seq;
         return this.snapshot({clockNs, seq, drives});
+    }
+
+    /** BEGIN (0), CHUNK (1), COMMIT (2) of a bytecode upload, answered at once (the firmware is free-running). */
+    _packet (bytes) {
+        const view = new DataView(bytes.buffer);
+        const op = bytes[2];
+        const id = view.getUint32(4, true);
+        const fw = this.firmware;
+        let result = 0;
+        if (op === 0) {
+            this.upload = {id, count: view.getUint32(8, true), bytes: []};
+        } else if (op === 1 && this.upload?.id === id && view.getUint16(8, true) === this.upload.bytes.length) {
+            this.upload.bytes.push(...bytes.subarray(10));
+        } else if (op === 2 && this.upload?.id === id && this.upload.bytes.length === this.upload.count * 16) {
+            const data = new DataView(Uint8Array.from(this.upload.bytes).buffer);
+            fw.program = Array.from({length: this.upload.count}, (_, i) => [0, 1, 2, 3].map(j => data.getInt32(i * 16 + j * 4, true)));
+            fw.programId = id;
+            fw.p.state = 'ready';
+        } else result = -22;
+        this.mailbox.reply = programReply(op, STATE_CODE[fw.p.state], id, {result, count: this.upload?.count ?? 0,
+            received: this.upload?.bytes.length ?? 0});
+    }
+
+    /** service.c takes the mailbox's request at its tick: START/STOP, then writes the reply. */
+    _takeControl () {
+        const request = this.mailbox.pending;
+        if (!request) return;
+        this.mailbox.pending = null;
+        const fw = this.firmware;
+        const result = request.id !== fw.programId ? -22 : request.op === 3 ? fw.start() : fw.stop();
+        this.mailbox.reply = programReply(request.op, STATE_CODE[fw.p.state], request.id, {result, count: fw.program?.length ?? 0});
     }
 
     /** The firmware program's state ('running', 'complete', 'fault', …). */
