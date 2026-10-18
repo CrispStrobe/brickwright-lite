@@ -639,6 +639,34 @@ commit and recursive-tree API original bytes with their exact extents and hashes
 Freeze those originals and executing workflow content separately; never derive
 the trusted expectation from an untrusted archive's own declarations.
 
+The separate `bw.gui-hdd.workflow-api-proof.v2` carries those exact API originals
+as bounded zlib streams. A recursive tree original can fit its own 4 MiB limit
+while its v1 base64 wrapper exceeds the separate 4 MiB proof limit; preserve that
+refusal and the retained originals. The v2 representation addresses this size
+gap without truncating the tree, fetching it again or increasing either limit.
+Each `commit` and `tree` role has closed `codec`, `original` and `compressed`
+fields: codec `zlib`, the original extent/hash, and the compressed extent/hash/
+canonical base64. Validate both declared bounds and the compressed bytes before
+inflation. Decode at most the declared original extent plus one sentinel byte,
+then require the exact extent/hash, stream EOF, no unconsumed data and no trailing
+or concatenated stream. No flush allocates additional output. The same strict
+JSON, ordered parents, complete tree and workflow-blob joins then apply. The v1
+format remains supported unchanged. Neither representation authenticates API
+provenance or reconstructs the complete Git commit/tree object graph.
+
+The proof-v2 checkpoint passes 76 Node tests, including 102 embedded Python
+controls and 12 held snapshot controls. All 98 earlier Python test bodies stay
+unchanged. Seven source mutations and 23 independent codec/API counterexamples
+are detected; complete and failed-partial offline CLI verdicts preserve v1
+behavior. A manufactured 12057-entry recursive tree exercises the size gap.
+These are source and original-format controls, not hosted or guest qualification.
+
+Changing the reader changes source21. Rebuild the final canonical request and
+explicitly review any private consumer's reader selection; an earlier request or
+historical merge proof cannot authorize the new source. Offline tests using
+retained API bytes establish format compatibility only, not a new hosted event.
+
+
 The envelope checkpoint passes 64 Node tests including 96 embedded Python
 controls, preserving all 91 earlier Python test bodies. Nineteen source
 mutations and 27 independent re-pinned counterexamples are detected. Separate
