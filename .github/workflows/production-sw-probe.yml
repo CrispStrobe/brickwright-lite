@@ -109,7 +109,10 @@ jobs:
           (cd cui && npm ci --no-audit --no-fund && npx playwright install chromium \
             && node scripts/census-part-faces.mjs --kinds "$kinds" --json ../example-faces.json) \
             || echo "::warning::bw-circuit-ui census reported failures (see log); the report still lists faces"
-          node scripts/census-example-faces.mjs report --census example-faces.json --md example-faces.md
+          # Exit 2: the pinned bw-circuit-ui has no face lists yet (pre-B22). A
+          # report, not a gate: say so instead of failing.
+          node scripts/census-example-faces.mjs report --census example-faces.json --md example-faces.md \
+            || { rc=$?; [ "$rc" = 2 ] && echo "::notice::example-faces report needs a bw-circuit-ui pin that lists faces (B22)" || exit "$rc"; }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: ${{ !cancelled() && env.CENSUS == 'true' }}
         with:
