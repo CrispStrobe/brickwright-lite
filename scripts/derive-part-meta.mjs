@@ -1347,6 +1347,33 @@ const cylinderAlong = (a, lo, hi, r) => {
     return c;
 };
 
+/**
+ * Boxes along coordinate axis k: the part cut into slabs where its outline along k changes, each
+ * slab the bounding box of the triangles that span it, equal neighbours merged. For a part whose
+ * envelope along its hole axis is one box but which narrows along its length (the changeover
+ * catch's neck and bar end).
+ */
+export const slabBoxes = (tris, k) => {
+    const cuts = [...new Set(tris.flatMap(t => t.v.map(v => round(v[k], 0.5))))].sort((p, q) => p - q);
+    const out = [];
+    for (let i = 0; i + 1 < cuts.length; i++) {
+        const [lo, hi] = [cuts[i], cuts[i + 1]];
+        const mn = [Infinity, Infinity, Infinity]; const mx = [-Infinity, -Infinity, -Infinity];
+        for (const t of tris) {
+            const ks = t.v.map(v => v[k]);
+            if (Math.min(...ks) > lo + 0.3 || Math.max(...ks) < hi - 0.3) continue;
+            for (const v of t.v) for (let j = 0; j < 3; j++) if (j !== k) { mn[j] = Math.min(mn[j], v[j]); mx[j] = Math.max(mx[j], v[j]); }
+        }
+        if (!Number.isFinite(mn[(k + 1) % 3])) continue;
+        mn[k] = lo; mx[k] = hi;
+        const box = [mn.map(v => round(v, 0.5)), mx.map(v => round(v, 0.5))];
+        const last = out[out.length - 1];
+        if (last && last[1][k] === lo && [0, 1, 2].every(j => j === k || (last[0][j] === box[0][j] && last[1][j] === box[1][j]))) last[1][k] = hi;
+        else out.push(box);
+    }
+    return out.map(([a, b]) => boxCollider(a, b));
+};
+
 /** The parts a transmission needs: connectors (and colliders, category) added to `meta` in place. */
 export const deriveTransmission = ({part, desc, meta, connectors, found, flat, read, problems, notes}) => {
     const add1 = c => connectors.push(c);
@@ -1394,6 +1421,11 @@ export const deriveTransmission = ({part, desc, meta, connectors, found, flat, r
         const [l0, l1] = [Math.min(...along), Math.max(...along)];
         const c = add(perp(joinerHole.position, joinerHole.axis), scale(joinerHole.axis, (l0 + l1) / 2));
         add1({id: 'r', type: 'spline', position: roundVec(c, 0.01), axis: joinerHole.axis, length: latticeLength(l1 - l0)});
+        // A ridged joiner turns inside the driving ring: round, so a cylinder (the ridges' reach), not
+        // the box of its envelope, whose corners would rub what passes close by.
+        const extent = found.verts.map(v => dot(v, joinerHole.axis));
+        const rMax = Math.max(...found.verts.map(v => len(perp(sub(v, joinerHole.position), joinerHole.axis))));
+        meta.colliders = [cylinderAlong(joinerHole.axis, Math.min(...extent), Math.max(...extent), round(rMax, 0.01))];
     }
     if (/^Technic Transmission Changeover Catch\b/.test(desc)) {
         const bars = flat.primitives.filter(q => /^p\/(4-4cyl[io])\.dat$/.test(q.file) && !q.via.length)
@@ -1403,6 +1435,8 @@ export const deriveTransmission = ({part, desc, meta, connectors, found, flat, r
             const b = bars[0];
             add1({id: 'f', type: 'fork', position: roundVec(add(b.t, scale(b.h, 0.5)), 0.01), axis: snapAxis(unit(b.h)), length: round(len(b.h), 0.5),
                 data: {radiusLdu: round(b.r, 0.01)}});
+            // Its outline narrows from the block to the neck and the bar: boxes along the lever (z).
+            meta.colliders = slabBoxes(found.tris, 2);
             meta.category = 'gear';
         } else problems.push(`changeover catch: ${bars.length} bar cylinders, need one`);
     }

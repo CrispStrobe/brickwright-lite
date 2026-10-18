@@ -128,6 +128,14 @@ const GEAR_POSITION_STEPS = 10;
 const WORM_VELOCITY_STEPS = 120;
 
 /**
+ * Solver velocity iterations for an island holding a planet carrier's mesh (a relativeGear in
+ * a turning frame, re-made every step and so without Jolt's warm start). A differential with
+ * one side held (test/bw-sim-gearbox.test.mjs) turned its free side 1.74× the casing with 30,
+ * 1.98× with 120, 1.992× with 240 (Willis: 2), and no better with 400 (measured).
+ */
+const CARRIER_VELOCITY_STEPS = 240;
+
+/**
  * Principal moments and axes of a symmetric 3×3 inertia tensor (cyclic Jacobi).
  * @param {number[][]} m row-major, symmetric
  * @returns {{values: number[], vectors: number[][]}} vectors[k] = the k-th axis (unit)
@@ -627,14 +635,41 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             const wheel = hingeMap.get(g.wheelJoint);
             worms.push({ id: g.id, wormJoint: g.wormJoint, wheel, holdNm: g.holdTorqueNm / Math.abs(g.ratio), driver: null, held: false });
             gearInfos.push({ type: 'worm', id: g.id, wormJoint: g.wormJoint, wheelJoint: g.wheelJoint, ratio: g.ratio });
+        } else if (g.kind === 'relativeGear' && !g.carrier) {
+            // A frame that does not turn about the gears (a clutch gear on its axle in the gearbox
+            // frame): the gear constraint on the two gear bodies' world rates, as for 'gear' —
+            // exact while the frame does not turn, and with the gear constraint's warm start.
+            let A = { body: g.gear1, axis: g.axis1 };
+            let B = { body: g.gear2, axis: g.axis2 };
+            let ratio = g.ratio;
+            if (Math.abs(ratio) > 1) { [A, B] = [B, A]; ratio = 1 / ratio; }
+            const gs = new J.GearConstraintSettings();
+            gs.mSpace = J.EConstraintSpace_WorldSpace;
+            const flip = ratio > 0 ? -1 : 1;
+            gs.mHingeAxis1 = new J.Vec3(...A.axis);
+            gs.mHingeAxis2 = new J.Vec3(...B.axis.map(v => v * flip));
+            gs.mRatio = 1 / Math.abs(ratio);
+            gs.mNumVelocityStepsOverride = GEAR_VELOCITY_STEPS;
+            gs.mNumPositionStepsOverride = GEAR_POSITION_STEPS;
+            const constraint = gs.Create(getBodyForId(A.body), getBodyForId(B.body));
+            physicsSystem.AddConstraint(constraint);
+            allConstraints.push(constraint);
+            J.destroy(gs);
+            for (const bid of [A.body, B.body]) floorInertia(bid);
+            gearInfos.push({ type: 'relativeGear', id: g.id, gear1: g.gear1, gear2: g.gear2, frame: g.frame, ratio: g.ratio });
         } else if (g.kind === 'relativeGear') {
-            relativeGears.push(g); // built after every other constraint (buildRelativeGears)
+            relativeGears.push(g); // a planet carrier: built after every other constraint (anchorRelativeGears)
             gearInfos.push({ type: 'relativeGear', id: g.id, gear1: g.gear1, gear2: g.gear2, frame: g.frame, ratio: g.ratio });
         } else if (g.kind === 'dogClutch') {
             const gear = hingeMap.get(g.gearJoint);
             const ring = sliderMap.get(g.sliderJoint);
             if (!gear || !ring) throw new Error(`dog clutch ${g.id}: joints not found`);
             dogClutches.push({ id: g.id, gear, ring, engage: g.engage, holdNm: g.holdTorqueNm, engaged: false });
+            // The clutch puts the gear's load on the axle (and the ring): their inertia is floored as
+            // a gear body's is (GEAR_MIN_INERTIA), so the solver holds the lock against the gear's.
+            const gj = jointMap.get(g.gearJoint);
+            const sj = jointMap.get(g.sliderJoint);
+            for (const bid of new Set([gj.body1, gj.body2, sj.body1, sj.body2])) if (bid !== 'world') floorInertia(bid);
             gearInfos.push({ type: 'dogClutch', id: g.id, gearJoint: g.gearJoint, sliderJoint: g.sliderJoint });
         } else if (g.kind === 'rackAndPinion' || g.kind === 'shiftFork') {
             // shiftFork (kinds/transmission.js): a changeover catch's swing pushing a driving ring
@@ -684,7 +719,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         relSettings.mSpace = J.EConstraintSpace_WorldSpace;
         for (const axis of [J.SixDOFConstraintSettings_EAxis_TranslationY, J.SixDOFConstraintSettings_EAxis_TranslationZ,
             J.SixDOFConstraintSettings_EAxis_RotationX, J.SixDOFConstraintSettings_EAxis_RotationY, J.SixDOFConstraintSettings_EAxis_RotationZ]) relSettings.MakeFreeAxis(axis);
-        relSettings.mNumVelocityStepsOverride = GEAR_VELOCITY_STEPS;
+        relSettings.MakeFixedAxis(J.SixDOFConstraintSettings_EAxis_TranslationX); // Jolt's default is every axis free
+        relSettings.mNumVelocityStepsOverride = CARRIER_VELOCITY_STEPS;
         relSettings.mNumPositionStepsOverride = GEAR_POSITION_STEPS;
     }
     const poseOf = id => {
@@ -718,6 +754,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             relSettings.mAxisY1 = tmp[3]; relSettings.mAxisY2 = tmp[3];
             r.constraint = relSettings.Create(r.b1, r.b2);
             physicsSystem.AddConstraint(r.constraint);
+            if (globalThis.__RGDBG) { const c6 = J.castObject(r.constraint, J.SixDOFConstraint); globalThis.__RGDBG(world(r.a1), t, c6.IsFixedAxis(J.SixDOFConstraintSettings_EAxis_TranslationX), c6.IsFreeAxis(J.SixDOFConstraintSettings_EAxis_TranslationY), c6.IsActive(), r.b1.IsActive(), r.b2.IsActive()); }
             for (const o of tmp) J.destroy(o);
         }
     };

@@ -47,7 +47,7 @@
 import {vecSub, vecDot, vecCross, vecLen, vecScale, vecNormalize, lineDistance, SIN_1_DEG, COS_1_DEG} from '../mech/vec.js';
 import {LDU_M, lduToWorld, dirToWorld} from '../contracts.js';
 import {shaftEngagement} from './pin-axle.js';
-import {toothConnectors} from './tooth-parts.js';
+import {toothConnectors, placedTooth} from './tooth-parts.js';
 
 /** LDU: a ring's teeth hold a clutch gear once they are this deep in its socket (half an 8 LDU socket). */
 export const ENGAGE_LDU = 4;
@@ -75,12 +75,24 @@ const splineInBore = {
 const needsLength = what => c => (typeof c.length === 'number' && c.length > 0 ? [] : [`a ${what} needs its length (LDU)`]);
 
 export const SPLINE = {kind: 'spline', validate: needsLength('spline')};
-export const SPLINE_BORE = {kind: 'spline-bore', pairs: [splineInBore], validate: needsLength('spline-bore')};
+export const SPLINE_BORE = {
+    kind: 'spline-bore', pairs: [splineInBore], validate: needsLength('spline-bore'),
+    /** The editor's overlap rule: a ring rides its joiner (the joiner is in the ring's bore). */
+    placedShare: (p, mp, q, mq) => {
+        const splines = placedTooth(q, mq, 'spline');
+        return splines.length > 0 && placedTooth(p, mp, 'spline-bore').some(r => splines.some(s => shaftEngagement(s.c, r.c) !== null));
+    }
+};
 export const CLUTCH = {kind: 'clutch', validate: needsLength('clutch socket')};
 export const CLUTCH_TEETH = {kind: 'clutch-teeth'};
 export const FORK = {
     kind: 'fork',
-    validate: c => (c.data && c.data.radiusLdu > 0 ? [] : ['data.radiusLdu: the bar\'s radius (LDU)'])
+    validate: c => (c.data && c.data.radiusLdu > 0 ? [] : ['data.radiusLdu: the bar\'s radius (LDU)']),
+    /** The editor's overlap rule: a catch whose bar is in a ring's groove reaches between its flanges. */
+    placedShare: (p, mp, q, mq) => {
+        const grooves = placedTooth(q, mq, 'fork-groove');
+        return grooves.length > 0 && placedTooth(p, mp, 'fork').some(f => grooves.some(g => barInGroove(f, g)));
+    }
 };
 export const FORK_GROOVE = {
     kind: 'fork-groove',
@@ -91,6 +103,21 @@ export const FORK_GROOVE = {
 };
 
 // ---- helpers -----------------------------------------------------------------------
+
+/**
+ * A catch's bar lies in a ring's groove: across the ring's axis (1°), between the flanges (its
+ * radius inside the groove's width, 0.5 LDU) and, as a line, between the groove's floor (plus the
+ * bar's radius, 0.5 LDU) and the flanges' rim. Both as toothConnectors/placedTooth give them.
+ */
+const barInGroove = (fork, g) => {
+    const u = g.c.axis;
+    if (Math.abs(vecDot(fork.c.axis, u)) > SIN_1_DEG + 1e-12) return false;
+    const rb = fork.data.radiusLdu;
+    const axial = vecDot(vecSub(fork.c.position, g.c.position), u);
+    if (Math.abs(axial) > g.data.widthLdu / 2 - rb + 0.5 + 1e-9) return false;
+    const off = lineDistance(fork.c.position, fork.c.axis, g.c.position, u);
+    return off >= g.data.radiusLdu + rb - 0.5 - 1e-9 && off <= g.data.outerLdu + 1e-9;
+};
 
 /** The slider joint whose ring side is `ringIsland`, with the other side: {joint, axle, sigma}. */
 const ringSliders = (joints, ringIsland) => joints.filter(j => j.type === 'slider' && (j.body1 === ringIsland || j.body2 === ringIsland))
@@ -163,6 +190,29 @@ export const DOG_CLUTCH = {
         if (!(typeof c.holdTorqueNm === 'number' && c.holdTorqueNm > 0)) out.push('holdTorqueNm: a positive number');
         return out;
     },
+    /**
+     * The editor's overlap rule: a driving ring rides its ridged joiner (the joiner sits in the ring's
+     * bore; their colliders are solid cylinders and boxes), and a ring's teeth go into a clutch
+     * gear's socket — both share volume by design, as meshing teeth do.
+     */
+    placedMesh (a, metaA, b, metaB) {
+        for (const [p, mp, q, mq] of [[a, metaA, b, metaB], [b, metaB, a, metaA]]) {
+            const bores = placedTooth(p, mp, 'spline-bore');
+            if (!bores.length) continue;
+            const splines = placedTooth(q, mq, 'spline');
+            if (bores.some(r => splines.some(s => shaftEngagement(s.c, r.c) !== null))) return true;
+            const ends = placedTooth(p, mp, 'clutch-teeth');
+            for (const k of placedTooth(q, mq, 'clutch')) {
+                for (const e of ends) {
+                    if (!parallel(k.c.axis, e.c.axis) || vecDot(k.c.axis, e.c.axis) > 0) continue;
+                    if (lineDistance(e.c.position, e.c.axis, k.c.position, k.c.axis) > 0.5 + 1e-9) continue;
+                    const gap = vecDot(vecSub(k.c.position, e.c.position), e.c.axis);
+                    if (gap <= 0.5 && gap >= -(k.c.length || 0) - 0.5) return true;
+                }
+            }
+        }
+        return false;
+    },
     /** The ring and the gear (each joint's side not shared with the other): the ring's teeth go into the gear. */
     bodies (c, joints) {
         const s = joints.find(j => j.id === c.sliderJoint);
@@ -185,12 +235,7 @@ export const SHIFT_FORK = {
             for (const g of grooves) {
                 if (g.islandId === fork.islandId) continue;
                 const u = g.c.axis;
-                if (Math.abs(vecDot(fork.c.axis, u)) > SIN_1_DEG + 1e-12) continue; // the bar lies across the ring
-                const rb = fork.data.radiusLdu;
-                const axial = vecDot(vecSub(fork.c.position, g.c.position), u);
-                if (Math.abs(axial) > g.data.widthLdu / 2 - rb + 0.5 + 1e-9) continue; // between the flanges
-                const off = lineDistance(fork.c.position, fork.c.axis, g.c.position, u);
-                if (off < g.data.radiusLdu + rb - 0.5 - 1e-9 || off > g.data.outerLdu + 1e-9) continue; // in the groove
+                if (!barInGroove(fork, g)) continue;
                 const parts = [fork.partId, g.partId];
                 const ring = ringSliders(joints, g.islandId).find(r => parallel(vecNormalize(dirToWorld(r.joint.axis)), u));
                 if (!ring) {

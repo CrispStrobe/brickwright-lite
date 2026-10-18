@@ -119,6 +119,11 @@ export const placedGearsMesh = (a, metaA, b, metaB, kinds = BUILTIN_KINDS) => {
     for (const m of kinds.couplings.list()) {
         if (typeof m.placedMesh === 'function' && m.placedMesh(a, metaA, b, metaB)) return true;
     }
+    // Parts that sit inside each other by design and whose connector kind says so (gearbox lane:
+    // a driving ring on its joiner, a catch's bar in the ring's groove, the gears in a differential).
+    for (const m of kinds.connectors.list()) {
+        if (typeof m.placedShare === 'function' && (m.placedShare(a, metaA, b, metaB) || m.placedShare(b, metaB, a, metaA))) return true;
+    }
     if (!metaA?.gear || !metaB?.gear || metaA.gear.type !== metaB.gear.type) return false;
     const module = kinds.couplings.meshFor(metaA.gear.type, metaB.gear.type);
     if (!module) return false;
@@ -251,8 +256,10 @@ export const buildGears = (nodes, islands, joints, catalogMap, diagnostics = [],
 
     // Closed loops: an inconsistent one locks (its closing coupling's gears are welded to the frame).
     for (const lock of inconsistentLoops(gears, relative, joints)) {
-        diagnostics.push({severity: 'warning', code: 'gear-loop-locked', parts: lock.parts,
-            message: `The gears ${lock.parts.join(', ')} close a loop of gears whose ratios disagree, so none of them can turn: the gear train locks.`});
+        // Every gear on the two locked bodies (they are welded to the frame together).
+        const parts = gearInfos.filter(g => lock.bodies.includes(g.islandId)).map(g => g.partId).sort();
+        diagnostics.push({severity: 'warning', code: 'gear-loop-locked', parts,
+            message: `The gears ${parts.join(', ')} close a loop of gears whose ratios disagree, so none of them can turn: the gear train locks.`});
         for (const b of lock.bodies) lockedPairs.push([lock.frame, b]);
     }
 

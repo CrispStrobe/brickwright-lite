@@ -223,7 +223,7 @@ export const compile = (model, catalog, opts = {}) => {
     }
     if (!gearResult) throw new Error('compile: mechanism topology did not settle');
     // A gear welded by gear-on-frame is "not on a hinge" by construction; that is the lock, already said.
-    const lockedGears = new Set(diagnostics.filter(d => d.code === 'gear-on-frame').flatMap(d => d.parts));
+    const lockedGears = new Set(diagnostics.filter(d => d.code === 'gear-on-frame' || d.code === 'gear-loop-locked').flatMap(d => d.parts));
     for (const d of gearDiagnostics) {
         if (d.code === 'gear-not-on-hinge' && d.parts.every(p => lockedGears.has(p))) continue;
         diagnostics.push(d);

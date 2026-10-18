@@ -374,7 +374,7 @@ kept as they are; every difference is explained below (a derived connector the h
 | 32190.dat | Technic panel fairing #1 | other | 3.7800000000000002 | 4 pinhole | 1 |
 | 32191.dat | Technic panel fairing #2 | other | 3.7800000000000002 | 4 pinhole | 1 |
 | 6539.dat | Technic transmission driving ring | gear | 1.16 | 1 spline-bore, 2 clutch-teeth, 1 fork-groove | 7 |
-| 6641.dat | Technic transmission changeover catch type 1 | gear | 0.61 | 2 axlehole, 1 fork | 1 |
+| 6641.dat | Technic transmission changeover catch type 1 | gear | 0.61 | 2 axlehole, 1 fork | 6 |
 | 76019.dat | Technic gear 24 tooth clutch with dark grey centre | gear | 1.53 | 1 clutch-axlehole | 1 |
 | 65414.dat | Technic differential casing for 5 internal gears | gear | 2.32 | 1 pinhole, 3 gear-seat, 1 snap | 1 |
 | 65413.dat | Technic gear 28 tooth double bevel with peghole | gear | 1.96 | 1 pinhole, 1 snap | 1 |
@@ -418,7 +418,7 @@ other; a clutch gear slips); racks and worms are derived when their teeth measur
 
 ## Size
 
-parts.json is 1183860 bytes as written (one-space JSON) and 532317 bytes minified (41967 gzipped) in
+parts.json is 1184680 bytes as written (one-space JSON) and 532691 bytes minified (42002 gzipped) in
 the lazy Sim Lab chunk. If the library grows by another few hundred parts, split it: keep the hand-measured parts (motors, hub,
 sensors, the examples' parts) in parts.json and move the derived ones to a second file the palette fetches on first open.
 
