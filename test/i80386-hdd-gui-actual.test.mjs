@@ -1472,6 +1472,100 @@ class Originals(unittest.TestCase):
         artifact={'total_count':1,'artifacts':[{'id':202,'name':'i80386-hdd-gui-font-discovery-200-1','expired':False,'size_in_bytes':len(archive),'digest':'sha256:'+H(archive),'workflow_run':{'id':200,'head_sha':'a'*40}}]}
         metadata={'run':E(run),'job':E(job),'artifact':E(artifact),'workflowProof':proof};expected['metadata']={key:ROW(raw) for key,raw in metadata.items()}
         return files,request_raw,expected,metadata,workflow
+    def font_workflow_v2(self,proof):
+        import zlib
+        def packed(row):
+            raw=base64.b64decode(row['base64']);compressed=zlib.compress(raw)
+            return {'codec':'zlib','original':ROW(raw),'compressed':dict(ROW(compressed),base64=base64.b64encode(compressed).decode())}
+        return E({'schema':'bw.gui-hdd.workflow-api-proof.v2',**{key:packed(proof[key]) for key in ('commit','tree')}})
+    def test_font_workflow_v2_large_api_original_and_legacy_full_delivery_equivalence(self):
+        files,request,expected,metadata,workflow=self.font_delivery_fixture();archive=self.rebind_font_delivery(files,expected,metadata)
+        old_proof=metadata['workflowProof'];old_expected=copy.deepcopy(expected);legacy=r.verify_font_delivery(archive,request,expected,metadata,workflow)
+        metadata['workflowProof']=self.font_workflow_v2(D(old_proof));expected['metadata']['workflowProof']=ROW(metadata['workflowProof'])
+        self.assertEqual(r.verify_font_delivery(archive,request,expected,metadata,workflow),legacy)
+        self.assertEqual(D(old_proof)['schema'],'bw.gui-hdd.workflow-api-proof.v1')
+        self.assertEqual(r.verify_font_delivery(archive,request,old_expected,dict(metadata,workflowProof=old_proof),workflow),legacy)
+        proof=D(old_proof);tree=D(base64.b64decode(proof['tree']['base64']))
+        # Manufactured ordinary recursive API entries, not retained official
+        # metadata. Their varied paths/blob hashes exercise the real size gap.
+        for index in range(12056):
+            h=hashlib.sha256(str(index).encode()).hexdigest()[:40]
+            tree['tree'].append({'path':'manufactured/'+h+'/'+str(index),'mode':'100644','type':'blob','sha':h,'size':index+1,
+              'url':'https://api.github.com/repos/CrispStrobe/brickwright-lite/git/blobs/'+h})
+        raw=E(tree);self.assertTrue(3330000<len(raw)<3400000);self.assertEqual(len(tree['tree']),12057)
+        proof['tree']=dict(ROW(raw),base64=base64.b64encode(raw).decode());unpacked=E(proof)
+        self.assertGreater(len(unpacked),r.JSON_CAP)
+        with self.assertRaisesRegex(ValueError,'bounded JSON original'):r.decode(unpacked)
+        metadata['workflowProof']=self.font_workflow_v2(proof);self.assertLess(len(metadata['workflowProof']),r.JSON_CAP)
+        expected['metadata']['workflowProof']=ROW(metadata['workflowProof'])
+        self.assertEqual(r.font_workflow_api_original(D(metadata['workflowProof'])['tree'],'bw.gui-hdd.workflow-api-proof.v2'),raw)
+        self.assertEqual(r.verify_font_delivery(archive,request,expected,metadata,workflow),legacy)
+    def test_font_workflow_v2_offline_cli_and_failed_partial_legacy_equivalence(self):
+        for partial in (False,True):
+            files,request,expected,metadata,workflow=self.font_delivery_fixture(partial);archive=self.rebind_font_delivery(files,expected,metadata)
+            legacy=r.verify_font_delivery(archive,request,expected,metadata,workflow)
+            metadata['workflowProof']=self.font_workflow_v2(D(metadata['workflowProof']));expected['metadata']['workflowProof']=ROW(metadata['workflowProof'])
+            mapping={'/archive':archive,'/request':request,'/expected':E(expected),'/workflow':workflow,**{'/'+key:raw for key,raw in metadata.items()}}
+            def read(path,cap):self.assertLessEqual(len(mapping[path]),cap);return mapping[path]
+            args=['--font-discovery-delivery','/archive','--request','/request','--expected','/expected','--run','/run','--job','/job','--artifact','/artifact','--workflow-proof','/workflowProof','--workflow','/workflow']
+            with patch.object(r,'bounded_input',read),patch.object(r.sys,'stdout',io.StringIO()) as stdout:self.assertEqual(r.main(args),0)
+            self.assertEqual(D(stdout.getvalue().encode()),legacy);self.assertEqual(legacy['producingConclusion'],'failure' if partial else 'success')
+            self.assertFalse(legacy['candidate']);self.assertFalse(legacy['qualified']);self.assertFalse(legacy['activeFontSelectionProved'])
+    def test_font_workflow_v2_coherent_compression_refusals(self):
+        import zlib
+        files,request,expected,metadata,workflow=self.font_delivery_fixture();base=D(self.font_workflow_v2(D(metadata['workflowProof'])))
+        def blob(raw):return dict(ROW(raw),base64=base64.b64encode(raw).decode())
+        for cut in ('schema','codec','extra','extra-original','extra-compressed','bool-length','float-length','oversize-original','oversize-compressed',
+          'under-length','over-length','wrong-original-hash','wrong-compressed-hash','compressed-extent','noncanonical-base64','malformed','truncated','trailing','multistream','bomb','duplicate-json'):
+            proof=copy.deepcopy(base);row=proof['tree'];compressed=base64.b64decode(row['compressed']['base64']);raw=zlib.decompress(compressed)
+            if cut=='schema':proof['schema']='bw.gui-hdd.workflow-api-proof.v3'
+            elif cut=='codec':row['codec']='gzip'
+            elif cut=='extra':row['verified']=True
+            elif cut=='extra-original':row['original']['base64']=base64.b64encode(raw).decode()
+            elif cut=='extra-compressed':row['compressed']['verified']=True
+            elif cut=='bool-length':row['original']['byteLength']=True
+            elif cut=='float-length':row['original']['byteLength']=float(len(raw))
+            elif cut=='oversize-original':row['original']['byteLength']=r.JSON_CAP+1
+            elif cut=='oversize-compressed':row['compressed']['byteLength']=r.JSON_CAP+1
+            elif cut=='under-length':row['original']['byteLength']-=1
+            elif cut=='over-length':row['original']['byteLength']+=1
+            elif cut=='wrong-original-hash':row['original']['sha256']='0'*64
+            elif cut=='wrong-compressed-hash':row['compressed']['sha256']='0'*64
+            elif cut=='compressed-extent':row['compressed']['byteLength']+=1
+            elif cut=='noncanonical-base64':row['compressed']['base64']+='\n'
+            elif cut=='malformed':row['compressed']=blob(b'not zlib')
+            elif cut=='truncated':row['compressed']=blob(compressed[:-1])
+            elif cut=='trailing':row['compressed']=blob(compressed+b'extra')
+            elif cut=='multistream':row['compressed']=blob(compressed+zlib.compress(b'{}'))
+            elif cut=='bomb':
+                expanded=b'X'*(r.JSON_CAP+1);row['compressed']=blob(zlib.compress(expanded));row['original']=dict(ROW(expanded),byteLength=16)
+            else:
+                raw=b'{"sha":"f","sha":"f"}\n';row['original']=ROW(raw);row['compressed']=blob(zlib.compress(raw))
+            encoded=E(proof);expected['metadata']['workflowProof']=ROW(encoded)
+            with self.assertRaises(ValueError,msg=cut):r.font_delivery_workflow(encoded,workflow,expected)
+    def test_font_workflow_v2_bounds_before_inflate_and_single_bounded_call(self):
+        import zlib
+        files,request,expected,metadata,workflow=self.font_delivery_fixture();proof=D(self.font_workflow_v2(D(metadata['workflowProof'])));row=proof['tree']
+        for cut in ('oversize-original','oversize-compressed','bad-compressed-hash'):
+            bad=copy.deepcopy(row)
+            if cut=='oversize-original':bad['original']['byteLength']=r.JSON_CAP+1
+            elif cut=='oversize-compressed':bad['compressed']['byteLength']=r.JSON_CAP+1
+            else:bad['compressed']['sha256']='0'*64
+            with patch.object(zlib,'decompressobj',side_effect=AssertionError('inflate must not start')) as inflater:
+                with self.assertRaises(ValueError,msg=cut):r.font_workflow_api_original(bad,proof['schema'])
+                inflater.assert_not_called()
+        actual=zlib.decompressobj();limits=[]
+        class BoundedInflater:
+            def decompress(self,raw,limit):limits.append(limit);return actual.decompress(raw,limit)
+            @property
+            def eof(self):return actual.eof
+            @property
+            def unused_data(self):return actual.unused_data
+            @property
+            def unconsumed_tail(self):return actual.unconsumed_tail
+        with patch.object(zlib,'decompressobj',return_value=BoundedInflater()):
+            raw=r.font_workflow_api_original(row,proof['schema'])
+        self.assertEqual(limits,[row['original']['byteLength']+1]);self.assertEqual(ROW(raw),row['original'])
     def rebind_font_delivery(self,files,expected,metadata):
         archive=zip_(files);expected['archive']=ROW(archive);artifact=D(metadata['artifact']);item=artifact['artifacts'][0] if 'artifacts' in artifact else artifact
         item.update(size_in_bytes=len(archive),digest='sha256:'+H(archive));metadata['artifact']=E(artifact);expected['metadata']={key:ROW(raw) for key,raw in metadata.items()};return archive

@@ -1292,14 +1292,31 @@ def font_delivery_pin(raw,row):
     need(type(raw) is bytes and len(raw)==row['byteLength'] and sha(raw)==row['sha256'],'separately frozen delivery original extent/hash')
 
 
+def font_workflow_api_original(value,schema):
+    if schema=='bw.gui-hdd.workflow-api-proof.v1':return font_original_blob(value,JSON_CAP)
+    need(schema=='bw.gui-hdd.workflow-api-proof.v2','versioned workflow API original')
+    fields(value,'codec original compressed');need(value['codec']=='zlib','fixed workflow API compression codec')
+    original=value['original'];fields(original,'byteLength sha256');integer(original['byteLength'],1,JSON_CAP);digest(original['sha256'])
+    compressed=font_original_blob(value['compressed'],JSON_CAP)
+    # Limit output during inflation, before any original JSON interpretation.
+    # No flush call may allocate output beyond the declared original extent.
+    import zlib
+    inflater=zlib.decompressobj()
+    try:raw=inflater.decompress(compressed,original['byteLength']+1)
+    except zlib.error as error:raise ValueError('invalid bounded workflow API zlib stream') from error
+    need(len(raw)==original['byteLength'] and inflater.eof and not inflater.unused_data and not inflater.unconsumed_tail,'exact complete single workflow API compression stream')
+    need(sha(raw)==original['sha256'],'uncompressed workflow API original hash')
+    return raw
+
+
 def font_delivery_workflow(proof_raw,workflow_raw,expected):
     # API originals are a separately reviewed metadata boundary. Only the blob's
     # Git object hash is reconstructed; complete commit/tree IDs are not rebuilt.
     selected=expected['workflow'];font_delivery_pin(proof_raw,expected['metadata']['workflowProof'])
     need(type(workflow_raw) is bytes and len(workflow_raw)==selected['byteLength'] and sha(workflow_raw)==selected['sha256'] and
          hashlib.sha1(b'blob '+str(len(workflow_raw)).encode()+b'\0'+workflow_raw).hexdigest()==selected['blob'],'independently selected executing workflow Git blob')
-    proof=decode(proof_raw);fields(proof,'schema commit tree');need(proof['schema']=='bw.gui-hdd.workflow-api-proof.v1' and encode(proof)==proof_raw,'canonical pinned workflow API proof wrapper')
-    commit=decode(font_original_blob(proof['commit'],JSON_CAP));tree=decode(font_original_blob(proof['tree'],JSON_CAP))
+    proof=decode(proof_raw);fields(proof,'schema commit tree');need(proof['schema'] in ('bw.gui-hdd.workflow-api-proof.v1','bw.gui-hdd.workflow-api-proof.v2') and encode(proof)==proof_raw,'canonical pinned workflow API proof wrapper')
+    commit=decode(font_workflow_api_original(proof['commit'],proof['schema']));tree=decode(font_workflow_api_original(proof['tree'],proof['schema']))
     need(commit.get('sha')==selected['commit'] and commit.get('tree',{}).get('sha')==selected['tree'] and tree.get('sha')==selected['tree'] and tree.get('truncated') is False,'selected commit/tree API observation joins')
     parents=commit.get('parents');need(type(parents) is list and len(parents)==2,'executing pull-request merge has two observed parents')
     for parent in parents:digest(parent.get('sha'),40)
