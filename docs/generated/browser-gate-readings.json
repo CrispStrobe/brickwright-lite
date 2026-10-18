@@ -268,6 +268,12 @@
    "max": null,
    "readings": []
   },
+  "Browser gate \u2014 Robot Lab build editor Studio tools (colour, hide, mirror, align, measure, groups, clipboard)": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
   "Browser gate \u2014 the debugger-only pane and its round trip": {
    "n": 20,
    "p95": 12,
@@ -7396,6 +7402,12 @@
    "readings": []
   },
   "Browser gate \u2014 CPX native program and live circuit face": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab scale, a 2,054-part model drawn instanced, and .lxf/.io model files": {
    "n": 0,
    "p95": null,
    "max": null,

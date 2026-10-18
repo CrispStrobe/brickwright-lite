@@ -16,9 +16,19 @@ const pose = (page, id) => page.evaluate(i => {
 }, id);
 const selectionOf = page => page.evaluate(() => window.__bwSimLab.editView.selection.slice().sort());
 /** Where a part's origin, or the gizmo's centre, is on screen right now. */
-const screenOf = (page, id, local) => page.evaluate(([i, l]) => {
+const screenOf = (page, id, local) => page.evaluate(([i, local]) => {
+    // `local` is [across, height, along] of the part as it lies: its y is taken along the world
+    // vertical (LDraw -y up), whatever the part's turn — a beam the palette stands on edge
+    // (canonical-frame.js defaultRotation) has its top where a flat one has it.
+    const part = window.__bwSimLab.editor.model.parts.find(p => p.id === i);
+    const R = part ? part.rotation : [1, 0, 0, 0, 1, 0, 0, 0, 1];
+    const up = [R[3], R[4], R[5]]; // the part-frame direction of world LDraw +y
+    const vert = Math.abs(up[1]) > 0.99 ? 1 : Math.abs(up[0]) > 0.99 ? 0 : 2;
+    const l = local ? local.slice() : [0, 0, 0];
+    if (local && vert !== 1) { const h = l[1]; l[1] = l[vert]; l[vert] = h * Math.sign(up[vert]); }
+    else if (local) l[1] = local[1] * Math.sign(up[1]);
     const v = window.__bwSimLab.editView;
-    const w = v.debugPoint(i, l || undefined);
+    const w = v.debugPoint(i, local ? l : undefined);
     return w && v.toScreen(w);
 }, [id, local || null]);
 /** A point on a beam's top face between two holes (where a finger would press, not into a hole). */
@@ -140,7 +150,8 @@ export const cadInteractions = async (page, beamId, {shotsDir}) => {
     const p2 = await pose(page, beamId);
     assert.notDeepEqual(p2.rotation, p1.rotation, 'R turned the part');
     assert.ok(exactRotation(p2.rotation), `exact rotation ${p2.rotation}`);
-    assert.deepEqual([p2.rotation[1], p2.rotation[4], p2.rotation[7]], [p1.rotation[1], p1.rotation[4], p1.rotation[7]], 'turned about the vertical');
+    // A turn about the world vertical (R' = Ry·R) keeps every part axis's height: row y of R.
+    assert.deepEqual([p2.rotation[3], p2.rotation[4], p2.rotation[5]], [p1.rotation[3], p1.rotation[4], p1.rotation[5]], 'turned about the vertical');
     console.log('PASS Build: R turns the selection 90° (exact rotation matrix)');
 
     // The rotate ring (E): dragging along the vertical ring turns by quarter turns.
@@ -169,10 +180,12 @@ export const cadInteractions = async (page, beamId, {shotsDir}) => {
 
     // Press on the selected part and drag: it slides on the floor, grid-snapped, staying on the floor.
     const onBeam = await grabPoint(page, beamId, 'Technic beam 7');
-    const promised = await drag(page, onBeam, [onBeam[0] - 90, onBeam[1] + 30]);
+    // Away from the beam placed beside it (as the X-arrow drag above): into it the slide is refused.
+    const awayLen = Math.hypot(...away) || 1;
+    const promised = await drag(page, onBeam, [onBeam[0] + away[0] / awayLen * 95, onBeam[1] + away[1] / awayLen * 95]);
     const p4 = await pose(page, beamId);
     const slid = [0, 2].map(i => p4.position[i] - p3.position[i]);
-    assert.ok(slid.some(v => v !== 0) && slid.every(v => Number.isInteger(v / grid)), `slid on the grid: ${slid}`);
+    assert.ok(slid.some(v => v !== 0) && slid.every(v => Number.isInteger(v / grid)), `slid on the grid: ${slid} (status: ${promised})`);
     assert.match(promised, /On the floor/, 'the status said where it would go');
     assert.equal(p4.position[1], p3.position[1], `it stays on the floor (${promised})`);
     console.log(`PASS Build: dragging a part slides it on the work plane (${slid} LDU)`);
@@ -255,6 +268,7 @@ const placeFromPalette = async (page, part, at, expect) => {
     await page.mouse.move(spot[0] - 20, spot[1] - 10);
     await page.mouse.move(spot[0], spot[1], {steps: 5});
     const said = await statusText(page);
+    if (!expect.test(said)) await page.screenshot({path: resolve('artifacts/sim-lab', 'sim-lab-build-place-failure.png'), fullPage: true}).catch(() => {});
     assert.match(said, expect, `before the click the status said: ${said}`);
     await page.mouse.down();
     await page.mouse.up();
@@ -324,15 +338,31 @@ const pinIntoHoleFromAbove = async (page, beamId, {shotsDir}) => {
 const beamOntoBeam = async (page, lowerId, {shotsDir}) => {
     await focusOn(page, lowerId, 'Technic beam 5');
     const lower = await pose(page, lowerId);
-    const id = await placeFromPalette(page, '32316.dat', () => screenOf(page, lowerId, [0, -10, 0]), /On top of Technic beam 5/);
+    let aimZ = 0;
+    // Aim at the middle hole's top, or a hole further along when something else (the pin standing
+    // out of the beam 7 beside it) is under the pointer there, as a person moves along the beam.
+    const id = await placeFromPalette(page, '32316.dat', async () => {
+        let spot;
+        for (const z of [0, 20, -20, 40, -40]) {
+            aimZ = z;
+            spot = await screenOf(page, lowerId, [0, -10, z]);
+            await page.mouse.move(spot[0], spot[1], {steps: 3});
+            if (/On top of Technic beam 5/.test(await statusText(page))) break;
+        }
+        return spot;
+    }, /On top of Technic beam 5/);
     const p = await pose(page, id);
-    // Both lie flat (turned only about the vertical): a beam 5's collider spans y ± 10 about its origin.
-    assert.equal(p.position[1] + 10, lower.position[1] - 10, `its bottom (${p.position[1] + 10}) is the lower beam's top (${lower.position[1] - 10})`);
+    // A beam 5's collider is one box about its origin: its height is that box seen along the
+    // vertical in the beam's pose (half of 18 on edge, as the palette stands a beam; 20 flat).
+    const half = await page.evaluate(() => window.__bwSimLab._pane.lib.CATALOG.get('32316.dat').colliders[0].halfExtents);
+    const up = q => [0, 1, 2].reduce((sum, k) => sum + Math.abs(q.rotation[3 + k]) * half[k], 0);
+    assert.equal(p.position[1] + up(p), lower.position[1] - up(lower), `its bottom (${p.position[1] + up(p)}) is the lower beam's top (${lower.position[1] - up(lower)})`);
     assert.ok(Number.isInteger(p.position[0] / 10) && Number.isInteger(p.position[2] / 10), `x/z on the grid: ${p.position}`);
     const centre = modelPoint(p, [0, 0, 0]);
-    assert.ok(Math.hypot(centre[0] - lower.position[0], centre[2] - lower.position[2]) <= 20, 'placed over the hole the pointer was on');
+    const aimed = modelPoint(lower, [0, 0, aimZ]);
+    assert.ok(Math.hypot(centre[0] - aimed[0], centre[2] - aimed[2]) <= 20, 'placed over the hole the pointer was on');
     await page.screenshot({path: resolve(shotsDir, 'sim-lab-build-beam-on-beam.png'), fullPage: true});
-    console.log(`PASS Build: a beam placed on another beam's top (aimed into a hole) rests on it, bottom y ${p.position[1] + 10} = top y ${lower.position[1] - 10}`);
+    console.log(`PASS Build: a beam placed on another beam's top (aimed into a hole) rests on it, bottom y ${p.position[1] + up(p)} = top y ${lower.position[1] - up(lower)}`);
     return id;
 };
 

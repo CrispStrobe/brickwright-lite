@@ -10,7 +10,8 @@
 // sources and fails on one without a sentence in both languages.
 //
 // Placeholders: {parts} the parts the issue is about ("the SPIKE medium angular
-// motor"), {line} the LDraw line it was found on.
+// motor"), {line} the LDraw line it was found on, {design} an LDD design number
+// (an .lxf part the Robot Lab cannot map).
 
 export const INSIGHT_TEXT = {
     en: {
@@ -43,7 +44,11 @@ export const INSIGHT_TEXT = {
             'duplicate-group': 'A group on line {line} has the same name as another group, so it is left out.',
             'unknown-group': 'A part on line {line} belongs to a group that does not exist, so it is left ungrouped.',
             'cycle': 'A sub-model in the file is built from itself, so that copy is left out.',
-            'project-model-unreadable': 'The robot saved in this project could not be read, so the standard robot is shown.'
+            'project-model-unreadable': 'The robot saved in this project could not be read, so the standard robot is shown.',
+            'studio-only-part': 'Line {line} places a part only BrickLink Studio has (not in LDraw), so it is left out.',
+            'lxf-unknown-design': 'The LEGO Digital Designer part {design} is not one the Robot Lab knows yet, so it is left out.',
+            'lxf-bad-transform': 'The LEGO Digital Designer part {design} is mirrored or stretched, so it is left out.',
+            'lxf-unknown-material': 'The LEGO Digital Designer part {design} has a colour LDraw does not know, so it is shown light grey.'
         },
         fallbackIssue: 'Something about this model needs a look.',
         and: 'and', part: 'the part {id}',
@@ -85,7 +90,11 @@ export const INSIGHT_TEXT = {
             'duplicate-group': 'Eine Gruppe in Zeile {line} hat denselben Namen wie eine andere Gruppe, darum wird sie weggelassen.',
             'unknown-group': 'Ein Teil in Zeile {line} gehört zu einer Gruppe, die es nicht gibt, darum bleibt es ohne Gruppe.',
             'cycle': 'Ein Teilmodell in der Datei ist aus sich selbst gebaut, darum wird diese Kopie weggelassen.',
-            'project-model-unreadable': 'Der in diesem Projekt gespeicherte Roboter konnte nicht gelesen werden, darum wird der Standard-Roboter gezeigt.'
+            'project-model-unreadable': 'Der in diesem Projekt gespeicherte Roboter konnte nicht gelesen werden, darum wird der Standard-Roboter gezeigt.',
+            'studio-only-part': 'Zeile {line} setzt ein Teil, das nur BrickLink Studio kennt (nicht LDraw), darum wird es weggelassen.',
+            'lxf-unknown-design': 'Das LEGO-Digital-Designer-Teil {design} kennt das Roboter-Labor noch nicht, darum wird es weggelassen.',
+            'lxf-bad-transform': 'Das LEGO-Digital-Designer-Teil {design} ist gespiegelt oder gestreckt, darum wird es weggelassen.',
+            'lxf-unknown-material': 'Das LEGO-Digital-Designer-Teil {design} hat eine Farbe, die LDraw nicht kennt, darum ist es hellgrau.'
         },
         fallbackIssue: 'Etwas an diesem Modell solltest du dir ansehen.',
         and: 'und', part: 'das Teil {id}',
@@ -111,7 +120,7 @@ export const issueSentence = (text, issue, nameOf) => {
     const names = (issue.parts || []).map(id => nameOf(id));
     const parts = names.length <= 1 ? (names[0] || '') : `${names.slice(0, -1).join(', ')} ${text.and} ${names[names.length - 1]}`;
     const template = text.issues[issue.code] || text.fallbackIssue;
-    const sentence = fill(template, {parts, line: issue.line ?? ''});
+    const sentence = fill(template, {parts, line: issue.line ?? '', design: issue.design ?? ''});
     return sentence.charAt(0).toUpperCase() + sentence.slice(1);
 };
 

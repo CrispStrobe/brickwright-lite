@@ -8,6 +8,7 @@
 //
 //   connectors  pin-axle.js: pin, axle, stud, ball and their holes;
 //               slide.js: 'slide-bore' (an axle slides through it: slider edge);
+//               stud.js: 'tube' (a stud in an underside tube's bore: rigid clutch);
 //               worm.js 'worm' and rack.js 'rack-teeth': tooth connectors that
 //               make couplings, not edges (R4)
 //   couplings   spur.js, bevel.js: tooth meshes that make a 'gear' coupling
@@ -24,6 +25,7 @@ import {BEVEL} from './bevel.js';
 import {SLIDE_BORE} from './slide.js';
 import {WORM, WORM_THREAD} from './worm.js';
 import {RACK, RACK_TEETH} from './rack.js';
+import {TUBE} from './stud.js';
 
 export const JOINT_KINDS = [
     {type: 'hinge', dof: 1},
@@ -33,7 +35,7 @@ export const JOINT_KINDS = [
 
 /** @type {{connectors: ConnectorKindRegistry, couplings: CouplingKindRegistry, joints: JointKindRegistry}} */
 export const BUILTIN_KINDS = Object.freeze({
-    connectors: new ConnectorKindRegistry([...PIN_AXLE_KINDS, SLIDE_BORE, WORM_THREAD, RACK_TEETH]),
+    connectors: new ConnectorKindRegistry([...PIN_AXLE_KINDS, SLIDE_BORE, WORM_THREAD, RACK_TEETH, TUBE]),
     couplings: new CouplingKindRegistry([SPUR, BEVEL, WORM, RACK]),
     joints: new JointKindRegistry(JOINT_KINDS)
 });

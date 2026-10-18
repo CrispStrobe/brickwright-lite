@@ -29,6 +29,9 @@ import SimLabPalette from './sim-lab-palette.jsx';
 import SimLabInstructions from './sim-lab-instructions.jsx';
 import {INSIGHT_TEXT, issueSentence, fillText} from './sim-lab-insight-text.js';
 import {firmwareRefusalSentence} from './sim-lab-firmware-text.js';
+import {EDITOR_TEXT} from './sim-lab-editor-text.js';
+import SimLabProperties from './sim-lab-properties.jsx';
+import SimLabShortcuts from './sim-lab-shortcuts.jsx';
 
 /** A MODELS entry's key: its `id` when one model file is listed more than once, else its file. */
 const modelKey = m => m.id || m.file;
@@ -37,7 +40,7 @@ const TEXT = {
     en: {
         title: 'Robot Lab (beta)',
         intro: 'A model from real LEGO® Technic parts with physics. Write a SPIKE Prime program (ports A and B drive the wheels) and press Run: it starts on the green flag.',
-        model: 'Model', importModel: 'Open .ldr…', run: 'Run', pause: 'Pause', reset: 'Reset',
+        model: 'Model', importModel: 'Open…', importHelp: 'Open a model: LDraw (.ldr, .mpd), BrickLink Studio (.io) or LEGO Digital Designer (.lxf)', run: 'Run', pause: 'Pause', reset: 'Reset',
         loading: 'Loading the model and the physics engine…', ready: 'Ready', running: 'Running', paused: 'Paused',
         failed: 'Could not load the model: {error}', physicsFailed: 'The physics stopped: {error}. Press Reset to start again.', noWebgl: 'This browser cannot show the 3D view ({error}). The simulation still runs.',
         connectFailed: 'Could not connect the program to the virtual hub: {error}',
@@ -55,7 +58,18 @@ const TEXT = {
         driveHelp: 'Hold an arrow (or use the arrow keys) to drive with motors A and B.', readout: 'Hub',
         issues: 'Notes about this model', time: 'Simulated time: {s} s', canvasLabel: '3D view of the simulated model',
         simulate: 'Simulate', build: 'Build', parts: 'Parts', undo: 'Undo', redo: 'Redo', remove: 'Delete',
-        save: 'Save .ldr', port: 'Port', none: 'none',
+        save: 'Save as…', saveHelp: 'Save the model as a file', port: 'Port', none: 'none',
+        saveFormats: {ldr: 'LDraw (.ldr)', mpd: 'LDraw multi-part (.mpd)', io: 'BrickLink Studio (.io)'},
+        fileFailed: 'Could not open {name}: {error}',
+        fileErrors: {
+            'io-encrypted': 'this BrickLink Studio file is password-protected (an older Studio made it). Open it in a current Studio and save it again, or export it there as LDraw (File › Export As).',
+            'io-no-model': 'this BrickLink Studio file holds no LDraw model (model.ldr).',
+            'not-a-zip': 'the file is damaged or not the kind its name says.',
+            'lxf-no-lxfml': 'this LEGO Digital Designer file holds no model (.LXFML).',
+            'lxf-unreadable': 'this LEGO Digital Designer model could not be read.',
+            'lxf-version': 'this LEGO Digital Designer file is from a version the Robot Lab cannot read (only LDD 4).',
+            'unsupported-format': 'the Robot Lab opens .ldr, .mpd, .io and .lxf files.'
+        },
         instructions: 'Instructions', instructionsHelp: 'Step-by-step building instructions for this robot, to build it from real LEGO® parts',
         search: 'Search parts', searchHint: 'Search: name or number', clearSearch: 'Clear the search', recent: 'Recently used',
         noMatches: 'No part matches “{q}”.', partTitle: '{name} · part {number}',
@@ -101,7 +115,7 @@ const TEXT = {
     de: {
         title: 'Roboter-Labor (Beta)',
         intro: 'Ein Modell aus echten LEGO®-Technic-Teilen mit Physik. Schreibe ein SPIKE-Prime-Programm (Ports A und B treiben die Räder an) und drücke Start: es beginnt mit der grünen Flagge.',
-        model: 'Modell', importModel: '.ldr öffnen…', run: 'Start', pause: 'Pause', reset: 'Zurücksetzen',
+        model: 'Modell', importModel: 'Öffnen…', importHelp: 'Ein Modell öffnen: LDraw (.ldr, .mpd), BrickLink Studio (.io) oder LEGO Digital Designer (.lxf)', run: 'Start', pause: 'Pause', reset: 'Zurücksetzen',
         loading: 'Modell und Physik-Engine werden geladen…', ready: 'Bereit', running: 'Läuft', paused: 'Pausiert',
         failed: 'Das Modell konnte nicht geladen werden: {error}', physicsFailed: 'Die Physik ist stehen geblieben: {error}. Mit Zurücksetzen geht es neu los.', noWebgl: 'Dieser Browser kann die 3D-Ansicht nicht zeigen ({error}). Die Simulation läuft trotzdem.',
         connectFailed: 'Das Programm konnte nicht mit dem virtuellen Hub verbunden werden: {error}',
@@ -119,7 +133,18 @@ const TEXT = {
         driveHelp: 'Halte einen Pfeil gedrückt (oder nutze die Pfeiltasten), um mit den Motoren A und B zu fahren.', readout: 'Hub',
         issues: 'Hinweise zu diesem Modell', time: 'Simulierte Zeit: {s} s', canvasLabel: '3D-Ansicht des simulierten Modells',
         simulate: 'Simulieren', build: 'Bauen', parts: 'Teile', undo: 'Rückgängig', redo: 'Wiederholen', remove: 'Löschen',
-        save: '.ldr speichern', port: 'Port', none: 'keiner',
+        save: 'Speichern unter…', saveHelp: 'Das Modell als Datei speichern', port: 'Port', none: 'keiner',
+        saveFormats: {ldr: 'LDraw (.ldr)', mpd: 'LDraw mehrteilig (.mpd)', io: 'BrickLink Studio (.io)'},
+        fileFailed: '{name} konnte nicht geöffnet werden: {error}',
+        fileErrors: {
+            'io-encrypted': 'Diese BrickLink-Studio-Datei ist mit einem Passwort geschützt (von einer älteren Studio-Version). Öffne sie in einem aktuellen Studio und speichere sie neu, oder exportiere sie dort als LDraw (Datei › Exportieren als).',
+            'io-no-model': 'Diese BrickLink-Studio-Datei enthält kein LDraw-Modell (model.ldr).',
+            'not-a-zip': 'Die Datei ist beschädigt oder nicht das, was ihr Name sagt.',
+            'lxf-no-lxfml': 'Diese LEGO-Digital-Designer-Datei enthält kein Modell (.LXFML).',
+            'lxf-unreadable': 'Dieses LEGO-Digital-Designer-Modell konnte nicht gelesen werden.',
+            'lxf-version': 'Diese LEGO-Digital-Designer-Datei stammt aus einer Version, die das Roboter-Labor nicht lesen kann (nur LDD 4).',
+            'unsupported-format': 'Das Roboter-Labor öffnet .ldr-, .mpd-, .io- und .lxf-Dateien.'
+        },
         instructions: 'Bauanleitung', instructionsHelp: 'Bauanleitung für diesen Roboter, Schritt für Schritt, zum Nachbauen mit echten LEGO®-Teilen',
         search: 'Teile suchen', searchHint: 'Suche: Name oder Nummer', clearSearch: 'Suche löschen', recent: 'Zuletzt benutzt',
         noMatches: 'Kein Teil passt zu „{q}“.', partTitle: '{name} · Teil {number}',
@@ -175,6 +200,12 @@ const SHOW_RTF_BELOW = 0.95;
 const INSIGHT_DEBOUNCE_MS = 150;
 /** How long "show me these parts" pulses them in Simulate (ms). */
 const HIGHLIGHT_MS = 3000;
+/**
+ * What "Open…" accepts (lib/bw-sim/model/model-file.js OPEN_ACCEPT, kept here so the first load does not
+ * pull the model readers in; test/bw-sim-model-file.test.mjs holds the two equal) and what "Save as…" offers.
+ */
+const OPEN_ACCEPT = '.ldr,.mpd,.io,.lxf';
+const SAVE_FORMATS = ['ldr', 'mpd', 'io'];
 /** The `0 <title>` line every model the pane writes carries (it is not parsed back, so it must not vary). */
 const MODEL_TITLE = 'Robot Lab model';
 /**
@@ -185,6 +216,10 @@ const MODEL_TITLE = 'Robot Lab model';
 const COMPACT_BELOW_PX = 640;
 /** Below this pane width the compact toolbars show glyphs only (a 1024 px tablet's side pane). */
 const NARROW_BELOW_PX = 420;
+/** From this pane width the properties panel stands beside the 3D view; narrower, it opens over the view's right edge. */
+const DOCK_PROPERTIES_PX = 1280;
+/** What is hidden in Build stays hidden for the browser session (view state, not the model). */
+const HIDDEN_STORAGE_KEY = 'bw-sim-lab-hidden';
 
 /** The compact toolbars' faces: drawn, not font glyphs, so every school device shows the same icon. */
 const ICONS = {
@@ -222,11 +257,13 @@ class SimLabPane extends React.Component {
         this.locale = locale;
         this.text = TEXT[locale];
         this.itext = INSIGHT_TEXT[locale] || INSIGHT_TEXT.en;
+        this.etext = EDITOR_TEXT[locale] || EDITOR_TEXT.en;
         this.state = {status: 'loading', message: '', info: '', driveSpeed: 50, issues: [], modelFile: null, shipped: null, simMs: 0, rtf: null, view3d: 'loading',
             mode: 'simulate', placing: null, selection: [], editorTick: 0, mat: null,
             buildStatus: {kind: 'idle'}, gizmoMode: 'move', grid: 10, recent: [], thumbTick: 0,
             showPorts: true, showMotion: false, blockers: [], portPicker: null, instructions: null, coarse: false,
-            paneWidth: 0, more: false, drawer: false, paletteDragging: false, infoOpen: false, route: 'scratch'};
+            paneWidth: 0, more: false, drawer: false, paletteDragging: false, infoOpen: false, route: 'scratch', saveMenu: false,
+            hidden: [], editGroup: null, pick: null, measurement: null, placeColor: null, propsOpen: false, shortcuts: false};
         this.root = React.createRef();
         this.moreRef = React.createRef();
         this.viewWrap = React.createRef();
@@ -358,6 +395,7 @@ class SimLabPane extends React.Component {
         if (this.editView) { try { this.editView.dispose(); } catch { /* a lost context may already be gone */ } }
         this.editView = null;
         this.editor = null;
+        if (!this.disposed) this.setState({editGroup: null, pick: null, measurement: null, shortcuts: false});
         // The pictures stay drawn (part-thumbnails.js keeps them); only the renderer goes.
         if (this.thumbs) { try { this.thumbs.dispose(); } catch { /* a lost context may already be gone */ } }
         this.thumbs = null;
@@ -391,8 +429,17 @@ class SimLabPane extends React.Component {
                 onTool: placing => this.setState({placing, paletteDragging: Boolean(placing && this.editView?.draggingFromPalette)}),
                 onMode: gizmoMode => this.setState({gizmoMode}),
                 portLabel: item => this.portLabelText(item),
-                onPortLabel: (id, rect) => this.openPortPicker(id, rect)});
+                onPortLabel: (id, rect) => this.openPortPicker(id, rect),
+                onViewState: view => this.onEditorViewState(view),
+                onColorPicked: color => this.pickColour(color),
+                measureLabel: m => fillText(this.etext.measureLabel, {ldu: this.decimal(m.ldu), studs: this.decimal(m.studs), mm: this.decimal(m.mm)}),
+                onShortcuts: () => this.setState({shortcuts: true})});
             this.editView.setGrid(this.state.grid);
+            this.colors = colors;
+            const palette = this.lib.colorPalette(colors);
+            this.palette = {...palette, byCode: new Map([...palette.common, ...palette.more].map(c => [c.code, c]))};
+            this.editView.setPlaceColor(this.state.placeColor ?? DEFAULT_COLOR);
+            this.editView.setHidden(this.storedHidden());
             // Palette pictures: null without WebGL (the palette then shows names only).
             this.thumbs = createPartThumbnails({read, colors, color: DEFAULT_COLOR});
             this.editView.setOverlay({ports: this.state.showPorts, motion: this.state.showMotion});
@@ -403,6 +450,41 @@ class SimLabPane extends React.Component {
             return;
         }
         this.setState({status: 'ready'});
+    }
+
+    /** Hidden parts (ids) kept for this browser session. */
+    storedHidden () {
+        try {
+            const ids = JSON.parse(sessionStorage.getItem(HIDDEN_STORAGE_KEY) || '[]');
+            return Array.isArray(ids) ? ids.filter(id => typeof id === 'string') : [];
+        } catch {
+            return [];
+        }
+    }
+
+    /** The build view's hidden parts, edited group, picking tool or measurement changed. */
+    onEditorViewState ({hidden, group, pick, measure}) {
+        this.setState({hidden, editGroup: group, pick, measurement: measure});
+        try {
+            sessionStorage.setItem(HIDDEN_STORAGE_KEY, JSON.stringify(hidden));
+        } catch { /* storage off: hidden only until the pane closes */ }
+    }
+
+    /** An LDraw colour's name: German for the common palette, else LDConfig's English name. */
+    colourName (code) {
+        const own = this.etext.colourNames && this.etext.colourNames[code];
+        if (own) return own;
+        const c = this.colors && this.colors.get(code);
+        return c ? c.name.replace(/_/g, ' ') : String(code);
+    }
+
+    /** The colour picker (or the eyedropper): new parts get this colour, and a selection is painted with it. */
+    pickColour (color) {
+        this.setState({placeColor: color});
+        if (!this.editView) return;
+        this.editView.setPlaceColor(color);
+        if (this.editView.selection.length) this.editView.paint(color);
+        this.setState(s => ({editorTick: s.editorTick + 1}));
     }
 
     /** Build: recompile shortly after the last edit (a drag is many edits). */
@@ -537,14 +619,35 @@ class SimLabPane extends React.Component {
         await this.openText(text, 'my-model.ldr');
     }
 
-    saveLdr () {
-        const text = this.lib.serializeModel(this.editor.model, {name: 'my-model.ldr', title: MODEL_TITLE});
-        const url = URL.createObjectURL(new Blob([text], {type: 'text/plain'}));
+    /** "Save as…": the model on show (built or simulated) as a .ldr, .mpd or .io file (lib/bw-sim/model/model-file.js). */
+    async saveAs (format) {
+        this.setState({saveMenu: false});
+        const model = this.editor ? this.editor.model : this.session?.model;
+        if (!model || !this.lib) return;
+        const name = !this.editor && isStorableName(this.state.modelFile) ? this.state.modelFile : 'my-model.ldr';
+        const {data, filename, mime} = await this.lib.saveModelFile(model, format, {name, title: MODEL_TITLE});
+        const url = URL.createObjectURL(new Blob([data], {type: mime}));
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'my-model.ldr';
+        a.download = filename;
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    /** The "Save as…" button and, while it is open, one button per format. */
+    renderSaveAs (style, disabled) {
+        const T = this.text;
+        const open = this.state.saveMenu && !disabled;
+        return (
+            <span key="save-as" style={{display: 'inline-flex', alignItems: 'center', gap: 4, flexWrap: 'wrap'}}>
+                <button type="button" style={style} data-testid="bw-sim-lab-save" disabled={disabled} title={T.saveHelp}
+                    aria-haspopup="true" aria-expanded={open} onClick={() => this.setState(s => ({saveMenu: !s.saveMenu}))}>{T.save}</button>
+                {open && SAVE_FORMATS.map(format => (
+                    <button key={format} type="button" style={style} data-testid={`bw-sim-lab-save-${format}`}
+                        onClick={() => this.saveAs(format)}>{T.saveFormats[format]}</button>
+                ))}
+            </span>
+        );
     }
 
     /**
@@ -615,12 +718,32 @@ class SimLabPane extends React.Component {
         if (entry.mat && this.state.mat !== entry.mat) await this.setMat(entry.mat);
     }
 
+    /**
+     * "Open…": an LDraw, BrickLink Studio or LEGO Digital Designer file, turned into LDraw
+     * text (lib/bw-sim/model/model-file.js). A file that cannot be opened at all leaves the
+     * model on show as it is and says why; what the import left out joins the model's notes.
+     */
     async openImported (event) {
         const f = event.target.files && event.target.files[0];
         event.target.value = '';
         if (!f) return;
-        this.lastText = await f.text();
-        await this.openText(this.lastText, f.name);
+        let opened;
+        try {
+            const bytes = new Uint8Array(await f.arrayBuffer());
+            const ldconfig = /\.lxf$/i.test(f.name) ?
+                (await this.lib.fetchLDrawClosure([], {withConfig: true})).read('ldconfig.ldr') || '' : '';
+            opened = await this.lib.openModelFile(f.name, bytes, {ldconfig, title: MODEL_TITLE});
+        } catch (error) {
+            const reason = (error && this.text.fileErrors[error.code]) || (error && error.message) || String(error);
+            if (!this.disposed) this.setState({message: this.t('fileFailed', {name: f.name, error: reason})});
+            return;
+        }
+        if (this.disposed) return;
+        this.lastText = opened.text;
+        await this.openText(opened.text, opened.name);
+        if (opened.refusals.length && !this.disposed) {
+            this.setState(s => ({issues: this.lib.mergeImportIssues(opened.refusals, s.issues)}));
+        }
     }
 
     async openText (text, name, shipped = null) {
@@ -1022,6 +1145,7 @@ class SimLabPane extends React.Component {
     buildStatusText () {
         const st = this.state.buildStatus || {kind: 'idle'};
         const T = this.text.st;
+        const E = this.etext.st;
         const name = part => this.partName(part);
         const fill = (template, values) => template.replace(/\{(\w+)\}/g, (_, k) => String(values[k] ?? ''));
         const hole = st.connector && /^[a-z](\d+)$/.exec(st.connector);
@@ -1044,9 +1168,17 @@ class SimLabPane extends React.Component {
         case 'turning': return fill(T.turning, {deg: st.degrees});
         case 'placed': return fill(T.placed, {part: name(st.part)});
         case 'blocked': return fill(T.blocked, {target: name(st.target)});
-        case 'refused': return fill(T[st.reason] || T.invalid, {detail: st.detail || '', target: st.target ? name(st.target) : ''});
+        case 'refused': return fill(T[st.reason] || E[st.reason] || T.invalid, {detail: st.detail || '', target: st.target ? name(st.target) : ''});
+        case 'painted': return fill(E.painted, {n: st.count, colour: this.colourName(st.color)});
+        case 'pickedColor': return fill(E.pickedColor, {colour: this.colourName(st.color), part: name(st.part)});
+        case 'measured': return fill(E.measured, {ldu: this.decimal(st.ldu), studs: this.decimal(st.studs), mm: this.decimal(st.mm)});
+        case 'mirrored': return fill(st.kept ? E.mirroredKept : st.swapped ? E.mirroredSwapped : E.mirrored, {n: st.count, s: st.swapped, k: st.kept});
+        case 'groupEdit': case 'groupLeft': return fill(E[st.kind], {name: st.name || ''});
+        case 'turnedBy': return fill(E.turnedBy, {deg: st.degrees});
         case 'idle': return this.state.coarse ? T.idleTouch : T.idle;
-        default: return T[st.kind] ? fill(T[st.kind], {n: st.count}) : (this.state.coarse ? T.idleTouch : T.idle);
+        default:
+            if (E[st.kind]) return fill(E[st.kind], {n: st.count});
+            return T[st.kind] ? fill(T[st.kind], {n: st.count}) : (this.state.coarse ? T.idleTouch : T.idle);
         }
     }
 
@@ -1081,6 +1213,24 @@ class SimLabPane extends React.Component {
         );
     }
 
+    /** Wide enough for the properties panel to stand beside the 3D view. */
+    dockProperties () {
+        return this.state.paneWidth >= DOCK_PROPERTIES_PX;
+    }
+
+    /** Build: the properties panel, docked beside the view or over its right edge. */
+    renderProperties (button, docked) {
+        if (!this.editor || !this.palette) return null;
+        const field = this.state.coarse ? {minHeight: 40} : undefined;
+        return (
+            <SimLabProperties T={this.etext} lib={this.lib} editor={this.editor} view={this.editView} selectionIds={this.state.selection}
+                palette={this.palette} colourName={code => this.colourName(code)} placeColor={this.state.placeColor ?? this.lib.DEFAULT_COLOR}
+                pick={this.state.pick} editGroup={this.state.editGroup} partName={part => this.partName(part)} tick={this.state.editorTick}
+                onColour={code => this.pickColour(code)} onTick={() => this.setState(s => ({editorTick: s.editorTick + 1}))}
+                onClose={docked ? null : () => this.setState({propsOpen: false})} button={button} field={field} docked={docked} />
+        );
+    }
+
     renderBuildBar (button) {
         const editor = this.editor;
         const view = this.editView;
@@ -1100,6 +1250,8 @@ class SimLabPane extends React.Component {
         const refused = st.kind === 'refused';
         const blocked = st.kind === 'blocked';
         const T = this.text;
+        const E = this.etext;
+        const docked = this.dockProperties();
         const nothing = !selection.length && !this.state.placing;
         /** Every Build action once: id, label, what it does; `glyph` is its face on the compact toolbar. */
         const act = {
@@ -1123,13 +1275,22 @@ class SimLabPane extends React.Component {
             'view-top': {label: T.top, run: () => view?.view('top')},
             'view-front': {label: T.front, run: () => view?.view('front')},
             'view-side': {label: T.side, run: () => view?.view('side')},
-            save: {label: T.save, disabled: !editor, run: () => this.saveLdr()}
+            // Studio's tools (sim-lab-editor-text.js): mirror, hide / isolate, measure, eyedropper, properties, shortcuts.
+            'mirror-x': {label: E.mirrorX, title: E.mirrorXHelp, disabled: !selection.length, run: () => { view?.mirror('x'); tick(); }},
+            'mirror-z': {label: E.mirrorZ, title: E.mirrorZHelp, disabled: !selection.length, run: () => { view?.mirror('z'); tick(); }},
+            hide: {label: E.hide, disabled: !selection.length, run: () => view?.hideSelection()},
+            isolate: {label: E.isolate, disabled: !selection.length, run: () => view?.isolate()},
+            'show-all': {label: E.showAll, disabled: !this.state.hidden.length, run: () => view?.showAll()},
+            measure: {label: E.measure, pressed: this.state.pick === 'measure', run: () => view?.setPick('measure')},
+            eyedropper: {label: E.eyedropper, title: E.eyedropperHelp, pressed: this.state.pick === 'color', run: () => view?.setPick('color')},
+            properties: {label: E.properties, title: E.propertiesHelp, pressed: this.state.propsOpen, run: () => this.setState(s => ({propsOpen: !s.propsOpen}))},
+            shortcuts: {label: E.shortcuts, title: E.shortcutsHelp, run: () => this.setState({shortcuts: true})}
         };
         const full = id => {
             const a = act[id];
             return (
-                <button key={id} type="button" style={small} data-testid={`bw-sim-lab-${id}`} disabled={a.disabled} title={a.title}
-                    onClick={a.run}>{a.label}</button>
+                <button key={id} type="button" style={a.pressed === undefined ? small : pressed(a.pressed)} data-testid={`bw-sim-lab-${id}`}
+                    disabled={a.disabled} title={a.title} aria-pressed={a.pressed} onClick={a.run}>{a.label}</button>
             );
         };
         // On the compact toolbar a glyph carries the action; its name is the accessible name and the tooltip.
@@ -1173,7 +1334,9 @@ class SimLabPane extends React.Component {
                             grid,
                             ...[...(narrow ? ['redo'] : []), 'turn-back', 'tip', 'duplicate', 'copy', 'paste', 'select-all', 'group', 'ungroup',
                                 ...(this.state.placing ? ['delete'] : ['cancel']),
-                                'view-home', 'view-fit', 'view-top', 'view-front', 'view-side', 'save'].map(full),
+                                'mirror-x', 'mirror-z', 'hide', 'isolate', 'show-all', 'measure', 'eyedropper', 'properties',
+                                'view-home', 'view-fit', 'view-top', 'view-front', 'view-side', 'shortcuts'].map(full),
+                            this.renderSaveAs(small, !editor),
                             this.renderInsightBar()
                         ])}
                     </div>
@@ -1188,10 +1351,23 @@ class SimLabPane extends React.Component {
                         {gap('g3')}
                         {['view-home', 'view-fit', 'view-top', 'view-front', 'view-side'].map(full)}
                         {gap('g4')}
-                        {full('save')}
+                        {this.renderSaveAs(small, !editor)}
+                        {gap('g5')}
+                        {['mirror-x', 'mirror-z', 'hide', 'isolate', 'show-all', 'measure', 'eyedropper', ...(docked ? [] : ['properties']), 'shortcuts'].map(full)}
                     </div>
                 )}
                 <div style={{display: 'flex', alignItems: 'center', gap: 8, minHeight: 22, ...oneLine}}>
+                    {this.state.hidden.length > 0 && (
+                        <button type="button" data-testid="bw-sim-lab-hidden-count" title={E.showAll} onClick={() => view?.showAll()}
+                            style={{...small, padding: '1px 6px', background: '#f1f5f9', whiteSpace: 'nowrap'}}>
+                            {E.hiddenCount.replace('{n}', this.state.hidden.length)}
+                        </button>
+                    )}
+                    {this.state.editGroup && (
+                        <span data-testid="bw-sim-lab-group-edit-chip" style={{whiteSpace: 'nowrap', color: '#5b21b6', fontWeight: 600}}>
+                            {E.groupBanner.replace('{name}', this.state.editGroup.name)}
+                        </span>
+                    )}
                     {selection.length > 0 && (
                         <span data-testid="bw-sim-lab-selection" style={{fontWeight: 600, color: '#1e3a8a', whiteSpace: compact ? 'nowrap' : undefined}}>
                             {sel ? this.t('selectedOne', {name: this.partName(sel.part)}) : this.t('selectedMany', {n: selection.length})}
@@ -1375,8 +1551,10 @@ class SimLabPane extends React.Component {
             </select>
         );
         const importButton = (
-            <button key="import" type="button" style={button} disabled={busy || !this.lib} onClick={() => this.file.current.click()}>{T.importModel}</button>
+            <button key="import" type="button" style={button} data-testid="bw-sim-lab-open" title={T.importHelp} disabled={busy || !this.lib}
+                onClick={() => this.file.current.click()}>{T.importModel}</button>
         );
+        const saveAsControl = this.renderSaveAs(button, busy || !this.session);
         const runButton = running ?
             <button type="button" style={button} data-testid="bw-sim-lab-pause" onClick={() => this.pause()}>{compact ? face('pause', T.pause) : T.pause}</button> :
             <button type="button" style={button} data-testid="bw-sim-lab-run" disabled={!this.session || busy || status === 'stopping'} onClick={() => this.run()}>{compact ? face('run', T.run) : T.run}</button>;
@@ -1398,7 +1576,7 @@ class SimLabPane extends React.Component {
         const large = compact && this.props.onEnterFullScreen && !this.props.isFullScreen;
         return (
             <div ref={this.root} data-testid="bw-sim-lab" data-status={status} data-layout={compact ? 'compact' : 'wide'}
-                style={{display: 'flex', flexDirection: 'column', gap: compact ? 6 : 8, padding: compact ? 8 : 10, height: '100%', boxSizing: 'border-box', minWidth: 0}}>
+                style={{position: 'relative', display: 'flex', flexDirection: 'column', gap: compact ? 6 : 8, padding: compact ? 8 : 10, height: '100%', boxSizing: 'border-box', minWidth: 0}}>
                 {!compact && <div style={{fontSize: 12, color: '#334155'}}>{T.intro}</div>}
                 <div style={{display: 'flex', alignItems: 'center', gap: 4, minWidth: 0}}>
                     <div role="tablist" style={{display: 'flex', gap: 4}}>
@@ -1427,11 +1605,12 @@ class SimLabPane extends React.Component {
                         title={this.editor ? null : this.shippedModel()?.title[this.locale] || this.state.modelFile}
                         onClose={() => this.setState({instructions: null})} />
                 )}
-                <input ref={this.file} type="file" accept=".ldr,.mpd" style={{display: 'none'}} data-testid="bw-sim-lab-file"
+                <input ref={this.file} type="file" accept={OPEN_ACCEPT} style={{display: 'none'}} data-testid="bw-sim-lab-file"
                     onChange={e => this.openImported(e)} />
                 {simulate && !compact && <div style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6}}>
                     <label style={{fontSize: 12}}>{T.model}{': '}{modelSelect}</label>
                     {importButton}
+                    {saveAsControl}
                     <label style={{fontSize: 12}}>{T.mat}{': '}{matSelect}</label>
                     {routeSelect}
                     {runButton}
@@ -1448,6 +1627,7 @@ class SimLabPane extends React.Component {
                             {this.renderMore(button, [
                                 <div key="intro" style={{fontSize: 12, color: '#334155', flex: '1 1 100%'}}>{T.intro}</div>,
                                 importButton,
+                                saveAsControl,
                                 this.lib ? <div key="insight" style={{flex: '1 1 100%'}}>{this.renderInsightBar()}</div> : null
                             ])}
                         </div>
@@ -1479,8 +1659,23 @@ class SimLabPane extends React.Component {
                     <div ref={this.viewWrap} style={{flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative', display: 'flex'}}>
                         <div ref={this.box} data-testid="bw-sim-lab-view" style={{flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative'}} />
                         {this.renderPortPicker(button)}
+                        {this.state.mode === 'build' && !this.dockProperties() && this.state.propsOpen && (
+                            <div data-testid="bw-sim-lab-properties-drawer" style={{position: 'absolute', right: 0, top: 0, bottom: 0, zIndex: 6, maxWidth: 'calc(100% - 48px)',
+                                display: 'flex', boxShadow: '-4px 0 14px rgba(15, 23, 42, 0.25)', borderRadius: '8px 0 0 8px'}}>
+                                {this.renderProperties(button, false)}
+                            </div>
+                        )}
                     </div>
+                    {this.state.mode === 'build' && this.dockProperties() && (
+                        <div style={{flex: '0 0 auto', display: 'flex', minHeight: 0}}>{this.renderProperties(button, true)}</div>
+                    )}
                 </div>
+                {this.state.mode === 'build' && this.state.shortcuts && (
+                    <SimLabShortcuts T={this.etext} onClose={() => {
+                        this.setState({shortcuts: false});
+                        this.editView?.canvas.focus();
+                    }} />
+                )}
                 {issues.length > 0 && (
                     <details data-testid="bw-sim-lab-issues" style={{fontSize: 12}} open={!compact}>
                         <summary style={compact ? {whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer'} : undefined}>
