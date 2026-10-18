@@ -339,8 +339,25 @@ The initial checkpoint kept both guards false. A subsequent separately reviewed
 activation enables metadata inventory only; actual source/workflow guards remain
 false. An immutable template and explicit own-PR event are still required.
 The first inventory selects source/runtime metadata only: locally assumed Python
-cache paths are excluded, and this does not establish the executing Python
-import/bytecode closure required before actual approval.
+cache paths are excluded. This inventory does not establish executing Python
+import/bytecode closure; selected hosted system interpreter/native libraries
+remain an explicit trusted platform boundary.
+
+The [startup checkpoint](https://github.com/CrispStrobe/brickwright-lite/commit/7e11a159c)
+versions the future actual request and reader as v3 while preserving v2 metadata
+inventory. Before CPython entry, the actual workflow exclusively creates and
+records an empty cache prefix; fixed isolated, no-site and no-bytecode-write
+options redirect cache reads to it. Controller and reader join the original
+installation, before/after flags, path and directory snapshots, plus ordered
+successful official steps. Fifty Python controls and 59 Node tests pass, with
+nine detected startup source cuts. These controls do not prove source/native
+import closure, whole-host authenticity or a browser/guest result.
+
+The first metadata event is already consumed for source `671702949709dc78da7d0cc8d0e064f9799ff399`:
+[run 39106669518](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39106669518).
+Its template digest is `668f81ce67ad7bd4313da934e0bddbd0e78e6cd152e67b68e55bb695fbdaf583`.
+At publication it is pending; do not repeat the label or original acquisition.
+Later source changes do not qualify or alter this earlier selected observation.
 
 Continue within the already claimed five implementation paths; dependency
 writers and other workflows remain outside this lane. Next tasks are:
@@ -360,7 +377,8 @@ writers and other workflows remain outside this lane. Next tasks are:
    real pinned headless-shell executable; do not substitute a larger browser or
    silently raise the file cap. The template must contain no operator paths.
    With only the reviewed metadata guards enabled, freeze the exact source head
-   and template, then admit one own-PR `x86-hdd-gui-inventory` event. Acquire its official originals
+   and template. The first own-PR `x86-hdd-gui-inventory` event above is already
+   consumed: await that run and acquire its official originals
    once, independently audit source/event/job and observed selected files,
    aliases and installed packages, then freeze the reviewed immutable input.
    The inventory is an observation, not automatic actual approval or a complete
@@ -369,7 +387,7 @@ writers and other workflows remain outside this lane. Next tasks are:
    head/tree/selected closure and producing workflow before selecting its ZIP
    digest from official metadata. The actual controller acquires that original
    once and derives bounded member inventories from authenticated bytes; the
-   reader recomputes them. Freeze the `bw.gui-hdd.actual-request.v2` identity
+   reader recomputes them. Freeze the `bw.gui-hdd.actual-request.v3` identity
    separately from the producer, including the prior inventory admission.
 4. Review final source, exact official event/job/step/artifact joins and resource
    margin before the separate actual activation. The HDD and forward scenarios

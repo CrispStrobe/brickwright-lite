@@ -5792,7 +5792,8 @@ source work: no browser/guest acceptance is inferred from the manufactured
 packets. A separately reviewed follow-up enables metadata inventory only;
 actual source/workflow guards remain false. Exact immutable template/source/event
 admission is still required. Selected metadata excludes locally assumed Python
-cache entries; executing Python import/bytecode closure remains an actual gate.
+cache entries; selected system interpreter/native libraries are an explicit
+trusted platform boundary, not a complete import-authenticity claim.
 The v2 follow-up implements bounded held proc reads, lazy capped censuses and
 explicit directory aliases; 42 Python methods pass with all prior 33 bodies
 held, and thirteen targeted source cuts are detected. These are mock controls.
@@ -6280,3 +6281,11 @@ previous installed candidate and receipts are preserved. Remaining native
 readiness, physical toolbar/connection/LED acceptance and clone buzzer tasks
 are bounded in the current handoff; no additional native or firmware work
 is implicitly claimed.
+
+The startup follow-up versions actual request/reader as v3 while holding the
+v2 inventory handler and workflow section. An exclusive empty prefix precedes
+isolated no-site CPython entry; original install/flags/path/directory and official
+step joins have 50 Python controls and nine detected cuts. Actual remains false.
+The separately reviewed first metadata event is consumed at source `671702949`;
+[run 39106669518](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39106669518)
+is pending at publication. Do not repeat its label or original acquisition.
