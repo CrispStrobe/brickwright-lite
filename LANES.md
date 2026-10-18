@@ -6393,3 +6393,20 @@ controls, every enabled exact-head source check, and fresh admitted actual
 candidate qualification before integrating source. Never repeat a successful
 original acquisition, reader or run merely to inspect it. See
 [the integration handoff](docs/INTEGRATION-NEXT-STEPS.md) for the remaining join.
+
+Source candidate on `lane/ios-active-asset-source-20261018`, after claim PR1070
+merged. The release-simulator-only Ready hook observes the actual installed
+resolver only when explicitly requested through its process environment. It
+retains sorted embedded storage identities and served identities separately,
+including current CSP-header hashes, finite structural/byte/output/time caps and
+partial refusals. Device-profile diagnostics retain their actual assertions
+while printing counts instead of device identifiers. The resource-preparation
+parent and all three helper call paths are preserved.
+
+This candidate does not wire a workflow observation or qualify the Apple adapter,
+installed map, resource/lifetime envelope or signed target. Next: freeze the
+independent expected-map and source/configuration/executable/artifact joins;
+prepare an opt-in unsigned simulator controller that admits an already available
+runtime and finite process/resource/output boundaries without implicit downloads;
+then qualify the exact candidate once. Preserve separate signed-map admission
+and release/TestFlight guards. Do not merge this source on pure collector tests.

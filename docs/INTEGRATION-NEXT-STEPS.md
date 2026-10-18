@@ -72,7 +72,19 @@ Next actions and completion criteria:
    Keep unsigned simulator, App Store and sideloadable export acceptance distinct;
    no device acceptance follows from simulator success. A changed candidate needs
    its own admitted affected qualification; historical results keep their identity.
-4. Merge the separate active-asset observation claim in `LANES.md` before source
+4. The separate active-asset observation claim in `LANES.md` merged in PR1070.
+   Its first source candidate uses the running app's resolver from Ready, stays
+   default-off and release-simulator-only, and distinguishes embedded storage
+   bytes from served bytes and HTML/CSP handling. It does not yet wire or qualify
+   an actual workflow observation. The resource-preparation parent is preserved.
+   Before admitting a new event, finish the independently frozen expected-map
+   reader and exact source/configuration/executable/artifact joins, admit an
+   already installed simulator runtime and explicit process/memory/output/time
+   limits, and prepare the optional controller without runtime downloads.
+   Require one fresh candidate-bound unsigned observation; signed-target map
+   identity remains a separate join. Pure Rust tests do not qualify the Apple
+   adapter, decompression allocation, callback lifetime or installed package.
+   Retain this source scope in `LANES.md` before further
    implementation. Observe the actual installed App resolver after Ready, with
    complete ordered keys, served lengths/hashes and explicit finite budgets.
    Account for iterator compression, resolver fallback and HTML/CSP transformations

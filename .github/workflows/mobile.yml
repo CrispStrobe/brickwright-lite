@@ -526,10 +526,11 @@ jobs:
 
           # The whole point of this job: without ProvisionedDevices the IPA is
           # an App Store package and devicectl will reject it.
-          plutil -extract ProvisionedDevices xml1 -o - "$WORK/embedded.plist" \
+          plutil -extract ProvisionedDevices xml1 -o - "$WORK/embedded.plist" >/dev/null \
             || { echo "::error::the built IPA names no devices — it cannot be sideloaded"; exit 1; }
-          echo "devices named in the embedded profile:"
-          plutil -extract ProvisionedDevices xml1 -o - "$WORK/embedded.plist" | grep '<string>'
+          DEVICE_COUNT=$(plutil -extract ProvisionedDevices xml1 -o - "$WORK/embedded.plist" | grep -c '<string>')
+          [ "$DEVICE_COUNT" -gt 0 ] || { echo "::error::ad-hoc profile has no registered devices"; exit 1; }
+          echo "ad-hoc profile verified: provisioned device count=$DEVICE_COUNT"
 
           [ -f "$APP/PrivacyInfo.xcprivacy" ] \
             || { echo "::error::PrivacyInfo.xcprivacy missing from the IPA"; exit 1; }
