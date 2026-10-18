@@ -732,7 +732,7 @@ class SimLabPane extends React.Component {
             const bytes = new Uint8Array(await f.arrayBuffer());
             const ldconfig = /\.lxf$/i.test(f.name) ?
                 (await this.lib.fetchLDrawClosure([], {withConfig: true})).read('ldconfig.ldr') || '' : '';
-            opened = await this.lib.openModelFile(f.name, bytes, {ldconfig, title: MODEL_TITLE});
+            opened = await this.lib.openModelFile(f.name, bytes, {ldconfig, title: MODEL_TITLE, catalog: this.lib.CATALOG});
         } catch (error) {
             const reason = (error && this.text.fileErrors[error.code]) || (error && error.message) || String(error);
             if (!this.disposed) this.setState({message: this.t('fileFailed', {name: f.name, error: reason})});

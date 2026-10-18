@@ -167,11 +167,13 @@ export const serializeMpd = (model, {name = 'model.ldr', title} = {}) => {
 /**
  * An LDD .lxf's model as LDraw text.
  * @param {Uint8Array} bytes
- * @param {{ldconfig: string}} options LDConfig.ldr text (the LEGO colour numbers)
+ * @param {{ldconfig: string, catalog?: Map<string, object>}} options ldconfig: LDConfig.ldr text (the LEGO colour
+ *        numbers); catalog: the Robot Lab's parts (a design outside ldd-parts.js may then be placed with a
+ *        derived frame: lxf-model.js)
  * @returns {Promise<{text: string, refusals: object[]}>}
  * @throws {ModelFileError} `not-a-zip`, `lxf-no-lxfml`, `lxf-unreadable`, `lxf-version`
  */
-export const readLxf = async (bytes, {ldconfig, name = 'model.lxf', title}) => {
+export const readLxf = async (bytes, {ldconfig, catalog, name = 'model.lxf', title}) => {
     let xml;
     if (isZip(bytes)) {
         const {names, encrypted} = zipDirectory(bytes);
@@ -185,7 +187,7 @@ export const readLxf = async (bytes, {ldconfig, name = 'model.lxf', title}) => {
     }
     let parsed;
     try {
-        parsed = parseLxfml(xml, {colours: lddColours(ldconfig)});
+        parsed = parseLxfml(xml, {colours: lddColours(ldconfig), catalog});
     } catch (error) {
         if (error instanceof LxfError) throw new ModelFileError(error.code, error.message);
         throw error;
@@ -197,15 +199,16 @@ export const readLxf = async (bytes, {ldconfig, name = 'model.lxf', title}) => {
  * Open any supported model file as LDraw text.
  * @param {string} name the file's name (its extension picks the reader)
  * @param {Uint8Array} bytes its contents
- * @param {{ldconfig?: string, title?: string}} [options] ldconfig: needed for .lxf
+ * @param {{ldconfig?: string, title?: string, catalog?: Map<string, object>}} [options] ldconfig: needed for .lxf;
+ *        catalog: the Robot Lab's parts, for .lxf designs placed with a derived frame
  * @returns {Promise<{text: string, name: string, refusals: object[]}>} name: the model's name from now on (.ldr for converted files)
  * @throws {ModelFileError}
  */
-export const openModelFile = async (name, bytes, {ldconfig = '', title} = {}) => {
+export const openModelFile = async (name, bytes, {ldconfig = '', title, catalog} = {}) => {
     const format = formatOf(name);
     if (format === 'ldr' || format === 'mpd') return {text: new TextDecoder().decode(bytes), name, refusals: []};
     if (format === 'io') return {...await readStudioIo(bytes), name: renameTo(name, 'ldr')};
-    if (format === 'lxf') return {...await readLxf(bytes, {ldconfig, name, title}), name: renameTo(name, 'ldr')};
+    if (format === 'lxf') return {...await readLxf(bytes, {ldconfig, catalog, name, title}), name: renameTo(name, 'ldr')};
     throw new ModelFileError('unsupported-format', `files ending in ${(/\.[^.]*$/.exec(String(name)) || [''])[0] || '(nothing)'} are not model files the Robot Lab opens`);
 };
 

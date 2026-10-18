@@ -48,7 +48,8 @@ export const INSIGHT_TEXT = {
             'studio-only-part': 'Line {line} places a part only BrickLink Studio has (not in LDraw), so it is left out.',
             'lxf-unknown-design': 'The LEGO Digital Designer part {design} is not one the Robot Lab knows yet, so it is left out.',
             'lxf-bad-transform': 'The LEGO Digital Designer part {design} is mirrored or stretched, so it is left out.',
-            'lxf-unknown-material': 'The LEGO Digital Designer part {design} has a colour LDraw does not know, so it is shown light grey.'
+            'lxf-unknown-material': 'The LEGO Digital Designer part {design} has a colour LDraw does not know, so it is shown light grey.',
+            'lxf-derived-frame': 'The LEGO Digital Designer part {design} was placed by measuring its studs, so check that it sits where you built it.'
         },
         fallbackIssue: 'Something about this model needs a look.',
         and: 'and', part: 'the part {id}',
@@ -94,7 +95,8 @@ export const INSIGHT_TEXT = {
             'studio-only-part': 'Zeile {line} setzt ein Teil, das nur BrickLink Studio kennt (nicht LDraw), darum wird es weggelassen.',
             'lxf-unknown-design': 'Das LEGO-Digital-Designer-Teil {design} kennt das Roboter-Labor noch nicht, darum wird es weggelassen.',
             'lxf-bad-transform': 'Das LEGO-Digital-Designer-Teil {design} ist gespiegelt oder gestreckt, darum wird es weggelassen.',
-            'lxf-unknown-material': 'Das LEGO-Digital-Designer-Teil {design} hat eine Farbe, die LDraw nicht kennt, darum ist es hellgrau.'
+            'lxf-unknown-material': 'Das LEGO-Digital-Designer-Teil {design} hat eine Farbe, die LDraw nicht kennt, darum ist es hellgrau.',
+            'lxf-derived-frame': 'Das LEGO-Digital-Designer-Teil {design} wurde anhand seiner Noppen eingesetzt. Prüfe, ob es dort sitzt, wo du es gebaut hast.'
         },
         fallbackIssue: 'Etwas an diesem Modell solltest du dir ansehen.',
         and: 'und', part: 'das Teil {id}',
