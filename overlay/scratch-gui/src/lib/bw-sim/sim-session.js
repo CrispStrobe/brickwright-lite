@@ -49,7 +49,9 @@ export const MODELS = Object.freeze([
     {file: 'wall-stopper.ldr', title: {en: 'Wall stopper', de: 'Wandstopper'},
         example: 'wall-stopper.bw', mat: 'wall'},
     {file: 'colour-explorer.ldr', title: {en: 'Colour explorer', de: 'Farbentdecker'},
-        example: 'colour-explorer.bw', mat: 'colour-zones'}
+        example: 'colour-explorer.bw', mat: 'colour-zones'},
+    {file: 'maze-runner.ldr', title: {en: 'Maze runner', de: 'Labyrinth-Läufer'},
+        example: 'maze.bw', mat: 'maze'}
 ]);
 export const MODELS_BASE = 'static/sim-lab/models/';
 export const PROGRAMS_BASE = 'static/sim-lab/programs/';

@@ -26,7 +26,7 @@ const CATALOG = catalogFrom(JSON.parse(readFileSync(path.join(GUI, 'src/lib/bw-s
 const FIXTURE = JSON.parse(readFileSync(path.join(ROOT, 'test/fixtures/bw-sim/line-follower.json'), 'utf8'));
 
 test('every model in the list is a shipped file that compiles cleanly, motors and sensors on ports', () => {
-    assert.deepEqual(MODELS.map(m => m.file), ['driving-base.ldr', 'line-follower.ldr', 'wall-stopper.ldr', 'colour-explorer.ldr']);
+    assert.deepEqual(MODELS.map(m => m.file), ['driving-base.ldr', 'line-follower.ldr', 'wall-stopper.ldr', 'colour-explorer.ldr', 'maze-runner.ldr']);
     for (const entry of MODELS) {
         assert.ok(entry.title.en && entry.title.de && entry.title.en !== entry.title.de, `${entry.file}: EN and DE titles`);
         const text = readFileSync(path.join(GUI, MODELS_BASE, entry.file), 'utf8');
