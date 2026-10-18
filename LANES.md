@@ -5743,9 +5743,9 @@ Implement only after this ownership amendment qualifies and merges.
 
 ## 386 GUI HDD and forward-debug hosted acceptance — 2026-10-16
 
-PROPOSED CLAIM — Codex x86, serialized after the existing media/debugger lane.
-Merge this claim before creating the new acceptance files. The existing merged
-claims cover the source in PR986, PR987 and PR989; their normal local composition
+SOURCE IMPLEMENTED; ACTUAL PENDING — Codex x86; ownership claim [PR1014](https://github.com/CrispStrobe/brickwright-lite/pull/1014)
+merged before implementation. Serialized after the existing media/debugger lane.
+The existing merged claims cover the source in PR986, PR987 and PR989; their normal local composition
 adds no supplier pin, lock, notice or other-owner change. This claim extends only
 the finite hosted acceptance boundary: new
 `scripts/run-i80386-hdd-gui-actual.py`,
@@ -5758,15 +5758,15 @@ Reuse the existing Playwright persistence scenario and established hosted
 build/browser pipeline; do not introduce another provisioning framework or
 change unrelated workflows.
 
-The source-only composition retains main's selected Board until its existing
-adoption owner supplies the reviewed installed dependency. It must refuse the
-actual persistence/debug scenario when the dedicated 386 target API is absent.
-Never inject supplier modules, fake a snapshot or infer installed support from
-a Board-only diagnostic. PR975's existing Board/SB3 owner retains its explicit
-**Not for agent merge** hold and all dependency writers; PR965 retains CUI/shared
-lock/notices ownership. This claim transfers no such surfaces. Record a handoff
-or wait for the existing owner's qualified adoption; any new adoption by this
-lane needs that handoff and a separately merged precise claim.
+The composition consumes the adoption already merged through
+[PR975](https://github.com/CrispStrobe/brickwright-lite/pull/975): Board
+`f84ba60ead0a90deb9830f0c1468839c293ecf05`, CUI
+`055930ec51300e0d71466c696ce1bf76284bde38` and SB3
+`a13f92b8bc4b06f0cb9ffec22bab71f06db7ac76` at the 2026-10-18 refresh.
+These are source selections, not this scenario's installed qualification.
+Refresh canonical declarations before admission; refuse missing dedicated
+386 target support. Never inject supplier modules or fake a snapshot.
+This claim transfers no dependency, package, lock or notice writers.
 
 Before a one-shot actual event, freeze the exact composed source, installed
 supplier/build graph, free inputs, browser/runtime identities, finite resource
@@ -5784,6 +5784,31 @@ enabled exact-head source check and separately admitted original-only actual
 result remains mandatory; acquire each official original once and never replay
 a guest for the reader. No ISO/ATAPI, generalized DOSBox, new CPU/device, reverse
 execution, mode-aware disassembler, physical timing, whole-OS or release claim.
+
+Source continuation is composed in [draft PR1013](https://github.com/CrispStrobe/brickwright-lite/pull/1013).
+The controller, standalone reader, two real-UI scenario implementations, focused
+manufactured-original controls and guarded workflow are implemented. This is
+source work: no browser/guest acceptance is inferred from the manufactured
+packets. A separately reviewed follow-up enables metadata inventory only;
+actual source/workflow guards remain false. Exact immutable template/source/event
+admission is still required. Selected metadata excludes locally assumed Python
+cache entries; selected system interpreter/native libraries are an explicit
+trusted platform boundary, not a complete import-authenticity claim.
+The v2 follow-up implements bounded held proc reads, lazy capped censuses and
+explicit directory aliases; 42 Python methods pass with all prior 33 bodies
+held, and thirteen targeted source cuts are detected. These are mock controls.
+Before activation, review the selected hosted runtime template, acquire and audit one separate
+metadata inventory, and freeze the externally selected actual request and full
+frontend-source admission. Setup consumes the same 35-minute job budget; its
+sufficiency remains unqualified. Follow the matching guide's completion gates.
+
+The startup follow-up versions actual request/reader as v3 while holding the
+v2 inventory handler and workflow section. An exclusive empty prefix precedes
+isolated no-site CPython entry; original install/flags/path/directory and official
+step joins have 50 Python controls and nine detected cuts. Actual remains false.
+The separately reviewed first metadata event is consumed at source `671702949`;
+[run 39106669518](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39106669518)
+is pending at publication. Do not repeat its label or original acquisition.
 
 ## A13 CPX production browser gate registration — 2026-10-16
 
