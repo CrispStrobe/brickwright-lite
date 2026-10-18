@@ -12,6 +12,7 @@
 import {mat3MulVec3, vecAdd, vecNormalize} from './vec.js';
 import {upgradePartMeta, partMotorJoint, partMotor, portRefOf} from '../contracts.js';
 import {BUILTIN_KINDS} from '../kinds/index.js';
+import {PAIR_REACH_LDU, connectorBounds, createSpatialIndex, grow} from './spatial-index.js';
 
 // The v1 connector rules live in kinds/pin-axle.js (the connector kind registry's first
 // modules); they are re-exported here for the editor and the tests that always read them here.
@@ -128,9 +129,16 @@ export const buildGraph = (model, catalog, diagnostics = [], kinds = BUILTIN_KIN
     // Deterministic iteration: sort nodes by id
     nodeList.sort((a, b) => a.id.localeCompare(b.id));
 
+    // Broad phase (spatial-index.js): a pair rule only joins connectors that come within PAIR_REACH_LDU
+    // of each other, so each node is compared with the nodes whose connectors are that near, not with
+    // every node of the model (a 2,000-part model: seconds, every compile).
+    const boxes = nodeList.map(n => connectorBounds(n.connectors));
+    const index = createSpatialIndex(boxes);
     for (let i = 0; i < nodeList.length; i++) {
         const nA = nodeList[i];
-        for (let j = i + 1; j < nodeList.length; j++) {
+        if (!boxes[i]) continue;
+        for (const j of index.queryBox(grow(boxes[i], PAIR_REACH_LDU))) {
+            if (j <= i) continue;
             const nB = nodeList[j];
             // Different PlacedModel parts only (motor housing vs output share same partId but are already handled as motor internal hinge; we should NOT connect housing/out via normal connector matching)
             if (nA.partId === nB.partId) continue;
