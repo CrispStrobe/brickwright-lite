@@ -192,13 +192,16 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     const onDemand = Boolean(built.instanced);
     let dirty = true;
     let lastBodies = null;
-    const lastCamera = new Float32Array(16);
+    // Float64: the camera matrix is doubles, and a float32 copy differs from it in nearly every
+    // element, so "the camera moved" was true every frame and an idle big model was redrawn forever
+    // (seconds a frame on a software GPU, queueing up behind whatever comes next).
+    const lastCamera = new Float64Array(16);
     const lastSize = new Vector2();
     const changed = (snapshot, size) => {
         let moved = false;
         const bodies = snapshot && snapshot.bodies;
         if (bodies && (!lastBodies || lastBodies.length !== bodies.length || bodies.some((v, i) => v !== lastBodies[i]))) {
-            lastBodies = Float32Array.from(bodies);
+            lastBodies = Float64Array.from(bodies);
             moved = true;
         }
         camera.updateMatrixWorld();
