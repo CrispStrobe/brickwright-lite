@@ -855,6 +855,9 @@ def install_input(blob,expected,target,env):
     return {'byteLength':len(payload),'sha256':sha(payload),'gitBlob':blob}
 
 
+INVENTORY_FAILURE_EVENT_CAP=256<<10
+
+
 def inventory_error(value,error,phase,path=None):
     # Error messages are observations, never arbitrary-length file contents.
     row={'phase':phase,'name':type(error).__name__.encode('ascii','backslashreplace')[:128].decode('ascii'),
@@ -866,19 +869,25 @@ def inventory_error(value,error,phase,path=None):
 
 
 def inventory_observation(template_raw,expected,root,env,output_path):
-    failure={'schema':'bw.gui-hdd.inventory-failure.v1','observationOnly':True,'candidate':False,'qualified':False,
+    failure={'schema':'bw.gui-hdd.inventory-failure.v2','observationOnly':True,'candidate':False,'qualified':False,
       'template':{'byteLength':len(template_raw),'sha256':sha(template_raw),'expectedSha256':None,'sourceHead':None,'bindingVerified':False},
       'event':None,'platform':{key:(env[key] if type(env.get(key)) is str and len(env[key].encode())<=1024 else None) for key in ('GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_JOB','GITHUB_REPOSITORY',
        'GITHUB_WORKFLOW_SHA','GITHUB_WORKFLOW_REF','GITHUB_EVENT_NAME','GITHUB_ACTOR','BW_EXPECTED_HEAD')},
+      'diagnostic':{'pathBytes':0,'limitBytes':0,'complete':False},
       'files':{},'aliases':{},'directoryAliases':{},'gitSource':{'reached':False,'head':None,'tree':None,'files':{}},
       'firstFailure':None,'secondary':[]}
-    try:return collect_inventory_observation(template_raw,expected,root,env,output_path,failure)
-    except BaseException as error:
-        inventory_error(failure,error,'inventory');return failure
+    try:
+        value=collect_inventory_observation(template_raw,expected,root,env,output_path,failure)
+        if value is not failure:return value  # Successful v2 bytes and predicates stay held.
+    except BaseException as error:inventory_error(failure,error,'inventory')
+    event=failure['event']
+    if event is None or event['original']['available'] is not True:
+        inventory_error(failure,ValueError('exact raw event original unavailable: '+('not read' if event is None else event['original']['reason'])),'inventory-event-original')
+    return failure
 
 
 def retain_inventory_observation(value,output_path):
-    failed=value.get('schema')=='bw.gui-hdd.inventory-failure.v1'
+    failed=value.get('schema')=='bw.gui-hdd.inventory-failure.v2'
     need(failed or value.get('schema')=='bw.gui-hdd.inventory-original.v2','explicit inventory original version')
     if failed:need(value['firstFailure'] is not None and value['candidate'] is False and value['qualified'] is False,'failure-only inventory cannot qualify')
     target=Path(output_path).with_name('inventory-failure.json') if failed else Path(output_path)
@@ -915,7 +924,11 @@ def collect_inventory_observation(template_raw,expected,root,env,output_path,fai
     template=decode(template_raw);fields(template,'schema sourceHead files aliases directoryAliases node python chromium tools')
     need(encode(template)==template_raw and template['schema']=='bw.gui-hdd.inventory-template.v2','canonical bounded inventory template')
     digest(template['sourceHead'],40);failure['template'].update(sourceHead=template['sourceHead'],bindingVerified=True)
-    event_raw=regular(env['GITHUB_EVENT_PATH'],JSON_CAP);failure['event']={'byteLength':len(event_raw),'sha256':sha(event_raw),'bindingVerified':False}
+    event_raw=regular(env['GITHUB_EVENT_PATH'],JSON_CAP)
+    available=len(event_raw)<=INVENTORY_FAILURE_EVENT_CAP
+    failure['event']={'byteLength':len(event_raw),'sha256':sha(event_raw),'bindingVerified':False,
+      'original':{'available':available,'base64':base64.b64encode(event_raw).decode() if available else None,
+       'reason':None if available else 'event exceeds256KiB retained-original cap'}}
     bind_inventory_event(event_raw,template['sourceHead'],expected,env);failure['event']['bindingVerified']=True
     need(type(template['files']) is list and 1<=len(template['files'])<=512 and len(set(template['files']))==len(template['files']) and
          type(template['aliases']) is list and len(template['aliases'])<=256 and len(set(template['aliases']))==len(template['aliases']) and type(template['directoryAliases']) is list and
@@ -930,6 +943,18 @@ def collect_inventory_observation(template_raw,expected,root,env,output_path,fai
         for path in template[role]:runtime_path(path)
     need(set(template['files']).isdisjoint(set(template['aliases'])|set(template['directoryAliases'])) and
          set(template['aliases']).isdisjoint(template['directoryAliases']),'disjoint fixed inventory roles')
+    # Reserve the actual encoded raw event/frame and bounded terminal errors
+    # BEFORE path diagnostics. An incomplete capped diagnostic never qualifies.
+    failure['diagnostic']['limitBytes']=JSON_CAP-len(encode(failure))-8192
+    need(failure['diagnostic']['limitBytes']>0,'failure event/frame leaves no path diagnostic budget')
+    failure['diagnostic']['complete']=True
+    def keep(role,path,row):
+        cost=len(encode({path:row}))+len(encode(row.get('error')))+32
+        if failure['diagnostic']['pathBytes']+cost>failure['diagnostic']['limitBytes']:
+            failure[role].pop(path,None);failure['diagnostic']['complete']=False
+            if row.get('error') is not None and failure['secondary'] and failure['secondary'][-1] is row['error']:failure['secondary'].pop()
+            raise ValueError('path diagnostic cap; remaining selected paths not observed')
+        failure['diagnostic']['pathBytes']+=cost
     deadline=time.monotonic()+180
     def metadata(info):return {key:getattr(info,'st_'+key) for key in ('dev','ino','mode','uid','gid','nlink','size','mtime_ns')}
     for path in template['files']:
@@ -943,6 +968,7 @@ def collect_inventory_observation(template_raw,expected,root,env,output_path,fai
             runtime['files'][path]=row['file'];row['status']='observed'
         except BaseException as error:
             row['status']='failed' if row['attempted'] else 'unvisited-deadline';row['error']=inventory_error(failure,error,'inventory-file',path)
+        keep('files',path,row)
     all_aliases={}
     for role in ('aliases','directoryAliases'):
         for path in template[role]:
@@ -957,6 +983,7 @@ def collect_inventory_observation(template_raw,expected,root,env,output_path,fai
                 observed['status']='observed'
             except BaseException as error:
                 observed['status']='failed' if observed['attempted'] else 'unvisited-deadline';observed['error']=inventory_error(failure,error,'inventory-alias',path)
+            keep(role,path,observed)
     if failure['firstFailure'] is not None:return failure  # No tools, Git, runtime probes or candidate after ANY required read failure.
     for path,row in all_aliases.items():row['target']=declared_alias_resolution(path,all_aliases)
     runtime_alias_policy(runtime)

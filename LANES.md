@@ -5763,6 +5763,10 @@ browser/guest qualification; source controls alone cannot satisfy that gate.
 The subsequent diagnostic collector uses a 180-second cooperative budget inside
 the held four-minute step/fifteen-minute job, explicitly marking unvisited paths.
 All 63 source controls pass; actual guards and required-font selection stay held.
+Failure-only v2 additionally retains bounded exact event bytes and has a standalone
+reader that joins them against external pins; 65 embedded Python controls pass.
+Successful inventory/actual formats and positive executable size checks stay held.
+
 
 
 SOURCE IMPLEMENTED; ACTUAL PENDING — Codex x86; ownership claim [PR1014](https://github.com/CrispStrobe/brickwright-lite/pull/1014)

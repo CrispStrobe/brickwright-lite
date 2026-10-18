@@ -709,7 +709,101 @@ def audit(files, expected):
         'fullOsQualified':False,'physicalTimingQualified':False,'reverseExecutionQualified':False}
 
 
+INVENTORY_FAILURE_EVENT_CAP=256<<10
+
+
+def inventory_failure_expected(expected):
+    fields(expected,'schema source template failure runId workflowSha')
+    need(expected['schema']=='bw.gui-hdd.inventory-failure-expectation.v2','explicit externally selected failure audit policy')
+    integer(expected['runId'],1,2**63-1);digest(expected['workflowSha'],40)
+    source=expected['source'];fields(source,'head tree files');digest(source['head'],40);digest(source['tree'],40)
+    rows(source['files']);need(set(source['files'])==SOURCE,'separately selected source21')
+    for name in ('template','failure'):
+        fields(expected[name],'byteLength sha256');integer(expected[name]['byteLength'],1,JSON_CAP);digest(expected[name]['sha256'])
+
+
+def verify_inventory_failure(failure_raw,template_raw,expected):
+    """Audit a retained failed observation; never runtime or official approval.
+
+    The caller independently selects these original extents/digests and source,
+    run and workflow facts after official artifact metadata admission.
+    """
+    inventory_failure_expected(expected)
+    for raw,name in ((failure_raw,'failure'),(template_raw,'template')):
+        need(type(raw) is bytes and len(raw)==expected[name]['byteLength'] and sha(raw)==expected[name]['sha256'],'independently selected '+name+' original')
+    template=decode(template_raw);fields(template,'schema sourceHead files aliases directoryAliases node python chromium tools')
+    need(encode(template)==template_raw and template['schema']=='bw.gui-hdd.inventory-template.v2' and template['sourceHead']==expected['source']['head'],'retained canonical template/source binding')
+    for role,cap in (('files',512),('aliases',256),('directoryAliases',256)):
+        roster=template[role];need(type(roster) is list and len(roster)<=cap and len(set(roster))==len(roster),'bounded unique selected failure roster')
+        for path in roster:runtime_path(path)
+    need(template['files'] and len(template['aliases'])+len(template['directoryAliases'])<=256 and
+         len(set(template['files']+template['aliases']+template['directoryAliases']))==sum(len(template[k]) for k in ('files','aliases','directoryAliases')),'disjoint complete selected failure roles')
+    value=decode(failure_raw);fields(value,'schema observationOnly candidate qualified template event platform diagnostic files aliases directoryAliases gitSource firstFailure secondary')
+    need(encode(value)==failure_raw and value['schema']=='bw.gui-hdd.inventory-failure.v2' and value['observationOnly'] is True and value['candidate'] is False and value['qualified'] is False and value['firstFailure'] is not None,'explicit canonical failure-only original')
+    selected=value['template'];fields(selected,'byteLength sha256 expectedSha256 sourceHead bindingVerified')
+    need(selected==dict(expected['template'],expectedSha256=expected['template']['sha256'],sourceHead=expected['source']['head'],bindingVerified=True),'failure retains independently selected template identity')
+    event=value['event'];fields(event,'byteLength sha256 bindingVerified original');integer(event['byteLength'],1,INVENTORY_FAILURE_EVENT_CAP);digest(event['sha256'])
+    original=event['original'];fields(original,'available base64 reason')
+    need(original['available'] is True and original['reason'] is None and event['bindingVerified'] is True and type(original['base64']) is str and original['base64'].isascii() and len(original['base64'])==4*((event['byteLength']+2)//3),'exact raw event original available within fixed cap')
+    event_raw=base64.b64decode(original['base64'],validate=True)
+    need(len(event_raw)==event['byteLength'] and sha(event_raw)==event['sha256'] and base64.b64encode(event_raw).decode()==original['base64'],'exact raw event byte extent/hash/encoding')
+    platform=value['platform'];fields(platform,'GITHUB_RUN_ID GITHUB_RUN_ATTEMPT GITHUB_JOB GITHUB_REPOSITORY GITHUB_WORKFLOW_SHA GITHUB_WORKFLOW_REF GITHUB_EVENT_NAME GITHUB_ACTOR BW_EXPECTED_HEAD')
+    need(platform['GITHUB_RUN_ID']==str(expected['runId']) and platform['GITHUB_WORKFLOW_SHA']==expected['workflowSha'],'independent run/workflow producing context')
+    bind_inventory_event(event_raw,expected['source']['head'],expected['template']['sha256'],platform)
+    pr=decode(event_raw)['pull_request']
+    need(platform['GITHUB_WORKFLOW_REF']==REPOSITORY+'/.github/workflows/i80386-hdd-gui-actual.yml@refs/pull/'+str(pr['number'])+'/merge','raw event/executing workflow ref join')
+    diagnostic=value['diagnostic'];fields(diagnostic,'pathBytes limitBytes complete');integer(diagnostic['pathBytes'],0,JSON_CAP);integer(diagnostic['limitBytes'],1,JSON_CAP)
+    need(diagnostic['complete'] is True and diagnostic['pathBytes']<=diagnostic['limitBytes'],'complete bounded failure path observations, no hidden truncation')
+    frame=decode(encode(value));frame.update(files={},aliases={},directoryAliases={},firstFailure=None,secondary=[],gitSource={'reached':False,'head':None,'tree':None,'files':{}},diagnostic={'pathBytes':0,'limitBytes':0,'complete':False})
+    need(diagnostic['limitBytes']==JSON_CAP-len(encode(frame))-8192,'independent event/frame reservation before path diagnostic budget')
+    errors=[];counts={};path_cost=0
+    for role in ('files','aliases','directoryAliases'):
+        observed=value[role];need(type(observed) is dict and set(observed)==set(template[role]),'entire selected failure roster retained');counts[role]={}
+        for path in template[role]:
+            row=observed[path];need(type(row) is dict and {'attempted','status'}<=set(row) and set(row)<=set('attempted status metadataBefore metadataAfter error'.split())|({'file'} if role=='files' else {'linkText'}),'closed reported path facts')
+            need(type(row['attempted']) is bool and row['status'] in ('observed','failed','unvisited-deadline'),'explicit path attempt/status')
+            counts[role][row['status']]=counts[role].get(row['status'],0)+1
+            for name in ('metadataBefore','metadataAfter'):
+                if name in row:
+                    info=row[name];fields(info,'dev ino mode uid gid nlink size mtime_ns')
+                    for name,item in info.items():integer(item,-2**63 if name=='mtime_ns' else 0,2**63-1 if name=='mtime_ns' else 2**64-1)
+            if row['status']=='observed':
+                need(row['attempted'] is True and 'error' not in row and row['metadataBefore']==row['metadataAfter'],'reported stable observed path')
+                if role=='files':
+                    fields(row['file'],'byteLength sha256');integer(row['file']['byteLength'],1,256<<20);digest(row['file']['sha256'])
+                    need(stat.S_ISREG(row['metadataBefore']['mode']) and row['metadataBefore']['size']==row['file']['byteLength'],'reported regular selected file extent')
+                else:need(stat.S_ISLNK(row['metadataBefore']['mode']) and type(row['linkText']) is str and 0<len(row['linkText'])<=512,'reported alias text')
+            else:
+                need('error' in row and (row['attempted'] is True if row['status']=='failed' else row['attempted'] is False and set(row)=={'attempted','status','error'}),'failed/unvisited paths cannot be observed success')
+                error=row['error'];need(error.get('path')==path and error.get('phase')==('inventory-file' if role=='files' else 'inventory-alias'),'path error provenance');errors.append(error)
+            path_cost+=len(encode({path:row}))+len(encode(row.get('error')))+32
+    need(path_cost==diagnostic['pathBytes'],'independent path budget accounting')
+    need(type(value['secondary']) is list and len(value['secondary'])<=770,'bounded secondary failure observations')
+    all_errors=[value['firstFailure']]+value['secondary']
+    for error in all_errors:
+        need(type(error) is dict and {'phase','name','message'}<=set(error)<=set('phase name message path'.split()),'closed retained error observation')
+        for name,cap in (('phase',128),('name',128),('message',1024)):need(type(error[name]) is str and error[name].isascii() and len(error[name])<=cap,'capped error fact')
+        if 'path' in error:runtime_path(error['path'])
+    need(all_errors[:len(errors)]==errors,'first selected-path error and ordered secondary observations preserved')
+    source=value['gitSource'];fields(source,'reached head tree files');need(type(source['reached']) is bool and type(source['files']) is dict,'explicit unavailable/partial source observation')
+    if not source['reached']:need(source=={'reached':False,'head':None,'tree':None,'files':{}},'source not invented before held Git gate')
+    else:
+        for name in ('head','tree'):need(source[name] is None or source[name]==expected['source'][name],'reported source identity joins external selection')
+        need(set(source['files'])<=SOURCE and all(row==expected['source']['files'][path] for path,row in source['files'].items()),'reported partial source file identities')
+    return {'schema':'bw.gui-hdd.inventory-failure-reader.v2','failureObserved':True,'eventJoined':True,'candidate':False,'qualified':False,
+      'templateSha256':expected['template']['sha256'],'sourceHead':expected['source']['head'],'runId':expected['runId'],'counts':counts,
+      'gitSourceReached':source['reached'],'firstFailure':value['firstFailure']}
+
+
 def main(argv=None):
+    raw_args=list(sys.argv[1:] if argv is None else argv)
+    if raw_args[:1]==['--inventory-failure']:
+        parser=argparse.ArgumentParser(description='Independent failure-only inventory audit',allow_abbrev=False)
+        for name in ('inventory-failure','template','expected'):parser.add_argument('--'+name,required=True)
+        need(len(raw_args)==6 and all(raw_args.count('--'+name)==1 for name in ('inventory-failure','template','expected')),'exact failure audit inputs')
+        args=parser.parse_args(raw_args);expected=decode(bounded_input(args.expected,JSON_CAP));inventory_failure_expected(expected)
+        failure=bounded_input(args.inventory_failure,expected['failure']['byteLength']);template=bounded_input(args.template,expected['template']['byteLength'])
+        print(encode(verify_inventory_failure(failure,template,expected)).decode(),end='');return 0
     parser=argparse.ArgumentParser(description=__doc__,allow_abbrev=False);parser.add_argument('artifact');parser.add_argument('expected')
     args=parser.parse_args(argv);expected=decode(bounded_input(args.expected,JSON_CAP));expected_policy(expected)
     raw=bounded_input(args.artifact,expected['artifactBytes'])
