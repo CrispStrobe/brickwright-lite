@@ -1172,6 +1172,162 @@ class Originals(unittest.TestCase):
             with self.assertRaises(ValueError):output.save('frontend.partial.zip',b'retry')
             self.assertEqual((output.root/'frontend.partial.zip').read_bytes(),b'prefix')
 
+    @contextlib.contextmanager
+    def font_discovery_edges(self,partial=False,close_error=False,missing=False,tool_mode=0o755,config_raw=None,read_error=False):
+        source=D(self.files['source.before.json']);config=config_raw or b'<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd"><fontconfig><include>conf.d</include><dir>/usr/share/fonts</dir></fontconfig>'
+        main='/etc/fonts/fonts.conf';alias='/etc/fonts/conf.d/10-family.conf';target='/usr/share/fontconfig/conf.avail/10-family.conf';font='/usr/share/fonts/Mock.ttf'
+        rawfiles={main:config,target:b'<fontconfig><alias><family>Mock</family></alias></fontconfig>',font:b'fontbytes',
+          '/usr/bin/git':b'selectedgit','/usr/bin/dpkg-query':b'selecteddpkg'}
+        names={'/etc/fonts/conf.d':['10-family.conf'],'/usr/share/fonts':['Mock.ttf'],'/usr/local/share/fonts':[]}
+        baseline={'schema':'bw.gui-hdd.inventory-template.v3','files':[main,target,font]+(['/etc/fonts/conf.avail/missing.conf'] if partial else []),'aliases':[alias]}
+        request={'schema':'bw.gui-hdd.font-discovery-request.v1','source':source,'baseline':dict(ROW(E(baseline)),base64=base64.b64encode(E(baseline)).decode())};raw=E(request)
+        env={'GITHUB_REPOSITORY':r.REPOSITORY,'GITHUB_EVENT_NAME':'pull_request','GITHUB_ACTOR':'CrispStrobe','GITHUB_RUN_ID':'200','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'font-discovery',
+          'GITHUB_WORKFLOW_SHA':'d'*40,'GITHUB_WORKFLOW_REF':r.REPOSITORY+'/.github/workflows/i80386-hdd-gui-actual.yml@refs/pull/123/merge','BW_EXPECTED_HEAD':'a'*40,'GITHUB_EVENT_PATH':'/event'}
+        event={'action':'labeled','label':{'name':'x86-hdd-gui-font-discovery'},'sender':{'login':'CrispStrobe'},'repository':{'full_name':r.REPOSITORY},'number':123,
+          'pull_request':{'number':123,'state':'open','head':{'sha':'a'*40,'repo':{'full_name':r.REPOSITORY,'fork':False}},'base':{'ref':'main','repo':{'full_name':r.REPOSITORY}},
+          'body':'<!-- BW_GUI_HDD_FONT_DISCOVERY_SHA256='+H(raw)+' -->'}}
+        store={'/event':E(event)};events=[];fdpaths={};readat={};counter=[0]
+        def info(path):
+            path=str(path)
+            if path==alias:mode=stat.S_IFLNK|0o777;size=len(target)
+            elif path in names:mode=stat.S_IFDIR|0o755;size=4096
+            elif path in rawfiles:mode=stat.S_IFREG|(tool_mode if path.startswith('/usr/bin/') else 0o644);size=len(rawfiles[path])
+            else:raise FileNotFoundError(path)
+            if missing and path==font:raise FileNotFoundError('FONT_READ_FIRST')
+            return SimpleNamespace(**{'st_'+k:v for k,v in {'dev':1,'ino':sorted(list(rawfiles)+list(names)+[alias]).index(path)+10,'mode':mode,'uid':0,'gid':0,'nlink':1,'size':size,'mtime_ns':-2}.items()})
+        class Scan:
+            def __init__(self,path):self.path=str(path)
+            def __enter__(self):return iter(SimpleNamespace(name=n) for n in names[self.path])
+            def __exit__(self,*args):pass
+        def open_(path,flags):
+            self.assertEqual(flags,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK);fd=50+len(fdpaths);fdpaths[fd]=str(path);readat[fd]=0;events.append(('open',str(path)));return fd
+        def read_(fd,size):
+            path=fdpaths[fd]
+            if read_error and path==font:raise OSError('FONT_READ_FIRST')
+            at=readat[fd];raw=rawfiles[path][at:at+size];readat[fd]+=len(raw);return raw
+        def close_(fd):
+            events.append(('close',fdpaths[fd]))
+            if close_error and fdpaths[fd]==font:raise OSError('FONT_CLOSE_FIRST')
+        class Output:
+            def __init__(self,path):self.root=pathlib.Path(path);self.files={}
+            def save(self,name,data):store[str(self.root/name)]=data;self.files[name]=ROW(data)
+        class Edge:
+            def __init__(self,root,output,env):self.output=output;self.attempts=set();self.deadline=10**20
+            def git(self,args):
+                role='git-'+str(len(self.attempts));self.attempts.add(role)
+                data=((source['head' if args[1]=='HEAD' else 'tree']+'\n').encode() if args[0]=='rev-parse' else ('source:'+args[2].split(':',1)[1]).encode())
+                argv=['/usr/bin/git','--no-replace-objects','-c','gc.auto=0','-c','maintenance.auto=false','-c','core.fsmonitor=false','-c','core.hooksPath=/dev/null']+args
+                self.output.save(role+'.stdout',data);self.output.save(role+'.stderr',b'');self.output.save(role+'.process.json',E({'argv':argv,'exitCode':0}));events.append(('git',args));return data
+            def run(self,role,argv,environment,seconds,stdout_cap):
+                self.attempts.add(role);events.append(('probe',role));counter[0]+=1
+                if role=='font-packages':out=b'fonts-mock\t1.0\tinstalled\n'
+                elif role=='font-owners':out=''.join('fonts-mock: '+path+'\n' for path in argv[3:] if 'missing.conf' not in path).encode()
+                else:out=''.join(path+'\n' for path in sorted({main,target,font,alias})).encode()
+                err=b'dpkg-query: no path found matching pattern /etc/fonts/conf.avail/missing.conf\n' if partial and role=='font-owners' else b''
+                record=proc(argv,out,err,environment,seconds=.001);record['identity'].update(parentPid=900,state='S');record.update(startedNs=counter[0]*10000000,endedNs=counter[0]*10000000+1000)
+                if err:record.update(exitCode=1,firstFailure='child nonzero exit')
+                for suffix,data in (('stdout',out),('stderr',err),('process.json',E(record))):self.output.save(role+'.'+suffix,data)
+                if err:raise ValueError('OWNERS_PARTIAL_FIRST')
+                return out
+        def regular_(path,cap):
+            path=str(path)
+            data=store.get(path)
+            if data is None and path.startswith('/checkout/'):data=('source:'+path[len('/checkout/'):]).encode()
+            if data is None:raise FileNotFoundError(path)
+            self.assertLessEqual(len(data),cap);return data
+        with patch.object(c,'Originals',Output),patch.object(c,'Hosted',Edge),patch.object(c,'regular',regular_),patch.object(c.Path,'lstat',lambda path:info(path)),patch.object(c.Path,'resolve',lambda path,strict=True:path),\
+          patch.object(c.Path,'exists',lambda path:str(path) in store),patch.object(c.os,'scandir',Scan),patch.object(c.os,'readlink',lambda path:target),\
+          patch.object(c.os,'open',open_),patch.object(c.os,'read',read_),patch.object(c.os,'fstat',lambda fd:info(fdpaths[fd])),patch.object(c.os,'close',close_):
+            yield raw,env,events
+    def font_discovery_fixture(self,**kw):
+        with self.font_discovery_edges(**kw) as (request,env,events):value=c.collect_font_discovery(request,H(request),pathlib.Path('/checkout'),env,'/out/fonts.json')
+        expected={'schema':'bw.gui-hdd.font-discovery-expectation.v1','source':D(request)['source'],'request':ROW(request),'original':ROW(E(value)),'runId':200,'workflowSha':'d'*40}
+        return value,request,expected,events
+    def test_font_discovery_complete_readonly_three_probe_original(self):
+        value,request,expected,events=self.font_discovery_fixture();self.assertIsNone(value['firstFailure']);self.assertTrue(value['complete'])
+        self.assertEqual([item[1] for item in events if item[0]=='probe'],['font-packages','font-owners','font-manifests'])
+        verdict=r.verify_font_discovery(E(value),request,expected);self.assertFalse(verdict['candidate']);self.assertFalse(verdict['activeFontSelectionProved']);self.assertFalse(verdict['actualRequestSupported'])
+        self.assertEqual(value['configs']['/usr/share/fontconfig/conf.avail/10-family.conf']['unsupported'],['opaque element alias'])
+        self.assertEqual(value['configReferences']['references'][0]['targets'],['/usr/share/fontconfig/conf.avail/10-family.conf'])
+    def test_font_discovery_partial_ownership_preserves_raw_and_stops(self):
+        value,request,expected,events=self.font_discovery_fixture(partial=True)
+        self.assertEqual(value['firstFailure']['message'],'OWNERS_PARTIAL_FIRST');self.assertFalse(value['complete']);self.assertEqual(len(value['commands']),2)
+        self.assertIn('/etc/fonts/conf.avail/missing.conf',value['baselineMissing']);self.assertIn(b'fonts-mock:',base64.b64decode(value['commands'][1]['stdout']['base64']))
+        self.assertTrue(r.verify_font_discovery(E(value),request,expected)['observationOnly'])
+    def test_font_discovery_required_read_close_and_suid_stop_before_packages(self):
+        for kw,message in (({'close_error':True},'FONT_CLOSE_FIRST'),({'missing':True},'FONT_READ_FIRST'),({'tool_mode':0o4755},'nonwritable root-owned')):
+            value,request,expected,events=self.font_discovery_fixture(**kw)
+            self.assertIn(message,value['firstFailure']['message']);self.assertFalse(any(op=='probe' for op,arg in events));self.assertFalse(value['complete'])
+        with patch.object(c.Path,'cwd',side_effect=AssertionError('guard touched OS')),patch.object(c,'regular',side_effect=AssertionError('guard read input')):
+            for mode in ('font-discovery-guard','font-discovery'):
+                with self.assertRaisesRegex(ValueError,'font discovery disabled'):c.main([mode])
+    def test_font_discovery_config_cap_and_frame_reserve_keep_bounded_failure(self):
+        value,request,expected,events=self.font_discovery_fixture(config_raw=b'X'*65537)
+        self.assertIsNotNone(value['firstFailure']);self.assertNotIn('original',value['files']['/etc/fonts/fonts.conf'])
+        self.assertFalse(any(op=='open' and path=='/etc/fonts/fonts.conf' for op,path in events));self.assertFalse(value['commands'])
+        with patch.object(c,'JSON_CAP',(2<<20)+1024):value,request,expected,events=self.font_discovery_fixture()
+        self.assertIn('reserve',value['firstFailure']['message']);self.assertLessEqual(len(E(value)),(2<<20)+1024);self.assertFalse(value['commands'])
+        self.assertTrue(r.verify_font_discovery(E(value),request,expected)['observationOnly'])
+    def test_font_discovery_read_primary_close_secondary_order(self):
+        value,request,expected,events=self.font_discovery_fixture(read_error=True,close_error=True)
+        self.assertEqual(value['firstFailure']['message'],'FONT_READ_FIRST');self.assertEqual([e['message'] for e in value['secondary']],['FONT_CLOSE_FIRST'])
+        self.assertFalse(value['commands']);self.assertFalse(value['files']['/usr/share/fonts/Mock.ttf']['close']['succeeded'])
+        self.assertFalse(r.verify_font_discovery(E(value),request,expected)['qualified'])
+    def test_font_discovery_independent_rehashed_semantic_refusals(self):
+        for cut in ('pin','event','head','source','tool-mode','float','alias','config','include','process','stream','package','owner','manifest','later-tool','candidate','native','source-empty','orphan','exit-bool','process-extra','tool-readback','omitted-file'):
+            value,request,expected,events=self.font_discovery_fixture();request_value=D(request)
+            if cut=='pin':expected['request']['sha256']='0'*64
+            elif cut in ('event','head'):
+                event=D(base64.b64decode(value['event']['base64']))
+                if cut=='event':event['sender']['login']='foreign'
+                else:event['pull_request']['head']['sha']='f'*40
+                value['event']=c.font_blob(E(event))
+            elif cut=='source':value['sourceCommands'][3]['stdout']['sha256']='0'*64
+            elif cut=='tool-mode':
+                for key in ('namedBefore','heldBefore','heldAfter','namedAfter'):value['tools']['/usr/bin/git'][key]['mode']|=0o4000
+            elif cut=='float':value['files']['/usr/share/fonts/Mock.ttf']['heldBefore']['uid']=0.0
+            elif cut=='alias':value['aliases']['/etc/fonts/conf.d/10-family.conf']['target']='/etc/fonts/other.conf'
+            elif cut=='config':value['files']['/etc/fonts/fonts.conf']['original']=c.font_blob(b'<fontconfig/>')
+            elif cut=='include':value['configReferences']['references'][0]['targets']=[]
+            elif cut=='process':value['commands'][0]['process']['identity']['sessionId']+=1
+            elif cut=='stream':value['commands'][0]['stdout']=c.font_blob(b'invented\n')
+            elif cut in ('package','owner','manifest'):
+                index={'package':0,'owner':1,'manifest':2}[cut];command=value['commands'][index]
+                raw=(b'fonts-mock\t1.0\tnot-installed\n' if cut=='package' else b'unknown: /etc/fonts/fonts.conf\n' if cut=='owner' else b'/different\n')
+                command['stdout']=c.font_blob(raw);command['process']['streams']['stdout']=ROW(raw)
+                if cut=='package':value['packages']={'fonts-mock':{'version':'1.0','status':'not-installed'}}
+            elif cut=='later-tool':value['commands'][0]['process'].update(exitCode=1,firstFailure='failed');value.update(complete=False,firstFailure={'phase':'font-packages','path':None,'name':'ValueError','message':'failed'})
+            elif cut=='source-empty':value['sourceCommands']=[]
+            elif cut=='orphan':value['directories']['/usr/share/fonts/orphan']=copy.deepcopy(value['directories']['/usr/local/share/fonts'])
+            elif cut=='exit-bool':value['commands'][0]['process']['exitCode']=False
+            elif cut=='process-extra':value['commands'][0]['process']['invented']=True
+            elif cut=='tool-readback':
+                for key in ('namedBefore','heldBefore','heldAfter','namedAfter'):value['commands'][0]['tool'][key]['ino']+=1
+            elif cut=='omitted-file':value['files'].pop('/usr/share/fonts/Mock.ttf')
+            elif cut=='candidate':value['candidate']=True
+            else:value['activeFontSelectionProved']=True
+            expected['original']=ROW(E(value))
+            with self.assertRaises((ValueError,KeyError),msg=cut):r.verify_font_discovery(E(value),request,expected)
+    def test_font_xml_opaque_prolog_no_entities_cycles_or_native_selection(self):
+        for raw in (b'<!DOCTYPE fontconfig SYSTEM "file:///etc/passwd"><fontconfig/>',b'<!DOCTYPE fontconfig [<!ENTITY x "oops">]><fontconfig>&x;</fontconfig>'):
+            for module in (c,r):
+                with self.assertRaises(ValueError):module.font_xml(raw)
+        raw=b'<fontconfig><include prefix="xdg">fonts.conf</include><include ignore_missing="yes">/etc/fonts/not-present.conf</include></fontconfig>'
+        for module in (c,r):
+            parsed=module.font_xml(raw);self.assertEqual(parsed['unsupported'],['unsupported include reference']);self.assertFalse(parsed['nativeSelectionInterpreted'])
+            config=module.font_xml(b'<fontconfig><include>/etc/fonts/fonts.conf</include></fontconfig>')
+            graph=module.font_config_links({'/etc/fonts/fonts.conf':config},{},{},{})
+            self.assertEqual(graph['cycles'],[['/etc/fonts/fonts.conf','/etc/fonts/fonts.conf']])
+    def test_font_discovery_retention_primary_and_close_are_not_success(self):
+        value,request,expected,events=self.font_discovery_fixture(partial=True)
+        class Sink:
+            def write(self,raw):raise OSError('WRITE_LATER')
+            def close(self):raise OSError('CLOSE_LAST')
+        with patch.object(c.Path,'open',return_value=Sink()),patch.object(c.sys,'stderr',io.StringIO()) as stderr:
+            self.assertEqual(c.retain_font_discovery(value,'/out/fonts.json'),1)
+        self.assertEqual(value['firstFailure']['message'],'OWNERS_PARTIAL_FIRST');self.assertEqual({row['message'] for row in value['secondary']},{'WRITE_LATER','CLOSE_LAST'})
+        self.assertIn('OWNERS_PARTIAL_FIRST',stderr.getvalue())
+
 suite=unittest.defaultTestLoader.loadTestsFromTestCase(Originals)
 result=unittest.TextTestRunner(verbosity=2).run(suite)
 print(json.dumps({'controls':result.testsRun,'failures':len(result.failures),'errors':len(result.errors)}))

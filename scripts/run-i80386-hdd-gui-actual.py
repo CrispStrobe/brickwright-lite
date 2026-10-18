@@ -1134,14 +1134,308 @@ def collect_inventory_observation(template_raw,expected,root,env,output_path,fai
     return result
 
 
+# A separate observation format; it cannot select fonts or approve an actual.
+FONT_DISCOVERY_ENABLED = False
+FONT_ROOTS = ('/etc/fonts/conf.d','/usr/share/fonts','/usr/local/share/fonts')
+FONT_PREFIXES = ('/etc/fonts/','/usr/share/fontconfig/','/usr/share/fonts/','/usr/local/share/fonts/')
+FONT_STREAM_CAP = 128 << 10
+
+
+def font_blob(raw):
+    return {'byteLength':len(raw),'sha256':sha(raw),'base64':base64.b64encode(raw).decode()}
+
+
+def font_request(raw,expected):
+    digest(expected);need(sha(raw)==expected,'independently selected font discovery request')
+    value=decode(raw);fields(value,'schema source baseline')
+    need(encode(value)==raw and value['schema']=='bw.gui-hdd.font-discovery-request.v1','canonical explicit font discovery request')
+    source=value['source'];fields(source,'head tree files');digest(source['head'],40);digest(source['tree'],40)
+    rows(source['files']);need(set(source['files'])==SOURCE,'exact discovery source21')
+    baseline=value['baseline'];fields(baseline,'byteLength sha256 base64');integer(baseline['byteLength'],1,JSON_CAP//4);digest(baseline['sha256'])
+    need(type(baseline['base64']) is str and len(baseline['base64'])==4*((baseline['byteLength']+2)//3),'bounded retained baseline template')
+    original=base64.b64decode(baseline['base64'],validate=True)
+    need(font_blob(original)==baseline,'exact baseline template original')
+    template=decode(original);need(encode(template)==original and template.get('schema') in ('bw.gui-hdd.inventory-template.v2','bw.gui-hdd.inventory-template.v3'),'unmodified versioned baseline template')
+    selected=[]
+    for key in ('files','aliases'):
+        roster=template.get(key);need(type(roster) is list and len(roster)<=512,'finite baseline roster')
+        for path in roster:
+            runtime_path(path)
+            if path.startswith(FONT_PREFIXES):selected.append(path)
+    need(len(selected)==len(set(selected)) and len(selected)<=512,'unique bounded baseline font paths')
+    return value,sorted(selected)
+
+
+def font_event(raw,request_sha,head,env):
+    event=decode(raw);pr=event.get('pull_request',{})
+    need(event.get('action')=='labeled' and event.get('label',{}).get('name')=='x86-hdd-gui-font-discovery' and
+         event.get('sender',{}).get('login')=='CrispStrobe' and event.get('repository',{}).get('full_name')==REPOSITORY,'owned discovery event')
+    integer(event.get('number'),1,2**31-1)
+    need(type(pr.get('number')) is int and event['number']==pr['number'] and pr.get('state')=='open' and
+         pr.get('head',{}).get('sha')==head and pr.get('head',{}).get('repo',{}).get('full_name')==REPOSITORY and
+         pr.get('head',{}).get('repo',{}).get('fork') is False and pr.get('base',{}).get('ref')=='main' and
+         pr.get('base',{}).get('repo',{}).get('full_name')==REPOSITORY,'exact own discovery source event')
+    marker='<!-- BW_GUI_HDD_FONT_DISCOVERY_SHA256='+request_sha+' -->'
+    need(type(pr.get('body')) is str and pr['body'].count('<!-- BW_GUI_HDD_FONT_DISCOVERY_SHA256=')==1 and pr['body'].count(marker)==1,'event transports selected discovery pin only')
+    need(env.get('GITHUB_REPOSITORY')==REPOSITORY and env.get('GITHUB_EVENT_NAME')=='pull_request' and env.get('GITHUB_ACTOR')=='CrispStrobe' and
+         env.get('GITHUB_RUN_ATTEMPT')=='1' and env.get('GITHUB_JOB')=='font-discovery' and re.fullmatch('[1-9][0-9]{0,19}',env.get('GITHUB_RUN_ID','')) and
+         env.get('BW_EXPECTED_HEAD')==head,'first discovery platform observations')
+    digest(env.get('GITHUB_WORKFLOW_SHA'),40)
+    need(env.get('GITHUB_WORKFLOW_REF')==REPOSITORY+'/.github/workflows/i80386-hdd-gui-actual.yml@refs/pull/'+str(pr['number'])+'/merge','discovery workflow/event reference')
+
+
+def font_xml(raw):
+    # This is a structural reference census, never Fontconfig execution semantics.
+    import xml.etree.ElementTree as ET
+    need(len(raw)<=65536,'bounded config original')
+    text=raw.decode('utf-8');doctype='<!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">'
+    if doctype in text:need(text.count(doctype)==1,'single opaque standard prolog');text=text.replace(doctype,'',1)
+    need(not re.search(r'<!\s*(?:DOCTYPE|ENTITY)',text,re.I),'no DTD loading, internal subset or entities')
+    root=ET.fromstring(text);need(root.tag=='fontconfig' and not root.attrib,'fontconfig structural root')
+    references=[];unsupported=[]
+    for item in root:
+        if item.tag in ('include','dir'):
+            content=(item.text or '').strip()
+            allowed={'ignore_missing','prefix'} if item.tag=='include' else {'prefix','salt'}
+            if len(item) or not set(item.attrib)<=allowed or item.attrib.get('prefix','default')!='default' or not content or len(content)>512:
+                unsupported.append('unsupported '+item.tag+' reference');continue
+            if item.tag=='include' and item.attrib.get('ignore_missing','no') not in ('yes','no'):
+                unsupported.append('unsupported include ignore_missing');continue
+            references.append({'kind':item.tag,'text':content,'ignoreMissing':item.attrib.get('ignore_missing','no')=='yes'})
+        else:unsupported.append('opaque element '+str(item.tag)[:80])
+    need(len(references)+len(unsupported)<=512,'bounded XML child census')
+    return {'references':references,'unsupported':unsupported,'nativeSelectionInterpreted':False}
+
+
+def font_config_links(configs,files,aliases,directories):
+    import posixpath
+    references=[];edges={path:[] for path in configs}
+    for path,config in sorted(configs.items()):
+        for ref in config['references']:
+            text=ref['text'];target=text if text.startswith('/') else posixpath.normpath(posixpath.dirname(path)+'/'+text)
+            supported=target.startswith(FONT_PREFIXES) and '..' not in target.split('/') and '~' not in text
+            targets=[];status='unsupported' if not supported else 'missing-ignored' if ref['ignoreMissing'] else 'missing'
+            if supported:
+                if target in aliases:target=aliases[target].get('target',target)
+                if ref['kind']=='dir':status='observed-directory' if target in directories and 'after' in directories[target] else status
+                elif target in configs:targets=[target];status='observed-config'
+                elif target in directories and 'entries' in directories[target]:
+                    for name in directories[target]['entries']:
+                        if re.fullmatch(r'[0-9].*\.conf',name):
+                            child=target+'/'+name;child=aliases.get(child,{}).get('target',child)
+                            if child in configs:targets.append(child)
+                            else:status='incomplete-directory'
+                    if status!='incomplete-directory':status='observed-config-directory'
+                edges[path].extend(targets)
+            references.append({'from':path,**ref,'target':target,'targets':targets,'status':status})
+    cycles=[]
+    # Bound expansion without claiming native traversal order or complete grammar.
+    visits=0
+    for path in edges:
+        todo=[(path,[])]
+        while todo:
+            item,stack=todo.pop();visits+=1;need(visits<=8192 and len(stack)<=128,'finite config reference traversal')
+            if item in stack:
+                cycle=stack[stack.index(item):]+[item]
+                if cycle not in cycles:cycles.append(cycle)
+            else:todo.extend((target,stack+[item]) for target in edges.get(item,[]))
+    return {'references':references,'cycles':cycles,'nativeSelectionInterpreted':False}
+
+
+def font_read(path,cap,row):
+    """Held EOF/readback/close observations; partial errors remain in row."""
+    runtime_path(path);fd=None;first=None;secondary=[]
+    try:
+        before=Path(path).lstat();row['namedBefore']=identity(before)
+        need(Path(path).resolve(strict=True)==Path(path) and stat.S_ISREG(before.st_mode) and 0<=before.st_size<=cap,'canonical bounded discovery regular file')
+        fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK);row['heldBefore']=identity(os.fstat(fd))
+        need(row['heldBefore']==row['namedBefore'],'discovery held identity')
+        data=bytearray()
+        while len(data)<=cap:
+            part=os.read(fd,min(65536,cap+1-len(data)))
+            if not part:break
+            data.extend(part)
+        row['file']={'byteLength':len(data),'sha256':sha(data),'eof':not part}
+        row['heldAfter']=identity(os.fstat(fd));row['namedAfter']=identity(Path(path).lstat())
+        need(len(data)==before.st_size and row['file']['eof'] is True and row['namedBefore']==row['heldBefore']==row['heldAfter']==row['namedAfter'],'stable bounded discovery EOF/identity')
+        return bytes(data)
+    except BaseException as error:first=error;raise
+    finally:
+        row['close']={'attempted':fd is not None,'succeeded':False}
+        if fd is not None:
+            try:os.close(fd);row['close']['succeeded']=True
+            except BaseException as error:
+                if first is None:raise
+                secondary.append(error);first.font_secondary=secondary
+
+
+def collect_font_discovery(request_raw,expected,root,env,output_path):
+    value={'schema':'bw.gui-hdd.font-discovery-original.v1','observationOnly':True,'candidate':False,'qualified':False,'activeFontSelectionProved':False,'perPackageManifestBoundariesProved':False,
+      'request':font_blob(request_raw),'event':None,'platform':{key:env.get(key) for key in ('GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_JOB','GITHUB_REPOSITORY',
+      'GITHUB_WORKFLOW_SHA','GITHUB_WORKFLOW_REF','GITHUB_EVENT_NAME','GITHUB_ACTOR','BW_EXPECTED_HEAD')},'sourceCommands':[],
+      'tools':{},'directories':{},'files':{},'aliases':{},'configs':{},'configReferences':None,'baselineMissing':[],'commands':[],'packages':None,'complete':False,'firstFailure':None,'secondary':[]}
+    deadline=time.monotonic()+180;capture=None;baseline=[]
+    def error(exc,phase,path=None):
+        item={'phase':phase,'path':path,'name':type(exc).__name__,'message':str(exc)[:512]}
+        if value['firstFailure'] is None:value['firstFailure']=item
+        elif len(value['secondary'])<128:value['secondary'].append(item)
+        for extra in getattr(exc,'font_secondary',[]):error(extra,'close',path)
+    def check():need(time.monotonic()<deadline,'discovery cooperative180s deadline')
+    def budget(row=None):
+        if len(encode(value))>JSON_CAP-(2<<20):
+            if row is not None:row.pop('entries',None)
+            raise ValueError('discovery frame/config reserve before package streams')
+    try:
+        request,baseline=font_request(request_raw,expected)
+        event_raw=regular(env['GITHUB_EVENT_PATH'],256<<10);value['event']=font_blob(event_raw)
+        font_event(event_raw,expected,request['source']['head'],env)
+        capture=Originals(Path(output_path).with_name(Path(output_path).stem+'-process-originals'))
+        edge=Hosted(root,capture,env);edge.deadline=min(edge.deadline,deadline)
+        # Root-owned selected system tools are an explicit platform trust boundary.
+        for path in ('/usr/bin/git','/usr/bin/dpkg-query'):
+            row={};value['tools'][path]=row;font_read(path,FILE_CAP,row)
+            info=row['namedBefore'];need(info['uid']==0 and info['mode']&0o6022==0 and info['mode']&0o111,'nonwritable root-owned discovery tool before invocation')
+        arguments=[['rev-parse','HEAD'],['rev-parse','HEAD^{tree}']]+[['cat-file','blob',request['source']['head']+':'+p] for p in sorted(SOURCE)]
+        outputs=[(request['source'][k]+'\n').encode() for k in ('head','tree')]
+        for index,args in enumerate(arguments):
+            check();raw=edge.git(args);role='git-'+str(index);process=decode(regular(capture.root/(role+'.process.json'),JSON_CAP))
+            record={'argv':process['argv'],'stdout':{'byteLength':len(raw),'sha256':sha(raw)},'stderr':capture.files[role+'.stderr'],'exitCode':process['exitCode']}
+            value['sourceCommands'].append(record)
+            if index<2:need(raw==outputs[index],'exact selected discovery head/tree')
+            else:
+                path=sorted(SOURCE)[index-2];need(raw==regular(Path(root)/path,FILE_CAP) and record['stdout']==request['source']['files'][path],'discovery source Git/live/external join')
+        pending=list(FONT_ROOTS);targets={'/etc/fonts/fonts.conf'};total=0
+        while pending:
+            check();path=pending.pop(0);need(len(value['directories'])<128,'discovery directory cap')
+            row={};value['directories'][path]=row
+            try:
+                info=Path(path).lstat();row['before']=identity(info)
+                need(stat.S_ISDIR(info.st_mode) and Path(path).resolve(strict=True)==Path(path),'canonical discovery directory')
+                names=[]
+                with os.scandir(path) as entries:
+                    for entry in entries:
+                        check();need(len(names)<1024 and re.fullmatch('[A-Za-z0-9_.@+ -]{1,255}',entry.name) and entry.name not in ('.','..'),'bounded plain directory entries')
+                        names.append(entry.name)
+                row['entries']=sorted(names);row['after']=identity(Path(path).lstat());need(row['before']==row['after'],'directory census identity readback')
+                budget(row)
+                for name in row['entries']:
+                    child=path+'/'+name;info=Path(child).lstat()
+                    if stat.S_ISDIR(info.st_mode):need(len(Path(child).parts)<=12,'finite font directory depth');pending.append(child)
+                    elif stat.S_ISREG(info.st_mode):targets.add(child)
+                    elif stat.S_ISLNK(info.st_mode):
+                        need(len(value['aliases'])<256,'font alias cap');item={'namedBefore':identity(info)};value['aliases'][child]=item
+                        text=os.readlink(child);need(type(text) is str and 0<len(text)<=512 and re.fullmatch('[A-Za-z0-9_./@+ -]+',text),'bounded font alias text')
+                        item['linkText']=text;item['namedAfter']=identity(Path(child).lstat());need(item['namedBefore']==item['namedAfter'],'font alias drift')
+                        target=declared_alias_resolution(child,{child:{'linkText':text}});runtime_path(target)
+                        need(target.startswith(FONT_PREFIXES) and Path(target).resolve(strict=True)==Path(target),'font alias canonical allowed regular target')
+                        item['target']=target;targets.add(target)
+                    else:raise ValueError('unsupported special font/config entry')
+                budget(row)
+            except BaseException as exc:
+                error(exc,'directory',path)
+                if str(exc).startswith('discovery frame/config'):raise
+        need(len(targets)<=512,'font file census cap')
+        for path in sorted(targets):
+            check();row={};value['files'][path]=row
+            try:
+                raw=font_read(path,65536 if path.endswith('.conf') else FILE_CAP,row);total+=len(raw);need(total<=256<<20,'aggregate font/config read cap')
+                if path.endswith('.conf'):
+                    original=font_blob(raw)
+                    need(len(encode(value))+len(encode(original))<=JSON_CAP-(2<<20),'raw config reservation before diagnostic')
+                    row['original']=original
+                    try:value['configs'][path]=font_xml(raw)
+                    except BaseException as exc:value['configs'][path]={'unsupported':[str(exc)[:512]],'references':[],'nativeSelectionInterpreted':False}
+                budget()
+            except BaseException as exc:
+                error(exc,'file',path)
+                if str(exc).startswith(('discovery frame/config','raw config reservation')):raise
+        observed=set(value['files'])|set(value['aliases']);value['baselineMissing']=sorted(set(baseline)-observed)
+        value['configReferences']=font_config_links(value['configs'],value['files'],value['aliases'],value['directories'])
+        if value['firstFailure'] is not None:return value  # no package process after a failed required census read
+        def probe(role,argv):
+            check();first=None;tool={}
+            font_read('/usr/bin/dpkg-query',FILE_CAP,tool)
+            need(encode(tool)==encode(value['tools']['/usr/bin/dpkg-query']),'package tool identity/hash/mode unchanged before each probe')
+            try:edge.run(role,argv,clean_env(),15,FONT_STREAM_CAP)
+            except BaseException as exc:first=exc;error(exc,role)
+            item={'role':role,'argv':argv,'tool':tool,'stdout':None,'stderr':None,'process':None};value['commands'].append(item)
+            for stream in ('stdout','stderr'):
+                path=capture.root/(role+'.'+stream)
+                if path.exists():item[stream]=font_blob(regular(path,FONT_STREAM_CAP) if capture.files[role+'.'+stream]['byteLength'] else b'')
+            path=capture.root/(role+'.process.json')
+            if path.exists():item['process']=decode(regular(path,64<<10))
+            need(len(encode(value))<=JSON_CAP-16384,'bounded discovery probe/frame original')
+            return first is None
+        if not probe('font-packages',['/usr/bin/dpkg-query','-W','-f=${binary:Package}\t${Version}\t${db:Status-Status}\n']):return value
+        package_raw=base64.b64decode(value['commands'][-1]['stdout']['base64']);packages=font_packages(package_raw);value['packages']=packages
+        query=sorted(observed|set(baseline));need(len(query)<=1024 and sum(len(p)+1 for p in query)<=128<<10,'finite ownership query')
+        if not probe('font-owners',['/usr/bin/dpkg-query','-S','--',*query]):return value
+        owners=font_owners(base64.b64decode(value['commands'][-1]['stdout']['base64']),query,packages)
+        selected=sorted({owner for names in owners.values() for owner in names});need(selected,'nonempty observed font owners')
+        if not probe('font-manifests',['/usr/bin/dpkg-query','-L','--',*selected]):return value
+        listed=font_manifest(base64.b64decode(value['commands'][-1]['stdout']['base64']))
+        need(all(path in listed for path in owners),'owner lookup paths present in selected package manifests')
+        value['complete']=True
+    except BaseException as exc:
+        if value['firstFailure'] is None or value['firstFailure']['message']!=str(exc)[:512]:error(exc,'discovery')
+    value['baselineMissing']=sorted(set(baseline)-(set(value['files'])|set(value['aliases'])))
+    return value
+
+
+def font_packages(raw):
+    need(type(raw) is bytes and len(raw)<=FONT_STREAM_CAP,'bounded package table');out={}
+    for line in raw.decode('utf-8').splitlines():
+        pieces=line.split('\t');need(len(pieces)==3 and re.fullmatch('[a-z0-9][a-z0-9+.:~-]{0,127}',pieces[0]) and 0<len(pieces[1])<=256 and pieces[2] in ('installed','not-installed','config-files'),'strict installed-package observation')
+        need(pieces[0] not in out,'unique package observation');out[pieces[0]]={'version':pieces[1],'status':pieces[2]}
+    need(0<len(out)<=8192,'finite package census');return out
+
+
+def font_owners(raw,query,packages):
+    out={}
+    for line in raw.decode('utf-8').splitlines():
+        names,sep,path=line.partition(': ');need(sep and path in query and path not in out,'ownership matches exact queried path')
+        owners=names.split(', ');need(0<len(owners)<=8 and len(set(owners))==len(owners) and all(name in packages and packages[name]['status']=='installed' for name in owners),'installed package ownership observation')
+        out[path]=owners
+    need(set(out)==set(query),'every queried path has observed ownership; no missing/unowned fallback');return out
+
+
+def font_manifest(raw):
+    out=set()
+    for path in raw.decode('utf-8').splitlines():
+        need(path.startswith('/') and len(path)<=1024 and '\x00' not in path,'bounded package manifest path');out.add(path)
+    need(len(out)<=32768,'finite package manifest census');return out
+
+
+def retain_font_discovery(value,path):
+    need(value['candidate'] is False and value['qualified'] is False and value['activeFontSelectionProved'] is False,'discovery cannot qualify')
+    raw=encode(value);need(len(raw)<=JSON_CAP,'bounded discovery original');stream=None;first=None
+    try:
+        stream=Path(path).open('xb');need(stream.write(raw)==len(raw),'complete exclusive discovery original')
+    except BaseException as exc:first=exc
+    finally:
+        if stream is not None:
+            try:stream.close()
+            except BaseException as exc:
+                if first is None:first=exc
+                else:value['secondary'].append({'phase':'retention-close','path':None,'name':type(exc).__name__,'message':str(exc)[:512]})
+    if first is not None:
+        item={'phase':'retention','path':None,'name':type(first).__name__,'message':str(first)[:512]}
+        if value['firstFailure'] is None:value['firstFailure']=item
+        else:value['secondary'].append(item)
+        sys.stderr.write(encode({'firstFailure':value['firstFailure'],'secondary':value['secondary'][-4:]}).decode());return 1
+    return 0 if value['complete'] is True and value['firstFailure'] is None else 1
+
+
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__,allow_abbrev=False)
-    parser.add_argument('mode',choices=('guard','inventory-guard','install-input','inventory','preflight','actual'))
+    parser.add_argument('mode',choices=('guard','inventory-guard','install-input','inventory','preflight','actual','font-discovery-guard','font-discovery'))
     for option in ('request','expected-sha256','output','blob'):parser.add_argument('--'+option)
     raw=list(sys.argv[1:] if argv is None else argv)
     for option in ('--request','--expected-sha256','--output','--blob'):
         if raw.count(option)>1:parser.error('one fixed input per option')
     args=parser.parse_args(raw)
+    if args.mode in ('font-discovery-guard','font-discovery'):
+        need(FONT_DISCOVERY_ENABLED is True,'font discovery disabled pending separate exact source/request/event review')
     if args.mode in ('guard','preflight','actual'):
         need(ACTUAL_ENABLED is True,'GUI actual disabled pending exact source/input/event/resource admission')
     if args.mode in ('inventory-guard','inventory'):
@@ -1149,13 +1443,15 @@ def main(argv=None):
     if args.mode=='guard':observe_python_startup(Path.cwd(),'guard',[])
     if args.mode=='install-input' and Path('gui-setup/python-startup.original.txt').exists():
         observe_python_startup(Path.cwd(),'install-input',raw[1:])
-    if args.mode in ('guard','inventory-guard'):return 0
+    if args.mode in ('guard','inventory-guard','font-discovery-guard'):return 0
     need(args.expected_sha256 and args.output,'fixed independent digest and output required')
     env=dict(os.environ)
     if args.mode=='install-input':
         need(args.blob,'fixed immutable input blob required');print(encode(install_input(args.blob,args.expected_sha256,args.output,env)).decode(),end='');return 0
     need(args.request,'fixed canonical input original required')
     request_raw=regular(args.request,JSON_CAP)
+    if args.mode=='font-discovery':
+        return retain_font_discovery(collect_font_discovery(request_raw,args.expected_sha256,Path.cwd(),env,args.output),args.output)
     if args.mode=='inventory':
         result=inventory_observation(request_raw,args.expected_sha256,Path.cwd(),env,args.output)
         return retain_inventory_observation(result,args.output)
