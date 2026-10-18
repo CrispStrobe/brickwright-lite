@@ -149,6 +149,21 @@ Next actions and completion criteria:
    controls do not qualify Darwin behavior, device-set ownership or path races,
    process creation latency, escaped descendants, delegated services or app RSS.
 
+   The unwired receipt receiver now prepares an absent output before launch,
+   hashes installed executable/plist files, and holds the output directory and
+   original receipt descriptors. It accepts a growing original without accepting a
+   replacement inode, parent, symlink, FIFO or hardlink. Capture is single-use;
+   bounded partial bytes survive failure, deadline and cleanup uncertainty. Source,
+   base configuration and typed profile headers must match; content joins remain
+   the standalone reader's job. Supplied PID/identity/RSS samples must match under
+   a fixed sampled RSS threshold, which does not enforce a hard memory limit or
+   authenticate the sampler. Installed files and receipt metadata are rechecked
+   after the final sample. Stop is rechecked after callbacks and final readback, so
+   a request during those boundaries keeps the capture partial. No workflow caller,
+   process sampler or launch-environment
+   binding is supplied by this receiver. A pre-launch preparation hook, actual
+   container/code/PID bindings and independent runtime-image admission remain open.
+
    Next, independently join the complete retained source/web/configuration/toolchain/
    executable and official job/artifact identities. Distinguish referenced codegen
    outputs from stale cache candidates without guessing Rust map layout. Toolchain

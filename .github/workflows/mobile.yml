@@ -866,6 +866,289 @@ jobs:
               return result, observation if result['observationRetained'] else None
 
 
+          class PreparedInstalledObservation:
+              """Unwired receiver. Prepare an absent output before launch; caller owns admission.
+
+              Process samples and expected pins are supplied, not authenticated by this class.
+              Receipt headers are checked here; standalone readers must join asset contents.
+              """
+              def __init__(self, spec, *, deadline, now=time.monotonic):
+                  import re
+                  keys = {'schema', 'appDirectory', 'bundleIdentifier', 'executableSHA256',
+                          'plistSHA256', 'receiptPath', 'sourceCommit', 'baseConfigSHA256'}
+                  self._parent = None
+                  self._receipt = None
+                  self._closed = False
+                  self._started = False
+                  self._close_errors = ()
+                  self._last_tick = None
+                  self._now = now
+                  self.last_raw = None
+                  try:
+                      need(type(spec) is dict and spec.keys() == keys)
+                      self._spec = dict(spec)
+                      need(spec['schema'] == 'brickwright.ios-installed-observation-plan.v1')
+                      for field, expression in (('sourceCommit', r'[a-f0-9]{40}'),
+                              ('executableSHA256', r'[a-f0-9]{64}'), ('plistSHA256', r'[a-f0-9]{64}'),
+                              ('baseConfigSHA256', r'[a-f0-9]{64}'),
+                              ('bundleIdentifier', r'[A-Za-z0-9][A-Za-z0-9-]*(?:\.[A-Za-z0-9][A-Za-z0-9-]*)+')):
+                          need(type(spec[field]) is str and re.fullmatch(expression, spec[field]) is not None)
+                      tick = self._check(deadline)
+                      need(deadline-tick <= 15)
+                      app = Path(spec['appDirectory'])
+                      need(app.is_absolute() and app.name.endswith('.app') and app.resolve(strict=True) == app)
+                      self._plist_path = app/'Info.plist'
+                      self._plist_identity, digest, raw = self._file(self._plist_path, 1024*1024, deadline, keep=True)
+                      need(digest == spec['plistSHA256'])
+                      info = plistlib.loads(raw)
+                      name = info['CFBundleExecutable']
+                      need(type(name) is str and re.fullmatch(r'[A-Za-z0-9_-][A-Za-z0-9_.-]*', name) is not None and
+                           info['CFBundleIdentifier'] == spec['bundleIdentifier'] and
+                           info['CFBundleSupportedPlatforms'] == ['iPhoneSimulator'])
+                      self._executable = app/name
+                      self._exe_identity, digest, _ = self._file(self._executable, 256*1024*1024, deadline)
+                      need(digest == spec['executableSHA256'])
+                      target = Path(spec['receiptPath'])
+                      need(target.is_absolute() and target.name == 'bw-embedded-asset-observation.json' and
+                           target.parent.resolve(strict=True) == target.parent)
+                      self._parent_path = target.parent
+                      self._parent = os.open(target.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+                      self._parent_identity = os.fstat(self._parent)
+                      need(stat.S_ISDIR(self._parent_identity.st_mode))
+                      self._parent_matches()
+                      try:
+                          os.stat(target.name, dir_fd=self._parent, follow_symlinks=False)
+                      except FileNotFoundError:
+                          pass
+                      else:
+                          raise ValueError('receipt already exists')
+                      self._name = target.name
+                      self._check(deadline)
+                  except BaseException:
+                      self.close()
+                      raise
+
+              def _check(self, deadline):
+                  import math
+                  need(not self._closed)
+                  tick = self._now()
+                  need(type(deadline) in (int, float) and math.isfinite(deadline) and
+                       type(tick) in (int, float) and math.isfinite(tick) and
+                       (self._last_tick is None or tick >= self._last_tick) and tick < deadline)
+                  self._last_tick = tick
+                  return tick
+
+              @staticmethod
+              def _identity(info):
+                  return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns, info.st_nlink)
+
+              def _file(self, path, cap, deadline, keep=False):
+                  need(path.is_absolute() and path.resolve(strict=True) == path)
+                  fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+                  try:
+                      before = os.fstat(fd)
+                      need(stat.S_ISREG(before.st_mode) and before.st_nlink == 1 and 0 < before.st_size <= cap)
+                      digest = hashlib.sha256()
+                      body = bytearray()
+                      used = 0
+                      while True:
+                          self._check(deadline)
+                          raw = os.read(fd, min(65536, cap+1-used))
+                          if not raw:
+                              break
+                          used += len(raw)
+                          need(used <= cap)
+                          digest.update(raw)
+                          if keep:
+                              body.extend(raw)
+                      need(used == before.st_size and self._identity(before) == self._identity(os.fstat(fd)))
+                      return self._identity(before), digest.hexdigest(), bytes(body)
+                  finally:
+                      os.close(fd)
+
+              def _parent_matches(self):
+                  need(not self._closed and self._parent is not None)
+                  held = os.fstat(self._parent)
+                  need((held.st_dev, held.st_ino) == (self._parent_identity.st_dev, self._parent_identity.st_ino))
+                  current = self._parent_path.stat(follow_symlinks=False)
+                  need(self._parent_path.resolve(strict=True) == self._parent_path and
+                       stat.S_ISDIR(current.st_mode) and (current.st_dev, current.st_ino) ==
+                       (self._parent_identity.st_dev, self._parent_identity.st_ino))
+
+              def _read_receipt(self, deadline, cap):
+                  self._parent_matches()
+                  if self._receipt is None:
+                      try:
+                          self._receipt = os.open(self._name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=self._parent)
+                      except FileNotFoundError:
+                          return None
+                  before = os.fstat(self._receipt)
+                  current = os.stat(self._name, dir_fd=self._parent, follow_symlinks=False)
+                  need(stat.S_ISREG(before.st_mode) and before.st_nlink == 1 and 0 <= before.st_size <= cap and
+                       (current.st_dev, current.st_ino) == (before.st_dev, before.st_ino))
+                  os.lseek(self._receipt, 0, os.SEEK_SET)
+                  body = bytearray()
+                  while True:
+                      self._check(deadline)
+                      raw = os.read(self._receipt, min(65536, cap+1-len(body)))
+                      if not raw:
+                          break
+                      body.extend(raw)
+                      need(len(body) <= cap)
+                  self.last_raw = bytes(body)
+                  after = os.fstat(self._receipt)
+                  self._parent_matches()
+                  current = os.stat(self._name, dir_fd=self._parent, follow_symlinks=False)
+                  need((current.st_dev, current.st_ino) == (before.st_dev, before.st_ino))
+                  if self._identity(before) != self._identity(after) or len(body) != before.st_size:
+                      return None  # A still-growing original is partial, not a complete replacement.
+                  self._last_receipt_identity = self._identity(after)
+                  return self.last_raw
+
+              def _header(self, raw):
+                  import re
+                  def unique(pairs):
+                      result = {}
+                      for key, value in pairs:
+                          need(key not in result)
+                          result[key] = value
+                      return result
+                  try:
+                      value = json.loads(raw, object_pairs_hook=unique, parse_float=lambda _: need(False),
+                                         parse_constant=lambda _: need(False))
+                  except json.JSONDecodeError:
+                      return False  # The single original may still be in the middle of its write.
+                  fields = {'schema', 'observation', 'asset_config_projection', 'source_label',
+                      'source_label_is_build_proof', 'effective_config_sha256', 'base_config_sha256',
+                      'executable_and_artifact_join', 'development_filesystem_fallback',
+                      'resolver_internal_fallback_excluded', 'signed_target_map_joined',
+                      'resource_and_process_lifetime_admitted'}
+                  need(type(value) is dict and value.keys() == fields and
+                       value['schema'] == 'brickwright.installed-asset-envelope.v2' and
+                       value['source_label'] == self._spec['sourceCommit'] and
+                       value['base_config_sha256'] == self._spec['baseConfigSHA256'])
+                  need(all(value[key] is False for key in ('source_label_is_build_proof',
+                      'development_filesystem_fallback', 'resolver_internal_fallback_excluded',
+                      'signed_target_map_joined', 'resource_and_process_lifetime_admitted')) and
+                      value['executable_and_artifact_join'] == 'required-external-independent-qualification')
+                  observation = value['observation']
+                  need(observation['schema'] == 'brickwright.installed-asset-observation.v1' and
+                       observation['status'] == 'complete-observation-only' and observation['refusal'] is None)
+                  projection = value['asset_config_projection']
+                  need(projection.keys() == {'schema', 'status', 'refusal', 'profile', 'runtime_config_sha256',
+                       'values', 'full_configuration_joined', 'raw_configuration_exposed', 'compiler_inputs_proved'} and
+                       projection['schema'] == 'brickwright.asset-config-projection.v1' and
+                       projection['status'] == 'complete-projection-only' and projection['refusal'] is None and
+                       projection['profile'] == 'tauri-2.11.5-utils-2.9.3-codegen-2.6.3-asset-config.v1')
+                  digest = value['effective_config_sha256']
+                  need(type(digest) is str and re.fullmatch(r'[a-f0-9]{64}', digest) is not None and
+                       projection['runtime_config_sha256'] == digest and
+                       all(projection[key] is False for key in ('full_configuration_joined',
+                           'raw_configuration_exposed', 'compiler_inputs_proved')))
+                  expected = {'dev_url_absent': True, 'csp_absent': True, 'dev_csp_absent': True,
+                              'pattern': 'brownfield', 'freeze_prototype': False,
+                              'disable_asset_csp_modification': False, 'asset_protocol_enabled': False}
+                  values = projection['values']
+                  need(type(values) is dict and values.keys() == expected.keys() and
+                       all(type(values[key]) is type(want) and values[key] == want for key, want in expected.items()))
+                  return True
+
+              def capture(self, pid, identity_sha256, sample, *, deadline, output_limit, stopped=None, pause=time.sleep):
+                  import re
+                  need(not self._closed and not self._started)
+                  self._started = True
+                  result = {'schema': 'brickwright.ios-installed-capture.v1', 'status': 'partial',
+                      'refusal': 'capture-admission', 'polls': 0, 'sampledPeakRSSBytes': 0,
+                      'sampledRSSThresholdBytes': 1024*1024*1024, 'cleanupFailures': [],
+                      'receiverClosed': False, 'installedFilesStable': False, 'receiptHeaderMatched': False,
+                      'samplerAuthenticated': False, 'hardMemoryLimitQualified': False,
+                      'runningExecutableJoined': False, 'assetContentsJoined': False, 'actualAppQualified': False}
+                  stage = 'capture-admission'
+                  try:
+                      need(not self._closed and type(pid) is int and 0 < pid <= 2147483647 and
+                           type(identity_sha256) is str and re.fullmatch(r'[a-f0-9]{64}', identity_sha256) is not None and
+                           type(output_limit) is int and 0 < output_limit <= 8*1024*1024 and
+                           callable(sample) and callable(pause) and (stopped is None or callable(stopped)))
+                      need(deadline-self._check(deadline) <= 30)
+                      def check_stop():
+                          nonlocal stage
+                          if stopped is not None:
+                              stage = 'stop'
+                              flag = stopped()
+                              need(type(flag) is bool and not flag)
+                      def process_sample():
+                          nonlocal stage
+                          stage = 'process-sample'
+                          snapshot = sample(pid)
+                          self._check(deadline)
+                          check_stop()
+                          stage = 'process-sample'
+                          need(type(snapshot) is dict and snapshot.keys() == {'pid', 'identitySHA256', 'rssBytes'} and
+                               type(snapshot['pid']) is int and snapshot['pid'] == pid and
+                               type(snapshot['identitySHA256']) is str and snapshot['identitySHA256'] == identity_sha256 and
+                               type(snapshot['rssBytes']) is int and
+                               0 <= snapshot['rssBytes'] <= result['sampledRSSThresholdBytes'])
+                          result['sampledPeakRSSBytes'] = max(result['sampledPeakRSSBytes'], snapshot['rssBytes'])
+                      for _ in range(600):
+                          stage = 'deadline'
+                          tick = self._check(deadline)
+                          check_stop()
+                          process_sample()
+                          stage = 'receipt-read'
+                          raw = self._read_receipt(deadline, output_limit)
+                          stage = 'receipt-header'
+                          if raw and self._header(raw):
+                              process_sample()
+                              stage = 'installed-files'
+                              identity, digest, _ = self._file(self._plist_path, 1024*1024, deadline)
+                              need(identity == self._plist_identity and digest == self._spec['plistSHA256'])
+                              identity, digest, _ = self._file(self._executable, 256*1024*1024, deadline)
+                              need(identity == self._exe_identity and digest == self._spec['executableSHA256'])
+                              stage = 'receipt-readback'
+                              self._parent_matches()
+                              current = os.stat(self._name, dir_fd=self._parent, follow_symlinks=False)
+                              need((current.st_dev, current.st_ino) == self._last_receipt_identity[:2])
+                              need(self._identity(os.fstat(self._receipt)) == self._last_receipt_identity)
+                              self._check(deadline)
+                              check_stop()
+                              result.update(status='captured-header-only', refusal=None,
+                                            installedFilesStable=True, receiptHeaderMatched=True)
+                              break
+                          result['polls'] += 1
+                          stage = 'deadline'
+                          pause(min(0.05, max(0, deadline-self._check(deadline))))
+                      else:
+                          raise ValueError('poll budget refused')
+                  except Exception:
+                      result['refusal'] = stage  # No paths, process records, exception payload or raw bytes.
+                  finally:
+                      result['cleanupFailures'] = list(self.close())
+                      result['receiverClosed'] = not result['cleanupFailures']
+                      if result['cleanupFailures']:
+                          result['status'] = 'partial'
+                          if result['refusal'] is None:
+                              result['refusal'] = 'receiver-cleanup'
+                  if self.last_raw is not None:
+                      result['rawBytes'] = len(self.last_raw)
+                      result['rawSHA256'] = hashlib.sha256(self.last_raw).hexdigest()
+                  return result, self.last_raw
+
+              def close(self):
+                  if not self._closed:
+                      errors = []
+                      for attribute in ('_receipt', '_parent'):
+                          fd = getattr(self, attribute)
+                          setattr(self, attribute, None)
+                          if fd is not None:
+                              try:
+                                  os.close(fd)
+                              except Exception:
+                                  errors.append(attribute+'-close')
+                      self._close_errors = tuple(errors)
+                      self._closed = True
+                  return self._close_errors
+
+
           def main():
               global ROWS, USED
               need(os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch' and

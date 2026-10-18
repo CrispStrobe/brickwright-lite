@@ -524,7 +524,9 @@ test('unwired owned simulator transaction core preserves identity, failures and 
     const prefix = retention.slice(0, end);
     const dir = mkdtempSync(join(tmpdir(), 'bw-ios-owned-core-'));
     try {
-        const result = spawnSync('/usr/bin/python3', ['-c', `${prefix}\nSOURCE_PREFIX = ${JSON.stringify(prefix)}\n${lifecycleControls}`], {
+        const controller = join(dir, 'controls.py');
+        writeFileSync(controller, `${prefix}\nSOURCE_PREFIX = ${JSON.stringify(prefix)}\n${lifecycleControls}`);
+        const result = spawnSync('/usr/bin/python3', [controller], {
             env: {...process.env, GITHUB_WORKSPACE: dir, RUNNER_TEMP: dir}, encoding: 'utf8', timeout: 15000
         });
         assert.equal(result.status, 0, result.stdout + result.stderr);
@@ -736,12 +738,209 @@ test('unwired bounded simctl adapter controls execute real owned subprocesses', 
     const prefix = retention.slice(0, retention.lastIndexOf('\ntry:\n'));
     const dir = mkdtempSync(join(tmpdir(), 'bw-ios-adapter-controls-'));
     try {
-        const result = spawnSync('/usr/bin/python3', ['-c', `${prefix}\nimport selectors\nSOURCE_PREFIX = ${JSON.stringify(prefix)}\n${adapterControls}`], {
+        const controller = join(dir, 'controls.py');
+        writeFileSync(controller, `${prefix}\nimport selectors\nSOURCE_PREFIX = ${JSON.stringify(prefix)}\n${adapterControls}`);
+        const result = spawnSync('/usr/bin/python3', [controller], {
             env: {...process.env, GITHUB_WORKSPACE: dir, RUNNER_TEMP: dir, TMPDIR: dir}, encoding: 'utf8', timeout: 20000
         });
         assert.equal(result.status, 0, result.stdout + result.stderr);
         assert.match(result.stderr, /Ran 13 tests/);
         assert.match(result.stderr, /OK/);
         assert.equal((retention.match(/bounded_simulator_command\(/g) || []).length, 1, 'adapter definition only');
+    } finally { rmSync(dir, {recursive: true, force: true}); }
+});
+
+const receiverControls = String.raw`
+import tempfile
+import shutil
+import unittest
+import copy
+from unittest import mock
+PROFILE='tauri-2.11.5-utils-2.9.3-codegen-2.6.3-asset-config.v1'
+def envelope():
+    return {'schema':'brickwright.installed-asset-envelope.v2',
+        'observation':{'schema':'brickwright.installed-asset-observation.v1','status':'complete-observation-only','refusal':None},
+        'asset_config_projection':{'schema':'brickwright.asset-config-projection.v1','status':'complete-projection-only','refusal':None,
+            'profile':PROFILE,'runtime_config_sha256':'c'*64,'values':{'dev_url_absent':True,'csp_absent':True,'dev_csp_absent':True,
+            'pattern':'brownfield','freeze_prototype':False,'disable_asset_csp_modification':False,'asset_protocol_enabled':False},
+            'full_configuration_joined':False,'raw_configuration_exposed':False,'compiler_inputs_proved':False},
+        'source_label':'a'*40,'source_label_is_build_proof':False,'effective_config_sha256':'c'*64,'base_config_sha256':'b'*64,
+        'executable_and_artifact_join':'required-external-independent-qualification','development_filesystem_fallback':False,
+        'resolver_internal_fallback_excluded':False,'signed_target_map_joined':False,'resource_and_process_lifetime_admitted':False}
+class ReceiverControls(unittest.TestCase):
+    def setUp(self):
+        self.root=Path(tempfile.mkdtemp(prefix='bw-ios-receiver-'));self.app=self.root/'Authored.app';self.app.mkdir()
+        self.parent=self.root/'Documents';self.parent.mkdir();self.target=self.parent/'bw-embedded-asset-observation.json'
+        self.exe=b'AUTHORED-NOT-AN-APPLE-EXECUTABLE';(self.app/'authored').write_bytes(self.exe)
+        self.plist=plistlib.dumps({'CFBundleExecutable':'authored','CFBundleIdentifier':'com.example.authored','CFBundleSupportedPlatforms':['iPhoneSimulator']})
+        (self.app/'Info.plist').write_bytes(self.plist);self.time=0.;self.samples=0;self.action=lambda:None
+        self.spec={'schema':'brickwright.ios-installed-observation-plan.v1','appDirectory':str(self.app),'bundleIdentifier':'com.example.authored',
+            'executableSHA256':hashlib.sha256(self.exe).hexdigest(),'plistSHA256':hashlib.sha256(self.plist).hexdigest(),
+            'receiptPath':str(self.target),'sourceCommit':'a'*40,'baseConfigSHA256':'b'*64}
+    def tearDown(self):shutil.rmtree(self.root)
+    def prepare(self,cls=PreparedInstalledObservation):return cls(self.spec,deadline=self.time+10,now=lambda:self.time)
+    def write(self,value=None):
+        raw=json.dumps(envelope() if value is None else value,separators=(',',':')).encode();self.target.write_bytes(raw);return raw
+    def sample(self,pid):
+        self.samples+=1;self.action();return {'pid':pid,'identitySHA256':'e'*64,'rssBytes':4096}
+    def pause(self,seconds):self.time+=seconds
+    def capture(self,receiver,**kwargs):
+        args=dict(deadline=self.time+1,output_limit=8*1024*1024,pause=self.pause);args.update(kwargs)
+        return receiver.capture(55,'e'*64,self.sample,**args)
+    def test_ready_header_is_retained_without_content_or_app_qualification(self):
+        before=len(os.listdir('/dev/fd'));receiver=self.prepare();raw=self.write();meta,got=self.capture(receiver)
+        self.assertEqual(got,raw);self.assertEqual(meta['status'],'captured-header-only');self.assertTrue(meta['installedFilesStable'])
+        self.assertEqual(meta['rawSHA256'],hashlib.sha256(raw).hexdigest());self.assertEqual(meta['sampledPeakRSSBytes'],4096)
+        for key in ('samplerAuthenticated','hardMemoryLimitQualified','runningExecutableJoined','assetContentsJoined','actualAppQualified'):self.assertIs(meta[key],False)
+        self.assertTrue(meta['receiverClosed']);self.assertEqual(len(os.listdir('/dev/fd')),before)
+        self.assertNotIn('AUTHORED',json.dumps(meta));self.assertNotIn(str(self.root),json.dumps(meta))
+    def test_absent_and_partial_original_can_grow_to_complete(self):
+        receiver=self.prepare();calls=[]
+        def grow(seconds):
+            self.pause(seconds);calls.append(True)
+            if len(calls)==1:self.target.write_bytes(b'{')
+            elif len(calls)==2:self.write()
+        meta,raw=self.capture(receiver,pause=grow);self.assertEqual(meta['status'],'captured-header-only');self.assertEqual(meta['polls'],2)
+    def test_timeout_and_stop_preserve_partial_raw_and_close_descriptors(self):
+        receiver=self.prepare();self.target.write_bytes(b'{');meta,raw=self.capture(receiver)
+        self.assertEqual(meta['status'],'partial');self.assertEqual(meta['refusal'],'deadline');self.assertEqual(raw,b'{');self.assertTrue(meta['receiverClosed'])
+        self.target.unlink();receiver=self.prepare();meta,raw=self.capture(receiver,stopped=lambda:True)
+        self.assertEqual(meta['refusal'],'stop');self.assertIsNone(raw);self.assertTrue(meta['receiverClosed'])
+    def test_prepare_refuses_existing_output_and_changed_installed_inputs(self):
+        self.target.write_bytes(b'old')
+        with self.assertRaises(ValueError):self.prepare()
+        self.target.unlink();(self.app/'authored').write_bytes(b'changed');before=len(os.listdir('/dev/fd'))
+        with self.assertRaises(ValueError):self.prepare()
+        self.assertEqual(len(os.listdir('/dev/fd')),before)
+    def test_symlink_fifo_and_hardlink_outputs_are_refused_without_blocking(self):
+        for kind in ('symlink','fifo','hardlink'):
+            receiver=self.prepare();other=self.root/'other';other.write_bytes(json.dumps(envelope()).encode())
+            if kind=='symlink':self.target.symlink_to(other)
+            elif kind=='fifo':os.mkfifo(self.target)
+            else:os.link(other,self.target)
+            meta,raw=self.capture(receiver);self.assertEqual(meta['refusal'],'receipt-read');self.assertIsNone(raw);self.assertTrue(meta['receiverClosed'])
+            self.target.unlink();other.unlink()
+    def test_replaced_original_inode_or_parent_is_not_a_new_receipt(self):
+        receiver=self.prepare();self.target.write_bytes(b'{')
+        def replace(seconds):self.pause(seconds);self.target.unlink();self.write()
+        meta,raw=self.capture(receiver,pause=replace);self.assertEqual(meta['refusal'],'receipt-read');self.assertEqual(raw,b'{')
+        self.target.unlink();receiver=self.prepare();self.parent.rename(self.root/'old-documents');self.parent.mkdir();self.write()
+        meta,raw=self.capture(receiver);self.assertEqual(meta['refusal'],'receipt-read');self.assertIsNone(raw)
+    def test_pid_identity_and_sampled_rss_threshold_refuse(self):
+        for snapshot in ({'pid':56,'identitySHA256':'e'*64,'rssBytes':1},{'pid':55,'identitySHA256':'f'*64,'rssBytes':1},
+            {'pid':55,'identitySHA256':'e'*64,'rssBytes':True},{'pid':55,'identitySHA256':'e'*64,'rssBytes':1024*1024*1024+1}):
+            receiver=self.prepare();self.write();meta,raw=receiver.capture(55,'e'*64,lambda _:snapshot,deadline=self.time+1,output_limit=8192,pause=self.pause)
+            self.assertEqual(meta['refusal'],'process-sample');self.assertIsNone(raw);self.target.unlink()
+    def test_changed_installed_file_or_late_sample_remains_partial(self):
+        receiver=self.prepare();raw=self.write()
+        def change():
+            if self.samples==2:(self.app/'authored').write_bytes(b'changed')
+        self.action=change;meta,got=self.capture(receiver);self.assertEqual(meta['refusal'],'installed-files');self.assertEqual(got,raw)
+        (self.app/'authored').write_bytes(self.exe);self.target.unlink();self.samples=0;receiver=self.prepare();raw=self.write()
+        def late():
+            if self.samples==2:self.time+=2
+        self.action=late;meta,got=self.capture(receiver);self.assertEqual(meta['refusal'],'process-sample');self.assertEqual(got,raw)
+    def test_complete_partial_or_wrong_header_and_typed_profile_refuse(self):
+        edits=[lambda v:v.update(source_label='f'*40),lambda v:v.update(extra=False),lambda v:v.update(base_config_sha256='f'*64),
+            lambda v:v.update(source_label_is_build_proof=True),lambda v:v['observation'].update(status='partial'),
+            lambda v:v['asset_config_projection'].update(status='partial',values=None),
+            lambda v:v['asset_config_projection']['values'].update(csp_absent=1),lambda v:v['asset_config_projection'].update(runtime_config_sha256='f'*64)]
+        for edit in edits:
+            receiver=self.prepare();value=envelope();edit(value);raw=self.write(value);meta,got=self.capture(receiver)
+            self.assertEqual(meta['refusal'],'receipt-header');self.assertEqual(got,raw);self.target.unlink()
+    def test_nonfinite_duplicate_and_output_budget_refuse(self):
+        for raw in (b'{"schema":1,"schema":2}',b'{"value":NaN}',b'{"value":1.5}'):
+            receiver=self.prepare();self.target.write_bytes(raw);meta,_=self.capture(receiver);self.assertEqual(meta['refusal'],'receipt-header');self.target.unlink()
+        receiver=self.prepare();self.write();meta,raw=self.capture(receiver,output_limit=8)
+        self.assertEqual(meta['refusal'],'receipt-read');self.assertIsNone(raw)
+    def test_closed_receiver_and_double_close_cannot_close_a_reused_fd(self):
+        receiver=self.prepare();self.write();self.capture(receiver)
+        fd=os.open(self.root/'other',os.O_CREAT|os.O_RDWR,0o600)
+        try:receiver.close();os.fstat(fd)
+        finally:os.close(fd)
+        self.target.unlink();receiver=self.prepare()
+        def close():receiver.close()
+        self.action=close;meta,_=self.capture(receiver);self.assertEqual(meta['refusal'],'process-sample');self.assertTrue(meta['receiverClosed'])
+    def test_keyboard_interrupt_closes_owned_descriptors(self):
+        receiver=self.prepare();before=len(os.listdir('/dev/fd'))
+        def interrupt(_):raise KeyboardInterrupt()
+        with self.assertRaises(KeyboardInterrupt):receiver.capture(55,'e'*64,interrupt,deadline=1,output_limit=8192,pause=self.pause)
+        self.assertTrue(receiver._closed);self.assertEqual(len(os.listdir('/dev/fd')),before-1)
+    def test_plan_copy_and_end_of_read_fingerprint_are_live(self):
+        receiver=self.prepare();self.spec['sourceCommit']='f'*40;raw=self.write();meta,got=self.capture(receiver)
+        self.assertEqual(meta['status'],'captured-header-only');self.assertEqual(got,raw)
+        self.target.unlink();self.spec['sourceCommit']='a'*40;self.samples=0;receiver=self.prepare();raw=self.write()
+        def replace_contents():
+            if self.samples==2:self.target.write_bytes(b'{"changed":true}')
+        self.action=replace_contents;meta,got=self.capture(receiver);self.assertEqual(meta['refusal'],'receipt-readback');self.assertEqual(got,raw)
+    def test_capture_is_one_shot_and_reentrant_calls_cannot_take_descriptors(self):
+        receiver=self.prepare();raw=self.write()
+        def nested():
+            with self.assertRaises(ValueError):self.capture(receiver)
+        self.action=nested;meta,got=self.capture(receiver);self.assertEqual(got,raw)
+        self.assertEqual(meta['status'],'captured-header-only')
+        with self.assertRaises(ValueError):self.capture(receiver)
+    def test_cleanup_uncertainty_keeps_original_bytes_and_partial_status(self):
+        receiver=self.prepare();raw=self.write();held=[];original=os.close
+        def remember():
+            if self.samples==2:held.append(receiver._receipt)
+        self.action=remember
+        def close(fd):
+            original(fd)
+            if held and fd==held[0]:raise OSError('AUTHORED-PRIVATE-CLOSE-ERROR')
+        with mock.patch.object(os,'close',side_effect=close):meta,got=self.capture(receiver)
+        self.assertEqual(got,raw);self.assertEqual(meta['status'],'partial');self.assertEqual(meta['refusal'],'receiver-cleanup')
+        self.assertIn('_receipt-close',meta['cleanupFailures']);self.assertFalse(meta['receiverClosed'])
+    def test_stop_during_final_sample_or_installed_readback_stays_partial(self):
+        for boundary in ('sample','readback'):
+            receiver=self.prepare();raw=self.write();stop=[False];self.samples=0
+            if boundary=='sample':
+                def request_stop():
+                    if self.samples==2:stop[0]=True
+                self.action=request_stop
+            else:
+                self.action=lambda:None;original=receiver._file
+                def request_stop(path,*args,**kwargs):
+                    value=original(path,*args,**kwargs)
+                    if path==receiver._executable:stop[0]=True
+                    return value
+                receiver._file=request_stop
+            meta,got=self.capture(receiver,stopped=lambda:stop[0]);self.assertEqual(meta['refusal'],'stop')
+            self.assertEqual(meta['status'],'partial');self.assertEqual(got,raw);self.assertTrue(meta['receiverClosed']);self.target.unlink()
+    def test_runtime_header_and_fingerprint_mutations_are_detected(self):
+        cuts=[("value['source_label'] == self._spec['sourceCommit'] and",'True and'),
+              ('need(self._identity(os.fstat(self._receipt)) == self._last_receipt_identity)','need(True)')]
+        for index,(cut,replacement) in enumerate(cuts):
+            self.assertTrue(cut in SOURCE_PREFIX);namespace={};exec(compile(SOURCE_PREFIX.replace(cut,replacement),'authored-receiver-mutant','exec'),namespace)
+            receiver=self.prepare(namespace['PreparedInstalledObservation']);value=envelope()
+            if index==0:value['source_label']='f'*40
+            self.write(value);self.samples=0
+            def alter():
+                if index==1 and self.samples==2:self.target.write_bytes(b'{"changed":true}')
+            self.action=alter;meta,_=self.capture(receiver);self.assertEqual(meta['status'],'captured-header-only');self.target.unlink()
+        import re
+        mutant,count=re.subn(r'(?m)^(\s*)self\._check\(deadline\)\n\1check_stop\(\)$',r'\1self._check(deadline)\n\1pass',SOURCE_PREFIX)
+        self.assertEqual(count,2);namespace={};exec(compile(mutant,'authored-stop-fence-mutant','exec'),namespace)
+        receiver=self.prepare(namespace['PreparedInstalledObservation']);self.write();self.samples=0;stop=[False]
+        def request_stop():
+            if self.samples==2:stop[0]=True
+        self.action=request_stop;meta,_=self.capture(receiver,stopped=lambda:stop[0])
+        self.assertTrue(stop[0]);self.assertEqual(meta['status'],'captured-header-only')
+unittest.main(argv=['authored-installed-receiver-controls'],verbosity=2)
+`;
+
+test('unwired installed observation receiver binds real file descriptors and supplied samples', () => {
+    const prefix = retention.slice(0, retention.lastIndexOf('\ntry:\n'));
+    const dir = mkdtempSync(join(tmpdir(), 'bw-ios-receiver-controls-'));
+    try {
+        const controller = join(dir, 'controls.py');
+        writeFileSync(controller, `${prefix}\nSOURCE_PREFIX = ${JSON.stringify(prefix)}\n${receiverControls}`);
+        const result = spawnSync('/usr/bin/python3', [controller], {
+            env: {...process.env, GITHUB_WORKSPACE: dir, RUNNER_TEMP: dir, TMPDIR: dir}, encoding: 'utf8', timeout: 15000
+        });
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        assert.match(result.stderr, /Ran 17 tests/);
+        assert.match(result.stderr, /OK/);
+        assert.equal((retention.match(/PreparedInstalledObservation\(/g) || []).length, 0, 'no receiver constructor caller');
     } finally { rmSync(dir, {recursive: true, force: true}); }
 });

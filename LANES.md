@@ -6561,3 +6561,20 @@ It checks API/default-SIGCHLD availability before spawning. Its 15 s/1 MiB caps
 remain unchanged; unsupported interpreters refuse optional inventory. No Python
 provisioning/pin, ordinary build or retained-input phase is changed. A real owned
 process control checks signal-before-reap ordering in both helpers.
+
+The optional controller now also has an unwired, single-use installed receipt
+receiver. Before launch it checks executable/plist pins and output absence, holds
+an output-directory FD, and later pins the first original receipt FD. It rejects
+replacement paths/inodes and nonregular or linked files, preserves bounded partial
+bytes, and checks source/configuration/profile headers plus supplied PID/identity/
+RSS samples. A final file fingerprint and installed-code readback prevent accepting
+late changes. Results remain header-only: no sampler authentication, running-code,
+asset-content, hard-memory or app qualification. Pre-launch integration, actual
+Darwin process sampling, container/environment/code joins and runtime-image/device
+admission remain open. No workflow caller or launch trigger is added. Focused
+Python controls now run from owned files to avoid command-line size limits.
+
+A source-only reproduction found Stop during the final sample could still accept
+a header. The receiver now rechecks Stop after callbacks and final readback; bounded
+original bytes remain partial. A runtime cut removing these boundary checks
+reproduces the stale acceptance. No actual app or G02 lifecycle claim follows.
