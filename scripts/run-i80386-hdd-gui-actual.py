@@ -930,33 +930,33 @@ def collect_inventory_observation(template_raw,expected,root,env,output_path,fai
         for path in template[role]:runtime_path(path)
     need(set(template['files']).isdisjoint(set(template['aliases'])|set(template['directoryAliases'])) and
          set(template['aliases']).isdisjoint(template['directoryAliases']),'disjoint fixed inventory roles')
-    deadline=time.monotonic()+300
+    deadline=time.monotonic()+180
     def metadata(info):return {key:getattr(info,'st_'+key) for key in ('dev','ino','mode','uid','gid','nlink','size','mtime_ns')}
     for path in template['files']:
-        row={};failure['files'][path]=row
+        row={'attempted':False};failure['files'][path]=row
         try:
             need(time.monotonic()<deadline,'inventory selected-path deadline; remaining paths not read')
-            row['metadataBefore']=metadata(os.lstat(path))
+            row['attempted']=True;row['metadataBefore']=metadata(os.lstat(path))
             raw=regular(path,256<<20);row['file']={'byteLength':len(raw),'sha256':sha(raw)}
             row['metadataAfter']=metadata(os.lstat(path));need(row['metadataBefore']==row['metadataAfter'],'inventory diagnostic file metadata drift')
             need(time.monotonic()<deadline,'inventory selected-path deadline after bounded read')
             runtime['files'][path]=row['file'];row['status']='observed'
         except BaseException as error:
-            row['status']='failed';row['error']=inventory_error(failure,error,'inventory-file',path)
+            row['status']='failed' if row['attempted'] else 'unvisited-deadline';row['error']=inventory_error(failure,error,'inventory-file',path)
     all_aliases={}
     for role in ('aliases','directoryAliases'):
         for path in template[role]:
-            observed={};failure[role][path]=observed
+            observed={'attempted':False};failure[role][path]=observed
             try:
                 need(time.monotonic()<deadline,'inventory selected-path deadline; remaining aliases not read')
-                before=os.lstat(path);observed['metadataBefore']=metadata(before);need(stat.S_ISLNK(before.st_mode),'selected inventory alias is symlink')
+                observed['attempted']=True;before=os.lstat(path);observed['metadataBefore']=metadata(before);need(stat.S_ISLNK(before.st_mode),'selected inventory alias is symlink')
                 text=os.readlink(path);need(type(text) is str and 0<len(text)<=512,'bounded selected inventory link text');observed['linkText']=text
                 after=os.lstat(path);observed['metadataAfter']=metadata(after);need(identity(after)==identity(before),'inventory alias snapshot readback')
                 need(time.monotonic()<deadline,'inventory selected-path deadline after alias read')
                 row={'linkText':text,'target':None};runtime[role][path]=row;need(path not in all_aliases,'disjoint alias template rosters');all_aliases[path]=row
                 observed['status']='observed'
             except BaseException as error:
-                observed['status']='failed';observed['error']=inventory_error(failure,error,'inventory-alias',path)
+                observed['status']='failed' if observed['attempted'] else 'unvisited-deadline';observed['error']=inventory_error(failure,error,'inventory-alias',path)
     if failure['firstFailure'] is not None:return failure  # No tools, Git, runtime probes or candidate after ANY required read failure.
     for path,row in all_aliases.items():row['target']=declared_alias_resolution(path,all_aliases)
     runtime_alias_policy(runtime)

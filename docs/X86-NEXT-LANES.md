@@ -374,6 +374,16 @@ actual v3 guards remain held. Sixty-two Node tests, including 58 Python controls
 pass; eight diagnostic source mutations are detected. These are source controls,
 not actual browser or guest qualification.
 
+The collector's cooperative selected-path budget is now 180 seconds, inside the
+unchanged four-minute recording step and fifteen-minute metadata job. Remaining
+paths are explicitly `unvisited-deadline` with `attempted: false`; an expired
+read remains an attempted failure. The original first failure stays primary.
+The cross-layer timeout control and all 63 Node tests pass, including 58 Python
+controls; three targeted timeout/status mutations are detected. This bounds the
+diagnostic attempt without claiming per-read preemption or job sufficiency.
+The earlier missing-font roster remains mandatory in a distinct diagnostic
+selection; actual execution remains disabled.
+
 Continue within the already claimed five implementation paths; dependency
 writers and other workflows remain outside this lane. Next tasks are:
 

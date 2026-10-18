@@ -422,11 +422,15 @@ class Originals(unittest.TestCase):
         self.assertLess(next(i for i,x in enumerate(events) if x[0]=='runtime'),next(i for i,x in enumerate(events) if x[0]=='Hosted'))
         self.assertEqual(len([x for x in events if x[0]=='git']),len(c.SOURCE)+2)
     def test_inventory_deadline_stops_later_reads_but_reports_entire_roster(self):
-        ticks=iter([0,1,301,302,303,304])
-        with self.inventory_edges(['/first','/second','/third'],clock=lambda:next(ticks)) as (raw,pin,env,events):
+        ticks=iter([0,1,181,182,183,184])
+        with self.inventory_edges(['/first','/second','/third'],['/late-link'],clock=lambda:next(ticks)) as (raw,pin,env,events):
             value=c.inventory_observation(raw,pin,pathlib.Path('/checkout'),env,'/out/inventory.original.json')
         self.assertIn('deadline',value['firstFailure']['message']);self.assertEqual(set(value['files']),{'/first','/second','/third'})
         self.assertEqual([path for operation,path in events if operation=='read' and path!='/event'],['/first'])
+        self.assertFalse(value['files']['/second']['attempted']);self.assertEqual(value['files']['/second']['status'],'unvisited-deadline')
+        self.assertFalse(value['files']['/third']['attempted']);self.assertEqual(value['files']['/third']['status'],'unvisited-deadline')
+        self.assertTrue(value['files']['/first']['attempted']);self.assertEqual(value['files']['/first']['status'],'failed')
+        self.assertFalse(value['aliases']['/late-link']['attempted']);self.assertEqual(value['aliases']['/late-link']['status'],'unvisited-deadline')
         self.assertFalse(any(operation=='runtime' for operation,path in events))
     def test_inventory_roster_caps_and_mismatched_template_stop_before_selected_reads(self):
         for files in (['/x']*2,['/x'+str(i) for i in range(513)]):
@@ -853,4 +857,18 @@ test('drawer and register readiness follow actual React toggle and full-width fo
     }};
     const reading=vm.runInContext('forwardRegistersReady(page,0x12345678)',scope).then(()=>{registersReady=true;});
     await tick();assert.equal(registersReady,false);registerCommit.resolve();await reading;
+});
+
+test('metadata diagnostic step and job budgets contain the collector without widening actual',()=>{
+    const workflow=fs.readFileSync(new URL('../.github/workflows/i80386-hdd-gui-actual.yml',import.meta.url),'utf8');
+    const inventory=workflow.split('  inventory:')[1].split('  actual:')[0];
+    const controller=fs.readFileSync(new URL('../scripts/run-i80386-hdd-gui-actual.py',import.meta.url),'utf8');
+    const collectorSeconds=Number(controller.match(/deadline=time\.monotonic\(\)\+(\d+)/)[1]);
+    const setupMinutes=Number(inventory.split('name: Install unchanged selected packages')[1].match(/timeout-minutes: (\d+)/)[1]);
+    const recordMinutes=Number(inventory.split('name: Install externally selected immutable template')[1].match(/timeout-minutes: (\d+)/)[1]);
+    const jobMinutes=Number(inventory.match(/timeout-minutes: (\d+)/)[1]);
+    assert.ok(recordMinutes*60>=collectorSeconds+60,'diagnostic record step cannot preempt the collector budget');
+    assert.ok(jobMinutes>=setupMinutes+recordMinutes+1,'metadata job includes setup, record and finite overhead margin');
+    assert.match(workflow.split('  actual:')[1],/false &&/);assert.match(workflow.split('  actual:')[1],/timeout-minutes: 35/);
+    assert.match(controller,/ACTUAL_ENABLED = False/);
 });

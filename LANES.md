@@ -5760,6 +5760,10 @@ fixes wait for real GUI state commits and retain bounded failure-only inventory
 diagnostics. Required files, successful schemas and actual guards remain held.
 The matching guide scopes the distinct diagnostic selection and later affected
 browser/guest qualification; source controls alone cannot satisfy that gate.
+The subsequent diagnostic collector uses a 180-second cooperative budget inside
+the held four-minute step/fifteen-minute job, explicitly marking unvisited paths.
+All 63 source controls pass; actual guards and required-font selection stay held.
+
 
 SOURCE IMPLEMENTED; ACTUAL PENDING — Codex x86; ownership claim [PR1014](https://github.com/CrispStrobe/brickwright-lite/pull/1014)
 merged before implementation. Serialized after the existing media/debugger lane.
