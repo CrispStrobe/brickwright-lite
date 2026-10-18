@@ -5,6 +5,14 @@ feb0557dbf7f8a11cc2a18fc946a269a4cd0fe09 (bw-circuit-ui #93: STC15, STC MCU and
 TMS9918A chip faces; census --generic-shots and generic/chips lists, which the
 example-faces report in production-sw-probe reads). CUI dependencies
 unchanged: exact SHA swap across the same 16 pin surfaces as the B21 bump.
+## CI: vendor-freshness skips prose-only pull requests — 2026-10-18
+
+CLAIMED and done in one PR — Claude. Free-tier runner slots: the `pull_request`
+trigger of `.github/workflows/vendor-freshness.yml` gets the same nine-file
+`paths-ignore` list its `push` trigger already has (BLOCKED, BUILD, CLAUDE,
+HANDOFF, LANES, MBIT-BUILD, PLAN, README, ROADMAP .md at the root). Such a PR
+cannot change vendor-pins.json, overlay/** or scripts/**. The push run, the
+nightly schedule, concurrency and the check itself are unchanged.
 ## deploy-watchdog: age running jobs, not the run — 2026-10-18
 
 CLAIMED and done in one PR — Claude. Issue #1074: the watchdog's stuck-run
@@ -5849,6 +5857,17 @@ Reuse the existing Playwright persistence scenario and established hosted
 build/browser pipeline; do not introduce another provisioning framework or
 change unrelated workflows.
 
+
+PROPOSED SCOPED CENSUS EXTENSION — Codex x86, 2026-10-18. Extend this
+merged claim only to `docs/generated/ci-step-census.json`, refreshed with the
+existing `scripts/gen-ci-steps.mjs --fetch --workflow i80386-hdd-gui-actual.yml`
+scoped generator, plus this lane's exact conditional-step pointers. Merge this
+claim before writing the generated census. Retain every unrelated workflow's
+dated readings and main provenance. No generator, census test, gate baseline,
+workflow condition, supplier pin or other owner's section changes are included.
+The current failed unit originals establish a missing workflow census entry;
+metadata refresh and source controls grant no actual guest qualification.
+
 The composition consumes the adoption already merged through
 [PR975](https://github.com/CrispStrobe/brickwright-lite/pull/975), with later CUI
 selection from [PR1066](https://github.com/CrispStrobe/brickwright-lite/pull/1066):
@@ -6368,19 +6387,21 @@ checkouts are preserved; no blanket rebase or supplier bump is claimed.
 
 ### Integrated-main native checkpoint — 2026-10-18
 
-PR1050 is landed and every enabled exact-head gate passed. Current-main
-`fc385cada4d2ff6aab21e22bdcc38dc696d9c787` production frontend, unchanged
-startup ownership budget, eight EN/DE Chromium/WebKit painted-icon controls,
-responsive actions and physical-iOS compilation pass. Signing stopped with
-`errSecInternalComponent` while the Mac screen was locked; direct signing
-confirmed that remaining block. No new iPad installation is claimed. The
-private continuation verifies the compiled app, waits for unlock, then signs
-and verifies before attempting WLAN delivery; it does not rebuild unchanged
-sources or take unsolicited screenshots of other foreground apps. The
-previous installed candidate and receipts are preserved. Remaining native
-readiness, physical toolbar/connection/LED acceptance and clone buzzer tasks
-are bounded in the current handoff; no additional native or firmware work
-is implicitly claimed.
+PR1050 is landed and every enabled exact-head gate passed. The qualified
+`fc385cada4d2ff6aab21e22bdcc38dc696d9c787` snapshot's production frontend,
+unchanged startup ownership budget, eight EN/DE Chromium/WebKit painted-icon
+controls, responsive actions and physical-iOS compilation pass. Original signing
+failures and the expired continuation are retained. A frozen compiled copy was
+signed in one bounded attempt, strictly verified and installed over WLAN on
+2026-10-18: 84.36 MiB, fresh embedded frontend, no duplicate frontend/archive.
+The shared compiled original was preserved. This delivers the qualified snapshot,
+not subsequent main. Automatic launch was explicitly denied because the iPad
+was locked; foreground and physical toolbar acceptance remain pending. Retry
+launch after unlock without rebuilding or resigning. The old watcher mistook an
+absent screen-lock field for locked; the replacement uses the signing result.
+Previous artifacts and receipts are retained privately. Native readiness,
+physical UI/connection/LED acceptance and clone buzzer tasks retain their bounds
+in the handoff; no additional native or firmware work is implicitly claimed.
 
 ## Arcade foundation CI: isolated mutant import closure — 2026-10-18
 
