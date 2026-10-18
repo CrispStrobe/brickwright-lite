@@ -15,7 +15,14 @@
 //               (mech/gears.js applies the shared frame rules);
 //               worm.js: a worm and a spur wheel → 'worm' (self-locking);
 //               rack.js: a rack and a spur pinion → 'rackAndPinion' (R4), both
-//               free detectors run after the meshes, in this order
+//               free detectors run after the meshes, in this order;
+//               relative-gear.js: 'relativeGear', a mesh relative to a frame that is not
+//               both hinges' (mech/gears.js emits it);
+//               transmission.js (gearbox lane): 'dogClutch' (a driving ring takes a
+//               clutch gear) and 'shiftFork' (a changeover catch pushes the ring)
+//   gearbox     transmission.js: spline, spline-bore (slider), clutch, clutch-teeth,
+//               fork, fork-groove; slip-clutch.js: clutch-axlehole (a slipping hinge);
+//               gear-seat.js: gear-seat (a satellite in its cradle: hinge), snap (rigid)
 //   joints      hinge, slider, ball — what the physics core builds today
 
 import {ConnectorKindRegistry, CouplingKindRegistry, JointKindRegistry} from '../registry/kinds.js';
@@ -26,6 +33,10 @@ import {SLIDE_BORE} from './slide.js';
 import {WORM, WORM_THREAD} from './worm.js';
 import {RACK, RACK_TEETH} from './rack.js';
 import {TUBE} from './stud.js';
+import {SPLINE, SPLINE_BORE, CLUTCH, CLUTCH_TEETH, FORK, FORK_GROOVE, DOG_CLUTCH, SHIFT_FORK} from './transmission.js';
+import {CLUTCH_AXLEHOLE} from './slip-clutch.js';
+import {GEAR_SEAT, SNAP} from './gear-seat.js';
+import {RELATIVE_GEAR} from './relative-gear.js';
 
 export const JOINT_KINDS = [
     {type: 'hinge', dof: 1},
@@ -35,8 +46,9 @@ export const JOINT_KINDS = [
 
 /** @type {{connectors: ConnectorKindRegistry, couplings: CouplingKindRegistry, joints: JointKindRegistry}} */
 export const BUILTIN_KINDS = Object.freeze({
-    connectors: new ConnectorKindRegistry([...PIN_AXLE_KINDS, SLIDE_BORE, WORM_THREAD, RACK_TEETH, TUBE]),
-    couplings: new CouplingKindRegistry([SPUR, BEVEL, WORM, RACK]),
+    connectors: new ConnectorKindRegistry([...PIN_AXLE_KINDS, SLIDE_BORE, WORM_THREAD, RACK_TEETH, TUBE,
+        SPLINE, SPLINE_BORE, CLUTCH, CLUTCH_TEETH, FORK, FORK_GROOVE, CLUTCH_AXLEHOLE, GEAR_SEAT, SNAP]),
+    couplings: new CouplingKindRegistry([SPUR, BEVEL, WORM, RACK, DOG_CLUTCH, SHIFT_FORK, RELATIVE_GEAR]),
     joints: new JointKindRegistry(JOINT_KINDS)
 });
 

@@ -37,3 +37,5 @@
 2825 2391 6612 4586 73507 71710 2719
 # mirror pairs (part-meta/canonical-frame.js: left/right counterparts found from geometry)
 41769a 41770a 43722a 43723a 32190 32191
+# transmission (gearbox lane): driving ring, changeover catch, clutch gears, slip clutch, differential
+6539 6641 76019 65414 65413

@@ -328,15 +328,24 @@ test('gear tip radius is pitch radius plus one module, centred on the axle hole'
         // angle. Check bevels with a wider tolerance and document it; spur rule stays 0.5.
         if (p.gear.type === 'bevel') {
             assert.ok(Math.abs(tip - (teeth * 1.25 + 2.5)) <= 2.0, `${p.part}: bevel tip radius ${tip.toFixed(2)} ≠ ${teeth}·1.25 + 2.5`);
-        } else if (p.part === '94925.dat') {
+        } else if (['94925.dat', '18946.dat', '76019.dat'].includes(p.part)) {
+            // 18946 (16T clutch, 21.79) and 76019 (24T slip clutch, 31.70): LDraw draws their tips
+            // short in the same way (scripts/derive-part-meta.mjs SHORT_TEETH).
             // 16T reinforced spur: tip is 21.66 vs 22.5 expected, 0.84 off due to its reinforced rim
             // (still spur, but allow 1.0 for this part; do not loosen general spur rule)
             assert.ok(Math.abs(tip - (teeth * 1.25 + 2.5)) <= 1.0, `${p.part}: tip radius ${tip.toFixed(2)} ≠ ${teeth}·1.25 + 2.5`);
         } else {
             assert.ok(Math.abs(tip - (teeth * 1.25 + 2.5)) <= 0.5, `${p.part}: tip radius ${tip.toFixed(2)} ≠ ${teeth}·1.25 + 2.5`);
         }
-        const hole = p.connectors.find(c => c.type === 'axlehole');
-        assert.ok(len(sub(hole.position, center)) <= POS_EPS, `${p.part}: gear centre is not on its axle hole`);
+        // The centre hole: an axle hole (the gear turns with its axle), a slip clutch's hub
+        // (kinds/slip-clutch.js), or a round pin hole (a clutch gear: free on its axle) whose
+        // line the centre is on.
+        const hole = p.connectors.find(c => c.type === 'axlehole' || c.type === 'clutch-axlehole');
+        if (hole) assert.ok(len(sub(hole.position, center)) <= POS_EPS, `${p.part}: gear centre is not on its axle hole`);
+        else {
+            const pin = p.connectors.find(c => c.type === 'pinhole' && len(perpOf(sub(c.position, center), c.axis)) <= POS_EPS);
+            assert.ok(pin, `${p.part}: gear centre is on no axle hole and no pin hole`);
+        }
     }
 });
 
