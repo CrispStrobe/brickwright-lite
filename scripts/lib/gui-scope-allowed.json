@@ -22,6 +22,7 @@
   },
   "three": {
     "tests": [
+      "test/bw-sim-camera-nav.test.mjs",
       "test/bw-sim-editor-v2.test.mjs",
       "test/bw-sim-instancing.test.mjs",
       "test/bw-sim-palette-ui.test.mjs",

@@ -35,8 +35,8 @@ export const EDITOR_TEXT = {
                 ['Click', 'select a part (a grouped part selects its group)'],
                 ['Shift+click', 'add or remove a part'], ['Shift+drag', 'select with a box'],
                 ['Drag a part', 'move it (it rests on what is under it; magnets snap)'],
-                ['Double click', 'edit inside a group'], ['Drag empty space / right drag', 'turn the view'],
-                ['Middle drag / Shift+right drag', 'slide the view'], ['Wheel', 'zoom']
+                ['Double click', 'edit inside a group'], ['Drag empty space / middle drag', 'turn the view'],
+                ['Right drag', 'slide the view'], ['Wheel', 'zoom toward the pointer']
             ]],
             ['Keyboard', [
                 ['W / E', 'move / turn with the handles'], ['R, Shift+R', 'turn 90° about the up axis'], ['T, Shift+T', 'tip 90°'],
@@ -44,7 +44,8 @@ export const EDITOR_TEXT = {
                 ['Delete', 'delete'], ['Ctrl+D', 'duplicate'], ['Ctrl+C / Ctrl+V', 'copy / paste (LDraw text: works with Studio and LeoCAD too)'],
                 ['Ctrl+A', 'select all'], ['Ctrl+G / Ctrl+Shift+G', 'group / ungroup'], ['Ctrl+Z / Ctrl+Y', 'undo / redo'],
                 ['H / I / Shift+H', 'hide / isolate / show all'], ['K', 'eyedropper: take a part\'s colour'], ['M', 'measure between two points'],
-                ['F', 'fit the selection in view'], ['Esc', 'stop / leave the group / clear the selection'], ['?', 'this sheet']
+                ['F', 'fit the selection in view'],
+                ['Arrows (nothing selected)', 'turn the view'], ['Shift+arrows', 'slide the view'], ['+ / -', 'zoom in / out'], ['Esc', 'stop / leave the group / clear the selection'], ['?', 'this sheet']
             ]],
             ['Touch', [
                 ['Tap', 'select a part'], ['Drag a part', 'move it'], ['Long press', 'add or remove a part'],
@@ -97,8 +98,8 @@ export const EDITOR_TEXT = {
                 ['Klick', 'ein Teil auswählen (ein Teil einer Gruppe wählt die Gruppe)'],
                 ['Umschalt+Klick', 'ein Teil dazu nehmen oder weglassen'], ['Umschalt+Ziehen', 'mit einem Rahmen auswählen'],
                 ['Teil ziehen', 'verschieben (es liegt auf dem, was darunter ist; Magnete rasten ein)'],
-                ['Doppelklick', 'in einer Gruppe bearbeiten'], ['Leere Fläche ziehen / rechts ziehen', 'Ansicht drehen'],
-                ['Mittlere Taste ziehen / Umschalt+rechts ziehen', 'Ansicht schieben'], ['Mausrad', 'zoomen']
+                ['Doppelklick', 'in einer Gruppe bearbeiten'], ['Leere Fläche ziehen / mittlere Taste ziehen', 'Ansicht drehen'],
+                ['Rechts ziehen', 'Ansicht schieben'], ['Mausrad', 'zum Mauszeiger hin zoomen']
             ]],
             ['Tastatur', [
                 ['W / E', 'mit den Griffen schieben / drehen'], ['R, Umschalt+R', 'um 90° um die Hochachse drehen'], ['T, Umschalt+T', 'um 90° kippen'],
@@ -106,7 +107,8 @@ export const EDITOR_TEXT = {
                 ['Entf', 'löschen'], ['Strg+D', 'verdoppeln'], ['Strg+C / Strg+V', 'kopieren / einfügen (LDraw-Text: geht auch mit Studio und LeoCAD)'],
                 ['Strg+A', 'alle wählen'], ['Strg+G / Strg+Umschalt+G', 'gruppieren / Gruppe lösen'], ['Strg+Z / Strg+Y', 'rückgängig / wiederholen'],
                 ['H / I / Umschalt+H', 'ausblenden / nur diese / alle zeigen'], ['K', 'Pipette: Farbe eines Teils nehmen'], ['M', 'zwischen zwei Punkten messen'],
-                ['F', 'Auswahl einpassen'], ['Esc', 'abbrechen / Gruppe verlassen / Auswahl aufheben'], ['?', 'diese Übersicht']
+                ['F', 'Auswahl einpassen'],
+                ['Pfeiltasten (nichts ausgewählt)', 'Ansicht drehen'], ['Umschalt+Pfeiltasten', 'Ansicht schieben'], ['+ / -', 'hinein / hinaus zoomen'], ['Esc', 'abbrechen / Gruppe verlassen / Auswahl aufheben'], ['?', 'diese Übersicht']
             ]],
             ['Touch', [
                 ['Tippen', 'ein Teil auswählen'], ['Teil ziehen', 'verschieben'], ['Lange drücken', 'ein Teil dazu nehmen oder weglassen'],

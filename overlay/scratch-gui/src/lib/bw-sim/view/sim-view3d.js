@@ -6,12 +6,13 @@
 // view (lib/spike-arena/arena-view3d.js) and reached the same way, only through
 // the pane's dynamic import of bw-sim/sim-lab.js (chunk "bw-sim-lab").
 
-import {Box3, Color, GridHelper, PerspectiveCamera, Vector2, Vector3, WebGLRenderer} from 'three';
+import {Box3, Color, GridHelper, MOUSE, PerspectiveCamera, Sphere, Vector2, Vector3, WebGLRenderer} from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {parseLDConfig} from './ldraw-colors.js';
 import {buildSimScene, applySnapshot} from './sim-scene3d.js';
 import {addPartLights} from './part-style.js';
 import {createInsightLayer, createPulse, tintMaterial} from './insight-layer.js';
+import {VIEW_DIRECTIONS, applyCameraAction, cameraKeyAction, configureOrbitControls, framePosition} from './camera-nav.js';
 
 export class WebGLUnavailableError extends Error {
     constructor (reason) {
@@ -95,9 +96,23 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     }
     const camera = new PerspectiveCamera(40, 1, 0.005, 50);
     const controls = new OrbitControls(camera, canvas);
+    // camera-nav.js: left or middle drag orbits, right (or Shift+left) drag pans, the wheel zooms toward the pointer.
+    configureOrbitControls(controls, MOUSE);
     controls.maxPolarAngle = Math.PI / 2 - 0.02; // never under the floor
     controls.minDistance = 0.05;
     controls.maxDistance = 5;
+    // The view takes the keyboard when clicked: arrows orbit, Shift+arrows pan, + and - zoom.
+    canvas.tabIndex = 0;
+    canvas.style.outline = 'none';
+    const onKey = event => {
+        if (applyCameraAction(camera, controls, cameraKeyAction(event), canvas.clientHeight)) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+    };
+    canvas.addEventListener('keydown', onKey);
+    const focusCanvas = () => canvas.focus({preventScroll: true});
+    canvas.addEventListener('pointerdown', focusCanvas);
 
     const modelBox = () => {
         const box = new Box3();
@@ -110,6 +125,33 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         camera.position.copy(position);
         controls.target.copy(target);
         controls.update();
+    };
+
+    /** Home, Top, Front or Side: the whole model, seen from that side. */
+    const viewFrom = name => {
+        const box = modelBox();
+        const sphere = box.isEmpty() ? new Sphere(new Vector3(), 0.1) : box.getBoundingSphere(new Sphere());
+        const size = renderer.getSize(new Vector2());
+        const {position} = framePosition({centre: sphere.center.toArray(), radius: sphere.radius,
+            direction: VIEW_DIRECTIONS[name] || VIEW_DIRECTIONS.home, fovDeg: camera.fov, aspect: size.x / Math.max(1, size.y)});
+        camera.position.set(...position);
+        controls.target.copy(sphere.center);
+        controls.update();
+        followed = null;
+    };
+    /** Fit: the whole model in view, from where the camera looks now. */
+    const fit = () => {
+        const dir = camera.position.clone().sub(controls.target).toArray();
+        const box = modelBox();
+        if (box.isEmpty()) return;
+        const sphere = box.getBoundingSphere(new Sphere());
+        const size = renderer.getSize(new Vector2());
+        const {position} = framePosition({centre: sphere.center.toArray(), radius: sphere.radius, direction: dir,
+            fovDeg: camera.fov, aspect: size.x / Math.max(1, size.y)});
+        camera.position.set(...position);
+        controls.target.copy(sphere.center);
+        controls.update();
+        followed = null;
     };
 
     const onLost = event => {
@@ -262,6 +304,8 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
             grid.material.dispose();
         }
         canvas.removeEventListener('webglcontextlost', onLost);
+        canvas.removeEventListener('keydown', onKey);
+        canvas.removeEventListener('pointerdown', focusCanvas);
         controls.dispose();
         built.dispose();
         renderer.dispose();
@@ -279,6 +323,11 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         resetCamera();
     };
     return {canvas, render, resize, resetCamera: recentre, dispose, setPorts, setMotion, setOverlay, highlight,
+        /** The pane's view buttons: 'home', 'top', 'front' or 'side'; and Fit. */
+        view: name => { viewFrom(name); dirty = true; },
+        fit: () => { fit(); dirty = true; },
+        /** A camera key (camera-nav.js), as if pressed on the focused view; true when the camera moved. */
+        nudge: event => { const moved = applyCameraAction(camera, controls, cameraKeyAction(event), canvas.clientHeight); dirty = dirty || moved; return moved; },
         /** The camera now (for the browser gate to read what a gesture did): position, target, distance (metres). */
         get camera () {
             return {position: camera.position.toArray(), target: controls.target.toArray(), distance: camera.position.distanceTo(controls.target)};

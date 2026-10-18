@@ -54,9 +54,10 @@
 //                         selection on the system clipboard as LDraw text, so it
 //                         pastes into another model, BrickLink Studio or LeoCAD, and
 //                         Ctrl+V takes LDraw text from there; ? opens the shortcut sheet
-//   camera                left-drag on empty space or right-drag: orbit;
-//                         middle-drag or Shift+right-drag: pan; wheel: zoom
-//                         toward the pointer
+//   camera                left-drag on empty space or middle-drag: orbit;
+//                         right-drag: pan; wheel: zoom toward the pointer;
+//                         with nothing selected, arrows orbit, Shift+arrows
+//                         pan, + / - zoom (view/camera-nav.js, as Simulate)
 //   fingers               (tablets; touch-gestures.js) a finger on a part:
 //                         select it, drag it (the mouse's drag: magnet,
 //                         overlap); on empty space: orbit; two fingers: pinch
@@ -82,6 +83,7 @@ import {
     Sphere, SphereGeometry, Vector2, Vector3, WebGLRenderer
 } from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {VIEW_DIRECTIONS, applyCameraAction, cameraKeyAction, configureOrbitControls} from '../view/camera-nav.js';
 import {TransformControls} from 'three/addons/controls/TransformControls.js';
 import {LDU_M, lduToWorld} from '../contracts.js';
 import {partGeometry, partVisual} from '../view/part-geometry.js';
@@ -638,8 +640,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     }
     s.add(transform.getHelper());
     const controls = new OrbitControls(camera, canvas);
-    controls.mouseButtons = {LEFT: MOUSE.ROTATE, MIDDLE: MOUSE.PAN, RIGHT: MOUSE.ROTATE};
-    controls.zoomToCursor = true;
+    // view/camera-nav.js, as in Simulate: left (on empty space) or middle drag orbits, right drag pans, the wheel zooms toward the pointer.
+    configureOrbitControls(controls, MOUSE);
     controls.maxPolarAngle = Math.PI / 2;
     controls.addEventListener('start', () => { cameraTouched = true; });
     // The camera, the gizmo (a handle lit, moved, resized) and the controls changing: a new frame.
@@ -1537,7 +1539,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         else for (const id of new Set(ids)) { const mesh = meshes.get(id); if (mesh) box.expandByObject(mesh); }
         return box;
     };
-    const VIEWS = {home: new Vector3(1, 0.8, 1.2), top: new Vector3(0, 1, 0.0001), front: new Vector3(0, 0.0001, 1), side: new Vector3(1, 0.0001, 0)};
+    const VIEWS = Object.fromEntries(Object.entries(VIEW_DIRECTIONS).map(([name, d]) => [name, new Vector3(...d)]));
     const view = name => {
         modelGroup.updateMatrixWorld(true);
         fitBox(modelBox(), VIEWS[name] || VIEWS.home);
@@ -1940,6 +1942,15 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             return;
         }
         if (event.altKey) return;
+        // With nothing selected (and no tool armed) the arrows, + and - move the camera (camera-nav.js).
+        if (!selection.length && !tool && !pickMode) {
+            const camAction = cameraKeyAction(event);
+            if (camAction) {
+                event.preventDefault();
+                if (applyCameraAction(camera, controls, camAction, canvas.clientHeight)) cameraTouched = true;
+                return;
+            }
+        }
         const plain = {
             w: () => setMode('move'), e: () => setMode('rotate'),
             r: () => turnSelection('up', event.shiftKey ? -1 : 1),
@@ -2088,6 +2099,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         select: ids => setSelection([].concat(ids || [])),
         selectAll: () => { setSelection(editor.model.parts.map(p => p.id)); status({kind: 'selected', count: selection.length}); },
         deleteSelection, duplicate, copy, paste, pasteText, undo, redo, view, fitSelection, groupSelection, ungroupSelection, escape,
+        /** A camera key (view/camera-nav.js), as on the focused view; true when the camera moved. */
+        nudge: event => { const moved = applyCameraAction(camera, controls, cameraKeyAction(event), canvas.clientHeight); if (moved) cameraTouched = true; return moved; },
         setMotion, setOverlay,
         hideSelection, isolate, showAll, setHidden, mirror: mirrorSelection, align: alignSelection, distribute: distributeSelection,
         toGrid: selectionToGrid, paint: paintSelection, setPick, enterGroup, leaveGroup, setPartPose, moveSelectionBy, turnSelectionBy,
