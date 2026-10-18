@@ -5791,8 +5791,9 @@ Actual activation and clean browser/guest qualification remain pending.
 A separately guarded font-discovery source continuation now collects bounded
 read-only package, configuration, alias and font-file observations. Its own
 request/original/independent-reader formats remain observation-only. A distinct
-disabled hosted job now delivers that collector; activation and original runtime
-observations remain unfinished. The original required roster and missing
+conditional hosted job now enables that collector in the source candidate.
+Its final-head request/event admission and original observations remain pending;
+the request is unpublished, no discovery event was sent, and actual stays disabled. The original required roster and missing
 paths remain held. See the matching guide for selection and qualification gates.
 A separate delivery reader now joins externally selected official metadata,
 workflow proof and the bounded original ZIP before grading a retained discovery
