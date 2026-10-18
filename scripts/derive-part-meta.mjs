@@ -94,6 +94,8 @@ const TOP_STUD = /^(stud|studa|stud2|stud2a|stud-logo\d?|stud2-logo\d?|studp01|s
 const OPEN_TUBE = /^stud4(a|f\d[nsw]|h|o|od|oda|s|s2)?\.dat$/;
 /** Everything stud-like: geometry inside these is never a Technic bore. */
 const STUDISH = /^(stud\w*|stu2\w*|stug\w*)\.dat$/;
+/** A stud drawn inside another stud primitive is part of it; inside a stud GROUP (stug-1x4.dat) it is a stud of its own. */
+const IN_A_STUD = /^(stud\w*|stu2\w*)\.dat$/;
 const viaStud = p => p.via.some(f => STUDISH.test(base(f)));
 
 /**
@@ -178,8 +180,8 @@ const trianglesOf = polys => {
 const sideOfRun = (tris, run, rIn, rOut) => {
     let s = 0;
     let a = 0;
-    // Which of 16 sectors around the line the wall covers: a bore or a shaft goes all round;
-    // a quarter-round fillet on a part's outline does not.
+    // Which of 16 sectors around the line the wall covers: a bore or a shaft goes all round (a
+    // slot's end half round); a quarter-round fillet on a part's outline does not.
     const e1 = unit(perp(Math.abs(run.axis[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0], run.axis));
     const e2 = cross(run.axis, e1);
     const sectors = new Set();
@@ -330,7 +332,9 @@ export const deriveConnectors = (flat, {header = {}, read, system = false} = {})
         if (system && !run.lines.some(l => COMPOSITE.test(base(l.prim.file)) && !/^(confric|connect)/.test(base(l.prim.file)))) {
             const vertical = Math.abs(run.axis[1]) > 0.999;
             // Through: nothing of the part within 5.5 LDU of the line, its bore wall reaching the bottom face.
-            const through = vertical && !verts.some(v => len(perp(sub(v, run.foot), run.axis)) < 5.5);
+            const top = Math.min(...ys);
+            const through = vertical && !verts.some(v => len(perp(sub(v, run.foot), run.axis)) < 5.5) &&
+                !tris.some(t => segmentHits([run.foot[0], yb - 0.2, run.foot[2]], [0, top - yb - 1, 0], t));
             if (through) {
                 run.through = true;
                 // From the top of its wall down to the underside of the material around it.
@@ -344,7 +348,8 @@ export const deriveConnectors = (flat, {header = {}, read, system = false} = {})
             }
         }
         const {side, score, round: around} = sideOfRun(tris, run, 5.4, 6.6);
-        if (side !== 0 && around < 0.75) {
+        // At least half round: a slot's end (32009) is a half cylinder, a corner fillet a quarter.
+        if (side !== 0 && around < 0.45) {
             notes.push(`6 LDU wall at ${roundVec(point(run, (run.lo + run.hi) / 2), 0.01)} along ${roundVec(run.axis, 1e-4)} covers ${Math.round(around * 16)}/16 of the circle: a fillet, not a bore`);
             continue;
         }
@@ -484,10 +489,10 @@ export const deriveConnectors = (flat, {header = {}, read, system = false} = {})
     });
 
     // Studs.
-    const studs = prims.filter(p => TOP_STUD.test(base(p.file)) && !p.via.some(f => STUDISH.test(base(f))))
+    const studs = prims.filter(p => TOP_STUD.test(base(p.file)) && !p.via.some(f => IN_A_STUD.test(base(f))))
         .map(p => ({position: p.x.t.slice(), axis: snapAxis(unit(scale(column(p.x, 1), -1))), height: 4 * len(column(p.x, 1)), radius: 6 * len(column(p.x, 0))}));
     studs.forEach((s, i) => connectors.push({id: `s${i}`, type: 'stud', position: s.position, axis: s.axis, length: s.height}));
-    const tubes = prims.filter(p => OPEN_TUBE.test(base(p.file)) && !p.via.some(f => STUDISH.test(base(f))));
+    const tubes = prims.filter(p => OPEN_TUBE.test(base(p.file)) && !p.via.some(f => IN_A_STUD.test(base(f))));
     return {connectors, notes, studs, tubes, tris, verts};
 };
 
@@ -522,31 +527,67 @@ const segmentHits = (p, d, tri) => {
 export const antiStudCells = (tris, verts, studs) => {
     const b = bounds([verts]);
     const yb = b.max[1];
-    const phase = i => {
-        if (studs.length) return ((studs[0].position[i] % 20) + 20) % 20;
-        return ((b.min[i] + 10) % 20 + 20) % 20;
+    // The stud grid: aligned with the part's studs, or with its footprint (a jumper plate's
+    // centre stud is half a stud off its cells): whichever finds more cells.
+    const phases = [[0, 2].map(i => ((b.min[i] + 10) % 20 + 20) % 20)];
+    if (studs.length) phases.push([0, 2].map(i => ((studs[0].position[i] % 20) + 20) % 20));
+    // Triangles over a cell's square, and those in the 4 LDU a stud reaches in.
+    const over = (x, z, r) => tris.filter(t => Math.min(t.v[0][0], t.v[1][0], t.v[2][0]) <= x + r && Math.max(t.v[0][0], t.v[1][0], t.v[2][0]) >= x - r &&
+        Math.min(t.v[0][2], t.v[1][2], t.v[2][2]) <= z + r && Math.max(t.v[0][2], t.v[1][2], t.v[2][2]) >= z - r);
+    let best = [];
+    for (const [px, pz] of phases) {
+        const cells = [];
+        for (let x = Math.ceil((b.min[0] + 10 - 0.01 - px) / 20) * 20 + px; x <= b.max[0] - 10 + 0.01; x += 20) {
+            for (let z = Math.ceil((b.min[2] + 10 - 0.01 - pz) / 20) * 20 + pz; z <= b.max[2] - 10 + 0.01; z += 20) {
+                if (cellTakesStud(over(x, z, 10), verts, x, z, yb, b)) cells.push([round(x, 0.01), yb, round(z, 0.01)]);
+            }
+        }
+        if (cells.length > best.length) best = cells;
+    }
+    return best;
+};
+
+/** Distance in the x/z plane from (x, z) to a triangle's footprint (0 inside it). */
+const footprintDistance = (x, z, t) => {
+    const [a, b2, c] = t.v.map(v => [v[0], v[2]]);
+    const crossZ = (o, p, q) => (p[0] - o[0]) * (q[1] - o[1]) - (p[1] - o[1]) * (q[0] - o[0]);
+    const pt = [x, z];
+    const d1 = crossZ(a, b2, pt); const d2 = crossZ(b2, c, pt); const d3 = crossZ(c, a, pt);
+    if ((d1 >= 0 && d2 >= 0 && d3 >= 0) || (d1 <= 0 && d2 <= 0 && d3 <= 0)) return 0;
+    const seg = (p, q) => {
+        const dx = q[0] - p[0]; const dz = q[1] - p[1];
+        const l2 = dx * dx + dz * dz;
+        const u = l2 ? Math.max(0, Math.min(1, ((x - p[0]) * dx + (z - p[1]) * dz) / l2)) : 0;
+        return Math.hypot(x - p[0] - u * dx, z - p[1] - u * dz);
     };
-    const cells = [];
-    const near = (p, r) => tris.filter(t => t.v.some(v => Math.hypot(v[0] - p[0], v[2] - p[2]) < r + 30));
-    for (let x = Math.ceil((b.min[0] + 10 - 0.01 - phase(0)) / 20) * 20 + phase(0); x <= b.max[0] - 10 + 0.01; x += 20) {
-        for (let z = Math.ceil((b.min[2] + 10 - 0.01 - phase(2)) / 20) * 20 + phase(2); z <= b.max[2] - 10 + 0.01; z += 20) {
-            const local = near([x, 0, z], 10);
-            // Free: vertical segments through the stud's volume cross no triangle; no vertex inside it.
+    return Math.min(seg(a, b2), seg(b2, c), seg(c, a));
+};
+
+/**
+ * One anti-stud cell at (x, z) of the bottom face yb: a stud fits (vertical segments through
+ * its volume cross no triangle; no vertex inside it), it is gripped (a face of the part within
+ * 5.4..8.6 LDU of the cell's axis, in the 4 LDU above the bottom face: walls, tubes, rods) and
+ * the cell is under the part (a ray up from it meets the part).
+ */
+const cellTakesStud = (local, verts, x, z, yb, b) => {
+    {
+        {
             const samples = [[0, 0], ...[0, 1, 2, 3, 4, 5, 6, 7].map(k => [5.4 * Math.cos(k * Math.PI / 4), 5.4 * Math.sin(k * Math.PI / 4)]),
                 ...[0, 1, 2, 3].map(k => [3 * Math.cos(k * Math.PI / 2 + 0.4), 3 * Math.sin(k * Math.PI / 2 + 0.4)])];
             const free = samples.every(([dx, dz]) => !local.some(t => segmentHits([x + dx, yb - 3.6, z + dz], [0, 3.3, 0], t))) &&
                 !verts.some(v => v[1] > yb - 3.6 && v[1] < yb - 0.3 && Math.hypot(v[0] - x, v[2] - z) < 5.5);
-            if (!free) continue;
-            // Gripped: material at the bottom face around the cell.
-            const grip = verts.some(v => v[1] > yb - 4.01 && Math.hypot(v[0] - x, v[2] - z) >= 5.4 && Math.hypot(v[0] - x, v[2] - z) <= 8.6);
-            if (!grip) continue;
+            if (!free) return false;
+            const grip = local.some(t => {
+                const ylo = Math.min(t.v[0][1], t.v[1][1], t.v[2][1]); const yhi = Math.max(t.v[0][1], t.v[1][1], t.v[2][1]);
+                if (yhi < yb - 4.01 || ylo > yb + 0.01) return false;
+                const d = footprintDistance(x, z, t);
+                return d >= 5.4 && d <= 8.6;
+            });
+            if (!grip) return false;
             // Under the part: a ray up from the cell hits the part.
-            const above = local.some(t => segmentHits([x, yb - 0.5, z], [0, b.min[1] - yb - 1, 0], t));
-            if (!above) continue;
-            cells.push([round(x, 0.01), yb, round(z, 0.01)]);
+            return local.some(t => segmentHits([x, yb - 0.5, z], [0, b.min[1] - yb - 1, 0], t));
         }
     }
-    return cells;
 };
 
 // ---- colliders ----------------------------------------------------------------
@@ -1157,7 +1198,7 @@ export const derivePart = (part, read) => {
     }
     if (!connectors.length) problems.push('no connector found');
     if (category === 'gear' && !meta.gear && !connectors.some(c => c.type === 'rack-teeth' || c.type === 'worm')) {
-        problems.push('a gear-category part without derivable gear data (crown, clutch, turntable, knob)');
+        problems.push('a gear-category part without derivable gear data (no clean rack teeth or worm thread; crown, clutch, turntable, knob)');
     }
     return {meta, problems, notes, desc, ldrawCategory};
 };
@@ -1229,6 +1270,102 @@ export const selfCheck = (meta, flat, {validate, kinds, minEngage = 8}) => {
         if (Math.abs(tip - want) > (meta.gear.type === 'bevel' ? 2 : 0.5)) out.push(`gear tip radius ${tip.toFixed(2)} ≠ ${teeth}·1.25 + 2.5 (not module 1)`);
     }
     return out;
+};
+
+// ---- the coverage report (docs/ROBOT-LAB-PARTS-COVERAGE.md) -----------------------
+
+/**
+ * Why a derived part disagrees with its hand measurement, part by part: read off the
+ * --compare rows and the LDraw files (2026-10-18). Facts, measured; never a fudge.
+ */
+export const EXPLAINED = {
+    '3648.dat': 'LDraw draws four 6 LDU bores at (±10, ±10) beside the axle hole. They are 14.1 LDU from it, under the contract\'s 15.5 LDU hole pitch, so they are no pin seats; the hand entry is right to leave them out (and the deriver rejects 3648a for them).',
+    '39367p01.dat': 'The hub\'s 8 pin holes are real LDraw bores the hand entry left out. The axle hole is drawn 20 long at z −11..9 (axl* primitives), 1 LDU off the hand entry\'s 18 centred at 0.',
+    '49295p01.dat': '28 hub pin holes the hand entry left out; the axle hole is drawn 20 long (z −10..10), the hand entry has 18.',
+    '39370.dat': 'The ball socket is not an LDraw connection primitive (the hand entry takes it from the castor assembly 39370c01). The deriver also finds a 10 LDU vertical bore over the socket (y 12..22).',
+    '52629.dat': 'The castor ball is a plain 24 LDU sphere, no towball primitive: measured by hand from the castor assembly.',
+    '54696p01.dat': 'LDraw draws an axle profile on the housing\'s far side (y 10..30) that the hand entry does not list.',
+    '54675.dat': '21 further blind side holes (connhol3) the hand entry does not list; four of its blind holes are written with the opposite axis and closedEnd — the same bottom.',
+    '37308.dat': 'Two further blind holes (connhol3) on the sensor\'s sides the hand entry does not list.',
+    '37316.dat': 'Two further blind holes (connhol3) the hand entry does not list.',
+    '37312.dat': '10 further blind holes (connhol3) and an axle hole the hand entry does not list.',
+    '3649.dat': 'The 40T gear\'s web has 12 pin holes and 4 axle holes, 15.5 LDU deep; the hand entry lists only the centre hole.',
+    '6589.dat': 'Hand-measurement error: the axle hole is drawn 7 deep (z 0..7; the gear spans z −3..7); the hand entry centres a 10 LDU hole at z 0, so its segment runs z −5..5, 2 LDU out of the gear\'s back and 2 short of its hub face (the axle-line test checks only the line, not the ends). 7 LDU is under the seat rule\'s 8, which is why the deriver rejects such bevel gears.',
+    '32198.dat': 'Hand-measurement error: as 6589, mirrored — the hole is drawn z −7..0 (the gear spans z −7..3); the hand entry has 10 centred at 0.',
+    '64179.dat': 'The frame\'s 12 perpendicular side holes are real LDraw bores the hand entry left out.',
+    '39794.dat': 'The frame\'s 16 perpendicular side holes are real LDraw bores the hand entry left out.',
+    '32054.dat': 'The stop bush has an axle hole (axl* primitives, x −30..−10) the hand entry left out.',
+    '32009.dat': 'The slot ends are drawn 16 deep (half cylinders, no counterbore); the hand entry rounds them to 20.',
+    '2736.dat': 'The towball stub is drawn 17 long to its end cap; the hand entry has 17.5 (within 0.5).',
+    '64781.dat': 'Rack teeth: the deriver\'s tooth-crest detection finds no even π·2.5 LDU pitch on this rack (its teeth meet the hole ends); kept as measured by hand.',
+    '3743.dat': 'Rack teeth: the deriver measures the toothed length from the first tooth crest to the last (74); the hand entry has the whole rack (80). Both pass the rack test\'s 8 LDU end tolerance.',
+    '48496.dat': 'The eyes are the same bores; the hand entry types them slide-bore (an axle slides in them, kinds/slide.js), a modelling choice the geometry cannot make. The pins are drawn 20 long at y 0..20; the hand entry has 19 at 10.5. LDraw also draws a vertical bore at the toggle\'s middle (y −10..0).',
+    '2823.dat': 'The fork\'s two studs and two anti-stud cells (System connectivity did not exist when it was measured); its cross hole is drawn 20 long, the hand entry has 16.'
+};
+
+const fmtConn = c => `${c.type} ${JSON.stringify(c.position)}${c.length !== undefined ? ` L${c.length}` : ''}`;
+
+/** The coverage report: what was derived, what was not and why, and the agreement with the hand-measured parts. */
+export const coverageMarkdown = ({added, rejected, measured, compare, partsBytes}) => {
+    const byCat = {};
+    for (const a of added) (byCat[a.category] ||= []).push(a);
+    const lines = [];
+    const handTotal = compare.reduce((n, r) => n + r.matched.length + r.handOnly.length, 0);
+    const matched = compare.reduce((n, r) => n + r.matched.length, 0);
+    const agree = compare.filter(r => !r.handOnly.length && !r.derivedOnly.length && r.matched.every(m => !m.lengthDiff && m.closedEndSame));
+    lines.push('# Robot Lab part library: coverage of the derived parts', '',
+        'Written by `node scripts/derive-part-meta.mjs --generate <list> --report-md <this file>` — do not edit by hand.', '',
+        'Parts in `overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json` marked `"derived": true` were derived from their official LDraw',
+        'files by `scripts/derive-part-meta.mjs`; the others are measured by hand. A derived part is admitted only when the deriver\'s',
+        '`selfCheck` passes (the rules of `test/bw-sim-part-meta.test.mjs`), and the tests then check the shipped file independently.', '',
+        '## How a part is derived', '',
+        '- **Connectors** come from LDraw\'s connection primitives with their placements composed down to the part frame',
+        '  (`ldraw/ldraw-geometry.js` `flattenPart`, which reports each primitive\'s ancestry): bore walls of radius 6 LDU and the Technic',
+        '  hole composites (connhole, connhol2, connhol3 — blind, `closedEnd` —, peghole\\*, beamhol\\*) are pin holes when the wall faces',
+        '  into its line (the mesh\'s outward BFC winding) and goes at least half round it; facing out of the line they are pins',
+        '  (`friction` from confric\\*), merged across a collar; the axl\\* profiles are axle holes or axles the same way; a gear\'s',
+        '  axle-hole sub-files are its hole; top-stud primitives are studs; towballs are 8 LDU sphere primitives; rack teeth and worm',
+        '  threads are measured as their tests measure them. Lengths round to the 10 LDU Technic lattice within 2 LDU (LDraw draws a',
+        '  blind hole 18 deep and a counterbore-less slot 16); a hole through a plate keeps the plate\'s 8 LDU.',
+        '- **Anti-studs** are measured, not assumed: every stud-grid cell of a System part\'s bottom face where a stud fits (no mesh within',
+        '  5.5 LDU of its axis over the 4 LDU it reaches in) and is gripped (walls or tubes within 8.6 LDU). **Tubes** are the bottoms of the',
+        '  open underside tubes (stud4\\*): a stud seats there too (kinds/stud.js `tube`).',
+        '- **Colliders**: a region box around every pin and axle, the stud layer as region `stud` (it sits in the hollow underside of the',
+        '  part on top), and solid boxes for the body — along the part\'s straight hole chains (bent liftarms, frames, T/H beams), else its',
+        '  outer envelope seen along its hole axis (System parts: from the top surface down to the bottom face, the hollow underside',
+        '  filled; slopes in 4 LDU stairs); a round body is a cylinder.',
+        '- **Mass** = mesh volume (divergence theorem over the outward-wound mesh) × ABS density **1.05 g/cm³** (ABS 1.04–1.06; LEGO',
+        '  elements are ABS). LDraw\'s walls are drawn at nominal thickness, so a 2 × 4 brick comes out 2.67 g (a real one weighs about 2.3 g).',
+        '- **Names**: the LDraw header description in the catalogue\'s sentence case; `nameDe` from a small term dictionary',
+        '  (Brick → Stein, Plate → Platte, Tile → Fliese, Slope Brick → Schräge, Beam → Lochbalken, Axle → Achse, Gear → Zahnrad, …), marked',
+        '  `nameDeGenerated: true`; the palette category from the description (Brick, Plate, Tile, Slope are new palette categories).', '');
+    lines.push('## Agreement with the hand-measured parts', '',
+        `${compare.length} hand-measured parts, ${handTotal} hand connectors: ${matched} matched by a derived connector of the same type on`,
+        `the same line within 0.5 LDU; ${agree.length} parts agree exactly (same connectors, lengths and blind ends). Hand entries are`,
+        'kept as they are; every difference is explained below (a derived connector the hand entry lacks is listed as "derived only").', '',
+        '| Part | Name | Matched | Hand only | Derived only | Length / blind end differs | Why |', '|---|---|---|---|---|---|---|');
+    for (const r of compare) {
+        const ld = r.matched.filter(m => m.lengthDiff || !m.closedEndSame);
+        const exact = !r.handOnly.length && !r.derivedOnly.length && !ld.length;
+        const why = EXPLAINED[r.part] || (exact ? 'agrees' : (r.problems || []).join('; ') || '');
+        lines.push(`| ${r.part} | ${r.name} | ${r.matched.length} | ${r.handOnly.map(fmtConn).join('<br>') || '—'} | ${r.derivedOnly.length > 4 ? `${r.derivedOnly.length} (${r.derivedOnly.slice(0, 2).map(fmtConn).join(', ')}, …)` : r.derivedOnly.map(fmtConn).join('<br>') || '—'} | ${ld.map(m => `${m.hand.type} L${m.hand.length} → L${m.derived.length}`).join('<br>') || '—'} | ${why} |`);
+    }
+    lines.push('', '## Derived parts by palette category', '', '| Category | Parts |', '|---|---|');
+    for (const [cat, list] of Object.entries(byCat)) lines.push(`| ${cat} | ${list.length} |`);
+    lines.push(`| **total** | **${added.length}** (and ${measured.length} listed parts already measured by hand) |`, '');
+    lines.push('<details><summary>Every derived part</summary>', '', '| Part | Name | Category | Mass (g) | Connectors | Colliders |', '|---|---|---|---|---|---|');
+    for (const a of added) lines.push(`| ${a.part} | ${a.name} | ${a.category} | ${a.massGrams} | ${a.connectors} | ${a.colliders} |`);
+    lines.push('', '</details>', '');
+    lines.push('## Not derived (coverage gaps)', '', 'Listed parts the deriver could not admit, with the reason. They are not in parts.json.', '',
+        '| Part | LDraw description | Why |', '|---|---|---|');
+    for (const r of rejected) lines.push(`| ${r.part} | ${r.name} | ${r.why.join('; ').replace(/\|/g, '/')} |`);
+    lines.push('', 'Not attempted: ball sockets, steering arms and links, click hinges, rubber/flex parts, panels, Bionicle/Hero Factory, Duplo.',
+        'Turntables, clutch gears, crown and knob gears need a coupling model of their own (a turntable is two parts that turn on each',
+        'other; a clutch gear slips); racks and worms are derived when their teeth measure cleanly.', '');
+    lines.push('## Size', '', `parts.json is ${partsBytes.pretty} bytes as written (one-space JSON) and ${partsBytes.min} bytes minified (${partsBytes.gz} gzipped) in`,
+        'the lazy Sim Lab chunk. If the library grows by another few hundred parts, split it: keep the hand-measured parts (motors, hub,',
+        'sensors, the examples\' parts) in parts.json and move the derived ones to a second file the palette fetches on first open.', '');
+    return `${lines.join('\n')}\n`;
 };
 
 // ---- CLI ----------------------------------------------------------------------
@@ -1326,6 +1463,12 @@ const main = async () => {
             connectors: Object.entries(m.connectors.reduce((a, c) => ({...a, [c.type]: (a[c.type] || 0) + 1}), {})).map(([k, v]) => `${v} ${k}`).join(', '),
             colliders: m.colliders.length})), rejected, measured, compare: compareAll(json.parts, read)};
         if (opt('--report')) writeFileSync(opt('--report'), `${JSON.stringify(report, null, 1)}\n`);
+        if (opt('--report-md')) {
+            const {gzipSync} = await import('node:zlib');
+            const text = partsFileText(json);
+            const min = JSON.stringify(json);
+            writeFileSync(opt('--report-md'), coverageMarkdown({...report, partsBytes: {pretty: text.length, min: min.length, gz: gzipSync(min).length}}));
+        }
         process.stderr.write(`derived ${added.length}, rejected ${rejected.length}, already measured ${measured.length}\n`);
         return;
     }
