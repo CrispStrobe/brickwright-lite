@@ -681,6 +681,22 @@ seven activation mutations are detected, with six independent controls and
 three independent mutation cuts. Guards perform no input or runtime work. These
 source results establish no hosted font observation or guest qualification.
 
+The actual frontend and original-delivery ZIP readers now validate the complete
+header census before inflating any member. They require exact untruncated names,
+unique paths, regular file or directory types, empty directory payloads, and
+unencrypted stored/deflated entries under the held role and aggregate limits.
+This closes manufactured packets previously accepted with NUL-truncated names,
+special-file types or ignored directory payloads. Both the controller and the
+independent frontend reader apply this policy; the original-delivery reader
+retains its own prefix, role and inventory checks. Ordinary frontend ZIP, Pages
+TAR delivery, and prefixed/unprefixed actual originals remain supported. Positive
+file-size predicates, TAR policy, v3/v4 schemas and actual guards are unchanged.
+These are source counterexamples and controls, not observed hosted guest results.
+The ZIP repair passes nine Node tests including 107 Python controls; all 102
+earlier Python test bodies stay unchanged. Twelve source mutations and 21
+independent coherent header counterexamples are detected. Valid frontend formats
+and both actual versions retain their earlier prefixed/unprefixed verdicts.
+
 A fresh agent can finish this work in the following bounded steps:
 
 1. Freeze the activated source candidate, finite caps and selected system tools.
