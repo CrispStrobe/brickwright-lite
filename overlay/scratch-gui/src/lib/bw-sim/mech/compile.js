@@ -14,13 +14,14 @@
 // body roles and the no-collide pairs; the default is the v1 mechanism.
 
 import {validatePlacedModel, validateCompiledMechanism, GROUND_FRICTION, LDU_M, lduToWorld, dirToWorld,
-    partHubProfile, partSensor, portRefOf, withBodyRoles, noCollidePairs, V1_COUPLING_KINDS} from '../contracts.js';
+    partHubProfile, partSensor, portRefOf, withBodyRoles, noCollidePairs, couplingBodyPairs, V1_COUPLING_KINDS} from '../contracts.js';
 import {BUILTIN_KINDS} from '../kinds/index.js';
 import {mat3MulVec3, vecAdd} from './vec.js';
 import {buildGraph} from './graph.js';
-import {buildIslands} from './islands.js';
+import {buildIslands, freeSpinnerWelds} from './islands.js';
 import {buildJoints} from './joints.js';
 import {buildGears} from './gears.js';
+import {sharedAxisBodyPairs, localNoCollide} from './collision-filter.js';
 import {validateLoad, loadBody} from '../world/objects.js';
 import {quatMul, quatConj} from './vec.js';
 
@@ -175,7 +176,8 @@ export const compile = (model, catalog, opts = {}) => {
     // mesh partner turns in (gear-on-frame, gears.js). Each pass rebuilds islands,
     // joints and gears from the graph plus the welds found so far; the gear pass's
     // other diagnostics are kept from the final pass only.
-    const extraRigidPairs = [];
+    // Free spinners (a frictionless pin between two beams) are welded to a neighbour from the start.
+    const extraRigidPairs = freeSpinnerWelds(nodes, graphEdges);
     const firstNodeOf = (islandsNow, bodyId) => {
         for (const [nid, bid] of islandsNow.nodeToBody.entries()) if (bid === bodyId) return nid;
         return null;
@@ -397,7 +399,10 @@ export const compile = (model, catalog, opts = {}) => {
     const relativeCouplings = (gearResult.relative || []).map(({type, ...rest}, i) => ({id: `r${i}`, kind: type, ...rest}));
     const couplings = [...gearResult.gears.map(({id, type, ...rest}) => ({id, kind: type, ...rest})), ...relativeCouplings, ...detectedCouplings];
     const mechanismV2 = {...mechanism, version: 2, bodies: withBodyRoles(mechanism.bodies), hubs: v2.hubs, actuators: v2.actuators,
-        couplings, devices: v2.devices, noCollide: noCollidePairs(joints, couplings, kinds, seatedBodyPairs(graphEdges, islands))};
+        couplings, devices: v2.devices, noCollide: noCollidePairs(joints, couplings, kinds,
+            [...seatedBodyPairs(graphEdges, islands), ...sharedAxisBodyPairs(graphEdges, islands)])};
+    const local = localNoCollide(mechanismV2.bodies, joints, mechanismV2.noCollide, couplingBodyPairs(joints, couplings, kinds), graphEdges, islands, nodes);
+    if (local.length) mechanismV2.noCollideParts = local;
     const problemsV2 = validateCompiledMechanism(mechanismV2, {kinds});
     if (problemsV2.length > 0) {
         throw new Error(`compile produced invalid mechanism v2: ${problemsV2.join('; ')}`);

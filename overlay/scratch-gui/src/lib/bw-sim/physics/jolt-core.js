@@ -32,7 +32,7 @@
 // way in metres (velocity / position / coast / brake / hold), force limited.
 // Per-step JavaScript state is in the state registry (state-registry.js).
 
-import { validateCompiledMechanism, upgradeMechanismV1 } from '../contracts.js';
+import { validateCompiledMechanism, upgradeMechanismV1, colliderVolume } from '../contracts.js';
 import { BUILTIN_KINDS } from '../kinds/index.js';
 import { createStateRegistry } from './state-registry.js';
 
@@ -116,6 +116,29 @@ const GEAR_VELOCITY_STEPS = 30;
  * — 6° (2 mm at the tip) inside the block — and at 13.7–13.9° with 5 to 20 (measured).
  */
 const GEAR_POSITION_STEPS = 10;
+
+/**
+ * Solver iterations for an island holding a motorised hinge (Jolt's defaults 10 / 2). The DC motor
+ * (applyHingeTorque) drives the hinge's output body, which carries the motor's rotor reflected through
+ * its gearbox (setRotorInertia: ~3e-4 kg·m² about the axis) on a few grams of parts. A contact on that
+ * body (an arm driven into a block) is solved as if it pushed an 8 g body: its impulse mostly
+ * TRANSLATES the body, the hinge takes the translation back, and the turn the contact must stop is
+ * reduced per iteration only by ε = m·r² / (I_axis + m·r²) (motorEpsilon). With Jolt's defaults a
+ * medium motor drove a beam-5 arm (ε = 0.011) through a static block (test/bw-sim-validation.test.mjs,
+ * stall: first touch +92.35° / −33.52°, the arm went to +276.6° / −401°). Measured on that bench,
+ * stop minus first touch (+ / −): velocity steps hardly matter (30–500) and are not monotonic; the
+ * POSITION steps are what pushes the arm back out of the block:
+ *   position  5: +6.4° / −0.8° (after part masses moved the arm's centre of mass)   10: +6.5°
+ *            20: +2.8° / −0.7°   30: +2.0° / −0.7°   40: +1.5° / −0.7°   60: +1.2° / −0.6°
+ * Position steps re-solve every contact of the island, so they are what costs (the driving base:
+ * 77 µs per step with 30/5, 155 µs with 20, 207 µs with 30). Each motorised hinge therefore gets
+ * MOTOR_POSITION_PER_EPS / ε of them, within [MOTOR_POSITION_STEPS, MOTOR_POSITION_STEPS_MAX]: the arm
+ * (ε 0.011) 30, a SPIKE wheel (ε 0.048) 7, a chassis side (ε ≈ 0.8) the minimum.
+ */
+const MOTOR_VELOCITY_STEPS = 30;
+const MOTOR_POSITION_STEPS = 5;
+const MOTOR_POSITION_STEPS_MAX = 40;
+const MOTOR_POSITION_PER_EPS = 0.33;
 
 /**
  * Solver velocity iterations for an island holding a worm (R4). A worm's 1:24 puts the wheel's
@@ -233,11 +256,14 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     // The pairs that must not collide (D2): one collision group for the whole scene,
     // sub-group = the body's index, and the noCollide pairs disabled in the table.
     // Jolt keeps the filter alive by reference from every body's CollisionGroup.
+    // A pair in `noCollideParts` (mech/collision-filter.js) is filtered PART BY PART instead: it stays
+    // enabled here and the SimShapeFilter below drops only its listed part pairs' sub-shape contacts.
     const bodyIndex = new Map(mechanism.bodies.map((b, i) => [b.id, i]));
+    const localPairs = new Map((mechanism.noCollideParts || []).map(([a, b, parts]) => [`${a}|${b}`, parts]));
     let groupFilter = null;
     if (mechanism.noCollide.length > 0) {
         groupFilter = new J.GroupFilterTable(mechanism.bodies.length);
-        for (const [a, b] of mechanism.noCollide) groupFilter.DisableCollision(bodyIndex.get(a), bodyIndex.get(b));
+        for (const [a, b] of mechanism.noCollide) if (!localPairs.has(`${a}|${b}`)) groupFilter.DisableCollision(bodyIndex.get(a), bodyIndex.get(b));
     }
 
     const bpInterface = new J.BroadPhaseLayerInterfaceTable(NUM_OBJECT_LAYERS, 2);
@@ -319,6 +345,40 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         const sym = [0, 1, 2].map(r => [0, 1, 2].map(c => 0.5 * (cols[c][r] + cols[r][c])));
         setInertia(mp, sym);
     };
+    /**
+     * How well a contact on a body can turn it about a hinge axis, in one solver iteration: the body's
+     * m·r² (r its colliders' outermost reach from the axis) against its moment about the axis.
+     */
+    const motorEpsilon = (bodyId, j) => {
+        const bd = mechanism.bodies.find(x => x.id === bodyId);
+        const e = bodyMap.get(bodyId);
+        const mp = e.body.GetMotionProperties();
+        const m = 1 / mp.GetInverseMass();
+        const n = Math.hypot(...j.axis);
+        const a = j.axis.map(v => v / n);
+        let r = 0;
+        for (const c of bd.colliders) {
+            const p = (c.position || [0, 0, 0]).map((v, i) => v + bd.position[i] - j.point[i]);
+            const along = p[0] * a[0] + p[1] * a[1] + p[2] * a[2];
+            const radial = Math.hypot(p[0] - along * a[0], p[1] - along * a[1], p[2] - along * a[2]);
+            const reach = c.shape === 'box' ? Math.hypot(...c.halfExtents) : c.shape === 'cylinder' ? Math.hypot(c.radius, c.halfHeight) : c.radius;
+            r = Math.max(r, radial + reach);
+        }
+        const T = inertiaOf(mp);
+        // The body's own moment about the axis through its centre of mass is in T; the hinge adds m·d².
+        const Ia = a.reduce((acc, x, row) => acc + x * a.reduce((s2, y, k) => s2 + T[row][k] * y, 0), 0);
+        return {m, r, Ia, eps: m * r * r / (Ia + m * r * r)};
+    };
+    /** A motorised hinge's position steps from the worse-conditioned of its two bodies (MOTOR_POSITION_PER_EPS). */
+    const setMotorSteps = (entry, j) => {
+        let eps = 1;
+        for (const id of [j.body1, j.body2]) {
+            const e = bodyMap.get(id);
+            if (e && e.motionType !== J.EMotionType_Static) eps = Math.min(eps, motorEpsilon(id, j).eps);
+        }
+        const steps = clamp(Math.ceil(MOTOR_POSITION_PER_EPS / eps), MOTOR_POSITION_STEPS, MOTOR_POSITION_STEPS_MAX);
+        entry.constraint.SetNumPositionStepsOverride(steps);
+    };
     /** Give a body's motion properties a body-space inertia tensor (symmetric 3×3, kg·m²). */
     const setInertia = (mp, tensor) => {
         const {values, vectors} = symmetricEigen3(tensor);
@@ -359,6 +419,11 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             } else throw new Error(`unknown collider shape ${col.shape}`);
         } else {
             const compoundSettings = new J.StaticCompoundShapeSettings();
+            // Per-part masses (mech/islands.js: each collider carries its share of its part's mass):
+            // each sub-shape gets the density massKg / volume, so Jolt's compound mass properties put
+            // the centre of mass and the inertia (parallel axis per sub-shape) where the parts' masses
+            // are. Without them (a hand-built mechanism) every collider has one density, as before.
+            const byMass = b.colliders.every(c => typeof c.massKg === 'number' && c.massKg > 0);
             for (const col of b.colliders) {
                 const pos = col.position ? new J.Vec3(...col.position) : new J.Vec3(0, 0, 0);
                 const rot = col.rotation ? new J.Quat(...col.rotation) : new J.Quat(0, 0, 0, 1);
@@ -371,7 +436,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                 } else if (col.shape === 'sphere') {
                     shapeSettings = new J.SphereShapeSettings(col.radius);
                 } else throw new Error(`unknown collider shape ${col.shape}`);
-                compoundSettings.AddShape(pos, rot, shapeSettings, 0);
+                if (byMass) shapeSettings.mDensity = col.massKg / colliderVolume(col);
+                compoundSettings.AddShape(pos, rot, shapeSettings, b.colliders.indexOf(col));
             }
             const shapeResult = compoundSettings.Create();
             if (shapeResult.HasError()) {
@@ -400,6 +466,12 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             J.destroy(group);
         }
         if (b.motion === 'dynamic') {
+            // Continuous collision (LinearCast) for every moving body: with Discrete, a brick dropped
+            // 50 cm (3.1 m/s, 16 mm per 5 ms step) passed through an 8 mm beam (measured). Jolt casts
+            // only a body that moves more than mLinearCastThreshold (0.25, below) of its inner radius
+            // in one step, so a slow body costs one comparison; measured cost in
+            // docs/ROBOT-LAB-ARCHITECTURE.md ("Motion quality").
+            bcs.mMotionQuality = J.EMotionQuality_LinearCast;
             bcs.mOverrideMassProperties = J.EOverrideMassProperties_CalculateInertia;
             const mp = bcs.mMassPropertiesOverride;
             mp.mMass = b.massKg;
@@ -418,6 +490,59 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         allBodyIDs.push(bodyID);
         J.destroy(bcs);
         for (const o of releaseAfterBody) J.destroy(o);
+    }
+
+    // Self-collision is local (D2, mech/collision-filter.js localNoCollide): for a body pair in
+    // noCollideParts, Jolt asks this filter about every pair of their sub-shapes whose bounds meet, and
+    // it refuses only the listed part pairs (an arm and its motor's housing touch; the arm and a post
+    // on that housing collide). It is JavaScript per sub-shape pair of EVERY body pair in the narrow
+    // phase, so it is installed only when the mechanism has such a pair (measured: 0.19 µs a call, ~2,000
+    // calls a step on the 2,054-part stress model, +28 % — which has none).
+    let simShapeFilter = null;
+    if (localPairs.size) {
+        const byPtr = new Map();
+        for (const b of mechanism.bodies) {
+            const e = bodyMap.get(b.id);
+            const shape = e.body.GetShape();
+            const info = { parts: b.colliders.map(c => c.part), shapePtr: J.getPointer(shape), compound: false, mask: 0, collider: null, local: null };
+            // One offset collider becomes a RotatedTranslatedShape, not a compound (Jolt's StaticCompoundShapeSettings).
+            if (shape.GetSubType() === J.EShapeSubType_StaticCompound) {
+                const compound = J.castObject(shape, J.CompoundShape);
+                const n = compound.GetNumSubShapes();
+                info.compound = true;
+                info.mask = n > 1 ? (2 ** (32 - Math.clz32(n - 1))) - 1 : 0;
+                info.collider = Int32Array.from({ length: n }, (_, i) => compound.GetSubShape(i).mUserData);
+            }
+            byPtr.set(J.getPointer(e.body), info);
+            e.filterInfo = info;
+        }
+        for (const [key, parts] of localPairs) {
+            const [a, b] = key.split('|');
+            const ia = bodyMap.get(a).filterInfo;
+            const ib = bodyMap.get(b).filterInfo;
+            const pa = J.getPointer(bodyMap.get(a).body);
+            const pb = J.getPointer(bodyMap.get(b).body);
+            (ia.local || (ia.local = new Map())).set(pb, new Set(parts.map(([x, y]) => `${x}\n${y}`)));
+            (ib.local || (ib.local = new Map())).set(pa, new Set(parts.map(([x, y]) => `${y}\n${x}`)));
+        }
+        /** The collider index of a sub-shape pointer pair, or −1 for the whole compound (Jolt asks before descending). */
+        const colliderOf = (info, shapePtr, subIdPtr) => {
+            if (!info.compound) return 0;
+            if (shapePtr === info.shapePtr) return -1;
+            return info.collider[(J.HEAPU32[subIdPtr >> 2] & info.mask) >>> 0];
+        };
+        simShapeFilter = new J.SimShapeFilterJS();
+        simShapeFilter.ShouldCollide = (body1, shape1, sub1, body2, shape2, sub2) => {
+            const i1 = byPtr.get(body1);
+            const parts = i1 && i1.local && i1.local.get(body2);
+            if (!parts) return true;
+            const c1 = colliderOf(i1, shape1, sub1);
+            const i2 = byPtr.get(body2);
+            const c2 = colliderOf(i2, shape2, sub2);
+            if (c1 < 0 || c2 < 0) return true;
+            return !parts.has(`${i1.parts[c1]}\n${i2.parts[c2]}`);
+        };
+        physicsSystem.SetSimShapeFilter(simShapeFilter);
     }
 
     const getBodyForId = id => {
@@ -477,6 +602,12 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             // (Jolt applies it while the motor is off: a coasting or unpowered hinge).
             if (j.limits) { hs.mLimitsMin = j.limits[0]; hs.mLimitsMax = j.limits[1]; }
             if (typeof j.frictionNm === 'number') hs.mMaxFrictionTorque = j.frictionNm;
+            if (actuator) {
+                // A motorised hinge's island solves with more iterations than Jolt's default (MOTOR_VELOCITY_STEPS;
+                // setMotorSteps raises the position steps once the rotor's inertia is on the body).
+                hs.mNumVelocityStepsOverride = MOTOR_VELOCITY_STEPS;
+                hs.mNumPositionStepsOverride = MOTOR_POSITION_STEPS;
+            }
             const constraint = hs.Create(bodyA, bodyB);
             physicsSystem.AddConstraint(constraint);
             allConstraints.push(constraint);
@@ -1198,6 +1329,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                 setInertia(mp, inertiaOf(mp).map((row, r) => row.map((v, k) => v + delta * a[r] * a[k])));
             }
             entry.rotorInertia = I;
+            setMotorSteps(entry, j);
         },
         /** A hinge: {angle, velocity} (rad, rad/s); a slider: {position, velocity} (m, m/s), body2 relative to body1 along the axis, zero at t = 0. */
         jointState(jointId) {
@@ -1421,6 +1553,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             for (const bid of allBodyIDs) { bodyInterface.RemoveBody(bid); bodyInterface.DestroyBody(bid); }
             J.destroy(joltInterface);
             if (contactListener) { J.destroy(contactListener); contactListener = null; }
+            if (simShapeFilter) { J.destroy(simShapeFilter); simShapeFilter = null; }
             bodyMap.clear(); hingeMap.clear(); sliderMap.clear(); ballMap.clear(); jointMap.clear();
         },
     };

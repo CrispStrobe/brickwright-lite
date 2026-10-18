@@ -1237,6 +1237,8 @@ deviates, and why:
   cannot hit a body it is jointed to, anywhere (a one-link arm on a motor cannot hit the
   chassis that holds the motor; a forearm on that arm can). A per-collider rule (seated
   colliders at t = 0 + contact normal along the hinge axis) would need the listener path.
+  *Resolved 2026-10-18:* the filter is local per part where it must be (see "Validation fixes as
+  built" below: `noCollideParts`, a SimShapeFilter only for those pairs).
 - **Expectations changed:** `bw-sim-physics-core` "a static body made of model parts is the
   machine frame" asserted that a frame does not push an overlapping *unjoined* moving body;
   under D2 only a *joined* one is left alone (the test now checks both, plus the obstacle).
@@ -1619,3 +1621,52 @@ for the parts and kinds that exist).
   (no LDraw assembly places their satellites), the 3L ring 18947 and its joiner 18948, the rotary
   catch 35188, double bevels meshing as spur gears, worm/rack inside carriers.
 - Tests: `test/bw-sim-gearbox.test.mjs`, `test/bw-sim-gearbox-program.test.mjs`.
+
+### Validation fixes as built (2026-10-18, `lane/simlab-validate-20261018`)
+
+The six faults `test/bw-sim-validation.test.mjs` found (docs/ROBOT-LAB-VALIDATION.md has the
+numbers per machine); all 22 of its tests pass with their original expectations and tolerances.
+
+- **Collision filter (D2, refined).** `mech/collision-filter.js`. (1) *Axis groups:* connector
+  endpoints joined by an edge are one group (a pin and the holes on it, an axle and everything on
+  it; a motor's housing and output share its axis). Every body pair in one group joins
+  `noCollide`, jointed or not: two beams on a frictionless pin are hinged to the pin, not to each
+  other, and rubbed face to face. (2) *Local exclusion* (`localNoCollide`): for each noCollide body
+  pair the compiler lists the PART pairs to keep apart — parts seated in one axis group (a motor's
+  two halves count as one part), and parts the pair's relative motion can never bring together: a
+  hinge keeps each part's interval along its line and its distance band from it (exact for boxes:
+  the corners projected across the line), a ball keeps distance from its point. If that is every
+  part pair the body pair stays whole in the `GroupFilterTable` (C++, broad phase); otherwise it is
+  in `CompiledMechanismV2.noCollideParts` ([bodyA, bodyB, [[partA, partB], …]]; colliders carry
+  `part`) and `jolt-core.js` refuses those sub-shape pairs in a Jolt `SimShapeFilterJS`. The filter
+  is JavaScript per sub-shape pair of every body pair in the narrow phase (0.19 µs a call; ~2,000
+  calls a step on the 2,054-part stress model, +28 %), so it is installed only when a mechanism
+  has such a pair; no shipped example does. Couplings and slider pairs stay whole: the shipped
+  Forklift's left tine sits on its guide axle's line 13 LDU under the guide's T holder (32039) and,
+  filtered locally, jams after 5.2 mm of its 65.6 mm travel — a model fix for its owner.
+- **Centre of mass and inertia.** `mech/islands.js` gives each collider `part` and `massKg` (its
+  part's mass shared by volume; a motor's halves split by `massFraction`); `jolt-core.js` sets each
+  sub-shape's density to `massKg / volume`, so Jolt's compound mass properties are the parts'
+  (parallel-axis per sub-shape). The total stays `massKg` (override, CalculateInertia). A mechanism
+  without tags keeps one density. Every robot's centre of mass moved a little; the shipped
+  examples' tests are unchanged.
+- **Free spinners.** `islands.js freeSpinnerWelds`: a part that is the shaft of every edge it has,
+  all hinges on one line, to two or more parts, with no gear, motor, sensor or hub — a
+  frictionless pin through two beams, a free axle — is welded to its first partner (compile.js
+  seeds the topology fixpoint with it). One hinge instead of a 0.25 g body between two; the
+  machine is kinematically the same (the pin's own spin is gone). No shipped example has one.
+- **Motion quality.** Every dynamic body is `EMotionQuality_LinearCast` (cast only when it moves
+  more than `mLinearCastThreshold` 0.25 of its inner radius in a step). Cost: a fixed ~13 µs per
+  step (35 → 48 µs on the shipped examples, +1.5 % on the stress model).
+- **Solver iterations of motorised hinges.** The rotor's reflected inertia (3e-4 kg·m²) on a few
+  grams of output makes a contact's impulse mostly translate the body (the hinge takes it back):
+  per iteration the turn a contact must stop shrinks only by ε = m·r² / (I_axis + m·r²)
+  (`motorEpsilon`; a beam-5 arm 0.011, a SPIKE wheel 0.048, a chassis ≈ 0.8). Measured on the stall
+  bench, velocity steps hardly matter and are not monotonic (300 let the arm through); position
+  steps push the arm back out (5: +6.4°, 20: +2.8°, 30: +2.0°, 60: +1.2° past first touch). A
+  motorised hinge gets 30 velocity steps and 0.33/ε position steps in [5, 40], set when the rotor
+  inertia is (`setMotorSteps`): the arm 30, a wheel 7. Position steps are the cost (they re-solve
+  every contact of the island).
+- **Cost overall** (median step, min of 5 runs, node, 200 Hz): shipped examples 35–38 → 67–70 µs,
+  Forklift 52 → 51 µs, 2,054-part stress model 1,329 → 1,366 µs (+2.7 %).
+

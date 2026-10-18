@@ -313,10 +313,9 @@ test('pendulum control (the stand–beam contact switched off): period = 2π√(
     assert.ok(kept >= 0.9, `amplitude kept ${kept}`);
 });
 
-test('pendulum as built: a beam on a frictionless pin swings with its period and loses little per swing', {
-    todo: 'the swinging beam rubs on the stand it shares the pin with: contact friction between face-to-face ' +
-        'neighbours (D2 collides every pair not joined directly) takes ~6° per half swing; see docs/ROBOT-LAB-VALIDATION.md'
-}, t => {
+test('pendulum as built: a beam on a frictionless pin swings with its period and loses little per swing', t => {
+    // The swinging beam and the stand share the pin (not a joint): mech/collision-filter.js keeps bodies that
+    // meet on one connector axis apart, so they no longer rub face to face (it took ~6° per half swing).
     const r = swingPendulum({separateStand: false});
     const kept = r.fullPeriodPeak / r.release;
     const errs = r.halves.map(h => h.T / PENDULUM.T(h.A) - 1);
@@ -395,10 +394,8 @@ test('four-bar control (links do not touch each other): rocker angle = the loop 
     assert.ok(r.worst.err <= 1.5, `rocker off by ${r.worst.err}°`);
 });
 
-test('four-bar as built: rocker angle = the loop equation\'s, within 1.5°', {
-    todo: 'neighbouring links rub face to face (crank–coupler, coupler–rocker contacts with friction under the ' +
-        'coupler\'s weight) and the soft hinge chain yields: 3.0° off at 180 °/s (4.7° at 60 °/s) near the rocker\'s limits'
-}, async t => {
+test('four-bar as built: rocker angle = the loop equation\'s, within 1.5°', async t => {
+    // Neighbouring links share a pin: they no longer rub (mech/collision-filter.js); they were 3.0° off.
     const r = await runFourBar({separateLinks: false});
     t.diagnostic(`worst error ${r.worst.err.toFixed(2)}° (crank ${r.worst.theta?.toFixed(1)}°: rocker ${r.worst.phi?.toFixed(2)}° vs ${r.worst.predicted?.toFixed(2)}°)`);
     assert.ok(r.worst.err <= 1.5, `rocker off by ${r.worst.err}°`);
@@ -433,11 +430,9 @@ test('balance, equal masses at equal arms: the lever stays level', t => {
     assert.ok(worst <= 0.5, `the lever turned ${worst}°`);
 });
 
-test('balance, equal masses: the lever stays on its pin\'s axis (no droop)', {
-    todo: 'a frictionless pin is its own 0.25 g body between two hinges; a 9 g lever whose weight sits 8 LDU in ' +
-        'front of the pin (the weights hang on the front layer) droops 11–18° off the axis — the default 10 solver ' +
-        'iterations do not hold the 36:1 mass ratio'
-}, t => {
+test('balance, equal masses: the lever stays on its pin\'s axis (no droop)', t => {
+    // The frictionless pin was its own 0.25 g body between two hinges and the 9 g lever drooped 17.8° through
+    // it; a free spinner is now welded to a neighbour (mech/islands.js freeSpinnerWelds): one hinge.
     // A real pin in two beam holes keeps the lever square to it: ≤ 1° (hole clearance).
     const {core, tilt} = balance('balance-equal.ldr');
     let droop = 0;
@@ -479,11 +474,9 @@ const leverStart = model => {
     return {alpha: moments(b => b.mass), alphaOneDensity: moments(b => total * b.volume / volume)};
 };
 
-test('balance, unequal: the heavier arm (three beams, 9 g) goes down against the bulkier lighter one (sensor, 8 g)', {
-    todo: 'Jolt puts a body\'s centre of mass at its colliders\' VOLUME centroid (one density for the whole ' +
-        'body), not at the parts\' masses: the big light sensor wins and the lever tips the wrong way; and the ' +
-        'pin chain does not hold the lever on its axis'
-}, t => {
+test('balance, unequal: the heavier arm (three beams, 9 g) goes down against the bulkier lighter one (sensor, 8 g)', t => {
+    // Each collider carries its share of its part's mass (mech/islands.js) and jolt-core.js gives each
+    // sub-shape that density: the body's centre of mass and inertia are the parts', not the colliders' volume's.
     const {core, lever, angle} = balance('balance-unequal.ldr');
     const {alpha, alphaOneDensity} = leverStart(machine('balance-unequal.ldr'));
     // Over the first 0.05 s the angle is ½·α0·t² (t small: the lever turns < 2°).
@@ -539,11 +532,9 @@ for (const h of [0.05, 0.2]) {
     });
 }
 
-test('drop from 50 cm and 1 m: the brick does not tunnel through the 8 mm beams', {
-    todo: 'tunnelling: at 3–4.4 m/s the brick moves 16–22 mm per 5 ms step, more than the beams are thick, and ' +
-        'every body is Jolt\'s Discrete motion quality (jolt-core.js: no EMotionQuality_LinearCast), so it passes ' +
-        'through the beams to the floor'
-}, t => {
+test('drop from 50 cm and 1 m: the brick does not tunnel through the 8 mm beams', t => {
+    // At 3–4.4 m/s the brick moves 16–22 mm per 5 ms step, more than the beams are thick: only continuous
+    // collision (jolt-core.js: every dynamic body is EMotionQuality_LinearCast) stops it on them.
     const out = [];
     for (const h of [0.5, 1]) {
         const {core, body, y0} = dropFrom(h);
@@ -700,11 +691,9 @@ const swingArm = async ({mode, direction}) => {
     return r;
 };
 
-test('stall: a motor arm driven into a fixed obstacle stops at first touch and the hub reports the stall', {
-    todo: 'a motorised hinge island without gears keeps Jolt\'s default 10 velocity / 2 position iterations: the ' +
-        'DC motor pushes the arm through the static obstacle (with the gear islands\' 30/10 on the motor hinge it ' +
-        'stops within 1° of first touch, measured)'
-}, async t => {
+test('stall: a motor arm driven into a fixed obstacle stops at first touch and the hub reports the stall', async t => {
+    // With Jolt's default 10 velocity / 2 position iterations the DC motor pushed the arm through the block;
+    // a motorised hinge's island now solves with 60 / 5 (jolt-core.js MOTOR_VELOCITY_STEPS).
     const out = [];
     for (const direction of [1, -1]) out.push(await swingArm({mode: 'obstacle', direction}));
     t.diagnostic(out.map(r => `first touch ${r.expected.toFixed(2)}°: arm at ${r.angle.toFixed(2)}°, stalled ${r.stalled}`).join('; '));
@@ -714,10 +703,10 @@ test('stall: a motor arm driven into a fixed obstacle stops at first touch and t
     }
 });
 
-test('self-collision: an arm turned into its own machine\'s frame (the post on the motor housing) is stopped', {
-    todo: 'noCollide is per body: the arm (motor output body) and the post (housing body) are joined by the ' +
-        'motor\'s hinge, so the whole pair never collides and the arm sweeps through its own frame'
-}, async t => {
+test('self-collision: an arm turned into its own machine\'s frame (the post on the motor housing) is stopped', async t => {
+    // The motor's hinge joins the housing body (with the post) and the output body (with the arm). The filter
+    // between them is local (mech/collision-filter.js localNoCollide, jolt-core.js SimShapeFilter): only parts
+    // seated together or kept apart by the turn are excluded; the arm and the post collide.
     const r = await swingArm({mode: 'frame', direction: 1});
     t.diagnostic(`first touch ${r.expected.toFixed(2)}°: arm at ${r.angle.toFixed(2)}° after 3 s, stalled ${r.stalled}`);
     assert.ok(Math.abs(r.angle - r.expected) <= 3, `arm at ${r.angle}° vs first touch ${r.expected}°`);

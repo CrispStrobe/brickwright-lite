@@ -247,6 +247,14 @@ const isVec = (v, n = 3) => Array.isArray(v) && v.length === n && v.every(isNum)
 const norm = v => Math.hypot(...v);
 const UNIT_EPS = 1e-6;
 
+/** A collider's volume (any unit cubed: the units it is given in). */
+export const colliderVolume = c => {
+    if (c.shape === 'box') return 8 * c.halfExtents[0] * c.halfExtents[1] * c.halfExtents[2];
+    if (c.shape === 'cylinder') return 2 * Math.PI * c.radius * c.radius * c.halfHeight;
+    if (c.shape === 'sphere') return 4 / 3 * Math.PI * c.radius ** 3;
+    return 0;
+};
+
 const checkCollider = (c, where, out) => {
     if (!c || typeof c !== 'object') return out.push(`${where}: not an object`);
     if (c.position !== undefined && !isVec(c.position)) out.push(`${where}.position: not a Vec3`);
@@ -763,7 +771,12 @@ export const dirToWorld = d => [d[0], 0 - d[1], 0 - d[2]];
  *               direction} in the world frame at t = 0
  *   noCollide   [[bodyA, bodyB]] sorted, A < B: pairs that must never collide once robot
  *               self-collision is on (owner decision D2; R3 builds the filter): bodies
- *               joined by a joint, and the two gear bodies of a coupling.
+ *               joined by a joint, bodies that meet on one connector axis, and the two gear
+ *               bodies of a coupling.
+ *   noCollideParts? [[bodyA, bodyB, [[partA, partB], …]]] a noCollide pair filtered PART BY PART
+ *               (mech/collision-filter.js localNoCollide): only those part pairs (partA's colliders
+ *               on bodyA, partB's on bodyB: colliders carry `part`) are kept apart, the others
+ *               collide. A noCollide pair not listed is filtered whole.
  * The v1 fields are the derived v1 VIEW (mechanismV1Aliases): `gears` = the gear and
  * rackAndPinion couplings, `sensors` = the devices, `joint.motor` = the actuator's numbers
  * (port without its hub). validateCompiledMechanism checks they agree; mechanismV1(m)
@@ -809,7 +822,6 @@ const coupledBodies = (ja, jb) => {
  * @returns {[string, string][]}
  */
 export const noCollidePairs = (joints, couplings, kinds = null, seated = []) => {
-    const byId = new Map(joints.map(j => [j.id, j]));
     const pairs = new Map();
     const add = (a, b) => {
         if (!a || !b || a === b || a === 'world' || b === 'world') return;
@@ -818,15 +830,25 @@ export const noCollidePairs = (joints, couplings, kinds = null, seated = []) => 
     };
     for (const j of joints) add(j.body1, j.body2);
     for (const [a, b] of seated) add(a, b);
+    for (const [a, b] of couplingBodyPairs(joints, couplings, kinds)) add(a, b);
+    return [...pairs.values()].sort((p, q) => p[0].localeCompare(q[0]) || p[1].localeCompare(q[1]));
+};
+
+/** The body pairs the couplings tie (meshing gears, a rack and its pinion, a registered kind's `bodies`). */
+export const couplingBodyPairs = (joints, couplings, kinds = null) => {
+    const byId = new Map(joints.map(j => [j.id, j]));
+    const out = [];
     for (const c of couplings) {
-        if (c.kind === 'gear') add(...coupledBodies(byId.get(c.joint1), byId.get(c.joint2)));
-        else if (c.kind === 'rackAndPinion') add(...coupledBodies(byId.get(c.hingeJoint), byId.get(c.sliderJoint)));
+        let pair = [];
+        if (c.kind === 'gear') pair = coupledBodies(byId.get(c.joint1), byId.get(c.joint2));
+        else if (c.kind === 'rackAndPinion') pair = coupledBodies(byId.get(c.hingeJoint), byId.get(c.sliderJoint));
         else {
             const module = kinds && kinds.couplings ? kinds.couplings.ofKind(c.kind) : null;
-            if (module && typeof module.bodies === 'function') add(...module.bodies(c, joints));
+            if (module && typeof module.bodies === 'function') pair = module.bodies(c, joints);
         }
+        if (pair.length === 2) out.push(pair);
     }
-    return [...pairs.values()].sort((p, q) => p[0].localeCompare(q[0]) || p[1].localeCompare(q[1]));
+    return out;
 };
 
 /** Coupling kinds the v1 contract has (its `gears` list): the v1 view keeps exactly these. */
@@ -985,6 +1007,17 @@ const validateMechanismV2 = (m, kinds, out) => {
             out.push(`noCollide[${i}]: need [bodyA, bodyB] of two known bodies, A < B`);
         }
     });
+    if (m.noCollideParts !== undefined) {
+        const pairs = new Set(m.noCollide.map(p => Array.isArray(p) ? p.join('|') : ''));
+        if (!Array.isArray(m.noCollideParts)) out.push('mechanism.noCollideParts: not an array');
+        else {
+            m.noCollideParts.forEach((entry, i) => {
+                const ok = Array.isArray(entry) && entry.length === 3 && pairs.has(`${entry[0]}|${entry[1]}`) && Array.isArray(entry[2]) &&
+                    entry[2].every(pp => Array.isArray(pp) && pp.length === 2 && typeof pp[0] === 'string' && typeof pp[1] === 'string');
+                if (!ok) out.push(`noCollideParts[${i}]: need [bodyA, bodyB, [[partA, partB], …]] of a noCollide pair`);
+            });
+        }
+    }
     if (out.length) return out;
     const v1 = mechanismV1Aliases(m);
     if (canonical(m.joints) !== canonical(v1.joints)) out.push('joints[].motor: the v1 view disagrees with actuators');
