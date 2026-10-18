@@ -46,6 +46,40 @@ const esmToCjs = source => source
             .join(' '))
     .replace(/^([ \t]*)export[ \t]+(const|let|var|function|class|async)\b/gm, '$1$2');
 
+// The program's clock (docs/SIM-LAB-PLAN.md §4.9, "One clock"). While the Robot Lab owns
+// the clock it sets `runtime.bwProgramClock` (gui lib/bw-sim/sim-clock.js): program time
+// then advances only as fast as the simulated world, and an extension's timers must run on
+// it too, or `move for 2 seconds` ends early in simulated time whenever the physics is
+// slower than real time. So each extension's source sees these names in place of the
+// globals: they use the program clock while one is set, and the browser's own otherwise
+// (every other moment, and every extension outside the Robot Lab, behaves as before). A
+// handle the program clock made is cancelled by it, wherever the timer runs by then.
+// `window.setTimeout` and friends stay the browser's: an explicit global is a wall-clock
+// wait on purpose (Bluetooth discovery).
+const PROGRAM_CLOCK_NAMES = ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date'];
+const programClockBindings = runtime => {
+    const clock = () => (runtime && runtime.bwProgramClock) || null;
+    const ownTimer = handle => handle !== null && typeof handle === 'object' && handle.bwProgramTimer === true;
+    const now = () => {
+        const c = clock();
+        return c ? c.now() : Date.now();
+    };
+    return [
+        (fn, ms, ...args) => {
+            const c = clock();
+            return c ? c.setTimeout(fn, ms, ...args) : globalThis.setTimeout(fn, ms, ...args);
+        },
+        handle => (ownTimer(handle) ? handle.clock.clearTimer(handle) : globalThis.clearTimeout(handle)),
+        (fn, ms, ...args) => {
+            const c = clock();
+            return c ? c.setInterval(fn, ms, ...args) : globalThis.setInterval(fn, ms, ...args);
+        },
+        handle => (ownTimer(handle) ? handle.clock.clearTimer(handle) : globalThis.clearInterval(handle)),
+        // `new Date()`, Date.UTC, instanceof: the real Date; only Date.now reads the program clock.
+        new Proxy(Date, {get: (target, key) => (key === 'now' ? now : Reflect.get(target, key))})
+    ];
+};
+
 // Build a `Scratch` shim and run a CrispStrobe extension source, returning a built-in
 // extension CLASS (the scratch-vm ExtensionManager instantiates it with `new Cls(runtime)`).
 // TurboWarp modules self-register via Scratch.extensions.register; Xcratch modules export
@@ -80,9 +114,9 @@ module.exports = function makeCrispExtension (source, dependencies = null) {
             // In the browser the extension's top-level code (language detection etc.) runs with
             // the real window/navigator; we only inject Scratch.
             // eslint-disable-next-line no-new-func
-            const run = new Function('Scratch', 'module', 'exports', esmToCjs(source));
+            const run = new Function('Scratch', 'module', 'exports', ...PROGRAM_CLOCK_NAMES, esmToCjs(source));
             const mod = { exports: {} };
-            run(Scratch, mod, mod.exports);
+            run(Scratch, mod, mod.exports, ...programClockBindings(runtime));
             const xcx = mod.exports && (mod.exports.blockClass || (mod.exports.default && mod.exports.default.blockClass));
             const inst = captured || (xcx && new xcx(runtime)) ||
                 (typeof mod.exports === 'function' ? new mod.exports(runtime) : mod.exports);

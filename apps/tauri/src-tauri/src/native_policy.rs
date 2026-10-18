@@ -280,7 +280,7 @@ impl Operation {
         }
     }
 
-    fn valid_args(self, args: &Value) -> bool {
+    pub(crate) fn valid_args(self, args: &Value) -> bool {
         let Value::Object(map) = args else {
             return false;
         };
