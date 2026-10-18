@@ -25302,6 +25302,36 @@
    "massGrams": 1.29,
    "connectors": [
     {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      20,
+      20,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      -20,
+      20,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
      "id": "t",
      "type": "turntable-race",
      "position": [
@@ -25417,6 +25447,36 @@
    "massGrams": 1.8,
    "connectors": [
     {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      20,
+      -20,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -20,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
      "id": "t",
      "type": "turntable-ring",
      "position": [
@@ -25526,6 +25586,102 @@
    "massGrams": 5.3500000000000005,
    "connectors": [
     {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      -40,
+      20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      40,
+      20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      -40,
+      20,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      40,
+      20,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h4",
+     "type": "pinhole",
+     "position": [
+      -40,
+      20,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h5",
+     "type": "pinhole",
+     "position": [
+      40,
+      20,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
      "id": "t",
      "type": "turntable-race",
      "position": [
@@ -25630,6 +25786,102 @@
    "category": "gear",
    "massGrams": 8.15,
    "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      -40,
+      -20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      40,
+      -20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      -40,
+      -20,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      40,
+      -20,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h4",
+     "type": "pinhole",
+     "position": [
+      -40,
+      -20,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h5",
+     "type": "pinhole",
+     "position": [
+      40,
+      -20,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
     {
      "id": "t",
      "type": "turntable-ring",

@@ -1106,7 +1106,7 @@ export const deriveTurntable = (desc, verts, holes) => {
         return {shape: 'cylinder', radius: round(Math.max(...vs.map(radius)), 0.01), halfHeight: round((y1 - y0) / 2, 0.01), position: [0, round((y0 + y1) / 2, 0.01), 0]};
     };
     const dy = disc.map(v => v[1]);
-    const connectors = [{id: 't', type: top ? 'turntable-ring' : 'turntable-race', position: [0, 0, 0], axis: [0, -1, 0],
+    const connectors = [...holes, {id: 't', type: top ? 'turntable-ring' : 'turntable-race', position: [0, 0, 0], axis: [0, -1, 0],
         length: round(Math.max(...dy) - Math.min(...dy), 0.5)}];
     const colliders = [cylinder(disc), ...(hub.length ? [cylinder(hub)] : []), ...inBlock.map(f => fitBox(verts, f)).filter(Boolean)];
     let gear = null;

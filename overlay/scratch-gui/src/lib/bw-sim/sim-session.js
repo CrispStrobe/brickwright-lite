@@ -68,7 +68,9 @@ export const MODELS = Object.freeze([
     {file: 'forklift.ldr', title: {en: 'Forklift', de: 'Gabelstapler'},
         example: 'forklift.bw', mat: 'warehouse'},
     {file: 'maze-runner.ldr', title: {en: 'Maze runner', de: 'Labyrinth-Läufer'},
-        example: 'maze.bw', mat: 'maze'}
+        example: 'maze.bw', mat: 'maze'},
+    {file: 'excavator.ldr', title: {en: 'Excavator', de: 'Bagger'},
+        example: 'excavator.bw', mat: 'plain'}
 ]);
 export const MODELS_BASE = 'static/sim-lab/models/';
 export const PROGRAMS_BASE = 'static/sim-lab/programs/';

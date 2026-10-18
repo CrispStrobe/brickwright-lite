@@ -59,8 +59,14 @@ const lazy = ({fail = 0} = {}) => {
     return {...cat, fetched};
 };
 
+/**
+ * Shipped models built from derived parts only: the Excavator (turntable, linear actuators, bucket,
+ * cross blocks — parts the deriver measures) opens with the second piece, as any model naming one does.
+ */
+const NEEDS_DERIVED = ['excavator.ldr'];
+
 test('every shipped model loads and parses on the core alone: opening one never fetches the rest', async () => {
-    const files = readdirSync(MODELS).filter(f => /\.(ldr|mpd)$/i.test(f));
+    const files = readdirSync(MODELS).filter(f => /\.(ldr|mpd)$/i.test(f) && !NEEDS_DERIVED.includes(f));
     assert.ok(files.length >= 5, files.join(', '));
     const cat = lazy();
     for (const f of files) {
@@ -73,6 +79,18 @@ test('every shipped model loads and parses on the core alone: opening one never 
     }
     assert.equal(cat.fetched.count, 0, 'the second piece was not fetched');
     assert.equal(cat.loaded(), false);
+});
+
+test('the shipped models that need derived parts load the rest once and parse with nothing refused', async () => {
+    for (const f of NEEDS_DERIVED) {
+        const cat = lazy();
+        const text = readFileSync(path.join(MODELS, f), 'utf8');
+        const catalog = await cat.catalogFor(text);
+        const {model, refusals} = parseModel(text, {catalog});
+        assert.deepEqual(refusals, [], `${f}: nothing refused`);
+        assert.ok(model.parts.length > 0, f);
+        assert.equal(cat.fetched.count, 1, `${f}: the second piece fetched once`);
+    }
 });
 
 test('a model naming a derived part loads the rest first, into the same Map: the part is placed, not refused', async () => {

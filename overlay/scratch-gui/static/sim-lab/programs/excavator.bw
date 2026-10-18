@@ -1,0 +1,36 @@
+DEVICE SPIKE
+
+# Robot Lab: the excavator digs, swings a quarter turn, dumps, and swings back.
+# Model: Excavator. Wheels on A and B, the turntable on C (an 8-tooth gear on the
+# 28-tooth turntable: 315 degrees of the motor turn it 90 degrees), and three linear
+# actuators: D lifts the boom, E swings the stick, F curls the bucket.
+# The motors turn the actuators' spindles one to one: 360 degrees push 1.2 mm.
+WHEN flag clicked:
+  set motor stop action A hold
+  set motor stop action B hold
+  set motor stop action C hold
+  set motor stop action D hold
+  set motor stop action E hold
+  set motor stop action F hold
+  run motor A clockwise 1 degrees
+  run motor B clockwise 1 degrees
+  set motor speed C 10
+  set motor speed D 100
+  set motor speed E 100
+  set motor speed F 100
+  # Dig: open the bucket, reach out, lower the boom until the teeth touch the
+  # ground, lift a little and curl the bucket in.
+  run motor F counterclockwise 2500 degrees
+  run motor E counterclockwise 3000 degrees
+  run motor D counterclockwise 2500 degrees
+  run motor D clockwise 2500 degrees
+  run motor F clockwise 5000 degrees
+  # Lift the load.
+  run motor D clockwise 3500 degrees
+  run motor E clockwise 3000 degrees
+  # Swing left a quarter turn and dump.
+  run motor C clockwise 315 degrees
+  run motor F counterclockwise 5000 degrees
+  # Swing back, then a quarter turn the other way and home again.
+  run motor C counterclockwise 630 degrees
+  run motor C clockwise 315 degrees

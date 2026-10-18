@@ -220,10 +220,10 @@ kept as they are; every difference is explained below (a derived connector the h
 | 6592.dat | Technic gear rack 1 x 10 with holes | gear | 1.83 | 2 pinhole, 1 rack-teeth | 1 |
 | 32132.dat | Technic gear rack 1 x 12 with holes | gear | 2.19 | 2 pinhole, 1 rack-teeth | 17 |
 | 32185.dat | Technic gear rack 1 x 14 with holes | gear | 2.5500000000000003 | 2 pinhole, 1 rack-teeth | 1 |
-| 99009.dat | Technic turntable 28 tooth bottom | gear | 1.29 | 1 turntable-race | 4 |
-| 99010.dat | Technic turntable 28 tooth top | gear | 1.8 | 1 turntable-ring | 4 |
-| 18939.dat | Technic turntable 60 tooth bottom | gear | 5.3500000000000005 | 1 turntable-race | 3 |
-| 18938.dat | Technic turntable 60 tooth top | gear | 8.15 | 1 turntable-ring | 4 |
+| 99009.dat | Technic turntable 28 tooth bottom | gear | 1.29 | 2 pinhole, 1 turntable-race | 4 |
+| 99010.dat | Technic turntable 28 tooth top | gear | 1.8 | 2 pinhole, 1 turntable-ring | 4 |
+| 18939.dat | Technic turntable 60 tooth bottom | gear | 5.3500000000000005 | 6 pinhole, 1 turntable-race | 3 |
+| 18938.dat | Technic turntable 60 tooth top | gear | 8.15 | 6 pinhole, 1 turntable-ring | 4 |
 | 62520.dat | Technic universal joint 3L end | connector | 0.19 | 1 axlehole | 1 |
 | 3712.dat | Technic universal joint 4L end with bush end | connector | 0.29 | 1 axlehole | 1 |
 | 575.dat | Technic universal joint 4L end with slotted end | connector | 0.37 | 1 axlehole | 1 |
@@ -417,7 +417,7 @@ other; a clutch gear slips); racks and worms are derived when their teeth measur
 
 ## Size
 
-parts.json is 1181773 bytes as written (one-space JSON) and 530929 bytes minified (41859 gzipped) in
+parts.json is 1184875 bytes as written (one-space JSON) and 532363 bytes minified (41952 gzipped) in
 the lazy Sim Lab chunk. If the library grows by another few hundred parts, split it: keep the hand-measured parts (motors, hub,
 sensors, the examples' parts) in parts.json and move the derived ones to a second file the palette fetches on first open.
 

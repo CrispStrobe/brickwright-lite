@@ -9,35 +9,35 @@
 // the rack's WORLD rates, which is exact only while the frame holding both does not move. An
 // excavator's stick actuator is carried by the boom: when the boom swings, the actuator's body
 // moves along its own axis, and a world-rate coupling would push the piston along by that
-// motion. The actuator's slider is driven here by its own MOTOR, which acts between the
-// slider's two bodies (relative), in velocity mode each step:
-//     v_target = ratio · ω_hinge + (x* − x) / τ,      x* = x0 + ratio · (θ − θ0)
-// (the second term pulls back the drift of the velocity solve, τ = 1/KP), with the motor's force
-// limited to the clutch force. That gives the three behaviours of the real part:
-//   - self-locking: while the spindle stands still the motor holds the piston where it is
-//     against any load up to the clutch force — nothing turns the spindle back;
-//   - the slip clutch: a load above the clutch force, or an end stop (the slider's limits, the
-//     nut at the end of the thread), stops the piston while the spindle turns on: when x* runs
-//     more than SLIP_M ahead of x, the clutch has slipped and x0 follows (the spindle's angle
-//     and the piston's position are re-paired);
-//   - the load on the input: the force the motor applied in the last step, F, costs the spindle
+// motion. Here everything is relative to the actuator's body. Each step:
+//   - the slider's LIMITS are pinned to x* = x0 + ratio · (θ − θ0), ± 1 µm: Jolt solves limits as
+//     hard constraints at the velocity and the position level, so the piston stays where the
+//     thread puts it (a velocity motor alone let a loaded arm drift and, with the drift pulled back
+//     by a gain, oscillate: measured on the excavator, ±2 mm at rest);
+//   - the slider's motor runs at the thread's speed, ratio · ω (force-limited to the clutch force),
+//     so the limits only have to correct the drift.
+// That gives the three behaviours of the real part:
+//   - self-locking: while the spindle stands still the piston is held where it is against any
+//     load up to the clutch force — nothing turns the spindle back;
+//   - the slip clutch: a load that stays above the clutch force (averaged over CLUTCH_TAU_S: one
+//     step's impulse is no load) moves the piston, and the thread re-pairs where it went; at an
+//     end stop (the joint's limits: the nut at the end of the thread) x* stops there while the
+//     spindle turns on;
+//   - the load on the input: the force that held the piston in the last step, F, costs the spindle
 //     a torque |F| · |ratio| / η against its turning (η the thread's efficiency), applied to the
 //     spindle's body (and back on the actuator's body): the motor that drives the spindle,
 //     through whatever gears, feels the load (one step late: explicit, as the core's other
 //     per-step couplings; the reduction through the thread keeps it small).
 
-const KP_PER_STEP = 0.2;
-/** How far the spindle may run ahead of the piston before the clutch counts as slipped (m). */
-export const SLIP_M = 0.0002;
 /** Below this spindle speed the load torque fades out (rad/s): a held spindle feels none (self-locking). */
 const OMEGA_SMOOTH = 0.5;
 /** Solver iterations for an island holding an actuator (see createScrewDrives). */
 export const SCREW_VELOCITY_STEPS = 60;
 export const SCREW_POSITION_STEPS = 10;
-/** The share of the clutch force at which the clutch counts as loaded to slipping. */
-const SLIP_FORCE_SHARE = 0.9;
-/** Within this of an end stop the piston counts as at the end (m). */
-const END_EPS_M = 0.00002;
+/** Half the window the piston is held in (m): a hard pair of limits this close. */
+const HOLD_M = 0.000001;
+/** How long a load must last to slip the clutch (s): its average over this time is what counts. */
+const CLUTCH_TAU_S = 0.05;
 
 /**
  * @param {object} args
@@ -66,8 +66,10 @@ export const createScrewDrives = ({J, couplings, hingeMap, sliderMap, jointMap, 
         ms.mMaxForceLimit = c.clutchForceN;
         s.maxForce = c.clutchForceN;
         s.mode = 'screw';
+        // The piston is held where the thread puts it by the slider's limits, pinned every step; its
+        // motor runs at the thread's speed (beforeStep).
         s.slider.SetMotorState(J.EMotorState_Velocity);
-        s.slider.SetTargetVelocity(0);
+        s.slider.SetLimits(s.position - HOLD_M, s.position + HOLD_M);
         // An actuator works in a closed loop (frame – boom – actuator, through light pins and axles):
         // Jolt's default 10 velocity / 2 position iterations let that loop sag and the transient
         // forces slip the clutch (measured: a 5 g boom at rest slipped it 8.5 mm, to the end of the
@@ -75,32 +77,33 @@ export const createScrewDrives = ({J, couplings, hingeMap, sliderMap, jointMap, 
         s.constraint.SetNumVelocityStepsOverride(SCREW_VELOCITY_STEPS);
         s.constraint.SetNumPositionStepsOverride(SCREW_POSITION_STEPS);
         return {c, h, s, x0: s.position, limits: js.limits || [-Infinity, Infinity], theta0: h.unwrapped, spindle: bodyIdOf(spindleIsBody2 ? jh.body2 : jh.body1),
-            frame: bodyIdOf(spindleIsBody2 ? jh.body1 : jh.body2), sign: spindleIsBody2 ? 1 : -1, slips: 0};
+            frame: bodyIdOf(spindleIsBody2 ? jh.body1 : jh.body2), sign: spindleIsBody2 ? 1 : -1, slips: 0, load: 0};
     });
     const torqueVec = new J.Vec3(0, 0, 0);
     const beforeStep = () => {
         for (const d of drives) {
             const {c, h, s} = d;
-            // The force the slider's motor applied in the last step (N).
-            const force = Math.abs(s.slider.GetTotalLambdaMotor()) / dt;
-            let err = d.x0 + c.ratio * (h.unwrapped - d.theta0) - s.position;
-            const atEnd = s.position >= d.limits[1] - END_EPS_M || s.position <= d.limits[0] + END_EPS_M;
-            // The clutch slips only when it is loaded to its force (or the piston is at an end stop):
-            // a lag of the velocity solve alone (a loop of light pins sags a little) is pulled back.
-            if (Math.abs(err) > SLIP_M && (atEnd || force >= SLIP_FORCE_SHARE * c.clutchForceN)) {
-                // The clutch slipped (an end stop, or a load above the clutch force): re-pair.
-                const excess = err - Math.sign(err) * SLIP_M;
-                d.x0 -= excess;
-                err -= excess;
+            // The force that held the piston in the last step (N): the limits' and the motor's impulse over the step.
+            const force = Math.abs(s.slider.GetTotalLambdaPositionLimits() + s.slider.GetTotalLambdaMotor()) / dt;
+            let target = d.x0 + c.ratio * (h.unwrapped - d.theta0);
+            // The slip clutch: above its force the piston gives way — it stays where the load pushed it
+            // and the thread re-pairs there; at an end stop the spindle turns on, the piston stays.
+            // A clutch slips under a load it carries, not under one step's impulse (Jolt's first steps
+            // under gravity carry spikes of several times the weight): the force averaged over CLUTCH_TAU_S.
+            d.load += (force - d.load) * Math.min(1, dt / CLUTCH_TAU_S);
+            if (d.load > c.clutchForceN) {
+                d.x0 += s.position - target;
+                target = s.position;
                 d.slips += 1;
             }
-            let v = c.ratio * h.velocity + err * KP_PER_STEP / dt;
-            // At an end stop the clutch slips: the drive stops pushing into it (Jolt carries a motor
-            // held hard against a limit into the next steps — measured: a piston pushed at the clutch
-            // force for seconds took 0.35 s to leave the stop when reversed).
-            if ((v > 0 && s.position >= d.limits[1] - END_EPS_M) || (v < 0 && s.position <= d.limits[0] + END_EPS_M)) v = 0;
-            s.slider.SetTargetVelocity(v);
-            if (s.slider.GetMotorState() !== J.EMotorState_Velocity) s.slider.SetMotorState(J.EMotorState_Velocity);
+            if (target > d.limits[1] || target < d.limits[0]) {
+                const end = Math.min(d.limits[1], Math.max(d.limits[0], target));
+                d.x0 += end - target;
+                target = end;
+            }
+            s.slider.SetLimits(target - HOLD_M, target + HOLD_M);
+            // ...and its motor moves it at the thread's speed (the limits then only correct the drift).
+            s.slider.SetTargetVelocity(c.ratio * h.velocity);
             // The thread's load on the spindle, from that force.
             const fade = Math.max(-1, Math.min(1, h.velocity / OMEGA_SMOOTH));
             const tau = -fade * force * Math.abs(c.ratio) / c.efficiency;
@@ -124,8 +127,8 @@ export const createScrewDrives = ({J, couplings, hingeMap, sliderMap, jointMap, 
         drives,
         beforeStep,
         registrant: {
-            save: () => drives.map(d => [d.x0, d.theta0, d.slips]),
-            restore: saved => drives.forEach((d, i) => { [d.x0, d.theta0, d.slips] = saved[i]; })
+            save: () => drives.map(d => [d.x0, d.theta0, d.slips, d.load]),
+            restore: saved => drives.forEach((d, i) => { [d.x0, d.theta0, d.slips, d.load] = saved[i]; })
         },
         destroy: () => J.destroy(torqueVec)
     };
