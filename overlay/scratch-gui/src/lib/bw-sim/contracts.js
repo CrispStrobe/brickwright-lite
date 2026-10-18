@@ -296,6 +296,23 @@ export const validatePartMeta = (meta, {connectorKinds = null} = {}) => {
     if (meta.nameDe !== undefined && (typeof meta.nameDe !== 'string' || !meta.nameDe)) out.push(`${p}.nameDe: must be a non-empty string`);
     if (typeof meta.category !== 'string' || !meta.category) out.push(`${p}.category: missing`);
     if (!(isNum(meta.massGrams) && meta.massGrams > 0)) out.push(`${p}.massGrams: need a positive number`);
+    // `mirrorOf` (part-meta/canonical-frame.js, measured): null, or the part whose shape is this
+    // one's under p ↦ m·p + t with m orthogonal and improper (det −1).
+    if (meta.mirrorOf !== undefined && meta.mirrorOf !== null) {
+        const mo = meta.mirrorOf;
+        const m = mo?.transform?.m;
+        const t = mo?.transform?.t;
+        const okM = Array.isArray(m) && m.length === 9 && m.every(isNum);
+        if (typeof mo?.part !== 'string' || !okM || !(Array.isArray(t) && t.length === 3 && t.every(isNum))) {
+            out.push(`${p}.mirrorOf: need {part, transform: {m: 9 numbers, t: 3 numbers}} or null`);
+        } else {
+            const d = m[0] * (m[4] * m[8] - m[5] * m[7]) - m[1] * (m[3] * m[8] - m[5] * m[6]) + m[2] * (m[3] * m[7] - m[4] * m[6]);
+            const mmT = [0, 1, 2].flatMap(r => [0, 1, 2].map(c => m[3 * r] * m[3 * c] + m[3 * r + 1] * m[3 * c + 1] + m[3 * r + 2] * m[3 * c + 2]));
+            if (Math.abs(d + 1) > 1e-6 || mmT.some((v, i) => Math.abs(v - (i % 4 === 0 ? 1 : 0)) > 1e-6)) {
+                out.push(`${p}.mirrorOf.transform.m: must be an orthogonal reflection (det −1), not det ${d}`);
+            }
+        }
+    }
     if (meta.friction !== undefined && !(isNum(meta.friction) && meta.friction >= 0 && meta.friction <= 2)) {
         out.push(`${p}.friction: need a number in 0..2`);
     }

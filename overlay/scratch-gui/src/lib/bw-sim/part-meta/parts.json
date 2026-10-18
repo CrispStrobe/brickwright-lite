@@ -69,7 +69,28 @@
      ]
     }
    ],
-   "nameDe": "Technic-Lochbalken 3"
+   "nameDe": "Technic-Lochbalken 3",
+   "mirrorOf": {
+    "part": "32523.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32524.dat",
@@ -193,7 +214,28 @@
      ]
     }
    ],
-   "nameDe": "Technic-Lochbalken 7"
+   "nameDe": "Technic-Lochbalken 7",
+   "mirrorOf": {
+    "part": "32524.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "2780.dat",
@@ -228,7 +270,28 @@
      ]
     }
    ],
-   "nameDe": "Technic-Pin mit Reibung"
+   "nameDe": "Technic-Pin mit Reibung",
+   "mirrorOf": {
+    "part": "2780.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3673.dat",
@@ -263,7 +326,28 @@
      ]
     }
    ],
-   "nameDe": "Technic-Pin ohne Reibung"
+   "nameDe": "Technic-Pin ohne Reibung",
+   "mirrorOf": {
+    "part": "3673.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3705.dat",
@@ -297,7 +381,28 @@
      ]
     }
    ],
-   "nameDe": "Technic-Achse 4"
+   "nameDe": "Technic-Achse 4",
+   "mirrorOf": {
+    "part": "3705.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3647.dat",
@@ -348,7 +453,28 @@
      0
     ]
    },
-   "nameDe": "Zahnrad 8 Zähne"
+   "nameDe": "Zahnrad 8 Zähne",
+   "mirrorOf": {
+    "part": "3647.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3648.dat",
@@ -399,7 +525,28 @@
      0
     ]
    },
-   "nameDe": "Zahnrad 24 Zähne"
+   "nameDe": "Zahnrad 24 Zähne",
+   "mirrorOf": {
+    "part": "3648.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "39367p01.dat",
@@ -437,7 +584,28 @@
     }
    ],
    "friction": 1,
-   "nameDe": "Rad 56 mm"
+   "nameDe": "Rad 56 mm",
+   "mirrorOf": {
+    "part": "39367p01.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "39370.dat",
@@ -636,7 +804,28 @@
      ]
     }
    ],
-   "nameDe": "Kugelrad-Halter"
+   "nameDe": "Kugelrad-Halter",
+   "mirrorOf": {
+    "part": "39370.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "52629.dat",
@@ -665,7 +854,28 @@
      "radius": 24
     }
    ],
-   "nameDe": "Kugelrolle 19 mm"
+   "nameDe": "Kugelrolle 19 mm",
+   "mirrorOf": {
+    "part": "52629.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "54696p01.dat",
@@ -1094,7 +1304,28 @@
     }
    ],
    "device": "spike-medium-angular",
-   "nameDe": "Mittlerer Motor"
+   "nameDe": "Mittlerer Motor",
+   "mirrorOf": {
+    "part": "54696p01.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "45601.dat",
@@ -1823,7 +2054,28 @@
     }
    ],
    "hubProfile": "spike-prime",
-   "nameDe": "SPIKE Prime Hub"
+   "nameDe": "SPIKE Prime Hub",
+   "mirrorOf": {
+    "part": "45601.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32316.dat",
@@ -1917,7 +2169,28 @@
      ]
     }
    ],
-   "nameDe": "Technic-Lochbalken 5"
+   "nameDe": "Technic-Lochbalken 5",
+   "mirrorOf": {
+    "part": "32316.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "40490.dat",
@@ -2071,7 +2344,28 @@
      ]
     }
    ],
-   "nameDe": "Technic-Lochbalken 9"
+   "nameDe": "Technic-Lochbalken 9",
+   "mirrorOf": {
+    "part": "40490.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32525.dat",
@@ -2255,7 +2549,28 @@
      ]
     }
    ],
-   "nameDe": "Technic-Lochbalken 11"
+   "nameDe": "Technic-Lochbalken 11",
+   "mirrorOf": {
+    "part": "32525.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "41239.dat",
@@ -2469,7 +2784,28 @@
      ]
     }
    ],
-   "nameDe": "Technic-Lochbalken 13"
+   "nameDe": "Technic-Lochbalken 13",
+   "mirrorOf": {
+    "part": "41239.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32278.dat",
@@ -2713,7 +3049,28 @@
      ]
     }
    ],
-   "nameDe": "Technic-Lochbalken 15"
+   "nameDe": "Technic-Lochbalken 15",
+   "mirrorOf": {
+    "part": "32278.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32062.dat",
@@ -2747,7 +3104,28 @@
      ]
     }
    ],
-   "nameDe": "Technic-Achse 2 mit Kerbe"
+   "nameDe": "Technic-Achse 2 mit Kerbe",
+   "mirrorOf": {
+    "part": "32062.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "4519.dat",
@@ -2781,7 +3159,28 @@
      ]
     }
    ],
-   "nameDe": "Technic-Achse 3"
+   "nameDe": "Technic-Achse 3",
+   "mirrorOf": {
+    "part": "4519.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32073.dat",
@@ -2815,7 +3214,28 @@
      ]
     }
    ],
-   "nameDe": "Technic-Achse 5"
+   "nameDe": "Technic-Achse 5",
+   "mirrorOf": {
+    "part": "32073.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3706.dat",
@@ -2849,7 +3269,28 @@
      ]
     }
    ],
-   "nameDe": "Technic-Achse 6"
+   "nameDe": "Technic-Achse 6",
+   "mirrorOf": {
+    "part": "3706.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3707.dat",
@@ -2883,7 +3324,28 @@
      ]
     }
    ],
-   "nameDe": "Technic-Achse 8"
+   "nameDe": "Technic-Achse 8",
+   "mirrorOf": {
+    "part": "3707.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "6558.dat",
@@ -2918,7 +3380,28 @@
      ]
     }
    ],
-   "nameDe": "Technic-Pin 3L mit Reibung"
+   "nameDe": "Technic-Pin 3L mit Reibung",
+   "mirrorOf": {
+    "part": "6558.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "43093.dat",
@@ -2968,7 +3451,28 @@
      ]
     }
    ],
-   "nameDe": "Technic-Achspin mit Reibung"
+   "nameDe": "Technic-Achspin mit Reibung",
+   "mirrorOf": {
+    "part": "43093.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3713.dat",
@@ -3005,7 +3509,28 @@
      ]
     }
    ],
-   "nameDe": "Technic-Buchse"
+   "nameDe": "Technic-Buchse",
+   "mirrorOf": {
+    "part": "3713.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "4265c.dat",
@@ -3042,7 +3567,28 @@
      ]
     }
    ],
-   "nameDe": "Technic-Halbbuchse"
+   "nameDe": "Technic-Halbbuchse",
+   "mirrorOf": {
+    "part": "4265c.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      -1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "94925.dat",
@@ -3093,7 +3639,28 @@
      0
     ]
    },
-   "nameDe": "Zahnrad 16 Zähne"
+   "nameDe": "Zahnrad 16 Zähne",
+   "mirrorOf": {
+    "part": "94925.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3649.dat",
@@ -3144,7 +3711,28 @@
      0
     ]
    },
-   "nameDe": "Zahnrad 40 Zähne"
+   "nameDe": "Zahnrad 40 Zähne",
+   "mirrorOf": {
+    "part": "3649.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "6589.dat",
@@ -3200,7 +3788,28 @@
      0
     ]
    },
-   "nameDe": "Kegelzahnrad 12 Zähne"
+   "nameDe": "Kegelzahnrad 12 Zähne",
+   "mirrorOf": {
+    "part": "6589.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32198.dat",
@@ -3256,7 +3865,28 @@
      0
     ]
    },
-   "nameDe": "Kegelzahnrad 20 Zähne"
+   "nameDe": "Kegelzahnrad 20 Zähne",
+   "mirrorOf": {
+    "part": "32198.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "54675.dat",
@@ -3589,7 +4219,28 @@
     }
    ],
    "device": "spike-large-angular",
-   "nameDe": "Großer Motor"
+   "nameDe": "Großer Motor",
+   "mirrorOf": {
+    "part": "54675.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "37308.dat",
@@ -3691,6 +4342,27 @@
      0,
      -1
     ]
+   },
+   "mirrorOf": {
+    "part": "37308.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
    }
   },
   {
@@ -3793,6 +4465,27 @@
      0,
      -1
     ]
+   },
+   "mirrorOf": {
+    "part": "37316.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
    }
   },
   {
@@ -3895,6 +4588,27 @@
      0,
      -1
     ]
+   },
+   "mirrorOf": {
+    "part": "37312.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
    }
   },
   {
@@ -4024,7 +4738,28 @@
       40
      ]
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "32526.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32140.dat",
@@ -4123,7 +4858,28 @@
       30
      ]
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "32140.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "64179.dat",
@@ -4262,7 +5018,28 @@
       70
      ]
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "64179.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "39794.dat",
@@ -4521,7 +5298,28 @@
       110
      ]
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "39794.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "6536.dat",
@@ -4575,7 +5373,28 @@
       0
      ]
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "6536.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32184.dat",
@@ -4639,7 +5458,28 @@
       10
      ]
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "32184.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32039.dat",
@@ -4693,7 +5533,28 @@
       -9.5
      ]
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "32039.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "42003.dat",
@@ -4757,7 +5618,28 @@
       10
      ]
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "42003.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "6632.dat",
@@ -4826,7 +5708,28 @@
       20
      ]
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "6632.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32449.dat",
@@ -4905,7 +5808,28 @@
       39
      ]
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "32449.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "49295p01.dat",
@@ -4943,7 +5867,28 @@
       0.7071067811865476
      ]
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "49295p01.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3749.dat",
@@ -4993,7 +5938,28 @@
       8
      ]
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "3749.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32054.dat",
@@ -5047,7 +6013,28 @@
      ],
      "region": "pin"
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "32054.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32348.dat",
@@ -5195,7 +6182,28 @@
       0.8944271909999159
      ]
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "32348.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "6629.dat",
@@ -5373,7 +6381,28 @@
       0.8944271909999159
      ]
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "6629.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32009.dat",
@@ -5609,7 +6638,28 @@
       0
      ]
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "32009.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "60483.dat",
@@ -5663,7 +6713,28 @@
       10
      ]
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "60483.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "41678.dat",
@@ -5747,7 +6818,28 @@
       -10.5
      ]
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "41678.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32002.dat",
@@ -5787,7 +6879,28 @@
       0
      ]
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "32002.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "87082.dat",
@@ -5881,7 +6994,28 @@
      ],
      "region": "pin"
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "87082.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "2736.dat",
@@ -5956,7 +7090,28 @@
       0
      ]
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "2736.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "4716.dat",
@@ -6013,7 +7168,8 @@
       0.7071067811865476
      ]
     }
-   ]
+   ],
+   "mirrorOf": null
   },
   {
    "part": "32063.dat",
@@ -6122,7 +7278,28 @@
       59
      ]
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "32063.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32065.dat",
@@ -6246,7 +7423,28 @@
       69
      ]
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "32065.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3737.dat",
@@ -6280,7 +7478,28 @@
       6
      ]
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "3737.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3708.dat",
@@ -6314,7 +7533,28 @@
       6
      ]
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "3708.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "87083.dat",
@@ -6349,7 +7589,28 @@
       8
      ]
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "87083.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32269.dat",
@@ -6401,6 +7662,27 @@
      0,
      0
     ]
+   },
+   "mirrorOf": {
+    "part": "32269.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      -1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
    }
   },
   {
@@ -6453,6 +7735,27 @@
      0,
      0
     ]
+   },
+   "mirrorOf": {
+    "part": "32270.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      -1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
    }
   },
   {
@@ -6565,6 +7868,27 @@
      0,
      0
     ]
+   },
+   "mirrorOf": {
+    "part": "32498.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
    }
   },
   {
@@ -6698,7 +8022,28 @@
       0
      ]
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "64781.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3743.dat",
@@ -6745,7 +8090,28 @@
       0
      ]
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "3743.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "48496.dat",
@@ -6898,7 +8264,28 @@
      ],
      "region": "pin"
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "48496.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "2823.dat",
@@ -6950,7 +8337,28 @@
       -80
      ]
     }
-   ]
+   ],
+   "mirrorOf": {
+    "part": "2823.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "18654.dat",
@@ -6983,7 +8391,28 @@
      "halfHeight": 10
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "18654.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "43857.dat",
@@ -7034,7 +8463,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "43857.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "7229.dat",
@@ -7100,7 +8550,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "7229.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "41677.dat",
@@ -7156,7 +8627,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "41677.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32017.dat",
@@ -7252,7 +8744,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "32017.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "11478.dat",
@@ -7348,7 +8861,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "11478.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "60484.dat",
@@ -7462,7 +8996,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "60484.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "71708.dat",
@@ -7548,7 +9103,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "71708.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "80286.dat",
@@ -7664,7 +9240,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "80286.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32056.dat",
@@ -7778,7 +9375,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "32056.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32249.dat",
@@ -7879,7 +9497,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "32249.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32250.dat",
@@ -8010,7 +9649,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "32250.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32251.dat",
@@ -8201,7 +9861,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "32251.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32271.dat",
@@ -8381,7 +10062,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "32271.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3916.dat",
@@ -8572,7 +10274,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3916.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "43464.dat",
@@ -8673,7 +10396,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "43464.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "2905.dat",
@@ -8812,7 +10556,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "2905.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "99773.dat",
@@ -8951,7 +10716,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "99773.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "14720.dat",
@@ -9133,7 +10919,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "14720.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "64178.dat",
@@ -9618,7 +11425,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "64178.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "39790.dat",
@@ -10403,7 +12231,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "39790.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3704.dat",
@@ -10439,7 +12288,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3704.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "44294.dat",
@@ -10475,7 +12345,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "44294.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "60485.dat",
@@ -10511,7 +12402,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "60485.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "23948.dat",
@@ -10547,7 +12459,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "23948.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "50451.dat",
@@ -10583,7 +12516,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "50451.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "24316.dat",
@@ -10624,7 +12578,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "24316.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "15462.dat",
@@ -10665,7 +12640,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "15462.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "55013.dat",
@@ -10706,7 +12702,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "55013.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32209.dat",
@@ -10747,7 +12764,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "32209.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "59426.dat",
@@ -10783,7 +12821,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "59426.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "99008.dat",
@@ -10819,7 +12878,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "99008.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "4459.dat",
@@ -10856,7 +12936,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "4459.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "61332.dat",
@@ -10893,7 +12994,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "61332.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "4274.dat",
@@ -10965,7 +13087,28 @@
      "region": "stud"
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "4274.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "89678.dat",
@@ -11037,7 +13180,28 @@
      "region": "stud"
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "89678.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      -1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "77765.dat",
@@ -11074,7 +13238,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "77765.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "42924.dat",
@@ -11111,7 +13296,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "42924.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      -1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "39888.dat",
@@ -11148,7 +13354,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "39888.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32556a.dat",
@@ -11190,7 +13417,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "32556a.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      -1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32556b.dat",
@@ -11227,7 +13475,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "32556b.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "65304.dat",
@@ -11298,7 +13567,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "65304.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      -1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "11214.dat",
@@ -11355,7 +13645,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "11214.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "18651.dat",
@@ -11412,7 +13723,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "18651.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "65249.dat",
@@ -11469,7 +13801,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "65249.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "6628.dat",
@@ -11525,7 +13878,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "6628.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "15100.dat",
@@ -11591,7 +13965,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "15100.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "65487.dat",
@@ -11657,7 +14052,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "65487.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      -1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "44874.dat",
@@ -11753,7 +14169,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "44874.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32138.dat",
@@ -11909,7 +14346,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "32138.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "6538a.dat",
@@ -11948,7 +14406,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "6538a.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "6538b.dat",
@@ -11984,7 +14463,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "6538b.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      -1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "59443.dat",
@@ -12023,7 +14523,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "59443.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      -1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "26287.dat",
@@ -12077,7 +14598,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "26287.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      -1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "42195.dat",
@@ -12131,7 +14673,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "42195.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      -1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32013.dat",
@@ -12187,7 +14750,8 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": null
   },
   {
    "part": "32034.dat",
@@ -12253,7 +14817,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "32034.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      -1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32016.dat",
@@ -12324,7 +14909,8 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": null
   },
   {
    "part": "32192.dat",
@@ -12414,7 +15000,8 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": null
   },
   {
    "part": "32015.dat",
@@ -12504,7 +15091,8 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": null
   },
   {
    "part": "32014.dat",
@@ -12575,7 +15163,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "32014.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      1,
+      0
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "10288.dat",
@@ -12699,7 +15308,8 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": null
   },
   {
    "part": "42135.dat",
@@ -12755,7 +15365,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "42135.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32068.dat",
@@ -12824,7 +15455,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "32068.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32291.dat",
@@ -12903,7 +15555,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "32291.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "44809.dat",
@@ -12974,7 +15647,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "44809.dat",
+    "transform": {
+     "m": [
+      0,
+      0,
+      -1,
+      0,
+      1,
+      0,
+      -1,
+      0,
+      0
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32557.dat",
@@ -13073,7 +15767,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "32557.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "63869.dat",
@@ -13159,7 +15874,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "63869.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "98989.dat",
@@ -13273,7 +16009,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "98989.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "80910.dat",
@@ -13372,7 +16129,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "80910.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "92907.dat",
@@ -13473,7 +16251,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "92907.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "48989.dat",
@@ -13659,7 +16458,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "48989.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32126.dat",
@@ -13715,7 +16535,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "32126.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "87408.dat",
@@ -13872,7 +16713,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "87408.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3651.dat",
@@ -14000,7 +16862,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3651.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "6553.dat",
@@ -14070,7 +16953,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "6553.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "22961.dat",
@@ -14140,7 +17044,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "22961.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "5713.dat",
@@ -14210,7 +17135,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "5713.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "27940.dat",
@@ -14304,7 +17250,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "27940.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "39793.dat",
@@ -14464,7 +17431,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "39793.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32123a.dat",
@@ -14503,7 +17491,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "32123a.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      -1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32123b.dat",
@@ -14542,7 +17551,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "32123b.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      -1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "4265a.dat",
@@ -14581,7 +17611,8 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": null
   },
   {
    "part": "6577.dat",
@@ -14620,7 +17651,8 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": null
   },
   {
    "part": "10928.dat",
@@ -14673,6 +17705,27 @@
      0,
      0
     ]
+   },
+   "mirrorOf": {
+    "part": "10928.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
    }
   },
   {
@@ -14726,6 +17779,27 @@
      0,
      -0.5
     ]
+   },
+   "mirrorOf": {
+    "part": "69778.dat",
+    "transform": {
+     "m": [
+      0,
+      1,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
    }
   },
   {
@@ -14779,6 +17853,27 @@
      0,
      0
     ]
+   },
+   "mirrorOf": {
+    "part": "69779.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
    }
   },
   {
@@ -14832,6 +17927,27 @@
      0,
      0
     ]
+   },
+   "mirrorOf": {
+    "part": "18575.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
    }
   },
   {
@@ -14942,6 +18058,27 @@
      0,
      0
     ]
+   },
+   "mirrorOf": {
+    "part": "46372.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
    }
   },
   {
@@ -15016,7 +18153,8 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": null
   },
   {
    "part": "6630.dat",
@@ -15095,7 +18233,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "6630.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "6592.dat",
@@ -15174,7 +18333,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "6592.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32132.dat",
@@ -15456,7 +18636,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "32132.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32185.dat",
@@ -15535,7 +18736,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "32185.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "62520.dat",
@@ -15579,7 +18801,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "62520.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3712.dat",
@@ -15623,7 +18866,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3712.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "575.dat",
@@ -15667,7 +18931,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "575.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "6541.dat",
@@ -15751,7 +19036,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "6541.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "73230.dat",
@@ -15835,7 +19141,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "73230.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3700.dat",
@@ -15948,7 +19275,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3700.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32000.dat",
@@ -16076,7 +19424,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "32000.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3701.dat",
@@ -16277,7 +19646,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3701.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3894.dat",
@@ -16566,7 +19956,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3894.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3702.dat",
@@ -16943,7 +20354,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3702.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "2730.dat",
@@ -17408,7 +20840,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "2730.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3895.dat",
@@ -17961,7 +21414,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3895.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32018.dat",
@@ -18602,7 +22076,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "32018.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3703.dat",
@@ -19331,7 +22826,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3703.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "5565.dat",
@@ -19503,7 +23019,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "5565.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3709b.dat",
@@ -19862,7 +23399,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3709b.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32001.dat",
@@ -20395,7 +23953,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "32001.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3738.dat",
@@ -21102,7 +24681,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3738.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "4263.dat",
@@ -21230,7 +24830,8 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": null
   },
   {
    "part": "4262.dat",
@@ -21416,7 +25017,8 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": null
   },
   {
    "part": "4442.dat",
@@ -21660,7 +25262,8 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": null
   },
   {
    "part": "3005.dat",
@@ -21729,7 +25332,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3005.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3004.dat",
@@ -21827,7 +25451,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3004.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3622.dat",
@@ -21954,7 +25599,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3622.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3010.dat",
@@ -22110,7 +25776,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3010.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3009.dat",
@@ -22324,7 +26011,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3009.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3008.dat",
@@ -22596,7 +26304,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3008.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "6111.dat",
@@ -22926,7 +26655,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "6111.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "6112.dat",
@@ -23314,7 +27064,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "6112.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3003.dat",
@@ -23484,7 +27255,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3003.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3002.dat",
@@ -23726,7 +27518,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3002.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3001.dat",
@@ -24040,7 +27853,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3001.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "2456.dat",
@@ -24498,7 +28332,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "2456.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3007.dat",
@@ -25100,7 +28955,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3007.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3006.dat",
@@ -25846,7 +29722,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3006.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "2356.dat",
@@ -26694,7 +30591,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "2356.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "14716.dat",
@@ -26763,7 +30681,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "14716.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3245a.dat",
@@ -26861,7 +30800,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3245a.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3024.dat",
@@ -26930,7 +30890,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3024.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3023b.dat",
@@ -27028,7 +31009,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3023b.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3623.dat",
@@ -27155,7 +31157,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3623.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3710.dat",
@@ -27311,7 +31334,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3710.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "78329.dat",
@@ -27496,7 +31540,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "78329.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3666.dat",
@@ -27710,7 +31775,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3666.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3460.dat",
@@ -27982,7 +32068,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3460.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "4477.dat",
@@ -28312,7 +32419,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "4477.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "60479.dat",
@@ -28700,7 +32828,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "60479.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3022.dat",
@@ -28870,7 +33019,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3022.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3021.dat",
@@ -29112,7 +33282,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3021.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3020.dat",
@@ -29426,7 +33617,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3020.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3795.dat",
@@ -29884,7 +34096,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3795.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3034.dat",
@@ -30486,7 +34719,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3034.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3832.dat",
@@ -31232,7 +35486,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3832.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "2445.dat",
@@ -32122,7 +36397,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "2445.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "11212.dat",
@@ -32479,7 +36775,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "11212.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3031.dat",
@@ -33109,7 +37426,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3031.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3032.dat",
@@ -34055,7 +38393,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3032.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3035.dat",
@@ -35317,7 +39676,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3035.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3030.dat",
@@ -36895,7 +41275,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3030.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3029.dat",
@@ -38789,7 +43190,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3029.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3958.dat",
@@ -40223,7 +44645,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3958.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3036.dat",
@@ -42145,7 +46588,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3036.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3033.dat",
@@ -44555,7 +49019,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3033.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3028.dat",
@@ -47453,7 +51938,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3028.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3070b.dat",
@@ -47493,7 +51999,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3070b.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3069b.dat",
@@ -47547,7 +52074,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3069b.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "63864.dat",
@@ -47615,7 +52163,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "63864.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "2431.dat",
@@ -47697,7 +52266,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "2431.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "6636.dat",
@@ -47807,7 +52397,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "6636.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "4162.dat",
@@ -47945,7 +52556,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "4162.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3068b.dat",
@@ -48041,7 +52673,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3068b.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "26603.dat",
@@ -48179,7 +52832,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "26603.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "87079.dat",
@@ -48359,7 +53033,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "87079.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "69729.dat",
@@ -48623,7 +53318,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "69729.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "1751.dat",
@@ -48999,7 +53715,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "1751.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "6934.dat",
@@ -49221,7 +53958,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "6934.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3039.dat",
@@ -49361,7 +54119,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3039.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3040b.dat",
@@ -49444,7 +54223,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3040b.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3038.dat",
@@ -49641,7 +54441,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3038.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3037.dat",
@@ -49895,7 +54716,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3037.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3298.dat",
@@ -50077,7 +54919,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3298.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "4286.dat",
@@ -50174,7 +55037,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "4286.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3043.dat",
@@ -50270,7 +55154,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3043.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "54200.dat",
@@ -50310,7 +55215,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "54200.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "85984.dat",
@@ -50364,7 +55290,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "85984.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3665a.dat",
@@ -50476,7 +55423,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3665a.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "6141.dat",
@@ -50545,7 +55513,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "6141.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3062b.dat",
@@ -50614,7 +55603,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3062b.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "41539.dat",
@@ -53196,7 +58206,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "41539.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3456.dat",
@@ -56582,7 +61613,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3456.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3027.dat",
@@ -60456,7 +65508,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3027.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3026.dat",
@@ -66282,7 +71355,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3026.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "92438.dat",
@@ -71504,7 +76598,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "92438.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "91988.dat",
@@ -72538,7 +77653,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "91988.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "4282.dat",
@@ -73716,7 +78852,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "4282.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "2465.dat",
@@ -74220,7 +79377,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "2465.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3754.dat",
@@ -74392,7 +79570,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3754.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      -1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "49311.dat",
@@ -74548,7 +79747,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "49311.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "30145.dat",
@@ -74718,7 +79938,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "30145.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "30144.dat",
@@ -75032,7 +80273,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "30144.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "6213.dat",
@@ -75490,7 +80752,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "6213.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "6212.dat",
@@ -76886,7 +82169,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "6212.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "4202.dat",
@@ -78556,7 +83860,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "4202.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "4201.dat",
@@ -80802,7 +86127,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "4201.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "4204.dat",
@@ -85296,7 +90642,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "4204.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "2357.dat",
@@ -85436,7 +90803,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "2357.dat",
+    "transform": {
+     "m": [
+      0,
+      0,
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      0
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "6143.dat",
@@ -85618,7 +91006,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "6143.dat",
+    "transform": {
+     "m": [
+      0,
+      0,
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      0
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3941.dat",
@@ -85800,7 +91209,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3941.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3065.dat",
@@ -85898,7 +91328,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3065.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3066.dat",
@@ -86054,7 +91505,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3066.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3245c.dat",
@@ -86152,7 +91624,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3245c.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "30136.dat",
@@ -86222,7 +91715,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "30136.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "6091.dat",
@@ -86291,7 +91805,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "6091.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "6215.dat",
@@ -86503,7 +92038,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "6215.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      -1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "4490.dat",
@@ -86616,7 +92172,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "4490.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3659.dat",
@@ -86772,7 +92349,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3659.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "2420.dat",
@@ -86912,7 +92510,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "2420.dat",
+    "transform": {
+     "m": [
+      0,
+      0,
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      0
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "2639.dat",
@@ -87383,7 +93002,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "2639.dat",
+    "transform": {
+     "m": [
+      0,
+      0,
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      0
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "2450.dat",
@@ -87667,7 +93307,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "2450.dat",
+    "transform": {
+     "m": [
+      0,
+      0,
+      -1,
+      0,
+      1,
+      0,
+      -1,
+      0,
+      0
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3176.dat",
@@ -87880,7 +93541,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3176.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3794b.dat",
@@ -87963,7 +93645,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3794b.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "87580.dat",
@@ -88088,7 +93791,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "87580.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3048b.dat",
@@ -88142,7 +93866,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3048b.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "48288.dat",
@@ -89848,7 +95593,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "48288.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "98138.dat",
@@ -89888,7 +95654,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "98138.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "14769.dat",
@@ -89984,7 +95771,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "14769.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "2412b.dat",
@@ -90090,7 +95898,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "2412b.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "4150.dat",
@@ -90172,7 +96001,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "4150.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3044b.dat",
@@ -90226,7 +96076,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3044b.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3747a.dat",
@@ -90440,7 +96311,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3747a.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "4161.dat",
@@ -90707,7 +96599,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "4161.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3297.dat",
@@ -91059,7 +96972,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3297.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "4445.dat",
@@ -91541,7 +97475,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "4445.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "3678b.dat",
@@ -91798,7 +97753,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "3678b.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "4460b.dat",
@@ -91998,7 +97974,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "4460b.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "2825.dat",
@@ -92112,7 +98109,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "2825.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "2391.dat",
@@ -92238,7 +98256,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "2391.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "6612.dat",
@@ -92394,7 +98433,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "6612.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "4586.dat",
@@ -92486,7 +98546,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "4586.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "73507.dat",
@@ -92672,7 +98753,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "73507.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "71710.dat",
@@ -92918,7 +99020,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "71710.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "2719.dat",
@@ -93220,7 +99343,8 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": null
   },
   {
    "part": "41769a.dat",
@@ -93404,7 +99528,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "41770a.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "41770a.dat",
@@ -93588,7 +99733,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "41769a.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "43722a.dat",
@@ -93743,7 +99909,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "43723a.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "43723a.dat",
@@ -93898,7 +100085,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "43722a.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32190.dat",
@@ -93984,7 +100192,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "32191.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   },
   {
    "part": "32191.dat",
@@ -94070,7 +100299,28 @@
      ]
     }
    ],
-   "derived": true
+   "derived": true,
+   "mirrorOf": {
+    "part": "32190.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   }
  ]
 }

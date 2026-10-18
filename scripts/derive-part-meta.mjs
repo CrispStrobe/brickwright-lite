@@ -43,6 +43,7 @@
 //   node scripts/derive-part-meta.mjs --lib <ldraw dir> --compare            derived vs hand-measured
 //   node scripts/derive-part-meta.mjs --lib <ldraw dir> --generate <list>    add derived parts to parts.json
 //        (a list file of part numbers; parts already in parts.json are kept as measured)
+//   then: node scripts/derive-canonical-frames.mjs   (re-adds each part's measured mirrorOf, which --generate drops)
 
 import {readFileSync, writeFileSync, existsSync} from 'node:fs';
 import path from 'node:path';
