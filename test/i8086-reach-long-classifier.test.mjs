@@ -94,12 +94,19 @@ test('an emitted long token is still a leak: a mutant typing i8086 numbers `long
                 .replace("import JSZip from 'jszip';", `import JSZip from ${JSON.stringify(jszip)};`)
                 .replace(anchor, "return 'long';");
             assert.equal(source.split(anchor).length, 2, 'mutation anchor moved');
-            for (const dependency of ['sb3-creator-runtime.js', 'sb3-creator-scratchruntime.js',
-                'sb3-creator-chostruntime.js', 'cubeDirections.js', 'ev3Dialect.js', 'arcadeDialect.js', 'cpxDialect.js', 'pinRoleParts.js']) {
+            const dependencies = ['sb3-creator-runtime.js', 'sb3-creator-scratchruntime.js',
+                'sb3-creator-chostruntime.js', 'cubeDirections.js', 'ev3Dialect.js', 'arcadeDialect.js', 'cpxDialect.js', 'pinRoleParts.js'];
+            if (/^import\s+[^\n]*\sfrom\s+['"]\.\/procedureParameterConstraints\.js['"]/m.test(source)) {
+                dependencies.push('procedureParameterConstraints.js');
+            }
+            for (const dependency of dependencies) {
                 await symlink(join(libDir, dependency), join(temp, basename(dependency)));
             }
             const mutantFile = join(temp, 'sb3-creator.mjs');
             await writeFile(mutantFile, mutant);
+            const {default: MutantCreator} = await import(pathToFileURL(mutantFile).href);
+            assert.equal(typeof MutantCreator, 'function',
+                'isolated mutant must load before checking the emitted-long mutation');
             const numeric = await run('measure-i8086-numeric-reach.mjs', dir, ['--sb3', mutantFile]);
             assert.deepEqual(numeric.long, [PROGRAM]);
             assert.deepEqual(numeric.emits, []);
