@@ -5780,6 +5780,10 @@ request/original/independent-reader formats remain observation-only. A distinct
 disabled hosted job now delivers that collector; activation and original runtime
 observations remain unfinished. The original required roster and missing
 paths remain held. See the matching guide for selection and qualification gates.
+A separate delivery reader now joins externally selected official metadata,
+workflow proof and the bounded original ZIP before grading a retained discovery
+observation. Missing request/observation or raw evidence refuses. This is
+original admission only; it cannot activate discovery or approve a runtime.
 The explicit consumer CUI expectation now follows main
 PR1066 at `fe89e3425bf323b1acd9e3f98df6a7383e9b836b`; no dependency writer changed.
 

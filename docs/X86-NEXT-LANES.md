@@ -584,6 +584,63 @@ To audit an admitted discovery original without executing its producer:
   --expected reviewed-font-expectation.json
 ```
 
+The distinct `bw.gui-hdd.font-discovery-delivery-expectation.v1` adds a
+read-only delivery envelope around that observation audit. Independently select
+the source21/request/archive identities, official run/job/artifact IDs and raw
+metadata, plus the executing workflow proof and bytes. The reader checks the
+bounded ZIP without extraction, closes its role roster, and joins raw process
+and stream originals to the embedded observations. It refuses duplicate,
+traversing, symbolic-link, encrypted, oversized or unexpected members before
+using their contents. Archive and aggregate member limits are each 32 MiB,
+with at most 96 entries; per-role limits apply before inflation.
+
+A terminal producing job is required; unrelated queued jobs do not require the
+whole workflow to have concluded successfully. The artifact joins the selected
+run, source head, name, digest and size. Historical source is checked against
+the retained event and immutable run/job/artifact head fields. A later PR
+association may show another head, so its moving nested head is not historical
+source authority. The executing workflow commit remains separate from that
+source head. Its independently pinned official commit/tree observations join
+the workflow entry and raw blob SHA1/SHA256 to source21. Official metadata
+provenance is an external admission boundary, not a self-issued payload flag;
+the reader does not recompute the complete Git commit/tree object graph.
+
+This first delivery reader requires the original request and discovery
+observation, including their asserted raw process/stream roles. It conservatively
+refuses early artifacts missing them; preserve those failure originals outside
+this reader without inventing observations. A supported terminal failed partial
+collection retains its original primary error and producing conclusion. This
+initial profile supports success or ordinary collector failure with completed
+predecessor/upload steps; cancellation, timeout and other incomplete deliveries
+refuse. Every verdict remains observation-only and grants no runtime,
+font-selection or actual execution approval. Admit official metadata before acquiring the selected ZIP
+once, then audit the retained bytes; this tool never fetches or replays anything.
+
+Audit the already retained delivery without fetching or extracting it:
+
+```sh
+/usr/bin/python3 -B scripts/read-i80386-hdd-gui-originals.py \
+  --font-discovery-delivery gui-font-discovery.zip \
+  --request reviewed-font-request.json \
+  --expected reviewed-font-delivery-expectation.json \
+  --run metadata/run.json --job metadata/job.json \
+  --artifact metadata/artifact.json \
+  --workflow-proof metadata/workflow-proof.json \
+  --workflow metadata/executing-workflow.yml
+```
+
+The expectation pins each metadata original and the complete ZIP independently.
+The canonical `bw.gui-hdd.workflow-api-proof.v1` wrapper contains the retained
+commit and recursive-tree API original bytes with their exact extents and hashes.
+Freeze those originals and executing workflow content separately; never derive
+the trusted expectation from an untrusted archive's own declarations.
+
+The envelope checkpoint passes 64 Node tests including 96 embedded Python
+controls, preserving all 91 earlier Python test bodies. Nineteen source
+mutations and 27 independent re-pinned counterexamples are detected. Separate
+offline CLI controls cover complete and failed partial manufactured artifacts;
+these controls do not establish an actual hosted observation or guest result.
+
 A fresh agent can finish this work in the following bounded steps:
 
 1. Review the delivered disabled job, finite caps, selected system tools and
