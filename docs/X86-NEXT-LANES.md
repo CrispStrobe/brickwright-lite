@@ -356,8 +356,23 @@ import closure, whole-host authenticity or a browser/guest result.
 The first metadata event is already consumed for source `671702949709dc78da7d0cc8d0e064f9799ff399`:
 [run 39106669518](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39106669518).
 Its template digest is `668f81ce67ad7bd4313da934e0bddbd0e78e6cd152e67b68e55bb695fbdaf583`.
-At publication it is pending; do not repeat the label or original acquisition.
-Later source changes do not qualify or alter this earlier selected observation.
+It failed because the required selected font configuration
+`/etc/fonts/conf.avail/65-droid-sans-fallback.conf` was absent. Its sole official
+artifact is already acquired and independently audited; do not repeat the label
+or download. There is no successful inventory original or observed runtime/source
+graph. Later source changes do not qualify that failed selection.
+
+The [GUI readiness checkpoint](https://github.com/CrispStrobe/brickwright-lite/commit/ad636dbd1)
+waits for actual configuration text, drawer controls, the requested memory page
+and rendered full-width registers. It preserves the existing debugger assertions;
+four removed-wait mutations are detected. The
+[failure-diagnostic checkpoint](https://github.com/CrispStrobe/brickwright-lite/commit/ca1867592)
+collects bounded selected-file and alias problems in a distinct
+`inventory-failure.json`, preserves the first error, and returns nonzero before
+runtime/Git probes after any required-path failure. Successful v2 output and
+actual v3 guards remain held. Sixty-two Node tests, including 58 Python controls,
+pass; eight diagnostic source mutations are detected. These are source controls,
+not actual browser or guest qualification.
 
 Continue within the already claimed five implementation paths; dependency
 writers and other workflows remain outside this lane. Next tasks are:
@@ -378,9 +393,14 @@ writers and other workflows remain outside this lane. Next tasks are:
    silently raise the file cap. The template must contain no operator paths.
    With only the reviewed metadata guards enabled, freeze the exact source head
    and template. The first own-PR `x86-hdd-gui-inventory` event above is already
-   consumed: await that run and acquire its official originals
-   once, independently audit source/event/job and observed selected files,
-   aliases and installed packages, then freeze the reviewed immutable input.
+   consumed and its failed original is already audited. First freeze the new
+   failure-collector source. Review the locked Playwright platform dependency
+   roster and package-owned font/configuration paths; do not silently remove the
+   missing mandatory font or substitute local-host observations. A distinct
+   diagnostic event needs its own independently reviewed source/template/event
+   admission. Its failure-only original must never become a successful inventory.
+   Independently audit the new original once, retaining all failures, before
+   freezing any complete runtime input.
    The inventory is an observation, not automatic actual approval or a complete
    host attestation. Preserve any mismatch; do not install a fallback.
 3. Independently admit the official frontend Build checkout log, full source
