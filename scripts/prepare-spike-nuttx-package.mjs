@@ -11,6 +11,7 @@ import {programAddressedSensorCapability} from './lib/spike-addressed-sensor-mar
 import {programStorageAbiAddress} from './lib/spike-program-storage-marker.mjs';
 import {firmwareExtraNotices} from './lib/spike-firmware-notices.mjs';
 import {prepareInitialFlash, initialFlashScenario, INITIAL_FLASH_FILE} from './lib/spike-initial-flash.mjs';
+import {stateServiceHelpers} from './lib/spike-state-service-helpers.mjs';
 import {packageModelMode, stagePackageModels, packageModelInclude} from './lib/spike-package-model-loading.mjs';
 const args = process.argv.slice(2);
 if (args.length < 5) throw new Error('Usage: prepare-spike-nuttx-package.mjs FIRMWARE_REPO RENODE_REPO INFRASTRUCTURE_REPO RENODE_EXECUTABLE NEW_OUTPUT_DIRECTORY [--compiled-models]');
@@ -66,11 +67,8 @@ const copies = [['nuttx/nuttx', 'nuttx-kernel.elf', firmware], ['nuttx/nuttx_use
     ['licenses/hubprogram-BSD-3-Clause.txt', 'licenses/hubprogram-BSD-3-Clause.txt', firmware],
     ...extraNotices.map(([source, destination]) => [source, destination, firmware]),
     ['scripts/spike-state-server.py', 'scripts/spike-state-server.py', models],
-    ...['spike_arena_mailbox', 'spike_arena_inputs', 'spike_state_monitor_protocol', 'ev3_state_observer', 'spike_nuttx_mailbox']
-        .map(p => [`tools/${p}.py`, `tools/${p}.py`, models])];
-if (stateService.includes('from spike_program_uart import')) {
-    copies.push(['tools/spike_program_uart.py', 'tools/spike_program_uart.py', models]);
-}
+    // Every helper the state service imports (spike_lockstep since renode-spike-prime#59).
+    ...stateServiceHelpers(stateService).map(p => [p, p, models])];
 for (const [source, destination, root] of copies) {
     // Stage the same captured bytes used for vectors and feature discovery.
     if (root === firmware && source === 'nuttx/nuttx_user.elf') await writeFile(join(output, destination), user);
