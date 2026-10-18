@@ -22,13 +22,23 @@
  * was trying to exclude. Such a run is skipped here and reconsidered on the
  * next tick, by which time it has either started or is still nothing to judge.
  *
+ * The same mistake one level down (2026-10-18, issue #1074): a run's jobs do
+ * not all start together. On a starved free-tier queue the gate jobs start,
+ * finish in seconds, and the test jobs then wait an hour for runners. Aging
+ * the RUN from its earliest job start counted that wait as execution and
+ * cancelled a healthy main build whose every finished job had passed, so Pages
+ * did not deploy. A run is stuck only when one of its jobs is still RUNNING
+ * (started, not completed) past the budget, measured from that job's own
+ * start. Finished jobs and not-yet-started jobs have no running age.
+ *
  * Pure and data-in/data-out so it can be tested against fixtures rather than
  * against a live queue, which is the only place the interesting cases occur.
  */
 
 /**
  * @param {Array<{id: (number|string), run_started_at: string,
- *                jobs: Array<{started_at: ?string}>}>} runs - in-flight runs
+ *                jobs: Array<{started_at: ?string, completed_at?: ?string,
+ *                             status?: string}>}>} runs - in-flight runs
  * @param {number} nowMs - current time in epoch ms
  * @param {{maxMinutes?: number}} [options] - execution-age budget
  * @returns {Array<{id: (number|string), ageMinutes: number}>} runs to cancel
@@ -37,8 +47,10 @@ export function stuckRuns (runs, nowMs, options = {}) {
     const maxMinutes = options.maxMinutes ?? 25;
     const out = [];
     for (const run of runs || []) {
+        // Only jobs still running: started and not completed.
         const starts = (run.jobs || [])
-            .map(job => job && job.started_at)
+            .filter(job => job && !job.completed_at && job.status !== 'completed')
+            .map(job => job.started_at)
             .filter(Boolean)
             .map(at => Date.parse(at))
             .filter(ms => Number.isFinite(ms));
