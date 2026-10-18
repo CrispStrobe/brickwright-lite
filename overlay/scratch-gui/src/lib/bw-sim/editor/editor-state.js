@@ -10,6 +10,7 @@
 
 import {validatePlacedModel, partMotorJoint} from '../contracts.js';
 import {placePart as snapPlacePart} from './snap.js';
+import {alignMoves, distributeMoves, gridMoves, mirrorPivot, mirrorPoses} from './editor-parity.js';
 
 const cloneModel = model => {
     const out = {
@@ -350,6 +351,45 @@ export const createEditor = ({model, catalog}) => {
                 if (!(Number.isInteger(color) && color >= 0)) throw new Error(`bad colour ${color}`);
                 next = cloneModel(current);
                 next.parts[idx].color = color;
+            } else if (cmd.type === 'paint') {
+                // The colour picker and the eyedropper: one colour on every part of a selection, one undo step.
+                const {ids, color} = cmd;
+                if (!Array.isArray(ids) || ids.length === 0) throw new Error('paint needs ids');
+                if (!(Number.isInteger(color) && color >= 0)) throw new Error(`bad colour ${color}`);
+                for (const pid of ids) if (!current.parts.some(p => p.id === pid)) throw new Error(`unknown id '${pid}'`);
+                const want = new Set(ids);
+                if (current.parts.every(p => !want.has(p.id) || p.color === color)) throw new Error('paint: nothing changes');
+                next = cloneModel(current);
+                for (const p of next.parts) if (want.has(p.id)) p.color = color;
+            } else if (cmd.type === 'mirror' || cmd.type === 'align' || cmd.type === 'distribute' || cmd.type === 'toGrid') {
+                const {ids} = cmd;
+                if (!Array.isArray(ids) || ids.length === 0) throw new Error(`${cmd.type} needs ids`);
+                for (const pid of ids) if (!current.parts.some(p => p.id === pid)) throw new Error(`unknown id '${pid}'`);
+                let poses;
+                if (cmd.type === 'mirror') {
+                    // A left part becomes its right counterpart, a symmetric one its mirror image, the rest keep
+                    // their handedness at the mirrored spot (editor-parity.js): never an improper rotation.
+                    const pivot = cmd.pivot ?? mirrorPivot(current, catalogMap, ids, cmd.axis);
+                    const want = new Set(ids);
+                    poses = mirrorPoses(current.parts.filter(p => want.has(p.id)), catalogMap, cmd.axis, pivot);
+                } else if (cmd.type === 'align') {
+                    poses = alignMoves({model: current, catalog: catalogMap, ids, axis: cmd.axis, mode: cmd.mode});
+                } else if (cmd.type === 'distribute') {
+                    poses = distributeMoves({model: current, catalog: catalogMap, ids, axis: cmd.axis});
+                } else {
+                    poses = gridMoves({model: current, catalog: catalogMap, ids, grid: cmd.grid});
+                }
+                next = cloneModel(current);
+                let changed = false;
+                for (const po of poses) {
+                    const p = next.parts.find(x => x.id === po.id);
+                    if (!isProperRotation(po.rotation)) throw new Error(`${cmd.type}: improper rotation for '${po.id}'`);
+                    if (po.part && po.part !== p.part) { p.part = po.part; changed = true; }
+                    if (po.position.some((v, i) => v !== p.position[i]) || po.rotation.some((v, i) => v !== p.rotation[i])) changed = true;
+                    p.position = po.position.slice();
+                    p.rotation = po.rotation.slice();
+                }
+                if (!changed) throw new Error(`${cmd.type}: nothing moves`);
             } else if (cmd.type === 'setPort') {
                 const {id, port} = cmd;
                 const idx = current.parts.findIndex(p => p.id === id);
