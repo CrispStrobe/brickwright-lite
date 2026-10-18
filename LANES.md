@@ -1,3 +1,23 @@
+## CI: vendor-freshness skips prose-only pull requests — 2026-10-18
+
+CLAIMED and done in one PR — Claude. Free-tier runner slots: the `pull_request`
+trigger of `.github/workflows/vendor-freshness.yml` gets the same nine-file
+`paths-ignore` list its `push` trigger already has (BLOCKED, BUILD, CLAUDE,
+HANDOFF, LANES, MBIT-BUILD, PLAN, README, ROADMAP .md at the root). Such a PR
+cannot change vendor-pins.json, overlay/** or scripts/**. The push run, the
+nightly schedule, concurrency and the check itself are unchanged.
+## deploy-watchdog: age running jobs, not the run — 2026-10-18
+
+CLAIMED and done in one PR — Claude. Issue #1074: the watchdog's stuck-run
+step cancelled main Build 60f747223 although every finished job had passed;
+on the starved free-tier queue the run's first jobs finished early and the
+test shards waited for runners, and the selector aged the RUN from its
+earliest job start. Owns scripts/watchdog-stuck-runs.mjs (only jobs still
+running count, each from its own start), the jq field list in
+.github/workflows/deploy-watchdog.yml that feeds it, and new fixtures in
+test/deploy-watchdog-age.test.mjs. Budget, red-streak check, permissions and
+main-only scope unchanged; no existing assertion changed.
+
 ## Production service-worker probe (#306) and example part-face census — 2026-10-18
 
 CLAIMED — Claude (circuit-editor lane). New files only:
@@ -5774,6 +5794,46 @@ fixes wait for real GUI state commits and retain bounded failure-only inventory
 diagnostics. Required files, successful schemas and actual guards remain held.
 The matching guide scopes the distinct diagnostic selection and later affected
 browser/guest qualification; source controls alone cannot satisfy that gate.
+The subsequent diagnostic collector uses a 180-second cooperative budget inside
+the held four-minute step/fifteen-minute job, explicitly marking unvisited paths.
+All 63 source controls pass; actual guards and required-font selection stay held.
+Failure-only v2 additionally retains bounded exact event bytes and has a standalone
+reader that joins them against external pins; 65 embedded Python controls pass.
+Successful inventory/actual formats and positive executable size checks stay held.
+Metadata-only v3 now has a separately typed empty Python-source map and standalone
+original reader; that checkpoint passed 74 Python controls and 17 targeted mutations.
+The next source candidate adds explicit actual v4 typed-source mapping, a separately
+named prior-observation reference and before/after EOF/hash/identity/close checks.
+The candidate passes 63 Node tests including 80 embedded Python controls; the
+74 earlier Python test bodies and legacy v3 packet verdict remain unchanged;
+22 source mutations and eight independent packet counterexamples are detected.
+Actual activation and clean browser/guest qualification remain pending.
+A separately guarded font-discovery source continuation now collects bounded
+read-only package, configuration, alias and font-file observations. Its own
+request/original/independent-reader formats remain observation-only. A distinct
+conditional hosted job now enables that collector in the source candidate.
+Its final-head request/event admission and original observations remain pending;
+the request is unpublished, no discovery event was sent, and actual stays disabled. The original required roster and missing
+paths remain held. See the matching guide for selection and qualification gates.
+A separate delivery reader now joins externally selected official metadata,
+workflow proof and the bounded original ZIP before grading a retained discovery
+observation. Missing request/observation or raw evidence refuses. This is
+original admission only; it cannot activate discovery or approve a runtime.
+A separately versioned bounded compressed workflow proof now addresses recursive
+API originals whose v1 base64 wrapper exceeds the held proof cap. Exact originals,
+v1 support, JSON/proof limits and all workflow identity joins remain held. This
+reader change requires a fresh source21/request and explicit consumer selection;
+no hosted discovery or actual qualification is inferred.
+Actual frontend and original-delivery ZIP admission now rejects NUL-truncated
+names, special file types and ignored directory payloads before any inflation.
+The complete header census preserves existing limits, required files, TAR and
+actual v3/v4 semantics. This is a source repair; clean affected GUI/guest
+qualification remains pending.
+The explicit consumer CUI expectation now follows main
+PR1066 at `fe89e3425bf323b1acd9e3f98df6a7383e9b836b`; no dependency writer changed.
+
+
+
 
 SOURCE IMPLEMENTED; ACTUAL PENDING — Codex x86; ownership claim [PR1014](https://github.com/CrispStrobe/brickwright-lite/pull/1014)
 merged before implementation. Serialized after the existing media/debugger lane.
@@ -5790,10 +5850,22 @@ Reuse the existing Playwright persistence scenario and established hosted
 build/browser pipeline; do not introduce another provisioning framework or
 change unrelated workflows.
 
+
+PROPOSED SCOPED CENSUS EXTENSION — Codex x86, 2026-10-18. Extend this
+merged claim only to `docs/generated/ci-step-census.json`, refreshed with the
+existing `scripts/gen-ci-steps.mjs --fetch --workflow i80386-hdd-gui-actual.yml`
+scoped generator, plus this lane's exact conditional-step pointers. Merge this
+claim before writing the generated census. Retain every unrelated workflow's
+dated readings and main provenance. No generator, census test, gate baseline,
+workflow condition, supplier pin or other owner's section changes are included.
+The current failed unit originals establish a missing workflow census entry;
+metadata refresh and source controls grant no actual guest qualification.
+
 The composition consumes the adoption already merged through
-[PR975](https://github.com/CrispStrobe/brickwright-lite/pull/975): Board
-`f84ba60ead0a90deb9830f0c1468839c293ecf05`, CUI
-`055930ec51300e0d71466c696ce1bf76284bde38` and SB3
+[PR975](https://github.com/CrispStrobe/brickwright-lite/pull/975), with later CUI
+selection from [PR1066](https://github.com/CrispStrobe/brickwright-lite/pull/1066):
+Board `f84ba60ead0a90deb9830f0c1468839c293ecf05`, CUI
+`fe89e3425bf323b1acd9e3f98df6a7383e9b836b` and SB3
 `a13f92b8bc4b06f0cb9ffec22bab71f06db7ac76` at the 2026-10-18 refresh.
 These are source selections, not this scenario's installed qualification.
 Refresh canonical declarations before admission; refuse missing dedicated
@@ -6308,23 +6380,25 @@ checkouts are preserved; no blanket rebase or supplier bump is claimed.
 
 ### Integrated-main native checkpoint — 2026-10-18
 
-PR1050 is landed and every enabled exact-head gate passed. Current-main
-`fc385cada4d2ff6aab21e22bdcc38dc696d9c787` production frontend, unchanged
-startup ownership budget, eight EN/DE Chromium/WebKit painted-icon controls,
-responsive actions and physical-iOS compilation pass. Signing stopped with
-`errSecInternalComponent` while the Mac screen was locked; direct signing
-confirmed that remaining block. No new iPad installation is claimed. The
-private continuation verifies the compiled app, waits for unlock, then signs
-and verifies before attempting WLAN delivery; it does not rebuild unchanged
-sources or take unsolicited screenshots of other foreground apps. The
-previous installed candidate and receipts are preserved. Remaining native
-readiness, physical toolbar/connection/LED acceptance and clone buzzer tasks
-are bounded in the current handoff; no additional native or firmware work
-is implicitly claimed.
+PR1050 is landed and every enabled exact-head gate passed. The qualified
+`fc385cada4d2ff6aab21e22bdcc38dc696d9c787` snapshot's production frontend,
+unchanged startup ownership budget, eight EN/DE Chromium/WebKit painted-icon
+controls, responsive actions and physical-iOS compilation pass. Original signing
+failures and the expired continuation are retained. A frozen compiled copy was
+signed in one bounded attempt, strictly verified and installed over WLAN on
+2026-10-18: 84.36 MiB, fresh embedded frontend, no duplicate frontend/archive.
+The shared compiled original was preserved. This delivers the qualified snapshot,
+not subsequent main. Automatic launch was explicitly denied because the iPad
+was locked; foreground and physical toolbar acceptance remain pending. Retry
+launch after unlock without rebuilding or resigning. The old watcher mistook an
+absent screen-lock field for locked; the replacement uses the signing result.
+Previous artifacts and receipts are retained privately. Native readiness,
+physical UI/connection/LED acceptance and clone buzzer tasks retain their bounds
+in the handoff; no additional native or firmware work is implicitly claimed.
 
 ## Arcade foundation CI: isolated mutant import closure — 2026-10-18
 
-CLAIMED — integration owner, branch
+IMPLEMENTED CANDIDATE — integration owner, branch
 `docs/arcade-ci-fixture-closure-claim-20261018`, following the scoped Arcade
 handoff in PR1046. Own `test/i8086-reach-long-classifier.test.mjs` and
 `test/i8086-wait-reach.test.mjs`, this ledger and narrowly necessary task prose.
@@ -6346,3 +6420,49 @@ isolated module closure and both semantic mutants, run compiler-heavy gallery
 checks in hosted CI, and require every enabled final-head check before normal
 matched-head merge. This test-fixture repair does not close the six PR888
 failures or qualify its broader source foundation, runtime, GUI or corpus.
+
+The claim merged in PR1062 before source edits. Both isolated fixtures now link
+the constraint module only when the creator actually imports it, and explicitly
+load the mutant before checking its semantic effect. Focused controls cover
+the creator with and without that dependency; omitting the required link fails
+at module loading. Full gallery compilation and final enabled hosted checks
+remain required. Existing semantic assertions and resource bounds are unchanged.
+
+## iOS qualification: active embedded asset identity — 2026-10-18
+
+CLAIMED — integration owner, branch
+`docs/ios-active-asset-proof-claim-20261018`. This follows the resource-preparation
+claim and PR1044; its qualified resource inventories and signatures leave the
+active embedded frontend identity open.
+
+Own a new `apps/tauri/src-tauri/src/embedded_asset_audit.rs`, narrowly additive
+module declaration and Ready-event observation in `apps/tauri/src-tauri/src/lib.rs`,
+an optional default-off unsigned simulator audit in `.github/workflows/mobile.yml`,
+focused controls in `test/tauri-embedded-asset-audit.test.mjs` and
+`test/ios-workflow-embedded-asset-audit.test.mjs`, and this ledger/task handoff.
+Coordinate shared workflow edits with the existing iOS owner. Preserve the real
+context creation, `run_with_context` signature, setup/build/run sequence, current
+event handlers, native operations, CLI ownership and CSP. No second generated
+context or invented asset provider may stand in for the installed app's resolver.
+
+The audit must retain canonical ordered asset keys, served byte lengths and
+SHA-256 identities, complete source/configuration/executable/artifact joins, and
+explicit terminal or partial failure. Review actual iterator compression,
+resolver fallback and HTML/CSP transformations independently before comparing
+outputs. Reject development filesystem fallback. Admit finite entry, per-file,
+total-byte, output, time and resource budgets before an actual observation.
+Do not download simulator runtimes implicitly or expose a public diagnostic UI
+or remote trigger. Unsigned observation alone does not prove a signed target's
+embedded map; require a separate demonstrated signed-source/map join.
+
+Preserve helper ordering, targets, export methods, signing/provisioning checks,
+privacy/icons and branch/tag/release/TestFlight guards. Replace the existing
+device-list diagnostic with count/status output while preserving its assertions;
+retain historical originals privately. No guest, dependency/pin, delivery event,
+physical-device, G02 or release acceptance is included.
+
+Merge this docs-only claim before implementation. Require nonvacuous focused
+controls, every enabled exact-head source check, and fresh admitted actual
+candidate qualification before integrating source. Never repeat a successful
+original acquisition, reader or run merely to inspect it. See
+[the integration handoff](docs/INTEGRATION-NEXT-STEPS.md) for the remaining join.

@@ -238,7 +238,7 @@ test('commented-zero mutation cannot put either timer program back into honest r
         assert.doesNotMatch(mutant, /from ['"]jszip['"]/,
             'isolated mutant retained a bare GUI dependency outside test attribution');
         try {
-            for (const dependency of [
+            const dependencies = [
                 'sb3-creator-runtime.js',
                 'sb3-creator-scratchruntime.js',
                 'sb3-creator-chostruntime.js',
@@ -247,8 +247,17 @@ test('commented-zero mutation cannot put either timer program back into honest r
                 'arcadeDialect.js',
                 'cpxDialect.js',
                 'pinRoleParts.js'
-            ]) await symlink(join(sourceDir, dependency), join(temp, basename(dependency)));
+            ];
+            if (/^import\s+[^\n]*\sfrom\s+['"]\.\/procedureParameterConstraints\.js['"]/m.test(source)) {
+                dependencies.push('procedureParameterConstraints.js');
+            }
+            for (const dependency of dependencies) {
+                await symlink(join(sourceDir, dependency), join(temp, basename(dependency)));
+            }
             await writeFile(mutantFile, mutant);
+            const {default: MutantCreator} = await import(pathToFileURL(mutantFile).href);
+            assert.equal(typeof MutantCreator, 'function',
+                'isolated mutant must load before checking the commented-zero mutation');
             const {stdout} = await execFileP(process.execPath, [
                 '--import', guiScopeHook,
                 'scripts/measure-i8086-numeric-reach.mjs',
