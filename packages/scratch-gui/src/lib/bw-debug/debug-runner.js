@@ -2406,8 +2406,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
     /** STM32F030 — same shape as the Pico attach, three differences: the
      *  program is a raw flash image in BYTES (vectors first — the F0
-     *  machine boots it like the silicon), the default clock is the
-     *  F030's 48 MHz, and the target kind is 'stm32f0'. The debug target
+     *  machine boots it like the silicon), the core clock follows the
+     *  firmware's own RCC setup (bw-board refuses a `clockHz` for STM32
+     *  targets), and the target kind is 'stm32f0'. The debug target
      *  underneath is the SAME rp2040js one, driven through the F0
      *  adapter's facade. */
     async function attachStm32F0Target(built) {
@@ -2420,8 +2421,6 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         const declared = projectStc(null);
         const stc = {...(declared || {}), pins: (declared && declared.pins) || []};
         const targetKind = (built && built.kind) || selectedTargetKind || 'stm32f0';
-        const defaultClock = targetKind === 'stm32g0' ? 64_000_000 : 48_000_000;
-        const clockHz = built.f_cpu || built.clockHz || defaultClock;
 
         const netlist = await resolveNetlist(vm, stc, inferNetlist);
         board = new BoardImpl(3.3);
@@ -2436,7 +2435,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         if (!program) throw new Error(`the ${targetKind} build produced no flash image`);
 
         const { target: f0Target, adapter: f0Adapter } = await createDebugTarget(targetKind, {
-            board, program, symbols: built.symbols, clockHz,
+            board, program, symbols: built.symbols,
         });
 
         if (f0Adapter && f0Adapter.onSerial) {

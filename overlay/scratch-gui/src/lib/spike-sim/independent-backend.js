@@ -55,6 +55,8 @@ export default class IndependentSpikeBackend {
         this._pacing = false;
         this._sound = null;
         this._onBeep = options.onBeep;
+        /** Optional (port index, controller) => boolean: may a position command complete now? */
+        this.positionSettled = null;
         if (options.configuration) for (let i = 0; i < 6; i++) this.configure(i, options.configuration);
     }
 
@@ -380,8 +382,10 @@ export default class IndependentSpikeBackend {
             if (positionMode && c.mode !== 'idle' && settled) {
                 m.position = c.target;
                 m.degPerSec = 0;
-                // Hold continues regulating after it settles.
-                if (c.mode !== 'hold') this._complete(c);
+                // Hold continues regulating after it settles. A physical motor finishes when its
+                // shaft is on target too, not when the reference is (positionSettled, set by the
+                // Robot Lab's DC-motor adapter; absent — the arena, kinematic — the reference is the shaft).
+                if (c.mode !== 'hold' && (!this.positionSettled || this.positionSettled(i, c))) this._complete(c);
             }
             if (c.mode === 'time' && c.remaining === 0) {
                 m.degPerSec = 0;

@@ -1,0 +1,199 @@
+{
+  "reference/light/set-brightness#0": {
+    "id": "reference/light/set-brightness#0",
+    "frames": [
+      {
+        "t": 300,
+        "original": [
+          8289918,
+          8289918,
+          8289918,
+          8289918,
+          8289918,
+          8289918,
+          986895,
+          986895,
+          986895,
+          986895
+        ],
+        "translated": [
+          8289918,
+          8289918,
+          8289918,
+          8289918,
+          8289918,
+          8289918,
+          8289918,
+          8289918,
+          8289918,
+          8289918
+        ]
+      },
+      {
+        "t": 900,
+        "original": [
+          8355711,
+          8355711,
+          8355711,
+          8289918,
+          8289918,
+          8289918,
+          8289918,
+          8289918,
+          8289918,
+          8289918
+        ],
+        "translated": [
+          8355711,
+          8355711,
+          8355711,
+          8355711,
+          8355711,
+          8355711,
+          8355711,
+          8355711,
+          8355711,
+          8355711
+        ]
+      }
+    ]
+  },
+  "reference/light/show-animation#0": {
+    "id": "reference/light/show-animation#0",
+    "frames": [
+      {
+        "t": 300,
+        "original": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "translated": [
+          983055,
+          917519,
+          786447,
+          720911,
+          589839,
+          524303,
+          393231,
+          327695,
+          196623,
+          65551
+        ]
+      }
+    ]
+  },
+  "tutorials/siren#4": {
+    "id": "tutorials/siren#4",
+    "frames": [],
+    "originalTones": [
+      {
+        "t": 205,
+        "frequency": 988,
+        "ms": 125
+      },
+      {
+        "t": 330,
+        "frequency": 1319,
+        "ms": 375
+      }
+    ],
+    "translatedTones": [
+      {
+        "t": 200,
+        "frequency": 988,
+        "ms": 125
+      },
+      {
+        "t": 326,
+        "frequency": 1319,
+        "ms": 375
+      }
+    ]
+  },
+  "learnsystem/beep-beep#0": {
+    "id": "learnsystem/beep-beep#0",
+    "frames": [
+      {
+        "t": 300,
+        "original": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "translated": [
+          984576,
+          984576,
+          984576,
+          984576,
+          984576,
+          984576,
+          984576,
+          984576,
+          984576,
+          984576
+        ]
+      }
+    ],
+    "originalTones": [
+      {
+        "t": 306,
+        "frequency": 700,
+        "ms": 250
+      }
+    ],
+    "translatedTones": [
+      {
+        "t": 300,
+        "frequency": 700,
+        "ms": 250
+      }
+    ]
+  },
+  "reference/light/set-pixel-color#0": {
+    "id": "reference/light/set-pixel-color#0",
+    "frames": [
+      {
+        "t": 300,
+        "original": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "translated": [
+          983047,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    ]
+  }
+}

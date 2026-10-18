@@ -132,8 +132,15 @@ const settle = async () => { for (let i = 0; i < 3; i++) await new Promise(resol
  * @param {function} [options.onFrame] called after every frame's tick with
  *   (bridge, frameIndex): a VIEW of the run (the 3D view test renders each
  *   frame's snapshot through it). It must only read.
+ * @param {function} [options.bridgeFor] (hub) => the world the program drives
+ *   instead of the arena: anything with the arena bridge's run interface,
+ *   `verdict` and `tick(ms)` returning the verdict ({status: 'running'} while
+ *   it runs) or a promise of it (awaited before the next frame: the Robot Lab
+ *   with its physics in a worker), optionally `reset()` and `snapshot()`. The Robot Lab's run
+ *   (test/helpers/sim-lab-vm.mjs) passes its physics session here; `world`
+ *   then only gives the time limit (world.timeLimitMs).
  */
-export async function runOnArena (source, world, {extraMs = 0, record = false, vmStepsOn = null, maxFrames: paneFrames = 0, stepClock = true, onFrame = null} = {}) {
+export async function runOnArena (source, world, {extraMs = 0, record = false, vmStepsOn = null, maxFrames: paneFrames = 0, stepClock = true, onFrame = null, bridgeFor = null} = {}) {
     const clock = new FakeClock(1.7e12);
     clock.install();
     const calls = new Map();
@@ -148,7 +155,7 @@ export async function runOnArena (source, world, {extraMs = 0, record = false, v
         globalThis.navigator.bluetooth = undefined;
         installWebBluetooth();
         globalThis.__brickwrightChooseVirtualBluetooth = candidates => candidates[0];
-        const bridge = new ArenaHubBridge({hubState: hub, world});
+        const bridge = bridgeFor ? bridgeFor(hub) : new ArenaHubBridge({hubState: hub, world});
         // Every view the checker judged, for replaying under a mutated checker.
         const views = [];
         if (record) {
@@ -199,7 +206,7 @@ export async function runOnArena (source, world, {extraMs = 0, record = false, v
         await connecting;
         if (!extension.isConnected()) throw new Error('the extension did not connect to the virtual hub');
         await clock.advance(200); // info response, device-notification request
-        bridge.reset();
+        bridge.reset?.();
         await clock.advance(FRAME_MS);
 
         const paneClock = new VmStepClock();
@@ -225,9 +232,9 @@ export async function runOnArena (source, world, {extraMs = 0, record = false, v
             }
             if (pane) {
                 const now = clock.now;
-                verdict = bridge.tick(frameSimMs(paneClock, lastFrame, now));
+                verdict = await bridge.tick(frameSimMs(paneClock, lastFrame, now));
                 lastFrame = now;
-            } else verdict = bridge.tick(FRAME_MS);
+            } else verdict = await bridge.tick(FRAME_MS);
             if (onFrame) onFrame(bridge, frames);
             frames++;
             if (peripheralState.lastUnsupportedPythonTunnel && !unsupported.includes(peripheralState.lastUnsupportedPythonTunnel)) {
@@ -241,7 +248,7 @@ export async function runOnArena (source, world, {extraMs = 0, record = false, v
         for (const target of vm.runtime.targets) {
             for (const variable of Object.values(target.variables || {})) variables[variable.name] = variable.value;
         }
-        return {verdict, snapshot: bridge.snapshot(), frames, calls, hub, unsupported, views, variables};
+        return {verdict, snapshot: bridge.snapshot?.() ?? null, frames, calls, hub, unsupported, views, variables};
     } finally {
         try { if (vm) { vm.stopAll(); vm.quit(); } } catch { /* noop */ }
         try { if (registration) registration.unregister(); } catch { /* noop */ }

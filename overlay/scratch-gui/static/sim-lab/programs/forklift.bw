@@ -1,0 +1,11 @@
+DEVICE SPIKE
+
+# Robot Lab: lift the pallet 4 cm, hold it up there, put it back down.
+# Model: Forklift (lift motor on C turns an 8-tooth gear on a rack).
+# The gear's pitch radius is 4 mm, so 573 degrees (10 radians) lift the forks 40 mm.
+WHEN flag clicked:
+  set motor stop action C hold
+  set motor speed C 30
+  run motor C clockwise 573 degrees
+  wait 5 seconds
+  run motor C counterclockwise 573 degrees

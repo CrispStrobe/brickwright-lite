@@ -1,0 +1,17 @@
+DEVICE SPIKE
+
+# Robot Lab: stay inside the Sumo ring.
+# Model: Colour explorer (wheels on A and B, colour sensor on C looking down).
+# The robot drives forward until the sensor sees the black band, then backs up
+# a little and turns away, then drives on again - for as long as it runs.
+WHEN flag clicked:
+  set movement motors A B
+  set movement speed 60
+  FOREVER:
+    start moving steering 0
+    wait until spike color C is black
+    stop movement
+    move backward 8 cm
+    reset yaw
+    start tank -20 20
+    wait until (spike angle yaw) < -90

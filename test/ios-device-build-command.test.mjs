@@ -42,7 +42,7 @@ test('native build documentation warns against the broken offline dev package', 
 });
 
 
-test('iOS preparation excludes the linked static archive from resources, including repeat builds', async () => {
+test('iOS preparation excludes duplicate archives/frontend resources, including repeat builds', async () => {
     const temp = await mkdtemp(path.join(os.tmpdir(), 'brickwright ios package-'));
     try {
         const app = path.join(temp, 'app');
@@ -61,9 +61,19 @@ test('iOS preparation excludes the linked static archive from resources, includi
         const resource = '111111111111111111111111 /* libapp.a in Resources */';
         const framework = '222222222222222222222222 /* libapp.a in Frameworks */';
         const other = '333333333333333333333333 /* Assets.xcassets in Resources */';
+        const frontendResource = '444444444444444444444444 /* assets in Resources */';
+        const frontendFile = '555555555555555555555555';
+        const nestedResource = '666666666666666666666666 /* assets in Resources */';
+        const nestedFile = '777777777777777777777777';
+        const frontendBuild = `${frontendResource} = {isa = PBXBuildFile; fileRef = ${frontendFile} /* assets */; };\n`;
         const pbxPath = path.join(project, 'project.pbxproj');
         await writeFile(pbxPath, `${resource} = {isa = PBXBuildFile;};\n` +
+            frontendBuild +
+            `${frontendFile} /* assets */ = {isa = PBXFileReference; lastKnownFileType = folder; path = assets; sourceTree = SOURCE_ROOT; };\n` +
+            `${nestedResource} = {isa = PBXBuildFile; fileRef = ${nestedFile} /* assets */; };\n` +
+            `${nestedFile} /* assets */ = {isa = PBXFileReference; lastKnownFileType = folder; path = fixtures/assets; sourceTree = SOURCE_ROOT; };\n` +
             `${framework} = {isa = PBXBuildFile;};\nfiles = (\n${resource},\n${framework},\n${other},\n);\n` +
+            `resources = (\n${frontendResource},\n${nestedResource},\n);\n` +
             'shellScript = "npm run -- tauri ios xcode-script";\n');
         const prepare = () => {
             const result = spawnSync(process.execPath, [script], {encoding: 'utf8'});
@@ -74,15 +84,26 @@ test('iOS preparation excludes the linked static archive from resources, includi
         assert.doesNotMatch(pbx, /libapp\.a in Resources/);
         assert.ok(pbx.includes(framework), 'the static linker input must remain');
         assert.ok(pbx.includes(other), 'ordinary resources must remain');
+        assert.ok(!pbx.includes(frontendResource), 'the duplicate root frontend must not be packaged');
+        assert.ok(pbx.includes(`${frontendFile} /* assets */`), 'the staging folder reference remains');
+        assert.ok(pbx.includes(nestedResource), 'a different folder also named assets must remain');
         assert.equal(await readFile(path.join(gen, 'assets/index.html'), 'utf8'), '<html>offline app</html>');
         // Reinitializing a project with Externals populated can add the archive
         // again even though the Rust command is already correctly anchored.
-        await writeFile(pbxPath, `${resource} = {isa = PBXBuildFile;};\n${pbx}`);
+        await writeFile(pbxPath, `${resource} = {isa = PBXBuildFile;};\n${frontendBuild}${pbx}`);
         prepare();
         pbx = await readFile(pbxPath, 'utf8');
         assert.doesNotMatch(pbx, /libapp\.a in Resources/);
         assert.ok(pbx.includes(framework));
         assert.ok(pbx.includes(other));
+        assert.ok(!pbx.includes(frontendResource));
+        assert.ok(pbx.includes(nestedResource));
+        const changedShape = frontendBuild + pbx.replace('path = assets;', 'path = moved-assets;');
+        await writeFile(pbxPath, changedShape);
+        const refused = spawnSync(process.execPath, [script], {encoding: 'utf8'});
+        assert.notEqual(refused.status, 0, 'unknown generated folder layout must be refused');
+        assert.match(refused.stderr, /frontend folder reference changed shape/);
+        assert.equal(await readFile(pbxPath, 'utf8'), changedShape, 'refusal must preserve the project');
     } finally {
         await rm(temp, {recursive: true, force: true});
     }
