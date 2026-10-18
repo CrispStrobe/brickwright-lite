@@ -5789,7 +5789,10 @@ Source continuation is composed in [draft PR1013](https://github.com/CrispStrobe
 The controller, standalone reader, two real-UI scenario implementations, focused
 manufactured-original controls and guarded workflow are implemented. This is
 source work: no browser/guest acceptance is inferred from the manufactured
-packets. Both actual and metadata-inventory source/workflow guards remain false.
+packets. A separately reviewed follow-up enables metadata inventory only;
+actual source/workflow guards remain false. Exact immutable template/source/event
+admission is still required. Selected metadata excludes locally assumed Python
+cache entries; executing Python import/bytecode closure remains an actual gate.
 The v2 follow-up implements bounded held proc reads, lazy capped censuses and
 explicit directory aliases; 42 Python methods pass with all prior 33 bodies
 held, and thirteen targeted source cuts are detected. These are mock controls.

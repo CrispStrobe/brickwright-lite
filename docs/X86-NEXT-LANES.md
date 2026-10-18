@@ -335,7 +335,12 @@ complete controller-to-reader mocked attempt and coherently rehashed negatives.
 Twenty targeted source cuts are detected. They are not an executed browser or
 guest result. The independent reader also
 grades captured rendered memory and register text, not only target values.
-Both actual and inventory source/workflow guards remain false.
+The initial checkpoint kept both guards false. A subsequent separately reviewed
+activation enables metadata inventory only; actual source/workflow guards remain
+false. An immutable template and explicit own-PR event are still required.
+The first inventory selects source/runtime metadata only: locally assumed Python
+cache paths are excluded, and this does not establish the executing Python
+import/bytecode closure required before actual approval.
 
 Continue within the already claimed five implementation paths; dependency
 writers and other workflows remain outside this lane. Next tasks are:
@@ -354,8 +359,8 @@ writers and other workflows remain outside this lane. Next tasks are:
    locked Playwright package and selected Node/Python/tool closure. Select the
    real pinned headless-shell executable; do not substitute a larger browser or
    silently raise the file cap. The template must contain no operator paths.
-   After separate source review, enable only the metadata inventory guards and
-   admit one own-PR `x86-hdd-gui-inventory` event. Acquire its official originals
+   With only the reviewed metadata guards enabled, freeze the exact source head
+   and template, then admit one own-PR `x86-hdd-gui-inventory` event. Acquire its official originals
    once, independently audit source/event/job and observed selected files,
    aliases and installed packages, then freeze the reviewed immutable input.
    The inventory is an observation, not automatic actual approval or a complete

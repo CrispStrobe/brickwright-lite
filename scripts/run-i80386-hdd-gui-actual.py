@@ -25,7 +25,7 @@ import urllib.request
 import zipfile
 
 ACTUAL_ENABLED = False
-INVENTORY_ENABLED = False
+INVENTORY_ENABLED = True
 REPOSITORY = 'CrispStrobe/brickwright-lite'
 LABEL = 'x86-hdd-gui-actual'
 BOARD = 'f84ba60ead0a90deb9830f0c1468839c293ecf05'

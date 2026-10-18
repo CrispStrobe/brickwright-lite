@@ -34,7 +34,7 @@ jobs:
   # transport independently frozen Git blobs/digests; they never approve them.
   inventory:
     if: >-
-      ${{ false && github.event_name == 'pull_request' && github.event.action == 'labeled' &&
+      ${{ true && github.event_name == 'pull_request' && github.event.action == 'labeled' &&
           github.event.label.name == 'x86-hdd-gui-inventory' && github.actor == 'CrispStrobe' &&
           github.run_attempt == 1 && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-24.04

@@ -254,9 +254,20 @@ class Originals(unittest.TestCase):
             for module in (r,c):
                 with self.assertRaises(ValueError):module.parse_request(raw,H(raw))
     def test_actual_guard_before_any_edge(self):
-        for args in (['guard'],['actual','--request','missing','--expected-sha256','0'*64,'--output','missing'],['preflight'],['inventory-guard'],['inventory']):
+        for args in (['guard'],['actual','--request','missing','--expected-sha256','0'*64,'--output','missing'],['preflight']):
             with patch.object(c,'regular',side_effect=AssertionError('read edge')),patch.object(c,'Hosted',side_effect=AssertionError('child edge')):
                 with self.assertRaisesRegex(ValueError,'disabled'):c.main(args)
+        with patch.object(c,'INVENTORY_ENABLED',False):
+            for args in (['inventory-guard'],['inventory']):
+                with patch.object(c,'regular',side_effect=AssertionError('read edge')),patch.object(c,'Hosted',side_effect=AssertionError('child edge')):
+                    with self.assertRaisesRegex(ValueError,'disabled'):c.main(args)
+    def test_enabled_inventory_guard_has_no_edges_or_actual_authority(self):
+        self.assertIs(c.INVENTORY_ENABLED,True);self.assertIs(c.ACTUAL_ENABLED,False)
+        with patch.object(c,'regular',side_effect=AssertionError('read edge')),patch.object(c,'Hosted',side_effect=AssertionError('child edge')),patch.object(c,'inventory_observation',side_effect=AssertionError('inventory edge')):
+            self.assertEqual(c.main(['inventory-guard']),0)
+            with self.assertRaisesRegex(ValueError,'fixed independent digest'):c.main(['inventory'])
+            for mode in ('guard','preflight','actual'):
+                with self.assertRaisesRegex(ValueError,'disabled'):c.main([mode])
     def test_held_nofollow_bounded_read(self):
         with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
             path=pathlib.Path(temporary)/'original';path.write_bytes(b'ok');link=path.with_name('alias');link.symlink_to(path.name)
