@@ -1,0 +1,22 @@
+DEVICE SPIKE
+
+# Robot Lab: shift a two-speed gearbox and watch the output change speed.
+# Model: Gearbox (motor A turns the input axle, motor B swings the changeover catch).
+# The catch slides the driving ring onto one of two clutch gears. Only the gear the
+# ring holds turns the output axle; the other one spins freely.
+# Gear 1: the 8-tooth gear turns the 24-tooth gear, so the pointer turns 3 times slower.
+# Gear 2: 16 teeth turn 16 teeth, so the pointer turns as fast as the motor.
+WHEN flag clicked:
+  set motor speed B 20
+  set motor speed A 50
+  display text "1"
+  run motor B to position -26
+  start motor A forward
+  wait 4 seconds
+  display text "2"
+  run motor B to position 26
+  wait 4 seconds
+  display text "N"
+  run motor B to position 0
+  wait 3 seconds
+  stop motor A

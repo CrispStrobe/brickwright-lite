@@ -1,0 +1,72 @@
+0 Two-speed gearbox (Brickwright Robot Lab reference model)
+0 Name: gearbox.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 !BW ID hub
+1 71 0 130 100 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID base
+1 72 0 40 0 0 0 1 0 1 0 -1 0 0 32524.dat
+0 !BW ID hubPin1
+1 0 60 50 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hubPin2
+1 0 -60 50 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID driveMotor
+0 !BW PORT A
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ID motorPin1
+1 0 20 30 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motorPin2
+1 0 -20 30 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID inputAxle
+1 4 0 -90 0 0 1 0 1 0 0 0 0 -1 3706.dat
+0 !BW ID input8
+1 72 0 -70 0 1 0 0 0 0 1 0 -1 0 3647.dat
+0 !BW ID input16
+1 72 0 -130 0 1 0 0 0 0 1 0 -1 0 94925.dat
+0 !BW ID outputAxle
+1 4 -40 -50 0 0 1 0 1 0 0 0 0 -1 3737.dat
+0 !BW ID pointer
+1 4 -40 -20 0 0 0 -1 0 1 0 1 0 0 6632.dat
+0 !BW ID clutch24
+1 72 -40 -70 0 1 0 0 0 0 1 0 -1 0 2471.dat
+0 !BW ID joiner
+1 72 -40 -100 0 1 0 0 0 0 1 0 -1 0 6538b.dat
+0 !BW ID ring
+1 71 -40 -100 0 1 0 0 0 0 1 0 -1 0 6539.dat
+0 !BW ID clutch16
+1 72 -40 -130 0 1 0 0 0 0 1 0 -1 0 18946.dat
+0 !BW ID catch
+1 72 -40 -100 60 1 0 0 0 1 0 0 0 1 6641.dat
+0 !BW ID shiftAxle
+1 4 40 -100 40 1 0 0 0 1 0 0 0 1 3737.dat
+0 !BW ID shiftMotor
+0 !BW PORT B
+1 71 60 0 40 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ID sidePin1
+1 0 30 -20 20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID sidePin2
+1 0 30 20 20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID bevelAxle
+1 4 60 -60 40 0 1 0 1 0 0 0 0 -1 4519.dat
+0 !BW ID bevel12
+1 72 60 -75 40 1 0 0 0 0 1 0 -1 0 6589.dat
+0 !BW ID bevel20
+1 72 75 -100 40 0 0 1 0 1 0 -1 0 0 32198.dat
+0 !BW ID post1
+1 72 100 -40 20 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID post2
+1 72 100 -40 60 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID postPin1
+1 0 90 -20 20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID postPin2
+1 0 90 20 20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID postPin3
+1 0 90 -20 60 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID postPin4
+1 0 90 20 60 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID top
+1 72 120 -100 40 0 1 0 -1 0 0 0 0 1 32523.dat
+0 !BW ID topPin1
+1 0 110 -100 20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID topPin2
+1 0 110 -100 60 1 0 0 0 1 0 0 0 1 2780.dat

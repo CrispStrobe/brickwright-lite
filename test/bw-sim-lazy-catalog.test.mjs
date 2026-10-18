@@ -59,8 +59,25 @@ const lazy = ({fail = 0} = {}) => {
     return {...cat, fetched};
 };
 
+/**
+ * The gear-mechanics examples (gearbox lane) are built from derived transmission parts (clutch
+ * gears, driving ring, changeover catch, differential casing): opening one loads the rest first,
+ * as any model naming a derived part does (the next test). Every other shipped model stays core.
+ */
+const NEEDS_REST = ['differential.ldr', 'gearbox.ldr'];
+
+test('the gear-mechanics examples load the rest once and parse with nothing refused', async () => {
+    const cat = lazy();
+    for (const f of NEEDS_REST) {
+        const text = readFileSync(path.join(MODELS, f), 'utf8');
+        const catalog = await cat.catalogFor(text);
+        assert.deepEqual(parseModel(text, {catalog}).refusals, [], `${f}: nothing refused`);
+    }
+    assert.equal(cat.fetched.count, 1, 'the rest is fetched once');
+});
+
 test('every shipped model loads and parses on the core alone: opening one never fetches the rest', async () => {
-    const files = readdirSync(MODELS).filter(f => /\.(ldr|mpd)$/i.test(f));
+    const files = readdirSync(MODELS).filter(f => /\.(ldr|mpd)$/i.test(f) && !NEEDS_REST.includes(f));
     assert.ok(files.length >= 5, files.join(', '));
     const cat = lazy();
     for (const f of files) {

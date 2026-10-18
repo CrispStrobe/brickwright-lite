@@ -1578,3 +1578,44 @@ for the parts and kinds that exist).
   migration recognises exactly those numbers on exactly those parts as the catalogue motor.
 - Tests: `test/bw-sim-motor-catalogue.test.mjs` (self-consistency, Philo's 9 V numbers transcribed
   independently, load-point residuals, LEGO cross-check with documented disagreements, sources).
+
+### Gear mechanics as built (2026-10-18, `lane/simlab-gearbox-20261018`)
+
+- **The generalised gear rule** (`mech/gears.js`): a mesh fixes the two gears' rotation
+  *relative to a frame F that holds both axes* — Willis, `(ω₂ − ω_F)·â₂ = ratio · (ω₁ − ω_F)·â₁`.
+  The v1 common-frame case (both hinges turn in F) is unchanged and bit-identical (every shipped
+  model and fixture compiles to the same mechanism as before; checked by hashing them). Two
+  more cases are found and emitted as the coupling kind `relativeGear` (`kinds/relative-gear.js`):
+  **chain** — F is reached through hinges coaxial with a gear (a clutch gear free on its axle,
+  the axle turning in the gearbox frame; a slip clutch's gear on its axle); **carrier** — both
+  hinges turn in F, but a gear's body also turns coaxially in a body heavier than F, so F turns
+  about that gear's axis (the differential casing riding its side axles; an arm swinging about a
+  gear's axle). Anchors are tooth points fixed in F one pitch radius from each axis, so |ratio|
+  is the tooth ratio even where LDraw seats a bevel off its pitch cone (the official
+  differential seats its 12T satellites 17 LDU from the apex; `kinds/bevel.js` SEAT_TOL_LDU 2).
+- **Physics** (`physics/jolt-core.js`): a `relativeGear` whose F does not turn about the gears
+  is a GearConstraint on the two gear bodies' world rates (warm-started, exact while F does not
+  turn — the v1 limit); a carrier mesh is the teeth's no-slip condition, a SixDOF constraint with
+  only the tangent translation fixed, re-made at F's current tooth points before every step
+  (exact for any motion of F; 240 velocity iterations: a held-side differential measures 1.992×
+  the casing for Willis' 2). This is the §8 `ToothContact` without a custom Jolt build; the
+  re-made constraints are the last in the system and are removed last-first, so the Jolt
+  constraint order that checkpoints rely on never changes.
+- **Clutches**: `kinds/transmission.js` — the driving ring's spline bore on a ridged joiner is a
+  slider; `dogClutch` locks the clutch gear's hinge (a friction of 2.5 N·m) while the ring's
+  teeth are ≥ 4 LDU in its socket, and narrows the ring's travel to the sockets' depth;
+  `shiftFork` couples the catch's hinge and the ring's slider (linearised swing, 2.3 % at the full
+  8 LDU). `kinds/slip-clutch.js` — the 24T clutch gear's hub is a hinge with friction
+  3.75 N·cm (stamped 2.5–5 N·cm; Munafo, LUGNET 1999). `kinds/gear-seat.js` — the differential's
+  satellite cradles (hinges) and its cover's clip (rigid), read from LDraw's assembly 65414c01.
+- **Closed loops**: every mesh is an equation between two gears' rates in a frame; union-find
+  with rate factors finds loops. A consistent loop is kept (both paths carry load); an
+  inconsistent one locks (`gear-loop-locked`), its gears welded to the frame.
+- **Parts** (derived, `scripts/derive-part-meta.mjs` "transmission parts" section): clutch gears
+  18946, 81346, 2471, 35185 (sockets measured by rays; 6542a/b refused: both faces measure as
+  sockets, which one carries the teeth is not measurable), peghole bevels 87407, 65413, driving
+  ring 6539, changeover catch 6641, slip clutch 76019, differential casing 65414; the joiners
+  6538a/b gain a spline and a cylinder collider. Not done: the older differentials 6573/62821
+  (no LDraw assembly places their satellites), the 3L ring 18947 and its joiner 18948, the rotary
+  catch 35188, double bevels meshing as spur gears, worm/rack inside carriers.
+- Tests: `test/bw-sim-gearbox.test.mjs`, `test/bw-sim-gearbox-program.test.mjs`.

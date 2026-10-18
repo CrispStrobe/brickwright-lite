@@ -46,6 +46,7 @@
       "test/bw-sim-dc-motor.test.mjs",
       "test/bw-sim-forklift.test.mjs",
       "test/bw-sim-gear-trains.test.mjs",
+      "test/bw-sim-gearbox-program.test.mjs",
       "test/bw-sim-gearbox.test.mjs",
       "test/bw-sim-hub-boundary.test.mjs",
       "test/bw-sim-imu.test.mjs",

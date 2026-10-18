@@ -190,6 +190,8 @@ export const buildGears = (nodes, islands, joints, catalogMap, diagnostics = [],
             // The coupling registry's tooth meshes (kinds/spur.js, kinds/bevel.js, …) say which pairs mesh.
             const module = kinds.couplings.meshFor(t1, t2);
             if (!module) {
+                // Only gears near enough to touch (centres within the two tip radii) are a pair to warn about.
+                if (vecLen(vecSub(g1.centerLdu, g2.centerLdu)) > g1.r + g2.r + 5 + 1e-9) continue;
                 let message = `Gear pair ${g1.partId}(${t1})–${g2.partId}(${t2}) unsupported`;
                 if (t1 === 'worm' || t2 === 'worm' || t1 === 'rack' || t2 === 'rack') message = `Worm/rack gear pair ${g1.partId}–${g2.partId} unsupported`;
                 else if (t1 !== t2) message = `Mismatched gear types ${g1.partId}(${t1})–${g2.partId}(${t2})`;
