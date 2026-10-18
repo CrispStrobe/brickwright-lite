@@ -2,9 +2,10 @@
  "$comment": "Sim Lab part metadata v2 (docs/SIM-LAB-PLAN.md B3a; PartMeta v2 in bw-sim/contracts.js, docs/ROBOT-LAB-ARCHITECTURE.md §5.4: a motor or sensor names its device, whose numbers are in bw-sim/devices/catalog.js). Authored by hand for this project from the official LDraw geometry, measured with bw-sim/ldraw/ldraw-geometry.js; never copied from BrickLink Studio, LDCad or any other connectivity database (plan D4). LDraw frame and units (LDU, -y up). test/bw-sim-part-meta.test.mjs checks every connector against the part mesh. Masses are estimates to +-20% (no published per-part masses); motor torque is LEGO's published stall torque for the medium angular motor (18 Ncm) and speed is the SPIKE 3 velocity limit used by docs/SPIKE-ARENA.md. Entries marked \"derived\": true are not measured by hand: scripts/derive-part-meta.mjs derives them from their LDraw files (connection primitives, measured anti-stud cells; mass = mesh volume x ABS 1.05 g/cm3; nameDeGenerated: a generated German name), and admits one only when it passes the geometry contract.",
  "version": 2,
  "references": [
-  "39370c01.dat"
+  "39370c01.dat",
+  "41769.dat"
  ],
- "$references": "LDraw assemblies vendored only so the metadata test can check a connector against LDraw's own placement (39370c01: where the castor ball sits in its socket).",
+ "$references": "LDraw assemblies vendored only so the metadata test can check a connector against LDraw's own placement (39370c01: where the castor ball sits in its socket). 41769.dat is LDraw's `~Moved to 41769a` alias, vendored only so test/bw-sim-canonical-frame.test.mjs checks that an alias is found as a duplicate by its geometry (part-meta/canonical-frame.js).",
  "parts": [
   {
    "part": "32523.dat",
@@ -93216,6 +93217,856 @@
       0,
       4,
       0
+     ]
+    }
+   ],
+   "derived": true
+  },
+  {
+   "part": "41769a.dat",
+   "name": "Wing 2 x 4 right without chamfer",
+   "nameDe": "Wing 2 x 4 Right ohne Chamfer",
+   "nameDeGenerated": true,
+   "category": "other",
+   "massGrams": 1.03,
+   "connectors": [
+    {
+     "id": "s0",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s1",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s2",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s3",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "u0",
+     "type": "antistud",
+     "position": [
+      -10,
+      8,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u1",
+     "type": "antistud",
+     "position": [
+      -10,
+      8,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u2",
+     "type": "antistud",
+     "position": [
+      10,
+      8,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u3",
+     "type": "antistud",
+     "position": [
+      10,
+      8,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u4",
+     "type": "antistud",
+     "position": [
+      10,
+      8,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u5",
+     "type": "antistud",
+     "position": [
+      10,
+      8,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      6,
+      2,
+      36
+     ],
+     "position": [
+      10,
+      -2,
+      0
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      20,
+      4,
+      40
+     ],
+     "position": [
+      0,
+      4,
+      0
+     ]
+    }
+   ],
+   "derived": true
+  },
+  {
+   "part": "41770a.dat",
+   "name": "Wing 2 x 4 left without chamfer",
+   "nameDe": "Wing 2 x 4 Left ohne Chamfer",
+   "nameDeGenerated": true,
+   "category": "other",
+   "massGrams": 1.03,
+   "connectors": [
+    {
+     "id": "s0",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s1",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s2",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s3",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "u0",
+     "type": "antistud",
+     "position": [
+      -10,
+      8,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u1",
+     "type": "antistud",
+     "position": [
+      -10,
+      8,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u2",
+     "type": "antistud",
+     "position": [
+      -10,
+      8,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u3",
+     "type": "antistud",
+     "position": [
+      -10,
+      8,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u4",
+     "type": "antistud",
+     "position": [
+      10,
+      8,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u5",
+     "type": "antistud",
+     "position": [
+      10,
+      8,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      6,
+      2,
+      36
+     ],
+     "position": [
+      -10,
+      -2,
+      0
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      20,
+      4,
+      40
+     ],
+     "position": [
+      0,
+      4,
+      0
+     ]
+    }
+   ],
+   "derived": true
+  },
+  {
+   "part": "43722a.dat",
+   "name": "Wing 2 x 3 right without chamfer",
+   "nameDe": "Wing 2 x 3 Right ohne Chamfer",
+   "nameDeGenerated": true,
+   "category": "other",
+   "massGrams": 0.78,
+   "connectors": [
+    {
+     "id": "s0",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s1",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s2",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "u0",
+     "type": "antistud",
+     "position": [
+      -10,
+      8,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u1",
+     "type": "antistud",
+     "position": [
+      -10,
+      8,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u2",
+     "type": "antistud",
+     "position": [
+      10,
+      8,
+      -20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u3",
+     "type": "antistud",
+     "position": [
+      10,
+      8,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u4",
+     "type": "antistud",
+     "position": [
+      10,
+      8,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      6,
+      2,
+      26
+     ],
+     "position": [
+      10,
+      -2,
+      0
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      20,
+      4,
+      30
+     ],
+     "position": [
+      0,
+      4,
+      0
+     ]
+    }
+   ],
+   "derived": true
+  },
+  {
+   "part": "43723a.dat",
+   "name": "Wing 2 x 3 left without chamfer",
+   "nameDe": "Wing 2 x 3 Left ohne Chamfer",
+   "nameDeGenerated": true,
+   "category": "other",
+   "massGrams": 0.78,
+   "connectors": [
+    {
+     "id": "s0",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s1",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s2",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "u0",
+     "type": "antistud",
+     "position": [
+      -10,
+      8,
+      -20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u1",
+     "type": "antistud",
+     "position": [
+      -10,
+      8,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u2",
+     "type": "antistud",
+     "position": [
+      -10,
+      8,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u3",
+     "type": "antistud",
+     "position": [
+      10,
+      8,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u4",
+     "type": "antistud",
+     "position": [
+      10,
+      8,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      6,
+      2,
+      26
+     ],
+     "position": [
+      -10,
+      -2,
+      0
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      20,
+      4,
+      30
+     ],
+     "position": [
+      0,
+      4,
+      0
+     ]
+    }
+   ],
+   "derived": true
+  },
+  {
+   "part": "32190.dat",
+   "name": "Technic panel fairing #1",
+   "nameDe": "Technic Panel Fairing #1",
+   "nameDeGenerated": true,
+   "category": "other",
+   "massGrams": 3.7800000000000002,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      -30,
+      -10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      0,
+      -50,
+      -10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      0,
+      30,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      0,
+      50,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      22.76,
+      58.97,
+      72.55
+     ],
+     "position": [
+      -13.76,
+      0,
+      52.550000000000004
+     ]
+    }
+   ],
+   "derived": true
+  },
+  {
+   "part": "32191.dat",
+   "name": "Technic panel fairing #2",
+   "nameDe": "Technic Panel Fairing #2",
+   "nameDeGenerated": true,
+   "category": "other",
+   "massGrams": 3.7800000000000002,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      -30,
+      -10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      0,
+      -50,
+      -10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      0,
+      30,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      0,
+      50,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      22.76,
+      58.97,
+      72.55
+     ],
+     "position": [
+      13.76,
+      0,
+      52.550000000000004
      ]
     }
    ],
