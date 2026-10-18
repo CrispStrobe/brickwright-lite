@@ -219,6 +219,10 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         get camera () {
             return {position: camera.position.toArray(), target: controls.target.toArray(), distance: camera.position.distanceTo(controls.target)};
         },
+        /** What the last frame cost: three's draw calls and triangles, GPU objects, and the instancing (scale gate). */
+        renderStats: () => ({calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, lines: renderer.info.render.lines,
+            geometries: renderer.info.memory.geometries, programs: renderer.info.programs?.length ?? null,
+            parts: model.parts.length, instanced: built.instanced ? built.instanced.stats() : null}),
         /** What the overlay shows now, plus the parts pulsing (for the browser gate). */
         overlayStats: () => ({...insight.stats(), pulsing: pulse.count,
             tinted: allMeshes().filter(m => [].concat(m.material).some(x => x.userData.baseColor && !x.color.equals(x.userData.baseColor))).length})};
