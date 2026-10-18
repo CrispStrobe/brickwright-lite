@@ -357,7 +357,7 @@ class Originals(unittest.TestCase):
         self.assertIn('test "$(realpath -e "$parent")" = "$parent"',actual)
         self.assertNotIn('rm ',actual)
     @contextlib.contextmanager
-    def inventory_edges(self,files=None,aliases=None,directories=None,faults=None,clock=None,event_transform=None):
+    def inventory_edges(self,files=None,aliases=None,directories=None,faults=None,clock=None,event_transform=None,typed=False):
         faults=faults or {};events=[];request=D(self.files['request.original.json']);original_sha=c.sha
         class NodeBytes(bytes):
             def __len__(self):return 124827920
@@ -365,6 +365,7 @@ class Originals(unittest.TestCase):
         template={'schema':'bw.gui-hdd.inventory-template.v2','sourceHead':'a'*40,'files':default if files is None else files,
           'aliases':aliases or [],'directoryAliases':directories or [],'node':'/node','python':'/usr/bin/python3.12','chromium':'/chrome',
           'tools':{'git':'/usr/bin/git','gh':'/usr/bin/gh'}}
+        if typed:template.update(schema='bw.gui-hdd.inventory-template.v3',emptyPythonSources=self.empty_selection())
         raw=E(template);pin=H(raw);event=D(base64.b64decode(self.expected['inventoryOriginal']['base64']))['event']
         event=D(base64.b64decode(event['base64']));event['pull_request']['body']='<!-- BW_GUI_HDD_INVENTORY_SHA256='+pin+' -->';event_raw=event_transform(event) if event_transform else E(event)
         env={'GITHUB_EVENT_PATH':'/event','GITHUB_RUN_ID':'90','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'inventory','GITHUB_REPOSITORY':c.REPOSITORY,
@@ -395,7 +396,7 @@ class Originals(unittest.TestCase):
                 events.append(('git',args));role='git-'+str(len(self.attempts));self.attempts.add(role)
                 if args[0]=='rev-parse':body=(request['source']['head' if args[1]=='HEAD' else 'tree']+'\n').encode()
                 else:body=('source:'+args[2].split(':',1)[1]).encode()
-                process={'argv':['/usr/bin/git']+args,'exitCode':0};saved[str(self.capture.root/(role+'.process.json'))]=E(process)
+                process={'argv':['/usr/bin/git','--no-replace-objects','-c','gc.auto=0','-c','maintenance.auto=false','-c','core.fsmonitor=false','-c','core.hooksPath=/dev/null']+args,'exitCode':0};saved[str(self.capture.root/(role+'.process.json'))]=E(process)
                 self.capture.files[role+'.stdout']=ROW(body);self.capture.files[role+'.stderr']=ROW(b'');return body
         def inventory(path):
             events.append(('installed',str(path)));prefix=str(path).removeprefix('/checkout/')+'/'
@@ -557,6 +558,172 @@ class Originals(unittest.TestCase):
             else:value['diagnostic']['pathBytes']+=1
             expected['failure']=ROW(E(value))
             with self.assertRaises(ValueError):r.verify_inventory_failure(E(value),template,expected)
+    def empty_selection(self):
+        return {c.EMPTY_PYTHON_PATH:{'role':'python-empty-package-source','byteLength':0,'sha256':H(b''),'uid':0,'gid':0,'mode':0o644}}
+    @contextlib.contextmanager
+    def empty_source_edges(self,cut=None,close_error=False):
+        events=[];base={'dev':1,'ino':2,'mode':stat.S_IFREG|0o644,'uid':0,'gid':0,'nlink':1,'size':0,'mtime_ns':-1};named_count=0;held_count=0
+        if cut in ('mode','uid','gid','nlink','size'):
+            base[cut]={'mode':stat.S_IFLNK|0o777,'uid':1,'gid':1,'nlink':2,'size':1}[cut]
+        def info():return SimpleNamespace(**{'st_'+key:value for key,value in base.items()})
+        def named(path):
+            nonlocal named_count
+            events.append(('named',str(path)));named_count+=1
+            if cut=='named-first-error' or cut=='named-error' and named_count==2:raise OSError('NAMED_READBACK')
+            value=info()
+            if cut=='named-drift' and named_count==2:value.st_ino+=1
+            return value
+        def held(fd):
+            nonlocal held_count
+            events.append(('held',fd));held_count+=1
+            if cut=='held-error':raise OSError('HELD_FAILED')
+            value=info()
+            if cut=='held-before-drift' or cut=='held-after-drift' and held_count==2:value.st_ino+=1
+            if cut and cut.startswith('drift-') and held_count==2:setattr(value,'st_'+cut[6:],getattr(value,'st_'+cut[6:])+1)
+            return value
+        def open_(path,flags):
+            events.append(('open',flags))
+            if cut=='open-error':raise OSError('OPEN_FAILED')
+            return 41
+        def read_(fd,cap):
+            events.append(('read',cap))
+            if cut=='read-error':raise OSError('READ_FAILED')
+            return b'X' if cut=='nonempty' else b''
+        def close_(fd):
+            events.append(('close',fd))
+            if cut=='close-error' or close_error:raise OSError('CLOSE_FAILED')
+        with patch.object(c.Path,'lstat',named),patch.object(c.Path,'resolve',return_value=pathlib.Path(c.EMPTY_PYTHON_PATH)),patch.object(c.os,'open',side_effect=open_),patch.object(c.os,'fstat',side_effect=held),patch.object(c.os,'read',side_effect=read_),patch.object(c.os,'close',side_effect=close_):
+            yield events
+    def typed_inventory_fixture(self,failed=False,cut=None,close_error=False):
+        faults={('lstat','/missing-font'):FileNotFoundError('FIRST_FONT')} if failed else {}
+        files=['/node','/usr/bin/python3.12','/chrome','/usr/bin/git','/usr/bin/gh']+(['/missing-font'] if failed else [])
+        with self.inventory_edges(files,faults=faults,typed=True) as (raw,pin,env,events),self.empty_source_edges(cut,close_error) as typed_events:
+            value=c.inventory_observation(raw,pin,pathlib.Path('/checkout'),env,'/out/a.json')
+        expected={'schema':'bw.gui-hdd.inventory-failure-expectation.v3' if value['schema'].startswith('bw.gui-hdd.inventory-failure.') else 'bw.gui-hdd.inventory-admission.v3',
+          'source':D(self.files['source.before.json']),'template':ROW(raw),'runId':90,'workflowSha':'d'*40}
+        expected['failure' if 'failure' in expected['schema'] else 'original']=ROW(E(value))
+        return value,raw,expected,events,typed_events
+    def rehash_typed_inventory(self,value,template,expected):
+        raw=E(template);expected['template']=ROW(raw)
+        if 'templateSha256' in value:value['templateSha256']=H(raw)
+        else:value['template'].update(ROW(raw),expectedSha256=H(raw))
+        event=value['event'];original=event.get('original',event);event_raw=D(base64.b64decode(original['base64']))
+        event_raw['pull_request']['body']='<!-- BW_GUI_HDD_INVENTORY_SHA256='+H(raw)+' -->';event_raw=E(event_raw)
+        event.update(ROW(event_raw));original['base64']=base64.b64encode(event_raw).decode()
+        if 'diagnostic' in value:
+            roles=('files','emptyPythonSources','aliases','directoryAliases')
+            value['diagnostic']['pathBytes']=sum(len(E({path:row}))+len(E(row.get('error')))+32 for role in roles for path,row in value[role].items())
+            frame=copy.deepcopy(value);frame.update(files={},emptyPythonSources={},aliases={},directoryAliases={},firstFailure=None,secondary=[],gitSource={'reached':False,'head':None,'tree':None,'files':{}},diagnostic={'pathBytes':0,'limitBytes':0,'complete':False})
+            value['diagnostic']['limitBytes']=c.JSON_CAP-len(E(frame))-8192
+        expected['failure' if 'failure' in expected['schema'] else 'original']=ROW(E(value));return raw
+    def test_typed_empty_source_held_eof_readback_close_positive(self):
+        observed={}
+        with self.empty_source_edges() as events:c.read_empty_python_source(c.EMPTY_PYTHON_PATH,self.empty_selection()[c.EMPTY_PYTHON_PATH],observed)
+        self.assertEqual(events,[('named',c.EMPTY_PYTHON_PATH),('open',os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK),('held',41),('read',1),('held',41),('named',c.EMPTY_PYTHON_PATH),('close',41)])
+        self.assertEqual(observed['read'],{'byteLength':0,'sha256':H(b''),'eof':True});r.verify_empty_python_source(observed)
+    def test_typed_source_rejects_wrong_selection_before_any_read(self):
+        for cut in ('path','role','hash','bool','float','negative','nonempty','owner','mode','extra'):
+            selected=self.empty_selection();row=selected[c.EMPTY_PYTHON_PATH]
+            if cut=='path':selected['/usr/lib/python3.12/fake/__init__.py']=selected.pop(c.EMPTY_PYTHON_PATH)
+            elif cut=='role':row['role']='executable'
+            elif cut=='hash':row['sha256']='0'*64
+            elif cut in ('bool','float','negative'):row['byteLength']={'bool':False,'float':0.0,'negative':-1}[cut]
+            elif cut=='nonempty':row.update(byteLength=1,sha256=H(b'X'))
+            elif cut=='owner':row['uid']=1
+            elif cut=='mode':row['mode']=0o444
+            else:row['extra']=True
+            with patch.object(c.os,'open') as opened,self.assertRaises(ValueError):c.empty_python_policy(selected,[],[],[])
+            opened.assert_not_called()
+        for role in ('files','aliases','directories'):
+            args=[[],[],[]];args[('files','aliases','directories').index(role)]=[c.EMPTY_PYTHON_PATH]
+            with self.assertRaises(ValueError):c.empty_python_policy(self.empty_selection(),*args)
+        with self.assertRaises(ValueError):c.empty_python_policy(self.empty_selection(),['/p'+str(i) for i in range(512)],[],[])
+    def test_typed_exception_does_not_relax_generic_positive_file_policy(self):
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            path=pathlib.Path(temporary)/'library.so';path.write_bytes(b'')
+            with self.assertRaises(ValueError):c.regular(path,1)
+            with self.assertRaises(ValueError):c.check_file(path,{'byteLength':0,'sha256':H(b'')})
+            path.write_bytes(b'X');self.assertEqual(c.check_file(path,ROW(b'X')),b'X')
+        for path in ('/etc/fonts/font.conf','/usr/bin/python3.12','/usr/lib/python3.12/urllib/__pycache__/__init__.cpython-312.pyc'):
+            selected={path:self.empty_selection()[c.EMPTY_PYTHON_PATH]}
+            for module in (c,r):
+                with self.assertRaises(ValueError):module.empty_python_policy(selected,[],[],[])
+        request=D(self.files['request.original.json'])
+        for path in (request['runtime']['node'],request['runtime']['chromium']):
+            changed=copy.deepcopy(request);changed['runtime']['files'][path]={'byteLength':0,'sha256':H(b'')};raw=E(changed)
+            for module in (c,r):
+                with self.assertRaises(ValueError):module.parse_request(raw,H(raw))
+    def test_typed_source_os_failures_identity_drift_and_secondary_close(self):
+        for cut in ('mode','uid','gid','nlink','size','named-first-error','open-error','held-error','held-before-drift','held-after-drift','named-drift','named-error','nonempty','read-error','close-error')+tuple('drift-'+key for key in ('dev','ino','mode','uid','gid','nlink','size','mtime_ns')):
+            observed={}
+            with self.empty_source_edges(cut) as events,self.assertRaises((ValueError,OSError)):c.read_empty_python_source(c.EMPTY_PYTHON_PATH,self.empty_selection()[c.EMPTY_PYTHON_PATH],observed)
+            self.assertEqual(sum(operation=='close' for operation,arg in events),0 if cut in ('mode','uid','gid','nlink','size','named-first-error','open-error') else 1)
+        with self.empty_source_edges('read-error',True),self.assertRaisesRegex(OSError,'READ_FAILED') as error:
+            c.read_empty_python_source(c.EMPTY_PYTHON_PATH,self.empty_selection()[c.EMPTY_PYTHON_PATH],{})
+        self.assertEqual([str(item) for item in error.exception.inventory_secondary],['CLOSE_FAILED'])
+    def test_typed_metadata_v3_complete_producer_reader_and_cli(self):
+        value,template,expected,events,typed_events=self.typed_inventory_fixture()
+        self.assertEqual(value['schema'],'bw.gui-hdd.inventory-original.v3');self.assertNotIn(c.EMPTY_PYTHON_PATH,value['runtime']['files'])
+        verdict=r.verify_inventory_original(E(value),template,expected);self.assertFalse(verdict['actualRequestSupported']);self.assertFalse(verdict['qualified'])
+        self.assertTrue(any(operation=='git' for operation,arg in events))
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            folder=pathlib.Path(temporary)
+            for name,raw in (('original',E(value)),('template',template),('expected',E(expected))):(folder/name).write_bytes(raw)
+            with patch.object(r.sys,'stdout',io.StringIO()) as stdout:self.assertEqual(r.main(['--inventory-original',str(folder/'original'),'--template',str(folder/'template'),'--expected',str(folder/'expected')]),0)
+            self.assertEqual(D(stdout.getvalue().encode()),verdict)
+    def test_typed_failure_v3_keeps_font_primary_and_close_secondary(self):
+        value,template,expected,events,typed_events=self.typed_inventory_fixture(True,'read-error',True)
+        self.assertEqual(value['firstFailure']['message'],'FIRST_FONT');self.assertEqual([error['message'] for error in value['secondary']],['READ_FAILED','CLOSE_FAILED'])
+        self.assertFalse(any(operation in ('runtime','Hosted','git') for operation,arg in events))
+        verdict=r.verify_inventory_failure(E(value),template,expected);self.assertFalse(verdict['qualified']);self.assertEqual(verdict['counts']['emptyPythonSources'],{'failed':1})
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            target=pathlib.Path(temporary)/'inventory.original.json';self.assertEqual(c.retain_inventory_observation(value,target),1)
+            self.assertFalse(target.exists());self.assertEqual(D(target.with_name('inventory-failure.json').read_bytes()),value)
+    def test_typed_failure_close_secondary_before_alias_refusal_is_retained(self):
+        faults={('lstat','/missing-font'):FileNotFoundError('FONT_FIRST'),('readlink','/bad-link'):OSError('ALIAS_LAST')}
+        with self.inventory_edges(['/node','/missing-font'],['/bad-link'],faults=faults,typed=True) as (raw,pin,env,events),self.empty_source_edges('read-error',True):
+            value=c.inventory_observation(raw,pin,pathlib.Path('/checkout'),env,'/out/a.json')
+        self.assertEqual([error['message'] for error in [value['firstFailure']]+value['secondary']],['FONT_FIRST','READ_FAILED','CLOSE_FAILED','ALIAS_LAST'])
+        expected={'schema':'bw.gui-hdd.inventory-failure-expectation.v3','source':D(self.files['source.before.json']),'template':ROW(raw),'failure':ROW(E(value)),'runId':90,'workflowSha':'d'*40}
+        self.assertTrue(r.verify_inventory_failure(E(value),raw,expected)['failureObserved'])
+        for close_snapshot in (False,True):
+            value,raw,expected,events,typed_events=self.typed_inventory_fixture(True,'close-error' if close_snapshot else None)
+            self.assertEqual(value['firstFailure']['message'],'FIRST_FONT')
+            self.assertEqual(value['emptyPythonSources'][c.EMPTY_PYTHON_PATH]['status'],'failed' if close_snapshot else 'observed')
+            self.assertTrue(r.verify_inventory_failure(E(value),raw,expected)['failureObserved'])
+    def test_typed_v3_rehashed_observation_adversaries_refuse_both_readers(self):
+        for failed in (False,True):
+            for cut in ('eof','hash','nonempty','identity','float','bool','mode','owner','links','close','missing','extra'):
+                value,raw,expected,events,typed_events=self.typed_inventory_fixture(failed);template=D(raw);observed=value['emptyPythonSources'][c.EMPTY_PYTHON_PATH]['source']
+                if cut=='eof':observed['read']['eof']=False
+                elif cut=='hash':observed['read']['sha256']='0'*64
+                elif cut=='nonempty':observed['read'].update(byteLength=1,sha256=H(b'X'),eof=False)
+                elif cut=='identity':observed['heldAfter']['ino']+=1
+                elif cut=='float':observed['heldBefore']['uid']=0.0
+                elif cut=='bool':observed['namedAfter']['gid']=False
+                elif cut in ('mode','owner','links'):
+                    key={'mode':'mode','owner':'uid','links':'nlink'}[cut]
+                    for name in ('namedBefore','heldBefore','heldAfter','namedAfter'):observed[name][key]=1 if cut=='owner' else 0 if cut=='mode' else 2
+                elif cut=='close':observed['close']['succeeded']=False
+                elif cut=='missing':value['emptyPythonSources']={}
+                else:observed['invented']=True
+                raw=self.rehash_typed_inventory(value,template,expected)
+                with self.assertRaises((ValueError,KeyError),msg=str((failed,cut))): (r.verify_inventory_failure if failed else r.verify_inventory_original)(E(value),raw,expected)
+    def test_typed_v3_rehashed_selection_oldschema_and_positive_zero_refuse(self):
+        for cut in ('role','path','hash','nonempty','duplicate','zero-executable','v2'):
+            value,raw,expected,events,typed_events=self.typed_inventory_fixture();template=D(raw);row=template['emptyPythonSources'][c.EMPTY_PYTHON_PATH]
+            if cut=='role':row['role']='library'
+            elif cut=='path':template['emptyPythonSources']['/usr/bin/python3.12']=template['emptyPythonSources'].pop(c.EMPTY_PYTHON_PATH)
+            elif cut=='hash':row['sha256']='0'*64
+            elif cut=='nonempty':row.update(byteLength=1,sha256=H(b'X'))
+            elif cut=='duplicate':template['files'].append(c.EMPTY_PYTHON_PATH)
+            elif cut=='zero-executable':value['runtime']['files']['/chrome']={'byteLength':0,'sha256':H(b'')}
+            else:template['schema']='bw.gui-hdd.inventory-template.v2';value['schema']='bw.gui-hdd.inventory-original.v2'
+            raw=self.rehash_typed_inventory(value,template,expected)
+            with self.assertRaises(ValueError):r.verify_inventory_original(E(value),raw,expected)
+        request=D(self.files['request.original.json']);request['runtime']['emptyPythonSources']=self.empty_selection()
+        with self.assertRaises(ValueError):c.parse_request(E(request),H(E(request)))
+        with self.assertRaises(ValueError):r.parse_request(E(request),H(E(request)))
     def test_metadata_before_acquisition(self):
         request=D(self.files['request.original.json']);args=[D(self.files[name+'.original.json']) for name in ('build-run','build-job','build-artifact')]
         c.admit_build_metadata(request,*args)

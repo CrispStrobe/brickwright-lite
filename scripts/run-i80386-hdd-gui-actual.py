@@ -855,6 +855,45 @@ def install_input(blob,expected,target,env):
     return {'byteLength':len(payload),'sha256':sha(payload),'gitBlob':blob}
 
 
+EMPTY_PYTHON_PATH='/usr/lib/python3.12/urllib/__init__.py'
+EMPTY_PYTHON_SHA256='e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+
+
+def empty_python_policy(selected,files,aliases,directory_aliases):
+    need(type(selected) is dict and set(selected)=={EMPTY_PYTHON_PATH},'fixed typed empty Python source roster')
+    row=selected[EMPTY_PYTHON_PATH];fields(row,'role byteLength sha256 uid gid mode')
+    integer(row['byteLength'],0,0);integer(row['uid'],0,0);integer(row['gid'],0,0);integer(row['mode'],0o644,0o644)
+    need(row['role']=='python-empty-package-source' and row['sha256']==EMPTY_PYTHON_SHA256,'fixed typed empty Python source identity')
+    need(len(files)+len(selected)<=512 and not set(selected)&(set(files)|set(aliases)|set(directory_aliases)),
+         'typed source disjoint from positive files/aliases within held cap')
+
+
+def read_empty_python_source(path,selection,observed):
+    """Read only this separately selected empty package source; never execute it."""
+    empty_python_policy({path:selection},[],[],[])
+    named=Path(path);before=named.lstat();observed['namedBefore']=identity(before)
+    need(named.absolute()==named and named.resolve(strict=True)==named and before.st_mode==stat.S_IFREG|0o644 and
+         before.st_uid==before.st_gid==0 and before.st_nlink==1 and before.st_size==0,'canonical root0644 single-link empty Python source')
+    descriptor=os.open(named,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK);first=None;secondary=[]
+    observed['close']={'attempted':False,'succeeded':False}
+    try:
+        observed['heldBefore']=identity(os.fstat(descriptor));need(observed['heldBefore']==observed['namedBefore'],'held empty source identity')
+        raw=os.read(descriptor,1);observed['read']={'byteLength':len(raw),'sha256':sha(raw),'eof':raw==b''}
+        need(raw==b'' and sha(raw)==selection['sha256'],'held empty source EOF/digest')
+        observed['heldAfter']=identity(os.fstat(descriptor));observed['namedAfter']=identity(named.lstat())
+        need(observed['heldAfter']==observed['namedAfter']==observed['namedBefore'],'stable held/named empty source readback')
+    except BaseException as error:first=error
+    finally:
+        observed['close']['attempted']=True
+        try:os.close(descriptor);observed['close']['succeeded']=True
+        except BaseException as error:
+            if first is None:first=error
+            else:secondary.append(error)
+    if first is not None:
+        first.inventory_secondary=secondary;raise first
+    return observed
+
+
 INVENTORY_FAILURE_EVENT_CAP=256<<10
 
 
@@ -869,13 +908,18 @@ def inventory_error(value,error,phase,path=None):
 
 
 def inventory_observation(template_raw,expected,root,env,output_path):
-    failure={'schema':'bw.gui-hdd.inventory-failure.v2','observationOnly':True,'candidate':False,'qualified':False,
+    version=2
+    try:
+        if decode(template_raw).get('schema')=='bw.gui-hdd.inventory-template.v3':version=3
+    except BaseException:pass
+    failure={'schema':'bw.gui-hdd.inventory-failure.v'+str(version),'observationOnly':True,'candidate':False,'qualified':False,
       'template':{'byteLength':len(template_raw),'sha256':sha(template_raw),'expectedSha256':None,'sourceHead':None,'bindingVerified':False},
       'event':None,'platform':{key:(env[key] if type(env.get(key)) is str and len(env[key].encode())<=1024 else None) for key in ('GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_JOB','GITHUB_REPOSITORY',
        'GITHUB_WORKFLOW_SHA','GITHUB_WORKFLOW_REF','GITHUB_EVENT_NAME','GITHUB_ACTOR','BW_EXPECTED_HEAD')},
       'diagnostic':{'pathBytes':0,'limitBytes':0,'complete':False},
       'files':{},'aliases':{},'directoryAliases':{},'gitSource':{'reached':False,'head':None,'tree':None,'files':{}},
       'firstFailure':None,'secondary':[]}
+    if version==3:failure['emptyPythonSources']={}
     try:
         value=collect_inventory_observation(template_raw,expected,root,env,output_path,failure)
         if value is not failure:return value  # Successful v2 bytes and predicates stay held.
@@ -887,8 +931,8 @@ def inventory_observation(template_raw,expected,root,env,output_path):
 
 
 def retain_inventory_observation(value,output_path):
-    failed=value.get('schema')=='bw.gui-hdd.inventory-failure.v2'
-    need(failed or value.get('schema')=='bw.gui-hdd.inventory-original.v2','explicit inventory original version')
+    failed=value.get('schema') in ('bw.gui-hdd.inventory-failure.v2','bw.gui-hdd.inventory-failure.v3')
+    need(failed or value.get('schema') in ('bw.gui-hdd.inventory-original.v2','bw.gui-hdd.inventory-original.v3'),'explicit inventory original version')
     if failed:need(value['firstFailure'] is not None and value['candidate'] is False and value['qualified'] is False,'failure-only inventory cannot qualify')
     target=Path(output_path).with_name('inventory-failure.json') if failed else Path(output_path)
     output=None;first=None;secondary=[]
@@ -921,8 +965,9 @@ def collect_inventory_observation(template_raw,expected,root,env,output_path,fai
     """Metadata only. No browser/tool probe/guest, and never self-approval."""
     digest(expected);failure['template']['expectedSha256']=expected
     need(sha(template_raw)==expected,'independently selected inventory template')
-    template=decode(template_raw);fields(template,'schema sourceHead files aliases directoryAliases node python chromium tools')
-    need(encode(template)==template_raw and template['schema']=='bw.gui-hdd.inventory-template.v2','canonical bounded inventory template')
+    template=decode(template_raw);version=3 if template.get('schema')=='bw.gui-hdd.inventory-template.v3' else 2
+    fields(template,'schema sourceHead files aliases directoryAliases node python chromium tools'+(' emptyPythonSources' if version==3 else ''))
+    need(encode(template)==template_raw and template['schema']=='bw.gui-hdd.inventory-template.v'+str(version),'canonical bounded inventory template')
     digest(template['sourceHead'],40);failure['template'].update(sourceHead=template['sourceHead'],bindingVerified=True)
     event_raw=regular(env['GITHUB_EVENT_PATH'],JSON_CAP)
     available=len(event_raw)<=INVENTORY_FAILURE_EVENT_CAP
@@ -943,6 +988,7 @@ def collect_inventory_observation(template_raw,expected,root,env,output_path,fai
         for path in template[role]:runtime_path(path)
     need(set(template['files']).isdisjoint(set(template['aliases'])|set(template['directoryAliases'])) and
          set(template['aliases']).isdisjoint(template['directoryAliases']),'disjoint fixed inventory roles')
+    if version==3:empty_python_policy(template['emptyPythonSources'],template['files'],template['aliases'],template['directoryAliases'])
     # Reserve the actual encoded raw event/frame and bounded terminal errors
     # BEFORE path diagnostics. An incomplete capped diagnostic never qualifies.
     failure['diagnostic']['limitBytes']=JSON_CAP-len(encode(failure))-8192
@@ -969,6 +1015,18 @@ def collect_inventory_observation(template_raw,expected,root,env,output_path,fai
         except BaseException as error:
             row['status']='failed' if row['attempted'] else 'unvisited-deadline';row['error']=inventory_error(failure,error,'inventory-file',path)
         keep('files',path,row)
+    if version==3:
+        for path,selection in template['emptyPythonSources'].items():
+            row={'attempted':False};failure['emptyPythonSources'][path]=row
+            try:
+                need(time.monotonic()<deadline,'inventory selected-path deadline; remaining typed source not read')
+                row['attempted']=True;row['source']={};read_empty_python_source(path,selection,row['source'])
+                need(time.monotonic()<deadline,'inventory selected-path deadline after typed source read')
+                row['status']='observed'
+            except BaseException as error:
+                row['status']='failed' if row['attempted'] else 'unvisited-deadline';row['error']=inventory_error(failure,error,'inventory-empty-python-source',path)
+                for secondary in getattr(error,'inventory_secondary',[]):inventory_error(failure,secondary,'inventory-empty-python-close',path)
+            keep('emptyPythonSources',path,row)
     all_aliases={}
     for role in ('aliases','directoryAliases'):
         for path in template[role]:
@@ -1016,11 +1074,13 @@ def collect_inventory_observation(template_raw,expected,root,env,output_path,fai
     installed={}
     for prefix in ('node_modules/bw-board','node_modules/playwright','node_modules/playwright-core'):
         for path,row in inventory(Path(root)/prefix).items():installed[prefix+'/'+path]=row
-    return {'schema':'bw.gui-hdd.inventory-original.v2','observationOnly':True,'templateSha256':expected,
+    result={'schema':'bw.gui-hdd.inventory-original.v'+str(version),'observationOnly':True,'templateSha256':expected,
         'source':{'head':head,'tree':tree,'files':files},'installedFiles':installed,'runtime':runtime,
         'event':{'byteLength':len(event_raw),'sha256':sha(event_raw),'base64':base64.b64encode(event_raw).decode()},
         'commands':commands,'platform':{name:env.get(name) for name in ('GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_JOB',
         'GITHUB_REPOSITORY','GITHUB_WORKFLOW_SHA','GITHUB_WORKFLOW_REF','GITHUB_EVENT_NAME','GITHUB_ACTOR','BW_EXPECTED_HEAD')}}
+    if version==3:result['emptyPythonSources']=failure['emptyPythonSources']
+    return result
 
 
 def main(argv=None):
