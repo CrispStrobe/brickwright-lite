@@ -169,7 +169,7 @@ const mirroredStructural = model => {
 const DRIVING_BASES = MODELS_UNDER_TEST.filter(m => /!BW ID motorL\b/.test(m.text));
 test('the mirrored-pair check covers the fixture and every shipped driving base', () => {
     assert.deepEqual(DRIVING_BASES.map(m => m.name),
-        ['S1 driving base (test fixture)', 'driving-base.ldr', 'line-follower.ldr', 'wall-stopper.ldr', 'colour-explorer.ldr']);
+        ['S1 driving base (test fixture)', 'driving-base.ldr', 'line-follower.ldr', 'wall-stopper.ldr', 'colour-explorer.ldr', 'maze-runner.ldr']);
 });
 
 for (const {name, text} of DRIVING_BASES) {
