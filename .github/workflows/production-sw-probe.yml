@@ -20,22 +20,24 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # One job, so that on the free tier it takes one runner slot per deploy:
+  # both live sites are probed in turn, and the example census only runs when
+  # the Pages build (which carries a new pin or new examples) triggered it.
   probe:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: pages
-            url: https://crispstrobe.github.io/brickwright-lite/
-          - target: vercel
-            url: https://brickwright-lite.vercel.app/
+    timeout-minutes: 40
+    env:
+      GH_TOKEN: ${{ github.token }}
+      CENSUS: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.name == 'Build (permissive base)' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          sparse-checkout: scripts/probe-production-sw.mjs
+          sparse-checkout: |
+            vendor-pins.json
+            scripts/probe-production-sw.mjs
+            scripts/census-example-faces.mjs
+            overlay/scratch-gui/examples/
           sparse-checkout-cone-mode: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
@@ -48,85 +50,58 @@ jobs:
           npm install --no-audit --no-fund playwright@1.62.1
           npx playwright install --with-deps chromium
           cp "$GITHUB_WORKSPACE/scripts/probe-production-sw.mjs" .
-      - name: Restore the previous seed
-        id: restore
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Check each live site against the previous seed, then reseed
         run: |
           prev=$(gh run list -R "$GITHUB_REPOSITORY" -w production-sw-probe -s success -L 20 --json databaseId -q '.[].databaseId' | grep -vx "$GITHUB_RUN_ID" | head -1 || true)
-          if [ -n "$prev" ] && gh run download "$prev" -R "$GITHUB_REPOSITORY" -n "sw-profile-${{ matrix.target }}" -D profile-prev 2>/dev/null; then
-            echo "found=true" >> "$GITHUB_OUTPUT"; echo "restored seed from run $prev"
-          else
-            echo "found=false" >> "$GITHUB_OUTPUT"; echo "no previous seed: this run only seeds"
-          fi
-      - name: Check the new deploy against the previous seed
-        if: steps.restore.outputs.found == 'true'
-        run: |
-          set +e
-          node "$RUNNER_TEMP/probe/probe-production-sw.mjs" check --url "${{ matrix.url }}" --profile profile-prev --json probe-${{ matrix.target }}.json
-          rc=$?
-          if [ "$rc" = 3 ]; then echo "::notice::${{ matrix.target }}: inconclusive (probed chunks unchanged since the seed)"; exit 0; fi
-          exit $rc
-      - name: Seed a fresh profile for the next deploy
-        if: ${{ !cancelled() }}
-        run: node "$RUNNER_TEMP/probe/probe-production-sw.mjs" seed --url "${{ matrix.url }}" --profile profile-next
-      - name: Drop the HTTP disk cache from the seed (the worker's Cache Storage stays)
-        if: ${{ !cancelled() }}
-        run: rm -rf profile-next/Default/Cache profile-next/Default/Code\ Cache profile-next/Default/GPUCache && du -sh profile-next
-      - name: Upload the new seed
+          [ -n "$prev" ] && gh run download "$prev" -R "$GITHUB_REPOSITORY" -n sw-profiles -D prev 2>/dev/null || echo "no previous seed: this run only seeds"
+          probe() { node "$RUNNER_TEMP/probe/probe-production-sw.mjs" "$@"; }
+          fail=0
+          for t in pages=https://crispstrobe.github.io/brickwright-lite/ vercel=https://brickwright-lite.vercel.app/; do
+            name=${t%%=*} url=${t#*=}
+            if [ -d "prev/next/$name" ]; then
+              set +e; probe check --url "$url" --profile "prev/next/$name" --json "probe-$name.json"; rc=$?; set -e
+              if [ "$rc" = 3 ]; then echo "::notice::$name: inconclusive (probed chunks unchanged since the seed)";
+              elif [ "$rc" != 0 ]; then echo "::error::$name: service-worker probe failed ($rc)"; fail=1; fi
+            fi
+            probe seed --url "$url" --profile "next/$name"
+            # The HTTP disk cache is not needed; the worker's Cache Storage stays.
+            rm -rf "next/$name/Default/Cache" "next/$name/Default/Code Cache" "next/$name/Default/GPUCache"
+          done
+          du -sh next
+          exit $fail
+      - name: Upload the new seeds and results
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: sw-profile-${{ matrix.target }}
-          path: profile-next/
+          name: sw-profiles
+          path: |
+            next/
+            probe-*.json
           include-hidden-files: true
           retention-days: 14
-      - name: Upload the check result
-        if: ${{ !cancelled() && steps.restore.outputs.found == 'true' }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: probe-result-${{ matrix.target }}
-          path: probe-${{ matrix.target }}.json
-          if-no-files-found: ignore
 
-  # Report, not a gate: which example parts the circuit editor draws with its
-  # generic module body (or a chip face), ranked by how many examples use them.
-  example-faces:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-        with:
-          sparse-checkout: |
-            vendor-pins.json
-            scripts/census-example-faces.mjs
-            overlay/scratch-gui/examples/
-          sparse-checkout-cone-mode: false
+      # Report, not a gate: which example parts the circuit editor draws with
+      # its generic module body (or a chip face), ranked by example count.
       - name: Pinned bw-circuit-ui commit
+        if: ${{ !cancelled() && env.CENSUS == 'true' }}
         id: pin
         run: echo "sha=$(node -e "console.log(require('./vendor-pins.json')['bw-circuit-ui'])")" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        if: ${{ !cancelled() && env.CENSUS == 'true' }}
         with:
           repository: CrispStrobe/bw-circuit-ui
           ref: ${{ steps.pin.outputs.sha }}
           path: cui
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: 22
-      - name: Install bw-circuit-ui and Chromium
-        working-directory: cui
-        run: |
-          npm ci --no-audit --no-fund
-          npx playwright install --with-deps chromium
-      - name: Draw every example kind in the real canvas
+      - name: Draw every example kind in the real canvas and report
+        if: ${{ !cancelled() && env.CENSUS == 'true' }}
         run: |
           kinds=$(node scripts/census-example-faces.mjs kinds)
-          cd cui && node scripts/census-part-faces.mjs --kinds "$kinds" --json ../example-faces.json || echo "::warning::bw-circuit-ui census reported failures (see log); the report below still lists faces"
-      - name: Report
-        run: node scripts/census-example-faces.mjs report --census example-faces.json --md example-faces.md
+          (cd cui && npm ci --no-audit --no-fund && npx playwright install chromium \
+            && node scripts/census-part-faces.mjs --kinds "$kinds" --json ../example-faces.json) \
+            || echo "::warning::bw-circuit-ui census reported failures (see log); the report still lists faces"
+          node scripts/census-example-faces.mjs report --census example-faces.json --md example-faces.md
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && env.CENSUS == 'true' }}
         with:
           name: example-faces
           path: |
