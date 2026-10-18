@@ -7,13 +7,13 @@
 // flags (SwiftShader): the 2,054-part stress model (scripts/lib/
 // sim-lab-stress-model.mjs) opened through "Open…", then
 //   - open: wall time from choosing the file to a ready scene;
-//   - frame: one render finished on the GPU (gl.finish), median and p90 of 30;
+//   - frame: one render waited for by reading back a pixel, median and p90 of 10;
 //   - loop: frames per second the pane's own animation loop manages over 3 s;
 //   - draw calls, triangles and GPU geometries of a frame (three's renderer.info);
 //   - JS heap after a forced GC (CDP), and Build: time to open, frame median.
 // `window.__bwSimLabInstancing` forces each mode (view/instanced-parts.js).
 //
-//   node scripts/measure-sim-lab-scale.mjs [--json=out.json]
+//   node scripts/measure-sim-lab-scale.mjs [--json=out.json] [--gpu=swiftshader|metal|vulkan|gl]
 import {chromium} from 'playwright';
 import {createServer} from 'node:http';
 import {readFile, writeFile} from 'node:fs/promises';
@@ -60,14 +60,14 @@ const measure = async (browser, instancing) => {
         window.__bwSimLabInstancing = on;
     }, instancing);
     await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 90000});
-    await page.getByRole('tab', {name: 'Code', exact: true}).click();
-    await page.getByTestId('bw-open-spike-arena').click();
-    await page.getByTestId('bw-spike-simulator-tab-simLab').click();
+    await page.getByRole('tab', {name: 'Code', exact: true}).click({timeout: 180000});
+    await page.getByTestId('bw-open-spike-arena').click({timeout: 180000});
+    await page.getByTestId('bw-spike-simulator-tab-simLab').click({timeout: 180000});
     await page.waitForFunction(() => window.__bwSimLab?.status === 'ready', null, {timeout: 120000});
     const heapBefore = await heapMb(page);
     const openMs = await openFile(page, {name: 'stress-model.ldr', buffer: Buffer.from(text), mimeType: 'text/plain', timeout: 600000});
     await page.waitForTimeout(1000);
-    const frame = await frameTimes(page, 30);
+    const frame = await frameTimes(page, 10);
     const fps = await loopFps(page, 3000); // instanced: idle frames are not redrawn (sim-view3d.js), so this is the page's idle rate
     const heap = await heapMb(page);
     const buildStart = Date.now();
@@ -87,7 +87,12 @@ const measure = async (browser, instancing) => {
 
 let browser;
 try {
-    browser = await chromium.launch({headless: true, args: ['--disable-dev-shm-usage', '--enable-unsafe-swiftshader', '--use-gl=angle', '--use-angle=swiftshader']});
+    // --gpu=swiftshader (default): the browser gate's software GPU. --gpu=metal|vulkan|gl: a real GPU through ANGLE.
+    const gpu = (process.argv.find(a => a.startsWith('--gpu=')) || '--gpu=swiftshader').slice('--gpu='.length);
+    const args = gpu === 'swiftshader' ? ['--disable-dev-shm-usage', '--enable-unsafe-swiftshader', '--use-gl=angle', '--use-angle=swiftshader'] :
+        ['--disable-dev-shm-usage', '--use-gl=angle', `--use-angle=${gpu}`, '--ignore-gpu-blocklist', '--enable-gpu'];
+    browser = await chromium.launch({headless: true, args});
+    console.log(JSON.stringify({gpu}));
     const rows = [];
     for (const instancing of [true, false]) {
         const row = await measure(browser, instancing);

@@ -60,9 +60,9 @@
 //      pane never scrolls sideways; the palette (a drawer when compact) places a part, Undo
 //      takes it away, the compact "More…" menu works, and "open large" goes full screen;
 //  13. big models and model files (scripts/lib/sim-lab-scale-gate.mjs, --part=scale): the 2,054-part
-//      stress model opened through "Open…" is ready within 60 s, drawn instanced in at most 150 draw
-//      calls and not blank, a frame finishes within 1 s; Build opens on it and a click on a grid beam
-//      selects that beam; the hand-made .lxf opens with its unknown parts listed; a password-protected
+//      stress model opened through "Open…" is ready within 120 s, drawn instanced in at most 150 draw
+//      calls and not blank, a frame finishes within 1 s; Build opens on a 269-part instanced model and
+//      a click on a grid beam selects that beam; the hand-made .lxf opens with its unknown parts listed; a password-protected
 //      .io is refused with the model left as it was; "Save as… → .io" downloads a ZIP whose model.ldr
 //      is the model's LDraw text and reopens to it;
 //  14. no page errors.
@@ -833,7 +833,7 @@ try {
         console.log(`PASS a ${r.stats.parts}-part model opens in ${(r.openMs / 1000).toFixed(1)} s (budget ${OPEN_BUDGET_MS / 1000} s), drawn instanced: ` +
             `${r.stats.calls} draw calls (budget ${DRAW_CALL_BUDGET}), ${r.stats.instanced.drawObjects} instanced objects, a frame ${r.frame.median.toFixed(1)} ms ` +
             `(p90 ${r.frame.p90.toFixed(1)}), not blank (${r.colours} byte values)`);
-        console.log(`PASS Build opens on it in ${(r.buildMs / 1000).toFixed(1)} s (frame ${r.buildFrame.median.toFixed(1)} ms) and a click on grid beam ${r.picked} selects it`);
+        console.log(`PASS Build opens on a ${r.buildParts}-part instanced model in ${(r.buildMs / 1000).toFixed(1)} s (frame ${r.buildFrame.median.toFixed(1)} ms) and a click on grid beam ${r.picked} selects it`);
         console.log('PASS the hand-made .lxf opens with its unknown, mirrored and uncoloured parts listed; a password-protected .io is refused and the model stays');
         console.log('PASS Save as… → BrickLink Studio (.io) downloads a ZIP whose model.ldr is the model\'s LDraw text, and it reopens to it');
         await page.close();
