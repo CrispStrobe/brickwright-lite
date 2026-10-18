@@ -132,7 +132,35 @@ const EXAMPLES = [
         }}
 ];
 
+/**
+ * `--cpu-throttle=N` slows every page's CPU N-fold (CDP Emulation.setCPUThrottlingRate), as a busy
+ * CI runner does: the VM's wall-clock blocks and the worker's simulated time then drift apart, which
+ * is how the Forklift's lift was cut short in CI (run 39079251326). 1 (default) is no throttling.
+ */
+const CPU_THROTTLE = Number((process.argv.find(a => a.startsWith('--cpu-throttle=')) || '--cpu-throttle=1').slice('--cpu-throttle='.length));
+/**
+ * `--worker-latency=MS` delays every message the page posts to a Web Worker by MS of wall time: a
+ * physics worker that answers slowly, as on a loaded runner. The session sends at most
+ * MAX_BATCH_STEPS (100 ms) of simulated time per round trip and drops the rest, so simulated time
+ * then runs slower than the VM's wall clock — the case CI's CPU throttling of the page cannot make
+ * (it slows the VM and the ticks alike).
+ */
+const WORKER_LATENCY = Number((process.argv.find(a => a.startsWith('--worker-latency=')) || '--worker-latency=0').slice('--worker-latency='.length));
+/** `--examples=a,b` runs only those example robots in the examples part (line-follower, wall-stopper, colour-explorer, forklift). */
+const ONLY_EXAMPLES = (process.argv.find(a => a.startsWith('--examples=')) || '').slice('--examples='.length).split(',').filter(Boolean);
+const runExample = file => !ONLY_EXAMPLES.length || ONLY_EXAMPLES.includes(file.replace(/\.ldr$/, ''));
+
 const openSimLab = async (page, {noWebgl = false, typed = false, program = PROGRAM} = {}) => {
+    if (CPU_THROTTLE > 1) {
+        const cdp = await page.context().newCDPSession(page);
+        await cdp.send('Emulation.setCPUThrottlingRate', {rate: CPU_THROTTLE});
+    }
+    if (WORKER_LATENCY > 0) {
+        await page.addInitScript(ms => {
+            const post = Worker.prototype.postMessage;
+            Worker.prototype.postMessage = function (...args) { setTimeout(() => post.apply(this, args), ms); };
+        }, WORKER_LATENCY);
+    }
     await page.addInitScript(force => {
         localStorage.clear();
         sessionStorage.clear();
@@ -399,6 +427,7 @@ try {
 
     if (want('examples')) { // the example robots run their programs to the end
         // 6. The line follower: model, mat, example program, Run — a lap on the line.
+        if (runExample('line-follower.ldr')) {
         const lf = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
         lf.on('pageerror', error => errors.push(error.message));
         lf.on('dialog', dialog => dialog.accept());
@@ -474,11 +503,12 @@ try {
             `worker ${(st.workerMs / st.batches).toFixed(2)} ms and main thread ${(st.mainMs / st.batches).toFixed(2)} ms per batch, ` +
             `${st.redos} batches redone for a command in flight, ${st.droppedMs} ms dropped`);
         await lf.close();
+        }
 
         // 7. The Wall stopper and 8. the Colour explorer, through the UI only: choose the model,
         // "Load example program" (it lands in the Code tab, becomes blocks, and puts the robot on
         // the example's mat by itself), Run, and judge where the robot comes to rest.
-        for (const example of EXAMPLES) {
+        for (const example of EXAMPLES.filter(e => runExample(e.file))) {
             const ex = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
             ex.on('pageerror', error => errors.push(error.message));
             ex.on('dialog', dialog => dialog.accept());
@@ -566,6 +596,7 @@ try {
             await ex.close();
         }
 
+        if (runExample('forklift.ldr')) {
         // 8b. The Forklift (R4): choose it, "Load example program" (it puts the robot on the Warehouse
         // mat with its pallet), Run, and judge the pallet's height from its body's pose: up 40 mm, held,
         // and back down — a rack and pinion and a world load, through the worker.
@@ -591,16 +622,20 @@ try {
                 rec.last = dy;
             });
         });
+        const wall0 = Date.now();
         await fl.getByTestId('bw-sim-lab-run').click();
         await fl.waitForFunction(() => window.__bwSimLab._pane.session.time - window.__bwForklift.start > 14000, null, {timeout: 240000});
-        const lift = await fl.evaluate(() => window.__bwForklift);
+        console.log(`  (14 s simulated took ${((Date.now() - wall0) / 1000).toFixed(1)} s of wall time)`);
+        const lift = await fl.evaluate(() => ({...window.__bwForklift, stats: window.__bwSimLab._pane.session.stats}));
         await fl.screenshot({path: resolve(artifacts, 'sim-lab-forklift.png'), fullPage: true});
         assert.equal(lift.worker, true, 'the Forklift ran its physics in the worker');
         assert.deepEqual(lift.loads, ['load:pallet'], 'the Warehouse mat put its pallet in the scene');
         assert.ok(Math.abs(lift.max - 0.04) <= 0.001, `the pallet rose ${lift.max} m, not 40 mm: ${JSON.stringify(lift)}`);
         assert.ok(Math.abs(lift.last) <= 0.001, `the pallet ended ${lift.last} m up: ${JSON.stringify(lift)}`);
-        console.log(`PASS the Forklift's example program, loaded from the pane, lifts the pallet ${(lift.max * 1000).toFixed(2)} mm and sets it down (${(lift.last * 1000).toFixed(2)} mm)`);
+        console.log(`PASS the Forklift's example program, loaded from the pane, lifts the pallet ${(lift.max * 1000).toFixed(2)} mm and sets it down (${(lift.last * 1000).toFixed(2)} mm); ` +
+            `worker: ${lift.stats.batches} batches, round trip ${(lift.stats.roundTripMs / lift.stats.batches).toFixed(1)} ms mean, ${lift.stats.redos} redone, ${lift.stats.droppedMs} ms dropped`);
         await fl.close();
+        }
     }
 
     if (want('ui')) { // seeing the model, instructions, no-WebGL fallback
