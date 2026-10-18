@@ -313,10 +313,9 @@ test('pendulum control (the stand–beam contact switched off): period = 2π√(
     assert.ok(kept >= 0.9, `amplitude kept ${kept}`);
 });
 
-test('pendulum as built: a beam on a frictionless pin swings with its period and loses little per swing', {
-    todo: 'the swinging beam rubs on the stand it shares the pin with: contact friction between face-to-face ' +
-        'neighbours (D2 collides every pair not joined directly) takes ~6° per half swing; see docs/ROBOT-LAB-VALIDATION.md'
-}, t => {
+test('pendulum as built: a beam on a frictionless pin swings with its period and loses little per swing', t => {
+    // The swinging beam and the stand share the pin (not a joint): mech/collision-filter.js keeps bodies that
+    // meet on one connector axis apart, so they no longer rub face to face (it took ~6° per half swing).
     const r = swingPendulum({separateStand: false});
     const kept = r.fullPeriodPeak / r.release;
     const errs = r.halves.map(h => h.T / PENDULUM.T(h.A) - 1);
@@ -395,10 +394,8 @@ test('four-bar control (links do not touch each other): rocker angle = the loop 
     assert.ok(r.worst.err <= 1.5, `rocker off by ${r.worst.err}°`);
 });
 
-test('four-bar as built: rocker angle = the loop equation\'s, within 1.5°', {
-    todo: 'neighbouring links rub face to face (crank–coupler, coupler–rocker contacts with friction under the ' +
-        'coupler\'s weight) and the soft hinge chain yields: 3.0° off at 180 °/s (4.7° at 60 °/s) near the rocker\'s limits'
-}, async t => {
+test('four-bar as built: rocker angle = the loop equation\'s, within 1.5°', async t => {
+    // Neighbouring links share a pin: they no longer rub (mech/collision-filter.js); they were 3.0° off.
     const r = await runFourBar({separateLinks: false});
     t.diagnostic(`worst error ${r.worst.err.toFixed(2)}° (crank ${r.worst.theta?.toFixed(1)}°: rocker ${r.worst.phi?.toFixed(2)}° vs ${r.worst.predicted?.toFixed(2)}°)`);
     assert.ok(r.worst.err <= 1.5, `rocker off by ${r.worst.err}°`);
