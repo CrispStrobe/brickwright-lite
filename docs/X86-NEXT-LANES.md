@@ -697,6 +697,25 @@ earlier Python test bodies stay unchanged. Twelve source mutations and 21
 independent coherent header counterexamples are detected. Valid frontend formats
 and both actual versions retain their earlier prefixed/unprefixed verdicts.
 
+The full source CI then found two integration failures: the GUI workflow was
+absent from generated CI readings, and the original-control test parsed only the
+last stdout line. The helper now requires one complete JSON summary and rejects
+prefix, suffix and concatenated output. Ten Node tests including all 107 Python
+controls pass, as do the eleven existing gate-shape tests; two parsing mutations
+are detected. No threshold, detector baseline, runtime or workflow condition
+changed. The earlier failed CI results remain failures.
+
+The remaining census refresh is scoped by
+[PR1079](https://github.com/CrispStrobe/brickwright-lite/pull/1079). After that
+claim merges, use the unchanged generator with `--fetch --workflow
+i80386-hdd-gui-actual.yml --baseline-ref FULL_REVIEWED_MAIN_SHA`, preserve every
+unrelated workflow's dated readings and main provenance, and add only exact dated
+pointers for the declared conditional steps the resulting readings require.
+Run the existing census tests and explicit generator `--check`; `--fetch` alone
+prints uncovered steps without failing for them. Do not run a metadata or actual
+job merely to seed census coverage. Finish this integration before rebuilding
+source21/request/workflow selections and requiring fresh final-head CI.
+
 A fresh agent can finish this work in the following bounded steps:
 
 1. Freeze the activated source candidate, finite caps and selected system tools.
