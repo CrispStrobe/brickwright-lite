@@ -855,12 +855,68 @@ def install_input(blob,expected,target,env):
     return {'byteLength':len(payload),'sha256':sha(payload),'gitBlob':blob}
 
 
+def inventory_error(value,error,phase,path=None):
+    # Error messages are observations, never arbitrary-length file contents.
+    row={'phase':phase,'name':type(error).__name__.encode('ascii','backslashreplace')[:128].decode('ascii'),
+      'message':str(error).encode('ascii','backslashreplace')[:1024].decode('ascii')}
+    if path is not None:row['path']=path
+    if value['firstFailure'] is None:value['firstFailure']=row
+    else:value['secondary'].append(row)
+    return row
+
+
 def inventory_observation(template_raw,expected,root,env,output_path):
+    failure={'schema':'bw.gui-hdd.inventory-failure.v1','observationOnly':True,'candidate':False,'qualified':False,
+      'template':{'byteLength':len(template_raw),'sha256':sha(template_raw),'expectedSha256':None,'sourceHead':None,'bindingVerified':False},
+      'event':None,'platform':{key:(env[key] if type(env.get(key)) is str and len(env[key].encode())<=1024 else None) for key in ('GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_JOB','GITHUB_REPOSITORY',
+       'GITHUB_WORKFLOW_SHA','GITHUB_WORKFLOW_REF','GITHUB_EVENT_NAME','GITHUB_ACTOR','BW_EXPECTED_HEAD')},
+      'files':{},'aliases':{},'directoryAliases':{},'gitSource':{'reached':False,'head':None,'tree':None,'files':{}},
+      'firstFailure':None,'secondary':[]}
+    try:return collect_inventory_observation(template_raw,expected,root,env,output_path,failure)
+    except BaseException as error:
+        inventory_error(failure,error,'inventory');return failure
+
+
+def retain_inventory_observation(value,output_path):
+    failed=value.get('schema')=='bw.gui-hdd.inventory-failure.v1'
+    need(failed or value.get('schema')=='bw.gui-hdd.inventory-original.v2','explicit inventory original version')
+    if failed:need(value['firstFailure'] is not None and value['candidate'] is False and value['qualified'] is False,'failure-only inventory cannot qualify')
+    target=Path(output_path).with_name('inventory-failure.json') if failed else Path(output_path)
+    output=None;first=None;secondary=[]
+    try:
+        raw=encode(value);need(len(raw)<=JSON_CAP,'bounded inventory original')
+        output=target.open('xb');need(output.write(raw)==len(raw),'complete inventory original')
+    except BaseException as error:first=error
+    finally:
+        if output is not None:
+            try:output.close()
+            except BaseException as error:
+                if first is None:first=error
+                else:secondary.append(error)
+    if first is not None:
+        if not failed:
+            first.inventory_secondary=secondary;raise first
+        inventory_error(value,first,'inventory-failure-retention')
+        for error in secondary:inventory_error(value,error,'inventory-failure-close')
+        # Never overwrite a partial/uncertain original. A bounded canonical
+        # stderr diagnostic preserves the first refusal and retention uncertainty.
+        diagnostic={'schema':value['schema'],'candidate':False,'qualified':False,'firstFailure':value['firstFailure'],
+          'secondary':value['secondary'][-4:],'secondaryCount':len(value['secondary'])}
+        try:sys.stderr.write(encode(diagnostic).decode())
+        except BaseException as secondary:inventory_error(value,secondary,'inventory-failure-diagnostic')
+        return 1
+    return 1 if failed else 0
+
+
+def collect_inventory_observation(template_raw,expected,root,env,output_path,failure):
     """Metadata only. No browser/tool probe/guest, and never self-approval."""
-    digest(expected);need(sha(template_raw)==expected,'independently selected inventory template')
+    digest(expected);failure['template']['expectedSha256']=expected
+    need(sha(template_raw)==expected,'independently selected inventory template')
     template=decode(template_raw);fields(template,'schema sourceHead files aliases directoryAliases node python chromium tools')
     need(encode(template)==template_raw and template['schema']=='bw.gui-hdd.inventory-template.v2','canonical bounded inventory template')
-    event_raw=regular(env['GITHUB_EVENT_PATH'],JSON_CAP);bind_inventory_event(event_raw,template['sourceHead'],expected,env)
+    digest(template['sourceHead'],40);failure['template'].update(sourceHead=template['sourceHead'],bindingVerified=True)
+    event_raw=regular(env['GITHUB_EVENT_PATH'],JSON_CAP);failure['event']={'byteLength':len(event_raw),'sha256':sha(event_raw),'bindingVerified':False}
+    bind_inventory_event(event_raw,template['sourceHead'],expected,env);failure['event']['bindingVerified']=True
     need(type(template['files']) is list and 1<=len(template['files'])<=512 and len(set(template['files']))==len(template['files']) and
          type(template['aliases']) is list and len(template['aliases'])<=256 and len(set(template['aliases']))==len(template['aliases']) and type(template['directoryAliases']) is list and
          len(set(template['directoryAliases']))==len(template['directoryAliases']) and len(template['aliases'])+len(template['directoryAliases'])<=256,
@@ -869,16 +925,39 @@ def inventory_observation(template_raw,expected,root,env,output_path):
         'tools':template['tools'],'resources':{'jobMinutes':35,'controllerSeconds':1800,
         'scenarioSeconds':{'freedos-hdd-persistence':1250,'forward-debug':180},'perProcessCoreBytes':0,
         'perProcessFileBytes':FILE_CAP,'perProcessOpenFiles':256,'aggregateContainmentQualified':False}}
+    # Validate the entire finite roster before any selected-path access.
+    for role in ('files','aliases','directoryAliases'):
+        for path in template[role]:runtime_path(path)
+    need(set(template['files']).isdisjoint(set(template['aliases'])|set(template['directoryAliases'])) and
+         set(template['aliases']).isdisjoint(template['directoryAliases']),'disjoint fixed inventory roles')
+    deadline=time.monotonic()+300
+    def metadata(info):return {key:getattr(info,'st_'+key) for key in ('dev','ino','mode','uid','gid','nlink','size','mtime_ns')}
     for path in template['files']:
-        need(type(path) is str and path.startswith('/') and '..' not in Path(path).parts,'fixed absolute inventory path')
-        raw=regular(path,256<<20);runtime['files'][path]={'byteLength':len(raw),'sha256':sha(raw)}
+        row={};failure['files'][path]=row
+        try:
+            need(time.monotonic()<deadline,'inventory selected-path deadline; remaining paths not read')
+            row['metadataBefore']=metadata(os.lstat(path))
+            raw=regular(path,256<<20);row['file']={'byteLength':len(raw),'sha256':sha(raw)}
+            row['metadataAfter']=metadata(os.lstat(path));need(row['metadataBefore']==row['metadataAfter'],'inventory diagnostic file metadata drift')
+            need(time.monotonic()<deadline,'inventory selected-path deadline after bounded read')
+            runtime['files'][path]=row['file'];row['status']='observed'
+        except BaseException as error:
+            row['status']='failed';row['error']=inventory_error(failure,error,'inventory-file',path)
     all_aliases={}
     for role in ('aliases','directoryAliases'):
         for path in template[role]:
-            runtime_path(path);before=os.lstat(path);need(stat.S_ISLNK(before.st_mode),'selected inventory alias is symlink')
-            text=os.readlink(path);need(type(text) is str and 0<len(text)<=512,'bounded selected inventory link text')
-            need(identity(os.lstat(path))==identity(before),'inventory alias snapshot readback')
-            row={'linkText':text,'target':None};runtime[role][path]=row;need(path not in all_aliases,'disjoint alias template rosters');all_aliases[path]=row
+            observed={};failure[role][path]=observed
+            try:
+                need(time.monotonic()<deadline,'inventory selected-path deadline; remaining aliases not read')
+                before=os.lstat(path);observed['metadataBefore']=metadata(before);need(stat.S_ISLNK(before.st_mode),'selected inventory alias is symlink')
+                text=os.readlink(path);need(type(text) is str and 0<len(text)<=512,'bounded selected inventory link text');observed['linkText']=text
+                after=os.lstat(path);observed['metadataAfter']=metadata(after);need(identity(after)==identity(before),'inventory alias snapshot readback')
+                need(time.monotonic()<deadline,'inventory selected-path deadline after alias read')
+                row={'linkText':text,'target':None};runtime[role][path]=row;need(path not in all_aliases,'disjoint alias template rosters');all_aliases[path]=row
+                observed['status']='observed'
+            except BaseException as error:
+                observed['status']='failed';observed['error']=inventory_error(failure,error,'inventory-alias',path)
+    if failure['firstFailure'] is not None:return failure  # No tools, Git, runtime probes or candidate after ANY required read failure.
     for path,row in all_aliases.items():row['target']=declared_alias_resolution(path,all_aliases)
     runtime_alias_policy(runtime)
     for name in ('node','python','chromium'):need(runtime[name] in runtime['files'],'selected inventory executable')
@@ -890,6 +969,7 @@ def inventory_observation(template_raw,expected,root,env,output_path):
     # source, inventory template, future request or changed activation code.
     git=['/usr/bin/git','--no-replace-objects','-c','gc.auto=0','-c','maintenance.auto=false',
         '-c','core.fsmonitor=false','-c','core.hooksPath=/dev/null']
+    failure['gitSource']['reached']=True
     capture=Originals(Path(output_path).parent/(Path(output_path).stem+'-git-originals'))
     edge=Hosted(root,capture,env);edge.deadline=min(edge.deadline,time.monotonic()+300)
     commands=[]
@@ -899,9 +979,10 @@ def inventory_observation(template_raw,expected,root,env,output_path):
         commands.append({'argv':process['argv'],'stdout':capture.files[role+'.stdout'],
                          'stderr':capture.files[role+'.stderr'],'exitCode':process['exitCode']})
         return raw
-    head=command(['rev-parse','HEAD']).decode().strip();tree=command(['rev-parse','HEAD^{tree}']).decode().strip();digest(head,40);digest(tree,40)
+    head=command(['rev-parse','HEAD']).decode().strip();failure['gitSource']['head']=head
+    tree=command(['rev-parse','HEAD^{tree}']).decode().strip();failure['gitSource']['tree']=tree;digest(head,40);digest(tree,40)
     need(head==template['sourceHead'],'externally selected inventory source head')
-    files={}
+    files={};failure['gitSource']['files']=files
     for path in sorted(SOURCE):
         raw=regular(Path(root)/path,FILE_CAP);need(command(['cat-file','blob',head+':'+path])==raw,'inventory source actual Git/live identity')
         files[path]={'byteLength':len(raw),'sha256':sha(raw)}
@@ -938,9 +1019,8 @@ def main(argv=None):
     need(args.request,'fixed canonical input original required')
     request_raw=regular(args.request,JSON_CAP)
     if args.mode=='inventory':
-        result=inventory_observation(request_raw,args.expected_sha256,Path.cwd(),env,args.output);raw=encode(result);need(len(raw)<=JSON_CAP,'bounded prior inventory original')
-        with Path(args.output).open('xb') as output:need(output.write(raw)==len(raw),'complete inventory original')
-        return 0
+        result=inventory_observation(request_raw,args.expected_sha256,Path.cwd(),env,args.output)
+        return retain_inventory_observation(result,args.output)
     return execute(request_raw,args.expected_sha256,Path.cwd(),args.output,env,preflight=args.mode=='preflight')
 
 

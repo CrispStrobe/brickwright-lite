@@ -11,6 +11,7 @@ const root = fileURLToPath(new URL('../',import.meta.url));
 const controls = String.raw`
 import ast,base64,copy,hashlib,importlib.util,io,json,os,pathlib,stat,sys,tarfile,tempfile,unittest,zipfile
 from unittest.mock import patch
+import contextlib
 from types import SimpleNamespace
 root=pathlib.Path(sys.argv[1])
 def load(name,path):
@@ -355,6 +356,119 @@ class Originals(unittest.TestCase):
         self.assertEqual(actual.count('/usr/bin/python3.12 -I -S -B -X pycache_prefix='+r.PYTHON_CACHE),3)
         self.assertIn('test "$(realpath -e "$parent")" = "$parent"',actual)
         self.assertNotIn('rm ',actual)
+    @contextlib.contextmanager
+    def inventory_edges(self,files=None,aliases=None,directories=None,faults=None,clock=None):
+        faults=faults or {};events=[];request=D(self.files['request.original.json']);original_sha=c.sha
+        class NodeBytes(bytes):
+            def __len__(self):return 124827920
+        node=NodeBytes(b'node');default=['/node','/usr/bin/python3.12','/chrome','/usr/bin/git','/usr/bin/gh']
+        template={'schema':'bw.gui-hdd.inventory-template.v2','sourceHead':'a'*40,'files':default if files is None else files,
+          'aliases':aliases or [],'directoryAliases':directories or [],'node':'/node','python':'/usr/bin/python3.12','chromium':'/chrome',
+          'tools':{'git':'/usr/bin/git','gh':'/usr/bin/gh'}}
+        raw=E(template);pin=H(raw);event=D(base64.b64decode(self.expected['inventoryOriginal']['base64']))['event']
+        event=D(base64.b64decode(event['base64']));event['pull_request']['body']='<!-- BW_GUI_HDD_INVENTORY_SHA256='+pin+' -->';event_raw=E(event)
+        env={'GITHUB_EVENT_PATH':'/event','GITHUB_RUN_ID':'90','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'inventory','GITHUB_REPOSITORY':c.REPOSITORY,
+          'GITHUB_WORKFLOW_SHA':'d'*40,'GITHUB_WORKFLOW_REF':'workflow-ref','GITHUB_EVENT_NAME':'pull_request','GITHUB_ACTOR':'CrispStrobe','BW_EXPECTED_HEAD':'a'*40}
+        saved={}
+        def regular(path,cap):
+            path=str(path);events.append(('read',path))
+            if ('read',path) in faults:raise faults['read',path]
+            if path=='/event':return event_raw
+            if path in saved:return saved[path]
+            if path=='/node':return node
+            if path.startswith('/checkout/'):return ('source:'+path.removeprefix('/checkout/')).encode()
+            return path.encode()
+        def lstat(path):
+            path=str(path);events.append(('lstat',path))
+            if ('lstat',path) in faults:raise faults['lstat',path]
+            mode=stat.S_IFLNK|0o777 if path in template['aliases']+template['directoryAliases'] else stat.S_IFREG|0o444
+            return SimpleNamespace(st_dev=1,st_ino=2,st_mode=mode,st_uid=0,st_gid=0,st_nlink=1,st_size=10,st_mtime_ns=1)
+        def readlink(path):
+            events.append(('readlink',path))
+            if ('readlink',path) in faults:raise faults['readlink',path]
+            return '/node'
+        class Capture:
+            def __init__(self,path):events.append(('capture',str(path)));self.root=path;self.files={}
+        class Hosted:
+            def __init__(self,where,capture,environment):events.append(('Hosted',None));self.capture=capture;self.attempts=set();self.deadline=1800
+            def git(self,args):
+                events.append(('git',args));role='git-'+str(len(self.attempts));self.attempts.add(role)
+                if args[0]=='rev-parse':body=(request['source']['head' if args[1]=='HEAD' else 'tree']+'\n').encode()
+                else:body=('source:'+args[2].split(':',1)[1]).encode()
+                process={'argv':['/usr/bin/git']+args,'exitCode':0};saved[str(self.capture.root/(role+'.process.json'))]=E(process)
+                self.capture.files[role+'.stdout']=ROW(body);self.capture.files[role+'.stderr']=ROW(b'');return body
+        def inventory(path):
+            events.append(('installed',str(path)));prefix=str(path).removeprefix('/checkout/')+'/'
+            return {name.removeprefix(prefix):row for name,row in request['installedFiles'].items() if name.startswith(prefix)}
+        def runtime(value):events.append(('runtime',None));return {}
+        with patch.object(c,'regular',side_effect=regular),patch.object(c.os,'lstat',side_effect=lstat),patch.object(c.os,'readlink',side_effect=readlink),patch.object(c,'sha',side_effect=lambda raw:'fde6a4bf8d0562f7751d1a2d6cb9b417c4cfe107bbcb0aa3e9a24e125e348f48' if raw is node else original_sha(raw)),patch.object(c,'observe_runtime',side_effect=runtime),patch.object(c,'Originals',Capture),patch.object(c,'Hosted',Hosted),patch.object(c,'inventory',side_effect=inventory),patch.object(c.time,'monotonic',side_effect=clock or (lambda:10)):
+            yield raw,pin,env,events
+    def test_failed_inventory_collects_all_required_files_and_aliases_without_tools(self):
+        selected=['/missing-font','/denied-font','/good-font','/node','/usr/bin/python3.12','/chrome','/usr/bin/git','/usr/bin/gh']
+        faults={('lstat','/missing-font'):FileNotFoundError('FIRST_FONT'),('read','/denied-font'):PermissionError('SECOND_FONT'),('readlink','/bad-link'):OSError('THIRD_LINK')}
+        with self.inventory_edges(selected,['/bad-link','/good-link'],faults=faults) as (raw,pin,env,events):
+            value=c.inventory_observation(raw,pin,pathlib.Path('/checkout'),env,'/out/inventory.original.json')
+        self.assertEqual(value['schema'],'bw.gui-hdd.inventory-failure.v1');self.assertFalse(value['candidate']);self.assertFalse(value['qualified'])
+        self.assertEqual(value['firstFailure']['message'],'FIRST_FONT');self.assertEqual([x['message'] for x in value['secondary']],['SECOND_FONT','THIRD_LINK'])
+        self.assertEqual(set(value['files']),set(selected));self.assertEqual(value['files']['/good-font']['status'],'observed');self.assertIn('file',value['files']['/node'])
+        self.assertEqual(value['aliases']['/good-link']['status'],'observed');self.assertFalse(value['gitSource']['reached']);self.assertIsNone(value['gitSource']['head'])
+        self.assertTrue(value['template']['bindingVerified']);self.assertEqual(value['template']['sha256'],pin);self.assertTrue(value['event']['bindingVerified'])
+        self.assertFalse(any(row[0] in ('runtime','Hosted','git','installed','capture') for row in events));self.assertLess(len(E(value)),c.JSON_CAP)
+    def test_successful_inventory_keeps_exact_v2_shape_and_existing_source_gate(self):
+        with self.inventory_edges() as (raw,pin,env,events):value=c.inventory_observation(raw,pin,pathlib.Path('/checkout'),env,'/out/inventory.original.json')
+        self.assertEqual(set(value),set('schema observationOnly templateSha256 source installedFiles runtime event commands platform'.split()))
+        self.assertEqual(value['schema'],'bw.gui-hdd.inventory-original.v2');self.assertEqual(value['source'],D(self.files['source.before.json']))
+        self.assertTrue(value['observationOnly']);self.assertEqual(value['templateSha256'],pin)
+        self.assertLess(next(i for i,x in enumerate(events) if x[0]=='runtime'),next(i for i,x in enumerate(events) if x[0]=='Hosted'))
+        self.assertEqual(len([x for x in events if x[0]=='git']),len(c.SOURCE)+2)
+    def test_inventory_deadline_stops_later_reads_but_reports_entire_roster(self):
+        ticks=iter([0,1,301,302,303,304])
+        with self.inventory_edges(['/first','/second','/third'],clock=lambda:next(ticks)) as (raw,pin,env,events):
+            value=c.inventory_observation(raw,pin,pathlib.Path('/checkout'),env,'/out/inventory.original.json')
+        self.assertIn('deadline',value['firstFailure']['message']);self.assertEqual(set(value['files']),{'/first','/second','/third'})
+        self.assertEqual([path for operation,path in events if operation=='read' and path!='/event'],['/first'])
+        self.assertFalse(any(operation=='runtime' for operation,path in events))
+    def test_inventory_roster_caps_and_mismatched_template_stop_before_selected_reads(self):
+        for files in (['/x']*2,['/x'+str(i) for i in range(513)]):
+            with self.inventory_edges(files) as (raw,pin,env,events):value=c.inventory_observation(raw,pin,pathlib.Path('/checkout'),env,'/out/a.json')
+            self.assertIsNotNone(value['firstFailure']);self.assertFalse(value['files']);self.assertFalse(any(x[0]=='lstat' for x in events))
+        with self.inventory_edges() as (raw,pin,env,events):value=c.inventory_observation(raw,'0'*64,pathlib.Path('/checkout'),env,'/out/a.json')
+        self.assertFalse(value['template']['bindingVerified']);self.assertIsNone(value['event']);self.assertEqual(events,[])
+    def test_maximal_failed_inventory_unicode_errors_remain_capped_and_canonical(self):
+        files=['/selected/file-'+str(i) for i in range(512)];aliases=['/selected/alias-'+str(i) for i in range(256)]
+        faults={('lstat',name):OSError('\U00010348'*5000) for name in files+aliases}
+        with self.inventory_edges(files,aliases,faults=faults) as (raw,pin,env,events):value=c.inventory_observation(raw,pin,pathlib.Path('/checkout'),env,'/out/a.json')
+        self.assertEqual(len(value['files']),512);self.assertEqual(len(value['aliases']),256);self.assertEqual(len(value['secondary']),767)
+        self.assertLess(len(E(value)),c.JSON_CAP);self.assertEqual(E(D(E(value))),E(value));self.assertLessEqual(len(value['firstFailure']['message'].encode()),1024)
+        self.assertFalse(any(row[0] in ('runtime','Hosted','git') for row in events))
+    def test_failed_inventory_cli_saves_only_failure_original_and_returns_nonzero(self):
+        with self.inventory_edges(['/missing'],faults={('lstat','/missing'):FileNotFoundError('FIRST')}) as (raw,pin,env,events):value=c.inventory_observation(raw,pin,pathlib.Path('/checkout'),env,'/out/a.json')
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            output=pathlib.Path(temporary)/'inventory.original.json'
+            with patch.object(c,'regular',return_value=raw),patch.object(c,'inventory_observation',return_value=value),patch.dict(c.os.environ,env,clear=True):
+                self.assertEqual(c.main(['inventory','--request','/request','--expected-sha256',pin,'--output',str(output)]),1)
+            self.assertFalse(output.exists());saved=output.with_name('inventory-failure.json');self.assertEqual(saved.read_bytes(),E(value))
+            with patch.object(c.sys,'stderr',io.StringIO()) as stderr:self.assertEqual(c.retain_inventory_observation(value,output),1)
+            self.assertEqual(value['firstFailure']['message'],'FIRST');self.assertEqual(D(stderr.getvalue().encode())['secondary'][-1]['phase'],'inventory-failure-retention')
+    def test_inventory_failure_write_and_close_do_not_replace_first_refusal(self):
+        for fault in ('write','close','both'):
+            value={'schema':'bw.gui-hdd.inventory-failure.v1','candidate':False,'qualified':False,'firstFailure':{'phase':'inventory-file','name':'FileNotFoundError','message':'ORIGINAL_MISSING'},'secondary':[]}
+            class Output:
+                def __enter__(self):return self
+                def write(self,raw):
+                    if fault in ('write','both'):raise OSError('WRITE_FAILED')
+                    return len(raw)
+                def close(self):
+                    if fault in ('close','both'):raise OSError('CLOSE_FAILED')
+            with patch.object(c.Path,'open',return_value=Output()),patch.object(c.sys,'stderr',io.StringIO()) as stderr:
+                self.assertEqual(c.retain_inventory_observation(value,'/out/success.json'),1)
+            diagnostic=D(stderr.getvalue().encode());self.assertEqual(diagnostic['firstFailure']['message'],'ORIGINAL_MISSING')
+            self.assertEqual([row['message'] for row in diagnostic['secondary']],['WRITE_FAILED','CLOSE_FAILED'] if fault=='both' else [fault.upper()+'_FAILED'])
+    def test_inventory_success_retention_is_original_path_and_status_zero(self):
+        with self.inventory_edges() as (raw,pin,env,events):value=c.inventory_observation(raw,pin,pathlib.Path('/checkout'),env,'/out/a.json')
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            path=pathlib.Path(temporary)/'inventory.original.json';self.assertEqual(c.retain_inventory_observation(value,path),0)
+            self.assertEqual(path.read_bytes(),E(value));self.assertFalse(path.with_name('inventory-failure.json').exists())
     def test_metadata_before_acquisition(self):
         request=D(self.files['request.original.json']);args=[D(self.files[name+'.original.json']) for name in ('build-run','build-job','build-artifact')]
         c.admit_build_metadata(request,*args)
