@@ -10,13 +10,20 @@ on:
     types: [completed]
     branches: [main]
   workflow_dispatch:
+  # Self-test when the probe itself changes: it runs every step against the
+  # live sites (read-only), which is also what puts it in the CI step census.
+  pull_request:
+    paths:
+      - .github/workflows/production-sw-probe.yml
+      - scripts/probe-production-sw.mjs
+      - scripts/census-example-faces.mjs
 
 permissions:
   contents: read
   actions: read
 
 concurrency:
-  group: production-sw-probe
+  group: production-sw-probe-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'live' }}
   cancel-in-progress: false
 
 jobs:
@@ -24,12 +31,12 @@ jobs:
   # both live sites are probed in turn, and the example census only runs when
   # the Pages build (which carries a new pin or new examples) triggered it.
   probe:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:
       GH_TOKEN: ${{ github.token }}
-      CENSUS: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.name == 'Build (permissive base)' }}
+      CENSUS: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.name == 'Build (permissive base)' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
