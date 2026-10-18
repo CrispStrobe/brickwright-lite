@@ -15,10 +15,25 @@ import {stressModel} from './sim-lab-stress-model.mjs';
 /** Two animation frames: the renderer has drawn what the page now holds (a condition, not a sleep). */
 const nextFrames = page => page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
 
+/**
+ * Clicks a pane control once it is there and enabled, waiting on that condition (polled, not per
+ * animation frame) for up to `timeout` — not Playwright's default 30 s. On a CI runner's SwiftShader the
+ * page can be busy for longer than that just after a big model (a frame of the 2,054-part model is
+ * seconds there, and the first frames of the next model queue behind it), and the mode buttons are
+ * disabled while the pane loads.
+ */
+export const clickWhenReady = async (page, testid, timeout = 120000) => {
+    await page.waitForFunction(id => {
+        const el = document.querySelector(`[data-testid="${id}"]`);
+        return Boolean(el && !el.disabled && el.getClientRects().length);
+    }, testid, {timeout, polling: 250});
+    await page.getByTestId(testid).click({timeout});
+};
+
 /** Open a model file through the pane's "Open…" file input; resolves with the wall time until it is ready. */
 export const openFile = async (page, {name, buffer, mimeType = 'application/octet-stream', timeout = 120000}) => {
     const started = Date.now();
-    await page.getByTestId('bw-sim-lab-file').setInputFiles({name, mimeType, buffer});
+    await page.getByTestId('bw-sim-lab-file').setInputFiles({name, mimeType, buffer}, {timeout});
     await page.waitForFunction(n => {
         const lab = window.__bwSimLab;
         return lab && lab._pane.state.modelFile === n && ['ready', 'failed'].includes(lab.status);
@@ -191,7 +206,7 @@ export const scaleInteractions = async (page, {root, shotsDir, JSZip}) => {
     await timePointerEvents(page);
     results.buildParts = state.parts;
     const buildStart = Date.now();
-    await page.getByTestId('bw-sim-lab-mode-build').click();
+    await clickWhenReady(page, 'bw-sim-lab-mode-build', OPEN_BUDGET_MS);
     await page.waitForFunction(() => window.__bwSimLab.editView && window.__bwSimLab.mode === 'build' && window.__bwSimLab.status === 'ready',
         null, {timeout: BUILD_OPEN_BUDGET_MS, polling: 250});
     await nextFrames(page);
@@ -227,7 +242,7 @@ export const scaleInteractions = async (page, {root, shotsDir, JSZip}) => {
         `a hovering pointer move took ${results.hover.median.toFixed(1)} ms (median of ${results.hover.n}, budget ${POINTER_MOVE_BUDGET_MS})`);
     const clickStart = Date.now();
     await page.mouse.click(at[0], at[1]);
-    await page.waitForFunction(id => window.__bwSimLab.editView.selection.length === 1 && window.__bwSimLab.editView.selection[0] === id, target, {timeout: 10000})
+    await page.waitForFunction(id => window.__bwSimLab.editView.selection.length === 1 && window.__bwSimLab.editView.selection[0] === id, target, {timeout: OPEN_BUDGET_MS, polling: 250})
         .catch(async () => {
             throw new Error(`clicking beam ${target} selected ${JSON.stringify(await page.evaluate(() => window.__bwSimLab.editView.selection))}`);
         });
@@ -260,7 +275,7 @@ export const scaleInteractions = async (page, {root, shotsDir, JSZip}) => {
     await page.keyboard.press('Control+z');
     assert.deepEqual(await pose(), p0, 'one undo puts the beam back');
     await page.screenshot({path: resolve(shotsDir, 'sim-lab-scale-build.png'), timeout: 120000});
-    await page.getByTestId('bw-sim-lab-mode-simulate').click();
+    await clickWhenReady(page, 'bw-sim-lab-mode-simulate', OPEN_BUDGET_MS);
     await page.waitForFunction(() => window.__bwSimLab.mode === 'simulate' && window.__bwSimLab.status === 'ready', null, {timeout: OPEN_BUDGET_MS, polling: 250});
 
     // Model files: the hand-made .lxf, a password-protected .io, and a .io written by Save as….
@@ -278,14 +293,14 @@ export const scaleInteractions = async (page, {root, shotsDir, JSZip}) => {
     results.lxf = opened;
 
     const encrypted = await readFile(resolve(root, 'test/fixtures/bw-sim/interop/studio-encrypted.io'));
-    await page.getByTestId('bw-sim-lab-file').setInputFiles({name: 'old-studio.io', mimeType: 'application/octet-stream', buffer: encrypted});
-    await page.getByTestId('bw-sim-lab-message').waitFor({timeout: 10000});
+    await page.getByTestId('bw-sim-lab-file').setInputFiles({name: 'old-studio.io', mimeType: 'application/octet-stream', buffer: encrypted}, {timeout: OPEN_BUDGET_MS});
+    await page.getByTestId('bw-sim-lab-message').waitFor({timeout: OPEN_BUDGET_MS});
     assert.match(await page.getByTestId('bw-sim-lab-message').textContent(), /password-protected/);
     assert.equal(await page.evaluate(() => window.__bwSimLab._pane.state.modelFile), 'interop-fixture.ldr', 'the model on show stays');
 
     const before = await page.evaluate(() => window.__bwSimLab._pane.lastText);
-    await page.getByTestId('bw-sim-lab-save').click();
-    const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('bw-sim-lab-save-io').click()]);
+    await clickWhenReady(page, 'bw-sim-lab-save', OPEN_BUDGET_MS);
+    const [download] = await Promise.all([page.waitForEvent('download'), clickWhenReady(page, 'bw-sim-lab-save-io', OPEN_BUDGET_MS)]);
     assert.equal(download.suggestedFilename(), 'interop-fixture.io');
     const zipBytes = await readFile(await download.path());
     const zip = await JSZip.loadAsync(zipBytes);
