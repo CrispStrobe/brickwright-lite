@@ -34,6 +34,8 @@ const OMEGA_SMOOTH = 0.5;
 /** Solver iterations for an island holding an actuator (see createScrewDrives). */
 export const SCREW_VELOCITY_STEPS = 60;
 export const SCREW_POSITION_STEPS = 10;
+/** The least mass the solver sees for an actuator's parts (kg; see floorMass). */
+export const SCREW_MIN_MASS_KG = 0.02;
 /** Half the window the piston is held in (m): a hard pair of limits this close. */
 const HOLD_M = 0.000001;
 /** How long a load must last to slip the clutch (s): its average over this time is what counts. */
@@ -51,13 +53,39 @@ const CLUTCH_TAU_S = 0.05;
  * @param {number} args.dt the fixed step (s)
  * @returns {{beforeStep(): void, registrant: {save(): any, restore(saved: any): void}, drives: object[]}}
  */
-export const createScrewDrives = ({J, couplings, hingeMap, sliderMap, jointMap, bodyInterface, bodyIdOf, dt}) => {
+export const createScrewDrives = ({J, couplings, hingeMap, sliderMap, jointMap, bodyInterface, bodyIdOf, bodyOf = () => null, dt}) => {
+    /**
+     * The solver's mass for an actuator's light parts and the light parts hinged to them. The piston (0.4 g) sits between the slider's
+     * hard limits and the hinge to a boom of 40–150 g: Jolt's iterative solve gives way at the light
+     * body, and the piston's hinge to the boom opened by 3 mm under the Excavator's arm (measured;
+     * the arm then did not follow its actuator back). A body lighter than SCREW_MIN_MASS_KG is given
+     * that mass (and its inertia scaled with it) with its GRAVITY FACTOR scaled down by the same
+     * ratio, so its weight is still its own: a numerical floor like the core's GEAR_MIN_INERTIA,
+     * which only makes the light part slower to accelerate on its own (the actuator moves at the
+     * thread's speed, which no motor-driven arm notices).
+     */
+    const floored = new Set();
+    const floorMass = id => {
+        const body = id && !floored.has(id) ? bodyOf(id) : null;
+        if (!body) return;
+        floored.add(id);
+        const mp = body.GetMotionProperties();
+        const inv = mp.GetInverseMass();
+        if (!(inv > 0) || 1 / inv >= SCREW_MIN_MASS_KG) return;
+        const k = SCREW_MIN_MASS_KG * inv;
+        mp.ScaleToMass(SCREW_MIN_MASS_KG);
+        mp.SetGravityFactor(mp.GetGravityFactor() / k);
+    };
     const drives = couplings.map(c => {
         const h = hingeMap.get(c.hingeJoint);
         const s = sliderMap.get(c.sliderJoint);
         const jh = jointMap.get(c.hingeJoint);
         const js = jointMap.get(c.sliderJoint);
         if (!h || !s || !jh || !js) throw new Error(`screw ${c.id}: its hinge and slider must exist`);
+        // The actuator's parts and what they are hinged to (its pivot axle, the pins at its ends).
+        const own = [js.body1, js.body2, jh.body1, jh.body2];
+        for (const b of own) floorMass(b);
+        for (const j of jointMap.values()) if (own.includes(j.body1) || own.includes(j.body2)) { floorMass(j.body1); floorMass(j.body2); }
         // The spindle is the hinge's body not shared with the slider; its signed axis (+ on body2).
         const frame = [jh.body1, jh.body2].find(b => b === js.body1 || b === js.body2);
         const spindleIsBody2 = jh.body2 !== frame;

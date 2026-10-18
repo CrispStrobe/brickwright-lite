@@ -18,15 +18,16 @@ WHEN flag clicked:
   set motor speed D 100
   set motor speed E 100
   set motor speed F 100
-  # Dig: open the bucket, reach out, lower the boom until the teeth touch the
-  # ground, lift a little and curl the bucket in.
+  # Dig: lift the boom a little, open the bucket, reach out, lower the boom until
+  # the teeth touch the ground, lift a little and curl the bucket in.
+  run motor D clockwise 1000 degrees
   run motor F counterclockwise 2500 degrees
   run motor E counterclockwise 3000 degrees
-  run motor D counterclockwise 2500 degrees
+  run motor D counterclockwise 5000 degrees
   run motor D clockwise 2500 degrees
   run motor F clockwise 5000 degrees
   # Lift the load.
-  run motor D clockwise 3500 degrees
+  run motor D clockwise 5000 degrees
   run motor E clockwise 3000 degrees
   # Swing left a quarter turn and dump.
   run motor C clockwise 315 degrees

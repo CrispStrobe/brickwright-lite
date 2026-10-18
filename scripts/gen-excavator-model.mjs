@@ -18,7 +18,7 @@ import {fileURLToPath} from 'node:url';
 
 const OUT = process.argv[2] || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'overlay/scratch-gui/static/sim-lab/models/excavator.ldr');
 /** Pin-to-pin lengths of the boom and stick actuators at build (120 contracted .. 180 extended). */
-const P_ = {LD: 150, LE: 150};
+const P_ = {LD: 160, LE: 135};
 
 const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 const add = (a, b, s = 1) => a.map((v, i) => v + s * b[i]);
