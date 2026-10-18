@@ -166,9 +166,15 @@ export const SEARCH_DIRS = Object.freeze(['parts/', 'p/', '']);
  * @param {{topRef?: (index: number) => boolean, topOwn?: boolean}} [options]
  * @returns {{polys: Vec3[][], polyColours: number[], edges: Vec3[][], edgeColours: number[], edgeDirect: boolean[],
  *            optional: Vec3[][], optionalColours: number[], optionalDirect: boolean[],
- *            primitives: {file: string, x: Xform}[],
+ *            primitives: {file: string, x: Xform, via: string[], invert: boolean}[],
  *            subparts: {file: string, x: Xform, description: string, polys: Vec3[][]}[],
  *            files: string[], missing: string[]}}
+ *          primitives: every placement of a file under p/ — nested ones too (a 4-4cyli inside
+ *          connhole.dat is listed as well as the connhole) — with its transform composed
+ *          down from the part frame; `via` names the library files it was reached through,
+ *          outermost first (so a cylinder drawn by stud.dat says so: ['p/stud.dat']), and
+ *          `invert` whether BFC INVERTNEXT applies to it (an inside-out primitive: a bore
+ *          drawn with an outward cylinder primitive)
  *          subparts: every instance of a parts/s/ file with its placement and its
  *          own polygons in the part frame (LDraw splits e.g. a gear's axle hole
  *          into such sub-files)
@@ -205,14 +211,15 @@ export const flattenPart = (name, read, {topRef = () => true, topOwn = true} = {
         return colour;
     };
     const lineColour = (code, current) => (code === 24 ? [current, false] : [resolveColour(code, current), true]);
-    const walk = (ref, x, colour, depth, invert) => {
+    const walk = (ref, x, colour, depth, invert, via) => {
         if (depth > 32) throw new Error(`LDraw reference depth > 32 at ${ref} (a cycle?)`);
         const f = load(ref);
         if (!f) {
             out.missing.push(ref);
             return;
         }
-        if (f.path.startsWith('p/')) out.primitives.push({file: f.path, x});
+        if (f.path.startsWith('p/')) out.primitives.push({file: f.path, x, via, invert});
+        const below = depth > 0 ? [...via, f.path] : via;
         const first = out.polys.length;
         const own = depth > 0 || topOwn;
         // A mirroring placement (negative determinant) flips winding, as does INVERTNEXT.
@@ -240,13 +247,13 @@ export const flattenPart = (name, read, {topRef = () => true, topOwn = true} = {
         f.parsed.refs.forEach((r, i) => {
             if (depth === 0 && !topRef(i)) return;
             const childColour = resolveColour(r.colour, colour);
-            walk(r.file, compose(x, r.x), childColour, depth + 1, invert !== r.invert);
+            walk(r.file, compose(x, r.x), childColour, depth + 1, invert !== r.invert, below);
         });
         if (f.path.startsWith('parts/s/')) {
             out.subparts.push({file: f.path, x, description: f.parsed.header.description, polys: out.polys.slice(first)});
         }
     };
-    walk(name, IDENTITY, 16, 0, false);
+    walk(name, IDENTITY, 16, 0, false, []);
     return out;
 };
 
