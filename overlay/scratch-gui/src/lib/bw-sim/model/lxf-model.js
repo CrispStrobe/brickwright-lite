@@ -21,6 +21,7 @@
 import {det3} from '../contracts.js';
 import {LDD_PARTS, LDD_UNIT_LDU} from './ldd-parts.js';
 import {lddFrameOf, rowOfFrame, DERIVED_RULES} from './ldd-frame.js';
+import {MAX_COORDINATE} from './ldraw-model.js';
 
 /** The colour an unmapped material gets: LDraw 71, light bluish grey (the Technic default). */
 export const LXF_FALLBACK_COLOUR = 71;
@@ -158,6 +159,11 @@ export const parseLxfml = (xml, {colours, catalog}) => {
                 message: `LDD design ${design}: material ${part.materials || '?'} has no LDraw colour; it is light bluish grey`});
         }
         const {rotation, position} = lddToLdraw(bone, row);
+        // A bone with absurd numbers (1e308) places nothing a model can hold: refused like a bad one.
+        if (![...rotation, ...position].every(Number.isFinite) || position.some(v => Math.abs(v) > MAX_COORDINATE)) {
+            refusals.push({code: 'lxf-bad-transform', design, message: `LDD design ${design}: its transformation places it out of range`});
+            return;
+        }
         if (derived) {
             refusals.push({severity: 'warning', code: 'lxf-derived-frame', design,
                 message: `LDD design ${design}: placed as ${row.part} with its LDD frame worked out from the part's studs (not from a recorded row)`});
