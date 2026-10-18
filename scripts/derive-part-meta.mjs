@@ -1314,7 +1314,7 @@ export const coverageMarkdown = ({added, rejected, measured, compare, partsBytes
     const matched = compare.reduce((n, r) => n + r.matched.length, 0);
     const agree = compare.filter(r => !r.handOnly.length && !r.derivedOnly.length && r.matched.every(m => !m.lengthDiff && m.closedEndSame));
     lines.push('# Robot Lab part library: coverage of the derived parts', '',
-        'Written by `node scripts/derive-part-meta.mjs --generate <list> --report-md <this file>` — do not edit by hand.', '',
+        'Written by `node scripts/derive-part-meta.mjs --lib <LDraw library> --generate scripts/derive-part-meta.parts.txt --report-md <this file>` — do not edit by hand.', '',
         'Parts in `overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json` marked `"derived": true` were derived from their official LDraw',
         'files by `scripts/derive-part-meta.mjs`; the others are measured by hand. A derived part is admitted only when the deriver\'s',
         '`selfCheck` passes (the rules of `test/bw-sim-part-meta.test.mjs`), and the tests then check the shipped file independently.', '',
@@ -1440,6 +1440,8 @@ export const generate = async (list, read) => {
         process.stderr.write(`+ ${part} ${m.name}\n`);
     }
     json.parts.push(...added);
+    const note = ' Entries marked "derived": true are not measured by hand: scripts/derive-part-meta.mjs derives them from their LDraw files (connection primitives, measured anti-stud cells; mass = mesh volume x ABS 1.05 g/cm3; nameDeGenerated: a generated German name), and admits one only when it passes the geometry contract.';
+    if (!json.$comment.includes(note)) json.$comment += note;
     return {json, added, rejected, measured};
 };
 
