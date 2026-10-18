@@ -4,10 +4,11 @@
  "references": [
   "39370c01.dat",
   "41769.dat",
+  "65414c01.dat",
   "92693c01-f1.dat",
   "92693c01-f2.dat"
  ],
- "$references": "LDraw assemblies vendored only so the metadata test can check a connector against LDraw's own placement (39370c01: where the castor ball sits in its socket). 41769.dat is LDraw's `~Moved to 41769a` alias, vendored only so test/bw-sim-canonical-frame.test.mjs checks that an alias is found as a duplicate by its geometry (part-meta/canonical-frame.js). 92693c01-f1/-f2.dat are LDraw's contracted and extended small linear actuator: the stroke and the spindle's thread are derived from them (scripts/derive-part-meta.mjs deriveLinearActuator) and test/bw-sim-linear-actuator.test.mjs checks them against them.",
+ "$references": "LDraw assemblies vendored only so the metadata test can check a connector against LDraw's own placement (39370c01: where the castor ball sits in its socket). 41769.dat is LDraw's `~Moved to 41769a` alias, vendored only so test/bw-sim-canonical-frame.test.mjs checks that an alias is found as a duplicate by its geometry (part-meta/canonical-frame.js). 65414c01.dat is LDraw's assembly of the differential 65414 with its cover 65413 and satellites 6589: scripts/derive-part-meta.mjs reads where the satellites and the cover sit (the casing's gear-seat and snap connectors). 92693c01-f1/-f2.dat are LDraw's contracted and extended small linear actuator: the stroke and the spindle's thread are derived from them (scripts/derive-part-meta.mjs deriveLinearActuator) and test/bw-sim-linear-actuator.test.mjs checks them against them.",
  "parts": [
   {
    "part": "32523.dat",
@@ -19805,6 +19806,21 @@
       1
      ],
      "length": 40
+    },
+    {
+     "id": "r",
+     "type": "spline",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
     }
    ],
    "colliders": [
@@ -19993,15 +20009,33 @@
       1
      ],
      "length": 40
+    },
+    {
+     "id": "r",
+     "type": "spline",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
     }
    ],
    "colliders": [
     {
-     "shape": "box",
-     "halfExtents": [
-      9.24,
-      9.24,
-      20
+     "shape": "cylinder",
+     "radius": 10,
+     "halfHeight": 20,
+     "rotation": [
+      0.707106781187,
+      0,
+      0,
+      0.707106781187
      ]
     }
    ],
@@ -24525,6 +24559,961 @@
        0,
        0,
        -1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "part": "18946.dat",
+   "name": "Technic gear 16 tooth with clutch on both sides",
+   "nameDe": "Technic-Zahnrad 16 Zähne mit Kupplung auf beiden Seiten",
+   "nameDeGenerated": true,
+   "category": "gear",
+   "massGrams": 0.97,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "k0",
+     "type": "clutch",
+     "position": [
+      0,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 8
+    },
+    {
+     "id": "k1",
+     "type": "clutch",
+     "position": [
+      0,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      0,
+      -1
+     ],
+     "length": 8
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "cylinder",
+     "radius": 21.79,
+     "halfHeight": 10,
+     "rotation": [
+      0.707106781187,
+      0,
+      0,
+      0.707106781187
+     ]
+    }
+   ],
+   "derived": true,
+   "gear": {
+    "type": "spur",
+    "teeth": 16,
+    "axis": [
+     0,
+     0,
+     1
+    ],
+    "center": [
+     0,
+     0,
+     0
+    ]
+   },
+   "mirrorOf": {
+    "part": "18946.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    },
+    "others": [
+     {
+      "m": [
+       1,
+       0,
+       0,
+       0,
+       -1,
+       0,
+       0,
+       0,
+       1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "m": [
+       1,
+       0,
+       0,
+       0,
+       1,
+       0,
+       0,
+       0,
+       -1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "m": [
+       -1,
+       0,
+       0,
+       0,
+       -1,
+       0,
+       0,
+       0,
+       -1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "m": [
+       0,
+       1,
+       0,
+       1,
+       0,
+       0,
+       0,
+       0,
+       1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "m": [
+       0,
+       -1,
+       0,
+       -1,
+       0,
+       0,
+       0,
+       0,
+       1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "m": [
+       0,
+       -1,
+       0,
+       1,
+       0,
+       0,
+       0,
+       0,
+       -1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "m": [
+       0,
+       1,
+       0,
+       -1,
+       0,
+       0,
+       0,
+       0,
+       -1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "part": "81346.dat",
+   "name": "Technic gear 20 tooth with clutch on both sides",
+   "nameDe": "Technic-Zahnrad 20 Zähne mit Kupplung auf beiden Seiten",
+   "nameDeGenerated": true,
+   "category": "gear",
+   "massGrams": 1.1500000000000001,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "k0",
+     "type": "clutch",
+     "position": [
+      0,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 8
+    },
+    {
+     "id": "k1",
+     "type": "clutch",
+     "position": [
+      0,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      0,
+      -1
+     ],
+     "length": 8
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "cylinder",
+     "radius": 27.61,
+     "halfHeight": 10,
+     "rotation": [
+      0.707106781187,
+      0,
+      0,
+      0.707106781187
+     ]
+    }
+   ],
+   "derived": true,
+   "gear": {
+    "type": "spur",
+    "teeth": 20,
+    "axis": [
+     0,
+     0,
+     1
+    ],
+    "center": [
+     0,
+     0,
+     0
+    ]
+   },
+   "mirrorOf": {
+    "part": "81346.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    },
+    "others": [
+     {
+      "m": [
+       1,
+       0,
+       0,
+       0,
+       -1,
+       0,
+       0,
+       0,
+       1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "m": [
+       1,
+       0,
+       0,
+       0,
+       1,
+       0,
+       0,
+       0,
+       -1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "m": [
+       -1,
+       0,
+       0,
+       0,
+       -1,
+       0,
+       0,
+       0,
+       -1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "m": [
+       0,
+       1,
+       0,
+       1,
+       0,
+       0,
+       0,
+       0,
+       1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "m": [
+       0,
+       -1,
+       0,
+       -1,
+       0,
+       0,
+       0,
+       0,
+       1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "m": [
+       0,
+       -1,
+       0,
+       1,
+       0,
+       0,
+       0,
+       0,
+       -1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "m": [
+       0,
+       1,
+       0,
+       -1,
+       0,
+       0,
+       0,
+       0,
+       -1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "part": "2471.dat",
+   "name": "Technic gear 24 tooth with clutch on both sides",
+   "nameDe": "Technic-Zahnrad 24 Zähne mit Kupplung auf beiden Seiten",
+   "nameDeGenerated": true,
+   "category": "gear",
+   "massGrams": 1.35,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "k0",
+     "type": "clutch",
+     "position": [
+      0,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 8
+    },
+    {
+     "id": "k1",
+     "type": "clutch",
+     "position": [
+      0,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      0,
+      -1
+     ],
+     "length": 8
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "cylinder",
+     "radius": 32.04,
+     "halfHeight": 10,
+     "rotation": [
+      0.707106781187,
+      0,
+      0,
+      0.707106781187
+     ]
+    }
+   ],
+   "derived": true,
+   "gear": {
+    "type": "spur",
+    "teeth": 24,
+    "axis": [
+     0,
+     0,
+     1
+    ],
+    "center": [
+     0,
+     0,
+     0
+    ]
+   },
+   "mirrorOf": {
+    "part": "2471.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    },
+    "others": [
+     {
+      "m": [
+       1,
+       0,
+       0,
+       0,
+       -1,
+       0,
+       0,
+       0,
+       1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "part": "35185.dat",
+   "name": "Technic gear 20 tooth double bevel with clutch on both sides",
+   "nameDe": "Technic-Zahnrad 20 Zähne Doppelkegel mit Kupplung auf beiden Seiten",
+   "nameDeGenerated": true,
+   "category": "gear",
+   "massGrams": 1.26,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "k0",
+     "type": "clutch",
+     "position": [
+      0,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 8
+    },
+    {
+     "id": "k1",
+     "type": "clutch",
+     "position": [
+      0,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      0,
+      -1
+     ],
+     "length": 8
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "cylinder",
+     "radius": 27.01,
+     "halfHeight": 10,
+     "rotation": [
+      0.707106781187,
+      0,
+      0,
+      0.707106781187
+     ]
+    }
+   ],
+   "derived": true,
+   "gear": {
+    "type": "bevel",
+    "teeth": 20,
+    "axis": [
+     0,
+     0,
+     1
+    ],
+    "center": [
+     0,
+     0,
+     0
+    ]
+   },
+   "mirrorOf": {
+    "part": "35185.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    },
+    "others": [
+     {
+      "m": [
+       1,
+       0,
+       0,
+       0,
+       -1,
+       0,
+       0,
+       0,
+       1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "m": [
+       1,
+       0,
+       0,
+       0,
+       1,
+       0,
+       0,
+       0,
+       -1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "m": [
+       -1,
+       0,
+       0,
+       0,
+       -1,
+       0,
+       0,
+       0,
+       -1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "m": [
+       0,
+       1,
+       0,
+       1,
+       0,
+       0,
+       0,
+       0,
+       1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "m": [
+       0,
+       -1,
+       0,
+       -1,
+       0,
+       0,
+       0,
+       0,
+       1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "m": [
+       0,
+       -1,
+       0,
+       1,
+       0,
+       0,
+       0,
+       0,
+       -1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "m": [
+       0,
+       1,
+       0,
+       -1,
+       0,
+       0,
+       0,
+       0,
+       -1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "part": "87407.dat",
+   "name": "Technic gear 20 tooth bevel with peghole",
+   "nameDe": "Technic-Zahnrad 20 Zähne Kegel mit Pinloch",
+   "nameDeGenerated": true,
+   "category": "gear",
+   "massGrams": 0.76,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "cylinder",
+     "radius": 26.080000000000002,
+     "halfHeight": 10,
+     "position": [
+      0,
+      0,
+      -10
+     ],
+     "rotation": [
+      0.707106781187,
+      0,
+      0,
+      0.707106781187
+     ]
+    }
+   ],
+   "derived": true,
+   "gear": {
+    "type": "bevel",
+    "teeth": 20,
+    "axis": [
+     0,
+     0,
+     1
+    ],
+    "center": [
+     0,
+     0,
+     0
+    ]
+   },
+   "mirrorOf": {
+    "part": "87407.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    },
+    "others": [
+     {
+      "m": [
+       1,
+       0,
+       0,
+       0,
+       -1,
+       0,
+       0,
+       0,
+       1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "m": [
+       0,
+       1,
+       0,
+       1,
+       0,
+       0,
+       0,
+       0,
+       1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "m": [
+       0,
+       -1,
+       0,
+       -1,
+       0,
+       0,
+       0,
+       0,
+       1
       ],
       "t": [
        0,
@@ -110706,6 +111695,718 @@
    "derived": true,
    "mirrorOf": {
     "part": "32190.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  {
+   "part": "6539.dat",
+   "name": "Technic transmission driving ring",
+   "nameDe": "Technic Transmission Driving Ring",
+   "nameDeGenerated": true,
+   "category": "gear",
+   "massGrams": 1.16,
+   "connectors": [
+    {
+     "id": "b",
+     "type": "spline-bore",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 40
+    },
+    {
+     "id": "e0",
+     "type": "clutch-teeth",
+     "position": [
+      0,
+      0,
+      20
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ]
+    },
+    {
+     "id": "e1",
+     "type": "clutch-teeth",
+     "position": [
+      0,
+      0,
+      -20
+     ],
+     "axis": [
+      0,
+      0,
+      -1
+     ]
+    },
+    {
+     "id": "g",
+     "type": "fork-groove",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "data": {
+      "radiusLdu": 13,
+      "outerLdu": 20,
+      "widthLdu": 10
+     }
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "cylinder",
+     "radius": 13,
+     "halfHeight": 0.5,
+     "rotation": [
+      0.707106781187,
+      0,
+      0,
+      0.707106781187
+     ],
+     "position": [
+      0,
+      0,
+      -19.5
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 15.100000000000001,
+     "halfHeight": 5,
+     "rotation": [
+      0.707106781187,
+      0,
+      0,
+      0.707106781187
+     ],
+     "position": [
+      0,
+      0,
+      -14
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 20,
+     "halfHeight": 2,
+     "rotation": [
+      0.707106781187,
+      0,
+      0,
+      0.707106781187
+     ],
+     "position": [
+      0,
+      0,
+      -7
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 13,
+     "halfHeight": 5,
+     "rotation": [
+      0.707106781187,
+      0,
+      0,
+      0.707106781187
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 20,
+     "halfHeight": 2,
+     "rotation": [
+      0.707106781187,
+      0,
+      0,
+      0.707106781187
+     ],
+     "position": [
+      0,
+      0,
+      7
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 15.100000000000001,
+     "halfHeight": 5,
+     "rotation": [
+      0.707106781187,
+      0,
+      0,
+      0.707106781187
+     ],
+     "position": [
+      0,
+      0,
+      14
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 13,
+     "halfHeight": 0.5,
+     "rotation": [
+      0.707106781187,
+      0,
+      0,
+      0.707106781187
+     ],
+     "position": [
+      0,
+      0,
+      19.5
+     ]
+    }
+   ],
+   "derived": true,
+   "mirrorOf": {
+    "part": "6539.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    },
+    "others": [
+     {
+      "m": [
+       -1,
+       0,
+       0,
+       0,
+       -1,
+       0,
+       0,
+       0,
+       -1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "part": "6641.dat",
+   "name": "Technic transmission changeover catch type 1",
+   "nameDe": "Technic Transmission Changeover Catch Typ 1",
+   "nameDeGenerated": true,
+   "category": "gear",
+   "massGrams": 0.61,
+   "connectors": [
+    {
+     "id": "x0",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      -2.5
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 17
+    },
+    {
+     "id": "x1",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "f",
+     "type": "fork",
+     "position": [
+      0,
+      0,
+      -42
+     ],
+     "axis": [
+      -1,
+      0,
+      0
+     ],
+     "length": 20,
+     "data": {
+      "radiusLdu": 2.3000000000000003
+     }
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      3.5,
+      1
+     ],
+     "position": [
+      0,
+      0,
+      -45
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      4,
+      2.75
+     ],
+     "position": [
+      0,
+      0,
+      -41.25
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      2,
+      5
+     ],
+     "position": [
+      0,
+      0,
+      -33.5
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      6.5,
+      1
+     ],
+     "position": [
+      0,
+      0,
+      -27.5
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      8.5,
+      1.5
+     ],
+     "position": [
+      0,
+      0,
+      -25
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      9,
+      14.75
+     ],
+     "position": [
+      0,
+      0,
+      -8.75
+     ]
+    }
+   ],
+   "derived": true,
+   "mirrorOf": {
+    "part": "6641.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    },
+    "others": [
+     {
+      "m": [
+       1,
+       0,
+       0,
+       0,
+       -1,
+       0,
+       0,
+       0,
+       1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "part": "76019.dat",
+   "name": "Technic gear 24 tooth clutch with dark grey centre",
+   "nameDe": "Technic-Zahnrad 24 Zähne Kupplung mit Dark Grey Mitte",
+   "nameDeGenerated": true,
+   "category": "gear",
+   "massGrams": 1.53,
+   "connectors": [
+    {
+     "id": "x0",
+     "type": "clutch-axlehole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20,
+     "data": {
+      "slipTorqueNm": 0.037500000000000006
+     }
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "cylinder",
+     "radius": 31.7,
+     "halfHeight": 10,
+     "rotation": [
+      0.707106781187,
+      0,
+      0,
+      0.707106781187
+     ]
+    }
+   ],
+   "derived": true,
+   "gear": {
+    "type": "spur",
+    "teeth": 24,
+    "axis": [
+     0,
+     0,
+     1
+    ],
+    "center": [
+     0,
+     0,
+     0
+    ]
+   },
+   "mirrorOf": {
+    "part": "76019.dat",
+    "transform": {
+     "m": [
+      0,
+      1,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    },
+    "others": [
+     {
+      "m": [
+       0,
+       -1,
+       0,
+       -1,
+       0,
+       0,
+       0,
+       0,
+       1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "part": "65414.dat",
+   "name": "Technic differential casing for 5 internal gears",
+   "nameDe": "Technic Differential Casing for 5 Internal Gears",
+   "nameDeGenerated": true,
+   "category": "gear",
+   "massGrams": 2.32,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      -5
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 10
+    },
+    {
+     "id": "q0",
+     "type": "gear-seat",
+     "position": [
+      0,
+      -17,
+      20
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "q1",
+     "type": "gear-seat",
+     "position": [
+      14.722,
+      8.5,
+      20
+     ],
+     "axis": [
+      -0.866027,
+      -0.499998,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "q2",
+     "type": "gear-seat",
+     "position": [
+      -14.722,
+      8.5,
+      20
+     ],
+     "axis": [
+      0.866027,
+      -0.499998,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "c",
+     "type": "snap",
+     "position": [
+      0,
+      0,
+      40
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ]
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "cylinder",
+     "radius": 26.3,
+     "halfHeight": 28.5,
+     "position": [
+      0,
+      0,
+      18.5
+     ],
+     "rotation": [
+      0.707106781187,
+      0,
+      0,
+      0.707106781187
+     ]
+    }
+   ],
+   "derived": true,
+   "mirrorOf": {
+    "part": "65414.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  {
+   "part": "65413.dat",
+   "name": "Technic gear 28 tooth double bevel with peghole",
+   "nameDe": "Technic-Zahnrad 28 Zähne Doppelkegel mit Pinloch",
+   "nameDeGenerated": true,
+   "category": "gear",
+   "massGrams": 1.96,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      5
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 10
+    },
+    {
+     "id": "c",
+     "type": "snap",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ]
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "cylinder",
+     "radius": 36.81,
+     "halfHeight": 10,
+     "rotation": [
+      0.707106781187,
+      0,
+      0,
+      0.707106781187
+     ]
+    }
+   ],
+   "derived": true,
+   "gear": {
+    "type": "bevel",
+    "teeth": 28,
+    "axis": [
+     0,
+     0,
+     1
+    ],
+    "center": [
+     0,
+     0,
+     0
+    ]
+   },
+   "mirrorOf": {
+    "part": "65413.dat",
     "transform": {
      "m": [
       -1,

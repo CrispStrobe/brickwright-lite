@@ -230,7 +230,9 @@ test('overlaps, move verdicts, free offsets and rays: the indexed answers are th
 
 test('the magnet: snapCandidates with the index equals snapCandidates over every part', () => {
     let found = 0;
-    for (let seed = 1; seed <= 5; seed++) {
+    // Eight random models: which parts the pool draws depends on the catalogue, and with five the
+    // queries near hole-less parts (turntables, actuator parts) left too few candidates to judge by.
+    for (let seed = 1; seed <= 8; seed++) {
         const r = rng(seed * 977);
         const plain = randomModel(seed, 100);
         const model = frozen(plain);

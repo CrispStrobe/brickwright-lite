@@ -17,11 +17,18 @@
 //   couplings   spur.js, bevel.js: tooth meshes that make a 'gear' coupling
 //               (mech/gears.js applies the shared frame rules);
 //               worm.js: a worm and a spur wheel → 'worm' (self-locking);
-//               rack.js: a rack and a spur pinion → 'rackAndPinion' (R4);
+//               rack.js: a rack and a spur pinion → 'rackAndPinion' (R4), both
+//               free detectors run after the meshes, in this order;
+//               relative-gear.js: 'relativeGear', a mesh relative to a frame that is not
+//               both hinges' (mech/gears.js emits it);
+//               transmission.js (gearbox lane): 'dogClutch' (a driving ring takes a
+//               clutch gear) and 'shiftFork' (a changeover catch pushes the ring);
 //               screw.js: a linear actuator's spindle and the nut of its piston →
-//               'screw' (self-locking, with a slip clutch); all free detectors run
-//               after the meshes, in this order. turntable.js adds a module that
-//               emits no coupling: a seated turntable's nesting halves (placedMesh)
+//               'screw' (self-locking, with a slip clutch). turntable.js adds a module
+//               that emits no coupling: a seated turntable's nesting halves (placedMesh)
+//   gearbox     transmission.js: spline, spline-bore (slider), clutch, clutch-teeth,
+//               fork, fork-groove; slip-clutch.js: clutch-axlehole (a slipping hinge);
+//               gear-seat.js: gear-seat (a satellite in its cradle: hinge), snap (rigid)
 //   joints      hinge, slider, ball — what the physics core builds today
 
 import {ConnectorKindRegistry, CouplingKindRegistry, JointKindRegistry} from '../registry/kinds.js';
@@ -34,6 +41,10 @@ import {RACK, RACK_TEETH} from './rack.js';
 import {TUBE} from './stud.js';
 import {TURNTABLE_RING, TURNTABLE_RACE, TURNTABLE_NEST} from './turntable.js';
 import {SCREW, SCREW_CONNECTORS} from './screw.js';
+import {SPLINE, SPLINE_BORE, CLUTCH, CLUTCH_TEETH, FORK, FORK_GROOVE, DOG_CLUTCH, SHIFT_FORK} from './transmission.js';
+import {CLUTCH_AXLEHOLE} from './slip-clutch.js';
+import {GEAR_SEAT, SNAP} from './gear-seat.js';
+import {RELATIVE_GEAR} from './relative-gear.js';
 
 export const JOINT_KINDS = [
     {type: 'hinge', dof: 1},
@@ -44,8 +55,9 @@ export const JOINT_KINDS = [
 /** @type {{connectors: ConnectorKindRegistry, couplings: CouplingKindRegistry, joints: JointKindRegistry}} */
 export const BUILTIN_KINDS = Object.freeze({
     connectors: new ConnectorKindRegistry([...PIN_AXLE_KINDS, SLIDE_BORE, WORM_THREAD, RACK_TEETH, TUBE,
+        SPLINE, SPLINE_BORE, CLUTCH, CLUTCH_TEETH, FORK, FORK_GROOVE, CLUTCH_AXLEHOLE, GEAR_SEAT, SNAP,
         TURNTABLE_RING, TURNTABLE_RACE, ...SCREW_CONNECTORS]),
-    couplings: new CouplingKindRegistry([SPUR, BEVEL, WORM, RACK, SCREW, TURNTABLE_NEST]),
+    couplings: new CouplingKindRegistry([SPUR, BEVEL, WORM, RACK, DOG_CLUTCH, SHIFT_FORK, RELATIVE_GEAR, SCREW, TURNTABLE_NEST]),
     joints: new JointKindRegistry(JOINT_KINDS)
 });
 

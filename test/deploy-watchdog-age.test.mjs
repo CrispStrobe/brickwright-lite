@@ -65,6 +65,39 @@ test('the earliest started job defines the run age, not the latest', () => {
     assert.deepEqual(ids(runs), ['multi']);
 });
 
+test('finished jobs carry no running age: a starved queue is not a stuck build', () => {
+    // The real shape from 2026-10-18 (issue #1074): the gate jobs started and
+    // finished at once, the test shards then waited for runners for an hour,
+    // and one shard had been running 11 minutes when the run was cancelled.
+    // Every finished job had passed; Pages did not deploy.
+    const runs = [{id: 'starved', run_started_at: ago(160), jobs: [
+        {started_at: ago(158), completed_at: ago(157), status: 'completed'},
+        {started_at: ago(150), completed_at: ago(135), status: 'completed'},
+        {started_at: ago(11), completed_at: null, status: 'in_progress'},
+        {started_at: null, completed_at: null, status: 'queued'},
+    ]}];
+    assert.deepEqual(ids(runs), [], 'a finished job early in the run aged the whole run');
+    // ...and a job that is itself RUNNING past the budget is still stuck.
+    runs[0].jobs[2].started_at = ago(31);
+    const found = stuckRuns(runs, NOW);
+    assert.deepEqual(found.map(r => r.id), ['starved']);
+    assert.equal(found[0].ageMinutes, 31, 'age must be the running job\'s own age');
+});
+
+test('a run whose every started job has finished is not stuck', () => {
+    const runs = [{id: 'between-jobs', run_started_at: ago(90), jobs: [
+        {started_at: ago(80), completed_at: ago(60), status: 'completed'},
+        {started_at: null, status: 'queued'}]}];
+    assert.deepEqual(ids(runs), []);
+});
+
+test('the watchdog hands the selector each job\'s completion, not only its start', () => {
+    const yml = readFileSync(path.join(import.meta.dirname, '..',
+        '.github/workflows/deploy-watchdog.yml'), 'utf8');
+    assert.match(yml, /--jq '\[\.jobs\[\] \| \{started_at, completed_at, status\}\]'/,
+        'without completed_at/status every finished job looks still running');
+});
+
 test('the budget is a boundary, not a suggestion', () => {
     const at = m => [{id: `run-${m}`, run_started_at: ago(60), jobs: [{started_at: ago(m)}]}];
     assert.deepEqual(ids(at(25)), [], '25 minutes is within budget');

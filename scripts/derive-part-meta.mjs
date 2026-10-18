@@ -49,6 +49,7 @@ import {readFileSync, writeFileSync, existsSync} from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {flattenPart, bounds, circularFeatures, column, apply, parseLDraw} from '../overlay/scratch-gui/src/lib/bw-sim/ldraw/ldraw-geometry.js';
+import {SLIP_CLUTCH_24T_NM} from '../overlay/scratch-gui/src/lib/bw-sim/kinds/slip-clutch.js';
 
 /** ABS, g/cm³ (LEGO elements are moulded from ABS; 1.04–1.06). */
 export const ABS_DENSITY_G_PER_CM3 = 1.05;
@@ -1422,7 +1423,9 @@ export const derivePart = (part, read) => {
     if (g && category === 'gear' && !/Crown|Large Tooth|Rack|Ring|Stepper/.test(desc)) {
         const holes = connectors.filter(c => c.type === 'axlehole');
         const centre = holes.find(c => len(c.position) < 0.5) || (holes.length === 1 ? holes[0] : null);
+        const free = centre ? null : freeGearCentre(connectors);
         if (centre) meta.gear = {type: /Bevel/.test(desc) ? 'bevel' : 'spur', teeth: Number(g[1]), axis: centre.axis, center: centre.position};
+        else if (free) meta.gear = {type: /Bevel/.test(desc) ? 'bevel' : 'spur', teeth: Number(g[1]), axis: free.axis, center: free.center};
         else problems.push('gear without one centre axle hole');
     }
     if (category === 'gear' && /^Technic Gear Rack\b/.test(desc)) {
@@ -1434,14 +1437,275 @@ export const derivePart = (part, read) => {
         const w = hole && wormThread(found.verts, hole);
         if (w) connectors.push({id: 'w', type: 'worm', ...w});
     }
+    deriveTransmission({part, desc, meta, connectors, found, flat, read, problems, notes});
     if (turntable && turntable.gear) meta.gear = turntable.gear;
     if (!connectors.length) problems.push('no connector found');
-    if (category === 'gear' && !meta.gear && !connectors.some(c => c.type === 'rack-teeth' || c.type === 'worm' || c.type === 'turntable-race')) {
+    if (meta.category === 'gear' && !meta.gear && !connectors.some(c => c.type === 'rack-teeth' || c.type === 'worm' || c.type === 'turntable-race' || TRANSMISSION_TYPES.has(c.type))) {
         problems.push('a gear-category part without derivable gear data (no clean rack teeth or worm thread; crown, clutch, turntable, knob)');
     }
     return {meta, problems, notes, desc, ldrawCategory};
 };
 
+
+// ---- transmission parts (gearbox lane, 2026-10-18) -----------------------------------
+//
+// Kept in this one section so that it merges cleanly with other lanes' derivation work.
+// The connector kinds are bw-sim/kinds/transmission.js, slip-clutch.js and gear-seat.js.
+//
+//   clutch gears      (6542a/b, 18946, 81346, 2471, 35185) and peghole bevels (87407, 65413):
+//                     no centre axle hole but a centre PIN hole — on an axle they spin
+//                     freely (an axle in a pin hole is a hinge). The gear's centre is the
+//                     point of that hole's line nearest the part origin (freeGearCentre).
+//                     A "with Clutch" gear's socket is measured: rays parallel to the axis,
+//                     11.5 LDU out (between the 9 LDU hub and the 14.7 LDU socket wall),
+//                     from each face inwards; where they run ≥ 4 LDU into the gear before
+//                     meeting it, that face has a socket ('clutch', length = its depth).
+//   slip clutch       "Technic Gear 24 Tooth Clutch" (76019, 76244): its axle hole is a
+//                     'clutch-axlehole' with the stamped rating (kinds/slip-clutch.js).
+//   driving ring      "Technic Transmission Driving Ring" (6539): its radial profile along
+//                     its axis gives the colliders (a stack of cylinders), the ridged bore
+//                     ('spline-bore', the ring's length), a 'clutch-teeth' end at each end,
+//                     and the groove between its flanges ('fork-groove').
+//   ridged joiners    an axle joiner that draws the ridge sub-part ("Axle Joiner Ridge
+//                     Segment", s/6538s02.dat: 6538a, 6538b) carries a 'spline' over the
+//                     ridges' extent.
+//   changeover catch  "Technic Transmission Changeover Catch" (6641): its bar, the thin
+//                     cylinder (radius 2–3 LDU) it ends in, is a 'fork'.
+//   differential      65414 holds its satellites in cradles and is closed by 65413; where,
+//                     LDraw's own assembly 65414c01 says (TRANSMISSION_ASSEMBLIES): each
+//                     satellite turning across the casing's axis is a 'gear-seat' of the
+//                     casing (its axle hole centre, the 12T bevel's origin), and the cover's
+//                     placement is a 'snap' on both parts.
+
+/**
+ * Module-1 gears LDraw draws with their tips a little short (as test/bw-sim-part-meta.test.mjs
+ * allows for 94925): the 16T clutch gear 18946 measures 21.79 LDU for 22.5, the 24T slip clutch
+ * 76019 31.70 for 32.5. Their tooth counts and the gearboxes they are sold for are module 1;
+ * a gear of another module would be off by several LDU. Allowed 1 LDU instead of 0.5.
+ */
+export const SHORT_TEETH = new Set(['18946.dat', '76019.dat']);
+
+export const TRANSMISSION_TYPES = new Set(['spline', 'spline-bore', 'clutch', 'clutch-teeth', 'fork', 'fork-groove', 'clutch-axlehole', 'gear-seat', 'snap']);
+
+/** Official LDraw assemblies that place a part's inner parts: part → {assembly, satellite, cover}. */
+export const TRANSMISSION_ASSEMBLIES = Object.freeze({
+    '65414.dat': {assembly: '65414c01.dat', satellite: '6589.dat', cover: '65413.dat'}
+});
+
+/** A gear's centre pin hole: {axis, center} (the hole line's point nearest the origin), or null. */
+export const freeGearCentre = connectors => {
+    const holes = connectors.filter(c => c.type === 'pinhole' && len(perp(c.position, c.axis)) < 0.5);
+    if (holes.length !== 1) return null;
+    const h = holes[0];
+    return {axis: h.axis, center: roundVec(sub(h.position, scale(h.axis, dot(h.position, h.axis))), 0.001)};
+};
+
+/** Distance along d (unit) from p to the first triangle hit within maxT, or null. */
+const rayHit = (tris, p, d, maxT) => {
+    let best = null;
+    for (const tri of tris) {
+        const [a, b, c] = tri.v;
+        const e1 = sub(b, a); const e2 = sub(c, a);
+        const q = cross(d, e2);
+        const det = dot(e1, q);
+        if (Math.abs(det) < 1e-12) continue;
+        const sv = sub(p, a);
+        const u = dot(sv, q) / det;
+        if (u < -1e-9 || u > 1 + 1e-9) continue;
+        const r = cross(sv, e1);
+        const v = dot(d, r) / det;
+        if (v < -1e-9 || u + v > 1 + 1e-9) continue;
+        const t = dot(e2, r) / det;
+        if (t >= 0 && t <= maxT && (best === null || t < best)) best = t;
+    }
+    return best;
+};
+
+/** Two unit vectors across axis a. */
+const across = a => {
+    const e1 = unit(perp(Math.abs(a[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0], a));
+    return [e1, cross(a, e1)];
+};
+
+/** A clutch gear's sockets, measured (see the section's comment). */
+export const clutchSockets = (tris, verts, centre, axis) => {
+    const out = [];
+    const [e1, e2] = across(axis);
+    for (const side of [1, -1]) {
+        const a = scale(axis, side);
+        let face = -Infinity;
+        for (const v of verts) {
+            const d = sub(v, centre);
+            if (len(perp(d, axis)) <= 17.5) face = Math.max(face, dot(d, a));
+        }
+        let depth = Infinity;
+        for (let k = 0; k < 8; k++) {
+            const th = k * Math.PI / 4 + Math.PI / 8;
+            const p = add(add(centre, scale(a, face + 1)), add(scale(e1, 11.5 * Math.cos(th)), scale(e2, 11.5 * Math.sin(th))));
+            const t = rayHit(tris, p, scale(a, -1), face + 1);
+            depth = Math.min(depth, t === null ? face + 1 : t - 1);
+        }
+        if (depth >= 4) out.push({type: 'clutch', position: roundVec(add(centre, scale(a, face)), 0.01), axis: snapAxis(a), length: round(depth, 0.5)});
+    }
+    return out;
+};
+
+/**
+ * A round part's radial profile along axis a (through the origin): intervals [lo, hi] along a
+ * with the radius of the triangles that span them (a cylinder wall spans its whole length; the
+ * annular faces span nothing), adjacent equal radii merged.
+ */
+export const radialProfile = (tris, a) => {
+    const cuts = [...new Set(tris.flatMap(t => t.v.map(v => round(dot(v, a), 0.01))))].sort((p, q) => p - q);
+    const out = [];
+    for (let i = 0; i + 1 < cuts.length; i++) {
+        const [lo, hi] = [cuts[i], cuts[i + 1]];
+        if (hi - lo < 0.05) continue;
+        let r = 0;
+        for (const t of tris) {
+            const zs = t.v.map(v => dot(v, a));
+            if (Math.min(...zs) > lo + 0.01 || Math.max(...zs) < hi - 0.01) continue;
+            for (const v of t.v) r = Math.max(r, len(perp(v, a)));
+        }
+        if (r === 0) continue;
+        r = round(r, 0.1);
+        const last = out[out.length - 1];
+        if (last && Math.abs(last.hi - lo) < 0.06 && last.r === r) last.hi = hi;
+        else out.push({lo, hi, r});
+    }
+    return out;
+};
+
+const cylinderAlong = (a, lo, hi, r) => {
+    const c = {shape: 'cylinder', radius: r, halfHeight: round((hi - lo) / 2, 0.01)};
+    const q = quatYTo(a);
+    if (q) c.rotation = q;
+    const centre = roundVec(scale(a, (lo + hi) / 2), 0.01);
+    if (centre.some(v => v !== 0)) c.position = centre;
+    return c;
+};
+
+/**
+ * Boxes along coordinate axis k: the part cut into slabs where its outline along k changes, each
+ * slab the bounding box of the triangles that span it, equal neighbours merged. For a part whose
+ * envelope along its hole axis is one box but which narrows along its length (the changeover
+ * catch's neck and bar end).
+ */
+export const slabBoxes = (tris, k) => {
+    const cuts = [...new Set(tris.flatMap(t => t.v.map(v => round(v[k], 0.5))))].sort((p, q) => p - q);
+    const out = [];
+    for (let i = 0; i + 1 < cuts.length; i++) {
+        const [lo, hi] = [cuts[i], cuts[i + 1]];
+        const mn = [Infinity, Infinity, Infinity]; const mx = [-Infinity, -Infinity, -Infinity];
+        for (const t of tris) {
+            const ks = t.v.map(v => v[k]);
+            if (Math.min(...ks) > lo + 0.3 || Math.max(...ks) < hi - 0.3) continue;
+            for (const v of t.v) for (let j = 0; j < 3; j++) if (j !== k) { mn[j] = Math.min(mn[j], v[j]); mx[j] = Math.max(mx[j], v[j]); }
+        }
+        if (!Number.isFinite(mn[(k + 1) % 3])) continue;
+        mn[k] = lo; mx[k] = hi;
+        const box = [mn.map(v => round(v, 0.5)), mx.map(v => round(v, 0.5))];
+        const last = out[out.length - 1];
+        if (last && last[1][k] === lo && [0, 1, 2].every(j => j === k || (last[0][j] === box[0][j] && last[1][j] === box[1][j]))) last[1][k] = hi;
+        else out.push(box);
+    }
+    return out.map(([a, b]) => boxCollider(a, b));
+};
+
+/** The parts a transmission needs: connectors (and colliders, category) added to `meta` in place. */
+export const deriveTransmission = ({part, desc, meta, connectors, found, flat, read, problems, notes}) => {
+    const add1 = c => connectors.push(c);
+    // Clutch gears: the sockets.
+    if (meta.gear && /\bwith Clutch\b/.test(desc)) {
+        const sockets = clutchSockets(found.tris, found.verts, meta.gear.center, meta.gear.axis);
+        const bothSides = /\bon Both Sides\b/.test(desc);
+        if (!sockets.length) problems.push('a clutch gear without a measurable clutch socket');
+        else if (!bothSides && sockets.length > 1) problems.push('a clutch gear with its clutch on one side, but both faces measure as sockets: which face has the clutch teeth is not measurable');
+        else sockets.forEach((c, i) => add1({id: `k${i}`, ...c}));
+    }
+    if (meta.gear && meta.gear.type === 'spur' && /^Technic Gear 24 Tooth Clutch\b/.test(desc)) {
+        const hole = connectors.find(c => c.type === 'axlehole' && len(sub(c.position, meta.gear.center)) < 0.5);
+        if (hole) {
+            hole.type = 'clutch-axlehole';
+            hole.data = {slipTorqueNm: SLIP_CLUTCH_24T_NM};
+        } else problems.push('a slip clutch gear without its centre axle hole');
+    }
+    if (/^Technic Transmission Driving Ring$/.test(desc)) {
+        // The ring is drawn along z: its cylinder walls' axes.
+        const a = [0, 0, 1];
+        const prof = radialProfile(found.tris, a);
+        if (!prof.length) { problems.push('driving ring: no radial profile'); return; }
+        const lo = prof[0].lo; const hi = prof[prof.length - 1].hi;
+        const outer = Math.max(...prof.map(q => q.r));
+        // The groove: the middle interval (holding 0) narrower than the flanges, between two flange intervals.
+        const mid = prof.findIndex(q => q.lo <= 0 && q.hi >= 0);
+        let g0 = mid; let g1 = mid;
+        while (g0 > 0 && prof[g0 - 1].r < outer) g0--;
+        while (g1 < prof.length - 1 && prof[g1 + 1].r < outer) g1++;
+        const grooveR = Math.min(...prof.slice(g0, g1 + 1).map(q => q.r));
+        meta.colliders = prof.filter(q => q.hi - q.lo >= 0.5).map(q => cylinderAlong(a, q.lo, q.hi, q.r));
+        meta.category = 'gear';
+        add1({id: 'b', type: 'spline-bore', position: [0, 0, round((lo + hi) / 2, 0.01)], axis: a, length: round(hi - lo, 0.5)});
+        add1({id: 'e0', type: 'clutch-teeth', position: [0, 0, round(hi, 0.01)], axis: [0, 0, 1]});
+        add1({id: 'e1', type: 'clutch-teeth', position: [0, 0, round(lo, 0.01)], axis: [0, 0, -1]});
+        add1({id: 'g', type: 'fork-groove', position: [0, 0, round((prof[g0].lo + prof[g1].hi) / 2, 0.01)], axis: a,
+            data: {radiusLdu: grooveR, outerLdu: outer, widthLdu: round(prof[g1].hi - prof[g0].lo, 0.1)}});
+        notes.push(`driving ring profile: ${prof.map(q => `${q.lo}..${q.hi} r${q.r}`).join(', ')}`);
+    }
+    const ridges = flat.subparts.filter(sp => /Ridge Segment/.test(sp.description));
+    const joinerHole = connectors.find(c => c.type === 'axlehole');
+    if (ridges.length && joinerHole && /^Technic Axle Joiner\b/.test(desc)) {
+        const along = ridges.flatMap(sp => sp.polys.flat()).map(v => dot(v, joinerHole.axis));
+        const [l0, l1] = [Math.min(...along), Math.max(...along)];
+        const c = add(perp(joinerHole.position, joinerHole.axis), scale(joinerHole.axis, (l0 + l1) / 2));
+        add1({id: 'r', type: 'spline', position: roundVec(c, 0.01), axis: joinerHole.axis, length: latticeLength(l1 - l0)});
+        // A ridged joiner turns inside the driving ring: round, so a cylinder (the ridges' reach), not
+        // the box of its envelope, whose corners would rub what passes close by.
+        const extent = found.verts.map(v => dot(v, joinerHole.axis));
+        const rMax = Math.max(...found.verts.map(v => len(perp(sub(v, joinerHole.position), joinerHole.axis))));
+        meta.colliders = [cylinderAlong(joinerHole.axis, Math.min(...extent), Math.max(...extent), round(rMax, 0.01))];
+    }
+    if (/^Technic Transmission Changeover Catch\b/.test(desc)) {
+        const bars = flat.primitives.filter(q => /^p\/(4-4cyl[io])\.dat$/.test(q.file) && !q.via.length)
+            .map(q => ({r: len(column(q.x, 0)), h: column(q.x, 1), t: q.x.t}))
+            .filter(b => b.r >= 1.5 && b.r <= 3 && len(b.h) >= 10);
+        if (bars.length === 1) {
+            const b = bars[0];
+            add1({id: 'f', type: 'fork', position: roundVec(add(b.t, scale(b.h, 0.5)), 0.01), axis: snapAxis(unit(b.h)), length: round(len(b.h), 0.5),
+                data: {radiusLdu: round(b.r, 0.01)}});
+            // Its outline narrows from the block to the neck and the bar: boxes along the lever (z).
+            meta.colliders = slabBoxes(found.tris, 2);
+            meta.category = 'gear';
+        } else problems.push(`changeover catch: ${bars.length} bar cylinders, need one`);
+    }
+    // Differential casing and cover, from LDraw's assembly.
+    for (const [casing, spec] of Object.entries(TRANSMISSION_ASSEMBLIES)) {
+        if (part !== casing && part !== spec.cover) continue;
+        const text = read(`parts/${spec.assembly}`);
+        if (!text) { problems.push(`${spec.assembly}: not in the library`); continue; }
+        const refs = parseLDraw(text).refs.map(r => ({...r, file: r.file.toLowerCase().replace(/\\/g, '/')}));
+        const home = refs.find(r => r.file === casing);
+        if (!home) { problems.push(`${spec.assembly} does not place ${casing}`); continue; }
+        // Placement relative to the casing: x ↦ Mcᵀ(x − tc) (Mc a rotation).
+        const Mc = home.x.m;
+        const toCasing = v => { const d = sub(v, home.x.t); return [0, 1, 2].map(i => Mc[i] * d[0] + Mc[3 + i] * d[1] + Mc[6 + i] * d[2]); };
+        const dirToCasing = v => [0, 1, 2].map(i => Mc[i] * v[0] + Mc[3 + i] * v[1] + Mc[6 + i] * v[2]);
+        const casingAxis = [0, 0, 1];
+        if (part === casing) {
+            meta.category = 'gear';
+            let n = 0;
+            for (const r of refs.filter(q => q.file === spec.satellite)) {
+                const ax = unit(dirToCasing(column(r.x, 2)));
+                if (Math.abs(dot(ax, casingAxis)) > 0.5) continue; // a side gear: it rides its axle
+                add1({id: `q${n++}`, type: 'gear-seat', position: roundVec(toCasing(r.x.t), 0.001), axis: roundVec(snapAxis(ax), 1e-6), length: 10});
+            }
+            const cover = refs.find(q => q.file === spec.cover);
+            if (cover) add1({id: 'c', type: 'snap', position: roundVec(toCasing(cover.x.t), 0.001), axis: roundVec(snapAxis(unit(dirToCasing(column(cover.x, 2)))), 1e-6)});
+        } else {
+            add1({id: 'c', type: 'snap', position: [0, 0, 0], axis: [0, 0, 1]});
+        }
+    }
+};
 
 // ---- self-check: the contract (test/bw-sim-part-meta.test.mjs), before a part is admitted ----
 
@@ -1508,7 +1772,7 @@ export const selfCheck = (meta, flat, {validate, kinds, minEngage = 8}) => {
         const want = teeth * 1.25 + 2.5;
         // A turntable's ring is moulded with its teeth a little short of the full addendum (the
         // 60T's tip is 0.75 LDU in): 1 LDU, as the metadata test allows for it.
-        const tol = meta.gear.type === 'bevel' ? 2 : meta.connectors.some(c => c.type === 'turntable-ring') ? 1 : 0.5;
+        const tol = meta.gear.type === 'bevel' ? 2 : SHORT_TEETH.has(meta.part) || meta.connectors.some(c => c.type === 'turntable-ring') ? 1 : 0.5;
         if (Math.abs(tip - want) > tol) out.push(`gear tip radius ${tip.toFixed(2)} ≠ ${teeth}·1.25 + 2.5 (not module 1)`);
     }
     return out;

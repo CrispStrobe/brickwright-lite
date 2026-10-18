@@ -350,6 +350,27 @@ Groups are declared before the parts, in definition order. Each member carries `
   `test/bw-sim-gear-trains.test.mjs` with the motor housing clamped (a static
   body made of model parts is the machine's frame: it does not collide with
   the machine's moving parts).
+- **Gearboxes** (since 2026-10-18): a gear with a round hole (a clutch gear,
+  18946/81346/2471/35185; a peghole bevel 87407/65413) spins freely on its
+  axle; its mesh with a gear in the frame still counts (the frame is found
+  through the axle turning in it). The **driving ring** 6539 slides on a
+  ridged axle joiner (6538a/b); pushed 4 LDU or more into a clutch gear's
+  socket it locks that gear to the axle. The **changeover catch** 6641 on a
+  turning axle pushes the ring along as it swings: a motor shifts gears. The
+  **white 24T clutch gear** (76019) passes torque up to its stamped
+  2.5–5 N·cm (the simulation uses 3.75) and slips above. Two gear paths
+  between the same axles run when their ratios agree and lock (warning
+  `gear-loop-locked`) when they do not.
+- **Differentials and planet carriers**: gears whose axles are held by a part
+  that itself turns (the differential casing 65414 with its 28T cover 65413
+  and three 12T satellites, placed as LDraw's own assembly 65414c01 places
+  them) are coupled relative to that part (Willis: ω₁ − ω_c = −(z₂/z₁)(ω₂ −
+  ω_c)), exact however the carrier moves: hold one side and the other turns
+  twice as fast as the casing. Examples: **Two-speed gearbox** (motor A
+  drives, motor B shifts; `gearbox.bw`) and **Differential** (motor A drives,
+  motor C holds or turns the right side; `differential.bw`). Tests:
+  `test/bw-sim-gearbox.test.mjs` (benches in `test/fixtures/bw-sim/gearbox/`)
+  and `test/bw-sim-gearbox-program.test.mjs` (the shipped examples).
 - Motors: the hub's own motor controller decides each motor's speed (ramps,
   holds, run-to-position, stop actions); the hinge turns under the motor's
   torque limit, and the **encoder reads what the wheel actually did**.

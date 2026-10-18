@@ -94,7 +94,8 @@ test('it compiles to six motors on A–F, a turntable mesh of the tooth ratio an
     for (const c of screws) assert.ok(Math.abs(Math.abs(c.ratio) / (LEAD_M / (2 * Math.PI)) - 1) < 1e-4, `${c.parts[0]}: ${c.ratio} m/rad`);
     // Each actuator is turned 1:1 from its motor: two gear pairs of equal teeth (16T and 12T bevel) per actuator.
     for (const k of ['boom', 'stick', 'bucket']) {
-        const pairs = m.couplings.filter(c => c.kind === 'gear' && c.parts.some(p => p.startsWith(k)));
+        // (The bevel pair turns in the actuator, which swings about the pivot axle: a 'relativeGear', mech/gears.js.)
+        const pairs = m.couplings.filter(c => (c.kind === 'gear' || c.kind === 'relativeGear') && c.parts.some(p => p.startsWith(k)));
         assert.equal(pairs.length, 2, k);
         for (const c of pairs) assert.ok(Math.abs(Math.abs(c.ratio) - 1) < 1e-9, `${k}: ${c.parts} ${c.ratio}`);
     }

@@ -225,13 +225,13 @@ export const compile = (model, catalog, opts = {}) => {
             gearResult = null;
             continue;
         }
-        for (const d of gearDiagnostics) if (d.code === 'gear-on-frame') diagnostics.push(d);
+        for (const d of gearDiagnostics) if (d.code === 'gear-on-frame' || d.code === 'gear-loop-locked') diagnostics.push(d);
         for (const [bA, bB] of gearResult.lockedPairs) weld(islands, bA, bB);
         gearResult = null;
     }
     if (!gearResult) throw new Error('compile: mechanism topology did not settle');
     // A gear welded by gear-on-frame is "not on a hinge" by construction; that is the lock, already said.
-    const lockedGears = new Set(diagnostics.filter(d => d.code === 'gear-on-frame').flatMap(d => d.parts));
+    const lockedGears = new Set(diagnostics.filter(d => d.code === 'gear-on-frame' || d.code === 'gear-loop-locked').flatMap(d => d.parts));
     for (const d of gearDiagnostics) {
         if (d.code === 'gear-not-on-hinge' && d.parts.every(p => lockedGears.has(p))) continue;
         diagnostics.push(d);
@@ -401,7 +401,9 @@ export const compile = (model, catalog, opts = {}) => {
     }
     if (!v2) return mechanism;
 
-    const couplings = [...gearResult.gears.map(({id, type, ...rest}) => ({id, kind: type, ...rest})), ...detectedCouplings];
+    // Meshes relative to a frame that is not both hinges' (mech/gears.js, gearbox lane): v2 only.
+    const relativeCouplings = (gearResult.relative || []).map(({type, ...rest}, i) => ({id: `r${i}`, kind: type, ...rest}));
+    const couplings = [...gearResult.gears.map(({id, type, ...rest}) => ({id, kind: type, ...rest})), ...relativeCouplings, ...detectedCouplings];
     const mechanismV2 = {...mechanism, version: 2, bodies: withBodyRoles(mechanism.bodies), hubs: v2.hubs, actuators: v2.actuators,
         couplings, devices: v2.devices, noCollide: noCollidePairs(joints, couplings, kinds, seatedBodyPairs(graphEdges, islands))};
     const problemsV2 = validateCompiledMechanism(mechanismV2, {kinds});
