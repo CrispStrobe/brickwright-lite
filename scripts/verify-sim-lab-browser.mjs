@@ -81,6 +81,8 @@ import {insightInteractions} from './lib/sim-lab-insight-gate.mjs';
 import {instructionsInteractions} from './lib/sim-lab-instructions-gate.mjs';
 import {touchInteractions} from './lib/sim-lab-touch-gate.mjs';
 import {layoutInteractions, MIN_CANVAS_PX} from './lib/sim-lab-layout-gate.mjs';
+import {brakingBound, judgeWallStop} from './lib/sim-lab-wall-stopper-judge.mjs';
+import {STEP_MS} from '../overlay/scratch-gui/src/lib/bw-sim/hub-bridge.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const build = resolve(process.env.BW_BUILD || `${root}/packages/scratch-gui/build`);
@@ -104,6 +106,8 @@ await new Promise(done => server.listen(0, '127.0.0.1', done));
 await mkdir(artifacts, {recursive: true});
 const url = `http://127.0.0.1:${server.address().port}/`;
 
+const WALL_STOPPER_PROGRAM = await readFile(resolve(root, 'overlay/scratch-gui/static/sim-lab/programs/wall-stopper.bw'), 'utf8');
+
 const JSZip = createRequire(new URL('../packages/scratch-gui/package.json', import.meta.url))('jszip');
 
 const PROGRAM = 'DEVICE SPIKE\nWHEN flag clicked:\n  set movement motors A B\n  move forward 20 cm\n';
@@ -115,13 +119,19 @@ const at = p => `(${p[0].toFixed(3)}, ${p[2].toFixed(3)})`;
 const EXAMPLES = [
     {name: 'Wall stopper', file: 'wall-stopper.ldr', mat: 'wall', sensor: 'distance', simMs: 10000,
         code: /wait until \(spike distance D\) < 10/, goal: /stop before the wall/,
+        // scripts/lib/sim-lab-wall-stopper-judge.mjs: (a) never touches the wall, (b) the stop begins within two VM
+        // frames and a sensor period after the reading first goes below 10 cm, (c) the overrun stays within the
+        // crossing speed times that budget plus the braking distance of the shorted motors, from the model.
         judge: r => {
-            const frontGap = r.faceX - r.last.front;
-            const rayGap = r.faceX - r.last.spot[0];
             assert.ok(r.faceX - r.startAxle[0] > 0.5, `the wall was not ahead: ${JSON.stringify(r)}`);
-            assert.ok(r.closestGap > 0, `the robot touched the wall: ${JSON.stringify(r)}`);
-            assert.ok(frontGap >= 0.08 && frontGap <= 0.12 && rayGap >= 0.08 && rayGap <= 0.12, `stopped ${frontGap} m from the wall: ${JSON.stringify(r)}`);
-            return `stops ${(frontGap * 100).toFixed(1)} cm before the wall (ray origin ${(rayGap * 100).toFixed(1)} cm), never touching it`;
+            const brake = brakingBound(r.mechanism, {speedPercent: Number(/set movement speed (\d+)/.exec(WALL_STOPPER_PROGRAM)[1]), hubBody: r.hubBody});
+            const v = judgeWallStop(r.wallSamples, {faceX: r.faceX, thresholdMm: 100, frameMs: r.frameMs, sensorMs: STEP_MS, brakeM: brake.brakeM});
+            const said = `front ${(v.frontGap * 100).toFixed(1)} cm, ray origin ${(v.rayGap * 100).toFixed(1)} cm from the wall; ` +
+                `stop began ${v.reactionMs?.toFixed(1)} ms after the reading went below 10 cm (budget ${v.budgetMs.toFixed(1)}), ` +
+                `ran on ${v.overrunM === null ? '-' : (v.overrunM * 100).toFixed(2)} cm (bound ${v.overrunBoundM === null ? '-' : (v.overrunBoundM * 100).toFixed(2)}, ` +
+                `braking ${(brake.brakeM * 100).toFixed(2)} cm)`;
+            assert.deepEqual(v.failures, [], `${said}: ${JSON.stringify({...r, mechanism: undefined, wallSamples: r.wallSamples.length})}`);
+            return `stops ${said}, never touching it`;
         }},
     {name: 'Colour explorer', file: 'colour-explorer.ldr', mat: 'colour-zones', sensor: 'color', simMs: 15000,
         code: /wait until spike color C is red/, goal: /find the red square/,
@@ -567,11 +577,16 @@ try {
                 const rec = window.__bwExample = {start: s.time, samples: [], closestGap: Infinity,
                     faceX: wall ? wall.position[0] - wall.colliders[0].halfExtents[0] : null};
                 rec.worker = s.worker;
+                const hubState = window.__bwSimLab._pane.props.hubState;
+                const drivePorts = (s.mechanism.actuators || []).map(a => a.port);
                 s.onAdvance(() => {
                     const sample = {t: s.time - rec.start, axle: carried(hubId, axle0), spot: carried(sensor.body, sensor.origin)};
                     if (wall) {
                         sample.front = Math.max(...robot.flatMap(b => b.colliders.map(c => reachX(b.id, c))));
                         rec.closestGap = Math.min(rec.closestGap, rec.faceX - sample.front);
+                        // What the hub holds after this advance: the distance reading and whether both drive motors run.
+                        sample.reading = hubState.data.sensors['ABCDEF'.indexOf(sensor.port)].distance;
+                        sample.driving = drivePorts.every(port => hubState.motors.busy(port));
                     }
                     rec.samples.push(sample);
                 });
@@ -584,7 +599,11 @@ try {
                 const last = r.samples.at(-1);
                 const before = r.samples.find(p => p.t >= last.t - 1000);
                 const pane = window.__bwSimLab._pane;
+                const wall = r.faceX !== null;
                 return {worker: r.worker, stats: pane.session.stats, motors: pane.props.hubState.data.motors.slice(0, 2),
+                    mechanism: wall ? pane.session.mechanism : null, hubBody: pane.session.bridge.hubBody,
+                    frameMs: pane.props.vm.runtime.currentStepTime,
+                    wallSamples: wall ? r.samples.map(p => ({t: p.t, front: p.front, ray: p.spot[0], reading: p.reading, driving: p.driving})) : null,
                     sensors: pane.props.hubState.data.sensors.slice(2, 4), faceX: r.faceX, closestGap: r.closestGap, last, samples: r.samples.length,
                     restMm: 1000 * Math.hypot(last.axle[0] - before.axle[0], last.axle[2] - before.axle[2]),
                     startAxle: r.samples[0].axle};
