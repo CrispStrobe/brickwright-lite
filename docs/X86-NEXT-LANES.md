@@ -705,16 +705,21 @@ controls pass, as do the eleven existing gate-shape tests; two parsing mutations
 are detected. No threshold, detector baseline, runtime or workflow condition
 changed. The earlier failed CI results remain failures.
 
-The remaining census refresh is scoped by
-[PR1079](https://github.com/CrispStrobe/brickwright-lite/pull/1079). After that
-claim merges, use the unchanged generator with `--fetch --workflow
-i80386-hdd-gui-actual.yml --baseline-ref FULL_REVIEWED_MAIN_SHA`, preserve every
-unrelated workflow's dated readings and main provenance, and add only exact dated
-pointers for the declared conditional steps the resulting readings require.
-Run the existing census tests and explicit generator `--check`; `--fetch` alone
-prints uncovered steps without failing for them. Do not run a metadata or actual
-job merely to seed census coverage. Finish this integration before rebuilding
-source21/request/workflow selections and requiring fresh final-head CI.
+The scoped census claim
+[PR1079](https://github.com/CrispStrobe/brickwright-lite/pull/1079) is merged.
+The unchanged generator refreshed only this workflow from 19 completed historical
+runs, retaining all 21 unrelated workflow rows, their 299 ordered runs and main
+provenance. Eleven exact dated pointers document the actual/font paths that
+those readings never executed. Actual remains disabled; font discovery still
+requires its separate source/request/workflow/event admission. The two failed
+inventory runs remain failed observations, with no replay or new event to seed
+coverage. No generator, census assertion, detector baseline or workflow condition
+changed. Run the existing census tests and explicit generator `--check`; `--fetch`
+alone prints uncovered steps without failing for them. Finish final-head CI and
+rebuild source21/request/workflow selections before any discovery event.
+The explicit generator check and 25 affected census, gate-shape and build-trigger
+controls pass. These are source and metadata checks; final hosted CI and clean
+affected browser/guest qualification remain separate requirements.
 
 A fresh agent can finish this work in the following bounded steps:
 
