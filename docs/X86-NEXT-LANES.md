@@ -374,6 +374,52 @@ actual v3 guards remain held. Sixty-two Node tests, including 58 Python controls
 pass; eight diagnostic source mutations are detected. These are source controls,
 not actual browser or guest qualification.
 
+The collector's cooperative selected-path budget is now 180 seconds, inside the
+unchanged four-minute recording step and fifteen-minute metadata job. Remaining
+paths are explicitly `unvisited-deadline` with `attempted: false`; an expired
+read remains an attempted failure. The original first failure stays primary.
+The cross-layer timeout control and all 63 Node tests pass, including 58 Python
+controls; three targeted timeout/status mutations are detected. This bounds the
+diagnostic attempt without claiming per-read preemption or job sufficiency.
+The earlier missing-font roster remains mandatory in a distinct diagnostic
+selection; actual execution remains disabled.
+
+The [candidate source checkpoint](https://github.com/CrispStrobe/brickwright-lite/commit/f0c113556)
+uses `bw.gui-hdd.inventory-failure.v2` for failed inventory: exact raw event
+bytes are embedded with a 256 KiB cap, separate hash/extent and reserved diagnostic
+budget. Unavailable originals or incomplete path diagnostics remain explicit
+failures. The standalone reader recomputes event/template/source-head and
+run/workflow joins against an independently frozen policy. It never imports the
+producer or converts a failed observation into a runtime candidate. Successful
+inventory v2, actual request v3, executable size rules and actual guards remain
+unchanged. The 63 Node tests include 65 Python controls for this continuation.
+
+For a future v2 failure original, after official artifact and source metadata
+admission, audit the selected original files from the repository root:
+
+```sh
+/usr/bin/python3 -B scripts/read-i80386-hdd-gui-originals.py \
+  --inventory-failure gui-inventory/inventory-failure.json \
+  --template gui-inventory/runtime-template.json \
+  --expected reviewed-failure-policy.json
+```
+
+The policy schema is `bw.gui-hdd.inventory-failure-expectation.v2`: supply
+independently selected source21 `head`/`tree`/`files`, template and failure
+`byteLength`/`sha256`, official `runId` and executing `workflowSha`. Consult the
+reader's closed field checks; do not derive these pins from the untrusted
+failure payload itself. A successful audit still reports `candidate: false`
+and `qualified: false`. Earlier failure v1 originals lack the raw event and
+cannot gain this joined-event result retroactively.
+
+Preserve the previous head's separate [native test failure](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39111138775/job/117627344977):
+`renode_brick_state::tests::lockstep_steps_land_exactly_one_quantum_apart_without_polling`
+failed while 252 tests passed and ten were ignored. Its cause is unestablished;
+do not relabel it as flaky or lower the timing threshold. Coordinate diagnosis
+with the native/Renode owner in `apps/tauri/src-tauri/src/renode_brick_state.rs`;
+that source is outside this five-path lane. Every enabled final-head check still
+has to succeed before source integration.
+
 Continue within the already claimed five implementation paths; dependency
 writers and other workflows remain outside this lane. Next tasks are:
 
@@ -403,6 +449,27 @@ writers and other workflows remain outside this lane. Next tasks are:
    freezing any complete runtime input.
    The inventory is an observation, not automatic actual approval or a complete
    host attestation. Preserve any mismatch; do not install a fallback.
+   The distinct [diagnostic run39111308927](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39111308927)
+   is now consumed and its original acquired once: 288/306 selected files,
+   84/101 file aliases and all three directory aliases were observed, with
+   no unvisited paths. Thirty-four missing font/configuration paths and one
+   zero-length named Python source account for the refusals. Git observation
+   was not reached; no successful runtime inventory exists.
+
+   Two concrete follow-ups remain within the owned paths. First retain bounded
+   exact event bytes in the failure format and independently join them to the
+   expected source/template and official run; a hash alone cannot supply that
+   missing original. Second version an explicit policy for selected empty Python
+   source files, starting with `/usr/lib/python3.12/urllib/__init__.py`. Its
+   regular0644, size-zero named stat was observed; its content hash was not.
+   Require exact declared source role/path, zero extent, empty-content digest,
+   held-file readback and independent reader agreement. Keep executable/library
+   positive-size checks and generic file reads intact. A typed exception must
+   be explicit in the versioned template, inventory and actual-request contracts,
+   with wrong-role/path/hash and nonempty-substitution adversaries; do not simply
+   lower the generic minimum size. Review any future package-derived font roster
+   as a distinct declared scope, retaining the old failed selection and explaining
+   every changed row. Do not delete failed entries solely to obtain green.
 3. Independently admit the official frontend Build checkout log, full source
    head/tree/selected closure and producing workflow before selecting its ZIP
    digest from official metadata. The actual controller acquires that original
