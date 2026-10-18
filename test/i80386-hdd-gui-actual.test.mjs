@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 const root = fileURLToPath(new URL('../',import.meta.url));
+const readOriginalControlSummary = stdout => JSON.parse(stdout.trim());
 
 // These are manufactured original-byte controls, never a browser/guest replay.
 // The independent reader is loaded directly; no producer grading helper is used.
@@ -1827,10 +1828,19 @@ print(json.dumps({'controls':result.testsRun,'failures':len(result.failures),'er
 sys.exit(not result.wasSuccessful())
 `;
 
+test('original controls stdout is one complete JSON summary without ignored output', () => {
+    const summary = {controls:107,failures:0,errors:0};
+    const raw = JSON.stringify(summary);
+    assert.deepEqual(readOriginalControlSummary(`  ${raw}\n`),summary);
+    for (const output of [`unexpected prefix\n${raw}`,`${raw}\nunexpected suffix`,`${raw}\n${raw}`]) {
+        assert.throws(() => readOriginalControlSummary(output),SyntaxError);
+    }
+});
+
 test('standalone original reader: complete manufactured packet and coherent negative controls', () => {
     const result = spawnSync('/usr/bin/python3',['-B','-',root],{input:controls,cwd:root,encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
     assert.equal(result.status,0,`${result.error?.stack || ""}\nsignal=${result.signal}\n${result.stdout}\n${result.stderr}`);
-    const summary=JSON.parse(result.stdout.trim().split('\n').at(-1));
+    const summary=readOriginalControlSummary(result.stdout);
     assert.ok(summary.controls>=25); assert.equal(summary.failures,0); assert.equal(summary.errors,0);
 });
 
