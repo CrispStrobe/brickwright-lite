@@ -210,12 +210,33 @@ def validate_startup(snapshot, installed, mode, arguments):
     return snapshot
 
 
+def actual_inventory_reference(reference):
+    """External prior-observation reference, never an automatic metadata approval."""
+    fields(reference,'schema metadataAdmission jobId artifactId artifactSha256 workflow')
+    need(reference['schema']=='bw.gui-hdd.actual-inventory-reference.v1','explicit actual typed inventory reference')
+    for name in ('jobId','artifactId'):integer(reference[name],1,2**63-1)
+    digest(reference['artifactSha256']);fields(reference['workflow'],'commit path sha256')
+    digest(reference['workflow']['commit'],40);digest(reference['workflow']['sha256'])
+    need(reference['workflow']['path']=='.github/workflows/i80386-hdd-gui-actual.yml','prior metadata producer workflow')
+    selected=reference['metadataAdmission'];fields(selected,'schema source template original runId workflowSha')
+    need(selected['schema']=='bw.gui-hdd.inventory-admission.v3','unchanged metadata v3 descriptor shape')
+    integer(selected['runId'],1,2**63-1);digest(selected['workflowSha'],40)
+    source=selected['source'];fields(source,'head tree files');digest(source['head'],40);digest(source['tree'],40)
+    rows(source['files']);need(set(source['files'])==SOURCE,'separately reviewed prior metadata source21')
+    for name in ('template','original'):
+        fields(selected[name],'byteLength sha256');integer(selected[name]['byteLength'],1,JSON_CAP);digest(selected[name]['sha256'])
+    need(selected['workflowSha']==reference['workflow']['commit'] and
+         reference['workflow']['sha256']==source['files'][reference['workflow']['path']]['sha256'],'prior observation/executing workflow/content join')
+    return selected
+
+
 def parse_request(raw, expected):
     digest(expected); need(type(raw) is bytes and 0 < len(raw) <= JSON_CAP and sha(raw) == expected,
                            'independently selected request digest')
     request = decode(raw)
+    version=4 if request.get('schema')=='bw.gui-hdd.actual-request.v4' else 3
     fields(request, 'schema repository pullRequest source build criticalFiles installedFiles runtime inventoryAdmission inputs pythonStartup')
-    need(encode(request) == raw and request['schema'] == 'bw.gui-hdd.actual-request.v3' and
+    need(encode(request) == raw and request['schema'] == 'bw.gui-hdd.actual-request.v'+str(version) and
          request['repository'] == REPOSITORY, 'canonical owned approval request')
     need(encode(request['pythonStartup'])==encode(startup_policy()) and request['runtime']['python']==PYTHON_EXECUTABLE,'explicit v3 startup policy and selected CPython')
     integer(request['pullRequest'], 1, 2**31-1)
@@ -242,7 +263,7 @@ def parse_request(raw, expected):
     rows(request['installedFiles'])
     need(any(x.startswith('node_modules/bw-board/') for x in request['installedFiles']) and
          any(x.startswith('node_modules/playwright-core/') for x in request['installedFiles']), 'complete selected supplier/browser package inventories required')
-    runtime = request['runtime']; fields(runtime, 'files aliases directoryAliases node python chromium tools resources')
+    runtime = request['runtime']; fields(runtime, 'files aliases directoryAliases node python chromium tools resources'+(' emptyPythonSources' if version==4 else ''))
     need(type(runtime['files']) is dict and 1 <= len(runtime['files']) <= 512, 'bounded independently admitted runtime graph')
     for name, item in runtime['files'].items():
         need(type(name) is str and name.startswith('/') and '..' not in Path(name).parts, 'absolute runtime file')
@@ -266,14 +287,17 @@ def parse_request(raw, expected):
          'scenarioSeconds':{'freedos-hdd-persistence':1250,'forward-debug':180},
          'perProcessCoreBytes':0,'perProcessFileBytes':FILE_CAP,'perProcessOpenFiles':256,
          'aggregateContainmentQualified':False}), 'fixed finite hosted envelope; no aggregate containment claim')
+    if version==4:empty_python_policy(runtime['emptyPythonSources'],runtime['files'],runtime['aliases'],runtime['directoryAliases'])
     prior_inventory=request['inventoryAdmission']
-    fields(prior_inventory,'schema sourceHead runId jobId artifactId artifactSha256 original templateSha256 workflow')
-    need(prior_inventory['schema']=='bw.gui-hdd.inventory-admission.v2','separately reviewed prior inventory admission')
-    digest(prior_inventory['sourceHead'],40);digest(prior_inventory['artifactSha256']);digest(prior_inventory['templateSha256'])
-    for key in ('runId','jobId','artifactId'):integer(prior_inventory[key],1,2**63-1)
-    fields(prior_inventory['original'],'byteLength sha256');integer(prior_inventory['original']['byteLength'],1,JSON_CAP);digest(prior_inventory['original']['sha256'])
-    fields(prior_inventory['workflow'],'commit path sha256');digest(prior_inventory['workflow']['commit'],40);digest(prior_inventory['workflow']['sha256'])
-    need(prior_inventory['workflow']['path']=='.github/workflows/i80386-hdd-gui-actual.yml','prior inventory producer workflow')
+    if version==4:actual_inventory_reference(prior_inventory)
+    else:
+        fields(prior_inventory,'schema sourceHead runId jobId artifactId artifactSha256 original templateSha256 workflow')
+        need(prior_inventory['schema']=='bw.gui-hdd.inventory-admission.v2','separately reviewed prior inventory admission')
+        digest(prior_inventory['sourceHead'],40);digest(prior_inventory['artifactSha256']);digest(prior_inventory['templateSha256'])
+        for key in ('runId','jobId','artifactId'):integer(prior_inventory[key],1,2**63-1)
+        fields(prior_inventory['original'],'byteLength sha256');integer(prior_inventory['original']['byteLength'],1,JSON_CAP);digest(prior_inventory['original']['sha256'])
+        fields(prior_inventory['workflow'],'commit path sha256');digest(prior_inventory['workflow']['commit'],40);digest(prior_inventory['workflow']['sha256'])
+        need(prior_inventory['workflow']['path']=='.github/workflows/i80386-hdd-gui-actual.yml','prior inventory producer workflow')
     fields(request['inputs'], 'floppy hdd bios vgaRom')
     input_paths={'floppy':'gui-inputs/floppy.img','hdd':'gui-inputs/hdd.img','bios':'gui-inputs/bios.bin','vgaRom':'gui-inputs/vga.bin'}
     for name, row in request['inputs'].items():
@@ -693,7 +717,30 @@ def observe_runtime(request):
     facts['availableCpus'] = sorted(os.sched_getaffinity(0))
     facts['rlimits'] = {str(key):list(resource.getrlimit(key)) for key in (resource.RLIMIT_CORE,resource.RLIMIT_FSIZE,resource.RLIMIT_NOFILE)}
     facts['aggregateContainmentQualified'] = False
+    if request.get('schema')=='bw.gui-hdd.actual-request.v4':observe_actual_empty_sources(request,facts)
     return facts
+
+
+def observe_actual_empty_sources(request,facts):
+    selected=request['runtime']['emptyPythonSources']
+    empty_python_policy(selected,request['runtime']['files'],request['runtime']['aliases'],request['runtime']['directoryAliases'])
+    facts.update(schema='bw.gui-hdd.runtime-observation.v4',emptyPythonSources={})
+    for path,selection in selected.items():
+        row={'attempted':True,'status':'failed','source':{}};facts['emptyPythonSources'][path]=row
+        try:read_empty_python_source(path,selection,row['source']);row['status']='observed'
+        except BaseException as error:
+            error.gui_runtime_original=encode(facts);raise
+
+
+def capture_actual_runtime(output,stage,request):
+    try:observed=observe_runtime(request)
+    except BaseException as error:
+        raw=getattr(error,'gui_runtime_original',None)
+        if raw is not None:
+            try:output.save('runtime.'+stage+'.json',raw)
+            except BaseException as extra:error.gui_secondary=getattr(error,'gui_secondary',[])+[('typed-runtime-retention',extra)]
+        raise
+    output.save('runtime.'+stage+'.json',encode(observed));return observed
 
 
 def admit_build_metadata(request, run, job, artifact):
@@ -732,7 +779,7 @@ def execute(request_raw, expected, root, output_path, env, factory=Hosted, prefl
         hosted = factory(root, output, env)
         event_raw = regular(env['GITHUB_EVENT_PATH'], JSON_CAP); bind_event(event_raw, request, expected, env)
         output.save('event.original.json', event_raw)
-        output.save('runtime.before.json', encode(observe_runtime(request)))
+        runtime_before=capture_actual_runtime(output,'before',request)
         need(hosted.git(['rev-parse', 'HEAD']).decode().strip() == request['source']['head'] and
              hosted.git(['rev-parse', 'HEAD^{tree}']).decode().strip() == request['source']['tree'], 'actual source HEAD/tree')
         observed_source={}
@@ -795,7 +842,9 @@ def execute(request_raw, expected, root, output_path, env, factory=Hosted, prefl
             for prefix in ('node_modules/bw-board','node_modules/playwright','node_modules/playwright-core'):
                 for name,row in inventory(Path(root)/prefix).items():installed_after[prefix+'/'+name]=row
             need(installed_after==request['installedFiles'],'complete installed graph after both scenarios')
-            output.save('installed.after.json', encode(installed_after)); output.save('runtime.after.json', encode(observe_runtime(request)))
+            output.save('installed.after.json', encode(installed_after)); runtime_after=capture_actual_runtime(output,'after',request)
+            if request['schema']=='bw.gui-hdd.actual-request.v4':
+                need(encode(runtime_before['emptyPythonSources'])==encode(runtime_after['emptyPythonSources']),'actual typed source before/after identity unchanged')
             need(inventory(build_root) == build_files, 'served build changed after scenarios')
             for role, row in request['inputs'].items(): check_file(Path(root)/row['path'], row)
             result['pass'] = True
@@ -804,6 +853,8 @@ def execute(request_raw, expected, root, output_path, env, factory=Hosted, prefl
         output.save('python-startup.after.json',encode(startup_after))
     except BaseException as error:
         retain(error,'attempt')
+        for extra in getattr(error,'inventory_secondary',[]):retain(extra,'typed-source-close')
+        for phase,extra in getattr(error,'gui_secondary',[]):retain(extra,phase)
     finally:
         # Collect only bounded regular owned probe originals, including partial failures.
         for scenario in SCENARIOS:

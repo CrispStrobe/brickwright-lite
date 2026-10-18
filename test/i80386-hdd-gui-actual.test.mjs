@@ -157,6 +157,47 @@ def sealed(files,expected):
     expected['artifact']['size_in_bytes']=len(raw);expected['artifact']['digest']='sha256:'+H(raw)
     return r.archive_originals(raw),expected
 
+def empty_v4_observation():
+    info={'dev':1,'ino':2,'mode':stat.S_IFREG|0o644,'uid':0,'gid':0,'nlink':1,'size':0,'mtime_ns':-1}
+    return {'attempted':True,'status':'observed','source':{**{name:copy.deepcopy(info) for name in ('namedBefore','heldBefore','heldAfter','namedAfter')},
+      'read':{'byteLength':0,'sha256':H(b''),'eof':True},'close':{'attempted':True,'succeeded':True}}}
+
+def refresh_v4_request(files,expected,request):
+    raw=E(request);pin=H(raw);files['request.original.json']=raw;expected['requestSha256']=pin
+    expected['inventoryReferenceSha256']=H(E(request['inventoryAdmission']))
+    event=D(files['event.original.json']);event['pull_request']['body']='<!-- BW_GUI_HDD_REQUEST_SHA256='+pin+' -->';files['event.original.json']=E(event)
+    result=D(files['result.json']);result['requestSha256']=pin;files['result.json']=E(result)
+    for stage in ('before','after'):
+        name='python-startup.'+stage+'.json';value=D(files[name]);value['arguments'][value['arguments'].index('--expected-sha256')+1]=pin;files[name]=E(value)
+
+def fixture_v4():
+    # Independently authored typed originals over the unchanged complete v3 UI packet.
+    files,expected=fixture();request=D(files['request.original.json']);old_runtime=copy.deepcopy(request['runtime'])
+    selected={'/usr/lib/python3.12/urllib/__init__.py':{'role':'python-empty-package-source','byteLength':0,'sha256':H(b''),'uid':0,'gid':0,'mode':0o644}}
+    template={'schema':'bw.gui-hdd.inventory-template.v3','sourceHead':'a'*40,'files':list(old_runtime['files']),
+      'aliases':list(old_runtime['aliases']),'directoryAliases':list(old_runtime['directoryAliases']),
+      **{name:copy.deepcopy(old_runtime[name]) for name in ('node','python','chromium','tools')},'emptyPythonSources':selected}
+    template_raw=E(template);prior=D(base64.b64decode(expected['inventoryOriginal']['base64']))
+    prior.update(schema='bw.gui-hdd.inventory-original.v3',templateSha256=H(template_raw),emptyPythonSources={path:empty_v4_observation() for path in selected})
+    prior['platform']['GITHUB_WORKFLOW_REF']=r.REPOSITORY+'/.github/workflows/i80386-hdd-gui-actual.yml@refs/pull/123/merge'
+    event=D(base64.b64decode(prior['event']['base64']));event['pull_request']['body']='<!-- BW_GUI_HDD_INVENTORY_SHA256='+H(template_raw)+' -->';raw=E(event)
+    prior['event']=dict(ROW(raw),base64=base64.b64encode(raw).decode())
+    prefix=['/usr/bin/git','--no-replace-objects','-c','gc.auto=0','-c','maintenance.auto=false','-c','core.fsmonitor=false','-c','core.hooksPath=/dev/null']
+    arguments=[['rev-parse','HEAD'],['rev-parse','HEAD^{tree}']]+[['cat-file','blob','a'*40+':'+path] for path in sorted(r.SOURCE)]
+    outputs=[b'a'*40+b'\n',b'b'*40+b'\n']+[('source:'+path).encode() for path in sorted(r.SOURCE)]
+    prior['commands']=[{'argv':prefix+args,'stdout':ROW(raw),'stderr':ROW(b''),'exitCode':0} for args,raw in zip(arguments,outputs)]
+    prior_raw=E(prior);metadata={'schema':'bw.gui-hdd.inventory-admission.v3','source':request['source'],'template':ROW(template_raw),'original':ROW(prior_raw),'runId':90,'workflowSha':'d'*40}
+    request['schema']='bw.gui-hdd.actual-request.v4';request['runtime']['emptyPythonSources']=copy.deepcopy(selected)
+    request['inventoryAdmission']={'schema':'bw.gui-hdd.actual-inventory-reference.v1','metadataAdmission':metadata,'jobId':91,'artifactId':92,'artifactSha256':'7'*64,
+      'workflow':{'commit':'d'*40,'path':'.github/workflows/i80386-hdd-gui-actual.yml','sha256':metadata['source']['files']['.github/workflows/i80386-hdd-gui-actual.yml']['sha256']}}
+    expected.update(schema='bw.gui-hdd.actual-expectation.v4',inventoryTemplate=dict(ROW(template_raw),base64=base64.b64encode(template_raw).decode()),
+      inventoryOriginal=dict(ROW(prior_raw),base64=base64.b64encode(prior_raw).decode()))
+    for stage in ('before','after'):
+        name='runtime.'+stage+'.json';old=D(files[name]);value={key:old[key] for key in ('files','aliases','directoryAliases','directoryIdentities','identities','resources','aggregateContainmentQualified')}
+        value.update(schema='bw.gui-hdd.runtime-observation.v4',availableCpus=[0],rlimits={'4':[-1,-1],'1':[-1,-1],'7':[1024,1024]},emptyPythonSources={path:empty_v4_observation() for path in selected})
+        files[name]=E(value)
+    refresh_v4_request(files,expected,request);return files,expected
+
 class Originals(unittest.TestCase):
     @classmethod
     def setUpClass(cls):cls.files,cls.expected=fixture()
@@ -724,6 +765,170 @@ class Originals(unittest.TestCase):
         request=D(self.files['request.original.json']);request['runtime']['emptyPythonSources']=self.empty_selection()
         with self.assertRaises(ValueError):c.parse_request(E(request),H(E(request)))
         with self.assertRaises(ValueError):r.parse_request(E(request),H(E(request)))
+    def run_actual_v4(self,fault=None,after=False,retention=False,drift=False):
+        files,expected=fixture_v4();request=D(files['request.original.json']);order=[]
+        original_regular=c.regular;original_inventory=c.inventory;original_runtime=c.observe_runtime;original_empty=c.read_empty_python_source;original_save=c.Originals.save;original_sha=c.sha
+        typed_events=[];runtime_count=0
+        class NodeBytes(bytes):
+            def __len__(self):return 124827920
+        node=NodeBytes(b'node');runtime_bytes={'/node':node,'/usr/bin/python3.12':b'python','/usr/lib/libselected.so':b'selected-library','/chrome':b'chrome','/usr/bin/git':b'git','/usr/bin/gh':b'gh'}
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            checkout=pathlib.Path(temporary);(checkout/'gui-originals').mkdir()
+            event=checkout/'event.json';event.write_bytes(files['event.original.json'])
+            env={'GITHUB_EVENT_PATH':str(event),'GITHUB_REPOSITORY':r.REPOSITORY,'GITHUB_EVENT_NAME':'pull_request',
+              'GITHUB_ACTOR':'CrispStrobe','GITHUB_RUN_ID':'200','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'actual',
+              'BW_EXPECTED_HEAD':'a'*40,'GH_TOKEN':'manufactured-not-a-credential'}
+            def regular(path,cap):
+                if str(path)==str(checkout/'vendor-pins.json'):return E({'bw-board':c.BOARD,'bw-circuit-ui':c.CUI,'sb3-creator':c.SB3})
+                return original_regular(path,cap)
+            def check_file(path,row):
+                name=str(path).removeprefix(str(checkout)+'/')
+                if str(path) in runtime_bytes:return runtime_bytes[str(path)]
+                if name in request['source']['files']:return ('source:'+name).encode()
+                return b'externally mocked installed/input bytes'
+            def inventory(path,*args):
+                name=str(path).removeprefix(str(checkout)+'/')
+                if name.startswith('node_modules/'):
+                    return {k.removeprefix(name+'/'):v for k,v in request['installedFiles'].items() if k.startswith(name+'/')}
+                return original_inventory(path,*args)
+            def runtime(request):
+                nonlocal runtime_count
+                order.append('runtime');runtime_count+=1;active=(runtime_count==2)==after
+                aliases=dict(request['runtime']['aliases'],**request['runtime']['directoryAliases'])
+                def metadata(path):
+                    path=str(path);mode=stat.S_IFLNK|0o777 if path in aliases else stat.S_IFREG|0o444 if path in runtime_bytes else stat.S_IFDIR|0o755
+                    return SimpleNamespace(st_dev=4,st_ino=5,st_mode=mode,st_uid=0,st_gid=0,st_nlink=1,st_size=1,st_mtime_ns=1)
+                def resolve(path,**kwargs):return pathlib.Path('/usr/bin/python3.12') if str(path) in ('/proc/self/exe',c.sys.executable) else path
+                def empty(path,selection,observed):
+                    original_identity=c.identity
+                    def identity(info):
+                        row=original_identity(info)
+                        if drift and runtime_count==2:row['ino']+=1
+                        return row
+                    with self.empty_source_edges(fault if active else None,close_error=bool(fault and active)) as calls,patch.object(c,'identity',side_effect=identity):
+                        try:return original_empty(path,selection,observed)
+                        finally:typed_events.append(copy.deepcopy(calls))
+                with patch.object(c.Path,'resolve',resolve),patch.object(c.Path,'stat',side_effect=lambda *args,**kwargs:SimpleNamespace(st_dev=4,st_ino=5)),patch.object(c.os,'lstat',side_effect=metadata),patch.object(c.os,'readlink',side_effect=lambda path:aliases[str(path)]['linkText']),patch.object(c,'directory_identity',return_value={'dev':4,'ino':6,'mode':stat.S_IFDIR|0o755}),patch.object(c.os,'sched_getaffinity',return_value={0}),patch.object(c.resource,'getrlimit',return_value=(-1,-1)),patch.object(c,'read_empty_python_source',side_effect=empty):
+                    return original_runtime(request)
+            def save(output,name,raw):
+                if retention and name.startswith('runtime.') and D(raw)['emptyPythonSources'][c.EMPTY_PYTHON_PATH]['status']=='failed':raise OSError('TYPED_RETENTION')
+                return original_save(output,name,raw)
+            def startup(where,mode,args):
+                observation=D(files['python-startup.before.json']);observation['arguments']=['scripts/run-i80386-hdd-gui-actual.py',mode]+args
+                return files['python-startup.original.txt'],observation
+            class Fake:
+                def __init__(self,where,output,environment):self.output=output;self.attempts=set()
+                def git(self,args):
+                    order.append('git');role='git-'+str(len(self.attempts));self.attempts.add(role)
+                    if args[0]=='rev-parse':stdout=(request['source']['head' if args[1]=='HEAD' else 'tree']+'\n').encode()
+                    else:stdout=('source:'+args[2].split(':',1)[1]).encode()
+                    prefix=['/usr/bin/git','--no-replace-objects','-c','gc.auto=0','-c','maintenance.auto=false','-c','core.fsmonitor=false','-c','core.hooksPath=/dev/null']
+                    self.output.save(role+'.stdout',stdout);self.output.save(role+'.stderr',b'');self.output.save(role+'.process.json',E(proc(prefix+args,stdout)))
+                    return stdout
+                def api(self,route):
+                    order.append('api');role='build-run' if '/runs/' in route else ('build-job' if '/jobs/' in route else 'build-artifact')
+                    return files[role+'.original.json']
+                def run(self,role,argv,environment,seconds,*args):
+                    order.append(role);self.attempts.add(role)
+                    if role=='frontend-acquisition':
+                        self.output.save(role+'.stderr',b'');self.output.save(role+'.process.json',E(proc(argv,files['frontend.original.zip'])))
+                        return files['frontend.original.zip']
+                    directory=pathlib.Path(environment['PROOF_OUTPUT']);directory.mkdir()
+                    admission=(self.output.root/'probe-admission.json').read_bytes()
+                    for name,raw in files.items():
+                        if not name.startswith(role+'/'):continue
+                        leaf=name.split('/',1)[1]
+                        if leaf=='admission.json':raw=admission
+                        if leaf=='proof.json':
+                            proof=D(raw);proof['admissionSha256']=H(admission);raw=E(proof)
+                        (directory/leaf).write_bytes(raw)
+                    child=D(files[role+'.process.json']);child['argv']=argv;child['environment']=environment
+                    for stream in ('stdout','stderr'):self.output.save(role+'.'+stream,b'')
+                    self.output.save(role+'.process.json',E(child));return b''
+            with patch.object(c,'sha',side_effect=lambda raw:'fde6a4bf8d0562f7751d1a2d6cb9b417c4cfe107bbcb0aa3e9a24e125e348f48' if raw is node else original_sha(raw)),patch.object(c.Originals,'save',save),patch.object(c,'regular',side_effect=regular),patch.object(c,'check_file',side_effect=check_file),patch.object(c,'inventory',side_effect=inventory),patch.object(c,'observe_runtime',side_effect=runtime),patch.object(c,'observe_python_startup',side_effect=startup):
+                status=c.execute(files['request.original.json'],expected['requestSha256'],checkout,checkout/'gui-originals/originals',env,factory=Fake)
+            observed={str(path.relative_to(checkout/'gui-originals/originals')):path.read_bytes() for path in (checkout/'gui-originals/originals').rglob('*') if path.is_file()}
+            return status,observed,expected,order,typed_events
+    def test_actual_v4_complete_packet_reaches_real_official_and_metadata_readers(self):
+        files,expected=fixture_v4();verdict=r.audit(*sealed(files,expected))
+        self.assertTrue(verdict['pass']);self.assertEqual(verdict['schema'],'bw.gui-hdd.reader.v4')
+        request=D(files['request.original.json']);self.assertEqual(c.parse_request(E(request),H(E(request))),r.parse_request(E(request),H(E(request))))
+        metadata=request['inventoryAdmission']['metadataAdmission'];result=r.verify_inventory_original(base64.b64decode(expected['inventoryOriginal']['base64']),base64.b64decode(expected['inventoryTemplate']['base64']),metadata)
+        self.assertFalse(result['actualRequestSupported']);self.assertFalse(result['qualified']);self.assertIs(c.ACTUAL_ENABLED,False);self.assertIs(r.ACTUAL_ENABLED,False)
+    def test_actual_v4_request_selection_type_and_legacy_version_refusals(self):
+        for cut in ('path','role','hash','nonempty','bool','float','duplicate','version','reference-schema','workflow-content','metadata-schema'):
+            files,expected=fixture_v4();request=D(files['request.original.json']);selection=request['runtime']['emptyPythonSources'];row=selection[c.EMPTY_PYTHON_PATH]
+            if cut=='path':selection['/usr/lib/python3.12/other/__init__.py']=selection.pop(c.EMPTY_PYTHON_PATH)
+            elif cut=='role':row['role']='executable'
+            elif cut=='hash':row['sha256']='0'*64
+            elif cut in ('nonempty','bool','float'):row['byteLength']={'nonempty':1,'bool':False,'float':0.0}[cut]
+            elif cut=='duplicate':request['runtime']['files'][c.EMPTY_PYTHON_PATH]=ROW(b'X')
+            elif cut=='version':request['schema']='bw.gui-hdd.actual-request.v3'
+            elif cut=='reference-schema':request['inventoryAdmission']['schema']='bw.gui-hdd.inventory-admission.v3'
+            elif cut=='workflow-content':request['inventoryAdmission']['workflow']['sha256']='0'*64
+            else:request['inventoryAdmission']['metadataAdmission']['schema']='bw.gui-hdd.inventory-admission.v2'
+            raw=E(request)
+            for module in (c,r):
+                with self.assertRaises(ValueError,msg=cut):module.parse_request(raw,H(raw))
+    def test_actual_v4_coherently_rehashed_runtime_before_after_adversaries(self):
+        for stage in ('before','after','both'):
+            for cut in ('role','eof','hash','nonempty','bool','float','drift','close','missing','schema','extra','resource-float','file-float','cpu-null','cpu-empty','cpu-duplicate','cpu-bool','cpu-float','cpu-order','rlimit-null','rlimit-bool','rlimit-float','rlimit-extra','rlimit-missing','rlimit-pair'):
+                files,expected=fixture_v4();name='runtime.'+('before' if stage=='both' else stage)+'.json';runtime=D(files[name]);row=runtime['emptyPythonSources'][c.EMPTY_PYTHON_PATH];source=row['source']
+                if cut=='role':row['role']='python-empty-package-source'
+                elif cut=='eof':source['read']['eof']=False
+                elif cut=='hash':source['read']['sha256']='0'*64
+                elif cut=='nonempty':source['read'].update(byteLength=1,sha256=H(b'X'),eof=False)
+                elif cut=='bool':source['heldBefore']['uid']=False
+                elif cut=='float':source['namedAfter']['gid']=0.0
+                elif cut=='drift':source['heldAfter']['ino']+=1
+                elif cut=='close':source['close']['succeeded']=False
+                elif cut=='missing':runtime['emptyPythonSources']={}
+                elif cut=='schema':runtime['schema']='bw.gui-hdd.runtime-observation.v3'
+                elif cut=='resource-float':runtime['resources']['controllerSeconds']=1800.0
+                elif cut=='file-float':runtime['files']['/chrome']['byteLength']=6.0
+                elif cut.startswith('cpu-'):runtime['availableCpus']={'cpu-null':None,'cpu-empty':[],'cpu-duplicate':[0,0],'cpu-bool':[False],'cpu-float':[0.0],'cpu-order':[1,0]}[cut]
+                elif cut=='rlimit-null':runtime['rlimits']=None
+                elif cut=='rlimit-bool':runtime['rlimits']['4'][0]=False
+                elif cut=='rlimit-float':runtime['rlimits']['4'][0]=0.0
+                elif cut=='rlimit-extra':runtime['rlimits']['invented']=[0,0]
+                elif cut=='rlimit-missing':runtime['rlimits'].pop('4')
+                elif cut=='rlimit-pair':runtime['rlimits']['4']=[-1]
+                else:runtime['invented']=True
+                files[name]=E(runtime)
+                if stage=='both':files['runtime.after.json']=E(runtime)
+                with self.assertRaises((ValueError,KeyError),msg=str((stage,cut))):r.audit(*sealed(files,expected))
+        files,expected=fixture_v4();runtime=D(files['runtime.after.json'])
+        for snapshot in ('namedBefore','heldBefore','heldAfter','namedAfter'):runtime['emptyPythonSources'][c.EMPTY_PYTHON_PATH]['source'][snapshot]['ino']+=1
+        files['runtime.after.json']=E(runtime)
+        with self.assertRaisesRegex(ValueError,'before/after identity'):r.audit(*sealed(files,expected))
+    def test_actual_v4_external_reference_template_and_prior_observation_authority(self):
+        for cut in ('reference-pin','template-pin','partial-template','outer-version','prior-close','workflow-conflict'):
+            files,expected=fixture_v4();request=D(files['request.original.json'])
+            if cut=='reference-pin':expected['inventoryReferenceSha256']='0'*64
+            elif cut=='template-pin':expected['inventoryTemplate']['sha256']='0'*64
+            elif cut=='partial-template':expected['inventoryTemplate']['base64']=expected['inventoryTemplate']['base64'][:-4]
+            elif cut=='outer-version':expected.pop('schema');expected.pop('inventoryTemplate');expected.pop('inventoryReferenceSha256')
+            elif cut=='workflow-conflict':
+                request['inventoryAdmission']['workflow']['sha256']='0'*64;refresh_v4_request(files,expected,request)
+            else:
+                prior=D(base64.b64decode(expected['inventoryOriginal']['base64']));prior['emptyPythonSources'][c.EMPTY_PYTHON_PATH]['source']['close']['succeeded']=False;raw=E(prior)
+                expected['inventoryOriginal']=dict(ROW(raw),base64=base64.b64encode(raw).decode());request['inventoryAdmission']['metadataAdmission']['original']=ROW(raw);refresh_v4_request(files,expected,request)
+            with self.assertRaises(ValueError,msg=cut):r.audit(*sealed(files,expected))
+    def test_actual_v4_real_controller_runtime_reader_before_and_after(self):
+        status,files,expected,order,calls=self.run_actual_v4();self.assertEqual(status,0);self.assertEqual(len(calls),2)
+        self.assertTrue(all(sum(operation=='read' and cap==1 for operation,cap in events)==1 and sum(operation=='close' for operation,cap in events)==1 for events in calls))
+        self.assertEqual(order.count('frontend-acquisition'),1);self.assertLess(order.index('api'),order.index('frontend-acquisition'))
+        self.assertLess(order.index(r.SCENARIOS[0]),order.index(r.SCENARIOS[1]));self.assertEqual(r.audit(*sealed(files,expected))['schema'],'bw.gui-hdd.reader.v4')
+    def test_actual_v4_controller_preserves_primary_secondary_partial_and_drift(self):
+        for after,retention in ((False,False),(True,False),(False,True)):
+            status,files,expected,order,calls=self.run_actual_v4('read-error',after,retention);self.assertEqual(status,1)
+            result=D(files['result.json']);self.assertEqual(result['firstFailure']['message'],'READ_FAILED')
+            self.assertEqual([row['message'] for row in result['secondary']],['CLOSE_FAILED']+(['TYPED_RETENTION'] if retention else []))
+            name='runtime.'+('after' if after else 'before')+'.json'
+            if not retention:self.assertEqual(D(files[name])['emptyPythonSources'][c.EMPTY_PYTHON_PATH]['status'],'failed')
+            if not after:self.assertNotIn('api',order);self.assertEqual(len(calls),2 if after else 1)
+        status,files,expected,order,calls=self.run_actual_v4(drift=True);self.assertEqual(status,1)
+        self.assertIn('before/after identity',D(files['result.json'])['firstFailure']['message']);self.assertEqual(len(calls),2)
     def test_metadata_before_acquisition(self):
         request=D(self.files['request.original.json']);args=[D(self.files[name+'.original.json']) for name in ('build-run','build-job','build-artifact')]
         c.admit_build_metadata(request,*args)

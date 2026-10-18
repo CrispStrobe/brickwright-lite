@@ -198,12 +198,33 @@ def validate_startup(snapshot, installed, mode, arguments):
     return snapshot
 
 
+def actual_inventory_reference(reference):
+    """External prior-observation reference, never an automatic metadata approval."""
+    fields(reference,'schema metadataAdmission jobId artifactId artifactSha256 workflow')
+    need(reference['schema']=='bw.gui-hdd.actual-inventory-reference.v1','explicit actual typed inventory reference')
+    for name in ('jobId','artifactId'):integer(reference[name],1,2**63-1)
+    digest(reference['artifactSha256']);fields(reference['workflow'],'commit path sha256')
+    digest(reference['workflow']['commit'],40);digest(reference['workflow']['sha256'])
+    need(reference['workflow']['path']=='.github/workflows/i80386-hdd-gui-actual.yml','prior metadata producer workflow')
+    selected=reference['metadataAdmission'];fields(selected,'schema source template original runId workflowSha')
+    need(selected['schema']=='bw.gui-hdd.inventory-admission.v3','unchanged metadata v3 descriptor shape')
+    integer(selected['runId'],1,2**63-1);digest(selected['workflowSha'],40)
+    source=selected['source'];fields(source,'head tree files');digest(source['head'],40);digest(source['tree'],40)
+    rows(source['files']);need(set(source['files'])==SOURCE,'separately reviewed prior metadata source21')
+    for name in ('template','original'):
+        fields(selected[name],'byteLength sha256');integer(selected[name]['byteLength'],1,JSON_CAP);digest(selected[name]['sha256'])
+    need(selected['workflowSha']==reference['workflow']['commit'] and
+         reference['workflow']['sha256']==source['files'][reference['workflow']['path']]['sha256'],'prior observation/executing workflow/content join')
+    return selected
+
+
 def parse_request(raw, expected):
     digest(expected); need(type(raw) is bytes and 0 < len(raw) <= JSON_CAP and sha(raw) == expected,
                            'independently selected request digest')
     request = decode(raw)
+    version=4 if request.get('schema')=='bw.gui-hdd.actual-request.v4' else 3
     fields(request, 'schema repository pullRequest source build criticalFiles installedFiles runtime inventoryAdmission inputs pythonStartup')
-    need(encode(request) == raw and request['schema'] == 'bw.gui-hdd.actual-request.v3' and
+    need(encode(request) == raw and request['schema'] == 'bw.gui-hdd.actual-request.v'+str(version) and
          request['repository'] == REPOSITORY, 'canonical owned approval request')
     need(encode(request['pythonStartup'])==encode(startup_policy()) and request['runtime']['python']==PYTHON_EXECUTABLE,'explicit v3 startup policy and selected CPython')
     integer(request['pullRequest'], 1, 2**31-1)
@@ -230,7 +251,7 @@ def parse_request(raw, expected):
     rows(request['installedFiles'])
     need(any(x.startswith('node_modules/bw-board/') for x in request['installedFiles']) and
          any(x.startswith('node_modules/playwright-core/') for x in request['installedFiles']), 'complete selected supplier/browser package inventories required')
-    runtime = request['runtime']; fields(runtime, 'files aliases directoryAliases node python chromium tools resources')
+    runtime = request['runtime']; fields(runtime, 'files aliases directoryAliases node python chromium tools resources'+(' emptyPythonSources' if version==4 else ''))
     need(type(runtime['files']) is dict and 1 <= len(runtime['files']) <= 512, 'bounded independently admitted runtime graph')
     for name, item in runtime['files'].items():
         need(type(name) is str and name.startswith('/') and '..' not in Path(name).parts, 'absolute runtime file')
@@ -254,14 +275,17 @@ def parse_request(raw, expected):
          'scenarioSeconds':{'freedos-hdd-persistence':1250,'forward-debug':180},
          'perProcessCoreBytes':0,'perProcessFileBytes':FILE_CAP,'perProcessOpenFiles':256,
          'aggregateContainmentQualified':False}), 'fixed finite hosted envelope; no aggregate containment claim')
+    if version==4:empty_python_policy(runtime['emptyPythonSources'],runtime['files'],runtime['aliases'],runtime['directoryAliases'])
     prior_inventory=request['inventoryAdmission']
-    fields(prior_inventory,'schema sourceHead runId jobId artifactId artifactSha256 original templateSha256 workflow')
-    need(prior_inventory['schema']=='bw.gui-hdd.inventory-admission.v2','separately reviewed prior inventory admission')
-    digest(prior_inventory['sourceHead'],40);digest(prior_inventory['artifactSha256']);digest(prior_inventory['templateSha256'])
-    for key in ('runId','jobId','artifactId'):integer(prior_inventory[key],1,2**63-1)
-    fields(prior_inventory['original'],'byteLength sha256');integer(prior_inventory['original']['byteLength'],1,JSON_CAP);digest(prior_inventory['original']['sha256'])
-    fields(prior_inventory['workflow'],'commit path sha256');digest(prior_inventory['workflow']['commit'],40);digest(prior_inventory['workflow']['sha256'])
-    need(prior_inventory['workflow']['path']=='.github/workflows/i80386-hdd-gui-actual.yml','prior inventory producer workflow')
+    if version==4:actual_inventory_reference(prior_inventory)
+    else:
+        fields(prior_inventory,'schema sourceHead runId jobId artifactId artifactSha256 original templateSha256 workflow')
+        need(prior_inventory['schema']=='bw.gui-hdd.inventory-admission.v2','separately reviewed prior inventory admission')
+        digest(prior_inventory['sourceHead'],40);digest(prior_inventory['artifactSha256']);digest(prior_inventory['templateSha256'])
+        for key in ('runId','jobId','artifactId'):integer(prior_inventory[key],1,2**63-1)
+        fields(prior_inventory['original'],'byteLength sha256');integer(prior_inventory['original']['byteLength'],1,JSON_CAP);digest(prior_inventory['original']['sha256'])
+        fields(prior_inventory['workflow'],'commit path sha256');digest(prior_inventory['workflow']['commit'],40);digest(prior_inventory['workflow']['sha256'])
+        need(prior_inventory['workflow']['path']=='.github/workflows/i80386-hdd-gui-actual.yml','prior inventory producer workflow')
     fields(request['inputs'], 'floppy hdd bios vgaRom')
     input_paths={'floppy':'gui-inputs/floppy.img','hdd':'gui-inputs/hdd.img','bios':'gui-inputs/bios.bin','vgaRom':'gui-inputs/vga.bin'}
     for name, row in request['inputs'].items():
@@ -332,8 +356,33 @@ def bounded_input(path,cap):
             if first is None:raise
 
 
+def expected_embedded_original(original):
+    fields(original,'byteLength sha256 base64');integer(original['byteLength'],1,JSON_CAP);digest(original['sha256'])
+    need(type(original['base64']) is str and original['base64'].isascii() and len(original['base64'])==4*((original['byteLength']+2)//3),'bounded external embedded original')
+    raw=base64.b64decode(original['base64'],validate=True)
+    need(len(raw)==original['byteLength'] and sha(raw)==original['sha256'] and base64.b64encode(raw).decode()==original['base64'],'external embedded original exact bytes')
+    return raw
+
+
+def join_actual_typed_inventory(request,prior_inventory,expected):
+    reference=request['inventoryAdmission'];metadata=actual_inventory_reference(reference)
+    need(sha(encode(reference))==expected['inventoryReferenceSha256'],'independently selected actual prior-observation reference')
+    prior_raw=expected_embedded_original(expected['inventoryOriginal']);template_raw=expected_embedded_original(expected['inventoryTemplate'])
+    # The held metadata reader checks observations. Only the separately selected
+    # reference and actual request authorize this new mapping.
+    verify_inventory_original(prior_raw,template_raw,metadata)
+    template=decode(template_raw)
+    need(encode(prior_inventory['installedFiles'])==encode(request['installedFiles']),'actual installed graph joins reviewed prior observation')
+    for role in ('files','aliases','directoryAliases','node','python','chromium','tools','resources'):
+        need(encode(prior_inventory['runtime'][role])==encode(request['runtime'][role]),'actual positive runtime graph joins reviewed metadata '+role)
+    need(encode(template['emptyPythonSources'])==encode(request['runtime']['emptyPythonSources']),'actual typed selection joins independently pinned metadata template')
+
+
 def expected_policy(expected):
-    fields(expected,'requestSha256 buildSourceAdmissionSha256 inventoryOriginal sourceHead runId jobId artifactId artifactName artifactBytes artifactSha256 run job artifact')
+    version=4 if expected.get('schema')=='bw.gui-hdd.actual-expectation.v4' else 3
+    fields(expected,'requestSha256 buildSourceAdmissionSha256 inventoryOriginal sourceHead runId jobId artifactId artifactName artifactBytes artifactSha256 run job artifact'+(' schema inventoryTemplate inventoryReferenceSha256' if version==4 else ''))
+    if version==4:
+        digest(expected['inventoryReferenceSha256']);expected_embedded_original(expected['inventoryTemplate'])
     for name in ('requestSha256','buildSourceAdmissionSha256','artifactSha256'):digest(expected[name])
     digest(expected['sourceHead'],40)
     for name in ('runId','jobId','artifactId'):integer(expected[name],1,2**63-1)
@@ -467,24 +516,28 @@ def tracked_source_originals(files,request):
 
 def official_joins(request, originals, expected):
     prior_inventory=expected_policy(expected)
-    need(sha(encode(prior_inventory))==request['inventoryAdmission']['original']['sha256'] and
-         len(encode(prior_inventory))==request['inventoryAdmission']['original']['byteLength'],'externally reviewed prior inventory identity')
-    admission=request['inventoryAdmission'];platform=prior_inventory.get('platform',{})
-    need(prior_inventory.get('schema')=='bw.gui-hdd.inventory-original.v2' and prior_inventory.get('observationOnly') is True and
-         prior_inventory.get('templateSha256')==admission['templateSha256'] and
-         platform.get('GITHUB_RUN_ID')==str(admission['runId']) and platform.get('GITHUB_RUN_ATTEMPT')=='1' and
-         platform.get('GITHUB_JOB')=='inventory' and platform.get('GITHUB_REPOSITORY')==REPOSITORY and
-         platform.get('GITHUB_WORKFLOW_SHA')==admission['workflow']['commit'] and
-         platform.get('GITHUB_EVENT_NAME')=='pull_request','prior inventory observed producing platform joins')
-    event=prior_inventory.get('event');fields(event,'byteLength sha256 base64');integer(event['byteLength'],1,JSON_CAP);digest(event['sha256'])
-    need(type(event['base64']) is str and len(event['base64'])<=(JSON_CAP+2)//3*4,'bounded prior event encoding')
-    event_raw=base64.b64decode(event['base64'],validate=True)
-    need(len(event_raw)==event['byteLength'] and sha(event_raw)==event['sha256'] and base64.b64encode(event_raw).decode()==event['base64'],'prior inventory event original identity')
-    bind_inventory_event(event_raw,admission['sourceHead'],admission['templateSha256'],platform)
-    need(prior_inventory['source']['head']==request['inventoryAdmission']['sourceHead'] and
-         prior_inventory['installedFiles']==request['installedFiles'] and prior_inventory['runtime']['files']==request['runtime']['files'] and
-         prior_inventory['runtime']['aliases']==request['runtime']['aliases'] and
-         prior_inventory['runtime']['directoryAliases']==request['runtime']['directoryAliases'],'request graph joins independently supplied prior inventory original')
+    version=4 if request['schema']=='bw.gui-hdd.actual-request.v4' else 3
+    need((version==4)==(expected.get('schema')=='bw.gui-hdd.actual-expectation.v4'),'explicit request/reader expectation version agreement')
+    if version==4:join_actual_typed_inventory(request,prior_inventory,expected)
+    else:
+        need(sha(encode(prior_inventory))==request['inventoryAdmission']['original']['sha256'] and
+             len(encode(prior_inventory))==request['inventoryAdmission']['original']['byteLength'],'externally reviewed prior inventory identity')
+        admission=request['inventoryAdmission'];platform=prior_inventory.get('platform',{})
+        need(prior_inventory.get('schema')=='bw.gui-hdd.inventory-original.v2' and prior_inventory.get('observationOnly') is True and
+             prior_inventory.get('templateSha256')==admission['templateSha256'] and
+             platform.get('GITHUB_RUN_ID')==str(admission['runId']) and platform.get('GITHUB_RUN_ATTEMPT')=='1' and
+             platform.get('GITHUB_JOB')=='inventory' and platform.get('GITHUB_REPOSITORY')==REPOSITORY and
+             platform.get('GITHUB_WORKFLOW_SHA')==admission['workflow']['commit'] and
+             platform.get('GITHUB_EVENT_NAME')=='pull_request','prior inventory observed producing platform joins')
+        event=prior_inventory.get('event');fields(event,'byteLength sha256 base64');integer(event['byteLength'],1,JSON_CAP);digest(event['sha256'])
+        need(type(event['base64']) is str and len(event['base64'])<=(JSON_CAP+2)//3*4,'bounded prior event encoding')
+        event_raw=base64.b64decode(event['base64'],validate=True)
+        need(len(event_raw)==event['byteLength'] and sha(event_raw)==event['sha256'] and base64.b64encode(event_raw).decode()==event['base64'],'prior inventory event original identity')
+        bind_inventory_event(event_raw,admission['sourceHead'],admission['templateSha256'],platform)
+        need(prior_inventory['source']['head']==request['inventoryAdmission']['sourceHead'] and
+             prior_inventory['installedFiles']==request['installedFiles'] and prior_inventory['runtime']['files']==request['runtime']['files'] and
+             prior_inventory['runtime']['aliases']==request['runtime']['aliases'] and
+             prior_inventory['runtime']['directoryAliases']==request['runtime']['directoryAliases'],'request graph joins independently supplied prior inventory original')
     digest(expected['buildSourceAdmissionSha256']);need(sha(encode(request['build']['sourceAdmission']))==expected['buildSourceAdmissionSha256'],'independent prior Build source admission original selection')
     digest(expected['requestSha256']); digest(expected['sourceHead'], 40); digest(expected['artifactSha256'])
     for key in ('runId','jobId','artifactId','artifactBytes'):integer(expected[key],1,2**63-1)
@@ -646,11 +699,29 @@ def audit(files, expected):
         runtime = decode(files['runtime.'+stage+'.json']);need(runtime['files'] == request['runtime']['files'] and
              runtime['aliases'] == request['runtime']['aliases'] and runtime['directoryAliases']==request['runtime']['directoryAliases'] and runtime['resources'] == request['runtime']['resources'] and
              runtime['aggregateContainmentQualified'] is False, 'runtime external graph/caps and honest containment boundary')
+        if request['schema']=='bw.gui-hdd.actual-request.v4':
+            fields(runtime,'schema files aliases directoryAliases directoryIdentities identities resources availableCpus rlimits aggregateContainmentQualified emptyPythonSources')
+            for role in ('files','aliases','directoryAliases','resources'):
+                need(encode(runtime[role])==encode(request['runtime'][role]),'strict actual v4 runtime external graph/cap types')
+            cpus=runtime['availableCpus'];need(type(cpus) is list and cpus,'observed nonempty CPU affinity list')
+            for cpu in cpus:integer(cpu,0,2**31-1)
+            need(cpus==sorted(set(cpus)),'observed sorted unique CPU affinity')
+            fields(runtime['rlimits'],'1 4 7')  # Existing Linux FSIZE, CORE and NOFILE observations only.
+            for pair in runtime['rlimits'].values():
+                need(type(pair) is list and len(pair)==2,'observed rlimit pair')
+                for limit in pair:integer(limit,-1,2**64-1)
+            need(runtime.get('schema')=='bw.gui-hdd.runtime-observation.v4','explicit typed actual runtime observation v4')
+            selected=runtime.get('emptyPythonSources');need(type(selected) is dict and set(selected)==set(request['runtime']['emptyPythonSources']),'runtime typed roster joins independent actual request')
+            for row in selected.values():
+                fields(row,'attempted status source');need(row['attempted'] is True and row['status']=='observed','actual typed source observed')
+                verify_empty_python_source(row['source'])
         targets={row['target'] for row in request['runtime']['directoryAliases'].values()}
         need(type(runtime.get('directoryIdentities')) is dict and set(runtime['directoryIdentities'])==targets,'exact observed directory target census')
         for target,row in runtime['directoryIdentities'].items():
             fields(row,'dev ino mode');integer(row['dev'],0,2**63-1);integer(row['ino'],1,2**63-1);integer(row['mode'],0,2**32-1)
             need(stat.S_ISDIR(row['mode']),'observed selected directory target is directory')
+    if request['schema']=='bw.gui-hdd.actual-request.v4':
+        need(encode(decode(files['runtime.before.json'])['emptyPythonSources'])==encode(decode(files['runtime.after.json'])['emptyPythonSources']),'actual typed source before/after identity unchanged')
     build = request['build'];run = decode(files['build-run.original.json']);job = decode(files['build-job.original.json']);artifact = decode(files['build-artifact.original.json']);typed_metadata(run,job,artifact)
     need(run.get('id') == build['runId'] and run.get('run_attempt') == 1 and run.get('repository',{}).get('full_name')==REPOSITORY and run.get('head_sha') == build['head'] and
          run.get('path') == '.github/workflows/build.yml' and run.get('status') == 'completed' and run.get('conclusion') == 'success', 'external frontend official run')
@@ -704,7 +775,7 @@ def audit(files, expected):
         identity_before=decode(files['runtime.before.json'])['identities'][request['runtime']['chromium']]
         need(any(item.get('executable')==request['runtime']['chromium'] and item.get('executableIdentity')==identity_before
              for sample in child['descendantSamples'] for item in sample['descendants']), 'actual observed browser process executable identity')
-    return {'pass':True,'schema':'bw.gui-hdd.reader.v3','sourceHead':request['source']['head'],
+    return {'pass':True,'schema':'bw.gui-hdd.reader.v'+('4' if request['schema']=='bw.gui-hdd.actual-request.v4' else '3'),'sourceHead':request['source']['head'],
         'hdd':check_hdd(files),'forwardDebug':check_forward(files),'aggregateContainmentQualified':False,
         'fullOsQualified':False,'physicalTimingQualified':False,'reverseExecutionQualified':False}
 
