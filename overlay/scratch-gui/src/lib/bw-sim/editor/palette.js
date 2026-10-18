@@ -16,6 +16,11 @@ export const PALETTE_CATEGORIES = [
     {id: 'connector', en: 'Connector', de: 'Verbinder'},
     {id: 'gear', en: 'Gear', de: 'Zahnrad'},
     {id: 'wheel', en: 'Wheel', de: 'Rad'},
+    // System parts (scripts/derive-part-meta.mjs categoryOf maps the LDraw descriptions here).
+    {id: 'brick', en: 'Brick', de: 'Stein'},
+    {id: 'plate', en: 'Plate', de: 'Platte'},
+    {id: 'tile', en: 'Tile', de: 'Fliese'},
+    {id: 'slope', en: 'Slope', de: 'Schräge'},
     {id: 'other', en: 'Other', de: 'Sonstiges'}
 ];
 
@@ -100,7 +105,7 @@ export const searchScore = (part, meta, query) => {
 };
 
 /**
- * The parts a search finds, best first (then by name in the learner's
+ * The parts a search finds, best first (then the shorter name, then by name in the learner's
  * language), as palette items; an empty query finds nothing (the palette then
  * shows its categories).
  * @returns {{part: string, name: string, nameEn: string, nameDe: string, number: string}[]}
@@ -112,7 +117,9 @@ export const searchPalette = (catalog, query, {locale = 'en'} = {}) => {
         const score = searchScore(part, meta, query);
         if (score > 0) found.push({score, part, name: locale === 'de' && meta.nameDe ? meta.nameDe : meta.name, nameEn: meta.name, nameDe: meta.nameDe, number: partNumber(part)});
     }
-    return found.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, locale, {numeric: true}))
+    // Equal scores: the shorter name first (it is more nearly what was typed: "Lochbalken 7"
+    // is the beam 7 before the liftarm 3 x 7 bent), then by name.
+    return found.sort((a, b) => b.score - a.score || a.name.length - b.name.length || a.name.localeCompare(b.name, locale, {numeric: true}))
         .map(({score, ...item}) => item);
 };
 

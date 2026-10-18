@@ -106,9 +106,10 @@ const centresMeet = (s, h) => !(vecDist(s.position, h.position) > TOL);
 export const SHAFT_TYPES = new Set(['pin', 'axle', 'ball']);
 /**
  * Collider `region`s that are a shaft: the volume of a pin, axle or ball that sits
- * inside another part's hole or socket. A collider without a region is solid.
+ * inside another part's hole or socket, and a System part's stud layer, which sits
+ * inside the hollow underside of the part on top of it. A collider without a region is solid.
  */
-export const SHAFT_REGIONS = Object.freeze(['pin', 'axle', 'ball']);
+export const SHAFT_REGIONS = Object.freeze(['pin', 'axle', 'ball', 'stud']);
 
 /**
  * Indices of a part's SOLID colliders: the volume that must not share space with
