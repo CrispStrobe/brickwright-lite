@@ -340,13 +340,17 @@ Both actual and inventory source/workflow guards remain false.
 Continue within the already claimed five implementation paths; dependency
 writers and other workflows remain outside this lane. Next tasks are:
 
-1. Close the known activation limits in `scripts/run-i80386-hdd-gui-actual.py`
-   and its independent reader: bound proc reads and census iteration before
-   allocation, and represent loader directory aliases explicitly with bounded
-   resolution to selected runtime descendants. Add coherent overflow/alias
-   negatives and preserve first errors. Keep existing caps and all UI predicates.
-2. Review the fixed `bw.gui-hdd.inventory-template.v1` path roster (or a separately
-   reviewed explicit version for directory aliases) against the
+1. **Bounded reads and alias source delivered.** The subsequent
+   [v2 source checkpoint](https://github.com/CrispStrobe/brickwright-lite/commit/7dd18548e)
+   bounds held proc reads to 4097 bytes before parsing and both lazy censuses to
+   8192 entries. Explicit directory aliases have a combined 256-alias cap,
+   bounded declared resolution and observed target-directory identities. The
+   request, inventory template, inventory original/admission and reader are v2;
+   result and probe-admission schemas remain v1. All 33 earlier Python test
+   bodies are held, with nine additional methods and thirteen detected source
+   cuts. The four focused Node wrappers pass independently. No real process,
+   browser or guest result is inferred from these mocked controls.
+2. Review the fixed `bw.gui-hdd.inventory-template.v2` path roster against the
    locked Playwright package and selected Node/Python/tool closure. Select the
    real pinned headless-shell executable; do not substitute a larger browser or
    silently raise the file cap. The template must contain no operator paths.
@@ -360,7 +364,7 @@ writers and other workflows remain outside this lane. Next tasks are:
    head/tree/selected closure and producing workflow before selecting its ZIP
    digest from official metadata. The actual controller acquires that original
    once and derives bounded member inventories from authenticated bytes; the
-   reader recomputes them. Freeze the `bw.gui-hdd.actual-request.v1` identity
+   reader recomputes them. Freeze the `bw.gui-hdd.actual-request.v2` identity
    separately from the producer, including the prior inventory admission.
 4. Review final source, exact official event/job/step/artifact joins and resource
    margin before the separate actual activation. The HDD and forward scenarios

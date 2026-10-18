@@ -5790,8 +5790,10 @@ The controller, standalone reader, two real-UI scenario implementations, focused
 manufactured-original controls and guarded workflow are implemented. This is
 source work: no browser/guest acceptance is inferred from the manufactured
 packets. Both actual and metadata-inventory source/workflow guards remain false.
-Before activation, finish bounded proc/census access and directory-alias closure,
-review the selected hosted runtime template, acquire and audit one separate
+The v2 follow-up implements bounded held proc reads, lazy capped censuses and
+explicit directory aliases; 42 Python methods pass with all prior 33 bodies
+held, and thirteen targeted source cuts are detected. These are mock controls.
+Before activation, review the selected hosted runtime template, acquire and audit one separate
 metadata inventory, and freeze the externally selected actual request and full
 frontend-source admission. Setup consumes the same 35-minute job budget; its
 sufficiency remains unqualified. Follow the matching guide's completion gates.
