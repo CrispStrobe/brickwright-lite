@@ -1135,7 +1135,7 @@ def collect_inventory_observation(template_raw,expected,root,env,output_path,fai
 
 
 # A separate observation format; it cannot select fonts or approve an actual.
-FONT_DISCOVERY_ENABLED = False
+FONT_DISCOVERY_ENABLED = True
 FONT_ROOTS = ('/etc/fonts/conf.d','/usr/share/fonts','/usr/local/share/fonts')
 FONT_PREFIXES = ('/etc/fonts/','/usr/share/fontconfig/','/usr/share/fonts/','/usr/local/share/fonts/')
 FONT_STREAM_CAP = 128 << 10

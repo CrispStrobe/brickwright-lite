@@ -1258,7 +1258,7 @@ class Originals(unittest.TestCase):
         for kw,message in (({'close_error':True},'FONT_CLOSE_FIRST'),({'missing':True},'FONT_READ_FIRST'),({'tool_mode':0o4755},'nonwritable root-owned')):
             value,request,expected,events=self.font_discovery_fixture(**kw)
             self.assertIn(message,value['firstFailure']['message']);self.assertFalse(any(op=='probe' for op,arg in events));self.assertFalse(value['complete'])
-        with patch.object(c.Path,'cwd',side_effect=AssertionError('guard touched OS')),patch.object(c,'regular',side_effect=AssertionError('guard read input')):
+        with patch.object(c,'FONT_DISCOVERY_ENABLED',False),patch.object(c.Path,'cwd',side_effect=AssertionError('guard touched OS')),patch.object(c,'regular',side_effect=AssertionError('guard read input')):
             for mode in ('font-discovery-guard','font-discovery'):
                 with self.assertRaisesRegex(ValueError,'font discovery disabled'):c.main([mode])
     def test_font_discovery_config_cap_and_frame_reserve_keep_bounded_failure(self):
@@ -1393,7 +1393,7 @@ class Originals(unittest.TestCase):
         stages=[];status=0
         # Model only the finite workflow ordering; the source guard is real.
         try:
-            with patch.object(c,'regular',side_effect=AssertionError('guard must precede input')),patch.object(c.Path,'cwd',side_effect=AssertionError('guard must precede setup')):
+            with patch.object(c,'FONT_DISCOVERY_ENABLED',False),patch.object(c,'regular',side_effect=AssertionError('guard must precede input')),patch.object(c.Path,'cwd',side_effect=AssertionError('guard must precede setup')):
                 c.main(['font-discovery-guard'])
             stages.extend(['setup','input'])
         except ValueError:status=1
@@ -1429,10 +1429,10 @@ class Originals(unittest.TestCase):
 
     def font_delivery_fixture(self,partial=False):
         value,request_raw,old_expected,events=self.font_discovery_fixture(partial=partial);request=D(request_raw)
-        # A manufactured future executing workflow selection, distinct from its
+        # A manufactured executing workflow selection, distinct from its
         # source commit. It is never an official event or activation evidence.
         workflow=(root/'.github/workflows/i80386-hdd-gui-actual.yml').read_bytes()
-        prefix,job=workflow.split(b'\n  font-discovery:\n');workflow=prefix+b'\n  font-discovery:\n'+job.replace(b'$'+b'{{ false &&',b'$'+b'{{ true &&',1)
+        prefix,job=workflow.split(b'\n  font-discovery:\n');self.assertIn(b'$'+b'{{ true &&',job);self.assertNotIn(b'$'+b'{{ false &&',job)
         request['source']['files'][r.FONT_WORKFLOW_PATH]=ROW(workflow);request_raw=E(request)
         value['request']=c.font_blob(request_raw);event=D(base64.b64decode(value['event']['base64']));event['pull_request']['body']='<!-- BW_GUI_HDD_FONT_DISCOVERY_SHA256='+H(request_raw)+' -->';value['event']=c.font_blob(E(event))
         files={name:b'' for name in ('guard.stdout','guard.stderr','npm.stdout','npm.stderr','chromium-install.stdout','chromium-install.stderr','input-install.stdout','input-install.stderr','controller.stdout','controller.stderr')}
@@ -1586,6 +1586,34 @@ class Originals(unittest.TestCase):
                 raw=bytearray(raw);at=raw.find(b'PK\x01\x02');raw[at+8:at+10]=(1).to_bytes(2,'little');raw=bytes(raw)
             with patch.object(r.zipfile.ZipFile,'read',side_effect=AssertionError('must refuse full census before inflate')):
                 with self.assertRaises(ValueError,msg=cut):r.font_delivery_archive(raw)
+
+    def test_font_enabled_default_guard_has_no_edges_and_no_actual_authority(self):
+        self.assertIs(c.FONT_DISCOVERY_ENABLED,True);self.assertIs(c.ACTUAL_ENABLED,False);self.assertIs(r.ACTUAL_ENABLED,False)
+        with patch.object(c,'regular',side_effect=AssertionError('guard read input')),patch.object(c,'Hosted',side_effect=AssertionError('guard API/process')),\
+          patch.object(c,'Originals',side_effect=AssertionError('guard evidence setup')),patch.object(c,'install_input',side_effect=AssertionError('guard input retrieval')),\
+          patch.object(c,'collect_font_discovery',side_effect=AssertionError('guard collection')),patch.object(c.Path,'cwd',side_effect=AssertionError('guard cwd')),\
+          patch.object(c.os,'open',side_effect=AssertionError('guard opened file')):
+            self.assertEqual(c.main(['font-discovery-guard']),0)
+            for mode in ('guard','preflight','actual'):
+                with self.assertRaisesRegex(ValueError,'GUI actual disabled'):c.main([mode])
+    def test_font_enabled_collection_still_refuses_wrong_request_and_source(self):
+        for cut in ('wrong-pin','noncanonical','wrong-schema','source-drift'):
+            with self.font_discovery_edges() as (request,env,events):
+                value=D(request)
+                if cut=='wrong-schema':value['schema']='bw.gui-hdd.actual-request.v4'
+                if cut=='source-drift':value['source']['files'][sorted(c.SOURCE)[0]]['sha256']='0'*64
+                request=E(value)+(b' ' if cut=='noncanonical' else b'');pin='0'*64 if cut=='wrong-pin' else H(request);previous=c.regular
+                def read(path,cap):
+                    raw=previous(path,cap)
+                    if str(path)=='/event':
+                        event=D(raw);event['pull_request']['body']='<!-- BW_GUI_HDD_FONT_DISCOVERY_SHA256='+pin+' -->';return E(event)
+                    return raw
+                with patch.object(c,'regular',read):observed=c.collect_font_discovery(request,pin,pathlib.Path('/checkout'),env,'/out/fonts.json')
+            self.assertIsNotNone(observed['firstFailure'],cut);self.assertFalse(observed['complete']);self.assertFalse(observed['candidate']);self.assertFalse(observed['qualified'])
+            self.assertFalse(observed['commands']);self.assertFalse(observed['directories']);self.assertFalse(any(op=='probe' for op,arg in events))
+            if cut=='source-drift':
+                self.assertIn('discovery source Git/live/external join',observed['firstFailure']['message']);self.assertTrue(any(op=='git' for op,arg in events))
+            else:self.assertFalse(events)
 
 suite=unittest.defaultTestLoader.loadTestsFromTestCase(Originals)
 result=unittest.TextTestRunner(verbosity=2).run(suite)
@@ -1751,14 +1779,14 @@ function fontDiscoveryWorkflowContract (workflow, controller) {
     assert.equal(workflow.split(marker).length,2,'one discovery job');
     const job=workflow.split(marker)[1];
     const [header,...steps]=job.split(/\n      - /);
-    assert.match(header,/\$\{\{ false &&/,'job stays disabled');
+    assert.match(header,/\$\{\{ true &&/,'metadata-only source job enabled');
     const conditions=["github.event_name == 'pull_request'","github.event.action == 'labeled'",
         "github.event.label.name == 'x86-hdd-gui-font-discovery'","github.actor == 'CrispStrobe'",
         "github.repository == 'CrispStrobe/brickwright-lite'","github.run_attempt == 1",
         'github.event.pull_request.head.repo.full_name == github.repository',
         'github.event.pull_request.head.repo.fork == false',"github.event.pull_request.base.ref == 'main'"];
     const predicate=header.split('    if: >-\n')[1]?.split('\n    runs-on:')[0].trim().replace(/\s+/g,' ');
-    assert.equal(predicate,'${{ false && '+conditions.join(' && ')+' }}','one exact non-bypassable predicate');
+    assert.equal(predicate,'${{ true && '+conditions.join(' && ')+' }}','one exact non-bypassable predicate');
     const headerKeys=[...header.matchAll(/^    ([a-z-]+):/gm)].map(match=>match[1]);
     assert.deepEqual(headerKeys,['if','runs-on','timeout-minutes','env','steps'],'closed unique job fields');
     const scalarMap=(text,indent)=>{
@@ -1841,10 +1869,10 @@ function fontDiscoveryWorkflowContract (workflow, controller) {
     assert.equal(seconds,180);assert.ok(minutes(collect)*60>=seconds+60,'collector leaves terminal retention margin');
     assert.equal(minutes(setup),10);assert.equal(minutes(install),1);assert.equal(minutes(collect),4);assert.equal(minutes(header),16);
     assert.ok(minutes(header)>=minutes(setup)+minutes(install)+minutes(collect)+1,'separate finite job backstop includes overhead');
-    assert.match(controller,/FONT_DISCOVERY_ENABLED = False/);assert.match(controller,/ACTUAL_ENABLED = False/);
+    assert.match(controller,/FONT_DISCOVERY_ENABLED = True/);assert.match(controller,/ACTUAL_ENABLED = False/);
 }
 
-test('disabled font-discovery workflow delivers pinned inputs to the finite observation contract',()=>{
+test('enabled font-discovery source delivers pinned inputs to the finite observation contract',()=>{
     const workflow=fs.readFileSync(new URL('../.github/workflows/i80386-hdd-gui-actual.yml',import.meta.url),'utf8');
     const controller=fs.readFileSync(new URL('../scripts/run-i80386-hdd-gui-actual.py',import.meta.url),'utf8');
     fontDiscoveryWorkflowContract(workflow,controller);
@@ -1857,7 +1885,7 @@ test('disabled font-discovery workflow delivers pinned inputs to the finite obse
         shift("GH_TOKEN: ''","GH_TOKEN: ''\n          GH_TOKEN: ${{ github.token }}"),
         shift("NODE_OPTIONS: ''","NODE_OPTIONS: ''\n      NODE_OPTIONS: '--eval=unreviewed'"),
         shift("        env:\n          GH_TOKEN: ''","        GH_TOKEN: ${{ github.token }}\n        env:\n          GH_TOKEN: ''"),
-        shift('${{ false &&','${{ true &&'),shift('x86-hdd-gui-font-discovery','x86-hdd-gui-inventory'),
+        shift('${{ true &&','${{ false &&'),shift('x86-hdd-gui-font-discovery','x86-hdd-gui-inventory'),
         shift('github.run_attempt == 1','github.run_attempt == 2'),shift('github.event.pull_request.head.repo.fork == false','true'),
         shift('ref: ${{ github.event.pull_request.head.sha }}','ref: ${{ github.sha }}'),shift('node-version: 22.23.3','node-version: 22'),
         shift('actions/checkout@11d5960a326750d5838078e36cf38b85af677262','actions/checkout@v4'),
