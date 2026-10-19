@@ -93,3 +93,30 @@ export function ordinaryPlayerScoreNumberCalls(program, safeIndex = () => false)
     if(tags.some(tag=>typeof tag!=='string'||!resourceTags.has(tag)||resourceBindings.has(tag.split('.')[0])))unsafe=true;
     return new WeakSet(unsafe?[]:candidates);
 }
+
+// Builtin CameraProperty members are compile-time Number enum leaves; the
+// translator emits each as its declared numeric literal. Only an unshadowed
+// builtin root qualifies, and any write, delete, extraction or alias of that
+// root invalidates every leaf in the program.
+const CAMERA_PROPERTY_MEMBERS = Object.freeze(['X','Y','Left','Right','Top','Bottom']);
+export function ordinaryCameraPropertyNumberLeaves(program) {
+    const sdk=staticSdkNamespaceReceivers(program),candidates=[];
+    let unsafe=false;
+    const rootOf=node=>{while(['Member','Index'].includes(node?.type))node=node.object;return node;};
+    const visit=(node,parent=null)=>{
+        if(!node||typeof node!=='object')return;
+        if(Array.isArray(node)){for(const value of node)visit(value,parent);return;}
+        if(node.type==='Identifier'&&node.name==='CameraProperty'&&sdk.has(node)){
+            const member=parent?.type==='Member'&&parent.object===node?parent:null;
+            if(!member||member.optional||!CAMERA_PROPERTY_MEMBERS.includes(member.name))unsafe=true;
+            else candidates.push(member);
+        }
+        if(node.type==='Assignment'||node.type==='Update'||node.type==='Unary'&&node.op==='delete'){
+            const root=rootOf(node.type==='Assignment'?node.left:node.argument);
+            if(root?.type==='Identifier'&&root.name==='CameraProperty'&&sdk.has(root))unsafe=true;
+        }
+        for(const value of Object.values(node))if(value&&typeof value==='object')visit(value,node);
+    };
+    visit(program);
+    return new WeakSet(unsafe?[]:candidates);
+}

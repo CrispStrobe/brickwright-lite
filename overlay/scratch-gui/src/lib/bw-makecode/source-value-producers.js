@@ -9,7 +9,7 @@ import {multiplayerPlayerSourceCalls} from './multiplayer-player-source.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 import {consoleInspectSourceCalls} from './console-inspect-source.js';
 import {SDK_FONT_FIELDS} from './sdk-font-value-descriptors.js';
-import {ordinaryPlayerScoreNumberCalls} from './ordinary-primitive-sdk-number-source.js';
+import {ordinaryPlayerScoreNumberCalls,ordinaryCameraPropertyNumberLeaves} from './ordinary-primitive-sdk-number-source.js';
 import {ordinarySceneClockNumberCalls} from './ordinary-scene-clock-number-source.js';
 import {controllerButtonEventNumberLeaves} from './controller-button-event-number-source.js';
 
@@ -95,6 +95,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         return initialized(node.index);
     };
     const ordinaryNumbers=ordinaryPrimitiveSdkNumbers?ordinaryPlayerScoreNumberCalls(program,safeClockIndex):null;
+    const cameraPropertyNumbers=ordinaryPrimitiveSdkNumbers?ordinaryCameraPropertyNumberLeaves(program):null;
     const spriteAyNumbers=privateSpriteAyProof||(ordinaryPrimitiveSdkNumbers?ordinarySpriteAyNumberReads(program):null);
     const sceneNumbers=sceneClockNumbers?ordinarySceneClockNumberCalls(program,safeClockIndex):null;
     let screenWritten=false;
@@ -179,11 +180,12 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         else if(node.type==='Binary'&&['+','-','*','/','%','&','|','^','<<','>>','>>>'].includes(node.op))derived.push({result:current,type:'Number',operands:[cell(node.left),cell(node.right)],signature:true,domain:'Number',stringConcat:node.op==='+'});
         else if(node.type==='Call'&&!node.isNew&&(node.callee?.type==='Identifier'||numericArrows.size&&node.callee?.type==='Parenthesized'))calls.push({node,callee:node.callee.type==='Identifier'?binding(owner,node.callee.name):null,result:current});
         else if(node.type==='Parenthesized'&&parenthesized)edge(cell(node.expression),current);
-        else if(['Conditional','Logical'].includes(node.type)){edge(cell(node.consequent||node.left),current);edge(cell(node.alternate||node.right),current);}
+        // The parser spells && / || / ?? as Binary; each yields one actual operand.
+        else if(['Conditional','Logical'].includes(node.type)||node.type==='Binary'&&['&&','||','??'].includes(node.op)){edge(cell(node.consequent||node.left),current);edge(cell(node.alternate||node.right),current);}
         else if(node.type==='Member'&&['width','height'].includes(node.name))edges.push([cell(node.object),current,'imageDimension',node.name]);
         else if(node.type==='Member'&&fields.has(node.name))edges.push([cell(node.object),current,'field',node.name]);
         else if(['Undefined','Null','String','Number','Boolean'].includes(node.type))add(current,node.type);
-        else if(ordinaryNumbers?.has(node)||sceneNumbers?.has(node)||buttonEventNumbers?.has(node)||spriteAyNumbers?.has(node))add(current,'Number');
+        else if(ordinaryNumbers?.has(node)||cameraPropertyNumbers?.has(node)||sceneNumbers?.has(node)||buttonEventNumbers?.has(node)||spriteAyNumbers?.has(node))add(current,'Number');
         else if(node.type==='Call'&&sdk.has(node.callee)&&path(node.callee)==='game.askForString')add(current,'String');
         else {add(current,'Opaque');if(arrayValues&&node.type==='Call'&&node.callee?.type==='Member')for(const value of [node.callee.object,...node.args])arrayOperations.push({kind:'escape',receiver:cell(value)});}
     };
