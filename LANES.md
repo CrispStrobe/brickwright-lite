@@ -6554,3 +6554,20 @@ canonical mirror freshness and every enabled exact-head check before source
 merge. Hardware acceptance separately requires cold launch, cancel, immediate
 retry and disconnect/reconnect on the iPad without restarting the app. Keep
 receipts, screenshots, device identifiers and machine paths gitignored.
+
+## CAD browser selection failure investigation — 2026-10-19
+
+CLAIMED — Codex integration, explicit user request to fix the CAD browser error.
+Branch `docs/cad-browser-selection-claim-20261019`. Own only the browser aiming
+and selection helper in `scripts/lib/sim-lab-cad-gate.mjs`, its focused source
+controls, this ledger and `docs/INTEGRATION-NEXT-STEPS.md`. Coordinate a separate
+extension before changing the Sim Lab owner's editor, rendering or physics.
+
+Retained robotlab failure: paletteInteractions calls focusOn after dropping a
+beam; its real mouse click leaves selection empty instead of selecting the
+expected placed part. Diagnose against the retained production frontend. Keep
+real pointer interactions, exact part identity, assertions and existing budgets;
+no direct editor selection, blind sleeps, retry-to-green or waived checks.
+Require an affected real-browser regression and all enabled exact-head CI before
+normal matched-head merge. This claim is documentation only; implementation
+follows its qualified merge. Preserve other lanes and SPIKE qualification holds.

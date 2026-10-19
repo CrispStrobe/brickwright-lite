@@ -191,3 +191,14 @@ only. Machine paths, acquisition receipts, originals, transcripts and access
 details belong in ignored local `CLAUDE.md` files or the private evidence store.
 Never commit or publish those inputs. Check the local ignored handoff before
 using retained artifacts, so that a successful original is acquired only once.
+
+### CAD browser selection gate
+
+The enabled robotlab browser job currently fails when `focusOn` clicks a beam
+after palette placement: selection is empty rather than the expected part.
+Investigate the actual pointer target and camera/hover state with the existing
+production browser gate. Repair the narrow aiming helper only after confirming
+the cause; extend the claim separately if editor source needs a change. Preserve
+real mouse input, exact selection assertions and budgets. Affected browser
+qualification and every enabled final-head check remain required. SPIKE source
+candidates also retain their separate installed qualification requirements.
