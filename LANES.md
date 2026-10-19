@@ -1,3 +1,35 @@
+## bw-circuit-ui pin bump for B24 terminal geometry — 2026-10-19
+
+CLAIMED and done in one PR — Claude (circuit-editor lane). Pin 6721d21 ->
+bda0157410a6704ae859a19398a8a742cdfae50b (bw-circuit-ui #96: terminals no longer collapse onto
+the part centre -- light_sensor, eeprom, seven_segment, oscilloscope,
+function_gen -- and the part-face census gates that no two terminals of one
+part share a point). CUI dependencies unchanged: exact SHA swap across the
+same 16 pin surfaces.
+
+## bw-circuit-ui pin bump for B23 faces — 2026-10-19
+
+CLAIMED and done in one PR — Claude (circuit-editor lane). Pin feb0557 ->
+6721d21e1ff8662dc4c21653833987a5bfd46b53 (bw-circuit-ui #95: terminal-dot names
+no longer pile up; symbol faces for npn, pnp, switch, ldr and the DIP switch,
+the most-used generic kinds in the examples census). CUI dependencies
+unchanged: exact SHA swap across the same 16 pin surfaces.
+
+## bw-circuit-ui pin bump for B22 chip faces — 2026-10-18
+
+CLAIMED and done in one PR — Claude (circuit-editor lane). Pin fe89e34 ->
+feb0557dbf7f8a11cc2a18fc946a269a4cd0fe09 (bw-circuit-ui #93: STC15, STC MCU and
+TMS9918A chip faces; census --generic-shots and generic/chips lists, which the
+example-faces report in production-sw-probe reads). CUI dependencies
+unchanged: exact SHA swap across the same 16 pin surfaces as the B21 bump.
+## CI: vendor-freshness skips prose-only pull requests — 2026-10-18
+
+CLAIMED and done in one PR — Claude. Free-tier runner slots: the `pull_request`
+trigger of `.github/workflows/vendor-freshness.yml` gets the same nine-file
+`paths-ignore` list its `push` trigger already has (BLOCKED, BUILD, CLAUDE,
+HANDOFF, LANES, MBIT-BUILD, PLAN, README, ROADMAP .md at the root). Such a PR
+cannot change vendor-pins.json, overlay/** or scripts/**. The push run, the
+nightly schedule, concurrency and the check itself are unchanged.
 ## deploy-watchdog: age running jobs, not the run — 2026-10-18
 
 CLAIMED and done in one PR — Claude. Issue #1074: the watchdog's stuck-run
@@ -6422,19 +6454,21 @@ checkouts are preserved; no blanket rebase or supplier bump is claimed.
 
 ### Integrated-main native checkpoint — 2026-10-18
 
-PR1050 is landed and every enabled exact-head gate passed. Current-main
-`fc385cada4d2ff6aab21e22bdcc38dc696d9c787` production frontend, unchanged
-startup ownership budget, eight EN/DE Chromium/WebKit painted-icon controls,
-responsive actions and physical-iOS compilation pass. Signing stopped with
-`errSecInternalComponent` while the Mac screen was locked; direct signing
-confirmed that remaining block. No new iPad installation is claimed. The
-private continuation verifies the compiled app, waits for unlock, then signs
-and verifies before attempting WLAN delivery; it does not rebuild unchanged
-sources or take unsolicited screenshots of other foreground apps. The
-previous installed candidate and receipts are preserved. Remaining native
-readiness, physical toolbar/connection/LED acceptance and clone buzzer tasks
-are bounded in the current handoff; no additional native or firmware work
-is implicitly claimed.
+PR1050 is landed and every enabled exact-head gate passed. The qualified
+`fc385cada4d2ff6aab21e22bdcc38dc696d9c787` snapshot's production frontend,
+unchanged startup ownership budget, eight EN/DE Chromium/WebKit painted-icon
+controls, responsive actions and physical-iOS compilation pass. Original signing
+failures and the expired continuation are retained. A frozen compiled copy was
+signed in one bounded attempt, strictly verified and installed over WLAN on
+2026-10-18: 84.36 MiB, fresh embedded frontend, no duplicate frontend/archive.
+The shared compiled original was preserved. This delivers the qualified snapshot,
+not subsequent main. Automatic launch was explicitly denied because the iPad
+was locked; foreground and physical toolbar acceptance remain pending. Retry
+launch after unlock without rebuilding or resigning. The old watcher mistook an
+absent screen-lock field for locked; the replacement uses the signing result.
+Previous artifacts and receipts are retained privately. Native readiness,
+physical UI/connection/LED acceptance and clone buzzer tasks retain their bounds
+in the handoff; no additional native or firmware work is implicitly claimed.
 
 ## Arcade foundation CI: isolated mutant import closure — 2026-10-18
 
@@ -6506,3 +6540,32 @@ controls, every enabled exact-head source check, and fresh admitted actual
 candidate qualification before integrating source. Never repeat a successful
 original acquisition, reader or run merely to inspect it. See
 [the integration handoff](docs/INTEGRATION-NEXT-STEPS.md) for the remaining join.
+
+
+## Native Scratch Link cancellation and reconnect ordering — 2026-10-19
+
+CLAIMED — Codex root, branch `fix/native-bridge-recovery-20261019`.
+Current-source deterministic deferred-promise probes reproduce a closed socket
+reopening after event registration, a listener retained after native open fails,
+and a new open dispatched before the previous native close completes. These
+are source defects; they do not establish the cause of the reported physical
+iPad cold-start symptom.
+
+Own `overlay/scratch-gui/src/lib/native-scratch-link-bridge.js`, its canonical
+`packages/scratch-gui` mirror, focused `test/scratchlink-bridge.test.mjs` controls,
+and this ledger plus the WeDo/iPad handoff. Guard asynchronous opening and
+outbound delivery against cancellation, release listeners on every failure,
+and serialize bridge open/close transitions so a late old close cannot tear
+down the next connection. Close must also cancel a pending real-socket fallback
+without later starting its bridge. Keep unrelated WebSockets and explicit
+transport preferences working. Reject stale work; retain bounded extension
+waits, existing protocol semantics, service permissions and supplier pins.
+
+No automatic retry loop, new timeout, native Rust/Swift change, firmware or
+buzzer claim is included. Native readiness/session changes need separate
+source evidence and ownership. Merge this claim before implementation; require
+deferred cancellation/failure/overlap controls that fail on the baseline,
+canonical mirror freshness and every enabled exact-head check before source
+merge. Hardware acceptance separately requires cold launch, cancel, immediate
+retry and disconnect/reconnect on the iPad without restarting the app. Keep
+receipts, screenshots, device identifiers and machine paths gitignored.

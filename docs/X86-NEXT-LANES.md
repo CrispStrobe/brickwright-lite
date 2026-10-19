@@ -915,20 +915,45 @@ Resolve and document that metadata observation boundary before any later hosted
 chain event; do not silently relax existing runtime checks or claim traversal
 of the retained environment from manufactured positives.
 
+Separate source continuations remain unmerged drafts:
+[the exact-entry chain reader (PR1084)](https://github.com/CrispStrobe/brickwright-lite/pull/1084)
+and [the historical bridge observation (PR1086)](https://github.com/CrispStrobe/brickwright-lite/pull/1086),
+followed by [the chain dependency repair (PR1088)](https://github.com/CrispStrobe/brickwright-lite/pull/1088).
+They keep chain, bridge and actual execution disabled. The chain's strict parent
+policy would refuse the retained `040777` parent. The bridge asks a different
+question: it starts at the selected alternatives child named in the prior
+observation, independently binds and regrades the historical bytes, and cannot
+claim a current association through the old font entry. Existing discovery and
+delivery formats, the baseline and all earlier failures remain preserved.
+
+Independent manufactured packets also exposed a partial-prefix defect in the
+earlier chain reader: a failed link or parent witness could still authorize a
+later observation in an incomplete packet. The separately scoped PR1088 repair in
+`verify_font_chain` requires successful dependencies before accepting later path
+facts, while preserving genuine failed final witnesses. Its source and test
+checkpoint passes 65 Node tests including 128 Python controls. Independent review
+rejects 13 negative packets and accepts six valid complete or partial packets;
+all 125 earlier Python test bodies and helpers remain unchanged. Final-head CI
+is still pending. Passing a failed original through a reader never makes that
+observation successful.
+
 A fresh agent should continue in these bounded lanes:
 
 1. Preserve the v1 original, unchanged baseline, first failures and all earlier
    consumed observations. Do not replay this event or download the artifact
    again. Keep the existing probe failure rules, caps and required roster;
    passing a partial original through its reader cannot make collection green.
-2. Separately version a typed, bounded alternatives-chain observation and its
-   independent reader. Declare intermediate-parent and alias admission policy,
-   stable held-link/readback observations, finite hop and cycle limits, escape
-   refusals, and a terminal regular-file requirement under the admitted font
-   roots. Preserve unsupported or missing hops as failures. Add manufactured
-   positive/negative packets and mutations that detect omitted guards; do not
-   fabricate an observed next target or loosen v1 acceptance. Keep actual
-   execution and any new observation job disabled while this source is reviewed.
+2. Continue the existing disabled chain/bridge source drafts and the older chain
+   reader's partial-prefix repair. Require coherent failed-close, identity-drift
+   and writable-parent negatives, valid complete/failed-prefix positives and
+   predicate-removal mutations.
+   Then separately implement the bridge's disabled official delivery boundary:
+   a literal job/event policy, externally selected prior/source/workflow joins,
+   exact original roles and raw source-process/stdout/stderr sidecars. Its inner
+   observation reader alone does not authenticate official metadata or child
+   processes. Preserve the strict parent, eight-hop, cycle, escape and terminal
+   font-root policy, existing caps and all prior formats. Review the exact new
+   reader and consumer selection independently before any activation.
 3. Require all enabled exact-head source checks to succeed. Separately admit a
    later versioned observation's request, source, executing workflow, event,
    finite resources and original roles before its single event. Never remove

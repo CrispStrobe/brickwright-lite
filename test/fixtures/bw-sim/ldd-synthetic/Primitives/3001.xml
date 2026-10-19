@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SYNTHETIC, hand-made: NOT LDD data. A brick with stud fields only: the fitter reports it
+     as not fitted (it fits Technic lines, not studs). -->
+<LEGOPrimitive versionMajor="0" versionMinor="1">
+  <Connectivity>
+    <Custom2DField type="0" width="4" height="8" angle="0" ax="1" ay="0" az="0" tx="0" ty="0.96" tz="0">0</Custom2DField>
+  </Connectivity>
+</LEGOPrimitive>
