@@ -91,8 +91,9 @@ test('hub profiles validate, and the registry takes a family as data + one modul
     assert.throws(() => hubRegistry.with(twoPortTestHub, twoPortTestHub), /registered twice/);
     assert.throws(() => hubRegistry.create('test-two-port'), /no hub module for profile 'test-two-port'/);
     const registry = hubRegistry.with(twoPortTestHub);
-    // rcx: hubs/rcx; lab-direct: the Robot Lab's own hub for a model without one (hubs/lab-direct, the Robot Lab API).
-    assert.deepEqual(registry.profiles().map(p => p.id), ['spike-prime', 'rcx', 'lab-direct', 'test-two-port']);
+    // rcx: hubs/rcx; lab-direct: the Robot Lab's own hub for a model without one (hubs/lab-direct, the Robot Lab API);
+    // ev3, nxt: hubs/ev3, hubs/nxt (direct commands over the BT-classic registry).
+    assert.deepEqual(registry.profiles().map(p => p.id), ['spike-prime', 'rcx', 'lab-direct', 'ev3', 'nxt', 'test-two-port']);
     assert.ok(registry.create('test-two-port', {id: 'x'}) instanceof TwoPortTestHub);
     assert.equal(hubRegistry.has('test-two-port'), false, 'the built-in registry is not changed by a test\'s');
 });
