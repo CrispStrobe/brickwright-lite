@@ -727,6 +727,11 @@ rendering, runtime or guest qualification. All 38 retained configuration
 rows also have unsupported or opaque content; 15 retain DTD-parser refusals.
 Recorded references cover only the supported structural subset. Neither those
 references nor an absence of recorded cycles proves native traversal or selection.
+The retained `truetype` parent also has root ownership and mode `040777`.
+A policy requiring nonwritable parents would refuse before reaching this alias.
+Resolve and document that metadata observation boundary before any later hosted
+chain event; do not silently relax existing runtime checks or claim traversal
+of the retained environment from manufactured positives.
 
 A fresh agent should continue in these bounded lanes:
 
