@@ -51,6 +51,8 @@ const LAZY = [
         why: 'lazyBuiltinExtensions.arcade in extension-manager.js'},
     {what: 'Robot Lab blocks', marker: 'when part [PART] touches [OTHER]', chunk: 'ext-robotlab',
         why: 'lazyBuiltinExtensions.robotlab in extension-manager.js'},
+    {what: 'Robot Lab tab', marker: 'Open the Robot Lab here', chunk: 'bw-robotlab-tab',
+        why: 'the React.lazy RobotLabTab in components/gui/gui.jsx'},
     {what: 'LEGO SPIKE Prime driver', marker: 'ID: spikeprime\\n', altMarkers: ['ID: spikeprime\n'], chunk: 'ext-spikeprime',
         why: 'lazyBuiltinExtensions.spikeprime in extension-manager.js'},
     // `md5ext` is NOT the marker: the default project and scratch-vm's serializer
