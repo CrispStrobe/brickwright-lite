@@ -316,8 +316,11 @@ download action [PR987](https://github.com/CrispStrobe/brickwright-lite/pull/987
 and persistence scenario [PR989](https://github.com/CrispStrobe/brickwright-lite/pull/989)
 are composed in [draft PR1013](https://github.com/CrispStrobe/brickwright-lite/pull/1013)
 under their merged ownership, with canonical manifest admission corrected.
-That source checkpoint keeps the selected dependency unchanged and is not an
-installed qualification.
+The source candidate remains at `79afc8bc4c67c71ae251cc60fed5c5aff9231fec`;
+its 17 enabled final-head checks passed, with seven declared conditional skips.
+PR1013 is not merged or qualified on main. This historical candidate selection
+is separate from current main's dependency declarations; refresh those before
+any later integration without changing pins as part of this handoff.
 The [merged acceptance claim](../LANES.md#386-gui-hdd-and-forward-debug-hosted-acceptance--2026-10-16)
 adds only one hosted entry controller, one standalone original reader, focused
 inert controls and a separate workflow around the existing probe. Ownership
@@ -525,14 +528,15 @@ unchanged; 22 source mutations and eight independent packet counterexamples
 are detected. These tests use manufactured inputs and mocked OS boundaries.
 Legacy actual v3 remains separate. Actual execution stays disabled
 until complete runtime, Build, source and event admission plus affected clean
-browser/guest qualification. The 34 missing font/configuration inputs remain
-unresolved; no new inventory event or roster change was made.
+browser/guest qualification. The 34 missing baseline font/configuration inputs remain unresolved; the later
+font observation below does not change the required roster.
 
 The separate font-discovery source candidate now sets
 `FONT_DISCOVERY_ENABLED = True` and enables its distinct conditional
 `font-discovery` workflow job. This source activation grants no event or runtime
-admission: the request remains unpublished, no discovery event has been sent,
-and `ACTUAL_ENABLED = False` remains held. Its `bw.gui-hdd.font-discovery-request.v1` pins source21 and
+admission. The exact request was subsequently published and one separately
+admitted font event was consumed, as recorded below; `ACTUAL_ENABLED = False`
+remains held. Its `bw.gui-hdd.font-discovery-request.v1` pins source21 and
 embeds the unchanged baseline template. It collects fixed configuration and
 font-directory censuses, held file hash/extent/EOF/identity/close observations,
 raw configuration bytes and at most three read-only `dpkg-query` probes:
@@ -697,37 +701,60 @@ earlier Python test bodies stay unchanged. Twelve source mutations and 21
 independent coherent header counterexamples are detected. Valid frontend formats
 and both actual versions retain their earlier prefixed/unprefixed verdicts.
 
-A fresh agent can finish this work in the following bounded steps:
+The one admitted font event is consumed:
+[run39170725966](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39170725966),
+[job117803003700](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39170725966/job/117803003700).
+The collector failed after guard, setup and input installation succeeded;
+upload also succeeded. Sole artifact `12152507881`, 491,919 bytes, SHA256
+`b0188bdde17b0645ae2707a74b494512531b352c14fbef484ffff96b887173db`,
+was retained once after official metadata admission. The independent standalone
+delivery reader, selected by SHA256
+`f075f669c4950d5fece113a57490b9b4bc94eaf90743f70715462c8270ac0a0b`,
+exited zero when validating that failed partial delivery. This validates the
+retained evidence; it does not make the producing job successful.
+The executing workflow `e983be1c6b22a685107dae75794903bb42c470d2`
+was joined separately from source head `79afc8bc`.
 
-1. Freeze the activated source candidate, finite caps and selected system tools.
-   Require every enabled final-head check to succeed. Rebuild the canonical
-   request from that final source head and tree, embedding the unchanged retained
-   baseline: either guard or a later source integration changes source21.
-   Freeze the executing workflow SHA, event, source checkout, original roles
-   and resource bounds before any one-shot metadata event. Repository variables
-   transport selected immutable blob and digest values; they grant no approval.
-   The separate transport names are `BW_GUI_HDD_FONT_DISCOVERY_BLOB` and
-   `BW_GUI_HDD_FONT_DISCOVERY_SHA256`; preserve the previous inventory variables
-   and consumed-event markers.
-2. Admit one official metadata-producing job and acquire its originals once.
-   Audit them independently, preserving partial package ownership and all old
-   font failures. A discovery result does not approve a successful runtime roster.
-3. Establish the native Fontconfig include/alias/selection closure separately,
-   then review a new versioned runtime template. Do not subtract failed baseline
-   paths or infer ownership from filenames.
-4. Admit the complete runtime and frontend Build/source/archive graph, then
-   qualify actual HDD persistence and forward debugging with clean affected
-   browser/guest runs. Every enabled exact-head source check remains mandatory.
+The first refusal was an alias outside the admitted font roots while visiting
+`/usr/share/fonts/truetype`. The retained alias
+`fonts-japanese-gothic.ttf` points to
+`/etc/alternatives/fonts-japanese-gothic.ttf`; the next hop and terminal file
+type were not observed. Do not invent the next target. The partial original
+contains 246 file observations, 38 aliases and 34 missing baseline paths.
+Packages remain null and no package probes ran. These are validated partial
+observations, not a successful inventory, new roster, native font selection,
+rendering, runtime or guest qualification. All 38 retained configuration
+rows also have unsupported or opaque content; 15 retain DTD-parser refusals.
+Recorded references cover only the supported structural subset. Neither those
+references nor an absence of recorded cycles proves native traversal or selection.
 
-For the next font-roster task, admit package ownership and the active fontconfig
-include/alias closure independently before selecting a new versioned template.
-The retained diagnostic establishes missing paths, not package ownership or a
-complete active font census. Do not derive a successful roster by subtracting
-its failed paths, relax generic file checks, install alternate fonts or reuse
-the consumed event. Review exact source/template/workflow and a distinct
-metadata event; acquire its originals once and grade every selected path with
-the standalone reader. Preserve all earlier font failures until the new
-selection and affected browser qualification are independently established.
+A fresh agent should continue in these bounded lanes:
+
+1. Preserve the v1 original, unchanged baseline, first failures and all earlier
+   consumed observations. Do not replay this event or download the artifact
+   again. Keep the existing probe failure rules, caps and required roster;
+   passing a partial original through its reader cannot make collection green.
+2. Separately version a typed, bounded alternatives-chain observation and its
+   independent reader. Declare intermediate-parent and alias admission policy,
+   stable held-link/readback observations, finite hop and cycle limits, escape
+   refusals, and a terminal regular-file requirement under the admitted font
+   roots. Preserve unsupported or missing hops as failures. Add manufactured
+   positive/negative packets and mutations that detect omitted guards; do not
+   fabricate an observed next target or loosen v1 acceptance. Keep actual
+   execution and any new observation job disabled while this source is reviewed.
+3. Require all enabled exact-head source checks to succeed. Separately admit a
+   later versioned observation's request, source, executing workflow, event,
+   finite resources and original roles before its single event. Never remove
+   and reapply the old label, rerun the consumed run or use a fallback dispatch.
+   Admit official producing metadata before acquiring its sole original once,
+   then audit retained bytes independently, preserving partial failure.
+4. Establish native Fontconfig configuration, version, cache, include and alias
+   selection evidence separately before reviewing a new versioned runtime
+   template. Admit package ownership without guessing from filenames or
+   subtracting failed baseline paths. Then close the complete runtime and
+   frontend Build/source/archive graph and qualify actual HDD persistence and
+   forward debugging through clean affected browser/guest runs. Every enabled
+   exact-head source check and separate actual admission remains mandatory.
 
 Main [PR1066](https://github.com/CrispStrobe/brickwright-lite/pull/1066) advanced
 CUI from `055930e` to `fe89e3425bf323b1acd9e3f98df6a7383e9b836b`.
