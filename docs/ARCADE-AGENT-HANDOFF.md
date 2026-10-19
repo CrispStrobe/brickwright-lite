@@ -17,7 +17,9 @@ prototype traces do not close its exact timing or installed-GUI gates.
 
 The lower runtime and Buffer stack is integrated into main through
 [PR856](https://github.com/CrispStrobe/brickwright-lite/pull/856).
-The next source stack is PR858, PR859, PR861, PR862, PR864 and PR865;
+The next source stack is PR858, PR859, PR861, PR862, PR864, PR865,
+[PR869](https://github.com/CrispStrobe/brickwright-lite/pull/869) and
+[PR870](https://github.com/CrispStrobe/brickwright-lite/pull/870);
 refresh their actual heads and checks before adoption. Follow the latest
 `LANES.md` ownership, including the independent device and board work.
 
@@ -2137,3 +2139,45 @@ remain pending. Distinct program/scene clocks, older character-animation rules,
 general classes/callable values and whole-game GUI journeys remain active gaps.
 Raw census remains 142 translated, 41 partial, 1 parse failure; no project has
 been promoted from these focused controls alone.
+
+## Continuation after Text Sprite: exact libraries, clocks and strings
+
+Current branch: `lane/arcade-legacy-scroller-integration-20261013`, stacked
+on [PR870](https://github.com/CrispStrobe/brickwright-lite/pull/870). This section
+supersedes pending statements about the following focused integrations above.
+
+- Exact background-scroll revision `43651f88b917a98ad886fdd4c1c2ad8001ce9b9c`
+  now has native version selection, full-source admission and matching export
+  dependency selection. Original/native/Code/fresh SB3/export/reimport controls
+  retain its single-background API and frame priority before the camera.
+- `game.runtime()` reads scene time; `control.millis()` reads program time.
+  Scene transitions, timer resets, stop and restart have separate controls.
+  Original debugger-paused time and complete scheduling parity remain open.
+- Arrays adds primitive `String.fromCharCode()` and single-argument `.concat()`.
+  UTF-16, nullable arguments, NaN and dynamic string returns survive editable
+  roundtrips. Known opaque arguments and unsupported arities are diagnosed.
+  General object coercion and failure control-flow parity remain open.
+- The TypeScript reader retains angle and postfix generic assertions without
+  runtime coercion. Assertions, comparison/shift operators and assignments to
+  a variable named `as` have controls. General assertion typing remains open.
+- The matching producer `540f1b31495822bd6e17f1d92d7f5af2b717cf1e` supplies
+  345 forms. Arrays source is `6139c269b07799bbcaa3335cf2ef1c328d5014ee`.
+  Do not sync an older producer over multi-board or Calliope declarations.
+
+The public Gallery authority helper was exercised with an actual hosted
+read-only token in [run38388670119](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38388670119).
+It resolves the current successful deployment and the official successful
+Pages job, rather than assuming the source head is deployed. Product branch
+checks remain separate from that permission/control proof.
+
+`test/fixtures/arcade-owned-text-game.mjs` and
+`scripts/verify-arcade-owned-game-gui.mjs` add the production IDE journey:
+Code typing, Blocks fields, Pixel painting, controller input, saved SB3 reopen,
+MakeCode export and reimport. Hosted execution is pending; its original
+simulator controls establish expected observations, not an IDE pass.
+
+Next workers own exact older character-animation conversion and proper numeric
+SpriteKind allocation/event semantics. Preserve original dependency initializer
+order, omitted/null kinds and numeric IDs. Fresh prepared corpus and whole-game
+acceptance must follow. Raw 184-input census remains142 translated/41 partial/1
+parse failure; none of these focused results promotes a whole project.

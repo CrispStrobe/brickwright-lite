@@ -13,6 +13,7 @@ const safePath = name => typeof name === 'string' && name && !name.startsWith('/
 
 export function prepareArcadeDependencyInputs (originalFiles, resolved) {
     const cfg = JSON.parse(originalFiles['pxt.json']);
+    const nativeLibraryVersions={};
     if (!Array.isArray(cfg.files)) throw new Error('Native dependency preparation requires pxt.json.files');
     if (Object.keys(originalFiles).some(name => name.startsWith(ROOT))) {
         throw new Error('Project uses the reserved dependency input directory');
@@ -65,6 +66,11 @@ export function prepareArcadeDependencyInputs (originalFiles, resolved) {
         if (!pkg || typeof pkg.files[file] !== 'string') throw new Error(`Missing resolved dependency source: ${id}/${file}`);
         const nativeAdapter = admitArcadeNativeSource({packageId: id, filename: file, source: pkg.files[file]});
         if (nativeAdapter) {
+            if(nativeAdapter.libraryNamespace) {
+                const name=nativeAdapter.libraryNamespace, version=nativeAdapter.libraryVersion;
+                if(nativeLibraryVersions[name] && nativeLibraryVersions[name]!==version)throw new Error(`Conflicting native library versions: ${name}`);
+                nativeLibraryVersions[name]=version;
+            }
             let path;
             if (nativeAdapter.replacementSource !== undefined) {
                 if (typeof nativeAdapter.replacementSource !== 'string') throw new Error('Native adapter replacement must be reviewed source text');
@@ -114,6 +120,7 @@ export function prepareArcadeDependencyInputs (originalFiles, resolved) {
     }
     const effectivePalette = resolved.runtimeConfig?.palette;
     files['pxt.json'] = JSON.stringify({...cfg,
+        ...(Object.keys(nativeLibraryVersions).length?{bwArcadeNativeLibraries:nativeLibraryVersions}:{}),
         ...(effectivePalette ? {palette: [...effectivePalette]} : {}), files: [...names, ...cfg.files,
         `${ROOT}resources.jres`]});
     return {files, originalFiles, provenance, skippedPackages, runtimeConfig: resolved.runtimeConfig || null,

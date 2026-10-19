@@ -27,6 +27,7 @@ module.exports = makeExt(`// Name: Arcade
   class Arcade {
     constructor(runtime) {
       this._runtime = runtime;
+      this._resetProgramClock();
       this._bufferSuspended = false;
       this._speechEngine = dependencies.createSpeechEngine(dependencies.initializeSpeech, dependencies.fonts,
         dependencies.initializeNativeLegacy);
@@ -38,6 +39,8 @@ module.exports = makeExt(`// Name: Arcade
       this._particleScenes=new WeakMap();this._particleOverlays=new Map();this._particleAnchors=new WeakMap();
       this._renderables=new WeakMap();this._screen=null;this._extensionSprites=new Map();this._frameHandlers=new WeakMap();this._extensionCreationWaits=[];
       this._scenePushHandlers = [];this._scenePopHandlers = [];
+      this._scrollerVersion = 'v0.1.2';
+      this._characterAnimationVersion = 'v0.1.0';
       this._nextSpriteHandle = 0;this._globalElapsedMs = 0;this._nextMultiplayerState=2;
       this._buttonStates = {};this._controllerConnections={};this._controllerInputs={};
       this._activeLegacyAnimations = new Set();
@@ -96,10 +99,12 @@ module.exports = makeExt(`// Name: Arcade
           this._terrainWaits.clear();
           if(this._foreverTimer!==undefined)clearTimeout(this._foreverTimer);this._foreverTimer=undefined;
         };
+        runtime.on('PROJECT_STOP_ALL', () => this._stopProgramClock());
         runtime.on('PROJECT_STOP_ALL', cancelCreations);
         runtime.on('PROJECT_STOP_ALL', () => {this._carnivalHost?.cancel();this._carnivalHost=null;this._musicHost?.stopAll();});
         runtime.on('RUNTIME_DISPOSED', () => {this._bufferSuspended=true;this._musicHost?.reset();this._musicHost=null;this._musicIds=new Map();this._musicValues=new Map();this._musicGeneration=dependencies.buffers.newHeapId();this._carnivalHost?.cancel();this._carnivalHost=null;this._bufferHeap=null;cancelCreations();this._clearTilemap();this._tileLocations.clear();this._animationAssetCache.clear();for(const id of this._imageSkins.keys())this._clearImage(id);});
         const reset = () => {
+          this._resetProgramClock();
           cancelCreations();
           this._terrainStopped = false;
           this._projectPalette = null;
@@ -128,6 +133,7 @@ module.exports = makeExt(`// Name: Arcade
           this._musicHost?.reset();this._musicIds=new Map();this._musicValues=new Map();this._musicGeneration=dependencies.buffers.newHeapId();
           this._bufferHeap = null;
           this._sevensegIds=new Map();this._sevensegValues=new Map();
+          this._scrollerVersion='v0.1.2';this._characterAnimationVersion='v0.1.0';
           this._extensionSprites=new Map();this._frameHandlers=new WeakMap();this._scrollerModule=null;this._characterAnimationModule=null;
           this._carnivalHost?.cancel();this._carnivalHost=null;this._gameOver=null;this._buttonPressWaiters=[];
           this._clearBackground();
@@ -181,6 +187,8 @@ module.exports = makeExt(`// Name: Arcade
         color2: '#D63878',
         color3: '#C42870',
         blocks: [
+          {opcode:'sceneMillis',blockType:Scratch.BlockType.REPORTER,text:'Arcade scene runtime milliseconds'},
+          {opcode:'programMillis',blockType:Scratch.BlockType.REPORTER,text:'Arcade program runtime milliseconds'},
           {opcode:'textSpriteCreate',blockType:Scratch.BlockType.REPORTER,text:'Arcade create text sprite [TEXT] background [BACKGROUND] foreground [FOREGROUND]',arguments:{...str('TEXT','Hello'),...n('BACKGROUND',0),...n('FOREGROUND',1)}},
           {opcode:'textSpriteSetText',blockType:Scratch.BlockType.COMMAND,text:'Arcade text sprite [ID] set text [TEXT]',arguments:{...str('ID',''),...str('TEXT','Hello')}},
           {opcode:'textSpriteSetMaxFontHeight',blockType:Scratch.BlockType.COMMAND,text:'Arcade text sprite [ID] set max font height [HEIGHT]',arguments:{...str('ID',''),...n('HEIGHT',8)}},
@@ -230,12 +238,14 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'carnivalGameOver',blockType:Scratch.BlockType.COMMAND,text:'Arcade carnival game over style [STYLE] effect [EFFECT]',arguments:{STYLE:{type:Scratch.ArgumentType.STRING,menu:'carnivalStyles',defaultValue:'Win'},EFFECT:{type:Scratch.ArgumentType.STRING,menu:'carnivalEffects',defaultValue:'unset'}}},
           {opcode:'carnivalCustomGameOver',blockType:Scratch.BlockType.COMMAND,text:'Arcade carnival custom game over message [MESSAGE] effect [EFFECT] sound [SOUND] use sound [HAS_SOUND] scoring [SCORING] score [SCORE] use score [HAS_SCORE]',arguments:{...str('MESSAGE','Great Job!'),EFFECT:{type:Scratch.ArgumentType.STRING,menu:'carnivalEffects',defaultValue:'unset'},...str('SOUND',''),HAS_SOUND:{type:Scratch.ArgumentType.BOOLEAN},SCORING:{type:Scratch.ArgumentType.STRING,menu:'carnivalScoring',defaultValue:'HScore'},...n('SCORE',0),HAS_SCORE:{type:Scratch.ArgumentType.BOOLEAN}}},
           {opcode:'startImageEffect',blockType:Scratch.BlockType.COMMAND,text:'Arcade start image effect [EFFECT] times [TIMES] delay [DELAY] ms',arguments:{EFFECT:{type:Scratch.ArgumentType.STRING,menu:'imageEffects',defaultValue:'dissolve'},...n('TIMES',0),...n('DELAY',0)}},
+          {opcode:'setBackgroundScrollVersion',blockType:Scratch.BlockType.COMMAND,text:'Arcade background scroll version [VERSION]',arguments:{VERSION:{type:Scratch.ArgumentType.STRING,menu:'backgroundScrollVersions',defaultValue:'v0.1.2'}}},
           {opcode:'scrollBackgroundWithCamera',blockType:Scratch.BlockType.COMMAND,text:'Arcade scroll background with camera [MODE] layer [LAYER]',arguments:{MODE:{type:Scratch.ArgumentType.STRING,menu:'cameraScrollModes',defaultValue:'OnlyHorizontal'},...n('LAYER',0)}},
           {opcode:'scrollBackgroundWithSpeed',blockType:Scratch.BlockType.COMMAND,text:'Arcade scroll background vx [VX] vy [VY] layer [LAYER]',arguments:{...n('VX',-50),...n('VY',-50),...n('LAYER',0)}},
           {opcode:'setBackgroundScrollMultipliers',blockType:Scratch.BlockType.COMMAND,text:'Arcade set background scroll multipliers x [X] y [Y] layer [LAYER]',arguments:{...n('X',1),...n('Y',1),...n('LAYER',0)}},
           {opcode:'setBackgroundScrollOffset',blockType:Scratch.BlockType.COMMAND,text:'Arcade set background scroll offset x [X] y [Y] layer [LAYER]',arguments:{...n('X',0),...n('Y',0),...n('LAYER',0)}},
           {opcode:'setBackgroundLayerImage',blockType:Scratch.BlockType.COMMAND,text:'Arcade set background layer [LAYER] image [IMAGE]',arguments:{...n('LAYER',0),...str('IMAGE','')}},
           {opcode:'setBackgroundLayerZ',blockType:Scratch.BlockType.COMMAND,text:'Arcade set background layer [LAYER] z [Z]',arguments:{...n('LAYER',0),...n('Z',-1000)}},
+          {opcode:'setCharacterAnimationVersion',blockType:Scratch.BlockType.COMMAND,text:'Arcade character animation version [VERSION]',arguments:{VERSION:{type:Scratch.ArgumentType.STRING,menu:'characterAnimationVersions',defaultValue:'v0.1.0'}}},
           {opcode:'characterFrames',blockType:Scratch.BlockType.COMMAND,text:'Arcade character [MODE] frames of [SPRITE] images [FRAMES] interval [INTERVAL] rule [RULE]',arguments:{MODE:{type:Scratch.ArgumentType.STRING,menu:'characterFrameModes',defaultValue:'loop'},...str('SPRITE',''),...str('FRAMES',''),...n('INTERVAL',500),...n('RULE',0)}},
           {opcode:'setCharacterAnimationsEnabled',blockType:Scratch.BlockType.COMMAND,text:'Arcade set character animations of [SPRITE] enabled [ENABLED]',arguments:{...str('SPRITE',''),ENABLED:{type:Scratch.ArgumentType.BOOLEAN}}},
           {opcode:'setCharacterState',blockType:Scratch.BlockType.COMMAND,text:'Arcade set character state of [SPRITE] to [RULE]',arguments:{...str('SPRITE',''),...n('RULE',0)}},
@@ -269,6 +279,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'stopAllSounds',blockType:Scratch.BlockType.COMMAND,text:'Arcade stop all sounds'},
           {opcode:'backgroundScrollOffset',blockType:Scratch.BlockType.REPORTER,text:'Arcade background scroll offset [AXIS] layer [LAYER]',arguments:{AXIS:{type:Scratch.ArgumentType.STRING,menu:'scrollAxes',defaultValue:'x'},...n('LAYER',0)}},
           {opcode:'characterRule',blockType:Scratch.BlockType.REPORTER,text:'Arcade character rule [PREDICATES]',arguments:str('PREDICATES','Moving')},
+          {opcode:'characterRuleToString',blockType:Scratch.BlockType.REPORTER,text:'Arcade character rule [RULE] as text',arguments:n('RULE',0)},
           {opcode:'characterMatchesRule',blockType:Scratch.BlockType.BOOLEAN,text:'Arcade character [SPRITE] matches rule [RULE]',arguments:{...str('SPRITE',''),...n('RULE',0)}},
           {opcode:'createDart',blockType:Scratch.BlockType.REPORTER,text:'Arcade create dart image [IMAGE] kind [KIND] x [X] y [Y]',arguments:{...str('IMAGE',''),...str('KIND','Player'),...n('X',10),...n('Y',110)}},
           {opcode:'createCorgi',blockType:Scratch.BlockType.REPORTER,text:'Arcade create corgi kind [KIND] x [X] y [Y]',arguments:{...str('KIND','Player'),...n('X',10),...n('Y',70)}},
@@ -799,9 +810,11 @@ module.exports = makeExt(`// Name: Arcade
           ,backgroundEffects: {acceptReporters: false, items: ['confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none', 'dissolve', 'melt', 'slash', 'splatter']}
           ,legacyGameOverEffects: {acceptReporters: false, items: ['unset', 'confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none', 'dissolve', 'melt', 'slash', 'splatter']}
           ,imageEffects: {acceptReporters: false, items: ['dissolve', 'melt', 'slash', 'splatter']}
-          ,cameraScrollModes: {acceptReporters: false, items: ['OnlyHorizontal', 'OnlyVertical', 'BothDirections']}
+          ,backgroundScrollVersions:{acceptReporters:false,items:[{text:'Layers (v0.1.2)',value:'v0.1.2'},{text:'Single background (legacy)',value:'43651f88b917a98ad886fdd4c1c2ad8001ce9b9c'}]},
+          cameraScrollModes: {acceptReporters: false, items: ['OnlyHorizontal', 'OnlyVertical', 'BothDirections']}
           ,scrollAxes: {acceptReporters: false, items: ['x', 'y']}
           ,characterFrameModes: {acceptReporters: false, items: ['loop', 'run']}
+          ,characterAnimationVersions:{acceptReporters:false,items:[{text:'Character (v0.1.0)',value:'v0.1.0'},{text:'Character (v0.0.2)',value:'a8df7de6f7073b553976b9e47fbfadebcdc4f0ec'}]}
           ,characterFacings: {acceptReporters: false, items: ['Up', 'Right', 'Down', 'Left']}
           ,dartActions: {acceptReporters: false, items: ['throwDart', 'stopDart']}
           ,tileDirections: {acceptReporters:true,items:[{text:'Left',value:'0'},{text:'Top',value:'1'},{text:'Right',value:'2'},{text:'Bottom',value:'3'},{text:'Center',value:'4'}]}
@@ -863,6 +876,34 @@ module.exports = makeExt(`// Name: Arcade
         }
       };
     }
+
+    // An owned runtime may inject {now:()=>milliseconds} for deterministic
+    // controls. Production uses the platform monotonic clock when available;
+    // this epoch is independent of Scratch's resettable project timer.
+    _resetProgramClock() {
+      const supplied=this._runtime?.bwArcadeProgramClock;
+      const now=supplied===undefined ? (()=>globalThis.performance?.now?.() ?? Date.now()) :
+        supplied && typeof supplied.now==='function' ? supplied.now.bind(supplied) : null;
+      const epoch={now,start:undefined,last:0,active:true};this._programClockEpoch=epoch;
+      if(!now)throw new Error('Arcade program clock source needs a now function');
+      const start=now();
+      if(this._programClockEpoch!==epoch || !Number.isFinite(start))throw new Error('Arcade program clock initialization is invalid');
+      epoch.start=start;
+    }
+    _programMillis() {
+      const epoch=this._programClockEpoch;if(!epoch || !Number.isFinite(epoch.start))throw new Error('Arcade program clock is not initialized');if(!epoch.active)return epoch.last;
+      const now=epoch.now();
+      if(this._programClockEpoch!==epoch)throw new Error('Arcade program clock run changed during read');
+      if(!Number.isFinite(now) || now<epoch.start+epoch.last)throw new Error('Arcade program clock source is invalid or moved backwards');
+      return epoch.last=Math.floor(now-epoch.start);
+    }
+    _stopProgramClock() {
+      const epoch=this._programClockEpoch;
+      try{this._programMillis();}catch(error){this._runtime?.emit?.('BLOCKS_ERROR',error.message);}
+      if(this._programClockEpoch===epoch)epoch.active=false;
+    }
+    programMillis() {try{return this._programMillis();}catch(error){this._runtime?.emit?.('BLOCKS_ERROR',error.message);return Scratch.BWValues.encode(undefined);}}
+    sceneMillis() {return this._state().elapsedMs || 0;}
 
     _state() {
       if (this._runtime) {
@@ -3645,9 +3686,23 @@ module.exports = makeExt(`// Name: Arcade
     // (scroller-pxt.js). Its frame handler runs after the camera update and
     // before rendering, as PXT's pre-render priority places it; each layer is a
     // renderable of its scene.
+    setBackgroundScrollVersion(args) {
+      const version=String(args.VERSION);
+      if(!['v0.1.2','43651f88b917a98ad886fdd4c1c2ad8001ce9b9c'].includes(version)) {
+        this._runtime?.emit?.('BLOCKS_ERROR','Arcade background scroll version is not implemented: '+version);return;
+      }
+      if(this._scrollerModule && version!==this._scrollerVersion) {
+        this._runtime?.emit?.('BLOCKS_ERROR','Arcade background scroll version must be selected before its first operation.');return;
+      }
+      this._scrollerVersion=version;
+    }
     _scroller() {
       if (this._scrollerModule) return this._scrollerModule;
       const ext=this;
+      if(this._scrollerVersion==='43651f88b917a98ad886fdd4c1c2ad8001ce9b9c') {
+        this._scrollerModule=dependencies.createLegacyScrollerHost(this,imageEngine,dependencies.initializeLegacyScroller);
+        return this._scrollerModule;
+      }
       const wrap=raw=>raw?{raw,get width(){return raw.width;},get height(){return raw.height;}}:null;
       this._scrollerModule=dependencies.initializeScroller({
         game:{
@@ -3685,8 +3740,23 @@ module.exports = makeExt(`// Name: Arcade
     // The character animations extension runs its original main.ts
     // (character-animations-pxt.js) on native sprites. Its frame handler
     // follows physics at PXT's ANIMATION_UPDATE_PRIORITY.
+    setCharacterAnimationVersion(args) {
+      const version=String(args.VERSION);
+      const legacy=dependencies.initializeLegacyCharacterAnimations.sourceIdentity.revision;
+      if(version!=='v0.1.0' && version!==legacy) {
+        this._runtime?.emit?.('BLOCKS_ERROR','Arcade character animation version is not implemented: '+version);return;
+      }
+      if(this._characterAnimationModule && version!==this._characterAnimationVersion) {
+        this._runtime?.emit?.('BLOCKS_ERROR','Arcade character animation version must be selected before its first operation.');return;
+      }
+      this._characterAnimationVersion=version;
+    }
     _characterAnimations() {
       if (this._characterAnimationModule) return this._characterAnimationModule;
+      if(this._characterAnimationVersion===dependencies.initializeLegacyCharacterAnimations.sourceIdentity.revision) {
+        this._characterAnimationModule=dependencies.createLegacyCharacterHost(this,dependencies.initializeLegacyCharacterAnimations);
+        return this._characterAnimationModule;
+      }
       const ext=this,wrappers=new WeakMap();
       const button=name=>({isPressed:()=>ext._heldButton(1,name)});
       this._characterAnimationModule=dependencies.initializeCharacterAnimations({
@@ -3738,13 +3808,22 @@ module.exports = makeExt(`// Name: Arcade
     setCharacterAnimationsEnabled(args) {this._characterAnimations().characterAnimations.setCharacterAnimationsEnabled(this._characterSprite(args.SPRITE),Scratch.BWValues.truth(args.ENABLED));}
     setCharacterState(args) {this._characterAnimations().characterAnimations.setCharacterState(this._characterSprite(args.SPRITE),this._characterRuleValue(args.RULE));}
     clearCharacterState(args) {this._characterAnimations().characterAnimations.clearCharacterState(this._characterSprite(args.SPRITE));}
-    setCharacterController(args) {this._characterAnimations().characterAnimations.setController(this._characterSprite(args.SPRITE),Scratch.BWValues.truth(args.ENABLED));}
-    lockCharacterFacing(args) {
-      const module=this._characterAnimations(),direction=module.characterAnimations.FacingDirection[String(args.DIRECTION)];
-      if(direction===undefined){this._runtime?.emit?.('BLOCKS_ERROR','Arcade has no character facing direction "'+String(args.DIRECTION)+'".');return;}
-      module.characterAnimations.lockFacingDirection(this._characterSprite(args.SPRITE),direction);
+    _characterApi(name) {
+      const api=this._characterAnimations().characterAnimations;
+      if(typeof api[name]!=='function') {
+        this._runtime?.emit?.('BLOCKS_ERROR','Arcade character animation '+name+' is not implemented for version '+this._characterAnimationVersion+'.');return null;
+      }
+      return api;
     }
-    unlockCharacterFacing(args) {this._characterAnimations().characterAnimations.unlockFacingDirection(this._characterSprite(args.SPRITE));}
+    setCharacterController(args) {const api=this._characterApi('setController');if(api)api.setController(this._characterSprite(args.SPRITE),Scratch.BWValues.truth(args.ENABLED));}
+    lockCharacterFacing(args) {
+      const api=this._characterApi('lockFacingDirection');if(!api)return;
+      const direction=api.FacingDirection[String(args.DIRECTION)];
+      if(direction===undefined){this._runtime?.emit?.('BLOCKS_ERROR','Arcade has no character facing direction "'+String(args.DIRECTION)+'".');return;}
+      api.lockFacingDirection(this._characterSprite(args.SPRITE),direction);
+    }
+    unlockCharacterFacing(args) {const api=this._characterApi('unlockFacingDirection');if(api)api.unlockFacingDirection(this._characterSprite(args.SPRITE));}
+    characterRuleToString(args) {return this._characterAnimations().characterAnimations.ruleToString(Scratch.Cast.toNumber(Scratch.BWValues.decode(args.RULE)));}
     characterRule(args) {
       const module=this._characterAnimations(),names=String(args.PREDICATES).trim().split(/\\s+/).filter(Boolean);
       const values=names.map(name=>Object.prototype.hasOwnProperty.call(module.Predicate,name) && typeof module.Predicate[name]==='number' ? module.Predicate[name] : undefined);
@@ -3766,7 +3845,11 @@ module.exports = makeExt(`// Name: Arcade
       const list=this._frameHandlers.get(state);
       if(list)for(let i=0;i<list.length;i++)if(list[i].order>=low && list[i].order<high)list[i].handler();
     }
-    _scrollerLayer(value) {return Math.floor(Scratch.Cast.toNumber(value));}
+    _scrollerLayer(value) {
+      const layer=Math.floor(Scratch.Cast.toNumber(value));
+      if(this._scrollerVersion!=='v0.1.2' && layer!==0)throw new Error('Legacy Arcade background scroll does not support layers.');
+      return layer;
+    }
     scrollBackgroundWithCamera(args) {
       const modes={OnlyHorizontal:0,OnlyVertical:1,BothDirections:2},mode=modes[String(args.MODE)];
       if(mode===undefined){this._runtime?.emit?.('BLOCKS_ERROR','Arcade has no camera scroll mode "'+String(args.MODE)+'".');return;}
@@ -3776,11 +3859,14 @@ module.exports = makeExt(`// Name: Arcade
     setBackgroundScrollMultipliers(args) {this._scroller().scroller.setCameraScrollingMultipliers(Scratch.Cast.toNumber(args.X),Scratch.Cast.toNumber(args.Y),this._scrollerLayer(args.LAYER));}
     setBackgroundScrollOffset(args) {this._scroller().scroller.setBackgroundScrollOffset(Scratch.Cast.toNumber(args.X),Scratch.Cast.toNumber(args.Y),this._scrollerLayer(args.LAYER));}
     setBackgroundLayerImage(args) {
+      if(this._scrollerVersion!=='v0.1.2') {this._runtime?.emit?.('BLOCKS_ERROR','Legacy Arcade background scroll does not support layers.');return;}
       const image=this._image(args.IMAGE);
       if(!image){this._runtime?.emit?.('BLOCKS_ERROR','Arcade background layers need an image.');return;}
       this._scroller().scroller.setLayerImage(this._scrollerLayer(args.LAYER),{raw:image,get width(){return image.width;},get height(){return image.height;}});
     }
-    setBackgroundLayerZ(args) {this._scroller().scroller.setLayerZIndex(this._scrollerLayer(args.LAYER),Scratch.Cast.toNumber(args.Z));}
+    setBackgroundLayerZ(args) {
+      if(this._scrollerVersion!=='v0.1.2') {this._runtime?.emit?.('BLOCKS_ERROR','Legacy Arcade background scroll does not support layers.');return;}
+      this._scroller().scroller.setLayerZIndex(this._scrollerLayer(args.LAYER),Scratch.Cast.toNumber(args.Z));}
     backgroundScrollOffset(args) {
       const scroller=this._scroller().scroller,layer=this._scrollerLayer(args.LAYER);
       return String(args.AXIS)==='y' ? scroller.getBackgroundYOffset(layer) : scroller.getBackgroundXOffset(layer);
@@ -4947,7 +5033,11 @@ module.exports = makeExt(`// Name: Arcade
   initializeSevenseg: require('./sevenseg-pxt'),
   initializeSpriteExtensions: require('./sprite-extensions-pxt'),
   initializeScroller: require('./scroller-pxt'),
+  initializeLegacyScroller: require('./legacy-scroller-pxt'),
+  createLegacyScrollerHost: require('./legacy-scroller-host'),
   initializeCharacterAnimations: require('./character-animations-pxt'),
+  initializeLegacyCharacterAnimations: require('./legacy-character-pxt'),
+  createLegacyCharacterHost: require('./legacy-character-host'),
   initializeText: require('./text-pxt'),
   createMusic: require('./music'),
   buffers: require('./buffer'),

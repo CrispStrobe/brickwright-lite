@@ -40,3 +40,9 @@ if (process.argv.includes('--check')) {
     if (readFileSync(path, 'utf8') !== output) throw new Error('Legacy scroller generated module differs');
     console.log('Verified complete original single-background scroller');
 } else writeFileSync(path, output);
+
+const admissionPath=resolve(root,'overlay/scratch-gui/src/lib/bw-makecode/legacy-scroller-source-admission.generated.js');
+const admission=`// Generated from the complete retained MIT legacy scroller; do not edit.\n// Regenerate: node scripts/generate-arcade-legacy-scroller.mjs\nexport const LEGACY_SCROLLER_SOURCE_TEXT=${JSON.stringify(source)};\nexport const LEGACY_SCROLLER_NATIVE_IDENTITY=Object.freeze(${JSON.stringify(identity)});\n`;
+if(process.argv.includes('--check')) {
+    if(readFileSync(admissionPath,'utf8')!==admission)throw new Error('Legacy scroller admission source differs');
+} else writeFileSync(admissionPath,admission);

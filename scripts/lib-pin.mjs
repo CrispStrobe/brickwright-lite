@@ -185,6 +185,31 @@ export const isScoped = (argv = process.argv) => argv.includes('--only');
 
 export class PinMoveRefused extends Error {}
 
+// An unreadable or conflicted file is never an empty pin registry. Only a
+// file that does not exist can start one; otherwise preserve it for repair.
+async function readPins (pinsFile, name) {
+    let text;
+    try {
+        text = await readFile(pinsFile, 'utf8');
+    } catch (error) {
+        if (error.code === 'ENOENT') return {};
+        throw error;
+    }
+    let pins;
+    try {
+        pins = JSON.parse(text);
+    } catch (error) {
+        throw new Error(`cannot read pins from ${pinsFile}: invalid JSON`, {cause: error});
+    }
+    if (pins === null || typeof pins !== 'object' || Array.isArray(pins)) {
+        throw new Error(`cannot read pins from ${pinsFile}: expected a JSON object`);
+    }
+    if (Object.hasOwn(pins, name) && (typeof pins[name] !== 'string' || !FULL_SHA.test(pins[name]))) {
+        throw new Error(`cannot read pins from ${pinsFile}: ${name} is not a 40-hex sha`);
+    }
+    return pins;
+}
+
 /**
  * A FILE SYNC NEVER MOVES THE PIN; A PIN MOVES ONLY WITH --pin.
  *
@@ -201,8 +226,8 @@ export class PinMoveRefused extends Error {}
  */
 export async function assertPinMoveAllowed (name, sha, {pinsFile = PINS_FILE, explicit = wantsPin(), scoped = isScoped(), stage = 'before'} = {}) {
     if (!FULL_SHA.test(sha || '')) throw new Error(`refusing to pin ${name} to ${JSON.stringify(sha)} — not a 40-hex sha`);
-    const pins = await readFile(pinsFile, 'utf8').then(JSON.parse).catch(() => ({}));
-    const old = pins[name];
+    const pins = await readPins(pinsFile, name);
+    const old = Object.hasOwn(pins, name) ? pins[name] : undefined;
     if (!old || old === sha) return {moves: false, old};
     if (explicit) return {moves: true, old};
     throw new PinMoveRefused(
@@ -217,9 +242,9 @@ export async function recordPin (name, sha, {pinsFile = PINS_FILE, log = console
         throw new Error(`refusing to pin ${name} to ${JSON.stringify(sha)} — not a 40-hex sha`);
     }
     await assertPinMoveAllowed(name, sha, {pinsFile, explicit, scoped, stage: 'after'});
-    const pins = await readFile(pinsFile, 'utf8').then(JSON.parse).catch(() => ({}));
-    if (pins[name] === sha) { log(`  pin unchanged: ${name}@${sha}`); return sha; }
-    pins[name] = sha;
+    const pins = await readPins(pinsFile, name);
+    if (Object.hasOwn(pins, name) && pins[name] === sha) { log(`  pin unchanged: ${name}@${sha}`); return sha; }
+    Object.defineProperty(pins, name, {value: sha, enumerable: true, configurable: true, writable: true});
     // INDENT 2, WHICH IS WHAT THE FILE ALREADY USES -- and this is not cosmetic.
     //
     // This wrote `null, 1`, so every --pin run REFORMATTED all three lines. Git

@@ -6552,3 +6552,48 @@ real input controls. Corpus worker owns immutable29-valid/12-invalid input
 records and older-library contracts. Keep the independent MakeCode CLI A6–A9
 and multi-board DEVICE lanes intact. No target SDK, board pin or hardware claim
 is changed by these Arcade source/host controls.
+
+### Arcade continuation after Text Sprite integration — 2026-10-13
+
+Root owns `lane/arcade-legacy-scroller-integration-20261013`: exact legacy
+background-scroll version dispatch, source admission and exporter/dependency
+selection. Root also owns the authentic asset factory integration.
+`namespace_buffers` owns distinct scene/program clock runtime hunks and shared
+compiler words, including the reserved scroller-version word.
+`extension_parser` owns deployed Gallery provenance and actual hosted token
+permission qualification. `corpus_gap_analysis` owns immutable authentic
+Smurfy observation and the private raw-evidence archive. Separate owned trees
+and file ownership apply; do not push the lower chains handled by Claude.
+Text Sprite integration is PR870; producer115. No whole-project corpus promotion
+is claimed from focused controls. GUI inspector/controller/game qualification
+remains required by the conversion/GUI gap ledger.
+
+
+### Owned Arcade TextSprite game GUI acceptance — 2026-10-13
+
+CLAIMED — `extension_parser`, `lane/arcade-owned-game-gui-20261013`.
+Own the new owned game/art fixture, production Playwright journey, one additive
+light-shard step and budget registration. Implementation files remain with the
+runtime, converter, exporter and GUI owners. The journey drives file import,
+Code keyboard editing, a native Blocks field, Costumes Pixel painting, the
+visible controller, actual SB3 download/fresh-context reopen, MakeCode export
+and file reimport. Original PXT runs compare label, positions and actual rendered
+pixels. Hosted full-IDE qualification is pending; focused original simulator
+checks do not establish an IDE pass or change the authentic corpus ledger.
+
+### Arcade continuation: primitive strings and numeric kind semantics
+
+Root owns `lane/arcade-legacy-scroller-integration-20261013`; exact scroller
+conversion/export and separate clocks are integrated with focused controls.
+Root also owns primitive string conversion/export and TypeScript assertion
+grammar. `namespace_buffers` owns matching345-form producer publication and
+Arrays string-source publication. `extension_parser` owns exact legacy
+character-animation admission/conversion/export and its roundtrip controls.
+`corpus_gap_analysis` owns isolated numeric kind registry/native membership,
+handler/default semantics and original probes. Kind translator/export follow
+the agreed native contract. Workers use separate trees and explicit file hunks.
+The independently owned multi-board DEVICE lane remains separate.
+
+The owned Text Sprite game production GUI gate is prepared and pending hosted
+execution. Raw corpus counts remain142 translated/41 partial/1 parser failure.
+No source-only adapter or focused test promotes a whole game.

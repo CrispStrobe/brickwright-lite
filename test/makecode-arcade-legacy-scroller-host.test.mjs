@@ -11,8 +11,6 @@ import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 const require = createRequire(import.meta.url);
 const dir = '../overlay/scratch-vm/src/extensions/crispstrobe/arcade/';
 const initializeOriginal = require(dir + 'legacy-scroller-pxt.js');
-const createHost = require(dir + 'legacy-scroller-host.js');
-const imageEngine = require(dir + 'image.js')([], require(dir + 'image-pxt.js'));
 const original = readFileSync(new URL(dir + 'legacy-scroller-source/main.ts', import.meta.url), 'utf8');
 const originalFiles = source => ({'main.ts': source, 'legacy-scroller.ts': original,
     'pxt.json': JSON.stringify({name: 'owned-legacy-scroller-control', dependencies: {device: '*'},
@@ -33,8 +31,10 @@ async function nativeWithLegacyHost(source) {
     const ext = adapter._inst;
     const before = {updates: ext._updateHandlers.length, pushes: ext._scenePushHandlers.length,
         pops: ext._scenePopHandlers.length, renderables: ext._renderablesOf().length};
-    // Standalone bridge qualification: project/version dispatch belongs to integration.
-    ext._scrollerModule = createHost(ext, imageEngine, initializeOriginal);
+    // Select through the actual native opcode before any lazy library operation.
+    adapter.setBackgroundScrollVersion({VERSION:initializeOriginal.sourceIdentity.revision});
+    assert.equal(ext._scrollerVersion,initializeOriginal.sourceIdentity.revision);
+    ext._scroller();
     assert.deepEqual({updates: ext._updateHandlers.length, pushes: ext._scenePushHandlers.length,
         pops: ext._scenePopHandlers.length, renderables: ext._renderablesOf().length}, before,
     'factory construction does not run the lazy original initializer');
