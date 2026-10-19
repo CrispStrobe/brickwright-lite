@@ -1,0 +1,8 @@
+0 The 60-tooth Technic turntable, its two halves on one origin as LDraw draws them assembled
+0 Name: turntable-60.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 !BW ID bottom
+1 72 0 0 0 1 0 0 0 1 0 0 0 1 18939.dat
+0 !BW ID top
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 18938.dat

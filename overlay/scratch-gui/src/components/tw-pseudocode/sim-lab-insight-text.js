@@ -10,7 +10,8 @@
 // sources and fails on one without a sentence in both languages.
 //
 // Placeholders: {parts} the parts the issue is about ("the SPIKE medium angular
-// motor"), {line} the LDraw line it was found on.
+// motor"), {line} the LDraw line it was found on, {design} an LDD design number
+// (an .lxf part the Robot Lab cannot map).
 
 export const INSIGHT_TEXT = {
     en: {
@@ -34,6 +35,12 @@ export const INSIGHT_TEXT = {
             'bad-obstacle': 'One of the obstacles is not set up right and is left out.',
             'bad-load': 'One of the things to carry (like the pallet) is not set up right and is left out.',
             'rack-not-sliding': '{parts}: the gear touches the rack, but the rack cannot slide along, so the gear does not move it. Hold the rack on a part that slides, like the smooth toggle joint on an axle.',
+            'gear-loop-locked': '{parts}: two gear paths join the same axles but want different speeds, so the gears jam and nothing turns. Take one of the paths out.',
+            'clutch-gear-fixed': '{parts}: the clutch gear sits fixed on the axle, so it always turns with it. Use a clutch gear with a round hole, which spins freely until the driving ring takes it.',
+            'clutch-not-on-axle': '{parts}: the driving ring faces the clutch gear, but the gear is not on the ring\'s axle, so the ring cannot take it.',
+            'fork-ring-not-sliding': '{parts}: the catch sits in the ring\'s groove, but the ring cannot slide, so shifting moves nothing. Put the driving ring on a ridged axle joiner.',
+            'fork-not-on-hinge': '{parts}: the catch sits in the ring\'s groove but cannot swing, so it holds the ring in place. Put the catch on an axle that turns.',
+            'screw-not-sliding': '{parts}: the spindle turns, but the piston cannot slide in the actuator, so it does not move. Put the piston back into its actuator.',
             'bad-port': 'The port on line {line} is not one of A–F, so it is ignored.',
             'bad-matrix': 'The part on line {line} is mirrored or stretched. Real bricks cannot be, so it is left out.',
             'unparsable': 'Line {line} of the file could not be read, so it is left out.',
@@ -43,7 +50,15 @@ export const INSIGHT_TEXT = {
             'duplicate-group': 'A group on line {line} has the same name as another group, so it is left out.',
             'unknown-group': 'A part on line {line} belongs to a group that does not exist, so it is left ungrouped.',
             'cycle': 'A sub-model in the file is built from itself, so that copy is left out.',
-            'project-model-unreadable': 'The robot saved in this project could not be read, so the standard robot is shown.'
+            'too-deep': 'Line {line} puts sub-models inside sub-models too many times over, so that copy is left out.',
+            'too-many-parts': 'This model has far too many parts for the Robot Lab, so it is not opened.',
+            'out-of-range': 'Line {line} places a part much too far away, so it is left out.',
+            'project-model-unreadable': 'The robot saved in this project could not be read, so the standard robot is shown.',
+            'studio-only-part': 'Line {line} places a part only BrickLink Studio has (not in LDraw), so it is left out.',
+            'lxf-unknown-design': 'The LEGO Digital Designer part {design} is not one the Robot Lab knows yet, so it is left out.',
+            'lxf-bad-transform': 'The LEGO Digital Designer part {design} is mirrored or stretched, so it is left out.',
+            'lxf-unknown-material': 'The LEGO Digital Designer part {design} has a colour LDraw does not know, so it is shown light grey.',
+            'lxf-derived-frame': 'The LEGO Digital Designer part {design} was placed by measuring its studs, so check that it sits where you built it.'
         },
         fallbackIssue: 'Something about this model needs a look.',
         and: 'and', part: 'the part {id}',
@@ -76,6 +91,12 @@ export const INSIGHT_TEXT = {
             'bad-obstacle': 'Eins der Hindernisse ist nicht richtig eingestellt und wird weggelassen.',
             'bad-load': 'Eins der Dinge zum Tragen (wie die Palette) ist nicht richtig eingestellt und wird weggelassen.',
             'rack-not-sliding': '{parts}: Das Zahnrad berührt die Zahnstange, aber die Zahnstange kann nicht gleiten, darum bewegt das Zahnrad sie nicht. Halte die Zahnstange an einem Teil, das gleitet, wie das glatte Kippgelenk auf einer Achse.',
+            'gear-loop-locked': '{parts}: Zwei Zahnrad-Wege verbinden dieselben Achsen, wollen aber verschiedene Geschwindigkeiten, darum klemmen die Zahnräder und nichts dreht sich. Nimm einen der Wege heraus.',
+            'clutch-gear-fixed': '{parts}: Das Kupplungszahnrad sitzt fest auf der Achse und dreht sich darum immer mit. Nimm ein Kupplungszahnrad mit rundem Loch, das sich frei dreht, bis der Schaltring es greift.',
+            'clutch-not-on-axle': '{parts}: Der Schaltring zeigt auf das Kupplungszahnrad, aber das Zahnrad sitzt nicht auf der Achse des Rings, darum kann der Ring es nicht greifen.',
+            'fork-ring-not-sliding': '{parts}: Die Schaltgabel sitzt in der Rille des Rings, aber der Ring kann nicht gleiten, darum bewegt das Schalten nichts. Setz den Schaltring auf einen geriffelten Achsverbinder.',
+            'fork-not-on-hinge': '{parts}: Die Schaltgabel sitzt in der Rille des Rings, kann sich aber nicht drehen, darum hält sie den Ring fest. Setz die Gabel auf eine Achse, die sich dreht.',
+            'screw-not-sliding': '{parts}: Die Spindel dreht sich, aber der Kolben kann im Linearantrieb nicht gleiten, darum bewegt er sich nicht. Setze den Kolben wieder in seinen Linearantrieb.',
             'bad-port': 'Der Port in Zeile {line} ist keiner von A–F, darum wird er ignoriert.',
             'bad-matrix': 'Das Teil in Zeile {line} ist gespiegelt oder gestreckt. Echte Steine können das nicht, darum wird es weggelassen.',
             'unparsable': 'Zeile {line} der Datei konnte nicht gelesen werden, darum wird sie weggelassen.',
@@ -85,7 +106,15 @@ export const INSIGHT_TEXT = {
             'duplicate-group': 'Eine Gruppe in Zeile {line} hat denselben Namen wie eine andere Gruppe, darum wird sie weggelassen.',
             'unknown-group': 'Ein Teil in Zeile {line} gehört zu einer Gruppe, die es nicht gibt, darum bleibt es ohne Gruppe.',
             'cycle': 'Ein Teilmodell in der Datei ist aus sich selbst gebaut, darum wird diese Kopie weggelassen.',
-            'project-model-unreadable': 'Der in diesem Projekt gespeicherte Roboter konnte nicht gelesen werden, darum wird der Standard-Roboter gezeigt.'
+            'too-deep': 'Zeile {line} steckt Teilmodelle zu oft ineinander, darum wird diese Kopie weggelassen.',
+            'too-many-parts': 'Dieses Modell hat viel zu viele Teile für das Roboter-Labor, darum wird es nicht geöffnet.',
+            'out-of-range': 'Zeile {line} setzt ein Teil viel zu weit weg, darum wird es weggelassen.',
+            'project-model-unreadable': 'Der in diesem Projekt gespeicherte Roboter konnte nicht gelesen werden, darum wird der Standard-Roboter gezeigt.',
+            'studio-only-part': 'Zeile {line} setzt ein Teil, das nur BrickLink Studio kennt (nicht LDraw), darum wird es weggelassen.',
+            'lxf-unknown-design': 'Das LEGO-Digital-Designer-Teil {design} kennt das Roboter-Labor noch nicht, darum wird es weggelassen.',
+            'lxf-bad-transform': 'Das LEGO-Digital-Designer-Teil {design} ist gespiegelt oder gestreckt, darum wird es weggelassen.',
+            'lxf-unknown-material': 'Das LEGO-Digital-Designer-Teil {design} hat eine Farbe, die LDraw nicht kennt, darum ist es hellgrau.',
+            'lxf-derived-frame': 'Das LEGO-Digital-Designer-Teil {design} wurde anhand seiner Noppen eingesetzt. Prüfe, ob es dort sitzt, wo du es gebaut hast.'
         },
         fallbackIssue: 'Etwas an diesem Modell solltest du dir ansehen.',
         and: 'und', part: 'das Teil {id}',
@@ -111,7 +140,7 @@ export const issueSentence = (text, issue, nameOf) => {
     const names = (issue.parts || []).map(id => nameOf(id));
     const parts = names.length <= 1 ? (names[0] || '') : `${names.slice(0, -1).join(', ')} ${text.and} ${names[names.length - 1]}`;
     const template = text.issues[issue.code] || text.fallbackIssue;
-    const sentence = fill(template, {parts, line: issue.line ?? ''});
+    const sentence = fill(template, {parts, line: issue.line ?? '', design: issue.design ?? ''});
     return sentence.charAt(0).toUpperCase() + sentence.slice(1);
 };
 

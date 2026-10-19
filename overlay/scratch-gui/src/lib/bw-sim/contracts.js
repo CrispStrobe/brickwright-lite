@@ -50,8 +50,10 @@ export const pitchRadiusLdu = teeth => teeth * 1.25;
 
 export const CONNECTOR_TYPES = Object.freeze(['pinhole', 'axlehole', 'axle', 'pin', 'stud', 'antistud', 'ball', 'ballsocket']);
 export const GEAR_TYPES = Object.freeze(['spur', 'bevel', 'worm', 'rack']);
-export const HUB_PORTS = Object.freeze(['A', 'B', 'C', 'D', 'E', 'F']);
-export const SENSOR_KINDS = Object.freeze(['distance', 'color', 'force']);
+/** Port ids: hub output letters, and the numbered inputs of the RCX (1–3) and NXT/EV3 (1–4); the hub profile refuses ports it lacks. */
+export const HUB_PORTS = Object.freeze(['A', 'B', 'C', 'D', 'E', 'F', '1', '2', '3', '4']);
+/** What sensors.js measures; 'rotation' is the RCX rotation sensor (the hinge in its hole). */
+export const SENSOR_KINDS = Object.freeze(['distance', 'color', 'force', 'rotation']);
 
 /** The hub profile a hub part is when its metadata names none (v1 parts: SPIKE Prime). */
 export const DEFAULT_HUB_PROFILE = 'spike-prime';
@@ -84,9 +86,10 @@ export const GROUND_FRICTION = 0.8;
  * A collision primitive. In PartMeta it is in the part's LDraw frame (LDU);
  * in a CompiledMechanism body it is in that body's local frame (metres).
  * A cylinder's axis is its local +y before `rotation` is applied.
- * `region` ('pin'|'axle'|'ball', PartMeta only) marks a collider as the shaft
- * part of a part that is also solid elsewhere (87082's pin ends, 32054's pin):
- * it may sit inside another part's hole; untagged colliders are solid
+ * `region` ('pin'|'axle'|'ball'|'stud', PartMeta only) marks a collider as the shaft
+ * part of a part that is also solid elsewhere (87082's pin ends, 32054's pin, a
+ * brick's studs): it may sit inside another part's hole or hollow underside;
+ * untagged colliders are solid
  * (editor/overlap.js solidColliders).
  * @typedef {(
  *   {shape: 'box', halfExtents: Vec3, position?: Vec3, rotation?: Quat, region?: string} |
@@ -121,7 +124,7 @@ export const GROUND_FRICTION = 0.8;
  *   part: string,                 e.g. '3713.dat'
  *   name: string,
  *   nameDe?: string,
- *   category: string,             'beam' | 'axle' | 'pin' | 'gear' | 'wheel' | 'motor' | 'hub' | 'sensor' | 'other'
+ *   category: string,             a palette category (editor/palette.js PALETTE_CATEGORIES): 'beam' | 'axle' | 'pin' | 'gear' | 'wheel' | 'motor' | 'hub' | 'sensor' | 'brick' | 'plate' | 'tile' | 'slope' | 'other'
  *   massGrams: number,
  *   friction?: number,            Coulomb friction coefficient of the part surface, 0..2;
  *                                 default PART_FRICTION (hard plastic). A tyred wheel is ~1.
@@ -246,13 +249,21 @@ const isVec = (v, n = 3) => Array.isArray(v) && v.length === n && v.every(isNum)
 const norm = v => Math.hypot(...v);
 const UNIT_EPS = 1e-6;
 
+/** A collider's volume (any unit cubed: the units it is given in). */
+export const colliderVolume = c => {
+    if (c.shape === 'box') return 8 * c.halfExtents[0] * c.halfExtents[1] * c.halfExtents[2];
+    if (c.shape === 'cylinder') return 2 * Math.PI * c.radius * c.radius * c.halfHeight;
+    if (c.shape === 'sphere') return 4 / 3 * Math.PI * c.radius ** 3;
+    return 0;
+};
+
 const checkCollider = (c, where, out) => {
     if (!c || typeof c !== 'object') return out.push(`${where}: not an object`);
     if (c.position !== undefined && !isVec(c.position)) out.push(`${where}.position: not a Vec3`);
     if (c.rotation !== undefined && !(isVec(c.rotation, 4) && Math.abs(norm(c.rotation) - 1) < 1e-4)) {
         out.push(`${where}.rotation: not a unit quaternion`);
     }
-    if (c.region !== undefined && !['pin', 'axle', 'ball'].includes(c.region)) out.push(`${where}.region: '${c.region}' is not pin|axle|ball`);
+    if (c.region !== undefined && !['pin', 'axle', 'ball', 'stud'].includes(c.region)) out.push(`${where}.region: '${c.region}' is not pin|axle|ball|stud`);
     if (c.shape === 'box') {
         if (!isVec(c.halfExtents) || !c.halfExtents.every(h => h > 0)) out.push(`${where}.halfExtents: need three positive numbers`);
     } else if (c.shape === 'cylinder') {
@@ -295,6 +306,27 @@ export const validatePartMeta = (meta, {connectorKinds = null} = {}) => {
     if (meta.nameDe !== undefined && (typeof meta.nameDe !== 'string' || !meta.nameDe)) out.push(`${p}.nameDe: must be a non-empty string`);
     if (typeof meta.category !== 'string' || !meta.category) out.push(`${p}.category: missing`);
     if (!(isNum(meta.massGrams) && meta.massGrams > 0)) out.push(`${p}.massGrams: need a positive number`);
+    // `mirrorOf` (part-meta/canonical-frame.js, measured): null, or the part whose shape is this
+    // one's under p ↦ m·p + t with m orthogonal and improper (det −1).
+    if (meta.mirrorOf !== undefined && meta.mirrorOf !== null) {
+        const mo = meta.mirrorOf;
+        const m = mo?.transform?.m;
+        const t = mo?.transform?.t;
+        const okM = Array.isArray(m) && m.length === 9 && m.every(isNum);
+        if (typeof mo?.part !== 'string' || !okM || !(Array.isArray(t) && t.length === 3 && t.every(isNum))) {
+            out.push(`${p}.mirrorOf: need {part, transform: {m: 9 numbers, t: 3 numbers}} or null`);
+        } else {
+            const d = m[0] * (m[4] * m[8] - m[5] * m[7]) - m[1] * (m[3] * m[8] - m[5] * m[6]) + m[2] * (m[3] * m[7] - m[4] * m[6]);
+            const mmT = [0, 1, 2].flatMap(r => [0, 1, 2].map(c => m[3 * r] * m[3 * c] + m[3 * r + 1] * m[3 * c + 1] + m[3 * r + 2] * m[3 * c + 2]));
+            if (Math.abs(d + 1) > 1e-6 || mmT.some((v, i) => Math.abs(v - (i % 4 === 0 ? 1 : 0)) > 1e-6)) {
+                out.push(`${p}.mirrorOf.transform.m: must be an orthogonal reflection (det −1), not det ${d}`);
+            }
+        }
+        if (mo?.others !== undefined && !(Array.isArray(mo.others) && mo.part === meta.part &&
+            mo.others.every(o => Array.isArray(o?.m) && o.m.length === 9 && o.m.every(isNum) && Array.isArray(o?.t) && o.t.length === 3 && o.t.every(isNum)))) {
+            out.push(`${p}.mirrorOf.others: only on a part that is its own mirror image, a list of {m, t}`);
+        }
+    }
     if (meta.friction !== undefined && !(isNum(meta.friction) && meta.friction >= 0 && meta.friction <= 2)) {
         out.push(`${p}.friction: need a number in 0..2`);
     }
@@ -741,7 +773,12 @@ export const dirToWorld = d => [d[0], 0 - d[1], 0 - d[2]];
  *               direction} in the world frame at t = 0
  *   noCollide   [[bodyA, bodyB]] sorted, A < B: pairs that must never collide once robot
  *               self-collision is on (owner decision D2; R3 builds the filter): bodies
- *               joined by a joint, and the two gear bodies of a coupling.
+ *               joined by a joint, bodies that meet on one connector axis, and the two gear
+ *               bodies of a coupling.
+ *   noCollideParts? [[bodyA, bodyB, [[partA, partB], …]]] a noCollide pair filtered PART BY PART
+ *               (mech/collision-filter.js localNoCollide): only those part pairs (partA's colliders
+ *               on bodyA, partB's on bodyB: colliders carry `part`) are kept apart, the others
+ *               collide. A noCollide pair not listed is filtered whole.
  * The v1 fields are the derived v1 VIEW (mechanismV1Aliases): `gears` = the gear and
  * rackAndPinion couplings, `sensors` = the devices, `joint.motor` = the actuator's numbers
  * (port without its hub). validateCompiledMechanism checks they agree; mechanismV1(m)
@@ -787,7 +824,6 @@ const coupledBodies = (ja, jb) => {
  * @returns {[string, string][]}
  */
 export const noCollidePairs = (joints, couplings, kinds = null, seated = []) => {
-    const byId = new Map(joints.map(j => [j.id, j]));
     const pairs = new Map();
     const add = (a, b) => {
         if (!a || !b || a === b || a === 'world' || b === 'world') return;
@@ -796,15 +832,25 @@ export const noCollidePairs = (joints, couplings, kinds = null, seated = []) => 
     };
     for (const j of joints) add(j.body1, j.body2);
     for (const [a, b] of seated) add(a, b);
+    for (const [a, b] of couplingBodyPairs(joints, couplings, kinds)) add(a, b);
+    return [...pairs.values()].sort((p, q) => p[0].localeCompare(q[0]) || p[1].localeCompare(q[1]));
+};
+
+/** The body pairs the couplings tie (meshing gears, a rack and its pinion, a registered kind's `bodies`). */
+export const couplingBodyPairs = (joints, couplings, kinds = null) => {
+    const byId = new Map(joints.map(j => [j.id, j]));
+    const out = [];
     for (const c of couplings) {
-        if (c.kind === 'gear') add(...coupledBodies(byId.get(c.joint1), byId.get(c.joint2)));
-        else if (c.kind === 'rackAndPinion') add(...coupledBodies(byId.get(c.hingeJoint), byId.get(c.sliderJoint)));
+        let pair = [];
+        if (c.kind === 'gear') pair = coupledBodies(byId.get(c.joint1), byId.get(c.joint2));
+        else if (c.kind === 'rackAndPinion') pair = coupledBodies(byId.get(c.hingeJoint), byId.get(c.sliderJoint));
         else {
             const module = kinds && kinds.couplings ? kinds.couplings.ofKind(c.kind) : null;
-            if (module && typeof module.bodies === 'function') add(...module.bodies(c, joints));
+            if (module && typeof module.bodies === 'function') pair = module.bodies(c, joints);
         }
+        if (pair.length === 2) out.push(pair);
     }
-    return [...pairs.values()].sort((p, q) => p[0].localeCompare(q[0]) || p[1].localeCompare(q[1]));
+    return out;
 };
 
 /** Coupling kinds the v1 contract has (its `gears` list): the v1 view keeps exactly these. */
@@ -963,6 +1009,17 @@ const validateMechanismV2 = (m, kinds, out) => {
             out.push(`noCollide[${i}]: need [bodyA, bodyB] of two known bodies, A < B`);
         }
     });
+    if (m.noCollideParts !== undefined) {
+        const pairs = new Set(m.noCollide.map(p => Array.isArray(p) ? p.join('|') : ''));
+        if (!Array.isArray(m.noCollideParts)) out.push('mechanism.noCollideParts: not an array');
+        else {
+            m.noCollideParts.forEach((entry, i) => {
+                const ok = Array.isArray(entry) && entry.length === 3 && pairs.has(`${entry[0]}|${entry[1]}`) && Array.isArray(entry[2]) &&
+                    entry[2].every(pp => Array.isArray(pp) && pp.length === 2 && typeof pp[0] === 'string' && typeof pp[1] === 'string');
+                if (!ok) out.push(`noCollideParts[${i}]: need [bodyA, bodyB, [[partA, partB], …]] of a noCollide pair`);
+            });
+        }
+    }
     if (out.length) return out;
     const v1 = mechanismV1Aliases(m);
     if (canonical(m.joints) !== canonical(v1.joints)) out.push('joints[].motor: the v1 view disagrees with actuators');

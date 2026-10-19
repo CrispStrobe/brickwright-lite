@@ -84,6 +84,8 @@
         "verify:starters": "node scripts/verify-starter-journeys.mjs",
         "verify:lego-spike": "node scripts/verify-lego-spike-roundtrip.mjs",
         "verify:sim-lab": "node scripts/verify-sim-lab-browser.mjs",
+        "verify:sim-lab-renode": "node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-sim-lab-renode-lockstep.mjs",
+        "verify:sim-lab-renode:degrees": "BW_SIMLAB_FORM=degrees node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-sim-lab-renode-lockstep.mjs",
         "verify:project-bundle": "node scripts/verify-project-bundle-integrity.mjs",
         "verify:pixel-source": "node scripts/verify-pixel-source-roundtrip.mjs",
         "verify:arrays-table": "node scripts/verify-arrays-table-display.mjs",
@@ -148,8 +150,8 @@
         "node": ">=22"
     },
     "devDependencies": {
-        "bw-board": "github:CrispStrobe/bw-board#f84ba60ead0a90deb9830f0c1468839c293ecf05",
-        "bw-circuit-ui": "github:CrispStrobe/bw-circuit-ui#055930ec51300e0d71466c696ce1bf76284bde38",
+        "bw-board": "github:CrispStrobe/bw-board#fac3a5a9928c8b53a778b0c42d8d91d5e693e4b7",
+        "bw-circuit-ui": "github:CrispStrobe/bw-circuit-ui#a7621be4d40d089826d78cd1e656b7c592ef16db",
         "digitaljs": "^0.14.2",
         "jszip": "3.10.1",
         "playwright": "^1.62.1",

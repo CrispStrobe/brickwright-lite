@@ -1,0 +1,49 @@
+0 RCX bumper car (Brickwright Robot Lab reference model)
+0 Name: rcx-bumper-car.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 // A MINDSTORMS RCX 2.0 on two 9 V mini-motors (A left, C right) with 56 mm wheels on
+0 // their output axles, a ball castor at the front on two Technic bricks, a touch sensor
+0 // bumper on the RCX's top front (input 1) and a light sensor looking down beside the
+0 // castor (input 2), held by a pin/bush connector with two studs. Forward is LDraw +z.
+0 // The front bricks sit half a stud off the RCX's grid: their studs grip the plate's tubes.
+0 !BW ID hub
+1 7 0 0 0 1 0 0 0 1 0 0 0 1 76454c02.dat
+0 !BW ID motorA
+0 !BW PORT A
+1 0 -40 96 -80 0 0 1 0 1 0 -1 0 0 71427.dat
+0 !BW ID motorC
+0 !BW PORT C
+1 0 40 96 -80 0 0 -1 0 1 0 1 0 0 71427.dat
+0 !BW ID wheelA
+1 15 -99 138 -80 0 0 1 0 -1 0 1 0 0 39367p01.dat
+0 !BW ID wheelC
+1 15 99 138 -80 0 0 1 0 -1 0 1 0 0 39367p01.dat
+0 !BW ID frontPlate
+1 72 0 96 40 0 0 1 0 1 0 -1 0 0 3035.dat
+0 !BW ID brickL
+1 72 -20 104 50 0 0 1 0 1 0 -1 0 0 3009.dat
+0 !BW ID brickR
+1 72 20 104 50 0 0 1 0 1 0 -1 0 0 3009.dat
+0 !BW ID technicL
+1 72 -20 128 50 0 0 1 0 1 0 -1 0 0 3894.dat
+0 !BW ID technicR
+1 72 20 128 50 0 0 1 0 1 0 -1 0 0 3894.dat
+0 !BW ID castor
+1 71 0 138 50 1 0 0 0 1 0 0 0 1 39370.dat
+0 !BW ID castorPinBack
+1 1 0 138 10 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID castorPinFront
+1 1 0 138 90 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID ball
+1 15 0 184 50 1 0 0 0 1 0 0 0 1 52629.dat
+0 !BW ID bumper
+0 !BW PORT 1
+1 7 0 -24 90 0 0 -1 0 1 0 1 0 0 75973.dat
+0 !BW ID eyePin
+1 0 30 138 30 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID eyeHolder
+1 7 40 118 30 1 0 0 0 0 -1 0 1 0 3651.dat
+0 !BW ID eye
+0 !BW PORT 2
+1 7 50 148 72 0 0 -1 1 0 0 0 -1 0 72634.dat

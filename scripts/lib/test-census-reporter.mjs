@@ -48,7 +48,10 @@ export default async function* testCensusReporter (source) {
         const file = event.data.file || '(unknown)';
         const b = bucket(file);
         b.tests++;
-        if (event.type === 'test:pass') b.passed++; else b.failed++;
+        // A known-open test (`{todo: …}`) is counted under `todo`, as TAP's `# todo` counts it, not as
+        // a failure: check-test-run.mjs holds every such test to a docs/….md pointer instead.
+        if (event.data.todo !== undefined && event.data.todo !== false) b.todo = (b.todo || 0) + 1;
+        else if (event.type === 'test:pass') b.passed++; else b.failed++;
         if (event.data.skip) b.skipped.push({name: event.data.name, reason: typeof event.data.skip === 'string' ? event.data.skip : '(no reason)'});
     }
     yield `${JSON.stringify({files, events}, null, 1)}\n`;

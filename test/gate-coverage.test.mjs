@@ -50,6 +50,13 @@ const KNOWN_UNWIRED = {
         + 'a pinned local Renode package, proof driver and GUI build. Seven Code/web-presence checks exercise '
         + 'the real guest through a semantic test transport; receipts must stay private. Source compiler/session '
         + 'and broker checks run in CI. See docs/SPIKE-FIRMWARE-PROGRAMS.md; this is not a Tauri ACL proof.',
+    'verify-sim-lab-renode-lockstep.mjs': 'manual/local: the Robot Lab SPIKE firmware route end to end (R13e) — '
+        + 'a real Renode (stock 1.16.1 or newer) running the NuttX package restaged with the lockstep-capable '
+        + 'runtime (scripts/restage-spike-nuttx-package.mjs), stepped in lockstep with the Robot Lab physics. '
+        + 'CI has no Renode and the firmware CI publishes no image (its SAFETY.md), so it cannot run there; it '
+        + 'skips with a message when Renode or the package is absent. Run with npm run verify:sim-lab-renode '
+        + '(and :degrees); measured 2026-10-18 on a Mac: encoders = physics ≤ 0.16°, steady speed 301.4 vs '
+        + '299.1 °/s, 360° move ends at 358.7°. See docs/ROBOT-LAB-SPIKE-EMULATION.md §7.',
     'verify-spike-renode-arena-browser.mjs': 'manual/local: requires an immutable locally built own ARM demo, '
         + 'a pinned Renode package and the compiled tools/renode-arena-proof driver. Execution receipts stay '
         + 'in the private evidence repo. Five real-guest production GUI checks passed; see docs/SPIKE-ARENA.md '

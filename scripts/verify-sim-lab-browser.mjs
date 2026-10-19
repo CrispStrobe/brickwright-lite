@@ -59,7 +59,21 @@
 //      Build/Simulate, Drive ▲, Move/Turn, Undo and the palette are on screen and on top; the
 //      pane never scrolls sideways; the palette (a drawer when compact) places a part, Undo
 //      takes it away, the compact "More…" menu works, and "open large" goes full screen;
-//  13. no page errors.
+//  13. the build editor's Studio/LeoCAD tools (scripts/lib/sim-lab-editor-parity-gate.mjs, `--part=editor`),
+//      real mouse and keys: a colour swatch paints a part (its pixels turn red) and the eyedropper copies
+//      a colour, hide / isolate / show all (kept through Simulate), mirror puts a bent liftarm's holes on
+//      their mirror images, align lines two beams up, the tape measures 120 LDU between a beam's end
+//      holes, a double click edits inside a group, Ctrl+C / Ctrl+V carry LDraw text between models (and
+//      from Studio), and ? opens the shortcut sheet;
+//  14. big models and model files (scripts/lib/sim-lab-scale-gate.mjs, --part=scale): the 2,054-part
+//      stress model opened through "Open…" is ready within 120 s, drawn instanced in at most 150 draw
+//      calls and not blank, a frame finishes within 1 s; Build opens on the whole model (ready and drawn)
+//      within its budget, an idle frame redraws nothing, a pointer move's handlers stay within budget
+//      (hovering and dragging), a click on a grid beam selects that beam and its gizmo X arrow moves it by
+//      grid steps (one undo puts it back); the hand-made .lxf opens with its unknown parts listed; a password-protected
+//      .io is refused with the model left as it was; "Save as… → .io" downloads a ZIP whose model.ldr
+//      is the model's LDraw text and reopens to it;
+//  14. no page errors.
 //
 // Every Sim Lab here runs its physics in the Web Worker (ROADMAP §4.9): each load
 // asserts `window.__bwSimLab.worker === true`, so the line-follower lap, the wall
@@ -81,6 +95,8 @@ import {insightInteractions} from './lib/sim-lab-insight-gate.mjs';
 import {instructionsInteractions} from './lib/sim-lab-instructions-gate.mjs';
 import {touchInteractions} from './lib/sim-lab-touch-gate.mjs';
 import {layoutInteractions, MIN_CANVAS_PX} from './lib/sim-lab-layout-gate.mjs';
+import {editorParityInteractions} from './lib/sim-lab-editor-parity-gate.mjs';
+import {scaleInteractions, OPEN_BUDGET_MS, DRAW_CALL_BUDGET, BUILD_OPEN_BUDGET_MS, IDLE_FRAME_BUDGET_MS, POINTER_MOVE_BUDGET_MS} from './lib/sim-lab-scale-gate.mjs';
 import {brakingBound, judgeWallStop} from './lib/sim-lab-wall-stopper-judge.mjs';
 import {STEP_MS} from '../overlay/scratch-gui/src/lib/bw-sim/hub-bridge.js';
 
@@ -110,6 +126,8 @@ const WALL_STOPPER_PROGRAM = await readFile(resolve(root, 'overlay/scratch-gui/s
 
 const JSZip = createRequire(new URL('../packages/scratch-gui/package.json', import.meta.url))('jszip');
 
+/** One clock (8c): a timed drive whose distance depends on the program's clock agreeing with the world's. */
+const TIMED_DRIVE = 'DEVICE SPIKE\nWHEN flag clicked:\n  set movement motors A B\n  wait 5 seconds\n  start moving steering 0\n  wait 2 seconds\n  stop movement\n';
 const PROGRAM = 'DEVICE SPIKE\nWHEN flag clicked:\n  set movement motors A B\n  move forward 20 cm\n';
 
 /** docs/SIM-LAB.md: the Colour Zones mat's red square, 0.3 m, centred at (-0.35, -0.35). */
@@ -156,7 +174,14 @@ const CPU_THROTTLE = Number((process.argv.find(a => a.startsWith('--cpu-throttle
  * (it slows the VM and the ticks alike).
  */
 const WORKER_LATENCY = Number((process.argv.find(a => a.startsWith('--worker-latency=')) || '--worker-latency=0').slice('--worker-latency='.length));
-/** `--examples=a,b` runs only those example robots in the examples part (line-follower, wall-stopper, colour-explorer, forklift). */
+/**
+ * Wall time to allow for `simMs` of simulated time. One clock (docs/SIM-LAB-PLAN.md §4.9): the VM
+ * steps only when the world has caught up, so every VM frame of simulated time costs at least one
+ * round trip to the worker (two when a command in flight redoes the batch): under --worker-latency
+ * the whole program slows down instead of running ahead of the world, and the wait has to allow it.
+ */
+const wallBudget = simMs => 240000 + Math.ceil(simMs / (1000 / 30)) * (2 * WORKER_LATENCY + 20);
+/** `--examples=a,b` runs only those example robots in the examples part (line-follower, wall-stopper, colour-explorer, forklift, sumo, timed-drive). */
 const ONLY_EXAMPLES = (process.argv.find(a => a.startsWith('--examples=')) || '').slice('--examples='.length).split(',').filter(Boolean);
 const runExample = file => !ONLY_EXAMPLES.length || ONLY_EXAMPLES.includes(file.replace(/\.ldr$/, ''));
 
@@ -218,10 +243,10 @@ const reading = page => page.evaluate(() => {
     return {pos: [b[i * 7], b[i * 7 + 1], b[i * 7 + 2]], a: motors[0].position, b: motors[1].position, time: s.time};
 });
 
-// One gate, five CI steps (each within the per-step budget, gen-gate-budgets.mjs):
-// `--part=core|examples|ui|tablet|layout` runs one section; no flag runs all of them.
+// One gate, six CI steps (each within the per-step budget, gen-gate-budgets.mjs):
+// `--part=core|examples|ui|tablet|layout|editor|scale` runs one section; no flag runs all of them.
 const PART = (process.argv.find(a => a.startsWith('--part=')) || '--part=all').slice('--part='.length);
-const PARTS = ['core', 'examples', 'ui', 'tablet', 'layout'];
+const PARTS = ['core', 'examples', 'ui', 'tablet', 'layout', 'editor', 'scale'];
 if (PART !== 'all' && !PARTS.includes(PART)) throw new Error(`--part must be one of ${PARTS.join(', ')} (got ${PART})`);
 const want = part => PART === 'all' || PART === part;
 
@@ -496,7 +521,7 @@ try {
         await lf.getByTestId('bw-sim-lab-run').click();
         // Simulated time decides: the lap, or 60 s of simulated time without one.
         await lf.waitForFunction(() => window.__bwLineLap.lapMs !== null || window.__bwSimLab._pane.session.time - window.__bwLineLap.start > 60000,
-            null, {timeout: 240000});
+            null, {timeout: wallBudget(60000)});
         const lapResult = await lf.evaluate(() => ({...window.__bwLineLap, stats: window.__bwSimLab._pane.session.stats}));
         assert.equal(lapResult.worker, true, 'the line follower ran its physics in the worker');
         await lf.screenshot({path: resolve(artifacts, 'sim-lab-line-follower.png'), fullPage: true});
@@ -593,7 +618,7 @@ try {
             }, {sensor: example.sensor});
             await ex.getByTestId('bw-sim-lab-run').click();
             // Simulated time decides: the run is judged after example.simMs of it, however long that takes in wall time.
-            await ex.waitForFunction(ms => window.__bwSimLab._pane.session.time - window.__bwExample.start > ms, example.simMs, {timeout: 240000});
+            await ex.waitForFunction(ms => window.__bwSimLab._pane.session.time - window.__bwExample.start > ms, example.simMs, {timeout: wallBudget(example.simMs)});
             const rec = await ex.evaluate(() => {
                 const r = window.__bwExample;
                 const last = r.samples.at(-1);
@@ -643,7 +668,7 @@ try {
         });
         const wall0 = Date.now();
         await fl.getByTestId('bw-sim-lab-run').click();
-        await fl.waitForFunction(() => window.__bwSimLab._pane.session.time - window.__bwForklift.start > 14000, null, {timeout: 240000});
+        await fl.waitForFunction(() => window.__bwSimLab._pane.session.time - window.__bwForklift.start > 14000, null, {timeout: wallBudget(14000)});
         console.log(`  (14 s simulated took ${((Date.now() - wall0) / 1000).toFixed(1)} s of wall time)`);
         const lift = await fl.evaluate(() => ({...window.__bwForklift, stats: window.__bwSimLab._pane.session.stats}));
         await fl.screenshot({path: resolve(artifacts, 'sim-lab-forklift.png'), fullPage: true});
@@ -654,6 +679,110 @@ try {
         console.log(`PASS the Forklift's example program, loaded from the pane, lifts the pallet ${(lift.max * 1000).toFixed(2)} mm and sets it down (${(lift.last * 1000).toFixed(2)} mm); ` +
             `worker: ${lift.stats.batches} batches, round trip ${(lift.stats.roundTripMs / lift.stats.batches).toFixed(1)} ms mean, ${lift.stats.redos} redone, ${lift.stats.droppedMs} ms dropped`);
         await fl.close();
+        }
+
+        if (runExample('timed-drive.ldr')) {
+        // 8c. Program time IS simulated time (one clock, docs/SIM-LAB-PLAN.md §4.9): `wait 5 seconds`,
+        // `start moving`, `wait 2 seconds`, `stop movement` on the driving base. The drive must last
+        // 2.00 s of SIMULATED time (± one VM frame) and cover the same distance however slowly the
+        // physics worker answers (--worker-latency): a program's clock that ran on wall time ended the
+        // wait early in simulated time whenever the world could not keep up.
+        const td = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+        td.on('pageerror', error => errors.push(error.message));
+        td.on('dialog', dialog => dialog.accept());
+        await openSimLab(td, {program: TIMED_DRIVE});
+        await td.evaluate(() => {
+            const pane = window.__bwSimLab._pane;
+            const s = pane.session;
+            const hubState = pane.props.hubState;
+            const hub = s.bridge.hubBody;
+            const rec = window.__bwTimed = {start: s.time, samples: [], frameMs: pane.props.vm.runtime.currentStepTime};
+            s.onAdvance(() => {
+                const p = s.core.bodyPose(hub).position;
+                rec.samples.push({t: s.time - rec.start, x: p[0], z: p[2], driving: hubState.motors.busy('A') && hubState.motors.busy('B')});
+            });
+        });
+        const wallTd = Date.now();
+        await td.getByTestId('bw-sim-lab-run').click();
+        await td.waitForFunction(() => window.__bwSimLab._pane.session.time - window.__bwTimed.start > 9000, null, {timeout: wallBudget(9000)});
+        const timed = await td.evaluate(() => ({...window.__bwTimed, stats: window.__bwSimLab._pane.session.stats,
+            rtfShown: document.querySelector('[data-testid="bw-sim-lab-status"]')?.textContent || ''}));
+        const tdWallS = (Date.now() - wallTd) / 1000;
+        const ts = timed.samples;
+        const on = ts.findIndex(p => p.driving);
+        const off = on < 0 ? -1 : ts.findIndex((p, i) => i > on && !p.driving);
+        assert.ok(on > 0 && off > on, `the timed drive started and stopped: ${JSON.stringify({on, off, n: ts.length})}`);
+        // The command took effect from the sample BEFORE the one that first shows it (see sim-lab-wall-stopper-judge.mjs).
+        const startedMs = ts[on - 1].t;
+        const stoppedMs = ts[off - 1].t;
+        const spanMs = stoppedMs - startedMs;
+        const rest = ts.at(-1);
+        const origin = ts[on - 1];
+        const travelled = Math.hypot(rest.x - origin.x, rest.z - origin.z);
+        assert.ok(Math.abs(spanMs - 2000) <= timed.frameMs + 1, `the 2 s drive lasted ${spanMs} ms simulated: ${JSON.stringify({startedMs, stoppedMs, frameMs: timed.frameMs})}`);
+        // The distance is printed, not judged against a number: it must be the same at every --worker-latency
+        // (compare the PASS lines), which test/bw-sim-program-clock.test.mjs asserts headless (± 1 %).
+        assert.ok(travelled > 0.1, `the 2 s drive barely moved the robot: ${travelled} m`);
+        await td.screenshot({path: resolve(artifacts, 'sim-lab-timed-drive.png'), fullPage: true});
+        console.log(`PASS wait 5 s, start moving, wait 2 s, stop: moved at ${(startedMs / 1000).toFixed(3)} s simulated, drove ` +
+            `${(spanMs / 1000).toFixed(3)} s simulated and ${(travelled * 1000).toFixed(1)} mm (9 s simulated took ${tdWallS.toFixed(1)} s of wall time; ` +
+            `status "${timed.rtfShown}"; ${timed.stats.batches} batches, ${timed.stats.redos} redone, ${timed.stats.droppedMs} ms dropped)`);
+        await td.close();
+        }
+
+        if (runExample('sumo.ldr')) {
+        // 8d. The Sumo ring (the Colour explorer with sumo.bw): 20 s of simulated time, inside the ring, to
+        // the band and back (thresholds: test/bw-sim-sumo-program.test.mjs). The final pose is printed: one
+        // clock makes it the same at every --worker-latency.
+        const su = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+        su.on('pageerror', error => errors.push(error.message));
+        su.on('dialog', dialog => dialog.accept());
+        await openSimLab(su, {program: null});
+        await su.getByTestId('bw-sim-lab-model').selectOption('sumo');
+        await su.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.shipped === 'sumo' &&
+            window.__bwSimLab._pane.session, null, {timeout: 60000});
+        await su.getByRole('button', {name: 'Load example program'}).click();
+        await su.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
+            null, {timeout: 60000});
+        assert.match(await su.locator('.cm-content').first().textContent(), /wait until spike color C is black/, 'the sumo example is in the Code tab');
+        await su.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.session?.mat === 'sumo', null, {timeout: 60000});
+        await su.evaluate(() => {
+            const s = window.__bwSimLab._pane.session;
+            const hubId = s.bridge.hubBody;
+            const hinges = s.mechanism.joints.filter(j => j.motor);
+            const axle0 = [0, 1, 2].map(i => (hinges[0].point[i] + hinges[1].point[i]) / 2);
+            const hub0 = s.mechanism.bodies.find(b => b.id === hubId).position;
+            const rotate = ([x, y, z, w], v) => {
+                const ix = w * v[0] + y * v[2] - z * v[1];
+                const iy = w * v[1] + z * v[0] - x * v[2];
+                const iz = w * v[2] + x * v[1] - y * v[0];
+                const iw = -x * v[0] - y * v[1] - z * v[2];
+                return [ix * w - iw * x - iy * z + iz * y, iy * w - iw * y - iz * x + ix * z, iz * w - iw * z - ix * y + iy * x];
+            };
+            const rec = window.__bwSumo = {start: s.time, t: 0, maxR: 0, entries: 0, travel: 0, prev: null, axle: null};
+            s.onAdvance(() => {
+                if (rec.t >= 20000) return; // judged over the first 20 s of simulated time
+                const pose = s.core.bodyPose(hubId);
+                const p = rotate(pose.rotation, axle0.map((v, i) => v - hub0[i])).map((v, i) => v + pose.position[i]);
+                const r = Math.hypot(p[0], p[2]);
+                rec.maxR = Math.max(rec.maxR, r);
+                if (rec.prev) {
+                    rec.travel += Math.hypot(p[0] - rec.prev[0], p[2] - rec.prev[2]);
+                    if (Math.hypot(rec.prev[0], rec.prev[2]) < 0.3 && r >= 0.3) rec.entries++;
+                }
+                rec.prev = p;
+                rec.axle = p;
+                rec.t = s.time - rec.start;
+            });
+        });
+        await su.getByTestId('bw-sim-lab-run').click();
+        await su.waitForFunction(() => window.__bwSumo.t >= 20000, null, {timeout: wallBudget(20000)});
+        const sumo = await su.evaluate(() => window.__bwSumo);
+        assert.ok(sumo.maxR < 0.385, `the robot left the ring: ${JSON.stringify(sumo)}`);
+        assert.ok(sumo.entries >= 2, `it drove to the band only ${sumo.entries} times in 20 s: ${JSON.stringify(sumo)}`);
+        console.log(`PASS the Sumo example keeps the robot in the ring for 20 s simulated: at most ${(sumo.maxR * 1000).toFixed(1)} mm from the centre, ` +
+            `${sumo.entries} drives to the band, ${sumo.travel.toFixed(3)} m travelled, axle at (${sumo.axle[0].toFixed(4)}, ${sumo.axle[2].toFixed(4)}) at ${(sumo.t / 1000).toFixed(3)} s`);
+        await su.close();
         }
     }
 
@@ -702,6 +831,34 @@ try {
         for (const row of layout) {
             console.log(`PASS layout ${row.size} ${row.mode}: ${row.layout} pane ${row.pane.join('×')}, 3D view ${row.canvas.join('×')} px (≥ ${MIN_CANVAS_PX} and half the pane), controls on screen`);
         }
+    }
+
+    if (want('editor')) { // the build editor's Studio/LeoCAD tools, real mouse and keys
+        // 13. Colour, hide / isolate, mirror, align, measure, edit inside a group, LDraw clipboard, shortcut sheet.
+        const studio = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block',
+            permissions: ['clipboard-read', 'clipboard-write']});
+        studio.on('pageerror', error => errors.push(error.message));
+        studio.on('dialog', dialog => dialog.accept());
+        await openSimLab(studio, {program: null});
+        await editorParityInteractions(studio, {shotsDir: artifacts});
+        await studio.close();
+    }
+    if (want('scale')) { // a 2,054-part model, instanced, and the .lxf/.io model files
+        const page = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block', acceptDownloads: true});
+        page.on('pageerror', error => errors.push(error.message));
+        page.on('dialog', dialog => dialog.accept());
+        await openSimLab(page, {program: null});
+        const r = await scaleInteractions(page, {root, shotsDir: artifacts, JSZip});
+        console.log(`PASS a ${r.stats.parts}-part model opens in ${(r.openMs / 1000).toFixed(1)} s (budget ${OPEN_BUDGET_MS / 1000} s), drawn instanced: ` +
+            `${r.stats.calls} draw calls (budget ${DRAW_CALL_BUDGET}), ${r.stats.instanced.drawObjects} instanced objects, a frame ${r.frame.median.toFixed(1)} ms ` +
+            `(p90 ${r.frame.p90.toFixed(1)}), not blank (${r.colours} byte values)`);
+        console.log(`PASS Build opens on the whole ${r.buildParts}-part model in ${(r.buildMs / 1000).toFixed(1)} s (budget ${BUILD_OPEN_BUDGET_MS / 1000} s); ` +
+            `an idle frame ${r.idle.median.toFixed(1)} ms (budget ${IDLE_FRAME_BUDGET_MS}; a forced full frame ${r.buildFrame.median.toFixed(0)} ms); ` +
+            `a pointer move ${r.hover.median.toFixed(1)} ms hovering, ${r.drag.median.toFixed(1)} ms dragging the gizmo (medians, budget ${POINTER_MOVE_BUDGET_MS}); ` +
+            `a click on grid beam ${r.picked} selects it (${r.clickMs} ms), its X arrow moves it ${r.dragged} LDU and one undo puts it back`);
+        console.log('PASS the hand-made .lxf opens with its unknown, mirrored and uncoloured parts listed; a password-protected .io is refused and the model stays');
+        console.log('PASS Save as… → BrickLink Studio (.io) downloads a ZIP whose model.ldr is the model\'s LDraw text, and it reopens to it');
+        await page.close();
     }
 
     assert.deepEqual(errors, [], `page errors: ${errors.join('\n')}`);

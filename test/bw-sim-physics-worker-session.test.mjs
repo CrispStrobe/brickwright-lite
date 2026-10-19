@@ -167,7 +167,10 @@ for (const [file, mat, port, kind] of [['wall-stopper.ldr', 'wall', null, 'dista
                 readings.add(JSON.stringify(p.hubThere.data.sensors[index]));
             }
             assert.equal(p.hubThere.data.sensors[index].kind, kind);
-            assert.ok(readings.size > 3, `the ${kind} reading changed as the robot drove: ${[...readings].slice(0, 5).join(' ')}`);
+            // At least three readings: the Colour explorer crosses white, the black zone and white, then leaves the
+            // mat (no colour). Until the motorised hinges got their own solver iterations (jolt-core.js
+            // MOTOR_VELOCITY_STEPS) its chassis rocked and the white reflection jittered 48–50, which made more.
+            assert.ok(readings.size >= 3, `the ${kind} reading changed as the robot drove: ${[...readings].slice(0, 5).join(' ')}`);
         } finally { await p.close(); }
     });
 }

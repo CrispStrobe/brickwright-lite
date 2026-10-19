@@ -9,7 +9,11 @@
 //
 // One clock (docs/SPIKE-ARENA.md): while the Sim Lab runs, its session owns
 // the hub's motor clock; the arena is not mounted at the same time (the
-// simulator pane shows one or the other).
+// simulator pane shows one or the other). And the program's clock is the
+// world's (docs/SIM-LAB-PLAN.md §4.9, lib/bw-sim/sim-clock.js): while it runs,
+// each VM step buys one step of simulated time and the VM waits for the world,
+// so a slow machine runs the whole program slower (the status line shows the
+// real-time factor) instead of letting the program's `wait`s outrun the world.
 //
 // The model is saved with the project (C8) the way every other Brickwright
 // surface is (lib/bw-project-bundle.js): one localStorage key, carried as the
@@ -24,6 +28,10 @@ import {SIM_LAB_STORAGE_KEY, simLabRecordFromText, readSimLabStorage, isStorable
 import SimLabPalette from './sim-lab-palette.jsx';
 import SimLabInstructions from './sim-lab-instructions.jsx';
 import {INSIGHT_TEXT, issueSentence, fillText} from './sim-lab-insight-text.js';
+import {firmwareRefusalSentence} from './sim-lab-firmware-text.js';
+import {EDITOR_TEXT} from './sim-lab-editor-text.js';
+import SimLabProperties from './sim-lab-properties.jsx';
+import SimLabShortcuts from './sim-lab-shortcuts.jsx';
 
 /** A MODELS entry's key: its `id` when one model file is listed more than once, else its file. */
 const modelKey = m => m.id || m.file;
@@ -32,7 +40,7 @@ const TEXT = {
     en: {
         title: 'Robot Lab (beta)',
         intro: 'A model from real LEGO® Technic parts with physics. Write a SPIKE Prime program (ports A and B drive the wheels) and press Run: it starts on the green flag.',
-        model: 'Model', importModel: 'Open .ldr…', run: 'Run', pause: 'Pause', reset: 'Reset',
+        model: 'Model', importModel: 'Open…', importHelp: 'Open a model: LDraw (.ldr, .mpd), BrickLink Studio (.io) or LEGO Digital Designer (.lxf)', run: 'Run', pause: 'Pause', reset: 'Reset',
         loading: 'Loading the model and the physics engine…', ready: 'Ready', running: 'Running', paused: 'Paused',
         failed: 'Could not load the model: {error}', physicsFailed: 'The physics stopped: {error}. Press Reset to start again.', noWebgl: 'This browser cannot show the 3D view ({error}). The simulation still runs.',
         connectFailed: 'Could not connect the program to the virtual hub: {error}',
@@ -43,14 +51,28 @@ const TEXT = {
             'line-follower.bw': 'The example program is in the Code tab now. Press Run and watch the robot follow the black line.',
             'wall-stopper.bw': 'The example program is in the Code tab now. Press Run and watch the robot stop before the wall. Challenge: make it stop 20 cm away.',
             'colour-explorer.bw': 'The example program is in the Code tab now. Press Run and watch the robot find the red square. Challenge: make it find the green one.',
-            'sumo.bw': 'The example program is in the Code tab now. Press Run: the robot drives around and turns back whenever it sees the black ring. Challenge: make it turn the other way, or faster.'
+            'sumo.bw': 'The example program is in the Code tab now. Press Run: the robot drives around and turns back whenever it sees the black ring. Challenge: make it turn the other way, or faster.',
+            'rcx-bumper-car.nqc': 'The NQC program is in the NQC tab and in the Lab\'s RCX. Press Run: the robot drives to the wall, backs off when its bumper is pressed and turns away. Challenge: make it back off further.',
+            'rcx-line-follower.nqc': 'The NQC program is in the NQC tab and in the Lab\'s RCX. Press Run and watch it follow the line\'s edge with its light sensor. Challenge: change THRESHOLD and see what happens.'
         },
         exampleFailed: 'Could not load the example program: {error}',
         mat: 'Mat', drive: 'Drive', forward: 'Forward', back: 'Back', left: 'Left', right: 'Right', stop: 'Stop', speed: 'Speed',
         driveHelp: 'Hold an arrow (or use the arrow keys) to drive with motors A and B.', readout: 'Hub',
         issues: 'Notes about this model', time: 'Simulated time: {s} s', canvasLabel: '3D view of the simulated model',
         simulate: 'Simulate', build: 'Build', parts: 'Parts', undo: 'Undo', redo: 'Redo', remove: 'Delete',
-        save: 'Save .ldr', port: 'Port', none: 'none',
+        save: 'Save as…', saveHelp: 'Save the model as a file', port: 'Port', none: 'none',
+        saveFormats: {ldr: 'LDraw (.ldr)', mpd: 'LDraw multi-part (.mpd)', io: 'BrickLink Studio (.io)'},
+        fileFailed: 'Could not open {name}: {error}',
+        fileErrors: {
+            'io-encrypted': 'this BrickLink Studio file is password-protected (an older Studio made it). Open it in a current Studio and save it again, or export it there as LDraw (File › Export As).',
+            'io-no-model': 'this BrickLink Studio file holds no LDraw model (model.ldr).',
+            'not-a-zip': 'the file is damaged or not the kind its name says.',
+            'model-too-big': 'the model inside the file is far too big for the Robot Lab.',
+            'lxf-no-lxfml': 'this LEGO Digital Designer file holds no model (.LXFML).',
+            'lxf-unreadable': 'this LEGO Digital Designer model could not be read.',
+            'lxf-version': 'this LEGO Digital Designer file is from a version the Robot Lab cannot read (only LDD 4).',
+            'unsupported-format': 'the Robot Lab opens .ldr, .mpd, .io and .lxf files.'
+        },
         instructions: 'Instructions', instructionsHelp: 'Step-by-step building instructions for this robot, to build it from real LEGO® parts',
         search: 'Search parts', searchHint: 'Search: name or number', clearSearch: 'Clear the search', recent: 'Recently used',
         noMatches: 'No part matches “{q}”.', partTitle: '{name} · part {number}',
@@ -63,8 +85,15 @@ const TEXT = {
         more: 'More…', moreHelp: 'More actions', large: 'Open the Robot Lab large (full screen)', timeShort: '{s} s',
         partsToggle: 'Show or hide the parts', infoToggle: 'Show or hide the whole note',
         route: 'Program', routeScratch: 'SPIKE blocks', routeFirmware: 'SPIKE firmware (desktop)',
+        rcxTarget: 'RCX downloads go to', rcxTargetTower: 'IR tower (a real RCX)', rcxTargetLab: 'Robot Lab RCX',
+        rcxNoProgram: 'The RCX has no program yet. Load the example, or choose "Robot Lab RCX" and send one from the NQC tab or the RCX blocks.',
+        rcxFailed: 'The RCX program could not be loaded: {error}',
         routeUnavailable: 'Not available: this build has no managed Renode runtime with lockstep.',
         realTime: '{f}× real time', firmwareFailed: 'Could not start the SPIKE firmware: {error}',
+        stopping: 'Stopping the program…',
+        firmwareReloading: 'The program changed: starting the emulated hub again with the new program…',
+        firmwareFault: 'The program on the SPIKE firmware stopped with an error ({error}). Press Run to start it again.',
+        firmwareControlFailed: 'The SPIKE firmware did not take the command: {error}',
         st: {
             idle: 'Click a part to select it. Drag it to move it; Shift+click adds parts; drag empty space to look around.',
             hover: '{part}: click to select, drag to move', hoverSelected: '{part}: drag to move, R turns, Delete removes',
@@ -92,7 +121,7 @@ const TEXT = {
     de: {
         title: 'Roboter-Labor (Beta)',
         intro: 'Ein Modell aus echten LEGO®-Technic-Teilen mit Physik. Schreibe ein SPIKE-Prime-Programm (Ports A und B treiben die Räder an) und drücke Start: es beginnt mit der grünen Flagge.',
-        model: 'Modell', importModel: '.ldr öffnen…', run: 'Start', pause: 'Pause', reset: 'Zurücksetzen',
+        model: 'Modell', importModel: 'Öffnen…', importHelp: 'Ein Modell öffnen: LDraw (.ldr, .mpd), BrickLink Studio (.io) oder LEGO Digital Designer (.lxf)', run: 'Start', pause: 'Pause', reset: 'Zurücksetzen',
         loading: 'Modell und Physik-Engine werden geladen…', ready: 'Bereit', running: 'Läuft', paused: 'Pausiert',
         failed: 'Das Modell konnte nicht geladen werden: {error}', physicsFailed: 'Die Physik ist stehen geblieben: {error}. Mit Zurücksetzen geht es neu los.', noWebgl: 'Dieser Browser kann die 3D-Ansicht nicht zeigen ({error}). Die Simulation läuft trotzdem.',
         connectFailed: 'Das Programm konnte nicht mit dem virtuellen Hub verbunden werden: {error}',
@@ -103,14 +132,28 @@ const TEXT = {
             'line-follower.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start und schau zu, wie der Roboter der schwarzen Linie folgt.',
             'wall-stopper.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start und schau zu, wie der Roboter vor der Wand anhält. Aufgabe: Lass ihn 20 cm vor der Wand anhalten.',
             'colour-explorer.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start und schau zu, wie der Roboter das rote Feld findet. Aufgabe: Lass ihn das grüne finden.',
-            'sumo.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start: Der Roboter fährt herum und kehrt um, sobald er den schwarzen Ring sieht. Aufgabe: Lass ihn andersherum oder schneller drehen.'
+            'sumo.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start: Der Roboter fährt herum und kehrt um, sobald er den schwarzen Ring sieht. Aufgabe: Lass ihn andersherum oder schneller drehen.',
+            'rcx-bumper-car.nqc': 'Das NQC-Programm steht jetzt im NQC-Tab und im RCX des Labors. Drücke Start: Der Roboter fährt zur Wand, setzt zurück, sobald sein Stoßfänger gedrückt wird, und dreht ab. Aufgabe: Lass ihn weiter zurücksetzen.',
+            'rcx-line-follower.nqc': 'Das NQC-Programm steht jetzt im NQC-Tab und im RCX des Labors. Drücke Start und schau zu, wie er mit dem Lichtsensor dem Rand der Linie folgt. Aufgabe: Ändere THRESHOLD und schau, was passiert.'
         },
         exampleFailed: 'Das Beispielprogramm konnte nicht geladen werden: {error}',
         mat: 'Matte', drive: 'Fahren', forward: 'Vorwärts', back: 'Rückwärts', left: 'Links', right: 'Rechts', stop: 'Stopp', speed: 'Tempo',
         driveHelp: 'Halte einen Pfeil gedrückt (oder nutze die Pfeiltasten), um mit den Motoren A und B zu fahren.', readout: 'Hub',
         issues: 'Hinweise zu diesem Modell', time: 'Simulierte Zeit: {s} s', canvasLabel: '3D-Ansicht des simulierten Modells',
         simulate: 'Simulieren', build: 'Bauen', parts: 'Teile', undo: 'Rückgängig', redo: 'Wiederholen', remove: 'Löschen',
-        save: '.ldr speichern', port: 'Port', none: 'keiner',
+        save: 'Speichern unter…', saveHelp: 'Das Modell als Datei speichern', port: 'Port', none: 'keiner',
+        saveFormats: {ldr: 'LDraw (.ldr)', mpd: 'LDraw mehrteilig (.mpd)', io: 'BrickLink Studio (.io)'},
+        fileFailed: '{name} konnte nicht geöffnet werden: {error}',
+        fileErrors: {
+            'io-encrypted': 'Diese BrickLink-Studio-Datei ist mit einem Passwort geschützt (von einer älteren Studio-Version). Öffne sie in einem aktuellen Studio und speichere sie neu, oder exportiere sie dort als LDraw (Datei › Exportieren als).',
+            'io-no-model': 'Diese BrickLink-Studio-Datei enthält kein LDraw-Modell (model.ldr).',
+            'not-a-zip': 'Die Datei ist beschädigt oder nicht das, was ihr Name sagt.',
+            'model-too-big': 'Das Modell in der Datei ist viel zu groß für das Roboter-Labor.',
+            'lxf-no-lxfml': 'Diese LEGO-Digital-Designer-Datei enthält kein Modell (.LXFML).',
+            'lxf-unreadable': 'Dieses LEGO-Digital-Designer-Modell konnte nicht gelesen werden.',
+            'lxf-version': 'Diese LEGO-Digital-Designer-Datei stammt aus einer Version, die das Roboter-Labor nicht lesen kann (nur LDD 4).',
+            'unsupported-format': 'Das Roboter-Labor öffnet .ldr-, .mpd-, .io- und .lxf-Dateien.'
+        },
         instructions: 'Bauanleitung', instructionsHelp: 'Bauanleitung für diesen Roboter, Schritt für Schritt, zum Nachbauen mit echten LEGO®-Teilen',
         search: 'Teile suchen', searchHint: 'Suche: Name oder Nummer', clearSearch: 'Suche löschen', recent: 'Zuletzt benutzt',
         noMatches: 'Kein Teil passt zu „{q}“.', partTitle: '{name} · Teil {number}',
@@ -123,8 +166,15 @@ const TEXT = {
         more: 'Mehr…', moreHelp: 'Weitere Aktionen', large: 'Roboter-Labor groß öffnen (Vollbild)', timeShort: '{s} s',
         partsToggle: 'Teile zeigen oder ausblenden', infoToggle: 'Den ganzen Hinweis zeigen oder einklappen',
         route: 'Programm', routeScratch: 'SPIKE-Blöcke', routeFirmware: 'SPIKE-Firmware (Desktop)',
+        rcxTarget: 'RCX-Übertragung an', rcxTargetTower: 'IR-Tower (ein echter RCX)', rcxTargetLab: 'Robot-Lab-RCX',
+        rcxNoProgram: 'Der RCX hat noch kein Programm. Lade das Beispiel, oder wähle „Robot-Lab-RCX“ und übertrage eines aus dem NQC-Tab oder mit den RCX-Blöcken.',
+        rcxFailed: 'Das RCX-Programm konnte nicht geladen werden: {error}',
         routeUnavailable: 'Nicht verfügbar: Dieser Build hat keine verwaltete Renode-Laufzeit mit Lockstep.',
         realTime: '{f}× Echtzeit', firmwareFailed: 'Die SPIKE-Firmware konnte nicht starten: {error}',
+        stopping: 'Das Programm hält an…',
+        firmwareReloading: 'Das Programm hat sich geändert: Der emulierte Hub startet neu mit dem neuen Programm…',
+        firmwareFault: 'Das Programm auf der SPIKE-Firmware hat mit einem Fehler angehalten ({error}). Drücke Ausführen, um es neu zu starten.',
+        firmwareControlFailed: 'Die SPIKE-Firmware hat den Befehl nicht angenommen: {error}',
         st: {
             idle: 'Klicke ein Teil an, um es auszuwählen. Ziehen verschiebt es; Umschalt+Klick wählt mehr Teile; Ziehen auf leerer Fläche dreht die Ansicht.',
             hover: '{part}: klicken wählt aus, ziehen verschiebt', hoverSelected: '{part}: ziehen verschiebt, R dreht, Entf löscht',
@@ -151,12 +201,23 @@ const TEXT = {
     }
 };
 
-/** Longest step the pane hands the physics per frame: a backgrounded tab must not jump seconds ahead. */
+/**
+ * Longest step the pane hands the physics per frame, on the paths that tick by wall time (the
+ * firmware route, or a VM whose step hook is inert): a backgrounded tab must not jump seconds ahead.
+ */
 const MAX_FRAME_MS = 50;
+/** The real-time factor is shown below this (a timer's jitter keeps a machine that keeps up near 1). */
+const SHOW_RTF_BELOW = 0.95;
 /** Build mode recompiles the model this long after the last edit (ms), for the issues and the motion overlay. */
 const INSIGHT_DEBOUNCE_MS = 150;
 /** How long "show me these parts" pulses them in Simulate (ms). */
 const HIGHLIGHT_MS = 3000;
+/**
+ * What "Open…" accepts (lib/bw-sim/model/model-file.js OPEN_ACCEPT, kept here so the first load does not
+ * pull the model readers in; test/bw-sim-model-file.test.mjs holds the two equal) and what "Save as…" offers.
+ */
+const OPEN_ACCEPT = '.ldr,.mpd,.io,.lxf';
+const SAVE_FORMATS = ['ldr', 'mpd', 'io'];
 /** The `0 <title>` line every model the pane writes carries (it is not parsed back, so it must not vary). */
 const MODEL_TITLE = 'Robot Lab model';
 /**
@@ -167,6 +228,10 @@ const MODEL_TITLE = 'Robot Lab model';
 const COMPACT_BELOW_PX = 640;
 /** Below this pane width the compact toolbars show glyphs only (a 1024 px tablet's side pane). */
 const NARROW_BELOW_PX = 420;
+/** From this pane width the properties panel stands beside the 3D view; narrower, it opens over the view's right edge. */
+const DOCK_PROPERTIES_PX = 1280;
+/** What is hidden in Build stays hidden for the browser session (view state, not the model). */
+const HIDDEN_STORAGE_KEY = 'bw-sim-lab-hidden';
 
 /** The compact toolbars' faces: drawn, not font glyphs, so every school device shows the same icon. */
 const ICONS = {
@@ -204,11 +269,13 @@ class SimLabPane extends React.Component {
         this.locale = locale;
         this.text = TEXT[locale];
         this.itext = INSIGHT_TEXT[locale] || INSIGHT_TEXT.en;
-        this.state = {status: 'loading', message: '', info: '', driveSpeed: 50, issues: [], modelFile: null, shipped: null, simMs: 0, view3d: 'loading',
+        this.etext = EDITOR_TEXT[locale] || EDITOR_TEXT.en;
+        this.state = {status: 'loading', message: '', info: '', driveSpeed: 50, issues: [], modelFile: null, shipped: null, simMs: 0, rtf: null, view3d: 'loading',
             mode: 'simulate', placing: null, selection: [], editorTick: 0, mat: null,
             buildStatus: {kind: 'idle'}, gizmoMode: 'move', grid: 10, recent: [], thumbTick: 0,
             showPorts: true, showMotion: false, blockers: [], portPicker: null, instructions: null, coarse: false,
-            paneWidth: 0, more: false, drawer: false, paletteDragging: false, infoOpen: false, route: 'scratch'};
+            paneWidth: 0, more: false, drawer: false, paletteDragging: false, infoOpen: false, route: 'scratch', saveMenu: false,
+            hidden: [], editGroup: null, pick: null, measurement: null, placeColor: null, propsOpen: false, shortcuts: false};
         this.root = React.createRef();
         this.moreRef = React.createRef();
         this.viewWrap = React.createRef();
@@ -229,6 +296,8 @@ class SimLabPane extends React.Component {
         this.thumbQueue = new Set();
         this.thumbs = null;
         this.last = null;
+        /** The program clock (lib/bw-sim/sim-clock.js), made when the chunk is in; installed while running. */
+        this.clock = null;
     }
 
     onPointerKind () {
@@ -256,6 +325,11 @@ class SimLabPane extends React.Component {
         if (this.state.more && this.moreRef.current && !this.moreRef.current.contains(event.target)) this.setState({more: false});
     }
 
+    /** A number as the learner's language writes it (German: decimal comma). */
+    decimal (text) {
+        return this.locale === 'de' ? String(text).replace('.', ',') : String(text);
+    }
+
     t (key, values = {}) {
         return this.text[key].replace(/\{(\w+)\}/g, (_, k) => String(values[k] ?? ''));
     }
@@ -276,6 +350,8 @@ class SimLabPane extends React.Component {
             get editView () { return this._pane.editView || null; },
             get projectRecord () { return this._pane.currentRecord(); },
             get blockers () { return this._pane.state.blockers; },
+            /** The firmware route's program on the emulated hub: its state name ('ready', 'running', …) or null. */
+            get firmwareProgram () { return this._pane.firmware?.program?.stateName ?? null; },
             /** The last Build-mode compile for the issues and the overlay: {ms, parts}. */
             get insight () { return this._pane.lastInsight || null; },
             _pane: this
@@ -301,6 +377,7 @@ class SimLabPane extends React.Component {
             return;
         }
         if (this.disposed) return;
+        this.registerRcxTarget();
         this.raf = requestAnimationFrame(this.frame);
         await this.openStored();
     }
@@ -316,8 +393,10 @@ class SimLabPane extends React.Component {
         if (this.coarseQuery && this.coarseQuery.removeEventListener) this.coarseQuery.removeEventListener('change', this.onPointerKind);
         this.disposed = true;
         cancelAnimationFrame(this.raf);
+        this.stopClock();
         this.teardown();
         this.teardownEditor();
+        if (this.unregisterRcx) this.unregisterRcx();
         if (this.physics) this.physics.terminate();
         this.physics = null;
         if (window.__bwSimLab && window.__bwSimLab._pane === this) delete window.__bwSimLab;
@@ -330,6 +409,8 @@ class SimLabPane extends React.Component {
         if (this.editView) { try { this.editView.dispose(); } catch { /* a lost context may already be gone */ } }
         this.editView = null;
         this.editor = null;
+        this.editorDrawn = false;
+        if (!this.disposed) this.setState({editGroup: null, pick: null, measurement: null, shortcuts: false});
         // The pictures stay drawn (part-thumbnails.js keeps them); only the renderer goes.
         if (this.thumbs) { try { this.thumbs.dispose(); } catch { /* a lost context may already be gone */ } }
         this.thumbs = null;
@@ -344,7 +425,15 @@ class SimLabPane extends React.Component {
         this.teardown();
         this.teardownEditor();
         this.setState({mode: 'build', status: 'loading', message: '', placing: null, selection: [], buildStatus: {kind: 'idle'}, gizmoMode: 'move', portPicker: null});
-        // Any palette part may be placed, so load the whole catalog's geometry once.
+        // Any palette part may be placed: the whole catalogue (its second piece is fetched the first
+        // time Build opens, sim-lab.js loadFullCatalog), then its geometry, once.
+        try {
+            await this.lib.loadFullCatalog();
+        } catch (error) {
+            if (!this.disposed) this.setState({status: 'failed', message: this.t('failed', {error: error.message})});
+            return;
+        }
+        if (this.disposed) return;
         if (!this.catalogFiles) this.catalogFiles = await fetchLDrawClosure([...CATALOG.keys()], {withConfig: true});
         if (this.disposed) return;
         const {read} = this.catalogFiles;
@@ -363,8 +452,17 @@ class SimLabPane extends React.Component {
                 onTool: placing => this.setState({placing, paletteDragging: Boolean(placing && this.editView?.draggingFromPalette)}),
                 onMode: gizmoMode => this.setState({gizmoMode}),
                 portLabel: item => this.portLabelText(item),
-                onPortLabel: (id, rect) => this.openPortPicker(id, rect)});
+                onPortLabel: (id, rect) => this.openPortPicker(id, rect),
+                onViewState: view => this.onEditorViewState(view),
+                onColorPicked: color => this.pickColour(color),
+                measureLabel: m => fillText(this.etext.measureLabel, {ldu: this.decimal(m.ldu), studs: this.decimal(m.studs), mm: this.decimal(m.mm)}),
+                onShortcuts: () => this.setState({shortcuts: true})});
             this.editView.setGrid(this.state.grid);
+            this.colors = colors;
+            const palette = this.lib.colorPalette(colors);
+            this.palette = {...palette, byCode: new Map([...palette.common, ...palette.more].map(c => [c.code, c]))};
+            this.editView.setPlaceColor(this.state.placeColor ?? DEFAULT_COLOR);
+            this.editView.setHidden(this.storedHidden());
             // Palette pictures: null without WebGL (the palette then shows names only).
             this.thumbs = createPartThumbnails({read, colors, color: DEFAULT_COLOR});
             this.editView.setOverlay({ports: this.state.showPorts, motion: this.state.showMotion});
@@ -375,6 +473,41 @@ class SimLabPane extends React.Component {
             return;
         }
         this.setState({status: 'ready'});
+    }
+
+    /** Hidden parts (ids) kept for this browser session. */
+    storedHidden () {
+        try {
+            const ids = JSON.parse(sessionStorage.getItem(HIDDEN_STORAGE_KEY) || '[]');
+            return Array.isArray(ids) ? ids.filter(id => typeof id === 'string') : [];
+        } catch {
+            return [];
+        }
+    }
+
+    /** The build view's hidden parts, edited group, picking tool or measurement changed. */
+    onEditorViewState ({hidden, group, pick, measure}) {
+        this.setState({hidden, editGroup: group, pick, measurement: measure});
+        try {
+            sessionStorage.setItem(HIDDEN_STORAGE_KEY, JSON.stringify(hidden));
+        } catch { /* storage off: hidden only until the pane closes */ }
+    }
+
+    /** An LDraw colour's name: German for the common palette, else LDConfig's English name. */
+    colourName (code) {
+        const own = this.etext.colourNames && this.etext.colourNames[code];
+        if (own) return own;
+        const c = this.colors && this.colors.get(code);
+        return c ? c.name.replace(/_/g, ' ') : String(code);
+    }
+
+    /** The colour picker (or the eyedropper): new parts get this colour, and a selection is painted with it. */
+    pickColour (color) {
+        this.setState({placeColor: color});
+        if (!this.editView) return;
+        this.editView.setPlaceColor(color);
+        if (this.editView.selection.length) this.editView.paint(color);
+        this.setState(s => ({editorTick: s.editorTick + 1}));
     }
 
     /** Build: recompile shortly after the last edit (a drag is many edits). */
@@ -437,7 +570,8 @@ class SimLabPane extends React.Component {
     /** A placed part's name in the learner's language, from its id in the model on show. */
     partNameById (id) {
         const model = this.editor ? this.editor.model : this.session?.model;
-        const placed = model && model.parts.find(p => p.id === id);
+        // The editor's model is frozen: its id map is built once (lib partsByIdOf), not a scan per issue.
+        const placed = model && (Object.isFrozen(model.parts) ? this.lib.partsByIdOf(model).get(id) : model.parts.find(p => p.id === id));
         return placed ? this.partName(placed.part) : fillText(this.itext.part, {id});
     }
 
@@ -509,17 +643,55 @@ class SimLabPane extends React.Component {
         await this.openText(text, 'my-model.ldr');
     }
 
-    saveLdr () {
-        const text = this.lib.serializeModel(this.editor.model, {name: 'my-model.ldr', title: MODEL_TITLE});
-        const url = URL.createObjectURL(new Blob([text], {type: 'text/plain'}));
+    /** "Save as…": the model on show (built or simulated) as a .ldr, .mpd or .io file (lib/bw-sim/model/model-file.js). */
+    async saveAs (format) {
+        this.setState({saveMenu: false});
+        const model = this.editor ? this.editor.model : this.session?.model;
+        if (!model || !this.lib) return;
+        const name = !this.editor && isStorableName(this.state.modelFile) ? this.state.modelFile : 'my-model.ldr';
+        const {data, filename, mime} = await this.lib.saveModelFile(model, format, {name, title: MODEL_TITLE});
+        const url = URL.createObjectURL(new Blob([data], {type: mime}));
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'my-model.ldr';
+        a.download = filename;
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
+    /** The "Save as…" button and, while it is open, one button per format. */
+    renderSaveAs (style, disabled) {
+        const T = this.text;
+        const open = this.state.saveMenu && !disabled;
+        return (
+            <span key="save-as" style={{display: 'inline-flex', alignItems: 'center', gap: 4, flexWrap: 'wrap'}}>
+                <button type="button" style={style} data-testid="bw-sim-lab-save" disabled={disabled} title={T.saveHelp}
+                    aria-haspopup="true" aria-expanded={open} onClick={() => this.setState(s => ({saveMenu: !s.saveMenu}))}>{T.save}</button>
+                {open && SAVE_FORMATS.map(format => (
+                    <button key={format} type="button" style={style} data-testid={`bw-sim-lab-save-${format}`}
+                        onClick={() => this.saveAs(format)}>{T.saveFormats[format]}</button>
+                ))}
+            </span>
+        );
+    }
+
+    /**
+     * Puts the VM on the session's clock (sim-clock.js). Not for the firmware route: its emulated
+     * hub runs the program and paces the scene itself (routes/renode-lockstep).
+     */
+    startClock () {
+        const vm = this.props.vm;
+        if (!this.session || this.session.lockstep || !vm || !vm.runtime || this.clockInert) return;
+        if (!this.clock) this.clock = new this.lib.SimLabClock();
+        this.clock.install(vm.runtime, this.session);
+    }
+
+    /** Back to wall time (Pause, a new model, the pane closing). */
+    stopClock () {
+        if (this.clock) this.clock.uninstall();
+    }
+
     teardown () {
+        this.stopClock();
         if (this.view) { try { this.view.dispose(); } catch { /* a lost context may already be gone */ } }
         this.view = null;
         if (this.session) this.session.dispose();
@@ -565,31 +737,60 @@ class SimLabPane extends React.Component {
         }
         if (this.disposed) return;
         if (this.state.status === 'running') this.pause();
-        window.dispatchEvent(new CustomEvent('bw-load-pseudocode', {detail: {code, source: `sim-lab:${entry.file}`}}));
+        if (entry.example.endsWith('.nqc')) await this.loadRcxExample(code);
+        else window.dispatchEvent(new CustomEvent('bw-load-pseudocode', {detail: {code, source: `sim-lab:${entry.file}`}}));
         this.setState({info: this.text.exampleGoal[entry.example] || this.text.exampleLoaded});
         if (entry.mat && this.state.mat !== entry.mat) await this.setMat(entry.mat);
     }
 
+    /**
+     * "Open…": an LDraw, BrickLink Studio or LEGO Digital Designer file, turned into LDraw
+     * text (lib/bw-sim/model/model-file.js). A file that cannot be opened at all leaves the
+     * model on show as it is and says why; what the import left out joins the model's notes.
+     */
     async openImported (event) {
         const f = event.target.files && event.target.files[0];
         event.target.value = '';
         if (!f) return;
-        this.lastText = await f.text();
-        await this.openText(this.lastText, f.name);
+        let opened;
+        try {
+            const bytes = new Uint8Array(await f.arrayBuffer());
+            const ldconfig = /\.lxf$/i.test(f.name) ?
+                (await this.lib.fetchLDrawClosure([], {withConfig: true})).read('ldconfig.ldr') || '' : '';
+            opened = await this.lib.openModelFile(f.name, bytes, {ldconfig, title: MODEL_TITLE, catalog: this.lib.CATALOG});
+        } catch (error) {
+            const reason = (error && this.text.fileErrors[error.code]) || (error && error.message) || String(error);
+            if (!this.disposed) this.setState({message: this.t('fileFailed', {name: f.name, error: reason})});
+            return;
+        }
+        if (this.disposed) return;
+        this.lastText = opened.text;
+        await this.openText(opened.text, opened.name);
+        if (opened.refusals.length && !this.disposed) {
+            this.setState(s => ({issues: this.lib.mergeImportIssues(opened.refusals, s.issues)}));
+        }
     }
 
     async openText (text, name, shipped = null) {
         const token = this.loadToken = {};
         this.opened = {text, name};
         this.teardown();
-        this.setState({status: 'loading', message: '', issues: [], blockers: [], modelFile: name, shipped, simMs: 0, view3d: 'loading'});
+        this.setState({status: 'loading', message: '', issues: [], blockers: [], modelFile: name, shipped, simMs: 0, rtf: null, view3d: 'loading'});
         const {SimSession, fetchLDrawClosure, createSimView3D, CATALOG} = this.lib;
         // The SPIKE firmware route (desktop): the emulated hub starts first; the scene then runs
         // in lockstep with it (lib/bw-sim/routes/renode-lockstep).
         let firmware = null;
+        let refusal = null;
+        this.firmware = null;
         if (this.state.route === 'firmware') {
+            // The program the emulated hub runs: the Code tab's blocks, compiled by the SPIKE
+            // arena's firmware compiler and uploaded before lockstep. A block it cannot express
+            // is named in the pane; the route still opens, with no program (the robot stands).
+            const compiled = this.compileFirmware();
+            refusal = compiled.error;
             try {
-                firmware = await this.lib.openFirmwareRoute({capabilities: this.renodeCapabilities(), hubState: this.props.hubState});
+                firmware = await this.lib.openFirmwareRoute({capabilities: this.renodeCapabilities(), hubState: this.props.hubState,
+                    program: compiled.program, onProgramChange: control => this.onFirmwareProgram(control)});
             } catch (error) {
                 if (token !== this.loadToken) return;
                 // The packaged runtime has no lockstep/v1: not a failure, an unavailable route.
@@ -603,6 +804,9 @@ class SimLabPane extends React.Component {
         }
         let result;
         try {
+            // A model naming a part beyond the catalogue's core (sim-lab.js) loads the rest first.
+            await this.lib.catalogFor(text);
+            if (token !== this.loadToken || this.disposed) { firmware?.driver.end().catch(() => {}); return; }
             result = await SimSession.fromText(text, {hubState: this.props.hubState, catalog: CATALOG, mat: this.state.mat,
                 worker: this.physicsClient(), ...(firmware ? {createHub: firmware.createHub} : {})});
         } catch (error) {
@@ -612,6 +816,10 @@ class SimLabPane extends React.Component {
         }
         if (!result.session) firmware?.driver.end().catch(() => {});
         if (token !== this.loadToken || this.disposed) { result.session?.dispose(); return; }
+        if (result.session && firmware) {
+            this.firmware = firmware;
+            if (refusal) this.setState({message: firmwareRefusalSentence(this.locale, refusal)});
+        }
         const {session, issues, model, runModel} = result;
         if (!session) {
             this.setState({status: 'failed', issues, blockers: this.lib.runBlockers(issues, model, CATALOG),
@@ -620,6 +828,8 @@ class SimLabPane extends React.Component {
         }
         const insight = this.lib.insightOf(runModel, session.mechanism, CATALOG, issues);
         this.session = session;
+        // A real RCX keeps its program through a reset; the Lab's does too (a new scene, the same image).
+        if (this.rcxHub() && this.rcxImage) this.rcxHub().loadProgram(this.rcxImage);
         // The worker could not run the scene (no WebAssembly in workers, say): the physics runs
         // here, and later models do not try the worker again.
         if (session.workerError && this.physics && !session.lockstep) { this.physics.terminate(); this.physics = false; }
@@ -671,23 +881,154 @@ class SimLabPane extends React.Component {
         });
     }
 
+    /** The Code tab's program for the firmware route: {program} or {error} (which block, why). */
+    compileFirmware () {
+        return this.lib.compileRouteProgram(this.props.vm, {topology: 'default'});
+    }
+
+    /**
+     * Run on the firmware route: the program as it is now (a changed one restarts the
+     * emulated hub with it: program packets cannot cross during lockstep), then START.
+     */
+    async runFirmware () {
+        const compiled = this.compileFirmware();
+        if (compiled.error) {
+            this.setState({message: firmwareRefusalSentence(this.locale, compiled.error)});
+            return;
+        }
+        const key = JSON.stringify(compiled.program.instructions);
+        if (this.firmware?.program?.key !== key) {
+            this.setState({info: this.text.firmwareReloading});
+            const opened = this.opened;
+            if (!opened) return;
+            await this.openText(opened.text, opened.name, this.state.shipped);
+            if (this.disposed || this.firmware?.program?.key !== key) return;
+        }
+        const program = this.firmware.program;
+        this.setState({status: 'running', info: '', message: ''});
+        try {
+            await program.start();
+        } catch (error) {
+            this.setState({status: 'paused', message: this.t('firmwareControlFailed', {error: error.message})});
+        }
+    }
+
+    /** Pause on the firmware route: STOP, and the clock runs on until the hub has taken it (the robot brakes). */
+    pauseFirmware () {
+        const program = this.firmware?.program;
+        if (!program || (!program.running && program.idle)) { this.setState({status: 'paused'}); return; }
+        this.setState({status: 'stopping'});
+        program.stop().catch(error => this.setState({status: 'paused', message: this.t('firmwareControlFailed', {error: error.message})}));
+    }
+
+    /** The emulated hub's program changed state (lib/bw-sim/routes/renode-lockstep/program.js onChange). */
+    onFirmwareProgram (control) {
+        if (this.disposed || this.firmware?.program !== control) return;
+        if (control.failed) {
+            this.setState({status: this.state.status === 'stopping' ? 'paused' : this.state.status,
+                message: this.t('firmwareControlFailed', {error: control.failed.message})});
+            return;
+        }
+        if (control.fault !== null && control.stateName === 'fault') {
+            this.setState({message: this.t('firmwareFault', {error: control.fault})});
+        }
+        if (this.state.status === 'stopping' && !control.running && control.idle) this.setState({status: 'paused'});
+    }
+
     frame (now) {
         this.raf = requestAnimationFrame(this.frame);
         const dt = this.last === null ? 0 : Math.min(MAX_FRAME_MS, now - this.last);
+        const clocked = Boolean(this.clock && this.clock.installed);
+        if (clocked) {
+            this.clock.noteFrame();
+            // The VM steps around the hook (arena-clock.js isInert): fall back to wall time, loudly in
+            // behaviour rather than freezing the world and every wait with it.
+            if (this.clock.inert) {
+                this.stopClock();
+                this.clockInert = true;
+            }
+        }
         this.last = now;
-        if (this.editView) { this.drawThumbs(); this.editView.render(); return; }
+        if (this.editView) {
+            // The model first; palette pictures (each a GPU read-back, slow on a software GPU) are drawn
+            // in frames the build view did not need to redraw, once it has drawn the model.
+            if (this.editView.render()) this.editorDrawn = true;
+            else if (this.editorDrawn) this.drawThumbs();
+            return;
+        }
         if (!this.session) return;
         if (this.session.failed && this.state.status !== 'failed') {
             this.setState({status: 'failed', message: this.t('physicsFailed', {error: this.session.failed.message})});
         }
-        if (this.state.status === 'running' && dt > 0) {
+        // 'stopping': the firmware route keeps its clock until the emulated hub has taken STOP.
+        // With the program clock installed the VM's steps tick the world (sim-clock.js), not frames.
+        if ((this.state.status === 'running' || this.state.status === 'stopping') && dt > 0 && !(this.clock && this.clock.installed)) {
             this.session.tick(dt);
         }
         // With the physics in the worker, simulated time advances when a batch comes back.
         if (Math.floor(this.session.time / 100) !== Math.floor(this.state.simMs / 100)) {
-            this.setState({simMs: this.session.time});
+            this.setState({simMs: this.session.time, rtf: this.clock && this.clock.installed ? this.clock.realTimeFactor : null});
         }
         if (this.view) this.view.render(this.session.snapshot());
+    }
+
+    /** The scene's RCX (hubs/rcx/), or null. */
+    rcxHub () {
+        const h = this.session && this.session.hubs.find(x => x.profile === 'rcx');
+        return h ? h.hub : null;
+    }
+
+    /**
+     * "Robot Lab RCX" as an `rcxDownload` target (lib/rcx/rcx-targets.js): the RCX blocks and the
+     * NQC tab send to the scene's RCX once the user picks it below; the IR tower stays the default.
+     */
+    registerRcxTarget () {
+        const runtime = this.props.vm && this.props.vm.runtime;
+        if (!runtime || this.unregisterRcx) return;
+        this.unregisterRcx = this.lib.registerRcxTarget(runtime, this.lib.robotLabRcxTarget(() => this.rcxHub(), {
+            onLoaded: (bytes, hub) => {
+                this.rcxImage = bytes.slice();
+                // A download that started the program (the NQC tab, the RCX blocks) runs the world too.
+                if (hub.status === 'running' && this.session && !this.session.lockstep && this.state.status !== 'running') {
+                    this.startClock();
+                    this.setState({status: 'running', info: ''});
+                }
+            }
+        }));
+    }
+
+    setRcxTarget (id) {
+        const runtime = this.props.vm && this.props.vm.runtime;
+        if (!runtime) return;
+        this.lib.selectRcxTarget(runtime, id);
+        this.forceUpdate();
+    }
+
+    /** Run with an RCX: its program starts (again) on the Lab's clock. */
+    runRcx () {
+        const hub = this.rcxHub();
+        this.stopClock();
+        if (hub.status === 'empty') this.setState({info: this.text.rcxNoProgram});
+        else {
+            hub.run();
+            this.setState({info: ''});
+        }
+        this.startClock();
+        this.setState({status: 'running'});
+    }
+
+    /** An NQC example: into the NQC tab, compiled, and downloaded to the Lab's RCX (the target chosen for it). */
+    async loadRcxExample (code) {
+        window.dispatchEvent(new CustomEvent('bw-load-pseudocode', {detail: {code, lang: 'nqc', source: 'sim-lab'}}));
+        const runtime = this.props.vm && this.props.vm.runtime;
+        const fail = error => this.setState({message: this.t('rcxFailed', {error})});
+        if (!runtime || typeof runtime.nqcCompile !== 'function' || typeof runtime.rcxDownload !== 'function') return fail('no NQC compiler');
+        const compiled = await runtime.nqcCompile(code, 'RCX2');
+        if (this.disposed) return;
+        if (!compiled.ok) return fail(compiled.log);
+        this.lib.selectRcxTarget(runtime, this.lib.ROBOT_LAB_RCX_TARGET);
+        const sent = await runtime.rcxDownload(compiled.bytes, {target: this.lib.ROBOT_LAB_RCX_TARGET, run: false});
+        if (!sent.ok) fail(sent.log);
     }
 
     spikeLoaded () {
@@ -698,15 +1039,19 @@ class SimLabPane extends React.Component {
     /** As the arena's Start: connect the spikeprime blocks to the shared virtual hub, then green flag. */
     async run () {
         if (!this.session) return;
-        // The firmware runs its own program in the emulator: the clock is all Run starts.
-        if (this.session.lockstep) { this.setState({status: 'running', info: ''}); return; }
+        if (this.session.lockstep) { await this.runFirmware(); return; }
+        if (this.rcxHub()) { this.runRcx(); return; }
         const hubState = this.props.hubState;
         hubState.setSimulationEnabled(true);
+        // Connecting runs on wall time (its timeouts are the browser's); the program clock goes in
+        // just before the green flag, so the program's first `wait` starts on the world's clock.
+        this.stopClock();
         this.setState({status: 'running'});
         const vm = this.props.vm;
         // Without a SPIKE program the clock still runs (the arrows below drive the motors),
         // but say plainly why nothing moves on its own.
         if (!this.spikeLoaded()) {
+            this.startClock();
             this.setState({info: this.shippedModel()?.example ? `${this.text.noProgram} ${this.text.exampleOffer}` : this.text.noProgram});
             return;
         }
@@ -725,7 +1070,10 @@ class SimLabPane extends React.Component {
             this.setState({message: this.t('connectFailed', {error: error.message})});
             return;
         }
-        if (this.state.status === 'running') vm.greenFlag();
+        if (this.state.status === 'running') {
+            this.startClock();
+            vm.greenFlag();
+        }
     }
     /** Puts the current model on another mat (its start pose, if the mat has one) and reloads it. */
     async setMat (mat) {
@@ -740,7 +1088,10 @@ class SimLabPane extends React.Component {
         if (!this.session || !this.session.bridge) return;
         const hub = this.props.hubState;
         hub.setSimulationEnabled(true);
-        if (this.state.status !== 'running') this.setState({status: 'running'});
+        if (this.state.status !== 'running') {
+            this.startClock();
+            this.setState({status: 'running'});
+        }
         const [left, right] = hub.movementPair || ['A', 'B'];
         const pct = this.state.driveSpeed;
         const dps = port => hub.motors.percentToDps(port, pct);
@@ -768,8 +1119,10 @@ class SimLabPane extends React.Component {
 
     pause () {
         if (!this.session) return;
+        if (this.session.lockstep) { this.pauseFirmware(); return; }
         if (this.spikeLoaded()) { try { this.props.vm.stopAll(); } catch { /* the VM may be mid-load */ } }
         this.props.hubState.backend.cancel();
+        this.stopClock();
         this.setState({status: 'paused'});
     }
 
@@ -888,6 +1241,7 @@ class SimLabPane extends React.Component {
     buildStatusText () {
         const st = this.state.buildStatus || {kind: 'idle'};
         const T = this.text.st;
+        const E = this.etext.st;
         const name = part => this.partName(part);
         const fill = (template, values) => template.replace(/\{(\w+)\}/g, (_, k) => String(values[k] ?? ''));
         const hole = st.connector && /^[a-z](\d+)$/.exec(st.connector);
@@ -910,9 +1264,17 @@ class SimLabPane extends React.Component {
         case 'turning': return fill(T.turning, {deg: st.degrees});
         case 'placed': return fill(T.placed, {part: name(st.part)});
         case 'blocked': return fill(T.blocked, {target: name(st.target)});
-        case 'refused': return fill(T[st.reason] || T.invalid, {detail: st.detail || '', target: st.target ? name(st.target) : ''});
+        case 'refused': return fill(T[st.reason] || E[st.reason] || T.invalid, {detail: st.detail || '', target: st.target ? name(st.target) : ''});
+        case 'painted': return fill(E.painted, {n: st.count, colour: this.colourName(st.color)});
+        case 'pickedColor': return fill(E.pickedColor, {colour: this.colourName(st.color), part: name(st.part)});
+        case 'measured': return fill(E.measured, {ldu: this.decimal(st.ldu), studs: this.decimal(st.studs), mm: this.decimal(st.mm)});
+        case 'mirrored': return fill(st.kept ? E.mirroredKept : st.swapped ? E.mirroredSwapped : E.mirrored, {n: st.count, s: st.swapped, k: st.kept});
+        case 'groupEdit': case 'groupLeft': return fill(E[st.kind], {name: st.name || ''});
+        case 'turnedBy': return fill(E.turnedBy, {deg: st.degrees});
         case 'idle': return this.state.coarse ? T.idleTouch : T.idle;
-        default: return T[st.kind] ? fill(T[st.kind], {n: st.count}) : (this.state.coarse ? T.idleTouch : T.idle);
+        default:
+            if (E[st.kind]) return fill(E[st.kind], {n: st.count});
+            return T[st.kind] ? fill(T[st.kind], {n: st.count}) : (this.state.coarse ? T.idleTouch : T.idle);
         }
     }
 
@@ -947,11 +1309,30 @@ class SimLabPane extends React.Component {
         );
     }
 
+    /** Wide enough for the properties panel to stand beside the 3D view. */
+    dockProperties () {
+        return this.state.paneWidth >= DOCK_PROPERTIES_PX;
+    }
+
+    /** Build: the properties panel, docked beside the view or over its right edge. */
+    renderProperties (button, docked) {
+        if (!this.editor || !this.palette) return null;
+        const field = this.state.coarse ? {minHeight: 40} : undefined;
+        return (
+            <SimLabProperties T={this.etext} lib={this.lib} editor={this.editor} view={this.editView} selectionIds={this.state.selection}
+                palette={this.palette} colourName={code => this.colourName(code)} placeColor={this.state.placeColor ?? this.lib.DEFAULT_COLOR}
+                pick={this.state.pick} editGroup={this.state.editGroup} partName={part => this.partName(part)} tick={this.state.editorTick}
+                onColour={code => this.pickColour(code)} onTick={() => this.setState(s => ({editorTick: s.editorTick + 1}))}
+                onClose={docked ? null : () => this.setState({propsOpen: false})} button={button} field={field} docked={docked} />
+        );
+    }
+
     renderBuildBar (button) {
         const editor = this.editor;
         const view = this.editView;
         const parts = editor ? editor.model.parts : [];
-        const selection = this.state.selection.map(id => parts.find(p => p.id === id)).filter(Boolean);
+        const byId = editor ? this.lib.partsByIdOf(editor.model) : new Map();
+        const selection = this.state.selection.map(id => byId.get(id)).filter(Boolean);
         const sel = selection.length === 1 ? selection[0] : null;
         const meta = sel ? this.lib.CATALOG.get(sel.part) : null;
         const portable = meta && this.lib.isPortPart(meta);
@@ -966,6 +1347,8 @@ class SimLabPane extends React.Component {
         const refused = st.kind === 'refused';
         const blocked = st.kind === 'blocked';
         const T = this.text;
+        const E = this.etext;
+        const docked = this.dockProperties();
         const nothing = !selection.length && !this.state.placing;
         /** Every Build action once: id, label, what it does; `glyph` is its face on the compact toolbar. */
         const act = {
@@ -989,13 +1372,22 @@ class SimLabPane extends React.Component {
             'view-top': {label: T.top, run: () => view?.view('top')},
             'view-front': {label: T.front, run: () => view?.view('front')},
             'view-side': {label: T.side, run: () => view?.view('side')},
-            save: {label: T.save, disabled: !editor, run: () => this.saveLdr()}
+            // Studio's tools (sim-lab-editor-text.js): mirror, hide / isolate, measure, eyedropper, properties, shortcuts.
+            'mirror-x': {label: E.mirrorX, title: E.mirrorXHelp, disabled: !selection.length, run: () => { view?.mirror('x'); tick(); }},
+            'mirror-z': {label: E.mirrorZ, title: E.mirrorZHelp, disabled: !selection.length, run: () => { view?.mirror('z'); tick(); }},
+            hide: {label: E.hide, disabled: !selection.length, run: () => view?.hideSelection()},
+            isolate: {label: E.isolate, disabled: !selection.length, run: () => view?.isolate()},
+            'show-all': {label: E.showAll, disabled: !this.state.hidden.length, run: () => view?.showAll()},
+            measure: {label: E.measure, pressed: this.state.pick === 'measure', run: () => view?.setPick('measure')},
+            eyedropper: {label: E.eyedropper, title: E.eyedropperHelp, pressed: this.state.pick === 'color', run: () => view?.setPick('color')},
+            properties: {label: E.properties, title: E.propertiesHelp, pressed: this.state.propsOpen, run: () => this.setState(s => ({propsOpen: !s.propsOpen}))},
+            shortcuts: {label: E.shortcuts, title: E.shortcutsHelp, run: () => this.setState({shortcuts: true})}
         };
         const full = id => {
             const a = act[id];
             return (
-                <button key={id} type="button" style={small} data-testid={`bw-sim-lab-${id}`} disabled={a.disabled} title={a.title}
-                    onClick={a.run}>{a.label}</button>
+                <button key={id} type="button" style={a.pressed === undefined ? small : pressed(a.pressed)} data-testid={`bw-sim-lab-${id}`}
+                    disabled={a.disabled} title={a.title} aria-pressed={a.pressed} onClick={a.run}>{a.label}</button>
             );
         };
         // On the compact toolbar a glyph carries the action; its name is the accessible name and the tooltip.
@@ -1039,7 +1431,9 @@ class SimLabPane extends React.Component {
                             grid,
                             ...[...(narrow ? ['redo'] : []), 'turn-back', 'tip', 'duplicate', 'copy', 'paste', 'select-all', 'group', 'ungroup',
                                 ...(this.state.placing ? ['delete'] : ['cancel']),
-                                'view-home', 'view-fit', 'view-top', 'view-front', 'view-side', 'save'].map(full),
+                                'mirror-x', 'mirror-z', 'hide', 'isolate', 'show-all', 'measure', 'eyedropper', 'properties',
+                                'view-home', 'view-fit', 'view-top', 'view-front', 'view-side', 'shortcuts'].map(full),
+                            this.renderSaveAs(small, !editor),
                             this.renderInsightBar()
                         ])}
                     </div>
@@ -1054,10 +1448,23 @@ class SimLabPane extends React.Component {
                         {gap('g3')}
                         {['view-home', 'view-fit', 'view-top', 'view-front', 'view-side'].map(full)}
                         {gap('g4')}
-                        {full('save')}
+                        {this.renderSaveAs(small, !editor)}
+                        {gap('g5')}
+                        {['mirror-x', 'mirror-z', 'hide', 'isolate', 'show-all', 'measure', 'eyedropper', ...(docked ? [] : ['properties']), 'shortcuts'].map(full)}
                     </div>
                 )}
                 <div style={{display: 'flex', alignItems: 'center', gap: 8, minHeight: 22, ...oneLine}}>
+                    {this.state.hidden.length > 0 && (
+                        <button type="button" data-testid="bw-sim-lab-hidden-count" title={E.showAll} onClick={() => view?.showAll()}
+                            style={{...small, padding: '1px 6px', background: '#f1f5f9', whiteSpace: 'nowrap'}}>
+                            {E.hiddenCount.replace('{n}', this.state.hidden.length)}
+                        </button>
+                    )}
+                    {this.state.editGroup && (
+                        <span data-testid="bw-sim-lab-group-edit-chip" style={{whiteSpace: 'nowrap', color: '#5b21b6', fontWeight: 600}}>
+                            {E.groupBanner.replace('{name}', this.state.editGroup.name)}
+                        </span>
+                    )}
                     {selection.length > 0 && (
                         <span data-testid="bw-sim-lab-selection" style={{fontWeight: 600, color: '#1e3a8a', whiteSpace: compact ? 'nowrap' : undefined}}>
                             {sel ? this.t('selectedOne', {name: this.partName(sel.part)}) : this.t('selectedMany', {n: selection.length})}
@@ -1206,9 +1613,12 @@ class SimLabPane extends React.Component {
         const T = this.text;
         const simulate = this.state.mode === 'simulate';
         const running = status === 'running';
-        const rtf = this.session?.lockstep ? this.session.realTimeFactor : null;
+        // The firmware route's emulator pace (always shown); the program clock's only when the world holds
+        // the program back (sim-clock.js): on a machine that keeps up there is nothing to say.
+        const programRtf = this.state.rtf !== null && this.state.rtf !== undefined && this.state.rtf < SHOW_RTF_BELOW ? this.state.rtf : null;
+        const rtf = this.session?.lockstep ? this.session.realTimeFactor : programRtf;
         const statusText = `${busy ? T.loading : T[status] || ''}${this.session ? ` · ${compact ? this.t('timeShort', {s: (simMs / 1000).toFixed(1)}) : this.t('time', {s: (simMs / 1000).toFixed(1)})}` : ''}` +
-            (rtf !== null && running ? ` · ${this.t('realTime', {f: rtf < 0.1 ? rtf.toFixed(3) : rtf.toFixed(2)})}` : '');
+            (rtf !== null && running ? ` · ${this.t('realTime', {f: this.decimal(rtf < 0.1 ? rtf.toFixed(3) : rtf.toFixed(2))})}` : '');
         // Desktop only (the web build has no managed Renode runtime): the program route.
         const firmwareReady = this.lib && this.desktop() &&
             this.lib.firmwareRouteReady(this.renodeCapabilities(), {unsupported: this.state.firmwareUnsupported});
@@ -1217,6 +1627,15 @@ class SimLabPane extends React.Component {
                 <select data-testid="bw-sim-lab-route" disabled={busy} value={this.state.route} onChange={e => this.setRoute(e.target.value)}>
                     <option value="scratch">{T.routeScratch}</option>
                     <option value="firmware" disabled={!firmwareReady} title={firmwareReady ? undefined : T.routeUnavailable}>{T.routeFirmware}</option>
+                </select>
+            </label>
+        );
+        const runtime = this.props.vm && this.props.vm.runtime;
+        const rcxTargetSelect = this.lib && runtime && this.rcxHub() && (
+            <label style={{fontSize: 12}}>{T.rcxTarget}{': '}
+                <select data-testid="bw-sim-lab-rcx-target" value={this.lib.rcxTargetOf(runtime)} onChange={e => this.setRcxTarget(e.target.value)}>
+                    <option value={this.lib.TOWER_TARGET}>{T.rcxTargetTower}</option>
+                    <option value={this.lib.ROBOT_LAB_RCX_TARGET}>{T.rcxTargetLab}</option>
                 </select>
             </label>
         );
@@ -1238,11 +1657,13 @@ class SimLabPane extends React.Component {
             </select>
         );
         const importButton = (
-            <button key="import" type="button" style={button} disabled={busy || !this.lib} onClick={() => this.file.current.click()}>{T.importModel}</button>
+            <button key="import" type="button" style={button} data-testid="bw-sim-lab-open" title={T.importHelp} disabled={busy || !this.lib}
+                onClick={() => this.file.current.click()}>{T.importModel}</button>
         );
+        const saveAsControl = this.renderSaveAs(button, busy || !this.session);
         const runButton = running ?
             <button type="button" style={button} data-testid="bw-sim-lab-pause" onClick={() => this.pause()}>{compact ? face('pause', T.pause) : T.pause}</button> :
-            <button type="button" style={button} data-testid="bw-sim-lab-run" disabled={!this.session || busy} onClick={() => this.run()}>{compact ? face('run', T.run) : T.run}</button>;
+            <button type="button" style={button} data-testid="bw-sim-lab-run" disabled={!this.session || busy || status === 'stopping'} onClick={() => this.run()}>{compact ? face('run', T.run) : T.run}</button>;
         const resetButton = (
             <button type="button" style={compact ? icon : button} data-testid="bw-sim-lab-reset" disabled={!this.session || busy}
                 aria-label={compact ? T.reset : undefined} title={compact ? T.reset : undefined} onClick={() => this.reset()}>
@@ -1261,7 +1682,7 @@ class SimLabPane extends React.Component {
         const large = compact && this.props.onEnterFullScreen && !this.props.isFullScreen;
         return (
             <div ref={this.root} data-testid="bw-sim-lab" data-status={status} data-layout={compact ? 'compact' : 'wide'}
-                style={{display: 'flex', flexDirection: 'column', gap: compact ? 6 : 8, padding: compact ? 8 : 10, height: '100%', boxSizing: 'border-box', minWidth: 0}}>
+                style={{position: 'relative', display: 'flex', flexDirection: 'column', gap: compact ? 6 : 8, padding: compact ? 8 : 10, height: '100%', boxSizing: 'border-box', minWidth: 0}}>
                 {!compact && <div style={{fontSize: 12, color: '#334155'}}>{T.intro}</div>}
                 <div style={{display: 'flex', alignItems: 'center', gap: 4, minWidth: 0}}>
                     <div role="tablist" style={{display: 'flex', gap: 4}}>
@@ -1290,13 +1711,15 @@ class SimLabPane extends React.Component {
                         title={this.editor ? null : this.shippedModel()?.title[this.locale] || this.state.modelFile}
                         onClose={() => this.setState({instructions: null})} />
                 )}
-                <input ref={this.file} type="file" accept=".ldr,.mpd" style={{display: 'none'}} data-testid="bw-sim-lab-file"
+                <input ref={this.file} type="file" accept={OPEN_ACCEPT} style={{display: 'none'}} data-testid="bw-sim-lab-file"
                     onChange={e => this.openImported(e)} />
                 {simulate && !compact && <div style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6}}>
                     <label style={{fontSize: 12}}>{T.model}{': '}{modelSelect}</label>
                     {importButton}
+                    {saveAsControl}
                     <label style={{fontSize: 12}}>{T.mat}{': '}{matSelect}</label>
                     {routeSelect}
+                    {rcxTargetSelect}
                     {runButton}
                     {resetButton}
                     {exampleButton}
@@ -1311,6 +1734,7 @@ class SimLabPane extends React.Component {
                             {this.renderMore(button, [
                                 <div key="intro" style={{fontSize: 12, color: '#334155', flex: '1 1 100%'}}>{T.intro}</div>,
                                 importButton,
+                                saveAsControl,
                                 this.lib ? <div key="insight" style={{flex: '1 1 100%'}}>{this.renderInsightBar()}</div> : null
                             ])}
                         </div>
@@ -1318,6 +1742,7 @@ class SimLabPane extends React.Component {
                             {modelSelect}
                             {matSelect}
                             {routeSelect}
+                            {rcxTargetSelect}
                             {exampleButton}
                         </div>
                     </React.Fragment>
@@ -1342,8 +1767,23 @@ class SimLabPane extends React.Component {
                     <div ref={this.viewWrap} style={{flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative', display: 'flex'}}>
                         <div ref={this.box} data-testid="bw-sim-lab-view" style={{flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative'}} />
                         {this.renderPortPicker(button)}
+                        {this.state.mode === 'build' && !this.dockProperties() && this.state.propsOpen && (
+                            <div data-testid="bw-sim-lab-properties-drawer" style={{position: 'absolute', right: 0, top: 0, bottom: 0, zIndex: 6, maxWidth: 'calc(100% - 48px)',
+                                display: 'flex', boxShadow: '-4px 0 14px rgba(15, 23, 42, 0.25)', borderRadius: '8px 0 0 8px'}}>
+                                {this.renderProperties(button, false)}
+                            </div>
+                        )}
                     </div>
+                    {this.state.mode === 'build' && this.dockProperties() && (
+                        <div style={{flex: '0 0 auto', display: 'flex', minHeight: 0}}>{this.renderProperties(button, true)}</div>
+                    )}
                 </div>
+                {this.state.mode === 'build' && this.state.shortcuts && (
+                    <SimLabShortcuts T={this.etext} onClose={() => {
+                        this.setState({shortcuts: false});
+                        this.editView?.canvas.focus();
+                    }} />
+                )}
                 {issues.length > 0 && (
                     <details data-testid="bw-sim-lab-issues" style={{fontSize: 12}} open={!compact}>
                         <summary style={compact ? {whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer'} : undefined}>

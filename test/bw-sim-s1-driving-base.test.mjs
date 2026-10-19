@@ -155,13 +155,27 @@ test('no two solid parts of the driving base overlap; only pins and axles sit in
     // (oc-parts.md): like 3705 they are single axle connectors, so they too sit inside holes.
     const inside = ['2780.dat', '3673.dat', '6558.dat', '43093.dat', '3705.dat', '4519.dat', '32073.dat', '3706.dat', '3707.dat', '32062.dat', '52629.dat',
         '3749.dat', '32002.dat', '2736.dat',
-        '3708.dat', '3737.dat', '87083.dat'];
+        '3708.dat', '3737.dat', '87083.dat',
+        // Derived from LDraw (scripts/derive-part-meta.mjs): axles 2-16 and with stops, pins, axle pins,
+        // towball pins, half pins with a stud.
+        '11214.dat', '15462.dat', '18651.dat', '23948.dat', '24316.dat', '32209.dat', '32556a.dat', '32556b.dat', '3704.dat',
+        '39888.dat', '4274.dat', '42924.dat', '44294.dat', '4459.dat', '50451.dat', '55013.dat', '59426.dat', '60485.dat',
+        '61332.dat', '65249.dat', '6628.dat', '77765.dat', '89678.dat', '99008.dat'];
     assert.deepEqual([...CATALOG.values()].filter(sitsInside).map(m => m.part).sort(), inside.slice().sort());
     // Partly shaft, partly solid: only their tagged shaft regions may sit inside another part
     // (32054's stop bush stays outside the hole; 87082's centre, with its pin hole, between two beams;
     // 48496, the smooth toggle joint of R4: its two pins in a beam, its eyes and bar outside).
-    const partly = [...CATALOG.values()].filter(m => !sitsInside(m) && m.colliders.some(c => c.region)).map(m => m.part).sort();
-    assert.deepEqual(partly, ['32054.dat', '48496.dat', '87082.dat']);
+    // Derived: pins and axles on blocks, cross blocks with pins, the pin with a stop bush type 2.
+    const partly = [...CATALOG.values()].filter(m => !sitsInside(m) && m.colliders.some(c => c.region && c.region !== 'stud')).map(m => m.part).sort();
+    // 71427, the RCX's 9 V mini-motor: its output axle stub is an axle region (a wheel's hole takes it).
+    assert.deepEqual(partly, ['15100.dat', '22961.dat', '27940.dat', '32054.dat', '32138.dat', '44874.dat', '48496.dat', '48989.dat',
+        '5713.dat', '65304.dat', '65487.dat', '6553.dat', '71427.dat', '87082.dat',
+        // The linear actuator's spindle: its input stub is an axle (region), its threaded rod is solid (kinds/screw.js).
+        '92695.dat']);
+    // The other region is a System part's stud layer (kinds/stud.js): it sits in the hollow underside of the part on top.
+    for (const m of CATALOG.values()) {
+        if (m.colliders.some(c => c.region === 'stud')) assert.ok(m.connectors.some(c => c.type === 'stud'), `${m.part}: a stud region without studs`);
+    }
     const found = [];
     for (const p of MODEL.parts) {
         for (const o of solidOverlaps(MODEL, CATALOG, p)) found.push(`${p.id} ↔ ${o.part}`);

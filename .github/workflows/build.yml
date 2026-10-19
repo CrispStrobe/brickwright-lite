@@ -112,6 +112,8 @@ on:
       - 'docs/PEERS-SECURITY-REVIEW.md'
       - 'docs/RCX-FIRMWARE.md'
       - 'docs/ROBOT-LAB-ARCHITECTURE.md'
+      - 'docs/ROBOT-LAB-SPIKE-EMULATION.md'
+      - 'docs/ROBOT-LAB-VALIDATION.md'
       - 'docs/SPIKE-CONSOLIDATION.md'
       - 'docs/SIM-LAB-PLAN.md'
       - 'docs/SPIKE-ARENA.md'
@@ -830,9 +832,11 @@ jobs:
           # run at all, so it cannot have found anything, and a green line says
           # it did. This repo has found five gates that could not fail; this one
           # could not even be built. Read the stream, not the summary.
-          if grep -qE '^not ok ' /tmp/unit.tap; then
+          # A known-open test (`# TODO` whose reason names its docs/….md entry; check-test-run.mjs
+          # above verifies the doc exists) is not a failure in TAP and is counted under `# todo`.
+          if grep -E '^not ok ' /tmp/unit.tap | grep -qvE '# TODO .*docs/[A-Za-z0-9._/-]+[.]md'; then
             echo "::error::TAP reports failures the summary did not count — a suite probably threw while being CONSTRUCTED (a missing import, a fixture that cannot be built). Those are not counted in \`# fail\` and may not affect the exit code."
-            grep -E '^not ok ' /tmp/unit.tap | head -20
+            grep -E '^not ok ' /tmp/unit.tap | grep -vE '# TODO .*docs/[A-Za-z0-9._/-]+[.]md' | head -20
             exit 1
           fi
           exit "$rc"
@@ -1742,6 +1746,16 @@ jobs:
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
         run: npm run verify:sim-lab -- --part=layout
+
+      - name: Browser gate — Robot Lab build editor Studio tools (colour, hide, mirror, align, measure, groups, clipboard)
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
+        run: npm run verify:sim-lab -- --part=editor
+
+      - name: Browser gate — Robot Lab scale, a 2,054-part model drawn instanced, and .lxf/.io model files
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
+        run: npm run verify:sim-lab -- --part=scale
 
       - name: Browser gate — ESP8266 image runs on the esp8266 debug kind with serial
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)

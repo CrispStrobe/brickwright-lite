@@ -110,6 +110,64 @@ const realSetImmediate = globalThis.setImmediate;
 const settle = async () => { for (let i = 0; i < 3; i++) await new Promise(resolve => realSetImmediate(resolve)); };
 
 /**
+ * A VM with `source` (DEVICE SPIKE .bw) loaded through the real SB3 path and the
+ * bundled spikeprime extension registered as the GUI registers it.
+ * @param {string} source
+ * @param {{calls?: Map}} [options] calls: counts every extension method call by name
+ * @returns {Promise<{vm, extension, creator}>}
+ */
+export async function loadSpikeProgram (source, {calls = null} = {}) {
+    const creator = new SB3Creator();
+    creator.parse(source);
+    const buffer = Buffer.from(await (await creator.generateSB3()).arrayBuffer());
+    const vm = new VM();
+    let extension = null;
+    const manager = vm.extensionManager;
+    const original = manager.loadExtensionURL.bind(manager);
+    manager.loadExtensionURL = id => {
+        if (String(id) !== 'spikeprime') return original(id);
+        extension = new SpikeExtension(vm.runtime);
+        if (calls) {
+            const names = new Set();
+            for (let proto = extension; proto && proto !== Object.prototype; proto = Object.getPrototypeOf(proto)) {
+                for (const name of Object.getOwnPropertyNames(proto)) names.add(name);
+            }
+            for (const name of names) {
+                let method;
+                try { method = extension[name]; } catch { continue; }
+                if (typeof method !== 'function' || name === 'constructor' || name === 'getInfo') continue;
+                extension[name] = function (...args) {
+                    calls.set(name, (calls.get(name) || 0) + 1);
+                    return method.apply(this, args);
+                };
+            }
+        }
+        const service = manager._registerInternalExtension(extension);
+        manager._loadedExtensions.set('spikeprime', service);
+        return Promise.resolve();
+    };
+    await vm.loadProject(buffer);
+    if (creator.project.stc) vm.runtime.stc = creator.project.stc;
+    if (!extension) throw new Error('the program does not load the spikeprime extension');
+    return {vm, extension, creator};
+}
+
+/**
+ * Registers a fresh virtual SPIKE hub on lite's Web Bluetooth shim, as the pane's Run does.
+ * @returns {{hub, registration}}
+ */
+export function registerVirtualHub () {
+    clearVirtualPeripheralsForTest();
+    const hub = new HubState();
+    hub.setSimulationEnabled(true);
+    const registration = registerVirtualSpikePrime({hubState: hub});
+    globalThis.navigator.bluetooth = undefined;
+    installWebBluetooth();
+    globalThis.__brickwrightChooseVirtualBluetooth = candidates => candidates[0];
+    return {hub, registration};
+}
+
+/**
  * Runs one program against one challenge.
  * @param {string} source DEVICE SPIKE .bw text
  * @param {object} world a validated challenge world
@@ -148,13 +206,8 @@ export async function runOnArena (source, world, {extraMs = 0, record = false, v
     let vm = null;
     let registration = null;
     try {
-        clearVirtualPeripheralsForTest();
-        const hub = new HubState();
-        hub.setSimulationEnabled(true);
-        registration = registerVirtualSpikePrime({hubState: hub});
-        globalThis.navigator.bluetooth = undefined;
-        installWebBluetooth();
-        globalThis.__brickwrightChooseVirtualBluetooth = candidates => candidates[0];
+        let hub;
+        ({hub, registration} = registerVirtualHub());
         const bridge = bridgeFor ? bridgeFor(hub) : new ArenaHubBridge({hubState: hub, world});
         // Every view the checker judged, for replaying under a mutated checker.
         const views = [];
@@ -163,36 +216,8 @@ export async function runOnArena (source, world, {extraMs = 0, record = false, v
             bridge.checker.evaluate = view => { views.push(view); return evaluate(view); };
         }
 
-        const creator = new SB3Creator();
-        creator.parse(source);
-        const buffer = Buffer.from(await (await creator.generateSB3()).arrayBuffer());
-        vm = new VM();
-        let extension = null;
-        const manager = vm.extensionManager;
-        const original = manager.loadExtensionURL.bind(manager);
-        manager.loadExtensionURL = id => {
-            if (String(id) !== 'spikeprime') return original(id);
-            extension = new SpikeExtension(vm.runtime);
-            const names = new Set();
-            for (let proto = extension; proto && proto !== Object.prototype; proto = Object.getPrototypeOf(proto)) {
-                for (const name of Object.getOwnPropertyNames(proto)) names.add(name);
-            }
-            for (const name of names) {
-                let method;
-                try { method = extension[name]; } catch { continue; }
-                if (typeof method !== 'function' || name === 'constructor' || name === 'getInfo') continue;
-                extension[name] = function (...args) {
-                    calls.set(name, (calls.get(name) || 0) + 1);
-                    return method.apply(this, args);
-                };
-            }
-            const service = manager._registerInternalExtension(extension);
-            manager._loadedExtensions.set('spikeprime', service);
-            return Promise.resolve();
-        };
-        await vm.loadProject(buffer);
-        if (creator.project.stc) vm.runtime.stc = creator.project.stc;
-        if (!extension) throw new Error('the program does not load the spikeprime extension');
+        let extension;
+        ({vm, extension} = await loadSpikeProgram(source, {calls}));
         vm.setCompatibilityMode(true);
         vm.runtime.currentStepTime = FRAME_MS;
         let budget = 0;

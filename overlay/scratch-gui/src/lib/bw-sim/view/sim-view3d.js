@@ -21,12 +21,22 @@ export class WebGLUnavailableError extends Error {
     }
 }
 
-/** WebGL 2 or nothing (three.js dropped WebGL 1 in r163). window.__bwSimLabForceNoWebGL forces the fallback. */
+let webgl2Seen = false;
+/**
+ * WebGL 2 or nothing (three.js dropped WebGL 1 in r163). window.__bwSimLabForceNoWebGL forces the fallback.
+ * The probe's context is released at once, and a yes is remembered for the page: every probe used to leave
+ * a live context behind until garbage collection, and on a software GPU each new context is slow to make.
+ */
 export const webglAvailable = () => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return false;
     if (window.__bwSimLabForceNoWebGL) return false;
+    if (webgl2Seen) return true;
     try {
-        return Boolean(document.createElement('canvas').getContext('webgl2'));
+        const gl = document.createElement('canvas').getContext('webgl2');
+        if (!gl) return false;
+        gl.getExtension('WEBGL_lose_context')?.loseContext();
+        webgl2Seen = true;
+        return true;
     } catch {
         return false;
     }
@@ -111,7 +121,11 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     const resize = () => {
         const width = Math.max(1, container.clientWidth || 0);
         const height = Math.max(1, container.clientHeight || Math.round(width * 0.6));
-        renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+        // Only when it changes: setPixelRatio re-sizes the canvas, and assigning a canvas its size, even
+        // the same size, throws its drawing buffer away and waits for the GPU — every frame, a stall
+        // that scales with the model (most of a big model's frame time on a software renderer).
+        const ratio = Math.min(2, window.devicePixelRatio || 1);
+        if (renderer.getPixelRatio() !== ratio) renderer.setPixelRatio(ratio);
         const size = renderer.getSize(new Vector2());
         if (size.x !== width || size.y !== height) {
             renderer.setSize(width, height, false);
@@ -152,7 +166,10 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         }
     };
     /** Port badges: items {id, port, label} (motors and sensors). */
-    const setPorts = items => insight.setPorts(items.map(item => ({...item, anchor: partCentre(item.id)})));
+    const setPorts = items => {
+        insight.setPorts(items.map(item => ({...item, anchor: partCentre(item.id)})));
+        dirty = true;
+    };
     /** Hinge axes, gear pairs and body tints from insightOf(runModel, mechanism, …). */
     const setMotion = ({joints = [], gears = [], tints: bodyTintMap = null} = {}) => {
         insight.setMotion({
@@ -162,21 +179,64 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         });
         tints = bodyTintMap;
         paintTints();
+        dirty = true;
     };
     const setOverlay = shown => {
         insight.setVisible(shown);
         paintTints();
+        dirty = true;
     };
     /** Pulse these parts for `ms` (a motor's drive hub too). */
     const highlight = (ids, ms = 3000) => {
         const want = new Set(ids);
         const meshes = allMeshes().filter(m => want.has(m.name.replace(/#hub$/, '')));
         pulse.start(meshes, ms, performance.now());
+        dirty = true;
         return meshes.length;
     };
 
-    const render = snapshot => {
+    // A big (instanced) model is drawn on demand: a frame where no body moved, the camera stayed,
+    // the size and the overlay are the same and nothing pulses is not drawn again — the pane's
+    // animation loop asks every frame, and redrawing thousands of unchanged parts would keep the
+    // page busy for nothing. Small models are drawn every frame, as always.
+    const onDemand = Boolean(built.instanced);
+    let dirty = true;
+    let lastBodies = null;
+    // Float64: the camera matrix is doubles, and a float32 copy differs from it in nearly every
+    // element, so "the camera moved" was true every frame and an idle big model was redrawn forever
+    // (seconds a frame on a software GPU, queueing up behind whatever comes next).
+    const lastCamera = new Float64Array(16);
+    const lastSize = new Vector2();
+    const changed = (snapshot, size) => {
+        let moved = false;
+        const bodies = snapshot && snapshot.bodies;
+        if (bodies && (!lastBodies || lastBodies.length !== bodies.length || bodies.some((v, i) => v !== lastBodies[i]))) {
+            lastBodies = Float64Array.from(bodies);
+            moved = true;
+        }
+        camera.updateMatrixWorld();
+        const cam = camera.matrixWorld.elements;
+        if (cam.some((v, i) => v !== lastCamera[i])) {
+            lastCamera.set(cam);
+            moved = true;
+        }
+        if (!size.equals(lastSize)) {
+            lastSize.copy(size);
+            moved = true;
+        }
+        return moved || pulse.count > 0;
+    };
+    controls.addEventListener('change', () => { dirty = true; });
+
+    /**
+     * Draw the scene at this snapshot.
+     * @param {object} [snapshot] the physics snapshot
+     * @param {{force?: boolean}} [options] force: draw even when nothing changed (frame timing)
+     */
+    const render = (snapshot, {force = false} = {}) => {
         resize();
+        if (onDemand && !force && !dirty && !changed(snapshot, renderer.getSize(new Vector2()))) return;
+        dirty = false;
         if (snapshot) applySnapshot(built, snapshot);
         const centre = modelBox().getCenter(new Vector3());
         if (followed) {
@@ -205,6 +265,9 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         controls.dispose();
         built.dispose();
         renderer.dispose();
+        // Give the context back now, not at garbage collection: a big model's buffers live in it, and
+        // on a software GPU the next view's context is slow to make while the old one still holds them.
+        renderer.forceContextLoss();
         canvas.remove();
     };
 
@@ -212,6 +275,7 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     resetCamera();
     const recentre = () => {
         followed = null;
+        dirty = true;
         resetCamera();
     };
     return {canvas, render, resize, resetCamera: recentre, dispose, setPorts, setMotion, setOverlay, highlight,
@@ -219,6 +283,12 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         get camera () {
             return {position: camera.position.toArray(), target: controls.target.toArray(), distance: camera.position.distanceTo(controls.target)};
         },
+        /** What the last frame cost: three's draw calls and triangles, GPU objects, and the instancing (scale gate). */
+        // `frames`: frames drawn so far (three counts each render), so a gate can see an idle big model is not redrawn.
+        renderStats: () => ({calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, lines: renderer.info.render.lines,
+            frames: renderer.info.render.frame,
+            geometries: renderer.info.memory.geometries, programs: renderer.info.programs?.length ?? null,
+            parts: model.parts.length, instanced: built.instanced ? built.instanced.stats() : null}),
         /** What the overlay shows now, plus the parts pulsing (for the browser gate). */
         overlayStats: () => ({...insight.stats(), pulsing: pulse.count,
             tinted: allMeshes().filter(m => [].concat(m.material).some(x => x.userData.baseColor && !x.color.equals(x.userData.baseColor))).length})};

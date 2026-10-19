@@ -11,6 +11,7 @@
 import {placedGearsMesh} from '../mech/gears.js';
 import {solidColliders} from '../kinds/pin-axle.js';
 import {mat3MulVec3, vecAdd, vecSub, vecScale, vecDot, vecCross, vecLen, vecNormalize} from '../mech/vec.js';
+import {indexFor, partBounds} from '../mech/spatial-index.js';
 
 // Transform a point from part local to model LDraw frame
 const transformPoint = (pos, rot, local) => vecAdd(mat3MulVec3(rot, local), pos);
@@ -179,6 +180,17 @@ export const primitivesOverlap = (a, b, tolerance = 1) => {
     return false;
 };
 
+/**
+ * The parts of `model` worth testing against `placedPart`: with an index (a frozen model, see
+ * spatial-index.js), only those whose bounds touch its own, in model order; else all of them.
+ */
+const nearParts = (model, catalogMap, placedPart, meta) => {
+    const index = indexFor(model.parts, catalogMap);
+    if (!index) return model.parts;
+    const box = partBounds(placedPart, meta);
+    return box ? index.queryBox(box).map(i => model.parts[i]) : [];
+};
+
 export const partOverlaps = (model, catalog, placedPart, {ignore = [], colliders = (meta => meta.colliders.map((_, i) => i))} = {}) => {
     const catalogMap = catalog instanceof Map ? catalog : new Map(Object.entries(catalog || {}));
     const meta = catalogMap.get(placedPart.part);
@@ -191,7 +203,8 @@ export const partOverlaps = (model, catalog, placedPart, {ignore = [], colliders
     const myPrims = pick(placedPart, meta);
     const result = [];
     if (!myPrims.length) return result;
-    for (const other of model.parts) {
+    // Broad phase: a part whose bounds miss this one's cannot overlap it (its colliders are inside them).
+    for (const other of nearParts(model, catalogMap, placedPart, meta)) {
         if (other.id === placedPart.id) continue;
         if (ignoreSet.has(other.id)) continue;
         const otherMeta = catalogMap.get(other.part);
@@ -239,7 +252,8 @@ export const solidOverlaps = (model, catalog, placedPart, {ignore = []} = {}) =>
     const catalogMap = asMap(catalog);
     const myMeta = catalogMap.get(placedPart.part);
     if (solidColliders(myMeta).length === 0) return [];
-    const skip = model.parts.filter(p => p.id !== placedPart.id && (solidColliders(catalogMap.get(p.part)).length === 0 ||
+    // Only parts that can touch it need the pin/axle and gear-mesh exemptions worked out.
+    const skip = nearParts(model, catalogMap, placedPart, myMeta).filter(p => p.id !== placedPart.id && (solidColliders(catalogMap.get(p.part)).length === 0 ||
         placedGearsMesh(placedPart, myMeta, p, catalogMap.get(p.part)))).map(p => p.id);
     return partOverlaps(model, catalogMap, placedPart, {ignore: [...ignore, ...skip], colliders: solidColliders});
 };
@@ -281,13 +295,14 @@ export const freeOffset = ({model, catalog, parts, offsets}) => {
  */
 export const moveVerdict = ({model, catalog, moves, connected = []}) => {
     const moved = new Map(moves.map(m => [m.id, m]));
-    const after = {...model, parts: model.parts.map(p => (moved.has(p.id) ? {...p, position: moved.get(p.id).position, rotation: moved.get(p.id).rotation} : p))};
     const ignore = [...moved.keys(), ...connected];
-    for (const p of after.parts) {
+    // Every moved part is ignored, so each moved part is tested against the parts that stay, which are
+    // the same in the model before and after the move: test against `model` itself (its index, if any).
+    for (const p of model.parts) {
         if (!moved.has(p.id)) continue;
-        const before = model.parts.find(q => q.id === p.id);
-        const was = new Set(before ? solidOverlaps(model, catalog, before, {ignore}).map(o => o.part) : []);
-        const hit = solidOverlaps(after, catalog, p, {ignore}).find(o => !was.has(o.part));
+        const m = moved.get(p.id);
+        const was = new Set(solidOverlaps(model, catalog, p, {ignore}).map(o => o.part));
+        const hit = solidOverlaps(model, catalog, {...p, position: m.position, rotation: m.rotation}, {ignore}).find(o => !was.has(o.part));
         if (hit) return {ok: false, part: p.id, into: hit.part};
     }
     return {ok: true};
@@ -348,7 +363,10 @@ export const rayHitParts = (model, catalog, origin, direction, {exclude = []} = 
     const dir = vecNormalize(direction);
     const skip = new Set(exclude);
     const hits = [];
-    for (const p of model.parts) {
+    // Broad phase: only the parts whose bounds the ray passes through (a frozen model's index).
+    const index = indexFor(model.parts, catalogMap);
+    const parts = index ? index.queryRay(origin, dir).map(i => model.parts[i]) : model.parts;
+    for (const p of parts) {
         if (skip.has(p.id)) continue;
         const meta = catalogMap.get(p.part);
         if (!meta) continue;

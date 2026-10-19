@@ -4,23 +4,23 @@
   "packages": [
     {
       "name": "bw-board",
-      "commit": "f84ba60ead0a90deb9830f0c1468839c293ecf05",
+      "commit": "fac3a5a9928c8b53a778b0c42d8d91d5e693e4b7",
       "license": "MIT",
       "licenseFile": "bw-board.MIT.txt",
       "licenseSha256": "e53c4e17a0971ca6cac5010a19876b77a896e3ce172b1f61d934dfd14c595d6d",
-      "sourceTree": "https://github.com/CrispStrobe/bw-board/tree/f84ba60ead0a90deb9830f0c1468839c293ecf05",
-      "sourceArchive": "https://github.com/CrispStrobe/bw-board/archive/f84ba60ead0a90deb9830f0c1468839c293ecf05.tar.gz",
-      "upstreamLicense": "https://github.com/CrispStrobe/bw-board/blob/f84ba60ead0a90deb9830f0c1468839c293ecf05/LICENSE"
+      "sourceTree": "https://github.com/CrispStrobe/bw-board/tree/fac3a5a9928c8b53a778b0c42d8d91d5e693e4b7",
+      "sourceArchive": "https://github.com/CrispStrobe/bw-board/archive/fac3a5a9928c8b53a778b0c42d8d91d5e693e4b7.tar.gz",
+      "upstreamLicense": "https://github.com/CrispStrobe/bw-board/blob/fac3a5a9928c8b53a778b0c42d8d91d5e693e4b7/LICENSE"
     },
     {
       "name": "bw-circuit-ui",
-      "commit": "055930ec51300e0d71466c696ce1bf76284bde38",
+      "commit": "a7621be4d40d089826d78cd1e656b7c592ef16db",
       "license": "MPL-2.0",
       "licenseFile": "bw-circuit-ui.MPL-2.0.txt",
       "licenseSha256": "3f3d9e0024b1921b067d6f7f88deb4a60cbe7a78e76c64e3f1d7fc3b779b9d04",
-      "sourceTree": "https://github.com/CrispStrobe/bw-circuit-ui/tree/055930ec51300e0d71466c696ce1bf76284bde38",
-      "sourceArchive": "https://github.com/CrispStrobe/bw-circuit-ui/archive/055930ec51300e0d71466c696ce1bf76284bde38.tar.gz",
-      "upstreamLicense": "https://github.com/CrispStrobe/bw-circuit-ui/blob/055930ec51300e0d71466c696ce1bf76284bde38/LICENSE"
+      "sourceTree": "https://github.com/CrispStrobe/bw-circuit-ui/tree/a7621be4d40d089826d78cd1e656b7c592ef16db",
+      "sourceArchive": "https://github.com/CrispStrobe/bw-circuit-ui/archive/a7621be4d40d089826d78cd1e656b7c592ef16db.tar.gz",
+      "upstreamLicense": "https://github.com/CrispStrobe/bw-circuit-ui/blob/a7621be4d40d089826d78cd1e656b7c592ef16db/LICENSE"
     }
   ]
 }

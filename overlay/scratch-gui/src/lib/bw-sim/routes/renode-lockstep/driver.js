@@ -51,8 +51,15 @@ export class RenodeLockstepDriver {
      *        (and has resumed the guest: begin refuses a debugger-halted hub)
      * @param {Function} [options.onEnd] called once when end() has finished (the route
      *        releases the hub's configurationOwner claim there)
+     * @param {Function} [options.beforeLockstep] async, run once the guest runs and before
+     *        lockstep.begin (the route uploads the program there: program packets wait for
+     *        the firmware's reply in WALL time, so they need a free-running guest, plan §2.6)
+     * @param {Function} [options.beforeEnd] async, run before lockstep.end while lockstep is
+     *        still running (the route STOPs the program there); its failure is reported
+     *        like end()'s own, after the session is closed
      */
-    constructor ({transport, backend = 'nuttx', topology = 'default', quantumUs = 5000, manageSession = true, onEnd = null}) {
+    constructor ({transport, backend = 'nuttx', topology = 'default', quantumUs = 5000, manageSession = true, onEnd = null,
+        beforeLockstep = null, beforeEnd = null}) {
         if (!transport || typeof transport.call !== 'function') throw new TypeError('a lockstep transport needs call(operation, args)');
         if (!QUANTA_US.includes(quantumUs)) throw new TypeError(`quantumUs must be one of ${QUANTA_US.join(', ')}`);
         this.transport = transport;
@@ -61,6 +68,10 @@ export class RenodeLockstepDriver {
         this.quantumUs = quantumUs;
         this.manageSession = manageSession;
         this.onEnd = typeof onEnd === 'function' ? onEnd : null;
+        this.beforeLockstep = typeof beforeLockstep === 'function' ? beforeLockstep : null;
+        this.beforeEnd = typeof beforeEnd === 'function' ? beforeEnd : null;
+        /** Called with every accepted snapshot (the begin frame, then each step's). */
+        this.observers = [];
         /** The begin frame's clock: the emulator's virtual time at Lab time 0. */
         this.t0Ns = null;
         this.clockNs = null;
@@ -102,6 +113,7 @@ export class RenodeLockstepDriver {
                 // stops a RUNNING emulation (renode-spike-prime#59), so resume it first.
                 await this.transport.call(LOCKSTEP_OPS.run, {}); // replies 'running' (text, not a frame)
             }
+            if (this.beforeLockstep) await this.beforeLockstep();
             const frame = readSnapshot(await this._call(LOCKSTEP_OPS.begin, {quantumUs: this.quantumUs}));
             this.frame = frame;
             this.t0Ns = this.clockNs = frame.clockNs;
@@ -109,6 +121,7 @@ export class RenodeLockstepDriver {
             this.identity = frameIdentity(frame);
             this.ports = frame.ports.map(p => ({...p}));
             this.state = 'running';
+            this._notify(frame);
             return frame;
         } catch (error) {
             this.failed = error;
@@ -143,6 +156,7 @@ export class RenodeLockstepDriver {
             this.stats.exchanges++;
             this.stats.exchangeMs += ms;
             this.stats.maxExchangeMs = Math.max(this.stats.maxExchangeMs, ms);
+            this._notify(read.frame);
             return read;
         } catch (error) {
             // Desync, contract breach, transport failure: the emulator's state is no longer
@@ -155,12 +169,29 @@ export class RenodeLockstepDriver {
         }
     }
 
+    /** Adds an observer of every accepted snapshot; returns its removal. */
+    observe (fn) {
+        this.observers.push(fn);
+        return () => { this.observers = this.observers.filter(o => o !== fn); };
+    }
+
+    _notify (frame) {
+        // Observers record, never throw: one that does fails the step like a contract breach.
+        for (const fn of this.observers) fn(frame);
+    }
+
     /** Leaves lockstep and closes the session (if managed). Safe to call twice. */
     async end () {
         if (this.state === 'ended') return;
         const wasRunning = this.state === 'running' || this.state === 'failed';
-        this.state = 'ended';
         const errors = [];
+        if (this.state === 'running' && this.beforeEnd) {
+            const beforeEnd = this.beforeEnd;
+            this.beforeEnd = null;
+            this.state = 'ending';
+            try { await beforeEnd(); } catch (error) { errors.push(error); }
+        }
+        this.state = 'ended';
         if (wasRunning && this.t0Ns !== null) {
             try { await this._call(LOCKSTEP_OPS.end, {}); } catch (error) { errors.push(error); }
         }

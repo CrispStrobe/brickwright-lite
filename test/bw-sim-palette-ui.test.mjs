@@ -53,9 +53,12 @@ test('search: "Lochbalken 7" finds the 7-hole beam first; numbers are whole numb
     assert.ok(!hits.includes('32278.dat') && !hits.includes('32316.dat'), `beam 15 and beam 5 are not beam 7: ${hits}`);
     const beam7 = found('beam 7');
     assert.equal(beam7[0], '32524.dat', `EN: ${beam7}`);
-    // Every word must match: an axle has no 7 in its name.
-    assert.ok(!found('achse 7').length, 'no axle 7 in the catalog');
-    assert.deepEqual(found('achse 4'), ['3705.dat']);
+    // Every word must match: no axle has 17 in its name (LEGO makes none).
+    assert.ok(!found('achse 17').length, 'no axle 17 in the catalog');
+    // "achse 4" is the axle 4 first, then the other axles 4 (with a stop), never axle 14 or 40.
+    const axle4 = found('achse 4');
+    assert.equal(axle4[0], '3705.dat');
+    for (const p of axle4) assert.match(CATALOG.get(p).nameDe, /Achse 4\b/, p);
 });
 
 test('search: by part number, and by EN or DE category word', () => {

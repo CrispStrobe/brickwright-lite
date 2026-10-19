@@ -91,7 +91,7 @@ jobs:
           payload='[]'
           for id in $(echo "$runs" | jq -r '.[]'); do
             jobs=$(gh api "repos/${{ github.repository }}/actions/runs/$id/jobs" \
-              --jq '[.jobs[] | {started_at}]' 2>/dev/null || echo '[]')
+              --jq '[.jobs[] | {started_at, completed_at, status}]' 2>/dev/null || echo '[]')
             payload=$(jq -c --argjson j "$jobs" --arg id "$id" '. + [{id: $id, jobs: $j}]' <<<"$payload")
           done
           echo "$payload" | node scripts/watchdog-stuck-runs.mjs | while read -r id age; do
