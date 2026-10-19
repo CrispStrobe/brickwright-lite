@@ -1025,6 +1025,15 @@ lock and vendor selection. A synthetic noncurrent consumer tests refusal without
 retaining a stale active supplier pin. The earlier CI failure stays retained;
 this repair changes no dependency version or runtime qualification.
 
+The current-main pin adoption now explicitly selects Board
+`fac3a5a9928c8b53a778b0c42d8d91d5e693e4b7` and CUI
+`a7621be4d40d089826d78cd1e656b7c592ef16db` in both consumers, preserving main
+package/lock/vendor declarations. Board controls actual v3/v4 admission and
+scenario proof grading; historical actual originals require their retained
+historical reader. Font-prior formats and bytes remain held. New source, reader
+and request bindings, exact-head CI and affected guest qualification remain
+pending; this pin refresh establishes no new runtime result.
+
 The dependency-free focused check is:
 
 ```sh

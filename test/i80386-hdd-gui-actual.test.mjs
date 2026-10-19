@@ -2469,6 +2469,23 @@ class Originals(unittest.TestCase):
             self.assertFalse(observed['complete'],cut);self.assertEqual(observed['firstFailure']['name'],'ValueError',cut);self.assertEqual(observed['sourceCommands'],[],cut)
             read.assert_not_called();hosted.assert_not_called();retained.assert_not_called()
 
+    def assert_noncurrent_board_refuses_actual_formats(self,noncurrent):
+        self.assertNotEqual(noncurrent,r.BOARD)
+        for factory in (fixture,fixture_v4):
+            files,expected=factory();self.assertTrue(r.audit(*sealed(copy.deepcopy(files),copy.deepcopy(expected)))['pass'])
+            for role in ('admission',*r.SCENARIOS):
+                changed=copy.deepcopy(files)
+                if role=='admission':
+                    admission=D(changed['probe-admission.json']);admission['boardPin']=noncurrent;raw=E(admission);changed['probe-admission.json']=raw
+                    for scenario in r.SCENARIOS:
+                        changed[scenario+'/admission.json']=raw;proof=D(changed[scenario+'/proof.json']);proof.update(boardPin=noncurrent,admissionSha256=H(raw));changed[scenario+'/proof.json']=E(proof)
+                else:
+                    proof=D(changed[role+'/proof.json']);proof['boardPin']=noncurrent;changed[role+'/proof.json']=E(proof)
+                with self.assertRaisesRegex(ValueError,'actual probe source/build admission joins' if role=='admission' else 'scenario proof source/admission identity'):
+                    r.audit(*sealed(changed,copy.deepcopy(expected)))
+    def test_current_board_requires_current_admission_and_scenario_pins_v3_v4(self):
+        self.assert_noncurrent_board_refuses_actual_formats('0'*40)
+
 suite=unittest.defaultTestLoader.loadTestsFromTestCase(Originals)
 result=unittest.TextTestRunner(verbosity=2).run(suite)
 print(json.dumps({'controls':result.testsRun,'failures':len(result.failures),'errors':len(result.errors)}))
@@ -2801,29 +2818,38 @@ test('bridge delivery job uses exact owned event with pinned bounded source guar
 });
 
 // Canonical declarations are selected by their actual dependency sections.
-const guiCuiSelection = () => {
+const guiCuiSelection = (dependency='bw-circuit-ui') => {
     const json = path => JSON.parse(fs.readFileSync(root+path,'utf8'));
     const rootPackage=json('package.json'), guiPackage=json('packages/scratch-gui/package.json');
     const rootLock=json('package-lock.json'), guiLock=json('packages/scratch-gui/package-lock.json');
-    return [rootPackage.devDependencies['bw-circuit-ui'],guiPackage.dependencies['bw-circuit-ui'],
-        rootLock.packages[''].devDependencies['bw-circuit-ui'],guiLock.packages[''].dependencies['bw-circuit-ui'],
-        rootLock.packages['node_modules/bw-circuit-ui'].resolved,guiLock.packages['node_modules/bw-circuit-ui'].resolved,
-        json('vendor-pins.json')['bw-circuit-ui']];
+    return [rootPackage.devDependencies[dependency],guiPackage.dependencies[dependency],
+        rootLock.packages[''].devDependencies[dependency],guiLock.packages[''].dependencies[dependency],
+        rootLock.packages['node_modules/'+dependency].resolved,guiLock.packages['node_modules/'+dependency].resolved,
+        json('vendor-pins.json')[dependency]];
 };
-const assertGuiCuiSelection = (consumer, selected) => {
+const assertGuiCuiSelection = (consumer, selected, dependency='bw-circuit-ui') => {
     assert.match(consumer,/^[0-9a-f]{40}$/);
-    assert.deepEqual(selected,[...Array(4).fill('github:CrispStrobe/bw-circuit-ui#'+consumer),
-        ...Array(2).fill('git+ssh://git@github.com/CrispStrobe/bw-circuit-ui.git#'+consumer),consumer]);
+    assert.deepEqual(selected,[...Array(4).fill('github:CrispStrobe/'+dependency+'#'+consumer),
+        ...Array(2).fill('git+ssh://git@github.com/CrispStrobe/'+dependency+'.git#'+consumer),consumer]);
 };
-test('GUI consumer explicitly matches current canonical CUI declarations', () => {
+test('GUI consumer explicitly matches current canonical Board and CUI declarations', () => {
     const controller=fs.readFileSync(root+'scripts/run-i80386-hdd-gui-actual.py','utf8');
-    const consumer=controller.match(/^CUI = '([0-9a-f]{40})'$/m)?.[1], selected=guiCuiSelection();
-    assertGuiCuiSelection(consumer,selected);
-    const reader=fs.readFileSync(root+'scripts/read-i80386-hdd-gui-originals.py','utf8').match(/^CUI = '([0-9a-f]{40})'$/m)?.[1];
-    assertGuiCuiSelection(reader,selected);
-    assert.throws(()=>assertGuiCuiSelection('0'.repeat(40),selected));
-    for(let i=0;i<selected.length;i++){
-        const drift=[...selected];drift[i]=drift[i].replace(consumer,'0'.repeat(40));
-        assert.throws(()=>assertGuiCuiSelection(consumer,drift));
+    const reader=fs.readFileSync(root+'scripts/read-i80386-hdd-gui-originals.py','utf8');
+    for(const [dependency,declaration] of [['bw-circuit-ui','CUI'],['bw-board','BOARD']]){
+        const pattern=new RegExp("^"+declaration+" = '([0-9a-f]{40})'$",'m');
+        const consumer=controller.match(pattern)?.[1], selected=guiCuiSelection(dependency);
+        assertGuiCuiSelection(consumer,selected,dependency);
+        assertGuiCuiSelection(reader.match(pattern)?.[1],selected,dependency);
+        assert.throws(()=>assertGuiCuiSelection('0'.repeat(40),selected,dependency));
+        for(let i=0;i<selected.length;i++){
+            const drift=[...selected];drift[i]=drift[i].replace(consumer,'0'.repeat(40));
+            assert.throws(()=>assertGuiCuiSelection(consumer,drift,dependency));
+        }
+        // Each single reader/controller declaration independently remains live.
+        for(const source of [controller,reader]){
+            const changed=source.replace(pattern,declaration+" = '"+'0'.repeat(40)+"'");
+            assert.notEqual(changed,source);
+            assert.throws(()=>assertGuiCuiSelection(changed.match(pattern)?.[1],selected,dependency));
+        }
     }
 });
