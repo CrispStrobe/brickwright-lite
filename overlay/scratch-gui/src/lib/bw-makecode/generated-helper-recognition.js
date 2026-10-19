@@ -12,7 +12,8 @@ const aggregateSame=Object.is,aggregateHasOwn=Object.prototype.hasOwnProperty;
 const aggregateSet=Set,aggregateSetValues=Set.prototype.values;
 const aggregateSetAdd=Set.prototype.add,aggregateSetHas=Set.prototype.has;
 const aggregateSetNext=aggregatePrototype(aggregateApply(aggregateSetValues,new aggregateSet(),[])).next;
-const aggregateGlobals=[];
+const aggregateGlobalObject=globalThis;
+const aggregateGlobals=[{name:'globalThis',descriptor:aggregateDescriptor(aggregateGlobalObject,'globalThis')}];
 const aggregateIntrinsicRows=[];
 const aggregateRemember=target=>{
     for(let i=0;i<aggregateIntrinsicRows.length;i++)if(aggregateIntrinsicRows[i].target===target)return;
@@ -23,7 +24,7 @@ const aggregateRemember=target=>{
 for(const name of ['Object','Array','Reflect','Map','Set','WeakMap','WeakSet','Number','String','Boolean',
     'RegExp','JSON','Math','Error','TypeError','SyntaxError','RangeError','Function','Symbol',
     'parseInt','parseFloat','isNaN','isFinite']){
-    const d=aggregateDescriptor(globalThis,name);aggregateGlobals[aggregateGlobals.length]={name,descriptor:d};
+    const d=aggregateDescriptor(aggregateGlobalObject,name);aggregateGlobals[aggregateGlobals.length]={name,descriptor:d};
     const value=d.value;aggregateRemember(value);
     const p=aggregateDescriptor(value,'prototype');if(p&&aggregateApply(aggregateHasOwn,p,['value']))aggregateRemember(p.value);
 }
@@ -44,7 +45,7 @@ const aggregateEqualDescriptor=(a,b)=>{
 };
 const aggregateIntrinsicsCurrent=()=>{
     for(let i=0;i<aggregateGlobals.length;i++){
-        const r=aggregateGlobals[i];if(!aggregateEqualDescriptor(aggregateDescriptor(globalThis,r.name),r.descriptor))return false;
+        const r=aggregateGlobals[i];if(!aggregateEqualDescriptor(aggregateDescriptor(aggregateGlobalObject,r.name),r.descriptor))return false;
     }
     for(let i=0;i<aggregateIntrinsicRows.length;i++){
         const r=aggregateIntrinsicRows[i],keys=aggregateOwnKeys(r.target);

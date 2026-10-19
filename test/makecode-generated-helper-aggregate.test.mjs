@@ -89,6 +89,14 @@ test('Object Reflect Number and RegExp replacements preserve actual parser metad
     for(const[target,key]of [[Object,'getOwnPropertyDescriptor'],[Reflect,'ownKeys'],[Object,'is'],[Number,'isFinite'],[RegExp.prototype,'exec']]){
         const ast=parse(arraySource),{result}=transparent(target,key,()=>normalize(ast,profiles.ordinary));assert.deepEqual(result,expected);
     }
+    const originalGlobal=globalThis;let globalReads=0;
+    const getterAst=parse(arraySource);
+    const fromGetter=using(originalGlobal,'globalThis',d=>({enumerable:d.enumerable,configurable:d.configurable,
+        get(){globalReads++;throw new Error('globalThis getter must not run');}}),()=>normalize(getterAst,profiles.ordinary));
+    assert.equal(globalReads,0);assert.deepEqual(fromGetter,expected);
+    const aliasAst=parse(arraySource);
+    const fromAlias=using(originalGlobal,'globalThis',d=>({...d,value:{}}),()=>normalize(aliasAst,profiles.ordinary));
+    assert.deepEqual(fromAlias,expected);
     const ast=parse(arraySource);let reads=0;define(ast,'foreign',{enumerable:true,get(){reads++;throw Error('must not evaluate foreign getter');}});
     assert.equal(inspectGeneratedHelperBindings(ast,profiles.ordinary).isCurrent(),false);assert.equal(reads,0);
 });
