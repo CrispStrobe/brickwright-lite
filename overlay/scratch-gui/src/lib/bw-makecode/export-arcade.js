@@ -3094,6 +3094,22 @@ class ArcadeEmitter {
             const input = b.inputs?.[name]?.[1];
             return Array.isArray(input) ? String(input[1]) : String(blocks[input]?.fields?.TEXT?.[0] || '');
         };
+        // A local reset (:= undefined/null) immediately followed by its definite
+        // overwrite (a direct set, or an if/else writing it in both branches
+        // before any exit) whose value does not read the local, and never
+        // captured, cannot be observed and is not a producer of that local.
+        const deadLocalReset=(blocks,block)=>{
+            const fixed=value=>value?.opcode==='arrays_specialValue'&&!Object.keys(value.inputs||{}).length&&['undefined','null'].includes(value.fields?.KIND?.[0]);
+            if(block?.opcode!=='arcade_setLocal'||!fixed(inputBlock(blocks,block,'VALUE')))return false;
+            const name=literal(blocks,block,'NAME');
+            if(Object.values(blocks).some(b=>['arcade_getCaptured','arcade_setCaptured'].includes(b?.opcode)&&literal(blocks,b,'NAME')===name))return false;
+            const reads=(value,seen=new Set())=>{if(!value||seen.has(value))return false;seen.add(value);if(value.opcode==='arcade_getLocal'&&literal(blocks,value,'NAME')===name)return true;
+                return Object.entries(value.inputs||{}).some(([key,slot])=>!key.startsWith('SUBSTACK')&&typeof slot?.[1]==='string'&&reads(blocks[slot[1]],seen));};
+            const direct=n=>n?.opcode==='arcade_setLocal'&&literal(blocks,n,'NAME')===name&&!fixed(inputBlock(blocks,n,'VALUE'))&&!reads(inputBlock(blocks,n,'VALUE'));
+            const branch=id=>{const seen=new Set();for(let n=blocks[id];n&&!seen.has(n);n=blocks[n.next]){seen.add(n);if(direct(n))return true;if(/return|stop|break|continue|throw/i.test(n.opcode))return false;}return false;};
+            const next=blocks[block.next];
+            return direct(next)||next?.opcode==='control_if_else'&&branch(next.inputs?.SUBSTACK?.[1])&&branch(next.inputs?.SUBSTACK2?.[1]);
+        };
         const inspectionCaptures=analyseConsoleCaptures({targets:this.project.targets,blocks:target=>target.blocks||{},
             input:(node,name,target)=>inputBlock(target.blocks||{},node,name),
             literal:(node,name,target)=>{
@@ -3368,7 +3384,7 @@ class ArcadeEmitter {
                     connect(id,ref(inputBlock(blocks,block,'VALUE')));
                 }
                 if(block.opcode==='arcade_setCaptured'){const cell=inspectionCaptures.captured(inspectionCaptures.scopeOf(block),fixedName(block));connect(cell?inspectionCellKey(cell):`${key}:capture:${literal(blocks,block,'NAME')}`,ref(inputBlock(blocks,block,'VALUE')));}
-                if (block.opcode === 'arcade_setLocal') connect(localKey(literal(blocks,block,'NAME')),ref(inputBlock(blocks,block,'VALUE')));
+                if (block.opcode === 'arcade_setLocal' && !deadLocalReset(blocks,block)) connect(localKey(literal(blocks,block,'NAME')),ref(inputBlock(blocks,block,'VALUE')));
                 if (block.opcode === 'data_setvariableto') connect(`variable:${block.fields.VARIABLE[1] || block.fields.VARIABLE[0]}`,ref(inputBlock(blocks,block,'VALUE')));
                 if (block.opcode === 'arcade_returnValue') connect(`${key}:result`,ref(inputBlock(blocks,block,'VALUE')));
                 if (block.opcode === 'arcade_callFunction') {

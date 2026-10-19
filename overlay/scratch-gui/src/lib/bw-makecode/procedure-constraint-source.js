@@ -33,7 +33,9 @@ export function procedureConstraintPrefix(fn,procedure,parameterName=name=>name)
 // This checker adds obligations, never types to the producer graph. Call it on
 // the actual flattened ordinary-declaration AST before rendering its bodies.
 export function validateProcedureConstraintSource(program,{onlyFunctions=null,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false}={}) {
- const graph=analyseSourceValueProducers(program,{unboundIsOpaque:true,opaqueDeclarationValues:true,ordinaryPrimitiveSdkNumbers,sceneClockNumbers,arrayCallbackParameters:true,arrayLoopEntries:true});
+ // A comparison, `!` or typeof of proved primitive operands is a primitive
+ // producer for this consumer (exported Code booleans are `0 < 1` helpers).
+ const graph=analyseSourceValueProducers(program,{unboundIsOpaque:true,opaqueDeclarationValues:true,ordinaryPrimitiveSdkNumbers,sceneClockNumbers,arrayCallbackParameters:true,arrayLoopEntries:true,primitiveComparisons:true});
  const constraintTypes=graph.constraintTypesAt||graph.typesAt;
  const functions=new Map(),uses=[],calls=[],writes=[];
  const ordinary=new Set((program.body||[]).filter(node=>node.type==='FunctionDeclaration'&&(!onlyFunctions||onlyFunctions.has(node.name))));
