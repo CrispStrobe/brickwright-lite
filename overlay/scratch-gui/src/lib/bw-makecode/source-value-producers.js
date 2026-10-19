@@ -9,7 +9,7 @@ import {multiplayerPlayerSourceCalls} from './multiplayer-player-source.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 import {consoleInspectSourceCalls} from './console-inspect-source.js';
 import {SDK_FONT_FIELDS} from './sdk-font-value-descriptors.js';
-import {ordinaryPlayerScoreNumberCalls,ordinaryCameraPropertyNumberLeaves} from './ordinary-primitive-sdk-number-source.js';
+import {ordinaryPlayerScoreNumberCalls,ordinaryCameraPropertyNumberLeaves,ordinaryMathNumberCalls} from './ordinary-primitive-sdk-number-source.js';
 import {ordinarySceneClockNumberCalls} from './ordinary-scene-clock-number-source.js';
 import {controllerButtonEventNumberLeaves} from './controller-button-event-number-source.js';
 
@@ -95,7 +95,7 @@ function deadLocalResets(program) {
 
 // Analyze actual lexical producers and all writers without rewriting the AST.
 // Source annotations constrain consumers; they never seed producer authority.
-function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,primitiveComparisons=false,normalCompletion=null,physicalUpdateSource=null}={},privateSpriteAyProof=null,identityInput=null) {
+function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,primitiveComparisons=false,closureEntries=false,normalCompletion=null,physicalUpdateSource=null}={},privateSpriteAyProof=null,identityInput=null) {
     const physicalEntry=physicalUpdateSource?physicalUpdateSourceRecord(program,physicalUpdateSource):null;
     if(physicalUpdateSource&&!physicalEntry)throw new Error('Physical update source proof must belong to the actual current Program');
     const loopEntry=arrayLoopEntries?proveDenseArrayLoopEntries(program,()=>analyseGraph(program,{parenthesized:true,unboundIsOpaque:true})):null;
@@ -129,6 +129,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     };
     const ordinaryNumbers=ordinaryPrimitiveSdkNumbers?ordinaryPlayerScoreNumberCalls(program,safeClockIndex):null;
     const cameraPropertyNumbers=ordinaryPrimitiveSdkNumbers?ordinaryCameraPropertyNumberLeaves(program):null;
+    const mathNumbers=ordinaryPrimitiveSdkNumbers?ordinaryMathNumberCalls(program):null;
     const spriteAyNumbers=privateSpriteAyProof||(ordinaryPrimitiveSdkNumbers?ordinarySpriteAyNumberReads(program):null);
     const sceneNumbers=sceneClockNumbers?ordinarySceneClockNumberCalls(program,safeClockIndex):null;
     let screenWritten=false;
@@ -153,7 +154,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(value=>visit(value,owner));return;}
         owners.set(node,owner);if(['FunctionDeclaration','Class'].includes(node.type) && (node.name?.startsWith('__bwSdkFont_') || node.name==='__bwSDK_Font'))fail('Internal Font descriptor and intrinsic names are not source bindings');
         if(node.type==='Declaration' && node.decls.some(decl=>decl.name.startsWith('__bwSdkFont_') || decl.name==='__bwSDK_Font'))fail('Internal Font descriptor and intrinsic names are not source bindings');
-        if(node.type==='Identifier'){if(node.name.startsWith('__bwSdkFont_'))fail('Internal Font intrinsic names are not source bindings');if(!writing.has(node)){cells.set(node,key());if(node.name==='screen'&&sdk.has(node))add(cell(node),screenWritten?'Opaque':'Image');else {const id=binding(owner,node.name);edge(id,cell(node));if(unboundIsOpaque&&!declarations.has(id)||opaqueDeclarationValues&&[...(declarations.get(id)||[])].some(value=>(['FunctionDeclaration','Class','Enum'].includes(value?.type)||value?.isArray||value?.typeName&&!['number','boolean','string','any'].includes(value.typeName)&&!(multiplayer&&value.typeName==='mp.Player'))))add(cell(node),'Opaque');else if(opaqueDeclarationValues&&multiplayer&&[...(declarations.get(id)||[])].some(value=>value?.typeName==='mp.Player'))add(cell(node),'OpaquePlayerConstraint');}}return;}
+        if(node.type==='Identifier'){if(node.name.startsWith('__bwSdkFont_'))fail('Internal Font intrinsic names are not source bindings');if(!writing.has(node)){cells.set(node,key());if(node.name==='screen'&&sdk.has(node))add(cell(node),screenWritten?'Opaque':'Image');else {const id=binding(owner,node.name);edge(id,cell(node));if(mathNumbers?.has(node))add(cell(node),'Number');else if(unboundIsOpaque&&!declarations.has(id)||opaqueDeclarationValues&&[...(declarations.get(id)||[])].some(value=>(['FunctionDeclaration','Class','Enum'].includes(value?.type)||value?.isArray||value?.typeName&&!['number','boolean','string','any'].includes(value.typeName)&&!(multiplayer&&value.typeName==='mp.Player'))))add(cell(node),'Opaque');else if(opaqueDeclarationValues&&multiplayer&&[...(declarations.get(id)||[])].some(value=>value?.typeName==='mp.Player'))add(cell(node),'OpaquePlayerConstraint');}}return;}
         cells.set(node,key());const current=cell(node);if(completion&&!completion.isReachable(node))unreachableCells.add(current);
         if(node.bwConsoleInspectIntrinsic===true&&node.callee?.name==='__bwConsoleInspectValue')internalInspection=true;
         if(node.type==='Program'){predeclare(node.body,owner);vars(node.body,owner);node.body.forEach(value=>visit(value,owner));return;}
@@ -210,7 +211,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         else if(node.type==='Binary'&&['===','!==','==','!=','<','>','<=','>='].includes(node.op)||node.type==='Unary'&&node.op==='!')derived.push({result:current,type:'Boolean',operands:(node.type==='Unary'?[node.argument]:[node.left,node.right]).map(cell),signature:true,inspectionPrimitive:true});
         else if(arrayValues&&node.type==='Unary'&&node.op==='typeof')derived.push({result:current,type:'String',operands:[cell(node.argument)],signature:true,inspectionPrimitive:true});
         else if(node.type==='Unary'&&['+','-','~'].includes(node.op))derived.push({result:current,type:'Number',operands:[cell(node.argument)],signature:true,domain:'Number'});
-        else if(node.type==='Binary'&&['+','-','*','/','%','&','|','^','<<','>>','>>>'].includes(node.op))derived.push({result:current,type:'Number',operands:[cell(node.left),cell(node.right)],signature:true,domain:'Number',stringConcat:node.op==='+'});
+        else if(node.type==='Binary'&&['+','-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(node.op))derived.push({result:current,type:'Number',operands:[cell(node.left),cell(node.right)],signature:true,domain:'Number',stringConcat:node.op==='+'});
         else if(node.type==='Call'&&!node.isNew&&(node.callee?.type==='Identifier'||numericArrows.size&&node.callee?.type==='Parenthesized'))calls.push({node,callee:node.callee.type==='Identifier'?binding(owner,node.callee.name):null,result:current});
         else if(node.type==='Parenthesized'&&parenthesized)edge(cell(node.expression),current);
         // The parser spells && / || / ?? as Binary; each yields one actual operand.
@@ -218,7 +219,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         else if(node.type==='Member'&&['width','height'].includes(node.name))edges.push([cell(node.object),current,'imageDimension',node.name]);
         else if(node.type==='Member'&&fields.has(node.name))edges.push([cell(node.object),current,'field',node.name]);
         else if(['Undefined','Null','String','Number','Boolean'].includes(node.type))add(current,node.type);
-        else if(ordinaryNumbers?.has(node)||cameraPropertyNumbers?.has(node)||sceneNumbers?.has(node)||buttonEventNumbers?.has(node)||spriteAyNumbers?.has(node))add(current,'Number');
+        else if(ordinaryNumbers?.has(node)||cameraPropertyNumbers?.has(node)||mathNumbers?.has(node)||sceneNumbers?.has(node)||buttonEventNumbers?.has(node)||spriteAyNumbers?.has(node))add(current,'Number');
         else if(node.type==='Call'&&sdk.has(node.callee)&&path(node.callee)==='game.askForString')add(current,'String');
         else {add(current,'Opaque');if(arrayValues&&node.type==='Call'&&node.callee?.type==='Member')for(const value of [node.callee.object,...node.args])arrayOperations.push({kind:'escape',receiver:cell(value)});}
     };
@@ -231,7 +232,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         const owner=owners.get(node)||global;if(initializationEntries)initializationAt.set(node,new Set(known));
         if(node.type==='Identifier'){
             if(known.has(binding(owner,node.name)))initializedReads.add(node);
-            if(!writing.has(node)&&!(node.name==='screen'&&sdk.has(node))&&!known.has(binding(owner,node.name))){
+            if(!writing.has(node)&&!(node.name==='screen'&&sdk.has(node))&&!mathNumbers?.has(node)&&!known.has(binding(owner,node.name))){
                 const id=binding(owner,node.name);
                 if(uninitializedLocalsAreOpaque&&global.bindings.get(node.name)!==id&&[...(declarations.get(id)||[])].some(declaration=>typeof declaration==='object'&&!['FunctionDeclaration','Class','Enum'].includes(declaration.type)))add(cell(node),'Opaque');
                 add(cell(node),'Undefined');
@@ -239,7 +240,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         }
         // A closure expression is allocated here, after the currently proved
         // initializations. Hoisted declarations retain their entry boundary.
-        if(node.type==='FunctionDeclaration'||node.type==='FunctionExpression'){const entryOwner=node.type==='FunctionDeclaration'?functions.get(binding(owner,node.name))?.owner:null;const first=node.body?.[0],methodOwner=entryOwner||owners.get(first);entry(node.body,new Set([...((consoleInspection||arrayValues)&&node.type==='FunctionExpression'?known:[]),...(node.params||[]).map(name=>binding(methodOwner||owner,name))]));return known;}
+        if(node.type==='FunctionDeclaration'||node.type==='FunctionExpression'){const entryOwner=node.type==='FunctionDeclaration'?functions.get(binding(owner,node.name))?.owner:null;const first=node.body?.[0],methodOwner=entryOwner||owners.get(first);entry(node.body,new Set([...((consoleInspection||arrayValues||closureEntries)&&node.type==='FunctionExpression'?known:[]),...(node.params||[]).map(name=>binding(methodOwner||owner,name))]));return known;}
         if(node.type==='Class'){for(const field of node.fields||[])entry(field.init,new Set());for(const method of [node.ctor,...(node.methods||[])].filter(Boolean)){const methodOwner=owners.get(method.body?.[0])||owner,globals=physicalEntry?.methods.get(method)?.globals||[];entry(method.body,new Set([...globals.map(decl=>binding(global,decl.name)),...(method.params||[]).map(name=>binding(methodOwner,name))]));}return known;}
         if(node.type==='Declaration'){for(const decl of node.decls){known=entry(decl.init,known);if(decl.init||localUndefinedDeclarations.has(decl))known=new Set([...known,binding(owner,decl.name)]);}return known;}
         if(node.type==='Assignment'){known=entry(node.right,known);if(node.left?.type==='Identifier'&&node.op==='=')known=new Set([...known,binding(owners.get(node.left),node.left.name)]);else known=entry(node.left,known);return known;}
@@ -254,7 +255,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     const resultFunctions=new Map([...functions].filter(([,fn])=>fn).map(([name,fn])=>[fn.result,name])),callGraph=new Map();
     for(const call of calls){let owner=owners.get(call.node);while(owner&&!owner.result)owner=owner.parent;const origin=resultFunctions.get(owner?.result);if(origin){if(!callGraph.has(origin))callGraph.set(origin,new Set());callGraph.get(origin).add(call.callee);}}
     const cyclic=(origin,current=origin,seen=new Set())=>{if(seen.has(current))return false;seen.add(current);for(const next of callGraph.get(current)||[])if(next===origin||cyclic(origin,next,seen))return true;return false;};
-    for(const call of calls){if(completion&&!completion.isReachable(call.node)){add(call.result,'Opaque');continue;}const fn=functions.get(call.callee);if(!fn||declarations.get(call.callee)?.size!==1||classWrites.has(call.callee)){
+    for(const call of calls){if(completion&&!completion.isReachable(call.node)){add(call.result,'Opaque');continue;}const fn=functions.get(call.callee);if(!fn&&mathNumbers?.has(call.node)){add(call.result,'Number');continue;}if(!fn||declarations.get(call.callee)?.size!==1||classWrites.has(call.callee)){
             if(numericArrows.size)numericCalls.push({node:call.node,result:call.result,receiver:cell(call.node.callee)});
             else add(call.result,'Opaque');if(arrayValues)for(const argument of call.node.args)arrayOperations.push({kind:'escape',receiver:cell(argument)});continue;
         }if(numericHelpers.has(fn.node)) {

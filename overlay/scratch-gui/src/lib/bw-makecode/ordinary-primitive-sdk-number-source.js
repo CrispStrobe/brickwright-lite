@@ -120,3 +120,45 @@ export function ordinaryCameraPropertyNumberLeaves(program) {
     visit(program);
     return new WeakSet(unsafe?[]:candidates);
 }
+
+// Builtin numeric values: `randint(a, b)`, `Infinity`, `NaN` and the Number-valued members of
+// the unshadowed builtin `Math` namespace. Any source declaration, parameter
+// or write of `randint`, or any write/extraction of `Math`, invalidates all.
+const MATH_NUMBER_MEMBERS = Object.freeze(['abs','acos','asin','atan','atan2','ceil','clamp','constrain','cos','exp','floor',
+    'icos','idiv','imul','isin','log','map','max','min','pow','random','randomRange','round','roundWithPrecision','sign','sin',
+    'sqrt','tan','trunc','E','LN10','LN2','LOG10E','LOG2E','PI','SQRT1_2','SQRT2']);
+export function ordinaryMathNumberCalls(program) {
+    const sdk=staticSdkNamespaceReceivers(program),candidates=[];
+    let randintBound=false,mathUnsafe=false;const bound=new Set(),constants=[];
+    const rootOf=node=>{while(['Member','Index'].includes(node?.type))node=node.object;return node;};
+    const visit=(node,parent=null)=>{
+        if(!node||typeof node!=='object')return;
+        if(Array.isArray(node)){for(const value of node)visit(value,parent);return;}
+        if(node.type==='Declaration'&&(node.decls||[]).some(decl=>decl.name==='randint'))randintBound=true;
+        if(node.type==='Declaration')for(const decl of node.decls||[])bound.add(decl.name);
+        if(['FunctionDeclaration','FunctionExpression','Class','Enum','Namespace'].includes(node.type)&&node.name)bound.add(node.name);
+        if(Array.isArray(node.params))for(const name of node.params)bound.add(name);
+        if(node.type==='Identifier'&&['Infinity','NaN'].includes(node.name)&&!(parent?.type==='Member'&&parent.object!==node&&parent.name===node.name))constants.push(node);
+        if(['FunctionDeclaration','FunctionExpression','Class','Enum','Namespace'].includes(node.type)&&node.name==='randint')randintBound=true;
+        if(Array.isArray(node.params)&&node.params.includes('randint'))randintBound=true;
+        if(node.type==='Assignment'||node.type==='Update'||node.type==='Unary'&&node.op==='delete'){
+            const root=rootOf(node.type==='Assignment'?node.left:node.argument);
+            if(root?.type==='Identifier'&&root.name==='randint')randintBound=true;
+            if(root?.type==='Identifier'&&['Infinity','NaN'].includes(root.name))bound.add(root.name);
+            if(root?.type==='Identifier'&&root.name==='Math'&&sdk.has(root))mathUnsafe=true;
+        }
+        if(node.type==='Identifier'&&node.name==='Math'&&sdk.has(node)&&!(parent?.type==='Member'&&parent.object===node))mathUnsafe=true;
+        if(node.type==='Call'&&!node.isNew&&!node.typeArguments?.length&&!node.args?.some(arg=>arg?.type==='Spread')){
+            const callee=node.callee;
+            if(callee?.type==='Identifier'&&callee.name==='randint'&&node.args.length===2)candidates.push({node,kind:'randint'});
+            if(callee?.type==='Member'&&!callee.optional&&callee.object?.type==='Identifier'&&callee.object.name==='Math'&&sdk.has(callee.object)&&MATH_NUMBER_MEMBERS.includes(callee.name))candidates.push({node,kind:'math'});
+        }
+        if(node.type==='Member'&&!node.optional&&node.object?.type==='Identifier'&&node.object.name==='Math'&&sdk.has(node.object)&&/^[A-Z0-9_]+$/.test(node.name)&&MATH_NUMBER_MEMBERS.includes(node.name)&&!(parent?.type==='Call'&&parent.callee===node))candidates.push({node,kind:'math'});
+        for(const value of Object.values(node))if(value&&typeof value==='object')visit(value,node);
+    };
+    visit(program);
+    // `Infinity` and `NaN` are global Number values unless the program binds or writes them.
+    const constantSafe=name=>!bound.has(name);
+    return new WeakSet([...candidates.filter(({kind})=>kind==='randint'?!randintBound:!mathUnsafe).map(({node})=>node),
+        ...constants.filter(node=>constantSafe(node.name))]);
+}

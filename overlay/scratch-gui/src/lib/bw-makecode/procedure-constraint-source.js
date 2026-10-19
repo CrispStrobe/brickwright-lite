@@ -35,7 +35,25 @@ export function procedureConstraintPrefix(fn,procedure,parameterName=name=>name)
 export function validateProcedureConstraintSource(program,{onlyFunctions=null,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false}={}) {
  // A comparison, `!` or typeof of proved primitive operands is a primitive
  // producer for this consumer (exported Code booleans are `0 < 1` helpers).
- const graph=analyseSourceValueProducers(program,{unboundIsOpaque:true,opaqueDeclarationValues:true,ordinaryPrimitiveSdkNumbers,sceneClockNumbers,arrayCallbackParameters:true,arrayLoopEntries:true,primitiveComparisons:true});
+ // A callback closure is allocated after the bindings already initialized
+ // at that point; they stay initialized inside its body.
+ // Structural binary helpers (`function h(a,b){return a OP b}` at the top
+ // level, declared once and never written) are specialized per call site, as
+ // the callable source gate does: each call is Number only from Number operands.
+ const helperNames=new Map();
+ for(const fn of program.body||[]){
+  const value=fn?.type==='FunctionDeclaration'&&fn.params?.length===2&&new Set(fn.params).size===2&&fn.body?.length===1&&fn.body[0].type==='Return'&&fn.body[0].value;
+  if(value?.type==='Binary'&&['+','-','*','/','%','&','|','^','<<','>>','>>>'].includes(value.op)&&value.left?.type==='Identifier'&&value.right?.type==='Identifier'&&value.left.name===fn.params[0]&&value.right.name===fn.params[1])
+   helperNames.set(fn.name,helperNames.has(fn.name)?null:fn);
+ }
+ const written=new Set();const scanWrites=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(scanWrites);return;}
+  if(node.type==='Assignment'||node.type==='Update'){let target=node.type==='Assignment'?node.left:node.argument;while(['Member','Index'].includes(target?.type))target=target.object;if(target?.type==='Identifier')written.add(target.name);}
+  if(node.type==='Declaration')for(const decl of node.decls||[])written.add(decl.name);
+  if(Array.isArray(node.params))for(const name of node.params)written.add(name);
+  for(const child of Object.values(node))if(child&&typeof child==='object')scanWrites(child);};
+ scanWrites(program);
+ const numericHelpers=new Set([...helperNames].filter(([name,fn])=>fn&&!written.has(name)).map(([,fn])=>fn));
+ const graph=analyseSourceValueProducers(program,{unboundIsOpaque:true,opaqueDeclarationValues:true,ordinaryPrimitiveSdkNumbers,sceneClockNumbers,arrayCallbackParameters:true,arrayLoopEntries:true,primitiveComparisons:true,closureEntries:true,numericHelpers});
  const constraintTypes=graph.constraintTypesAt||graph.typesAt;
  const functions=new Map(),uses=[],calls=[],writes=[];
  const ordinary=new Set((program.body||[]).filter(node=>node.type==='FunctionDeclaration'&&(!onlyFunctions||onlyFunctions.has(node.name))));
@@ -161,7 +179,12 @@ function prepareConstraints(program,mode,declarationIdentityOnly) {
   selected.set(fn.name,{fn,params:[...fn.params],types:fn.params.map(name=>fn.paramTypes?.[name]?.text)});
  }
  const uses=[];const visit=(node,parent=null,key=null)=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(child=>visit(child,parent,key));return;}if(node.type==='Identifier')uses.push({node,parent,key});for(const [name,value]of Object.entries(node))if(value&&typeof value==='object')visit(value,node,name);};visit(program);
- for(const {node,parent,key}of uses){const entry=selected.get(node.name);if(entry&&graph.unchangedFunctionAt(node)===entry.fn&&!(parent?.type==='Call'&&key==='callee'&&!parent.isNew&&!parent.typeArguments?.length)){selected.delete(node.name);excluded.push('Procedure parameter constraint: '+node.name+' escaped or nonordinary call remains outside this protocol');}}
+ // A declaration passed directly as a call argument is a static callback; the
+ // supported default leaves it on the existing callback route, unconstrained.
+ // Every other escape or nonordinary use (alias, write, new, generics) refuses.
+ const escapes=new Map();
+ for(const {node,parent,key}of uses){const entry=selected.get(node.name);if(entry&&graph.unchangedFunctionAt(node)===entry.fn&&!(parent?.type==='Call'&&key==='callee'&&!parent.isNew&&!parent.typeArguments?.length)){if(!escapes.has(node.name))escapes.set(node.name,[]);escapes.get(node.name).push(parent?.type==='Call'&&key==='args'&&!parent.isNew);}}
+ for(const [name,callbacks]of escapes){selected.delete(name);if(mode==='supported-default'&&callbacks.every(Boolean))continue;excluded.push('Procedure parameter constraint: '+name+' escaped or nonordinary call remains outside this protocol');}
  for(const [name,entry]of selected)if(graph.unchangedFunctionAt(entry.fn)!==entry.fn){selected.delete(name);excluded.push('Procedure parameter constraint: '+name+' requires a unique unchanged actual ordinary declaration');}
  const validation={onlyFunctions:new Set(selected.keys()),ordinaryPrimitiveSdkNumbers:mode==='supported-default',sceneClockNumbers:mode==='supported-default'};
  const diagnostics=[...excluded,...validateProcedureConstraintSource(program,validation)];
