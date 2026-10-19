@@ -76,7 +76,8 @@ export const MODELS = Object.freeze([
         example: 'differential.bw'},
     // No hub at all: the Robot Lab's own lab-direct hub owns the motor, and its example steers it
     // with `lab` words (docs/SIM-LAB.md "Steering the Lab").
-    {file: 'motor-bench.ldr', title: {en: 'Motor bench (no hub)', de: 'Motorprüfstand (ohne Hub)'}}
+    {file: 'motor-bench.ldr', title: {en: 'Motor bench (no hub)', de: 'Motorprüfstand (ohne Hub)'},
+        example: 'motor-bench.bw'}
 ]);
 export const MODELS_BASE = 'static/sim-lab/models/';
 export const PROGRAMS_BASE = 'static/sim-lab/programs/';

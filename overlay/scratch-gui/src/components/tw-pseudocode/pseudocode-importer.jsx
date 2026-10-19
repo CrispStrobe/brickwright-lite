@@ -2673,8 +2673,8 @@ class PseudocodeImporter extends React.Component {
             const SB3 = (await this.lib()).default;
             let pseudo = src;
             if (from === 'c') pseudo = (await this.readC(src)).pseudocode;
-            else if (from === 'python') pseudo = (await import(/* webpackChunkName: "sb3-creator-python" */ '../../lib/sb3-creator-python.js')).default(src).pseudocode;
-            else if (from === 'javascript') pseudo = (await import(/* webpackChunkName: "sb3-creator-javascript" */ '../../lib/sb3-creator-javascript.js')).default(src).pseudocode;
+            else if (from === 'python') pseudo = (await import(/* webpackChunkName: "sb3-creator-readers" */ '../../lib/robot-lab-pseudocode.js')).readPython(src).pseudocode;
+            else if (from === 'javascript') pseudo = (await import(/* webpackChunkName: "sb3-creator-readers" */ '../../lib/robot-lab-pseudocode.js')).readJavaScript(src).pseudocode;
             else if (from === 'basic') pseudo = (await import(/* webpackChunkName: "sb3-creator-basic" */ '../../lib/sb3-creator-basic.js')).default(src).pseudocode;
             else if (DOS_LANG[from]) pseudo = (await DOS_LANG[from].load()).default(src).pseudocode;
             const creator = new SB3();
@@ -4542,7 +4542,7 @@ class PseudocodeImporter extends React.Component {
         this.setState({spike3Log: [], spike3Running: false});
         let report = null;
         try {
-            report = (await import(/* webpackChunkName: "sb3-creator-python" */ '../../lib/sb3-creator-python.js')).default(code);
+            report = (await import(/* webpackChunkName: "sb3-creator-readers" */ '../../lib/robot-lab-pseudocode.js')).readPython(code);
         } catch (e) {
             push('err', `${this.L.spike3Error}: ${e.message}`);
             return;
@@ -5106,11 +5106,11 @@ class PseudocodeImporter extends React.Component {
                 source = res.pseudocode;
                 parseWarnings = [this.L.asmLifted(res.stats.lifted)];
             } else if (lang === 'python') {
-                const res = (await import(/* webpackChunkName: "sb3-creator-python" */ '../../lib/sb3-creator-python.js')).default(source);
+                const res = (await import(/* webpackChunkName: "sb3-creator-readers" */ '../../lib/robot-lab-pseudocode.js')).readPython(source);
                 if (strict && res.unsupported?.length) throw new Error(res.unsupported.join(' · '));
                 source = res.pseudocode; parseWarnings = res.warnings || [];
             } else if (lang === 'javascript') {
-                const res = (await import(/* webpackChunkName: "sb3-creator-javascript" */ '../../lib/sb3-creator-javascript.js')).default(source);
+                const res = (await import(/* webpackChunkName: "sb3-creator-readers" */ '../../lib/robot-lab-pseudocode.js')).readJavaScript(source);
                 source = res.pseudocode; parseWarnings = res.warnings || [];
             } else if (lang === 'basic') {
                 const res = (await import(/* webpackChunkName: "sb3-creator-basic" */ '../../lib/sb3-creator-basic.js')).default(source);
