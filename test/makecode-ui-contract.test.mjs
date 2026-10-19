@@ -49,15 +49,26 @@ test('an artefact is read as bytes, not as text', () => {
     assert.match(method, /new Uint8Array\(reader\.result\)/);
 });
 
-test('all five entry points share one lazily-loaded chunk', () => {
+test('file and share imports use one lazy gateway and all exporters share its chunk', () => {
     const chunks = [...source.matchAll(/webpackChunkName: "([^"]+)" \*\/ '\.\.\/\.\.\/lib\/bw-makecode\/(index|export-arcade)\.js'/g)]
         .map(m => m[1]);
-    // Eight since a project can hold several boards: the per-board subjects
-    // (boardSubjects) and the per-board export each import it once more.
-    assert.equal(chunks.length, 8,
-        'file import, share import, export, the ▶/⤓ MakeCode subject, the Arcade export (+ its hex container), ' +
-        'and the per-board subjects and per-board export of a multi-board project');
-    assert.deepEqual([...new Set(chunks)], ['bw-makecode'], 'one chunk, not eight');
+    const gateway = scopeAfter(source, 'makeCodeImportModule () {');
+    const lazy = /import\(\s*\/\* webpackChunkName: "bw-makecode" \*\/ '\.\.\/\.\.\/lib\/bw-makecode\/(?:index|export-arcade)\.js'\)/g;
+    assert.equal([...gateway.matchAll(lazy)].length, 1, 'one actual lazy gateway');
+    for (const signature of ['openArtefactFile (file) {', 'async openMakeCodeShare () {']) {
+        const body = scopeAfter(source, signature);
+        assert.equal([...body.matchAll(/await this\.makeCodeImportModule\(\)/g)].length, 1, signature);
+        assert.equal([...body.matchAll(lazy)].length, 0, 'imports delegate to the gateway');
+    }
+    for (const signature of ['async exportMakeCode () {', 'async makeCodeSubject () {',
+        'async boardSubjects (source) {', 'async exportBoardsMakeCode (source) {',
+        'async arcadeFromStage () {', 'async exportArcade () {']) {
+        assert.equal([...scopeAfter(source, signature).matchAll(lazy)].length, 1, signature);
+    }
+    assert.equal(chunks.length, 7, 'one gateway and six export/subject loaders');
+    assert.deepEqual([...new Set(chunks)], ['bw-makecode'], 'all paths use one chunk');
+    assert.doesNotMatch(source, /^import .*bw-makecode\/(?:index|export-arcade)\.js/m,
+        'the shared gateway must remain lazy');
 });
 
 test('MakeCode\'s compiler is loaded on demand, in its own chunk, by the ▶, emulate and ⤓ actions and the Arcade board list only', () => {

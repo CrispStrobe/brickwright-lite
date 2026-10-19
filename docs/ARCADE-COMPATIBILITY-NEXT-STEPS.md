@@ -225,3 +225,14 @@ The completion ledger remains **184 raw sources plus 41 project contexts**.
 Historical raw results remain **147 translated / 36 partial / 1 malformed**;
 the complete current 225-subject result is **unmeasured**. Focused passes,
 fixture improvements and SDK acceptance do not reduce that count.
+
+### Import gateway test maintenance
+
+The MakeCode file and share import actions now share `makeCodeImportModule`.
+Their source-driven controls must call the actual `currentMakeCodeRequest`
+predicate; replacing that predicate with an unconditional success would hide
+stale prompt and stage changes. Count the gateway plus the six export/subject
+loaders only after checking both importing entry methods delegate to it. Keep
+`test/makecode-import-request-fences.test.mjs`, the modal answer/cancel controls
+and the deliberate revert-to-native-prompt failures as qualification gates.
+These checks establish source and DOM wiring, not a rendered Arcade game.

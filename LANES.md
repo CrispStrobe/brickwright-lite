@@ -6805,3 +6805,14 @@ No complete suite or new corpus count is claimed. Investigate actual repeated
 analysis cost; do not raise bounds, shard the suite or repeat unchanged source.
 Main composition needs its own controls, affected guest qualification and all
 enabled final-head hosted checks before normal matched-head landing.
+
+## Arcade import gateway source controls — 2026-10-19
+
+Owner: root, `lane/arcade-ui-import-contracts-20261019`. Scope: repair stale
+source-driven tests for the existing MakeCode lazy gateway and request fencing.
+No product behavior, dependency, timeout, workflow or compatibility count changes.
+The prompt driver must execute the actual current-request predicate and retain
+modal answer/cancel and revert-to-native-prompt controls. The chunk control must
+prove both import entry methods use the shared gateway and each exporter/subject
+keeps its lazy chunk. Whole affected modules and existing request-fence controls
+remain pending qualification; no browser claim.
