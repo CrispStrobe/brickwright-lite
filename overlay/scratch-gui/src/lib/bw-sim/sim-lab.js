@@ -33,7 +33,7 @@ export {createEditor, partsByIdOf} from './editor/editor-state.js';
 export {colorPalette, rotationToDegrees, degreesToRotation} from './editor/editor-parity.js';
 export {selectionPivot} from './editor/transform-math.js';
 export {createEditorView3D, DEFAULT_COLOR} from './editor/editor-view3d.js';
-export {snapCandidates} from './editor/snap.js';
+export {snapCandidates, pairedParts} from './editor/snap.js';
 export {paletteFrom, searchPalette, pushRecent, partNumber} from './editor/palette.js';
 export {createPartThumbnails} from './view/part-thumbnails.js';
 export {serializeModel, parseModel} from './model/ldraw-model.js';

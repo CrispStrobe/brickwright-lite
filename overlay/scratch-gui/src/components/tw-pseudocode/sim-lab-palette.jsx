@@ -94,8 +94,10 @@ class SimLabPalette extends React.Component {
     }
 
     renderTile (item, {testid, compact = false}) {
-        const {text: T, placing, thumbs, onArm, onPress} = this.props;
+        const {text: T, placing, thumbs, onArm, onPress, fits} = this.props;
         const on = placing === item.part;
+        // Target-first: a part that cannot go into the pinned target steps back.
+        const dim = Boolean(fits && !fits(item.part));
         const picture = thumbs ? thumbs.get(item.part) : null;
         const title = fill(T.partTitle, {name: item.name, number: item.number});
         return (
@@ -103,11 +105,13 @@ class SimLabPalette extends React.Component {
                 ref={this.observe} aria-pressed={on} title={title} draggable={false}
                 onDragStart={e => e.preventDefault()}
                 onPointerDown={e => onPress(item.part, e)}
-                onClick={() => onArm(item.part)}
+                onClick={e => onArm(item.part, {keyboard: e.detail === 0})}
+                data-fits={fits ? (dim ? 'no' : 'yes') : undefined}
                 style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', gap: 2,
                     width: '100%', minHeight: compact ? 0 : 44, padding: compact ? 3 : '4px 4px 6px', borderRadius: 8, cursor: 'grab',
                     border: `${on ? 2 : 1}px solid ${on ? '#2563eb' : '#e2e8f0'}`, background: on ? '#dbeafe' : '#fff',
-                    userSelect: 'none', touchAction: 'pan-y', WebkitTouchCallout: 'none', boxSizing: 'border-box', fontSize: 11, lineHeight: '13px', color: '#1e293b'}}>
+                    userSelect: 'none', touchAction: 'pan-y', WebkitTouchCallout: 'none', boxSizing: 'border-box', fontSize: 11, lineHeight: '13px', color: '#1e293b',
+                    opacity: dim ? 0.35 : 1}}>
                 {thumbs && (picture ?
                     <img src={picture} alt="" draggable={false} data-testid="bw-sim-lab-thumb" width={THUMB_CSS_PX} height={THUMB_CSS_PX}
                         style={{display: 'block', pointerEvents: 'none'}} /> :

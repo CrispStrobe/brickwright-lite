@@ -188,6 +188,8 @@ const SimLabProperties = ({T, lib, editor, view, selectionIds, palette, colourNa
                             {!editGroup && <button type="button" style={small} onClick={run(() => view?.ungroupSelection())}>{T.ungroup}</button>}
                         </div>
                     ))}
+                    <button type="button" style={small} data-testid="bw-sim-lab-select-connected" title={T.connect.selectConnected}
+                        onClick={run(() => view?.selectConnected())}>{T.connect.selectConnected}</button>
                 </Section>
             )}
 

@@ -211,6 +211,8 @@ const NARROW_BELOW_PX = 420;
 const DOCK_PROPERTIES_PX = 1280;
 /** What is hidden in Build stays hidden for the browser session (view state, not the model). */
 const HIDDEN_STORAGE_KEY = 'bw-sim-lab-hidden';
+/** How Build's 3D view reads a scroll (camera-nav.js wheelIntent), kept in this browser. */
+const WHEEL_STORAGE_KEY = 'bw-sim-lab-wheel-mode';
 
 /**
  * From this pane width the toolbar may take a second row and shows every action; narrower, it
@@ -246,7 +248,8 @@ class SimLabPane extends React.Component {
             showPorts: true, showMotion: false, blockers: [], portPicker: null, instructions: null, coarse: false,
             paneWidth: 0, menu: null, drawer: false, paletteDragging: false, infoOpen: false, route: 'scratch',
             paletteOpen: true, paletteShare: null, propsShare: null, propsDocked: true,
-            hidden: [], editGroup: null, pick: null, measurement: null, placeColor: null, propsOpen: false, shortcuts: false};
+            hidden: [], editGroup: null, pick: null, measurement: null, placeColor: null, propsOpen: false, shortcuts: false,
+            hold: null, announce: '', wheelMode: this.storedWheelMode()};
         this.root = React.createRef();
         this.viewWrap = React.createRef();
         this.box = React.createRef();
@@ -331,6 +334,10 @@ class SimLabPane extends React.Component {
             get firmwareProgram () { return this._pane.firmware?.program?.stateName ?? null; },
             /** The last Build-mode compile for the issues and the overlay: {ms, parts}. */
             get insight () { return this._pane.lastInsight || null; },
+            /** Build (docs/ROBOT-LAB-UX.md §5): the lit connectors [{partId, connectorId, active}], the candidate pose, the ghost's tone. */
+            highlights () { return this._pane.editView ? this._pane.editView.debug.highlights() : []; },
+            candidate () { return this._pane.editView ? this._pane.editView.debug.candidate() : null; },
+            ghostTone () { return this._pane.editView ? this._pane.editView.debug.ghostTone() : null; },
             _pane: this
         };
         // The SPIKE arena stands aside while this session drives the shared hub (lib/robot-lab-events.js).
@@ -440,8 +447,12 @@ class SimLabPane extends React.Component {
                 onViewState: view => this.onEditorViewState(view),
                 onColorPicked: color => this.pickColour(color),
                 measureLabel: m => fillText(this.etext.measureLabel, {ldu: this.decimal(m.ldu), studs: this.decimal(m.studs), mm: this.decimal(m.mm)}),
-                onShortcuts: () => this.setState({shortcuts: true})});
+                onShortcuts: () => this.setState({shortcuts: true}),
+                onHold: hold => this.setState({hold}),
+                onAnnounce: info => this.setState({announce: this.announceText(info)}),
+                viewCubeLabels: this.etext.connect.cube});
             this.editView.setGrid(this.state.grid);
+            this.editView.setWheelMode(this.state.wheelMode);
             this.colors = colors;
             const palette = this.lib.colorPalette(colors);
             this.palette = {...palette, byCode: new Map([...palette.common, ...palette.more].map(c => [c.code, c]))};
@@ -1115,10 +1126,17 @@ class SimLabPane extends React.Component {
     }
 
     /** A click on a palette tile arms (or disarms) the placing tool, unless the press was dragged out. */
-    armPart (part) {
+    armPart (part, how = {}) {
         if (this.paletteDragged) { this.paletteDragged = false; return; }
+        // Target-first: a lit connector was clicked; a part that fits goes straight into it.
+        if (this.editView && this.editView.pinnedTarget && this.editView.fitsTarget(part)) {
+            this.editView.placeIntoTarget(part);
+            this.setState(s => ({placing: null, drawer: this.compact() ? false : s.drawer}));
+            return;
+        }
         const next = this.state.placing === part ? null : part;
-        this.editView?.setTool(next);
+        // Enter on a tile, or a finger's tap: the ghost starts on the target nearest the view's centre.
+        this.editView?.setTool(next, {centre: Boolean(next && (how.keyboard || this.tilePointer === 'touch'))});
         // The drawer closes once a part is armed, so the whole view is free for the click that places it.
         this.setState({placing: next, drawer: next && this.compact() ? false : this.state.drawer});
     }
@@ -1126,6 +1144,7 @@ class SimLabPane extends React.Component {
     /** A press on a palette tile: the editor view follows it; dragged into the view, it places the part there. */
     pressPart (part, event) {
         this.paletteDragged = false;
+        this.tilePointer = event.pointerType;
         if (event.button !== 0 || !this.editView) return;
         event.preventDefault(); // no text selection or native image drag while it is dragged out
         this.editView.pressPalettePart(part, event, ({dragged}) => {
@@ -1138,7 +1157,104 @@ class SimLabPane extends React.Component {
         return (
             <SimLabPalette key={this.thumbs ? 'pictures' : 'names'} text={this.text} lib={this.lib} locale={this.locale}
                 placing={this.state.placing} recent={this.state.recent} thumbs={this.thumbs} thumbTick={this.state.thumbTick}
-                requestThumb={this.requestThumb} onArm={this.armPart} onPress={this.pressPart} />
+                requestThumb={this.requestThumb} onArm={this.armPart} onPress={this.pressPart}
+                fits={this.state.hold && this.state.hold.pinned && this.editView ? part => this.editView.fitsTarget(part) : null} />
+        );
+    }
+
+    /** What the screen reader hears for a new target or a refusal (aria-live). */
+    announceText (info) {
+        const C = this.etext.connect;
+        const fill = (template, values) => template.replace(/\{(\w+)\}/g, (_, k) => String(values[k] ?? ''));
+        if (!info) return '';
+        if (info.kind === 'refused') return fill(C.refusedPlace, {target: info.target ? this.partName(info.target) : ''});
+        const values = {part: this.partName(info.part), target: info.target ? this.partName(info.target) : '',
+            connector: C.connector[this.connectorType(info)] || C.connectorOther, n: info.index + 1, of: info.of,
+            face: C.faces[info.face] || '', pairs: info.pairs === 1 ? C.pairsOne : fill(C.pairsMany, {n: info.pairs}),
+            into: info.into ? this.partName(info.into) : ''};
+        return fill(info.kind === 'blocked' ? C.announceBlocked : C.announce, values);
+    }
+
+    /** A connector's type, from the part's metadata. */
+    connectorType ({target, connector}) {
+        const m = this.lib && target && this.lib.CATALOG.get(target);
+        const c = m && m.connectors.find(x => x.id === connector);
+        return c ? c.type : null;
+    }
+
+    /** How the 3D view reads a scroll ('auto', 'mouse', 'trackpad'), kept in this browser. */
+    storedWheelMode () {
+        try {
+            const v = localStorage.getItem(WHEEL_STORAGE_KEY);
+            return ['auto', 'mouse', 'trackpad'].includes(v) ? v : 'auto';
+        } catch {
+            return 'auto';
+        }
+    }
+
+    setWheelMode (wheelMode) {
+        this.setState({wheelMode});
+        this.editView?.setWheelMode(wheelMode);
+        try { localStorage.setItem(WHEEL_STORAGE_KEY, wheelMode); } catch { /* private window: this session only */ }
+    }
+
+    /**
+     * Build: the hint bar (what the keys do now), the target chip (Target-first) and, for a finger,
+     * the ✓ / ⟳ / ✕ buttons for the part in hand; plus the screen reader's announcements.
+     */
+    renderHoldOverlays () {
+        const C = this.etext.connect;
+        const hold = this.state.hold || {holding: false};
+        const view = this.editView;
+        let hint;
+        if (hold.holding) {
+            const dragging = !hold.part;
+            hint = dragging ? C.hintDragging : hold.touch ? C.hintHoldingTouch : hold.keyboard ? C.hintHoldingKeyboard : C.hintHolding;
+            if (hold.round) hint = `${hint} · ${C.hintFine}`;
+            if (hold.tone === 'blocked') hint = `${C.hintBlocked} · ${hint}`;
+        } else if (hold.pinned) {
+            hint = C.hintTarget;
+        } else {
+            hint = this.state.coarse ? C.hintIdleTouch : C.hintIdle;
+        }
+        const pin = hold.pinned;
+        const pinNumber = pin && /(\d+)$/.exec(pin.connectorId);
+        const chipBase = {display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 8px', borderRadius: 999, fontSize: 12, boxShadow: '0 1px 4px rgba(15, 23, 42, 0.2)'};
+        const touchButton = {minWidth: 48, minHeight: 48, borderRadius: 999, border: '1px solid #94a3b8', background: '#fff', fontSize: 20, cursor: 'pointer',
+            boxShadow: '0 2px 6px rgba(15, 23, 42, 0.25)'};
+        return (
+            <React.Fragment>
+                <div data-testid="bw-sim-lab-hint-bar" data-holding={hold.holding ? 'yes' : 'no'} data-tone={hold.tone || ''}
+                    style={{position: 'absolute', left: 8, bottom: 8, right: 108, zIndex: 3, pointerEvents: 'none', display: 'flex', justifyContent: 'flex-start'}}>
+                    <span style={{background: hold.tone === 'blocked' ? 'rgba(254, 226, 226, 0.95)' : 'rgba(248, 250, 252, 0.92)', color: hold.tone === 'blocked' ? '#991b1b' : '#334155',
+                        borderRadius: 6, padding: '3px 8px', fontSize: 12, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        boxShadow: '0 1px 3px rgba(15, 23, 42, 0.15)'}}>{hint}</span>
+                </div>
+                {pin && (
+                    <div data-testid="bw-sim-lab-target-chip" style={{position: 'absolute', left: 8, top: 8, zIndex: 4, ...chipBase, background: '#fef3c7', color: '#92400e', fontWeight: 600}}>
+                        {C.targetChip.replace('{target}', this.partName(pin.part))
+                            .replace('{connector}', C.connector[this.connectorType({target: pin.part, connector: pin.connectorId})] || C.connectorOther)
+                            .replace('{n}', pinNumber ? Number(pinNumber[1]) + 1 : '')}
+                        <button type="button" data-testid="bw-sim-lab-target-clear" title={C.clearTarget} aria-label={C.clearTarget}
+                            onClick={() => view?.clearTarget()} style={{border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 14, color: '#92400e', padding: 0}}>✕</button>
+                    </div>
+                )}
+                {hold.holding && hold.part && (hold.touch || this.state.coarse) && (
+                    <div role="group" aria-label={C.touchControls} data-testid="bw-sim-lab-touch-hold"
+                        style={{position: 'absolute', right: 108, bottom: 44, zIndex: 5, display: 'flex', gap: 8}}>
+                        <button type="button" data-testid="bw-sim-lab-touch-place" title={C.touchPlace} aria-label={C.touchPlace} style={touchButton}
+                            onClick={() => view?.placeHeld()}>✓</button>
+                        <button type="button" data-testid="bw-sim-lab-touch-turn" title={C.touchTurn} aria-label={C.touchTurn} style={touchButton}
+                            onClick={() => view?.turn('up', 1)}>⟳</button>
+                        <button type="button" data-testid="bw-sim-lab-touch-cancel" title={C.touchCancel} aria-label={C.touchCancel} style={touchButton}
+                            onClick={() => { view?.setTool(null); this.setState({placing: null}); }}>✕</button>
+                    </div>
+                )}
+                <div data-testid="bw-sim-lab-announce" aria-live="polite" role="status"
+                    style={{position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap'}}>
+                    {this.state.announce}
+                </div>
+            </React.Fragment>
         );
     }
 
@@ -1169,7 +1285,15 @@ class SimLabPane extends React.Component {
         case 'turning': return fill(T.turning, {deg: st.degrees});
         case 'placed': return fill(T.placed, {part: name(st.part)});
         case 'blocked': return fill(T.blocked, {target: name(st.target)});
-        case 'refused': return fill(T[st.reason] || E[st.reason] || T.invalid, {detail: st.detail || '', target: st.target ? name(st.target) : ''});
+        case 'refused': return fill(T[st.reason] || E[st.reason] || this.etext.connect.st[st.reason] || T.invalid, {detail: st.detail || '', target: st.target ? name(st.target) : ''});
+        case 'released': return fill(this.etext.connect.st.released, {target: name(st.target)});
+        case 'targetPinned': {
+            const C = this.etext.connect;
+            const num = st.connector && /(\d+)$/.exec(st.connector);
+            return fill(C.st.targetPinned, {target: name(st.target), connector: C.connector[this.connectorType(st)] || C.connectorOther, hole: num ? Number(num[1]) + 1 : ''});
+        }
+        case 'targetCleared': case 'flipped': return this.etext.connect.st[st.kind];
+        case 'connectedSelected': return fill(this.etext.connect.st.connectedSelected, {n: st.count});
         case 'painted': return fill(E.painted, {n: st.count, colour: this.colourName(st.color)});
         case 'pickedColor': return fill(E.pickedColor, {colour: this.colourName(st.color), part: name(st.part)});
         case 'measured': return fill(E.measured, {ldu: this.decimal(st.ldu), studs: this.decimal(st.studs), mm: this.decimal(st.mm)});
@@ -1773,6 +1897,7 @@ class SimLabPane extends React.Component {
                     <div ref={this.viewWrap} style={{flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative', display: 'flex',
                         background: '#fff', borderRadius: 6}}>
                         <div ref={this.box} data-testid="bw-sim-lab-view" style={{flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative'}} />
+                        {build && this.editView && this.renderHoldOverlays()}
                         {this.renderPortPicker(button)}
                         {build && !this.dockProperties() && this.state.propsOpen && (
                             <div data-testid="bw-sim-lab-properties-drawer" style={{position: 'absolute', right: 0, top: 0, bottom: 0, zIndex: 6, maxWidth: 'calc(100% - 48px)',
@@ -1785,7 +1910,7 @@ class SimLabPane extends React.Component {
                 </div>
                 {simulate && this.session && this.session.bridge && !this.session.lockstep && this.renderDrive(button)}
                 {build && this.state.shortcuts && (
-                    <SimLabShortcuts T={this.etext} onClose={() => {
+                    <SimLabShortcuts T={this.etext} wheelMode={this.state.wheelMode} onWheelMode={mode => this.setWheelMode(mode)} onClose={() => {
                         this.setState({shortcuts: false});
                         this.editView?.canvas.focus();
                     }} />
