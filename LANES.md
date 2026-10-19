@@ -8,6 +8,19 @@ f84ba60 -> fac3a5a9928c8b53a778b0c42d8d91d5e693e4b7 (bw-board #659 light_sensor
 divider model; 393 commits, owner-approved, dependencies unchanged). Exact SHA
 swap across the same 16 pin surfaces; licence hashes unchanged.
 
+## Robot Lab: jolt-physics -> Brickwright fork 1.1.0-bw.2 (Jolt master) — 2026-10-19
+
+CLAIMED and done in one PR — Claude (Robot Lab lane, owner request). The Sim
+Lab engine moves from npm `jolt-physics` 1.1.0 to the JoltPhysics.js fork
+release `v1.1.0-bw.2` (tarball sha256 e45f1c12...ac516, lockfile sha512
+integrity): upstream Jolt master 01adafb plus the GearConstraint ratio fix and
+GearMeshConstraint. Owns the pin surfaces only: scripts/integrate.mjs,
+packages/scratch-gui/package.json and package-lock.json, the Jolt notice in
+THIRD-PARTY-NOTICES.md, and the fetch-pinning census row. jolt-core.js and its
+gear workarounds are unchanged (adopting GearMeshConstraint is a later step).
+Non-gear physics changes come from upstream Jolt since v5.6.0 (control build
+without the gear commits: JoltPhysics.js Actions run 39223975871).
+
 ## bw-circuit-ui pin bump for B24 terminal geometry — 2026-10-19
 
 CLAIMED and done in one PR — Claude (circuit-editor lane). Pin 6721d21 ->
