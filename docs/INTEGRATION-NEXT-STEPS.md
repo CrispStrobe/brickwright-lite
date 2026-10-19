@@ -438,3 +438,12 @@ actual result before choosing a device/boot/process/service ownership interface.
 Tool help is an interface fact; it cannot substitute for actual ownership or
 resource admission. The command-cleanup v6 fixed-helper original has passed its
 bounded standalone joins, with simulator/app/family claims still false.
+
+The first tool-interface event failed before `simctl help` returned any bytes;
+its owned pending child was killed and reaped. Retain the failed original and
+partial-reader refusal. Earlier queries identify Xcode 26.6 but establish no
+simulator ownership API. Investigate with phase/timing originals and an explicit
+opt-in sample of only the still-unreaped owned help child. Preserve the original
+ten-second deadline, avoid shared-service actions and retain diagnostic failures.
+Sampling changes execution timing and cannot establish a performance conclusion.
+Do not retry the original profile or admit app execution from this partial result.

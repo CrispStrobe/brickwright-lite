@@ -30,6 +30,10 @@ on:
         description: Retain bounded installed simulator tool help only; no app builds, launches or downloads.
         type: boolean
         default: false
+      ios_audit_interface_diagnostic:
+        description: Sample only the owned slow simctl help child during interface inventory; keeps the original deadline.
+        type: boolean
+        default: false
       ios_audit_runtime:
         description: Optional exact installed iOS runtime identifier for admission only; never launches an app.
         type: string
@@ -46,7 +50,7 @@ permissions:
 
 jobs:
   ios-audit-preflight:
-    if: github.event_name == 'workflow_dispatch' && inputs.ios_audit_preflight_only && !inputs.ios_audit_interface_only && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'
+    if: github.event_name == 'workflow_dispatch' && inputs.ios_audit_preflight_only && !inputs.ios_audit_interface_only && !inputs.ios_audit_interface_diagnostic && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'
     runs-on: macos-latest
     timeout-minutes: 8
     permissions:
@@ -457,7 +461,7 @@ jobs:
           retention-days: 7
 
   ios-audit-interface:
-    if: github.event_name == 'workflow_dispatch' && inputs.ios_audit_interface_only && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'
+    if: github.event_name == 'workflow_dispatch' && (inputs.ios_audit_interface_only || inputs.ios_audit_interface_diagnostic) && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'
     runs-on: macos-latest
     timeout-minutes: 4
     permissions:
@@ -470,6 +474,8 @@ jobs:
       - name: Retain installed tool interface facts without an app operation
         timeout-minutes: 2
         env:
+          BW_INTERFACE_MODE: ${{ inputs.ios_audit_interface_only }}
+          BW_INTERFACE_DIAGNOSTIC: ${{ inputs.ios_audit_interface_diagnostic }}
           BW_INTERFACE_OTHER_MODE: ${{ inputs.ios_audit_preflight_only }}
           BW_INTERFACE_RUNTIME: ${{ inputs.ios_audit_runtime }}
           BW_INTERFACE_BUILD: ${{ inputs.ios_audit_runtime_build }}
@@ -483,11 +489,18 @@ jobs:
           def require(ok):
               if not ok:raise ValueError('installed interface inventory refused')
 
-          def retained_command(argv, cleanup, *, deadline):
+          def retained_command(argv, cleanup, *, deadline, observe=None, facts=None):
               """Fixed help/version commands only; retained prefixes are not ownership proof."""
               child=None;selector=None;rows=[];output=bytearray();failure=None;used=0
+              stage='admission';started=time.monotonic();observed=False
+              if facts is not None:
+                  require(type(facts) is dict and not facts)
+                  facts['startedMonotonic']=started
+                  facts['deadlineMonotonic']=deadline
               try:
+                  require(observe is None or callable(observe))
                   require(time.monotonic()<deadline)
+                  stage='spawn'
                   selector=selectors.DefaultSelector()
                   environment={key:value for key,value in os.environ.items() if key in
                       ('PATH','HOME','TMPDIR','DEVELOPER_DIR','LANG','LC_ALL','__CF_USER_TEXT_ENCODING')}
@@ -495,21 +508,35 @@ jobs:
                       start_new_session=True,close_fds=True,env=environment)
                   for pipe in (child.stdout,child.stderr):
                       os.set_blocking(pipe.fileno(),False);selector.register(pipe,selectors.EVENT_READ)
+                  if facts is not None:
+                      facts['spawnedMonotonic']=time.monotonic();facts['pid']=child.pid
                   while True:
+                      stage='deadline'
                       require(time.monotonic()<deadline and len(rows)<256)
+                      stage='read'
                       for key,_ in selector.select(min(.05,max(0,deadline-time.monotonic()))):
                           raw=os.read(key.fileobj.fileno(),65536)
                           rows.append({'kind':'stdout' if key.fileobj is child.stdout else 'stderr','rawHex':raw.hex()})
-                          used+=len(raw);require(used<=65536)
+                          stage='output';used+=len(raw);require(used<=65536)
                           if not raw:selector.unregister(key.fileobj)
                           elif key.fileobj is child.stdout:output.extend(raw)
+                      stage='wait'
                       info=os.waitid(os.P_PID,child.pid,os.WEXITED|os.WNOHANG|os.WNOWAIT)
                       if info is not None:
                           values=tuple(getattr(info,key) for key in ('si_pid','si_uid','si_signo','si_status','si_code'))
                           rows.append({'kind':'wait','rawHex':struct.pack('<5q',*values).hex()})
+                          stage='exit'
                           require(info.si_pid==child.pid and info.si_code==os.CLD_EXITED and info.si_status==0)
                           if not selector.get_map():break
-              except BaseException as error:failure=error
+                      elif observe is not None and not observed and time.monotonic()-started>=2:
+                          stage='diagnostic';observed=True
+                          if facts is not None:facts['diagnosticStartedMonotonic']=time.monotonic()
+                          require(child.returncode is None)
+                          observe(child,deadline)
+                          if facts is not None:facts['diagnosticFinishedMonotonic']=time.monotonic()
+              except BaseException as error:
+                  failure=error
+                  if facts is not None:facts['failurePhase']=stage
               finally:
                   if child is not None:
                       try:rows.extend(json.loads(row) for row in cleanup(child,deadline=time.monotonic()+2))
@@ -529,16 +556,20 @@ jobs:
                       try:selector.close()
                       except BaseException as error:
                           if failure is None:failure=error
+              if facts is not None:
+                  facts['finishedMonotonic']=time.monotonic()
+                  facts['diagnosticInvoked']=observed
               return bytes(output),rows,None if failure is None else type(failure).__name__
 
           def main():
               root=Path(os.environ['RUNNER_TEMP'])/'bw-ios-interface-inventory';root.mkdir(exist_ok=False)
-              report={'schema':'brickwright.ios-tool-interface.v1','sourceCommit':os.environ['GITHUB_SHA'],
+              report={'schema':'brickwright.ios-tool-interface.v2','sourceCommit':os.environ['GITHUB_SHA'],
                   'runID':os.environ['GITHUB_RUN_ID'],'attempt':os.environ['GITHUB_RUN_ATTEMPT'],'job':os.environ['GITHUB_JOB'],
-                  'status':'partial','commands':[],'actualAppQualified':False,'namespaceOwnershipQualified':False}
+                  'status':'partial','commands':[],'diagnostics':[],'actualAppQualified':False,'namespaceOwnershipQualified':False}
               try:
                   require(sys.platform=='darwin' and platform.machine()=='arm64' and sys.version_info>=(3,13) and signal.getsignal(signal.SIGCHLD)==signal.SIG_DFL)
-                  require(os.environ['BW_INTERFACE_OTHER_MODE']=='false' and os.environ['BW_INTERFACE_RUNTIME']=='' and os.environ['BW_INTERFACE_BUILD']=='')
+                  require(os.environ['BW_INTERFACE_MODE']=='true' and os.environ['BW_INTERFACE_OTHER_MODE']=='false' and os.environ['BW_INTERFACE_RUNTIME']=='' and os.environ['BW_INTERFACE_BUILD']=='')
+                  require(os.environ['BW_INTERFACE_DIAGNOSTIC'] in ('true','false'))
                   workflow=(Path(os.environ['GITHUB_WORKSPACE'])/'.github/workflows/mobile.yml').read_text()
                   report['workflowSHA256']=hashlib.sha256(workflow.encode()).hexdigest()
                   block=re.search(r'# BEGIN IOS INPUT RETENTION\n          cat > "\$RUNNER_TEMP/bw-ios-audit-capture.py" <<\'PY\'\n([\s\S]*?)          PY\n          # END IOS INPUT RETENTION',workflow)
@@ -549,10 +580,23 @@ jobs:
                       ('/bin/launchctl','help')]
                   for subcommand in ('','spawn','launch','get_app_container','appinfo','list'):
                       commands.append(('/usr/bin/xcrun','simctl','help',*(() if not subcommand else (subcommand,))))
+                  def observe_owned_help(child,deadline):
+                      # This unreaped Popen PID cannot be recycled. No name lookup or
+                      # shared service PID is admitted. Sampling is diagnostic only.
+                      require(child.returncode is None)
+                      facts={}
+                      sample_argv=('/usr/bin/sample',str(child.pid),'1','10','-mayDie','-file','/dev/stdout')
+                      output,originals,failure=retained_command(sample_argv,cleanup,
+                          deadline=min(deadline-1,time.monotonic()+3),facts=facts)
+                      report['diagnostics'].append({'targetPID':child.pid,'argv':list(sample_argv),
+                          'originals':originals,'failure':failure,'facts':facts})
+                      require(failure is None)
                   for argv in commands:
                       require(time.monotonic()<total_deadline)
-                      stdout,rows,failure=retained_command(argv,cleanup,deadline=min(total_deadline,time.monotonic()+10))
-                      report['commands'].append({'argv':list(argv),'originals':rows,'failure':failure})
+                      facts={}
+                      observer=observe_owned_help if os.environ['BW_INTERFACE_DIAGNOSTIC']=='true' and argv==('/usr/bin/xcrun','simctl','help') else None
+                      stdout,rows,failure=retained_command(argv,cleanup,deadline=min(total_deadline,time.monotonic()+10),observe=observer,facts=facts)
+                      report['commands'].append({'argv':list(argv),'originals':rows,'failure':failure,'facts':facts})
                       require(failure is None)
                   report['status']='installed-help-observed-only'
               except Exception as error:report['failure']=type(error).__name__;raise
@@ -573,7 +617,7 @@ jobs:
           retention-days: 7
 
   build-web:
-    if: github.event_name != 'workflow_dispatch' || (inputs.ios_audit_preflight_only != true && inputs.ios_audit_interface_only != true)
+    if: github.event_name != 'workflow_dispatch' || (inputs.ios_audit_preflight_only != true && inputs.ios_audit_interface_only != true && inputs.ios_audit_interface_diagnostic != true)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0

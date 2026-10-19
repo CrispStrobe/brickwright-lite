@@ -1874,9 +1874,9 @@ const preflight = preflightBlock[1].replace(/^          /gm, '');
 
 test('Darwin preflight-only dispatch is closed, unsigned and excludes existing app build jobs', () => {
     assert.match(workflow, /ios_audit_preflight_only:\n[^\n]+\n        type: boolean\n        default: false/);
-    const guard = "github.event_name == 'workflow_dispatch' && inputs.ios_audit_preflight_only && !inputs.ios_audit_interface_only && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'";
+    const guard = "github.event_name == 'workflow_dispatch' && inputs.ios_audit_preflight_only && !inputs.ios_audit_interface_only && !inputs.ios_audit_interface_diagnostic && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'";
     assert.ok(workflow.includes(`  ios-audit-preflight:\n    if: ${guard}\n`));
-    assert.ok(workflow.includes("  build-web:\n    if: github.event_name != 'workflow_dispatch' || (inputs.ios_audit_preflight_only != true && inputs.ios_audit_interface_only != true)\n"));
+    assert.ok(workflow.includes("  build-web:\n    if: github.event_name != 'workflow_dispatch' || (inputs.ios_audit_preflight_only != true && inputs.ios_audit_interface_only != true && inputs.ios_audit_interface_diagnostic != true)\n"));
     const job = workflow.slice(workflow.indexOf('  ios-audit-preflight:\n'), workflow.indexOf('  ios-audit-interface:\n'));
     assert.match(job, /permissions:\n      contents: read/);
     assert.match(job, /timeout-minutes: 8/);
@@ -2202,7 +2202,7 @@ class InterfaceControls(unittest.TestCase):
     def cleanup(self,child,**kw):
         self.cleanup_calls.append(child.pid);os.killpg(child.pid,signal.SIGKILL);return ()
     def run_command(self,program,**kw):
-        return retained_command(('/usr/bin/python3','-c',program),kw.get('cleanup',self.cleanup),deadline=time.monotonic()+kw.get('seconds',2))
+        return retained_command(('/usr/bin/python3','-c',program),kw.get('cleanup',self.cleanup),deadline=time.monotonic()+kw.get('seconds',2),observe=kw.get('observe'),facts=kw.get('facts'))
     def released(self):
         self.assertEqual(len(self.children),1);child=self.children[0]
         self.assertIsNotNone(child.returncode);self.assertTrue(child.stdout.closed and child.stderr.closed)
@@ -2234,13 +2234,37 @@ class InterfaceControls(unittest.TestCase):
             def select(self,*a,**kw):raise KeyboardInterrupt('authored')
         with mock.patch.object(selectors,'DefaultSelector',Interrupting):raw,rows,failure=self.run_command('import time;time.sleep(20)')
         self.assertEqual(failure,'KeyboardInterrupt');self.released()
+    def test_deadline_phase_and_times_are_retained(self):
+        facts={};raw,rows,failure=self.run_command('import time;time.sleep(.6)',seconds=.2,facts=facts)
+        self.assertEqual(facts['failurePhase'],'deadline');self.assertIs(facts['diagnosticInvoked'],False)
+        self.assertLessEqual(facts['startedMonotonic'],facts['spawnedMonotonic'])
+        self.assertLessEqual(facts['spawnedMonotonic'],facts['finishedMonotonic']);self.released()
+    def test_observer_gets_only_the_unreaped_owned_handle_once(self):
+        real=time.monotonic;calls=[0];observations=[];facts={}
+        def clock():
+            calls[0]+=1;return real()+(2.1 if calls[0]>3 else 0)
+        def observe(child,deadline):
+            self.assertIs(child,self.children[0]);self.assertIsNone(child.returncode)
+            observations.append(child.pid)
+        with mock.patch.object(time,'monotonic',side_effect=clock):
+            raw,rows,failure=self.run_command('import time;time.sleep(.3)',seconds=4,observe=observe,facts=facts)
+        self.assertIsNone(failure);self.assertEqual(observations,[self.children[0].pid])
+        self.assertIs(facts['diagnosticInvoked'],True);self.released()
+    def test_observer_failure_preserves_diagnostic_phase_and_still_reaps(self):
+        real=time.monotonic;calls=[0];facts={}
+        def clock():
+            calls[0]+=1;return real()+(2.1 if calls[0]>3 else 0)
+        def observe(child,deadline):raise RuntimeError('authored')
+        with mock.patch.object(time,'monotonic',side_effect=clock):
+            raw,rows,failure=self.run_command('import time;time.sleep(.3)',seconds=4,observe=observe,facts=facts)
+        self.assertEqual(failure,'RuntimeError');self.assertEqual(facts['failurePhase'],'diagnostic');self.released()
     def test_main_keeps_fixed_command_graph_and_false_ownership_claims(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);(root/'.github/workflows').mkdir(parents=True)
             (root/'.github/workflows/mobile.yml').write_text(WORKFLOW_TEXT)
             env={'RUNNER_TEMP':directory,'GITHUB_WORKSPACE':directory,'GITHUB_SHA':'a'*40,
                  'GITHUB_RUN_ID':'123','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'ios-audit-interface','BW_INTERFACE_OTHER_MODE':'false',
-                 'BW_INTERFACE_RUNTIME':'','BW_INTERFACE_BUILD':''}
+                 'BW_INTERFACE_MODE':'true','BW_INTERFACE_DIAGNOSTIC':'false','BW_INTERFACE_RUNTIME':'','BW_INTERFACE_BUILD':''}
             with mock.patch.dict(os.environ,env),mock.patch.object(sys,'platform','darwin'),mock.patch.object(sys,'version_info',(3,13)),mock.patch.object(platform,'machine',return_value='arm64'),mock.patch.dict(globals(),{'retained_command':mock.Mock(return_value=(b'authored',[],None))}),mock.patch('builtins.print'):
                 main();calls=[call.args[0] for call in retained_command.call_args_list]
             expected=[('/usr/bin/xcrun','--find','simctl'),('/usr/bin/xcodebuild','-version'),('/bin/launchctl','help')]
@@ -2249,12 +2273,41 @@ class InterfaceControls(unittest.TestCase):
             report=json.loads((root/'bw-ios-interface-inventory/report.json').read_text())
             self.assertIs(report['actualAppQualified'],False);self.assertIs(report['namespaceOwnershipQualified'],False)
             self.assertEqual(report['workflowSHA256'],hashlib.sha256(WORKFLOW_TEXT.encode()).hexdigest())
+    def test_diagnostic_main_samples_only_the_held_help_handle_within_its_deadline(self):
+        from types import SimpleNamespace
+        for sample_failure in (None,'ValueError'):
+            with tempfile.TemporaryDirectory() as directory:
+                root=Path(directory);(root/'.github/workflows').mkdir(parents=True)
+                (root/'.github/workflows/mobile.yml').write_text(WORKFLOW_TEXT)
+                env={'RUNNER_TEMP':directory,'GITHUB_WORKSPACE':directory,'GITHUB_SHA':'a'*40,
+                     'GITHUB_RUN_ID':'123','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'ios-audit-interface',
+                     'BW_INTERFACE_OTHER_MODE':'false','BW_INTERFACE_MODE':'true',
+                     'BW_INTERFACE_DIAGNOSTIC':'true','BW_INTERFACE_RUNTIME':'','BW_INTERFACE_BUILD':''}
+                calls=[];help_deadline=[]
+                def command(argv,cleanup,**kw):
+                    calls.append(argv)
+                    if argv==('/usr/bin/xcrun','simctl','help'):
+                        help_deadline.append(kw['deadline']);kw['observe'](SimpleNamespace(pid=37,returncode=None),kw['deadline'])
+                    elif argv[0]=='/usr/bin/sample':
+                        self.assertEqual(argv,('/usr/bin/sample','37','1','10','-mayDie','-file','/dev/stdout'))
+                        self.assertLessEqual(kw['deadline'],help_deadline[0]-1)
+                        return b'authored-sample',[],sample_failure
+                    else:self.assertIsNone(kw.get('observe'))
+                    return b'authored',[],None
+                with mock.patch.dict(os.environ,env),mock.patch.object(sys,'platform','darwin'),mock.patch.object(sys,'version_info',(3,13)),mock.patch.object(platform,'machine',return_value='arm64'),mock.patch.dict(globals(),{'retained_command':mock.Mock(side_effect=command)}),mock.patch('builtins.print'):
+                    if sample_failure:
+                        with self.assertRaises(ValueError):main()
+                    else:main()
+                report=json.loads((root/'bw-ios-interface-inventory/report.json').read_text())
+                self.assertEqual(len(report['diagnostics']),1);self.assertEqual(report['diagnostics'][0]['targetPID'],37)
+                self.assertEqual(report['diagnostics'][0]['failure'],sample_failure)
+                self.assertEqual(sum(argv[0]=='/usr/bin/sample' for argv in calls),1)
     def test_main_rejects_mixed_modes_and_runtime_selections_before_commands(self):
-        for key,value in (('BW_INTERFACE_OTHER_MODE','true'),('BW_INTERFACE_RUNTIME','authored'),('BW_INTERFACE_BUILD','authored')):
+        for key,value in (('BW_INTERFACE_MODE','false'),('BW_INTERFACE_OTHER_MODE','true'),('BW_INTERFACE_RUNTIME','authored'),('BW_INTERFACE_BUILD','authored')):
             with tempfile.TemporaryDirectory() as directory:
                 env={'RUNNER_TEMP':directory,'GITHUB_WORKSPACE':directory,'GITHUB_SHA':'a'*40,
                      'GITHUB_RUN_ID':'123','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'ios-audit-interface','BW_INTERFACE_OTHER_MODE':'false',
-                     'BW_INTERFACE_RUNTIME':'','BW_INTERFACE_BUILD':'',key:value}
+                     'BW_INTERFACE_MODE':'true','BW_INTERFACE_DIAGNOSTIC':'false','BW_INTERFACE_RUNTIME':'','BW_INTERFACE_BUILD':'',key:value}
                 with mock.patch.dict(os.environ,env),mock.patch.object(sys,'platform','darwin'),mock.patch.object(sys,'version_info',(3,13)),mock.patch.object(platform,'machine',return_value='arm64'),mock.patch.dict(globals(),{'retained_command':mock.Mock()}),mock.patch('builtins.print'):
                     with self.assertRaises(ValueError):main()
                     retained_command.assert_not_called()
@@ -2265,7 +2318,7 @@ test('interface inventory is disjoint, read-only and bounded to installed tool h
     const start = workflow.indexOf('  ios-audit-interface:\n');
     const job = workflow.slice(start, workflow.indexOf('  build-web:\n', start));
     assert.match(workflow, /ios_audit_interface_only:\n[^\n]+\n        type: boolean\n        default: false/);
-    assert.ok(job.includes("if: github.event_name == 'workflow_dispatch' && inputs.ios_audit_interface_only && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'"));
+    assert.ok(job.includes("if: github.event_name == 'workflow_dispatch' && (inputs.ios_audit_interface_only || inputs.ios_audit_interface_diagnostic) && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'"));
     assert.match(job, /permissions:\n      contents: read/);
     assert.match(interfaceSource, /BW_INTERFACE_OTHER_MODE'\]=='false'/);
     assert.match(interfaceSource, /BW_INTERFACE_RUNTIME'\]=='' and os.environ\['BW_INTERFACE_BUILD'\]==''/);
@@ -2281,11 +2334,13 @@ test('interface inventory is disjoint, read-only and bounded to installed tool h
     };
     try {
         const result=run(prefix,'baseline');assert.equal(result.status,0,result.stdout+result.stderr);
-        assert.match(result.stderr,/Ran 8 tests/);
+        assert.match(result.stderr,/Ran 12 tests/);
         for (const [index,[before,after]] of [
             ['used<=65536','True'],
             ['time.monotonic()<deadline and len(rows)<256','len(rows)<256'],
-            ["rows.append({'kind':'reap','code':code})",'None']
+            ["rows.append({'kind':'reap','code':code})",'None'],
+            ['elif observe is not None and not observed and time.monotonic()-started>=2:', 'elif False:'],
+            ['deadline=min(deadline-1,time.monotonic()+3)', 'deadline=time.monotonic()+30']
         ].entries()) {
             assert.equal(prefix.split(before).length,2,before);
             const cut=run(prefix.replace(before,after),`cut-${index}`);
