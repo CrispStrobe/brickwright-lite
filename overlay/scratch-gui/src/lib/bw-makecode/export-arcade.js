@@ -3478,7 +3478,16 @@ class ArcadeEmitter {
                 if(inspectionOpaqueNodes.has(node)||seen.has(value)||!producers?.size)return false;
                 const next=new Set([...seen,value]);return [...producers].every(producer=>inspectionTypes(producer,allowed,next,origins));
             }
-            if(inspectionOpaqueNodes.has(node)||!node.types.size||[...node.types].some(type=>type!=='any'&&!allowed.includes(type)))return false;
+            if(inspectionOpaqueNodes.has(node))return false;
+            if(!node.types.size||[...node.types].some(type=>type!=='any'&&!allowed.includes(type))){
+                // The annotation graph unifies a value with everything it flows
+                // into (e.g. a mixed Array element). Its own directed writers
+                // still decide what it can actually hold.
+                const producers=inspectionProducers.get(value);
+                if(anys.has(value)||seen.has(value)||!producers?.size)return false;
+                const next=new Set([...seen,value]);
+                return [...producers].every(producer=>inspectionTypes(producer,allowed,next,origins));
+            }
             if(!node.types.has('any'))return true;
             // An Any declaration resets a real scalar cell to Undefined. It
             // does not prove its later values. Follow every actual directed
