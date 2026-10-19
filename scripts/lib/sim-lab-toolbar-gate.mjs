@@ -25,7 +25,7 @@ import assert from 'node:assert/strict';
 import {resolve} from 'node:path';
 
 /** The tab's accessible name in either language. */
-export const ROBOT_LAB_TAB = /^(Robot Lab|Roboter-Labor)$/;
+export const ROBOT_LAB_TAB = /^(Robots|Roboter)$/;
 
 /** Shows the Robot Lab tab, as a person does: its tab in the editor's tab list. */
 export const openRobotLabTab = async page => {

@@ -1027,8 +1027,8 @@ const GUIComponent = props => {
                                         </Tab>
                                     ) : null}
                                     <Tab className={tabClassNames.tab}
-                                        title={intl.formatMessage({id: 'gui.gui.robotLabTab', defaultMessage: 'Robot Lab'})}
-                                        aria-label={intl.formatMessage({id: 'gui.gui.robotLabTab', defaultMessage: 'Robot Lab'})}>
+                                        title={intl.formatMessage({id: 'gui.gui.robotLabTab', defaultMessage: 'Robots'})}
+                                        aria-label={intl.formatMessage({id: 'gui.gui.robotLabTab', defaultMessage: 'Robots'})}>
                                         <svg aria-hidden="true" data-bw-tab-icon="" viewBox="0 0 24 24" focusable="false">
                                             <path d="M7 8h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2zM12 4v4M9.5 12.5h.01M14.5 12.5h.01M3 12v3M21 12v3M8 21h8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                                         </svg>
