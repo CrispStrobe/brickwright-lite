@@ -84,7 +84,13 @@ jobs:
           #include <sys/resource.h>
           #include <mach/mach_time.h>
           #include <mach/mach.h>
-          #include <sys/codesign.h>
+          /* Observer-tool interop only: the SDK does not ship sys/codesign.h.
+           * Read-only ABI reference: apple-oss-distributions/xnu,
+           * f6217f891ac0bb64f3d375211650a4c1ff8ca1ea, bsd/sys/codesign.h.
+           * SDK types remain authoritative; no Apple implementation is included. */
+          extern int csops_audittoken(pid_t, unsigned int, void *, size_t, audit_token_t *);
+          #define BW_CS_STATUS 0U
+          #define BW_CS_CDHASH 5U
           int main(int argc, char **argv) {
               struct rusage_info_v0 r = {0};
               mach_timebase_info_data_t t = {0};
@@ -109,12 +115,12 @@ jobs:
               unsigned char cdhash[20] = {0};
               if (task_info(mach_task_self(),TASK_AUDIT_TOKEN,(task_info_t)&token,&count) != KERN_SUCCESS ||
                   count != TASK_AUDIT_TOKEN_COUNT ||
-                  csops_audittoken(getpid(),CS_OPS_STATUS,&code_status,sizeof(code_status),&token) ||
-                  csops_audittoken(getpid(),CS_OPS_CDHASH,cdhash,sizeof(cdhash),&token)) return 4;
+                  csops_audittoken(getpid(),BW_CS_STATUS,&code_status,sizeof(code_status),&token) ||
+                  csops_audittoken(getpid(),BW_CS_CDHASH,cdhash,sizeof(cdhash),&token)) return 4;
               printf("\"auditTokenSize\":%zu,\"auditTokenCount\":%u,\"auditTokenFlavor\":%u,"
                      "\"csStatusOperation\":%u,\"csCDHashOperation\":%u,\"cdhashBytes\":%zu,"
                      "\"codeStatus\":%u,\"auditTokenHex\":\"",sizeof(token),count,TASK_AUDIT_TOKEN,
-                     CS_OPS_STATUS,CS_OPS_CDHASH,sizeof(cdhash),code_status);
+                     BW_CS_STATUS,BW_CS_CDHASH,sizeof(cdhash),code_status);
               for (size_t i=0; i<sizeof(token); ++i) printf("%02x",((unsigned char *)&token)[i]);
               printf("\",\"cdhash\":\"");
               for (size_t i=0; i<sizeof(cdhash); ++i) printf("%02x",cdhash[i]);
@@ -152,6 +158,14 @@ jobs:
                       (value['userTicks']+value['systemTicks'])*value['numer']//value['denom'] <= 5_000_000_000)
 
 
+          def validate_api_exports():
+              library = ctypes.CDLL('/usr/lib/libSystem.B.dylib', use_errno=True)
+              names = ('task_name_for_pid','task_info','mach_port_deallocate','csops_audittoken')
+              exports = {name:hasattr(library,name) for name in names}
+              require(all(exports.values()))
+              return exports
+
+
           def producer_namespace(workflow):
               match = re.search(r'# BEGIN IOS INPUT RETENTION\n          cat > "\$RUNNER_TEMP/bw-ios-audit-capture.py" <<\'PY\'\n([\s\S]*?)          PY\n          # END IOS INPUT RETENTION',workflow)
               require(match is not None)
@@ -165,7 +179,7 @@ jobs:
           def main():
               root=Path(os.environ['RUNNER_TEMP']).resolve()/'bw-ios-darwin-preflight'
               root.mkdir(exist_ok=False)
-              report={'schema':'brickwright.darwin-sdk-preflight.v2','status':'partial',
+              report={'schema':'brickwright.darwin-sdk-preflight.v3','status':'partial',
                       'sourceCommit':os.environ['GITHUB_SHA'],'runID':os.environ['GITHUB_RUN_ID'],
                       'attempt':os.environ['GITHUB_RUN_ATTEMPT'],'job':os.environ['GITHUB_JOB'],
                       'actualAppQualified':False,'processFamilyQualified':False,'cleanupSucceeded':False}
@@ -192,6 +206,13 @@ jobs:
                       result=subprocess.run(args,stdin=subprocess.DEVNULL,capture_output=True,timeout=30,check=True)
                       require(len(result.stdout)+len(result.stderr)<=65536)
                       return result.stdout
+                  report['stage']='api-exports'
+                  report['apiExports']=validate_api_exports()
+                  report['codeSignDeclaration']={'kind':'observer-tool-interop',
+                      'source':'apple-oss-distributions/xnu',
+                      'revision':'f6217f891ac0bb64f3d375211650a4c1ff8ca1ea',
+                      'path':'bsd/sys/codesign.h','sdkHeaderProvided':False,
+                      'operations':{'status':0,'cdhash':5}}
                   report['stage']='compiler-discovery'
                   compiler=command(['/usr/bin/xcrun','--sdk','macosx','--find','clang']).decode().strip()
                   sdk=command(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-path']).decode().strip()

@@ -1657,6 +1657,18 @@ class SDKReportControls(unittest.TestCase):
             v=dict(self.value);v[key]=value
             with self.subTest(key=key,value=value):
                 with self.assertRaises(ValueError):validate_sdk_report(v,37)
+    def test_required_exports_are_checked_without_fallback(self):
+        names=('task_name_for_pid','task_info','mach_port_deallocate','csops_audittoken')
+        library=type('Library',(),{name:object() for name in names})()
+        with mock.patch.object(ctypes,'CDLL',return_value=library) as load:
+            self.assertEqual(validate_api_exports(),dict.fromkeys(names,True))
+            load.assert_called_once_with('/usr/lib/libSystem.B.dylib',use_errno=True)
+        for missing in names:
+            partial=type('Library',(),{name:object() for name in names if name!=missing})()
+            with self.subTest(missing=missing),mock.patch.object(ctypes,'CDLL',return_value=partial):
+                with self.assertRaises(ValueError):validate_api_exports()
+        with mock.patch.object(ctypes,'CDLL',side_effect=OSError('missing library')):
+            with self.assertRaises(OSError):validate_api_exports()
     def test_unsupported_host_refuses_before_compiler(self):
         import tempfile
         with tempfile.TemporaryDirectory() as directory,mock.patch.dict(os.environ,{'RUNNER_TEMP':directory,
@@ -1685,6 +1697,9 @@ test('Darwin preflight-only dispatch is closed, unsigned and excludes existing a
     assert.match(job, /name: brickwright-ios-darwin-preflight/);
     assert.match(job, /path: \$\{\{ runner.temp \}\}\/bw-ios-darwin-preflight\/report.json/);
     assert.match(preflight, /sys.version_info >= \(3,13\)/);
+    assert.doesNotMatch(preflight, /#include <sys\/codesign\.h>/);
+    assert.match(preflight, /extern int csops_audittoken\(pid_t, unsigned int, void \*, size_t, audit_token_t \*\);/);
+    assert.ok(preflight.indexOf("report['apiExports']=validate_api_exports()") < preflight.indexOf("report['stage']='probe-compile'"));
     assert.match(preflight, /os\.WEXITED\|os\.WNOHANG\|os\.WNOWAIT/);
     assert.ok(preflight.indexOf('os.killpg(process.pid,signal.SIGKILL)') < preflight.indexOf('process.wait(timeout=2)'));
     assert.match(preflight, /'actualAppQualified':False,'processFamilyQualified':False/);
@@ -1701,7 +1716,7 @@ test('Darwin SDK report controls reject layout, identity, CPU-unit and resource 
     try {
         const baseline = run(definitions, 'baseline');
         assert.equal(baseline.status, 0, baseline.stdout + baseline.stderr);
-        assert.match(baseline.stderr, /Ran 6 tests/);
+        assert.match(baseline.stderr, /Ran 7 tests/);
         for (const [index, [before, after]] of [
             ["value[k] == v", 'True'],
             ["value['pid'] == pid", 'True'],

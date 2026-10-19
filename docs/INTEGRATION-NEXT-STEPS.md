@@ -232,8 +232,10 @@ Use [SPIKE-STATUS-AND-LANES.md](SPIKE-STATUS-AND-LANES.md) for the source and
 qualified component history. Claim a narrow source lane before implementation.
 
 The latest generation diagnostic stopped at readiness: it did not reach an
-armed native run or guest campaign. A complete diagnostic capture took 4.809
-seconds, which does not meet the required 250 ms observation cadence. Preserve
+armed native run or guest campaign. A failed-ready child capture took 4.809
+seconds; the unchanged empty-descendant guard refused three WebKit helpers. The
+startup 250 ms capture assertion was never reached. That diagnostic cannot serve
+as the required startup sampler, and no per-operation timing cause is established. Preserve
 the original refusal; do not relax deadlines or treat a matching helper image
 as runtime ownership, generation identity or a successful guest result.
 
@@ -241,6 +243,13 @@ The bounded collector and independent-reader prototypes remain unwired audit
 controls. Before connecting them to an actual run, review the complete producer
 graph, source identities, original retention, resource budget and independent
 reader. Mock source tests establish no live process, timing or provenance claim.
+The independent budget reader now gates the complete frozen source-constructor
+context before graph or history joins, including empty and complete-only histories.
+A coherently forged supplied context previously passed a partial graph even though
+the actual constructor refused it. Keep that authored counterexample distinct from
+actual evidence. Next prepare the explicit-authority OS/FD/clock adapter with the
+required executable-metadata operation, then review helper-aware readiness and
+startup policy; the old bridge's descendant limits still refuse the helper set.
 
 Complete the remaining actual two-UI-Stop, chooser/startup/final-sampling,
 generation, late-poll and deferred-storage cases with clean source-bound installed
@@ -313,6 +322,13 @@ boundary remains unknown. Preserve that original. The diagnostic revision record
 host/admission/cleanup stages and a summary even if upload fails. It also checks
 read-only audit-token/code-directory APIs and executable page consistency against
 its owned helper. Keep this distinct from a simulator target's permissions.
+The second event retained a precise compile failure: the SDK lacks
+`sys/codesign.h`. Its host had the required Python wait APIs, but no helper or
+kernel identity query ran. The corrected observer tool declares only the reviewed
+read-only ABI using SDK types, records its XNU declaration provenance separately
+from SDK layout, and requires the actual library exports before compilation.
+No Apple implementation or private header is bundled. A corrected event still
+needs its own exact source-bound platform evidence.
 
 `DarwinAuditIdentity` and `simulator_code_directory` remain unwired for app
 observation. The former obtains a kernel task-name right and audit token, uses
@@ -332,8 +348,8 @@ identity, target ownership, child/service census and cleanup before composing th
 transaction controller. An observed UUID/path/birth digest is not an authenticated
 capability or a continuous identity lease. Keep existing app qualification flags
 false until the full source/artifact/installed-map joins and affected actual run
-pass. No new dispatch, download, actual launch or workflow entry mode is added
-by this source preparation.
+pass. The isolated helper preflight provides no authority for an actual app
+launch or an additional installed observation.
 
 ## Handoff and privacy
 
