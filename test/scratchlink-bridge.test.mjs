@@ -222,7 +222,9 @@ const freshBridge = async (invoke, listen = async () => () => {}) => {
     window.__TAURI__ = {core: {invoke}, event: {listen}};
     // Each case owns an independent native transition queue, as a fresh page does.
     const source = readFileSync(resolve(LIB, 'native-scratch-link-bridge.js'), 'utf8');
-    return import(`data:text/javascript;base64,${Buffer.from(`${source}\n// case ${++harnessId}`).toString('base64')}`);
+    const moduleSource = source + '\n// case ' + ++harnessId;
+    const moduleUrl = 'data:text/javascript;base64,' + Buffer.from(moduleSource).toString('base64');
+    return import(moduleUrl);
 };
 
 describe('native cancellation and reconnect ownership', () => {
