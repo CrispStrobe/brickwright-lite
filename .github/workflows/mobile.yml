@@ -182,7 +182,7 @@ jobs:
               return row
 
 
-          def finish_preflight_helper(process, exit_info, report):
+          def finish_preflight_helper(process, exit_info, report, *, ownership_token):
               """Reap the observed owned exit even when group signalling refuses.
 
               Darwin's zombie-only negative is classified only for the exact fixed probe,
@@ -195,9 +195,19 @@ jobs:
                   fields=('si_pid','si_uid','si_signo','si_status','si_code')
                   original={key:getattr(exit_info,key) for key in fields}
                   report['probeExitOriginal']=original
-                  require(all(type(v) is int for v in original.values()) and original=={
-                      'si_pid':process.pid,'si_uid':os.geteuid(),'si_signo':signal.SIGCHLD,
-                      'si_status':0,'si_code':os.CLD_EXITED})
+                  require(type(ownership_token) is bytes and len(ownership_token)==32)
+                  import struct
+                  token=struct.unpack('<8I',ownership_token)
+                  report['probeExitOwnershipTokenHex']=ownership_token.hex()
+                  report['waitUIDUsedForOwnership']=False
+                  require(token[5]==process.pid and token[1]==os.geteuid())
+                  # Darwin waitid leaves si_uid zero in the observed exit record.
+                  # Ownership is from the authenticated pre-exit kernel token.
+                  require(all(type(v) is int for v in original.values()) and
+                      0<=original['si_uid']<=2**32-1 and
+                      {key:value for key,value in original.items() if key!='si_uid'}=={
+                          'si_pid':process.pid,'si_signo':signal.SIGCHLD,
+                          'si_status':0,'si_code':os.CLD_EXITED})
                   preflight_group_original(process.pid,report)
                   signal_error=None
                   try:
@@ -245,7 +255,7 @@ jobs:
           def main():
               root=Path(os.environ['RUNNER_TEMP']).resolve()/'bw-ios-darwin-preflight'
               root.mkdir(exist_ok=False)
-              report={'schema':'brickwright.darwin-sdk-preflight.v4','status':'partial',
+              report={'schema':'brickwright.darwin-sdk-preflight.v5','status':'partial',
                       'sourceCommit':os.environ['GITHUB_SHA'],'runID':os.environ['GITHUB_RUN_ID'],
                       'attempt':os.environ['GITHUB_RUN_ATTEMPT'],'job':os.environ['GITHUB_JOB'],
                       'actualAppQualified':False,'processFamilyQualified':False,'processGroupQualified':False,'cleanupSucceeded':False}
@@ -347,7 +357,7 @@ jobs:
                       time.sleep(0.01)
                   exit_info=os.waitid(os.P_PID,process.pid,os.WEXITED|os.WNOHANG|os.WNOWAIT)
                   report['nonReapingWaitObserved']=True
-                  finish_preflight_helper(process,exit_info,report)
+                  finish_preflight_helper(process,exit_info,report,ownership_token=identity._token)
                   report['cleanupSucceeded']=True
                   report['stage']='exit-refusal'
                   try:sampler(process.pid)
@@ -1095,7 +1105,7 @@ jobs:
               print('iOS runtime candidate recorded; app launch remains refused')
 
 
-          def owned_simulator_transaction(plan, invoke, observe, now=time.monotonic, *, prepare, release):
+          def owned_simulator_transaction(plan, invoke, observe, now=time.monotonic, *, prepare, release, stopped=None):
               """Unwired transaction core. Adapters must enforce command/observation bounds.
 
               Supplied admission fields are not authenticated capabilities. No workflow phase
@@ -1107,6 +1117,7 @@ jobs:
                       'appPath', 'sourceSHA256', 'executableSHA256', 'runtimeArchitectureAdmitted',
                       'deviceModelAdmitted', 'processEnvelopeAdmitted'}
               need(all(callable(callback) for callback in (invoke, observe, now, prepare, release)))
+              need(stopped is None or callable(stopped))
               need(type(plan) is dict and plan.keys() == keys)
               plan = dict(plan)  # Caller mutation during an adapter call cannot retarget ownership.
               need(plan['schema'] == 'brickwright.ios-owned-simulator-plan.v1')
@@ -1129,6 +1140,7 @@ jobs:
                         'primaryFailure': None, 'cleanupFailures': [], 'trace': [], 'limits': limits.copy(),
                         'creationAttempted': False, 'ownershipEstablished': False, 'creationUncertain': False,
                         'observationRetained': False, 'cleanupAbsenceObserved': False,
+                        'cancellationObserved': False,
                         'preparationReturned': False, 'preparationReleased': False,
                         'suppliedAdmissionAuthenticated': False, 'callbackBoundsQualified': False,
                         'resourceLifetimeQualified': False, 'actualAppQualified': False}
@@ -1145,6 +1157,15 @@ jobs:
                   return value
               start = tick()
               deadline = start + limits['activeSeconds']
+              def check_stop(*, active=True):
+                  if stopped is not None:
+                      flag = stopped()
+                      need(type(flag) is bool)
+                      result['cancellationObserved'] |= flag
+                      need(not result['cancellationObserved'])
+                  current = tick()  # Also fence a late/malformed supplied Stop callback.
+                  need(current < deadline if active else current < start +
+                       limits['activeSeconds'] + limits['cleanupSeconds'] + limits['releaseSeconds'])
               counts = [0, 0]
               def call(args, cleanup=False):
                   current = tick()
@@ -1192,7 +1213,11 @@ jobs:
                        row['deviceTypeIdentifier'] == plan['deviceTypeIdentifier'])
                   return row
               def operation(command, *arguments, cleanup=False):
+                  if not cleanup:
+                      check_stop()
                   row = verify(cleanup)
+                  if not cleanup:
+                      check_stop()  # Readback must not dispatch a later cancelled effect.
                   if not cleanup:
                       need(row['isAvailable'] is True)
                       if command == 'boot':
@@ -1201,9 +1226,11 @@ jobs:
                           need(row['state'] == 'Booted')
                   return call((command, owned, *arguments), cleanup)
               try:
+                  check_stop()
                   before = catalog()
                   need(not any(row['name'] == plan['name'] for _, row in before.values()))
                   stage = 'create'
+                  check_stop()
                   result['creationAttempted'] = True
                   raw = call(('create', plan['name'], plan['deviceTypeIdentifier'], plan['runtimeIdentifier']))
                   identifier = raw.decode('ascii').strip().upper()
@@ -1219,6 +1246,7 @@ jobs:
                   owned = identifier
                   result['ownershipEstablished'] = True
                   result['trace'].append('created-identity')
+                  check_stop()  # Resolve the returned ownership before cancellation cleanup.
                   stage = 'boot'
                   boot_attempted = True
                   operation('boot')
@@ -1229,6 +1257,7 @@ jobs:
                   operation('install', plan['appPath'])
                   stage = 'prepare-observation'
                   need(verify()['state'] == 'Booted')
+                  check_stop()
                   current = tick()
                   need(current < deadline)
                   preparation_deadline = min(deadline, current+limits['preparationSeconds'])
@@ -1239,6 +1268,7 @@ jobs:
                   preparation_returned = True
                   result['preparationReturned'] = True
                   need(prepared is not None and tick() < preparation_deadline)
+                  check_stop()
                   result['trace'].append('prepared-before-launch')
                   stage = 'launch'
                   launch_attempted = True
@@ -1247,6 +1277,7 @@ jobs:
                   need(match is not None and int(match[1]) <= 2147483647)
                   stage = 'observe'
                   need(verify()['state'] == 'Booted')
+                  check_stop()
                   current = tick()
                   need(current < deadline)
                   # Adapter owns environment binding, installed-code/readback, PID/RSS checks,
@@ -1259,6 +1290,7 @@ jobs:
                   result['observationSHA256'] = hashlib.sha256(observation).hexdigest()
                   result['observationBytes'] = len(observation)
                   need(tick() < observation_deadline)
+                  check_stop()  # Keep returned originals, refuse successful publication.
               except Exception:
                   result['primaryFailure'] = stage  # No exception payload, args, paths, UUIDs or device names.
               finally:
@@ -1298,6 +1330,11 @@ jobs:
                               need(release_deadline is not None and tick() < release_deadline)
                           except Exception:
                               result['cleanupFailures'].append('preparation-release')
+              try:
+                  check_stop(active=False)
+              except Exception:
+                  if result['primaryFailure'] is None:
+                      result['primaryFailure'] = 'publication'
               result['activeCommands'] = counts[0]
               result['cleanupCommands'] = counts[1]
               if result['primaryFailure'] is None and not result['cleanupFailures'] and result['observationRetained']:

@@ -6841,3 +6841,31 @@ canonical mirror freshness and every enabled exact-head check before source
 merge. Hardware acceptance separately requires cold launch, cancel, immediate
 retry and disconnect/reconnect on the iPad without restarting the app. Keep
 receipts, screenshots, device identifiers and machine paths gitignored.
+
+
+## iOS audit: unwired transaction Stop and publication fences — 2026-10-19
+
+The same claimed workflow core now accepts a typed optional Stop callback, keeps
+cancellation sticky, fences active effects after readback/preparation/observation,
+and refuses successful publication if Stop occurs during cleanup/release. A valid
+returned create identity is resolved before cancellation cleanup; other devices
+remain untouched. Returned observation bytes remain retained with partial status.
+Cleanup/release continue on cancellation. Six new authored lifecycle controls and
+a publication-fence mutant complement normal and existing failure controls.
+This is cooperative source behavior only: callback interruption, shared Stop
+intent in the full wrapper, target/service/process-group authority and actual app
+qualification remain open. No workflow phase invokes the transaction core.
+
+
+## iOS audit: authenticated exit ownership instead of wait UID — 2026-10-19
+
+The fourth actual preflight refused the wait-UID comparison: Darwin returned zero,
+while the authenticated pre-exit token had the helper's actual UID. The child was
+reaped with zero exit and no cleanup errors; group census was never reached.
+Retain this failed original. The probe now ties exit ownership to the already
+verified live kernel audit token's PID/UID, retains wait UID as information and
+refuses changed ownership tokens. Reviewed XNU wait code zeros but does not fill
+that exit UID; runner kernel source identity is still unjoined. This changes no
+permission requirement and gives supplied UID fields no authority. A separately
+source-bound corrected platform event and independent original joins are still
+required. General simulator group/family/app qualification remains false.

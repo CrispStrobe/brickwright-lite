@@ -340,6 +340,15 @@ UID/PID/zero-exit record before classifying this fixed, nonforking-helper negati
 It always attempts the owned reap despite signal errors. This does not admit
 simulator command-group cleanup, service families or app observation. General
 process-group qualification remains explicitly false.
+The fourth event retained a zero-exit wait record whose `si_uid` was zero, while
+the pre-exit kernel audit token had UID 501. It refused before group census; its
+owned child was nevertheless reaped with no cleanup error. Darwin's reviewed
+[wait implementation](https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/bsd/kern/kern_exit.c)
+zeros that structure and does not populate UID on this exit path. The corrected
+probe retains wait UID as information and joins ownership to the authenticated
+pre-exit audit token's PID/UID. Changed tokens still refuse; no supplied UID or
+blanket wait-UID exception provides authority. Actual group-census behavior and
+the full platform result remain unqualified until the corrected event passes.
 
 `DarwinAuditIdentity` and `simulator_code_directory` remain unwired for app
 observation. The former obtains a kernel task-name right and audit token, uses
@@ -361,6 +370,22 @@ capability or a continuous identity lease. Keep existing app qualification flags
 false until the full source/artifact/installed-map joins and affected actual run
 pass. The isolated helper preflight provides no authority for an actual app
 launch or an additional installed observation.
+
+## Whole-transaction cancellation before wrapper admission
+
+The unwired transaction core now accepts a typed Stop callback. It checks before
+active effects and again after identity readback, preparation and observation,
+then fences publication after device cleanup and receiver release. A cancelled
+create still resolves the returned identity for exact owned cleanup before
+refusing boot. Stop does not suppress cleanup or release, and a returned
+observation remains retained with partial status. Cancellation is sticky and
+cannot be cleared by a later callback value. Normal transactions remain live.
+
+This closes the core's cooperative cancellation boundary; callbacks can still
+block and the complete wrapper remains unwired. Adapters must share the same
+Stop intent, enforce their own interruption/resource bounds and retain originals.
+Target ownership, service families, command-group cleanup and actual installed
+qualification are still mandatory before an app launch.
 
 ## Handoff and privacy
 

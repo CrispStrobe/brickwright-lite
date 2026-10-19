@@ -424,10 +424,51 @@ class World:
         assert device==NEW and pid==1234 and self.time<deadline and output_limit==8*1024*1024
         assert prepared is self.context
         return self.observer()
-    def run(self,fn=owned_simulator_transaction,plan=None):
-        return fn(copy.deepcopy(PLAN) if plan is None else plan,self.invoke,self.observe,self.now,prepare=self.prepare,release=self.release)
+    def run(self,fn=owned_simulator_transaction,plan=None,*,stopped=None):
+        return fn(copy.deepcopy(PLAN) if plan is None else plan,self.invoke,self.observe,self.now,prepare=self.prepare,release=self.release,stopped=stopped)
     def ops(self):return [a[0] for a in self.commands]
 class LifecycleControls(unittest.TestCase):
+    def test_initial_stop_or_invalid_flag_performs_no_command(self):
+        for flag in (True,None,1):
+            w=World();r,raw=w.run(stopped=lambda:flag)
+            self.assertEqual(w.commands,[]);self.assertEqual(r['status'],'partial');self.assertIsNone(raw)
+    def test_stop_after_create_still_resolves_and_cleans_exact_owned_device(self):
+        w=World();r,raw=w.run(stopped=lambda:'create' in w.ops())
+        self.assertTrue(r['ownershipEstablished']);self.assertTrue(r['cancellationObserved'])
+        self.assertNotIn('boot',w.ops());self.assertNotIn(NEW,w.devices);self.assertIn(OLD,w.devices)
+        self.assertTrue(r['cleanupAbsenceObserved']);self.assertEqual(r['status'],'partial')
+    def test_stop_during_readback_cannot_dispatch_next_effect(self):
+        w=World();flag=[False];original=w.invoke
+        def invoke(args,**kwargs):
+            value=original(args,**kwargs)
+            if args[0]=='list' and 'boot' in w.ops():flag[0]=True
+            return value
+        w.invoke=invoke;r,raw=w.run(stopped=lambda:flag[0])
+        self.assertNotIn('bootstatus',w.ops());self.assertNotIn('install',w.ops())
+        self.assertTrue(r['cleanupAbsenceObserved']);self.assertEqual(r['status'],'partial')
+    def test_stop_in_preparation_releases_once_without_launch(self):
+        w=World();flag=[False]
+        def prepare():flag[0]=True;return w.context
+        w.preparer=prepare;r,raw=w.run(stopped=lambda:flag[0])
+        self.assertNotIn('launch',w.ops());self.assertEqual(w.releases,[w.context])
+        self.assertTrue(r['cleanupAbsenceObserved']);self.assertEqual(r['status'],'partial')
+    def test_stop_during_observation_preserves_original_but_refuses_success(self):
+        w=World();flag=[False]
+        def observe():flag[0]=True;return RAW
+        w.observer=observe;r,raw=w.run(stopped=lambda:flag[0])
+        self.assertEqual(raw,RAW);self.assertTrue(r['observationRetained']);self.assertEqual(r['status'],'partial')
+        self.assertEqual(w.releases,[w.context]);self.assertTrue(r['cleanupAbsenceObserved'])
+    def test_stop_during_release_fences_publication_and_mutant_exposes_it(self):
+        def run(fn):
+            w=World();flag=[False]
+            def release():flag[0]=True
+            w.releaser=release;r,raw=w.run(fn,stopped=lambda:flag[0]);return r,raw,w
+        r,raw,w=run(owned_simulator_transaction)
+        self.assertEqual(r['primaryFailure'],'publication');self.assertEqual(r['status'],'partial')
+        self.assertEqual(raw,RAW);self.assertTrue(r['preparationReleased']);self.assertEqual(w.releases,[w.context])
+        namespace={};cut='check_stop(active=False)';self.assertEqual(SOURCE_PREFIX.count(cut),1)
+        exec(compile(SOURCE_PREFIX.replace(cut,'pass'),'authored-no-publication-stop','exec'),namespace)
+        changed,_,_=run(namespace['owned_simulator_transaction']);self.assertEqual(changed['status'],'observed-transaction-only')
     def test_normal_transaction_keeps_other_device_and_limited_claims(self):
         w=World();old=copy.deepcopy(w.devices[OLD]);r,raw=w.run()
         self.assertEqual(r['status'],'observed-transaction-only');self.assertEqual(raw,RAW)
@@ -630,7 +671,7 @@ test('unwired owned simulator transaction core preserves identity, failures and 
             env: {...process.env, GITHUB_WORKSPACE: dir, RUNNER_TEMP: dir}, encoding: 'utf8', timeout: 15000
         });
         assert.equal(result.status, 0, result.stdout + result.stderr);
-        assert.match(result.stderr, /Ran 22 tests/);
+        assert.match(result.stderr, /Ran 28 tests/);
         assert.match(result.stderr, /OK/);
     } finally { rmSync(dir, {recursive: true, force: true}); }
 });
@@ -850,7 +891,7 @@ test('unwired bounded simctl adapter controls execute real owned subprocesses', 
             env: {...process.env, GITHUB_WORKSPACE: dir, RUNNER_TEMP: dir, TMPDIR: dir}, encoding: 'utf8', timeout: 20000
         });
         assert.equal(result.status, 0, result.stdout + result.stderr);
-        assert.match(result.stderr, /Ran 13 tests/);
+        assert.match(result.stderr, /Ran 14 tests/);
         assert.match(result.stderr, /OK/);
         assert.equal((retention.match(/bounded_simulator_command\(/g) || []).length, 1, 'adapter definition only');
     } finally { rmSync(dir, {recursive: true, force: true}); }
@@ -1672,8 +1713,9 @@ class SDKReportControls(unittest.TestCase):
     def cleanup_fixture(self):
         from types import SimpleNamespace
         process=SimpleNamespace(pid=37,returncode=None,wait=mock.Mock(return_value=0))
-        info=SimpleNamespace(si_pid=37,si_uid=501,si_signo=int(signal.SIGCHLD),si_status=0,si_code=os.CLD_EXITED)
+        info=SimpleNamespace(si_pid=37,si_uid=0,si_signo=int(signal.SIGCHLD),si_status=0,si_code=os.CLD_EXITED)
         report={}
+        self.ownership_token=b''.join(n.to_bytes(4,'little') for n in (501,501,20,501,20,37,123,9))
         self.enterContext(mock.patch.object(os,'geteuid',return_value=501))
         self.enterContext(mock.patch.object(os,'waitid',return_value=info))
         self.enterContext(mock.patch.object(os,'waitpid',side_effect=ChildProcessError()))
@@ -1682,39 +1724,49 @@ class SDKReportControls(unittest.TestCase):
         return process,info,report,signal_call
     def test_fixed_helper_success_reaps_and_preserves_wait_original(self):
         process,info,report,signal_call=self.cleanup_fixture()
-        finish_preflight_helper(process,info,report)
+        finish_preflight_helper(process,info,report,ownership_token=self.ownership_token)
         self.assertTrue(report['fixedProbeGroupChecked']);self.assertTrue(report['leaderReaped'])
         self.assertEqual(report['probeExitOriginal']['si_pid'],37)
         process.wait.assert_called_once_with(timeout=2);signal_call.assert_called_once_with(37,signal.SIGKILL)
     def test_fixed_helper_eperm_needs_both_censuses_and_same_owned_exit(self):
         import errno
         process,info,report,signal_call=self.cleanup_fixture();signal_call.side_effect=PermissionError(errno.EPERM,'authored')
-        finish_preflight_helper(process,info,report)
+        finish_preflight_helper(process,info,report,ownership_token=self.ownership_token)
         self.assertTrue(report['zombieOnlyGroupNegativeObserved']);self.assertEqual(preflight_group_original.call_count,2)
         self.assertEqual(report['probeGroupSignal'],{'status':-1,'errno':errno.EPERM})
         self.assertTrue(report['leaderReaped'])
     def test_fixed_helper_signal_error_never_skips_reap_or_becomes_success(self):
         import errno
         process,info,report,signal_call=self.cleanup_fixture();signal_call.side_effect=OSError(errno.EIO,'authored')
-        with self.assertRaises(ValueError):finish_preflight_helper(process,info,report)
+        with self.assertRaises(ValueError):finish_preflight_helper(process,info,report,ownership_token=self.ownership_token)
         self.assertNotIn('fixedProbeGroupChecked',report);process.wait.assert_called_once_with(timeout=2)
         self.assertTrue(report['leaderReaped'])
     def test_bad_exit_or_group_or_second_wait_refuses_but_reaps(self):
         from types import SimpleNamespace
-        for mode in ('pid','uid','status','code','group','second-wait'):
+        for mode in ('pid','status','code','group','second-wait','ownership-uid','ownership-pid'):
             with self.subTest(mode=mode):
                 process,info,report,signal_call=self.cleanup_fixture()
-                if mode in ('pid','uid','status','code'):setattr(info,'si_'+mode,getattr(info,'si_'+mode)+1)
+                if mode in ('pid','status','code'):setattr(info,'si_'+mode,getattr(info,'si_'+mode)+1)
+                elif mode.startswith('ownership-'):
+                    offset=4 if mode=='ownership-uid' else 20
+                    self.ownership_token=self.ownership_token[:offset]+(999).to_bytes(4,'little')+self.ownership_token[offset+4:]
                 elif mode=='group':preflight_group_original.side_effect=ValueError('authored foreign group')
                 else:os.waitid.return_value=None
-                with self.assertRaises(ValueError):finish_preflight_helper(process,info,report)
+                with self.assertRaises(ValueError):finish_preflight_helper(process,info,report,ownership_token=self.ownership_token)
                 process.wait.assert_called_once_with(timeout=2)
                 self.assertNotIn('fixedProbeGroupChecked',report)
+    def test_wait_uid_is_retained_without_becoming_ownership_authority(self):
+        for value in (0,501,999):
+            process,info,report,signal_call=self.cleanup_fixture();info.si_uid=value
+            finish_preflight_helper(process,info,report,ownership_token=self.ownership_token)
+            self.assertEqual(report['probeExitOriginal']['si_uid'],value)
+            self.assertIs(report['waitUIDUsedForOwnership'],False)
+            self.assertEqual(report['probeExitOwnershipTokenHex'],self.ownership_token.hex())
     def test_cleanup_primary_survives_reap_error(self):
         process,info,report,signal_call=self.cleanup_fixture()
         primary=ValueError('authored primary');preflight_group_original.side_effect=primary
         process.wait.side_effect=TimeoutError('authored reap error')
-        with self.assertRaises(ValueError) as caught:finish_preflight_helper(process,info,report)
+        with self.assertRaises(ValueError) as caught:finish_preflight_helper(process,info,report,ownership_token=self.ownership_token)
         self.assertIs(caught.exception,primary);self.assertEqual(report['helperReapFailure'],'TimeoutError')
     def test_actual_group_binding_and_closed_singleton_buffer(self):
         original_function=globals()['preflight_group_original']
@@ -1781,14 +1833,15 @@ test('Darwin SDK report controls reject layout, identity, CPU-unit and resource 
     try {
         const baseline = run(definitions, 'baseline');
         assert.equal(baseline.status, 0, baseline.stdout + baseline.stderr);
-        assert.match(baseline.stderr, /Ran 13 tests/);
+        assert.match(baseline.stderr, /Ran 14 tests/);
         for (const [index, [before, after]] of [
             ["value[k] == v", 'True'],
             ["value['pid'] == pid", 'True'],
             ["value['rssBytes'] <= 1024**3", 'True'],
             ["(value['userTicks']+value['systemTicks'])*value['numer']//value['denom'] <= 5_000_000_000", 'True'],
             ["type(count) is int and count==1 and row['errno']==0 and buffer[0]==pid", 'True'],
-            ['again is not None and {key:getattr(again,key) for key in fields}==original', 'True']
+            ['again is not None and {key:getattr(again,key) for key in fields}==original', 'True'],
+            ['token[5]==process.pid and token[1]==os.geteuid()', 'True']
         ].entries()) {
             assert.equal(definitions.split(before).length, 2);
             const result = run(definitions.replace(before, after), `cut-${index}`);
