@@ -553,6 +553,20 @@ const CENSUS = [
            + 'branch here — the version literal IS the immutable name.'
     },
     {
+        file: 'scripts/integrate.mjs',
+        kind: 'release',
+        text: 'github.com/CrispStrobe/JoltPhysics.js/releases/download/v1.1.0-bw.1/jolt-physics-1.1.0-bw.1.tgz',
+        class: 'content-hash',
+        why: 'The Robot Lab\'s physics engine: our MIT fork of JoltPhysics.js (GearMeshConstraint, the '
+           + 'gear torque fix; BRICKWRIGHT.md on its brickwright/gear-mesh branch), published as a '
+           + 'release tarball rather than to npm. The tag is movable, so the tag is not what is '
+           + 'trusted: JOLT_PHYSICS_INTEGRITY in this same file is the tarball\'s sha512, integrate '
+           + 'refuses a GUI lockfile whose jolt-physics entry does not carry exactly that value, and npm '
+           + 'checks the downloaded bytes against the lockfile\'s integrity before it unpacks anything, '
+           + 'so a moved tag or a replaced asset fails the install closed. The fork\'s release workflow '
+           + 'rebuilds the same bytes from its pinned sources (sha256 6ba56b57…6fd4).'
+    },
+    {
         file: 'scripts/probe-pico-kaluma.mjs',
         kind: 'release',
         text: 'github.com/kaluma-project/kaluma/releases/download/1.2.1/kaluma-rp2-pico-1.2.1.uf2',

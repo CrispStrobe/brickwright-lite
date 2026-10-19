@@ -14,8 +14,8 @@
 // Bodies: one Jolt body per mechanism body, shape = compound of colliders
 // (box / cylinder local +y / sphere), mass overridden to massKg.
 // Joints: hinge / slider at point/axis (world at t=0), body2:'world' fixed.
-// Gears: contract ratio ω(joint2)=ratio·ω(joint1) mapped to a Jolt
-// GearConstraint between the two gear bodies, r = -1/ratio (see GearConstraint.h).
+// Gears: contract ratio ω(joint2)=ratio·ω(joint1) as a tooth contact at the pitch
+// point between the two gear bodies (GearMeshConstraint, the Brickwright fork of Jolt).
 // Collisions (owner decision D2, R3): EVERYTHING collides — robot parts with the
 // world, with loads and with each other — except the body pairs in the
 // mechanism's `noCollide` list (bodies joined by a joint or a coupling, parts
@@ -84,14 +84,6 @@ const perpForAxis = axis => {
     return [px / len, py / len, pz / len];
 };
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-/** Rotate v by the unit quaternion q (xyzw). */
-const quatRotateVecRG = (q, v) => {
-    const [qx, qy, qz, qw] = q;
-    const cx = qy * v[2] - qz * v[1] + qw * v[0];
-    const cy = qz * v[0] - qx * v[2] + qw * v[1];
-    const cz = qx * v[1] - qy * v[0] + qw * v[2];
-    return [v[0] + 2 * (qy * cz - qz * cy), v[1] + 2 * (qz * cx - qx * cz), v[2] + 2 * (qx * cy - qy * cx)];
-};
 /**
  * Box convex radius (metres), as for cylinders: a quarter of the thinnest half
  * extent, at most 0.5 mm. Jolt keeps the box's outer extents and rounds its
@@ -109,6 +101,16 @@ const boxConvexRadius = halfExtents => Math.min(0.0005, 0.25 * Math.min(...halfE
  * (measured); from 15 up it is stopped, 30 stops it within 2° of first touch.
  */
 const GEAR_VELOCITY_STEPS = 30;
+
+/**
+ * Solver velocity iterations for an island holding a gear mesh (GearMeshConstraint). A mesh couples
+ * the gears' frames too, and in a linear actuator's closed loop (the Excavator's boom: motor → 16T
+ * pair → bevel pair in the actuator's body → spindle) the loop sagged under the mesh's impulses
+ * with fewer: the boom left its law-of-cosines angle by 1.73° with 30, 0.73° with 120 (measured,
+ * test/bw-sim-excavator.test.mjs; the planet-carrier contact this replaces needed 240). Islands
+ * without a mesh keep their own counts.
+ */
+const MESH_VELOCITY_STEPS = 120;
 
 /**
  * Solver position iterations for an island holding a gear (Jolt's default is 2). With
@@ -147,17 +149,10 @@ const MOTOR_POSITION_PER_EPS = 0.33;
  * gear constraint slips where the solve has not converged: a 102 g arm 5 cm out (0.05 N·m) on a
  * 24T driven by a worm turned 1.49 % faster than ω/24 over 1.6 s with 30 iterations, 0.28 % with
  * 120 (measured; the plain 'gear' kind does the same at this ratio and load). Islands without a
- * worm keep GEAR_VELOCITY_STEPS, so every gear train runs as before.
+ * worm keep GEAR_VELOCITY_STEPS, so every gear train runs as before. (Since the tooth-contact mesh
+ * every mesh has MESH_VELOCITY_STEPS, the same number.)
  */
 const WORM_VELOCITY_STEPS = 120;
-
-/**
- * Solver velocity iterations for an island holding a planet carrier's mesh (a relativeGear in
- * a turning frame, re-made every step and so without Jolt's warm start). A differential with
- * one side held (test/bw-sim-gearbox.test.mjs) turned its free side 1.74× the casing with 30,
- * 1.98× with 120, 1.992× with 240 (Willis: 2), and no better with 400 (measured).
- */
-const CARRIER_VELOCITY_STEPS = 240;
 
 /**
  * Principal moments and axes of a symmetric 3×3 inertia tensor (cyclic Jacobi).
@@ -678,25 +673,34 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         } else throw new Error(`unknown joint type ${j.type}`);
     }
 
-    // Gears are Jolt GearConstraints between the two GEAR bodies, so the mesh
-    // works both ways: a load on the driven gear (an obstacle, a heavy arm) comes
-    // back through the teeth to the driving motor and can stall it. (Until
-    // 2026-10-17 a gear was a velocity servo on the driven hinge with an
-    // unlimited torque: the motor never felt its load, and which hinge drove
-    // which depended on joint id order.)
+    // Gears are tooth contacts between the two GEAR bodies: Jolt's GearMeshConstraint, which the
+    // Brickwright fork of Jolt adds (jolt-physics 1.1.0-bw.1; the fork's BRICKWRIGHT.md,
+    // https://github.com/CrispStrobe/JoltPhysics.js/blob/brickwright/gear-mesh/BRICKWRIGHT.md).
+    // The mesh is what it physically is: n·(V2(P) − V1(P)) = 0 at the pitch point P along the
+    // line of action n, with V_i(P) the velocity of gear i's material point there. The impulse is an
+    // equal and opposite force pair at P, so torque crosses the mesh multiplied by the ratio (upstream
+    // Jolt's GearConstraint passed it 1:1), the reaction reaches the frame holding the axles (each
+    // gear's hinge names it: SetConstraints), and a machine on a free frame conserves angular
+    // momentum. Because each gear's rate is taken RELATIVE TO ITS FRAME, a mesh on a frame that
+    // turns (the Excavator's slew pinion on its turntable, a planet on its carrier) is exact too:
+    // no special path for moving frames, no per-step re-anchoring.
     //
-    // The two hinges of a mesh share the frame body that holds both axles
-    // (mech/gears.js only couples such pairs); the gear body of each hinge is
-    // its other body. A gear on the hinge's body2 turns by +ω about the hinge
-    // axis, one on body1 by −ω, so Jolt gets the signed axes a = s·axis and
-    // ω1·a1 + r·ω2·a2 = 0 (GearConstraintPart) gives ω(joint2) = −ω(joint1)/r:
-    // r = −1/ratio. Jolt 1.1.0's gear constraint diverges (NaN within a few
-    // steps, measured) for a negative r or r < 1 (e.g. ratio −3 or +1/3), so the
-    // pair is ordered to make |ratio| ≤ 1 and a positive ratio is expressed by
-    // flipping axis 2: r = 1/|ratio| ≥ 1 always. Jolt constrains the gear bodies' WORLD rotation rates: exact
-    // while the frame does not turn about the gear axes (a gearbox clamped or
-    // standing still); on a frame that itself turns about them the coupling is
-    // off by that frame rate (documented in docs/SIM-LAB.md).
+    // The hinges also give the mesh its PHASE (the accumulated hinge angles), from which the fork's
+    // position steps would pull back any slip since SetConstraints. That is re-based before every
+    // step (rebaseMeshes): the position steps then remove the drift of the step itself, not the slip
+    // of the past. Accumulated phase correction fought the rest of the solve (measured): a stalled
+    // motor's arm on a driven 24T was pushed 7.7° into a static block (the contact on a light arm
+    // gives way before the mesh's correction does: test/bw-sim-gear-trains.test.mjs P5 §6 allows 6°),
+    // and the Excavator's bucket actuator chain (motor → 16T pair → bevel pair → spindle) rang and
+    // blew up (NaN) within a second of curling. With the re-base the velocity constraint is exact and
+    // the per-step drift is removed; slip the solver cannot prevent (that arm's impact: 10.5° of the
+    // 24T) stays slipped, as it did with the gear constraint.
+    //
+    // The two hinges of a mesh share the frame body that holds both axles (mech/gears.js only
+    // couples such pairs); the gear body of each hinge is its other body. A gear on the hinge's
+    // body2 turns by +ω about the hinge axis, one on body1 by −ω, so with the signed axes
+    // a = s·axis each gear's rate about its axis IS its joint's rate, and the contract ratio
+    // ω(joint2) = ratio·ω(joint1) is the mesh's mRatio as it is (any sign, any magnitude).
     /**
      * Gear bodies get principal moments of at least GEAR_MIN_INERTIA. A mesh couples a
      * 2–7 g gear (true inertia ~1e-7 kg·m²) to a motor whose rotor alone is 3e-4 kg·m² at
@@ -708,8 +712,36 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
      * smallest floor that stalls that arm at the block) the ratio is ~100. It is a numerical
      * floor, not a property of the parts: a small gear spins up ~100× more slowly on its
      * own than a real one, which no motor-driven train notices (the rotor dominates).
+     * Re-measured with the tooth-contact mesh (2026-10-19, test/bw-sim-gear-trains.test.mjs P5 §6,
+     * first touch 13.3°): 3e-5 stops the arm at 13.9° with the motor stalled; 1e-5 and 3e-6 let it
+     * bounce back off the block (8.4°, 2.5°) with the motor still turning (17, 30 °/s). Kept.
      */
     const GEAR_MIN_INERTIA = 3e-5;
+    /**
+     * Gear bodies get a mass of at least GEAR_MIN_MASS_KG (their weight kept: the gravity factor is
+     * scaled down by the same ratio; their inertia is kept, GEAR_MIN_INERTIA floors that), as
+     * physics/screw.js floors an actuator's light parts (SCREW_MIN_MASS_KG, the same 20 g). A light
+     * gear body between its hinge and a contact or a mesh is pushed SIDEWAYS by the contact, the
+     * hinge takes that back, and only a small part of each iteration turns it: the Excavator's slew
+     * pinion (8T on the 28T turntable) slipped 17° of the turntable in one dig cycle under the
+     * swinging arm without the floor (−72.5° … +107.4° for ±90°), 9° with it (−81.1° … +98.7°); a
+     * stalled DC motor's arm on a driven 24T kept rocking against its block (the motor at 17 °/s, not
+     * reported stalled) without it, and stalls with it (measured). A numerical floor like GEAR_MIN_INERTIA: a light
+     * gear accelerates along a line more slowly on its own, which nothing on a hinge notices.
+     */
+    const GEAR_MIN_MASS_KG = 0.02;
+    const floorMass = id => {
+        const e = bodyMap.get(id);
+        if (!e || e.motionType === J.EMotionType_Static) return;
+        const mp = e.body.GetMotionProperties();
+        const inv = mp.GetInverseMass();
+        if (!(inv > 0) || 1 / inv >= GEAR_MIN_MASS_KG) return;
+        const inertia = inertiaOf(mp);
+        const k = GEAR_MIN_MASS_KG * inv;
+        mp.ScaleToMass(GEAR_MIN_MASS_KG);
+        mp.SetGravityFactor(mp.GetGravityFactor() / k);
+        setInertia(mp, inertia);
+    };
     const floorInertia = id => {
         const e = bodyMap.get(id);
         if (!e || e.motionType === J.EMotionType_Static) return;
@@ -720,63 +752,68 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         setInertia(mp, [0, 1, 2].map(r => [0, 1, 2].map(c => vectors.reduce((acc, u, k) => acc + v[k] * u[r] * u[c], 0))));
     };
     const gearInfos = [];
-    /**
-     * A spur mesh whose frame MOVES (its two hinges' shared body is dynamic) as a tooth contact at
-     * the frame's pitch point (the 'relativeGear' carrier path below), not a GearConstraint: Jolt's
-     * gear constraint couples the gear bodies' WORLD rates, so a frame turning about the gear axes at
-     * Ω drove the gears (1 + |ratio|)·Ω wrong relative to it — the Excavator's base yawing under its
-     * slew mesh (8T on the 28T turntable) fed its own yaw (14.9–84.7° in one dig cycle, depending on
-     * solver details; < 10° wanted). Parallel axes and an external mesh only (the pitch point lies
-     * between the centres at r1 = D·|ratio|/(1 + |ratio|)); anything else, and every mesh on a static
-     * frame (exact there), keeps the gear constraint.
-     * @returns {object|null} a relativeGear-shaped coupling {gear1, gear2, frame, anchor1, anchor2, tangent}
-     */
-    const movingFrameMesh = g => {
-        const j1 = jointMap.get(g.joint1);
-        const j2 = jointMap.get(g.joint2);
-        if (!j1 || !j2 || j1.type !== 'hinge' || j2.type !== 'hinge') return null;
-        const frame = [j1.body1, j1.body2].find(b => b === j2.body1 || b === j2.body2);
-        const fe = frame && frame !== 'world' ? bodyMap.get(frame) : null;
-        if (!fe || fe.motionType === J.EMotionType_Static) return null;
-        const side = j => (j.body2 === frame ? { body: j.body1, s: -1 } : { body: j.body2, s: 1 });
-        const s1 = side(j1);
-        const s2 = side(j2);
-        const n1 = Math.hypot(...j1.axis);
-        const a1 = j1.axis.map(v => v / n1);
-        const a2n = Math.hypot(...j2.axis);
-        const a2 = j2.axis.map(v => v / a2n);
-        const along = a1[0] * a2[0] + a1[1] * a2[1] + a1[2] * a2[2];
-        if (Math.abs(along) < Math.cos(Math.PI / 180)) return null;
-        // Vertical axes only (along gravity): the turn a frame on the floor makes freely is yaw. A frame
-        // swinging about a horizontal gear axis (an actuator's 16T pair on a boom) keeps the gear
-        // constraint its tuning was measured with (documented limit).
-        const up = mechanism.gravity.map(v => -v);
-        const gn = Math.hypot(...up) || 1;
-        if (Math.abs((a1[0] * up[0] + a1[1] * up[1] + a1[2] * up[2]) / gn) < Math.cos(Math.PI / 180)) return null;
-        // External: the two gears turn opposite ways seen along one axis.
-        if (s1.s * s2.s * g.ratio * along >= 0) return null;
-        const d = j2.point.map((v, i) => v - j1.point[i]);
-        const t0 = d[0] * a1[0] + d[1] * a1[1] + d[2] * a1[2];
-        const perp = d.map((v, i) => v - t0 * a1[i]);
-        const D = Math.hypot(...perp);
-        if (D < 1e-6) return null;
-        const n = perp.map(v => v / D);
-        const r1 = D * Math.abs(g.ratio) / (1 + Math.abs(g.ratio));
-        const P = j1.point.map((v, i) => v + n[i] * r1 + a1[i] * t0 / 2);
-        const t = [a1[1] * n[2] - a1[2] * n[1], a1[2] * n[0] - a1[0] * n[2], a1[0] * n[1] - a1[1] * n[0]];
-        // The tooth contact holds the two pitch points' speeds along t, and it is re-made every step, so
-        // nothing remembers where the teeth were: under load the mesh slipped 8–14° of the turntable in
-        // one dig cycle. `slip` gives the arc the gears have slipped (from the two hinges' angles) and
-        // the re-made constraint starts that far out, so its position steps pull the mesh back.
-        const k = (a, C) => {
-            const r = P.map((v, i) => v - C[i]);
-            return (a[1] * r[2] - a[2] * r[1]) * t[0] + (a[2] * r[0] - a[0] * r[2]) * t[1] + (a[0] * r[1] - a[1] * r[0]) * t[2];
-        };
-        return { id: g.id, gear1: s1.body, gear2: s2.body, frame, anchor1: P, anchor2: P, tangent: t, carrier: true,
-            slip: { joint1: g.joint1, joint2: g.joint2, u1: s1.s * k(a1, j1.point), u2: s2.s * k(a2, j2.point) } };
+    const unit = v => { const n = Math.hypot(...v) || 1; return v.map(x => x / n); };
+    const dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    const cross3 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+    /** Closest points of the lines p + s·a and q + t·b: [on the first, on the second] (null when parallel). */
+    const closestPoints = (p, a, q, b) => {
+        const d = q.map((v, i) => v - p[i]);
+        const ab = dot3(a, b);
+        const den = 1 - ab * ab;
+        if (den < 1e-9) return null;
+        const s = (dot3(d, a) - ab * dot3(d, b)) / den;
+        const t = (ab * dot3(d, a) - dot3(d, b)) / den;
+        return [p.map((v, i) => v + a[i] * s), q.map((v, i) => v + b[i] * t)];
     };
-    /** A Jolt GearConstraint for ω(j2) = ratio·ω(j1) between the two gear bodies (the 'gear' kind's rules). */
-    const buildGearConstraint = (id, j1, j2, ratio0, velocitySteps = GEAR_VELOCITY_STEPS) => {
+    /** Axes closer to parallel than this (|a1 × a2|) are a spur/internal mesh (as the fork's cParallelThreshold). */
+    const PARALLEL = 0.02;
+    /**
+     * A GearMeshConstraint between gear bodies b1 and b2 turning about the unit axes a1, a2
+     * through points c1, c2 (world, t = 0): ω2 = ratio·ω1, each the gear's rate relative to its
+     * frame about its axis. `contact` is the pitch point, needed only where the axes are not
+     * parallel (worm, bevel; for parallel axes the fork places it on the line of centres from
+     * the ratio). hinge1/hinge2 (Jolt HingeConstraints holding gear 1 / gear 2) give the frames
+     * and the phase; without them the frames count as at rest.
+     */
+    /** Meshes with their hinges: {constraint, hinge1, hinge2} (re-based before every step: rebaseMeshes). */
+    const meshes = [];
+    const meshGear = ({b1, b2, a1, a2, c1, c2, ratio, contact, hinge1, hinge2, velocitySteps = MESH_VELOCITY_STEPS}) => {
+        const ms = new J.GearMeshConstraintSettings();
+        ms.mSpace = J.EConstraintSpace_WorldSpace;
+        const tmp = [new J.RVec3(...c1), new J.Vec3(...a1), new J.RVec3(...c2), new J.Vec3(...a2)];
+        [ms.mPoint1, ms.mHingeAxis1, ms.mPoint2, ms.mHingeAxis2] = tmp;
+        if (contact) { tmp.push(new J.RVec3(...contact)); ms.mContactPoint = tmp[4]; }
+        ms.mRatio = ratio;
+        ms.mNumVelocityStepsOverride = velocitySteps;
+        ms.mNumPositionStepsOverride = GEAR_POSITION_STEPS;
+        const constraint = J.castObject(ms.Create(getBodyForId(b1), getBodyForId(b2)), J.GearMeshConstraint);
+        J.destroy(ms);
+        for (const o of tmp) J.destroy(o);
+        physicsSystem.AddConstraint(constraint);
+        allConstraints.push(constraint);
+        if (hinge1 && hinge2) {
+            constraint.SetConstraints(hinge1, hinge2);
+            meshes.push({ constraint, hinge1, hinge2 });
+        }
+        for (const bid of [b1, b2]) { floorInertia(bid); floorMass(bid); }
+        return constraint;
+    };
+    /**
+     * The pitch point of two non-parallel gear axes for meshGear when the coupling does not carry
+     * one (the 'gear' kind's bevel pairs): in the plane of the axes, through their closest point O,
+     * at P − O ∝ a1 − ratio·a2. There the pitch speeds of the two gears are ratio : 1, so the tooth
+     * contact holds the ratio exactly; the scale (1 cm) does not matter when both gears turn in one
+     * frame (the reaction on it is the couple k1·a1 − k2·a2), which is the only case mech/gears.js emits.
+     */
+    const crossedPitchPoint = (c1, a1, c2, a2, ratio) => {
+        const cp = closestPoints(c1, a1, c2, a2);
+        if (!cp) return null;
+        const O = cp[0].map((v, i) => (v + cp[1][i]) / 2);
+        const dir = unit(a1.map((v, i) => v - ratio * a2[i]));
+        return O.map((v, i) => v + 0.01 * dir[i]);
+    };
+    /** The 'gear' / 'worm' kinds' rules: two hinges, the gear the side not shared with the other hinge. */
+    const hingeMesh = (id, j1, j2, ratio, {velocitySteps, worm = false} = {}) => {
         if (!j1 || !j2) throw new Error(`gear ${id} joint not found`);
         if (j1.type !== 'hinge' || j2.type !== 'hinge') throw new Error(`gear ${id} must couple two hinges`);
         const shared = [j1.body1, j1.body2].find(b => b === j2.body1 || b === j2.body2);
@@ -785,71 +822,66 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             if (shared === undefined || j.body1 === j.body2) return { body: j.body2, sign: 1 };
             return j.body2 === shared ? { body: j.body1, sign: -1 } : { body: j.body2, sign: 1 };
         };
-        let A = { j: j1, side: gearSide(j1) };
-        let B = { j: j2, side: gearSide(j2) };
-        let ratio = ratio0;
-        if (Math.abs(ratio) > 1) { [A, B] = [B, A]; ratio = 1 / ratio; }
-        const gs = new J.GearConstraintSettings();
-        gs.mSpace = J.EConstraintSpace_WorldSpace;
-        const flip = ratio > 0 ? -1 : 1;
-        gs.mHingeAxis1 = new J.Vec3(...A.j.axis.map(v => v * A.side.sign));
-        gs.mHingeAxis2 = new J.Vec3(...B.j.axis.map(v => v * B.side.sign * flip));
-        gs.mRatio = 1 / Math.abs(ratio);
-        gs.mNumVelocityStepsOverride = velocitySteps;
-        gs.mNumPositionStepsOverride = GEAR_POSITION_STEPS;
-        const constraint = gs.Create(getBodyForId(A.side.body), getBodyForId(B.side.body));
-        physicsSystem.AddConstraint(constraint);
-        allConstraints.push(constraint);
-        J.destroy(gs);
-        for (const bid of [A.side.body, B.side.body]) floorInertia(bid);
-        return constraint;
+        const s1 = gearSide(j1);
+        const s2 = gearSide(j2);
+        const a1 = unit(j1.axis).map(v => v * s1.sign);
+        const a2 = unit(j2.axis).map(v => v * s2.sign);
+        let contact = null;
+        if (Math.hypot(...cross3(a1, a2)) >= PARALLEL) {
+            if (worm) {
+                // The worm's pitch point towards the wheel: on the common perpendicular of the two axes,
+                // the wheel's pitch radius (module 1 mm: 0.5 mm per tooth, |ratio| = 1/teeth for LEGO's
+                // single-start worms) from the wheel's axis.
+                const cp = closestPoints(j1.point, a1, j2.point, a2);
+                if (cp) {
+                    const [Q, R] = cp;
+                    const D = Math.hypot(...R.map((v, i) => v - Q[i]));
+                    const rWheel = 0.0005 / Math.abs(ratio);
+                    const rWorm = rWheel < D ? D - rWheel : D / 2;
+                    contact = D > 1e-9 ? Q.map((v, i) => v + (R[i] - v) * rWorm / D) : null;
+                }
+            }
+            if (!contact) contact = crossedPitchPoint(j1.point, a1, j2.point, a2, ratio);
+        }
+        return meshGear({ b1: s1.body, b2: s2.body, a1, a2, c1: j1.point, c2: j2.point, ratio, contact,
+            hinge1: hingeMap.get(j1.id).hinge, hinge2: hingeMap.get(j2.id).hinge, velocitySteps });
     };
     /** Self-locking worms (built below): {wormJoint, wheel (hinge entry), holdNm, driver (hinge entry|null), held}. */
     const worms = [];
     /** Linear actuators' screw couplings (physics/screw.js drives them). */
     const screwCouplings = [];
-    /** Meshes relative to a frame (kinds/relative-gear.js), built last and re-anchored every step. */
-    const relativeGears = [];
     /** Driving rings and their clutch gears (kinds/transmission.js): {gear (hinge entry), ring (slider entry), engage, holdNm, engaged}. */
     const dogClutches = [];
     for (const g of mechanism.couplings) {
         if (g.kind === 'gear') {
-            const contact = movingFrameMesh(g);
-            if (contact) relativeGears.push(contact);
-            else buildGearConstraint(g.id, jointMap.get(g.joint1), jointMap.get(g.joint2), g.ratio);
+            hingeMesh(g.id, jointMap.get(g.joint1), jointMap.get(g.joint2), g.ratio);
             gearInfos.push({ type: 'gear', id: g.id, joint1: g.joint1, joint2: g.joint2, ratio: g.ratio });
         } else if (g.kind === 'worm') {
-            // A worm and its wheel (kinds/worm.js): the mesh is a gear constraint, ratio = 1/teeth
-            // (signed by the thread's hand); the SELF-LOCK is a hold on the wheel's hinge, applied
-            // per step while nothing drives the worm (wormHolds below).
-            buildGearConstraint(g.id, jointMap.get(g.wormJoint), jointMap.get(g.wheelJoint), g.ratio, WORM_VELOCITY_STEPS);
+            // A worm and its wheel (kinds/worm.js): the mesh, ratio = 1/teeth (signed by the thread's
+            // hand), at the worm's pitch point; the mesh has no friction, so the SELF-LOCK is a hold on
+            // the wheel's hinge, applied per step while nothing drives the worm (wormHolds below).
+            hingeMesh(g.id, jointMap.get(g.wormJoint), jointMap.get(g.wheelJoint), g.ratio, { velocitySteps: WORM_VELOCITY_STEPS, worm: true });
             const wheel = hingeMap.get(g.wheelJoint);
             worms.push({ id: g.id, wormJoint: g.wormJoint, wheel, holdNm: g.holdTorqueNm / Math.abs(g.ratio), driver: null, held: false });
             gearInfos.push({ type: 'worm', id: g.id, wormJoint: g.wormJoint, wheelJoint: g.wheelJoint, ratio: g.ratio });
-        } else if (g.kind === 'relativeGear' && !g.carrier) {
-            // A frame that does not turn about the gears (a clutch gear on its axle in the gearbox
-            // frame): the gear constraint on the two gear bodies' world rates, as for 'gear' —
-            // exact while the frame does not turn, and with the gear constraint's warm start.
-            let A = { body: g.gear1, axis: g.axis1 };
-            let B = { body: g.gear2, axis: g.axis2 };
-            let ratio = g.ratio;
-            if (Math.abs(ratio) > 1) { [A, B] = [B, A]; ratio = 1 / ratio; }
-            const gs = new J.GearConstraintSettings();
-            gs.mSpace = J.EConstraintSpace_WorldSpace;
-            const flip = ratio > 0 ? -1 : 1;
-            gs.mHingeAxis1 = new J.Vec3(...A.axis);
-            gs.mHingeAxis2 = new J.Vec3(...B.axis.map(v => v * flip));
-            gs.mRatio = 1 / Math.abs(ratio);
-            gs.mNumVelocityStepsOverride = GEAR_VELOCITY_STEPS;
-            gs.mNumPositionStepsOverride = GEAR_POSITION_STEPS;
-            const constraint = gs.Create(getBodyForId(A.body), getBodyForId(B.body));
-            physicsSystem.AddConstraint(constraint);
-            allConstraints.push(constraint);
-            J.destroy(gs);
-            for (const bid of [A.body, B.body]) floorInertia(bid);
-            gearInfos.push({ type: 'relativeGear', id: g.id, gear1: g.gear1, gear2: g.gear2, frame: g.frame, ratio: g.ratio });
         } else if (g.kind === 'relativeGear') {
-            relativeGears.push(g); // a planet carrier: built after every other constraint (anchorRelativeGears)
+            // kinds/relative-gear.js: (ω₂ − ω_F)·axis2 = ratio·(ω₁ − ω_F)·axis1 in a frame F. The same
+            // tooth contact. Carrier (both gears' hinges turn in F, and F turns: a planet carrier):
+            // those two hinges are the mesh's frames, exact however F moves. Chain (a gear on a hinge in
+            // an axle that turns, coaxially, in F: a clutch gear free on its axle): the gear's own hinge
+            // turns in that axle, not in F, so its angle is not the mesh's phase — no hinges, and the
+            // frames count as at rest (F does not turn about the gears here: exact while it does not
+            // turn at all, as the gear constraint was).
+            const j1 = jointMap.get(g.joint1);
+            const j2 = jointMap.get(g.joint2);
+            const holds = (j, body) => j && j.type === 'hinge' && (j.body1 === body || j.body2 === body);
+            if (!holds(j1, g.gear1) || !holds(j2, g.gear2)) throw new Error(`relativeGear ${g.id}: joint1/joint2 must be the gears' hinges`);
+            const frameOf = (j, body) => (j.body1 === body ? j.body2 : j.body1);
+            const sameFrame = frameOf(j1, g.gear1) === g.frame && frameOf(j2, g.gear2) === g.frame;
+            const parallel = Math.hypot(...cross3(g.axis1, g.axis2)) < PARALLEL;
+            meshGear({ b1: g.gear1, b2: g.gear2, a1: g.axis1, a2: g.axis2, c1: j1.point, c2: j2.point, ratio: g.ratio,
+                contact: parallel ? null : g.anchor1,
+                hinge1: sameFrame ? hingeMap.get(g.joint1).hinge : null, hinge2: sameFrame ? hingeMap.get(g.joint2).hinge : null });
             gearInfos.push({ type: 'relativeGear', id: g.id, gear1: g.gear1, gear2: g.gear2, frame: g.frame, ratio: g.ratio });
         } else if (g.kind === 'dogClutch') {
             const gear = hingeMap.get(g.gearJoint);
@@ -905,65 +937,6 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             // kinds/turntable.js emits none; a hand-built mechanism naming the kind has nothing to build.
         } else throw new Error(`no physics builder for coupling kind '${g.kind}' (${g.id})`);
     }
-
-    // Relative meshes (kinds/relative-gear.js): the teeth's no-slip condition at the tooth points,
-    // (v₁(anchor1) − v₂(anchor2))·tangent = 0, a SixDOF constraint with only that translation fixed.
-    // The anchors are tooth points fixed in the FRAME (both gear axes are), while the constraint's
-    // anchors ride on the turning gears: so it is re-made at the frame's current tooth points before
-    // every step. These are the last constraints in the system and are removed last-first, so Jolt's
-    // constraint order (its SaveState/RestoreState order) of everything else never changes.
-    const relSettings = relativeGears.length ? new J.SixDOFConstraintSettings() : null;
-    if (relSettings) {
-        relSettings.mSpace = J.EConstraintSpace_WorldSpace;
-        for (const axis of [J.SixDOFConstraintSettings_EAxis_TranslationY, J.SixDOFConstraintSettings_EAxis_TranslationZ,
-            J.SixDOFConstraintSettings_EAxis_RotationX, J.SixDOFConstraintSettings_EAxis_RotationY, J.SixDOFConstraintSettings_EAxis_RotationZ]) relSettings.MakeFreeAxis(axis);
-        relSettings.MakeFixedAxis(J.SixDOFConstraintSettings_EAxis_TranslationX); // Jolt's default is every axis free
-        relSettings.mNumVelocityStepsOverride = CARRIER_VELOCITY_STEPS;
-        relSettings.mNumPositionStepsOverride = GEAR_POSITION_STEPS;
-    }
-    const poseOf = id => {
-        const e = bodyMap.get(id);
-        const p = bodyInterface.GetPosition(e.bodyID);
-        const r = bodyInterface.GetRotation(e.bodyID);
-        return { p: [p.GetX(), p.GetY(), p.GetZ()], q: [r.GetX(), r.GetY(), r.GetZ(), r.GetW()] };
-    };
-    const conjQ = q => [-q[0], -q[1], -q[2], q[3]];
-    const relGears = relativeGears.map(g => {
-        const f = poseOf(g.frame);
-        const inv = conjQ(f.q);
-        const local = w => quatRotateVecRG(inv, [w[0] - f.p[0], w[1] - f.p[1], w[2] - f.p[2]]);
-        for (const bid of [g.gear1, g.gear2]) floorInertia(bid);
-        return { g, b1: getBodyForId(g.gear1), b2: getBodyForId(g.gear2), a1: local(g.anchor1), a2: local(g.anchor2),
-            t: quatRotateVecRG(inv, g.tangent), constraint: null };
-    });
-    const anchorRelativeGears = () => {
-        for (let i = relGears.length - 1; i >= 0; i--) {
-            if (relGears[i].constraint) { physicsSystem.RemoveConstraint(relGears[i].constraint); relGears[i].constraint = null; }
-        }
-        for (const r of relGears) {
-            const f = poseOf(r.g.frame);
-            const world = v => { const w = quatRotateVecRG(f.q, v); return [w[0] + f.p[0], w[1] + f.p[1], w[2] + f.p[2]]; };
-            const t = quatRotateVecRG(f.q, r.t);
-            const n = perpForAxis(t);
-            const tmp = [new J.RVec3(...world(r.a1)), new J.RVec3(...world(r.a2)), new J.Vec3(...t), new J.Vec3(...n)];
-            if (r.g.slip) {
-                // Arc slipped along t: gear 2's pitch point ahead of gear 1's (both relative to the frame).
-                const sl = r.g.slip;
-                const delta = sl.u2 * hingeMap.get(sl.joint2).unwrapped - sl.u1 * hingeMap.get(sl.joint1).unwrapped;
-                J.destroy(tmp[1]);
-                tmp[1] = new J.RVec3(...world(r.a2).map((v, i) => v + t[i] * delta));
-            }
-            relSettings.mPosition1 = tmp[0];
-            relSettings.mPosition2 = tmp[1];
-            relSettings.mAxisX1 = tmp[2]; relSettings.mAxisX2 = tmp[2];
-            relSettings.mAxisY1 = tmp[3]; relSettings.mAxisY2 = tmp[3];
-            r.constraint = relSettings.Create(r.b1, r.b2);
-            physicsSystem.AddConstraint(r.constraint);
-            if (globalThis.__RGDBG) { const c6 = J.castObject(r.constraint, J.SixDOFConstraint); globalThis.__RGDBG(world(r.a1), t, c6.IsFixedAxis(J.SixDOFConstraintSettings_EAxis_TranslationX), c6.IsFreeAxis(J.SixDOFConstraintSettings_EAxis_TranslationY), c6.IsActive(), r.b1.IsActive(), r.b2.IsActive()); }
-            for (const o of tmp) J.destroy(o);
-        }
-    };
-    if (relGears.length) anchorRelativeGears();
 
     // Dog clutches (kinds/transmission.js): while the ring's teeth are in a clutch gear's socket
     // (the ring's slider within `engage`), the gear's hinge on the axle holds with holdNm on top of
@@ -1307,7 +1280,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                 if (worms.length) applyWormHolds();
                 if (screws) screws.beforeStep();
                 if (dogClutches.length) applyDogClutches();
-                if (relGears.length) anchorRelativeGears();
+                // Re-base every mesh's phase on its hinges' angles now (see the gears' header comment).
+                for (const m of meshes) m.constraint.SetConstraints(m.hinge1, m.hinge2);
                 joltInterface.Step(dtFixed, 1);
                 timeSteps += 1;
                 acc -= dtFixed;
@@ -1462,6 +1436,31 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             if (!e) throw new Error(`unknown body ${bodyId}`);
             const v = bodyInterface.GetAngularVelocity(e.bodyID);
             return [v.GetX(), v.GetY(), v.GetZ()];
+        },
+        /**
+         * A body's angular momentum about `about` (world, m), kg·m²/s: I·ω about its centre of mass plus
+         * m·(c − about) × v, with the mass and inertia the solver uses (floors included). Static: zero.
+         */
+        bodyAngularMomentum(bodyId, about = [0, 0, 0]) {
+            ensureAlive();
+            const e = bodyMap.get(bodyId);
+            if (!e) throw new Error(`unknown body ${bodyId}`);
+            if (e.motionType === J.EMotionType_Static) return [0, 0, 0];
+            const mp = e.body.GetMotionProperties();
+            const m = 1 / mp.GetInverseMass();
+            const r = bodyInterface.GetRotation(e.bodyID);
+            const q = [r.GetX(), r.GetY(), r.GetZ(), r.GetW()];
+            const I = inertiaOf(mp);
+            const wv = bodyInterface.GetAngularVelocity(e.bodyID);
+            const w = [wv.GetX(), wv.GetY(), wv.GetZ()];
+            // I_world·ω = R·I·Rᵀ·ω
+            const wl = quatRotateVec([-q[0], -q[1], -q[2], q[3]], w);
+            const L = quatRotateVec(q, [0, 1, 2].map(i => I[i][0] * wl[0] + I[i][1] * wl[1] + I[i][2] * wl[2]));
+            const c = e.body.GetCenterOfMassPosition();
+            const d = [c.GetX() - about[0], c.GetY() - about[1], c.GetZ() - about[2]];
+            const vv = bodyInterface.GetLinearVelocity(e.bodyID);
+            const v = [vv.GetX(), vv.GetY(), vv.GetZ()];
+            return [L[0] + m * (d[1] * v[2] - d[2] * v[1]), L[1] + m * (d[2] * v[0] - d[0] * v[2]), L[2] + m * (d[0] * v[1] - d[1] * v[0])];
         },
         snapshot() {
             ensureAlive();
@@ -1628,8 +1627,6 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             if (destroyed) return;
             destroyed = true;
             if (recorder) { J.destroy(recorder); recorder = null; }
-            for (let i = relGears.length - 1; i >= 0; i--) if (relGears[i].constraint) physicsSystem.RemoveConstraint(relGears[i].constraint);
-            if (relSettings) J.destroy(relSettings);
             for (const c of allConstraints) physicsSystem.RemoveConstraint(c);
             for (const bid of allBodyIDs) { bodyInterface.RemoveBody(bid); bodyInterface.DestroyBody(bid); }
             J.destroy(joltInterface);

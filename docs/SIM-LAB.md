@@ -346,9 +346,12 @@ Groups are declared before the parts, in definition order. Each member carries `
   `gear-on-frame`: the two become one rigid body); gears whose axles turn in
   two separate parts are not coupled (`gear-frames-differ`). The coupling
   works both ways: a blocked output stalls the motor at its torque limit.
-  Limit: exact while the frame does not itself turn about the gear axes; on a
-  frame that does (gears on a turntable) the gears are off by the frame's
-  rate. Test gearboxes: `test/fixtures/bw-sim/gears/`, run by
+  Since 2026-10-19 a mesh is a tooth contact (our fork of the Jolt physics
+  engine): torque is multiplied by the gear ratio (an 8:24 reduction gives
+  three times the torque at the 24T), the teeth push back on the frame that
+  holds the axles (a machine standing free turns the way real ones do, and
+  conserves its angular momentum), and gears on a turning frame (a turntable,
+  a planet carrier) keep their ratio relative to it. Test gearboxes: `test/fixtures/bw-sim/gears/`, run by
   `test/bw-sim-gear-trains.test.mjs` with the motor housing clamped (a static
   body made of model parts is the machine's frame: it does not collide with
   the machine's moving parts).
