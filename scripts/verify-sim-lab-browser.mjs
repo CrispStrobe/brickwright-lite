@@ -903,9 +903,19 @@ try {
         const tablet = await browser.newPage({viewport: {width: 1024, height: 768}, hasTouch: true, serviceWorkers: 'block'});
         tablet.on('pageerror', error => errors.push(error.message));
         tablet.on('dialog', dialog => dialog.accept());
-        // The stage column open beside the tab (as on a fresh tablet that uses it), so the Lab starts compact.
-        await openSimLab(tablet, {program: null, stage: true});
-        await touchInteractions(tablet, {shotsDir: artifacts});
+        // A trace of the whole run, kept only when it fails (CI uploads artifacts/sim-lab/ then): a miss
+        // on CI's Linux runner that never happened on a Mac left nothing to look at.
+        await tablet.context().tracing.start({screenshots: true, snapshots: true});
+        try {
+            // The stage column open beside the tab (as on a fresh tablet that uses it), so the Lab starts compact.
+            await openSimLab(tablet, {program: null, stage: true});
+            await touchInteractions(tablet, {shotsDir: artifacts});
+        } catch (error) {
+            await tablet.screenshot({path: resolve(artifacts, 'sim-lab-tablet-failure.png'), fullPage: true}).catch(() => {});
+            await tablet.context().tracing.stop({path: resolve(artifacts, 'sim-lab-tablet-trace.zip')}).catch(() => {});
+            throw error;
+        }
+        await tablet.context().tracing.stop();
         await tablet.close();
     }
 
