@@ -2116,7 +2116,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         }
         if (hit) {
             const id = hit.object.name;
-            if (!selection.includes(id)) setSelection([id]);
+            const wasSelected = selection.includes(id);
+            if (!wasSelected) setSelection([id]);
             controls.enabled = false;
             transform.enabled = false;
             // The pressed point on the part, and how high above the part's own bottom it is:
@@ -2125,7 +2126,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             modelGroup.updateMatrixWorld(true);
             const bottom = modelBox(selection).min.y;
             gesture = {...base, kind: 'part', start: selectedParts(), grab: hit.point.clone(), bottom, started: false,
-                lit: litUnder(event)};
+                // Target-first: a lit hole of a part already selected (the first click selects, the next one pins).
+                lit: wasSelected ? litUnder(event) : null};
             canvas.setPointerCapture(event.pointerId);
             return;
         }

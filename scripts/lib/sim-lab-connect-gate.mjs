@@ -315,9 +315,11 @@ const checks = async (page, {shotsDir, shots}) => {
     await lab(page, ids => window.__bwSimLab.editor.apply({type: 'batch', commands: [{type: 'ungroup', id: window.__bwSimLab.editor.model.groups[0].id},
         ...ids.map(id => ({type: 'delete', id}))]}), ids9);
 
-    // T10. Target-first: a click on lit h3, then the pin's tile.
+    // T10. Target-first: the beam selected (a click), a click on its lit h3, then the pin's tile.
     await page.keyboard.press('Escape');
     await hover(page, q.h3);
+    await page.mouse.click(q.h3[0], q.h3[1]);
+    assert.equal(await page.getByTestId('bw-sim-lab-target-chip').count(), 0, 'the first click only selects');
     await page.mouse.click(q.h3[0], q.h3[1]);
     await page.getByTestId('bw-sim-lab-target-chip').waitFor({timeout: 5000});
     const n10 = await count(page);

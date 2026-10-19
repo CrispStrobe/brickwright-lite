@@ -39,7 +39,7 @@ export const EDITOR_TEXT = {
                 ['Drag empty space / middle drag', 'turn the view about the point under the pointer'],
                 ['Right drag', 'slide the view'], ['Wheel', 'zoom toward the pointer'],
                 ['Trackpad: two fingers / Shift / pinch', 'turn the view / slide it / zoom'],
-                ['Click a lit hole, then a part', 'the part goes into that hole'], ['Ctrl+click', 'select everything connected'],
+                ['Click a selected part\'s lit hole, then a palette part', 'the part goes into that hole'], ['Ctrl+click', 'select everything connected'],
                 ['View cube', 'click a face, edge or corner to look from there']
             ]],
             ['Keyboard', [
@@ -62,7 +62,7 @@ export const EDITOR_TEXT = {
         ],
         // Connection-first building (docs/ROBOT-LAB-UX.md): hints, the target chip, the screen reader, the view cube.
         connect: {
-            hintIdle: 'Drag a part to move it · Click a lit hole, then a part, to fit it there · Drag empty space to turn the view · Right-drag slides · Wheel zooms · Double-click centres',
+            hintIdle: 'Drag a part to move it · Select a part, click its lit hole, then a palette part: it goes in · Drag empty space to turn the view · Right-drag slides · Wheel zooms · Double-click centres',
             hintIdleTouch: 'Tap a part to select it, drag it to move it · One finger on empty space turns the view, two fingers zoom and slide',
             hintHolding: 'Click to place · R turn · Tab other spot · X flip · Alt no magnet · Esc cancel',
             hintHoldingKeyboard: 'Enter places · Tab next spot · R turn · X flip · Arrows nudge · Esc cancel',
@@ -142,7 +142,7 @@ export const EDITOR_TEXT = {
                 ['Leere Fläche ziehen / mittlere Taste ziehen', 'Ansicht um den Punkt unter dem Mauszeiger drehen'],
                 ['Rechts ziehen', 'Ansicht schieben'], ['Mausrad', 'zum Mauszeiger hin zoomen'],
                 ['Trackpad: zwei Finger / Umschalt / Zusammenziehen', 'Ansicht drehen / schieben / zoomen'],
-                ['Leuchtendes Loch anklicken, dann ein Teil', 'das Teil kommt in dieses Loch'], ['Strg+Klick', 'alles Verbundene auswählen'],
+                ['Leuchtendes Loch eines ausgewählten Teils anklicken, dann ein Teil', 'das Teil kommt in dieses Loch'], ['Strg+Klick', 'alles Verbundene auswählen'],
                 ['Ansichtswürfel', 'Fläche, Kante oder Ecke anklicken: von dort aus ansehen']
             ]],
             ['Tastatur', [
@@ -164,7 +164,7 @@ export const EDITOR_TEXT = {
             ]]
         ],
         connect: {
-            hintIdle: 'Teil ziehen verschiebt es · Leuchtendes Loch anklicken, dann ein Teil: es passt hinein · Leere Fläche ziehen dreht die Ansicht · Rechts ziehen schiebt · Mausrad zoomt · Doppelklick zentriert',
+            hintIdle: 'Teil ziehen verschiebt es · Teil auswählen, sein leuchtendes Loch anklicken, dann ein Teil der Teileliste: es kommt hinein · Leere Fläche ziehen dreht die Ansicht · Rechts ziehen schiebt · Mausrad zoomt · Doppelklick zentriert',
             hintIdleTouch: 'Teil antippen wählt es aus, ziehen verschiebt es · Ein Finger auf leerer Fläche dreht die Ansicht, zwei Finger zoomen und schieben',
             hintHolding: 'Klicken setzt · R dreht · Tab andere Stelle · X wendet · Alt ohne Magnet · Esc bricht ab',
             hintHoldingKeyboard: 'Eingabe setzt · Tab nächste Stelle · R dreht · X wendet · Pfeiltasten schieben · Esc bricht ab',
