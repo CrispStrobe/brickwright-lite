@@ -1741,6 +1741,15 @@ jobs:
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
         run: npm run verify:sim-lab -- --part=tablet
+      - name: Upload Robot Lab gate evidence (screenshots; the tablet's trace) on failure
+        timeout-minutes: 5
+        if: ${{ failure() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sim-lab-evidence
+          path: artifacts/sim-lab/
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Browser gate — Robot Lab layout at five window sizes (Simulate and Build)
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)

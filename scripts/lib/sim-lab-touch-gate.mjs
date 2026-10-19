@@ -39,11 +39,60 @@ const settled = async page => {
  * (#888, #1097). Wait for a tap's effect (at most 5 s) before asserting it; the assertion after this says
  * what is wrong if the effect never comes.
  */
-const effect = async (page, fn, arg) => {
+const effect = async (page, fn, arg, {tapped = null} = {}) => {
     try {
         await page.waitForFunction(fn, arg, {timeout: 5000});
-    } catch { /* the caller's assertion reports it */ }
+    } catch {
+        // the caller's assertion reports it; first, what the tap did (CI keeps the log, not the screen)
+        if (tapped) console.log(`touch gate: no effect 5 s after tapping ${tapped}: ${JSON.stringify(await tapReport(page, tapped))}`);
+    }
 };
+
+/**
+ * Keeps the page's last input events (pointer, touch, click, their cancels) with their target and what
+ * document.elementFromPoint finds at their point, and counts the Build view's selectAll calls, so a tap
+ * without its effect can be explained from the log (a miss on CI's Linux runner left no evidence).
+ */
+const recordInput = page => page.evaluate(() => {
+    const log = window.__bwTapLog = [];
+    const name = el => (el && el.closest ? el.closest('[data-testid]')?.dataset.testid || el.tagName : String(el));
+    for (const type of ['pointerdown', 'pointerup', 'pointercancel', 'touchstart', 'touchend', 'touchcancel', 'click', 'contextmenu']) {
+        document.addEventListener(type, e => {
+            const pt = e.changedTouches ? e.changedTouches[0] : e;
+            const x = pt ? Math.round(pt.clientX) : null;
+            const y = pt ? Math.round(pt.clientY) : null;
+            log.push({t: Math.round(performance.now()), type, pointer: e.pointerType || '', x, y, target: name(e.target),
+                atPoint: x === null ? null : name(document.elementFromPoint(x, y)), prevented: e.defaultPrevented});
+            if (log.length > 40) log.shift();
+        }, true);
+    }
+    window.__bwSelectAllCalls = 0;
+});
+
+const tapReport = (page, testid) => page.evaluate(id => {
+    const el = document.querySelector(`[data-testid="${id}"]`);
+    const r = el && el.getBoundingClientRect();
+    const view = window.__bwSimLab && window.__bwSimLab.editView;
+    return {
+        now: Math.round(performance.now()),
+        button: el ? {box: [r.x, r.y, r.width, r.height].map(Math.round), disabled: el.disabled,
+            atCentre: (document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('[data-testid]') || {}).dataset?.testid || null} : 'missing',
+        selectAllCalls: window.__bwSelectAllCalls,
+        selection: view ? view.selection.length : null,
+        parts: window.__bwSimLab?.editor?.model.parts.length ?? null,
+        status: document.querySelector('[data-testid="bw-sim-lab-build-status"]')?.textContent || null,
+        events: (window.__bwTapLog || []).slice(-24)
+    };
+}, testid);
+
+/** Counts calls into the Build view's selectAll (the view is made anew each time Build opens). */
+const countSelectAll = page => page.evaluate(() => {
+    const view = window.__bwSimLab.editView;
+    if (!view || view.__bwCounted) return;
+    const inner = view.selectAll;
+    view.selectAll = (...args) => { window.__bwSelectAllCalls++; return inner(...args); };
+    view.__bwCounted = true;
+});
 
 /** Where a point on a part (LDU, part frame), or the gizmo's centre, is on screen right now. */
 const screenOf = (page, id, local) => page.evaluate(([i, l]) => {
@@ -118,6 +167,7 @@ const openFloor = (page, clear) => page.evaluate(([min]) => {
  */
 export const touchInteractions = async (page, {shotsDir}) => {
     const finger = await touchInput(page);
+    await recordInput(page);
     const coarse = await page.evaluate(() => matchMedia('(pointer: coarse)').matches);
 
     // ---- Beside the stage column, not the whole width: the compact layout under a finger ----
@@ -297,8 +347,10 @@ export const touchInteractions = async (page, {shotsDir}) => {
     console.log(`PASS touch: a finger drags the gizmo's X arrow (x ${along[0]} LDU, nothing in y or z)`);
 
     // The keyboard's actions on the build bar: Select all, Copy, Paste, Turn ↺, Undo.
+    await countSelectAll(page);
     await page.getByTestId('bw-sim-lab-select-all').tap();
-    await effect(page, () => window.__bwSimLab.editView.selection.length === window.__bwSimLab.editor.model.parts.length);
+    await effect(page, () => window.__bwSimLab.editView.selection.length === window.__bwSimLab.editor.model.parts.length, undefined,
+        {tapped: 'bw-sim-lab-select-all'});
     assert.equal((await selectionOf(page)).length, await countOf(page), 'Select all selects every part');
     await page.getByTestId('bw-sim-lab-cancel').tap();
     await effect(page, () => window.__bwSimLab.editView.selection.length === 0);
