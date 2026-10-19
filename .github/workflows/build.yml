@@ -112,7 +112,6 @@ on:
       - 'docs/PEERS-SECURITY-REVIEW.md'
       - 'docs/RCX-FIRMWARE.md'
       - 'docs/ROBOT-LAB-ARCHITECTURE.md'
-      - 'docs/ROBOT-LAB-EV3-NXT.md'
       - 'docs/ROBOT-LAB-SPIKE-EMULATION.md'
       - 'docs/ROBOT-LAB-VALIDATION.md'
       - 'docs/SPIKE-CONSOLIDATION.md'
