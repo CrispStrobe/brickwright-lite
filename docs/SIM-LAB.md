@@ -296,14 +296,16 @@ Every derived step is buildable: each new part touches a part built before, dire
 
 Build is a small CAD editor (`bw-sim/editor/editor-view3d.js`; arithmetic in `editor/transform-math.js`). Every change goes through the editor command stack; a change to several parts is one `moveMany`/`batch` command, so one Ctrl+Z undoes it.
 
+How a part finds its connection — the lit holes, the cursor-driven target, hysteresis, Tab, red refusals, turning in the hand, Target-first, keyboard placement and the camera (orbit about the pointer, the view cube) — is specified, with what other LEGO editors do and what is implemented, in [ROBOT-LAB-UX.md](ROBOT-LAB-UX.md) (pure core: `editor/snap.js` `snapAtPointer`; tests: `test/bw-sim-snap-pointer.test.mjs`, `scripts/lib/sim-lab-connect-gate.mjs`).
+
 **Mouse**
 - **Click a part** selects it. If it is in a group, the whole group is selected.
 - **Shift+click** adds or removes a part (or its whole group). **Click empty space** clears the selection; **Esc** also clears.
 - **Shift+drag on empty space** draws a box; parts whose centres lie inside are added to the selection.
 - **Drag a part** slides the selection on the work plane (the floor or the top face of another part), grid-snapped.
 - **Gizmo:** when a part is selected, three coloured arrows (X red, Y green, Z blue) and planes move it along axes or in planes (W for move, E for rotate). Coloured rings turn it (see R/T below). Dragging the gizmo shows the “Moving x…/Turning …” status.
-- **Magnet:** a single part dragged or placed near a matching hole or axle shows a green ghost and snaps there on release (all connector pairs that would connect are counted). **Hold Alt** to turn the magnet off. A pin must be within 0.5 LDU sideways and reach at least 8 LDU into the hole (the compiler's seating rule, below); a placed part that would overlap another is refused (see below).
-- **Camera:** left-drag on empty space or middle-drag orbits; right-drag pans; wheel zooms toward the pointer; with nothing selected the arrows orbit, Shift+arrows pan and + / − zoom (see *Moving the view*).
+- **Magnet (connection-first, ROBOT-LAB-UX.md §3):** with a part in hand, the free holes, pins and studs it could join light up near the pointer; the one under the pointer (24 px) is the target and the ghost seats there, green, with every pair it makes counted — or red where it was aimed when it would go into a part. A selection or group snaps too (its pins all seat, or the pose is not offered). **Tab** tries the other spots, **R / [ ] / X** turn it in the hand. **Hold Alt** to turn the magnet off. With nothing in hand the hole under the pointer lights; click it, then a palette part, and the part goes in (Target-first). A pin must be within 0.5 LDU sideways and reach at least 8 LDU into the hole (the compiler's seating rule, below); a placed part that would overlap another is refused (see below).
+- **Camera:** left-drag on empty space or middle-drag orbits about the point under the pointer; right-drag pans; wheel (and a trackpad pinch) zooms to the point under the pointer; a trackpad's two-finger scroll orbits, Shift+scroll pans; Build looks from 5° to 175° (under a part too); a double click centres the view on the clicked point; the view cube (bottom right) turns the view to a face, edge or corner; with nothing selected the arrows orbit, Shift+arrows pan and + / − zoom (see *Moving the view*).
 
 **Fingers (tablets: iPad, touch Chromebooks; `editor/touch-gestures.js`)** — Pointer Events with `pointerType === 'touch'`, `touch-action: none` on the canvas; the mouse is unchanged.
 - **One finger on a part** selects it and drags it on the work plane: the mouse's drag (magnet, resting on top, overlap refusal). A **tap** selects just that part.
@@ -322,7 +324,9 @@ Build is a small CAD editor (`bw-sim/editor/editor-view3d.js`; arithmetic in `ed
 - Categories are collapsible and keep their open state across a search.
 
 **Keyboard (onKey)**
-- **R / Shift+R** — turn 90° about the vertical (world Y). If the selection is a single part sitting on a pin or axle, it turns about that connection's axis instead.
+- **R / Shift+R** — turn 90° about the vertical (world Y). If the selection is a single part sitting on a pin or axle, it turns about that connection's axis instead; a part in hand (palette or drag) turns about the connection it would make.
+- **[ / ]** — turn 15° on a round connection (a pin or an axle in a round hole, a ball); refused on an axle in an axle hole and on studs. **X** — flip end for end along the connection.
+- **Tab / Shift+Tab** (a part in hand) — the next / previous way to put it here; **Enter / Space** places it; **Enter on a palette tile** takes the part with the keyboard (the ghost starts on the target nearest the view's centre).
 - **T / Shift+T** — tip 90° about the horizontal axis facing the camera (the closer of world X or Z).
 - **F** — fit the selection (or the whole model) in view; **Home/Top/Front/Side** buttons do the same with fixed directions.
 - **Ctrl+Z / Ctrl+Y** (or Shift+Ctrl+Z) — undo / redo one command step.

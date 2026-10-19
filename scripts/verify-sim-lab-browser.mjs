@@ -79,7 +79,12 @@
 //      every control named, with a tooltip giving its name and shortcut, in English and German; every
 //      Build action by click and by key; orbit, pan and zoom by mouse and keys in Simulate and Build, the
 //      view buttons, and a drag on a part moving the part, not the camera;
-//  16. no page errors.
+//  16. no page errors;
+//  17. connection-first building (scripts/lib/sim-lab-connect-gate.mjs, --part=editor, docs/ROBOT-LAB-UX.md §5):
+//      a pin in hand lights the free pin holes and seats in the one under the pointer, with hysteresis,
+//      Tab alternatives, a red refusal when blocked, R and [ ] turns, a multi-part group seating both pins,
+//      Target-first and keyboard-only placement; the camera orbits and zooms about the point under the
+//      pointer, looks from below in Build, eases a double-click focus, and the view cube turns the view.
 //
 // Every Sim Lab here runs its physics in the Web Worker (ROADMAP §4.9): each load
 // asserts `window.__bwSimLab.worker === true`, so the line-follower lap, the wall
@@ -102,6 +107,7 @@ import {instructionsInteractions} from './lib/sim-lab-instructions-gate.mjs';
 import {touchInteractions} from './lib/sim-lab-touch-gate.mjs';
 import {layoutInteractions, MIN_CANVAS_PX} from './lib/sim-lab-layout-gate.mjs';
 import {editorParityInteractions} from './lib/sim-lab-editor-parity-gate.mjs';
+import {connectInteractions} from './lib/sim-lab-connect-gate.mjs';
 import {openRobotLabTab, tool, toolbarInteractions} from './lib/sim-lab-toolbar-gate.mjs';
 import {scaleInteractions, OPEN_BUDGET_MS, DRAW_CALL_BUDGET, BUILD_OPEN_BUDGET_MS, IDLE_FRAME_BUDGET_MS, POINTER_MOVE_BUDGET_MS} from './lib/sim-lab-scale-gate.mjs';
 import {brakingBound, judgeWallStop} from './lib/sim-lab-wall-stopper-judge.mjs';
@@ -215,6 +221,9 @@ const openSimLab = async (page, {noWebgl = false, typed = false, program = PROGR
         localStorage.setItem('bw-right-pane-hidden', rightPane ? '0' : '1');
         if (force) window.__bwSimLabForceNoWebGL = true;
     }, [noWebgl, stage]);
+    // Camera moves the program makes ease over 300 ms (docs/ROBOT-LAB-UX.md §3.7); these checks read the camera
+    // right after a view button, so they run with reduced motion (a jump). The connect checks test the easing.
+    await page.emulateMedia({reducedMotion: 'reduce'});
     await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 90000});
     // The Code tab ("Skripte" on a German page).
     await page.getByRole('tab', {name: /^(Code|Skripte)$/}).click();
@@ -900,6 +909,20 @@ try {
         await openSimLab(studio, {program: null});
         await editorParityInteractions(studio, {shotsDir: artifacts});
         await studio.close();
+        // 17. Connection-first building (scripts/lib/sim-lab-connect-gate.mjs, docs/ROBOT-LAB-UX.md §5).
+        const connect = await browser.newPage({viewport: {width: 1280, height: 800}, serviceWorkers: 'block'});
+        connect.on('pageerror', error => errors.push(error.message));
+        connect.on('dialog', dialog => dialog.accept());
+        await openSimLab(connect, {program: null});
+        const c = await connectInteractions(connect, {shotsDir: artifacts, shots: process.env.BW_UX_SHOTS || artifacts});
+        console.log(`PASS connect: the hole under the pointer lights alone (holes ${c.pitchPx.toFixed(0)} px apart), a pin in hand lights pin holes only, ` +
+            `h3 kept 5 px towards h4 (and at the midpoint: ${c.hysteresisKept}), a click seats it ${c.t2.engaged} LDU in with one pair; Tab / Shift+Tab; ` +
+            `a brick in the way: red, refused; a gear finds the axle's tip, not pin holes; [ on an axle refused, on a pin 15°; R mid-drag turns a Beam 3 about its pin, one undo; ` +
+            `a grouped Beam 3 seats both pins (${c.t9.join(', ')}); a lit hole then a tile; keyboard only ("${c.announce}")`);
+        console.log(`PASS connect camera: a middle drag keeps its point within ${c.orbitDriftPx.toFixed(2)} px, the wheel ${c.wheelDriftPx.toFixed(2)} px, a pinch ` +
+            `${c.pinchDriftPx.toFixed(2)} px; Build looks from ${c.buildPolar.toFixed(0)}°, Simulate stops at ${c.simulatePolar.toFixed(0)}°; a double click centres in ` +
+            `${c.focusMs.toFixed(0)} ms (reduced motion ${c.focusReducedMs.toFixed(0)} ms); a trackpad scroll orbits; the view cube's top looks down`);
+        await connect.close();
     }
     if (want('scale')) { // a 2,054-part model, instanced, and the .lxf/.io model files
         const page = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block', acceptDownloads: true});
