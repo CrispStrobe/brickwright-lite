@@ -13,15 +13,27 @@ should resume only for a demonstrated blocker in its own lane. It is not a
 prerequisite for separate SPIKE desktop lifecycle work. Existing qualification
 and merge requirements remain in force for each candidate.
 
-For SPIKE, first test the remaining two-UI-Stop boundary using the retained,
-source-bound installed package: click Code Stop, hold only the already completed
-native close return, and attempt the second visible arena Stop through the real
-UI. Preserve an unavailable or disabled control as an observation; never replace
-that click with a direct pane method and report two UI Stops. Require normal
-recovery and cleanup before accepting the finite case. Keep this distinct from
-the generation-transition collector, whose earlier readiness refusal remains
-unresolved. Record each result at its exact source, not as current-main or full
-G02 qualification. Then continue the applicable lifecycle matrix below.
+The retained installed package at
+`f7b3bf03b1468a81e26228d052c4164d7081dc73` now passes the finite two-UI-Stop
+case: real Code Stop followed by real arena Stop while only the completed native
+close return is held. Both Stop promises wait, one native close is observed,
+clock/configuration ownership releases, and a distinct own-NuttX guest completes
+normally with cleanup. The standalone reader verifies the complete 54-byte Python
+upload as six protocol-sized chunks, their offsets, CRC and acknowledgements,
+plus both startup transactions and UI event order. Its authored controls accept
+two positive fixtures and reject 53 adversaries.
+
+Preserve the first controller failure from positional response-field ordering
+and the original reader's unsupported single-chunk assumption. Neither is a
+product defect or a successful qualification. A distinct chunk-aware reader
+passed the retained successful originals; no guest was rerun for that reading.
+The pane and session source match the pinned main composition, but this result
+qualifies the named retained package only. Full G02 remains open.
+
+Next continue the generation-transition collector and applicable lifecycle
+matrix. Its earlier readiness refusal remains unresolved; the successful UI Stop
+case does not admit helper processes or replace the collector's source, identity,
+resource or timing requirements. Keep iOS audit work deferred independently.
 
 Refresh pending PR checks without duplicating existing runs. PR1044 has been
 normally composed with main; its workflow and test implementation are unchanged,
@@ -34,7 +46,8 @@ to make progress on SPIKE.
 - [PR990](https://github.com/CrispStrobe/brickwright-lite/pull/990) merged as
   `6d9dfeb1d50139de517cfbdf302055b71eab125f`. Its retained Linux package
   passed finite Stop, held teardown-return, cleanup and two own-NuttX startup
-  cases. Two actual UI Stops and the full G02 matrix remain unqualified.
+  cases. The separately observed two-UI-Stop case is recorded above; the full
+  G02 matrix remains unqualified.
 - Release ownership [PR1011](https://github.com/CrispStrobe/brickwright-lite/pull/1011)
   merged as `e2225bb05eb2464e31100de3a8060f59ab6f3062`. This did not publish
   a version, tag, signed build or TestFlight delivery.
@@ -135,7 +148,8 @@ controls. Before connecting them to an actual run, review the complete producer
 graph, source identities, original retention, resource budget and independent
 reader. Mock source tests establish no live process, timing or provenance claim.
 
-Complete the remaining actual two-UI-Stop, chooser/startup/final-sampling,
+Retain the finite two-UI-Stop result above. Complete the remaining actual
+chooser/startup/final-sampling,
 generation, late-poll and deferred-storage cases with clean source-bound installed
 own-guest evidence. Retain normal Start/restart, cancellation, ownership, cleanup
 and distinct recovery controls. Do not replay successful originals just to read
