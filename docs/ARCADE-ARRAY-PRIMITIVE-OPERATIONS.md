@@ -1,0 +1,25 @@
+# Owned Array addition candidate
+
+The candidate adds an operation-scoped Array primitive string for the existing addition block. It uses the actual current Array allocation, runtime generation, operand slot, cached primitive and backing graph. It changes neither generic reference prototypes nor Scratch Cast, and grants no new Sprite, image, callable or other resource value. Standalone adapters without the service retain their existing behavior.
+
+The initial profile covers reference-literal allocations and their owned nested backing Arrays, same-body aliases and mutations. Holes, null and undefined contribute empty entries; numbers, text and booleans use their primitive text; repeated aliases render repeatedly and an active-path cycle contributes empty text. Unknown or foreign bodies, opaque elements, custom properties/prototypes and accessors refuse explicitly. Named legacy allocations, slice/concat results without a literal backing proof, and user-defined coercion are outside this initial profile.
+
+The finite profile limits traversal to 4,096 distinct bodies, 65,536 visited elements, depth 128 and one MiB of produced text. It refuses excess; it does not use an object-text fallback. A literal ingress witness closes the actual parser, decoder and heap identities after once-only input conversion; indexed fresh allocation avoids replaceable Array species. The operation completion fence rechecks source metadata, backing data and each visited object prototype after any other operand conversion, preserving actual execution order and errors.
+
+These are source candidates with an actual locally committed supplier revision explicitly selected in the embedding candidate; final adoption review, a fresh normal installation and genuine affected execution remain pending. `test/arrays-owned-plus-native.test.mjs` supplies focused native controls; existing native operation and Number ingress modules remain mandatory. Public import, current Code, save/reopen and all three genuine original/reconstructed/exported contexts require separate qualification. Existing addition blocks supply the authoring surface; no browser interaction or full application acceptance is claimed.
+
+## Remaining allocation compatibility
+
+The literal profile does not yet qualify text coercion for `create1D`, `create2D`, `createEmpty`, `createZeros`, `createRange`, named references, or reference slice/concat results. Each needs its actual fresh-body or current-owner proof, nested and alias cases, mutation behavior, and original semantics tested through the public pipeline and a fresh installed runtime. These are follow-up compatibility tasks, not a permanent rejection policy or a full Array addition claim.
+
+Metadata-only registered constructors remain permanently inert when created without a valid runtime; attaching a runtime later cannot issue operation authority. Existing-heap lookup accepts primitive identity fields, performs no allocation or listener registration, and alone grants no coercion authority. Rendering retains the descriptors actually consumed, including holes and prototypes, and refuses publication when a later observation or operand callback changes them.
+
+## Metadata and alias admission in this profile
+
+Mutable encoded data objects require private evidence of their actual native JSON allocation. Unknown encoded boxes must have an invariant immutable shape: nonextensible, complete nonconfigurable readonly own-data fields with the specified primitive value and ordinary or null prototype. Arbitrary mutable objects inserted by a host callback are refused; admitting such objects safely remains a compatibility task. Ordinary primitive numbers do not need this metadata path.
+
+Mutable reference metadata must be the actual native outer and tuple objects constructed by the value service, or have the same invariant immutable shape. A serialized alias that normalizes through an existing canonical reference remains covered. On an interning cache miss, the existing decoder can return the incoming mutable object; that object is outside this profile unless properly normalized or made invariant. A cached-wrapper control therefore does not claim general fresh save/reload alias coverage. Native provenance is recorded before interning and never assigned blindly to an existing returned wrapper.
+
+Publication first completes all potentially trapping observations for every operand loan, then checks every trusted native backing and parsed-data row in one callback-free final pass. No later raw-reference, graph or WeakRef callback can invalidate an earlier operand after that pass. This new narrowed profile has not yet been executed or qualified; earlier source-only mutable-box examples are retained as unqualified predecessors, not evidence of an existing feature regression.
+
+Metadata module loading and `getInfo()` remain available when native WeakRef is absent. The operation service is permanently inert on that engine: this candidate provides no strong-reference fallback or Array runtime qualification there. Installing a WeakRef constructor after module loading cannot activate the captured unsupported profile.

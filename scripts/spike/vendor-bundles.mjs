@@ -27,6 +27,7 @@
 // Fetched sha-addressed from raw.githubusercontent, which is immutable, so no
 // cache can substitute for what the commit contains. Same doctrine as
 // scripts/lib-pin.mjs and docs/FETCH-PINNING.md.
+import {renderBuiltinCarrier} from '../lib/arrays-carrier.mjs';
 import {writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {readFileSync} from 'node:fs';
@@ -42,8 +43,7 @@ const PINS = resolve(ROOT, 'overlay/scratch-vm/src/extension-support/bundled-ups
  * 2258847c1, both filed as urgent build breaks — because a backtick anywhere
  * in a comment closes it. A JSON string has no such edge.
  */
-export const renderBundle = source =>
-    `const makeExt = require('../adapter');\nmodule.exports = makeExt(${JSON.stringify(source)});\n`;
+export const renderBundle = (source, id = null) => renderBuiltinCarrier(id,source);
 
 const fetchText = async function (url, attempts = 3) {
     let lastError = null;
@@ -92,7 +92,7 @@ const vendorPins = JSON.parse(readFileSync(resolve(ROOT, 'vendor-pins.json'), 'u
 for (const id of only ? [only] : Object.keys(MAP)) {
     const from = sourceOf(id, vendorPins);
     const source = await fetchText(rawURL(from.path, from.repo, from.commit));
-    const bundle = renderBundle(source);
+    const bundle = renderBundle(source, id);
     pins.files[id] = {
         path: from.path,
         sha256: sha256(source),
