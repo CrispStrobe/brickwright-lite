@@ -568,7 +568,7 @@ jobs:
 
           def main():
               root=Path(os.environ['RUNNER_TEMP'])/'bw-ios-interface-inventory';root.mkdir(exist_ok=False)
-              report={'schema':'brickwright.ios-tool-interface.v4','sourceCommit':os.environ['GITHUB_SHA'],
+              report={'schema':'brickwright.ios-tool-interface.v5','sourceCommit':os.environ['GITHUB_SHA'],
                   'runID':os.environ['GITHUB_RUN_ID'],'attempt':os.environ['GITHUB_RUN_ATTEMPT'],'job':os.environ['GITHUB_JOB'],
                   'profile':'unadmitted','status':'partial','commands':[],'diagnostics':[],'commandGraphComplete':False,'actualAppQualified':False,'namespaceOwnershipQualified':False}
               try:
@@ -598,7 +598,8 @@ jobs:
                       # shared service PID is admitted. Sampling is diagnostic only.
                       require(child.returncode is None)
                       facts={}
-                      sample_argv=('/usr/bin/sample',str(child.pid),'1','10','-mayDie','-file','/dev/stdout')
+                      # Default symbol lookup follows sampling; no speculative -mayDie prefetch.
+                      sample_argv=('/usr/bin/sample',str(child.pid),'1','10','-file','/dev/stdout')
                       output,originals,failure=retained_command(sample_argv,cleanup,
                           deadline=min(deadline-1,time.monotonic()+3),facts=facts)
                       report['diagnostics'].append({'targetPID':child.pid,'argv':list(sample_argv),

@@ -2289,7 +2289,7 @@ class InterfaceControls(unittest.TestCase):
                     if argv==('/usr/bin/xcrun','simctl','help'):
                         help_deadline.append(kw['deadline']);kw['observe'](SimpleNamespace(pid=37,returncode=None),kw['deadline'])
                     elif argv[0]=='/usr/bin/sample':
-                        self.assertEqual(argv,('/usr/bin/sample','37','1','10','-mayDie','-file','/dev/stdout'))
+                        self.assertEqual(argv,('/usr/bin/sample','37','1','10','-file','/dev/stdout'))
                         self.assertLessEqual(kw['deadline'],help_deadline[0]-1)
                         return b'authored-sample',[],sample_failure
                     else:self.assertIsNone(kw.get('observe'))
@@ -2364,7 +2364,8 @@ test('interface inventory is disjoint, read-only and bounded to installed tool h
             ["rows.append({'kind':'reap','code':code})",'None'],
             ['elif observe is not None and not observed and time.monotonic()-started>=2:', 'elif False:'],
             ['deadline=min(deadline-1,time.monotonic()+3)', 'deadline=time.monotonic()+30'],
-            ["require(all(record['failure'] is None for record in report['diagnostics']))", 'require(True)']
+            ["require(all(record['failure'] is None for record in report['diagnostics']))", 'require(True)'],
+            ["sample_argv=('/usr/bin/sample',str(child.pid),'1','10','-file','/dev/stdout')", "sample_argv=('/usr/bin/sample',str(child.pid),'1','10','-mayDie','-file','/dev/stdout')"]
         ].entries()) {
             assert.equal(prefix.split(before).length,2,before);
             const cut=run(prefix.replace(before,after),`cut-${index}`);

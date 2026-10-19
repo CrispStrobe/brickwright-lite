@@ -467,3 +467,10 @@ print/procinfo/managerpid help, without starting simctl or a sampler. It refuses
 mixed manual/sampler requests, requires interface selection and excludes app
 builds. Preserve earlier failures and limits; use the actual retained manuals to
 choose supported diagnostics instead of inventing flags or raising timeouts.
+
+The manual-only event passed its bounded packet joins on Xcode26.6. Its installed
+sample documentation identifies mayDie as eager symbol acquisition. The next
+candidate uses default sampling order without that optional prefetch, retaining
+all output and time bounds. Do not infer that symbol lookup caused the earlier
+failure; an affected actual diagnostic remains required. Complete manual evidence
+still supplies no simulator namespace, service or installed-map admission.
