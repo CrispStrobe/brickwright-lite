@@ -462,6 +462,19 @@ Python timeout. Its original failure is retained; host load was elevated, and
 the cause is not established. A complete exact-head hosted run remains required.
 Resource limits, event checks, baseline and actual-execution guards remain unchanged.
 
+The hosted source suite at `3f71e4eafc2d60c2c885b3cca3aba520161d31ff`
+passes 67 tests on Node 22.23.3 with no failures or skips. This suite includes
+the embedded original-reader controls; the separate HDD snapshot suite is not
+attributed to that job. Its retained workflow selection and limited diagnostic
+resource review are prepared, while the remaining enabled checks still gate any
+event. These results do not qualify a browser, guest or runtime.
+
+Keep `ci:full` present before publishing the final source checkpoint: the CI tier
+uses the triggering event's label snapshot. A later label event cannot change an
+earlier run's captured tier. Preserve the earlier results, require every enabled
+check on the final head, and rebind source/request/workflow selections after any
+new commit. Do not rerun or relabel a consumed diagnostic to obtain a green gate.
+
 The scoped census refresh records 19 recent completed runs at their actual source;
 new bridge steps are younger than those readings. Every unrelated workflow row,
 ordered run and main provenance remains held. Four inventory pointers preserve the
