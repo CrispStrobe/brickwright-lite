@@ -148,6 +148,11 @@ const lazyBuiltinExtensions = {
     // The Arcade runtime (task E1) carries MakeCode's speech fonts (font12 alone is
     // ~137 KiB gzipped) and sprite/image engines: needed only by an Arcade project.
     arcade: () => import(/* webpackChunkName: "ext-arcade" */ '../extensions/crispstrobe/arcade/index.js'),
+    // Lite-native Robot Lab blocks: every block one call of runtime.robotLab, the API the
+    // Robot Lab pane installs (gui lib/bw-sim/api/robot-lab-api.js). LITE_ONLY, classified in
+    // scripts/spike/bundled-upstream.mjs. Lazy: only a Robot Lab project needs them, and eager
+    // they pushed the 8086 benchmark's initial JS over its budget (PR #1097).
+    robotlab: () => import(/* webpackChunkName: "ext-robotlab" */ '../extensions/crispstrobe/robotlab/index.js'),
     planetemaths: () => import(/* webpackChunkName: "ext-planetemaths" */ '../extensions/crispstrobe/planetemaths/index.js'),
     legopoweredup: () => import(/* webpackChunkName: "ext-legopoweredup" */ '../extensions/crispstrobe/legopoweredup/index.js'),
     legoboostunified: () => import(/* webpackChunkName: "ext-legoboostunified" */ '../extensions/crispstrobe/legoboostunified/index.js'),

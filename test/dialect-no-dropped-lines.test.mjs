@@ -30,7 +30,10 @@ import assert from 'node:assert/strict';
 import {readdirSync, readFileSync} from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
+// The compiler as the app obtains it: through the registering door, which layers lite's own words
+// (the Robot Lab's `lab …`, lib/robot-lab-pseudocode.js) on the pinned sb3-creator — a shipped
+// program in those words is read by the app, so it is read here the same way.
+import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator-register-art.js';
 import examples from '../overlay/scratch-gui/src/lib/sb3-creator-examples.js';
 import gameExamples from '../overlay/scratch-gui/src/lib/sb3-creator-game-examples.js';
 import {spike3PythonToPseudocode} from '../overlay/scratch-gui/src/lib/sb3-creator-spike3.js';

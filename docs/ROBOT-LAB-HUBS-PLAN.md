@@ -50,8 +50,24 @@ executable spec); RCX (A–C, 1–3; the existing `RcxVm`).
 ## Phases
 
 - **P0 contracts:** `connectVirtualHub`, BT-classic and BLE virtual-peripheral registries, `lab-direct` hub.
+  **`lab-direct` done 2026-10-19** (lane/simlab-api-20261019): `G/bw-sim/hubs/lab-direct/` (profile + VirtualHub,
+  the SPIKE controller structure, exported to the worker's mirror), registered in `hubs/index.js`; a model with
+  motors and no hub part runs on it (`sim-session.js` `sceneHubDefs`); the *Motor bench* model shows it.
+  Open: `connectVirtualHub` and the BT-classic/BLE peripheral registries (they serve P3–P5).
 - **P1 Robot Lab API** + `robotlab` blocks + `lab` words + `_robotlab` for Python/JS. Accept: `setMotor`
   drives an encoder to 360 ± 2° with no hub program; part poses deterministic across rollback.
+  **Done 2026-10-19** (lane/simlab-api-20261019; docs/SIM-LAB.md "Steering the Lab"): `G/bw-sim/api/robot-lab-api.js`
+  installed by the pane as `runtime.robotLab` and `window.__bwSimLab.api`; `X/robotlab` (14 blocks, EN+DE, in the
+  extension library); `G/robotLabDialect.js` (`lab` words under any DEVICE, one table) layered on the pinned
+  sb3-creator at its door (`G/robot-lab-pseudocode.js`); `_robotlab` in `RUNTIME_EXTENSIONS` with a 'simulator'
+  driver bound to the API and the Python/JS lift back. Both acceptances are tests
+  (`test/bw-sim-robot-lab-api.test.mjs`); round trips of every block in `test/robot-lab-dialect.test.mjs`;
+  browser gate `verify:sim-lab --part=api`. Decision: a motor on a hub that runs its own program (firmware
+  route, RCX VM) is refused by name; on a SPIKE hub run from Scratch blocks the API commands the hub's own
+  controller. The RCX hub (P2) gets the same refusal: `RcxVirtualHub` has no `directCommand`, its outputs
+  belong to the NQC program in the VM (test "an RCX runs its own program…", merged on lane/simlab-next6-20261019).
+  Open: `camera` and `setTimeScale` have no blocks yet; Python in the Code tab's console
+  cannot reach the Lab (Skulpt in a worker) — its route is ⇦ To blocks.
 - **P2 RCX** (pulled forward: the VM exists): `hubs/rcx/`, virtual `rcxDownload`, RCX sensors.
   **Done 2026-10-19** (lane/simlab-rcx-hub-20261019): RCX 2.0, mini-motor 71427, touch/light/rotation
   sensors as parts and devices; "Robot Lab RCX" as an explicitly chosen download target; the RCX

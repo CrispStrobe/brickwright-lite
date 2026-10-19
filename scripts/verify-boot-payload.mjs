@@ -49,6 +49,10 @@ const LAZY = [
         why: 'lazyBuiltinExtensions.legonxt in extension-manager.js'},
     {what: 'Arcade runtime (its speech fonts)', marker: 'font12: Adobe SIL OFL 1.1', chunk: 'ext-arcade',
         why: 'lazyBuiltinExtensions.arcade in extension-manager.js'},
+    {what: 'Robot Lab blocks', marker: 'when part [PART] touches [OTHER]', chunk: 'ext-robotlab',
+        why: 'lazyBuiltinExtensions.robotlab in extension-manager.js'},
+    {what: 'Robot Lab tab', marker: 'Open the Robot Lab here', chunk: 'bw-robotlab-tab',
+        why: 'the React.lazy RobotLabTab in components/gui/gui.jsx'},
     {what: 'LEGO SPIKE Prime driver', marker: 'ID: spikeprime\\n', altMarkers: ['ID: spikeprime\n'], chunk: 'ext-spikeprime',
         why: 'lazyBuiltinExtensions.spikeprime in extension-manager.js'},
     // `md5ext` is NOT the marker: the default project and scratch-vm's serializer
@@ -98,6 +102,13 @@ const LAZY = [
     {what: 'the Sim Lab physics worker', marker: 'sim batch before sim load', chunk: 'bw-sim-physics-worker',
         notInChunks: ['bw-spike-simulator', 'bw-sim-lab'],
         why: 'startPhysicsWorker in overlay/scratch-gui/src/lib/bw-sim/sim-lab.js (new Worker(new URL(…)), webpackChunkName "bw-sim-physics-worker")'},
+    // The Robot Lab editor itself (its pane and icon toolbar): its own editor tab loads it when the tab
+    // is first shown (robot-lab-tab.jsx, React.lazy), so it is neither in the boot scripts nor in the
+    // arena pane's chunk any more (the arena only offers "Open in Robot Lab"). The marker is the
+    // toolbar's test id, which only sim-lab-toolbar.jsx carries.
+    {what: 'the Robot Lab editor (pane and toolbar)', marker: 'bw-sim-lab-toolbar', chunk: 'bw-robot-lab',
+        notInChunks: ['bw-spike-simulator'],
+        why: 'React.lazy in overlay/scratch-gui/src/components/tw-pseudocode/robot-lab-tab.jsx (webpackChunkName "bw-robot-lab")'},
     {what: 'the Sim Lab 3D view', marker: 'bw-sim-lab-3d-canvas', chunk: 'bw-sim-lab',
         notInChunks: ['bw-spike-simulator'],
         why: 'the dynamic import in sim-lab-pane.jsx (webpackChunkName "bw-sim-lab")'},

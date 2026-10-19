@@ -34,7 +34,7 @@ import {mechanismIssues} from './mech/insight.js';
 import {loadJolt, createPhysicsCore} from './physics/jolt-core.js';
 import {SimHubBridge, HubReplay, STEP_MS} from './hub-bridge.js';
 import {MirrorCore} from './sim-worker-protocol.js';
-import {hubRegistry} from './hubs/index.js';
+import {hubRegistry, LAB_DIRECT_ID} from './hubs/index.js';
 import {upgradePartMeta, partHubProfile} from './contracts.js';
 import {createMat} from './world/mats.js';
 import {placeOnStart, driveAnchor} from './world/place.js';
@@ -82,7 +82,11 @@ export const MODELS = Object.freeze([
     {file: 'rcx-bumper-car.ldr', title: {en: 'RCX bumper car', de: 'RCX-Rempelauto'},
         example: 'rcx-bumper-car.nqc', mat: 'wall'},
     {id: 'rcx-line-follower', file: 'rcx-bumper-car.ldr', title: {en: 'RCX line follower', de: 'RCX-Linienfolger'},
-        example: 'rcx-line-follower.nqc', mat: 'line-oval'}
+        example: 'rcx-line-follower.nqc', mat: 'line-oval'},
+    // No hub at all: the Robot Lab's own lab-direct hub owns the motor, and its example steers it
+    // with `lab` words (docs/SIM-LAB.md "Steering the Lab").
+    {file: 'motor-bench.ldr', title: {en: 'Motor bench (no hub)', de: 'Motorprüfstand (ohne Hub)'},
+        example: 'motor-bench.bw'}
 ]);
 export const MODELS_BASE = 'static/sim-lab/models/';
 export const PROGRAMS_BASE = 'static/sim-lab/programs/';
@@ -140,6 +144,21 @@ export const hubsOf = (model, mechanism, catalog, {all = false} = {}) => {
     return [{id, profile: hubParts.get(id), body: body.id}];
 };
 
+/**
+ * The hubs a scene runs: the model's (hubsOf), or — for a model with motors or sensors and
+ * no hub part — the Robot Lab's own `lab-direct` hub (hubs/lab-direct), which owns them all so
+ * blocks, `lab` words and Python/JS can turn them directly through the same port boundary.
+ * Its pose is not an IMU (nothing reads it): it rides on the first moving body.
+ */
+export const sceneHubDefs = (model, mechanism, catalog, {all = false, registry = hubRegistry} = {}) => {
+    const defs = hubsOf(model, mechanism, catalog, {all});
+    if (defs.length || !registry.has('lab-direct')) return defs;
+    const wired = mechanism.joints.some(j => j.motor) || (mechanism.sensors || []).length > 0;
+    if (!wired) return [];
+    const body = (mechanism.bodies.find(b => b.motion === 'dynamic') || mechanism.bodies[0]).id;
+    return [{id: LAB_DIRECT_ID, profile: 'lab-direct', body}];
+};
+
 /** The body that carries the (first) hub, or null. */
 export const hubBodyOf = (model, mechanism, catalog) => hubsOf(model, mechanism, catalog)[0]?.body ?? null;
 
@@ -151,6 +170,8 @@ export const hubBodyOf = (model, mechanism, catalog) => hubsOf(model, mechanism,
 const makeHubs = ({defs, registry, hubState, createHub}) => {
     let shared = false;
     return defs.map((h, index) => {
+        // The Robot Lab's own hub wraps no hub state and is no firmware's to emulate.
+        if (h.profile === 'lab-direct') return {...h, hub: registry.create(h.profile, {id: h.id})};
         const made = createHub ? createHub({...h, index}) : null;
         if (made) return {...h, hub: made};
         if (shared) throw new Error(`hub '${h.id}': two hubs of a scene cannot share one hub state`);
@@ -190,9 +211,11 @@ export class SimSession {
         this.runModel = runModel;
         this.mat = mat;
         this.mechanism = mechanism;
+        /** The part catalogue the model was compiled with (the Robot Lab API reads part kinds from it). */
+        this.catalog = catalog;
         this.hubState = hubState;
         /** [{id, profile, body, hub}]: the model's hubs, each a VirtualHub (hubs/hub-profile.js). */
-        this.hubs = made || makeHubs({defs: hubsOf(model, mechanism, catalog, {all: Boolean(createHub)}), registry, hubState, createHub});
+        this.hubs = made || makeHubs({defs: sceneHubDefs(model, mechanism, catalog, {all: Boolean(createHub), registry}), registry, hubState, createHub});
         /** A hub of the scene cannot be rewound: in-thread, one step per lockstep exchange. */
         this.lockstep = this.hubs.some(({hub}) => isNonRewindable(hub));
         if (worker && this.lockstep) {
@@ -241,7 +264,7 @@ export class SimSession {
         const {model, runModel, mechanism, issues} = prepareModel(text, catalog, {mat});
         if (!mechanism) return {session: null, issues, model, runModel};
         let workerError = null;
-        const defs = hubsOf(model, mechanism, catalog, {all: Boolean(createHub)});
+        const defs = sceneHubDefs(model, mechanism, catalog, {all: Boolean(createHub), registry});
         const hubs = makeHubs({defs, registry, hubState, createHub});
         if (worker && hubs.some(({hub}) => isNonRewindable(hub))) {
             // Refused, not failed: the worker stays usable for the next scene.

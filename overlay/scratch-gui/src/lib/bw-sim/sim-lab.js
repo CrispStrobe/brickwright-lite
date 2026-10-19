@@ -24,6 +24,7 @@ import {PhysicsClient} from './physics/physics-client.js';
 
 export {SimSession, prepareModel, MODELS, MODELS_BASE, PROGRAMS_BASE} from './sim-session.js';
 export {SimLabClock} from './sim-clock.js';
+export {createRobotLabApi} from './api/robot-lab-api.js';
 export {isPortPart} from './contracts.js';
 export {fetchLDrawClosure, LDRAW_BASE} from './ldraw/ldraw-fetch.js';
 export {connectVirtualSpike} from '../virtual-hub/connect-virtual-spike.js';
@@ -35,7 +36,7 @@ export {createEditor, partsByIdOf} from './editor/editor-state.js';
 export {colorPalette, rotationToDegrees, degreesToRotation} from './editor/editor-parity.js';
 export {selectionPivot} from './editor/transform-math.js';
 export {createEditorView3D, DEFAULT_COLOR} from './editor/editor-view3d.js';
-export {snapCandidates} from './editor/snap.js';
+export {snapCandidates, pairedParts} from './editor/snap.js';
 export {paletteFrom, searchPalette, pushRecent, partNumber} from './editor/palette.js';
 export {createPartThumbnails} from './view/part-thumbnails.js';
 export {serializeModel, parseModel} from './model/ldraw-model.js';

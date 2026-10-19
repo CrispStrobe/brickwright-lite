@@ -27,7 +27,7 @@ const FIXTURE = JSON.parse(readFileSync(path.join(ROOT, 'test/fixtures/bw-sim/li
 
 test('every model in the list is a shipped file that compiles cleanly, motors and sensors on ports', () => {
     assert.deepEqual(MODELS.map(m => m.id || m.file), ['driving-base.ldr', 'line-follower.ldr', 'wall-stopper.ldr', 'colour-explorer.ldr', 'sumo', 'forklift.ldr', 'maze-runner.ldr',
-        'gearbox.ldr', 'differential.ldr', 'excavator.ldr', 'rcx-bumper-car.ldr', 'rcx-line-follower']);
+        'gearbox.ldr', 'differential.ldr', 'excavator.ldr', 'rcx-bumper-car.ldr', 'rcx-line-follower', 'motor-bench.ldr']);
     // The pane lists entries by key (id, else file): keys are unique, and a file listed twice needs an id.
     const keys = MODELS.map(m => m.id || m.file);
     assert.equal(new Set(keys).size, keys.length, `unique keys: ${keys}`);
@@ -41,13 +41,14 @@ test('every model in the list is a shipped file that compiles cleanly, motors an
         assert.deepEqual(refusals, [], entry.file);
         const {mechanism, issues} = prepareModel(text, CATALOG, {mat: entry.mat || null});
         assert.deepEqual(issues.filter(i => i.severity === 'error'), [], entry.file);
-        assert.ok(model.parts.length > 5, entry.file);
+        // The motor bench is the smallest thing the Robot Lab can turn: a motor, an axle and a gear, no hub.
+        assert.ok(model.parts.length > (entry.file === 'motor-bench.ldr' ? 2 : 5), entry.file);
         // The driving bases drive their wheels on A and B; the Forklift (R4) stands, its lift motor on C;
         // the gearbox drives on A and shifts on B; the differential drives on A and holds a side on C;
         // the Excavator: wheels on A and B, slew C, boom D, stick E, bucket F.
-        // The RCX bumper car drives on outputs A and C (its sensors on inputs 1 and 2).
+        // The RCX bumper car drives on outputs A and C (its sensors on inputs 1 and 2); the hubless motor bench turns A.
         const ports = {'forklift.ldr': ['C'], 'differential.ldr': ['A', 'C'], 'excavator.ldr': ['A', 'B', 'C', 'D', 'E', 'F'],
-            'rcx-bumper-car.ldr': ['A', 'C']}[entry.file] || ['A', 'B'];
+            'rcx-bumper-car.ldr': ['A', 'C'], 'motor-bench.ldr': ['A']}[entry.file] || ['A', 'B'];
         assert.deepEqual(mechanism.joints.filter(j => j.motor).map(j => j.motor.port).sort(), ports, `${entry.file}: motors on ${ports}`);
         // SPIKE sensors on the LPF2 ports A-F, the RCX's on its inputs 1-3.
         const rcx = mechanism.hubs.some(h => h.profile === 'rcx');
@@ -56,9 +57,12 @@ test('every model in the list is a shipped file that compiles cleanly, motors an
         if (entry.example) {
             const program = path.join(GUI, PROGRAMS_BASE, entry.example);
             assert.ok(existsSync(program), `${entry.file}: example ${entry.example} is shipped`);
-            // SPIKE examples are DEVICE SPIKE text; RCX examples are NQC source with a main task.
-            if (rcx) assert.match(readFileSync(program, 'utf8'), /^task main\(\)\s*$/m, entry.example);
-            else assert.match(readFileSync(program, 'utf8'), /^DEVICE SPIKE\s*$/m, entry.example);
+            // SPIKE examples are DEVICE SPIKE text; RCX examples are NQC source with a main task;
+            // the hubless bench's is `lab` words, which need no DEVICE.
+            const source = readFileSync(program, 'utf8');
+            if (rcx) assert.match(source, /^task main\(\)\s*$/m, entry.example);
+            else if (entry.file === 'motor-bench.ldr') assert.match(source, /^\s+lab run motor A /m, entry.example);
+            else assert.match(source, /^DEVICE SPIKE\s*$/m, entry.example);
         }
     }
 });
