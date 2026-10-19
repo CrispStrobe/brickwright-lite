@@ -15,6 +15,12 @@
  * - `onWrite(uuid, bytes, withResponse)` accepting bytes;
  * - optional `setNotificationSink(fn)`, where `fn(uuid, bytes)` emits a GATT
  *   notification. The sink is removed by passing `null` on disconnect.
+ * - optional `onStartNotifications(uuid)`, told when the host subscribes to a
+ *   characteristic (after the subscription is in place, so a notification sent
+ *   from it is delivered);
+ * - optional `hubState`: the hub this peripheral is (connectVirtualHub chooses by it);
+ * - optional `manufacturerData` ({companyId: byte[]}): what it advertises, for a
+ *   Scratch Link filter that names manufacturer data (scratch-link-ble.js).
  */
 
 import {canonicalUuid} from '../native-web-bluetooth.js';
@@ -89,6 +95,10 @@ class VirtualCharacteristic extends EventTarget {
     // eslint-disable-next-line require-await -- Web Bluetooth specifies a promise
     async startNotifications () {
         this._notifying = true;
+        // Optional hook: a peripheral that speaks only once someone listens (an LWP3 hub's
+        // Attached I/O, a WeDo hub's input values) learns of the subscription.
+        const peripheral = this.service._server._peripheral;
+        if (typeof peripheral.onStartNotifications === 'function') peripheral.onStartNotifications(this.uuid);
         return this;
     }
 
@@ -209,7 +219,11 @@ export const registerVirtualPeripheral = factory => {
 
 export const clearVirtualPeripheralsForTest = () => factories.clear();
 
-const chooseVirtual = async (candidates, hasReal) => {
+/**
+ * Which virtual peripheral to use: the host's chooser (`__brickwrightChooseVirtualBluetooth`,
+ * connectVirtualHub's), else the only one when no real radio exists, else ask.
+ */
+export const chooseVirtual = async (candidates, hasReal) => {
     if (typeof globalThis.__brickwrightChooseVirtualBluetooth === 'function') {
         return globalThis.__brickwrightChooseVirtualBluetooth(candidates, hasReal);
     }
@@ -224,6 +238,33 @@ const hasUnsupportedVirtualFilters = options => !!(options?.exclusionFilters?.le
     (options?.filters || []).some(filter => filter?.manufacturerData !== undefined ||
         filter?.serviceData !== undefined));
 const dispose = peripheral => peripheral && typeof peripheral.dispose === 'function' && peripheral.dispose();
+
+/**
+ * The registry, read by the other transports that offer the same virtual peripherals (the
+ * Scratch Link BLE double, scratch-link-ble.js): whether any factory is registered...
+ * @returns {boolean}
+ */
+export const hasVirtualPeripherals = () => factories.size > 0;
+
+/**
+ * ...and one fresh peripheral per factory that matches `options` (Web Bluetooth's
+ * requestDevice filters; Scratch Link's `discover` filters have the same shape: services,
+ * name, namePrefix). Factories that answer null (a simulation switched off) offer nothing;
+ * a peripheral that does not match is disposed at once.
+ * @param {object} options {filters, acceptAllDevices}
+ * @returns {object[]} the matching VirtualPeripherals
+ */
+export const virtualCandidates = options => {
+    const created = [...factories].map(factory => factory()).filter(Boolean);
+    const candidates = created.filter(p => matches(p, options || {}));
+    for (const peripheral of created) if (!candidates.includes(peripheral)) dispose(peripheral);
+    return candidates;
+};
+
+/** Disposes every candidate but `keep` (the one a chooser picked). */
+export const disposeVirtualCandidates = (candidates, keep = null) => {
+    for (const candidate of candidates) if (candidate !== keep) dispose(candidate);
+};
 
 /**
  * Wrap the currently installed Web Bluetooth object. Safe to call repeatedly.
@@ -248,9 +289,7 @@ export default function installVirtualWebBluetooth () {
                     error.name = 'NotFoundError';
                     throw error;
                 }
-                const created = [...factories].map(factory => factory()).filter(Boolean);
-                const candidates = created.filter(p => matches(p, options || {}));
-                for (const peripheral of created) if (!candidates.includes(peripheral)) dispose(peripheral);
+                const candidates = virtualCandidates(options);
                 if (candidates.length === 0) {
                     if (realRequest && !virtualOnly) return realRequest(options);
                     const error = new Error('No Bluetooth devices matched the requested filters.');
