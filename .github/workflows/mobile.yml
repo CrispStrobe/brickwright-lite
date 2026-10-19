@@ -193,6 +193,7 @@ jobs:
           cat > "$RUNNER_TEMP/bw-ios-audit-capture.py" <<'PY'
           """Retain bounded unsigned build inputs; never start an app or claim active use."""
           import hashlib
+          import math
           import json
           import os
           from pathlib import Path
@@ -920,6 +921,144 @@ jobs:
               if result['primaryFailure'] is None and not result['cleanupFailures'] and result['observationRetained']:
                   result['status'] = 'observed-transaction-only'
               return result, observation if result['observationRetained'] else None
+
+
+          class DarwinProcessSampler:
+              """Unwired, cooperative single-PID observations; no ownership or image lease.
+
+              ABI references: Apple XNU sys/resource.h, libproc.c, mach/mach_time.h;
+              CPU units follow fill_task_rusage -> task_power_info_locked. Target SDK
+              layout and actual kernel behavior still require independent admission.
+              """
+              def __init__(self, pid, executable, *, deadline, now=time.monotonic, stopped=None):
+                  import ctypes
+                  import platform
+                  need(sys.platform == 'darwin' and platform.machine() == 'arm64' and
+                       ctypes.sizeof(ctypes.c_void_p) == 8 and sys.byteorder == 'little')
+                  need(type(pid) is int and 0 < pid <= 2147483647 and type(executable) is str and
+                       executable.startswith('/') and str(Path(executable)) == executable and
+                       '..' not in Path(executable).parts and '\x00' not in executable and
+                       0 < len(executable.encode('utf-8')) < 4096 and callable(now) and
+                       (stopped is None or callable(stopped)))
+                  class Usage(ctypes.Structure):
+                      _fields_ = [('uuid', ctypes.c_ubyte * 16)] + [
+                          (name, ctypes.c_uint64) for name in (
+                              'user', 'system', 'packageWakeups', 'interruptWakeups', 'pageins',
+                              'wired', 'resident', 'footprint', 'birth', 'exit')]
+                  class Timebase(ctypes.Structure):
+                      _fields_ = [('numer', ctypes.c_uint32), ('denom', ctypes.c_uint32)]
+                  need(ctypes.sizeof(Usage) == 96 and ctypes.alignment(Usage) == 8 and
+                       Usage.user.offset == 16 and Usage.resident.offset == 64 and
+                       Usage.birth.offset == 80 and Usage.exit.offset == 88 and ctypes.sizeof(Timebase) == 8)
+                  self._ctypes, self._usage = ctypes, Usage
+                  self._pid, self._executable = pid, executable.encode('utf-8')
+                  self._now, self._stopped, self._deadline = now, stopped, deadline
+                  self._last = now()
+                  need(type(self._last) in (int, float) and type(deadline) in (int, float) and
+                       math.isfinite(self._last) and math.isfinite(deadline) and
+                       self._last <= deadline <= self._last + 30)
+                  self._failed, self._active, self._polls = False, False, 0
+                  self._records, self._bytes = [], 0
+                  self._identity, self._previous = None, None
+                  self._check()
+                  lib = ctypes.CDLL('/usr/lib/libproc.dylib', use_errno=True)
+                  system = ctypes.CDLL('/usr/lib/libSystem.B.dylib', use_errno=True)
+                  self._rusage, self._path = lib.proc_pid_rusage, lib.proc_pidpath
+                  self._rusage.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_void_p]
+                  self._rusage.restype = ctypes.c_int
+                  self._path.argtypes = [ctypes.c_int, ctypes.c_void_p, ctypes.c_uint32]
+                  self._path.restype = ctypes.c_int
+                  timebase = system.mach_timebase_info
+                  timebase.argtypes, timebase.restype = [ctypes.POINTER(Timebase)], ctypes.c_int
+                  ratio = Timebase()
+                  ctypes.set_errno(0)
+                  status = timebase(ctypes.byref(ratio))
+                  self._record('timebase', status, ctypes.get_errno(), bytes(ratio))
+                  self._check()
+                  need(status == 0 and ratio.numer > 0 and ratio.denom > 0)
+                  self._numer, self._denom = int(ratio.numer), int(ratio.denom)
+
+              def _check(self):
+                  tick = self._now()
+                  need(not self._failed and type(tick) in (int, float) and self._last <= tick <= self._deadline)
+                  self._last = tick
+                  if self._stopped is not None:
+                      flag = self._stopped()
+                      need(type(flag) is bool and not flag)
+                  # A cancellation callback can itself consume the remaining budget.
+                  tick = self._now()
+                  need(type(tick) in (int, float) and self._last <= tick <= self._deadline and not self._failed)
+                  self._last = tick
+
+              def _reserve(self, bound):
+                  # Refuse before entering a syscall whose original would not fit.
+                  need(len(self._records) < 2048 and self._bytes + bound <= 1024*1024)
+
+              def _record(self, kind, status, error, raw):
+                  # Raw syscall originals stay private, including failed/partial buffers.
+                  row = {'kind': kind, 'status': status, 'errno': error, 'rawHex': raw.hex()}
+                  size = len(json.dumps(row, separators=(',', ':')).encode('utf-8'))
+                  need(len(self._records) < 2048 and self._bytes + size <= 1024*1024)
+                  self._records.append(row)
+                  self._bytes += size
+
+              def originals(self):
+                  return [dict(row) for row in self._records]
+
+              def _resource(self):
+                  self._check()
+                  c = self._ctypes
+                  self._reserve(512)
+                  value = self._usage()
+                  c.set_errno(0)
+                  status = self._rusage(self._pid, 0, c.byref(value))
+                  self._record('rusage-v0', status, c.get_errno(), bytes(value))
+                  self._check()
+                  need(status == 0 and value.birth > 0 and value.exit == 0 and any(value.uuid))
+                  cpu = (int(value.user) + int(value.system)) * self._numer // self._denom
+                  need(value.resident <= 1024*1024*1024 and cpu <= 5_000_000_000)
+                  identity = (int(value.birth), bytes(value.uuid))
+                  counters = (int(value.user), int(value.system))
+                  if self._previous is not None:
+                      prior_identity, prior_counters = self._previous
+                      need(identity == prior_identity and all(a >= b for a, b in zip(counters, prior_counters)))
+                  self._previous = (identity, counters)
+                  return value, identity
+
+              def __call__(self, pid):
+                  try:
+                      need(not self._active and not self._failed and type(pid) is int and pid == self._pid)
+                      self._active = True
+                      self._check()
+                      need(self._polls < 100)
+                      self._polls += 1
+                      before, identity = self._resource()
+                      self._check()
+                      c = self._ctypes
+                      self._reserve(8448)
+                      buffer = c.create_string_buffer(4096)
+                      c.set_errno(0)
+                      status = self._path(pid, buffer, 4096)
+                      # Keep the complete bounded buffer, not just the reported substring.
+                      self._record('pidpath', status, c.get_errno(), bytes(buffer))
+                      self._check()
+                      need(0 < status < 4096 and buffer.raw[status] == 0 and
+                           b'\x00' not in buffer.raw[:status] and buffer.raw[:status] == self._executable)
+                      after, after_identity = self._resource()
+                      need(identity == after_identity)
+                      token = hashlib.sha256(json.dumps({'pid': pid, 'birth': identity[0],
+                          'uuid': identity[1].hex(), 'pathHex': self._executable.hex()},
+                          sort_keys=True, separators=(',', ':')).encode('utf-8')).hexdigest()
+                      need(self._identity is None or token == self._identity)
+                      self._identity = token
+                      self._check()
+                      return {'pid': pid, 'identitySHA256': token,
+                              'rssBytes': max(int(before.resident), int(after.resident))}
+                  except BaseException:
+                      self._failed = True
+                      raise
+                  finally:
+                      self._active = False
 
 
           class PreparedInstalledObservation:

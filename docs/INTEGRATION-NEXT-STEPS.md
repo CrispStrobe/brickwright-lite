@@ -1,4 +1,4 @@
-# Integration handoff — 2026-10-18
+# Integration handoff — 2026-10-19
 
 Refresh PR heads, checks and `LANES.md` before acting. This file records the
 integration owner's remaining work; other lanes retain their own ownership.
@@ -276,6 +276,39 @@ The instrument CLI harness has a separate owner in
 [PR1043](https://github.com/CrispStrobe/brickwright-lite/pull/1043). Coordinate with
 that owner instead of duplicating observation or merging. The actual instrument
 campaign remains after TestFlight; harness preparation does not authorize it.
+
+## Darwin sampler admission before controller wiring
+
+The draft active-asset candidate defines an unwired `DarwinProcessSampler` in
+`.github/workflows/mobile.yml`. Its authored controls are in
+`test/ios-workflow-embedded-asset-audit.test.mjs`. It reads one PID through
+`proc_pid_rusage` and `proc_pidpath`, brackets path lookup with birth/UUID and
+counter checks, and converts cumulative Mach CPU ticks with `mach_timebase_info`.
+The fixed sampled limits are 1 GiB RSS, five lifetime CPU seconds, 30 cooperative
+wall seconds, 100 polls and 1 MiB of private raw syscall records. These are sampled
+refusal thresholds, not hard kernel containment. A blocking foreign call is not
+interrupted. A process family and delegated simulator services remain unbounded.
+
+The API/layout research uses Apple XNU revision
+`f6217f891ac0bb64f3d375211650a4c1ff8ca1ea`:
+[resource layout](https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/bsd/sys/resource.h),
+[libproc interfaces](https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/libsyscall/wrappers/libproc/libproc.c),
+[timebase layout](https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/osfmk/mach/mach_time.h),
+[resource counters](https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/osfmk/kern/bsd_kern.c)
+and [Mach CPU accounting](https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/osfmk/kern/task.c).
+No Apple implementation is vendored. The installed SDK and runner are not yet
+joined to that research revision.
+
+Before use, independently verify the exact target SDK's ABI offsets, library
+exports, syscall status semantics, CPU units/timebase and permission failures.
+Then test actual birth/exit/reuse/path drift and resource limits on the admitted
+runner, retaining originals. Resolve executable identity across exec, mapped-file
+identity, target ownership, child/service census and cleanup before composing the
+transaction controller. An observed UUID/path/birth digest is not an authenticated
+capability or a continuous identity lease. Keep existing app qualification flags
+false until the full source/artifact/installed-map joins and affected actual run
+pass. No new dispatch, download, actual launch or workflow entry mode is added
+by this source preparation.
 
 ## Handoff and privacy
 

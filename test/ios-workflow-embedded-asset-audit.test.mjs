@@ -16,13 +16,13 @@ test('ad-hoc diagnostics print only device count and preserve the actual asserti
 function assertNoAuditEntry(body) {
     const start = body.indexOf('def main():');
     assert.ok(start >= 0, 'the actual entry point must exist');
-    assert.doesNotMatch(body.slice(start), /SIMCTL_CHILD_|BW_EMBEDDED_ASSET_AUDIT_PATH|prepared_launch|owned_simulator_transaction|prepare_installed_observation|release_installed_observation|bounded_simulator_command/);
+    assert.doesNotMatch(body.slice(start), /SIMCTL_CHILD_|BW_EMBEDDED_ASSET_AUDIT_PATH|prepared_launch|owned_simulator_transaction|prepare_installed_observation|release_installed_observation|bounded_simulator_command|DarwinProcessSampler/);
 }
 
 test('asset source preparation adds no runtime download or delivery event', () => {
     assert.doesNotMatch(workflow, /simctl.*download|downloadPlatform/);
     assertNoAuditEntry(retention);
-    for (const injected of ['SIMCTL_CHILD_BW_EMBEDDED_ASSET_AUDIT_PATH = "injected"', 'bounded_simulator_command("injected")']) {
+    for (const injected of ['SIMCTL_CHILD_BW_EMBEDDED_ASSET_AUDIT_PATH = "injected"', 'bounded_simulator_command("injected")', 'DarwinProcessSampler("injected")']) {
         assert.throws(() => assertNoAuditEntry(retention.replace('def main():', `def main():\n    ${injected}`)));
     }
     assert.match(workflow, /if: startsWith\(github.ref, 'refs\/tags\/'\)/);
@@ -739,9 +739,15 @@ class AdapterControls(unittest.TestCase):
         with self.assertRaises(SimulatorCommandRefused) as caught:self.run_command()
         self.assertEqual(caught.exception.reason,'exit');self.assertNotIn('AUTHORED-PRIVATE',str(caught.exception))
     def test_absolute_deadline_kills_and_reaps_the_owned_leader(self):
-        self.write_actor('hang')
-        with self.assertRaises(SimulatorCommandRefused) as caught:self.run_command(deadline=time.monotonic()+0.3)
-        self.assertEqual(caught.exception.reason,'deadline');pid=json.loads((self.root/'pid.json').read_text())['leader']
+        self.write_actor('hang');children=[];original_popen=subprocess.Popen
+        def spawn(*args,**kwargs):
+            child=original_popen(*args,**kwargs);children.append(child);return child
+        # A timed-out child may never reach its first Python file write. Observe
+        # the actual parent-owned handle without replacing the launched process.
+        with mock.patch.object(subprocess,'Popen',side_effect=spawn):
+            with self.assertRaises(SimulatorCommandRefused) as caught:self.run_command(deadline=time.monotonic()+0.3)
+        self.assertEqual(caught.exception.reason,'deadline');self.assertEqual(len(children),1)
+        pid=children[0].pid;self.assertIsNotNone(children[0].returncode)
         with self.assertRaises(ChildProcessError):os.waitpid(pid,os.WNOHANG)
         self.assertTrue(self.inactive(pid))
     def test_exited_leader_with_inherited_pipes_still_times_out_and_cleans_group(self):
@@ -1463,5 +1469,153 @@ test('unwired launch environment binds one prepared receiver to one explicit lau
         assert.equal(result.status, 0, result.stdout + result.stderr);
         assert.match(result.stderr, /Ran 10 tests/);
         assert.match(result.stderr, /OK/);
+    } finally { rmSync(dir, {recursive: true, force: true}); }
+});
+
+const darwinSamplerControls = String.raw`
+import ctypes, platform, struct, unittest
+from unittest import mock
+class KernelFunction:
+    def __init__(self,call):self.call=call
+    def __call__(self,*args):return self.call(*args)
+class DarwinSamplerControls(unittest.TestCase):
+    def setUp(self):
+        self.tick=0;self.stop=False;self.path=b'/authored/Installed.app/Executable';self.birth=12;self.uuid=b'U'*16
+        self.user=1;self.system=2;self.rss=100;self.exit=0;self.numer=125;self.denom=3
+        self.resource_status=0;self.path_status=None;self.timebase_status=0;self.calls=[];self.hook=None
+        self.lib=type('AuthoredLib',(),{})();self.system_lib=type('AuthoredSystem',(),{})()
+        self.lib.proc_pid_rusage=KernelFunction(self.resource)
+        self.lib.proc_pidpath=KernelFunction(self.pidpath)
+        self.system_lib.mach_timebase_info=KernelFunction(self.timebase)
+    def resource(self,pid,flavor,target):
+        self.calls.append(('resource',pid,flavor));self.assertEqual((pid,flavor),(37,0))
+        ctypes.memmove(target,struct.pack('<16s10Q',self.uuid,self.user,self.system,0,0,0,0,self.rss,0,self.birth,self.exit),96)
+        ctypes.set_errno(7 if self.resource_status else 0)
+        if self.hook:self.hook('resource')
+        return self.resource_status
+    def pidpath(self,pid,target,size):
+        self.calls.append(('path',pid,size));self.assertEqual((pid,size),(37,4096))
+        ctypes.memmove(target,self.path+b'\0',len(self.path)+1)
+        if self.hook:self.hook('path')
+        return len(self.path) if self.path_status is None else self.path_status
+    def timebase(self,target):
+        ctypes.memmove(target,struct.pack('<II',self.numer,self.denom),8)
+        return self.timebase_status
+    def make(self):
+        def load(path,**kw):
+            self.assertEqual(kw,{'use_errno':True})
+            return {'/usr/lib/libproc.dylib':self.lib,'/usr/lib/libSystem.B.dylib':self.system_lib}[path]
+        with mock.patch.object(sys,'platform','darwin'),mock.patch.object(platform,'machine',return_value='arm64'),mock.patch.object(ctypes,'CDLL',side_effect=load):
+            return DarwinProcessSampler(37,'/authored/Installed.app/Executable',deadline=30,now=lambda:self.tick,stopped=lambda:self.stop)
+    def refused(self,s):
+        with self.assertRaises(ValueError):s(37)
+        with self.assertRaises(ValueError):s(37)
+    def test_baseline_and_abi(self):
+        s=self.make();first=s(37);second=s(37)
+        self.assertEqual(first,second);self.assertEqual(set(first),{'pid','identitySHA256','rssBytes'})
+        self.assertEqual(first['rssBytes'],100);self.assertEqual(len(first['identitySHA256']),64)
+        self.assertEqual([row['kind'] for row in s.originals()],['timebase']+['rusage-v0','pidpath','rusage-v0']*2)
+        self.assertEqual(self.lib.proc_pid_rusage.argtypes,[ctypes.c_int,ctypes.c_int,ctypes.c_void_p])
+        self.assertEqual(self.lib.proc_pidpath.argtypes,[ctypes.c_int,ctypes.c_void_p,ctypes.c_uint32])
+        self.assertEqual(s._usage.resident.offset,64);self.assertEqual(ctypes.sizeof(s._usage),96)
+        originals=s.originals();originals[0]['rawHex']='mutated';self.assertNotEqual(s.originals()[0]['rawHex'],'mutated')
+    def test_unsupported_platform_before_library_load(self):
+        with mock.patch.object(sys,'platform','linux'),mock.patch.object(ctypes,'CDLL') as load:
+            with self.assertRaises(ValueError):DarwinProcessSampler(37,'/authored/exe',deadline=1)
+            load.assert_not_called()
+    def test_cpu_conversion_and_lifetime_budget(self):
+        for user,system in [(120000001,0),(0,120000001),(60000001,60000001)]:
+            with self.subTest(user=user,system=system):
+                self.user,self.system=user,system;s=self.make();self.refused(s)
+        self.user,self.system=120000000,0;s=self.make();self.assertEqual(s(37)['pid'],37)
+        self.numer,self.denom=1,1;self.user=5000000001;s=self.make();self.refused(s)
+    def test_timebase_refusal(self):
+        for status,numer,denom in [(1,1,1),(0,0,1),(0,1,0)]:
+            self.timebase_status,self.numer,self.denom=status,numer,denom
+            with self.subTest(status=status,numer=numer,denom=denom):
+                with self.assertRaises(ValueError):self.make()
+    def test_rss_threshold(self):
+        s=self.make();self.rss=1024*1024*1024;self.assertEqual(s(37)['rssBytes'],self.rss)
+        self.rss+=1;self.refused(s);self.assertEqual(s.originals()[-1]['kind'],'rusage-v0')
+    def test_kernel_failure_keeps_original(self):
+        s=self.make();self.resource_status=-1;self.refused(s)
+        row=s.originals()[-1];self.assertEqual((row['status'],row['errno']),(-1,7));self.assertEqual(len(bytes.fromhex(row['rawHex'])),96)
+    def test_path_refusals(self):
+        for path,status in [(b'/authored/other',None),(self.path,0),(self.path,4096),(self.path,3),(b'/authored\0/hidden',None)]:
+            with self.subTest(path=path,status=status):
+                s=self.make();self.path,self.path_status=path,status;self.refused(s)
+                self.assertEqual(len(bytes.fromhex(s.originals()[-1]['rawHex'])),4096)
+                self.path=b'/authored/Installed.app/Executable';self.path_status=None
+    def test_birth_uuid_exit_and_counter_drift(self):
+        for field,value in [('birth',13),('uuid',b'V'*16),('exit',1),('birth',0),('uuid',b'\0'*16),('user',0),('system',1)]:
+            with self.subTest(field=field):
+                self.setUp();s=self.make();s(37);setattr(self,field,value);self.refused(s)
+    def test_bracket_catches_reuse(self):
+        s=self.make()
+        def hook(stage):
+            if stage=='path':self.birth+=1
+        self.hook=hook;self.refused(s)
+        self.assertEqual([r['kind'] for r in s.originals()],['timebase','rusage-v0','pidpath','rusage-v0'])
+    def test_late_stop_and_deadline_keep_originals(self):
+        for stage,late in [('resource','stop'),('path','stop'),('resource','time'),('path','time')]:
+            with self.subTest(stage=stage,late=late):
+                self.setUp();s=self.make()
+                def hook(current):
+                    if current==stage:
+                        if late=='stop':self.stop=True
+                        else:self.tick=31
+                self.hook=hook;self.refused(s)
+                self.assertEqual(s.originals()[-1]['kind'],'pidpath' if stage=='path' else 'rusage-v0')
+        self.setUp();s=self.make();self.tick=-1;self.refused(s)
+    def test_reentry_seals_outer_call(self):
+        s=self.make()
+        def hook(stage):
+            if stage=='path':
+                with self.assertRaises(ValueError):s(37)
+        self.hook=hook;self.refused(s)
+    def test_finite_polls_and_bytes(self):
+        s=self.make()
+        for _ in range(100):s(37)
+        self.assertLess(s._bytes,1024*1024);self.assertEqual(len(s.originals()),301)
+        self.refused(s);self.assertEqual(len(s.originals()),301)
+        s=self.make();s._bytes=1024*1024;before=len(self.calls);self.refused(s);self.assertEqual(len(self.calls),before)
+    def test_wrong_pid_and_expired_entry(self):
+        s=self.make()
+        with self.assertRaises(ValueError):s(38)
+        self.refused(s)
+        self.tick=31
+        with self.assertRaises(ValueError):self.make()
+        self.tick=float('inf')
+        with self.assertRaises(ValueError):self.make()
+unittest.main(argv=['authored-darwin-kernel-controls'],defaultTest='DarwinSamplerControls',verbosity=2)
+`;
+
+test('unwired Darwin sampler brackets kernel identity and enforces converted CPU, RSS and retention bounds', () => {
+    const prefix = retention.slice(0, retention.lastIndexOf('\ntry:\n'));
+    const dir = mkdtempSync(join(tmpdir(), 'bw-ios-darwin-controls-'));
+    const run = (source, name) => {
+        const file = join(dir, `${name}.py`);
+        writeFileSync(file, `${source}\n${darwinSamplerControls}`);
+        return spawnSync('/usr/bin/python3', [file], {env: {...process.env,
+            GITHUB_WORKSPACE: dir, RUNNER_TEMP: dir, TMPDIR: dir}, encoding: 'utf8', timeout: 15000});
+    };
+    try {
+        const baseline = run(prefix, 'baseline');
+        assert.equal(baseline.status, 0, baseline.stdout + baseline.stderr);
+        assert.match(baseline.stderr, /Ran 13 tests/);
+        const cuts = [
+            ['cpu <= 5_000_000_000', 'True'],
+            ['value.resident <= 1024*1024*1024', 'True'],
+            ["identity = (int(value.birth), bytes(value.uuid))", "identity = (1, b'fixed')"],
+            ['buffer.raw[:status] == self._executable', 'True'],
+            ['self._polls < 100', 'True']
+        ];
+        for (const [index, [before, after]] of cuts.entries()) {
+            assert.equal(prefix.split(before).length, 2, `unique cut: ${before}`);
+            const result = run(prefix.replace(before, after), `cut-${index}`);
+            assert.notEqual(result.status, 0, `undetected mutation: ${before}`);
+            assert.match(result.stderr, /FAIL:/, result.stdout + result.stderr);
+            assert.doesNotMatch(result.stderr, /SyntaxError|ImportError/);
+        }
     } finally { rmSync(dir, {recursive: true, force: true}); }
 });
