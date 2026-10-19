@@ -172,14 +172,21 @@ test('every motor number names its source: Philo, LEGO, Pybricks, or estimated w
     }
 });
 
-test('only the SPIKE motors and the RCX mini-motor have parts; LPF2 ids are unique; every part\'s device is in the catalogue', () => {
+test('the SPIKE, RCX and Powered Up motors with parts have them; LPF2 ids are unique; every part\'s device is in the catalogue', () => {
     const lpf2 = MOTORS.map(d => d.ids.lpf2).filter(x => x !== undefined);
     assert.equal(new Set(lpf2).size, lpf2.length, `${lpf2}`);
-    const WITH_PARTS = id => id.startsWith('spike-') || id === 'technic-minimotor-71427';
+    // The Powered Up / BOOST / WeDo 2.0 motors got their LDraw parts with the LWP3 and WeDo hubs (docs/LWP3-VIRTUAL-HUB-NOTES.md).
+    const PUP_PARTS = ['pup-medium-motor', 'boost-interactive-motor', 'technic-large-motor', 'technic-xl-motor'];
+    const WITH_PARTS = id => id.startsWith('spike-') || id === 'technic-minimotor-71427' || PUP_PARTS.includes(id);
     for (const d of MOTORS) assert.deepEqual(d.parts.length > 0, WITH_PARTS(d.id), `${d.id}: ${d.parts}`);
     const parts = JSON.parse(readFileSync(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json'), 'utf8')).parts;
     const motorDevices = parts.map(p => p.device).filter(id => id && deviceModels.get(id)?.class === 'motor').sort();
-    assert.deepEqual(motorDevices, ['spike-large-angular', 'spike-medium-angular', 'technic-minimotor-71427']);
+    assert.deepEqual(motorDevices, ['boost-interactive-motor', 'pup-medium-motor', 'spike-large-angular', 'spike-medium-angular',
+        'technic-large-motor', 'technic-minimotor-71427', 'technic-xl-motor']);
+    // The BOOST Move Hub's two motors are built into the hub part (internal joints actuatedBy 'built-in').
+    const moveHub = parts.find(p => p.part === '26910.dat');
+    assert.deepEqual(moveHub.internalJoints.filter(j => j.actuatedBy === 'built-in').map(j => [j.port, j.device]),
+        [['A', 'boost-move-hub-motor'], ['B', 'boost-move-hub-motor']]);
     for (const id of motorDevices) {
         const part = parts.find(p => p.device === id);
         assert.deepEqual(deviceModels.get(id).parts, [part.part], `${id} names its part`);

@@ -116606,6 +116606,8296 @@
      ]
     }
    }
+  },
+  {
+   "part": "26910.dat",
+   "name": "BOOST Move Hub",
+   "nameDe": "BOOST-Move-Hub",
+   "category": "hub",
+   "massGrams": 230,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      -50,
+      66,
+      -140
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      50,
+      66,
+      -140
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      -50,
+      66,
+      -120
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      50,
+      66,
+      -120
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h4",
+     "type": "pinhole",
+     "position": [
+      -50,
+      66,
+      -100
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h5",
+     "type": "pinhole",
+     "position": [
+      50,
+      66,
+      -100
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h6",
+     "type": "pinhole",
+     "position": [
+      -50,
+      66,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h7",
+     "type": "pinhole",
+     "position": [
+      50,
+      66,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h8",
+     "type": "pinhole",
+     "position": [
+      0,
+      91,
+      -10
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "x0",
+     "type": "axlehole",
+     "position": [
+      -50,
+      66,
+      140
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x1",
+     "type": "axlehole",
+     "position": [
+      50,
+      66,
+      140
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "s0",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      -90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s1",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      -110
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s2",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s3",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -110
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s4",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s5",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -110
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s6",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      -90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s7",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      -110
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s8",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -130
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s9",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -150
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s10",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      -130
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s11",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      -150
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s12",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      -130
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s13",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      -150
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s14",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -130
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s15",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -150
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s16",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s17",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s18",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s19",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s20",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s21",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s22",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s23",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s24",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s25",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s26",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      -50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s27",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s28",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      -50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s29",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s30",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s31",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s32",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      150
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s33",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      130
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s34",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      150
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s35",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      130
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s36",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      150
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s37",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      130
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s38",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      150
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s39",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      130
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s40",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      110
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s41",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s42",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      110
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s43",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s44",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      110
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s45",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s46",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      110
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s47",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s48",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s49",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s50",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s51",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s52",
+     "type": "stud",
+     "position": [
+      50,
+      24,
+      150
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s53",
+     "type": "stud",
+     "position": [
+      50,
+      24,
+      130
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s54",
+     "type": "stud",
+     "position": [
+      50,
+      24,
+      110
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s55",
+     "type": "stud",
+     "position": [
+      50,
+      24,
+      90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s56",
+     "type": "stud",
+     "position": [
+      50,
+      24,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s57",
+     "type": "stud",
+     "position": [
+      50,
+      24,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s58",
+     "type": "stud",
+     "position": [
+      50,
+      56,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s59",
+     "type": "stud",
+     "position": [
+      50,
+      56,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s60",
+     "type": "stud",
+     "position": [
+      50,
+      56,
+      -90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s61",
+     "type": "stud",
+     "position": [
+      50,
+      56,
+      -110
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s62",
+     "type": "stud",
+     "position": [
+      50,
+      56,
+      -130
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s63",
+     "type": "stud",
+     "position": [
+      50,
+      56,
+      -150
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s64",
+     "type": "stud",
+     "position": [
+      -50,
+      24,
+      150
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s65",
+     "type": "stud",
+     "position": [
+      -50,
+      24,
+      130
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s66",
+     "type": "stud",
+     "position": [
+      -50,
+      24,
+      110
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s67",
+     "type": "stud",
+     "position": [
+      -50,
+      24,
+      90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s68",
+     "type": "stud",
+     "position": [
+      -50,
+      24,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s69",
+     "type": "stud",
+     "position": [
+      -50,
+      24,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s70",
+     "type": "stud",
+     "position": [
+      -50,
+      56,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s71",
+     "type": "stud",
+     "position": [
+      -50,
+      56,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s72",
+     "type": "stud",
+     "position": [
+      -50,
+      56,
+      -90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s73",
+     "type": "stud",
+     "position": [
+      -50,
+      56,
+      -110
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s74",
+     "type": "stud",
+     "position": [
+      -50,
+      56,
+      -130
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s75",
+     "type": "stud",
+     "position": [
+      -50,
+      56,
+      -150
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "u0",
+     "type": "antistud",
+     "position": [
+      -50,
+      96,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u1",
+     "type": "antistud",
+     "position": [
+      -50,
+      96,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u2",
+     "type": "antistud",
+     "position": [
+      -50,
+      96,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u3",
+     "type": "antistud",
+     "position": [
+      -50,
+      96,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u4",
+     "type": "antistud",
+     "position": [
+      -50,
+      96,
+      90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u5",
+     "type": "antistud",
+     "position": [
+      -50,
+      96,
+      110
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u6",
+     "type": "antistud",
+     "position": [
+      -50,
+      96,
+      130
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u7",
+     "type": "antistud",
+     "position": [
+      -50,
+      96,
+      150
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u8",
+     "type": "antistud",
+     "position": [
+      -30,
+      96,
+      -150
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u9",
+     "type": "antistud",
+     "position": [
+      -30,
+      96,
+      -130
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u10",
+     "type": "antistud",
+     "position": [
+      -30,
+      96,
+      -110
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u11",
+     "type": "antistud",
+     "position": [
+      -30,
+      96,
+      -90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u12",
+     "type": "antistud",
+     "position": [
+      -30,
+      96,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u13",
+     "type": "antistud",
+     "position": [
+      -30,
+      96,
+      -50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u14",
+     "type": "antistud",
+     "position": [
+      -30,
+      96,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u15",
+     "type": "antistud",
+     "position": [
+      -30,
+      96,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u16",
+     "type": "antistud",
+     "position": [
+      -30,
+      96,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u17",
+     "type": "antistud",
+     "position": [
+      -30,
+      96,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u18",
+     "type": "antistud",
+     "position": [
+      -30,
+      96,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u19",
+     "type": "antistud",
+     "position": [
+      -30,
+      96,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u20",
+     "type": "antistud",
+     "position": [
+      -30,
+      96,
+      90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u21",
+     "type": "antistud",
+     "position": [
+      -30,
+      96,
+      110
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u22",
+     "type": "antistud",
+     "position": [
+      -30,
+      96,
+      130
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u23",
+     "type": "antistud",
+     "position": [
+      -30,
+      96,
+      150
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u24",
+     "type": "antistud",
+     "position": [
+      -10,
+      96,
+      -150
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u25",
+     "type": "antistud",
+     "position": [
+      -10,
+      96,
+      -130
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u26",
+     "type": "antistud",
+     "position": [
+      -10,
+      96,
+      -110
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u27",
+     "type": "antistud",
+     "position": [
+      -10,
+      96,
+      -90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u28",
+     "type": "antistud",
+     "position": [
+      -10,
+      96,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u29",
+     "type": "antistud",
+     "position": [
+      -10,
+      96,
+      -50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u30",
+     "type": "antistud",
+     "position": [
+      -10,
+      96,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u31",
+     "type": "antistud",
+     "position": [
+      -10,
+      96,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u32",
+     "type": "antistud",
+     "position": [
+      -10,
+      96,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u33",
+     "type": "antistud",
+     "position": [
+      -10,
+      96,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u34",
+     "type": "antistud",
+     "position": [
+      -10,
+      96,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u35",
+     "type": "antistud",
+     "position": [
+      -10,
+      96,
+      90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u36",
+     "type": "antistud",
+     "position": [
+      -10,
+      96,
+      110
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u37",
+     "type": "antistud",
+     "position": [
+      -10,
+      96,
+      130
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u38",
+     "type": "antistud",
+     "position": [
+      -10,
+      96,
+      150
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u39",
+     "type": "antistud",
+     "position": [
+      10,
+      96,
+      -150
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u40",
+     "type": "antistud",
+     "position": [
+      10,
+      96,
+      -130
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u41",
+     "type": "antistud",
+     "position": [
+      10,
+      96,
+      -110
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u42",
+     "type": "antistud",
+     "position": [
+      10,
+      96,
+      -90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u43",
+     "type": "antistud",
+     "position": [
+      10,
+      96,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u44",
+     "type": "antistud",
+     "position": [
+      10,
+      96,
+      -50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u45",
+     "type": "antistud",
+     "position": [
+      10,
+      96,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u46",
+     "type": "antistud",
+     "position": [
+      10,
+      96,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u47",
+     "type": "antistud",
+     "position": [
+      10,
+      96,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u48",
+     "type": "antistud",
+     "position": [
+      10,
+      96,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u49",
+     "type": "antistud",
+     "position": [
+      10,
+      96,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u50",
+     "type": "antistud",
+     "position": [
+      10,
+      96,
+      90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u51",
+     "type": "antistud",
+     "position": [
+      10,
+      96,
+      110
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u52",
+     "type": "antistud",
+     "position": [
+      10,
+      96,
+      130
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u53",
+     "type": "antistud",
+     "position": [
+      10,
+      96,
+      150
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u54",
+     "type": "antistud",
+     "position": [
+      30,
+      96,
+      -150
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u55",
+     "type": "antistud",
+     "position": [
+      30,
+      96,
+      -130
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u56",
+     "type": "antistud",
+     "position": [
+      30,
+      96,
+      -110
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u57",
+     "type": "antistud",
+     "position": [
+      30,
+      96,
+      -90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u58",
+     "type": "antistud",
+     "position": [
+      30,
+      96,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u59",
+     "type": "antistud",
+     "position": [
+      30,
+      96,
+      -50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u60",
+     "type": "antistud",
+     "position": [
+      30,
+      96,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u61",
+     "type": "antistud",
+     "position": [
+      30,
+      96,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u62",
+     "type": "antistud",
+     "position": [
+      30,
+      96,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u63",
+     "type": "antistud",
+     "position": [
+      30,
+      96,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u64",
+     "type": "antistud",
+     "position": [
+      30,
+      96,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u65",
+     "type": "antistud",
+     "position": [
+      30,
+      96,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u66",
+     "type": "antistud",
+     "position": [
+      30,
+      96,
+      90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u67",
+     "type": "antistud",
+     "position": [
+      30,
+      96,
+      110
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u68",
+     "type": "antistud",
+     "position": [
+      30,
+      96,
+      130
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u69",
+     "type": "antistud",
+     "position": [
+      30,
+      96,
+      150
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u70",
+     "type": "antistud",
+     "position": [
+      50,
+      96,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u71",
+     "type": "antistud",
+     "position": [
+      50,
+      96,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u72",
+     "type": "antistud",
+     "position": [
+      50,
+      96,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u73",
+     "type": "antistud",
+     "position": [
+      50,
+      96,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u74",
+     "type": "antistud",
+     "position": [
+      50,
+      96,
+      90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u75",
+     "type": "antistud",
+     "position": [
+      50,
+      96,
+      110
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u76",
+     "type": "antistud",
+     "position": [
+      50,
+      96,
+      130
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u77",
+     "type": "antistud",
+     "position": [
+      50,
+      96,
+      150
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      36,
+      2,
+      156
+     ],
+     "position": [
+      0,
+      -2,
+      0
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      56,
+      2,
+      56
+     ],
+     "position": [
+      0,
+      22,
+      100
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      56,
+      2,
+      76
+     ],
+     "position": [
+      0,
+      54,
+      -80
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      60,
+      48,
+      160
+     ],
+     "position": [
+      0,
+      48,
+      0
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 14,
+     "halfHeight": 10,
+     "position": [
+      -50,
+      66,
+      140
+     ],
+     "rotation": [
+      0,
+      0,
+      0.7071067811865476,
+      0.7071067811865476
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 14,
+     "halfHeight": 10,
+     "position": [
+      50,
+      66,
+      140
+     ],
+     "rotation": [
+      0,
+      0,
+      0.7071067811865476,
+      0.7071067811865476
+     ]
+    }
+   ],
+   "internalJoints": [
+    {
+     "id": "A",
+     "type": "hinge",
+     "point": [
+      -50,
+      66,
+      140
+     ],
+     "axis": [
+      -1,
+      0,
+      0
+     ],
+     "movingConnectors": [
+      "x0"
+     ],
+     "movingColliders": [
+      4
+     ],
+     "massFraction": 0.03,
+     "actuatedBy": "built-in",
+     "device": "boost-move-hub-motor",
+     "port": "A"
+    },
+    {
+     "id": "B",
+     "type": "hinge",
+     "point": [
+      50,
+      66,
+      140
+     ],
+     "axis": [
+      -1,
+      0,
+      0
+     ],
+     "movingConnectors": [
+      "x1"
+     ],
+     "movingColliders": [
+      5
+     ],
+     "massFraction": 0.03,
+     "actuatedBy": "built-in",
+     "device": "boost-move-hub-motor",
+     "port": "B"
+    }
+   ],
+   "hubProfile": "boost-move-hub",
+   "mirrorOf": {
+    "part": "26910.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  {
+   "part": "28738.dat",
+   "name": "Powered Up Hub (City hub)",
+   "nameDe": "Powered-Up-Hub (City-Hub)",
+   "category": "hub",
+   "massGrams": 150,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      86,
+      72
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      0,
+      86,
+      -72
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "s0",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s1",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s2",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s3",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s4",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s5",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s6",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s7",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s8",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s9",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s10",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      -50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s11",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s12",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      -50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s13",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s14",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s15",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s16",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s17",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s18",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s19",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s20",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s21",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s22",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s23",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s24",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s25",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s26",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s27",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "u0",
+     "type": "antistud",
+     "position": [
+      -30,
+      96,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u1",
+     "type": "antistud",
+     "position": [
+      -30,
+      96,
+      -50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u2",
+     "type": "antistud",
+     "position": [
+      -30,
+      96,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u3",
+     "type": "antistud",
+     "position": [
+      -30,
+      96,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u4",
+     "type": "antistud",
+     "position": [
+      -30,
+      96,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u5",
+     "type": "antistud",
+     "position": [
+      -30,
+      96,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u6",
+     "type": "antistud",
+     "position": [
+      -30,
+      96,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u7",
+     "type": "antistud",
+     "position": [
+      -30,
+      96,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u8",
+     "type": "antistud",
+     "position": [
+      -10,
+      96,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u9",
+     "type": "antistud",
+     "position": [
+      -10,
+      96,
+      -50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u10",
+     "type": "antistud",
+     "position": [
+      -10,
+      96,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u11",
+     "type": "antistud",
+     "position": [
+      -10,
+      96,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u12",
+     "type": "antistud",
+     "position": [
+      -10,
+      96,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u13",
+     "type": "antistud",
+     "position": [
+      -10,
+      96,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u14",
+     "type": "antistud",
+     "position": [
+      -10,
+      96,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u15",
+     "type": "antistud",
+     "position": [
+      -10,
+      96,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u16",
+     "type": "antistud",
+     "position": [
+      10,
+      96,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u17",
+     "type": "antistud",
+     "position": [
+      10,
+      96,
+      -50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u18",
+     "type": "antistud",
+     "position": [
+      10,
+      96,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u19",
+     "type": "antistud",
+     "position": [
+      10,
+      96,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u20",
+     "type": "antistud",
+     "position": [
+      10,
+      96,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u21",
+     "type": "antistud",
+     "position": [
+      10,
+      96,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u22",
+     "type": "antistud",
+     "position": [
+      10,
+      96,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u23",
+     "type": "antistud",
+     "position": [
+      10,
+      96,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u24",
+     "type": "antistud",
+     "position": [
+      30,
+      96,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u25",
+     "type": "antistud",
+     "position": [
+      30,
+      96,
+      -50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u26",
+     "type": "antistud",
+     "position": [
+      30,
+      96,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u27",
+     "type": "antistud",
+     "position": [
+      30,
+      96,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u28",
+     "type": "antistud",
+     "position": [
+      30,
+      96,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u29",
+     "type": "antistud",
+     "position": [
+      30,
+      96,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u30",
+     "type": "antistud",
+     "position": [
+      30,
+      96,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u31",
+     "type": "antistud",
+     "position": [
+      30,
+      96,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      36,
+      2,
+      76
+     ],
+     "position": [
+      0,
+      -2,
+      0
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      40,
+      48,
+      80
+     ],
+     "position": [
+      0,
+      48,
+      0
+     ]
+    }
+   ],
+   "hubProfile": "pup-city-hub",
+   "mirrorOf": {
+    "part": "28738.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  {
+   "part": "22127.dat",
+   "name": "Technic Hub (Control+)",
+   "nameDe": "Technic-Hub (Control+)",
+   "category": "hub",
+   "massGrams": 250,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      80,
+      0,
+      80
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      80,
+      0,
+      40
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      -80,
+      0,
+      60
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      80,
+      0,
+      60
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h4",
+     "type": "pinhole",
+     "position": [
+      80,
+      0,
+      -80
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h5",
+     "type": "pinhole",
+     "position": [
+      80,
+      0,
+      -40
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h6",
+     "type": "pinhole",
+     "position": [
+      -80,
+      0,
+      -60
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h7",
+     "type": "pinhole",
+     "position": [
+      80,
+      0,
+      -60
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h8",
+     "type": "pinhole",
+     "position": [
+      -80,
+      0,
+      80
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h9",
+     "type": "pinhole",
+     "position": [
+      -80,
+      0,
+      40
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h10",
+     "type": "pinhole",
+     "position": [
+      -80,
+      0,
+      -80
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h11",
+     "type": "pinhole",
+     "position": [
+      -80,
+      0,
+      -40
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      90,
+      50,
+      89
+     ]
+    }
+   ],
+   "hubProfile": "technic-hub",
+   "mirrorOf": null
+  },
+  {
+   "part": "67351c01.dat",
+   "name": "SPIKE Essential hub",
+   "nameDe": "SPIKE-Essential-Hub",
+   "category": "hub",
+   "massGrams": 100,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -10,
+      40
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -10,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      60,
+      -10,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -30,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h4",
+     "type": "pinhole",
+     "position": [
+      60,
+      -30,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h5",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -50,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h6",
+     "type": "pinhole",
+     "position": [
+      60,
+      -50,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h7",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -30,
+      -40
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h8",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -30,
+      40
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h9",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -70,
+      -40
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h10",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -10,
+      -40
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h11",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -10,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h12",
+     "type": "pinhole",
+     "position": [
+      60,
+      -10,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h13",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -30,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h14",
+     "type": "pinhole",
+     "position": [
+      60,
+      -30,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h15",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -50,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h16",
+     "type": "pinhole",
+     "position": [
+      60,
+      -50,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h17",
+     "type": "pinhole",
+     "position": [
+      60,
+      -10,
+      40
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h18",
+     "type": "pinhole",
+     "position": [
+      60,
+      -30,
+      -40
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h19",
+     "type": "pinhole",
+     "position": [
+      60,
+      -30,
+      40
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h20",
+     "type": "pinhole",
+     "position": [
+      60,
+      -70,
+      -40
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h21",
+     "type": "pinhole",
+     "position": [
+      60,
+      -10,
+      -40
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h22",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -10,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h23",
+     "type": "pinhole",
+     "position": [
+      60,
+      -10,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 16
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      70,
+      40,
+      50
+     ],
+     "position": [
+      0,
+      -40,
+      0
+     ]
+    }
+   ],
+   "hubProfile": "spike-essential",
+   "mirrorOf": null
+  },
+  {
+   "part": "19071.dat",
+   "name": "WeDo 2.0 Smart Hub",
+   "nameDe": "WeDo-2.0-Smart-Hub",
+   "category": "hub",
+   "massGrams": 85,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      -50,
+      34,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      50,
+      34,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      -50,
+      34,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      50,
+      34,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h4",
+     "type": "pinhole",
+     "position": [
+      -50,
+      34,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h5",
+     "type": "pinhole",
+     "position": [
+      50,
+      34,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "s0",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s1",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s2",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s3",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s4",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s5",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s6",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s7",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s8",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s9",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s10",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s11",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s12",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s13",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s14",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s15",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s16",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s17",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      -50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s18",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s19",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      -50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s20",
+     "type": "stud",
+     "position": [
+      50,
+      24,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s21",
+     "type": "stud",
+     "position": [
+      50,
+      24,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s22",
+     "type": "stud",
+     "position": [
+      50,
+      24,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s23",
+     "type": "stud",
+     "position": [
+      50,
+      24,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s24",
+     "type": "stud",
+     "position": [
+      -50,
+      24,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s25",
+     "type": "stud",
+     "position": [
+      -50,
+      24,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s26",
+     "type": "stud",
+     "position": [
+      -50,
+      24,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s27",
+     "type": "stud",
+     "position": [
+      -50,
+      24,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "u0",
+     "type": "antistud",
+     "position": [
+      -30,
+      72,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u1",
+     "type": "antistud",
+     "position": [
+      -30,
+      72,
+      -50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u2",
+     "type": "antistud",
+     "position": [
+      -30,
+      72,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u3",
+     "type": "antistud",
+     "position": [
+      -30,
+      72,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u4",
+     "type": "antistud",
+     "position": [
+      -30,
+      72,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u5",
+     "type": "antistud",
+     "position": [
+      -30,
+      72,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u6",
+     "type": "antistud",
+     "position": [
+      -30,
+      72,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u7",
+     "type": "antistud",
+     "position": [
+      -30,
+      72,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u8",
+     "type": "antistud",
+     "position": [
+      -10,
+      72,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u9",
+     "type": "antistud",
+     "position": [
+      -10,
+      72,
+      -50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u10",
+     "type": "antistud",
+     "position": [
+      -10,
+      72,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u11",
+     "type": "antistud",
+     "position": [
+      -10,
+      72,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u12",
+     "type": "antistud",
+     "position": [
+      -10,
+      72,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u13",
+     "type": "antistud",
+     "position": [
+      -10,
+      72,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u14",
+     "type": "antistud",
+     "position": [
+      -10,
+      72,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u15",
+     "type": "antistud",
+     "position": [
+      -10,
+      72,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u16",
+     "type": "antistud",
+     "position": [
+      10,
+      72,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u17",
+     "type": "antistud",
+     "position": [
+      10,
+      72,
+      -50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u18",
+     "type": "antistud",
+     "position": [
+      10,
+      72,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u19",
+     "type": "antistud",
+     "position": [
+      10,
+      72,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u20",
+     "type": "antistud",
+     "position": [
+      10,
+      72,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u21",
+     "type": "antistud",
+     "position": [
+      10,
+      72,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u22",
+     "type": "antistud",
+     "position": [
+      10,
+      72,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u23",
+     "type": "antistud",
+     "position": [
+      10,
+      72,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u24",
+     "type": "antistud",
+     "position": [
+      30,
+      72,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u25",
+     "type": "antistud",
+     "position": [
+      30,
+      72,
+      -50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u26",
+     "type": "antistud",
+     "position": [
+      30,
+      72,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u27",
+     "type": "antistud",
+     "position": [
+      30,
+      72,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u28",
+     "type": "antistud",
+     "position": [
+      30,
+      72,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u29",
+     "type": "antistud",
+     "position": [
+      30,
+      72,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u30",
+     "type": "antistud",
+     "position": [
+      30,
+      72,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u31",
+     "type": "antistud",
+     "position": [
+      30,
+      72,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      36,
+      2,
+      56
+     ],
+     "position": [
+      0,
+      -2,
+      0
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      56,
+      2,
+      36
+     ],
+     "position": [
+      0,
+      22,
+      0
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      60,
+      36,
+      80
+     ],
+     "position": [
+      0,
+      36,
+      0
+     ]
+    }
+   ],
+   "hubProfile": "wedo2",
+   "mirrorOf": {
+    "part": "19071.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  {
+   "part": "22169.dat",
+   "name": "Technic large motor (Control+)",
+   "nameDe": "Technic-L-Motor (Control+)",
+   "category": "motor",
+   "massGrams": 70,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      20,
+      -20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      -20,
+      20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      20,
+      20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h4",
+     "type": "pinhole",
+     "position": [
+      -20,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h5",
+     "type": "pinhole",
+     "position": [
+      -20,
+      0,
+      140
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h6",
+     "type": "pinhole",
+     "position": [
+      0,
+      20,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h7",
+     "type": "pinhole",
+     "position": [
+      20,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h8",
+     "type": "pinhole",
+     "position": [
+      20,
+      0,
+      140
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h9",
+     "type": "pinhole",
+     "position": [
+      0,
+      -20,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h10",
+     "type": "pinhole",
+     "position": [
+      -20,
+      20,
+      140
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h11",
+     "type": "pinhole",
+     "position": [
+      20,
+      20,
+      140
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h12",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -20,
+      140
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h13",
+     "type": "pinhole",
+     "position": [
+      20,
+      -20,
+      140
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x0",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      30,
+      39,
+      75
+     ],
+     "position": [
+      0,
+      0,
+      75
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 12,
+     "halfHeight": 5,
+     "position": [
+      0,
+      0,
+      -5
+     ],
+     "rotation": [
+      0.7071067811865476,
+      0,
+      0,
+      0.7071067811865476
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      30,
+      12.5,
+      5
+     ],
+     "position": [
+      0,
+      -26.5,
+      -5
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      30,
+      12.5,
+      5
+     ],
+     "position": [
+      0,
+      26.5,
+      -5
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      8,
+      14,
+      5
+     ],
+     "position": [
+      -22,
+      0,
+      -5
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      8,
+      14,
+      5
+     ],
+     "position": [
+      22,
+      0,
+      -5
+     ]
+    }
+   ],
+   "internalJoints": [
+    {
+     "id": "motor",
+     "type": "hinge",
+     "point": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "movingConnectors": [
+      "x0"
+     ],
+     "movingColliders": [
+      1
+     ],
+     "massFraction": 0.15,
+     "actuatedBy": "device"
+    }
+   ],
+   "device": "technic-large-motor",
+   "mirrorOf": {
+    "part": "22169.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  {
+   "part": "22172.dat",
+   "name": "Technic XL motor (Control+)",
+   "nameDe": "Technic-XL-Motor (Control+)",
+   "category": "motor",
+   "massGrams": 95,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      -40,
+      20,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      40,
+      20,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      -20,
+      40,
+      40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      20,
+      40,
+      40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h4",
+     "type": "pinhole",
+     "position": [
+      -20,
+      20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h5",
+     "type": "pinhole",
+     "position": [
+      20,
+      20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h6",
+     "type": "pinhole",
+     "position": [
+      -40,
+      -20,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h7",
+     "type": "pinhole",
+     "position": [
+      40,
+      -20,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h8",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -40,
+      40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h9",
+     "type": "pinhole",
+     "position": [
+      20,
+      -40,
+      40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h10",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h11",
+     "type": "pinhole",
+     "position": [
+      20,
+      -20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h12",
+     "type": "pinhole",
+     "position": [
+      20,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h13",
+     "type": "pinhole",
+     "position": [
+      20,
+      0,
+      140
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h14",
+     "type": "pinhole",
+     "position": [
+      0,
+      20,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h15",
+     "type": "pinhole",
+     "position": [
+      -40,
+      0,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h16",
+     "type": "pinhole",
+     "position": [
+      40,
+      0,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h17",
+     "type": "pinhole",
+     "position": [
+      -20,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h18",
+     "type": "pinhole",
+     "position": [
+      -20,
+      0,
+      140
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h19",
+     "type": "pinhole",
+     "position": [
+      0,
+      -20,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h20",
+     "type": "pinhole",
+     "position": [
+      -20,
+      20,
+      140
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h21",
+     "type": "pinhole",
+     "position": [
+      20,
+      20,
+      140
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h22",
+     "type": "pinhole",
+     "position": [
+      -40,
+      20,
+      120
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h23",
+     "type": "pinhole",
+     "position": [
+      40,
+      20,
+      120
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h24",
+     "type": "pinhole",
+     "position": [
+      -20,
+      40,
+      120
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h25",
+     "type": "pinhole",
+     "position": [
+      20,
+      40,
+      120
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h26",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -20,
+      140
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h27",
+     "type": "pinhole",
+     "position": [
+      20,
+      -20,
+      140
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h28",
+     "type": "pinhole",
+     "position": [
+      -40,
+      -20,
+      120
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h29",
+     "type": "pinhole",
+     "position": [
+      40,
+      -20,
+      120
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h30",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -40,
+      120
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h31",
+     "type": "pinhole",
+     "position": [
+      20,
+      -40,
+      120
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h32",
+     "type": "pinhole",
+     "position": [
+      -40,
+      0,
+      120
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h33",
+     "type": "pinhole",
+     "position": [
+      40,
+      0,
+      120
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "x0",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      50,
+      49,
+      75
+     ],
+     "position": [
+      0,
+      0,
+      75
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 12,
+     "halfHeight": 5,
+     "position": [
+      0,
+      0,
+      -5
+     ],
+     "rotation": [
+      0.7071067811865476,
+      0,
+      0,
+      0.7071067811865476
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      50,
+      17.5,
+      5
+     ],
+     "position": [
+      0,
+      -31.5,
+      -5
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      50,
+      17.5,
+      5
+     ],
+     "position": [
+      0,
+      31.5,
+      -5
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      18,
+      14,
+      5
+     ],
+     "position": [
+      -32,
+      0,
+      -5
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      18,
+      14,
+      5
+     ],
+     "position": [
+      32,
+      0,
+      -5
+     ]
+    }
+   ],
+   "internalJoints": [
+    {
+     "id": "motor",
+     "type": "hinge",
+     "point": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "movingConnectors": [
+      "x0"
+     ],
+     "movingColliders": [
+      1
+     ],
+     "massFraction": 0.15,
+     "actuatedBy": "device"
+    }
+   ],
+   "device": "technic-xl-motor",
+   "mirrorOf": {
+    "part": "22172.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    },
+    "others": [
+     {
+      "m": [
+       1,
+       0,
+       0,
+       0,
+       -1,
+       0,
+       0,
+       0,
+       1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "part": "26913.dat",
+   "name": "BOOST interactive motor",
+   "nameDe": "BOOST-Interaktiver Motor",
+   "category": "motor",
+   "massGrams": 40,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      20,
+      34,
+      -50
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      0,
+      54,
+      -50
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      0,
+      14,
+      -50
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      -20,
+      34,
+      -50
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "x0",
+     "type": "axlehole",
+     "position": [
+      0,
+      34,
+      -50
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "s0",
+     "type": "stud",
+     "position": [
+      30,
+      8,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s1",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s2",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s3",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s4",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s5",
+     "type": "stud",
+     "position": [
+      30,
+      8,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s6",
+     "type": "stud",
+     "position": [
+      -30,
+      8,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s7",
+     "type": "stud",
+     "position": [
+      -30,
+      8,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s8",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s9",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s10",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s11",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s12",
+     "type": "stud",
+     "position": [
+      30,
+      8,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s13",
+     "type": "stud",
+     "position": [
+      30,
+      8,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s14",
+     "type": "stud",
+     "position": [
+      -30,
+      8,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s15",
+     "type": "stud",
+     "position": [
+      -30,
+      8,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s16",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s17",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s18",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s19",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "u0",
+     "type": "antistud",
+     "position": [
+      -10,
+      72,
+      -50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u1",
+     "type": "antistud",
+     "position": [
+      -10,
+      72,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u2",
+     "type": "antistud",
+     "position": [
+      -10,
+      72,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u3",
+     "type": "antistud",
+     "position": [
+      -10,
+      72,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u4",
+     "type": "antistud",
+     "position": [
+      -10,
+      72,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u5",
+     "type": "antistud",
+     "position": [
+      -10,
+      72,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u6",
+     "type": "antistud",
+     "position": [
+      10,
+      72,
+      -50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u7",
+     "type": "antistud",
+     "position": [
+      10,
+      72,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u8",
+     "type": "antistud",
+     "position": [
+      10,
+      72,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u9",
+     "type": "antistud",
+     "position": [
+      10,
+      72,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u10",
+     "type": "antistud",
+     "position": [
+      10,
+      72,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u11",
+     "type": "antistud",
+     "position": [
+      10,
+      72,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      36,
+      2,
+      36
+     ],
+     "position": [
+      0,
+      6,
+      0
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      16,
+      2,
+      56
+     ],
+     "position": [
+      0,
+      -2,
+      0
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      40,
+      36,
+      50
+     ],
+     "position": [
+      0,
+      36,
+      10
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 26,
+     "halfHeight": 10,
+     "position": [
+      0,
+      34,
+      -50
+     ],
+     "rotation": [
+      0.7071067811865476,
+      0,
+      0,
+      0.7071067811865476
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      40,
+      3,
+      10
+     ],
+     "position": [
+      0,
+      3,
+      -50
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      40,
+      5,
+      10
+     ],
+     "position": [
+      0,
+      67,
+      -50
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      6,
+      28,
+      10
+     ],
+     "position": [
+      -34,
+      34,
+      -50
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      6,
+      28,
+      10
+     ],
+     "position": [
+      34,
+      34,
+      -50
+     ]
+    }
+   ],
+   "internalJoints": [
+    {
+     "id": "motor",
+     "type": "hinge",
+     "point": [
+      0,
+      34,
+      -50
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "movingConnectors": [
+      "x0",
+      "h0",
+      "h1",
+      "h2",
+      "h3"
+     ],
+     "movingColliders": [
+      3
+     ],
+     "massFraction": 0.15,
+     "actuatedBy": "device"
+    }
+   ],
+   "device": "boost-interactive-motor",
+   "mirrorOf": null
+  },
+  {
+   "part": "21980.dat",
+   "name": "WeDo 2.0 medium motor",
+   "nameDe": "WeDo-2.0-Motor",
+   "category": "motor",
+   "massGrams": 30,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      20,
+      26,
+      -10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      0,
+      46,
+      -10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      -20,
+      26,
+      -10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "x0",
+     "type": "axlehole",
+     "position": [
+      0,
+      26,
+      -10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "s0",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s1",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s2",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s3",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "u0",
+     "type": "antistud",
+     "position": [
+      -20,
+      56,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u1",
+     "type": "antistud",
+     "position": [
+      -20,
+      56,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u2",
+     "type": "antistud",
+     "position": [
+      -20,
+      56,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u3",
+     "type": "antistud",
+     "position": [
+      -20,
+      56,
+      90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u4",
+     "type": "antistud",
+     "position": [
+      0,
+      56,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u5",
+     "type": "antistud",
+     "position": [
+      0,
+      56,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u6",
+     "type": "antistud",
+     "position": [
+      0,
+      56,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u7",
+     "type": "antistud",
+     "position": [
+      0,
+      56,
+      90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u8",
+     "type": "antistud",
+     "position": [
+      20,
+      56,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u9",
+     "type": "antistud",
+     "position": [
+      20,
+      56,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u10",
+     "type": "antistud",
+     "position": [
+      20,
+      56,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u11",
+     "type": "antistud",
+     "position": [
+      20,
+      56,
+      90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      16,
+      2,
+      16
+     ],
+     "position": [
+      0,
+      -2,
+      0
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      30,
+      30,
+      50
+     ],
+     "position": [
+      0,
+      26,
+      50
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 16,
+     "halfHeight": 10,
+     "position": [
+      0,
+      26,
+      -10
+     ],
+     "rotation": [
+      0.7071067811865476,
+      0,
+      0,
+      0.7071067811865476
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      30,
+      6,
+      10
+     ],
+     "position": [
+      0,
+      2,
+      -10
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      30,
+      6,
+      10
+     ],
+     "position": [
+      0,
+      50,
+      -10
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      6,
+      18,
+      10
+     ],
+     "position": [
+      -24,
+      26,
+      -10
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      6,
+      18,
+      10
+     ],
+     "position": [
+      24,
+      26,
+      -10
+     ]
+    }
+   ],
+   "internalJoints": [
+    {
+     "id": "motor",
+     "type": "hinge",
+     "point": [
+      0,
+      26,
+      -10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "movingConnectors": [
+      "x0",
+      "h0",
+      "h1",
+      "h2"
+     ],
+     "movingColliders": [
+      2
+     ],
+     "massFraction": 0.15,
+     "actuatedBy": "device"
+    }
+   ],
+   "device": "pup-medium-motor",
+   "mirrorOf": {
+    "part": "21980.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  {
+   "part": "26912.dat",
+   "name": "BOOST colour and distance sensor",
+   "nameDe": "BOOST-Farb- und Abstandssensor",
+   "category": "sensor",
+   "massGrams": 15,
+   "connectors": [
+    {
+     "id": "s0",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s1",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s2",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s3",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s4",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s5",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s6",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s7",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "u0",
+     "type": "antistud",
+     "position": [
+      -10,
+      48,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u1",
+     "type": "antistud",
+     "position": [
+      -10,
+      48,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u2",
+     "type": "antistud",
+     "position": [
+      10,
+      48,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u3",
+     "type": "antistud",
+     "position": [
+      10,
+      48,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      16,
+      2,
+      36
+     ],
+     "position": [
+      0,
+      -2,
+      0
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      20,
+      12,
+      40
+     ],
+     "position": [
+      0,
+      12,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      20,
+      12,
+      20
+     ],
+     "position": [
+      0,
+      36,
+      -20
+     ]
+    }
+   ],
+   "device": "boost-color-distance",
+   "probe": {
+    "kind": "ray",
+    "origin": [
+     0,
+     24,
+     -40
+    ],
+    "direction": [
+     0,
+     0,
+     -1
+    ]
+   },
+   "mirrorOf": {
+    "part": "26912.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  {
+   "part": "20841.dat",
+   "name": "WeDo 2.0 tilt sensor",
+   "nameDe": "WeDo-2.0-Neigungssensor",
+   "category": "sensor",
+   "massGrams": 12,
+   "connectors": [
+    {
+     "id": "s0",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s1",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s2",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s3",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s4",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s5",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s6",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s7",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "u0",
+     "type": "antistud",
+     "position": [
+      -30,
+      24,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u1",
+     "type": "antistud",
+     "position": [
+      -30,
+      24,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u2",
+     "type": "antistud",
+     "position": [
+      -10,
+      24,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u3",
+     "type": "antistud",
+     "position": [
+      -10,
+      24,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u4",
+     "type": "antistud",
+     "position": [
+      10,
+      24,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u5",
+     "type": "antistud",
+     "position": [
+      10,
+      24,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u6",
+     "type": "antistud",
+     "position": [
+      30,
+      24,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u7",
+     "type": "antistud",
+     "position": [
+      30,
+      24,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      36,
+      2,
+      16
+     ],
+     "position": [
+      0,
+      -2,
+      0
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      40,
+      12,
+      20
+     ],
+     "position": [
+      0,
+      12,
+      0
+     ]
+    }
+   ],
+   "device": "wedo2-tilt",
+   "probe": {
+    "kind": "ray",
+    "origin": [
+     40,
+     12,
+     0
+    ],
+    "direction": [
+     1,
+     0,
+     0
+    ]
+   },
+   "mirrorOf": {
+    "part": "20841.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      -1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  {
+   "part": "20844.dat",
+   "name": "WeDo 2.0 motion sensor",
+   "nameDe": "WeDo-2.0-Bewegungssensor",
+   "category": "sensor",
+   "massGrams": 12,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      33,
+      10,
+      -10
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 14
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      33,
+      10,
+      10
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 14
+    },
+    {
+     "id": "s0",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s1",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s2",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s3",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s4",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s5",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "u0",
+     "type": "antistud",
+     "position": [
+      -30,
+      24,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u1",
+     "type": "antistud",
+     "position": [
+      -30,
+      24,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u2",
+     "type": "antistud",
+     "position": [
+      -10,
+      24,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u3",
+     "type": "antistud",
+     "position": [
+      -10,
+      24,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u4",
+     "type": "antistud",
+     "position": [
+      10,
+      24,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u5",
+     "type": "antistud",
+     "position": [
+      10,
+      24,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u6",
+     "type": "antistud",
+     "position": [
+      30,
+      24,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u7",
+     "type": "antistud",
+     "position": [
+      30,
+      24,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      26,
+      2,
+      16
+     ],
+     "position": [
+      -10,
+      -2,
+      0
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      40,
+      12,
+      20
+     ],
+     "position": [
+      0,
+      12,
+      0
+     ]
+    }
+   ],
+   "device": "wedo2-motion",
+   "probe": {
+    "kind": "ray",
+    "origin": [
+     40,
+     10,
+     0
+    ],
+    "direction": [
+     1,
+     0,
+     0
+    ]
+   },
+   "mirrorOf": {
+    "part": "20844.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      -1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   }
  ]
 }
