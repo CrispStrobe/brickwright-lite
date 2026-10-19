@@ -392,8 +392,8 @@ association stay explicitly false. New bridge parents, held links and terminal
 font files retain the strict ownership, identity, path and output limits; a later
 unsafe terminal parent can still produce a failed observation. Existing discovery
 and font-chain versions retain their admission rules. New formats, manufactured
-controls and independent source review precede any hosted job, official delivery,
-consumer selection or distinct event. Actual execution remains disabled.
+controls and independent source review precede any job activation, official
+observation, consumer selection or distinct event. Actual execution remains disabled.
 The new bridge reader must also reject newly derived historical-entry ancestors
 after a forbidden rebound, and suffixes after failed link close or identity
 readback. Preserve the original failed witnesses and legitimate common ancestors;
@@ -405,6 +405,69 @@ controller/reader module code apart from CLI dispatch, remain unchanged. The
 retained prior also fits the new request limits without any observation calls;
 that parser check neither selects a new event nor approves the current host.
 
+A further source-only bridge delivery slice adds separate
+`--font-bridge-metadata` and `--font-bridge-delivery` reader modes. Its closed
+`bw.gui-hdd.font-bridge-delivery-expectation.v1` selects the current source,
+request, historical prior reference, executing workflow and official
+run/job/artifact metadata independently of the uploaded ZIP. Metadata grading
+does not read an archive and does not authorize acquisition. Raw labeled-event
+and marker checks remain deferred until original grading; the run API's
+`pull_request` value alone cannot establish those bytes. The executing merge
+commit remains distinct from source head, while selected workflow bytes must
+match the current source's workflow descriptor.
+
+The archive reader checks the complete header census before inflation: 81 exact
+file roles, optional uniform upload prefix, bounded known directories, and no
+extra, mixed, duplicate, encrypted, truncated or special-file members. It retains
+the 32 MiB archive/inflation and 96-entry caps. Twenty-three Git commands have
+69 raw process/stdout/stderr sidecars joined to the inner descriptors, selected
+source bytes, fixed argv, environment, identity and serial chronology. These are
+finite original-consistency checks, not complete host or continuous ownership
+authentication. All runtime, qualification and current-association flags stay false.
+The selected aggregate child span is bounded to 200 seconds; it does not bound
+controller work before the first child or after the last child, prove preemption,
+or anchor monotonic observations to official API UTC timestamps.
+
+The initial supported profile requires all source commands to succeed, then a
+complete observation or an ordinary retained chain/close failure. Failed
+collection remains a failed producing job even when the reader validates its
+evidence. A primary failure must name the rederived attempted path, and secondary
+close failures must refer to that same path. Missing raw triples,
+setup/source/retention failures, cancellation and
+official timeouts are refused; preserve unsupported originals externally. Existing
+discovery/delivery readers and their selected consumers remain unchanged.
+
+The new `font-bridge` workflow job has a literal-false condition, and
+`FONT_BRIDGE_ENABLED` remains false. It preserves the selected actions, package
+setup and runtime pins, installs one immutable request with credentials confined
+to that step, collects without credentials, and always retains the owned output.
+Its finite backstops have no measured sufficiency or containment claim. No new
+request, transport setting, event, archive acquisition or hosted bridge observation
+is selected by this source implementation.
+
+The scoped census refresh records 19 recent completed runs at their actual source;
+new bridge steps are younger than those readings. Every unrelated workflow row,
+ordered run and main provenance remains held. Four inventory pointers preserve the
+two consumed failed events now outside that window, and five pointers explain the
+new disabled bridge job and named steps. No event was run to populate coverage;
+the explicit generator check remains required alongside the census tests.
+
+This checkpoint passes 66 Node tests, including 135 embedded Python controls,
+with no failures or skips. Seven new focused methods include eight detected
+critical omissions; eight workflow mutations are also detected. Independent
+reader-only checks accept four manufactured positive cases, reject 30 coherent
+metadata/raw mutations, and reject 19 malformed archive cases before inflation.
+All 128 earlier Python methods/helpers, legacy reader branches and existing
+workflow bytes remain held. These controls qualify the source checkpoint only.
+
+Next, review this draft and its parent composition against current main and
+finish every enabled exact-head check. Before any activation, separately freeze
+the full source/request/prior/consumer selections, executing workflow, resource
+envelope and official event/job/artifact joins. The metadata-only verdict cannot
+authorize retrieval; acquisition requires that external admission, once. Audit
+the retained original independently, preserve failed producing conclusions, then
+close native font selection and the complete runtime/frontend graph before any
+clean affected browser/guest qualification. Keep actual execution disabled.
 
 The existing runner bridge [PR986](https://github.com/CrispStrobe/brickwright-lite/pull/986),
 download action [PR987](https://github.com/CrispStrobe/brickwright-lite/pull/987)

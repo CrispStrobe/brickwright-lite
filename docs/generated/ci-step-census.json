@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-18T19:48:04.507Z",
+ "generatedAt": "2026-10-19T07:04:55.440Z",
  "repo": "CrispStrobe/brickwright-lite",
  "headSha": "a87a7b447",
  "newestMainRun": 36409366028,
@@ -1799,6 +1799,54 @@
    "sha": "93dd86bd2"
   },
   {
+   "run": 39211579340,
+   "workflow": "i80386-hdd-gui-actual.yml",
+   "branch": "lane/386-font-chain-prefix-20261019",
+   "sha": "6a7be70c4"
+  },
+  {
+   "run": 39211578243,
+   "workflow": "i80386-hdd-gui-actual.yml",
+   "branch": "lane/386-font-chain-prefix-20261019",
+   "sha": "6a7be70c4"
+  },
+  {
+   "run": 39209352872,
+   "workflow": "i80386-hdd-gui-actual.yml",
+   "branch": "lane/386-font-bridge-source-20261019",
+   "sha": "a8f8b3c54"
+  },
+  {
+   "run": 39209352831,
+   "workflow": "i80386-hdd-gui-actual.yml",
+   "branch": "lane/386-font-bridge-source-20261019",
+   "sha": "a8f8b3c54"
+  },
+  {
+   "run": 39207868286,
+   "workflow": "i80386-hdd-gui-actual.yml",
+   "branch": "lane/386-font-chain-source-20261019",
+   "sha": "5f3e45926"
+  },
+  {
+   "run": 39206389297,
+   "workflow": "i80386-hdd-gui-actual.yml",
+   "branch": "lane/386-font-chain-source-20261019",
+   "sha": "5f3e45926"
+  },
+  {
+   "run": 39170725966,
+   "workflow": "i80386-hdd-gui-actual.yml",
+   "branch": "lane/386-hdd-composition-20261016",
+   "sha": "79afc8bc4"
+  },
+  {
+   "run": 39160971918,
+   "workflow": "i80386-hdd-gui-actual.yml",
+   "branch": "lane/386-hdd-composition-20261016",
+   "sha": "79afc8bc4"
+  },
+  {
    "run": 39156700861,
    "workflow": "i80386-hdd-gui-actual.yml",
    "branch": "lane/386-hdd-composition-20261016",
@@ -1863,54 +1911,6 @@
    "workflow": "i80386-hdd-gui-actual.yml",
    "branch": "lane/386-hdd-composition-20261016",
    "sha": "b5c2921a0"
-  },
-  {
-   "run": 39114108417,
-   "workflow": "i80386-hdd-gui-actual.yml",
-   "branch": "lane/386-hdd-composition-20261016",
-   "sha": "ff253b1e5"
-  },
-  {
-   "run": 39111308927,
-   "workflow": "i80386-hdd-gui-actual.yml",
-   "branch": "lane/386-hdd-composition-20261016",
-   "sha": "59a41df87"
-  },
-  {
-   "run": 39111138893,
-   "workflow": "i80386-hdd-gui-actual.yml",
-   "branch": "lane/386-hdd-composition-20261016",
-   "sha": "59a41df87"
-  },
-  {
-   "run": 39110581756,
-   "workflow": "i80386-hdd-gui-actual.yml",
-   "branch": "lane/386-hdd-composition-20261016",
-   "sha": "16484f108"
-  },
-  {
-   "run": 39107642173,
-   "workflow": "i80386-hdd-gui-actual.yml",
-   "branch": "lane/386-hdd-composition-20261016",
-   "sha": "964c535bf"
-  },
-  {
-   "run": 39107615364,
-   "workflow": "i80386-hdd-gui-actual.yml",
-   "branch": "lane/386-hdd-composition-20261016",
-   "sha": "9c05b0629"
-  },
-  {
-   "run": 39106669518,
-   "workflow": "i80386-hdd-gui-actual.yml",
-   "branch": "lane/386-hdd-composition-20261016",
-   "sha": "671702949"
-  },
-  {
-   "run": 39106463062,
-   "workflow": "i80386-hdd-gui-actual.yml",
-   "branch": "lane/386-hdd-composition-20261016",
-   "sha": "671702949"
   }
  ],
  "workflowsInTree": [
@@ -6675,20 +6675,19 @@
     "Record bounded read-only font discovery without credentials"
    ],
    "inFileInNoRun": [
+    "Refuse unreviewed inventory before setup or input retrieval",
+    "Install unchanged selected packages and Chromium without frontend build",
+    "Install externally selected immutable template and record observations",
     "Install empty Python cache prefix and refuse unreviewed actual source",
     "Repeat inventory installation exactly, without frontend build",
     "Install externally admitted request and refuse runtime/source drift",
     "Prepare unchanged authenticated free media once",
-    "One official frontend acquisition and two serial genuine UI scenarios",
-    "Refuse unreviewed discovery before setup or input retrieval",
-    "Install unchanged selected packages and Chromium for font observation",
-    "Install externally selected immutable discovery request",
-    "Record bounded read-only font discovery without credentials"
+    "One official frontend acquisition and two serial genuine UI scenarios"
    ],
    "steps": {
     "Source and manufactured-original controls only": {
-     "existed": 17,
-     "ran": 17,
+     "existed": 15,
+     "ran": 15,
      "existedMain": 0,
      "ranMain": 0,
      "skippedInFailedRuns": 0,
@@ -6699,41 +6698,54 @@
      "clause": null,
      "class": "always"
     },
-    "Refuse unreviewed inventory before setup or input retrieval": {
-     "existed": 2,
-     "ran": 2,
+    "Refuse unreviewed discovery before setup or input retrieval": {
+     "existed": 1,
+     "ran": 1,
      "existedMain": 0,
      "ranMain": 0,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
-      "inventory"
+      "font-discovery"
      ],
      "clause": null,
      "class": "always"
     },
-    "Install unchanged selected packages and Chromium without frontend build": {
-     "existed": 2,
-     "ran": 2,
+    "Install unchanged selected packages and Chromium for font observation": {
+     "existed": 1,
+     "ran": 1,
      "existedMain": 0,
      "ranMain": 0,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
-      "inventory"
+      "font-discovery"
      ],
      "clause": null,
      "class": "always"
     },
-    "Install externally selected immutable template and record observations": {
-     "existed": 2,
-     "ran": 2,
+    "Install externally selected immutable discovery request": {
+     "existed": 1,
+     "ran": 1,
      "existedMain": 0,
      "ranMain": 0,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
-      "inventory"
+      "font-discovery"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Record bounded read-only font discovery without credentials": {
+     "existed": 1,
+     "ran": 1,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "font-discovery"
      ],
      "clause": null,
      "class": "always"
@@ -6742,7 +6754,7 @@
    "jobs": {
     "controls": {
      "existed": 19,
-     "ran": 17,
+     "ran": 15,
      "existedMain": 0,
      "ranMain": 0,
      "class": "sometimes"
@@ -6755,26 +6767,26 @@
      "class": "never"
     },
     "font-discovery": {
-     "existed": 7,
+     "existed": 15,
+     "ran": 1,
+     "existedMain": 0,
+     "ranMain": 0,
+     "class": "sometimes"
+    },
+    "inventory": {
+     "existed": 19,
      "ran": 0,
      "existedMain": 0,
      "ranMain": 0,
      "class": "never"
-    },
-    "inventory": {
-     "existed": 19,
-     "ran": 2,
-     "existedMain": 0,
-     "ranMain": 0,
-     "class": "sometimes"
     }
    },
-   "sourceSha": "624d436e0"
+   "sourceSha": "6a7be70c4"
   }
  },
  "lastRefresh": {
   "workflow": "i80386-hdd-gui-actual.yml",
-  "at": "2026-10-18T19:48:04.507Z",
-  "sourceSha": "624d436e0"
+  "at": "2026-10-19T07:04:55.440Z",
+  "sourceSha": "6a7be70c4"
  }
 }

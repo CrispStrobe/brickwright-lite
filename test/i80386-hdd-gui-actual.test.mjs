@@ -2241,6 +2241,197 @@ class Originals(unittest.TestCase):
         expected={'schema':'bw.gui-hdd.font-chain-expectation.v1','source':D(request)['source'],'request':ROW(request),'original':ROW(E(value)),'runId':200,'workflowSha':'d'*40}
         self.assertFalse(r.verify_font_chain(E(value),request,expected)['complete'])
 
+    def font_bridge_delivery_fixture(self,failed=False,failure_cut=None):
+        failed=failed or failure_cut is not None;key=(failed,failure_cut)
+        cache=getattr(type(self),'_bridge_delivery_seeds',{})
+        if key in cache:return copy.deepcopy(cache[key])
+        value,request_raw,inner,events,status=self.font_bridge_fixture(cut=failure_cut or ('close' if failed else None))
+        workflow=b'name: manufactured separate bridge workflow\n';request=D(request_raw);request['source']['files'][r.FONT_WORKFLOW_PATH]=ROW(workflow);request_raw=E(request)
+        value['request']=c.font_blob(request_raw);event=D(base64.b64decode(value['event']['base64']));event['pull_request']['body']='<!-- BW_GUI_HDD_FONT_BRIDGE_SHA256='+H(request_raw)+' -->';value['event']=c.font_blob(E(event))
+        files={name:b'' for name in r.FONT_BRIDGE_TOP};files['request.json']=request_raw
+        files['input-install.stdout']=E(dict(ROW(request_raw),gitBlob=hashlib.sha1(b'blob '+str(len(request_raw)).encode()+b'\0'+request_raw).hexdigest()))
+        for index,command in enumerate(value['sourceCommands']):
+            stdout=(request['source']['head' if index==0 else 'tree']+'\n').encode() if index<2 else workflow if sorted(r.SOURCE)[index-2]==r.FONT_WORKFLOW_PATH else ('source:'+sorted(r.SOURCE)[index-2]).encode()
+            command['stdout']=ROW(stdout);process=proc(command['argv'],stdout,b'',c.clean_env(),seconds=.001);pid=2000+index
+            process['identity'].update(pid=pid,pgid=pid,sessionId=pid,parentPid=900,state='S');process.update(startedNs=10000000*(index+1),endedNs=10000000*(index+1)+1000)
+            for suffix,raw in (('stdout',stdout),('stderr',b''),('process.json',E(process))):files[r.FONT_BRIDGE_PROCESS_ROOT+'git-'+str(index)+'.'+suffix]=raw
+        files['font-bridge-original.json']=E(value);self.assertEqual(len(files),81)
+        blob=hashlib.sha1(b'blob '+str(len(workflow)).encode()+b'\0'+workflow).hexdigest()
+        proof=E({'schema':'bw.gui-hdd.workflow-api-proof.v1','commit':c.font_blob(E({'sha':'d'*40,'tree':{'sha':'f'*40},'parents':[{'sha':'e'*40},{'sha':'a'*40}]})), 'tree':c.font_blob(E({'sha':'f'*40,'truncated':False,'tree':[{'path':r.FONT_WORKFLOW_PATH,'type':'blob','mode':'100644','sha':blob,'size':len(workflow)}]}))})
+        run={'id':200,'run_attempt':1,'head_sha':'a'*40,'event':'pull_request','repository':{'full_name':r.REPOSITORY},'head_repository':{'full_name':r.REPOSITORY,'fork':False},'actor':{'login':'CrispStrobe'},'triggering_actor':{'login':'CrispStrobe'},'path':r.FONT_WORKFLOW_PATH,'status':'in_progress','conclusion':None,'pull_requests':[{'number':123,'head':{'sha':'9'*40}}]}
+        names=['Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262','Refuse unreviewed bridge before setup or input retrieval','Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020','Install unchanged selected packages and Chromium for bridge observation','Install externally selected immutable bridge request','Record bounded read-only font bridge without credentials','Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02']
+        job={'id':201,'run_id':200,'run_attempt':1,'head_sha':'a'*40,'runner_id':300,'runner_name':'Manufactured bridge runner','labels':['ubuntu-24.04'],'name':'font-bridge','status':'completed','conclusion':'failure' if failed else 'success','started_at':'2026-10-19T00:00:00Z','completed_at':'2026-10-19T00:01:00Z','steps':[{'number':i+1,'name':name,'status':'completed','conclusion':'failure' if failed and i==5 else 'success','started_at':'2026-10-19T00:00:'+str(i*2).zfill(2)+'Z','completed_at':'2026-10-19T00:00:'+str(i*2+1).zfill(2)+'Z'} for i,name in enumerate(names)]}
+        archive=zip_(files);artifact={'total_count':1,'artifacts':[{'id':202,'name':'i80386-hdd-gui-font-bridge-200-1','expired':False,'size_in_bytes':len(archive),'digest':'sha256:'+H(archive),'workflow_run':{'id':200,'head_sha':'a'*40}}]}
+        metadata={'run':E(run),'job':E(job),'artifact':E(artifact),'workflowProof':proof};expected={'schema':'bw.gui-hdd.font-bridge-delivery-expectation.v1','source':request['source'],'request':ROW(request_raw),'archive':ROW(archive),'runId':200,'jobId':201,'artifactId':202,'prNumber':123,'workflow':{'commit':'d'*40,'base':'e'*40,'tree':'f'*40,'blob':blob,**ROW(workflow)},'metadata':{key:ROW(raw) for key,raw in metadata.items()},'prior':inner['prior']}
+        result=(files,request_raw,expected,metadata,workflow);cache[key]=copy.deepcopy(result);type(self)._bridge_delivery_seeds=cache
+        return result
+    def bridge_delivery_seal(self,files,expected,metadata):
+        expected=copy.deepcopy(expected);metadata=dict(metadata);archive=zip_(files);artifact=D(metadata['artifact']);artifact['artifacts'][0].update(size_in_bytes=len(archive),digest='sha256:'+H(archive));metadata['artifact']=E(artifact)
+        expected['archive']=ROW(archive);expected['metadata']={key:ROW(raw) for key,raw in metadata.items()}
+        return archive,expected,metadata
+    def test_font_bridge_delivery_complete_failed_and_metadata_cli(self):
+        for failed in (False,True):
+            files,request,expected,metadata,workflow=self.font_bridge_delivery_fixture(failed);archive,expected,metadata=self.bridge_delivery_seal(files,expected,metadata)
+            admission=r.admit_font_bridge_metadata(request,expected,metadata,workflow);self.assertFalse(admission['acquisitionAuthorized']);self.assertFalse(admission['archiveObserved']);self.assertFalse(admission['eventObserved']);self.assertFalse(admission['rawOriginalsAudited'])
+            verdict=r.verify_font_bridge_delivery(archive,request,expected,metadata,workflow);self.assertEqual(verdict['complete'],not failed);self.assertEqual(verdict['producingConclusion'],'failure' if failed else 'success');self.assertFalse(verdict['qualified']);self.assertFalse(verdict['currentEntryAssociationObserved'])
+            inputs={'/archive':archive,'/request':request,'/expected':E(expected),'/workflow':workflow,**{'/'+key:raw for key,raw in metadata.items()}};reads=[]
+            def bounded(path,cap):reads.append(path);self.assertLessEqual(len(inputs[path]),cap);return inputs[path]
+            tail=['--request','/request','--expected','/expected','--run','/run','--job','/job','--artifact','/artifact','--workflow-proof','/workflowProof','--workflow','/workflow']
+            for args in (['--font-bridge-metadata',*tail],['--font-bridge-delivery','/archive',*tail]):
+                out=io.StringIO();reads.clear()
+                with patch.object(r,'bounded_input',bounded),contextlib.redirect_stdout(out):self.assertEqual(r.main(args),0)
+                self.assertEqual(D(out.getvalue().encode()),admission if args[0]=='--font-bridge-metadata' else verdict)
+                if args[0]=='--font-bridge-metadata':self.assertNotIn('/archive',reads)
+                else:self.assertEqual(reads[-1],'/archive')
+    def test_font_bridge_delivery_metadata_refuses_before_archive_open(self):
+        files,request,expected,metadata,workflow=self.font_bridge_delivery_fixture();run=D(metadata['run']);run['actor']['login']='foreign';metadata['run']=E(run);expected['metadata']['run']=ROW(metadata['run'])
+        inputs={'/request':request,'/expected':E(expected),'/workflow':workflow,**{'/'+key:raw for key,raw in metadata.items()}}
+        def bounded(path,cap):self.assertNotEqual(path,'/archive','archive opened before metadata admission');return inputs[path]
+        with patch.object(r,'bounded_input',bounded),patch.object(r,'font_bridge_delivery_archive',side_effect=AssertionError('ZIP parsed before metadata')):
+            with self.assertRaises(ValueError):r.main(['--font-bridge-delivery','/archive','--request','/request','--expected','/expected','--run','/run','--job','/job','--artifact','/artifact','--workflow-proof','/workflowProof','--workflow','/workflow'])
+    def test_font_bridge_delivery_rehashed_official_and_prior_refusals(self):
+        for cut in ('job-mode','attempt','bool-id','actor','head','runner','step-order','setup-failed','cancelled','artifact-name','artifact-size','artifact-digest','expired','prior','workflow','workflow-source','schema'):
+            files,request,expected,metadata,workflow=self.font_bridge_delivery_fixture();run=D(metadata['run']);job=D(metadata['job']);artifact=D(metadata['artifact'])
+            if cut=='job-mode':job['name']='font-discovery'
+            elif cut=='attempt':job['run_attempt']=2
+            elif cut=='bool-id':job['id']=True
+            elif cut=='actor':run['triggering_actor']['login']='foreign'
+            elif cut=='head':run['head_sha']='0'*40
+            elif cut=='runner':job['runner_id']=0
+            elif cut=='step-order':job['steps'][0],job['steps'][1]=job['steps'][1],job['steps'][0]
+            elif cut=='setup-failed':job['steps'][3]['conclusion']='failure'
+            elif cut=='cancelled':job['conclusion']='cancelled'
+            elif cut=='artifact-name':artifact['artifacts'][0]['name']='i80386-hdd-gui-font-discovery-200-1'
+            elif cut=='artifact-size':artifact['artifacts'][0]['size_in_bytes']+=1
+            elif cut=='artifact-digest':artifact['artifacts'][0]['digest']='sha256:'+'0'*64
+            elif cut=='expired':artifact['artifacts'][0]['expired']=True
+            elif cut=='prior':expected['prior']['runId']+=1
+            elif cut=='workflow':workflow+=b'changed'
+            elif cut=='workflow-source':
+                q=D(request);q['source']['files'][r.FONT_WORKFLOW_PATH]['sha256']='0'*64;request=E(q);expected['source']=q['source'];expected['request']=ROW(request)
+            else:expected['schema']='bw.gui-hdd.font-discovery-delivery-expectation.v1'
+            metadata.update(run=E(run),job=E(job),artifact=E(artifact));expected['metadata']={key:ROW(raw) for key,raw in metadata.items()}
+            with self.assertRaises(ValueError,msg=cut):r.admit_font_bridge_metadata(request,expected,metadata,workflow)
+    def test_font_bridge_delivery_raw_role_and_inner_semantic_refusals(self):
+        for cut in ('missing','extra','raw-source','raw-argv','raw-env','raw-time','raw-primary','raw-pid','raw-bool','raw-stderr','raw-close','event','prior','inner-mode','association','retention','source-prefix','source-retention','retention-phase','secondary-retention','source-path-none','unrelated-failure-path','secondary-path-none','secondary-path-unrelated','raw-gap'):
+            files,request,expected,metadata,workflow=self.font_bridge_delivery_fixture(failed=cut in ('source-retention','retention-phase','secondary-retention','source-path-none','unrelated-failure-path','secondary-path-none','secondary-path-unrelated','raw-gap'));value=D(files['font-bridge-original.json']);role=r.FONT_BRIDGE_PROCESS_ROOT+'git-0';process=D(files[role+'.process.json'])
+            if cut=='missing':files.pop(role+'.stderr')
+            elif cut=='extra':files[r.FONT_BRIDGE_PROCESS_ROOT+'font-packages.stdout']=b''
+            elif cut=='raw-source':files[role+'.stdout']=b'invented\n';process['streams']['stdout']=ROW(files[role+'.stdout'])
+            elif cut=='raw-gap':
+                for index in range(1,23):
+                    name=r.FONT_BRIDGE_PROCESS_ROOT+'git-'+str(index)+'.process.json';row=D(files[name]);row['startedNs']+=201*10**9;row['endedNs']+=201*10**9;files[name]=E(row)
+            elif cut=='raw-argv':process['argv'][-1]='other'
+            elif cut=='raw-env':process['environment']['HOME']='/invented'
+            elif cut=='raw-time':process['endedNs']=process['startedNs']
+            elif cut=='raw-primary':process.update(exitCode=1,firstFailure='child refused')
+            elif cut=='raw-pid':process['identity']['parentPid']=process['identity']['pid']
+            elif cut=='raw-bool':process['exitCode']=False
+            elif cut=='raw-stderr':files[role+'.stderr']=b'warning';process['streams']['stderr']=ROW(b'warning')
+            elif cut=='raw-close':process['secondaryFailures']=[{'phase':'close','name':'OSError','message':'close failed'}];process['firstFailure']='close failed'
+            elif cut=='event':event=D(base64.b64decode(value['event']['base64']));event['label']['name']='x86-hdd-gui-font-chain';value['event']=c.font_blob(E(event))
+            elif cut=='prior':old=D(base64.b64decode(D(request)['prior']['original']['base64']));old['aliases'][D(request)['prior']['sourceEntry']]['namedAfter']['ino']+=1;q=D(request);q['prior']['original']=c.font_blob(E(old));request=E(q);files['request.json']=request
+            elif cut=='inner-mode':value['schema']='bw.gui-hdd.font-chain-original.v1'
+            elif cut=='association':value['sourceEntryReobserved']=True
+            elif cut=='retention':files['controller.stderr']=b'close refusal'
+            elif cut=='source-retention':value['firstFailure']['phase']='source-retention'
+            elif cut=='retention-phase':value['firstFailure']['phase']='retention'
+            elif cut=='source-path-none':value['firstFailure']['path']=None
+            elif cut=='unrelated-failure-path':value['firstFailure']['path']='/opt/not-attempted'
+            elif cut in ('secondary-path-none','secondary-path-unrelated'):value['secondary']=[{'phase':'close','path':None if cut=='secondary-path-none' else '/opt/not-attempted','name':'OSError','message':'close failed'}]
+            elif cut=='secondary-retention':value['secondary']=[{'phase':'source-retention','path':value['firstFailure']['path'],'name':'OSError','message':'retention failed'}]
+            else:value['sourceCommands'].pop()
+            files[role+'.process.json']=E(process);files['font-bridge-original.json']=E(value)
+            archive,expected,metadata=self.bridge_delivery_seal(files,expected,metadata)
+            if cut=='prior':expected['request']=ROW(request)
+            with self.assertRaises((ValueError,KeyError),msg=cut):r.verify_font_bridge_delivery(archive,request,expected,metadata,workflow)
+    def test_font_bridge_delivery_header_roster_before_inflation(self):
+        for cut in ('missing','extra','mixed','directory-payload','special','oversized','request-cap'):
+            files,request,expected,metadata,workflow=self.font_bridge_delivery_fixture()
+            if cut=='missing':files.pop('guard.stdout')
+            elif cut=='extra':files['unknown.txt']=b''
+            elif cut=='mixed':files['gui-font-bridge/guard.stdout']=files.pop('guard.stdout')
+            elif cut=='directory-payload':files['gui-font-bridge/']=b'payload'
+            elif cut=='request-cap':files['request.json']=b'x'*(r.JSON_CAP//4+1)
+            elif cut=='oversized':files[r.FONT_BRIDGE_PROCESS_ROOT+'git-0.stdout']=b'x'*(r.STREAM_CAP+1)
+            if cut=='special':
+                output=io.BytesIO()
+                with zipfile.ZipFile(output,'w') as archive:
+                    for name,raw in files.items():
+                        info=zipfile.ZipInfo(name);info.external_attr=((stat.S_IFIFO|0o600)<<16) if name=='guard.stdout' else 0;archive.writestr(info,raw)
+                raw=output.getvalue()
+            else:raw=zip_(files)
+            with patch.object(zipfile.ZipFile,'open',side_effect=AssertionError('inflated before whole header admission')):
+                with self.assertRaises(ValueError,msg=cut):r.font_bridge_delivery_archive(raw)
+        files,request,expected,metadata,workflow=self.font_bridge_delivery_fixture();prefixed={'gui-font-bridge/'+name:raw for name,raw in files.items()};archive,expected,metadata=self.bridge_delivery_seal(prefixed,expected,metadata)
+        self.assertTrue(r.verify_font_bridge_delivery(archive,request,expected,metadata,workflow)['complete'])
+
+
+        for prefix,dirs in (('',[r.FONT_BRIDGE_PROCESS_ROOT]),('gui-font-bridge/',['gui-font-bridge/','gui-font-bridge/'+r.FONT_BRIDGE_PROCESS_ROOT])):
+            files,request,expected,metadata,workflow=self.font_bridge_delivery_fixture();layout={prefix+name:raw for name,raw in files.items()};layout.update({name:b'' for name in dirs})
+            archive,expected,metadata=self.bridge_delivery_seal(layout,expected,metadata);self.assertTrue(r.verify_font_bridge_delivery(archive,request,expected,metadata,workflow)['complete'])
+        for prefix,orphan in (('','gui-font-bridge/'),('','gui-font-bridge/'+r.FONT_BRIDGE_PROCESS_ROOT),('gui-font-bridge/',r.FONT_BRIDGE_PROCESS_ROOT)):
+            files,request,expected,metadata,workflow=self.font_bridge_delivery_fixture();layout={prefix+name:raw for name,raw in files.items()};layout[orphan]=b''
+            raw=zip_(layout)
+            with patch.object(zipfile.ZipFile,'open',side_effect=AssertionError('inflated orphan-layout directory')):
+                with self.assertRaisesRegex(ValueError,'selected file layout'):r.font_bridge_delivery_archive(raw)
+    def test_font_bridge_delivery_critical_predicate_omissions_detected(self):
+        source=(root/'scripts/read-i80386-hdd-gui-originals.py').read_text()
+        cases=[("need(prior_end-first_start<=200*10**9,'bridge raw source span profile at most200s; not controller duration or preemption')","need(True,'bridge raw source span profile at most200s; not controller duration or preemption')",'raw-span'),
+          ("need(directories<=allowed_directories,'bridge directory records belong to selected file layout')","need(True,'bridge directory records belong to selected file layout')",'directory-layout'),("need(encode(source['files'][FONT_WORKFLOW_PATH])==encode({k:workflow[k] for k in ('byteLength','sha256')}),'bridge executing workflow content joins reviewed source21 workflow')","need(True,'bridge executing workflow content joins reviewed source21 workflow')",'workflow-source'),("need(encode(request['source'])==encode(expected['source']) and encode(font_bridge_reference(request['prior'],request['entry']))==encode(expected['prior']),'bridge current source and historical prior independently selected')","need(True,'bridge current source and historical prior independently selected')",'prior'),
+          ("job.get('name')=='font-bridge'","True",'job'),
+          ("need(required=={name for name,item in headers},'exact bridge delivery role closure; unsupported early/source failures refuse')","need(True,'exact bridge delivery role closure; unsupported early/source failures refuse')",'missing'),
+          ("need(encode(command['stdout'])==encode(process['streams']['stdout']) and encode(command['stderr'])==encode(process['streams']['stderr']) and type(command['exitCode']) is int and command['exitCode']==0,'bridge descriptor/raw source join')","need(True,'bridge descriptor/raw source join')",'raw-descriptor'),
+          ("need(encode(process['streams']['stdout'])==encode(selected),'bridge raw source/external bytes join')","need(True,'bridge raw source/external bytes join')",'raw-source')]
+        for old,new,cut in cases:
+            self.assertIn(old,source);namespace={'__name__':'bridge_delivery_mutant'};exec(compile(source.replace(old,new,1),'bridge-delivery-mutant','exec'),namespace)
+            files,request,expected,metadata,workflow=self.font_bridge_delivery_fixture()
+            if cut=='workflow-source':
+                q=D(request);q['source']['files'][r.FONT_WORKFLOW_PATH]['sha256']='0'*64;request=E(q);expected['source']=q['source'];expected['request']=ROW(request)
+            elif cut=='prior':expected['prior']['runId']+=1
+            elif cut=='job':job=D(metadata['job']);job['name']='font-discovery';metadata['job']=E(job)
+            elif cut=='missing':files.pop('guard.stdout')
+            elif cut=='directory-layout':files['gui-font-bridge/']=b''
+            else:
+                if cut=='raw-span':
+                    for index in range(1,23):
+                        name=r.FONT_BRIDGE_PROCESS_ROOT+'git-'+str(index)+'.process.json';row=D(files[name]);row['startedNs']+=201*10**9;row['endedNs']+=201*10**9;files[name]=E(row)
+                    value=D(files['font-bridge-original.json'])
+                    with self.assertRaises(ValueError):r.font_bridge_delivery_raw(value,files,D(request))
+                    namespace['font_bridge_delivery_raw'](value,files,D(request));continue
+                role=r.FONT_BRIDGE_PROCESS_ROOT+'git-0';process=D(files[role+'.process.json'])
+                if cut=='raw-descriptor':
+                    # Only the source summary can differ while raw selected bytes
+                    # remain fixed; exercise this validator directly below.
+                    value=D(files['font-bridge-original.json']);value['sourceCommands'][0]['stdout']['sha256']='0'*64
+                    with self.assertRaises(ValueError):r.font_bridge_delivery_raw(value,files,D(request))
+                    namespace['font_bridge_delivery_raw'](value,files,D(request));continue
+                files[role+'.stdout']=b'wrong source\n';process['streams']['stdout']=ROW(files[role+'.stdout']);files[role+'.process.json']=E(process)
+                # Coherently alter summary too; inner source validation normally
+                # rejects this independently, so isolate the final raw pin gate.
+                value=D(files['font-bridge-original.json']);value['sourceCommands'][0]['stdout']=ROW(files[role+'.stdout'])
+                with self.assertRaises(ValueError):r.font_bridge_delivery_raw(value,files,D(request))
+                namespace['font_bridge_delivery_raw'](value,files,D(request));continue
+            archive,expected,metadata=self.bridge_delivery_seal(files,expected,metadata)
+            if cut in ('missing','directory-layout'):
+                with self.assertRaises(ValueError):r.font_bridge_delivery_archive(archive)
+                result=namespace['font_bridge_delivery_archive'](archive)
+                if cut=='missing':self.assertNotIn('guard.stdout',result)
+                else:self.assertEqual(len(result),81)
+                continue
+            with self.assertRaises(ValueError):r.admit_font_bridge_metadata(request,expected,metadata,workflow)
+            self.assertFalse(namespace['admit_font_bridge_metadata'](request,expected,metadata,workflow)['acquisitionAuthorized'])
+
+    def test_font_bridge_delivery_supported_failed_filesystem_prefixes(self):
+        for cut in ('read-close','bridge-link-close','terminal-parent-write','back-to-entry'):
+            files,request,expected,metadata,workflow=self.font_bridge_delivery_fixture(failure_cut=cut);archive,expected,metadata=self.bridge_delivery_seal(files,expected,metadata)
+            verdict=r.verify_font_bridge_delivery(archive,request,expected,metadata,workflow);self.assertFalse(verdict['complete']);self.assertEqual(verdict['producingConclusion'],'failure');self.assertFalse(verdict['sourceEntryReobserved'])
+        files,request,expected,metadata,workflow=self.font_bridge_delivery_fixture(failed=True);value=D(files['font-bridge-original.json']);row=copy.deepcopy(value['parents'][1]);row['namedBefore']['mode']|=0o022
+        for key in ('heldBefore','heldAfter','namedAfter'):row[key]=None
+        row['close']={'attempted':False,'succeeded':False};value['parents']=value['parents'][:1]+[row];value.update(links=[],terminal=None,firstFailure={'phase':'chain','path':D(request)['entry'],'name':'ValueError','message':'canonical nonwritable chain parent'})
+        files['font-bridge-original.json']=E(value);archive,expected,metadata=self.bridge_delivery_seal(files,expected,metadata)
+        self.assertFalse(r.verify_font_bridge_delivery(archive,request,expected,metadata,workflow)['complete'])
+
 suite=unittest.defaultTestLoader.loadTestsFromTestCase(Originals)
 result=unittest.TextTestRunner(verbosity=2).run(suite)
 print(json.dumps({'controls':result.testsRun,'failures':len(result.failures),'errors':len(result.errors)}))
@@ -2534,4 +2725,39 @@ test('enabled font-discovery source delivers pinned inputs to the finite observa
     ];
     const parts=job.split(/\n      - /);const swapped=[parts[0],parts[1],parts[3],parts[2],...parts.slice(4)].join('\n      - ');variants.push(prefix+swapped);
     for(const changed of variants)assert.throws(()=>fontDiscoveryWorkflowContract(changed,controller));
+});
+
+
+function fontBridgeDeliveryWorkflowContract (workflow, controller) {
+    const marker='\n  font-bridge:\n';
+    assert.equal(workflow.split(marker).length,2);
+    const job=workflow.split(marker)[1].split('\n  # Observation delivery only.')[0];
+    const [header,...steps]=job.split(/\n      - /);
+    const conditions=["github.event_name == 'pull_request'","github.event.action == 'labeled'","github.event.label.name == 'x86-hdd-gui-font-bridge'","github.actor == 'CrispStrobe'","github.repository == 'CrispStrobe/brickwright-lite'",'github.run_attempt == 1','github.event.pull_request.head.repo.full_name == github.repository','github.event.pull_request.head.repo.fork == false',"github.event.pull_request.base.ref == 'main'"];
+    const predicate=header.split('    if: >-\n')[1].split('\n    runs-on:')[0].trim().replace(/\s+/g,' ');
+    assert.equal(predicate,'${{ false && '+conditions.join(' && ')+' }}');
+    assert.match(controller,/FONT_BRIDGE_ENABLED = False/);
+    assert.match(controller,/ACTUAL_ENABLED = False/);
+    assert.equal(steps.length,7);assert.match(header,/runs-on: ubuntu-24\.04/);assert.match(header,/timeout-minutes: 16/);
+    assert.doesNotMatch(job,/continue-on-error|\|\| true|npm (?:run )?build|fc-list|fc-cache/);
+    for(const key of ['NODE_OPTIONS','NODE_PATH','NODE_V8_COVERAGE','LD_PRELOAD','LD_AUDIT','LD_LIBRARY_PATH','PYTHONPATH','PYTHONHOME','PYTHONSTARTUP','PYTHONUSERBASE','PYTHONINSPECT','PYTHONPYCACHEPREFIX','BASH_ENV','ENV'])assert.match(header,new RegExp('^      '+key+": ''$",'m'));
+    assert.doesNotMatch(header,/GH_TOKEN|GITHUB_TOKEN/);
+    const [checkout,guard,node,setup,install,collect,upload]=steps;
+    assert.match(checkout,/uses: actions\/checkout@11d5960a326750d5838078e36cf38b85af677262/);assert.match(checkout,/ref: \$\{\{ github.event.pull_request.head.sha \}\}/);assert.match(checkout,/persist-credentials: false/);
+    assert.match(guard,/font-bridge-guard/);assert.match(guard,/mkdir gui-font-bridge/);assert.match(guard,/set -o noclobber/);
+    assert.match(node,/actions\/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020/);assert.match(node,/node-version: 22.23.3/);
+    assert.match(setup,/timeout-minutes: 10/);assert.match(setup,/npm ci --ignore-scripts --no-audit --no-fund/);assert.match(setup,/playwright\/cli.js install --with-deps chromium/);
+    assert.match(install,/timeout-minutes: 1/);assert.match(install,/GH_TOKEN: \$\{\{ github.token \}\}/);assert.match(install,/--blob "\$BW_FONT_BRIDGE_BLOB" --expected-sha256 "\$BW_FONT_BRIDGE_SHA256"/);
+    assert.match(collect,/timeout-minutes: 4/);assert.match(collect,/GH_TOKEN: ''\n          GITHUB_TOKEN: ''/);assert.match(collect,/font-bridge \\/);assert.match(collect,/--output "\$GITHUB_WORKSPACE\/gui-font-bridge\/font-bridge-original.json"/);
+    assert.match(upload,/actions\/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02/);assert.match(upload,/if: always\(\)/);assert.match(upload,/name: i80386-hdd-gui-font-bridge-\$\{\{ github.run_id \}\}-\$\{\{ github.run_attempt \}\}/);assert.match(upload,/path: gui-font-bridge/);
+}
+
+test('bridge delivery job is initially disabled with pinned bounded source guards',()=>{
+    const workflow=fs.readFileSync(new URL('../.github/workflows/i80386-hdd-gui-actual.yml',import.meta.url),'utf8');
+    const controller=fs.readFileSync(new URL('../scripts/run-i80386-hdd-gui-actual.py',import.meta.url),'utf8');
+    fontBridgeDeliveryWorkflowContract(workflow,controller);
+    const marker='\n  font-bridge:\n',prefix=workflow.split(marker)[0]+marker,parts=workflow.split(marker)[1].split('\n  # Observation delivery only.'),job=parts[0],suffix='\n  # Observation delivery only.'+parts[1];
+    for(const [old,value] of [['${{ false &&','${{ true &&'],['github.run_attempt == 1','github.run_attempt == 2'],['font-bridge-guard','font-chain-guard'],['if: always()','if: success()'],['GH_TOKEN: \'\'','GH_TOKEN: ${{ github.token }}'],['timeout-minutes: 16','timeout-minutes: 8'],['--ignore-scripts','--foreground-scripts'],['node-version: 22.23.3','node-version: 22']]){
+        assert.ok(job.includes(old));assert.throws(()=>fontBridgeDeliveryWorkflowContract(prefix+job.replace(old,value)+suffix,controller));
+    }
 });

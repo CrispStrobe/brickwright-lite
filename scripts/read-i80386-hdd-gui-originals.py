@@ -1849,8 +1849,173 @@ def verify_font_bridge(original_raw,request_raw,expected):
 
 
 
+
+FONT_BRIDGE_PROCESS_ROOT = 'font-bridge-original-process-originals/'
+FONT_BRIDGE_TOP = ('guard.stdout','guard.stderr','npm.stdout','npm.stderr','chromium-install.stdout','chromium-install.stderr','input-install.stdout','input-install.stderr','request.json','controller.stdout','controller.stderr','font-bridge-original.json')
+
+def font_bridge_delivery_expected(expected):
+    fields(expected,'schema source request archive runId jobId artifactId prNumber workflow metadata prior')
+    need(expected['schema']=='bw.gui-hdd.font-bridge-delivery-expectation.v1','explicit observation delivery policy')
+    for key in ('runId','jobId','artifactId','prNumber'):integer(expected[key],1,2**63-1)
+    source=expected['source'];fields(source,'head tree files');digest(source['head'],40);digest(source['tree'],40)
+    rows(source['files']);need(set(source['files'])==SOURCE,'externally selected delivery source21')
+    for key,cap in (('request',JSON_CAP//4),('archive',FONT_DELIVERY_CAP)):
+        fields(expected[key],'byteLength sha256');integer(expected[key]['byteLength'],1,cap);digest(expected[key]['sha256'])
+    metadata=expected['metadata'];fields(metadata,'run job artifact workflowProof')
+    for row in metadata.values():fields(row,'byteLength sha256');integer(row['byteLength'],1,JSON_CAP);digest(row['sha256'])
+    workflow=expected['workflow'];fields(workflow,'commit base tree blob byteLength sha256')
+    for key in ('commit','base','tree','blob'):digest(workflow[key],40)
+    integer(workflow['byteLength'],1,65536);digest(workflow['sha256'])
+    need(workflow['commit']!=source['head'] and workflow['base']!=source['head'],'separate executing merge workflow and selected source/base')
+    need(encode(source['files'][FONT_WORKFLOW_PATH])==encode({k:workflow[k] for k in ('byteLength','sha256')}),'bridge executing workflow content joins reviewed source21 workflow')
+
+    prior=expected['prior'];fields(prior,'schema sourceEntry entry source runId workflowSha request original')
+    need(prior['schema']=='bw.gui-hdd.font-bridge-prior-reference.v1','explicit independently selected historical prior reference')
+    font_expected({**{key:prior[key] for key in ('source','request','original','runId','workflowSha')},'schema':'bw.gui-hdd.font-discovery-expectation.v1'})
+    runtime_path(prior['sourceEntry']);runtime_path(prior['entry'])
+
+def font_bridge_delivery_official(metadata,expected):
+    for key,raw in metadata.items():font_delivery_pin(raw,expected['metadata'][key])
+    run=decode(metadata['run']);job=decode(metadata['job']);artifact=decode(metadata['artifact'])
+    if set(artifact)=={'total_count','artifacts'}:
+        integer(artifact['total_count'],1,1);need(type(artifact['artifacts']) is list and len(artifact['artifacts'])==1,'one selected official artifact wrapper');artifact=artifact['artifacts'][0]
+    for value,key,selected in ((run,'id','runId'),(job,'id','jobId'),(artifact,'id','artifactId')):
+        integer(value.get(key),1,2**63-1);need(value[key]==expected[selected],'exact official delivery IDs')
+    for value in (run,job):integer(value.get('run_attempt'),1,1)
+    integer(job.get('run_id'),1,2**63-1);integer(artifact.get('workflow_run',{}).get('id'),1,2**63-1);integer(artifact.get('size_in_bytes'),1,FONT_DELIVERY_CAP)
+    need(run.get('event')=='pull_request' and run.get('head_sha')==expected['source']['head'] and run.get('repository',{}).get('full_name')==REPOSITORY and
+         run.get('head_repository',{}).get('full_name')==REPOSITORY and run.get('head_repository',{}).get('fork') is False and
+         run.get('actor',{}).get('login')=='CrispStrobe' and run.get('triggering_actor',{}).get('login')=='CrispStrobe' and run.get('path')==FONT_WORKFLOW_PATH,'owned official source/event/actor/workflow run')
+    need(run.get('status') in ('queued','in_progress','completed','waiting','pending','requested') and (run.get('conclusion') is None or type(run['conclusion']) is str),'observed whole-run state, not unrelated job success')
+    prs=run.get('pull_requests');need(type(prs) is list and 1<=len(prs)<=32,'bounded run PR association')
+    for pr in prs:integer(pr.get('number'),1,2**63-1)
+    need(sum(pr['number']==expected['prNumber'] for pr in prs)==1,'official PR number association; moving nested head is not authority')
+    integer(job.get('runner_id'),1,2**63-1);need(type(job.get('runner_name')) is str and 0<len(job['runner_name'])<=256 and encode(job.get('labels'))==encode(['ubuntu-24.04']),'assigned selected hosted runner observations')
+    need(job['run_id']==expected['runId'] and job.get('head_sha')==expected['source']['head'] and job.get('name')=='font-bridge' and job.get('status')=='completed' and job.get('conclusion') in ('success','failure'),'selected producing job terminal')
+    need(artifact.get('name')=='i80386-hdd-gui-font-bridge-'+str(expected['runId'])+'-1' and artifact.get('expired') is False and
+         artifact['size_in_bytes']==expected['archive']['byteLength'] and artifact.get('digest')=='sha256:'+expected['archive']['sha256'] and
+         artifact['workflow_run']['id']==expected['runId'] and artifact['workflow_run'].get('head_sha')==expected['source']['head'],'official artifact/run/source/name/extent/digest joins; no job-ID field inferred')
+    began=font_delivery_time(job.get('started_at'));ended=font_delivery_time(job.get('completed_at'));need(began<=ended,'official terminal job chronology')
+    steps=job.get('steps');need(type(steps) is list and len(steps)<=64,'bounded official producing steps');numbers=[]
+    for step in steps:integer(step.get('number'),1,128);numbers.append(step['number'])
+    need(numbers==sorted(set(numbers)),'strict unique ordered official step numbers')
+    required=['Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262','Refuse unreviewed bridge before setup or input retrieval',
+      'Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020','Install unchanged selected packages and Chromium for bridge observation',
+      'Install externally selected immutable bridge request','Record bounded read-only font bridge without credentials',
+      'Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02']
+    previous=began;positions=[]
+    for name in required:
+        matches=[(index,step) for index,step in enumerate(steps) if step.get('name')==name];need(len(matches)==1,'one official producing step for each reviewed role')
+        index,step=matches[0];need(step.get('status')=='completed' and step.get('conclusion')==(job['conclusion'] if name.startswith('Record bounded') else 'success'),'terminal official guard/setup/input/collector/upload step')
+        start=font_delivery_time(step.get('started_at'));end=font_delivery_time(step.get('completed_at'));need(previous<=start<=end<=ended,'official producing step chronology');previous=end;positions.append(index)
+    need(positions==sorted(set(positions)),'official guard precedes setup, input, collection and upload')
+    return job['conclusion']
+
+def font_bridge_delivery_archive(raw):
+    need(type(raw) is bytes and 0<len(raw)<=FONT_DELIVERY_CAP,'bounded font delivery ZIP')
+    top=set(FONT_BRIDGE_TOP)
+    required=top|{FONT_BRIDGE_PROCESS_ROOT+'git-'+str(i)+'.'+suffix for i in range(2+len(SOURCE)) for suffix in ('stdout','stderr','process.json')}
+    headers=[];names=set();total=0;prefix=None;directories=set()
+    with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+        items=archive.infolist();need(len(items)<=96,'bounded delivery ZIP entry census')
+        for item in items:
+            name=item.filename;need(item.orig_filename==name and '\x00' not in name,'exact untruncated ZIP member name');relative(name.rstrip('/') if item.is_dir() else name)
+            need(name not in names and not item.flag_bits&1 and item.compress_type in (zipfile.ZIP_STORED,zipfile.ZIP_DEFLATED),'unique unencrypted stored/deflated ZIP entries');names.add(name)
+            mode=stat.S_IFMT(item.external_attr>>16)
+            need(mode in ((0,stat.S_IFDIR) if item.is_dir() else (0,stat.S_IFREG)),'regular font delivery members; no links or special files')
+            if item.is_dir():
+                need(item.file_size==0,'known directory roles carry no ignored payload')
+                need(name in ('gui-font-bridge/',FONT_BRIDGE_PROCESS_ROOT,'gui-font-bridge/'+FONT_BRIDGE_PROCESS_ROOT),'fixed delivery directory roles');directories.add(name);continue
+            current='gui-font-bridge/' if name.startswith('gui-font-bridge/') else ''
+            if prefix is None:prefix=current
+            need(current==prefix,'one uniform upload root');inner=name.removeprefix(current)
+            if inner in top:
+                cap=JSON_CAP//4 if inner=='request.json' else JSON_CAP if inner in ('font-bridge-original.json','npm.stdout','npm.stderr','chromium-install.stdout','chromium-install.stderr') else 16384
+            else:
+                need(inner.startswith(FONT_BRIDGE_PROCESS_ROOT),'fixed delivery raw-process root');leaf=inner[len(FONT_BRIDGE_PROCESS_ROOT):]
+                match=re.fullmatch(r'git-([0-9]+)\.(stdout|stderr|process\.json)',leaf)
+                need(match is not None and 0<=int(match[1])<2+len(SOURCE) and str(int(match[1]))==match[1],'fixed bridge Git roles before inflate')
+                cap=JSON_CAP if match[2]=='process.json' else STREAM_CAP
+            need(type(item.file_size) is int and 0<=item.file_size<=cap,'delivery role extent before inflate');total+=item.file_size
+            need(total<=FONT_DELIVERY_CAP and len(headers)<96,'inflated delivery aggregate/file cap before inflate');headers.append((inner,item))
+        need(required=={name for name,item in headers},'exact bridge delivery role closure; unsupported early/source failures refuse')
+        allowed_directories={FONT_BRIDGE_PROCESS_ROOT} if prefix=='' else {'gui-font-bridge/','gui-font-bridge/'+FONT_BRIDGE_PROCESS_ROOT}
+        need(directories<=allowed_directories,'bridge directory records belong to selected file layout')
+        # No member is inflated until the ENTIRE role/extent census has passed.
+        return {name:archive.read(item) for name,item in headers}
+
+def font_bridge_delivery_raw(value,files,request):
+    commands=value['sourceCommands'];need(type(commands) is list and len(commands)==2+len(SOURCE) and value['commands']==[] and value['packages'] is None,'bridge profile requires complete source prefix and no package probes')
+    prior_end=0;first_start=None;parent=None;identities=set()
+    for index,command in enumerate(commands):
+        role=FONT_BRIDGE_PROCESS_ROOT+'git-'+str(index);stdout=files[role+'.stdout'];stderr=files[role+'.stderr']
+        process=font_delivery_process(files[role+'.process.json'],stdout,stderr,command['argv'])
+        need(process['startedNs']>=prior_end,'serial bridge raw source chronology');prior_end=process['endedNs']
+        if first_start is None:first_start=process['startedNs']
+        need(prior_end-first_start<=200*10**9,'bridge raw source span profile at most200s; not controller duration or preemption')
+        current=process['identity'];need(parent is None or parent==current['parentPid'],'same observed bridge controller parent');parent=current['parentPid']
+        identity_=(current['pid'],current['startTicks']);need(identity_ not in identities,'distinct bridge child identities');identities.add(identity_)
+        need(process['exitCode']==0 and process['firstFailure'] is None and process['secondaryFailures']==[] and process['remainingDescendants']==[] and process['overflowObservedBytes']=={} and not stderr,'successful bridge raw Git profile only')
+        need(encode(command['stdout'])==encode(process['streams']['stdout']) and encode(command['stderr'])==encode(process['streams']['stderr']) and type(command['exitCode']) is int and command['exitCode']==0,'bridge descriptor/raw source join')
+        selected={'byteLength':41,'sha256':sha((request['source']['head' if index==0 else 'tree']+'\n').encode())} if index<2 else request['source']['files'][sorted(SOURCE)[index-2]]
+        need(encode(process['streams']['stdout'])==encode(selected),'bridge raw source/external bytes join')
+
+
+def admit_font_bridge_metadata(request_raw,expected,metadata,workflow_raw):
+    # API origin is externally trusted; consistency here never authorizes GET.
+    font_bridge_delivery_expected(expected);fields(metadata,'run job artifact workflowProof');font_delivery_pin(request_raw,expected['request'])
+    request=font_bridge_request(request_raw,expected['request']['sha256'])
+    need(encode(request['source'])==encode(expected['source']) and encode(font_bridge_reference(request['prior'],request['entry']))==encode(expected['prior']),'bridge current source and historical prior independently selected')
+    conclusion=font_bridge_delivery_official(metadata,expected);font_delivery_workflow(metadata['workflowProof'],workflow_raw,expected)
+    return {'schema':'bw.gui-hdd.font-bridge-metadata-reader.v1','metadataConsistent':True,'producingConclusion':conclusion,'archiveObserved':False,'eventObserved':False,'rawOriginalsAudited':False,
+      'acquisitionAuthorized':False,'eventAuthorized':False,'candidate':False,'qualified':False,'actual':False,'sourceRuntimeObserved':False,'sourceEntryReobserved':False,'currentEntryAssociationObserved':False}
+
+
+def verify_font_bridge_delivery(archive_raw,request_raw,expected,metadata,workflow_raw):
+    admission=admit_font_bridge_metadata(request_raw,expected,metadata,workflow_raw)
+    font_delivery_pin(archive_raw,expected['archive']);files=font_bridge_delivery_archive(archive_raw)
+    need(files['request.json']==request_raw,'exact installed bridge request original')
+    original=files['font-bridge-original.json'];value=decode(original)
+    inner={'schema':'bw.gui-hdd.font-bridge-expectation.v1','source':expected['source'],'request':expected['request'],'original':{'byteLength':len(original),'sha256':sha(original)},'runId':expected['runId'],'workflowSha':expected['workflow']['commit'],'prior':expected['prior']}
+    verdict=verify_font_bridge(original,request_raw,inner);request=font_bridge_request(request_raw,expected['request']['sha256'])
+    event=decode(font_original_blob(value['event'],256<<10));need(event['number']==expected['prNumber'],'bridge retained event/official PR join')
+    font_bridge_delivery_raw(value,files,request)
+    need(all(files[name]==b'' for name in ('guard.stdout','guard.stderr','input-install.stderr','controller.stdout','controller.stderr')),'bridge supported normal control streams; retention/early failures refuse')
+    installed={'byteLength':len(request_raw),'sha256':sha(request_raw),'gitBlob':hashlib.sha1(b'blob '+str(len(request_raw)).encode()+b'\0'+request_raw).hexdigest()}
+    need(files['input-install.stdout']==encode(installed),'exact immutable bridge installer witness')
+    conclusion=admission['producingConclusion']
+    if conclusion=='failure':
+        need(type(value['firstFailure']) is dict and value['firstFailure']['phase']=='chain' and type(value['firstFailure']['path']) is str,'bridge delivery supports only filesystem chain failures after source admission')
+        need(all(row['phase']=='close' and row['path']==value['firstFailure']['path'] for row in value['secondary']),'source-retention or diagnostic secondary failures unsupported by bridge delivery')
+        attempted=request['entry']
+        for row in value['links']:
+            try:font_chain_witness_row(row,True);following=font_chain_next(attempted,row['linkBefore'])
+            except ValueError:break
+            attempted=following
+        need(value['firstFailure']['path']==attempted,'failed bridge primary joins admitted pending path prefix')
+    need(value['complete'] is (conclusion=='success') and (value['firstFailure'] is None) is (conclusion=='success'),'official bridge conclusion preserves collection failure')
+    return {'schema':'bw.gui-hdd.font-bridge-delivery-reader.v1','observationOnly':True,'candidate':False,'qualified':False,'activeFontSelectionProved':False,'actualRequestSupported':False,'actual':False,
+      'sourceRuntimeObserved':False,'sourceEntryReobserved':False,'currentEntryAssociationObserved':False,'producingConclusion':conclusion,'complete':value['complete'],'firstFailure':value['firstFailure'],
+      'sourceHead':expected['source']['head'],'workflowCommit':expected['workflow']['commit'],'runId':expected['runId'],'jobId':expected['jobId'],'artifactId':expected['artifactId'],'observation':verdict}
+
+
 def main(argv=None):
     raw_args=list(sys.argv[1:] if argv is None else argv)
+    if raw_args[:1] in (['--font-bridge-delivery'],['--font-bridge-metadata']):
+        mode=raw_args[0];parser=argparse.ArgumentParser(description='Independent bridge official metadata/delivery admission',allow_abbrev=False)
+        names=('request','expected','run','job','artifact','workflow-proof','workflow')
+        for name in names:parser.add_argument('--'+name,required=True)
+        if mode=='--font-bridge-delivery':parser.add_argument('--font-bridge-delivery',required=True);names=('font-bridge-delivery',*names)
+        else:parser.add_argument('--font-bridge-metadata',action='store_true');names=('font-bridge-metadata',*names)
+        need(len(raw_args)==(16 if mode=='--font-bridge-delivery' else 15) and all(raw_args.count('--'+name)==1 for name in names),'exact bridge metadata/delivery audit inputs')
+        args=parser.parse_args(raw_args);expected=decode(bounded_input(args.expected,JSON_CAP));font_bridge_delivery_expected(expected)
+        request=bounded_input(args.request,expected['request']['byteLength'])
+        metadata={key:bounded_input(getattr(args,'workflow_proof' if key=='workflowProof' else key),expected['metadata'][key]['byteLength']) for key in ('run','job','artifact','workflowProof')}
+        workflow=bounded_input(args.workflow,expected['workflow']['byteLength'])
+        admission=admit_font_bridge_metadata(request,expected,metadata,workflow)
+        if mode=='--font-bridge-metadata':print(encode(admission).decode(),end='');return 0
+        archive=bounded_input(args.font_bridge_delivery,expected['archive']['byteLength'])
+        print(encode(verify_font_bridge_delivery(archive,request,expected,metadata,workflow)).decode(),end='');return 0
     if raw_args[:1]==['--font-bridge']:
         parser=argparse.ArgumentParser(description='Independent prior-referenced font bridge observation',allow_abbrev=False)
         for name in ('font-bridge','request','expected'):parser.add_argument('--'+name,required=True)
