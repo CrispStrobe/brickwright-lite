@@ -1,0 +1,14 @@
+0 pendulum (Brickwright Robot Lab validation machine)
+0 Name: pendulum.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 // Physical pendulum (Robot Lab validation, test/bw-sim-validation.test.mjs).
+0 // A beam 7 stands upright (holes along z, layer z -30..-10); its top hole (y 0) and the end hole of a second
+0 // beam 7 (layer z -10..10) share a frictionless pin 3673 along z. The swinging beam is built at rest at
+0 // 36.87 degrees from the vertical (sin 0.6, cos 0.8): its centre is 60 LDU from the pivot at (36, 48, 0).
+0 !BW ID stand
+1 72 0 60 -20 -1 0 0 0 0 1 0 1 0 32524.dat
+0 !BW ID pivot
+1 71 0 0 -10 0 1 0 0 0 1 1 0 0 3673.dat
+0 !BW ID bob
+1 4 36 48 0 -0.8 0 0.6 0.6 0 0.8 0 1 0 32524.dat

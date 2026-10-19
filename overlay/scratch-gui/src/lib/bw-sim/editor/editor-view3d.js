@@ -89,6 +89,7 @@ import {PART_SURFACE, addEdgeLines, addPartLights, edgeMaterials} from '../view/
 import {createInstancedParts, useInstancing} from '../view/instanced-parts.js';
 import {snapCandidates, rotateAboutSnap} from './snap.js';
 import {freeOffset, moveVerdict, rayHitParts, restingPosition, solidOverlaps} from './overlap.js';
+import {createSpatialIndex, partBounds} from '../mech/spatial-index.js';
 import {
     DEFAULT_GRID, GRID_STEPS, HOLE_PITCH, IDENTITY, cleanRotation, expandToGroups, facingAxis, gizmoSize, mul3, mulVec3,
     placeCopies, rotatePoses, selectionPivot, snapDelta, translatePoses, worldAxisRotation
@@ -186,6 +187,10 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     camera.position.set(0.35, 0.3, 0.45);
 
     // ---- state ---------------------------------------------------------------
+    // Drawn on demand: a frame is drawn only when something in it changed (render below). On a
+    // software GPU a 2,000-part model takes seconds to draw, so an idle view must not redraw it.
+    let dirty = true;
+    const invalidate = () => { dirty = true; };
     const meshes = new Map(); // id → Mesh
     let selection = []; // ids
     let hovered = null;
@@ -211,7 +216,17 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     const coarseQuery = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(pointer: coarse)') : null;
     const bigHandles = () => lastTouch || Boolean(coarseQuery && coarseQuery.matches);
 
-    const partsById = () => new Map(editor.model.parts.map(p => [p.id, p]));
+    // The editor's model is frozen (editor-state.js): one id → part map per model, built when first asked.
+    let byIdFor = null;
+    let byIdMap = null;
+    const partsById = () => {
+        const parts = editor.model.parts;
+        if (byIdFor !== parts) {
+            byIdMap = new Map(parts.map(p => [p.id, p]));
+            byIdFor = parts;
+        }
+        return byIdMap;
+    };
     const selectedParts = () => {
         const byId = partsById();
         return selection.map(id => byId.get(id)).filter(Boolean);
@@ -258,10 +273,26 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             .filter(h => meshes.has(h.part))
             .map(h => ({...h, world: new Vector3(...lduToWorld(h.point)), distance: h.t * LDU_M}));
     };
+    /**
+     * The meshes a ray may hit (world boxes of each part's mesh and colliders, spatial-index.js),
+     * nearest-first order left to three: only these are raycast triangle by triangle.
+     */
+    const meshesAlong = (ray, keep) => {
+        const index = pickIndex();
+        const {origin, direction} = ray.ray;
+        const out = [];
+        for (const i of index.queryRay(origin.toArray(), direction.toArray())) {
+            const mesh = meshes.get(index.ids[i]);
+            if (mesh && keep(mesh.name)) out.push(mesh);
+        }
+        // A part being moved is drawn where the preview puts it, not where the index has it.
+        if (preview) for (const m of preview.moves) { const mesh = meshes.get(m.id); if (mesh && keep(m.id) && !out.includes(mesh)) out.push(mesh); }
+        return out;
+    };
     /** The part under the pointer: its mesh or its collider, whichever the ray meets first. */
     const partUnder = event => {
         const ray = pick(event);
-        const hits = ray.intersectObjects([...meshes.values()].filter(m => pickable(m.name)), false);
+        const hits = ray.intersectObjects(meshesAlong(ray, pickable), false);
         const mesh = hits.length ? hits[0] : null;
         const solid = colliderHits(ray).filter(h => pickable(h.part))[0];
         if (solid && (!mesh || solid.distance < mesh.distance)) {
@@ -278,7 +309,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     const surfaceUnder = (event, exclude = []) => {
         const ray = pick(event);
         const skip = new Set([...exclude, ...hidden]);
-        const hits = ray.intersectObjects([...meshes.values()].filter(m => !skip.has(m.name)), false);
+        const hits = ray.intersectObjects(meshesAlong(ray, id => !skip.has(id)), false);
         const n = new Vector3();
         let best = null;
         for (const h of hits) {
@@ -333,17 +364,48 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     const blockedLine = new LineBasicMaterial({color: 0xdc2626});
 
     const posesOverride = () => (preview ? new Map(preview.moves.map(m => [m.id, m])) : new Map());
+    /** Parts drawn somewhere else than the model has them (a previewed move): put back by the next placeMeshes. */
+    let overridden = new Set();
+    /** Moves the previewed parts' meshes (and puts back the ones no longer previewed); the rest stay as they are. */
     const placeMeshes = () => {
         const over = posesOverride();
-        for (const p of editor.model.parts) {
-            const mesh = meshes.get(p.id);
-            if (!mesh) continue;
-            const pose = over.get(p.id) || p;
-            mesh.matrix.copy(worldMatrix(pose.position, pose.rotation));
+        const byId = partsById();
+        for (const id of new Set([...overridden, ...over.keys()])) {
+            const mesh = meshes.get(id);
+            const pose = over.get(id) || byId.get(id);
+            if (mesh && pose) mesh.matrix.copy(worldMatrix(pose.position, pose.rotation));
         }
+        overridden = new Set(over.keys());
         drawOutlines();
     };
+    // Parts drawn other than plainly (hidden, selected, hovered, red, tinted, dimmed): drawOutlines
+    // restyles these and the ones that join them, not every part of the model on every hover.
+    const styled = new Set();
+    /** One part's look: shown or hidden, dimmed outside the group being edited, its glow and tint. */
+    const styleMesh = (mesh, id, {red, group, tints}) => {
+        const hide = hidden.has(id);
+        // Instanced: the proxy itself is never drawn (its instance is); the instance follows its flags.
+        if (instanced) mesh.userData.hidden = hide;
+        else mesh.visible = !hide;
+        // Editing inside a group: the rest of the model steps back.
+        const dim = Boolean(group && !group.has(id));
+        mesh.userData.dim = dim;
+        const on = selection.includes(id);
+        const glow = red.has(id) ? 0x7f1d1d : (on ? 0x1e3a8a : (id === hovered ? 0x0c4a6e : 0x000000));
+        for (const m of [].concat(mesh.material)) {
+            if (m.transparent !== dim) { m.transparent = dim; m.needsUpdate = true; }
+            m.opacity = dim ? 0.25 : 1;
+            m.depthWrite = !dim;
+            m.emissive?.setHex(glow);
+            // Blocked: the part itself turns red (a tint over its own colour is too faint on grey).
+            // "Show how it moves": its body's pastel.
+            const tint = tints ? tints.get(id) : null;
+            tintMaterial(m, red.has(id) ? 0xef4444 : (tint || null));
+        }
+        return hide || dim || glow !== 0 || Boolean(tints && tints.get(id)) || red.has(id);
+    };
     const drawOutlines = () => {
+        invalidate();
         outlineGroup.clear();
         const red = preview && preview.blocked ? new Set(preview.moves.map(m => m.id)) : new Set();
         const add = (id, material) => {
@@ -364,28 +426,22 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         };
         if (hovered && !selection.includes(hovered) && !hidden.has(hovered)) add(hovered, hoverLine);
         for (const id of selection) if (!hidden.has(id)) add(id, selectedLine);
-        const group = editingGroup && groupById(editingGroup);
-        for (const [id, mesh] of meshes) {
-            mesh.visible = !hidden.has(id);
-            // Editing inside a group: the rest of the model steps back.
-            const dim = Boolean(group && !group.parts.includes(id));
-            for (const m of [].concat(mesh.material)) {
-                if (m.transparent !== dim) { m.transparent = dim; m.needsUpdate = true; }
-                m.opacity = dim ? 0.25 : 1;
-                m.depthWrite = !dim;
-            }
-            const on = selection.includes(id);
-            const glow = red.has(id) ? 0x7f1d1d : (on ? 0x1e3a8a : (id === hovered ? 0x0c4a6e : 0x000000));
-            for (const m of [].concat(mesh.material)) {
-                m.emissive?.setHex(glow);
-                // Blocked: the part itself turns red (a tint over its own colour is too faint on grey).
-                // "Show how it moves": its body's pastel.
-                const tint = partTints && insight.shown.motion ? partTints.get(id) : null;
-                tintMaterial(m, red.has(id) ? 0xef4444 : (tint || null));
-            }
+        const g = editingGroup && groupById(editingGroup);
+        const look = {red, group: g ? new Set(g.parts) : null, tints: partTints && insight.shown.motion ? partTints : null};
+        // Who may look other than plain now: the styled ones (they may go back), and every one with a reason.
+        const touch = new Set(styled);
+        for (const id of hidden) touch.add(id);
+        for (const id of selection) touch.add(id);
+        for (const id of red) touch.add(id);
+        if (hovered) touch.add(hovered);
+        if (look.tints) for (const id of look.tints.keys()) touch.add(id);
+        if (look.group) for (const id of meshes.keys()) touch.add(id);
+        styled.clear();
+        for (const id of touch) {
+            const mesh = meshes.get(id);
+            if (mesh && styleMesh(mesh, id, look)) styled.add(id);
         }
     };
-
     // ---- seeing the model: port badges, hinge axes, gear pairs, body tints ---------------
     // (view/insight-layer.js). Port badges come straight from the model, so they change with
     // a port at once; the motion overlay comes from the pane's debounced compile (setMotion).
@@ -426,38 +482,78 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     // parts' invisible proxies, so picking, highlights and tints read and write them as before.
     let instanced = null;
     s.onBeforeRender = () => instanced?.sync();
+    const disposeMesh = mesh => {
+        modelGroup.remove(mesh);
+        for (const m of [].concat(mesh.material)) m.dispose();
+    };
+    /** A part's mesh (the instanced proxy, or a drawn mesh with its edge lines). */
+    const makeMesh = (p, withLines) => {
+        // Each mesh gets its own material pair so a highlight is per part.
+        const mats = materialsFor(p.color ?? DEFAULT_COLOR).map(m => m.clone());
+        const mesh = new Mesh(partGeometry(p.part, read, colors), mats);
+        mesh.matrixAutoUpdate = false;
+        mesh.matrix.copy(worldMatrix(p.position, p.rotation));
+        mesh.name = p.id;
+        mesh.userData.part = p.part;
+        mesh.userData.placed = p;
+        if (withLines) addEdgeLines(mesh, partVisual(p.part, read, colors), linesFor(p.color ?? DEFAULT_COLOR));
+        modelGroup.add(mesh);
+        return mesh;
+    };
+    /**
+     * Brings the meshes up to the editor's model. The model is immutable with structural sharing
+     * (editor-state.js): a part that is the same object as last time is unchanged and keeps its mesh;
+     * one only moved keeps its mesh at the new pose; only a new, removed, re-coloured or swapped part
+     * makes or drops a mesh, and only then are the instanced batches remade (from the same proxies).
+     */
     const rebuild = () => {
-        for (const mesh of meshes.values()) {
-            modelGroup.remove(mesh);
-            for (const m of [].concat(mesh.material)) m.dispose();
+        const model = editor.model;
+        const instancing = useInstancing(model.parts.length);
+        let changed = false;
+        if (instancing !== Boolean(instanced) || !meshes.size) {
+            // Drawn the other way now (or the first time): every mesh is made anew.
+            for (const mesh of meshes.values()) disposeMesh(mesh);
+            meshes.clear();
+            styled.clear();
+            changed = true;
         }
-        meshes.clear();
-        if (instanced) {
+        const ids = new Set(model.parts.map(p => p.id));
+        for (const [id, mesh] of meshes) {
+            if (ids.has(id)) continue;
+            disposeMesh(mesh);
+            meshes.delete(id);
+            changed = true;
+        }
+        for (const p of model.parts) {
+            const mesh = meshes.get(p.id);
+            const was = mesh && mesh.userData.placed;
+            if (was === p) continue;
+            if (was && was.part === p.part && (was.color ?? DEFAULT_COLOR) === (p.color ?? DEFAULT_COLOR)) {
+                mesh.matrix.copy(worldMatrix(p.position, p.rotation));
+                mesh.userData.placed = p;
+                continue;
+            }
+            if (mesh) disposeMesh(mesh);
+            meshes.set(p.id, makeMesh(p, !instancing));
+            changed = true;
+        }
+        if (changed && instanced) {
             s.remove(instanced.object);
             instanced.dispose();
             instanced = null;
         }
-        const model = editor.model;
-        const mirror = useInstancing(model.parts.length) ? createInstancedParts({colors}) : null;
-        for (const p of model.parts) {
-            // Each mesh gets its own material pair so a highlight is per part.
-            const mats = materialsFor(p.color ?? DEFAULT_COLOR).map(m => m.clone());
-            const mesh = new Mesh(partGeometry(p.part, read, colors), mats);
-            mesh.matrixAutoUpdate = false;
-            mesh.matrix.copy(worldMatrix(p.position, p.rotation));
-            mesh.name = p.id;
-            mesh.userData.part = p.part;
-            if (mirror) mirror.add(mesh, partVisual(p.part, read, colors), p.color ?? DEFAULT_COLOR);
-            else addEdgeLines(mesh, partVisual(p.part, read, colors), linesFor(p.color ?? DEFAULT_COLOR));
-            modelGroup.add(mesh);
-            meshes.set(p.id, mesh);
-        }
-        if (mirror) {
+        if (changed && instancing) {
+            const mirror = createInstancedParts({colors});
+            for (const p of model.parts) {
+                const mesh = meshes.get(p.id);
+                mirror.add(mesh, partVisual(p.part, read, colors), p.color ?? DEFAULT_COLOR);
+            }
             modelGroup.updateMatrixWorld(true);
             mirror.build();
             s.add(mirror.object);
             instanced = mirror;
         }
+        pickIndexFor = null;
         // The floor is fixed where the model stood when the editor opened, so lifting
         // the lowest part does not move the floor away under it; it only ever goes down.
         modelGroup.updateMatrixWorld(true);
@@ -474,6 +570,38 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         placeMeshes();
         updateGizmo();
         refreshPorts();
+    };
+
+    // The ray-picking index: each part's world box (its mesh's bounds and its colliders), per model.
+    // A part object is frozen and keeps its pose, so its box is kept for it (WeakMap).
+    const worldBoxes = new WeakMap();
+    let pickIndexFor = null;
+    let pickIndexed = null;
+    const worldBoxOf = p => {
+        let box = worldBoxes.get(p);
+        if (box) return box;
+        const geometry = partGeometry(p.part, read, colors);
+        if (!geometry.boundingBox) geometry.computeBoundingBox();
+        const b = geometry.boundingBox.clone().applyMatrix4(worldMatrix(p.position, p.rotation));
+        const ldu = partBounds(p, catalogMap.get(p.part));
+        if (ldu) {
+            // LDraw → world is (x, -y, -z) in metres: a box's y and z bounds swap ends.
+            b.expandByPoint(new Vector3(...lduToWorld(ldu.min)));
+            b.expandByPoint(new Vector3(...lduToWorld(ldu.max)));
+        }
+        box = {min: b.min.toArray(), max: b.max.toArray()};
+        worldBoxes.set(p, box);
+        return box;
+    };
+    const pickIndex = () => {
+        const parts = editor.model.parts;
+        if (pickIndexFor !== parts) {
+            const present = parts.filter(p => meshes.has(p.id));
+            pickIndexed = createSpatialIndex(present.map(worldBoxOf), 40 * LDU_M);
+            pickIndexed.ids = present.map(p => p.id);
+            pickIndexFor = parts;
+        }
+        return pickIndexed;
     };
 
     // ---- selection -----------------------------------------------------------
@@ -514,6 +642,9 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     controls.zoomToCursor = true;
     controls.maxPolarAngle = Math.PI / 2;
     controls.addEventListener('start', () => { cameraTouched = true; });
+    // The camera, the gizmo (a handle lit, moved, resized) and the controls changing: a new frame.
+    controls.addEventListener('change', invalidate);
+    transform.addEventListener('change', invalidate);
     controls.update();
 
     const pivotLdu = () => selectionPivot(selectedParts(), gridStep);
@@ -526,6 +657,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         if (Math.abs(size - transform.size) > 0.01) transform.setSize(size);
     };
     const updateGizmo = () => {
+        invalidate();
         if (!selection.length || tool) {
             transform.detach();
             return;
@@ -673,17 +805,11 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     /** The same for a new part placed at `pose`. */
     const placeBlockedBy = (part, pose) => {
         const placed = {id: '__placing__', part, position: pose.position, rotation: pose.rotation};
-        const hit = solidOverlaps({...editor.model, parts: [...editor.model.parts, placed]}, catalogMap, placed)[0];
+        const hit = solidOverlaps(editor.model, catalogMap, placed)[0];
         const into = hit && partsById().get(hit.part);
         return hit ? {part: placed.id, into: hit.part, target: into ? into.part : null} : null;
     };
 
-    /** The model without some parts (what a moving part may attach to). */
-    const modelWithout = ids => {
-        const model = editor.model;
-        const skip = new Set(ids);
-        return {...model, parts: model.parts.filter(p => !skip.has(p.id))};
-    };
     const samePose = (a, b) => a.position.every((v, i) => Math.abs(v - b.position[i]) < 0.5) &&
         a.rotation.every((v, i) => Math.abs(v - b.rotation[i]) < 1e-6);
     /**
@@ -693,7 +819,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
      */
     const magnetFor = (pose, placed) => {
         if (samePose(pose, placed)) return null;
-        const found = snapCandidates({model: modelWithout([placed.id]), catalog: catalogMap, part: placed.part,
+        // The part itself is not something to attach to (`exclude`, not a copy of the model without it).
+        const found = snapCandidates({model: editor.model, exclude: [placed.id], catalog: catalogMap, part: placed.part,
             pose: {position: pose.position, rotation: pose.rotation}, radius: MAGNET_RADIUS})
             .filter(c => !samePose(c, placed));
         if (!found.length) return null;
@@ -702,6 +829,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
 
     // ---- ghosts and magnet markers -------------------------------------------
     const clearGhost = () => {
+        invalidate();
         for (const c of [...ghostGroup.children]) {
             ghostGroup.remove(c);
             if (c.userData.owned) for (const m of [].concat(c.material)) m.dispose();
@@ -713,6 +841,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         moving: new MeshBasicMaterial({color: 0x16a34a, depthTest: false})
     };
     const marker = (lduPoint, which) => {
+        invalidate();
         const m = new Mesh(markerGeometry, markerMaterials[which]);
         m.position.fromArray(lduToWorld(lduPoint));
         m.renderOrder = 20;
@@ -977,7 +1106,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         return false;
     };
     const attachmentOf = placed => {
-        const found = snapCandidates({model: modelWithout([placed.id]), catalog: catalogMap, part: placed.part,
+        const found = snapCandidates({model: editor.model, exclude: [placed.id], catalog: catalogMap, part: placed.part,
             pose: {position: placed.position, rotation: placed.rotation}, radius: HOLE_PITCH});
         return found.find(c => samePose(c, placed)) || null;
     };
@@ -1263,6 +1392,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         whiteSpace: 'nowrap', boxShadow: '0 2px 6px rgba(15, 23, 42, 0.3)', zIndex: 4});
     container.appendChild(measureDiv);
     const drawMeasure = () => {
+        invalidate();
         for (const c of [...measureGroup.children]) {
             measureGroup.remove(c);
             if (c.geometry !== markerGeometry) c.geometry.dispose();
@@ -1403,7 +1533,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     };
     const modelBox = ids => {
         const box = new Box3();
-        for (const [id, mesh] of meshes) if (!ids || ids.includes(id)) box.expandByObject(mesh);
+        if (!ids) for (const mesh of meshes.values()) box.expandByObject(mesh);
+        else for (const id of new Set(ids)) { const mesh = meshes.get(id); if (mesh) box.expandByObject(mesh); }
         return box;
     };
     const VIEWS = {home: new Vector3(1, 0.8, 1.2), top: new Vector3(0, 1, 0.0001), front: new Vector3(0, 0.0001, 1), side: new Vector3(1, 0.0001, 0)};
@@ -1841,12 +1972,20 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     const unsubscribe = editor.subscribe(() => rebuild());
 
     // ---- frame loop hooks -----------------------------------------------------------
+    const drawSize = new Vector2();
     const resize = () => {
         const width = Math.max(1, container.clientWidth || 0);
         const height = Math.max(1, container.clientHeight || Math.round(width * 0.6));
-        renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
-        const size = renderer.getSize(new Vector2());
+        // Only on a change: setting the pixel ratio (or the size) resets the canvas — its drawing
+        // buffer is reallocated and cleared — which every frame was a GPU stall and a forced redraw.
+        const ratio = Math.min(2, window.devicePixelRatio || 1);
+        if (renderer.getPixelRatio() !== ratio) {
+            renderer.setPixelRatio(ratio);
+            invalidate();
+        }
+        const size = renderer.getSize(drawSize);
         if (size.x !== width || size.y !== height) {
+            invalidate();
             renderer.setSize(width, height, false);
             camera.aspect = width / height;
             camera.updateProjectionMatrix();
@@ -1854,15 +1993,27 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             if (!cameraTouched) frameModel();
         }
     };
-    const render = () => {
+    const drawnCamera = new Matrix4();
+    const drawnProjection = new Matrix4();
+    /**
+     * Draws a frame when anything in it changed since the last one (`invalidate`: the model, a
+     * highlight, a ghost, the gizmo, the controls; or the camera, compared here), or when `force`d.
+     * @returns {boolean} whether it drew
+     */
+    const render = ({force = false} = {}) => {
         resize();
         fitGizmo();
-        s.updateMatrixWorld();
         camera.updateMatrixWorld();
-        const size = renderer.getSize(new Vector2());
+        if (!force && !dirty && camera.matrixWorld.equals(drawnCamera) && camera.projectionMatrix.equals(drawnProjection)) return false;
+        dirty = false;
+        drawnCamera.copy(camera.matrixWorld);
+        drawnProjection.copy(camera.projectionMatrix);
+        s.updateMatrixWorld();
+        const size = renderer.getSize(drawSize);
         insight.update(camera, size.x, size.y);
         placeMeasureLabel();
         renderer.render(s, camera);
+        return true;
     };
     const dispose = () => {
         unsubscribe();
@@ -1905,6 +2056,9 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         transform.dispose();
         controls.dispose();
         renderer.dispose();
+        // Give the context back now, not at garbage collection: a big model's buffers live in it, and
+        // on a software GPU the next view's context is slow to make while the old one still holds them.
+        renderer.forceContextLoss();
         boxDiv.remove();
         canvas.remove();
     };

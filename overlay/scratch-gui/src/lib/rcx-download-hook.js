@@ -24,7 +24,15 @@
  * no firmware answers nothing, which is indistinguishable from no brick and no
  * tower. See docs/RCX-FIRMWARE.md — the honest thing is to say so in the UI
  * beforehand, not to guess afterwards.
+ *
+ * TARGETS. A download goes to the IR tower unless the user CHOSE a virtual
+ * target (lib/rcx/rcx-targets.js: `runtime.rcxDownloadTarget`, or
+ * `options.target`) — the Robot Lab's simulated RCX registers one. The tower
+ * path below is unchanged; a chosen target that is gone is a refusal, never a
+ * fallback to the tower.
  */
+
+import {virtualDownload} from './rcx/rcx-targets.js';
 
 /**
  * @param {object} vm the scratch-vm instance
@@ -39,6 +47,8 @@ const installRcxDownloader = function (vm) {
     if (typeof runtime.rcxDownload === 'function') return false;
 
     runtime.rcxDownload = async function (bytes, options = {}) {
+        const virtual = virtualDownload(runtime, bytes, options);
+        if (virtual) return virtual;
         let link = null;
         try {
             const [{parseRcxImage, downloadImage}, {openRcxSerial, requestRcxPort}] =

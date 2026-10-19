@@ -51,7 +51,9 @@ const TEXT = {
             'line-follower.bw': 'The example program is in the Code tab now. Press Run and watch the robot follow the black line.',
             'wall-stopper.bw': 'The example program is in the Code tab now. Press Run and watch the robot stop before the wall. Challenge: make it stop 20 cm away.',
             'colour-explorer.bw': 'The example program is in the Code tab now. Press Run and watch the robot find the red square. Challenge: make it find the green one.',
-            'sumo.bw': 'The example program is in the Code tab now. Press Run: the robot drives around and turns back whenever it sees the black ring. Challenge: make it turn the other way, or faster.'
+            'sumo.bw': 'The example program is in the Code tab now. Press Run: the robot drives around and turns back whenever it sees the black ring. Challenge: make it turn the other way, or faster.',
+            'rcx-bumper-car.nqc': 'The NQC program is in the NQC tab and in the Lab\'s RCX. Press Run: the robot drives to the wall, backs off when its bumper is pressed and turns away. Challenge: make it back off further.',
+            'rcx-line-follower.nqc': 'The NQC program is in the NQC tab and in the Lab\'s RCX. Press Run and watch it follow the line\'s edge with its light sensor. Challenge: change THRESHOLD and see what happens.'
         },
         exampleFailed: 'Could not load the example program: {error}',
         mat: 'Mat', drive: 'Drive', forward: 'Forward', back: 'Back', left: 'Left', right: 'Right', stop: 'Stop', speed: 'Speed',
@@ -65,6 +67,7 @@ const TEXT = {
             'io-encrypted': 'this BrickLink Studio file is password-protected (an older Studio made it). Open it in a current Studio and save it again, or export it there as LDraw (File › Export As).',
             'io-no-model': 'this BrickLink Studio file holds no LDraw model (model.ldr).',
             'not-a-zip': 'the file is damaged or not the kind its name says.',
+            'model-too-big': 'the model inside the file is far too big for the Robot Lab.',
             'lxf-no-lxfml': 'this LEGO Digital Designer file holds no model (.LXFML).',
             'lxf-unreadable': 'this LEGO Digital Designer model could not be read.',
             'lxf-version': 'this LEGO Digital Designer file is from a version the Robot Lab cannot read (only LDD 4).',
@@ -82,6 +85,9 @@ const TEXT = {
         more: 'More…', moreHelp: 'More actions', large: 'Open the Robot Lab large (full screen)', timeShort: '{s} s',
         partsToggle: 'Show or hide the parts', infoToggle: 'Show or hide the whole note',
         route: 'Program', routeScratch: 'SPIKE blocks', routeFirmware: 'SPIKE firmware (desktop)',
+        rcxTarget: 'RCX downloads go to', rcxTargetTower: 'IR tower (a real RCX)', rcxTargetLab: 'Robot Lab RCX',
+        rcxNoProgram: 'The RCX has no program yet. Load the example, or choose "Robot Lab RCX" and send one from the NQC tab or the RCX blocks.',
+        rcxFailed: 'The RCX program could not be loaded: {error}',
         routeUnavailable: 'Not available: this build has no managed Renode runtime with lockstep.',
         realTime: '{f}× real time', firmwareFailed: 'Could not start the SPIKE firmware: {error}',
         stopping: 'Stopping the program…',
@@ -126,7 +132,9 @@ const TEXT = {
             'line-follower.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start und schau zu, wie der Roboter der schwarzen Linie folgt.',
             'wall-stopper.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start und schau zu, wie der Roboter vor der Wand anhält. Aufgabe: Lass ihn 20 cm vor der Wand anhalten.',
             'colour-explorer.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start und schau zu, wie der Roboter das rote Feld findet. Aufgabe: Lass ihn das grüne finden.',
-            'sumo.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start: Der Roboter fährt herum und kehrt um, sobald er den schwarzen Ring sieht. Aufgabe: Lass ihn andersherum oder schneller drehen.'
+            'sumo.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start: Der Roboter fährt herum und kehrt um, sobald er den schwarzen Ring sieht. Aufgabe: Lass ihn andersherum oder schneller drehen.',
+            'rcx-bumper-car.nqc': 'Das NQC-Programm steht jetzt im NQC-Tab und im RCX des Labors. Drücke Start: Der Roboter fährt zur Wand, setzt zurück, sobald sein Stoßfänger gedrückt wird, und dreht ab. Aufgabe: Lass ihn weiter zurücksetzen.',
+            'rcx-line-follower.nqc': 'Das NQC-Programm steht jetzt im NQC-Tab und im RCX des Labors. Drücke Start und schau zu, wie er mit dem Lichtsensor dem Rand der Linie folgt. Aufgabe: Ändere THRESHOLD und schau, was passiert.'
         },
         exampleFailed: 'Das Beispielprogramm konnte nicht geladen werden: {error}',
         mat: 'Matte', drive: 'Fahren', forward: 'Vorwärts', back: 'Rückwärts', left: 'Links', right: 'Rechts', stop: 'Stopp', speed: 'Tempo',
@@ -140,6 +148,7 @@ const TEXT = {
             'io-encrypted': 'Diese BrickLink-Studio-Datei ist mit einem Passwort geschützt (von einer älteren Studio-Version). Öffne sie in einem aktuellen Studio und speichere sie neu, oder exportiere sie dort als LDraw (Datei › Exportieren als).',
             'io-no-model': 'Diese BrickLink-Studio-Datei enthält kein LDraw-Modell (model.ldr).',
             'not-a-zip': 'Die Datei ist beschädigt oder nicht das, was ihr Name sagt.',
+            'model-too-big': 'Das Modell in der Datei ist viel zu groß für das Roboter-Labor.',
             'lxf-no-lxfml': 'Diese LEGO-Digital-Designer-Datei enthält kein Modell (.LXFML).',
             'lxf-unreadable': 'Dieses LEGO-Digital-Designer-Modell konnte nicht gelesen werden.',
             'lxf-version': 'Diese LEGO-Digital-Designer-Datei stammt aus einer Version, die das Roboter-Labor nicht lesen kann (nur LDD 4).',
@@ -157,6 +166,9 @@ const TEXT = {
         more: 'Mehr…', moreHelp: 'Weitere Aktionen', large: 'Roboter-Labor groß öffnen (Vollbild)', timeShort: '{s} s',
         partsToggle: 'Teile zeigen oder ausblenden', infoToggle: 'Den ganzen Hinweis zeigen oder einklappen',
         route: 'Programm', routeScratch: 'SPIKE-Blöcke', routeFirmware: 'SPIKE-Firmware (Desktop)',
+        rcxTarget: 'RCX-Übertragung an', rcxTargetTower: 'IR-Tower (ein echter RCX)', rcxTargetLab: 'Robot-Lab-RCX',
+        rcxNoProgram: 'Der RCX hat noch kein Programm. Lade das Beispiel, oder wähle „Robot-Lab-RCX“ und übertrage eines aus dem NQC-Tab oder mit den RCX-Blöcken.',
+        rcxFailed: 'Das RCX-Programm konnte nicht geladen werden: {error}',
         routeUnavailable: 'Nicht verfügbar: Dieser Build hat keine verwaltete Renode-Laufzeit mit Lockstep.',
         realTime: '{f}× Echtzeit', firmwareFailed: 'Die SPIKE-Firmware konnte nicht starten: {error}',
         stopping: 'Das Programm hält an…',
@@ -365,6 +377,7 @@ class SimLabPane extends React.Component {
             return;
         }
         if (this.disposed) return;
+        this.registerRcxTarget();
         this.raf = requestAnimationFrame(this.frame);
         await this.openStored();
     }
@@ -383,6 +396,7 @@ class SimLabPane extends React.Component {
         this.stopClock();
         this.teardown();
         this.teardownEditor();
+        if (this.unregisterRcx) this.unregisterRcx();
         if (this.physics) this.physics.terminate();
         this.physics = null;
         if (window.__bwSimLab && window.__bwSimLab._pane === this) delete window.__bwSimLab;
@@ -395,6 +409,7 @@ class SimLabPane extends React.Component {
         if (this.editView) { try { this.editView.dispose(); } catch { /* a lost context may already be gone */ } }
         this.editView = null;
         this.editor = null;
+        this.editorDrawn = false;
         if (!this.disposed) this.setState({editGroup: null, pick: null, measurement: null, shortcuts: false});
         // The pictures stay drawn (part-thumbnails.js keeps them); only the renderer goes.
         if (this.thumbs) { try { this.thumbs.dispose(); } catch { /* a lost context may already be gone */ } }
@@ -410,7 +425,15 @@ class SimLabPane extends React.Component {
         this.teardown();
         this.teardownEditor();
         this.setState({mode: 'build', status: 'loading', message: '', placing: null, selection: [], buildStatus: {kind: 'idle'}, gizmoMode: 'move', portPicker: null});
-        // Any palette part may be placed, so load the whole catalog's geometry once.
+        // Any palette part may be placed: the whole catalogue (its second piece is fetched the first
+        // time Build opens, sim-lab.js loadFullCatalog), then its geometry, once.
+        try {
+            await this.lib.loadFullCatalog();
+        } catch (error) {
+            if (!this.disposed) this.setState({status: 'failed', message: this.t('failed', {error: error.message})});
+            return;
+        }
+        if (this.disposed) return;
         if (!this.catalogFiles) this.catalogFiles = await fetchLDrawClosure([...CATALOG.keys()], {withConfig: true});
         if (this.disposed) return;
         const {read} = this.catalogFiles;
@@ -547,7 +570,8 @@ class SimLabPane extends React.Component {
     /** A placed part's name in the learner's language, from its id in the model on show. */
     partNameById (id) {
         const model = this.editor ? this.editor.model : this.session?.model;
-        const placed = model && model.parts.find(p => p.id === id);
+        // The editor's model is frozen: its id map is built once (lib partsByIdOf), not a scan per issue.
+        const placed = model && (Object.isFrozen(model.parts) ? this.lib.partsByIdOf(model).get(id) : model.parts.find(p => p.id === id));
         return placed ? this.partName(placed.part) : fillText(this.itext.part, {id});
     }
 
@@ -713,7 +737,8 @@ class SimLabPane extends React.Component {
         }
         if (this.disposed) return;
         if (this.state.status === 'running') this.pause();
-        window.dispatchEvent(new CustomEvent('bw-load-pseudocode', {detail: {code, source: `sim-lab:${entry.file}`}}));
+        if (entry.example.endsWith('.nqc')) await this.loadRcxExample(code);
+        else window.dispatchEvent(new CustomEvent('bw-load-pseudocode', {detail: {code, source: `sim-lab:${entry.file}`}}));
         this.setState({info: this.text.exampleGoal[entry.example] || this.text.exampleLoaded});
         if (entry.mat && this.state.mat !== entry.mat) await this.setMat(entry.mat);
     }
@@ -732,7 +757,7 @@ class SimLabPane extends React.Component {
             const bytes = new Uint8Array(await f.arrayBuffer());
             const ldconfig = /\.lxf$/i.test(f.name) ?
                 (await this.lib.fetchLDrawClosure([], {withConfig: true})).read('ldconfig.ldr') || '' : '';
-            opened = await this.lib.openModelFile(f.name, bytes, {ldconfig, title: MODEL_TITLE});
+            opened = await this.lib.openModelFile(f.name, bytes, {ldconfig, title: MODEL_TITLE, catalog: this.lib.CATALOG});
         } catch (error) {
             const reason = (error && this.text.fileErrors[error.code]) || (error && error.message) || String(error);
             if (!this.disposed) this.setState({message: this.t('fileFailed', {name: f.name, error: reason})});
@@ -779,6 +804,9 @@ class SimLabPane extends React.Component {
         }
         let result;
         try {
+            // A model naming a part beyond the catalogue's core (sim-lab.js) loads the rest first.
+            await this.lib.catalogFor(text);
+            if (token !== this.loadToken || this.disposed) { firmware?.driver.end().catch(() => {}); return; }
             result = await SimSession.fromText(text, {hubState: this.props.hubState, catalog: CATALOG, mat: this.state.mat,
                 worker: this.physicsClient(), ...(firmware ? {createHub: firmware.createHub} : {})});
         } catch (error) {
@@ -800,6 +828,8 @@ class SimLabPane extends React.Component {
         }
         const insight = this.lib.insightOf(runModel, session.mechanism, CATALOG, issues);
         this.session = session;
+        // A real RCX keeps its program through a reset; the Lab's does too (a new scene, the same image).
+        if (this.rcxHub() && this.rcxImage) this.rcxHub().loadProgram(this.rcxImage);
         // The worker could not run the scene (no WebAssembly in workers, say): the physics runs
         // here, and later models do not try the worker again.
         if (session.workerError && this.physics && !session.lockstep) { this.physics.terminate(); this.physics = false; }
@@ -919,7 +949,13 @@ class SimLabPane extends React.Component {
             }
         }
         this.last = now;
-        if (this.editView) { this.drawThumbs(); this.editView.render(); return; }
+        if (this.editView) {
+            // The model first; palette pictures (each a GPU read-back, slow on a software GPU) are drawn
+            // in frames the build view did not need to redraw, once it has drawn the model.
+            if (this.editView.render()) this.editorDrawn = true;
+            else if (this.editorDrawn) this.drawThumbs();
+            return;
+        }
         if (!this.session) return;
         if (this.session.failed && this.state.status !== 'failed') {
             this.setState({status: 'failed', message: this.t('physicsFailed', {error: this.session.failed.message})});
@@ -936,6 +972,65 @@ class SimLabPane extends React.Component {
         if (this.view) this.view.render(this.session.snapshot());
     }
 
+    /** The scene's RCX (hubs/rcx/), or null. */
+    rcxHub () {
+        const h = this.session && this.session.hubs.find(x => x.profile === 'rcx');
+        return h ? h.hub : null;
+    }
+
+    /**
+     * "Robot Lab RCX" as an `rcxDownload` target (lib/rcx/rcx-targets.js): the RCX blocks and the
+     * NQC tab send to the scene's RCX once the user picks it below; the IR tower stays the default.
+     */
+    registerRcxTarget () {
+        const runtime = this.props.vm && this.props.vm.runtime;
+        if (!runtime || this.unregisterRcx) return;
+        this.unregisterRcx = this.lib.registerRcxTarget(runtime, this.lib.robotLabRcxTarget(() => this.rcxHub(), {
+            onLoaded: (bytes, hub) => {
+                this.rcxImage = bytes.slice();
+                // A download that started the program (the NQC tab, the RCX blocks) runs the world too.
+                if (hub.status === 'running' && this.session && !this.session.lockstep && this.state.status !== 'running') {
+                    this.startClock();
+                    this.setState({status: 'running', info: ''});
+                }
+            }
+        }));
+    }
+
+    setRcxTarget (id) {
+        const runtime = this.props.vm && this.props.vm.runtime;
+        if (!runtime) return;
+        this.lib.selectRcxTarget(runtime, id);
+        this.forceUpdate();
+    }
+
+    /** Run with an RCX: its program starts (again) on the Lab's clock. */
+    runRcx () {
+        const hub = this.rcxHub();
+        this.stopClock();
+        if (hub.status === 'empty') this.setState({info: this.text.rcxNoProgram});
+        else {
+            hub.run();
+            this.setState({info: ''});
+        }
+        this.startClock();
+        this.setState({status: 'running'});
+    }
+
+    /** An NQC example: into the NQC tab, compiled, and downloaded to the Lab's RCX (the target chosen for it). */
+    async loadRcxExample (code) {
+        window.dispatchEvent(new CustomEvent('bw-load-pseudocode', {detail: {code, lang: 'nqc', source: 'sim-lab'}}));
+        const runtime = this.props.vm && this.props.vm.runtime;
+        const fail = error => this.setState({message: this.t('rcxFailed', {error})});
+        if (!runtime || typeof runtime.nqcCompile !== 'function' || typeof runtime.rcxDownload !== 'function') return fail('no NQC compiler');
+        const compiled = await runtime.nqcCompile(code, 'RCX2');
+        if (this.disposed) return;
+        if (!compiled.ok) return fail(compiled.log);
+        this.lib.selectRcxTarget(runtime, this.lib.ROBOT_LAB_RCX_TARGET);
+        const sent = await runtime.rcxDownload(compiled.bytes, {target: this.lib.ROBOT_LAB_RCX_TARGET, run: false});
+        if (!sent.ok) fail(sent.log);
+    }
+
     spikeLoaded () {
         const vm = this.props.vm;
         return Boolean(vm && vm.extensionManager && vm.extensionManager.isExtensionLoaded('spikeprime'));
@@ -945,6 +1040,7 @@ class SimLabPane extends React.Component {
     async run () {
         if (!this.session) return;
         if (this.session.lockstep) { await this.runFirmware(); return; }
+        if (this.rcxHub()) { this.runRcx(); return; }
         const hubState = this.props.hubState;
         hubState.setSimulationEnabled(true);
         // Connecting runs on wall time (its timeouts are the browser's); the program clock goes in
@@ -1235,7 +1331,8 @@ class SimLabPane extends React.Component {
         const editor = this.editor;
         const view = this.editView;
         const parts = editor ? editor.model.parts : [];
-        const selection = this.state.selection.map(id => parts.find(p => p.id === id)).filter(Boolean);
+        const byId = editor ? this.lib.partsByIdOf(editor.model) : new Map();
+        const selection = this.state.selection.map(id => byId.get(id)).filter(Boolean);
         const sel = selection.length === 1 ? selection[0] : null;
         const meta = sel ? this.lib.CATALOG.get(sel.part) : null;
         const portable = meta && this.lib.isPortPart(meta);
@@ -1533,6 +1630,15 @@ class SimLabPane extends React.Component {
                 </select>
             </label>
         );
+        const runtime = this.props.vm && this.props.vm.runtime;
+        const rcxTargetSelect = this.lib && runtime && this.rcxHub() && (
+            <label style={{fontSize: 12}}>{T.rcxTarget}{': '}
+                <select data-testid="bw-sim-lab-rcx-target" value={this.lib.rcxTargetOf(runtime)} onChange={e => this.setRcxTarget(e.target.value)}>
+                    <option value={this.lib.TOWER_TARGET}>{T.rcxTargetTower}</option>
+                    <option value={this.lib.ROBOT_LAB_RCX_TARGET}>{T.rcxTargetLab}</option>
+                </select>
+            </label>
+        );
         const modelSelect = (
             <select data-testid="bw-sim-lab-model" disabled={busy || !this.lib} value={shipped || ''}
                 aria-label={compact ? T.model : undefined} title={compact ? T.model : undefined}
@@ -1613,6 +1719,7 @@ class SimLabPane extends React.Component {
                     {saveAsControl}
                     <label style={{fontSize: 12}}>{T.mat}{': '}{matSelect}</label>
                     {routeSelect}
+                    {rcxTargetSelect}
                     {runButton}
                     {resetButton}
                     {exampleButton}
@@ -1635,6 +1742,7 @@ class SimLabPane extends React.Component {
                             {modelSelect}
                             {matSelect}
                             {routeSelect}
+                            {rcxTargetSelect}
                             {exampleButton}
                         </div>
                     </React.Fragment>

@@ -21,12 +21,22 @@ export class WebGLUnavailableError extends Error {
     }
 }
 
-/** WebGL 2 or nothing (three.js dropped WebGL 1 in r163). window.__bwSimLabForceNoWebGL forces the fallback. */
+let webgl2Seen = false;
+/**
+ * WebGL 2 or nothing (three.js dropped WebGL 1 in r163). window.__bwSimLabForceNoWebGL forces the fallback.
+ * The probe's context is released at once, and a yes is remembered for the page: every probe used to leave
+ * a live context behind until garbage collection, and on a software GPU each new context is slow to make.
+ */
 export const webglAvailable = () => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return false;
     if (window.__bwSimLabForceNoWebGL) return false;
+    if (webgl2Seen) return true;
     try {
-        return Boolean(document.createElement('canvas').getContext('webgl2'));
+        const gl = document.createElement('canvas').getContext('webgl2');
+        if (!gl) return false;
+        gl.getExtension('WEBGL_lose_context')?.loseContext();
+        webgl2Seen = true;
+        return true;
     } catch {
         return false;
     }
@@ -255,6 +265,9 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         controls.dispose();
         built.dispose();
         renderer.dispose();
+        // Give the context back now, not at garbage collection: a big model's buffers live in it, and
+        // on a software GPU the next view's context is slow to make while the old one still holds them.
+        renderer.forceContextLoss();
         canvas.remove();
     };
 
@@ -271,7 +284,9 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
             return {position: camera.position.toArray(), target: controls.target.toArray(), distance: camera.position.distanceTo(controls.target)};
         },
         /** What the last frame cost: three's draw calls and triangles, GPU objects, and the instancing (scale gate). */
+        // `frames`: frames drawn so far (three counts each render), so a gate can see an idle big model is not redrawn.
         renderStats: () => ({calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, lines: renderer.info.render.lines,
+            frames: renderer.info.render.frame,
             geometries: renderer.info.memory.geometries, programs: renderer.info.programs?.length ?? null,
             parts: model.parts.length, instanced: built.instanced ? built.instanced.stats() : null}),
         /** What the overlay shows now, plus the parts pulsing (for the browser gate). */

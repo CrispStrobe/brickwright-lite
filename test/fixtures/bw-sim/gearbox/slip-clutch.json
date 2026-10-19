@@ -1,0 +1,14 @@
+{
+  "$comment": "Slip clutch on the bench, LDraw frame (-y up): the 8-24 bench (medium motor A at the origin, a Technic beam 7 pinned under the housing) with the white 24T clutch gear 76019 on a 3L axle in the motor output at y=-70, meshing with a 24T 3648 on an 8L axle in the beam's hole at x=60 (pitch radii 30 + 30). The clutch gear's hub holds its axle with the stamped 2.5-5 N·cm.",
+  "version": 1,
+  "parts": [
+    {"id": "m", "part": "54696p01.dat", "position": [0,0,0], "rotation": [1,0,0,0,1,0,0,0,1], "port": "A"},
+    {"id": "beam", "part": "32524.dat", "position": [0,40,0], "rotation": [0,0,1,0,1,0,-1,0,0]},
+    {"id": "pin1", "part": "2780.dat", "position": [20,30,0], "rotation": [0,1,0,1,0,0,0,0,-1]},
+    {"id": "pin2", "part": "2780.dat", "position": [-20,30,0], "rotation": [0,1,0,1,0,0,0,0,-1]},
+    {"id": "aIn", "part": "4519.dat", "position": [0,-60,0], "rotation": [0,1,0,1,0,0,0,0,-1]},
+    {"id": "clutch", "part": "76019.dat", "position": [0,-70,0], "rotation": [1,0,0,0,0,1,0,-1,0]},
+    {"id": "aOut", "part": "3707.dat", "position": [60,-10,0], "rotation": [0,1,0,1,0,0,0,0,-1]},
+    {"id": "g24", "part": "3648.dat", "position": [60,-70,0], "rotation": [1,0,0,0,0,1,0,-1,0]}
+  ]
+}

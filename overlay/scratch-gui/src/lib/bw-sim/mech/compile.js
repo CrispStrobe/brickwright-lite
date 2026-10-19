@@ -14,13 +14,15 @@
 // body roles and the no-collide pairs; the default is the v1 mechanism.
 
 import {validatePlacedModel, validateCompiledMechanism, GROUND_FRICTION, LDU_M, lduToWorld, dirToWorld,
-    partHubProfile, partSensor, portRefOf, withBodyRoles, noCollidePairs, V1_COUPLING_KINDS} from '../contracts.js';
+    partHubProfile, partSensor, portRefOf, withBodyRoles, noCollidePairs, couplingBodyPairs, V1_COUPLING_KINDS} from '../contracts.js';
 import {BUILTIN_KINDS} from '../kinds/index.js';
 import {mat3MulVec3, vecAdd} from './vec.js';
 import {buildGraph} from './graph.js';
 import {buildIslands} from './islands.js';
 import {buildJoints} from './joints.js';
 import {buildGears} from './gears.js';
+import {sharedAxisBodyPairs, localNoCollide} from './collision-filter.js';
+import {freePinWelds} from './free-pins.js';
 import {validateLoad, loadBody} from '../world/objects.js';
 import {quatMul, quatConj} from './vec.js';
 
@@ -205,6 +207,13 @@ export const compile = (model, catalog, opts = {}) => {
             });
             continue;
         }
+        // A free pin (mech/free-pins.js) is welded to one of the two parts it joins: one hinge, no
+        // light body between two constraints.
+        const freePins = freePinWelds(nodes, islands, jointsResult.joints);
+        if (freePins.length > 0) {
+            for (const [bA, bB] of freePins) weld(islands, bA, bB);
+            continue;
+        }
         gearDiagnostics = [];
         gearResult = buildGears(nodes, islands, jointsResult.joints, catalogMap, gearDiagnostics, jointsResult.jointEntries, kinds);
         if (gearResult.lockedPairs.length === 0) {
@@ -217,13 +226,13 @@ export const compile = (model, catalog, opts = {}) => {
             gearResult = null;
             continue;
         }
-        for (const d of gearDiagnostics) if (d.code === 'gear-on-frame') diagnostics.push(d);
+        for (const d of gearDiagnostics) if (d.code === 'gear-on-frame' || d.code === 'gear-loop-locked') diagnostics.push(d);
         for (const [bA, bB] of gearResult.lockedPairs) weld(islands, bA, bB);
         gearResult = null;
     }
     if (!gearResult) throw new Error('compile: mechanism topology did not settle');
     // A gear welded by gear-on-frame is "not on a hinge" by construction; that is the lock, already said.
-    const lockedGears = new Set(diagnostics.filter(d => d.code === 'gear-on-frame').flatMap(d => d.parts));
+    const lockedGears = new Set(diagnostics.filter(d => d.code === 'gear-on-frame' || d.code === 'gear-loop-locked').flatMap(d => d.parts));
     for (const d of gearDiagnostics) {
         if (d.code === 'gear-not-on-hinge' && d.parts.every(p => lockedGears.has(p))) continue;
         diagnostics.push(d);
@@ -393,9 +402,14 @@ export const compile = (model, catalog, opts = {}) => {
     }
     if (!v2) return mechanism;
 
-    const couplings = [...gearResult.gears.map(({id, type, ...rest}) => ({id, kind: type, ...rest})), ...detectedCouplings];
+    // Meshes relative to a frame that is not both hinges' (mech/gears.js, gearbox lane): v2 only.
+    const relativeCouplings = (gearResult.relative || []).map(({type, ...rest}, i) => ({id: `r${i}`, kind: type, ...rest}));
+    const couplings = [...gearResult.gears.map(({id, type, ...rest}) => ({id, kind: type, ...rest})), ...relativeCouplings, ...detectedCouplings];
     const mechanismV2 = {...mechanism, version: 2, bodies: withBodyRoles(mechanism.bodies), hubs: v2.hubs, actuators: v2.actuators,
-        couplings, devices: v2.devices, noCollide: noCollidePairs(joints, couplings, kinds, seatedBodyPairs(graphEdges, islands))};
+        couplings, devices: v2.devices, noCollide: noCollidePairs(joints, couplings, kinds,
+            [...seatedBodyPairs(graphEdges, islands), ...sharedAxisBodyPairs(graphEdges, islands)])};
+    const local = localNoCollide(mechanismV2.bodies, joints, mechanismV2.noCollide, couplingBodyPairs(joints, couplings, kinds), graphEdges, islands, nodes);
+    if (local.length) mechanismV2.noCollideParts = local;
     const problemsV2 = validateCompiledMechanism(mechanismV2, {kinds});
     if (problemsV2.length > 0) {
         throw new Error(`compile produced invalid mechanism v2: ${problemsV2.join('; ')}`);

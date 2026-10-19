@@ -68,7 +68,22 @@ for (const l of lines) {
 check('the runner printed a summary', 'tests' in summary && 'fail' in summary,
     'tests' in summary ? `tests ${summary.tests}, pass ${summary.pass}, fail ${summary.fail}, cancelled ${summary.cancelled ?? 0}`
         : 'no `# tests` / `# fail` lines — the runner died before summarising, and a partial TAP reads as green to a grep');
-const notOk = lines.filter(l => /^\s*not ok \d+/.test(l));
+// A known-open test (`{todo: …}`) prints `not ok N - name # TODO reason` and is counted under
+// `# todo`, not `# fail`. It is accepted only when its reason points at the doc entry that tracks
+// it (an existing `docs/….md`), the way a skip must point at where it executes; a TODO without
+// one, and every other `not ok`, still fails here (owner decision 2026-10-19).
+const TODO_DOC = /# TODO\b.*?\b(docs\/[A-Za-z0-9._/-]+\.md)/;
+const repoRoot = path.join(path.dirname(new URL(import.meta.url).pathname), '..');
+const todoWithDoc = l => {
+    const m = l.match(TODO_DOC);
+    return Boolean(m) && existsSync(path.join(repoRoot, m[1]));
+};
+const todos = lines.filter(l => /^\s*not ok \d+.*# TODO\b/.test(l));
+const strayTodos = todos.filter(l => !todoWithDoc(l));
+check('every known-open (TODO) test points at the doc entry that tracks it', strayTodos.length === 0,
+    strayTodos.length ? `${strayTodos.length} TODO(s) without an existing docs/….md in the reason: ${strayTodos[0].trim().slice(0, 120)}`
+        : `${todos.length} TODO(s), each with its doc`);
+const notOk = lines.filter(l => /^\s*not ok \d+/.test(l) && !todoWithDoc(l));
 const counted = (summary.fail ?? 0) + (summary.cancelled ?? 0);
 check('every `not ok` is counted by the summary', notOk.length === 0 || counted > 0,
     notOk.length === 0 ? 'no failures' : counted > 0 ? `${notOk.length} not-ok line(s), summary counts ${counted}`

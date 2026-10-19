@@ -1,0 +1,16 @@
+{
+  "$comment": "Two gear paths between the same two axles that agree, LDraw frame (-y up): on the 8-24 bench, the motor's 6L input axle carries a 16T at y=-70 and another at y=-130, the 10L output axle in the beam's hole at x=40 a 16T at each height. Both paths turn the output at -1: they share the load.",
+  "version": 1,
+  "parts": [
+    {"id": "m", "part": "54696p01.dat", "position": [0,0,0], "rotation": [1,0,0,0,1,0,0,0,1], "port": "A"},
+    {"id": "beam", "part": "32524.dat", "position": [0,40,0], "rotation": [0,0,1,0,1,0,-1,0,0]},
+    {"id": "pin1", "part": "2780.dat", "position": [20,30,0], "rotation": [0,1,0,1,0,0,0,0,-1]},
+    {"id": "pin2", "part": "2780.dat", "position": [-20,30,0], "rotation": [0,1,0,1,0,0,0,0,-1]},
+    {"id": "aI", "part": "3706.dat", "position": [0,-90,0], "rotation": [0,1,0,1,0,0,0,0,-1]},
+    {"id": "gIa", "part": "94925.dat", "position": [0,-70,0], "rotation": [1,0,0,0,0,1,0,-1,0]},
+    {"id": "gIb", "part": "94925.dat", "position": [0,-130,0], "rotation": [1,0,0,0,0,1,0,-1,0]},
+    {"id": "aO", "part": "3737.dat", "position": [40,-50,0], "rotation": [0,1,0,1,0,0,0,0,-1]},
+    {"id": "gOa", "part": "94925.dat", "position": [40,-70,0], "rotation": [1,0,0,0,0,1,0,-1,0]},
+    {"id": "gOb", "part": "94925.dat", "position": [40,-130,0], "rotation": [1,0,0,0,0,1,0,-1,0]}
+  ]
+}

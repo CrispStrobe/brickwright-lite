@@ -10,6 +10,7 @@ import {edgeKind, shaftEngagement} from '../mech/graph.js';
 import {BUILTIN_KINDS} from '../kinds/index.js';
 import {validatePlacedModel, det3} from '../contracts.js';
 import {partOverlaps} from './overlap.js';
+import {PAIR_REACH_LDU, boxOfPoints, grow, indexFor, partBounds} from '../mech/spatial-index.js';
 
 const TOL = 0.5 + 1e-9;
 const RADIUS_DEFAULT = 40;
@@ -183,36 +184,45 @@ const rotationForAxis = (localAxis, worldAxis, draggedRot) => {
     return mat3MulMat3(twistMat, baseMat);
 };
 
-export const snapCandidates = ({model, catalog, part, pose, radius = RADIUS_DEFAULT}) => {
+export const snapCandidates = ({model, catalog, part, pose, radius = RADIUS_DEFAULT, exclude = []}) => {
     const catalogMap = catalog instanceof Map ? catalog : new Map(Object.entries(catalog || {}));
     const movingMeta = catalogMap.get(part);
     if (!movingMeta) return [];
     const movingConnectors = movingMeta.connectors;
     if (!movingConnectors || movingConnectors.length === 0) return [];
+    const excluded = new Set(exclude);
 
-    // Collect scene connectors with their world poses and part ids
-    const sceneConnectors = [];
-    for (const pl of model.parts) {
+    // Broad phase (spatial-index.js; a frozen model only): the parts that may hold a connector within
+    // `radius` of the dragged part's, in model order (the order decides which of two equal poses is kept).
+    const index = indexFor(model.parts, catalogMap);
+    const near = box => (index ? index.queryBox(box).map(i => model.parts[i]) : model.parts).filter(pl => !excluded.has(pl.id));
+    const draggedBox = boxOfPoints(movingConnectors.map(c => transformPoint(pose.position, pose.rotation, c.position)));
+    const sceneParts = near(grow(draggedBox, radius + 1));
+
+    const worldConnectors = pl => {
         const meta = catalogMap.get(pl.part);
-        if (!meta) continue;
-        for (const c of meta.connectors) {
-            const worldPos = transformPoint(pl.position, pl.rotation, c.position);
-            const worldAxis = transformAxis(pl.rotation, c.axis);
-            sceneConnectors.push({
-                partId: pl.id,
-                connectorId: c.id,
-                type: c.type,
-                position: worldPos,
-                axis: worldAxis,
-                length: c.length,
-                friction: c.friction,
-                closedEnd: c.closedEnd,
-                metaConnector: c,
-                placed: pl
-            });
-        }
-    }
-
+        if (!meta) return [];
+        return meta.connectors.map(c => ({
+            partId: pl.id,
+            connectorId: c.id,
+            type: c.type,
+            position: transformPoint(pl.position, pl.rotation, c.position),
+            axis: transformAxis(pl.rotation, c.axis),
+            length: c.length,
+            friction: c.friction,
+            closedEnd: c.closedEnd,
+            metaConnector: c,
+            placed: pl
+        }));
+    };
+    // Collect scene connectors with their world poses and part ids
+    const sceneConnectors = sceneParts.flatMap(worldConnectors);
+    /** Scene connectors that may pair with a moving part at (newPos, newRot): all of them without an index. */
+    const connectorsNear = (newPos, newRot) => {
+        if (!index) return sceneConnectors;
+        const box = partBounds({position: newPos, rotation: newRot}, movingMeta);
+        return box ? near(grow(box, PAIR_REACH_LDU)).flatMap(worldConnectors) : [];
+    };
     const candidates = [];
     const seenPos = new Set();
 
@@ -333,8 +343,9 @@ export const snapCandidates = ({model, catalog, part, pose, radius = RADIUS_DEFA
                 friction: c.friction,
                 closedEnd: c.closedEnd
             }));
+            const pairable = connectorsNear(newPos, newRot);
             for (const mw of movingWorldConns) {
-                for (const sc of sceneConnectors) {
+                for (const sc of pairable) {
                     const co = coincideRule(mw, sc) ? [mw, sc] : coincideRule(sc, mw) ? [sc, mw] : null;
                     if (co) {
                         if (coincideRule(co[0], co[1]).match(co[0], co[1])) {
@@ -376,8 +387,7 @@ export const snapCandidates = ({model, catalog, part, pose, radius = RADIUS_DEFA
             const connectedPartIds = new Set(allPairs.map(p => p.fixed.part));
 // Check bounding box overlap - only reject if overlapping with a part that is NOT in the candidate's pairs (i.e., not connected)
             const placedPartForOverlap = {id: '__moving__', part, position: newPos, rotation: newRot};
-            const tempModel = {version: model.version, parts: [...model.parts, placedPartForOverlap]};
-            const overlaps = partOverlaps(tempModel, catalogMap, placedPartForOverlap, {ignore: [...connectedPartIds, '__moving__']});
+            const overlaps = partOverlaps(model, catalogMap, placedPartForOverlap, {ignore: [...connectedPartIds, '__moving__', ...excluded]});
             // partOverlaps returns overlaps with other parts, ignoring connected ones; if any, reject
             // But we need to check if the overlaps are with non-connected parts
             let overlap = false;

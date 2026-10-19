@@ -22,12 +22,21 @@
 // proxy.matrixWorld, instance colour = the proxy material's colour plus its
 // emissive glow. partAt(object, instanceId) maps an instance back to its part
 // id for code that raycasts the instanced meshes themselves.
+//
+// A proxy's `userData.hidden` (the build view's "hide") draws its instance at
+// zero scale, and `userData.dim` (the rest of the model while a group is being
+// edited) blends its colour most of the way to DIM_COLOR: instances share one
+// opaque material, so they step back by colour, not by transparency.
 
 import {
     BufferGeometry, Color, DynamicDrawUsage, Group, InstancedBufferAttribute, InstancedBufferGeometry,
     InstancedMesh, LineSegments, MeshStandardMaterial, ShaderMaterial
 } from 'three';
 import {PART_SURFACE} from './part-style.js';
+
+/** The colour a dimmed instance fades towards (the build view's background) and how far. */
+export const DIM_COLOR = new Color(0xe8eef5);
+const DIM_AMOUNT = 0.75;
 
 /** Models with at least this many parts are drawn instanced (smaller ones: one mesh per part, as before). */
 export const INSTANCE_FROM = 200;
@@ -207,6 +216,7 @@ export const createInstancedParts = ({colors}) => {
 
     const scratch = new Color();
     const glow = new Color();
+    const ZERO = new Array(16).fill(0);
     /**
      * Copy every proxy's world matrix and look into its instances. Cheap enough per frame
      * (16 + 6 floats per part); the GPU upload happens only when something changed.
@@ -217,7 +227,7 @@ export const createInstancedParts = ({colors}) => {
             const m = batch.matrices.array;
             let moved = force;
             batch.entries.forEach(({proxy}, i) => {
-                const e = proxy.matrixWorld.elements;
+                const e = proxy.userData.hidden ? ZERO : proxy.matrixWorld.elements;
                 const o = i * 16;
                 for (let k = 0; k < 16; k++) {
                     if (m[o + k] !== e[k]) {
@@ -236,6 +246,7 @@ export const createInstancedParts = ({colors}) => {
                     if (kind === 'own' || !material.vertexColors) scratch.copy(material.color);
                     else scratch.setRGB(1, 1, 1);
                     if (material.emissive) scratch.add(glow.copy(material.emissive));
+                    if (proxy.userData.dim) scratch.lerp(DIM_COLOR, DIM_AMOUNT);
                     const o = i * 3;
                     if (a[o] !== scratch.r || a[o + 1] !== scratch.g || a[o + 2] !== scratch.b) {
                         a[o] = scratch.r;
