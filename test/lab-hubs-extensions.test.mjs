@@ -30,7 +30,7 @@ if (!existsSync(missing)) {
         assert.fail(`missing ${missing} — run \`cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps\``);
     });
 } else {
-    const {runLabHubProgram, modelText, programText} = await import('./helpers/lab-hubs-vm.mjs');
+    const {runLabHubProgram, runStockHubExtension, modelText, programText} = await import('./helpers/lab-hubs-vm.mjs');
     const DEG_TOLERANCE = 2;
 
     /** The hub body's floor position (x, z) and heading (degrees about +y) from the session. */
@@ -140,6 +140,49 @@ if (!existsSync(missing)) {
             const seen = last.seen.distanceMm;
             // Its front is against the wall: the sensor's window sits 8 mm behind the hub's front edge and the castors.
             assert.ok(seen >= 0 && seen <= 30, `pressed against the wall: ${seen} mm`);
+        } finally {
+            r.session.dispose();
+        }
+    });
+
+    test('scratch-vm\'s own BOOST extension finds the Move Hub by its manufacturer data over Scratch Link and turns A and B two rotations', async () => {
+        // Its io/ble.js discovers with a manufacturerData filter (company 0x0397, System Type 0x40) and waits for
+        // each motor's §3.32 feedback before the block ends.
+        let finished = false;
+        const r = await runStockHubExtension('boost', {modelText: modelText('boost-rover.ldr'), mat: 'plain',
+            steps: async (ext, wait, block) => {
+                finished = await block(ext.motorOnForRotation({MOTOR_ID: 'AB', ROTATION: 2}));
+                await wait(300);
+            }});
+        try {
+            assert.equal(finished, true, 'the block ended on the hub\'s completion feedback');
+            for (const port of ['A', 'B']) {
+                const angle = r.hub.readPort(port).angleDeg;
+                assert.ok(Math.abs(angle - 720) <= 3, `${port} at ${angle.toFixed(2)}°`);
+            }
+            // Its max power is the power + 10 (scratch3_boost BoostMotorMaxPowerAdd): 50 + 10 = 60 (0x3C).
+            const sent = r.written.filter(b => b[2] === 0x81 && b[5] === 0x0b);
+            assert.deepEqual(sent.map(b => [b[3], b[11]]), [[0x37, 0x3c], [0x38, 0x3c]]);
+        } finally {
+            r.session.dispose();
+        }
+    });
+
+    test('scratch-vm\'s own WeDo 2.0 extension runs the rover until its distance (percent) drops, then floats the motor', async () => {
+        let seen = null;
+        const r = await runStockHubExtension('wedo2', {modelText: modelText('wedo-milo.ldr'), mat: 'wall',
+            steps: async (ext, wait) => {
+                ext.motorOn({MOTOR_ID: 'motor'});
+                for (let i = 0; i < 200 && !(ext.getDistance() > 0 && ext.getDistance() < 50); i++) await wait(50);
+                seen = ext.getDistance();
+                ext.motorOff({MOTOR_ID: 'motor'});
+                await wait(500);
+            }});
+        try {
+            assert.ok(seen > 0 && seen < 50, `the sensor reads ${seen} % near the wall`);
+            assert.equal(r.hub.readPort('A').state, 'float');
+            // scratch3_wedo2's input command for its distance sensor: unit 1 (percent).
+            assert.ok(r.written.some(b => b.join(',') === [1, 2, 2, 0x23, 0, 1, 0, 0, 0, 1, 1].join(',')));
         } finally {
             r.session.dispose();
         }

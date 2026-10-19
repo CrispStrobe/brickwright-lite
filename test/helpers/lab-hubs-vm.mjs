@@ -206,3 +206,83 @@ export async function runLabHubProgram (source, {modelText: text, mat = null, tr
         clock.uninstall();
     }
 }
+
+/**
+ * scratch-vm's OWN boost / wedo2 extension (src/extensions/scratch3_boost, scratch3_wedo2, as the
+ * GUI bundles them) on the scene's hub: loaded by the VM, connected as the pane's Run connects it
+ * (the runtime's peripheral scan over Scratch Link — its io/ble.js — then connectPeripheral on the
+ * first peripheral listed, connectVirtualHub choosing the hub), then `steps(extension, wait)` calls
+ * its block functions with the world running: `wait(ms)` advances the clock and the world together.
+ * @returns {Promise<{session, hub, written, received}>}
+ */
+export async function runStockHubExtension (extensionId, {modelText: text, mat = null, steps}) {
+    const clock = new FakeClock(1.7e12);
+    clock.install();
+    let vm = null;
+    let unregister = null;
+    let session = null;
+    const savedWebSocket = globalThis.WebSocket;
+    try {
+        const built = await SimSession.fromText(text, {hubState: null, catalog: CATALOG, mat});
+        session = built.session;
+        const hub = session.hubs.map(h => h.hub).find(h => h.protocol);
+        clearVirtualPeripheralsForTest();
+        globalThis.navigator.bluetooth = undefined;
+        installWebBluetooth();
+        globalThis.WebSocket = class NoScratchLink {
+            constructor () { throw new Error('no real Scratch Link in this test'); }
+        };
+        installScratchLinkBle(globalThis);
+        unregister = registerRobotLabBlePeripherals(() => session.hubs.map(h => h.hub));
+        vm = new VM();
+        await vm.extensionManager.loadExtensionURL(extensionId);
+        const serviceName = vm.extensionManager._loadedExtensions.get(extensionId);
+        const dispatch = (await importGuiDependency('scratch-vm/src/dispatch/central-dispatch.js')).default;
+        const extension = dispatch.services[serviceName];
+        const connected = () => vm.getPeripheralIsConnected(extensionId);
+        let settled = false;
+        let error = null;
+        connectVirtualHub({host: globalThis, extensionId, hubState: hub, connected, timeoutMs: 10000,
+            disconnect: () => vm.disconnectPeripheral(extensionId), wait: ms => clock.advance(ms),
+            connect: () => new Promise(resolve => {
+                const onList = list => {
+                    const first = Object.keys(list || {})[0];
+                    if (!first) return;
+                    vm.runtime.removeListener('PERIPHERAL_LIST_UPDATE', onList);
+                    vm.connectPeripheral(extensionId, first);
+                    resolve();
+                };
+                vm.runtime.on('PERIPHERAL_LIST_UPDATE', onList);
+                vm.scanForPeripheral(extensionId);
+            })}).then(() => { settled = true; }, e => { error = e; settled = true; });
+        for (let i = 0; i < 800 && !settled; i++) await clock.advance(25);
+        if (error) throw error;
+        if (!settled) throw new Error(`${extensionId} did not connect`);
+        await clock.advance(500);
+        /** Simulated time passes for the program and the world together. */
+        const wait = async ms => {
+            for (let t = 0; t < ms; t += FRAME_MS) {
+                await clock.advance(FRAME_MS);
+                session.tick(FRAME_MS);
+                await session.idle();
+                await settle();
+            }
+        };
+        /** Runs a block function to completion while the world runs (a block that waits on the hub). */
+        const block = async (promise, maxMs = 10000) => {
+            let done = false;
+            Promise.resolve(promise).then(() => { done = true; });
+            for (let t = 0; t < maxMs && !done; t += FRAME_MS) await wait(FRAME_MS);
+            return done;
+        };
+        await steps(extension, wait, block);
+        return {session, hub, written: hub.log.filter(e => e.dir === 'down').map(e => e.bytes),
+            received: hub.log.filter(e => e.dir === 'up').map(e => e.bytes)};
+    } finally {
+        try { if (vm) { vm.stopAll(); vm.quit(); } } catch { /* noop */ }
+        try { if (unregister) unregister(); } catch { /* noop */ }
+        globalThis.__brickwrightChooseVirtualBluetooth = undefined;
+        globalThis.WebSocket = savedWebSocket;
+        clock.uninstall();
+    }
+}
