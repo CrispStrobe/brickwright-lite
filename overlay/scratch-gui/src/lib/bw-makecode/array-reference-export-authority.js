@@ -12,7 +12,9 @@ const FRESH_SDK_ARRAYS=Object.freeze({arcade_tilesOfType:Object.freeze(['IMAGE']
 export function createArrayReferenceExportAuthority(project, options = {}, animationProducer = null) {
     const animationProducers = animationProducer === null ? createAnimationFrameArrayProducers(options) :
         isAnimationFrameArrayProducer(animationProducer, options) ? animationProducer : createAnimationFrameArrayProducers({});
-    const bad=Symbol('unproved value'),targets=project.targets||[],nodes=new Map(),records=[],owners=new WeakMap(),invalid=new WeakSet(),snapshots=[];
+    // `missing` is an element read whose presence is unproved: possibly an
+    // absent (undefined, hence falsy) slot. It is otherwise exactly `bad`.
+    const missing=Symbol('possibly absent element'),bad=Symbol('unproved value'),targets=project.targets||[],nodes=new Map(),records=[],owners=new WeakMap(),invalid=new WeakSet(),snapshots=[];
     const cells=new Map(),values=new WeakMap(),tokens=new WeakMap(),scopes=[],procedures=new Map(),calls=[],mutations=[];
     let invalidGlobalBinding=false;
     const block=(target,id)=>typeof id==='string'?target.blocks?.[id]:null;
@@ -431,15 +433,29 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             if(/return|stop|break|continue|throw/i.test(n.opcode))return false;}return false;};
         return next.opcode==='control_if_else'&&!invalid.has(next)&&branchAssigns(next.inputs?.SUBSTACK?.[1])&&branchAssigns(next.inputs?.SUBSTACK2?.[1]);
     };
+    // `x := v` immediately followed by `if not truthy(x) then x := e`, with the
+    // occurrence after that if: a possibly absent (falsy) v cannot reach it.
+    const falsyGuarded=(c,w,at)=>{
+        if(!resetFlowReady||invalid.has(w.node)||w.scope.invalid||!w.value)return false;
+        const scope=owners.get(at);if(!scope||w.scope!==scope||!scope.executedBefore)return false;
+        const st=statementOf(at),before=st&&scope.executedBefore.get(st),next=block(w.target,w.node.next);
+        if(!before||!next||next.opcode!=='control_if'||invalid.has(next)||!before.has(next)||!exactKeys(next,['CONDITION','SUBSTACK']))return false;
+        const not=block(w.target,next.inputs.CONDITION?.[1]),truthy=not?.opcode==='operator_not'&&exactKeys(not,['OPERAND'])&&block(w.target,not.inputs.OPERAND?.[1]);
+        const read=truthy?.opcode==='arrays_valueTruthy'&&exactKeys(truthy,['VALUE'])&&block(w.target,truthy.inputs.VALUE?.[1]);
+        if(!read||binding(w.target,read)!==c)return false;
+        const first=block(w.target,next.inputs.SUBSTACK?.[1]);
+        return c.writers.some(o=>o!==w&&o.node===first&&o.scope===scope&&o.value&&!resetValue(o.value.node)&&!invalid.has(o.node)&&
+            !(o.value.cell===c)&&!(o.value.node&&readsCell(o.target,o.value.node,c)));
+    };
     const computingCells=new Set();
     const cellTypesAt=(c,at)=>{
         if(!c||c.directBad||!at||computingCells.has(c))return new Set(c?c.types:[bad]);
-        const live=c.writers.filter(w=>!killedReset(c,w,at));
-        if(live.length===c.writers.length)return new Set(c.types);
+        const live=c.writers.filter(w=>!killedReset(c,w,at)),guarded=new Set(live.filter(w=>falsyGuarded(c,w,at)));
+        if(live.length===c.writers.length&&!guarded.size)return new Set(c.types);
         computingCells.add(c);
         try{
             const out=new Set();if(!live.length)out.add(bad);
-            for(const w of live)for(const type of w.value&&!invalid.has(w.node)&&!w.scope.invalid?readInput(w.value):[bad])out.add(type);
+            for(const w of live)for(const type of w.value&&!invalid.has(w.node)&&!w.scope.invalid?readInput(w.value):[bad])if(!(guarded.has(w)&&type===missing))out.add(type);
             return out;
         }finally{computingCells.delete(c);}
     };
@@ -561,7 +577,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                     // Do not poison a cell irreversibly before formal/alias
                     // argument facts reach a dominating mutation receiver.
                     if(pendingPresence(a,node))return new Set();
-                    result.add(bad);
+                    result.add(missing);
                 }
                 for(const item of a.elements)result.add(item);
             }return result;
@@ -787,12 +803,23 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         return !!scope.executedBefore.get(shrink)?.has(statement);
     };
     resetFlowReady=true;
+    // A push precedes an occurrence in every activation when it executed
+    // earlier in the occurrence's own scope (directly or on a called
+    // procedure's straight prefix), or when the occurrence is in an ordinary
+    // procedure whose every actual direct caller is itself preceded by it.
+    const pushedBefore=(push,at,depth=0)=>{
+        const scope=owners.get(at);if(!scope||scope.invalid)return false;
+        const before=scope.executedBefore?.get(at)||new Set();
+        if(before.has(push)||calleeExecutedBefore(push,scope,before))return true;
+        if(depth>6||!scope.proc||scope.unknownEntry||implicitEntries.has(scope)||!scope.callers.length)return false;
+        return scope.callers.every(call=>call.node&&owners.get(call.node)===call.scope&&pushedBefore(push,call.node,depth+1));
+    };
     const minimumAt=(allocation,at,qualifies=()=>true)=>{
         if([...allocation.shrinks||[]].some(node=>node!==at&&!shrinkAfter(node,at)))return 0;
         const scope=owners.get(at),before=scope?.executedBefore.get(at)||new Set();let length=allocation.minLength;
         // A possible target receives element-type obligations below, but only
         // a unique actual target receives guaranteed-presence credit.
-        for(const {target,node}of mutations){const receiver=readInput(input(node,'ARRAY',target));if((before.has(node)||calleeExecutedBefore(node,scope,before))&&['push','unshift'].includes(literal(node,'OP',target))&&receiver.size===1&&receiver.has(allocation)&&uniqueAllocation(allocation)&&qualifies(target,node))length++;}
+        for(const {target,node}of mutations){const receiver=readInput(input(node,'ARRAY',target));if(pushedBefore(node,at)&&['push','unshift'].includes(literal(node,'OP',target))&&receiver.size===1&&receiver.has(allocation)&&uniqueAllocation(allocation)&&qualifies(target,node))length++;}
         return length;
     };
     const pendingPresence=(allocation,at)=>{
@@ -848,7 +875,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     const checkingWriterInitialization=new Set();
     const initialized=(value,path=new Set())=>{
         if(!value)return false;if(value.jsonArray)return true;
-        const initializedCell=(c,scope,at)=>{if(!available(c,scope,at))return false;if(checkingWriterInitialization.has(c))return true;checkingWriterInitialization.add(c);try{const live=c.directBad?c.writers:c.writers.filter(w=>!killedReset(c,w,at));return live.length>0&&live.every(w=>w.value&&initialized(w.value));}finally{checkingWriterInitialization.delete(c);}};
+        const initializedCell=(c,scope,at)=>{if(!available(c,scope,at))return false;if(checkingWriterInitialization.has(c))return true;checkingWriterInitialization.add(c);try{const live=c.directBad?c.writers:c.writers.filter(w=>!killedReset(c,w,at));return live.length>0&&live.every(w=>w.value&&(initialized(w.value)||!c.directBad&&falsyGuarded(c,w,at)&&w.value.node?.opcode==='arrays_referenceItem'&&initialized(input(w.value.node,'ARRAY',w.target))));}finally{checkingWriterInitialization.delete(c);}};
         if(value.cell)return initializedCell(value.cell,owners.get(value.at),value.at);
         if(!value.node)return false;const {target,node}=value;if(path.has(node))return false;const next=new Set([...path,node]),c=binding(target,node);
         if(c)return initializedCell(c,owners.get(node),node);
