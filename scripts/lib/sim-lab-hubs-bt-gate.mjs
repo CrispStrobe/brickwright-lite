@@ -103,15 +103,13 @@ export const hubsBtInteractions = async ({browser, errors, openSimLab, wallBudge
         await openSimLab(page, {program: null});
         await openModel(page, 'nxt-bumper-bot.ldr');
         assert.equal(await page.evaluate(() => window.__bwSimLab.worker), true, 'the physics runs in the Web Worker');
-        assert.equal(await page.evaluate(() => window.__bwSimLab._pane.state.mat), 'wall', 'the bumper bot faces the wall');
         await page.getByRole('button', {name: 'Load example program'}).click();
         await page.waitForFunction(() => window.__bwSimLab._pane.props.vm.extensionManager.isExtensionLoaded('legonxt') &&
             Object.values(window.__bwSimLab._pane.props.vm.editingTarget.blocks._blocks).some(b => b.opcode === 'legonxt_motorRunDegrees'),
         null, {timeout: 60000});
-        await page.evaluate(() => {
-            const s = window.__bwSimLab._pane.session;
-            return s.idle();
-        });
+        // Load example program also puts the robot on the mat its program is written for: the Wall.
+        await page.waitForFunction(() => window.__bwSimLab._pane.state.mat === 'wall' && window.__bwSimLab.status === 'ready' &&
+            window.__bwSimLab._pane.session, null, {timeout: 60000});
         await instrument(page);
         await page.getByTestId('bw-sim-lab-run').click();
         // Connect (wall time), 360° (~1 s), the 2 s wait, the drive to the wall (~1 s): 8 s of simulated time.
@@ -141,6 +139,9 @@ export const hubsBtInteractions = async ({browser, errors, openSimLab, wallBudge
         page.on('dialog', dialog => dialog.accept());
         await openSimLab(page, {program: null});
         await openModel(page, 'ev3-wall-stopper.ldr');
+        await page.evaluate(() => window.__bwSimLab._pane.setMat('wall'));
+        await page.waitForFunction(() => window.__bwSimLab._pane.state.mat === 'wall' && window.__bwSimLab.status === 'ready' &&
+            window.__bwSimLab._pane.session, null, {timeout: 60000});
         assert.equal(await buildStockEv3(page), 10, 'two scripts of stock EV3 blocks');
         await instrument(page);
         await page.getByTestId('bw-sim-lab-run').click();
