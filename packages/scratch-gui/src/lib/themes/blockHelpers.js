@@ -1,4 +1,5 @@
 import {DEFAULT_THEME, getColorsForTheme, themeMap} from '.';
+import {injectLoopBlockMedia} from './loopBlockMedia';
 
 const getBlockIconURI = extensionIcons => {
     if (!extensionIcons) return null;
@@ -78,13 +79,17 @@ const injectBlockIcons = (blockInfoJson, theme) => {
 
 /**
  * Applies extension color theme to static block json.
- * No changes are applied if called with the default theme, allowing extensions to provide their own colors.
+ * The default theme preserves extension colors. Generated loop media follows
+ * the actual workspace media setting in every theme.
  * @param {object} blockInfoJson - Static block json
  * @param {string} theme - Theme name
+ * @param {string} media - Current workspace options.pathToMedia
+ * @param {object} blockInfo - Original VM block metadata
  * @returns {object} Block info json with updated colors. The original blockInfoJson is not modified.
  */
-const injectExtensionBlockTheme = (blockInfoJson, theme) => {
-    // Don't do any manipulation for the default theme
+const injectExtensionBlockTheme = (blockInfoJson, theme, media, blockInfo) => {
+    blockInfoJson = injectLoopBlockMedia(blockInfoJson, media, blockInfo);
+    // Don't recolor extensions for the default theme.
     if (theme === DEFAULT_THEME) return blockInfoJson;
 
     const extensionColors = getExtensionColors(theme);

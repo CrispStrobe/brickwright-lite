@@ -64,6 +64,107 @@ export function createClassCallableExportProvider({target,project,classes,defini
             return anchor.kind==='sdk'&&!initializedBefore(id,readBlock)?null:anchor;
         }finally{checkingVariables.delete(id);}
     };
+    // A numeric module read is a current mutable cell, never a copied capture
+    // value or a saved Scratch default. This narrow query needs real RHS Number
+    // producers and initialization before every corresponding closure exists.
+    const checkingPrimitiveVariables=new Set();
+    const primitiveVariableType=(slot,owner,readAt)=>{
+        if(!plan||owner?.kind!=='arrow'||!plan.owners.includes(owner)||!readAt)return null;
+        const readId=Object.entries(target.blocks).find(([,block])=>block===readAt)?.[0];
+        if(!readId)return null;
+        let id,name;
+        if(Array.isArray(slot)&&slot.length===3&&slot[0]===12){
+            if(!Object.values(readAt.inputs||{}).some(input=>input[1]===slot))return null;
+            name=slot[1];id=slot[2];
+        }else if(readAt.opcode==='data_variable'&&target.blocks[slot]===readAt){
+            const field=readAt.fields?.VARIABLE;if(!Array.isArray(field)||field.length!==2)return null;
+            [name,id]=field;
+        }else return null;
+        if(typeof id!=='string'||typeof name!=='string'||checkingPrimitiveVariables.has(id))return null;
+        const owners=project.targets.filter(other=>Object.hasOwn(other.variables||{},id));
+        if(owners.length!==1||owners[0]!==target&&!owners[0].isStage)return null;
+        const variable=owners[0].variables[id];
+        if(!Array.isArray(variable)||variable.length!==2||variable[0]!==name)return null;
+        checkingPrimitiveVariables.add(id);
+        try{
+            const entries=Object.entries(target.blocks),byObject=new Map();
+            for(const [key,block]of entries){if(byObject.has(block))return null;byObject.set(block,key);}
+            const rootOf=block=>{
+                const seen=new Set();let current=block;
+                while(current?.parent){
+                    if(seen.has(current))return null;seen.add(current);
+                    const childId=byObject.get(current),parent=target.blocks[current.parent];
+                    if(!childId||!parent||current.topLevel)return null;
+                    const incoming=(parent.next===childId?1:0)+Object.values(parent.inputs||{}).filter(input=>input[1]===childId).length;
+                    if(incoming!==1)return null;current=parent;
+                }
+                return current&&current.topLevel===true?current:null;
+            };
+            const starts=[];
+            for(const other of project.targets)for(const block of Object.values(other.blocks||{}))if(block.topLevel){
+                if(block.opcode==='arcade_whenSourceStarts'){if(other!==target||block.parent!=null||block.mutation||Object.keys(block.inputs||{}).length||Object.keys(block.fields||{}).length)return null;starts.push(block);}
+                else if(block.opcode==='arcade_whenCallableDispatched'){
+                    const procedure=literal(other,block,'NAME'),next=other.blocks[block.next];
+                    if(other!==target||block.parent!=null||block.mutation||Object.keys(block.fields||{}).length||Object.keys(block.inputs||{}).join(',')!=='NAME'||!plan.sites.some(site=>plan.owners.find(row=>row.id===site.owner)?.procedure===procedure)||
+                        next?.opcode!=='arcade_runCallableDispatch'||next.parent!==byObject.get(block)||next.next||
+                        Object.keys(next.inputs||{}).length||Object.keys(next.fields||{}).length)return null;
+                }else if(block.opcode!=='procedures_definition')return null;
+            }
+            if(starts.length!==1)return null;
+            const start=starts[0],order=new Map();let next=start.next;const visited=new Set();
+            while(next){
+                if(visited.has(next))return null;visited.add(next);const block=target.blocks[next];
+                if(!block||rootOf(block)!==start||Object.keys(block.inputs||{}).some(key=>key.startsWith('SUBSTACK')))return null;
+                order.set(block,order.size);next=block.next;
+            }
+            const topCommand=block=>{
+                let current=block;const seen=new Set();
+                while(current&&!order.has(current)){
+                    if(seen.has(current))return null;seen.add(current);current=target.blocks[current.parent];
+                }
+                return order.has(current)?current:null;
+            };
+            const writers=[],declarations=[];
+            const arrowProcedures=new Set(plan.owners.filter(row=>row.kind==='arrow').map(row=>row.procedure));
+            for(const other of project.targets)for(const block of Object.values(other.blocks||{})){
+                // A closure's creation order cannot dominate a direct call to
+                // its body. This numeric query admits closure ingress only.
+                if(block.opcode==='arcade_callFunction'){
+                    const procedure=literal(other,block,'NAME');
+                    if(typeof procedure!=='string'||arrowProcedures.has(procedure))return null;
+                }
+                if(block.opcode==='procedures_call'){
+                    const procedure=block.mutation?.proccode;
+                    if(typeof procedure!=='string'||arrowProcedures.has(procedure))return null;
+                }
+                for(const [field,value]of Object.entries(block.fields||{}))if(Array.isArray(value)&&value[1]===id){
+                    if(other!==target||field!=='VARIABLE'||value[0]!==name||!['data_setvariableto','data_changevariableby','data_variable'].includes(block.opcode))return null;
+                }
+                if(block.fields?.VARIABLE?.[1]===id&&['data_setvariableto','data_changevariableby'].includes(block.opcode)){
+                    if(other!==target||block.mutation||Object.keys(block.inputs||{}).join(',')!=='VALUE'||Object.keys(block.fields||{}).join(',')!=='VARIABLE'||block.fields.VARIABLE.length!==2||!['arcade_whenSourceStarts','procedures_definition'].includes(rootOf(block)?.opcode))return null;
+                    // Existing slotType checks actual ordered RHS reporters. A
+                    // declared scalar tag and saved variable value seed nothing.
+                    const actual=slotType(block.inputs?.VALUE?.[1],scope(block),new Set(),block);
+                    if(actual?.kind!=='named'||actual.name!=='number')return null;writers.push(block);
+                }
+                const declared=block.inputs?.VARIABLE?.[1];
+                if(Array.isArray(declared)&&declared[0]===12&&declared[2]===id){
+                    if(other!==target||block.opcode!=='arcade_declareSourceScalar'||declared.length!==3||declared[1]!==name||block.fields?.TYPE?.[0]!=='Number')return null;
+                    declarations.push(block);
+                }
+            }
+            if(declarations.length!==1||!order.has(declarations[0])||!writers.length)return null;
+            const initializers=writers.filter(block=>block.opcode==='data_setvariableto'&&order.has(block));
+            if(!initializers.length)return null;
+            const first=initializers.reduce((left,right)=>order.get(left)<order.get(right)?left:right);
+            if(order.get(declarations[0])>=order.get(first))return null;
+            const creates=entries.map(([,block])=>block).filter(block=>block.opcode==='arcade_createCallable'&&literal(target,block,'NAME')===owner.procedure);
+            if(!creates.length)return null;
+            for(const block of creates){const command=topCommand(block);if(rootOf(block)!==start||!command||order.get(command)<=order.get(first))return null;}
+            if(rootOf(readAt)?.opcode!=='procedures_definition'||scope(readAt)!==owner)return null;
+            return named('number');
+        }finally{checkingPrimitiveVariables.delete(id);}
+    };
     const scope=block=>{
         const seen=new Set();let current=block;
         while(current?.parent){if(seen.has(current)){fail('cyclic current body ownership');}seen.add(current);current=target.blocks[current.parent];}
@@ -144,7 +245,7 @@ export function createClassCallableExportProvider({target,project,classes,defini
         if(Array.isArray(slot)){
             if([4,5,6,7,8].includes(slot[0]))return named('number');
             if(slot[0]===10)return named('string');
-            if(slot[0]===12)return variableType({opcode:'data_variable',fields:{VARIABLE:[slot[1],slot[2]]}},readAt);
+            if(slot[0]===12)return variableType({opcode:'data_variable',fields:{VARIABLE:[slot[1],slot[2]]}},readAt)||primitiveVariableType(slot,owner,readAt);
             return null;
         }
         const block=target.blocks[slot];if(!block||seen.has(block))return null;seen=new Set([...seen,block]);
@@ -168,7 +269,7 @@ export function createClassCallableExportProvider({target,project,classes,defini
             const site=plan?.sites.find(row=>row.owner===owner.id),name=literal(target,block,'NAME');
             return plan?.bindings.find(row=>row.nativeName===name&&site?.captures.some(capture=>capture.binding===row.id))?.type;
         }
-        if(block.opcode==='data_variable')return variableType(block);
+        if(block.opcode==='data_variable')return variableType(block)||primitiveVariableType(slot,owner,block);
         if(block.opcode==='arcade_createCallable'){
             const procedure=literal(target,block,'NAME');return plan?.owners.find(row=>row.procedure===procedure)?.signature;
         }
@@ -281,6 +382,79 @@ export function createClassCallableExportProvider({target,project,classes,defini
             if(!actual)fail(imageOperation?'current Image operation lacks its actual owned receiver, exact shape and Number operands':'current class field write differs from its concrete signature');
         }
     };
+    // This is a statement-only module entry, not a callFunction value type.
+    // The actual declaration body remains subject to complete lexical/body
+    // validation before the exporter installs this provider's root context.
+    const declaredModuleVoidCall=block=>{
+        if(block?.opcode!=='arcade_callFunction'||Object.keys(block.inputs||{}).sort().join(',')!=='ARGS,NAME')return false;
+        const callIDs=Object.entries(target.blocks).filter(([,value])=>value===block);if(callIDs.length!==1)return false;
+        const code=block.inputs.NAME[1],text=typeof code==='string'&&target.blocks[code];
+        const name=Array.isArray(code)?code.length===2&&code[0]===10&&typeof code[1]==='string'?code[1]:null:
+            text?.opcode==='text'&&text.shadow===true&&text.parent===callIDs[0][0]&&Object.keys(text.inputs||{}).length===0&&
+            Object.keys(text.fields||{}).join(',')==='TEXT'&&typeof text.fields.TEXT?.[0]==='string'&&!text.next?text.fields.TEXT[0]:null;
+        const owners=plan?.owners.filter(row=>row.kind==='declaration'&&row.parent===plan.module&&row.procedure===name);
+        if(owners?.length!==1||/%[sbn]/.test(name))return false;
+        const owner=owners[0];if(owner.parameters.length||owner.signature.parameters.length||owner.defaults.length||owner.signature.result.kind!=='named'||owner.signature.result.name!=='void')return false;
+        const def=definitions.get(key(target,name));if(!def||def.target!==target||def.code!==name||def.parameters.length||def.block?.opcode!=='procedures_definition')return false;
+        const ids=Object.entries(target.blocks).filter(([,value])=>value===def.block);if(ids.length!==1)return false;
+        const protoID=def.block.inputs?.custom_block?.[1],proto=typeof protoID==='string'&&target.blocks[protoID];
+        if(proto?.opcode!=='procedures_prototype'||proto.parent!==ids[0][0]||proto.mutation?.proccode!==name||typeof proto.mutation.argumentnames!=='string')return false;
+        let names;try{names=JSON.parse(proto.mutation.argumentnames);}catch(_){return false;}
+        if(!Array.isArray(names)||names.length)return false;
+        const args=block.inputs.ARGS[1],end=typeof args==='string'&&target.blocks[args];
+        return Array.isArray(args)?args.length===2&&args[0]===10&&args[1]==='[]':
+            end?.opcode==='text'&&end.shadow===true&&end.parent===callIDs[0][0]&&
+            Object.keys(end.inputs||{}).length===0&&Object.keys(end.fields||{}).join(',')==='TEXT'&&end.fields.TEXT?.[0]==='[]'&&!end.next;
+    };
+    // A discarded Void call has no value binding. Its destination must be
+    // unobservable in the complete current project, not just absent from the
+    // retained lexical plan. The same physical proof serves ordinary roots,
+    // nonlexical methods and actual lexical owners.
+    const unusedVoidProofs=new WeakMap(),issuedUnusedVoidProofs=new Map();
+    const observeUnusedVoidProofs=()=>{
+        let current=true;
+        for(const proof of issuedUnusedVoidProofs.values())if(!proof.current())current=false;
+        return current;
+    };
+    const observeUnusedVoidAt=id=>{const proof=issuedUnusedVoidProofs.get(id);return !proof||proof.current();};
+    const unusedVoidStatement=(block,owner)=>{
+        if(!observeUnusedVoidProofs())return null;
+        const cached=block&&typeof block==='object'?unusedVoidProofs.get(block):null;
+        if(!plan||block?.opcode!=='arcade_setLocal'||!project.targets.includes(target))return null;
+        const ids=Object.entries(target.blocks).filter(([,value])=>value===block);if(ids.length!==1)return null;
+        const [id]=ids[0],actualOwner=scope(block);let root=block;const parents=new Set();
+        while(root.parent){if(parents.has(root))return null;parents.add(root);root=target.blocks[root.parent];if(!root)return null;}
+        if(owner.id?actualOwner.id!==owner.id:owner.rootBlock?root!==owner.rootBlock:!owner.procedure||actualOwner.procedure!==owner.procedure)return null;
+        if(cached)return cached;
+        const name=literal(target,block,'NAME');
+        if(!/^[A-Za-z_]\w*$/.test(name||'')||name===actualOwner.receiverParameter||classes.has(name))return null;
+        if(plan.bindings.some(row=>row.nativeName===name||row.sourceName===name))return null;
+        if([...definitions.values()].some(row=>row.parameters.includes(name)))return null;
+        if(project.targets.some(other=>Object.values(other.variables||{}).some(variable=>variable[0]===name)))return null;
+        for(const other of project.targets)for(const current of Object.values(other.blocks||{})){
+            if(['arcade_declareLocal','arcade_getLocal','arcade_getCaptured','arcade_setLocal','arcade_setCaptured'].includes(current.opcode)&&literal(other,current,'NAME')===name&&!(other===target&&current===block))return null;
+            if(/^argument_reporter_/.test(current.opcode)&&current.fields?.VALUE?.[0]===name)return null;
+        }
+        const valueId=block.inputs?.VALUE?.[1],value=typeof valueId==='string'&&target.blocks[valueId];if(!value||value.parent!==id)return null;
+        // A lexical declaration's new route is specifically an existing owned
+        // class/callback call. Other Void-producing operations do not acquire
+        // a statement permission from this sink.
+        if(owner.id&&!['arcade_callObjectMethod','arcade_callCallable'].includes(value.opcode))return null;
+        const moduleVoid=owner.rootBlock?.opcode==='arcade_whenSourceStarts'&&actualOwner.rootBlock===owner.rootBlock&&declaredModuleVoidCall(value);
+        verifyWriters();const type=moduleVoid?null:slotType(valueId,actualOwner);
+        if(!moduleVoid&&(type?.kind!=='named'||type.name!=='void'))return null;
+        const issuedPlan=plan,state=()=>JSON.stringify([plan,project.targets.map(other=>[other.variables,other.blocks]),
+            [...classes].map(([name,row])=>[name,{...row,target:project.targets.indexOf(row.target)}]),
+            [...definitions].map(([name,row])=>[name,row.code,row.parameters,project.targets.indexOf(row.target),Object.entries(row.target.blocks).filter(([,value])=>value===row.block).map(([id])=>id)])]),snapshot=state();let expired=false;
+        const proof=Object.freeze({current(){
+            if(expired)return false;
+            try {
+                if(plan!==issuedPlan||!project.targets.includes(target)||target.blocks[id]!==block||block.inputs?.VALUE?.[1]!==valueId||target.blocks[valueId]!==value||state()!==snapshot){expired=true;return false;}
+                return true;
+            }catch(error){expired=true;throw error;}
+        }});
+        unusedVoidProofs.set(block,proof);issuedUnusedVoidProofs.set(id,proof);return proof;
+    };
     return Object.freeze({
         validateCurrentPlan(candidate,actualTarget){
             plan=null;let accepted=false;
@@ -336,6 +510,7 @@ export function createClassCallableExportProvider({target,project,classes,defini
             accepted=true;return true;
             }finally{if(!accepted)plan=null;}
         },
+        primitiveVariableType,
         currentInputType(block,name){
             if(!plan||!Object.values(target.blocks).includes(block))return null;
             verifyWriters();return slotType(block.inputs?.[name]?.[1],scope(block),new Set(),block);
@@ -358,6 +533,7 @@ export function createClassCallableExportProvider({target,project,classes,defini
             return reads.length>0&&reads.every(block=>variableType({fields:{VARIABLE:['',id]}},block)?.kind==='sdk');
         },
         localType:local,
+        unusedVoidStatement,
         localAssignment(block,owner){
             if(!plan||block?.opcode!=='arcade_setLocal'||!Object.values(target.blocks).includes(block))return null;
             const name=literal(target,block,'NAME');if(!/^[A-Za-z_]\w*$/.test(name||'')||name===owner.receiverParameter)return null;
@@ -381,6 +557,7 @@ export function createClassCallableExportProvider({target,project,classes,defini
             return Object.freeze({name,type:structuredClone(type),first:!earlier});
         },
         contextForModuleRoot(root,callableEmitter,moduleCreates){
+            if(!observeUnusedVoidProofs())return null;
             if(!plan||!Object.values(target.blocks).includes(root)||!root.topLevel||!['arcade_whenSourceStarts','event_whenflagclicked','procedures_definition'].includes(root.opcode))return null;
             const definition={block:root};
             const owner={kind:'module',rootBlock:root},cells=new Map();
@@ -393,17 +570,18 @@ export function createClassCallableExportProvider({target,project,classes,defini
                 const type=slotType(id,scope(block)),cls=type?.kind==='named'&&classes.get(type.name);
                 return !!cls&&cls.target===target&&!cls.intrinsic&&plan.classes.some(row=>row.name===cls.name);
             });
-            if(![...moduleCreates].some(id=>contains(definition.block,id))&&!constructor)return null;
+            const declaredVoid=Object.entries(target.blocks).some(([id,block])=>block.opcode==='arcade_setLocal'&&contains(root,id)&&
+                declaredModuleVoidCall(target.blocks[block.inputs?.VALUE?.[1]])&&unusedVoidStatement(block,owner)?.current());
+            if(![...moduleCreates].some(id=>contains(definition.block,id))&&!constructor&&!declaredVoid)return null;
             verifyWriters();
             const provider=this;
             return {
                 statementTerminator:true,
                 generatedLocal(id){const block=target.blocks[id],proof=provider.localAssignment(block,owner);if(proof)cells.set(proof.name,proof.type);return proof;},
                 discardLocal(id){
+                    if(!observeUnusedVoidAt(id))return false;
                     const block=target.blocks[id];if(block?.opcode!=='arcade_setLocal'||!contains(root,id))return false;
-                    const name=literal(target,block,'NAME');
-                    if(Object.values(target.blocks).some(read=>read.opcode==='arcade_getLocal'&&literal(target,read,'NAME')===name&&contains(root,Object.entries(target.blocks).find(([,row])=>row===read)?.[0])))return false;
-                    return slotType(block.inputs.VALUE?.[1],owner)?.name==='void';
+                    const proof=unusedVoidStatement(block,owner);return !!proof&&proof.current();
                 },
                 local(name){if(!cells.has(name))fail('module procedure reads a local before its proved assignment');return name;},
                 capture(){fail('module procedure has no lexical capture');},
@@ -411,6 +589,7 @@ export function createClassCallableExportProvider({target,project,classes,defini
             };
         },
         contextForMethod(code){
+            if(!observeUnusedVoidProofs())return null;
             const cls=[...classes.values()].find(row=>row.target===target&&row.methods.some(method=>method.procedure===code&&method.callableSignature));
             const method=cls?.methods.find(row=>row.procedure===code),definition=definitions.get(key(target,code));if(!plan||!method||!definition)return null;
             const owner={className:cls.name,receiverParameter:definition.parameters[0],parameters:method.parameters,procedure:code};
@@ -426,12 +605,12 @@ export function createClassCallableExportProvider({target,project,classes,defini
                     return null;
                 },
                 discardLocal(id){
+                    if(!observeUnusedVoidAt(id))return false;
                     const block=target.blocks[id];if(block?.opcode!=='arcade_setLocal')return false;
                     const name=literal(target,block,'NAME');if(name===owner.receiverParameter||owner.parameters.some(row=>row.name===name))return false;
                     const branch=conditional(owner);
                     if(branch)return branch.followups.includes(target.blocks[block.inputs.VALUE?.[1]]);
-                    if(Object.values(target.blocks).some(read=>scope(read).procedure===owner.procedure&&read.opcode==='arcade_getLocal'&&literal(target,read,'NAME')===name))return false;
-                    return slotType(block.inputs.VALUE?.[1],owner)?.name==='void';
+                    const proof=unusedVoidStatement(block,owner);return !!proof&&proof.current();
                 },
                 local(name,write=false){
                     const branch=conditional(owner);

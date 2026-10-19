@@ -1,96 +1,80 @@
 import {classCallableCapturedBindings} from './lower-callable-values.js';
-import {SDK_CLASS_NODES,SDK_SPRITE_CLASS_NODES,SDK_DIALOG_CLASS_NODES,sdkClassName} from './sdk-class-descriptors.js';
+import {sdkClassName} from './sdk-class-descriptors.js';
 import {SDK_DIALOG_OPAQUE_PARAMETERS} from './sdk-dialog-class-descriptors.js';
 import {ValueTypeGraph} from './value-type-graph.js';
-import {createClassCallableDescriptors} from './callable-class-descriptors.js';
+import {prepareObjectClassStructure} from './object-class-source-structure.js';
+import {physicalUpdateSourceFor,analyseSourceValueProducers} from './source-value-producers.js';
+import {physicalUpdateSourceSnapshot} from './physical-update-source-snapshot.js';
+
+const physicalLowerings=new WeakMap();
+// The existing callback and PXT statement normalizers represent an absent
+// If alternative as an empty statement list. This is an IR edge projection,
+// never a runtime Array, a value fact, or permission to omit body/metadata.
+function physicalOutputSnapshot(root){
+    if(!physicalUpdateSourceSnapshot(root))return null;
+    const statementIfs=new WeakSet(),scanned=new WeakSet();let scanValid=true;
+    const ownDescriptor=Object.getOwnPropertyDescriptor,isArray=Array.isArray;
+    const data=(node,key)=>{if(!node||typeof node!=='object')return undefined;const d=ownDescriptor(node,key);return d&&Object.hasOwn(d,'value')?d.value:undefined;};
+    const each=(array,visit)=>{
+        if(!isArray(array)){scanValid=false;return;}
+        const length=data(array,'length');
+        for(let index=0;index<length;index++){
+            const d=ownDescriptor(array,String(index));
+            if(!d||!Object.hasOwn(d,'value')){scanValid=false;continue;}
+            visit(d.value);
+        }
+    };
+    const expressionKeys=['expr','init','test','value','argument','left','right','callee','args','object','index','items','iterable','update'];
+    const scan=(node,statement=false)=>{
+        if(!node||typeof node!=='object'||scanned.has(node))return;scanned.add(node);
+        if(isArray(node)){each(node,value=>scan(value,statement));return;}
+        const type=data(node,'type');
+        if(type==='If'&&statement)statementIfs.add(node);
+        if(['Program','FunctionDeclaration','FunctionExpression','Block','While','For','ForOf','ForIn'].includes(type))scan(data(node,'body'),true);
+        if(type==='If'&&statement){scan(data(node,'consequent'),true);scan(data(node,'alternate'),true);}
+        if(type==='Declaration')each(data(node,'decls'),decl=>scan(data(decl,'init')));
+        if(type==='Switch')each(data(node,'cases'),row=>{scan(data(row,'test'));scan(data(row,'body'),true);});
+        for(let index=0;index<expressionKeys.length;index++)scan(data(node,expressionKeys[index]));
+        if(type==='Object'&&data(node,'props')!==undefined)each(data(node,'props'),row=>scan(data(row,'value')));
+    };try{scan(root,true);}catch{return null;}
+    if(!scanValid)return null;
+    const seen=new Map();let valid=true;
+    const copy=value=>{
+        if(!value||typeof value!=='object')return value;
+        if(seen.has(value))return seen.get(value);
+        const prototype=Object.getPrototypeOf(value),out=Array.isArray(value)?[]:Object.create(prototype);
+        if(Array.isArray(value)&&prototype!==Array.prototype)Object.setPrototypeOf(out,prototype);seen.set(value,out);
+        const type=Object.getOwnPropertyDescriptor(value,'type');
+        const isIf=type&&Object.hasOwn(type,'value')&&type.value==='If'&&statementIfs.has(value);
+        if(isIf){
+            const test=Object.getOwnPropertyDescriptor(value,'test'),yes=Object.getOwnPropertyDescriptor(value,'consequent'),no=Object.getOwnPropertyDescriptor(value,'alternate');
+            if(!test||!yes||!no||![test,yes,no].every(d=>Object.hasOwn(d,'value'))||!test.value||typeof test.value!=='object'||Array.isArray(test.value)||!Array.isArray(yes.value)||no.value!==null&&!Array.isArray(no.value))valid=false;
+        }
+        for(const key of Reflect.ownKeys(value)){
+            const descriptor=Object.getOwnPropertyDescriptor(value,key);
+            if(!descriptor||!Object.hasOwn(descriptor,'value')){valid=false;continue;}
+            const projected=isIf&&key==='alternate'&&descriptor.value===null?[]:copy(descriptor.value);
+            Object.defineProperty(out,key,{...descriptor,value:projected});
+        }
+        return out;
+    };
+    const projected=copy(root);return valid?physicalUpdateSourceSnapshot(projected):null;
+}
+function matchesPhysicalOutput(snapshot,node){
+    const current=physicalOutputSnapshot(node);return !!current&&snapshot.matches(current.objects[0]);
+}
 
 // Class structure is declarative authoring data. Instances are explicit heap
 // references; no field state, per-class numeric handles or closure snapshots.
-export function lowerObjectClasses(program,{classCallablePrototype=false,sdkImagePrototype=false}={}) {
-    if(classCallablePrototype!==true&&classCallablePrototype!==false)return {program,unsupported:['Class callable class lowering requires its explicit Boolean option']};
-    const callableModel=classCallablePrototype?createClassCallableDescriptors(program,{sdkImagePrototype}):null;
-    if(callableModel?.unsupported.length)return {program,unsupported:callableModel.unsupported};
-    if(classCallablePrototype && JSON.stringify(program.bwClassCallableDescriptors)!==JSON.stringify({schema:callableModel.schema,version:callableModel.version,classes:callableModel.classes}))
-        return {program,unsupported:['Class callable descriptors differ from actual source declarations']};
-    const liftedCallables=new Set((program.bwCallables||[]).map(row=>row.name));
-    const callableClass=name=>callableModel?.classes.find(row=>row.name===name);
-    const callableField=(name,field)=>callableClass(name)?.fields.find(row=>row.name===field);
-    const callableMethod=(name,method)=>callableClass(name)?.methods.find(row=>row.name===method);
-    const sdkField=(name,field)=>callableClass(name)?.sdkRoles?.fields.find(row=>row.name===field&&row.type==='Image');
-    const sdkParameter=(name,index)=>callableClass(name)?.sdkRoles?.constructor.find(row=>row.index===index);
-    const reserved = new Set(SDK_CLASS_NODES.map(node=>node.name).filter(name=>name.startsWith('__bwSDK_')));
-    const usesReserved = node => node && typeof node==='object' &&
-        (reserved.has(node.type==='Identifier'||node.type==='Class'?node.name:null) || reserved.has(node.type==='Class'?node.base:null) ||
-        Object.values(node).some(value=>Array.isArray(value)?value.some(usesReserved):usesReserved(value)));
-    if(usesReserved(program))return {program,unsupported:['Internal SDK class descriptor names are not source constructors or bindings']};
-    const contains = (node, predicate) => node && typeof node === 'object' && (predicate(node) ||
-        Object.values(node).some(value => Array.isArray(value) ? value.some(child => contains(child, predicate)) : contains(value, predicate)));
-    const dialogName=node=>node?.type==='Member' && node.object?.type==='Identifier' && node.object.name==='game' && ['BaseDialog','SplashDialog'].includes(node.name) ? sdkClassName('game.'+node.name):null;
-    const dialogRequested=contains(program,node=>node.type==='Call' && node.isNew && dialogName(node.callee));
-    const sourceClasses = program.body.filter(node => node.type === 'Class').map(node=>{
-        const properties=new Map();for(const member of node.methods.filter(method=>['get','set'].includes(method.kind))){
-            if(!properties.has(member.name))properties.set(member.name,{name:member.name,accessor:{},modifiers:member.modifiers||[],isStatic:member.isStatic});
-            const field=properties.get(member.name);if(field.accessor[member.kind])field.duplicateAccessor=true;field.accessor[member.kind]=member;
-        }
-        for(const field of properties.values()){const get=field.accessor.get,set=field.accessor.set;field.typeName=(typeof get?.returnType==='string'?get.returnType:get?.returnType?.text)||(typeof set?.paramTypes?.[set.params[0]]==='string'?set.paramTypes[set.params[0]]:set?.paramTypes?.[set.params[0]]?.text)||'any';field.modifiers=[...(get?.modifiers||set?.modifiers||[]),...(get&&!set?['readonly']:[])];}
-        return {...node,fields:[...node.fields,...properties.values()],...(node.base?{base:sdkClassName(node.base)}:{})};
-    });
-    const classes = new Map(sourceClasses.map(node => [node.name, node]));
-    const hasWhenUsed=program.body.some(node=>node.type==='Declaration' && node.decls.some(decl=>decl.whenUsed));
-    if (!classes.size && !dialogRequested && !hasWhenUsed) return {program, unsupported: []};
-    const sdkClasses=[...(sourceClasses.some(node=>['Sprite','__bwSDK_ExtendableSprite'].includes(node.base))?SDK_SPRITE_CLASS_NODES:[]),...(dialogRequested||sourceClasses.some(node=>SDK_DIALOG_CLASS_NODES.some(base=>base.name===node.base))?SDK_DIALOG_CLASS_NODES:[])];
-    const originalClasses=new Map(classes);classes.clear();for(const node of sdkClasses)classes.set(node.name,node);for(const [name,node]of originalClasses)classes.set(name,node);
-    const unsupported = [], admitted = new Map();
-    const fail = message => { if (!unsupported.includes(message)) unsupported.push(message); };
-    for (const [name, cls] of [...sdkClasses.filter(node=>classes.get(node.name)===node).map(node=>[node.name,node]),...sourceClasses.map(node=>[node.name,node])]) {
-        const problems = [...(cls.unsupported || [])].filter(problem=>!(classCallablePrototype && problem==='generic class methods' && cls.methods.filter(method=>method.typeParameters?.length).every(method=>callableMethod(name,method.name))));
-        if(cls.fields.some(field=>field.typeName && !callableField(name,field.name) && !/^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(?:\[\])*$/.test(field.typeName)))problems.push('union, callable or opaque field type metadata');
-        if(cls.fields.some(field=>contains(field.init,node=>node.type==='Identifier' && node.name==='this')))problems.push('selected Arcade SDK instance-field this initializers');
-        const originalDefault=value=>['Number','Boolean','Null'].includes(value?.type) || value?.type==='Unary' && ['+','-'].includes(value.op) && value.argument?.type==='Number';
-        if([cls.ctor,...cls.methods].filter(Boolean).some(member=>member.parameterDefaults?.some(param=>!originalDefault(param.value))))problems.push('selected Arcade SDK nonliteral default arguments');
-        if(contains(cls,node=>node.type==='FunctionDeclaration'))problems.push('nested function declarations');
-        if (cls.fields.some(field => field.isStatic)) problems.push('static fields');
-        if (cls.methods.some(method => method.isStatic)) problems.push('static methods or accessors');
-        if(new Set(cls.fields.map(field=>field.name)).size!==cls.fields.length || cls.fields.some(field=>field.duplicateAccessor))problems.push('duplicate field or accessor declarations');
-        if(cls.methods.some(method=>method.kind==='method' && cls.fields.some(field=>field.name===method.name)))problems.push('field or accessor conflicts with a method');
-        for(const field of cls.fields.filter(field=>field.accessor?.get&&field.accessor?.set)){const get=field.accessor.get,set=field.accessor.set,param=set.paramTypes?.[set.params[0]],type=typeof param==='string'?param:param?.text;const mode=member=>member.modifiers?.find(value=>['private','protected'].includes(value))||'public';if(field.typeName!=='any'&&type&&type!=='any'&&field.typeName!==type)problems.push('getter and setter type mismatch');if(mode(get)!==mode(set))problems.push('getter and setter visibility mismatch');}
-        for(const method of cls.methods.filter(method=>['get','set'].includes(method.kind))){if(method.params.length!==(method.kind==='get'?0:1))problems.push('accessor parameter count');if(method.optionalParams?.length || method.parameterDefaults?.length)problems.push('selected Arcade SDK optional or default accessor parameters');if(method.kind==='get'&&!contains(method.body,node=>node.type==='Return'&&node.value))problems.push('selected Arcade SDK getter must return a value');if(method.kind==='set'&&contains(method.body,node=>node.type==='Return'&&node.value))problems.push('selected Arcade SDK setter cannot return a value');}
-        if (contains(classCallablePrototype?{fields:cls.fields,methods:cls.methods.map(method=>({...method,originalBody:undefined})),ctor:cls.ctor?{...cls.ctor,originalBody:undefined}:null}:cls, node => node.type === 'FunctionExpression')) problems.push('function-valued fields or captured callbacks');
-        if (cls.fields.some(field => !callableField(name,field.name) && /=>|\bFunction\b/.test(field.typeName || ''))) problems.push('function field types');
-        if (problems.length) { fail(`Class ${name} requires unsupported ${problems.join(', ')}`); continue; }
-        admitted.set(name, cls);
-    }
-    const lineage = name => {const result=[],seen=new Set();while(name){if(seen.has(name)||!admitted.has(name))return null;seen.add(name);result.push(name);name=admitted.get(name).base;}return result;};
-    for(const [name,cls]of admitted){
-        const chain=lineage(name);
-        if(cls.base && [...classes.keys()].indexOf(cls.base)>=[...classes.keys()].indexOf(name))fail(`Selected Arcade SDK requires parent declaration order before ${name}`);
-        if(!chain){fail(`Class ${name} requires unsupported or cyclic parent ${cls.base}`);continue;}
-        if(cls.sdkIntrinsic)continue;
-        if(chain.some(base=>admitted.get(base)?.sdkIntrinsic==='SplashDialog'))fail('User SplashDialog subclasses require separate native dispatch qualification');
-        if(chain.some(base=>admitted.get(base)?.sdkIntrinsic==='BaseDialog') && cls.methods.some(method=>
-            ['resize','drawBorder','clearInterior','drawPartial','fastFill','drawCursorRow','setText','setFont','cursorRowHeight','rowHeight','textAreaWidth','textAreaHeight'].includes(method.name)))
-            fail('SDK BaseDialog constructor or layout override requires separate native dispatch qualification');
-        const extendable=chain.some(base=>admitted.get(base)?.sdkIntrinsic==='ExtendableSprite');
-        // A source method without a returned expression has an inferred void
-        // result. Preserve that proven signature in editable class metadata;
-        // an unresolved result must not weaken native update validation.
-        if(extendable)for(const method of cls.methods.filter(method=>method.name==='update'))
-            if(!method.returnType && !contains(method.body,node=>node.type==='Return' && node.value))method.returnType='void';
-        if(chain.some(base=>['BaseSprite','Sprite','ExtendableSprite'].includes(admitted.get(base)?.sdkIntrinsic)) && cls.methods.some(method=>
-            ['update','draw','drawSprite','__draw','__drawCore','__update','setHitbox','resetHitbox','recalcSize','setDimensions','__visible','__serialize'].includes(method.name) && !(extendable && method.name==='update')))
-            fail('SDK Sprite draw/update/hitbox overrides require separate qualification');
-        if(cls.base && cls.ctor){
-            const body=cls.ctor.originalBody || cls.ctor.body,superCall=node=>node?.type==='ExpressionStatement' && node.expr?.type==='Call' && node.expr.callee?.name==='super';
-            if(body.filter(superCall).length!==1)fail('Derived class '+name+' constructor requires one direct super call');
-            if((cls.fields.some(field=>field.init)||cls.ctor.parameterProperties?.length) && !superCall(body[0]))fail('Selected Arcade SDK requires super first before initialized fields or parameter properties in '+name);
-            const first=body.findIndex(superCall);if(first>0 && body.slice(0,first).some(node=>contains(node,value=>value.type==='Identifier'&&value.name==='this')))fail('Derived class '+name+' uses this before super');
-        }
-        for(const field of cls.fields)for(const base of chain.slice(1)){const other=admitted.get(base).fields.find(other=>other.name===field.name);if(other){if(!field.accessor||!other.accessor)fail('Redefinition of inherited class field '+field.name);else if(field.typeName!=='any'&&other.typeName!=='any'&&field.typeName!==other.typeName)fail('Class accessor override type differs from its base property '+field.name);}}
-        for(const method of cls.methods.filter(method=>method.kind==='method'))if(chain.slice(1).some(base=>admitted.get(base).fields.some(field=>field.name===method.name)))fail('Inherited field or accessor conflicts with class method '+method.name);
-        for(const field of cls.fields)if(chain.slice(1).some(base=>admitted.get(base).methods.some(method=>method.kind==='method'&&method.name===field.name)))fail('Class field or accessor conflicts with inherited method '+field.name);
-        for(const method of cls.methods){const parent=chain.slice(1).flatMap(base=>admitted.get(base).methods).find(other=>other.name===method.name && other.kind===method.kind);if(parent){const visibility=value=>value.modifiers?.find(mode=>['private','protected'].includes(mode)) || 'public',baseMode=visibility(parent),mode=visibility(method);if(baseMode==='private' || baseMode==='public'&&mode!=='public' || baseMode==='protected'&&mode==='private')fail('Class override visibility differs from its accessible base method '+method.name);if(method.params.length!==parent.params.length || method.params.some((param,index)=>JSON.stringify(typeof method.paramTypes?.[param]==='string'?method.paramTypes[param]:method.paramTypes?.[param]?.text)!==JSON.stringify(typeof parent.paramTypes?.[parent.params[index]]==='string'?parent.paramTypes[parent.params[index]]:parent.paramTypes?.[parent.params[index]]?.text)))fail('Class override parameter signature differs from its base method '+method.name);}}
-    }
-    if(unsupported.length)return {program,unsupported};
+export function lowerObjectClasses(program,{classCallablePrototype=false,sdkImagePrototype=false,physicalUpdateSource=null}={}) {
+    const physicalEntry=physicalUpdateSource?physicalUpdateSourceFor(program,physicalUpdateSource):null;
+    if(physicalUpdateSource&&!physicalEntry)return {program,unsupported:['Throw physical update source changed before class lowering']};
+    const physicalMethods=new Map(),physicalCreates=new WeakMap();
+    const structure=prepareObjectClassStructure(program,{classCallablePrototype,sdkImagePrototype});
+    if(structure.skip||structure.unsupported.length)return {program,unsupported:structure.unsupported};
+    const {callableModel,liftedCallables,callableClass,callableField,callableMethod,sdkField,sdkParameter,contains,dialogName,sourceClasses,sdkClasses,classes,admitted,lineage}=structure;
+    const unsupported=structure.unsupported;
+    const fail=message=>{if(!unsupported.includes(message))unsupported.push(message);};
     const fieldOwners=new WeakMap(),methodClasses=new WeakMap();
     for(const [name,cls]of admitted){cls.fields.forEach(field=>fieldOwners.set(field,name));cls.methods.forEach(method=>methodClasses.set(method,name));}
     const findField=(name,field)=>lineage(name).flatMap(base=>admitted.get(base).fields).find(value=>value.name===field);
@@ -393,7 +377,8 @@ export function lowerObjectClasses(program,{classCallablePrototype=false,sdkImag
         if (node.type === 'Identifier' && node.name === 'this' && context) return {...id(selfName), bwObjectTypes:['object']};
         if (node.type === 'Call' && node.isNew && node.callee?.type === 'Identifier' && admitted.has(node.callee.name)) {
             for(const index of opaqueParameters(node.callee.name,'constructor'))if(node.args[index] && !['Null','Undefined'].includes(node.args[index].type))fail('SDK Dialog Font arguments require separate native Font qualification');
-            return call('create', [str(node.callee.name), {type:'Array', items:node.args.map(arg => rewrite(arg, context))}], ['object']);
+            const created=call('create', [str(node.callee.name), {type:'Array', items:node.args.map(arg => rewrite(arg, context))}], ['object']);
+            physicalCreates.set(node,created);return created;
         }
         if (node.type === 'Call' && node.callee?.type === 'Member' && classNames(node.callee.object).length) {
             const names = classNames(node.callee.object);
@@ -458,10 +443,19 @@ export function lowerObjectClasses(program,{classCallablePrototype=false,sdkImag
             initBody.push(statement(call('set',[{...id(selfName),bwObjectTypes:['object']},str(field.name),procedure(fn,[],types(field.init))])));
         }
         body.push({type:'FunctionDeclaration',name:initName,params:[selfName],body:initBody});
-        if(node.ctor)body.push({type:'FunctionDeclaration',name:ctorName,params:ctorParams,paramTypes:node.ctor.paramTypes,body:rewrite(classBody(node.ctor),{name,constructor:true})});
+        const callableConstructor=callableClass(name)?.constructorSignature;
+        if(callableConstructor&&!Number.isInteger(node.ctor?.bwClassCallableScopeId))
+            fail('Class callable constructor requires its actual lowered lexical scope');
+        // The completed current class signature owns these callable parameters.
+        // Preserve its actual body as a class procedure through the following
+        // legacy static-callback specialization, exactly as for checked methods.
+        if(node.ctor)body.push({type:'FunctionDeclaration',name:ctorName,params:ctorParams,paramTypes:node.ctor.paramTypes,
+            body:rewrite(classBody(node.ctor),{name,constructor:true}),
+            ...(callableConstructor&&Number.isInteger(node.ctor.bwClassCallableScopeId)?{bwClassCallableMethod:true}:{})});
         else if(!node.base)body.push({type:'FunctionDeclaration',name:ctorName,params:ctorParams,body:[]});
         if(Number.isInteger(node.ctor?.bwClassCallableScopeId))classCallableProcedures.push({scopeId:node.ctor.bwClassCallableScopeId,
-            className:name,methodName:null,procedure:signature(ctorName,ctorParams),receiverParameter:selfName});
+            className:name,methodName:null,procedure:signature(ctorName,ctorParams),receiverParameter:selfName,
+            ...(callableClass(name)?.constructorSignature?{constructorSignature:callableClass(name).constructorSignature}:{})});
         const superParams=ctorParams;
         body.push({type:'FunctionDeclaration',name:`__bwClass_${name}_superConstructor`,params:superParams,body:[
             statement(procedure(signature(initName,[selfName]),[{...id(selfName),bwObjectTypes:['object']}])),
@@ -469,15 +463,72 @@ export function lowerObjectClasses(program,{classCallablePrototype=false,sdkImag
         ]});
         for (const method of node.methods) {
             const fn = accessorNames.get(method) || `__bwClass_${name}_${method.name}`, params = [selfName, ...method.params];
-            body.push({type:'FunctionDeclaration', name:fn, params, paramTypes:method.paramTypes,
-                body:rewrite(classBody(method), {name, constructor:false}),...(callableMethod(name,method.name)?{bwClassCallableMethod:true}:{})});
+            const generated={type:'FunctionDeclaration', name:fn, params, paramTypes:method.paramTypes,
+                body:rewrite(classBody(method), {name, constructor:false}),...(callableMethod(name,method.name)?{bwClassCallableMethod:true}:{})};
+            body.push(generated);
+            const original=structure.methodOrigins.get(method);
+            if(physicalEntry?.hasMethod(original))physicalMethods.set(original,generated);
             if(Number.isInteger(method.bwClassCallableScopeId))classCallableProcedures.push({scopeId:method.bwClassCallableScopeId,
                 className:name,methodName:method.name,procedure:signature(fn,params),receiverParameter:selfName});
             if(method.kind==='method')methods.push({name:method.name, procedure:signature(fn, params), parameters:method.params.map((param,index) => ({name:param,...(callableMethod(name,method.name)?.signature.parameters[index].type.kind==='callable'?{type:'callable',callableSignature:callableMethod(name,method.name).signature.parameters[index].type}:{type:typeText(method.paramTypes?.[param])}),optional:!!method.optionalParams?.includes(param),...(method.parameterDefaults?.some(value=>value.name===param)?{default:defaultValue(method.parameterDefaults.find(value=>value.name===param).value)}:{})})), returnType:callableMethod(name,method.name)?(callableMethod(name,method.name).signature.result.kind==='callable'?'callable':callableMethod(name,method.name).signature.result.name):typeText(method.returnType),visibility:visibility(method),...(callableMethod(name,method.name)?{typeParameters:callableMethod(name,method.name).typeParameters,callableSignature:callableMethod(name,method.name).signature,...(callableMethod(name,method.name).resultFlow?{resultFlow:callableMethod(name,method.name).resultFlow}:{})}:{})});
         }
         body.push(statement(call(node.base?'declareSubclass':'declare', [str(name),...(node.base?[str(node.base)]:[]), str(JSON.stringify(node.fields.map(field => ({name:field.name,type:callableField(name,field.name)?'callable':field.typeName || 'any',...(callableField(name,field.name)?{valueKind:'callable',callableSignature:callableField(name,field.name).type}:{}),...(sdkField(name,field.name)?{valueKind:'sdk',sdkType:sdkField(name,field.name).sdkType}:{}),readonly:!!field.modifiers?.includes('readonly'),visibility:visibility(field),...(field.accessor?.get?{getter:signature(accessorNames.get(field.accessor.get),[selfName])}:{}),...(field.accessor?.set?{setter:{procedure:signature(accessorNames.get(field.accessor.set),[selfName,...field.accessor.set.params]),parameters:field.accessor.set.params.map(param=>({name:param,type:typeText(field.accessor.set.paramTypes?.[param]),optional:false}))}}:{}),...(field.parameterProperty?{parameterProperty:true}:{}),...(ownInitializers.has(field.name)?{initializer:ownInitializers.get(field.name)}:{})})))),
             str(signature(initName, [selfName])), str(signature(`__bwClass_${actualCtor.name}_constructor`,ctorParams)),
-            str(JSON.stringify((actualCtor.ctor?.params || []).map((param,index) => ({name:param,type:typeText(actualCtor.ctor?.paramTypes?.[param]),...(sdkParameter(actualCtor.name,index)?{sdkType:sdkParameter(actualCtor.name,index).sdkType}:{}),optional:!!actualCtor.ctor?.optionalParams?.includes(param),...(actualCtor.ctor?.parameterDefaults?.some(value=>value.name===param)?{default:defaultValue(actualCtor.ctor.parameterDefaults.find(value=>value.name===param).value)}:{})})))), str(JSON.stringify(methods))])));
+            str(JSON.stringify((actualCtor.ctor?.params || []).map((param,index) => ({name:param,
+                ...(callableClass(actualCtor.name)?.constructorSignature?.parameters[index].type.kind==='callable'?
+                    {type:'callable',callableSignature:callableClass(actualCtor.name).constructorSignature.parameters[index].type}:
+                    {type:typeText(actualCtor.ctor?.paramTypes?.[param])}),
+                ...(sdkParameter(actualCtor.name,index)?{sdkType:sdkParameter(actualCtor.name,index).sdkType}:{}),optional:!!actualCtor.ctor?.optionalParams?.includes(param),...(actualCtor.ctor?.parameterDefaults?.some(value=>value.name===param)?{default:defaultValue(actualCtor.ctor.parameterDefaults.find(value=>value.name===param).value)}:{})})))), str(JSON.stringify(methods))])));
     }
-    return {program:{...program,body,bwObjectClasses:true,...(classCallableProcedures.length?{bwClassCallableProcedures:classCallableProcedures}:{})}, unsupported};
+    const result={program:{...program,body,bwObjectClasses:true,...(classCallableProcedures.length?{bwClassCallableProcedures:classCallableProcedures}:{})},unsupported};
+    if(physicalEntry&&!unsupported.length){
+        const rows=physicalEntry.methods().map(row=>({...row,generated:physicalMethods.get(row.method),creates:row.sites.map(site=>physicalCreates.get(site))}));
+        // Every source/generated procedure (including fields, constructors,
+        // super and SDK bodies) and every ordered executable root/registration
+        // is recorded in this single pass. Names only index private body rows.
+        const procedures=body.filter(node=>node.type==='FunctionDeclaration');
+        const roots=physicalOutputSnapshot(body.filter(node=>node.type!=='FunctionDeclaration'));
+        const snapshots=procedures.map(node=>({name:node.name,snapshot:physicalOutputSnapshot(node)}));
+        const creates=rows.flatMap(row=>row.creates).map(node=>node&&physicalUpdateSourceSnapshot(node));
+        if(!physicalEntry.current()||!roots||snapshots.some(row=>!row.snapshot)||rows.some(row=>!row.generated||row.creates.some(node=>!node))||creates.some(value=>!value))
+            fail('Throw physical update requires complete current generated methods and construction origins');
+        else {const receipt=Object.freeze({});result.physicalUpdateLowering=receipt;
+            const rootCalls=[];const scan=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(scan);return;}if(node.type==='Call')rootCalls.push(node);for(const [key,value]of Object.entries(node))if(!['originalBody','parameterDefaults','bwProcedureConstraintSource'].includes(key))scan(value);};
+            scan(body.filter(node=>node.type!=='FunctionDeclaration'));
+            const positions=rows.flatMap(row=>row.creates).map(node=>rootCalls.indexOf(node));
+            if(positions.some(index=>index<0))fail('Throw physical update construction lost its actual root position');
+            else physicalLowerings.set(receipt,{source:physicalEntry,rows,roots,snapshots,creates,positions});}
+    }
+    return result;
+}
+
+// Query-only: a copied receipt/tag, arbitrary matching method name or caller
+// supplied structural rows cannot enter this private issuance map.
+export function validatePhysicalUpdateLowering(program,receipt){
+    const r=physicalLowerings.get(receipt),unsupported=[];
+    const fail=message=>unsupported.push('Throw physical update lowering: '+message);
+    if(!r||!r.source.current()){fail('actual private source/lowering receipt is unavailable or expired');return unsupported;}
+    if(!physicalUpdateSourceSnapshot(program)){fail('final Program is not current plain data');return unsupported;}
+    if(!matchesPhysicalOutput(r.roots,program.body.filter(node=>node.type!=='FunctionDeclaration')))fail('actual root effects, construction or registration changed');
+    const procedures=program.body.filter(node=>node.type==='FunctionDeclaration');
+    if(procedures.length!==r.snapshots.length||procedures.some((node,index)=>node.name!==r.snapshots[index]?.name))fail('actual ordered generated procedure inventory changed');
+    for(const row of r.snapshots){const found=procedures.filter(node=>node.name===row.name);
+        if(found.length!==1||!matchesPhysicalOutput(row.snapshot,found[0]))fail('actual generated/source procedure changed: '+row.name);}
+    if(unsupported.length)return unsupported;
+    const nodes=[];const visit=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(visit);return;}nodes.push(node);for(const [key,value]of Object.entries(node))if(!['originalBody','parameterDefaults','bwProcedureConstraintSource'].includes(key))visit(value);};visit(program.body.filter(node=>node.type!=='FunctionDeclaration'));
+    const rootCalls=nodes.filter(node=>node.type==='Call');
+    const graph=analyseSourceValueProducers(program,{initializationEntries:true,unboundIsOpaque:true,opaqueDeclarationValues:true,uninitializedLocalsAreOpaque:true});
+    let index=0;
+    for(const row of r.rows)for(const origin of row.creates){
+        const snapshot=r.creates[index],found=rootCalls[r.positions[index++]];
+        // The full ordered root graph above binds this occurrence, including
+        // identical allocations at distinct sites, without a name/hash join.
+        if(!found||!snapshot.matches(found)){fail('actual generated construction lost its exact physical origin');continue;}
+        for(const decl of row.globals){
+            const current=program.body.filter(node=>node.type==='Declaration').flatMap(node=>node.decls).filter(node=>node.name===decl.name);
+            if(current.length!==1||graph.declarationCountAt(program,decl.name)!==1||!graph.isBindingInitializedAt(found,graph.bindingOf(program,decl.name)))
+                fail('actual binding is not initialized before every generated construction: '+decl.name);
+        }
+    }
+    return unsupported;
 }

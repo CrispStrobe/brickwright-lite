@@ -126,3 +126,26 @@ test('current typed clock accepts canonical nonshadow sockets and uniquely owned
         const out=projectToArcade(project);t.diagnostic(JSON.stringify({stage:'canonical current typed clock socket',mode,current:project,out}));assert.deepEqual(out.unsupported,[],mode);assert.deepEqual(out.warnings,[]);
     }
 });
+
+
+test('clock reporter diagnostics survive an independently rejected ordinary caller',t=>{
+    const result=arcadeToPseudocode('let seen=0;function receive(value:number){seen=value}receive(game.runtime());');
+    const creator=new Creator();creator.parse(result.code);assert.deepEqual(result.unsupported,[]);assert.deepEqual(creator.errors,[]);
+    const project=JSON.parse(JSON.stringify(creator.project)),target=project.targets.find(owner=>Object.values(owner.blocks).some(block=>block.opcode==='arcade_sceneMillis'));
+    const clock=Object.values(target.blocks).find(block=>block.opcode==='arcade_sceneMillis');clock.shadow=true;
+    const out=projectToArcade(project);t.diagnostic(JSON.stringify({stage:'independent malformed clock and ordinary caller refusals',project,out}));
+    assert.ok(out.unsupported.includes('Procedure parameter constraint: actual current caller or writer requires Number'));
+    assert.ok(out.unsupported.includes('Arcade ordinary symbol: call ordered formal/input binding differs'));
+    assert.ok(out.unsupported.includes('Scene clock Number: current zero-input reporter or unique parent differs'));
+    assert.doesNotMatch(out.ts,/game\.runtime\(\)/);assert.deepEqual(out.warnings,[]);
+});
+
+test('an orphan clock reporter remains an explicit malformed current graph element',t=>{
+    const result=arcadeToPseudocode('let seen=game.runtime();'),creator=new Creator();creator.parse(result.code);assert.deepEqual(result.unsupported,[]);assert.deepEqual(creator.errors,[]);
+    const project=JSON.parse(JSON.stringify(creator.project)),target=project.targets.find(owner=>Object.values(owner.blocks).some(block=>block.opcode==='arcade_sceneMillis'));
+    const clock=Object.values(target.blocks).find(block=>block.opcode==='arcade_sceneMillis');assert.equal(Object.hasOwn(target.blocks,'authoredOrphanClock'),false);
+    target.blocks.authoredOrphanClock={...clock,parent:null};
+    const out=projectToArcade(project);t.diagnostic(JSON.stringify({stage:'orphan current clock refusal with untouched connected clock',project,out}));
+    assert.ok(out.unsupported.includes('Scene clock Number: current zero-input reporter or unique parent differs'));
+    assert.match(out.ts,/game\.runtime\(\)/,'the untouched valid connected reporter keeps its independent emission');assert.deepEqual(out.warnings,[]);
+});

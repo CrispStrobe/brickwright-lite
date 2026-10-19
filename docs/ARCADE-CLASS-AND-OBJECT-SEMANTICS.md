@@ -8,6 +8,73 @@ Ordinary inheritance and virtual/super dispatch have focused controls. Accessors
 statics, instanceof, captured callables and installed editor closure remain
 separate steps; this contract does not claim full class compatibility.
 
+## Ordinary constructor parameter properties
+
+The source candidate for stored class callbacks accepts ordinary constructor
+parameter properties only when the parser's hidden parameter metadata and
+constructor metadata share the same array, the field declarations agree on
+type and visibility, and the actual constructor body starts with the matching
+ordered assignments. The existing producer proof still checks every argument,
+field write, callback invocation and constructor completion. An annotation does
+not initialize a field. Readonly writes and private or protected access retain
+their existing restrictions.
+
+Callable constructor parameters use the existing explicit callable signature
+metadata, obtained from the completed argument and constructor-body proof.
+Export compares that signature with the actual constructor procedure and
+lexical owner before rendering its type. Raw function-type text does not
+replace this signature or supply current-body authority.
+
+Lowering preserves the hidden descriptors and shared metadata references. A
+completed proof that observes changed metadata expires permanently; restoring
+the old values requires a fresh proof. Defaults, optional parameters,
+inheritance and native Sprite or scene callback domains are outside this new
+correspondence rule.
+
+Focused controls cover ordinary Number and Void callbacks and the current
+Code, Blocks, SB3 and source export/reimport routes. Their execution and
+affected native guest qualification remain pending for this candidate. This
+does not establish compatibility with a complete retained library. Existing
+raw class and callable authoring vocabulary is reused; no dedicated constructor
+parameter-property editor or installed GUI qualification is claimed.
+
+### Unused ordinary Void calls during current export
+
+An actual owned class or callback call returning Void may remain an expression
+statement when lowering stores its unused result in a local sink. Export must
+prove the exact current receiver and arguments and the sink's physical owner.
+The sink must have no value binding, formal, capture, reader or other writer in
+the current project; its spelling supplies no authority. The call remains once
+in its original position, with its effects and possible exceptions preserved.
+Currentness failure expires this statement proof even if edited data is restored.
+The partial lexical typer need not assign a value type to an ordinary global
+receiver: the statement proof uses the existing current class producer and
+all-writer checks. A known conflicting result still refuses. All actual local
+initializations and complete bodies remain subject to lexical validation; no
+receiver value type is added to the partial typer by discarding the result.
+At the source module root, the same sink proof can retain a zero-argument call
+to an actual current module-level declaration with a Void signature and matching
+physical definition and formals. Its complete body must still validate. This
+admits a statement, not a general function-call value producer; parameterized
+declaration calls and unknown targets are outside this narrow root route.
+
+Current ordinary-class staging locals are emitted as bare typed declarations,
+followed by their actual ordered allocation and alias writes. Emitting an
+explicit Undefined initializer would invent an incompatible class producer.
+Bare declarations supply no instance: a read before the actual assignment or a
+wrong assigned value still refuses, and an authored explicit Undefined
+initializer remains distinct and unsupported by this class producer proof.
+Primitive, callable and SDK local declaration routes are unchanged.
+Direct visual Blocks editing of constructor parameter-property modifiers and
+signatures, and of ordinary-class typed local declarations, remains unqualified.
+Code and Creator conversions do not establish that editor acceptance.
+
+This does not admit Void as a stored value or arbitrary unknown calls. Existing
+conditional and field-mutation proofs remain separate. Code, current blocks and
+saved-project export controls cover this narrow representation; dedicated GUI
+authoring, affected native execution and complete-game qualification remain
+separate acceptance requirements.
+
 ## Why a separate reference model is needed
 
 Before this lane, Arcade refused ordinary source classes. The shared translator has a
@@ -73,3 +140,52 @@ controls; admitting a class cannot automatically admit an extension package.
 Full original package execution, historical target selection and source-license
 admission remain independent requirements. Do not label selected-SDK compiler
 failures as historical invalidity or structural admission as full compatibility.
+
+
+### Constructor callback metadata and runtime arguments
+
+Constructor parameters with an explicit canonical callable signature use the
+same owned signature validator in the inert source catalogue and runtime heap.
+The runtime retains a frozen signature, checks it against the actual managed
+constructor owner, and validates each supplied callback as a live owned resource
+with that signature before allocation. An uninitialized field, null, a procedure
+name, or a forged or expired reference is not a constructor callback argument.
+The source body and its actual field writes remain authoritative; metadata does
+not initialize a parameter property or issue a frame. A class merely named
+`callable` continues to use its ordinary class domain.
+
+This bounded constructor callback route accepts required ordinary signatures;
+optional/default callback parameters and SDK types nested in these signatures
+remain outside it. Existing separately qualified SDK parameter and field routes
+retain their own checks. Focused component controls are in
+`test/arcade-class-callable-constructor-parameters.test.mjs`. Fresh production
+installation and affected genuine VM qualification remain required before a
+runtime capability is reported as qualified. Code and Blocks conversion retain
+the actual constructor form; dedicated visual authoring of parameter-property
+modifiers and callback signatures remains unqualified.
+
+### Mutable Number globals in current callback export
+
+Current class callback export can retain an Arrow's read of an ordinary mutable
+module Number cell. The exported Arrow continues to read the variable; it does
+not replace that read with a captured constant. The bounded route proves the
+actual variable ID and its unique owning target, every current writer's Number
+RHS, the real startup initializer, and initialization before each corresponding
+closure is created. The current declaration, connected bodies, lexical owners
+and concrete callback signatures remain independently required. A variable's
+name, type annotation or saved Scratch value cannot supply a missing producer
+or initialization proof. Editing a writer or body requires fresh proof.
+
+This route requires the closed startup and callable-dispatch entry catalogue.
+Direct calls to Arrow procedures are refused, because closure creation order
+cannot establish initialization before a direct invocation. Broader event
+entries, String or Boolean module captures, and primitive captures read directly
+by class methods remain separate work. Existing class, SDK and lexical binding
+proofs retain their own boundaries.
+
+Focused controls in `test/makecode-class-callable-primitive-globals.test.mjs`
+exercise current Code conversion, mutable writes, exact emitted Number Arrow
+bodies and adversarial ownership, writer and initialization edits. These controls
+establish a bounded export route. Fresh emitted-source SDK compilation and
+reimport, GUI authoring and inspection, and complete-game compatibility require
+their own qualification.

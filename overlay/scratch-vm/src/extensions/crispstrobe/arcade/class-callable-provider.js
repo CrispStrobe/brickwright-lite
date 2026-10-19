@@ -39,13 +39,20 @@ module.exports = function createClassCallableProvider(runtime, values, heap, fra
                 if(JSON.stringify(selected.callableSignature)!==JSON.stringify(owner.signature)||
                     JSON.stringify(selected.typeParameters)!==JSON.stringify(owner.typeParameters))fail('source creator differs from its actual heap signature');
             }else if(owner.typeParameters.length||selected.parameters.some((parameter,index)=>
-                (parameter.sdkType?parameter.type!=='Image'||JSON.stringify(parameter.sdkType)!==JSON.stringify(owner.signature.parameters[index].type):owner.signature.parameters[index].type.kind!=='named'||owner.signature.parameters[index].type.name!==parameter.type))||
+                (Object.hasOwn(parameter,'callableSignature')?parameter.type!=='callable'||Object.hasOwn(parameter,'sdkType')||JSON.stringify(parameter.callableSignature)!==JSON.stringify(owner.signature.parameters[index].type):parameter.sdkType?parameter.type!=='Image'||JSON.stringify(parameter.sdkType)!==JSON.stringify(owner.signature.parameters[index].type):owner.signature.parameters[index].type.kind!=='named'||owner.signature.parameters[index].type.name!==parameter.type))||
                 owner.kind==='method'&&(owner.signature.result.kind!=='named'||owner.signature.result.name!==selected.returnType))
                 fail('source creator differs from its actual heap signature');
         }
     };
     const recordFor = proof => {const record = proofs.get(proof);if (!record) fail('unknown declaration proof');return record;};
     const freeze=value=>{for(const child of Object.values(value))if(child&&typeof child==='object')freeze(child);return Object.freeze(value);};
+    function constructorParameterSignature(signature) {
+        const validated=types.validate(signature);
+        const hasSdk=type=>type.kind==='sdk'||type.kind==='callable'&&
+            (type.parameters.some(parameter=>hasSdk(parameter.type))||hasSdk(type.result));
+        if(validated.kind!=='callable'||hasSdk(validated))fail('constructor callback requires an explicit ordinary callable signature without SDK roles');
+        return freeze(validated);
+    }
     function methodSignature(method) {
         if(!Array.isArray(method.typeParameters)||!Array.isArray(method.parameters))fail('method requires explicit generic and parameter metadata');
         const generics=new Set();
@@ -126,6 +133,7 @@ module.exports = function createClassCallableProvider(runtime, values, heap, fra
         signature(proof) {const record=recordFor(proof);current(record,record.target);return structuredClone(record.signature);},
         invocation(proof,args,rawArgs=args) {const record=recordFor(proof);current(record,record.target);const signature=types.instantiate(record.signature,[],args);signature.parameters.forEach((parameter,index)=>{if(parameter.type.kind==='sdk')types.result({kind:'callable',parameters:[],result:parameter.type},rawArgs[index]);});return signature;},
         result(signature,value) {return types.result(signature,value);},
+        constructorParameterSignature,
         fieldSignature(signature) {
             const validated=types.validate(signature);
             if(validated.kind!=='callable')fail('field requires an explicit callable signature');

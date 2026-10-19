@@ -12,7 +12,61 @@ const ROOT = '__bwDependencyInputs/';
 const safePath = name => typeof name === 'string' && name && !name.startsWith('/') &&
     !name.includes('\\') && name.split('/').every(part => part && part !== '.' && part !== '..');
 
+// Provenance only: these private snapshots grant no value or effect authority.
+const preparedNativeSources = new WeakMap();
+function nativeSourceSnapshot (...roots) {
+    const rows = [], seen = new Set(); let fields = 0;
+    const visit = value => {
+        if (value === null || typeof value !== 'object') {
+            if (typeof value === 'function') throw new Error('opaque source value');
+            return;
+        }
+        if (seen.has(value)) return;
+        seen.add(value);
+        if (seen.size > 50000) throw new Error('source snapshot bound');
+        const prototype = Object.getPrototypeOf(value);
+        if (prototype !== null && prototype !== Object.prototype && prototype !== Array.prototype) {
+            throw new Error('opaque source prototype');
+        }
+        const keys = Reflect.ownKeys(value), descriptors = [];
+        for (const key of keys) {
+            if (++fields > 250000) throw new Error('source descriptor bound');
+            const descriptor = Object.getOwnPropertyDescriptor(value, key);
+            if (!descriptor || !Object.hasOwn(descriptor, 'value')) throw new Error('source accessor');
+            descriptors.push(descriptor); visit(descriptor.value);
+        }
+        rows.push({value, prototype, keys, descriptors});
+    };
+    try { roots.forEach(visit); } catch { return null; }
+    return () => {
+        try {
+            return rows.every(row => {
+                if (Object.getPrototypeOf(row.value) !== row.prototype) return false;
+                const keys = Reflect.ownKeys(row.value);
+                return keys.length === row.keys.length && keys.every((key, index) => {
+                    if (key !== row.keys[index]) return false;
+                    const actual = Object.getOwnPropertyDescriptor(row.value, key), prior = row.descriptors[index];
+                    return actual && Object.hasOwn(actual, 'value') && Object.is(actual.value, prior.value) &&
+                        actual.enumerable === prior.enumerable && actual.configurable === prior.configurable &&
+                        actual.writable === prior.writable;
+                });
+            });
+        } catch { return false; }
+    };
+}
+
+/** Read an existing preparation's private provenance; never register a copy. */
+export function currentPreparedNativeSourceProvenance (files) {
+    const receipt = files && preparedNativeSources.get(files);
+    return receipt && receipt.isCurrent() ? receipt : null;
+}
+
 export function prepareArcadeDependencyInputs (originalFiles, resolved) {
+    // Capture before ordinary preparation can evaluate any caller properties.
+    // Unsafe inputs keep their existing public behavior, without private proof.
+    const inputCurrent = nativeSourceSnapshot(originalFiles, resolved);
+    const selectedNativeSources = [], admissionCurrent = [], visitedSourceOrder = [];
+
     const cfg = JSON.parse(originalFiles['pxt.json']);
     const nativeLibraryVersions={};
     if (!Array.isArray(cfg.files)) throw new Error('Native dependency preparation requires pxt.json.files');
@@ -61,13 +115,19 @@ export function prepareArcadeDependencyInputs (originalFiles, resolved) {
     }
     files[`${ROOT}resources.jres`] = JSON.stringify(resources);
     const materializeFixedImages = createFixedImageResourceMaterializer(originalFiles,resolved);
-    for (const {id, file} of resolved.sourceOrder) {
+    let sourceOrderIndex = -1;
+    for (const sourceEntry of resolved.sourceOrder) {
+        const {id, file} = sourceEntry;
+        sourceOrderIndex++;
+        visitedSourceOrder.push(sourceEntry);
         if (typeof id !== 'string' || !id || !safePath(file)) throw new Error('Unsafe dependency source identity');
         const pkg = resolved.packages[id];
         if (pkg?.vendored) continue;
         if (!pkg || typeof pkg.files[file] !== 'string') throw new Error(`Missing resolved dependency source: ${id}/${file}`);
-        const nativeAdapter = admitArcadeNativeSource({packageId: id, filename: file, source: pkg.files[file]});
+        const originalSource = pkg.files[file];
+        const nativeAdapter = admitArcadeNativeSource({packageId: id, filename: file, source: originalSource});
         if (nativeAdapter) {
+            admissionCurrent.push(nativeSourceSnapshot(nativeAdapter));
             if(nativeAdapter.libraryNamespace) {
                 const name=nativeAdapter.libraryNamespace, version=nativeAdapter.libraryVersion;
                 if(nativeLibraryVersions[name] && nativeLibraryVersions[name]!==version)throw new Error(`Conflicting native library versions: ${name}`);
@@ -84,6 +144,9 @@ export function prepareArcadeDependencyInputs (originalFiles, resolved) {
                 files[path] = nativeAdapter.replacementSource;
                 names.push(path);
             }
+            selectedNativeSources.push(Object.freeze({admission: nativeAdapter, packageId: id,
+                filename: file, originalSource, sourceOrderIndex,
+                preparedPath: path, replacementSource: nativeAdapter.replacementSource}));
             provenance.push({id, file, ...(path ? {path} : {}), nativeAdapter});
             continue;
         }
@@ -129,6 +192,27 @@ export function prepareArcadeDependencyInputs (originalFiles, resolved) {
         ...(Object.keys(nativeLibraryVersions).length?{bwArcadeNativeLibraries:nativeLibraryVersions}:{}),
         ...(effectivePalette ? {palette: [...effectivePalette]} : {}), files: [...names, ...cfg.files,
         `${ROOT}resources.jres`]});
+    const outputCurrent = nativeSourceSnapshot(files, provenance);
+    // The original iterator still drives preparation. Private issuance additionally
+    // joins every visited entry to the actual ordered own-data Array slots.
+    const sourceOrderMatches = () => {
+        if (!inputCurrent || !inputCurrent()) return false;
+        const order = Object.getOwnPropertyDescriptor(resolved, 'sourceOrder')?.value;
+        if (!Array.isArray(order) || order.length !== visitedSourceOrder.length) return false;
+        return visitedSourceOrder.every((entry, index) =>
+            Object.getOwnPropertyDescriptor(order, String(index))?.value === entry);
+    };
+    if (selectedNativeSources.length && inputCurrent && outputCurrent && sourceOrderMatches() &&
+        admissionCurrent.every(current => current && current()) && inputCurrent()) {
+        let live = true;
+        const isCurrent = () => {
+            if (live && (!inputCurrent() || !outputCurrent() ||
+                !admissionCurrent.every(current => current()))) live = false;
+            return live;
+        };
+        const receipt = Object.freeze({entries: Object.freeze(selectedNativeSources), isCurrent});
+        if (isCurrent()) preparedNativeSources.set(files, receipt);
+    }
     return {files, originalFiles, provenance, skippedPackages, runtimeConfig: resolved.runtimeConfig || null,
         fetchedExtensions: resolved.fetchedExtensions || []};
 }

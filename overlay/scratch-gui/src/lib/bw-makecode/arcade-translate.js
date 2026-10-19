@@ -1,10 +1,13 @@
-import {prepareProcedureConstraintSource,procedureConstraintAstMetadata} from './procedure-constraint-source.js';
+import {capturePreparedSharedImageSources,parseSharedImageSourceBoundary,parseSharedImageSourceProgram,bindPreparedSharedImageSource,sharedImageSourceContextCurrent} from './shared-image-array-source-effects.js';
+import {prepareSharedImageArrayTransport,projectSharedImageArrayTransport,finishSharedImageArrayTransport,currentSharedImageArrayTransport,reproveSharedImageArrayTransport} from './source-shared-image-array-transport.js';
+import {prepareProcedureConstraintSourceForTranslation,procedureConstraintAstMetadata} from './procedure-constraint-source.js';
+import {BUTTON_EVENTS,controllerButtonEventNumberLeaves} from './controller-button-event-number-source.js';
 import {createProcedureOwnerEmission} from './procedure-owner-emission.js';
-import {prepareThrowSource} from './throw-source-gate.js';
+import {prepareThrowSource,prepareThrowEmission,reproveThrowEmission,hasThrowEmission} from './throw-source-gate.js';
 import {proveArrayMapValues} from './lower-array-map-values.js';
 import {selectNamedFunctionSourceProof} from './named-function-source-selection.js';
 import {lowerNamedFunctionValues} from './lower-named-function-values.js';
-import {selectClassCallableSourceProof} from './class-callable-source-gate.js';
+import {selectClassCallableSourceProofForTranslation} from './class-callable-source-gate.js';
 import {withClassResultFlowProof} from './class-callable-result-flow-proof.js';
 import {numberLiteralCode,containsNonFiniteNumberLiteral} from './source-number-literal.js';
 import {lowerMathIdivValues} from './math-idiv-source.js';
@@ -16,6 +19,7 @@ import {validateClassCallablePlan} from './class-callable-plan.js';
 import {sourceCallableDeclarations} from './source-callable-declarations.js';
 import {callableDeclarationEnvelope,callableVariableEnvelope} from './callable-export-graph.js';
 import {lowerNamedArrayItemHelpers} from './named-array-item-helpers.js';
+import {GENERATED_HELPER_PROFILES,inspectGeneratedHelperBindings,mapGeneratedSourceArray} from './generated-helper-recognition.js';
 import {lowerLiveFontMetrics} from './live-font-metrics.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 import {sourceReferenceDeclarations} from './source-reference-declarations.js';
@@ -182,7 +186,7 @@ const COLLISION_DIRECTIONS = Object.freeze({Left:0, Top:1, Right:2, Bottom:3});
 // Retained Arcade game/sprite.ts TileDirection; Center also covers default.
 const TILE_DIRECTIONS = Object.freeze({...COLLISION_DIRECTIONS, Center:4});
 const CAMERA_PROPERTIES = Object.freeze({X:0, Y:1, Left:2, Right:3, Top:4, Bottom:5});
-const BUTTON_EVENTS = Object.freeze({Pressed:2049, Released:2048, Repeated:2054});
+
 
 /**
  * Velocity divisor: Arcade's vx is pixels per second and a Scratch
@@ -346,7 +350,7 @@ class ArcadeTranslator extends BaseTranslator {
         this.textSpriteReferences=references.textSprites;this.playerReferences=references.players;this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.legacyTileReferences=references.legacyTiles;this.animationReferences = references.animations;this.sevensegDigitReferences=references.sevensegDigits;this.sevensegCounterReferences=references.sevensegCounters;this.dartReferences=references.darts;this.corgiReferences=references.corgis;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
         this.referenceArrayProgram=containsAst(node,value=>value.type==='Array' || references.arrays.has(value));
         this.fontValueProgram=containsAst(node,value=>!!value.bwFontIntrinsic);
-        this.throwValueProgram=node.bwProvedThrowProgram===true;
+        this.throwValueProgram=hasThrowEmission(node);this.throwSourceProgram=node;
         this.procedureConstraintSource=node.bwProcedureConstraintSource || null;
         this.provenArrayReferences=references.provenArrays;
         this.inferredSpriteParameters = references.parameters;
@@ -400,6 +404,7 @@ class ArcadeTranslator extends BaseTranslator {
     }
 
     imageRef(node, allowValueCall = true) {
+        if(node?.type==='Index' && this.planImageValue)this.planImageValue(node);
         if (node?.type === 'Template' && this.assetKindLookup &&
             lookupAssetTemplate(this.assetKindLookup,node.tag,node.value) === null) return 'null value';
         const background = this.imageValueResources.get(node);
@@ -549,7 +554,7 @@ class ArcadeTranslator extends BaseTranslator {
     }
     arcadeStatement(st, indent, out) {
         if(st.type==='ThrowStatement'){
-            if(!this.throwValueProgram){out.push(`${'  '.repeat(indent)}${this.note('Throw source requires qualified source context and canonical protocol')}`);return;}
+            if(!this.throwValueProgram||!hasThrowEmission(this.throwSourceProgram)){out.push(`${'  '.repeat(indent)}${this.note('Throw source requires qualified source context and canonical protocol')}`);return;}
             out.push(`${'  '.repeat(indent)}arcade throw (${this.arrayElementValue(st.argument)})`);return;
         }
         if(st.type==='ExpressionStatement' && st.expr?.bwNativeNamedArray && st.expr.bwNativeNamedArray.kind!=='get') {
@@ -1192,6 +1197,9 @@ class ArcadeTranslator extends BaseTranslator {
             const values={Connected:1,Disconnected:2};if(Object.prototype.hasOwnProperty.call(values,node.name))return String(values[node.name]);
             this.unsupported.push(`${this.path(node)} is not a declared Arcade ControllerEvent member`);return 'undefined value';
         }
+        // Generic emission accepts the same actual readonly leaves as the
+        // caller producer proof; spelling or parameter types are insufficient.
+        if(this.buttonEventNumberLeaves?.has(node))return String(BUTTON_EVENTS[node.name]);
         if(this.handleTemplates && node?.type==='Member' && node.object?.type==='Identifier' && node.object.name==='ControllerButtonEvent') {
             if(this.boundSourceGlobals?.has('ControllerButtonEvent') || this.localVars?.has('ControllerButtonEvent') || this.currentParameters?.has('ControllerButtonEvent') || this.capturedBindings.has('ControllerButtonEvent')) {
                 this.unsupported.push(`${this.path(node)} refers to a shadowed ControllerButtonEvent binding`);return 'undefined value';
@@ -1379,6 +1387,7 @@ class ArcadeTranslator extends BaseTranslator {
             }
             return `arcade sprite array kind ${this.kindSlot(kind)}`;
         }
+        if(node?.type==='Index' && this.planImageValue)this.planImageValue(node);
         if (node?.type==='Index' && this.isArrayReference(node.object) && !this.imageValueResources.has(node)) return `item (${this.expr(node.index)}) of array reference (${this.expr(node.object)})`;
         if (node?.type==='Member' && node.name==='length' && this.isArrayReference(node.object)) return `length of array reference (${this.expr(node.object)})`;
 
@@ -2912,7 +2921,6 @@ const kindOf = node => {
  * Match the full body and every use before inlining; names alone never grant
  * intrinsic semantics. Evaluating the operands preserves call argument order.
  */
-let legacyArrayHelperTemplates;
 // Arcade destroys the current kind collection, not a live query on each
 // iteration. Lower through the same snapshot-array and handle destruction
 // primitives exposed in Blocks. Newly created callback sprites survive.
@@ -3101,81 +3109,116 @@ const desugarForOf = (program, source) => {
 // the \`stop all\` itself was lost. When that machinery is present VERBATIM, this
 // lifts it back: \`_stopAll()\` is \`stop all\`, a mark of \`_stopOthers\` is \`stop
 // other scripts in sprite\`, and the run-token lines and their guards vanish.
-let exporterTokenTemplates;
-const liftExporterStops = program => {
-    const shape = node => JSON.stringify(node, (key, value) => (key === 'line' ? undefined : value));
-    const templates = exporterTokenTemplates || (exporterTokenTemplates = new Map(
-        parseMakeCodeTs(`${HELPERS.tok.ts}\n${HELPERS.others.ts}`).body
-            .filter(st => st.type === 'FunctionDeclaration').map(fn => [fn.name, shape(fn)])));
-    const declared = new Map(program.body.filter(st => st.type === 'FunctionDeclaration').map(fn => [fn.name, fn]));
-    const stopAll = declared.get('_stopAll');
-    const generated = ['_tok', '_dead'].every(name => declared.has(name) && shape(declared.get(name)) === templates.get(name)) &&
-        (!stopAll || stopAll.body?.[0]?.type === 'ExpressionStatement' && stopAll.body[0].expr?.type === 'Assignment' &&
-            stopAll.body[0].expr.left?.name === '_stopMark' && stopAll.body[0].expr.right?.name === '_tokens');
-    if (!generated) return program;
-    const helpers = new Set(['_tok', '_dead', '_stopAll',
-        ...['_stopOthers', '_othersStopped'].filter(name => declared.has(name) && shape(declared.get(name)) === templates.get(name))]);
-    const isId = (node, name) => node?.type === 'Identifier' && (name instanceof RegExp ? name.test(node.name) : node.name === name);
-    const isCall = (node, name) => node?.type === 'Call' && isId(node.callee, name);
-    const marker = name => ({type: 'ExpressionStatement', expr: {type: 'Call', callee: {type: 'Identifier', name}, args: []}});
-    // A guard term the export adds at each yield; anything else in the test stays.
-    const guardTerm = node => isCall(node, '_dead') && isId(node.args?.[0], '_t') ||
-        isCall(node, '_othersStopped') && isId(node.args?.[1], '_t') ||
-        node?.type === 'Binary' && node.op === '&&' && node.left?.type === 'Binary' && node.left.op === '<=' &&
-            isId(node.left.left, '_t') && isId(node.left.right, /^_som_/);
-    const terms = node => node?.type === 'Binary' && node.op === '||' ? [...terms(node.left), ...terms(node.right)] : [node];
-    const bareReturn = st => st?.type === 'Return' && !st.value ||
-        st?.type === 'Block' && st.body?.length === 1 && bareReturn(st.body[0]) ||
-        Array.isArray(st) && st.length === 1 && bareReturn(st[0]);
-    const statements = list => {
-        const out = [];
-        for (let i = 0; i < list.length; i++) {
-            const st = list[i];
-            if (st?.type === 'FunctionDeclaration' && helpers.has(st.name)) continue;
-            if (st?.type === 'Declaration' && st.decls.every(d => /^(_tokens|_stopMark|_som_\w+|_sok_\w+)$/.test(d.name) && !d.init?.type?.startsWith('Call') ||
-                d.name === '_t' && isCall(d.init, '_tok'))) continue;
-            if (st?.type === 'If' && !st.alternate && bareReturn(st.consequent)) {
-                const all = terms(st.test);
-                const kept = all.filter(term => !guardTerm(term));
-                if (kept.length === 0) continue;
-                if (kept.length < all.length) {
-                    out.push({...st, test: kept.reduce((left, right) => ({type: 'Binary', op: '||', left, right}))});
-                    continue;
-                }
-            }
-            const expr = st?.type === 'ExpressionStatement' && st.expr;
-            if (isCall(expr, '_stopAll') && !expr.args?.length) {
-                out.push(marker('__bwStopAll'));
-                if (bareReturn(list[i + 1])) i++;
-                continue;
-            }
-            if (isCall(expr, '_stopOthers') && isId(expr.args?.[1], '_t')) {
-                out.push(marker('__bwStopOthers'));
-                continue;
-            }
-            // \`_som_X = _tokens\` then \`_sok_X = _t\`: stop other scripts of a sprite that is never cloned.
-            if (expr?.type === 'Assignment' && isId(expr.left, /^_som_/) && isId(expr.right, '_tokens')) {
-                const next = list[i + 1]?.expr;
-                if (next?.type === 'Assignment' && isId(next.left, /^_sok_/) && isId(next.right, '_t')) i++;
-                out.push(marker('__bwStopOthers'));
-                continue;
-            }
-            out.push(visit(st));
-        }
-        return out;
+// This recognizer admits the complete no-clone/no-speech recipe. Other
+// stop recipes remain ordinary source until their full receiver/effect proof
+// is available; a matching first assignment never authorizes deleting a body.
+const liftExporterStops = (program,profile) => {
+    const proof=inspectGeneratedHelperBindings(program,profile);
+    if(!proof.isCurrent())return program;
+    const functions=program.body.filter(n=>n.type==='FunctionDeclaration');
+    const fn=name=>functions.find(n=>n.name===name);
+    const tok=fn('_tok'),dead=fn('_dead'),stop=fn('_stopAll');
+    if(!proof.root(tok)||!proof.root(dead)||!stop||!proof.root(stop))return program;
+    const tokSource=HELPERS.tok.ts;
+    // matches selects the function from a source fragment by its declaration.
+    const tokText=tokSource.slice(tokSource.indexOf('function _tok'),tokSource.indexOf('function _dead'));
+    const deadText=tokSource.slice(tokSource.indexOf('function _dead'));
+    if(!proof.matches(tok,tokText)||!proof.matches(dead,deadText)||
+        !proof.matches(stop,'function _stopAll () {_stopMark = _tokens\n music.stopAllSounds()}'))return program;
+    const helpers=new Set([tok,dead,stop]),allowed=new Set(),remove=new Set(helpers),replacements=new Map(),guards=new Map();
+    const include=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(include);return;}
+        allowed.add(node);for(const v of Object.values(node))include(v);};
+    helpers.forEach(include);
+    const call=(n,target,arity)=>n?.type==='Call'&&n.args?.length===arity&&proof.declarationAt(n.callee)===target;
+    const zero=n=>n?.type==='Number'&&Number(n.value)===0;
+    const rootDecl=name=>program.body.find(n=>n.type==='Declaration'&&n.decls.length===1&&n.decls[0].name===name&&zero(n.decls[0].init));
+    const tokens=rootDecl('_tokens'),mark=rootDecl('_stopMark');
+    if(!tokens||!mark||tokens.kind!=='let'||mark.kind!=='let'||!proof.unique('_tokens')||!proof.unique('_stopMark'))return program;
+    const storage=(n,d)=>n?.type==='Identifier'&&proof.declarationAt(n)===d.decls[0];
+    const path=n=>n?.type==='Identifier'?n.name:n?.type==='Member'?path(n.object)+'.'+n.name:null;
+    const activation=node=>{
+        let owner=node;while(owner&&!['FunctionDeclaration','FunctionExpression'].includes(owner.type))owner=proof.parentOf(owner);
+        if(owner?.type!=='FunctionExpression')return null;
+        const registration=proof.parentOf(owner),api=path(registration?.callee);
+        if(registration?.type!=='Call'||!registration.args.includes(owner)||registration.isNew||
+            !(['game.onUpdate','game.onUpdateInterval','control.runInParallel','info.onCountdownEnd','info.onLifeZero'].includes(api)||
+                /^controller\.(?:A|B|up|down|left|right|menu)\.onEvent$/.test(api||'')))return null;
+        let base=registration.callee;while(base?.type==='Member')base=base.object;
+        return proof.unbound(base)?owner:null;
     };
-    const visit = node => {
-        if (Array.isArray(node)) return statements(node);
-        if (!node || typeof node !== 'object') return node;
-        const copy = {...node};
-        for (const key of Object.keys(copy)) {
-            if (Array.isArray(copy[key])) copy[key] = copy[key].every(x => x && typeof x === 'object' && 'type' in x) &&
-                ['body', 'consequent', 'alternate', 'cases'].includes(key) ? statements(copy[key]) : copy[key].map(visit);
-            else if (copy[key] && typeof copy[key] === 'object') copy[key] = visit(copy[key]);
-        }
-        return copy;
+    const tokenDecls=new Map(),tokenOwners=new Map();
+    for(const n of proof.nodes)if(n.type==='Declaration'&&n.kind==='const'&&n.decls.length===1&&call(n.decls[0].init,tok,0)){
+        const owner=activation(n);if(!owner||owner.body?.[0]!==n)return program;
+        tokenDecls.set(n.decls[0],n);tokenOwners.set(n.decls[0],owner);include(n);remove.add(n);
+    }
+    const token=n=>n?.type==='Identifier'&&tokenDecls.has(proof.declarationAt(n));
+    const marker=name=>({type:'ExpressionStatement',expr:{type:'Call',callee:{type:'Identifier',name},args:[]}});
+    const pairs=[];
+    const lists=[];const collectLists=n=>{if(!n||typeof n!=='object')return;if(Array.isArray(n)){lists.push(n);n.forEach(collectLists);}
+        else for(const v of Object.values(n))collectLists(v);};collectLists(program);
+    for(const list of lists)for(let i=0;i<list.length-1;i++){
+        const a=list[i],b=list[i+1],x=a?.type==='ExpressionStatement'&&a.expr,y=b?.type==='ExpressionStatement'&&b.expr;
+        if(x?.type!=='Assignment'||x.op!=='='||!storage(x.right,tokens)||y?.type!=='Assignment'||y.op!=='='||!token(y.right))continue;
+        const md=proof.declarationAt(x.left),kd=proof.declarationAt(y.left);
+        const ms=program.body.find(n=>n.type==='Declaration'&&n.decls.length===1&&n.decls[0]===md&&zero(md.init));
+        const ks=program.body.find(n=>n.type==='Declaration'&&n.decls.length===1&&n.decls[0]===kd&&zero(kd.init));
+        if(!ms||!ks||ms.kind!=='let'||ks.kind!=='let'||md===kd||[tokens.decls[0],mark.decls[0]].includes(md)||
+            [tokens.decls[0],mark.decls[0]].includes(kd)||!proof.unique(md.name)||!proof.unique(kd.name))return program;
+        if(activation(a)!==tokenOwners.get(proof.declarationAt(y.right)))return program;
+        pairs.push({md,kd,token:proof.declarationAt(y.right)});include(a);include(b);include(ms);include(ks);
+        remove.add(ms);remove.add(ks);remove.add(b);replacements.set(a,marker('__bwStopOthers'));
+    }
+    if(pairs.length){
+        // The initial mark recipe is limited to ordinary scripts emitted on
+        // Game. A source Sprite/scene/class route needs its own target recipe;
+        // marker spellings do not prove the receiver of stop-other scripts.
+        const roots=new Set(['game','control','controller','music','basic','pause','console','Math','Array','Object','JSON','String','Number','isNaN','undefined','Infinity','NaN']);
+        if(proof.nodes.some(n=>['Class','ClassDeclaration','Method'].includes(n.type)||
+            n.type==='Identifier'&&(['sprites','SpriteKind','scene','mp','self','this'].includes(n.name)||
+                !proof.declarationAt(n)&&!roots.has(n.name))||
+            n.type==='Call'&&(n.isNew||n.constructorCall||n.callee?.type==='Index')))return program;
+    }
+    const bareReturn=n=>Array.isArray(n)?n.length===1&&bareReturn(n[0]):n?.type==='Return'&&!n.value||n?.type==='Block'&&bareReturn(n.body);
+    const terms=n=>n?.type==='Binary'&&n.op==='||'?[...terms(n.left),...terms(n.right)]:[n];
+    const guard=n=>{
+        if(call(n,dead,1)&&token(n.args[0])&&activation(n)===tokenOwners.get(proof.declarationAt(n.args[0])))return true;
+        if(n?.type!=='Binary'||n.op!=='&&')return false;
+        const a=n.left,b=n.right;if(a?.type!=='Binary'||a.op!=='<='||b?.type!=='Binary'||b.op!='!=')return false;
+        return token(a.left)&&token(b.left)&&activation(n)===tokenOwners.get(proof.declarationAt(a.left))&&proof.declarationAt(a.left)===proof.declarationAt(b.left)&&
+            pairs.some(p=>p.token===proof.declarationAt(a.left)&&proof.declarationAt(a.right)===p.md&&proof.declarationAt(b.right)===p.kd);
     };
-    return {...program, body: statements(program.body)};
+    for(const n of proof.nodes){
+        if(n.type==='If'&&!n.alternate&&bareReturn(n.consequent)){
+            const all=terms(n.test),kept=all.filter(t=>!guard(t));if(kept.length===all.length)continue;
+            all.filter(guard).forEach(include);guards.set(n,kept);
+        }
+        if(n.type==='ExpressionStatement'&&call(n.expr,stop,0)){
+            const owner=activation(n),list=lists.find(rows=>rows.includes(n)),at=list?.indexOf(n);
+            if(!owner||![...tokenOwners.values()].includes(owner)||!list||
+                !(bareReturn(list[at+1])||list===owner.body&&at===list.length-1))return program;
+            include(n);replacements.set(n,marker('__bwStopAll'));
+        }
+    }
+    include(tokens);include(mark);remove.add(tokens);remove.add(mark);
+    // Every actual binding reference is accounted for before deleting any
+    // storage, token, guard or helper. Foreign writes/reads/escapes refuse all.
+    const protectedDeclarations=new Set([tok,dead,stop,tokens.decls[0],mark.decls[0],...tokenDecls.keys(),...pairs.flatMap(p=>[p.md,p.kd])]);
+    for(const n of proof.nodes)if(n.type==='Identifier'){
+        if(protectedDeclarations.has(proof.declarationAt(n))&&!allowed.has(n))return program;
+        if(n.name==='music'&&(!allowed.has(n)||!proof.unbound(n)))return program;
+    }
+    if(!proof.ambient(helpers)||!proof.calls(tok,[0],helpers)||!proof.calls(dead,[1],helpers)||!proof.calls(stop,[0],helpers)||!proof.isCurrent())return program;
+    const rewrite=n=>{
+        if(!n||typeof n!=='object')return n;
+        if(Array.isArray(n)){
+            const kept=n.filter(x=>!remove.has(x)&&!(guards.has(x)&&!guards.get(x).length));
+            return mapGeneratedSourceArray(kept.length===n.length?n:kept,rewrite);
+        }
+        if(replacements.has(n))return replacements.get(n);
+        if(guards.has(n)){const kept=guards.get(n);return {...n,test:kept.map(rewrite).reduce((left,right)=>({type:'Binary',op:'||',left,right})),consequent:rewrite(n.consequent)};}
+        return Object.fromEntries(Object.entries(n).map(([k,v])=>[k,rewrite(v)]));
+    };
+    return rewrite(program);
 };
 
 // PXT library calls that are, by their own definition, expressions the
@@ -3187,36 +3230,28 @@ const liftExporterStops = program => {
 // tree: rewriting calls changed caller order and raw numeric selection.
 const lowerLibraryCalls = program => program;
 
-const inlineLegacyArrayHelpers = program => {
-    if(!program.body.some(fn=>fn.type==='FunctionDeclaration' && /^__bw(?:Named(?:Parse|Json)Value|ArrayAccess)/.test(fn.name)))return program;
-    const templates=legacyArrayHelperTemplates || (legacyArrayHelperTemplates=new Map([
-        ['__bwNamedParseValue',{fn:parseMakeCodeTs(LEGACY_PARSE_SOURCE, {parameterDefaults: true, retainParentheses:true}).body[0],type:'LegacyParsedValue'}],
-        ['__bwNamedJsonValue',{fn:parseMakeCodeTs(LEGACY_JSON_SOURCE, {parameterDefaults: true, retainParentheses:true}).body[0],type:'LegacyJsonValue'}],
-        ['__bwArrayAccess',{fn:parseMakeCodeTs(ARRAY_ACCESS_SOURCE, {parameterDefaults: true, retainParentheses:true}).body[0],type:'NativeArrayAccess'}]
-    ]));
-    const normalize=(fn,base)=>{
-        const rename=node=>Array.isArray(node)?node.map(rename):node && typeof node==='object'?
-            Object.fromEntries(Object.entries(node).map(([key,value])=>[key,(key==='name' && value===fn.name)?base:rename(value)])):node;
-        return JSON.stringify(rename(fn));
-    };
-    const helpers=new Map();
-    for(const fn of program.body)if(fn.type==='FunctionDeclaration')for(const [base,template] of templates)
-        if(new RegExp('^'+base+'_*$').test(fn.name) && normalize(fn,base)===normalize(template.fn,base))helpers.set(fn.name,template);
-    const unsafe=new Set();
-    const inspect=(node,parent,key)=>{
-        if(!node || typeof node!=='object')return;
-        if(node.type==='Identifier' && helpers.has(node.name) && !(parent?.type==='Call' && key==='callee' && parent.args.length===1))unsafe.add(node.name);
-        for(const [key,value] of Object.entries(node))if(Array.isArray(value))value.forEach(child=>inspect(child,node,key));else inspect(value,node,key);
-    };
-    for(const node of program.body)if(!helpers.has(node.name))inspect(node);
-    for(const name of unsafe)helpers.delete(name);
+const inlineLegacyArrayHelpers = (program,profile) => {
+    const proof=inspectGeneratedHelperBindings(program,profile);
+    if(!proof.isCurrent())return program;
+    const recipes=[['__bwNamedParseValue',LEGACY_PARSE_SOURCE,'LegacyParsedValue'],
+        ['__bwNamedJsonValue',LEGACY_JSON_SOURCE,'LegacyJsonValue'],
+        ['__bwArrayAccess',ARRAY_ACCESS_SOURCE,'NativeArrayAccess']];
+    const candidates=new Map();
+    for(const fn of program.body)if(proof.root(fn))for(const [base,source,type]of recipes)
+        if(proof.matches(fn,source,new Map([[fn.name,base]])))candidates.set(fn,{type});
+    // A retained helper body becomes an external consumer of its dependencies.
+    // Recompute until removing one declaration cannot strand a retained caller.
+    const selected=new Set(candidates.keys());let changed;
+    do {changed=false;for(const fn of selected)if(!proof.closed(fn,selected)||proof.calls(fn,[1],selected)===null){selected.delete(fn);changed=true;}}while(changed);
+    const calls=new Map();for(const fn of selected)for(const call of proof.calls(fn,[1],selected))calls.set(call,candidates.get(fn));
+    if(!selected.size||!proof.isCurrent())return program;
     const rewrite=node=>{
-        if(!node || typeof node!=='object')return node;
-        if(Array.isArray(node))return node.map(rewrite);
-        if(node.type==='Call' && node.callee?.type==='Identifier' && helpers.has(node.callee.name))return {type:helpers.get(node.callee.name).type,value:rewrite(node.args[0])};
+        if(!node||typeof node!=='object')return node;
+        if(Array.isArray(node))return mapGeneratedSourceArray(node,rewrite);
+        if(calls.has(node))return {type:calls.get(node).type,value:rewrite(node.args[0])};
         return Object.fromEntries(Object.entries(node).map(([key,value])=>[key,rewrite(value)]));
     };
-    return rewrite({...program,body:program.body.filter(fn=>!(fn.type==='FunctionDeclaration' && helpers.has(fn.name)))});
+    return rewrite({...program,body:program.body.filter(fn=>!selected.has(fn))});
 };
 
 const inlineValueHelpers = (program, requireUnshadowedBindings = false) => {
@@ -3250,7 +3285,7 @@ const inlineValueHelpers = (program, requireUnshadowedBindings = false) => {
     if(!helpers.size)return program;
     const rewrite=node=>{
         if(!node || typeof node!=='object')return node;
-        if(Array.isArray(node))return node.map(rewrite);
+        if(Array.isArray(node))return mapGeneratedSourceArray(node,rewrite);
         if(node.type==='Call' && node.callee?.type==='Identifier' && helpers.has(node.callee.name)) {
             const {value}=helpers.get(node.callee.name),args=node.args.map(rewrite);
             return value.type==='Binary'?{...value,left:args[0],right:args[1]}:{...value,argument:args[0]};
@@ -4011,8 +4046,18 @@ const translateCreationEvents = (ast, assets, assetKindLookup = null, scrollerVe
 const planImageValues = (t, ast, {creationApis, requiresSpriteRuntime, directImageOwners,
     frameArrays = new Map(), wrappedFrameValue = () => null, usedFrameArrays = new Set(),
     acceptImage = () => true, eager = true,
-    allocateName = index => `__arcadeBackground${index}`}) => {
+    allocateName = null}) => {
     const nameOf = call => call && t.path(call.callee);
+    const sharedTransport = currentSharedImageArrayTransport(ast);
+    const occupied = new Set(['Game','Stage']);
+    containsAst(ast,node=>{if(typeof node.name==='string')occupied.add(node.name);for(const decl of node.decls||[])occupied.add(decl.name);for(const name of node.params||[])occupied.add(name);return false;});
+    let nextResource=0;
+    const resourceName = index => {
+        const base=allocateName?allocateName(index):`__arcadeBackground${++nextResource}`;
+        let name=base,suffix=1;
+        while(occupied.has(name) || occupied.has(`${name}Image`))name=`${base}_${++suffix}`;
+        occupied.add(name);occupied.add(`${name}Image`);return name;
+    };
     const imageValueCostumes = [];
     const builtinImageResources = new Map();
     const sharedFrameResources = new Map();
@@ -4067,7 +4112,7 @@ const planImageValues = (t, ast, {creationApis, requiresSpriteRuntime, directIma
             }
         });
         for(const group of stagedImageGroups.values()) {
-            const name=allocateName(imageValueCostumes.length+1);
+            const name=resourceName(imageValueCostumes.length+1);
             const resource={name,key:`${name}Image`,count:group.count,fresh:true};
             for(let index=0;index<group.count;index++)imageValueCostumes.push({sprite:name,name:`${name}-frame-${index}`,svg:imageToSvg(group.members.get(index)),mode:index?'add':'replace'});
             for(const node of group.nodes)t.imageValueResources.set(node,{...resource,value:{type:'Number',value:node.bwImageArrayIndex}});
@@ -4080,6 +4125,7 @@ const planImageValues = (t, ast, {creationApis, requiresSpriteRuntime, directIma
         // Emission consumes this whole factory, so allocating its child images
         // would leave an unused ordinary target that export makes an actor.
         if (isAnimationResourceFactory(node)) return;
+        if (sharedTransport?.declarations.has(node)) return;
         if (node.type==='Declaration' && node.decls.every(d=>frameArrays.has(d.name))) return;
         // Map resources are embedded in tile data; they are not sprite image values.
         if(node.type==='Call' && nameOf(node)==='tiles.createTilemap')return;
@@ -4087,12 +4133,25 @@ const planImageValues = (t, ast, {creationApis, requiresSpriteRuntime, directIma
         // with a costume per frame, so the frames stay together in the costume
         // editor's timeline. Each element is still a fresh copy of its frame.
         if (node.type === 'Array' && node.items?.length >= 2 && node.items.every(item => item?.type === 'Template' && item.tag === 'img' && acceptImage(item) && t.imageOf(item))) {
-            const name = allocateName(imageValueCostumes.length+1);
+            const name = resourceName(imageValueCostumes.length+1);
             const resource = {name, key:`${name}Image`, count:node.items.length, fresh:true};
             node.items.forEach((item, i) => {
                 imageValueCostumes.push({sprite:name, name:`${name}-frame-${i}`, svg:imageToSvg(t.imageOf(item)), mode:i ? 'add' : 'replace'});
                 t.imageValueResources.set(item, {...resource, value:{type:'Number', value:i}});
             });
+            return;
+        }
+        const selected = sharedTransport?.selection(node);
+        if (selected) {
+            let resource=sharedFrameResources.get(selected.key);
+            if (!resource) {
+                const name=resourceName(imageValueCostumes.length+1);
+                resource={name,key:selected.key,count:selected.images.length};
+                sharedFrameResources.set(selected.key,resource);
+                selected.images.forEach((image,i)=>imageValueCostumes.push({sprite:name,name:`${name}-frame-${i}`,svg:imageToSvg(image),mode:i?'add':'replace'}));
+            }
+            usedFrameArrays.add(selected.key);
+            t.imageValueResources.set(node,{...resource,value:{type:'Number',value:selected.index}});
             return;
         }
         const image = acceptImage(node) ? t.imageOf(node) : null;
@@ -4106,7 +4165,7 @@ const planImageValues = (t, ast, {creationApis, requiresSpriteRuntime, directIma
             const builtin = node.type === 'Member' ? t.path(node) : node.type === 'Template' && node.tag === 'assets.tile' && image.tileId ? image.tileId : null;
             let resource = builtin && builtinImageResources.get(builtin);
             if (!resource) {
-                const name = allocateName(imageValueCostumes.length+1);
+                const name = resourceName(imageValueCostumes.length+1);
                 resource = {name,key:`${name}Image`,fresh:!builtin};
                 imageValueCostumes.push({sprite:name,name:`${name}-art`,svg:imageToSvg(image),mode:'replace'});
                 if (builtin) builtinImageResources.set(builtin,resource);
@@ -4121,7 +4180,7 @@ const planImageValues = (t, ast, {creationApis, requiresSpriteRuntime, directIma
             if (frames && value) {
                 let resource=sharedFrameResources.get(arrayName);
                 if (!resource) {
-                    const name=allocateName(imageValueCostumes.length+1);
+                    const name=resourceName(imageValueCostumes.length+1);
                     resource={name,key:arrayName,count:frames.length};sharedFrameResources.set(arrayName,resource);
                     frames.forEach((image,i)=>imageValueCostumes.push({sprite:name,name:`${name}-frame-${i}`,svg:imageToSvg(image),mode:i?'add':'replace'}));
                 }
@@ -4163,16 +4222,29 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
     // A declaration with a sprite-valued initializer creates a handle at that
     // exact point, just like a later assignment to the same variable. Lower
     // only this form so the existing ordered setup path owns both forms.
-    ast = {...ast, body: ast.body.flatMap(st => {
+    const beforeHandleProjection=ast;
+    let changedCreation=false;
+    const orderedBody = ast.body.flatMap(st => {
         if (st.type !== 'Declaration' || !st.decls.some(d => !d.temporary && d.init?.type === 'Call' &&
             creationApis.has(t.path(d.init.callee)))) return [st];
+        changedCreation=true;
         return st.decls.flatMap(d => !d.temporary && d.init?.type === 'Call' &&
             creationApis.has(t.path(d.init.callee)) ? [
                 {...st, decls: [{...d, init: {type: 'Null',spritePlaceholder:true}}]},
                 {type: 'ExpressionStatement', expr: {type: 'Assignment', op: '=',
                     left: {type: 'Identifier', name: d.name}, right: d.init}}
             ] : [{...st, decls: [d]}]);
-    })};
+    });
+    if(changedCreation) {
+        const next={...ast,body:orderedBody};
+        if(currentSharedImageArrayTransport(ast)) {
+            const projected=reproveSharedImageArrayTransport(ast,next);
+            // The outer current AST remains untouched for the generic route.
+            if(!projected)return null;
+            ast=projected;
+        } else ast=next;
+    }
+    if(ast!==beforeHandleProjection&&hasThrowEmission(beforeHandleProjection))t.unsupported.push(...reproveThrowEmission(ast,beforeHandleProjection));
     const callOf = st => st.type === 'ExpressionStatement' && st.expr?.type === 'Call' ? st.expr : null;
     const nameOf = call => call && t.path(call.callee);
     const calls = ast.body.map(callOf);
@@ -4314,12 +4386,8 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         ['Identifier','Call','Index'].includes(st.expr.left.object?.type);
     const ordinaryAssignment = st => st.type === 'ExpressionStatement' &&
         st.expr?.type === 'Assignment' && st.expr.left?.type === 'Identifier' && !assignsCreate(st);
-    const frameArrays = new Map();
-    for (const st of ast.body) if (st.type === 'Declaration') for (const d of st.decls) {
-        if (!d.name.startsWith('__bwFrames_') || d.init?.type !== 'Array') continue;
-        const images = d.init.items.map(item => t.imageOf(item));
-        if (images.length && images.every(Boolean)) frameArrays.set(d.name, images);
-    }
+    const sharedTransport = currentSharedImageArrayTransport(ast);
+    const frameArrays = sharedTransport?.frames || new Map();
     const wrappedFrameValue = (node, count) => {
         const isCount = item => item?.type === 'Number' && Number(item.value) === count;
         if (node?.type !== 'Binary' || node.op !== '%' || !isCount(node.right)) return null;
@@ -4854,13 +4922,15 @@ export function arcadeToPseudocode (files, opts = {}) {
     const map = typeof files === 'string' ? {'main.ts': files} : (files || {});
     const selectedSource = arcadeProjectSource(map);
     const source = selectedSource.source;
+    const sharedSourcePreparation = capturePreparedSharedImageSources(map,selectedSource);
+    let sharedSourceConsumed=false;
     const projectInputDiagnostics = [...selectedSource.diagnostics];
     // Parse each boundary independently before the combined parse. This keeps
     // syntax errors in one file from consuming the following file's tokens,
     // while the combined parser allocates its generated temporary names once.
     if (selectedSource.entries.length > 1) {
         for (const entry of selectedSource.entries) {
-            try { parseMakeCodeTs(entry.source, {parameterDefaults: true}); }
+            try { parseSharedImageSourceBoundary(sharedSourcePreparation,entry); }
             catch (error) { throw new Error(`${entry.name}: ${error.message}`, {cause: error}); }
         }
     }
@@ -4976,15 +5046,14 @@ export function arcadeToPseudocode (files, opts = {}) {
         return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, lowerAnimationAssets(value)]));
     };
     const callableParseOptions={parameterDefaults:true,retainParentheses:true,retainWhenUsed:true,retainClassHeritage:true,retainOrdinaryDefaultProvenance:true};
-    const ordinarySource=parseMakeCodeTs(source,{...callableParseOptions,retainCallableMetadata:opts.procedureConstraintsPrototype===true,
-        retainPrimitiveProcedureDefaults:opts.procedureConstraintsPrototype!==true});
+    const ordinarySource=parseSharedImageSourceProgram(sharedSourcePreparation,source,opts.procedureConstraintsPrototype===true,opts.procedureConstraintsPrototype!==true);
     const callableSourceParsed=parseMakeCodeTs(source,{...callableParseOptions,retainCallableMetadata:true});
     const namedEligibility=selectNamedFunctionSourceProof(callableSourceParsed,{ordinaryProgram:ordinarySource,registrationSpec:sceneRegistrationSpec});
     const namedEnabled=namedEligibility.eligible;
     const namedLowering=namedEnabled?lowerNamedFunctionValues(callableSourceParsed):null;
     const callableEligibility=callableSourceGate(callableSourceParsed,{normalize:true});
     const callableEnabled=opts.callableLexicalPrototype===true || callableEligibility.eligible;
-    const {proof:classEligibility,sdkImageEnabled}=selectClassCallableSourceProof(callableSourceParsed,{sdkImagePrototype:opts.sdkImagePrototype===true});
+    const {proof:classEligibility,sdkImageEnabled}=selectClassCallableSourceProofForTranslation(callableSourceParsed,{sdkImagePrototype:opts.sdkImagePrototype===true});
     const classEnabled=opts.classCallablePrototype===true || classEligibility.eligible;
     if(opts.sdkImagePrototype===true&&!classEligibility.eligible)projectInputDiagnostics.push(...classEligibility.unsupported,'SDK Image prototype requires its completed actual source producer proof');
     // Ordinary programs retain their ordinary parse. Only the proved numeric
@@ -4993,9 +5062,15 @@ export function arcadeToPseudocode (files, opts = {}) {
     if(!namedEnabled&&!opts.callableLexicalPrototype&&!opts.classCallablePrototype&&!classEligibility.eligible){
         projectInputDiagnostics.push(...callableEligibility.unsupported,...classEligibility.unsupported,...namedEligibility.unsupported);
     }
-    const namedArrayInputs=lowerNamedArrayItemHelpers(inlineValueHelpers(callableSourceInput,true));
-    const parsed = lowerSourceLoopControl(inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerArrayCallbacks(lowerIifes(lowerDestroyAllSprites(lowerLibraryCalls(liftExporterStops(
-        lowerAnimationAssets(namedArrayInputs.program))), source), source), source), source))));
+    const sharedSourceContext = !namedEnabled&&!callableEnabled&&!classEnabled ? bindPreparedSharedImageSource(sharedSourcePreparation,ordinarySource) : null;
+    const generatedProfile=(namedEnabled||classEnabled||callableEnabled||opts.procedureConstraintsPrototype===true)?
+        GENERATED_HELPER_PROFILES.metadata:GENERATED_HELPER_PROFILES.ordinary;
+    const namedArrayInputs=lowerNamedArrayItemHelpers(inlineValueHelpers(callableSourceInput,true),{profile:generatedProfile});
+    // Recognition consumes the selected parse context before clone-heavy
+    // lowerings erase its parameter descriptors or alter canonical bodies.
+    const generatedSource=inlineLegacyArrayHelpers(liftExporterStops(namedArrayInputs.program,generatedProfile),generatedProfile);
+    const parsed = lowerSourceLoopControl(inlineValueHelpers(desugarForOf(lowerArrayCallbacks(lowerIifes(lowerDestroyAllSprites(lowerLibraryCalls(
+        lowerAnimationAssets(generatedSource)), source), source), source), source)));
     const containsPaletteCall = node => {
         if(!node || typeof node!=='object')return false;
         if(node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='setPalette' &&
@@ -5003,8 +5078,10 @@ export function arcadeToPseudocode (files, opts = {}) {
         return Object.values(node).some(value=>Array.isArray(value)?value.some(containsPaletteCall):containsPaletteCall(value));
     };
     const runtimePaletteRequested=containsPaletteCall(parsed);
+    let admittedThrowProgram=null;
     const withAnimationDiagnostics = result => {
         result = nameArtworkSprites(result);
+        if(admittedThrowProgram&&!hasThrowEmission(admittedThrowProgram))result={...result,unsupported:[...(result.unsupported||[]),'Throw source changed during actual emission']};
         let code = result.code;
         const sourceWarnings=[...(parsed.sourceWarnings || []),...(namespaceBindings.warnings || [])];
         if(sourceWarnings.length)code=code.replace(/^(DEVICE ARCADE.*)$/m, (_,header)=>header+'\n'+sourceWarnings.map(warning=>'# source warning: '+warning).join('\n'));
@@ -5058,8 +5135,9 @@ export function arcadeToPseudocode (files, opts = {}) {
                 else {rows.splice(last+1,0,...callableDeclarations);code=rows.join('\n');}
             }else code=code.replace(/^WHEN arcade source starts:((?:\n  declare arcade source (?:scalar|reference|callable) .+)*)/m,prefix=>prefix+'\n'+callableDeclarations.join('\n'));
         }
+        const sourceReceiptDiagnostics=sharedSourceConsumed&&!sharedImageSourceContextCurrent(sharedSourceContext)?['Shared Image Array selected-source receipt expired; admitted source and artwork retained']:[];
         return {...result,code,costumes,animationResources,warnings:[...recovered.warnings,...sourceWarnings],
-            unsupported:[...new Set([...namedArrayInputs.unsupported,...animationDiagnostics,...projectInputDiagnostics,...paletteDiagnostics,...result.unsupported])]};
+            unsupported:[...new Set([...namedArrayInputs.unsupported,...animationDiagnostics,...projectInputDiagnostics,...paletteDiagnostics,...sourceReceiptDiagnostics,...result.unsupported])]};
     };
     let textSpriteInitializer=false;
     try {const cfg=JSON.parse(map['pxt.json'] || '{}');textSpriteInitializer=cfg.bwArcadeNativeLibraries?.textsprite==='v1.3.0' && selectedSource.entries.some(entry=>entry.name.startsWith('__bwDependencyInputs/arcade-text/') && entry.source===TEXT_SPRITE_INITIALIZER);}catch{}
@@ -5085,7 +5163,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     projectInputDiagnostics.push(...integerDivisions.unsupported);
     const ordinaryOmissions = prepareOrdinaryCallOmissions(integerDivisions.program);
     projectInputDiagnostics.push(...ordinaryOmissions.unsupported);
-    const procedureConstraints=prepareProcedureConstraintSource(ordinaryOmissions.program,{mode:opts.procedureConstraintsPrototype===true?'prototype':'supported-default'});
+    const procedureConstraints=prepareProcedureConstraintSourceForTranslation(ordinaryOmissions.program,{mode:opts.procedureConstraintsPrototype===true?'prototype':'supported-default'});
     if(procedureConstraints)projectInputDiagnostics.push(...procedureConstraints.diagnostics);
     // Never attach the preparation's Program inside the executable AST: general
     // walkers would otherwise see a second copy of all declarations and effects.
@@ -5093,35 +5171,63 @@ export function arcadeToPseudocode (files, opts = {}) {
     const throwSource=prepareThrowSource(protocolProgram);
     projectInputDiagnostics.push(...throwSource.unsupported);
     if(throwSource.present&&opts.throwPrototype!==true)projectInputDiagnostics.push('Throw source requires its qualified canonical protocol; prototype admission is not enabled');
-    const throwProgram=throwSource.present&&!throwSource.unsupported.length&&opts.throwPrototype===true?{...throwSource.program,bwProvedThrowProgram:true}:throwSource.program;
+    const throwProgram=throwSource.program;
     const inspectionValues=lowerConsoleInspectValues(throwProgram);
     projectInputDiagnostics.push(...inspectionValues.unsupported);
     const fontValues = lowerSdkFontValues(inspectionValues.program);
     projectInputDiagnostics.push(...fontValues.unsupported);
     const fontSource = lowerLiveFontMetrics(fontValues.program);
-    const queryReferences = inferImageReferences(fontSource,tileImagePath,tileImageOf,
-        node => !!assetKindLookup && node?.type==='Template' && ['assets.image','assets.tile'].includes(node.tag));
-    const arrayMaps=proveArrayMapValues(fontSource,source);
-    projectInputDiagnostics.push(...arrayMaps.unsupported);
-    const stagedSource = lowerPxtStagedValues(fontSource, {
-        lowerArrayMap:arrayMaps.lower,
-        isStaticResource: node => !!decodeTilemap(node,tileImageOf,tileImagePath),
-        isArrayQuery: node => node.callee?.type==='Member' &&
-            ['indexOf','removeElement'].includes(node.callee.name) && queryReferences.arrays.has(node.callee.object)
-    });
-    stagedSource.sourceReferenceDeclarations = sourceReferenceDeclarations(stagedSource);
-    stagedSource.sourceCallableDeclarations=namedEnabled?stagedSource.sourceCallableDeclarations || []:callableEnabled?sourceCallableDeclarations(stagedSource).declarations:[];
-    const callables=namedEnabled?{program:stagedSource,unsupported:namedLowering.unsupported}:classEnabled?lowerCallableValues(stagedSource,{classPrototype:true,sdkImagePrototype:sdkImageEnabled}):callableEnabled?lowerCallableValues(stagedSource):{program:stagedSource,unsupported:[]};
-    projectInputDiagnostics.push(...callables.unsupported);
-    const objectClasses = lowerObjectClasses(callables.program,{classCallablePrototype:classEnabled,sdkImagePrototype:sdkImageEnabled});
-    if(classEnabled && !callables.unsupported.length && !objectClasses.unsupported.length) {
-        try {objectClasses.program.bwCallableLexicalPlan=callables.finishClassPlan(objectClasses.program.bwClassCallableProcedures || []);}
-        catch(error){objectClasses.unsupported.push(String(error.message));}
+    const sharedPreparation = !namedEnabled && !callableEnabled && !classEnabled ? prepareSharedImageArrayTransport(fontSource,{sourceContext:sharedSourceContext}) : null;
+    const buildCurrentAst = (input, transport = null) => {
+        const diagnostics = [];
+        const queryReferences = inferImageReferences(input,tileImagePath,tileImageOf,
+            node => !!assetKindLookup && node?.type==='Template' && ['assets.image','assets.tile'].includes(node.tag));
+        const arrayMaps=proveArrayMapValues(input,source);
+        diagnostics.push(...arrayMaps.unsupported);
+        const stagedSource = lowerPxtStagedValues(input, {
+            sharedImageArrayPlan: transport?.plan || null,
+            lowerArrayMap:arrayMaps.lower,
+            isStaticResource: node => !!decodeTilemap(node,tileImageOf,tileImagePath),
+            isArrayQuery: node => node.callee?.type==='Member' &&
+                ['indexOf','removeElement'].includes(node.callee.name) && queryReferences.arrays.has(node.callee.object)
+        });
+        stagedSource.sourceReferenceDeclarations = sourceReferenceDeclarations(stagedSource);
+        stagedSource.sourceCallableDeclarations=namedEnabled?stagedSource.sourceCallableDeclarations || []:callableEnabled?sourceCallableDeclarations(stagedSource).declarations:[];
+        const callables=namedEnabled?{program:stagedSource,unsupported:namedLowering.unsupported}:classEnabled?lowerCallableValues(stagedSource,{classPrototype:true,sdkImagePrototype:sdkImageEnabled}):callableEnabled?lowerCallableValues(stagedSource):{program:stagedSource,unsupported:[]};
+        diagnostics.push(...callables.unsupported);
+        // This actual build/fallback owns its own fresh source proof.
+        const stagedThrow=throwSource.physicalUpdateSource?prepareThrowSource(callables.program):throwSource;
+        if(stagedThrow!==throwSource)diagnostics.push(...stagedThrow.unsupported);
+        const objectClasses = lowerObjectClasses(callables.program,{classCallablePrototype:classEnabled,sdkImagePrototype:sdkImageEnabled,
+            physicalUpdateSource:stagedThrow.physicalUpdateSource});
+        if(classEnabled && !callables.unsupported.length && !objectClasses.unsupported.length) {
+            try {objectClasses.program.bwCallableLexicalPlan=callables.finishClassPlan(objectClasses.program.bwClassCallableProcedures || []);}
+            catch(error){objectClasses.unsupported.push(String(error.message));}
+        }
+        diagnostics.push(...objectClasses.unsupported);
+        const callbacks = lowerStaticCallbackHelpers(objectClasses.program, {registrationSpec:sceneRegistrationSpec});
+        diagnostics.push(...callbacks.unsupported);
+        const ast = lowerLazyValues(callbacks.program);
+        return {ast:transport ? projectSharedImageArrayTransport(ast,transport.plan) : ast,diagnostics,stagedThrow,physicalUpdateLowering:objectClasses.physicalUpdateLowering};
+    };
+    let built = buildCurrentAst(sharedPreparation?.program || fontSource,sharedPreparation);
+    if(sharedPreparation && !finishSharedImageArrayTransport(built.ast,sharedPreparation.plan)) {
+        // No emitter/artwork callback has run. Recompile this SAME current AST
+        // with ordinary staging, retaining both diagnostics and explicit refusal.
+        const refused = built.diagnostics;
+        built = buildCurrentAst(fontSource);
+        built.diagnostics.push(...refused,'Shared Image Array transport projection refused; ordinary current source staging retained');
     }
-    projectInputDiagnostics.push(...objectClasses.unsupported);
-    const callbacks = lowerStaticCallbackHelpers(objectClasses.program, {registrationSpec:sceneRegistrationSpec});
-    projectInputDiagnostics.push(...callbacks.unsupported);
-    const ast = lowerLazyValues(callbacks.program);
+    projectInputDiagnostics.push(...built.diagnostics);
+    const ast = built.ast;
+    const sharedImageTransport = currentSharedImageArrayTransport(ast);
+    // Issue only for the actual chosen output, after transport finishing or
+    // ordinary-current fallback. No abandoned build transfers an emission fact.
+    if(throwSource.present&&!throwSource.unsupported.length&&!built.stagedThrow.unsupported.length&&opts.throwPrototype===true){
+        const finalThrow=prepareThrowEmission(ast,built.stagedThrow,built.physicalUpdateLowering,throwSource);
+        projectInputDiagnostics.push(...finalThrow);if(!finalThrow.length)admittedThrowProgram=ast;
+    }
+    sharedSourceConsumed=!!sharedImageTransport&&!!sharedSourceContext;
     const flattened = namespaceBindings.program ? ast : null;
     const nativeTilemaps = createNativeTilemapRegistry(map,tileImageOf,assetFileOrder?{fileOrder:assetFileOrder}:{});
     const namedEvents = flattened && translateNamedHandleEvents(flattened, assets, nativeTilemaps, !!projectPaletteHex || runtimePaletteRequested || sourceScalarDeclarations(flattened).length > 0, assetKindLookup, scrollerVersion, characterVersion);
@@ -5137,6 +5243,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     // Before anything is emitted: a variable this program has to be
     // renamed must not land on a name the program already uses.
     t.claimNames(ast);
+    t.buttonEventNumberLeaves = controllerButtonEventNumberLeaves(ast);
     // A retained unsupported class/helper must not discard neighboring Image
     // values. Claim only actual literals here: a variable or namespace alias
     // reads the single value allocated by its initializer, not a new copy.
@@ -5603,7 +5710,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     };
 
     for (const st of ast.body) {
-        if (st.type === 'Enum' || st.type === 'FunctionDeclaration') continue;
+        if (st.type === 'Enum' || st.type === 'FunctionDeclaration' || sharedImageTransport?.declarations.has(st)) continue;
         const call = st.type === 'ExpressionStatement' && st.expr.type === 'Call' ? st.expr : null;
         const name = call ? t.path(call.callee) : null;
         const handler = call ? (call.args || []).find(arg => arg.type === 'FunctionExpression') : null;
@@ -5756,7 +5863,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const out = [];
     out.push('DEVICE ARCADE', '');
     if(t.referenceArrayProgram || t.fontValueProgram || t.throwValueProgram){
-        const globals=ast.body.filter(st=>st.type==='Declaration').flatMap(st=>st.decls)
+        const globals=ast.body.filter(st=>st.type==='Declaration' && !sharedImageTransport?.declarations.has(st)).flatMap(st=>st.decls)
             .filter(decl=>!decl.temporary && !t.sprite(decl.name) && !(decl.init?.type==='Call' && t.path(decl.init.callee)==='sprites.create'));
         out.push(...globals.map(decl=>`GLOBAL ${t.varName(decl.name)}`),'');
     }

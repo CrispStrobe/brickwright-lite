@@ -22,6 +22,50 @@ passing integration. The corrected canonical compiler is separately under
 [PR158](https://github.com/CrispStrobe/sb3-creator/pull/158); it is not the
 compiler used by that hosted editor evidence.
 
+## Latest development repair frontier — 2026-10-16
+
+Read [the current repair table](ARCADE-CI-REPAIR-STATUS.md) first. The base
+composition has 245 passing source controls across 18 modules, qualified in
+segments. The original combined execution timed out after 215 complete cases;
+its timeout remains retained. Only the remaining 30 cases were executed again,
+all passing. Exact source, module and test-name multiplicities join the results;
+this is not a successful single 245-case execution.
+
+Subsequent focused successors qualify TextSprite positioning, exact music-call
+non-exposure and dense indexed reads in current exported loops. The music suite
+passes 46 controls. The map/loop/export suite has 27 passing cases in segments:
+25 unchanged cases plus two corrected test oracles. The actual edited export
+fixture completes ten stages, preserving its connected numeric edit from 1 to 2
+through export and reimport. The original failures remain retained. These
+source qualifications are separate from the complete original simulator/native
+callback comparison and final composed hosted checks.
+
+The private prepared-source receipt still grants no value type or effect
+permission. Read the [shared-frame contract](ARCADE-SHARED-IMAGE-ARRAY-TRANSPORT.md)
+and [GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md) for exact boundaries.
+
+Actual native shared-frame guests preserve aliases, independent clones,
+separate equal-pixel resources, ordinary Array mutations and Stop/restart
+reconstruction. A second guest also executes two stateful kind allocations in
+source order and observes successive values without assuming a starting ID.
+Authentic library effects, artwork editing and visible authoring remain open.
+
+Owned class-update Throw now passes source admission with the explicit direct
+converter option. Its original native failure exposed duplicate errors and a
+suspended scene update iterator. The runtime repair now passes 18 controlled
+unwind/publication checks and both unchanged native guests on a fresh normal VM
+installation: one error, preserved earlier effects, later updates, independent
+controller input and paused-constructor/Stop behavior. The public project
+importer still does not forward this option, so these controls do not establish
+GUI availability or generic class exceptions.
+
+The small shared-frame missing-initializer distinction is repaired. Authentic
+seven-backing library transport still needs exact selected-source provenance
+and effect/receiver proofs. A separate 37-control run qualifies the private
+Text source handoff and actual parser-return/currentness boundaries, with the
+original 24 controls retained. It is not an authentic-project closure. Recheck the immutable corpus after composition;
+its recorded count remains 147 translated / 36 partial / one malformed input.
+
 ## Development results and next gaps — 2026-10-16
 
 These results concern the reviewed development composition. They do not establish
@@ -3795,3 +3839,11 @@ existing execution hooks, preserves the info census and adds no word, engine
 ABI, pin or clock policy. Source/boundary-model/native controls are authored,
 not yet run on this candidate. Do not promote Sparks, its external Timer writer
 or its cyclic fields, nor visible editor acceptance, from this source change.
+
+## Image entry metadata and editor contract qualification
+
+The optional Image Array clone entry analysis now separates opaque root metadata from consumed executable data. It tracks the current Program and descriptors, rejects host functions and BigInt in serializer domains before helper calls, and preserves the original strict source-origin protocol. All 60 focused tests pass, including the original 55 unchanged controls.
+
+An authentic FreeThrow conversion now issues the entry query and accepts the same first clone that previously failed before the query. Its next named refusal is a zero-argument `destroy()` on a sprite alias from an actual overlap callback. Proving that callback origin, every receiver writer and destruction reentry remains necessary; a `Sprite` annotation supplies no authority. Whole-game acceptance and the raw census remain unchanged.
+
+The complete 22 import-request and 13 editor-contract tests pass with their existing mutation controls. The 24-test native-prompt module, actual browser editing and installed native dialogs remain separate pending qualifications. The original notice inventory missed five hyphenated license filenames; preserve the original coverage gap and use the complete inventory for the next qualification.

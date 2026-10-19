@@ -1,18 +1,62 @@
 import {validateProcedureConstraintSource} from './procedure-constraint-source.js';
-import {analyseSourceValueProducers} from './source-value-producers.js';
+import {analyseSourceValueProducers,preparePhysicalUpdateThrowSource,physicalUpdateSourceFor} from './source-value-producers.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
+import {physicalUpdateSourceSnapshot} from './physical-update-source-snapshot.js';
+import {validatePhysicalUpdateLowering} from './lower-object-classes.js';
+
+const sourceProofs=new WeakMap(),emissionProofs=new WeakMap();
+export function hasThrowEmission(program){return emissionProofs.get(program)?.current()===true;}
+export function prepareThrowEmission(program,sourceProof,lowering=null,originalProof=sourceProof){
+    const source=sourceProofs.get(sourceProof),original=sourceProofs.get(originalProof),unsupported=[];
+    const projections=emissionProofs.get(program)?.projections||new Set();
+    if([...projections].some(proof=>!proof.current()))unsupported.push('Throw actual consumed emitter projection changed before publication');
+    if(!original||!original.snapshot.current()||!source||!source.snapshot.current())unsupported.push('Throw source changed before final emission');
+    else if(sourceProof.physicalUpdateSource)unsupported.push(...validatePhysicalUpdateLowering(program,lowering));
+    else {const final=prepareThrowSource(program);if(!final.present||final.unsupported.length)unsupported.push('Throw final ordinary/controller source failed fresh reproof',...final.unsupported);}
+    const snapshot=physicalUpdateSourceSnapshot(program);
+    if(!snapshot)unsupported.push('Throw final emission requires current plain data');
+    if(!unsupported.length){
+        // Publication of the outer route must also observe every actually
+        // consumed projection. Reproof cannot erase an existing dependency.
+        emissionProofs.set(program,Object.freeze({sourceProof,lowering,originalProof,projections,
+            current:()=>snapshot.current()&&source.snapshot.current()&&original.snapshot.current()&&[...projections].every(proof=>proof.current())}));
+    }
+    return Object.freeze(unsupported);
+}
+
+// A real emitter may project an actual Program. Recompute the current source
+// and generated correspondence on that output; never transplant the old brand
+// or its binding symbols onto new identities.
+export function reproveThrowEmission(program,previous){
+    const prior=emissionProofs.get(previous);
+    if(!prior?.current())return Object.freeze(['Throw emission projection requires its actual current private predecessor']);
+    if(emissionProofs.has(program))return Object.freeze(['Throw emission projection requires its fresh never-branded actual output Program']);
+    const unsupported=prepareThrowEmission(program,prior.sourceProof,prior.lowering,prior.originalProof);
+    if(!unsupported.length)prior.projections.add(emissionProofs.get(program));
+    return unsupported;
+}
 
 // This gate proves source contexts and operand domains. It issues no runtime
 // exception/owner capability and does not enable a canonical compiler word.
 export function prepareThrowSource(program) {
-    const all=[],parents=new WeakMap();
-    const collect=(node,parent=null)=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(child=>collect(child,parent));return;}all.push(node);parents.set(node,parent);Object.values(node).forEach(child=>collect(child,node));};collect(program);
+    const sourceSnapshot=physicalUpdateSourceSnapshot(program);
+    if(!sourceSnapshot)return Object.freeze({present:true,program,unsupported:Object.freeze(['Throw source requires current acyclic plain own data'])});
+    const all=[],parents=new WeakMap(),seen=new WeakSet();let shared=false;
+    const metadata=new Set(['originalBody','parameterDefaults','paramTypes','typeParameters','returnType','assertedType','bwProcedureConstraintSource']);
+    const collect=(node,parent=null)=>{
+        if(!node||typeof node!=='object')return;
+        if(seen.has(node)){shared=true;return;}seen.add(node);
+        if(Array.isArray(node)){node.forEach(child=>collect(child,parent));return;}
+        all.push(node);parents.set(node,parent);
+        for(const [key,child]of Object.entries(node))if(!metadata.has(key))collect(child,node);
+    };collect(program);
     const throws=all.filter(node=>node.type==='ThrowStatement');
     if(!throws.length)return Object.freeze({present:false,unsupported:Object.freeze([]),program});
+    if(shared)return Object.freeze({present:true,program,unsupported:Object.freeze(['Throw source requires unshared executable nodes'])});
     const unsupported=[],fail=message=>{const text=`Throw source: ${message}`;if(!unsupported.includes(text))unsupported.push(text);};
     for(const diagnostic of validateProcedureConstraintSource(program))fail(diagnostic);
     const options={unboundIsOpaque:true,opaqueDeclarationValues:true,uninitializedLocalsAreOpaque:true};
-    const graph=analyseSourceValueProducers(program,options),completion=graph.normalCompletion;
+    let graph=analyseSourceValueProducers(program,options),completion=graph.normalCompletion;
     const sdk=staticSdkNamespaceReceivers(program),primitive=new Set(['Number','String','Boolean','Null','Undefined']);
     const path=node=>node?.type==='Identifier'?node.name:node?.type==='Member'?path(node.object)+'.'+node.name:null;
     const root=node=>node?.type==='Identifier'?node:['Member','Index'].includes(node?.type)?root(node.object):null;
@@ -42,13 +86,21 @@ export function prepareThrowSource(program) {
         if(['FunctionDeclaration','FunctionExpression'].includes(node.type)){walk(node.body,node,false);return;}
         if(node.type==='Class'){
             for(const field of node.fields||[])walk(field.init,node,false);
-            for(const method of [node.ctor,...(node.methods||[])].filter(Boolean))walk(method.body,node,false);return;
+            for(const method of [node.ctor,...(node.methods||[])].filter(Boolean))walk(method.body,method,false);return;
         }
         if(node.type==='Call')calls.push({node,owner:current,target:graph.immutableFunctionAt(node)});
         for(const child of Object.values(node))walk(child,current,nested||loops.has(node.type));
     };walk(program);
     const affected=new Set(throws.map(node=>owner.get(node)));
     let changed;do{changed=false;for(const call of calls)if(affected.has(call.target)&&!affected.has(call.owner)){affected.add(call.owner);changed=true;}}while(changed);
+    const sourceMethods=new Set(all.filter(node=>node.type==='Class').flatMap(cls=>[cls.ctor,...(cls.methods||[])].filter(Boolean)));
+    let physicalUpdateSource=null,physicalEntry=null;
+    if([...affected].some(current=>sourceMethods.has(current))){
+        physicalUpdateSource=preparePhysicalUpdateThrowSource(program);
+        for(const message of physicalUpdateSource.unsupported)if(!unsupported.includes(message))unsupported.push(message);
+        physicalEntry=physicalUpdateSourceFor(program,physicalUpdateSource);
+        if(physicalEntry){graph=analyseSourceValueProducers(program,{...options,physicalUpdateSource});completion=graph.normalCompletion;}
+    }
     const valueOwners=new Set(affected);let added;do{added=false;for(const call of calls)if(valueOwners.has(call.owner)&&call.target&&!valueOwners.has(call.target)){valueOwners.add(call.target);added=true;}}while(added);
     for(const fn of valueOwners)if(fn?.type==='FunctionDeclaration'&&(new Set(fn.params).size!==fn.params.length||fn.typeParameters?.length||fn.optionalParams?.length||fn.restParam||Object.keys(fn.defaultParams||{}).length||fn.parameterDefaults?.some(value=>value!=null)))fail('ordinary call flow requires unique required nongeneric parameters');
     for(const call of calls)if(valueOwners.has(call.target)&&call.node.args.length!==call.target.params.length)fail('ordinary call argument count must match actual required parameters');
@@ -65,6 +117,9 @@ export function prepareThrowSource(program) {
             for(const node of all)if(node.type==='Identifier'&&graph.bindingOf(node)===graph.bindingOf(current)){
                 const parent=parents.get(node);if(parent?.type!=='Call'||parent.callee!==node||parent.isNew||parent.typeArguments?.length||graph.immutableFunctionAt(parent)!==current)fail('throwing procedure reference must be a direct immutable ordinary call');
             }
+        }else if(physicalEntry?.hasMethod(current)){
+            // Exact private source entry; globals were intersected before every
+            // earliest actual allocation, not after derived construction.
         }else if(current?.type==='FunctionExpression'&&button(current)){
             // Actual static SDK registration is the only callback scope here.
         }else fail('only main, unchanged ordinary procedures and actual static controller button handlers are supported');
@@ -82,5 +137,7 @@ export function prepareThrowSource(program) {
         const isCallee=parent?.type==='Call'&&parent.callee===node;
         if(!isTarget&&!isCallee&&graph.bindingKindsAt(node).has('variable')&&!graph.isInitializedAt(node))fail('value read requires its actual dominating initialization');
     }
-    return Object.freeze({present:true,program,completion,unsupported:Object.freeze(unsupported)});
+    const result=Object.freeze({present:true,program,completion,physicalUpdateSource,unsupported:Object.freeze(unsupported)});
+    if(!unsupported.length&&sourceSnapshot.current())sourceProofs.set(result,{snapshot:sourceSnapshot});
+    return result;
 }

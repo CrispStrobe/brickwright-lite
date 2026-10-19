@@ -5,6 +5,42 @@ separates measured conversion routes from native and authoring gates. Results
 below are dated checkpoints with their own source and evidence boundaries; a
 pure or headless native pass does not establish visible editor compatibility.
 
+## Current Array callbacks and Text effects — 2026-10-16
+
+| Capability | Qualified development boundary | Required visible authoring journey |
+| --- | --- | --- |
+| Discarded Array.map and indexed loops | Complete callback effects, receiver-once evaluation and cached length remain. Private dense producer proofs follow real allocations, writers, aliases and read presence. Twenty-seven focused cases pass in segments; the actual current-export fixture preserves a connected edit from 1 to 2 through ten stages and both export/reimport pairs. Generic reads retain their existing Undefined handling; annotations and generated names issue no value proof. | Create and edit the callback in Blocks and Code, navigate a real unsupported input, save/reopen in a fresh session and export the current graph with its actual dependency context. Preserve the callback body and diagnostics. The headless connected edit does not qualify visible block editing. |
+| TextSprite edge positioning | Forty-one focused source/public-artifact controls qualify plain left/right/top/bottom writes on actual TextSprites, preserving current native setters and order. Mixed, computed, compound and unknown receivers remain refused. | Edit text, icon and all four edges through actual controls; compare rendered positions, referenced artwork, controller input and Stop/restart. Save/reopen and export/reimport the edited result. |
+| Fixed music call beside shared frames | Forty-six controls qualify exact current direct music.play calls with two arguments and a fixed existing playback mode. Extracting, storing or returning that method is refused. No Playable value or neighboring SDK API is inferred. | Author and edit playback and its mode, verify audible playback and error location, then preserve it with current frame edits through save/reopen and export/reimport. Runtime playback and GUI support remain separate gates. |
+
+The original failed map/export oracles and music method-value control remain
+retained. The complete original simulator/native callback comparison, authentic
+project closure and final composed checks remain required. These focused counts
+do not change the historical corpus or establish full MakeCode compatibility.
+
+
+## Animation roundtrip audit and remaining editor work — 2026-10-16
+
+Use [the integration repair status](ARCADE-CI-REPAIR-STATUS.md) for the current
+qualification order and six coordinated contracts. These are development
+boundaries, not a new whole-project compatibility census.
+
+| Surface | Current measured capability | Work an editor agent must qualify |
+| --- | --- | --- |
+| Animation libraries and Arrays | Validated current resources supply Array export authority. The complete original five-test suite passes: real VM/storage, three plain CLI conversions and original Arcade compile/run. A separate audit covers both complete archives, every costume/sound role, rich used and unused documents and source identity. Default asset IDs may regenerate; role metadata, references and exact content are checked independently. | Build and edit frame Arrays through actual Blocks and Code; edit frames and names in the graphics editor; verify shared references versus fresh clones, used and unused assets, same/fresh save/reopen and actual current export/reimport. An internal backing Array must not appear as an extra user asset on every conversion. |
+| Normal CLI and project loading | The CLI resolves the installed GUI library and canonical VM normally; the full five-test path passes without child module aliases or injected loader flags. | Open the CLI-produced current project in the real editor and steer it through controller widgets. Preserve diagnostics and current dependency context. Player-specific Number and EV3 gaps remain separate. |
+| Loop arrows | Current static fields use the actual workspace media path. Eleven modeled controls pass. | Check real workspace and flyout arrows under default, contrast and restored themes, including a deployment prefix and save/reopen. No missing-asset masking. |
+| Per-player numeric values | All 41 focused source controls pass. Real native controls preserve four independent player scores, refuse altered cache bindings and preserve a connected-writer edit through current export/reimport. | Edit the actual connected player selector through all four players; verify the selected receiver, current Code, ordinary Number consumers, score isolation and saved/exported project. Show unsupported or stale input at its actual location. |
+| Class construction and updates | The repaired actual native control completes its paused constructor, observes two updates during construction and four total, and preserves values and call counts after Stop. The original zero-update failure remains retained. | Preserve authorable constructor and update bodies, timing and failure behavior. Add usable class/base/field/method controls and typed sockets where still absent. Qualify edits, Stop/restart and save/reopen with the repaired actual runtime; constructor completion alone cannot qualify updates. |
+| Repeated frame transport and generated helpers | Thirty-six helper controls and 24 shared-frame source/public artifact controls pass. A real shared-frame guest qualifies alias/clone/equal-resource/ordinary-Array semantics and Stop/restart. Authentic library effects and whole-project growth remain open. | Keep full current bodies and diagnostics visible. Verify edited Code/Blocks remains stable across repeated export/reimport, including shared frame identity, renamed helpers and user shadows. Do not hide backing blocks or erase extra helper effects to make the editor appear clean. |
+
+The saved-output audit required two corrections to its own assumptions: remove
+redundant source reads within a verification stage, and compare randomized
+asset identities through complete actual roles rather than unchanged filenames.
+Both original failed audits remain preserved. Successful application and
+compiler executions were not repeated to inspect those files. None of these
+headless results establishes visible GUI acceptance or changes the historical
+184-input census.
 
 ## Current conversion and editor acceptance checkpoint — 2026-10-16
 
@@ -5141,3 +5177,33 @@ and diagnostics which locate an invalid capture or call. Verify two outer
 invocations keep separate storage, same/fresh reopen, changed exported bodies
 and native failure/Stop/disposal handling. No nested-helper or visible GUI
 support is claimed by this tracking entry.
+
+### Current score, helper, frame and update authoring frontier — 2026-10-16
+
+These development results do not qualify the visible production editor or
+change the immutable whole-project census. Follow the [current repair table](ARCADE-CI-REPAIR-STATUS.md)
+and the precise ownership contracts before extending a surface.
+
+| Capability | Qualified boundary | Remaining visible acceptance |
+| --- | --- | --- |
+| Fixed player score Number inputs | Source and current graph proof for players 1–4; native four-player isolation, altered-cache rejection and connected-writer export/reimport | Create and edit each real player dropdown/reporter in Blocks, connect it to a Number formal, inspect equivalent Code, save/reopen and run via the controller pane. Invalid current bindings need a visible location and diagnostic. |
+| Current scene-clock diagnostics | Source/Creator/export controls retain independent malformed clock diagnostics even when another malformed caller prevents argument emission | Show all affected connected blocks and errors without losing the program; repair each socket visibly and rerun. |
+| Generated helper recovery | Exact current bodies, lexical bindings, defaults and continuation effects; 36 focused controls | Retain user-edited or unmatched helper bodies and diagnostics through Code and Blocks. Qualify real imported/exported projects rather than exposing generated temporaries as learner variables. |
+| Shared frame Image arrays | Twenty-four source/public artifact controls plus an actual native alias/clone/distinct equal-resource/ordinary-Array/Stop-restart guest; a second native guest qualifies two actual stateful kind allocations in order without a guessed starting ID; authentic complete-project and edited-art lifecycle gates remain open | Edit one actual shared frame and verify all its aliases, preserve explicit clones and independent equal-pixel initializers, save/reopen, export and run. Graphics needs clear resource ownership and readable asset names. |
+| Physical SDK Sprite updates | Real paused-constructor guest observes updates during construction; Stop preserves values and call counts | Author an override in Code/Blocks, edit its body and image, steer the real running stage, Stop/restart and reload without duplicate registrations. No general class or constructor-continuation qualification follows. |
+| Throw inside owned update methods | Explicit direct converter source admission passes 64 controls; the proper unwind/publication repair passes 18 controls and both unchanged native guests on a fresh normal VM, including one error, later updates and detached input | Qualify the public importer option and locate the actual thrown value and failed invocation visibly, preserve preceding effects and unrelated input handlers, then edit/replay/save/reopen/export. Keep the original positive guest and its assertions. |
+
+Do not grant Number or class authority from a displayed type annotation, a
+public metadata tag, an expected socket shape or a same-spelled SDK name.
+GUI evidence must use the actual connected program and current resources.
+
+The current public project importer does not forward the direct converter's
+Throw prototype option. An opt-in converter or native control therefore does
+not establish public import or GUI availability. Product route/default support
+needs separate qualified implementation; never silently infer it from tests.
+
+### Image-entry and asynchronous editor follow-up
+
+The optional Image Array entry proof now handles the parser's opaque root procedure metadata while keeping consumed defaults, annotations and serializer domains as observed data. All 60 source controls pass. An authentic project advances past the original clone and stops at an incoming overlap-sprite alias `destroy()` call; callback provenance, complete writer closure and destruction reentry still need implementation and qualification.
+
+The complete 22 request-fence and 13 editor-contract tests pass. Browser work must still exercise pending file/share imports, replacement imports, stage changes and disposal visibly, including answer/cancel/error outcomes. Verify Code, connected Blocks, artwork, save/reopen and edited export together. The remaining native-prompt suite and installed dialogs have no new qualification from these source tests.

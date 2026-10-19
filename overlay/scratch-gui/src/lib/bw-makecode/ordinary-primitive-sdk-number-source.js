@@ -23,3 +23,73 @@ export function ordinaryPrimitiveSdkNumberCalls(program) {
     visit(program);
     return new WeakSet(unsafe?[]:candidates);
 }
+
+// The original seven-call census remains independent. This additional profile
+// is selected only by the ordinary primitive constraint consumer whose native
+// score implementation and fixed-player result ownership are checked separately.
+// A source candidate is never a certificate for a cached native Number result.
+export function ordinaryPlayerScoreNumberCalls(program, safeIndex = () => false) {
+    const sdk=staticSdkNamespaceReceivers(program),candidates=[];
+    const rootArities=new Map([['score',0],['setScore',1],['changeScoreBy',1],
+        ['startCountdown',1],['onCountdownEnd',1],['onScore',2],['showScore',1]]);
+    const playerArities=new Map([['score',0],['setScore',1],['changeScoreBy',1]]);
+    const players=new Set(['player1','player2','player3','player4']);
+    // The parser stores a template tag as a dotted STRING, not its original
+    // Identifier/Member tree. Do not let those erased calls escape the census.
+    const resourceTags=new Set(['img','hex','tilemap','assets.image','assets.tile','assets.tilemap']);
+    const resourceRoots=new Set(['img','hex','tilemap','assets']),resourceBindings=new Set(),tags=[];
+    let unsafe=false,hasPlayerAccess=false;
+    const classThis=ancestors=>{
+        const owner=[...ancestors].reverse().find(node=>node.type==='Class');
+        if(!owner)return false;
+        const at=ancestors.indexOf(owner),member=ancestors[at+1];
+        if(!member||member.isStatic||!(member===owner.ctor||owner.methods?.includes(member)||owner.fields?.includes(member)))return false;
+        return ancestors.slice(at+2).every(node=>node.type!=='FunctionDeclaration'&&
+            (node.type!=='FunctionExpression'||node.functionKind==='arrow'));
+    };
+    const visit=(node,parent=null,grandparent=null,ancestors=[])=>{
+        if(!node||typeof node!=='object')return;
+        if(Array.isArray(node)){for(const value of node)visit(value,parent,grandparent,ancestors);return;}
+        if(node.type==='Template'){
+            if(typeof node.value!=='string'||node.value.includes('${'))unsafe=true;
+            if(Object.hasOwn(node,'tag')){
+                tags.push(node.tag);
+                // Even an erased/malformed info tag must select the extended
+                // profile, rather than falling through to the legacy API.
+                if(typeof node.tag==='string'&&node.tag.split('.')[0]==='info')hasPlayerAccess=true;
+            }
+        }
+        // Resource literals are the only closed tag effects retained here.
+        // Any source binding/reference to their root makes that literal's
+        // builtin identity uncertain. This is deliberately conservative across
+        // scopes; it supplies no Image/Buffer or SDK result authority.
+        if(node.type==='Identifier'&&resourceRoots.has(node.name))resourceBindings.add(node.name);
+        if(['FunctionDeclaration','FunctionExpression','Class','Enum','Namespace','ForOf'].includes(node.type)&&resourceRoots.has(node.name))resourceBindings.add(node.name);
+        if(node.type==='Declaration')for(const decl of node.decls||[])if(resourceRoots.has(decl.name))resourceBindings.add(decl.name);
+        if(Array.isArray(node.params))for(const name of node.params)if(resourceRoots.has(name))resourceBindings.add(name);
+        if(node.type==='Unknown'||node.type==='Identifier'&&
+            (['globalThis','global','window','self','eval','Function','Reflect','arguments'].includes(node.name)||
+                node.name==='this'&&!classThis(ancestors))||
+            node.type==='Member'&&node.name==='constructor'||node.type==='Index'&&!safeIndex(node))unsafe=true;
+        if(node.type==='Identifier'&&node.name==='info'&&sdk.has(node)){
+            const receiver=parent?.type==='Member'&&parent.object===node?parent:null;
+            const selected=players.has(receiver?.name);
+            if(selected)hasPlayerAccess=true;
+            const member=selected&&grandparent?.type==='Member'&&grandparent.object===receiver?grandparent:receiver;
+            const call=selected?ancestors.at(-3):grandparent;
+            const arities=selected?playerArities:rootArities;
+            if(!member||!call||call.type!=='Call'||call.callee!==member||call.isNew||call.constructorCall||
+                call.optional||member.optional||receiver.optional||call.typeArguments?.length||
+                !arities.has(member.name)||!Array.isArray(call.args)||call.args.length!==arities.get(member.name)||
+                call.args.some(arg=>arg?.type==='Spread'))unsafe=true;
+            else if(member.name==='score')candidates.push(call);
+        }
+        for(const value of Object.values(node))if(value&&typeof value==='object')visit(value,node,parent,[...ancestors,node]);
+    };
+    visit(program);
+    // Consumers that do not use the added player surface retain the complete
+    // original seven-call policy, including its independently tested limits.
+    if(!hasPlayerAccess)return ordinaryPrimitiveSdkNumberCalls(program);
+    if(tags.some(tag=>typeof tag!=='string'||!resourceTags.has(tag)||resourceBindings.has(tag.split('.')[0])))unsafe=true;
+    return new WeakSet(unsafe?[]:candidates);
+}

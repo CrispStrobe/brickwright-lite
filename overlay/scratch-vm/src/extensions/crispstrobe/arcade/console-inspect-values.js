@@ -14,6 +14,10 @@ const scoreSourceRows = new WeakMap();
 const scoreIssue = Symbol('actual Arcade score metadata issuance');
 const scoreIssues = new WeakMap();
 let scoreIssueSerial = 0;
+// Only the actual finite player literals can select this existing score role.
+// Do not execute a tag, getter, toString or valueOf to establish that identity.
+const fixedScorePlayer = value => typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 4 ? value :
+    typeof value === 'string' && /^[1-4]$/.test(value) ? value.charCodeAt(0) - 48 : null;
 function scoreInfo(info,owner) {
     const entries=info?.id==='arcade'&&info.blocks?.filter(block=>block.opcode==='getPlayerScore');
     if(entries?.length!==1||!owner)throw Error('Arcade score declaration owner is missing');
@@ -163,8 +167,10 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null) {
                 Object.keys(node.inputs||{}).join(',')!=='PLAYER')return refuseScore('score reporter schema differs');
             const player=input(node,'PLAYER');
             if(!player||player.parent!==node.id||player.opcode!=='math_number'||player.shadow!==true||player.topLevel!==false||player.next!=null||player.mutation!=null||
-                Object.keys(player.inputs||{}).length||Object.keys(player.fields||{}).join(',')!=='NUM'||
-                String(player.fields.NUM.value)!=='1')return refuseScore('player1 shadow schema differs');
+                Object.keys(player.inputs||{}).length||Object.keys(player.fields||{}).join(',')!=='NUM')return refuseScore('fixed player shadow schema differs');
+            const numberField=Object.getOwnPropertyDescriptor(player.fields,'NUM')?.value;
+            const selectedPlayer=fixedScorePlayer(numberField&&Object.getOwnPropertyDescriptor(numberField,'value')?.value);
+            if(selectedPlayer===null)return refuseScore('fixed player literal differs');
             const parent=read(node.parent);
             if(!parent||Object.values(parent.inputs||{}).filter(slot=>slot.block===node.id).length!==1)return refuseScore('score parent ownership differs');
             const root=util?.thread?.peekStack?.(),operations=target.blocks._cache?._executeCached?.[root]?._ops||[];
@@ -179,10 +185,11 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null) {
                 if(operation._blockFunction!==score.func)return refuseScore('active score function differs');
                 if(Object.keys(operation._argValues||{}).sort().join(',')!=='PLAYER,mutation')return refuseScore('active score argument schema differs');
                 if(operation._argValues.mutation!==operation.mutation||operation.mutation!==node.mutation)return refuseScore('active score mutation differs');
-                if(String(operation._argValues.PLAYER)!=='1')return refuseScore('active player argument differs');
+                const cachedPlayer=Object.getOwnPropertyDescriptor(operation._argValues,'PLAYER')?.value;
+                if(fixedScorePlayer(cachedPlayer)!==selectedPlayer)return refuseScore('active player argument differs');
                 if(shadow?.id!==player.id||shadow.opcode!=='math_number'||shadow.fields!==player.fields||
                     shadow.inputs!==target.blocks.getInputs(player))return refuseScore('active player shadow cache differs');
-                if(shadow._isShadowBlock!==true||shadow._shadowValue!==operation._argValues.PLAYER||
+                if(shadow._isShadowBlock!==true||Object.getOwnPropertyDescriptor(shadow,'_shadowValue')?.value!==cachedPlayer||
                     shadow._parentValues!==operation._argValues||shadow._parentKey!=='PLAYER')return refuseScore('active player shadow value or ownership differs');
                 if(!operation._parentValues||typeof operation._parentValues[operation._parentKey]!=='number')return refuseScore('active score result is not native Number');
             }

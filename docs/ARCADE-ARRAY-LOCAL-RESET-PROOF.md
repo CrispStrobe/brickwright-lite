@@ -108,3 +108,25 @@ its required fresh compiler or guest qualification before claiming that route.
 Existing native results are not promoted by a source proof. Visible Blocks/Code
 editing and GUI acceptance remain separate gates. No whole-project compatibility
 count changes without the complete required pipeline evidence.
+
+## Literal frame-image operands in a closed prefix
+
+The local-reset proof and mandatory ordinary-callee initialization summary use
+one physical frame-image operand effect rule. It requires the current connected
+same-owner reporter, exact input schema, primitive literal key/template and
+finite primitive numeric index/range operands. Existing closed-project,
+ordinary-frame, alias, publication and complete-writer checks remain mandatory.
+Dynamic operands and reads or escapes of the reset destination retain refusal.
+
+This is an effect classification only. The native operation still reads and
+writes its real frame/image cache and handle registries; decode errors still
+publish their actual diagnostic, and a thrown error does not become a completed
+continuation. The clone still copies an actual image or retains its existing
+missing-image behavior. Neither operand grants a general Image/Array value,
+resource, indexed-element presence or missing-element narrowing fact.
+
+Keep independent artwork/template/range validation and every original error,
+body and evaluation order. Unknown providers or reentrant effects remain outside
+the closed proof. This rule does not admit a new ordinary indexed-Array operand
+in a callee summary or change cache lifetime. Current public roundtrips and an
+affected genuine guest must qualify the implementation separately.

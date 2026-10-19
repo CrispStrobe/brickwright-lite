@@ -45,7 +45,8 @@ module.exports = makeExt(`// Name: Arcade
     constructor(runtime) {
       this._runtime = runtime;
       const newExceptionOwner=()=>dependencies.arcadeExceptions.create(runtime,(args,util)=>
-        Scratch.BWValues.decode(dependencies.currentNumberInput(runtime,args,util,'arcade_throwValue')));
+        Scratch.BWValues.decode(dependencies.currentNumberInput(runtime,args,util,'arcade_throwValue')),
+        (child,args,util)=>spriteUpdateHosts.get(this)?.consumeChild(child,args,util));
       exceptionOwners.set(this,newExceptionOwner());
       managedReturnHosts.set(this,dependencies.createManagedReturnValues(runtime));
       this._sourceScalarCells = dependencies.createSourceScalarCells(runtime, Scratch.BWValues, dependencies.sourceReferenceTypes, dependencies.sourceCallableCells);
@@ -2097,8 +2098,10 @@ module.exports = makeExt(`// Name: Arcade
       // Dispatch through the real managed-call queue. Its source phase owns
       // runnable eligibility; a Promise continuation must not synchronously
       // re-enter execute's shared BlockUtility with a different caller.
-      return this.callFunction({NAME:name,ARGS:JSON.stringify(values,Scratch.BWValues.jsonReplacer),bwObjectConstruction:token,bwExceptionCaller:exceptionCaller},
-        {thread:util?.thread,target,sequencer:null});
+      const args={NAME:name,ARGS:JSON.stringify(values,Scratch.BWValues.jsonReplacer),bwObjectConstruction:token,bwExceptionCaller:exceptionCaller};
+      const callUtil={thread:util?.thread,target,sequencer:null};
+      spriteUpdateHosts.get(this).prepareCall(name,values,util,args,callUtil);
+      return this.callFunction(args,callUtil);
     }
     createObject(args,util) {
       // BlockUtility is reused by the sequencer. Promise continuations retain
@@ -2212,9 +2215,9 @@ module.exports = makeExt(`// Name: Arcade
       const thread = runtime._pushThread(definition, target);
       const exceptions=exceptionOwners.get(this);
       let unlink;
-      try {unlink=exceptions.link(thread,util.thread,()=>{
-        classCallableHosts.get(this)?.abortThread(thread);managedReturnHosts.get(this).forget(thread);
-      },args.bwExceptionCaller);}catch(error){runtime.sequencer.retireThread(thread);throw error;}
+      const cleanup=()=>{classCallableHosts.get(this)?.abortThread(thread);managedReturnHosts.get(this).forget(thread);};
+      try {unlink=util.thread ? exceptions.link(thread,util.thread,cleanup,args.bwExceptionCaller) :
+        exceptions.linkPhysicalUpdate(thread,args,util,cleanup);}catch(error){runtime.sequencer.retireThread(thread);throw error;}
       // A sentinel caller frame retains arguments/locals while the native
       // sequencer replaces body frames. Each invocation owns its own cells.
       // The caller frame carries cells but has no executable block. Reusing
@@ -2380,10 +2383,25 @@ module.exports = makeExt(`// Name: Arcade
     }
     _runTerrainGenerator(generator) {
       const epoch = this._terrainEpoch;
-      const resume = () => {
-        if (epoch !== this._terrainEpoch) return;
-        const step = generator.next();
-        if (!step.done) return Promise.resolve(step.value).then(resume);
+      const close = () => {
+        // Only return-completion cleanup may run after cancellation. Drive
+        // yielded finally work, never the ordinary body; cap unexpected cleanup.
+        let remaining=64;
+        const finish=(method='return',error)=>{
+          if(remaining--<=0)throw new Error('Arcade cancelled iterator cleanup exceeded its finite step bound');
+          const step=generator[method](error);
+          if(!step.done)return Promise.resolve(step.value).then(()=>finish('next'),error=>finish('throw',error));
+        };
+        return finish();
+      };
+      const resume = (failed=false,error) => {
+        // A cancelled actual turn must close its suspended iterator, not run
+        // its authored continuation or retain a physical update entry.
+        if (epoch !== this._terrainEpoch) return close();
+        // Rejection belongs to this same yielded operation. Throw it through
+        // delegation so every owned iterator finally runs before propagation.
+        const step = failed ? generator.throw(error) : generator.next();
+        if (!step.done) return Promise.resolve(step.value).then(()=>resume(),error=>resume(true,error));
         return step.value;
       };
       return resume();
@@ -3299,7 +3317,7 @@ module.exports = makeExt(`// Name: Arcade
       return created && typeof created.then === 'function' ? created.then(position) : position(created);
     }
     _reserveSdkSprite() {const id=dependencies.sdkSpriteClasses.allocateHandle();this._spriteValues.set(id,{id,_sdkBaseOnly:true});return id;}
-    _registerSdkSprite(id,util) {const sprite=this._spriteValues.get(id),state=this._state();if(sprite._sdkRegistered)throw new Error('SDK BaseSprite was registered twice');spriteUpdateHosts.get(this).register(sprite,util);sprite._sdkRegistered=true;sprite._sdkScene=state;sprite.pxtId=state.nextSpriteId++;state.sprites[id]=sprite;this._sceneFlags.register(state,sprite);}
+    _registerSdkSprite(id,util) {const sprite=this._spriteValues.get(id),state=this._state();if(sprite._sdkRegistered)throw new Error('SDK BaseSprite was registered twice');spriteUpdateHosts.get(this).register(sprite,util,state);sprite._sdkRegistered=true;sprite._sdkScene=state;sprite.pxtId=state.nextSpriteId++;state.sprites[id]=sprite;this._sceneFlags.register(state,sprite);}
     _initializeSdkSprite(id,image) {const sprite=this._spriteValues.get(id),width=image.width,height=image.height;sprite._sdkBaseOnly=false;Object.assign(sprite,{x:((160-width)>>1)+width/2,y:((120-height)>>1)+height/2,vx:0,vy:0,ax:0,ay:0,fx:0,fy:0,width,height,flags:0});this._installSpriteFixedPoint(sprite);sprite._creationKind=null;}
     _spriteKindSets(state=this._state()) {if(!state._nativeKindSets){state._nativeKindSets=new Map();for(const sprite of Object.values(state.sprites))if(sprite.kind>=0){if(!state._nativeKindSets.has(sprite.kind))state._nativeKindSets.set(sprite.kind,[]);state._nativeKindSets.get(sprite.kind).push(sprite);}}return state._nativeKindSets;}
     _addSpriteKind(sprite,kind,state=this._state()) {if(!(kind>=0))return;const sets=this._spriteKindSets(state);if(!sets.has(kind))sets.set(kind,[]);if(!sets.get(kind).includes(sprite))sets.get(kind).push(sprite);}
@@ -5960,7 +5978,7 @@ module.exports = makeExt(`// Name: Arcade
       this._pendingSceneSeconds.delete(owner);
       const epoch=this._terrainEpoch,result=this._runTerrainGenerator(this._advanceFrameSteps(elapsed));
       if(result?.then){
-        const pending=result.catch(error=>this._runtime?.emit?.('BLOCKS_ERROR',error.message)).finally(()=>{if(this._sceneFrames.get(owner)===pending)this._sceneFrames.delete(owner);if(this._terrainFrame===pending && epoch===this._terrainEpoch)this._terrainFrame=null;});
+        const pending=result.catch(error=>{if(epoch===this._terrainEpoch&&!dependencies.arcadeExceptions.reported(this._runtime,error))this._runtime?.emit?.('BLOCKS_ERROR',error?.message ?? String(error));}).finally(()=>{if(this._sceneFrames.get(owner)===pending)this._sceneFrames.delete(owner);if(this._terrainFrame===pending && epoch===this._terrainEpoch)this._terrainFrame=null;});
         this._sceneFrames.set(owner,pending);if(this._state()===owner)this._terrainFrame=pending;return pending;
       }
       return result;

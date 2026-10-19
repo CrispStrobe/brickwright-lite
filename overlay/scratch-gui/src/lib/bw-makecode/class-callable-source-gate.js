@@ -1,3 +1,4 @@
+import {currentParserClassAbsence} from './ts-import.js';
 import {proveClassCallableSource,classSdkImageRoles} from './class-callable-source-flow.js';
 
 // Keep the actual completed proof object: source lowering checks its private
@@ -10,6 +11,13 @@ export function selectClassCallableSourceProof(program,{sdkImagePrototype=false}
     const image=proveClassCallableSource(program,{sdkImagePrototype:true});
     if(image.eligible&&program.body.some(node=>node.type==='Class'&&classSdkImageRoles(image,program,node)))return {proof:image,sdkImageEnabled:true};
     return {proof:ordinary,sdkImageEnabled:false};
+}
+
+// Translation consumes only negative eligibility and diagnostics for absence.
+// The general selector above retains its actual flow object on every route.
+export function selectClassCallableSourceProofForTranslation(program,{sdkImagePrototype=false}={}) {
+    if(currentParserClassAbsence(program))return {proof:{eligible:false,unsupported:[]},sdkImageEnabled:false};
+    return selectClassCallableSourceProof(program,{sdkImagePrototype});
 }
 
 // Eligibility never mutates source or enables a runtime service. The caller

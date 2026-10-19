@@ -1,22 +1,25 @@
 // Lowering metadata comes only from a completed source producer proof. The
 // actual current Blocks body must be checked independently during execution
 // and export; this inert certificate cannot issue a completion permission.
-import {classResultFlowCertificate,classMethodSourceSignature,classCallableReflectionSource,classSdkImageRoles,classSdkImageValue} from './class-callable-source-flow.js';
+import {classResultFlowCertificate,classMethodSourceSignature,classConstructorSourceSignature,classCallableReflectionSource,classSdkImageRoles,classSdkImageValue} from './class-callable-source-flow.js';
+import {cloneClassSourceMetadata,ordinaryConstructorParameterProperties} from './class-parameter-property-source.js';
 export function withClassResultFlowProof(program,proof) {
     if(proof?.eligible!==true||!proof.resultFlows)return program;
-    const reflection=node=>{
-        if(!node||typeof node!=='object')return node;
-        if(Array.isArray(node))return node.map(reflection);
-        const out=Object.fromEntries(Object.entries(node).map(([key,value])=>[key,key==='originalBody'?value:reflection(value)]));
+    const methods=new Set(program.body.filter(node=>node.type==='Class').flatMap(node=>node.methods));
+    return cloneClassSourceMetadata(program,(node,out)=>{
         if(classSdkImageValue(proof,program,node)){out.bwSdkImageValue=true;out.bwObjectTypes=['image'];}
         if(node.type==='Unary'&&node.op==='typeof'&&classCallableReflectionSource(proof,program,node))out.bwSourceCallableTypeOf=true;
-        return out;
-    };
-    return {...program,body:program.body.map(node=>node.type==='Class'?{...reflection(node),
-        ...(classSdkImageRoles(proof,program,node)?{bwSdkImageRoles:classSdkImageRoles(proof,program,node)}:{}),
-        methods:node.methods.map(method=>{
-            const flow=classResultFlowCertificate(proof,program,method);
-            const signature=classMethodSourceSignature(proof,program,method);
-            return {...reflection(method),bwClassCallableSignature:signature,...(flow?{bwClassResultFlow:structuredClone(flow)}:{})};
-        })}:reflection(node))};
+        if(node.type==='Class') {
+            const roles=classSdkImageRoles(proof,program,node);if(roles)out.bwSdkImageRoles=roles;
+            const constructor=classConstructorSourceSignature(proof,program,node);
+            if(constructor)out.ctor.bwClassCallableSignature=constructor;
+            if(node.ctor?.parameterProperties?.length&&!ordinaryConstructorParameterProperties(out))
+                throw Error('Class lowering lost its actual constructor parameter property correspondence');
+        }
+        if(methods.has(node)) {
+            out.bwClassCallableSignature=classMethodSourceSignature(proof,program,node);
+            const flow=classResultFlowCertificate(proof,program,node);
+            if(flow)out.bwClassResultFlow=structuredClone(flow);
+        }
+    });
 }

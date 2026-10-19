@@ -492,14 +492,21 @@ mapping, whole G02, rollback, licensing or release qualification. Keep this
 follow-up out of the already frozen composed-package qualification target.
 ## Original Arcade profiler clock bootstrap — 2026-10-16
 
-PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this claim before
-implementation. Contract: [reference clock bootstrap](docs/ARCADE-REFERENCE-CLOCK-BOOTSTRAP.md).
+CLAIMED — Codex Arcade integration; documentation claim
+[PR1001](https://github.com/CrispStrobe/brickwright-lite/pull/1001) merged after
+all four enabled checks passed. Source candidate and runtime qualification are
+pending. Contract: [reference clock bootstrap](docs/ARCADE-REFERENCE-CLOCK-BOOTSTRAP.md).
 Own the original-simulator clock helper, its Arcade runtime initialization call
 site, focused controls and qualification notes. Preserve paused-zero document
 admission, then prove a deterministic complete-frame bootstrap before actual
 guest construction, positive profiling and unchanged relative timer/frame/input
 phases. No PXT vendor patch, guest-clock replacement, normalized result,
-expectation/budget reduction, dependency pin or workflow change. All unrelated
+expectation/budget reduction, dependency pin or workflow change.
+The exact elapsed-wait control uses program `control.millis()`; scene
+`game.runtime()` is a separate frame-phase contract and cannot borrow elapsed
+wait expectations. The incorrect newly authored guest and its failure remain
+retained; corrected-guest qualification is pending. No simulator or native
+clock policy changes. All unrelated
 source, runtime, editor and device owners retain their lanes.
 
 ## Code conversion: preserve newer editor ownership — 2026-10-16
@@ -5997,8 +6004,8 @@ All unrelated owners and retained failures remain preserved.
 
 ## MakeCode CLI integrated GUI module boundary — 2026-10-16
 
-PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this separate claim
-before implementation: [CLI module boundary](docs/ARCADE-CLI-INTEGRATED-GUI-SCOPE.md).
+Claim merged; Codex Arcade integration owns the source boundary and focused
+qualification:  [CLI module boundary](docs/ARCADE-CLI-INTEGRATED-GUI-SCOPE.md).
 Continue the landed CLI target work and preserve its commands and target
 behavior. Own the `scripts/makecode.mjs` library-loading/prerequisite boundary, an
 optional focused `scripts/lib/` inspection helper, the coordinated exact
@@ -6018,6 +6025,11 @@ integration receipt producer before editing it. Current Array and clock failures
 remain independent; this claim does not infer their cause from module identity
 or promote whole-project compatibility from source resolution controls.
 
+CLI boundary source implementation coordinates the three existing
+`scripts/lib/pxt-node.mjs` runtime-library imports with the same installed GUI
+library loader. No worker/compiler behavior or runtime source authority is
+changed. Source and actual CLI qualification remain pending.
+
 ## Arcade animation resource Array producers — 2026-10-16
 
 PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this claim before
@@ -6029,6 +6041,19 @@ editor ownership remain separate. Preserve unknown-resource Undefined behavior,
 shared-cache versus fresh-array identity, all writers, mutation and presence
 checks, and current graph/resource binding. No opcode-only type grant, default
 Array, dependency pin or runtime semantic change is authorized by this claim.
+
+### Controller event literals and ordinary primitive callers — maintenance
+
+Coordinate the existing unified controller registration and ordinary procedure
+parameter constraint lanes. The three existing `ControllerButtonEvent` scalar
+payloads share one immutable source map between emission and the selected
+ordinary producer proof. Only actual unshadowed readonly builtin leaves in a
+closed source/callee/effect domain qualify; annotations, fake objects, unknown
+members, writers, escaping roots and dynamic effects remain refused. Other SDK
+enums and Number results, native certificates, words and pins are unchanged.
+Focused controls and fresh affected native/browser qualification are required;
+source authoring alone does not close the original hosted regression or promote
+a whole game.
 
 ## Arcade custom loop block theme media — 2026-10-16
 
@@ -6044,11 +6069,43 @@ pin, workflow or broad runtime change. A fresh affected visible editor/theme
 qualification remains required; original missing-resource failures stay open
 until that evidence exists. Other lanes retain their owned surfaces.
 
+Loop media development source now binds the current workspace media at actual
+static registration and adapts only the final generated legacy arrow field.
+The merged contract's focused source controls are authored, not yet run; actual
+visible theme/base-path and fresh official artifact gates remain open. Headless
+VM JSON, unrelated icons, default colors and dynamic factories remain unchanged.
+
+### Animation malformed-file browser qualification message — 2026-10-16
+
+Continuation of the claimed Wide Arcade artwork documents and Pixel authoring
+qualification scripts. The original hosted browser reached malformed companion
+import after its editable-resource, save/reopen and original-PXT pixel checks.
+The observed visible error includes the dependency translation stage; the
+previous exact text fixture omitted that stage. Update only that exact message
+while preserving the loaded-VM, Code and published-resource identity assertions.
+No product exception, diagnostic, import behavior, timeout or assertion is
+removed. [Qualification boundary](docs/ARCADE-ANIMATION-ERROR-MESSAGE-QUALIFICATION.md).
+Fresh production browser qualification remains required; the original failure
+is retained and this source correction alone promotes no game.
+
+### Arcade repair composition and measured gates — 2026-10-16
+
+The [current repair status](docs/ARCADE-CI-REPAIR-STATUS.md) records the normally
+composed source and its distinct qualification boundaries. The complete
+original five-test animation suite passes on the normal installation, including
+three plain CLI conversions and one original Arcade compile/simulator run.
+The corrected program-clock guest separately passes exact0/20/40 through the
+original helper on its reviewed source context. Visible GUI, final-head hosted
+checks and whole-game promotion remain pending. Preserve all original failures.
+The List, per-player, Carnival, managed SDK and shared Image Array contracts
+landed in joint documentation claim1007; bounded implementation is authorized.
+Its claim checks do not qualify subsequent source implementation.
+
 ### Arcade ExtendableSprite update Throw source intersection — 2026-10-16
 
 Owner: Codex Arcade integration, coordinated with the existing Throw, owned
-Sprite class callable and managed SDK lanes. Status: claim pending qualified
-normal merge; no implementation under this amendment yet.
+Sprite class callable and managed SDK lanes. Claim1010 has merged after all
+enabled checks; bounded source implementation is authorized.
 
 Contract: [source admission and initialization](docs/ARCADE-EXTENDABLE-THROW-SOURCE-ADMISSION.md).
 Own the narrow GUI source issuer/currentness/normalization intersection in
@@ -6060,7 +6117,7 @@ scheduler/runtime/pin/worker change, skipped control or corpus promotion.
 
 ### Shared-frame selected source provenance — coordinated amendment
 
-Owner: Codex Arcade integration. Claim pending qualified normal merge.
+Owner: Codex Arcade integration. Claim1012 has merged after all enabled checks.
 Extend only the [shared-frame non-exposure contract](docs/ARCADE-SHARED-IMAGE-ARRAY-TRANSPORT.md)
 into dependency-project.js for a private actual-source/prepared-map receipt.
 Keep optional effect analysis private to the existing shared-frame helper and
@@ -6068,7 +6125,7 @@ its exact translator hooks. Preserve actual source comparison, source ordering,
 all initializers, unused bodies and diagnostics; no public flag/namespace/tag
 can issue proof. This does not widen ordinary Number/reference producers,
 classes, runtime behavior, dependency fetching, pins or compiler execution.
-Implement only after this ownership amendment qualifies and merges.
+Bounded implementation is authorized; claim checks do not qualify its source.
 
 
 ## 386 GUI HDD and forward-debug hosted acceptance — 2026-10-16
@@ -6884,3 +6941,25 @@ prototype; global product hook waits for PR881's matched-head green merge.
 implementation paths listed there. Shared runtime/translator hunks must be
 coordinated. Preserve independent multi-board/arena and engine lanes.
 
+## Arcade foundation reconciliation and composed analysis — 2026-10-19
+
+ACTIVE / QUALIFICATION PENDING — Codex Arcade integration, within the existing
+Arcade compatibility lane and the ordered PR1046 handoff. Normally compose the
+retained foundation and declaration/Sprite analysis with current main; preserve
+the independently landed timer classification, refusal census, fixture repairs
+and concurrent UI/native work. The declaration demand uses an internal fourth
+argument, retaining the Sprite proof's third argument and the eager/Throw paths.
+
+The required sb3-creator `7d3f8be7` descends from main's `a13f92b8`; required
+Arrays `4db2813d` descends from main's `598fc966`. Retain those required newer
+supplier revisions with matching canonical source, notices and provenance,
+while preserving main's other supplier pins. This is explicit prerequisite
+reconciliation, not a blanket supplier or runtime qualification.
+
+The first complete 218-test attempt observed 210 consecutive passes before
+SIGKILL, with eight tests and the summary unobserved. Child CPU was 24.90 seconds
+under the unchanged 25-second bound; the precise kill cause remains unproved.
+No complete suite or new corpus count is claimed. Investigate actual repeated
+analysis cost; do not raise bounds, shard the suite or repeat unchanged source.
+Main composition needs its own controls, affected guest qualification and all
+enabled final-head hosted checks before normal matched-head landing.

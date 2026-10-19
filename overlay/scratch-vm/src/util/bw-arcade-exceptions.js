@@ -5,11 +5,12 @@ const cachedPrimitiveOwner = require('./bw-cached-primitive-owner');
 // completion. Only the current primitive may issue a signal for this runtime.
 const owners = new WeakMap();
 const signals = new WeakMap();
+const publishedSignals = new WeakSet();
 const failedThreads = new WeakMap();
 const promiseLeases = new WeakMap();
 const callerLeases = new WeakMap();
 
-function create(runtime, readValue) {
+function create(runtime, readValue, consumePhysicalUpdate = null) {
     if (!runtime || typeof runtime.on !== 'function' || !Array.isArray(runtime.targets)) {
         return Object.freeze({raise() {throw new Error('Arcade Throw requires a bound runtime');},
             rejectConstraint() {throw new Error('Arcade constraint rejection requires a bound runtime');},
@@ -46,6 +47,7 @@ function create(runtime, readValue) {
             }
             if (cleanupErrors.length) signal.cause = new AggregateError(cleanupErrors, 'Arcade invocation cleanup failed');
             runtime.emit('BLOCKS_ERROR', signal);
+            publishedSignals.add(signal);
         } finally {throw signal;}
     };
     const owner = Object.freeze({
@@ -84,6 +86,19 @@ function create(runtime, readValue) {
             const edge = {caller, cleanup, generation};
             edges.set(child, edge);
             return () => {if (edges.get(child) === edge) edges.delete(child);};
+        },
+        linkPhysicalUpdate(child,args,util,cleanup) {
+            // This consumer is captured by the actual extension constructor.
+            // Neither a missing caller nor public tags can mint a root edge.
+            if (!live(child) || util?.thread!==undefined || typeof cleanup!=='function' || edges.has(child) ||
+                typeof consumePhysicalUpdate!=='function')
+                throw new Error('Arcade physical update requires its private current entry');
+            const witness=consumePhysicalUpdate(child,args,util);
+            if (!witness || witness.target!==child.target || !live(child))
+                throw new Error('Arcade physical update requires its private current entry');
+            const edge={caller:null,cleanup,generation};
+            edges.set(child,edge);
+            return ()=>{if(edges.get(child)===edge)edges.delete(child);};
         },
         raise(args, util) {
             const thread = util?.thread;
@@ -190,6 +205,11 @@ function diagnostic(runtime,error) {
     const record=signals.get(error);
     return record?.runtime===runtime ? ['constraint','array-constraint','condition-wait','primitive-fault'].includes(record.kind) ? Object.freeze({kind:record.kind,message:record.message,block:record.block,target:record.target.id}) : Object.freeze({value:record.value,block:record.block,target:record.target.id}) : null;
 }
+// A copied message or privately issued but unpublished signal is insufficient.
+// This is a read-only publication fact, never an activation or exception loan.
+function reported(runtime,error) {
+    return signals.get(error)?.runtime===runtime && publishedSignals.has(error);
+}
 function stale(runtime,thread,lease) {
     if (failed(runtime,thread)) return true;
     if (lease===null) return false; // Ordinary Scratch, no active Arcade owner.
@@ -204,4 +224,4 @@ function rejectConditionWait(runtime,thread,error) {
     if(!owner)throw Error('Source condition rejection requires the current Arcade exception owner');
     return owner.rejectConditionWait(thread,error);
 }
-module.exports = Object.freeze({rejectConditionWait,create, consume, failed, capture, stale, diagnostic,arrayCoordinatorReady,rejectArrayOperation});
+module.exports = Object.freeze({rejectConditionWait,create, consume, failed, capture, stale, diagnostic,reported,arrayCoordinatorReady,rejectArrayOperation});

@@ -64,13 +64,20 @@ module.exports = function createObjectHeap(runtime, values, native = {}) {
         if (!Array.isArray(spec.fields) || !Array.isArray(spec.parameters) || !Array.isArray(spec.methods))
             throw new Error('Class fields, parameters and methods must be declared');
         const validType=type=>typeof type==='string' && /^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(?:\[\])*$/.test(type);
-        const validParameters=(params,allowSdk=false)=>Array.isArray(params) && params.every(param=>param && (param.sdkType===undefined||allowSdk) && /^[A-Za-z_]\w*$/.test(param.name||'') && validType(param.type) && typeof param.optional==='boolean' && (param.default===undefined || param.optional && (param.default===null || typeof param.default==='boolean' || typeof param.default==='number'&&Number.isFinite(param.default))) && Object.keys(param).every(key=>['name','type','optional','default','sdkType'].includes(key))) && new Set(params.map(param=>param.name)).size===params.length;
+        const validParameters=(params,allowSdk=false)=>Array.isArray(params) && params.every(param=>param && (param.sdkType===undefined||allowSdk) && (!own(param,'callableSignature')||allowSdk) && /^[A-Za-z_]\w*$/.test(param.name||'') && validType(param.type) && typeof param.optional==='boolean' && (param.default===undefined || param.optional && (param.default===null || typeof param.default==='boolean' || typeof param.default==='number'&&Number.isFinite(param.default))) && Object.keys(param).every(key=>['name','type','optional','default','sdkType','callableSignature'].includes(key))) && new Set(params.map(param=>param.name)).size===params.length;
         if(!validParameters(spec.parameters,true))throw new Error('Invalid declared constructor parameters');
         const sdkType = (type,declared) => {
             if(declared!=='Image'||typeof native.sdkSignature!=='function'||typeof native.sdkField!=='function')throw new Error('SDK class type requires its explicit owned service');
             const result=native.sdkSignature(type);if(result.kind!=='sdk'||result.name!=='Image')throw new Error('SDK class type requires exact Image signature');return Object.freeze(result);
         };
-        const parameters=spec.parameters.map(parameter=>parameter.sdkType!==undefined?Object.freeze({...parameter,sdkType:sdkType(parameter.sdkType,parameter.type)}):parameter);
+        const parameters=spec.parameters.map(parameter=>{
+            if(own(parameter,'callableSignature')) {
+                if(parameter.type!=='callable'||own(parameter,'sdkType')||parameter.optional!==false||own(parameter,'default')||typeof native.constructorParameterSignature!=='function')
+                    throw new Error('Class constructor callback requires its explicit owned signature service');
+                return Object.freeze({...parameter,callableSignature:native.constructorParameterSignature(parameter.callableSignature)});
+            }
+            return parameter.sdkType!==undefined?Object.freeze({...parameter,sdkType:sdkType(parameter.sdkType,parameter.type)}):parameter;
+        });
         const fields = new Map(), methods = new Map();
         for (const field of spec.fields) {
             if (!field || typeof field.name !== 'string' || !/^[A-Za-z_]\w*$/.test(field.name) || fields.has(field.name) ||

@@ -280,6 +280,9 @@ export function createCallableLexicalEmitter(graph, compileCurrentBody) {
         },
         discardLocal: blockId=>{
             const proof=discardedMutationProofs.get(graph)?.get(blockId),block=graph.target.blocks[blockId];
+            // Observe the whole-project sink dependency before other early
+            // returns; a false/throw observation permanently expires this fact.
+            if(proof?.unusedVoidStatement&&!proof.unusedVoidStatement.current())return false;
             return !!proof && proof.owner===owner.id && block===proof.block &&
                 block.inputs?.VALUE?.[1]===proof.valueId && graph.target.blocks[proof.valueId]===proof.value &&
                 mutationSnapshot(graph,blockId)===proof.snapshot;
@@ -305,7 +308,11 @@ export function createCallableLexicalEmitter(graph, compileCurrentBody) {
                 return parameter.name + (parameter.optional && !fallback?'?':'') + ': ' + renderCallableSignature(parameter.type) +
                     (fallback?' = '+JSON.stringify(fallback.value):'');
             }).join(', ');
-            const lines=[...locals.map(binding=>'    let '+binding.sourceName+': '+renderCallableSignature(binding.type)+' = undefined'),...body];
+            // An ordinary class cell starts uninitialized; an explicit
+            // Undefined initializer would falsely claim a class producer.
+            // Keep the actual subsequent writes and full source-body proof.
+            const lines=[...locals.map(binding=>'    let '+binding.sourceName+': '+renderCallableSignature(binding.type)+
+                (binding.type.kind==='named'&&plan.classes?.some(cls=>cls.name===binding.type.name)?'':' = undefined')),...body];
             const result=renderCallableSignature(owner.signature.result);
             if(owner.kind==='declaration') return 'function '+owner.sourceName+'('+params+'): '+result+' {\n'+lines.join('\n')+'\n}';
             return (owner.kind==='arrow'?'('+params+') =>':'function ('+params+'): '+result) +
@@ -351,7 +358,7 @@ export function validateCallableCurrentBodyTypes(graph,literalInput) {
         const result=[];let slot=block.inputs?.ARGS?.[1];const visited=new Set();
         while(typeof slot==='string' && blocks[slot]?.opcode==='arcade_functionArgument') {
             if(visited.has(slot))fail('cyclic current class argument chain');visited.add(slot);
-            const argument=blocks[slot],type=typeOf(argument.inputs?.VALUE?.[1],owner,seen);
+            const argument=blocks[slot],type=typeOf(argument.inputs?.VALUE?.[1],owner,seen,argument);
             if(!type)fail('unproved current class argument type');result.push(type);slot=argument.inputs?.REST?.[1];
         }
         const last=typeof slot==='string'?blocks[slot]:null;
@@ -359,18 +366,18 @@ export function validateCallableCurrentBodyTypes(graph,literalInput) {
             !(last?.opcode==='text'&&last.shadow&&last.fields?.TEXT?.[0]==='[]'))fail('class call requires its actual current ordered argument chain');
         return result;
     };
-    const typeOf=(slot,owner,seen=new Set())=>{
+    const typeOf=(slot,owner,seen=new Set(),readAt=null)=>{
         if(Array.isArray(slot)) {
             if([4,5,6,7,8].includes(slot[0]))return named('number');
             if(slot[0]===10)return named('string');
             if(slot[0]===12) {
                 const row=[...graph.globalBindings].find(([,row])=>row.variableId===slot[2]);
-                return row&&plan.bindings.find(binding=>binding.id===row[0])?.type;
+                return row?plan.bindings.find(binding=>binding.id===row[0])?.type:graph.classProvider?.primitiveVariableType?.(slot,owner,readAt);
             }
         }
         const block=blocks[slot];if(!block||seen.has(slot))return null;
         seen=new Set(seen);seen.add(slot);
-        const input=name=>typeOf(block.inputs?.[name]?.[1],owner,seen);
+        const input=name=>typeOf(block.inputs?.[name]?.[1],owner,seen,block);
         const binding=name=>plan.bindings.find(binding=>binding.nativeName===name&&
             (binding.owner===owner.id || plan.sites.find(site=>site.owner===owner.id)?.captures.some(capture=>capture.binding===binding.id)));
         if(block.opcode==='arcade_createCallable') {
@@ -396,7 +403,7 @@ export function validateCallableCurrentBodyTypes(graph,literalInput) {
         if(block.opcode==='text')return named('string');
         if(block.opcode==='data_variable') {
             const row=[...graph.globalBindings].find(([,row])=>row.variableId===block.fields?.VARIABLE?.[1]);
-            return row&&plan.bindings.find(binding=>binding.id===row[0])?.type;
+            return row?plan.bindings.find(binding=>binding.id===row[0])?.type:graph.classProvider?.primitiveVariableType?.(slot,owner,block);
         }
         if(block.opcode==='arcade_callFunction'||block.opcode==='arcade_callCallable') {
             const signature=block.opcode==='arcade_callFunction'?
@@ -443,7 +450,7 @@ export function validateCallableCurrentBodyTypes(graph,literalInput) {
                 const binding=plan.bindings.find(binding=>binding.nativeName===name&&
                     (binding.owner===owner.id||site?.captures.some(capture=>capture.binding===binding.id)));
                 if(graph.classProvider&&name===owner.receiverParameter)fail('edited body writes its class receiver');
-                const actual=typeOf(block.inputs?.VALUE?.[1],owner);
+                const actual=typeOf(block.inputs?.VALUE?.[1],owner,new Set(),block);
                 const initialUndefined=block.opcode==='arcade_setLocal'&&binding?.kind==='local'&&binding.owner===owner.id&&
                     binding.type.kind==='named'&&binding.type.name==='number'&&actual?.kind==='named'&&actual.name==='undefined'&&!assigned.has(binding.id);
                 if(!binding && graph.classProvider && block.opcode==='arcade_setLocal') {
@@ -461,12 +468,19 @@ export function validateCallableCurrentBodyTypes(graph,literalInput) {
                         generated.set(id,proof);generatedNames.set(identity,proof);
                     } else {
                     const valueId=block.inputs?.VALUE?.[1],value=blocks[valueId];
-                    if(value?.opcode!=='arcade_assignObjectField'||typeof graph.classProvider.statementType!=='function'||
+                    // The lexical typer catalogs callable globals, not every
+                    // ordinary class variable. A private statement certificate
+                    // checks its exact current call/receiver and arguments under
+                    // this graph's mandatory full bound-local/body validation;
+                    // it supplies no missing value type to this graph.
+                    // A known conflicting result still cannot be discarded here.
+                    const unusedVoidStatement=(!actual||actual.kind==='named'&&actual.name==='void')?graph.classProvider.unusedVoidStatement?.(block,owner):null;
+                    if(!unusedVoidStatement&&(value?.opcode!=='arcade_assignObjectField'||typeof graph.classProvider.statementType!=='function'||
                         graph.classProvider.statementType(value,owner,{
                             inputType:name=>typeOf(value.inputs?.[name]?.[1],owner),argsType:()=>argsType(value,owner,new Set()),
                             localType:name=>owner.receiverParameter===name?named(owner.className):plan.bindings.find(row=>row.owner===owner.id&&row.nativeName===name)?.type
-                        })!==true)fail('unowned local assignment is not a validated current field mutation');
-                    discarded.set(id,{owner:owner.id,block,valueId,value,snapshot:mutationSnapshot(graph,id)});
+                        })!==true))fail('unowned local assignment is not a validated current field mutation');
+                    discarded.set(id,{owner:owner.id,block,valueId,value,snapshot:mutationSnapshot(graph,id),...(unusedVoidStatement?{unusedVoidStatement}:{})});
                     }
                 } else {
                     if(!binding||!actual||(!same(binding.type,actual)&&!initialUndefined))fail('edited current assignment differs from its concrete lexical signature');
@@ -474,7 +488,7 @@ export function validateCallableCurrentBodyTypes(graph,literalInput) {
                 }
             }
             if(block.opcode==='arcade_returnValue') {
-                const actual=typeOf(block.inputs?.VALUE?.[1],owner);
+                const actual=typeOf(block.inputs?.VALUE?.[1],owner,new Set(),block);
                 if(!actual||!same(owner.signature.result,actual))fail('edited current return differs from its concrete lexical signature');
             }
             id=block.next;
@@ -488,6 +502,6 @@ export function validateCallableCurrentBodyTypes(graph,literalInput) {
         return procedure?plan.owners.find(row=>row.id===procedure[0]):current?.opcode==='arcade_whenSourceStarts'?plan.owners.find(row=>row.id===plan.module):null;
     };
     currentTypeProofs.set(graph,{snapshot:JSON.stringify([plan,blocks]),literal:literalInput,input:(block,name)=>{
-        const owner=currentOwner(block);return owner?typeOf(block.inputs?.[name]?.[1],owner):null;
+        const owner=currentOwner(block);return owner?typeOf(block.inputs?.[name]?.[1],owner,new Set(),block):null;
     }});
 }

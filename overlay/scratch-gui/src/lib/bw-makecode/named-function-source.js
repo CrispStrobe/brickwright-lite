@@ -1,3 +1,4 @@
+import {currentParserClassAbsence} from './ts-import.js';
 import {parseCallableType} from './callable-type-syntax.js';
 import {analyseCallableBindings} from './callable-bindings.js';
 import {analyseSourceValueProducers} from './source-value-producers.js';
@@ -14,7 +15,9 @@ const named = name => ({kind:'named',name});
 export function proveNamedFunctionSource(input) {
     const flattened=lowerNamespaceBindings(input,{namedFunctionValues:true});
     const program=flattened.program || input,lexical=analyseCallableBindings(program);
-    const producers=analyseSourceValueProducers(program,{parenthesized:true,unboundIsOpaque:true});
+    // The target census below does not consume producer facts. Preserve eager
+    // analysis for every input lacking current parser-owned structural evidence.
+    let producers=currentParserClassAbsence(program)?null:analyseSourceValueProducers(program,{parenthesized:true,unboundIsOpaque:true});
     const unsupported=[],fail=message=>{const text='Named function values: '+message;if(!unsupported.includes(text))unsupported.push(text);};
     const writes=new Map(),parents=new WeakMap(),order=new WeakMap(),declarationKinds=new WeakMap();
     const add=(binding,row)=>{if(!binding)return;if(!writes.has(binding))writes.set(binding,[]);writes.get(binding).push(row);};
@@ -73,6 +76,7 @@ export function proveNamedFunctionSource(input) {
     };
     inspect(program);
     if(!targets.size)return {eligible:false,unsupported:[],program:input};
+    producers ||= analyseSourceValueProducers(program,{parenthesized:true,unboundIsOpaque:true});
     flattened.unsupported.forEach(fail);
     if(lexical.bindings.some(binding=>binding.name==='__bwCallables'))fail('authored internal callable namespace conflicts with declaration lowering');
     // A named-only plan must not silently swallow the established Arrow/class

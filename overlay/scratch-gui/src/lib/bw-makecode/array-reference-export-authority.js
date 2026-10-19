@@ -1,8 +1,11 @@
 import {analyseConsoleCaptures} from './console-capture-provenance.js';
+import {createAnimationFrameArrayProducers, isAnimationFrameArrayProducer} from './animation-frame-array-producers.js';
 
 // Producer facts are deliberately separate from the exporter's annotation graph.
 // Merely being plugged into an ARRAY input never creates an Array fact.
-export function createArrayReferenceExportAuthority(project) {
+export function createArrayReferenceExportAuthority(project, options = {}, animationProducer = null) {
+    const animationProducers = animationProducer === null ? createAnimationFrameArrayProducers(options) :
+        isAnimationFrameArrayProducer(animationProducer, options) ? animationProducer : createAnimationFrameArrayProducers({});
     const bad=Symbol('unproved value'),targets=project.targets||[],nodes=new Map(),records=[],owners=new WeakMap(),invalid=new WeakSet(),snapshots=[];
     const cells=new Map(),values=new WeakMap(),tokens=new WeakMap(),scopes=[],procedures=new Map(),calls=[],mutations=[];
     let invalidGlobalBinding=false;
@@ -207,7 +210,31 @@ export function createArrayReferenceExportAuthority(project) {
         return !records.some(({node,scope})=>scope.invalid||invalid.has(node)||
             /^(arcade_(?:.*Callable|.*Captured|.*Object|.*Class|startParallel|pushScene|popScene)|procedures_callreturn)/.test(node.opcode));
     };
+    // One operand-effect rule serves both local-reset and callee-summary
+    // proofs. This grants no Image/Array/value or artwork-validity fact. The
+    // callers retain their closedEffects/frame/alias/completion obligations.
+    // Primitive literal codecs prevent hidden candidate reads or coercions.
+    const closedFrameImageEffect=(target,node,scope)=>{
+        if(!node||node.opcode!=='arcade_frameImage'||invalid.has(node)||owners.get(node)!==scope||
+            node.mutation!=null||!exactKeys(node,['KEY','INDEX','TEMPLATE','START','COUNT']))return false;
+        const primitive=(name,tags,field,opcode)=>{
+            const value=input(node,name,target);
+            if(value.raw&&value.raw.length===2&&tags.includes(value.raw[0]))return value.raw[1];
+            const leaf=value.node;
+            return leaf&&!invalid.has(leaf)&&owners.get(leaf)===scope&&leaf.shadow===true&&leaf.opcode===opcode&&
+                !leaf.next&&leaf.mutation==null&&exactKeys(leaf,[],[field])&&Object.keys(leaf.fields||{}).length===1?
+                (Array.isArray(leaf.fields[field])&&[1,2].includes(leaf.fields[field].length)&&
+                    (leaf.fields[field].length===1||leaf.fields[field][1]===null)?leaf.fields[field][0]:null):null;
+        };
+        if(!['KEY','TEMPLATE'].every(name=>typeof primitive(name,[10],'TEXT','text')==='string'))return false;
+        return ['INDEX','START','COUNT'].every(name=>{
+            const value=primitive(name,[4,5,6,7,8],'NUM','math_number');
+            return (typeof value==='number'||typeof value==='string')&&Number.isFinite(Number(value));
+        });
+    };
+    let frameResetUsed=false,frameResetExpired=false;
     const overwrittenPrivateReset=(destination,writer)=>{
+        let traversedFrameEffect=false;
         const {target,node,scope}=writer,reset=writer.value?.node;
         const shape=(n,inputs,fields=[])=>!!n&&!invalid.has(n)&&owners.get(n)===scope&&n.mutation==null&&
             Object.keys(n.inputs||{}).length===inputs.length&&inputs.every(key=>Object.hasOwn(n.inputs||{},key))&&
@@ -304,6 +331,7 @@ export function createArrayReferenceExportAuthority(project) {
             if(n.opcode==='arrays_referenceItem'&&shape(n,['ARRAY','INDEX'])){
                 const a=operand('ARRAY'),i=operand('INDEX');return a!==unproved&&i!==unproved&&i.kind==='number'?{kind:'stored'}:unproved;
             }
+            if(closedFrameImageEffect(target,n,scope)){traversedFrameEffect=true;return {kind:'stored'};}
             if(n.opcode==='arcade_cloneImage'&&shape(n,['IMAGE']))return operand('IMAGE')!==unproved?{kind:'stored'}:unproved;
             return unproved;
         };
@@ -321,7 +349,7 @@ export function createArrayReferenceExportAuthority(project) {
                         // including earlier resets before this writer; only a
                         // real later Array overwrite completes this proof.
                         if(!special(input(current,'VALUE',target)?.node)){
-                            if(seenReset&&v.kind==='array'){extendedResetUsed=true;return true;}
+                            if(seenReset&&v.kind==='array'){extendedResetUsed=true;if(traversedFrameEffect)frameResetUsed=true;return true;}
                             return false;
                         }
                     }
@@ -453,6 +481,11 @@ export function createArrayReferenceExportAuthority(project) {
         const c=binding(target,node);if(c)return new Set(c.types);
         const allocated=factories(target,node);if(allocated)return allocated;const named=namedBinding(target,node);if(named)return named;
         if(node.opcode==='arcade_spritesOfKind')return exactKeys(node,['KIND'])&&numericKind(input(node,'KIND',target))?new Set([token(node,target,[{raw:[10,'SDK Sprite element not an Array']}],0)]):new Set([bad]);
+        if(['arcade_animationAssetFrames','arcade_animationAssetFreshFrames'].includes(node.opcode)){
+            const producer=animationProducers.resolve(target,node);
+            return producer?new Set([token(producer.allocation,producer.shared?null:target,
+                Array.from({length:producer.length},()=>({raw:[10,'SDK Image element not an Array']})),producer.length)]):new Set([bad]);
+        }
         if(['arrays_referenceSlice','arrays_referenceConcat'].includes(node.opcode)){
             const left=readInput(input(node,'ARRAY',target)),right=node.opcode==='arrays_referenceConcat'?readInput(input(node,'OTHER',target)):new Set();
             if(!operationShape(node))return new Set([bad]);if(!left.size||node.opcode==='arrays_referenceConcat'&&!right.size)return new Set();
@@ -477,18 +510,6 @@ export function createArrayReferenceExportAuthority(project) {
             const out=new Set();for(const value of call.fn.returns)for(const type of readInput(value))out.add(type);return out;
         }
         return new Set([bad]);
-    }
-    // Availability is an occurrence property, not a cell's eventual type union.
-    for(const scope of scopes){
-        scope.executedBefore=new WeakMap();
-        const walk=(id,known,path=new Set(),executed=new Set())=>{
-            if(!id||path.has(id))return known;const node=block(scope.target,id);if(!node)return known;const next=new Set([...path,id]);
-            const expressionPath=new Set();const expressions=value=>{if(!value||expressionPath.has(value))return;expressionPath.add(value);scope.before.set(value,new Set(known));scope.executedBefore.set(value,new Set(executed));for(const [name,slot]of Object.entries(value.inputs||{}))if(!name.startsWith('SUBSTACK'))expressions(block(scope.target,slot[1]));};expressions(node);
-            if(node.opcode==='data_setvariableto'){const c=globalCell(scope.target,node.fields?.VARIABLE?.[1]);if(c)known.add(c);}
-            if(node.opcode==='arcade_setLocal'){const c=localCell(scope,literal(node,'NAME',scope.target));if(c)known.add(c);}
-            for(const name of ['SUBSTACK','SUBSTACK2'])if(node.inputs?.[name])walk(node.inputs[name][1],new Set(known),next,new Set(executed));
-            executed.add(node);return walk(node.next,known,next,executed);
-        };walk(scope.root.next,new Set((scope.params||[]).map(name=>localCell(scope,name)).filter(Boolean)));
     }
     // Type tokens describe allocation sites and MAY writers, not body identity.
     // Mutation-derived presence needs an independent proof that this actual
@@ -558,6 +579,115 @@ export function createArrayReferenceExportAuthority(project) {
         const result=scope.proc?scope.callers.length===1&&!!scope.callers[0].args&&onceNode(scope.callers[0].node,next):scope.root.opcode==='arcade_whenSourceStarts';
         onceScopes.set(scope,result);return result;
     };
+    // Mandatory callee writes are occurrence certificates, never producer facts.
+    // Collect every managed/escaped/unknown entry above before deriving these.
+    let summaryExpired=false,summaryIssued=false;
+    const summaryCache=new Map(),summaryBusy=new Set(),summaryEpoch={};
+    // Cloud destinations can synchronously call an external provider; cloud
+    // reads can receive writers outside this closed current-project inventory.
+    const ordinarySummaryGlobal=c=>{
+        for(const [target,map]of globalCell.maps)for(const [id,key]of map)if(cells.get(key)===c){
+            const row=target.variables?.[id];return Array.isArray(row)&&row.length===2;
+        }
+        return false;
+    };
+    const ordinarySummaryScope=scope=>{
+        if(!scope?.proc||scope.invalid||scope.unknownEntry||implicitEntries.has(scope)||
+            scope.params.length||scope.ids.length||Object.hasOwn(Object.prototype,scope.proc))return false;
+        const all=Object.values(scope.target.blocks||{}),prototype=child(scope.root,'custom_block',scope.target);
+        return scope.root.opcode==='procedures_definition'&&scope.root.mutation==null&&
+            exactKeys(scope.root,['custom_block'])&&prototype&&prototype.parent===scope.id&&
+            prototype.opcode==='procedures_prototype'&&!invalid.has(prototype)&&
+            !prototype.next&&exactKeys(prototype,[])&&
+            all.filter(n=>n.opcode==='procedures_definition'&&child(n,'custom_block',scope.target)?.mutation?.proccode===scope.proc).length===1&&
+            all.filter(n=>n.opcode==='procedures_prototype'&&n.mutation?.proccode===scope.proc).length===1;
+    };
+    const summaryCall=call=>!!call?.fn&&!call.fn.invalid&&call.args?.length===0&&
+        call.node.opcode==='procedures_call'&&exactKeys(call.node,[])&&
+        call.node.mutation?.proccode===call.fn.proc&&call.node.mutation?.argumentids==='[]'&&
+        Object.keys(call.node.mutation).every(key=>['tagName','children','proccode','argumentids','warp'].includes(key));
+    const summaryFor=scope=>{
+        if(summaryCache.has(scope))return summaryCache.get(scope);
+        if(summaryBusy.has(scope)||!ordinarySummaryScope(scope)||!closedEffects())return null;
+        summaryBusy.add(scope);
+        const locals=new Map(),writes=new Map(),seen=new Set();
+        const shape=(node,names)=>!!node&&!invalid.has(node)&&owners.get(node)===scope&&node.mutation==null&&exactKeys(node,names);
+        // These closed synchronous operands preserve their real native effects.
+        // No Image value/resource fact is issued; unknown calls or effects refuse.
+        const operand=(value,path=new Set())=>{
+            if(!value)return null;
+            if(value.raw)return Array.isArray(value.raw)&&value.raw.length===2&&[4,5,6,7,8,9,10,11].includes(value.raw[0])?'scalar':null;
+            if(value.cell)return ordinarySummaryGlobal(value.cell)?'reference':null;
+            const n=value.node;if(!n||path.has(n)||invalid.has(n)||owners.get(n)!==scope)return null;
+            const next=new Set([...path,n]),at=name=>input(n,name,scope.target);
+            if(n.opcode==='arcade_getLocal'&&shape(n,['NAME'])){
+                const name=literal(n,'NAME',scope.target);
+                return typeof name==='string'&&!Object.hasOwn(Object.prototype,name)?locals.get(localCell(scope,name))||null:null;
+            }
+            if(n.opcode==='data_variable'&&n.mutation==null&&exactKeys(n,[],['VARIABLE'])&&ordinarySummaryGlobal(binding(scope.target,n)))return 'reference';
+            const scalarInputs={operator_add:['NUM1','NUM2'],operator_subtract:['NUM1','NUM2'],operator_multiply:['NUM1','NUM2'],operator_divide:['NUM1','NUM2'],operator_mod:['NUM1','NUM2']};
+            if(scalarInputs[n.opcode]&&shape(n,scalarInputs[n.opcode])&&scalarInputs[n.opcode].every(name=>operand(at(name),next)==='scalar'))return 'scalar';
+            if(n.opcode==='arrays_createReference'&&shape(n,['VALUES'])&&literal(n,'VALUES',scope.target)==='[]')return 'array';
+            if(n.opcode==='arrays_specialValue'&&n.mutation==null&&exactKeys(n,[],['KIND'])&&
+                ['null','undefined'].includes(literal(n,'KIND',scope.target)))return 'scalar';
+            if(closedFrameImageEffect(scope.target,n,scope))return 'image-effect';
+            if(n.opcode==='arcade_cloneImage'&&shape(n,['IMAGE'])&&operand(at('IMAGE'),next)==='image-effect')return 'image-effect';
+            return null;
+        };
+        let id=scope.root.next,ok=true;
+        while(id){
+            if(seen.has(id)){ok=false;break;}seen.add(id);
+            const n=block(scope.target,id);if(!n||invalid.has(n)||owners.get(n)!==scope){ok=false;break;}
+            if(n.opcode==='arcade_setLocal'&&shape(n,['NAME','VALUE'])){
+                const name=literal(n,'NAME',scope.target),kind=operand(input(n,'VALUE',scope.target));
+                if(typeof name!=='string'||Object.hasOwn(Object.prototype,name)||!kind){ok=false;break;}
+                const c=localCell(scope,name),origin=captures.local(captures.scopeOf(n),name),captureProof=origin&&captures.proof(origin);
+                if(origin&&(!captureProof||captureProof.escaped)){ok=false;break;}locals.set(c,kind);
+            }else if(n.opcode==='arrays_mutateReference'&&shape(n,['ARRAY','OP','INDEX','VALUE'])&&
+                literal(n,'OP',scope.target)==='push'&&literalNumber(scope.target,n,'INDEX')===0&&
+                operand(input(n,'ARRAY',scope.target))==='array'&&operand(input(n,'VALUE',scope.target))){
+                // Actual local Array mutation stays at its original command.
+            }else if(n.opcode==='data_setvariableto'&&n.mutation==null&&exactKeys(n,['VALUE'],['VARIABLE'])){
+                const c=globalCell(scope.target,n.fields?.VARIABLE?.[1]);
+                const rhs=input(n,'VALUE',scope.target),kind=operand(rhs),source=rhs.cell||(rhs.node&&binding(scope.target,rhs.node));
+                if(!ordinarySummaryGlobal(c)||!['array','reference'].includes(kind)||source===c){ok=false;break;}
+                writes.set(c,{epoch:summaryEpoch,scope,writer:n,dependencies:[],required:[rhs]});
+            }else if(n.opcode==='procedures_call'){
+                const call=calls.find(c=>c.node===n),nested=summaryCall(call)&&call.scope===scope&&summaryFor(call.fn);
+                if(!nested){ok=false;break;}
+                for(const [c,proof]of nested)writes.set(c,{epoch:summaryEpoch,scope,writer:proof.writer,call:n,dependencies:[proof],required:[]});
+            }else {ok=false;break;}
+            id=n.next;
+        }
+        summaryBusy.delete(scope);const result=ok?writes:null;summaryCache.set(scope,result);return result;
+    };
+    const checkingSummary=new Set();
+    // Only queried after construction/type propagation. No forward initializer
+    // is called while building summaries; RHS availability stays occurrence-local.
+    const summaryCurrent=proof=>{
+        if(summaryExpired||proof?.epoch!==summaryEpoch||checkingSummary.has(proof))return false;
+        checkingSummary.add(proof);
+        try{return proof.dependencies.every(summaryCurrent)&&proof.required.every(value=>initialized(value));}
+        finally{checkingSummary.delete(proof);}
+    };
+    // Keep the original direct-write availability Sets untouched. A separate
+    // occurrence map preserves the certificate dependency through caller entries.
+    for(const scope of scopes){
+        scope.executedBefore=new WeakMap();scope.summaryBefore=new WeakMap();
+        const walk=(id,known,path=new Set(),executed=new Set(),summaries=new Map(),top=true)=>{
+            if(!id||path.has(id))return known;const node=block(scope.target,id);if(!node)return known;const next=new Set([...path,id]);
+            const expressionPath=new Set();const expressions=value=>{if(!value||expressionPath.has(value))return;expressionPath.add(value);scope.before.set(value,new Set(known));scope.summaryBefore.set(value,new Map(summaries));scope.executedBefore.set(value,new Set(executed));for(const [name,slot]of Object.entries(value.inputs||{}))if(!name.startsWith('SUBSTACK'))expressions(block(scope.target,slot[1]));};expressions(node);
+            if(node.opcode==='data_setvariableto'){const c=globalCell(scope.target,node.fields?.VARIABLE?.[1]);if(c)known.add(c);}
+            if(node.opcode==='arcade_setLocal'){const c=localCell(scope,literal(node,'NAME',scope.target));if(c)known.add(c);}
+            if(top&&node.opcode==='procedures_call'&&(ordinarySummaryScope(scope)||
+                scope.root.opcode==='arcade_whenSourceStarts'&&scope.root.mutation==null&&exactKeys(scope.root,[]))){
+                const call=calls.find(c=>c.node===node),proofs=summaryCall(call)&&call.scope===scope&&summaryFor(call.fn);
+                if(proofs)for(const [c,proof]of proofs){summaryIssued=true;summaries.set(c,{epoch:summaryEpoch,scope,call:node,writer:proof.writer,dependencies:[proof],required:[]});}
+            }
+            for(const name of ['SUBSTACK','SUBSTACK2'])if(node.inputs?.[name])walk(node.inputs[name][1],new Set(known),next,new Set(executed),new Map(summaries),false);
+            executed.add(node);return walk(node.next,known,next,executed,summaries,top);
+        };walk(scope.root.next,new Set((scope.params||[]).map(name=>localCell(scope,name)).filter(Boolean)));
+    }
     const uniqueAllocation=(allocation,path=new Set())=>{
         if(!allocation||path.has(allocation))return false;
         const next=new Set([...path,allocation]);
@@ -596,6 +726,7 @@ export function createArrayReferenceExportAuthority(project) {
         if(!c||!scope||scope.invalid||scope.unknownEntry)return 0;
         if(path.has(scope))return c.global&&singleArray(c.types)?1:0;if(c.formal===scope){if(initializingCells.has(c))return 0;initializingCells.add(c);try{return scope.callers.length>0&&c.writers.every(writer=>!writer.argument||initialized(writer.value))?2:0;}finally{initializingCells.delete(c);}}
         if(scope.before.get(node)?.has(c))return 2;
+        if(summaryCurrent(scope.summaryBefore?.get(node)?.get(c)))return 2;
         const next=new Set([...path,scope]);let entries=scope.callers;
         if(!entries.length){
             const registrationPairs={arcade_whenRegisteredMultiplayerConnection:'arcade_registerMultiplayerConnection',arcade_whenRegisteredControlEvent:'arcade_registerControlEvent',arcade_whenParallelHandler:'arcade_startParallelHandler',arcade_whenRegisteredLegacyWall:'arcade_registerLegacyWallHandler',arcade_whenRegisteredMultiplayerButton:'arcade_registerMultiplayerButtonHandler',arcade_whenRegisteredCreated:'arcade_registerSpriteCreated',arcade_whenRegisteredWall:'arcade_registerWallHandler',arcade_whenRegisteredTile:'arcade_registerTileHandler',arcade_whenRegisteredUpdate:'arcade_registerUpdateHandler',arcade_whenRegisteredInterval:'arcade_registerIntervalHandler',arcade_whenRegisteredButton:'arcade_registerButtonHandler',arcade_whenRegisteredPaint:'arcade_registerPaintHandler',arcade_whenRegisteredShade:'arcade_registerShadeHandler',arcade_whenRegisteredInstanceDestroyed:'arcade_registerInstanceDestroyedHandler',arcade_whenRegisteredKindDestroyed:'arcade_registerDestroyedHandler',arcade_whenRegisteredOverlap:'arcade_registerOverlapHandler',arcade_whenRegisteredScenePush:'arcade_registerScenePushHandler',arcade_whenRegisteredScenePop:'arcade_registerScenePopHandler',arcade_whenRegisteredForever:'arcade_registerForeverHandler',arcade_whenRegisteredLifeZero:'arcade_registerLifeZeroHandler',arcade_whenRegisteredCountdown:'arcade_registerCountdownHandler'};
@@ -628,6 +759,7 @@ export function createArrayReferenceExportAuthority(project) {
         if(!value.node)return false;const {target,node}=value;if(path.has(node))return false;const next=new Set([...path,node]),c=binding(target,node);
         if(c)return initializedCell(c,owners.get(node),node);
         if(node.opcode==='arrays_createReference')return true;
+        if(['arcade_animationAssetFrames','arcade_animationAssetFreshFrames'].includes(node.opcode))return !!animationProducers.resolve(target,node);
         if(node.opcode==='arrays_namedReference')return singleArray(namedBinding(target,node)||new Set());
         if(node.opcode==='arcade_callFunction'){
             const call=calls.find(c=>c.node===node);return !!call?.fn&&!call.fn.invalid&&!!call.args&&call.args.every(arg=>singleArray(readInput(arg))?initialized(arg,next):true)&&call.fn.returns.every(result=>initialized(result,next));
@@ -646,10 +778,15 @@ export function createArrayReferenceExportAuthority(project) {
         if(node.opcode==='arcade_spritesOfKind'&&exactKeys(node,['KIND']))return numericKindInitialized(input(node,'KIND',target));
         return false;
     };
-    const live=()=>project.targets===targets&&snapshot()===original&&(!extendedResetUsed||effectMetadata()===originalEffects)&&snapshots.every(s=>s.target.blocks?.[s.id]===s.node&&s.node.inputs===s.inputs&&s.node.fields===s.fields&&s.node.mutation===s.mutation&&s.inputRows.every(([name,row,a,b])=>s.node.inputs?.[name]===row&&row?.[1]===a&&row?.[2]===b));
+    const live=()=>project.targets===targets&&snapshot()===original&&animationProducers.isCurrent()&&(!extendedResetUsed||effectMetadata()===originalEffects)&&snapshots.every(s=>s.target.blocks?.[s.id]===s.node&&s.node.inputs===s.inputs&&s.node.fields===s.fields&&s.node.mutation===s.mutation&&s.inputRows.every(([name,row,a,b])=>s.node.inputs?.[name]===row&&row?.[1]===a&&row?.[2]===b));
     return Object.freeze({validateInput(target,node,name='ARRAY'){
+        let current;try{current=live();if(summaryIssued&&effectMetadata()!==originalEffects)summaryExpired=true;}catch(error){summaryExpired=true;if(frameResetUsed)frameResetExpired=true;throw error;}
+        if(!current){summaryExpired=true;if(frameResetUsed)frameResetExpired=true;}
+        // Only a successfully discounted reset may retain this dependency.
+        // False or thrown currentness expires it before any diagnostic exit.
+        if(frameResetUsed&&frameResetExpired)current=false;
         if(invalidGlobalBinding)return {ok:false,reason:'current variable name, ID, owner or writer schema does not agree'};
-        if(!live()||!nodes.get(target)||!owners.has(node)||invalid.has(node)||nodes.get(target).get(Object.keys(target.blocks||{}).find(id=>target.blocks[id]===node))!==node)return {ok:false,reason:'current target, input or connected graph changed'};
+        if(!current||!nodes.get(target)||!owners.has(node)||invalid.has(node)||nodes.get(target).get(Object.keys(target.blocks||{}).find(id=>target.blocks[id]===node))!==node)return {ok:false,reason:'current target, input or connected graph changed'};
         if(!operationShape(node))return {ok:false,reason:'requires the exact supported current operation input schema'};
         const value=input(node,name,target),types=readInput(value);return singleArray(types)&&initialized(value)?{ok:true}:{ok:false,reason:'requires an actual initialized Array producer and compatible all writers'};
     }});

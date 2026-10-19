@@ -14,6 +14,7 @@ module.exports = function createClassCallableHost(runtime, values, createHeap, n
         sdkSignature: type => types.validate(type),
         sdkField: (type,value) => {types.result({kind:'callable',parameters:[],result:type},value);},
         callableSignature: signature => provider.fieldSignature(signature),
+        constructorParameterSignature: signature => provider.constructorParameterSignature(signature),
         callableField: (signature, value) => provider.fieldValue(signature, value),
         callableMethod: method => provider.methodSignature(method)});
     const listeners=new Map();
@@ -42,7 +43,7 @@ module.exports = function createClassCallableHost(runtime, values, createHeap, n
         while (definition) {
             if (seen.has(definition.name) || definition.intrinsic) return [];
             seen.add(definition.name);
-            classProfile ||= [...definition.fields.values()].some(field=>['callable','sdk'].includes(field.valueKind)) || [...definition.methods.values()].some(method=>method.callableSignature) || definition.parameters.some(parameter=>parameter.sdkType);
+            classProfile ||= [...definition.fields.values()].some(field=>['callable','sdk'].includes(field.valueKind)) || [...definition.methods.values()].some(method=>method.callableSignature) || definition.parameters.some(parameter=>parameter.sdkType||Object.hasOwn(parameter,'callableSignature'));
             for (const method of definition.methods.values()) if (method.procedure === procedure && !methods.has(method)) {
                 methods.add(method);rows.push({method});
             }
@@ -61,7 +62,13 @@ module.exports = function createClassCallableHost(runtime, values, createHeap, n
     return Object.freeze({heap, provider, subscribeLifecycle,
         validateConstructor(definition,args,target) {
             currentSdkClass(definition,target);
-            definition.parameters.forEach((parameter,index)=>{if(parameter.sdkType)types.result({kind:'callable',parameters:[],result:parameter.sdkType},args[index]);});
+            definition.parameters.forEach((parameter,index)=>{
+                if(parameter.sdkType)types.result({kind:'callable',parameters:[],result:parameter.sdkType},args[index]);
+                if(Object.hasOwn(parameter,'callableSignature'))
+                    // Unlike an uninitialized field, an actual constructor
+                    // callback argument must be a live owned matching resource.
+                    types.instantiate({kind:'callable',parameters:[{name:parameter.name,optional:false,type:parameter.callableSignature}],result:{kind:'named',name:'void'}},[],[args[index]]);
+            });
         },
         validateMethodInputs(method,args) {
             if(method.callableSignature){const signature=types.instantiate(method.callableSignature,method.typeParameters,args);rawSdkInputs(signature,args);}
