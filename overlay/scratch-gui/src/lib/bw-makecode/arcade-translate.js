@@ -8,7 +8,7 @@ import {proveArrayMapValues} from './lower-array-map-values.js';
 import {selectNamedFunctionSourceProof} from './named-function-source-selection.js';
 import {lowerNamedFunctionValues} from './lower-named-function-values.js';
 import {selectClassCallableSourceProofForTranslation} from './class-callable-source-gate.js';
-import {withClassResultFlowProof} from './class-callable-result-flow-proof.js';
+import {withCompilerOwnedClassResultFlowProof} from './class-callable-result-flow-proof.js';
 import {numberLiteralCode,containsNonFiniteNumberLiteral} from './source-number-literal.js';
 import {lowerMathIdivValues} from './math-idiv-source.js';
 import {lowerConsoleInspectValues} from './lower-console-inspect-values.js';
@@ -5035,7 +5035,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     if(opts.sdkImagePrototype===true&&!classEligibility.eligible)projectInputDiagnostics.push(...classEligibility.unsupported,'SDK Image prototype requires its completed actual source producer proof');
     // Ordinary programs retain their ordinary parse. Only the proved numeric
     // surface uses lexical metadata and the existing callable lowering path.
-    const callableSourceInput=namedEnabled ? namedLowering.program : classEnabled ? withClassResultFlowProof(callableSourceParsed,classEligibility) : callableEnabled ? (callableEligibility.program || callableSourceParsed) : ordinarySource;
+    const callableSourceInput=namedEnabled ? namedLowering.program : classEnabled ? withCompilerOwnedClassResultFlowProof(callableSourceParsed,classEligibility) : callableEnabled ? (callableEligibility.program || callableSourceParsed) : ordinarySource;
     if(!namedEnabled&&!opts.callableLexicalPrototype&&!opts.classCallablePrototype&&!classEligibility.eligible){
         projectInputDiagnostics.push(...callableEligibility.unsupported,...classEligibility.unsupported,...namedEligibility.unsupported);
     }
