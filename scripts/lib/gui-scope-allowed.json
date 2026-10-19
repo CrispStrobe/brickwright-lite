@@ -77,7 +77,8 @@
       "test/bw-sim-validation.test.mjs",
       "test/bw-sim-wall-stopper-program.test.mjs",
       "test/bw-sim-world.test.mjs",
-      "test/bw-sim-worm.test.mjs"
+      "test/bw-sim-worm.test.mjs",
+      "test/bw-sim-rcx-hub.test.mjs"
     ],
     "why": "the Sim Lab physics core (overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js) runs a CompiledMechanism in Jolt, a GUI-package dependency; its own test and the S1 end-to-end driving-base test run it headless via the wasm-compat build"
   }

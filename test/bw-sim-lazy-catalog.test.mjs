@@ -62,9 +62,12 @@ const lazy = ({fail = 0} = {}) => {
 /**
  * The gear-mechanics examples (gearbox lane) are built from derived transmission parts (clutch
  * gears, driving ring, changeover catch, differential casing): opening one loads the rest first,
- * as any model naming a derived part does (the next test). Every other shipped model stays core.
+ * as any model naming a derived part does (the next test); so does the RCX bumper car. Every other
+ * shipped model stays core.
  */
-const NEEDS_REST = ['differential.ldr', 'gearbox.ldr'];
+// The RCX bumper car (hubs/rcx/) stands its castor on derived System and Technic bricks and holds its
+// light sensor with a derived pin/bush connector.
+const NEEDS_REST = ['differential.ldr', 'gearbox.ldr', 'rcx-bumper-car.ldr'];
 
 test('the gear-mechanics examples load the rest once and parse with nothing refused', async () => {
     const cat = lazy();

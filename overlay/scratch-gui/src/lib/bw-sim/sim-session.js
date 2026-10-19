@@ -51,7 +51,8 @@ export const catalogFrom = partsJson => new Map(partsJson.parts.map(p => [p.part
 
 /**
  * Reference models shipped in static/sim-lab/models/ (file name → titles). A model
- * may name an example program in static/sim-lab/programs/ (DEVICE SPIKE text) and
+ * may name an example program in static/sim-lab/programs/ (DEVICE SPIKE text; for the
+ * RCX, NQC source `.nqc`) and
  * the mat it is meant for: the pane offers to load it into the Code tab.
  */
 export const MODELS = Object.freeze([
@@ -73,7 +74,13 @@ export const MODELS = Object.freeze([
     {file: 'gearbox.ldr', title: {en: 'Two-speed gearbox', de: 'Zweigang-Schaltgetriebe'},
         example: 'gearbox.bw'},
     {file: 'differential.ldr', title: {en: 'Differential', de: 'Differenzialgetriebe'},
-        example: 'differential.bw'}
+        example: 'differential.bw'},
+    // The LEGO MINDSTORMS RCX (hubs/rcx/, docs/ROBOT-LAB-RCX.md): its examples are NQC (`.nqc`), compiled
+    // by nqc-wasm and downloaded to the Lab's RCX, where the clean-room bytecode VM runs them.
+    {file: 'rcx-bumper-car.ldr', title: {en: 'RCX bumper car', de: 'RCX-Rempelauto'},
+        example: 'rcx-bumper-car.nqc', mat: 'wall'},
+    {id: 'rcx-line-follower', file: 'rcx-bumper-car.ldr', title: {en: 'RCX line follower', de: 'RCX-Linienfolger'},
+        example: 'rcx-line-follower.nqc', mat: 'line-oval'}
 ]);
 export const MODELS_BASE = 'static/sim-lab/models/';
 export const PROGRAMS_BASE = 'static/sim-lab/programs/';
