@@ -293,7 +293,11 @@ const operations=new Map();
 for(const spec of specs){operations.set(spec.initializer,{spec,operation:'fields'});operations.set(spec.constructor,{spec,operation:'constructor'});operations.set(`__bwClass_${spec.name}_superConstructor ${['self',...spec.parameters].map(()=>'%s').join(' ')}`,{spec,operation:'constructor'});for(const method of spec.methods)operations.set(method.procedure,{spec,operation:method.name});}
 function create(ext,values){
  const sprite=ref=>{const found=ext._spriteValues.get(String(ref));if(!found)throw new Error('Unknown or stale native Sprite reference');return found;};
- const invoke=(name,args,util,token)=>{
+ // `nested` is the caller primitive's own loan-suspending stepper, when it
+ // holds one; created handlers then run as genuine nested VM threads.
+ // `caller` is its exception caller lease, so a virtual call resumed after
+ // an earlier managed call still links to the actual constructing thread.
+ const invoke=(name,args,util,token,nested=null,caller=null)=>{
   util={thread:util?.thread,target:util?.target || util?.thread?.target,sequencer:util?.sequencer};
   const found=operations.get(name);if(!found)throw new Error('Unknown SDK Sprite procedure');
   const ref=args[0],s=sprite(ref),op=found.operation;
@@ -304,14 +308,14 @@ function create(ext,values){
    active();
    if(found.spec.intrinsic==='BaseSprite'){s.z=Number(args[1]);ext._registerSdkSprite(ref,util);return;}
    if(found.spec.intrinsic==='ExtendableSprite'){
-    const complete=()=>{const scene=ext._state(),handlers=ext._createdHandlers;return chain(callVirtual(ref,'setKind',[args[2]],util,token),()=>{active();scene.physicsEngine.members.push(s);s._creationKind=ext._kindValue(args[2]);return chain(ext._finishSpriteCreation(ref,{...util,sequencer:ext._runtime.sequencer},{state:scene,handlers}),()=>{active();s.hasCustomDimensions=false;});});};
-    return chain(invoke('__bwClass_Sprite_constructor %s %s',[ref,args[1]],util,token),complete);
+    const complete=()=>{const scene=ext._state(),handlers=ext._createdHandlers;return chain(callVirtual(ref,'setKind',[args[2]],util,token,caller),()=>{active();scene.physicsEngine.members.push(s);s._creationKind=ext._kindValue(args[2]);return chain(ext._finishSpriteCreation(ref,{...util,sequencer:ext._runtime.sequencer},{state:scene,handlers,...(nested?{stepNested:nested}:{})}),()=>{active();s.hasCustomDimensions=false;});});};
+    return chain(invoke('__bwClass_Sprite_constructor %s %s',[ref,args[1]],util,token,nested,caller),complete);
    }
    // BaseSprite registration precedes image rejection and Sprite initialization.
-   invoke('__bwClass___bwSDK_BaseSprite_constructor %s %s',[ref,0],util,token);
+   invoke('__bwClass___bwSDK_BaseSprite_constructor %s %s',[ref,0],util,token,nested,caller);
    const image=ext._image(args[1]);if(!image)throw new Error('Sprite image cannot be undefined or null');
    ext._initializeSdkSprite(ref,image);
-   return chain(callVirtual(ref,'setImage',[args[1]],util,token),()=>{active();return chain(callVirtual(ref,'setKind',[-1],util,token),()=>{active();s.layer=1;s.lifespan=undefined;});});
+   return chain(callVirtual(ref,'setImage',[args[1]],util,token,caller),()=>{active();return chain(callVirtual(ref,'setKind',[-1],util,token,caller),()=>{active();s.layer=1;s.lifespan=undefined;});});
   }
   if(op==='update')return;
   if(op==='setImage')return ext.setSpriteImage({ID:ref,IMAGE:args[1]});
@@ -328,7 +332,7 @@ function create(ext,values){
   if(op==='destroy')return ext.destroySprite({ID:ref},util);
   throw new Error('SDK Sprite operation is not qualified: '+op);
  };
- const callVirtual=(ref,name,args,util,token)=>{const method=ext._objectHeap.method(ref,name);return ext._objectProcedure(method.procedure,[ref,...args],util,token);};
+ const callVirtual=(ref,name,args,util,token,caller=null)=>{const method=ext._objectHeap.method(ref,name);return ext._objectProcedure(method.procedure,[ref,...args],util,token,caller);};
  const chain=(value,next)=>value&&typeof value.then==='function'?value.then(next):next();
  const reserve=def=>{
   for(const name of ['draw','drawSprite','__draw','__drawCore','__update','setHitbox','resetHitbox','recalcSize','setDimensions','__visible','__serialize'])

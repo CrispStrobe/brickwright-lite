@@ -9,7 +9,7 @@ function create(ext,values){
     const external=ref=>providers.find(p=>p.api.heapHooks.external(ref));
     const owner=ref=>{const found=external(ref);if(!found)throw new Error('Unknown or stale native class reference');return found.api.heapHooks;};
     return {matches:name=>providers.some(p=>p.api.matches(name)),
-        invoke(name,args,util,token){const found=providers.find(p=>p.api.matches(name));if(!found)throw new Error('Unknown native class procedure');return found.api.invoke(name,args,util,token);},
+        invoke(name,args,util,token,nested=null,caller=null){const found=providers.find(p=>p.api.matches(name));if(!found)throw new Error('Unknown native class procedure');return found.api.invoke(name,args,util,token,nested,caller);},
         heapHooks:{definition:name=>providers.map(p=>p.api.heapHooks.definition(name)).find(Boolean),
             reserve(def){const found=providers.find(p=>p.kinds.has(def.intrinsic));if(!found)throw new Error('Unqualified native class allocation');return found.api.heapHooks.reserve(def);},
             external:ref=>!!external(ref),externalClass:ref=>owner(ref).externalClass(ref),

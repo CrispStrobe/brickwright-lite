@@ -52,9 +52,12 @@ function create(runtime, readValue, consumePhysicalUpdate = null) {
     };
     const owner = Object.freeze({
         failure,
-        captureCaller(args,util) {
-            if (!live(util?.thread)) return null;
-            if (!cachedPrimitiveOwner(runtime,util,args,'arcade_createObject',[])) return null;
+        // Object construction and SDK class procedures may resume a caller
+        // after an earlier managed call; only their actual cached primitive
+        // invocation can retain that caller.
+        captureCaller(args,util,opcode='arcade_createObject') {
+            if (!live(util?.thread) || !['arcade_createObject','arcade_callFunction'].includes(opcode)) return null;
+            if (!cachedPrimitiveOwner(runtime,util,args,opcode,[])) return null;
             const lease=Object.freeze({});
             callerLeases.set(lease,{owner,thread:util.thread,frame:util.thread.peekStackFrame(),generation});
             return lease;
