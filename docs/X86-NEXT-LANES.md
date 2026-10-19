@@ -976,6 +976,20 @@ four CUI commits change five module-label/layout and supporting files; existing
 386 target/API source is unchanged. Full rendering and this scenario's browser
 acceptance still need their own qualification. Board and SB3 selections stay held.
 
+The current-main composition explicitly advances only the GUI consumer expectation
+to canonical CUI `bda0157410a6704ae859a19398a8a742cdfae50b`, checking root
+devDependencies, GUI dependencies, both lock roots/resolutions and vendor pins.
+The dependency declarations remain main bytes. Earlier request/source selections
+are historical and cannot admit this source without rebuilding their bindings.
+All actual and new observation guards remain held; no browser qualification is inferred.
+The supplier changes chip/discrete faces, crowded terminal labels and aliased
+terminal geometry. No 386 engine API files change, but rendering needs fresh
+qualification. The composed source passes 79 Node tests, including 135 embedded
+Python controls and HDD snapshot controls, with no failures or skips. The new
+canonical consistency control detects the stale consumer and drift in all seven
+declarations. The original reader and historical requests remain tied to their
+selected source; this composition does not authorize a hosted event.
+
 The dependency-free focused check is:
 
 ```sh

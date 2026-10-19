@@ -2761,3 +2761,29 @@ test('bridge delivery job is initially disabled with pinned bounded source guard
         assert.ok(job.includes(old));assert.throws(()=>fontBridgeDeliveryWorkflowContract(prefix+job.replace(old,value)+suffix,controller));
     }
 });
+
+// Canonical declarations are selected by their actual dependency sections.
+const guiCuiSelection = () => {
+    const json = path => JSON.parse(fs.readFileSync(root+path,'utf8'));
+    const rootPackage=json('package.json'), guiPackage=json('packages/scratch-gui/package.json');
+    const rootLock=json('package-lock.json'), guiLock=json('packages/scratch-gui/package-lock.json');
+    return [rootPackage.devDependencies['bw-circuit-ui'],guiPackage.dependencies['bw-circuit-ui'],
+        rootLock.packages[''].devDependencies['bw-circuit-ui'],guiLock.packages[''].dependencies['bw-circuit-ui'],
+        rootLock.packages['node_modules/bw-circuit-ui'].resolved,guiLock.packages['node_modules/bw-circuit-ui'].resolved,
+        json('vendor-pins.json')['bw-circuit-ui']];
+};
+const assertGuiCuiSelection = (consumer, selected) => {
+    assert.match(consumer,/^[0-9a-f]{40}$/);
+    assert.deepEqual(selected,[...Array(4).fill('github:CrispStrobe/bw-circuit-ui#'+consumer),
+        ...Array(2).fill('git+ssh://git@github.com/CrispStrobe/bw-circuit-ui.git#'+consumer),consumer]);
+};
+test('GUI consumer explicitly matches current canonical CUI declarations', () => {
+    const controller=fs.readFileSync(root+'scripts/run-i80386-hdd-gui-actual.py','utf8');
+    const consumer=controller.match(/^CUI = '([0-9a-f]{40})'$/m)?.[1], selected=guiCuiSelection();
+    assertGuiCuiSelection(consumer,selected);
+    assert.throws(()=>assertGuiCuiSelection('fe89e3425bf323b1acd9e3f98df6a7383e9b836b',selected));
+    for(let i=0;i<selected.length;i++){
+        const drift=[...selected];drift[i]=drift[i].replace(consumer,'0'.repeat(40));
+        assert.throws(()=>assertGuiCuiSelection(consumer,drift));
+    }
+});

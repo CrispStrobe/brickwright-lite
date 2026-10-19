@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-18T20:50:26.981Z",
+  "generatedAt": "2026-10-19T07:04:55.440Z",
   "repo": "CrispStrobe/brickwright-lite",
   "headSha": "a87a7b447",
   "newestMainRun": 36409366028,
@@ -1937,6 +1937,7 @@
     "deploy-daily.yml",
     "deploy-watchdog.yml",
     "i80386-freedos-circuits-direct-actual.yml",
+    "i80386-hdd-gui-actual.yml",
     "i8086-execution.yml",
     "makecode-arcade-bases.yml",
     "mobile.yml",
@@ -2226,7 +2227,7 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Replace the App Store screenshot sets": {
           "existed": 5,
@@ -2268,12 +2269,12 @@
         "Parse the flagged JSX",
         "Apply the scratch-paint overlay (extended costume designer)",
         "Apply the scratch-render overlay (lazy render fonts)",
-        "Guard \u2014 bundled stc12 has all emitted opcodes",
-        "Guard \u2014 WASM pin is a descendant of the crash-fix floor",
-        "Guard \u2014 blocks.jsx has the toolbox null-guard",
-        "Guard \u2014 the example execution gates exist and their ratchets have not grown",
-        "Guard \u2014 the fetch-pinning gate exists and can still fail",
-        "Content gates \u2014 faceplates, hub faces, retro console",
+        "Guard — bundled stc12 has all emitted opcodes",
+        "Guard — WASM pin is a descendant of the crash-fix floor",
+        "Guard — blocks.jsx has the toolbox null-guard",
+        "Guard — the example execution gates exist and their ratchets have not grown",
+        "Guard — the fetch-pinning gate exists and can still fail",
+        "Content gates — faceplates, hub faces, retro console",
         "Vendored-repo history for the pin-move gate",
         "Fetch the pinned bw-board tree for the pin-reader tests",
         "Verify pinned installed package bytes and upstream notices",
@@ -2288,15 +2289,15 @@
         "Resolve the path-scoped stc flasher pin",
         "Fetch stc-compiler at the flasher artifact pin",
         "Run unit tests",
-        "Mutation proofs \u2014 every enforcement layer must be able to fail",
-        "Guard \u2014 packaged native broker proof authority is fresh",
-        "Guard \u2014 packaged native broker host and worker assets are fresh",
+        "Mutation proofs — every enforcement layer must be able to fail",
+        "Guard — packaged native broker proof authority is fresh",
+        "Guard — packaged native broker host and worker assets are fresh",
         "Build the editor",
-        "Guard \u2014 emitted native broker proof bytes retain reviewed authority",
-        "Guard \u2014 emitted distribution policy is the requested policy",
-        "Guard \u2014 no GPL payload reaches the build output",
-        "Guard \u2014 the labwired engine stays lazily loaded",
-        "Guard \u2014 the first load stays lean",
+        "Guard — emitted native broker proof bytes retain reviewed authority",
+        "Guard — emitted distribution policy is the requested policy",
+        "Guard — no GPL payload reaches the build output",
+        "Guard — the labwired engine stays lazily loaded",
+        "Guard — the first load stays lean",
         "Fetch stc-compiler (the debugger smoke's disassembly oracle)",
         "Smoke-test the debugger",
         "Require green upstream evidence for the pinned 8086 engine",
@@ -2313,72 +2314,72 @@
         "Restore the sha256-pinned MakeCode runtime tarballs from cache (browser)",
         "Fetch the pinned MakeCode runtime for the browser gates (tolerated absent)",
         "Build the editor",
-        "Guard \u2014 emitted native broker proof bytes retain reviewed authority",
+        "Guard — emitted native broker proof bytes retain reviewed authority",
         "Install Playwright browser",
-        "Browser gate \u2014 native broker packaged assets",
+        "Browser gate — native broker packaged assets",
         "Serve the built app",
-        "Browser gate \u2014 the debugger-only pane and its round trip",
-        "Browser gate \u2014 debugger recording, reverse and fork history",
-        "Browser gate \u2014 the example journey (Lane U)",
-        "Browser gate \u2014 what is wrong with the stage after a load",
-        "Browser gate \u2014 a program's chip refusal reaches the debug panel",
-        "Browser gate \u2014 Machine Loader preset reaches the debugger",
-        "Browser gate \u2014 the Machine Manager library modal",
-        "Browser gate \u2014 a modal is reachable on a phone-sized screen",
-        "Browser gate \u2014 controls are hittable on a phone",
-        "Browser gate \u2014 the editor fits a phone in both orientations",
-        "Browser gate \u2014 CP/M 2.2 boots from the Machine Manager to A>",
-        "Browser gate \u2014 debugger run-to and synchronized inspection",
-        "Browser gate \u2014 service worker failure modes",
-        "Browser gate \u2014 circuit UX",
-        "Browser gate \u2014 render fonts arrive with the first text costume, not before",
-        "Browser gate \u2014 circuit rendering and placement",
-        "Browser gate \u2014 physical 74C922 keypad encoder",
-        "Browser gate \u2014 the DRC can sum chip current",
-        "Browser gate \u2014 view buttons",
-        "Browser gate \u2014 editor",
-        "Browser gate \u2014 unpinned extension sandbox",
-        "Browser gate \u2014 game gallery and hardware examples",
-        "Browser gate \u2014 both BASIC profiles execute on real machines",
-        "Browser gate \u2014 8086 local assembly, CGA, keyboard and 8255",
-        "Browser gate \u2014 386 local DOSBox HDD boot in Widgets",
-        "Browser gate \u2014 machine Widgets keyboard, mouse and fullscreen",
-        "Browser gate \u2014 8086 .COM / .img export (N10)",
-        "Browser gate \u2014 micro:bit WebUSB flash button (N9)",
-        "Browser benchmark \u2014 8086 desktop and mobile",
-        "Browser gate \u2014 declared extension capability broker",
-        "Browser gate \u2014 first-run chooser and guided journeys",
-        "Browser gate \u2014 LEGO SPIKE archive and Code-tab round trip",
-        "Browser gate \u2014 SPIKE Prime German palette renders without a Blockly index error",
-        "Browser gate \u2014 four-surface project save, reopen and vanilla replacement",
-        "Browser gate \u2014 costume artwork survives save/reload and records first-open performance",
-        "Browser gate \u2014 editable pixel source survives save and reopen",
-        "Browser gate \u2014 first Sounds-tab interactivity",
-        "Browser gate \u2014 P21 Code importer activation, retry and state",
-        "Browser gate \u2014 the renderer accepts the table the arrays blocks describe",
-        "Browser gate \u2014 a missing extension chunk costs its blocks, not the project",
-        "Browser gates \u2014 About, intro, interaction, and schematic rendering",
-        "Browser gates \u2014 Code chrome, Controller, faceplates, and Instruments",
-        "Browser gate \u2014 Aurora-65 keyboard, OLED and VGA workstation",
-        "Browser gate \u2014 debugger dock and serial input",
-        "Browser gate \u2014 language x device matrix badge and panel",
-        "Browser gate \u2014 the heavy engine is not downloaded on first load",
-        "Browser gate \u2014 the labwired heavy tier actually executes",
-        "Browser gate \u2014 with no engine artifact, the tier is not offered",
-        "Browser gate \u2014 offline 8051 compile and debugger evidence",
-        "Browser gate \u2014 the DEFAULT route is hosted, and says so (Lane GPL)",
-        "Browser gate \u2014 offline linked 8051 assembly listings",
-        "Browser gate \u2014 an AVR lesson bench starts offline on its shipped image",
-        "Browser gate \u2014 promoted pinned extension worker",
-        "Browser gate \u2014 the native Web Bluetooth shim",
-        "Browser gate \u2014 MakeCode import",
-        "Browser gate \u2014 micro:bit MicroPython tab and simulator",
-        "Browser gate \u2014 Pico MicroPython simulator Run lights the LED (N3c)",
-        "Browser gate \u2014 Pico \u25b6 Run refuses by name with no firmware (N3c)",
-        "Browser gate \u2014 micro:bit debugger, block and line stepping",
-        "Browser gate \u2014 Arduboy console runs a compiled game",
-        "Measure \u2014 time every browser wait (manual runs only)",
-        "Audit \u2014 every browser gate ran",
+        "Browser gate — the debugger-only pane and its round trip",
+        "Browser gate — debugger recording, reverse and fork history",
+        "Browser gate — the example journey (Lane U)",
+        "Browser gate — what is wrong with the stage after a load",
+        "Browser gate — a program's chip refusal reaches the debug panel",
+        "Browser gate — Machine Loader preset reaches the debugger",
+        "Browser gate — the Machine Manager library modal",
+        "Browser gate — a modal is reachable on a phone-sized screen",
+        "Browser gate — controls are hittable on a phone",
+        "Browser gate — the editor fits a phone in both orientations",
+        "Browser gate — CP/M 2.2 boots from the Machine Manager to A>",
+        "Browser gate — debugger run-to and synchronized inspection",
+        "Browser gate — service worker failure modes",
+        "Browser gate — circuit UX",
+        "Browser gate — render fonts arrive with the first text costume, not before",
+        "Browser gate — circuit rendering and placement",
+        "Browser gate — physical 74C922 keypad encoder",
+        "Browser gate — the DRC can sum chip current",
+        "Browser gate — view buttons",
+        "Browser gate — editor",
+        "Browser gate — unpinned extension sandbox",
+        "Browser gate — game gallery and hardware examples",
+        "Browser gate — both BASIC profiles execute on real machines",
+        "Browser gate — 8086 local assembly, CGA, keyboard and 8255",
+        "Browser gate — 386 local DOSBox HDD boot in Widgets",
+        "Browser gate — machine Widgets keyboard, mouse and fullscreen",
+        "Browser gate — 8086 .COM / .img export (N10)",
+        "Browser gate — micro:bit WebUSB flash button (N9)",
+        "Browser benchmark — 8086 desktop and mobile",
+        "Browser gate — declared extension capability broker",
+        "Browser gate — first-run chooser and guided journeys",
+        "Browser gate — LEGO SPIKE archive and Code-tab round trip",
+        "Browser gate — SPIKE Prime German palette renders without a Blockly index error",
+        "Browser gate — four-surface project save, reopen and vanilla replacement",
+        "Browser gate — costume artwork survives save/reload and records first-open performance",
+        "Browser gate — editable pixel source survives save and reopen",
+        "Browser gate — first Sounds-tab interactivity",
+        "Browser gate — P21 Code importer activation, retry and state",
+        "Browser gate — the renderer accepts the table the arrays blocks describe",
+        "Browser gate — a missing extension chunk costs its blocks, not the project",
+        "Browser gates — About, intro, interaction, and schematic rendering",
+        "Browser gates — Code chrome, Controller, faceplates, and Instruments",
+        "Browser gate — Aurora-65 keyboard, OLED and VGA workstation",
+        "Browser gate — debugger dock and serial input",
+        "Browser gate — language x device matrix badge and panel",
+        "Browser gate — the heavy engine is not downloaded on first load",
+        "Browser gate — the labwired heavy tier actually executes",
+        "Browser gate — with no engine artifact, the tier is not offered",
+        "Browser gate — offline 8051 compile and debugger evidence",
+        "Browser gate — the DEFAULT route is hosted, and says so (Lane GPL)",
+        "Browser gate — offline linked 8051 assembly listings",
+        "Browser gate — an AVR lesson bench starts offline on its shipped image",
+        "Browser gate — promoted pinned extension worker",
+        "Browser gate — the native Web Bluetooth shim",
+        "Browser gate — MakeCode import",
+        "Browser gate — micro:bit MicroPython tab and simulator",
+        "Browser gate — Pico MicroPython simulator Run lights the LED (N3c)",
+        "Browser gate — Pico ▶ Run refuses by name with no firmware (N3c)",
+        "Browser gate — micro:bit debugger, block and line stepping",
+        "Browser gate — Arduboy console runs a compiled game",
+        "Measure — time every browser wait (manual runs only)",
+        "Audit — every browser gate ran",
         "Install pinned root packages for the corpus solver",
         "Run the lesson corpus walks",
         "Install root package inputs before the flag-on integration",
@@ -2392,9 +2393,9 @@
         "Build the editor flag-on",
         "Install Playwright browser for the flag-on drive",
         "Serve the flag-on build",
-        "FPGA gate \u2014 builder canvas to Verilog (NO synthesis; not the release receipt)",
-        "FPGA gate \u2014 two fingers pinch the gate canvas",
-        "FPGA gate \u2014 the flag-on surface and the learning path",
+        "FPGA gate — builder canvas to Verilog (NO synthesis; not the release receipt)",
+        "FPGA gate — two fingers pinch the gate canvas",
+        "FPGA gate — the flag-on surface and the learning path",
         "Refuse to publish a tree older than the published one",
         "Deploy to GitHub Pages",
         "Install Playwright",
@@ -2428,7 +2429,7 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Run bounded source-only tests": {
           "existed": 22,
@@ -2442,7 +2443,7 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Vendor the pinned permissive Scratch sources": {
           "existed": 22,
@@ -2457,7 +2458,7 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Integrate the Code tab (sb3-creator)": {
           "existed": 22,
@@ -2472,7 +2473,7 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Fetch the heavy simulation engine (labwired-wasm)": {
           "existed": 22,
@@ -2487,7 +2488,7 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Install": {
           "existed": 22,
@@ -2502,7 +2503,7 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Install the local FPGA toolchain (the deployable build is flag-on)": {
           "existed": 22,
@@ -2516,7 +2517,7 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Apply the scratch-vm overlay (built-in extensions)": {
           "existed": 22,
@@ -2531,7 +2532,7 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Parse the flagged JSX": {
           "existed": 22,
@@ -2545,7 +2546,7 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Apply the scratch-paint overlay (extended costume designer)": {
           "existed": 22,
@@ -2560,7 +2561,7 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Apply the scratch-render overlay (lazy render fonts)": {
           "existed": 22,
@@ -2575,9 +2576,9 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Guard \u2014 bundled stc12 has all emitted opcodes": {
+        "Guard — bundled stc12 has all emitted opcodes": {
           "existed": 22,
           "ran": 21,
           "existedMain": 1,
@@ -2589,9 +2590,9 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Guard \u2014 WASM pin is a descendant of the crash-fix floor": {
+        "Guard — WASM pin is a descendant of the crash-fix floor": {
           "existed": 22,
           "ran": 21,
           "existedMain": 1,
@@ -2603,9 +2604,9 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Guard \u2014 blocks.jsx has the toolbox null-guard": {
+        "Guard — blocks.jsx has the toolbox null-guard": {
           "existed": 22,
           "ran": 21,
           "existedMain": 1,
@@ -2617,9 +2618,9 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Guard \u2014 the example execution gates exist and their ratchets have not grown": {
+        "Guard — the example execution gates exist and their ratchets have not grown": {
           "existed": 22,
           "ran": 21,
           "existedMain": 1,
@@ -2631,9 +2632,9 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Guard \u2014 the fetch-pinning gate exists and can still fail": {
+        "Guard — the fetch-pinning gate exists and can still fail": {
           "existed": 22,
           "ran": 21,
           "existedMain": 1,
@@ -2645,9 +2646,9 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Content gates \u2014 faceplates, hub faces, retro console": {
+        "Content gates — faceplates, hub faces, retro console": {
           "existed": 22,
           "ran": 21,
           "existedMain": 1,
@@ -2659,7 +2660,7 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Vendored-repo history for the pin-move gate": {
           "existed": 22,
@@ -2673,7 +2674,7 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Fetch the pinned bw-board tree for the pin-reader tests": {
           "existed": 22,
@@ -2687,7 +2688,7 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Verify pinned installed package bytes and upstream notices": {
           "existed": 22,
@@ -2701,7 +2702,7 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' && steps.bwboard_tree.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Restore the sha-pinned ARM toolchain from cache": {
           "existed": 22,
@@ -2715,7 +2716,7 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Fetch the sha-pinned ARM toolchain for the executed-C differential (tolerated absent)": {
           "existed": 22,
@@ -2729,7 +2730,7 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Restore the sha-pinned Pico MicroPython firmware from cache": {
           "existed": 22,
@@ -2743,7 +2744,7 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Fetch the sha-pinned Pico MicroPython firmware for the unit tests (tolerated absent)": {
           "existed": 22,
@@ -2757,7 +2758,7 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Restore the sha256-pinned MakeCode runtime tarballs from cache": {
           "existed": 22,
@@ -2771,7 +2772,7 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Fetch the pinned MakeCode runtime (tolerated absent)": {
           "existed": 22,
@@ -2785,7 +2786,7 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Install Pyodide for the FPGA bitstream-packer gate (tolerated absent)": {
           "existed": 22,
@@ -2799,7 +2800,7 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Fetch the GPL SDCC toolchain for the Node consumers (tolerated absent)": {
           "existed": 22,
@@ -2813,7 +2814,7 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Resolve the path-scoped stc flasher pin": {
           "existed": 22,
@@ -2827,7 +2828,7 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Fetch stc-compiler at the flasher artifact pin": {
           "existed": 22,
@@ -2841,7 +2842,7 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' && steps.stc_flasher_pin.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Run unit tests": {
           "existed": 22,
@@ -2855,9 +2856,9 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' && steps.stc_flasher_pin.outcome == 'success' && steps.stc_flasher_source.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Mutation proofs \u2014 every enforcement layer must be able to fail": {
+        "Mutation proofs — every enforcement layer must be able to fail": {
           "existed": 22,
           "ran": 6,
           "existedMain": 1,
@@ -2869,9 +2870,9 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Guard \u2014 packaged native broker proof authority is fresh": {
+        "Guard — packaged native broker proof authority is fresh": {
           "existed": 22,
           "ran": 21,
           "existedMain": 1,
@@ -2883,9 +2884,9 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Guard \u2014 packaged native broker host and worker assets are fresh": {
+        "Guard — packaged native broker host and worker assets are fresh": {
           "existed": 22,
           "ran": 6,
           "existedMain": 1,
@@ -2897,7 +2898,7 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Build the editor": {
           "existed": 22,
@@ -2912,9 +2913,9 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' && steps.package_provenance.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Guard \u2014 emitted native broker proof bytes retain reviewed authority": {
+        "Guard — emitted native broker proof bytes retain reviewed authority": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -2927,9 +2928,9 @@
           ],
           "clause": "${{ !cancelled() && steps.build_editor.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Guard \u2014 emitted distribution policy is the requested policy": {
+        "Guard — emitted distribution policy is the requested policy": {
           "existed": 20,
           "ran": 18,
           "existedMain": 1,
@@ -2941,9 +2942,9 @@
           ],
           "clause": "${{ !cancelled() && steps.build_editor.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Guard \u2014 no GPL payload reaches the build output": {
+        "Guard — no GPL payload reaches the build output": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -2955,9 +2956,9 @@
           ],
           "clause": "${{ !cancelled() && steps.build_editor.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Guard \u2014 the labwired engine stays lazily loaded": {
+        "Guard — the labwired engine stays lazily loaded": {
           "existed": 22,
           "ran": 21,
           "existedMain": 1,
@@ -2969,9 +2970,9 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Guard \u2014 the first load stays lean": {
+        "Guard — the first load stays lean": {
           "existed": 22,
           "ran": 21,
           "existedMain": 1,
@@ -2983,7 +2984,7 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Fetch stc-compiler (the debugger smoke's disassembly oracle)": {
           "existed": 22,
@@ -2997,7 +2998,7 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Smoke-test the debugger": {
           "existed": 22,
@@ -3011,7 +3012,7 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Install root package inputs before browser integration": {
           "existed": 22,
@@ -3025,7 +3026,7 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Verify pinned installed package bytes and upstream notices before browser build": {
           "existed": 22,
@@ -3039,7 +3040,7 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays_browser.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Fetch the Pico MicroPython firmware for the sim gate (tolerated absent)": {
           "existed": 22,
@@ -3053,7 +3054,7 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays_browser.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Restore the sha256-pinned MakeCode runtime tarballs from cache (browser)": {
           "existed": 22,
@@ -3067,7 +3068,7 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays_browser.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Fetch the pinned MakeCode runtime for the browser gates (tolerated absent)": {
           "existed": 22,
@@ -3081,7 +3082,7 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays_browser.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Install Playwright browser": {
           "existed": 22,
@@ -3095,9 +3096,9 @@
           ],
           "clause": "${{ !cancelled() && steps.overlays_browser.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 native broker packaged assets": {
+        "Browser gate — native broker packaged assets": {
           "existed": 22,
           "ran": 21,
           "existedMain": 1,
@@ -3109,7 +3110,7 @@
           ],
           "clause": "${{ !cancelled() && steps.playwright.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Serve the built app": {
           "existed": 22,
@@ -3123,9 +3124,9 @@
           ],
           "clause": "${{ !cancelled() && steps.playwright.outcome == 'success' && steps.build_editor_browser.outcome == 'success' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 the debugger-only pane and its round trip": {
+        "Browser gate — the debugger-only pane and its round trip": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3137,9 +3138,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 debugger recording, reverse and fork history": {
+        "Browser gate — debugger recording, reverse and fork history": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3151,9 +3152,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 the example journey (Lane U)": {
+        "Browser gate — the example journey (Lane U)": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3165,9 +3166,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 what is wrong with the stage after a load": {
+        "Browser gate — what is wrong with the stage after a load": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3179,9 +3180,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 a program's chip refusal reaches the debug panel": {
+        "Browser gate — a program's chip refusal reaches the debug panel": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3193,9 +3194,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 Machine Loader preset reaches the debugger": {
+        "Browser gate — Machine Loader preset reaches the debugger": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3207,9 +3208,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 the Machine Manager library modal": {
+        "Browser gate — the Machine Manager library modal": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3221,9 +3222,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 a modal is reachable on a phone-sized screen": {
+        "Browser gate — a modal is reachable on a phone-sized screen": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3235,9 +3236,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 controls are hittable on a phone": {
+        "Browser gate — controls are hittable on a phone": {
           "existed": 19,
           "ran": 17,
           "existedMain": 1,
@@ -3249,9 +3250,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 the editor fits a phone in both orientations": {
+        "Browser gate — the editor fits a phone in both orientations": {
           "existed": 19,
           "ran": 17,
           "existedMain": 1,
@@ -3263,9 +3264,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 CP/M 2.2 boots from the Machine Manager to A>": {
+        "Browser gate — CP/M 2.2 boots from the Machine Manager to A>": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3277,9 +3278,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 debugger run-to and synchronized inspection": {
+        "Browser gate — debugger run-to and synchronized inspection": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3291,9 +3292,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 service worker failure modes": {
+        "Browser gate — service worker failure modes": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3305,9 +3306,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 circuit UX": {
+        "Browser gate — circuit UX": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3319,9 +3320,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 render fonts arrive with the first text costume, not before": {
+        "Browser gate — render fonts arrive with the first text costume, not before": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3333,9 +3334,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 circuit rendering and placement": {
+        "Browser gate — circuit rendering and placement": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3347,9 +3348,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 physical 74C922 keypad encoder": {
+        "Browser gate — physical 74C922 keypad encoder": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3361,9 +3362,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 the DRC can sum chip current": {
+        "Browser gate — the DRC can sum chip current": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3375,9 +3376,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 view buttons": {
+        "Browser gate — view buttons": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3389,9 +3390,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 editor": {
+        "Browser gate — editor": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3403,9 +3404,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 unpinned extension sandbox": {
+        "Browser gate — unpinned extension sandbox": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3417,9 +3418,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 game gallery and hardware examples": {
+        "Browser gate — game gallery and hardware examples": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3431,9 +3432,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 both BASIC profiles execute on real machines": {
+        "Browser gate — both BASIC profiles execute on real machines": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3445,9 +3446,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 8086 local assembly, CGA, keyboard and 8255": {
+        "Browser gate — 8086 local assembly, CGA, keyboard and 8255": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3459,9 +3460,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 386 local DOSBox HDD boot in Widgets": {
+        "Browser gate — 386 local DOSBox HDD boot in Widgets": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3473,9 +3474,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 machine Widgets keyboard, mouse and fullscreen": {
+        "Browser gate — machine Widgets keyboard, mouse and fullscreen": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3487,9 +3488,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 8086 .COM / .img export (N10)": {
+        "Browser gate — 8086 .COM / .img export (N10)": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3501,9 +3502,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 micro:bit WebUSB flash button (N9)": {
+        "Browser gate — micro:bit WebUSB flash button (N9)": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3515,9 +3516,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser benchmark \u2014 8086 desktop and mobile": {
+        "Browser benchmark — 8086 desktop and mobile": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3529,9 +3530,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 declared extension capability broker": {
+        "Browser gate — declared extension capability broker": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3543,9 +3544,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 first-run chooser and guided journeys": {
+        "Browser gate — first-run chooser and guided journeys": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3557,9 +3558,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 LEGO SPIKE archive and Code-tab round trip": {
+        "Browser gate — LEGO SPIKE archive and Code-tab round trip": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3571,9 +3572,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 SPIKE Prime German palette renders without a Blockly index error": {
+        "Browser gate — SPIKE Prime German palette renders without a Blockly index error": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3585,9 +3586,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 four-surface project save, reopen and vanilla replacement": {
+        "Browser gate — four-surface project save, reopen and vanilla replacement": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3599,9 +3600,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 costume artwork survives save/reload and records first-open performance": {
+        "Browser gate — costume artwork survives save/reload and records first-open performance": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3613,9 +3614,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 editable pixel source survives save and reopen": {
+        "Browser gate — editable pixel source survives save and reopen": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3627,9 +3628,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 first Sounds-tab interactivity": {
+        "Browser gate — first Sounds-tab interactivity": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3641,9 +3642,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 P21 Code importer activation, retry and state": {
+        "Browser gate — P21 Code importer activation, retry and state": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3655,9 +3656,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 the renderer accepts the table the arrays blocks describe": {
+        "Browser gate — the renderer accepts the table the arrays blocks describe": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3669,9 +3670,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 a missing extension chunk costs its blocks, not the project": {
+        "Browser gate — a missing extension chunk costs its blocks, not the project": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3683,9 +3684,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gates \u2014 About, intro, interaction, and schematic rendering": {
+        "Browser gates — About, intro, interaction, and schematic rendering": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3697,9 +3698,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gates \u2014 Code chrome, Controller, faceplates, and Instruments": {
+        "Browser gates — Code chrome, Controller, faceplates, and Instruments": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3711,9 +3712,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 Aurora-65 keyboard, OLED and VGA workstation": {
+        "Browser gate — Aurora-65 keyboard, OLED and VGA workstation": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3725,9 +3726,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 debugger dock and serial input": {
+        "Browser gate — debugger dock and serial input": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3739,9 +3740,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 language x device matrix badge and panel": {
+        "Browser gate — language x device matrix badge and panel": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3753,9 +3754,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 the heavy engine is not downloaded on first load": {
+        "Browser gate — the heavy engine is not downloaded on first load": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3767,9 +3768,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 the labwired heavy tier actually executes": {
+        "Browser gate — the labwired heavy tier actually executes": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3781,9 +3782,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 with no engine artifact, the tier is not offered": {
+        "Browser gate — with no engine artifact, the tier is not offered": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3795,9 +3796,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 offline 8051 compile and debugger evidence": {
+        "Browser gate — offline 8051 compile and debugger evidence": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3809,9 +3810,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 the DEFAULT route is hosted, and says so (Lane GPL)": {
+        "Browser gate — the DEFAULT route is hosted, and says so (Lane GPL)": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3823,9 +3824,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 offline linked 8051 assembly listings": {
+        "Browser gate — offline linked 8051 assembly listings": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3837,9 +3838,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 an AVR lesson bench starts offline on its shipped image": {
+        "Browser gate — an AVR lesson bench starts offline on its shipped image": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3851,9 +3852,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 promoted pinned extension worker": {
+        "Browser gate — promoted pinned extension worker": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3865,9 +3866,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 the native Web Bluetooth shim": {
+        "Browser gate — the native Web Bluetooth shim": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3879,9 +3880,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 MakeCode import": {
+        "Browser gate — MakeCode import": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3893,9 +3894,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 micro:bit MicroPython tab and simulator": {
+        "Browser gate — micro:bit MicroPython tab and simulator": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3907,9 +3908,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 Pico MicroPython simulator Run lights the LED (N3c)": {
+        "Browser gate — Pico MicroPython simulator Run lights the LED (N3c)": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3921,9 +3922,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 Pico \u25b6 Run refuses by name with no firmware (N3c)": {
+        "Browser gate — Pico ▶ Run refuses by name with no firmware (N3c)": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3935,9 +3936,9 @@
           ],
           "clause": "${{ !cancelled() && steps.build_editor_browser.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 micro:bit debugger, block and line stepping": {
+        "Browser gate — micro:bit debugger, block and line stepping": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3949,9 +3950,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 Arduboy console runs a compiled game": {
+        "Browser gate — Arduboy console runs a compiled game": {
           "existed": 22,
           "ran": 20,
           "existedMain": 1,
@@ -3963,9 +3964,9 @@
           ],
           "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Measure \u2014 time every browser wait (manual runs only)": {
+        "Measure — time every browser wait (manual runs only)": {
           "existed": 22,
           "ran": 2,
           "existedMain": 1,
@@ -3977,9 +3978,9 @@
           ],
           "clause": "${{ !cancelled() && github.event_name == 'workflow_dispatch' && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
           "class": "sometimes",
-          "why": "trigger \u2014 the clause names the event"
+          "why": "trigger — the clause names the event"
         },
-        "Audit \u2014 every browser gate ran": {
+        "Audit — every browser gate ran": {
           "existed": 22,
           "ran": 22,
           "existedMain": 1,
@@ -4135,7 +4136,7 @@
           "clause": "${{ !cancelled() && steps.build_editor_fpga.outcome == 'success' }}",
           "class": "always"
         },
-        "FPGA gate \u2014 builder canvas to Verilog (NO synthesis; not the release receipt)": {
+        "FPGA gate — builder canvas to Verilog (NO synthesis; not the release receipt)": {
           "existed": 22,
           "ran": 22,
           "existedMain": 1,
@@ -4148,7 +4149,7 @@
           "clause": "${{ !cancelled() && steps.fpga_serve.outcome == 'success' }}",
           "class": "always"
         },
-        "FPGA gate \u2014 two fingers pinch the gate canvas": {
+        "FPGA gate — two fingers pinch the gate canvas": {
           "existed": 22,
           "ran": 22,
           "existedMain": 1,
@@ -4161,7 +4162,7 @@
           "clause": "${{ !cancelled() && steps.fpga_serve.outcome == 'success' }}",
           "class": "always"
         },
-        "FPGA gate \u2014 the flag-on surface and the learning path": {
+        "FPGA gate — the flag-on surface and the learning path": {
           "existed": 22,
           "ran": 22,
           "existedMain": 1,
@@ -4252,7 +4253,7 @@
           "clause": null,
           "class": "always"
         },
-        "Browser gate \u2014 named 386 media reaches Widgets and reports attach failures": {
+        "Browser gate — named 386 media reaches Widgets and reports attach failures": {
           "existed": 14,
           "ran": 12,
           "existedMain": 0,
@@ -4264,9 +4265,9 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
-        "Browser gate \u2014 the controller pane works on a phone": {
+        "Browser gate — the controller pane works on a phone": {
           "existed": 15,
           "ran": 13,
           "existedMain": 0,
@@ -4278,7 +4279,7 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         }
       },
       "jobs": {
@@ -4748,7 +4749,7 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "no clause \u2014 skipped by the runner after a failure"
+          "why": "no clause — skipped by the runner after a failure"
         }
       },
       "jobs": {
@@ -4883,12 +4884,12 @@
         "Install the ARM toolchain CODAL builds with",
         "Fetch the pinned MakeCode runtime",
         "Build the Arcade firmware bases from source",
-        "Serve OUR bases \u2014 every buildable pin present and byte-identical to its built pin",
+        "Serve OUR bases — every buildable pin present and byte-identical to its built pin",
         "A game links onto every served base (fails if the test skips)",
         "Install the ARM toolchain CODAL builds with (emulator bases)",
         "Fetch the pinned MakeCode runtime (emulator bases)",
-        "Build the micro:bit emulator bases from source \u2014 the licence gate fails on any Nordic code",
-        "Serve OUR emulator bases \u2014 every pin present and byte-identical",
+        "Build the micro:bit emulator bases from source — the licence gate fails on any Nordic code",
+        "Serve OUR emulator bases — every pin present and byte-identical",
         "A program links onto every emulator base, the official one is refused (fails if the test skips)"
       ],
       "inFileInNoRun": [],
@@ -4932,7 +4933,7 @@
           "clause": null,
           "class": "always"
         },
-        "Serve OUR bases \u2014 every buildable pin present and byte-identical to its built pin": {
+        "Serve OUR bases — every buildable pin present and byte-identical to its built pin": {
           "existed": 20,
           "ran": 20,
           "existedMain": 3,
@@ -4957,7 +4958,7 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Install the ARM toolchain CODAL builds with (emulator bases)": {
           "existed": 20,
@@ -4985,7 +4986,7 @@
           "clause": null,
           "class": "always"
         },
-        "Build the micro:bit emulator bases from source \u2014 the licence gate fails on any Nordic code": {
+        "Build the micro:bit emulator bases from source — the licence gate fails on any Nordic code": {
           "existed": 20,
           "ran": 20,
           "existedMain": 3,
@@ -4998,7 +4999,7 @@
           "clause": null,
           "class": "always"
         },
-        "Serve OUR emulator bases \u2014 every pin present and byte-identical": {
+        "Serve OUR emulator bases — every pin present and byte-identical": {
           "existed": 20,
           "ran": 20,
           "existedMain": 3,
@@ -5104,7 +5105,7 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Run dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c": {
           "existed": 19,
@@ -5166,7 +5167,7 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Attach APK to the release": {
           "existed": 19,
@@ -5180,7 +5181,7 @@
           ],
           "clause": "startsWith(github.ref, 'refs/tags/')",
           "class": "sometimes",
-          "why": "tag \u2014 runs on tag refs only"
+          "why": "tag — runs on tag refs only"
         },
         "Build iOS app (simulator, unsigned)": {
           "existed": 19,
@@ -5207,7 +5208,7 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Build sideloadable IPA": {
           "existed": 9,
@@ -5260,7 +5261,7 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Validate + upload to App Store Connect": {
           "existed": 10,
@@ -5274,7 +5275,7 @@
           ],
           "clause": "github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Send tester notes to App Store Connect": {
           "existed": 10,
@@ -5288,7 +5289,7 @@
           ],
           "clause": "startsWith(github.ref, 'refs/tags/')",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Distribute to TestFlight (internal + external)": {
           "existed": 10,
@@ -5302,7 +5303,7 @@
           ],
           "clause": "startsWith(github.ref, 'refs/tags/')",
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Run android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407": {
           "existed": 6,
@@ -5811,7 +5812,7 @@
           ],
           "clause": "matrix.os == 'macos-latest' && startsWith(github.ref, 'refs/tags/')",
           "class": "sometimes",
-          "why": "tag \u2014 runs on tag refs only"
+          "why": "tag — runs on tag refs only"
         },
         "Run dtolnay/rust-toolchain@stable": {
           "existed": 1,
@@ -6131,7 +6132,7 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "The frontend the config points at must contain the broker document": {
           "existed": 11,
@@ -6145,7 +6146,7 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Drive the packaged broker boundary": {
           "existed": 11,
@@ -6159,7 +6160,7 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Drive remote downloads through the real native WebView": {
           "existed": 11,
@@ -6173,7 +6174,7 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Keep the boundary evidence": {
           "existed": 11,
@@ -6282,7 +6283,7 @@
         "examples gallery",
         "runtime extension gallery content pins",
         "hosted service targets vs snapshot (report only)",
-        "vendor pin freshness \u2014 bw-board / bw-circuit-ui behind master (report only)"
+        "vendor pin freshness — bw-board / bw-circuit-ui behind master (report only)"
       ],
       "inFileInNoRun": [],
       "steps": {
@@ -6377,7 +6378,7 @@
           "clause": "always()",
           "class": "always"
         },
-        "vendor pin freshness \u2014 bw-board / bw-circuit-ui behind master (report only)": {
+        "vendor pin freshness — bw-board / bw-circuit-ui behind master (report only)": {
           "existed": 15,
           "ran": 15,
           "existedMain": 4,
@@ -6601,7 +6602,7 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Bind app build, pins, probe and media before guest": {
           "existed": 9,
@@ -6615,7 +6616,7 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Install bounded Chromium and execute actual Circuit guest input": {
           "existed": 9,
@@ -6629,7 +6630,7 @@
           ],
           "clause": null,
           "class": "sometimes",
-          "why": "upstream failure \u2014 skipped only in runs where an earlier job failed"
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
         },
         "Inventory bounded original evidence": {
           "existed": 9,
@@ -6885,8 +6886,8 @@
     }
   },
   "lastRefresh": {
-    "workflow": "production-sw-probe.yml",
-    "at": "2026-10-18T20:50:26.981Z",
-    "sourceSha": "cbfb4d698"
+    "workflow": "i80386-hdd-gui-actual.yml",
+    "at": "2026-10-19T07:04:55.440Z",
+    "sourceSha": "6a7be70c4"
   }
 }

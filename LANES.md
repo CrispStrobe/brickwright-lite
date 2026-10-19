@@ -5902,8 +5902,10 @@ names, special file types and ignored directory payloads before any inflation.
 The complete header census preserves existing limits, required files, TAR and
 actual v3/v4 semantics. This is a source repair; clean affected GUI/guest
 qualification remains pending.
-The explicit consumer CUI expectation now follows main
-PR1066 at `fe89e3425bf323b1acd9e3f98df6a7383e9b836b`; no dependency writer changed.
+The explicit consumer CUI expectation now follows the composed main selection
+`bda0157410a6704ae859a19398a8a742cdfae50b`; root and GUI package/lock and
+vendor declarations remain unchanged. Historical requests require fresh source
+selection; all guards and actual qualification remain held.
 
 
 
