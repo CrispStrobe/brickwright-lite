@@ -109,6 +109,7 @@ class ArcadeEmitter {
         this.unsupported = [];
         this.requiresAnimationPackage = false;
         this.requiresSevensegPackage = false;
+        this.requiresTextSpritePackage = false;
         this.requiresDartsPackage = false;
         this.requiresCorgioPackage = false;
         this.requiresScrollerPackage = false;
@@ -183,6 +184,8 @@ class ArcadeEmitter {
         this.usedRegisteredCallbacks = new Set();
         this.usedDestroyedCallbacks = new Set();
         this.currentLocalNames = null;
+        this.implicitLoopYield=true;
+        this.managedValueProcedures=new Set();
         this.emittedSprites = new Set();    // the targets that became an Arcade sprite
         this.hasProjectPalette = this.project.targets.some(target =>
             Object.values(target.blocks || {}).some(block => block.opcode === 'arcade_setPalette'));
@@ -706,12 +709,24 @@ class ArcadeEmitter {
 
     referenceArrayValue (b, name='ARRAY') {
         const value=this.value(b,name);
-        const slot=b.inputs?.[name]?.[1];
-        let id=Array.isArray(slot) && [12,13].includes(slot[0]) ? slot[2] : null;
-        const reporter=typeof slot==='string' && this.block(slot);
-        if(reporter?.opcode==='data_variable')id=reporter.fields?.VARIABLE?.[1];
-        const dynamic=id && this.mixedValueVariableIds.has(id);
-        if(!dynamic)return value;
+        const needsArrayAccess = (block, input, seen = new Set()) => {
+            if (seen.has(block)) return false;
+            seen.add(block);
+            const slot=block.inputs?.[input]?.[1];
+            let id=Array.isArray(slot) && [12,13].includes(slot[0]) ? slot[2] : null;
+            const reporter=typeof slot==='string' && this.block(slot);
+            if(reporter?.opcode==='data_variable')id=reporter.fields?.VARIABLE?.[1];
+            if(id)return this.mixedValueVariableIds.has(id);
+            // A cast receiver is any[]. Its indexed/pop/random element is any,
+            // so an outer array operation needs its own explicit array access.
+            // Typed array receivers retain their element types (Sprite/Image/
+            // nested arrays); casting those indiscriminately changes PXT dispatch.
+            if(['arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom'].includes(reporter?.opcode) ||
+                reporter?.opcode==='arrays_mutateReference' && ['pop','shift','removeAt'].includes(this.literalInput(reporter,'OP')))
+                return needsArrayAccess(reporter,'ARRAY',seen);
+            return false;
+        };
+        if(!needsArrayAccess(b,name))return value;
         const key='arrayAccess';
         if(!this.legacyValueHelpers.has(key)) {
             let fn='__bwArrayAccess';
@@ -864,7 +879,7 @@ class ArcadeEmitter {
     isBoolean (b) {
         return !!b && ['arrays_valueTruthy','arrays_valueCompare','arrays_referenceRemove','arrays_referenceTruthy', 'arrays_contains', 'operator_and', 'operator_or', 'operator_not', 'operator_gt', 'operator_lt', 'operator_equals',
             'sensing_touchingobject', 'sensing_keypressed', 'sensing_mousedown', 'data_listcontainsitem',
-            'arcade_spriteDataReadBoolean', 'arcade_bufferIsReadOnly', 'arcade_bufferEquals', 'arcade_spriteOverlaps', 'arcade_imagesOverlap', 'arcade_tileIs', 'arcade_spriteTileKindAt', 'arcade_imageEquals', 'arcade_tileIsWall', 'arcade_isHittingTile', 'arcade_hasLife', 'arcade_hasPlayerScore', 'arcade_characterMatchesRule'].includes(b.opcode);
+            'arcade_settingsExists', 'arcade_spriteDataReadBoolean', 'arcade_bufferIsReadOnly', 'arcade_bufferEquals', 'arcade_spriteOverlaps', 'arcade_imagesOverlap', 'arcade_tileIs', 'arcade_spriteTileKindAt', 'arcade_imageEquals', 'arcade_tileIsWall', 'arcade_isHittingTile', 'arcade_hasLife', 'arcade_hasPlayerScore', 'arcade_characterMatchesRule'].includes(b.opcode);
     }
 
     menuField (b, input, field) {
@@ -1093,6 +1108,13 @@ class ArcadeEmitter {
         case 'arcade_bufferToText': return `${v('BUFFER')}.toString()`;
         case 'arcade_songFromBuffer': return `music.createSong(${v('BUFFER')})`;
         case 'arcade_cloneImage': return `${v('IMAGE')}.clone()`;
+        case 'arcade_settingsRead': {
+            const type=this.menuField(b,'TYPE','settingReadTypes') || this.literalInput(b,'TYPE');
+            if(type==='List')return `settings.list(${v('KEY')})`;
+            if(!['Number','String','NumberArray','Buffer'].includes(type)){this.note('Settings requires a fixed supported read type');return 'undefined';}
+            return `settings.read${type}(${v('KEY')})`;
+        }
+        case 'arcade_settingsExists': return `settings.exists(${v('KEY')})`;
         case 'arcade_spriteDataRead': {
             this.requiresSpriteDataPackage=true;
             const type=this.menuField(b,'TYPE','spriteDataReadTypes') || this.literalInput(b,'TYPE');
@@ -1175,6 +1197,15 @@ class ArcadeEmitter {
         case 'arcade_backgroundScrollOffset':
             this.requiresScrollerPackage = true;
             return `scroller.getBackground${this.field(b, 'AXIS') === 'y' ? 'Y' : 'X'}Offset(${v('LAYER')})`;
+        case 'arcade_textSpriteCreate':
+            this.requiresTextSpritePackage=true;
+            return `textsprite.create(${v('TEXT')}, ${v('BACKGROUND')}, ${v('FOREGROUND')})`;
+        case 'arcade_textSpriteProperty': {
+            this.requiresTextSpritePackage=true;
+            const property=this.menuField(b,'PROPERTY','textSpriteProperties') || this.field(b,'PROPERTY');
+            if(!['text','bg','fg','maxFontHeight','borderWidth','borderColor','padding','outlineWidth','outlineColor','icon'].includes(property)){this.note(`Unsupported TextSprite property ${property}`);return this.na();}
+            return `${v('ID')}.${property}`;
+        }
         case 'arcade_createDart':
             this.requiresDartsPackage = true;
             return `darts.create(${v('IMAGE')}, ${this.kindExpr(b, 'KIND')}, ${v('X')}, ${v('Y')})`;
@@ -1602,7 +1633,7 @@ class ArcadeEmitter {
         case 'control_repeat_until':
             push(`while (!${this.condition(b, 'CONDITION')}) {`);
             this.substack(b, 'SUBSTACK', depth + 1, out);
-            push('    pause(20)');
+            if(this.implicitLoopYield)push('    pause(20)');
             this.guardLine().forEach(line => push(`    ${line}`));
             push('}');
             return;
@@ -1614,7 +1645,7 @@ class ArcadeEmitter {
             // One frame per pass (Scratch redraws once per loop iteration too).
             push('while (true) {');
             this.substack(b, 'SUBSTACK', depth + 1, out);
-            push('    pause(20)');
+            if(this.implicitLoopYield)push('    pause(20)');
             this.guardLine().forEach(line => push(`    ${line}`));
             push('}');
             return;
@@ -1803,6 +1834,20 @@ class ArcadeEmitter {
         }
         case 'arcade_unlockCharacterFacing': this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.unlockFacingDirection(${v('SPRITE')})`); return;
         case 'arcade_setBackgroundLayerZ': this.requiresScrollerPackage = true; push(`scroller.setLayerZIndex(${v('LAYER')}, ${v('Z')})`); return;
+        case 'arcade_textSpriteSetText': case 'arcade_textSpriteSetMaxFontHeight': case 'arcade_textSpriteSetIcon':
+        case 'arcade_textSpriteSetBorder': case 'arcade_textSpriteSetOutline': case 'arcade_textSpriteUpdate': {
+            this.requiresTextSpritePackage=true;
+            const [method,args]={arcade_textSpriteSetText:['setText',['TEXT']],arcade_textSpriteSetMaxFontHeight:['setMaxFontHeight',['HEIGHT']],
+                arcade_textSpriteSetIcon:['setIcon',['IMAGE']],arcade_textSpriteSetBorder:['setBorder',['WIDTH','COLOR','PADDING']],
+                arcade_textSpriteSetOutline:['setOutline',['WIDTH','COLOR']],arcade_textSpriteUpdate:['update',[]]}[b.opcode];
+            push(`${v('ID')}.${method}(${args.map(name=>v(name)).join(', ')})`);return;
+        }
+        case 'arcade_textSpriteSetProperty': {
+            this.requiresTextSpritePackage=true;
+            const property=this.menuField(b,'PROPERTY','textSpriteProperties') || this.field(b,'PROPERTY');
+            if(!['text','bg','fg','maxFontHeight','borderWidth','borderColor','padding','outlineWidth','outlineColor','icon'].includes(property)){push(`// ${this.note(`Unsupported TextSprite property ${property}`)}`);return;}
+            push(`${v('ID')}.${property} = ${v('VALUE')}`);return;
+        }
         case 'arcade_dartAction': {
             const action = this.field(b, 'ACTION');
             if (!['throwDart', 'stopDart'].includes(action)) { push(`// ${this.note(`Unsupported dart action ${action}`)}`); return; }
@@ -2172,6 +2217,13 @@ class ArcadeEmitter {
             return;
         }
         case 'arcade_log': push(`console.log(${this.arrayValue(b, 'TEXT')})`); return;
+        case 'arcade_settingsWrite': {
+            const type=this.menuField(b,'TYPE','settingWriteTypes') || this.literalInput(b,'TYPE');
+            if(!['Number','String','NumberArray','Buffer'].includes(type)){push(this.note('Settings requires a fixed supported write type'));return;}
+            push(`settings.write${type}(${v('KEY')}, ${v('VALUE')})`);return;
+        }
+        case 'arcade_settingsRemove': push(`settings.remove(${v('KEY')})`);return;
+        case 'arcade_settingsClear': push('settings.clear()');return;
         case 'arcade_spriteDataSet': {
             this.requiresSpriteDataPackage=true;
             const type=this.menuField(b,'TYPE','spriteDataTypes') || this.literalInput(b,'TYPE');
@@ -2463,7 +2515,7 @@ class ArcadeEmitter {
 
     localDeclaration (name, key) {
         const type=this.localValueTypes.get(key)?.get(name) || 'any';
-        const initial=type==='mp.Player' || type==='Image' || type==='Sprite' || type==='tiles.Location' || type==='tiles.Tile' || type==='animation.Animation' || type==='SevenSegDigit' || type==='DigitCounter' || type==='Dart' || type==='Corgio' || type==='scene.Scene' || type==='ArcadePhysicsEngine' || type.endsWith('[]') ? 'null' : type==='string' ? '""' : type==='boolean' ? 'false' : '0';
+        const initial=type==='mp.Player' || type==='Image' || type==='Sprite' || type==='tiles.Location' || type==='tiles.Tile' || type==='animation.Animation' || type==='SevenSegDigit' || type==='DigitCounter' || type==='Dart' || type==='Corgio' || type==='TextSprite' || type==='scene.Scene' || type==='ArcadePhysicsEngine' || type.endsWith('[]') ? 'null' : type==='string' ? '""' : type==='boolean' ? 'false' : '0';
         return `    let ${name}: ${type} = ${initial}`;
     }
 
@@ -2477,7 +2529,7 @@ class ArcadeEmitter {
         if (this.registeredCallbacks.has(token)) return this.registeredCallbacks.get(token);
         const entry = this.registeredCallbackBlocks.get(token);
         if (!entry || this.compilingRegisteredCallbacks.has(token)) return null;
-        const saved = {target:this.target,blocks:this.blocks,eventHandles:this.eventHandles,eventLocationName:this.eventLocationName,eventKind:this.eventKind,eventPlayerName:this.eventPlayerName,currentLocalNames:this.currentLocalNames};
+        const saved = {target:this.target,blocks:this.blocks,eventHandles:this.eventHandles,eventLocationName:this.eventLocationName,eventKind:this.eventKind,eventPlayerName:this.eventPlayerName,currentLocalNames:this.currentLocalNames,implicitLoopYield:this.implicitLoopYield};
         this.compilingRegisteredCallbacks.add(token);
         this.target = entry.target;this.blocks = entry.target.blocks;
         let parameter = `${entry.kind==='created'?'__bwCreatedSprite':['wall','tile'].includes(entry.kind)?'__bwTerrainSprite':'__bwEventSprite'}_${ident(token)}`;
@@ -2489,6 +2541,7 @@ class ArcadeEmitter {
         this.eventLocationName=['wall','tile'].includes(entry.kind)?location:null;
         this.eventHandles = entry.kind==='overlap'?[parameter,second]:['created','wall','tile','legacyWall','destroyed'].includes(entry.kind)?[parameter]:[];this.eventKind = this.registeredCallbackKinds.get(token);
         this.currentLocalNames = new Set();
+        this.implicitLoopYield=true;
         const script = [];this.stmts(entry.block.next,1,script);
         const scope=`${entry.target.name}:script:${Object.keys(this.blocks).find(id=>this.blocks[id]===entry.block)}`;
         script.unshift(...[...this.currentLocalNames].filter(name=>name!==parameter && name!==location && name!==second).map(name=>this.localDeclaration(name,scope)));
@@ -2500,7 +2553,7 @@ class ArcadeEmitter {
     /** Infer Image argument annotations from native image operations and
      * resource aliases. Constraint edges carry types through forwarded calls. */
     imageProcedureParameters () {
-        const graphBufferValues=new Set(),graphPlayerValues=new Set(),graphAnimationValues=new Set(),graphSevensegDigitValues=new Set(),graphSevensegCounterValues=new Set(),graphDartValues=new Set(),graphCorgiValues=new Set(),graphSceneValues=new Set(),graphPhysicsEngineValues=new Set();
+        const graphTextSpriteValues=new Set(),graphBufferValues=new Set(),graphPlayerValues=new Set(),graphAnimationValues=new Set(),graphSevensegDigitValues=new Set(),graphSevensegCounterValues=new Set(),graphDartValues=new Set(),graphCorgiValues=new Set(),graphSceneValues=new Set(),graphPhysicsEngineValues=new Set();
         const dataProperties=[], parameters = new Map(), edges = [], images = new Set(), sprites = new Set(), tiles = new Set(), legacyTiles = new Set(), arrays = new Set(), numbers = new Set(), booleans=new Set(), strings=new Set(), anys=new Set(), specialTypes=[],valueOperations=[], elements=[],lookupTypes=[];
         const definitions = [],captureLinks=[],callbackScopes=new Map(),callbackCaptureNames=new Map();
         const inputBlock = (blocks, b, name) => {
@@ -2560,6 +2613,13 @@ class ArcadeEmitter {
                 if (!value) return null;
                 if(value.opcode==='arrays_namedReference'){const id='named-array:'+literal(blocks,value,'NAME');arrays.add(id);return id;}
                 if(['arrays_parseLegacyValue','arrays_jsonValue','arrays_pop'].includes(value.opcode)){const id=Symbol('legacy value');anys.add(id);return id;}
+                if(value.opcode==='arcade_settingsExists'){const id=Symbol('setting exists');booleans.add(id);return id;}
+                if(value.opcode==='arcade_settingsRead'){
+                    const menu=inputBlock(blocks,value,'TYPE'),type=menu?.fields?.settingReadTypes?.[0] || literal(blocks,value,'TYPE'),id=Symbol('setting value');
+                    if(type==='Number')numbers.add(id);else if(type==='String')strings.add(id);else if(type==='Buffer')graphBufferValues.add(id);
+                    else if(type==='NumberArray' || type==='List'){arrays.add(id);const item=Symbol('setting array item');(type==='NumberArray'?numbers:strings).add(item);elements.push([id,item]);}
+                    else anys.add(id);return id;
+                }
                 if(value.opcode==='arcade_spriteDataRead') {
                     const menu=inputBlock(blocks,value,'TYPE'),type=menu?.fields?.spriteDataReadTypes?.[0] || literal(blocks,value,'TYPE');
                     const id=Symbol('sprite data value');
@@ -2616,6 +2676,8 @@ class ArcadeEmitter {
                 if(value.opcode==='arcade_sevensegDigit'){const id=Symbol('seven segment digit');graphSevensegDigitValues.add(id);return id;}
                 if(value.opcode==='arcade_sevensegCounter'){const id=Symbol('seven segment counter');graphSevensegCounterValues.add(id);return id;}
                 if(value.opcode==='arcade_sevensegProperty'){const id=Symbol('seven segment property');numbers.add(id);return id;}
+                if(value.opcode==='arcade_textSpriteCreate'){const id=Symbol('text sprite');graphTextSpriteValues.add(id);sprites.add(id);return id;}
+                if(value.opcode==='arcade_textSpriteProperty'){const id=Symbol('text sprite property');const property=inputBlock(blocks,value,'PROPERTY')?.fields?.textSpriteProperties?.[0] || literal(blocks,value,'PROPERTY');(property==='text'?strings:property==='icon'?images:numbers).add(id);return id;}
                 if(value.opcode==='arcade_createDart'){const id=Symbol('dart');graphDartValues.add(id);sprites.add(id);return id;}
                 if(value.opcode==='arcade_createCorgi'){const id=Symbol('corgi');graphCorgiValues.add(id);sprites.add(id);return id;}
                 if(['arcade_dartProperty','arcade_corgiProperty','arcade_backgroundScrollOffset','arcade_characterRule'].includes(value.opcode)){const id=Symbol('extension property');numbers.add(id);return id;}
@@ -2656,6 +2718,11 @@ class ArcadeEmitter {
                 }
                 if(block.opcode==='arcade_bufferWrite'){const buffer=ref(inputBlock(blocks,block,'SOURCE'));if(buffer)graphBufferValues.add(buffer);}
                 if(['arcade_bufferConcat','arcade_bufferEquals','arcade_bufferIndexOf'].includes(block.opcode)){const buffer=ref(inputBlock(blocks,block,'OTHER'));if(buffer)graphBufferValues.add(buffer);}
+                if(/^arcade_textSprite/.test(block.opcode)){
+                    const id=ref(inputBlock(blocks,block,'ID'));if(id){graphTextSpriteValues.add(id);sprites.add(id);}
+                    if(block.opcode==='arcade_textSpriteSetIcon'){const image=ref(inputBlock(blocks,block,'IMAGE'));if(image)images.add(image);}
+                    if(block.opcode==='arcade_textSpriteSetProperty'){const property=inputBlock(blocks,block,'PROPERTY')?.fields?.textSpriteProperties?.[0] || literal(blocks,block,'PROPERTY'),value=ref(inputBlock(blocks,block,'VALUE'));if(value)(property==='text'?strings:property==='icon'?images:numbers).add(value);}
+                }
                 if(block.opcode==='arcade_eventPlayer'){const player=ref(block);if(player)graphPlayerValues.add(player);}
                 if(['arcade_playerSprite','arcade_setPlayerSprite','arcade_playerProperty','arcade_movePlayerWithButtons','arcade_playerConnected','arcade_playerButtonPressed','arcade_getPlayerState','arcade_setPlayerState','arcade_changePlayerState'].includes(block.opcode)){
                     const player=ref(inputBlock(blocks,block,'PLAYER'));if(player)graphPlayerValues.add(player);
@@ -2698,6 +2765,11 @@ class ArcadeEmitter {
                         captureLinks.push([`${scope}:capture:${name}`,!explicit.has(name) || captured && !local?`${key}:capture:${name}`:localKey(name)]);
                     }
                 }
+                if(block.opcode==='arcade_settingsWrite'){
+                    const menu=inputBlock(blocks,block,'TYPE'),type=menu?.fields?.settingWriteTypes?.[0] || literal(blocks,block,'TYPE'),value=ref(inputBlock(blocks,block,'VALUE'));
+                    if(type==='NumberArray' && value){arrays.add(value);const item=Symbol('setting write item');numbers.add(item);elements.push([value,item]);}
+                    if(type==='Buffer' && value)graphBufferValues.add(value);
+                }
                 if(block.opcode==='arcade_setSpriteProperty' && literal(blocks,block,'PROPERTY')==='data') {
                     const id=Symbol('sprite data assignment');dataProperties.push([ref(inputBlock(blocks,block,'ID')),id]);
                     connect(id,ref(inputBlock(blocks,block,'VALUE')));
@@ -2725,7 +2797,7 @@ class ArcadeEmitter {
         }
         edges.push(...captureLinks);
         const graph=new ValueTypeGraph();
-        for(const [values,type] of [[graphBufferValues,'Buffer'],[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']])for(const value of values)graph.add(value,type);
+        for(const [values,type] of [[graphTextSpriteValues,'TextSprite'],[graphBufferValues,'Buffer'],[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']])for(const value of values)graph.add(value,type);
         for(const [a,b] of edges)graph.merge(a,b);
         for(const [receiver,value] of dataProperties)if(receiver)graph.merge(graph.property(receiver,'data'),value);
         for(const [,value] of dataProperties)if(!graph.node(value).types.size)graph.add(value,'any');
@@ -2755,12 +2827,12 @@ class ArcadeEmitter {
         // to its elements (which would incorrectly change the argument type).
         for(const [array,value] of lookupTypes)if(array && value){
             const element=graph.element(array),types=graph.node(element).types;
-            const searched=[...graph.node(value).types].filter(type=>['Buffer','Image','Sprite','TileLocation','LegacyTile','Animation','SevenSegDigit','DigitCounter','Dart','Corgio','Scene','PhysicsEngine','Player','array','number','string','boolean'].includes(type));
+            const searched=[...graph.node(value).types].filter(type=>['Buffer','Image','Sprite','TileLocation','LegacyTile','Animation','SevenSegDigit','DigitCounter','Dart','Corgio','TextSprite','Scene','PhysicsEngine','Player','array','number','string','boolean'].includes(type));
             if(types.size && searched.some(type=>!types.has(type)))graph.add(element,'any');
         }
         // Element and alias joins can make a nested array visible to reads or
         // procedure results that had no annotation of their own.
-        const inferred=new Map([[graphBufferValues,'Buffer'],[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']]);
+        const inferred=new Map([[graphTextSpriteValues,'TextSprite'],[graphBufferValues,'Buffer'],[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']]);
         for(const [key] of graph.nodes)for(const [values,type] of inferred)if(graph.has(key,type))values.add(key);
         this.spriteReturnFunctions = new Set([...parameters.keys()].filter(key=>graph.arrayType(`${key}:result`)==='Sprite'));
         this.spriteVariableIds = new Set([...sprites].filter(key=>typeof key==='string' && key.startsWith('variable:') && graph.arrayType(key)==='Sprite').map(key=>key.slice(9)));
@@ -2769,7 +2841,7 @@ class ArcadeEmitter {
         const arrayType=value=>graph.arrayType(value);
         this.mixedValueVariableIds=new Set([...graph.nodes.keys()].filter(key=>typeof key==='string' && key.startsWith('variable:') && (graph.node(key).types.size>1 || graph.has(key,'any')) && graph.arrayType(key)==='any').map(key=>key.slice(9)));
         this.booleanVariableIds=new Set([...booleans].filter(key=>typeof key==='string' && key.startsWith('variable:') && graph.arrayType(key)==='boolean').map(key=>key.slice(9)));
-        this.primitiveVariableTypes=new Map([...graph.nodes.keys()].filter(key=>typeof key==='string' && key.startsWith('variable:') && ['Buffer','mp.Player','string','tiles.Location','tiles.Tile','animation.Animation','SevenSegDigit','DigitCounter','Dart','Corgio','scene.Scene','ArcadePhysicsEngine'].includes(graph.arrayType(key))).map(key=>[key.slice(9),graph.arrayType(key)]));
+        this.primitiveVariableTypes=new Map([...graph.nodes.keys()].filter(key=>typeof key==='string' && key.startsWith('variable:') && ['Buffer','mp.Player','string','tiles.Location','tiles.Tile','animation.Animation','SevenSegDigit','DigitCounter','Dart','Corgio','TextSprite','scene.Scene','ArcadePhysicsEngine'].includes(graph.arrayType(key))).map(key=>[key.slice(9),graph.arrayType(key)]));
         this.valueReturnTypes=new Map([...parameters.keys()].map(key=>[key,graph.arrayType(`${key}:result`)]));
         this.localValueTypes=new Map();
         for(const key of graph.nodes.keys()){
@@ -2832,12 +2904,13 @@ class ArcadeEmitter {
 
     // ── scripts ──────────────────────────────────────────────────────────
     /** Emit one script body with the guards a yield must check. */
-    body (firstId, guards, preamble = []) {
-        const saved = this.guards;
+    body (firstId, guards, preamble = [], implicitLoopYield=true) {
+        const saved = {guards:this.guards,implicitLoopYield:this.implicitLoopYield};
         this.guards = guards;
+        this.implicitLoopYield=implicitLoopYield;
         const script = [...preamble];
         this.stmts(firstId, 1, script);
-        this.guards = saved;
+        Object.assign(this,saved);
         return script;
     }
 
@@ -2949,6 +3022,12 @@ class ArcadeEmitter {
                     this.handleTemplateVars.set(handle, null);
                 } else if (!this.handleTemplateVars.has(handle)) this.handleTemplateVars.set(handle, template);
             }
+        }
+        // Only native managed value invocations identify synchronous source
+        // functions. Scratch hats and ordinary command procedures keep yields.
+        for(const t of this.project.targets)for(const b of Object.values(t.blocks || {}))if(b?.opcode==='arcade_callFunction'){
+            const code=this.literalInput(b,'NAME');
+            if(code!==null)this.managedValueProcedures.add(`${t.isStage?'':t.name}:${code}`);
         }
         // Custom blocks first, so calls can find their names.
         for (const t of this.project.targets) {
@@ -3123,7 +3202,7 @@ class ArcadeEmitter {
                     }
                     const saved = this.currentLocalNames;
                     this.currentLocalNames = new Set();
-                    script = this.body(b.next, [...this.stopGuards(), ...(clonable ? ['_gone(self)'] : [])]);
+                    script = this.body(b.next, [...this.stopGuards(), ...(clonable ? ['_gone(self)'] : [])], [], !this.managedValueProcedures.has(key));
                     const locals = [...this.currentLocalNames].filter(name => !names.includes(name));
                     this.currentLocalNames = saved;
                     const fn = this.fnNames.get(key);
@@ -3160,6 +3239,7 @@ class ArcadeEmitter {
         }
         // Declarations: every variable the program touched, then the sprites.
         const decls = [...new Set(this.globals.values())];
+        if(this.requiresTextSpritePackage)this.customSpriteKinds.delete('Text');
         if (this.customSpriteKinds.size) {
             out.push('namespace SpriteKind {');
             for (const kind of this.customSpriteKinds) out.push(`    export const ${kind} = SpriteKind.create()`);
@@ -3177,7 +3257,7 @@ class ArcadeEmitter {
             const mixedInitialScalar = this.initialGlobals.has(n) &&
                 ['string', 'boolean', 'number'].some(kind => kinds.has(kind) && kind !== initialScalarType);
             out.push(arrayKind?`let ${n}: ${arrayKind} = null`:this.handleVars.has(n) ? `let ${n}: Sprite = null` :
-                kinds.size > 1 || kinds.has('any') || mixedInitialScalar ? `let ${n}: any = ${initial}` : kinds.has('string') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : '""'}` : kinds.has('boolean') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : 'false'}` : kinds.has('Buffer') ? `let ${n}: Buffer = null` : kinds.has('mp.Player') ? `let ${n}: mp.Player = null` : kinds.has('scene.Scene') ? `let ${n}: scene.Scene = null` : kinds.has('ArcadePhysicsEngine') ? `let ${n}: ArcadePhysicsEngine = null` : kinds.has('animation.Animation') ? `let ${n}: animation.Animation = null` : kinds.has('SevenSegDigit') ? `let ${n}: SevenSegDigit = null` : kinds.has('DigitCounter') ? `let ${n}: DigitCounter = null` : kinds.has('Dart') ? `let ${n}: Dart = null` : kinds.has('Corgio') ? `let ${n}: Corgio = null` : kinds.has('tiles.Tile') ? `let ${n}: tiles.Tile = null` : kinds.has('tiles.Location') ? `let ${n}: tiles.Location = null` : kinds.has('image') ? `let ${n}: Image = null` : `let ${n} = ${initial}`);
+                kinds.size > 1 || kinds.has('any') || mixedInitialScalar ? `let ${n}: any = ${initial}` : kinds.has('string') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : '""'}` : kinds.has('boolean') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : 'false'}` : kinds.has('Buffer') ? `let ${n}: Buffer = null` : kinds.has('mp.Player') ? `let ${n}: mp.Player = null` : kinds.has('scene.Scene') ? `let ${n}: scene.Scene = null` : kinds.has('ArcadePhysicsEngine') ? `let ${n}: ArcadePhysicsEngine = null` : kinds.has('animation.Animation') ? `let ${n}: animation.Animation = null` : kinds.has('SevenSegDigit') ? `let ${n}: SevenSegDigit = null` : kinds.has('DigitCounter') ? `let ${n}: DigitCounter = null` : kinds.has('TextSprite') ? `let ${n}: TextSprite = null` : kinds.has('Dart') ? `let ${n}: Dart = null` : kinds.has('Corgio') ? `let ${n}: Corgio = null` : kinds.has('tiles.Tile') ? `let ${n}: tiles.Tile = null` : kinds.has('tiles.Location') ? `let ${n}: tiles.Location = null` : kinds.has('image') ? `let ${n}: Image = null` : `let ${n} = ${initial}`);
         }
         if (this.usesAnimationResources) {
             const resources = [...this.authoredAnimationArrays.values()];
@@ -3388,7 +3468,7 @@ export function projectToArcade (project, opts = {}) {
         'main.ts': projectTs,
         ...assetFiles,
         'pxt.json': `${JSON.stringify({
-            name, description: 'Exported from BrickWright', dependencies: {device: '*', ...(e.requiresSpriteDataPackage ? {'arcade-sprite-data':'github:microsoft/arcade-sprite-data#332026d12c46286c7afe59bc4829ccf08471d5b1'} : {}), ...(e.requiresCarnivalPackage ? {'arcade-carnival':'github:microsoft/arcade-carnival#v0.0.7'} : {}), ...(e.requiresLegacyTilemapPackage ? {'color-coded-tilemap': '*'} : {}), ...(e.requiresAnimationPackage ? {animation: '*'} : {}), ...(e.requiresSevensegPackage ? {sevenseg: '*'} : {}), ...(e.requiresDartsPackage ? {darts: '*'} : {}), ...(e.requiresCorgioPackage ? {corgio: '*'} : {}), ...(e.requiresScrollerPackage ? {'arcade-background-scroll': 'github:microsoft/arcade-background-scroll#v0.1.2'} : {}), ...(e.requiresCharacterAnimationsPackage ? {'arcade-character-animations': 'github:microsoft/arcade-character-animations#v0.1.0'} : {}), ...(e.requiresMultiplayerPackage ? {multiplayer: '*'} : {})},
+            name, description: 'Exported from BrickWright', dependencies: {device: '*', ...(e.requiresTextSpritePackage ? {'arcade-text':'github:microsoft/arcade-text#fa2439314c6633943666a763fdae32a5c67a9ae8'} : {}), ...(e.requiresSpriteDataPackage ? {'arcade-sprite-data':'github:microsoft/arcade-sprite-data#332026d12c46286c7afe59bc4829ccf08471d5b1'} : {}), ...(e.requiresCarnivalPackage ? {'arcade-carnival':'github:microsoft/arcade-carnival#v0.0.7'} : {}), ...(e.requiresLegacyTilemapPackage ? {'color-coded-tilemap': '*'} : {}), ...(e.requiresAnimationPackage ? {animation: '*'} : {}), ...(e.requiresSevensegPackage ? {sevenseg: '*'} : {}), ...(e.requiresDartsPackage ? {darts: '*'} : {}), ...(e.requiresCorgioPackage ? {corgio: '*'} : {}), ...(e.requiresScrollerPackage ? {'arcade-background-scroll': 'github:microsoft/arcade-background-scroll#v0.1.2'} : {}), ...(e.requiresCharacterAnimationsPackage ? {'arcade-character-animations': 'github:microsoft/arcade-character-animations#v0.1.0'} : {}), ...(e.requiresMultiplayerPackage ? {multiplayer: '*'} : {})},
             files: [...Object.keys(assetFiles), 'main.ts'], preferredEditor: 'tsprj',
             ...(!samePalette(e.palette, ARCADE_PALETTE) ? {palette: ['#000000', ...e.palette.slice(1)]} : {})
         }, null, 4)}\n`

@@ -20,8 +20,8 @@ const sandboxes = new Map();
 /** Is this target's runtime synced? */
 export const hasRuntime = target => fs.existsSync(path.join(STATIC, target, 'pxtworker.js'));
 
-async function sandbox (target) {
-    if (sandboxes.has(target)) return sandboxes.get(target);
+async function sandbox (target, fresh = false) {
+    if (!fresh && sandboxes.has(target)) return sandboxes.get(target);
     if (!hasRuntime(target)) {
         throw Object.assign(new Error(`MakeCode ${target} runtime not synced — run \`npm run sync:makecode\``), {code: 'NO_RUNTIME'});
     }
@@ -43,7 +43,7 @@ async function sandbox (target) {
     sb.__bwOriginalWorkerSha256 = createHash('sha256').update(workerBytes).digest('hex');
     vm.runInContext(workerBytes.toString('utf8'), sb, {filename: 'pxtworker.js'});
     vm.runInContext(PXT_GLUE_JS, sb, {filename: 'pxt-glue.js'});
-    sandboxes.set(target, sb);
+    if (!fresh) sandboxes.set(target, sb);
     return sb;
 }
 
@@ -56,7 +56,11 @@ async function sandbox (target) {
  *     image on the Bluetooth-free emulator bases (a refused base throws code BASE_REFUSED)
  */
 async function runCompiler (target, files, opts = {}, projectInputs = false) {
-    const sb = await sandbox(target);
+    // PXT retains compiler/package state across projects, including failed
+    // dependency installations. A corpus sequence reproduced assertions that
+    // disappear on the same input in a fresh worker. Keep each compile and
+    // preparation isolated; the read-only tutorial emitter can still be reused.
+    const sb = await sandbox(target, true);
     const {onDemandExtensions} = await import(pathToFileURL(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-makecode/pxt-runtime.js')).href);
     // CLI audits are offline by default. Fetch only when explicitly requested.
     const onDemand = await onDemandExtensions(target, files, opts.fetchExtensions === true, opts.fetch);

@@ -181,6 +181,15 @@ module.exports = makeExt(`// Name: Arcade
         color2: '#D63878',
         color3: '#C42870',
         blocks: [
+          {opcode:'textSpriteCreate',blockType:Scratch.BlockType.REPORTER,text:'Arcade create text sprite [TEXT] background [BACKGROUND] foreground [FOREGROUND]',arguments:{...str('TEXT','Hello'),...n('BACKGROUND',0),...n('FOREGROUND',1)}},
+          {opcode:'textSpriteSetText',blockType:Scratch.BlockType.COMMAND,text:'Arcade text sprite [ID] set text [TEXT]',arguments:{...str('ID',''),...str('TEXT','Hello')}},
+          {opcode:'textSpriteSetMaxFontHeight',blockType:Scratch.BlockType.COMMAND,text:'Arcade text sprite [ID] set max font height [HEIGHT]',arguments:{...str('ID',''),...n('HEIGHT',8)}},
+          {opcode:'textSpriteSetIcon',blockType:Scratch.BlockType.COMMAND,text:'Arcade text sprite [ID] set icon [IMAGE]',arguments:{...str('ID',''),...str('IMAGE','')}},
+          {opcode:'textSpriteSetBorder',blockType:Scratch.BlockType.COMMAND,text:'Arcade text sprite [ID] set border width [WIDTH] color [COLOR] padding [PADDING]',arguments:{...str('ID',''),...n('WIDTH',1),...n('COLOR',6),...n('PADDING',0)}},
+          {opcode:'textSpriteSetOutline',blockType:Scratch.BlockType.COMMAND,text:'Arcade text sprite [ID] set outline width [WIDTH] color [COLOR]',arguments:{...str('ID',''),...n('WIDTH',1),...n('COLOR',6)}},
+          {opcode:'textSpriteUpdate',blockType:Scratch.BlockType.COMMAND,text:'Arcade text sprite [ID] redraw',arguments:str('ID','')},
+          {opcode:'textSpriteProperty',blockType:Scratch.BlockType.REPORTER,text:'Arcade text sprite [ID] property [PROPERTY]',arguments:{...str('ID',''),PROPERTY:{type:Scratch.ArgumentType.STRING,menu:'textSpriteProperties',defaultValue:'text'}}},
+          {opcode:'textSpriteSetProperty',blockType:Scratch.BlockType.COMMAND,text:'Arcade text sprite [ID] set property [PROPERTY] to [VALUE]',arguments:{...str('ID',''),...str('VALUE',''),PROPERTY:{type:Scratch.ArgumentType.STRING,menu:'textSpriteProperties',defaultValue:'text'}}},
           {opcode:'followSprite',blockType:Scratch.BlockType.COMMAND,text:'Arcade sprite [ID] follow [TARGET] speed [SPEED] turn rate [TURN]',arguments:{...str('ID',''),...str('TARGET',''),...n('SPEED',100),...n('TURN',400)}},
           {opcode:'unfollowSprite',blockType:Scratch.BlockType.COMMAND,text:'Arcade sprite [ID] stop following',arguments:str('ID','')},
           {opcode:'startParallelHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade run parallel as [TOKEN] capturing [CAPTURES]',arguments:{...str('TOKEN','handler'),...str('CAPTURES','')}},
@@ -292,6 +301,11 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'bufferUnpack',blockType:Scratch.BlockType.REPORTER,text:'Arcade unpack byte buffer [BUFFER] format [FORMAT] at [OFFSET]',arguments:{...str('BUFFER',''),...str('FORMAT','<BH'),...n('OFFSET',0)}},
           {opcode:'bufferPackAt',blockType:Scratch.BlockType.COMMAND,text:'Arcade pack number array [ARRAY] into byte buffer [BUFFER] at [OFFSET] format [FORMAT]',arguments:{...str('ARRAY',''),...str('BUFFER',''),...n('OFFSET',0),...str('FORMAT','<BH')}},
           {opcode:'bufferFromArray',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer from number array [ARRAY]',arguments:str('ARRAY','')},
+          {opcode:'settingsWrite',blockType:Scratch.BlockType.COMMAND,text:'Arcade write setting [KEY] type [TYPE] value [VALUE]',arguments:{...str('KEY',''),...str('VALUE',''),TYPE:{type:Scratch.ArgumentType.STRING,menu:'settingWriteTypes',defaultValue:'Number'}}},
+          {opcode:'settingsRead',blockType:Scratch.BlockType.REPORTER,text:'Arcade read setting [KEY] type [TYPE]',arguments:{...str('KEY',''),TYPE:{type:Scratch.ArgumentType.STRING,menu:'settingReadTypes',defaultValue:'Number'}}},
+          {opcode:'settingsExists',blockType:Scratch.BlockType.BOOLEAN,text:'Arcade setting [KEY] exists',arguments:str('KEY','')},
+          {opcode:'settingsRemove',blockType:Scratch.BlockType.COMMAND,text:'Arcade remove setting [KEY]',arguments:str('KEY','')},
+          {opcode:'settingsClear',blockType:Scratch.BlockType.COMMAND,text:'Arcade clear user settings'},
           {opcode:'spriteDataSet',blockType:Scratch.BlockType.COMMAND,text:'Arcade set sprite [ID] data [KEY] type [TYPE] to [VALUE]',arguments:{...str('ID',''),...str('KEY',''),...str('VALUE',''),TYPE:{type:Scratch.ArgumentType.STRING,menu:'spriteDataTypes',defaultValue:'Number'}}},
           {opcode:'spriteDataRead',blockType:Scratch.BlockType.REPORTER,text:'Arcade sprite [ID] data [KEY] type [TYPE]',arguments:{...str('ID',''),...str('KEY',''),TYPE:{type:Scratch.ArgumentType.STRING,menu:'spriteDataReadTypes',defaultValue:'Number'}}},
           {opcode:'spriteDataReadBoolean',blockType:Scratch.BlockType.BOOLEAN,text:'Arcade sprite [ID] boolean data [KEY]',arguments:{...str('ID',''),...str('KEY','')}},
@@ -835,6 +849,9 @@ module.exports = makeExt(`// Name: Arcade
           ,animationProperties: {acceptReporters: false, items: ['image', 'action', 'interval']}
           ,animationTypes: {acceptReporters: true, items: [{text:'all',value:'0'}, {text:'image',value:'1'}, {text:'movement',value:'2'}]}
           ,imageProperties: {acceptReporters: false, items: ['width', 'height']}
+          ,settingWriteTypes:{acceptReporters:false,items:['Number','String','NumberArray','Buffer']}
+          ,textSpriteProperties:{acceptReporters:false,items:['text','bg','fg','maxFontHeight','borderWidth','borderColor','padding','outlineWidth','outlineColor','icon']}
+          ,settingReadTypes:{acceptReporters:false,items:['Number','String','NumberArray','Buffer','List']}
           ,spriteDataTypes:{acceptReporters:false,items:['Number','String','Boolean','Sprite']}
           ,spriteDataReadTypes:{acceptReporters:false,items:['Number','String','Sprite']}
           ,bufferFormats: {acceptReporters: true, items: Object.keys(dependencies.buffers.NumberFormat).filter(key=>!/^\\d+$/.test(key))}
@@ -874,6 +891,86 @@ module.exports = makeExt(`// Name: Arcade
       });
       return state._mpPlayers;
     }
+    _settingsStore() {
+      const stage=this._runtime.getTargetForStage();
+      if(!this._settingsBinding || this._settingsBinding.stage!==stage){
+        const options={changed:()=>this._runtime.emitProjectChanged?.()};
+        if(Object.prototype.hasOwnProperty.call(this._runtime,'bwArcadeSettingsStorage'))options.storage=this._runtime.bwArcadeSettingsStorage;
+        this._settingsBinding={stage,store:dependencies.createProgramSettings(stage,options)};
+      }
+      return this._settingsBinding.store;
+    }
+    _settingsGuard(work,boolean=false){try{return work();}catch(error){this._runtime?.emit?.('BLOCKS_ERROR',error.message);return boolean?false:Scratch.BWValues.encode(undefined);}}
+    settingsWrite(args,util){return this._settingsGuard(()=>{
+      const type=args.TYPE,key=Scratch.BWValues.decode(args.KEY);
+      let value=Scratch.BWValues.decode(args.VALUE);
+      // Editor shadows deliver numeric strings; connected typed reporters keep
+      // their values and diagnostics. BWValues does not tag primitive strings.
+      const block=util?.target?.blocks?.getBlock(util.thread?.peekStack?.());
+      const input=block?.inputs?.VALUE;
+      const shadow=input && input.block===input.shadow && util?.target?.blocks?.getBlock(input?.shadow);
+      if(type==='Number' && typeof value==='string' && shadow && ['math_number','math_integer','math_whole_number','math_positive_number','math_angle','text'].includes(shadow.opcode))value=Scratch.Cast.toNumber(value);
+      if(type==='NumberArray'){value=Scratch.BWValues.arrayValue(this._runtime,args.VALUE);if(!value || value.some(v=>typeof Scratch.BWValues.decode(v)!=='number'))throw new Error('Arcade settings require a number array');value=value.map(v=>Scratch.BWValues.decode(v));}
+      else if(type==='Buffer')value=this._buffer(args.VALUE);
+      else if(type==='Number' && typeof value!=='number' && value!=null || type==='String' && typeof value!=='string')throw new Error('Arcade setting value type does not match');
+      if(!['Number','String','NumberArray','Buffer'].includes(type))throw new Error('Arcade setting type is not supported');
+      this._settingsStore().call('write'+type,key,value);
+    });}
+    settingsRead(args){return this._settingsGuard(()=>{
+      const type=args.TYPE,key=Scratch.BWValues.decode(args.KEY);
+      if(!['Number','String','NumberArray','Buffer','List'].includes(type))throw new Error('Arcade setting read type is not supported');
+      const value=this._settingsStore().call(type==='List'?'list':'read'+type,key);
+      if(type==='List')return Scratch.BWValues.arrayReference(this._runtime,value.data);
+      if(type==='NumberArray' && Array.isArray(value))return Scratch.BWValues.arrayReference(this._runtime,value);
+      if(type==='Buffer' && value)return this._bufferReference(value);
+      return Scratch.BWValues.encode(value);
+    });}
+    settingsExists(args){return this._settingsGuard(()=>this._settingsStore().call('exists',Scratch.BWValues.decode(args.KEY)),true);}
+    settingsRemove(args){return this._settingsGuard(()=>this._settingsStore().call('remove',Scratch.BWValues.decode(args.KEY)));}
+    settingsClear(){return this._settingsGuard(()=>this._settingsStore().call('clear'));}
+
+    _textSprites() {
+      if(!this._textSpriteModule)this._textSpriteModule=dependencies.createTextSpriteHost(this,imageEngine,dependencies.initializeTextSprite);
+      return this._textSpriteModule;
+    }
+    _textSprite(value) {
+      const instance=this._extensionSprites.get(String(Scratch.BWValues.decode(value)));
+      if(!instance || !(instance instanceof this._textSprites().TextSprite))throw new Error('Arcade expected an owned text sprite');
+      return instance;
+    }
+    _textSpriteGuard(call) {
+      try {return call();}catch(error){this._runtime?.emit?.('BLOCKS_ERROR',String(error.message || error));return Scratch.BWValues.encode(undefined);}
+    }
+    textSpriteCreate(args) {return this._textSpriteGuard(()=>this._textSprites().textsprite.create(Scratch.BWValues.decode(args.TEXT),
+      this._animationNumericValue(args.BACKGROUND),this._animationNumericValue(args.FOREGROUND)).__bwId);}
+    textSpriteSetText(args) {return this._textSpriteGuard(()=>this._textSprite(args.ID).setText(Scratch.BWValues.decode(args.TEXT)));}
+    textSpriteSetMaxFontHeight(args) {return this._textSpriteGuard(()=>this._textSprite(args.ID).setMaxFontHeight(this._animationNumericValue(args.HEIGHT)));}
+    _textSpriteImage(value) {
+      const decoded=Scratch.BWValues.decode(value);
+      if(decoded==null)return null;
+      const image=this._image(value);if(!image)throw new Error('Arcade text sprite icon needs an image or null');
+      return this._textSprites().wrapImage(image);
+    }
+    textSpriteSetIcon(args) {return this._textSpriteGuard(()=>this._textSprite(args.ID).setIcon(this._textSpriteImage(args.IMAGE)));}
+    textSpriteSetBorder(args) {return this._textSpriteGuard(()=>this._textSprite(args.ID).setBorder(this._animationNumericValue(args.WIDTH),
+      this._animationNumericValue(args.COLOR),this._animationNumericValue(args.PADDING)));}
+    textSpriteSetOutline(args) {return this._textSpriteGuard(()=>this._textSprite(args.ID).setOutline(this._animationNumericValue(args.WIDTH),this._animationNumericValue(args.COLOR)));}
+    textSpriteUpdate(args) {return this._textSpriteGuard(()=>this._textSprite(args.ID).update());}
+    _textSpritePropertyName(value) {
+      const property=String(value);
+      if(!['text','bg','fg','maxFontHeight','borderWidth','borderColor','padding','outlineWidth','outlineColor','icon'].includes(property))throw new Error('Arcade Text Sprite property is not supported');
+      return property;
+    }
+    textSpriteProperty(args) {return this._textSpriteGuard(()=>{
+      const property=this._textSpritePropertyName(args.PROPERTY),value=this._textSprite(args.ID)[property];
+      return property==='icon' && value?this._imageHandle(value.raw):Scratch.BWValues.encode(value);
+    });}
+    textSpriteSetProperty(args) {return this._textSpriteGuard(()=>{
+      const property=this._textSpritePropertyName(args.PROPERTY);
+      this._textSprite(args.ID)[property]=property==='icon'?this._textSpriteImage(args.VALUE):Scratch.BWValues.decode(args.VALUE);
+      // Original public field writes store only; update() explicitly redraws.
+    });}
+
     // Original v0.0.5 helpers run unchanged over the owned Sprite data object.
     // The facade supplies its historical data() accessor; values retain aliases.
     _spriteDataCall(args,method,value) {
@@ -1479,7 +1576,17 @@ module.exports = makeExt(`// Name: Arcade
       thread.bwFunctionNames.add(name);
       if (util.sequencer === runtime.sequencer && !recursive) {
         const caller = util.thread, sequencer = util.sequencer, active = sequencer.activeThread;
-        try {sequencer.activeThread = thread;sequencer.stepThread(thread);}
+        try {
+          sequencer.activeThread = thread;
+          const deadline=Date.now()+0.75*runtime.currentStepTime;
+          sequencer.stepThread(thread);
+          // Native source functions do not add a physics frame for finite loop
+          // bookkeeping. Continue only loop yields within the real scheduler
+          // budget; promises, explicit waits and stop retirements still suspend.
+          while(runtime.threads.includes(thread) && thread.status===thread.constructor.STATUS_RUNNING &&
+            thread.peekStackFrame()?.isLoop && !thread.peekStackFrame()?.timer && Date.now()<deadline)
+            sequencer.stepThread(thread);
+        }
         finally {util.thread = caller;util.sequencer = sequencer;sequencer.activeThread = active;}
         if (!runtime.threads.includes(caller)) {sequencer.retireThread(caller);sequencer.retireThread(thread);return 0;}
       }
@@ -2203,12 +2310,16 @@ module.exports = makeExt(`// Name: Arcade
     }
     createSprite(args, util) {
       const width = Math.max(1, Number(args.WIDTH) || 16), height = Math.max(1, Number(args.HEIGHT) || 16);
-      return this._finishSpriteCreation(this._createSprite({...args, X: ((160-width) >> 1) + width/2,
+      return this._finishSpriteCreation(this._createSprite({...args, WIDTH:width, HEIGHT:height, X: ((160-width) >> 1) + width/2,
         Y: ((120-height) >> 1) + height/2}), util);
     }
     createImageSprite(args, util) {
       const image = this._image(args.IMAGE);
-      return image ? this.createSprite({...args, WIDTH:image.width, HEIGHT:image.height}, util) : '';
+      if(!image){this._runtime?.emit?.('BLOCKS_ERROR','Sprite image cannot be undefined or null');return ''; }
+      // Image dimensions are constructor data: zero is a genuine empty image.
+      const width=image.width,height=image.height;
+      return this._finishSpriteCreation(this._createSprite({...args,WIDTH:width,HEIGHT:height,
+        X:((160-width)>>1)+width/2,Y:((120-height)>>1)+height/2}),util);
     }
     // Arcade stores edges, velocity and acceleration as signed 24.8 values.
     // Keep the actual object in fixed point: reads, image resizing and subsequent
@@ -2324,7 +2435,10 @@ module.exports = makeExt(`// Name: Arcade
       const id = 'arcade:' + (++this._nextSpriteHandle);state.nextSpriteId++;
       const sprite = {id, pxtId: state.nextSpriteId - 1, kind: String(args.KIND), x: Number(args.X) || 0, y: Number(args.Y) || 0,
         vx: 0, vy: 0, ax: 0, ay: 0, fx: 0, fy: 0, z: 0, lifespan: 0, flags: 0,
-        width: Math.max(1, Number(args.WIDTH) || 16), height: Math.max(1, Number(args.HEIGHT) || 16)};
+        // Public creation normalizes defaults before entering this private path;
+        // native image constructors may supply genuine zero dimensions.
+        width: args.WIDTH===0?0:Math.max(1,Number(args.WIDTH)||16),
+        height: args.HEIGHT===0?0:Math.max(1,Number(args.HEIGHT)||16)};
       this._installSpriteFixedPoint(sprite);
       sprite._kindInsertion = ++this._kindInsertion;
       state.sprites[id] = sprite;
@@ -4817,6 +4931,9 @@ module.exports = makeExt(`// Name: Arcade
   Scratch.extensions.register(new Arcade(Scratch.vm && Scratch.vm.runtime));
 })(Scratch);
 `, {
+  createTextSpriteHost: require('./text-sprite-host'),
+  initializeTextSprite: require('./text-sprite-pxt'),
+  createProgramSettings: require('./program-settings').createProgramSettings,
   initializeSpriteData: require('./sprite-data-pxt'),
   createSpeechEngine: require('./speech'),
   initializeSpeech: require('./speech-pxt'),

@@ -1,3 +1,4 @@
+import {TEXT_SPRITE_SOURCE_TEXT,TEXT_SPRITE_INITIALIZER,TEXT_SPRITE_NATIVE_IDENTITY} from './text-source-admission.generated.js';
 import {SPRITE_DATA_SOURCE_TEXT,SPRITE_DATA_NATIVE_IDENTITY,SPRITE_DATA_NATIVE_APIS} from './native-source-admission.generated.js';
 
 // The complete original helper is implemented by the retained native adapter.
@@ -18,7 +19,16 @@ const SPRITE_DATA_RECEIPT=Object.freeze({
  * The source text includes comments and line endings, so this browser-safe
  * comparison has the same boundary as the generator's retained SHA256 check.
  */
+const TEXT_SPRITE_RECEIPT=Object.freeze({
+    adapter:'arcade-text-v1.3.0',source:TEXT_SPRITE_NATIVE_IDENTITY,
+    apis:Object.freeze(['textsprite.create','TextSprite.setText','TextSprite.setMaxFontHeight','TextSprite.setIcon','TextSprite.setBorder','TextSprite.setOutline','TextSprite.update','TextSprite property read','TextSprite property write']),
+    nativeOpcodes:Object.freeze(['textSpriteCreate','textSpriteSetText','textSpriteSetMaxFontHeight','textSpriteSetIcon','textSpriteSetBorder','textSpriteSetOutline','textSpriteUpdate','textSpriteProperty','textSpriteSetProperty']),
+    replacementSource:TEXT_SPRITE_INITIALIZER,
+    initialization:'retain original SpriteKind.Text initializer at original file ordering; replace class and function installation with original native host',
+    boundary:'symbolic kind identity; numeric kind allocation is not qualified; additional executable files and unimplemented callsites remain diagnosed'
+});
 export const admitArcadeNativeSource=({packageId,filename,source}={}) =>
+    packageId===TEXT_SPRITE_NATIVE_IDENTITY.packageId && filename===TEXT_SPRITE_NATIVE_IDENTITY.filename && source===TEXT_SPRITE_SOURCE_TEXT ? TEXT_SPRITE_RECEIPT :
     packageId===SPRITE_DATA_NATIVE_IDENTITY.packageId &&
     filename===SPRITE_DATA_NATIVE_IDENTITY.filename &&
     source===SPRITE_DATA_SOURCE_TEXT ? SPRITE_DATA_RECEIPT : null;

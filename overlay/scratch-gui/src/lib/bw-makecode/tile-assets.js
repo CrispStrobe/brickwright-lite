@@ -14,16 +14,11 @@ export const validTileId = id => typeof id === 'string' && id.split('.').length 
     id.split('.').every(part => IDENTIFIER.test(part) && !RESERVED.has(part));
 
 /** Read tile resources separately from image aliases; ambiguous aliases refuse resolution. */
-export function parseTileAssets (text) {
+export function parseTileAssetEntries (text) {
     let jres;
-    try { jres = JSON.parse(text); } catch (error) { return {}; }
-    if (!jres || typeof jres !== 'object') return {};
-    const out = Object.create(null);
-    const aliases = (key, image) => {
-        if (!key) return;
-        if (Object.prototype.hasOwnProperty.call(out, key) && out[key]?.tileId !== image.tileId) out[key] = null;
-        else if (!Object.prototype.hasOwnProperty.call(out, key)) out[key] = image;
-    };
+    try { jres = JSON.parse(text); } catch (error) { return []; }
+    if (!jres || typeof jres !== 'object') return [];
+    const entries = [];
     for (const [key, entry] of Object.entries(jres)) {
         if (!entry || typeof entry !== 'object' || !entry.tilemapTile || typeof entry.data !== 'string') continue;
         const image = decodeMkcdImage(entry.data);
@@ -33,7 +28,17 @@ export function parseTileAssets (text) {
         const tileId = entry.id || (key.includes('.') ? key : `${namespace.replace(/\.$/, '')}.${key}`);
         if (!validTileId(tileId)) continue;
         const tile = {...image, tileId, displayName: typeof entry.displayName === 'string' && entry.displayName ? entry.displayName : tileId.split('.').pop()};
-        for (const alias of new Set([tileId, key, tileId.split('.').pop(), tile.displayName])) aliases(alias, tile);
+        entries.push({key,tile,aliases:[...new Set([tileId,key,tileId.split('.').pop(),tile.displayName])],factoryDisplayName:entry.displayName});
+    }
+    return entries;
+}
+
+
+export function parseTileAssets (text) {
+    const out = Object.create(null);
+    for (const {tile,aliases} of parseTileAssetEntries(text)) for (const key of aliases) {
+        if (Object.prototype.hasOwnProperty.call(out,key) && out[key]?.tileId !== tile.tileId) out[key] = null;
+        else if (!Object.prototype.hasOwnProperty.call(out,key)) out[key] = tile;
     }
     return out;
 }
