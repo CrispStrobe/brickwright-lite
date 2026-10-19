@@ -7,7 +7,8 @@ const option={procedureConstraintsPrototype:true};
 test('ordinary declaration prefix is explicit and precedes local/body initialization',()=>{
  const source='function keep(value:number){let local=1;return value+local}let result=keep(20);';
  const ordinary=arcadeToPseudocode(source),explicitFalse=arcadeToPseudocode(source,{procedureConstraintsPrototype:false}),selected=arcadeToPseudocode(source,option);
- assert.deepEqual(ordinary,explicitFalse);assert.doesNotMatch(ordinary.code,/declare arcade procedure/);assert.deepEqual(selected.unsupported,[]);
+ // Supported ordinary primitive constraints are default-on (8da5bc23b).
+ assert.deepEqual(ordinary,explicitFalse);assert.match(ordinary.code,/declare arcade procedure "keep %s" parameter "value" as Number/);assert.deepEqual(selected.unsupported,[]);
  assert.match(selected.code,/DEFINE keep \(value\):\n  declare arcade procedure "keep %s" parameter "value" as Number\n/);
  assert.ok(selected.code.indexOf('parameter "value"')<selected.code.indexOf('arcade set local local'));
 });
