@@ -29,7 +29,11 @@ export const ROBOT_LAB_TAB = /^(Robots|Roboter)$/;
 
 /** Shows the Robot Lab tab, as a person does: its tab in the editor's tab list. */
 export const openRobotLabTab = async page => {
-    await page.getByRole('tab', {name: ROBOT_LAB_TAB}).click();
+    const tab = page.getByRole('tab', {name: ROBOT_LAB_TAB});
+    // the words on the tab, not only its accessible name (the label once kept the old, long name)
+    const label = (await tab.locator('[data-bw-tab-label]').textContent()).trim();
+    if (!ROBOT_LAB_TAB.test(label)) throw new Error(`the Robot Lab tab reads "${label}"`);
+    await tab.click();
 };
 
 /** Clicks (or taps) a toolbar action where a person finds it: on the bar, else in the More menu. */
