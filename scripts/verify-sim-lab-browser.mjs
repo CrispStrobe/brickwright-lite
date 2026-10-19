@@ -89,6 +89,11 @@
 //      a Blocks project of robotlab blocks (saved and reloaded as an .sb3) loads the hubless motor bench and
 //      turns its motor 360 ± 2° through runtime.robotLab; the bench's example in `lab` words, through the UI
 //      only, turns it 360°, rests there through its wait, runs on at 90 °/s and brakes.
+//  19. the LEGO radio hubs (scripts/lib/sim-lab-hubs-gate.mjs, --part=hubs-ble, docs/ROBOT-LAB-HUBS-PLAN.md P3):
+//      through the UI only, each example's pup / boost / wedo words become the REAL extension's blocks and
+//      Run connects them to the scene's virtual hub (Scratch Link double or Web Bluetooth shim): legopoweredup
+//      turns the Technic Hub's motor A 360 ± 2° and back; legoboostunified drives the Move Hub rover ahead and
+//      turns it; wedo2unified runs the WeDo rover until its motion sensor sees the wall, and stops it.
 //
 // Every Sim Lab here runs its physics in the Web Worker (ROADMAP §4.9): each load
 // asserts `window.__bwSimLab.worker === true`, so the line-follower lap, the wall
@@ -113,6 +118,7 @@ import {layoutInteractions, MIN_CANVAS_PX} from './lib/sim-lab-layout-gate.mjs';
 import {editorParityInteractions} from './lib/sim-lab-editor-parity-gate.mjs';
 import {connectInteractions} from './lib/sim-lab-connect-gate.mjs';
 import {apiInteractions, DEGREES_TOLERANCE} from './lib/sim-lab-api-gate.mjs';
+import {hubsInteractions, HUB_DEGREES_TOLERANCE} from './lib/sim-lab-hubs-gate.mjs';
 import {openRobotLabTab, tool, toolbarInteractions} from './lib/sim-lab-toolbar-gate.mjs';
 import {scaleInteractions, OPEN_BUDGET_MS, DRAW_CALL_BUDGET, BUILD_OPEN_BUDGET_MS, IDLE_FRAME_BUDGET_MS, POINTER_MOVE_BUDGET_MS} from './lib/sim-lab-scale-gate.mjs';
 import {brakingBound, judgeWallStop} from './lib/sim-lab-wall-stopper-judge.mjs';
@@ -280,9 +286,9 @@ const reading = page => page.evaluate(() => {
 });
 
 // One gate, six CI steps (each within the per-step budget, gen-gate-budgets.mjs):
-// `--part=core|examples|ui|tablet|layout|editor|scale|api` runs one section; no flag runs all of them.
+// `--part=core|examples|ui|tablet|layout|editor|scale|api|hubs-ble` runs one section; no flag runs all of them.
 const PART = (process.argv.find(a => a.startsWith('--part=')) || '--part=all').slice('--part='.length);
-const PARTS = ['core', 'examples', 'ui', 'tablet', 'layout', 'editor', 'scale', 'api'];
+const PARTS = ['core', 'examples', 'ui', 'tablet', 'layout', 'editor', 'scale', 'api', 'hubs-ble'];
 if (PART !== 'all' && !PARTS.includes(PART)) throw new Error(`--part must be one of ${PARTS.join(', ')} (got ${PART})`);
 const want = part => PART === 'all' || PART === part;
 
@@ -953,6 +959,16 @@ try {
             `and turns motor A ${r.blocks.angle}° for "run for 360 degrees" (±${DEGREES_TOLERANCE}), in the worker; Robot Lab status "${r.blocks.status}"`);
         console.log(`PASS the motor bench's example in lab words (Load example program, Run): rests at ${r.words.restAngle.toFixed(2)}° ` +
             `for ${r.words.restMs.toFixed(0)} ms of simulated time, runs on to ${r.words.final.toFixed(1)}° at 90 °/s and brakes`);
+    }
+
+    if (want('hubs-ble')) { // the LEGO radio hubs driven by the real extensions (Scratch Link double, Web Bluetooth shim)
+        const r = await hubsInteractions({browser, errors, openSimLab, wallBudget});
+        console.log(`PASS legopoweredup blocks (the Technic Hub bench's example) connect to the Lab's Technic Hub and turn motor A to ` +
+            `${r.technic.rest.toFixed(2)}° for "turn motor A on for 360 degrees" (±${HUB_DEGREES_TOLERANCE}), then back to ${r.technic.end.toFixed(2)}°`);
+        console.log(`PASS legoboostunified blocks drive the BOOST Move Hub rover ${(r.boost.driven * 100).toFixed(1)} cm ahead with its ` +
+            `built-in motors A and B, then turn it ${r.boost.turned.toFixed(0)}°`);
+        console.log(`PASS wedo2unified blocks run the WeDo 2.0 rover ${(r.wedo.driven * 100).toFixed(1)} cm until its motion sensor sees the ` +
+            `wall (${r.wedo.seenAtStop} mm), and stop it ${r.wedo.rest} mm short of it`);
     }
 
     assert.deepEqual(errors, [], `page errors: ${errors.join('\n')}`);
