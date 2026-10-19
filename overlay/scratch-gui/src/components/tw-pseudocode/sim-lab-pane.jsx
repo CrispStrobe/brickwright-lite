@@ -494,11 +494,18 @@ class SimLabPane extends React.Component {
         return h ? h.hub : null;
     }
 
-    /** The LEGO extension of the Code tab's program that speaks to this hub, or null (HUB_EXTENSIONS, first loaded). */
+    /**
+     * The LEGO extension of the Code tab's program that speaks to this hub, or null: the first of
+     * HUB_EXTENSIONS whose blocks the project uses (an extension stays loaded after its blocks are
+     * gone, so being loaded is not enough), else the first loaded.
+     */
     hubExtension (hub = this.radioHub()) {
         const vm = this.props.vm;
         if (!hub || !vm || !vm.extensionManager) return null;
-        return (HUB_EXTENSIONS[hub.protocol] || []).find(id => vm.extensionManager.isExtensionLoaded(id)) || null;
+        const loaded = (HUB_EXTENSIONS[hub.protocol] || []).filter(id => vm.extensionManager.isExtensionLoaded(id));
+        const used = id => (vm.runtime.targets || []).some(t => Object.values((t.blocks && t.blocks._blocks) || {})
+            .some(b => typeof b.opcode === 'string' && b.opcode.startsWith(`${id}_`)));
+        return loaded.find(used) || loaded[0] || null;
     }
 
     /**
