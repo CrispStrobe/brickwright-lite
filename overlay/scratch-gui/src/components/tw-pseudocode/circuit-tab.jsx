@@ -9,6 +9,7 @@ import {shouldLoadCircuitDesigner} from '../../lib/bw-debug/circuit-designer-loa
 import {getReactPerformanceProbe, profileReactSubtree} from '../../lib/bw-debug/react-perf-profiler.js';
 import {shouldRefreshDesignerDebugState} from '../../lib/bw-debug/debug-ui-refresh.js';
 import {setProjectTitle} from '../../reducers/project-title';
+import {activateTab} from '../../reducers/editor-tab';
 import {noCircuitMessage} from '../../lib/example-device-only.js';
 import {getIsAnyCreatingNewState} from '../../reducers/project-state';
 import {activateUndoSurface, registerUndoSurface} from '../../lib/global-undo.js';
@@ -169,6 +170,7 @@ class CircuitTab extends React.Component {
             debugHintDismissed, hideStage, debugDock, showInStage, rightPaneHidden,
             examples: null, examplesError: null, curriculum: null,
             circuitData: null, loadingExample: null,
+            cpxState: this.props.vm?.runtime?.bwCpxState || null, handleCpxInput: null,
             machineBooted: false, pendingExampleTitle: null,
             // The air every part sits in (lib/bench-temperature.js): the chips'
             // on-die sensors and the temperature-dependent parts read it.
@@ -187,10 +189,12 @@ class CircuitTab extends React.Component {
         this.handleRunnerGone = this.handleRunnerGone.bind(this);
         this.handleProjectStop = this.handleProjectStop.bind(this);
         this.handleProjectChanged = this.handleProjectChanged.bind(this);
+        this.handleCpxState = this.handleCpxState.bind(this);
         this._circuitFileWake = this._circuitFileWake.bind(this);
         // The File-menu action waiting for the designer to exist, or null. Not
         // state: replaying it must not itself schedule a render.
         this._circuitFilePending = null;
+        this._circuitFileReplayFrame = null;
         // The benchmark installs this before application boot. It remains null
         // for ordinary production sessions, so source attribution has neither
         // trace allocation nor a changing prop identity outside the receipt.
@@ -201,23 +205,39 @@ class CircuitTab extends React.Component {
         if (this._performanceProbe) this._performanceProbe.mark(source, detail);
     }
 
-    /**
-     * Wake the lazily-mounted designer for a File-menu circuit action.
-     *
-     * Does NOTHING once `state.Designer` is set — from that moment the designer
-     * is rendered (hidden or visible, it stays mounted whatever panel shows) and
-     * bw-circuit-ui's own `bw-circuit-file` listener owns the event. The replay
-     * carries `bwReplay: true` so this handler cannot queue its own echo.
-     */
+    /** A cached component module is not necessarily a mounted File receiver. */
     _circuitFileWake (e) {
-        if (this.state.Designer || this.state.error) return;
         const detail = (e && e.detail) || {};
-        if (detail.bwReplay) return;
-        this._circuitFilePending = detail.action || null;
-        if (this._circuitFilePending) this.load({explicit: true});
+        if (detail.bwReplay || this.state.error || this._boxRef.current) return;
+        if (!['load', 'save', 'import', 'export'].includes(detail.action)) return;
+        this._circuitFilePending = detail.action;
+        // The hidden view may have unmounted before its debounced autosave.
+        // Preserve the last real host-owned circuit, rather than rebuilding a
+        // starter or replaying an older example when the receiver remounts.
+        const circuit = this.state.circuit;
+        if (circuit && typeof circuit.toJSON === 'function') {
+            this.setState({circuitData: circuit.toJSON()});
+        }
+        this.props.onShowCircuit?.();
+        this.load({explicit: true});
+    }
+
+    _replayCircuitFile () {
+        if (!this._boxRef.current || !this._circuitFilePending || this._circuitFileReplayFrame != null) return;
+        // Wait for the mounted designer's effects to register the upstream
+        // command channel. Repeated host updates must not schedule duplicates.
+        this._circuitFileReplayFrame = requestAnimationFrame(() => {
+            this._circuitFileReplayFrame = null;
+            if (!this._boxRef.current) return;
+            const action = this._circuitFilePending;
+            this._circuitFilePending = null;
+            window.dispatchEvent(new CustomEvent(
+                'bw-circuit-file', {detail: {action, bwReplay: true}}));
+        });
     }
 
     componentDidMount () {
+        this.subscribeCpxRuntime(this.props.vm?.runtime);
         this._unregisterUndo = registerUndoSurface('circuit', {
             canUndo: () => !!this._findUndoButton(),
             undo: () => {
@@ -526,6 +546,7 @@ class CircuitTab extends React.Component {
     ).find(button => button.textContent.trim() === '↶')
 
     componentDidUpdate (prevProps, prevState) {
+        if (prevProps.vm?.runtime !== this.props.vm?.runtime) this.subscribeCpxRuntime(this.props.vm?.runtime);
         if (this.props.isVisible && !prevProps.isVisible) activateUndoSurface('circuit');
         // The event that opens this lazily rendered bench can precede the
         // DebugPanel listener in the same React commit. Replay the retained
@@ -538,18 +559,8 @@ class CircuitTab extends React.Component {
                 pending.type === 'asm' ? 'bw-asm-rom-ready' : 'bw-machine-media-load',
                 {detail: pending.detail})));
         }
-        // The designer has just appeared and a File-menu action was waiting for it.
-        // Re-dispatch on the SAME channel rather than calling a handler directly:
-        // the receiver is vendored (bw-circuit-ui CircuitDesigner) and lite does not
-        // edit vendored files. `bwReplay` stops _circuitFileWake re-queueing it.
-        if (prevState && !prevState.Designer && this.state.Designer && this._circuitFilePending) {
-            const action = this._circuitFilePending;
-            this._circuitFilePending = null;
-            // One frame, so the designer's own listener is registered before the
-            // event arrives — React has rendered it, but effects run after paint.
-            requestAnimationFrame(() => window.dispatchEvent(new CustomEvent(
-                'bw-circuit-file', {detail: {action, bwReplay: true}})));
-        }
+        // The receiver can remount while its component module stays cached.
+        this._replayCircuitFile();
         // TitledHOC resets the title to “BrickWright Project” when the
         // load/create state settles. Publish an example's name after that
         // transition, rather than racing it immediately after vm.loadProject.
@@ -634,8 +645,15 @@ class CircuitTab extends React.Component {
     }
 
     componentWillUnmount () {
+        this._cpxRuntime?.removeListener('CPX_STATE', this.handleCpxState);
+        this._cpxInputs?.release();
+        this._cpxInputs = null;
+        this._cpxRuntime = null;
         if (this._unregisterUndo) this._unregisterUndo();
         cancelAnimationFrame(this._hostResizeFrame);
+        cancelAnimationFrame(this._circuitFileReplayFrame);
+        this._circuitFileReplayFrame = null;
+        this._circuitFilePending = null;
         if (this._hostRO) { this._hostRO.disconnect(); this._hostRO = null; }
         window.removeEventListener('resize', this._measureBox);
         window.removeEventListener('bw-circuit-file', this._circuitFileWake);
@@ -663,6 +681,69 @@ class CircuitTab extends React.Component {
         if (this._stageHost && this._stageHost.parentNode) {
             this._stageHost.parentNode.removeChild(this._stageHost);
         }
+    }
+
+    subscribeCpxRuntime (runtime) {
+        this._cpxRuntime?.removeListener('CPX_STATE', this.handleCpxState);
+        this._cpxInputs?.release();
+        this._cpxRuntime = runtime || null;
+        this._cpxInputs = this.createCpxInputs(this._cpxRuntime);
+        this.setState({handleCpxInput: runtime ? this._cpxInputs.input : null});
+        this._cpxRuntime?.on('CPX_STATE', this.handleCpxState);
+        this.handleCpxState(this._cpxRuntime?.bwCpxState || null);
+    }
+
+    createCpxInputs (runtime) {
+        // A mounted face keeps its input sink even if the host changes VM.
+        // Retire that sink and release only presses originating on this face.
+        const held = new Map();
+        let active = true;
+        return {
+            input: input => {
+                let board = runtime?.bwCpx;
+                if (!active || !input) return;
+                if ((input.button === 'A' || input.button === 'B') && typeof input.down === 'boolean') {
+                    if (input.down) {
+                        if (!board || held.has(input.button)) return;
+                        held.set(input.button, board);
+                    } else {
+                        board = held.get(input.button);
+                        if (!board) return;
+                        held.delete(input.button);
+                    }
+                    board.setButton(input.button, input.down);
+                } else if (board && typeof input.switchRight === 'boolean') {
+                    board.setSwitch(input.switchRight);
+                }
+            },
+            release: () => {
+                active = false;
+                const pending = [...held];
+                held.clear();
+                for (const [button, board] of pending) board.setButton(button, false);
+            }
+        };
+    }
+
+    handleCpxState (next) {
+        // Sensor/audio-only publications must not redraw the entire designer.
+        // Retain the original snapshot; the runtime remains its sole owner.
+        this.setState(previous => {
+            const old = previous.cpxState;
+            if (old === next) return null;
+            if (old && next && old.switchRight === next.switchRight && old.redLed === next.redLed &&
+                old.buttons?.A === next.buttons?.A && old.buttons?.B === next.buttons?.B) {
+                let same = true;
+                for (let i = 0; i < 10; i++) {
+                    if (old.shown?.[i] !== next.shown?.[i]) {
+                        same = false;
+                        break;
+                    }
+                }
+                if (same) return null;
+            }
+            return {cpxState: next};
+        });
     }
 
     setDock (d) {
@@ -2002,6 +2083,8 @@ class CircuitTab extends React.Component {
                 <div style={this.state.panel === 'designer' ?
                     {flex: '1 1 auto', minHeight: 0, overflow: 'auto'} : {display: 'none'}}>
                     {profileReactSubtree(React, 'CircuitDesigner', (<Designer
+                        cpxState={this.state.cpxState}
+                        onCpxInput={this.state.handleCpxInput}
                     performanceProbe={this._performanceProbe}
                     stc={stc}
                     examples={this.state.examples || undefined}
@@ -2341,7 +2424,8 @@ CircuitTab.propTypes = {
     isProjectCreating: PropTypes.bool,
     isVisible: PropTypes.bool,
     onSetProjectTitle: PropTypes.func,
-    vm: PropTypes.shape({toJSON: PropTypes.func}).isRequired
+    onShowCircuit: PropTypes.func,
+    vm: PropTypes.shape({runtime: PropTypes.object, toJSON: PropTypes.func}).isRequired
 };
 
 export default connect(state => ({
@@ -2350,5 +2434,6 @@ export default connect(state => ({
     isProjectCreating: getIsAnyCreatingNewState(state.scratchGui.projectState.loadingState),
     isVisible: state.scratchGui.editorTab.activeTabIndex === 4
 }), dispatch => ({
-    onSetProjectTitle: title => dispatch(setProjectTitle(title))
+    onSetProjectTitle: title => dispatch(setProjectTitle(title)),
+    onShowCircuit: () => dispatch(activateTab(4))
 }))(CircuitTab);

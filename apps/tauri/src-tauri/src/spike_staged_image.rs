@@ -310,7 +310,9 @@ impl StagedImage {
                 self.directory_handle.as_raw_fd(),
                 c"image.bin".as_ptr(),
                 flags,
-                0o600 as libc::mode_t,
+                // The variadic mode argument is promoted to an unsigned int: `mode_t` is u16 on
+                // macOS, which cannot pass through `...` (E0617). c_uint is correct on Linux too.
+                0o600 as libc::c_uint,
             )
         };
         if fd < 0 {

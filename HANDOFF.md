@@ -1,3 +1,13 @@
+# Current handoff — 2026-10-18
+
+See [WeDo/iPad integration handoff](docs/WEDO-IPAD-INTEGRATION-HANDOFF.md) for current delivery status and scoped next actions; [LANES.md](LANES.md) governs ownership. Machine-specific context is in gitignored `CLAUDE.md`.
+
+STM32, A13 and iPad/WeDo source integrations are on remote main. The integrated iOS app compiled; signing awaits Mac unlock. Follow the linked record for exact source, the signing continuation and remaining physical acceptance tasks.
+
+The August record below is historical, not the current task queue.
+
+---
+
 # bw-bundle handoff — 2026-08-15 (session 8, continued)
 
 ## What was done this session (42 tasks, all pushed)

@@ -1,12 +1,26 @@
 import PropTypes from 'prop-types';
 import React from 'react';
+import {hardReload} from '../lib/hard-reload.js';
 
 let importerRequest = null;
 const loadPseudocodeImporter = () => {
     if (!importerRequest) {
         importerRequest = import(
             /* webpackChunkName: "pseudocode-importer" */ '../components/tw-pseudocode/pseudocode-importer.jsx'
-        ).catch(error => {
+        ).then(module => {
+            // React.lazy needs a component as the default export. Without one
+            // React only reports minified error #306 ("undefined"), which names
+            // neither the chunk nor the cause; a deploy that replaced the chunk
+            // under an open page is the usual reason.
+            const component = module && module.default;
+            if (typeof component !== 'function' && !(component && typeof component === 'object')) {
+                const error = new Error('The "pseudocode-importer" chunk loaded without a default ' +
+                    'export, so this page and the deployed build no longer match.');
+                error.bwStaleBuild = true;
+                throw error;
+            }
+            return module;
+        }).catch(error => {
             importerRequest = null;
             throw error;
         });
@@ -20,11 +34,26 @@ const loadPseudocodeImporter = () => {
 export const preloadPseudocodeImporter = () => loadPseudocodeImporter().catch(() => null);
 const createLazyImporter = () => React.lazy(loadPseudocodeImporter);
 
+// Failures a Retry cannot fix, because the open page and the deployed chunks
+// come from different builds; only a reload fetches a matching set.
+export const isStaleBuildError = error => Boolean(error) && (error.bwStaleBuild === true ||
+    error.name === 'ChunkLoadError' ||
+    /Loading (CSS )?chunk|dynamically imported module|Minified React error #306|Element type is invalid/
+        .test(String(error.message || error)));
+
+// The innermost component named in React's component stack, so a nested
+// lazy child that resolved to undefined is identified too.
+export const failingComponentOf = componentStack => {
+    const match = /^\s*(?:in|at) ([A-Za-z_$][\w$.]*)/m.exec(componentStack || '');
+    return match ? match[1] : null;
+};
+
 class LazyPseudocodeImporter extends React.Component {
     constructor (props) {
         super(props);
         this.state = {
             activated: props.isVisible,
+            componentStack: null,
             error: null,
             generation: 0,
             importerReady: false,
@@ -34,6 +63,12 @@ class LazyPseudocodeImporter extends React.Component {
     }
     static getDerivedStateFromError (error) {
         return {error};
+    }
+    componentDidCatch (error, info) {
+        const componentStack = (info && info.componentStack) || null;
+        this.setState({componentStack});
+        // eslint-disable-next-line no-console
+        console.error('[code editor]', error, componentStack || '');
     }
     componentDidMount () {
         window.addEventListener('bw-project-bundle-loaded', this.handleBundleLoaded);
@@ -72,15 +107,39 @@ class LazyPseudocodeImporter extends React.Component {
     handleImporterReady = () => this.setState({importerReady: true});
     handleRetry = () => {
         this.Importer = createLazyImporter();
-        this.setState(state => ({error: null, generation: state.generation + 1, importerReady: false}));
+        this.setState(state => ({componentStack: null, error: null, generation: state.generation + 1, importerReady: false}));
     };
+    // A plain reload is not enough: the service worker can hand back the same
+    // stale chunk. hardReload clears caches and the worker first.
+    handleReload = () => hardReload();
     render () {
         if (!this.state.activated) return null;
         if (this.state.error) {
+            const {componentStack, error} = this.state;
+            const stale = isStaleBuildError(error);
+            const component = failingComponentOf(componentStack);
             return (
-                <div data-pseudocode-importer-load-error role="alert" style={{padding: 16}}>
-                    <p>{String(this.state.error.message || this.state.error)}</p>
+                <div
+                    data-pseudocode-importer-load-error
+                    data-stale-build={stale ? 'true' : 'false'}
+                    role="alert"
+                    style={{padding: 16}}
+                >
+                    <p>{String(error.message || error)}</p>
+                    {component ? <p data-pseudocode-importer-failing-component>In: {component}</p> : null}
+                    {stale ? (
+                        <p>The code editor was updated since this page opened. Reload to fetch the matching version.</p>
+                    ) : null}
+                    {stale ? <button type="button" onClick={this.handleReload}>Reload page</button> : null}
                     <button type="button" onClick={this.handleRetry}>Retry code editor</button>
+                    {componentStack || error.stack ? (
+                        <details>
+                            <summary>Details</summary>
+                            <pre style={{whiteSpace: 'pre-wrap', fontSize: 11}}>
+                                {[error.stack, componentStack].filter(Boolean).join('\n')}
+                            </pre>
+                        </details>
+                    ) : null}
                 </div>
             );
         }

@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-07T20:07:49.943Z",
+ "generatedAt": "2026-10-18T20:50:26.981Z",
  "repo": "CrispStrobe/brickwright-lite",
  "headSha": "a87a7b447",
  "newestMainRun": 36409366028,
@@ -1797,6 +1797,18 @@
    "workflow": "i80386-freedos-circuits-direct-actual.yml",
    "branch": "lane/x86-direct-circuits-20261007",
    "sha": "93dd86bd2"
+  },
+  {
+   "run": 39163703528,
+   "workflow": "production-sw-probe.yml",
+   "branch": "lane/prod-sw-probe-20261018",
+   "sha": "cbfb4d698"
+  },
+  {
+   "run": 39153060630,
+   "workflow": "production-sw-probe.yml",
+   "branch": "lane/prod-sw-probe-20261018",
+   "sha": "1bcac23de"
   }
  ],
  "workflowsInTree": [
@@ -1816,6 +1828,7 @@
   "mobile.yml",
   "nightly-corpus-differential.yml",
   "pascal-ack-image.yml",
+  "production-sw-probe.yml",
   "release.yml",
   "rust-notices.yml",
   "target-performance.yml",
@@ -6541,11 +6554,99 @@
     }
    },
    "sourceSha": "428c00934"
+  },
+  "production-sw-probe.yml": {
+   "runs": 2,
+   "stepsInFile": [
+    "Install Playwright (Lite's locked version)",
+    "Check each live site against the previous seed, then reseed",
+    "Upload the new seeds and results",
+    "Pinned bw-circuit-ui commit (validated)",
+    "Draw every example kind in the real canvas and report"
+   ],
+   "inFileInNoRun": [],
+   "steps": {
+    "Install Playwright (Lite's locked version)": {
+     "existed": 2,
+     "ran": 2,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "probe"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Check each live site against the previous seed, then reseed": {
+     "existed": 2,
+     "ran": 2,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "probe"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Upload the new seeds and results": {
+     "existed": 2,
+     "ran": 2,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "probe"
+     ],
+     "clause": "${{ !cancelled() }}",
+     "class": "always"
+    },
+    "Pinned bw-circuit-ui commit (validated)": {
+     "existed": 2,
+     "ran": 2,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "probe"
+     ],
+     "clause": "${{ !cancelled() && env.CENSUS == 'true' }}",
+     "class": "always"
+    },
+    "Draw every example kind in the real canvas and report": {
+     "existed": 2,
+     "ran": 2,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "probe"
+     ],
+     "clause": "${{ !cancelled() && env.CENSUS == 'true' }}",
+     "class": "always"
+    }
+   },
+   "jobs": {
+    "probe": {
+     "existed": 2,
+     "ran": 2,
+     "existedMain": 0,
+     "ranMain": 0,
+     "class": "always"
+    }
+   },
+   "sourceSha": "cbfb4d698"
   }
  },
  "lastRefresh": {
-  "workflow": "i80386-freedos-circuits-direct-actual.yml",
-  "at": "2026-10-07T20:07:49.943Z",
-  "sourceSha": "428c00934"
+  "workflow": "production-sw-probe.yml",
+  "at": "2026-10-18T20:50:26.981Z",
+  "sourceSha": "cbfb4d698"
  }
 }

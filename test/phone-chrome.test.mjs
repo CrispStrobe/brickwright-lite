@@ -28,9 +28,8 @@ test('class names are matched by substring, because CSS Modules rewrites them', 
 });
 
 test('shrinking the row does not shrink the thing you tap', () => {
-    // The tap-target floor is 32. A tab shorter than that would be a regression
-    // dressed as a space saving.
-    assert.ok(TAB_H >= 32, `tab height ${TAB_H} must stay at or above the 32px floor`);
+    // Touch tabs need a comfortable target as well as fitting visible content.
+    assert.ok(TAB_H >= 44, `tab height ${TAB_H} must stay at or above the 44px floor`);
     assert.ok(TABS_H >= TAB_H, 'the strip cannot be shorter than its tabs');
 });
 
@@ -57,7 +56,7 @@ test('the tab strip outranks the menu bar it now sits in', () => {
 
 test('the chrome is now ONE row, and bounded', () => {
     // 48 + 44 = 92 before any of this. The tab strip is fixed, so it costs no
-    // flow height at all and the chrome IS the menu bar: 36px, measured.
+    // flow height at all and the chrome IS the single menu-bar row.
     assert.ok(MENU_H < 48, `the menu row must shrink below 48px, got ${MENU_H}`);
     assert.ok(MENU_H >= TABS_H, `a ${TABS_H}px strip cannot sit inside a ${MENU_H}px row`);
     assert.ok(MENU_H < 92, 'the whole chrome must beat the two-row 92px it replaces');

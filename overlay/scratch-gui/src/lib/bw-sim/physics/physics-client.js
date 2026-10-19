@@ -3,7 +3,9 @@
 //
 // Main-thread client for the physics worker. Wraps a Worker-like port
 // with postMessage/onmessage and correlates replies by id. Also exports
-// interpolate() for rendering between snapshots.
+// interpolate() for rendering between snapshots. The worker itself is started
+// by sim-lab.js (startPhysicsWorker): its entry wires the hub families in, and
+// physics/ imports no hub.
 
 /**
  * Linear interpolation for positions, nlerp for quaternions, linear for joint angles.
@@ -64,16 +66,29 @@ export class PhysicsClient {
                 pending.resolve(msg);
             }
         };
+        // A worker whose script failed to load, or that died, answers nothing: fail
+        // every request instead of leaving it pending (the session then falls back).
+        const onError = e => {
+            const error = new Error(e?.message || 'the physics worker failed');
+            for (const pending of this._pending.values()) pending.reject(error);
+            this._pending.clear();
+            this.failed = error;
+        };
         if (typeof port.addEventListener === 'function') {
             port.addEventListener('message', onMessage);
+            port.addEventListener('error', onError);
         } else if (typeof port.on === 'function') {
             port.on('message', onMessage);
+            port.on('error', onError);
         } else {
             port.onmessage = onMessage;
+            port.onerror = onError;
         }
+        this.failed = null;
     }
 
     _request(msg, transfer) {
+        if (this.failed) return Promise.reject(this.failed);
         const id = this._nextId++;
         msg.id = id;
         return new Promise((resolve, reject) => {
@@ -120,6 +135,44 @@ export class PhysicsClient {
         const reply = await this._request({ type: 'reset' });
         if (reply.type !== 'loaded') throw new Error(reply.message ?? 'reset failed');
         return { bodyIds: reply.bodyIds, jointIds: reply.jointIds };
+    }
+
+    /**
+     * Load a Sim Lab scene (../sim-worker-protocol.js): the physics and the hub bridge's
+     * mirror hubs. Resolves to the poses and the hubs' readings at t = 0 (by hub id) and
+     * the scene's id (batches name it).
+     * @param {{mechanism: object, hubs: {id: string, profile: string, body: string}[], stepMs: number}} scene
+     * @returns {Promise<{scene: number, t: number, bodies: Float64Array, joints: Float64Array, readings: object}>}
+     */
+    async simLoad({ mechanism, hubs = [], stepMs }) {
+        const reply = await this._request({ type: 'sim-load', mechanism, hubs, stepMs });
+        if (reply.type !== 'sim-loaded') throw new Error(reply.message ?? 'sim load failed');
+        return { scene: reply.id, t: reply.t, bodies: reply.bodies, joints: reply.joints, readings: reply.readings ?? {} };
+    }
+
+    /**
+     * Run one batch of fixed steps.
+     * @param {{scene: number, steps?: number, ticks?: number[], hubs?: object, redo?: boolean}} batch
+     *        hubs: each hub's exportState() by hub id
+     * @returns {Promise<{frames: object[], t: number, bodies: Float64Array, joints: Float64Array, workMs: number}>}
+     */
+    async simBatch({ scene, steps = 0, ticks = [], hubs = {}, redo = false }) {
+        const reply = await this._request({ type: 'sim-batch', scene, steps, ticks, hubs, redo });
+        if (reply.type !== 'sim-frames') throw new Error(reply.message ?? 'sim batch failed');
+        return reply;
+    }
+
+    /** @param {number} scene @returns {Promise<void>} */
+    async simDispose(scene) {
+        await this._request({ type: 'sim-dispose', scene });
+    }
+
+    /** Stop the worker (the pane does, when it goes away). */
+    terminate() {
+        for (const pending of this._pending.values()) pending.reject(new Error('the physics worker was stopped'));
+        this._pending.clear();
+        this.failed = new Error('the physics worker was stopped');
+        if (typeof this._port.terminate === 'function') this._port.terminate();
     }
 
     /**

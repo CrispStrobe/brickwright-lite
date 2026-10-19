@@ -7,7 +7,7 @@ use std::collections::BTreeSet;
 use std::io::{Read, Write};
 use std::net::{Shutdown, SocketAddr, TcpStream};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Condvar, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
@@ -17,6 +17,11 @@ const MAX_CAPABILITIES: usize = 128;
 const EV3_PIXELS: usize = 178 * 128;
 const READ_BYTES: usize = 16 * 1024;
 const IO_TIMEOUT: Duration = Duration::from_millis(250);
+/// One lockstep exchange's wall budget: the emulator runs a whole quantum (≤ 20 ms of
+/// virtual time) before it replies, at a real-time factor that can be far below 1.
+const LOCKSTEP_REPLY_TIMEOUT: Duration = Duration::from_secs(5);
+/// The target capability that admits `lockstep.*` (Runtime renode-spike-prime#58).
+pub(crate) const LOCKSTEP_CAPABILITY: &str = "lockstep/v1";
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -325,7 +330,29 @@ pub(crate) struct BrickStateFeed {
     stream: TcpStream,
     command_lock: Mutex<()>,
     reply: Arc<Mutex<Option<PendingCommand>>>,
+    /// Signalled (under `reply`) whenever the reader stores a snapshot or a result, or
+    /// stops: a lockstep exchange waits on it instead of polling.
+    changed: Arc<Condvar>,
+    /// Whether this connection began lockstep (`lockstep.begin` accepted, no `end` yet).
+    lockstep_active: AtomicBool,
     thread: Option<JoinHandle<()>>,
+}
+
+/// Wakes every lockstep waiter when the reader thread ends, on any path.
+struct WakeOnExit(Arc<Mutex<Option<PendingCommand>>>, Arc<Condvar>);
+
+impl WakeOnExit {
+    fn notify(&self) {
+        // Take the lock so a waiter between its check and its wait cannot miss this.
+        let _slot = self.0.lock();
+        self.1.notify_all();
+    }
+}
+
+impl Drop for WakeOnExit {
+    fn drop(&mut self) {
+        self.notify();
+    }
 }
 
 struct PendingCommand {
@@ -399,7 +426,10 @@ impl BrickStateFeed {
         let healthy_thread = Arc::clone(&healthy);
         let stop_thread = Arc::clone(&stop);
         let reply_thread = Arc::clone(&reply);
+        let changed = Arc::new(Condvar::new());
+        let wake = WakeOnExit(Arc::clone(&reply), Arc::clone(&changed));
         let thread = thread::spawn(move || {
+            let wake = wake;
             let mut decoder = BrickStateDecoder::default();
             let mut pending = Vec::new();
             let mut buffer = [0u8; READ_BYTES];
@@ -422,6 +452,7 @@ impl BrickStateFeed {
                                     healthy_thread.store(false, Ordering::Release);
                                     return;
                                 }
+                                wake.notify();
                                 pending.clear();
                                 pending.append(&mut remainder);
                                 continue;
@@ -438,6 +469,7 @@ impl BrickStateFeed {
                                         healthy_thread.store(false, Ordering::Release);
                                         return;
                                     }
+                                    wake.notify();
                                 }
                                 Err(_) => {
                                     healthy_thread.store(false, Ordering::Release);
@@ -466,6 +498,8 @@ impl BrickStateFeed {
             stream,
             command_lock: Mutex::new(()),
             reply,
+            changed,
+            lockstep_active: AtomicBool::new(false),
             thread: Some(thread),
         })
     }
@@ -510,6 +544,7 @@ impl BrickStateFeed {
             "micropython.uart.read" | "micropython.uart.write" | "micropython.uart.close" if uart_request.is_some() => {}
             "nuttx.program.packet" if crate::arena_inputs::valid_nuttx_packet(&arguments) => {}
             "nuttx.program.storage.submit" if crate::arena_inputs::valid_nuttx_storage_submit(&arguments) => {}
+            "nuttx.program.control.submit" if crate::arena_inputs::valid_nuttx_program_control(&arguments) => {}
             "arena.inputs" if crate::arena_inputs::valid(&arguments) => {}
             "arena.program.load" if crate::arena_inputs::valid_program(&arguments) => {}
             "state.sample" if arguments.as_object().is_some_and(|args| args.is_empty()) => {}
@@ -539,6 +574,11 @@ impl BrickStateFeed {
                     && prior.lifecycle["micropythonUart"]["generation"].as_u64() == uart_request.as_ref().map(|request| request.generation())
             }
             "state.sample" => true,
+            "nuttx.program.control.submit" => prior.target.board == "spike-prime"
+                && prior.target.transport == "none"
+                && prior.target.firmware == "brickwright-nuttx"
+                && prior.target.capabilities.iter().any(|cap| cap == "nuttx-program/v1")
+                && prior.target.capabilities.iter().any(|cap| cap == "nuttx-program-deferred-start/v1"),
             "nuttx.program.packet" | "nuttx.program.storage.submit" => prior.target.board == "spike-prime"
                 && prior.target.transport == "none"
                 && prior.target.firmware == "brickwright-nuttx"
@@ -608,6 +648,133 @@ impl BrickStateFeed {
             self.stop.store(true, Ordering::Release);
             self.healthy.store(false, Ordering::Release);
             let _ = self.stream.shutdown(Shutdown::Both);
+        }
+        outcome
+    }
+
+    /// Robot Lab lockstep (docs/ROBOT-LAB-SPIKE-EMULATION.md §2.2, R13a): forwards one
+    /// closed `lockstep.begin|step|end` command and waits — on the reader's condition
+    /// variable, not a polling sleep — for its accepted result and the snapshot after
+    /// it. Admitted only when the target advertises `lockstep/v1`. The reply is the
+    /// result's `data` — the Runtime's snapshot right after the command, which is also
+    /// the stream's next snapshot (renode-spike-prime#59): it is returned once the
+    /// stream (and so the decoder's checks) has caught up with it and agrees. A Runtime
+    /// without `data` falls back to the first fresh streamed snapshot. A `step` reply's
+    /// clock must be exactly `expectClockNs + quantum`; past that is a desync. Any failure
+    /// after the write tears the feed down, as for every other command.
+    pub(crate) fn lockstep(
+        &self,
+        name: &str,
+        arguments: serde_json::Value,
+    ) -> Result<BrickStateSnapshot, String> {
+        let valid = match name {
+            "lockstep.begin" => crate::arena_inputs::valid_lockstep_begin(&arguments),
+            "lockstep.step" => crate::arena_inputs::valid_lockstep_step(&arguments),
+            "lockstep.end" => crate::arena_inputs::valid_lockstep_end(&arguments),
+            _ => return Err("brick-state input is unsupported".into()),
+        };
+        if !valid {
+            return Err("brick-state lockstep input is malformed".into());
+        }
+        let _lock = self
+            .command_lock
+            .lock()
+            .map_err(|_| "brick-state command unavailable".to_owned())?;
+        let prior = self.latest()?;
+        if prior.target.board != "spike-prime"
+            || prior.target.transport != "none"
+            || !matches!(prior.target.firmware.as_str(), "brickwright-nuttx" | "micropython-prime")
+        {
+            return Err("brick-state input target mismatch".into());
+        }
+        if !prior.target.capabilities.iter().any(|cap| cap == LOCKSTEP_CAPABILITY) {
+            return Err("the emulated SPIKE hub does not support lockstep (lockstep/v1)".into());
+        }
+        if arguments.get("hub").is_some()
+            && !(prior.target.firmware == "micropython-prime"
+                && prior.target.capabilities.iter().any(|cap| cap == "prime-hub-io/v1"))
+        {
+            return Err("brick-state input target mismatch".into());
+        }
+        let active = self.lockstep_active.load(Ordering::Acquire);
+        if name == "lockstep.begin" && active {
+            return Err("lockstep has already begun".into());
+        }
+        if name != "lockstep.begin" && !active {
+            return Err("lockstep has not begun".into());
+        }
+        let target_clock = if name == "lockstep.step" {
+            let quantum_ns = arguments["quantumUs"].as_u64().expect("validated quantum") * 1000;
+            Some(arguments["expectClockNs"].as_u64().expect("validated clock") + quantum_ns)
+        } else {
+            None
+        };
+        let request_id = format!("input-{}", prior.seq);
+        let command = serde_json::json!({"schemaVersion":1,"type":"command",
+            "requestId":request_id,"expectedSeq":prior.seq,
+            "command":name,"arguments":arguments});
+        let mut wire = serde_json::to_vec(&command)
+            .map_err(|_| "brick-state command unavailable".to_owned())?;
+        wire.push(b'\n');
+        *self.reply.lock().map_err(|_| "brick-state command unavailable")? =
+            Some(PendingCommand {request_id, seq: prior.seq, result: None});
+        let outcome = (|| {
+            let mut stream = &self.stream;
+            stream.write_all(&wire).map_err(|_| "brick-state command unavailable".to_owned())?;
+            let deadline = Instant::now() + LOCKSTEP_REPLY_TIMEOUT;
+            let mut slot = self.reply.lock().map_err(|_| "brick-state command unavailable")?;
+            loop {
+                let current = self.latest()?;
+                if let Some(result) = slot.as_ref().and_then(|owned| owned.result.as_ref()) {
+                    if !result.accepted {
+                        return Err("brick-state command rejected".to_owned());
+                    }
+                    if let Some(data) = &result.data {
+                        let reply: BrickStateSnapshot = serde_json::from_value(data.clone())
+                            .map_err(|_| "brick-state lockstep reply is malformed".to_owned())?;
+                        if reply.seq <= prior.seq
+                            || target_clock.is_some_and(|clock| reply.clock_ns != clock)
+                        {
+                            return Err("brick-state lockstep clock desynchronised".to_owned());
+                        }
+                        if current.seq == reply.seq && current != reply {
+                            return Err("brick-state lockstep reply differs from the stream".to_owned());
+                        }
+                        if current.seq >= reply.seq {
+                            return Ok(reply);
+                        }
+                    } else if current.seq > prior.seq {
+                        match target_clock {
+                            Some(clock) if current.clock_ns > clock => {
+                                return Err("brick-state lockstep clock desynchronised".to_owned());
+                            }
+                            Some(clock) if current.clock_ns < clock => {}
+                            _ => return Ok(current),
+                        }
+                    }
+                }
+                let now = Instant::now();
+                if now >= deadline {
+                    return Err("brick-state command timed out".to_owned());
+                }
+                slot = self
+                    .changed
+                    .wait_timeout(slot, deadline - now)
+                    .map_err(|_| "brick-state command unavailable")?
+                    .0;
+            }
+        })();
+        if let Ok(mut slot) = self.reply.lock() { *slot = None; }
+        match (&outcome, name) {
+            (Ok(_), "lockstep.begin") => self.lockstep_active.store(true, Ordering::Release),
+            (Ok(_), "lockstep.end") => self.lockstep_active.store(false, Ordering::Release),
+            (Ok(_), _) => {}
+            (Err(_), _) => {
+                self.lockstep_active.store(false, Ordering::Release);
+                self.stop.store(true, Ordering::Release);
+                self.healthy.store(false, Ordering::Release);
+                let _ = self.stream.shutdown(Shutdown::Both);
+            }
         }
         outcome
     }
@@ -851,6 +1018,240 @@ mod tests {
         format!(
             r#"{{"schemaVersion":1,"type":"snapshot","seq":{seq},"clockNs":42,"target":{{"board":"spike-prime","firmware":"brickwright-nuttx","transport":"none","imageSha256":null,"capabilities":[],"limitations":[]}},"lifecycle":{{"phase":"ready","generation":1}},"ports":[],"motors":[],"sensors":[],"display":{{"width":5,"height":5,"pixels":[]}},"buttons":{{}},"battery":{{"percent":100}},"power":{{"state":"on"}},"imu":{{"acceleration":{{"x":0,"y":0,"z":0}},"angularVelocity":{{"x":0,"y":0,"z":0}}}},"audio":{{"active":false}},"storage":{{"ready":true}},"bluetooth":{{"state":"modeled","transport":"none"}}}}"#
         )
+    }
+
+    fn lockstep_frame(seq: u64, clock_ns: u64) -> serde_json::Value {
+        let mut value: serde_json::Value = serde_json::from_str(&frame(seq)).unwrap();
+        value["clockNs"] = clock_ns.into();
+        value["target"]["imageSha256"] = "b".repeat(64).into();
+        value["target"]["capabilities"] =
+            serde_json::json!(["lockstep/v1", "motor-bridge-drive/v1", "external-shaft/v1"]);
+        value["ports"] = serde_json::json!([{"id":"A","attached":true,"kind":"motor"}]);
+        value["motors"] = serde_json::json!([{"port":"A","position":0.0,"speedDps":0.0,
+            "positionSource":"external","drive":{"mean":2500,"last":2500,"brakingTicks":0,"ticks":5}}]);
+        value
+    }
+
+    fn lockstep_step(clock_ns: u64) -> serde_json::Value {
+        serde_json::json!({"quantumUs":5000,"expectClockNs":clock_ns,
+            "shafts":[{"port":"A","positionMdeg":1000,"speedMdps":360000}],
+            "sensors":[{"port":"D","kind":"distance","values":{"distanceMillimeters":175}}]})
+    }
+
+    fn reply(stream: &mut TcpStream, command: &serde_json::Value) {
+        writeln!(stream, "{}", serde_json::json!({"schemaVersion":1,"type":"result",
+            "requestId":command["requestId"],"seq":command["expectedSeq"],"accepted":true})).unwrap();
+    }
+
+    /// Nothing reaches the fake state service: the connection stays silent until dropped.
+    fn assert_silent(stream: &mut TcpStream) {
+        let mut byte = [0];
+        match stream.read(&mut byte) {
+            Ok(0) => {}
+            Err(error) if matches!(error.kind(), std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut) => {}
+            other => panic!("a refused lockstep request reached the state service: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn lockstep_steps_land_exactly_one_quantum_apart_without_polling() {
+        const T0: u64 = 1_000_000_000;
+        const STEPS: u64 = 1000;
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let endpoint = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+            stream.set_nodelay(true).unwrap();
+            let mut seq = 0;
+            writeln!(stream, "{}", lockstep_frame(seq, T0)).unwrap();
+            let begin = read_command(&mut stream);
+            assert_eq!(begin["command"], "lockstep.begin");
+            assert_eq!(begin["arguments"], serde_json::json!({"quantumUs":5000}));
+            reply(&mut stream, &begin);
+            seq += 1;
+            writeln!(stream, "{}", lockstep_frame(seq, T0)).unwrap();
+            let mut clock = T0;
+            for k in 0..STEPS {
+                let step = read_command(&mut stream);
+                assert_eq!(step["command"], "lockstep.step");
+                assert_eq!(step["arguments"], lockstep_step(clock));
+                if k % 100 == 7 || k % 100 == 8 {
+                    // A snapshot from before the quantum ran must not complete the step.
+                    seq += 1;
+                    writeln!(stream, "{}", lockstep_frame(seq, clock)).unwrap();
+                }
+                clock += 5_000_000;
+                let mut after = lockstep_frame(seq + 1, clock);
+                seq += 1;
+                if k % 2 == 0 {
+                    reply(&mut stream, &step);
+                    writeln!(stream, "{after}").unwrap();
+                } else {
+                    // The Runtime's shape (renode-spike-prime#59): the result's data IS the
+                    // snapshot, streamed right after the result.
+                    after["motors"][0]["drive"]["mean"] = (-10000).into();
+                    writeln!(stream, "{}", serde_json::json!({"schemaVersion":1,"type":"result",
+                        "requestId":step["requestId"],"seq":step["expectedSeq"],"accepted":true,"data":after})).unwrap();
+                    writeln!(stream, "{after}").unwrap();
+                }
+            }
+            let end = read_command(&mut stream);
+            assert_eq!(end["command"], "lockstep.end");
+            reply(&mut stream, &end);
+            writeln!(stream, "{}", lockstep_frame(seq + 1, clock)).unwrap();
+            thread::sleep(Duration::from_millis(100));
+        });
+        let feed = BrickStateFeed::connect(endpoint).unwrap();
+        feed.wait_ready(Duration::from_secs(2)).unwrap();
+        assert_eq!(feed.lockstep("lockstep.step", lockstep_step(T0)).unwrap_err(), "lockstep has not begun");
+        assert!(feed.latest().is_ok(), "a refused step must not touch the feed");
+        let begun = feed.lockstep("lockstep.begin", serde_json::json!({"quantumUs":5000})).unwrap();
+        assert_eq!((begun.seq, begun.clock_ns), (1, T0));
+        assert_eq!(feed.lockstep("lockstep.begin", serde_json::json!({"quantumUs":5000})).unwrap_err(),
+            "lockstep has already begun");
+        let mut wall = Vec::with_capacity(STEPS as usize);
+        for k in 0..STEPS {
+            let started = Instant::now();
+            let snapshot = feed.lockstep("lockstep.step", lockstep_step(T0 + k * 5_000_000)).unwrap();
+            wall.push(started.elapsed());
+            assert_eq!(snapshot.clock_ns, T0 + (k + 1) * 5_000_000);
+            assert_eq!(snapshot.motors[0]["positionSource"], "external");
+        }
+        feed.lockstep("lockstep.end", serde_json::json!({})).unwrap();
+        assert_eq!(feed.lockstep("lockstep.step", lockstep_step(T0)).unwrap_err(), "lockstep has not begun");
+        wall.sort();
+        // Without polling: the ordinary command path waits in 5 ms sleeps, so a polling wait can
+        // never finish an exchange in under 5 ms; the condition-variable wait finishes the fastest
+        // ones in well under a millisecond even on a loaded CI runner. A median threshold at 5 ms
+        // measured runner load instead (5.4 ms on a GitHub runner, PR #1061), not polling.
+        assert!(wall[0] < Duration::from_micros(2500), "fastest exchange {:?} (median {:?}): a polling wait cannot go below its 5 ms sleep", wall[0], wall[wall.len() / 2]);
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn lockstep_is_refused_before_any_byte_without_capability_or_with_a_malformed_step() {
+        for (capabilities, arguments, expected) in [
+            (serde_json::json!(["arena-inputs/v1"]), serde_json::json!({"quantumUs":5000}),
+                "the emulated SPIKE hub does not support lockstep (lockstep/v1)"),
+            (serde_json::json!(["lockstep/v1"]), serde_json::json!({"quantumUs":7500}),
+                "brick-state lockstep input is malformed"),
+            (serde_json::json!(["lockstep/v1"]), serde_json::json!({"quantumUs":5000,"monitor":"start"}),
+                "brick-state lockstep input is malformed"),
+        ] {
+            let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+            let endpoint = listener.local_addr().unwrap();
+            let server = thread::spawn(move || {
+                let (mut stream, _) = listener.accept().unwrap();
+                stream.set_read_timeout(Some(Duration::from_millis(300))).unwrap();
+                let mut snapshot = lockstep_frame(0, 42);
+                snapshot["target"]["capabilities"] = capabilities;
+                writeln!(stream, "{snapshot}").unwrap();
+                assert_silent(&mut stream);
+            });
+            let feed = BrickStateFeed::connect(endpoint).unwrap();
+            feed.wait_ready(Duration::from_secs(2)).unwrap();
+            assert_eq!(feed.lockstep("lockstep.begin", arguments).unwrap_err(), expected);
+            assert!(feed.lockstep("lockstep.run", serde_json::json!({})).is_err());
+            assert!(feed.latest().is_ok());
+            server.join().unwrap();
+        }
+    }
+
+    #[test]
+    fn lockstep_malformed_steps_and_nuttx_hub_inputs_never_reach_the_state_service() {
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let endpoint = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+            writeln!(stream, "{}", lockstep_frame(0, 0)).unwrap();
+            let begin = read_command(&mut stream);
+            reply(&mut stream, &begin);
+            writeln!(stream, "{}", lockstep_frame(1, 0)).unwrap();
+            stream.set_read_timeout(Some(Duration::from_millis(300))).unwrap();
+            assert_silent(&mut stream);
+        });
+        let feed = BrickStateFeed::connect(endpoint).unwrap();
+        feed.wait_ready(Duration::from_secs(2)).unwrap();
+        feed.lockstep("lockstep.begin", serde_json::json!({"quantumUs":5000})).unwrap();
+        let mut hub = lockstep_step(0);
+        hub["hub"] = serde_json::json!({"buttons":{"left":false,"center":false,"right":false,"bluetooth":false},
+            "imuRaw":{"temperature":0,"angularRate":[0,0,0],"acceleration":[0,0,0]}});
+        assert_eq!(feed.lockstep("lockstep.step", hub).unwrap_err(), "brick-state input target mismatch");
+        let mutations: [fn(&mut serde_json::Value); 5] = [
+            |v: &mut serde_json::Value| v["shafts"][0]["port"] = "G".into(),
+            |v: &mut serde_json::Value| v["sensors"][0]["port"] = "A".into(),
+            |v: &mut serde_json::Value| v["shafts"][0]["positionMdeg"] = 0.5.into(),
+            |v: &mut serde_json::Value| v["quantumUs"] = 7500.into(),
+            |v: &mut serde_json::Value| v["extra"] = true.into(),
+        ];
+        for mutate in mutations {
+            let mut bad = lockstep_step(0);
+            mutate(&mut bad);
+            assert_eq!(feed.lockstep("lockstep.step", bad).unwrap_err(), "brick-state lockstep input is malformed");
+        }
+        assert!(feed.latest().is_ok());
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn lockstep_reply_data_must_be_the_quantum_and_agree_with_the_stream() {
+        for (data_clock, stream_clock, expected) in [
+            (5_000_000u64, 5_000_000u64, Ok(5_000_000u64)),
+            (5_000_001, 5_000_001, Err("brick-state lockstep clock desynchronised")),
+            (5_000_000, 4_000_000, Err("brick-state lockstep reply differs from the stream")),
+        ] {
+            let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+            let endpoint = listener.local_addr().unwrap();
+            let server = thread::spawn(move || {
+                let (mut stream, _) = listener.accept().unwrap();
+                stream.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+                writeln!(stream, "{}", lockstep_frame(0, 0)).unwrap();
+                let begin = read_command(&mut stream);
+                writeln!(stream, "{}", serde_json::json!({"schemaVersion":1,"type":"result",
+                    "requestId":begin["requestId"],"seq":0,"accepted":true,"data":lockstep_frame(1, 0)})).unwrap();
+                writeln!(stream, "{}", lockstep_frame(1, 0)).unwrap();
+                let step = read_command(&mut stream);
+                writeln!(stream, "{}", serde_json::json!({"schemaVersion":1,"type":"result",
+                    "requestId":step["requestId"],"seq":1,"accepted":true,"data":lockstep_frame(2, data_clock)})).unwrap();
+                // A desync tears the feed down at the result: this write may find it gone.
+                let _ = writeln!(stream, "{}", lockstep_frame(2, stream_clock));
+                thread::sleep(Duration::from_millis(100));
+            });
+            let feed = BrickStateFeed::connect(endpoint).unwrap();
+            feed.wait_ready(Duration::from_secs(2)).unwrap();
+            assert_eq!(feed.lockstep("lockstep.begin", serde_json::json!({"quantumUs":5000})).unwrap().seq, 1);
+            let outcome = feed.lockstep("lockstep.step", lockstep_step(0));
+            assert_eq!(outcome.as_ref().map(|s| s.clock_ns).map_err(String::as_str), expected);
+            assert_eq!(feed.latest().is_ok(), expected.is_ok());
+            server.join().unwrap();
+        }
+    }
+
+    #[test]
+    fn lockstep_reply_past_the_quantum_is_a_desync_that_ends_the_feed() {
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let endpoint = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+            writeln!(stream, "{}", lockstep_frame(0, 0)).unwrap();
+            let begin = read_command(&mut stream);
+            reply(&mut stream, &begin);
+            writeln!(stream, "{}", lockstep_frame(1, 0)).unwrap();
+            let step = read_command(&mut stream);
+            reply(&mut stream, &step);
+            writeln!(stream, "{}", lockstep_frame(2, 5_000_001)).unwrap();
+            thread::sleep(Duration::from_millis(100));
+        });
+        let feed = BrickStateFeed::connect(endpoint).unwrap();
+        feed.wait_ready(Duration::from_secs(2)).unwrap();
+        feed.lockstep("lockstep.begin", serde_json::json!({"quantumUs":5000})).unwrap();
+        assert_eq!(feed.lockstep("lockstep.step", lockstep_step(0)).unwrap_err(),
+            "brick-state lockstep clock desynchronised");
+        assert!(feed.latest().is_err());
+        server.join().unwrap();
     }
 
     #[test]

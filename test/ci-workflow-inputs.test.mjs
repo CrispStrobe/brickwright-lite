@@ -24,7 +24,12 @@ const allowedGlobal = site => site.file === '.github/workflows/vendor-freshness.
 const allowedFlasher = site => site.file === '.github/workflows/build.yml'
     && site.repository === 'CrispStrobe/stc-compiler'
     && site.ref === '${{ steps.stc_flasher_pin.outputs.sha }}';
-const allowed = site => allowedGlobal(site) || allowedFlasher(site);
+// The production probe's example census draws example parts with the pinned
+// bw-circuit-ui, through the same validated vendor_pins output.
+const allowedProbe = site => site.file === '.github/workflows/production-sw-probe.yml'
+    && site.repository === 'CrispStrobe/bw-circuit-ui'
+    && site.ref === '${{ steps.vendor_pins.outputs.bw-circuit-ui }}';
+const allowed = site => allowedGlobal(site) || allowedFlasher(site) || allowedProbe(site);
 
 function assertFlasherValidation(body, name) {
     assert.match(body, /id: stc_flasher_pin\n\s+if:[^\n]+\n\s+run: \|\n\s+node -e .*stc-compiler-flasher.*\/\^\[0-9a-f\]\{40\}\$\//, name);
@@ -50,6 +55,10 @@ test('every external workflow checkout has a full pin or validated vendor-pin ou
         assertFlasherValidation(body, name);
         assert.throws(()=>assertFlasherValidation(body.replace('id: stc_flasher_pin','id: unchecked'),name));
     }
+    const probe = workflows.get('.github/workflows/production-sw-probe.yml');
+    assert.match(probe, /id: vendor_pins\n\s+run: node scripts\/ci-vendor-pins\.mjs >> "\$GITHUB_OUTPUT"/);
+    assert.ok(probe.indexOf('id: vendor_pins') < probe.indexOf('repository: CrispStrobe/bw-circuit-ui'));
+    assert.deepEqual(sites.filter(allowedProbe).map(site => site.repository), ['CrispStrobe/bw-circuit-ui']);
     t.diagnostic(`Audited ${sites.length} external checkout sites across ${workflows.size} workflows`);
 });
 

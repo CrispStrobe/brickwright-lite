@@ -273,12 +273,12 @@ try{
         await editor().fill(`${device}\nGLOBAL actor\nGLOBAL frames\nGLOBAL interval\nGLOBAL phase\nGLOBAL freshFirst\nGLOBAL freshSecond\nGLOBAL freshPixel\nGLOBAL sharedPixel\nGLOBAL freshSame\n${generated.replace(/^DEVICE[^\n]*\n?/m,'').trimEnd()}\nSPRITE Game:\nWHEN flag clicked:\n  hide\n  arcade set background color to 1\n  set actor to arcade create image (arcade new image width 3 height 2) template "" kind "Player"\n  arcade set position of actor x 80 y 60\n  arcade set scale of actor to 8 anchor 0\n  set frames to `);
         await editor().click();await page.keyboard.press('Control+End');
         await page.getByTestId('bw-code-animation-picker').selectOption(published.id);
-        await page.getByTestId('bw-code-animation-insert-frames').click();
+        await page.getByTestId('bw-code-animation-insert-menu').click();await page.getByTestId('bw-code-animation-insert-frames').click();
         await editor().click();await page.keyboard.press('Control+End');await page.keyboard.insertText('\n  set interval to ');
-        await page.getByTestId('bw-code-animation-insert-interval').click();
+        await page.getByTestId('bw-code-animation-insert-menu').click();await page.getByTestId('bw-code-animation-insert-interval').click();
         for(const variable of ['freshFirst','freshSecond']){
             await editor().click();await page.keyboard.press('Control+End');await page.keyboard.insertText(`\n  set ${variable} to `);
-            await page.getByTestId('bw-code-animation-insert-fresh').click();
+            await page.getByTestId('bw-code-animation-insert-menu').click();await page.getByTestId('bw-code-animation-insert-fresh').click();
         }
         await editor().click();await page.keyboard.press('Control+End');await page.keyboard.insertText(`\n  arcade set image pixel (item 0 of array reference (freshFirst)) x 0 y 0 color 7\n  set freshPixel to arcade image pixel (item 0 of array reference (freshSecond)) x 0 y 0\n  set sharedPixel to arcade image pixel (item 0 of array reference (frames)) x 0 y 0\n  set freshSame to compare value (freshFirst) op "===" with (freshSecond)`);
 
@@ -594,7 +594,7 @@ try{
         await picker.selectOption(copyId);
         const beforeInsert=await editor().evaluate(element=>element.cmTile.root.view.state.doc.toString());
         await editor().click();await page.keyboard.press('Control+End');await page.keyboard.insertText('\n');
-        await page.getByTestId('bw-code-animation-insert-fresh').click();
+        await page.getByTestId('bw-code-animation-insert-menu').click();await page.getByTestId('bw-code-animation-insert-fresh').click();
         assert.ok((await editor().evaluate(element=>element.cmTile.root.view.state.doc.toString())).includes(`arcade animation fresh frames resource "${copyId}"`));
         // Restore the source through the actual editor, leaving gameplay bindings unchanged.
         await editor().fill(beforeInsert);

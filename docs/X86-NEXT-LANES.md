@@ -316,12 +316,464 @@ download action [PR987](https://github.com/CrispStrobe/brickwright-lite/pull/987
 and persistence scenario [PR989](https://github.com/CrispStrobe/brickwright-lite/pull/989)
 are composed in [draft PR1013](https://github.com/CrispStrobe/brickwright-lite/pull/1013)
 under their merged ownership, with canonical manifest admission corrected.
-That source checkpoint keeps the selected dependency unchanged and is not an
-installed qualification.
-The [proposed acceptance extension](../LANES.md#386-gui-hdd-and-forward-debug-hosted-acceptance--2026-10-16)
+The source candidate remains at `79afc8bc4c67c71ae251cc60fed5c5aff9231fec`;
+its 17 enabled final-head checks passed, with seven declared conditional skips.
+PR1013 is not merged or qualified on main. This historical candidate selection
+is separate from current main's dependency declarations; refresh those before
+any later integration without changing pins as part of this handoff.
+The [merged acceptance claim](../LANES.md#386-gui-hdd-and-forward-debug-hosted-acceptance--2026-10-16)
 adds only one hosted entry controller, one standalone original reader, focused
-inert controls and a separate workflow seam around the existing probe. Merge
-that claim before implementing its new files.
+inert controls and a separate workflow around the existing probe. Ownership
+was merged in [PR1014](https://github.com/CrispStrobe/brickwright-lite/pull/1014)
+before implementation; the hosted acceptance remains unfinished.
+
+The [acceptance source checkpoint](https://github.com/CrispStrobe/brickwright-lite/commit/37cf9a63cb6da453145b031fc682880e448dbb11)
+implements the controller, standalone reader, workflow and two probe scenarios
+in the same draft composition. The HDD scenario uses genuine
+browser downloads and a fresh chooser session. The separate self-authored boot
+image exercises existing breakpoint, instruction-step, full-width register,
+physical readonly-memory and pane-retention controls. Source controls pass 59
+Node tests, including 33 embedded Python original-byte controls; they include a
+complete controller-to-reader mocked attempt and coherently rehashed negatives.
+Twenty targeted source cuts are detected. They are not an executed browser or
+guest result. The independent reader also
+grades captured rendered memory and register text, not only target values.
+The initial checkpoint kept both guards false. A subsequent separately reviewed
+activation enables metadata inventory only; actual source/workflow guards remain
+false. An immutable template and explicit own-PR event are still required.
+The first inventory selects source/runtime metadata only: locally assumed Python
+cache paths are excluded. This inventory does not establish executing Python
+import/bytecode closure; selected hosted system interpreter/native libraries
+remain an explicit trusted platform boundary.
+
+The [startup checkpoint](https://github.com/CrispStrobe/brickwright-lite/commit/7e11a159c)
+versions the future actual request and reader as v3 while preserving v2 metadata
+inventory. Before CPython entry, the actual workflow exclusively creates and
+records an empty cache prefix; fixed isolated, no-site and no-bytecode-write
+options redirect cache reads to it. Controller and reader join the original
+installation, before/after flags, path and directory snapshots, plus ordered
+successful official steps. Fifty Python controls and 59 Node tests pass, with
+nine detected startup source cuts. These controls do not prove source/native
+import closure, whole-host authenticity or a browser/guest result.
+
+The first metadata event is already consumed for source `671702949709dc78da7d0cc8d0e064f9799ff399`:
+[run 39106669518](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39106669518).
+Its template digest is `668f81ce67ad7bd4313da934e0bddbd0e78e6cd152e67b68e55bb695fbdaf583`.
+It failed because the required selected font configuration
+`/etc/fonts/conf.avail/65-droid-sans-fallback.conf` was absent. Its sole official
+artifact is already acquired and independently audited; do not repeat the label
+or download. There is no successful inventory original or observed runtime/source
+graph. Later source changes do not qualify that failed selection.
+
+The [GUI readiness checkpoint](https://github.com/CrispStrobe/brickwright-lite/commit/ad636dbd1)
+waits for actual configuration text, drawer controls, the requested memory page
+and rendered full-width registers. It preserves the existing debugger assertions;
+four removed-wait mutations are detected. The
+[failure-diagnostic checkpoint](https://github.com/CrispStrobe/brickwright-lite/commit/ca1867592)
+collects bounded selected-file and alias problems in a distinct
+`inventory-failure.json`, preserves the first error, and returns nonzero before
+runtime/Git probes after any required-path failure. Successful v2 output and
+actual v3 guards remain held. Sixty-two Node tests, including 58 Python controls,
+pass; eight diagnostic source mutations are detected. These are source controls,
+not actual browser or guest qualification.
+
+The collector's cooperative selected-path budget is now 180 seconds, inside the
+unchanged four-minute recording step and fifteen-minute metadata job. Remaining
+paths are explicitly `unvisited-deadline` with `attempted: false`; an expired
+read remains an attempted failure. The original first failure stays primary.
+The cross-layer timeout control and all 63 Node tests pass, including 58 Python
+controls; three targeted timeout/status mutations are detected. This bounds the
+diagnostic attempt without claiming per-read preemption or job sufficiency.
+The earlier missing-font roster remains mandatory in a distinct diagnostic
+selection; actual execution remains disabled.
+
+Failure-only inventory now uses `bw.gui-hdd.inventory-failure.v2`: exact raw event
+bytes are embedded with a 256 KiB cap, separate hash/extent and reserved diagnostic
+budget. Unavailable originals or incomplete path diagnostics remain explicit
+failures. The standalone reader recomputes event/template/source-head and
+run/workflow joins against an independently frozen policy. It never imports the
+producer or converts a failed observation into a runtime candidate. Successful
+inventory v2, actual request v3, executable size rules and actual guards remain
+unchanged. The 63 Node tests include 65 Python controls for this continuation.
+
+For a future v2 failure original, after official artifact and source metadata
+admission, audit the selected original files from the repository root:
+
+```sh
+/usr/bin/python3 -B scripts/read-i80386-hdd-gui-originals.py \
+  --inventory-failure gui-inventory/inventory-failure.json \
+  --template gui-inventory/runtime-template.json \
+  --expected reviewed-failure-policy.json
+```
+
+The policy schema is `bw.gui-hdd.inventory-failure-expectation.v2`: supply
+independently selected source21 `head`/`tree`/`files`, template and failure
+`byteLength`/`sha256`, official `runId` and executing `workflowSha`. Consult the
+reader's closed field checks; do not derive these pins from the untrusted
+failure payload itself. A successful audit still reports `candidate: false`
+and `qualified: false`. Earlier failure v1 originals lack the raw event and
+cannot gain this joined-event result retroactively.
+
+Preserve the previous head's separate [native test failure](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39111138775/job/117627344977):
+`renode_brick_state::tests::lockstep_steps_land_exactly_one_quantum_apart_without_polling`
+failed while 252 tests passed and ten were ignored. Its cause is unestablished;
+do not relabel it as flaky or lower the timing threshold. Coordinate diagnosis
+with the native/Renode owner in `apps/tauri/src-tauri/src/renode_brick_state.rs`;
+that source is outside this five-path lane. Every enabled final-head check still
+has to succeed before source integration.
+
+Continue within the already claimed five implementation paths; dependency
+writers and other workflows remain outside this lane. Next tasks are:
+
+1. **Bounded reads and alias source delivered.** The subsequent
+   [v2 source checkpoint](https://github.com/CrispStrobe/brickwright-lite/commit/7dd18548e)
+   bounds held proc reads to 4097 bytes before parsing and both lazy censuses to
+   8192 entries. Explicit directory aliases have a combined 256-alias cap,
+   bounded declared resolution and observed target-directory identities. The
+   request, inventory template, inventory original/admission and reader are v2;
+   result and probe-admission schemas remain v1. All 33 earlier Python test
+   bodies are held, with nine additional methods and thirteen detected source
+   cuts. The four focused Node wrappers pass independently. No real process,
+   browser or guest result is inferred from these mocked controls.
+2. Review the fixed `bw.gui-hdd.inventory-template.v2` path roster against the
+   locked Playwright package and selected Node/Python/tool closure. Select the
+   real pinned headless-shell executable; do not substitute a larger browser or
+   silently raise the file cap. The template must contain no operator paths.
+   With only the reviewed metadata guards enabled, freeze the exact source head
+   and template. The first own-PR `x86-hdd-gui-inventory` event above is already
+   consumed and its failed original is already audited. First freeze the new
+   failure-collector source. Review the locked Playwright platform dependency
+   roster and package-owned font/configuration paths; do not silently remove the
+   missing mandatory font or substitute local-host observations. A distinct
+   diagnostic event needs its own independently reviewed source/template/event
+   admission. Its failure-only original must never become a successful inventory.
+   Independently audit the new original once, retaining all failures, before
+   freezing any complete runtime input.
+   The inventory is an observation, not automatic actual approval or a complete
+   host attestation. Preserve any mismatch; do not install a fallback.
+   The distinct [diagnostic run39111308927](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39111308927)
+   is now consumed and its original acquired once: 288/306 selected files,
+   84/101 file aliases and all three directory aliases were observed, with
+   no unvisited paths. Thirty-four missing font/configuration paths and one
+   zero-length named Python source account for the refusals. Git observation
+   was not reached; no successful runtime inventory exists.
+
+   Two source prerequisites are now delivered: exact raw-event failure retention
+   and the explicit metadata-only empty Python-source policy described below.
+   The earlier original still has only named0644, size-zero stat for the empty
+   path, with no observed content hash. Actual-request v4 mapping remains pending;
+   existing v3 must not accept the new typed map. Review any package-derived font roster
+   as a distinct declared scope, retaining the old failed selection and explaining
+   every changed row. Do not delete failed entries solely to obtain green.
+3. Independently admit the official frontend Build checkout log, full source
+   head/tree/selected closure and producing workflow before selecting its ZIP
+   digest from official metadata. The actual controller acquires that original
+   once and derives bounded member inventories from authenticated bytes; the
+   reader recomputes them. Freeze the `bw.gui-hdd.actual-request.v3` identity
+   separately from the producer, including the prior inventory admission.
+4. Review final source, exact official event/job/step/artifact joins and resource
+   margin before the separate actual activation. The HDD and forward scenarios
+   keep 1250/180-second bounds under the 1800-second controller and 35-minute job;
+   package/browser setup consumes that same job budget. Per-process limits do
+   not prove aggregate containment or continuous process-group ownership.
+   After every enabled final-head check passes, admit one bounded actual event
+   and audit its original packet with `scripts/read-i80386-hdd-gui-originals.py`,
+   without producer imports or browser/guest replay. Preserve failures.
+5. Only qualified original evidence plus all enabled final-head checks can
+   close the component/composition merge gates. Refresh ownership and normal
+   merge parents/tree before merging; source controls alone do not qualify it.
+
+The [typed metadata checkpoint](https://github.com/CrispStrobe/brickwright-lite/commit/1f8565a7a)
+delivers template, successful-original, failure and admission v3 with a separate
+`emptyPythonSources` map. Only `/usr/lib/python3.12/urllib/__init__.py` is admitted
+under the declared `python-empty-package-source` role: root-owned0644, zero
+extent, exact empty digest, held one-byte EOF read, four strict metadata snapshots
+and successful close. Positive and typed entries share the existing 512-file
+limit. Generic file reads and executable/library positive-size checks stay held.
+All 63 Node tests and 74 Python controls pass; 17 source mutations are detected,
+and the legacy v2 success fixture is byte-identical. These are mocked source
+controls, not an observed hosted empty-file result.
+
+For a future externally pinned v3 metadata original, the independent endpoint is:
+
+```sh
+/usr/bin/python3 -B scripts/read-i80386-hdd-gui-originals.py \
+  --inventory-original gui-inventory/inventory-original.json \
+  --template gui-inventory/runtime-template.json \
+  --expected reviewed-metadata-policy.json
+```
+
+The policy schema is `bw.gui-hdd.inventory-admission.v3`: supply source21,
+original/template byte lengths and hashes, official run ID and workflow SHA.
+Its verdict keeps `candidate` and `qualified` false and explicitly reports
+`actualRequestSupported: false`. Existing template/inventory v2, failure v2 and
+actual request/reader v3 stay distinct; this metadata map is not accepted by
+actual v3. The new source candidate explicitly maps that role through actual
+request/reader v4. Its `bw.gui-hdd.actual-inventory-reference.v1` contains the
+unchanged metadata admission v3 descriptor plus independently selected producing
+job, artifact and workflow identities. A separately versioned
+`bw.gui-hdd.actual-expectation.v4` pins the reference and exact retained metadata
+original/template; the independent reader rechecks the metadata observations.
+The metadata-only verdict continues to report `actualRequestSupported: false`:
+it cannot authorize an actual run.
+
+The actual v4 runtime observations retain and independently grade typed EOF,
+empty digest, four strict identity snapshots and close before and after the
+guest. They preserve the isolated Python startup envelope, generic positive
+file predicates, caps and first/secondary errors. Request/expectation/schema
+mixing, wrong role/path/hash, coherent nonempty data and failed readback/close
+must refuse. The source candidate passes 63 Node tests including 80 embedded Python controls.
+The 74 earlier Python test bodies and the old actual v3 packet verdict remain
+unchanged; 22 source mutations and eight independent packet counterexamples
+are detected. These tests use manufactured inputs and mocked OS boundaries.
+Legacy actual v3 remains separate. Actual execution stays disabled
+until complete runtime, Build, source and event admission plus affected clean
+browser/guest qualification. The 34 missing baseline font/configuration inputs remain unresolved; the later
+font observation below does not change the required roster.
+
+The separate font-discovery source candidate now sets
+`FONT_DISCOVERY_ENABLED = True` and enables its distinct conditional
+`font-discovery` workflow job. This source activation grants no event or runtime
+admission. The exact request was subsequently published and one separately
+admitted font event was consumed, as recorded below; `ACTUAL_ENABLED = False`
+remains held. Its `bw.gui-hdd.font-discovery-request.v1` pins source21 and
+embeds the unchanged baseline template. It collects fixed configuration and
+font-directory censuses, held file hash/extent/EOF/identity/close observations,
+raw configuration bytes and at most three read-only `dpkg-query` probes:
+installed packages, path ownership and the selected owners' manifest union.
+The combined manifest output proves union membership only, not individual
+package boundaries. Root-owned nonwritable selected system tools are an explicit
+platform trust boundary; this is not complete tool/runtime attestation.
+
+The new job uses the held Ubuntu 24.04, Node 22.23.3 and action selections.
+A source guard runs before package setup or input retrieval. Setup installs the
+unchanged selected packages and Chromium without building the frontend; it has
+a ten-minute ceiling. A separate one-minute input step uses the existing
+immutable own-repository blob transport. Only that run step receives the API token in its environment.
+The token-free recording step runs isolated Python with a four-minute ceiling
+around the collector's 180-second cooperative budget. The sixteen-minute job
+backstop includes setup and upload; these limits do not prove measured
+sufficiency, syscall preemption or aggregate containment. Existing metadata and
+actual jobs remain unchanged. The job still requires the selected own-repository
+actor, label, first attempt, base/fork conditions and exact request/source/event
+joins; source activation alone admits no event.
+
+The delivery controls pass 64 Node tests, including 91 embedded Python controls.
+All 88 earlier Python test bodies remain unchanged. Twenty-six workflow drift
+variants and independent mocked input/event/token counterexamples refuse. The
+Python test wrapper now sends its controls through stdin to avoid the operating
+system's single-argument limit; assertions and timeouts remain unchanged. These
+are source controls, not hosted setup, font-selection or browser qualification.
+
+The upload step runs after failure and retains the outputs actually created:
+guard/setup/input/collector diagnostics, the request when installed, and separate
+process originals when collected. An early refusal does not invent missing
+request or collection evidence. A failure stays a failure. Admit the producing
+job and artifact metadata independently
+before acquiring the original once; do not infer executing workflow identity
+from the source run head or retry a consumed event.
+
+The distinct `bw.gui-hdd.font-discovery-original.v1` preserves partial probe
+streams and the first refusal. Its standalone reader accepts independently
+selected source/request/original/run/workflow identities through
+`bw.gui-hdd.font-discovery-expectation.v1`. It recomputes structural XML
+include/directory references and cycles from bounded raw originals. It never
+executes Fontconfig, loads a DTD or proves native traversal/active font selection.
+Unsupported syntax and incomplete observations remain explicit. The verdict
+always keeps `candidate`, `qualified`, `activeFontSelectionProved` and
+`actualRequestSupported` false, including after a complete discovery.
+
+To audit an admitted discovery original without executing its producer:
+
+```sh
+/usr/bin/python3 -B scripts/read-i80386-hdd-gui-originals.py \
+  --font-discovery font-discovery.original.json \
+  --request reviewed-font-request.json \
+  --expected reviewed-font-expectation.json
+```
+
+The distinct `bw.gui-hdd.font-discovery-delivery-expectation.v1` adds a
+read-only delivery envelope around that observation audit. Independently select
+the source21/request/archive identities, official run/job/artifact IDs and raw
+metadata, plus the executing workflow proof and bytes. The reader checks the
+bounded ZIP without extraction, closes its role roster, and joins raw process
+and stream originals to the embedded observations. It refuses duplicate,
+traversing, symbolic-link, encrypted, oversized or unexpected members before
+using their contents. Archive and aggregate member limits are each 32 MiB,
+with at most 96 entries; per-role limits apply before inflation.
+
+A terminal producing job is required; unrelated queued jobs do not require the
+whole workflow to have concluded successfully. The artifact joins the selected
+run, source head, name, digest and size. Historical source is checked against
+the retained event and immutable run/job/artifact head fields. A later PR
+association may show another head, so its moving nested head is not historical
+source authority. The executing workflow commit remains separate from that
+source head. Its independently pinned official commit/tree observations join
+the workflow entry and raw blob SHA1/SHA256 to source21. Official metadata
+provenance is an external admission boundary, not a self-issued payload flag;
+the reader does not recompute the complete Git commit/tree object graph.
+
+This first delivery reader requires the original request and discovery
+observation, including their asserted raw process/stream roles. It conservatively
+refuses early artifacts missing them; preserve those failure originals outside
+this reader without inventing observations. A supported terminal failed partial
+collection retains its original primary error and producing conclusion. This
+initial profile supports success or ordinary collector failure with completed
+predecessor/upload steps; cancellation, timeout and other incomplete deliveries
+refuse. Every verdict remains observation-only and grants no runtime,
+font-selection or actual execution approval. Admit official metadata before acquiring the selected ZIP
+once, then audit the retained bytes; this tool never fetches or replays anything.
+
+Audit the already retained delivery without fetching or extracting it:
+
+```sh
+/usr/bin/python3 -B scripts/read-i80386-hdd-gui-originals.py \
+  --font-discovery-delivery gui-font-discovery.zip \
+  --request reviewed-font-request.json \
+  --expected reviewed-font-delivery-expectation.json \
+  --run metadata/run.json --job metadata/job.json \
+  --artifact metadata/artifact.json \
+  --workflow-proof metadata/workflow-proof.json \
+  --workflow metadata/executing-workflow.yml
+```
+
+The expectation pins each metadata original and the complete ZIP independently.
+The canonical `bw.gui-hdd.workflow-api-proof.v1` wrapper contains the retained
+commit and recursive-tree API original bytes with their exact extents and hashes.
+Freeze those originals and executing workflow content separately; never derive
+the trusted expectation from an untrusted archive's own declarations.
+
+The separate `bw.gui-hdd.workflow-api-proof.v2` carries those exact API originals
+as bounded zlib streams. A recursive tree original can fit its own 4 MiB limit
+while its v1 base64 wrapper exceeds the separate 4 MiB proof limit; preserve that
+refusal and the retained originals. The v2 representation addresses this size
+gap without truncating the tree, fetching it again or increasing either limit.
+Each `commit` and `tree` role has closed `codec`, `original` and `compressed`
+fields: codec `zlib`, the original extent/hash, and the compressed extent/hash/
+canonical base64. Validate both declared bounds and the compressed bytes before
+inflation. Decode at most the declared original extent plus one sentinel byte,
+then require the exact extent/hash, stream EOF, no unconsumed data and no trailing
+or concatenated stream. No flush allocates additional output. The same strict
+JSON, ordered parents, complete tree and workflow-blob joins then apply. The v1
+format remains supported unchanged. Neither representation authenticates API
+provenance or reconstructs the complete Git commit/tree object graph.
+
+The proof-v2 checkpoint passes 76 Node tests, including 102 embedded Python
+controls and 12 held snapshot controls. All 98 earlier Python test bodies stay
+unchanged. Seven source mutations and 23 independent codec/API counterexamples
+are detected; complete and failed-partial offline CLI verdicts preserve v1
+behavior. A manufactured 12057-entry recursive tree exercises the size gap.
+These are source and original-format controls, not hosted or guest qualification.
+
+Changing the reader changes source21. Rebuild the final canonical request and
+explicitly review any private consumer's reader selection; an earlier request or
+historical merge proof cannot authorize the new source. Offline tests using
+retained API bytes establish format compatibility only, not a new hosted event.
+
+
+The envelope checkpoint passes 64 Node tests including 96 embedded Python
+controls, preserving all 91 earlier Python test bodies. Nineteen source
+mutations and 27 independent re-pinned counterexamples are detected. Separate
+offline CLI controls cover complete and failed partial manufactured artifacts;
+these controls do not establish an actual hosted observation or guest result.
+
+The activation checkpoint passes 64 Node tests including 98 Python controls.
+It adds two controls for enabled-default refusal boundaries and changes only
+three earlier guard/fixture methods to model the intentional activation; the
+remaining 108 earlier methods stay held. Twenty-six workflow drift cases and
+seven activation mutations are detected, with six independent controls and
+three independent mutation cuts. Guards perform no input or runtime work. These
+source results establish no hosted font observation or guest qualification.
+
+The actual frontend and original-delivery ZIP readers now validate the complete
+header census before inflating any member. They require exact untruncated names,
+unique paths, regular file or directory types, empty directory payloads, and
+unencrypted stored/deflated entries under the held role and aggregate limits.
+This closes manufactured packets previously accepted with NUL-truncated names,
+special-file types or ignored directory payloads. Both the controller and the
+independent frontend reader apply this policy; the original-delivery reader
+retains its own prefix, role and inventory checks. Ordinary frontend ZIP, Pages
+TAR delivery, and prefixed/unprefixed actual originals remain supported. Positive
+file-size predicates, TAR policy, v3/v4 schemas and actual guards are unchanged.
+These are source counterexamples and controls, not observed hosted guest results.
+The ZIP repair passes nine Node tests including 107 Python controls; all 102
+earlier Python test bodies stay unchanged. Twelve source mutations and 21
+independent coherent header counterexamples are detected. Valid frontend formats
+and both actual versions retain their earlier prefixed/unprefixed verdicts.
+
+The one admitted font event is consumed:
+[run39170725966](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39170725966),
+[job117803003700](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39170725966/job/117803003700).
+The collector failed after guard, setup and input installation succeeded;
+upload also succeeded. Sole artifact `12152507881`, 491,919 bytes, SHA256
+`b0188bdde17b0645ae2707a74b494512531b352c14fbef484ffff96b887173db`,
+was retained once after official metadata admission. The independent standalone
+delivery reader, selected by SHA256
+`f075f669c4950d5fece113a57490b9b4bc94eaf90743f70715462c8270ac0a0b`,
+exited zero when validating that failed partial delivery. This validates the
+retained evidence; it does not make the producing job successful.
+The executing workflow `e983be1c6b22a685107dae75794903bb42c470d2`
+was joined separately from source head `79afc8bc`.
+
+The first refusal was an alias outside the admitted font roots while visiting
+`/usr/share/fonts/truetype`. The retained alias
+`fonts-japanese-gothic.ttf` points to
+`/etc/alternatives/fonts-japanese-gothic.ttf`; the next hop and terminal file
+type were not observed. Do not invent the next target. The partial original
+contains 246 file observations, 38 aliases and 34 missing baseline paths.
+Packages remain null and no package probes ran. These are validated partial
+observations, not a successful inventory, new roster, native font selection,
+rendering, runtime or guest qualification. All 38 retained configuration
+rows also have unsupported or opaque content; 15 retain DTD-parser refusals.
+Recorded references cover only the supported structural subset. Neither those
+references nor an absence of recorded cycles proves native traversal or selection.
+The retained `truetype` parent also has root ownership and mode `040777`.
+A policy requiring nonwritable parents would refuse before reaching this alias.
+Resolve and document that metadata observation boundary before any later hosted
+chain event; do not silently relax existing runtime checks or claim traversal
+of the retained environment from manufactured positives.
+
+A fresh agent should continue in these bounded lanes:
+
+1. Preserve the v1 original, unchanged baseline, first failures and all earlier
+   consumed observations. Do not replay this event or download the artifact
+   again. Keep the existing probe failure rules, caps and required roster;
+   passing a partial original through its reader cannot make collection green.
+2. Separately version a typed, bounded alternatives-chain observation and its
+   independent reader. Declare intermediate-parent and alias admission policy,
+   stable held-link/readback observations, finite hop and cycle limits, escape
+   refusals, and a terminal regular-file requirement under the admitted font
+   roots. Preserve unsupported or missing hops as failures. Add manufactured
+   positive/negative packets and mutations that detect omitted guards; do not
+   fabricate an observed next target or loosen v1 acceptance. Keep actual
+   execution and any new observation job disabled while this source is reviewed.
+3. Require all enabled exact-head source checks to succeed. Separately admit a
+   later versioned observation's request, source, executing workflow, event,
+   finite resources and original roles before its single event. Never remove
+   and reapply the old label, rerun the consumed run or use a fallback dispatch.
+   Admit official producing metadata before acquiring its sole original once,
+   then audit retained bytes independently, preserving partial failure.
+4. Establish native Fontconfig configuration, version, cache, include and alias
+   selection evidence separately before reviewing a new versioned runtime
+   template. Admit package ownership without guessing from filenames or
+   subtracting failed baseline paths. Then close the complete runtime and
+   frontend Build/source/archive graph and qualify actual HDD persistence and
+   forward debugging through clean affected browser/guest runs. Every enabled
+   exact-head source check and separate actual admission remains mandatory.
+
+Main [PR1066](https://github.com/CrispStrobe/brickwright-lite/pull/1066) advanced
+CUI from `055930e` to `fe89e3425bf323b1acd9e3f98df6a7383e9b836b`.
+The [separate consumer update](https://github.com/CrispStrobe/brickwright-lite/commit/d07be38c7)
+explicitly matches that canonical selection without writing dependencies. The
+four CUI commits change five module-label/layout and supporting files; existing
+386 target/API source is unchanged. Full rendering and this scenario's browser
+acceptance still need their own qualification. Board and SB3 selections stay held.
+
+The dependency-free focused check is:
+
+```sh
+node --test test/i80386-hdd-gui-actual.test.mjs test/i80386-hdd-download.test.mjs
+```
 
 The earlier handoff proposal above is a dated snapshot. Read-only source
 observations on 2026-10-16 found PR975 head `e553bb7a` selecting Board `f00f8ff5`,
@@ -332,15 +784,17 @@ module graph matches the retained CLI source anchor, while an unrelated
 labwired source change means the entire supplier source tree is not identical.
 Source equality does not qualify an installed browser or transfer ownership.
 
-Use the live [Board/SB3 owner PR975](https://github.com/CrispStrobe/brickwright-lite/pull/975)
-and [CUI/shared-writer owner PR965](https://github.com/CrispStrobe/brickwright-lite/pull/965)
-for coordination; preserve the existing merge hold. Immediately before source
-and actual admission, refresh their exact heads and canonical package, lock
-and vendor-pin declarations, then admit the complete selected installed graph
-and its qualification. The root manifest's authoritative Board field is
-`devDependencies`; the GUI manifest's is `dependencies`. Require both exact
-identities and refuse missing, conflicting or duplicate declarations rather
-than accepting an arbitrary fallback. No pin or lock handoff is implied.
+At the 2026-10-18 refresh, [PR975](https://github.com/CrispStrobe/brickwright-lite/pull/975)
+has merged. Canonical main selects Board
+`f84ba60ead0a90deb9830f0c1468839c293ecf05`, CUI
+`055930ec51300e0d71466c696ce1bf76284bde38` and SB3
+`a13f92b8bc4b06f0cb9ffec22bab71f06db7ac76`. Historical proposal holds above
+are superseded by the merged adoption, not a transfer of dependency writers.
+Refresh canonical package, lock and vendor-pin declarations immediately before
+source and actual admission. Independently admit the complete installed graph;
+a merged pin alone does not qualify these GUI scenarios. The root manifest's
+authoritative Board field is `devDependencies`; the GUI manifest's is
+`dependencies`. Refuse missing, conflicting or duplicate declarations.
 
 After qualified adoption and source/build admission, run the existing genuine
 download/reload scenario with its fixed free floppy and 306×4×17 data image.
@@ -350,6 +804,17 @@ and terminal process/resource/cleanup observations. Freeze a standalone reader
 and the attempt-1 official event/job/step/artifact joins before execution.
 Preserve all current predicates and limits; source controls cannot replace an
 original or justify an automatic retry.
+
+The candidate user flow is **Code → device selector → Manage machines… →
+FreeDOS VGA (named 386 profile)**. Select the boot floppy and a type-1 HDD
+(306×4×17), then **Boot FreeDOS VGA**. After the guest closes its files, pause
+and use **Download HDD image + JSON**. To reopen it, start a fresh machine with
+the same floppy and the downloaded image in the HDD chooser. This is an
+explicit exported copy; the original selected file is not an automatic save
+destination. The download action is still in the unmerged composition, and
+its installed browser acceptance is the task above. Optional AT BIOS and VGA
+ROM choosers and the bundled free firmware remain existing profile choices;
+other disk geometries and ISO/CD images are outside this acceptance.
 
 A separate bounded forward-debug scenario must demonstrate actual UI pause,
 code breakpoint, instruction step, full-width register and read-only physical

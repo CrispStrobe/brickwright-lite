@@ -26,7 +26,11 @@ test('boot payload accepts shared lazy engine bytes but rejects eager, absent an
             'bw-circuit-ui': 'Check the address decode wiring on the breadboard. Could not recognise this file',
             'bw-board': 'entry', 'guided-lessons': 'optional', '8933.hash': marker,
             // The arena's 3D view: its own chunk, three in a shared lazy chunk, and the arena pane's chunk without either.
-            'bw-arena-3d': 'bw-spike-arena-3d-canvas', '1380.hash': three, 'bw-spike-simulator': 'the 2D arena pane'
+            'bw-arena-3d': 'bw-spike-arena-3d-canvas', '1380.hash': three, 'bw-spike-simulator': 'the 2D arena pane',
+            // The Sim Lab: its own chunk (the view's canvas id), Jolt in its own (shared) lazy chunk,
+            // the physics worker in its own; the Sim Lab chunk carries neither.
+            'bw-sim-lab': 'bw-sim-lab-3d-canvas bw-sim-part-thumbnails bw-sim-instructions-canvas', 'bw-sim-jolt': 'JoltInterface_GetPhysicsSystem_',
+            'bw-sim-physics-worker': 'sim batch before sim load'
         })) put(`chunks/${name}.js`, bytes);
         let result = run();
         assert.equal(result.status, 0, result.stdout + result.stderr);
@@ -64,14 +68,33 @@ test('boot payload accepts shared lazy engine bytes but rejects eager, absent an
         put('chunks/bw-spike-simulator.js', 'the 2D arena pane');
         put('chunks/1380.hash.js', 'renamed');
         assert.equal(run().status, 1, 'three\'s marker must be found in lazy JS');
+        put('chunks/1380.hash.js', three);
+        assert.equal(run().status, 0, 'restored');
+        // Jolt belongs to the worker (and the no-worker fallback), not to the Sim Lab's main chunk.
+        put('chunks/bw-sim-lab.js', 'bw-sim-lab-3d-canvas bw-sim-part-thumbnails JoltInterface_GetPhysicsSystem_');
+        result = run();
+        assert.equal(result.status, 1);
+        assert.match(result.stdout, /FAIL Jolt physics .* are not in chunks\/bw-sim-lab\*\.js/);
+        put('chunks/bw-sim-lab.js', 'bw-sim-lab-3d-canvas bw-sim-part-thumbnails');
+        rmSync(join(build, 'chunks/bw-sim-physics-worker.js'));
+        result = run();
+        assert.equal(result.status, 1, 'the worker\'s own chunk is required');
+        assert.match(result.stdout, /FAIL the Sim Lab physics worker have their own chunk/);
     } finally {rmSync(build, {recursive: true, force: true});}
 });
 
-test('3D isolation checks name the simulator chunk the GUI actually imports', () => {
+test('3D and physics isolation checks name the simulator and Sim Lab chunks the GUI actually imports', () => {
     const gui = readFileSync('overlay/scratch-gui/src/components/gui/gui.jsx', 'utf8');
     const script = readFileSync('scripts/verify-boot-payload.mjs', 'utf8');
     const name = gui.match(/webpackChunkName: "([^"]+)" \*\/ '\.\.\/tw-pseudocode\/spike-simulator-pane\.jsx'/)?.[1];
     assert.equal(name, 'bw-spike-simulator');
-    assert.equal(script.split(`notInChunks: ['${name}']`).length - 1, 2,
-        'both three.js and the 3D view must be excluded from the actual simulator chunk');
+    // three.js, the arena 3D view, Jolt, the physics worker, the Sim Lab view, its palette
+    // thumbnails and its building instructions: all seven stay out of the simulator pane's chunk.
+    assert.equal(script.match(new RegExp(`notInChunks: \\[(?:'[^']+', )*'${name}'`, 'g'))?.length, 7,
+        'three.js, the arena 3D view, Jolt, the physics worker, the Sim Lab view, its palette thumbnails and its building instructions must all be excluded from the actual simulator chunk');
+    // Jolt and the physics worker also stay out of the Sim Lab's own main-thread chunk.
+    const pane = readFileSync('overlay/scratch-gui/src/components/tw-pseudocode/sim-lab-pane.jsx', 'utf8');
+    assert.equal(pane.match(/webpackChunkName: "([^"]+)" \*\/ '\.\.\/\.\.\/lib\/bw-sim\/sim-lab\.js'/)?.[1], 'bw-sim-lab');
+    assert.equal(script.match(/notInChunks: \[(?:'[^']+', )*'bw-sim-lab'/g)?.length, 2,
+        'Jolt and the physics worker must be excluded from the Sim Lab\'s main-thread chunk');
 });

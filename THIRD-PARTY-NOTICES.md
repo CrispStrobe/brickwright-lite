@@ -1992,6 +1992,16 @@ permissive newlib + libi86 runtime, and carries no GCC-runtime copyleft.
   Loaded at run time and driven by `runDosToolchain('fe', …)` over the
   bw-board 8086 DOS bench, which mounts the user's program as `PROG.FE`.
 
+### fe source for board targets
+
+`overlay/scratch-gui/src/lib/bw-lang/fe-target-c.js` (mirrored under
+`packages/scratch-gui`) embeds fe's `fe.h` and `fe.c` from the same commit,
+unmodified except that the `#include "fe.h"` line and the `FE_STANDALONE`
+`main` are left out, together with fe's MIT licence text. The Code tab joins
+them with the user's program and a small `main` into one C file, which the
+hosted RISC-V compiler builds; the resulting image runs in the browser
+RISC-V simulator.
+
 ## partcl (DOS-native Tcl) — MIT
 
 The code tab's "Tcl (partcl on DOS)" language runs a real 16-bit MS-DOS
@@ -2046,6 +2056,18 @@ runtime, and carries no GCC-runtime copyleft.
   bw-board 8086 DOS bench, which mounts the user's program as `PROG.TCL` and
   the library as `JIMLIB.TCL`.
 
+### Jim Tcl source for board targets
+
+`static/roms/jimsh0.c` (overlay and packages copies) is Jim Tcl's
+single-file build `autosetup/jimsh0.c` from the same commit, unmodified
+(SHA-256 as recorded in `jim.provenance.json`). When asked to run Tcl on
+RISC-V, `overlay/scratch-gui/src/lib/bw-lang/tcl-target-c.js` fetches it,
+checks that hash, applies asserted edits (no exec/readdir/glob; a
+channel-aware core `puts`; a renamed jimsh `main`), adds our `main` and
+stubs for POSIX calls the target lacks, and sends the one C file to the
+hosted RISC-V compiler. Jim Tcl is BSD-2-Clause; its full text ships as
+`static/roms/jim.LICENSE.txt`.
+
 ## zForth (DOS-native Forth) — MIT
 
 The code tab's "Forth (zForth on DOS)" language runs a real 16-bit MS-DOS
@@ -2073,6 +2095,18 @@ copyleft.
   Loaded at run time and driven by `runDosToolchain('forth', …)` over the
   bw-board 8086 DOS bench, which mounts the user's program as `PROG.FTH`. Blocks
   ⇄ Forth is `overlay/scratch-gui/src/lib/bw-lang/forth.js`.
+
+### zForth source for board targets
+
+`overlay/scratch-gui/src/lib/bw-lang/forth-target-c.js` (mirrored under
+`packages/scratch-gui`) embeds zForth's `zforth.h`, `zforth.c` and
+`forth/core.zf` from the same commit, with zForth's MIT licence text.
+They are unmodified except that `zforth.h`'s `#include "zfconf.h"` is
+replaced by our own configuration (after the upstream Linux `zfconf.h`:
+float cells, trace off, 16 KiB dictionary) and `zforth.c`'s
+`#include "zforth.h"` is left out. The host functions are ours. The Code
+tab joins them with the user's program into one C file, which the hosted
+RISC-V compiler builds; the image runs in the browser RISC-V simulator.
 
 ## Free 80386 AT firmware (Bochs BIOS + LGPL VGABios) — LGPL-2.1
 
@@ -2267,7 +2301,7 @@ header, is retained in `overlay/scratch-vm/src/extensions/crispstrobe/arrays/ind
 as a JSON source string; the host adapter is separate.
 
 The exact selected source is
-https://github.com/CrispStrobe/extensions/blob/598fc9665a3ffdcc6fdeaa465f2c42ccaa814d8f/extensions/CrispStrobe/arrays.js.
+https://github.com/CrispStrobe/extensions/blob/4db2813d366af8a110fc79599afb55d1cd42d8df/extensions/CrispStrobe/arrays.js.
 `vendor-pins.json` and the generated per-file bundle receipt record the commit
 and content hash. This scopes the adoption to Arrays; it does not advance other
 extension sources. MPL-2.0 text: https://www.mozilla.org/en-US/MPL/2.0/.
