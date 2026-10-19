@@ -47,3 +47,17 @@ initialization, so later loader/prototype edits cannot intercept engine context.
 The cyclic helpers publish stable frozen function exports before loading their
 dependencies; no runtime dispatcher registration or caller trust flag is used.
 These additional controls remain pending fresh native qualification.
+
+
+## CommonJS initialization follow-up
+
+Early operation and exception exports use immutable records with a null
+prototype. Node's circular-require warning logic decorates ordinary-object
+exports; freezing such an ordinary object before the cycle closes prevents
+that decoration and can stop initialization. A null prototype keeps the exact
+frozen own function exports and eager closed dispatch identities without
+opening a mutable export or delaying dependency capture. Three native loader
+controls exercise each coordinator module as the first entry using an isolated
+cache, restoring the original cache in `finally`. The existing 45 native
+controls remain unchanged. Fresh installation and complete affected execution
+are required; this source correction alone does not qualify runtime semantics.

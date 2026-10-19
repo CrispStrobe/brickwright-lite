@@ -12,7 +12,7 @@ const failureHas=(map,key)=>failureApply(nativeWeakHas,map,[key]);
 const failureDelete=(map,key)=>failureApply(nativeWeakDelete,map,[key]);
 const signalAdd=(set,key)=>failureApply(nativeSetAdd,set,[key]);
 const signalHas=(set,key)=>failureApply(nativeSetHas,set,[key]);
-module.exports=failureFreeze({rejectConditionWait,create,consume,failed,capture,stale,diagnostic,reported,arrayCoordinatorReady,rejectArrayOperation});
+module.exports=failureFreeze({__proto__:null,rejectConditionWait,create,consume,failed,capture,stale,diagnostic,reported,arrayCoordinatorReady,rejectArrayOperation});
 const primitiveOwner = require('./bw-primitive-owner');
 const cachedPrimitiveOwner = require('./bw-cached-primitive-owner');
 const consumeArrayFailureLease=require('./bw-array-operations').consumeFailureLease;

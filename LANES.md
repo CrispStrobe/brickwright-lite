@@ -6931,3 +6931,14 @@ for valueBinary/createReference, route actual proof errors through private
 lineage cleanup, and recognize malformed tracked identities only to reject.
 No generic value/Number/Cast grant, no supplier pin change, and no change to
 legacy caught-copy probes. Original failed controls remain mandatory regressions.
+
+
+### Owned Array closed CommonJS exports — 2026-10-19
+
+SOURCE CANDIDATE / QUALIFICATION PENDING in the existing Array/current-call
+rejection lane. Keep early stable frozen function exports and eager private
+dispatch, using null-prototype export records for the two early cyclic modules.
+Add three actual native-loader entry-order controls with isolated cache and
+unconditional restoration; preserve the original 45 controls unchanged. No
+supplier pin, value proof, runtime budget or generic exception behavior changes.
+Fresh normal installation and complete native qualification remain mandatory.

@@ -1,7 +1,7 @@
 // Stable entry exports close the owner -> exceptions -> operations CJS cycle.
 // All values are hoisted function declarations, invoked only after boot completes.
 const primitiveFreeze=Object.freeze;
-module.exports=primitiveFreeze({registerSource,bind,consumeFailureLease});
+module.exports=primitiveFreeze({__proto__:null,registerSource,bind,consumeFailureLease});
 // Opt-in native Array operation ownership, NOT an element/type certificate.
 // Only trusted builtin construction receives a module-held registration token.
 const primitiveOwner = require('./bw-primitive-owner');
