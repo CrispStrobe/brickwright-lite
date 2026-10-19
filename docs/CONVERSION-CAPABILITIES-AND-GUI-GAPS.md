@@ -3882,3 +3882,28 @@ Still required: numeric SpriteKind creation, dependency initializer ordering,
 kind display names separate from runtime IDs, captured event IDs, null/default
 kind semantics, and direct authoring of dynamic kinds. Also retain the open
 general object-coercion, class/callable and scheduler/debugger boundaries.
+
+## Numeric kind and original library authoring: bounded integration
+
+The canonical producer now has 349 forms: dynamic numeric kind creation, named
+lookup, explicit runtime binding and exact library initializer selection accompany
+the existing numeric `kind` property getter. Code and Blocks preserve numeric
+reporters connected to friendly kind fields. Original source initializers and
+event captures retain allocation and execution order; no automatic allocation
+is inferred from a custom display name. Three full kind-program roundtrips pass
+original execution, native execution, Code, SB3 replacement/reopening, original
+export execution and prepared reimport.
+
+Remaining GUI acceptance: direct creation/editing of mutable custom kinds;
+readable names separately from numeric IDs; dynamic binding diagnostics; original
+MakeCode Blockly decompilation and custom kind dropdown behavior. The existing
+Text Sprite production IDE journey is still pending its hosted result. Numeric
+word availability does not close these authoring gaps.
+
+Exact older character-animation source/export now has controls. Twenty SDK Scene
+constants and primitive String compositions have typed source controls. Local
+PXT particle collection semantics remove the genuine Dance Party runtime error;
+all four controller buttons and an authored win are observed. Complete game
+editing, persistence and original export/reimport remain required independently.
+Default HUD loss presentation, splash keyboard acknowledgement and scheduler
+phases remain active gaps. No raw corpus classification changes here.

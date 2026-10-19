@@ -6597,3 +6597,20 @@ The independently owned multi-board DEVICE lane remains separate.
 The owned Text Sprite game production GUI gate is prepared and pending hosted
 execution. Raw corpus counts remain142 translated/41 partial/1 parser failure.
 No source-only adapter or focused test promotes a whole game.
+
+### Arcade numeric kinds and particle integration — 2026-10-13
+
+Root owns `lane/arcade-character-kind-integration-20261013`, stacked on PR877:
+exact older character-animation admission/export, 349-form producer integration,
+numeric kind source/native/export semantics, Scene numeric constants and typed
+primitive String composition. `extension_parser` delivered local original PXT
+particle collection removals; root integrated them. Focused qualification is
+bounded to the recorded controls; full hosted IDE and corpus promotions remain
+pending. Do not push lower branches owned by the independent integration session.
+
+`namespace_buffers` owns isolated default info loss presentation controls and
+implementation hunks. `corpus_gap_analysis` owns the proposed frame phase scope
+claim, private diagnostic prototype and original comparison controls; no product
+kernel hook change before its claim lands. `extension_parser` observes the owned
+GUI gate and prepares HUD visibility source/native/export/typed-authoring scope.
+Coordinate Arcade index hunks explicitly; preserve independent multi-board lanes.

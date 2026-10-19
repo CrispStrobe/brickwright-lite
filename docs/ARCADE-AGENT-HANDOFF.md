@@ -2181,3 +2181,46 @@ SpriteKind allocation/event semantics. Preserve original dependency initializer
 order, omitted/null kinds and numeric IDs. Fresh prepared corpus and whole-game
 acceptance must follow. Raw 184-input census remains142 translated/41 partial/1
 parse failure; none of these focused results promotes a whole project.
+
+## Numeric kinds, exact character versions and particle collections
+
+The next integration branch is `lane/arcade-character-kind-integration-20261013`,
+stacked on [PR877](https://github.com/CrispStrobe/brickwright-lite/pull/877).
+It includes the latest main through `b86d1cb9f294052bd0ae6dc4cd97d5bc57193c55`.
+
+- Exact older character-animation source admission, native version selection and
+  matching export preserve the original rule semantics. Unsupported modern-only
+  operations on that version remain diagnosed.
+- Numeric SpriteKind allocation follows the retained original allocator. Builtin
+  Player/Food/Enemy are 1000/1001/1002; Projectile remains 1. Unused dependency
+  initializers consume IDs in original order. Mutable and uninitialized kind
+  bindings, fractional/negative IDs, nullable creation, captured event IDs and
+  `sprite.kind()` use actual numeric values. Friendly names are separate metadata.
+- Three full kind programs pass original/native, Code, same/fresh VM SB3, original
+  export execution and prepared reimport controls. The combined worker batch
+  passes 14 controls. This qualifies those programs, not arbitrary games.
+- Twenty numeric Scene constants come from the selected SDK. Expression and enum
+  use, shadowing and readonly assignment controls pass. Primitive String admission
+  composes with Scene constants and numeric kinds while rejecting opaque objects.
+- Particle source calls are lowered to local retained PXT collection semantics,
+  without modifying global Array prototypes. Twelve effects/collection controls
+  pass. Genuine Dance Party accepts all four controller buttons, scores and wins
+  without runtime errors; random trajectories and exact timing remain unqualified.
+
+The matching 349-form producer is
+`95b89bcba319562b34498ab23b9cdfe7aa8a8c9b`
+([PR118](https://github.com/CrispStrobe/sb3-creator/pull/118)); Arrays source is
+`3f9812599cef61a0d47c843c6ba2c5ef4bdb98b2`
+([PR38](https://github.com/CrispStrobe/extensions/pull/38)).
+The source audit on PR877 retains all original input and binary hashes:
+29 original-valid contexts, 12 invalid contexts; 16 valid structurally importable
+programs, 12 semantic/API blocked and one parser failure. This is a structural
+audit, not a promotion. Raw counts remain 142 translated / 41 partial / 1 failure.
+
+Open boundaries include frame phases/cadence and debugger time, default info
+loss presentation, genuine splash acknowledgement through the production UI,
+Story/classes/callable values, broader custom kind authoring and original
+MakeCode Blockly decompilation. The owned full IDE game gate remains pending
+hosted execution. PR877 unit shard 2 failed because the generated character
+admission module was unused there; the next integration wires it into actual
+admission, translation and export. Its production graph must pass hosted checks.

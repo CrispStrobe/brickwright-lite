@@ -31,7 +31,7 @@ import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export
 import {lowerLazyValues} from '../overlay/scratch-gui/src/lib/bw-makecode/lower-lazy-values.js';
 import {parseMakeCodeTs} from '../overlay/scratch-gui/src/lib/bw-makecode/ts-import.js';
 import {arcadeSimAvailable, compileArcade, runArcadeSim} from '../scripts/lib/makecode-arcade-sim.mjs';
-import {SB3Creator, runProgram} from './helpers/bw-vm.mjs';
+import {runProgram} from './helpers/bw-vm.mjs';
 
 const SIM = arcadeSimAvailable() ? false : 'MakeCode runtime not synced (npm run sync:makecode) — no pxt-arcade compiler and simulator';
 const pxtLog = async files => {
@@ -40,13 +40,13 @@ const pxtLog = async files => {
     return run.serial.map(line => line.text).join('');
 };
 const handlePath = code => /arcade create template/.test(code);
+const exportCreator = creator => projectToArcade(creator.project, {costumeSvg: (target, costume) => creator.assets.get(costume.assetId)?.data});
 
 async function importAndRun (source) {
     const imported = arcadeToPseudocode(source);
-    const creator = new SB3Creator();
-    creator.parse(imported.code);
+    const run = await runProgram(imported.code, {frames: 6, uploads: imported.costumes, storage: true});
+    const creator = run.creator;
     assert.deepEqual(creator.warnings, []);
-    const run = await runProgram(imported.code, {frames: 6});
     assert.deepEqual(run.errors, []);
     return {imported, creator, lite: (run.vm.runtime.bwArcadeDeviceState?.serial ?? '').replace(/\n/g, '')};
 }
@@ -80,13 +80,13 @@ test('text truthiness on the fixed-sprite path is MakeCode\'s: "" false, "0" tru
     assert.doesNotMatch(imported.code, /not \((s|t|arcade local p) = 0\)/);
     // The two logged truth values are 1/0 on this path.
     assert.equal(lite, TEXT_LOG.replace('a-truefalsefalse', 'a-true00'));
-    assert.deepEqual(projectToArcade(creator.project).unsupported, []);
+    assert.deepEqual(exportCreator(creator).unsupported, []);
 });
 
 test('text truthiness: pxt-arcade logs the same for the original and for the export', {skip: SIM, timeout: 300000}, async () => {
     const {creator, lite} = await importAndRun(TEXT);
     assert.equal(await pxtLog(TEXT), TEXT_LOG);
-    assert.equal(await pxtLog(projectToArcade(creator.project).files), lite);
+    assert.equal(await pxtLog(exportCreator(creator).files), lite);
 });
 
 // ── (2) functions on the fixed-sprite path with two sprites. info.showScore
@@ -106,21 +106,24 @@ const sections = code => Object.fromEntries(code.split(/^(?=SPRITE )/m).filter(s
 
 test('a function is defined on the sprite whose script calls it, not after the last sprite', async () => {
     const {imported, creator, lite} = await importAndRun(FUNCTIONS);
-    assert.equal(handlePath(imported.code), false, 'the fixed-sprite path');
+    // Numeric kind semantics select native sprite handles. Function ownership
+    // must follow its script caller; showScore remains explicitly diagnosed.
     assert.deepEqual(imported.unsupported, ['info.showScore()']);
-    const {a, b} = sections(imported.code);
+    const byOwner=sections(imported.code);
+    const owner=Object.keys(byOwner).find(name=>/call function "dbl %s"/.test(byOwner[name]));
+    assert.ok(owner,'the setup script calls dbl');
     for (const fn of ['dbl', 'quad', 'unused']) {
-        assert.match(a, new RegExp(`^DEFINE ${fn}\\b`, 'm'), `${fn} on a, the sprite running the program`);
-        assert.doesNotMatch(b, new RegExp(`^DEFINE ${fn}\\b`, 'm'), `${fn} not on b, which calls nothing`);
+        assert.match(byOwner[owner],new RegExp(`^DEFINE ${fn}\\b`,'m'),`${fn} belongs to the calling script owner`);
+        for(const [name,body] of Object.entries(byOwner))if(name!==owner)assert.doesNotMatch(body,new RegExp(`^DEFINE ${fn}\\b`,'m'),`${fn} is not stranded on artwork ${name}`);
     }
     assert.equal(lite, '64');
-    assert.deepEqual(projectToArcade(creator.project).unsupported, []);
+    assert.deepEqual(exportCreator(creator).unsupported, []);
 });
 
 test('functions: pxt-arcade logs the same for the original and for the export', {skip: SIM, timeout: 300000}, async () => {
     const {creator} = await importAndRun(FUNCTIONS);
     assert.equal(await pxtLog(FUNCTIONS), '64');
-    assert.equal(await pxtLog(projectToArcade(creator.project).files), '64');
+    assert.equal(await pxtLog(exportCreator(creator).files), '64');
 });
 
 // ── (3) a switch's case bodies are lowered like any other statements
@@ -161,7 +164,7 @@ test('&&, ||, ? : and i++ inside a switch case run as MakeCode runs them', async
 test('switch: pxt-arcade logs the same for the original and for the export', {skip: SIM, timeout: 300000}, async () => {
     const {creator, lite} = await importAndRun(SWITCH);
     assert.equal(await pxtLog(SWITCH), 'not botheither2056true0');
-    assert.equal(await pxtLog(projectToArcade(creator.project).files), lite);
+    assert.equal(await pxtLog(exportCreator(creator).files), lite);
 });
 
 /** Every If/While/For test that still holds `&&` or `||` after lowering. */
