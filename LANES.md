@@ -6977,3 +6977,15 @@ Preserve the existing v1 observer API, actual conversion operation, full provide
 diagnostics and legacy classification. No input trust, supplier pin, compiler,
 SDK, runtime, corpus coverage or performance grant is included. Existing controls
 and new encoding controls require actual qualification before selection.
+
+
+### Compact native octet observation — 2026-10-19
+
+SOURCE CANDIDATE / QUALIFICATION PENDING within the retained-context conversion
+CLI and lossless report scope above. Use actual native Uint8Array slots and
+fixed ordinary backing to encode the spec-defined dense index prefix directly.
+Preserve one own-key observation, every custom tail descriptor, payload snapshot,
+logical bounds, v1 behavior and the complete changed-realm fallback. No source
+conversion, diagnostic, supplier, runtime, input or execution-budget change.
+New full-graph controls and the existing complete controls require qualification;
+the timed-out complete census is preserved without a fit or hotspot claim.

@@ -407,3 +407,21 @@ fit a limit. Static translation still does not establish runtime behavior or
 behavioral equivalence. The current Markdown gap tables use historical legacy
 labels; presenting modern Creator errors and unparsed channels alongside those
 labels remains separate reporting work.
+
+
+### Native octet descriptor observation
+
+The compact report observer can encode native Uint8Array integer-index
+properties directly from the existing byte snapshot. Native slots establish the
+brand, including Buffer and subclasses; fixed ordinary ArrayBuffer backing is
+required. This preserves the existing v2 format and all logical entry limits.
+Own keys are still enumerated once, and every named or symbol property retains
+its actual descriptor and value observation. Shared, resizable, unrecognized or
+changed-intrinsic cases retain the original descriptor loop. The v1 observer and
+conversion/classification remain unchanged.
+
+This is an observer-cost candidate, not a measured conversion speedup. The
+complete 225-input episode timed out before its full report; all current subject
+outcomes remain unobserved. Component controls, actual measurement and a freshly
+bound complete run remain separate requirements. No cap increase, filtering or
+partial-prefix result is implied.
