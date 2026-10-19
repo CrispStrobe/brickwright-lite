@@ -66,11 +66,12 @@ export class Lwp3VirtualHub {
     /**
      * @param {{id?: string, profile?: string}} [options] profile: an LWP3 hub type id (profiles.js)
      */
-    constructor ({id = 'hub', profile = 'technic-hub'} = {}) {
+    constructor ({id = 'hub', profile = 'technic-hub', firmware = 'current'} = {}) {
         const type = LWP3_HUB_TYPES.get(profile);
         if (!type) throw new Error(`no LWP3 hub type '${profile}'`);
         this.id = id;
         this.type = type;
+        this.setFirmware(firmware);
         this.profile = type.profile;
         /** The VirtualHub that the protocol peripheral looks for (virtual-hub/lwp3-peripheral.js). */
         this.protocol = 'lwp3';
@@ -104,14 +105,26 @@ export class Lwp3VirtualHub {
 
     // ---- ports ------------------------------------------------------------------------------
 
+    /**
+     * Which firmware the hub runs: 'current' (the hub type's own) or one of its `firmwares` (the Move
+     * Hub's 'legacy' 1.0.00.0223, with the port ids of that firmware). Before a host connects.
+     */
+    setFirmware (name = 'current') {
+        const f = name === 'current' ? this.type : this.type.firmwares[name];
+        if (!f) throw new Error(`${this.type.profile.id} has no firmware '${name}'`);
+        this.firmware = name;
+        this.portIds = f.portIds;
+        this.firmwareVersion = f.firmware;
+    }
+
     /** LWP3 port id of a profile port ('A' → 0x00), or of an internal device. */
     portIdOf (port) {
-        return this.type.portIds[port];
+        return this.portIds[port];
     }
 
     /** The profile port of an LWP3 port id, or null. */
     portOfId (portId) {
-        const entry = Object.entries(this.type.portIds).find(([, id]) => id === portId);
+        const entry = Object.entries(this.portIds).find(([, id]) => id === portId);
         return entry ? entry[0] : null;
     }
 
@@ -299,7 +312,7 @@ export class Lwp3VirtualHub {
     }
 
     _send (bytes) {
-        this.log.push({dir: 'up', bytes: [...bytes]});
+        this.log.push({dir: 'up', bytes: [...bytes], t: this.timeMs});
         if (this.log.length > 400) this.log.splice(0, this.log.length - 400);
         if (this._sink) this._sink(bytes);
     }
@@ -315,7 +328,7 @@ export class Lwp3VirtualHub {
 
     /** The host writes one message to the LEGO Hub Characteristic. */
     receive (bytes) {
-        this.log.push({dir: 'down', bytes: [...bytes]});
+        this.log.push({dir: 'down', bytes: [...bytes], t: this.timeMs});
         let m;
         try {
             m = parse(bytes);
@@ -345,7 +358,7 @@ export class Lwp3VirtualHub {
         const payload = {
             [PROP.ADVERTISING_NAME]: () => ascii(this.type.advertisedName),
             [PROP.BUTTON]: () => [0x00],
-            [PROP.FW_VERSION]: () => versionNumber(...this.type.firmware),
+            [PROP.FW_VERSION]: () => versionNumber(...this.firmwareVersion),
             [PROP.HW_VERSION]: () => versionNumber(0, 4, 0, 0),
             [PROP.RSSI]: () => [int8(-40) & 0xff],
             [PROP.BATTERY_VOLTAGE]: () => [BATTERY_PERCENT],

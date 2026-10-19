@@ -115,7 +115,8 @@ const settle = async () => { for (let i = 0; i < 4; i++) await new Promise(resol
  * @param {function} [options.onFrame] ({session, hub, t}) after every frame
  * @returns {Promise<{session, hub, extension, extensionId, frames, connectMs, written, received}>}
  */
-export async function runLabHubProgram (source, {modelText: text, mat = null, transport = 'ble', timeLimitMs, stopWhen = null, onFrame = null}) {
+export async function runLabHubProgram (source, {modelText: text, mat = null, transport = 'ble', timeLimitMs, stopWhen = null, onFrame = null,
+    firmware = null}) {
     const clock = new FakeClock(1.7e12);
     clock.install();
     let vm = null;
@@ -128,6 +129,8 @@ export async function runLabHubProgram (source, {modelText: text, mat = null, tr
         if (!session) throw new Error(`the model does not compile: ${JSON.stringify(built.issues)}`);
         const hub = session.hubs.map(h => h.hub).find(h => h.protocol);
         if (!hub) throw new Error('the model has no radio hub');
+        // A hub that can run another firmware (the Move Hub's 'legacy' 1.0.00.0223 port map).
+        if (firmware) hub.setFirmware(firmware);
         // The shim and the Scratch Link double, as render-gui.jsx installs them; the scene's hub registered as the pane does.
         clearVirtualPeripheralsForTest();
         globalThis.navigator.bluetooth = undefined;
@@ -197,7 +200,8 @@ export async function runLabHubProgram (source, {modelText: text, mat = null, tr
         }
         const written = hub.log.filter(e => e.dir === 'down').map(e => e.bytes);
         const received = hub.log.filter(e => e.dir === 'up').map(e => e.bytes);
-        return {session, hub, extension, extensionId, frames, connectMs, written, received, vm};
+        const log = hub.log.slice();
+        return {session, hub, extension, extensionId, frames, connectMs, written, received, vm, log};
     } finally {
         try { if (vm) { vm.stopAll(); vm.quit(); } } catch { /* noop */ }
         try { if (unregister) unregister(); } catch { /* noop */ }
@@ -215,7 +219,7 @@ export async function runLabHubProgram (source, {modelText: text, mat = null, tr
  * its block functions with the world running: `wait(ms)` advances the clock and the world together.
  * @returns {Promise<{session, hub, written, received}>}
  */
-export async function runStockHubExtension (extensionId, {modelText: text, mat = null, steps}) {
+export async function runStockHubExtension (extensionId, {modelText: text, mat = null, steps, firmware = null}) {
     const clock = new FakeClock(1.7e12);
     clock.install();
     let vm = null;
@@ -226,6 +230,7 @@ export async function runStockHubExtension (extensionId, {modelText: text, mat =
         const built = await SimSession.fromText(text, {hubState: null, catalog: CATALOG, mat});
         session = built.session;
         const hub = session.hubs.map(h => h.hub).find(h => h.protocol);
+        if (firmware) hub.setFirmware(firmware);
         clearVirtualPeripheralsForTest();
         globalThis.navigator.bluetooth = undefined;
         installWebBluetooth();

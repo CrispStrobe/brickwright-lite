@@ -313,7 +313,7 @@ coverage and every source).
 | Hub | Part | Extension(s) | Example model |
 |---|---|---|---|
 | Technic Hub (Control+) | 22127 | **LEGO Powered Up** (`legopoweredup`) | *Technic Hub motor bench* — motor A turns one full turn and back |
-| BOOST Move Hub (motors A, B built in) | 26910 | **LEGO Boost** (`legoboostunified`), scratch-vm's *LEGO BOOST* | *BOOST rover* — drives ahead, then turns |
+| BOOST Move Hub (motors A, B built in) | 26910 | **LEGO Boost** (`legoboostunified`), scratch-vm's *LEGO BOOST* | *BOOST rover* — drives ahead with one "AB" block, then spins on the spot |
 | Powered Up Hub (City), SPIKE Essential | 28738, 67351c01 | `legopoweredup` | — (parts and hubs; build your own) |
 | WeDo 2.0 Smart Hub | 19071 | **LEGO WeDo 2.0** (`wedo2unified`), scratch-vm's *LEGO Education WeDo 2.0* | *WeDo 2.0 rover with motion sensor* — drives until the sensor sees the wall |
 
@@ -328,9 +328,11 @@ coverage and every source).
   `boost turn motor A on`, `wait until (wedo distance) < 5`. **⇦ To blocks** makes the real extension's blocks.
 - **Ports**: a motor or sensor part says its port with `!BW PORT`; the Move Hub's motors A and B are inside the hub.
 - **Not modelled**: the extensions' Python/JS calls in the Lab; hats and Boolean blocks as words; Port Mode
-  Information; synchronised (virtual) ports. **Found in the extensions** (left as they are, the point is to test
-  them unchanged): the BOOST blocks send 10 % max power, a block for "AB" reaches A only (a 50 ms rate limit), and
-  they address the Move Hub's pre-1.0.00.0224 port map — so the Lab's Move Hub reports that firmware.
+  Information; synchronised (virtual) ports. **Found in the extensions** and fixed upstream (CrispStrobe/extensions
+  `ea3e08e`, vendored): the BOOST blocks sent 10 % max power, a block for "AB" reached A only (a 50 ms rate limit),
+  and they addressed the Move Hub's pre-1.0.00.0224 port map. Now "AB" reaches both — B 50 ms after A (a queue),
+  which turns a rover a little at the start, as on a real hub — and the Lab's Move Hub runs the current firmware
+  (1.0.00.0224) or, as an option, the legacy one (1.0.00.0223); docs/LWP3-VIRTUAL-HUB-NOTES.md "Findings".
 
 ## Seeing the model
 
@@ -573,7 +575,7 @@ Part geometry is a curated subset of the official **LDraw Parts Library** (CC BY
 - `bw-sim-excavator.test.mjs` — the Excavator: couplings from the parts, the boom against the law of cosines, and its example program's dig cycle.
 - `bw-sim-robot-lab-api.test.mjs` — the Robot Lab API and the `lab-direct` hub: a hubless motor turned to 360 ± 2° (bound derived from the controller's window and the motor's time constant), power/speed/hold/coast and an interrupted wait, part poses bit-identical through a redone worker batch, a SPIKE hub from blocks allowed and a hub running its own program refused (EN, DE), sensors, positions and contact with the ground and the wall, neutral answers without a model.
 - `lwp3-virtual-hub.test.mjs`, `wedo2-virtual-hub.test.mjs` (not `bw-sim-*`) — the radio hubs byte by byte against layouts written out from LEGO's LWP3 document and the WeDo sources; StartSpeedForDegrees 360 on the physics; the worker mirror.
-- `lab-hubs-extensions.test.mjs` — the real `legopoweredup`, `legoboostunified` and `wedo2unified` through the Scratch VM, Web Bluetooth and the Scratch Link double, on Jolt: the Technic L motor 360 ± 2°, the BOOST rover drives and turns, the WeDo rover stops at the wall (and the judge fails without the stop).
+- `lab-hubs-extensions.test.mjs` — the real `legopoweredup`, `legoboostunified` and `wedo2unified` through the Scratch VM, Web Bluetooth and the Scratch Link double, on Jolt: the Technic L motor 360 ± 2°, the BOOST rover drives (its heading the one the 50 ms start skew explains, held while cruising) and spins on both Move Hub firmwares, the WeDo rover stops at the wall (and the judge fails without the stop).
 - `scratch-link-ble-double.test.mjs`, `lego-hubs-dialect.test.mjs` — the Scratch Link BLE double (fall-through, JSON-RPC, manufacturer data) and connectVirtualHub; the `pup`/`boost`/`wedo` words counted against the extensions' getInfo and round-tripped.
 - `robot-lab-dialect.test.mjs` (not `bw-sim-*`) — one method list: every robotlab block is one `lab` word, one `_robotlab` op and one API method; every block round-trips blocks → words → blocks and through Python and JavaScript; the words under any DEVICE; the simulator driver; EN/DE block texts; the blocks with no Lab open.
 

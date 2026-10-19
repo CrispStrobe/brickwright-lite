@@ -79,13 +79,18 @@ speed commands open loop and refuses degrees. The supply is 9 V (6 AA/AAA cells;
 
 | Hub (set) | LDraw part | System Type | Ports (LWP3 id) | Internal devices | Source of the port map |
 |---|---|---|---|---|---|
-| BOOST Move Hub (88006, in set 17101) | `26910.dat` | 0x40 (§2.1, LEGO) | A 0x37, B 0x38 (built-in motors), C 0x01, D 0x02 | LED 0x32, tilt 0x3A (type 0x28), current 0x3B, voltage 0x3C | scratch-vm scratch3_boost (firmware ≤ 1.0.00.0223), node-poweredup |
+| BOOST Move Hub (88006, in set 17101) | `26910.dat` | 0x40 (§2.1, LEGO) | A 0x00, B 0x01 (built-in motors), C 0x02, D 0x03; legacy firmware: A 0x37, B 0x38, C 0x01, D 0x02 | LED 0x32, tilt 0x3A (type 0x28), current 0x3B, voltage 0x3C | scratch-vm scratch3_boost (BoostPort10000224OrNewer / 10000223OrOlder), node-poweredup |
 | Powered Up Hub, "City hub" (88009) | `28738.dat` | 0x41 (§2.1, LEGO) | A 0x00, B 0x01 | LED 0x32, current 0x3B, voltage 0x3C | node-poweredup |
 | Technic Hub, "Control+" (88012) | `22127.dat` | 0x80 (community) | A–D 0x00–0x03 | LED 0x32, current, voltage, temperature 0x3D, accelerometer 0x61, gyro 0x62, tilt 0x63 | node-poweredup |
 | SPIKE Essential hub (45609) | `67351c01.dat` | 0x83 (community) | A 0x00, B 0x01 | LED 0x31, temperature, accelerometer, gyro, tilt 0x63 | node-poweredup |
 
-The Move Hub reports firmware **1.0.00.0223** and uses that firmware's port ids (A 55, B 56, C 1, D 2):
-the ids changed with 1.0.00.0224, and both BOOST extensions address the old map (see Findings). Its two
+The Move Hub's port ids changed with its firmware 1.0.00.0224. By default the virtual Move Hub reports
+**1.0.00.0224** — the first firmware with the current map (A 0, B 1, C 2, D 3), the boundary scratch-vm's
+scratch3_boost tests against — and the option `firmware: 'legacy'` (`Lwp3VirtualHub`, `setFirmware`) makes it
+**1.0.00.0223** with that firmware's ids (A 55, B 56, C 1, D 2). Both are real firmwares and both BOOST
+extensions now pick the map from the version (and legoboostunified also from the attached I/O); the tests run
+both. Until 2026-10-19 (next7) the hub reported only 1.0.00.0223, because legoboostunified took the old map for
+every firmware (Findings, history). Its two
 built-in motors are internal joints of the hub part (`actuatedBy: 'built-in'`, contracts.js), A on the
 left output and B on the right, wired so that the same positive speed drives the rover forward.
 Tilt values: the Move Hub's mode 0 is two Int8 degrees (roll, pitch); the Technic hub's mode 0 three Int16
@@ -136,6 +141,25 @@ an Input Values notification is not interpreted by any reader cited; it is sent 
 - Notifications are delivered on a later task, in order, never re-entrantly.
 
 ## Findings about the extensions (not changed here: the rule is to test them unchanged)
+
+**Status (2026-10-19): fixed upstream** in CrispStrobe/extensions PR #53 (commit `ea3e08e`), which lite vendors
+(`scripts/spike/bundled-upstream.mjs`): legoboostunified sends MaxPower = power + 10 (clamped to 100), as
+scratch3_boost does, and picks the Move Hub's port map from the firmware version and the attached I/O;
+legoboostunified and legopoweredup queue their messages (one per port, coalesced, 50 ms apart) instead of
+dropping them, so "AB" reaches both motors; legopoweredup sends end states float 0, hold 126, brake 127. The
+list below is the history, as found against the extensions before `ea3e08e`.
+
+**What the queue still means.** A block for "AB" sends A's command, then B's 50 ms later, and the hub starts
+each motor when its command arrives (§3.27: a single-port command; the extension does not use a synchronised
+pair, §3.25 / sub command 0x08). At 50 % speed (≈ 945 °/s on the Move Hub's motors) wheel A turns ≈ 47° more than
+B before B catches up, which turns the shipped BOOST rover (wheel radius 28 mm, track 100 mm) by ≈ 13–19° at the
+start; a real Move Hub driven by these blocks does the same. The shipped example used to give each motor its own
+block (B then started ≈ 130 ms after A, the extension's block waiting 100 ms per message), which at the fixed
+extension's full power turned the rover ≈ 32° — the regression the next7 lane saw. On the first version of the
+model (track 68 mm, wheels against the hub) a front-driven turn at 100 % also saturated the outer wheel's speed
+controller and the rover spun out; the model's wheels now stand on 8-long axles (track 100 mm).
+
+History (before `ea3e08e`):
 
 - **legoboostunified** picks the Move Hub's old port map whenever the *bugfix* field of the firmware
   version is ≤ 23 (`split(".")[2]`), i.e. for every real firmware; scratch-vm's scratch3_boost compares the

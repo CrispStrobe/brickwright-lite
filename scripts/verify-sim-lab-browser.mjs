@@ -971,8 +971,8 @@ try {
         const r = await hubsInteractions({browser, errors, openSimLab, wallBudget});
         console.log(`PASS legopoweredup blocks (the Technic Hub bench's example) connect to the Lab's Technic Hub and turn motor A to ` +
             `${r.technic.rest.toFixed(2)}° for "turn motor A on for 360 degrees" (±${HUB_DEGREES_TOLERANCE}), then back to ${r.technic.end.toFixed(2)}°`);
-        console.log(`PASS legoboostunified blocks drive the BOOST Move Hub rover ${(r.boost.driven * 100).toFixed(1)} cm ahead with its ` +
-            `built-in motors A and B, then turn it ${r.boost.turned.toFixed(0)}°`);
+        console.log(`PASS legoboostunified blocks ("AB") drive the BOOST Move Hub rover ${(r.boost.driven * 100).toFixed(1)} cm ahead with its ` +
+            `built-in motors A and B, holding a ${r.boost.heading.toFixed(1)}° heading (spread ${r.boost.cruiseSpread.toFixed(2)}°), then spin it ${r.boost.turned.toFixed(0)}°`);
         console.log(`PASS wedo2unified blocks run the WeDo 2.0 rover ${(r.wedo.driven * 100).toFixed(1)} cm until its motion sensor sees the ` +
             `wall (${r.wedo.seenAtStop} mm), and stop it ${r.wedo.rest} mm short of it`);
     }

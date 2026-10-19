@@ -13,7 +13,7 @@
 //
 //   1. Technic Hub bench (legopoweredup): motor A rests at 360 ± 2° after "turn motor A on for
 //      360 degrees", then turns back to 0 ± 2°;
-//   2. BOOST rover (legoboostunified): the Move Hub drives ahead with its built-in motors A and B,
+//   2. BOOST rover (legoboostunified): the Move Hub drives ahead with its built-in motors A and B (one "AB" block),
 //      then turns;
 //   3. WeDo 2.0 rover (wedo2unified): the motor runs until the motion sensor sees the wall, then
 //      stops, short of it.
@@ -96,16 +96,25 @@ export const hubsInteractions = async ({browser, errors, openSimLab, wallBudget}
 
     // ---- 2. legoboostunified on the BOOST Move Hub, over Web Bluetooth ------------------------
     await prepare(page, {file: 'boost-rover.ldr', extension: 'legoboostunified', mat: 'plain'});
-    await runFor(page, 7500, wallBudget);
+    await runFor(page, 6000, wallBudget);
     {
+        // The example: "turn motor AB on for 2 seconds" (StartSpeedForTime: the hub's motor mode 'time'), then
+        // B backwards and "turn motor AB on for 180 degrees" (a spin on the spot). Phases from the hub, not a clock.
         const r = await samples(page);
         const start = r[0];
-        const ahead = r.filter(s => s.t <= 3100).pop();
+        const drive = r.filter(s => s.a.mode === 'time');
+        assert.ok(drive.length > 30, 'the timed drive ran');
+        const ahead = drive[drive.length - 1];
+        const cruise = drive.filter(s => s.t >= drive[0].t + 1000).map(s => s.yaw);
         const end = r[r.length - 1];
         const turned = ((end.yaw - ahead.yaw + 540) % 360) - 180;
-        out.boost = {driven: Math.hypot(ahead.x - start.x, ahead.z - start.z), turned};
-        assert.ok(out.boost.driven > 0.1, `the rover drove ahead: ${JSON.stringify(out.boost)}`);
-        assert.ok(Math.abs(turned) > 30, `then turned: ${JSON.stringify(out.boost)}`);
+        out.boost = {driven: Math.hypot(ahead.x - start.x, ahead.z - start.z), heading: ahead.yaw - start.yaw,
+            cruiseSpread: Math.max(...cruise) - Math.min(...cruise), turned};
+        assert.ok(out.boost.driven > 0.3, `the rover drove ahead: ${JSON.stringify(out.boost)}`);
+        // B starts 50 ms after A (the extension's per-port queue): a heading of ~20° the skew explains
+        // (test/lab-hubs-extensions.test.mjs derives it), then held while cruising.
+        assert.ok(Math.abs(out.boost.heading) < 30 && out.boost.cruiseSpread < 2, `it holds a heading while cruising: ${JSON.stringify(out.boost)}`);
+        assert.ok(Math.abs(turned) > 45, `then spun: ${JSON.stringify(out.boost)}`);
     }
     await page.getByTestId('bw-sim-lab-pause').click();
 

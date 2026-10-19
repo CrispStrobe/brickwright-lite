@@ -2,18 +2,19 @@
 0 Name: boost-rover.ldr
 0 Author: Brickwright
 0 !LDRAW_ORG Unofficial_Model
-0 // The BOOST Move Hub drives two wheels with its built-in motors A (left) and B (right);
-0 // two ball castors, each pinned to a 7-hole beam on the hub's side, hold it level at the back.
+0 // The BOOST Move Hub drives two wheels with its built-in motors A (left) and B (right), on
+0 // 8-long axles so the wheels stand clear of the hub (a 10 cm track); two ball castors, each
+0 // pinned to a 7-hole beam on the hub's side, hold it level at the back.
 0 !BW ID hub
 1 71 0 0 0 1 0 0 0 1 0 0 0 1 26910.dat
 0 !BW ID axleL
-1 0 -100 66 140 1 0 0 0 1 0 0 0 1 3706.dat
+1 0 -120 66 140 1 0 0 0 1 0 0 0 1 3707.dat
 0 !BW ID wheelL
-1 15 -85 66 140 0 0 1 0 -1 0 1 0 0 39367p01.dat
+1 15 -125 66 140 0 0 1 0 -1 0 1 0 0 39367p01.dat
 0 !BW ID axleR
-1 0 100 66 140 1 0 0 0 1 0 0 0 1 3706.dat
+1 0 120 66 140 1 0 0 0 1 0 0 0 1 3707.dat
 0 !BW ID wheelR
-1 15 85 66 140 0 0 1 0 -1 0 1 0 0 39367p01.dat
+1 15 125 66 140 0 0 1 0 -1 0 1 0 0 39367p01.dat
 0 !BW ID beamL
 1 71 -70 66 -80 0 1 0 -1 0 0 0 0 1 32524.dat
 0 !BW ID pinL1

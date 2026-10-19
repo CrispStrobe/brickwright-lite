@@ -11,7 +11,9 @@
  *   - legopoweredup's "turn motor A on for 360 degrees" turns the Technic large motor on the
  *     Technic Hub's port A by 360 ± 2° (its encoder, the hinge's measured rotation), over Web
  *     Bluetooth AND over Scratch Link, and the shipped example turns it back to 0 ± 2°;
- *   - the shipped BOOST example drives the Move Hub rover ahead and then turns it;
+ *   - the shipped BOOST example drives the Move Hub rover ahead with one "AB" block — its heading is the one
+ *     the 50 ms start skew between A and B explains, held while cruising — and then spins it, on either
+ *     Move Hub firmware's port map;
  *   - the shipped WeDo 2.0 example runs the rover's motor until the motion sensor sees the
  *     wall, then stops it short of the wall, over both transports;
  *   - what the extension wrote is LWP3 / WeDo bytes the hub took (no error message back).
@@ -81,29 +83,46 @@ if (!existsSync(missing)) {
         }
     });
 
-    test('the shipped BOOST example drives the Move Hub rover ahead with motors A and B, then turns it', async () => {
-        const track = [];
-        const r = await runLabHubProgram(programText('boost-rover.bw'), {modelText: modelText('boost-rover.ldr'), mat: 'plain',
-            timeLimitMs: 9000, onFrame: ({session, t}) => track.push({t, ...pose(session)})});
-        try {
-            assert.equal(r.extensionId, 'legoboostunified');
-            const start = track[0];
-            const ahead = track.filter(p => p.t <= 3100).at(-1);
-            const end = track.at(-1);
-            const driven = Math.hypot(ahead.x - start.x, ahead.z - start.z);
-            assert.ok(driven > 0.1, `drove ${driven.toFixed(3)} m in its 3 s ahead`);
-            assert.ok(Math.abs(ahead.yaw - start.yaw) < 15, `ahead stays roughly straight: ${(ahead.yaw - start.yaw).toFixed(1)}°`);
-            let turned = end.yaw - ahead.yaw;
-            turned = ((turned + 540) % 360) - 180;
-            assert.ok(Math.abs(turned) > 30, `then turned ${turned.toFixed(1)}°`);
-            // Both built-in motors were driven (A 0x37 and B 0x38: the Move Hub's ports before firmware 1.0.00.0224).
-            const ports = new Set(r.written.filter(b => b[2] === 0x81).map(b => b[3]));
-            assert.ok(ports.has(0x37) && ports.has(0x38), [...ports].join(','));
-            assert.deepEqual(errorsBack(r.received), []);
-        } finally {
-            r.session.dispose();
-        }
-    });
+    // The BOOST rover (boost-rover.ldr): wheels of radius 70 LDU on the Move Hub's outputs at x = ±125 LDU.
+    const WHEEL_RADIUS_M = 70 * 0.0004;
+    const TRACK_M = 250 * 0.0004;
+    // The Move Hub runs either firmware: the current port map (A 0x00, B 0x01) or the legacy one before
+    // 1.0.00.0224 (A 0x37, B 0x38); legoboostunified reads the version and the attached I/O and picks it.
+    for (const [firmware, ports] of [['current', [0x00, 0x01]], ['legacy', [0x37, 0x38]]]) {
+        test(`the shipped BOOST example drives the Move Hub rover ahead with "AB", then spins it (${firmware} firmware)`, async () => {
+            const track = [];
+            const r = await runLabHubProgram(programText('boost-rover.bw'), {modelText: modelText('boost-rover.ldr'), mat: 'plain',
+                firmware, timeLimitMs: 5000, onFrame: ({session, hub, t}) => track.push({t, ...pose(session), speed: hub.readPort('A').speedDps})});
+            try {
+                assert.equal(r.extensionId, 'legoboostunified');
+                // One "AB" block reaches both motors: the extension queues one StartSpeedForTime per port, 50 ms apart.
+                const timed = r.log.filter(e => e.dir === 'down' && e.bytes[2] === 0x81 && e.bytes[5] === 0x09);
+                assert.deepEqual(timed.map(e => e.bytes[3]), ports, 'StartSpeedForTime to A, then to B');
+                const skewMs = timed[1].t - timed[0].t;
+                assert.ok(skewMs >= 50 && skewMs <= 120, `B starts ${skewMs} ms after A`);
+                const start = track[0];
+                const ahead = track.filter(p => p.t <= 2000);
+                const end = ahead.at(-1);
+                const driven = Math.hypot(end.x - start.x, end.z - start.z);
+                assert.ok(driven > 0.4, `drove ${driven.toFixed(3)} m ahead`);
+                // The heading it takes is the start skew's and no more: wheel A turns speed · skew further than B
+                // before B catches up, which turns the rover by that arc over the track — on a real Move Hub as here,
+                // since the hub starts each motor when its command arrives. Then it holds that heading (no spin-out).
+                const speed = ahead.at(-1).speed;
+                const expected = speed * skewMs / 1000 * Math.PI / 180 * WHEEL_RADIUS_M / TRACK_M * 180 / Math.PI;
+                const heading = end.yaw - start.yaw;
+                assert.ok(Math.abs(Math.abs(heading) - expected) <= 5, `heading ${heading.toFixed(1)}°, the skew explains ${expected.toFixed(1)}°`);
+                const cruise = ahead.filter(p => p.t >= 1000).map(p => p.yaw);
+                assert.ok(Math.max(...cruise) - Math.min(...cruise) < 2, `it holds its heading while cruising: ${Math.min(...cruise).toFixed(1)}…${Math.max(...cruise).toFixed(1)}°`);
+                let turned = track.at(-1).yaw - end.yaw;
+                turned = ((turned + 540) % 360) - 180;
+                assert.ok(Math.abs(turned) > 45, `then spun ${turned.toFixed(1)}°`);
+                assert.deepEqual(errorsBack(r.received), []);
+            } finally {
+                r.session.dispose();
+            }
+        });
+    }
 
     for (const transport of ['ble', 'scratchlink']) {
         test(`the shipped WeDo 2.0 example runs the motor until the motion sensor sees the wall (over ${transport})`, async () => {
@@ -145,11 +164,12 @@ if (!existsSync(missing)) {
         }
     });
 
-    test('scratch-vm\'s own BOOST extension finds the Move Hub by its manufacturer data over Scratch Link and turns A and B two rotations', async () => {
+    for (const [firmware, ports] of [['current', [0x00, 0x01]], ['legacy', [0x37, 0x38]]]) {
+    test(`scratch-vm's own BOOST extension finds the Move Hub by its manufacturer data over Scratch Link and turns A and B two rotations (${firmware} firmware)`, async () => {
         // Its io/ble.js discovers with a manufacturerData filter (company 0x0397, System Type 0x40) and waits for
-        // each motor's §3.32 feedback before the block ends.
+        // each motor's §3.32 feedback before the block ends; it picks the port map by the firmware version.
         let finished = false;
-        const r = await runStockHubExtension('boost', {modelText: modelText('boost-rover.ldr'), mat: 'plain',
+        const r = await runStockHubExtension('boost', {modelText: modelText('boost-rover.ldr'), mat: 'plain', firmware,
             steps: async (ext, wait, block) => {
                 finished = await block(ext.motorOnForRotation({MOTOR_ID: 'AB', ROTATION: 2}));
                 await wait(300);
@@ -162,11 +182,12 @@ if (!existsSync(missing)) {
             }
             // Its max power is the power + 10 (scratch3_boost BoostMotorMaxPowerAdd): 50 + 10 = 60 (0x3C).
             const sent = r.written.filter(b => b[2] === 0x81 && b[5] === 0x0b);
-            assert.deepEqual(sent.map(b => [b[3], b[11]]), [[0x37, 0x3c], [0x38, 0x3c]]);
+            assert.deepEqual(sent.map(b => [b[3], b[11]]), [[ports[0], 0x3c], [ports[1], 0x3c]]);
         } finally {
             r.session.dispose();
         }
     });
+    }
 
     test('scratch-vm\'s own WeDo 2.0 extension runs the rover until its distance (percent) drops, then floats the motor', async () => {
         let seen = null;

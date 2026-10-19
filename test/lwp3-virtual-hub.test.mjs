@@ -84,21 +84,25 @@ test('§3.5 Hub Properties: Request Update answers with Update (0x06) and the pr
     assert.deepEqual(send('05 00 01 08 05'), [`14 00 01 08 06 ${hex([...'LEGO System A/S'].map(c => c.charCodeAt(0)))}`]);
 });
 
-test('the BOOST Move Hub reports firmware 1.0.00.0223 and the port ids of that firmware (A 0x37, B 0x38)', () => {
-    const hub = new Lwp3VirtualHub({id: 'hub', profile: 'boost-move-hub'});
-    hub.plug([{port: 'A', class: 'motor', ids: {lpf2: 39}}, {port: 'B', class: 'motor', ids: {lpf2: 39}}]);
-    const up = [];
-    hub.setSink(b => up.push(hex(b)));
-    hub.receive(Uint8Array.from(bytes('05 00 01 03 05')));
-    assert.deepEqual(up, ['09 00 01 03 06 23 02 00 10']);
-    hub.receive(Uint8Array.from(bytes('05 00 01 0b 05')));
-    assert.equal(up[1], '06 00 01 0b 06 40', '§2.1: 010 00000 = Boost Hub');
-    up.length = 0;
-    hub.announce();
-    assert.deepEqual(up.slice(0, 2).map(m => m.slice(0, 17)), ['0f 00 04 37 01 27', '0f 00 04 38 01 27'].map(s => s.slice(0, 17)));
-    // The internal tilt (0x28) on 0x3A.
-    assert.ok(up.some(m => m.startsWith('0f 00 04 3a 01 28 00')), up.join('\n'));
-});
+for (const [firmware, fw, a, b] of [['current', '24 02 00 10', '00', '01'], ['legacy', '23 02 00 10', '37', '38']]) {
+    test(`the BOOST Move Hub on its ${firmware} firmware reports its version and that firmware's port ids (A 0x${a}, B 0x${b})`, () => {
+        // scratch-vm scratch3_boost: the port ids changed with 1.0.00.0224 (BoostPort10000223OrOlder: A 55, B 56).
+        const hub = new Lwp3VirtualHub({id: 'hub', profile: 'boost-move-hub', firmware});
+        hub.plug([{port: 'A', class: 'motor', ids: {lpf2: 39}}, {port: 'B', class: 'motor', ids: {lpf2: 39}}]);
+        const up = [];
+        hub.setSink(m => up.push(hex(m)));
+        hub.receive(Uint8Array.from(bytes('05 00 01 03 05')));
+        assert.deepEqual(up, [`09 00 01 03 06 ${fw}`], '§3.5.6: build BCD, bugfix 00, 0MMM mmmm 0x10');
+        hub.receive(Uint8Array.from(bytes('05 00 01 0b 05')));
+        assert.equal(up[1], '06 00 01 0b 06 40', '§2.1: 010 00000 = Boost Hub');
+        up.length = 0;
+        hub.announce();
+        assert.deepEqual(up.slice(0, 2).map(m => m.slice(0, 17)), [`0f 00 04 ${a} 01 27`, `0f 00 04 ${b} 01 27`]);
+        // The internal tilt (0x28) on 0x3A, on either firmware.
+        assert.ok(up.some(m => m.startsWith('0f 00 04 3a 01 28 00')), up.join('\n'));
+        assert.throws(() => hub.setFirmware('beta'), /no firmware 'beta'/);
+    });
+}
 
 test('§3.17/§3.23/§3.21 Port Input Format Setup (Single) → Port Input Format (Single) → Port Value (Single)', () => {
     const {hub, send, up} = technicHub();
@@ -216,4 +220,39 @@ test('the worker\'s mirror: export/import carries everything that decides a driv
     hub.advanceTo(55);
     mirror.advanceTo(55);
     assert.deepEqual(mirror.readDrives(), hub.readDrives());
+});
+
+test('the BOOST rover at full speed: a 50 ms start skew turns it by the skew\'s arc, and it holds that heading (no spin-out)', async () => {
+    // The shipped rover's wheels (radius 70 LDU) on the Move Hub's outputs, 250 LDU apart. A front-driven
+    // chassis on ball castors needs differential traction to hold a turn; on the narrower first version of this
+    // model (170 LDU) the outer wheel's controller saturated at 100 % and the rover spun out.
+    const text = readFileSync(path.join(ROOT, 'overlay/scratch-gui/static/sim-lab/models/boost-rover.ldr'), 'latin1');
+    const {session} = await SimSession.fromText(text, {hubState: null, catalog: CATALOG, mat: 'plain'});
+    try {
+        const hub = session.hubs[0].hub;
+        const body = session.hubs[0].body;
+        const yaw = () => {
+            const s = session.snapshot();
+            const i = s.bodyIds.indexOf(body);
+            const [qx, qy, qz, qw] = [3, 4, 5, 6].map(k => s.bodies[i * 7 + k]);
+            return Math.atan2(2 * (qw * qy + qx * qz), 1 - 2 * (qy * qy + qx * qx)) * 180 / Math.PI;
+        };
+        for (let t = 0; t < 300; t += 5) session.tick(5);
+        const y0 = yaw();
+        // StartSpeed 100 %, max power 100, to A, then to B 50 ms later (the extension's queue spacing).
+        hub.receive(Uint8Array.from(bytes('09 00 81 00 11 07 64 64 00')));
+        for (let t = 0; t < 50; t += 5) session.tick(5);
+        hub.receive(Uint8Array.from(bytes('09 00 81 01 11 07 64 64 00')));
+        const cruise = [];
+        for (let t = 0; t < 1600; t += 5) {
+            session.tick(5);
+            if (t >= 1200) cruise.push(yaw() - y0);
+        }
+        const speed = hub.readPort('B').speedDps;
+        const expected = speed * 0.05 * (70 / 250) ;
+        assert.ok(Math.abs(Math.abs(cruise[0]) - expected) <= 5, `heading ${cruise[0].toFixed(1)}°, the skew explains ${expected.toFixed(1)}°`);
+        assert.ok(Math.max(...cruise) - Math.min(...cruise) < 2, `held: ${Math.min(...cruise).toFixed(1)}…${Math.max(...cruise).toFixed(1)}°`);
+    } finally {
+        session.dispose();
+    }
 });

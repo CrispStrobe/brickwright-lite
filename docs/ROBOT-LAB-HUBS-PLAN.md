@@ -90,7 +90,8 @@ executable spec); RCX (A–C, 1–3; the existing `RcxVm`).
   bench: 360 ± 2°; BOOST rover drives and turns; WeDo rover stops at the wall with its motion sensor).
   Words: `pup` / `boost` / `wedo` (`G/legoHubsDialect.js`, one table, under any DEVICE line); a `DEVICE POWEREDUP`
   declaration line is open (the pinned compiler's DEVICE names a build target). Extension findings (MaxPower 10,
-  the AB rate limit, the Move Hub port map) in the notes, the extensions unchanged.
+  the AB rate limit, the Move Hub port map) in the notes; fixed upstream at CrispStrobe/extensions `ea3e08e` and
+  vendored (next7), the BOOST example now uses one "AB" block and the Move Hub runs either firmware's port map.
 - **P4 EV3:** direct commands, then the LMS VM; the wall-stop scenario through `DEVICE EV3` and RBF.
   **L1 done 2026-10-19** (lane/simlab-hubs-bt-20261019; docs/ROBOT-LAB-EV3-NXT.md): `G/bw-sim/hubs/ev3/` — the EV3
   direct-command executor (EV3 Communication and Firmware Developer Kits: frame, parameter encoding, output/input/
