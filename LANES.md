@@ -6931,3 +6931,26 @@ for valueBinary/createReference, route actual proof errors through private
 lineage cleanup, and recognize malformed tracked identities only to reject.
 No generic value/Number/Cast grant, no supplier pin change, and no change to
 legacy caught-copy probes. Original failed controls remain mandatory regressions.
+
+## Arcade retained-context conversion CLI — 2026-10-19
+
+SOURCE CANDIDATE / QUALIFICATION PENDING — Codex Arcade integration within the
+merged foundation reconciliation and compatibility scope. Add an explicit local
+context catalogue reader and shared actual public conversion/Creator operation
+to the compatibility audit CLI. Preserve raw classification, all complete inputs
+and original compiler failures, full provided diagnostics and current dependency
+validation. No SDK-return trust flag, case-specific source repair, supplier pin
+change, fetching, runtime or corpus qualification is included. The roundtrip
+script's common-reader integration and affected archive/export controls remain
+follow-up work. See the retained-context section of
+[the compatibility audit](docs/COMPATIBILITY-AUDIT.md).
+
+### Lossless conversion report representation — 2026-10-19
+
+SOURCE CANDIDATE / QUALIFICATION PENDING — Codex within the retained-context
+conversion CLI scope above. Add explicitly versioned lossless byte payload and
+own-descriptor packing, a bounded data decoder and opt-in full-report gzip.
+Preserve the existing v1 observer API, actual conversion operation, full provided
+diagnostics and legacy classification. No input trust, supplier pin, compiler,
+SDK, runtime, corpus coverage or performance grant is included. Existing controls
+and new encoding controls require actual qualification before selection.
