@@ -465,8 +465,18 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     };
     // Only appends (push) and reads may touch a positional Array: no shrink,
     // set, insertion or unshift, and no named-array write route.
-    const positionalStable=a=>!a.shrinks?.size&&!a.elements.has(bad)&&mutations.every(({target,node})=>
-        !readInput(input(node,'ARRAY',target)).has(a)||node.opcode==='arrays_mutateReference'&&literal(node,'OP',target)==='push');
+    // A later statement of the same once-only scope cannot have moved a slot yet.
+    const afterAt=(node,at)=>{const scope=owners.get(at),later=statementOf(node),statement=statementOf(at);
+        return !!scope&&owners.get(node)===scope&&!!later&&!!statement&&later!==statement&&onceNode(later)&&onceNode(statement)&&!!scope.executedBefore.get(later)?.has(statement);};
+    // A named registry write after the occurrence in the same script cannot
+    // precede it when that script re-created the named Array earlier in the
+    // same activation: a restarted script re-creates it before reading again.
+    const afterInActivation=(node,at,creation)=>{const scope=owners.get(at),later=statementOf(node),statement=statementOf(at);
+        return !!scope&&!!creation&&owners.get(node)===scope&&owners.get(creation)===scope&&!!later&&!!statement&&later!==statement&&
+            !!scope.executedBefore.get(later)?.has(statement)&&!!scope.executedBefore.get(statement)?.has(creation);};
+    const positionalStable=(a,at)=>[...(a.shrinks||[])].every(node=>afterAt(node,at))&&
+        (!a.elements.has(bad)||Array.isArray(a.namedMutations)&&a.namedMutations.every(r=>afterAt(r.node,at)||afterInActivation(r.node,at,a.node)))&&
+        mutations.every(({target,node})=>!readInput(input(node,'ARRAY',target)).has(a)||node.opcode==='arrays_mutateReference'&&literal(node,'OP',target)==='push'||afterAt(node,at));
     // A procedure whose every return is a read of one formal that only its
     // actual call arguments write returns, at each call, that call's argument.
     const passthroughIndex=fn=>{
@@ -576,6 +586,8 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             const json=literal(writer,'JSON',target);if(typeof json!=='string')return new Set([bad]);try{value=JSON.parse(json);}catch{value=writer.opcode==='arrays_create2D'?[[]]:[];}if(!Array.isArray(value))return new Set([bad]);
         }else if(!exactKeys(writer,['NAME']))return new Set([bad]);
         const allocation=jsonArray(value,writer,target);
+        const namedMutations=records.filter(r=>r.node.opcode.startsWith('arrays_')&&r.node.inputs?.NAME&&literal(r.node,'NAME',r.target)===name&&!['arrays_namedReference','arrays_createEmpty','arrays_create1D','arrays_create2D','arrays_length','arrays_get'].includes(r.node.opcode));
+        if(!Object.hasOwn(allocation,'namedMutations')&&!allocation.elements.has(bad))allocation.namedMutations=namedMutations;
         if(records.some(r=>r.node.opcode.startsWith('arrays_')&&r.node.inputs?.NAME&&literal(r.node,'NAME',r.target)===name&&!['arrays_namedReference','arrays_createEmpty','arrays_create1D','arrays_create2D','arrays_length','arrays_get'].includes(r.node.opcode)))allocation.elements.add(bad);
         return new Set([allocation]);
     };
@@ -641,7 +653,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                 // A fixed literal slot of a positional (JSON/literal) Array whose
                 // earlier slots never move holds exactly its own item.
                 const index=node.opcode==='arrays_referenceItem'?literalNumber(target,node,'INDEX'):null;
-                if(index!==null&&Number.isInteger(index)&&index>=0&&Array.isArray(a.items)&&index<a.items.length&&positionalStable(a)){
+                if(index!==null&&Number.isInteger(index)&&index>=0&&Array.isArray(a.items)&&index<a.items.length&&positionalStable(a,node)){
                     for(const item of readInput(a.items[index]))result.add(item);continue;
                 }
                 for(const item of a.elements)result.add(item);
@@ -1039,7 +1051,9 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     };
     const checkingWriterInitialization=new Set();
     const initialized=(value,path=new Set())=>{
-        if(!value)return false;if(value.jsonArray)return true;
+        // A literal value (JSON item or literal input) is initialized; it is an
+        // Array only through jsonArray, which singleArray still checks.
+        if(!value)return false;if(value.jsonArray||value.raw)return true;
         const initializedCell=(c,scope,at)=>{if(!available(c,scope,at))return false;if(checkingWriterInitialization.has(c))return true;checkingWriterInitialization.add(c);try{const live=c.directBad?c.writers:c.writers.filter(w=>!killedReset(c,w,at));return live.length>0&&live.every(w=>w.value&&(initialized(w.value)||!c.directBad&&falsyGuarded(c,w,at)&&w.value.node?.opcode==='arrays_referenceItem'&&initialized(input(w.value.node,'ARRAY',w.target))));}finally{checkingWriterInitialization.delete(c);}};
         if(value.cell)return initializedCell(value.cell,owners.get(value.at),value.at);
         if(!value.node)return false;const {target,node}=value;if(path.has(node))return false;const next=new Set([...path,node]),c=binding(target,node);
