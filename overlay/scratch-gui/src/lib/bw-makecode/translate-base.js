@@ -294,12 +294,13 @@ export class BaseTranslator {
      */
     varName (name) {
         const original = String(name);
-        if (!NOT_A_VARIABLE.has(original.toLowerCase())) return original;
+        if (!NOT_A_VARIABLE.has(original.toLowerCase()) && !this.reservedVariableNames?.has(original.toLowerCase())) return original;
         if (!this.renamed) this.renamed = new Map();
         if (this.renamed.has(original)) return this.renamed.get(original);
         let renamed = `${original}_`;
         while (this.taken && this.taken.has(renamed)) renamed += '_';
         this.renamed.set(original, renamed);
+        if (this.taken) this.taken.add(renamed);
         // NOT a refusal — the variable is fully supported, it just cannot
         // keep its name. It is announced once at the top of the program
         // rather than counted among the things we could not do.
@@ -327,7 +328,9 @@ export class BaseTranslator {
     renameNotes () {
         return [...(this.renamed || [])].map(([from, to]) =>
             `# "${from}" is written as "${to}" here: the pseudocode reads a bare ` +
-            `"${from}" as a Scratch block, not as a variable.`).concat([...(this.renamedProcs || [])].map(([from, to]) =>
+            (this.reservedVariableNames?.has(from.toLowerCase()) ?
+                `"${from}" as Arcade HUD storage, not as an ordinary variable.` :
+                `"${from}" as a Scratch block, not as a variable.`)).concat([...(this.renamedProcs || [])].map(([from, to]) =>
             `# the function "${from}" is written as "${to}" here: the pseudocode reads "${from}" as a Scratch block, ` +
             'not as a call of the function.'));
     }

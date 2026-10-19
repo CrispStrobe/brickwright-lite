@@ -206,6 +206,9 @@ const CONTROLLER_KEYS = {
 class ArcadeTranslator extends BaseTranslator {
     constructor (assets, tilemaps, assetKindLookup = null, scrollerVersion = 'v0.1.2', characterVersion = 'v0.1.0') {
         super();
+        // The legacy Arcade exporter gives global score/lives HUD meaning.
+        // Ordinary source bindings retain independent storage under safe names.
+        this.reservedVariableNames=new Set(['score','lives']);
         this.assets = assets || {};      // jres images by name
         this.assetKindLookup = assetKindLookup;
         this.scrollerVersion = scrollerVersion;
@@ -835,6 +838,10 @@ class ArcadeTranslator extends BaseTranslator {
             if (a.length === 1) return `arcade ask text ${this.expr(a[0])}`;
             this.unsupported.push('game.askForString() with length limit or other options');
             return '""';
+        case 'scene.cameraLeft':
+        case 'scene.cameraTop':
+            if(this.handleTemplates && !a.length)return `arcade camera draw offset ${name==='scene.cameraLeft'?'x':'y'}`;
+            this.unsupported.push(`${name} requires no arguments and native camera support`);return 'undefined value';
         case 'scene.cameraProperty':
             if(this.handleTemplates && a.length===1) {
                 const property=this.path(a[0]);
@@ -1213,7 +1220,7 @@ class ArcadeTranslator extends BaseTranslator {
         const handle = node?.type === 'Member' && this.handleRef(node.object);
         if (handle) {
             if (['x', 'y', 'left', 'right', 'top', 'bottom', 'vx', 'vy', 'ax', 'ay', 'fx', 'fy', 'sx', 'sy', 'scale',
-                'width', 'height', 'z', 'lifespan', 'rotation', 'rotationDegrees', 'data'].includes(node.name)) {
+                'width', 'height', 'z', 'lifespan', 'rotation', 'rotationDegrees', 'data', 'flags'].includes(node.name)) {
                 return `arcade property ${node.name} of ${handle}`;
             }
             if (node.name === 'image') return `arcade image of ${handle}`;
@@ -1376,6 +1383,12 @@ class ArcadeTranslator extends BaseTranslator {
         if(this.handleTemplates && ['game.pushScene','game.popScene'].includes(name)) {
             if(a.length){push(this.note(`${name} requires no arguments`));return;}
             push(name==='game.pushScene'?'arcade push scene':'arcade pop scene');return;
+        }
+        if(this.handleTemplates && /^info\.(showScore|showLife|showCountdown)$/.test(name||'')) {
+            if(this.bindsName('info')){push(this.note(`${name} refers to a shadowed info binding`));return;}
+            if(a.length!==1){push(this.note(`${name} requires one Boolean visibility value`));return;}
+            const element=name.slice('info.show'.length).toLowerCase();
+            push(`arcade set hud ${element} visible ${this.boolSlot(a[0])}`);return;
         }
         if(this.handleTemplates && /^info(?:\.player[1-4])?\.(setLife|changeLifeBy)$/.test(name||'')) {
             if(a.length!==1){push(this.note(`${name} requires one life value`));return;}
@@ -3138,7 +3151,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
             if(api==='mp.isConnected' || api==='mp.isButtonPressed' || api==='game.ask' || node.callee?.type==='Member' && (node.callee.name==='tileKindAt' && typeOf(node.callee.object,owner).has('sprite') || node.callee.name==='equals' && typeOf(node.callee.object,owner).has('image')))return new Set(['boolean']);
             if(api==='game.currentScene' && !node.args.length)return new Set(['scene']);
             if(api==='ArcadePhysicsEngine' && node.constructorCall && node.args.length<=3)return new Set(['physics-engine']);
-            if(api==='scene.cameraProperty' && node.args.length===1 || /^info(?:\.player[1-4])?\.(life|score)$/.test(api||'') && !node.args.length)return new Set(['number']);
+            if(api==='scene.cameraProperty' && node.args.length===1 || ['scene.cameraLeft','scene.cameraTop'].includes(api) && !node.args.length || /^info(?:\.player[1-4])?\.(life|score)$/.test(api||'') && !node.args.length)return new Set(['number']);
             if(/^info(?:\.player[1-4])?\.(hasLife|hasScore)$/.test(api||'') && !node.args.length)return new Set(['boolean']);
             if(api==='animation.createAnimation')return new Set(['animation']);
             if(api==='sevenseg.createDigit')return new Set(['sevenseg-digit']);
@@ -3662,6 +3675,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(['LegacyParsedValue','LegacyJsonValue','NativeArrayAccess'].includes(node.type) || node.type==='Identifier' && ['NaN','Infinity'].includes(node.name) && !t.boundSourceGlobals.has(node.name))return true;
         if(node.type==='SpriteKindReset' || node.type==='Member' && t.path(node.object)==='SpriteKind' || node.type==='Call' && (t.path(node.callee)==='SpriteKind.create' || node.callee?.type==='Member' && ['kind','setKind'].includes(node.callee.name) || t.path(node.callee)==='sprites.create' && (!node.args[1] || !['Member'].includes(node.args[1].type))))return true;
         if(node.type==='Call' && (isSpriteRegistration(t.path(node.callee)) || t.path(node.callee)==='sprites.onCreated'))return true;
+        if(node.type==='Call' && /^info\.(showScore|showLife|showCountdown)$/.test(t.path(node.callee)||''))return true;
         if(t.bufferReferences.has(node))return true;
         if(node.type==='Declaration' && node.decls.some(decl=>decl.isArray && !decl.init))return true;
         const constantNumber=value=>value?.type==='Number'?Number(value.value):value?.type==='Unary' && value.op==='-' && value.argument?.type==='Number'?-Number(value.argument.value):value?.type==='Member' && value.object?.name==='Math' && value.name==='PI'?Math.PI:NaN;
@@ -3680,8 +3694,9 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(node.type==='Call' && /^carnival\.(?:startCountdownGame|onGameOverExpanded|customGameOverExpanded)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^game\.(?:gameOver|over|setGameOver\w+)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && (node.callee.name==='startEffect' || node.callee.name==='destroy' && node.args?.length))return true;
-        if(node.type==='Call' && (['game.currentScene','ArcadePhysicsEngine','sprites.allOfKind','scene.onHitTile','scene.tileHitFrom','scene.onHitWall','scene.onOverlapTile','scene.centerCameraAt','scene.cameraShake','scene.cameraFollowSprite','scene.cameraProperty','game.pushScene','game.popScene','game.addScenePushHandler','game.addScenePopHandler','game.removeScenePushHandler','game.removeScenePopHandler'].includes(t.path(node.callee)) || /^tiles\./.test(t.path(node.callee)||'')))return true;
-        if(node.type==='Member' && ['fx','fy','sx','sy','scale'].includes(node.name))return true;
+        if(node.type==='Call' && (['game.currentScene','ArcadePhysicsEngine','sprites.allOfKind','scene.onHitTile','scene.tileHitFrom','scene.onHitWall','scene.onOverlapTile','scene.centerCameraAt','scene.cameraShake','scene.cameraFollowSprite','scene.cameraProperty','scene.cameraLeft','scene.cameraTop','game.pushScene','game.popScene','game.addScenePushHandler','game.addScenePopHandler','game.removeScenePushHandler','game.removeScenePopHandler'].includes(t.path(node.callee)) || /^tiles\./.test(t.path(node.callee)||'')))return true;
+        if(node.type==='Call' && /^info(?:\.player[1-4])?\.(?:life|hasLife|setLife|changeLifeBy|onLifeZero)$/.test(t.path(node.callee)||''))return true;
+        if(node.type==='Member' && ['fx','fy','sx','sy','scale','flags'].includes(node.name))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='toString' && t.spriteReferences.has(node.callee.object))return true;
         const mixedValue=value=>['String','Boolean','Null','Undefined','Array'].includes(value?.type) || t.stringReferences.has(value) || t.booleanReferences.has(value) || t.arrayReferences.has(value) || t.imageReferences.has(value);
         if(node.type==='Binary' && (node.op==='%' || ['+','-','*','/','==','!=','===','!==','<','>','<=','>='].includes(node.op) && (mixedValue(node.left) || mixedValue(node.right))) || node.type==='Unary' && ['+','-'].includes(node.op) && mixedValue(node.argument))return true;

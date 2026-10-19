@@ -1486,6 +1486,21 @@ both tutorial programs compiled offline and run as firmware on the pinned
 engine with the emulated radio stack; holding a remote button runs the
 matching Calliope motor line on a shared air and nothing moves on separate airs.
 
+## Native Arcade splash and long text — 2026-10-13
+
+CLAIMED — Codex Arcade dialog integration, `work/arcade-native-text-dialogs-20261013`.
+Envelope: Arcade native dialog lifecycle, controller event gating, dialog image
+host and scene composition in `overlay/scratch-vm/src/extensions/crispstrobe/arcade/`;
+`components/stage/arcade-dialog.jsx` and its dialog-only CSS/props in the GUI stage
+component and container; affected tracked mirrors; focused original/native,
+Code/blocks/export/SB3 and accessibility controls; this ledger and
+`docs/compatibility/arcade-native-text-dialogs.md`.
+Reuse the retained MIT text dialog classes. Render the live parent scene through
+the child scene, preserve scene and epoch ownership, and route accessible controls
+through actual controller edges. Preserve independent DEVICE/arena and question
+flows. No local full GUI build, source/actor substitution or dialog-dismiss shortcut.
+Initial and resumed scene frame timing remains a separately tracked scheduler gap.
+
 
 ## Two-way GPIO pin block ⇄ Forth — 2026-10-12
 
@@ -6614,3 +6629,21 @@ claim, private diagnostic prototype and original comparison controls; no product
 kernel hook change before its claim lands. `extension_parser` observes the owned
 GUI gate and prepares HUD visibility source/native/export/typed-authoring scope.
 Coordinate Arcade index hunks explicitly; preserve independent multi-board lanes.
+
+### Arcade HUD/camera continuation and qualification — 2026-10-13
+
+Root owns `lane/arcade-camera-flags-info-selection-20261013`: 351-form producer
+integration, exact raw camera-offset reporting, readable flags, native info-only
+life selection and the actual production GUI replacement-stage guard. HUD
+visibility/source-name collision controls and terminal HUD generator callbacks
+are integrated from their owners. Combined25PASS/2timingTODO and camera/latest
+main11PASS remain bounded controls; raw corpus41 partials is unchanged.
+
+`extension_parser` owns AST tile-map factory registration/alias/order/null
+semantics and its tilemap-call importer hunks, plus private Maze GUI preparation
+and final artifact observation. `corpus_gap_analysis` owns explicit portable
+source-loop eligibility/352-form producer preparation and the private phase
+prototype; global product hook waits for PR881's matched-head green merge.
+`namespace_buffers` owns the original native text-dialog contract and scoped
+implementation paths listed there. Shared runtime/translator hunks must be
+coordinated. Preserve independent multi-board/arena and engine lanes.

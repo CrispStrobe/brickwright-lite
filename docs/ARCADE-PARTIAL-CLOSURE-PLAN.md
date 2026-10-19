@@ -622,3 +622,26 @@ The next ordered gates are:
 
 A genuine completion requires the whole authored project acceptance boundary.
 Raw and prepared counts must remain distinguishable throughout.
+
+## Current checkpoint after HUD and camera integration
+
+The 351-form integration qualifies raw camera offsets, readable sprite flags,
+HUD visibility and ordinary score/lives source bindings. Default and custom
+terminal HUD drawing has 25 passing controls and two explicitly failing initial
+clock comparisons. Fresh selected-SDK structural admission is17/29 valid
+contexts;11 API/semantic blockers and1 parser failure remain.12 compiler
+diagnostic contexts are preserved separately. Historical instance-overlap APIs
+need original version authority; selected-current-SDK refusal alone does not
+prove a historically invalid app. Raw41 partials remain unchanged.
+
+Maze's35 runtime comparisons match original win/loss and presentation. The
+prepared private production GUI journey must now establish actual Code/Blocks,
+Tilemap/Pixel editing, controller victory, saved SB3 reopening and original
+export/reimport. The first owned TextSprite hosted journey failed on a transient
+missing stage during replacement; the source guard is fixed and needs a real
+rerun. These results still do not authorize whole-project promotion.
+
+The next dependency order remains: validated tile-map factory semantics, scoped
+source-loop eligibility and frame phases, then original native dialogs/real
+splash input. Continue Story, classes and callable values from actual diagnostic
+families. Preserve every prior failure and the immutable original inputs.
