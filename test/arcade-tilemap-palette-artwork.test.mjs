@@ -36,8 +36,24 @@ test('actual edited tile artwork keeps project colors, indices, walls and names 
         const restored=findTilemapBlocks(run.vm)[0];assert.deepEqual(restored.data,edited);assert.equal(writeTilemapBlock(run.vm,ref,edited),false);
         const projection=inspectTilemapPalette(run.vm),colors=[],ctx={fillStyle:null,fillRect(){colors.push(this.fillStyle);}};
         drawTilemapImage(ctx,restored.data.images[1],0,0,1,projection);assert.ok(colors.includes('#123456')&&colors.includes('#000000'));
-        const exported=projectToArcade(JSON.parse(run.vm.toJSON()),{costumeSvg:(_target,costume)=>run.creator.assets.get(costume.assetId)?.data});
-        record({stage:'tile-palette-export',result:exported});
+        // Match the stage export UI: after a real load/reload, the VM owns the
+        // current asset IDs and bytes. The original Creator's cache is not the
+        // current costume registry.
+        const svgs=new Map(),assetInputs=[];
+        for(const target of run.vm.runtime.targets){
+            if(!target.isOriginal)continue;
+            for(const costume of target.sprite.costumes){
+                if(costume.asset?.dataFormat!=='svg')continue;
+                const svg=costume.asset.decodeText();assert.equal(typeof svg,'string');
+                if(svgs.has(costume.assetId))assert.equal(svgs.get(costume.assetId),svg,'one current asset ID must name the same actual bytes');
+                svgs.set(costume.assetId,svg);
+                assetInputs.push({targetId:target.id,targetName:target.getName(),costumeName:costume.name,
+                    assetId:costume.assetId,svg,originalCreatorHasAsset:run.creator.assets.has(costume.assetId)});
+            }
+        }
+        const exportProject=JSON.parse(run.vm.toJSON());
+        const exported=projectToArcade(exportProject,{costumeSvg:(_target,costume)=>svgs.get(costume.assetId)||null});
+        record({stage:'tile-palette-export',result:exported,project:exportProject,assetInputs});
         assert.deepEqual(exported.unsupported,[]);assert.deepEqual(exported.warnings,[]);
         close(run);
         const codeRun=await runProgram(code,{frames:3,storage:true,uploads:imported.costumes});runs.push(codeRun);
