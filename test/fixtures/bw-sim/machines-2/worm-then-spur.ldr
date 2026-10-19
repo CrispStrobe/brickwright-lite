@@ -1,0 +1,32 @@
+0 worm-then-spur (Brickwright Robot Lab validation machine, round 2)
+0 Name: worm-then-spur.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 // Worm then spur (Robot Lab validation round 2): the worm rig of machines/load-worm-24.ldr with a longer wheel
+0 // axle and a spur stage. The SPIKE medium motor (port A) output up at the origin; a 3 x 5 L-beam pinned to the
+0 // housing's side hole s1 by a friction pin, its short arm holding holes along x at y = -100, z = -20, -40, -60
+0 // (x 30 ... 50). The worm 4716 (right-hand thread, one start) on a 4L axle in the output (worm y -120 ... -80)
+0 // drives a 24T at (0, -100, -40) on a 6L axle along x in the L-beam's hole z = -40 (worm pitch radius 10 + 30 =
+0 // 40 LDU from the worm axis). That axle carries an 8T at x = 70, meshing with an 8T on a 4L axle in the hole
+0 // z = -60 (centres 10 + 10 = 20 LDU apart). The output is that axle.
+0 !BW ID motor
+0 !BW PORT A
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ID pin
+1 0 30 -20 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID frame
+1 72 40 -20 -20 0 1 0 0 0 -1 -1 0 0 32526.dat
+0 !BW ID wormAxle
+1 4 0 -80 0 0 -1 0 1 0 0 0 0 1 3705.dat
+0 !BW ID worm
+1 16 0 -100 0 1 0 0 0 0 -1 0 1 0 4716.dat
+0 !BW ID wheelAxle
+1 4 40 -100 -40 1 0 0 0 1 0 0 0 1 3706.dat
+0 !BW ID wheel
+1 16 0 -100 -40 0 0 1 0 1 0 -1 0 0 3648.dat
+0 !BW ID g8a
+1 16 70 -100 -40 0 0 1 0 1 0 -1 0 0 3647.dat
+0 !BW ID outAxle
+1 4 60 -100 -60 1 0 0 0 1 0 0 0 1 3705.dat
+0 !BW ID gOut
+1 16 70 -100 -60 0 0 1 0 1 0 -1 0 0 3647.dat

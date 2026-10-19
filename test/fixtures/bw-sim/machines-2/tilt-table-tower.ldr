@@ -1,0 +1,23 @@
+0 tilt-table-tower (Brickwright Robot Lab validation machine, round 2)
+0 Name: tilt-table-tower.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 // Tilting table and a loose brick tower (Robot Lab validation round 2): the SPIKE medium motor (port A) lies on
+0 // its side, output towards -x (local y -> +x), its output face at x = -40. A Technic beam 7 along z, holes along
+0 // x, centre (-60, 0, 0), is pinned to the output's holes out2/out3 (z = +-20) by friction pins: the table, its top
+0 // face at y = -9, turning about the motor axis (the x axis). On it stands a tower of two bricks 1 x 1 x 3 (14716)
+0 // clutched stud-in-tube, NOT fastened to the beam (a beam has no studs): the tower is loose by design. Footprint
+0 // 20 x 20 LDU; as the table tilts about x the tower tips over a bottom edge 10 LDU from its centre line.
+0 !BW ID motor
+0 !BW PORT A
+1 71 0 0 0 0 1 0 -1 0 0 0 0 1 54696p01.dat
+0 !BW ID table
+1 72 -60 0 0 0 1 0 -1 0 0 0 0 1 32524.dat
+0 !BW ID tablePin1
+1 0 -50 0 20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tablePin2
+1 0 -50 0 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID towerLow
+1 4 -60 -81 0 1 0 0 0 1 0 0 0 1 14716.dat
+0 !BW ID towerHigh
+1 14 -60 -153 0 1 0 0 0 1 0 0 0 1 14716.dat

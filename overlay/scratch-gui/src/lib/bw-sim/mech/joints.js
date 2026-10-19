@@ -9,6 +9,7 @@
 import {COS_1_DEG, vecAdd, vecSub, vecDot, vecCross, vecLen, vecScale, vecNormalize, vecDist, lineDistance} from './vec.js';
 import {lduToWorld, dirToWorld, LDU_M} from '../contracts.js';
 import {MIN_ENGAGE_LDU} from '../kinds/pin-axle.js';
+import {slipTorqueOf} from '../kinds/slip-clutch.js';
 
 const COS_1 = COS_1_DEG;
 const TOL = 0.5 + 1e-9;
@@ -247,6 +248,9 @@ export const buildJoints = (nodes, edges, islands, diagnostics = []) => {
                 axis: g.axisWorld,
             };
             if (g.motor) joint.motor = motorOf(g.motor);
+            // A slip clutch's hub (kinds/slip-clutch.js): the hinge holds up to its slip torque.
+            const slip = slipTorqueOf(group, nodes);
+            if (slip !== null) joint.frictionNm = slip;
             joints.push({joint, groupKey: key, members: group});
         } else {
             // Check collinearity among all members
@@ -283,6 +287,8 @@ export const buildJoints = (nodes, edges, islands, diagnostics = []) => {
                 // If any member has motor, include it (should not happen for hinge group >1)
                 const motorMember = group.find(g => g.motor);
                 if (motorMember) joint.motor = motorOf(motorMember.motor);
+                const slip = slipTorqueOf(group, nodes);
+                if (slip !== null) joint.frictionNm = slip;
                 joints.push({joint, groupKey: key, members: group});
             } else {
                 // Locked: non-collinear hinges between same pair lock it

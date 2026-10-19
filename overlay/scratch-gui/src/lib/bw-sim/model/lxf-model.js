@@ -6,9 +6,13 @@
 // runs it), so the few elements it needs are read with a small tag scanner.
 //
 // What is read: LXFML version 5 (LDD 4.x), every <Part> inside <Bricks> with
-// its designID, first material and first <Bone transformation="…">. A part
-// whose design the Robot Lab cannot map (model/ldd-parts.js) is a refusal
-// with code `lxf-unknown-design` naming the design number; a material LDraw's
+// its designID, first material and first <Bone transformation="…">. A design in
+// model/ldd-parts.js's table is placed with its recorded frame. Any other design
+// whose number is a catalogue part (`<designID>.dat`) and whose frame the
+// geometry rule of model/ldd-frame.js derives with confidence (a stud-grid part:
+// brick, plate, tile, slope — docs/ROBOT-LAB-LDD-FRAMES.md) is placed with that
+// derived frame and a warning `lxf-derived-frame`. Every other part
+// is a refusal with code `lxf-unknown-design` naming the design number; a material LDraw's
 // colour table has no LEGO number for keeps the part in the catalog default
 // colour and says so (`lxf-unknown-material`); a mirrored or stretched bone is
 // `lxf-bad-transform`. Cameras, groups, rigid systems and building
@@ -16,6 +20,8 @@
 
 import {det3} from '../contracts.js';
 import {LDD_PARTS, LDD_UNIT_LDU} from './ldd-parts.js';
+import {lddFrameOf, rowOfFrame, DERIVED_RULES} from './ldd-frame.js';
+import {MAX_COORDINATE} from './ldraw-model.js';
 
 /** The colour an unmapped material gets: LDraw 71, light bluish grey (the Technic default). */
 export const LXF_FALLBACK_COLOUR = 71;
@@ -75,14 +81,16 @@ const tidy = (v, step) => {
  * One LXFML bone placed as an LDraw part (see model/ldd-parts.js for the formula).
  * @param {number[]} bone the 12 numbers of `transformation`: 3×3 rotation by rows of
  *        basis images (row k is where local axis k goes), then the translation
- * @param {{translation: number[], axis: number[], angle: number}} row the part's frame difference
+ * @param {{translation: number[], axis: number[], angle: number}|{translation: number[], rotation: number[]}} row
+ *        the part's frame difference: a table row (axis-angle), or a derived one (ldd-frame.js rowOfFrame:
+ *        `rotation` is Rn itself, row-major)
  * @returns {{rotation: number[], position: number[]}} LDraw rotation (row-major) and position (LDU)
  */
 export const lddToLdraw = (bone, row) => {
     // The bone's k-th triple is the image of local axis k: those are the COLUMNS of B.
     const B = [bone[0], bone[3], bone[6], bone[1], bone[4], bone[7], bone[2], bone[5], bone[8]];
     const b = bone.slice(9, 12);
-    const Rn = axisAngle(row.axis, -row.angle);
+    const Rn = row.rotation || axisAngle(row.axis, -row.angle);
     const BR = mul(B, Rn);
     const F = [1, 0, 0, 0, -1, 0, 0, 0, -1];
     const rotation = mul(mul(F, BR), F).map(v => tidy(v, 1));
@@ -92,13 +100,30 @@ export const lddToLdraw = (bone, row) => {
 };
 
 /**
+ * A design outside the table: the catalogue part of the same number, when the geometry rule
+ * derives its LDD frame with a rule trusted for import (ldd-frame.js DERIVED_RULES).
+ * @returns {{part: string, translation: number[], rotation: number[]}|null}
+ */
+const derivedRow = (design, catalog) => {
+    if (!catalog || !/^[0-9A-Za-z]+$/.test(design)) return null;
+    const part = `${design.toLowerCase()}.dat`;
+    const meta = catalog.get(part);
+    if (!meta) return null;
+    const frame = lddFrameOf(meta);
+    if (!frame || !DERIVED_RULES.has(frame.rule)) return null;
+    return {part, ...rowOfFrame(frame)};
+};
+
+/**
  * Read LXFML text into a PlacedModel.
  * @param {string} xml
- * @param {{colours: Map<number, number>}} options LEGO colour number → LDraw code (ldd-parts.js lddColours)
+ * @param {{colours: Map<number, number>, catalog?: Map<string, object>}} options colours: LEGO colour number →
+ *        LDraw code (ldd-parts.js lddColours); catalog: LDraw part → PartMeta (the Robot Lab's catalogue), for
+ *        the derived frame of a design outside ldd-parts.js
  * @returns {{model: {version: 1, parts: object[]}, refusals: object[]}}
  * @throws {LxfError} when the text is not LXFML this reader understands
  */
-export const parseLxfml = (xml, {colours}) => {
+export const parseLxfml = (xml, {colours, catalog}) => {
     const list = tags(xml);
     const root = list.find(t => t.open);
     if (!root || root.name !== 'LXFML') throw new LxfError('lxf-unreadable', 'not an LXFML document');
@@ -110,10 +135,15 @@ export const parseLxfml = (xml, {colours}) => {
     let part = null; // {designID, materials, bone}
     const finish = () => {
         const design = String(part.designID || '').trim();
-        const row = LDD_PARTS.get(design);
+        let row = LDD_PARTS.get(design);
+        let derived = null;
         if (!row) {
-            refusals.push({code: 'lxf-unknown-design', design, message: `LDD design ${design || '?'} has no LDraw part in the Robot Lab`});
-            return;
+            derived = derivedRow(design, catalog);
+            if (!derived) {
+                refusals.push({code: 'lxf-unknown-design', design, message: `LDD design ${design || '?'} has no LDraw part in the Robot Lab`});
+                return;
+            }
+            row = derived;
         }
         const bone = part.bone ? part.bone.split(',').map(Number) : null;
         if (!bone || bone.length !== 12 || bone.some(v => !Number.isFinite(v)) ||
@@ -129,6 +159,15 @@ export const parseLxfml = (xml, {colours}) => {
                 message: `LDD design ${design}: material ${part.materials || '?'} has no LDraw colour; it is light bluish grey`});
         }
         const {rotation, position} = lddToLdraw(bone, row);
+        // A bone with absurd numbers (1e308) places nothing a model can hold: refused like a bad one.
+        if (![...rotation, ...position].every(Number.isFinite) || position.some(v => Math.abs(v) > MAX_COORDINATE)) {
+            refusals.push({code: 'lxf-bad-transform', design, message: `LDD design ${design}: its transformation places it out of range`});
+            return;
+        }
+        if (derived) {
+            refusals.push({severity: 'warning', code: 'lxf-derived-frame', design,
+                message: `LDD design ${design}: placed as ${row.part} with its LDD frame worked out from the part's studs (not from a recorded row)`});
+        }
         parts.push({id: `p${parts.length + 1}`, part: row.part, color, position, rotation});
     };
     for (const t of list) {
