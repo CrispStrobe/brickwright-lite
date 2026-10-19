@@ -43,11 +43,21 @@ test('unit shards retain exact integrated build prerequisites and hard deploymen
     const unit=jobs.get('unit'),build=jobs.get('build'),deploy=jobs.get('deploy');
     assert.match(unit,/timeout-minutes: 30/);
     assert.match(unit,/fail-fast: false/);assert.match(unit,/shard: \[1, 2, 3, 4\]/);
-    const unitPrep=unit.slice(unit.indexOf('    runs-on:'),unit.indexOf('      - name: Run unit tests\n')).trimEnd();
+    const arraysAdmission='      - name: Admit the pinned Arrays source for native unit inputs\n'+
+        '        id: arrays_number_value_source\n'+
+        "        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}\n"+
+        '        run: node scripts/admit-arrays-number-value-test-source.mjs';
+    const fullUnitPrep=unit.slice(unit.indexOf('    runs-on:'),unit.indexOf('      - name: Run unit tests\n')).trimEnd();
+    assert.equal(fullUnitPrep.split(arraysAdmission).length,2,'exactly one complete unit-only Arrays admission follows production preparation');
+    assert.ok(fullUnitPrep.endsWith(arraysAdmission),'no unreviewed step may follow the unit-only source admission');
+    assert.doesNotMatch(build,/Admit the pinned Arrays source for native unit inputs/);
+    const unitPrep=fullUnitPrep.slice(0,-arraysAdmission.length).trimEnd();
     const buildPrep=build.slice(build.indexOf('    runs-on:'),build.indexOf('      # A green suite says')).trimEnd();
     assert.equal(unitPrep,buildPrep,'unit preparation must not omit or drift from the integrated build prerequisites');
     assert.ok(unitPrep.includes('steps.stc_flasher_pin.outputs.sha'));
     assert.match(unit,/BW_TEST_SHARD: \$\{\{ matrix.shard \}\}\/4/);
+    assert.match(unit,/steps\.arrays_number_value_source\.outcome == 'success'/);
+    assert.match(unit,/BW_ARRAY_NUMBER_VALUE_SOURCE: \$\{\{ github\.workspace \}\}\/test-results\/arrays-number-value-input\/arrays\.js/);
     assert.match(unit,/npm run test:fast:shard 2>&1 \| tee \/tmp\/unit.tap/);
     assert.match(unit,/check-test-run.mjs --set fast --shard "\$BW_TEST_SHARD" --tap/);
     assert.match(unit,/check-gui-scope.mjs --log test-results\/fast.gui-scope.tsv/);

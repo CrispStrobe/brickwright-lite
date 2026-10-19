@@ -336,12 +336,18 @@ jobs:
       - name: Fetch the heavy simulation engine (labwired-wasm)
         run: node scripts/sync-labwired-wasm.mjs || echo "labwired-wasm unavailable — the heavy tier will not be offered"
       - name: Install
-        run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
+        run: |
+          set -euo pipefail
+          (cd packages/scratch-gui && npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund)
+          git diff --exit-code -- packages/scratch-gui/package.json packages/scratch-gui/package-lock.json
       # The deployable build below is flag-ON, and flag-on webpack aliases
       # @yowasp/yosys to the REAL package (an off build gets the yosys-absent stub),
       # so the local FPGA tier's worker resolves. ~75 MB, in the deploy build only.
       - name: Install the local FPGA toolchain (the deployable build is flag-on)
-        run: cd packages/scratch-gui && npm install --no-save --ignore-scripts --legacy-peer-deps --no-audit --no-fund @yowasp/yosys
+        run: |
+          set -euo pipefail
+          (cd packages/scratch-gui && npm install --no-save --ignore-scripts --legacy-peer-deps --no-audit --no-fund @yowasp/yosys)
+          git diff --exit-code -- packages/scratch-gui/package.json packages/scratch-gui/package-lock.json
       - name: Apply the scratch-vm overlay (built-in extensions)
         run: node scripts/apply-vm-overlay.mjs
       # The FPGA surface ships in the DEPLOYABLE build (BW_ENABLE_FPGA=1 above),
