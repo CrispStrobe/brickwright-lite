@@ -109,29 +109,44 @@ pointer (a thin 1 × 3 on the output axle at LDraw y −20) swept through the dr
 turn — it now sits at the top of a 12L output axle (3708, y −170), 25 LDU above the 16T gears.
 Gearbox program: output/motor −0.3333 / −1.0000 (tooth ratios), the differential tests pass.
 
-## Open: gear meshes do not conserve angular momentum (excavator base yaw, `todo`)
+## Gear meshes: torque × ratio and momentum conserved (resolved 2026-10-19, the Jolt fork)
 
-`test/bw-sim-excavator.test.mjs` "the dig cycle leaves the base where it stands" is a `todo`. The
-base yaws far beyond 10° during the DIG, before any slew (the slew's own reaction is ≈ 0.015 N·m:
-speed 10 %, 1500 °/s² on the motor, I ≈ 2e-3 kg·m² about the turntable). Floating without floor or
-gravity, the Excavator gains ≈ 2.6e-2 N·m·s of angular momentum in 1.75 s and spins ≈ 285° while only
-its bucket actuator runs (at rest it stays still). Jolt's GearConstraint applies angular impulses
-λ·a1, λ·r·a2 to the two gears only; a real mesh also pushes both axles, and that couple reaches the
-frame. On a moving frame (every actuator's 16T pair, the slew mesh) each mesh that transmits torque
-puts λ·(a1 + r·a2) into the machine. Clamped benches hide it. The fix is a momentum-conserving mesh
-for every gear kind (next task). The slew mesh is already a tooth contact relative to its frame
-(the merge with the excavator lane), which keeps the swings within 12° of ±90°.
+Until 2026-10-19 two gear bugs were open: Jolt's `GearConstraint` passed torque across a mesh 1:1
+(`GearConstraintPart` applied λ, not ratio·λ, to body 2: rows 15 and 16 of round 2), and it is
+angular-only, so no tooth reaction reached the axles' frame and a machine on a moving frame gained
+angular momentum (the Excavator's base yawed 15–140° in a dig cycle; floating, it spun ≈ 285° while
+only its bucket actuator ran). Neither can be fixed around the solver (tried and rejected: a SixDOF
+tooth contact re-made every step — no warm start, did not converge against the hinges; the missing
+impulses applied after each step — unstable).
 
-Measured since (2026-10-19), for the fix: on two discs on world hinges (8:24, r = 3, a torque on disc 1),
-this jolt-physics build's GearConstraint gives α1 = τ/(I1 + I2/3), not τ/(I1 + I2/9), and 2.34e-7 J of
-work becomes 1.95e-7 J of kinetic energy: it applies λ·a2, not r·λ·a2, to gear 2 (round 2's "gear
-torque 1:1"), and no reaction to the axles. Tried and rejected: (a) a tooth contact (a SixDOF fixing
-the pitch points along t) re-made every step for every mesh — momentum-correct, but without warm
-start it does not converge against the hinges (a lone disc against a static gear turns at 0.48 rad/s
-at 10 iterations, 0.04 at 240; a clutch gear crept at 1.1 rad/s under a load it should hold, the dyno's
-η 0.52); (b) the GearConstraint plus the missing impulses applied after each step — unstable (diverges
-in both signs). A conserving mesh needs the ratio inside Jolt's gear solver (a patched jolt-physics
-build) or a solver of our own.
+The Robot Lab now runs on the Brickwright fork of Jolt (`jolt-physics` 1.1.0-bw.2, pinned by release
+tarball and integrity; <https://github.com/CrispStrobe/JoltPhysics.js/blob/brickwright/gear-mesh/BRICKWRIGHT.md>,
+Jolt v5.6.0 + the fix in <https://github.com/CrispStrobe/JoltPhysics>). Its `GearConstraint` passes
+torque × ratio, and its new `GearMeshConstraint` is the mesh as a tooth contact at the pitch point:
+an equal and opposite force pair, so torque scales with the ratio, the reaction loads each gear's
+frame (the other body of its hinge), and momentum is conserved. Every mesh kind uses it
+(`jolt-core.js` `meshGear`; ROBOT-LAB-ARCHITECTURE.md §1.2 has the details). Measured at 200 Hz:
+
+| Check | Expected | Before (Jolt 1.1.0) | Now | Tolerance |
+|---|---|---|---|---|
+| row 15: 8:24 dyno, motor operating point | 16.253 rad/s | 11.796 rad/s | 16.205 rad/s (−0.30 %) | 1 % |
+| row 16: mesh efficiency | η = 1 | 0.332 | 0.979 (207.0 mW in, 202.6 mW out) | 3 % |
+| Excavator dig cycle: base yaw | < 10° | 139.4° | 5.0° (turntable −81.1° … +98.7°, back to 7.6°) | 10° |
+| free-floating 8:24 gearbox, motor internal, no gravity: max abs(ΔΣL) / Σ abs(L_i) over 2 s | 0 | (the fork: 0.68 with GearConstraint) | 1.13e-3; 24T/8T relative to the frame −0.33328; the frame turned 151.5° | 2e-3 (integrator: no gyroscopic term; the gearbox without its mesh drifts 4e-3) |
+| differential, one side held: the other side / casing (Willis) | 2 | 1.992 (240 iterations, re-made contact) | 1.9999 / 2.0000 | 2 % |
+
+Two measured limits of the solver, handled in `jolt-core.js` and documented there:
+- The fork's mesh can also pull back accumulated phase error from the hinge angles. Kept on across
+  steps, that correction fought the rest of the solve: a stalled DC motor's arm on a driven 24T was
+  pushed 7.7° into a static block (P5 §6 allows 6°), and the Excavator's bucket actuator chain rang
+  and diverged (NaN) within a second. The phase is therefore re-based before every step: the mesh is
+  exact in velocity and removes each step's drift; slip the solver cannot prevent (the stalled arm's
+  impact: 10.5° of the 24T) stays slipped, as with the gear constraint.
+- A light gear body between its hinge and a contact or a mesh gives way sideways: gear bodies get a
+  solver mass of at least 20 g with their weight kept (as the actuators' parts already did). Without
+  it the slew pinion slipped 17° of the turntable in a dig cycle and the stalled arm kept rocking.
+- A mesh island solves with 120 velocity iterations (the carrier contact needed 240): with 30 the
+  Excavator's boom left its law-of-cosines angle by 1.73°, with 120 by 0.73° (tolerance 1.5°).
 
 Minor, recorded by the passing tests: Jolt's default linear damping (0.05 s⁻¹, not set by
 `jolt-core.js`) acts as a weak, velocity-proportional air drag (−0.4 % on free fall at 0.15 s).
@@ -143,7 +158,7 @@ says how it is built) and four shipped models (`driving-base.ldr`, `wall-stopper
 `colour-explorer.ldr`, `forklift.ldr`). The method is round 1's: real parts, real builds (the fixtures
 pass `bw-sim-models-solid`; the suite's first test checks they compile with no diagnostics except
 the loose parts that are the point of a machine), the real pipeline, and expected values derived in
-the test from catalogue geometry and documented physics. The suite takes about 4 s (17 tests).
+the test from catalogue geometry and documented physics. The suite takes about 4 s (18 tests: since 2026-10-19 also the free-floating gearbox above).
 Measured at 200 Hz on 2026-10-19.
 
 | # | Machine (fixture) | What it tests | Expected (derivation) | Measured | Tolerance (why) | Verdict |
@@ -151,18 +166,18 @@ Measured at 200 Hz on 2026-10-19.
 | 12 | `gear-train-243.ldr` | five 8:24 stages | (−8/24)^5 = −1/243; same ratio over both halves of 10 s; no creep while held | −1/242.999 (both halves); held 2 s: output 0.00000° | 0.5 % (exact kinematics) | pass |
 | 13 | `worm-then-spur.ldr` | worm direction from the thread's hand, then 8:8 | right-hand thread: wheel = −k/((a_w × (P − C))·a) · worm, k = 1.25 LDU/rad; then −1: +1/24 about the output's axis | +0.04167 | 0.5 % | pass |
 | 14 | `dyno-direct.ldr` (slip clutch held by its mesh) | DC motor on its torque–speed line | Philo's 9 V points → R, k_t, k_e → at 7.2 V τs 10.44 N·cm, ω0 18.46 rad/s; load 3.75 N·cm (the clutch's catalogue rating): ω = ω0(1 − τL/τs) = 11.832 rad/s | 11.800 rad/s (−0.27 %) at duty 1 | 1 % | pass |
-| 15 | `dyno-geared.ldr` (8T drives the clutch gear, its axle held) | torque through a mesh | load at the motor 3.75/3 N·cm → 16.253 rad/s | 11.796 rad/s — the direct bench's speed; ring/motor 0.3333 | 1 % | **todo** |
-| 16 | `dyno-geared.ldr` | mesh efficiency | ideal spur gears: P_out/P_in = 1 | η = 0.332 (444.7 mW in, 147.5 mW out) | 3 % | **todo** |
+| 15 | `dyno-geared.ldr` (8T drives the clutch gear, its axle held) | torque through a mesh | load at the motor 3.75/3 N·cm → 16.253 rad/s | 16.205 rad/s (−0.30 %); ring/motor 0.3333 | 1 % | pass (was todo: 11.796 rad/s, the direct bench's — torque 1:1) |
+| 16 | `dyno-geared.ldr` | mesh efficiency | ideal spur gears: P_out/P_in = 1 | η = 0.979 (207.0 mW in, 202.6 mW out) | 3 % | pass (was todo: η = 0.332) |
 | 17 | shipped `forklift.ldr`, hub clamped | force through rack and pinion (control for 15) | hold torque m·g·r = 14.8 g · g · 4 mm = 0.579 mN·m | carriage sinks at 0.9×, rises at 1.1× | ±10 % bracket | pass |
 | 18 | shipped `driving-base.ldr`, A −300 °/s, B 150 °/s | differential steering on a circle | from the encoders: Ω = (v_R − v_L)/t = −30.882 °/s, R = t/2·(v_R + v_L)/(v_R − v_L) = 204.00 mm (outer/inner 2.000) | Ω −30.882 °/s, R 203.98 mm | 1 % | pass |
 | 19 | the same run | hub yaw, gyro, encoder | yaw (cw) = −geometric yaw; ∫gyro z = geometric yaw; encoder A = the wheel's turn in the chassis | 92.646° vs −92.646°; −92.645°; −899.998° vs −899.998° | 0.1°, 0.5 %, 0.1° | pass |
 | 20 | shipped `wall-stopper.ldr` + a 2 cm wall | distance sensor | ray distance D/cos ψ, mm; −1 outside 50 … 2000 mm: 30 mm → −1, 100, 300, 319.3 (20°), 391.6 (40°), 800, 1732.1 (1.5 m at 30°), 2.2 m → −1 | 100, 300, 319, 392, 800, 1732, −1 / −1 | 1 mm | pass |
 | 21 | shipped `colour-explorer.ldr` on `colour-zones` | colour sensor | mat layout: white 10, red 9, yellow 7, green 6, blue 3, border black 0, off-mat white; white reflection 100·(1 − h/32 mm), h = 16.4 mm → 48.8 | all colours right; reflection 48 | exact; ±2 | pass |
-| 22 | `tilt-table-tower.ldr` | tower tips at tan θ = (b/2)/h | COM 72.75 LDU above the table (catalogue colliders), half base 10 LDU: θc = 7.83° | tips at 10.00° one way, 6.45° the other | 0.5° (the 0.5° steps) | **todo** |
+| 22 | `tilt-table-tower.ldr` | tower tips at tan θ = (b/2)/h | COM 72.75 LDU above the table (catalogue colliders), half base 10 LDU: θc = 7.83° | tips at 7.38° one way, −7.43° the other (stood at 6.01° / −5.93°) | 0.5° (the 0.5° steps) | pass (was todo: 10.00° / 6.45°; margin 0.1°) |
 | 23 | `carts.ldr` (robot pushes cart 1 into cart 2) | momentum in a collision | Σ m·v conserved (masses from the catalogue: 54.6 g each) | 7.413 → 7.387 g·m/s (−0.35 %) | 1 % (damping, 50 ms) | pass |
-| 24 | `carts.ldr` | restitution | no body sets one: Jolt's 0, the carts leave together | e = 0.669 | e ≤ 0.05 | **todo** |
+| 24 | `carts.ldr` | restitution | no body sets one: Jolt's 0, the carts leave together | e = 0.235 | e ≤ 0.05 | **todo** |
 | 24c | `carts.ldr`, all mass in the bumper bodies (control) | the same | e = 0 | e = 0.010 | e ≤ 0.05 | pass |
-| 25 | `carts.ldr`, cart 2 coasting | rolling resistance | a ≥ c_rr·g, c_rr ≥ 0.005 (rubber on a hard floor) | a = 0.0054 m/s² = 0.05·v (Jolt's default damping only) | — | **todo** |
+| 25 | `carts.ldr`, cart 2 coasting | rolling resistance | a ≥ c_rr·g, c_rr ≥ 0.005 (rubber on a hard floor) | a = 0.0038 m/s² = 0.05·v (Jolt's default damping only) | — | **todo** |
 | 26 | universal joint | ω2/ω1 = cos β/(1 − sin²β cos²θ) | — | not buildable: no cross/fork connector or coupling kind | — | **todo** |
 
 Not built in this round: a crank-slider (needs a frame that holds the smooth toggle joint's
@@ -173,7 +188,8 @@ platform"; the arena still has no slope (round 1, 7d).
 
 ### Discrepancies and diagnoses (round 2)
 
-7. **Gears pass torque 1:1 (15, 16). New, and the largest.** A gear constraint makes the driven
+7. **Gears pass torque 1:1 (15, 16). Resolved 2026-10-19** (the Jolt fork, section above; the
+   diagnosis is kept as it was found). A gear constraint makes the driven
    gear turn at the tooth ratio, but the torque it passes is not scaled by that ratio: a load torque
    on the driven gear reaches the driver unchanged, whatever the teeth. Energy is not conserved: in
    row 16 the motor puts 3× the power into the 8:24 mesh that the slipping clutch takes out. So a
@@ -189,7 +205,8 @@ platform"; the arena still has no slope (round 1, 7d).
    kinds/relative-gear.js, which is exact for forces), or patch the gear part upstream. Not made here:
    `jolt-core.js` is another lane's. Round 1 and the gear suites missed it because they measure
    kinematics only.
-8. **A tower on a small footprint rocks and tips early or late (22).** The table stopped at 5–6°
+8. **A tower on a small footprint rocks and tips early or late (22). Passes since (measured
+   2026-10-19, the same with Jolt 1.1.0 and the fork): 7.38° / −7.43°, 0.1° inside the tolerance.** The table stopped at 5–6°
    leaves the tower leaning 1.5°: the loaded edge sinks into Jolt's 0.2 mm penetration slop
    (`LEGO_PENETRATION_SLOP_M`), and on an 8 mm footprint that is atan(0.2/8) = 1.4°. With the table
    still and gravity tilted instead, it tips between 6° and 7° (θc 7.83°). The table's steps then set
@@ -197,12 +214,15 @@ platform"; the arena still has no slope (round 1, 7d).
    smaller slop for small bodies, or more contact points per face. Not made here (`jolt-core.js`).
 9. **A light body between hinges springs back (24).** Each cart's bumper is a 4.8 g beam hinged to
    two 25 g wheel sets. On impact the hinge chain stores the energy and returns it: e = 0.67 with
-   restitution 0. With the carts' mass moved into the bumper body (control 24c) e = 0.01. Momentum
+   restitution 0 when found, 0.235 now (2026-10-19). Not the body model: no body sets a restitution.
+   The 20 g solver mass floor that gears and actuators use does not apply: in a collision the floored
+   mass is the mass, and row 23's momentum would not be conserved. With the carts' mass moved into the bumper body (control 24c) e = 0.01. Momentum
    is conserved either way (23). This is round 1's bug 2 (soft pin chains), seen in a collision.
 10. **No rolling resistance (25).** A free cart loses only Jolt's default 0.05 s⁻¹ damping
     (a = 0.05·v, a c_rr of about 0.0006 at 0.11 m/s), 10× less than a tyre on a hard floor. A coasting
     robot rolls about 10× too far. This is a model gap: rolling resistance would need a per-tyre
-    torque (or wheel-body damping) in the core.
+    torque c_rr·N·r (or wheel-body damping) in the core, and N, each tyre's normal load, is not read
+    today (the core's contact listener sees contact points, not impulses). Still open.
 11. **No universal joint (26).** The catalogue has the U-joint's ends but no part or connector for the
     cross, and no coupling kind joins two ends. This needs a new connector kind (a cross in two forks:
     two perpendicular hinges through one body, or a Jolt `SixDOF` with two rotations free).

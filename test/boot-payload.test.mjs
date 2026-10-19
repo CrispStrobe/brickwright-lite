@@ -22,6 +22,8 @@ test('boot payload accepts shared lazy engine bytes but rejects eager, absent an
             'ext-legonxt': 'ID: legonxt', 'ext-spikeprime': 'ID: spikeprime\n',
             'ext-arcade': 'font12: Adobe SIL OFL 1.1',
             'ext-circuitplayground': 'ID: circuitplayground',
+            'ext-robotlab': 'when part [PART] touches [OTHER]',
+            'bw-robotlab-tab': 'Open the Robot Lab here',
             'asset-library-index': '"name":"Abby"',
             'bw-circuit-ui': 'Check the address decode wiring on the breadboard. Could not recognise this file',
             'bw-board': 'entry', 'guided-lessons': 'optional', '8933.hash': marker,
@@ -31,6 +33,8 @@ test('boot payload accepts shared lazy engine bytes but rejects eager, absent an
             // the physics worker in its own; the Sim Lab chunk carries neither.
             'bw-sim-lab': 'bw-sim-lab-3d-canvas bw-sim-part-thumbnails bw-sim-instructions-canvas Kugelrad-Halter', 'bw-sim-jolt': 'JoltInterface_GetPhysicsSystem_',
             'bw-sim-physics-worker': 'sim batch before sim load',
+            // The Robot Lab editor (pane and toolbar): its own tab's chunk, not the arena pane's.
+            'bw-robot-lab': 'bw-sim-lab-toolbar',
             // The part catalogue: the core in the Sim Lab chunk (above), the derived parts in their own.
             'bw-sim-parts': 'Technic-Stein 1 x 1 mit Loch'
         })) put(`chunks/${name}.js`, bytes);
@@ -107,11 +111,14 @@ test('3D and physics isolation checks name the simulator and Sim Lab chunks the 
     const script = readFileSync('scripts/verify-boot-payload.mjs', 'utf8');
     const name = gui.match(/webpackChunkName: "([^"]+)" \*\/ '\.\.\/tw-pseudocode\/spike-simulator-pane\.jsx'/)?.[1];
     assert.equal(name, 'bw-spike-simulator');
-    // three.js, the arena 3D view, Jolt, the physics worker, the Sim Lab view, its palette
-    // thumbnails, its building instructions and both pieces of its part catalogue: all nine stay
-    // out of the simulator pane's chunk.
-    assert.equal(script.match(new RegExp(`notInChunks: \\[(?:'[^']+', )*'${name}'`, 'g'))?.length, 9,
-        'three.js, the arena 3D view, Jolt, the physics worker, the Sim Lab view, its palette thumbnails, its building instructions and both catalogue pieces must all be excluded from the actual simulator chunk');
+    // three.js, the arena 3D view, Jolt, the physics worker, the Robot Lab editor, the Sim Lab view,
+    // its palette thumbnails, its building instructions and both pieces of its part catalogue: all ten
+    // stay out of the simulator pane's chunk.
+    assert.equal(script.match(new RegExp(`notInChunks: \\[(?:'[^']+', )*'${name}'`, 'g'))?.length, 10,
+        'three.js, the arena 3D view, Jolt, the physics worker, the Robot Lab editor, the Sim Lab view, its palette thumbnails, its building instructions and both catalogue pieces must all be excluded from the actual simulator chunk');
+    // The Robot Lab editor is the chunk its own tab lazily imports.
+    const tab = readFileSync('overlay/scratch-gui/src/components/tw-pseudocode/robot-lab-tab.jsx', 'utf8');
+    assert.equal(tab.match(/webpackChunkName: "([^"]+)" \*\/ '\.\/sim-lab-pane\.jsx'/)?.[1], 'bw-robot-lab');
     // Jolt and the physics worker also stay out of the Sim Lab's own main-thread chunk.
     const pane = readFileSync('overlay/scratch-gui/src/components/tw-pseudocode/sim-lab-pane.jsx', 'utf8');
     assert.equal(pane.match(/webpackChunkName: "([^"]+)" \*\/ '\.\.\/\.\.\/lib\/bw-sim\/sim-lab\.js'/)?.[1], 'bw-sim-lab');

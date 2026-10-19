@@ -194,3 +194,30 @@ test('six-motor profile is sandbox-only, localized, pre-start and compiled-progr
         assert.match(one(renderer,'bw-spike-six-motor-hint').props.children,/Scratch-Motorbefehle unterstützen A–F/);
     } finally {if(renderer)act(()=>renderer.unmount());browser.restore();await cleanup();}
 });
+
+test('the Robot Lab tab takes the shared hub: the arena stands aside, and its buttons hand over either way', async () => {
+    const browser = installBrowser(), {Pane, cleanup} = await loadSimulator();
+    const hub = new Hub(); let renderer;
+    const seen = [];
+    browser.win.addEventListener('bw-open-robot-lab', () => seen.push('open'));
+    browser.win.addEventListener('bw-robot-lab-release', () => seen.push('release'));
+    const has = id => renderer.root.findAll(node => typeof node.type === 'string' && node.props['data-testid'] === id).length > 0;
+    try {
+        await act(async () => { renderer = create(React.createElement(Pane, {hubState: hub, locale: 'en'})); });
+        await settle(() => browser.win.__bwSpikeArena?.bridge, 'arena ready');
+        // The Robot Lab is not a sub-tab any more: the arena offers to open it in its own tab.
+        assert.equal(has('bw-spike-simulator-tab-simLab'), false);
+        await act(async () => { one(renderer, 'bw-spike-simulator-open-robot-lab').props.onClick(); });
+        assert.deepEqual(seen, ['open']);
+        // The Lab's session starts: one hub, one world, so the arena is not mounted while it runs.
+        await act(async () => { browser.win.dispatchEvent(new CustomEvent('bw-robot-lab-owner', {detail: {active: true}})); });
+        assert.equal(has('bw-spike-arena-start'), false, 'the arena stands aside');
+        assert.equal(one(renderer, 'bw-spike-simulator').props['data-robot-lab'], 'active');
+        assert.match(one(renderer, 'bw-spike-simulator-lab-active').props.children[0].props.children, /Robot Lab tab is driving the virtual hub/);
+        await act(async () => { one(renderer, 'bw-spike-simulator-use-arena').props.onClick(); });
+        assert.deepEqual(seen, ['open', 'release']);
+        await act(async () => { browser.win.dispatchEvent(new CustomEvent('bw-robot-lab-owner', {detail: {active: false}})); });
+        await settle(() => has('bw-spike-arena-start'), 'arena back');
+        assert.equal(renderer.getInstance().hubState, hub, 'the same hub throughout');
+    } finally { if (renderer) act(() => renderer.unmount()); browser.restore(); await cleanup(); }
+});

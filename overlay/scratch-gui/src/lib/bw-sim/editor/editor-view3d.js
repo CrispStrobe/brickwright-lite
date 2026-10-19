@@ -54,9 +54,10 @@
 //                         selection on the system clipboard as LDraw text, so it
 //                         pastes into another model, BrickLink Studio or LeoCAD, and
 //                         Ctrl+V takes LDraw text from there; ? opens the shortcut sheet
-//   camera                left-drag on empty space or right-drag: orbit;
-//                         middle-drag or Shift+right-drag: pan; wheel: zoom
-//                         toward the pointer
+//   camera                left-drag on empty space or middle-drag: orbit;
+//                         right-drag: pan; wheel: zoom toward the pointer;
+//                         with nothing selected, arrows orbit, Shift+arrows
+//                         pan, + / - zoom (view/camera-nav.js, as Simulate)
 //   fingers               (tablets; touch-gestures.js) a finger on a part:
 //                         select it, drag it (the mouse's drag: magnet,
 //                         overlap); on empty space: orbit; two fingers: pinch
@@ -77,17 +78,24 @@
 // F·R·F with F = diag(1, -1, -1).
 
 import {
-    Box3, Color, EdgesGeometry, GridHelper, Group, LineBasicMaterial, LineSegments,
-    BufferGeometry, Float32BufferAttribute, Matrix4, Mesh, MeshBasicMaterial, MeshStandardMaterial, MOUSE, Object3D, PerspectiveCamera, Plane, Raycaster, Scene,
-    Sphere, SphereGeometry, Vector2, Vector3, WebGLRenderer
+    Box3, BoxGeometry, CanvasTexture, Color, DoubleSide, EdgesGeometry, GridHelper, Group, LineBasicMaterial, LineSegments,
+    BufferGeometry, Float32BufferAttribute, Matrix4, Mesh, MeshBasicMaterial, MeshStandardMaterial, MOUSE, Object3D, PerspectiveCamera, Plane, Quaternion, Raycaster,
+    RingGeometry, Scene, Sphere, SphereGeometry, Vector2, Vector3, WebGLRenderer
 } from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {
+    BUILD_POLAR, CAMERA_ANIMATION_MS, VIEW_DIRECTIONS, applyCameraAction, cameraKeyAction, configureOrbitControls, easeOut, orbitAboutPivot,
+    viewCubeDirection, wheelIntent, wheelZoomFactor, zoomAbout
+} from '../view/camera-nav.js';
 import {TransformControls} from 'three/addons/controls/TransformControls.js';
 import {LDU_M, lduToWorld} from '../contracts.js';
 import {partGeometry, partVisual} from '../view/part-geometry.js';
 import {PART_SURFACE, addEdgeLines, addPartLights, edgeMaterials} from '../view/part-style.js';
 import {createInstancedParts, useInstancing} from '../view/instanced-parts.js';
-import {snapCandidates, rotateAboutSnap} from './snap.js';
+import {
+    SNAP_PX, axisRotation, connectedComponent, connectionLine, connectorUnderPointer, joinRule, pairedParts, snapAtPointer, snapCandidates, rotateAboutSnap,
+    turnAboutLine
+} from './snap.js';
 import {freeOffset, moveVerdict, rayHitParts, restingPosition, solidOverlaps} from './overlap.js';
 import {createSpatialIndex, partBounds} from '../mech/spatial-index.js';
 import {
@@ -102,7 +110,7 @@ import {
 import {portItems} from '../mech/insight.js';
 import {createInsightLayer, tintMaterial} from '../view/insight-layer.js';
 import {
-    COARSE_CENTRE_PX, COARSE_GIZMO_MIN_PX, COARSE_HANDLE_PX, LONG_PRESS_MS, TOUCH_SLOP_PX, createTouchTracker, orbitAngles, orbitOffset,
+    COARSE_CENTRE_PX, COARSE_GIZMO_MIN_PX, COARSE_HANDLE_PX, LONG_PRESS_MS, TOUCH_SLOP_PX, createTouchTracker, orbitAngles,
     panAmounts, pinchDistance
 } from './touch-gestures.js';
 
@@ -119,6 +127,9 @@ const CLICK_PX = 4;
 /** How near (px) the pointer must be to a gizmo handle's visible shape for a press to grab it rather than a part. */
 const HANDLE_PX = 8;
 const QUARTER = Math.PI / 2;
+const FINE = Math.PI / 12;
+/** A finger carrying a part sees its ghost this far above it (px). */
+const TOUCH_LIFT_PX = 60;
 
 /** A placed pose (LDraw) as a world Matrix4. */
 export const worldMatrix = (position, rotation) => {
@@ -127,6 +138,7 @@ export const worldMatrix = (position, rotation) => {
     return new Matrix4().set(f[0], f[1], f[2], p[0], f[3], f[4], f[5], p[1], f[6], f[7], f[8], p[2], 0, 0, 0, 1);
 };
 
+const transposeRotation = m => [m[0], m[3], m[6], m[1], m[4], m[7], m[2], m[5], m[8]];
 /** A world point (metres, y up) in LDraw units. */
 export const worldToLdu = v => [v.x / LDU_M, (0 - v.y) / LDU_M, (0 - v.z) / LDU_M];
 /** A world displacement (metres) in LDraw units. */
@@ -156,11 +168,15 @@ let clipboard = [];
  * @param {(color: number, id: string) => void} [options.onColorPicked] the eyedropper picked a part's colour
  * @param {(m: object) => string} [options.measureLabel] the words on the measuring tape's label
  * @param {() => void} [options.onShortcuts] ? was pressed
+ * @param {(hold: {holding: boolean, tone: string|null, round: boolean, touch: boolean, keyboard: boolean, pinned: object|null}) => void} [options.onHold]
+ *        what is in hand and how it would land (the pane's hint bar, target chip and touch buttons)
+ * @param {(info: object) => void} [options.onAnnounce] a new target or a refusal, for the screen reader (aria-live)
+ * @param {{top: string, bottom: string, front: string, back: string, left: string, right: string}} [options.viewCubeLabels] the view cube's faces
  */
 export const createEditorView3D = ({container, read, colors, catalog, editor,
     onSelect = () => {}, onChange = () => {}, onStatus = () => {}, onTool = () => {}, onMode = () => {},
     portLabel = () => '', onPortLabel = null, onViewState = () => {}, onColorPicked = () => {},
-    measureLabel = m => `${m.ldu} LDU`, onShortcuts = () => {}}) => {
+    measureLabel = m => `${m.ldu} LDU`, onShortcuts = () => {}, onHold = () => {}, onAnnounce = () => {}, viewCubeLabels = null}) => {
     const renderer = new WebGLRenderer({antialias: true});
     const canvas = renderer.domElement;
     canvas.dataset.testid = 'bw-sim-lab-editor-canvas';
@@ -174,7 +190,10 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     const modelGroup = new Group();
     const outlineGroup = new Group();
     const ghostGroup = new Group();
-    stage.add(modelGroup, outlineGroup, ghostGroup);
+    // The connectors that light up (docs/ROBOT-LAB-UX.md §3.2) and the orbit's pivot dot.
+    const connectorGroup = new Group();
+    const pivotGroup = new Group();
+    stage.add(modelGroup, outlineGroup, ghostGroup, connectorGroup, pivotGroup);
     const s = new Scene();
     s.background = new Color(0xe8eef5);
     s.add(stage);
@@ -205,6 +224,15 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     let preview = null; // {moves, candidate} while a selection is being moved
     let modifiers = {alt: false, shift: false};
     let cameraTouched = false;
+    // Connection-first placement (snap.js snapAtPointer, docs/ROBOT-LAB-UX.md §3).
+    let lastPointer = null; // {clientX, clientY, touch}: where the held part was last aimed
+    let keyboardHold = false; // the held part is aimed with the keyboard (or a tap on a tile): no pointer
+    let pinned = null; // Target-first: the connector clicked, {partId, connectorId, type, point, normal, part}
+    let idleLit = null; // nothing in hand: the connector lit under the pointer
+    let litList = []; // what is lit now: [{partId, connectorId, active, tone}]
+    let ghostTone = null; // 'free' | 'snap' | 'blocked' | null
+    let wheelMode = 'auto'; // 'auto' | 'mouse' | 'trackpad' (camera-nav.js wheelIntent)
+    let lastAnnounced = null;
     // Studio's view state (not the model): hidden parts, the group being edited, the picking tool.
     const hidden = new Set();
     let editingGroup = null; // a group id
@@ -328,6 +356,38 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         return p ? {point: p, part: null} : null;
     };
 
+    /** The pointer's ray in LDraw units (snap.js works there). */
+    const rayLdu = event => {
+        const r = pick(event).ray;
+        return {origin: worldToLdu(r.origin), direction: [r.direction.x, -r.direction.y, -r.direction.z]};
+    };
+    const eyeLdu = () => worldToLdu(camera.position);
+    /** A client point in the canvas's own pixels. */
+    const canvasPx = event => {
+        const rect = canvas.getBoundingClientRect();
+        return [event.clientX - rect.left, event.clientY - rect.top];
+    };
+    const viewProjection = new Matrix4();
+    /** LDU point → canvas pixels (null behind the eye) for the camera as it is now: plain arithmetic, called per connector. */
+    const projector = () => {
+        camera.updateMatrixWorld();
+        viewProjection.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+        const e = viewProjection.elements;
+        const w = canvas.clientWidth || 1;
+        const h = canvas.clientHeight || 1;
+        return p => {
+            const x = p[0] * LDU_M; const y = -p[1] * LDU_M; const z = -p[2] * LDU_M;
+            const cw = e[3] * x + e[7] * y + e[11] * z + e[15];
+            if (cw <= 1e-9) return null;
+            return [((e[0] * x + e[4] * y + e[8] * z + e[12]) / cw + 1) / 2 * w, (1 - (e[1] * x + e[5] * y + e[9] * z + e[13]) / cw) / 2 * h];
+        };
+    };
+    /** The view's centre as a client point (keyboard placement and a tap on a tile aim there). */
+    const viewCentre = () => {
+        const rect = canvas.getBoundingClientRect();
+        return {clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2};
+    };
+
     // ---- the model's meshes and highlights -------------------------------------
     const materials = new Map();
     const materialsFor = color => {
@@ -346,9 +406,20 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         if (!lineMaterials.has(color)) lineMaterials.set(color, edgeMaterials(color, colors));
         return lineMaterials.get(color);
     };
-    const ghostMaterial = tone => [0, 1].map(() => new MeshStandardMaterial({
-        color: {snap: '#22c55e', blocked: '#ef4444'}[tone] || '#3b82f6', transparent: true, opacity: 0.55, depthWrite: false
-    }));
+    // One material pair per tone, kept for the view's life: a ghost is remade on every pointer move while
+    // a part snaps, and a material made and disposed with it took its shader program with it (three.js
+    // frees a program when its last material goes), so every move compiled and linked the program anew -
+    // seconds each on a software GPU (SwiftShader), the GPU queue behind it growing with every move.
+    const ghostMaterials = new Map();
+    const ghostMaterial = tone => {
+        const key = tone === 'snap' || tone === 'blocked' ? tone : 'plain';
+        if (!ghostMaterials.has(key)) {
+            ghostMaterials.set(key, [0, 1].map(() => new MeshStandardMaterial({
+                color: {snap: '#22c55e', blocked: '#ef4444'}[key] || '#64748b', transparent: true, opacity: 0.55, depthWrite: false
+            })));
+        }
+        return ghostMaterials.get(key);
+    };
     const edges = new Map();
     const edgesFor = part => {
         if (!edges.has(part)) edges.set(part, new EdgesGeometry(partGeometry(part, read, colors), 35));
@@ -471,7 +542,10 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             gears: gears.map(g => ({text: g.text, from: fixed(g.from), to: fixed(g.to)}))
         });
         partTints = tints;
-        drawOutlines();
+        // Hidden, the motion overlay and its tints change nothing on screen: no restyle and no new frame (the
+        // pane recompiles after every edit, and on a big model on a software GPU a frame is seconds).
+        // Shown again, setOverlay restyles with the tints kept here.
+        if (insight.shown.motion) drawOutlines();
     };
     const setOverlay = shown => {
         insight.setVisible(shown);
@@ -570,6 +644,13 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         placeMeshes();
         updateGizmo();
         refreshPorts();
+        // A pinned target belongs to the model it was clicked on; the lit connector to the pointer's last move.
+        if (pinned || idleLit) {
+            pinned = null;
+            idleLit = null;
+            if (!tool && !gesture) showConnectors([]);
+            emitHold();
+        }
     };
 
     // The ray-picking index: each part's world box (its mesh's bounds and its colliders), per model.
@@ -637,10 +718,17 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         for (const handle of set ? set.children.filter(c => c.name === 'XYZ') : []) set.remove(handle);
     }
     s.add(transform.getHelper());
+    // The wheel is this view's (onWheel, registered before three's controls so they never see it).
+    canvas.addEventListener('wheel', event => onWheel(event), {passive: false});
     const controls = new OrbitControls(camera, canvas);
-    controls.mouseButtons = {LEFT: MOUSE.ROTATE, MIDDLE: MOUSE.PAN, RIGHT: MOUSE.ROTATE};
-    controls.zoomToCursor = true;
-    controls.maxPolarAngle = Math.PI / 2;
+    // view/camera-nav.js, as in Simulate: the right drag pans (three's controls). Orbiting is this view's own
+    // (about the point under the pointer: left drag on empty space, middle drag, one finger, a trackpad's scroll).
+    configureOrbitControls(controls, MOUSE);
+    controls.enableRotate = false;
+    controls.enableZoom = false;
+    // Build looks from 5° to 175°: under a part too (Simulate keeps the floor).
+    controls.minPolarAngle = BUILD_POLAR.min;
+    controls.maxPolarAngle = BUILD_POLAR.max;
     controls.addEventListener('start', () => { cameraTouched = true; });
     // The camera, the gizmo (a handle lit, moved, resized) and the controls changing: a new frame.
     controls.addEventListener('change', invalidate);
@@ -830,10 +918,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     // ---- ghosts and magnet markers -------------------------------------------
     const clearGhost = () => {
         invalidate();
-        for (const c of [...ghostGroup.children]) {
-            ghostGroup.remove(c);
-            if (c.userData.owned) for (const m of [].concat(c.material)) m.dispose();
-        }
+        ghostTone = null;
+        ghostGroup.clear(); // the ghosts' materials are the shared ghostMaterials, disposed with the view
     };
     const markerGeometry = new SphereGeometry(4 * LDU_M, 12, 8);
     const markerMaterials = {
@@ -856,8 +942,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     const showMagnet = (found, placed, part = placed && placed.part) => {
         clearGhost();
         if (!found) return;
+        ghostTone = 'snap';
         const mesh = new Mesh(partGeometry(part, read, colors), ghostMaterial('snap'));
-        mesh.userData.owned = true;
         mesh.matrixAutoUpdate = false;
         mesh.matrix.copy(worldMatrix(found.position, found.rotation));
         mesh.name = 'ghost';
@@ -873,12 +959,22 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     };
     const showGhost = (part, position, rotation, tone) => {
         clearGhost();
+        ghostTone = tone;
         const mesh = new Mesh(partGeometry(part, read, colors), ghostMaterial(tone));
-        mesh.userData.owned = true;
         mesh.matrixAutoUpdate = false;
         mesh.matrix.copy(worldMatrix(position, rotation));
         mesh.name = 'ghost';
         ghostGroup.add(mesh);
+    };
+    /** One more ghost beside the ones shown (a carried selection snapped: each of its parts). */
+    const showGhostAlso = (part, position, rotation, tone) => {
+        const mesh = new Mesh(partGeometry(part, read, colors), ghostMaterial(tone));
+        mesh.matrixAutoUpdate = false;
+        mesh.matrix.copy(worldMatrix(position, rotation));
+        mesh.name = 'ghost';
+        ghostGroup.add(mesh);
+        ghostTone = tone;
+        invalidate();
     };
     const snapStatus = found => {
         const pair = found.pairs[0];
@@ -929,13 +1025,14 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     /**
      * Where a part rests on a surface at a world point: in its default placement
      * (part-meta/canonical-frame.js defaultRotation: studs up, a beam along x with its
-     * holes horizontal, a shaft along x, a gear on a horizontal axle), turned, its
-     * footprint centred on the point, its colliders' bottom ON the surface
-     * (overlap.js `restingPosition`), x/z on the grid.
+     * holes horizontal, a shaft along x, a gear on a horizontal axle) or the turned
+     * `rotation` the hand holds it in, its footprint centred on the point, its colliders'
+     * bottom ON the surface (overlap.js `restingPosition`), x/z on the grid.
      */
-    const restingPose = (part, point, turns) => {
+    const restingPose = (part, point, rotationOrTurns = 0) => {
         const meta = catalogMap.get(part);
-        const rotation = cleanRotation(mul3(worldAxisRotation('y', (((turns % 4) + 4) % 4) * QUARTER), defaultRotation(meta)));
+        const rotation = Array.isArray(rotationOrTurns) ? cleanRotation(rotationOrTurns) :
+            cleanRotation(mul3(worldAxisRotation('y', (((rotationOrTurns % 4) + 4) % 4) * QUARTER), defaultRotation(meta)));
         if (meta && meta.colliders && meta.colliders.length) {
             return {position: restingPosition({meta, rotation, point: worldToLdu(point), grid: gridStep}), rotation};
         }
@@ -948,42 +1045,184 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         const ldu = worldToLdu(origin);
         return {position: [Math.round(ldu[0] / gridStep) * gridStep, Math.round(ldu[1]), Math.round(ldu[2] / gridStep) * gridStep].map(tidy), rotation};
     };
+    /** A part's default placement rotation (canonical-frame.js). */
+    const homeRotation = part => cleanRotation(defaultRotation(catalogMap.get(part)));
+
+    // ---- connectors that light up (docs/ROBOT-LAB-UX.md §3.2) -------------------------------
+    // Rings at a hole's entry face or a shaft's tip, a "+" in an axle hole, a sphere for balls:
+    // cyan for what could take the part in hand, amber for the target, green for the held
+    // connector, red when the pose is blocked. Depth-tested, so holes behind a part stay dark.
+    const HL_COLOURS = {candidate: 0x38bdf8, active: 0xf59e0b, held: 0x22c55e, blocked: 0xef4444, pinned: 0xf59e0b};
+    const hlMaterials = new Map();
+    const hlMaterial = (tone, faint) => {
+        const key = `${tone}:${faint}`;
+        if (!hlMaterials.has(key)) {
+            hlMaterials.set(key, new MeshBasicMaterial({color: HL_COLOURS[tone], transparent: true, opacity: faint ? 0.5 : 0.95, side: DoubleSide,
+                depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4}));
+        }
+        return hlMaterials.get(key);
+    };
+    const ringGeometry = new RingGeometry(5 * LDU_M, 7.5 * LDU_M, 28);
+    const pinnedRingGeometry = new RingGeometry(8.5 * LDU_M, 10 * LDU_M, 28);
+    const barGeometry = new BoxGeometry(7 * LDU_M, 1.6 * LDU_M, 0.3 * LDU_M);
+    const ballGeometry = new SphereGeometry(5 * LDU_M, 16, 12);
+    const unitZ = new Vector3(0, 0, 1);
+    /** Draws `items` ({point, normal, type, tone, faint, scale}, LDU) and remembers them for the gate. */
+    const drawConnectors = items => {
+        invalidate();
+        connectorGroup.clear();
+        for (const it of items) {
+            const n = new Vector3(it.normal[0], -it.normal[1], -it.normal[2]).normalize();
+            const at = new Vector3(...lduToWorld(it.point)).addScaledVector(n, 0.4 * LDU_M);
+            const q = new Quaternion().setFromUnitVectors(unitZ, n);
+            const mat = hlMaterial(it.tone, it.faint);
+            const add = (geometry, spin = 0) => {
+                const m = new Mesh(geometry, mat);
+                m.position.copy(at);
+                m.quaternion.copy(q);
+                if (spin) m.rotateZ(spin);
+                m.scale.setScalar(it.scale || 1);
+                m.renderOrder = 15;
+                connectorGroup.add(m);
+            };
+            if (it.type === 'ball' || it.type === 'ballsocket') add(ballGeometry);
+            else add(ringGeometry);
+            if (it.type === 'axlehole') { add(barGeometry); add(barGeometry, Math.PI / 2); }
+            if (it.tone === 'pinned') add(pinnedRingGeometry);
+        }
+    };
+    /** What is lit: the pinned target, then `extra` (the idle highlight, or the holding set). */
+    const showConnectors = (extra = []) => {
+        const items = [];
+        if (pinned) items.push({...pinned, tone: 'pinned', scale: 1.3, active: true});
+        for (const it of extra) if (!(pinned && it.partId === pinned.partId && it.connectorId === pinned.connectorId)) items.push(it);
+        litList = items.filter(it => it.partId).map(it => ({partId: it.partId, connectorId: it.connectorId, active: Boolean(it.active), tone: it.tone}));
+        drawConnectors(items);
+    };
+    /** Holding: every compatible free connector near the pointer, faint; the target opaque and bigger; the held one green. */
+    const holdingLights = (lit, chosen, ghostPart) => {
+        const items = [];
+        const active = chosen && chosen.target;
+        for (const l of lit) {
+            if (active && l.partId === active.partId && l.connectorId === active.connectorId) continue;
+            items.push({...l, tone: 'candidate', faint: true});
+        }
+        if (active) {
+            items.push({partId: active.partId, connectorId: active.connectorId, type: active.type, point: active.point, normal: active.normal,
+                tone: chosen.blocked ? 'blocked' : 'active', scale: 1.3, active: true});
+            const lead = chosen.moves.find(m => m.id === chosen.lead.partId);
+            const leadPart = lead ? lead.part || ghostPart : ghostPart;
+            const p = lead && connectorWorld(lead, chosen.lead.connectorId, leadPart);
+            if (p) items.push({point: p, normal: active.normal.map(v => -v), type: chosen.lead.type, tone: chosen.blocked ? 'blocked' : 'held'});
+        }
+        return items;
+    };
+
+    /** Nothing in hand: the free connector under the pointer (16 px; a finger 28 px), or null. */
+    const litUnder = event => {
+        const g = editingGroup && groupById(editingGroup);
+        const outside = g ? editor.model.parts.filter(p => !g.parts.includes(p.id)).map(p => p.id) : [];
+        return connectorUnderPointer(editor.model, catalogMap, rayLdu(event), projector(), {pointer: canvasPx(event), eye: eyeLdu(),
+            radiusPx: event.touch || lastTouch ? SNAP_PX.idleTouch : SNAP_PX.idleMouse, exclude: [...hidden, ...outside]});
+    };
+    /** The hint bar, the target chip and the touch buttons follow this. */
+    const emitHold = () => {
+        const dragging = Boolean(gesture && gesture.kind === 'part' && gesture.started);
+        onHold({holding: Boolean(tool) || dragging, tone: tool || dragging ? ghostTone : null, round: Boolean(candidate && candidate.round) ||
+            Boolean(dragging && preview && preview.candidate && preview.candidate.round),
+        touch: lastTouch, keyboard: keyboardHold, part: tool ? tool.part : null,
+        pinned: pinned ? {partId: pinned.partId, connectorId: pinned.connectorId, part: pinned.part} : null});
+    };
+    /** Says a new target (or nothing) once, for the screen reader. */
+    const announceTarget = (found, part) => {
+        if (!found || !found.target) { lastAnnounced = null; return; }
+        const key = `${found.target.partId}:${found.target.connectorId}:${found.target.entry}:${found.pairs.length}:${Boolean(found.blocked)}`;
+        if (key === lastAnnounced) return;
+        lastAnnounced = key;
+        const into = partsById().get(found.target.partId);
+        const meta = into && catalogMap.get(into.part);
+        const same = meta ? meta.connectors.filter(c => c.type === found.target.type) : [];
+        const n = found.target.normal;
+        const k = [0, 1, 2].reduce((best, i) => (Math.abs(n[i]) > Math.abs(n[best]) ? i : best), 0);
+        // LDraw: -y is up, +z is the front (towards the Home view).
+        const face = [['right', 'left'], ['bottom', 'top'], ['front', 'back']][k][n[k] > 0 ? 0 : 1];
+        onAnnounce({kind: found.blocked ? 'blocked' : 'target', part, target: into ? into.part : null, connector: found.target.connectorId,
+            index: Math.max(0, same.findIndex(c => c.id === found.target.connectorId)), of: same.length, face, pairs: found.pairs.length,
+            into: found.blocked ? partsById().get(found.blocked.into)?.part || null : null});
+    };
+    const setCursor = cursor => {
+        if (canvas.style.cursor !== cursor) canvas.style.cursor = cursor;
+    };
 
     /** The palette ghost's free pose, and what it would push into. */
     const setFreePose = pose => {
         freePose = pose ? {...pose, blocked: placeBlockedBy(tool.part, pose)} : null;
         if (freePose) showGhost(tool.part, freePose.position, freePose.rotation, freePose.blocked ? 'blocked' : 'free');
     };
-    const updateGhost = event => {
-        if (!tool) return;
-        const hit = partUnder(event);
-        let found = [];
-        if (hit && !modifiers.alt) {
-            found = snapCandidates({model: editor.model, catalog: catalogMap, part: tool.part,
-                pose: {position: worldToLdu(hit.point), rotation: IDENTITY}});
+    const HELD_ID = '__held__';
+    /** Where the pointer (or, keyboard / a tapped tile, the view's centre) would put the part in hand. */
+    const holdResult = () => {
+        if (!tool || modifiers.alt) return null;
+        const held = {parts: [{id: HELD_ID, part: tool.part, position: [0, 0, 0], rotation: tool.rotation}]};
+        const project = projector();
+        const common = {eye: eyeLdu(), cycle: tool.cycle, flip: tool.flip, exclude: [...hidden]};
+        if (keyboardHold) {
+            const w = canvas.clientWidth; const h = canvas.clientHeight;
+            return snapAtPointer(editor.model, catalogMap, held, null, project, {...common, pointer: [w / 2, h / 2], allParts: true, startNearest: true, viewport: [w, h]});
         }
-        if (found.length) {
-            candidate = rotateAboutSnap(found[0], tool.turns);
-            candidate = {...candidate, rotation: cleanRotation(candidate.rotation)};
+        if (!lastPointer) return null;
+        return snapAtPointer(editor.model, catalogMap, held, rayLdu(lastPointer), project, {...common, pointer: canvasPx(lastPointer),
+            radiusPx: lastPointer.touch ? SNAP_PX.targetTouch : SNAP_PX.targetMouse, previous: tool.prevKey});
+    };
+    /**
+     * The palette ghost for the pointer at `where` (client point; null: aim again where it was).
+     * Snapped: green on its target (red where it was aimed when it would push into a part); else
+     * resting on the surface under the pointer, as before.
+     */
+    const updateGhost = (where = null, {keyboard = false} = {}) => {
+        if (!tool) return;
+        if (where) {
+            lastPointer = {clientX: where.clientX, clientY: where.clientY, touch: Boolean(where.touch)};
+            keyboardHold = keyboard;
+        } else if (keyboard) keyboardHold = true;
+        const r = holdResult();
+        const chosen = r && r.chosen;
+        if (chosen) {
+            tool.prevKey = r.chosenKey;
+            candidate = {...chosen, position: chosen.moves[0].position, rotation: cleanRotation(chosen.moves[0].rotation)};
             freePose = null;
-            showMagnet(candidate, null, tool.part);
-            status(snapStatus(candidate));
+            const tone = chosen.blocked ? 'blocked' : 'snap';
+            showGhost(tool.part, candidate.position, candidate.rotation, tone);
+            showConnectors(holdingLights(r.lit, chosen, tool.part));
+            const into = chosen.blocked && partsById().get(chosen.blocked.into);
+            status(chosen.blocked ? {kind: 'blocked', target: into ? into.part : null} : snapStatus(candidate));
+            announceTarget(candidate, tool.part);
+            setCursor(chosen.blocked ? 'not-allowed' : 'grabbing');
+            emitHold();
             return;
         }
+        tool.prevKey = null;
         candidate = null;
-        const surface = surfaceUnder(event);
-        if (!surface) return;
-        setFreePose(restingPose(tool.part, surface.point, tool.turns));
+        const surface = surfaceUnder(keyboardHold || !lastPointer ? viewCentre() : lastPointer);
+        showConnectors(r ? r.lit.map(l => ({...l, tone: 'candidate', faint: true})) : []);
+        announceTarget(null);
+        if (!surface) { emitHold(); return; }
+        setFreePose(restingPose(tool.part, surface.point, tool.rotation));
         const on = surface.part && partsById().get(surface.part);
         if (freePose.blocked) status({kind: 'blocked', target: freePose.blocked.target});
         else status(on ? {kind: 'onTop', target: on.part} : {kind: 'floor'});
+        setCursor(freePose.blocked ? 'not-allowed' : 'grabbing');
+        emitHold();
     };
 
     const place = ({keepTool = false} = {}) => {
         const pose = candidate || freePose;
         if (!tool || !pose) return null;
-        if (!candidate && freePose.blocked) {
-            status({kind: 'refused', reason: 'overlapPlace', target: freePose.blocked.target});
+        const blocked = candidate ? candidate.blocked : freePose.blocked;
+        if (blocked) {
+            const into = candidate ? partsById().get(blocked.into)?.part || null : blocked.target;
+            status({kind: 'refused', reason: 'overlapPlace', target: into});
+            onAnnounce({kind: 'refused', reason: 'overlapPlace', target: into});
             return null;
         }
         const snapped = Boolean(candidate);
@@ -995,27 +1234,142 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             // Tinkercad: the new part is selected, ready to be moved or turned.
             setTool(null);
             setSelection([placed.id]);
+        } else {
+            // Shift+click: still in hand, aimed again (the spot it took is not free any more).
+            tool.prevKey = null;
+            updateGhost(null);
         }
         return {id: placed.id, snapped};
     };
 
-    const setTool = part => {
+    const setTool = (part, {centre = false} = {}) => {
         // Esc, the palette or Build closing: a drag of another part (or any) is over.
         if (paletteDrag && (!part || part !== paletteDrag.part)) {
             const d = detachPaletteDrag();
             d.onEnd({dragged: d.dragging, placed: null});
         }
-        tool = part ? {part, turns: 0} : null;
+        tool = part ? {part, turns: 0, rotation: homeRotation(part), cycle: 0, flip: false, prevKey: null} : null;
         candidate = null;
         freePose = null;
+        keyboardHold = false;
+        lastPointer = null;
         clearGhost();
+        if (!part) {
+            ghostTone = null;
+            showConnectors([]);
+            setCursor('');
+        }
         if (part) {
             setSelection([]);
             canvas.focus();
             status({kind: 'placing', part});
+            // Keyboard (Enter on a tile) or a tapped tile: the ghost goes to the target nearest the view's centre.
+            if (centre) updateGhost(null, {keyboard: true});
         }
         updateGizmo();
         onTool(part || null);
+        emitHold();
+    };
+
+    /** Turns or flips what is in hand (docs/ROBOT-LAB-UX.md §3.5): R ±90°, [ ] ±15° (round only), T tip, X flip. */
+    const quarterOnlyReason = c => (c && (c.lead?.type === 'stud' || c.target?.type === 'stud' || c.target?.type === 'antistud' || c.target?.type === 'tube') ?
+        'studsQuarterOnly' : 'axleQuarterOnly');
+    const turnHeld = (how, direction) => {
+        if (!tool) return false;
+        const about = (axis, angle, from) => turnAboutLine([{position: [0, 0, 0], rotation: from}], axis, [0, 0, 0], angle)[0].rotation;
+        if (how === 'flip') {
+            tool.flip = !tool.flip;
+            status({kind: 'flipped'});
+        } else if (how === 'fine') {
+            if (!candidate) { status({kind: 'refused', reason: 'fineNeedsConnection'}); return true; }
+            if (!candidate.round) { status({kind: 'refused', reason: quarterOnlyReason(candidate)}); return true; }
+            tool.rotation = about(candidate.axis, direction * FINE, candidate.rotation);
+        } else if (how === 'tip') {
+            const axis = facingAxis(camera.getWorldDirection(new Vector3()));
+            tool.rotation = cleanRotation(mul3(worldAxisRotation(axis, direction * QUARTER), candidate ? candidate.rotation : tool.rotation));
+        } else if (candidate) {
+            tool.rotation = about(candidate.axis, direction * QUARTER, candidate.rotation);
+        } else {
+            tool.turns = (tool.turns + direction + 4) % 4;
+            tool.rotation = cleanRotation(mul3(worldAxisRotation('y', direction * QUARTER), freePose ? freePose.rotation : tool.rotation));
+        }
+        updateGhost(null);
+        return true;
+    };
+    /** Tab / Shift+Tab: the next (previous) way to put the part in hand here. */
+    const cycleHeld = direction => {
+        if (!tool) return false;
+        if (!lastPointer) keyboardHold = true;
+        tool.cycle += direction;
+        updateGhost(null);
+        return true;
+    };
+    /** Holding, keyboard: the arrows move the free ghost one grid step along the floor axes nearest the screen's. */
+    const nudgeHeld = key => {
+        if (!tool) return false;
+        const right = new Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
+        const ahead = camera.getWorldDirection(new Vector3());
+        const along = v => (Math.abs(v.x) >= Math.abs(v.z) ? [Math.sign(v.x) || 1, 0, 0] : [0, 0, Math.sign(v.z) || 1]);
+        const dir = {ArrowRight: along(right), ArrowLeft: along(right).map(v => -v), ArrowUp: along(ahead), ArrowDown: along(ahead).map(v => -v)}[key];
+        if (!dir) return false;
+        const base = candidate || freePose;
+        if (!base) return true;
+        // World x/z → LDraw x/-z.
+        const step = [dir[0] * gridStep, 0, -dir[2] * gridStep];
+        candidate = null;
+        tool.prevKey = null;
+        keyboardHold = true;
+        setFreePose({position: base.position.map((v, i) => tidy(v + step[i])), rotation: base.rotation});
+        showConnectors([]);
+        if (freePose.blocked) status({kind: 'blocked', target: freePose.blocked.target});
+        else status({kind: 'moving', delta: step});
+        emitHold();
+        return true;
+    };
+
+    // ---- Target-first (Mecabricks): a lit connector clicked, then a palette part goes into it --------
+    const setPinned = lit => {
+        const p = lit && partsById().get(lit.partId);
+        pinned = p ? {partId: lit.partId, connectorId: lit.connectorId, type: lit.type, point: lit.point, normal: lit.normal, part: p.part} : null;
+        showConnectors(idleLit ? [{...idleLit, tone: 'candidate'}] : []);
+        if (pinned) status({kind: 'targetPinned', target: pinned.part, connector: pinned.connectorId});
+        emitHold();
+    };
+    /** Whether a part from the palette could go into the pinned target (the palette dims the rest). */
+    const fitsTarget = part => {
+        if (!pinned) return true;
+        const meta = catalogMap.get(part);
+        const into = catalogMap.get(pinned.part);
+        const t = into && into.connectors.find(c => c.id === pinned.connectorId);
+        return Boolean(meta && t && meta.connectors.some(c => joinRule(c, t)));
+    };
+    /** A palette part straight into the pinned target: placed (one undo step), selected, the target cleared. */
+    const placeIntoTarget = part => {
+        if (!pinned) return null;
+        const held = {parts: [{id: HELD_ID, part, position: [0, 0, 0], rotation: homeRotation(part)}]};
+        const project = projector();
+        const eye = eyeLdu();
+        const q = project(pinned.point) || [canvas.clientWidth / 2, canvas.clientHeight / 2];
+        const r = snapAtPointer(editor.model, catalogMap, held, {origin: eye, direction: pinned.point.map((v, i) => v - eye[i])}, project,
+            {pointer: q, eye, only: {partId: pinned.partId, connectorId: pinned.connectorId}, exclude: [...hidden]});
+        const chosen = r.chosen;
+        if (!chosen) { status({kind: 'refused', reason: 'targetNoFit', target: pinned.part}); return null; }
+        if (chosen.blocked) {
+            const into = partsById().get(chosen.blocked.into);
+            status({kind: 'refused', reason: 'overlapPlace', target: into ? into.part : null});
+            onAnnounce({kind: 'refused', reason: 'overlapPlace', target: into ? into.part : null});
+            return null;
+        }
+        if (tool) setTool(null);
+        const mv = chosen.moves[0];
+        if (!run({type: 'place', part, position: mv.position, rotation: cleanRotation(mv.rotation), color: placeColor}, {placed: part})) return null;
+        const placed = editor.model.parts[editor.model.parts.length - 1];
+        pinned = null;
+        setSelection([placed.id]);
+        status({...snapStatus({pairs: chosen.pairs}), kind: 'snapped'});
+        announceTarget(chosen, part);
+        emitHold();
+        return {id: placed.id, snapped: true};
     };
 
     // ---- dragging a part out of the palette -------------------------------------------
@@ -1115,19 +1469,11 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
      * the horizontal world axis nearest the view direction. A lone part sitting
      * on a pin or an axle turns about that connection instead (R only).
      */
+    const dragging = () => Boolean(gesture && gesture.kind === 'part' && gesture.started);
     const turnSelection = (axis, direction) => {
-        if (tool) {
-            tool.turns = (tool.turns + direction + 4) % 4;
-            if (candidate) {
-                candidate = {...rotateAboutSnap(candidate, direction)};
-                candidate.rotation = cleanRotation(candidate.rotation);
-                showMagnet(candidate, null, tool.part);
-            } else if (freePose) {
-                setFreePose({position: freePose.position, rotation: cleanRotation(mul3(worldAxisRotation('y', direction * QUARTER), freePose.rotation))});
-                if (freePose.blocked) status({kind: 'blocked', target: freePose.blocked.target});
-            }
-            return;
-        }
+        // In hand (from the palette, or being dragged): turned about the connection it would make, or the vertical.
+        if (tool) { turnHeld(axis === 'facing' ? 'tip' : 'quarter', direction); return; }
+        if (dragging()) { turnDrag(axis === 'facing' ? 'tip' : 'quarter', direction); return; }
         if (!needSelection()) return;
         const parts = selectedParts();
         if (axis === 'up' && parts.length === 1) {
@@ -1147,6 +1493,55 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         const blocked = blockedBy(moves);
         if (blocked) { status({kind: 'refused', reason: 'overlapTurn', target: blocked.target}); return; }
         if (run({type: 'moveMany', moves}, {turned: moves.length})) status({kind: 'turned', count: moves.length});
+    };
+    /**
+     * [ / ]: 15° about a round connection (a pin or an axle in a round hole, a ball), in hand or for a
+     * lone selected part sitting on one; refused on an axle in an axle hole and on studs.
+     */
+    const fineTurn = direction => {
+        if (tool) { turnHeld('fine', direction); return; }
+        if (dragging()) { turnDrag('fine', direction); return; }
+        if (!needSelection()) return;
+        const parts = selectedParts();
+        const line = parts.length === 1 ? connectionLine(editor.model, catalogMap, parts[0].id) : null;
+        if (!line || line.many) { status({kind: 'refused', reason: 'fineNeedsConnection'}); return; }
+        if (!line.round) {
+            const studs = ['stud', 'antistud', 'tube'].includes(line.shaft) || ['stud', 'antistud', 'tube'].includes(line.hole);
+            status({kind: 'refused', reason: studs ? 'studsQuarterOnly' : 'axleQuarterOnly'});
+            return;
+        }
+        const [turned] = turnAboutLine([parts[0]], line.axis, line.point, direction * FINE);
+        const move = {id: parts[0].id, position: turned.position, rotation: turned.rotation};
+        const blocked = blockedBy([move], pairedParts(editor.model, catalogMap, parts[0].id));
+        if (blocked) { status({kind: 'refused', reason: 'overlapTurn', target: blocked.target}); return; }
+        if (run({type: 'moveMany', moves: [move]}, {turned: 1})) status({kind: 'turnedBy', degrees: 15 * direction});
+    };
+    /** X: end for end along the connection (in hand: the other way round; a lone selected part: about its connection). */
+    const flipSelection = () => {
+        if (tool) { turnHeld('flip', 1); return; }
+        if (dragging()) { turnDrag('flip', 1); return; }
+        if (!needSelection()) return;
+        const parts = selectedParts();
+        const line = parts.length === 1 ? connectionLine(editor.model, catalogMap, parts[0].id) : null;
+        if (!line || line.many) { status({kind: 'refused', reason: 'flipNeedsConnection'}); return; }
+        // Half a turn about the world axis most across the connection, through the part's middle on that line.
+        const perp = [[1, 0, 0], [0, 1, 0], [0, 0, 1]].sort((a, b) => Math.abs(a[0] * line.axis[0] + a[1] * line.axis[1] + a[2] * line.axis[2]) -
+            Math.abs(b[0] * line.axis[0] + b[1] * line.axis[1] + b[2] * line.axis[2]))[0];
+        const box = partBounds(parts[0], catalogMap.get(parts[0].part));
+        const mid = box ? box.min.map((v, i) => (v + box.max[i]) / 2) : parts[0].position;
+        const along = mid.reduce((acc, v, i) => acc + (v - line.point[i]) * line.axis[i], 0);
+        const point = line.point.map((v, i) => v + line.axis[i] * along);
+        const [turned] = turnAboutLine([parts[0]], perp, point, Math.PI);
+        const move = {id: parts[0].id, position: turned.position, rotation: turned.rotation};
+        const blocked = blockedBy([move], pairedParts(editor.model, catalogMap, parts[0].id));
+        if (blocked) { status({kind: 'refused', reason: 'overlapTurn', target: blocked.target}); return; }
+        if (run({type: 'moveMany', moves: [move]}, {turned: 1})) status({kind: 'flipped'});
+    };
+    /** Selects every part joined to the selection through pairs (Studio's "By Connected"). */
+    const selectConnected = () => {
+        if (!needSelection()) return;
+        setSelection(connectedComponent(editor.model, catalogMap, selection));
+        status({kind: 'connectedSelected', count: selection.length});
     };
     const deleteSelection = () => {
         if (!needSelection()) return;
@@ -1486,12 +1881,14 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         return true;
     };
     const onDblClick = event => {
-        if (tool || pickMode) return;
+        if (tool || pickMode || cubeHit(event)) return;
         const hit = partUnder(event);
         if (!hit) { leaveGroup(); return; }
         const id = hit.object.name;
         const g = (editor.model.groups || []).find(x => x.parts.includes(id));
+        // A grouped part: edit inside its group (as before); any other part: the view centres on the clicked point.
         if (g && editingGroup !== g.id) enterGroup(g.id, id);
+        else focusOn(hit.point);
     };
 
     // Ctrl+C / Ctrl+V reach the system clipboard through the copy and paste events (no permission
@@ -1516,7 +1913,55 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     };
 
     // ---- camera ---------------------------------------------------------------------
-    const fitBox = (box, direction) => {
+    // docs/ROBOT-LAB-UX.md §3.7: orbit about the point under the pointer (camera and target turn
+    // together, so it stays put), zoom to the point under the pointer, a trackpad's scroll orbits,
+    // every camera move the program makes eases (or jumps, with prefers-reduced-motion).
+    /** Puts the camera and its target where `to` says ({position, target}, world arrays). */
+    const applyCamera = ({position, target}) => {
+        camera.position.fromArray(position);
+        controls.target.fromArray(target);
+        const d = camera.position.distanceTo(controls.target);
+        camera.near = Math.max(0.001, d / 200);
+        camera.far = Math.max(1, d * 100);
+        camera.updateProjectionMatrix();
+        camera.lookAt(controls.target);
+        controls.update();
+        invalidate();
+    };
+    let camAnim = null; // {from, to, start}
+    const prefersReducedMotion = () => {
+        try { return Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch { return false; }
+    };
+    /** A camera move the program makes: eased over CAMERA_ANIMATION_MS, or at once (`animate` false, reduced motion). */
+    const moveCamera = (to, {animate = true} = {}) => {
+        if (!animate || prefersReducedMotion()) {
+            camAnim = null;
+            applyCamera(to);
+            return;
+        }
+        camAnim = {from: {position: camera.position.toArray(), target: controls.target.toArray()}, to, start: performance.now()};
+        invalidate();
+    };
+    function stopCameraAnimation () { camAnim = null; }
+    /** One frame of the camera's eased move: the target slides, the view direction turns, the distance changes. */
+    const stepCamera = () => {
+        if (!camAnim) return;
+        const k = easeOut((performance.now() - camAnim.start) / CAMERA_ANIMATION_MS);
+        const {from, to} = camAnim;
+        if (k >= 1) {
+            camAnim = null;
+            applyCamera(to);
+            return;
+        }
+        const target = from.target.map((v, i) => v + (to.target[i] - v) * k);
+        const o0 = new Vector3().fromArray(from.position).sub(new Vector3().fromArray(from.target));
+        const o1 = new Vector3().fromArray(to.position).sub(new Vector3().fromArray(to.target));
+        const length = o0.length() + (o1.length() - o0.length()) * k;
+        const turn = new Quaternion().slerp(new Quaternion().setFromUnitVectors(o0.clone().normalize(), o1.clone().normalize()), k);
+        const dir = o0.normalize().applyQuaternion(turn);
+        applyCamera({position: dir.multiplyScalar(length).add(new Vector3().fromArray(target)).toArray(), target});
+    };
+    const fitBox = (box, direction, {animate = false} = {}) => {
         const b = box.isEmpty() ? new Box3(new Vector3(-0.05, floorY ?? 0, -0.05), new Vector3(0.05, (floorY ?? 0) + 0.05, 0.05)) : box;
         const sphere = b.getBoundingSphere(new Sphere());
         const radius = Math.max(0.02, sphere.radius);
@@ -1524,12 +1969,83 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         const hHalf = Math.atan(Math.tan(vHalf) * camera.aspect);
         const distance = radius / Math.sin(Math.min(vHalf, hHalf)) * 1.15;
         const dir = (direction || camera.position.clone().sub(controls.target)).clone().normalize();
-        camera.position.copy(sphere.center).addScaledVector(dir, distance);
-        camera.near = Math.max(0.001, distance / 200);
-        camera.far = distance * 100;
-        camera.updateProjectionMatrix();
-        controls.target.copy(sphere.center);
-        controls.update();
+        moveCamera({position: sphere.center.clone().addScaledVector(dir, distance).toArray(), target: sphere.center.toArray()}, {animate});
+    };
+    /** Double click on a part: the view centres on the clicked point, at the same distance. */
+    const focusOn = point => {
+        const shift = point.clone().sub(controls.target);
+        moveCamera({position: camera.position.clone().add(shift).toArray(), target: point.toArray()});
+        cameraTouched = true;
+    };
+    /** Where an orbit turns about: the point under the pointer when the gesture starts, else the target. */
+    const orbitStart = event => {
+        const hit = partUnder(event);
+        return {pivot: hit ? hit.point.clone() : controls.target.clone(), x: event.clientX, y: event.clientY};
+    };
+    const pivotDot = new Mesh(new SphereGeometry(2.5 * LDU_M, 12, 8), new MeshBasicMaterial({color: 0xf59e0b, depthTest: false, transparent: true, opacity: 0.9}));
+    pivotDot.renderOrder = 40;
+    /** Turns camera and target together about `pivot` (screen pixels dragged; the view's polar range holds). */
+    const orbitBy = (dx, dy, pivot = controls.target) => {
+        const a = orbitAngles(dx, dy, canvas.clientHeight);
+        applyCamera(orbitAboutPivot({position: camera.position.toArray(), target: controls.target.toArray(), pivot: pivot.toArray(),
+            theta: a.theta, phi: a.phi, minPolar: controls.minPolarAngle, maxPolar: controls.maxPolarAngle}));
+        cameraTouched = true;
+    };
+    const orbitDrag = (event, o) => {
+        const dx = event.clientX - o.x;
+        const dy = event.clientY - o.y;
+        o.x = event.clientX;
+        o.y = event.clientY;
+        if (!pivotDot.parent) {
+            pivotDot.position.copy(o.pivot);
+            pivotGroup.add(pivotDot);
+        }
+        if (dx || dy) orbitBy(dx, dy, o.pivot);
+        setCursor('grabbing');
+    };
+    const endOrbit = () => {
+        if (pivotDot.parent) { pivotGroup.remove(pivotDot); invalidate(); }
+        setCursor('');
+    };
+    /** Slides camera and target together by screen pixels. */
+    const panBy = (dx, dy) => {
+        const distance = camera.position.distanceTo(controls.target);
+        camera.updateMatrix();
+        const [right, up] = panAmounts(dx, dy, distance, camera.fov, canvas.clientHeight);
+        const shift = new Vector3().setFromMatrixColumn(camera.matrix, 0).multiplyScalar(right)
+            .add(new Vector3().setFromMatrixColumn(camera.matrix, 1).multiplyScalar(up));
+        applyCamera({position: camera.position.clone().add(shift).toArray(), target: controls.target.clone().add(shift).toArray()});
+        cameraTouched = true;
+    };
+    /** The world point a zoom at the pointer keeps under it: a part, else the floor, else the target's depth. */
+    const zoomPointAt = event => {
+        const hit = partUnder(event);
+        if (hit) return hit.point.toArray();
+        const ray = raycaster.ray;
+        const distance = camera.position.distanceTo(controls.target);
+        const f = ray.intersectPlane(floor, new Vector3());
+        if (f && f.distanceTo(camera.position) < distance * 20) return f.toArray();
+        return ray.at(distance, new Vector3()).toArray();
+    };
+    let wheelOrbit = null; // a trackpad's scroll: its pivot, kept while the scrolling goes on
+    /** The wheel and the trackpad (camera-nav.js wheelIntent): zoom to the pointer, orbit, or pan. */
+    const onWheel = event => {
+        event.preventDefault();
+        event.stopImmediatePropagation(); // three's OrbitControls never zooms here: this does, to the point under the pointer
+        stopCameraAnimation();
+        const intent = wheelIntent(event, wheelMode);
+        if (intent === 'zoom') {
+            const d = camera.position.distanceTo(controls.target);
+            const wanted = Math.min(controls.maxDistance, Math.max(Math.max(0.01, controls.minDistance), d * wheelZoomFactor(event)));
+            applyCamera(zoomAbout({position: camera.position.toArray(), target: controls.target.toArray(), point: zoomPointAt(event), factor: wanted / d}));
+        } else if (intent === 'orbit') {
+            if (!wheelOrbit || event.timeStamp > wheelOrbit.until) wheelOrbit = {pivot: orbitStart(event).pivot};
+            wheelOrbit.until = event.timeStamp + 300;
+            orbitBy(-event.deltaX, -event.deltaY, wheelOrbit.pivot);
+        } else {
+            panBy(-(event.deltaX || event.deltaY), event.deltaX ? -event.deltaY : 0);
+        }
+        cameraTouched = true;
     };
     const modelBox = ids => {
         const box = new Box3();
@@ -1537,15 +2053,15 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         else for (const id of new Set(ids)) { const mesh = meshes.get(id); if (mesh) box.expandByObject(mesh); }
         return box;
     };
-    const VIEWS = {home: new Vector3(1, 0.8, 1.2), top: new Vector3(0, 1, 0.0001), front: new Vector3(0, 0.0001, 1), side: new Vector3(1, 0.0001, 0)};
+    const VIEWS = Object.fromEntries(Object.entries(VIEW_DIRECTIONS).map(([name, d]) => [name, new Vector3(...d)]));
     const view = name => {
         modelGroup.updateMatrixWorld(true);
-        fitBox(modelBox(), VIEWS[name] || VIEWS.home);
+        fitBox(modelBox(), VIEWS[name] || VIEWS.home, {animate: true});
         cameraTouched = true;
     };
     const fitSelection = () => {
         modelGroup.updateMatrixWorld(true);
-        fitBox(modelBox(selection.length ? selection : null));
+        fitBox(modelBox(selection.length ? selection : null), null, {animate: true});
         cameraTouched = true;
     };
     const frameModel = () => {
@@ -1567,17 +2083,37 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
 
     function onDown (event) {
         lastTouch = event.pointerType === 'touch';
+        stopCameraAnimation();
         if (lastTouch) { onTouchDown(event); return; }
         readModifiers(event);
         canvas.focus();
+        if (cubeHit(event)) {
+            // The view cube: its face, edge or corner turns the view there (OrbitControls never sees the press).
+            event.stopImmediatePropagation();
+            event.preventDefault();
+            clickViewCube(event);
+            gesture = null;
+            return;
+        }
+        if (event.button === 1) {
+            // Middle drag: orbit about the point under the pointer.
+            gesture = {x: event.clientX, y: event.clientY, pointerId: event.pointerId, kind: 'orbit', orbit: orbitStart(event)};
+            canvas.setPointerCapture(event.pointerId);
+            return;
+        }
         if (event.button !== 0) { gesture = null; return; }
         if (pickMode) { gesture = {x: event.clientX, y: event.clientY, pointerId: event.pointerId, kind: 'pick'}; return; }
         // The gizmo gets the press when the pointer is on one of its handles (on a
         // part, only on the handle's visible shape: the picker reaches further).
         if (gizmoGrab(event)) { controls.enabled = false; return; }
         const base = {x: event.clientX, y: event.clientY, pointerId: event.pointerId};
-        if (tool) { gesture = {...base, kind: 'tool'}; return; }
+        if (tool) { gesture = {...base, kind: 'tool', orbit: orbitStart(event)}; return; }
         const hit = partUnder(event);
+        if (hit && (event.ctrlKey || event.metaKey)) {
+            // Ctrl+click: the part and everything joined to it (Studio's "By Connected").
+            gesture = {...base, kind: 'connected', id: hit.object.name};
+            return;
+        }
         if (event.shiftKey) {
             // Shift: click toggles a part, drag on anything draws a selection box.
             controls.enabled = false;
@@ -1588,7 +2124,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         }
         if (hit) {
             const id = hit.object.name;
-            if (!selection.includes(id)) setSelection([id]);
+            const wasSelected = selection.includes(id);
+            if (!wasSelected) setSelection([id]);
             controls.enabled = false;
             transform.enabled = false;
             // The pressed point on the part, and how high above the part's own bottom it is:
@@ -1596,20 +2133,28 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             // the surface under it.
             modelGroup.updateMatrixWorld(true);
             const bottom = modelBox(selection).min.y;
-            gesture = {...base, kind: 'part', start: selectedParts(), grab: hit.point.clone(), bottom, started: false};
+            gesture = {...base, kind: 'part', start: selectedParts(), grab: hit.point.clone(), bottom, started: false,
+                // Target-first: a lit hole of a part already selected (the first click selects, the next one pins).
+                lit: wasSelected ? litUnder(event) : null};
             canvas.setPointerCapture(event.pointerId);
             return;
         }
-        gesture = {...base, kind: 'empty'};
+        gesture = {...base, kind: 'empty', orbit: orbitStart(event)};
     }
 
     const onMove = event => {
         if (event.pointerType === 'mouse') lastTouch = false;
         readModifiers(event);
         if (paletteDrag && paletteDrag.dragging) return; // onPaletteMove follows it
+        if (gesture && gesture.orbit && (gesture.kind === 'orbit' || travelled(event, gesture) > CLICK_PX) &&
+            (gesture.kind === 'orbit' || gesture.kind === 'empty' || gesture.kind === 'tool')) {
+            orbitDrag(event, gesture.orbit);
+            return;
+        }
         if (tool && (!gesture || travelled(event, gesture) <= CLICK_PX)) { updateGhost(event); return; }
         if (!gesture) {
             if (transform.dragging) return;
+            if (cubeHit(event)) { setCursor('pointer'); return; }
             gizmoHover = pickMode ? null : gizmoGrab(event);
             if (gizmoHover) {
                 if (hovered !== `gizmo:${transform.axis}`) {
@@ -1622,6 +2167,13 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             }
             const hit = partUnder(event);
             const id = hit ? hit.object.name : null;
+            setCursor(id && !pickMode ? 'grab' : '');
+            // Nothing in hand: the one free connector under the pointer lights up (a click pins it as the target).
+            const lit = id && !pickMode ? litUnder(event) : null;
+            if ((lit && lit.connectorId) !== (idleLit && idleLit.connectorId) || (lit && lit.partId) !== (idleLit && idleLit.partId)) {
+                idleLit = lit;
+                showConnectors(lit ? [{...lit, tone: 'candidate', active: true}] : []);
+            }
             if (id !== hovered) {
                 hovered = id;
                 drawOutlines();
@@ -1634,15 +2186,35 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         }
         if (gesture.kind === 'part') {
             if (!gesture.started && travelled(event, gesture) <= CLICK_PX) return;
-            gesture.started = true;
+            if (!gesture.started) startDrag(gesture);
             dragPart(event, gesture);
         } else if (gesture.kind === 'box') {
             drawBox(event, gesture);
         }
     };
 
+    /**
+     * A drag starts: what it carries (the selection), the pressed point in LDU (its nearest held
+     * connector leads the snap), and the part it pulls away from ("Released from …").
+     */
+    const startDrag = g => {
+        g.started = true;
+        g.spin = IDENTITY;
+        g.cycle = 0;
+        g.flip = false;
+        g.prevKey = null;
+        g.grabLdu = worldToLdu(g.grab);
+        const inside = new Set(g.start.map(p => p.id));
+        const outside = g.start.flatMap(p => pairedParts(editor.model, catalogMap, p.id)).find(id => !inside.has(id));
+        const from = outside && partsById().get(outside);
+        g.released = from ? from.part : null;
+        if (pinned) { pinned = null; showConnectors([]); }
+    };
+    /** The carried parts as turned in the hand (R, [ ], T while dragging): turned about the pressed point. */
+    const heldBase = g => (g.spin === IDENTITY ? g.start : rotatePoses(g.start, g.spin, g.grabLdu).map((m, i) => ({...m, part: g.start[i].part})));
     /** A pressed part (and the rest of the selection) follows the pointer or finger at `event` (clientX/Y). */
     const dragPart = (event, g) => {
+        g.last = {clientX: event.clientX, clientY: event.clientY, touch: Boolean(event.touch)};
         const surface = surfaceUnder(event, selection);
         if (!surface) return;
         // Where the pressed point would be: on the pointer's ray, as high above the
@@ -1653,17 +2225,73 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         const at = t > 0 ? ray.at(t, new Vector3()) : surface.point.clone();
         const d = worldDeltaToLdu(new Vector3(at.x - g.grab.x, surface.point.y - g.bottom, at.z - g.grab.z));
         const delta = [Math.round(d[0] / gridStep) * gridStep, Math.round(d[1]), Math.round(d[2] / gridStep) * gridStep].map(tidy);
-        let aimed = null;
-        if (surface.part && g.start.length === 1) {
-            const p = worldToLdu(surface.point);
-            const s0 = g.start[0];
-            aimed = {id: s0.id, position: [p[0], s0.position[1] + delta[1], p[2]], rotation: s0.rotation};
+        const base = heldBase(g);
+        // The connection the pointer asks for (snap.js snapAtPointer): any selection, all of its pairs counted.
+        let found = null;
+        let lit = [];
+        if (!modifiers.alt) {
+            const r = snapAtPointer(editor.model, catalogMap, {parts: base, grab: g.grabLdu}, rayLdu(event), projector(),
+                {pointer: canvasPx(event), eye: eyeLdu(), radiusPx: g.touch ? SNAP_PX.targetTouch : SNAP_PX.targetMouse, previous: g.prevKey,
+                    cycle: g.cycle, flip: g.flip, exclude: [...hidden]});
+            found = r.chosen;
+            lit = r.lit;
+            g.prevKey = r.chosenKey;
         }
-        showMove(g.start, translatePoses(g.start, delta), delta, aimed);
-        if (!preview.candidate && !preview.blocked) {
-            const on = surface.part && partsById().get(surface.part);
-            status(on ? {kind: 'onTop', target: on.part, delta} : {kind: 'floor', delta});
+        if (found) {
+            const moves = found.moves.map(m => ({id: m.id, position: m.position, rotation: cleanRotation(m.rotation)}));
+            const into = found.blocked && partsById().get(found.blocked.into);
+            const blocked = found.blocked ? {part: found.blocked.part, into: found.blocked.into, target: into ? into.part : null} : null;
+            preview = {moves, candidate: {...found, position: moves[0].position, rotation: moves[0].rotation}, blocked};
+            placeMeshes();
+            clearGhost();
+            ghostTone = blocked ? 'blocked' : 'snap';
+            if (!blocked) for (const m of found.moves) showGhostAlso(m.part, m.position, m.rotation, 'snap');
+            showConnectors(holdingLights(lit, found, null));
+            status(blocked ? {kind: 'blocked', target: blocked.target} : snapStatus(found));
+            announceTarget(found, g.start[0].part);
+        } else {
+            const moves = translatePoses(base, delta);
+            const blocked = blockedBy(moves);
+            preview = {moves, candidate: null, blocked};
+            placeMeshes();
+            clearGhost();
+            ghostTone = blocked ? 'blocked' : 'free';
+            showConnectors(lit.map(l => ({...l, tone: 'candidate', faint: true})));
+            announceTarget(null);
+            if (blocked) status({kind: 'blocked', target: blocked.target});
+            else if (g.released) status({kind: 'released', target: g.released, delta});
+            else {
+                const on = surface.part && partsById().get(surface.part);
+                status(on ? {kind: 'onTop', target: on.part, delta} : {kind: 'floor', delta});
+            }
         }
+        setCursor(preview.blocked ? 'not-allowed' : 'grabbing');
+        emitHold();
+    };
+    /** R, [ ], T, X and Tab while a selection is dragged: turned in the hand, then aimed again where the pointer is. */
+    const turnDrag = (how, direction) => {
+        const g = gesture;
+        if (!g || g.kind !== 'part' || !g.started || !g.last) return false;
+        const c = preview && preview.candidate;
+        const base = heldBase(g);
+        // The turn the snap applied to the hand (base → seated), so a turn about the connection keeps the seat.
+        const seat = c ? mul3(c.moves[0].rotation, transposeRotation(base[0].rotation)) : IDENTITY;
+        const spinBy = R => { g.spin = cleanRotation(mul3(R, g.spin)); };
+        if (how === 'cycle') g.cycle += direction;
+        else if (how === 'flip') { g.flip = !g.flip; status({kind: 'flipped'}); }
+        else if (how === 'fine') {
+            if (!c) { status({kind: 'refused', reason: 'fineNeedsConnection'}); return true; }
+            if (!c.round) { status({kind: 'refused', reason: quarterOnlyReason(c)}); return true; }
+            spinBy(mul3(axisRotation(c.axis, direction * FINE), seat));
+        } else if (how === 'tip') {
+            spinBy(mul3(worldAxisRotation(facingAxis(camera.getWorldDirection(new Vector3())), direction * QUARTER), seat));
+        } else if (c) {
+            spinBy(mul3(axisRotation(c.axis, direction * QUARTER), seat));
+        } else {
+            spinBy(worldAxisRotation('y', direction * QUARTER));
+        }
+        dragPart(g.last, g);
+        return true;
     };
     /** The selection box from where `g` was pressed to `event`. */
     const drawBox = (event, g, slop = CLICK_PX) => {
@@ -1703,18 +2331,31 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         boxDiv.style.display = 'none';
         if (!g) return;
         try { canvas.releasePointerCapture(event.pointerId); } catch { /* not captured */ }
+        if (g.orbit) endOrbit();
         const click = travelled(event, g) <= CLICK_PX;
         if (g.kind === 'tool') {
             if (!click) return; // a drag orbited the camera
             updateGhost(event);
             place({keepTool: event.shiftKey});
+        } else if (g.kind === 'connected') {
+            if (!click) return;
+            const ids = connectedComponent(editor.model, catalogMap, [g.id]);
+            setSelection(ids);
+            status({kind: 'connectedSelected', count: selection.length});
         } else if (g.kind === 'part') {
-            if (g.started) commitPreview();
-            else {
-                // A plain click on a part: just that part (and its group).
+            if (g.started) {
+                commitPreview();
+                showConnectors([]);
+                setCursor('');
+                announceTarget(null);
+            } else {
+                // A plain click on a part: just that part (and its group); on a lit free connector, that is the target too.
                 setSelection([partUnder(event)?.object.name].filter(Boolean));
                 status({kind: 'selected', count: selection.length});
+                if (g.lit) setPinned(g.lit);
+                else if (pinned) setPinned(null);
             }
+            emitHold();
             updateGizmo();
         } else if (g.kind === 'box') {
             if (click) {
@@ -1729,6 +2370,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             doPick(event);
         } else if (g.kind === 'empty' && click) {
             setSelection([]);
+            if (pinned) setPinned(null);
             status({kind: editingGroup ? 'groupEdit' : 'idle', name: editingGroup ? groupById(editingGroup)?.name : undefined});
         }
     };
@@ -1773,6 +2415,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             return;
         }
         event.stopImmediatePropagation(); // OrbitControls and TransformControls never see this finger
+        if (!tracker.count && cubeHit(event)) { clickViewCube(event); return; }
         const out = tracker.down(touchAt(event));
         if (!out) return;
         if (out.type === 'pinchStart') {
@@ -1786,7 +2429,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         if (tool) gesture = {...base, kind: 'tool'};
         else if (pickMode) gesture = {...base, kind: 'pick'};
         else if (hit) gesture = {...base, kind: 'part', id: hit.object.name, grab: hit.point.clone(), started: false};
-        else gesture = {...base, kind: 'empty'};
+        else gesture = {...base, kind: 'empty', orbit: orbitStart(event)};
         stopLongPress();
         const due = event.timeStamp + LONG_PRESS_MS;
         longPressTimer = setTimeout(() => onTouch(tracker.tick(Math.max(due, performance.now()))), LONG_PRESS_MS);
@@ -1833,11 +2476,15 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
                     modelGroup.updateMatrixWorld(true);
                     g.start = selectedParts();
                     g.bottom = modelBox(selection).min.y;
-                    g.started = true;
+                    startDrag(g);
                 }
-                dragPart(at(out.x, out.y), g);
-            } else if (g.kind === 'empty' || g.kind === 'tool' || g.kind === 'pick') {
-                orbitBy(out.dx, out.dy);
+                dragPart({...at(out.x, out.y), touch: true}, g);
+            } else if (g.kind === 'tool') {
+                // A finger carrying the part: the ghost a little above it, so the finger does not hide it.
+                g.dragged = true;
+                updateGhost({clientX: out.x, clientY: out.y - TOUCH_LIFT_PX, touch: true});
+            } else if (g.kind === 'empty' || g.kind === 'pick') {
+                orbitBy(out.dx, out.dy, g.orbit ? g.orbit.pivot : controls.target);
             }
         } else if (out.type === 'heldDrag') {
             if (g && g.kind === 'box') drawBox(at(out.x, out.y), g, TOUCH_SLOP_PX);
@@ -1855,9 +2502,13 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             if (!g || g.kind === 'pinch') return;
             const still = out.was === 'tap' || out.was === 'longPress' || out.was === 'held';
             if (g.kind === 'tool') {
-                if (!still) return; // the finger orbited the camera
-                updateGhost(where);
-                place();
+                // A tap places where it tapped; a lifted finger places what it carried (Snapped, or free and not in the way).
+                if (still) {
+                    updateGhost({...where, touch: true});
+                    place();
+                } else if (g.dragged) {
+                    place();
+                }
             } else if (g.kind === 'part') {
                 if (g.started) {
                     commitPreview();
@@ -1880,15 +2531,6 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             }
         }
     }
-    /** One finger on empty space turns the camera about its target, as a mouse drag does. */
-    const orbitBy = (dx, dy) => {
-        const a = orbitAngles(dx, dy, canvas.clientHeight);
-        const offset = orbitOffset(camera.position.clone().sub(controls.target).toArray(), a.theta, a.phi,
-            {maxPolar: controls.maxPolarAngle});
-        camera.position.copy(controls.target).add(new Vector3(...offset));
-        controls.update();
-        cameraTouched = true;
-    };
     /** Two fingers: closer to the target as they spread, and the scene follows their midpoint. */
     const pinchBy = (scale, [dx, dy]) => {
         const offset = camera.position.clone().sub(controls.target);
@@ -1910,9 +2552,13 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
 
     /** Esc (or its button): a drag in progress is called off, else the placing tool ends, else the selection is cleared. */
     const escape = () => {
-        if (gesture && gesture.kind === 'part') { preview = null; gesture = null; clearGhost(); placeMeshes(); return; }
+        if (gesture && gesture.kind === 'part') {
+            preview = null; gesture = null; clearGhost(); placeMeshes(); showConnectors([]); setCursor(''); emitHold();
+            return;
+        }
         if (pickMode) setPick(null);
         else if (tool) setTool(null);
+        else if (pinned) { setPinned(null); status({kind: 'targetCleared'}); }
         else if (editingGroup) leaveGroup();
         else { setSelection([]); status({kind: 'idle'}); }
     };
@@ -1939,10 +2585,33 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             if (actions[key]) { event.preventDefault(); actions[key](); }
             return;
         }
+        // [ ] turn 15° (German keyboards type them with Alt/AltGr, so before the Alt check).
+        if (key === '[' || key === ']') { event.preventDefault(); fineTurn(key === ']' ? 1 : -1); return; }
+        // In hand: Tab tries the next way to put it here, Enter or Space places it, the arrows nudge it.
+        if (tool || dragging()) {
+            if (key === 'Tab') {
+                event.preventDefault();
+                if (tool) cycleHeld(event.shiftKey ? -1 : 1);
+                else turnDrag('cycle', event.shiftKey ? -1 : 1);
+                return;
+            }
+            if (tool && (key === 'Enter' || key === ' ')) { event.preventDefault(); place({keepTool: event.shiftKey}); return; }
+            if (tool && key.startsWith('Arrow')) { event.preventDefault(); nudgeHeld(key); return; }
+        }
         if (event.altKey) return;
+        // With nothing selected (and no tool armed) the arrows, + and - move the camera (camera-nav.js).
+        if (!selection.length && !tool && !pickMode) {
+            const camAction = cameraKeyAction(event);
+            if (camAction) {
+                event.preventDefault();
+                if (applyCameraAction(camera, controls, camAction, canvas.clientHeight)) cameraTouched = true;
+                return;
+            }
+        }
         const plain = {
             w: () => setMode('move'), e: () => setMode('rotate'),
             r: () => turnSelection('up', event.shiftKey ? -1 : 1),
+            x: flipSelection,
             t: () => turnSelection('facing', event.shiftKey ? -1 : 1),
             f: fitSelection,
             h: () => (event.shiftKey ? showAll() : hideSelection()),
@@ -1957,6 +2626,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     const onKeyUp = event => readModifiers(event);
     const onLeave = () => {
         if (hovered && !gesture) { hovered = null; drawOutlines(); }
+        if (idleLit && !gesture && !tool) { idleLit = null; showConnectors([]); }
+        if (!gesture && !tool) setCursor('');
     };
 
     canvas.addEventListener('pointermove', onMove);
@@ -1970,6 +2641,83 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     document.addEventListener('copy', onCopyEvent);
     document.addEventListener('paste', onPasteEvent);
     const unsubscribe = editor.subscribe(() => rebuild());
+
+    // ---- the view cube (docs/ROBOT-LAB-UX.md §3.7): a face, an edge or a corner turns the view there --------
+    const CUBE_PX = 84;
+    const CUBE_MARGIN = 10;
+    const cubeScene = new Scene();
+    const cubeCamera = new PerspectiveCamera(30, 1, 0.1, 10);
+    const cubeLabels = {right: 'Right', left: 'Left', top: 'Top', bottom: 'Bottom', front: 'Front', back: 'Back', ...(viewCubeLabels || {})};
+    const cubeFace = text => {
+        const c = document.createElement('canvas');
+        c.width = 128;
+        c.height = 128;
+        const g = c.getContext('2d');
+        if (g) {
+            g.fillStyle = '#f8fafc';
+            g.fillRect(0, 0, 128, 128);
+            g.strokeStyle = '#94a3b8';
+            g.lineWidth = 6;
+            g.strokeRect(3, 3, 122, 122);
+            g.fillStyle = '#1e293b';
+            g.font = `700 ${text.length > 7 ? 24 : 30}px system-ui, sans-serif`;
+            g.textAlign = 'center';
+            g.textBaseline = 'middle';
+            g.fillText(text, 64, 66);
+        }
+        return new CanvasTexture(c);
+    };
+    // BoxGeometry's faces: +x, -x, +y, -y, +z, -z (world: +z is the Front view's side, +x the Side view's).
+    const cubeMaterials = [cubeLabels.right, cubeLabels.left, cubeLabels.top, cubeLabels.bottom, cubeLabels.front, cubeLabels.back]
+        .map(text => new MeshBasicMaterial({map: cubeFace(text)}));
+    const cubeGeometry = new BoxGeometry(1, 1, 1);
+    const cube = new Mesh(cubeGeometry, cubeMaterials);
+    const cubeEdges = new LineSegments(new EdgesGeometry(cubeGeometry), new LineBasicMaterial({color: 0x64748b}));
+    cubeScene.add(cube, cubeEdges);
+    /** The cube's square in canvas pixels: the view's bottom-right corner. */
+    const cubeRect = () => ({left: canvas.clientWidth - CUBE_PX - CUBE_MARGIN, top: canvas.clientHeight - CUBE_PX - CUBE_MARGIN, size: CUBE_PX});
+    const aimCubeCamera = () => {
+        const dir = camera.position.clone().sub(controls.target).normalize();
+        cubeCamera.position.copy(dir.multiplyScalar(3.4));
+        cubeCamera.up.copy(camera.up);
+        cubeCamera.lookAt(0, 0, 0);
+        cubeCamera.updateMatrixWorld();
+    };
+    const cubeRay = new Raycaster();
+    /** The point (cube coordinates) the pointer is on, or null off the cube. */
+    function cubeHit (event) {
+        if (!canvas.clientWidth || canvas.clientWidth < 4 * CUBE_PX) return null;
+        const [x, y] = canvasPx(event);
+        const r = cubeRect();
+        if (x < r.left || y < r.top || x > r.left + r.size || y > r.top + r.size) return null;
+        aimCubeCamera();
+        cubeRay.setFromCamera(new Vector2((x - r.left) / r.size * 2 - 1, -((y - r.top) / r.size) * 2 + 1), cubeCamera);
+        const h = cubeRay.intersectObject(cube, false)[0];
+        return h ? h.point.toArray() : null;
+    }
+    function clickViewCube (event) {
+        const p = cubeHit(event);
+        if (!p) return;
+        const dir = new Vector3(...viewCubeDirection(p)).normalize();
+        const distance = camera.position.distanceTo(controls.target);
+        moveCamera({position: controls.target.clone().addScaledVector(dir, distance).toArray(), target: controls.target.toArray()});
+        cameraTouched = true;
+    }
+    const drawViewCube = () => {
+        const r = cubeRect();
+        if (r.left < 0 || r.top < 0 || canvas.clientWidth < 4 * CUBE_PX) return;
+        aimCubeCamera();
+        const bottom = canvas.clientHeight - r.top - r.size;
+        renderer.setScissorTest(true);
+        renderer.setScissor(r.left, bottom, r.size, r.size);
+        renderer.setViewport(r.left, bottom, r.size, r.size);
+        renderer.autoClear = false;
+        renderer.clearDepth();
+        renderer.render(cubeScene, cubeCamera);
+        renderer.autoClear = true;
+        renderer.setScissorTest(false);
+        renderer.setViewport(0, 0, canvas.clientWidth, canvas.clientHeight);
+    };
 
     // ---- frame loop hooks -----------------------------------------------------------
     const drawSize = new Vector2();
@@ -2002,6 +2750,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
      */
     const render = ({force = false} = {}) => {
         resize();
+        stepCamera();
         fitGizmo();
         camera.updateMatrixWorld();
         if (!force && !dirty && camera.matrixWorld.equals(drawnCamera) && camera.projectionMatrix.equals(drawnProjection)) return false;
@@ -2013,6 +2762,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         insight.update(camera, size.x, size.y);
         placeMeasureLabel();
         renderer.render(s, camera);
+        drawViewCube();
         return true;
     };
     const dispose = () => {
@@ -2048,6 +2798,14 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         hoverLine.dispose();
         blockedLine.dispose();
         markerGeometry.dispose();
+        for (const m of hlMaterials.values()) m.dispose();
+        for (const pair of ghostMaterials.values()) for (const m of pair) m.dispose();
+        for (const g of [ringGeometry, pinnedRingGeometry, barGeometry, ballGeometry, cubeGeometry]) g.dispose();
+        for (const m of cubeMaterials) { if (m.map) m.map.dispose(); m.dispose(); }
+        cubeEdges.geometry.dispose();
+        cubeEdges.material.dispose();
+        pivotDot.geometry.dispose();
+        pivotDot.material.dispose();
         markerMaterials.fixed.dispose();
         markerMaterials.moving.dispose();
         grid.geometry.dispose();
@@ -2069,6 +2827,33 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     status({kind: 'idle'});
     return {
         canvas, render, resize, dispose, setTool, frameModel, pressPalettePart,
+        /** Target-first: whether a palette part could go into the pinned target, and placing it there. */
+        fitsTarget, placeIntoTarget,
+        get pinnedTarget () { return pinned ? {partId: pinned.partId, connectorId: pinned.connectorId, part: pinned.part} : null; },
+        clearTarget: () => setPinned(null),
+        /** In hand: place it (the touch ✓), turn it (⟳), the next way (Tab). */
+        placeHeld: () => place(), cycleHeld, fineTurn, flip: flipSelection, selectConnected,
+        /** How a scroll is read: 'auto' (wheel or trackpad, guessed), 'mouse' (zoom), 'trackpad' (orbit). */
+        setWheelMode (next) { if (['auto', 'mouse', 'trackpad'].includes(next)) wheelMode = next; },
+        get wheelMode () { return wheelMode; },
+        /** For the browser gate (docs/ROBOT-LAB-UX.md §5): what is lit, the candidate pose, the ghost's tone, the view cube. */
+        debug: {
+            highlights: () => litList.map(h => ({partId: h.partId, connectorId: h.connectorId, active: h.active})),
+            candidate: () => {
+                const c = tool ? candidate : preview && preview.candidate;
+                if (!c) return null;
+                const blocked = tool ? Boolean(c.blocked) : Boolean(preview.blocked);
+                return {pose: {position: c.position.slice(), rotation: c.rotation.slice()}, moves: (c.moves || []).map(m => ({id: m.id, position: m.position.slice(), rotation: m.rotation.slice()})),
+                    pairs: c.pairs.map(p => ({...p, fixed: {...p.fixed}})), blocked, target: c.target ? {...c.target} : null, lead: c.lead ? {...c.lead} : null, round: Boolean(c.round)};
+            },
+            ghostTone: () => ghostTone,
+            viewCube: () => {
+                const rect = canvas.getBoundingClientRect();
+                const r = cubeRect();
+                return {left: rect.left + r.left, top: rect.top + r.top, size: r.size};
+            },
+            animating: () => Boolean(camAnim)
+        },
         /** Whether a part from the palette is being dragged right now. */
         get draggingFromPalette () { return Boolean(paletteDrag && paletteDrag.dragging); },
         get selected () { return selection[0] || null; },
@@ -2088,6 +2873,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         select: ids => setSelection([].concat(ids || [])),
         selectAll: () => { setSelection(editor.model.parts.map(p => p.id)); status({kind: 'selected', count: selection.length}); },
         deleteSelection, duplicate, copy, paste, pasteText, undo, redo, view, fitSelection, groupSelection, ungroupSelection, escape,
+        /** A camera key (view/camera-nav.js), as on the focused view; true when the camera moved. */
+        nudge: event => { const moved = applyCameraAction(camera, controls, cameraKeyAction(event), canvas.clientHeight); if (moved) cameraTouched = true; return moved; },
         setMotion, setOverlay,
         hideSelection, isolate, showAll, setHidden, mirror: mirrorSelection, align: alignSelection, distribute: distributeSelection,
         toGrid: selectionToGrid, paint: paintSelection, setPick, enterGroup, leaveGroup, setPartPose, moveSelectionBy, turnSelectionBy,

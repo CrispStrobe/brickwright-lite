@@ -471,11 +471,11 @@ const ABOUT_GROUPS = [
                 role: 'Part geometry for the Sim Lab (unmodified official parts; credit: The LDraw Parts Library)'
             },
             {
-                name: 'Jolt Physics (JoltPhysics.js)',
-                url: 'https://github.com/jrouwe/JoltPhysics.js',
+                name: 'Jolt Physics (JoltPhysics.js, Brickwright fork)',
+                url: 'https://github.com/CrispStrobe/JoltPhysics.js',
                 license: 'MIT',
-                licenseUrl: 'https://github.com/jrouwe/JoltPhysics.js/blob/main/LICENSE',
-                role: 'The Sim Lab physics engine (rigid bodies, hinges, motors, gears)'
+                licenseUrl: 'https://github.com/CrispStrobe/JoltPhysics.js/blob/brickwright/gear-mesh/LICENSE',
+                role: 'The Sim Lab physics engine (rigid bodies, hinges, motors, gear meshes)'
             },
             {
                 name: 'three.js',

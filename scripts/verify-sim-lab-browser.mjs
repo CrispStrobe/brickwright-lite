@@ -4,9 +4,11 @@
 //
 // The Sim Lab (docs/SIM-LAB-PLAN.md §0) in the SHIPPED GUI build, end to end:
 //
-//   1. the Code tab opens the SPIKE simulator, whose "Sim Lab (beta)" tab loads
-//      the reference driving base from static/sim-lab/models/ with no error
-//      issues and a WebGL 3D canvas that actually drew pixels;
+//   1. the Robot Lab is its own editor tab (beside Blocks, Code, Circuit): the tab
+//      loads the reference driving base from static/sim-lab/models/ with no error
+//      issues and a WebGL 3D canvas that actually drew pixels; the SPIKE arena's
+//      "Open in Robot Lab" reaches the same tab, and the arena stands aside while
+//      the Lab drives the shared virtual hub (one hub, one world);
 //   2. a real Scratch program (DEVICE SPIKE pseudocode → blocks, green flag)
 //      drives the simulated robot through the virtual SPIKE hub: after Run the
 //      hub body has moved forward and the drive motors' encoders have turned;
@@ -73,7 +75,20 @@
 //      grid steps (one undo puts it back); the hand-made .lxf opens with its unknown parts listed; a password-protected
 //      .io is refused with the model left as it was; "Save as… → .io" downloads a ZIP whose model.ldr
 //      is the model's LDraw text and reopens to it;
-//  14. no page errors.
+//  15. the tab, its icon toolbar and the movable 3D view (scripts/lib/sim-lab-toolbar-gate.mjs, --part=ui):
+//      every control named, with a tooltip giving its name and shortcut, in English and German; every
+//      Build action by click and by key; orbit, pan and zoom by mouse and keys in Simulate and Build, the
+//      view buttons, and a drag on a part moving the part, not the camera;
+//  16. no page errors;
+//  17. connection-first building (scripts/lib/sim-lab-connect-gate.mjs, --part=editor, docs/ROBOT-LAB-UX.md §5):
+//      a pin in hand lights the free pin holes and seats in the one under the pointer, with hysteresis,
+//      Tab alternatives, a red refusal when blocked, R and [ ] turns, a multi-part group seating both pins,
+//      Target-first and keyboard-only placement; the camera orbits and zooms about the point under the
+//      pointer, looks from below in Build, eases a double-click focus, and the view cube turns the view.
+//  18. the Lab steered from code (scripts/lib/sim-lab-api-gate.mjs, --part=api, docs/ROBOT-LAB-HUBS-PLAN.md P1):
+//      a Blocks project of robotlab blocks (saved and reloaded as an .sb3) loads the hubless motor bench and
+//      turns its motor 360 ± 2° through runtime.robotLab; the bench's example in `lab` words, through the UI
+//      only, turns it 360°, rests there through its wait, runs on at 90 °/s and brakes.
 //
 // Every Sim Lab here runs its physics in the Web Worker (ROADMAP §4.9): each load
 // asserts `window.__bwSimLab.worker === true`, so the line-follower lap, the wall
@@ -96,7 +111,11 @@ import {instructionsInteractions} from './lib/sim-lab-instructions-gate.mjs';
 import {touchInteractions} from './lib/sim-lab-touch-gate.mjs';
 import {layoutInteractions, MIN_CANVAS_PX} from './lib/sim-lab-layout-gate.mjs';
 import {editorParityInteractions} from './lib/sim-lab-editor-parity-gate.mjs';
-import {scaleInteractions, OPEN_BUDGET_MS, DRAW_CALL_BUDGET, BUILD_OPEN_BUDGET_MS, IDLE_FRAME_BUDGET_MS, POINTER_MOVE_BUDGET_MS} from './lib/sim-lab-scale-gate.mjs';
+import {connectInteractions} from './lib/sim-lab-connect-gate.mjs';
+import {apiInteractions, DEGREES_TOLERANCE} from './lib/sim-lab-api-gate.mjs';
+import {openRobotLabTab, tool, toolbarInteractions} from './lib/sim-lab-toolbar-gate.mjs';
+import {scaleInteractions, OPEN_BUDGET_MS, DRAW_CALL_BUDGET, BUILD_OPEN_BUDGET_MS, IDLE_FRAME_BUDGET_MS, POINTER_MOVE_BUDGET_MS,
+    DRAG_LINK_BUDGET, UNDO_DRAW_BUDGET} from './lib/sim-lab-scale-gate.mjs';
 import {brakingBound, judgeWallStop} from './lib/sim-lab-wall-stopper-judge.mjs';
 import {STEP_MS} from '../overlay/scratch-gui/src/lib/bw-sim/hub-bridge.js';
 
@@ -185,7 +204,12 @@ const wallBudget = simMs => 240000 + Math.ceil(simMs / (1000 / 30)) * (2 * WORKE
 const ONLY_EXAMPLES = (process.argv.find(a => a.startsWith('--examples=')) || '').slice('--examples='.length).split(',').filter(Boolean);
 const runExample = file => !ONLY_EXAMPLES.length || ONLY_EXAMPLES.includes(file.replace(/\.ldr$/, ''));
 
-const openSimLab = async (page, {noWebgl = false, typed = false, program = PROGRAM} = {}) => {
+/**
+ * Opens the Robot Lab with `program` in the Code tab. `via: 'tab'` (default) clicks the Robot Lab tab;
+ * `via: 'arena'` takes the SPIKE arena's "Open in Robot Lab" (the arena in the right pane). `stage`
+ * keeps the right pane (stage, arena) open beside the editor, so the Lab gets only part of the width.
+ */
+const openSimLab = async (page, {noWebgl = false, typed = false, program = PROGRAM, via = 'tab', stage = via === 'arena'} = {}) => {
     if (CPU_THROTTLE > 1) {
         const cdp = await page.context().newCDPSession(page);
         await cdp.send('Emulation.setCPUThrottlingRate', {rate: CPU_THROTTLE});
@@ -196,15 +220,19 @@ const openSimLab = async (page, {noWebgl = false, typed = false, program = PROGR
             Worker.prototype.postMessage = function (...args) { setTimeout(() => post.apply(this, args), ms); };
         }, WORKER_LATENCY);
     }
-    await page.addInitScript(force => {
+    await page.addInitScript(([force, rightPane]) => {
         localStorage.clear();
         sessionStorage.clear();
         localStorage.setItem('bw-starter-v1-complete', '1');
-        localStorage.setItem('bw-right-pane-hidden', '0');
+        localStorage.setItem('bw-right-pane-hidden', rightPane ? '0' : '1');
         if (force) window.__bwSimLabForceNoWebGL = true;
-    }, noWebgl);
+    }, [noWebgl, stage]);
+    // Camera moves the program makes ease over 300 ms (docs/ROBOT-LAB-UX.md §3.7); these checks read the camera
+    // right after a view button, so they run with reduced motion (a jump). The connect checks test the easing.
+    await page.emulateMedia({reducedMotion: 'reduce'});
     await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 90000});
-    await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    // The Code tab ("Skripte" on a German page).
+    await page.getByRole('tab', {name: /^(Code|Skripte)$/}).click();
     await page.getByTestId('bw-device-select').waitFor({timeout: 60000});
     if (typed) {
         // As a person does it: type the program into the editor. Typing does NOT load it into
@@ -219,10 +247,19 @@ const openSimLab = async (page, {noWebgl = false, typed = false, program = PROGR
         await page.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
             null, {timeout: 60000});
     }
-    await page.getByTestId('bw-open-spike-arena').click();
-    await page.getByTestId('bw-spike-simulator').waitFor({timeout: 60000});
-    await page.getByTestId('bw-spike-simulator-tab-simLab').click();
+    if (via === 'arena') {
+        // The arena (right pane) offers the Robot Lab; it opens in its own tab and the arena stands aside.
+        await page.getByTestId('bw-open-spike-arena').click();
+        await page.getByTestId('bw-spike-simulator').waitFor({timeout: 60000});
+        await page.getByTestId('bw-spike-simulator-open-robot-lab').click();
+    } else {
+        await openRobotLabTab(page);
+    }
     await page.waitForFunction(() => ['ready', 'failed'].includes(window.__bwSimLab?.status), null, {timeout: 90000});
+    if (via === 'arena') {
+        await page.getByTestId('bw-spike-simulator-lab-active').waitFor({timeout: 10000});
+        assert.equal(await page.getByTestId('bw-spike-arena-start').count(), 0, 'the arena stands aside while the Robot Lab drives the hub');
+    }
     const state = await page.evaluate(() => ({status: window.__bwSimLab.status, issues: window.__bwSimLab.issues,
         view3d: window.__bwSimLab.view3d, message: document.querySelector('[data-testid="bw-sim-lab-message"]')?.textContent || '',
         worker: window.__bwSimLab.worker, workerError: window.__bwSimLab.workerError}));
@@ -239,14 +276,14 @@ const reading = page => page.evaluate(() => {
     const hub = s.bridge.hubBody;
     const i = s.snapshot().bodyIds.indexOf(hub);
     const b = s.snapshot().bodies;
-    const motors = pane.props.hubState.data.motors;
+    const motors = pane.hub.data.motors;
     return {pos: [b[i * 7], b[i * 7 + 1], b[i * 7 + 2]], a: motors[0].position, b: motors[1].position, time: s.time};
 });
 
 // One gate, six CI steps (each within the per-step budget, gen-gate-budgets.mjs):
-// `--part=core|examples|ui|tablet|layout|editor|scale` runs one section; no flag runs all of them.
+// `--part=core|examples|ui|tablet|layout|editor|scale|api` runs one section; no flag runs all of them.
 const PART = (process.argv.find(a => a.startsWith('--part=')) || '--part=all').slice('--part='.length);
-const PARTS = ['core', 'examples', 'ui', 'tablet', 'layout', 'editor', 'scale'];
+const PARTS = ['core', 'examples', 'ui', 'tablet', 'layout', 'editor', 'scale', 'api'];
 if (PART !== 'all' && !PARTS.includes(PART)) throw new Error(`--part must be one of ${PARTS.join(', ')} (got ${PART})`);
 const want = part => PART === 'all' || PART === part;
 
@@ -259,8 +296,11 @@ try {
         const page = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
         page.on('pageerror', error => errors.push(error.message));
         page.on('dialog', dialog => dialog.accept());
-        const state = await openSimLab(page, {typed: true});
+        // Through the SPIKE arena's "Open in Robot Lab" (the route the Lab had before it was a tab).
+        const state = await openSimLab(page, {typed: true, via: 'arena'});
         assert.equal(state.view3d, 'webgl', `3D view: ${JSON.stringify(state)}`);
+        assert.equal(await page.getByRole('tab', {name: 'Robot Lab', exact: true}).getAttribute('aria-selected'), 'true',
+            'the arena\'s Open in Robot Lab shows the Robot Lab tab');
         const canvas = page.getByTestId('bw-sim-lab-3d-canvas');
         await canvas.waitFor({timeout: 30000});
         const box = await canvas.boundingBox();
@@ -293,7 +333,9 @@ try {
         assert.match(await page.getByTestId('bw-sim-lab-readout').textContent(), /A -?\d+°/);
         console.log(`PASS holding ▲ drives the robot ${((drivePad.pos[2] - driven.pos[2]) * 100).toFixed(1)} cm with no program`);
 
-        // 3. Load the typed program with "⇦ To blocks" (as a person would), then Run: the program drives it.
+        // 3. Load the typed program with "⇦ To blocks" in the Code tab (as a person would), back to the
+        //    Robot Lab tab, then Run: the program drives it.
+        await page.getByRole('tab', {name: 'Code', exact: true}).click();
         await page.getByRole('button', {name: '⇦ To blocks'}).first().click();
         if (process.env.SIM_DEBUG) {
             await page.screenshot({path: resolve(artifacts, 'to-blocks.png'), fullPage: true});
@@ -302,13 +344,14 @@ try {
         }
         await page.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
             null, {timeout: 60000});
+        await openRobotLabTab(page);
         await page.getByTestId('bw-sim-lab-pause').click();
         const before = await reading(page);
         // Run starts the program on the green flag, as the arena's Start does.
         await page.getByTestId('bw-sim-lab-run').click();
         if (process.env.SIM_DEBUG) {
             console.log('DEBUG', JSON.stringify(await page.evaluate(() => {
-                const h = window.__bwSimLab._pane.props.hubState;
+                const h = window.__bwSimLab._pane.hub;
                 return {connected: h.data.connected, sim: h.data.simulationEnabled, motors: h.data.motors.slice(0, 2), last: h.data.lastCommand,
                     pair: h.movementPair, owner: h.clockOwner, sameHub: h === window.__brickwrightVirtualSpike?.hubState, time: window.__bwSimLab._pane.session.time,
                     status: window.__bwSimLab.status, code: document.querySelector('[data-testid="bw-code-status"]')?.textContent};
@@ -384,9 +427,9 @@ try {
         const pin = await page.evaluate(p => window.__bwSimLab.editView.placeAt('2780.dat', p), holeWorld);
         assert.equal(pin.snapped, true, 'a pin dropped on a beam hole snaps');
         assert.equal(await count(), start + 3);
-        await page.getByTestId('bw-sim-lab-undo').click();
+        await tool(page, 'undo');
         assert.equal(await count(), start + 2);
-        await page.getByTestId('bw-sim-lab-redo').click();
+        await tool(page, 'redo');
         assert.equal(await count(), start + 3);
         await page.screenshot({path: resolve(artifacts, 'sim-lab-build.png'), fullPage: true});
         console.log('PASS Build: a pin snaps into a beam hole; undo and redo');
@@ -423,7 +466,7 @@ try {
             localStorage.clear();
             sessionStorage.clear();
             localStorage.setItem('bw-starter-v1-complete', '1');
-            localStorage.setItem('bw-right-pane-hidden', '0');
+            localStorage.setItem('bw-right-pane-hidden', '1');
         });
         await reopen.goto(url, {waitUntil: 'domcontentloaded', timeout: 90000});
         const loadSaved = async () => {
@@ -434,10 +477,7 @@ try {
         // Loaded BEFORE the Sim Lab is open: the pane finds the model on mount.
         await loadSaved();
         await reopen.waitForFunction(() => localStorage.getItem('bw-sim-lab-model-v1'), null, {timeout: 60000});
-        await reopen.getByRole('tab', {name: 'Code', exact: true}).click();
-        await reopen.getByTestId('bw-open-spike-arena').click();
-        await reopen.getByTestId('bw-spike-simulator').waitFor({timeout: 60000});
-        await reopen.getByTestId('bw-spike-simulator-tab-simLab').click();
+        await openRobotLabTab(reopen);
         await reopen.waitForFunction(() => window.__bwSimLab?.status === 'ready' && window.__bwSimLab._pane.session, null, {timeout: 90000});
         const restored = await reopen.evaluate(() => window.__bwSimLab.projectRecord);
         assert.equal(restored.ldraw, shown.ldraw, 'reopened model text is byte-identical to the saved one');
@@ -602,7 +642,7 @@ try {
                 const rec = window.__bwExample = {start: s.time, samples: [], closestGap: Infinity,
                     faceX: wall ? wall.position[0] - wall.colliders[0].halfExtents[0] : null};
                 rec.worker = s.worker;
-                const hubState = window.__bwSimLab._pane.props.hubState;
+                const hubState = window.__bwSimLab._pane.hub;
                 const drivePorts = (s.mechanism.actuators || []).map(a => a.port);
                 s.onAdvance(() => {
                     const sample = {t: s.time - rec.start, axle: carried(hubId, axle0), spot: carried(sensor.body, sensor.origin)};
@@ -625,11 +665,11 @@ try {
                 const before = r.samples.find(p => p.t >= last.t - 1000);
                 const pane = window.__bwSimLab._pane;
                 const wall = r.faceX !== null;
-                return {worker: r.worker, stats: pane.session.stats, motors: pane.props.hubState.data.motors.slice(0, 2),
+                return {worker: r.worker, stats: pane.session.stats, motors: pane.hub.data.motors.slice(0, 2),
                     mechanism: wall ? pane.session.mechanism : null, hubBody: pane.session.bridge.hubBody,
                     frameMs: pane.props.vm.runtime.currentStepTime,
                     wallSamples: wall ? r.samples.map(p => ({t: p.t, front: p.front, ray: p.spot[0], reading: p.reading, driving: p.driving})) : null,
-                    sensors: pane.props.hubState.data.sensors.slice(2, 4), faceX: r.faceX, closestGap: r.closestGap, last, samples: r.samples.length,
+                    sensors: pane.hub.data.sensors.slice(2, 4), faceX: r.faceX, closestGap: r.closestGap, last, samples: r.samples.length,
                     restMm: 1000 * Math.hypot(last.axle[0] - before.axle[0], last.axle[2] - before.axle[2]),
                     startAxle: r.samples[0].axle};
             });
@@ -694,7 +734,7 @@ try {
         await td.evaluate(() => {
             const pane = window.__bwSimLab._pane;
             const s = pane.session;
-            const hubState = pane.props.hubState;
+            const hubState = pane.hub;
             const hub = s.bridge.hubBody;
             const rec = window.__bwTimed = {start: s.time, samples: [], frameMs: pane.props.vm.runtime.currentStepTime};
             s.onAdvance(() => {
@@ -786,7 +826,38 @@ try {
         }
     }
 
-    if (want('ui')) { // seeing the model, instructions, no-WebGL fallback
+    if (want('ui')) { // the tab, its toolbar and camera; seeing the model, instructions, no-WebGL fallback
+        // 15. The Robot Lab tab: icon toolbar (names, tooltips with shortcuts, every action by click and key)
+        //     and the movable 3D view (orbit, pan, zoom by mouse and keys; part drags move parts), in English…
+        const bar = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+        bar.on('pageerror', error => errors.push(error.message));
+        bar.on('dialog', dialog => dialog.accept());
+        await openSimLab(bar, {program: null});
+        const moved = await toolbarInteractions(bar, {shotsDir: artifacts, labels: {
+            simulate: {'mode-simulate': 'Simulate', 'mode-build': 'Build', instructions: 'Instructions', run: 'Run', reset: 'Reset',
+                'view-home': 'Home view', 'view-fit': 'Fit in view', 'show-ports': 'Show ports', 'file-menu': 'File', help: 'Help'},
+            build: {'mode-move': 'Move with arrows', turn: 'Turn 90°', undo: 'Undo', 'view-top': 'View from the top', 'parts-toggle': 'Parts'}}});
+        console.log('PASS the Robot Lab tab: every toolbar control is named and its tooltip gives its shortcut; every Build action works by click and by key');
+        for (const mode of ['simulate', 'build']) {
+            const m = moved[`${mode}Camera`];
+            console.log(`PASS camera (${mode}): Top/Front/Side/Home frame the model; a left drag on empty space orbits ${(m.orbitM * 100).toFixed(1)} cm ` +
+                `about a fixed target, a right drag pans ${(m.panM * 100).toFixed(1)} cm, the wheel zooms ×${m.zoom.toFixed(2)}, arrows orbit, Shift+arrows pan, - zooms out`);
+        }
+        console.log(`PASS Build: a drag on a part moves it ${moved.partDrag.movedLdu.toFixed(0)} LDU and leaves the camera; with a part selected the arrows leave the camera`);
+        await bar.close();
+        // …and in German (a de-DE page): the same controls, German names and German shortcut keys.
+        const de = await browser.newPage({viewport: {width: 1366, height: 900}, serviceWorkers: 'block', locale: 'de-DE'});
+        de.on('pageerror', error => errors.push(error.message));
+        await openSimLab(de, {program: null});
+        const german = await toolbarInteractions(de, {shotsDir: artifacts, full: false, labels: {
+            simulate: {'mode-simulate': 'Simulieren', 'mode-build': 'Bauen', instructions: 'Bauanleitung', run: 'Start', reset: 'Zurücksetzen',
+                'view-home': 'Startansicht', 'show-ports': 'Ports zeigen', help: 'Hilfe'},
+            build: {'mode-move': 'Mit Pfeilen schieben', turn: 'Um 90° drehen', undo: 'Rückgängig', 'parts-toggle': 'Teile'}}});
+        assert.match(german.buildControls.find(c => c.id === 'bw-sim-lab-undo').title, /^Rückgängig \(Strg\+Z\)$/, 'German tooltips name German keys');
+        assert.equal(await de.getByRole('tab', {name: 'Roboter-Labor', exact: true}).getAttribute('aria-selected'), 'true', 'the tab is called Roboter-Labor');
+        console.log('PASS the Robot Lab tab in German: Roboter-Labor, every control named in German, tooltips with Strg/Umschalt shortcuts');
+        await de.close();
+
         // 9. Seeing the model: port badges, issues that show their parts, "Show how it moves".
         const see = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
         see.on('pageerror', error => errors.push(error.message));
@@ -820,7 +891,8 @@ try {
         const tablet = await browser.newPage({viewport: {width: 1024, height: 768}, hasTouch: true, serviceWorkers: 'block'});
         tablet.on('pageerror', error => errors.push(error.message));
         tablet.on('dialog', dialog => dialog.accept());
-        await openSimLab(tablet, {program: null});
+        // The stage column open beside the tab (as on a fresh tablet that uses it), so the Lab starts compact.
+        await openSimLab(tablet, {program: null, stage: true});
         await touchInteractions(tablet, {shotsDir: artifacts});
         await tablet.close();
     }
@@ -829,7 +901,8 @@ try {
         // 12. The layout at five window sizes, Simulate and Build.
         const layout = await layoutInteractions(browser, {open: openSimLab, shotsDir: artifacts, errors});
         for (const row of layout) {
-            console.log(`PASS layout ${row.size} ${row.mode}: ${row.layout} pane ${row.pane.join('×')}, 3D view ${row.canvas.join('×')} px (≥ ${MIN_CANVAS_PX} and half the pane), controls on screen`);
+            console.log(`PASS layout ${row.size} ${row.mode}: ${row.layout} pane ${row.pane.join('×')}, 3D view ${row.canvas.join('×')} px (≥ ${MIN_CANVAS_PX} and half the pane), controls on screen` +
+                (row.mode === 'Build' ? `, toolbar ${row.toolbarPx} px tall${row.more ? ' with More' : ''}` : ''));
         }
     }
 
@@ -842,6 +915,20 @@ try {
         await openSimLab(studio, {program: null});
         await editorParityInteractions(studio, {shotsDir: artifacts});
         await studio.close();
+        // 17. Connection-first building (scripts/lib/sim-lab-connect-gate.mjs, docs/ROBOT-LAB-UX.md §5).
+        const connect = await browser.newPage({viewport: {width: 1280, height: 800}, serviceWorkers: 'block'});
+        connect.on('pageerror', error => errors.push(error.message));
+        connect.on('dialog', dialog => dialog.accept());
+        await openSimLab(connect, {program: null});
+        const c = await connectInteractions(connect, {shotsDir: artifacts, shots: process.env.BW_UX_SHOTS || artifacts});
+        console.log(`PASS connect: the hole under the pointer lights alone (holes ${c.pitchPx.toFixed(0)} px apart), a pin in hand lights pin holes only, ` +
+            `h3 kept 5 px towards h4 (and at the midpoint: ${c.hysteresisKept}), a click seats it ${c.t2.engaged} LDU in with one pair; Tab / Shift+Tab; ` +
+            `a brick in the way: red, refused; a gear finds the axle's tip, not pin holes; [ on an axle refused, on a pin 15°; R mid-drag turns a Beam 3 about its pin, one undo; ` +
+            `a grouped Beam 3 seats both pins (${c.t9.join(', ')}); a lit hole then a tile; keyboard only ("${c.announce}")`);
+        console.log(`PASS connect camera: a middle drag keeps its point within ${c.orbitDriftPx.toFixed(2)} px, the wheel ${c.wheelDriftPx.toFixed(2)} px, a pinch ` +
+            `${c.pinchDriftPx.toFixed(2)} px; Build looks from ${c.buildPolar.toFixed(0)}°, Simulate stops at ${c.simulatePolar.toFixed(0)}°; a double click centres on its point ` +
+            `(eased ${c.focusOff.toFixed(2)} LDU off, reduced motion at once ${c.focusReducedOff.toFixed(2)} LDU; tolerance ${c.focusTol.toFixed(2)} = one pixel there); a trackpad scroll orbits; the view cube's top looks down`);
+        await connect.close();
     }
     if (want('scale')) { // a 2,054-part model, instanced, and the .lxf/.io model files
         const page = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block', acceptDownloads: true});
@@ -855,10 +942,20 @@ try {
         console.log(`PASS Build opens on the whole ${r.buildParts}-part model in ${(r.buildMs / 1000).toFixed(1)} s (budget ${BUILD_OPEN_BUDGET_MS / 1000} s); ` +
             `an idle frame ${r.idle.median.toFixed(1)} ms (budget ${IDLE_FRAME_BUDGET_MS}; a forced full frame ${r.buildFrame.median.toFixed(0)} ms); ` +
             `a pointer move ${r.hover.median.toFixed(1)} ms hovering, ${r.drag.median.toFixed(1)} ms dragging the gizmo (medians, budget ${POINTER_MOVE_BUDGET_MS}); ` +
-            `a click on grid beam ${r.picked} selects it (${r.clickMs} ms), its X arrow moves it ${r.dragged} LDU and one undo puts it back`);
+            `a click on grid beam ${r.picked} selects it (${r.clickMs} ms), its X arrow moves it ${r.dragged} LDU ` +
+            `(${r.dragLinks} shader programs linked, budget ${DRAG_LINK_BUDGET}) and one undo puts it back ` +
+            `(${r.undoDraws} frame drawn, budget ${UNDO_DRAW_BUDGET}; on screen ${(r.undoShotMs / 1000).toFixed(1)} s)`);
         console.log('PASS the hand-made .lxf opens with its unknown, mirrored and uncoloured parts listed; a password-protected .io is refused and the model stays');
         console.log('PASS Save as… → BrickLink Studio (.io) downloads a ZIP whose model.ldr is the model\'s LDraw text, and it reopens to it');
         await page.close();
+    }
+
+    if (want('api')) { // the Lab steered from blocks and from `lab` words (runtime.robotLab)
+        const r = await apiInteractions({browser, errors, openSimLab, wallBudget});
+        console.log(`PASS a Blocks project (robotlab blocks, saved and reloaded as .sb3) loads the hubless motor bench on the lab-direct hub ` +
+            `and turns motor A ${r.blocks.angle}° for "run for 360 degrees" (±${DEGREES_TOLERANCE}), in the worker; Robot Lab status "${r.blocks.status}"`);
+        console.log(`PASS the motor bench's example in lab words (Load example program, Run): rests at ${r.words.restAngle.toFixed(2)}° ` +
+            `for ${r.words.restMs.toFixed(0)} ms of simulated time, runs on to ${r.words.final.toFixed(1)}° at 90 °/s and brakes`);
     }
 
     assert.deepEqual(errors, [], `page errors: ${errors.join('\n')}`);

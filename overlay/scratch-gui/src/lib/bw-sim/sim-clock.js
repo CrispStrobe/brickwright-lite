@@ -73,6 +73,8 @@ export class SimLabClock {
         this.steps = new VmStepClock({beforeStep: () => this._beforeStep(), afterStep: ms => this._afterStep(ms)});
         this.runtime = null;
         this.session = null;
+        /** Simulated per real time, (0, 1]: slow motion below 1 (the Robot Lab API's setTimeScale). */
+        this.timeScale = 1;
         this._reset();
     }
 
@@ -196,6 +198,14 @@ export class SimLabClock {
         const applied = () => { if (generation === this._generation) this._applied(ms); };
         if (!session || session.failed || session._disposed) { applied(); return; }
         session.tick(ms);
+        // Slow motion (the Robot Lab API's setTimeScale, < 1): the step is held back for the wall time
+        // that makes simulated time run at `timeScale` of real time. At 1 (always, unless asked) the
+        // order of operations is exactly as it was.
+        const pace = this.timeScale > 0 && this.timeScale < 1 ? ms * (1 / this.timeScale - 1) : 0;
+        if (pace > 0) {
+            session.idle().then(() => new Promise(resolve => setTimeout(resolve, pace))).then(applied, applied);
+            return;
+        }
         session.idle().then(applied, applied);
     }
 

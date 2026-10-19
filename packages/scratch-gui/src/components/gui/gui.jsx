@@ -145,6 +145,19 @@ const CODE_TAB_INDEX = 3;
 // see showFpga below, which also requires the user's opt-in.
 const FPGA_BUILT = process.env.BW_ENABLE_FPGA;
 
+// The Robot Lab (docs/SIM-LAB.md) is appended after everything else, FPGA included, so
+// no existing index moves (CODE_TAB_INDEX, circuit-tab.jsx's 4, pseudocode-importer.jsx's
+// FPGA_TAB_INDEX 5). Its own index therefore depends on whether the FPGA tab is shown;
+// robot-lab-tab.jsx is handed it rather than hard-coding one.
+const robotLabTabIndex = showFpgaTab => (showFpgaTab ? 6 : 5);
+// The tab component itself loads when the Robot Lab is first wanted (shown, or asked for by
+// the SPIKE arena's "Open in Robot Lab"), not with the first load: eager, it pushed the 8086
+// benchmark's P17 initial JavaScript over its budget (PR #1097). 'bw-open-robot-lab' is
+// ROBOT_LAB_EVENTS.open (lib/robot-lab-events.js), spelled out so that module stays lazy too.
+const RobotLabTab = React.lazy(() =>
+    import(/* webpackChunkName: "bw-robotlab-tab" */ '../tw-pseudocode/robot-lab-tab.jsx'));
+const ROBOT_LAB_OPEN_EVENT = 'bw-open-robot-lab';
+
 const GUIComponent = props => {
     const [starterOpen, setStarterOpen] = React.useState(false);
     // RUNTIME: has the user switched the FPGA tab on (Settings ▸ FPGA lab)? It
@@ -234,6 +247,20 @@ const GUIComponent = props => {
         window.addEventListener('bw-activate-tab', onActivate);
         return () => window.removeEventListener('bw-activate-tab', onActivate);
     }, [props.onActivateTab]);
+    // The Robot Lab tab mounts once wanted and then stays mounted (its model and a running
+    // program survive a trip to another tab). Before it has loaded, an open request is
+    // answered here: show the tab, which then mounts visible and takes the hub.
+    const [robotLabWanted, setRobotLabWanted] = React.useState(false);
+    const robotLabIndex = robotLabTabIndex(showFpga);
+    if (!robotLabWanted && props.activeTabIndex === robotLabIndex) setRobotLabWanted(true);
+    React.useEffect(() => {
+        const onOpen = () => {
+            setRobotLabWanted(true);
+            if (props.onActivateTab) props.onActivateTab(robotLabIndex);
+        };
+        window.addEventListener(ROBOT_LAB_OPEN_EVENT, onOpen);
+        return () => window.removeEventListener(ROBOT_LAB_OPEN_EVENT, onOpen);
+    }, [props.onActivateTab, robotLabIndex]);
     const chooseStarter = React.useCallback(journey => {
         setStarterBusy(true);
         setStarterError('');
@@ -999,6 +1026,14 @@ const GUIComponent = props => {
                                             <span data-bw-tab-label=""><FormattedMessage defaultMessage="FPGA" description="Brickwright FPGA/HDL surface tab" id="gui.gui.fpgaTab" /></span>
                                         </Tab>
                                     ) : null}
+                                    <Tab className={tabClassNames.tab}
+                                        title={intl.formatMessage({id: 'gui.gui.robotLabTab', defaultMessage: 'Robot Lab'})}
+                                        aria-label={intl.formatMessage({id: 'gui.gui.robotLabTab', defaultMessage: 'Robot Lab'})}>
+                                        <svg aria-hidden="true" data-bw-tab-icon="" viewBox="0 0 24 24" focusable="false">
+                                            <path d="M7 8h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2zM12 4v4M9.5 12.5h.01M14.5 12.5h.01M3 12v3M21 12v3M8 21h8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                        </svg>
+                                        <span data-bw-tab-label=""><FormattedMessage defaultMessage="Robot Lab" description="Brickwright Robot Lab (3D LEGO model and physics) tab" id="gui.gui.robotLabTab" /></span>
+                                    </Tab>
                                 </TabList>
                                 <TabPanel className={tabClassNames.tabPanel}>
                                     {middleContent === 'code' ? (
@@ -1067,6 +1102,18 @@ const GUIComponent = props => {
                                         </React.Suspense>
                                     </TabPanel>
                                 ) : null}
+                                <TabPanel className={tabClassNames.tabPanel}>
+                                    {robotLabWanted ? (
+                                        <React.Suspense fallback={<div data-testid="bw-robot-lab-tab" data-state="loading" />}>
+                                            <RobotLabTab
+                                                isVisible={activeTabIndex === robotLabIndex}
+                                                locale={intl.locale}
+                                                tabIndex={robotLabIndex}
+                                                vm={vm}
+                                            />
+                                        </React.Suspense>
+                                    ) : <div data-testid="bw-robot-lab-tab" data-state="idle" />}
+                                </TabPanel>
                             </Tabs>
                             <button
                                 type="button"

@@ -35,16 +35,24 @@ export const EDITOR_TEXT = {
                 ['Click', 'select a part (a grouped part selects its group)'],
                 ['Shift+click', 'add or remove a part'], ['Shift+drag', 'select with a box'],
                 ['Drag a part', 'move it (it rests on what is under it; magnets snap)'],
-                ['Double click', 'edit inside a group'], ['Drag empty space / right drag', 'turn the view'],
-                ['Middle drag / Shift+right drag', 'slide the view'], ['Wheel', 'zoom']
+                ['Double click', 'centre the view there (on a grouped part: edit inside the group)'],
+                ['Drag empty space / middle drag', 'turn the view about the point under the pointer'],
+                ['Right drag', 'slide the view'], ['Wheel', 'zoom toward the pointer'],
+                ['Trackpad: two fingers / Shift / pinch', 'turn the view / slide it / zoom'],
+                ['Click a selected part\'s lit hole, then a palette part', 'the part goes into that hole'], ['Ctrl+click', 'select everything connected'],
+                ['View cube', 'click a face, edge or corner to look from there']
             ]],
             ['Keyboard', [
-                ['W / E', 'move / turn with the handles'], ['R, Shift+R', 'turn 90° about the up axis'], ['T, Shift+T', 'tip 90°'],
+                ['W / E', 'move / turn with the handles'], ['R, Shift+R', 'turn 90° (about the pin or axle it sits on, or the up axis)'], ['T, Shift+T', 'tip 90°'],
+                ['[ / ]', 'turn 15° on a pin, a round hole or a ball'], ['X', 'flip end for end'],
+                ['Tab / Shift+Tab (holding a part)', 'the next / previous spot'], ['Enter / Space (holding a part)', 'place it'],
+                ['Enter on a palette part', 'take it; Tab picks the spot, Enter places'],
                 ['Shift (while turning)', '15° steps'], ['Alt (while moving)', 'no magnet'],
                 ['Delete', 'delete'], ['Ctrl+D', 'duplicate'], ['Ctrl+C / Ctrl+V', 'copy / paste (LDraw text: works with Studio and LeoCAD too)'],
                 ['Ctrl+A', 'select all'], ['Ctrl+G / Ctrl+Shift+G', 'group / ungroup'], ['Ctrl+Z / Ctrl+Y', 'undo / redo'],
                 ['H / I / Shift+H', 'hide / isolate / show all'], ['K', 'eyedropper: take a part\'s colour'], ['M', 'measure between two points'],
-                ['F', 'fit the selection in view'], ['Esc', 'stop / leave the group / clear the selection'], ['?', 'this sheet']
+                ['F', 'fit the selection in view'],
+                ['Arrows (nothing selected)', 'turn the view'], ['Shift+arrows', 'slide the view'], ['+ / -', 'zoom in / out'], ['Esc', 'stop / leave the group / clear the selection'], ['?', 'this sheet']
             ]],
             ['Touch', [
                 ['Tap', 'select a part'], ['Drag a part', 'move it'], ['Long press', 'add or remove a part'],
@@ -52,6 +60,39 @@ export const EDITOR_TEXT = {
                 ['Two fingers', 'zoom and slide the view']
             ]]
         ],
+        // Connection-first building (docs/ROBOT-LAB-UX.md): hints, the target chip, the screen reader, the view cube.
+        connect: {
+            hintIdle: 'Drag a part to move it · Select a part, click its lit hole, then a palette part: it goes in · Drag empty space to turn the view · Right-drag slides · Wheel zooms · Double-click centres',
+            hintIdleTouch: 'Tap a part to select it, drag it to move it · One finger on empty space turns the view, two fingers zoom and slide',
+            hintHolding: 'Click to place · R turn · Tab other spot · X flip · Alt no magnet · Esc cancel',
+            hintHoldingKeyboard: 'Enter places · Tab next spot · R turn · X flip · Arrows nudge · Esc cancel',
+            hintHoldingTouch: 'Lift your finger to place · ✓ place · ⟳ turn · ✕ cancel',
+            hintDragging: 'Let go to drop · R turn · Tab other spot · X flip · Alt no magnet · Esc cancel',
+            hintFine: '[ ] fine turn',
+            hintBlocked: 'In the way: it would go into another part',
+            hintTarget: 'Now pick a part in the palette: it goes into the target · Esc clears',
+            targetChip: 'Target: {target}, {connector} {n}',
+            clearTarget: 'Clear the target (Esc)',
+            announce: '{part} → {target}, {connector} {n} of {of}, {face}; {pairs}',
+            announceBlocked: '{part} → {target}, {connector} {n} of {of}: it would go into {into}',
+            pairsOne: '1 connection', pairsMany: '{n} connections',
+            refusedPlace: 'Not placed: it would go into {target}.',
+            connector: {pinhole: 'hole', axlehole: 'axle hole', pin: 'pin', axle: 'axle', stud: 'stud', antistud: 'stud hole', tube: 'tube', ball: 'ball', ballsocket: 'socket'},
+            connectorOther: 'connector',
+            faces: {top: 'from the top', bottom: 'from below', front: 'from the front', back: 'from the back', left: 'from the left', right: 'from the right'},
+            touchPlace: 'Place', touchTurn: 'Turn', touchCancel: 'Cancel', touchControls: 'The part in hand',
+            cube: {top: 'Top', bottom: 'Bottom', front: 'Front', back: 'Back', left: 'Left', right: 'Right'},
+            wheel: 'Scrolling in the 3D view', wheelAuto: 'Guess: a mouse wheel zooms, a trackpad turns the view',
+            wheelMouse: 'Always zoom (mouse wheel)', wheelTrackpad: 'Trackpad: scrolling turns the view, pinch zooms',
+            selectConnected: 'Select connected (Ctrl+click)',
+            st: {
+                released: 'Released from {target}', targetPinned: 'Target: {target} {connector} {hole}. Now pick a part in the palette (Esc clears).',
+                targetCleared: 'Target cleared', connectedSelected: '{n} connected parts selected', flipped: 'Flipped end for end',
+                axleQuarterOnly: 'An axle only turns in quarter turns here.', studsQuarterOnly: 'Studs only turn in quarter turns.',
+                fineNeedsConnection: '[ and ] turn a part 15° on a pin, an axle in a round hole or a ball.',
+                flipNeedsConnection: 'X flips a part that sits on a pin, an axle or a stud.', targetNoFit: 'That part does not fit the target.'
+            }
+        },
         st: {
             hidden: '{n} hidden: Shift+H (Show all) brings them back', isolated: 'Only {n} shown: Shift+H (Show all) brings the rest back',
             shownAll: 'All parts shown again ({n})', nothingHidden: 'Nothing is hidden.',
@@ -97,16 +138,24 @@ export const EDITOR_TEXT = {
                 ['Klick', 'ein Teil auswählen (ein Teil einer Gruppe wählt die Gruppe)'],
                 ['Umschalt+Klick', 'ein Teil dazu nehmen oder weglassen'], ['Umschalt+Ziehen', 'mit einem Rahmen auswählen'],
                 ['Teil ziehen', 'verschieben (es liegt auf dem, was darunter ist; Magnete rasten ein)'],
-                ['Doppelklick', 'in einer Gruppe bearbeiten'], ['Leere Fläche ziehen / rechts ziehen', 'Ansicht drehen'],
-                ['Mittlere Taste ziehen / Umschalt+rechts ziehen', 'Ansicht schieben'], ['Mausrad', 'zoomen']
+                ['Doppelklick', 'Ansicht dorthin zentrieren (auf einem Gruppenteil: in der Gruppe bearbeiten)'],
+                ['Leere Fläche ziehen / mittlere Taste ziehen', 'Ansicht um den Punkt unter dem Mauszeiger drehen'],
+                ['Rechts ziehen', 'Ansicht schieben'], ['Mausrad', 'zum Mauszeiger hin zoomen'],
+                ['Trackpad: zwei Finger / Umschalt / Zusammenziehen', 'Ansicht drehen / schieben / zoomen'],
+                ['Leuchtendes Loch eines ausgewählten Teils anklicken, dann ein Teil', 'das Teil kommt in dieses Loch'], ['Strg+Klick', 'alles Verbundene auswählen'],
+                ['Ansichtswürfel', 'Fläche, Kante oder Ecke anklicken: von dort aus ansehen']
             ]],
             ['Tastatur', [
-                ['W / E', 'mit den Griffen schieben / drehen'], ['R, Umschalt+R', 'um 90° um die Hochachse drehen'], ['T, Umschalt+T', 'um 90° kippen'],
+                ['W / E', 'mit den Griffen schieben / drehen'], ['R, Umschalt+R', 'um 90° drehen (um den Pin oder die Achse, auf der es sitzt, sonst um die Hochachse)'], ['T, Umschalt+T', 'um 90° kippen'],
+                ['[ / ]', 'um 15° drehen auf einem Pin, in einem runden Loch oder auf einer Kugel'], ['X', 'umwenden'],
+                ['Tab / Umschalt+Tab (Teil in der Hand)', 'nächste / vorige Stelle'], ['Eingabe / Leertaste (Teil in der Hand)', 'setzen'],
+                ['Eingabe auf einem Teil der Teileliste', 'in die Hand nehmen; Tab wählt die Stelle, Eingabe setzt'],
                 ['Umschalt (beim Drehen)', '15°-Schritte'], ['Alt (beim Schieben)', 'ohne Magnet'],
                 ['Entf', 'löschen'], ['Strg+D', 'verdoppeln'], ['Strg+C / Strg+V', 'kopieren / einfügen (LDraw-Text: geht auch mit Studio und LeoCAD)'],
                 ['Strg+A', 'alle wählen'], ['Strg+G / Strg+Umschalt+G', 'gruppieren / Gruppe lösen'], ['Strg+Z / Strg+Y', 'rückgängig / wiederholen'],
                 ['H / I / Umschalt+H', 'ausblenden / nur diese / alle zeigen'], ['K', 'Pipette: Farbe eines Teils nehmen'], ['M', 'zwischen zwei Punkten messen'],
-                ['F', 'Auswahl einpassen'], ['Esc', 'abbrechen / Gruppe verlassen / Auswahl aufheben'], ['?', 'diese Übersicht']
+                ['F', 'Auswahl einpassen'],
+                ['Pfeiltasten (nichts ausgewählt)', 'Ansicht drehen'], ['Umschalt+Pfeiltasten', 'Ansicht schieben'], ['+ / -', 'hinein / hinaus zoomen'], ['Esc', 'abbrechen / Gruppe verlassen / Auswahl aufheben'], ['?', 'diese Übersicht']
             ]],
             ['Touch', [
                 ['Tippen', 'ein Teil auswählen'], ['Teil ziehen', 'verschieben'], ['Lange drücken', 'ein Teil dazu nehmen oder weglassen'],
@@ -114,6 +163,38 @@ export const EDITOR_TEXT = {
                 ['Zwei Finger', 'zoomen und Ansicht schieben']
             ]]
         ],
+        connect: {
+            hintIdle: 'Teil ziehen verschiebt es · Teil auswählen, sein leuchtendes Loch anklicken, dann ein Teil der Teileliste: es kommt hinein · Leere Fläche ziehen dreht die Ansicht · Rechts ziehen schiebt · Mausrad zoomt · Doppelklick zentriert',
+            hintIdleTouch: 'Teil antippen wählt es aus, ziehen verschiebt es · Ein Finger auf leerer Fläche dreht die Ansicht, zwei Finger zoomen und schieben',
+            hintHolding: 'Klicken setzt · R dreht · Tab andere Stelle · X wendet · Alt ohne Magnet · Esc bricht ab',
+            hintHoldingKeyboard: 'Eingabe setzt · Tab nächste Stelle · R dreht · X wendet · Pfeiltasten schieben · Esc bricht ab',
+            hintHoldingTouch: 'Finger heben setzt · ✓ setzen · ⟳ drehen · ✕ abbrechen',
+            hintDragging: 'Loslassen setzt ab · R dreht · Tab andere Stelle · X wendet · Alt ohne Magnet · Esc bricht ab',
+            hintFine: '[ ] fein drehen',
+            hintBlocked: 'Im Weg: Es würde in ein anderes Teil hineinragen',
+            hintTarget: 'Jetzt ein Teil in der Teileliste wählen: es kommt ins Ziel · Esc löscht das Ziel',
+            targetChip: 'Ziel: {target}, {connector} {n}',
+            clearTarget: 'Ziel löschen (Esc)',
+            announce: '{part} → {target}, {connector} {n} von {of}, {face}; {pairs}',
+            announceBlocked: '{part} → {target}, {connector} {n} von {of}: es würde in {into} hineinragen',
+            pairsOne: '1 Verbindung', pairsMany: '{n} Verbindungen',
+            refusedPlace: 'Nicht gesetzt: Es würde in {target} hineinragen.',
+            connector: {pinhole: 'Loch', axlehole: 'Achsloch', pin: 'Pin', axle: 'Achse', stud: 'Noppe', antistud: 'Noppenloch', tube: 'Röhre', ball: 'Kugel', ballsocket: 'Pfanne'},
+            connectorOther: 'Anschluss',
+            faces: {top: 'von oben', bottom: 'von unten', front: 'von vorne', back: 'von hinten', left: 'von links', right: 'von rechts'},
+            touchPlace: 'Setzen', touchTurn: 'Drehen', touchCancel: 'Abbrechen', touchControls: 'Das Teil in der Hand',
+            cube: {top: 'Oben', bottom: 'Unten', front: 'Vorne', back: 'Hinten', left: 'Links', right: 'Rechts'},
+            wheel: 'Scrollen in der 3D-Ansicht', wheelAuto: 'Raten: Mausrad zoomt, Trackpad dreht die Ansicht',
+            wheelMouse: 'Immer zoomen (Mausrad)', wheelTrackpad: 'Trackpad: Scrollen dreht die Ansicht, Zusammenziehen zoomt',
+            selectConnected: 'Verbundene wählen (Strg+Klick)',
+            st: {
+                released: 'Von {target} gelöst', targetPinned: 'Ziel: {target} {connector} {hole}. Jetzt ein Teil in der Teileliste wählen (Esc löscht).',
+                targetCleared: 'Ziel gelöscht', connectedSelected: '{n} verbundene Teile ausgewählt', flipped: 'Umgewendet',
+                axleQuarterOnly: 'Eine Achse dreht sich hier nur in Vierteldrehungen.', studsQuarterOnly: 'Noppen drehen sich nur in Vierteldrehungen.',
+                fineNeedsConnection: '[ und ] drehen ein Teil um 15° auf einem Pin, einer Achse in einem runden Loch oder einer Kugel.',
+                flipNeedsConnection: 'X wendet ein Teil, das auf einem Pin, einer Achse oder einer Noppe sitzt.', targetNoFit: 'Dieses Teil passt nicht ins Ziel.'
+            }
+        },
         st: {
             hidden: '{n} ausgeblendet: Umschalt+H (Alle zeigen) holt sie zurück', isolated: 'Nur {n} sichtbar: Umschalt+H (Alle zeigen) holt den Rest zurück',
             shownAll: 'Alle Teile wieder sichtbar ({n})', nothingHidden: 'Nichts ist ausgeblendet.',
