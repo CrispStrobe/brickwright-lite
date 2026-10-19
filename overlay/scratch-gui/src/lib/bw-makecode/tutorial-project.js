@@ -22,22 +22,34 @@ const mergePackage = (previous, next, name) => {
     throw new Error(`Conflicting tutorial package: ${name}`);
 };
 
-export function tutorialProjectFiles(markdown, mainSource, {name = 'Recovered tutorial', target = 'arcade'} = {}) {
-    if (typeof markdown !== 'string' || typeof mainSource !== 'string') throw new Error('Tutorial and main.ts must be text.');
+const inputFences = markdown => {
+    if (typeof markdown !== 'string') throw new Error('Tutorial must be text.');
     const fences = [];
     let fence = null;
-    for (const line of markdown.split(/\r?\n/)) {
+    for (const raw of markdown.match(/[^\n]*(?:\n|$)/g) || []) {
+        if (!raw) continue;
+        const line = raw.replace(/\r?\n$/, '');
         if (fence) {
             const close = line.match(/^ {0,3}(`+|~+)[ \t]*$/);
             if (close && close[1][0] === fence.mark[0] && close[1].length >= fence.mark.length) {
                 fences.push(fence);fence = null;
-            } else fence.lines.push(line);
+            } else { fence.lines.push(line);fence.raw += raw; }
         } else {
             const open = line.match(/^ {0,3}(`{3,}|~{3,})([^\r\n]*)$/);
-            if (open) fence = {mark: open[1], language: open[2].trim(), lines: []};
+            if (open) fence = {mark: open[1], language: open[2].trim(), lines: [], raw: ''};
         }
     }
-    if (fence && ['assetjson', 'package', 'customts'].includes(fence.language)) throw new Error(`Unclosed ${fence.language} input fence.`);
+    if (fence && ['assetjson', 'package', 'customts', 'jres'].includes(fence.language)) throw new Error(`Unclosed ${fence.language} input fence.`);
+    return fences;
+};
+
+export const hasTutorialJres = markdown => inputFences(markdown).some(block => block.language === 'jres');
+
+export function tutorialProjectFiles(markdown, mainSource, {
+    name = 'Recovered tutorial', target = 'arcade', jresToTypeScript
+} = {}) {
+    if (typeof mainSource !== 'string') throw new Error('Tutorial and main.ts must be text.');
+    const fences = inputFences(markdown);
     const files = Object.create(null), dependencies = Object.create(null);
     let customCount = 0;
     const add = (filename, text) => {
@@ -46,7 +58,7 @@ export function tutorialProjectFiles(markdown, mainSource, {name = 'Recovered tu
         files[filename] = text;
     };
     for (const block of fences) {
-        const text = block.lines.join('\n');
+        const text = block.language === 'jres' ? block.raw : block.lines.join('\n');
         if (block.language === 'assetjson') {
             let assets;
             try { assets = JSON.parse(text); } catch (error) { throw new Error(`Invalid assetjson: ${error.message}`); }
@@ -54,6 +66,18 @@ export function tutorialProjectFiles(markdown, mainSource, {name = 'Recovered tu
             for (const [filename, content] of Object.entries(assets)) add(filename, content);
         } else if (block.language === 'customts') {
             add(`tutorial.custom.${++customCount}.ts`, text + '\n');
+        } else if (block.language === 'jres') {
+            let resources;
+            try { resources = JSON.parse(text); } catch (error) { throw new Error(`Invalid jres: ${error.message}`); }
+            if (!resources || typeof resources !== 'object' || Array.isArray(resources)) throw new Error('jres must contain a resource object.');
+            if (typeof jresToTypeScript !== 'function') throw new Error('Standalone tutorial jres requires the original PXT tilemap generator.');
+            const generated = jresToTypeScript(text);
+            if (typeof generated !== 'string') throw new Error('Original PXT tilemap generator must return TypeScript text.');
+            // These are PXT's original standalone tutorial resource filenames.
+            // The emitter supplies factory aliases and exact map/wall bytes.
+            // Conflicting assetjson resources remain a refusal, never a merge.
+            add('tilemap.g.jres', text);
+            add('tilemap.g.ts', generated);
         } else if (block.language === 'package') {
             for (const raw of block.lines) {
                 const line = raw.trim();

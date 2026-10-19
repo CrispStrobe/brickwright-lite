@@ -208,9 +208,12 @@ async function main () {
             return 2;
         }
         if (!a.mainSource) { console.error(`tutorial-to-project requires --main <main.ts>\n${USAGE}`); return 2; }
-        const {tutorialProjectFiles} = await import('../overlay/scratch-gui/src/lib/bw-makecode/tutorial-project.js');
+        const {tutorialProjectFiles, hasTutorialJres} = await import('../overlay/scratch-gui/src/lib/bw-makecode/tutorial-project.js');
         const {makeCodeProjectFile} = await lib('bw-makecode/project-file.js');
-        const project = tutorialProjectFiles(fs.readFileSync(a.input, 'utf8'), fs.readFileSync(a.mainSource, 'utf8'), {name: base(a.input), target: a.target});
+        const markdown = fs.readFileSync(a.input, 'utf8');
+        const {getTutorialTilemapGenerator} = await import('./lib/pxt-node.mjs');
+        const project = tutorialProjectFiles(markdown, fs.readFileSync(a.mainSource, 'utf8'), {name: base(a.input), target: a.target,
+            jresToTypeScript: hasTutorialJres(markdown) ? await getTutorialTilemapGenerator(a.target) : undefined});
         const dest = a.output || `${base(a.input)}.${a.target}.mkcd`;
         fs.writeFileSync(dest, makeCodeProjectFile(project.files, {name: base(a.input), target: a.target}));
         console.log(`wrote ${dest} (${Object.keys(project.files).length} project files; package dependencies preserved, not fetched)`);

@@ -2051,3 +2051,20 @@ GUI interaction acceptance and immutable project recensus remain required.
 Builtin tile-map companion lookup now reads exact pinned builtin images after
 project-provided assets, preserving override precedence and unknown-image
 refusal. This enables authentic recovered JRES maps without substitute pixels.
+
+## Authentic resource fences and reproducible prepared census — 2026-10-13
+
+Recovery now retains standalone JRES from original tutorial documents and
+calls the original pinned worker's emitter, with actual loaded-worker hash.
+All three CLI assembler callers are wired. Four exact tutorial contexts now
+compile and import; subsequent native/controller/original/SB3 receipts must
+state their observed boundary. Source Buffer/import, typed tile probes and
+these maps remain separate changes with separate hosted qualification.
+
+`compat-audit --prepare-extensions` adds a separate prepared-input result,
+leaving the raw original-input classification untouched. Add `--fetch-extensions`
+only when online dependency recovery is intended. Per-file hashes and source
+provenance distinguish supplied project context from newly generated dependency
+views. The original main bytes are checked before/after. Missing offline
+libraries or prepared parser failures remain explicit failing results.
+Do not reinterpret prepared translation or compiler success as a working game.

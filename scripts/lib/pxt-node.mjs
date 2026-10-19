@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import util from 'node:util';
+import {createHash} from 'node:crypto';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -38,7 +39,9 @@ async function sandbox (target) {
     sb.self = sb;
     sb.eval = src => vm.runInContext(src, sb, {filename: 'eval'});
     vm.createContext(sb, {codeGeneration: {strings: false, wasm: false}});
-    vm.runInContext(fs.readFileSync(path.join(dir, 'pxtworker.js'), 'utf8'), sb, {filename: 'pxtworker.js'});
+    const workerBytes = fs.readFileSync(path.join(dir, 'pxtworker.js'));
+    sb.__bwOriginalWorkerSha256 = createHash('sha256').update(workerBytes).digest('hex');
+    vm.runInContext(workerBytes.toString('utf8'), sb, {filename: 'pxtworker.js'});
     vm.runInContext(PXT_GLUE_JS, sb, {filename: 'pxt-glue.js'});
     sandboxes.set(target, sb);
     return sb;
@@ -93,3 +96,14 @@ export const compile = (target, files, opts = {}) => runCompiler(target, files, 
  * target libraries. Remote fetching remains explicitly opt-in.
  */
 export const resolveProjectInputs = (target, files, opts = {}) => runCompiler(target, files, opts, true);
+
+/** PXT's own tutorial JRES emitter, from this target's pinned original worker.
+ * No compilation, package fetching or execution of the tutorial's source.
+ */
+export async function getTutorialTilemapGenerator (target) {
+    const sb = await sandbox(target);
+    const generate = text => sb.pxt.emitTilemapsFromJRes(JSON.parse(text));
+    generate.provenance = {emitter: 'pxt.emitTilemapsFromJRes', target,
+        workerSha256: sb.__bwOriginalWorkerSha256, versions: {...sb.pxtTargetBundle.versions}};
+    return generate;
+}
