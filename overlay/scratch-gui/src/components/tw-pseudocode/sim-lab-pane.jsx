@@ -56,9 +56,12 @@ const TEXT = {
             'sumo.bw': 'The example program is in the Code tab now. Press Run: the robot drives around and turns back whenever it sees the black ring. Challenge: make it turn the other way, or faster.',
             'rcx-bumper-car.nqc': 'The NQC program is in the NQC tab and in the Lab\'s RCX. Press Run: the robot drives to the wall, backs off when its bumper is pressed and turns away. Challenge: make it back off further.',
             'rcx-line-follower.nqc': 'The NQC program is in the NQC tab and in the Lab\'s RCX. Press Run and watch it follow the line\'s edge with its light sensor. Challenge: change THRESHOLD and see what happens.',
-            'motor-bench.bw': 'The example program is in the Code tab now, in lab words: no hub, the Robot Lab turns the motor itself. Press Run. Challenge: make it turn back the other way.'
+            'motor-bench.bw': 'The example program is in the Code tab now, in lab words: no hub, the Robot Lab turns the motor itself. Press Run. Challenge: make it turn back the other way.',
+            'ev3-wall-stopper.bw': 'The example program is in the Code tab now, in EV3 words. Press Run: the program connects to the Lab\'s EV3 over Scratch Link and drives at the wall until its ultrasonic sensor sees it closer than 15 cm.',
+            'nxt-bumper-bot.blocks.json': 'The NXT blocks are on the sprite now. Press Run: the program connects to the Lab\'s NXT over Scratch Link, turns both wheels once, then drives until the bumper touches the wall.'
         },
         noProgramLab: 'Nothing tells this motor to turn yet. Use the Robot Lab blocks (Add Extension) or lab words in the Code tab, press ⇦ To blocks, then press Run.',
+        noProgramBt: 'No {brick} program is loaded yet, so nothing tells the motors to turn. Add the {brick} blocks (Add Extension) or load the example program, then press Run.',
         exampleFailed: 'Could not load the example program: {error}',
         mat: 'Mat', drive: 'Drive', forward: 'Forward', back: 'Back', left: 'Left', right: 'Right', stop: 'Stop', speed: 'Speed',
         driveHelp: 'Hold an arrow (or use the arrow keys) to drive with motors A and B.', readout: 'Hub',
@@ -131,9 +134,12 @@ const TEXT = {
             'sumo.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start: Der Roboter fährt herum und kehrt um, sobald er den schwarzen Ring sieht. Aufgabe: Lass ihn andersherum oder schneller drehen.',
             'rcx-bumper-car.nqc': 'Das NQC-Programm steht jetzt im NQC-Tab und im RCX des Labors. Drücke Start: Der Roboter fährt zur Wand, setzt zurück, sobald sein Stoßfänger gedrückt wird, und dreht ab. Aufgabe: Lass ihn weiter zurücksetzen.',
             'rcx-line-follower.nqc': 'Das NQC-Programm steht jetzt im NQC-Tab und im RCX des Labors. Drücke Start und schau zu, wie er mit dem Lichtsensor dem Rand der Linie folgt. Aufgabe: Ändere THRESHOLD und schau, was passiert.',
-            'motor-bench.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in lab-Wörtern: ohne Hub dreht das Robot Lab den Motor selbst. Drücke Start. Aufgabe: Lass ihn wieder zurückdrehen.'
+            'motor-bench.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in lab-Wörtern: ohne Hub dreht das Robot Lab den Motor selbst. Drücke Start. Aufgabe: Lass ihn wieder zurückdrehen.',
+            'ev3-wall-stopper.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in EV3-Wörtern. Drücke Start: Das Programm verbindet sich über Scratch Link mit dem EV3 des Labors und fährt auf die Wand zu, bis sein Ultraschallsensor sie näher als 15 cm sieht.',
+            'nxt-bumper-bot.blocks.json': 'Die NXT-Blöcke sind jetzt bei der Figur. Drücke Start: Das Programm verbindet sich über Scratch Link mit dem NXT des Labors, dreht beide Räder einmal und fährt dann, bis der Stoßfänger die Wand berührt.'
         },
         noProgramLab: 'Noch sagt dem Motor niemand, dass er sich drehen soll. Nimm die Robot-Lab-Blöcke (Erweiterung hinzufügen) oder lab-Wörter im Code-Tab, drücke ⇦ Zu Blöcken und dann Start.',
+        noProgramBt: 'Es ist noch kein {brick}-Programm geladen, darum dreht sich kein Motor. Füge die {brick}-Blöcke hinzu (Erweiterung hinzufügen) oder lade das Beispielprogramm, dann drücke Start.',
         exampleFailed: 'Das Beispielprogramm konnte nicht geladen werden: {error}',
         mat: 'Matte', drive: 'Fahren', forward: 'Vorwärts', back: 'Rückwärts', left: 'Links', right: 'Rechts', stop: 'Stopp', speed: 'Tempo',
         driveHelp: 'Halte einen Pfeil gedrückt (oder nutze die Pfeiltasten), um mit den Motoren A und B zu fahren.', readout: 'Hub',
@@ -380,6 +386,7 @@ class SimLabPane extends React.Component {
         }
         if (this.disposed) return;
         this.registerRcxTarget();
+        this.registerBtBricks();
         this.installApi();
         this.raf = requestAnimationFrame(this.frame);
         await this.openStored();
@@ -487,6 +494,7 @@ class SimLabPane extends React.Component {
         this.teardown();
         this.teardownEditor();
         if (this.unregisterRcx) this.unregisterRcx();
+        if (this.unregisterBt) this.unregisterBt();
         if (this.physics) this.physics.terminate();
         this.physics = null;
         const runtime = this.props.vm && this.props.vm.runtime;
@@ -826,6 +834,7 @@ class SimLabPane extends React.Component {
         if (this.disposed) return;
         if (this.state.status === 'running') this.pause();
         if (entry.example.endsWith('.nqc')) await this.loadRcxExample(code);
+        else if (entry.example.endsWith('.blocks.json')) await this.loadBlocksExample(code);
         else window.dispatchEvent(new CustomEvent('bw-load-pseudocode', {detail: {code, source: `sim-lab:${entry.file}`}}));
         this.setState({info: this.text.exampleGoal[entry.example] || this.text.exampleLoaded});
         if (entry.mat && this.state.mat !== entry.mat) await this.setMat(entry.mat);
@@ -1120,6 +1129,80 @@ class SimLabPane extends React.Component {
         if (!sent.ok) fail(sent.log);
     }
 
+    /** 'ev3' or 'nxt' when the scene's hub is a MINDSTORMS brick its blocks reach over Scratch Link (hubs/ev3, hubs/nxt), else null. */
+    btProfile () {
+        const h = this.session && this.session.hubs.find(x => x.profile === 'ev3' || x.profile === 'nxt');
+        return h ? h.profile : null;
+    }
+
+    /**
+     * "Virtual EV3" and "Virtual NXT" in the Scratch Link BT-classic registry (lib/virtual-hub/
+     * bt-classic-registry.js): while the scene has that brick, an EV3 or NXT extension that looks for
+     * a brick over Scratch Link finds the Lab's, and its direct commands drive it.
+     */
+    registerBtBricks () {
+        if (this.unregisterBt) return;
+        const hubOf = profile => () => {
+            const h = this.session && this.session.hubs.find(x => x.profile === profile);
+            return h ? h.hub : null;
+        };
+        const unregister = [
+            this.lib.registerVirtualClassicPeripheral(this.lib.ev3ClassicPeripheral(hubOf('ev3'))),
+            this.lib.registerVirtualClassicPeripheral(this.lib.nxtClassicPeripheral(hubOf('nxt')))
+        ];
+        this.unregisterBt = () => {
+            for (const fn of unregister) fn();
+            this.unregisterBt = null;
+        };
+    }
+
+    /**
+     * Run with an EV3 or NXT: the loaded extension (ev3comprehensive or the stock `ev3`; legonxt)
+     * connects to the Lab's brick over Scratch Link, then the green flag.
+     */
+    async runBt ({greenFlag = true} = {}) {
+        const profile = this.btProfile();
+        const vm = this.props.vm;
+        const brick = profile === 'ev3' ? 'EV3' : 'NXT';
+        const ids = profile === 'ev3' ? ['ev3comprehensive', 'ev3'] : ['legonxt'];
+        const extensionId = ids.find(id => vm && vm.extensionManager && vm.extensionManager.isExtensionLoaded(id));
+        this.stopClock();
+        this.setState({status: 'running'});
+        if (!extensionId) {
+            this.startClock();
+            this.setState({info: this.t('noProgramBt', {brick})});
+            return;
+        }
+        this.setState({info: ''});
+        try {
+            await this.lib.connectVirtualBtHub({vm, extensionId,
+                peripheralId: profile === 'ev3' ? this.lib.EV3_PERIPHERAL_ID : this.lib.NXT_PERIPHERAL_ID});
+        } catch (error) {
+            // Said, and the world still runs: the program's own connect block may yet reach the brick.
+            this.setState({message: this.t('connectFailed', {error: error.message})});
+        }
+        if (this.state.status === 'running') {
+            this.startClock();
+            if (greenFlag) vm.greenFlag();
+        }
+    }
+
+    /** A blocks example (`.blocks.json`: an extension's blocks for a sprite): the extension in, the script onto the editing sprite. */
+    async loadBlocksExample (code) {
+        const vm = this.props.vm;
+        if (!vm || !vm.editingTarget) return;
+        try {
+            const example = JSON.parse(code);
+            for (const id of example.extensions || []) {
+                if (!vm.extensionManager.isExtensionLoaded(id)) await vm.extensionManager.loadExtensionURL(id);
+            }
+            await vm.shareBlocksToTarget(this.lib.vmBlocksOf(example.blocks), vm.editingTarget.id);
+            vm.emitWorkspaceUpdate();
+        } catch (error) {
+            this.setState({message: this.t('exampleFailed', {error: error.message})});
+        }
+    }
+
     spikeLoaded () {
         const vm = this.props.vm;
         return Boolean(vm && vm.extensionManager && vm.extensionManager.isExtensionLoaded('spikeprime'));
@@ -1130,6 +1213,7 @@ class SimLabPane extends React.Component {
         if (!this.session) return;
         if (this.session.lockstep) { await this.runFirmware(); return; }
         if (this.rcxHub()) { this.runRcx(); return; }
+        if (this.btProfile()) { await this.runBt({greenFlag}); return; }
         const hubState = this.hub;
         hubState.setSimulationEnabled(true);
         // Connecting runs on wall time (its timeouts are the browser's); the program clock goes in

@@ -14,8 +14,8 @@ Abbreviations: X = `overlay/scratch-vm/src/extensions/crispstrobe`, G = `overlay
 | SPIKE Essential | via `X/legopoweredup` | — | — | BLE (LWP3) | no |
 | Boost / Powered Up (City, Technic, Move) | `X/legoboostunified`, `X/legopoweredup` | Python/JS `_legopoweredup.*` calls only | — | Web Bluetooth LWP3, Scratch Link BLE, bridge | no |
 | WeDo 2.0 | `X/wedo2unified` | as above | — | Web Bluetooth (own WeDo service, not LWP3) | no |
-| EV3 | `X/ev3comprehensive`, `X/ev3dev` | `DEVICE EV3`, MakeCode EV3 | LMS → RBF in the extension | Scratch Link BT, serial, bridge, HTTP | no |
-| NXT | `X/legonxt` | — | NXC hosted compile → `.rxe` | Scratch Link BT, Web Serial, bridge | no |
+| EV3 | `X/ev3comprehensive`, `X/ev3dev`; stock `ev3` | `DEVICE EV3`, MakeCode EV3 | LMS → RBF in the extension | Scratch Link BT, serial, bridge, HTTP | **yes, L1** (`Ev3VirtualHub`, direct commands over Scratch Link, 2026-10-19; ev3comprehensive blocked upstream) |
+| NXT | `X/legonxt` | — | NXC hosted compile → `.rxe` | Scratch Link BT, Web Serial, bridge | **yes, L1** (`NxtVirtualHub`, direct commands over Scratch Link, 2026-10-19) |
 | RCX | `X/legorcx` (NQC) | NQC tab | NQC WASM; clean-room `RcxVm` (`G/bw-sim/routes/rcx-vm/`) | IR tower (`G/rcx-download-hook.js`) | **yes** (`RcxVirtualHub`; download target "Robot Lab RCX", 2026-10-19) |
 
 ## Design
@@ -53,7 +53,11 @@ executable spec); RCX (A–C, 1–3; the existing `RcxVm`).
   **`lab-direct` done 2026-10-19** (lane/simlab-api-20261019): `G/bw-sim/hubs/lab-direct/` (profile + VirtualHub,
   the SPIKE controller structure, exported to the worker's mirror), registered in `hubs/index.js`; a model with
   motors and no hub part runs on it (`sim-session.js` `sceneHubDefs`); the *Motor bench* model shows it.
-  Open: `connectVirtualHub` and the BT-classic/BLE peripheral registries (they serve P3–P5).
+  Open: `connectVirtualHub` and the BLE peripheral registry (they serve P3).
+  **BT-classic registry done 2026-10-19** (lane/simlab-hubs-bt-20261019): `G/virtual-hub/bt-classic-registry.js`
+  (Scratch Link BT JSON-RPC, peripherals by name and device class, replies after the send's result; SPIKE's 2.x
+  REPL simulation claims first, unchanged); a local `G/virtual-hub/connect-virtual-bt-hub.js` until
+  `connectVirtualHub` lands (docs/ROBOT-LAB-EV3-NXT.md "Merge notes").
 - **P1 Robot Lab API** + `robotlab` blocks + `lab` words + `_robotlab` for Python/JS. Accept: `setMotor`
   drives an encoder to 360 ± 2° with no hub program; part poses deterministic across rollback.
   **Done 2026-10-19** (lane/simlab-api-20261019; docs/SIM-LAB.md "Steering the Lab"): `G/bw-sim/api/robot-lab-api.js`
@@ -76,8 +80,20 @@ executable spec); RCX (A–C, 1–3; the existing `RcxVm`).
 - **P3 LWP3 hubs and WeDo 2:** Technic L motor on port A by 360 ± 2° from `legopoweredup` blocks; a
   WeDo 2 conveyor; DEVICE words for WEDO2/BOOST/POWEREDUP.
 - **P4 EV3:** direct commands, then the LMS VM; the wall-stop scenario through `DEVICE EV3` and RBF.
+  **L1 done 2026-10-19** (lane/simlab-hubs-bt-20261019; docs/ROBOT-LAB-EV3-NXT.md): `G/bw-sim/hubs/ev3/` — the EV3
+  direct-command executor (EV3 Communication and Firmware Developer Kits: frame, parameter encoding, output/input/
+  sound/UI/timer opcodes, DIRECT_REPLY(_ERROR)), the brick (A–D large/medium motors, 1–4 touch/colour/ultrasonic/
+  gyro), "Virtual EV3"; parts 95646, 95658, 99455, 95648, 95650, 95652, 99380; the EV3 wall stopper with its
+  DEVICE EV3 example. The stock Scratch `ev3` blocks stop it before the wall (test + gate). **Open:** the DEVICE EV3
+  run — ev3comprehensive sends nothing over Scratch Link (an upstream bug, three lines; "Known open"); L2, the
+  RBF VM.
 - **P5 NXT:** same shape; the hosted NXC compiler is a network dependency (a local NXC WASM build is the
-  alternative).
+  alternative). **L1 done 2026-10-19** (same lane): `G/bw-sim/hubs/nxt/` — telegrams per the NXT Bluetooth
+  Developer Kit Appendices 1/2 (SETOUTPUTSTATE, GETOUTPUTSTATE, SETINPUTMODE, GETINPUTVALUES, RESETMOTORPOSITION,
+  PLAYTONE, KEEPALIVE, LS* for the ultrasonic sensor, …), the brick (A–C, 1–4), "Virtual NXT"; parts 53788,
+  53787, 53793, 55969, 53792; the NXT bumper bot whose legonxt example turns both motors 360 ± 2° and stops on
+  its bumper (test + gate). **Open:** NXT words, the `.rxe` VM (L2), re-verifying the NXT layouts against the
+  BDK PDFs.
 
 **Risks.** Clean-room VMs only, sources recorded (D4); never ship LEGO firmware; EV3 in Renode would need
 a user-supplied image. LWP3/EV3 controller behaviour is our model — compare with real-hardware captures.

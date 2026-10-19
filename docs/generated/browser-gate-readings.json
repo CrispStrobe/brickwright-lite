@@ -7418,6 +7418,12 @@
    "p95": null,
    "max": null,
    "readings": []
+  },
+  "Browser gate \u2014 Robot Lab EV3 and NXT, their blocks drive the Lab's bricks over Scratch Link (bumper bot, wall stopper)": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
   }
  }
 }

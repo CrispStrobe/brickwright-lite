@@ -89,6 +89,11 @@
 //      a Blocks project of robotlab blocks (saved and reloaded as an .sb3) loads the hubless motor bench and
 //      turns its motor 360 ± 2° through runtime.robotLab; the bench's example in `lab` words, through the UI
 //      only, turns it 360°, rests there through its wait, runs on at 90 °/s and brakes.
+//  19. the EV3 and NXT (scripts/lib/sim-lab-hubs-bt-gate.mjs, --part=hubs-bt, docs/ROBOT-LAB-EV3-NXT.md):
+//      their extensions reach the Lab's bricks over Scratch Link (the BT-classic registry) — the NXT
+//      bumper bot's example (legonxt blocks, UI only) turns both wheels 360 ± 2° and stops on its bumper
+//      at the wall; stock Scratch EV3 blocks stop the EV3 wall stopper before the wall on its ultrasonic
+//      sensor; the DEVICE EV3 example becomes ev3comprehensive blocks.
 //
 // Every Sim Lab here runs its physics in the Web Worker (ROADMAP §4.9): each load
 // asserts `window.__bwSimLab.worker === true`, so the line-follower lap, the wall
@@ -113,6 +118,7 @@ import {layoutInteractions, MIN_CANVAS_PX} from './lib/sim-lab-layout-gate.mjs';
 import {editorParityInteractions} from './lib/sim-lab-editor-parity-gate.mjs';
 import {connectInteractions} from './lib/sim-lab-connect-gate.mjs';
 import {apiInteractions, DEGREES_TOLERANCE} from './lib/sim-lab-api-gate.mjs';
+import {hubsBtInteractions} from './lib/sim-lab-hubs-bt-gate.mjs';
 import {openRobotLabTab, tool, toolbarInteractions} from './lib/sim-lab-toolbar-gate.mjs';
 import {scaleInteractions, OPEN_BUDGET_MS, DRAW_CALL_BUDGET, BUILD_OPEN_BUDGET_MS, IDLE_FRAME_BUDGET_MS, POINTER_MOVE_BUDGET_MS} from './lib/sim-lab-scale-gate.mjs';
 import {brakingBound, judgeWallStop} from './lib/sim-lab-wall-stopper-judge.mjs';
@@ -280,9 +286,9 @@ const reading = page => page.evaluate(() => {
 });
 
 // One gate, six CI steps (each within the per-step budget, gen-gate-budgets.mjs):
-// `--part=core|examples|ui|tablet|layout|editor|scale|api` runs one section; no flag runs all of them.
+// `--part=core|examples|ui|tablet|layout|editor|scale|api|hubs-bt` runs one section; no flag runs all of them.
 const PART = (process.argv.find(a => a.startsWith('--part=')) || '--part=all').slice('--part='.length);
-const PARTS = ['core', 'examples', 'ui', 'tablet', 'layout', 'editor', 'scale', 'api'];
+const PARTS = ['core', 'examples', 'ui', 'tablet', 'layout', 'editor', 'scale', 'api', 'hubs-bt'];
 if (PART !== 'all' && !PARTS.includes(PART)) throw new Error(`--part must be one of ${PARTS.join(', ')} (got ${PART})`);
 const want = part => PART === 'all' || PART === part;
 
@@ -953,6 +959,14 @@ try {
             `and turns motor A ${r.blocks.angle}° for "run for 360 degrees" (±${DEGREES_TOLERANCE}), in the worker; Robot Lab status "${r.blocks.status}"`);
         console.log(`PASS the motor bench's example in lab words (Load example program, Run): rests at ${r.words.restAngle.toFixed(2)}° ` +
             `for ${r.words.restMs.toFixed(0)} ms of simulated time, runs on to ${r.words.final.toFixed(1)}° at 90 °/s and brakes`);
+    }
+
+    if (want('hubs-bt')) { // the EV3 and NXT, their extensions over Scratch Link to the Lab's bricks
+        const r = await hubsBtInteractions({browser, errors, openSimLab, wallBudget});
+        console.log(`PASS NXT bumper bot (Load example program, Run): legonxt over Scratch Link turns B and C to TachoCount ` +
+            `${r.nxt.tacho.join(' and ')} for 360° (±${DEGREES_TOLERANCE}), then drives until the bumper is pressed (${r.nxt.pressedAtMs} ms) and stops`);
+        console.log(`PASS EV3 wall stopper with stock Scratch EV3 blocks: drove ${r.ev3.travelled.toFixed(3)} m and stopped ${r.ev3.cm} cm from the wall`);
+        console.log(`PASS the EV3 wall stopper's DEVICE EV3 example becomes ${r.device.ops.join(', ')}`);
     }
 
     assert.deepEqual(errors, [], `page errors: ${errors.join('\n')}`);
