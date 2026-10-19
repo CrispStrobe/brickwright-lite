@@ -92,6 +92,27 @@ fn write_startup_observation(observation: StartupObservation) {
     let _ = writeln!(std::io::stderr().lock(), "{observation}");
 }
 
+// The broker deliberately redacts backend errors. Keep the native diagnostic
+// closed too: classify known RSP failures, never interpolate backend error text.
+// "unavailable" does not distinguish connect, socket setup or a closed socket.
+fn rsp_startup_failure_record(error: &str) -> String {
+    let reason = match error {
+        "Renode debugger unavailable" => "unavailable",
+        "Renode debugger returned an invalid initial state" => "invalid-initial-state",
+        "Renode debugger acknowledgement timed out" => "acknowledgement-timeout",
+        "Renode debugger acknowledgement failed" => "acknowledgement-failed",
+        "Renode debugger response failed" => "response-failed",
+        "Renode debugger response exceeds its bounds" => "response-bound",
+        "Renode debugger checksum mismatch" => "checksum-mismatch",
+        "Renode debugger rejected the packet" => "packet-rejected",
+        "Renode debugger unexpected acknowledgement byte" => "unexpected-acknowledgement",
+        "Renode debugger acknowledgement byte limit exceeded" => "acknowledgement-bound",
+        "Renode debugger asynchronous stop frame limit exceeded" => "async-stop-bound",
+        _ => "other",
+    };
+    format!("renode-startup-failure phase=rsp-connect reason={reason}")
+}
+
 struct StartupTrace<F: FnMut(StartupObservation)> {
     began: Instant,
     phase: StartupPhase,
@@ -309,6 +330,9 @@ impl RenodeDebugger {
                 Ok(rsp) => break rsp,
                 Err(_) if Instant::now() < deadline => thread::sleep(Duration::from_millis(25)),
                 Err(error) => {
+                    // One terminal record, after retries; logging cannot change
+                    // the original failure, deadline, teardown or public error.
+                    let _ = writeln!(std::io::stderr().lock(), "{}", rsp_startup_failure_record(&error));
                     supervisor.teardown(TeardownReason::Reset);
                     return Err(error);
                 }
@@ -778,6 +802,36 @@ impl RenodeDebugger {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn rsp_startup_failure_uses_only_closed_reasons() {
+        for (error, reason) in [
+            ("Renode debugger unavailable", "unavailable"),
+            ("Renode debugger returned an invalid initial state", "invalid-initial-state"),
+            ("Renode debugger acknowledgement timed out", "acknowledgement-timeout"),
+            ("Renode debugger acknowledgement failed", "acknowledgement-failed"),
+            ("Renode debugger response failed", "response-failed"),
+            ("Renode debugger response exceeds its bounds", "response-bound"),
+            ("Renode debugger checksum mismatch", "checksum-mismatch"),
+            ("Renode debugger rejected the packet", "packet-rejected"),
+            ("Renode debugger unexpected acknowledgement byte", "unexpected-acknowledgement"),
+            ("Renode debugger acknowledgement byte limit exceeded", "acknowledgement-bound"),
+            ("Renode debugger asynchronous stop frame limit exceeded", "async-stop-bound"),
+        ] {
+            assert_eq!(super::rsp_startup_failure_record(error),
+                format!("renode-startup-failure phase=rsp-connect reason={reason}"));
+        }
+    }
+
+    #[test]
+    fn rsp_startup_failure_never_echoes_unknown_or_decorated_backend_text() {
+        for error in ["", "fixture/private-image lease=fixture-secret\nreason=spoofed",
+            "Renode debugger unavailable fixture-secret",
+            "Renode debugger unavailable\nreason=spoofed", "☃"] {
+            assert_eq!(super::rsp_startup_failure_record(error),
+                "renode-startup-failure phase=rsp-connect reason=other");
+        }
+    }
+
     #[test]
     fn startup_trace_preserves_error_and_closes_failed_phase_without_error_text() {
         let mut observations = Vec::new();
