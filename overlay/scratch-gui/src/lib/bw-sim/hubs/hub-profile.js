@@ -132,6 +132,13 @@
  * @property {(state: unknown) => void} importState
  * @property {(state: unknown) => string} stateKey   equal keys ⇒ identical drives from here on
  * @property {() => void} dispose        hands the clock back
+ * @property {(port: string, command: object) => {ok: boolean, done?: Promise<string>, code?: string, message?: string}} [directCommand]
+ *           OPTIONAL: a motor command from the Robot Lab API (api/robot-lab-api.js) — {power} |
+ *           {speedDps} | {degrees, speedDps} | {position, speedDps} | {stop} — taken by the hub's
+ *           own controller, so the port keeps one owner. A hub whose program runs ON the hub (an
+ *           emulated firmware, a bytecode VM) has none, and the API refuses such a motor by name.
+ * @property {(port: string) => object|null} [readPort]
+ *           OPTIONAL: what a port reports now ({kind: 'motor', angleDeg, speedDps} or a sensor's reading)
  */
 
 /** Device classes a port can accept (docs §5.1). */

@@ -69,6 +69,7 @@
       "test/bw-sim-render-quality.test.mjs",
       "test/bw-sim-renode-lockstep-program.test.mjs",
       "test/bw-sim-renode-lockstep.test.mjs",
+      "test/bw-sim-robot-lab-api.test.mjs",
       "test/bw-sim-s1-driving-base.test.mjs",
       "test/bw-sim-scene3d.test.mjs",
       "test/bw-sim-sensors.test.mjs",

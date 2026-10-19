@@ -9,10 +9,15 @@
 
 import {HubRegistry} from '../registry/hubs.js';
 import {spikePrimeHub} from './spike/spike-virtual-hub.js';
+import {labDirectHub} from './lab-direct/lab-direct-hub.js';
 
 /** The profile a hub part without a profile in its metadata is (contracts.js, so the compiler may read it too). */
 export {DEFAULT_HUB_PROFILE} from '../contracts.js';
 
+/** The Robot Lab's own hub for a model with no hub part (hubs/lab-direct): no part carries it. */
+export {LAB_DIRECT_ID} from './lab-direct/lab-direct-hub.js';
+
 export const hubRegistry = new HubRegistry([
-    spikePrimeHub
+    spikePrimeHub,
+    labDirectHub
 ]);

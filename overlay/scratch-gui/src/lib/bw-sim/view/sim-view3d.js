@@ -179,6 +179,8 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     // Follow: the camera and its orbit target move with the model's centre, so
     // the robot stays in view while the learner can still orbit around it.
     let followed = null;
+    /** A part the camera follows instead of the model's centre (the Robot Lab API's camera({follow})), or null. */
+    let followPartId = null;
     // ---- seeing the model (mech/insight.js data, view/insight-layer.js) -------------
     const insight = createInsightLayer({container, scene: built.scene});
     const pulse = createPulse();
@@ -280,7 +282,7 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         if (onDemand && !force && !dirty && !changed(snapshot, renderer.getSize(new Vector2()))) return;
         dirty = false;
         if (snapshot) applySnapshot(built, snapshot);
-        const centre = modelBox().getCenter(new Vector3());
+        const centre = (followPartId && partCentre(followPartId)()) || modelBox().getCenter(new Vector3());
         if (followed) {
             const delta = centre.clone().sub(followed);
             delta.y = 0;
@@ -326,6 +328,13 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         /** The pane's view buttons: 'home', 'top', 'front' or 'side'; and Fit. */
         view: name => { viewFrom(name); dirty = true; },
         fit: () => { fit(); dirty = true; },
+        /** Follow a part (its id in the model) instead of the whole model's centre; null: the model again. */
+        followPart: id => {
+            followPartId = id && built.partMeshes.has(id) ? id : null;
+            followed = null;
+            dirty = true;
+            return followPartId;
+        },
         /** A camera key (camera-nav.js), as if pressed on the focused view; true when the camera moved. */
         nudge: event => { const moved = applyCameraAction(camera, controls, cameraKeyAction(event), canvas.clientHeight); dirty = dirty || moved; return moved; },
         /** The camera now (for the browser gate to read what a gesture did): position, target, distance (metres). */
