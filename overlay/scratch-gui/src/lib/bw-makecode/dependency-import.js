@@ -8,6 +8,8 @@ export class DependencyImportError extends Error {
         this.name = 'DependencyImportError';this.code = error?.code || 'DEPENDENCY_IMPORT';
         this.stage = stage;this.cause = error;this.details = makeCodeWorkerErrorEnvelope(error);
         this.dependencyInputs = dependencyInputs;
+        // Keep the resolver's named per-extension refusals visible to callers.
+        if (Array.isArray(error?.refused)) this.refused = error.refused;
     }
 }
 
