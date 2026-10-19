@@ -3232,6 +3232,16 @@ jobs:
             await new Promise(resolve=>setTimeout(resolve,100));
           }
           JS
+      # pxt-node.mjs admits only the integrated GUI libraries with the pinned,
+      # overlaid scratch-vm. Prepare that source tree; no frontend build.
+      - name: Vendor the pinned permissive Scratch sources
+        run: npm run vendor
+      - name: Integrate the owned GUI libraries
+        run: node scripts/integrate.mjs
+      - name: Install the declared GUI dependencies
+        run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
+      - name: Apply the scratch-vm overlay
+        run: node scripts/apply-vm-overlay.mjs
       - name: Actual production IDE numeric/settings/source-loop authoring
         env:
           PROOF_URL: http://localhost:8617/
