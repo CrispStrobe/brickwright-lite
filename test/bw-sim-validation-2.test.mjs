@@ -709,7 +709,7 @@ test('two carts collide: with restitution 0 (no part sets one) they leave togeth
         'wheel sets, and the hinges\' compliance stores the impact and gives it back (control: the same carts with all ' +
         'their mass in the bumper body leave together, e ≈ 0); the light-body-between-hinges problem of round 1, bug 2. ' +
         'Not the body model (restitution is 0 on every body) and not fixable by the 20 g solver floor the gears and ' +
-        'actuators use: in an impact the floored mass IS the mass, so momentum (the check above) would not be conserved'
+        'actuators use: in an impact the floored mass IS the mass, so momentum (the check above) would not be conserved; see docs/ROBOT-LAB-VALIDATION.md'
 }, async t => {
     // Jolt's restitution is 0 unless a body sets it (jolt-core.js; compile sets none for parts): a
     // perfectly inelastic impact, both carts at the common speed. e = (v2' − v1') / (v1 − v2) ≤ 0.05.
@@ -750,7 +750,7 @@ test('a free cart coasts with rolling resistance: deceleration ≥ c_rr·g, c_rr
 test('universal joint: ω2/ω1 = cos β / (1 − sin²β·cos²θ); two in phase cancel', {
     todo: 'not buildable: the catalogue has only the U-joint\'s ends (62520, 3712, 575) as parts with an axle hole ' +
         'each and no connector between them, and no coupling kind joins two ends (the cross is not modelled), so ' +
-        'two ends placed fork in fork are two loose parts'
+        'two ends placed fork in fork are two loose parts; see docs/ROBOT-LAB-VALIDATION.md'
 }, () => {
     // What a universal joint must do (the closed form), stated for when the kind exists: at β = 30° the
     // output speed swings between cos β = 0.866 and 1/cos β = 1.155 of the input's, twice per turn.
