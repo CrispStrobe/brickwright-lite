@@ -17,6 +17,13 @@ passing integration. The corrected canonical compiler is separately under
 [PR158](https://github.com/CrispStrobe/sb3-creator/pull/158); it is not the
 compiler used by that hosted editor evidence.
 
+## Open failures at the #888 landing — 2026-10-19
+
+PR #888 landed with 45 unit tests marked as documented TODOs, plus two open
+browser gates. Every open failure is listed in
+[ARCADE-888-OPEN-FAILURES.md](ARCADE-888-OPEN-FAILURES.md), with its
+root-cause group, what was tried and the next step. Start there.
+
 ## Latest development repair frontier — 2026-10-16
 
 Read [the current repair table](ARCADE-CI-REPAIR-STATUS.md) first. The base
