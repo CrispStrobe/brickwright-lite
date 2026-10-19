@@ -647,6 +647,17 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                 for(const item of a.elements)result.add(item);
             }return result;
         }
+        // settings.list() always returns a fresh Array of key strings.
+        if(node.opcode==='arcade_settingsRead'&&exactKeys(node,['KEY'],['TYPE'])&&literal(node,'TYPE',target)==='List')return new Set([token(node,target,[{raw:[10,'settings key not an Array']}],0)]);
+        if(node.opcode==='arcade_settingsRead'){
+            const w=spriteDataReady?settingsArrayWriter(target,node):null;if(!w)return new Set([bad]);
+            const source=readInput(w.value);if(!source.size)return new Set();if(!singleArray(source))return new Set([bad]);
+            // Each read returns a fresh detached copy of the value written by w.
+            const t=token(node,target,[],0);for(const a of source)for(const e of a.elements)t.elements.add(e);
+            if(!Object.getOwnPropertyDescriptor(t,'minLength').get)Object.defineProperty(t,'minLength',{configurable:true,enumerable:true,get(){
+                if(concatLengths.has(t))return 0;concatLengths.add(t);try{return Math.min(...[...readInput(w.value)].map(a=>a===t?0:minimumAt(a,w.node)));}finally{concatLengths.delete(t);}}});
+            return new Set([t]);
+        }
         if(node.opcode==='arcade_spriteProperty'){const w=spriteDataReady?spriteDataWriter(target,node):null;return w?readInput(w.value):new Set([bad]);}
         if(node.opcode==='arcade_objectField'){const f=literal(node,'FIELD',target);return !dynamicFields&&typeof f==='string'&&exactKeys(node,['OBJECT','FIELD'])&&cells.has('field:'+f)?new Set(fieldCell(f).types):new Set([bad]);}
         if(node.opcode==='arcade_callFunction'){
@@ -896,6 +907,32 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(w.scope!==scope||!onceNode(w.node)||!scope.executedBefore?.get(statementOf(node))?.has(w.node))return null;
         return {value:input(w.node,'VALUE',w.target),node:w.node};
     };
+    // An Array settings read is the value of the one same-type write of that
+    // literal key that ran once, earlier in the reading scope. Every other
+    // write/remove of that key and every clear must be in the same once-only
+    // scope and run either before that write or after the read. A dynamic
+    // key, or a key mutation elsewhere, refuses (an absent key reads undefined).
+    const settingsArrayWriter=(target,node)=>{
+        const type=literal(node,'TYPE',target),key=literal(node,'KEY',target);
+        if(!exactKeys(node,['KEY'],['TYPE'])||!['NumberArray','StringArray'].includes(type)||typeof key!=='string')return null;
+        const scope=owners.get(node),statement=statementOf(node),before=statement&&scope?.executedBefore?.get(statement);if(!before)return null;
+        const touches=records.filter(r=>['arcade_settingsWrite','arcade_settingsRemove','arcade_settingsClear'].includes(r.node.opcode));
+        let writer=null;
+        for(const r of touches){
+            const k=r.node.opcode==='arcade_settingsClear'?null:literal(r.node,'KEY',r.target);
+            if(r.node.opcode!=='arcade_settingsClear'&&typeof k!=='string')return null;
+            if(k!==null&&k!==key)continue;
+            if(r.scope!==scope||!onceNode(r.node)||invalid.has(r.node))return null;
+            if(r.node.opcode==='arcade_settingsWrite'&&literal(r.node,'TYPE',r.target)===type&&before.has(r.node)&&(!writer||scope.executedBefore.get(r.node)?.has(writer.node)))writer=r;
+        }
+        if(!writer)return null;
+        for(const r of touches){
+            const k=r.node.opcode==='arcade_settingsClear'?null:literal(r.node,'KEY',r.target);if(k!==null&&k!==key||r===writer)continue;
+            const earlier=!!scope.executedBefore.get(writer.node)?.has(r.node),later=!!scope.executedBefore.get(r.node)?.has(statement);
+            if(!earlier&&!later)return null;
+        }
+        return {node:writer.node,value:input(writer.node,'VALUE',writer.target)};
+    };
     spriteDataReady=true;
     resetFlowReady=true;
     // A push precedes an occurrence in every activation when it executed
@@ -1027,6 +1064,8 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         }
         if(node.opcode==='arcade_objectField')return fieldInitialized(target,node,next);
         if(node.opcode==='arcade_spriteProperty'){const w=spriteDataWriter(target,node);return !!w&&initialized(w.value,next);}
+        if(node.opcode==='arcade_settingsRead'&&exactKeys(node,['KEY'],['TYPE'])&&literal(node,'TYPE',target)==='List')return true;
+        if(node.opcode==='arcade_settingsRead'){const w=settingsArrayWriter(target,node);return !!w&&initialized(w.value,next);}
         if(node.opcode==='arcade_spritesOfKind'&&exactKeys(node,['KIND']))return numericKindInitialized(input(node,'KIND',target));
         if(Object.hasOwn(FRESH_SDK_ARRAYS,node.opcode))return exactKeys(node,FRESH_SDK_ARRAYS[node.opcode]);
         return false;
