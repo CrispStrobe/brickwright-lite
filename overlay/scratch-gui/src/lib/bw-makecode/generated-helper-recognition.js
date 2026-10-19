@@ -1,5 +1,64 @@
 import {parseMakeCodeTs} from './ts-import.js';
 import {analyseCallableBindings} from './callable-bindings.js';
+import {LEGACY_PARSE_SOURCE,LEGACY_JSON_SOURCE,ARRAY_ACCESS_SOURCE} from './legacy-array-values.js';
+
+// Eligibility for a compiler-owned synchronous operation, not a public proof
+// of arbitrary objects or hostile realms. These observations are private and
+// contain no AST/binding/type results. Captured meta operations do not invoke
+// a replacement intrinsic while checking whether the original realm remains.
+const aggregateApply=Reflect.apply,aggregateOwnKeys=Reflect.ownKeys;
+const aggregateDescriptor=Object.getOwnPropertyDescriptor,aggregatePrototype=Object.getPrototypeOf;
+const aggregateSame=Object.is,aggregateHasOwn=Object.prototype.hasOwnProperty;
+const aggregateSet=Set,aggregateSetValues=Set.prototype.values;
+const aggregateSetAdd=Set.prototype.add,aggregateSetHas=Set.prototype.has;
+const aggregateSetNext=aggregatePrototype(aggregateApply(aggregateSetValues,new aggregateSet(),[])).next;
+const aggregateGlobals=[];
+const aggregateIntrinsicRows=[];
+const aggregateRemember=target=>{
+    for(let i=0;i<aggregateIntrinsicRows.length;i++)if(aggregateIntrinsicRows[i].target===target)return;
+    const keys=aggregateOwnKeys(target),descriptors=[];
+    for(let i=0;i<keys.length;i++)descriptors[i]=aggregateDescriptor(target,keys[i]);
+    aggregateIntrinsicRows[aggregateIntrinsicRows.length]={target,parent:aggregatePrototype(target),keys,descriptors};
+};
+for(const name of ['Object','Array','Reflect','Map','Set','WeakMap','WeakSet','Number','String','Boolean',
+    'RegExp','JSON','Math','Error','TypeError','SyntaxError','RangeError','Function','Symbol',
+    'parseInt','parseFloat','isNaN','isFinite']){
+    const d=aggregateDescriptor(globalThis,name);aggregateGlobals[aggregateGlobals.length]={name,descriptor:d};
+    const value=d.value;aggregateRemember(value);
+    const p=aggregateDescriptor(value,'prototype');if(p&&aggregateApply(aggregateHasOwn,p,['value']))aggregateRemember(p.value);
+}
+// Iteration can escape through a replaced iterator or next method too. Include
+// each actual iterator's complete own descriptors and prototype chain.
+for(const iterator of [[][Symbol.iterator](),new Map()[Symbol.iterator](),new Set()[Symbol.iterator](),''[Symbol.iterator]()]){
+    for(let p=aggregatePrototype(iterator);p;p=aggregatePrototype(p))aggregateRemember(p);
+}
+const aggregateDescriptorKeys=['value','writable','get','set'];
+const aggregateEqualDescriptor=(a,b)=>{
+    if(!a||!b||a.enumerable!==b.enumerable||a.configurable!==b.configurable)return false;
+    for(let index=0;index<aggregateDescriptorKeys.length;index++){
+        const key=aggregateDescriptorKeys[index];
+        const x=aggregateApply(aggregateHasOwn,a,[key]),y=aggregateApply(aggregateHasOwn,b,[key]);
+        if(x!==y||x&&!aggregateSame(a[key],b[key]))return false;
+    }
+    return true;
+};
+const aggregateIntrinsicsCurrent=()=>{
+    for(let i=0;i<aggregateGlobals.length;i++){
+        const r=aggregateGlobals[i];if(!aggregateEqualDescriptor(aggregateDescriptor(globalThis,r.name),r.descriptor))return false;
+    }
+    for(let i=0;i<aggregateIntrinsicRows.length;i++){
+        const r=aggregateIntrinsicRows[i],keys=aggregateOwnKeys(r.target);
+        if(aggregatePrototype(r.target)!==r.parent||keys.length!==r.keys.length)return false;
+        for(let j=0;j<keys.length;j++)if(!aggregateSame(keys[j],r.keys[j])||
+            !aggregateEqualDescriptor(aggregateDescriptor(r.target,keys[j]),r.descriptors[j]))return false;
+    }
+    return true;
+};
+const aggregateCopyMembers=input=>{
+    const output=new aggregateSet(),iterator=aggregateApply(aggregateSetValues,input,[]);
+    for(;;){const row=aggregateApply(aggregateSetNext,iterator,[]);if(row.done)return output;
+        aggregateApply(aggregateSetAdd,output,[row.value]);}
+};
 
 const common={parameterDefaults:true,retainParentheses:true};
 export const GENERATED_HELPER_PROFILES=Object.freeze({
@@ -52,6 +111,11 @@ export function hasGeneratedHelperShape(fn,source,profile,names=new Map()){
 
 /** Binding/currentness only: this proof creates no value or type facts. */
 export function inspectGeneratedHelperBindings(program,profile){
+    return buildGeneratedHelperBindings(program,profile,false);
+}
+// fastAmbient is chosen only by the complete compiler operation below. No
+// caller-selected mode or proof object from this branch leaves the module.
+function buildGeneratedHelperBindings(program,profile,fastAmbient){
     const snapshots=[],seen=new WeakSet(),active=new WeakSet(),nodes=[],parents=new WeakMap(),counts=new Map();let valid=profiles.has(profile);
     const capture=(value,prefixAllowed=false,parameterArray=false)=>{
         if(typeof value==='function'){if(!prefixAllowed)valid=false;return;}
@@ -118,8 +182,9 @@ export function inspectGeneratedHelperBindings(program,profile){
         if(!sameGeneratedData(n.body.slice(0,expected.length),expected)){valid=false;break;}
     }
     const lexical=valid?analyseCallableBindings(program):null;
-    const root=fn=>current()&&fn?.type==='FunctionDeclaration'&&program.body.includes(fn)&&counts.get(fn.name)===1&&
+    const rootBinding=fn=>fn?.type==='FunctionDeclaration'&&program.body.includes(fn)&&counts.get(fn.name)===1&&
         lexical.global.names.get(fn.name)?.node===fn&&!lexical.global.names.get(fn.name).written;
+    const root=fn=>current()&&rootBinding(fn);
     // The callable analyser intentionally omits proved literal default
     // prologues. Their two actual parameter references still participate in
     // this complete executable census, bound to that exact function scope.
@@ -157,6 +222,19 @@ export function inspectGeneratedHelperBindings(program,profile){
         return top!==n||parent?.type==='Call'&&parent.callee===n||['Infinity','NaN','undefined'].includes(name);
     });
     const ambient=(internal=new Set())=>{
+        // Only the complete compiler operation owns this branch and its Sets.
+        // Public callers retain every original root/current/has observation.
+        let ownedInternal=null;
+        if(fastAmbient){
+            if(!current())return false;
+            ownedInternal=aggregateCopyMembers(internal);
+            if(!current())return false;
+        }
+        const member=fn=>aggregateApply(aggregateSetHas,ownedInternal,[fn]);
+        const ambientWithin=node=>{
+            for(let p=parents.get(node);p;p=parents.get(p))if(member(p))return true;
+            return false;
+        };
         const namespaceCalls=new Set(['Array.isArray','Object.keys','JSON.parse','JSON.stringify','Math.round','Math.floor','Math.ceil','Math.min','Math.max','Math.abs','Math.random','Math.percentChance',
             'console.log','game.onUpdate','game.onUpdateInterval','control.runInParallel','control.panic','basic.pause','music.stopAllSounds',
             'info.setScore','info.changeScoreBy','info.score','info.startCountdown','info.onCountdownEnd','sprites.create','sprites.onCreated','sprites.onDestroyed','sprites.onOverlap']);
@@ -189,7 +267,7 @@ export function inspectGeneratedHelperBindings(program,profile){
             // Exact canonical ArrayAccess only transports its actual argument.
             if(n?.type==='Call'&&n.args?.length===1){
                 const fn=binding(n.callee)?.node;
-                return internal.has(fn)&&fn?.params?.length===1&&fn.body?.length===2&&fn.body[0].type==='Declaration'&&
+                return (fastAmbient?member(fn):internal.has(fn))&&fn?.params?.length===1&&fn.body?.length===2&&fn.body[0].type==='Declaration'&&
                     fn.body[0].decls.length===1&&fn.body[0].decls[0].init?.type==='Identifier'&&fn.body[0].decls[0].init.name===fn.params[0]&&
                     fn.body[1].type==='Return'&&fn.body[1].value?.type==='Identifier'&&fn.body[1].value.name===fn.body[0].decls[0].name&&arrays(n.args[0],seen);
             }
@@ -197,12 +275,12 @@ export function inspectGeneratedHelperBindings(program,profile){
         };
         const path=n=>n?.type==='Identifier'?n.name:n?.type==='Member'?path(n.object)+'.'+n.name:null;
         for(const n of nodes){
-            if(within(n,internal))continue;
+            if(fastAmbient?ambientWithin(n):within(n,internal))continue;
             if(n.type==='Call'){
                 if(n.isNew||n.constructorCall||n.typeArguments?.length||n.args?.some(a=>a?.type==='Spread'))return false;
                 if(n.callee?.type==='Identifier'){
                     const b=binding(n.callee);
-                    if(b){if(b.node?.type!=='FunctionDeclaration'||!root(b.node))return false;}
+                    if(b){if(b.node?.type!=='FunctionDeclaration'||!(fastAmbient?rootBinding(b.node):root(b.node)))return false;}
                     else if(!['pause','isNaN','Number','String','Boolean','parseInt','parseFloat'].includes(n.callee.name)||counts.has(n.callee.name))return false;
                 }else if(n.callee?.type==='Member'){
                     let base=n.callee;while(base.type==='Member')base=base.object;
@@ -235,4 +313,43 @@ export function inspectGeneratedHelperBindings(program,profile){
         matches:(fn,source,names)=>current()&&program.body.includes(fn)&&hasGeneratedHelperShape(fn,source,profile,names),
         unbound:node=>current()&&node?.type==='Identifier'&&!binding(node)&&!counts.has(node.name),
         unique:name=>current()&&counts.get(name)===1,profile});
+}
+
+/**
+ * Compiler INTERNAL complete operation. Input is the actual synchronous parser
+ * result after only owned normalizers, before external publication. It is not
+ * a hostile/foreign AST entry or an unforgeable origin token. No options,
+ * caller Sets, recipes, callbacks or private proof objects cross this boundary.
+ * Later intrinsic changes select the unchanged slow proof path. The module
+ * initializes in the normal compiler realm; this does not authenticate a realm
+ * already tampered with before module initialization.
+ */
+export function normalizeCompilerOwnedLegacyArrayHelpers(program,profile){
+    const proof=buildGeneratedHelperBindings(program,profile,aggregateIntrinsicsCurrent());
+    if(!proof.isCurrent())return program;
+    const recipes=[['__bwNamedParseValue',LEGACY_PARSE_SOURCE,'LegacyParsedValue'],
+        ['__bwNamedJsonValue',LEGACY_JSON_SOURCE,'LegacyJsonValue'],
+        ['__bwArrayAccess',ARRAY_ACCESS_SOURCE,'NativeArrayAccess']];
+    const candidates=new Map();
+    // Reject impossible recipe shapes before rescanning the whole binding snapshot.
+    // Shape alone grants no rewrite: every selected helper still needs the original
+    // current root, exact match, closed-use and call proofs below.
+    for(const fn of program.body)if(fn?.type==='FunctionDeclaration')for(const [base,source,type]of recipes){
+        const names=new Map([[fn.name,base]]);
+        if(hasGeneratedHelperShape(fn,source,profile,names)&&proof.root(fn)&&proof.matches(fn,source,names))
+            candidates.set(fn,{type});
+    }
+    // A retained helper body becomes an external consumer of its dependencies.
+    // Recompute until removing one declaration cannot strand a retained caller.
+    const selected=new Set(candidates.keys());let changed;
+    do {changed=false;for(const fn of selected)if(!proof.closed(fn,selected)||proof.calls(fn,[1],selected)===null){selected.delete(fn);changed=true;}}while(changed);
+    const calls=new Map();for(const fn of selected)for(const call of proof.calls(fn,[1],selected))calls.set(call,candidates.get(fn));
+    if(!selected.size||!proof.isCurrent())return program;
+    const rewrite=node=>{
+        if(!node||typeof node!=='object')return node;
+        if(Array.isArray(node))return mapGeneratedSourceArray(node,rewrite);
+        if(calls.has(node))return {type:calls.get(node).type,value:rewrite(node.args[0])};
+        return Object.fromEntries(Object.entries(node).map(([key,value])=>[key,rewrite(value)]));
+    };
+    return rewrite({...program,body:program.body.filter(fn=>!selected.has(fn))});
 }

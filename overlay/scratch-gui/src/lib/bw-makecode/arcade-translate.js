@@ -19,7 +19,7 @@ import {validateClassCallablePlan} from './class-callable-plan.js';
 import {sourceCallableDeclarations} from './source-callable-declarations.js';
 import {callableDeclarationEnvelope,callableVariableEnvelope} from './callable-export-graph.js';
 import {lowerNamedArrayItemHelpers} from './named-array-item-helpers.js';
-import {GENERATED_HELPER_PROFILES,hasGeneratedHelperShape,inspectGeneratedHelperBindings,mapGeneratedSourceArray} from './generated-helper-recognition.js';
+import {GENERATED_HELPER_PROFILES,hasGeneratedHelperShape,inspectGeneratedHelperBindings,normalizeCompilerOwnedLegacyArrayHelpers,mapGeneratedSourceArray} from './generated-helper-recognition.js';
 import {lowerLiveFontMetrics} from './live-font-metrics.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 import {sourceReferenceDeclarations} from './source-reference-declarations.js';
@@ -114,7 +114,6 @@ const NOTE_FREQUENCIES = {C: 262, CSharp: 277, D: 294, Eb: 311, E: 330, F: 349, 
 import {parseTileAssets} from './tile-assets.js';
 import {createAssetKindLookup, lookupAssetTemplate} from './asset-kind-lookup.js';
 import {decodeTilemap, createNativeTilemapRegistry, resolveNativeTilemap} from './tilemap-values.js';
-import {LEGACY_PARSE_SOURCE, LEGACY_JSON_SOURCE, ARRAY_ACCESS_SOURCE} from './legacy-array-values.js';
 import {prepareAnimationImport} from '../bw-animation-import.js';
 import {ValueTypeGraph} from './value-type-graph.js';
 import {lowerSourceLoopControl} from './lower-source-loop-control.js';
@@ -3230,35 +3229,7 @@ const liftExporterStops = (program,profile) => {
 // tree: rewriting calls changed caller order and raw numeric selection.
 const lowerLibraryCalls = program => program;
 
-const inlineLegacyArrayHelpers = (program,profile) => {
-    const proof=inspectGeneratedHelperBindings(program,profile);
-    if(!proof.isCurrent())return program;
-    const recipes=[['__bwNamedParseValue',LEGACY_PARSE_SOURCE,'LegacyParsedValue'],
-        ['__bwNamedJsonValue',LEGACY_JSON_SOURCE,'LegacyJsonValue'],
-        ['__bwArrayAccess',ARRAY_ACCESS_SOURCE,'NativeArrayAccess']];
-    const candidates=new Map();
-    // Reject impossible recipe shapes before rescanning the whole binding snapshot.
-    // Shape alone grants no rewrite: every selected helper still needs the original
-    // current root, exact match, closed-use and call proofs below.
-    for(const fn of program.body)if(fn?.type==='FunctionDeclaration')for(const [base,source,type]of recipes){
-        const names=new Map([[fn.name,base]]);
-        if(hasGeneratedHelperShape(fn,source,profile,names)&&proof.root(fn)&&proof.matches(fn,source,names))
-            candidates.set(fn,{type});
-    }
-    // A retained helper body becomes an external consumer of its dependencies.
-    // Recompute until removing one declaration cannot strand a retained caller.
-    const selected=new Set(candidates.keys());let changed;
-    do {changed=false;for(const fn of selected)if(!proof.closed(fn,selected)||proof.calls(fn,[1],selected)===null){selected.delete(fn);changed=true;}}while(changed);
-    const calls=new Map();for(const fn of selected)for(const call of proof.calls(fn,[1],selected))calls.set(call,candidates.get(fn));
-    if(!selected.size||!proof.isCurrent())return program;
-    const rewrite=node=>{
-        if(!node||typeof node!=='object')return node;
-        if(Array.isArray(node))return mapGeneratedSourceArray(node,rewrite);
-        if(calls.has(node))return {type:calls.get(node).type,value:rewrite(node.args[0])};
-        return Object.fromEntries(Object.entries(node).map(([key,value])=>[key,rewrite(value)]));
-    };
-    return rewrite({...program,body:program.body.filter(fn=>!selected.has(fn))});
-};
+
 
 const inlineValueHelpers = (program, requireUnshadowedBindings = false) => {
     const helpers=new Map();
@@ -5074,7 +5045,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const namedArrayInputs=lowerNamedArrayItemHelpers(inlineValueHelpers(callableSourceInput,true),{profile:generatedProfile});
     // Recognition consumes the selected parse context before clone-heavy
     // lowerings erase its parameter descriptors or alter canonical bodies.
-    const generatedSource=inlineLegacyArrayHelpers(liftExporterStops(namedArrayInputs.program,generatedProfile),generatedProfile);
+    const generatedSource=normalizeCompilerOwnedLegacyArrayHelpers(liftExporterStops(namedArrayInputs.program,generatedProfile),generatedProfile);
     const parsed = lowerSourceLoopControl(inlineValueHelpers(desugarForOf(lowerArrayCallbacks(lowerIifes(lowerDestroyAllSprites(lowerLibraryCalls(
         lowerAnimationAssets(generatedSource)), source), source), source), source)));
     const containsPaletteCall = node => {
