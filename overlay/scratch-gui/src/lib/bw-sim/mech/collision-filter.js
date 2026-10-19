@@ -320,12 +320,6 @@ export const localNoCollide = (bodies, joints, noCollide, coupled, edges, island
             });
             if (agree) motion = {kind, point, axis: a0};
         }
-        // A slider pair stays filtered whole: the shipped Forklift's left tine sits on its guide axle's
-        // line (x −60, z 155 LDU), under the guide's T holder (13 LDU) and the guide itself (32 LDU), so
-        // filtered locally it jams after 5.2 mm of its 40 mm lift; moving the tines off that line breaks
-        // their 40 LDU spacing for the pallet in this carriage (docs/ROBOT-LAB-VALIDATION.md). Until the
-        // carriage is redesigned, sliders keep the per-body filter.
-        if (motion && motion.kind === 'slider') continue;
         // Parts the motion can never bring together: what it keeps fixed separates them.
         const never = (cx, cy) => {
             if (!motion) return false;

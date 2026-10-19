@@ -1643,9 +1643,8 @@ numbers per machine); all 22 of its tests pass with their original expectations 
   `part`) and `jolt-core.js` refuses those sub-shape pairs in a Jolt `SimShapeFilterJS`. The filter
   is JavaScript per sub-shape pair of every body pair in the narrow phase (0.19 µs a call; ~2,000
   calls a step on the 2,054-part stress model, +28 %), so it is installed only when a mechanism
-  has such a pair; no shipped example does. Couplings and slider pairs stay whole: the shipped
-  Forklift's left tine sits on its guide axle's line 13 LDU under the guide's T holder (32039) and,
-  filtered locally, jams after 5.2 mm of its 65.6 mm travel — a model fix for its owner.
+  has such a pair. Couplings stay whole; slider pairs are local since the Forklift's tines moved
+  off its guide axle's line (2026-10-19).
 - **Centre of mass and inertia.** `mech/islands.js` gives each collider `part` and `massKg` (its
   part's mass shared by volume; a motor's halves split by `massFraction`); `jolt-core.js` sets each
   sub-shape's density to `massKg / volume`, so Jolt's compound mass properties are the parts'

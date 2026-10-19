@@ -87,18 +87,16 @@ unchanged. Step costs are node medians at 200 Hz (min of 5 runs); `docs/ROBOT-LA
    `noCollideParts` and is filtered per sub-shape by a Jolt SimShapeFilter (installed only
    then; no shipped example needs it, step time unchanged). Arm stops at 93.53°.
 
-## Open: the Forklift's carriage (for the lead)
+## The Forklift's carriage (resolved 2026-10-19)
 
-Slider pairs keep the per-body filter. Filtered locally, the shipped `forklift.ldr` jams: its
-left tine (2823 at x −60) and the 3L pin under it sit on the guide axle's own line (x −60, z 155),
-13 LDU below the guide's T holder (32039 at LDraw y −70) and 32 LDU below the guide axle itself.
-The rack test then rose 5.4 mm of 37.6 mm and the 40 mm lift cannot happen. Moving the holder is
-not enough (the guide is in the way too), and moving the tines off the line in this carriage
-breaks their 40 LDU spacing, which the pallet's pockets need: with the 3L pin offset in the fork
-arm the tines are 20 LDU apart (tried: the pallet is pushed at rest and lifts 41.0 mm against
-r·θ 40.0); any 40 LDU placement collides with the upright (it takes the toggle's pins) or the
-rack. The carriage needs a redesign with the mast behind the forks; then slider pairs can be
-local too (`collision-filter.js`, one line).
+The left tine (2823 at x −60) and its 3L pin sat on the guide axle's own line (x −60, z 155 LDU), 13 LDU
+under the guide's T holder and 32 under the guide, so with local filtering the carriage jammed after
+5.2 mm of its 40 mm lift. The tines now hang on a cross beam in front of the mast: a beam 5 (32316,
+x −20, y −14, holes z 155…235) pinned to the fork arm's two lower holes (z 155, 175), the 3L pin at z
+215 carrying the tines at x −40 and 0 (still 40 LDU apart for the pallet's pockets). Their roots
+(z 195…235) are 30 LDU in front of the T holder. The Warehouse pallet moved with them (world x −0.136,
+z −0.016). Slider pairs are filtered locally now; the Forklift tests pass unchanged (40 mm lift: 39.82
+against r·θ 40.03; held drift 0.013 mm; slip on the forks 0.00 mm).
 
 ## Integration with the gearbox lane (2026-10-19)
 
