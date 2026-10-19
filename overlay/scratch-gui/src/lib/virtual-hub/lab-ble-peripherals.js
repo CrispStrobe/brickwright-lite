@@ -18,8 +18,34 @@ import {LWP3_SERVICE, LWP3_CHARACTERISTIC, LEGO_COMPANY_ID} from '../bw-sim/hubs
 import {WEDO2_GATT, WEDO2_SERVICE} from '../bw-sim/hubs/wedo2/wedo2-protocol.js';
 import {WEDO2_NAME} from '../bw-sim/hubs/wedo2/wedo2-virtual-hub.js';
 
-/** A notification as a radio delivers it: after the current call returns. */
-const later = fn => (typeof queueMicrotask === 'function' ? queueMicrotask(fn) : Promise.resolve().then(fn));
+/**
+ * Notifications as a radio delivers them: on a later task, in order. Not a microtask: a host
+ * that subscribes (`await characteristic.startNotifications()`) and only then adds its listener
+ * must not miss what the hub sends on subscription (an LWP3 hub's Attached I/O), as it does not
+ * with a real hub, whose answer comes a connection interval later. One queue per connection.
+ */
+const radioQueue = () => {
+    let queue = [];
+    let timer = null;
+    return {
+        push (fn) {
+            queue.push(fn);
+            if (timer === null) {
+                timer = setTimeout(() => {
+                    timer = null;
+                    const due = queue;
+                    queue = [];
+                    for (const f of due) f();
+                }, 0);
+            }
+        },
+        clear () {
+            if (timer !== null) clearTimeout(timer);
+            timer = null;
+            queue = [];
+        }
+    };
+};
 
 /**
  * The LWP3 hub's GATT peripheral (LWP3 §3: one service 0x1623, one characteristic 0x1624, every
@@ -36,6 +62,7 @@ export class Lwp3Peripheral {
         // §2.2 capabilities 0x02 (peripheral role) | 0x04 (LPF2 devices); §2.4 status 0x01 ("I can be Peripheral").
         this.manufacturerData = {[LEGO_COMPANY_ID]: [0x00, hub.type.systemType, 0x06, 0x00, 0x01, 0x00]};
         this.connected = false;
+        this.radio = radioQueue();
     }
 
     connect () {
@@ -44,6 +71,7 @@ export class Lwp3Peripheral {
 
     disconnect () {
         this.connected = false;
+        this.radio.clear();
         this.hub.setSink(null);
     }
 
@@ -54,7 +82,7 @@ export class Lwp3Peripheral {
         }
         this.hub.setSink(bytes => {
             const copy = Uint8Array.from(bytes);
-            later(() => { if (this.connected) fn(LWP3_CHARACTERISTIC, copy); });
+            this.radio.push(() => { if (this.connected) fn(LWP3_CHARACTERISTIC, copy); });
         });
     }
 
@@ -81,6 +109,7 @@ export class Wedo2Peripheral {
         this.name = WEDO2_NAME;
         this.services = WEDO2_GATT.map(s => ({uuid: s.uuid, characteristics: s.characteristics.map(c => ({uuid: c.uuid}))}));
         this.connected = false;
+        this.radio = radioQueue();
     }
 
     connect () {
@@ -89,6 +118,7 @@ export class Wedo2Peripheral {
 
     disconnect () {
         this.connected = false;
+        this.radio.clear();
         this.hub.setSink(null);
     }
 
@@ -99,7 +129,7 @@ export class Wedo2Peripheral {
         }
         this.hub.setSink((uuid, bytes) => {
             const copy = Uint8Array.from(bytes);
-            later(() => { if (this.connected) fn(uuid, copy); });
+            this.radio.push(() => { if (this.connected) fn(uuid, copy); });
         });
     }
 

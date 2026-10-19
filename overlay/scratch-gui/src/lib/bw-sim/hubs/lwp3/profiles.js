@@ -37,13 +37,15 @@ const internalMotorPort = id => Object.freeze({...lpf2Port(id), label: label(`Po
  * @property {import('../hub-profile.js').HubProfile} profile
  * @property {number} systemType     §2.1 / property 0x0B
  * @property {string} advertisedName §3.5.5 property 0x01 (also the BLE device name)
+ * @property {number[]} firmware     §3.5.6 property 0x03: [major, minor, bugfix, build]
  * @property {Object<string, number>} portIds   profile port id → LWP3 port id
  * @property {{port: number, type: number, device: string}[]} internal  internal devices announced at connect
  * @property {Object<string, string>} [builtInMotors]  profile port → catalogue motor device
  * @property {string} source         where the port map comes from
  */
 
-const hubType = ({id, name, part, ports, systemType, advertisedName, portIds, internal, builtInMotors = {}, imu = null, source}) => {
+const hubType = ({id, name, part, ports, systemType, advertisedName, portIds, internal, builtInMotors = {}, imu = null, source,
+    firmware = [1, 0, 0, 9999]}) => {
     const profile = Object.freeze({
         id,
         name,
@@ -56,7 +58,7 @@ const hubType = ({id, name, part, ports, systemType, advertisedName, portIds, in
         // Blocks over Web Bluetooth or Scratch Link (virtual-hub/lwp3-peripheral.js) and the Robot Lab API.
         routes: Object.freeze(['legopoweredup-extension', 'legoboostunified-extension', 'boost-extension', 'robot-lab-api'])
     });
-    return Object.freeze({profile, systemType, advertisedName, portIds: Object.freeze(portIds),
+    return Object.freeze({profile, systemType, advertisedName, firmware: Object.freeze(firmware), portIds: Object.freeze(portIds),
         internal: Object.freeze(internal.map(i => Object.freeze(i))), builtInMotors: Object.freeze(builtInMotors), source});
 };
 
@@ -70,12 +72,18 @@ export const MOVE_HUB = hubType({
     ports: [internalMotorPort('A'), internalMotorPort('B'), lpf2Port('C'), lpf2Port('D')],
     systemType: SYSTEM_TYPE.MOVE_HUB,
     advertisedName: 'LEGO Move Hub',
-    portIds: {A: 0x00, B: 0x01, C: 0x02, D: 0x03},
+    // The Move Hub's port ids changed with its firmware 1.0.00.0224 (scratch-vm extensions/scratch3_boost,
+    // BoostPort10000223OrOlder / 10000224OrNewer). This hub reports firmware 1.0.00.0223 and keeps that
+    // map — A 55, B 56, C 1, D 2 — the one both BOOST extensions address (legoboostunified picks it for
+    // every firmware it reads, docs/LWP3-VIRTUAL-HUB-NOTES.md "Findings").
+    firmware: [1, 0, 0, 223],
+    portIds: {A: 0x37, B: 0x38, C: 0x01, D: 0x02},
     internal: [LED, {port: 0x3a, type: IO_TYPE.INTERNAL_TILT, device: 'move-hub-tilt'},
         {port: 0x3b, type: IO_TYPE.CURRENT, device: 'current'}, {port: 0x3c, type: IO_TYPE.VOLTAGE, device: 'voltage'}],
     builtInMotors: {A: 'boost-move-hub-motor', B: 'boost-move-hub-motor'},
     imu: 'move-hub-tilt',
-    source: 'node-poweredup src/hubs/movehub.ts portMap (A 0, B 1, C 2, D 3, HUB_LED 50, TILT_SENSOR 58, CURRENT 59, VOLTAGE 60) — community; ' +
+    source: 'scratch-vm extensions/scratch3_boost BoostPort10000223OrOlder (A 55, B 56, C 1, D 2) and node-poweredup ' +
+        'src/hubs/movehub.ts portMap (HUB_LED 50, TILT_SENSOR 58, CURRENT 59, VOLTAGE 60) — community; ' +
         'LWP3 §2.1 System Type 0x40 "Boost Hub" — LEGO'
 });
 

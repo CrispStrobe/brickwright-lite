@@ -1,0 +1,58 @@
+0 WeDo 2.0 rover (Brickwright Robot Lab reference model)
+0 Name: wedo-milo.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 // A Milo-style WeDo 2.0 rover: the Smart Hub on top, the WeDo motor on port A hanging
+0 // under it on a stack of bricks and driving one wheel at the back, two ball castors on
+0 // Technic bricks at the front, and the motion sensor on port B looking ahead. Its program
+0 // drives until the sensor sees the wall.
+0 !BW ID hub
+1 15 0 0 0 1 0 0 0 1 0 0 0 1 19071.dat
+0 !BW ID spacer1
+1 71 -20 72 -80 1 0 0 0 1 0 0 0 1 3003.dat
+0 !BW ID spacer2
+1 71 -20 96 -80 1 0 0 0 1 0 0 0 1 3003.dat
+0 !BW ID spacer3
+1 71 -20 120 -80 1 0 0 0 1 0 0 0 1 3022.dat
+0 !BW ID motor
+0 !BW PORT A
+1 72 -20 128 -80 0 0 -1 0 1 0 1 0 0 21980.dat
+0 !BW ID axle
+1 0 60 154 -80 1 0 0 0 1 0 0 0 1 3707.dat
+0 !BW ID wheel
+1 15 20 154 -80 0 0 1 0 -1 0 1 0 0 39367p01.dat
+0 !BW ID stackL1
+1 4 -30 72 40 0 0 1 0 1 0 -1 0 0 3010.dat
+0 !BW ID stackL2
+1 4 -30 96 40 0 0 1 0 1 0 -1 0 0 3010.dat
+0 !BW ID stackL3
+1 4 -30 120 40 0 0 1 0 1 0 -1 0 0 3010.dat
+0 !BW ID beamL
+1 4 -30 144 40 0 0 1 0 1 0 -1 0 0 3701.dat
+0 !BW ID castorL
+1 71 -50 154 60 1 0 0 0 1 0 0 0 1 39370.dat
+0 !BW ID ballL
+1 15 -50 200 60 1 0 0 0 1 0 0 0 1 52629.dat
+0 !BW ID pinL1
+1 0 -40 154 20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID pinL2
+1 0 -40 154 60 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID stackR1
+1 4 30 72 40 0 0 1 0 1 0 -1 0 0 3010.dat
+0 !BW ID stackR2
+1 4 30 96 40 0 0 1 0 1 0 -1 0 0 3010.dat
+0 !BW ID stackR3
+1 4 30 120 40 0 0 1 0 1 0 -1 0 0 3010.dat
+0 !BW ID beamR
+1 4 30 144 40 0 0 1 0 1 0 -1 0 0 3701.dat
+0 !BW ID castorR
+1 71 50 154 60 1 0 0 0 1 0 0 0 1 39370.dat
+0 !BW ID ballR
+1 15 50 200 60 1 0 0 0 1 0 0 0 1 52629.dat
+0 !BW ID pinR1
+1 0 40 154 20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID pinR2
+1 0 40 154 60 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID sensor
+0 !BW PORT B
+1 72 0 -24 20 0 0 -1 0 1 0 1 0 0 20844.dat

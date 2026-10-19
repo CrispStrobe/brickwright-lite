@@ -1,0 +1,26 @@
+0 Technic hub motor bench (Brickwright Robot Lab reference model)
+0 Name: technic-hub-bench.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 // A Technic Hub (Control+) with a Technic large motor on its port A, both pinned to a
+0 // 9-hole beam; the motor turns a 24-tooth gear on an axle. The legopoweredup blocks drive it
+0 // over Web Bluetooth or Scratch Link, as a real hub (docs/SIM-LAB.md "Powered Up, BOOST, WeDo").
+0 !BW ID hub
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 22127.dat
+0 !BW ID beam
+1 72 100 0 0 0 1 0 -1 0 0 0 0 1 40490.dat
+0 !BW ID pinHub1
+1 0 90 0 60 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID pinHub2
+1 0 90 0 -60 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor
+0 !BW PORT A
+1 72 140 -20 -80 1 0 0 0 1 0 0 0 1 22169.dat
+0 !BW ID pinMotor1
+1 0 110 0 -80 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID pinMotor2
+1 0 110 0 60 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID axle
+1 0 140 -20 -130 0 0 1 0 1 0 -1 0 0 3706.dat
+0 !BW ID gear
+1 4 140 -20 -170 1 0 0 0 1 0 0 0 1 3648.dat

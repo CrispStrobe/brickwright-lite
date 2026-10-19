@@ -54,8 +54,6 @@ const DEG = 180 / Math.PI;
 /** The IO type a hub reports for a port's device when the part names none (an external Boost motor). */
 const DEFAULT_MOTOR_TYPE = IO_TYPE.EXTERNAL_MOTOR_TACHO;
 
-/** Firmware version this hub reports (§3.5.6); a made-up but well-formed number, flagged as virtual by its build. */
-export const VIRTUAL_FW = Object.freeze(versionNumber(1, 0, 0, 9999));
 /** LWP version (§3.5.7, BCD): 3.00. */
 export const LWP_VERSION = Object.freeze([0x00, 0x03]);
 /** Battery level reported (%): the Lab's battery does not drain. */
@@ -347,7 +345,7 @@ export class Lwp3VirtualHub {
         const payload = {
             [PROP.ADVERTISING_NAME]: () => ascii(this.type.advertisedName),
             [PROP.BUTTON]: () => [0x00],
-            [PROP.FW_VERSION]: () => VIRTUAL_FW,
+            [PROP.FW_VERSION]: () => versionNumber(...this.type.firmware),
             [PROP.HW_VERSION]: () => versionNumber(0, 4, 0, 0),
             [PROP.RSSI]: () => [int8(-40) & 0xff],
             [PROP.BATTERY_VOLTAGE]: () => [BATTERY_PERCENT],

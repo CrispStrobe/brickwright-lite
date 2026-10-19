@@ -1,0 +1,7 @@
+# WeDo 2.0 rover: the LEGO WeDo 2.0 blocks (wedo2unified) run the motor on port A until the motion
+# sensor on port B sees the wall (its distance 0..10 drops below 5), then stop it.
+WHEN flag clicked:
+  wedo set motor A power to 100 %
+  wedo turn motor A on
+  wait until (wedo distance) < 5
+  wedo turn motor A off

@@ -17,6 +17,7 @@ import installVirtualSpikeClassicScratchLink from '../lib/virtual-hub/spike-clas
 import VirtualSpikeHubState from '../lib/virtual-hub/spike-hub-state.js';
 import initVirtualSpikePanel from '../lib/virtual-hub/spike-panel.js';
 import installScratchLinkBridge from '../lib/native-scratch-link-bridge.js';
+import installVirtualScratchLinkBle from '../lib/virtual-hub/scratch-link-ble.js';
 import initTauriBridge from '../lib/tauri-bridge.js';
 import initUrlExtensions from '../lib/url-extensions.js';
 import {applyStoredChrome} from '../components/gui/chrome-toggle.jsx';
@@ -92,6 +93,11 @@ export default appTarget => {
     // path for the case where the socket never opens. Nothing it does can
     // remove one of the extension's own three connection options.
     installScratchLinkBridge();
+
+    // Scratch Link's BLE route to the Robot Lab's virtual radio hubs (LWP3, WeDo 2.0): installed after
+    // the bridge so it is asked first, and inert unless the Lab is connecting a program to its hub
+    // (a virtual chooser installed, a virtual peripheral registered); every other socket passes through.
+    installVirtualScratchLinkBle();
 
     // Wire native file-open (Tauri) → web VM. No-op in a browser.
     initTauriBridge();
