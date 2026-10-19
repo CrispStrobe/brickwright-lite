@@ -2,6 +2,14 @@
 // scene.ts/extendableSprite.ts source contracts; retain the existing MIT notice.
 // This service supplies no constructor defaults and no alternate Sprite body.
 function create(ext) {
+    const runtime=ext?._runtime;
+    if(!runtime || typeof runtime.on!=='function' || !Array.isArray(runtime.targets)) {
+        // Palette/metadata construction has no runtime owner. This service must
+        // stay inert even if the extension later receives a runtime property.
+        const refuse=()=>{throw new Error('Native Sprite update requires its originally bound runtime');};
+        return Object.freeze({register:refuse,steps:function *(){refuse();},claim:refuse,
+            handles:()=>false,hasSceneUpdates:()=>false,prepareCall:refuse,consumeChild:()=>null});
+    }
     const owners=new WeakMap(),entries=new WeakMap();
     const active=new WeakMap(),invocations=new WeakMap(),calls=new WeakMap();
     // Cancellation is private state: restoring public phase fields cannot
