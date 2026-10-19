@@ -55,9 +55,15 @@ if (!existsSync(missing)) {
                 const angle = r.hub.readPort('A').angleDeg;
                 assert.ok(Math.abs(angle - 360) <= DEG_TOLERANCE, `motor A at ${angle.toFixed(2)}°`);
                 // The command the extension sent is §3.27.9 StartSpeedForDegrees: port 0, execute immediately with
-                // feedback, 0x0B, Int32 360, speed 50, max power 100 (and its end state, here 0x80).
+                // feedback, 0x0B, Int32 360, speed 50, max power 100, then its end state and profile bytes.
+                // Scoped by the message's own length byte (§3.1 common header), not a fixed prefix: the
+                // write is exactly one 14-byte message, and every field is read from it by position.
                 const degrees = r.written.find(b => b[2] === 0x81 && b[5] === 0x0b);
-                assert.deepEqual(degrees.slice(0, 12), [0x0e, 0x00, 0x81, 0x00, 0x11, 0x0b, 0x68, 0x01, 0x00, 0x00, 0x32, 0x64]);
+                assert.ok(degrees, 'a StartSpeedForDegrees write');
+                assert.equal(degrees.length, degrees[0], 'the write is one whole LWP3 message');
+                const [length, hubId, type, port, startup, sub, d0, d1, d2, d3, speed, maxPower] = degrees;
+                assert.deepEqual({length, hubId, type, port, startup, sub, degrees: d0 | d1 << 8 | d2 << 16 | d3 << 24, speed, maxPower},
+                    {length: 14, hubId: 0x00, type: 0x81, port: 0x00, startup: 0x11, sub: 0x0b, degrees: 360, speed: 0x32, maxPower: 0x64});
                 assert.deepEqual(errorsBack(r.received), [], 'the hub took every message');
                 // §3.32 feedback: in progress (0x01), then idle + completed (0x0A) for the degrees command.
                 const feedback = r.received.filter(b => b[2] === 0x82).map(b => b[4]);

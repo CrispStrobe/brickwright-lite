@@ -3,11 +3,12 @@ import VirtualSpikeHubState from './spike-hub-state.js';
 import {applyHubPython, applyScratchVerb} from './spike-hub-commands.js';
 
 import {CLASSIC_MESSAGE_MAX_BYTES, isClassicScratchLink, encodeBase64, decodeBase64,
-    addClassicSocketClaim, installVirtualClassicScratchLink} from './bt-classic-registry.js';
+    addClassicSocketClaim, installVirtualClassicScratchLink} from './scratch-link-classic-hook.js';
 
-// The Scratch Link BT plumbing (URL test, base64, the WebSocket wrapper) is the BT-classic registry's
-// (bt-classic-registry.js); this module is SPIKE 2.x's REPL served over it, and claims the socket
-// first while the virtual SPIKE's Classic simulation is enabled — as before the registry existed.
+// The Scratch Link BT plumbing (URL test, base64, the WebSocket wrapper) is the boot hook's
+// (scratch-link-classic-hook.js); this module is SPIKE 2.x's REPL served over it, and claims the
+// socket first while the virtual SPIKE's Classic simulation is enabled — at boot, without the Robot
+// Lab. The Lab's registry (bt-classic-registry.js, lazy) claims after it once that chunk loads.
 export {CLASSIC_MESSAGE_MAX_BYTES};
 export const CLASSIC_INPUT_MAX_BYTES = 4096;
 

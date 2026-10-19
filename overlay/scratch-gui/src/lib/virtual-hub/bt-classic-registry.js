@@ -25,35 +25,20 @@
 // matches anything) while available() is true. With nothing available, a Scratch Link URL falls
 // through to the real WebSocket: a real Scratch Link and a real brick keep working.
 //
+// This module is the Robot Lab's (its chunk, bw-sim-lab), never the first load's: the URL test,
+// base64 and the WebSocket wrapper it serves through are the boot hook's
+// (scratch-link-classic-hook.js), and the registry's claim joins that wrapper, after SPIKE's, when
+// this module loads.
+//
 // Replies are delivered on a later macrotask, after the JSON-RPC result of the `send` that caused
 // them: the stock and NXT extensions only start waiting for a reply once their `send` resolved, so a
 // reply that overtook the result would be dropped, as it never is on the real link.
 
-export const CLASSIC_MESSAGE_MAX_BYTES = 64 * 1024;
+import {CLASSIC_MESSAGE_MAX_BYTES, isClassicScratchLink, encodeBase64, decodeBase64, addClassicSocketClaim,
+    installVirtualClassicScratchLink} from './scratch-link-classic-hook.js';
 
-/** Whether a URL is Scratch Link's BT endpoint on this machine (loopback only, as Scratch Link listens). */
-export const isClassicScratchLink = value => {
-    let url;
-    try { url = new URL(String(value)); } catch (_) { return false; }
-    const loopback = ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname);
-    return loopback && ['ws:', 'wss:'].includes(url.protocol) && ['20110', '20111'].includes(url.port) &&
-        (/^\/bt(?:\/|$)/.test(url.pathname) || /^\/scratch\/bt(?:\/|$)/.test(url.pathname));
-};
-
-export const encodeBase64 = bytes => {
-    let binary = '';
-    for (const byte of bytes) binary += String.fromCharCode(byte);
-    return btoa(binary);
-};
-
-export const decodeBase64 = text => {
-    if (typeof text !== 'string' || text.length > Math.ceil(CLASSIC_MESSAGE_MAX_BYTES / 3) * 4) {
-        throw new RangeError('virtual Classic message is too large');
-    }
-    const binary = atob(text);
-    if (binary.length > CLASSIC_MESSAGE_MAX_BYTES) throw new RangeError('virtual Classic message is too large');
-    return Uint8Array.from(binary, character => character.charCodeAt(0));
-};
+export {CLASSIC_MESSAGE_MAX_BYTES, isClassicScratchLink, encodeBase64, decodeBase64, addClassicSocketClaim,
+    installVirtualClassicScratchLink};
 
 /** Registered peripherals by id. One registry per page (the Robot Lab chunk and the app share it). */
 const peripherals = new Map();
@@ -211,47 +196,6 @@ export class VirtualClassicSocket {
     }
 }
 
-/**
- * Socket claims, in priority order: (url) => a socket, or null to pass. SPIKE's 2.x REPL
- * simulation (spike-classic-scratch-link.js) claims first while it is enabled, as it always did.
- */
-const claims = [];
-
-/** Adds a claim; returns its removal. */
-export const addClassicSocketClaim = claim => {
-    claims.push(claim);
-    return () => {
-        const i = claims.indexOf(claim);
-        if (i >= 0) claims.splice(i, 1);
-    };
-};
-
 /** The registry's own claim: a VirtualClassicSocket while any registered peripheral is available. */
 const registryClaim = url => (availableClassicPeripherals().length ? new VirtualClassicSocket(url) : null);
-
-/**
- * Wraps window.WebSocket once: a Scratch Link BT URL goes to the first claim that takes it (SPIKE's
- * REPL simulation, then this registry), anything else — and a BT URL nobody claims — to the real
- * WebSocket. `host` and `NativeWebSocket` are for tests.
- */
-export const installVirtualClassicScratchLink = ({host = typeof window === 'undefined' ? null : window,
-    NativeWebSocket = host ? host.WebSocket : null} = {}) => {
-    if (!host || typeof NativeWebSocket !== 'function') return 'unavailable';
-    if (host.WebSocket && host.WebSocket.__brickwrightVirtualClassic) return 'already installed';
-    const Wrapped = function WebSocket (url, protocols) {
-        if (isClassicScratchLink(url)) {
-            for (const claim of [...claims, registryClaim]) {
-                const socket = claim(url);
-                if (socket) return socket;
-            }
-        }
-        return protocols === undefined ? new NativeWebSocket(url) : new NativeWebSocket(url, protocols);
-    };
-    Wrapped.prototype = NativeWebSocket.prototype;
-    for (const key of ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED']) Wrapped[key] = NativeWebSocket[key];
-    Wrapped.__brickwrightVirtualClassic = true;
-    // The name SPIKE's installer used to check; kept so an older caller still sees "installed".
-    Wrapped.__brickwrightVirtualSpikeClassic = true;
-    host.WebSocket = Wrapped;
-    return 'installed';
-};
+addClassicSocketClaim(registryClaim, {fallback: true});

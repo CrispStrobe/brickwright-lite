@@ -131,7 +131,7 @@ export async function runLabHubProgram (source, {modelText: text, mat = null, tr
         if (!hub) throw new Error('the model has no radio hub');
         // A hub that can run another firmware (the Move Hub's 'legacy' 1.0.00.0223 port map).
         if (firmware) hub.setFirmware(firmware);
-        // The shim and the Scratch Link double, as render-gui.jsx installs them; the scene's hub registered as the pane does.
+        // The shim and the Scratch Link double, as render-gui.jsx (the shim) and the Lab's registerRobotLabBlePeripherals (the double) install them; the scene's hub registered as the pane does.
         clearVirtualPeripheralsForTest();
         globalThis.navigator.bluetooth = undefined;
         installWebBluetooth();

@@ -14,6 +14,7 @@
 // exactly the scene's hub.
 
 import {registerVirtualPeripheral} from './web-bluetooth-shim.js';
+import installVirtualScratchLinkBle from './scratch-link-ble.js';
 import {LWP3_SERVICE, LWP3_CHARACTERISTIC, LEGO_COMPANY_ID} from '../bw-sim/hubs/lwp3/lwp3-protocol.js';
 import {WEDO2_GATT, WEDO2_SERVICE} from '../bw-sim/hubs/wedo2/wedo2-protocol.js';
 import {WEDO2_NAME} from '../bw-sim/hubs/wedo2/wedo2-virtual-hub.js';
@@ -159,6 +160,12 @@ export {WEDO2_SERVICE};
  * @returns {Function} unregister
  */
 export const registerRobotLabBlePeripherals = getHubs => {
+    // Scratch Link's BLE route to these hubs: the double (scratch-link-ble.js) is the Robot Lab's,
+    // not the first load's, so its WebSocket wrapper goes in here, when the Lab first offers a hub.
+    // It is idempotent and inert unless the Lab is connecting a program to its hub (a virtual chooser
+    // installed, a virtual peripheral registered); every other socket passes through to the one
+    // installed before (the native Scratch Link bridge's, the browser's).
+    installVirtualScratchLinkBle();
     const made = new Set();
     const factory = (protocol, Make) => registerVirtualPeripheral(() => {
         const hub = (getHubs() || []).find(h => h && h.protocol === protocol);
