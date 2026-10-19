@@ -484,3 +484,25 @@ original/prepared file hashes, package source provenance and explicit failures.
 The resolver is not a compiler or gameplay oracle. A requested preparation or
 prepared parse failure returns a failing CLI status. Compilation, execution,
 behavioural comparisons and GUI evidence remain separate gates.
+
+## Prompt suspension and effective palettes — 2026-10-13
+
+Text and number prompts now suspend the caller scene, serialize concurrent
+prompts, restore on completion or failure, and cancel active/queued work at
+Stop or disposal. Default text and number lengths are 12 and 6; numeric answers
+use the original `parseFloat` semantics, including NaN. Source variables named
+`answer`, `timer`, `loudness` or `username` receive safe dialect names to prevent
+Scratch built-in reporter collisions. Thirteen focused prompt and lifecycle
+checks passed. Optional prompt parameters and the original on-screen keyboard
+remain explicit gaps; these checks do not establish matching prompt artwork.
+
+Dependency preparation now captures the original compiler's effective
+`copts.jres.__palette`, rather than guessing from dependency order or the final
+target settings. Two focused original-compiler/native checks cover dependency
+palettes, reversed dependency order, root overrides and 19200 indexed pixels.
+Actual game comparisons retain separate input timing and frame evidence.
+
+Hosted checks exposed two obsolete controls: an expected namespace Buffer
+refusal, and an old producer pin. The controls now verify actual namespace song
+bytes and requalify the SPIKE artifact against the adopted producer. The nine
+combined dependency, palette and SPIKE controls passed without skips.
