@@ -19,7 +19,8 @@ test('actual edited tile artwork keeps project colors, indices, walls and names 
     const imported=arcadeToPseudocode({'main.ts':source,'pxt.json':JSON.stringify({name:'painter-palette',dependencies:{device:'*'},files:['main.ts'],palette})});
     record({stage:'tile-palette-import',result:imported});
     assert.deepEqual(imported.unsupported,[]);assert.deepEqual(imported.warnings,[]);
-    const runs=[];
+    const runs=[],closed=new Set();
+    const close=run=>{if(!closed.has(run)){run.vm.quit();closed.add(run);}};
     try{
         const run=await runProgram(imported.code,{frames:3,storage:true,uploads:imported.costumes});runs.push(run);
         record({stage:'tile-palette-initial-VM',project:JSON.parse(run.vm.toJSON()),errors:run.errors,palette:inspectTilemapPalette(run.vm)});
@@ -29,9 +30,6 @@ test('actual edited tile artwork keeps project colors, indices, walls and names 
         assert.equal(writeTilemapBlock(run.vm,ref,edited),true);
         const code=run.creator.decompile(JSON.parse(run.vm.toJSON()));
         record({stage:'tile-palette-current-Code',code,edited});
-        const codeRun=await runProgram(code,{frames:3,storage:true,uploads:imported.costumes});runs.push(codeRun);
-        record({stage:'tile-palette-Code-VM',project:JSON.parse(codeRun.vm.toJSON()),errors:codeRun.errors});
-        assert.deepEqual(codeRun.errors,[]);assert.deepEqual(findTilemapBlocks(codeRun.vm)[0].data,edited);
         const saved=await run.vm.saveProjectSb3(),bytes=Buffer.from(await saved.arrayBuffer());
         record({stage:'tile-palette-saved-SB3',bytesBase64:bytes.toString('base64'),project:JSON.parse(run.vm.toJSON())});
         await run.vm.loadProject(bytes);
@@ -41,10 +39,15 @@ test('actual edited tile artwork keeps project colors, indices, walls and names 
         const exported=projectToArcade(JSON.parse(run.vm.toJSON()),{costumeSvg:(_target,costume)=>run.creator.assets.get(costume.assetId)?.data});
         record({stage:'tile-palette-export',result:exported});
         assert.deepEqual(exported.unsupported,[]);assert.deepEqual(exported.warnings,[]);
+        close(run);
+        const codeRun=await runProgram(code,{frames:3,storage:true,uploads:imported.costumes});runs.push(codeRun);
+        record({stage:'tile-palette-Code-VM',project:JSON.parse(codeRun.vm.toJSON()),errors:codeRun.errors});
+        assert.deepEqual(codeRun.errors,[]);assert.deepEqual(findTilemapBlocks(codeRun.vm)[0].data,edited);
+        close(codeRun);
         const again=arcadeToPseudocode(exported.files);record({stage:'tile-palette-reimport',result:again});assert.deepEqual(again.unsupported,[]);assert.deepEqual(again.warnings,[]);
         const reimported=await runProgram(again.code,{frames:3,storage:true,uploads:again.costumes});runs.push(reimported);
         record({stage:'tile-palette-reimport-VM',project:JSON.parse(reimported.vm.toJSON()),errors:reimported.errors,palette:inspectTilemapPalette(reimported.vm)});
         assert.deepEqual(reimported.errors,[]);assert.deepEqual(findTilemapBlocks(reimported.vm)[0].data,edited);
         assert.deepEqual(inspectTilemapPalette(reimported.vm).colors,[null,...palette.slice(1)]);
-    }finally{for(const run of runs)run.vm.quit();clearStrayTimers();}
+    }finally{for(const run of runs)close(run);clearStrayTimers();}
 });
