@@ -30,14 +30,15 @@ test('actual Node TODO outcomes survive census and a lost pending record or hidd
         for (const name of ['check-test-run.mjs', 'check-tap-failures.mjs', 'list-tests.mjs', 'lib/skip-pointers.mjs', 'lib/tap-outcomes.mjs', 'lib/test-census-reporter.mjs'])
             copyFileSync(new URL('../scripts/' + name, import.meta.url), path.join(root, 'scripts', name));
         writeFileSync(path.join(root, 'LANES.md'), '');
+        mkdirSync(path.join(root, 'docs'));writeFileSync(path.join(root, 'docs/PENDING.md'), '# pending\n');
         writeFileSync(path.join(root, 'test/fixture.test.mjs'), `import test, {describe} from 'node:test';
 import assert from 'node:assert/strict';
 test('ordinary pass',()=>{});
-test('failed pending',{todo:'pinned discrepancy'},()=>{assert.equal(1,2)});
-test('passing pending',{todo:'not yet qualified'},()=>{});
-describe('pending suite',{todo:'suite planned'},()=>{
- test('child failure',()=>{assert.equal(1,2)});
- test('child pass',()=>{});
+test('failed pending',{todo:'pinned discrepancy, docs/PENDING.md'},()=>{assert.equal(1,2)});
+test('passing pending',{todo:'not yet qualified, docs/PENDING.md'},()=>{});
+describe('pending suite',{todo:'suite planned, docs/PENDING.md'},()=>{
+ test('child failure',{todo:'child pending, docs/PENDING.md'},()=>{assert.equal(1,2)});
+ test('child pass',{todo:'child pending, docs/PENDING.md'},()=>{});
 });
 `);
         const run = spawnSync(process.execPath, ['--test', '--test-reporter=tap', '--test-reporter-destination=stdout',
@@ -51,13 +52,17 @@ describe('pending suite',{todo:'suite planned'},()=>{
         const bucket = Object.values(census.files)[0];
         assert.equal(bucket.tests, 6); assert.equal(bucket.passed, 1); assert.equal(bucket.failed, 0);
         assert.deepEqual(bucket.todo.map(row => [row.name, row.reason, row.passed]),
-            [['failed pending', 'pinned discrepancy', false], ['passing pending', 'not yet qualified', true],
-             ['child failure', '(no reason)', false], ['child pass', '(no reason)', true], ['pending suite', 'suite planned', true]]);
+            [['failed pending', 'pinned discrepancy, docs/PENDING.md', false], ['passing pending', 'not yet qualified, docs/PENDING.md', true],
+             ['child failure', 'child pending, docs/PENDING.md', false], ['child pass', 'child pending, docs/PENDING.md', true], ['pending suite', 'suite planned, docs/PENDING.md', true]]);
         assert.deepEqual(bucket.todo.map(row => row.type), ['test', 'test', 'test', 'test', 'suite']);
         writeFileSync(path.join(root, 'run.tap'), run.stdout);
         const audit = () => spawnSync(process.execPath, ['scripts/check-test-run.mjs', '--set', 'fast', '--tap', 'run.tap', '--census', 'census.json'],
             {cwd: root, env, encoding: 'utf8'});
         const good = audit(); assert.equal(good.status, 0, good.stdout + good.stderr);
+        // Owner rule (2026-10-19): a TODO must name an existing docs/….md entry.
+        writeFileSync(path.join(root, 'run.tap'), run.stdout.replace('pinned discrepancy, docs/PENDING.md', 'pinned discrepancy'));
+        const undocumented = audit(); assert.equal(undocumented.status, 1); assert.match(undocumented.stdout, /FAIL every known-open \(TODO\) test points at the doc entry/);
+        writeFileSync(path.join(root, 'run.tap'), run.stdout);
         const failureGate = () => spawnSync(process.execPath, ['scripts/check-tap-failures.mjs', 'run.tap'],
             {cwd: root, env, encoding: 'utf8'});
         assert.equal(failureGate().status, 0, 'the actual workflow failure check accepts only explicit pending outcomes');
