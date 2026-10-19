@@ -26,6 +26,7 @@ import React from 'react';
 import {pickLocale, browserLocale} from '../../lib/bw-i18n.js';
 import {SIM_LAB_STORAGE_KEY, simLabRecordFromText, readSimLabStorage, isStorableName} from '../../lib/bw-sim/model/sim-lab-persist.js';
 import SimLabPalette from './sim-lab-palette.jsx';
+import SimLabInfo from './sim-lab-info.jsx';
 import SimLabInstructions from './sim-lab-instructions.jsx';
 import {INSIGHT_TEXT, issueSentence, fillText} from './sim-lab-insight-text.js';
 import {firmwareRefusalSentence} from './sim-lab-firmware-text.js';
@@ -96,6 +97,17 @@ const TEXT = {
         search: 'Search parts', searchHint: 'Search: name or number', clearSearch: 'Clear the search', recent: 'Recently used',
         noMatches: 'No part matches “{q}”.', partTitle: '{name} · part {number}',
         paletteHelp: 'Click a part, then click in the view. Or drag it into the view.',
+        helpBuild: 'How to build', helpParts: 'Placing parts',
+        catalogueOpen: 'Add a part from the LDraw catalogue', catalogueTitle: 'LDraw catalogue', catalogueBack: 'Back to the parts',
+        catalogueHint: 'Number or name, e.g. 3001, slope 45', catalogueLoading: 'Loading the catalogue…',
+        catalogueUnavailable: 'The LDraw catalogue could not be loaded ({error}). It needs a network connection.',
+        catalogueAbout: 'Search all {total} LDraw parts. Added parts stay on this device.',
+        catalogueCount: '{shown} of {total} parts', catalogueAdd: 'Add', catalogueAdding: 'Adding…', catalogueHave: 'Added',
+        catalogueAdded: '{name} added. Click in the view to place it.',
+        catalogueDecoration: '{name} added as decoration: it does not connect ({why}).',
+        catalogueFailed: '{part} could not be added: {error}',
+        catalogueCredits: 'Credits for the {n} parts you added',
+        catalogueCredit: 'Parts: LDraw.org Parts Library, CC BY.',
         selectedOne: 'Selected: {name}', selectedMany: 'Selected: {n} parts',
         timeShort: '{s} s',
         partsToggle: 'Show or hide the parts', infoToggle: 'Show or hide the whole note',
@@ -178,6 +190,17 @@ const TEXT = {
         search: 'Teile suchen', searchHint: 'Suche: Name oder Nummer', clearSearch: 'Suche löschen', recent: 'Zuletzt benutzt',
         noMatches: 'Kein Teil passt zu „{q}“.', partTitle: '{name} · Teil {number}',
         paletteHelp: 'Klicke ein Teil an, dann in die Ansicht. Oder zieh es in die Ansicht.',
+        helpBuild: 'So baust du', helpParts: 'Teile platzieren',
+        catalogueOpen: 'Ein Teil aus dem LDraw-Katalog hinzufügen', catalogueTitle: 'LDraw-Katalog', catalogueBack: 'Zurück zu den Teilen',
+        catalogueHint: 'Nummer oder Name, z. B. 3001, slope 45', catalogueLoading: 'Katalog wird geladen…',
+        catalogueUnavailable: 'Der LDraw-Katalog konnte nicht geladen werden ({error}). Er braucht eine Netzwerkverbindung.',
+        catalogueAbout: 'Durchsuche alle {total} LDraw-Teile. Hinzugefügte Teile bleiben auf diesem Gerät.',
+        catalogueCount: '{shown} von {total} Teilen', catalogueAdd: 'Hinzufügen', catalogueAdding: 'Wird hinzugefügt…', catalogueHave: 'Vorhanden',
+        catalogueAdded: '{name} hinzugefügt. Klicke in die Ansicht, um es zu platzieren.',
+        catalogueDecoration: '{name} als Deko hinzugefügt: es verbindet sich nicht ({why}).',
+        catalogueFailed: '{part} konnte nicht hinzugefügt werden: {error}',
+        catalogueCredits: 'Credits für deine {n} hinzugefügten Teile',
+        catalogueCredit: 'Teile: LDraw.org Parts Library, CC BY.',
         selectedOne: 'Ausgewählt: {name}', selectedMany: 'Ausgewählt: {n} Teile',
         timeShort: '{s} s',
         partsToggle: 'Teile zeigen oder ausblenden', infoToggle: 'Den ganzen Hinweis zeigen oder einklappen',
@@ -298,6 +321,8 @@ class SimLabPane extends React.Component {
         this.onBundleCollect = this.onBundleCollect.bind(this);
         this.onBundleLoaded = this.onBundleLoaded.bind(this);
         this.requestThumb = this.requestThumb.bind(this);
+        this.openCatalogue = this.openCatalogue.bind(this);
+        this.addCatalogPart = this.addCatalogPart.bind(this);
         this.armPart = this.armPart.bind(this);
         this.pressPart = this.pressPart.bind(this);
         this.onPointerKind = this.onPointerKind.bind(this);
@@ -1472,6 +1497,26 @@ class SimLabPane extends React.Component {
         );
     }
 
+    /** The whole LDraw catalogue's part list, for the palette's "+" (lib/bw-sim/ldraw/ldraw-catalog.js). */
+    openCatalogue () {
+        return this.lib.ldrawCatalogue().then(catalogue => catalogue.catalog());
+    }
+
+    /**
+     * Adds a catalogue part: derived (lib/bw-sim/part-meta/catalog-parts.js), its LDraw files joined to
+     * the editor's (the view and the palette pictures read from that one map), and armed for placing.
+     */
+    async addCatalogPart (part) {
+        // the files join the editor's map before the part joins the catalogue (sim-lab.js addCatalogPart)
+        const added = await this.lib.addCatalogPart(part, {into: this.catalogFiles ? this.catalogFiles.files : null});
+        if (this.disposed) return added;
+        this.requestThumb(part); // its picture, now that its files are here (a draw before them kept none)
+        this.editView?.setTool(part);
+        this.setState(s => ({placing: part, recent: this.lib.pushRecent(s.recent, part),
+            drawer: this.compact() ? false : s.drawer}));
+        return added;
+    }
+
     /** A palette tile came into view: its picture is drawn in a coming frame. */
     requestThumb (part) {
         if (this.thumbs && !this.thumbs.has(part)) this.thumbQueue.add(part);
@@ -1522,7 +1567,8 @@ class SimLabPane extends React.Component {
             <SimLabPalette key={this.thumbs ? 'pictures' : 'names'} text={this.text} lib={this.lib} locale={this.locale}
                 placing={this.state.placing} recent={this.state.recent} thumbs={this.thumbs} thumbTick={this.state.thumbTick}
                 requestThumb={this.requestThumb} onArm={this.armPart} onPress={this.pressPart}
-                fits={this.state.hold && this.state.hold.pinned && this.editView ? part => this.editView.fitsTarget(part) : null} />
+                fits={this.state.hold && this.state.hold.pinned && this.editView ? part => this.editView.fitsTarget(part) : null}
+                onOpenCatalogue={this.openCatalogue} onAddCatalogPart={this.addCatalogPart} />
         );
     }
 
@@ -1579,7 +1625,7 @@ class SimLabPane extends React.Component {
         } else if (hold.pinned) {
             hint = C.hintTarget;
         } else {
-            hint = this.state.coarse ? C.hintIdleTouch : C.hintIdle;
+            hint = null; // idle: the build (i) holds the how-to, the view stays clear
         }
         const pin = hold.pinned;
         const pinNumber = pin && /(\d+)$/.exec(pin.connectorId);
@@ -1588,12 +1634,12 @@ class SimLabPane extends React.Component {
             boxShadow: '0 2px 6px rgba(15, 23, 42, 0.25)'};
         return (
             <React.Fragment>
-                <div data-testid="bw-sim-lab-hint-bar" data-holding={hold.holding ? 'yes' : 'no'} data-tone={hold.tone || ''}
+                {hint && <div data-testid="bw-sim-lab-hint-bar" data-holding={hold.holding ? 'yes' : 'no'} data-tone={hold.tone || ''}
                     style={{position: 'absolute', left: 8, bottom: 8, right: 108, zIndex: 3, pointerEvents: 'none', display: 'flex', justifyContent: 'flex-start'}}>
                     <span style={{background: hold.tone === 'blocked' ? 'rgba(254, 226, 226, 0.95)' : 'rgba(248, 250, 252, 0.92)', color: hold.tone === 'blocked' ? '#991b1b' : '#334155',
                         borderRadius: 6, padding: '3px 8px', fontSize: 12, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         boxShadow: '0 1px 3px rgba(15, 23, 42, 0.15)'}}>{hint}</span>
-                </div>
+                </div>}
                 {pin && (
                     <div data-testid="bw-sim-lab-target-chip" style={{position: 'absolute', left: 8, top: 8, zIndex: 4, ...chipBase, background: '#fef3c7', color: '#92400e', fontWeight: 600}}>
                         {C.targetChip.replace('{target}', this.partName(pin.part))
@@ -1664,10 +1710,10 @@ class SimLabPane extends React.Component {
         case 'mirrored': return fill(st.kept ? E.mirroredKept : st.swapped ? E.mirroredSwapped : E.mirrored, {n: st.count, s: st.swapped, k: st.kept});
         case 'groupEdit': case 'groupLeft': return fill(E[st.kind], {name: st.name || ''});
         case 'turnedBy': return fill(E.turnedBy, {deg: st.degrees});
-        case 'idle': return this.state.coarse ? T.idleTouch : T.idle;
+        case 'idle': return ''; // nothing to report; the (i) beside the status explains how to build
         default:
             if (E[st.kind]) return fill(E[st.kind], {n: st.count});
-            return T[st.kind] ? fill(T[st.kind], {n: st.count}) : (this.state.coarse ? T.idleTouch : T.idle);
+            return T[st.kind] ? fill(T[st.kind], {n: st.count}) : '';
         }
     }
 
@@ -2182,6 +2228,11 @@ class SimLabPane extends React.Component {
                         {E.groupBanner.replace('{name}', this.state.editGroup.name)}
                     </span>
                 )}
+                <SimLabInfo testid="bw-sim-lab-help-build" label={T.helpBuild}
+                    text={<React.Fragment>
+                        <span style={{display: 'block', marginBottom: 6}}>{this.state.coarse ? T.idleTouch : T.idle}</span>
+                        <span style={{display: 'block'}}>{this.state.coarse ? this.etext.connect.hintIdleTouch : this.etext.connect.hintIdle}</span>
+                    </React.Fragment>} />
                 <span role="status" data-testid="bw-sim-lab-build-status" data-kind={st.kind || 'idle'} title={hint}
                     style={{color: refused || blocked ? '#b91c1c' : '#475569', fontWeight: refused ? 600 : 400,
                         flex: '1 1 0', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>

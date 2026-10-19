@@ -862,6 +862,37 @@ movingColliders: outputColliders, massFraction: 0.15, actuatedBy:'device'}]` + `
 `hubProfile: 'spike-prime'`. The **file** is migrated once (a script), so the loader's
 upgrade path is only for user catalogs and old fixtures.
 
+#### 5.4.1 Parts from the whole LDraw catalogue (2026-10-19)
+
+The palette ships the parts in `parts.json`; the palette's **+** adds any of the ~23,700
+parts of the LDraw.org Parts Library at run time (owner decision 2026-10-19: fetch from the
+ldraw-stl mirror; parts the deriver cannot connect are offered as decoration).
+
+- **Source.** `ldraw/ldraw-catalog.js` reads the ldraw-stl mirror
+  (https://crispstrobe.github.io/ldraw-stl/library/, built weekly from the official
+  `complete.zip` by https://github.com/CrispStrobe/ldraw-stl): the CC BY files only,
+  unmodified, one zip cut into chunks; one HTTP range request per file. `fetchLDrawClosure`
+  takes vendored files from `static/ldraw/` (ldraw-lock.json lists them, so nothing else is
+  asked for there) and the rest from the catalogue (`setLDrawFallback`).
+- **Metadata.** The deriver moved from `scripts/derive-part-meta.mjs` to
+  `part-meta/derive.js` (the script is its command line; output byte-identical).
+  `part-meta/catalog-parts.js` runs it with `selfCheck` in a worker
+  (`part-meta/catalog-worker.js`, 20 s budget). A part that passes is a normal derived part.
+  One that does not becomes a **decoration** (category `decoration`, no connectors,
+  `deriveColliders`' envelope or its bounding box as colliders, at least 0.5 LDU thick, mass
+  from the mesh volume): a free body that rests and collides but joins nothing.
+- **Persistence.** Added parts are kept per device (`localStorage` `bw-sim-catalog-parts`,
+  with the library build and the files' attribution) and are in `CATALOG` from the start. A
+  model naming a part no catalogue piece has derives it from the catalogue when it is opened
+  (`sim-lab.js catalogFor`), so a model made elsewhere opens the same.
+- **Policy.** `BW_REMOTE_PARTS_POLICY=deny` (webpack.config.js) builds the app without the
+  catalogue; it is data, not code, so it is separate from the remote-code policies and their
+  receipt. The About dialog shows it.
+- **Licence.** Every library file is CC BY 4.0 or CC BY 2.0 + 4.0. The app renders parts
+  (2D, which LDraw.org does not count as an adaptation) and saves models as references.
+  The palette's catalogue view names, for each added part, every fetched file's author,
+  licence and source; the About dialog's LDraw entry says where the files come from.
+
 ### 5.5 The world
 
 File: `world/world.js` (contract), `world/mats.js` (stays), `world/objects.js`,

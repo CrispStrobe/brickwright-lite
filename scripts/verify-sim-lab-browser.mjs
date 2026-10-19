@@ -99,6 +99,10 @@
 //      bumper bot's example (legonxt blocks, UI only) turns both wheels 360 ± 2° and stops on its bumper
 //      at the wall; stock Scratch EV3 blocks stop the EV3 wall stopper before the wall on its ultrasonic
 //      sensor; the DEVICE EV3 example becomes ev3comprehensive blocks.
+//  21. parts from the whole LDraw catalogue (scripts/lib/sim-lab-catalogue-gate.mjs, --part=editor,
+//      docs/ROBOT-LAB-ARCHITECTURE.md §5.4.1), against a stand-in mirror: "+" finds, adds and places a
+//      part the app does not ship; a sticker joins as decoration; credits name the files; a model with
+//      both simulates; both are back after a reload.
 //
 // Every Sim Lab here runs its physics in the Web Worker (ROADMAP §4.9): each load
 // asserts `window.__bwSimLab.worker === true`, so the line-follower lap, the wall
@@ -122,6 +126,7 @@ import {touchInteractions} from './lib/sim-lab-touch-gate.mjs';
 import {layoutInteractions, MIN_CANVAS_PX} from './lib/sim-lab-layout-gate.mjs';
 import {editorParityInteractions} from './lib/sim-lab-editor-parity-gate.mjs';
 import {connectInteractions} from './lib/sim-lab-connect-gate.mjs';
+import {catalogueInteractions} from './lib/sim-lab-catalogue-gate.mjs';
 import {apiInteractions, DEGREES_TOLERANCE} from './lib/sim-lab-api-gate.mjs';
 import {hubsInteractions, HUB_DEGREES_TOLERANCE} from './lib/sim-lab-hubs-gate.mjs';
 import {hubsBtInteractions} from './lib/sim-lab-hubs-bt-gate.mjs';
@@ -311,7 +316,7 @@ try {
         // Through the SPIKE arena's "Open in Robot Lab" (the route the Lab had before it was a tab).
         const state = await openSimLab(page, {typed: true, via: 'arena'});
         assert.equal(state.view3d, 'webgl', `3D view: ${JSON.stringify(state)}`);
-        assert.equal(await page.getByRole('tab', {name: 'Robot Lab', exact: true}).getAttribute('aria-selected'), 'true',
+        assert.equal(await page.getByRole('tab', {name: 'Robots', exact: true}).getAttribute('aria-selected'), 'true',
             'the arena\'s Open in Robot Lab shows the Robot Lab tab');
         const canvas = page.getByTestId('bw-sim-lab-3d-canvas');
         await canvas.waitFor({timeout: 30000});
@@ -866,8 +871,8 @@ try {
                 'view-home': 'Startansicht', 'show-ports': 'Ports zeigen', help: 'Hilfe'},
             build: {'mode-move': 'Mit Pfeilen schieben', turn: 'Um 90° drehen', undo: 'Rückgängig', 'parts-toggle': 'Teile'}}});
         assert.match(german.buildControls.find(c => c.id === 'bw-sim-lab-undo').title, /^Rückgängig \(Strg\+Z\)$/, 'German tooltips name German keys');
-        assert.equal(await de.getByRole('tab', {name: 'Roboter-Labor', exact: true}).getAttribute('aria-selected'), 'true', 'the tab is called Roboter-Labor');
-        console.log('PASS the Robot Lab tab in German: Roboter-Labor, every control named in German, tooltips with Strg/Umschalt shortcuts');
+        assert.equal(await de.getByRole('tab', {name: 'Roboter', exact: true}).getAttribute('aria-selected'), 'true', 'the tab is called Roboter-Labor');
+        console.log('PASS the Robot Lab tab in German: Roboter, every control named in German, tooltips with Strg/Umschalt shortcuts');
         await de.close();
 
         // 9. Seeing the model: port badges, issues that show their parts, "Show how it moves".
@@ -941,6 +946,16 @@ try {
             `${c.pinchDriftPx.toFixed(2)} px; Build looks from ${c.buildPolar.toFixed(0)}°, Simulate stops at ${c.simulatePolar.toFixed(0)}°; a double click centres on its point ` +
             `(eased ${c.focusOff.toFixed(2)} LDU off, reduced motion at once ${c.focusReducedOff.toFixed(2)} LDU; tolerance ${c.focusTol.toFixed(2)} = one pixel there); a trackpad scroll orbits; the view cube's top looks down`);
         await connect.close();
+        // 21. Parts from the whole LDraw catalogue (scripts/lib/sim-lab-catalogue-gate.mjs, docs/ROBOT-LAB-ARCHITECTURE.md §5.4.1).
+        const cat = await browser.newPage({viewport: {width: 1280, height: 800}, serviceWorkers: 'block'});
+        cat.on('pageerror', error => errors.push(error.message));
+        cat.on('dialog', dialog => dialog.accept());
+        await openSimLab(cat, {program: null});
+        const k = await catalogueInteractions(cat, {root, shotsDir: artifacts});
+        console.log(`PASS catalogue: "+" finds a part the app does not ship, adds it (${k.brickConnectors} connectors) and a click places it; ` +
+            `a sticker joins as decoration and an alias is not offered; the credits name the files' author and licence; ` +
+            `${k.chunkRequests} range requests to the mirror and none to static/ldraw for its parts; the model with both simulates; both are back after a reload`);
+        await cat.close();
     }
     if (want('scale')) { // a 2,054-part model, instanced, and the .lxf/.io model files
         const page = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block', acceptDownloads: true});

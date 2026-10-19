@@ -11,6 +11,13 @@ const distributionPolicy = {
     executableToolchains: process.env.BW_REMOTE_TOOLCHAINS_POLICY || remoteCodePolicy,
     machineImages: process.env.BW_REMOTE_MACHINE_IMAGES_POLICY || remoteCodePolicy
 };
+// Parts from the LDraw catalogue (the Robot Lab palette's "+") are DATA fetched from the
+// ldraw-stl mirror, not code: their switch is separate from the remote-code policies and
+// their receipt. `deny` builds the app without the catalogue (only the vendored parts).
+const remotePartsPolicy = process.env.BW_REMOTE_PARTS_POLICY || 'allow';
+if (!['allow', 'deny'].includes(remotePartsPolicy)) {
+    throw new Error(`BW_REMOTE_PARTS_POLICY must be "allow" or "deny", got ${JSON.stringify(remotePartsPolicy)}`);
+}
 const distributionPolicyReceipt = `remote-extensions=${distributionPolicy.remoteExtensions} ` +
     `toolchains=${distributionPolicy.executableToolchains} machine-images=${distributionPolicy.machineImages}`;
 
@@ -180,6 +187,7 @@ const baseConfig = new ScratchWebpackConfigBuilder(
         'process.env.BW_REMOTE_EXTENSIONS_POLICY': JSON.stringify(distributionPolicy.remoteExtensions),
         'process.env.BW_REMOTE_TOOLCHAINS_POLICY': JSON.stringify(distributionPolicy.executableToolchains),
         'process.env.BW_REMOTE_MACHINE_IMAGES_POLICY': JSON.stringify(distributionPolicy.machineImages),
+        'process.env.BW_REMOTE_PARTS_POLICY': JSON.stringify(remotePartsPolicy),
         // One precomputed literal lets diagnostics and artifact verification quote the exact
         // compiled profile; deriving it from object properties lets minifiers retain fragments.
         'process.env.BW_DISTRIBUTION_POLICY_RECEIPT': JSON.stringify(distributionPolicyReceipt),
