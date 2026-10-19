@@ -1440,7 +1440,7 @@ jobs:
               print('iOS runtime candidate recorded; app launch remains refused')
 
 
-          def owned_simulator_transaction(plan, invoke, observe, now=time.monotonic, *, prepare, release, stopped=None):
+          def owned_simulator_transaction(plan, invoke, observe, now=time.monotonic, *, prepare, release, stopped=None, cleanup_invoke=None):
               """Unwired transaction core. Adapters must enforce command/observation bounds.
 
               Supplied admission fields are not authenticated capabilities. No workflow phase
@@ -1453,6 +1453,7 @@ jobs:
                       'deviceModelAdmitted', 'processEnvelopeAdmitted'}
               need(all(callable(callback) for callback in (invoke, observe, now, prepare, release)))
               need(stopped is None or callable(stopped))
+              need(cleanup_invoke is None or callable(cleanup_invoke))
               need(type(plan) is dict and plan.keys() == keys)
               plan = dict(plan)  # Caller mutation during an adapter call cannot retarget ownership.
               need(plan['schema'] == 'brickwright.ios-owned-simulator-plan.v1')
@@ -1479,6 +1480,15 @@ jobs:
                         'preparationReturned': False, 'preparationReleased': False,
                         'suppliedAdmissionAuthenticated': False, 'callbackBoundsQualified': False,
                         'resourceLifetimeQualified': False, 'actualAppQualified': False}
+              interrupt = None
+              secondary_interrupts = []
+              def remember_interrupt(error):
+                  nonlocal interrupt
+                  if not isinstance(error, Exception):
+                      if interrupt is None:
+                          interrupt = error
+                      elif error is not interrupt and all(error is not saved for saved in secondary_interrupts):
+                          secondary_interrupts.append(error)
               last = None
               broken_clock = False
               def tick():
@@ -1510,7 +1520,8 @@ jobs:
                   need(counts[slot] < maximum)
                   counts[slot] += 1
                   command_deadline = min(deadline, current+limits['commandSeconds'])
-                  value = invoke(tuple(args), deadline=command_deadline, output_limit=limits['commandBytes'])
+                  callback = cleanup_invoke if cleanup and cleanup_invoke is not None else invoke
+                  value = callback(tuple(args), deadline=command_deadline, output_limit=limits['commandBytes'])
                   need(tick() < command_deadline and type(value) is bytes and len(value) <= limits['commandBytes'])
                   return value
               def catalog(cleanup=False):
@@ -1626,7 +1637,8 @@ jobs:
                   result['observationBytes'] = len(observation)
                   need(tick() < observation_deadline)
                   check_stop()  # Keep returned originals, refuse successful publication.
-              except Exception:
+              except BaseException as error:
+                  remember_interrupt(error)
                   result['primaryFailure'] = stage  # No exception payload, args, paths, UUIDs or device names.
               finally:
                   result['creationUncertain'] = result['creationAttempted'] and not result['ownershipEstablished']
@@ -1634,8 +1646,10 @@ jobs:
                       if owned is not None:
                           try:
                               deadline = tick() + limits['cleanupSeconds']
-                          except Exception:
+                          except BaseException as error:
+                              remember_interrupt(error)
                               result['cleanupFailures'].append('cleanup-clock')
+                              deadline = float('-inf')
                           for command, arguments, required in (
                                   ('terminate', (plan['bundleIdentifier'],), launch_attempted),
                                   ('shutdown', (), boot_attempted), ('delete', (), True)):
@@ -1643,12 +1657,14 @@ jobs:
                                   try:
                                       operation(command, *arguments, cleanup=True)
                                       result['trace'].append(command)
-                                  except Exception:
+                                  except BaseException as error:
+                                      remember_interrupt(error)
                                       result['cleanupFailures'].append(command)
                           try:
                               need(owned not in catalog(cleanup=True))
                               result['cleanupAbsenceObserved'] = True
-                          except Exception:
+                          except BaseException as error:
+                              remember_interrupt(error)
                               result['cleanupFailures'].append('absence-readback')
                   finally:
                       if preparation_returned:
@@ -1657,23 +1673,34 @@ jobs:
                           try:
                               try:
                                   release_deadline = tick() + limits['releaseSeconds']
-                              except Exception:
+                              except BaseException as error:
+                                  remember_interrupt(error)
                                   release_deadline = None
                               value = release(prepared)  # Must close even if the clock is broken.
                               need(value is None)
                               result['preparationReleased'] = True
                               need(release_deadline is not None and tick() < release_deadline)
-                          except Exception:
+                          except BaseException as error:
+                              remember_interrupt(error)
                               result['cleanupFailures'].append('preparation-release')
               try:
                   check_stop(active=False)
-              except Exception:
+              except BaseException as error:
+                  remember_interrupt(error)
                   if result['primaryFailure'] is None:
                       result['primaryFailure'] = 'publication'
               result['activeCommands'] = counts[0]
               result['cleanupCommands'] = counts[1]
               if result['primaryFailure'] is None and not result['cleanupFailures'] and result['observationRetained']:
                   result['status'] = 'observed-transaction-only'
+              if interrupt is not None:
+                  # Private immutable snapshots survive cancellation; never publish success.
+                  result['status'] = 'partial'
+                  interrupt.simulator_transaction_result = json.dumps(result, sort_keys=True,
+                      separators=(',', ':')).encode()
+                  interrupt.simulator_transaction_observation = observation if result['observationRetained'] else None
+                  interrupt.simulator_transaction_secondary_interrupts = tuple(secondary_interrupts)
+                  raise interrupt
               return result, observation if result['observationRetained'] else None
 
 

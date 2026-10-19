@@ -424,10 +424,78 @@ class World:
         assert device==NEW and pid==1234 and self.time<deadline and output_limit==8*1024*1024
         assert prepared is self.context
         return self.observer()
-    def run(self,fn=owned_simulator_transaction,plan=None,*,stopped=None):
-        return fn(copy.deepcopy(PLAN) if plan is None else plan,self.invoke,self.observe,self.now,prepare=self.prepare,release=self.release,stopped=stopped)
+    def run(self,fn=owned_simulator_transaction,plan=None,*,stopped=None,cleanup_invoke=None):
+        return fn(copy.deepcopy(PLAN) if plan is None else plan,self.invoke,self.observe,self.now,prepare=self.prepare,release=self.release,stopped=stopped,cleanup_invoke=cleanup_invoke)
     def ops(self):return [a[0] for a in self.commands]
 class LifecycleControls(unittest.TestCase):
+    def test_cleanup_adapter_stays_live_after_stop_while_active_adapter_refuses(self):
+        w=World();flag=[False];active=[];cleanup=[];invoke=w.invoke
+        def active_invoke(args,**kwargs):
+            if flag[0]:raise ValueError('authored-stopped-active')
+            active.append(args);return invoke(args,**kwargs)
+        def cleanup_invoke(args,**kwargs):
+            cleanup.append(args);return invoke(args,**kwargs)
+        def observed():flag[0]=True;return RAW
+        w.invoke=active_invoke;w.observer=observed
+        r,raw=w.run(stopped=lambda:flag[0],cleanup_invoke=cleanup_invoke)
+        self.assertEqual(raw,RAW);self.assertEqual(r['status'],'partial');self.assertTrue(r['cancellationObserved'])
+        self.assertTrue(r['cleanupAbsenceObserved']);self.assertEqual(r['cleanupFailures'],[])
+        self.assertEqual([args[0] for args in cleanup],['list','terminate','list','shutdown','list','delete','list'])
+        self.assertFalse(any(args[0] in ('terminate','shutdown','delete') for args in active))
+        self.assertEqual(w.releases,[w.context]);self.assertEqual(w.devices[OLD]['name'],'AUTHORED-OTHER-DEVICE')
+        cut='callback = cleanup_invoke if cleanup and cleanup_invoke is not None else invoke'
+        self.assertEqual(SOURCE_PREFIX.count(cut),1);namespace={}
+        exec(compile(SOURCE_PREFIX.replace(cut,'callback = invoke'),'authored-lost-cleanup-adapter','exec'),namespace)
+        w=World();flag=[False];invoke=w.invoke
+        w.invoke=active_invoke;w.observer=observed
+        # Release still runs even when the intentionally broken route cannot delete.
+        w.release=lambda context:w.releases.append(context)
+        r,raw=w.run(namespace['owned_simulator_transaction'],stopped=lambda:flag[0],cleanup_invoke=cleanup_invoke)
+        self.assertFalse(r['cleanupAbsenceObserved']);self.assertIn('delete',r['cleanupFailures'])
+    def test_interrupt_during_cleanup_continues_and_preserves_observation(self):
+        for operation in ('terminate','shutdown','delete'):
+            w=World();invoke=w.invoke
+            def interrupted(args,**kwargs):
+                if args[0]==operation:
+                    w.commands.append(args);raise KeyboardInterrupt('authored-cleanup')
+                return invoke(args,**kwargs)
+            w.invoke=interrupted
+            with self.subTest(operation=operation),self.assertRaises(KeyboardInterrupt) as caught:w.run()
+            r=json.loads(caught.exception.simulator_transaction_result)
+            self.assertIn(operation,r['cleanupFailures']);self.assertEqual(r['status'],'partial')
+            self.assertIn('delete',w.ops());self.assertEqual(r['cleanupAbsenceObserved'],operation!='delete')
+            self.assertEqual(caught.exception.simulator_transaction_observation,RAW)
+            self.assertEqual(w.releases,[w.context]);self.assertIn(OLD,w.devices)
+    def test_primary_interrupt_is_not_replaced_by_cleanup_interrupt(self):
+        w=World();first=KeyboardInterrupt('authored-first');second=SystemExit('authored-second');invoke=w.invoke
+        def observer():raise first
+        def cleanup(args,**kwargs):
+            if args[0]=='terminate':w.commands.append(args);raise second
+            return invoke(args,**kwargs)
+        w.observer=observer;w.invoke=cleanup
+        with self.assertRaises(KeyboardInterrupt) as caught:w.run()
+        self.assertIs(caught.exception,first);self.assertEqual(caught.exception.simulator_transaction_secondary_interrupts,(second,))
+        self.assertIsNone(caught.exception.simulator_transaction_observation)
+        r=json.loads(caught.exception.simulator_transaction_result)
+        self.assertEqual(r['primaryFailure'],'observe');self.assertIn('terminate',r['cleanupFailures'])
+        self.assertTrue(r['cleanupAbsenceObserved']);self.assertEqual(w.releases,[w.context])
+    def test_cleanup_interrupt_continuation_mutant_is_detected(self):
+        cut="except BaseException as error:\n                            remember_interrupt(error)\n                            result['cleanupFailures'].append(command)"
+        self.assertEqual(SOURCE_PREFIX.count(cut),1)
+        namespace={};exec(compile(SOURCE_PREFIX.replace(cut,cut.replace('BaseException','Exception')),'authored-interrupt-cleanup-mutant','exec'),namespace)
+        w=World();invoke=w.invoke
+        def interrupted(args,**kwargs):
+            if args[0]=='terminate':w.commands.append(args);raise KeyboardInterrupt('authored')
+            return invoke(args,**kwargs)
+        w.invoke=interrupted
+        w.release=lambda context:w.releases.append(context)
+        with self.assertRaises(KeyboardInterrupt):w.run(namespace['owned_simulator_transaction'])
+        self.assertNotIn('delete',w.ops());self.assertEqual(w.releases,[w.context])
+    def test_invalid_cleanup_adapter_refuses_before_any_effect(self):
+        for invalid in (True,{},1):
+            w=World()
+            with self.assertRaises(ValueError):w.run(cleanup_invoke=invalid)
+            self.assertEqual(w.commands,[])
     def test_initial_stop_or_invalid_flag_performs_no_command(self):
         for flag in (True,None,1):
             w=World();r,raw=w.run(stopped=lambda:flag)
@@ -652,7 +720,7 @@ class LifecycleControls(unittest.TestCase):
         w.observe=lambda *a,**k:RAW
         r,_=w.run(namespace['owned_simulator_transaction']);self.assertNotIn(OLD,w.devices)
         self.assertTrue(r['ownershipEstablished'])
-        cut="except Exception:\n                            result['cleanupFailures'].append(command)";self.assertTrue(cut in source,'cleanup continuation mutation anchor')
+        cut="except BaseException as error:\n                            remember_interrupt(error)\n                            result['cleanupFailures'].append(command)";self.assertTrue(cut in source,'cleanup continuation mutation anchor')
         namespace={};exec(compile(source.replace(cut,cut+'\n                            break'),'authored-mutant','exec'),namespace)
         w=World();w.fail={'terminate'};r,raw=w.run(namespace['owned_simulator_transaction'])
         self.assertNotIn('delete',w.ops());self.assertFalse(r['cleanupAbsenceObserved']);self.assertEqual(raw,RAW)
@@ -671,7 +739,7 @@ test('unwired owned simulator transaction core preserves identity, failures and 
             env: {...process.env, GITHUB_WORKSPACE: dir, RUNNER_TEMP: dir}, encoding: 'utf8', timeout: 15000
         });
         assert.equal(result.status, 0, result.stdout + result.stderr);
-        assert.match(result.stderr, /Ran 28 tests/);
+        assert.match(result.stderr, /Ran 33 tests/);
         assert.match(result.stderr, /OK/);
     } finally { rmSync(dir, {recursive: true, force: true}); }
 });

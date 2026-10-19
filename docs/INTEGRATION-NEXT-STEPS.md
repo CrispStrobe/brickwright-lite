@@ -474,3 +474,10 @@ candidate uses default sampling order without that optional prefetch, retaining
 all output and time bounds. Do not infer that symbol lookup caused the earlier
 failure; an affected actual diagnostic remains required. Complete manual evidence
 still supplies no simulator namespace, service or installed-map admission.
+
+Wrapper preparation now has a separate cleanup callback route. Active commands
+must share Stop; cleanup catalogs and owned cleanup effects must remain available
+after Stop while retaining identity, count and time checks. Deferred interrupts
+preserve the first cancellation and retained originals while later cleanup and
+receiver release are attempted. These source controls do not authenticate callback
+ownership or satisfy actual wrapper/resource qualification; entry remains disabled.
