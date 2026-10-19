@@ -6805,3 +6805,15 @@ No complete suite or new corpus count is claimed. Investigate actual repeated
 analysis cost; do not raise bounds, shard the suite or repeat unchanged source.
 Main composition needs its own controls, affected guest qualification and all
 enabled final-head hosted checks before normal matched-head landing.
+
+### Current Array occurrence initialization — isolated source candidate
+
+Coordinated under the merged ordinary Array/source-owner export envelope above.
+A private direct-source-start occurrence profile retains observed undefined
+reads and every physical writer while proving a later mandatory Array/alias
+assignment. Own the occurrence helper, its existing authority consumer,
+focused controls and the narrow Array initialization contract. Existing callee,
+callback, resource and element authorities remain independent. No new value
+kind, runtime, pin, workflow, budget or GUI qualification is claimed. Calls,
+control paths, other entries and unknown effects do not acquire new credit;
+affected actual qualification is required before adoption.
