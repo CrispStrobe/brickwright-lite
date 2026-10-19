@@ -80,7 +80,23 @@ function build(project){
         }
     }
     if(!root||targets.filter(t=>t.isStage===true).length!==1)return null;
-    if(project.monitors!=null&&(!Array.isArray(project.monitors)||project.monitors.length))return null;
+    // Hidden default variable monitors are serialized UI metadata, not entry
+    // scripts: the VM schedules only isMonitored blocks (serialized visible).
+    // Slider/list/visible monitors remain outside this closed writer census.
+    if(project.monitors!=null){
+        if(!Array.isArray(project.monitors))return null;
+        const monitorIds=new Set(),monitorKeys=['id','mode','opcode','params','spriteName','value','width','height','x','y','visible','sliderMin','sliderMax','isDiscrete'];
+        for(const monitor of project.monitors){
+            if(!monitor||Array.isArray(monitor)||keys(monitor).length!==monitorKeys.length||monitorKeys.some(key=>!Object.hasOwn(monitor,key)))return null;
+            const cell=globals.get(monitor.id);
+            if(typeof monitor.id!=='string'||monitorIds.has(monitor.id)||!cell||cell.target.isStage!==true||
+                monitor.mode!=='default'||monitor.opcode!=='data_variable'||monitor.spriteName!==null||monitor.visible!==false||
+                !monitor.params||Array.isArray(monitor.params)||keys(monitor.params).length!==1||!Object.hasOwn(monitor.params,'VARIABLE')||monitor.params.VARIABLE!==cell.name||
+                monitor.value!==0||monitor.width!==0||monitor.height!==0||!Number.isFinite(monitor.x)||!Number.isFinite(monitor.y)||
+                monitor.sliderMin!==0||monitor.sliderMax!==100||monitor.isDiscrete!==true)return null;
+            monitorIds.add(monitor.id);
+        }
+    }
     if(project.extensionURLs!=null&&(typeof project.extensionURLs!=='object'||Array.isArray(project.extensionURLs)||Object.entries(project.extensionURLs).some(([id,url])=>id!=='arrays'||url!=='https://crispstrobe.github.io/extensions/CrispStrobe/arrays.js')))return null;
     const binding=(target,name,id)=>{
         const c=globals.get(id);if(!c||c.name!==name||c.target!==target&&c.target.isStage!==true)return null;

@@ -52,6 +52,19 @@ test('conditional loop call and registered entries cannot acquire straight-line 
 });
 
 test('the complete current writer ID owner and physical edge inventory remains mandatory',()=>{
+    const baseline=current(original).creator,stage=baseline.project.targets.find(t=>t.isStage),monitors=structuredClone(baseline.project.monitors);
+    assert.equal(monitors.length,Object.keys(stage.variables).length,'the actual Creator keeps all canonical hidden variable monitors');
+    assert.ok(monitors.length>0);accepted(baseline);assert.deepEqual(baseline.project.monitors,monitors,'accepted monitors are preserved');
+    for(const edit of [
+        m=>{m.mode='slider';},m=>{m.visible=true;},m=>{m.opcode='data_listcontents';},
+        m=>{m.id='foreign-monitor-id';},m=>{m.params.VARIABLE='foreign-name';},
+        m=>{m.params.EXTRA='unknown';},m=>{m.unknown=true;},m=>{m.spriteName='Game';},
+        m=>{m.value=[];},m=>{m.sliderMin=-1;},m=>{m.x=Infinity;}
+    ]){const {creator}=current(original),{target,node}=item(creator);edit(creator.project.monitors[0]);assert.equal(createArrayReferenceExportAuthority(creator.project).validateInput(target,node).ok,false);refused(creator);}
+    for(const edit of [
+        creator=>{creator.project.monitors.push(structuredClone(creator.project.monitors[0]));},
+        creator=>{const stage=creator.project.targets.find(t=>t.isStage),game=creator.project.targets.find(t=>!t.isStage),id=creator.project.monitors[0].id;game.variables[id]=stage.variables[id];delete stage.variables[id];}
+    ]){const {creator}=current(original),{target,node}=item(creator);edit(creator);assert.equal(createArrayReferenceExportAuthority(creator.project).validateInput(target,node).ok,false);refused(creator);}
     for(const edit of [
         (creator,target,node)=>{node.inputs.ARRAY[1][2]='foreign-id';},
         (creator,target,node)=>{const stage=creator.project.targets.find(t=>t.isStage);stage.variables[node.inputs.ARRAY[1][2]][0]='other';},
@@ -70,7 +83,8 @@ test('the complete current writer ID owner and physical edge inventory remains m
 test('issued occurrence credit expires on physical or metadata ABA and fresh policies reprove restoration',()=>{
     for(const edit of [
         (creator,node)=>{const old=node.inputs.ARRAY;node.inputs.ARRAY=[...old];return()=>{node.inputs.ARRAY=old;};},
-        creator=>{const old=creator.project.extensions;creator.project.extensions=[...old,'unknown'];return()=>{creator.project.extensions=old;};}
+        creator=>{const old=creator.project.extensions;creator.project.extensions=[...old,'unknown'];return()=>{creator.project.extensions=old;};},
+        creator=>{const monitor=creator.project.monitors[0];monitor.visible=true;return()=>{monitor.visible=false;};}
     ]){const {creator}=current(original),{target,node}=item(creator),proof=createArrayReferenceExportAuthority(creator.project);assert.equal(proof.validateInput(target,node).ok,true);const restore=edit(creator,node);assert.equal(proof.validateInput(target,node).ok,false);restore();assert.equal(proof.validateInput(target,node).ok,false);assert.equal(createArrayReferenceExportAuthority(creator.project).validateInput(target,node).ok,true);}
 });
 

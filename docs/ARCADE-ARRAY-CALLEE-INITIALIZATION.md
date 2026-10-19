@@ -117,7 +117,11 @@ comparison operands are checked independently and their actual operations,
 errors and evaluation order remain in the project. Nested reference bodies,
 expression-list factories, branches, loops, calls, registered/event entries,
 unknown effects, orphan/foreign blocks and unresolved bindings retain the
-existing conservative refusal. A later incompatible writer is not discounted.
+existing conservative refusal. Hidden default scalar-variable monitors may be
+retained only with exact current Stage variable IDs/names and canonical metadata;
+visible, slider, list and unknown monitor roles remain unsupported. These hidden
+monitors do not add writer or script authority. A later incompatible writer is
+not discounted.
 Existing independently proved cases retain their original authority.
 
 The additional fact is private to its exact receiver occurrence. Complete
