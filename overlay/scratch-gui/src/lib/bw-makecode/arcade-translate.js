@@ -19,7 +19,7 @@ import {validateClassCallablePlan} from './class-callable-plan.js';
 import {sourceCallableDeclarations} from './source-callable-declarations.js';
 import {callableDeclarationEnvelope,callableVariableEnvelope} from './callable-export-graph.js';
 import {lowerNamedArrayItemHelpers} from './named-array-item-helpers.js';
-import {GENERATED_HELPER_PROFILES,inspectGeneratedHelperBindings,mapGeneratedSourceArray} from './generated-helper-recognition.js';
+import {GENERATED_HELPER_PROFILES,hasGeneratedHelperShape,inspectGeneratedHelperBindings,mapGeneratedSourceArray} from './generated-helper-recognition.js';
 import {lowerLiveFontMetrics} from './live-font-metrics.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 import {sourceReferenceDeclarations} from './source-reference-declarations.js';
@@ -3237,8 +3237,14 @@ const inlineLegacyArrayHelpers = (program,profile) => {
         ['__bwNamedJsonValue',LEGACY_JSON_SOURCE,'LegacyJsonValue'],
         ['__bwArrayAccess',ARRAY_ACCESS_SOURCE,'NativeArrayAccess']];
     const candidates=new Map();
-    for(const fn of program.body)if(proof.root(fn))for(const [base,source,type]of recipes)
-        if(proof.matches(fn,source,new Map([[fn.name,base]])))candidates.set(fn,{type});
+    // Reject impossible recipe shapes before rescanning the whole binding snapshot.
+    // Shape alone grants no rewrite: every selected helper still needs the original
+    // current root, exact match, closed-use and call proofs below.
+    for(const fn of program.body)if(fn?.type==='FunctionDeclaration')for(const [base,source,type]of recipes){
+        const names=new Map([[fn.name,base]]);
+        if(hasGeneratedHelperShape(fn,source,profile,names)&&proof.root(fn)&&proof.matches(fn,source,names))
+            candidates.set(fn,{type});
+    }
     // A retained helper body becomes an external consumer of its dependencies.
     // Recompute until removing one declaration cannot strand a retained caller.
     const selected=new Set(candidates.keys());let changed;

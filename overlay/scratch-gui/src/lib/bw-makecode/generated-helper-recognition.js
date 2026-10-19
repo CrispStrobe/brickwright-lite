@@ -45,7 +45,8 @@ function sameGeneratedData(a,b,names=new Map()){
         return sameGeneratedData(value,y.value,names);
     });
 }
-function matchesGeneratedFunction(fn,source,profile,names=new Map()){
+// A necessary syntax check only: callers still need the current binding proof.
+export function hasGeneratedHelperShape(fn,source,profile,names=new Map()){
     const expected=canonical(source,profile);return !!expected&&sameGeneratedData(fn,expected,names);
 }
 
@@ -231,7 +232,7 @@ export function inspectGeneratedHelperBindings(program,profile){
     return Object.freeze({isCurrent:current,root,calls,closed,ambient,nodes:Object.freeze([...nodes]),parentOf:node=>parents.get(node),
         declarationAt:node=>binding(node)?.node,
         storageReference:(node,name)=>current()&&counts.get(name)===1&&binding(node)===lexical?.global.names.get(name),
-        matches:(fn,source,names)=>current()&&program.body.includes(fn)&&matchesGeneratedFunction(fn,source,profile,names),
+        matches:(fn,source,names)=>current()&&program.body.includes(fn)&&hasGeneratedHelperShape(fn,source,profile,names),
         unbound:node=>current()&&node?.type==='Identifier'&&!binding(node)&&!counts.has(node.name),
         unique:name=>current()&&counts.get(name)===1,profile});
 }
