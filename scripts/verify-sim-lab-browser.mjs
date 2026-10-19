@@ -968,7 +968,8 @@ try {
         const k = await catalogueInteractions(cat, {root, shotsDir: artifacts});
         console.log(`PASS catalogue: "+" finds a part the app does not ship, adds it (${k.brickConnectors} connectors) and a click places it; ` +
             `a sticker joins as decoration and an alias is not offered; the credits name the files' author and licence; ` +
-            `${k.chunkRequests} range requests to the mirror and none to static/ldraw for its parts; the model with both simulates; both are back after a reload`);
+            `${k.chunkRequests} range requests to the mirror and none to static/ldraw for its parts; the model with both simulates; both are back after a reload; ` +
+            `${k.resultPictures ?? 'no'} result pictures; My parts refuses to remove a part in use and removes it once unused`);
         await cat.close();
     }
     if (want('scale')) { // a 2,054-part model, instanced, and the .lxf/.io model files

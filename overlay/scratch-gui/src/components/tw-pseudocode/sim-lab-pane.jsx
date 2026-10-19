@@ -112,6 +112,8 @@ const TEXT = {
         catalogueDecoration: '{name} added as decoration: it does not connect ({why}).',
         catalogueFailed: '{part} could not be added: {error}',
         catalogueCredits: 'Credits for the {n} parts you added',
+        myParts: 'My parts', catalogueRemove: 'Remove {name} from my parts', catalogueRemoved: '{name} removed.',
+        catalogueInUse: '{name} is in this model: delete it from the model first.',
         catalogueCredit: 'Parts: LDraw.org Parts Library, CC BY.',
         selectedOne: 'Selected: {name}', selectedMany: 'Selected: {n} parts',
         timeShort: '{s} s',
@@ -209,6 +211,8 @@ const TEXT = {
         catalogueDecoration: '{name} als Deko hinzugefügt: es verbindet sich nicht ({why}).',
         catalogueFailed: '{part} konnte nicht hinzugefügt werden: {error}',
         catalogueCredits: 'Credits für deine {n} hinzugefügten Teile',
+        myParts: 'Meine Teile', catalogueRemove: '{name} aus meinen Teilen entfernen', catalogueRemoved: '{name} entfernt.',
+        catalogueInUse: '{name} ist in diesem Modell: lösche es zuerst aus dem Modell.',
         catalogueCredit: 'Teile: LDraw.org Parts Library, CC BY.',
         selectedOne: 'Ausgewählt: {name}', selectedMany: 'Ausgewählt: {n} Teile',
         timeShort: '{s} s',
@@ -339,6 +343,8 @@ class SimLabPane extends React.Component {
         this.requestThumb = this.requestThumb.bind(this);
         this.openCatalogue = this.openCatalogue.bind(this);
         this.addCatalogPart = this.addCatalogPart.bind(this);
+        this.cataloguePreview = this.cataloguePreview.bind(this);
+        this.removeCatalogPart = this.removeCatalogPart.bind(this);
         this.armPart = this.armPart.bind(this);
         this.pressPart = this.pressPart.bind(this);
         this.onPointerKind = this.onPointerKind.bind(this);
@@ -1675,6 +1681,44 @@ class SimLabPane extends React.Component {
         return added;
     }
 
+    /**
+     * A catalogue result's picture: its LDraw files from the catalogue, kept in the editor's map (so
+     * adding the part later fetches nothing new), drawn by the palette's renderer. Four at a time.
+     */
+    cataloguePreview (part) {
+        const run = async () => {
+            if (!this.thumbs || !this.catalogFiles) return null;
+            await this.lib.ldrawCatalogue();
+            const closure = await this.lib.fetchLDrawClosure([part]);
+            if (!closure.files.has(`parts/${part.toLowerCase()}`) || this.disposed || !this.thumbs) return null;
+            for (const [path, text] of closure.files) this.catalogFiles.files.set(path, text);
+            return this.thumbs.render(part) || null;
+        };
+        const queue = this.previewQueue || (this.previewQueue = {active: 0, waiting: []});
+        return new Promise((resolve, reject) => {
+            const start = () => {
+                queue.active++;
+                run().then(resolve, reject).finally(() => {
+                    queue.active--;
+                    const next = queue.waiting.shift();
+                    if (next) next();
+                });
+            };
+            if (queue.active < 4) start();
+            else queue.waiting.push(start);
+        });
+    }
+
+    /** Removes a part added from the catalogue, unless the model in Build uses it. */
+    removeCatalogPart (part) {
+        const model = this.editor ? this.editor.model : null;
+        if (model && model.parts.some(p => p.part === part)) return {ok: false, reason: 'in-use'};
+        if (this.state.placing === part) this.editView?.setTool(null);
+        this.lib.removeCatalogPart(part);
+        this.setState(s => ({recent: s.recent.filter(p => p !== part), placing: s.placing === part ? null : s.placing}));
+        return {ok: true};
+    }
+
     /** A palette tile came into view: its picture is drawn in a coming frame. */
     requestThumb (part) {
         if (this.thumbs && !this.thumbs.has(part)) this.thumbQueue.add(part);
@@ -1726,7 +1770,8 @@ class SimLabPane extends React.Component {
                 placing={this.state.placing} recent={this.state.recent} thumbs={this.thumbs} thumbTick={this.state.thumbTick}
                 requestThumb={this.requestThumb} onArm={this.armPart} onPress={this.pressPart}
                 fits={this.state.hold && this.state.hold.pinned && this.editView ? part => this.editView.fitsTarget(part) : null}
-                onOpenCatalogue={this.openCatalogue} onAddCatalogPart={this.addCatalogPart} />
+                onOpenCatalogue={this.openCatalogue} onAddCatalogPart={this.addCatalogPart}
+                onCataloguePreview={this.cataloguePreview} onRemoveCatalogPart={this.removeCatalogPart} />
         );
     }
 

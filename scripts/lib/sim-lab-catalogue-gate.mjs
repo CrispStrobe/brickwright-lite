@@ -9,13 +9,15 @@
 //
 //   1. "+" opens the catalogue; searching finds a part the app does not ship; "Add"
 //      derives it, arms it, and a click in the view places it;
-//   2. a sticker (nothing to connect to) is added as decoration: its own palette
-//      category, the note says why; an alias is not offered;
+//   2. a sticker (nothing to connect to) is added as decoration (the note says why) and
+//      both added parts sit in "My parts"; an alias is not offered;
 //   3. the catalogue view's credits name the added files' author and licence;
 //   4. the catalogue files come from the mirror, and static/ldraw/ is never asked
 //      for a file it does not vendor;
 //   5. a model holding both added parts simulates (the decoration is a free body);
-//   6. after a reload both parts are still in the palette, before "+" is opened.
+//   6. after a reload both parts are still in the palette, before "+" is opened;
+//   7. catalogue results show a picture of each part, drawn from the mirror's files;
+//   8. "My parts" removes a part, but not while the model in Build holds it.
 
 import assert from 'node:assert/strict';
 import {resolve} from 'node:path';
@@ -98,7 +100,9 @@ const checks = async (page, {root, shotsDir}) => {
     // 2. A sticker becomes decoration; an alias is not offered.
     const deco = await addFromCatalogue(page, 'zz sticker', 'zz-sticker.dat');
     assert.match(deco, /decoration/);
-    await page.getByTestId('bw-sim-lab-category-decoration').waitFor();
+    const mine = page.getByTestId('bw-sim-lab-category-mine');
+    await mine.waitFor();
+    for (const part of ['zz-brick.dat', 'zz-sticker.dat']) await mine.getByTestId(`bw-sim-lab-part-${part}`).waitFor();
     await page.getByTestId('bw-sim-lab-catalogue-open').click();
     await page.getByTestId('bw-sim-lab-catalogue-search').fill('moved 3001');
     assert.equal(await page.getByTestId('bw-sim-lab-catalogue-add-zz-alias.dat').count(), 0, 'an alias is not offered');
@@ -138,8 +142,38 @@ const checks = async (page, {root, shotsDir}) => {
     await page.waitForFunction(() => window.__bwSimLab && ['ready', 'failed'].includes(window.__bwSimLab.status), null, {timeout: 60000});
     assert.ok(await lab(page, () => window.__bwSimLab._pane.lib.CATALOG.has('zz-sticker.dat') && window.__bwSimLab._pane.lib.CATALOG.has('zz-brick.dat')));
     await enterBuild(page);
-    await page.getByTestId('bw-sim-lab-category-decoration').waitFor();
+    await page.getByTestId('bw-sim-lab-category-mine').getByTestId('bw-sim-lab-part-zz-sticker.dat').waitFor();
     out.persisted = true;
     out.chunkRequests = mirrorLog.filter(f => /\.zip\.\d+$/.test(f)).length;
+
+    // 7. Pictures in the catalogue results (the palette draws pictures here, so results get them too).
+    if (await lab(page, () => Boolean(window.__bwSimLab._pane.thumbs))) {
+        await page.getByTestId('bw-sim-lab-catalogue-open').click();
+        await page.getByTestId('bw-sim-lab-catalogue-search').fill('zz');
+        await page.getByTestId('bw-sim-lab-catalogue-results').waitFor({timeout: 30000});
+        await page.getByTestId('bw-sim-lab-catalogue-thumb').first().waitFor({timeout: 30000});
+        const src = await page.getByTestId('bw-sim-lab-catalogue-thumb').first().getAttribute('src');
+        assert.match(src, /^data:image\//, 'a result picture is a drawn image');
+        await page.waitForFunction(() => document.querySelectorAll('[data-testid="bw-sim-lab-catalogue-thumb"]').length >= 2, null, {timeout: 30000});
+        out.resultPictures = await page.getByTestId('bw-sim-lab-catalogue-thumb').count();
+        await page.screenshot({path: resolve(shotsDir, 'sim-lab-catalogue-pictures.png')});
+        await page.getByTestId('bw-sim-lab-catalogue-back').click();
+    }
+
+    // 8. Remove from "My parts": refused while the model holds the part, done once it does not.
+    await lab(page, () => window.__bwSimLab.editor.apply({type: 'place', part: 'zz-brick.dat', position: [0, -24, 0], rotation: [1, 0, 0, 0, 1, 0, 0, 0, 1], color: 4}));
+    await page.getByTestId('bw-sim-lab-mine-remove-zz-brick.dat').click();
+    assert.match(await page.getByTestId('bw-sim-lab-catalogue-note').textContent(), /in this model/);
+    assert.ok(await lab(page, () => window.__bwSimLab._pane.lib.CATALOG.has('zz-brick.dat')), 'a part in use stays');
+    await lab(page, () => {
+        const ed = window.__bwSimLab.editor;
+        ed.apply({type: 'batch', commands: ed.model.parts.filter(p => p.part === 'zz-brick.dat').map(p => ({type: 'delete', id: p.id}))});
+    });
+    await page.getByTestId('bw-sim-lab-mine-remove-zz-brick.dat').click();
+    await page.waitForFunction(() => !window.__bwSimLab._pane.lib.CATALOG.has('zz-brick.dat'));
+    assert.equal(await page.getByTestId('bw-sim-lab-part-zz-brick.dat').count(), 0, 'its tile is gone');
+    assert.ok(!(await lab(page, () => localStorage.getItem('bw-sim-catalog-parts') || '')).includes('zz-brick.dat'), 'and it is gone from this device');
+    await page.getByTestId('bw-sim-lab-category-mine').getByTestId('bw-sim-lab-part-zz-sticker.dat').waitFor();
+    out.removed = true;
     return out;
 };

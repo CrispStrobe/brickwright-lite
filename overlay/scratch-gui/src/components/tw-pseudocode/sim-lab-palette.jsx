@@ -18,7 +18,8 @@ import React from 'react';
 import SimLabInfo from './sim-lab-info.jsx';
 
 /** Categories open when Build opens (the ones a first robot is made of). */
-const OPEN_AT_START = ['hub', 'motor', 'beam', 'pin', 'axle', 'wheel'];
+const OPEN_AT_START = ['mine', 'hub', 'motor', 'beam', 'pin', 'axle', 'wheel'];
+const CATALOGUE_THUMB_PX = 40;
 const THUMB_CSS_PX = 56;
 
 const fill = (template, values) => template.replace(/\{(\w+)\}/g, (_, k) => String(values[k] ?? ''));
@@ -28,8 +29,12 @@ class SimLabPalette extends React.Component {
         // Which categories are open survives a search (which shows a flat list instead).
         this.state = {query: '', open: OPEN_AT_START,
             // the LDraw catalogue view: its list (null until loaded), search, and the add in progress
-            catalogue: false, list: null, listError: '', catQuery: '', adding: null, note: null};
+            catalogue: false, list: null, listError: '', catQuery: '', adding: null, note: null,
+            // pictures of catalogue results, drawn when a row comes into view (part -> data URL; undefined while drawing)
+            catThumbs: new Map()};
         this.scroller = React.createRef();
+        this.observeRow = this.observeRow.bind(this);
+        this.catIo = null;
         this.observe = this.observe.bind(this);
         this.sweep = this.sweep.bind(this);
         this.io = null;
@@ -68,6 +73,9 @@ class SimLabPalette extends React.Component {
     }
 
     componentWillUnmount () {
+        this.unmounted = true;
+        if (this.catIo) this.catIo.disconnect();
+        this.catIo = null;
         if (this.io) this.io.disconnect();
         this.io = null;
         if (this.resizer) this.resizer.disconnect();
@@ -120,6 +128,38 @@ class SimLabPalette extends React.Component {
         }, error => this.setState({adding: null, note: {kind: 'error', text: fill(T.catalogueFailed, {part, error: error.message})}}));
     }
 
+    /** A catalogue result row came near the screen: its picture is asked for, once. */
+    observeRow (el) {
+        if (!el || !this.props.onCataloguePreview || this.state.catThumbs.has(el.dataset.part)) return;
+        if (!this.catIo && typeof IntersectionObserver === 'function') {
+            this.catIo = new IntersectionObserver(entries => {
+                for (const e of entries) {
+                    if (!e.isIntersecting) continue;
+                    this.catIo.unobserve(e.target);
+                    this.preview(e.target.dataset.part);
+                }
+            }, {rootMargin: '80px 0px'});
+        }
+        if (this.catIo) this.catIo.observe(el);
+        else this.preview(el.dataset.part);
+    }
+
+    preview (part) {
+        if (this.state.catThumbs.has(part)) return;
+        this.setState(s => ({catThumbs: new Map(s.catThumbs).set(part, undefined)}));
+        this.props.onCataloguePreview(part).then(url => url, () => null).then(url => {
+            if (!this.unmounted) this.setState(s => ({catThumbs: new Map(s.catThumbs).set(part, url)}));
+        });
+    }
+
+    removeMine (part) {
+        const {text: T, locale, lib} = this.props;
+        const m = lib.CATALOG.get(part);
+        const name = (locale === 'de' && m?.nameDe) || m?.name || part;
+        const r = this.props.onRemoveCatalogPart(part);
+        this.setState({note: r.ok ? {kind: 'added', text: fill(T.catalogueRemoved, {name})} : {kind: 'error-inline', text: fill(T.catalogueInUse, {name})}});
+    }
+
     renderCatalogue () {
         const {text: T, lib, locale} = this.props;
         const {list, listError, catQuery, adding, note} = this.state;
@@ -148,7 +188,12 @@ class SimLabPalette extends React.Component {
                             {found.results.map(p => {
                                 const have = lib.CATALOG.has(p.part);
                                 return (
-                                    <li key={p.part} data-part={p.part} style={{display: 'flex', gap: 6, alignItems: 'center', padding: '5px 2px', borderBottom: '1px solid #e2e8f0'}}>
+                                    <li key={p.part} data-part={p.part} ref={this.observeRow}
+                                        style={{display: 'flex', gap: 6, alignItems: 'center', padding: '5px 2px', borderBottom: '1px solid #e2e8f0'}}>
+                                        {this.state.catThumbs.get(p.part) ?
+                                            <img src={this.state.catThumbs.get(p.part)} alt="" width={CATALOGUE_THUMB_PX} height={CATALOGUE_THUMB_PX}
+                                                data-testid="bw-sim-lab-catalogue-thumb" style={{flex: '0 0 auto', display: 'block'}} /> :
+                                            <span aria-hidden="true" style={{flex: '0 0 auto', width: CATALOGUE_THUMB_PX, height: CATALOGUE_THUMB_PX, borderRadius: 4, background: '#f1f5f9'}} />}
                                         <span style={{flex: '1 1 auto', minWidth: 0}}>
                                             <span style={{color: '#64748b', fontFamily: 'monospace', marginRight: 4}}>{lib.partNumber(p.part)}</span>
                                             {p.title}
@@ -168,6 +213,37 @@ class SimLabPalette extends React.Component {
                 <div style={{color: '#64748b', fontSize: 10, marginTop: 8}}>{T.catalogueCredit}</div>
                 {this.renderCredits()}
             </div>
+        );
+    }
+
+    /** "My parts": the parts added from the LDraw catalogue, each with a remove button. */
+    renderMine (grid) {
+        const {text: T, lib, locale} = this.props;
+        const mine = (lib.catalogueParts ? lib.catalogueParts() : []).map(e => e.part).filter(p => lib.CATALOG.has(p));
+        if (!mine.length) return null;
+        const item = part => {
+            const m = lib.CATALOG.get(part);
+            return {part, name: (locale === 'de' && m?.nameDe) || m?.name || part, number: lib.partNumber(part)};
+        };
+        return (
+            <details data-testid="bw-sim-lab-category-mine" open={this.state.open.includes('mine')}
+                onToggle={e => {
+                    const isOpen = e.currentTarget.open;
+                    this.setState(s => ({open: isOpen ? [...new Set([...s.open, 'mine'])] : s.open.filter(c => c !== 'mine')}));
+                }}>
+                <summary style={{cursor: 'pointer', padding: '6px 2px', fontWeight: 600, userSelect: 'none'}}>{T.myParts} ({mine.length})</summary>
+                <div style={grid}>
+                    {mine.map(part => (
+                        <div key={part} style={{position: 'relative'}}>
+                            {this.renderTile(item(part), {testid: 'bw-sim-lab-part-'})}
+                            <button type="button" data-testid={`bw-sim-lab-mine-remove-${part}`} aria-label={fill(T.catalogueRemove, {name: item(part).name})}
+                                title={fill(T.catalogueRemove, {name: item(part).name})} onClick={() => this.removeMine(part)}
+                                style={{position: 'absolute', top: 2, right: 2, width: 18, height: 18, padding: 0, lineHeight: '16px', fontSize: 11,
+                                    borderRadius: 999, border: '1px solid #cbd5e1', background: '#fff', color: '#475569', cursor: 'pointer'}}>×</button>
+                        </div>
+                    ))}
+                </div>
+            </details>
         );
     }
 
@@ -243,6 +319,8 @@ class SimLabPalette extends React.Component {
         const searching = query.trim().length > 0;
         const found = searching ? lib.searchPalette(lib.CATALOG, query, {locale}) : null;
         const grid = {display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 4, margin: '4px 0 6px'};
+        // parts added from the catalogue sit in "My parts", not in the categories too
+        const mineSet = new Set((lib.catalogueParts ? lib.catalogueParts() : []).map(e => e.part));
         return (
             <div data-testid="bw-sim-lab-palette" ref={this.scroller}
                 style={{width: '100%', minWidth: 0, flex: '1 1 auto', overflow: 'auto', fontSize: 12, paddingRight: 6, boxSizing: 'border-box'}}>
@@ -266,7 +344,10 @@ class SimLabPalette extends React.Component {
                             style={{minWidth: 30, fontSize: 16, lineHeight: 1, borderRadius: 6, border: '1px solid #2563eb', background: '#eff6ff', color: '#1d4ed8', cursor: 'pointer'}}>+</button>
                     )}
                 </div>
-                {note && note.kind !== 'error' && (
+                {note && note.kind === 'error-inline' && (
+                    <div data-testid="bw-sim-lab-catalogue-note" role="status" style={{color: '#b91c1c', margin: '0 2px 6px'}}>{note.text}</div>
+                )}
+                {note && note.kind !== 'error' && note.kind !== 'error-inline' && (
                     <div data-testid="bw-sim-lab-catalogue-note" role="status"
                         style={{background: note.kind === 'decoration' ? '#fef9c3' : '#dcfce7', borderRadius: 6, padding: '5px 6px', marginBottom: 6}}>
                         {note.text}
@@ -288,7 +369,8 @@ class SimLabPalette extends React.Component {
                                 </div>
                             </div>
                         )}
-                        {lib.paletteFrom(lib.CATALOG, {locale}).map(g => (
+                        {this.renderMine(grid)}
+                        {lib.paletteFrom(new Map([...lib.CATALOG].filter(([part]) => !mineSet.has(part))), {locale}).map(g => (
                             <details key={g.category} data-testid={`bw-sim-lab-category-${g.category}`} open={this.state.open.includes(g.category)}
                                 onToggle={e => {
                                     const isOpen = e.currentTarget.open;
