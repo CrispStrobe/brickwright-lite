@@ -197,6 +197,14 @@ Next actions and completion criteria:
    runtime downloads. Require one fresh candidate-bound unsigned observation.
    Signed-target map identity remains separate. Pure controls do not qualify the
    Apple adapter, decompression allocation, callback lifetime or installed package.
+   The Rust collector controls now select an explicit Cargo installation executable
+   rather than a bare PATH command. Missing and relative installation roots refuse
+   without fallback. The original ambient-binding CI failure is retained; the
+   detector and baseline are unchanged, and its controls plus the real Rust controls
+   pass locally with PATH-shadow and missing-tool checks. Tool version and actual
+   app compiler identity remain separate joins. This test repair does not add launch
+   wiring or qualify the installed candidate; launch environment and Darwin process
+   monitoring remain open.
 5. Merge only after actual affected qualification and every enabled final-head
    check succeeds. Use a matched-head normal merge and verify landed tree/parents.
 
