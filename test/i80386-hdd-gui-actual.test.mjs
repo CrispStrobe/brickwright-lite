@@ -2028,6 +2028,176 @@ class Originals(unittest.TestCase):
             with self.font_chain_edges(cut=cut) as (raw,env,ops,store):baseline=c.collect_font_chain(raw,H(raw),pathlib.Path('/checkout'),env,'/out/chain.json')
             self.assertNotEqual((status,value['firstFailure']),(1,baseline['firstFailure']),cut)
 
+    def font_bridge_prior_fixture(self,large=False):
+        value,request,expected,events=self.font_discovery_fixture()
+        oldentry='/usr/share/fonts/truetype/prior.ttf';bridge='/etc/alternatives/choice.ttf'
+        value.update(complete=False,commands=[],packages=None,firstFailure={'phase':'directory','path':str(pathlib.Path(oldentry).parent),'name':'ValueError','message':'font alias canonical allowed regular target'})
+        parent=copy.deepcopy(value['directories']['/usr/share/fonts']);parent['entries']=['prior.ttf'];value['directories'][str(pathlib.Path(oldentry).parent)]=parent
+        value['directories']['/usr/share/fonts']['entries'].append('truetype');value['directories']['/usr/share/fonts']['entries'].sort()
+        info=copy.deepcopy(next(iter(value['aliases'].values()))['namedBefore']);info.update(mode=stat.S_IFLNK|0o777,size=len(bridge),uid=0)
+        value['aliases'][oldentry]={'namedBefore':info,'namedAfter':copy.deepcopy(info),'linkText':bridge}
+        if large:
+            path='/etc/fonts/fonts.conf';row=value['files'][path];data=base64.b64decode(row['original']['base64']).replace(b'</fontconfig>',b' '*60000+b'</fontconfig>')
+            row['original']=c.font_blob(data);row['file'].update(ROW(data))
+            for key in ('namedBefore','heldBefore','heldAfter','namedAfter'):row[key]['size']=len(data)
+            event=D(base64.b64decode(value['event']['base64']));body=event['pull_request']['body']
+            low,high=0,261000
+            while low<high:
+                mid=(low+high)//2;event['pull_request']['body']=body+' '*mid;value['event']=c.font_blob(E(event))
+                if len(E(value))<446776:low=mid+1
+                else:high=mid
+            event['pull_request']['body']=body+' '*low;value['event']=c.font_blob(E(event));self.assertLessEqual(len(E(event)),256<<10);self.assertGreaterEqual(len(E(value)),446776)
+        original=E(value);expected['original']=ROW(original)
+        self.assertFalse(r.verify_font_discovery(original,request,expected)['complete'])
+        return {'schema':'bw.gui-hdd.font-bridge-prior.v1','sourceEntry':oldentry,'request':c.font_blob(request),'original':c.font_blob(original),'expectation':expected}
+    def font_bridge_fixture(self,cut=None,large=False):
+        prior=self.font_bridge_prior_fixture(large)
+        with self.font_chain_edges(actual_sources=large,cut=cut if cut in ('close','parent-write','terminal-parent-write','read-close','link-read-close','escape') else None) as (chainrequest,env,events,store):
+            source=D(chainrequest)['source'];request=E({'schema':'bw.gui-hdd.font-bridge-request.v1','source':source,'baseline':D(base64.b64decode(prior['request']['base64']))['baseline'],'entry':'/etc/alternatives/choice.ttf','prior':prior})
+            if cut in ('prior-pin','prior-stat','prior-type','prior-target','prior-link','prior-run','prior-baseline','mode'):
+                q=D(request)
+                if cut=='prior-pin':q['prior']['expectation']['original']['sha256']='0'*64
+                elif cut=='prior-run':q['prior']['expectation']['runId']+=1
+                elif cut=='prior-baseline':q['baseline']=c.font_blob(E({'schema':'bw.gui-hdd.inventory-template.v3','files':[],'aliases':[]}))
+                elif cut=='mode':q['schema']='bw.gui-hdd.font-chain-request.v1'
+                else:
+                    original=D(base64.b64decode(q['prior']['original']['base64']));alias=original['aliases'][prior['sourceEntry']]
+                    if cut=='prior-stat':alias['namedAfter']['ino']+=1
+                    elif cut=='prior-type':alias['namedBefore']['uid']=False;alias['namedAfter']['uid']=False
+                    elif cut=='prior-target':alias['target']='/usr/share/fonts/guessed.ttf'
+                    else:alias['linkText']='/etc/alternatives/other.ttf'
+                    raw=E(original);q['prior']['original']=c.font_blob(raw);q['prior']['expectation']['original']=ROW(raw)
+                request=E(q)
+            store['/request']=request;event=D(store['/event']);event['label']['name']='x86-hdd-gui-font-bridge';event['pull_request']['body']='<!-- BW_GUI_HDD_FONT_BRIDGE_SHA256='+H(request)+' -->';
+            if large:event['pull_request']['body']+=' '*((256<<10)-len(E(event)))
+            store['/event']=E(event)
+            env['GITHUB_JOB']='font-bridge';oldstat=c.Path.lstat;oldopen=c.os.open;oldresolve=c.Path.resolve;oldlink=c.os.readlink;oldfstat=c.os.fstat;oldclose=c.os.close
+            def guarded(operation,path,*args,**kw):
+                self.assertFalse(str(path)==prior['sourceEntry'] or str(path).startswith(str(pathlib.Path(prior['sourceEntry']).parent)),'old entry/unsafe parent was reobserved')
+                result=operation(path,*args,**kw)
+                if cut=='back-to-entry' and hasattr(result,'st_mode') and stat.S_ISLNK(result.st_mode):result.st_size=len(prior['sourceEntry'])
+                return result
+            def fstat_(fd):
+                info=oldfstat(fd)
+                if cut=='back-to-entry' and stat.S_ISLNK(info.st_mode):info.st_size=len(prior['sourceEntry'])
+                return info
+            def close_(fd):
+                if cut=='bridge-link-close' and stat.S_ISLNK(oldfstat(fd).st_mode):raise OSError('LINK_CLOSE_FIRST')
+                return oldclose(fd)
+            with patch.object(c,'FONT_BRIDGE_ENABLED',True),patch.dict(c.os.environ,env,clear=True),patch.object(c.Path,'lstat',lambda path:guarded(oldstat,path)),patch.object(c.Path,'resolve',lambda path,**kw:guarded(oldresolve,path,**kw)),patch.object(c.os,'open',lambda path,*args:guarded(oldopen,path,*args)),patch.object(c.os,'close',close_),patch.object(c.os,'fstat',fstat_),patch.object(c.os,'readlink',lambda path,**kw:prior['sourceEntry'] if cut=='back-to-entry' else oldlink(path,**kw)),patch.object(c.os,'scandir',side_effect=AssertionError('no font directory census')):
+                status=c.main(['font-bridge','--request','/request','--expected-sha256',H(request),'--output','/out/bridge.json'])
+            value=D(store['/out/bridge.json'])
+        expected={'schema':'bw.gui-hdd.font-bridge-expectation.v1','source':source,'request':ROW(request),'original':ROW(E(value)),'runId':200,'workflowSha':'d'*40,'prior':r.font_bridge_reference(prior,'/etc/alternatives/choice.ttf')}
+        return value,request,expected,events,status
+    def test_font_bridge_prior_referenced_real_cli_and_independent_reader(self):
+        value,request,expected,events,status=self.font_bridge_fixture();self.assertEqual(status,0,value['firstFailure']);self.assertEqual(len(value['links']),1)
+        verdict=r.verify_font_bridge(E(value),request,expected);self.assertTrue(verdict['complete']);self.assertFalse(verdict['sourceEntryReobserved']);self.assertFalse(verdict['currentEntryAssociationObserved']);self.assertFalse(verdict['qualified'])
+        inputs={'/original':E(value),'/request':request,'/expected':E(expected)};out=io.StringIO()
+        with patch.object(r,'bounded_input',lambda path,cap:inputs[path]),contextlib.redirect_stdout(out):self.assertEqual(r.main(['--font-bridge','/original','--request','/request','--expected','/expected']),0)
+        self.assertEqual(D(out.getvalue().encode()),verdict)
+    def test_font_bridge_invalid_prior_refuses_before_observation_boundaries(self):
+        for cut in ('prior-pin','prior-stat','prior-type','prior-target','prior-link','prior-run','prior-baseline','mode'):
+            value,request,expected,events,status=self.font_bridge_fixture(cut=cut);self.assertEqual(status,1,cut);self.assertFalse(events,cut);self.assertFalse(value['complete']);self.assertEqual(value['sourceCommands'],[])
+            with self.assertRaises((ValueError,KeyError),msg=cut):r.verify_font_bridge(E(value),request,expected)
+        with patch.object(c,'regular',side_effect=AssertionError('read input')),patch.object(c.Path,'cwd',side_effect=AssertionError('cwd')):
+            for mode in ('font-bridge','font-bridge-guard'):
+                with self.assertRaisesRegex(ValueError,'font bridge disabled'):c.main([mode])
+        self.assertFalse(c.FONT_BRIDGE_ENABLED);self.assertFalse(c.FONT_CHAIN_ENABLED);self.assertFalse(c.ACTUAL_ENABLED)
+    def test_font_bridge_failed_reads_and_closed_mode_policies(self):
+        for cut in ('close','read-close','escape'):
+            value,request,expected,events,status=self.font_bridge_fixture(cut=cut);self.assertEqual(status,1);self.assertFalse(r.verify_font_bridge(E(value),request,expected)['complete'])
+        value,request,expected,events,status=self.font_bridge_fixture()
+        for cut in ('prior-outer','association','entry-observed','version','tool-original','parent','terminal'):
+            v=copy.deepcopy(value);e=copy.deepcopy(expected)
+            if cut=='prior-outer':e['prior']['runId']+=1
+            elif cut=='association':v['currentEntryAssociationObserved']=True
+            elif cut=='entry-observed':v['sourceEntryReobserved']=True
+            elif cut=='version':v['schema']='bw.gui-hdd.font-chain-original.v1'
+            elif cut=='tool-original':v['tool']['original']={}
+            elif cut=='parent':row=copy.deepcopy(v['parents'][0]);row['path']='/opt/unrelated';v['parents'].append(row);v['complete']=False;v['firstFailure']={'phase':'chain','path':None,'name':'ValueError','message':'failed'}
+            else:v['terminal']['path']='/etc/passwd';v['complete']=False;v['firstFailure']={'phase':'chain','path':None,'name':'ValueError','message':'failed'}
+            e['original']=ROW(E(v))
+            with self.assertRaises((ValueError,KeyError),msg=cut):r.verify_font_bridge(E(v),request,e)
+    def test_font_bridge_actual_prior_size_preserves_frame_and_input_caps(self):
+        value,request,expected,events,status=self.font_bridge_fixture(large=True);self.assertEqual(status,0,value['firstFailure']);self.assertGreaterEqual(D(request)['prior']['original']['byteLength'],446776)
+        self.assertLessEqual(len(request),c.JSON_CAP//4);self.assertLess(len(E(value)),c.JSON_CAP-(2<<20));self.assertTrue(r.verify_font_bridge(E(value),request,expected)['complete'])
+        prior=D(request)['prior'];prior['original']['byteLength']=c.JSON_CAP//4+1
+        with patch.object(c.base64,'b64decode',side_effect=AssertionError('oversized input decoded')):
+            with self.assertRaises(ValueError):c.font_bridge_blob(prior['original'])
+
+    def test_font_bridge_never_reobserves_historical_source_entry(self):
+        value,request,expected,events,status=self.font_bridge_fixture(cut='back-to-entry')
+        self.assertEqual(status,1);self.assertEqual(value['firstFailure']['message'],'historical source entry cannot be reobserved');self.assertIsNone(value['terminal'])
+        self.assertFalse(r.verify_font_bridge(E(value),request,expected)['complete'])
+        for kind in ('link','terminal'):
+            value,request,expected,events,status=self.font_bridge_fixture();sourceEntry=D(request)['prior']['sourceEntry']
+            for row in value['links']:
+                row['linkBefore']=row['linkAfter']=sourceEntry
+                for key in ('namedBefore','heldBefore','heldAfter','namedAfter'):row[key]['size']=len(sourceEntry)
+            if kind=='terminal':value['terminal']['path']=sourceEntry
+            else:row=copy.deepcopy(value['links'][0]);row['path']=sourceEntry;value['links'].append(row)
+            expected['original']=ROW(E(value))
+            with self.assertRaises(ValueError):r.verify_font_bridge(E(value),request,expected)
+    def test_font_bridge_critical_prior_and_policy_mutations_detected(self):
+        source=(root/'scripts/run-i80386-hdd-gui-actual.py').read_text()
+        old="need(encode(alias['namedBefore'])==encode(alias['namedAfter']) and alias['linkText']==entry and type(alias['linkText']) is str and\n      alias['namedBefore']['size']==len(entry.encode()),'stable incomplete prior alias with exact literal bridge text/extent')"
+        cuts=[(old,"need(True,'stable incomplete prior alias with exact literal bridge text/extent')",'font_bridge_prior','prior-stat'),
+          ("need(encode(selected[role])==encode({key:prior[role][key] for key in ('byteLength','sha256')}),'externally selected prior pin join')","need(True,'externally selected prior pin join')",'font_bridge_prior','prior-pin'),
+          ("for key,item in info.items():integer(item,-2**63 if key=='mtime_ns' else 0,2**63-1 if key=='mtime_ns' else 2**64-1)","for key,item in info.items():pass",'font_bridge_prior','prior-type'),
+          ("need(path!=request['prior']['sourceEntry'],'historical source entry cannot be reobserved')","need(True,'historical source entry cannot be reobserved')",'collect_font_bridge','back-to-entry')]
+        for old,new,name,cut in cuts:
+            self.assertIn(old,source);namespace={'__name__':'bridge_mutant'};exec(compile(source.replace(old,new,1),'bridge-mutant','exec'),namespace);f=namespace[name];f=type(f)(f.__code__,c.__dict__,f.__name__,f.__defaults__,f.__closure__)
+            with patch.object(c,name,f):mutant=self.font_bridge_fixture(cut=cut)
+            baseline=self.font_bridge_fixture(cut=cut)
+            self.assertNotEqual((mutant[-1],mutant[0]['firstFailure']),(baseline[-1],baseline[0]['firstFailure']),cut)
+        reader=(root/'scripts/read-i80386-hdd-gui-originals.py').read_text();old="need(encode(font_bridge_reference(request['prior'],request['entry']))==encode(expected['prior']),'independently selected prior reference')";self.assertIn(old,reader)
+        namespace={'__name__':'bridge_reader_mutant'};exec(compile(reader.replace(old,"need(True,'independently selected prior reference')",1),'bridge-reader-mutant','exec'),namespace)
+        value,request,expected,events,status=self.font_bridge_fixture();expected['prior']['runId']+=1
+        with self.assertRaises(ValueError):r.verify_font_bridge(E(value),request,expected)
+        self.assertTrue(namespace['verify_font_bridge'](E(value),request,expected)['complete'])
+
+    def test_font_bridge_forbidden_rebound_does_not_authorize_new_parents(self):
+        value,request,expected,events,status=self.font_bridge_fixture(cut='back-to-entry');self.assertEqual(status,1)
+        original=copy.deepcopy(value);sourceEntry=D(request)['prior']['sourceEntry'];oldparent=str(pathlib.Path(sourceEntry).parent)
+        extra=copy.deepcopy(value['parents'][0]);extra['path']=oldparent;value['parents'].append(extra);expected['original']=ROW(E(value))
+        with self.assertRaisesRegex(ValueError,'derived chain ancestry|ordered derived prefix'):r.verify_font_bridge(E(value),request,expected)
+        # Removing this one fence reproduces the peer's coherently re-pinned
+        # failed packet acceptance, rather than merely changing an error string.
+        source=(root/'scripts/read-i80386-hdd-gui-originals.py').read_text();predicate="if current==request['prior']['sourceEntry']:";self.assertIn(predicate,source)
+        namespace={'__name__':'bridge_rebound_mutant'};exec(compile(source.replace(predicate,'if False:',1),'bridge-rebound-mutant','exec'),namespace)
+        mutant_packet=copy.deepcopy(original);present={row['path'] for row in mutant_packet['parents']}
+        for path in reversed(list(pathlib.Path(sourceEntry).parents)):
+            if str(path) not in present:
+                row=copy.deepcopy(extra);row['path']=str(path);mutant_packet['parents'].append(row);present.add(str(path))
+        selected=copy.deepcopy(expected);selected['original']=ROW(E(mutant_packet))
+        with self.assertRaises(ValueError):r.verify_font_bridge(E(mutant_packet),request,selected)
+        self.assertFalse(namespace['verify_font_bridge'](E(mutant_packet),request,selected)['complete'])
+        # A shared ancestor already justified by an independently observed new
+        # font path remains admissible; the historical parent is not blacklisted.
+        value=original;newalias=oldparent+'/another.ttf';link=copy.deepcopy(value['links'][0]);link['path']=newalias;value['links'].append(link)
+        value['links'][0]['linkBefore']=value['links'][0]['linkAfter']=newalias
+        for key in ('namedBefore','heldBefore','heldAfter','namedAfter'):value['links'][0][key]['size']=len(newalias)
+        present={row['path'] for row in value['parents']}
+        for path in reversed(list(pathlib.Path(newalias).parents)):
+            if str(path) not in present:
+                row=copy.deepcopy(extra);row['path']=str(path);value['parents'].append(row);present.add(str(path))
+        expected['original']=ROW(E(value))
+        self.assertFalse(r.verify_font_bridge(E(value),request,expected)['complete'])
+
+    def test_font_bridge_failed_witness_cannot_authorize_suffix_or_derived_parent(self):
+        for cut in ('link-close','link-drift','parent-close','parent-drift','parent-write'):
+            value,request,expected,events,status=self.font_bridge_fixture();value['complete']=False;value['firstFailure']={'phase':'chain','path':None,'name':'OSError','message':'first witness failure'}
+            row=value['links'][0] if cut.startswith('link') else value['parents'][0]
+            if cut.endswith('close'):row['close']['succeeded']=False
+            elif cut.endswith('write'):
+                for key in ('namedBefore','heldBefore','heldAfter','namedAfter'):row[key]['mode']|=0o022
+            else:row['heldAfter']['ino']+=1
+            expected['original']=ROW(E(value))
+            with self.assertRaises(ValueError,msg=cut):r.verify_font_bridge(E(value),request,expected)
+        for cut in ('bridge-link-close','link-read-close','terminal-parent-write'):
+            value,request,expected,events,status=self.font_bridge_fixture(cut=cut);self.assertEqual(status,1,cut);self.assertIsNone(value['terminal'])
+            self.assertFalse(r.verify_font_bridge(E(value),request,expected)['complete'])
+
 suite=unittest.defaultTestLoader.loadTestsFromTestCase(Originals)
 result=unittest.TextTestRunner(verbosity=2).run(suite)
 print(json.dumps({'controls':result.testsRun,'failures':len(result.failures),'errors':len(result.errors)}))

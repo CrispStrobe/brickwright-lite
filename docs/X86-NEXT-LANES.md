@@ -346,6 +346,57 @@ failures remain failed observations. These are mocked source controls, with no
 hosted chain observation or guest qualification. The earlier frozen reader and
 consumers remain selected for the retained v1 original; no consumer pin is
 silently changed by this source slice.
+Further bridge review exposed a separate partial-prefix limit in the held chain
+reader: a failed close or identity readback with retained link text can still
+authorize later rows in an incomplete packet. That format remains disabled and
+its verdicts are held in this continuation; review a separately scoped repair
+before any activation. Its manufactured full-suite positives do not close this
+independent counterexample.
+That repair belongs in `verify_font_chain` and focused manufactured controls in
+`test/i80386-hdd-gui-actual.test.mjs`: prove parent and link completion before
+accepting subsequent path facts; retain a genuinely failed final witness. Include
+coherently rehashed failed-close, identity-drift and writable-parent packets with
+later links or terminals, plus valid complete and failed-prefix positives. Keep
+the guard false, prior discovery/delivery versions, caps and baseline unchanged;
+obtain independent packet review before a separately qualified source merge.
+
+A separate disabled `font-bridge` source slice asks only about a selected direct
+child of `/etc/alternatives/` named in the retained incomplete alias. Its request
+must carry bounded exact prior request/original bytes and independently selected
+source, run, workflow and digest bindings. The independent reader must regrade
+that prior discovery observation and additionally require stable root-owned
+symlink witnesses and the exact historical literal link text. Prior discovery
+validation alone does not establish those new reference requirements.
+
+Its distinct controller modes are `font-bridge-guard` and `font-bridge`, with
+standalone reader mode `--font-bridge`. The closed formats are
+`bw.gui-hdd.font-bridge-request.v1`, `bw.gui-hdd.font-bridge-original.v1`,
+`bw.gui-hdd.font-bridge-expectation.v1`, embedded
+`bw.gui-hdd.font-bridge-prior.v1` and externally selected
+`bw.gui-hdd.font-bridge-prior-reference.v1`. `FONT_BRIDGE_ENABLED` remains false.
+Each embedded prior byte stream and the complete new request have a 1 MiB
+cap; the existing 4 MiB JSON cap and 2 MiB output reserve remain unchanged.
+Prior descriptors bind immutable bytes, source, run and workflow. Official
+metadata authenticity still requires the separately admitted delivery boundary.
+
+This question must never read the old font entry or its writable parent to
+claim a current association. Both source-entry reobservation and current-entry
+association stay explicitly false. New bridge parents, held links and terminal
+font files retain the strict ownership, identity, path and output limits; a later
+unsafe terminal parent can still produce a failed observation. Existing discovery
+and font-chain versions retain their admission rules. New formats, manufactured
+controls and independent source review precede any hosted job, official delivery,
+consumer selection or distinct event. Actual execution remains disabled.
+The new bridge reader must also reject newly derived historical-entry ancestors
+after a forbidden rebound, and suffixes after failed link close or identity
+readback. Preserve the original failed witnesses and legitimate common ancestors;
+do not discard failures or make every incomplete packet unacceptable.
+The corrected source passes 65 Node tests, including 125 Python controls. Eight
+new focused methods exercise the bridge, with six detected predicate-removal
+mutations. All 117 earlier Python test bodies and helpers, and the existing
+controller/reader module code apart from CLI dispatch, remain unchanged. The
+retained prior also fits the new request limits without any observation calls;
+that parser check neither selects a new event nor approves the current host.
 
 
 The existing runner bridge [PR986](https://github.com/CrispStrobe/brickwright-lite/pull/986),
@@ -353,8 +404,11 @@ download action [PR987](https://github.com/CrispStrobe/brickwright-lite/pull/987
 and persistence scenario [PR989](https://github.com/CrispStrobe/brickwright-lite/pull/989)
 are composed in [draft PR1013](https://github.com/CrispStrobe/brickwright-lite/pull/1013)
 under their merged ownership, with canonical manifest admission corrected.
-That source checkpoint keeps the selected dependency unchanged and is not an
-installed qualification.
+The source candidate remains at `79afc8bc4c67c71ae251cc60fed5c5aff9231fec`;
+its 17 enabled final-head checks passed, with seven declared conditional skips.
+PR1013 is not merged or qualified on main. This historical candidate selection
+is separate from current main's dependency declarations; refresh those before
+any later integration without changing pins as part of this handoff.
 The [merged acceptance claim](../LANES.md#386-gui-hdd-and-forward-debug-hosted-acceptance--2026-10-16)
 adds only one hosted entry controller, one standalone original reader, focused
 inert controls and a separate workflow around the existing probe. Ownership
@@ -562,14 +616,15 @@ unchanged; 22 source mutations and eight independent packet counterexamples
 are detected. These tests use manufactured inputs and mocked OS boundaries.
 Legacy actual v3 remains separate. Actual execution stays disabled
 until complete runtime, Build, source and event admission plus affected clean
-browser/guest qualification. The 34 missing font/configuration inputs remain
-unresolved; no new inventory event or roster change was made.
+browser/guest qualification. The 34 missing baseline font/configuration inputs remain unresolved; the later
+font observation below does not change the required roster.
 
 The separate font-discovery source candidate now sets
 `FONT_DISCOVERY_ENABLED = True` and enables its distinct conditional
 `font-discovery` workflow job. This source activation grants no event or runtime
 admission. The exact request was subsequently published and one separately
-admitted font event was consumed; `ACTUAL_ENABLED = False` remains held. Its `bw.gui-hdd.font-discovery-request.v1` pins source21 and
+admitted font event was consumed, as recorded below; `ACTUAL_ENABLED = False`
+remains held. Its `bw.gui-hdd.font-discovery-request.v1` pins source21 and
 embeds the unchanged baseline template. It collects fixed configuration and
 font-directory censuses, held file hash/extent/EOF/identity/close observations,
 raw configuration bytes and at most three read-only `dpkg-query` probes:

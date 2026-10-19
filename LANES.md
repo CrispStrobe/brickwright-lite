@@ -5828,6 +5828,13 @@ outer-delivery path, new input or event. Its strict parent policy refuses the
 retained mode040777 parent; manufactured positives do not qualify that layout.
 Raw source-command sidecars remain separate from inner descriptor validation.
 See the guide for source controls and the remaining trust/delivery gates.
+A separately disabled bridge-only continuation observes an explicitly selected
+alternatives child referenced by a stable incomplete historical alias. Its
+separate versioned request retains and pins prior discovery bytes; the reader
+regrades them independently. It cannot establish the old font entry's current
+association or reobserve its writable parent. Existing chain starting roots,
+strict parent/terminal policy, caps and actual guards remain held. No new hosted
+job, official outer-delivery path, input, event or consumer adoption is included.
 A separate delivery reader now joins externally selected official metadata,
 workflow proof and the bounded original ZIP before grading a retained discovery
 observation. Missing request/observation or raw evidence refuses. This is

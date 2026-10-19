@@ -1595,14 +1595,184 @@ def retain_font_chain(value,path):
     return retain_font_discovery(value,path)
 
 
+
+# Separate prior-reference mode: historical alias bytes select a question only.
+FONT_BRIDGE_ENABLED = False
+
+
+def font_bridge_blob(row):
+    fields(row,'byteLength sha256 base64');integer(row['byteLength'],1,JSON_CAP//4);digest(row['sha256'])
+    need(type(row['base64']) is str and len(row['base64'])==4*((row['byteLength']+2)//3),'bounded prior encoding before decode')
+    raw=base64.b64decode(row['base64'],validate=True)
+    need(len(raw)==row['byteLength'] and sha(raw)==row['sha256'] and base64.b64encode(raw).decode()==row['base64'],'exact prior original bytes')
+    return raw
+
+
+def font_bridge_prior(prior,entry):
+    fields(prior,'schema sourceEntry request original expectation')
+    need(prior['schema']=='bw.gui-hdd.font-bridge-prior.v1','explicit immutable prior version')
+    runtime_path(prior['sourceEntry']);runtime_path(entry)
+    need(prior['sourceEntry'].startswith(FONT_CHAIN_ROOTS) and entry.startswith('/etc/alternatives/') and entry.count('/')==3,'historical font entry and single-child bridge question')
+    selected=prior['expectation'];fields(selected,'schema source request original runId workflowSha')
+    need(selected['schema']=='bw.gui-hdd.font-discovery-expectation.v1','explicit prior discovery expectation')
+    source=selected['source'];fields(source,'head tree files');digest(source['head'],40);digest(source['tree'],40)
+    rows(source['files']);need(set(source['files'])==SOURCE,'exact prior source21')
+    integer(selected['runId'],1,2**63-1);digest(selected['workflowSha'],40)
+    for role in ('request','original'):
+        fields(selected[role],'byteLength sha256');integer(selected[role]['byteLength'],1,JSON_CAP//4);digest(selected[role]['sha256'])
+        need(encode(selected[role])==encode({key:prior[role][key] for key in ('byteLength','sha256')}),'externally selected prior pin join')
+    request_raw=font_bridge_blob(prior['request']);original_raw=font_bridge_blob(prior['original'])
+    request,baseline=font_request(request_raw,selected['request']['sha256'])
+    need(encode(request['source'])==encode(source),'prior request/source selection join')
+    value=decode(original_raw)
+    fields(value,'schema observationOnly candidate qualified activeFontSelectionProved perPackageManifestBoundariesProved request event platform sourceCommands tools directories files aliases configs configReferences baselineMissing commands packages complete firstFailure secondary')
+    need(encode(value)==original_raw and value['schema']=='bw.gui-hdd.font-discovery-original.v1' and value['observationOnly'] is True and value['complete'] is False and
+      all(value[k] is False for k in ('candidate','qualified','activeFontSelectionProved','perPackageManifestBoundariesProved')),'canonical failed historical discovery only')
+    need(font_bridge_blob(value['request'])==request_raw,'prior retained request bytes')
+    platform=value['platform'];fields(platform,'GITHUB_RUN_ID GITHUB_RUN_ATTEMPT GITHUB_JOB GITHUB_REPOSITORY GITHUB_WORKFLOW_SHA GITHUB_WORKFLOW_REF GITHUB_EVENT_NAME GITHUB_ACTOR BW_EXPECTED_HEAD')
+    need(platform['GITHUB_RUN_ID']==str(selected['runId']) and platform['GITHUB_WORKFLOW_SHA']==selected['workflowSha'],'prior externally selected run/workflow')
+    need(type(value['event']) is dict and type(value['event'].get('byteLength')) is int and value['event']['byteLength']<=256<<10,'bounded prior event before decode')
+    font_event(font_bridge_blob(value['event']),selected['request']['sha256'],source['head'],platform)
+    need(type(value['aliases']) is dict and len(value['aliases'])<=256 and prior['sourceEntry'] in value['aliases'],'bounded recorded prior alias')
+    alias=value['aliases'][prior['sourceEntry']];fields(alias,'namedBefore namedAfter linkText')
+    for snapshot in ('namedBefore','namedAfter'):
+        info=alias[snapshot];fields(info,'dev ino mode uid gid nlink size mtime_ns')
+        for key,item in info.items():integer(item,-2**63 if key=='mtime_ns' else 0,2**63-1 if key=='mtime_ns' else 2**64-1)
+        need(info['uid']==0 and stat.S_ISLNK(info['mode']),'root-owned historical symlink')
+    need(encode(alias['namedBefore'])==encode(alias['namedAfter']) and alias['linkText']==entry and type(alias['linkText']) is str and
+      alias['namedBefore']['size']==len(entry.encode()),'stable incomplete prior alias with exact literal bridge text/extent')
+    error=value['firstFailure'];fields(error,'phase path name message')
+    need(error['phase']=='directory' and error['path']==str(Path(prior['sourceEntry']).parent) and error['name']=='ValueError' and error['message']=='font alias canonical allowed regular target','recorded alias boundary refusal')
+    need(entry not in value['aliases'] and entry not in value['files'] and entry not in value['directories'],'bridge hop previously unobserved')
+    return request,original_raw
+
+
+def font_bridge_reference(prior,entry):
+    selected=prior['expectation']
+    return {'schema':'bw.gui-hdd.font-bridge-prior-reference.v1','sourceEntry':prior['sourceEntry'],'entry':entry,'source':selected['source'],
+      'runId':selected['runId'],'workflowSha':selected['workflowSha'],'request':selected['request'],'original':selected['original']}
+
+
+def font_bridge_request(raw,expected):
+    digest(expected);need(type(raw) is bytes and len(raw)<=JSON_CAP//4 and sha(raw)==expected,'bounded selected bridge request')
+    value=decode(raw);fields(value,'schema source baseline entry prior')
+    need(encode(value)==raw and value['schema']=='bw.gui-hdd.font-bridge-request.v1','explicit canonical bridge request version')
+    legacy={key:value[key] for key in ('source','baseline')};legacy['schema']='bw.gui-hdd.font-discovery-request.v1'
+    font_request(encode(legacy),sha(encode(legacy)))
+    previous,original=font_bridge_prior(value['prior'],value['entry'])
+    need(encode(value['baseline'])==encode(previous['baseline']),'unchanged prior baseline descriptor')
+    return value
+
+
+def font_bridge_event(raw,request_sha,head,env):
+    event=decode(raw);pr=event.get('pull_request',{})
+    need(event.get('action')=='labeled' and event.get('label',{}).get('name')=='x86-hdd-gui-font-bridge' and
+         event.get('sender',{}).get('login')=='CrispStrobe' and event.get('repository',{}).get('full_name')==REPOSITORY,'owned discovery event')
+    integer(event.get('number'),1,2**31-1)
+    need(type(pr.get('number')) is int and event['number']==pr['number'] and pr.get('state')=='open' and
+         pr.get('head',{}).get('sha')==head and pr.get('head',{}).get('repo',{}).get('full_name')==REPOSITORY and
+         pr.get('head',{}).get('repo',{}).get('fork') is False and pr.get('base',{}).get('ref')=='main' and
+         pr.get('base',{}).get('repo',{}).get('full_name')==REPOSITORY,'exact own discovery source event')
+    marker='<!-- BW_GUI_HDD_FONT_BRIDGE_SHA256='+request_sha+' -->'
+    need(type(pr.get('body')) is str and pr['body'].count('<!-- BW_GUI_HDD_FONT_BRIDGE_SHA256=')==1 and pr['body'].count(marker)==1,'event transports selected discovery pin only')
+    need(env.get('GITHUB_REPOSITORY')==REPOSITORY and env.get('GITHUB_EVENT_NAME')=='pull_request' and env.get('GITHUB_ACTOR')=='CrispStrobe' and
+         env.get('GITHUB_RUN_ATTEMPT')=='1' and env.get('GITHUB_JOB')=='font-bridge' and re.fullmatch('[1-9][0-9]{0,19}',env.get('GITHUB_RUN_ID','')) and
+         env.get('BW_EXPECTED_HEAD')==head,'first discovery platform observations')
+    digest(env.get('GITHUB_WORKFLOW_SHA'),40)
+    need(env.get('GITHUB_WORKFLOW_REF')==REPOSITORY+'/.github/workflows/i80386-hdd-gui-actual.yml@refs/pull/'+str(pr['number'])+'/merge','discovery workflow/event reference')
+
+def collect_font_bridge(request_raw,expected,root,env,output_path):
+    value={'schema':'bw.gui-hdd.font-bridge-original.v1','observationOnly':True,'candidate':False,'qualified':False,
+      'activeFontSelectionProved':False,'sourceRuntimeObserved':False,'sourceEntryReobserved':False,'currentEntryAssociationObserved':False,'request':font_blob(request_raw),'event':None,
+      'platform':{key:env.get(key) for key in ('GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_JOB','GITHUB_REPOSITORY','GITHUB_WORKFLOW_SHA','GITHUB_WORKFLOW_REF','GITHUB_EVENT_NAME','GITHUB_ACTOR','BW_EXPECTED_HEAD')},
+      'tool':{},'sourceCommands':[],'parents':[],'links':[],'terminal':None,'complete':False,'firstFailure':None,'secondary':[], 'commands':[], 'packages':None}
+    deadline=time.monotonic()+180
+    def check():
+        need(time.monotonic()<deadline,'chain cooperative180s deadline')
+        need(len(encode(value))<JSON_CAP-(2<<20),'chain output reserve')
+    try:
+        request=font_bridge_request(request_raw,expected)
+        event_raw=regular(env['GITHUB_EVENT_PATH'],256<<10);value['event']=font_blob(event_raw)
+        font_bridge_event(event_raw,expected,request['source']['head'],env)
+        check();font_read('/usr/bin/git',FILE_CAP,value['tool'])
+        tool=value['tool']['namedBefore']
+        need(tool['uid']==0 and tool['mode']&0o6022==0 and tool['mode']&0o111,'root-owned nonwritable executable chain Git')
+        capture=Originals(Path(output_path).with_name(Path(output_path).stem+'-process-originals'))
+        edge=Hosted(root,capture,env);edge.deadline=min(edge.deadline,deadline)
+        arguments=[['rev-parse','HEAD'],['rev-parse','HEAD^{tree}']]+[['cat-file','blob',request['source']['head']+':'+p] for p in sorted(SOURCE)]
+        for index,args in enumerate(arguments):
+            check();role='git-'+str(index);record={'argv':['/usr/bin/git','--no-replace-objects','-c','gc.auto=0','-c','maintenance.auto=false','-c','core.fsmonitor=false','-c','core.hooksPath=/dev/null',*args],'stdout':None,'stderr':None,'exitCode':None};value['sourceCommands'].append(record)
+            source_error=None
+            try:raw=edge.git(args)
+            except BaseException as exc:source_error=exc
+            for suffix in ('stdout','stderr','process.json'):
+                try:
+                    saved=capture.root/(role+'.'+suffix)
+                    if saved.exists():
+                        limit=JSON_CAP if suffix=='process.json' else STREAM_CAP
+                        data=regular(saved,limit) if capture.files[role+'.'+suffix]['byteLength'] else b''
+                        if suffix=='process.json':
+                            process=decode(data);need(process.get('argv')==record['argv'],'chain retained process arguments')
+                            integer(process.get('exitCode'),-255,255);record['exitCode']=process['exitCode']
+                        else:record[suffix]={'byteLength':len(data),'sha256':sha(data)}
+                except BaseException as exc:
+                    if source_error is None:source_error=exc
+                    else:source_error.font_chain_secondary=getattr(source_error,'font_chain_secondary',[])+[exc]
+            if source_error is not None:raise source_error
+            if index<2:need(raw==(request['source']['head' if index==0 else 'tree']+'\n').encode(),'chain exact Git source identity')
+            else:
+                selected=sorted(SOURCE)[index-2]
+                need(raw==regular(Path(root)/selected,FILE_CAP) and {'byteLength':len(raw),'sha256':sha(raw)}==request['source']['files'][selected],'chain Git/live/external source join')
+        path=request['entry'];seen=set();parents=set()
+        while True:
+            check();need(path!=request['prior']['sourceEntry'],'historical source entry cannot be reobserved')
+            need(path not in seen,'chain cycle refused');seen.add(path)
+            # Every ancestor is witnessed; no canonical-parent assumption hides
+            # an intermediate symlink. No directory contents are enumerated.
+            for parent in reversed(list(Path(path).parents)):
+                parent=str(parent)
+                if parent in parents:continue
+                check();need(len(value['parents'])<128,'combined chain parent cap')
+                row,error=font_chain_witness(parent,'parent',check);value['parents'].append(row)
+                if error is not None:raise error
+                parents.add(parent)
+            check();info=Path(path).lstat()
+            if stat.S_ISLNK(info.st_mode):
+                need(len(value['links'])<min(FONT_CHAIN_HOPS,256),'combined chain alias/hop cap')
+                row,error=font_chain_witness(path,'link',check);value['links'].append(row)
+                if error is not None:raise error
+                path=font_chain_next(path,row['linkBefore']);continue
+            need(len(value['links'])>0 and path.startswith(FONT_CHAIN_ROOTS),'regular terminal within original font roots')
+            value['terminal']={'path':path,'observation':{}}
+            raw=font_read(path,FILE_CAP,value['terminal']['observation'])
+            terminal_info=value['terminal']['observation']['namedBefore']
+            need(0<len(raw)<=256<<20 and terminal_info['uid']==0 and not terminal_info['mode']&0o6022,'positive root-owned nonwritable terminal font')
+            check();value['complete']=True;break
+    except BaseException as exc:
+        value['firstFailure']={'phase':'chain','path':locals().get('path'),'name':type(exc).__name__,'message':str(exc)[:512]}
+        later=[('close',e) for e in getattr(exc,'font_secondary',[])]+[('source-retention',e) for e in getattr(exc,'font_chain_secondary',[])]
+        value['secondary']=[{'phase':phase,'path':locals().get('path'),'name':type(e).__name__,'message':str(e)[:512]} for phase,e in later][:128]
+    return value
+
+
+def retain_font_bridge(value,path):
+    # Separate format; same exclusive bounded retention and first-error policy.
+    need(value['schema']=='bw.gui-hdd.font-bridge-original.v1' and value['commands']==[] and value['packages'] is None,'passive chain only')
+    return retain_font_discovery(value,path)
+
+
+
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__,allow_abbrev=False)
-    parser.add_argument('mode',choices=('guard','inventory-guard','install-input','inventory','preflight','actual','font-discovery-guard','font-discovery','font-chain-guard','font-chain'))
+    parser.add_argument('mode',choices=('guard','inventory-guard','install-input','inventory','preflight','actual','font-discovery-guard','font-discovery','font-chain-guard','font-chain','font-bridge-guard','font-bridge'))
     for option in ('request','expected-sha256','output','blob'):parser.add_argument('--'+option)
     raw=list(sys.argv[1:] if argv is None else argv)
     for option in ('--request','--expected-sha256','--output','--blob'):
         if raw.count(option)>1:parser.error('one fixed input per option')
     args=parser.parse_args(raw)
+    if args.mode in ('font-bridge-guard','font-bridge'):
+        need(FONT_BRIDGE_ENABLED is True,'font bridge disabled pending separate prior/source/request/event/delivery review')
+        need(raw==['font-bridge-guard'] if args.mode=='font-bridge-guard' else len(raw)==7 and all(raw.count(option)==1 for option in ('--request','--expected-sha256','--output')),'exact passive bridge CLI inputs')
     if args.mode in ('font-chain-guard','font-chain'):
         need(FONT_CHAIN_ENABLED is True,'font chain disabled pending separate source/request/event/delivery review')
         need(raw==['font-chain-guard'] if args.mode=='font-chain-guard' else len(raw)==7 and all(raw.count(option)==1 for option in ('--request','--expected-sha256','--output')),'exact passive chain CLI inputs')
@@ -1615,13 +1785,15 @@ def main(argv=None):
     if args.mode=='guard':observe_python_startup(Path.cwd(),'guard',[])
     if args.mode=='install-input' and Path('gui-setup/python-startup.original.txt').exists():
         observe_python_startup(Path.cwd(),'install-input',raw[1:])
-    if args.mode in ('guard','inventory-guard','font-discovery-guard','font-chain-guard'):return 0
+    if args.mode in ('guard','inventory-guard','font-discovery-guard','font-chain-guard','font-bridge-guard'):return 0
     need(args.expected_sha256 and args.output,'fixed independent digest and output required')
     env=dict(os.environ)
     if args.mode=='install-input':
         need(args.blob,'fixed immutable input blob required');print(encode(install_input(args.blob,args.expected_sha256,args.output,env)).decode(),end='');return 0
     need(args.request,'fixed canonical input original required')
     request_raw=regular(args.request,JSON_CAP)
+    if args.mode=='font-bridge':
+        return retain_font_bridge(collect_font_bridge(request_raw,args.expected_sha256,Path.cwd(),env,args.output),args.output)
     if args.mode=='font-chain':
         return retain_font_chain(collect_font_chain(request_raw,args.expected_sha256,Path.cwd(),env,args.output),args.output)
     if args.mode=='font-discovery':
