@@ -1,0 +1,9 @@
+DEVICE EV3
+
+# Robot Lab: drive at the wall and stop before it.
+# Model: EV3 wall stopper (large motors on B and C, ultrasonic sensor on input 4 looking ahead).
+# The ultrasonic sensor measures in cm: stop as soon as the wall is closer than 15 cm.
+WHEN flag clicked:
+  run motor BC at 40 %
+  wait until (ev3 distance 4 cm) < 15
+  stop motor BC brake

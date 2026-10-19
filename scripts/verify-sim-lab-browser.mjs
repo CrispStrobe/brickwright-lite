@@ -89,6 +89,27 @@
 //      a Blocks project of robotlab blocks (saved and reloaded as an .sb3) loads the hubless motor bench and
 //      turns its motor 360 ± 2° through runtime.robotLab; the bench's example in `lab` words, through the UI
 //      only, turns it 360°, rests there through its wait, runs on at 90 °/s and brakes.
+//  19. the LEGO radio hubs (scripts/lib/sim-lab-hubs-gate.mjs, --part=hubs-ble, docs/ROBOT-LAB-HUBS-PLAN.md P3):
+//      through the UI only, each example's pup / boost / wedo words become the REAL extension's blocks and
+//      Run connects them to the scene's virtual hub (Scratch Link double or Web Bluetooth shim): legopoweredup
+//      turns the Technic Hub's motor A 360 ± 2° and back; legoboostunified drives the Move Hub rover ahead and
+//      turns it; wedo2unified runs the WeDo rover until its motion sensor sees the wall, and stops it.
+//  20. the EV3 and NXT (scripts/lib/sim-lab-hubs-bt-gate.mjs, --part=hubs-bt, docs/ROBOT-LAB-EV3-NXT.md):
+//      their extensions reach the Lab's bricks over Scratch Link (the BT-classic registry) — the NXT
+//      bumper bot's example (legonxt blocks, UI only) turns both wheels 360 ± 2° and stops on its bumper
+//      at the wall; stock Scratch EV3 blocks stop the EV3 wall stopper before the wall on its ultrasonic
+//      sensor; the DEVICE EV3 example becomes ev3comprehensive blocks.
+//  21. parts from the whole LDraw catalogue (scripts/lib/sim-lab-catalogue-gate.mjs, --part=editor,
+//      docs/ROBOT-LAB-ARCHITECTURE.md §5.4.1), against a stand-in mirror: "+" finds, adds and places a
+//      part the app does not ship; a sticker joins as decoration; credits name the files; a model with
+//      both simulates; both are back after a reload.
+//  22. Simulate's speed, Readings, sensor rays and replay (scripts/lib/sim-lab-simulate-ux-gate.mjs,
+//      --part=ui), on the Wall stopper: ½× halves simulated time; Readings shows motors A, B and the
+//      distance sensor, moving as it drives; the sensor's ray is drawn; paused, the replay slider shows
+//      an earlier pose, and Run goes on from now.
+//  23. the mats' challenges (scripts/lib/sim-lab-challenges-gate.mjs, --part=ui): the Wall stopper's
+//      own program wins "Stop at the wall" (stars, the gap, kept as the best); "Stay in the ring" moves
+//      the robot to the sumo mat, where driving straight on leaves the ring and loses.
 //
 // Every Sim Lab here runs its physics in the Web Worker (ROADMAP §4.9): each load
 // asserts `window.__bwSimLab.worker === true`, so the line-follower lap, the wall
@@ -112,7 +133,12 @@ import {touchInteractions} from './lib/sim-lab-touch-gate.mjs';
 import {layoutInteractions, MIN_CANVAS_PX} from './lib/sim-lab-layout-gate.mjs';
 import {editorParityInteractions} from './lib/sim-lab-editor-parity-gate.mjs';
 import {connectInteractions} from './lib/sim-lab-connect-gate.mjs';
+import {catalogueInteractions} from './lib/sim-lab-catalogue-gate.mjs';
+import {simulateUxInteractions} from './lib/sim-lab-simulate-ux-gate.mjs';
+import {challengesInteractions} from './lib/sim-lab-challenges-gate.mjs';
 import {apiInteractions, DEGREES_TOLERANCE} from './lib/sim-lab-api-gate.mjs';
+import {hubsInteractions, HUB_DEGREES_TOLERANCE} from './lib/sim-lab-hubs-gate.mjs';
+import {hubsBtInteractions} from './lib/sim-lab-hubs-bt-gate.mjs';
 import {openRobotLabTab, tool, toolbarInteractions} from './lib/sim-lab-toolbar-gate.mjs';
 import {scaleInteractions, OPEN_BUDGET_MS, DRAW_CALL_BUDGET, BUILD_OPEN_BUDGET_MS, IDLE_FRAME_BUDGET_MS, POINTER_MOVE_BUDGET_MS,
     DRAG_LINK_BUDGET, UNDO_DRAW_BUDGET} from './lib/sim-lab-scale-gate.mjs';
@@ -281,9 +307,9 @@ const reading = page => page.evaluate(() => {
 });
 
 // One gate, six CI steps (each within the per-step budget, gen-gate-budgets.mjs):
-// `--part=core|examples|ui|tablet|layout|editor|scale|api` runs one section; no flag runs all of them.
+// `--part=core|examples|ui|tablet|layout|editor|scale|api|hubs-ble|hubs-bt` runs one section; no flag runs all of them.
 const PART = (process.argv.find(a => a.startsWith('--part=')) || '--part=all').slice('--part='.length);
-const PARTS = ['core', 'examples', 'ui', 'tablet', 'layout', 'editor', 'scale', 'api'];
+const PARTS = ['core', 'examples', 'ui', 'tablet', 'layout', 'editor', 'scale', 'api', 'hubs-ble', 'hubs-bt'];
 if (PART !== 'all' && !PARTS.includes(PART)) throw new Error(`--part must be one of ${PARTS.join(', ')} (got ${PART})`);
 const want = part => PART === 'all' || PART === part;
 
@@ -299,7 +325,7 @@ try {
         // Through the SPIKE arena's "Open in Robot Lab" (the route the Lab had before it was a tab).
         const state = await openSimLab(page, {typed: true, via: 'arena'});
         assert.equal(state.view3d, 'webgl', `3D view: ${JSON.stringify(state)}`);
-        assert.equal(await page.getByRole('tab', {name: 'Robot Lab', exact: true}).getAttribute('aria-selected'), 'true',
+        assert.equal(await page.getByRole('tab', {name: 'Robots', exact: true}).getAttribute('aria-selected'), 'true',
             'the arena\'s Open in Robot Lab shows the Robot Lab tab');
         const canvas = page.getByTestId('bw-sim-lab-3d-canvas');
         await canvas.waitFor({timeout: 30000});
@@ -854,8 +880,8 @@ try {
                 'view-home': 'Startansicht', 'show-ports': 'Ports zeigen', help: 'Hilfe'},
             build: {'mode-move': 'Mit Pfeilen schieben', turn: 'Um 90° drehen', undo: 'Rückgängig', 'parts-toggle': 'Teile'}}});
         assert.match(german.buildControls.find(c => c.id === 'bw-sim-lab-undo').title, /^Rückgängig \(Strg\+Z\)$/, 'German tooltips name German keys');
-        assert.equal(await de.getByRole('tab', {name: 'Roboter-Labor', exact: true}).getAttribute('aria-selected'), 'true', 'the tab is called Roboter-Labor');
-        console.log('PASS the Robot Lab tab in German: Roboter-Labor, every control named in German, tooltips with Strg/Umschalt shortcuts');
+        assert.equal(await de.getByRole('tab', {name: 'Roboter', exact: true}).getAttribute('aria-selected'), 'true', 'the tab is called Roboter-Labor');
+        console.log('PASS the Robot Lab tab in German: Roboter, every control named in German, tooltips with Strg/Umschalt shortcuts');
         await de.close();
 
         // 9. Seeing the model: port badges, issues that show their parts, "Show how it moves".
@@ -884,6 +910,24 @@ try {
         await fallback.waitForFunction(t => window.__bwSimLab._pane.session.time > t + 500, f0.time, {timeout: 30000});
         console.log('PASS without WebGL the pane says so and the simulation still runs');
         await fallback.close();
+        // 22. Simulate's speed, Readings, sensor rays and replay (scripts/lib/sim-lab-simulate-ux-gate.mjs).
+        const ux = await browser.newPage({viewport: {width: 1440, height: 900}, serviceWorkers: 'block'});
+        ux.on('pageerror', error => errors.push(error.message));
+        ux.on('dialog', dialog => dialog.accept());
+        await openSimLab(ux, {program: null});
+        const u = await simulateUxInteractions(ux, {shotsDir: artifacts});
+        console.log(`PASS simulate: ½× runs at ${u.halfRate.toFixed(2)} of 1×'s rate; Readings shows ${u.readings} rows that move with the robot; ` +
+            `the distance sensor's ray is drawn (${u.rayCm} cm); paused, the replay goes back ${u.replayBackM.toFixed(2)} m of motion and Run goes on from now`);
+        await ux.close();
+        // The mats' challenges (scripts/lib/sim-lab-challenges-gate.mjs): won by the Wall stopper's program, lost on the sumo mat.
+        const ch = await browser.newPage({viewport: {width: 1440, height: 900}, serviceWorkers: 'block'});
+        ch.on('pageerror', error => errors.push(error.message));
+        ch.on('dialog', dialog => dialog.accept());
+        await openSimLab(ch, {program: null});
+        const c = await challengesInteractions(ch, {shotsDir: artifacts});
+        console.log(`PASS challenges: "Stop at the wall" won by the Wall stopper's program (${c.wallStars} stars, ${c.wallGapCm} cm left) and kept as ` +
+            `the best; "Stay in the ring" moves the robot to the sumo mat, where driving straight on leaves the ring after ${c.sumoLostAtS.toFixed(1)} s`);
+        await ch.close();
     }
 
     if (want('tablet')) { // a 1024×768 touch page, real fingers only
@@ -891,9 +935,19 @@ try {
         const tablet = await browser.newPage({viewport: {width: 1024, height: 768}, hasTouch: true, serviceWorkers: 'block'});
         tablet.on('pageerror', error => errors.push(error.message));
         tablet.on('dialog', dialog => dialog.accept());
-        // The stage column open beside the tab (as on a fresh tablet that uses it), so the Lab starts compact.
-        await openSimLab(tablet, {program: null, stage: true});
-        await touchInteractions(tablet, {shotsDir: artifacts});
+        // A trace of the whole run, kept only when it fails (CI uploads artifacts/sim-lab/ then): a miss
+        // on CI's Linux runner that never happened on a Mac left nothing to look at.
+        await tablet.context().tracing.start({screenshots: true, snapshots: true});
+        try {
+            // The stage column open beside the tab (as on a fresh tablet that uses it), so the Lab starts compact.
+            await openSimLab(tablet, {program: null, stage: true});
+            await touchInteractions(tablet, {shotsDir: artifacts});
+        } catch (error) {
+            await tablet.screenshot({path: resolve(artifacts, 'sim-lab-tablet-failure.png'), fullPage: true}).catch(() => {});
+            await tablet.context().tracing.stop({path: resolve(artifacts, 'sim-lab-tablet-trace.zip')}).catch(() => {});
+            throw error;
+        }
+        await tablet.context().tracing.stop();
         await tablet.close();
     }
 
@@ -929,6 +983,17 @@ try {
             `${c.pinchDriftPx.toFixed(2)} px; Build looks from ${c.buildPolar.toFixed(0)}°, Simulate stops at ${c.simulatePolar.toFixed(0)}°; a double click centres on its point ` +
             `(eased ${c.focusOff.toFixed(2)} LDU off, reduced motion at once ${c.focusReducedOff.toFixed(2)} LDU; tolerance ${c.focusTol.toFixed(2)} = one pixel there); a trackpad scroll orbits; the view cube's top looks down`);
         await connect.close();
+        // 21. Parts from the whole LDraw catalogue (scripts/lib/sim-lab-catalogue-gate.mjs, docs/ROBOT-LAB-ARCHITECTURE.md §5.4.1).
+        const cat = await browser.newPage({viewport: {width: 1280, height: 800}, serviceWorkers: 'block'});
+        cat.on('pageerror', error => errors.push(error.message));
+        cat.on('dialog', dialog => dialog.accept());
+        await openSimLab(cat, {program: null});
+        const k = await catalogueInteractions(cat, {root, shotsDir: artifacts});
+        console.log(`PASS catalogue: "+" finds a part the app does not ship, adds it (${k.brickConnectors} connectors) and a click places it; ` +
+            `a sticker joins as decoration and an alias is not offered; the credits name the files' author and licence; ` +
+            `${k.chunkRequests} range requests to the mirror and none to static/ldraw for its parts; the model with both simulates; both are back after a reload; ` +
+            `${k.resultPictures ?? 'no'} result pictures; My parts refuses to remove a part in use and removes it once unused`);
+        await cat.close();
     }
     if (want('scale')) { // a 2,054-part model, instanced, and the .lxf/.io model files
         const page = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block', acceptDownloads: true});
@@ -956,6 +1021,24 @@ try {
             `and turns motor A ${r.blocks.angle}° for "run for 360 degrees" (±${DEGREES_TOLERANCE}), in the worker; Robot Lab status "${r.blocks.status}"`);
         console.log(`PASS the motor bench's example in lab words (Load example program, Run): rests at ${r.words.restAngle.toFixed(2)}° ` +
             `for ${r.words.restMs.toFixed(0)} ms of simulated time, runs on to ${r.words.final.toFixed(1)}° at 90 °/s and brakes`);
+    }
+
+    if (want('hubs-ble')) { // the LEGO radio hubs driven by the real extensions (Scratch Link double, Web Bluetooth shim)
+        const r = await hubsInteractions({browser, errors, openSimLab, wallBudget});
+        console.log(`PASS legopoweredup blocks (the Technic Hub bench's example) connect to the Lab's Technic Hub and turn motor A to ` +
+            `${r.technic.rest.toFixed(2)}° for "turn motor A on for 360 degrees" (±${HUB_DEGREES_TOLERANCE}), then back to ${r.technic.end.toFixed(2)}°`);
+        console.log(`PASS legoboostunified blocks ("AB") drive the BOOST Move Hub rover ${(r.boost.driven * 100).toFixed(1)} cm ahead with its ` +
+            `built-in motors A and B, holding a ${r.boost.heading.toFixed(1)}° heading (spread ${r.boost.cruiseSpread.toFixed(2)}°), then spin it ${r.boost.turned.toFixed(0)}°`);
+        console.log(`PASS wedo2unified blocks run the WeDo 2.0 rover ${(r.wedo.driven * 100).toFixed(1)} cm until its motion sensor sees the ` +
+            `wall (${r.wedo.seenAtStop} mm), and stop it ${r.wedo.rest} mm short of it`);
+    }
+
+    if (want('hubs-bt')) { // the EV3 and NXT, their extensions over Scratch Link to the Lab's bricks
+        const r = await hubsBtInteractions({browser, errors, openSimLab, wallBudget});
+        console.log(`PASS NXT bumper bot (Load example program, Run): legonxt over Scratch Link turns B and C to TachoCount ` +
+            `${r.nxt.tacho.join(' and ')} for 360° (±${DEGREES_TOLERANCE}), then drives until the bumper is pressed (${r.nxt.pressedAtMs} ms) and stops`);
+        console.log(`PASS EV3 wall stopper with stock Scratch EV3 blocks: drove ${r.ev3.travelled.toFixed(3)} m and stopped ${r.ev3.cm} cm from the wall`);
+        console.log(`PASS the EV3 wall stopper's DEVICE EV3 example becomes ${r.device.ops.join(', ')}`);
     }
 
     assert.deepEqual(errors, [], `page errors: ${errors.join('\n')}`);

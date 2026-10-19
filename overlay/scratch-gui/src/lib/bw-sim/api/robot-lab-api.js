@@ -404,6 +404,23 @@ export const createRobotLabApi = (host) => {
         pose,
         touching: (a, b) => touchingNow(a, b),
         /**
+         * Where a part is on the floor: the corners of its colliders as [x, z] world metres (the
+         * challenges' judge measures from these, not from the part's origin inside it). [] when unknown.
+         */
+        partOutline (part) {
+            const s = session();
+            if (!s) return [];
+            const boxes = boxesOf(s, scene(), part) || [];
+            const out = [];
+            for (const b of boxes) {
+                for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
+                    const p = [0, 1, 2].map(k => b.c[k] + sx * b.h[0] * b.axes[0][k] + sy * b.h[1] * b.axes[1][k] + sz * b.h[2] * b.axes[2][k]);
+                    out.push([p[0], p[2]]);
+                }
+            }
+            return out;
+        },
+        /**
          * Calls fn({a, b}) each time `a` comes to touch `b` (a part id, or 'ground' / a mat
          * obstacle's id), after the step it happened in. Returns an unsubscribe.
          */

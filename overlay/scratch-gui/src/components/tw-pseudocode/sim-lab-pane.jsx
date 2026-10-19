@@ -26,6 +26,9 @@ import React from 'react';
 import {pickLocale, browserLocale} from '../../lib/bw-i18n.js';
 import {SIM_LAB_STORAGE_KEY, simLabRecordFromText, readSimLabStorage, isStorableName} from '../../lib/bw-sim/model/sim-lab-persist.js';
 import SimLabPalette from './sim-lab-palette.jsx';
+import SimLabInfo from './sim-lab-info.jsx';
+import SimLabReadings from './sim-lab-readings.jsx';
+import SimLabChallenges from './sim-lab-challenges.jsx';
 import SimLabInstructions from './sim-lab-instructions.jsx';
 import {INSIGHT_TEXT, issueSentence, fillText} from './sim-lab-insight-text.js';
 import {firmwareRefusalSentence} from './sim-lab-firmware-text.js';
@@ -37,6 +40,15 @@ import {Icon, Popup, Separator, ToolButton, splitToolbar, toolStyles, tooltipOf}
 import {TOOLBAR_TEXT} from './sim-lab-toolbar-text.js';
 import {sharedSpikeHubState} from '../../lib/virtual-hub/shared-spike-hub.js';
 import {ROBOT_LAB_EVENTS} from '../../lib/robot-lab-events.js';
+
+/**
+ * The LEGO extensions that program a radio hub (hub `protocol`, bw-sim/hubs/lwp3 and hubs/wedo2), in the
+ * order Run looks for them: the bundled unified ones first, then scratch-vm's own.
+ */
+const HUB_EXTENSIONS = Object.freeze({
+    lwp3: Object.freeze(['legopoweredup', 'legoboostunified', 'boost']),
+    wedo2: Object.freeze(['wedo2unified', 'wedo2'])
+});
 
 /** A MODELS entry's key: its `id` when one model file is listed more than once, else its file. */
 const modelKey = m => m.id || m.file;
@@ -56,9 +68,16 @@ const TEXT = {
             'sumo.bw': 'The example program is in the Code tab now. Press Run: the robot drives around and turns back whenever it sees the black ring. Challenge: make it turn the other way, or faster.',
             'rcx-bumper-car.nqc': 'The NQC program is in the NQC tab and in the Lab\'s RCX. Press Run: the robot drives to the wall, backs off when its bumper is pressed and turns away. Challenge: make it back off further.',
             'rcx-line-follower.nqc': 'The NQC program is in the NQC tab and in the Lab\'s RCX. Press Run and watch it follow the line\'s edge with its light sensor. Challenge: change THRESHOLD and see what happens.',
-            'motor-bench.bw': 'The example program is in the Code tab now, in lab words: no hub, the Robot Lab turns the motor itself. Press Run. Challenge: make it turn back the other way.'
+            'motor-bench.bw': 'The example program is in the Code tab now, in lab words: no hub, the Robot Lab turns the motor itself. Press Run. Challenge: make it turn back the other way.',
+            'ev3-wall-stopper.bw': 'The example program is in the Code tab now, in EV3 words. Press Run: the program connects to the Lab\'s EV3 over Scratch Link and drives at the wall until its ultrasonic sensor sees it closer than 15 cm.',
+            'nxt-bumper-bot.blocks.json': 'The NXT blocks are on the sprite now. Press Run: the program connects to the Lab\'s NXT over Scratch Link, turns both wheels once, then drives until the bumper touches the wall.',
+            'technic-hub-bench.bw': 'The example program is in the Code tab now, in pup words: the LEGO Powered Up blocks. Press ⇦ To blocks, then Run: the blocks connect to the Lab\'s Technic Hub and turn motor A one full turn. Challenge: make it turn three quarters.',
+            'boost-rover.bw': 'The example program is in the Code tab now, in boost words: the LEGO BOOST blocks. Press ⇦ To blocks, then Run: the Move Hub drives ahead with its motors A and B, then spins on the spot. Challenge: make it spin the other way.',
+            'wedo-milo.bw': 'The example program is in the Code tab now, in wedo words: the LEGO WeDo 2.0 blocks. Press ⇦ To blocks, then Run: the rover drives until its motion sensor sees the wall. Challenge: make it stop further away.'
         },
         noProgramLab: 'Nothing tells this motor to turn yet. Use the Robot Lab blocks (Add Extension) or lab words in the Code tab, press ⇦ To blocks, then press Run.',
+        noProgramBt: 'No {brick} program is loaded yet, so nothing tells the motors to turn. Add the {brick} blocks (Add Extension) or load the example program, then press Run.',
+        noProgramHub: 'No program for this hub is loaded yet. Add its blocks ({extensions}) or write pup, boost or wedo words in the Code tab, press ⇦ To blocks, then press Run.',
         exampleFailed: 'Could not load the example program: {error}',
         mat: 'Mat', drive: 'Drive', forward: 'Forward', back: 'Back', left: 'Left', right: 'Right', stop: 'Stop', speed: 'Speed',
         driveHelp: 'Hold an arrow (or use the arrow keys) to drive with motors A and B.', readout: 'Hub',
@@ -80,6 +99,36 @@ const TEXT = {
         search: 'Search parts', searchHint: 'Search: name or number', clearSearch: 'Clear the search', recent: 'Recently used',
         noMatches: 'No part matches “{q}”.', partTitle: '{name} · part {number}',
         paletteHelp: 'Click a part, then click in the view. Or drag it into the view.',
+        helpBuild: 'How to build', helpParts: 'Placing parts',
+        readingsTitle: 'Readings', readingsMotors: 'Motors', readingsSensors: 'Sensors', readingsEmpty: 'This model has no motors or sensors.',
+        readingsMotor: 'Motor {port}', readingsSensor: '{kind} {port}', readingsClose: 'Close',
+        challengesTitle: 'Challenges', challengeStart: 'Start', challengeRestart: 'Start again', challengeAgain: 'Try again',
+        challengeOthers: 'All challenges', challengeReady: 'Press Run to begin.', challengeTime: '{s} s',
+        challengeStars: '{n} of 3 stars', challengeBest: 'Best: {n} of 3 stars, {text}',
+        challengeMeasure: {time: '{v} s', gap: '{v} cm to the wall', overshoot: '{v} cm past the edge'},
+        challengeWhy: {offTrack: 'The robot left the line.', touched: 'The robot touched the wall.',
+            leftRing: 'The robot left the ring.', timeUp: 'Time is up.'},
+        challenges: {
+            'oval-lap': {title: 'One lap', goal: 'Follow the line once around the oval.'},
+            'wall-stop': {title: 'Stop at the wall', goal: 'Drive at the wall and stop close to it without touching it.'},
+            'sumo-stay': {title: 'Stay in the ring', goal: 'Keep the robot inside the ring for 30 seconds.'},
+            'maze-goal': {title: 'Through the maze', goal: 'Find the way to the green square.'},
+            'zones-tour': {title: 'Four corners', goal: 'Drive into all four coloured corners, in any order.'}
+        },
+        kinds: {distance: 'Distance', color: 'Colour', force: 'Force', touch: 'Touch', light: 'Light', rotation: 'Rotation', tilt: 'Tilt', motion: 'Motion'},
+        replay: 'Replay', replayHelp: 'Look back at the last seconds. Run goes on from now.', replayNow: 'now', speedValue: '{n}×',
+        catalogueOpen: 'Add a part from the LDraw catalogue', catalogueTitle: 'LDraw catalogue', catalogueBack: 'Back to the parts',
+        catalogueHint: 'Number or name, e.g. 3001, slope 45', catalogueLoading: 'Loading the catalogue…',
+        catalogueUnavailable: 'The LDraw catalogue could not be loaded ({error}). It needs a network connection.',
+        catalogueAbout: 'Search all {total} LDraw parts. Added parts stay on this device.',
+        catalogueCount: '{shown} of {total} parts', catalogueAdd: 'Add', catalogueAdding: 'Adding…', catalogueHave: 'Added',
+        catalogueAdded: '{name} added. Click in the view to place it.',
+        catalogueDecoration: '{name} added as decoration: it does not connect ({why}).',
+        catalogueFailed: '{part} could not be added: {error}',
+        catalogueCredits: 'Credits for the {n} parts you added',
+        myParts: 'My parts', catalogueRemove: 'Remove {name} from my parts', catalogueRemoved: '{name} removed.',
+        catalogueInUse: '{name} is in this model: delete it from the model first.',
+        catalogueCredit: 'Parts: LDraw.org Parts Library, CC BY.',
         selectedOne: 'Selected: {name}', selectedMany: 'Selected: {n} parts',
         timeShort: '{s} s',
         partsToggle: 'Show or hide the parts', infoToggle: 'Show or hide the whole note',
@@ -131,9 +180,16 @@ const TEXT = {
             'sumo.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start: Der Roboter fährt herum und kehrt um, sobald er den schwarzen Ring sieht. Aufgabe: Lass ihn andersherum oder schneller drehen.',
             'rcx-bumper-car.nqc': 'Das NQC-Programm steht jetzt im NQC-Tab und im RCX des Labors. Drücke Start: Der Roboter fährt zur Wand, setzt zurück, sobald sein Stoßfänger gedrückt wird, und dreht ab. Aufgabe: Lass ihn weiter zurücksetzen.',
             'rcx-line-follower.nqc': 'Das NQC-Programm steht jetzt im NQC-Tab und im RCX des Labors. Drücke Start und schau zu, wie er mit dem Lichtsensor dem Rand der Linie folgt. Aufgabe: Ändere THRESHOLD und schau, was passiert.',
-            'motor-bench.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in lab-Wörtern: ohne Hub dreht das Robot Lab den Motor selbst. Drücke Start. Aufgabe: Lass ihn wieder zurückdrehen.'
+            'motor-bench.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in lab-Wörtern: ohne Hub dreht das Robot Lab den Motor selbst. Drücke Start. Aufgabe: Lass ihn wieder zurückdrehen.',
+            'ev3-wall-stopper.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in EV3-Wörtern. Drücke Start: Das Programm verbindet sich über Scratch Link mit dem EV3 des Labors und fährt auf die Wand zu, bis sein Ultraschallsensor sie näher als 15 cm sieht.',
+            'nxt-bumper-bot.blocks.json': 'Die NXT-Blöcke sind jetzt bei der Figur. Drücke Start: Das Programm verbindet sich über Scratch Link mit dem NXT des Labors, dreht beide Räder einmal und fährt dann, bis der Stoßfänger die Wand berührt.',
+            'technic-hub-bench.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in pup-Wörtern: die Blöcke von LEGO Powered Up. Drücke ⇦ Zu Blöcken und dann Start: Die Blöcke verbinden sich mit dem Technic-Hub des Labors und drehen Motor A einmal ganz herum. Aufgabe: Lass ihn eine Dreivierteldrehung machen.',
+            'boost-rover.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in boost-Wörtern: die Blöcke von LEGO BOOST. Drücke ⇦ Zu Blöcken und dann Start: Der Move Hub fährt mit seinen Motoren A und B geradeaus und dreht sich dann auf der Stelle. Aufgabe: Lass ihn andersherum drehen.',
+            'wedo-milo.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in wedo-Wörtern: die Blöcke von LEGO WeDo 2.0. Drücke ⇦ Zu Blöcken und dann Start: Der Rover fährt, bis sein Bewegungssensor die Wand sieht. Aufgabe: Lass ihn weiter vorher anhalten.'
         },
         noProgramLab: 'Noch sagt dem Motor niemand, dass er sich drehen soll. Nimm die Robot-Lab-Blöcke (Erweiterung hinzufügen) oder lab-Wörter im Code-Tab, drücke ⇦ Zu Blöcken und dann Start.',
+        noProgramBt: 'Es ist noch kein {brick}-Programm geladen, darum dreht sich kein Motor. Füge die {brick}-Blöcke hinzu (Erweiterung hinzufügen) oder lade das Beispielprogramm, dann drücke Start.',
+        noProgramHub: 'Für diesen Hub ist noch kein Programm geladen. Füge seine Blöcke hinzu ({extensions}) oder schreibe pup-, boost- oder wedo-Wörter im Code-Tab, drücke ⇦ Zu Blöcken und dann Start.',
         exampleFailed: 'Das Beispielprogramm konnte nicht geladen werden: {error}',
         mat: 'Matte', drive: 'Fahren', forward: 'Vorwärts', back: 'Rückwärts', left: 'Links', right: 'Rechts', stop: 'Stopp', speed: 'Tempo',
         driveHelp: 'Halte einen Pfeil gedrückt (oder nutze die Pfeiltasten), um mit den Motoren A und B zu fahren.', readout: 'Hub',
@@ -155,6 +211,36 @@ const TEXT = {
         search: 'Teile suchen', searchHint: 'Suche: Name oder Nummer', clearSearch: 'Suche löschen', recent: 'Zuletzt benutzt',
         noMatches: 'Kein Teil passt zu „{q}“.', partTitle: '{name} · Teil {number}',
         paletteHelp: 'Klicke ein Teil an, dann in die Ansicht. Oder zieh es in die Ansicht.',
+        helpBuild: 'So baust du', helpParts: 'Teile platzieren',
+        readingsTitle: 'Messwerte', readingsMotors: 'Motoren', readingsSensors: 'Sensoren', readingsEmpty: 'Dieses Modell hat keine Motoren oder Sensoren.',
+        readingsMotor: 'Motor {port}', readingsSensor: '{kind} {port}', readingsClose: 'Schließen',
+        challengesTitle: 'Aufgaben', challengeStart: 'Starten', challengeRestart: 'Neu starten', challengeAgain: 'Nochmal',
+        challengeOthers: 'Alle Aufgaben', challengeReady: 'Drücke Start, um zu beginnen.', challengeTime: '{s} s',
+        challengeStars: '{n} von 3 Sternen', challengeBest: 'Bestes: {n} von 3 Sternen, {text}',
+        challengeMeasure: {time: '{v} s', gap: '{v} cm bis zur Wand', overshoot: '{v} cm über den Rand'},
+        challengeWhy: {offTrack: 'Der Roboter hat die Linie verlassen.', touched: 'Der Roboter hat die Wand berührt.',
+            leftRing: 'Der Roboter hat den Ring verlassen.', timeUp: 'Die Zeit ist um.'},
+        challenges: {
+            'oval-lap': {title: 'Eine Runde', goal: 'Folge der Linie einmal um das Oval.'},
+            'wall-stop': {title: 'Halt an der Wand', goal: 'Fahre auf die Wand zu und halte dicht davor, ohne sie zu berühren.'},
+            'sumo-stay': {title: 'Im Ring bleiben', goal: 'Halte den Roboter 30 Sekunden lang im Ring.'},
+            'maze-goal': {title: 'Durchs Labyrinth', goal: 'Finde den Weg zum grünen Feld.'},
+            'zones-tour': {title: 'Vier Ecken', goal: 'Fahre in alle vier farbigen Ecken, in beliebiger Reihenfolge.'}
+        },
+        kinds: {distance: 'Abstand', color: 'Farbe', force: 'Kraft', touch: 'Berührung', light: 'Licht', rotation: 'Drehung', tilt: 'Neigung', motion: 'Bewegung'},
+        replay: 'Wiederholung', replayHelp: 'Auf die letzten Sekunden zurückschauen. Start geht ab jetzt weiter.', replayNow: 'jetzt', speedValue: '{n}×',
+        catalogueOpen: 'Ein Teil aus dem LDraw-Katalog hinzufügen', catalogueTitle: 'LDraw-Katalog', catalogueBack: 'Zurück zu den Teilen',
+        catalogueHint: 'Nummer oder Name, z. B. 3001, slope 45', catalogueLoading: 'Katalog wird geladen…',
+        catalogueUnavailable: 'Der LDraw-Katalog konnte nicht geladen werden ({error}). Er braucht eine Netzwerkverbindung.',
+        catalogueAbout: 'Durchsuche alle {total} LDraw-Teile. Hinzugefügte Teile bleiben auf diesem Gerät.',
+        catalogueCount: '{shown} von {total} Teilen', catalogueAdd: 'Hinzufügen', catalogueAdding: 'Wird hinzugefügt…', catalogueHave: 'Vorhanden',
+        catalogueAdded: '{name} hinzugefügt. Klicke in die Ansicht, um es zu platzieren.',
+        catalogueDecoration: '{name} als Deko hinzugefügt: es verbindet sich nicht ({why}).',
+        catalogueFailed: '{part} konnte nicht hinzugefügt werden: {error}',
+        catalogueCredits: 'Credits für deine {n} hinzugefügten Teile',
+        myParts: 'Meine Teile', catalogueRemove: '{name} aus meinen Teilen entfernen', catalogueRemoved: '{name} entfernt.',
+        catalogueInUse: '{name} ist in diesem Modell: lösche es zuerst aus dem Modell.',
+        catalogueCredit: 'Teile: LDraw.org Parts Library, CC BY.',
         selectedOne: 'Ausgewählt: {name}', selectedMany: 'Ausgewählt: {n} Teile',
         timeShort: '{s} s',
         partsToggle: 'Teile zeigen oder ausblenden', infoToggle: 'Den ganzen Hinweis zeigen oder einklappen',
@@ -199,6 +285,17 @@ const TEXT = {
  * firmware route, or a VM whose step hook is inert): a backgrounded tab must not jump seconds ahead.
  */
 const MAX_FRAME_MS = 50;
+/** Replay (Simulate, paused): the last 20 s of simulated time, a pose about every 33 ms of it. */
+const REPLAY_MS = 20000;
+const REPLAY_STEP_MS = 33;
+/** Readings: 10 samples per simulated second, the last 10 s drawn. */
+const READINGS_SAMPLES = 100;
+/** A challenge is judged this often (simulated ms); its best results are kept on this device. */
+const CHALLENGE_STEP_MS = 100;
+const CHALLENGE_BEST_KEY = 'bw-sim-challenge-best';
+const readBest = () => {
+    try { return JSON.parse(localStorage.getItem(CHALLENGE_BEST_KEY) || '{}') || {}; } catch { return {}; }
+};
 /** The real-time factor is shown below this (a timer's jitter keeps a machine that keeps up near 1). */
 const SHOW_RTF_BELOW = 0.95;
 /** Build mode recompiles the model this long after the last edit (ms), for the issues and the motion overlay. */
@@ -260,6 +357,9 @@ class SimLabPane extends React.Component {
             mode: 'simulate', placing: null, selection: [], editorTick: 0, mat: null,
             buildStatus: {kind: 'idle'}, gizmoMode: 'move', grid: 10, recent: [], thumbTick: 0,
             showPorts: true, showMotion: false, blockers: [], portPicker: null, instructions: null, coarse: false,
+            // Simulate: sensor rays, the Readings panel, slow motion, and the replay position (null: live)
+            showSensors: false, readings: false, timeScale: 1, replayAt: null, replayFrames: 0, readingsTick: 0,
+            challengesOpen: false, challenge: null, challengeResult: null, challengeBest: readBest(),
             paneWidth: 0, menu: null, drawer: false, paletteDragging: false, infoOpen: false, route: 'scratch',
             paletteOpen: true, paletteShare: null, propsShare: null, propsDocked: true,
             hidden: [], editGroup: null, pick: null, measurement: null, placeColor: null, propsOpen: false, shortcuts: false,
@@ -275,6 +375,10 @@ class SimLabPane extends React.Component {
         this.onBundleCollect = this.onBundleCollect.bind(this);
         this.onBundleLoaded = this.onBundleLoaded.bind(this);
         this.requestThumb = this.requestThumb.bind(this);
+        this.openCatalogue = this.openCatalogue.bind(this);
+        this.addCatalogPart = this.addCatalogPart.bind(this);
+        this.cataloguePreview = this.cataloguePreview.bind(this);
+        this.removeCatalogPart = this.removeCatalogPart.bind(this);
         this.armPart = this.armPart.bind(this);
         this.pressPart = this.pressPart.bind(this);
         this.onPointerKind = this.onPointerKind.bind(this);
@@ -380,6 +484,10 @@ class SimLabPane extends React.Component {
         }
         if (this.disposed) return;
         this.registerRcxTarget();
+        // The scene's radio hubs (LWP3: BOOST, Powered Up, Technic, SPIKE Essential; WeDo 2.0) as virtual BLE
+        // peripherals, for the LEGO extensions to reach over Web Bluetooth or Scratch Link (virtual-hub/lab-ble-peripherals.js).
+        this.unregisterBle = this.lib.registerRobotLabBlePeripherals(() => (this.session ? this.session.hubs.map(h => h.hub) : []));
+        this.registerBtBricks();
         this.installApi();
         this.raf = requestAnimationFrame(this.frame);
         await this.openStored();
@@ -400,10 +508,7 @@ class SimLabPane extends React.Component {
             stop: () => this.apiStop(),
             reset: () => this.reset(),
             ensureRunning: () => this.apiEnsureRunning(),
-            setTimeScale: scale => {
-                this.timeScale = scale;
-                if (this.clock) this.clock.timeScale = scale;
-            },
+            setTimeScale: scale => this.setSpeed(scale),
             camera: view => this.apiCamera(view),
             locale: () => this.locale
         });
@@ -468,6 +573,80 @@ class SimLabPane extends React.Component {
         return Boolean(this.session && this.session.hubs && this.session.hubs.some(h => h.profile === 'spike-prime'));
     }
 
+    /** The scene's radio hub (an LWP3 hub or the WeDo 2.0 hub: hubs/lwp3, hubs/wedo2), or null. */
+    radioHub () {
+        const h = this.session && this.session.hubs && this.session.hubs.find(x => x.hub && x.hub.protocol);
+        return h ? h.hub : null;
+    }
+
+    /**
+     * The LEGO extension of the Code tab's program that speaks to this hub, or null: the first of
+     * HUB_EXTENSIONS whose blocks the project uses (an extension stays loaded after its blocks are
+     * gone, so being loaded is not enough), else the first loaded.
+     */
+    hubExtension (hub = this.radioHub()) {
+        const vm = this.props.vm;
+        if (!hub || !vm || !vm.extensionManager) return null;
+        const loaded = (HUB_EXTENSIONS[hub.protocol] || []).filter(id => vm.extensionManager.isExtensionLoaded(id));
+        const used = id => (vm.runtime.targets || []).some(t => Object.values((t.blocks && t.blocks._blocks) || {})
+            .some(b => typeof b.opcode === 'string' && b.opcode.startsWith(`${id}_`)));
+        return loaded.find(used) || loaded[0] || null;
+    }
+
+    /**
+     * Connect the program's LEGO extension to the scene's hub, exactly as a person would connect it to a
+     * real one — the extension's own connect (its block's function), over whatever transport it is set to
+     * (Web Bluetooth, Scratch Link) — with connectVirtualHub choosing this hub. scratch-vm's own boost and
+     * wedo2 connect through the runtime's peripheral scan, as the connection dialog does.
+     */
+    async connectRadioHub (hub, id) {
+        const vm = this.props.vm;
+        const prim = name => vm.runtime._primitives[`${id}_${name}`];
+        const stock = id === 'boost' || id === 'wedo2';
+        const connected = () => Boolean(stock ? vm.getPeripheralIsConnected(id) : prim('isConnected')?.({}));
+        await this.lib.connectVirtualHub({host: window, extensionId: id, hubState: hub, timeoutMs: 15000, connected,
+            disconnect: () => (stock ? vm.disconnectPeripheral(id) : prim('disconnect')?.({})),
+            connect: () => {
+                if (!stock) return prim('connect')({});
+                return new Promise(resolve => {
+                    const onList = list => {
+                        const first = Object.keys(list || {})[0];
+                        if (!first) return;
+                        vm.runtime.removeListener('PERIPHERAL_LIST_UPDATE', onList);
+                        vm.connectPeripheral(id, first);
+                        resolve();
+                    };
+                    vm.runtime.on('PERIPHERAL_LIST_UPDATE', onList);
+                    vm.scanForPeripheral(id);
+                });
+            }});
+    }
+
+    /** Run for a radio hub: the program's extension connects to it, then the green flag. */
+    async runRadioHub (hub, {greenFlag = true} = {}) {
+        const vm = this.props.vm;
+        this.stopClock();
+        this.setState({status: 'running'});
+        const id = this.hubExtension(hub);
+        if (!id) {
+            this.startClock();
+            const none = this.t('noProgramHub', {extensions: (HUB_EXTENSIONS[hub.protocol] || []).join(', ')});
+            this.setState({info: this.shippedModel()?.example ? `${none} ${this.text.exampleOffer}` : none});
+            return;
+        }
+        this.setState({info: ''});
+        try {
+            await this.connectRadioHub(hub, id);
+        } catch (error) {
+            this.setState({message: this.t('connectFailed', {error: error.message})});
+            return;
+        }
+        if (this.state.status === 'running') {
+            this.startClock();
+            if (greenFlag) vm.greenFlag();
+        }
+    }
+
     componentWillUnmount () {
         // Flush first: a Build-mode edit made just before handing the hub to the
         // arena must still be in the next save.
@@ -487,6 +666,8 @@ class SimLabPane extends React.Component {
         this.teardown();
         this.teardownEditor();
         if (this.unregisterRcx) this.unregisterRcx();
+        if (this.unregisterBle) this.unregisterBle();
+        if (this.unregisterBt) this.unregisterBt();
         if (this.physics) this.physics.terminate();
         this.physics = null;
         const runtime = this.props.vm && this.props.vm.runtime;
@@ -654,6 +835,7 @@ class SimLabPane extends React.Component {
             const shown = {ports: this.state.showPorts, motion: this.state.showMotion};
             this.editView?.setOverlay(shown);
             this.view?.setOverlay?.(shown);
+            this.view?.setSensors?.(this.sensorRays(), this.state.showSensors);
         });
     }
 
@@ -826,6 +1008,7 @@ class SimLabPane extends React.Component {
         if (this.disposed) return;
         if (this.state.status === 'running') this.pause();
         if (entry.example.endsWith('.nqc')) await this.loadRcxExample(code);
+        else if (entry.example.endsWith('.blocks.json')) await this.loadBlocksExample(code);
         else window.dispatchEvent(new CustomEvent('bw-load-pseudocode', {detail: {code, source: `sim-lab:${entry.file}`}}));
         this.setState({info: this.text.exampleGoal[entry.example] || this.text.exampleLoaded});
         if (entry.mat && this.state.mat !== entry.mat) await this.setMat(entry.mat);
@@ -861,6 +1044,7 @@ class SimLabPane extends React.Component {
 
     async openText (text, name, shipped = null) {
         const token = this.loadToken = {};
+        this.clearReplay();
         this.opened = {text, name};
         this.teardown();
         this.setState({status: 'loading', message: '', issues: [], blockers: [], modelFile: name, shipped, simMs: 0, rtf: null, view3d: 'loading'});
@@ -931,6 +1115,7 @@ class SimLabPane extends React.Component {
             this.view.setPorts(insight.ports.map(item => ({...item, label: this.portLabelText(item)})));
             this.view.setMotion({joints: insight.joints, gears: insight.gears, tints: insight.tints.bodies});
             this.view.setOverlay({ports: this.state.showPorts, motion: this.state.showMotion});
+            this.view.setSensors(this.sensorRays(), this.state.showSensors);
             this.view.render(session.snapshot());
         } catch (error) {
             view3d = 'fallback';
@@ -1058,7 +1243,150 @@ class SimLabPane extends React.Component {
         if (Math.floor(this.session.time / 100) !== Math.floor(this.state.simMs / 100)) {
             this.setState({simMs: this.session.time, rtf: this.clock && this.clock.installed ? this.clock.realTimeFactor : null});
         }
-        if (this.view) this.view.render(this.session.snapshot());
+        if (this.state.status === 'running') this.record();
+        if (this.state.readings && this.api) this.sample();
+        if (this.challengeRun && this.state.status === 'running') this.judgeChallenge();
+        const replayed = this.state.replayAt !== null && this.replay ? this.replay.frames[this.state.replayAt] : null;
+        if (this.view) this.view.render(replayed ? replayed.snapshot : this.session.snapshot());
+    }
+
+    // ---- Simulate: slow motion, replay, readings, sensor rays --------------------------------
+
+    /** Slow motion: simulated per real time, 1, 1/2 or 1/4 (also the Robot Lab API's setTimeScale). */
+    setSpeed (scale) {
+        const s = Math.min(1, Math.max(0.05, Number(scale) || 1));
+        this.timeScale = s;
+        if (this.clock) this.clock.timeScale = s;
+        if (this.state.timeScale !== s) this.setState({timeScale: s});
+    }
+
+    /** Keeps the last REPLAY_MS of the run (body poses, about 30 per simulated second) for the replay slider. */
+    record () {
+        const t = this.session.time;
+        if (!this.replay) this.replay = {frames: []};
+        const frames = this.replay.frames;
+        if (frames.length && t - frames[frames.length - 1].t < REPLAY_STEP_MS) return;
+        const snap = this.session.snapshot();
+        frames.push({t, snapshot: {bodyIds: snap.bodyIds, bodies: Float32Array.from(snap.bodies)}});
+        while (frames.length && t - frames[0].t > REPLAY_MS) frames.shift();
+        if (this.state.replayAt !== null || frames.length % 15 === 0) this.setState({replayAt: null, replayFrames: frames.length});
+    }
+
+    clearReplay () {
+        this.replay = null;
+        this.readingsHistory = new Map();
+        this.lastSample = null;
+        if (this.state.replayAt !== null || this.state.replayFrames) this.setState({replayAt: null, replayFrames: 0});
+    }
+
+    /** Every motor's angle and speed and every sensor's value, 10 times a simulated second, for the Readings panel. */
+    sample () {
+        const t = this.session.time;
+        if (this.lastSample !== null && this.lastSample !== undefined && t - this.lastSample < 100 && t >= this.lastSample) return;
+        this.lastSample = t;
+        const history = this.readingsHistory || (this.readingsHistory = new Map());
+        const push = (key, value, now) => {
+            const h = history.get(key) || {values: [], now: ''};
+            h.values.push(value);
+            if (h.values.length > READINGS_SAMPLES) h.values.shift();
+            h.now = now;
+            history.set(key, h);
+        };
+        const api = this.api;
+        for (const m of api.motors()) {
+            const ref = m.port ?? m.id;
+            const angle = api.motorAngle(ref);
+            push(`motor-${ref}`, angle, `${Math.round(angle)}° · ${Math.round(api.motorSpeed(ref))} °/s`);
+        }
+        for (const x of api.sensors()) {
+            const ref = x.port ?? x.id;
+            const v = api.sensorValue(ref);
+            const now = x.kind === 'distance' ? (v < 0 ? '–' : `${v} cm`) : typeof v === 'number' ? String(v) : String(v);
+            push(`sensor-${ref}`, typeof v === 'number' && v >= 0 ? v : null, now);
+        }
+        this.setState(s => ({readingsTick: s.readingsTick + 1}));
+    }
+
+    /** The Readings panel's rows. */
+    readingsRows () {
+        const api = this.api;
+        const history = this.readingsHistory || new Map();
+        const T = this.text;
+        const rows = (list, prefix, label) => list.map(x => {
+            const ref = x.port ?? x.id;
+            const h = history.get(`${prefix}-${ref}`) || {values: [], now: '…'};
+            return {key: `${prefix}-${ref}`, label: label(x), now: h.now, values: h.values};
+        });
+        if (!api || !this.session) return {motors: [], sensors: []};
+        return {
+            motors: rows(api.motors(), 'motor', m => fillText(T.readingsMotor, {port: m.port ?? m.id})),
+            sensors: rows(api.sensors(), 'sensor', x => fillText(T.readingsSensor, {kind: T.kinds[x.kind] || x.kind, port: x.port ?? x.id}))
+        };
+    }
+
+    /**
+     * The sensor rays for the view: each sensor part's probe (PartMeta `probe`, part frame), a distance
+     * sensor's as long as it measures (1 cm = 25 LDU; nothing seen: its 2 m range), the others 2 cm.
+     */
+    sensorRays () {
+        if (!this.session || !this.api) return [];
+        const model = this.session.runModel || this.session.model;
+        const byId = new Map(model.parts.map(p => [p.id, p]));
+        const out = [];
+        for (const x of this.api.sensors()) {
+            const placed = byId.get(x.part);
+            const meta = placed && this.lib.CATALOG.get(placed.part);
+            const probe = meta && (meta.probe || meta.device?.probe);
+            if (!probe || !probe.origin || !probe.direction) continue;
+            const ref = x.port ?? x.id;
+            out.push({id: x.part, origin: probe.origin, direction: probe.direction,
+                lengthOf: x.kind === 'distance' ? () => {
+                    const cm = this.api.sensorValue(ref);
+                    return (typeof cm === 'number' && cm > 0 ? cm : 200) * 25;
+                } : () => 50});
+        }
+        return out;
+    }
+
+    /** Paused with a recorded run: a slider back through its last seconds (the run goes on from now). */
+    renderReplay () {
+        const n = this.state.replayFrames;
+        if (this.state.mode !== 'simulate' || this.state.status === 'running' || !this.replay || n < 2) return null;
+        const frames = this.replay.frames;
+        const at = this.state.replayAt === null ? frames.length - 1 : this.state.replayAt;
+        const back = (frames[frames.length - 1].t - frames[at].t) / 1000;
+        const T = this.text;
+        return (
+            <div data-testid="bw-sim-lab-replay" style={{position: 'absolute', left: 8, right: 8, bottom: 8, zIndex: 5, display: 'flex', alignItems: 'center', gap: 8,
+                background: 'rgba(255, 255, 255, 0.94)', border: '1px solid #cbd5e1', borderRadius: 8, padding: '4px 10px', fontSize: 12}}>
+                <span style={{fontWeight: 600}} title={T.replayHelp}>{T.replay}</span>
+                <input type="range" data-testid="bw-sim-lab-replay-slider" aria-label={T.replay} title={T.replayHelp}
+                    min={0} max={frames.length - 1} step={1} value={at} style={{flex: '1 1 auto'}}
+                    onChange={e => {
+                        const i = Number(e.target.value);
+                        this.setState({replayAt: i >= frames.length - 1 ? null : i});
+                    }} />
+                <span data-testid="bw-sim-lab-replay-time" style={{fontVariantNumeric: 'tabular-nums', minWidth: 52, textAlign: 'right'}}>
+                    {at >= frames.length - 1 ? T.replayNow : `−${back.toFixed(1)} s`}
+                </span>
+            </div>
+        );
+    }
+
+    /** Slow motion: an icon and a list (1×, ½×, ¼×). */
+    renderSpeed (inMenu) {
+        const A = this.ttext.actions;
+        const field = this.state.coarse ? {minHeight: 40} : {height: 28};
+        return (
+            <label title={A.speed} style={{display: 'inline-flex', alignItems: 'center', gap: 4, padding: inMenu ? '0 8px' : '0 4px', fontSize: 12, flex: '0 0 auto'}}>
+                <Icon name="speed" />
+                {inMenu ? <span style={{flex: '1 1 auto'}}>{A.speed}</span> : null}
+                <select data-testid="bw-sim-lab-speed" aria-label={A.speed} value={this.state.timeScale} style={field}
+                    onChange={e => this.setSpeed(Number(e.target.value))}>
+                    {[1, 0.5, 0.25].map(v => <option key={v} value={v}>{fillText(this.text.speedValue, {n: v === 1 ? '1' : v === 0.5 ? '½' : '¼'})}</option>)}
+                </select>
+            </label>
+        );
     }
 
     /** The scene's RCX (hubs/rcx/), or null. */
@@ -1120,6 +1448,80 @@ class SimLabPane extends React.Component {
         if (!sent.ok) fail(sent.log);
     }
 
+    /** 'ev3' or 'nxt' when the scene's hub is a MINDSTORMS brick its blocks reach over Scratch Link (hubs/ev3, hubs/nxt), else null. */
+    btProfile () {
+        const h = this.session && this.session.hubs.find(x => x.profile === 'ev3' || x.profile === 'nxt');
+        return h ? h.profile : null;
+    }
+
+    /**
+     * "Virtual EV3" and "Virtual NXT" in the Scratch Link BT-classic registry (lib/virtual-hub/
+     * bt-classic-registry.js): while the scene has that brick, an EV3 or NXT extension that looks for
+     * a brick over Scratch Link finds the Lab's, and its direct commands drive it.
+     */
+    registerBtBricks () {
+        if (this.unregisterBt) return;
+        const hubOf = profile => () => {
+            const h = this.session && this.session.hubs.find(x => x.profile === profile);
+            return h ? h.hub : null;
+        };
+        const unregister = [
+            this.lib.registerVirtualClassicPeripheral(this.lib.ev3ClassicPeripheral(hubOf('ev3'))),
+            this.lib.registerVirtualClassicPeripheral(this.lib.nxtClassicPeripheral(hubOf('nxt')))
+        ];
+        this.unregisterBt = () => {
+            for (const fn of unregister) fn();
+            this.unregisterBt = null;
+        };
+    }
+
+    /**
+     * Run with an EV3 or NXT: the loaded extension (ev3comprehensive or the stock `ev3`; legonxt)
+     * connects to the Lab's brick over Scratch Link, then the green flag.
+     */
+    async runBt ({greenFlag = true} = {}) {
+        const profile = this.btProfile();
+        const vm = this.props.vm;
+        const brick = profile === 'ev3' ? 'EV3' : 'NXT';
+        const ids = profile === 'ev3' ? ['ev3comprehensive', 'ev3'] : ['legonxt'];
+        const extensionId = ids.find(id => vm && vm.extensionManager && vm.extensionManager.isExtensionLoaded(id));
+        this.stopClock();
+        this.setState({status: 'running'});
+        if (!extensionId) {
+            this.startClock();
+            this.setState({info: this.t('noProgramBt', {brick})});
+            return;
+        }
+        this.setState({info: ''});
+        try {
+            await this.lib.connectVirtualHub({vm, extensionId,
+                peripheralId: profile === 'ev3' ? this.lib.EV3_PERIPHERAL_ID : this.lib.NXT_PERIPHERAL_ID});
+        } catch (error) {
+            // Said, and the world still runs: the program's own connect block may yet reach the brick.
+            this.setState({message: this.t('connectFailed', {error: error.message})});
+        }
+        if (this.state.status === 'running') {
+            this.startClock();
+            if (greenFlag) vm.greenFlag();
+        }
+    }
+
+    /** A blocks example (`.blocks.json`: an extension's blocks for a sprite): the extension in, the script onto the editing sprite. */
+    async loadBlocksExample (code) {
+        const vm = this.props.vm;
+        if (!vm || !vm.editingTarget) return;
+        try {
+            const example = JSON.parse(code);
+            for (const id of example.extensions || []) {
+                if (!vm.extensionManager.isExtensionLoaded(id)) await vm.extensionManager.loadExtensionURL(id);
+            }
+            await vm.shareBlocksToTarget(this.lib.vmBlocksOf(example.blocks), vm.editingTarget.id);
+            vm.emitWorkspaceUpdate();
+        } catch (error) {
+            this.setState({message: this.t('exampleFailed', {error: error.message})});
+        }
+    }
+
     spikeLoaded () {
         const vm = this.props.vm;
         return Boolean(vm && vm.extensionManager && vm.extensionManager.isExtensionLoaded('spikeprime'));
@@ -1130,6 +1532,8 @@ class SimLabPane extends React.Component {
         if (!this.session) return;
         if (this.session.lockstep) { await this.runFirmware(); return; }
         if (this.rcxHub()) { this.runRcx(); return; }
+        if (this.radioHub()) { await this.runRadioHub(this.radioHub(), {greenFlag}); return; }
+        if (this.btProfile()) { await this.runBt({greenFlag}); return; }
         const hubState = this.hub;
         hubState.setSimulationEnabled(true);
         // Connecting runs on wall time (its timeouts are the browser's); the program clock goes in
@@ -1177,7 +1581,97 @@ class SimLabPane extends React.Component {
         if (!this.session) return;
         const text = this.lib.serializeModel(this.session.model, {name: this.state.modelFile || 'model.ldr'});
         this.pause();
-        this.setState({mat: mat || null}, () => this.openText(text, this.state.modelFile, this.state.shipped));
+        const challenge = this.state.challenge && this.lib.CHALLENGES.find(c => c.id === this.state.challenge);
+        if (challenge && challenge.mat !== (mat || 'plain')) this.endChallenge();
+        await new Promise(resolve => this.setState({mat: mat || null}, resolve));
+        await this.openText(text, this.state.modelFile, this.state.shipped);
+    }
+
+    // ---- Challenges: a goal on a mat, judged while the robot runs (lib/bw-sim/world/challenges.js) ----
+
+    /** Starts a challenge on its mat, the robot back at the start; Run begins it. null: back to the list. */
+    async startChallenge (id) {
+        if (!id) { this.endChallenge(); return; }
+        const challenge = this.lib.CHALLENGES.find(c => c.id === id);
+        if (!challenge || !this.session) return;
+        this.challengeRun = null;
+        this.setState({challenge: id, challengeResult: null, challengesOpen: true});
+        if ((this.state.mat || 'plain') !== challenge.mat) await this.setMat(challenge.mat);
+        else await this.reset();
+        this.armChallenge();
+    }
+
+    /** A fresh judge for the challenge under way (after a start or a Reset: the robot is at the start). */
+    armChallenge () {
+        if (!this.state.challenge) return;
+        this.challengeRun = this.lib.createChallengeRun(this.state.challenge);
+        this.challengeFrom = null;
+        this.challengeLast = null;
+        this.setState({challengeResult: null});
+    }
+
+    endChallenge () {
+        this.challengeRun = null;
+        if (this.state.challenge) this.setState({challenge: null, challengeResult: null});
+    }
+
+    /** What the judge sees: the robot's outline on the floor (its parts' collider corners, metres) and which of the mat's obstacles it touches. */
+    challengeObservation (tS) {
+        const api = this.api;
+        const parts = api.parts();
+        const points = parts.flatMap(p => api.partOutline(p.id));
+        const touching = {};
+        for (const o of this.lib.createMat(this.state.mat || 'plain').obstacles) {
+            touching[o.id] = parts.some(p => api.touching(p.id, o.id));
+        }
+        return {tS, points, touching};
+    }
+
+    judgeChallenge () {
+        const run = this.challengeRun;
+        const t = this.session.time;
+        if (this.challengeFrom === null || this.challengeFrom === undefined || t < this.challengeFrom) this.challengeFrom = t;
+        if (this.challengeLast !== null && this.challengeLast !== undefined && t - this.challengeLast < CHALLENGE_STEP_MS) return;
+        this.challengeLast = t;
+        const before = run.result;
+        const r = run.step(this.challengeObservation((t - this.challengeFrom) / 1000));
+        if (r.status !== 'running') {
+            this.challengeRun = null;
+            if (r.status === 'done') this.keepBest(run.challenge, r);
+            this.pause();
+        }
+        if (r.status !== before.status || Math.round(r.timeS * 10) !== Math.round(before.timeS * 10)) this.setState({challengeResult: r});
+    }
+
+    keepBest (challenge, r) {
+        const best = readBest();
+        if (!this.lib.betterResult(r, best[challenge.id])) return;
+        best[challenge.id] = {stars: r.stars, value: r.value};
+        try { localStorage.setItem(CHALLENGE_BEST_KEY, JSON.stringify(best)); } catch { /* private mode: kept for this visit */ }
+        this.setState({challengeBest: best});
+    }
+
+    /** How a result's measure reads: a time, a gap, an overshoot. */
+    measureText (challenge, value) {
+        const v = challenge.measure === 'time' ? value.toFixed(1) : String(Math.round(value * 100));
+        return fillText(this.text.challengeMeasure[challenge.measure], {v: this.decimal(v)});
+    }
+
+    renderChallenges () {
+        const T = this.text;
+        const mats = new Map(this.lib.MATS.map(m => [m.id, m.title[this.locale] || m.title.en]));
+        const list = this.lib.CHALLENGES.map(c => {
+            const best = this.state.challengeBest[c.id];
+            return {id: c.id, mat: mats.get(c.mat) || c.mat, ...T.challenges[c.id],
+                best: best ? {stars: best.stars, text: this.measureText(c, best.value)} : null};
+        });
+        const challenge = this.state.challenge && this.lib.CHALLENGES.find(c => c.id === this.state.challenge);
+        const r = this.state.challengeResult;
+        const active = challenge ? {id: challenge.id, result: r, measureText: r && r.status === 'done' ? this.measureText(challenge, r.value) : ''} : null;
+        return (
+            <SimLabChallenges text={{...T, close: T.readingsClose}} challenges={list} active={active}
+                onStart={id => this.startChallenge(id)} onClose={() => this.setState({challengesOpen: false})} />
+        );
     }
 
     /** Hold-to-drive with the movement pair (A left, mounted mirrored; B right), as the arena's drive pad. */
@@ -1218,7 +1712,9 @@ class SimLabPane extends React.Component {
         if (!this.session) return;
         if (this.session.lockstep) { this.pauseFirmware(); return; }
         // Pause stops the program too (a Robot Lab program's next motor command would run the world again).
-        if (this.spikeLoaded() || this.robotLabLoaded()) { try { this.props.vm.stopAll(); } catch { /* the VM may be mid-load */ } }
+        if (this.spikeLoaded() || this.robotLabLoaded() || this.hubExtension()) {
+            try { this.props.vm.stopAll(); } catch { /* the VM may be mid-load */ }
+        }
         this.hub.backend.cancel();
         this.stopClock();
         this.setState({status: 'paused'});
@@ -1230,6 +1726,7 @@ class SimLabPane extends React.Component {
         const name = this.state.modelFile;
         if (this.state.shipped) await this.openShipped(this.state.shipped);
         else if (this.lastText) await this.openText(this.lastText, name);
+        this.armChallenge();
     }
 
     renderDrive (button) {
@@ -1290,6 +1787,64 @@ class SimLabPane extends React.Component {
         );
     }
 
+    /** The whole LDraw catalogue's part list, for the palette's "+" (lib/bw-sim/ldraw/ldraw-catalog.js). */
+    openCatalogue () {
+        return this.lib.ldrawCatalogue().then(catalogue => catalogue.catalog());
+    }
+
+    /**
+     * Adds a catalogue part: derived (lib/bw-sim/part-meta/catalog-parts.js), its LDraw files joined to
+     * the editor's (the view and the palette pictures read from that one map), and armed for placing.
+     */
+    async addCatalogPart (part) {
+        // the files join the editor's map before the part joins the catalogue (sim-lab.js addCatalogPart)
+        const added = await this.lib.addCatalogPart(part, {into: this.catalogFiles ? this.catalogFiles.files : null});
+        if (this.disposed) return added;
+        this.requestThumb(part); // its picture, now that its files are here (a draw before them kept none)
+        this.editView?.setTool(part);
+        this.setState(s => ({placing: part, recent: this.lib.pushRecent(s.recent, part),
+            drawer: this.compact() ? false : s.drawer}));
+        return added;
+    }
+
+    /**
+     * A catalogue result's picture: its LDraw files from the catalogue, kept in the editor's map (so
+     * adding the part later fetches nothing new), drawn by the palette's renderer. Four at a time.
+     */
+    cataloguePreview (part) {
+        const run = async () => {
+            if (!this.thumbs || !this.catalogFiles) return null;
+            await this.lib.ldrawCatalogue();
+            const closure = await this.lib.fetchLDrawClosure([part]);
+            if (!closure.files.has(`parts/${part.toLowerCase()}`) || this.disposed || !this.thumbs) return null;
+            for (const [path, text] of closure.files) this.catalogFiles.files.set(path, text);
+            return this.thumbs.render(part) || null;
+        };
+        const queue = this.previewQueue || (this.previewQueue = {active: 0, waiting: []});
+        return new Promise((resolve, reject) => {
+            const start = () => {
+                queue.active++;
+                run().then(resolve, reject).finally(() => {
+                    queue.active--;
+                    const next = queue.waiting.shift();
+                    if (next) next();
+                });
+            };
+            if (queue.active < 4) start();
+            else queue.waiting.push(start);
+        });
+    }
+
+    /** Removes a part added from the catalogue, unless the model in Build uses it. */
+    removeCatalogPart (part) {
+        const model = this.editor ? this.editor.model : null;
+        if (model && model.parts.some(p => p.part === part)) return {ok: false, reason: 'in-use'};
+        if (this.state.placing === part) this.editView?.setTool(null);
+        this.lib.removeCatalogPart(part);
+        this.setState(s => ({recent: s.recent.filter(p => p !== part), placing: s.placing === part ? null : s.placing}));
+        return {ok: true};
+    }
+
     /** A palette tile came into view: its picture is drawn in a coming frame. */
     requestThumb (part) {
         if (this.thumbs && !this.thumbs.has(part)) this.thumbQueue.add(part);
@@ -1340,7 +1895,9 @@ class SimLabPane extends React.Component {
             <SimLabPalette key={this.thumbs ? 'pictures' : 'names'} text={this.text} lib={this.lib} locale={this.locale}
                 placing={this.state.placing} recent={this.state.recent} thumbs={this.thumbs} thumbTick={this.state.thumbTick}
                 requestThumb={this.requestThumb} onArm={this.armPart} onPress={this.pressPart}
-                fits={this.state.hold && this.state.hold.pinned && this.editView ? part => this.editView.fitsTarget(part) : null} />
+                fits={this.state.hold && this.state.hold.pinned && this.editView ? part => this.editView.fitsTarget(part) : null}
+                onOpenCatalogue={this.openCatalogue} onAddCatalogPart={this.addCatalogPart}
+                onCataloguePreview={this.cataloguePreview} onRemoveCatalogPart={this.removeCatalogPart} />
         );
     }
 
@@ -1397,7 +1954,7 @@ class SimLabPane extends React.Component {
         } else if (hold.pinned) {
             hint = C.hintTarget;
         } else {
-            hint = this.state.coarse ? C.hintIdleTouch : C.hintIdle;
+            hint = null; // idle: the build (i) holds the how-to, the view stays clear
         }
         const pin = hold.pinned;
         const pinNumber = pin && /(\d+)$/.exec(pin.connectorId);
@@ -1406,12 +1963,12 @@ class SimLabPane extends React.Component {
             boxShadow: '0 2px 6px rgba(15, 23, 42, 0.25)'};
         return (
             <React.Fragment>
-                <div data-testid="bw-sim-lab-hint-bar" data-holding={hold.holding ? 'yes' : 'no'} data-tone={hold.tone || ''}
+                {hint && <div data-testid="bw-sim-lab-hint-bar" data-holding={hold.holding ? 'yes' : 'no'} data-tone={hold.tone || ''}
                     style={{position: 'absolute', left: 8, bottom: 8, right: 108, zIndex: 3, pointerEvents: 'none', display: 'flex', justifyContent: 'flex-start'}}>
                     <span style={{background: hold.tone === 'blocked' ? 'rgba(254, 226, 226, 0.95)' : 'rgba(248, 250, 252, 0.92)', color: hold.tone === 'blocked' ? '#991b1b' : '#334155',
                         borderRadius: 6, padding: '3px 8px', fontSize: 12, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         boxShadow: '0 1px 3px rgba(15, 23, 42, 0.15)'}}>{hint}</span>
-                </div>
+                </div>}
                 {pin && (
                     <div data-testid="bw-sim-lab-target-chip" style={{position: 'absolute', left: 8, top: 8, zIndex: 4, ...chipBase, background: '#fef3c7', color: '#92400e', fontWeight: 600}}>
                         {C.targetChip.replace('{target}', this.partName(pin.part))
@@ -1482,10 +2039,10 @@ class SimLabPane extends React.Component {
         case 'mirrored': return fill(st.kept ? E.mirroredKept : st.swapped ? E.mirroredSwapped : E.mirrored, {n: st.count, s: st.swapped, k: st.kept});
         case 'groupEdit': case 'groupLeft': return fill(E[st.kind], {name: st.name || ''});
         case 'turnedBy': return fill(E.turnedBy, {deg: st.degrees});
-        case 'idle': return this.state.coarse ? T.idleTouch : T.idle;
+        case 'idle': return ''; // nothing to report; the (i) beside the status explains how to build
         default:
             if (E[st.kind]) return fill(E[st.kind], {n: st.count});
-            return T[st.kind] ? fill(T[st.kind], {n: st.count}) : (this.state.coarse ? T.idleTouch : T.idle);
+            return T[st.kind] ? fill(T[st.kind], {n: st.count}) : '';
         }
     }
 
@@ -1593,16 +2150,20 @@ class SimLabPane extends React.Component {
         const info = this.state.info;
         if (!info || this.state.mode !== 'simulate') return null;
         const box = {fontSize: 12, color: '#1e3a8a', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 6, padding: '6px 8px'};
-        if (!this.compact()) return <div role="status" data-testid="bw-sim-lab-info" style={box}>{info}</div>;
+        // One line at every width (owner request: no long text on screen); a click shows all of it.
         const open = this.state.infoOpen;
         return (
-            <div role="status" data-testid="bw-sim-lab-info" style={{...box, padding: '4px 8px', minWidth: 0}}>
-                <button type="button" data-testid="bw-sim-lab-info-toggle" aria-expanded={open} title={this.text.infoToggle}
+            <div role="status" data-testid="bw-sim-lab-info" style={{...box, padding: '4px 8px', minWidth: 0, display: 'flex', alignItems: 'flex-start', gap: 6}}>
+                {/* the toggle is its own small button: the note's words are not part of any button's name */}
+                <button type="button" data-testid="bw-sim-lab-info-toggle" aria-expanded={open} aria-label={this.text.infoToggle} title={this.text.infoToggle}
                     onClick={() => this.setState(s => ({infoOpen: !s.infoOpen}))}
-                    style={{display: 'block', width: '100%', font: 'inherit', color: 'inherit', textAlign: 'left', background: 'none', border: 'none',
-                        padding: 0, cursor: 'pointer', ...(open ? {} : {whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'})}}>
-                    <span aria-hidden="true">{open ? '▾ ' : '▸ '}</span>{info}
+                    style={{flex: '0 0 auto', font: 'inherit', color: 'inherit', background: 'none', border: 'none', padding: 0, cursor: 'pointer'}}>
+                    {open ? '▾' : '▸'}
                 </button>
+                <span onClick={() => this.setState(s => ({infoOpen: !s.infoOpen}))}
+                    style={{flex: '1 1 auto', minWidth: 0, cursor: 'pointer', ...(open ? {} : {whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'})}}>
+                    {info}
+                </span>
             </div>
         );
     }
@@ -1684,6 +2245,13 @@ class SimLabPane extends React.Component {
                 run: () => this.setState(st => (docked ? {propsDocked: !st.propsDocked} : {propsOpen: !st.propsOpen}))},
             shortcuts: {id: 'shortcuts', label: A.shortcuts, title: this.etext.shortcutsHelp, run: () => this.setState({shortcuts: true, menu: null}), pri: 3},
             grid: {id: 'grid', label: A.grid, pri: 3, width: 96, render: inMenu => this.renderGrid(inMenu)},
+            speed: {id: 'speed', label: A.speed, pri: 2, width: 84, render: inMenu => this.renderSpeed(inMenu)},
+            'show-sensors': {id: 'show-sensors', label: A['show-sensors'], kind: 'switch', pressed: this.state.showSensors,
+                run: () => this.setOverlay({showSensors: !this.state.showSensors}), pri: 3},
+            readings: {id: 'readings', label: A.readings, kind: 'switch', pressed: this.state.readings,
+                run: () => this.setState(s => ({readings: !s.readings})), pri: 2},
+            challenges: {id: 'challenges', label: A.challenges, kind: 'switch', pressed: this.state.challengesOpen,
+                run: () => this.setState(s => ({challengesOpen: !s.challengesOpen})), pri: 2},
             file: {id: 'file-menu', label: A['file-menu'], pri: 2, width: 46, render: inMenu => this.renderFile(inMenu)}
         };
     }
@@ -1708,9 +2276,9 @@ class SimLabPane extends React.Component {
             ];
         }
         return [
-            pick('run', G.run, ['run', 'reset']),
+            pick('run', G.run, ['run', 'reset', 'speed', 'challenges']),
             pick('view', G.view, ['view-home', 'view-fit', 'view-top', 'view-front', 'view-side']),
-            pick('show', G.show, ['show-ports', 'show-motion']),
+            pick('show', G.show, ['show-ports', 'show-motion', 'show-sensors', 'readings']),
             pick('file', G.file, ['file'])
         ];
     }
@@ -2000,6 +2568,11 @@ class SimLabPane extends React.Component {
                         {E.groupBanner.replace('{name}', this.state.editGroup.name)}
                     </span>
                 )}
+                <SimLabInfo testid="bw-sim-lab-help-build" label={T.helpBuild}
+                    text={<React.Fragment>
+                        <span style={{display: 'block', marginBottom: 6}}>{this.state.coarse ? T.idleTouch : T.idle}</span>
+                        <span style={{display: 'block'}}>{this.state.coarse ? this.etext.connect.hintIdleTouch : this.etext.connect.hintIdle}</span>
+                    </React.Fragment>} />
                 <span role="status" data-testid="bw-sim-lab-build-status" data-kind={st.kind || 'idle'} title={hint}
                     style={{color: refused || blocked ? '#b91c1c' : '#475569', fontWeight: refused ? 600 : 400,
                         flex: '1 1 0', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
@@ -2091,6 +2664,12 @@ class SimLabPane extends React.Component {
                         background: '#fff', borderRadius: 6}}>
                         <div ref={this.box} data-testid="bw-sim-lab-view" style={{flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative'}} />
                         {build && this.editView && this.renderHoldOverlays()}
+                        {simulate && this.state.readings && (
+                            <SimLabReadings text={{...this.text, close: this.text.readingsClose}} {...this.readingsRows()}
+                                onClose={() => this.setState({readings: false})} />
+                        )}
+                        {simulate && this.state.challengesOpen && this.lib && this.renderChallenges()}
+                        {simulate && this.renderReplay()}
                         {this.renderPortPicker(button)}
                         {build && !this.dockProperties() && this.state.propsOpen && (
                             <div data-testid="bw-sim-lab-properties-drawer" style={{position: 'absolute', right: 0, top: 0, bottom: 0, zIndex: 6, maxWidth: 'calc(100% - 48px)',

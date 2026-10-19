@@ -294,3 +294,37 @@ The starting values from §6 were kept: every gate reading lies well inside them
 - *Animation.* Every programmatic camera move eases over 300 ms (Fit, Home/Top/Front/Side, a double click, the view cube); the other browser-gate parts run with `prefers-reduced-motion: reduce`, so they read the camera right after a button; the connect checks test the easing.
 
 **Gate coverage of §5:** T1–T17 run in `scripts/lib/sim-lab-connect-gate.mjs` except the second half of T9 (a moved Beam 7 so only one pin fits), which `test/bw-sim-snap-pointer.test.mjs` covers ("all-or-nothing"). Debug hooks: `window.__bwSimLab.highlights()`, `candidate()`, `ghostTone()`, and `editView.debug.viewCube()` / `animating()`.
+
+## 8. Simulate: speed, readings, sensor rays, replay (2026-10-19)
+
+- **Speed:** 1×, ½× and ¼× in the Program group, over the clock's time scale (also the API's
+  `setTimeScale`). Slow motion is paced against the wall clock (`sim-clock.js slowMotionWait`):
+  ½× measures 0.47 of 1×'s rate in the gate, where the old per-step wait gave about 0.74.
+- **Readings** (Show group): a panel over the view with each motor's angle and speed and each
+  sensor's value, now and as a line over the last 10 s, sampled 10 times a simulated second
+  through the Robot Lab API.
+- **Show sensor rays:** each sensor part's probe (`PartMeta.probe`, part frame) drawn from the
+  part; a distance sensor's ray is as long as what it measures (2 m when it sees nothing).
+- **Replay:** paused after a run, a slider goes back through the last 20 s of body poses (about 30
+  per simulated second). It only shows them: Run goes on from now, and neither physics nor the
+  program is rolled back (a program's state cannot be).
+- The no-program note above the view is one line at every width; ▸ shows all of it.
+- Gate: `scripts/lib/sim-lab-simulate-ux-gate.mjs` (`--part=ui`) on the Wall stopper.
+
+## 9. Challenges on the mats (2026-10-20)
+
+- One per mat (`lib/bw-sim/world/challenges.js`): **One lap** (line oval), **Stop at the wall**,
+  **Stay in the ring** (sumo, 30 s), **Through the maze** (to the green cell), **Four corners**
+  (colour zones). Plain and Warehouse have none yet.
+- A judge sees only what someone watching the mat would: the robot's outline on the floor (its
+  parts' collider corners, `partOutline` in the Robot Lab API), which mat obstacles it touches,
+  and the simulated time. So it works for every hub, firmware and language.
+- Stars are for how well: a time, the gap to the wall, how far parts went past the ring. The
+  shipped examples earn 2 of 3 (Line follower ~23 s for a lap, 3 stars at ≤ 20 s; Wall stopper
+  ~8 cm, 3 stars at ≤ 8 cm), so the third star is for improving them.
+- Simulate's **Challenges** button (Program group) lists them with the best result on this device
+  (`localStorage` `bw-sim-challenge-best`). Start switches to the mat and puts the robot back at
+  the start; Run begins; a result pauses the world. Reset starts the judge afresh.
+- Tests: `test/bw-sim-challenges.test.mjs` (each challenge won, each way of losing, on made-up runs);
+  gate `scripts/lib/sim-lab-challenges-gate.mjs` (`--part=ui`): the Wall stopper's own program
+  wins "Stop at the wall"; on the sumo mat, driving straight on leaves the ring.

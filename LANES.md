@@ -1,3 +1,57 @@
+## Robot Lab challenges on the mats — 2026-10-20
+
+CLAIMED and done in one PR — Claude (Robot Lab lane, owner request "yes do all that": Robot
+Lab UX). Pushed to the combined branch (#1108). world/challenges.js: one challenge per mat
+(One lap, Stop at the wall, Stay in the ring, Through the maze, Four corners), each a judge
+of what anyone watching the mat could see (the robot's outline on the floor, its contacts
+with the mat's obstacles, the simulated time), so it works for every hub and program; 1-3
+stars for a time, a gap or a margin, the shipped examples earning 2. Simulate's Challenges
+button (sim-lab-challenges.jsx) starts one on its mat with the robot at the start; a result
+pauses the world and the best is kept on this device. Robot Lab API: partOutline(part).
+Tests: test/bw-sim-challenges.test.mjs; gate scripts/lib/sim-lab-challenges-gate.mjs
+(--part=ui).
+
+## Robot Lab catalogue: result pictures, My parts with remove — 2026-10-19
+
+CLAIMED and done in one PR — Claude (Robot Lab lane, owner request). Stacked on #1104.
+The palette's "+" results show a picture of each part (drawn when the row scrolls into
+view, four at a time, by the palette's own renderer; the files stay in the editor's map, so
+adding the part fetches nothing new). Parts added from the catalogue sit in "My parts" at
+the top of the palette instead of in the categories, each with a remove button; a part the
+model in Build holds is not removed (the note says why). Gate: sim-lab-catalogue-gate.mjs
+steps 7-8 (--part=editor).
+
+## Robot Lab Simulate: speed, Readings, sensor rays, replay; slow motion fixed — 2026-10-19
+
+CLAIMED and done in one PR — Claude (Robot Lab lane, owner request). Stacked on #1102.
+Simulate gets a speed control (1×, ½×, ¼× over the existing time scale), a Readings panel
+(sim-lab-readings.jsx: every motor's angle and speed and every sensor's value with a 10 s
+line, through the Robot Lab API, so every hub kind reads the same), Show sensor rays
+(sim-view3d.js setSensors: each sensor part's PartMeta probe; a distance ray as long as it
+measures) and an instant replay while paused (the last 20 s of body poses; Run goes on from
+now; physics and program are not rolled back). Fix: slow motion added a fixed wait after
+each step and ran ½× at about 0.72 of real time; sim-clock.js slowMotionWait paces against
+the wall clock (test/bw-sim-slow-motion.test.mjs). The no-program note is one line at
+every width (owner request: no long text). The touch gate waits for a tap's effect (the
+same change as #1103). Gate: scripts/lib/sim-lab-simulate-ux-gate.mjs (--part=ui).
+
+## Robot Lab: parts from the whole LDraw catalogue (palette "+") — 2026-10-19
+
+CLAIMED and done in one PR — Claude (Robot Lab lane, owner request and decisions: fetch
+from the ldraw-stl mirror; offer parts that cannot connect as decoration). The deriver moves
+from scripts/derive-part-meta.mjs into overlay/.../bw-sim/part-meta/derive.js (the script is
+its command line; --compare and --generate output byte-identical). New:
+bw-sim/ldraw/ldraw-catalog.js (mirror reader, range requests), part-meta/catalog-parts.js and
+catalog-worker.js, sim-lab.js addCatalogPart/catalogueParts/catalogFor, the palette's "+"
+catalogue view with per-part CC BY credits, the `decoration` palette category, and
+BW_REMOTE_PARTS_POLICY (webpack, About row). Owns those files plus fetchLDrawClosure's
+fallback; parts.json, the vendored static/ldraw/ subset and the physics are unchanged.
+docs/ROBOT-LAB-ARCHITECTURE.md §5.4.1. Also in this PR (owner requests): the tab label
+Robots / Roboter; the long idle help (build status, hint bar, palette help) moves into
+two (i) buttons (sim-lab-info.jsx); part-geometry.js and part-thumbnails.js no longer
+cache an empty result for a part whose files arrive late. Stacked on
+lane/simlab-next7-20261019 (merge order: #1097, next7, this).
+
 ## bw-circuit-ui + bw-board pin bump for light_sensor (B25/B26) — 2026-10-19
 
 CLAIMED and done in one PR — Claude (circuit-editor lane). bw-circuit-ui
