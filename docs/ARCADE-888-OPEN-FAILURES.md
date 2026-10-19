@@ -102,16 +102,22 @@ changed. Source of the list: hosted Build run 39297263647 (head f2ecafef1).
 | I | `test/makecode-discarded-map-edited-export.test.mjs` | typed discarded map survives actual Creator export and a current numeric input edit without annotation-derived ingress | 0 !== 1 |
 | I | `test/makecode-export-arcade.test.mjs` | stop blocks and not survive export and re-import, without the run-token machinery | DEVICE ARCADE GLOBAL GameSprite GLOBAL _tokens GLOBAL _stopMark GLOBAL _som_Game GLOBAL _sok_Game GLOBAL Game_n GLOBAL Game_m SPRITE Game: |
 
+### Integration-only (PR #1085)
+
+| Group | File | Test | Error |
+|---|---|---|---|
+| I | `test/makecode-arcade-legacy-tile-collisions.test.mjs` | legacy collision filters/order, captures, yielding, snapshot indices and scenes match PXT through all roundtrips | 'ABCA' !== 'ABCABC'. Fails only with the stacked PRs merged; tried: none yet; next: compare callback order with #888 alone. |
+
 ## Failing browser gates (no known-open mechanism; not disabled)
 
 | Job | Gate | Error | Next step |
 |---|---|---|---|
 | browser (heavy) | `scripts/verify-arcade-carnival-browser.mjs` | `import exposes the carnival pseudocode command` | The carnival import reports unsupported constructs; expected to clear with groups A/B. Re-check after those land. |
-| browser (robotlab) | `scripts/lib/sim-lab-touch-gate.mjs` (via `verify-sim-lab-browser.mjs`) | `Select all selects every part` (1 !== 16) | The branch changes no Sim Lab file and main's robotlab passes; reproduce in a browser, then compare the merged GUI against main. |
+| browser (robotlab) | `scripts/lib/sim-lab-touch-gate.mjs` / `sim-lab-cad-gate.mjs` (via `verify-sim-lab-browser.mjs`) | `Select all selects every part` (1 !== 16); on #1085 also `focusOn` expected ['p16'], got [] | The branch changes no Sim Lab file and main's robotlab passes; reproduce in a browser, then compare the merged GUI against main. |
 
 ## Already-TODO items owned by other work
 
 These were already `# TODO` before this landing and are not part of this list:
 
 - Robot Lab lane (`docs/ROBOT-LAB-VALIDATION.md`): rolling resistance; gearbox efficiency under load; motor torque through an 8:24 mesh; dig-cycle base yaw; tilting-table tower; two-cart restitution; universal joint not buildable.
-- Existing Arcade TODOs: first HUD callback phase; restored callback phase; do-while `continue` posttest boundary; negative-kind initial overlap frame timing.
+- Existing Arcade TODOs (their reasons now point here, per the docs-pointer rule): first HUD callback phase; restored callback phase; do-while `continue` posttest boundary; negative-kind initial overlap frame timing.
