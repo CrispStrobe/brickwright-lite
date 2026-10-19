@@ -13,8 +13,18 @@ test('ad-hoc diagnostics print only device count and preserve the actual asserti
     assert.doesNotMatch(workflow, /^\s*plutil -extract ProvisionedDevices[^\n]+\| grep '<string>'/m);
     assert.equal((workflow.match(/^\s*node scripts\/prepare-ios-device-build\.mjs$/gm) || []).length, 3);
 });
+function assertNoAuditEntry(body) {
+    const start = body.indexOf('def main():');
+    assert.ok(start >= 0, 'the actual entry point must exist');
+    assert.doesNotMatch(body.slice(start), /SIMCTL_CHILD_|BW_EMBEDDED_ASSET_AUDIT_PATH|prepared_launch|owned_simulator_transaction|prepare_installed_observation|release_installed_observation|bounded_simulator_command/);
+}
+
 test('asset source preparation adds no runtime download or delivery event', () => {
-    assert.doesNotMatch(workflow, /simctl.*download|downloadPlatform|BW_EMBEDDED_ASSET_AUDIT_PATH/);
+    assert.doesNotMatch(workflow, /simctl.*download|downloadPlatform/);
+    assertNoAuditEntry(retention);
+    for (const injected of ['SIMCTL_CHILD_BW_EMBEDDED_ASSET_AUDIT_PATH = "injected"', 'bounded_simulator_command("injected")']) {
+        assert.throws(() => assertNoAuditEntry(retention.replace('def main():', `def main():\n    ${injected}`)));
+    }
     assert.match(workflow, /if: startsWith\(github.ref, 'refs\/tags\/'\)/);
 });
 test('actual device-count shell keeps assertions and does not print authored identifiers', () => {
@@ -140,7 +150,8 @@ test('retention input defaults off and every optional step has the unsigned exac
     assert.match(ios, /name: brickwright-ios-toolchain-inputs/);
     assert.ok(ios.indexOf('name: brickwright-ios-sim') < ios.indexOf('Retain unsigned iOS products after build'));
     assert.match(ios, /name: brickwright-ios-audit-inputs[\s\S]*?include-hidden-files: true[\s\S]*?if-no-files-found: error/);
-    assert.doesNotMatch(retention, /devicectl|downloadPlatform|BW_EMBEDDED_ASSET_AUDIT_PATH/);
+    assert.doesNotMatch(retention, /devicectl|downloadPlatform/);
+    assertNoAuditEntry(retention);
     assert.match(retention, /\['xcrun', 'simctl', 'list', 'runtimes', '--json'\]/);
 });
 
@@ -1302,5 +1313,155 @@ test('unwired container preparation binds selected directories and installed rec
         assert.match(result.stderr, /OK/);
         assert.equal((retention.match(/prepare_installed_observation\(/g) || []).length, 1, 'adapter definition only');
         assert.equal((retention.match(/release_installed_observation\(/g) || []).length, 1, 'release definition only');
+    } finally { rmSync(dir, {recursive: true, force: true}); }
+});
+
+const launchControls = String.raw`
+class LaunchControls(unittest.TestCase):
+    def setUp(self):
+        self.f=ContainerControls();self.f.setUp();self.receivers=[];self.count=0
+        self.actor=self.f.f.root/'xcrun';self.mode='env';self.write_actor()
+        self.environment=mock.patch.dict(os.environ,{'PATH':str(self.f.f.root)+os.pathsep+os.environ['PATH'],
+            'SIMCTL_CHILD_BW_EMBEDDED_ASSET_AUDIT_PATH':'AUTHORED-WRONG-PATH','SIMCTL_CHILD_AUTHORED_SECRET':'AUTHORED-SECRET',
+            'BW_EMBEDDED_ASSET_AUDIT_PATH':'AUTHORED-WRONG-UNPREFIXED','BW_AUTHORED_SECRET':'AUTHORED-SECRET'})
+        self.environment.start()
+    def tearDown(self):
+        self.environment.stop()
+        for receiver,release in self.receivers:release(receiver)
+        self.f.tearDown()
+    def write_actor(self):
+        script='''#!/usr/bin/python3
+import os,sys,json
+from pathlib import Path
+ROOT=Path(__file__).parent
+MODE=__MODE__
+(ROOT/'attempts').open('ab').write(b'x')
+if MODE=='exit':sys.exit(37)
+if MODE=='pins':(Path((ROOT/'app-path').read_text())/'authored').write_bytes(b'AUTHORED-CHANGED')
+if MODE=='parent':
+ p=Path((ROOT/'receipt-path').read_text()).parent;p.rename(p.with_name('OldDocuments'));p.mkdir()
+if MODE=='ready':Path(os.environ['SIMCTL_CHILD_BW_EMBEDDED_ASSET_AUDIT_PATH']).write_bytes((ROOT/'envelope').read_bytes())
+print(json.dumps({'args':sys.argv[1:],'environment':{k:v for k,v in os.environ.items() if k.startswith('SIMCTL_CHILD_') or k.startswith('BW_')}}))
+'''.replace('__MODE__',repr(self.mode))
+        self.actor.write_text(script);self.actor.chmod(0o755)
+        (self.f.f.root/'app-path').write_text(str(self.f.app));(self.f.f.root/'receipt-path').write_text(str(self.f.f.target))
+        (self.f.f.root/'envelope').write_bytes(json.dumps(envelope()).encode())
+    def prepare(self,namespace=None):
+        fn=prepare_installed_observation if namespace is None else namespace['prepare_installed_observation']
+        release=release_installed_observation if namespace is None else namespace['release_installed_observation']
+        receiver=self.f.prepare(fn);self.receivers.append((receiver,release));return receiver
+    def command(self,receiver=None,*,namespace=None,args=None,directory=None,**kwargs):
+        fn=bounded_simulator_command if namespace is None else namespace['bounded_simulator_command']
+        options=dict(device_set=self.f.directory if directory is None else directory,deadline=time.monotonic()+3,output_limit=4096,prepared_launch=receiver)
+        options.update(kwargs);return fn(('launch',NEW,'com.example.authored') if args is None else args,**options)
+    def attempts(self):
+        file=self.f.f.root/'attempts';return len(file.read_bytes()) if file.exists() else 0
+    def test_bound_launch_receives_only_derived_audit_path(self):
+        receiver=self.prepare();raw=self.command(receiver);value=json.loads(raw)
+        self.assertEqual(value['environment'],{'SIMCTL_CHILD_BW_EMBEDDED_ASSET_AUDIT_PATH':str(self.f.f.target)})
+        self.assertEqual(value['args'],['simctl','--set',str(self.f.directory),'launch',NEW,'com.example.authored'])
+        self.assertTrue(receiver._launch_attempted);self.assertEqual(self.attempts(),1)
+    def test_default_launch_filters_all_audit_and_arbitrary_child_environment(self):
+        self.assertEqual(json.loads(self.command())['environment'],{});self.assertEqual(self.attempts(),1)
+    def test_wrong_operation_dict_and_ordinary_unbound_receiver_never_spawn(self):
+        receiver=self.prepare()
+        for value,args in (({},None),(str(self.f.f.target),None),(receiver,('list','devices','--json'))):
+            with mock.patch.object(subprocess,'Popen') as spawn:
+                with self.assertRaises(SimulatorCommandRefused):self.command(value,args=args)
+                spawn.assert_not_called()
+        spec=dict(self.f.f.spec,appDirectory=str(self.f.app),receiptPath=str(self.f.f.target))
+        ordinary=PreparedInstalledObservation(spec,deadline=10,now=lambda:0)
+        try:
+            with self.assertRaises(SimulatorCommandRefused):self.command(ordinary)
+        finally:release_installed_observation(ordinary)
+        self.assertEqual(self.attempts(),0)
+    def test_wrong_device_bundle_or_device_set_never_spawn(self):
+        other=self.f.f.root/('bw-ios-assets-'+'b'*32+'.deviceset');other.mkdir()
+        for args,directory in ((('launch',OTHER,'com.example.authored'),None),(('launch',NEW,'com.example.other'),None),(None,other)):
+            with self.assertRaises(SimulatorCommandRefused):self.command(self.prepare(),args=args,directory=directory)
+        self.assertEqual(self.attempts(),0)
+    def test_closed_reused_and_failed_spawn_contexts_are_refused(self):
+        receiver=self.prepare();release_installed_observation(receiver)
+        with self.assertRaises(SimulatorCommandRefused):self.command(receiver)
+        receiver=self.prepare();self.command(receiver)
+        with self.assertRaises(SimulatorCommandRefused):self.command(receiver)
+        self.assertEqual(self.attempts(),1)
+        receiver=self.prepare()
+        with mock.patch.object(subprocess,'Popen',side_effect=OSError('AUTHORED-SPAWN-ERROR')):
+            with self.assertRaises(SimulatorCommandRefused):self.command(receiver)
+        with self.assertRaises(SimulatorCommandRefused):self.command(receiver)
+        self.assertEqual(self.attempts(),1)
+    def test_old_output_changed_files_and_replaced_parent_refuse(self):
+        receiver=self.prepare();self.f.f.target.write_bytes(b'OLD')
+        with self.assertRaises(SimulatorCommandRefused):self.command(receiver)
+        self.assertEqual(self.attempts(),0);self.assertEqual(self.f.f.target.read_bytes(),b'OLD');self.f.f.target.unlink()
+        receiver=self.prepare();self.mode='pins';self.write_actor()
+        with self.assertRaises(SimulatorCommandRefused):self.command(receiver)
+        self.assertEqual(self.attempts(),1)
+        # Restore fixture bytes; a fresh helper must independently admit the file.
+        (self.f.app/'authored').write_bytes(self.f.f.exe);receiver=self.prepare();self.mode='parent';self.write_actor()
+        with self.assertRaises(SimulatorCommandRefused):self.command(receiver)
+        self.assertEqual(self.attempts(),2)
+    def test_stop_or_deadline_during_command_cleanup_never_publishes_reply(self):
+        original=os.close
+        for mode in ('stop','deadline'):
+            receiver=self.prepare();flag=[False];clock=[0.]
+            def close(fd):
+                info=os.fstat(fd);original(fd)
+                if stat.S_ISDIR(info.st_mode):
+                    flag[0]=True
+                    if mode=='deadline':clock[0]=11.
+            with mock.patch.object(os,'close',side_effect=close),mock.patch.object(time,'monotonic',side_effect=lambda:clock[0]):
+                with self.assertRaises(SimulatorCommandRefused) as caught:self.command(receiver,deadline=10,stopped=lambda:flag[0] if mode=='stop' else False)
+            self.assertEqual(caught.exception.reason,mode)
+        self.assertEqual(self.attempts(),2)
+    def test_reentrant_clock_cannot_start_a_second_command(self):
+        receiver=self.prepare();triggered=[];refused=[]
+        def clock():
+            if not triggered:
+                triggered.append(True)
+                try:self.command(receiver)
+                except SimulatorCommandRefused:refused.append(True)
+            return 0.
+        receiver._now=clock;self.command(receiver)
+        self.assertEqual(refused,[True]);self.assertEqual(self.attempts(),1)
+    def test_authored_ready_bytes_can_be_captured_without_app_qualification(self):
+        receiver=self.prepare();self.mode='ready';self.write_actor();self.command(receiver)
+        meta,raw=self.f.f.capture(receiver);self.assertEqual(meta['status'],'captured-header-only')
+        self.assertEqual(raw,self.f.f.target.read_bytes());self.assertIs(meta['actualAppQualified'],False)
+    def test_runtime_mutants_expose_target_reuse_output_environment_and_cleanup_fences(self):
+        def mutated(cut,replacement):
+            self.assertIn(cut,SOURCE_PREFIX);namespace={};exec(compile(SOURCE_PREFIX.replace(cut,replacement),'authored-launch-mutant','exec'),namespace);return namespace
+        cut="need(self._launch_binding[:3] == (str(device_set), device, bundle))"
+        ns=mutated(cut,'need(True)');r=self.prepare(ns);self.command(r,namespace=ns,args=('launch',NEW,'com.example.other'))
+        ns=mutated('need(not self._launch_attempted)','need(True)');r=self.prepare(ns)
+        self.command(r,namespace=ns);self.command(r,namespace=ns)
+        ns=mutated("raise ValueError('receipt exists before launch')",'pass');r=self.prepare(ns);self.f.f.target.write_bytes(b'OLD')
+        self.command(r,namespace=ns);self.f.f.target.unlink()
+        ns=mutated("environment['SIMCTL_CHILD_BW_EMBEDDED_ASSET_AUDIT_PATH'] = audit_path",'pass');r=self.prepare(ns)
+        self.assertEqual(json.loads(self.command(r,namespace=ns))['environment'],{})
+        cut='check()  # Recheck after readback and command cleanup, before returning.'
+        ns=mutated(cut,'pass');r=self.prepare(ns);original=os.close;flag=[False]
+        def close(fd):
+            info=os.fstat(fd);original(fd)
+            if stat.S_ISDIR(info.st_mode):flag[0]=True
+        with mock.patch.object(os,'close',side_effect=close):raw=self.command(r,namespace=ns,stopped=lambda:flag[0])
+        self.assertTrue(flag[0]);self.assertIn('environment',json.loads(raw))
+unittest.main(argv=['authored-launch-controls'],defaultTest='LaunchControls',verbosity=2)
+`;
+
+test('unwired launch environment binds one prepared receiver to one explicit launch', () => {
+    const prefix = retention.slice(0, retention.lastIndexOf('\ntry:\n'));
+    const controls = receiverControls.replace(/^unittest.main.*$/m, '') + containerControls.replace(/^unittest.main.*$/m, '') + launchControls;
+    const dir = mkdtempSync(join(tmpdir(), 'bw-ios-launch-controls-'));
+    try {
+        const controller = join(dir, 'controls.py');
+        writeFileSync(controller, `${prefix}\nSOURCE_PREFIX = ${JSON.stringify(prefix)}\n${controls}`);
+        const result = spawnSync('/usr/bin/python3', [controller], {
+            env: {...process.env, GITHUB_WORKSPACE: dir, RUNNER_TEMP: dir, TMPDIR: dir}, encoding: 'utf8', timeout: 20000
+        });
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        assert.match(result.stderr, /Ran 10 tests/);
+        assert.match(result.stderr, /OK/);
     } finally { rmSync(dir, {recursive: true, force: true}); }
 });

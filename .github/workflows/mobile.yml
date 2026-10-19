@@ -452,7 +452,7 @@ jobs:
                   self.cleanup_failures = tuple(cleanup_failures)
 
 
-          def bounded_simulator_command(arguments, *, device_set, deadline, output_limit, stopped=None):
+          def bounded_simulator_command(arguments, *, device_set, deadline, output_limit, stopped=None, prepared_launch=None):
               """Unwired simctl client adapter; not containment of delegated services/apps.
 
               Requires non-reaping waitid (macOS Python 3.13+) and the default SIGCHLD
@@ -519,6 +519,8 @@ jobs:
                           need(Path(arguments[2]).is_absolute() and arguments[2].endswith('.app'))
                       elif operation in ('launch', 'terminate'):
                           need(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9-]*(?:\.[A-Za-z0-9][A-Za-z0-9-]*)+', arguments[2]) is not None)
+                  need(prepared_launch is None or (operation == 'launch' and
+                       type(prepared_launch) is PreparedInstalledObservation))
                   stage = 'device-set'
                   directory = Path(device_set)
                   need(directory.is_absolute() and directory.resolve(strict=True) == directory and
@@ -539,6 +541,14 @@ jobs:
                   selector = selectors.DefaultSelector()
                   environment = {key: value for key, value in os.environ.items() if key in (
                       'PATH', 'HOME', 'TMPDIR', 'DEVELOPER_DIR', 'SDKROOT', 'LANG', 'LC_ALL', '__CF_USER_TEXT_ENCODING')}
+                  if prepared_launch is not None:
+                      stage = 'launch-binding'
+                      audit_path = prepared_launch._launch_path(directory, arguments[1], arguments[2], deadline, starting=True)
+                      check()
+                      stage = 'launch-binding'
+                      prepared_launch._parent_matches()
+                      environment['SIMCTL_CHILD_BW_EMBEDDED_ASSET_AUDIT_PATH'] = audit_path
+                  stage = 'spawn'
                   process = subprocess.Popen(['xcrun', 'simctl', '--set', str(directory), *arguments],
                       stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                       start_new_session=True, close_fds=True, env=environment)
@@ -605,6 +615,13 @@ jobs:
                           os.close(directory_fd)
                       except Exception:
                           cleanup.append('directory-close')
+              if primary is None and not cleanup and prepared_launch is not None:
+                  try:
+                      stage = 'launch-binding'
+                      prepared_launch._launch_path(directory, arguments[1], arguments[2], deadline, starting=False)
+                      check()  # Recheck after readback and command cleanup, before returning.
+                  except BaseException as error:
+                      primary, reason = error, stage
               if primary is not None:
                   if not isinstance(primary, Exception):
                       if cleanup:
@@ -919,6 +936,8 @@ jobs:
                   self._receipt = None
                   self._closed = False
                   self._started = False
+                  self._launch_binding = None
+                  self._launch_attempted = False
                   self._close_errors = ()
                   self._last_tick = None
                   self._now = now
@@ -966,6 +985,39 @@ jobs:
                   except BaseException:
                       self.close()
                       raise
+
+              def _launch_path(self, device_set, device, bundle, deadline, *, starting):
+                  # Internal consistency checks, not an authenticated namespace capability.
+                  need(not self._closed and not self._started and type(starting) is bool and
+                       type(self._launch_binding) is tuple and len(self._launch_binding) == 4)
+                  if starting:
+                      need(not self._launch_attempted)
+                      self._launch_attempted = True  # Burn before clock/filesystem callbacks.
+                  else:
+                      need(self._launch_attempted)
+                  need(self._launch_binding[:3] == (str(device_set), device, bundle))
+                  self._check(deadline)
+                  for name, identity in self._launch_binding[3]:
+                      path = Path(name)
+                      current = path.stat(follow_symlinks=False)
+                      need(path.resolve(strict=True) == path and stat.S_ISDIR(current.st_mode) and
+                           (current.st_dev, current.st_ino) == identity)
+                  self._parent_matches()
+                  for path, cap, expected_identity, expected_hash in (
+                          (self._plist_path, 1024*1024, self._plist_identity, self._spec['plistSHA256']),
+                          (self._executable, 256*1024*1024, self._exe_identity, self._spec['executableSHA256'])):
+                      identity, digest, _ = self._file(path, cap, deadline)
+                      need(identity == expected_identity and digest == expected_hash)
+                  if starting:
+                      try:
+                          os.stat(self._name, dir_fd=self._parent, follow_symlinks=False)
+                      except FileNotFoundError:
+                          pass
+                      else:
+                          raise ValueError('receipt exists before launch')
+                  self._check(deadline)
+                  self._parent_matches()
+                  return str(self._parent_path/self._name)
 
               def _check(self, deadline):
                   import math
@@ -1335,6 +1387,8 @@ jobs:
                   raise InstalledPreparationRefused(reason, cleanup) from None
               if cleanup:
                   raise InstalledPreparationRefused('cleanup', cleanup)
+              receiver._launch_binding = (str(device_set), device, spec['bundleIdentifier'],
+                  tuple((str(path), identity) for path, _, identity in directories))
               return receiver
 
 

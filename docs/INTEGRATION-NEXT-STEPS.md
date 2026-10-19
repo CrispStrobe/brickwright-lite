@@ -197,6 +197,19 @@ Next actions and completion criteria:
    runtime downloads. Require one fresh candidate-bound unsigned observation.
    Signed-target map identity remains separate. Pure controls do not qualify the
    Apple adapter, decompression allocation, callback lifetime or installed package.
+   Launch environment selection is now implemented only inside the unwired command
+   adapter. An optional prepared receiver must match the explicit device set, UUID
+   and bundle; its installed files, directory identities and absent fixed output
+   are checked before consuming one launch attempt. The only added child variable
+   is the derived audit path. Inherited audit/arbitrary child variables are still
+   filtered. Binding and pins are read back after client cleanup, then Stop and
+   deadline are checked before returning. Failed spawns consume the attempt. These
+   finite consistency checks are not authenticated ownership, running-code proof
+   or cancellation of delegated services. A refused launch reply can follow an
+   actual start, so the transaction owner still owes app cleanup. No workflow phase
+   calls this path. Validate actual Xcode environment/path behavior, implement
+   Darwin monitoring and complete the admitted wrapper before an actual observation.
+
    The Rust collector controls now select an explicit Cargo installation executable
    rather than a bare PATH command. Missing and relative installation roots refuse
    without fallback. The original ambient-binding CI failure is retained; the
