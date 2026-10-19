@@ -27,7 +27,7 @@ const FIXTURE = JSON.parse(readFileSync(path.join(ROOT, 'test/fixtures/bw-sim/li
 
 test('every model in the list is a shipped file that compiles cleanly, motors and sensors on ports', () => {
     assert.deepEqual(MODELS.map(m => m.id || m.file), ['driving-base.ldr', 'line-follower.ldr', 'wall-stopper.ldr', 'colour-explorer.ldr', 'sumo', 'forklift.ldr', 'maze-runner.ldr',
-        'gearbox.ldr', 'differential.ldr']);
+        'gearbox.ldr', 'differential.ldr', 'excavator.ldr']);
     // The pane lists entries by key (id, else file): keys are unique, and a file listed twice needs an id.
     const keys = MODELS.map(m => m.id || m.file);
     assert.equal(new Set(keys).size, keys.length, `unique keys: ${keys}`);
@@ -43,8 +43,9 @@ test('every model in the list is a shipped file that compiles cleanly, motors an
         assert.deepEqual(issues.filter(i => i.severity === 'error'), [], entry.file);
         assert.ok(model.parts.length > 5, entry.file);
         // The driving bases drive their wheels on A and B; the Forklift (R4) stands, its lift motor on C;
-        // the gearbox drives on A and shifts on B; the differential drives on A and holds a side on C.
-        const ports = {'forklift.ldr': ['C'], 'differential.ldr': ['A', 'C']}[entry.file] || ['A', 'B'];
+        // the gearbox drives on A and shifts on B; the differential drives on A and holds a side on C;
+        // the Excavator: wheels on A and B, slew C, boom D, stick E, bucket F.
+        const ports = {'forklift.ldr': ['C'], 'differential.ldr': ['A', 'C'], 'excavator.ldr': ['A', 'B', 'C', 'D', 'E', 'F']}[entry.file] || ['A', 'B'];
         assert.deepEqual(mechanism.joints.filter(j => j.motor).map(j => j.motor.port).sort(), ports, `${entry.file}: motors on ${ports}`);
         for (const s of mechanism.sensors || []) assert.match(s.port, /^[A-F]$/, `${entry.file}: sensor port`);
         if (entry.mat) assert.ok(MATS.some(m => m.id === entry.mat), `${entry.file}: mat ${entry.mat} exists`);

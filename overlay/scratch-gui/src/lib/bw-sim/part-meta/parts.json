@@ -4,9 +4,11 @@
  "references": [
   "39370c01.dat",
   "41769.dat",
-  "65414c01.dat"
+  "65414c01.dat",
+  "92693c01-f1.dat",
+  "92693c01-f2.dat"
  ],
- "$references": "LDraw assemblies vendored only so the metadata test can check a connector against LDraw's own placement (39370c01: where the castor ball sits in its socket). 41769.dat is LDraw's `~Moved to 41769a` alias, vendored only so test/bw-sim-canonical-frame.test.mjs checks that an alias is found as a duplicate by its geometry (part-meta/canonical-frame.js). 65414c01.dat is LDraw's assembly of the differential 65414 with its cover 65413 and satellites 6589: scripts/derive-part-meta.mjs reads where the satellites and the cover sit (the casing's gear-seat and snap connectors).",
+ "$references": "LDraw assemblies vendored only so the metadata test can check a connector against LDraw's own placement (39370c01: where the castor ball sits in its socket). 41769.dat is LDraw's `~Moved to 41769a` alias, vendored only so test/bw-sim-canonical-frame.test.mjs checks that an alias is found as a duplicate by its geometry (part-meta/canonical-frame.js). 65414c01.dat is LDraw's assembly of the differential 65414 with its cover 65413 and satellites 6589: scripts/derive-part-meta.mjs reads where the satellites and the cover sit (the casing's gear-seat and snap connectors). 92693c01-f1/-f2.dat are LDraw's contracted and extended small linear actuator: the stroke and the spindle's thread are derived from them (scripts/derive-part-meta.mjs deriveLinearActuator) and test/bw-sim-linear-actuator.test.mjs checks them against them.",
  "parts": [
   {
    "part": "32523.dat",
@@ -26240,6 +26242,716 @@
    "derived": true,
    "mirrorOf": {
     "part": "32185.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    },
+    "others": [
+     {
+      "m": [
+       1,
+       0,
+       0,
+       0,
+       1,
+       0,
+       0,
+       0,
+       -1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "part": "99009.dat",
+   "name": "Technic turntable 28 tooth bottom",
+   "nameDe": "Technic-Drehkranz 28 Zähne Unterteil",
+   "nameDeGenerated": true,
+   "category": "gear",
+   "massGrams": 1.29,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      20,
+      20,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      -20,
+      20,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "t",
+     "type": "turntable-race",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 14
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "cylinder",
+     "radius": 27,
+     "halfHeight": 7,
+     "position": [
+      0,
+      3,
+      0
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 15.22,
+     "halfHeight": 6,
+     "position": [
+      0,
+      4,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      9.040000000000001,
+      9.5,
+      10.38
+     ],
+     "position": [
+      19.96,
+      19.5,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      9.040000000000001,
+      9.5,
+      10.38
+     ],
+     "position": [
+      -19.96,
+      19.5,
+      0
+     ]
+    }
+   ],
+   "derived": true,
+   "mirrorOf": {
+    "part": "99009.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    },
+    "others": [
+     {
+      "m": [
+       1,
+       0,
+       0,
+       0,
+       1,
+       0,
+       0,
+       0,
+       -1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "part": "99010.dat",
+   "name": "Technic turntable 28 tooth top",
+   "nameDe": "Technic-Drehkranz 28 Zähne Oberteil",
+   "nameDeGenerated": true,
+   "category": "gear",
+   "massGrams": 1.8,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      20,
+      -20,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -20,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "t",
+     "type": "turntable-ring",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "cylinder",
+     "radius": 36.81,
+     "halfHeight": 10,
+     "position": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 16.47,
+     "halfHeight": 2,
+     "position": [
+      0,
+      -8,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      9.040000000000001,
+      9.5,
+      10.38
+     ],
+     "position": [
+      19.96,
+      -19.5,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      9.040000000000001,
+      9.5,
+      10.38
+     ],
+     "position": [
+      -19.96,
+      -19.5,
+      0
+     ]
+    }
+   ],
+   "derived": true,
+   "gear": {
+    "type": "spur",
+    "teeth": 28,
+    "axis": [
+     0,
+     -1,
+     0
+    ],
+    "center": [
+     0,
+     0.5,
+     0
+    ]
+   },
+   "mirrorOf": {
+    "part": "99010.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  {
+   "part": "18939.dat",
+   "name": "Technic turntable 60 tooth bottom",
+   "nameDe": "Technic-Drehkranz 60 Zähne Unterteil",
+   "nameDeGenerated": true,
+   "category": "gear",
+   "massGrams": 5.3500000000000005,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      -40,
+      20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      40,
+      20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      -40,
+      20,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      40,
+      20,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h4",
+     "type": "pinhole",
+     "position": [
+      -40,
+      20,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h5",
+     "type": "pinhole",
+     "position": [
+      40,
+      20,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "t",
+     "type": "turntable-race",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 15
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "cylinder",
+     "radius": 67,
+     "halfHeight": 7.5,
+     "position": [
+      0,
+      2.5,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      10,
+      30
+     ],
+     "position": [
+      40,
+      20,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      10,
+      30
+     ],
+     "position": [
+      -40,
+      20,
+      0
+     ]
+    }
+   ],
+   "derived": true,
+   "mirrorOf": {
+    "part": "18939.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    },
+    "others": [
+     {
+      "m": [
+       1,
+       0,
+       0,
+       0,
+       1,
+       0,
+       0,
+       0,
+       -1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "part": "18938.dat",
+   "name": "Technic turntable 60 tooth top",
+   "nameDe": "Technic-Drehkranz 60 Zähne Oberteil",
+   "nameDeGenerated": true,
+   "category": "gear",
+   "massGrams": 8.15,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      -40,
+      -20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      40,
+      -20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      -40,
+      -20,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      40,
+      -20,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h4",
+     "type": "pinhole",
+     "position": [
+      -40,
+      -20,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h5",
+     "type": "pinhole",
+     "position": [
+      40,
+      -20,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "t",
+     "type": "turntable-ring",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "cylinder",
+     "radius": 76.75,
+     "halfHeight": 10,
+     "position": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 37,
+     "halfHeight": 10,
+     "position": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      10.040000000000001,
+      10,
+      30
+     ],
+     "position": [
+      39.96,
+      -20,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      10.040000000000001,
+      10,
+      30
+     ],
+     "position": [
+      -39.96,
+      -20,
+      0
+     ]
+    }
+   ],
+   "derived": true,
+   "gear": {
+    "type": "spur",
+    "teeth": 60,
+    "axis": [
+     0,
+     -1,
+     0
+    ],
+    "center": [
+     0,
+     -0.96,
+     0
+    ]
+   },
+   "mirrorOf": {
+    "part": "18938.dat",
     "transform": {
      "m": [
       -1,
@@ -111695,6 +112407,617 @@
    },
    "mirrorOf": {
     "part": "65413.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  {
+   "part": "92693c01.dat",
+   "name": "Technic linear actuator 4 x 1 x 1 body assembly",
+   "nameDe": "Technic-Linearantrieb 4 x 1 x 1 Gehäuse",
+   "nameDeGenerated": true,
+   "category": "other",
+   "massGrams": 1.53,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      -25,
+      0,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      25,
+      0,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      -25,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      25,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "h4",
+     "type": "la-bore",
+     "position": [
+      0,
+      0,
+      105
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 10
+    },
+    {
+     "id": "b",
+     "type": "screw-bearing",
+     "position": [
+      0,
+      0,
+      32.5
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 5
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      5,
+      9,
+      16.62
+     ],
+     "position": [
+      25,
+      0,
+      7.62
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      5,
+      9,
+      16.62
+     ],
+     "position": [
+      -25,
+      0,
+      7.62
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      30,
+      10,
+      4.23
+     ],
+     "position": [
+      0,
+      0,
+      29.77
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      20,
+      9,
+      4.47
+     ],
+     "position": [
+      0,
+      0,
+      39.47
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      10,
+      37.5
+     ],
+     "position": [
+      0,
+      0,
+      72.5
+     ]
+    }
+   ],
+   "derived": true,
+   "mirrorOf": {
+    "part": "92693c01.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    },
+    "others": [
+     {
+      "m": [
+       1,
+       0,
+       0,
+       0,
+       -1,
+       0,
+       0,
+       0,
+       1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "part": "92695.dat",
+   "name": "Technic linear actuator 4 x 1 x 1 axle actuator",
+   "nameDe": "Technic-Linearantrieb 4 x 1 x 1 Spindel",
+   "nameDeGenerated": true,
+   "category": "other",
+   "massGrams": 0.28,
+   "connectors": [
+    {
+     "id": "a0",
+     "type": "axle",
+     "position": [
+      0,
+      0,
+      -8.25
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 22.5
+    },
+    {
+     "id": "s",
+     "type": "screw-spindle",
+     "position": [
+      0,
+      0,
+      42
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 78,
+     "data": {
+      "threadFrom": -37,
+      "threadTo": 23,
+      "leadLdu": 3.0147,
+      "hand": 1,
+      "radiusLdu": 3
+     }
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      8,
+      8,
+      11.25
+     ],
+     "position": [
+      0,
+      0,
+      -8.25
+     ],
+     "region": "axle"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      8,
+      8,
+      39
+     ],
+     "position": [
+      0,
+      0,
+      42
+     ]
+    }
+   ],
+   "derived": true,
+   "mirrorOf": {
+    "part": "92695.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    },
+    "others": [
+     {
+      "m": [
+       1,
+       0,
+       0,
+       0,
+       -1,
+       0,
+       0,
+       0,
+       1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "part": "92696.dat",
+   "name": "Technic linear actuator 4 x 1 x 1 piston",
+   "nameDe": "Technic-Linearantrieb 4 x 1 x 1 Kolben",
+   "nameDeGenerated": true,
+   "category": "other",
+   "massGrams": 0.38,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "r",
+     "type": "la-rod",
+     "position": [
+      0,
+      0,
+      -47
+     ],
+     "axis": [
+      0,
+      0,
+      -1
+     ],
+     "length": 76
+    },
+    {
+     "id": "n",
+     "type": "screw-nut",
+     "position": [
+      0,
+      0,
+      -85
+     ],
+     "axis": [
+      0,
+      0,
+      -1
+     ]
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      6,
+      8,
+      37.5
+     ],
+     "position": [
+      0,
+      0,
+      -47.5
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      9,
+      9
+     ]
+    }
+   ],
+   "derived": true,
+   "mirrorOf": {
+    "part": "92696.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    },
+    "others": [
+     {
+      "m": [
+       1,
+       0,
+       0,
+       0,
+       -1,
+       0,
+       0,
+       0,
+       1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "part": "24120.dat",
+   "name": "Technic excavator bucket 4 x 5",
+   "nameDe": "Technic-Baggerschaufel 4 x 5",
+   "nameDeGenerated": true,
+   "category": "other",
+   "massGrams": 9.38,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      0,
+      -20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      0,
+      20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      29,
+      9
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      40,
+      35.37,
+      9.040000000000001
+     ],
+     "position": [
+      0,
+      6.37,
+      -21.04
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      40,
+      39.33,
+      9.5
+     ],
+     "position": [
+      0,
+      10.33,
+      -40.5
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      40,
+      41,
+      9.32
+     ],
+     "position": [
+      0,
+      9,
+      -60.68
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      36,
+      10.620000000000001,
+      8.73
+     ],
+     "position": [
+      0,
+      34.02,
+      -80.23
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      40,
+      11.13,
+      4.47
+     ],
+     "position": [
+      0,
+      -21.13,
+      -104.47
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      40,
+      14.8,
+      8.040000000000001
+     ],
+     "position": [
+      0,
+      -45.92,
+      -119.39
+     ]
+    }
+   ],
+   "derived": true,
+   "mirrorOf": {
+    "part": "24120.dat",
     "transform": {
      "m": [
       -1,

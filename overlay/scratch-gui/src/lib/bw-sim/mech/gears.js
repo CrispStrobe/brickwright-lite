@@ -189,6 +189,9 @@ export const buildGears = (nodes, islands, joints, catalogMap, diagnostics = [],
             const t1 = g1.type; const t2 = g2.type;
             // The coupling registry's tooth meshes (kinds/spur.js, kinds/bevel.js, …) say which pairs mesh.
             const module = kinds.couplings.meshFor(t1, t2);
+            // Gears of kinds that cannot mesh are only worth a warning where their teeth meet: pitch
+            // circles within a module of touching (a spur and a bevel gear across a model are not a pair).
+            if (!module && Math.hypot(...[0, 1, 2].map(i => g1.centerLdu[i] - g2.centerLdu[i])) > g1.r + g2.r + 2.5) continue;
             if (!module) {
                 // Only gears near enough to touch (centres within the two tip radii) are a pair to warn about.
                 if (vecLen(vecSub(g1.centerLdu, g2.centerLdu)) > g1.r + g2.r + 5 + 1e-9) continue;

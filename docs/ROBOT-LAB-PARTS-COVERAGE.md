@@ -114,13 +114,13 @@ kept as they are; every difference is explained below (a derived connector the h
 | axle | 15 |
 | pin | 18 |
 | connector | 33 |
-| gear | 20 |
+| gear | 24 |
 | brick | 49 |
 | plate | 47 |
 | tile | 17 |
 | slope | 18 |
-| other | 8 |
-| **total** | **252** (and 56 listed parts already measured by hand) |
+| other | 12 |
+| **total** | **260** (and 56 listed parts already measured by hand) |
 
 <details><summary>Every derived part</summary>
 
@@ -225,6 +225,10 @@ kept as they are; every difference is explained below (a derived connector the h
 | 6592.dat | Technic gear rack 1 x 10 with holes | gear | 1.83 | 2 pinhole, 1 rack-teeth | 1 |
 | 32132.dat | Technic gear rack 1 x 12 with holes | gear | 2.19 | 2 pinhole, 1 rack-teeth | 17 |
 | 32185.dat | Technic gear rack 1 x 14 with holes | gear | 2.5500000000000003 | 2 pinhole, 1 rack-teeth | 1 |
+| 99009.dat | Technic turntable 28 tooth bottom | gear | 1.29 | 2 pinhole, 1 turntable-race | 4 |
+| 99010.dat | Technic turntable 28 tooth top | gear | 1.8 | 2 pinhole, 1 turntable-ring | 4 |
+| 18939.dat | Technic turntable 60 tooth bottom | gear | 5.3500000000000005 | 6 pinhole, 1 turntable-race | 3 |
+| 18938.dat | Technic turntable 60 tooth top | gear | 8.15 | 6 pinhole, 1 turntable-ring | 4 |
 | 62520.dat | Technic universal joint 3L end | connector | 0.19 | 1 axlehole | 1 |
 | 3712.dat | Technic universal joint 4L end with bush end | connector | 0.29 | 1 axlehole | 1 |
 | 575.dat | Technic universal joint 4L end with slotted end | connector | 0.37 | 1 axlehole | 1 |
@@ -378,6 +382,10 @@ kept as they are; every difference is explained below (a derived connector the h
 | 76019.dat | Technic gear 24 tooth clutch with dark grey centre | gear | 1.53 | 1 clutch-axlehole | 1 |
 | 65414.dat | Technic differential casing for 5 internal gears | gear | 2.32 | 1 pinhole, 3 gear-seat, 1 snap | 1 |
 | 65413.dat | Technic gear 28 tooth double bevel with peghole | gear | 1.96 | 1 pinhole, 1 snap | 1 |
+| 92693c01.dat | Technic linear actuator 4 x 1 x 1 body assembly | other | 1.53 | 4 pinhole, 1 la-bore, 1 screw-bearing | 5 |
+| 92695.dat | Technic linear actuator 4 x 1 x 1 axle actuator | other | 0.28 | 1 axle, 1 screw-spindle | 2 |
+| 92696.dat | Technic linear actuator 4 x 1 x 1 piston | other | 0.38 | 1 pinhole, 1 la-rod, 1 screw-nut | 2 |
+| 24120.dat | Technic excavator bucket 4 x 5 | other | 9.38 | 3 pinhole | 7 |
 
 </details>
 
@@ -387,38 +395,37 @@ Listed parts the deriver could not admit, with the reason. They are not in parts
 
 | Part | LDraw description | Why |
 |---|---|---|
-| 6587.dat | 6587.dat | 6587.dat: not in the library |
+| 6587.dat | Technic Axle 3 with Stud | colliders enclose 97.3 % of the mesh (< 98 %) |
 | 4019.dat | Technic Gear 16 Tooth | gear tip radius 21.66 ≠ 16·1.25 + 2.5 (not module 1) |
-| 3648a.dat | 3648a.dat | 3648a.dat: not in the library |
-| 32072.dat | 32072.dat | 32072.dat: not in the library |
-| 4143.dat | 4143.dat | 4143.dat: not in the library |
-| 69762.dat | 69762.dat | 69762.dat: not in the library |
+| 3648a.dat | Technic Gear 24 Tooth with 3 Axleholes | holes h0/x0 14.14 LDU apart; holes h1/x0 14.14 LDU apart; holes h2/x0 14.14 LDU apart; holes h3/x0 14.14 LDU apart |
+| 32072.dat | Technic Gear 4 Knob | a gear-category part without derivable gear data (no clean rack teeth or worm thread; crown, clutch, turntable, knob) |
+| 4143.dat | Technic Gear 14 Tooth Bevel | x0: a 4 LDU axlehole is shallower than the seat rule's 8 LDU |
+| 69762.dat | Technic Gear 14 Tooth Bevel | gear tip radius 27.00 ≠ 14·1.25 + 2.5 (not module 1) |
 | 6542a.dat | Technic Gear 16 Tooth with Clutch | a clutch gear with its clutch on one side, but both faces measure as sockets: which face has the clutch teeth is not measurable; gear tip radius 21.88 ≠ 16·1.25 + 2.5 (not module 1) |
 | 6542b.dat | Technic Gear 16 Tooth with Clutch Smooth | a clutch gear with its clutch on one side, but both faces measure as sockets: which face has the clutch teeth is not measurable; gear tip radius 21.88 ≠ 16·1.25 + 2.5 (not module 1) |
 | 3650c.dat | Technic Gear 24 Tooth Crown Type 3 | a gear-category part without derivable gear data (no clean rack teeth or worm thread; crown, clutch, turntable, knob) |
 | 32198a.dat | Technic Gear 20 Tooth Bevel with Two Axlehole Slots | x0: a 7 LDU axlehole is shallower than the seat rule's 8 LDU |
-| 32198b.dat | 32198b.dat | 32198b.dat: not in the library |
-| 27938.dat | 27938.dat | 27938.dat: not in the library |
-| 87761.dat | 87761.dat | 87761.dat: not in the library |
-| 99009.dat | 99009.dat | 99009.dat: not in the library |
-| 99010.dat | 99010.dat | 99010.dat: not in the library |
-| 18939.dat | 18939.dat | 18939.dat: not in the library |
-| 18938.dat | 18938.dat | 18938.dat: not in the library |
-| 48452.dat | 48452.dat | 48452.dat: not in the library |
-| 48168.dat | 48168.dat | 48168.dat: not in the library |
-| 62519.dat | 62519.dat | 62519.dat: not in the library |
-| 3326a.dat | 3326a.dat | 3326a.dat: not in the library |
-| 3326b.dat | 3326b.dat | 3326b.dat: not in the library |
-| 4032a.dat | 4032a.dat | 4032a.dat: not in the library |
-| 4589.dat | 4589.dat | 4589.dat: not in the library |
+| 32198b.dat | Technic Gear 20 Tooth Bevel with Four Axlehole Slots | x0: a 7 LDU axlehole is shallower than the seat rule's 8 LDU |
+| 27938.dat | Technic Worm Gear 1L | worm pitch radius 15.47: does not mesh a 24T 40 LDU away |
+| 87761.dat | Technic Gear Rack 1 x 7 with Pegholes and Axleholes | a gear-category part without derivable gear data (no clean rack teeth or worm thread; crown, clutch, turntable, knob) |
+| 48452.dat | Technic Turntable Type 2 Base | a gear-category part without derivable gear data (no clean rack teeth or worm thread; crown, clutch, turntable, knob) |
+| 48168.dat | Technic Turntable Type 2 Top | a gear-category part without derivable gear data (no clean rack teeth or worm thread; crown, clutch, turntable, knob) |
+| 62519.dat | Technic Universal Joint 3L Centre | no connector found |
+| 3326a.dat | Technic Universal Joint Centre Type 1 | no connector found |
+| 3326b.dat | Technic Universal Joint Centre Type 2 | no connector found |
+| 4032a.dat | Plate 2 x 2 Round with Axlehole | x0: a 4 LDU axlehole is shallower than the seat rule's 8 LDU |
+| 4589.dat | Cone 1 x 1 | x0: a 6 LDU axlehole is shallower than the seat rule's 8 LDU |
 
 Not attempted: ball sockets, steering arms and links, click hinges, rubber/flex parts, panels, Bionicle/Hero Factory, Duplo.
-Turntables, clutch gears, crown and knob gears need a coupling model of their own (a turntable is two parts that turn on each
-other; a clutch gear slips); racks and worms are derived when their teeth measure cleanly.
+Clutch gears, crown and knob gears need a coupling model of their own (a clutch gear slips); racks and worms are derived when
+their teeth measure cleanly. Turntables (kinds/turntable.js: a ring and a race at the origin LDraw assembles them on, the top
+half's teeth a spur gear) and the small linear actuator (kinds/screw.js: bearing, spindle thread, guide bore, rod and nut, the
+stroke from LDraw's contracted and extended assemblies, the lead from the measured turns of a full stroke) have derivations of
+their own (deriveTurntable, deriveLinearActuator); the excavator bucket's colliders are slabs across its depth.
 
 ## Size
 
-parts.json is 1184680 bytes as written (one-space JSON) and 532691 bytes minified (42002 gzipped) in
+parts.json is 1198561 bytes as written (one-space JSON) and 540006 bytes minified (43072 gzipped) in
 the lazy Sim Lab chunk. If the library grows by another few hundred parts, split it: keep the hand-measured parts (motors, hub,
 sensors, the examples' parts) in parts.json and move the derived ones to a second file the palette fetches on first open.
 

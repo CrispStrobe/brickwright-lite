@@ -328,6 +328,27 @@ test('gear tip radius is pitch radius plus one module, centred on the axle hole'
         // angle. Check bevels with a wider tolerance and document it; spur rule stays 0.5.
         if (p.gear.type === 'bevel') {
             assert.ok(Math.abs(tip - (teeth * 1.25 + 2.5)) <= 2.0, `${p.part}: bevel tip radius ${tip.toFixed(2)} ≠ ${teeth}·1.25 + 2.5`);
+        } else if (p.connectors.some(c => c.type === 'turntable-ring')) {
+            // A turntable's toothed half (kinds/turntable.js): its ring is moulded with the teeth a
+            // little short of the full addendum (60T: 76.75 vs 77.5; 28T: 36.81 vs 37.5): 1.0 LDU.
+            assert.ok(Math.abs(tip - (teeth * 1.25 + 2.5)) <= 1.0, `${p.part}: tip radius ${tip.toFixed(2)} ≠ ${teeth}·1.25 + 2.5`);
+            // No axle hole: the gear is centred on the turntable's axis (the ring connector's line).
+            const ring = p.connectors.find(c => c.type === 'turntable-ring');
+            const d = sub(center, ring.position);
+            assert.ok(len(d.map((x, i) => x - dot(d, ring.axis) * ring.axis[i])) <= POS_EPS, `${p.part}: gear centre off the turntable axis`);
+            // The tooth count the description gives is the mesh's: tooth crests (vertices at the tip
+            // radius) grouped by angle around the axis, the group across ±180° joined.
+            const crest = flat.get(p.part).polys.flat().filter(v => len(perpOf(sub(v, center), axis)) > tip - 0.3);
+            const e1 = Math.abs(axis[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
+            const u = perpOf(e1, axis).map(x => x / len(perpOf(e1, axis)));
+            const w = [axis[1] * u[2] - axis[2] * u[1], axis[2] * u[0] - axis[0] * u[2], axis[0] * u[1] - axis[1] * u[0]];
+            const angles = [...new Set(crest.map(v => Math.round(Math.atan2(dot(sub(v, center), w), dot(sub(v, center), u)) * 1800 / Math.PI) / 10))].sort((a, b) => a - b);
+            const groups = [];
+            for (const a of angles) if (groups.length && a - groups[groups.length - 1] < 360 / teeth / 2) groups[groups.length - 1] = a; else groups.push(a);
+            if (groups.length > 1 && groups[0] + 360 - groups[groups.length - 1] < 360 / teeth / 2) groups.pop();
+            assert.equal(groups.length, teeth, `${p.part}: ${groups.length} tooth crests on the mesh, the description says ${teeth}`);
+            continue;
+        } else if (p.part === '94925.dat') {
         } else if (['94925.dat', '18946.dat', '76019.dat'].includes(p.part)) {
             // 18946 (16T clutch, 21.79) and 76019 (24T slip clutch, 31.70): LDraw draws their tips
             // short in the same way (scripts/derive-part-meta.mjs SHORT_TEETH).

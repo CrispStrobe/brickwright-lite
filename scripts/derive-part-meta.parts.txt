@@ -39,3 +39,5 @@
 41769a 41770a 43722a 43723a 32190 32191
 # transmission (gearbox lane): driving ring, changeover catch, clutch gears, slip clutch, differential
 6539 6641 76019 65414 65413
+# excavator: linear actuator (small: body, spindle, piston), bucket (turntables 18938/18939 are listed above)
+92693c01 92695 92696 24120

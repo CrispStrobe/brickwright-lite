@@ -59,10 +59,10 @@ unchanged. Step costs are node medians at 200 Hz (min of 5 runs); `docs/ROBOT-LA
    by edges into axis groups; every body pair in one group is in `noCollide`. Pendulum 59.5 % →
    93.8 % kept per period (96.4 % with fix 2), four-bar 3.03° → 0.34° (0.03° with fix 2).
 2. **A frictionless pin was its own light body (6b; part of 4b, 5b, 6c).** A 0.25 g body between
-   two hinges at 10 iterations could not hold a 9 g lever: droop 17.9°. *Fix:* `mech/islands.js
-   freeSpinnerWelds` welds a free spinner (the shaft of every edge it has, all hinges on one line,
-   two or more partners, no gear/motor/sensor/hub) to its first partner: one hinge, the same
-   kinematics. Droop 0.07°. Chosen over more iterations, which only reduced it (0.45° at 30/10,
+   two hinges at 10 iterations could not hold a 9 g lever: droop 17.9°. *Fix:* a free pin is
+   welded to its first partner: one hinge, the same kinematics. Droop 0.07°. (Since the merge
+   with the excavator lane, which solved the same problem, the one mechanism is
+   `mech/free-pins.js`, extended to pins with more than two partners.) Chosen over more iterations, which only reduced it (0.45° at 30/10,
    measured) and cost every hinge island.
 3. **Centre of mass from collider volume (6c).** Jolt gave each compound one density: the 8 g,
    642 000 LDU³ sensor outweighed 9 g of beams; α0 +23.0 rad/s² (the wrong side down; −17.30

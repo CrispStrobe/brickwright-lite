@@ -126,11 +126,11 @@ custom constraint (§8 D1).
 | M2 | Gear train on a turning frame (crane slewing ring with a vertical gear inside the superstructure; any vertical-axis gear on a yawing robot) | as M1 | Stock is off by the frame rate (documented limit). **Custom**: frame-relative gear (`ToothContact`, §5.3). Approx: none good; diagnose with a `gear-on-turning-frame` warning when the frame's hinge axis is parallel to the gear axis. |
 | M3 | Worm drive, **non-backdrivable** | worm 4716, 24T, worm gear box | `GearConstraint` ratio `1/teeth` (worm = 1 start). Self-locking: the worm's hinge gets `mMaxFrictionTorque = holdTorqueNm` (Jolt applies hinge friction only while the motor is **off**), and a worm whose input is not motor-driven is held by that friction; a load on the wheel then cannot turn the worm. When the worm is motor-driven, back-driving would need `teeth × motor torque` — far above any realistic load, so the motor simply stalls first. Stock. Efficiency loss (real worms ~40–60 %) as an optional extra friction on the wheel hinge. |
 | M4 | Rack and pinion (forklift mast, steering, plotter axis) | gear racks (1×4 3743 and longer racks), 8T/16T/24T pinion, rack guides (beams with holes, axle connectors as runners) | `SliderConstraint` (rack body in its guide; a rack in a beam's slot is a new connector kind `rack-slot`) + `RackAndPinionConstraint` (`ratio` m/rad = pitch radius in m). Stock — the core must create it (today ignored). Limits from the rack length (end stops). |
-| M5 | Linear actuator (old 2790 / new 61927, 92693 mini) | LA housing, piston | Two bodies (housing, piston) + `SliderConstraint` with limits = stroke; input axle hinge + `RackAndPinionConstraint` with ratio = screw lead / 2π; self-locking as M3 via slider `mMaxFrictionForce`. The real LA's **end-of-stroke slip clutch**: approx = disable the rack-pinion (`SetEnabled(false)`) while the piston is at a limit and the input pushes outward, re-enable when it reverses (a 1-bit state in the core's checkpoint). **Custom** exact: torque-limited coupling. |
+| M5 | Linear actuator (old 2790 / new 61927, 92693 mini) — **as built for the 92693 mini: see "Excavator as built" below** | LA housing, piston | Two bodies (housing, piston) + `SliderConstraint` with limits = stroke; input axle hinge + `RackAndPinionConstraint` with ratio = screw lead / 2π; self-locking as M3 via slider `mMaxFrictionForce`. The real LA's **end-of-stroke slip clutch**: approx = disable the rack-pinion (`SetEnabled(false)`) while the piston is at a limit and the input pushes outward, re-enable when it reverses (a 1-bit state in the core's checkpoint). **Custom** exact: torque-limited coupling. |
 | M6 | Chain / track drive | chain link 3711, tread link 3873, sprockets (gear 8T/16T/24T/40T act as sprockets), track 57518 with sprocket 57519 | Chain between two sprockets on one frame = `GearConstraint` with **positive** ratio `teeth1/teeth2` (same direction). Links are rendered, not simulated. Stock. Tracks on a vehicle (approx): the sprocket and idlers become wheels with tread friction, coupled 1:1 by `chain` couplings, plus a non-colliding visual track. `TrackedVehicleController` is not used: it owns the whole vehicle, and here the compiler owns the bodies. |
 | M7 | Differential (car, open diff) | differential 28T/24T housing (62821 new, 6573 old), 12T bevel spiders, side gears | Mechanically: carrier hinge on the chassis, two side-gear hinges on the chassis (output half-axles), spider hinges on the carrier, four bevel meshes. The spider–side meshes are on a frame (the carrier) that turns about the side-gear axis — exactly M2's limit; stock Jolt gives the wrong relation. **Custom** (`ToothContact`). Approx (no custom build): a lumped **differential coupling** solved by a JS step listener as `ω_L + ω_R = 2·ω_C` (relative to the chassis) with velocity-level impulses each step: correct kinematics, weaker under load (not inside the solver iterations). Locked diff = `FixedConstraint` carrier–side gear. |
 | M8 | Clutch gears and driving ring (shifting gearbox, Schaltgetriebe) | driving ring 6539, driving ring extension, driving-ring hub axle, 16T clutch gear 6542, 20T double bevel with clutch, changeover catch 6641, gear shift lever | Clutch gears spin freely on the hub axle: hinge (new connector kind `clutch-bore`). The ring is a body on a **slider** along the hub (new connector kind `ring-hub`) with **detents** (3 positions) as a slider position motor with a low force limit snapping to the nearest detent. A **`selectableCoupling`** per clutch gear: engaged when the ring's slider position is within ±0.6 mm of that gear's engage position; engaged = the gear's hinge to the hub axle is locked (hinge motor velocity 0, torque limit = `couplingTorqueNm`, ~0.5 N·m) — disengaged = motor off, free. The coupling state machine runs in the core per step and is saved in the checkpoint. Tooth alignment (the ring engages only at 4 angular positions) is modelled as: engagement waits until the relative angle is within ±10° of a multiple of 90°. Stock. |
-| M9 | Turntable (crane slewing, excavator upper) | turntable 28T old (2856/2855), 56T large turntable (48452 / 18938+18939), small 24T | Two halves = a hinge (new connector kind `turntable-ring` pair, axis through the centre); the outer half's teeth are a `gear` of type `spur` (or `ring`) with its tooth count, meshing with a worm or a pinion (M1/M3). Stock. Bearing friction as hinge `mMaxFrictionTorque`. |
+| M9 | Turntable (crane slewing, excavator upper) — **as built (28T 99010/99009, 60T 18938/18939): see "Excavator as built"** | turntable 28T old (2856/2855), 56T large turntable (48452 / 18938+18939), small 24T | Two halves = a hinge (new connector kind `turntable-ring` pair, axis through the centre); the outer half's teeth are a `gear` of type `spur` (or `ring`) with its tooth count, meshing with a worm or a pinion (M1/M3). Stock. Bearing friction as hinge `mMaxFrictionTorque`. |
 | M10 | Winch / rope / pulley (crane hoist) | string with end studs (several lengths), winch drum (a wedge belt wheel or a dedicated drum), hook, pulley wheels | Rope = **unilateral length constraint** `Σ|segments| + r_drum·θ_drum ≤ L0` through sheave points on bodies. Jolt's `PulleyConstraint` has world-**fixed** sheave points and no drum term, so it fits only a crane whose boom does not move. **Approx (stock, recommended for v1)**: `DistanceConstraint` from the hook body to the last sheave point (min 0 — slack allowed — max = current rope length), with `SetDistance` updated every step from the drum angle; the measured rope tension (`GetTotalLambdaPosition`/dt) is applied back to the drum as a torque `T·r` on the next step (one-step explicit coupling; stable because hoists are worm- or gear-reduced). Multi-segment ropes over boom-tip sheaves: rope length is split at the sheaves the compiler found, only the last segment is a real constraint, the others' lengths are geometric (they change when the boom luffs, and that change is added to `L`). **Custom** exact: a `Rope` constraint over moving sheaves. Soft-body rods: not for v1 (cost, and SaveState of soft bodies is unmeasured here). |
 | M11 | Rubber band | rubber bands (several sizes), as return springs and belt drives | Spring: `DistanceConstraint` min 0, max = rest length, `mLimitsSpringSettings` with the band's stiffness (pulls only). Belt drive over pulleys = `GearConstraint` ratio `r1/r2`, positive, with slip approximated by a lower velocity-step count. Stock. |
 | M12 | Pneumatics | pump (small 2797 / large 19475), cylinder (small 4692, large 2793/47224), switch/valve 4694, tank 75974, hoses, T-pieces, PF/Control+ compressor | Not a Jolt problem. A **lumped-pressure network** module (`fluid/`): nodes = hose-connected volumes with pressure state; valves switch connectivity (3 positions, a hinge with detents read like a sensor); pumps add air mass per stroke (pump = slider with a return spring, stroke volume); cylinder force = (p_A − p_B)·area applied as the cylinder **slider motor**: velocity mode, target ±large, force limits from the pressures, so Jolt does the dynamics and the end stops. Network state stepped once per physics step, saved in the checkpoint. Stock + module. |
@@ -1652,11 +1652,13 @@ numbers per machine); all 22 of its tests pass with their original expectations 
   (parallel-axis per sub-shape). The total stays `massKg` (override, CalculateInertia). A mechanism
   without tags keeps one density. Every robot's centre of mass moved a little; the shipped
   examples' tests are unchanged.
-- **Free spinners.** `islands.js freeSpinnerWelds`: a part that is the shaft of every edge it has,
-  all hinges on one line, to two or more parts, with no gear, motor, sensor or hub — a
-  frictionless pin through two beams, a free axle — is welded to its first partner (compile.js
-  seeds the topology fixpoint with it). One hinge instead of a 0.25 g body between two; the
-  machine is kinematically the same (the pin's own spin is gone). No shipped example has one.
+- **Free spinners.** One mechanism, `mech/free-pins.js` (the excavator lane's; the validation lane's
+  `islands.js freeSpinnerWelds` was removed at the merge): a body made only of shaft parts (no solid
+  collider, no teeth or tooth connector) whose joints are two or more motorless hinges on one line to
+  different bodies is welded to the first of them, inside the topology fixpoint. It judges the BODY
+  with its compiled joints, so it also covers a pin rigid with a bush, and it knows the screw and
+  turntable kinds; the validation lane's case of three beams on one pin was added (two or more
+  joints, not exactly two). Balance droop 0.07°, pendulum period +0.1 %.
 - **Motion quality.** Every dynamic body is `EMotionQuality_LinearCast` (cast only when it moves
   more than `mLinearCastThreshold` 0.25 of its inner radius in a step). Cost: a fixed ~13 µs per
   step (35 → 48 µs on the shipped examples, +1.5 % on the stress model).
@@ -1669,6 +1671,76 @@ numbers per machine); all 22 of its tests pass with their original expectations 
   motorised hinge gets 30 velocity steps and 0.33/ε position steps in [5, 40], set when the rotor
   inertia is (`setMotorSteps`): the arm 30, a wheel 7. Position steps are the cost (they re-solve
   every contact of the island).
+- **Meshes on a moving frame (merge with the excavator lane, 2026-10-19).** Jolt's GearConstraint
+  couples the gear bodies' WORLD rates; a frame turning about the gear axes at Ω drives the gears
+  (1 + |ratio|)·Ω wrong relative to it. A 'gear' coupling of parallel, vertical axes (external mesh)
+  whose shared frame is dynamic is now built as the gearbox lane's tooth contact (`movingFrameMesh` →
+  the relativeGear carrier path, re-made at the frame's pitch point every step), plus a slip memory:
+  the re-made contact starts offset along its tangent by the arc the hinges' angles say has slipped,
+  so its position steps pull the mesh back (without it the slew mesh slipped 8–14° in a dig cycle).
+  Measured: slew motor −336° / +293° → turntable +96 / −84 expected at 8/28, +99.5 / −84.9 seen.
+  Horizontal-axis meshes on moving frames (an actuator's 16T pair on a boom) keep the gear
+  constraint they were tuned with — a documented limit.
+- **Open: the Excavator's base yaw.** With the mesh exact, the dig cycle's base yaws far beyond the
+  test's 10° (139° measured; 68.7° with every validation fix off): the upper structure's moment about
+  the turntable axis (≈ 2.0e-3 kg·m², point masses) is ~5× the base's (≈ 3.8e-4), so a free base turns
+  ~75° against a 90° swing, and the floor's grip (≈ 0.3 N·m: 0.47 kg on tyres 70 mm out) is below the
+  slew's peak torque (≈ 0.37 N·m: the 0.10 N·m stall × 3.5). The lane's 4.1° came from the world-rate
+  error acting as a spring on the base's yaw, and was hypersensitive (4–85° with unrelated solver
+  changes). The model (heavier/wider base, slower slew) or the bound needs the lead's decision.
 - **Cost overall** (median step, min of 5 runs, node, 200 Hz): shipped examples 35–38 → 67–70 µs,
   Forklift 52 → 51 µs, 2,054-part stress model 1,329 → 1,366 µs (+2.7 %).
 
+
+### Excavator as built (2026-10-18, `lane/simlab-excavator-20261018`)
+
+The T3 machine with wheels (tracks are later, M6): `static/sim-lab/models/excavator.ldr`, written by
+`scripts/gen-excavator-model.mjs` from a few numbers, with `programs/excavator.bw`. Six SPIKE medium
+motors: A/B wheels, C slew, D boom, E stick, F bucket.
+
+- **Turntable (M9), `kinds/turntable.js`.** LDraw draws a turntable's halves assembled on one origin
+  (their meshes nest without interpenetrating there, which the shipped-model mesh check confirms), so
+  the deriver gives the top half a `turntable-ring` and the bottom a `turntable-race` connector at
+  that origin on the y axis; ring + race (centres 0.5 LDU, axes 1°) is a `hinge` edge. The top half's
+  teeth are an ordinary spur `gear` (60 or 28 teeth, counted on the mesh by the metadata test; tip
+  0.75 LDU short of module 1, allowed 1 LDU), so a pinion meshes through `kinds/spur.js` and the
+  common-frame rule applies unchanged: the pinion's axle turns in the base the bottom half is fixed
+  to, and the top half turns in that base through the turntable hinge. The halves' colliders (a disc,
+  a hub, the mounting blocks) overlap where the meshes interleave; `TURNTABLE_NEST` is a coupling
+  module that emits no coupling, only `placedMesh` for the editor's overlap rule. Parts: 18938/18939,
+  99010/99009 (derived, with their pin holes).
+- **Linear actuator (M5), `kinds/screw.js` + `physics/screw.js`.** The small actuator is three LDraw
+  parts: body 92693c01, spindle 92695, piston 92696. Connector kinds: `screw-bearing` (body) +
+  `screw-spindle` (spindle) = hinge; `la-bore` (body's front bore) + `la-rod` (piston) = slider;
+  `screw-nut` (the piston's rear end). The coupling `screw` (a spindle on a hinge in frame F, a nut on
+  its thread on a body that slides in F) has `ratio = σ·(−hand·lead/2π)·(a·s)` m/rad, the slider's
+  travel narrowed to the thread. Lead: LDraw's contracted/extended assemblies give the stroke (60 LDU
+  = 24 mm), a measured 7165° per full stroke (Eurobricks, 2023, six encoder readings) gives 19.90
+  turns: 1.206 mm per turn; right-hand assumed (LDraw draws no thread). Lead angle 9.1° on the 2.4 mm
+  rod, below plastic's friction angle (μ 0.2–0.35): self-locking; η = tan λ / tan(λ + φ) ≈ 0.35.
+  Physics, all relative to the actuator's body (a world-rate RackAndPinionConstraint would move the
+  stick's actuator with the boom): the slider's limits are pinned each step to x* = x0 + ratio·(θ − θ0)
+  (hard constraints), its motor runs at ratio·ω; a load averaged over 50 ms above the clutch force
+  (60 N, a stated modelling number: no published measurement found) slips the clutch; at an end stop
+  x* stops while the spindle turns on; the held force costs the spindle |F|·|ratio|/η of torque
+  (explicit, one step). The island gets 60/10 solver iterations, and the actuator's parts and what is
+  hinged to them at least 20 g of solver mass with their gravity factor scaled back (a 0.4 g piston
+  between a hard limit and a boom let its hinge open 3 mm).
+- **Free pins (`mech/free-pins.js`).** A frictionless pin or axle that only joins two parts on one
+  line is welded to one of them: one hinge instead of a 0.25 g body between two (a loop of such
+  bodies sagged ±4° at rest).
+- **Gear changes (for the gearbox lane to know).** `kinds/gear-mesh.js` `meshRatio` takes gear 2's
+  lever as its pitch radius (a mesh 0.3 LDU off nominal no longer bends the tooth ratio:
+  28/8 = 3.5, not 3.6); `mech/gears.js` reports `unsupported-gear` for a spur–bevel pair only where
+  the pitch circles come within a module of touching. Nothing else in gears.js changed.
+- **Limits.** The slew drive is an 8T on the 28T (no worm: no room for one under the turntable with
+  a SPIKE motor), back-drivable: the arm's loads turn it a few degrees under the motor's hold (the
+  example's swings are −81°/+99° for a commanded ±90°, see the test). *Since 2026-10-19:* a spur mesh
+  with vertical axes on a moving frame (this slew mesh) is a tooth contact relative to the frame, not
+  Jolt's world-rate gear constraint (see "Validation fixes as built"), and the base's yaw is open (below). The floor is rigid,
+  so "digging" is the teeth reaching the floor; there is no soil. Wheels, not tracks. The motors
+  are on the frame/boom/stick, each driving its actuator's pivot axle through 16T gears and a 12T
+  bevel pair inside the actuator's fork.
+- Tests: `test/bw-sim-linear-actuator.test.mjs`, `test/bw-sim-turntable.test.mjs`,
+  `test/bw-sim-excavator.test.mjs`; the model is in `test/bw-sim-models-solid.test.mjs` and the
+  instructions tests like every MODELS entry.

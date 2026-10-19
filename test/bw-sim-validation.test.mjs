@@ -432,7 +432,7 @@ test('balance, equal masses at equal arms: the lever stays level', t => {
 
 test('balance, equal masses: the lever stays on its pin\'s axis (no droop)', t => {
     // The frictionless pin was its own 0.25 g body between two hinges and the 9 g lever drooped 17.8° through
-    // it; a free spinner is now welded to a neighbour (mech/islands.js freeSpinnerWelds): one hinge.
+    // it; a free spinner is now welded to a neighbour (mech/free-pins.js): one hinge.
     // A real pin in two beam holes keeps the lever square to it: ≤ 1° (hole clearance).
     const {core, tilt} = balance('balance-equal.ldr');
     let droop = 0;

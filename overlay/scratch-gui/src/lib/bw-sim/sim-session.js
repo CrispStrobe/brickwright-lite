@@ -73,7 +73,9 @@ export const MODELS = Object.freeze([
     {file: 'gearbox.ldr', title: {en: 'Two-speed gearbox', de: 'Zweigang-Schaltgetriebe'},
         example: 'gearbox.bw'},
     {file: 'differential.ldr', title: {en: 'Differential', de: 'Differenzialgetriebe'},
-        example: 'differential.bw'}
+        example: 'differential.bw'},
+    {file: 'excavator.ldr', title: {en: 'Excavator', de: 'Bagger'},
+        example: 'excavator.bw', mat: 'plain'}
 ]);
 export const MODELS_BASE = 'static/sim-lab/models/';
 export const PROGRAMS_BASE = 'static/sim-lab/programs/';

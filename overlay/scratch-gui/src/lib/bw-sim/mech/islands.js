@@ -6,8 +6,8 @@
 // Colliders transformed into body frame (metres), mass summed.
 // Ground added unless opts.ground===false.
 
-import {vecAdd, vecSub, vecDot, vecScale, vecLen, vecNormalize, mat3MulVec3, quatMul, quatFromLDrawMat, quatNormalize, COS_1_DEG} from './vec.js';
-import {LDU_M, PART_FRICTION, lduToWorld, partMotorJoint, partSensor, partHubProfile, colliderVolume} from '../contracts.js';
+import {vecAdd, vecSub, mat3MulVec3, quatMul, quatFromLDrawMat, quatNormalize} from './vec.js';
+import {LDU_M, PART_FRICTION, lduToWorld, partMotorJoint, colliderVolume} from '../contracts.js';
 
 /** Fraction of a v1 motor's mass that belongs to the output (turning) body (PartMeta v2: internalJoints[].massFraction). */
 export {MOTOR_OUTPUT_MASS_FRACTION} from '../contracts.js';
@@ -36,46 +36,6 @@ class DSU {
         else this.parent.set(ra, rb);
     }
 }
-
-/**
- * Free spinners welded to a neighbour (D2's body model, test/bw-sim-validation.test.mjs balance):
- * a part that is the SHAFT of every edge it has, all of them hinges on one line (collinear within
- * 1° and 0.5 LDU), to two or more other parts — a frictionless pin through two beams, a free axle
- * through holes with nothing fixed on it — turns freely about its own axis and carries nothing.
- * As its own body it is a 0.25–2 g body between two hinges, and the solver cannot hold a 9–24 g
- * lever through that chain: a balance's lever drooped 17.8° off its pin's axis (10 iterations; 0.45°
- * at 30/10). Welded into one of its partners it is ONE hinge between the two parts, kinematically
- * the same machine (only the pin's own spin, which nothing reads, is gone). The partner is the
- * first by node id. A part with a gear, a motor or a sensor is never a spinner.
- * @param {Map<string, object>} nodes graph nodes
- * @param {object[]} edges graph edges
- * @returns {[string, string][]} node pairs to weld (compile.js: extra rigid pairs)
- */
-export const freeSpinnerWelds = (nodes, edges) => {
-    const byNode = new Map();
-    for (const e of edges) {
-        for (const end of [e.a.part, e.b.part]) {
-            if (!byNode.has(end)) byNode.set(end, []);
-            byNode.get(end).push(e);
-        }
-    }
-    const out = [];
-    for (const [id, list] of byNode) {
-        const node = nodes.get(id);
-        if (!node || !node.meta || node.meta.gear || partMotorJoint(node.meta) || partSensor(node.meta) || partHubProfile(node.meta)) continue;
-        if (!list.every(e => e.kind === 'hinge' && !e._isMotorInternal && e.b.part === id && e.a.part !== id)) continue;
-        const partners = [...new Set(list.map(e => e.a.part))].sort();
-        if (partners.length < 2) continue;
-        const axis = vecNormalize(list[0].axis);
-        const onLine = list.every(e => {
-            if (Math.abs(vecDot(vecNormalize(e.axis), axis)) < COS_1_DEG - 1e-12) return false;
-            const d = vecSub(e.point, list[0].point);
-            return vecLen(vecSub(d, vecScale(axis, vecDot(d, axis)))) <= 0.5 + 1e-9;
-        });
-        if (onLine) out.push([id, partners[0]]);
-    }
-    return out.sort((p, q) => p[0].localeCompare(q[0]));
-};
 
 /**
  * Build islands (bodies) from nodes and edges.
