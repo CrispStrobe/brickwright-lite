@@ -6,6 +6,18 @@ on:
       - 'scripts/makecode/**'
       - 'scripts/verify-arcade-controls.mjs'
       - 'scripts/lib/arcade-controls.mjs'
+      - 'scripts/lib/pxt-node.mjs'
+      - 'scripts/lib/integrated-gui-library.mjs'
+      - 'scripts/vendor.mjs'
+      - 'scripts/integrate.mjs'
+      - 'scripts/apply-vm-overlay.mjs'
+      - 'scripts/lib/vm-package-exports.mjs'
+      - 'overlay/scratch-vm/src/util/bw-procedure-constraint-model.js'
+      - 'packages/scratch-gui/package.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vendor-pins.json'
+      - 'test/ci-workflow-inputs.test.mjs'
       - 'scripts/sync-makecode-runtime.mjs'
       - 'overlay/scratch-gui/src/lib/bw-makecode/pxt-runtime.js'
       - 'test/makecode-arcade-controls.test.mjs'
@@ -22,7 +34,20 @@ jobs:
         with:
           node-version: 22
       - name: Layout and ledger contracts
-        run: node --test test/makecode-arcade-controls.test.mjs test/target-checkpoint-ledger.test.mjs
+        run: node --test test/makecode-arcade-controls.test.mjs test/target-checkpoint-ledger.test.mjs test/ci-workflow-inputs.test.mjs
+      # pxt-node admits the actual integrated GUI libraries and the canonical
+      # installed VM model. Prepare that normal package scope before syncing
+      # runtime assets; a partial packages/ directory is not an installation.
+      - name: Install pinned root package inputs
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Vendor the pinned permissive Scratch sources
+        run: npm run vendor
+      - name: Integrate the owned GUI libraries
+        run: node scripts/integrate.mjs
+      - name: Install the declared GUI dependencies
+        run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
+      - name: Apply the canonical VM overlay and model exports
+        run: node scripts/apply-vm-overlay.mjs
       - name: Sync pinned MakeCode runtimes
         run: node scripts/sync-makecode-runtime.mjs
       - name: Install isolated browser tooling
