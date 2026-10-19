@@ -316,9 +316,14 @@ export const assertLazySoundTabBoundary = report => {
         failures.push(`lazy sound-tab assets fell below 75 KiB: ${sound?.emittedBytes || 0} bytes`);
     }
     const baselineInitialBytes = 4543936; // P17 baseline run 34049223633.
-    if (report.initial.bytes > baselineInitialBytes - (75 * 1024)) {
-        failures.push(`P17 initial JavaScript ${report.initial.bytes} exceeds ` +
-            `${baselineInitialBytes - (75 * 1024)} bytes`);
+    // +4 KiB (owner decision 2026-10-19, PR #1097): the Robot Lab tab's button, its open-request
+    // listener, the parts-panel divider and the robotlab library card stay in the first load;
+    // the tab itself and its blocks are lazy (verify-boot-payload holds both out). Main stood
+    // 548 bytes under the old limit, so any new tab needed this.
+    const robotLabAllowance = 4 * 1024;
+    const limit = baselineInitialBytes - (75 * 1024) + robotLabAllowance;
+    if (report.initial.bytes > limit) {
+        failures.push(`P17 initial JavaScript ${report.initial.bytes} exceeds ${limit} bytes`);
     }
     return failures;
 };

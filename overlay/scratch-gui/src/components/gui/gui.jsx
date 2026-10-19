@@ -7,7 +7,6 @@ import {connect} from 'react-redux';
 import MediaQuery from 'react-responsive';
 import {Tab, Tabs, TabList, TabPanel} from 'react-tabs';
 import CircuitTab from '../tw-pseudocode/circuit-tab.jsx';
-import RobotLabTab from '../tw-pseudocode/robot-lab-tab.jsx';
 import {getFpgaEnabled, FPGA_TOGGLE_EVENT} from '../../lib/bw-fpga-preferences.js';
 import {pinsToValue} from '../../lib/bw-fpga/pin-value.js';
 // FpgaTab ships only in a build that carries it (BW_ENABLE_FPGA), and even then
@@ -151,6 +150,13 @@ const FPGA_BUILT = process.env.BW_ENABLE_FPGA;
 // FPGA_TAB_INDEX 5). Its own index therefore depends on whether the FPGA tab is shown;
 // robot-lab-tab.jsx is handed it rather than hard-coding one.
 const robotLabTabIndex = showFpgaTab => (showFpgaTab ? 6 : 5);
+// The tab component itself loads when the Robot Lab is first wanted (shown, or asked for by
+// the SPIKE arena's "Open in Robot Lab"), not with the first load: eager, it pushed the 8086
+// benchmark's P17 initial JavaScript over its budget (PR #1097). 'bw-open-robot-lab' is
+// ROBOT_LAB_EVENTS.open (lib/robot-lab-events.js), spelled out so that module stays lazy too.
+const RobotLabTab = React.lazy(() =>
+    import(/* webpackChunkName: "bw-robotlab-tab" */ '../tw-pseudocode/robot-lab-tab.jsx'));
+const ROBOT_LAB_OPEN_EVENT = 'bw-open-robot-lab';
 
 const GUIComponent = props => {
     const [starterOpen, setStarterOpen] = React.useState(false);
@@ -241,6 +247,20 @@ const GUIComponent = props => {
         window.addEventListener('bw-activate-tab', onActivate);
         return () => window.removeEventListener('bw-activate-tab', onActivate);
     }, [props.onActivateTab]);
+    // The Robot Lab tab mounts once wanted and then stays mounted (its model and a running
+    // program survive a trip to another tab). Before it has loaded, an open request is
+    // answered here: show the tab, which then mounts visible and takes the hub.
+    const [robotLabWanted, setRobotLabWanted] = React.useState(false);
+    const robotLabIndex = robotLabTabIndex(showFpga);
+    if (!robotLabWanted && props.activeTabIndex === robotLabIndex) setRobotLabWanted(true);
+    React.useEffect(() => {
+        const onOpen = () => {
+            setRobotLabWanted(true);
+            if (props.onActivateTab) props.onActivateTab(robotLabIndex);
+        };
+        window.addEventListener(ROBOT_LAB_OPEN_EVENT, onOpen);
+        return () => window.removeEventListener(ROBOT_LAB_OPEN_EVENT, onOpen);
+    }, [props.onActivateTab, robotLabIndex]);
     const chooseStarter = React.useCallback(journey => {
         setStarterBusy(true);
         setStarterError('');
@@ -1083,12 +1103,16 @@ const GUIComponent = props => {
                                     </TabPanel>
                                 ) : null}
                                 <TabPanel className={tabClassNames.tabPanel}>
-                                    <RobotLabTab
-                                        isVisible={activeTabIndex === robotLabTabIndex(showFpga)}
-                                        locale={intl.locale}
-                                        tabIndex={robotLabTabIndex(showFpga)}
-                                        vm={vm}
-                                    />
+                                    {robotLabWanted ? (
+                                        <React.Suspense fallback={<div data-testid="bw-robot-lab-tab" data-state="loading" />}>
+                                            <RobotLabTab
+                                                isVisible={activeTabIndex === robotLabIndex}
+                                                locale={intl.locale}
+                                                tabIndex={robotLabIndex}
+                                                vm={vm}
+                                            />
+                                        </React.Suspense>
+                                    ) : <div data-testid="bw-robot-lab-tab" data-state="idle" />}
                                 </TabPanel>
                             </Tabs>
                             <button

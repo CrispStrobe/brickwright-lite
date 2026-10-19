@@ -406,9 +406,20 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         if (!lineMaterials.has(color)) lineMaterials.set(color, edgeMaterials(color, colors));
         return lineMaterials.get(color);
     };
-    const ghostMaterial = tone => [0, 1].map(() => new MeshStandardMaterial({
-        color: {snap: '#22c55e', blocked: '#ef4444'}[tone] || '#64748b', transparent: true, opacity: 0.55, depthWrite: false
-    }));
+    // One material pair per tone, kept for the view's life: a ghost is remade on every pointer move while
+    // a part snaps, and a material made and disposed with it took its shader program with it (three.js
+    // frees a program when its last material goes), so every move compiled and linked the program anew -
+    // seconds each on a software GPU (SwiftShader), the GPU queue behind it growing with every move.
+    const ghostMaterials = new Map();
+    const ghostMaterial = tone => {
+        const key = tone === 'snap' || tone === 'blocked' ? tone : 'plain';
+        if (!ghostMaterials.has(key)) {
+            ghostMaterials.set(key, [0, 1].map(() => new MeshStandardMaterial({
+                color: {snap: '#22c55e', blocked: '#ef4444'}[key] || '#64748b', transparent: true, opacity: 0.55, depthWrite: false
+            })));
+        }
+        return ghostMaterials.get(key);
+    };
     const edges = new Map();
     const edgesFor = part => {
         if (!edges.has(part)) edges.set(part, new EdgesGeometry(partGeometry(part, read, colors), 35));
@@ -531,7 +542,10 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             gears: gears.map(g => ({text: g.text, from: fixed(g.from), to: fixed(g.to)}))
         });
         partTints = tints;
-        drawOutlines();
+        // Hidden, the motion overlay and its tints change nothing on screen: no restyle and no new frame (the
+        // pane recompiles after every edit, and on a big model on a software GPU a frame is seconds).
+        // Shown again, setOverlay restyles with the tints kept here.
+        if (insight.shown.motion) drawOutlines();
     };
     const setOverlay = shown => {
         insight.setVisible(shown);
@@ -905,10 +919,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     const clearGhost = () => {
         invalidate();
         ghostTone = null;
-        for (const c of [...ghostGroup.children]) {
-            ghostGroup.remove(c);
-            if (c.userData.owned) for (const m of [].concat(c.material)) m.dispose();
-        }
+        ghostGroup.clear(); // the ghosts' materials are the shared ghostMaterials, disposed with the view
     };
     const markerGeometry = new SphereGeometry(4 * LDU_M, 12, 8);
     const markerMaterials = {
@@ -933,7 +944,6 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         if (!found) return;
         ghostTone = 'snap';
         const mesh = new Mesh(partGeometry(part, read, colors), ghostMaterial('snap'));
-        mesh.userData.owned = true;
         mesh.matrixAutoUpdate = false;
         mesh.matrix.copy(worldMatrix(found.position, found.rotation));
         mesh.name = 'ghost';
@@ -951,7 +961,6 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         clearGhost();
         ghostTone = tone;
         const mesh = new Mesh(partGeometry(part, read, colors), ghostMaterial(tone));
-        mesh.userData.owned = true;
         mesh.matrixAutoUpdate = false;
         mesh.matrix.copy(worldMatrix(position, rotation));
         mesh.name = 'ghost';
@@ -960,7 +969,6 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     /** One more ghost beside the ones shown (a carried selection snapped: each of its parts). */
     const showGhostAlso = (part, position, rotation, tone) => {
         const mesh = new Mesh(partGeometry(part, read, colors), ghostMaterial(tone));
-        mesh.userData.owned = true;
         mesh.matrixAutoUpdate = false;
         mesh.matrix.copy(worldMatrix(position, rotation));
         mesh.name = 'ghost';
@@ -2791,6 +2799,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         blockedLine.dispose();
         markerGeometry.dispose();
         for (const m of hlMaterials.values()) m.dispose();
+        for (const pair of ghostMaterials.values()) for (const m of pair) m.dispose();
         for (const g of [ringGeometry, pinnedRingGeometry, barGeometry, ballGeometry, cubeGeometry]) g.dispose();
         for (const m of cubeMaterials) { if (m.map) m.map.dispose(); m.dispose(); }
         cubeEdges.geometry.dispose();

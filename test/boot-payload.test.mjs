@@ -22,6 +22,7 @@ test('boot payload accepts shared lazy engine bytes but rejects eager, absent an
             'ext-legonxt': 'ID: legonxt', 'ext-spikeprime': 'ID: spikeprime\n',
             'ext-arcade': 'font12: Adobe SIL OFL 1.1',
             'ext-robotlab': 'when part [PART] touches [OTHER]',
+            'bw-robotlab-tab': 'Open the Robot Lab here',
             'asset-library-index': '"name":"Abby"',
             'bw-circuit-ui': 'Check the address decode wiring on the breadboard. Could not recognise this file',
             'bw-board': 'entry', 'guided-lessons': 'optional', '8933.hash': marker,
