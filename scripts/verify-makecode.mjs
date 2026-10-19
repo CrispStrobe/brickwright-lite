@@ -26,7 +26,9 @@ import {existsSync} from 'node:fs';
 import {extname, join, normalize, resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
+import JSZip from 'jszip';
 import {openCodeActions} from './lib-code-actions.mjs';
+import {makeCodeProjectFile} from '../overlay/scratch-gui/src/lib/bw-makecode/project-file.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const build = join(root, 'packages', 'scratch-gui', 'build');
@@ -235,8 +237,175 @@ try {
         check('on the micro:bit V2 board, from the emulator image (not the official base)',
             /microbit-v2 board \(nrf52833/i.test(body) && /microbit-v2-emu\.elf/.test(body),
             (body.match(/[^\n]*microbit-v2[^\n]*/i) || [''])[0].slice(0, 160));
-        check('the status names what the V2 model does not do faithfully yet (serial)',
-            /serial output is not faithful|serielle Ausgabe ist auf diesem Board-Modell noch nicht/.test(await paneText()), '');
+        check('the V2 status no longer withholds serial output',
+            !/serial output is not faithful|serielle Ausgabe ist auf diesem Board-Modell noch nicht/.test(await paneText()));
+
+        // A10: an authored program through the actual import/compiler/emulator
+        // path, with a unique complete line observed in the real UART console.
+        const greeting = 'A10 browser serial';
+        const serialProject = {meta: {name: 'a10-serial', cloudId: 'pxt/microbit', editor: 'tsprj'},
+            source: JSON.stringify({'main.ts': `serial.setWriteLinePadding(0)\nserial.writeLine("${greeting}")\n`, 'pxt.json': JSON.stringify({
+                name: 'a10-serial', dependencies: {core: '*', radio: '*'}, files: ['main.ts'], preferredEditor: 'tsprj'
+            })})};
+        await input.setInputFiles({name: 'a10-serial.mkcd', mimeType: 'application/octet-stream',
+            buffer: Buffer.from(JSON.stringify(serialProject))});
+        await waitFor(paneText, t => /a10-serial/.test(t), 30000);
+        await clickAction('bw-makecode-emulate');
+        const serial = await waitFor(() => page.locator('[data-debug-panel]:visible [data-testid="bw-serial-console"]')
+            .innerText().catch(() => ''), t => t.replace(/\r/g, '').split('\n').includes(greeting), 60000);
+        check('the compiled V2 guest prints the complete ordered line in the Debug console',
+            serial.replace(/\r/g, '').split('\n').includes(greeting), serial.slice(0, 160));
+        const serialIdentity = await page.evaluate(() => document.body.innerText);
+        check('the serial proof uses its own micro:bit V2 board and emulator ELF',
+            /microbit-v2 board \(nrf52833/i.test(serialIdentity) &&
+            /a10-serial-microbit-v2-emu\.elf/i.test(serialIdentity), serialIdentity.slice(-600));
+        check('the serial guest remains on a running V2 emulator session', await statusText() === 'running');
+        // This scenario owns a firmware override. The real global green flag
+        // intentionally restarts retained firmware as well as VM blocks; clear
+        // our image through the product control before later native scenarios.
+        // Its display can own the dock now, so reach the debugger explicitly.
+        const serialActions = page.locator('[data-testid="bw-code-actions"]');
+        if (await serialActions.evaluate(menu => menu.open)) await serialActions.locator('summary').click();
+        await page.locator('[data-testid="bw-open-circuit-debugger"]').click();
+        await page.locator('[data-debug-panel]:visible [data-firmware-back]').click();
+        await page.locator('[data-debug-panel]:visible [data-firmware-chip]').waitFor({state: 'detached', timeout: 30000});
+        check('the serial scenario releases its own firmware override before another device starts',
+            await page.locator('[data-debug-panel] [data-firmware-chip]').count() === 0 && await statusText() === 'idle');
+    }
+
+    // A11: the actual Code-tab download must compile in its own target.
+    // This fixture contains wait-until: the old micro:bit exporter writes
+    // pauseUntil, which pxt-calliope does not provide.
+    await input.setInputFiles(join(fixtures, 'calliope-images.hex'));
+    const calliopeCode = await waitFor(() => page.evaluate(() => {
+        const editor = document.querySelector('.cm-content');
+        return editor ? editor.innerText : '';
+    }), t => /DEVICE CALLIOPEMINI/.test(t), 30000);
+    check('a Calliope project selects its own device before export', /DEVICE CALLIOPEMINI/.test(calliopeCode));
+    const calliopeDownload = page.waitForEvent('download', {timeout: 30000});
+    await clickAction('bw-makecode-export');
+    const calliopeFile = await calliopeDownload;
+    const calliopeBytes = await readFile(await calliopeFile.path());
+    const calliopeEnvelope = JSON.parse(calliopeBytes.toString('utf8'));
+    const calliopeFiles = JSON.parse(calliopeEnvelope.source);
+    check('Code export downloads a Calliope .mkcd with Calliope packages',
+        /\.mkcd$/i.test(calliopeFile.suggestedFilename()) && calliopeEnvelope.meta.cloudId === 'pxt/calliopemini' &&
+        JSON.stringify(JSON.parse(calliopeFiles['pxt.json']).dependencies) === JSON.stringify({core: '*', radio: '*'}));
+    check('Calliope wait-until is a polling loop, not micro:bit pauseUntil',
+        !/pauseUntil/.test(calliopeFiles['main.ts']) && /basic\.pause\(20\)/.test(calliopeFiles['main.ts']));
+    const calliopeStatus = await paneText();
+    check('the Code export points to the Calliope editor', /https:\/\/makecode\.calliope\.cc\//.test(calliopeStatus));
+    if (runtime) {
+        // Reopen exactly the downloaded bytes, preserving their .mkcd name.
+        // Running this recovered project invokes Calliope's real PXT compiler.
+        await input.setInputFiles({name: calliopeFile.suggestedFilename(), mimeType: 'application/octet-stream', buffer: calliopeBytes});
+        await waitFor(paneText, t => /calliopemini|Calliope/.test(t), 30000);
+        await clickAction('bw-makecode-run');
+        const pane = page.locator('[data-testid="bw-makecode-pane"][data-target="calliopemini"]');
+        await pane.waitFor({state: 'visible', timeout: 60000});
+        const state = await waitFor(() => pane.locator('[data-testid="bw-makecode-state"]').innerText().catch(() => ''),
+            t => /Running|Läuft|Error|Fehler/.test(t), 60000);
+        check('the downloaded Calliope project compiles and runs in its own simulator', /Running|Läuft/.test(state), state);
+        const frame = await simFrame('calliopemini');
+        check('the exported project uses the real Calliope simulator frame', !!frame);
+    }
+
+    // ── A12. Source-only CPX import -> real native blocks/device inputs. ──
+    {
+        const inputOnly = {'main.ts': 'input.onLoudSound(function () { music.playTone(440,100) })',
+            'pxt.json': JSON.stringify({name: 'CPX package identity',
+                dependencies: {'circuit-playground': '*'}, files: ['main.ts']})};
+        await input.setInputFiles({name: 'cpx-input-only.mkcd', mimeType: 'application/octet-stream',
+            buffer: Buffer.from(makeCodeProjectFile(inputOnly, {name: 'CPX package identity', target: 'unknown'}))});
+        const inputCode = await waitFor(() => page.locator('.cm-content').first().innerText().catch(() => ''),
+            value => /when loud sound:/.test(value), 30000);
+        check('shared CPX input APIs use the project board package rather than micro:bit inference',
+            /^DEVICE CPX\b/.test(inputCode) && /when loud sound:/.test(inputCode) && /play tone 440 Hz for 100 ms/.test(inputCode));
+        const source = 'light.setBrightness(255)\nlight.setAll(0xff0000)\n' +
+            'input.buttonA.onEvent(ButtonEvent.Click, function () { light.setAll(0x0000ff) })\n' +
+            'input.onGesture(Gesture.Shake, () => light.setAll(0x00ff00))\n';
+        const files = {'main.ts': source, 'pxt.json': JSON.stringify({name: 'A12 CPX',
+            dependencies: {'circuit-playground': '*'}, files: ['main.ts']})};
+        await input.setInputFiles({name: 'a12-cpx.mkcd', mimeType: 'application/octet-stream',
+            buffer: Buffer.from(makeCodeProjectFile(files, {name: 'A12 CPX', target: 'adafruit'}))});
+        const code = await waitFor(() => page.locator('.cm-content').first().innerText().catch(() => ''),
+            value => /^DEVICE CPX\b/.test(value) && /when button A click:/.test(value) &&
+                /when gesture shake:/.test(value), 30000);
+        check('CPX source-only import produces DEVICE CPX and native event words',
+            /^DEVICE CPX\b/.test(code) && /when button A click:/.test(code) && /when gesture shake:/.test(code));
+        check('CPX import names Circuit Playground rather than micro:bit',
+            /Circuit Playground Express/.test(await paneText()));
+        const unexpectedDownloads = [];
+        const onDownload = download => unexpectedDownloads.push(download.suggestedFilename());
+        page.on('download', onDownload);
+        await clickAction('bw-makecode-export');
+        const refused = await waitFor(paneText, value => /MakeCode export is not available for cpx/.test(value), 30000);
+        page.off('download', onDownload);
+        check('CPX translated MakeCode export is refused by name without a micro:bit download',
+            /MakeCode export is not available for cpx/.test(refused) && unexpectedDownloads.length === 0);
+        const originalDownload = page.waitForEvent('download', {timeout: 30000});
+        await clickAction('bw-export-makecode-source');
+        const original = await originalDownload;
+        const recovered = await JSZip.loadAsync(await readFile(await original.path()));
+        check('CPX original-source download keeps its own target and untouched source',
+            /\.zip$/i.test(original.suggestedFilename()) && await recovered.file('main.ts').async('string') === source &&
+            /Recovered adafruit source/.test(await recovered.file('BRICKWRIGHT-IMPORT.txt').async('string')));
+
+        const available = await page.evaluate(async () => (await fetch('static/makecode/adafruit/target.json')).ok);
+        check('the pinned CPX MakeCode runtime is present for the preserved run path', available);
+        if (available) {
+            await clickAction('bw-makecode-run');
+            const pane = page.locator('[data-testid="bw-makecode-pane"][data-target="adafruit"]');
+            await pane.waitFor({state: 'visible', timeout: 60000});
+            const state = await waitFor(() => pane.locator('[data-testid="bw-makecode-state"]').innerText(),
+                value => /Running|Läuft|Error|Fehler/.test(value), 60000);
+            check('the CPX original still compiles and runs in its own MakeCode simulator', /Running|Läuft/.test(state), state);
+            check('the CPX MakeCode run uses the real adafruit simulator frame', !!(await simFrame('adafruit')));
+            await pane.locator('[data-testid="bw-makecode-stop"]').click();
+        }
+        await page.evaluate(() => {
+            for (const details of document.querySelectorAll('[data-testid="bw-code-actions"]')) details.open = false;
+        });
+        await page.getByRole('button', {name: /To blocks|Zu Blöcken/i}).first().click();
+        const loaded = await waitFor(() => page.evaluate(() => {
+            const vm = window.__brickwrightStore?.getState().scratchGui.vm;
+            const stage = vm?.runtime.getTargetForStage();
+            return {device: vm?.runtime.bwDeviceId, ops: Object.values(stage?.blocks?._blocks || {}).map(b => b.opcode)};
+        }), value => value.device === 'cpx' && value.ops.includes('circuitplayground_whengesture'), 30000);
+        check('CPX translated source loads the actual native CPX command and handler blocks',
+            loaded.device === 'cpx' && ['circuitplayground_setall', 'circuitplayground_whenbutton',
+                'circuitplayground_whengesture'].every(op => loaded.ops.includes(op)));
+        await page.locator('[title="Circuit Playground"]:visible').click();
+        await page.locator('[data-testid="bw-cpx-pane"]').waitFor({state: 'visible', timeout: 30000});
+        const ring = () => page.locator('[data-testid^="bw-cpx-pixel-"]').evaluateAll(elements =>
+            elements.map(element => element.getAttribute('fill')));
+        const all = (pixels, color) => pixels.length === 10 && pixels.every(p => p === color);
+        const nativeState = () => page.evaluate(() => {
+            const vm = window.__brickwrightStore?.getState().scratchGui.vm;
+            const rt = vm?.runtime;
+            return {device: rt?.bwDeviceId, stcDevice: rt?.stc?.device,
+                dock: localStorage.getItem('bw-debug-dock'),
+                paneCount: document.querySelectorAll('[data-testid="bw-cpx-pane"]').length,
+                ring: Array.from(document.querySelectorAll('[data-testid^="bw-cpx-pixel-"]'), e => e.getAttribute('fill')),
+                board: Boolean(rt?.bwCpx), state: rt?.bwCpxState,
+                threads: rt?.threads?.map(t => ({topBlock: t.topBlock, status: t.status})),
+                stageOps: Object.values(rt?.getTargetForStage()?.blocks?._blocks || {}).map(b => b.opcode)};
+        });
+        console.log('CPX native before Start', JSON.stringify(await nativeState()));
+        await page.locator('[class*="green-flag_green-flag"]').first().click();
+        const red = await waitFor(ring, pixels => all(pixels, 'rgb(255, 0, 0)'), 30000);
+        console.log('CPX native after Start', JSON.stringify(await nativeState()));
+        check('actual native CPX Start renders all ten translated red pixels', all(red, 'rgb(255, 0, 0)'));
+        if (!all(red, 'rgb(255, 0, 0)')) throw new Error('CPX native Start observation failed; original state recorded');
+        await page.locator('[data-testid="bw-cpx-button-A"]').click();
+        const blue = await waitFor(ring, pixels => all(pixels, 'rgb(0, 0, 255)'), 30000);
+        check('actual CPX pane button A runs the translated handler and renders ten blue pixels', all(blue, 'rgb(0, 0, 255)'));
+        await page.locator('[data-testid="bw-cpx-gesture-shake"]').click();
+        const green = await waitFor(ring, pixels => all(pixels, 'rgb(0, 255, 0)'), 30000);
+        check('actual CPX pane shake executes the expression-bodied callback and renders ten green pixels', all(green, 'rgb(0, 255, 0)'));
+        await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.stopAll());
+        await page.locator('[title="Scratch Stage"], [title="Scratch-Bühne"]').first().click();
+        await page.locator('[role="tab"]', {hasText: 'Code'}).first().click();
     }
 
     // ── 2. an Arcade game brings its sprites ──────────────────────────

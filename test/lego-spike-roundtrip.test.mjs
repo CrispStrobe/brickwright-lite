@@ -287,8 +287,12 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> c94f428d (2026-10-12): Buffer packing vocabulary; SPIKE artifact unchanged.
     // -> 504abe93 (2026-10-13): producer main (2bc0bcb9) with the SEVENSEG8 show_number minus placement (B14, sb3-creator #109); runtime words unchanged.
     // -> c47b9680 (2026-10-13): board sections (DEVICE <id> AS <Name>:) and the Calliope motor word (sb3-creator #112, #113); SPIKE artifact unchanged.
+    // -> 0e486e0f (2026-10-14): DEVICE CPX and cpxDialect.js (sb3-creator #136) plus the Arcade lane's words; `git diff c47b9680 0e486e0f -- src/` touches only the arcade/CPX dialects, the runtime registry and sb3Creator.js, with no SPIKE line among them; SPIKE artifact unchanged, re-run at the new pin.
+    // -> 8472098b (2026-10-14): DEVICE ESP8266 C back end (sb3-creator #144) plus the Arcade repeat/typeof/font-metric words, explicit procedure calls and the SEVENSEG8 long show_number (#137-#142); `git diff 0e486e0f 8472098b -- src/` touches only arcadeDialect.js and sb3Creator.js.
+    // -> c9be966f (2026-10-15): STM32G030/F103 C fixes, F103 ADC and chip temperature (sb3-creator #152) and DEVICE-line device C (sb3-creator #145, #149-#151) plus the Arcade callable/circle/font/inspect words (#143, #146-#148); src/ changes are sb3Creator.js and arcadeDialect.js only.
+    // -> a13f92b8 (2026-10-15): STM32 C correct on silicon (clock tree, G0 IOPORT, pulls, ADC, tone, named refusals; sb3-creator #155) plus #153/#154 Code-tab declaration fixes; src/ change is sb3Creator.js only.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        'c47b96800b968b4b95e21c30efb9e33c026491fc');
+        'a13f92b8bc4b06f0cb9ffec22bab71f06db7ac76');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

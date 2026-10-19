@@ -110,6 +110,64 @@ const realSetImmediate = globalThis.setImmediate;
 const settle = async () => { for (let i = 0; i < 3; i++) await new Promise(resolve => realSetImmediate(resolve)); };
 
 /**
+ * A VM with `source` (DEVICE SPIKE .bw) loaded through the real SB3 path and the
+ * bundled spikeprime extension registered as the GUI registers it.
+ * @param {string} source
+ * @param {{calls?: Map}} [options] calls: counts every extension method call by name
+ * @returns {Promise<{vm, extension, creator}>}
+ */
+export async function loadSpikeProgram (source, {calls = null} = {}) {
+    const creator = new SB3Creator();
+    creator.parse(source);
+    const buffer = Buffer.from(await (await creator.generateSB3()).arrayBuffer());
+    const vm = new VM();
+    let extension = null;
+    const manager = vm.extensionManager;
+    const original = manager.loadExtensionURL.bind(manager);
+    manager.loadExtensionURL = id => {
+        if (String(id) !== 'spikeprime') return original(id);
+        extension = new SpikeExtension(vm.runtime);
+        if (calls) {
+            const names = new Set();
+            for (let proto = extension; proto && proto !== Object.prototype; proto = Object.getPrototypeOf(proto)) {
+                for (const name of Object.getOwnPropertyNames(proto)) names.add(name);
+            }
+            for (const name of names) {
+                let method;
+                try { method = extension[name]; } catch { continue; }
+                if (typeof method !== 'function' || name === 'constructor' || name === 'getInfo') continue;
+                extension[name] = function (...args) {
+                    calls.set(name, (calls.get(name) || 0) + 1);
+                    return method.apply(this, args);
+                };
+            }
+        }
+        const service = manager._registerInternalExtension(extension);
+        manager._loadedExtensions.set('spikeprime', service);
+        return Promise.resolve();
+    };
+    await vm.loadProject(buffer);
+    if (creator.project.stc) vm.runtime.stc = creator.project.stc;
+    if (!extension) throw new Error('the program does not load the spikeprime extension');
+    return {vm, extension, creator};
+}
+
+/**
+ * Registers a fresh virtual SPIKE hub on lite's Web Bluetooth shim, as the pane's Run does.
+ * @returns {{hub, registration}}
+ */
+export function registerVirtualHub () {
+    clearVirtualPeripheralsForTest();
+    const hub = new HubState();
+    hub.setSimulationEnabled(true);
+    const registration = registerVirtualSpikePrime({hubState: hub});
+    globalThis.navigator.bluetooth = undefined;
+    installWebBluetooth();
+    globalThis.__brickwrightChooseVirtualBluetooth = candidates => candidates[0];
+    return {hub, registration};
+}
+
+/**
  * Runs one program against one challenge.
  * @param {string} source DEVICE SPIKE .bw text
  * @param {object} world a validated challenge world
@@ -132,8 +190,15 @@ const settle = async () => { for (let i = 0; i < 3; i++) await new Promise(resol
  * @param {function} [options.onFrame] called after every frame's tick with
  *   (bridge, frameIndex): a VIEW of the run (the 3D view test renders each
  *   frame's snapshot through it). It must only read.
+ * @param {function} [options.bridgeFor] (hub) => the world the program drives
+ *   instead of the arena: anything with the arena bridge's run interface,
+ *   `verdict` and `tick(ms)` returning the verdict ({status: 'running'} while
+ *   it runs) or a promise of it (awaited before the next frame: the Robot Lab
+ *   with its physics in a worker), optionally `reset()` and `snapshot()`. The Robot Lab's run
+ *   (test/helpers/sim-lab-vm.mjs) passes its physics session here; `world`
+ *   then only gives the time limit (world.timeLimitMs).
  */
-export async function runOnArena (source, world, {extraMs = 0, record = false, vmStepsOn = null, maxFrames: paneFrames = 0, stepClock = true, onFrame = null} = {}) {
+export async function runOnArena (source, world, {extraMs = 0, record = false, vmStepsOn = null, maxFrames: paneFrames = 0, stepClock = true, onFrame = null, bridgeFor = null} = {}) {
     const clock = new FakeClock(1.7e12);
     clock.install();
     const calls = new Map();
@@ -141,14 +206,9 @@ export async function runOnArena (source, world, {extraMs = 0, record = false, v
     let vm = null;
     let registration = null;
     try {
-        clearVirtualPeripheralsForTest();
-        const hub = new HubState();
-        hub.setSimulationEnabled(true);
-        registration = registerVirtualSpikePrime({hubState: hub});
-        globalThis.navigator.bluetooth = undefined;
-        installWebBluetooth();
-        globalThis.__brickwrightChooseVirtualBluetooth = candidates => candidates[0];
-        const bridge = new ArenaHubBridge({hubState: hub, world});
+        let hub;
+        ({hub, registration} = registerVirtualHub());
+        const bridge = bridgeFor ? bridgeFor(hub) : new ArenaHubBridge({hubState: hub, world});
         // Every view the checker judged, for replaying under a mutated checker.
         const views = [];
         if (record) {
@@ -156,36 +216,8 @@ export async function runOnArena (source, world, {extraMs = 0, record = false, v
             bridge.checker.evaluate = view => { views.push(view); return evaluate(view); };
         }
 
-        const creator = new SB3Creator();
-        creator.parse(source);
-        const buffer = Buffer.from(await (await creator.generateSB3()).arrayBuffer());
-        vm = new VM();
-        let extension = null;
-        const manager = vm.extensionManager;
-        const original = manager.loadExtensionURL.bind(manager);
-        manager.loadExtensionURL = id => {
-            if (String(id) !== 'spikeprime') return original(id);
-            extension = new SpikeExtension(vm.runtime);
-            const names = new Set();
-            for (let proto = extension; proto && proto !== Object.prototype; proto = Object.getPrototypeOf(proto)) {
-                for (const name of Object.getOwnPropertyNames(proto)) names.add(name);
-            }
-            for (const name of names) {
-                let method;
-                try { method = extension[name]; } catch { continue; }
-                if (typeof method !== 'function' || name === 'constructor' || name === 'getInfo') continue;
-                extension[name] = function (...args) {
-                    calls.set(name, (calls.get(name) || 0) + 1);
-                    return method.apply(this, args);
-                };
-            }
-            const service = manager._registerInternalExtension(extension);
-            manager._loadedExtensions.set('spikeprime', service);
-            return Promise.resolve();
-        };
-        await vm.loadProject(buffer);
-        if (creator.project.stc) vm.runtime.stc = creator.project.stc;
-        if (!extension) throw new Error('the program does not load the spikeprime extension');
+        let extension;
+        ({vm, extension} = await loadSpikeProgram(source, {calls}));
         vm.setCompatibilityMode(true);
         vm.runtime.currentStepTime = FRAME_MS;
         let budget = 0;
@@ -199,7 +231,7 @@ export async function runOnArena (source, world, {extraMs = 0, record = false, v
         await connecting;
         if (!extension.isConnected()) throw new Error('the extension did not connect to the virtual hub');
         await clock.advance(200); // info response, device-notification request
-        bridge.reset();
+        bridge.reset?.();
         await clock.advance(FRAME_MS);
 
         const paneClock = new VmStepClock();
@@ -225,9 +257,9 @@ export async function runOnArena (source, world, {extraMs = 0, record = false, v
             }
             if (pane) {
                 const now = clock.now;
-                verdict = bridge.tick(frameSimMs(paneClock, lastFrame, now));
+                verdict = await bridge.tick(frameSimMs(paneClock, lastFrame, now));
                 lastFrame = now;
-            } else verdict = bridge.tick(FRAME_MS);
+            } else verdict = await bridge.tick(FRAME_MS);
             if (onFrame) onFrame(bridge, frames);
             frames++;
             if (peripheralState.lastUnsupportedPythonTunnel && !unsupported.includes(peripheralState.lastUnsupportedPythonTunnel)) {
@@ -241,7 +273,7 @@ export async function runOnArena (source, world, {extraMs = 0, record = false, v
         for (const target of vm.runtime.targets) {
             for (const variable of Object.values(target.variables || {})) variables[variable.name] = variable.value;
         }
-        return {verdict, snapshot: bridge.snapshot(), frames, calls, hub, unsupported, views, variables};
+        return {verdict, snapshot: bridge.snapshot?.() ?? null, frames, calls, hub, unsupported, views, variables};
     } finally {
         try { if (vm) { vm.stopAll(); vm.quit(); } } catch { /* noop */ }
         try { if (registration) registration.unregister(); } catch { /* noop */ }

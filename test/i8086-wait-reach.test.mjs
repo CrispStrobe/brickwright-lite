@@ -43,6 +43,7 @@ const expectedEmitted = [
     'arduino-02-button',
     'arduino-02-digital-input-pullup',
     'arduino-02-state-change',
+    'arduino-04-ascii-table',
     'arduino-05-arrays',
     'arduino-05-for-loop',
     'arduino-05-switch-case-2',
@@ -52,13 +53,17 @@ const expectedEmitted = [
     'arduino-sk-p11-crystal-ball',
     'arduino-sk-p13-touch-lamp',
     'arduino-sk-p15-hacking-buttons',
+    'aurora65-workstation',
     'avr01-blink',
     'avr05-button-led',
     'binary-counter-buttons',
     'blinkenrocket-pendant',
+    'eater6502-bench',
     'eater6502-blink',
+    'eater6502-full-build',
     'i8086-blink',
     'idea-generator',
+    'mb01-display',
     'mega01-blink',
     'mega03-port-current',
     'morse-buzzer-message',
@@ -116,15 +121,45 @@ const auditReach = (receipt, {compiled}) => {
     assert.deepEqual(receipt.emits, expectedEmitted,
         'the exact safety-correct emitted set changed');
     assert.deepEqual(receipt.compiled, compiled ? expectedEmitted : []);
+    // sb3-creator c9be966f (#151): a DEVICE line now builds that device's C, so
+    // the 28 programs that used to emit host C (hostC 28 -> 0) reach the 8086
+    // lowering: five emit and compile (expectedEmitted), the micro:bit/SPIKE
+    // sensor reads are refused by name (loweringRefused +9), the Arduino String
+    // examples' joined prints are refused by name (printRefused +13), and
+    // mb05-faceplate-matrix's constant exceeds 16 bits (int16Refused +1).
+    assert.equal(s.hostC, 0);
+    assert.deepEqual(namesOf(receipt.int16), ['mb05-faceplate-matrix']);
     assert.deepEqual(namesOf(receipt.loweringRefused), [
         '70-calculator',
         '70-calculator-simple',
         '71-calculator-pcb',
         'arduino-02-blink-without-delay',
-        'arduino-02-debounce'
+        'arduino-02-debounce',
+        'mb02-sensors',
+        'mb03-pins',
+        'mb04-radio',
+        'mb05-lesson',
+        'mb06-reaction',
+        'mb07-stepcounter',
+        'mb08-thermometer',
+        'microbit01-hello',
+        'spike01-obstacle-avoid'
     ]);
     assert.deepEqual(namesOf(receipt.printRefused), [
+        'arduino-08-char-analysis',
         'arduino-08-string-addition',
+        'arduino-08-string-append',
+        'arduino-08-string-case',
+        'arduino-08-string-chars',
+        'arduino-08-string-compare',
+        'arduino-08-string-constructors',
+        'arduino-08-string-indexof',
+        'arduino-08-string-length',
+        'arduino-08-string-length-trim',
+        'arduino-08-string-replace',
+        'arduino-08-string-startswith',
+        'arduino-08-string-substring',
+        'arduino-08-string-toint',
         'guess-the-number'
     ]);
     assert.equal(receipt.loweringRefused.every(row => row.includes(': ') && !row.endsWith(': ?')), true);
@@ -135,10 +170,11 @@ const auditReach = (receipt, {compiled}) => {
         'N2e list lowering is implemented; ADC remains smoothing\'s sole terminal choke');
     assert.equal(receipt.choke.some(row => /(?:^|, )numericLists(?:,|$)/.test(row.split(': ')[1] || '')), false,
         'an implemented numeric-list feature must never be reported as unsupported');
-    assert.equal(s.emits, 57,
+    assert.equal(s.emits, 62,
         'c879 removes two unsafe timer fallbacks from N2c\'s historical 44, then N2d adds four prints, '
-        + 'P7 adds i8086-blink, N2f adds crystal-ball, c593574 adds lesson 56, and B10 adds eight of '
-        + 'sb3-creator #49\'s examples');
+        + 'P7 adds i8086-blink, N2f adds crystal-ball, c593574 adds lesson 56, B10 adds eight of '
+        + 'sb3-creator #49\'s examples, and sb3-creator c9be966f (#151 DEVICE-line C) adds five '
+        + '(arduino-04-ascii-table, aurora65-workstation, eater6502-bench, eater6502-full-build, mb01-display)');
     if (compiled) {
         assert.equal(s.compiled, s.emits,
             `every emitted program must compile through SmallerC: ${JSON.stringify(receipt.compileFailed)}`);
@@ -202,16 +238,26 @@ test('commented-zero mutation cannot put either timer program back into honest r
         assert.doesNotMatch(mutant, /from ['"]jszip['"]/,
             'isolated mutant retained a bare GUI dependency outside test attribution');
         try {
-            for (const dependency of [
+            const dependencies = [
                 'sb3-creator-runtime.js',
                 'sb3-creator-scratchruntime.js',
                 'sb3-creator-chostruntime.js',
                 'cubeDirections.js',
                 'ev3Dialect.js',
                 'arcadeDialect.js',
+                'cpxDialect.js',
                 'pinRoleParts.js'
-            ]) await symlink(join(sourceDir, dependency), join(temp, basename(dependency)));
+            ];
+            if (/^import\s+[^\n]*\sfrom\s+['"]\.\/procedureParameterConstraints\.js['"]/m.test(source)) {
+                dependencies.push('procedureParameterConstraints.js');
+            }
+            for (const dependency of dependencies) {
+                await symlink(join(sourceDir, dependency), join(temp, basename(dependency)));
+            }
             await writeFile(mutantFile, mutant);
+            const {default: MutantCreator} = await import(pathToFileURL(mutantFile).href);
+            assert.equal(typeof MutantCreator, 'function',
+                'isolated mutant must load before checking the commented-zero mutation');
             const {stdout} = await execFileP(process.execPath, [
                 '--import', guiScopeHook,
                 'scripts/measure-i8086-numeric-reach.mjs',

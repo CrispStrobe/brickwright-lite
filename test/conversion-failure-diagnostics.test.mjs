@@ -56,7 +56,11 @@ test('actual Code compile catch displays a real VM serialized validation rejecti
     const context = {props: {vm}, state: {lang: 'pseudocode', uploads: []}, _animationImport: null, _codeArtwork: null,
         L: {stCompiling: 'Compiling', stError: message => `Error: ${message}`},
         activeCode: () => 'SPRITE Game:\nWHEN flag clicked:\n  say "changed"',
-        lib: async () => ({default: InvalidCostumes}), setState (patch) {Object.assign(this.state, patch);}};
+        lib: async () => ({default: InvalidCostumes}), setState (patch) {
+            // Match React's functional updater contract as well as object patches.
+            const update = typeof patch === 'function' ? patch(this.state) : patch;
+            if (update) Object.assign(this.state, update);
+        }};
     try {
         await execute.call(context);
         assert.match(context.state.status, /Could not parse as a valid SB2 or SB3 project/);

@@ -500,6 +500,8 @@ export function selectDebugTargetKind(device, requested = 'emulator') {
     if (normalized === 'attiny85') return 'attiny85';
     if (normalized === 'pico') return 'rp2040js';
     if (normalized === 'stm32f030') return 'stm32f0';
+    if (normalized === 'stm32g030' || normalized === 'stm32g0') return 'stm32g0';
+    if (normalized === 'esp8266') return 'esp8266';
     if (['eater6502', '6502', 'w65c02'].includes(normalized)) return 'eater6502';
     if (['z80', 'zx48', 'zx128'].includes(normalized)) return 'z80';
     if (['i8086', '8086', 'i8088', '8088'].includes(normalized)) return 'i8086';
@@ -1484,8 +1486,12 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         }
         if (!out.success) throw new Error(out.error || 'the compiler refused this program');
         const isPico = String(stc.device || '').toLowerCase() === 'pico';
-        const isStm32 = deviceLower === 'stm32f030';
-        if (!out.symbols && !isPico && !isStm32) {
+        const isStm32 = deviceLower === 'stm32f030' || deviceLower === 'stm32g030' || deviceLower === 'stm32f103';
+        // The ESP8266 target returns a flash image (0xE9 boot header) and no
+        // symbol table: the esp8266 debug kind runs it without one.
+        const isEsp8266 = deviceLower === 'esp8266';
+        const isRawImage = isPico || isStm32 || isEsp8266;
+        if (!out.symbols && !isRawImage) {
             throw new Error(
                 `the image built but carries no symbol table, so the debugger cannot ` +
                 `say where it is: ${out.symbols_error || 'no reason given'}`
@@ -1516,18 +1522,18 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 ? new Uint8Array([...bytes, 0])
                 : bytes;
             image = new Uint16Array(padded.buffer, padded.byteOffset, padded.length / 2);
-        } else if (isStm32) {
+        } else if (isStm32 || isEsp8266) {
             image = Uint8Array.from(atob(out.base64), c => c.charCodeAt(0));
         }
 
         return {
-            hex: (isPico || isStm32) ? null : atob(out.base64),
+            hex: isRawImage ? null : atob(out.base64),
             image,
             symbols: out.symbols,
             c,
             bytes: out.bytes,
             f_cpu: out.f_cpu || out.fcpu || out.clockHz,
-            format: out.format || ((isPico || isStm32) ? 'bin' : 'ihx'),
+            format: out.format || (isRawImage ? 'bin' : 'ihx'),
         };
     }
 
@@ -1581,8 +1587,12 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             return attachI80386();
         }
 
-        if (selectedTargetKind === 'stm32f0') {
+        if (selectedTargetKind === 'stm32f0' || selectedTargetKind === 'stm32g0') {
             return attachStm32F0Target(built);
+        }
+
+        if (selectedTargetKind === 'esp8266') {
+            return attachEsp8266Target(built);
         }
 
         // The heavy tier. Only offered when its engine actually loaded (the
@@ -2393,8 +2403,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
     /** STM32F030 — same shape as the Pico attach, three differences: the
      *  program is a raw flash image in BYTES (vectors first — the F0
-     *  machine boots it like the silicon), the default clock is the
-     *  F030's 48 MHz, and the target kind is 'stm32f0'. The debug target
+     *  machine boots it like the silicon), the core clock follows the
+     *  firmware's own RCC setup (bw-board refuses a `clockHz` for STM32
+     *  targets), and the target kind is 'stm32f0'. The debug target
      *  underneath is the SAME rp2040js one, driven through the F0
      *  adapter's facade. */
     async function attachStm32F0Target(built) {
@@ -2406,7 +2417,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // declares no pins; inferNetlist and the pin table read stc.pins.
         const declared = projectStc(null);
         const stc = {...(declared || {}), pins: (declared && declared.pins) || []};
-        const clockHz = built.f_cpu || built.clockHz || 48_000_000;
+        const targetKind = (built && built.kind) || selectedTargetKind || 'stm32f0';
 
         const netlist = await resolveNetlist(vm, stc, inferNetlist);
         board = new BoardImpl(3.3);
@@ -2418,10 +2429,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-board-ready'));
 
         const program = built.image instanceof Uint8Array ? built.image : null;
-        if (!program) throw new Error('the STM32F030 build produced no flash image');
+        if (!program) throw new Error(`the ${targetKind} build produced no flash image`);
 
-        const { target: f0Target, adapter: f0Adapter } = await createDebugTarget('stm32f0', {
-            board, program, symbols: built.symbols, clockHz,
+        const { target: f0Target, adapter: f0Adapter } = await createDebugTarget(targetKind, {
+            board, program, symbols: built.symbols,
         });
 
         if (f0Adapter && f0Adapter.onSerial) {
@@ -2477,6 +2488,82 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         });
 
         setStatus('ready', S('built.device', {bytes: built.bytes, device: 'STM32F030', points: blockOf.size}));
+        return session;
+    }
+
+    /** ESP8266 — bw-board's `esp8266` kind over the esp8266js fork. The
+     *  program is the compiler's flash image in BYTES (0xE9 header); the
+     *  factory loads the engine lazily, attaches the board and returns a
+     *  debug target that runs, pauses, steps and takes code breakpoints.
+     *  No symbol table comes back from this target, so block glow has no
+     *  (task, state) addresses to join: the board and serial are the
+     *  surface. */
+    async function attachEsp8266Target(built) {
+        setStatus('attaching', S('attach.esp8266'));
+        const { createDebugTarget, createDebugSession, BoardImpl, inferNetlist } =
+            await import(/* webpackChunkName: "bw-board" */ 'bw-board');
+
+        const declared = projectStc(null);
+        const stc = {...(declared || {}), pins: (declared && declared.pins) || []};
+
+        const netlist = await resolveNetlist(vm, stc, inferNetlist);
+        board = new BoardImpl(3.3);
+        board.setNetlist(netlist.parts, netlist.nets);
+        board.setPower(true);
+        if (vm && vm.runtime) vm.runtime.bwRunBoard = board;
+        if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-board-ready'));
+
+        const image = built.image instanceof Uint8Array ? built.image : null;
+        if (!image) throw new Error('the ESP8266 build produced no flash image');
+
+        const { target: espTarget, adapter: espAdapter } = await createDebugTarget('esp8266', { board, image });
+
+        if (espAdapter && espAdapter.onSerial) {
+            let lineBuf = '';
+            serialLines = [];
+            espAdapter.onSerial((byte) => {
+                const ch = String.fromCharCode(byte);
+                if (ch === '\n') {
+                    serialLines.push(lineBuf);
+                    lineBuf = '';
+                    if (serialLines.length > 200) serialLines.shift();
+                } else if (ch !== '\r') {
+                    lineBuf += ch;
+                }
+            });
+        }
+        // RX: the adapter takes a byte or a byte list (a typed line arrives
+        // as a string, the SerialConsole sends single keycodes as numbers).
+        if (espAdapter && espAdapter.sendSerial) {
+            runner.sendSerial = (data) => {
+                if (typeof data === 'number') {
+                    espAdapter.sendSerial(data & 0xff);
+                    return;
+                }
+                espAdapter.sendSerial(Array.from(String(data), ch => ch.charCodeAt(0) & 0xff));
+            };
+        }
+
+        setValueResolver((blockId) => runner.valuesAtBlock(blockId));
+        if (vm && vm.runtime) vm.runtime._bwDebugVariables = () => runner.variables();
+        symbols = built.symbols || null;
+        variableTable = (symbols && symbols.variables || []).filter((v) => v.space);
+        pinTable = stc.pins || [];
+
+        target = espTarget;
+        session = createDebugSession(target, {
+            onChange: (st) => {
+                if (st.halted) {
+                    if (shouldSkip(st)) { skipped++; skipRequested = true; return; }
+                    glow(st.tasks);
+                    trace.record(target, st.why ? st.why.cause : 'halt',
+                        { variables: runner.variables(), tasks: st.tasks });
+                } else clearGlow();
+                emit();
+            }
+        });
+
+        setStatus('ready', S('built.device', {bytes: built.bytes, device: 'ESP8266', points: blockOf.size}));
         return session;
     }
 
@@ -3654,7 +3741,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             return { hex: text, image: null, symbols: fw.symbols || null, c: null,
                 bytes: text.length, f_cpu: fw.fCpu || null, format: 'ihx' };
         }
-        if (kind === 'rp2040js' || kind === 'stm32f0') {
+        if (kind === 'rp2040js' || kind === 'stm32f0' || kind === 'stm32g0') {
             const bytes = fw.bytes || new TextEncoder().encode(fw.text || '');
             if (!bytes.length) throw new Error(`${fw.name}: empty firmware file`);
             if (kind === 'rp2040js') {
@@ -3670,6 +3757,16 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                     throw new Error(`${fw.name}: word 0 is 0x${(sp >>> 0).toString(16)} — not an SRAM ` +
                         'stack pointer, so this is not an STM32 flash image (vectors must come first)');
                 }
+            }
+            return { hex: null, image: bytes, symbols: null, c: null,
+                bytes: bytes.length, f_cpu: null, format: 'bin' };
+        }
+        if (kind === 'esp8266') {
+            // An ESP8266 flash image: the boot header's first byte is 0xE9,
+            // checked so a wrong file fails with a sentence.
+            const bytes = fw.bytes || new Uint8Array(0);
+            if (!bytes.length || bytes[0] !== 0xe9) {
+                throw new Error(`${fw.name}: not an ESP8266 flash image (it must start with the 0xE9 boot header)`);
             }
             return { hex: null, image: bytes, symbols: null, c: null,
                 bytes: bytes.length, f_cpu: null, format: 'bin' };

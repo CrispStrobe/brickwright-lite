@@ -1,5 +1,7 @@
 import React from 'react';
+import {createPortal} from 'react-dom';
 import PropTypes from 'prop-types';
+import {injectIntl, intlShape} from 'react-intl';
 
 /**
  * Collapse the editor's two top rows into one strip.
@@ -42,6 +44,28 @@ class ChromeToggle extends React.Component {
         this.state = {compact: typeof document !== 'undefined' &&
             document.body.classList.contains(CLASS)};
         this.toggle = this.toggle.bind(this);
+        this.button = React.createRef();
+    }
+
+    componentDidMount () {
+        this.mounted = true;
+        // Icons fit while the small local measurement chunk loads.
+        this.tabList = document.querySelector('[data-bw-editor-tabs]');
+        if (this.tabList) this.tabList.setAttribute('data-bw-tab-icons-only', '');
+        import(/* webpackChunkName: "tab-label-fit" */ '../../lib/fit-tab-labels').then(({installTabLabelFit}) => {
+            if (this.mounted) {
+                this.labelFit = installTabLabelFit(() => this.state.compact, this.tabList);
+            }
+        });
+    }
+
+    componentDidUpdate () {
+        if (this.labelFit) this.labelFit.scheduleFit();
+    }
+
+    componentWillUnmount () {
+        this.mounted = false;
+        if (this.labelFit) this.labelFit.dispose();
     }
 
     toggle () {
@@ -57,25 +81,42 @@ class ChromeToggle extends React.Component {
 
     render () {
         const {compact} = this.state;
-        return (
+        const button = (
             <button
                 aria-pressed={compact}
                 className={this.props.className}
-                title={compact
-                    ? (/^de/i.test(navigator.language) ? 'Menüleiste und Tab-Beschriftungen anzeigen' : 'Show the menu bar and tab labels')
-                    : (/^de/i.test(navigator.language) ? 'Menüleiste und Tabs zu einem Streifen zusammenfalten' : 'Collapse the menu bar and tabs into one strip')}
+                type="button"
+                hidden={this.props.hidden}
+                ref={this.button}
+                data-testid="bw-chrome-toggle"
+                aria-label={this.props.intl.formatMessage(compact ? {
+                    id: 'gui.chrome.expand', defaultMessage: 'Show the menu bar and tab labels'
+                } : {
+                    id: 'gui.chrome.collapse', defaultMessage: 'Collapse the menu bar and tabs into one strip'
+                })}
+                title={this.props.intl.formatMessage(compact ? {
+                    id: 'gui.chrome.expand', defaultMessage: 'Show the menu bar and tab labels'
+                } : {
+                    id: 'gui.chrome.collapse', defaultMessage: 'Collapse the menu bar and tabs into one strip'
+                })}
                 onClick={this.toggle}
             >
-                {/* Three dots when there is something folded away, a chevron when
-                    there is something to fold: the glyph says what the click does. */}
-                <span aria-hidden="true">{compact ? '⋯' : '⌃'}</span>
+                <span
+                    aria-hidden="true"
+                    data-bw-chrome-icon={compact ? 'expand' : 'collapse'}
+                />
             </button>
         );
+        // iPad WebKit clips a fixed child of the scrolling tab list, leaving
+        // just the button's left edge visible. Escape that scroll container.
+        return typeof document === 'undefined' ? button : createPortal(button, document.body);
     }
 }
 
 ChromeToggle.propTypes = {
-    className: PropTypes.string
+    className: PropTypes.string,
+    hidden: PropTypes.bool,
+    intl: intlShape.isRequired
 };
 
-export default ChromeToggle;
+export default injectIntl(ChromeToggle);

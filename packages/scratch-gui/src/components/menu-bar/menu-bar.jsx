@@ -267,7 +267,7 @@ class MenuBar extends React.Component {
         openNativeProject(path).catch(error => {
             // eslint-disable-next-line no-console
             console.error('[brickwright] open project failed', error);
-            nativeMessage(`Could not open the project: ${error.message || error}`);
+            nativeMessage(this.props.intl.formatMessage({id: 'gui.menuBar.openProjectError', defaultMessage: 'Could not open the project: {error}'}, {error: error.message || String(error)}));
         });
     }
     // The File menu's own SB3Downloader exists only while the menu is open, so the save
@@ -610,7 +610,7 @@ class MenuBar extends React.Component {
                                                 key={recent.path}
                                                 onClick={() => this.handleNativeOpen(recent.path)}
                                             >
-                                                {`Open recent: ${recent.name}`}
+                                                {this.props.intl.formatMessage({id: 'gui.menuBar.openRecent', defaultMessage: 'Open recent: {name}'}, {name: recent.name})}
                                             </MenuItem>
                                         ))}
                                         <SB3Downloader>{(className, downloadProjectCallback) => (
@@ -620,7 +620,7 @@ class MenuBar extends React.Component {
                                                         className={className}
                                                         onClick={this.getSaveToComputerHandler(downloadProjectCallback, 'save')}
                                                     >
-                                                        {'Save project'}
+                                                        <FormattedMessage id="gui.menuBar.saveProject" defaultMessage="Save project" />
                                                     </MenuItem>
                                                 )}
                                                 {this.state.nativeDocuments && (
@@ -628,7 +628,7 @@ class MenuBar extends React.Component {
                                                         className={className}
                                                         onClick={this.getSaveToComputerHandler(downloadProjectCallback, 'saveAs')}
                                                     >
-                                                        {'Save project as…'}
+                                                        <FormattedMessage id="gui.menuBar.saveProjectAs" defaultMessage="Save project as…" />
                                                     </MenuItem>
                                                 )}
                                                 <MenuItem
@@ -676,25 +676,25 @@ class MenuBar extends React.Component {
                                             if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-circuit-file', {detail: {action: 'load'}}));
                                             this.props.onRequestCloseFile();
                                         }}>
-                                            {'Open circuit…'}
+                                            <FormattedMessage id="gui.menuBar.openCircuit" defaultMessage="Open circuit…" />
                                         </MenuItem>
                                         <MenuItem onClick={() => {
                                             if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-circuit-file', {detail: {action: 'save'}}));
                                             this.props.onRequestCloseFile();
                                         }}>
-                                            {'Save circuit'}
+                                            <FormattedMessage id="gui.menuBar.saveCircuit" defaultMessage="Save circuit" />
                                         </MenuItem>
                                         <MenuItem onClick={() => {
                                             if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-circuit-file', {detail: {action: 'import'}}));
                                             this.props.onRequestCloseFile();
                                         }}>
-                                            {'Import circuit…'}
+                                            <FormattedMessage id="gui.menuBar.importCircuit" defaultMessage="Import circuit…" />
                                         </MenuItem>
                                         <MenuItem onClick={() => {
                                             if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-circuit-file', {detail: {action: 'export'}}));
                                             this.props.onRequestCloseFile();
                                         }}>
-                                            {'Export circuit…'}
+                                            <FormattedMessage id="gui.menuBar.exportCircuit" defaultMessage="Export circuit…" />
                                         </MenuItem>
                                     </MenuSection>
                                 </MenuBarMenu>

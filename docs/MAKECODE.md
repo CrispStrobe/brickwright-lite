@@ -437,6 +437,13 @@ packages (`core`, `radio`), and `wait until` becomes the polling loop it stands
 for: pxt-calliope 3.0.30 has no `pauseUntil` (pxt-microbit's core poll.ts), and
 a Calliope corpus program failed to compile on it until this (task A6).
 
+The Code tab also selects the micro:bit, Calliope or EV3 emitter from the
+project's device and writes the matching MakeCode target and editor guidance
+(task A11, PR971). A Calliope export uses the polling form of `wait until`;
+a real downloaded Calliope project has been reopened, compiled and run in the
+browser qualification. Unchanged imported MakeCode files retain their own
+target, and multi-board projects keep their existing export behavior.
+
 `run <file> [--target microbit|calliopemini] [--seconds N] [--json]` (task A7)
 runs the program on LabWired's `microbit-v1` board: an nRF51822 with the Nordic
 S110 SoftDevice EMULATED (only the application window of the `.hex` is loaded;
@@ -479,14 +486,16 @@ micro:bit V2**: the image goes to the Debug pane on the `board:microbit-v2`
 LabWired board through the same firmware hand-off a compiled sketch takes, and
 the LED matrix shows in Widgets.
 
-Measured with the CLI: the program's 5x5 picture is drawn, in guest time. Its
-SERIAL is not reported, by name: CODAL's `NRF52Serial::putc` hands the UARTE's
-EasyDMA a pointer to a stack byte and returns at once; LabWired's UARTE reads
-the transmit buffer when the transfer completes, a frame later, by which time
-that stack slot holds other data, so the bytes it captures are not the ones the
-program wrote (silicon fetches the byte when the transfer starts). `run --board
-v2` withholds serial (`serial: null`, `serialWithheld` in `--json`), and the
-Code tab says so; the engine fix is task A10.
+The CLI reports the V2 firmware's serial text in both JSON and text mode, and
+the Code tab sends it to the Debug console. The pinned
+`labwired-wasm-de14721e` engine fixes the UARTE buffer lifetime and interrupt
+completion faults that corrupted CODAL output. Real compiled programs passed
+complete greeting/ordered-counter checks with the matrix, fault and guest-time
+bounds intact; a fresh browser V2 ELF reached Running and printed its complete
+unique greeting ([A10, PR988](https://github.com/CrispStrobe/brickwright-lite/pull/988)).
+
+MakeCode's `serial.writeLine` pads records to 32 bytes including CRLF by default.
+Use `serial.setWriteLinePadding(0)` in the program for unpadded lines.
 
 ## Two things found on the way that are not built here
 

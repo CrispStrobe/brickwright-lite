@@ -1,7 +1,15 @@
 name: Build (permissive base)
 on:
   workflow_dispatch:
+  # TWO TIERS (owner decision 2026-10-14). Every PR push gets the FAST tier
+  # (unit shards, build, corpus); the THOROUGH tier (browser light/heavy, fpga
+  # surface) runs on main pushes, workflow_dispatch, and PRs labelled ci:full.
+  # `labeled`/`unlabeled` start a run that does only what the label changes
+  # (the thorough tier, and the `full CI requested` verdict), so no job runs
+  # twice for one commit. A documentation-only PR (judged by the push `paths:`
+  # filter below, see scripts/ci-docs-only.mjs) runs neither code tier.
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled, ready_for_review]
   push:
     branches: [main]
     # A LEDGER ROW IS NOT A BUILD, and until now every one started a full
@@ -68,6 +76,8 @@ on:
     # left under the `!docs/*.md` negation — so editing the doc those two
     # read would not have rebuilt or retested them. Caught by
     # test/build-trigger-paths.test.mjs, which is the whole point of it.
+    # 2026-10-17: ROBOT-LAB-ARCHITECTURE.md, named by
+    # scripts/migrate-parts-v2.mjs and parts.json's $comment (Robot Lab R2).
     #
     # A skipped run means no Pages deploy for that push. That is correct: the
     # app is byte-identical, and deploy-daily republishes regardless.
@@ -101,7 +111,10 @@ on:
       - 'docs/PICO-KALUMA-BOOT.md'
       - 'docs/PEERS-SECURITY-REVIEW.md'
       - 'docs/RCX-FIRMWARE.md'
+      - 'docs/ROBOT-LAB-ARCHITECTURE.md'
+      - 'docs/ROBOT-LAB-SPIKE-EMULATION.md'
       - 'docs/SPIKE-CONSOLIDATION.md'
+      - 'docs/SIM-LAB-PLAN.md'
       - 'docs/SPIKE-ARENA.md'
       - 'docs/SPIKE-FIRMWARE-PROGRAMS.md'
       - 'docs/TARGET-EMULATOR-PERFORMANCE.md'
@@ -138,10 +151,98 @@ permissions:
 # OTHER ref (a lane branch, dispatched by hand): one group per BRANCH, cancelled by
 # the next dispatch — docs/CI-QUEUE-2026-09-07.md measured 16 branch runs
 # hand-cancelled a mean 1.7 min after supersession having burned 36 runner-minutes.
+# 2026-10-14: non-main groups carry the workflow name, and PR groups the event
+# kind — a label event (keyed by the label's name) never cancels a code push's
+# run, and an unrelated label never cancels the ci:full run.
 concurrency:
-  group: ${{ github.ref == 'refs/heads/main' && format('pages-{0}', github.sha) || (github.event.pull_request.number && format('pages-pr-{0}', github.event.pull_request.number) || format('branch-{0}', github.ref_name)) }}
+  group: ${{ github.ref == 'refs/heads/main' && format('pages-{0}', github.sha) || (github.event.pull_request.number && format('{0}-pr-{1}-{2}', github.workflow, github.event.pull_request.number, (github.event.action == 'labeled' || github.event.action == 'unlabeled') && format('label-{0}', github.event.label.name) || 'code') || format('{0}-branch-{1}', github.workflow, github.ref_name)) }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 jobs:
+  # CHANGE SCOPE. Decides the tiers once, for every job below.
+  #   fast     — unit shards, build, corpus: every non-label event, unless the
+  #              PR is documentation-only.
+  #   thorough — browser, fpga surface: any non-PR event (main push, dispatch);
+  #              on a PR only for code changes carrying ci:full (or the run the
+  #              `labeled: ci:full` event starts).
+  # Non-PR events are never docs-only here: push already has its paths filter.
+  scope:
+    name: change scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      docs_only: ${{ steps.files.outputs.docs_only }}
+      fast: ${{ steps.tier.outputs.fast }}
+      thorough: ${{ steps.tier.outputs.thorough }}
+      full_label: ${{ steps.tier.outputs.full_label }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: { node-version: 22 }
+      - id: files
+        name: Classify the changed files (docs-only by the push paths filter)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" != "pull_request" ]; then
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          gh api "repos/$REPO/pulls/$PR/files" --paginate -q '.[] | .filename, (.previous_filename // empty)' > /tmp/changed.txt
+          node scripts/ci-docs-only.mjs < /tmp/changed.txt >> "$GITHUB_OUTPUT"
+      - id: tier
+        name: Decide the fast and thorough tiers
+        env:
+          EVENT: ${{ github.event_name }}
+          ACTION: ${{ github.event.action }}
+          LABEL: ${{ github.event.label.name }}
+          HAS_FULL: ${{ contains(github.event.pull_request.labels.*.name, 'ci:full') }}
+          DOCS_ONLY: ${{ steps.files.outputs.docs_only }}
+        run: |
+          set -euo pipefail
+          fast=true; thorough=true
+          if [ "$EVENT" = "pull_request" ]; then
+            if [ "$DOCS_ONLY" = "true" ]; then fast=false; thorough=false
+            elif [ "$ACTION" = "labeled" ] || [ "$ACTION" = "unlabeled" ]; then
+              fast=false
+              if [ "$ACTION" = "labeled" ] && [ "$LABEL" = "ci:full" ]; then thorough=true; else thorough=false; fi
+            elif [ "$HAS_FULL" = "true" ]; then thorough=true
+            else thorough=false
+            fi
+          fi
+          echo "fast=$fast thorough=$thorough docs_only=$DOCS_ONLY event=$EVENT/$ACTION"
+          { echo "fast=$fast"; echo "thorough=$thorough"; echo "full_label=$HAS_FULL"; } >> "$GITHUB_OUTPUT"
+
+  # MERGE DISCIPLINE. The merge rule is "every enabled check on the exact head
+  # is SUCCESS", and a PR without ci:full has the thorough tier SKIPPED, not
+  # green. This always-running check turns that into a red verdict for code
+  # changes, so the rule still forces the thorough tier before a code merge.
+  # It runs on every PR event, label ones included, so the newest verdict
+  # always reflects the current labels.
+  full-ci-gate:
+    name: full CI requested
+    if: github.event_name == 'pull_request'
+    needs: scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require ci:full for code changes
+        env:
+          DOCS_ONLY: ${{ needs.scope.outputs.docs_only }}
+          HAS_FULL: ${{ needs.scope.outputs.full_label }}
+          ACTION: ${{ github.event.action }}
+          LABEL: ${{ github.event.label.name }}
+        run: |
+          set -euo pipefail
+          if [ "$DOCS_ONLY" = "true" ]; then echo "documentation-only change: the fast path is sufficient"; exit 0; fi
+          if [ "$ACTION" = "unlabeled" ] && [ "$LABEL" = "ci:full" ]; then HAS_FULL=false; fi
+          if [ "$HAS_FULL" = "true" ]; then echo "ci:full present: the thorough tier runs for this PR"; exit 0; fi
+          echo "::error::code change: add the ci:full label so the thorough tier runs before merge"
+          exit 1
+
   # SUPERSEDED MAIN COMMITS RUN CHEAP. Measured 2026-09-29: main took 100 commits
   # in 24 h, each run is 6 jobs, and one run is ~36 min of job time (browser
   # light 12, build 11, browser heavy 9, fpga 3, corpus 1). That is ~60 job-hours
@@ -196,6 +297,8 @@ jobs:
   # file/skip/GUI-resolution census. No Pages artifact is produced here.
   unit:
     name: unit (${{ matrix.shard }}/2)
+    needs: scope
+    if: needs.scope.outputs.fast == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -747,6 +850,8 @@ jobs:
           if-no-files-found: error
 
   build:
+    needs: scope
+    if: needs.scope.outputs.fast == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1394,8 +1499,8 @@ jobs:
   # gave the job TWO `steps:` keys, which PyYAML silently accepts and Actions
   # rejects with a run that has no jobs at all.
   browser:
-    needs: guard
-    if: needs.guard.outputs.superseded != 'true'
+    needs: [guard, scope]
+    if: needs.guard.outputs.superseded != 'true' && needs.scope.outputs.thorough == 'true'
     # TWO SHARDS OF ONE BODY. The gates below took 13–15 min in series (two
     # dispatch runs, 2026-09-06: labwired heavy tier 140 s, 8086 benchmark 107 s,
     # no-engine-artifact 46 s, AVR offline bench 34 s, debugger recording 30 s,
@@ -1421,7 +1526,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [heavy, light]
+        shard: [heavy, light, robotlab]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # Job-level permissions REPLACE the workflow's for this job, so the two it
@@ -1613,6 +1718,48 @@ jobs:
         env:
           BW_SPIKE_RECEIPT_DIR: ${{ runner.temp }}/spike-browser-receipts
         run: node scripts/verify-spike-simulator-browser.mjs
+
+      - name: Browser gate — Robot Lab core, a real-parts model loads, drives, is built and saved
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
+        run: npm run verify:sim-lab -- --part=core
+
+      - name: Browser gate — Robot Lab examples run their programs (line follower, wall stopper, colour explorer)
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
+        run: npm run verify:sim-lab -- --part=examples
+
+      - name: Browser gate — Robot Lab model insight, instructions and the no-WebGL fallback
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
+        run: npm run verify:sim-lab -- --part=ui
+
+      - name: Browser gate — Robot Lab on a school tablet, real touch input at 1024×768
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
+        run: npm run verify:sim-lab -- --part=tablet
+
+      - name: Browser gate — Robot Lab layout at five window sizes (Simulate and Build)
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
+        run: npm run verify:sim-lab -- --part=layout
+
+      - name: Browser gate — Robot Lab build editor Studio tools (colour, hide, mirror, align, measure, groups, clipboard)
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
+        run: npm run verify:sim-lab -- --part=editor
+
+      - name: Browser gate — Robot Lab scale, a 2,054-part model drawn instanced, and .lxf/.io model files
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
+        run: npm run verify:sim-lab -- --part=scale
+
+      - name: Browser gate — ESP8266 image runs on the esp8266 debug kind with serial
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        env:
+          ESP8266_BROWSER_ARTIFACTS: ${{ runner.temp }}/esp8266-debug-browser
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-esp8266-debug-browser.mjs
 
       - name: Browser gate — responsive editor, dismissible messages, movable lessons and image targets
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
@@ -2560,6 +2707,20 @@ jobs:
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-makecode.mjs
 
+      # Native CPX blocks must drive the same state in the pane and circuit face.
+      # Keep this journey separate so its duration and failure receipt are visible.
+      - name: Browser gate — CPX native program and live circuit face
+        id: cpx_circuit_face
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ CPX_FACE_REPORT=artifacts/cpx-circuit-face/current.json node scripts/verify-cpx-circuit-face.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.cpx_circuit_face.outcome != 'skipped' && matrix.shard == 'light'
+        with:
+          name: cpx-circuit-face-proof
+          path: artifacts/cpx-circuit-face/*
+          if-no-files-found: error
+
       # Both of these were on the KNOWN_UNWIRED list as FAILING, and both
       # failed for one reason: the starter-journeys backdrop swallowed every
       # click, so each spent its whole timeout retrying the first one. That
@@ -2824,6 +2985,8 @@ jobs:
         run: node scripts/audit-job-steps.mjs --shard ${{ matrix.shard }}
 
   corpus:
+    needs: scope
+    if: needs.scope.outputs.fast == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -2879,8 +3042,8 @@ jobs:
   # a green check that proves nothing.
   fpga-surface:
     name: fpga surface (flag-on)
-    needs: guard
-    if: needs.guard.outputs.superseded != 'true'
+    needs: [guard, scope]
+    if: needs.guard.outputs.superseded != 'true' && needs.scope.outputs.thorough == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

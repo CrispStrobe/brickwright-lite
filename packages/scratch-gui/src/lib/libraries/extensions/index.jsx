@@ -72,6 +72,14 @@ export default [
         featured: true
     },
     {
+        name: 'Circuit Playground',
+        extensionId: 'circuitplayground',
+        iconURL: 'static/extension-posters/circuitplayground.svg',
+        insetIconURL: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PGNpcmNsZSBjeD0iMjQiIGN5PSIyNCIgcj0iMjIiIGZpbGw9IiNjMDE2OGMiLz48Y2lyY2xlIGN4PSIyNC4wIiBjeT0iOS4wIiByPSIzLjUiIGZpbGw9IiNmZjAwMDAiIHN0cm9rZT0iIzIyMiIgc3Ryb2tlLXdpZHRoPSIwLjciLz48Y2lyY2xlIGN4PSIzMi44IiBjeT0iMTEuOSIgcj0iMy41IiBmaWxsPSIjZmY3ZjAwIiBzdHJva2U9IiMyMjIiIHN0cm9rZS13aWR0aD0iMC43Ii8+PGNpcmNsZSBjeD0iMzguMyIgY3k9IjE5LjQiIHI9IjMuNSIgZmlsbD0iI2ZmZmYwMCIgc3Ryb2tlPSIjMjIyIiBzdHJva2Utd2lkdGg9IjAuNyIvPjxjaXJjbGUgY3g9IjM4LjMiIGN5PSIyOC42IiByPSIzLjUiIGZpbGw9IiMwMGZmMDAiIHN0cm9rZT0iIzIyMiIgc3Ryb2tlLXdpZHRoPSIwLjciLz48Y2lyY2xlIGN4PSIzMi44IiBjeT0iMzYuMSIgcj0iMy41IiBmaWxsPSIjMDBmZmZmIiBzdHJva2U9IiMyMjIiIHN0cm9rZS13aWR0aD0iMC43Ii8+PGNpcmNsZSBjeD0iMjQuMCIgY3k9IjM5LjAiIHI9IjMuNSIgZmlsbD0iIzAwMDBmZiIgc3Ryb2tlPSIjMjIyIiBzdHJva2Utd2lkdGg9IjAuNyIvPjxjaXJjbGUgY3g9IjE1LjIiIGN5PSIzNi4xIiByPSIzLjUiIGZpbGw9IiM0YjAwODIiIHN0cm9rZT0iIzIyMiIgc3Ryb2tlLXdpZHRoPSIwLjciLz48Y2lyY2xlIGN4PSI5LjciIGN5PSIyOC42IiByPSIzLjUiIGZpbGw9IiM4YTJiZTIiIHN0cm9rZT0iIzIyMiIgc3Ryb2tlLXdpZHRoPSIwLjciLz48Y2lyY2xlIGN4PSI5LjciIGN5PSIxOS40IiByPSIzLjUiIGZpbGw9IiNmZjAwN2YiIHN0cm9rZT0iIzIyMiIgc3Ryb2tlLXdpZHRoPSIwLjciLz48Y2lyY2xlIGN4PSIxNS4yIiBjeT0iMTEuOSIgcj0iMy41IiBmaWxsPSIjZmZmZmZmIiBzdHJva2U9IiMyMjIiIHN0cm9rZS13aWR0aD0iMC43Ii8+PC9zdmc+',
+        description: 'Circuit Playground Express: NeoPixel ring, buttons, switch, sensors and speaker — bundled built-in.',
+        featured: true
+    },
+    {
         name: 'GPIO Pins',
         extensionId: 'bwgpio',
         iconURL: 'static/extension-posters/csp.png',

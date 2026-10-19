@@ -1,7 +1,33 @@
 # brickwright-lite — roadmap
 
-Everything known to be pending, in one place, with the measurements that were expensive to
-obtain. Two rules for this file:
+## Current circuit/instrument sequence — 2026-10-15
+
+Follow the [current plan](PLAN.md#current-circuitinstrument-campaign--2026-10-15)
+and upstream [acceptance contract](https://github.com/CrispStrobe/bw-circuit-ui/blob/master/docs/CIRCUIT-INSTRUMENT-NEXT.md):
+qualified LM741 source → installed-consumer adoption and TestFlight release →
+stratified measurement regression → demonstrated causal repairs → bounded
+instrument-realism proof. As reconciled on 2026-10-17, upstream qualification
+and consumer adoption PR965 are complete; TestFlight delivery is not established.
+PR1011 is a merged ownership claim, not a released build. The existing iOS
+workflow-resource lane owns the remaining workflow integration.
+
+The [CLI instrument handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md) scopes the
+unimplemented harness, 312 planned parameter cases across 12 templates,
+independent reference classes, causal repair triage and a bounded GUI realism
+follow-up. Harness preparation may proceed while release work continues, but
+the actual campaign remains after TestFlight. Claim ownership before coding;
+the preparation session is closing without reserving implementation. Later
+steps require their own installed identities, raw results and actual GUI
+qualification. Do not count
+historical corpus totals as a fresh sweep or parameter variants as distinct
+topologies. `LANES.md`, not historical session names below, controls ownership.
+
+The entries below retain dated measurements and rejected approaches. Their
+presence is not proof that a gap remains open; check current source before
+claiming or implementing one.
+
+Engineering backlog and dated measurements, including work that may since have
+landed. Two rules for interpreting this file:
 
 - **Each entry carries its evidence.** Numbers, not impressions. An item that says "feels cramped"
   costs its next reader a day; one that says "the rail pins the editor's min-content at 776px"
@@ -22,13 +48,12 @@ item marked with an agent name is being worked on.
 
 ---
 
-## Next-session shortlist — reconciled 2026-09-08
+## Historical shortlist — reconciled 2026-09-08
 
-[PLAN.md](PLAN.md#next-session-priorities--reconciled-2026-09-08) defines the
-execution order. The exact baseline is `62c7a00c4`; [HISTORY.md](HISTORY.md)
+[The current plan](PLAN.md#current-circuitinstrument-campaign--2026-10-15) defines
+the circuit campaign above. This older shortlist's baseline was `62c7a00c4`; [HISTORY.md](HISTORY.md)
 holds completed and rejected work, and [LANES.md](LANES.md) controls live
-ownership. Do not start a later track while an earlier track is owned or under
-landing audit.
+ownership. This dated order is not a reservation of any current lane.
 
 ### Track 1 — N2f: random-dependent output on the 8086 C route — DONE
 
@@ -1895,6 +1920,44 @@ through the Code tab silently eats blocks.
 Note that the RCX extension already transpiles ITS OWN blocks to NQC. `generateNQC` is a different
 thing — a whole Scratch project, not one extension's vocabulary — and the two should not be
 confused when someone picks this up.
+
+### 4.9 The Sim Lab physics worker — CLOSED 2026-10-17, the physics runs in it
+
+Was: `physics/physics-worker.js` and `physics-client.js` were built and tested but imported by
+nothing, because `bw-sim/hub-bridge.js` reads every motorised joint's angle synchronously on each
+5 ms step and feeds it to the hub's motor controller before the next step, and splitting that
+loop across a message boundary would add a step of latency to every encoder reading.
+
+Done without splitting the loop: the controller stays on the main thread (the VM needs it
+synchronously), and the worker runs the SAME bridge step against a mirror of the controller's
+state, one batch per tick, returning one frame per step (encoders, IMU, sensor rays of that
+step). The main thread replays the real controller over those frames, so waits and
+run-for-degrees promises finish on their step; a command that changes the controller while a
+batch is in flight makes the worker redo the batch from a Jolt checkpoint. Results are
+bit-identical to the main-thread physics (`test/bw-sim-physics-worker-session.test.mjs`); the
+design is docs/SIM-LAB-PLAN.md "§4.9 The physics worker". The browser gate runs every Sim Lab
+check with the worker in use. Both files left KNOWN_DEAD in the commit that wired them
+(`test/no-dead-overlay-modules.test.mjs`).
+
+Still open, named: `castRay` from the main thread (nothing needs it today; it would be an async
+query); `interpolate()` in physics-client.js is unused (the view draws the last batch's poses);
+Jolt in the worker is single-threaded.
+
+### 4.10 The Robot Lab RCX VM (R5) — BUILT 2026-10-17, waiting for its hub adapter
+
+`lib/bw-sim/routes/rcx-vm/rcx-vm.js` (with `rcx-bytecode.js` and `rcx-program.js`, which it
+imports) is the clean-room interpreter of the RCX standard-firmware bytecode that
+docs/ROBOT-LAB-ARCHITECTURE.md §3.5 and §7 R5 call for: NQC source → the in-repo `nqc-wasm` →
+`.rcx` → this VM → ports. It is a pure, step-driven route module (`advance(ms, ports)`,
+`snapshot()`/`restore()`), built ahead of its consumer on purpose: the `VirtualHub` interface,
+hub registry and generic bridge are slice R1, being written concurrently, and the VM must not
+touch them. So `rcx-vm.js` is in KNOWN_DEAD (`test/no-dead-overlay-modules.test.mjs`) with this
+section as its owner. What it does, the sources it was written from and what is missing:
+docs/ROBOT-LAB-RCX.md. Tests: `test/bw-sim-rcx-vm.test.mjs` (compiles real NQC in Node).
+
+**Leaves KNOWN_DEAD when** `hubs/rcx/rcx-virtual-hub.js` (R5's adapter: outputs → `pwm` drives
+with 8 levels, device readings → raw ADC values, the VM worker-resident in the §6.4 state
+registry) imports it — in that commit, as the 4.7 and 4.9 entries did.
 
 ### 5.1 The stc12 extension lite ships is missing 8 opcodes the emitter emits — FIXED
 

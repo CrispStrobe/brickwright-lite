@@ -1,7 +1,9 @@
 {
-  "bw-circuit-ui": "5f336b24447351ce80742c0e71078cdd23e7912b",
-  "bw-board": "c5078499ebcde97ce615689667244b37c76eb22f",
-  "sb3-creator": "c47b96800b968b4b95e21c30efb9e33c026491fc",
+  "bw-circuit-ui": "bda0157410a6704ae859a19398a8a742cdfae50b",
+  "bw-board": "f84ba60ead0a90deb9830f0c1468839c293ecf05",
+  "sb3-creator": "a13f92b8bc4b06f0cb9ffec22bab71f06db7ac76",
   "stc-compiler-flasher": "30f43384a9f226de3c3cb753e119dd93ca2e81ff",
-  "arrays-values": "598fc9665a3ffdcc6fdeaa465f2c42ccaa814d8f"
+  "arrays-values": "598fc9665a3ffdcc6fdeaa465f2c42ccaa814d8f",
+  "circuitplayground": "0c4e3b4a0cee57d65474082938c352818426eebb",
+  "wedo2unified": "98eca46ed343ffe186e737062fdc68716f28ca6c"
 }

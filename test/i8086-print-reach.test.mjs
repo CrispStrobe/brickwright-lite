@@ -98,21 +98,26 @@ test('the exact 304-program post-production print census is disjoint and exhaust
         assert.equal(report.invariants.opcodeProgramExhaustive, true);
         assert.equal(report.invariants.currentOutputCount, 56);
         assert.equal(report.invariants.currentOutputExhaustiveForSource, true);
+        // sb3-creator c9be966f (#151): a DEVICE line builds that device's C, so
+        // the 15 output programs that generated host C reach the 8086 device
+        // route: arduino-04-ascii-table and eater6502-full-build emit, and the
+        // other 13 (the Arduino String examples' joined prints) are printRefused.
         assert.deepEqual(report.currentOutput.counts,
-            {notReached: 6, hostC: 15, refused: 25, emitted: 10, commentOnly: 0});
+            {notReached: 6, hostC: 0, refused: 38, emitted: 12, commentOnly: 0});
         assert.deepEqual(report.terminalCounts, {
-            retargetRefused: 132, parseFailed: 8, noOutputOpcode: 114, hostC: 15,
-            printRefused: 2, remainingChoke: 22, waitRefused: 1, int16Refused: 0,
-            longLeaked: 0, emitted: 10, commentOnly: 0
+            retargetRefused: 132, parseFailed: 8, noOutputOpcode: 114, hostC: 0,
+            printRefused: 15, remainingChoke: 22, waitRefused: 1, int16Refused: 0,
+            longLeaked: 0, emitted: 12, commentOnly: 0
         });
         assert.equal(report.invariants.terminalCount, 304);
         assert.equal(report.invariants.terminalExhaustive, true);
         assert.deepEqual(report.chokeCombinationCounts, {
-            adc: 17, none: 13, 'adc + tone': 1,
+            adc: 17, none: 28, 'adc + tone': 1,
             'adc + pwm': 1, 'adc + now': 3
         });
         assert.deepEqual(report.remainingChokeCounts, {adc: 22, tone: 1, pwm: 1, now: 3});
-        assert.equal(report.computedForms.variable.deviceOccurrences, 17);
+        // 17 -> 32 at c9be966f: the former host-C programs' variable prints are device occurrences now.
+        assert.equal(report.computedForms.variable.deviceOccurrences, 32);
         assert.equal(report.computedForms.stc12_read.deviceOccurrences, 15);
         assert.equal(report.computedForms.operator_join.deviceOccurrences, 5);
         assert.deepEqual(report.computedForms.operator_join.devicePrograms,
@@ -121,9 +126,11 @@ test('the exact 304-program post-production print census is disjoint and exhaust
             'arduino-01-digital-read-serial',
             'arduino-02-digital-input-pullup',
             'arduino-02-state-change',
+            'arduino-04-ascii-table',
             'arduino-06-ping',
             'arduino-sk-p11-crystal-ball',
             'binary-counter-buttons',
+            'eater6502-full-build',
             'idea-generator',
             'reaction-duel',
             'sense-noise-counter',
@@ -146,8 +153,22 @@ test('the exact 304-program post-production print census is disjoint and exhaust
             assert.equal(Object.hasOwn(report.printRefusalEvidence, name), false,
                 `${name}: released literal output remained a print refusal instead of its ADC choke`);
         }
+        // +13 at c9be966f: the Arduino String examples left host C and are refused by name.
         assert.deepEqual(Object.keys(report.printRefusalEvidence), [
+            'arduino-08-char-analysis',
             'arduino-08-string-addition',
+            'arduino-08-string-append',
+            'arduino-08-string-case',
+            'arduino-08-string-chars',
+            'arduino-08-string-compare',
+            'arduino-08-string-constructors',
+            'arduino-08-string-indexof',
+            'arduino-08-string-length',
+            'arduino-08-string-length-trim',
+            'arduino-08-string-replace',
+            'arduino-08-string-startswith',
+            'arduino-08-string-substring',
+            'arduino-08-string-toint',
             'guess-the-number'
         ]);
         assert.ok(report.terminal.emitted.includes('arduino-sk-p11-crystal-ball'),

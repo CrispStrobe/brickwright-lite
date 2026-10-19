@@ -108,19 +108,23 @@ class SpikeArenaPane extends React.Component {
 
     /** Loads a unit and selects one of its challenges (the first when `wanted` is not in it). */
     async openUnit (unitId, wanted) {
-        await this.stopProgram();
-        if (this.disposed) return;
         const token = this.unitToken = {};
+        const stopped = this.stopProgram();
+        const intent = this.programIntent;
+        const current = () => !this.disposed && this.unitToken === token &&
+            this.programIntent === intent && this.bridge === intent.bridge;
+        await stopped;
+        if (!current()) return;
         this.setState({status: 'loading', sandbox: null, topology: 'default', message: ''});
         try {
             const {unit, challenges, folder} = await loadUnit(unitId);
-            if (token !== this.unitToken) return;
+            if (!current()) return;
             this.folder = folder;
             const index = Math.max(0, wanted ? challenges.findIndex(c => c.id === wanted) : 0);
             this.bridge = null;
             this.setState({unit, challenges, index, readout: null, status: 'ready'}, () => this.select(index));
         } catch (error) {
-            if (token === this.unitToken) this.setState({status: 'failed', message: this.t('loadFailed', {error: error.message})});
+            if (current()) this.setState({status: 'failed', message: this.t('loadFailed', {error: error.message})});
         }
     }
 
@@ -152,12 +156,17 @@ class SpikeArenaPane extends React.Component {
     get world () { return this.state.sandbox || this.state.challenges[this.state.index] || null; }
 
     async select (index) {
-        await this.stopProgram();
-        if (this.disposed) return;
+        const stopped = this.stopProgram();
+        const intent = this.programIntent;
+        const current = () => !this.disposed && this.programIntent === intent && this.bridge === intent.bridge;
+        await stopped;
+        if (!current()) return;
         const world = this.state.challenges[index];
         if (!world) return;
         this.bridge = new ArenaHubBridge({hubState: this.hubState, world});
+        intent.bridge = this.bridge;
         this.setState({index, sandbox: null, topology: 'default', readout: null, verdict: null, status: 'ready', message: '', hintsOpen: false}, () => {
+            if (!current()) return;
             // A new world needs a new scene; the renderer is not reused across worlds.
             if (this.view3d) this.mountView3D();
             this.draw();
@@ -167,14 +176,19 @@ class SpikeArenaPane extends React.Component {
 
     async setSandbox (world) {
         this.unitToken = null;
-        await this.stopProgram();
-        if (this.disposed) return;
+        const stopped = this.stopProgram();
+        const intent = this.programIntent;
+        const current = () => !this.disposed && this.programIntent === intent && this.bridge === intent.bridge;
+        await stopped;
+        if (!current()) return;
         this.unitToken = null;
         this.bridge = new ArenaHubBridge({hubState: this.hubState, world});
+        intent.bridge = this.bridge;
         this.lastFrame = null;
         this.clock.clear();
         try { localStorage.setItem(SANDBOX_STORAGE_KEY, JSON.stringify(world)); } catch { /* local storage may be unavailable */ }
         this.setState({sandbox: world, status: 'ready', verdict: null, readout: null, message: ''}, () => {
+            if (!current()) return;
             if (this.view3d) this.mountView3D();
             this.draw();
         });
@@ -234,15 +248,21 @@ class SpikeArenaPane extends React.Component {
 
     async manualDrive (direction) {
         if (!this.state.sandbox || !this.bridge) return;
-        await this.stopProgram();
-        if (this.disposed) return;
+        const stopped = this.stopProgram();
+        const intent = this.programIntent;
+        const current = () => !this.disposed && this.programIntent === intent && this.bridge === intent.bridge;
+        await stopped;
+        if (!current()) return;
         this.hubState.setSimulationEnabled(true);
+        if (!current()) return;
         const speeds = {forward: [1, 1], back: [-1, -1], left: [-1, 1], right: [1, -1], stop: [0, 0]}[direction];
         if (!speeds) return;
         for (const [i, side] of [this.bridge.robot.left, this.bridge.robot.right].entries()) {
+            if (!current()) return;
             const speed = this.hubState.backend.percentToDps(side.port, this.state.driveSpeed * speeds[i] * (side.reversed ? -1 : 1));
             this.hubState.backend.runAtSpeed(side.port, speed);
         }
+        if (!current()) return;
         this.lastFrame = null;
         this.setState({execution: 'native', topology: 'default', status: 'running', message: ''});
     }
@@ -489,21 +509,34 @@ class SpikeArenaPane extends React.Component {
         if (program) encodeInstructions(program, {topology});
         if (this.firmwareSession?.storageSupported && (source !== null || this.state.execution === 'nuttx')) {
             const session = this.firmwareSession;
-            session.onOutput = onOutput;
-            session.onProgramState = this.firmwareProgramObserver(session, onProgramState);
-            session.onStopped = this.firmwareStoppedObserver(session, 'nuttx', program, onStopped);
-            session.onError = this.firmwareErrorObserver(session, onError);
-            session.onCompleted = () => { onCompleted(); if (!this.disposed && this.firmwareSession === session) this.setState({message: this.locale === 'de' ? 'Firmware-Programm abgeschlossen.' : 'Firmware program completed.'}); };
+            const feedback = this.firmwareUploadFeedback = {active: true};
+            const owned = () => !this.disposed && this.firmwareUploadFeedback === feedback;
+            const consume = callback => (...args) => { if (owned() && feedback.active) return callback(...args); };
+            const observe = callback => (...args) => { if (owned()) return callback(...args); };
+            const reportError = consume(onError);
+            session.onOutput = consume(onOutput);
+            // The live native pane still observes firmware after an upload fails;
+            // the failed Code run must keep its error until a new run replaces it.
+            session.onProgramState = observe(this.firmwareProgramObserver(session, consume(onProgramState)));
+            session.onStopped = observe(this.firmwareStoppedObserver(session, 'nuttx', program, consume(onStopped)));
+            session.onError = observe(this.firmwareErrorObserver(session, reportError));
+            session.onCompleted = observe(() => { consume(onCompleted)(); if (this.firmwareSession === session) this.setState({message: this.locale === 'de' ? 'Firmware-Programm abgeschlossen.' : 'Firmware program completed.'}); });
             this.setState({status: 'starting', message: this.locale === 'de' ? 'Aktueller Code wird in die laufende Firmware geladen…' : 'Uploading current code to the live firmware…'});
             try {
+                consume(onStarting)(this.locale === 'de' ? 'Aktueller Code wird in die laufende Firmware geladen…' : 'Uploading current code to the live firmware…');
                 await session.uploadProgram(program, source);
                 this.firmwareStartedState(session, this.locale === 'de' ? 'Aktueller Code geladen; läuft in der ARM-Firmware.' : 'Current code uploaded and running in ARM firmware.');
             } catch (error) {
-                if (!this.disposed && this.firmwareSession === session) this.setState({status: session.programState === 2 ? 'running' : 'paused', message: error.message});
+                if (owned() && this.firmwareSession === session && !session.closed) {
+                    this.setState({status: session.programState === 2 ? 'running' : 'paused', message: error.message});
+                    try { reportError(error); }
+                    finally { feedback.active = false; }
+                }
                 throw error;
             }
             return;
         }
+        this.firmwareUploadFeedback = null;
         await this.stopProgram();
         if (this.disposed) throw new Error('The arena pane is closed');
         this.hubState.setSimulationEnabled(true);
@@ -627,22 +660,40 @@ class SpikeArenaPane extends React.Component {
         this.setState({status: 'running', verdict: this.bridge.verdict, message});
     }
 
-    async stopProgram ({restart = false} = {}) {
+    async stopProgram ({restart = false, clearMessage = false} = {}) {
         // Invalidate a pending native Start even when Reset retains its bridge
         // and execution backend, or a backend selection returns to native.
-        const intent = this.programIntent = {};
+        const intent = this.programIntent = {bridge: this.bridge};
         const bridge = this.bridge;
         const current = () => !this.disposed && this.programIntent === intent && this.bridge === bridge;
         const firmware = this.firmwareSession;
         this.firmwareSession = null;
+        let pending = this.pendingFirmwareStop;
         if (firmware) {
-            try { await firmware.stop(); }
+            // Publish the teardown before invoking stop: it can synchronously
+            // notify a listener which calls Stop again after detachment.
+            let resolveStop, rejectStop;
+            const stopped = new Promise((resolve, reject) => {
+                resolveStop = resolve; rejectStop = reject;
+            });
+            const stops = pending ? [pending, stopped] : [stopped];
+            pending = this.pendingFirmwareStop = Promise.allSettled(stops).then(results => {
+                const failed = results.find(result => result.status === 'rejected');
+                if (failed) throw failed.reason;
+            });
+            try { resolveStop(firmware.stop()); }
+            catch (error) { rejectStop(error); }
+        }
+        if (pending) {
+            try { await pending; }
             catch (error) {
                 if (current()) throw error;
                 return;
+            } finally {
+                if (this.pendingFirmwareStop === pending) this.pendingFirmwareStop = null;
             }
-            // Teardown belongs to the detached session. Shared VM, backend and
-            // port cleanup must still belong to this pane when it resumes.
+            // Even a later Stop with no attached session must wait for native
+            // clock ownership release before restoring a bridge or backend.
             if (!current()) return;
         }
         if (this.bridge && this.world && ['six-motors', 'dual-ultrasonic'].includes(this.arenaFirmwareTopology)) {
@@ -650,8 +701,10 @@ class SpikeArenaPane extends React.Component {
             this.bridge = new ArenaHubBridge({hubState: this.hubState, world: this.world});
         }
         this.arenaFirmwareTopology = null;
+        // A topology teardown may replace the bridge while retaining its intent.
+        intent.bridge = this.bridge;
         this.clock.uninstall();
-        if (restart) this.setState({status: 'ready'});
+        if (restart) this.setState({status: 'ready', ...(clearMessage ? {message: ''} : {})});
         const external = this.hubState?.externalBackend;
         if (external) external.cancel();
         this.hubState.backend.cancel();
@@ -662,25 +715,57 @@ class SpikeArenaPane extends React.Component {
     }
 
     async pause () {
-        if (this.firmwareSession?.storageSupported) {
-            try { await this.firmwareSession.stopProgram(); this.setState({status: 'paused', message: this.locale === 'de' ? 'Programm gestoppt. Speicher verfügbar, sobald die Firmware vollständig angehalten hat.' : 'Program stopped. Storage is available when firmware finishes stopping.'}); }
-            catch (error) { this.setState({message: error.message}); }
+        if (this.firmwareSession?.uploading) {
+            const stopped = this.stopProgram({restart: true, clearMessage: true});
+            const intent = this.programIntent;
+            try { await stopped; }
+            catch (error) {
+                if (!this.disposed && this.programIntent === intent) {
+                    this.setState({status: 'failed', message: error.message});
+                }
+            }
             return;
         }
-        if (this.firmwareSession || this.hubState?.externalBackend) await this.stopProgram();
+        const session = this.firmwareSession;
+        if (session?.storageSupported) {
+            const current = () => !this.disposed && this.firmwareSession === session && !session.closed;
+            try {
+                await session.stopProgram();
+                if (current()) this.setState({status: 'paused', message: this.locale === 'de' ? 'Programm gestoppt. Speicher verfügbar, sobald die Firmware vollständig angehalten hat.' : 'Program stopped. Storage is available when firmware finishes stopping.'});
+            } catch (error) {
+                if (current()) this.setState({message: error.message});
+            }
+            return;
+        }
+        if (this.firmwareSession || this.hubState?.externalBackend) {
+            const stopped = this.stopProgram();
+            // stopProgram creates its intent before awaiting firmware teardown.
+            const intent = this.programIntent;
+            await stopped;
+            if (this.disposed || this.programIntent !== intent || this.bridge !== intent.bridge) return;
+        }
+        if (this.disposed) return;
         this.setState({status: 'paused'});
     }
 
     async reset () {
-        await this.stopProgram();
+        const stopped = this.stopProgram();
+        const intent = this.programIntent;
+        await stopped;
+        if (this.disposed || this.programIntent !== intent || this.bridge !== intent.bridge) return;
         if (this.bridge) this.bridge.reset();
         this.setState({status: 'ready', verdict: null, message: ''}, () => this.draw());
     }
 
     async step () {
-        if (!this.bridge) return;
+        if (this.disposed || !this.bridge) return;
         if (this.state.execution !== 'native') return;
-        if (this.hubState?.externalBackend) await this.stopProgram();
+        if (this.hubState?.externalBackend) {
+            const stopped = this.stopProgram();
+            const intent = this.programIntent;
+            await stopped;
+            if (this.disposed || this.programIntent !== intent || this.bridge !== intent.bridge) return;
+        }
         this.advance(STEP_BUTTON_MS);
         this.setState({status: 'paused'});
     }
@@ -837,7 +922,7 @@ class SpikeArenaPane extends React.Component {
                     </select>
                     </>}
                     <div style={{display: 'flex', flexWrap: 'wrap', gap: 6}}>
-                        {status === 'running' || (status === 'starting' && this.firmwareSession) ? (
+                        {status === 'running' || (status === 'starting' && this.firmwareSession) || this.firmwareSession?.uploading ? (
                             <button type="button" style={btn} onClick={() => this.pause()} data-testid="bw-spike-arena-stop">{t('stop')}</button>
                         ) : (
                             <button type="button" style={{...btn, background: '#2f9e44', color: '#fff', border: '1px solid #2b8a3e'}}

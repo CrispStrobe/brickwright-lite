@@ -409,10 +409,10 @@ test('Arcade: pxt-arcade and Lite\'s VM log the same', {skip: SKIP_ARCADE, timeo
     assert.equal((await arcadeImport(source)).lite, expected);
 });
 
-test('Arcade: the export of the members it has words for logs the same in pxt-arcade', {skip: SKIP_ARCADE, timeout: 300000}, async () => {
-    // export-arcade.js has no `letter of` (operator_letter_of as a value is
-    // refused by name there), so charAt/[] are measured above, not here.
-    const lines = ARCADE_LINES.filter(([e]) => !/^(atIs|idxIs)\(/.test(e));
+test('Arcade: the export of every member logs the same in pxt-arcade', {skip: SKIP_ARCADE, timeout: 300000}, async () => {
+    // Until E17 export-arcade.js refused `letter of` (operator_letter_of as a
+    // value), so charAt/[] were left out here; now every line goes out.
+    const lines = ARCADE_LINES;
     const {creator, lite} = await arcadeImport(arcadeSource(lines));
     const ex = projectToArcade(creator.project);
     assert.deepEqual(ex.unsupported, []);

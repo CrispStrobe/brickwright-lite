@@ -83,13 +83,17 @@ export async function runSpike3OnVirtualHub (vm, options = {}) {
     vm.greenFlag();
     let stopped = false;
     // The Code tab can run without an arena pane. Spend VM steps on the same
-    // hub in that case; an active arena already spends those steps itself.
+    // hub in that case; an active arena already spends those steps itself, and
+    // a Robot Lab scene on this hub owns its clock outright — its physics
+    // measures the shafts (docs/ROBOT-LAB-ARCHITECTURE.md §3.5), so motors must
+    // never advance here, not even while the Lab is paused.
     const hub = virtualHub.hubState;
     const clock = new VmStepClock();
     const installed = hub && clock.install(vm.runtime);
     const timer = installed ? setInterval(() => {
         const ms = clock.take();
         if (!ms || stopped || win.__bwSpikeArena?.status === 'running') return;
+        if (win.__bwSimLab?.hubState === hub) return;
         const arena = win.__bwSpikeArena?.bridge;
         if (arena && win.__bwSpikeArena?._pane?.hubState === hub) arena.tick(ms);
         else { hub.stepMotors(ms); hub.changed(); }

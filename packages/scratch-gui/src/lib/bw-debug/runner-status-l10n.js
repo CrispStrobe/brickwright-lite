@@ -60,6 +60,7 @@ const TABLE = {
         'attach.pico': 'starting the Pico emulator…',
         'attach.labwired': 'starting the labwired engine…',
         'attach.stm32': 'starting the STM32F030 emulator…',
+        'attach.esp8266': 'starting the ESP8266 emulator…',
 
         // ---- what was built
         'built.plain': '{bytes} bytes, {points} yield points',
@@ -157,6 +158,7 @@ const TABLE = {
         'attach.pico': 'Pico-Emulator wird gestartet…',
         'attach.labwired': 'labwired-Engine wird gestartet…',
         'attach.stm32': 'STM32F030-Emulator wird gestartet…',
+        'attach.esp8266': 'ESP8266-Emulator wird gestartet…',
 
         'built.plain': '{bytes} Bytes, {points} Haltepunkte',
         'built.device': '{bytes} Bytes ({device}), {points} Haltepunkte',

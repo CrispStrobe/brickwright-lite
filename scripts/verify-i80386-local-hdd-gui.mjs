@@ -48,7 +48,8 @@ try {
     await page.waitForFunction(() => {
         const regs = window.__benchTarget?.regs?.();
         const canvas = document.querySelector('[data-testid="bw-machine-canvas"]');
-        return regs?.halted && regs.pc === 0x7c1a && regs.di === 2 * 21 &&
+        // bw-board's 386 target reports 32-bit registers (edi); the 8086 one di.
+        return regs?.halted && regs.pc === 0x7c1a && regs.edi === 2 * 21 &&
             canvas?.width === 720 && canvas?.height === 400;
     }, undefined, {timeout: 45000});
     const proof = await page.evaluate(() => {

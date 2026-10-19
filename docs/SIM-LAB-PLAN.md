@@ -1,6 +1,6 @@
 # Technic Sim Lab — implementation plan
 
-Status: **planned, not started**. Created 2026-09-02.
+Status: **S1 done** (§0). Created 2026-09-02.
 Owner of record: unclaimed — claim individual tasks in `LANES.md` per its protocol.
 
 A Tinkercad-Sim-Lab-style mode for LEGO Technic: build a model from parts in the
@@ -12,6 +12,250 @@ drive on a mat, the color sensor reads the line it is actually over.
 Everything shipped is BSD-3/MIT/Apache-2.0/zlib code plus CC-BY-2.0 part
 geometry (content, attribution-only — same treatment as a font). No GPL, no NC,
 no "check with legal" licenses. See §7 for the full ledger.
+
+---
+
+## 0. Status and revisions — 2026-10-16
+
+Status: **S1 done** (branch `lane/simlab-20261016`; see `LANES.md`, "Sim Lab S1").
+This section overrides the sections below where they disagree.
+
+**S1 as built.**
+- `bw-sim/contracts.js`: PartMeta / PlacedModel / CompiledMechanism, frames,
+  units, the signed gear-ratio convention, validators. Extensions over the
+  plan: `ball`/`ballsocket` connectors and a `ball` joint (the SPIKE castor
+  ball is its own rolling body), `motor.outputColliders` (the drive hub's
+  shapes), optional part `friction`.
+- B1, changed: the curated LDraw subset is **vendored unmodified** under
+  `static/ldraw/` with a per-file lock (hash, release, author, licence line),
+  not fetched at build time: `complete.zip` lives at one mutable URL, so a
+  hash pin would break at every LDraw release. `npm run sync:ldraw:check`
+  verifies it offline. Packing for the browser is a build step for M2.
+- B3a + B3b: `part-meta/parts.json`, 34 parts (SPIKE hub, both angular
+  motors, the three sensors, wheel, castor, beams, axles, pins, bushes,
+  8/16/24/40T spur and 12/20T bevel gears), each connector checked against
+  the mesh by `test/bw-sim-part-meta.test.mjs` (`ldraw/ldraw-geometry.js`).
+- D1-D4: `bw-sim/mech/` compiler; C8 data half: `bw-sim/model/ldraw-model.js`.
+- D5 core: `bw-sim/physics/jolt-core.js` (in the worker since 2026-10-17: "§4.9" below). Jolt
+  contact tolerances are set for millimetre parts: the defaults (2 cm) made
+  the driving base drive 15 % slower than its wheels.
+- A6 (S1 form): `bw-sim/hub-bridge.js` - the unchanged virtual SPIKE hub
+  drives the real-parts driving base (`test/bw-sim-s1-driving-base.test.mjs`).
+
+**Next:** the physics worker (D5), packing and rendering the vendored parts in
+the arena three.js view (C2), then the M2 editor (C3-C7).
+
+**What landed since the plan was written (2026-09-02).**
+- Lane A for SPIKE is largely done, by other lanes: `virtual-hub/` ships the
+  Web Bluetooth shim, the SPIKE peripheral, `spike-hub-state.js` and the
+  dashboard panel. **A4 is superseded**: the Sim Lab drives the existing
+  `VirtualSpikeHubState` (docs/SPIKE-ARENA.md, "The hub contract") instead of
+  a new `HubState`. A2 (LWP3: Boost/Powered Up/WeDo) remains open.
+- The SPIKE arena (docs/SPIKE-ARENA.md) ships a 2D world, simulated sensors, a
+  checker, units, and a lazily loaded three.js 3D view. `three` 0.186.1 is a
+  GUI dependency, so **C1's dependency step and the three.js half of F2 are
+  done**.
+
+**One clock.** The arena contract says motors advance only inside
+`hubState.stepMotors(dt)`, owned by whoever runs the world. In the Sim Lab
+the physics core is that owner: motor targets flow from the hub state into
+the hinge motors, and joint angles flow back as encoder positions. The hub's
+own kinematic motor model is not stepped while a physics scene runs.
+
+**Order changed: S1, a vertical slice, comes first.** M2's editor is the
+largest UX job; the riskiest *technical* path is compile → physics → hub. S1
+proves that path headless, before any editor exists:
+1. `bw-sim/contracts.js` — the PartMeta / PlacedModel / CompiledMechanism
+   contracts and validators (the D5 "engine-agnostic seam", made concrete).
+2. D5 core — `bw-sim/physics/` runs a CompiledMechanism in Jolt under
+   `node --test` (worker wrapper later).
+3. D1–D4 — `bw-sim/mech/` compiles a PlacedModel + PartMeta catalog to a
+   CompiledMechanism (connection graph, islands, hinges, inferred gears).
+4. B1 + B3a — the pinned, curated LDraw subset and hand-authored metadata for
+   the ~10 parts of a driving base.
+5. A6 (S1 form) — a hand-written driving-base fixture driven by the existing
+   virtual SPIKE hub: `start motor A` turns the simulated wheel and the
+   encoder reads it back.
+Then M2 (editor) as planned, rendering through the arena's three.js stack.
+
+**Verified 2026-10-16.** `jolt-physics` 1.1.0 (MIT) in Node: a velocity-
+motorised hinge driving an 8T gear into a 24T via `GearConstraint` holds the
+angle ratio at −0.3333 after 2 s simulated and tracks its 555°/s target.
+
+**License ledger corrections (§7).** The LDraw parts library is **not**
+uniformly CC-BY-2.0: parts are CC BY 4.0, dual CC BY 2.0 / 4.0, or (older,
+unreachable authors) CC BY 2.0 only (`CAreadme.txt`; Contributor Agreement
+rev. 2024-06-06, which also allows CC0). All are attribution-only and
+compatible. Obligations for our curated, packed subset: credit "The LDraw
+Parts Library" (accepted by LDraw.org in place of per-author lists), state
+that the files were modified (packed), link the licence(s), ship
+`CAreadme.txt`, and keep every part's `!LICENSE` and `Author` header lines
+(or record them in the manifest). Official library parts only — unofficial
+parts are excluded. Trademark: "LEGO®" appears only as an adjective, never in
+a product name or logo, with the standard not-endorsed disclaimer; no
+official instructions, box art or catalogue images. Rapier (fallback) is
+Apache-2.0: ship its licence and NOTICE if it is ever adopted.
+
+### §4.9 The physics worker — 2026-10-17 (ROADMAP §4.9)
+
+*Since Robot Lab slice R1 (`docs/ROBOT-LAB-ARCHITECTURE.md` §6.5, "R1 as built")* the protocol
+below is generic over hubs: the worker entry and the protocol are `bw-sim/physics-worker.js` and
+`bw-sim/sim-worker-protocol.js` (out of `physics/`), a batch carries `hubs: {id: exportState()}`
+of each `VirtualHub` (SPIKE's adapter exports exactly the controller state listed in step 1),
+and a frame is `{t, hubs: {id: {drives, readings, pose}}}`, replayed through the hub's
+`advanceTo`/`readDrives`/`writeReadings`. The SPIKE numbers are unchanged to the bit.
+
+**Where the physics runs.** In the app, in a Web Worker (`physics/physics-worker.js`, its own
+chunk `bw-sim-physics-worker`; Jolt in chunk `bw-sim-jolt`, which the main thread fetches only
+when it has no worker). In node, without `Worker`, or when the worker cannot load the scene
+(no WebAssembly in workers), on the main thread as before; `session.workerError` says why.
+`session.worker` says which; the browser gate asserts `true`.
+
+**What stays on the main thread.** The hub state and its motor controller
+(`VirtualSpikeHubState` and the independent backend): the VM reads and writes them
+synchronously, and a run-for-degrees promise or a wait must finish there.
+
+**Why not "send motor targets, get poses back".** Within one 5 ms step the controller and
+the hinge are a closed loop: the controller's velocity drives the hinge, the hinge's measured
+angle is the next step's encoder (run-to-position, holds). Splitting that across the message
+boundary adds a step of latency to every encoder reading, and sensors would read a different
+step's pose than the encoders. So the loop runs where the physics is.
+
+**Protocol** (`physics/sim-worker-protocol.js`; one batch = the steps one `tick()` makes due):
+
+1. main → worker: `{scene, steps, hub: exportMotorState(hub)}` — everything the controller
+   reads when it steps (per-port controllers minus their promise resolvers, motor data, port
+   devices, simulated ms, clock owner).
+2. worker: `core.checkpoint()` (Jolt `SaveState` + the core's own unwrapped angles and motor
+   commands + the bridge's heading/IMU memory), import the state into a **mirror** hub, run the
+   unchanged `SimHubBridge.step()` N times — controller, hinge targets, physics step, encoders,
+   heading, IMU, sensor rays — and record each step's **frame** (what that step writes into the hub).
+3. worker → main: the frames and every body's pose / joint state after the last step (Float64).
+4. main: if the controller state is still the one sent, **replay**: per frame, the real
+   controller steps once (`stepMotors(5)`; its waits and promises finish on that step), then
+   `applyFrame` writes the frame exactly as the in-thread bridge does; then one `changed()`.
+   Each frame carries the velocity the mirror commanded; the replay checks the real controller
+   commanded the same (`stats.diverged`, always 0).
+5. If the controller state changed while the batch was in flight (the VM set a motor, the drive
+   pad, Pause): re-send with `redo: true` — the worker `rollback()`s to the checkpoint and runs the
+   batch with the new state. In-thread a tick is atomic, so that command reached the controller
+   before the tick; the redone batch is exactly that. A command that changes nothing the
+   controller reads (the same speed again) is not a conflict.
+
+**One clock — the world's.** The hub's simulated time, `session.time`, the encoders, the sensors and the poses
+all advance together when a batch is applied; nothing the VM can see moves while a batch is in
+flight. The cost is one round trip between a tick and its result. A batch is at most
+`MAX_BATCH_STEPS` (20 = 100 ms); when the worker cannot keep up, the rest is dropped
+(`stats.droppedMs`), as the pane's 50 ms frame clamp drops it on the main thread.
+
+**One clock — the program's too (2026-10-18, `bw-sim/sim-clock.js`).** Dropping time kept the
+world consistent with itself but not with the PROGRAM: the Scratch VM and the spikeprime
+extension ran on wall time (`wait 5 seconds`, `timer`, `move for 2 seconds`, the extension's
+`setTimeout`/`Date.now` waits, its send rate limiter), so on a machine whose physics ran below
+real time a timed block ended early in simulated time and the same program drove a shorter
+distance on a slow Chromebook than on a fast Mac. Measured in the browser gate with the worker
+slowed (`--worker-latency`, every message to the worker delayed): before, `wait 5` + `start
+moving` + `wait 2` + `stop` lasted 1.30 s of simulated time on a loaded Mac with no added
+latency, 0.30 s at 600 ms and 0.10 s at 1000 ms; the Sumo program left its ring at every latency
+(axle up to 390–405 mm from the centre, the edge is at 385); and the line follower, colour
+explorer and forklift ended differently with and without latency (rest poses apart by up to
+24 mm, the line follower 2.9 vs 9.1 mm off its line). Now the program's time IS simulated time:
+
+| when | what happens |
+|---|---|
+| VM step k | runs at program time T: `runtime.currentMSecs = epoch + T` (the clock replaces `updateCurrentMSecs` on the instance, so `wait`, every stack timer and the `timer` reporter read it); its commands reach the hub in the step's promise continuations |
+| flush (a macrotask later) | `session.tick(stepMs)`: the step buys exactly its nominal `runtime.currentStepTime` of simulated time |
+| applied (`session.idle()`) | program time becomes T + stepMs = `session.time` − its value at install; the extension's timers due by then fire |
+| VM step k + 1 | only now: a VM interval tick that came while the world was busy was held back (`stats.heldBack`) and runs as soon as the batch is applied (a macrotask, after the timers' continuations) |
+
+So the VM never runs ahead of the world: if the physics cannot keep up, the whole program slows
+down and the pane shows the real-time factor (`{f}× real time` / `{f}× Echtzeit`, below 0.95).
+A batch never exceeds one VM step (33 ms), so nothing is dropped any more on this path. The
+step counting reuses the SPIKE arena's `VmStepClock` (`spike-arena/arena-clock.js`, which gained
+optional `beforeStep`/`afterStep` hooks; the arena passes none and is unchanged), including its
+inertness check: if the VM ever steps around the hook, the pane falls back to wall-clock frames
+rather than freezing the world.
+
+*The extension's timers.* The CrispStrobe extension adapter (`scratch-vm
+extensions/crispstrobe/adapter.js`) runs every bundled extension's source with its own
+`setTimeout`, `clearTimeout`, `setInterval`, `clearInterval` and `Date` (only `Date.now`
+differs): while `runtime.bwProgramClock` is set (the Robot Lab, running) they schedule on program
+time, otherwise they are the browser's. The extension bundle itself stays byte-equal to upstream.
+`window.setTimeout` stays wall time on purpose (Bluetooth discovery). On Pause, a new model or
+the pane closing, the clock uninstalls and timers still pending move to the wall clock with the
+time they had left.
+
+*What is not on it.* The VM's stepping interval itself (wall time: it is the pace a fast
+machine keeps), and the virtual hub's transports, which deliver at once
+(`spike-prime-peripheral.js` notifies on every `hubState.changed()`, which a batch replay calls
+once). The SPIKE firmware route's main-thread scenes keep their own clock: the emulated hub runs
+the program and the lockstep runner steps one physics step per exchange
+(`routes/renode-lockstep`), so the pane installs no program clock there. The SPIKE arena counts
+VM steps for its world but its programs' `wait`s still read wall time (`currentMSecs`), so a
+starved VM there still sees a `wait` end early in mission time; this change does not touch it.
+
+**Measured** (`node scripts/verify-sim-lab-browser.mjs --part=examples --worker-latency=N`, headless
+Chromium on an Apple Silicon Mac, 2026-10-18), identical at every latency to the printed digit:
+
+| check | 0 ms | 600 ms | 1000 ms |
+|---|---|---|---|
+| timed drive: simulated span, distance | 2.033 s, 744.4 mm | 2.033 s, 744.4 mm | 2.033 s, 744.4 mm |
+| line follower lap, worst offset | 22.6 s, 2.4 mm | 22.6 s, 2.4 mm | 22.6 s, 2.4 mm |
+| wall stopper (front from the wall) | 8.6 cm | 8.6 cm | 8.6 cm |
+| colour explorer at rest (axle) | (−0.311, −0.282) | (−0.311, −0.282) | (−0.311, −0.282) |
+| forklift lift | 39.82 mm | 39.82 mm | 39.82 mm |
+| sumo, 20 s: furthest out, axle at 20.033 s | 338.1 mm, (−0.0361, 0.2964) | 338.1 mm, (−0.0361, 0.2964) | 338.1 mm, (−0.0361, 0.2964) |
+| real-time factor (timed drive) | ~1 | 0.055 | 0.033 |
+
+The drive's span is 2 s plus one VM frame (33 ms) at every latency: `start moving` reaches the hub
+in the step that runs it, and its promise lets the thread start `wait 2` one step later — the VM's
+behaviour, the same headless (`test/bw-sim-program-clock.test.mjs`: 1 s + 33 ms). Nothing is
+dropped and no batch is redone (commands now arrive between batches). The cost is wall time: one
+round trip per VM frame, so a worker 600 ms away runs the program at 0.055× real time, 1000 ms at 0.033×.
+
+The order is the one the headless runs always used (`test/helpers/spike-arena-vm.mjs`: timers,
+VM step, world tick, in fake time). `test/bw-sim-program-clock.test.mjs` runs the browser's path
+for real — the VM on its own `setInterval`, the adapter's timers, a real worker thread behind a
+transport that delays every message by 200 ms — and checks that at every VM step the time the
+program reads has advanced exactly as far as `session.time`, that a 1 s drive is 1 s of simulated
+time ± one VM frame with and without the delay, the same distance ± 1 %, and that the pane's
+previous wall-clock loop fails that judge.
+
+**Determinism.** Jolt's checkpoint → rollback → step with the same commands is bit-identical
+(measured), so the worker gives the in-thread numbers to the last bit, not approximately:
+`test/bw-sim-physics-worker-session.test.mjs` runs both side by side on a real worker thread
+(driving base forward, turning, run-for-degrees; distance and colour sensors on their mats;
+encoders of the same step as the mirrored poses; a redone batch; a hub-less model; the line
+follower's example program through the real VM, frame for frame).
+
+**Consumers.** `session.core` on the worker is a `MirrorCore`: `snapshot()` (Float32, as the
+core's), `bodyPose()` and `jointState()` at full precision, from the last applied batch;
+`castRay`/`step`/`setMotor` throw (they run in the worker, inside their step). The 3D view and
+the pane use `snapshot()`; sensors.js runs in the worker; instruments that sample "after every
+step" use `session.onAdvance(fn)`; headless code that ticks in lockstep awaits `session.idle()`.
+
+**Measured** (`node --import ./scripts/lib/register-gui-scope.mjs scripts/bench-sim-lab-worker.mjs`,
+node worker_threads, 10 s simulated at 60 fps, lockstep; Apple Silicon Mac, 2026-10-17, with other
+jobs running, so ±30 %):
+
+| model | main thread, physics here | main thread, physics in worker | work in the worker | round trip |
+|---|---|---|---|---|
+| S1 driving base (16 parts, 5 bodies) | 12.1 ms / sim s | 5.7 ms / sim s | 14.4 ms / sim s | 0.37 ms mean, 3.8 max |
+| gear train (144 parts, 42 bodies, 18 gear meshes, 6 motors) | 38.4 ms / sim s | 7.1 ms / sim s | 50.3 ms / sim s | 1.0 ms mean, 8.0 max |
+
+The main thread keeps what does not grow with the model (export, compare, replay, mirror);
+the work in the worker is 1.2–1.3× the in-thread physics: the per-batch Jolt checkpoint and the
+frame records are the price of exact redo. In the browser gate (headless Chromium, SwiftShader)
+the line-follower lap ran 457 batches of ~10 steps: 1.3–1.5 ms per batch in the worker,
+0.16 ms per batch on the main thread, round trip 3–5 ms mean (single stalls up to ~1 s when the
+page's main thread is busy rendering; simulated time simply waits, nothing is lost).
+
+**A race this exposed (fixed for both modes).** A new session used to leave each sensor port's
+reading from the previous model until the first step; with the worker that window is a round
+trip, and a stale "nothing ahead" (−1) ended the Wall stopper's `wait until distance < 10` before
+the robot moved (seen once in the gate under load, reproduced on purpose). Both the in-thread
+bridge and the worker's load now publish the sensors' t = 0 readings when the session is made.
+
 
 ---
 

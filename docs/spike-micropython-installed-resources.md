@@ -21,7 +21,8 @@ node scripts/prepare-spike-micropython-pins.mjs \
   --resource-root /absolute/native-resources
 ```
 
-The generated `support/pins.json` contains four compile-time values:
+The generated `support/pins.json` contains four compile-time values for the
+legacy source-overlay profile:
 
 | Pin | Purpose |
 | --- | --- |
@@ -37,11 +38,46 @@ for one location is refused. Relative pins use forward slashes, forbid empty,
 native resource directory. A symlink that escapes that directory is refused.
 The executable digest and every support artifact are checked before launch.
 
+For a runtime with compiled Prime models, assemble an explicit compiled support
+profile before freezing it. The legacy source-overlay platform uses different
+model type names; omitting its model include alone does not make it compatible.
+The desktop helper reads four native platform files from an immutable local
+Runtime Git commit without fetching or changing that checkout. Its model
+contract must match the selected commit's MicroPython stager. It applies the
+same application clock/storage settings and retains the legacy package's UART
+helper, authored seed, state helpers, model source and notices byte for byte.
+The retained model source remains credited but is not included at runtime.
+
+```sh
+node scripts/prepare-spike-compiled-micropython-support.mjs \
+  assembled-support renode-spike-prime PLATFORM_COMMIT MODEL_CONTRACT_COMMIT \
+  native-resources/runtime/renode compiled-support
+```
+
+Use the resulting `compiled-support` as the pinning tool's support input. It has
+17 manifest entries, including `profile.json`. That descriptor records schema
+version 1, kind `compiled-prime-models/v1`, the runtime executable SHA-256 and
+the platform/model contract commits. Pin generation also emits
+`BW_RENODE_MICROPYTHON_PROFILE_SHA256`; supply this fifth value to the native
+build. The existing Linux desktop packager propagates it automatically. The
+descriptor is included in the resource mapping and closed manifest. Both the
+manifest and descriptor are checked before image staging and checked again
+before supervisor handoff. A missing native profile pin, different runtime pin,
+changed descriptor or descriptor omitted from the manifest is refused. The
+editor cannot select or override this profile.
+
+These pins bind selected build inputs; they do not establish that a runtime
+binary was built from the stated source contracts or qualify an application.
+The compiled route needs its own installed selected-image/raw-REPL, error,
+Stop and fresh-recovery evidence. Historical legacy results below do not
+qualify this new route. No runtime or application is fetched by either helper.
+
 Configure the Tauri bundle to map only the reviewed runtime distribution and
 closed support package to their matching destinations. Tauri supports explicit
 [source-to-destination resource mappings](https://v2.tauri.app/reference/config/#resources).
 The tool also emits `support/tauri-support-resources.json`, an override containing
-exact mappings for the 16 support artifacts and `manifest.json`. Use that config
+exact mappings for the 16 legacy or 17 compiled support artifacts and
+`manifest.json`. Use that config
 when building the Tauri package; it preserves each support path and excludes
 pin metadata, firmware and adjacent files. Add your reviewed runtime mapping
 separately, for example `/absolute/native-resources/runtime/` to `runtime/`.

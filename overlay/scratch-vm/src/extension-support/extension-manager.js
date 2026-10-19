@@ -97,6 +97,7 @@ const builtinExtensions = {
     // 404'd and the blocks were dropped (gallery sweep, 2026-08-10).
     bitops: () => require('../extensions/crispstrobe/bitops'),
     microbitplus: () => require('../extensions/crispstrobe/microbitplus'),
+    circuitplayground: () => require('../extensions/crispstrobe/circuitplayground'),
     stc12: () => require('../extensions/crispstrobe/stc12'),
     stc12live: () => require('../extensions/crispstrobe/stc12live'),
     // Lite-native generic GPIO pins: `set pin N to V` / `read pin N`, driving the

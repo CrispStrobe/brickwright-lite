@@ -49,9 +49,16 @@ export class VmStepClock {
     /**
      * @param {object} [options]
      * @param {number} [options.nominalMs] fallback when runtime.currentStepTime is unset
+     * @param {function(): boolean} [options.beforeStep] asked before each step; false skips the
+     *        step (not run, not counted). The arena passes none: its world steps on the main
+     *        thread inside the frame, so it never has to hold the VM back. The Robot Lab
+     *        (bw-sim/sim-clock.js) holds the VM until its physics worker has caught up.
+     * @param {function(number): void} [options.afterStep] told each counted step's simulated ms
      */
-    constructor ({nominalMs = NOMINAL_STEP_MS} = {}) {
+    constructor ({nominalMs = NOMINAL_STEP_MS, beforeStep = null, afterStep = null} = {}) {
         this.nominalMs = nominalMs;
+        this.beforeStep = beforeStep;
+        this.afterStep = afterStep;
         this.pending = 0;
         this.steps = 0;
         this.runtime = null;
@@ -78,9 +85,12 @@ export class VmStepClock {
         // Bound through `this` so any other wrapper already on the instance
         // still runs: we add a step COUNT, we do not take the step over.
         const wrapped = (...args) => {
+            if (this.beforeStep && !this.beforeStep()) return undefined;
             const result = original.apply(runtime, args);
+            const ms = Number(runtime.currentStepTime) || this.nominalMs;
             this.steps += 1;
-            this.pending += Number(runtime.currentStepTime) || this.nominalMs;
+            this.pending += ms;
+            if (this.afterStep) this.afterStep(ms);
             return result;
         };
         runtime._step = wrapped;
