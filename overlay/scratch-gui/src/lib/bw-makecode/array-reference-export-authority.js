@@ -1,12 +1,20 @@
 import {analyseConsoleCaptures} from './console-capture-provenance.js';
 import {createAnimationFrameArrayProducers, isAnimationFrameArrayProducer} from './animation-frame-array-producers.js';
 
+// SDK reporters whose native implementation returns a fresh Array reference
+// (or reports an error), keyed to their exact input schema.
+const FRESH_SDK_ARRAYS=Object.freeze({arcade_tilesOfType:Object.freeze(['IMAGE']),arcade_legacyTilesOfType:Object.freeze(['INDEX']),
+    arcade_bufferChunked:Object.freeze(['BUFFER','SIZE']),arcade_bufferChunkedFromUTF8:Object.freeze(['TEXT','SIZE']),
+    arcade_bufferUnpack:Object.freeze(['BUFFER','FORMAT','OFFSET']),arcade_bufferToArray:Object.freeze(['BUFFER','FORMAT'])});
+
 // Producer facts are deliberately separate from the exporter's annotation graph.
 // Merely being plugged into an ARRAY input never creates an Array fact.
 export function createArrayReferenceExportAuthority(project, options = {}, animationProducer = null) {
     const animationProducers = animationProducer === null ? createAnimationFrameArrayProducers(options) :
         isAnimationFrameArrayProducer(animationProducer, options) ? animationProducer : createAnimationFrameArrayProducers({});
-    const bad=Symbol('unproved value'),targets=project.targets||[],nodes=new Map(),records=[],owners=new WeakMap(),invalid=new WeakSet(),snapshots=[];
+    // `missing` is an element read whose presence is unproved: possibly an
+    // absent (undefined, hence falsy) slot. It is otherwise exactly `bad`.
+    const missing=Symbol('possibly absent element'),bad=Symbol('unproved value'),targets=project.targets||[],nodes=new Map(),records=[],owners=new WeakMap(),invalid=new WeakSet(),snapshots=[];
     const cells=new Map(),values=new WeakMap(),tokens=new WeakMap(),scopes=[],procedures=new Map(),calls=[],mutations=[];
     let invalidGlobalBinding=false;
     const block=(target,id)=>typeof id==='string'?target.blocks?.[id]:null;
@@ -60,6 +68,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             owners.set(node,scope);records.push({target,node,scope});if(node.next)visit(all[node.next],new Set([node]));
         }
     }
+    let dynamicFields=false;const fieldCell=name=>cell('field:'+name);
     const cell=key=>{if(!cells.has(key))cells.set(key,{key,writers:[],types:new Set(),formal:null});return cells.get(key);};
     const globalCell=(target,id)=>{
         const own=targets.filter(t=>Object.hasOwn(t.variables||{},id));if(own.length!==1)return null;
@@ -68,10 +77,10 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(!nodes.has(actual))return null;let map=globalCell.maps.get(actual);if(!map)globalCell.maps.set(actual,map=new Map());if(!map.has(id))map.set(id,{});const value=cell(map.get(id));value.global=true;return value;
     };globalCell.maps=new Map();
     const localCell=(scope,name)=>{if(!scope||scope.invalid||typeof name!=='string'||name==='__proto__')return null;let map=localCell.maps.get(scope);if(!map)localCell.maps.set(scope,map=new Map());if(!map.has(name))map.set(name,{});return cell(map.get(name));};localCell.maps=new Map();
-    const capturedCell=(scope,name)=>{const origin=captures.captured(captures.scopeOf(scope.root.next?block(scope.target,scope.root.next):scope.root),name);const value=origin?localCell(scopes.find(s=>s.root===origin.scope.root),name):null;if(value&&!captures.proof(origin))value.types.add(bad);return value;};
+    const capturedCell=(scope,name)=>{const origin=captures.captured(captures.scopeOf(scope.root.next?block(scope.target,scope.root.next):scope.root),name);const value=origin?localCell(scopes.find(s=>s.root===origin.scope.root),name):null;if(value&&!captures.proof(origin))(value.directBad=true,value.types.add(bad));return value;};
     const binding=(target,node)=>{
         const scope=owners.get(node);if(node.opcode==='data_variable'){const id=node.fields?.VARIABLE?.[1],declaration=targets.find(t=>Object.hasOwn(t.variables||{},id))?.variables[id];return declaration?.[0]===node.fields?.VARIABLE?.[0]?globalCell(target,id):null;}
-        if(node.opcode==='arcade_getLocal'){const name=literal(node,'NAME',target),value=localCell(scope,name),origin=captures.local(captures.scopeOf(node),name);if(value&&origin&&!captures.proof(origin))value.types.add(bad);return value;}
+        if(node.opcode==='arcade_getLocal'){const name=literal(node,'NAME',target),value=localCell(scope,name),origin=captures.local(captures.scopeOf(node),name);if(value&&origin&&!captures.proof(origin))(value.directBad=true,value.types.add(bad));return value;}
         if(node.opcode==='arcade_getCaptured')return capturedCell(scope,literal(node,'NAME',target));
         if(node.opcode.startsWith('argument_reporter_'))return localCell(scope,node.fields?.VALUE?.[0]);return null;
     };
@@ -111,7 +120,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(node.opcode==='data_setvariableto'||node.opcode==='data_changevariableby')destination=globalCell(target,node.fields?.VARIABLE?.[1]);
         else if(node.opcode==='arcade_setLocal')destination=localCell(scope,literal(node,'NAME',target));
         else if(node.opcode==='arcade_setCaptured')destination=capturedCell(scope,literal(node,'NAME',target));
-        if(destination&&['arcade_setLocal','arcade_setCaptured'].includes(node.opcode)&&(!exactKeys(node,['NAME','VALUE'])||node.mutation!=null))destination.types.add(bad);
+        if(destination&&['arcade_setLocal','arcade_setCaptured'].includes(node.opcode)&&(!exactKeys(node,['NAME','VALUE'])||node.mutation!=null))(destination.directBad=true,destination.types.add(bad));
         if(destination)destination.writers.push({target,node,scope,value:node.opcode==='data_changevariableby'?null:input(node,'VALUE',target)});
         if(node.opcode==='arcade_returnValue')scope.returns.push(input(node,'VALUE',target));
         if(['arcade_callFunction','procedures_call'].includes(node.opcode)){
@@ -120,6 +129,9 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             if(node.opcode==='procedures_call'&&fn){let ids;try{ids=JSON.parse(node.mutation.argumentids);}catch{}if(JSON.stringify(ids)===JSON.stringify(fn.ids)&&Object.keys(node.inputs||{}).sort().join('|')===[...fn.ids].sort().join('|'))args=fn.ids.map(id=>input(node,id,target));}
             const call={target,node,scope,fn,args};calls.push(call);if(fn){fn.callers.push(call);if(!args||args.length!==fn.params.length)fn.invalid=true;else fn.params.forEach((name,index)=>localCell(fn,name)?.writers.push({target,node,scope,value:args[index],argument:true}));}
         }
+        // Object fields: one pseudo cell per literal field name, written by every
+        // actual setObjectField with that name. A dynamic name poisons all.
+        if(node.opcode==='arcade_setObjectField'){const f=literal(node,'FIELD',target);if(typeof f==='string'&&exactKeys(node,['OBJECT','FIELD','VALUE']))fieldCell(f).writers.push({target,node,scope,value:input(node,'VALUE',target)});else dynamicFields=true;}
         if(['arrays_mutateReference','arrays_referenceTake','arrays_referenceRemove'].includes(node.opcode))mutations.push({target,node,value:input(node,'VALUE',target)});
     }
     // An unproved dynamic or value-based entry cannot disappear from a
@@ -376,8 +388,8 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         !deadReset(destination,writer)&&!overwrittenPrivateReset(destination,writer));
     // Orphan writes and dynamic local names cannot disappear from all-writer proof.
     for(const target of targets)for(const node of Object.values(target.blocks||{})){
-        if(!owners.has(node)&&['data_setvariableto','data_changevariableby'].includes(node.opcode)){const c=globalCell(target,node.fields?.VARIABLE?.[1]);if(c)c.types.add(bad);}
-        if(['arcade_setLocal','arcade_setCaptured'].includes(node.opcode)&&literal(node,'NAME',target)===null){const owner=owners.get(node);for(const c of cells.values())if(localCell.maps.get(owner)&&[...localCell.maps.get(owner).values()].includes(c.key))c.types.add(bad);}
+        if(!owners.has(node)&&['data_setvariableto','data_changevariableby'].includes(node.opcode)){const c=globalCell(target,node.fields?.VARIABLE?.[1]);if(c)(c.directBad=true,c.types.add(bad));}
+        if(['arcade_setLocal','arcade_setCaptured'].includes(node.opcode)&&literal(node,'NAME',target)===null){const owner=owners.get(node);for(const c of cells.values())if(localCell.maps.get(owner)&&[...localCell.maps.get(owner).values()].includes(c.key))(c.directBad=true,c.types.add(bad));}
     }
     const singleArray=types=>types.size>0&&[...types].every(type=>type&&typeof type==='object'&&type.array===true);
     const token=(node,target,items,minLength=items.length)=>{if(!tokens.has(node))tokens.set(node,{array:true,node,target,items,minLength,elements:new Set(),sources:new Set(items)});return tokens.get(node);};
@@ -387,8 +399,126 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         for(const value of allocation.items)if(value.jsonArray)value.origin=allocation;
         return allocation;
     };
+    // A declaration reset (set to undefined/null) cannot reach an occurrence
+    // when its overwrite of the same cell definitely executed between them:
+    // - a global reset and overwrite on the top-level chain of the once-only
+    //   source-start script, with the occurrence later in that script;
+    // - a local reset immediately followed by its definite overwrite.
+    // The overwrite value must not read the cell. Every other writer and every
+    // other occurrence keeps the full writer set.
+    const resetValue=n=>n?.opcode==='arrays_specialValue'&&exactKeys(n,[],['KIND'])&&['undefined','null'].includes(n.fields?.KIND?.[0]);
+    const readsCell=(target,node,c,seen=new Set())=>{
+        if(!node||seen.has(node))return false;seen.add(node);if(binding(target,node)===c)return true;
+        for(const [name,slot]of Object.entries(node.inputs||{})){if(name.startsWith('SUBSTACK'))continue;
+            for(const raw of [slot?.[1],slot?.[2]]){if(Array.isArray(raw)&&raw[0]===12&&globalCell(target,raw[2])===c)return true;
+                if(typeof raw==='string'&&readsCell(target,block(target,raw),c,seen))return true;}}
+        return false;
+    };
+    const topChain=(scope,node)=>{const seen=new Set();let id=scope.root?.next;while(id&&!seen.has(id)){seen.add(id);const n=block(scope.target,id);if(n===node)return true;id=n?.next;}return false;};
+    let resetFlowReady=false,spriteDataReady=false;
+    const killedReset=(c,w,at)=>{
+        if(!resetFlowReady||!resetValue(w.value?.node)||invalid.has(w.node)||w.scope.invalid)return false;
+        const scope=owners.get(at);if(!scope||w.scope!==scope||!scope.executedBefore)return false;
+        const st=statementOf(at),before=st&&scope.executedBefore.get(st);if(!before)return false;
+        const valid=o=>o!==w&&o.scope===scope&&o.value&&!resetValue(o.value.node)&&!invalid.has(o.node)&&before.has(o.node)&&
+            !(o.value.cell===c)&&!(o.value.node&&readsCell(o.target,o.value.node,c));
+        if(c.global){
+            if(scope.root.opcode!=='arcade_whenSourceStarts'||!onceNode(w.node)||!topChain(scope,w.node))return false;
+            return c.writers.some(o=>valid(o)&&topChain(scope,o.node)&&!!scope.executedBefore.get(o.node)?.has(w.node));
+        }
+        // A local reset must be followed IMMEDIATELY by its definite overwrite:
+        // a direct writer, or an if/else whose both branches write the cell
+        // before any exit. Nothing else may run between reset and overwrite.
+        const next=block(w.target,w.node.next);
+        if(!next||!before.has(next))return false;
+        if(c.writers.some(o=>valid(o)&&o.node===next))return true;
+        const branchAssigns=id=>{const seen=new Set();for(let n=block(w.target,id);n&&!seen.has(n);n=block(w.target,n.next)){seen.add(n);
+            if(c.writers.some(o=>o.node===n&&o.scope===scope&&o.value&&!resetValue(o.value.node)&&!invalid.has(n)&&!(o.value.cell===c)&&!(o.value.node&&readsCell(o.target,o.value.node,c))))return true;
+            if(/return|stop|break|continue|throw/i.test(n.opcode))return false;}return false;};
+        return next.opcode==='control_if_else'&&!invalid.has(next)&&branchAssigns(next.inputs?.SUBSTACK?.[1])&&branchAssigns(next.inputs?.SUBSTACK2?.[1]);
+    };
+    // `x := v` immediately followed by `if not truthy(x) then x := e`, with the
+    // occurrence after that if: a possibly absent (falsy) v cannot reach it.
+    const falsyGuarded=(c,w,at)=>{
+        if(!resetFlowReady||invalid.has(w.node)||w.scope.invalid||!w.value)return false;
+        const scope=owners.get(at);if(!scope||w.scope!==scope||!scope.executedBefore)return false;
+        const st=statementOf(at),before=st&&scope.executedBefore.get(st),next=block(w.target,w.node.next);
+        if(!before||!next||next.opcode!=='control_if'||invalid.has(next)||!before.has(next)||!exactKeys(next,['CONDITION','SUBSTACK']))return false;
+        const not=block(w.target,next.inputs.CONDITION?.[1]),truthy=not?.opcode==='operator_not'&&exactKeys(not,['OPERAND'])&&block(w.target,not.inputs.OPERAND?.[1]);
+        const read=truthy?.opcode==='arrays_valueTruthy'&&exactKeys(truthy,['VALUE'])&&block(w.target,truthy.inputs.VALUE?.[1]);
+        if(!read||binding(w.target,read)!==c)return false;
+        const first=block(w.target,next.inputs.SUBSTACK?.[1]);
+        return c.writers.some(o=>o!==w&&o.node===first&&o.scope===scope&&o.value&&!resetValue(o.value.node)&&!invalid.has(o.node)&&
+            !(o.value.cell===c)&&!(o.value.node&&readsCell(o.target,o.value.node,c)));
+    };
+    const computingCells=new Set();
+    const cellTypesAt=(c,at)=>{
+        if(!c||c.directBad||!at||computingCells.has(c))return new Set(c?c.types:[bad]);
+        const live=c.writers.filter(w=>!killedReset(c,w,at)),guarded=new Set(live.filter(w=>falsyGuarded(c,w,at)));
+        if(live.length===c.writers.length&&!guarded.size)return new Set(c.types);
+        computingCells.add(c);
+        try{
+            const out=new Set();if(!live.length)out.add(bad);
+            for(const w of live)for(const type of w.value&&!invalid.has(w.node)&&!w.scope.invalid?readInput(w.value):[bad])if(!(guarded.has(w)&&type===missing))out.add(type);
+            return out;
+        }finally{computingCells.delete(c);}
+    };
+    // Only appends (push) and reads may touch a positional Array: no shrink,
+    // set, insertion or unshift, and no named-array write route.
+    // A later statement of the same once-only scope cannot have moved a slot yet.
+    const afterAt=(node,at)=>{const scope=owners.get(at),later=statementOf(node),statement=statementOf(at);
+        return !!scope&&owners.get(node)===scope&&!!later&&!!statement&&later!==statement&&onceNode(later)&&onceNode(statement)&&!!scope.executedBefore.get(later)?.has(statement);};
+    // A named registry write after the occurrence in the same script cannot
+    // precede it when that script re-created the named Array earlier in the
+    // same activation: a restarted script re-creates it before reading again.
+    const afterInActivation=(node,at,creation)=>{const scope=owners.get(at),later=statementOf(node),statement=statementOf(at);
+        return !!scope&&!!creation&&owners.get(node)===scope&&owners.get(creation)===scope&&!!later&&!!statement&&later!==statement&&
+            !!scope.executedBefore.get(later)?.has(statement)&&!!scope.executedBefore.get(statement)?.has(creation);};
+    const positionalStable=(a,at)=>[...(a.shrinks||[])].every(node=>afterAt(node,at))&&
+        (!a.elements.has(bad)||Array.isArray(a.namedMutations)&&a.namedMutations.every(r=>afterAt(r.node,at)||afterInActivation(r.node,at,a.node)))&&
+        mutations.every(({target,node})=>!readInput(input(node,'ARRAY',target)).has(a)||node.opcode==='arrays_mutateReference'&&literal(node,'OP',target)==='push'||afterAt(node,at));
+    // A procedure whose every return is a read of one formal that only its
+    // actual call arguments write returns, at each call, that call's argument.
+    const passthroughIndex=fn=>{
+        if(!fn||fn.invalid||!fn.returns?.length||!Array.isArray(fn.params))return -1;
+        let index=-1;
+        for(const value of fn.returns){
+            const n=value?.node;if(!n||!['arcade_getLocal'].includes(n.opcode)&&!n.opcode?.startsWith('argument_reporter_'))return -1;
+            const c=binding(value.target,n);if(!c||c.formal!==fn||c.writers.some(w=>!w.argument))return -1;
+            const name=n.opcode==='arcade_getLocal'?literal(n,'NAME',value.target):n.fields?.VALUE?.[0],i=fn.params.indexOf(name);
+            if(i<0||index>=0&&index!==i)return -1;index=i;
+        }
+        return index;
+    };
+    // An occurrence inside `if truthy(t)` whose statement is immediately
+    // preceded by `t := compare(literal, literal)` that is false never runs
+    // (the `false && e` lowering). Only literal Number operands qualify.
+    const literalCompare=(target,n)=>{
+        if(n?.opcode!=='arrays_valueCompare'||!exactKeys(n,['LEFT','RIGHT'],['OP']))return null;
+        const l=literalNumber(target,n,'LEFT'),r=literalNumber(target,n,'RIGHT'),op=literal(n,'OP',target);
+        if(l===null||r===null||Number.isNaN(l)||Number.isNaN(r))return null;
+        return {'<':l<r,'>':l>r,'<=':l<=r,'>=':l>=r,'===':l===r,'!==':l!==r,'==':l==r,'!=':l!=r}[op]??null;
+    };
+    const deadOccurrence=(target,node)=>{
+        const seen=new Set();let current=node;
+        while(current&&!seen.has(current)){seen.add(current);
+            const parent=block(target,current.parent);if(!parent)return false;
+            const id=Object.keys(target.blocks).find(key=>target.blocks[key]===current);
+            if(parent.opcode==='control_if'&&parent.inputs?.SUBSTACK?.[1]===id&&exactKeys(parent,['CONDITION','SUBSTACK'])){
+                const truthy=block(target,parent.inputs.CONDITION?.[1]),read=truthy?.opcode==='arrays_valueTruthy'&&exactKeys(truthy,['VALUE'])&&block(target,truthy.inputs.VALUE?.[1]);
+                const prevId=Object.keys(target.blocks).find(key=>target.blocks[key]?.next===Object.keys(target.blocks).find(k=>target.blocks[k]===parent));
+                const prev=prevId&&block(target,prevId);
+                if(read?.opcode==='arcade_getLocal'&&prev?.opcode==='arcade_setLocal'&&exactKeys(prev,['NAME','VALUE'])&&
+                    literal(prev,'NAME',target)===literal(read,'NAME',target)&&owners.get(prev)===owners.get(parent)&&
+                    literalCompare(target,block(target,prev.inputs.VALUE?.[1]))===false)return true;
+            }
+            current=parent;
+        }
+        return false;
+    };
+    const concatLengths=new Set();
     const readInput=value=>{
-        if(!value)return new Set([bad]);if(value.cell)return new Set(value.cell.types);if(value.jsonArray)return new Set([jsonArray(value.jsonArray,value.identity,null,value.origin)]);if(value.node)return readNode(value.target,value.node);return new Set([bad]);
+        if(!value)return new Set([bad]);if(value.cell)return cellTypesAt(value.cell,value.at);if(value.jsonArray)return new Set([jsonArray(value.jsonArray,value.identity,null,value.origin)]);if(value.node)return readNode(value.target,value.node);return new Set([bad]);
     };
     const literalNumber=(target,node,name)=>{const v=input(node,name,target);if(v.raw&&[4,5,6,7,8].includes(v.raw[0]))return Number(v.raw[1]);if(v.node?.shadow&&v.node.opcode==='math_number')return Number(v.node.fields?.NUM?.[0]);return null;};
     // A reset can be ignored for KIND facts only when a synchronous source-start
@@ -434,6 +564,10 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(node.opcode==='arcade_createSpriteKind')return exactKeys(node,[]);
         if(node.opcode==='arcade_spriteKindValue')return exactKeys(node,['NAME'])&&typeof literal(node,'NAME',value.target)==='string';
         if(node.opcode==='arrays_valueBinary')return ['+','-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(literal(node,'OP',value.target))&&numericKind(input(node,'LEFT',value.target),next)&&numericKind(input(node,'RIGHT',value.target),next);
+        // Scratch arithmetic reporters always cast their operands and return a Number.
+        if(['operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod'].includes(node.opcode))return exactKeys(node,['NUM1','NUM2']);
+        if(node.opcode==='operator_round')return exactKeys(node,['NUM']);
+        if(node.opcode==='operator_mathop')return exactKeys(node,['NUM'],['OPERATOR']);
         return false;
     };
     const namedBinding=(target,node)=>{
@@ -452,6 +586,8 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             const json=literal(writer,'JSON',target);if(typeof json!=='string')return new Set([bad]);try{value=JSON.parse(json);}catch{value=writer.opcode==='arrays_create2D'?[[]]:[];}if(!Array.isArray(value))return new Set([bad]);
         }else if(!exactKeys(writer,['NAME']))return new Set([bad]);
         const allocation=jsonArray(value,writer,target);
+        const namedMutations=records.filter(r=>r.node.opcode.startsWith('arrays_')&&r.node.inputs?.NAME&&literal(r.node,'NAME',r.target)===name&&!['arrays_namedReference','arrays_createEmpty','arrays_create1D','arrays_create2D','arrays_length','arrays_get'].includes(r.node.opcode));
+        if(!Object.hasOwn(allocation,'namedMutations')&&!allocation.elements.has(bad))allocation.namedMutations=namedMutations;
         if(records.some(r=>r.node.opcode.startsWith('arrays_')&&r.node.inputs?.NAME&&literal(r.node,'NAME',r.target)===name&&!['arrays_namedReference','arrays_createEmpty','arrays_create1D','arrays_create2D','arrays_length','arrays_get'].includes(r.node.opcode)))allocation.elements.add(bad);
         return new Set([allocation]);
     };
@@ -478,9 +614,10 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     }
     function computeNode(target,node){
         if(!node||invalid.has(node)||owners.get(node)?.invalid)return new Set([bad]);
-        const c=binding(target,node);if(c)return new Set(c.types);
+        const c=binding(target,node);if(c)return cellTypesAt(c,node);
         const allocated=factories(target,node);if(allocated)return allocated;const named=namedBinding(target,node);if(named)return named;
         if(node.opcode==='arcade_spritesOfKind')return exactKeys(node,['KIND'])&&numericKind(input(node,'KIND',target))?new Set([token(node,target,[{raw:[10,'SDK Sprite element not an Array']}],0)]):new Set([bad]);
+        if(Object.hasOwn(FRESH_SDK_ARRAYS,node.opcode))return exactKeys(node,FRESH_SDK_ARRAYS[node.opcode])?new Set([token(node,target,[{raw:[10,'SDK element not an Array']}],0)]):new Set([bad]);
         if(['arcade_animationAssetFrames','arcade_animationAssetFreshFrames'].includes(node.opcode)){
             const producer=animationProducers.resolve(target,node);
             return producer?new Set([token(producer.allocation,producer.shared?null:target,
@@ -490,7 +627,18 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             const left=readInput(input(node,'ARRAY',target)),right=node.opcode==='arrays_referenceConcat'?readInput(input(node,'OTHER',target)):new Set();
             if(!operationShape(node))return new Set([bad]);if(!left.size||node.opcode==='arrays_referenceConcat'&&!right.size)return new Set();
             if(!singleArray(left)||node.opcode==='arrays_referenceConcat'&&!singleArray(right))return new Set([bad]);
-            const t=token(node,target,[],0);for(const a of [...left,...right]){for(const v of a.elements)t.elements.add(v);for(const source of a.sources)t.sources.add(source);}return new Set([t]);
+            const t=token(node,target,[],0);for(const a of [...left,...right]){for(const v of a.elements)t.elements.add(v);for(const source of a.sources)t.sources.add(source);}
+            // A concatenation holds at least both operands' proven lengths at the
+            // concat occurrence; its own result then shrinks only by its own ops.
+            if(node.opcode==='arrays_referenceConcat'&&!Object.getOwnPropertyDescriptor(t,'minLength').get){
+                const operand=name=>[...readInput(input(node,name,target))];
+                Object.defineProperty(t,'minLength',{configurable:true,enumerable:true,get(){
+                    if(concatLengths.has(t))return 0;concatLengths.add(t);
+                    try{const l=operand('ARRAY'),r=operand('OTHER');if(!singleArray(new Set(l))||!singleArray(new Set(r)))return 0;
+                        return Math.min(...l.map(a=>a===t?0:minimumAt(a,node)))+Math.min(...r.map(a=>a===t?0:minimumAt(a,node)));}
+                    finally{concatLengths.delete(t);}}});
+            }
+            return new Set([t]);
         }
         if(['arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom'].includes(node.opcode)||node.opcode==='arrays_mutateReference'&&['pop','shift','removeAt'].includes(literal(node,'OP',target))){
             const receiver=readInput(input(node,'ARRAY',target));if(!operationShape(node))return new Set([bad]);if(!receiver.size)return new Set();if(!singleArray(receiver))return new Set([bad]);const result=new Set();
@@ -500,13 +648,33 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                     // Do not poison a cell irreversibly before formal/alias
                     // argument facts reach a dominating mutation receiver.
                     if(pendingPresence(a,node))return new Set();
-                    result.add(bad);
+                    result.add(missing);
+                }
+                // A fixed literal slot of a positional (JSON/literal) Array whose
+                // earlier slots never move holds exactly its own item.
+                const index=node.opcode==='arrays_referenceItem'?literalNumber(target,node,'INDEX'):null;
+                if(index!==null&&Number.isInteger(index)&&index>=0&&Array.isArray(a.items)&&index<a.items.length&&positionalStable(a,node)){
+                    for(const item of readInput(a.items[index]))result.add(item);continue;
                 }
                 for(const item of a.elements)result.add(item);
             }return result;
         }
+        // settings.list() always returns a fresh Array of key strings.
+        if(node.opcode==='arcade_settingsRead'&&exactKeys(node,['KEY'],['TYPE'])&&literal(node,'TYPE',target)==='List')return new Set([token(node,target,[{raw:[10,'settings key not an Array']}],0)]);
+        if(node.opcode==='arcade_settingsRead'){
+            const w=spriteDataReady?settingsArrayWriter(target,node):null;if(!w)return new Set([bad]);
+            const source=readInput(w.value);if(!source.size)return new Set();if(!singleArray(source))return new Set([bad]);
+            // Each read returns a fresh detached copy of the value written by w.
+            const t=token(node,target,[],0);for(const a of source)for(const e of a.elements)t.elements.add(e);
+            if(!Object.getOwnPropertyDescriptor(t,'minLength').get)Object.defineProperty(t,'minLength',{configurable:true,enumerable:true,get(){
+                if(concatLengths.has(t))return 0;concatLengths.add(t);try{return Math.min(...[...readInput(w.value)].map(a=>a===t?0:minimumAt(a,w.node)));}finally{concatLengths.delete(t);}}});
+            return new Set([t]);
+        }
+        if(node.opcode==='arcade_spriteProperty'){const w=spriteDataReady?spriteDataWriter(target,node):null;return w?readInput(w.value):new Set([bad]);}
+        if(node.opcode==='arcade_objectField'){const f=literal(node,'FIELD',target);return !dynamicFields&&typeof f==='string'&&exactKeys(node,['OBJECT','FIELD'])&&cells.has('field:'+f)?new Set(fieldCell(f).types):new Set([bad]);}
         if(node.opcode==='arcade_callFunction'){
             const call=calls.find(call=>call.node===node);if(!call?.fn||call.fn.invalid||!call.args||!returnsAlways(target,call.fn.root.next))return new Set([bad]);
+            const through=passthroughIndex(call.fn);if(through>=0)return readInput(call.args[through]);
             const out=new Set();for(const value of call.fn.returns)for(const type of readInput(value))out.add(type);return out;
         }
         return new Set([bad]);
@@ -693,12 +861,124 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         const next=new Set([...path,allocation]);
         return allocation.origin?uniqueAllocation(allocation.origin,next):!!allocation.target&&onceNode(allocation.node);
     };
+    // A callee statement on the unconditional straight prefix of its body runs
+    // on every completed call. Credit it only for a direct call operand of a
+    // caller statement that already executed before the queried occurrence.
+    const straightPrefix=(fn,node)=>{
+        const seen=new Set();let id=fn.root?.next;
+        while(id&&!seen.has(id)){seen.add(id);const n=block(fn.target,id);if(!n)return false;if(n===node)return true;
+            if(Object.keys(n.inputs||{}).some(name=>name.startsWith('SUBSTACK'))||/return|stop|break|continue|throw/i.test(n.opcode))return false;id=n.next;}
+        return false;
+    };
+    const calleeExecutedBefore=(node,scope,before)=>{
+        const fn=owners.get(node);if(!fn||!scope||fn===scope||fn.invalid||fn.unknownEntry||!straightPrefix(fn,node))return false;
+        return calls.some(call=>call.fn===fn&&call.scope===scope&&owners.get(call.node)===scope&&[...before].some(statement=>statement&&owners.get(statement)===scope&&
+            Object.entries(statement.inputs||{}).some(([name,slot])=>!name.startsWith('SUBSTACK')&&block(scope.target,slot?.[1])===call.node)));
+    };
+    // The statement that evaluates an expression occurrence.
+    const statementOf=node=>{
+        const scope=owners.get(node);if(!scope)return null;let current=node;const seen=new Set();
+        while(current&&current!==scope.root&&!seen.has(current)){seen.add(current);
+            const parent=block(scope.target,current.parent);if(!parent||owners.get(parent)!==scope)return null;
+            const id=Object.keys(scope.target.blocks).find(id=>scope.target.blocks[id]===current);
+            if(parent.next===id||Object.entries(parent.inputs||{}).some(([name,slot])=>name.startsWith('SUBSTACK')&&slot?.[1]===id))return current;
+            current=parent;}
+        return null;
+    };
+    // A shrink whose once-only statement runs strictly after the queried
+    // occurrence's once-only statement in the same scope cannot remove an
+    // element first; every evaluation stays inside its own statement.
+    const shrinkAfter=(shrink,at)=>{
+        const scope=owners.get(at),statement=statementOf(at),later=statementOf(shrink);
+        if(!scope||owners.get(shrink)!==scope||!statement||!later||statement===later||!onceNode(statement)||!onceNode(later))return false;
+        return !!scope.executedBefore.get(shrink)?.has(statement);
+    };
+    // Sprite.data of a sprite variable: exactly one actual data write targets
+    // that variable, once and earlier in the reading scope, and the variable
+    // holds exactly one fresh sprite creation. Every other data write must
+    // target a distinct variable that also holds only its own fresh creation.
+    const SPRITE_CREATIONS=new Set(['arcade_createSprite','arcade_createImageSprite']);
+    // The one fresh sprite creation a cell holds, following plain aliases.
+    const liveCreation=(c,at,path=new Set())=>{
+        if(!c||c.directBad||path.has(c))return null;path.add(c);
+        const live=c.writers.filter(w=>!killedReset(c,w,at));if(live.length!==1||invalid.has(live[0].node))return null;
+        const value=live[0].value,source=value?.cell||(value?.node&&binding(live[0].target,value.node));
+        if(source)return liveCreation(source,live[0].node,path);
+        return SPRITE_CREATIONS.has(value?.node?.opcode)?value.node:null;
+    };
+    const idCell=(target,node)=>{const v=input(node,'ID',target);return v?.cell||(v?.node&&binding(target,v.node))||null;};
+    const spriteDataWriter=(target,node)=>{
+        if(!exactKeys(node,['ID'],['PROPERTY'])||literal(node,'PROPERTY',target)!=='data')return null;
+        const c=idCell(target,node),creation=liveCreation(c,node);if(!creation)return null;
+        const writes=records.filter(r=>r.node.opcode==='arcade_setSpriteProperty'&&literal(r.node,'PROPERTY',r.target)==='data');
+        if(records.some(r=>r.node.opcode==='arcade_setSpriteProperty'&&literal(r.node,'PROPERTY',r.target)===null))return null;
+        const own=[];
+        for(const r of writes){if(!exactKeys(r.node,['ID','VALUE'],['PROPERTY'])||invalid.has(r.node))return null;const other=idCell(r.target,r.node);
+            const made=other===c?creation:liveCreation(other,r.node);if(!made)return null;if(made===creation)own.push(r);}
+        if(own.length!==1)return null;const w=own[0],scope=owners.get(node);
+        if(w.scope!==scope||!onceNode(w.node)||!scope.executedBefore?.get(statementOf(node))?.has(w.node))return null;
+        return {value:input(w.node,'VALUE',w.target),node:w.node};
+    };
+    // An Array settings read is the value of the one same-type write of that
+    // literal key that ran once, earlier in the reading scope. Every other
+    // write/remove of that key and every clear must be in the same once-only
+    // scope and run either before that write or after the read. A dynamic
+    // key, or a key mutation elsewhere, refuses (an absent key reads undefined).
+    const settingsArrayWriter=(target,node)=>{
+        const type=literal(node,'TYPE',target),key=literal(node,'KEY',target);
+        if(!exactKeys(node,['KEY'],['TYPE'])||!['NumberArray','StringArray'].includes(type)||typeof key!=='string')return null;
+        const scope=owners.get(node),statement=statementOf(node),before=statement&&scope?.executedBefore?.get(statement);if(!before)return null;
+        const touches=records.filter(r=>['arcade_settingsWrite','arcade_settingsRemove','arcade_settingsClear'].includes(r.node.opcode));
+        let writer=null;
+        for(const r of touches){
+            const k=r.node.opcode==='arcade_settingsClear'?null:literal(r.node,'KEY',r.target);
+            if(r.node.opcode!=='arcade_settingsClear'&&typeof k!=='string')return null;
+            if(k!==null&&k!==key)continue;
+            if(r.scope!==scope||!onceNode(r.node)||invalid.has(r.node))return null;
+            if(r.node.opcode==='arcade_settingsWrite'&&literal(r.node,'TYPE',r.target)===type&&before.has(r.node)&&(!writer||scope.executedBefore.get(r.node)?.has(writer.node)))writer=r;
+        }
+        if(!writer)return null;
+        for(const r of touches){
+            const k=r.node.opcode==='arcade_settingsClear'?null:literal(r.node,'KEY',r.target);if(k!==null&&k!==key||r===writer)continue;
+            const earlier=!!scope.executedBefore.get(writer.node)?.has(r.node),later=!!scope.executedBefore.get(r.node)?.has(statement);
+            if(!earlier&&!later)return null;
+        }
+        return {node:writer.node,value:input(writer.node,'VALUE',writer.target)};
+    };
+    spriteDataReady=true;
+    resetFlowReady=true;
+    // A push precedes an occurrence in every activation when it executed
+    // earlier in the occurrence's own scope (directly or on a called
+    // procedure's straight prefix), or when the occurrence is in an ordinary
+    // procedure whose every actual direct caller is itself preceded by it.
+    const pushedBefore=(push,at,depth=0)=>{
+        const scope=owners.get(at);if(!scope||scope.invalid)return false;
+        const before=scope.executedBefore?.get(at)||new Set();
+        if(before.has(push)||calleeExecutedBefore(push,scope,before))return true;
+        if(depth>6||!scope.proc||scope.unknownEntry||implicitEntries.has(scope)||!scope.callers.length)return false;
+        return scope.callers.every(call=>call.node&&owners.get(call.node)===call.scope&&pushedBefore(push,call.node,depth+1));
+    };
+    const singleShrink=(target,node)=>node.opcode==='arrays_referenceTake'&&['pop','shift'].includes(literal(node,'OP',target))||
+        node.opcode==='arrays_mutateReference'&&['pop','shift','removeAt'].includes(literal(node,'OP',target))||node.opcode==='arrays_referenceRemove';
+    const shrinkBefore=(shrink,at)=>{
+        const scope=owners.get(at),statement=statementOf(at),earlier=statementOf(shrink);
+        if(!scope||owners.get(shrink)!==scope||!statement||!earlier||statement===earlier||!singleShrink(scope.target,shrink)||!onceNode(statement)||!onceNode(earlier))return false;
+        return !!scope.executedBefore.get(statement)?.has(earlier);
+    };
     const minimumAt=(allocation,at,qualifies=()=>true)=>{
-        if([...allocation.shrinks||[]].some(node=>node!==at))return 0;
-        const scope=owners.get(at),before=scope?.executedBefore.get(at)||new Set();let length=allocation.minLength;
+        // A single-element shrink in a once-only statement that definitely ran
+        // earlier in the same scope removes at most one element; any other
+        // possibly earlier shrink forfeits all presence credit.
+        let removed=0;
+        for(const node of allocation.shrinks||[]){
+            if(node===at||shrinkAfter(node,at))continue;
+            if(shrinkBefore(node,at)){removed++;continue;}
+            return 0;
+        }
+        const scope=owners.get(at),before=scope?.executedBefore.get(at)||new Set();let length=allocation.minLength-removed;
         // A possible target receives element-type obligations below, but only
         // a unique actual target receives guaranteed-presence credit.
-        for(const {target,node}of mutations){const receiver=readInput(input(node,'ARRAY',target));if(before.has(node)&&['push','unshift'].includes(literal(node,'OP',target))&&receiver.size===1&&receiver.has(allocation)&&uniqueAllocation(allocation)&&qualifies(target,node))length++;}
+        for(const {target,node}of mutations){const receiver=readInput(input(node,'ARRAY',target));if(pushedBefore(node,at)&&['push','unshift'].includes(literal(node,'OP',target))&&receiver.size===1&&receiver.has(allocation)&&uniqueAllocation(allocation)&&qualifies(target,node))length++;}
         return length;
     };
     const pendingPresence=(allocation,at)=>{
@@ -706,7 +986,39 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         const before=owners.get(at)?.executedBefore.get(at)||new Set();
         return mutations.some(({target,node})=>before.has(node)&&['push','unshift'].includes(literal(node,'OP',target))&&readInput(input(node,'ARRAY',target)).size===0);
     };
+    // The for-of lowering reads `item i of a` as the FIRST statement of
+    // `repeat while i < length(a)`, where i is a local written only by a literal
+    // zero before the loop and by `i := +i + 1` inside it, and a is a local
+    // written once before the loop. The just-checked bound
+    // makes that read present.
+    const forOfPresent=(allocation,target,node)=>{
+        // No shrink matters: nothing can run between the bound check and the
+        // first body statement in one thread step, and every iteration re-checks.
+        if(node.opcode!=='arrays_referenceItem')return false;
+        const indexRead=input(node,'INDEX',target).node,arrayRead=input(node,'ARRAY',target).node;
+        if(indexRead?.opcode!=='arcade_getLocal'||arrayRead?.opcode!=='arcade_getLocal')return false;
+        const scope=owners.get(node),i=binding(target,indexRead),a=binding(target,arrayRead),statement=statementOf(node);
+        if(!scope||!i||!a||i===a||!statement)return false;
+        const loop=block(target,statement.parent);
+        if(loop?.opcode!=='arcade_sourceWhile'||!exactKeys(loop,['CONDITION','SUBSTACK'])||loop.inputs.SUBSTACK?.[1]!==Object.keys(target.blocks).find(k=>target.blocks[k]===statement))return false;
+        const condition=block(target,loop.inputs.CONDITION?.[1]);
+        if(condition?.opcode!=='arrays_valueCompare'||!exactKeys(condition,['LEFT','RIGHT'],['OP'])||literal(condition,'OP',target)!=='<')return false;
+        const left=input(condition,'LEFT',target).node,right=input(condition,'RIGHT',target).node;
+        if(left?.opcode!=='arcade_getLocal'||binding(target,left)!==i||right?.opcode!=='arrays_referenceLength'||!exactKeys(right,['ARRAY']))return false;
+        const lengthRead=input(right,'ARRAY',target).node;if(lengthRead?.opcode!=='arcade_getLocal'||binding(target,lengthRead)!==a)return false;
+        const inLoop=n=>{for(let p=n,seen=new Set();p&&!seen.has(p);seen.add(p),p=block(target,p.parent))if(p===loop)return true;return false;};
+        if(a.writers.length!==1||a.writers[0].scope!==scope||inLoop(a.writers[0].node))return false;
+        const zero=v=>{const n=v?.node;if(v?.raw)return Number(v.raw[1])===0;if(n?.opcode==='operator_add'&&exactKeys(n,['NUM1','NUM2']))return literalNumber(target,n,'NUM1')===0&&literalNumber(target,n,'NUM2')===0;return n?.shadow&&n.opcode==='math_number'&&Number(n.fields?.NUM?.[0])===0;};
+        const step=v=>{const n=v?.node;if(n?.opcode!=='arrays_valueBinary'||literal(n,'OP',target)!=='+'||!exactKeys(n,['LEFT','RIGHT'],['OP']))return false;
+            const l=input(n,'LEFT',target).node,plus=l?.opcode==='arrays_valueUnary'&&literal(l,'OP',target)==='+'?input(l,'VALUE',target).node:l,r=input(n,'RIGHT',target);
+            const one=r.raw?Number(r.raw[1])===1:r.node?.opcode==='operator_add'&&literalNumber(target,r.node,'NUM1')===0&&literalNumber(target,r.node,'NUM2')===1;
+            return plus?.opcode==='arcade_getLocal'&&binding(target,plus)===i&&one;};
+        const inits=i.writers.filter(w=>!inLoop(w.node)),steps=i.writers.filter(w=>inLoop(w.node));
+        return inits.length===1&&inits[0].scope===scope&&zero(inits[0].value)&&steps.length>=1&&steps.every(w=>step(w.value))&&
+            !!scope.executedBefore.get(loop)?.has(inits[0].node)&&!!scope.executedBefore.get(loop)?.has(a.writers[0].node);
+    };
     const presentAt=(allocation,target,node,qualifies)=>{
+        if(forOfPresent(allocation,target,node))return true;
         const length=minimumAt(allocation,node,qualifies),index=literalNumber(target,node,'INDEX');
         return node.opcode==='arrays_referenceRandom'||node.opcode==='arrays_referenceTake'&&['pop','shift'].includes(literal(node,'OP',target))?length>0:index!==null&&Number.isInteger(index)&&index>=0&&index<length;
     };
@@ -751,10 +1063,30 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         const next=new Set([...path,c]);
         return c.writers.length>0&&c.writers.every(writer=>deadKindReset(c,writer)||numericKindInitialized(writer.value,next));
     };
+    // A field read is initialized when every writer of that field name is a
+    // straight-prefix statement of an actual class constructor/field
+    // initializer that no call can precede, and its value is initialized;
+    // a read inside that same procedure must follow the write.
+    const callOpcodes=new Set(['arcade_callFunction','procedures_call','arcade_callObjectMethod','arcade_createObject']);
+    const callsIn=(target,node,seen=new Set())=>{if(!node||seen.has(node))return false;seen.add(node);if(callOpcodes.has(node.opcode))return true;return Object.values(node.inputs||{}).some(slot=>typeof slot?.[1]==='string'&&callsIn(target,block(target,slot[1]),seen));};
+    const constructorPrefix=w=>{
+        const scope=w.scope;if(!scope?.proc||!/^__bwClass_.+_(constructor|fields)( |$)/.test(scope.proc))return false;
+        const seen=new Set();for(let n=block(scope.target,scope.root.next);n&&!seen.has(n);n=block(scope.target,n.next)){seen.add(n);if(n===w.node)return true;
+            if(Object.keys(n.inputs||{}).some(name=>name.startsWith('SUBSTACK'))||callsIn(scope.target,n))return false;}
+        return false;
+    };
+    const fieldInitialized=(target,node,path)=>{
+        const f=literal(node,'FIELD',target);if(dynamicFields||typeof f!=='string'||!cells.has('field:'+f))return false;
+        const c=fieldCell(f),scope=owners.get(node);
+        return c.writers.length>0&&c.writers.every(w=>w.value&&constructorPrefix(w)&&initialized(w.value,path)&&
+            (w.scope!==scope||!!scope.executedBefore?.get(statementOf(node))?.has(w.node)));
+    };
     const checkingWriterInitialization=new Set();
     const initialized=(value,path=new Set())=>{
-        if(!value)return false;if(value.jsonArray)return true;
-        const initializedCell=(c,scope,at)=>{if(!available(c,scope,at))return false;if(checkingWriterInitialization.has(c))return true;checkingWriterInitialization.add(c);try{return c.writers.length>0&&c.writers.every(w=>w.value&&initialized(w.value));}finally{checkingWriterInitialization.delete(c);}};
+        // A literal value (JSON item or literal input) is initialized; it is an
+        // Array only through jsonArray, which singleArray still checks.
+        if(!value)return false;if(value.jsonArray||value.raw)return true;
+        const initializedCell=(c,scope,at)=>{if(!available(c,scope,at))return false;if(checkingWriterInitialization.has(c))return true;checkingWriterInitialization.add(c);try{const live=c.directBad?c.writers:c.writers.filter(w=>!killedReset(c,w,at));return live.length>0&&live.every(w=>w.value&&(initialized(w.value)||!c.directBad&&falsyGuarded(c,w,at)&&w.value.node?.opcode==='arrays_referenceItem'&&initialized(input(w.value.node,'ARRAY',w.target))));}finally{checkingWriterInitialization.delete(c);}};
         if(value.cell)return initializedCell(value.cell,owners.get(value.at),value.at);
         if(!value.node)return false;const {target,node}=value;if(path.has(node))return false;const next=new Set([...path,node]),c=binding(target,node);
         if(c)return initializedCell(c,owners.get(node),node);
@@ -762,6 +1094,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(['arcade_animationAssetFrames','arcade_animationAssetFreshFrames'].includes(node.opcode))return !!animationProducers.resolve(target,node);
         if(node.opcode==='arrays_namedReference')return singleArray(namedBinding(target,node)||new Set());
         if(node.opcode==='arcade_callFunction'){
+            const passing=calls.find(c=>c.node===node);if(passing?.fn&&!passing.fn.invalid&&passing.args&&passthroughIndex(passing.fn)>=0)return initialized(passing.args[passthroughIndex(passing.fn)],next);
             const call=calls.find(c=>c.node===node);return !!call?.fn&&!call.fn.invalid&&!!call.args&&call.args.every(arg=>singleArray(readInput(arg))?initialized(arg,next):true)&&call.fn.returns.every(result=>initialized(result,next));
         }
         if(['arrays_referenceSlice','arrays_referenceConcat','arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom','arrays_mutateReference'].includes(node.opcode)){
@@ -775,7 +1108,12 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             }
             return true;
         }
+        if(node.opcode==='arcade_objectField')return fieldInitialized(target,node,next);
+        if(node.opcode==='arcade_spriteProperty'){const w=spriteDataWriter(target,node);return !!w&&initialized(w.value,next);}
+        if(node.opcode==='arcade_settingsRead'&&exactKeys(node,['KEY'],['TYPE'])&&literal(node,'TYPE',target)==='List')return true;
+        if(node.opcode==='arcade_settingsRead'){const w=settingsArrayWriter(target,node);return !!w&&initialized(w.value,next);}
         if(node.opcode==='arcade_spritesOfKind'&&exactKeys(node,['KIND']))return numericKindInitialized(input(node,'KIND',target));
+        if(Object.hasOwn(FRESH_SDK_ARRAYS,node.opcode))return exactKeys(node,FRESH_SDK_ARRAYS[node.opcode]);
         return false;
     };
     const live=()=>project.targets===targets&&snapshot()===original&&animationProducers.isCurrent()&&(!extendedResetUsed||effectMetadata()===originalEffects)&&snapshots.every(s=>s.target.blocks?.[s.id]===s.node&&s.node.inputs===s.inputs&&s.node.fields===s.fields&&s.node.mutation===s.mutation&&s.inputRows.every(([name,row,a,b])=>s.node.inputs?.[name]===row&&row?.[1]===a&&row?.[2]===b));
@@ -788,6 +1126,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(invalidGlobalBinding)return {ok:false,reason:'current variable name, ID, owner or writer schema does not agree'};
         if(!current||!nodes.get(target)||!owners.has(node)||invalid.has(node)||nodes.get(target).get(Object.keys(target.blocks||{}).find(id=>target.blocks[id]===node))!==node)return {ok:false,reason:'current target, input or connected graph changed'};
         if(!operationShape(node))return {ok:false,reason:'requires the exact supported current operation input schema'};
+        if(deadOccurrence(target,node))return {ok:true};
         const value=input(node,name,target),types=readInput(value);return singleArray(types)&&initialized(value)?{ok:true}:{ok:false,reason:'requires an actual initialized Array producer and compatible all writers'};
     }});
 }

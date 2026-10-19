@@ -9,7 +9,7 @@ import {multiplayerPlayerSourceCalls} from './multiplayer-player-source.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 import {consoleInspectSourceCalls} from './console-inspect-source.js';
 import {SDK_FONT_FIELDS} from './sdk-font-value-descriptors.js';
-import {ordinaryPlayerScoreNumberCalls} from './ordinary-primitive-sdk-number-source.js';
+import {ordinaryPlayerScoreNumberCalls,ordinaryCameraPropertyNumberLeaves,ordinaryMathNumberCalls} from './ordinary-primitive-sdk-number-source.js';
 import {ordinarySceneClockNumberCalls} from './ordinary-scene-clock-number-source.js';
 import {controllerButtonEventNumberLeaves} from './controller-button-event-number-source.js';
 
@@ -60,9 +60,42 @@ export function analyseSourceDeclarationIdentityForPreparation(program) {
     return declarationIdentityFreeze({unchangedFunctionAt:graph.unchangedFunctionAt});
 }
 
+// A local reset `x = undefined|null` that is immediately followed by its
+// definite overwrite (a direct `x = e`, or an if/else assigning x in both
+// branches before any exit), where e does not read x and no nested function
+// mentions x, can never be observed. It is not a producer of x.
+function deadLocalResets(program) {
+    const dead=new WeakSet(),FN=new Set(['FunctionDeclaration','FunctionExpression','Class']);
+    const mentions=(node,name)=>{if(!node||typeof node!=='object')return false;if(Array.isArray(node))return node.some(child=>mentions(child,name));if(node.type==='Identifier'&&node.name===name)return true;return Object.values(node).some(child=>child&&typeof child==='object'&&mentions(child,name));};
+    const assignment=(statement,name)=>statement?.type==='ExpressionStatement'&&statement.expr?.type==='Assignment'&&statement.expr.op==='='&&statement.expr.left?.type==='Identifier'&&statement.expr.left.name===name?statement.expr:null;
+    const reset=statement=>{const a=statement?.type==='ExpressionStatement'&&statement.expr?.type==='Assignment'&&statement.expr.op==='='&&statement.expr.left?.type==='Identifier'?statement.expr:null;return a&&['Undefined','Null'].includes(a.right?.type)?a:null;};
+    const exits=statement=>['Return','Break','Continue','ThrowStatement'].includes(statement?.type);
+    const definite=(statement,name)=>{const a=assignment(statement,name);if(a)return !['Undefined','Null'].includes(a.right?.type)&&!mentions(a.right,name);
+        if(statement?.type!=='If'||!Array.isArray(statement.consequent)||!Array.isArray(statement.alternate)||mentions(statement.test,name))return false;
+        const branch=list=>{for(const item of list){if(definite(item,name))return true;if(exits(item)||mentions(item,name))return false;}return false;};
+        return branch(statement.consequent)&&branch(statement.alternate);};
+    const fn=node=>{
+        const locals=new Set(),captured=new Set();
+        const scan=(value,nested)=>{if(!value||typeof value!=='object')return;if(Array.isArray(value)){value.forEach(child=>scan(child,nested));return;}
+            if(FN.has(value.type)){const inner=new Set();const names=v=>{if(!v||typeof v!=='object')return;if(Array.isArray(v)){v.forEach(names);return;}if(v.type==='Identifier')inner.add(v.name);Object.values(v).forEach(names);};names(value);inner.forEach(n=>captured.add(n));return;}
+            if(!nested&&value.type==='Declaration'&&['let','const'].includes(value.kind))for(const decl of value.decls||[])locals.add(decl.name);
+            for(const child of Object.values(value))if(child&&typeof child==='object')scan(child,nested);};
+        scan(node.body,false);
+        const lists=value=>{if(!value||typeof value!=='object')return;if(Array.isArray(value)){
+                for(let i=0;i+1<value.length;i++){const a=reset(value[i]);if(a&&locals.has(a.left.name)&&!captured.has(a.left.name)&&definite(value[i+1],a.left.name))dead.add(a);}
+                value.forEach(lists);return;}
+            if(FN.has(value.type))return;for(const child of Object.values(value))if(child&&typeof child==='object')lists(child);};
+        lists(node.body);
+    };
+    const visit=value=>{if(!value||typeof value!=='object')return;if(Array.isArray(value)){value.forEach(visit);return;}
+        if(['FunctionDeclaration','FunctionExpression'].includes(value.type)&&Array.isArray(value.body))fn(value);
+        for(const child of Object.values(value))if(child&&typeof child==='object')visit(child);};
+    visit(program);return dead;
+}
+
 // Analyze actual lexical producers and all writers without rewriting the AST.
 // Source annotations constrain consumers; they never seed producer authority.
-function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,normalCompletion=null,physicalUpdateSource=null}={},privateSpriteAyProof=null,identityInput=null) {
+function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,primitiveComparisons=false,closureEntries=false,normalCompletion=null,physicalUpdateSource=null}={},privateSpriteAyProof=null,identityInput=null) {
     const physicalEntry=physicalUpdateSource?physicalUpdateSourceRecord(program,physicalUpdateSource):null;
     if(physicalUpdateSource&&!physicalEntry)throw new Error('Physical update source proof must belong to the actual current Program');
     const loopEntry=arrayLoopEntries?proveDenseArrayLoopEntries(program,()=>analyseGraph(program,{parenthesized:true,unboundIsOpaque:true})):null;
@@ -95,12 +128,14 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         return initialized(node.index);
     };
     const ordinaryNumbers=ordinaryPrimitiveSdkNumbers?ordinaryPlayerScoreNumberCalls(program,safeClockIndex):null;
+    const cameraPropertyNumbers=ordinaryPrimitiveSdkNumbers?ordinaryCameraPropertyNumberLeaves(program):null;
+    const mathNumbers=ordinaryPrimitiveSdkNumbers?ordinaryMathNumberCalls(program):null;
     const spriteAyNumbers=privateSpriteAyProof||(ordinaryPrimitiveSdkNumbers?ordinarySpriteAyNumberReads(program):null);
     const sceneNumbers=sceneClockNumbers?ordinarySceneClockNumberCalls(program,safeClockIndex):null;
     let screenWritten=false;
     const scanScreenWrites=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(scanScreenWrites);return;}const target=node.type==='Assignment'?node.left:node.type==='Update'?node.argument:null;if(target?.type==='Identifier'&&target.name==='screen'&&sdk.has(target))screenWritten=true;Object.values(node).forEach(scanScreenWrites);};scanScreenWrites(program);
     const initializedReads=new WeakSet(),initializationAt=new WeakMap(),localUndefinedDeclarations=new Set();
-    const writing=new WeakSet(),owners=new WeakMap(),cells=new WeakMap(),types=new Map(),edges=[],scales=[],texts=[],derived=[],prints=[],classes=new Map(),classCalls=[],classWrites=new Set(),declarations=new Map(),functions=new Map(),calls=[],numericCalls=[],unsupported=[];
+    const deadResets=deadLocalResets(program),writing=new WeakSet(),owners=new WeakMap(),cells=new WeakMap(),types=new Map(),edges=[],scales=[],texts=[],derived=[],prints=[],classes=new Map(),classCalls=[],classWrites=new Set(),declarations=new Map(),functions=new Map(),calls=[],numericCalls=[],unsupported=[];
     const fail=message=>{if(!unsupported.includes(message))unsupported.push(message);};
     const scope=parent=>({parent,bindings:new Map()});
     const global=scope(null),key=()=>Symbol(),add=(cell,type)=>{if(!types.has(cell))types.set(cell,new Set());const set=types.get(cell),before=set.size;set.add(unreachableCells.has(cell)?'Opaque':type);return before!==set.size;};
@@ -119,7 +154,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(value=>visit(value,owner));return;}
         owners.set(node,owner);if(['FunctionDeclaration','Class'].includes(node.type) && (node.name?.startsWith('__bwSdkFont_') || node.name==='__bwSDK_Font'))fail('Internal Font descriptor and intrinsic names are not source bindings');
         if(node.type==='Declaration' && node.decls.some(decl=>decl.name.startsWith('__bwSdkFont_') || decl.name==='__bwSDK_Font'))fail('Internal Font descriptor and intrinsic names are not source bindings');
-        if(node.type==='Identifier'){if(node.name.startsWith('__bwSdkFont_'))fail('Internal Font intrinsic names are not source bindings');if(!writing.has(node)){cells.set(node,key());if(node.name==='screen'&&sdk.has(node))add(cell(node),screenWritten?'Opaque':'Image');else {const id=binding(owner,node.name);edge(id,cell(node));if(unboundIsOpaque&&!declarations.has(id)||opaqueDeclarationValues&&[...(declarations.get(id)||[])].some(value=>(['FunctionDeclaration','Class','Enum'].includes(value?.type)||value?.isArray||value?.typeName&&!['number','boolean','string','any'].includes(value.typeName)&&!(multiplayer&&value.typeName==='mp.Player'))))add(cell(node),'Opaque');else if(opaqueDeclarationValues&&multiplayer&&[...(declarations.get(id)||[])].some(value=>value?.typeName==='mp.Player'))add(cell(node),'OpaquePlayerConstraint');}}return;}
+        if(node.type==='Identifier'){if(node.name.startsWith('__bwSdkFont_'))fail('Internal Font intrinsic names are not source bindings');if(!writing.has(node)){cells.set(node,key());if(node.name==='screen'&&sdk.has(node))add(cell(node),screenWritten?'Opaque':'Image');else {const id=binding(owner,node.name);edge(id,cell(node));if(mathNumbers?.has(node))add(cell(node),'Number');else if(unboundIsOpaque&&!declarations.has(id)||opaqueDeclarationValues&&[...(declarations.get(id)||[])].some(value=>(['FunctionDeclaration','Class','Enum'].includes(value?.type)||value?.isArray||value?.typeName&&!['number','boolean','string','any'].includes(value.typeName)&&!(multiplayer&&value.typeName==='mp.Player'))))add(cell(node),'Opaque');else if(opaqueDeclarationValues&&multiplayer&&[...(declarations.get(id)||[])].some(value=>value?.typeName==='mp.Player'))add(cell(node),'OpaquePlayerConstraint');}}return;}
         cells.set(node,key());const current=cell(node);if(completion&&!completion.isReachable(node))unreachableCells.add(current);
         if(node.bwConsoleInspectIntrinsic===true&&node.callee?.name==='__bwConsoleInspectValue')internalInspection=true;
         if(node.type==='Program'){predeclare(node.body,owner);vars(node.body,owner);node.body.forEach(value=>visit(value,owner));return;}
@@ -149,7 +184,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         if(node.type==='ThrowStatement'){visit(node.argument,owner);return;}
         if(node.type==='Assignment'&&node.op==='='&&node.left?.type==='Identifier')writing.add(node.left);
         for(const value of Object.values(node))if(value&&typeof value==='object')visit(value,owner);
-        if(node.type==='Assignment'){if(arrayValues&&node.left?.type==='Member'&&node.left.name!=='length')arrayOperations.push({kind:'methodWrite',receiver:cell(node.left.object)});if(arrayValues&&node.left?.type==='Index')arrayOperations.push({kind:'write',receiver:cell(node.left.object),index:cell(node.left.index),value:cell(node.right)});if(node.left?.type==='Identifier')classWrites.add(binding(owners.get(node.left),node.left.name));if(node.op==='=')edge(cell(node.right),cell(node.left));else if(node.left?.type==='Identifier')derived.push({result:binding(owners.get(node.left),node.left.name),type:'Number',operands:[cell(node.left),cell(node.right)],signature:['+=','-=','*=','/=','%=','&=','|=','^=','<<=','>>=','>>>='].includes(node.op),domain:'Number'});else add(cell(node.left),'Opaque');edge(cell(node.right),current);return;}
+        if(node.type==='Assignment'){if(arrayValues&&node.left?.type==='Member'&&node.left.name!=='length')arrayOperations.push({kind:'methodWrite',receiver:cell(node.left.object)});if(arrayValues&&node.left?.type==='Index')arrayOperations.push({kind:'write',receiver:cell(node.left.object),index:cell(node.left.index),value:cell(node.right)});if(node.left?.type==='Identifier')classWrites.add(binding(owners.get(node.left),node.left.name));if(node.op==='='){if(!deadResets.has(node))edge(cell(node.right),cell(node.left));}else if(node.left?.type==='Identifier')derived.push({result:binding(owners.get(node.left),node.left.name),type:'Number',operands:[cell(node.left),cell(node.right)],signature:['+=','-=','*=','/=','%=','&=','|=','^=','<<=','>>=','>>>='].includes(node.op),domain:'Number'});else add(cell(node.left),'Opaque');edge(cell(node.right),current);return;}
         if(arrayValues&&node.type==='Update'&&node.argument?.type==='Member'&&node.argument.name!=='length')arrayOperations.push({kind:'methodWrite',receiver:cell(node.argument.object)});
         if(arrayValues&&node.type==='Update'&&node.argument?.type==='Index')arrayOperations.push({kind:'update',receiver:cell(node.argument.object),index:cell(node.argument.index)});
         if(node.type==='Update'&&node.argument?.type==='Identifier'){classWrites.add(binding(owners.get(node.argument),node.argument.name));derived.push({result:binding(owners.get(node.argument),node.argument.name),type:'Number',operands:[cell(node.argument)],signature:['++','--'].includes(node.op),domain:'Number'});edge(cell(node.argument),current);return;}
@@ -176,14 +211,15 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         else if(node.type==='Binary'&&['===','!==','==','!=','<','>','<=','>='].includes(node.op)||node.type==='Unary'&&node.op==='!')derived.push({result:current,type:'Boolean',operands:(node.type==='Unary'?[node.argument]:[node.left,node.right]).map(cell),signature:true,inspectionPrimitive:true});
         else if(arrayValues&&node.type==='Unary'&&node.op==='typeof')derived.push({result:current,type:'String',operands:[cell(node.argument)],signature:true,inspectionPrimitive:true});
         else if(node.type==='Unary'&&['+','-','~'].includes(node.op))derived.push({result:current,type:'Number',operands:[cell(node.argument)],signature:true,domain:'Number'});
-        else if(node.type==='Binary'&&['+','-','*','/','%','&','|','^','<<','>>','>>>'].includes(node.op))derived.push({result:current,type:'Number',operands:[cell(node.left),cell(node.right)],signature:true,domain:'Number',stringConcat:node.op==='+'});
+        else if(node.type==='Binary'&&['+','-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(node.op))derived.push({result:current,type:'Number',operands:[cell(node.left),cell(node.right)],signature:true,domain:'Number',stringConcat:node.op==='+'});
         else if(node.type==='Call'&&!node.isNew&&(node.callee?.type==='Identifier'||numericArrows.size&&node.callee?.type==='Parenthesized'))calls.push({node,callee:node.callee.type==='Identifier'?binding(owner,node.callee.name):null,result:current});
         else if(node.type==='Parenthesized'&&parenthesized)edge(cell(node.expression),current);
-        else if(['Conditional','Logical'].includes(node.type)){edge(cell(node.consequent||node.left),current);edge(cell(node.alternate||node.right),current);}
+        // The parser spells && / || / ?? as Binary; each yields one actual operand.
+        else if(['Conditional','Logical'].includes(node.type)||node.type==='Binary'&&['&&','||','??'].includes(node.op)){edge(cell(node.consequent||node.left),current);edge(cell(node.alternate||node.right),current);}
         else if(node.type==='Member'&&['width','height'].includes(node.name))edges.push([cell(node.object),current,'imageDimension',node.name]);
         else if(node.type==='Member'&&fields.has(node.name))edges.push([cell(node.object),current,'field',node.name]);
         else if(['Undefined','Null','String','Number','Boolean'].includes(node.type))add(current,node.type);
-        else if(ordinaryNumbers?.has(node)||sceneNumbers?.has(node)||buttonEventNumbers?.has(node)||spriteAyNumbers?.has(node))add(current,'Number');
+        else if(ordinaryNumbers?.has(node)||cameraPropertyNumbers?.has(node)||mathNumbers?.has(node)||sceneNumbers?.has(node)||buttonEventNumbers?.has(node)||spriteAyNumbers?.has(node))add(current,'Number');
         else if(node.type==='Call'&&sdk.has(node.callee)&&path(node.callee)==='game.askForString')add(current,'String');
         else {add(current,'Opaque');if(arrayValues&&node.type==='Call'&&node.callee?.type==='Member')for(const value of [node.callee.object,...node.args])arrayOperations.push({kind:'escape',receiver:cell(value)});}
     };
@@ -196,7 +232,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         const owner=owners.get(node)||global;if(initializationEntries)initializationAt.set(node,new Set(known));
         if(node.type==='Identifier'){
             if(known.has(binding(owner,node.name)))initializedReads.add(node);
-            if(!writing.has(node)&&!(node.name==='screen'&&sdk.has(node))&&!known.has(binding(owner,node.name))){
+            if(!writing.has(node)&&!(node.name==='screen'&&sdk.has(node))&&!mathNumbers?.has(node)&&!known.has(binding(owner,node.name))){
                 const id=binding(owner,node.name);
                 if(uninitializedLocalsAreOpaque&&global.bindings.get(node.name)!==id&&[...(declarations.get(id)||[])].some(declaration=>typeof declaration==='object'&&!['FunctionDeclaration','Class','Enum'].includes(declaration.type)))add(cell(node),'Opaque');
                 add(cell(node),'Undefined');
@@ -204,7 +240,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         }
         // A closure expression is allocated here, after the currently proved
         // initializations. Hoisted declarations retain their entry boundary.
-        if(node.type==='FunctionDeclaration'||node.type==='FunctionExpression'){const entryOwner=node.type==='FunctionDeclaration'?functions.get(binding(owner,node.name))?.owner:null;const first=node.body?.[0],methodOwner=entryOwner||owners.get(first);entry(node.body,new Set([...((consoleInspection||arrayValues)&&node.type==='FunctionExpression'?known:[]),...(node.params||[]).map(name=>binding(methodOwner||owner,name))]));return known;}
+        if(node.type==='FunctionDeclaration'||node.type==='FunctionExpression'){const entryOwner=node.type==='FunctionDeclaration'?functions.get(binding(owner,node.name))?.owner:null;const first=node.body?.[0],methodOwner=entryOwner||owners.get(first);entry(node.body,new Set([...((consoleInspection||arrayValues||closureEntries)&&node.type==='FunctionExpression'?known:[]),...(node.params||[]).map(name=>binding(methodOwner||owner,name))]));return known;}
         if(node.type==='Class'){for(const field of node.fields||[])entry(field.init,new Set());for(const method of [node.ctor,...(node.methods||[])].filter(Boolean)){const methodOwner=owners.get(method.body?.[0])||owner,globals=physicalEntry?.methods.get(method)?.globals||[];entry(method.body,new Set([...globals.map(decl=>binding(global,decl.name)),...(method.params||[]).map(name=>binding(methodOwner,name))]));}return known;}
         if(node.type==='Declaration'){for(const decl of node.decls){known=entry(decl.init,known);if(decl.init||localUndefinedDeclarations.has(decl))known=new Set([...known,binding(owner,decl.name)]);}return known;}
         if(node.type==='Assignment'){known=entry(node.right,known);if(node.left?.type==='Identifier'&&node.op==='=')known=new Set([...known,binding(owners.get(node.left),node.left.name)]);else known=entry(node.left,known);return known;}
@@ -219,7 +255,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     const resultFunctions=new Map([...functions].filter(([,fn])=>fn).map(([name,fn])=>[fn.result,name])),callGraph=new Map();
     for(const call of calls){let owner=owners.get(call.node);while(owner&&!owner.result)owner=owner.parent;const origin=resultFunctions.get(owner?.result);if(origin){if(!callGraph.has(origin))callGraph.set(origin,new Set());callGraph.get(origin).add(call.callee);}}
     const cyclic=(origin,current=origin,seen=new Set())=>{if(seen.has(current))return false;seen.add(current);for(const next of callGraph.get(current)||[])if(next===origin||cyclic(origin,next,seen))return true;return false;};
-    for(const call of calls){if(completion&&!completion.isReachable(call.node)){add(call.result,'Opaque');continue;}const fn=functions.get(call.callee);if(!fn||declarations.get(call.callee)?.size!==1||classWrites.has(call.callee)){
+    for(const call of calls){if(completion&&!completion.isReachable(call.node)){add(call.result,'Opaque');continue;}const fn=functions.get(call.callee);if(!fn&&mathNumbers?.has(call.node)){add(call.result,'Number');continue;}if(!fn||declarations.get(call.callee)?.size!==1||classWrites.has(call.callee)){
             if(numericArrows.size)numericCalls.push({node:call.node,result:call.result,receiver:cell(call.node.callee)});
             else add(call.result,'Opaque');if(arrayValues)for(const argument of call.node.args)arrayOperations.push({kind:'escape',receiver:cell(argument)});continue;
         }if(numericHelpers.has(fn.node)) {
@@ -261,7 +297,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     const playerOperand=value=>!unsafePlayerWrite&&types.get(value)?.has('Player')&&[...types.get(value)].every(type=>['Player','Null','Undefined','OpaquePlayerConstraint'].includes(type));
     const numericOperand=value=>types.get(value)?.size&&[...types.get(value)].every(type=>type==='Number'||type==='Undefined');
     const inspectionDomain=(operand,allowed)=>types.get(operand)?.size&&[...types.get(operand)].every(type=>allowed.has(type));
-    const derivedValid=item=>item.inspectionPrimitive?(consoleInspection||internalInspection||arrayValues)&&item.operands.every(operand=>inspectionDomain(operand,primitiveTypes)):item.inspection?item.signature&&inspectionDomain(item.operands[0],primitiveTypes)&&(item.operands.length===1||inspectionDomain(item.operands[1],new Set(['Number','Undefined']))):item.signature&&(stringConcat(item)||item.operands.every(operand=>item.domain==='Player'?playerOperand(operand):item.domain==='Number'&&item.type==='Number'?numericOperand(operand):exactType(operand,item.domain)));
+    const derivedValid=item=>item.inspectionPrimitive?(consoleInspection||internalInspection||arrayValues||primitiveComparisons)&&item.operands.every(operand=>inspectionDomain(operand,primitiveTypes)):item.inspection?item.signature&&inspectionDomain(item.operands[0],primitiveTypes)&&(item.operands.length===1||inspectionDomain(item.operands[1],new Set(['Number','Undefined']))):item.signature&&(stringConcat(item)||item.operands.every(operand=>item.domain==='Player'?playerOperand(operand):item.domain==='Number'&&item.type==='Number'?numericOperand(operand):exactType(operand,item.domain)));
     const arrayTypes=value=>{const set=types.get(value);return set?.size&&[...set].every(type=>type?.kind==='Array')?[...set]:null;};
     const propagateArrays=()=>{let changed=false;
         for(const op of arrayOperations){const tokens=arrayTypes(op.receiver);if(!tokens)continue;

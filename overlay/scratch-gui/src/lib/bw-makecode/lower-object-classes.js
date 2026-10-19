@@ -438,7 +438,9 @@ export function lowerObjectClasses(program,{classCallablePrototype=false,sdkImag
         const ownInitializers=new Map(),initBody=[];
         if(node.base)initBody.push(statement(procedure(signature(`__bwClass_${node.base}_fields`,[selfName]),[{...id(selfName),bwObjectTypes:['object']}] )));
         for(const field of node.fields.filter(field=>field.init)){
-            const fn=`__bwClass_${name}_field_${field.name}`;ownInitializers.set(field.name,fn);
+            // An exported program already declares this helper by name; never
+            // create a second procedure with the same name on reimport.
+            let fn=`__bwClass_${name}_field_${field.name}`;while(takenNames.has(fn))fn+='_';takenNames.add(fn);ownInitializers.set(field.name,fn);
             body.push({type:'FunctionDeclaration',name:fn,params:[],body:[...rewrite(field.pxtStagingPrefix || [],{name,constructor:true}),{type:'Return',value:rewrite(field.pxtStagedInit || field.init,{name,constructor:true})}]});
             initBody.push(statement(call('set',[{...id(selfName),bwObjectTypes:['object']},str(field.name),procedure(fn,[],types(field.init))])));
         }

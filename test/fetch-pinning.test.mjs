@@ -365,6 +365,17 @@ const CENSUS = [
     },
     {
         file: '.github/workflows/build.yml',
+        kind: 'raw',
+        text: 'raw.githubusercontent.com/CrispStrobe/extensions/${ARRAY_SUPPLIER_SHA}/extensions/CrispStrobe/arrays.js',
+        class: 'sha-const',
+        why: 'CONTENT, sha-addressed and byte-bound. ARRAY_SUPPLIER_SHA is a 40-hex constant '
+           + 'in the same step env (SHA_CONSTANTS below asserts it) and the step also checks the '
+           + 'downloaded bytes against ARRAY_SUPPLIER_SHA256 before exporting the path. The file '
+           + 'is the explicit frozen Array supplier the two *-native unit tests require; it is '
+           + 'read by those tests only and never written into the tree.'
+    },
+    {
+        file: '.github/workflows/build.yml',
         kind: 'git',
         text: 'git clone --bare --filter=blob:none https://github.com/CrispStrobe/emu8051-stc.git /tmp/emu8051-stc.git 2>/dev/null',
         class: 'waived',
@@ -498,6 +509,17 @@ const CENSUS = [
            + 'is trusted: MICROBIT_EMU_BASES holds each base\'s sha256 and emuBases() serves and caches '
            + 'nothing else (test/makecode-emu-bases-fetch.test.mjs). The bytes are re-derived by '
            + 'scripts/build-makecode-emu-bases.mjs, whose workflow syncs with --no-emu-fetch.'
+    },
+    {
+        file: 'scripts/integrate.mjs',
+        kind: 'release',
+        text: 'github.com/CrispStrobe/JoltPhysics.js/releases/download/v1.1.0-bw.2/jolt-physics-1.1.0-bw.2.tgz',
+        class: 'content-hash',
+        why: 'The Sim Lab physics engine: the Brickwright JoltPhysics.js fork build 1.1.0-bw.2 (Jolt master '
+           + 'plus the gear fixes), taken as an npm tarball dependency. The tag is movable, so it is not what '
+           + 'is trusted: packages/scratch-gui/package-lock.json holds the tarball\'s sha512 integrity '
+           + '(sha256 e45f1c127c6d0bcb79f5c87124106700746493e898246ad31dead483004ac516) and npm refuses '
+           + 'different bytes. The fork\'s brickwright-release.yml re-derives the bytes from the pinned commits.'
     },
     {
         file: 'scripts/vendor-forward.mjs',
@@ -636,6 +658,7 @@ const SHA_CONSTANTS = [
     ['scripts/sync-emu8051-wasm.mjs', /const PIN = '([0-9a-zA-Z]+)'/],
     ['scripts/sync-labwired-wasm.mjs', /const PIN = '([0-9a-zA-Z]+)'/],
     ['.github/workflows/build.yml', /^\s*FLOOR=(\S+)/m],
+    ['.github/workflows/build.yml', /^\s*ARRAY_SUPPLIER_SHA: (\S+)/m],
     ['overlay/scratch-gui/src/lib/bw-machines/lessons.js', /const LINUX_MEDIA_COMMIT = '([0-9a-zA-Z]+)'/],
     ['overlay/scratch-gui/src/lib/bw-machines/lessons.js', /const ELKS_MEDIA_COMMIT = '([0-9a-zA-Z]+)'/],
     ['scripts/verify-native-downloads-e2e.mjs', /'([0-9a-zA-Z]+)\/riscv32-linux\/Image'/],

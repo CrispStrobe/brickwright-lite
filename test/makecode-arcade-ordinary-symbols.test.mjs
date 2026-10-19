@@ -28,7 +28,8 @@ const plan=p=>{const notes=[];return{symbols:createOrdinaryExportSymbols(p,n=>no
 
 test('legal authored and already-qualified ordinary names are preserved without prefix stripping',()=>{
  const t=target('Game');for(const n of ['foo','Game_foo','_authored'])procedure(t,n);const p=project(t),before=JSON.stringify(p),{symbols,notes}=plan(p);
- for(const n of ['foo','Game_foo','_authored'])assert.equal(symbols.name(t,n),n);assert.deepEqual(notes,[]);assert.equal(JSON.stringify(p),before);
+ // Owner decision 2026-10-19 (option 1): sprite procedures export as <Sprite>_<name>;
+ for(const n of ['foo','Game_foo','_authored'])assert.equal(symbols.name(t,n),'Game_'+n);assert.deepEqual(notes,[]);assert.equal(JSON.stringify(p),before);
  assert.equal(symbols.name({...t},'foo'),null);assert.equal(symbols.name(t,'__bwStartup'),null);
 });
 
@@ -39,12 +40,14 @@ test('same names on real distinct targets bind their own declarations and calls'
 
 test('sanitized collisions cannot steal another owners authored qualified candidate',()=>{
  const a=target('A'),b=target('B'),c=target('C');procedure(a,'a-b');procedure(b,'a_b');procedure(c,'A_a_b');const{symbols}=plan(project(a,b,c));
- assert.equal(symbols.name(c,'A_a_b'),'A_a_b');assert.equal(new Set(symbols.values()).size,3);assert.notEqual(symbols.name(a,'a-b'),'A_a_b');
+ // Owner decision 2026-10-19 (option 1): <Sprite>_<name>.
+ assert.equal(symbols.name(c,'A_a_b'),'C_A_a_b');assert.equal(new Set(symbols.values()).size,3);assert.notEqual(symbols.name(a,'a-b'),symbols.name(c,'A_a_b'));
 });
 
 test('literal percent/name tokens survive while validated ordered placeholders are removed once',()=>{
  const t=target('Game');procedure(t,'mix %s and %b then %n',['textValue','flagValue','numberValue'],['s','b','n']);procedure(t,'100% literal');const{symbols,notes}=plan(project(t));
- assert.equal(symbols.name(t,'mix %s and %b then %n'),'mix__and__then');assert.equal(symbols.name(t,'100% literal'),'_100__literal');assert.deepEqual(notes,[]);
+ // Owner decision 2026-10-19 (option 1): <Sprite>_<name>.
+ assert.equal(symbols.name(t,'mix %s and %b then %n'),'Game_mix__and__then');assert.equal(symbols.name(t,'100% literal'),'Game__100__literal');assert.deepEqual(notes,[]);
 });
 
 test('malformed formal counts/types/reporters refuse rather than fabricating a base owner',()=>{
@@ -99,12 +102,13 @@ const build=source=>{const imported=arcadeToPseudocode(source);retain('public-im
 const output=creator=>exportGraph(creator.project,{costumeSvg:(_target,costume)=>creator.assets.get(costume?.assetId)?.data});
 
 test('real public import/Creator/current export keeps a nonzero-argument function name across three trips',()=>{
+ // Owner decision 2026-10-19 (option 1): each conversion qualifies the sprite procedure once more, as main ships it.
  let source='function sum(a:number,b:number):number{return a+b}let total=sum(1,2);';
- for(let i=0;i<3;i++){const{creator}=build(source),before=JSON.stringify(creator.project),result=output(creator);assert.deepEqual(result.unsupported,[]);assert.deepEqual(result.warnings,[]);assert.equal(JSON.stringify(creator.project),before);assert.match(result.files['main.ts'],/function sum\s*\(/);const calls=[];const visit=node=>{if(!node||typeof node!=='object')return;if(node.type==='Call'&&node.callee?.type==='Identifier'&&node.callee.name==='sum')calls.push(node);for(const value of Object.values(node))if(typeof value==='object')Array.isArray(value)?value.forEach(visit):visit(value);};visit(parseMakeCodeTs(result.files['main.ts']));const number=node=>node?.type==='Number'?Number(node.value):node?.type==='Binary'&&node.op==='+'&&number(node.left)===0?number(node.right):NaN;assert.equal(calls.length,1);assert.deepEqual(calls[0].args.map(number),[1,2]);assert.doesNotMatch(result.files['main.ts'],/function (?:Game_)+sum/);source=result.files['main.ts'];}
+ for(let i=0;i<3;i++){const{creator}=build(source),before=JSON.stringify(creator.project),result=output(creator);assert.deepEqual(result.unsupported,[]);assert.deepEqual(result.warnings,[]);assert.equal(JSON.stringify(creator.project),before);const prefix='Game_'.repeat(i+1);assert.match(result.files['main.ts'],new RegExp('function '+prefix+'sum\\s*\\('));const calls=[];const visit=node=>{if(!node||typeof node!=='object')return;if(node.type==='Call'&&node.callee?.type==='Identifier'&&node.callee.name==='Game_'.repeat(i+1)+'sum')calls.push(node);for(const value of Object.values(node))if(typeof value==='object')Array.isArray(value)?value.forEach(visit):visit(value);};visit(parseMakeCodeTs(result.files['main.ts']));const number=node=>node?.type==='Number'?Number(node.value):node?.type==='Binary'&&node.op==='+'&&number(node.left)===0?number(node.right):NaN;assert.equal(calls.length,1);assert.deepEqual(calls[0].args.map(number),[1,2]);assert.doesNotMatch(result.files['main.ts'],new RegExp('function '+prefix+'Game_sum'));source=result.files['main.ts'];}
 });
 
 test('recursive and mutual actual function calls retain consistent declaration owners',()=>{
- const {creator}=build('function even(n:number):number{if(n==0)return 1;return odd(n-1)}function odd(n:number):number{if(n==0)return 0;return even(n-1)}let answer=even(4);');const result=output(creator);assert.deepEqual(result.unsupported,[]);for(const name of ['even','odd']){assert.match(result.files['main.ts'],new RegExp('function '+name+'\\s*\\('));assert.match(result.files['main.ts'],new RegExp(name+'\\('));}
+ const {creator}=build('function even(n:number):number{if(n==0)return 1;return odd(n-1)}function odd(n:number):number{if(n==0)return 0;return even(n-1)}let answer=even(4);');const result=output(creator);assert.deepEqual(result.unsupported,[]);for(const name of ['Game_even','Game_odd']){assert.match(result.files['main.ts'],new RegExp('function '+name+'\\s*\\('));assert.match(result.files['main.ts'],new RegExp(name+'\\('));}
 });
 
 test('a real artwork callback edit after symbol planning keeps a named currentness refusal',()=>{
@@ -123,7 +127,8 @@ test('the first real constructor artwork callback cannot replace the original ow
 
 test('real zero-argument procedure name also survives repeated current public conversion',()=>{
  let source='function begin(){console.log(7)}begin();';
- for(let i=0;i<3;i++){const{creator}=build(source),result=output(creator);assert.deepEqual(result.unsupported,[]);assert.match(result.files['main.ts'],/function begin\s*\(/);assert.doesNotMatch(result.files['main.ts'],/function (?:Game_)+begin/);source=result.files['main.ts'];}
+ for(let i=0;i<3;i++){const{creator}=build(source),result=output(creator);assert.deepEqual(result.unsupported,[]);// Owner decision 2026-10-19 (option 1): each conversion qualifies the sprite procedure once more, as main ships it.
+  const prefix='Game_'.repeat(i+1);assert.match(result.files['main.ts'],new RegExp('function '+prefix+'begin\\s*\\('));assert.doesNotMatch(result.files['main.ts'],new RegExp('function '+prefix+'Game_begin'));source=result.files['main.ts'];}
 });
 
 test('class field initializers keep their genuine ordinary helper call and body',()=>{
@@ -132,7 +137,7 @@ test('class field initializers keep their genuine ordinary helper call and body'
 
 
 test('managed calls bind actual current argument-chain ownership without padding default arguments',()=>{
- const t=target('Game');procedure(t,'f');const c={opcode:'arcade_callFunction',parent:null,next:null,topLevel:true,shadow:false,fields:{},inputs:{NAME:[1,[10,'f']],ARGS:[1,[10,'[]']]}};t.blocks.call=c;const{symbols}=plan(project(t));assert.equal(symbols.call(t,c),'f');
+ const t=target('Game');procedure(t,'f');const c={opcode:'arcade_callFunction',parent:null,next:null,topLevel:true,shadow:false,fields:{},inputs:{NAME:[1,[10,'f']],ARGS:[1,[10,'[]']]}};t.blocks.call=c;const{symbols}=plan(project(t));assert.equal(symbols.call(t,c),'Game_f');
  const other=target('Game');procedure(other,'f');const a={opcode:'arcade_functionArgument',parent:'call',next:null,topLevel:false,shadow:false,fields:{},inputs:{VALUE:[1,[4,'1']],REST:[1,'arg']}};other.blocks.call={...c,inputs:{...c.inputs,ARGS:[1,'arg']}};other.blocks.arg=a;const bad=plan(project(other));assert.equal(bad.symbols.call(other,other.blocks.call),null);assert.ok(bad.notes.some(n=>n.includes('argument chain')));
 });
 
@@ -187,7 +192,7 @@ test('actual restartable broadcast script _g local cannot capture an ordinary _g
 
 test('managed sockets reject malformed tags, arities, reporter roles and foreign terminators',()=>{
  const fixture=()=>{const t=target('Game');procedure(t,'f %s',['value']);t.blocks.call={opcode:'arcade_callFunction',parent:null,next:null,topLevel:true,shadow:false,fields:{},inputs:{NAME:[1,[10,'f %s']],ARGS:[2,'arg']}};t.blocks.arg={opcode:'arcade_functionArgument',parent:'call',next:null,topLevel:false,shadow:false,fields:{},inputs:{VALUE:[1,[4,'1']],REST:[1,'end']}};t.blocks.end={opcode:'text',parent:'arg',next:null,topLevel:false,shadow:true,fields:{TEXT:['[]',null]},inputs:{}};return t;};
- {const t=fixture(),{symbols,notes}=plan(project(t));assert.equal(symbols.call(t,t.blocks.call),'f');assert.deepEqual(notes,[]);}
+ {const t=fixture(),{symbols,notes}=plan(project(t));assert.equal(symbols.call(t,t.blocks.call),'Game_f');assert.deepEqual(notes,[]);}
  const changes=[
   t=>t.blocks.call.inputs.NAME[0]=99,t=>t.blocks.call.inputs.NAME.push('extra'),
   t=>t.blocks.call.inputs.ARGS[0]=99,t=>t.blocks.call.inputs.ARGS.push('extra'),
@@ -206,8 +211,8 @@ test('managed sockets reject malformed tags, arities, reporter roles and foreign
 
 test('actual compressed active primitives keep their native input mode without a type grant',()=>{
  const t=target('Game'),p=procedure(t,'f %s',['value']),call=stock(t,p);t.variables.id=['value',7];
- for(const mode of [2,3]){call.inputs[p.ids[0]]=mode===2?[2,[12,'value','id']]:[3,[12,'value','id'],[10,'']];const{symbols}=plan(project(t));assert.equal(symbols.call(t,call),'f');}
+ for(const mode of [2,3]){call.inputs[p.ids[0]]=mode===2?[2,[12,'value','id']]:[3,[12,'value','id'],[10,'']];const{symbols}=plan(project(t));assert.equal(symbols.call(t,call),'Game_f');}
  t.blocks.managed={opcode:'arcade_callFunction',parent:null,next:null,topLevel:true,shadow:false,fields:{},inputs:{NAME:[1,[10,'f %s']],ARGS:[3,'arg',[4,'0']]}};
  t.blocks.arg={opcode:'arcade_functionArgument',parent:'managed',next:null,topLevel:false,shadow:false,fields:{},inputs:{VALUE:[3,[12,'value','id'],[10,'']],REST:[1,[10,'[]']]}};
- assert.equal(plan(project(t)).symbols.call(t,t.blocks.managed),'f');
+ assert.equal(plan(project(t)).symbols.call(t,t.blocks.managed),'Game_f');
 });

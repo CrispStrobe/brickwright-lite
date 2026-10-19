@@ -113,6 +113,7 @@ on:
       - 'docs/RCX-FIRMWARE.md'
       - 'docs/ROBOT-LAB-ARCHITECTURE.md'
       - 'docs/ROBOT-LAB-SPIKE-EMULATION.md'
+      - 'docs/ROBOT-LAB-VALIDATION.md'
       - 'docs/SPIKE-CONSOLIDATION.md'
       - 'docs/SIM-LAB-PLAN.md'
       - 'docs/SPIKE-ARENA.md'
@@ -780,11 +781,19 @@ jobs:
         env:
           BW_TEST_SHARD: ${{ matrix.shard }}/4
           STC_COMPILER_FLASHER_DIR: ${{ github.workspace }}/.stc-compiler-flasher
+          # The two *-native Array tests refuse the vendored copy and require an
+          # explicit frozen supplier file: one exact upstream commit, bytes bound.
+          ARRAY_SUPPLIER_SHA: 4dde49c46123ddf355c53192ce382dab77746799
+          ARRAY_SUPPLIER_SHA256: 47f50e20773c417fb0a7d164b70a354f66cd5c1daa871608e0af9eb0cfdd3db5
         run: |
           if ! grep -q '"test"' package.json; then
             echo "::error::package.json has no test script — tests exist but nothing runs them"
             exit 1
           fi
+          supplier="$RUNNER_TEMP/arrays-number-value-supplier.js"
+          curl -fsSL --retry 3 -o "$supplier" "https://raw.githubusercontent.com/CrispStrobe/extensions/${ARRAY_SUPPLIER_SHA}/extensions/CrispStrobe/arrays.js"
+          echo "${ARRAY_SUPPLIER_SHA256}  $supplier" | sha256sum -c -
+          export BW_ARRAY_NUMBER_VALUE_SOURCE="$supplier"
           set -o pipefail
           # This shard partitions the complete non-corpus suite; the two corpus
           # walks remain in their existing required job. They run in the `corpus` job below, in parallel with this
@@ -830,7 +839,8 @@ jobs:
           # A construction failure is the WORST kind to lose: the gate did not
           # run at all, so it cannot have found anything, and a green line says
           # it did. This repo has found five gates that could not fail; this one
-          # could not even be built. Classify the stream; TODO stays explicitly pending.
+          # could not even be built. Classify the stream; a TODO is pending, and check-test-run.mjs above
+          # requires its reason to name an existing docs/….md entry.
           node scripts/check-tap-failures.mjs /tmp/unit.tap
           exit "$rc"
 
@@ -3222,6 +3232,16 @@ jobs:
             await new Promise(resolve=>setTimeout(resolve,100));
           }
           JS
+      # pxt-node.mjs admits only the integrated GUI libraries with the pinned,
+      # overlaid scratch-vm. Prepare that source tree; no frontend build.
+      - name: Vendor the pinned permissive Scratch sources
+        run: npm run vendor
+      - name: Integrate the owned GUI libraries
+        run: node scripts/integrate.mjs
+      - name: Install the declared GUI dependencies
+        run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
+      - name: Apply the scratch-vm overlay
+        run: node scripts/apply-vm-overlay.mjs
       - name: Actual production IDE numeric/settings/source-loop authoring
         env:
           PROOF_URL: http://localhost:8617/

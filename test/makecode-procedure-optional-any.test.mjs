@@ -9,7 +9,8 @@ const BW=createRequire(import.meta.url)(VM_SRC+'/util/bw-values.js'),options={pr
 const source='let calls=0;let argCalls=0;function next(){argCalls+=1;return "title"}function keep(title:any,subtitle?:any){calls+=1;return subtitle}let omitted=keep(next());let explicit=keep(next(),undefined);let present=keep(next(),20);let ready=calls;';
 test('optional Any pads missing arguments without introducing a new type or default rule',()=>{
  const imported=arcadeToPseudocode(source,options);assert.deepEqual(imported.unsupported,[]);assert.match(imported.code,/declare arcade procedure "keep %s %s" parameter "title" as Any\n  declare arcade procedure "keep %s %s" parameter "subtitle" as Any/);
- assert.doesNotMatch(arcadeToPseudocode(source).code,/declare arcade procedure/);
+ // Supported ordinary constraints, including trailing optional Any, are default-on (8da5bc23b).
+ assert.match(arcadeToPseudocode(source).code,/declare arcade procedure "keep %s %s" parameter "title" as Any/);
  const mixed=arcadeToPseudocode('function keep(title:string,subtitle?:any){return subtitle}let result=keep("title");',options);assert.deepEqual(mixed.unsupported,[]);assert.match(mixed.code,/parameter "title" as String/);
 });
 test('only supported trailing optional Any enters the existing protocol',()=>{

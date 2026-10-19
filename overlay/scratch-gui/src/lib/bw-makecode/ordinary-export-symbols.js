@@ -91,7 +91,10 @@ export function createOrdinaryExportSymbols(project,note=()=>{}){
    if(Object.values(blocks).filter(b=>b?.opcode==='procedures_prototype'&&b.mutation?.proccode===code).length!==1||definitions.has(code))valid=false;
    if(definitions.has(code)){blocked.add(definitions.get(code));table.delete(code);}
    if(!valid){report('ambiguous or malformed definition/prototype/formals '+code);definitions.set(code,null);continue;}
-   const record={target,targetIndex,definition,id,prototype,protoId,code,ids,names,base:ident(code.replace(/%[sbn]/g,'').trim()||'fn'),symbol:null};definitions.set(code,record);table.set(code,record);records.push(record);
+   // Owner decision (2026-10-19, option 1): every Scratch-sprite procedure
+   // exports as `<Sprite>_<name>`, as main ships it; a Stage one stays bare.
+   const authored=ident(code.replace(/%[sbn]/g,'').trim()||'fn');
+   const record={target,targetIndex,definition,id,prototype,protoId,code,ids,names,base:target.isStage?authored:ident(target.name+'_'+authored),symbol:null};definitions.set(code,record);table.set(code,record);records.push(record);
   }
  }
  const legacyOwners=new Map();for(const r of records){const key=(r.target.isStage?'':r.target.name)+':'+r.code;if(legacyOwners.has(key)){blocked.add(r);blocked.add(legacyOwners.get(key));report('legacy analysis keys conflate distinct actual procedure owners');}else legacyOwners.set(key,r);}
@@ -101,7 +104,7 @@ export function createOrdinaryExportSymbols(project,note=()=>{}){
  // different owner's preferred authored name, including already-qualified names.
  for(const r of records)if(!blocked.has(r)&&counts.get(r.base)===1&&!hygieneReserved(r.base)){r.symbol=r.base;used.add(r.symbol);}
  for(const r of [...records].sort((a,b)=>a.targetIndex-b.targetIndex||(a.code<b.code?-1:a.code>b.code?1:0)))if(!blocked.has(r)&&!r.symbol){
-  let base=ident((r.target.isStage?'stage':r.target.name)+'_'+r.base);if(hygieneReserved(base))base='bwFunction_'+base;let candidate=base,n=2;
+  let base=r.target.isStage?ident('stage_'+r.base):r.base;if(hygieneReserved(base))base='bwFunction_'+base;let candidate=base,n=2;
   while(hygieneReserved(candidate)||used.has(candidate)||preferred.has(candidate)){candidate=base+'_'+n++;}
   r.symbol=candidate;used.add(candidate);
  }

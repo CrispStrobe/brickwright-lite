@@ -1943,7 +1943,7 @@ Still open, named: `castRay` from the main thread (nothing needs it today; it wo
 query); `interpolate()` in physics-client.js is unused (the view draws the last batch's poses);
 Jolt in the worker is single-threaded.
 
-### 4.10 The Robot Lab RCX VM (R5) — BUILT 2026-10-17, waiting for its hub adapter
+### 4.10 The Robot Lab RCX VM (R5) — BUILT 2026-10-17, RUNNING IN THE LAB 2026-10-19
 
 `lib/bw-sim/routes/rcx-vm/rcx-vm.js` (with `rcx-bytecode.js` and `rcx-program.js`, which it
 imports) is the clean-room interpreter of the RCX standard-firmware bytecode that
@@ -1955,9 +1955,10 @@ touch them. So `rcx-vm.js` is in KNOWN_DEAD (`test/no-dead-overlay-modules.test.
 section as its owner. What it does, the sources it was written from and what is missing:
 docs/ROBOT-LAB-RCX.md. Tests: `test/bw-sim-rcx-vm.test.mjs` (compiles real NQC in Node).
 
-**Leaves KNOWN_DEAD when** `hubs/rcx/rcx-virtual-hub.js` (R5's adapter: outputs → `pwm` drives
-with 8 levels, device readings → raw ADC values, the VM worker-resident in the §6.4 state
-registry) imports it — in that commit, as the 4.7 and 4.9 entries did.
+**Left KNOWN_DEAD 2026-10-19:** `hubs/rcx/rcx-virtual-hub.js` (R5's adapter: outputs → `pwm`
+drives with 8 levels, device readings → raw ADC values, the VM's state in exportState so the
+worker's mirror redoes a batch) imports it; a virtual `rcxDownload` target "Robot Lab RCX" puts
+NQC programs into it. docs/ROBOT-LAB-RCX.md "The hub" says what runs and what is missing.
 
 ### 5.1 The stc12 extension lite ships is missing 8 opcodes the emitter emits — FIXED
 

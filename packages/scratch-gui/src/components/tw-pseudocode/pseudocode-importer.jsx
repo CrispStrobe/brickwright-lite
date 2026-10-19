@@ -1399,6 +1399,12 @@ class PseudocodeImporter extends React.Component {
         this._onLoadPseudocode = event => {
             const code = event && event.detail && event.detail.code;
             if (typeof code !== 'string') return;
+            // An NQC example (the Robot Lab's RCX models) goes into the NQC buffer as text:
+            // the pane compiles and downloads it itself.
+            if (event.detail.lang === 'nqc') {
+                this.setState({lang: 'nqc', output: null, status: '', buffers: {...this.state.buffers, nqc: code}});
+                return;
+            }
             this._animationImport = null;
             this._makeCodeRequest = null;
             this._codeArtwork = null;
@@ -2011,23 +2017,29 @@ class PseudocodeImporter extends React.Component {
         if (this._unmounted) return;
         // The prompt is asynchronous too: reserve this intent against the
         // current stage before another file/share action can supersede it.
-        const request = this._makeCodeRequest = {stage:this.props.vm.runtime.getTargetForStage()};
-        let url = '';
+        const request = this._makeCodeRequest = {stage: this.props.vm.runtime.getTargetForStage()};
+        const current = () => !this._unmounted && this._makeCodeRequest === request &&
+            this.props.vm.runtime.getTargetForStage() === request.stage;
+        let shown = '';
         try {
-            url = await promptAsync(this.L.mcSharePrompt,'');
-            if (!this.currentMakeCodeRequest(request)) return;
+            const url = await promptAsync(this.L.mcSharePrompt, '');
+            if (!current()) return;
             if (!url || !url.trim()) {
                 this._makeCodeRequest = null;
                 return;
             }
-            this.setState({status:this.L.mcShareLoading});
-            const module = await this.makeCodeImportModule();
-            if (!this.currentMakeCodeRequest(request)) return;
-            const res = await module.importShareLink(url.trim(),{animationResources:true,prepareDependencies:true});
-            if (!this.currentMakeCodeRequest(request)) return;
-            this.applyMakeCodeImport(res,res.project.name || url.trim());
+            shown = url.trim();
+            this.setState({status: this.L.mcShareLoading});
+            // The component's shared loader keeps one chunk; a bare receiver
+            // loads the same chunk directly.
+            const module = this.makeCodeImportModule ? await this.makeCodeImportModule() : await import(
+                /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js');
+            if (!current()) return;
+            const res = await module.importShareLink(shown, {animationResources: true, prepareDependencies: true});
+            if (!current()) return;
+            this.applyMakeCodeImport(res, res.project.name || shown);
         } catch (err) {
-            if (this.currentMakeCodeRequest(request)) this.setState({status:this.L.mcFailed(url ? url.trim() : this.L.mcSharePrompt,(err && err.message) || String(err))});
+            if (current()) this.setState({status: this.L.mcFailed(shown || this.L.mcSharePrompt, (err && err.message) || String(err))});
         }
     }
 

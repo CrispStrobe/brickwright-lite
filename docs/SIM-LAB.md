@@ -11,9 +11,11 @@ How it is built, and what comes next, is in `docs/SIM-LAB-PLAN.md`.
 1. Write a SPIKE Prime program in the Code tab (blocks or DEVICE SPIKE text). The reference model drives its wheels with ports **A (left, mounted mirrored) and B (right)**, like the arena's driving base, so `set movement motors A B` and `move forward 20 cm` work as in the arena.
    The **Model** list has the **SPIKE driving base**, the **Line follower** (the same base with a
    colour sensor on port **C** just ahead of the drive axle, for the Line Oval mat), the **Wall stopper**
-   (the base with a distance sensor on port **D** looking ahead, for the Wall mat) and the **Colour
+   (the base with a distance sensor on port **D** looking ahead, for the Wall mat), the **Colour
    explorer** (the base with a colour sensor on port **C** centred ahead of the axle, for the Colour
-   Zones mat). Each of the last three comes with an example program: the examples are below.
+   Zones mat) and the **Maze runner** (the base with a distance sensor on port **D** looking ahead and a
+   colour sensor on port **C** looking down, for the Maze mat). Each of the last four comes with an
+   example program: the examples are below.
 2. Open the SPIKE simulator (**SPIKE arena** button in the Code tab) and pick the **Robot Lab (beta)** tab.
 3. Press **Run**. As the arena's Start does, Run connects the program to the virtual hub and starts it on the green flag. **Pause** stops the program and the clock; **Reset** reloads the model.
    The program's clock is the simulation's: `wait 2 seconds` is 2 s of simulated time on every computer. When a computer cannot simulate in real time, the whole program runs slower and the status line says how fast, e.g. *“0.40× real time”* (*“0,40× Echtzeit”*); what the robot does stays the same.
@@ -103,6 +105,68 @@ WHEN flag clicked:
 
 The Model list keys its entries by the model's file name (one example per model), so it cannot offer a second example for the Colour explorer — the program is loaded from the code above instead. `test/bw-sim-sumo-program.test.mjs` runs exactly this text through the Scratch VM, the spikeprime extension and the virtual hub on the shipped model and mat, for 40 s of simulated time: the drive-axle midpoint never leaves the 0.385 m ring edge, the robot reaches the band more than three times and travels more than 6 m; the same program waiting for a colour the mat does not have (blue) rolls straight out of the ring in seconds. *Challenge:* make the turn angle random so the robot explores the whole ring.
 
+**The maze runner, ready to run.** Choose **Maze runner** in the Model list, press **Load example program** (it puts the program into the Code tab, builds the blocks and moves the robot onto the **Maze** mat), then press **Run**. The robot keeps its left hand on the wall: in every square it turns a quarter to look left with the distance sensor, then ahead, then right, and drives one cell into the first open way (left, then ahead, then right, then back); the colour sensor looking down stops the robot the moment the floor under it is the goal cell's green. From the start it reaches the goal in about 70 s of simulated time. The program (`static/sim-lab/programs/maze.bw`):
+
+```
+DEVICE SPIKE
+
+# Robot Lab: find your way through the maze to the green square.
+# Model: Maze runner (wheels on A and B, a distance sensor on D looking ahead,
+# a colour sensor on C looking down).
+# Keep your left hand on the wall: at every square look left first, then
+# ahead, then right, and drive that way when it is open. The colour sensor
+# stops the robot the moment the floor under it is green.
+WHEN flag clicked:
+  set movement motors A B
+  set movement speed 30
+  reset yaw
+  REPEAT UNTIL spike color C is green:
+    # Look left: turn a quarter to the left and take a reading.
+    reset yaw
+    start tank -20 20
+    wait until (spike angle yaw) < -83
+    stop movement
+    wait 0.5 seconds
+    IF (spike distance D) > 25 THEN:
+      move forward 30 cm
+    ELSE:
+      # Left is a wall. Face ahead again and take a reading.
+      reset yaw
+      start tank 20 -20
+      wait until (spike angle yaw) > 83
+      stop movement
+      wait 0.5 seconds
+      IF (spike distance D) > 25 THEN:
+        move forward 30 cm
+      ELSE:
+        # Ahead is a wall too. Face right and take a reading.
+        reset yaw
+        start tank 20 -20
+        wait until (spike angle yaw) > 83
+        stop movement
+        wait 0.5 seconds
+        IF (spike distance D) > 25 THEN:
+          move forward 30 cm
+        ELSE:
+          # Only the way back is open: face it and drive.
+          reset yaw
+          start tank 20 -20
+          wait until (spike angle yaw) > 83
+          stop movement
+          wait 0.5 seconds
+          move forward 30 cm
+  # Home: the floor is green. Stop, light the hub and beep.
+  stop movement
+  set center button light to green
+  play beep 440 0.3
+```
+
+The two waits are what make the moves repeatable: `stop movement` shorts the motors and the robot rolls on for a moment, so each turn stops a little past the 83° the block waits for and settles on 90°, and each one-cell drive runs on a moment after its block returns. The 25 cm threshold sits between the two readings that matter: a wall on the edge ahead has its near face 0.15 - 0.01 = 0.14 m from the cell centre and the sensor's ray starts 44 mm ahead of the axle, so it reads about 96 mm, while the nearest open corridor (one cell, then the rim wall's near face at 0.15 + 0.3 - 0.01 = 0.44 m) reads 440 - 44 = 396 mm. The model is the driving base plus the wall stopper's distance-sensor mount and the colour explorer's colour-sensor mount on the same base: two 15-hole beams on the hub's top holes carry a cross beam, the distance sensor (ray 36 mm up) hangs under it on two pins seated in its blind side holes, and the colour sensor sits on a 3-hole beam on the right, held on two pins, looking down 16 mm above the floor. No two solid parts overlap, and the compiler welds both sensors into the hub's body. `test/bw-sim-maze-program.test.mjs` runs exactly this text through the Scratch VM, the spikeprime extension and the virtual hub on the shipped model and mat, for 120 s of simulated time: the colour sensor first sees the goal's green at 70 s, and at rest the drive-axle midpoint (0.49, -0.44) and the sensor's spot (0.52, -0.41) are both on the goal cell's green floor (read from `createMat('maze')`, x 0.3–0.6, z -0.6 to -0.3), and the axle midpoint never crosses a wall's centre plane. The same program waiting for blue (which the mat does not have) never stops. *Challenge:* put the goal behind a wall the left hand alone will not pass, and see the program miss it.
+
+
+**The excavator, ready to run.** Choose **Excavator** in the Model list (it stands on the **Plain** mat), press **Load example program**, then press **Run**. The excavator lifts its boom a little, opens the bucket, reaches out, lowers the boom until the bucket's teeth touch the floor, curls the bucket in, lifts it, swings a quarter turn, dumps, and swings a quarter turn the other way and back — about 50 s of simulated time. The program (`static/sim-lab/programs/excavator.bw`) uses six motors: A and B are the wheels (held still), C turns the turntable (an 8-tooth gear on the 28-tooth turntable: 315 degrees of the motor are a quarter turn), D, E and F turn the spindles of three small linear actuators one to one (360 degrees push or pull 1.2 mm), which move the boom, the stick and the bucket. The model (`static/sim-lab/models/excavator.ldr`, written by `scripts/gen-excavator-model.mjs`) is the SPIKE driving base with a 28-tooth Technic turntable on the hub's back top holes (two axle-and-pin connectors 42003 on axle pins), the slew motor behind the hub on 3L pins, castors front and back; on the turntable a small frame, two 9L posts on pins with a cross hole (15100), a 15L boom and a 13L stick; each actuator pivots on an axle that its motor turns through two 16-tooth gears, and a 12-tooth bevel pair inside the actuator's fork turns its spindle. `test/bw-sim-excavator.test.mjs` runs the program through the Scratch VM and the virtual hub and judges the bucket's lowest point against the floor (down to the floor, then lifted 19 cm), the turntable's angle (a quarter turn each way, within 12°) and the base (it turns less than 10° on the floor); without the boom lowering, the bucket never reaches the floor. *Challenge:* dig twice before you swing.
+
+**RCX bumper car / RCX line follower (2026-10-19).** The first robot on another hub: a LEGO MINDSTORMS **RCX 2.0** (LDraw 76454c02) on two 9 V **mini-motors** 71427 (outputs A left, C right, 56 mm wheels straight on their output axles), a ball castor at the front on two Technic bricks, a **touch sensor** 879 as a bumper on the RCX's top front (input 1) and a **light sensor** 9758 looking down beside the castor (input 2, held by a pin/bush connector with two studs; its eye 8 mm over the floor). It is programmed in **NQC** for the RCX's standard firmware: **Load example program** puts the NQC text into the NQC tab, compiles it with the in-browser NQC and downloads it to the Lab's RCX ("Robot Lab RCX", chosen in the pane's *RCX downloads go to* picker); **Run** starts it, as the RCX's Run button does. The NQC tab's *send to brick* and the RCX blocks' download block go to whichever target is chosen there — the IR tower (a real RCX) stays the default and is never fallen back to. The examples: `rcx-bumper-car.nqc` (Wall mat: forward at power 3 until the bumper is pressed, back 0.3 s, turn 0.2 s, stop) and `rcx-line-follower.nqc` (Line Oval: edge following with `THRESHOLD 41` between white ≈ 51 % and black ≈ 31 %, one lap in about 7 s). The two motors are mirror images, so *forward* is `OnRev(OUT_A); OnFwd(OUT_C)`. Power levels set **torque, not speed**: the firmware drives a motor (p+1) of every 8 ms and floats it the rest, so an unloaded mini-motor turns at its full ~360 rpm at every level — at full power the start lifts the robot's front (its wheels are behind the RCX's centre of mass), which is why the bumper car uses power 3. Tests: `test/bw-sim-rcx-hub.test.mjs`. How the RCX is simulated, its sources and what is missing: `docs/ROBOT-LAB-RCX.md`.
 
 `scripts/verify-sim-lab-browser.mjs` runs both examples through the pane's buttons in the built app and judges them the same way.
 
@@ -119,10 +183,12 @@ If no SPIKE program is loaded when you press Run, the pane shows: *“No SPIKE p
 
 - **Sumo ring** (`sumo`, 1.0 × 1.0 m) — a white disc with a 5 cm black ring band centred on the mat (inner radius 0.335 m, outer radius 0.385 m — outer diameter 0.77 m). The robot starts at the ring centre, heading +x, ready for a stay-in-the-ring robot.
 
+- **Maze** (`maze`, 1.2 × 1.2 m) — a 4 × 4 grid of 0.3 m cells with 2 cm grey walls standing on the grid lines at -0.6 + 0.3 k; the goal cell (3,0) has a green floor (colour id 6), the other cells are white. The robot starts at the start cell's centre (-0.45, -0.45) heading +z, ready for a wall-follower. The walls are the mat's obstacles, so the distance sensor sees them.
 
-Choosing the line-oval mat puts the robot on the line, the wall mat puts its drive axle 0.68 m before the wall face; the other mats start at (0,0) heading 0.
 
-**Open…** loads your own model: LDraw `.ldr`/`.mpd` from any LDraw editor, a BrickLink Studio `.io` or a LEGO Digital Designer `.lxf` (see *Model files* below). LDraw files from any editor (LeoCAD, BrickLink Studio's LDraw export, including MPD files with `0 FILE` submodels; Studio meta like `0 STEP`, `!LDCAD`, `!STUDIO`/`PE_TEX` and `0x2RRGGBB` direct colours are ignored). Parts the Robot Lab does not know, loose geometry and mirrored parts are listed under **Notes about this model** and skipped; the rest still runs. A motor or sensor is bound to a hub port by a meta line before its part line:
+Choosing the line-oval mat puts the robot on the line, the wall mat puts its drive axle 0.68 m before the wall face, the maze mat puts it at the start cell's centre heading into the maze; the other mats start at (0,0) heading 0.
+
+**Open…** loads your own model: LDraw `.ldr`/`.mpd` from any LDraw editor, a BrickLink Studio `.io` or a LEGO Digital Designer `.lxf` (see *Model files* below). LDraw files from any editor (LeoCAD, BrickLink Studio's LDraw export, including MPD files with `0 FILE` submodels; Studio meta like `!LDCAD`, `!STUDIO`/`PE_TEX` is ignored, `0 STEP` becomes building steps and `0x2RRGGBB` direct colours are kept). Parts the Robot Lab does not know, loose geometry and mirrored parts are listed under **Notes about this model** and skipped; the rest still runs. A motor or sensor is bound to a hub port by a meta line before its part line:
 ```
 0 !BW PORT A
 1 71 -100 10 80 0 1 0 1 0 0 0 0 -1 54696p01.dat
@@ -132,9 +198,36 @@ Without WebGL the pane says so and the simulation still runs (encoders and yaw k
 
 **Model files** (`bw-sim/model/model-file.js`). **Save as…** (Build and Simulate) writes the model on show as `.ldr`, `.mpd` (one `0 FILE` section) or `.io`; all three read back to the same model, byte for byte for the LDraw text.
 - **BrickLink Studio `.io`** is a ZIP whose `model.ldr` is the model in plain LDraw with LDraw colour codes (LDraw wiki "IO"; read the same way by the open-source readers in vengi and brick-mcp). Opening reads only `model.ldr`; parts Studio carries in `CustomParts/` are listed as Studio-only, other parts the Robot Lab does not know as unknown. Studio's own library has 127 part names in another frame than upstream LDraw (the MIT-licensed census in tribixbite/craftmatic); none is a Robot Lab part, so nothing is re-framed. **Older Studio versions encrypt the archive: such a file is refused** with a message to re-save it in a current Studio or export LDraw there — the Robot Lab does not open protected archives. Saving writes a plain ZIP holding `model.ldr` (the `.ldr` save byte for byte, `!BW` ports, ids and groups inside as LDraw comments); not written: the thumbnail, `.info`, `model2.ldr`/`modelv2.ldr`, instruction settings and `CustomParts/`.
-- **LEGO Digital Designer `.lxf`** (LDD 4, LXFML version 5; open only) is a ZIP with `IMAGE100.LXFML`. Each `<Part>` becomes an LDraw part through a curated table of 27 core Technic parts (`bw-sim/model/ldd-parts.js`: beams, pins, axles, bushes, round and bevel gears, plus four newer LDD design numbers of them). LDD design numbers are LEGO's moulded design numbers, which LDraw also uses as file names; the per-part frame offsets are recorded from the community `ldraw.xml` mapping file (no licence statement, so not vendored). LDD units are 25 LDU, LDD is +y up. Materials are LEGO colour numbers, mapped through LDraw's own `LDConfig.ldr` `LEGOID` comments. Any other design — every SPIKE element included — is listed and left out; so are mirrored parts; an unknown material keeps the part in light bluish grey.
+- **LEGO Digital Designer `.lxf`** (LDD 4, LXFML version 5; open only) is a ZIP with `IMAGE100.LXFML`. Each `<Part>` becomes an LDraw part through a curated table of 27 core Technic parts (`bw-sim/model/ldd-parts.js`: beams, pins, axles, bushes, round and bevel gears, plus four newer LDD design numbers of them). LDD design numbers are LEGO's moulded design numbers, which LDraw also uses as file names; the per-part frame offsets are recorded from the community `ldraw.xml` mapping file (no licence statement, so not vendored). LDD units are 25 LDU, LDD is +y up. Materials are LEGO colour numbers, mapped through LDraw's own `LDConfig.ldr` `LEGOID` comments. A design outside the table that is a plain studded catalogue part (brick, plate, tile) is placed from its geometry and flagged `lxf-derived-frame`; any other design — every SPIKE element included — is listed and left out; so are mirrored parts; an unknown material keeps the part in light bluish grey. Why LDD needs per-part offsets at all, how far geometry predicts them, and the two planned better routes (snapping to connections; the user's own `ldraw.xml`): `docs/ROBOT-LAB-LDD-FRAMES.md`.
 
-**Big models.** A model of 200 parts or more is drawn instanced (`bw-sim/view/instanced-parts.js`): one `InstancedMesh` per part geometry for its own-colour faces and one for its fixed-colour faces, and instanced edge and conditional-edge lines; the placed colour is a per-instance colour, a motor's drive hub keeps its own batch and turns. Every part keeps an invisible mesh where it always was, so picking in Build, port badges, tints and highlights work unchanged. In Simulate a big model is redrawn only when something changed. `scripts/measure-sim-lab-scale.mjs` measures the 2,054-part stress model (`scripts/lib/sim-lab-stress-model.mjs`) with instancing on and off. Measured 2026-10-18 on an Apple-silicon Mac (headless Chromium; instanced vs one mesh per part): through ANGLE/Metal a forced frame 19.5 vs 30.7 ms (pixel read-back included), 43 vs 6,130 draw calls, JS heap after opening 37.8 vs 64.3 MB, opening 1.3 vs 1.7 s; through SwiftShader (the browser gate's software GPU) 3.2 vs 4.7 s a frame — rasterising 4.3 M triangles and 3.4 M line segments dominates there — and opening 4.9 vs 6.8 s. Build on the full model is held up by the editor reading its model through a deep copy on every access (`editor-state.js` `get model`), about 3–5 s per frame at 2,000 parts whichever way it is drawn; the scale gate therefore checks Build picking on a 269-part instanced model.
+**What opens and what saves (2026-10-18).**
+
+| Format | Program | Open | Save | Notes |
+|---|---|---|---|---|
+| `.ldr` | LDraw (LeoCAD, LDCad, MLCad, Studio export) | yes | yes | the format of record |
+| `.mpd` | LDraw multi-part | yes (sub-models flattened) | yes (one `0 FILE`) | sub-model structure is not kept |
+| `.io` | BrickLink Studio | yes (unencrypted) | yes | only `model.ldr` is read/written |
+| `.lxf` | LEGO Digital Designer | yes (27 Technic parts + studded parts) | no | LDD can export `.ldr` itself |
+| `.sb3` | Brickwright project | yes | yes | the model rides inside, byte for byte |
+
+Not supported: Mecabricks `.zmbx`, LDD `.lxfml` without the ZIP, BrickLink/Rebrickable parts lists (XML/CSV), 3D export (STL/OBJ/glTF), Studio's encrypted `.io`.
+
+**Limits and what a damaged file does.** The LDraw reader refuses by name, never throws and never opens half a model: sub-models nest at most 32 deep (`too-deep`, that copy left out), a model flattens to at most 20,000 parts (`too-many-parts`: nothing opens), a coordinate beyond 10⁶ LDU is `out-of-range`, a garbled number or colour refuses its line (`unparsable`; `parseFloat`'s "12abc" → 12 is not accepted), a matrix must be a rotation to 0.02 (rows orthonormal, determinant positive: a mirror, scale or shear is `bad-matrix`; a rotation written with three decimals, as MLCad does, is accepted and made exactly orthonormal, while our own six-decimal rotations are kept as written). A part in colour 16 inside a sub-model takes the colour the sub-model is placed in; direct colours are written as `0x2RRGGBB`. An MPD section that is a part (`.dat`, or `!LDRAW_ORG …Part/Subpart/Primitive/Shortcut`: an embedded unofficial part) is placed as the catalogue part of that name or refused once as unknown, never opened up into its primitives; of two sections with one name the first counts. A ZIP that JSZip cannot read (bad CRC, cut off, sizes that do not match) is `not-a-zip`; an entry declaring more than 32 MB is `model-too-big`; an LDD bone with absurd numbers is `lxf-bad-transform`.
+
+**Testing the readers and writers (2026-10-18).**
+1. **Every shipped and generated model** (`test/bw-sim-model-roundtrip.test.mjs`): the six shipped models and the 2,054-part stress model go `.ldr`, `.mpd`, `.io` and the project's `simLab` record (and the stress model through a real `.sb3` via the bundle writer/reader) and back, compared as models (part, colour, pose to 1e-6 LDU, port, id, group, steps) and byte for byte.
+2. **Randomised round trips** (same file; seeded, a fixed 150 + 150 cases, the seed in every failure, `modelCase(seed)`/`mpdCase(seed)` rebuild one): random catalogue parts, the 24 axis-aligned rotations and uniformly random ones, every LDConfig colour and direct colours, ports, ids, groups, `0 STEP`, through every format; and random MPDs with nested sub-models placed several times (colour 16 inherited, ports inside) flatten to exactly what placing every part by hand gives (`test/fixtures/bw-sim/model-gen.mjs`, its own matrix arithmetic). Minimal reproductions of each bug found are tests in the same file ("found: …").
+3. **Real files from other programs** (`test/bw-sim-model-foreign.test.mjs`, fixtures and licences in `test/fixtures/model-files/SOURCES.md`): three LDraw OMR Technic sets (CC BY 2.0) — 42022 Hot Rod (MLCad-style, three-decimal rotations, 3 deep), 42032 Compact Tracked Loader (LDCad 1.4, 4 deep, an embedded unofficial part), 42034 Quad Bike — each against what it must open to, written down by hand from the file text (leaf count 414/251/147, named parts placed by hand with colour and rotation); unknown parts are refused line by line by name, the rest opens and round-trips byte-stably. **Missing:** a Studio 2.x `.io` and an LDD `.lxf` with an open licence (none found; one real `.lxf` with only a bare "BSD" tag was opened locally, not vendored) — the owner can supply files saved in Studio/LDD (`SOURCES.md` says what would help).
+4. **Our files read by LeoCAD** (`scripts/check-model-files-leocad.mjs`, not in CI yet): every shipped model and OMR fixture is saved as `.ldr` and `.mpd` and given to `QT_QPA_PLATFORM=offscreen leocad -l <library> --export-csv out.csv <file>`; LeoCAD's parts list (part, colour code, quantity; sub-models flattened) must equal ours. The CSV export needs LeoCAD 23.03 or later and creates no render context (offscreen is enough). **Proposed CI job** (the lead decides; not in `build.yml`): on `ubuntu-latest`, download the LeoCAD release AppImage and its `Library-*.zip` from github.com/leozide/leocad/releases (pinned version and sha256), `--appimage-extract` it (no FUSE on the runners), unzip the library, `npm ci`, run the script; about 2–3 minutes, no GUI build needed. Ubuntu's apt `leocad` (21.06 on 22.04/24.04) has no `--export-csv` and no parts library (`ldraw-parts` is a separate multiverse package), so apt alone is not enough. Not run here yet (nothing big installed on the Mac); the first CI run confirms it.
+5. **Fuzzing** (`test/bw-sim-model-fuzz.test.mjs`; seeded, 120 cases per family): mutated `.ldr`/`.mpd` (truncated, garbled characters, absurd numbers — 1e308, NaN, Infinity, hex, empty — stray metas, a line repeated thousands of times, other line ends), mutated `.io`/`.lxf` bytes (truncated, garbled data, a garbled central directory, absurd entry counts), broken LXFML (lost closing tags, broken attributes, absurd transforms, thousands of parts), ZIPs with the wrong entries, deep nesting (20,000), cycles, sub-models doubling at every level (2⁴⁰), 30,000 parts, and mutated `simLab` records. Each case either refuses the whole file with a code the pane words, or opens a valid model in which every non-comment line of a single-file model is a part or a named refusal; each case is timed (3 s budget).
+6. **Studio and LDD, by hand, once per release** (they do not run headless):
+   - [ ] Save the driving base and the forklift as `.io`; open both in a current BrickLink Studio 2.x: every part present, colours right, the hub's ports and ids survive a save in Studio and reopening in the Robot Lab (Studio keeps `0 !BW` comments in `model.ldr`).
+   - [ ] Open a Studio-made `.io` with a sub-model and a Studio-only part in the Robot Lab: the sub-model is flattened, the Studio part is listed as Studio-only.
+   - [ ] Save as `.mpd` and `.ldr`; open in LeoCAD and LDCad: the same parts, poses and colours; `0 STEP`s become steps.
+   - [ ] In LDD 4.3, build a small model from the 27 table parts (beams, pins, axles, gears) and one brick; save `.lxf`; open it in the Robot Lab: parts where LDD shows them, the brick placed with `lxf-derived-frame`, other designs listed by number.
+   - [ ] Note the program versions and any difference here.
+
+**Big models.** A model of 200 parts or more is drawn instanced (`bw-sim/view/instanced-parts.js`): one `InstancedMesh` per part geometry for its own-colour faces and one for its fixed-colour faces, and instanced edge and conditional-edge lines; the placed colour is a per-instance colour, a motor's drive hub keeps its own batch and turns. Every part keeps an invisible mesh where it always was, so picking in Build, port badges, tints and highlights work unchanged. In Simulate a big model is redrawn only when something changed. `scripts/measure-sim-lab-scale.mjs` measures the 2,054-part stress model (`scripts/lib/sim-lab-stress-model.mjs`) with instancing on and off. Measured 2026-10-18 on an Apple-silicon Mac (headless Chromium; instanced vs one mesh per part): through ANGLE/Metal a forced frame 19.5 vs 30.7 ms (pixel read-back included), 43 vs 6,130 draw calls, JS heap after opening 37.8 vs 64.3 MB, opening 1.3 vs 1.7 s; through SwiftShader (the browser gate's software GPU) 3.2 vs 4.7 s a frame — rasterising 4.3 M triangles and 3.4 M line segments dominates there — and opening 4.9 vs 6.8 s. Build on the full model (after the 2026-10-18 performance work: a frozen, structurally shared editor model instead of a deep copy per read, a spatial hash for overlap/snap/picking/insight, redraw only on change): idle frame 4,650 → 16.7 ms, pointer move 8,200 → 12–54 ms, click-select from never-within-180 s to 44–71 ms, opening Build 98 s → 13–28 s (SwiftShader, Mac under load; the 10 s target is not met yet). The scale gate runs Build on the full model with budgets written next to these measurements.
 
 **Saved with the project.** “Save to your computer” stores the model the Lab shows (the Build scene, or the model being simulated) inside the `.sb3`, as its LDraw text, in the `simLab` section of the Brickwright bundle (`lib/bw-project-bundle.js`; record in `bw-sim/model/sim-lab-persist.js`). Opening the project restores it byte-for-byte; a project without one opens the reference driving base. Vanilla Scratch ignores the entry. Saving (`serializeModel` in `bw-sim/model/ldraw-model.js`) writes a flat single-file model (first FILE is main, submodels expanded), not an MPD.
 
@@ -259,6 +352,27 @@ Groups are declared before the parts, in definition order. Each member carries `
   `test/bw-sim-gear-trains.test.mjs` with the motor housing clamped (a static
   body made of model parts is the machine's frame: it does not collide with
   the machine's moving parts).
+- **Gearboxes** (since 2026-10-18): a gear with a round hole (a clutch gear,
+  18946/81346/2471/35185; a peghole bevel 87407/65413) spins freely on its
+  axle; its mesh with a gear in the frame still counts (the frame is found
+  through the axle turning in it). The **driving ring** 6539 slides on a
+  ridged axle joiner (6538a/b); pushed 4 LDU or more into a clutch gear's
+  socket it locks that gear to the axle. The **changeover catch** 6641 on a
+  turning axle pushes the ring along as it swings: a motor shifts gears. The
+  **white 24T clutch gear** (76019) passes torque up to its stamped
+  2.5–5 N·cm (the simulation uses 3.75) and slips above. Two gear paths
+  between the same axles run when their ratios agree and lock (warning
+  `gear-loop-locked`) when they do not.
+- **Differentials and planet carriers**: gears whose axles are held by a part
+  that itself turns (the differential casing 65414 with its 28T cover 65413
+  and three 12T satellites, placed as LDraw's own assembly 65414c01 places
+  them) are coupled relative to that part (Willis: ω₁ − ω_c = −(z₂/z₁)(ω₂ −
+  ω_c)), exact however the carrier moves: hold one side and the other turns
+  twice as fast as the casing. Examples: **Two-speed gearbox** (motor A
+  drives, motor B shifts; `gearbox.bw`) and **Differential** (motor A drives,
+  motor C holds or turns the right side; `differential.bw`). Tests:
+  `test/bw-sim-gearbox.test.mjs` (benches in `test/fixtures/bw-sim/gearbox/`)
+  and `test/bw-sim-gearbox-program.test.mjs` (the shipped examples).
 - Motors: the hub's own motor controller decides each motor's speed (ramps,
   holds, run-to-position, stop actions); the hinge turns under the motor's
   torque limit, and the **encoder reads what the wheel actually did**.
@@ -269,7 +383,10 @@ Groups are declared before the parts, in definition order. Each member carries `
   - **Force (port F, device 63):** ray along the plunger up to 10 mm; if it hits within 2 mm, `force = 100·(1 - d/0.002)` (0–100), `pressed` when >10; otherwise 0.
   - **IMU (motion_sensor):** pitch/roll from the hub body's quaternion, `faceUp` (0 top … 5 bottom), `angularVelocity` and `acceleration` (milli-g) derived from body motion and gravity.
 - **Mats and obstacles (`bw-sim/world/`):** the Mat selector above; obstacles are static box bodies (compile option `obstacles: [{id, shape:'box', size:[w,h,d], position:[x,y,z], yawDeg, color}]`) — colour is a SPIKE colour id 0–10 shown as a box mesh; the S1 driving base collides and stops against them, and the distance sensor's ray meets them. A mat may carry obstacles (`createMat(id).obstacles`, same shape); `prepareModel` compiles them with the model, which is how the Wall mat's wall gets into the scene.
-- Not yet simulated: flexible parts (belts, hoses), worm and rack gears beyond spur/bevel, and the colour sensor's ambient-light modes.
+- **Turntables** (60 and 28 teeth): the two halves turn on each other; the toothed top is a spur gear for a pinion on the base (`bw-sim/kinds/turntable.js`).
+- **Linear actuators** (the small one, 92693): the spindle's turn moves the piston by its thread's lead (1.206 mm per turn), it holds any load up to its slip clutch (self-locking), it stops at the ends of its stroke while the spindle turns on, and the motor feels the load (`bw-sim/kinds/screw.js`, `bw-sim/physics/screw.js`).
+- A frictionless pin or axle that only joins two parts is one hinge between them (`bw-sim/mech/free-pins.js`).
+- Not yet simulated: flexible parts (belts, hoses), tracks, and the colour sensor's ambient-light modes.
 
 ## The parts it knows (56)
 
@@ -302,7 +419,7 @@ Part geometry is a curated subset of the official **LDraw Parts Library** (CC BY
 
 ## Checks
 
-**Unit (bw-sim):** 34 files in `test/bw-sim-*.test.mjs`, each a pure check of one area:
+**Unit (bw-sim):** 72 files in `test/bw-sim-*.test.mjs`, each a pure check of one area:
 - `bw-sim-contracts.test.mjs` — PlacedModel, CompiledMechanism and CompiledModel validators.
 - `bw-sim-editor-overlap.test.mjs` — build moves/turns/places that would intersect are refused; pins/axles/ball may sit inside.
 - `bw-sim-editor-ports.test.mjs` — copies of motors/sensors keep a sensible port (free keeps, taken gets first free, six full → none, three at once distinct, beam none, undo restores).
@@ -315,6 +432,9 @@ Part geometry is a curated subset of the official **LDraw Parts Library** (CC BY
 - `bw-sim-line-follower.test.mjs` — line-oval colour readings along the centre line.
 - `bw-sim-mats.test.mjs` — mat sizes, colours and reflection for the three mats.
 - `bw-sim-mech.test.mjs` — compiler: islands, hinges, gears, sensors, locked-hinge merging.
+- `bw-sim-model-roundtrip.test.mjs` — every shipped model, the stress model and 150 seeded random models through `.ldr`, `.mpd`, `.io` and the project record, compared as models and byte for byte; 150 random nested MPDs equal placing by hand; minimal reproductions of the bugs these found.
+- `bw-sim-model-foreign.test.mjs` — three LDraw OMR files (MLCad, LDCad) open to the model written down by hand; unknown parts refused by name; embedded parts; round trips.
+- `bw-sim-model-fuzz.test.mjs` — seeded mutations of every format (and deep, cyclic, doubling MPDs) are refused by name or open as valid models, in bounded time.
 - `bw-sim-model-file.test.mjs` — `.ldr` → `.io` → `.ldr` and `.ldr` → `.mpd` → `.ldr` byte-stable; a password-protected `.io` (a self-made fixture) and broken or foreign files refused by name; Studio-only parts; a hand-made `.lxf` opens with its parts at poses worked out by hand; colours from LDConfig's LEGOIDs.
 - `bw-sim-instancing.test.mjs` — a big model drawn instanced: one instance per part at its LDraw placement (motors split), instances follow a physics snapshot, tints and highlights; proxies still answer a raycast; the 2,054-part stress model in a few dozen drawn objects.
 - `bw-sim-model-insight.test.mjs` — every issue code in the sources has an EN and DE sentence; issues name their parts (motor without a port, gear-on-frame, a loose part); body tints, hinge-axis segments and gear ratios against the compiled mechanism; compile time for 72 parts.
@@ -336,6 +456,9 @@ Part geometry is a curated subset of the official **LDraw Parts Library** (CC BY
 - `bw-sim-snap.test.mjs` — snap candidates (pins, axles, studs, ball).
 - `bw-sim-touch.test.mjs` — fingers: tap, drag, long press, long-press drag and pinch from touch event sequences (slop, long-press time, a late lift), one-finger orbit against an independent rotation, pinch zoom and two-finger pan.
 - `bw-sim-world.test.mjs` — mats and obstacles in the compiled mechanism and scene.
+- `bw-sim-linear-actuator.test.mjs` — the small linear actuator from its three parts: stroke from LDraw's assemblies, lead from the measured turns, extension per revolution, self-locking under a hanging load, end stops with the clutch, and a frame–boom–actuator loop against the law of cosines.
+- `bw-sim-turntable.test.mjs` — each turntable pair is one hinge on its axis; slewing turns the turntable by the tooth ratio.
+- `bw-sim-excavator.test.mjs` — the Excavator: couplings from the parts, the boom against the law of cosines, and its example program's dig cycle.
 
 Plus `test/bw-sim-persist.test.mjs` ↔ `test/project-bundle-archive.test.mjs` (real bundle writer/reader) and `scripts/verify-boot-payload.mjs` (the Sim Lab view stays out of the first load, chunk `bw-sim-lab`; Jolt and the physics worker stay out of that chunk too, chunks `bw-sim-jolt` and `bw-sim-physics-worker`).
 

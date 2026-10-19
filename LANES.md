@@ -8,6 +8,29 @@ CLAIMED and done in one PR — Claude takes over at the owner's request,
 arrays-values (4db2813) pins move, both strict descendants of main's pins.
 The Codex claims below for those lanes are adopted, not replaced.
 
+## bw-circuit-ui + bw-board pin bump for light_sensor (B25/B26) — 2026-10-19
+
+CLAIMED and done in one PR — Claude (circuit-editor lane). bw-circuit-ui
+bda0157 -> a7621be4d40d089826d78cd1e656b7c592ef16db (#97: CD4017 chip face and
+symbols for dc_motor, ntc, inductor, slide_switch, tilt_sensor, opamp, relay;
+#98: light_sensor is its own engine device, the ldr alias is gone). bw-board
+f84ba60 -> fac3a5a9928c8b53a778b0c42d8d91d5e693e4b7 (bw-board #659 light_sensor
+divider model; 393 commits, owner-approved, dependencies unchanged). Exact SHA
+swap across the same 16 pin surfaces; licence hashes unchanged.
+
+## Robot Lab: jolt-physics -> Brickwright fork 1.1.0-bw.2 (Jolt master) — 2026-10-19
+
+CLAIMED and done in one PR — Claude (Robot Lab lane, owner request). The Sim
+Lab engine moves from npm `jolt-physics` 1.1.0 to the JoltPhysics.js fork
+release `v1.1.0-bw.2` (tarball sha256 e45f1c12...ac516, lockfile sha512
+integrity): upstream Jolt master 01adafb plus the GearConstraint ratio fix and
+GearMeshConstraint. Owns the pin surfaces only: scripts/integrate.mjs,
+packages/scratch-gui/package.json and package-lock.json, the Jolt notice in
+THIRD-PARTY-NOTICES.md, and the fetch-pinning census row. jolt-core.js and its
+gear workarounds are unchanged (adopting GearMeshConstraint is a later step).
+Non-gear physics changes come from upstream Jolt since v5.6.0 (control build
+without the gear commits: JoltPhysics.js Actions run 39223975871).
+
 ## bw-circuit-ui pin bump for B24 terminal geometry — 2026-10-19
 
 CLAIMED and done in one PR — Claude (circuit-editor lane). Pin 6721d21 ->
@@ -95,8 +118,8 @@ Coordination: renode-infrastructure-spike-prime#37 (external shaft), renode-spik
 
 ## C9 — AVR instruction-cost layout investigation — 2026-10-17
 
-HANDOFF READY — diagnostic producer delivery is complete; a fresh agent may
-continue C9.2 within this scope; C9.1 intake is complete. Keep qualified controller branch
+DONE within the recorded native-code boundary — C9.1 intake, the bounded C9.2
+explanation and C9.3 no-implementation decision are complete. Keep qualified controller branch
 `lane/c9-avr-layout-20261017` frozen in the owned LabWired Core fork. This is the C9 measurement/explanation
 lane, independent
 of A13, the SAMD replacement work and the existing C10/STM32 adoption owners.
@@ -124,20 +147,32 @@ precise scope and must improve both prescribed source trees without worsening
 any existing baseline row beyond its unchanged tolerance. No per-chip waiver,
 rebaselining, repeated unchanged run or release/physical-timing claim.
 
-### C9 continuation — 2026-10-17
+### C9 bounded closeout — 2026-10-19
 
 Diagnostic source delivered in [Core PR248](https://github.com/CrispStrobe/labwired-core/pull/248),
-merge `5b470d61`; investigation remains open. Continue only
+merge `5b470d61`. Retain only
 [run 39001605287](https://github.com/CrispStrobe/labwired-core/actions/runs/39001605287) at qualified controller `2201716d`.
 All four source jobs and the independent source/cohort audits passed. The four
 archives/logs were acquired once; **reuse retained originals, never download or
 dispatch again**. C9.1 is complete. Measured step costs are pre-sync 913.558531,
 sync 987.746057, current 1004.746098 and retained upstream 995.746146 Ir/step.
-The [Core results and C9.2–C9.3 handoff](https://github.com/CrispStrobe/labwired-core/blob/main/docs/engineering/avr-layout-cost.md#pending-tasks-and-acceptance)
-identify shared advance/time functions and scope the remaining causal/codegen
-review and separate implementation decision. Follow that contract
-for exact intake, attribution and decision acceptance. No optimization, baseline,
-profile, engine release or Lite pin change is included in this delivered phase.
+The [Core native-code review and decision](https://github.com/CrispStrobe/labwired-core/blob/main/docs/engineering/avr-layout-cost.md#causal-native-code-review-and-implementation-decision--2026-10-19)
+identifies the exact extra nine timer-frame instructions, 17.1875 Ir/step of
+combined central-clock outlining overhead, and eager advance setup. Some net
+advance differences remain unassigned to individual source expressions, and
+LLVM's triggering source perturbation is not established. These limits remain
+explicit; the report does not claim a complete compiler-decision proof.
+
+No further runtime optimization is justified: earlier broad attempts have not
+supplied qualified gains across both prescribed source families, and the old
+task-current timer shape is absent from the retained issue-251 fixed candidate.
+That supplementary static observation has no new raw profile counts. The
+separately qualified issue-251 full gate reports no regressions across all
+unchanged 82 modes. Retain every baseline, tolerance, clock, profile and waiver;
+no C9 engine release or Lite pin change follows. A future compiler-trigger
+experiment or optimization needs a new precise current-source scope and its
+own unchanged qualification. This finite investigation's source ownership is
+released; preserve the controller and all original packets/failures.
 
 ## H1 follow-up — stale lazy chunks from the service worker (#306) — 2026-10-17
 
@@ -6816,3 +6851,31 @@ No complete suite or new corpus count is claimed. Investigate actual repeated
 analysis cost; do not raise bounds, shard the suite or repeat unchanged source.
 Main composition needs its own controls, affected guest qualification and all
 enabled final-head hosted checks before normal matched-head landing.
+
+## Native Scratch Link cancellation and reconnect ordering — 2026-10-19
+
+CLAIMED — Codex root, branch `fix/native-bridge-recovery-20261019`.
+Current-source deterministic deferred-promise probes reproduce a closed socket
+reopening after event registration, a listener retained after native open fails,
+and a new open dispatched before the previous native close completes. These
+are source defects; they do not establish the cause of the reported physical
+iPad cold-start symptom.
+
+Own `overlay/scratch-gui/src/lib/native-scratch-link-bridge.js`, its canonical
+`packages/scratch-gui` mirror, focused `test/scratchlink-bridge.test.mjs` controls,
+and this ledger plus the WeDo/iPad handoff. Guard asynchronous opening and
+outbound delivery against cancellation, release listeners on every failure,
+and serialize bridge open/close transitions so a late old close cannot tear
+down the next connection. Close must also cancel a pending real-socket fallback
+without later starting its bridge. Keep unrelated WebSockets and explicit
+transport preferences working. Reject stale work; retain bounded extension
+waits, existing protocol semantics, service permissions and supplier pins.
+
+No automatic retry loop, new timeout, native Rust/Swift change, firmware or
+buzzer claim is included. Native readiness/session changes need separate
+source evidence and ownership. Merge this claim before implementation; require
+deferred cancellation/failure/overlap controls that fail on the baseline,
+canonical mirror freshness and every enabled exact-head check before source
+merge. Hardware acceptance separately requires cold launch, cancel, immediate
+retry and disconnect/reconnect on the iPad without restarting the app. Keep
+receipts, screenshots, device identifiers and machine paths gitignored.
