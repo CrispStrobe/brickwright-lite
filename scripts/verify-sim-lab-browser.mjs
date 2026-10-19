@@ -107,6 +107,9 @@
 //      --part=ui), on the Wall stopper: ½× halves simulated time; Readings shows motors A, B and the
 //      distance sensor, moving as it drives; the sensor's ray is drawn; paused, the replay slider shows
 //      an earlier pose, and Run goes on from now.
+//  23. the mats' challenges (scripts/lib/sim-lab-challenges-gate.mjs, --part=ui): the Wall stopper's
+//      own program wins "Stop at the wall" (stars, the gap, kept as the best); "Stay in the ring" moves
+//      the robot to the sumo mat, where driving straight on leaves the ring and loses.
 //
 // Every Sim Lab here runs its physics in the Web Worker (ROADMAP §4.9): each load
 // asserts `window.__bwSimLab.worker === true`, so the line-follower lap, the wall
@@ -132,6 +135,7 @@ import {editorParityInteractions} from './lib/sim-lab-editor-parity-gate.mjs';
 import {connectInteractions} from './lib/sim-lab-connect-gate.mjs';
 import {catalogueInteractions} from './lib/sim-lab-catalogue-gate.mjs';
 import {simulateUxInteractions} from './lib/sim-lab-simulate-ux-gate.mjs';
+import {challengesInteractions} from './lib/sim-lab-challenges-gate.mjs';
 import {apiInteractions, DEGREES_TOLERANCE} from './lib/sim-lab-api-gate.mjs';
 import {hubsInteractions, HUB_DEGREES_TOLERANCE} from './lib/sim-lab-hubs-gate.mjs';
 import {hubsBtInteractions} from './lib/sim-lab-hubs-bt-gate.mjs';
@@ -915,6 +919,15 @@ try {
         console.log(`PASS simulate: ½× runs at ${u.halfRate.toFixed(2)} of 1×'s rate; Readings shows ${u.readings} rows that move with the robot; ` +
             `the distance sensor's ray is drawn (${u.rayCm} cm); paused, the replay goes back ${u.replayBackM.toFixed(2)} m of motion and Run goes on from now`);
         await ux.close();
+        // The mats' challenges (scripts/lib/sim-lab-challenges-gate.mjs): won by the Wall stopper's program, lost on the sumo mat.
+        const ch = await browser.newPage({viewport: {width: 1440, height: 900}, serviceWorkers: 'block'});
+        ch.on('pageerror', error => errors.push(error.message));
+        ch.on('dialog', dialog => dialog.accept());
+        await openSimLab(ch, {program: null});
+        const c = await challengesInteractions(ch, {shotsDir: artifacts});
+        console.log(`PASS challenges: "Stop at the wall" won by the Wall stopper's program (${c.wallStars} stars, ${c.wallGapCm} cm left) and kept as ` +
+            `the best; "Stay in the ring" moves the robot to the sumo mat, where driving straight on leaves the ring after ${c.sumoLostAtS.toFixed(1)} s`);
+        await ch.close();
     }
 
     if (want('tablet')) { // a 1024×768 touch page, real fingers only

@@ -28,6 +28,7 @@ import {SIM_LAB_STORAGE_KEY, simLabRecordFromText, readSimLabStorage, isStorable
 import SimLabPalette from './sim-lab-palette.jsx';
 import SimLabInfo from './sim-lab-info.jsx';
 import SimLabReadings from './sim-lab-readings.jsx';
+import SimLabChallenges from './sim-lab-challenges.jsx';
 import SimLabInstructions from './sim-lab-instructions.jsx';
 import {INSIGHT_TEXT, issueSentence, fillText} from './sim-lab-insight-text.js';
 import {firmwareRefusalSentence} from './sim-lab-firmware-text.js';
@@ -101,6 +102,19 @@ const TEXT = {
         helpBuild: 'How to build', helpParts: 'Placing parts',
         readingsTitle: 'Readings', readingsMotors: 'Motors', readingsSensors: 'Sensors', readingsEmpty: 'This model has no motors or sensors.',
         readingsMotor: 'Motor {port}', readingsSensor: '{kind} {port}', readingsClose: 'Close',
+        challengesTitle: 'Challenges', challengeStart: 'Start', challengeRestart: 'Start again', challengeAgain: 'Try again',
+        challengeOthers: 'All challenges', challengeReady: 'Press Run to begin.', challengeTime: '{s} s',
+        challengeStars: '{n} of 3 stars', challengeBest: 'Best: {n} of 3 stars, {text}',
+        challengeMeasure: {time: '{v} s', gap: '{v} cm to the wall', overshoot: '{v} cm past the edge'},
+        challengeWhy: {offTrack: 'The robot left the line.', touched: 'The robot touched the wall.',
+            leftRing: 'The robot left the ring.', timeUp: 'Time is up.'},
+        challenges: {
+            'oval-lap': {title: 'One lap', goal: 'Follow the line once around the oval.'},
+            'wall-stop': {title: 'Stop at the wall', goal: 'Drive at the wall and stop close to it without touching it.'},
+            'sumo-stay': {title: 'Stay in the ring', goal: 'Keep the robot inside the ring for 30 seconds.'},
+            'maze-goal': {title: 'Through the maze', goal: 'Find the way to the green square.'},
+            'zones-tour': {title: 'Four corners', goal: 'Drive into all four coloured corners, in any order.'}
+        },
         kinds: {distance: 'Distance', color: 'Colour', force: 'Force', touch: 'Touch', light: 'Light', rotation: 'Rotation', tilt: 'Tilt', motion: 'Motion'},
         replay: 'Replay', replayHelp: 'Look back at the last seconds. Run goes on from now.', replayNow: 'now', speedValue: '{n}×',
         catalogueOpen: 'Add a part from the LDraw catalogue', catalogueTitle: 'LDraw catalogue', catalogueBack: 'Back to the parts',
@@ -200,6 +214,19 @@ const TEXT = {
         helpBuild: 'So baust du', helpParts: 'Teile platzieren',
         readingsTitle: 'Messwerte', readingsMotors: 'Motoren', readingsSensors: 'Sensoren', readingsEmpty: 'Dieses Modell hat keine Motoren oder Sensoren.',
         readingsMotor: 'Motor {port}', readingsSensor: '{kind} {port}', readingsClose: 'Schließen',
+        challengesTitle: 'Aufgaben', challengeStart: 'Starten', challengeRestart: 'Neu starten', challengeAgain: 'Nochmal',
+        challengeOthers: 'Alle Aufgaben', challengeReady: 'Drücke Start, um zu beginnen.', challengeTime: '{s} s',
+        challengeStars: '{n} von 3 Sternen', challengeBest: 'Bestes: {n} von 3 Sternen, {text}',
+        challengeMeasure: {time: '{v} s', gap: '{v} cm bis zur Wand', overshoot: '{v} cm über den Rand'},
+        challengeWhy: {offTrack: 'Der Roboter hat die Linie verlassen.', touched: 'Der Roboter hat die Wand berührt.',
+            leftRing: 'Der Roboter hat den Ring verlassen.', timeUp: 'Die Zeit ist um.'},
+        challenges: {
+            'oval-lap': {title: 'Eine Runde', goal: 'Folge der Linie einmal um das Oval.'},
+            'wall-stop': {title: 'Halt an der Wand', goal: 'Fahre auf die Wand zu und halte dicht davor, ohne sie zu berühren.'},
+            'sumo-stay': {title: 'Im Ring bleiben', goal: 'Halte den Roboter 30 Sekunden lang im Ring.'},
+            'maze-goal': {title: 'Durchs Labyrinth', goal: 'Finde den Weg zum grünen Feld.'},
+            'zones-tour': {title: 'Vier Ecken', goal: 'Fahre in alle vier farbigen Ecken, in beliebiger Reihenfolge.'}
+        },
         kinds: {distance: 'Abstand', color: 'Farbe', force: 'Kraft', touch: 'Berührung', light: 'Licht', rotation: 'Drehung', tilt: 'Neigung', motion: 'Bewegung'},
         replay: 'Wiederholung', replayHelp: 'Auf die letzten Sekunden zurückschauen. Start geht ab jetzt weiter.', replayNow: 'jetzt', speedValue: '{n}×',
         catalogueOpen: 'Ein Teil aus dem LDraw-Katalog hinzufügen', catalogueTitle: 'LDraw-Katalog', catalogueBack: 'Zurück zu den Teilen',
@@ -263,6 +290,12 @@ const REPLAY_MS = 20000;
 const REPLAY_STEP_MS = 33;
 /** Readings: 10 samples per simulated second, the last 10 s drawn. */
 const READINGS_SAMPLES = 100;
+/** A challenge is judged this often (simulated ms); its best results are kept on this device. */
+const CHALLENGE_STEP_MS = 100;
+const CHALLENGE_BEST_KEY = 'bw-sim-challenge-best';
+const readBest = () => {
+    try { return JSON.parse(localStorage.getItem(CHALLENGE_BEST_KEY) || '{}') || {}; } catch { return {}; }
+};
 /** The real-time factor is shown below this (a timer's jitter keeps a machine that keeps up near 1). */
 const SHOW_RTF_BELOW = 0.95;
 /** Build mode recompiles the model this long after the last edit (ms), for the issues and the motion overlay. */
@@ -326,6 +359,7 @@ class SimLabPane extends React.Component {
             showPorts: true, showMotion: false, blockers: [], portPicker: null, instructions: null, coarse: false,
             // Simulate: sensor rays, the Readings panel, slow motion, and the replay position (null: live)
             showSensors: false, readings: false, timeScale: 1, replayAt: null, replayFrames: 0, readingsTick: 0,
+            challengesOpen: false, challenge: null, challengeResult: null, challengeBest: readBest(),
             paneWidth: 0, menu: null, drawer: false, paletteDragging: false, infoOpen: false, route: 'scratch',
             paletteOpen: true, paletteShare: null, propsShare: null, propsDocked: true,
             hidden: [], editGroup: null, pick: null, measurement: null, placeColor: null, propsOpen: false, shortcuts: false,
@@ -1211,6 +1245,7 @@ class SimLabPane extends React.Component {
         }
         if (this.state.status === 'running') this.record();
         if (this.state.readings && this.api) this.sample();
+        if (this.challengeRun && this.state.status === 'running') this.judgeChallenge();
         const replayed = this.state.replayAt !== null && this.replay ? this.replay.frames[this.state.replayAt] : null;
         if (this.view) this.view.render(replayed ? replayed.snapshot : this.session.snapshot());
     }
@@ -1546,7 +1581,97 @@ class SimLabPane extends React.Component {
         if (!this.session) return;
         const text = this.lib.serializeModel(this.session.model, {name: this.state.modelFile || 'model.ldr'});
         this.pause();
-        this.setState({mat: mat || null}, () => this.openText(text, this.state.modelFile, this.state.shipped));
+        const challenge = this.state.challenge && this.lib.CHALLENGES.find(c => c.id === this.state.challenge);
+        if (challenge && challenge.mat !== (mat || 'plain')) this.endChallenge();
+        await new Promise(resolve => this.setState({mat: mat || null}, resolve));
+        await this.openText(text, this.state.modelFile, this.state.shipped);
+    }
+
+    // ---- Challenges: a goal on a mat, judged while the robot runs (lib/bw-sim/world/challenges.js) ----
+
+    /** Starts a challenge on its mat, the robot back at the start; Run begins it. null: back to the list. */
+    async startChallenge (id) {
+        if (!id) { this.endChallenge(); return; }
+        const challenge = this.lib.CHALLENGES.find(c => c.id === id);
+        if (!challenge || !this.session) return;
+        this.challengeRun = null;
+        this.setState({challenge: id, challengeResult: null, challengesOpen: true});
+        if ((this.state.mat || 'plain') !== challenge.mat) await this.setMat(challenge.mat);
+        else await this.reset();
+        this.armChallenge();
+    }
+
+    /** A fresh judge for the challenge under way (after a start or a Reset: the robot is at the start). */
+    armChallenge () {
+        if (!this.state.challenge) return;
+        this.challengeRun = this.lib.createChallengeRun(this.state.challenge);
+        this.challengeFrom = null;
+        this.challengeLast = null;
+        this.setState({challengeResult: null});
+    }
+
+    endChallenge () {
+        this.challengeRun = null;
+        if (this.state.challenge) this.setState({challenge: null, challengeResult: null});
+    }
+
+    /** What the judge sees: the robot's outline on the floor (its parts' collider corners, metres) and which of the mat's obstacles it touches. */
+    challengeObservation (tS) {
+        const api = this.api;
+        const parts = api.parts();
+        const points = parts.flatMap(p => api.partOutline(p.id));
+        const touching = {};
+        for (const o of this.lib.createMat(this.state.mat || 'plain').obstacles) {
+            touching[o.id] = parts.some(p => api.touching(p.id, o.id));
+        }
+        return {tS, points, touching};
+    }
+
+    judgeChallenge () {
+        const run = this.challengeRun;
+        const t = this.session.time;
+        if (this.challengeFrom === null || this.challengeFrom === undefined || t < this.challengeFrom) this.challengeFrom = t;
+        if (this.challengeLast !== null && this.challengeLast !== undefined && t - this.challengeLast < CHALLENGE_STEP_MS) return;
+        this.challengeLast = t;
+        const before = run.result;
+        const r = run.step(this.challengeObservation((t - this.challengeFrom) / 1000));
+        if (r.status !== 'running') {
+            this.challengeRun = null;
+            if (r.status === 'done') this.keepBest(run.challenge, r);
+            this.pause();
+        }
+        if (r.status !== before.status || Math.round(r.timeS * 10) !== Math.round(before.timeS * 10)) this.setState({challengeResult: r});
+    }
+
+    keepBest (challenge, r) {
+        const best = readBest();
+        if (!this.lib.betterResult(r, best[challenge.id])) return;
+        best[challenge.id] = {stars: r.stars, value: r.value};
+        try { localStorage.setItem(CHALLENGE_BEST_KEY, JSON.stringify(best)); } catch { /* private mode: kept for this visit */ }
+        this.setState({challengeBest: best});
+    }
+
+    /** How a result's measure reads: a time, a gap, an overshoot. */
+    measureText (challenge, value) {
+        const v = challenge.measure === 'time' ? value.toFixed(1) : String(Math.round(value * 100));
+        return fillText(this.text.challengeMeasure[challenge.measure], {v: this.decimal(v)});
+    }
+
+    renderChallenges () {
+        const T = this.text;
+        const mats = new Map(this.lib.MATS.map(m => [m.id, m.title[this.locale] || m.title.en]));
+        const list = this.lib.CHALLENGES.map(c => {
+            const best = this.state.challengeBest[c.id];
+            return {id: c.id, mat: mats.get(c.mat) || c.mat, ...T.challenges[c.id],
+                best: best ? {stars: best.stars, text: this.measureText(c, best.value)} : null};
+        });
+        const challenge = this.state.challenge && this.lib.CHALLENGES.find(c => c.id === this.state.challenge);
+        const r = this.state.challengeResult;
+        const active = challenge ? {id: challenge.id, result: r, measureText: r && r.status === 'done' ? this.measureText(challenge, r.value) : ''} : null;
+        return (
+            <SimLabChallenges text={{...T, close: T.readingsClose}} challenges={list} active={active}
+                onStart={id => this.startChallenge(id)} onClose={() => this.setState({challengesOpen: false})} />
+        );
     }
 
     /** Hold-to-drive with the movement pair (A left, mounted mirrored; B right), as the arena's drive pad. */
@@ -1601,6 +1726,7 @@ class SimLabPane extends React.Component {
         const name = this.state.modelFile;
         if (this.state.shipped) await this.openShipped(this.state.shipped);
         else if (this.lastText) await this.openText(this.lastText, name);
+        this.armChallenge();
     }
 
     renderDrive (button) {
@@ -2124,6 +2250,8 @@ class SimLabPane extends React.Component {
                 run: () => this.setOverlay({showSensors: !this.state.showSensors}), pri: 3},
             readings: {id: 'readings', label: A.readings, kind: 'switch', pressed: this.state.readings,
                 run: () => this.setState(s => ({readings: !s.readings})), pri: 2},
+            challenges: {id: 'challenges', label: A.challenges, kind: 'switch', pressed: this.state.challengesOpen,
+                run: () => this.setState(s => ({challengesOpen: !s.challengesOpen})), pri: 2},
             file: {id: 'file-menu', label: A['file-menu'], pri: 2, width: 46, render: inMenu => this.renderFile(inMenu)}
         };
     }
@@ -2148,7 +2276,7 @@ class SimLabPane extends React.Component {
             ];
         }
         return [
-            pick('run', G.run, ['run', 'reset', 'speed']),
+            pick('run', G.run, ['run', 'reset', 'speed', 'challenges']),
             pick('view', G.view, ['view-home', 'view-fit', 'view-top', 'view-front', 'view-side']),
             pick('show', G.show, ['show-ports', 'show-motion', 'show-sensors', 'readings']),
             pick('file', G.file, ['file'])
@@ -2540,6 +2668,7 @@ class SimLabPane extends React.Component {
                             <SimLabReadings text={{...this.text, close: this.text.readingsClose}} {...this.readingsRows()}
                                 onClose={() => this.setState({readings: false})} />
                         )}
+                        {simulate && this.state.challengesOpen && this.lib && this.renderChallenges()}
                         {simulate && this.renderReplay()}
                         {this.renderPortPicker(button)}
                         {build && !this.dockProperties() && this.state.propsOpen && (

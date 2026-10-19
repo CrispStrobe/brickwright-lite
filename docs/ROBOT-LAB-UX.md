@@ -310,3 +310,21 @@ The starting values from §6 were kept: every gate reading lies well inside them
   program is rolled back (a program's state cannot be).
 - The no-program note above the view is one line at every width; ▸ shows all of it.
 - Gate: `scripts/lib/sim-lab-simulate-ux-gate.mjs` (`--part=ui`) on the Wall stopper.
+
+## 9. Challenges on the mats (2026-10-20)
+
+- One per mat (`lib/bw-sim/world/challenges.js`): **One lap** (line oval), **Stop at the wall**,
+  **Stay in the ring** (sumo, 30 s), **Through the maze** (to the green cell), **Four corners**
+  (colour zones). Plain and Warehouse have none yet.
+- A judge sees only what someone watching the mat would: the robot's outline on the floor (its
+  parts' collider corners, `partOutline` in the Robot Lab API), which mat obstacles it touches,
+  and the simulated time. So it works for every hub, firmware and language.
+- Stars are for how well: a time, the gap to the wall, how far parts went past the ring. The
+  shipped examples earn 2 of 3 (Line follower ~23 s for a lap, 3 stars at ≤ 20 s; Wall stopper
+  ~8 cm, 3 stars at ≤ 8 cm), so the third star is for improving them.
+- Simulate's **Challenges** button (Program group) lists them with the best result on this device
+  (`localStorage` `bw-sim-challenge-best`). Start switches to the mat and puts the robot back at
+  the start; Run begins; a result pauses the world. Reset starts the judge afresh.
+- Tests: `test/bw-sim-challenges.test.mjs` (each challenge won, each way of losing, on made-up runs);
+  gate `scripts/lib/sim-lab-challenges-gate.mjs` (`--part=ui`): the Wall stopper's own program
+  wins "Stop at the wall"; on the sumo mat, driving straight on leaves the ring.

@@ -63,6 +63,7 @@ export {openModelFile, saveModelFile, mergeImportIssues, OPEN_ACCEPT, SAVE_FORMA
 export {modelInsight, insightOf, portItems, runBlockers} from './mech/insight.js';
 export {parseLDConfig} from './view/ldraw-colors.js';
 export {MATS, createMat, ovalCentreAt, distanceToOvalCentre} from './world/mats.js';
+export {CHALLENGES, challengesFor, createChallengeRun, betterResult} from './world/challenges.js';
 export {buildSteps, stepView, partsList} from './instructions/steps.js';
 export {instructionsPrintHtml} from './instructions/print-page.js';
 export {createInstructionsView, INSTRUCTIONS_TESTID, HIGHLIGHT as INSTRUCTIONS_HIGHLIGHT} from './view/instructions-view.js';
