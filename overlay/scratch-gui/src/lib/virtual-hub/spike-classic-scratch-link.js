@@ -2,28 +2,14 @@
 import VirtualSpikeHubState from './spike-hub-state.js';
 import {applyHubPython, applyScratchVerb} from './spike-hub-commands.js';
 
-export const CLASSIC_MESSAGE_MAX_BYTES = 64 * 1024;
+import {CLASSIC_MESSAGE_MAX_BYTES, isClassicScratchLink, encodeBase64, decodeBase64,
+    addClassicSocketClaim, installVirtualClassicScratchLink} from './bt-classic-registry.js';
+
+// The Scratch Link BT plumbing (URL test, base64, the WebSocket wrapper) is the BT-classic registry's
+// (bt-classic-registry.js); this module is SPIKE 2.x's REPL served over it, and claims the socket
+// first while the virtual SPIKE's Classic simulation is enabled — as before the registry existed.
+export {CLASSIC_MESSAGE_MAX_BYTES};
 export const CLASSIC_INPUT_MAX_BYTES = 4096;
-const isClassicScratchLink = value => {
-    let url;
-    try { url = new URL(String(value)); } catch (_) { return false; }
-    const loopback = ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname);
-    return loopback && ['ws:', 'wss:'].includes(url.protocol) && ['20110', '20111'].includes(url.port) &&
-        (/^\/bt(?:\/|$)/.test(url.pathname) || /^\/scratch\/bt(?:\/|$)/.test(url.pathname));
-};
-const encodeBase64 = bytes => {
-    let binary = '';
-    for (const byte of bytes) binary += String.fromCharCode(byte);
-    return btoa(binary);
-};
-const decodeBase64 = text => {
-    if (typeof text !== 'string' || text.length > Math.ceil(CLASSIC_MESSAGE_MAX_BYTES / 3) * 4) {
-        throw new RangeError('virtual Classic message is too large');
-    }
-    const binary = atob(text);
-    if (binary.length > CLASSIC_MESSAGE_MAX_BYTES) throw new RangeError('virtual Classic message is too large');
-    return Uint8Array.from(binary, character => character.charCodeAt(0));
-};
 
 export class VirtualSpikeClassicSocket {
     constructor (url, {hubState = new VirtualSpikeHubState()} = {}) {
@@ -184,22 +170,18 @@ export class VirtualSpikeClassicSocket {
     }
 }
 
-export default function installVirtualSpikeClassicScratchLink (hubState = new VirtualSpikeHubState()) {
-    if (typeof window === 'undefined' || typeof window.WebSocket !== 'function') return 'unavailable';
-    if (window.WebSocket.__brickwrightVirtualSpikeClassic) return 'already installed';
-    const NativeWebSocket = window.WebSocket;
-    const Wrapped = function WebSocket (url, protocols) {
-        if (hubState.data.simulationEnabled &&
-            hubState.data.firmwareTarget !== 'official-v3' && isClassicScratchLink(url)) {
-            return new VirtualSpikeClassicSocket(url, {hubState});
-        }
-        return protocols === undefined ? new NativeWebSocket(url) : new NativeWebSocket(url, protocols);
-    };
-    Wrapped.prototype = NativeWebSocket.prototype;
-    for (const key of ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED']) Wrapped[key] = NativeWebSocket[key];
-    Wrapped.__brickwrightVirtualSpikeClassic = true;
-    window.WebSocket = Wrapped;
-    return 'installed';
+/**
+ * The SPIKE claim on Scratch Link BT sockets (inert unless the virtual SPIKE's simulation is on and
+ * its firmware target is not official 3.x), and the one WebSocket wrapper that serves every claim.
+ */
+export default function installVirtualSpikeClassicScratchLink (hubState = new VirtualSpikeHubState(), options = {}) {
+    if (typeof window === 'undefined' && !options.host) return 'unavailable';
+    const host = options.host || window;
+    if (host.__brickwrightVirtualSpikeClassicClaim) return 'already installed';
+    host.__brickwrightVirtualSpikeClassicClaim = addClassicSocketClaim(url => (
+        hubState.data.simulationEnabled && hubState.data.firmwareTarget !== 'official-v3' ?
+            new VirtualSpikeClassicSocket(url, {hubState}) : null));
+    return installVirtualClassicScratchLink({host, ...options});
 }
 
 export {isClassicScratchLink};
