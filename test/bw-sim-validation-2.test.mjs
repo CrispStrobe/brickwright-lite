@@ -315,7 +315,7 @@ test('motor under load through an 8:24 mesh: the clutch\'s torque reaches the mo
 });
 
 test('gearbox efficiency under load: power out of the 8:24 mesh = power in (ideal gears)', {
-    todo: 'the same gear-torque bug: the motor puts in 3× the power the slipping clutch takes out (η = 1/3)'
+    todo: 'the same gear-torque bug: the motor puts in 3× the power the slipping clutch takes out (η = 1/3); see docs/ROBOT-LAB-VALIDATION.md'
 }, async t => {
     // Input power at the shaft: the DC line's torque at the measured speed (full duty) times that
     // speed, τ_in = τs·(1 − ω/ω0) (it contains the gearbox friction, which is the motor's, not the
@@ -537,7 +537,7 @@ test('colour sensor (the Colour Explorer\'s) over the colour-zones mat: each zon
 test('tilting table: a loose tower of two 1 × 1 × 3 bricks tips at tan θ = (half base) / (COM height)', {
     todo: 'the tower tips between 5° and 10° (direction-dependent) against 7.8°: it rocks on its 8 mm footprint — ' +
         'the loaded edge sinks into the 0.2 mm penetration slop (jolt-core.js LEGO_PENETRATION_SLOP_M; ' +
-        'atan(0.2/8) = 1.4°, a static lean of 1.5° measured with the table still) and the table\'s steps set it rocking'
+        'atan(0.2/8) = 1.4°, a static lean of 1.5° measured with the table still) and the table\'s steps set it rocking; see docs/ROBOT-LAB-VALIDATION.md'
 }, async t => {
     // Statics: the tower (one body: the bricks clutch stud in tube) stands on the table's top face
     // (y = −9 LDU) and tips over its bottom edge, 10 LDU (its collider's half width) from its centre
@@ -654,7 +654,7 @@ test('two carts collide: the sum of momenta is conserved', async t => {
 test('two carts collide: with restitution 0 (no part sets one) they leave together', {
     todo: 'they bounce apart (e ≈ 0.67): the bumper beam is a 4.8 g body hinged to two 25 g wheel sets, and the ' +
         'hinges\' compliance stores the impact and gives it back (control: the same carts with all their mass in ' +
-        'the bumper body leave together, e ≈ 0); the light-body-between-hinges problem of round 1, bug 2'
+        'the bumper body leave together, e ≈ 0); the light-body-between-hinges problem of round 1, bug 2; see docs/ROBOT-LAB-VALIDATION.md'
 }, async t => {
     // Jolt's restitution is 0 unless a body sets it (jolt-core.js; compile sets none for parts): a
     // perfectly inelastic impact, both carts at the common speed. e = (v2' − v1') / (v1 − v2) ≤ 0.05.
@@ -675,7 +675,7 @@ test('two carts collide, control (all of each cart\'s mass in its bumper body): 
 
 test('a free cart coasts with rolling resistance: deceleration ≥ c_rr·g, c_rr ≥ 0.005', {
     todo: 'there is no rolling resistance: the cart loses only Jolt\'s default 0.05 s⁻¹ velocity damping ' +
-        '(a = 0.05·v, c_rr-equivalent ~0.0006 at 0.11 m/s), an order of magnitude below a hard tyre on a hard floor'
+        '(a = 0.05·v, c_rr-equivalent ~0.0006 at 0.11 m/s), an order of magnitude below a hard tyre on a hard floor; see docs/ROBOT-LAB-VALIDATION.md'
 }, async t => {
     // A rolling tyre on a hard floor loses c_rr·m·g (textbook range for rubber on concrete-like floors
     // 0.005 … 0.03): over the last 1.5 s of the run cart 2 coasts alone; its deceleration should be at
@@ -692,7 +692,7 @@ test('a free cart coasts with rolling resistance: deceleration ≥ c_rr·g, c_rr
 test('universal joint: ω2/ω1 = cos β / (1 − sin²β·cos²θ); two in phase cancel', {
     todo: 'not buildable: the catalogue has only the U-joint\'s ends (62520, 3712, 575) as parts with an axle hole ' +
         'each and no connector between them, and no coupling kind joins two ends (the cross is not modelled), so ' +
-        'two ends placed fork in fork are two loose parts'
+        'two ends placed fork in fork are two loose parts; see docs/ROBOT-LAB-VALIDATION.md'
 }, () => {
     // What a universal joint must do (the closed form), stated for when the kind exists: at β = 30° the
     // output speed swings between cos β = 0.866 and 1/cos β = 1.155 of the input's, twice per turn.
