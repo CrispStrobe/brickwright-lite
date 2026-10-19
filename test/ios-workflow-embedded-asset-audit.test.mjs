@@ -1942,9 +1942,9 @@ const preflight = preflightBlock[1].replace(/^          /gm, '');
 
 test('Darwin preflight-only dispatch is closed, unsigned and excludes existing app build jobs', () => {
     assert.match(workflow, /ios_audit_preflight_only:\n[^\n]+\n        type: boolean\n        default: false/);
-    const guard = "github.event_name == 'workflow_dispatch' && inputs.ios_audit_preflight_only && !inputs.ios_audit_interface_only && !inputs.ios_audit_interface_diagnostic && !inputs.ios_audit_interface_manual_only && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'";
+    const guard = "github.event_name == 'workflow_dispatch' && inputs.ios_audit_preflight_only && !inputs.ios_audit_interface_only && !inputs.ios_audit_interface_diagnostic && !inputs.ios_audit_interface_manual_only && !inputs.ios_audit_interface_inventory_only && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'";
     assert.ok(workflow.includes(`  ios-audit-preflight:\n    if: ${guard}\n`));
-    assert.ok(workflow.includes("  build-web:\n    if: github.event_name != 'workflow_dispatch' || (inputs.ios_audit_preflight_only != true && inputs.ios_audit_interface_only != true && inputs.ios_audit_interface_diagnostic != true && inputs.ios_audit_interface_manual_only != true)\n"));
+    assert.ok(workflow.includes("  build-web:\n    if: github.event_name != 'workflow_dispatch' || (inputs.ios_audit_preflight_only != true && inputs.ios_audit_interface_only != true && inputs.ios_audit_interface_diagnostic != true && inputs.ios_audit_interface_manual_only != true && inputs.ios_audit_interface_inventory_only != true)\n"));
     const job = workflow.slice(workflow.indexOf('  ios-audit-preflight:\n'), workflow.indexOf('  ios-audit-interface:\n'));
     assert.match(job, /permissions:\n      contents: read/);
     assert.match(job, /timeout-minutes: 8/);
@@ -2332,7 +2332,7 @@ class InterfaceControls(unittest.TestCase):
             (root/'.github/workflows/mobile.yml').write_text(WORKFLOW_TEXT)
             env={'RUNNER_TEMP':directory,'GITHUB_WORKSPACE':directory,'GITHUB_SHA':'a'*40,
                  'GITHUB_RUN_ID':'123','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'ios-audit-interface','BW_INTERFACE_OTHER_MODE':'false',
-                 'BW_INTERFACE_MANUAL_ONLY':'false','BW_INTERFACE_MODE':'true','BW_INTERFACE_DIAGNOSTIC':'false','BW_INTERFACE_RUNTIME':'','BW_INTERFACE_BUILD':''}
+                 'BW_INTERFACE_MANUAL_ONLY':'false','BW_INTERFACE_INVENTORY_ONLY':'false','BW_INTERFACE_MODE':'true','BW_INTERFACE_DIAGNOSTIC':'false','BW_INTERFACE_RUNTIME':'','BW_INTERFACE_BUILD':''}
             with mock.patch.dict(os.environ,env),mock.patch.object(sys,'platform','darwin'),mock.patch.object(sys,'version_info',(3,13)),mock.patch.object(platform,'machine',return_value='arm64'),mock.patch.dict(globals(),{'retained_command':mock.Mock(return_value=(b'authored',[],None))}),mock.patch('builtins.print'):
                 main();calls=[call.args[0] for call in retained_command.call_args_list]
             expected=[('/usr/bin/xcrun','--find','simctl'),('/usr/bin/xcodebuild','-version'),('/bin/launchctl','help')]
@@ -2349,7 +2349,7 @@ class InterfaceControls(unittest.TestCase):
                 (root/'.github/workflows/mobile.yml').write_text(WORKFLOW_TEXT)
                 env={'RUNNER_TEMP':directory,'GITHUB_WORKSPACE':directory,'GITHUB_SHA':'a'*40,
                      'GITHUB_RUN_ID':'123','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'ios-audit-interface',
-                     'BW_INTERFACE_OTHER_MODE':'false','BW_INTERFACE_MANUAL_ONLY':'false','BW_INTERFACE_MODE':'true',
+                     'BW_INTERFACE_OTHER_MODE':'false','BW_INTERFACE_MANUAL_ONLY':'false','BW_INTERFACE_INVENTORY_ONLY':'false','BW_INTERFACE_MODE':'true',
                      'BW_INTERFACE_DIAGNOSTIC':'true','BW_INTERFACE_RUNTIME':'','BW_INTERFACE_BUILD':''}
                 calls=[];help_deadline=[]
                 def command(argv,cleanup,**kw):
@@ -2372,6 +2372,26 @@ class InterfaceControls(unittest.TestCase):
                 self.assertEqual(sum(argv[:3]==('/usr/bin/xcrun','simctl','help') for argv in calls),6)
                 self.assertEqual(report['diagnostics'][0]['failure'],sample_failure)
                 self.assertEqual(sum(argv[0]=='/usr/bin/sample' for argv in calls),1)
+    def test_inventory_mode_reads_only_fixed_metadata_and_refuses_other_profiles(self):
+        for manual,diagnostic in (('false','false'),('true','false'),('false','true')):
+            with tempfile.TemporaryDirectory() as directory:
+                root=Path(directory);(root/'.github/workflows').mkdir(parents=True)
+                (root/'.github/workflows/mobile.yml').write_text(WORKFLOW_TEXT)
+                env={'RUNNER_TEMP':directory,'GITHUB_WORKSPACE':directory,'GITHUB_SHA':'a'*40,
+                     'GITHUB_RUN_ID':'123','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'ios-audit-interface',
+                     'BW_INTERFACE_OTHER_MODE':'false','BW_INTERFACE_MODE':'true',
+                     'BW_INTERFACE_INVENTORY_ONLY':'true','BW_INTERFACE_MANUAL_ONLY':manual,
+                     'BW_INTERFACE_DIAGNOSTIC':diagnostic,'BW_INTERFACE_RUNTIME':'','BW_INTERFACE_BUILD':''}
+                with mock.patch.dict(os.environ,env),mock.patch.object(sys,'platform','darwin'),mock.patch.object(sys,'version_info',(3,13)),mock.patch.object(platform,'machine',return_value='arm64'),mock.patch.dict(globals(),{'retained_command':mock.Mock(return_value=(b'authored',[],None))}),mock.patch('builtins.print'):
+                    if manual=='true' or diagnostic=='true':
+                        with self.assertRaises(ValueError):main()
+                        retained_command.assert_not_called()
+                    else:
+                        main();self.assertEqual([call.args[0] for call in retained_command.call_args_list],
+                            [('/usr/bin/xcodebuild','-version'),('/usr/bin/xcrun','simctl','help','runtime'),('/usr/bin/xcrun','simctl','list','--json','runtimes'),('/usr/bin/xcrun','simctl','list','--json','devicetypes','iPhone-16'),('/usr/bin/xcrun','simctl','runtime','list','--json')])
+                        for call in retained_command.call_args_list:self.assertIsNone(call.kwargs['observe'])
+                report=json.loads((root/'bw-ios-interface-inventory/report.json').read_text());self.assertEqual(report['diagnostics'],[])
+                if manual==diagnostic=='false':self.assertEqual(report['profile'],'inventory-only')
     def test_manual_mode_reads_only_fixed_docs_and_refuses_sampling(self):
         for diagnostic in ('false','true'):
             with tempfile.TemporaryDirectory() as directory:
@@ -2379,7 +2399,7 @@ class InterfaceControls(unittest.TestCase):
                 (root/'.github/workflows/mobile.yml').write_text(WORKFLOW_TEXT)
                 env={'RUNNER_TEMP':directory,'GITHUB_WORKSPACE':directory,'GITHUB_SHA':'a'*40,
                      'GITHUB_RUN_ID':'123','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'ios-audit-interface',
-                     'BW_INTERFACE_OTHER_MODE':'false','BW_INTERFACE_MODE':'true',
+                     'BW_INTERFACE_OTHER_MODE':'false','BW_INTERFACE_INVENTORY_ONLY':'false','BW_INTERFACE_MODE':'true',
                      'BW_INTERFACE_MANUAL_ONLY':'true','BW_INTERFACE_DIAGNOSTIC':diagnostic,
                      'BW_INTERFACE_RUNTIME':'','BW_INTERFACE_BUILD':''}
                 with mock.patch.dict(os.environ,env),mock.patch.object(sys,'platform','darwin'),mock.patch.object(sys,'version_info',(3,13)),mock.patch.object(platform,'machine',return_value='arm64'),mock.patch.dict(globals(),{'retained_command':mock.Mock(return_value=(b'authored',[],None))}),mock.patch('builtins.print'):
@@ -2398,7 +2418,7 @@ class InterfaceControls(unittest.TestCase):
             with tempfile.TemporaryDirectory() as directory:
                 env={'RUNNER_TEMP':directory,'GITHUB_WORKSPACE':directory,'GITHUB_SHA':'a'*40,
                      'GITHUB_RUN_ID':'123','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'ios-audit-interface','BW_INTERFACE_OTHER_MODE':'false',
-                     'BW_INTERFACE_MANUAL_ONLY':'false','BW_INTERFACE_MODE':'true','BW_INTERFACE_DIAGNOSTIC':'false','BW_INTERFACE_RUNTIME':'','BW_INTERFACE_BUILD':'',key:value}
+                     'BW_INTERFACE_MANUAL_ONLY':'false','BW_INTERFACE_INVENTORY_ONLY':'false','BW_INTERFACE_MODE':'true','BW_INTERFACE_DIAGNOSTIC':'false','BW_INTERFACE_RUNTIME':'','BW_INTERFACE_BUILD':'',key:value}
                 with mock.patch.dict(os.environ,env),mock.patch.object(sys,'platform','darwin'),mock.patch.object(sys,'version_info',(3,13)),mock.patch.object(platform,'machine',return_value='arm64'),mock.patch.dict(globals(),{'retained_command':mock.Mock()}),mock.patch('builtins.print'):
                     with self.assertRaises(ValueError):main()
                     retained_command.assert_not_called()
@@ -2409,7 +2429,7 @@ test('interface inventory is disjoint, read-only and bounded to installed tool h
     const start = workflow.indexOf('  ios-audit-interface:\n');
     const job = workflow.slice(start, workflow.indexOf('  build-web:\n', start));
     assert.match(workflow, /ios_audit_interface_only:\n[^\n]+\n        type: boolean\n        default: false/);
-    assert.ok(job.includes("if: github.event_name == 'workflow_dispatch' && (inputs.ios_audit_interface_only || inputs.ios_audit_interface_diagnostic || inputs.ios_audit_interface_manual_only) && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'"));
+    assert.ok(job.includes("if: github.event_name == 'workflow_dispatch' && (inputs.ios_audit_interface_only || inputs.ios_audit_interface_diagnostic || inputs.ios_audit_interface_manual_only || inputs.ios_audit_interface_inventory_only) && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'"));
     assert.match(job, /permissions:\n      contents: read/);
     assert.match(interfaceSource, /BW_INTERFACE_OTHER_MODE'\]=='false'/);
     assert.match(interfaceSource, /BW_INTERFACE_RUNTIME'\]=='' and os.environ\['BW_INTERFACE_BUILD'\]==''/);
@@ -2425,7 +2445,7 @@ test('interface inventory is disjoint, read-only and bounded to installed tool h
     };
     try {
         const result=run(prefix,'baseline');assert.equal(result.status,0,result.stdout+result.stderr);
-        assert.match(result.stderr,/Ran 13 tests/);
+        assert.match(result.stderr,/Ran 14 tests/);
         for (const [index,[before,after]] of [
             ['used<=65536','True'],
             ['time.monotonic()<deadline and len(rows)<256','len(rows)<256'],

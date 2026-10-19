@@ -4,11 +4,11 @@ Refresh PR heads, checks and `LANES.md` before acting. This file records the
 integration owner's remaining work; other lanes retain their own ownership.
 Historical results qualify their named source and artifact, not later builds.
 
-Current blocker: the unsigned installed embedded-map proof remains open. Both the
-initial simulator-tool query and its sampler diagnostic failed within their
-admitted bounds. A manual-only profile reads installed documentation without
-starting simctl or a sampler. Source controls and completed tool prefixes do not
-qualify an installed app, delivery or the remaining SPIKE lifecycle matrix.
+Current blocker: the unsigned installed embedded-map proof remains open. Installed
+manuals and the complete simulator help graph now have bounded independent joins;
+the sampler still failed and the diagnostic event remains partial. Next collect
+and review actual runtime/image/model metadata, then finish ownership, resource
+and wrapper admission. No tool result qualifies an app or the remaining SPIKE matrix.
 
 ## Landed and ready for continuation
 
@@ -481,3 +481,10 @@ after Stop while retaining identity, count and time checks. Deferred interrupts
 preserve the first cancellation and retained originals while later cleanup and
 receiver release are attempted. These source controls do not authenticate callback
 ownership or satisfy actual wrapper/resource qualification; entry remains disabled.
+
+The separate inventory-only selection reads installed runtime/image catalogs and
+a filtered iPhone-16 device-type catalog. It starts no devices or apps and requests
+no downloads. Collection completeness is distinct from selected-target admission;
+review actual architecture/build/image/model fields before any create/boot event.
+The retained complete help graph is usable despite the separate failed sampler,
+without relabeling the whole event or making a startup-cause claim.

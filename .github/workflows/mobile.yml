@@ -38,6 +38,10 @@ on:
         description: Read installed sample and launchctl manuals only; never starts simctl or a sampler.
         type: boolean
         default: false
+      ios_audit_interface_inventory_only:
+        description: Collect installed runtime, image and selected device-type metadata only; never starts devices or downloads runtimes.
+        type: boolean
+        default: false
       ios_audit_runtime:
         description: Optional exact installed iOS runtime identifier for admission only; never launches an app.
         type: string
@@ -54,7 +58,7 @@ permissions:
 
 jobs:
   ios-audit-preflight:
-    if: github.event_name == 'workflow_dispatch' && inputs.ios_audit_preflight_only && !inputs.ios_audit_interface_only && !inputs.ios_audit_interface_diagnostic && !inputs.ios_audit_interface_manual_only && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'
+    if: github.event_name == 'workflow_dispatch' && inputs.ios_audit_preflight_only && !inputs.ios_audit_interface_only && !inputs.ios_audit_interface_diagnostic && !inputs.ios_audit_interface_manual_only && !inputs.ios_audit_interface_inventory_only && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'
     runs-on: macos-latest
     timeout-minutes: 8
     permissions:
@@ -465,7 +469,7 @@ jobs:
           retention-days: 7
 
   ios-audit-interface:
-    if: github.event_name == 'workflow_dispatch' && (inputs.ios_audit_interface_only || inputs.ios_audit_interface_diagnostic || inputs.ios_audit_interface_manual_only) && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'
+    if: github.event_name == 'workflow_dispatch' && (inputs.ios_audit_interface_only || inputs.ios_audit_interface_diagnostic || inputs.ios_audit_interface_manual_only || inputs.ios_audit_interface_inventory_only) && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'
     runs-on: macos-latest
     timeout-minutes: 4
     permissions:
@@ -478,6 +482,7 @@ jobs:
       - name: Retain installed tool interface facts without an app operation
         timeout-minutes: 2
         env:
+          BW_INTERFACE_INVENTORY_ONLY: ${{ inputs.ios_audit_interface_inventory_only }}
           BW_INTERFACE_MANUAL_ONLY: ${{ inputs.ios_audit_interface_manual_only }}
           BW_INTERFACE_MODE: ${{ inputs.ios_audit_interface_only }}
           BW_INTERFACE_DIAGNOSTIC: ${{ inputs.ios_audit_interface_diagnostic }}
@@ -568,7 +573,7 @@ jobs:
 
           def main():
               root=Path(os.environ['RUNNER_TEMP'])/'bw-ios-interface-inventory';root.mkdir(exist_ok=False)
-              report={'schema':'brickwright.ios-tool-interface.v5','sourceCommit':os.environ['GITHUB_SHA'],
+              report={'schema':'brickwright.ios-tool-interface.v6','sourceCommit':os.environ['GITHUB_SHA'],
                   'runID':os.environ['GITHUB_RUN_ID'],'attempt':os.environ['GITHUB_RUN_ATTEMPT'],'job':os.environ['GITHUB_JOB'],
                   'profile':'unadmitted','status':'partial','commands':[],'diagnostics':[],'commandGraphComplete':False,'actualAppQualified':False,'namespaceOwnershipQualified':False}
               try:
@@ -577,8 +582,11 @@ jobs:
                   require(os.environ['BW_INTERFACE_DIAGNOSTIC'] in ('true','false'))
                   require(os.environ['BW_INTERFACE_MANUAL_ONLY'] in ('true','false'))
                   manual_only=os.environ['BW_INTERFACE_MANUAL_ONLY']=='true'
+                  require(os.environ['BW_INTERFACE_INVENTORY_ONLY'] in ('true','false'))
+                  inventory_only=os.environ['BW_INTERFACE_INVENTORY_ONLY']=='true'
+                  require(not inventory_only or (not manual_only and os.environ['BW_INTERFACE_DIAGNOSTIC']=='false'))
                   require(not manual_only or os.environ['BW_INTERFACE_DIAGNOSTIC']=='false')
-                  report['profile']='manual-only' if manual_only else 'simctl-help'
+                  report['profile']='inventory-only' if inventory_only else 'manual-only' if manual_only else 'simctl-help'
                   workflow=(Path(os.environ['GITHUB_WORKSPACE'])/'.github/workflows/mobile.yml').read_text()
                   report['workflowSHA256']=hashlib.sha256(workflow.encode()).hexdigest()
                   block=re.search(r'# BEGIN IOS INPUT RETENTION\n          cat > "\$RUNNER_TEMP/bw-ios-audit-capture.py" <<\'PY\'\n([\s\S]*?)          PY\n          # END IOS INPUT RETENTION',workflow)
@@ -593,6 +601,11 @@ jobs:
                       commands=[('/usr/bin/xcodebuild','-version'),('/bin/launchctl','help','print'),
                           ('/bin/launchctl','help','procinfo'),('/bin/launchctl','help','managerpid'),
                           ('/usr/bin/man','-P','/bin/cat','sample')]
+                  if inventory_only:
+                      commands=[('/usr/bin/xcodebuild','-version'),('/usr/bin/xcrun','simctl','help','runtime'),
+                          ('/usr/bin/xcrun','simctl','list','--json','runtimes'),
+                          ('/usr/bin/xcrun','simctl','list','--json','devicetypes','iPhone-16'),
+                          ('/usr/bin/xcrun','simctl','runtime','list','--json')]
                   def observe_owned_help(child,deadline):
                       # This unreaped Popen PID cannot be recycled. No name lookup or
                       # shared service PID is admitted. Sampling is diagnostic only.
@@ -633,7 +646,7 @@ jobs:
           retention-days: 7
 
   build-web:
-    if: github.event_name != 'workflow_dispatch' || (inputs.ios_audit_preflight_only != true && inputs.ios_audit_interface_only != true && inputs.ios_audit_interface_diagnostic != true && inputs.ios_audit_interface_manual_only != true)
+    if: github.event_name != 'workflow_dispatch' || (inputs.ios_audit_preflight_only != true && inputs.ios_audit_interface_only != true && inputs.ios_audit_interface_diagnostic != true && inputs.ios_audit_interface_manual_only != true && inputs.ios_audit_interface_inventory_only != true)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0

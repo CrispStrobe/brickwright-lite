@@ -6998,3 +6998,22 @@ attached to it. Broken cleanup-clock admission refuses further command dispatch.
 Thirty-three authored lifecycle cases and routing/continuation mutations pass;
 normal behavior and prior failures remain covered. No workflow entry invokes the
 core, no simulator/app event ran and callback/resource admission remains false.
+
+## iOS audit: installed runtime inventory — 2026-10-19
+
+The default-order diagnostic39230490047 retained a complete nine-command help graph
+within the original bounds, independently joined. Its sampler completed sampling
+but timed out during reported symbol processing. The event remains failed; the
+reader distinguishes interfaceComplete true from diagnosticComplete false. No
+cause for the older cold-start refusal is established and no sampler retry is needed
+merely to use the retained CLI interfaces.
+
+A separate default-off inventory-only selection now collects Xcode version,
+runtime-command help, runtime catalog, the iPhone-16-filtered device-type catalog
+and installed runtime-image metadata. The search filter is supported by the retained
+list help and keeps the original output cap. No device is created, booted, installed,
+launched or spawned; no image acquisition or service control is requested. Mixing
+inventory with manual/sampler modes refuses, and any audit-only flag excludes normal
+app builds. Existing time, output and cleanup limits remain. Independent JSON and
+packet checks establish collection only; selected target, ownership and app admission
+remain false until the actual image/architecture/model joins are reviewed.
