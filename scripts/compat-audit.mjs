@@ -467,8 +467,8 @@ if (out) {
     mark('REPORT_JSON_END');
     // Explicit output name opts into full lossless compression, never row/field omission.
     if (out.endsWith('.json.gz')) {
-        mark('REPORT_GZIP_WRITE_BEGIN');
         const {gzipSync} = await import('node:zlib');
+        mark('REPORT_GZIP_WRITE_BEGIN');
         fs.writeFileSync(out, gzipSync(Buffer.from(json, 'utf8')));
         mark('REPORT_GZIP_WRITE_END');
     } else {mark('REPORT_WRITE_BEGIN'); fs.writeFileSync(out, json); mark('REPORT_WRITE_END');}
