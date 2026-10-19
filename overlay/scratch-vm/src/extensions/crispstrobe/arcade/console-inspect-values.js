@@ -249,11 +249,36 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null) {
             };
             const fallthrough=sequence(read(definition.next));return {results:[...results],fallthrough};
         };
-        const safeCell = (cell,player=false,origins=null,domains=null) => {
+        // A declaration reset (local := undefined/null) cannot reach a read when
+        // every path from it to the read's statement on the same chain passes a
+        // definite overwrite (a direct set, or an if/else assigning in both
+        // branches before any exit) whose value does not read the cell.
+        const fixedReset=node=>node?.opcode==='arrays_specialValue'&&!Object.keys(node.inputs||{}).length&&['undefined','null'].includes(node.fields?.KIND?.value);
+        const localCellOf=node=>['arcade_setLocal','arcade_getLocal'].includes(node?.opcode)?captureProof.local(captureProof.scopeOf(node),literal(node,'NAME')):null;
+        const readsCell=(node,cell,path=new Set())=>{
+            if(!node||path.has(node))return false;path.add(node);
+            if(node.opcode==='arcade_getCaptured'||node.opcode==='arcade_getLocal'&&localCellOf(node)===cell)return true;
+            return Object.entries(node.inputs||{}).some(([name,slot])=>!name.startsWith('SUBSTACK')&&readsCell(read(slot.block),cell,path));
+        };
+        const exits=node=>/return|stop|break|continue|throw/i.test(node?.opcode||'');
+        const assigns=(node,cell)=>{
+            if(node?.opcode==='arcade_setLocal'&&localCellOf(node)===cell){const value=input(node,'VALUE');return !!value&&!fixedReset(value)&&!readsCell(value,cell);}
+            if(node?.opcode==='control_if_else')return chainAssigns(node.inputs?.SUBSTACK?.block,cell)&&chainAssigns(node.inputs?.SUBSTACK2?.block,cell);
+            return false;
+        };
+        const chainAssigns=(id,cell)=>{const path=new Set();for(let node=read(id);node&&!path.has(node);node=read(node.next)){path.add(node);if(assigns(node,cell))return true;if(exits(node))return false;}return false;};
+        const deadReset=(writer,cell,at)=>{
+            if(!at||!fixedReset(input(writer,'VALUE')))return false;
+            const chain=[],path=new Set();for(let node=read(writer.next);node&&!path.has(node);node=read(node.next)){path.add(node);chain.push(node);}
+            const climbed=new Set();
+            for(let node=at;node&&!climbed.has(node);node=read(node.parent)){climbed.add(node);const index=chain.indexOf(node);if(index>=0)return chain.slice(0,index).some(statement=>assigns(statement,cell));}
+            return false;
+        };
+        const safeCell = (cell,player=false,origins=null,domains=null,at=null) => {
             const proof=captureProof.proof(cell);
             if(!proof||cell.scope.target!==target)return false;
             const evidence=new Set();
-            if(!proof.writers.every(({node:writer})=>safe(input(writer,'VALUE'),player,evidence,domains)))return false;
+            if(!proof.writers.filter(({node:writer})=>!deadReset(writer,cell,at)).every(({node:writer})=>safe(input(writer,'VALUE'),player,evidence,domains)))return false;
             let valid=proof.writers.length>0;
             if(proof.index>=0){
                 const procedure=cell.scope.procedure;if(typeof procedure!=='string')return false;
@@ -320,7 +345,7 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null) {
                 if (op === 'arcade_getLocal' || op === 'arcade_getCaptured' || /^argument_reporter_/.test(op)) {
                     const name=/^argument_reporter_/.test(op)?node.fields?.VALUE?.value:literal(node,'NAME');
                     const scope=captureProof.scopeOf(node),cell=op==='arcade_getCaptured'?captureProof.captured(scope,name):captureProof.local(scope,name);
-                    return safeCell(cell,player,origins,domains);
+                    return safeCell(cell,player,origins,domains,op==='arcade_getLocal'?node:null);
                 }
                 if (op === 'arcade_callFunction') {
                     const name=literal(node,'NAME'),definitions=Object.values(all).filter(value=>value.opcode==='procedures_definition'&&input(value,'custom_block')?.mutation?.proccode===name);
