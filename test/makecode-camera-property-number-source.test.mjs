@@ -40,29 +40,45 @@ test('only compiler completed validation gains six canonical numeric leaves and 
     refuse(wrap('','accept("2");'));
     refuse(wrap('let picked:number;','','picked'));
 });
-test('all lexical declarations shadows duplicate bodies casts and unknown members remain unproved',()=>{
+test('per-use lexical identity refuses real shadows and uncertain forms without poisoning unrelated scopes',()=>{
     for(const prefix of ['let CameraProperty:any={X:0};','function CameraProperty(){}',
-        'class CameraProperty{}','enum CameraProperty{X=0}',
-        'function unused(CameraProperty:any){return CameraProperty.X}',
-        '{let CameraProperty:any=0;}','function effect(){}function effect(){}effect();'])refuse(wrap(prefix));
+        'class CameraProperty{}','enum CameraProperty{X=0}'])refuse(wrap(prefix));
+    // These old fixture-policy negatives are intentionally superseded: an
+    // unrelated scope cannot change the actual SDK binding at the selected use.
+    for(const prefix of ['function unused(CameraProperty:any){return CameraProperty.X}',
+        '{let CameraProperty:any=0;}','function effect(){}function effect(){}effect();']){
+        assert.deepEqual(complete(parse(wrap(prefix)),options),[]);
+    }
     refuse(wrap('','','CameraProperty.Missing'));
     refuse(wrap('','','(CameraProperty as any).X'));
     refuse(wrap('','','CameraProperty["X"]'));
     const loop='function accept(property:number){return property}\nfor(let CameraProperty of [1]){accept(CameraProperty.X)}';
     assert.ok(complete(parse(loop),options).length);
+    const local='function accept(property:number){return property}function shadow(CameraProperty:any){accept(CameraProperty.X)}';
+    assert.ok(complete(parse(local),options).length);
 });
-test('root member writes escapes ambient dynamic effects and unowned method names cannot certify constants',()=>{
+test('enum root mutation escape and dynamic lexical effects refuse while unrelated effects retain canonical Number',()=>{
     for(const effect of ['CameraProperty=other;','CameraProperty.X=0;','CameraProperty.X+=1;',
         'CameraProperty.X++;','delete CameraProperty.X;','let alias=CameraProperty;',
-        'unknown();','unknown(CameraProperty);','eval("CameraProperty.X=9");',
-        'Function("CameraProperty.X=9")();','let ambient=globalThis;',
-        'Object.defineProperty(CameraProperty,"X",other);','Reflect.set(CameraProperty,"X",9);',
-        'function effect(){}let alias=effect;','let fake:any=other;fake.setPosition(1,2);']){
+        'unknown(CameraProperty);','eval("CameraProperty.X=9");',
+        'Function("CameraProperty.X=9")();','Object.defineProperty(CameraProperty,"X",other);',
+        'Reflect.set(CameraProperty,"X",9);']){
         refuse(wrap(effect));refuse(wrap('',effect));
     }
     const safe='let art=image.create(2,2);art.fill(3);let hero=sprites.create(art,SpriteKind.Player);hero.setPosition(1,2);';
-    assert.deepEqual(complete(parse(wrap(safe)),options),[]);
-    for(const changed of [safe+'hero=other;',safe.replace('sprites.create(art,SpriteKind.Player)','other()'),safe.replace('hero.setPosition(1,2)','hero.missing(1,2)')])refuse(wrap(changed));
+    const unrelated=['unknown();','let ambient=globalThis;',
+        'function effect(){}let alias=effect;','let fake:any=other;fake.setPosition(1,2);',
+        safe,safe+'hero=other;',safe.replace('sprites.create(art,SpriteKind.Player)','other()'),
+        safe.replace('hero.setPosition(1,2)','hero.missing(1,2)')];
+    for(const effect of unrelated){
+        assert.deepEqual(complete(parse(wrap(effect)),options),[]);
+        assert.deepEqual(complete(parse(wrap('',effect)),options),[]);
+    }
+    // No Image/Sprite operation is certified by the enum fact. Existing public
+    // translation still reports an unknown source operation independently.
+    const unknown=arcadeToPseudocode(wrap('unknown();'));
+    assert.ok(unknown.unsupported.length>0);
+    assert.equal(unknown.unsupported.some(message=>message.includes('accept.property requires Number')),false);
 });
 test('fresh completion observes physical argument declaration metadata and unknown source changes',()=>{
     const ast=parse(wrap());assert.deepEqual(complete(ast,options),[]);
