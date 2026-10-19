@@ -6522,3 +6522,14 @@ record separate prepared-input audits without overwriting raw classifications.
 Four authentic terrain contexts pass original compilation/native import;
 11 recovery controls and9 audit controls pass without skips. Native gameplay,
 original comparisons and GUI qualifications remain explicit independent gates.
+
+## Arcade continuation: SpriteData and extension source syntax
+
+Owner: Codex integration. Claimed: native original SpriteData v0.0.5, exact
+source admission, original root tilemap generation, TS parameter properties,
+connection semantics and exponentiation qualification. Separate workers own
+connection and exponentiation hunks in isolated trees. Lower integration
+branches through the Buffer roots lane remain owned by the landing operator.
+Focused integrated source controls: 22 passed without skips. Hosted/editor
+checks and actual remaining-context qualification are pending. No raw corpus
+row is reclassified from focused tests alone.
