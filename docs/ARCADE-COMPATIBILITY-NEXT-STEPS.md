@@ -73,6 +73,9 @@ complete-game/GUI qualification in separate ledgers.
 
 ## Ordered work packages
 
+The concrete failure families, source entry points and acceptance criteria are
+listed in [the current work packages](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md).
+
 ### 1. Qualify and integrate the foundation
 
 Refresh PR #888, main, supplier dependencies and active lanes. Reconcile each
