@@ -105,6 +105,8 @@ const BUILTIN_IMAGE_GROUPS = new Set(Object.keys(BUILTIN_IMAGES).map(key => key.
 const ARCADE_TRUE = '(compare value (0) op "<" with (1))';
 const ARCADE_FALSE = '(compare value (1) op "<" with (0))';
 const DELEGATE = Symbol('base statement');
+// NumberFormat ordinal order from retained pxt-core13.2.1 BufferMethods.
+const BUFFER_FORMATS=['Int8LE','UInt8LE','Int16LE','UInt16LE','Int32LE','Int8BE','UInt8BE','Int16BE','UInt16BE','Int32BE','UInt32LE','UInt32BE','Float32LE','Float64LE','Float32BE','Float64BE'];
 // MakeCode text as a dialect string literal, exactly. The dialect decodes
 // only \n \t \r \\ and \" inside quotes (it keeps \f, \b and \uXXXX as
 // literal text) and reads any other character as itself, so those five are
@@ -270,7 +272,7 @@ class ArcadeTranslator extends BaseTranslator {
         this.boundSourceGlobals=new Set(node.body.filter(st=>st.type==='Declaration').flatMap(st=>st.decls.map(decl=>decl.name)));
         this.sourceFunctions=new Map(node.body.filter(fn=>fn.type==='FunctionDeclaration').map(fn=>[fn.name,fn]));
         const references = inferImageReferences(node, value => this.path(value), value => this.imageOf(value));
-        this.imageReferences = references.images;this.spriteReferences = references.sprites;this.dataReferences = references.data;
+        this.bufferReferences = references.buffers;this.imageReferences = references.images;this.spriteReferences = references.sprites;this.dataReferences = references.data;
         this.playerReferences=references.players;this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.legacyTileReferences=references.legacyTiles;this.animationReferences = references.animations;this.sevensegDigitReferences=references.sevensegDigits;this.sevensegCounterReferences=references.sevensegCounters;this.dartReferences=references.darts;this.corgiReferences=references.corgis;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
         this.inferredSpriteParameters = references.parameters;
         this.spriteResultFunctions = references.spriteFunctions;
@@ -457,6 +459,7 @@ class ArcadeTranslator extends BaseTranslator {
         if(delegated)super.statement(st,indent,out);
     }
     arcadeStatement(st, indent, out) {
+        if(st?.type==='ExpressionStatement' && this.bufferStatement(st.expr,indent,out))return;
         const target=st?.type==='ExpressionStatement' && st.expr?.type==='Assignment' && st.expr.left;
         if(target?.type==='Member' && (this.physicsEngineReferences?.has(target.object) || this.sceneReferences?.has(target.object))) {
             const n=st.expr,pad='  '.repeat(indent);
@@ -617,6 +620,8 @@ class ArcadeTranslator extends BaseTranslator {
     }
 
     callExpression (node) {
+        const importedBuffer=this.bufferExpression(node);
+        if(importedBuffer!==null)return importedBuffer;
         const engineApi=this.path(node.callee),engineArgs=node.args||[];
         if(engineApi?.startsWith('mp.') && (this.boundSourceGlobals?.has('mp') || this.sourceFunctions?.has('mp') || this.localVars?.has('mp') || this.currentParameters?.has('mp') || this.capturedBindings.has('mp'))) {
             this.unsupported.push(`${engineApi} refers to a shadowed mp binding`);return 'undefined value';
@@ -974,6 +979,8 @@ class ArcadeTranslator extends BaseTranslator {
         }
         if(node?.type==='LegacyParsedValue'){this.usesArrays=true;return `parse array input (${this.arrayElementValue(node.value)})`;}
         if(node?.type==='NativeArrayAccess')return this.expr(node.value);
+        const importedBuffer=this.bufferExpression(node);
+        if(importedBuffer!==null)return importedBuffer;
         if(node?.type==='LegacyJsonValue'){this.usesArrays=true;return `JSON text of value (${this.arrayElementValue(node.value)})`;}
         if(this.handleTemplates && node?.type==='Identifier' && node.temporary)return `arcade local ${node.name}`;
         if(this.handleTemplates && node?.type==='Boolean')return node.value?ARCADE_TRUE:ARCADE_FALSE;
@@ -1742,6 +1749,65 @@ class ArcadeTranslator extends BaseTranslator {
 
     // effects.<name> as one of PXT's ParticleEffect instances.
     /** A program binding (global, function, local, parameter or capture) named `name`. */
+    bufferFormat(node) {
+        if(node?.type==='Member' && node.object?.name==='NumberFormat' && !this.bindsName('NumberFormat')) {
+            if(BUFFER_FORMATS.includes(node.name))return node.name;
+            this.note(`Unknown Buffer NumberFormat.${node.name}`);return '(undefined value)';
+        }
+        return `(${this.expr(node)})`;
+    }
+    bufferExpression(node) {
+        if(!this.handleTemplates)return null;
+        const value=n=>`(${this.expr(n)})`;
+        if(node?.type==='Member' && node.object?.name==='NumberFormat' && !this.bindsName('NumberFormat')) {
+            if(BUFFER_FORMATS.includes(node.name))return String(BUFFER_FORMATS.indexOf(node.name)+1);
+            this.note(`Unknown Buffer NumberFormat.${node.name}`);return 'undefined value';
+        }
+        if(node?.type==='Template' && node.tag==='hex') {
+            const hex=node.value.replace(/\s/g,'');
+            if(!/^(?:[0-9a-f]{2})*$/i.test(hex)){this.note('Buffer hex literal requires complete hexadecimal bytes');return 'undefined value';}
+            return `arcade byte buffer literal hex ${JSON.stringify(hex)}`;
+        }
+        if(node?.type==='Index' && this.bufferReferences?.has(node.object))return `arcade byte buffer ${value(node.object)} byte at ${value(node.index)}`;
+        if(node?.type==='Member' && this.bufferReferences?.has(node.object)) {
+            if(node.name==='length')return `arcade byte buffer ${value(node.object)} length`;
+            this.note(`Buffer.${node.name} property requires supported Buffer member access`);return 'undefined value';
+        }
+        if(node?.type!=='Call')return null;
+        const api=this.path(node.callee),a=node.args||[];
+        if(['control.createBuffer','control.createBufferFromUTF8','Buffer.fromHex','Buffer.fromUTF8'].includes(api) && !this.bindsName(api.split('.')[0])) {
+            if(a.length!==1){this.note(`${api} requires one argument`);return 'undefined value';}
+            if(api==='control.createBuffer')return `arcade create byte buffer size ${value(a[0])}`;
+            return `arcade byte buffer from ${api==='Buffer.fromHex'?'hex':'UTF8'} text ${value(a[0])}`;
+        }
+        if(node.callee?.type!=='Member' || !this.bufferReferences?.has(node.callee.object))return null;
+        const receiver=value(node.callee.object),op=node.callee.name;
+        if(op==='getNumber' && a.length===2)return `arcade byte buffer ${receiver} number ${this.bufferFormat(a[0])} at ${value(a[1])}`;
+        if(['toHex','toString','isReadOnly'].includes(op) && !a.length)return `arcade byte buffer ${receiver} ${ {toHex:'to hex',toString:'to UTF8 text',isReadOnly:'is read only'}[op]}`;
+        if(op==='slice' && a.length<=2)return `arcade byte buffer ${receiver} slice at ${a[0]?value(a[0]):0} length ${a[1]?value(a[1]):-1}`;
+        // The original shared view needs its own native block; do not copy it.
+        if(op==='subarray'){this.note('Buffer.subarray requires a native shared-view block');return 'undefined value';}
+        this.note(`Buffer.${op} requires supported Buffer expression arguments`);return 'undefined value';
+    }
+    bufferStatement(node,indent,out) {
+        if(!this.handleTemplates)return false;
+        const target=node?.type==='Assignment' && node.left;
+        if(target?.type==='Index' && this.bufferReferences?.has(target.object)) {
+            if(node.op!=='='){out.push(`${'  '.repeat(indent)}${this.note('Buffer byte compound assignment requires single-evaluation lowering')}`);return true;}
+            out.push(`${'  '.repeat(indent)}arcade set byte buffer (${this.expr(target.object)}) byte at (${this.expr(target.index)}) to (${this.expr(node.right)})`);return true;
+        }
+        if(node?.type!=='Call' || node.callee?.type!=='Member' || !this.bufferReferences?.has(node.callee.object))return false;
+        const a=node.args||[],op=node.callee.name,receiver=`(${this.expr(node.callee.object)})`,v=(i,fallback)=>a[i]?`(${this.expr(a[i])})`:fallback;
+        let code;
+        if(op==='setNumber' && a.length===3)code=`arcade set byte buffer ${receiver} number ${this.bufferFormat(a[0])} at ${v(1)} to ${v(2)}`;
+        if(op==='fill' && a.length>=1 && a.length<=3)code=`arcade fill byte buffer ${receiver} with ${v(0)} at ${v(1,0)} length ${v(2,-1)}`;
+        if(op==='write' && a.length>=2 && a.length<=4)code=`arcade write byte buffer ${receiver} at ${v(0)} from ${v(1)}`;
+        if(['shift','rotate'].includes(op) && a.length>=1 && a.length<=3)code=`arcade ${op} byte buffer ${receiver} by ${v(0)} at ${v(1,0)} length ${v(2,-1)}`;
+        if(!code)return false;
+        if(op==='write' && a.length>2){out.push(`${'  '.repeat(indent)}${this.note('Buffer.write source offset and length require native block arguments')}`);return true;}
+        out.push(`${'  '.repeat(indent)}${code}`);return true;
+    }
+
     bindsName (name) {
         return Boolean(this.boundSourceGlobals?.has(name) || this.sourceFunctions?.has(name) || this.localVars?.has(name) ||
             this.currentParameters?.has(name) || this.capturedBindings?.has(name));
@@ -1975,8 +2041,7 @@ class ArcadeTranslator extends BaseTranslator {
                     `arcade song named ${JSON.stringify(buffer.bwSongName)} hex ${JSON.stringify(text.toLowerCase())}` :
                     `arcade song playable hex ${JSON.stringify(text.toLowerCase())}`;
             }
-            if (buffer?.type === 'Call' && this.path(buffer.callee) === 'Buffer.fromHex' && !this.bindsName('Buffer') && buffer.args.length === 1)
-                return `arcade song playable hex (${this.expr(buffer.args[0])})`;
+            if (this.bufferReferences?.has(buffer))return `arcade song playable byte buffer (${this.expr(buffer)})`;
             this.note('music.createSong requires a hex literal or Buffer.fromHex expression');
             return '0';
         }
@@ -2786,7 +2851,7 @@ const inferProcedureHandleParameters = (ast, functions, globalHandles, pathOf) =
  * Passing a resource does not copy it. Forwarded parameters and local aliases
  * reach a fixed point, including recursive procedures and callback callers. */
 const inferImageReferences = (ast, pathOf, imageOf) => {
-    const players = new WeakSet(), references = new WeakSet(), tiles = new WeakSet(), legacyTiles = new WeakSet(), sprites = new WeakSet(), animations = new WeakSet(), sevensegDigits = new WeakSet(), sevensegCounters = new WeakSet(), darts = new WeakSet(), corgis = new WeakSet(), scenes = new WeakSet(), physicsEngines = new WeakSet(), nulls = new WeakSet(), arrays = new WeakSet(), numbers = new WeakSet(), strings = new WeakSet(), booleans = new WeakSet();
+    const buffers = new WeakSet(), players = new WeakSet(), references = new WeakSet(), tiles = new WeakSet(), legacyTiles = new WeakSet(), sprites = new WeakSet(), animations = new WeakSet(), sevensegDigits = new WeakSet(), sevensegCounters = new WeakSet(), darts = new WeakSet(), corgis = new WeakSet(), scenes = new WeakSet(), physicsEngines = new WeakSet(), nulls = new WeakSet(), arrays = new WeakSet(), numbers = new WeakSet(), strings = new WeakSet(), booleans = new WeakSet();
     const entries = [];
     const functions = new Map();
     const scope = parent => ({parent, bindings: new Map()});
@@ -2964,6 +3029,7 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
             const name={image:'Image',sprite:'Sprite',tile:'TileLocation','legacy-tile':'LegacyTile',animation:'Animation','sevenseg-digit':'SevenSegDigit','sevenseg-counter':'DigitCounter',dart:'Dart',corgio:'Corgio',scene:'Scene','physics-engine':'PhysicsEngine',player:'Player',number:'number',string:'string',boolean:'boolean',array:'array'}[type];
             if(name)graph.add(value,name);
         }
+        if(node.type==='Template' && node.tag==='hex' || node.type==='Call' && ['control.createBuffer','control.createBufferFromUTF8','Buffer.fromHex','Buffer.fromUTF8'].includes(pathOf(node.callee)))graph.add(value,'Buffer');
         if(node.type==='Call' && pathOf(node.callee)==='mp.allPlayers'){graph.add(value,'array');graph.add(graph.element(value),'Player');}
         if(node.type==='Call' && pathOf(node.callee)==='sprites.allOfKind'){graph.add(value,'array');graph.add(graph.element(value),'Sprite');}
         if(node.type==='Call' && pathOf(node.callee)==='scene.getTilesByType'){graph.add(value,'array');graph.add(graph.element(value),'LegacyTile');}
@@ -2998,12 +3064,14 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
                 if(['pop','shift','removeAt','get'].includes(op) || op==='_pickRandom' && !node.args.length)connect(value,graph.element(receiver));
             }
             if(pathOf(node.callee)==='Math.pickRandom' && node.args.length===1 && graph.has(cell(node.args[0],owner),'array'))connect(value,graph.element(cell(node.args[0],owner)));
+            if(receiver && graph.has(receiver,'Buffer') && ['slice','subarray'].includes(op))graph.add(value,'Buffer');
             if(receiver && op==='clone' && !node.args.length && graph.has(receiver,'Image'))graph.add(value,'Image');
         }
     } while(revision!==graph.revision);
     const data = new WeakSet();
     for (const {node, owner} of entries) {
         const value=cell(node,owner);
+        if(graph.has(value,'Buffer'))buffers.add(node);
         if(graph.has(value,'SpriteData'))data.add(node);
         if (graph.has(value,'array')) arrays.add(node);
         if (graph.has(value,'string')) strings.add(node);
@@ -3024,7 +3092,7 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
         if(types.has('physics-engine') || graph.has(value,'PhysicsEngine') && !['number','string','boolean','Image','Sprite','Scene'].some(type=>graph.has(value,type)))physicsEngines.add(node);
         if(types.has('null') && [...types].every(type=>type==='null'||type==='sprite'))nulls.add(node);
     }
-    return {players, images: references, tiles, legacyTiles, sprites, animations, sevensegDigits, sevensegCounters, darts, corgis, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
+    return {buffers, players, images: references, tiles, legacyTiles, sprites, animations, sevensegDigits, sevensegCounters, darts, corgis, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
         spriteFunctions:new Set([...functions].filter(([,fn])=>graph.has(fn.resultCell,'Sprite')).map(([name])=>name)),
         parameters:new Map([...functions].map(([name,fn])=>[name,new Set(fn.node.params.filter(param=>graph.has(binding(fn.owner,param),'Sprite')))]))};
 };
@@ -3360,6 +3428,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if (!node || typeof node !== 'object') return false;
         if(node.loweredStaticCallbacks || node.optionalParams?.length || node.loweredLazyValues || node.type==='Undefined' || node.type==='Null' && !node.spritePlaceholder || t.hasLazyCondition(node))return true;
         if(['LegacyParsedValue','LegacyJsonValue','NativeArrayAccess'].includes(node.type) || node.type==='Identifier' && ['NaN','Infinity'].includes(node.name) && !t.boundSourceGlobals.has(node.name))return true;
+        if(t.bufferReferences.has(node))return true;
         if(node.type==='Declaration' && node.decls.some(decl=>decl.isArray && !decl.init))return true;
         const constantNumber=value=>value?.type==='Number'?Number(value.value):value?.type==='Unary' && value.op==='-' && value.argument?.type==='Number'?-Number(value.argument.value):value?.type==='Member' && value.object?.name==='Math' && value.name==='PI'?Math.PI:NaN;
         if(node.type==='Binary' && node.op==='/' && (!Number.isFinite(constantNumber(node.right)) || constantNumber(node.right)===0))return true;
