@@ -1,9 +1,11 @@
 import {analyseConsoleCaptures} from './console-capture-provenance.js';
 import {createAnimationFrameArrayProducers, isAnimationFrameArrayProducer} from './animation-frame-array-producers.js';
 
-// SDK reporters whose native implementation always returns a fresh Array
-// reference of locations, keyed to their exact input schema.
-const FRESH_SDK_ARRAYS=Object.freeze({arcade_tilesOfType:Object.freeze(['IMAGE']),arcade_legacyTilesOfType:Object.freeze(['INDEX'])});
+// SDK reporters whose native implementation returns a fresh Array reference
+// (or reports an error), keyed to their exact input schema.
+const FRESH_SDK_ARRAYS=Object.freeze({arcade_tilesOfType:Object.freeze(['IMAGE']),arcade_legacyTilesOfType:Object.freeze(['INDEX']),
+    arcade_bufferChunked:Object.freeze(['BUFFER','SIZE']),arcade_bufferChunkedFromUTF8:Object.freeze(['TEXT','SIZE']),
+    arcade_bufferUnpack:Object.freeze(['BUFFER','FORMAT','OFFSET']),arcade_bufferToArray:Object.freeze(['BUFFER','FORMAT'])});
 
 // Producer facts are deliberately separate from the exporter's annotation graph.
 // Merely being plugged into an ARRAY input never creates an Array fact.
@@ -489,8 +491,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         const c=binding(target,node);if(c)return new Set(c.types);
         const allocated=factories(target,node);if(allocated)return allocated;const named=namedBinding(target,node);if(named)return named;
         if(node.opcode==='arcade_spritesOfKind')return exactKeys(node,['KIND'])&&numericKind(input(node,'KIND',target))?new Set([token(node,target,[{raw:[10,'SDK Sprite element not an Array']}],0)]):new Set([bad]);
-        // Native tile queries return a fresh Array of locations (or throw).
-        if(Object.hasOwn(FRESH_SDK_ARRAYS,node.opcode))return exactKeys(node,FRESH_SDK_ARRAYS[node.opcode])?new Set([token(node,target,[{raw:[10,'SDK Location element not an Array']}],0)]):new Set([bad]);
+        if(Object.hasOwn(FRESH_SDK_ARRAYS,node.opcode))return exactKeys(node,FRESH_SDK_ARRAYS[node.opcode])?new Set([token(node,target,[{raw:[10,'SDK element not an Array']}],0)]):new Set([bad]);
         if(['arcade_animationAssetFrames','arcade_animationAssetFreshFrames'].includes(node.opcode)){
             const producer=animationProducers.resolve(target,node);
             return producer?new Set([token(producer.allocation,producer.shared?null:target,
