@@ -2,6 +2,7 @@ import test from 'node:test';
 import {EventEmitter} from 'node:events';
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
 import assert from 'node:assert/strict';
+import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
 const code=`let hero=sprites.create(img\`1\`,SpriteKind.Player)
@@ -65,4 +66,17 @@ for(const event of ['PROJECT_STOP_ALL','RUNTIME_DISPOSED'])test(event+' cancels 
     assert.equal(asked,1);assert.equal(arcade._state(),stopped);
     assert.equal(arcade._textPromptWaits.size,0);
     assert.equal(runtime.bwArcadeTextPrompt,null);
+});
+
+for(const [value,label] of [['true','true'],['false','false'],['undefined','undefined'],['null','null']])test('prompt message preserves source primitive '+value,async()=>{
+    try {
+        const original=await runPxtArcade('let inspected=console.inspect('+value+')');
+        assert.equal(original.inspected,label);
+        const imported=arcadeToPseudocode('let entered=game.askForString('+value+')');
+        const run=await runProgram(imported.code,{frames:0});
+        let question;run.vm.runtime.on('QUESTION',value=>{if(value!==null)question=value;});
+        await stepFrames(run.vm,5,20);assert.equal(question,original.inspected);
+        run.vm.runtime.emit('ANSWER','ok');await stepFrames(run.vm,5,20);
+        assert.equal(variable(run,'entered'),'ok');assert.deepEqual(run.errors,[]);
+    }finally{clearStrayTimers();}
 });

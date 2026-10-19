@@ -1336,6 +1336,7 @@ class ArcadeEmitter {
         case 'arcade_eventPlayer':
             if(this.eventPlayerName)return this.eventPlayerName;
             this.note('Arcade event player outside a multiplayer callback');return this.na();
+        case 'arcade_playerConnected':this.requiresMultiplayerPackage=true;return `mp.isConnected(${v('PLAYER')})`;
         case 'arcade_playerButtonPressed':this.requiresMultiplayerPackage=true;return `mp.isButtonPressed(${v('PLAYER')}, ${v('BUTTON')})`;
         case 'arcade_eventSprite': {
             const which = this.field(b, 'WHICH') === 'second' ? 1 : 0;
@@ -2605,7 +2606,7 @@ class ArcadeEmitter {
                 if(['arcade_tileLocationProperty','arcade_legacyTileProperty'].includes(value.opcode)){const id=Symbol('tile numeric property');numbers.add(id);return id;}
                 if(['arcade_playerLookup','arcade_playerBySprite','arcade_eventPlayer'].includes(value.opcode)){const id=Symbol('player value');graphPlayerValues.add(id);return id;}
                 if(value.opcode==='arcade_allPlayers'){const id=Symbol('player array');arrays.add(id);return id;}
-                if(['arcade_playerButtonPressed','arcade_ask'].includes(value.opcode)){const id=Symbol('player button pressed');booleans.add(id);return id;}
+                if(['arcade_playerConnected','arcade_playerButtonPressed','arcade_ask'].includes(value.opcode)){const id=Symbol('player button pressed');booleans.add(id);return id;}
                 if(['arcade_createPlayerState','arcade_getPlayerState'].includes(value.opcode)){const id=Symbol('player state number');numbers.add(id);return id;}
                 if(value.opcode==='arcade_playerProperty'){const id=Symbol('player property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_currentScene'){const id=Symbol('scene value');graphSceneValues.add(id);return id;}
@@ -2656,7 +2657,7 @@ class ArcadeEmitter {
                 if(block.opcode==='arcade_bufferWrite'){const buffer=ref(inputBlock(blocks,block,'SOURCE'));if(buffer)graphBufferValues.add(buffer);}
                 if(['arcade_bufferConcat','arcade_bufferEquals','arcade_bufferIndexOf'].includes(block.opcode)){const buffer=ref(inputBlock(blocks,block,'OTHER'));if(buffer)graphBufferValues.add(buffer);}
                 if(block.opcode==='arcade_eventPlayer'){const player=ref(block);if(player)graphPlayerValues.add(player);}
-                if(['arcade_playerSprite','arcade_setPlayerSprite','arcade_playerProperty','arcade_movePlayerWithButtons','arcade_playerButtonPressed','arcade_getPlayerState','arcade_setPlayerState','arcade_changePlayerState'].includes(block.opcode)){
+                if(['arcade_playerSprite','arcade_setPlayerSprite','arcade_playerProperty','arcade_movePlayerWithButtons','arcade_playerConnected','arcade_playerButtonPressed','arcade_getPlayerState','arcade_setPlayerState','arcade_changePlayerState'].includes(block.opcode)){
                     const player=ref(inputBlock(blocks,block,'PLAYER'));if(player)graphPlayerValues.add(player);
                 }
                 if(block.opcode==='arcade_allPlayers'){const array=ref(block),item=Symbol('player collection element');graphPlayerValues.add(item);elements.push([array,item]);}
