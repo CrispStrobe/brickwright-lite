@@ -308,6 +308,22 @@ probe executable and full runner path are excluded. Review that exact event's
 metadata and report once. A passing platform preflight does not qualify a running
 app or authorize a simulator launch.
 
+The first platform event failed without a report artifact; its exact failing
+boundary remains unknown. Preserve that original. The diagnostic revision records
+host/admission/cleanup stages and a summary even if upload fails. It also checks
+read-only audit-token/code-directory APIs and executable page consistency against
+its owned helper. Keep this distinct from a simulator target's permissions.
+
+`DarwinAuditIdentity` and `simulator_code_directory` remain unwired for app
+observation. The former obtains a kernel task-name right and audit token, uses
+read-only code-status/hash queries tied to that token, and releases its right
+once. The latter checks the supported thin-arm64 ad-hoc SHA-256 directory and
+covered pages; it provides no certificate or signature-trust conclusion. Resolve
+these actual APIs before using their derived identity in the controller. API
+references are Apple's [task info](https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/osfmk/mach/task_info.h),
+[code-sign operations](https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/bsd/sys/codesign.h)
+and [CodeDirectory layout](https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/osfmk/kern/cs_blobs.h).
+
 Before use, independently verify the exact target SDK's ABI offsets, library
 exports, syscall status semantics, CPU units/timebase and permission failures.
 Then test actual birth/exit/reuse/path drift and resource limits on the admitted

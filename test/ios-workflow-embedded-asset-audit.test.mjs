@@ -16,7 +16,7 @@ test('ad-hoc diagnostics print only device count and preserve the actual asserti
 function assertNoAuditEntry(body) {
     const start = body.indexOf('def main():');
     assert.ok(start >= 0, 'the actual entry point must exist');
-    assert.doesNotMatch(body.slice(start), /SIMCTL_CHILD_|BW_EMBEDDED_ASSET_AUDIT_PATH|prepared_launch|owned_simulator_transaction|prepare_installed_observation|release_installed_observation|bounded_simulator_command|DarwinProcessSampler/);
+    assert.doesNotMatch(body.slice(start), /SIMCTL_CHILD_|BW_EMBEDDED_ASSET_AUDIT_PATH|prepared_launch|owned_simulator_transaction|prepare_installed_observation|release_installed_observation|bounded_simulator_command|DarwinProcessSampler|DarwinAuditIdentity|simulator_code_directory/);
 }
 
 test('asset source preparation adds no runtime download or delivery event', () => {
@@ -1627,13 +1627,15 @@ class SDKReportControls(unittest.TestCase):
     def setUp(self):
         self.value={'usageSize':96,'userOffset':16,'systemOffset':24,'residentOffset':64,'birthOffset':80,
             'exitOffset':88,'timebaseSize':8,'numer':125,'denom':3,'pid':37,'uuid':'ab'*16,'birth':12,
-            'userTicks':100,'systemTicks':200,'rssBytes':100,'pathMatches':True}
+            'userTicks':100,'systemTicks':200,'rssBytes':100,'pathMatches':True,
+            'auditTokenSize':32,'auditTokenCount':8,'auditTokenFlavor':15,'csStatusOperation':0,
+            'csCDHashOperation':5,'cdhashBytes':20,'codeStatus':1,'auditTokenHex':'ab'*32,'cdhash':'cd'*20}
     def test_positive_and_exact_boundary(self):
         validate_sdk_report(self.value,37)
         self.value['userTicks']=120000000;self.value['systemTicks']=0;self.value['rssBytes']=1024**3
         validate_sdk_report(self.value,37)
     def test_every_layout_field_is_checked(self):
-        for key in ['usageSize','userOffset','systemOffset','residentOffset','birthOffset','exitOffset','timebaseSize']:
+        for key in ['usageSize','userOffset','systemOffset','residentOffset','birthOffset','exitOffset','timebaseSize','auditTokenSize','auditTokenCount','auditTokenFlavor','csStatusOperation','csCDHashOperation','cdhashBytes']:
             with self.subTest(key=key):
                 v=dict(self.value);v[key]+=1
                 with self.assertRaises(ValueError):validate_sdk_report(v,37)
@@ -1645,7 +1647,7 @@ class SDKReportControls(unittest.TestCase):
             with self.subTest(key=key):
                 with self.assertRaises(ValueError):validate_sdk_report(v,37)
     def test_identity_refusals(self):
-        for key,value in [('pid',38),('uuid','0'*32),('uuid','not-hex'),('birth',0),('pathMatches',False)]:
+        for key,value in [('pid',38),('uuid','0'*32),('uuid','not-hex'),('birth',0),('pathMatches',False),('codeStatus',0),('auditTokenHex','invalid'),('cdhash','0'*40)]:
             v=dict(self.value);v[key]=value
             with self.subTest(key=key):
                 with self.assertRaises(ValueError):validate_sdk_report(v,37)
@@ -1656,9 +1658,14 @@ class SDKReportControls(unittest.TestCase):
             with self.subTest(key=key,value=value):
                 with self.assertRaises(ValueError):validate_sdk_report(v,37)
     def test_unsupported_host_refuses_before_compiler(self):
-        with mock.patch.object(sys,'platform','linux'),mock.patch.object(subprocess,'run') as run:
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory,mock.patch.dict(os.environ,{'RUNNER_TEMP':directory,
+            'GITHUB_SHA':'a'*40,'GITHUB_RUN_ID':'123','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'ios-audit-preflight'}),mock.patch.object(sys,'platform','linux'),mock.patch.object(subprocess,'run') as run:
             with self.assertRaises(ValueError):main()
             run.assert_not_called()
+            report=json.loads((Path(directory)/'bw-ios-darwin-preflight/report.json').read_text())
+            self.assertEqual(report['failure'],{'type':'ValueError','stage':'platform-admission'})
+            self.assertEqual(report['host']['platform'],'linux');self.assertEqual(report['cleanupErrors'],[])
 unittest.main(argv=['authored-sdk-controls'],defaultTest='SDKReportControls',verbosity=2)
 `;
 
@@ -1708,4 +1715,144 @@ test('Darwin SDK report controls reject layout, identity, CPU-unit and resource 
             assert.doesNotMatch(result.stderr, /SyntaxError|ImportError/);
         }
     } finally { rmSync(dir, {recursive:true, force:true}); }
+});
+
+const auditIdentityControls = String.raw`
+import ctypes,platform,struct,unittest
+from unittest import mock
+class IdentityFunction:
+    def __init__(self,fn):self.fn=fn
+    def __call__(self,*args):return self.fn(*args)
+class AuditIdentityControls(unittest.TestCase):
+    def setUp(self):
+        self.tick=0;self.stop=False;self.port=91;self.acquire_status=0;self.info_status=0;self.count=8
+        self.token=[501,os.geteuid(),0,0,0,37,123,9];self.flags=1;self.hash=b'H'*20
+        self.cs_status=0;self.close_status=0;self.closed=[];self.operations=[];self.hook=None
+        self.lib=type('AuthoredSystem',(),{})()
+        for key,fn in [('task_name_for_pid',self.acquire),('task_info',self.info),('csops_audittoken',self.csops),('mach_port_deallocate',self.deallocate)]:setattr(self.lib,key,IdentityFunction(fn))
+    def acquire(self,actor,pid,target):
+        self.assertEqual((actor,pid),(7,37));ctypes.memmove(target,struct.pack('<I',self.port),4)
+        return self.acquire_status
+    def info(self,port,flavor,token,count):
+        self.assertEqual((port,flavor),(91,15));ctypes.memmove(token,struct.pack('<8I',*self.token),32)
+        ctypes.memmove(count,struct.pack('<I',self.count),4)
+        if self.hook:self.hook('info')
+        return self.info_status
+    def csops(self,pid,operation,value,size,token):
+        self.operations.append(operation);self.assertEqual(pid,37)
+        self.assertEqual(bytes(token),struct.pack('<8I',*self.token))
+        self.assertEqual(size,4 if operation==0 else 20)
+        ctypes.memmove(value,struct.pack('<I',self.flags) if operation==0 else self.hash,size)
+        ctypes.set_errno(13 if self.cs_status else 0)
+        if self.hook:self.hook('csops')
+        return self.cs_status
+    def deallocate(self,actor,port):
+        self.closed.append((actor,port));return self.close_status
+    def make(self):
+        with mock.patch.object(sys,'platform','darwin'),mock.patch.object(platform,'machine',return_value='arm64'),mock.patch.object(ctypes,'CDLL',return_value=self.lib),mock.patch.object(ctypes.c_uint32,'in_dll',return_value=ctypes.c_uint32(7)):
+            return DarwinAuditIdentity(37,(b'H'*20).hex(),deadline=30,now=lambda:self.tick,stopped=lambda:self.stop)
+    def refused(self,identity):
+        with self.assertRaises(ValueError):identity.sample()
+        with self.assertRaises(ValueError):identity.sample()
+    def test_baseline_kernel_token_and_readonly_operations(self):
+        obj=self.make();first=obj.sample();self.assertEqual(first,obj.sample());self.assertEqual(len(first),64)
+        self.assertEqual(self.operations,[0,5,0,5]);self.assertEqual(obj._token,struct.pack('<8I',*self.token))
+        rows=obj.originals();rows[0]['rawHex']='changed';self.assertNotEqual(rows,obj.originals())
+        obj.close();obj.close();self.assertEqual(self.closed,[(7,91)])
+        with self.assertRaises(ValueError):obj.sample()
+    def test_kernel_token_fields_and_exec_generation(self):
+        for field,value in [(1,os.geteuid()+1),(5,38),(7,10)]:
+            self.setUp();obj=self.make();obj.sample();self.token[field]=value
+            self.refused(obj);obj.close()
+    def test_short_token_and_kernel_errors(self):
+        for field,value in [('count',7),('info_status',5),('cs_status',-1),('flags',0),('hash',b'X'*20)]:
+            self.setUp();obj=self.make();setattr(self,field,value)
+            self.refused(obj);self.assertGreater(len(obj.originals()),1);obj.close()
+    def test_acquire_failure_does_not_release_undefined_port(self):
+        self.acquire_status=5
+        with self.assertRaises(ValueError) as caught:self.make()
+        self.assertEqual(self.closed,[]);self.assertEqual(caught.exception.identity_originals[0]['status'],5)
+    def test_close_once_even_after_failure(self):
+        obj=self.make();self.close_status=5
+        with self.assertRaises(ValueError):obj.close()
+        obj.close();self.assertEqual(self.closed,[(7,91)])
+        self.assertEqual(obj.originals()[-1]['status'],5)
+    def test_final_clock_and_stop_fences(self):
+        for setting,value in [('tick',31),('tick',-1),('stop',True)]:
+            self.setUp();obj=self.make()
+            self.hook=lambda stage:setattr(self,setting,value)
+            self.refused(obj);obj.close()
+    def test_reentry_seals_and_does_not_reuse_port(self):
+        obj=self.make()
+        def hook(stage):
+            if stage=='csops':
+                with self.assertRaises(ValueError):obj.sample()
+        self.hook=hook;self.refused(obj);obj.close();self.assertEqual(self.closed,[(7,91)])
+    def test_poll_and_record_capacity_refuse_before_kernel(self):
+        obj=self.make()
+        for _ in range(200):obj.sample()
+        count=len(self.operations);self.refused(obj);self.assertEqual(count,len(self.operations));obj.close()
+        obj=self.make();obj._bytes=256*1024-1023;self.refused(obj);obj.close()
+
+class CodeDirectoryControls(unittest.TestCase):
+    def fixture(self):
+        prefix=bytearray(4096)
+        struct.pack_into('<8I',prefix,0,0xfeedfacf,0x100000c,0,2,1,16,0,0)
+        struct.pack_into('<4I',prefix,32,0x1d,16,4096,160)
+        directory=bytearray(128)
+        struct.pack_into('>9I',directory,0,0xfade0c02,128,0x20400,2,96,88,0,1,4096)
+        struct.pack_into('4B',directory,36,32,2,0,12)
+        directory[88:94]=b'owned\0';directory[96:128]=hashlib.sha256(prefix).digest()
+        signature=struct.pack('>5I',0xfade0cc0,148,1,0,20)+bytes(directory)+bytes(12)
+        return bytes(prefix)+signature,bytes(directory)
+    def parse(self,raw,**kw):return simulator_code_directory(raw,deadline=1,now=lambda:0,**kw)
+    def test_primary_sha256_directory_and_all_pages(self):
+        raw,directory=self.fixture();result=self.parse(raw)
+        self.assertEqual(result['executableSHA256'],hashlib.sha256(raw).hexdigest())
+        self.assertEqual(result['cdhash'],hashlib.sha256(directory).digest()[:20].hex())
+        self.assertEqual(result['codeSlots'],1);self.assertFalse(result['signatureTrustQualified'])
+    def test_executable_page_corruption_and_signature_bounds(self):
+        raw,_=self.fixture()
+        for offset,value in [(100,1),(4096,0),(4096+20+37,1),(4096+20+15,0),(4096+20+44,1)]:
+            bad=bytearray(raw);bad[offset]=value
+            with self.subTest(offset=offset):
+                with self.assertRaises(ValueError):self.parse(bytes(bad))
+        for bad in [raw[:-1],raw+b'\0',raw[:16],b'X'*len(raw)]:
+            with self.assertRaises(ValueError):self.parse(bad)
+    def test_unsupported_alternate_directory(self):
+        raw,_=self.fixture();bad=bytearray(raw);struct.pack_into('>I',bad,4096+12,0x1000)
+        with self.assertRaises(ValueError):self.parse(bytes(bad))
+    def test_stop_and_clock_after_hashing(self):
+        raw,_=self.fixture()
+        with self.assertRaises(ValueError):self.parse(raw,stopped=lambda:True)
+        values=iter([0,0,0,0,0,2])
+        with self.assertRaises(ValueError):simulator_code_directory(raw,deadline=1,now=lambda:next(values))
+
+unittest.main(argv=['authored-kernel-identity'],defaultTest=('AuditIdentityControls','CodeDirectoryControls'),verbosity=2)
+`;
+
+test('unwired audit identity uses kernel tokens and read-only code hashes with owned port cleanup', () => {
+    const prefix = retention.slice(0, retention.lastIndexOf('\ntry:\n'));
+    const dir = mkdtempSync(join(tmpdir(), 'bw-ios-audit-identity-'));
+    const run = (source, name) => {
+        const file = join(dir, `${name}.py`);writeFileSync(file,`${source}\n${auditIdentityControls}`);
+        return spawnSync('/usr/bin/python3',[file],{env:{...process.env,GITHUB_WORKSPACE:dir,RUNNER_TEMP:dir},encoding:'utf8',timeout:15000});
+    };
+    try {
+        const baseline=run(prefix,'baseline');assert.equal(baseline.status,0,baseline.stdout+baseline.stderr);
+        assert.match(baseline.stderr,/Ran 12 tests/);
+        for (const [index,[before,after]] of [
+            ['raw==self._token','True'],
+            ['bytes(value)==self._expected','True'],
+            ['need(value.value&1)','need(True)'],
+            ['need(actual==expected)','need(True)'],
+            ['self._polls<200','True']
+        ].entries()) {
+            assert.equal(prefix.split(before).length,2,`unique identity cut ${index}`);
+            const result=run(prefix.replace(before,after),`cut-${index}`);
+            assert.notEqual(result.status,0,`undetected identity cut ${index}`);
+            assert.match(result.stderr,/FAIL:/,result.stdout+result.stderr);
+            assert.doesNotMatch(result.stderr,/SyntaxError|ImportError/);
+        }
+    } finally {rmSync(dir,{recursive:true,force:true});}
 });

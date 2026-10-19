@@ -83,6 +83,8 @@ jobs:
           #include <libproc.h>
           #include <sys/resource.h>
           #include <mach/mach_time.h>
+          #include <mach/mach.h>
+          #include <sys/codesign.h>
           int main(int argc, char **argv) {
               struct rusage_info_v0 r = {0};
               mach_timebase_info_data_t t = {0};
@@ -97,13 +99,29 @@ jobs:
                      offsetof(struct rusage_info_v0, ri_proc_start_abstime), offsetof(struct rusage_info_v0, ri_proc_exit_abstime),
                      sizeof(t), t.numer, t.denom, getpid());
               for (int i=0; i<16; ++i) printf("%02x", r.ri_uuid[i]);
-              printf("\",\"birth\":%llu,\"userTicks\":%llu,\"systemTicks\":%llu,\"rssBytes\":%llu,\"pathMatches\":%s}\n",
+              printf("\",\"birth\":%llu,\"userTicks\":%llu,\"systemTicks\":%llu,\"rssBytes\":%llu,\"pathMatches\":%s,",
                      (unsigned long long)r.ri_proc_start_abstime, (unsigned long long)r.ri_user_time,
                      (unsigned long long)r.ri_system_time, (unsigned long long)r.ri_resident_size,
                      strcmp(path,argv[0]) == 0 ? "true" : "false");
+              audit_token_t token = {{0}};
+              mach_msg_type_number_t count = TASK_AUDIT_TOKEN_COUNT;
+              uint32_t code_status = 0;
+              unsigned char cdhash[20] = {0};
+              if (task_info(mach_task_self(),TASK_AUDIT_TOKEN,(task_info_t)&token,&count) != KERN_SUCCESS ||
+                  count != TASK_AUDIT_TOKEN_COUNT ||
+                  csops_audittoken(getpid(),CS_OPS_STATUS,&code_status,sizeof(code_status),&token) ||
+                  csops_audittoken(getpid(),CS_OPS_CDHASH,cdhash,sizeof(cdhash),&token)) return 4;
+              printf("\"auditTokenSize\":%zu,\"auditTokenCount\":%u,\"auditTokenFlavor\":%u,"
+                     "\"csStatusOperation\":%u,\"csCDHashOperation\":%u,\"cdhashBytes\":%zu,"
+                     "\"codeStatus\":%u,\"auditTokenHex\":\"",sizeof(token),count,TASK_AUDIT_TOKEN,
+                     CS_OPS_STATUS,CS_OPS_CDHASH,sizeof(cdhash),code_status);
+              for (size_t i=0; i<sizeof(token); ++i) printf("%02x",((unsigned char *)&token)[i]);
+              printf("\",\"cdhash\":\"");
+              for (size_t i=0; i<sizeof(cdhash); ++i) printf("%02x",cdhash[i]);
+              printf("\"}\n");
               fflush(stdout);
-              char token;
-              return read(STDIN_FILENO,&token,1)==1 && token=='X' ? 0 : 3;
+              char quit_token;
+              return read(STDIN_FILENO,&quit_token,1)==1 && quit_token=='X' ? 0 : 3;
           }
           """
 
@@ -115,13 +133,18 @@ jobs:
 
           def validate_sdk_report(value, pid):
               layout = {'usageSize':96, 'userOffset':16, 'systemOffset':24, 'residentOffset':64,
-                        'birthOffset':80, 'exitOffset':88, 'timebaseSize':8}
-              fields = set(layout) | {'numer','denom','pid','uuid','birth','userTicks','systemTicks','rssBytes','pathMatches'}
+                        'birthOffset':80, 'exitOffset':88, 'timebaseSize':8,
+                        'auditTokenSize':32,'auditTokenCount':8,'auditTokenFlavor':15,
+                        'csStatusOperation':0,'csCDHashOperation':5,'cdhashBytes':20}
+              fields = set(layout) | {'numer','denom','pid','uuid','birth','userTicks','systemTicks','rssBytes','pathMatches','codeStatus','auditTokenHex','cdhash'}
               require(type(value) is dict and value.keys() == fields)
               require(all(type(value[k]) is int and value[k] == v for k,v in layout.items()))
               require(type(value['pid']) is int and value['pid'] == pid and 0 < pid <= 2147483647)
               require(type(value['uuid']) is str and re.fullmatch('[a-f0-9]{32}',value['uuid']) is not None and
                       value['uuid'] != '0'*32 and value['pathMatches'] is True)
+              require(type(value['codeStatus']) is int and 0<=value['codeStatus']<=2**32-1 and value['codeStatus']&1 and
+                      type(value['auditTokenHex']) is str and re.fullmatch('[a-f0-9]{64}',value['auditTokenHex']) is not None and
+                      type(value['cdhash']) is str and re.fullmatch('[a-f0-9]{40}',value['cdhash']) is not None and value['cdhash']!='0'*40)
               require(all(type(value[k]) is int and 0 <= value[k] <= 2**64-1
                           for k in ('birth','userTicks','systemTicks','rssBytes')) and value['birth'] > 0)
               require(all(type(value[k]) is int and 0 < value[k] <= 2**32-1 for k in ('numer','denom')))
@@ -140,20 +163,27 @@ jobs:
 
 
           def main():
-              require(sys.platform == 'darwin' and platform.machine() == 'arm64' and sys.version_info >= (3,13))
-              require(all(hasattr(os,key) for key in ('waitid','P_PID','WEXITED','WNOHANG','WNOWAIT')) and
-                      signal.getsignal(signal.SIGCHLD) == signal.SIG_DFL)
-              require(os.environ['GITHUB_EVENT_NAME'] == 'workflow_dispatch' and
-                      os.environ['GITHUB_REPOSITORY'] == 'CrispStrobe/brickwright-lite' and
-                      os.environ['GITHUB_REF'] == 'refs/heads/lane/ios-active-asset-source-20261018')
               root=Path(os.environ['RUNNER_TEMP']).resolve()/'bw-ios-darwin-preflight'
               root.mkdir(exist_ok=False)
-              report={'schema':'brickwright.darwin-sdk-preflight.v1','status':'partial',
+              report={'schema':'brickwright.darwin-sdk-preflight.v2','status':'partial',
                       'sourceCommit':os.environ['GITHUB_SHA'],'runID':os.environ['GITHUB_RUN_ID'],
                       'attempt':os.environ['GITHUB_RUN_ATTEMPT'],'job':os.environ['GITHUB_JOB'],
                       'actualAppQualified':False,'processFamilyQualified':False,'cleanupSucceeded':False}
               process=None
+              identity=None
+              report['stage']='platform-admission'
+              report['host']={'platform':sys.platform,'architecture':platform.machine(),
+                  'pythonVersion':list(sys.version_info[:3]),
+                  'waitAPIs':{key:hasattr(os,key) for key in ('waitid','P_PID','WEXITED','WNOHANG','WNOWAIT')},
+                  'sigchldDefault':signal.getsignal(signal.SIGCHLD)==signal.SIG_DFL}
               try:
+                  require(sys.platform == 'darwin' and platform.machine() == 'arm64' and sys.version_info >= (3,13))
+                  require(all(hasattr(os,key) for key in ('waitid','P_PID','WEXITED','WNOHANG','WNOWAIT')) and
+                          signal.getsignal(signal.SIGCHLD) == signal.SIG_DFL)
+                  require(os.environ['GITHUB_EVENT_NAME'] == 'workflow_dispatch' and
+                          os.environ['GITHUB_REPOSITORY'] == 'CrispStrobe/brickwright-lite' and
+                          os.environ['GITHUB_REF'] == 'refs/heads/lane/ios-active-asset-source-20261018')
+                  report['stage']='producer-loading'
                   workflow=(Path(os.environ['GITHUB_WORKSPACE'])/'.github/workflows/mobile.yml').read_text()
                   namespace,prefix_hash=producer_namespace(workflow)
                   report['producerPrefixSHA256']=prefix_hash
@@ -162,6 +192,7 @@ jobs:
                       result=subprocess.run(args,stdin=subprocess.DEVNULL,capture_output=True,timeout=30,check=True)
                       require(len(result.stdout)+len(result.stderr)<=65536)
                       return result.stdout
+                  report['stage']='compiler-discovery'
                   compiler=command(['/usr/bin/xcrun','--sdk','macosx','--find','clang']).decode().strip()
                   sdk=command(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-path']).decode().strip()
                   require(Path(compiler).is_absolute() and Path(sdk).is_absolute())
@@ -172,21 +203,36 @@ jobs:
                   report['sdkSettingsSHA256']=hashlib.sha256(settings.read_bytes()).hexdigest()
                   source=root/'probe.c';source.write_text(C_SOURCE)
                   executable=root/'probe'
+                  report['stage']='probe-compile'
                   command([compiler,'-std=c11','-Wall','-Wextra','-Werror','-isysroot',sdk,str(source),'-o',str(executable)])
                   report['probeSourceSHA256']=hashlib.sha256(source.read_bytes()).hexdigest()
                   report['probeExecutableSHA256']=hashlib.sha256(executable.read_bytes()).hexdigest()
                   environment={key:os.environ[key] for key in ('HOME','PATH','TMPDIR') if key in os.environ}
+                  report['stage']='probe-start'
                   process=subprocess.Popen([str(executable)],stdin=subprocess.PIPE,stdout=subprocess.PIPE,
                       stderr=subprocess.PIPE,start_new_session=True,close_fds=True,env=environment)
+                  report['stage']='probe-read'
                   with selectors.DefaultSelector() as selector:
                       selector.register(process.stdout,selectors.EVENT_READ)
                       require(bool(selector.select(5)))
                       raw=os.read(process.stdout.fileno(),4097)
                   require(0<len(raw)<=4096 and raw.endswith(b'\n') and raw.count(b'\n')==1)
                   report['probeOutputHex']=raw.hex()
+                  report['stage']='sdk-layout'
                   observed=json.loads(raw);report['sdkOriginal']=observed
                   validate_sdk_report(observed,process.pid)
+                  report['stage']='code-directory-pages'
+                  directory=namespace['simulator_code_directory'](executable.read_bytes(),deadline=time.monotonic()+5)
+                  require(directory['cdhash']==observed['cdhash'])
+                  report['codeDirectory']=directory
+                  report['stage']='kernel-identity-create'
+                  identity=namespace['DarwinAuditIdentity'](process.pid,directory['cdhash'],deadline=time.monotonic()+15)
+                  report['stage']='kernel-identity-read'
+                  token_identity=identity.sample()
+                  require(identity._token.hex()==observed['auditTokenHex'])
+                  report['stage']='sampler-create'
                   sampler=namespace['DarwinProcessSampler'](process.pid,str(executable),deadline=time.monotonic()+10)
+                  report['stage']='sampler-read'
                   snapshot=sampler(process.pid)
                   require((sampler._numer,sampler._denom)==(observed['numer'],observed['denom']))
                   birth,uuid=sampler._previous[0]
@@ -194,6 +240,8 @@ jobs:
                   counters=sampler._previous[1]
                   require(counters[0]>=observed['userTicks'] and counters[1]>=observed['systemTicks'])
                   require(snapshot['pid']==process.pid and snapshot['rssBytes']>0)
+                  require(identity.sample()==token_identity)
+                  report['kernelIdentitySHA256']=token_identity
                   report['sdkOriginal']=observed
                   report['sampledRSSBytes']=snapshot['rssBytes']
                   report['sampleIdentitySHA256']=snapshot['identitySHA256']
@@ -204,6 +252,7 @@ jobs:
                        'rawBytes':len(bytes.fromhex(row['rawHex'])),
                        'rawSHA256':hashlib.sha256(bytes.fromhex(row['rawHex'])).hexdigest()}
                       for row in sampler.originals()]
+                  report['stage']='probe-graceful-exit'
                   process.stdin.write(b'X');process.stdin.flush();process.stdin.close()
                   deadline=time.monotonic()+5
                   while os.waitid(os.P_PID,process.pid,os.WEXITED|os.WNOHANG|os.WNOWAIT) is None:
@@ -218,19 +267,56 @@ jobs:
                   try:os.waitpid(process.pid,os.WNOHANG)
                   except ChildProcessError:report['leaderReaped']=True
                   else:raise ValueError('owned leader was not reaped')
+                  report['stage']='exit-refusal'
                   try:sampler(process.pid)
                   except ValueError:report['exitedPIDRefused']=True
                   else:raise ValueError('exited PID accepted')
-                  report['status']='sdk-and-owned-process-controls-pass'
+                  report['kernelExitOriginals']=sampler.originals()[len(report['kernelOriginals']):]
+                  report['stage']='kernel-identity-exit-refusal'
+                  try:identity.sample()
+                  except ValueError:report['kernelIdentityExitRefused']=True
+                  else:raise ValueError('exited kernel identity accepted')
+                  identity.close()
+                  report['identityOriginals']=identity.originals()
+                  report['identityPortReleased']=True
+                  report['stage']='complete'
+                  report['status']='sdk-and-kernel-identity-controls-pass'
+              except Exception as failure:
+                  report['failure']={'type':type(failure).__name__,'stage':report['stage']}
+                  if isinstance(failure,subprocess.CalledProcessError):
+                      diagnostic=failure.stderr or b''
+                      report['compilerErrorSHA256']=hashlib.sha256(diagnostic).hexdigest()
+                      text=diagnostic[:8192].decode('utf-8','replace')
+                      for private in (str(root),locals().get('sdk',''),locals().get('compiler','')):
+                          if private:text=text.replace(private,'<preflight-input>')
+                      report['compilerDiagnostics']=text
+                  raise
               finally:
-                  if process is not None:
-                      if process.returncode is None:
-                          try:os.killpg(process.pid,signal.SIGKILL)
-                          except ProcessLookupError:pass
-                          process.wait(timeout=2)
-                      for stream in (process.stdin,process.stdout,process.stderr):
-                          if stream is not None and not stream.closed:stream.close()
-                  (root/'report.json').write_text(json.dumps(report,sort_keys=True,indent=2)+'\n')
+                  errors=[]
+                  try:
+                      if identity is not None:
+                          try:identity.close()
+                          except Exception as error:errors.append('identity-'+type(error).__name__)
+                          report['identityOriginals']=identity.originals()
+                      if process is not None:
+                          if process.returncode is None:
+                              try:os.killpg(process.pid,signal.SIGKILL)
+                              except ProcessLookupError:pass
+                              process.wait(timeout=2)
+                  except Exception as error:errors.append(type(error).__name__)
+                  finally:
+                      if process is not None:
+                          for stream in (process.stdin,process.stdout,process.stderr):
+                              try:
+                                  if stream is not None and not stream.closed:stream.close()
+                              except Exception as error:errors.append(type(error).__name__)
+                      report['cleanupErrors']=errors
+                      if errors:report['cleanupSucceeded']=False
+                      summary={key:report[key] for key in ('status','stage','host','failure','sdkOriginal',
+                          'cleanupSucceeded','cleanupErrors') if key in report}
+                      print('Darwin preflight summary '+json.dumps(summary,sort_keys=True))
+                      (root/'report.json').write_text(json.dumps(report,sort_keys=True,indent=2)+'\n')
+                  require(not errors)
               print('Darwin SDK and owned-process preflight passed; app observation remains disabled')
 
           if __name__=='__main__':
@@ -1133,6 +1219,202 @@ jobs:
               if result['primaryFailure'] is None and not result['cleanupFailures'] and result['observationRetained']:
                   result['status'] = 'observed-transaction-only'
               return result, observation if result['observationRetained'] else None
+
+
+          def simulator_code_directory(raw, *, deadline, now=time.monotonic, stopped=None):
+              """Bounded thin arm64 ad-hoc CodeDirectory/page consistency, not signature trust."""
+              import struct
+              last = now()
+              need(type(raw) is bytes and 32 <= len(raw) <= 256*1024*1024 and
+                   type(deadline) in (int,float) and math.isfinite(deadline) and
+                   type(last) in (int,float) and math.isfinite(last) and last <= deadline <= last+5 and
+                   callable(now) and (stopped is None or callable(stopped)))
+              def check():
+                  nonlocal last
+                  tick=now()
+                  need(type(tick) in (int,float) and math.isfinite(tick) and last <= tick <= deadline)
+                  last=tick
+                  if stopped is not None:
+                      flag=stopped()
+                      need(type(flag) is bool and not flag)
+                  tick=now()
+                  need(type(tick) in (int,float) and math.isfinite(tick) and last <= tick <= deadline)
+                  last=tick
+              check()
+              magic,cpu,subtype,kind,count,commands,flags,reserved=struct.unpack_from('<8I',raw)
+              need(magic==0xfeedfacf and cpu==0x100000c and kind==2 and 0<count<=256 and
+                   8<=commands<=65536 and 32+commands<=len(raw))
+              cursor=32
+              signatures=[]
+              for _ in range(count):
+                  check()
+                  need(cursor+8<=32+commands)
+                  command,size=struct.unpack_from('<II',raw,cursor)
+                  need(size>=8 and size%4==0 and cursor+size<=32+commands)
+                  if command==0x1d:
+                      need(size==16)
+                      signatures.append(struct.unpack_from('<II',raw,cursor+8))
+                  cursor+=size
+              need(cursor==32+commands and len(signatures)==1)
+              offset,length=signatures[0]
+              need(offset>=cursor and 12<=length<=16*1024*1024 and offset+length==len(raw))
+              blob=memoryview(raw)[offset:offset+length]
+              magic,total,count=struct.unpack_from('>III',blob)
+              need(magic==0xfade0cc0 and 12<=total<=length and length-total<=15 and
+                   not any(blob[total:]) and 0<count<=16 and 12+count*8<=total)
+              directories=[];ranges=[];slots=set()
+              for index in range(count):
+                  check()
+                  slot,start=struct.unpack_from('>II',blob,12+index*8)
+                  need(slot not in slots and start>=12+count*8 and start+8<=total)
+                  slots.add(slot)
+                  tag,size=struct.unpack_from('>II',blob,start)
+                  need(size>=8 and start+size<=total and all(start+size<=a or start>=b for a,b in ranges))
+                  ranges.append((start,start+size))
+                  if slot==0:
+                      need(tag==0xfade0c02);directories.append(bytes(blob[start:start+size]))
+                  # Alternate CodeDirectories need a separately reviewed kernel-selection join.
+                  need(not 0x1000<=slot<=0x1005)
+              need(len(directories)==1)
+              directory=directories[0]
+              need(len(directory)>=88)
+              magic,size,version,cd_flags,hash_offset,ident,special,pages,limit=struct.unpack_from('>9I',directory)
+              hash_size,hash_type,platform,page_power=struct.unpack_from('4B',directory,36)
+              need(size==len(directory) and version in (0x20400,0x20500,0x20600) and cd_flags&2 and
+                   hash_size==32 and hash_type==2 and 12<=page_power<=16 and special<=32)
+              header={0x20400:88,0x20500:96,0x20600:108}[version]
+              need(len(directory)>=header and struct.unpack_from('>I',directory,44)[0]==0)
+              if limit==0:
+                  limit=struct.unpack_from('>Q',directory,56)[0]
+              page=1<<page_power
+              need(limit==offset and 0<pages<=65536 and pages==(limit+page-1)//page and
+                   hash_offset-special*hash_size>=header and hash_offset+pages*hash_size<=len(directory) and
+                   header<=ident<hash_offset-special*hash_size and
+                   b'\0' in directory[ident:hash_offset-special*hash_size])
+              for index in range(pages):
+                  check()
+                  actual=hashlib.sha256(memoryview(raw)[index*page:min(limit,(index+1)*page)]).digest()
+                  expected=directory[hash_offset+index*hash_size:hash_offset+(index+1)*hash_size]
+                  need(actual==expected)
+              result={'schema':'brickwright.simulator-code-directory.v1',
+                      'executableSHA256':hashlib.sha256(raw).hexdigest(),
+                      'codeDirectorySHA256':hashlib.sha256(directory).hexdigest(),
+                      'cdhash':hashlib.sha256(directory).digest()[:20].hex(),
+                      'hashType':hash_type,'codeSlots':pages,'codeLimit':limit,'signatureTrustQualified':False}
+              check()
+              return result
+
+
+          class DarwinAuditIdentity:
+              """Unwired audit-token/code-hash checks. The caller must join expected file bytes.
+
+              No task_for_pid/debugger privilege fallback, process mutation, or fabricated
+              audit token. Actual target SDK exports and permission behavior remain unqualified.
+              """
+              def __init__(self,pid,cdhash,*,deadline,now=time.monotonic,stopped=None):
+                  import ctypes
+                  import platform
+                  import re
+                  need(sys.platform=='darwin' and platform.machine()=='arm64' and
+                       ctypes.sizeof(ctypes.c_void_p)==8 and sys.byteorder=='little')
+                  need(type(pid) is int and 0<pid<=2147483647 and type(cdhash) is str and
+                       re.fullmatch('[a-f0-9]{40}',cdhash) is not None and cdhash!='0'*40 and
+                       callable(now) and (stopped is None or callable(stopped)))
+                  self._c,self._pid,self._expected=ctypes,pid,bytes.fromhex(cdhash)
+                  self._deadline,self._now,self._stopped=deadline,now,stopped
+                  self._last=now();self._port=0;self._closed=False;self._failed=False;self._active=False
+                  self._records=[];self._bytes=0;self._polls=0;self._token=None
+                  need(type(self._last) in (int,float) and type(deadline) in (int,float) and
+                       math.isfinite(self._last) and math.isfinite(deadline) and self._last<=deadline<=self._last+30)
+                  self._check()
+                  system=ctypes.CDLL('/usr/lib/libSystem.B.dylib',use_errno=True)
+                  self._selfport=ctypes.c_uint32.in_dll(system,'mach_task_self_').value
+                  need(self._selfport!=0)
+                  self._acquire=system.task_name_for_pid
+                  self._acquire.argtypes=[ctypes.c_uint32,ctypes.c_int,ctypes.POINTER(ctypes.c_uint32)]
+                  self._acquire.restype=ctypes.c_int
+                  self._info=system.task_info
+                  self._info.argtypes=[ctypes.c_uint32,ctypes.c_uint32,ctypes.c_void_p,ctypes.POINTER(ctypes.c_uint32)]
+                  self._info.restype=ctypes.c_int
+                  self._csops=system.csops_audittoken
+                  self._csops.argtypes=[ctypes.c_int,ctypes.c_uint32,ctypes.c_void_p,ctypes.c_size_t,ctypes.c_void_p]
+                  self._csops.restype=ctypes.c_int
+                  self._deallocate=system.mach_port_deallocate
+                  self._deallocate.argtypes=[ctypes.c_uint32,ctypes.c_uint32]
+                  self._deallocate.restype=ctypes.c_int
+                  port=ctypes.c_uint32()
+                  try:
+                      status=self._acquire(self._selfport,pid,ctypes.byref(port))
+                      self._port=port.value if status==0 else 0
+                      self._record('task-name',status,0,bytes(port))
+                      self._check();need(status==0 and self._port not in (0,0xffffffff))
+                  except BaseException as primary:
+                      self._failed=True
+                      try:self.close()
+                      except Exception:primary.identity_cleanup_failed=True
+                      primary.identity_originals=self.originals()
+                      raise
+
+              def _check(self):
+                  need(not self._closed and not self._failed)
+                  tick=self._now()
+                  need(type(tick) in (int,float) and math.isfinite(tick) and self._last<=tick<=self._deadline)
+                  self._last=tick
+                  if self._stopped is not None:
+                      flag=self._stopped();need(type(flag) is bool and not flag)
+                  tick=self._now()
+                  need(type(tick) in (int,float) and math.isfinite(tick) and self._last<=tick<=self._deadline and
+                       not self._closed and not self._failed)
+                  self._last=tick
+
+              def _record(self,kind,status,error,raw):
+                  row={'kind':kind,'status':status,'errno':error,'rawHex':raw.hex()}
+                  size=len(json.dumps(row,separators=(',',':')).encode())
+                  need(len(self._records)<1024 and self._bytes+size<=256*1024)
+                  self._records.append(row);self._bytes+=size
+
+              def originals(self):
+                  return [dict(row) for row in self._records]
+
+              def _audit(self):
+                  self._check()
+                  c=self._c;token=(c.c_uint32*8)();count=c.c_uint32(8)
+                  status=self._info(self._port,15,token,c.byref(count))
+                  self._record('task-audit-token',status,0,bytes(token)+bytes(count));self._check()
+                  need(status==0 and count.value==8 and token[5]==self._pid and token[1]==os.geteuid())
+                  raw=bytes(token)
+                  need(self._token is None or raw==self._token)
+                  self._token=raw
+                  return token
+
+              def sample(self):
+                  try:
+                      need(not self._active);self._active=True;self._check()
+                      need(self._polls<200 and len(self._records)+4<=1024 and self._bytes+1024<=256*1024)
+                      self._polls+=1;c=self._c;token=self._audit()
+                      for kind,operation,value in [('code-status',0,c.c_uint32()),('code-directory-hash',5,(c.c_ubyte*20)())]:
+                          self._check();c.set_errno(0)
+                          status=self._csops(self._pid,operation,c.byref(value),c.sizeof(value),token)
+                          self._record(kind,status,c.get_errno(),bytes(value));self._check()
+                          need(status==0)
+                          if operation==0:need(value.value&1)
+                          else:need(bytes(value)==self._expected)
+                      need(bytes(self._audit())==bytes(token))
+                      result=hashlib.sha256(bytes(token)+self._expected).hexdigest()
+                      self._check();return result
+                  except BaseException:
+                      self._failed=True
+                      raise
+                  finally:self._active=False
+
+              def close(self):
+                  if self._closed:return
+                  self._closed=True
+                  port=self._port;self._port=0
+                  if port not in (0,0xffffffff):
+                      status=self._deallocate(self._selfport,port)
+                      self._record('port-deallocate',status,0,b'')
+                      need(status==0)
 
 
           class DarwinProcessSampler:
