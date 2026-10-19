@@ -5207,3 +5207,22 @@ needs separate qualified implementation; never silently infer it from tests.
 The optional Image Array entry proof now handles the parser's opaque root procedure metadata while keeping consumed defaults, annotations and serializer domains as observed data. All 60 source controls pass. An authentic project advances past the original clone and stops at an incoming overlap-sprite alias `destroy()` call; callback provenance, complete writer closure and destruction reentry still need implementation and qualification.
 
 The complete 22 request-fence and 13 editor-contract tests pass. Browser work must still exercise pending file/share imports, replacement imports, stage changes and disposal visibly, including answer/cancel/error outcomes. Verify Code, connected Blocks, artwork, save/reopen and edited export together. The remaining native-prompt suite and installed dialogs have no new qualification from these source tests.
+
+## Current Array and camera acceptance boundaries — 2026-10-19
+
+The local candidate explicitly adopts the number-input and operation-ownership
+hooks already merged in [extensions PR #48](https://github.com/CrispStrobe/extensions/pull/48).
+The actual shipped source-admission command and both unchanged native test
+modules completed all 32 cases with no skips. This is a runtime boundary, not
+a complete corpus or graphical authoring result. Preserve the original failed
+pin result and the missing-input refusal.
+
+| Capability | Current evidence | Remaining user-facing acceptance |
+| --- | --- | --- |
+| Array operations and Number inputs | All 29 ownership cases and three Number-ingress cases pass with the explicitly pinned supplier. | Test connected Number reporters versus text, actual editor mutations, Stop/restart and save/reopen through the production registered extension. |
+| Array conversion to text | A real original/imported/Code/exported three-context run exposed `[object Object]` where the element text was expected. A separate implementation is under review. | Preserve nested arrays, holes, aliases and cycles through the same operation used by Code and blocks. A global reference-prototype change is insufficient. Require real execution and MakeCode acceptance with unchanged expected values. |
+| Camera enum arguments to typed helpers | The actual public import refuses `CameraProperty.X/Y` as Number producers. The retained PXT compiler emits canonical enum members as numeric constants. | Complete the producer fix with shadowing/mutation negatives, then execute the unchanged camera module across Code, archive and MakeCode export/import. Existing camera dropdown blocks need visible selection/edit/save-reopen checks; typed helper authoring remains a separate gap. |
+
+Follow [the failure work packages](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md) for
+whole-module, original-compiler, complete-census and landing gates. Focused
+passes do not reduce the historical partial count.
