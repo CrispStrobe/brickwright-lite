@@ -6,9 +6,39 @@ Historical results qualify their named source and artifact, not later builds.
 
 Current blocker: the unsigned installed embedded-map proof remains open. Installed
 manuals and the complete simulator help graph now have bounded independent joins;
-the sampler still failed and the diagnostic event remains partial. Next collect
-and review actual runtime/image/model metadata, then finish ownership, resource
-and wrapper admission. No tool result qualifies an app or the remaining SPIKE matrix.
+the sampler still failed and the diagnostic event remains partial. Bounded catalog
+compatibility is now joined for iOS26.2/23C54, arm64 and iPhone16. Next finish
+namespace/service ownership, family resources and guarded wrapper admission, with
+fresh catalog joins in the eventual app job. No tool result qualifies an app or
+the remaining SPIKE matrix.
+
+## Immediate implementation contract
+
+Continue inside the merged optional iOS audit lane; keep the workflow entry closed
+until these acceptance criteria are met:
+
+1. Build the device-set ownership factory around an exclusive directory and held
+   identity. Join the explicit boot, app and delegated services through an
+   authoritative platform observation. Paths, callback assertions and returned
+   PIDs alone cannot grant cleanup authority; missing permissions must refuse.
+2. Qualify kernel identity, executable/code identity, family membership and resource
+   accounting on owned actors. Include exit, exec, PID reuse, membership changes,
+   failed readback and cleanup controls. Preserve current limits and failed
+   originals. A successful single helper does not cover a simulator service family.
+3. Compose the existing transaction, bounded invoker, prepared receiver and actual
+   identity provider with one sticky Stop intent and a separate cleanup route.
+   Retain the whole bounded original union, including partial capture and deferred
+   interrupts. Require completed receiver metadata for successful publication;
+   partial raw bytes must survive refusals without becoming a successful capture.
+   Demonstrate normal behavior and cancellation at each boundary.
+4. Rejoin the actual job's SDK/runtime/image/build/arm64/model and installed native
+   bytes, then run the one admitted unsigned installed-map qualification. Its
+   standalone reader must join source, effective configuration, artifact, active
+   asset map and served bytes. Keep signed delivery and physical-device claims
+   separate. Only then consider exact-head checks and matched-head integration.
+
+The catalog observation selects a compatible candidate for review; it cannot
+stand in for any of these ownership, resource or installed-map criteria.
 
 ## Landed and ready for continuation
 
@@ -421,10 +451,10 @@ until signaling and reaping finish. Its cleanup candidate accepts an exited
 singleton EPERM only around two matching kernel group censuses and a stable
 nonreaping terminal record. Uncertain groups and other signal failures refuse.
 Cleanup continues through interruptions; Linux behavior has separate controls.
-The default-off v6 fixed-helper profile can exercise the candidate on its one
-nonforking helper, retaining wait/group originals before independent teardown.
-This requires a new source-bound platform event and independent reader. Earlier
-successful originals must not be replayed.
+The default-off v6 fixed-helper event39222955547 passed for its one nonforking
+helper, with retained wait/group originals and independent packet joins. That
+bounded result does not qualify a general process group or delegated service
+family. Successful originals must not be replayed.
 
 The command journal retains bounded observed stdout/stderr, terminal waits and
 reap records privately, including prefixes from refusals. It is not a complete
@@ -494,3 +524,11 @@ A new metadata-only query filters runtimes by the observed iOS26.2 description;
 it retains the cap and omits already retained runtime help. Candidate selection
 from a failed capture cannot admit the catalog or target. Require bounded new
 originals and independent image/build/architecture/model joins before proceeding.
+
+The bounded filtered catalog now has independent packet and semantic compatibility
+joins for iOS26.2/23C54, arm64 and iPhone16. Those facts belong to the metadata job;
+a future app job must rejoin its own image, runtime, build, model and architecture.
+Selected-target, namespace, installed-code and resource admission remain open.
+Receiver cancellation now keeps the original interrupt, partial receipt bytes and
+cleanup uncertainty even if a later descriptor close is interrupted. Keep this
+custody when wiring the guarded wrapper; source controls are not app qualification.

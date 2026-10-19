@@ -1174,6 +1174,45 @@ class ReceiverControls(unittest.TestCase):
                 receiver._file=request_stop
             meta,got=self.capture(receiver,stopped=lambda:stop[0]);self.assertEqual(meta['refusal'],'stop')
             self.assertEqual(meta['status'],'partial');self.assertEqual(got,raw);self.assertTrue(meta['receiverClosed']);self.target.unlink()
+    def test_capture_interrupt_preserves_first_cancellation_partial_bytes_and_close_interrupt(self):
+        before=len(os.listdir('/dev/fd'));receiver=self.prepare();raw=self.write();self.samples=0
+        first=KeyboardInterrupt('AUTHORED-FIRST');second=SystemExit('AUTHORED-SECOND');original=os.close;closed=[]
+        def sample(pid):
+            self.samples+=1
+            if self.samples==2:raise first
+            return {'pid':pid,'identitySHA256':'e'*64,'rssBytes':4096}
+        def close(fd):
+            original(fd);closed.append(fd)
+            if len(closed)==1:raise second
+        with mock.patch.object(os,'close',side_effect=close),self.assertRaises(KeyboardInterrupt) as caught:
+            receiver.capture(55,'e'*64,sample,deadline=1,output_limit=8192,pause=self.pause)
+        self.assertIs(caught.exception,first);self.assertEqual(len(closed),2)
+        self.assertEqual(caught.exception.installed_capture_secondary_interrupts,(second,))
+        self.assertEqual(caught.exception.installed_capture_observation,raw)
+        meta=json.loads(caught.exception.installed_capture_result)
+        self.assertEqual(meta['status'],'partial');self.assertEqual(meta['refusal'],'process-sample')
+        self.assertEqual(meta['cleanupFailures'],['_receipt-close']);self.assertFalse(meta['receiverClosed'])
+        self.assertEqual(meta['rawSHA256'],hashlib.sha256(raw).hexdigest());self.assertFalse(meta['actualAppQualified'])
+        self.assertEqual(len(os.listdir('/dev/fd')),before)
+        self.assertNotIn('AUTHORED',json.dumps(meta));self.assertNotIn(str(self.root),json.dumps(meta))
+    def test_close_interrupt_after_capture_preserves_raw_and_refuses_completed_status(self):
+        before=len(os.listdir('/dev/fd'));receiver=self.prepare();raw=self.write();original=os.close;closed=[];first=KeyboardInterrupt()
+        held=[receiver._parent]
+        def snapshot():
+            if self.samples==2:held.append(receiver._receipt)
+        self.action=snapshot
+        def close(fd):
+            original(fd)
+            if fd in held:
+                closed.append(fd)
+                if fd==held[-1] and len(held)==2:raise first
+        with mock.patch.object(os,'close',side_effect=close),self.assertRaises(KeyboardInterrupt) as caught:self.capture(receiver)
+        self.assertIs(caught.exception,first);meta=json.loads(caught.exception.installed_capture_result)
+        self.assertEqual(meta['status'],'partial');self.assertEqual(meta['refusal'],'receiver-cleanup')
+        self.assertEqual(caught.exception.installed_capture_observation,raw)
+        self.assertEqual(caught.exception.installed_capture_secondary_interrupts,())
+        self.assertEqual(meta['cleanupFailures'],['_receipt-close']);self.assertEqual(len(closed),2)
+        self.assertEqual(len(os.listdir('/dev/fd')),before)
     def test_runtime_header_and_fingerprint_mutations_are_detected(self):
         cuts=[("value['source_label'] == self._spec['sourceCommit'] and",'True and'),
               ('need(self._identity(os.fstat(self._receipt)) == self._last_receipt_identity)','need(True)')]
@@ -1206,7 +1245,7 @@ test('unwired installed observation receiver binds real file descriptors and sup
             env: {...process.env, GITHUB_WORKSPACE: dir, RUNNER_TEMP: dir, TMPDIR: dir}, encoding: 'utf8', timeout: 15000
         });
         assert.equal(result.status, 0, result.stdout + result.stderr);
-        assert.match(result.stderr, /Ran 17 tests/);
+        assert.match(result.stderr, /Ran 19 tests/);
         assert.match(result.stderr, /OK/);
         assert.equal((retention.match(/PreparedInstalledObservation\(/g) || []).length, 1, 'constructor only inside unwired preparation adapter');
     } finally { rmSync(dir, {recursive: true, force: true}); }

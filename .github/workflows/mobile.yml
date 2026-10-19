@@ -2284,6 +2284,8 @@ jobs:
                       'samplerAuthenticated': False, 'hardMemoryLimitQualified': False,
                       'runningExecutableJoined': False, 'assetContentsJoined': False, 'actualAppQualified': False}
                   stage = 'capture-admission'
+                  interrupt = None
+                  secondary_interrupts = []
                   try:
                       need(not self._closed and type(pid) is int and 0 < pid <= 2147483647 and
                            type(identity_sha256) is str and re.fullmatch(r'[a-f0-9]{64}', identity_sha256) is not None and
@@ -2339,11 +2341,23 @@ jobs:
                           pause(min(0.05, max(0, deadline-self._check(deadline))))
                       else:
                           raise ValueError('poll budget refused')
-                  except Exception:
+                  except BaseException as error:
                       result['refusal'] = stage  # No paths, process records, exception payload or raw bytes.
+                      if not isinstance(error, Exception):
+                          interrupt = error
                   finally:
-                      result['cleanupFailures'] = list(self.close())
-                      result['receiverClosed'] = not result['cleanupFailures']
+                      try:
+                          result['cleanupFailures'] = list(self.close())
+                      except BaseException as error:
+                          result['cleanupFailures'] = list(self._close_errors)
+                          if not isinstance(error, Exception):
+                              if interrupt is None:
+                                  interrupt = error
+                              elif error is not interrupt:
+                                  secondary_interrupts.append(error)
+                          else:
+                              result['cleanupFailures'].append('receiver-close')
+                      result['receiverClosed'] = not result['cleanupFailures'] and self._closed
                       if result['cleanupFailures']:
                           result['status'] = 'partial'
                           if result['refusal'] is None:
@@ -2351,6 +2365,13 @@ jobs:
                   if self.last_raw is not None:
                       result['rawBytes'] = len(self.last_raw)
                       result['rawSHA256'] = hashlib.sha256(self.last_raw).hexdigest()
+                  if interrupt is not None:
+                      result['status'] = 'partial'
+                      interrupt.installed_capture_result = json.dumps(result, sort_keys=True,
+                          separators=(',', ':')).encode()
+                      interrupt.installed_capture_observation = self.last_raw
+                      interrupt.installed_capture_secondary_interrupts = tuple(secondary_interrupts)
+                      raise interrupt
                   return result, self.last_raw
 
               def close(self):
