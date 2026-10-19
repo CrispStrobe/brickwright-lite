@@ -79,7 +79,7 @@ test('hidden constructor role edits refuse without getter calls and remain expir
 });
 
 test('JSON-only public accessor and Proxy observation paths are preserved by internal fallback',()=>{
- const {program,proof}=issue('let count=1;');const declaration=program.body[0].decls[0],number=declaration.init;const descriptor=Object.getOwnPropertyDescriptor(number,'value');let reads=0;
+ const {program,proof}=issue('class Box{value:number;constructor(value:number){this.value=value}read(){return this.value}}let box=new Box(2);let result=box.read();');const number=objects(program).find(node=>node.type==='Number');assert.ok(number);const descriptor=Object.getOwnPropertyDescriptor(number,'value');let reads=0;
  // Install exactly one actual getter with the original serialized value.
  Object.defineProperty(number,'value',{enumerable:descriptor.enumerable,configurable:true,get(){reads++;return descriptor.value;}});
  const observe=fn=>{reads=0;let message;try{fn(program,proof);}catch(error){message=error.message;}return {reads,message};};
@@ -102,7 +102,9 @@ test('changed observation intrinsics delegate the complete original operation wi
  assert.equal(reads,0);assert.deepEqual(result,withClassResultFlowProof(fixture.program,fixture.proof));
 });
 test('ordinary methods, classless proofs and defaults preserve original full clone behavior',()=>{
- for(const text of ['let count=1;','class Box{value:number;constructor(value:number){this.value=value}read(){return this.value}}let box=new Box(2);let result=box.read();',counter]) {
+ const classless=parse('let count=1;'),ineligible=proveClassCallableSource(classless);assert.equal(ineligible.eligible,false);assert.deepEqual(ineligible.unsupported,[]);
+ assert.equal(withClassResultFlowProof(classless,ineligible),classless);assert.equal(withCompilerOwnedClassResultFlowProof(classless,ineligible),classless);
+ for(const text of ['class Box{value:number;constructor(value:number){this.value=value}read(){return this.value}}let box=new Box(2);let result=box.read();',counter]) {
   const {program,proof}=issue(text);assert.deepEqual(withCompilerOwnedClassResultFlowProof(program,proof),baselineWithClassResultFlowProof(program,proof));
   assert.deepEqual(withClassResultFlowProof(program,proof),baselineWithClassResultFlowProof(program,proof));
   program.extra={type:'Identifier',name:'not-original'};assert.throws(()=>withCompilerOwnedClassResultFlowProof(program,proof),/actual unchanged source proof/);
