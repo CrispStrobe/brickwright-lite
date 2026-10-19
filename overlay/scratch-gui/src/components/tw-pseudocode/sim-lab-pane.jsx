@@ -1324,12 +1324,12 @@ class SimLabPane extends React.Component {
         const s = toolStyles(this.state.coarse);
         return {
             run: running ?
-                {id: 'pause', label: A.pause, icon: 'pause', words: narrow ? null : A.pause, style: s.stop, run: () => this.pause(), pri: 1} :
-                {id: 'run', label: A.run, icon: 'run', words: narrow ? null : A.run, style: s.primary, pri: 1,
+                {id: 'pause', label: A.pause, icon: 'pause', words: narrow ? null : A.pause, style: s.stop, run: () => this.pause(), pri: 1, pin: true} :
+                {id: 'run', label: A.run, icon: 'run', words: narrow ? null : A.run, style: s.primary, pri: 1, pin: true,
                     disabled: !this.session || busy || this.state.status === 'stopping', run: () => this.run()},
-            reset: {id: 'reset', label: A.reset, disabled: !this.session || busy, run: () => this.reset(), pri: 1},
-            'mode-move': {id: 'mode-move', label: A['mode-move'], pressed: this.state.gizmoMode === 'move', run: () => view?.setMode('move'), pri: 1},
-            'mode-rotate': {id: 'mode-rotate', label: A['mode-rotate'], pressed: this.state.gizmoMode === 'rotate', run: () => view?.setMode('rotate'), pri: 1},
+            reset: {id: 'reset', label: A.reset, disabled: !this.session || busy, run: () => this.reset(), pri: 1, pin: true},
+            'mode-move': {id: 'mode-move', label: A['mode-move'], pressed: this.state.gizmoMode === 'move', run: () => view?.setMode('move'), pri: 1, pin: true},
+            'mode-rotate': {id: 'mode-rotate', label: A['mode-rotate'], pressed: this.state.gizmoMode === 'rotate', run: () => view?.setMode('rotate'), pri: 1, pin: true},
             turn: {id: 'turn', label: A.turn, disabled: nothing, run: () => view?.turn('up', 1), pri: 1},
             'turn-back': {id: 'turn-back', label: A['turn-back'], disabled: nothing, run: () => view?.turn('up', -1), pri: 3},
             tip: {id: 'tip', label: A.tip, disabled: !selection.length, run: () => view?.turn('facing', 1), pri: 3},
@@ -1343,7 +1343,7 @@ class SimLabPane extends React.Component {
             copy: {id: 'copy', label: A.copy, disabled: !selection.length, run: () => view?.copy(), pri: 3},
             paste: {id: 'paste', label: A.paste, run: () => view?.paste(), pri: 3},
             'select-all': {id: 'select-all', label: A['select-all'], disabled: !parts.length, run: () => view?.selectAll(), pri: 3},
-            undo: {id: 'undo', label: A.undo, disabled: !editor?.canUndo, run: () => { view?.undo(); tick(); }, pri: 1},
+            undo: {id: 'undo', label: A.undo, disabled: !editor?.canUndo, run: () => { view?.undo(); tick(); }, pri: 1, pin: true},
             redo: {id: 'redo', label: A.redo, disabled: !editor?.canRedo, run: () => { view?.redo(); tick(); }, pri: 2},
             'view-home': {id: 'view-home', label: A['view-home'], disabled: noCam, run: () => cam?.view?.('home'), pri: 2},
             'view-fit': {id: 'view-fit', label: A['view-fit'], disabled: noCam,
@@ -1363,9 +1363,9 @@ class SimLabPane extends React.Component {
             measure: {id: 'measure', label: A.measure, pressed: this.state.pick === 'measure', run: () => view?.setPick('measure'), pri: 3},
             eyedropper: {id: 'eyedropper', label: A.eyedropper, title: this.etext.eyedropperHelp, pressed: this.state.pick === 'color',
                 run: () => view?.setPick('color'), pri: 3},
-            'parts-toggle': {id: 'parts-toggle', label: A['parts-toggle'], title: T.partsToggle, pri: 1,
+            'parts-toggle': {id: 'parts-toggle', label: A['parts-toggle'], title: T.partsToggle, pri: 1, pin: true,
                 pressed: this.compact() ? this.state.drawer : this.state.paletteOpen,
-                words: this.compact() && !narrow && !this.state.coarse ? A['parts-toggle'] : null,
+                words: this.compact() && this.state.paneWidth >= 560 && !this.state.coarse ? A['parts-toggle'] : null,
                 run: () => this.setState(st => (this.compact() ? {drawer: !st.drawer} : {paletteOpen: !st.paletteOpen}))},
             properties: {id: 'properties', label: A.properties, title: this.etext.propertiesHelp, pri: 2,
                 pressed: docked ? this.state.propsDocked : this.state.propsOpen,
@@ -1535,7 +1535,8 @@ class SimLabPane extends React.Component {
         const groups = this.toolbarGroups();
         const wrap = !this.state.paneWidth || this.state.paneWidth >= WRAP_TOOLBAR_PX;
         const modeWidth = this.modeWords() ? 330 : 3 * (s.size + 2) + 6;
-        const {bar, more} = splitToolbar(groups, {width: this.state.paneWidth - 20, coarse, reserved: modeWidth + s.size + 4, wrap});
+        // The pane's padding, the mode switch and Help never leave the bar.
+        const {bar, more} = splitToolbar(groups, {width: this.state.paneWidth - 16, coarse, reserved: modeWidth + s.size + 8, wrap});
         const TT = this.ttext;
         return (
             <div role="toolbar" aria-label={TT.toolbar} data-testid="bw-sim-lab-toolbar"

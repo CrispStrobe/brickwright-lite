@@ -163,24 +163,31 @@ export const Separator = ({coarse}) => <span aria-hidden="true" style={toolStyle
 
 /**
  * Which of `groups` (in order; each {id, label, items}) stay on the bar when it is `width` px
- * wide and which go to the More menu. Items carry a priority (`pri`: 1 always shown, then 2, 3);
- * the lowest-priority ones leave first. With `width` 0 (not measured) or `wrap`, nothing leaves.
+ * wide and which go to the More menu. Items carry a priority (`pri`: 1 first to stay, then 2, 3);
+ * the lowest-priority ones leave first, and if even the first ones do not fit, the last of them
+ * leave too. With `width` 0 (not measured) or `wrap`, nothing leaves.
  * @returns {{bar: object[], more: object[]}} groups with their items split
  */
 export const splitToolbar = (groups, {width, coarse, reserved = 0, wrap = false}) => {
     if (!width || wrap) return {bar: groups, more: []};
     const s = toolStyles(coarse);
-    const itemWidth = item => item.width || (item.words ? s.size + 8 * String(item.words).length : s.size) + 2;
-    const fits = maxPri => {
-        let total = reserved + s.size; // the More button
-        for (const g of groups) {
-            const shown = g.items.filter(i => (i.pri || 3) <= maxPri);
-            if (shown.length) total += 9 + shown.reduce((sum, i) => sum + itemWidth(i), 0);
+    const GAP = 2;
+    const SEPARATOR = 7 + 2 * GAP;
+    const itemWidth = item => (item.width || (item.words ? s.size + 8 * String(item.words).length : s.size)) + GAP;
+    const total = bar => reserved + s.size + GAP + bar.reduce((sum, g) => sum + (g.items.length ? SEPARATOR + g.items.reduce((n, i) => n + itemWidth(i), 0) : 0), 0);
+    const keep = maxPri => groups.map(g => ({...g, items: g.items.filter(i => (i.pri || 3) <= maxPri)}));
+    const maxPri = [3, 2, 1].find(p => total(keep(p)) <= width) || 1;
+    const bar = keep(maxPri);
+    const dropped = new Set(groups.flatMap(g => g.items.filter(i => (i.pri || 3) > maxPri)));
+    // Still too wide: the last items on the bar go too, except the pinned ones (`pin`: the
+    // compact palette's button, Run, Undo — what a narrow pane cannot work without).
+    for (let g = bar.length - 1; g >= 0 && total(bar) > width; g--) {
+        for (let k = bar[g].items.length - 1; k >= 0 && total(bar) > width; k--) {
+            if (bar[g].items[k].pin) continue;
+            dropped.add(bar[g].items[k]);
+            bar[g].items.splice(k, 1);
         }
-        return total <= width;
-    };
-    const maxPri = [3, 2, 1].find(fits) || 1;
-    const bar = groups.map(g => ({...g, items: g.items.filter(i => (i.pri || 3) <= maxPri)})).filter(g => g.items.length);
-    const more = groups.map(g => ({...g, items: g.items.filter(i => (i.pri || 3) > maxPri)})).filter(g => g.items.length);
-    return {bar, more};
+    }
+    const more = groups.map(g => ({...g, items: g.items.filter(i => dropped.has(i))})).filter(g => g.items.length);
+    return {bar: bar.filter(g => g.items.length), more};
 };
