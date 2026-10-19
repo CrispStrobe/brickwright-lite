@@ -122,6 +122,7 @@ on:
       - 'docs/VENDOR-DIVERGENCE-SB3-CREATOR.md'
       - 'docs/WAVE-OPEN-DEFECTS.md'
       - 'docs/app-store-metadata.md'
+      - 'docs/ARCADE-888-OPEN-FAILURES.md'
 permissions:
   contents: read
   pages: write
