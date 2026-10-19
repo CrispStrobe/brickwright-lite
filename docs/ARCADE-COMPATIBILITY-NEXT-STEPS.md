@@ -14,9 +14,11 @@ compatibility or qualify the pending source as part of `main`.
 ## Integration blocker
 
 The foundation in [PR #888](https://github.com/CrispStrobe/brickwright-lite/pull/888)
-is still open. At this checkpoint six enabled checks failed: four unit shards
-and the light/heavy browser checks. Refresh the exact head and checks before
-acting; these are observations, not permanent classifications.
+is still open. The current composed head is `f288fd633`. Its observed failures
+include the source controls, vendor check, four unit shards, deployable build
+and heavy browser check. The light browser check passed. Refresh the exact
+head and checks before acting; these are observations, not permanent
+classifications. Do not dispatch another campaign merely to inspect a result.
 
 The subsequent constructor, callback, Sprite and importer work depends on that
 foundation. A source audit found 22 owned paths absent from the checked main
@@ -31,7 +33,7 @@ main with an older integration tree or silently replace dependency pins.
 | --- | --- | --- |
 | Constructor parameter properties | Ordered public/private/readonly parameter-property initialization; instance-local state and callback fields | Main integration, new composed regression and editor authoring |
 | Constructor callbacks | Canonical Number and Void signatures, live receiver ownership, separate callback and object generations | Broader games, paused/debugger paths and graphical authoring |
-| Mutable globals in exported callbacks | Current variable identities, complete writer checks and initialization ordering; callbacks keep a shared mutable cell | Reimport of the exact emitted MakeCode map and visible editing |
+| Mutable globals in exported callbacks | Current variable identities, complete writer checks and initialization ordering; callbacks keep a shared mutable cell | Exact emitted map reimport passed; affected runtime and visible editing remain |
 | Owned Sprite acceleration | Number reads from the actual `ay` property through proven owned-array loops | Other properties, arbitrary collections, actual affected game execution and GUI |
 | Parser/class selection | Structural evidence expires on physical or metadata changes; uncertain ASTs retain the original path | Complete corpus and current-main integration |
 | Declaration identity preparation | Private demand in the existing producer engine avoids unused result propagation; public eager analysis and all parameter/default validation remain | Composition with the Sprite proof, complete suite/corpus and affected guest |
@@ -84,21 +86,30 @@ are understood, affected clean guest qualification passes, and the reviewed
 merge tree and actual merge parents/tree agree. Use a normal matched-head merge.
 No force push, automatic merge or borrowed old-head success.
 
-### 2. Compose the declaration and Sprite proofs correctly
+### 2. Finish analysis-cost fixes and complete-suite qualification
 
-Both candidates currently use an internal `analyseGraph` argument for different
-purposes. Their direct composition conflicts. Preserve the existing Sprite proof
-argument and route the declaration-identity context through a distinct argument;
-update only its real private call sites. Preserve recursive Sprite proofs and
-the complete public eager/Throw path. Do not overwrite one implementation with
-the other or expose a public option that bypasses value validation.
+The declaration/Sprite composition now preserves the private Sprite argument
+and the separate declaration-identity argument. Public eager analysis and Throw
+validation remain intact. Two whole 218-test attempts reached 210 passes with
+eight export controls and the whole-run summary unobserved. Their original
+terminal/rusage evidence remains retained; neither attempt is a complete pass.
 
-Review the composition and run both complete component modules, then the whole
-combined suite. The expected suite becomes 218 tests if the original 185, the
-17 cost controls and both eight-test feature modules are unchanged. Derive the
-actual catalogue from source; do not accept a predicted count as a result.
-Capture actual CPU/rusage, terminal state and cleanup. Keep the existing limits;
-no unchanged retries, test splitting or filtered substitutes for a whole result.
+An actual Counter translation/Creator/Code/export profile identifies repeated
+class-source snapshot validation during metadata cloning as a major cost.
+Optimize the actual compiler-owned operation while preserving the public
+foreign-AST path, physical-change expiry, all positive type checks and current
+export writer validation. Do not replace these checks with a saved type cache.
+A separate helper aggregate has passed its 25 focused controls; this does not
+establish whole-suite or corpus capacity.
+
+The last eight export tests also repeat one identical synchronous fixture
+pipeline sixteen times. A candidate may build that genuine pipeline once and
+supply a fresh complete graph to every control. Keep all edits, restoration,
+export calls and assertions. Fixture reuse is not a product performance claim.
+
+Derive the final whole-suite catalogue from source, including added controls.
+Capture actual CPU/rusage, terminal state and cleanup under the existing limits.
+No unchanged retries, increased limits or filtered substitutes for a whole pass.
 
 ### 3. Finish the complete conversion census
 
@@ -116,12 +127,13 @@ milestone; a successful prefix is insufficient.
 
 ### 4. Close the export permutations and affected native cases
 
-Reimport the exact already compiled Counter output map through the public
-importer, actual Creator, Code and SB3 paths. Read the retained emitted files;
-do not rerun the successful export or SDK merely to obtain them. Preserve
-constructor properties, both allocations, live mutable-global reads, Void
-callbacks, actual blocks and per-archive assets. Then qualify affected current
-native behavior separately; compilation is not execution.
+The exact previously SDK-accepted Counter map has now passed public import,
+Creator, SB3, actual Code decompile and a second Creator/SB3 roundtrip on the
+current foundation. An independent saved-data audit checked both archives,
+connected block order, constructor properties, allocations and asset joins.
+The successful original SDK compile was not rerun. This is structural
+qualification; numeric runtime results, current native behavior and visible
+editing remain separate requirements.
 
 The unchanged Juggler/mega-bounce source has a prepared targeted diagnostic.
 Only its original source was retained; its device configuration is explicitly
@@ -141,8 +153,9 @@ journey. In particular cover:
   inputs/results, with readable editable blocks and useful diagnostics.
 - Sprite property editing, ownership/lifetime feedback, controllers/widgets,
   animation frames and image changes that alter what the game actually draws.
-- Tile names on MakeCode export, legacy color maps, sprite placement on tiles,
-  and save/reopen of a painted level.
+- Qualify the existing tile-name export, legacy-map editor, tile placement and
+  painted-level save/reopen implementations before classifying them as missing
+  code. Track each browser journey and any actual defect separately.
 - Graphics palettes, backgrounds, walls/collisions and resource identity across
   Code, blocks, asset editors and exports.
 
@@ -181,3 +194,34 @@ sb3-creator and Arrays supplier revisions and main's unrelated newer pins,
 with coherent canonical files, mirrors, notices and provenance. The composed
 source is a candidate until its independent source review, affected execution
 and exact-head hosted checks complete.
+
+## Current qualification queue
+
+1. Repair source-control installation prerequisites and reconcile the obsolete
+   downstream parser wrapper with the already-fixed pinned supplier. Keep the
+   strict canonical identity check and supplier revision unchanged. Sixteen
+   affected workflow/parser controls passed; the final hosted check is pending.
+2. Classify all current unit failures from the retained official originals.
+   Preserve genuine implementation failures and repair obsolete fixtures only
+   with meaningful controls.
+3. The build source manifest correctly rejected a modified tracked GUI lockfile.
+   Diagnose which normal installation changes it; make the reviewed dependency
+   graph reproducible. Do not exempt the lockfile or erase an unexplained diff.
+4. The Carnival browser assertion reads a virtualized editor viewport. Capture
+   the actual full CodeMirror document and import state before applying the same
+   semantic assertion. Full-document behavior is currently unobserved; no
+   Carnival implementation fix is established.
+5. A project-palette painter candidate passed four pure controls and genuine
+   installation qualification. Its actual artwork test stopped before any test
+   or VM stage because jsdom imports a builtin blocked by the pure harness.
+   Correct that observation boundary while keeping process execution forbidden,
+   then qualify actual Code, archive save/reopen, export and reimport. Actual
+   rendered colors and browser interaction remain separate.
+6. Add graphical authoring for structured class fields/modifiers/parameters and
+   Number/Void callback signatures. Conversion support alone does not supply
+   these controls. Require blank-project creation and editable roundtrips.
+
+The completion ledger remains **184 raw sources plus 41 project contexts**.
+Historical raw results remain **147 translated / 36 partial / 1 malformed**;
+the complete current 225-subject result is **unmeasured**. Focused passes,
+fixture improvements and SDK acceptance do not reduce that count.
