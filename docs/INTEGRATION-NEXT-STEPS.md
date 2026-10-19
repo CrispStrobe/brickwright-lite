@@ -430,3 +430,11 @@ cleanup. Missing ownership, permission or family facts must remain refusals.
 Exact final-head checks and affected actual installed qualification still precede
 merge. TestFlight, instrumentation and later SPIKE lifecycle qualification remain
 separate pending work.
+
+The separate default-off interface inventory collects installed Xcode/simctl and
+launchctl help with fixed commands only. It rejects mixed modes/runtime selection
+and excludes app builds and delivery. Retain and independently read one frozen
+actual result before choosing a device/boot/process/service ownership interface.
+Tool help is an interface fact; it cannot substitute for actual ownership or
+resource admission. The command-cleanup v6 fixed-helper original has passed its
+bounded standalone joins, with simulator/app/family claims still false.
