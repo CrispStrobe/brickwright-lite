@@ -3,11 +3,13 @@ import assert from 'node:assert/strict';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 const text=value=>[1,[10,value]];
+// Real Scratch procedure blocks carry shadow/topLevel; the strict ordinary
+// symbol checks (46e09dc0f..30fe39989) require them.
 function fixture(type='String',argument=null) {
  const blocks={
-  def:{opcode:'procedures_definition',topLevel:true,parent:null,next:'declare',inputs:{custom_block:[1,'proto']},fields:{}},
-  proto:{opcode:'procedures_prototype',parent:'def',next:null,inputs:{arg:[1,'formal']},fields:{},mutation:{proccode:'holdText %s',argumentnames:'["thisText"]',argumentids:'["arg"]',argumentdefaults:'[""]',warp:'false'}},
-  formal:{opcode:'argument_reporter_string_number',parent:'proto',shadow:true,inputs:{},fields:{VALUE:['thisText',null]}},
+  def:{opcode:'procedures_definition',topLevel:true,shadow:false,parent:null,next:'declare',inputs:{custom_block:[1,'proto']},fields:{}},
+  proto:{opcode:'procedures_prototype',parent:'def',next:null,topLevel:false,shadow:true,inputs:{arg:[1,'formal']},fields:{},mutation:{proccode:'holdText %s',argumentnames:'["thisText"]',argumentids:'["arg"]',argumentdefaults:'[""]',warp:'false'}},
+  formal:{opcode:'argument_reporter_string_number',parent:'proto',shadow:true,topLevel:false,next:null,inputs:{},fields:{VALUE:['thisText',null]}},
   declare:{opcode:'arcade_declareParameterConstraint',parent:'def',next:'display',inputs:{},fields:{PROCEDURE:['holdText %s',null],PARAMETER:['thisText',null],TYPE:[type,null]}},
   display:{opcode:'arcade_showLongText',parent:'declare',next:null,fields:{LAYOUT:['Bottom',null]},inputs:{TEXT:[1,'read']}},
   read:{opcode:'argument_reporter_string_number',parent:'display',inputs:{},fields:{VALUE:['thisText',null]}}

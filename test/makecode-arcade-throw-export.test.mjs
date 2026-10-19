@@ -17,9 +17,11 @@ test('opaque Throw operands and unknown, terrain or creation owners remain named
  for(const owner of ['arcade_whenRegisteredCreated','arcade_whenRegisteredWall','arcade_whenRegisteredTile','event_whenbroadcastreceived'])assert.ok(projectToArcade(project({opcode:'math_number',shadow:true,fields:{NUM:['20',null]}},owner)).unsupported.some(message=>message.includes('Throw export')),owner);
 });
 test('ordinary procedure Throw keeps real call ancestry and refuses a creation-handler caller',()=>{
+ // Real Scratch procedure blocks carry shadow/topLevel; the strict ordinary
+ // symbol checks (46e09dc0f..30fe39989) require them.
  const p=project({opcode:'math_number',shadow:true,fields:{NUM:['20',null]}}),b=p.targets[0].blocks;
  b.hat.next='call';b.call={opcode:'procedures_call',parent:'hat',next:null,fields:{},inputs:{},mutation:{proccode:'fail',argumentids:'[]'}};
- b.def={opcode:'procedures_definition',parent:null,topLevel:true,next:'throw',fields:{},inputs:{custom_block:[1,'proto']}};b.proto={opcode:'procedures_prototype',parent:'def',next:null,fields:{},inputs:{},mutation:{proccode:'fail',argumentids:'[]',argumentnames:'[]',argumentdefaults:'[]'}};b.throw.parent='def';
+ b.def={opcode:'procedures_definition',parent:null,topLevel:true,shadow:false,next:'throw',fields:{},inputs:{custom_block:[1,'proto']}};b.proto={opcode:'procedures_prototype',parent:'def',next:null,topLevel:false,shadow:true,fields:{},inputs:{},mutation:{proccode:'fail',argumentids:'[]',argumentnames:'[]',argumentdefaults:'[]'}};b.throw.parent='def';
  let out=projectToArcade(p);assert.deepEqual(out.unsupported,[]);assert.match(out.ts,/function fail\s*\(\)\s*\{\s*throw 20/);assert.doesNotMatch(out.ts,/function fail\s*\(\):/);
  b.hat.opcode='arcade_whenRegisteredCreated';out=projectToArcade(p);assert.ok(out.unsupported.some(message=>message.includes('Throw export')));
 });
