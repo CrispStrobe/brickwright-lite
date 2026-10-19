@@ -23,3 +23,27 @@ Mutable reference metadata must be the actual native outer and tuple objects con
 Publication first completes all potentially trapping observations for every operand loan, then checks every trusted native backing and parsed-data row in one callback-free final pass. No later raw-reference, graph or WeakRef callback can invalidate an earlier operand after that pass. This new narrowed profile has not yet been executed or qualified; earlier source-only mutable-box examples are retained as unqualified predecessors, not evidence of an existing feature regression.
 
 Metadata module loading and `getInfo()` remain available when native WeakRef is absent. The operation service is permanently inert on that engine: this candidate provides no strong-reference fallback or Array runtime qualification there. Installing a WeakRef constructor after module loading cannot activate the captured unsupported profile.
+
+## Failure routing candidate
+
+The current native controls exposed a distinction between rejecting an unsafe
+Array operation and correctly retiring its actual VM fiber. The candidate keeps
+strict value and primitive proofs, while using a separate engine-owned witness
+only to route failures from the current `valueBinary` or `createReference` call.
+The witness is an opaque token: it exposes no engine arguments or utility.
+Internal dispatch forwards context only to private lease validation; the token
+alone cannot invoke a value API or retire a fiber. Original entry ownership
+survives later input/cache/registration edits solely for rejection.
+Copied arguments cannot borrow value authority. An arbitrary Error or publicly
+returned witness cannot supply the private rejection lease; returned, unrelated
+and stale calls cannot retire another fiber. Existing legacy caught-copy probes
+retain their behavior. Malformed tracked references are recognized for rejection
+without granting their altered shape any access. Fresh native and original
+three-context semantics qualification are still required.
+
+Private failure state uses captured native map and reflection operations.
+Failure dispatch and lease consumption hold their actual module functions from
+initialization, so later loader/prototype edits cannot intercept engine context.
+The cyclic helpers publish stable frozen function exports before loading their
+dependencies; no runtime dispatcher registration or caller trust flag is used.
+These additional controls remain pending fresh native qualification.

@@ -1,7 +1,17 @@
 // Private synchronous primitive execution loan. Only the engine's current
 // cached operation supplies this context; it never survives an awaited result.
+// Private call/failure state never dispatches mutable prototype hooks after
+// guest callbacks. These closures expose neither maps nor their context rows.
+const callApply=Reflect.apply,callFreeze=Object.freeze;
+const callWeakGet=WeakMap.prototype.get,callWeakSet=WeakMap.prototype.set;
+const callWeakHas=WeakMap.prototype.has,callWeakDelete=WeakMap.prototype.delete;
+const callGet=(map,key)=>callApply(callWeakGet,map,[key]);
+const callSet=(map,key,value)=>callApply(callWeakSet,map,[key,value]);
+const callHas=(map,key)=>callApply(callWeakHas,map,[key]);
+const callDelete=(map,key)=>callApply(callWeakDelete,map,[key]);
 const active = new WeakMap();
 const activeCalls = new WeakMap();
+const failureCalls = new WeakMap();
 const cachedOwner = require('./bw-cached-primitive-owner');
 const conditionWaits = require('./bw-source-condition-waits');
 const sceneClockNumber = require('./bw-scene-clock-number');
@@ -54,47 +64,76 @@ function owned(record) {
         container._cache?._executeCached?.[root]?._ops.includes(operation);
 }
 function invoke(runtime,thread,container,operation,args,util,primitive) {
-    if(active.has(runtime))throw new Error('Primitive execution ownership cannot be reentered');
-    const record={runtime,thread,container,operation,args,util,root:thread.peekStack(),block:container.getBlock(operation.id),blockFunction:operation._blockFunction};
+    if(callHas(active,runtime))throw new Error('Primitive execution ownership cannot be reentered');
+    const record={runtime,thread,container,operation,args,util,opcode:operation.opcode,blockId:operation.id,target:thread.target,root:thread.peekStack(),block:container.getBlock(operation.id),blockFunction:operation._blockFunction};
     if(!record.block || typeof primitive!=='function' || !owned(record))throw new Error('Primitive execution requires the actual cached caller');
-    active.set(runtime,record);
-    try {const result=primitive();return conditionWaits.after(record,sceneClockNumber.after(record,result));}finally{try{sceneClockNumber.finish(record);}finally{active.delete(runtime);}}
+    callSet(active,runtime,record);
+    try {const result=primitive();return conditionWaits.after(record,sceneClockNumber.after(record,result));}finally{try{sceneClockNumber.finish(record);}finally{callDelete(active,runtime);}}
 }
 // Only a genuine synchronous nested VM thread may suspend an existing loan.
 // No callback, copied utility or retained argument snapshot can borrow it.
 function stepNested(util,args,child) {
-    const runtime=util?.runtime,record=runtime&&active.get(runtime),sequencer=runtime?.sequencer;
+    const runtime=util?.runtime,record=runtime&&callGet(active,runtime),sequencer=runtime?.sequencer;
     if(!record||record.util!==util||record.args!==args||!owned(record))throw new Error('Nested primitive step requires the actual current caller');
     if(!child||child===record.thread||!runtime.threads.includes(child)||!runtime.isActiveThread(child)||child.isKilled||
         child.status===child.constructor.STATUS_DONE||!runtime.targets.includes(child.target)||
         child.blockContainer!==child.target.blocks||!child.blockContainer.getBlock(child.peekStack())||
         typeof sequencer.stepThread!=='function')throw new Error('Nested primitive step requires a distinct live VM child');
     const previousThread=util.thread,previousSequencer=util.sequencer,previousActive=sequencer.activeThread;
-    active.delete(runtime);
+    callDelete(active,runtime);
     try {sequencer.activeThread=child;return sequencer.stepThread(child);}
-    finally {util.thread=previousThread;util.sequencer=previousSequencer;sequencer.activeThread=previousActive;active.set(runtime,record);}
+    finally {util.thread=previousThread;util.sequencer=previousSequencer;sequencer.activeThread=previousActive;callSet(active,runtime,record);}
 }
 function current(util,args) {
-    const record=util?.runtime && active.get(util.runtime);
+    const record=util?.runtime && callGet(active,util.runtime);
     return record && record.util===util && record.args===args && owned(record) ? record.block : null;
 }
 // Rejection-only witness for an invoker which already passed strong ownership.
 // Current metadata/cache/registration may subsequently become the reason to
 // reject. This witness never authorizes effects or Number interpretation.
 function captureActiveCall(util,args) {
-    const record=util?.runtime&&active.get(util.runtime);
+    const record=util?.runtime&&callGet(active,util.runtime);
     if(!record||record.util!==util||record.args!==args||!owned(record))return null;
     try {if(cachedOwner(record.runtime,util,args,record.block.opcode,[])!==record.block)return null;}catch{return null;}
-    const token=Object.freeze({});
-    activeCalls.set(token,{record,runtime:record.runtime,thread:record.thread,target:record.thread.target,
+    const token=callFreeze({});
+    callSet(activeCalls,token,{record,runtime:record.runtime,thread:record.thread,target:record.thread.target,
         container:record.container,root:record.root,args,util});
     return token;
 }
+// Rejection-only recovery for a trusted current Array boundary. The public
+// token is opaque: no actual engine args, util or block context escapes.
+function captureFailureCall(runtime,opcode) {
+    if(opcode!=='arrays_valueBinary'&&opcode!=='arrays_createReference')return null;
+    const record=runtime&&callGet(active,runtime);
+    // active is published only AFTER invoke validated the original cached
+    // caller. Later source/cache edits may themselves require rejection.
+    if(!record||record.opcode!==opcode)return null;
+    const token=callFreeze({});
+    callSet(activeCalls,token,{record,runtime,thread:record.thread,target:record.target,
+        container:record.container,root:record.root,args:record.args,util:record.util});
+    if(!isActiveCall(token,record.util,record.args))return null;
+    callSet(failureCalls,token,{runtime,opcode,blockId:record.blockId});
+    return token;
+}
+function isFailureActive(token,runtime,opcode,blockId) {
+    const mark=callGet(failureCalls,token),saved=callGet(activeCalls,token);
+    return !!mark&&!!saved&&mark.runtime===runtime&&mark.opcode===opcode&&
+        (blockId===undefined||mark.blockId===blockId)&&
+        saved.runtime===runtime&&saved.record.opcode===opcode&&
+        isActiveCall(token,saved.util,saved.args);
+}
+function dispatchArrayFailure(token,error,lease) {
+    const mark=callGet(failureCalls,token),saved=callGet(activeCalls,token);
+    if(!mark||!saved||!isFailureActive(token,mark.runtime,mark.opcode,mark.blockId))throw error;
+    // Internal forwarding only. Public callers still cannot manufacture the
+    // Array service's private one-use lease, and never receive this context.
+    return arrayFailureDispatcher(mark.runtime,saved.args,saved.util,error,lease,mark.blockId);
+}
 function isActiveCall(token,util,args) {
-    const saved=activeCalls.get(token);
+    const saved=callGet(activeCalls,token);
     if(!saved||saved.util!==util||saved.args!==args)return false;
     const {runtime,thread,target,container,root,record}=saved;
-    return active.get(runtime)===record&&runtime.sequencer.activeThread===thread&&
+    return callGet(active,runtime)===record&&runtime.sequencer.activeThread===thread&&
         runtime.isActiveThread(thread)&&runtime.threads.includes(thread)&&!thread.isKilled&&
         thread.status!==thread.constructor.STATUS_DONE&&runtime.targets.includes(target)&&
         thread.target===target&&thread.blockContainer===container&&target.blocks===container&&
@@ -104,4 +143,8 @@ function beforeInputs(runtime,thread,container,blockCached) {
     const ready=conditionWaits.beforeInputs(runtime,thread,container,blockCached);
     sceneClockNumber.beforeInputs(runtime,thread,container,blockCached,ready);return ready;
 }
-module.exports=Object.freeze({beforeInputs,invoke,current,stepNested,handles,permitsNumberInput,captureActiveCall,isActiveCall});
+module.exports=Object.freeze({beforeInputs,invoke,current,stepNested,handles,permitsNumberInput,captureActiveCall,captureFailureCall,isFailureActive,dispatchArrayFailure,isActiveCall});
+
+// Exceptions publishes one stable frozen function object at module entry;
+// no late Module._load call receives a private current-call context.
+const arrayFailureDispatcher=require('./bw-arcade-exceptions').rejectArrayOperation;

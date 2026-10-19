@@ -1,3 +1,7 @@
+// Stable entry exports close the owner -> exceptions -> operations CJS cycle.
+// All values are hoisted function declarations, invoked only after boot completes.
+const primitiveFreeze=Object.freeze;
+module.exports=primitiveFreeze({registerSource,bind,consumeFailureLease});
 // Opt-in native Array operation ownership, NOT an element/type certificate.
 // Only trusted builtin construction receives a module-held registration token.
 const primitiveOwner = require('./bw-primitive-owner');
@@ -29,6 +33,9 @@ const primitiveArray=Array.isArray, primitiveText=String, primitiveNumber=Number
 const primitiveInteger=Number.isInteger, primitiveApply=Reflect.apply;
 const primitiveWeakGet=WeakMap.prototype.get, primitiveWeakSet=WeakMap.prototype.set;
 const primitiveWeakDelete=WeakMap.prototype.delete, primitiveWeakHas=WeakMap.prototype.has;
+const leaseGet=(map,key)=>primitiveApply(primitiveWeakGet,map,[key]);
+const leaseSet=(map,key,value)=>primitiveApply(primitiveWeakSet,map,[key,value]);
+const leaseDelete=(map,key)=>primitiveApply(primitiveWeakDelete,map,[key]);
 const primitiveSetHas=Set.prototype.has,primitiveSetAdd=Set.prototype.add,primitiveSetDelete=Set.prototype.delete;
 const primitiveUndefined=values.UNDEFINED;
 const primitiveSetSize=Object.getOwnPropertyDescriptor(Set.prototype,'size').get;
@@ -91,6 +98,18 @@ const referenceIdentity = value => {
         kind.value!=='array'||typeof id.value!=='string'||typeof scope.value!=='string')return null;
     return {kind:kind.value,id:id.value,scope:scope.value};
 };
+// Failure detection must still recognize the existing owned body behind an
+// extra-field wrapper. This identity never grants access or primitive authority;
+// a detected tracked reference must subsequently pass exactReference or reject.
+const failureReferenceIdentity = value => {
+    if(!value||typeof value!=='object')return null;
+    const outer=primitiveDescriptor(value,'bwReference');
+    if(!outer||!primitiveOwn(outer,'value')||!outer.value||typeof outer.value!=='object')return null;
+    const ref=outer.value,kind=primitiveDescriptor(ref,'kind'),id=primitiveDescriptor(ref,'id'),scope=primitiveDescriptor(ref,'scope');
+    if(!kind||!id||!scope||!primitiveOwn(kind,'value')||!primitiveOwn(id,'value')||!primitiveOwn(scope,'value')||
+        kind.value!=='array'||typeof id.value!=='string'||typeof scope.value!=='string')return null;
+    return {kind:kind.value,id:id.value,scope:scope.value};
+};
 const exactReference = value => referenceIdentity(value)!==null;
 const tuple = value => {
     const identity=referenceIdentity(value);
@@ -107,7 +126,8 @@ function registerSource(source) {
 function ownsActualCall(record) {
     return !record.closed&&record.state.active&&!record.state.disposed&&
         record.generation===record.state.generation&&record.instance()===record.boundInstance&&
-        primitiveOwner.isActiveCall(record.actualCall,record.util,record.args);
+        (record.failureOnly?primitiveOwner.isFailureActive(record.failureCall,record.runtime,'arrays_'+record.method):
+            primitiveOwner.isActiveCall(record.actualCall,record.util,record.args));
 }
 // Capture data without invoking metadata accessors. Identity alone cannot
 // detect in-place changes to fields, input entries or mutation properties.
@@ -206,10 +226,20 @@ function graphValid(record) {
         cachedOwner(record.runtime,record.util,record.args,record.opcode,[])===record.block;}
     catch {return false;}
 }
-function consumeFailureLease(runtime,args,util,error,lease) {
-    const saved=failures.get(lease);
-    if(!saved||saved.error!==error||saved.record.runtime!==runtime||saved.record.args!==args||saved.record.util!==util||!ownsActualCall(saved.record))return false;
-    failures.delete(lease);return Object.freeze({block:saved.record.blockId});
+function consumeFailureLease(runtime,args,util,error,lease,failureBlock) {
+    const saved=leaseGet(failures,lease),record=saved?.record;
+    if(!saved||saved.error!==error||record.runtime!==runtime||!ownsActualCall(record))return false;
+    if(record.failureOnly){
+        if(!primitiveOwner.isActiveCall(record.failureCall,util,args)||
+            !primitiveOwner.isFailureActive(record.failureCall,runtime,'arrays_'+record.method,failureBlock)||
+            typeof failureBlock!=='string')return false;
+        // Internal dispatch supplies the original entry block ID. The boolean
+        // token check binds it without exposing args/util or revalidating a
+        // graph/cache change which can itself be the reason to reject.
+        leaseDelete(failures,lease);return primitiveFreeze({block:failureBlock});
+    }
+    if(record.args!==args||record.util!==util)return false;
+    leaseDelete(failures,lease);return primitiveFreeze({block:record.blockId});
 }
 function bind(runtime,registration,source,instance) {
     if(!registrations.has(registration)||registrations.get(registration)!==source)throw Error('Array operation registration/source binding differs');
@@ -242,18 +272,21 @@ function bind(runtime,registration,source,instance) {
         if(state.disposed&&fresh&&instance()&&registrations.get(registration)===source)state={active:false,disposed:false,generation:state.generation+1,lastTargets:new Set(runtime.targets)};
         else invalidate();
     });
-    const reject=(record,message)=>{
+    const rejectError=(record,error)=>{
         if(record?.method==='valueBinary')record.primitiveExpired=true;
         if(record?.method==='createReference')record.literalExpired=true;
-        const error=new Error('Array operation ownership: '+message);
         if(record?.method==='createReference'&&!record.literalFailure)record.literalFailure=error;
-        if(record&&ownsActualCall(record)&&exceptions.arrayCoordinatorReady(runtime)){
-            const lease=Object.freeze({});failures.set(lease,{record,error});
-            try {return exceptions.rejectArrayOperation(runtime,record.args,record.util,error,lease);}
-            finally {failures.delete(lease);}
+        // Only this bound service can issue a lease. Already adopted signals
+        // cannot pass ownsActualCall after retirement and are rethrown unchanged.
+        if(record&&record.runtime===runtime&&record.binding===binding&&ownsActualCall(record)&&exceptions.arrayCoordinatorReady(runtime)){
+            const lease=primitiveFreeze({});leaseSet(failures,lease,{record,error});
+            try {return record.failureOnly?primitiveOwner.dispatchArrayFailure(record.failureCall,error,lease):
+                exceptions.rejectArrayOperation(runtime,record.args,record.util,error,lease);}
+            finally {leaseDelete(failures,lease);}
         }
         throw error;
     };
+    const reject=(record,message)=>rejectError(record,new primitiveError('Array operation ownership: '+message));
     const checkBody=(record,body)=>{
         const saved=body&&typeof body==='object'&&primitiveApply(primitiveWeakGet,bodies,[body]);
         if(!saved)return;
@@ -263,9 +296,12 @@ function bind(runtime,registration,source,instance) {
     const scan=(record,value,seen=new Set())=>{
         if(!value||typeof value!=='object'||primitiveApply(primitiveSetHas,seen,[value]))return;
         primitiveApply(primitiveSetAdd,seen,[value]);checkBody(record,value);
-        const identity=referenceIdentity(value),key=identity&&JSON.stringify([identity.kind,identity.id,identity.scope]);
+        const identity=failureReferenceIdentity(value),key=identity&&JSON.stringify([identity.kind,identity.id,identity.scope]);
         const known=key&&(()=>{const weak=primitiveApply(primitiveMapGet,references,[key]);return weak&&primitiveApply(primitiveDeref,weak,[]);})();
-        if(identity)checkBody(record,lookupIdentity(runtime,identity));
+        const lookedUp=lookupIdentity(runtime,identity);
+        if((known||lookedUp&&primitiveApply(primitiveWeakHas,bodies,[lookedUp]))&&!exactReference(value))
+            reject(record,'tracked reference requires its exact raw shape');
+        if(identity)checkBody(record,lookedUp);
         if(known){checkBody(record,known);
             if(lookupIdentity(runtime,identity)!==known)reject(record,'reference/body scope differs');}
         for(const property of Reflect.ownKeys(value)){
@@ -389,6 +425,13 @@ function bind(runtime,registration,source,instance) {
     };
     const service=Object.freeze({
         begin(method,args,util){
+            const failureCall=(method==='valueBinary'||method==='createReference')&&
+                primitiveOwner.captureFailureCall(runtime,'arrays_'+method);
+            const failureRecord=failureCall?{runtime,binding,failureOnly:true,failureCall,
+                state,generation:state.generation,instance,boundInstance:instance(),method,closed:false}:null;
+            try {
+            if(failureCall&&!primitiveOwner.current(util,args))
+                reject(failureRecord,'tracked Array requires its current operation');
             if((method==='valueBinary'||method==='createReference')&&!primitiveIntrinsicsCurrent())throw Error('Array primitive intrinsic surface changed');
             if(!methods.has(method))throw Error('Array operation method is not registered');
             if(!state.active||state.disposed||!exceptions.arrayCoordinatorReady(runtime)||util?.runtime!==runtime)return undefined;
@@ -401,9 +444,11 @@ function bind(runtime,registration,source,instance) {
             const actualCall=primitiveOwner.captureActiveCall(util,args);if(!actualCall)return undefined;
             const ticket=Object.freeze({}),record={runtime,binding,actualCall,blockId:block.id,opcode:block.opcode,metadataUnchanged:captureContext(util,block),state,generation:state.generation,args,util,thread:util.thread,root:util.thread.peekStack(),block,primitive:runtime.getOpcodeFunction(block.opcode),instance,boundInstance,method,closed:false,previous};
             tickets.set(ticket,record);inflight.set(runtime,record);return ticket;
+            }catch(error){return rejectError(failureRecord,error);}
         },
         access(ticket,facts){
             const record=primitiveApply(primitiveWeakGet,tickets,[ticket]);
+            try {
             const literal=facts?.kind==='literal-ingress',literalBody=facts?.kind==='literal-body';
             if(literal){
                 if(!primitiveIntrinsicsCurrent()){
@@ -463,16 +508,18 @@ function bind(runtime,registration,source,instance) {
             if(record&&(record.method==='createReference'||record.method==='valueBinary')&&
                 (!primitiveIntrinsicsCurrent()||!graphValid(record)||!primitiveIntrinsicsCurrent()))reject(record,'Array operation proof expired during input observation');
             if(literal)record.literalWitness=true;
+            }catch(error){return rejectError(record,error);}
         },
         primitive(ticket,facts){
             const record=primitiveApply(primitiveWeakGet,tickets,[ticket]);
-            if(!primitiveIntrinsicsCurrent()){
-                if(record)record.primitiveExpired=true;
-                throw new primitiveError('Array primitive intrinsic surface changed');
-            }
-            if(record&&(record.runtime!==runtime||record.binding!==binding))throw Error('Array primitive ticket belongs to another binding');
-            try{return primitiveLoan(record,facts);}
-            catch(error){if(record)record.primitiveExpired=true;throw error;}
+            try {
+                if(!primitiveIntrinsicsCurrent()){
+                    if(record)record.primitiveExpired=true;
+                    throw new primitiveError('Array primitive intrinsic surface changed');
+                }
+                if(record&&(record.runtime!==runtime||record.binding!==binding))throw Error('Array primitive ticket belongs to another binding');
+                return primitiveLoan(record,facts);
+            }catch(error){if(record)record.primitiveExpired=true;return rejectError(record,error);}
         },
         finish(ticket,result,facts){
             const record=primitiveApply(primitiveWeakGet,tickets,[ticket]);if(!record)return;
@@ -538,9 +585,8 @@ function bind(runtime,registration,source,instance) {
                         primitiveApply(primitiveMapSet,references,[key,weak]);if(collected)primitiveApply(primitiveFinalizationRegister,collected,[body,{key,weak}]);
                     }
                 }
-            } finally {close();}
+            } catch(error){return rejectError(record,error);} finally {close();}
         }
     });
     return service;
 }
-module.exports=Object.freeze({registerSource,bind,consumeFailureLease});
