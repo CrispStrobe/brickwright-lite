@@ -1,3 +1,27 @@
+## bw-circuit-ui pin bump for B24 terminal geometry — 2026-10-19
+
+CLAIMED and done in one PR — Claude (circuit-editor lane). Pin 6721d21 ->
+bda0157410a6704ae859a19398a8a742cdfae50b (bw-circuit-ui #96: terminals no longer collapse onto
+the part centre -- light_sensor, eeprom, seven_segment, oscilloscope,
+function_gen -- and the part-face census gates that no two terminals of one
+part share a point). CUI dependencies unchanged: exact SHA swap across the
+same 16 pin surfaces.
+
+## bw-circuit-ui pin bump for B23 faces — 2026-10-19
+
+CLAIMED and done in one PR — Claude (circuit-editor lane). Pin feb0557 ->
+6721d21e1ff8662dc4c21653833987a5bfd46b53 (bw-circuit-ui #95: terminal-dot names
+no longer pile up; symbol faces for npn, pnp, switch, ldr and the DIP switch,
+the most-used generic kinds in the examples census). CUI dependencies
+unchanged: exact SHA swap across the same 16 pin surfaces.
+
+## bw-circuit-ui pin bump for B22 chip faces — 2026-10-18
+
+CLAIMED and done in one PR — Claude (circuit-editor lane). Pin fe89e34 ->
+feb0557dbf7f8a11cc2a18fc946a269a4cd0fe09 (bw-circuit-ui #93: STC15, STC MCU and
+TMS9918A chip faces; census --generic-shots and generic/chips lists, which the
+example-faces report in production-sw-probe reads). CUI dependencies
+unchanged: exact SHA swap across the same 16 pin surfaces as the B21 bump.
 ## CI: vendor-freshness skips prose-only pull requests — 2026-10-18
 
 CLAIMED and done in one PR — Claude. Free-tier runner slots: the `pull_request`
