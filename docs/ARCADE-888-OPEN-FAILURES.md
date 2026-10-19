@@ -108,12 +108,29 @@ changed. Source of the list: hosted Build run 39297263647 (head f2ecafef1).
 |---|---|---|---|
 | I | `test/makecode-arcade-legacy-tile-collisions.test.mjs` | legacy collision filters/order, captures, yielding, snapshot indices and scenes match PXT through all roundtrips | 'ABCA' !== 'ABCABC'. Fails only with the stacked PRs merged; tried: none yet; next: compare callback order with #888 alone. |
 
-## Failing browser gates (no known-open mechanism; not disabled)
+## Browser gates
 
-| Job | Gate | Error | Next step |
-|---|---|---|---|
-| browser (heavy) | `scripts/verify-arcade-carnival-browser.mjs` | `import exposes the carnival pseudocode command` | The carnival import reports unsupported constructs; expected to clear with groups A/B. Re-check after those land. |
-| browser (robotlab) | `scripts/lib/sim-lab-touch-gate.mjs` / `sim-lab-cad-gate.mjs` (via `verify-sim-lab-browser.mjs`) | `Select all selects every part` (1 !== 16); on #1085 also `focusOn` expected ['p16'], got [] | The branch changes no Sim Lab file and main's robotlab passes; reproduce in a browser, then compare the merged GUI against main. |
+### browser (heavy): Arcade carnival, KNOWN-OPEN
+
+- Gate: `scripts/verify-arcade-carnival-browser.mjs`, judged by `scripts/known-open-gate.mjs`
+  against `scripts/lib/browser-known-open.json` (entry `arcade-carnival`).
+- Open failure: `AssertionError: import exposes the carnival pseudocode command`. The carnival
+  import still reports unsupported constructs, so its pseudocode lacks the countdown command.
+- The gate still runs and prints its result. Only that exact assertion is reported as known-open;
+  any other carnival failure still fails the job. If the gate passes, the job fails until the
+  entry is removed, so a stale entry cannot linger.
+- Next step: clears with groups A/B. Then remove the entry here and in the JSON.
+
+### browser (robotlab): Sim Lab, INTERMITTENT (owner: Robot Lab lane)
+
+Not marked known-open. When it fails, rerun only the failed job. Failures seen:
+
+| Run context | Gate | Failure |
+|---|---|---|
+| #888 | `scripts/lib/sim-lab-touch-gate.mjs` | `Select all selects every part` (1 !== 16) |
+| #1097 | `scripts/lib/sim-lab-touch-gate.mjs` | `Select all selects every part` (1 !== 16) |
+| #1085 | `scripts/lib/sim-lab-cad-gate.mjs` `focusOn` | expected `['p16']`, got `[]` |
+| #1097 | scale gate | 120 s screenshot timeout |
 
 ## Already-TODO items owned by other work
 
