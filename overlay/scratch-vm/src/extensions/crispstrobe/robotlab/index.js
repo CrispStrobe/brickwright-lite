@@ -66,7 +66,8 @@ const t = key => COPY[language()][key] || COPY.en[key] || key;
 
 /** The shipped models (gui sim-session.js MODELS keys); the API's own list wins when the Lab is open. */
 const MODELS = ['driving-base', 'line-follower', 'wall-stopper', 'colour-explorer', 'sumo', 'forklift', 'maze-runner',
-    'gearbox', 'differential', 'excavator', 'rcx-bumper-car', 'rcx-line-follower', 'motor-bench'];
+    'gearbox', 'differential', 'excavator', 'rcx-bumper-car', 'rcx-line-follower', 'motor-bench',
+    'technic-hub-bench', 'boost-rover', 'wedo-milo'];
 const PORTS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 /** A brick with a wheel: the category and the library's inset icon. */
