@@ -480,6 +480,32 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         }
         return index;
     };
+    // An occurrence inside `if truthy(t)` whose statement is immediately
+    // preceded by `t := compare(literal, literal)` that is false never runs
+    // (the `false && e` lowering). Only literal Number operands qualify.
+    const literalCompare=(target,n)=>{
+        if(n?.opcode!=='arrays_valueCompare'||!exactKeys(n,['LEFT','RIGHT'],['OP']))return null;
+        const l=literalNumber(target,n,'LEFT'),r=literalNumber(target,n,'RIGHT'),op=literal(n,'OP',target);
+        if(l===null||r===null||Number.isNaN(l)||Number.isNaN(r))return null;
+        return {'<':l<r,'>':l>r,'<=':l<=r,'>=':l>=r,'===':l===r,'!==':l!==r,'==':l==r,'!=':l!=r}[op]??null;
+    };
+    const deadOccurrence=(target,node)=>{
+        const seen=new Set();let current=node;
+        while(current&&!seen.has(current)){seen.add(current);
+            const parent=block(target,current.parent);if(!parent)return false;
+            const id=Object.keys(target.blocks).find(key=>target.blocks[key]===current);
+            if(parent.opcode==='control_if'&&parent.inputs?.SUBSTACK?.[1]===id&&exactKeys(parent,['CONDITION','SUBSTACK'])){
+                const truthy=block(target,parent.inputs.CONDITION?.[1]),read=truthy?.opcode==='arrays_valueTruthy'&&exactKeys(truthy,['VALUE'])&&block(target,truthy.inputs.VALUE?.[1]);
+                const prevId=Object.keys(target.blocks).find(key=>target.blocks[key]?.next===Object.keys(target.blocks).find(k=>target.blocks[k]===parent));
+                const prev=prevId&&block(target,prevId);
+                if(read?.opcode==='arcade_getLocal'&&prev?.opcode==='arcade_setLocal'&&exactKeys(prev,['NAME','VALUE'])&&
+                    literal(prev,'NAME',target)===literal(read,'NAME',target)&&owners.get(prev)===owners.get(parent)&&
+                    literalCompare(target,block(target,prev.inputs.VALUE?.[1]))===false)return true;
+            }
+            current=parent;
+        }
+        return false;
+    };
     const readInput=value=>{
         if(!value)return new Set([bad]);if(value.cell)return cellTypesAt(value.cell,value.at);if(value.jsonArray)return new Set([jsonArray(value.jsonArray,value.identity,null,value.origin)]);if(value.node)return readNode(value.target,value.node);return new Set([bad]);
     };
@@ -1003,6 +1029,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(invalidGlobalBinding)return {ok:false,reason:'current variable name, ID, owner or writer schema does not agree'};
         if(!current||!nodes.get(target)||!owners.has(node)||invalid.has(node)||nodes.get(target).get(Object.keys(target.blocks||{}).find(id=>target.blocks[id]===node))!==node)return {ok:false,reason:'current target, input or connected graph changed'};
         if(!operationShape(node))return {ok:false,reason:'requires the exact supported current operation input schema'};
+        if(deadOccurrence(target,node))return {ok:true};
         const value=input(node,name,target),types=readInput(value);return singleArray(types)&&initialized(value)?{ok:true}:{ok:false,reason:'requires an actual initialized Array producer and compatible all writers'};
     }});
 }
