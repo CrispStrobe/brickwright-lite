@@ -240,31 +240,11 @@ const hasUnsupportedVirtualFilters = options => !!(options?.exclusionFilters?.le
 const dispose = peripheral => peripheral && typeof peripheral.dispose === 'function' && peripheral.dispose();
 
 /**
- * The registry, read by the other transports that offer the same virtual peripherals (the
- * Scratch Link BLE double, scratch-link-ble.js): whether any factory is registered...
- * @returns {boolean}
+ * The registry and its filter match, read by the other transport that offers the same virtual
+ * peripherals: the Scratch Link BLE double (scratch-link-ble.js, in the Robot Lab's chunk — its
+ * candidate helpers live there, not in this first-load module).
  */
-export const hasVirtualPeripherals = () => factories.size > 0;
-
-/**
- * ...and one fresh peripheral per factory that matches `options` (Web Bluetooth's
- * requestDevice filters; Scratch Link's `discover` filters have the same shape: services,
- * name, namePrefix). Factories that answer null (a simulation switched off) offer nothing;
- * a peripheral that does not match is disposed at once.
- * @param {object} options {filters, acceptAllDevices}
- * @returns {object[]} the matching VirtualPeripherals
- */
-export const virtualCandidates = options => {
-    const created = [...factories].map(factory => factory()).filter(Boolean);
-    const candidates = created.filter(p => matches(p, options || {}));
-    for (const peripheral of created) if (!candidates.includes(peripheral)) dispose(peripheral);
-    return candidates;
-};
-
-/** Disposes every candidate but `keep` (the one a chooser picked). */
-export const disposeVirtualCandidates = (candidates, keep = null) => {
-    for (const candidate of candidates) if (candidate !== keep) dispose(candidate);
-};
+export {factories as virtualFactories, matches as matchesVirtual};
 
 /**
  * Wrap the currently installed Web Bluetooth object. Safe to call repeatedly.
@@ -289,7 +269,9 @@ export default function installVirtualWebBluetooth () {
                     error.name = 'NotFoundError';
                     throw error;
                 }
-                const candidates = virtualCandidates(options);
+                const created = [...factories].map(factory => factory()).filter(Boolean);
+                const candidates = created.filter(p => matches(p, options || {}));
+                for (const peripheral of created) if (!candidates.includes(peripheral)) dispose(peripheral);
                 if (candidates.length === 0) {
                     if (realRequest && !virtualOnly) return realRequest(options);
                     const error = new Error('No Bluetooth devices matched the requested filters.');

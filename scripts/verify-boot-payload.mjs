@@ -115,12 +115,13 @@ const LAZY = [
     // The Robot Lab's Scratch Link doubles (docs/ROBOT-LAB-HUBS-PLAN.md P0): the BLE socket double
     // (lib/virtual-hub/scratch-link-ble.js) and the BT-classic peripheral registry
     // (lib/virtual-hub/bt-classic-registry.js) serve only the Lab's virtual hubs, so they come with
-    // the Sim Lab chunk. The first load keeps only the classic boot hook (scratch-link-classic-hook.js)
-    // SPIKE's 2.x REPL simulation claims through; render-gui.jsx once imported the BLE double eagerly.
+    // the Sim Lab chunk. The first load keeps only the classic URL test and WebSocket wrapper
+    // (spike-classic-scratch-link.js) that SPIKE's 2.x REPL simulation claims through at boot;
+    // render-gui.jsx once imported the BLE double eagerly.
     {what: 'the Scratch Link BLE double', marker: 'the virtual chooser refused this peripheral', chunk: 'bw-sim-lab',
         why: 'registerRobotLabBlePeripherals (lib/virtual-hub/lab-ble-peripherals.js) installs it, reached only through sim-lab.js (webpackChunkName "bw-sim-lab")'},
     {what: 'the BT-classic peripheral registry', marker: 'a virtual peripheral needs an id', chunk: 'bw-sim-lab',
-        why: 'sim-lab.js re-exports registerVirtualClassicPeripheral; boot code imports scratch-link-classic-hook.js, never bt-classic-registry.js'},
+        why: 'sim-lab.js re-exports registerVirtualClassicPeripheral; boot code imports spike-classic-scratch-link.js, never bt-classic-registry.js'},
     // The Build palette's part pictures (lib/bw-sim/view/part-thumbnails.js): three.js
     // draws them, so they come with the Sim Lab chunk, not with the pane that shows them.
     {what: 'the Sim Lab palette thumbnails', marker: 'bw-sim-part-thumbnails', chunk: 'bw-sim-lab',

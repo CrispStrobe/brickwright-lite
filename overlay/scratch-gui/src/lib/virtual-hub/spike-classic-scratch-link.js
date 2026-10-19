@@ -2,14 +2,83 @@
 import VirtualSpikeHubState from './spike-hub-state.js';
 import {applyHubPython, applyScratchVerb} from './spike-hub-commands.js';
 
-import {CLASSIC_MESSAGE_MAX_BYTES, isClassicScratchLink, encodeBase64, decodeBase64,
-    addClassicSocketClaim, installVirtualClassicScratchLink} from './scratch-link-classic-hook.js';
+// The Scratch Link Bluetooth-Classic plumbing every virtual BT brick shares: the URL test,
+// base64, the socket claims and the ONE window.WebSocket wrapper that serves them. It lives here,
+// in the first load, because SPIKE 2.x's REPL simulation (below) claims through it at boot,
+// without the Robot Lab, and claims first while the virtual SPIKE's Classic simulation is enabled.
+// The Robot Lab's virtual peripheral registry (bt-classic-registry.js, its JSON-RPC socket double)
+// is lazy: it lives in the bw-sim-lab chunk and adds its claim, after SPIKE's, when that chunk
+// loads. Until then — and whenever no claim takes a URL — a Scratch Link BT URL reaches the real
+// WebSocket. (One module, not a separate boot hook: P17 counts each module's export plumbing.)
 
-// The Scratch Link BT plumbing (URL test, base64, the WebSocket wrapper) is the boot hook's
-// (scratch-link-classic-hook.js); this module is SPIKE 2.x's REPL served over it, and claims the
-// socket first while the virtual SPIKE's Classic simulation is enabled — at boot, without the Robot
-// Lab. The Lab's registry (bt-classic-registry.js, lazy) claims after it once that chunk loads.
-export {CLASSIC_MESSAGE_MAX_BYTES};
+export const CLASSIC_MESSAGE_MAX_BYTES = 64 * 1024;
+
+/** Whether a URL is Scratch Link's BT endpoint on this machine (loopback only, as Scratch Link listens). */
+export const isClassicScratchLink = value => {
+    let url;
+    try { url = new URL(String(value)); } catch (_) { return false; }
+    const loopback = ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname);
+    return loopback && ['ws:', 'wss:'].includes(url.protocol) && ['20110', '20111'].includes(url.port) &&
+        (/^\/bt(?:\/|$)/.test(url.pathname) || /^\/scratch\/bt(?:\/|$)/.test(url.pathname));
+};
+
+export const encodeBase64 = bytes => {
+    let binary = '';
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return btoa(binary);
+};
+
+export const decodeBase64 = text => {
+    if (typeof text !== 'string' || text.length > Math.ceil(CLASSIC_MESSAGE_MAX_BYTES / 3) * 4) {
+        throw new RangeError('virtual Classic message is too large');
+    }
+    const binary = atob(text);
+    if (binary.length > CLASSIC_MESSAGE_MAX_BYTES) throw new RangeError('virtual Classic message is too large');
+    return Uint8Array.from(binary, character => character.charCodeAt(0));
+};
+
+/**
+ * Socket claims, in priority order: (url) => a socket, or null to pass. SPIKE's 2.x REPL
+ * simulation claims FIRST while it is enabled, as it always did, whenever the Robot Lab's
+ * registry added its own claim (at the end) — before or after it.
+ */
+const claims = [];
+
+/** Adds a claim, at the front when `first`; returns its removal. */
+export const addClassicSocketClaim = (claim, first) => {
+    if (first) claims.unshift(claim);
+    else claims.push(claim);
+    return () => {
+        const i = claims.indexOf(claim);
+        if (i >= 0) claims.splice(i, 1);
+    };
+};
+
+/**
+ * Wraps window.WebSocket once: a Scratch Link BT URL goes to the first claim that takes it (SPIKE's
+ * REPL simulation, then the registry once the Robot Lab loaded it), anything else — and a BT URL
+ * nobody claims — to the real WebSocket. `host` and `NativeWebSocket` are for tests.
+ */
+export const installVirtualClassicScratchLink = ({host = typeof window === 'undefined' ? null : window,
+    NativeWebSocket = host ? host.WebSocket : null} = {}) => {
+    if (!host || typeof NativeWebSocket !== 'function') return 'unavailable';
+    if (host.WebSocket && host.WebSocket.__brickwrightVirtualClassic) return 'already installed';
+    const Wrapped = function WebSocket (url, protocols) {
+        if (isClassicScratchLink(url)) {
+            for (const claim of claims.slice()) {
+                const socket = claim(url);
+                if (socket) return socket;
+            }
+        }
+        return protocols === undefined ? new NativeWebSocket(url) : new NativeWebSocket(url, protocols);
+    };
+    Wrapped.prototype = NativeWebSocket.prototype;
+    for (const key of ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED']) Wrapped[key] = NativeWebSocket[key];
+    Wrapped.__brickwrightVirtualClassic = true;
+    host.WebSocket = Wrapped;
+    return 'installed';
+};
+
 export const CLASSIC_INPUT_MAX_BYTES = 4096;
 
 export class VirtualSpikeClassicSocket {
@@ -181,8 +250,8 @@ export default function installVirtualSpikeClassicScratchLink (hubState = new Vi
     if (host.__brickwrightVirtualSpikeClassicClaim) return 'already installed';
     host.__brickwrightVirtualSpikeClassicClaim = addClassicSocketClaim(url => (
         hubState.data.simulationEnabled && hubState.data.firmwareTarget !== 'official-v3' ?
-            new VirtualSpikeClassicSocket(url, {hubState}) : null));
-    return installVirtualClassicScratchLink({host, ...options});
+            new VirtualSpikeClassicSocket(url, {hubState}) : null), true);
+    // No object spread here: Babel would add its spread helpers to the first load for it (P17).
+    return installVirtualClassicScratchLink({host, NativeWebSocket: options.NativeWebSocket});
 }
 
-export {isClassicScratchLink};

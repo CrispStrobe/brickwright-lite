@@ -28,8 +28,31 @@
 // the extension's own Connect: their real Scratch Link) — the URL reaches the page's real
 // WebSocket unchanged. BT-classic (`/scratch/bt`) is never touched here.
 
-import {virtualCandidates, hasVirtualPeripherals, disposeVirtualCandidates, chooseVirtual} from './web-bluetooth-shim.js';
+import {virtualFactories, matchesVirtual, chooseVirtual} from './web-bluetooth-shim.js';
 import {canonicalUuid} from '../native-web-bluetooth.js';
+
+const dispose = peripheral => peripheral && typeof peripheral.dispose === 'function' && peripheral.dispose();
+
+/** Whether any virtual peripheral factory is registered (web-bluetooth-shim.js registerVirtualPeripheral). */
+const hasVirtualPeripherals = () => virtualFactories.size > 0;
+
+/**
+ * One fresh peripheral per factory that matches `options` (Web Bluetooth's requestDevice filters;
+ * Scratch Link's `discover` filters have the same shape: services, name, namePrefix). Factories
+ * that answer null (a simulation switched off) offer nothing; a peripheral that does not match is
+ * disposed at once.
+ */
+const virtualCandidates = options => {
+    const created = [...virtualFactories].map(factory => factory()).filter(Boolean);
+    const candidates = created.filter(p => matchesVirtual(p, options || {}));
+    for (const peripheral of created) if (!candidates.includes(peripheral)) dispose(peripheral);
+    return candidates;
+};
+
+/** Disposes every candidate but `keep` (the one a chooser picked). */
+const disposeVirtualCandidates = (candidates, keep = null) => {
+    for (const candidate of candidates) if (candidate !== keep) dispose(candidate);
+};
 
 /** The largest base64 message a write may carry (a GATT write is ≤ 512 bytes; generous). */
 export const BLE_MESSAGE_MAX_BYTES = 4096;

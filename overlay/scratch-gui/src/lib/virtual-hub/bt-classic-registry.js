@@ -26,16 +26,16 @@
 // through to the real WebSocket: a real Scratch Link and a real brick keep working.
 //
 // This module is the Robot Lab's (its chunk, bw-sim-lab), never the first load's: the URL test,
-// base64 and the WebSocket wrapper it serves through are the boot hook's
-// (scratch-link-classic-hook.js), and the registry's claim joins that wrapper, after SPIKE's, when
-// this module loads.
+// base64 and the WebSocket wrapper it serves through are in the first load
+// (spike-classic-scratch-link.js, where SPIKE's REPL simulation claims at boot), and the
+// registry's claim joins that wrapper, after SPIKE's, when this module loads.
 //
 // Replies are delivered on a later macrotask, after the JSON-RPC result of the `send` that caused
 // them: the stock and NXT extensions only start waiting for a reply once their `send` resolved, so a
 // reply that overtook the result would be dropped, as it never is on the real link.
 
 import {CLASSIC_MESSAGE_MAX_BYTES, isClassicScratchLink, encodeBase64, decodeBase64, addClassicSocketClaim,
-    installVirtualClassicScratchLink} from './scratch-link-classic-hook.js';
+    installVirtualClassicScratchLink} from './spike-classic-scratch-link.js';
 
 export {CLASSIC_MESSAGE_MAX_BYTES, isClassicScratchLink, encodeBase64, decodeBase64, addClassicSocketClaim,
     installVirtualClassicScratchLink};
@@ -198,4 +198,4 @@ export class VirtualClassicSocket {
 
 /** The registry's own claim: a VirtualClassicSocket while any registered peripheral is available. */
 const registryClaim = url => (availableClassicPeripherals().length ? new VirtualClassicSocket(url) : null);
-addClassicSocketClaim(registryClaim, {fallback: true});
+addClassicSocketClaim(registryClaim);
