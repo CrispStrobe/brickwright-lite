@@ -23,6 +23,8 @@
 //   gearbox     transmission.js: spline, spline-bore (slider), clutch, clutch-teeth,
 //               fork, fork-groove; slip-clutch.js: clutch-axlehole (a slipping hinge);
 //               gear-seat.js: gear-seat (a satellite in its cradle: hinge), snap (rigid)
+//   sensors     rotation-sensor.js: 'sensor-axlehole' (the RCX rotation sensor's turning
+//               insert: an axle in it is a hinge the sensor reads)
 //   joints      hinge, slider, ball — what the physics core builds today
 
 import {ConnectorKindRegistry, CouplingKindRegistry, JointKindRegistry} from '../registry/kinds.js';
@@ -37,6 +39,7 @@ import {SPLINE, SPLINE_BORE, CLUTCH, CLUTCH_TEETH, FORK, FORK_GROOVE, DOG_CLUTCH
 import {CLUTCH_AXLEHOLE} from './slip-clutch.js';
 import {GEAR_SEAT, SNAP} from './gear-seat.js';
 import {RELATIVE_GEAR} from './relative-gear.js';
+import {SENSOR_AXLEHOLE} from './rotation-sensor.js';
 
 export const JOINT_KINDS = [
     {type: 'hinge', dof: 1},
@@ -47,7 +50,8 @@ export const JOINT_KINDS = [
 /** @type {{connectors: ConnectorKindRegistry, couplings: CouplingKindRegistry, joints: JointKindRegistry}} */
 export const BUILTIN_KINDS = Object.freeze({
     connectors: new ConnectorKindRegistry([...PIN_AXLE_KINDS, SLIDE_BORE, WORM_THREAD, RACK_TEETH, TUBE,
-        SPLINE, SPLINE_BORE, CLUTCH, CLUTCH_TEETH, FORK, FORK_GROOVE, CLUTCH_AXLEHOLE, GEAR_SEAT, SNAP]),
+        SPLINE, SPLINE_BORE, CLUTCH, CLUTCH_TEETH, FORK, FORK_GROOVE, CLUTCH_AXLEHOLE, GEAR_SEAT, SNAP,
+        SENSOR_AXLEHOLE]),
     couplings: new CouplingKindRegistry([SPUR, BEVEL, WORM, RACK, DOG_CLUTCH, SHIFT_FORK, RELATIVE_GEAR]),
     joints: new JointKindRegistry(JOINT_KINDS)
 });

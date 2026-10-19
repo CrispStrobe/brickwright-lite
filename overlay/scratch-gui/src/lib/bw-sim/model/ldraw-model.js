@@ -17,7 +17,8 @@
 
 import {det3} from '../contracts.js';
 
-const HUB_PORTS = new Set(['A', 'B', 'C', 'D', 'E', 'F']);
+/** Port ids a `0 !BW PORT` line may name: hub output letters, and the numbered inputs of the RCX (1–3) and NXT/EV3 (1–4). */
+const HUB_PORTS = new Set(['A', 'B', 'C', 'D', 'E', 'F', '1', '2', '3', '4']);
 
 /** Deepest sub-model nesting opened (main model = 0). */
 export const MAX_DEPTH = 32;
