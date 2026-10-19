@@ -38,13 +38,78 @@ const numericArrowBodies=(text,parse)=>{
  for(const call of constructions){const arrow=call.args[1];assert.equal(arrow.type,'FunctionExpression');assert.equal(arrow.functionKind,'arrow');assert.deepEqual(arrow.params,['value']);assert.equal(arrow.body.length,1);assert.equal(arrow.body[0].type,'Return');const returned=unparen(arrow.body[0].value);assert.equal(returned.type,'Binary');assert.equal(returned.op,'+');assert.equal(unparen(returned.left).type,'Identifier');assert.equal(unparen(returned.left).name,arrow.params[0]);assert.equal(unparen(returned.right).type,'Identifier');assert.equal(unparen(returned.right).name,'offset');}
 };
 const clean=value=>{assert.deepEqual(value.unsupported,[]);assert.deepEqual(value.warnings,[]);};
-const create=()=>{
+const buildBaseline=()=>{
  const imported=arcadeToPseudocode({'main.ts':source});clean(imported);
  const initial=new Creator();initial.parse(imported.code);assert.deepEqual(initial.errors,[]);assert.deepEqual(initial.warnings,[]);assert.deepEqual(initial.unparsed,[]);
  // The native guest rebuilds current Code in a new Creator. Exercise that
  // normalization, without pretending this pure control runs a VM.
  const code=initial.decompile(structuredClone(initial.project));const second=new Creator();second.parse(code);assert.deepEqual(second.errors,[]);assert.deepEqual(second.warnings,[]);assert.deepEqual(second.unparsed,[]);
  return second.project;
+};
+// Lazily build the real import/Creator/Code/Creator fixture once. Each control still
+// receives a separate complete graph and invokes the current exporter itself.
+let baseline,initializationError;
+let fixtureState='uninitialized';
+const assertPlainProject=value=>{
+ const seen=new Set(),active=new Set();let properties=0;
+ const visit=(node,depth)=>{
+  assert.ok(depth<=128,'fixture own-data depth bound');
+  if(node===null||typeof node==='string'||typeof node==='boolean')return;
+  if(typeof node==='number'){assert.ok(Number.isFinite(node),'finite fixture number');return;}
+  assert.equal(typeof node,'object','fixture contains only JSON own data');
+  assert.equal(active.has(node),false,'fixture has no cycles');
+  if(seen.has(node))return;
+  seen.add(node);assert.ok(seen.size<=100000,'fixture own-data object bound');active.add(node);
+  const array=Array.isArray(node),descriptors=Object.getOwnPropertyDescriptors(node),keys=Reflect.ownKeys(descriptors);
+  assert.equal(Object.getPrototypeOf(node),array?Array.prototype:Object.prototype,'plain fixture prototype');
+  assert.equal(Object.isExtensible(node),true,'ordinary extensible fixture object');
+  if(array){
+   const length=descriptors.length;assert.ok(length&&Object.hasOwn(length,'value')&&!length.enumerable&&length.writable&&!length.configurable,'ordinary array length');
+   assert.ok(Number.isSafeInteger(length.value)&&length.value>=0,'ordinary array size');
+   assert.equal(keys.length,length.value+1,'dense array without hidden properties');
+   for(let index=0;index<length.value;index++)assert.ok(Object.hasOwn(descriptors,String(index)),'dense fixture array');
+  }
+  for(const key of keys){
+   assert.equal(typeof key,'string','no fixture symbol metadata');
+   if(array&&key==='length')continue;
+   const descriptor=descriptors[key];assert.ok(Object.hasOwn(descriptor,'value')&&descriptor.enumerable&&descriptor.writable&&descriptor.configurable,'ordinary enumerable own data only');
+   if(array)assert.ok(/^(0|[1-9][0-9]*)$/.test(key)&&Number(key)<descriptors.length.value,'ordinary array index');
+   assert.ok(++properties<=1000000,'fixture own-data property bound');visit(descriptor.value,depth+1);
+  }
+  active.delete(node);
+ };visit(value,0);return seen;
+};
+const assertSeparateClone=(original,copy,originalObjects)=>{
+ const pairs=new Map(),reverse=new Map();
+ const visit=(left,right)=>{
+  if(left===null||typeof left!=='object'){assert.ok(Object.is(left,right));return;}
+  assert.ok(right!==null&&typeof right==='object');assert.equal(originalObjects.has(right),false,'clone shares no fixture object');
+  if(pairs.has(left)){assert.equal(pairs.get(left),right,'clone retains shared-reference topology');return;}
+  assert.equal(reverse.has(right),false,'distinct fixture objects remain distinct');pairs.set(left,right);reverse.set(right,left);
+  assert.equal(Object.getPrototypeOf(left),Object.getPrototypeOf(right));
+  const leftDescriptors=Object.getOwnPropertyDescriptors(left),rightDescriptors=Object.getOwnPropertyDescriptors(right);
+  const keys=Reflect.ownKeys(leftDescriptors);assert.deepEqual(Reflect.ownKeys(rightDescriptors),keys);
+  for(const key of keys){assert.equal(Object.hasOwn(rightDescriptors[key],'value'),true);visit(leftDescriptors[key].value,rightDescriptors[key].value);}
+ };visit(original,copy);assert.equal(pairs.size,originalObjects.size,'clone includes the complete fixture graph');
+};
+const create=()=>{
+ if(fixtureState==='initializing'){
+  initializationError=Error('Reentrant actual fixture initialization');fixtureState='failed';throw initializationError;
+ }
+ if(fixtureState==='failed')throw initializationError;
+ if(fixtureState==='uninitialized'){
+  fixtureState='initializing';
+  try{
+   baseline=buildBaseline();const objects=assertPlainProject(baseline),probe=structuredClone(baseline);
+   assertPlainProject(probe);assert.deepEqual(probe,baseline);assertSeparateClone(baseline,probe,objects);
+   if(fixtureState!=='initializing')throw initializationError;
+   fixtureState='ready';
+  }catch(error){
+   if(fixtureState!=='failed')initializationError=error;
+   fixtureState='failed';throw initializationError;
+  }
+ }
+ return structuredClone(baseline);
 };
 const rows=project=>project.targets.flatMap(target=>Object.entries(target.blocks).map(([id,block])=>({target,id,block})));
 const offset=project=>{
