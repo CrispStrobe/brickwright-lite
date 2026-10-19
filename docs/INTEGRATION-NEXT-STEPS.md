@@ -1,8 +1,33 @@
-# Integration handoff — 2026-10-18
+# Integration handoff — 2026-10-19
 
 Refresh PR heads, checks and `LANES.md` before acting. This file records the
 integration owner's remaining work; other lanes retain their own ownership.
 Historical results qualify their named source and artifact, not later builds.
+
+## Current priority
+
+Continue integration and the remaining SPIKE G02 lifecycle cases independently.
+The optional iOS audit in draft [PR1078](https://github.com/CrispStrobe/brickwright-lite/pull/1078)
+is deferred; additional SDK, simulator-ownership and resource-controller work
+should resume only for a demonstrated blocker in its own lane. It is not a
+prerequisite for separate SPIKE desktop lifecycle work. Existing qualification
+and merge requirements remain in force for each candidate.
+
+For SPIKE, first test the remaining two-UI-Stop boundary using the retained,
+source-bound installed package: click Code Stop, hold only the already completed
+native close return, and attempt the second visible arena Stop through the real
+UI. Preserve an unavailable or disabled control as an observation; never replace
+that click with a direct pane method and report two UI Stops. Require normal
+recovery and cleanup before accepting the finite case. Keep this distinct from
+the generation-transition collector, whose earlier readiness refusal remains
+unresolved. Record each result at its exact source, not as current-main or full
+G02 qualification. Then continue the applicable lifecycle matrix below.
+
+Refresh pending PR checks without duplicating existing runs. PR1044 has been
+normally composed with main; its workflow and test implementation are unchanged,
+19 focused controls pass, and fresh checks are required. Its active embedded
+frontend proof remains open, so it remains draft. Do not wait for that iOS proof
+to make progress on SPIKE.
 
 ## Landed and ready for continuation
 
@@ -17,14 +42,16 @@ Historical results qualify their named source and artifact, not later builds.
   merged as `f823dac58882ba9f03b0d6dc43a214339a39d48a`. Its four enabled
   checks passed; seven documented conditional jobs skipped.
 
-## Remaining work, in order
+## Remaining work by lane
 
 ### 1. Qualify and integrate the iOS workflow resource preparation
 
 Candidate: draft [PR1044](https://github.com/CrispStrobe/brickwright-lite/pull/1044),
-head `0fce34bef3467a8d9a5722d483611217ff11ee81`, branch
-`lane/ios-workflow-resource-preparation-20261017`. Fourteen source checks passed;
-conditional delivery jobs skipped as declared. `ci:full` has already been
+head `9e4e123aad1756f67780e000d22977a6e3377b48`, branch
+`lane/ios-workflow-resource-preparation-20261017`. This normally merges main
+`5a468d19a2f337ffa40be422a8f1363b33fad27a` into the earlier qualified source.
+Fourteen source checks passed on the earlier head; conditional delivery jobs
+skipped as declared. Refresh every enabled check for the new head. `ci:full` has already been
 applied. Do not apply it again merely to start another run.
 
 Scope: `.github/workflows/mobile.yml`,
@@ -46,7 +73,9 @@ node --test test/ios-workflow-resource-preparation.test.mjs test/ios-device-buil
 ```
 
 The separately admitted [mobile event 39105125520](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39105125520)
-completed on this exact source. Four official web/iOS artifact digests and job
+completed on the earlier `0fce34bef3467a8d9a5722d483611217ff11ee81`
+source. Its results do not qualify the later main composition. Four official
+web/iOS artifact digests and job
 joins match. Independent unsigned simulator, App Store and ad-hoc resource
 inventories passed, without copied root frontend folders or static archives.
 Profile CMS signatures, profile/export fields and the original CI codesign
