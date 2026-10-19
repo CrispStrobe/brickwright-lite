@@ -137,6 +137,12 @@ export const hubsOf = (model, mechanism, catalog, {all = false} = {}) => {
     if (all && Array.isArray(mechanism.hubs) && mechanism.hubs.length) {
         return mechanism.hubs.map(h => ({id: h.id, profile: h.profile, body: h.body}));
     }
+    // The first hub of CompiledMechanism v2 (the body that carries its housing: a hub with built-in
+    // motors, the BOOST Move Hub, is a part of its output bodies too).
+    if (Array.isArray(mechanism.hubs) && mechanism.hubs.length) {
+        const h = mechanism.hubs[0];
+        return [{id: h.id, profile: h.profile, body: h.body}];
+    }
     const hubParts = new Map(model.parts.filter(p => partHubProfile(catalog.get(p.part))).map(p => [p.id, partHubProfile(catalog.get(p.part))]));
     const body = mechanism.bodies.find(b => b.parts.some(id => hubParts.has(id)));
     if (!body) return [];
