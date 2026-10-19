@@ -1020,6 +1020,11 @@ canonical consistency control detects the stale consumer and drift in all seven
 declarations. The original reader and historical requests remain tied to their
 selected source; this composition does not authorize a hosted event.
 
+Both controller and reader CUI declarations must match the canonical package,
+lock and vendor selection. A synthetic noncurrent consumer tests refusal without
+retaining a stale active supplier pin. The earlier CI failure stays retained;
+this repair changes no dependency version or runtime qualification.
+
 The dependency-free focused check is:
 
 ```sh

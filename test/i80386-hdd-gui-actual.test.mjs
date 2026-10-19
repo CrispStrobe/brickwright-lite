@@ -2819,7 +2819,9 @@ test('GUI consumer explicitly matches current canonical CUI declarations', () =>
     const controller=fs.readFileSync(root+'scripts/run-i80386-hdd-gui-actual.py','utf8');
     const consumer=controller.match(/^CUI = '([0-9a-f]{40})'$/m)?.[1], selected=guiCuiSelection();
     assertGuiCuiSelection(consumer,selected);
-    assert.throws(()=>assertGuiCuiSelection('fe89e3425bf323b1acd9e3f98df6a7383e9b836b',selected));
+    const reader=fs.readFileSync(root+'scripts/read-i80386-hdd-gui-originals.py','utf8').match(/^CUI = '([0-9a-f]{40})'$/m)?.[1];
+    assertGuiCuiSelection(reader,selected);
+    assert.throws(()=>assertGuiCuiSelection('0'.repeat(40),selected));
     for(let i=0;i<selected.length;i++){
         const drift=[...selected];drift[i]=drift[i].replace(consumer,'0'.repeat(40));
         assert.throws(()=>assertGuiCuiSelection(consumer,drift));
