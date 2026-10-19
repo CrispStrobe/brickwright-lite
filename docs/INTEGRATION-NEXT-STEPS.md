@@ -350,6 +350,19 @@ pre-exit audit token's PID/UID. Changed tokens still refuse; no supplied UID or
 blanket wait-UID exception provides authority. Actual group-census behavior and
 the full platform result remain unqualified until the corrected event passes.
 
+The corrected [fifth platform event](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39216035612)
+passed on source `ecc8d063f6f775f56f96e27bd3eb1815658fb424` with SDK 26.5 on
+Darwin arm64. Its fixed helper passed layout, token/code hash, executable-page,
+resource, stable wait/group and exit-refusal checks, released its owned port and
+was reaped with no cleanup errors. The zombie-only signal negative was retained,
+with both singleton kernel group originals and authenticated pre-exit ownership.
+The source-bound independent packet reader passed its limited joins. Independent
+executable bytes and full path originals were not retained, so it establishes no
+complete executable/compiler-input or mapped-app identity proof. All prior failed
+originals remain failures. General simulator groups, namespaces, service families,
+resources, installed-app behavior, physical devices and release remain unqualified.
+Do not repeat the successful event, download or reader merely to inspect it.
+
 `DarwinAuditIdentity` and `simulator_code_directory` remain unwired for app
 observation. The former obtains a kernel task-name right and audit token, uses
 read-only code-status/hash queries tied to that token, and releases its right
