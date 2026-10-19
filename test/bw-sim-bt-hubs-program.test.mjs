@@ -151,9 +151,9 @@ if (!existsSync(missing)) {
         assert.equal(last.running, false, 'both scripts ended');
     });
 
-    test('EV3 wall stopper: the DEVICE EV3 example through ev3comprehensive', {
-        todo: 'docs/ROBOT-LAB-EV3-NXT.md "Known open": ev3comprehensive sends nothing over Scratch Link (isConnected reads backend.connected, its ScratchLinkBackend sets _connected) and its reply path reads an unset readBuffer'
-    }, async () => {
+    // Was {todo} until CrispStrobe/extensions ea3e08e (PR #53) fixed ev3comprehensive's Scratch Link
+    // isConnected() and its reply buffer (docs/ROBOT-LAB-EV3-NXT.md).
+    test('EV3 wall stopper: the DEVICE EV3 example through ev3comprehensive', async () => {
         const ev3 = entry('ev3-wall-stopper.ldr');
         assert.match(program(ev3.example), /^DEVICE EV3\s*$/m);
         const {track, hub, connectError} = await runOnBtHub({bw: program(ev3.example)}, {
