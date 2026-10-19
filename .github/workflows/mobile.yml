@@ -22,6 +22,10 @@ on:
         description: Retain bounded unsigned iOS build inputs for independent audit; does not launch the app.
         type: boolean
         default: false
+      ios_audit_preflight_only:
+        description: Verify Darwin SDK and one owned test process only; skips all app builds and delivery.
+        type: boolean
+        default: false
       ios_audit_runtime:
         description: Optional exact installed iOS runtime identifier for admission only; never launches an app.
         type: string
@@ -37,7 +41,215 @@ permissions:
   contents: write
 
 jobs:
+  ios-audit-preflight:
+    if: github.event_name == 'workflow_dispatch' && inputs.ios_audit_preflight_only && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'
+    runs-on: macos-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6; explicit preflight interpreter only
+        id: python
+        with:
+          python-version: '3.13'
+      - name: Verify Darwin SDK and owned process without an app launch
+        timeout-minutes: 4
+        env:
+          BW_PREFLIGHT_PYTHON: ${{ steps.python.outputs.python-path }}
+        run: |
+          set -euo pipefail
+          # BEGIN IOS DARWIN PREFLIGHT
+          "$BW_PREFLIGHT_PYTHON" - <<'PY'
+          import ctypes
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import platform
+          import re
+          import selectors
+          import signal
+          import subprocess
+          import sys
+          import time
+
+          C_SOURCE = r"""
+          #include <stddef.h>
+          #include <stdint.h>
+          #include <stdio.h>
+          #include <string.h>
+          #include <unistd.h>
+          #include <libproc.h>
+          #include <sys/resource.h>
+          #include <mach/mach_time.h>
+          int main(int argc, char **argv) {
+              struct rusage_info_v0 r = {0};
+              mach_timebase_info_data_t t = {0};
+              char path[4096] = {0};
+              if (argc != 1 || proc_pid_rusage(getpid(), RUSAGE_INFO_V0, (rusage_info_t *)&r) ||
+                  mach_timebase_info(&t) || proc_pidpath(getpid(), path, sizeof(path)) <= 0) return 2;
+              printf("{\"usageSize\":%zu,\"userOffset\":%zu,\"systemOffset\":%zu,"
+                     "\"residentOffset\":%zu,\"birthOffset\":%zu,\"exitOffset\":%zu,"
+                     "\"timebaseSize\":%zu,\"numer\":%u,\"denom\":%u,\"pid\":%d,\"uuid\":\"",
+                     sizeof(r), offsetof(struct rusage_info_v0, ri_user_time),
+                     offsetof(struct rusage_info_v0, ri_system_time), offsetof(struct rusage_info_v0, ri_resident_size),
+                     offsetof(struct rusage_info_v0, ri_proc_start_abstime), offsetof(struct rusage_info_v0, ri_proc_exit_abstime),
+                     sizeof(t), t.numer, t.denom, getpid());
+              for (int i=0; i<16; ++i) printf("%02x", r.ri_uuid[i]);
+              printf("\",\"birth\":%llu,\"userTicks\":%llu,\"systemTicks\":%llu,\"rssBytes\":%llu,\"pathMatches\":%s}\n",
+                     (unsigned long long)r.ri_proc_start_abstime, (unsigned long long)r.ri_user_time,
+                     (unsigned long long)r.ri_system_time, (unsigned long long)r.ri_resident_size,
+                     strcmp(path,argv[0]) == 0 ? "true" : "false");
+              fflush(stdout);
+              char token;
+              return read(STDIN_FILENO,&token,1)==1 && token=='X' ? 0 : 3;
+          }
+          """
+
+
+          def require(value):
+              if not value:
+                  raise ValueError('Darwin preflight refused')
+
+
+          def validate_sdk_report(value, pid):
+              layout = {'usageSize':96, 'userOffset':16, 'systemOffset':24, 'residentOffset':64,
+                        'birthOffset':80, 'exitOffset':88, 'timebaseSize':8}
+              fields = set(layout) | {'numer','denom','pid','uuid','birth','userTicks','systemTicks','rssBytes','pathMatches'}
+              require(type(value) is dict and value.keys() == fields)
+              require(all(type(value[k]) is int and value[k] == v for k,v in layout.items()))
+              require(type(value['pid']) is int and value['pid'] == pid and 0 < pid <= 2147483647)
+              require(type(value['uuid']) is str and re.fullmatch('[a-f0-9]{32}',value['uuid']) is not None and
+                      value['uuid'] != '0'*32 and value['pathMatches'] is True)
+              require(all(type(value[k]) is int and 0 <= value[k] <= 2**64-1
+                          for k in ('birth','userTicks','systemTicks','rssBytes')) and value['birth'] > 0)
+              require(all(type(value[k]) is int and 0 < value[k] <= 2**32-1 for k in ('numer','denom')))
+              require(value['rssBytes'] <= 1024**3 and
+                      (value['userTicks']+value['systemTicks'])*value['numer']//value['denom'] <= 5_000_000_000)
+
+
+          def producer_namespace(workflow):
+              match = re.search(r'# BEGIN IOS INPUT RETENTION\n          cat > "\$RUNNER_TEMP/bw-ios-audit-capture.py" <<\'PY\'\n([\s\S]*?)          PY\n          # END IOS INPUT RETENTION',workflow)
+              require(match is not None)
+              source = re.sub('^          ','',match[1],flags=re.M)
+              prefix = source[:source.rindex('\ntry:\n')]
+              namespace = {}
+              exec(compile(prefix,'reviewed-workflow-producer','exec'),namespace)
+              return namespace,hashlib.sha256(prefix.encode()).hexdigest()
+
+
+          def main():
+              require(sys.platform == 'darwin' and platform.machine() == 'arm64' and sys.version_info >= (3,13))
+              require(all(hasattr(os,key) for key in ('waitid','P_PID','WEXITED','WNOHANG','WNOWAIT')) and
+                      signal.getsignal(signal.SIGCHLD) == signal.SIG_DFL)
+              require(os.environ['GITHUB_EVENT_NAME'] == 'workflow_dispatch' and
+                      os.environ['GITHUB_REPOSITORY'] == 'CrispStrobe/brickwright-lite' and
+                      os.environ['GITHUB_REF'] == 'refs/heads/lane/ios-active-asset-source-20261018')
+              root=Path(os.environ['RUNNER_TEMP']).resolve()/'bw-ios-darwin-preflight'
+              root.mkdir(exist_ok=False)
+              report={'schema':'brickwright.darwin-sdk-preflight.v1','status':'partial',
+                      'sourceCommit':os.environ['GITHUB_SHA'],'runID':os.environ['GITHUB_RUN_ID'],
+                      'attempt':os.environ['GITHUB_RUN_ATTEMPT'],'job':os.environ['GITHUB_JOB'],
+                      'actualAppQualified':False,'processFamilyQualified':False,'cleanupSucceeded':False}
+              process=None
+              try:
+                  workflow=(Path(os.environ['GITHUB_WORKSPACE'])/'.github/workflows/mobile.yml').read_text()
+                  namespace,prefix_hash=producer_namespace(workflow)
+                  report['producerPrefixSHA256']=prefix_hash
+                  report['workflowSHA256']=hashlib.sha256(workflow.encode()).hexdigest()
+                  def command(args):
+                      result=subprocess.run(args,stdin=subprocess.DEVNULL,capture_output=True,timeout=30,check=True)
+                      require(len(result.stdout)+len(result.stderr)<=65536)
+                      return result.stdout
+                  compiler=command(['/usr/bin/xcrun','--sdk','macosx','--find','clang']).decode().strip()
+                  sdk=command(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-path']).decode().strip()
+                  require(Path(compiler).is_absolute() and Path(sdk).is_absolute())
+                  report['sdkVersion']=command(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-version']).decode().strip()
+                  report['compilerVersionSHA256']=hashlib.sha256(command([compiler,'--version'])).hexdigest()
+                  settings=Path(sdk)/'SDKSettings.json'
+                  require(settings.is_file() and settings.stat().st_size<=1024*1024)
+                  report['sdkSettingsSHA256']=hashlib.sha256(settings.read_bytes()).hexdigest()
+                  source=root/'probe.c';source.write_text(C_SOURCE)
+                  executable=root/'probe'
+                  command([compiler,'-std=c11','-Wall','-Wextra','-Werror','-isysroot',sdk,str(source),'-o',str(executable)])
+                  report['probeSourceSHA256']=hashlib.sha256(source.read_bytes()).hexdigest()
+                  report['probeExecutableSHA256']=hashlib.sha256(executable.read_bytes()).hexdigest()
+                  environment={key:os.environ[key] for key in ('HOME','PATH','TMPDIR') if key in os.environ}
+                  process=subprocess.Popen([str(executable)],stdin=subprocess.PIPE,stdout=subprocess.PIPE,
+                      stderr=subprocess.PIPE,start_new_session=True,close_fds=True,env=environment)
+                  with selectors.DefaultSelector() as selector:
+                      selector.register(process.stdout,selectors.EVENT_READ)
+                      require(bool(selector.select(5)))
+                      raw=os.read(process.stdout.fileno(),4097)
+                  require(0<len(raw)<=4096 and raw.endswith(b'\n') and raw.count(b'\n')==1)
+                  report['probeOutputHex']=raw.hex()
+                  observed=json.loads(raw);report['sdkOriginal']=observed
+                  validate_sdk_report(observed,process.pid)
+                  sampler=namespace['DarwinProcessSampler'](process.pid,str(executable),deadline=time.monotonic()+10)
+                  snapshot=sampler(process.pid)
+                  require((sampler._numer,sampler._denom)==(observed['numer'],observed['denom']))
+                  birth,uuid=sampler._previous[0]
+                  require(birth==observed['birth'] and uuid.hex()==observed['uuid'])
+                  counters=sampler._previous[1]
+                  require(counters[0]>=observed['userTicks'] and counters[1]>=observed['systemTicks'])
+                  require(snapshot['pid']==process.pid and snapshot['rssBytes']>0)
+                  report['sdkOriginal']=observed
+                  report['sampledRSSBytes']=snapshot['rssBytes']
+                  report['sampleIdentitySHA256']=snapshot['identitySHA256']
+                  # Preserve resource originals. The full pidpath buffer contains a runner
+                  # directory; publish only its hash/size, never the path or executable.
+                  report['kernelOriginals']=[dict(row) if row['kind']!='pidpath' else
+                      {'kind':'pidpath','status':row['status'],'errno':row['errno'],
+                       'rawBytes':len(bytes.fromhex(row['rawHex'])),
+                       'rawSHA256':hashlib.sha256(bytes.fromhex(row['rawHex'])).hexdigest()}
+                      for row in sampler.originals()]
+                  process.stdin.write(b'X');process.stdin.flush();process.stdin.close()
+                  deadline=time.monotonic()+5
+                  while os.waitid(os.P_PID,process.pid,os.WEXITED|os.WNOHANG|os.WNOWAIT) is None:
+                      require(time.monotonic()<deadline)
+                      time.sleep(0.01)
+                  report['nonReapingWaitObserved']=True
+                  # Consume the group identity while its leader is still ours to reap.
+                  try:os.killpg(process.pid,signal.SIGKILL)
+                  except ProcessLookupError:pass
+                  require(process.wait(timeout=2)==0)
+                  report['cleanupSucceeded']=True
+                  try:os.waitpid(process.pid,os.WNOHANG)
+                  except ChildProcessError:report['leaderReaped']=True
+                  else:raise ValueError('owned leader was not reaped')
+                  try:sampler(process.pid)
+                  except ValueError:report['exitedPIDRefused']=True
+                  else:raise ValueError('exited PID accepted')
+                  report['status']='sdk-and-owned-process-controls-pass'
+              finally:
+                  if process is not None:
+                      if process.returncode is None:
+                          try:os.killpg(process.pid,signal.SIGKILL)
+                          except ProcessLookupError:pass
+                          process.wait(timeout=2)
+                      for stream in (process.stdin,process.stdout,process.stderr):
+                          if stream is not None and not stream.closed:stream.close()
+                  (root/'report.json').write_text(json.dumps(report,sort_keys=True,indent=2)+'\n')
+              print('Darwin SDK and owned-process preflight passed; app observation remains disabled')
+
+          if __name__=='__main__':
+              try:main()
+              except Exception:
+                  print('Darwin preflight refused; inspect the bounded structured report',file=sys.stderr)
+                  raise SystemExit(1)
+          PY
+          # END IOS DARWIN PREFLIGHT
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: brickwright-ios-darwin-preflight
+          path: ${{ runner.temp }}/bw-ios-darwin-preflight/report.json
+          if-no-files-found: error
+          retention-days: 7
+
   build-web:
+    if: github.event_name != 'workflow_dispatch' || inputs.ios_audit_preflight_only != true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0

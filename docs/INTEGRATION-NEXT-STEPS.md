@@ -299,6 +299,15 @@ and [Mach CPU accounting](https://github.com/apple-oss-distributions/xnu/blob/f6
 No Apple implementation is vendored. The installed SDK and runner are not yet
 joined to that research revision.
 
+The same workflow now has an isolated `ios_audit_preflight_only` mode, off by
+default. It requires the owned source branch, input retention and unsigned flags.
+It skips the web build and therefore every dependent app build. Its bounded Mac
+job checks SDK offsets and one owned C process against the sampler, including
+wait/cleanup and refusal after exit. Only a structured report is uploaded; the
+probe executable and full runner path are excluded. Review that exact event's
+metadata and report once. A passing platform preflight does not qualify a running
+app or authorize a simulator launch.
+
 Before use, independently verify the exact target SDK's ABI offsets, library
 exports, syscall status semantics, CPU units/timebase and permission failures.
 Then test actual birth/exit/reuse/path drift and resource limits on the admitted

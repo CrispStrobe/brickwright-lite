@@ -1619,3 +1619,93 @@ test('unwired Darwin sampler brackets kernel identity and enforces converted CPU
         }
     } finally { rmSync(dir, {recursive: true, force: true}); }
 });
+
+const sdkReportControls = String.raw`
+import unittest
+from unittest import mock
+class SDKReportControls(unittest.TestCase):
+    def setUp(self):
+        self.value={'usageSize':96,'userOffset':16,'systemOffset':24,'residentOffset':64,'birthOffset':80,
+            'exitOffset':88,'timebaseSize':8,'numer':125,'denom':3,'pid':37,'uuid':'ab'*16,'birth':12,
+            'userTicks':100,'systemTicks':200,'rssBytes':100,'pathMatches':True}
+    def test_positive_and_exact_boundary(self):
+        validate_sdk_report(self.value,37)
+        self.value['userTicks']=120000000;self.value['systemTicks']=0;self.value['rssBytes']=1024**3
+        validate_sdk_report(self.value,37)
+    def test_every_layout_field_is_checked(self):
+        for key in ['usageSize','userOffset','systemOffset','residentOffset','birthOffset','exitOffset','timebaseSize']:
+            with self.subTest(key=key):
+                v=dict(self.value);v[key]+=1
+                with self.assertRaises(ValueError):validate_sdk_report(v,37)
+    def test_closed_schema_and_types(self):
+        for v in [[],None,{**self.value,'extra':1},{k:v for k,v in self.value.items() if k!='uuid'}]:
+            with self.assertRaises(ValueError):validate_sdk_report(v,37)
+        for key in ['usageSize','pid','numer','denom','birth','userTicks','systemTicks','rssBytes']:
+            v=dict(self.value);v[key]=True
+            with self.subTest(key=key):
+                with self.assertRaises(ValueError):validate_sdk_report(v,37)
+    def test_identity_refusals(self):
+        for key,value in [('pid',38),('uuid','0'*32),('uuid','not-hex'),('birth',0),('pathMatches',False)]:
+            v=dict(self.value);v[key]=value
+            with self.subTest(key=key):
+                with self.assertRaises(ValueError):validate_sdk_report(v,37)
+    def test_resource_and_timebase_refusals(self):
+        for key,value in [('numer',0),('denom',0),('numer',2**32),('denom',2**32),('rssBytes',1024**3+1),
+                          ('userTicks',120000001),('systemTicks',120000001),('birth',2**64),('userTicks',-1)]:
+            v=dict(self.value);v[key]=value
+            with self.subTest(key=key,value=value):
+                with self.assertRaises(ValueError):validate_sdk_report(v,37)
+    def test_unsupported_host_refuses_before_compiler(self):
+        with mock.patch.object(sys,'platform','linux'),mock.patch.object(subprocess,'run') as run:
+            with self.assertRaises(ValueError):main()
+            run.assert_not_called()
+unittest.main(argv=['authored-sdk-controls'],defaultTest='SDKReportControls',verbosity=2)
+`;
+
+const preflightBlock = workflow.match(/# BEGIN IOS DARWIN PREFLIGHT\n          "\$BW_PREFLIGHT_PYTHON" - <<'PY'\n([\s\S]*?)          PY\n          # END IOS DARWIN PREFLIGHT/);
+assert.ok(preflightBlock, 'exact embedded Darwin preflight');
+const preflight = preflightBlock[1].replace(/^          /gm, '');
+
+test('Darwin preflight-only dispatch is closed, unsigned and excludes existing app build jobs', () => {
+    assert.match(workflow, /ios_audit_preflight_only:\n[^\n]+\n        type: boolean\n        default: false/);
+    const guard = "github.event_name == 'workflow_dispatch' && inputs.ios_audit_preflight_only && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'";
+    assert.ok(workflow.includes(`  ios-audit-preflight:\n    if: ${guard}\n`));
+    assert.ok(workflow.includes("  build-web:\n    if: github.event_name != 'workflow_dispatch' || inputs.ios_audit_preflight_only != true\n"));
+    const job = workflow.slice(workflow.indexOf('  ios-audit-preflight:\n'), workflow.indexOf('  build-web:\n'));
+    assert.match(job, /permissions:\n      contents: read/);
+    assert.match(job, /timeout-minutes: 8/);
+    assert.doesNotMatch(job, /tauri ios|simctl|downloadPlatform|secrets\.|devicectl|sign_ios: true/);
+    assert.match(job, /name: brickwright-ios-darwin-preflight/);
+    assert.match(job, /path: \$\{\{ runner.temp \}\}\/bw-ios-darwin-preflight\/report.json/);
+    assert.match(preflight, /sys.version_info >= \(3,13\)/);
+    assert.match(preflight, /os\.WEXITED\|os\.WNOHANG\|os\.WNOWAIT/);
+    assert.ok(preflight.indexOf('os.killpg(process.pid,signal.SIGKILL)') < preflight.indexOf('process.wait(timeout=2)'));
+    assert.match(preflight, /'actualAppQualified':False,'processFamilyQualified':False/);
+});
+
+test('Darwin SDK report controls reject layout, identity, CPU-unit and resource mismatches', () => {
+    const definitions = preflight.slice(0, preflight.indexOf("\nif __name__=='__main__':"));
+    const dir = mkdtempSync(join(tmpdir(), 'bw-ios-sdk-controls-'));
+    const run = (source, name) => {
+        const file = join(dir, `${name}.py`);
+        writeFileSync(file, `${source}\n${sdkReportControls}`);
+        return spawnSync('/usr/bin/python3', [file], {encoding:'utf8', timeout:15000});
+    };
+    try {
+        const baseline = run(definitions, 'baseline');
+        assert.equal(baseline.status, 0, baseline.stdout + baseline.stderr);
+        assert.match(baseline.stderr, /Ran 6 tests/);
+        for (const [index, [before, after]] of [
+            ["value[k] == v", 'True'],
+            ["value['pid'] == pid", 'True'],
+            ["value['rssBytes'] <= 1024**3", 'True'],
+            ["(value['userTicks']+value['systemTicks'])*value['numer']//value['denom'] <= 5_000_000_000", 'True']
+        ].entries()) {
+            assert.equal(definitions.split(before).length, 2);
+            const result = run(definitions.replace(before, after), `cut-${index}`);
+            assert.notEqual(result.status, 0, `undetected SDK cut ${index}`);
+            assert.match(result.stderr, /FAIL:/, result.stdout + result.stderr);
+            assert.doesNotMatch(result.stderr, /SyntaxError|ImportError/);
+        }
+    } finally { rmSync(dir, {recursive:true, force:true}); }
+});
