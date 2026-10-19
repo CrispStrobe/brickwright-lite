@@ -279,7 +279,7 @@ This is cursor-driven. A new pure export, `snapAtPointer(model, catalog, held, r
 | Hysteresis | 8 px | 5 px towards h4 keeps h3; at the midpoint plus 3 px h3 is still kept; fully on h4 switches (T4). The current target counts up to radius + hysteresis, or the hysteresis could not hold it past the radius |
 | Fallback | 12 LDU | the connector nearest the ray's hit point when none projects within the radius |
 
-The starting values from §6 were kept: every gate reading lies well inside them (camera checks: a middle-drag orbit moves its point 0.00 px, a wheel zoom 0.38 px, a pinch 0.12 px; a double click centres in 299 ms, at once with reduced motion).
+The starting values from §6 were kept: every gate reading lies well inside them (camera checks: a middle-drag orbit moves its point 0.00 px, a wheel zoom 0.38 px, a pinch 0.12 px; a double click centres on the clicked point within one pixel's span on the face, at once with reduced motion; the gate waits on that end condition, never on wall time).
 
 **Differences from the text above, and why**
 

@@ -925,8 +925,8 @@ try {
             `a brick in the way: red, refused; a gear finds the axle's tip, not pin holes; [ on an axle refused, on a pin 15°; R mid-drag turns a Beam 3 about its pin, one undo; ` +
             `a grouped Beam 3 seats both pins (${c.t9.join(', ')}); a lit hole then a tile; keyboard only ("${c.announce}")`);
         console.log(`PASS connect camera: a middle drag keeps its point within ${c.orbitDriftPx.toFixed(2)} px, the wheel ${c.wheelDriftPx.toFixed(2)} px, a pinch ` +
-            `${c.pinchDriftPx.toFixed(2)} px; Build looks from ${c.buildPolar.toFixed(0)}°, Simulate stops at ${c.simulatePolar.toFixed(0)}°; a double click centres in ` +
-            `${c.focusMs.toFixed(0)} ms (reduced motion ${c.focusReducedMs.toFixed(0)} ms); a trackpad scroll orbits; the view cube's top looks down`);
+            `${c.pinchDriftPx.toFixed(2)} px; Build looks from ${c.buildPolar.toFixed(0)}°, Simulate stops at ${c.simulatePolar.toFixed(0)}°; a double click centres on its point ` +
+            `(eased ${c.focusOff.toFixed(2)} LDU off, reduced motion at once ${c.focusReducedOff.toFixed(2)} LDU; tolerance ${c.focusTol.toFixed(2)} = one pixel there); a trackpad scroll orbits; the view cube's top looks down`);
         await connect.close();
     }
     if (want('scale')) { // a 2,054-part model, instanced, and the .lxf/.io model files
