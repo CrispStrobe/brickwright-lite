@@ -2,10 +2,10 @@
 
 ## Latest bounded qualification checkpoint — 2026-10-19
 
-Both complete 225-subject CLI attempts ended without reports; **all 225 current
+Three complete 225-subject CLI attempts ended without reports; **all 225 current
 outcomes remain unobserved**. The historical 184 raw-input result stays **147 translated / 36
 partial / one malformed**; the 41 original contexts retain 29 compiler successes and 12 failures
-separately. Neither incomplete episode establishes its kill cause,
+separately. These incomplete episodes do not establish their kill causes,
 a bottleneck or a successful prefix.
 
 C6 ran all 48 native Array controls: 45 passed and three failed. The composed
@@ -90,7 +90,7 @@ initialization remain the authority.
   real input. No uniform speedup or complete-job capacity is established.
 
 The historical raw-source census was 147 translated, 36 partial and one
-malformed input out of 184. Two complete current attempts ended without reports; **all 225 current outcomes remain unobserved**.
+malformed input out of 184. Three complete current attempts ended without reports; **all 225 current outcomes remain unobserved**.
 Incomplete prefixes and feature tests must never be subtracted from that count.
 Keep the 41 complete project contexts, their original compiler failures, and
 complete-game/GUI qualification in separate ledgers.
@@ -271,7 +271,7 @@ Sampling added measurable overhead and does not establish whole-suite capacity.
 
 The completion ledger remains **184 raw sources plus 41 project contexts**.
 Historical raw results remain **147 translated / 36 partial / 1 malformed**;
-both complete current 225-subject attempts were incomplete and **all outcomes remain unobserved**. Focused passes,
+all three complete current 225-subject attempts were incomplete and **all outcomes remain unobserved**. Focused passes,
 fixture improvements and SDK acceptance do not reduce that count.
 ### Tile painter palette projection candidate
 

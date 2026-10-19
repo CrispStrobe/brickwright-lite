@@ -2,10 +2,10 @@
 
 ## Latest bounded qualification checkpoint — 2026-10-19
 
-Both complete 225-subject CLI attempts ended without reports; **all 225 current
+Three complete 225-subject CLI attempts ended without reports; **all 225 current
 outcomes remain unobserved**. The historical 184 raw-input result stays **147 translated / 36
 partial / one malformed**; the 41 original contexts retain 29 compiler successes and 12 failures
-separately. Neither incomplete episode establishes its kill cause,
+separately. These incomplete episodes do not establish their kill causes,
 a bottleneck or a successful prefix.
 
 C6 ran all 48 native Array controls: 45 passed and three failed. The composed
@@ -21,7 +21,7 @@ Current Array runtime status: C6 completed 48 native controls with 45 passing an
 
 ## Current integration checkpoint — 2026-10-19
 
-The historical 184-input result remains **147 translated, 36 partial and one malformed**. Two complete 225-input attempts ended without reports; all 225 current outcomes remain unobserved. No focused count below changes that result.
+The historical 184-input result remains **147 translated, 36 partial and one malformed**. Three complete 225-input attempts ended without reports; all 225 current outcomes remain unobserved. No focused count below changes that result.
 
 | Area | Observed result | Next acceptance |
 | --- | --- | --- |

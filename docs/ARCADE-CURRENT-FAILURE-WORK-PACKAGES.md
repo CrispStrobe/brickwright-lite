@@ -2,8 +2,8 @@
 
 ## Latest bounded qualification checkpoint — 2026-10-19
 
-The complete 225-subject CLI assessment has been attempted twice against
-successive candidates. Neither produced a complete JSON/gzip report, Markdown
+The complete 225-subject CLI assessment has been attempted three times against
+successive candidates. None produced a complete JSON/gzip report, Markdown
 or final summary. The first reached the wall limit; the changed candidate ended
 with SIGKILL near the CPU bound without a launcher kill. The kill cause and a
 performance bottleneck are not established. **All 225 current outcomes remain
@@ -29,7 +29,13 @@ Compact native-byte observation passed 37 component controls. Optional phase
 progress is separate diagnostic work: its first 45-control episode passed 44
 and failed one existing gzip source-policy check; all eight new controls passed.
 The marker-boundary correction preserves all assertions; the changed-head
-episode passed all 45 tests. Its independent saved-data review passes. Progress prefixes do not establish completed conversion outcomes.
+episode passed all 45 tests. Its independent saved-data review passes. Progress prefixes do not establish completed conversion outcomes. The progress-enabled
+225-subject attempt also ended with SIGKILL and no report. Its journal contains
+79 in-memory row markers and begins the 80th subject; the last marker is
+`ROW_WIRE_CAPTURE_BEGIN`. These are diagnostic positions, not qualified app
+outcomes. Inspect the saved phase-cost evidence before choosing another
+optimization; do not retry the same tree or infer a kill cause from its last
+marker.
 
 ### Methodical acceptance still required
 
@@ -61,7 +67,7 @@ The newer Array rejection-routing candidate reproduces its complete normal insta
 The compressed report path has also completed an actual two-input CLI run. An independent reader reconstructed every native byte payload and descriptor run and compared the complete returned graphs with the earlier report, allowing only the inventoried generated IDs and input-path identity to differ. Both authored inputs still produce five blocks with the same provided diagnostic channels. This qualifies that report path for those two authored inputs; it is not a complete corpus result.
 
 
-The historical 184-input result remains **147 translated, 36 partial and one malformed**. Two complete 225-input attempts ended without reports; all 225 current outcomes remain unobserved. No focused count below changes that result.
+The historical 184-input result remains **147 translated, 36 partial and one malformed**. Three complete 225-input attempts ended without reports; all 225 current outcomes remain unobserved. No focused count below changes that result.
 
 | Area | Observed result | Next acceptance |
 | --- | --- | --- |
