@@ -407,3 +407,26 @@ only. Machine paths, acquisition receipts, originals, transcripts and access
 details belong in ignored local `CLAUDE.md` files or the private evidence store.
 Never commit or publish those inputs. Check the local ignored handoff before
 using retained artifacts, so that a successful original is acquired only once.
+
+### Command cleanup candidate and remaining admission
+
+The unwired simulator command adapter retains a Darwin child's numeric identity
+until signaling and reaping finish. Its cleanup candidate accepts an exited
+singleton EPERM only around two matching kernel group censuses and a stable
+nonreaping terminal record. Uncertain groups and other signal failures refuse.
+Cleanup continues through interruptions; Linux behavior has separate controls.
+The default-off v6 fixed-helper profile can exercise the candidate on its one
+nonforking helper, retaining wait/group originals before independent teardown.
+This requires a new source-bound platform event and independent reader. Earlier
+successful originals must not be replayed.
+
+The command journal retains bounded observed stdout/stderr, terminal waits and
+reap records privately, including prefixes from refusals. It is not a complete
+transcript of bytes never read. Before an installed-app event, identify an authoritative join from the explicit device set and boot to the app
+and delegated services, admit target SDK/runtime/build/architecture and process
+identity, and bound the whole observed resource and original union. Then compose
+the same prepared receiver and Stop intent through invocation, observation and
+cleanup. Missing ownership, permission or family facts must remain refusals.
+Exact final-head checks and affected actual installed qualification still precede
+merge. TestFlight, instrumentation and later SPIKE lifecycle qualification remain
+separate pending work.

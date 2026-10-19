@@ -16,7 +16,7 @@ test('ad-hoc diagnostics print only device count and preserve the actual asserti
 function assertNoAuditEntry(body) {
     const start = body.indexOf('def main():');
     assert.ok(start >= 0, 'the actual entry point must exist');
-    assert.doesNotMatch(body.slice(start), /SIMCTL_CHILD_|BW_EMBEDDED_ASSET_AUDIT_PATH|prepared_launch|owned_simulator_transaction|prepare_installed_observation|release_installed_observation|bounded_simulator_command|DarwinProcessSampler|DarwinAuditIdentity|simulator_code_directory/);
+    assert.doesNotMatch(body.slice(start), /SIMCTL_CHILD_|BW_EMBEDDED_ASSET_AUDIT_PATH|prepared_launch|owned_simulator_transaction|prepare_installed_observation|release_installed_observation|bounded_simulator_command|darwin_owned_command_cleanup|DarwinProcessSampler|DarwinAuditIdentity|simulator_code_directory/);
 }
 
 test('asset source preparation adds no runtime download or delivery event', () => {
@@ -872,6 +872,58 @@ class AdapterControls(unittest.TestCase):
         self.assertEqual(result['status'],'observed-transaction-only');self.assertEqual(raw,b'{"authoredOnly":true}')
         self.assertTrue(result['cleanupAbsenceObserved']);self.assertIs(result['actualAppQualified'],False)
         self.assertEqual(json.loads((self.root/'state.json').read_text()),{})
+    def test_darwin_cleanup_adapter_retains_originals_and_continues_after_interrupt(self):
+        original_popen=subprocess.Popen;children=[]
+        def spawn(*args,**kwargs):
+            child=original_popen(*args,**kwargs);children.append(child);return child
+        records=[b'{"authoredCleanupOnly":true}']
+        def cleanup(child,**kwargs):
+            self.assertIsNone(child.returncode)
+            os.killpg(child.pid,signal.SIGKILL)
+            return tuple(records)
+        with mock.patch.object(sys,'platform','darwin'),mock.patch.dict(bounded_simulator_command.__globals__,{'darwin_owned_command_cleanup':cleanup}),mock.patch.object(subprocess,'Popen',side_effect=spawn):
+            retained=[];self.run_command(cleanup_originals=retained)
+        self.assertEqual(retained,records);self.assertIsNotNone(children[-1].returncode)
+        self.assertTrue(children[-1].stdout.closed and children[-1].stderr.closed)
+        def interrupt(child,**kwargs):
+            cleanup(child,**kwargs)
+            error=KeyboardInterrupt('authored');error.command_cleanup_originals=tuple(records);raise error
+        self.write_actor('exit');before=len(os.listdir('/dev/fd'))
+        with mock.patch.object(sys,'platform','darwin'),mock.patch.dict(bounded_simulator_command.__globals__,{'darwin_owned_command_cleanup':interrupt}),mock.patch.object(subprocess,'Popen',side_effect=spawn):
+            retained=[]
+            with self.assertRaises(KeyboardInterrupt) as caught:self.run_command(cleanup_originals=retained)
+        self.assertEqual(retained,records);self.assertIsInstance(caught.exception.command_primary_error,Exception)
+        self.assertIn('group-signal',caught.exception.__notes__[0]);self.assertIsNotNone(children[-1].returncode)
+        self.assertTrue(children[-1].stdout.closed and children[-1].stderr.closed)
+        self.assertEqual(len(os.listdir('/dev/fd')),before)
+        for invalid in ((),[b'reused'],True):
+            with mock.patch.object(subprocess,'Popen') as spawn:
+                with self.assertRaises(SimulatorCommandRefused):self.run_command(cleanup_originals=invalid)
+                spawn.assert_not_called()
+    def test_original_journal_retains_streams_exit_and_refusal_prefix_privately(self):
+        retained=[];self.write_actor('output')
+        with self.assertRaises(SimulatorCommandRefused) as caught:self.run_command(output_limit=64,command_originals=retained)
+        self.assertEqual(caught.exception.reason,'output')
+        rows=[json.loads(row) for row in retained]
+        stdout=b''.join(bytes.fromhex(row['rawHex']) for row in rows if row['kind']=='stdout')
+        stderr=b''.join(bytes.fromhex(row['rawHex']) for row in rows if row['kind']=='stderr')
+        self.assertEqual(stdout,b'a'*40);self.assertEqual(stderr,b'b'*40)
+        self.assertEqual(rows[-1]['kind'],'leader-reaped')
+        self.assertLessEqual(sum(map(len,retained)),2*(64+65536)+131072)
+        retained=[];self.write_actor('exit')
+        with self.assertRaises(SimulatorCommandRefused) as caught:self.run_command(command_originals=retained)
+        self.assertEqual(caught.exception.reason,'exit');self.assertNotIn('AUTHORED-PRIVATE',str(caught.exception))
+        rows=[json.loads(row) for row in retained]
+        self.assertIn('wait-terminal',[row['kind'] for row in rows])
+        self.assertEqual(b''.join(bytes.fromhex(row['rawHex']) for row in rows if row['kind']=='stderr'),b'AUTHORED-PRIVATE-STDERR')
+        for invalid in ((),[b'reused'],True):
+            with mock.patch.object(subprocess,'Popen') as spawn:
+                with self.assertRaises(SimulatorCommandRefused):self.run_command(command_originals=invalid)
+                spawn.assert_not_called()
+        alias=[]
+        with mock.patch.object(subprocess,'Popen') as spawn:
+            with self.assertRaises(SimulatorCommandRefused):self.run_command(command_originals=alias,cleanup_originals=alias)
+            spawn.assert_not_called()
     def test_runtime_output_budget_mutant_is_detected(self):
         namespace={};cut='need(used <= output_limit)';self.assertIn(cut,SOURCE_PREFIX)
         exec(compile(SOURCE_PREFIX.replace(cut,'need(True)'),'authored-output-mutant','exec'),namespace)
@@ -891,7 +943,7 @@ test('unwired bounded simctl adapter controls execute real owned subprocesses', 
             env: {...process.env, GITHUB_WORKSPACE: dir, RUNNER_TEMP: dir, TMPDIR: dir}, encoding: 'utf8', timeout: 20000
         });
         assert.equal(result.status, 0, result.stdout + result.stderr);
-        assert.match(result.stderr, /Ran 14 tests/);
+        assert.match(result.stderr, /Ran 15 tests/);
         assert.match(result.stderr, /OK/);
         assert.equal((retention.match(/bounded_simulator_command\(/g) || []).length, 1, 'adapter definition only');
     } finally { rmSync(dir, {recursive: true, force: true}); }
@@ -1722,6 +1774,24 @@ class SDKReportControls(unittest.TestCase):
         census=self.enterContext(mock.patch.dict(globals(),{'preflight_group_original':mock.Mock()}))
         signal_call=self.enterContext(mock.patch.object(os,'killpg'))
         return process,info,report,signal_call
+    def test_command_cleanup_probe_preserves_primary_originals_and_always_tears_down(self):
+        process,info,report,signal_call=self.cleanup_fixture()
+        row=b'{"kind":"authored-only","rawHex":""}'
+        run=mock.Mock(return_value=(row,))
+        with mock.patch.dict(globals(),{'finish_preflight_helper':mock.Mock()}) as ignored:
+            check_command_cleanup({'darwin_owned_command_cleanup':run},process,info,report,ownership_token=self.ownership_token)
+            finish_preflight_helper.assert_called_once()
+        self.assertEqual(report['commandCleanupOriginals'],[json.loads(row)])
+        self.assertTrue(report['commandCleanupProbeChecked'])
+        for error in (RuntimeError('authored'),KeyboardInterrupt('authored')):
+            error.command_cleanup_originals=(row,);report={};run.side_effect=error
+            with mock.patch.dict(globals(),{'finish_preflight_helper':mock.Mock(side_effect=ValueError('teardown'))}):
+                with self.assertRaises(type(error)) as caught:
+                    check_command_cleanup({'darwin_owned_command_cleanup':run},process,info,report,ownership_token=self.ownership_token)
+                self.assertIs(caught.exception,error);finish_preflight_helper.assert_called_once()
+            self.assertEqual(report['commandCleanupOriginals'],[json.loads(row)])
+            self.assertNotIn('commandCleanupProbeChecked',report)
+            self.assertEqual(report['commandCleanupTeardownFailure'],'ValueError')
     def test_fixed_helper_success_reaps_and_preserves_wait_original(self):
         process,info,report,signal_call=self.cleanup_fixture()
         finish_preflight_helper(process,info,report,ownership_token=self.ownership_token)
@@ -1833,7 +1903,7 @@ test('Darwin SDK report controls reject layout, identity, CPU-unit and resource 
     try {
         const baseline = run(definitions, 'baseline');
         assert.equal(baseline.status, 0, baseline.stdout + baseline.stderr);
-        assert.match(baseline.stderr, /Ran 14 tests/);
+        assert.match(baseline.stderr, /Ran 15 tests/);
         for (const [index, [before, after]] of [
             ["value[k] == v", 'True'],
             ["value['pid'] == pid", 'True'],
@@ -1990,4 +2060,129 @@ test('unwired audit identity uses kernel tokens and read-only code hashes with o
             assert.doesNotMatch(result.stderr,/SyntaxError|ImportError/);
         }
     } finally {rmSync(dir,{recursive:true,force:true});}
+});
+
+const darwinCommandGroupControls = String.raw`
+import ctypes
+import errno
+import platform
+import signal
+import struct
+import unittest
+from types import SimpleNamespace
+from unittest import mock
+
+class GroupQuery:
+    def __init__(self):self.count=1;self.pid=37;self.error=0;self.hook=None
+    def __call__(self,pid,raw,size):
+        assert pid==37 and size==8
+        ctypes.cast(raw,ctypes.POINTER(ctypes.c_int32))[0]=self.pid
+        ctypes.set_errno(self.error)
+        if self.hook:self.hook()
+        return self.count
+
+class DarwinCommandGroupControls(unittest.TestCase):
+    def setUp(self):
+        self.process=SimpleNamespace(pid=37,returncode=None)
+        self.tick=0.;self.query=GroupQuery();self.library=SimpleNamespace(proc_listpgrppids=self.query)
+        self.info=SimpleNamespace(si_pid=37,si_uid=0,si_signo=int(signal.SIGCHLD),si_status=0,si_code=os.CLD_EXITED)
+        self.enterContext(mock.patch.object(sys,'platform','darwin'))
+        self.enterContext(mock.patch.object(platform,'machine',return_value='arm64'))
+        self.load=self.enterContext(mock.patch.object(ctypes,'CDLL',return_value=self.library))
+        self.wait=self.enterContext(mock.patch.object(os,'waitid',return_value=self.info))
+        self.kill=self.enterContext(mock.patch.object(os,'killpg',side_effect=PermissionError(errno.EPERM,'authored')))
+    def run_cleanup(self):return darwin_owned_command_cleanup(self.process,deadline=2,now=lambda:self.tick)
+    def originals(self,rows):return [json.loads(row) for row in rows]
+    def test_singleton_zombie_negative_keeps_wait_and_two_group_originals(self):
+        rows=self.originals(self.run_cleanup())
+        self.assertEqual([r['kind'] for r in rows],['wait-terminal','group','group-signal','group','wait-terminal'])
+        self.assertEqual(rows[2]['errno'],errno.EPERM)
+        for row in (rows[1],rows[3]):self.assertEqual(struct.unpack('<2i',bytes.fromhex(row['rawHex'])),(37,0))
+        self.kill.assert_called_once_with(37,signal.SIGKILL)
+        self.load.assert_called_once_with('/usr/lib/libproc.dylib',use_errno=True)
+        self.assertLessEqual(sum(len(row) for row in self.run_cleanup()),4096)
+    def test_live_group_signal_success_uses_no_zombie_exception(self):
+        self.wait.return_value=None;self.kill.side_effect=None
+        rows=self.originals(self.run_cleanup());self.assertEqual([r['kind'] for r in rows],['wait-pending','group-signal'])
+        self.load.assert_not_called();self.assertEqual(rows[-1]['status'],0)
+    def test_terminal_nonzero_and_signal_exit_still_allow_owned_cleanup(self):
+        for code,status in ((os.CLD_EXITED,37),(os.CLD_KILLED,9),(os.CLD_DUMPED,11)):
+            self.info.si_code,self.info.si_status=code,status
+            self.assertEqual(self.originals(self.run_cleanup())[0]['kind'],'wait-terminal')
+    def test_live_eperm_and_unknown_signal_errors_refuse(self):
+        for info,error in ((None,PermissionError(errno.EPERM,'authored')),(self.info,PermissionError(errno.EACCES,'authored')),(self.info,OSError(errno.EIO,'authored')),(self.info,ProcessLookupError(errno.ESRCH,'authored'))):
+            self.wait.return_value=info;self.kill.side_effect=error
+            with self.subTest(info=info,error=type(error).__name__),self.assertRaises(DarwinCommandCleanupRefused) as caught:self.run_cleanup()
+            self.assertTrue(caught.exception.originals)
+    def test_unknown_truncated_foreign_and_error_groups_refuse_before_signal(self):
+        for count,pid,error in ((0,37,0),(2,37,0),(-1,37,0),(1,38,0),(1,37,5),(True,37,0)):
+            self.query.count,self.query.pid,self.query.error=count,pid,error
+            self.kill.reset_mock()
+            with self.subTest(count=count,pid=pid,error=error),self.assertRaises(DarwinCommandCleanupRefused) as caught:self.run_cleanup()
+            self.kill.assert_not_called();rows=self.originals(caught.exception.originals)
+            self.assertEqual(rows[-1]['kind'],'group')
+    def test_changed_second_wait_or_second_group_refuses(self):
+        for mode in ('wait','group'):
+            self.wait.side_effect=None;self.query.pid=37
+            if mode=='wait':self.wait.side_effect=[self.info,SimpleNamespace(**{**vars(self.info),'si_status':1})]
+            else:
+                calls=[0]
+                def change():
+                    calls[0]+=1
+                    if calls[0]==1:self.query.pid=38
+                self.query.hook=change
+            with self.subTest(mode=mode),self.assertRaises(DarwinCommandCleanupRefused):self.run_cleanup()
+            self.query.hook=None
+    def test_wrong_wait_identity_and_unreaped_requirement_refuse(self):
+        for mode in ('pid','uid','code','reaped','pidtype'):
+            self.process.returncode=None;self.process.pid=37;self.info.si_pid=37;self.info.si_uid=0;self.info.si_code=os.CLD_EXITED
+            if mode=='pid':self.info.si_pid=38
+            elif mode=='uid':self.info.si_uid=-1
+            elif mode=='code':self.info.si_code=-1
+            elif mode=='reaped':self.process.returncode=0
+            else:self.process.pid=True
+            self.kill.reset_mock()
+            with self.subTest(mode=mode),self.assertRaises(DarwinCommandCleanupRefused):self.run_cleanup()
+            self.kill.assert_not_called()
+    def test_late_kernel_query_retains_original_but_never_signals(self):
+        self.query.hook=lambda:setattr(self,'tick',3.)
+        with self.assertRaises(DarwinCommandCleanupRefused) as caught:self.run_cleanup()
+        self.assertEqual(self.originals(caught.exception.originals)[-1]['kind'],'group');self.kill.assert_not_called()
+    def test_interrupt_preserves_prefix_and_never_reaps_in_helper(self):
+        self.kill.side_effect=KeyboardInterrupt('authored')
+        with self.assertRaises(KeyboardInterrupt) as caught:self.run_cleanup()
+        self.assertEqual(len(caught.exception.command_cleanup_originals),2)
+        self.assertIsNone(self.process.returncode)
+    def test_unsupported_platform_refuses_before_kernel_queries(self):
+        with mock.patch.object(sys,'platform','linux'),self.assertRaises(DarwinCommandCleanupRefused):self.run_cleanup()
+        self.wait.assert_not_called();self.load.assert_not_called();self.kill.assert_not_called()
+
+unittest.main(argv=['authored-darwin-command-group-controls'],verbosity=2)
+`;
+
+test('Darwin command cleanup retains kernel originals and refuses uncertain groups', () => {
+    const prefix = retention.slice(0, retention.lastIndexOf('\ntry:\n'));
+    const dir = mkdtempSync(join(tmpdir(), 'bw-ios-command-group-'));
+    const run = (source, name) => {
+        const file = join(dir, `${name}.py`);
+        writeFileSync(file, `${source}\n${darwinCommandGroupControls}`);
+        return spawnSync('/usr/bin/python3', [file], {env: {...process.env, GITHUB_WORKSPACE: dir, RUNNER_TEMP: dir, TMPDIR: dir}, encoding: 'utf8', timeout: 15000});
+    };
+    try {
+        const baseline = run(prefix, 'baseline');
+        assert.equal(baseline.status, 0, baseline.stdout + baseline.stderr);
+        assert.match(baseline.stderr, /Ran 10 tests/);
+        for (const [index, [before, after]] of [
+            ['type(count) is int and count==1 and ctypes.get_errno()==0 and buffer[0]==process.pid', 'True'],
+            ['singleton();need(wait_original()==before)', 'singleton()'],
+            ['signal_error.errno==errno.EPERM and before is not None', 'True'],
+            ['tick<=deadline', 'True']
+        ].entries()) {
+            assert.equal(prefix.split(before).length, 2, before);
+            const result = run(prefix.replace(before, after), `cut-${index}`);
+            assert.notEqual(result.status, 0, `undetected cut ${before}`);
+            assert.match(result.stderr, /FAIL:/, result.stdout + result.stderr);
+            assert.doesNotMatch(result.stderr, /SyntaxError|ImportError/);
+        }
+    } finally { rmSync(dir, {recursive: true, force: true}); }
 });

@@ -242,6 +242,29 @@ jobs:
                       if primary is None:raise
 
 
+          def check_command_cleanup(namespace, process, exit_info, report, *, ownership_token):
+              """Exercise the candidate primitive only on this fixed nonforking helper."""
+              primary=None
+              try:
+                  report['commandCleanupOriginals']=[]
+                  rows=namespace['darwin_owned_command_cleanup'](process,deadline=time.monotonic()+2)
+                  report['commandCleanupOriginals']=[json.loads(row) for row in rows]
+                  report['commandCleanupProbeChecked']=True
+              except BaseException as error:
+                  primary=error
+                  report['commandCleanupOriginals']=[json.loads(row) for row in
+                      getattr(error,'originals',getattr(error,'command_cleanup_originals',()))]
+                  raise
+              finally:
+                  # The primitive never reaps. Preserve the primary failure while the
+                  # independent fixed-probe teardown always attempts the owned wait.
+                  try:
+                      finish_preflight_helper(process,exit_info,report,ownership_token=ownership_token)
+                  except BaseException as error:
+                      report['commandCleanupTeardownFailure']=type(error).__name__
+                      if primary is None:raise
+
+
           def producer_namespace(workflow):
               match = re.search(r'# BEGIN IOS INPUT RETENTION\n          cat > "\$RUNNER_TEMP/bw-ios-audit-capture.py" <<\'PY\'\n([\s\S]*?)          PY\n          # END IOS INPUT RETENTION',workflow)
               require(match is not None)
@@ -255,7 +278,7 @@ jobs:
           def main():
               root=Path(os.environ['RUNNER_TEMP']).resolve()/'bw-ios-darwin-preflight'
               root.mkdir(exist_ok=False)
-              report={'schema':'brickwright.darwin-sdk-preflight.v5','status':'partial',
+              report={'schema':'brickwright.darwin-sdk-preflight.v6','status':'partial',
                       'sourceCommit':os.environ['GITHUB_SHA'],'runID':os.environ['GITHUB_RUN_ID'],
                       'attempt':os.environ['GITHUB_RUN_ATTEMPT'],'job':os.environ['GITHUB_JOB'],
                       'actualAppQualified':False,'processFamilyQualified':False,'processGroupQualified':False,'cleanupSucceeded':False}
@@ -357,7 +380,8 @@ jobs:
                       time.sleep(0.01)
                   exit_info=os.waitid(os.P_PID,process.pid,os.WEXITED|os.WNOHANG|os.WNOWAIT)
                   report['nonReapingWaitObserved']=True
-                  finish_preflight_helper(process,exit_info,report,ownership_token=identity._token)
+                  report['stage']='command-cleanup-probe'
+                  check_command_cleanup(namespace,process,exit_info,report,ownership_token=identity._token)
                   report['cleanupSucceeded']=True
                   report['stage']='exit-refusal'
                   try:sampler(process.pid)
@@ -838,6 +862,88 @@ jobs:
               return builds[0]
 
 
+          class DarwinCommandCleanupRefused(RuntimeError):
+              def __init__(self, originals):
+                  super().__init__('Darwin command group cleanup refused')
+                  self.originals = tuple(originals)
+
+
+          def darwin_owned_command_cleanup(process, *, deadline, now=time.monotonic):
+              """Unwired same-group signal check, never a simulator/service ownership lease.
+
+              Caller owns this fresh Popen session and must always reap it afterward. No
+              concurrent reaper may steal the leader. EPERM is admitted only for two exact
+              singleton group observations around a stable nonreaping terminal child.
+              """
+              import ctypes
+              import errno
+              import platform
+              import signal
+              import struct
+              records=[]
+              last=None
+              def record(kind,status,error,raw):
+                  need(type(raw) is bytes and len(raw)<=128)
+                  value=json.dumps({'kind':kind,'status':status,'errno':error,'rawHex':raw.hex()},
+                                   sort_keys=True,separators=(',',':')).encode()
+                  need(len(records)<16 and sum(map(len,records))+len(value)<=4096)
+                  records.append(value)
+              def check():
+                  nonlocal last
+                  tick=now()
+                  need(type(tick) in (int,float) and math.isfinite(tick) and
+                       (last is None or last<=tick) and tick<=deadline)
+                  last=tick
+              def wait_original():
+                  check()
+                  info=os.waitid(os.P_PID,process.pid,os.WEXITED|os.WNOHANG|os.WNOWAIT)
+                  if info is None:
+                      record('wait-pending',0,0,b'');check();return None
+                  fields=tuple(getattr(info,key) for key in ('si_pid','si_uid','si_signo','si_status','si_code'))
+                  need(all(type(v) is int and -(2**63)<=v<2**63 for v in fields))
+                  record('wait-terminal',0,0,struct.pack('<5q',*fields));check()
+                  need(fields[0]==process.pid and 0<=fields[1]<=2**32-1 and fields[2]==signal.SIGCHLD and
+                       fields[4] in (os.CLD_EXITED,os.CLD_KILLED,os.CLD_DUMPED))
+                  # si_uid is retained information, never child ownership authority.
+                  return fields
+              def singleton():
+                  check();buffer=(ctypes.c_int32*2)();ctypes.set_errno(0)
+                  count=query(process.pid,ctypes.byref(buffer),ctypes.sizeof(buffer))
+                  record('group',count,ctypes.get_errno(),bytes(buffer));check()
+                  need(type(count) is int and count==1 and ctypes.get_errno()==0 and buffer[0]==process.pid)
+              try:
+                  need(sys.platform=='darwin' and platform.machine()=='arm64' and
+                       ctypes.sizeof(ctypes.c_void_p)==8 and sys.byteorder=='little')
+                  need(type(process.pid) is int and 1<process.pid<=2147483647 and process.returncode is None)
+                  need(callable(now) and type(deadline) in (int,float) and math.isfinite(deadline))
+                  check();need(deadline-last<=2)
+                  need(signal.getsignal(signal.SIGCHLD)==signal.SIG_DFL)
+                  before=wait_original()
+                  if before is not None:
+                      library=ctypes.CDLL('/usr/lib/libproc.dylib',use_errno=True)
+                      query=library.proc_listpgrppids
+                      query.argtypes=[ctypes.c_int,ctypes.c_void_p,ctypes.c_int];query.restype=ctypes.c_int
+                      singleton()
+                  check()
+                  signal_error=None
+                  try:
+                      os.killpg(process.pid,signal.SIGKILL)
+                      record('group-signal',0,0,b'')
+                  except OSError as error:
+                      record('group-signal',-1,error.errno,b'');signal_error=error
+                  check()
+                  if signal_error is not None:
+                      need(isinstance(signal_error,PermissionError) and signal_error.errno==errno.EPERM and before is not None)
+                      singleton();need(wait_original()==before)
+                  check()
+                  return tuple(records)
+              except BaseException as error:
+                  if not isinstance(error,Exception):
+                      error.command_cleanup_originals=tuple(records)
+                      raise
+                  raise DarwinCommandCleanupRefused(records) from None
+
+
           class SimulatorCommandRefused(RuntimeError):
               def __init__(self, reason, cleanup_failures=()):
                   super().__init__('simulator command refused')
@@ -845,7 +951,7 @@ jobs:
                   self.cleanup_failures = tuple(cleanup_failures)
 
 
-          def bounded_simulator_command(arguments, *, device_set, deadline, output_limit, stopped=None, prepared_launch=None):
+          def bounded_simulator_command(arguments, *, device_set, deadline, output_limit, stopped=None, prepared_launch=None, cleanup_originals=None, command_originals=None):
               """Unwired simctl client adapter; not containment of delegated services/apps.
 
               Requires non-reaping waitid (macOS Python 3.13+) and the default SIGCHLD
@@ -863,6 +969,16 @@ jobs:
               cleanup = []
               output = bytearray()
               last = None
+              retained_bytes = 0
+              def retain(kind, raw):
+                  nonlocal retained_bytes
+                  if command_originals is None:
+                      return
+                  need(type(raw) is bytes and len(raw)<=65536)
+                  row=json.dumps({'kind':kind,'rawHex':raw.hex()},sort_keys=True,separators=(',',':')).encode()
+                  need(len(command_originals)<1024 and retained_bytes+len(row)<=2*(output_limit+65536)+131072)
+                  list.append(command_originals,row)
+                  retained_bytes+=len(row)
               def check():
                   nonlocal last, stage
                   stage = 'deadline'
@@ -878,6 +994,9 @@ jobs:
                   need(type(deadline) in (int, float) and math.isfinite(deadline))
                   need(type(output_limit) is int and 0 < output_limit <= 1024*1024)
                   need(stopped is None or callable(stopped))
+                  need(cleanup_originals is None or (type(cleanup_originals) is list and not cleanup_originals))
+                  need(command_originals is None or (type(command_originals) is list and not command_originals))
+                  need(command_originals is None or command_originals is not cleanup_originals)
                   need(callable(getattr(BaseException, 'add_note', None)))
                   need(callable(getattr(os, 'waitid', None)) and
                        all(hasattr(os, name) for name in ('P_PID', 'WEXITED', 'WNOHANG', 'WNOWAIT', 'CLD_EXITED')))
@@ -954,6 +1073,7 @@ jobs:
                       for key, _ in selector.select(min(0.05, deadline-current)):
                           stage = 'read'
                           raw = os.read(key.fileobj.fileno(), 65536)
+                          retain('stdout' if key.fileobj is process.stdout else 'stderr',raw)
                           if not raw:
                               selector.unregister(key.fileobj)
                               continue
@@ -967,6 +1087,10 @@ jobs:
                       # PID until signaling the group so its numeric identity cannot recycle.
                       info = os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
                       if info is not None:
+                          import struct
+                          fields=tuple(getattr(info,key) for key in ('si_pid','si_uid','si_signo','si_status','si_code'))
+                          need(all(type(value) is int and -(2**63)<=value<2**63 for value in fields))
+                          retain('wait-terminal',struct.pack('<5q',*fields))
                           need(info.si_pid == process.pid)
                           if info.si_code != os.CLD_EXITED or info.si_status != 0:
                               stage = 'exit'
@@ -984,30 +1108,61 @@ jobs:
                       # Signal only this newly created command session, before reaping its
                       # leader. Descendants that leave the group/services are not contained.
                       try:
-                          os.killpg(process.pid, signal.SIGKILL)
+                          if sys.platform == 'darwin':
+                              originals = darwin_owned_command_cleanup(process, deadline=time.monotonic()+2)
+                              for row in originals:
+                                  retain('darwin-cleanup',row)
+                              if cleanup_originals is not None:
+                                  list.extend(cleanup_originals, originals)
+                          else:
+                              os.killpg(process.pid, signal.SIGKILL)
                       except ProcessLookupError:
                           pass
-                      except Exception:
+                      except BaseException as error:
+                          if cleanup_originals is not None:
+                              list.extend(cleanup_originals, getattr(error,'originals',
+                                  getattr(error,'command_cleanup_originals',())))
                           cleanup.append('group-signal')
+                          if not isinstance(error, Exception):
+                              if primary is not None:
+                                  error.command_primary_error = primary
+                              primary, reason = error, 'cleanup'
                       try:
-                          process.wait(timeout=2)
-                      except Exception:
+                          code=process.wait(timeout=2)
+                          retain('leader-reaped',str(code).encode('ascii'))
+                      except BaseException as error:
                           cleanup.append('leader-reap')
+                          if not isinstance(error, Exception):
+                              if primary is not None:
+                                  error.command_primary_error = primary
+                              primary, reason = error, 'cleanup'
                       for pipe in (process.stdout, process.stderr):
                           try:
                               pipe.close()
-                          except Exception:
+                          except BaseException as error:
                               cleanup.append('pipe-close')
+                              if not isinstance(error, Exception):
+                                  if primary is not None:
+                                      error.command_primary_error = primary
+                                  primary, reason = error, 'cleanup'
                   if selector is not None:
                       try:
                           selector.close()
-                      except Exception:
+                      except BaseException as error:
                           cleanup.append('selector-close')
+                          if not isinstance(error, Exception):
+                              if primary is not None:
+                                  error.command_primary_error = primary
+                              primary, reason = error, 'cleanup'
                   if directory_fd is not None:
                       try:
                           os.close(directory_fd)
-                      except Exception:
+                      except BaseException as error:
                           cleanup.append('directory-close')
+                          if not isinstance(error, Exception):
+                              if primary is not None:
+                                  error.command_primary_error = primary
+                              primary, reason = error, 'cleanup'
               if primary is None and not cleanup and prepared_launch is not None:
                   try:
                       stage = 'launch-binding'
