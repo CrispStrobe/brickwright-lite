@@ -6937,8 +6937,14 @@ legacy caught-copy probes. Original failed controls remain mandatory regressions
 
 SOURCE CANDIDATE / QUALIFICATION PENDING in the existing Array/current-call
 rejection lane. Keep early stable frozen function exports and eager private
-dispatch, using null-prototype export records for the two early cyclic modules.
+dispatch, using null-prototype export records for all three cyclic modules.
 Add three actual native-loader entry-order controls with isolated cache and
 unconditional restoration; preserve the original 45 controls unchanged. No
 supplier pin, value proof, runtime budget or generic exception behavior changes.
 Fresh normal installation and complete native qualification remain mandatory.
+
+The primitive-owner record is included even though it is published near the
+module tail: the final eager dependency still closes a loading cycle. Require
+all three null prototypes in each existing entry-order control. The earlier
+two-record source packet is held; installation acceptance alone is not boot or
+native feature qualification.

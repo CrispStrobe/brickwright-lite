@@ -143,7 +143,7 @@ function beforeInputs(runtime,thread,container,blockCached) {
     const ready=conditionWaits.beforeInputs(runtime,thread,container,blockCached);
     sceneClockNumber.beforeInputs(runtime,thread,container,blockCached,ready);return ready;
 }
-module.exports=Object.freeze({beforeInputs,invoke,current,stepNested,handles,permitsNumberInput,captureActiveCall,captureFailureCall,isFailureActive,dispatchArrayFailure,isActiveCall});
+module.exports=Object.freeze({__proto__:null,beforeInputs,invoke,current,stepNested,handles,permitsNumberInput,captureActiveCall,captureFailureCall,isFailureActive,dispatchArrayFailure,isActiveCall});
 
 // Exceptions publishes one stable frozen function object at module entry;
 // no late Module._load call receives a private current-call context.

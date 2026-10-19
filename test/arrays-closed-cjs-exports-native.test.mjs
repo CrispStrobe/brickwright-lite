@@ -28,7 +28,7 @@ function actualEntry(first){
    assert.equal(loaded.exports,exported);
    assert.equal(Object.isFrozen(exported),true);
    assert.deepEqual(Reflect.ownKeys(exported).sort(),[...expected].sort());
-   if(name!=='bw-primitive-owner')assert.equal(Object.getPrototypeOf(exported),null,'early exports avoid ordinary-object warning prototype decoration');
+   assert.equal(Object.getPrototypeOf(exported),null,'every cyclic export avoids ordinary-object warning prototype decoration');
    for(const key of expected){
     const descriptor=Object.getOwnPropertyDescriptor(exported,key);
     assert.equal(typeof descriptor.value,'function');
