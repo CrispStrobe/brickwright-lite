@@ -52,7 +52,7 @@ export const catalogFrom = partsJson => new Map(partsJson.parts.map(p => [p.part
 /**
  * Reference models shipped in static/sim-lab/models/ (file name → titles). A model
  * may name an example program in static/sim-lab/programs/ (DEVICE SPIKE text; for the
- * RCX, NQC source `.nqc`) and
+ * RCX, NQC source `.nqc`; DEVICE EV3 text; legonxt blocks `.blocks.json`) and
  * the mat it is meant for: the pane offers to load it into the Code tab.
  */
 export const MODELS = Object.freeze([
@@ -83,6 +83,14 @@ export const MODELS = Object.freeze([
         example: 'rcx-bumper-car.nqc', mat: 'wall'},
     {id: 'rcx-line-follower', file: 'rcx-bumper-car.ldr', title: {en: 'RCX line follower', de: 'RCX-Linienfolger'},
         example: 'rcx-line-follower.nqc', mat: 'line-oval'},
+    // MINDSTORMS EV3 and NXT (hubs/ev3/, hubs/nxt/, docs/ROBOT-LAB-EV3-NXT.md): their blocks reach the
+    // Lab's brick as direct commands over the Scratch Link BT-classic registry. The EV3's example is
+    // DEVICE EV3 text (the ev3comprehensive blocks); the NXT's, legonxt blocks (`.blocks.json`: a
+    // sprite's script, added to the editing sprite) — the NXT has no DEVICE words yet.
+    {file: 'ev3-wall-stopper.ldr', title: {en: 'EV3 wall stopper', de: 'EV3-Wandstopper'},
+        example: 'ev3-wall-stopper.bw', mat: 'wall'},
+    {file: 'nxt-bumper-bot.ldr', title: {en: 'NXT bumper bot', de: 'NXT-Rempelroboter'},
+        example: 'nxt-bumper-bot.blocks.json', mat: 'wall'},
     // No hub at all: the Robot Lab's own lab-direct hub owns the motor, and its example steers it
     // with `lab` words (docs/SIM-LAB.md "Steering the Lab").
     {file: 'motor-bench.ldr', title: {en: 'Motor bench (no hub)', de: 'Motorprüfstand (ohne Hub)'},

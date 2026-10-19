@@ -34,6 +34,8 @@ export {registerRcxTarget, selectRcxTarget, rcxTargetOf, TOWER_TARGET} from '../
 export {ev3ClassicPeripheral, EV3_PERIPHERAL_ID} from './hubs/ev3/ev3-peripheral.js';
 export {nxtClassicPeripheral, NXT_PERIPHERAL_ID} from './hubs/nxt/nxt-peripheral.js';
 export {registerVirtualClassicPeripheral} from '../virtual-hub/bt-classic-registry.js';
+export {connectVirtualBtHub} from '../virtual-hub/connect-virtual-bt-hub.js';
+export {vmBlocksOf} from './blocks-example.js';
 export {openFirmwareRoute, desktopRenodeCapabilities, lockstepAvailable, firmwareRouteReady, compileRouteProgram} from './routes/renode-lockstep/index.js';
 export {createEditor, partsByIdOf} from './editor/editor-state.js';
 export {colorPalette, rotationToDegrees, degreesToRotation} from './editor/editor-parity.js';

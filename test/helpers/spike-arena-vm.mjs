@@ -63,8 +63,8 @@ const SPIKE_DIR = bundledExtensionIds().get('spikeprime');
 if (!SPIKE_DIR) throw new Error('no bundled spikeprime extension');
 const SpikeExtension = loadExtensionClass(SPIKE_DIR);
 
-/** A clock the whole run shares: Date.now, setTimeout, setInterval. */
-class FakeClock {
+/** A clock the whole run shares: Date.now, setTimeout, setInterval (test/helpers/bt-hub-vm.mjs too). */
+export class FakeClock {
     constructor (start) { this.now = start; this.timers = new Map(); this.nextId = 1; }
     install () {
         this.saved = {now: Date.now, setTimeout: globalThis.setTimeout, clearTimeout: globalThis.clearTimeout,
@@ -107,7 +107,7 @@ class FakeClock {
 
 /** Lets every queued promise continuation run (not a timer: setImmediate is the real one). */
 const realSetImmediate = globalThis.setImmediate;
-const settle = async () => { for (let i = 0; i < 3; i++) await new Promise(resolve => realSetImmediate(resolve)); };
+export const settle = async () => { for (let i = 0; i < 3; i++) await new Promise(resolve => realSetImmediate(resolve)); };
 
 /**
  * A VM with `source` (DEVICE SPIKE .bw) loaded through the real SB3 path and the

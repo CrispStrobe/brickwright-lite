@@ -16,6 +16,10 @@
 //     0xC0 data contains out-of-range values, 0xDD communication bus error, 0xEC no active program,
 //     0xED illegal size specified, 0xF0 bad input or output specified, 0xFF bad arguments.
 //
+// The NXT kits were not at hand when this was written (docs/ROBOT-LAB-EV3-NXT.md "Verification status"):
+// the layouts follow the appendices' tables, cross-checked against the Haskell NXT library's docs and
+// against what legonxt sends and parses; re-verify against the PDFs.
+//
 // This module knows the telegrams; the brick (hubs/nxt/nxt-virtual-hub.js) knows the physics.
 
 export const DIRECT_REPLY_REQUIRED = 0x00;

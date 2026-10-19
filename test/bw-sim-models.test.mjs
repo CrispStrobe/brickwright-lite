@@ -27,7 +27,8 @@ const FIXTURE = JSON.parse(readFileSync(path.join(ROOT, 'test/fixtures/bw-sim/li
 
 test('every model in the list is a shipped file that compiles cleanly, motors and sensors on ports', () => {
     assert.deepEqual(MODELS.map(m => m.id || m.file), ['driving-base.ldr', 'line-follower.ldr', 'wall-stopper.ldr', 'colour-explorer.ldr', 'sumo', 'forklift.ldr', 'maze-runner.ldr',
-        'gearbox.ldr', 'differential.ldr', 'excavator.ldr', 'rcx-bumper-car.ldr', 'rcx-line-follower', 'motor-bench.ldr']);
+        'gearbox.ldr', 'differential.ldr', 'excavator.ldr', 'rcx-bumper-car.ldr', 'rcx-line-follower', 'ev3-wall-stopper.ldr', 'nxt-bumper-bot.ldr',
+        'motor-bench.ldr']);
     // The pane lists entries by key (id, else file): keys are unique, and a file listed twice needs an id.
     const keys = MODELS.map(m => m.id || m.file);
     assert.equal(new Set(keys).size, keys.length, `unique keys: ${keys}`);
@@ -48,11 +49,14 @@ test('every model in the list is a shipped file that compiles cleanly, motors an
         // the Excavator: wheels on A and B, slew C, boom D, stick E, bucket F.
         // The RCX bumper car drives on outputs A and C (its sensors on inputs 1 and 2); the hubless motor bench turns A.
         const ports = {'forklift.ldr': ['C'], 'differential.ldr': ['A', 'C'], 'excavator.ldr': ['A', 'B', 'C', 'D', 'E', 'F'],
-            'rcx-bumper-car.ldr': ['A', 'C'], 'motor-bench.ldr': ['A']}[entry.file] || ['A', 'B'];
+            'rcx-bumper-car.ldr': ['A', 'C'], 'motor-bench.ldr': ['A'], 'ev3-wall-stopper.ldr': ['B', 'C'],
+            'nxt-bumper-bot.ldr': ['B', 'C']}[entry.file] || ['A', 'B'];
         assert.deepEqual(mechanism.joints.filter(j => j.motor).map(j => j.motor.port).sort(), ports, `${entry.file}: motors on ${ports}`);
         // SPIKE sensors on the LPF2 ports A-F, the RCX's on its inputs 1-3.
         const rcx = mechanism.hubs.some(h => h.profile === 'rcx');
-        for (const s of mechanism.sensors || []) assert.match(s.port, rcx ? /^[1-3]$/ : /^[A-F]$/, `${entry.file}: sensor port`);
+        // The EV3's and NXT's sensors on their inputs 1-4.
+        const mindstorms = mechanism.hubs.find(h => h.profile === 'ev3' || h.profile === 'nxt');
+        for (const s of mechanism.sensors || []) assert.match(s.port, rcx ? /^[1-3]$/ : mindstorms ? /^[1-4]$/ : /^[A-F]$/, `${entry.file}: sensor port`);
         if (entry.mat) assert.ok(MATS.some(m => m.id === entry.mat), `${entry.file}: mat ${entry.mat} exists`);
         if (entry.example) {
             const program = path.join(GUI, PROGRAMS_BASE, entry.example);
@@ -61,6 +65,9 @@ test('every model in the list is a shipped file that compiles cleanly, motors an
             // the hubless bench's is `lab` words, which need no DEVICE.
             const source = readFileSync(program, 'utf8');
             if (rcx) assert.match(source, /^task main\(\)\s*$/m, entry.example);
+            // The EV3's example is DEVICE EV3 text; the NXT's, legonxt blocks.
+            else if (mindstorms && mindstorms.profile === 'ev3') assert.match(source, /^DEVICE EV3\s*$/m, entry.example);
+            else if (mindstorms) assert.deepEqual(JSON.parse(source).extensions, ['legonxt'], entry.example);
             else if (entry.file === 'motor-bench.ldr') assert.match(source, /^\s+lab run motor A /m, entry.example);
             else assert.match(source, /^DEVICE SPIKE\s*$/m, entry.example);
         }

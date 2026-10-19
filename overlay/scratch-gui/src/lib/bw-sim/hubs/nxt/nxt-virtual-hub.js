@@ -26,14 +26,16 @@
 //   - a tacho limit: the move ends when the port has turned that far since the command; a
 //     regulated move decelerates onto it (ACCEL_DPS2) and ends on the encoder within
 //     END_TOLERANCE_DEG, an unregulated one at the count. Then the run state is IDLE and the motor
-//     brakes (BRAKE) or floats. TachoCount restarts at each command with a tacho limit.
+//     brakes (BRAKE) or floats — a regulated move with BRAKE holds the count it ended on (the speed
+//     loop keeps the shaft there) until the next command. TachoCount restarts at each command
+//     with a tacho limit.
 //
 // INPUTS: SETINPUTMODE's type and mode; GETINPUTVALUES's raw / normalized / scaled values from
 // devices/nxt-sensors.js; the ultrasonic sensor as an I2C device (LSWRITE / LSGETSTATUS / LSREAD).
 
 import {NXT_PROFILE, NXT_OUTPUTS, NXT_INPUTS} from './profile.js';
 import {dcMotorFor} from '../../devices/dc-motors.js';
-import {freshOutput, readEncoder, driveOpen, drivePassive, driveRegulated, copyOutput} from '../mindstorms-output.js';
+import {freshOutput, readEncoder, driveOpen, drivePassive, driveRegulated, driveHold} from '../mindstorms-output.js';
 import {MODE, REGULATION, RUN_STATE, STATUS} from './nxt-direct-commands.js';
 import {NXT_SENSOR_TYPE, nxtAnalog, nxtScaled, usRegister, US_I2C_ADDRESS} from '../../devices/nxt-sensors.js';
 
@@ -44,6 +46,8 @@ export const ACCEL_DPS2 = 1500;
 /** ...and ends when the shaft is this close to the limit (°) and slower than END_SPEED_DPS. */
 export const END_TOLERANCE_DEG = 1;
 export const END_SPEED_DPS = 30;
+/** ...or, once the reference is on the limit, this close: the hold after the move finishes it (°). */
+export const END_HOLD_DEG = 4;
 /** A regulated move that cannot reach its limit (blocked) ends after this long without progress. */
 export const STALL_MS = 1000;
 const EVENT_LOG = 50;
@@ -53,7 +57,8 @@ const NXT_DEVICES = Object.freeze({'nxt-touch': 'touch', 'nxt-light': 'light', '
 const freshPort = () => ({
     ...freshOutput(), device: null,
     power: 0, mode: 0, regulation: 0, turnRatio: 0, runState: RUN_STATE.IDLE, tachoLimit: 0,
-    tachoZero: 0, blockZero: 0, rotationZero: 0, moveStartDeg: 0, stalledMs: 0, lastProgressDeg: 0
+    tachoZero: 0, blockZero: 0, rotationZero: 0, moveStartDeg: 0, stalledMs: 0, lastProgressDeg: 0,
+    holdDeg: null
 });
 
 const freshInput = () => ({device: null, type: NXT_SENSOR_TYPE.none, mode: 0, probe: null, valid: false,
@@ -135,6 +140,7 @@ export class NxtVirtualHub {
     _drive (i, port, dtMs) {
         const on = (port.mode & MODE.MOTORON) && port.runState !== RUN_STATE.IDLE;
         const off = () => drivePassive(port, port.mode & MODE.BRAKE ? 'brake' : 'coast');
+        if (!on && port.holdDeg !== null) { driveHold(port, port.holdDeg, this.specs.get(i), dtMs); return; }
         if (!on) { off(); return; }
         const regulated = (port.mode & MODE.REGULATED) && port.regulation !== REGULATION.IDLE;
         const spec = this.specs.get(i);
@@ -150,8 +156,11 @@ export class NxtVirtualHub {
                 return;
             }
             // Regulated: a reference that decelerates onto the limit; the encoder decides the end.
-            if (Math.abs(remaining) <= END_TOLERANCE_DEG && Math.abs(port.measuredDps) <= END_SPEED_DPS) {
-                this._endMove(port);
+            // The reference is on the limit and the shaft (nearly) there and slow: the move is over, and
+            // the hold that follows pulls the shaft onto the count.
+            const arrived = port.regulating && Math.abs(port.refDeg - (port.moveStartDeg + dir * limit)) < 1e-6;
+            if (Math.abs(remaining) <= (arrived ? END_HOLD_DEG : END_TOLERANCE_DEG) && Math.abs(port.measuredDps) <= END_SPEED_DPS) {
+                this._endMove(port, port.moveStartDeg + dir * limit);
                 return;
             }
             if (travelled > port.lastProgressDeg + 0.5) { port.lastProgressDeg = travelled; port.stalledMs = 0; }
@@ -172,9 +181,11 @@ export class NxtVirtualHub {
         else driveOpen(port, level, port.mode & MODE.BRAKE ? 'brake' : 'coast');
     }
 
-    _endMove (port) {
+    /** The move is over: run state IDLE; braked, floating, or (a regulated move with BRAKE) holding `holdDeg`. */
+    _endMove (port, holdDeg = null) {
         port.runState = RUN_STATE.IDLE;
         port.power = 0;
+        port.holdDeg = holdDeg !== null && (port.mode & MODE.BRAKE) ? holdDeg : null;
         drivePassive(port, port.mode & MODE.BRAKE ? 'brake' : 'coast');
         this._changed();
     }
@@ -242,6 +253,7 @@ export class NxtVirtualHub {
     setOutputState (i, {power, mode, regulation, turnRatio, runState, tachoLimit}) {
         const p = this.s.outputs[i];
         Object.assign(p, {power, mode, regulation, turnRatio, runState, tachoLimit});
+        p.holdDeg = null;
         if (tachoLimit > 0) {
             p.moveStartDeg = p.angleDeg;
             p.tachoZero = p.angleDeg;

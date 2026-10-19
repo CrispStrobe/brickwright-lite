@@ -15,8 +15,8 @@
 // FAHRENHEITMODE 0xC0, ANGLESTEPSMODE 0xE0. The ultrasonic sensor's I2C registers: LEGO
 // "MINDSTORMS NXT Hardware Developer Kit", Appendix 7 "Ultrasonic sensor I2C communication
 // protocol" (address 0x02; 0x00 version, 0x08 product id, 0x10 sensor type, 0x41 command,
-// 0x42–0x49 measurement bytes 0–7; distance in cm, 255 = nothing). Where a number is ours it
-// says "estimated".
+// 0x42–0x49 measurement bytes 0–7; distance in cm, 255 = nothing) — not at hand when written, see
+// docs/ROBOT-LAB-EV3-NXT.md "Verification status". Where a number is ours it says "estimated".
 
 export const NXT_SENSOR_TYPE = Object.freeze({none: 0x00, switch: 0x01, temperature: 0x02, reflection: 0x03, angle: 0x04,
     lightActive: 0x05, lightInactive: 0x06, soundDb: 0x07, soundDba: 0x08, custom: 0x09, lowspeed: 0x0a, lowspeed9v: 0x0b});

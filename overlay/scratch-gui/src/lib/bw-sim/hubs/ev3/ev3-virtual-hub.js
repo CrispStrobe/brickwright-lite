@@ -513,7 +513,7 @@ export class Ev3VirtualHub {
     }
 
     playFile (volume, name, repeat) {
-        this.s.toneEndMs = repeat ? Infinity : this.s.timeMs + FILE_SOUND_MS;
+        this.s.toneEndMs = repeat ? Number.MAX_SAFE_INTEGER : this.s.timeMs + FILE_SOUND_MS;
         this.event('sound', {volume, name, repeat});
     }
 
