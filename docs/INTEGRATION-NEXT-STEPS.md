@@ -447,3 +447,11 @@ opt-in sample of only the still-unreaped owned help child. Preserve the original
 ten-second deadline, avoid shared-service actions and retain diagnostic failures.
 Sampling changes execution timing and cannot establish a performance conclusion.
 Do not retry the original profile or admit app execution from this partial result.
+
+The first sampler diagnostic failed within its own three-second bound without a
+stack report; both owned children were reaped. Timing originals showed that this
+auxiliary failure prematurely ended the primary observation. The v3 source fixes
+that isolation: primary commands retain their original deadlines and requested
+sampler failures still prevent whole-profile success. Independent reader outputs
+separate primary-graph completeness from diagnostic completeness. No new actual
+result or startup cause is inferred from the source controls.

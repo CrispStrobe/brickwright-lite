@@ -563,9 +563,9 @@ jobs:
 
           def main():
               root=Path(os.environ['RUNNER_TEMP'])/'bw-ios-interface-inventory';root.mkdir(exist_ok=False)
-              report={'schema':'brickwright.ios-tool-interface.v2','sourceCommit':os.environ['GITHUB_SHA'],
+              report={'schema':'brickwright.ios-tool-interface.v3','sourceCommit':os.environ['GITHUB_SHA'],
                   'runID':os.environ['GITHUB_RUN_ID'],'attempt':os.environ['GITHUB_RUN_ATTEMPT'],'job':os.environ['GITHUB_JOB'],
-                  'status':'partial','commands':[],'diagnostics':[],'actualAppQualified':False,'namespaceOwnershipQualified':False}
+                  'status':'partial','commands':[],'diagnostics':[],'commandGraphComplete':False,'actualAppQualified':False,'namespaceOwnershipQualified':False}
               try:
                   require(sys.platform=='darwin' and platform.machine()=='arm64' and sys.version_info>=(3,13) and signal.getsignal(signal.SIGCHLD)==signal.SIG_DFL)
                   require(os.environ['BW_INTERFACE_MODE']=='true' and os.environ['BW_INTERFACE_OTHER_MODE']=='false' and os.environ['BW_INTERFACE_RUNTIME']=='' and os.environ['BW_INTERFACE_BUILD']=='')
@@ -590,7 +590,7 @@ jobs:
                           deadline=min(deadline-1,time.monotonic()+3),facts=facts)
                       report['diagnostics'].append({'targetPID':child.pid,'argv':list(sample_argv),
                           'originals':originals,'failure':failure,'facts':facts})
-                      require(failure is None)
+                      # Preserve auxiliary failure without shortening the primary command.
                   for argv in commands:
                       require(time.monotonic()<total_deadline)
                       facts={}
@@ -598,6 +598,8 @@ jobs:
                       stdout,rows,failure=retained_command(argv,cleanup,deadline=min(total_deadline,time.monotonic()+10),observe=observer,facts=facts)
                       report['commands'].append({'argv':list(argv),'originals':rows,'failure':failure,'facts':facts})
                       require(failure is None)
+                  report['commandGraphComplete']=True
+                  require(all(record['failure'] is None for record in report['diagnostics']))
                   report['status']='installed-help-observed-only'
               except Exception as error:report['failure']=type(error).__name__;raise
               finally:

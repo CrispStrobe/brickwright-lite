@@ -2300,6 +2300,8 @@ class InterfaceControls(unittest.TestCase):
                     else:main()
                 report=json.loads((root/'bw-ios-interface-inventory/report.json').read_text())
                 self.assertEqual(len(report['diagnostics']),1);self.assertEqual(report['diagnostics'][0]['targetPID'],37)
+                self.assertIs(report['commandGraphComplete'],True)
+                self.assertEqual(sum(argv[:3]==('/usr/bin/xcrun','simctl','help') for argv in calls),6)
                 self.assertEqual(report['diagnostics'][0]['failure'],sample_failure)
                 self.assertEqual(sum(argv[0]=='/usr/bin/sample' for argv in calls),1)
     def test_main_rejects_mixed_modes_and_runtime_selections_before_commands(self):
@@ -2340,7 +2342,8 @@ test('interface inventory is disjoint, read-only and bounded to installed tool h
             ['time.monotonic()<deadline and len(rows)<256','len(rows)<256'],
             ["rows.append({'kind':'reap','code':code})",'None'],
             ['elif observe is not None and not observed and time.monotonic()-started>=2:', 'elif False:'],
-            ['deadline=min(deadline-1,time.monotonic()+3)', 'deadline=time.monotonic()+30']
+            ['deadline=min(deadline-1,time.monotonic()+3)', 'deadline=time.monotonic()+30'],
+            ["require(all(record['failure'] is None for record in report['diagnostics']))", 'require(True)']
         ].entries()) {
             assert.equal(prefix.split(before).length,2,before);
             const cut=run(prefix.replace(before,after),`cut-${index}`);
