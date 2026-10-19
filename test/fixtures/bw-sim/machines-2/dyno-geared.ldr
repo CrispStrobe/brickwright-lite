@@ -1,0 +1,26 @@
+0 dyno-geared (Brickwright Robot Lab validation machine, round 2)
+0 Name: dyno-geared.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 // Brake dynamometer through an 8:24 mesh (Robot Lab validation round 2): the SPIKE medium motor (port A) output
+0 // up at the origin, a Technic beam 7 pinned under its housing (u0/u1). An 8T 3647 on a 3L axle in the output at
+0 // y = -60 drives the white 24T slip-clutch gear 76019 on an 8L axle in the beam's hole at x = 40 (pitch radii
+0 // 10 + 30). The test holds that axle: the clutch's ring turns at a third of the motor's speed and slips on its
+0 // hub at the stamped torque, which the mesh brings to the motor as a third.
+0 !BW ID motor
+0 !BW PORT A
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ID frame
+1 72 0 40 0 0 0 1 0 1 0 -1 0 0 32524.dat
+0 !BW ID framePin1
+1 0 20 30 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID framePin2
+1 0 -20 30 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID axleIn
+1 4 0 -60 0 0 1 0 1 0 0 0 0 -1 4519.dat
+0 !BW ID gIn
+1 16 0 -60 0 1 0 0 0 0 1 0 -1 0 3647.dat
+0 !BW ID axleOut
+1 4 40 -10 0 0 1 0 1 0 0 0 0 -1 3707.dat
+0 !BW ID clutch
+1 15 40 -60 0 1 0 0 0 0 1 0 -1 0 76019.dat

@@ -31,7 +31,7 @@ test('group creates group and undo restores', () => {
     const after = ed.model;
     assert.equal(after.groups.length, 1);
     assert.equal(after.groups[0].name, 'MyGroup');
-    assert.deepEqual(after.groups[0].parts.sort(), ['p1','p2']);
+    assert.deepEqual([...after.groups[0].parts].sort(), ['p1','p2']); // the model is frozen: sort a copy
     // undo
     ed.undo();
     assert.deepEqual(ed.model, before);

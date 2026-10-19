@@ -25,7 +25,12 @@ export const meshRatio = (g1, h1, g2, h2, P) => {
     const a1 = vecScale(vecNormalize(dirToWorld(h1.joint.axis)), h1.sign);
     const a2 = vecScale(vecNormalize(dirToWorld(h2.joint.axis)), h2.sign);
     const cross1 = vecCross(a1, vecSub(P, g1.centerLdu));
-    const cross2 = vecCross(a2, vecSub(P, g2.centerLdu));
+    // Gear 2's lever at the contact is its pitch radius: the contact test accepts centres 0.5 LDU
+    // off, and a lever measured to P would put that error into the ratio (a 28T turntable and an 8T
+    // 0.28 LDU short of 45 LDU apart gave 3.6 instead of 28/8 = 3.5). The teeth set the ratio.
+    const d2 = vecSub(P, g2.centerLdu);
+    const radial2 = vecSub(d2, vecScale(a2, vecDot(d2, a2)));
+    const cross2 = vecLen(radial2) > 1e-9 && g2.r > 0 ? vecCross(a2, vecScale(vecNormalize(radial2), g2.r)) : vecCross(a2, d2);
     const t = vecNormalize(cross1);
     if (vecLen(t) < 1e-9) return null;
     const den = vecDot(cross2, t);

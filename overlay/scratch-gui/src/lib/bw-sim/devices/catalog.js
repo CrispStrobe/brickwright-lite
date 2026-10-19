@@ -23,8 +23,12 @@
 export const DEVICE_MODEL_CLASSES = Object.freeze(['motor', 'servo-motor', 'linear-actuator', 'lamp', 'sensor-passive',
     'sensor-active', 'sensor-digital', 'sensor-lpf2', 'pneumatic-valve-actuator']);
 
-/** The v1 sensor kinds sensors.js measures (contracts.js SENSOR_KINDS), until the probe/encoder split. */
-const SENSOR_MEASURES = Object.freeze(['distance', 'color', 'force']);
+/**
+ * What sensors.js measures for a device (contracts.js SENSOR_KINDS): the v1 kinds and
+ * 'rotation' (the RCX rotation sensor: the turn of the axle through its hole, read from the
+ * hinge the compiler made there — sensors.js rotationJoint).
+ */
+const SENSOR_MEASURES = Object.freeze(['distance', 'color', 'force', 'rotation']);
 
 const V1_SOURCE = 'part-meta/parts.json v1 (LEGO published stall torque 18 / 38 Ncm; speed limits of SPIKE 3 as in docs/SPIKE-ARENA.md)';
 
@@ -317,7 +321,8 @@ const MOTORS = [
         philo: {column: '2838', noLoadRpm: 4100, noLoadA: 0.035, stallNcm: 0.85, stallA: 0.70,
             note: 'ungeared; his load points were taken through a 1:5 reduction and corrected',
             loadPoints: [[6, 0.45, 580, 0.32], [7, 0.45, 1000, 0.32], [9, 0.45, 2000, 0.32], [12, 0.45, 3300, 0.33]]}}),
-    philoMotor({id: 'technic-minimotor-71427', name: 'Electric Technic Mini-Motor 9V (71427c01)', numbers: {part: '71427c01'},
+    philoMotor({id: 'technic-minimotor-71427', name: 'Electric Technic Mini-Motor 9V (71427c01)', parts: ['71427.dat'],
+        numbers: {part: '71427c01'},
         numbersSource: PHILO_PARTREF, supply: 'rcx',
         philo: {column: '71427', noLoadRpm: 360, noLoadA: 0.0035, stallNcm: 6, stallA: 0.36,
             loadPoints: [[4.5, 2.25, 57, 0.12], [7, 2.25, 160, 0.12], [9, 2.25, 250, 0.12], [12, 2.25, 375, 0.12]]}}),
@@ -409,6 +414,28 @@ const MOTORS = [
         pyb: PYBRICKS_TECHNIC_XL, encoder: SPIKE_ENCODER, encoderSource: `${PHILO_ENCODER} (the same rotation/angle sensors as the C+ L motor)`})
 ];
 
+// RCX SENSORS (docs/ROBOT-LAB-RCX.md). Passive (the touch switch) and active (light, rotation:
+// the RCX powers them through the same two wires and reads them between power pulses) 9 V
+// sensors; the hub reports no id (devices/rcx-sensors.js turns each probe into the 10-bit raw
+// value the RCX's ADC reads, hubs/rcx/ hands it to the bytecode VM).
+const RCX_REF = 'lego-rcx-ref: LEGO MINDSTORMS "RCX 2.0 Firmware Command Overview" (2000-07-04; ' +
+    'LEGO_3804_RCX-2.0-Firmware_Byte_Codes_Reference.pdf, BrickBot Archive, github.com/BrickBot/Archive/releases/tag/LEGO)';
+const RCX_SENSORS = [
+    {id: 'rcx-touch', class: 'sensor-passive', name: 'RCX touch sensor (879)', parts: ['75973.dat'], ids: {},
+        numbers: {part: '879'}, source: `${RCX_REF}: sensor type Switch, default BooleanMode, Sensor bool = the raw value ` +
+            'with thresholds and hysteresis at 45/55 % (source 13); a switch to ground: closed reads low, open reads full scale',
+        sensor: {kind: 'force', encoder: 'rcx-touch'}},
+    {id: 'rcx-light', class: 'sensor-active', name: 'RCX light sensor (9758)', parts: ['72634.dat'], ids: {},
+        numbers: {part: '2982c01', set: '9758'}, source: `${RCX_REF}: sensor type Reflection, default PctFullScaleMode ` +
+            '(0..100); percent = 146 − raw/7 (M. Gasperi, quoted on LUGNET robotics.rcx.legos #2539, 2002 — community); ' +
+            'the reflectance → percent line is estimated (devices/rcx-sensors.js)',
+        sensor: {kind: 'color', encoder: 'rcx-light'}},
+    {id: 'rcx-rotation', class: 'sensor-active', name: 'RCX rotation sensor (2977)', parts: ['72632.dat'], ids: {},
+        numbers: {part: '2977c01'}, source: `${RCX_REF}: sensor type Angle, default AngleStepsMode, "counts rotations in ` +
+            '1/16 ticks" (ClearSensorValue): 16 counts per turn of the axle through it',
+        sensor: {kind: 'rotation', encoder: 'rcx-rotation'}, encoder: {countsPerRev: 16, absolute: false}}
+];
+
 /** @type {DeviceModel[]} */
 export const DEVICE_MODELS = Object.freeze([
     ...MOTORS,
@@ -417,7 +444,8 @@ export const DEVICE_MODELS = Object.freeze([
     {id: 'spike-distance', class: 'sensor-lpf2', parts: ['37316.dat'], ids: {lpf2: 62}, source: V1_SOURCE,
         sensor: {kind: 'distance', encoder: 'spike-distance'}},
     {id: 'spike-force', class: 'sensor-lpf2', parts: ['37312.dat'], ids: {lpf2: 63}, source: V1_SOURCE,
-        sensor: {kind: 'force', encoder: 'spike-force'}}
+        sensor: {kind: 'force', encoder: 'spike-force'}},
+    ...RCX_SENSORS
 ].map(d => Object.freeze(d)));
 
 /** id → DeviceModel */

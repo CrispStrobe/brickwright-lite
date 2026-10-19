@@ -341,9 +341,10 @@ const maze = {
 // LOADS — dynamic world bodies the model moves by contact — as it carries obstacles (the compile
 // option `loads`). The pallet stands where the Forklift example's tines are when the model is
 // placed on the start pose (x −0.2 m, heading +x; the anchor is its lift motor's shaft): centred
-// between the tines (model x −40 LDU, 100 LDU ahead of the shaft), turned so its pockets run
+// between the tines (model x −20 LDU, 160 LDU ahead of the shaft: the tines hang on a cross beam
+// in front of the guide axle), turned so its pockets run
 // along the tines. test/bw-sim-forklift.test.mjs measures that the tines sit in the pockets.
-export const WAREHOUSE = Object.freeze({start: Object.freeze({x: -0.2, z: 0, heading: 0}), pallet: Object.freeze([-0.16, 0, -0.024])});
+export const WAREHOUSE = Object.freeze({start: Object.freeze({x: -0.2, z: 0, heading: 0}), pallet: Object.freeze([-0.136, 0, -0.016])});
 
 const warehouse = {
     id: 'warehouse',

@@ -1,0 +1,31 @@
+// Robot Lab: RCX bumper car (NQC, for the RCX's standard firmware).
+// Model: RCX bumper car - mini-motors on outputs A (left) and C (right),
+// touch sensor bumper on input 1. The two motors are mounted mirror-image,
+// so driving forward is A in reverse and C forward.
+// Download it to "Robot Lab RCX" and the robot drives to the wall, backs off
+// when the bumper is pressed, turns away and stops.
+
+task main()
+{
+    SetSensor(SENSOR_1, SENSOR_TOUCH);
+    // Power 3 of 0..7: half the motors' torque. The wheels sit behind the RCX's
+    // centre of mass, and at full power the start lifts the front off the floor
+    // (a wheelie) - the speed is nearly the same, the RCX's power levels set torque.
+    SetPower(OUT_A + OUT_C, 3);
+
+    // Forward until the bumper touches something.
+    OnRev(OUT_A);
+    OnFwd(OUT_C);
+    until (SENSOR_1 == 1);
+    PlaySound(SOUND_CLICK);
+
+    // Back up for 0.3 s.
+    OnFwd(OUT_A);
+    OnRev(OUT_C);
+    Wait(30);
+
+    // Turn on the spot for 0.2 s, then stop.
+    OnRev(OUT_A + OUT_C);
+    Wait(20);
+    Off(OUT_A + OUT_C);
+}

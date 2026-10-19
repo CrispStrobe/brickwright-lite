@@ -7,24 +7,82 @@
 // or pasting several parts, is a `moveMany` / `batch` command: its steps run
 // against a scratch copy, and only when every one of them is valid does the
 // model change, with a single history entry (all or nothing).
+//
+// The model is IMMUTABLE with structural sharing: every model the editor holds,
+// hands out (`editor.model`, `apply`, `undo`, `redo`, subscribers) or keeps in its
+// history is deeply frozen, so reading it costs nothing (no copy: a 2,000-part
+// model used to be deep-copied on every read, several times per pointer move) and
+// no caller can change the editor's state through it (a write throws in strict
+// code). A command builds a new model that shares every part it did not touch:
+// an unchanged part is the SAME object before and after, which is what lets the
+// build view's spatial index (spatial-index.js) and per-part caches skip it.
 
 import {validatePlacedModel, partMotorJoint} from '../contracts.js';
-import {placePart as snapPlacePart} from './snap.js';
 import {alignMoves, distributeMoves, gridMoves, mirrorPivot, mirrorPoses} from './editor-parity.js';
 
-const cloneModel = model => {
-    const out = {
-        version: model.version,
-        parts: model.parts.map(p => ({
-            ...p,
-            position: p.position.slice(),
-            rotation: p.rotation.slice()
-        }))
-    };
-    if (model.groups) out.groups = model.groups.map(g => ({id: g.id, name: g.name, parts: g.parts.slice()}));
+/** A deep copy of a plain value (part fields: numbers, strings, arrays, small objects such as a v2 port). */
+const copyValue = v => {
+    if (Array.isArray(v)) return v.map(copyValue);
+    if (v && typeof v === 'object') {
+        const out = {};
+        for (const k of Object.keys(v)) out[k] = copyValue(v[k]);
+        return out;
+    }
+    return v;
+};
+/** Freezes a value and everything inside it. */
+const deepFreeze = v => {
+    if (v && typeof v === 'object' && !Object.isFrozen(v)) {
+        Object.freeze(v);
+        for (const k of Object.keys(v)) deepFreeze(v[k]);
+    }
+    return v;
+};
+/** A frozen part: `fields` copied (a caller's arrays are never kept). */
+const frozenPart = fields => deepFreeze(copyValue(fields));
+
+/** A frozen model from parts (already frozen), and groups / steps (frozen or not). */
+const makeModel = (version, parts, groups, steps) => {
+    const out = {version, parts: Object.freeze(parts)};
+    if (groups) out.groups = deepFreeze(groups);
+    if (steps) out.steps = deepFreeze(steps);
+    return Object.freeze(out);
+};
+/** The editor's own frozen copy of a model given to it (the caller's model is never kept or changed). */
+const importModel = model => {
+    const groups = model.groups ? model.groups.map(g => ({id: g.id, name: g.name, parts: g.parts.slice()})) : null;
     // Building steps from `0 STEP` lines ride along; parts deleted since are skipped where they are read.
-    if (model.steps) out.steps = model.steps.map(ids => ids.slice());
-    return out;
+    const steps = model.steps ? model.steps.map(ids => ids.slice()) : null;
+    return makeModel(model.version, model.parts.map(frozenPart), groups, steps);
+};
+
+/** The next free part id, as snap.js placePart picks it (`p<n+1>`, then counting up). */
+const nextPartId = (parts, ids) => {
+    let id = `p${parts.length + 1}`;
+    let counter = 1;
+    while (ids.has(id)) {
+        id = `p${parts.length + counter}`;
+        counter++;
+        if (counter > 100) break;
+    }
+    return id;
+};
+
+const byIdCache = new WeakMap();
+/**
+ * id → placed part for a model, built once per frozen parts array (an editor model's), so a
+ * lookup by id is not a scan of every part; a parts array that may still change gets a fresh map.
+ * @param {{parts: object[]}} model
+ * @returns {Map<string, object>}
+ */
+export const partsByIdOf = model => {
+    const parts = model.parts;
+    let map = Object.isFrozen(parts) ? byIdCache.get(parts) : null;
+    if (!map) {
+        map = new Map(parts.map(p => [p.id, p]));
+        if (Object.isFrozen(parts)) byIdCache.set(parts, map);
+    }
+    return map;
 };
 
 export const groupOf = (model, partId) => {
@@ -55,10 +113,10 @@ const nextGroupId = model => {
     return `g${n}`;
 };
 
-const dissolveSmallGroups = model => {
-    if (!model.groups) return;
-    model.groups = model.groups.filter(g => g.parts.length >= 2);
-    if (model.groups.length === 0) delete model.groups;
+/** Groups with fewer than two members dissolve; null when none is left. */
+const keptGroups = groups => {
+    const kept = groups.filter(g => g.parts.length >= 2);
+    return kept.length ? kept : null;
 };
 
 export const portsForCopies = (model, catalog, parts) => {
@@ -130,7 +188,8 @@ export const portsForCopies = (model, catalog, parts) => {
 
 export const createEditor = ({model, catalog}) => {
     const catalogMap = catalog instanceof Map ? catalog : new Map(Object.entries(catalog || {}));
-    let current = cloneModel(model);
+    let current = importModel(model);
+    // History holds the frozen models themselves: nothing in them can change, so no copies.
     const undoStack = [];
     const redoStack = [];
     const subs = new Set();
@@ -140,17 +199,45 @@ export const createEditor = ({model, catalog}) => {
 
     const notify = () => {
         if (batching) return;
-        for (const fn of subs) fn(cloneModel(current));
+        for (const fn of subs) fn(current);
     };
 
     const pushHistory = prev => {
         if (batching) return;
-        undoStack.push(cloneModel(prev));
+        undoStack.push(prev);
         redoStack.length = 0;
     };
 
+    const indexOf = id => current.parts.findIndex(p => p.id === id);
+    const hasPart = id => current.parts.some(p => p.id === id);
+    /** A new model: `parts` (frozen parts, unchanged ones shared) and the current groups and steps unless given. */
+    const derive = (parts, groups = current.groups || null) => makeModel(current.version, parts, groups, current.steps || null);
+    /** `parts` with the part at `idx` replaced by a frozen copy carrying `changes` (a field set to undefined is removed). */
+    const withPart = (parts, idx, changes) => {
+        const fields = {...parts[idx], ...changes};
+        for (const k of Object.keys(changes)) if (changes[k] === undefined) delete fields[k];
+        const out = parts.slice();
+        out[idx] = frozenPart(fields);
+        return out;
+    };
+    /**
+     * A new part appended to `parts` as snap.js placePart (the next free id; a truthy port), then the colour
+     * and port the command asks for. Returns the new parts array.
+     */
+    const appended = (parts, {part, position, rotation, port}, {color, setPort}) => {
+        const ids = new Set(parts.map(p => p.id));
+        const fields = {id: nextPartId(parts, ids), part, position, rotation};
+        if (port) fields.port = port;
+        if (color !== undefined) fields.color = color;
+        if (setPort !== undefined) {
+            if (setPort) fields.port = setPort;
+            else delete fields.port;
+        }
+        return [...parts, frozenPart(fields)];
+    };
+
     const editor = {
-        get model() { return cloneModel(current); },
+        get model() { return current; },
         get canUndo() { return undoStack.length > 0; },
         get canRedo() { return redoStack.length > 0; },
         subscribe(fn) {
@@ -162,7 +249,7 @@ export const createEditor = ({model, catalog}) => {
             // view's gizmo and drags) runs as an all-or-nothing batch of moves; `ids` + `delta` or `poses`
             // (group moves) is handled below.
             if (cmd && (cmd.type === 'batch' || (cmd.type === 'moveMany' && Array.isArray(cmd.moves)))) return applyBatch(cmd);
-            const prev = cloneModel(current);
+            const prev = current;
             let next;
             if (cmd.type === 'place') {
                 const {part, position, rotation, color, port} = cmd;
@@ -177,91 +264,63 @@ export const createEditor = ({model, catalog}) => {
                     if (!isMotor && !isSensor) throw new Error(`port on non-motor/sensor part '${part}'`);
                     if (!['A','B','C','D','E','F'].includes(port)) throw new Error(`bad port '${port}'`);
                 }
-                next = snapPlacePart(current, {part, position, rotation, color, port});
-                // snapPlacePart handles id generation, but we need to handle color/port
-                // Our snapPlacePart currently only handles part, position, rotation, id, port, not color
-                // We need to handle color manually: the last part in next should have color/port
-                const last = next.parts[next.parts.length - 1];
-                if (color !== undefined) last.color = color;
-                if (port !== undefined && port !== null) last.port = port;
-                if (port === null && last.port) delete last.port;
+                next = derive(appended(current.parts, {part, position, rotation, port},
+                    {color, setPort: port === undefined ? undefined : port}));
             } else if (cmd.type === 'move') {
                 const {id, position, rotation} = cmd;
-                const idx = current.parts.findIndex(p => p.id === id);
+                const idx = indexOf(id);
                 if (idx === -1) throw new Error(`unknown id '${id}'`);
                 if (!Array.isArray(position) || position.length !== 3) throw new Error('bad position');
                 if (!Array.isArray(rotation) || rotation.length !== 9) throw new Error('bad rotation');
-                next = cloneModel(current);
-                next.parts[idx].position = position.slice();
-                next.parts[idx].rotation = rotation.slice();
+                next = derive(withPart(current.parts, idx, {position, rotation}));
             } else if (cmd.type === 'delete') {
                 const {id} = cmd;
-                const idx = current.parts.findIndex(p => p.id === id);
+                const idx = indexOf(id);
                 if (idx === -1) throw new Error(`unknown id '${id}'`);
-                next = cloneModel(current);
-                next.parts.splice(idx, 1);
+                const parts = current.parts.slice();
+                parts.splice(idx, 1);
                 // Remove from groups, dissolve small
-                if (next.groups) {
-                    for (const g of next.groups) {
-                        const i = g.parts.indexOf(id);
-                        if (i !== -1) g.parts.splice(i, 1);
-                    }
-                    dissolveSmallGroups(next);
-                }
+                const groups = current.groups ?
+                    keptGroups(current.groups.map(g => (g.parts.includes(id) ? {id: g.id, name: g.name, parts: g.parts.filter(pid => pid !== id)} : g))) :
+                    null;
+                next = derive(parts, groups);
             } else if (cmd.type === 'clone') {
                 const {id, offset} = cmd;
                 const orig = current.parts.find(p => p.id === id);
                 if (!orig) throw new Error(`unknown id '${id}'`);
                 const off = offset || [40, 0, 0];
                 const newPos = [orig.position[0] + off[0], orig.position[1] + off[1], orig.position[2] + off[2]];
-                const ports = portsForCopies(current, catalogMap, [orig]);
-                const port = ports[0];
-                next = snapPlacePart(current, {part: orig.part, position: newPos, rotation: orig.rotation.slice(), color: orig.color, port});
-                // Handle color/port for clone as well (snapPlacePart doesn't handle color, so we set it)
-                const last = next.parts[next.parts.length - 1];
-                if (orig.color !== undefined) last.color = orig.color;
-                if (port) last.port = port; else if (last.port) delete last.port;
-                // If original was in a group, clones currently not in group; but single clone doesn't create new group (needs >=2)
-                // So we don't handle group for single clone here; cloneMany will handle multi
+                const port = portsForCopies(current, catalogMap, [orig])[0];
+                // A single clone forms no group (a group needs two); cloneMany handles groups.
+                next = derive(appended(current.parts, {part: orig.part, position: newPos, rotation: orig.rotation, port},
+                    {color: orig.color, setPort: port || null}));
             } else if (cmd.type === 'group') {
                 const {ids, name} = cmd;
                 if (!Array.isArray(ids) || ids.length < 2) throw new Error('group needs at least 2 parts');
-                for (const pid of ids) if (!current.parts.some(p => p.id === pid)) throw new Error(`unknown id '${pid}'`);
-                next = cloneModel(current);
-                // Collect all parts that should be in the new group: ids plus any parts from old groups that contain any of ids (merge)
+                for (const pid of ids) if (!hasPart(pid)) throw new Error(`unknown id '${pid}'`);
+                // The new group: ids plus every member of an old group that contains any of them (merged).
                 const toMerge = new Set(ids);
-                const oldGroupsToRemove = new Set();
-                if (next.groups) {
-                    for (const g of next.groups) {
-                        if (g.parts.some(pid => ids.includes(pid))) {
-                            for (const pid of g.parts) toMerge.add(pid);
-                            oldGroupsToRemove.add(g.id);
-                        }
-                    }
-                    if (oldGroupsToRemove.size) next.groups = next.groups.filter(g => !oldGroupsToRemove.has(g.id));
-                }
-                const newParts = [...toMerge];
-                const gid = nextGroupId(next);
-                const gname = name || `Group ${gid}`;
-                if (!next.groups) next.groups = [];
-                next.groups.push({id: gid, name: gname, parts: newParts});
+                let groups = current.groups ? current.groups.slice() : [];
+                const merged = groups.filter(g => g.parts.some(pid => ids.includes(pid)));
+                for (const g of merged) for (const pid of g.parts) toMerge.add(pid);
+                if (merged.length) groups = groups.filter(g => !merged.includes(g));
+                const gid = nextGroupId({groups});
+                groups.push({id: gid, name: name || `Group ${gid}`, parts: [...toMerge]});
+                next = derive(current.parts, groups);
             } else if (cmd.type === 'ungroup') {
                 const {id} = cmd;
                 if (!current.groups || !current.groups.some(g => g.id === id)) throw new Error(`unknown group '${id}'`);
-                next = cloneModel(current);
-                next.groups = next.groups.filter(g => g.id !== id);
-                if (next.groups.length === 0) delete next.groups;
+                const groups = current.groups.filter(g => g.id !== id);
+                next = derive(current.parts, groups.length ? groups : null);
             } else if (cmd.type === 'renameGroup') {
                 const {id, name} = cmd;
                 if (!current.groups || !current.groups.some(g => g.id === id)) throw new Error(`unknown group '${id}'`);
                 if (typeof name !== 'string' || !name) throw new Error('bad name');
-                next = cloneModel(current);
-                const g = next.groups.find(x => x.id === id);
-                g.name = name;
+                next = derive(current.parts, current.groups.map(g => (g.id === id ? {id: g.id, name, parts: g.parts.slice()} : g)));
             } else if (cmd.type === 'moveMany') {
                 const {ids, delta, poses} = cmd;
                 if (!Array.isArray(ids) || ids.length === 0) throw new Error('moveMany needs ids');
-                for (const pid of ids) if (!current.parts.some(p => p.id === pid)) throw new Error(`unknown id '${pid}'`);
+                for (const pid of ids) if (!hasPart(pid)) throw new Error(`unknown id '${pid}'`);
                 if (delta !== undefined) {
                     if (!Array.isArray(delta) || delta.length !== 3) throw new Error('bad delta');
                 }
@@ -275,96 +334,73 @@ export const createEditor = ({model, catalog}) => {
                     }
                 }
                 if (delta === undefined && poses === undefined) throw new Error('moveMany needs delta or poses');
-                next = cloneModel(current);
+                let parts = current.parts;
                 if (poses) {
-                    for (const po of poses) {
-                        const idx = next.parts.findIndex(p => p.id === po.id);
-                        next.parts[idx].position = po.position.slice();
-                        next.parts[idx].rotation = po.rotation.slice();
-                    }
+                    for (const po of poses) parts = withPart(parts, parts.findIndex(p => p.id === po.id), {position: po.position, rotation: po.rotation});
                 } else {
                     for (const pid of ids) {
-                        const idx = next.parts.findIndex(p => p.id === pid);
-                        next.parts[idx].position = [next.parts[idx].position[0] + delta[0], next.parts[idx].position[1] + delta[1], next.parts[idx].position[2] + delta[2]];
+                        const idx = parts.findIndex(p => p.id === pid);
+                        const at = parts[idx].position;
+                        parts = withPart(parts, idx, {position: [at[0] + delta[0], at[1] + delta[1], at[2] + delta[2]]});
                     }
                 }
+                next = derive(parts);
             } else if (cmd.type === 'deleteMany') {
                 const {ids} = cmd;
                 if (!Array.isArray(ids) || ids.length === 0) throw new Error('deleteMany needs ids');
-                for (const pid of ids) if (!current.parts.some(p => p.id === pid)) throw new Error(`unknown id '${pid}'`);
-                next = cloneModel(current);
+                for (const pid of ids) if (!hasPart(pid)) throw new Error(`unknown id '${pid}'`);
                 const delSet = new Set(ids);
-                next.parts = next.parts.filter(p => !delSet.has(p.id));
-                if (next.groups) {
-                    for (const g of next.groups) g.parts = g.parts.filter(pid => !delSet.has(pid));
-                    dissolveSmallGroups(next);
-                }
+                const groups = current.groups ?
+                    keptGroups(current.groups.map(g => (g.parts.some(pid => delSet.has(pid)) ? {id: g.id, name: g.name, parts: g.parts.filter(pid => !delSet.has(pid))} : g))) :
+                    null;
+                next = derive(current.parts.filter(p => !delSet.has(p.id)), groups);
             } else if (cmd.type === 'cloneMany') {
                 const {ids, offset} = cmd;
                 if (!Array.isArray(ids) || ids.length === 0) throw new Error('cloneMany needs ids');
-                for (const pid of ids) if (!current.parts.some(p => p.id === pid)) throw new Error(`unknown id '${pid}'`);
+                for (const pid of ids) if (!hasPart(pid)) throw new Error(`unknown id '${pid}'`);
                 const off = offset || [40, 0, 0];
                 if (!Array.isArray(off) || off.length !== 3) throw new Error('bad offset');
-                next = cloneModel(current);
-                // Determine ports for copies using helper (in model order)
+                // Ports for the copies (in model order).
                 const partsToCopy = ids.map(pid => current.parts.find(p => p.id === pid));
                 const ports = portsForCopies(current, catalogMap, partsToCopy);
-                const idToPort = new Map();
-                for (let i = 0; i < ids.length; i++) idToPort.set(ids[i], ports[i]);
-                // Map from original id to new cloned part
-                const clones = [];
                 const origToCloneId = new Map();
-                for (const pid of ids) {
-                    const orig = current.parts.find(p => p.id === pid);
-                    const port = idToPort.get(pid);
+                let parts = current.parts;
+                ids.forEach((pid, i) => {
+                    const orig = partsToCopy[i];
+                    const port = ports[i];
                     const newPos = [orig.position[0] + off[0], orig.position[1] + off[1], orig.position[2] + off[2]];
-                    const cloned = snapPlacePart(next, {part: orig.part, position: newPos, rotation: orig.rotation.slice(), color: orig.color, port});
-                    const last = cloned.parts[cloned.parts.length - 1];
-                    if (orig.color !== undefined) last.color = orig.color;
-                    if (port) last.port = port; else if (last.port) delete last.port;
-                    // snapPlacePart already set next to cloned, but we need to track new id
-                    // The new part is the last in cloned.parts
-                    const newId = last.id;
-                    clones.push({origId: pid, newId});
-                    origToCloneId.set(pid, newId);
-                    next = cloned;
-                }
-                // Handle groups: clones keep their group structure, a cloned group becomes a new group
+                    parts = appended(parts, {part: orig.part, position: newPos, rotation: orig.rotation, port}, {color: orig.color, setPort: port || null});
+                    origToCloneId.set(pid, parts[parts.length - 1].id);
+                });
+                // Clones keep their group structure: a cloned group (two or more members copied) becomes a new group.
+                let groups = current.groups || null;
                 if (current.groups) {
-                    // Find groups that are touched by the cloned ids
-                    const touchedGroups = current.groups.filter(g => g.parts.some(pid => ids.includes(pid)));
-                    for (const og of touchedGroups) {
+                    groups = current.groups.slice();
+                    for (const og of current.groups.filter(g => g.parts.some(pid => ids.includes(pid)))) {
                         const clonedParts = og.parts.filter(pid => ids.includes(pid)).map(pid => origToCloneId.get(pid));
-                        if (clonedParts.length >= 2) {
-                            const newGid = nextGroupId(next);
-                            if (!next.groups) next.groups = [];
-                            next.groups.push({id: newGid, name: og.name, parts: clonedParts});
-                        } else if (clonedParts.length === 1) {
-                            // Single cloned part from a group doesn't form a group (needs >=2), so leave ungrouped
-                        }
+                        if (clonedParts.length >= 2) groups.push({id: nextGroupId({groups}), name: og.name, parts: clonedParts});
                     }
                 }
+                next = derive(parts, groups);
             } else if (cmd.type === 'recolor') {
                 const {id, color} = cmd;
-                const idx = current.parts.findIndex(p => p.id === id);
+                const idx = indexOf(id);
                 if (idx === -1) throw new Error(`unknown id '${id}'`);
                 if (!(Number.isInteger(color) && color >= 0)) throw new Error(`bad colour ${color}`);
-                next = cloneModel(current);
-                next.parts[idx].color = color;
+                next = derive(withPart(current.parts, idx, {color}));
             } else if (cmd.type === 'paint') {
                 // The colour picker and the eyedropper: one colour on every part of a selection, one undo step.
                 const {ids, color} = cmd;
                 if (!Array.isArray(ids) || ids.length === 0) throw new Error('paint needs ids');
                 if (!(Number.isInteger(color) && color >= 0)) throw new Error(`bad colour ${color}`);
-                for (const pid of ids) if (!current.parts.some(p => p.id === pid)) throw new Error(`unknown id '${pid}'`);
+                for (const pid of ids) if (!hasPart(pid)) throw new Error(`unknown id '${pid}'`);
                 const want = new Set(ids);
                 if (current.parts.every(p => !want.has(p.id) || p.color === color)) throw new Error('paint: nothing changes');
-                next = cloneModel(current);
-                for (const p of next.parts) if (want.has(p.id)) p.color = color;
+                next = derive(current.parts.map(p => (want.has(p.id) ? frozenPart({...p, color}) : p)));
             } else if (cmd.type === 'mirror' || cmd.type === 'align' || cmd.type === 'distribute' || cmd.type === 'toGrid') {
                 const {ids} = cmd;
                 if (!Array.isArray(ids) || ids.length === 0) throw new Error(`${cmd.type} needs ids`);
-                for (const pid of ids) if (!current.parts.some(p => p.id === pid)) throw new Error(`unknown id '${pid}'`);
+                for (const pid of ids) if (!hasPart(pid)) throw new Error(`unknown id '${pid}'`);
                 let poses;
                 if (cmd.type === 'mirror') {
                     // A left part becomes its right counterpart, a symmetric one its mirror image, the rest keep
@@ -379,20 +415,22 @@ export const createEditor = ({model, catalog}) => {
                 } else {
                     poses = gridMoves({model: current, catalog: catalogMap, ids, grid: cmd.grid});
                 }
-                next = cloneModel(current);
+                let parts = current.parts;
                 let changed = false;
                 for (const po of poses) {
-                    const p = next.parts.find(x => x.id === po.id);
+                    const idx = parts.findIndex(x => x.id === po.id);
+                    const p = parts[idx];
                     if (!isProperRotation(po.rotation)) throw new Error(`${cmd.type}: improper rotation for '${po.id}'`);
-                    if (po.part && po.part !== p.part) { p.part = po.part; changed = true; }
+                    const changes = {position: po.position, rotation: po.rotation};
+                    if (po.part && po.part !== p.part) { changes.part = po.part; changed = true; }
                     if (po.position.some((v, i) => v !== p.position[i]) || po.rotation.some((v, i) => v !== p.rotation[i])) changed = true;
-                    p.position = po.position.slice();
-                    p.rotation = po.rotation.slice();
+                    parts = withPart(parts, idx, changes);
                 }
                 if (!changed) throw new Error(`${cmd.type}: nothing moves`);
+                next = derive(parts);
             } else if (cmd.type === 'setPort') {
                 const {id, port} = cmd;
-                const idx = current.parts.findIndex(p => p.id === id);
+                const idx = indexOf(id);
                 if (idx === -1) throw new Error(`unknown id '${id}'`);
                 const meta = catalogMap.get(current.parts[idx].part);
                 if (port !== null && port !== undefined) {
@@ -401,9 +439,7 @@ export const createEditor = ({model, catalog}) => {
                     if (!isMotor && !isSensor) throw new Error(`port on non-motor/sensor part '${current.parts[idx].part}'`);
                     if (!['A','B','C','D','E','F'].includes(port)) throw new Error(`bad port '${port}'`);
                 }
-                next = cloneModel(current);
-                if (port === null || port === undefined) delete next.parts[idx].port;
-                else next.parts[idx].port = port;
+                next = derive(withPart(current.parts, idx, {port: port === null || port === undefined ? undefined : port}));
             } else {
                 throw new Error(`unknown command type '${cmd.type}'`);
             }
@@ -415,21 +451,21 @@ export const createEditor = ({model, catalog}) => {
             pushHistory(prev);
             current = next;
             notify();
-            return cloneModel(current);
+            return current;
         },
         undo() {
-            if (!undoStack.length) return cloneModel(current);
-            redoStack.push(cloneModel(current));
+            if (!undoStack.length) return current;
+            redoStack.push(current);
             current = undoStack.pop();
             notify();
-            return cloneModel(current);
+            return current;
         },
         redo() {
-            if (!redoStack.length) return cloneModel(current);
-            undoStack.push(cloneModel(current));
+            if (!redoStack.length) return current;
+            undoStack.push(current);
             current = redoStack.pop();
             notify();
-            return cloneModel(current);
+            return current;
         }
     };
 
@@ -446,7 +482,7 @@ export const createEditor = ({model, catalog}) => {
             const ids = steps.map(s => s.id);
             if (new Set(ids).size !== ids.length) throw new Error('moveMany: a part is moved twice');
         }
-        const prev = cloneModel(current);
+        const prev = current;
         batching++;
         try {
             for (const step of steps) editor.apply(step);
@@ -458,7 +494,7 @@ export const createEditor = ({model, catalog}) => {
         }
         pushHistory(prev);
         notify();
-        return cloneModel(current);
+        return current;
     };
 
     return editor;

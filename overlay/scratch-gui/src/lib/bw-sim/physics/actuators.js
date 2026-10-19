@@ -28,6 +28,12 @@
 //          Decay at duty 0: 'brake' shorts the winding (u = 0: only the
 //          back-EMF damping τ = −τs·ω/ω0 remains), 'coast' opens it (no
 //          electrical torque; only the gearbox friction, frictionTorqueNm).
+//          While driven, 'brake' decay is drive/brake PWM (the damping acts the
+//          whole period: the line above) and 'coast' drive/float PWM (the RCX's
+//          on/float pattern, hubs/rcx/): averaged over the period
+//              τ = duty·τs(V) − |duty|·(τs/ω0)·ω
+//          so an unloaded motor runs near its full no-load speed at any duty
+//          and the duty sets the torque, as RCX power levels do.
 //          While driven the gearbox friction τf = k_t·i0 is inside the line
 //          and scales with |duty| (exact at duty ±1 and 0; at duty 0.5 the
 //          model is τf/2 stronger than a motor whose friction is a constant
@@ -59,7 +65,10 @@ export const dcMotorCommand = (device, duty, decay, supplyVolts) => {
     const d = Math.max(-1, Math.min(1, Number(duty) || 0));
     if (d === 0 && decay === 'coast') return {mode: 'coast', frictionNm: spec.frictionTorqueNm || 0};
     const line = dcLineAt(spec, supplyVolts);
-    return {mode: 'torque', torqueNm: line.stallTorqueNm * d, dampingNmsPerRad: line.dampingNmsPerRad};
+    // 'coast' while driven: drive/float PWM (the RCX's on/float pattern) — the winding is
+    // open in the off phase, so the back-EMF damping acts only for the |duty| it is driven.
+    const damping = decay === 'coast' ? line.dampingNmsPerRad * Math.abs(d) : line.dampingNmsPerRad;
+    return {mode: 'torque', torqueNm: line.stallTorqueNm * d, dampingNmsPerRad: damping};
 };
 
 /**

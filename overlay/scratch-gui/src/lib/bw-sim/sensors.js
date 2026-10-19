@@ -24,6 +24,8 @@
 //     white, 0 for black, scaled by 1 − distance/0.032.
 //   force: castRay along the plunger up to ~5 mm; if a hit is within 2 mm,
 //     force = 100·(1 − d/0.002) (clamped), pressed when >10.
+//   rotation (the RCX rotation sensor): no ray — the angle of the hinge that
+//     turns in the sensor's hole (rotationJoint), radians since t = 0.
 
 /** LEGO device ids, matching lib/spike-arena/arena-hub-bridge.js. */
 import {createMat} from './world/mats.js';
@@ -167,6 +169,29 @@ export const sensorsOf = mechanism => {
     return Array.isArray(mechanism.sensors) ? mechanism.sensors.map(s => ({...s, hub: null})) : [];
 };
 
+/** How far (m) a hinge's line may pass from a rotation sensor's probe and still be the axle in its hole. */
+const ROTATION_AXLE_REACH_M = 0.004;
+
+/**
+ * The hinge a rotation sensor reads: one joined to the sensor's body, coaxial with its probe
+ * (the hole's axis) at t = 0, and its sign (+1 when the probe sees the axle turn as the hinge
+ * angle: body2 relative to body1 about the hinge axis, taken about the probe direction).
+ * @returns {{joint: object, sign: number}|null}
+ */
+export const rotationJoint = (mechanism, sensor) => {
+    for (const joint of (mechanism && mechanism.joints) || []) {
+        if (joint.type !== 'hinge' || (joint.body1 !== sensor.body && joint.body2 !== sensor.body)) continue;
+        const along = joint.axis[0] * sensor.direction[0] + joint.axis[1] * sensor.direction[1] + joint.axis[2] * sensor.direction[2];
+        if (Math.abs(along) < 0.999) continue;
+        const d = vecSub(sensor.origin, joint.point);
+        const t = d[0] * joint.axis[0] + d[1] * joint.axis[1] + d[2] * joint.axis[2];
+        const off = Math.hypot(d[0] - t * joint.axis[0], d[1] - t * joint.axis[1], d[2] - t * joint.axis[2]);
+        if (off > ROTATION_AXLE_REACH_M) continue;
+        return {joint, sign: Math.sign(along) * (joint.body1 === sensor.body ? 1 : -1)};
+    }
+    return null;
+};
+
 /**
  * Read all sensors of a mechanism at the core's current time.
  * @param {object} core a physics core from createPhysicsCore (with bodyPose, castRay)
@@ -299,6 +324,16 @@ export const readSensors = (core, mechanism, robotBodies = [], sensors = sensors
                     };
                 }
             }
+        } else if (sensor.kind === 'rotation') {
+            // The RCX rotation sensor: the turn of the axle through its hole relative to the
+            // sensor's own body — the hinge the compiler made there (kinds/rotation-sensor.js),
+            // read about the probe's direction. Nothing turning in the hole: 0.
+            const found = rotationJoint(mechanism, sensor);
+            let angle = 0;
+            if (found) {
+                try { angle = core.jointState(found.joint.id).angle; } catch (_) {}
+            }
+            out[sensor.port] = {kind: 'rotation', angleRad: found ? found.sign * angle : 0, joint: found ? found.joint.id : null};
         } else if (sensor.kind === 'force') {
             // Tip probe: cast up to 5 mm, but only 0..2 mm counts.
             const maxDist = 0.01;
