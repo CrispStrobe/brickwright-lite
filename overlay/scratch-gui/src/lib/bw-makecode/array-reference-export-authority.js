@@ -1,6 +1,10 @@
 import {analyseConsoleCaptures} from './console-capture-provenance.js';
 import {createAnimationFrameArrayProducers, isAnimationFrameArrayProducer} from './animation-frame-array-producers.js';
 
+// SDK reporters whose native implementation always returns a fresh Array
+// reference of locations, keyed to their exact input schema.
+const FRESH_SDK_ARRAYS=Object.freeze({arcade_tilesOfType:Object.freeze(['IMAGE']),arcade_legacyTilesOfType:Object.freeze(['INDEX'])});
+
 // Producer facts are deliberately separate from the exporter's annotation graph.
 // Merely being plugged into an ARRAY input never creates an Array fact.
 export function createArrayReferenceExportAuthority(project, options = {}, animationProducer = null) {
@@ -434,6 +438,10 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(node.opcode==='arcade_createSpriteKind')return exactKeys(node,[]);
         if(node.opcode==='arcade_spriteKindValue')return exactKeys(node,['NAME'])&&typeof literal(node,'NAME',value.target)==='string';
         if(node.opcode==='arrays_valueBinary')return ['+','-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(literal(node,'OP',value.target))&&numericKind(input(node,'LEFT',value.target),next)&&numericKind(input(node,'RIGHT',value.target),next);
+        // Scratch arithmetic reporters always cast their operands and return a Number.
+        if(['operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod'].includes(node.opcode))return exactKeys(node,['NUM1','NUM2']);
+        if(node.opcode==='operator_round')return exactKeys(node,['NUM']);
+        if(node.opcode==='operator_mathop')return exactKeys(node,['NUM'],['OPERATOR']);
         return false;
     };
     const namedBinding=(target,node)=>{
@@ -481,6 +489,8 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         const c=binding(target,node);if(c)return new Set(c.types);
         const allocated=factories(target,node);if(allocated)return allocated;const named=namedBinding(target,node);if(named)return named;
         if(node.opcode==='arcade_spritesOfKind')return exactKeys(node,['KIND'])&&numericKind(input(node,'KIND',target))?new Set([token(node,target,[{raw:[10,'SDK Sprite element not an Array']}],0)]):new Set([bad]);
+        // Native tile queries return a fresh Array of locations (or throw).
+        if(Object.hasOwn(FRESH_SDK_ARRAYS,node.opcode))return exactKeys(node,FRESH_SDK_ARRAYS[node.opcode])?new Set([token(node,target,[{raw:[10,'SDK Location element not an Array']}],0)]):new Set([bad]);
         if(['arcade_animationAssetFrames','arcade_animationAssetFreshFrames'].includes(node.opcode)){
             const producer=animationProducers.resolve(target,node);
             return producer?new Set([token(producer.allocation,producer.shared?null:target,
@@ -693,12 +703,44 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         const next=new Set([...path,allocation]);
         return allocation.origin?uniqueAllocation(allocation.origin,next):!!allocation.target&&onceNode(allocation.node);
     };
+    // A callee statement on the unconditional straight prefix of its body runs
+    // on every completed call. Credit it only for a direct call operand of a
+    // caller statement that already executed before the queried occurrence.
+    const straightPrefix=(fn,node)=>{
+        const seen=new Set();let id=fn.root?.next;
+        while(id&&!seen.has(id)){seen.add(id);const n=block(fn.target,id);if(!n)return false;if(n===node)return true;
+            if(Object.keys(n.inputs||{}).some(name=>name.startsWith('SUBSTACK'))||/return|stop|break|continue|throw/i.test(n.opcode))return false;id=n.next;}
+        return false;
+    };
+    const calleeExecutedBefore=(node,scope,before)=>{
+        const fn=owners.get(node);if(!fn||!scope||fn===scope||fn.invalid||fn.unknownEntry||!straightPrefix(fn,node))return false;
+        return calls.some(call=>call.fn===fn&&call.scope===scope&&owners.get(call.node)===scope&&[...before].some(statement=>statement&&owners.get(statement)===scope&&
+            Object.entries(statement.inputs||{}).some(([name,slot])=>!name.startsWith('SUBSTACK')&&block(scope.target,slot?.[1])===call.node)));
+    };
+    // The statement that evaluates an expression occurrence.
+    const statementOf=node=>{
+        const scope=owners.get(node);if(!scope)return null;let current=node;const seen=new Set();
+        while(current&&current!==scope.root&&!seen.has(current)){seen.add(current);
+            const parent=block(scope.target,current.parent);if(!parent||owners.get(parent)!==scope)return null;
+            const id=Object.keys(scope.target.blocks).find(id=>scope.target.blocks[id]===current);
+            if(parent.next===id||Object.entries(parent.inputs||{}).some(([name,slot])=>name.startsWith('SUBSTACK')&&slot?.[1]===id))return current;
+            current=parent;}
+        return null;
+    };
+    // A shrink whose once-only statement runs strictly after the queried
+    // occurrence's once-only statement in the same scope cannot remove an
+    // element first; every evaluation stays inside its own statement.
+    const shrinkAfter=(shrink,at)=>{
+        const scope=owners.get(at),statement=statementOf(at),later=statementOf(shrink);
+        if(!scope||owners.get(shrink)!==scope||!statement||!later||statement===later||!onceNode(statement)||!onceNode(later))return false;
+        return !!scope.executedBefore.get(shrink)?.has(statement);
+    };
     const minimumAt=(allocation,at,qualifies=()=>true)=>{
-        if([...allocation.shrinks||[]].some(node=>node!==at))return 0;
+        if([...allocation.shrinks||[]].some(node=>node!==at&&!shrinkAfter(node,at)))return 0;
         const scope=owners.get(at),before=scope?.executedBefore.get(at)||new Set();let length=allocation.minLength;
         // A possible target receives element-type obligations below, but only
         // a unique actual target receives guaranteed-presence credit.
-        for(const {target,node}of mutations){const receiver=readInput(input(node,'ARRAY',target));if(before.has(node)&&['push','unshift'].includes(literal(node,'OP',target))&&receiver.size===1&&receiver.has(allocation)&&uniqueAllocation(allocation)&&qualifies(target,node))length++;}
+        for(const {target,node}of mutations){const receiver=readInput(input(node,'ARRAY',target));if((before.has(node)||calleeExecutedBefore(node,scope,before))&&['push','unshift'].includes(literal(node,'OP',target))&&receiver.size===1&&receiver.has(allocation)&&uniqueAllocation(allocation)&&qualifies(target,node))length++;}
         return length;
     };
     const pendingPresence=(allocation,at)=>{
@@ -776,6 +818,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             return true;
         }
         if(node.opcode==='arcade_spritesOfKind'&&exactKeys(node,['KIND']))return numericKindInitialized(input(node,'KIND',target));
+        if(Object.hasOwn(FRESH_SDK_ARRAYS,node.opcode))return exactKeys(node,FRESH_SDK_ARRAYS[node.opcode]);
         return false;
     };
     const live=()=>project.targets===targets&&snapshot()===original&&animationProducers.isCurrent()&&(!extendedResetUsed||effectMetadata()===originalEffects)&&snapshots.every(s=>s.target.blocks?.[s.id]===s.node&&s.node.inputs===s.inputs&&s.node.fields===s.fields&&s.node.mutation===s.mutation&&s.inputRows.every(([name,row,a,b])=>s.node.inputs?.[name]===row&&row?.[1]===a&&row?.[2]===b));
