@@ -134,3 +134,41 @@ test('both debugger jobs install the root packages their tests load', () => {
     }
     assert.doesNotMatch(workflow, /Dependency-free debugger architecture/);
 });
+
+// The controls verifier uses pxt-node's strict integrated GUI admission. A
+// runtime-only packages/ tree must not substitute for the declared installation.
+function assertArcadeControlsPreparation(source) {
+    assert.match(source, /timeout-minutes: 15(?:\n|$)/);
+    const commands = [
+        'npm ci --ignore-scripts --no-audit --no-fund',
+        'npm run vendor',
+        'node scripts/integrate.mjs',
+        'cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund',
+        'node scripts/apply-vm-overlay.mjs',
+        'node scripts/sync-makecode-runtime.mjs',
+        'node scripts/verify-arcade-controls.mjs'
+    ];
+    let previous = -1;
+    for (const command of commands) {
+        const line = `        run: ${command}\n`;
+        const position = source.indexOf(line);
+        assert.ok(position > previous, `controls prerequisite missing or out of order: ${command}`);
+        assert.equal(source.indexOf(line, position + line.length), -1, `duplicate controls prerequisite: ${command}`);
+        previous = position;
+    }
+    assert.doesNotMatch(source, /npm run build|--allow-stale|continue-on-error/);
+}
+
+test('Arcade controls prepare the real integrated GUI and installed model before runtime verification', () => {
+    const source = workflows.get('.github/workflows/arcade-controls.yml');
+    assertArcadeControlsPreparation(source);
+    for (const command of [
+        'npm ci --ignore-scripts --no-audit --no-fund',
+        'npm run vendor', 'node scripts/integrate.mjs',
+        'cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund',
+        'node scripts/apply-vm-overlay.mjs'
+    ]) assert.throws(() => assertArcadeControlsPreparation(source.replace(`        run: ${command}\n`, '')));
+    const integrate = 'node scripts/integrate.mjs', apply = 'node scripts/apply-vm-overlay.mjs';
+    assert.throws(() => assertArcadeControlsPreparation(source.replace(integrate, '__SWAP__').replace(apply, integrate).replace('__SWAP__', apply)));
+    assert.throws(() => assertArcadeControlsPreparation(source.replace('timeout-minutes: 15', 'timeout-minutes: 30')));
+});
