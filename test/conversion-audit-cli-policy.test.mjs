@@ -38,7 +38,10 @@ test('context-only CLI uses explicit catalogue roots and current shared operatio
 test('whole census entry remains the shared pure operation while roundtrip integration is explicitly separate', () => {
     const core = fs.readFileSync(new URL('../scripts/lib/conversion-audit-core.mjs', import.meta.url), 'utf8');
     assert.doesNotMatch(core, /process\.argv|node:child_process|pxt-node|bw-vm/);
-    assert.match(cli, /conversion: conversionObservationGraph\(observation\)/);
+    assert.match(cli, /import \{compactConversionObservationGraph\} from '.\/lib\/conversion-audit-core.mjs'/);
+    assert.equal((cli.match(/conversion: compactConversionObservationGraph\(observation\)/g) || []).length, 1);
+    assert.doesNotMatch(cli, /conversion: conversionObservationGraph\(observation\)/);
+    assert.equal((cli.match(/observationFailure: conversionObservationGraph\(conversionException\(error\)\)/g) || []).length, 2);
     assert.match(cli, /observationFailure: conversionObservationGraph\(conversionException\(error\)\)/);
     assert.match(cli, /staticTranslation: row.staticTranslation.status/);
     assert.match(cli, /behavioralEquivalence: 'not-measured'/);
