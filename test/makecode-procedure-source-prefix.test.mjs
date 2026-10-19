@@ -4,10 +4,18 @@ import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arc
 import {parseMakeCodeTs} from '../overlay/scratch-gui/src/lib/bw-makecode/ts-import.js';
 import {prepareProcedureConstraintSource} from '../overlay/scratch-gui/src/lib/bw-makecode/procedure-constraint-source.js';
 const option={procedureConstraintsPrototype:true};
-test('ordinary declaration prefix is explicit and precedes local/body initialization',()=>{
+test('canonical default and explicit prototype Number prefixes precede local/body initialization',()=>{
  const source='function keep(value:number){let local=1;return value+local}let result=keep(20);';
  const ordinary=arcadeToPseudocode(source),explicitFalse=arcadeToPseudocode(source,{procedureConstraintsPrototype:false}),selected=arcadeToPseudocode(source,option);
- assert.deepEqual(ordinary,explicitFalse);assert.doesNotMatch(ordinary.code,/declare arcade procedure/);assert.deepEqual(selected.unsupported,[]);
+ assert.deepEqual(ordinary,explicitFalse);
+ const prefix='DEFINE keep (value):\n  declare arcade procedure "keep %s" parameter "value" as Number\n';
+ for(const result of [ordinary,explicitFalse,selected]){
+  assert.deepEqual(result.unsupported,[]);
+  const declaration=result.code.indexOf(prefix),initialization=result.code.indexOf('arcade set local local');
+  assert.ok(declaration>=0,'exact canonical Number declaration prefix');
+  assert.equal(result.code.indexOf(prefix,declaration+prefix.length),-1,'one declaration prefix');
+  assert.ok(initialization>=declaration+prefix.length,'declaration precedes local/body initialization');
+ }
  assert.match(selected.code,/DEFINE keep \(value\):\n  declare arcade procedure "keep %s" parameter "value" as Number\n/);
  assert.ok(selected.code.indexOf('parameter "value"')<selected.code.indexOf('arcade set local local'));
 });
