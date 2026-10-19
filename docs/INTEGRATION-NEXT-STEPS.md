@@ -17,8 +17,10 @@ the remaining SPIKE matrix.
 Continue inside the merged optional iOS audit lane; keep the workflow entry closed
 until these acceptance criteria are met:
 
-1. Build the device-set ownership factory around an exclusive directory and held
-   identity. Join the explicit boot, app and delegated services through an
+1. Qualify the new exclusive directory factory and its held descriptor identity
+   on the admitted platform. Its finite checks refuse observed replacement across
+   commands; they grant no atomic namespace lease. Join the boot, app and delegated
+   services through an
    authoritative platform observation. Paths, callback assertions and returned
    PIDs alone cannot grant cleanup authority; missing permissions must refuse.
 2. Qualify kernel identity, executable/code identity, family membership and resource
@@ -532,3 +534,12 @@ Selected-target, namespace, installed-code and resource admission remain open.
 Receiver cancellation now keeps the original interrupt, partial receipt bytes and
 cleanup uncertainty even if a later descriptor close is interrupted. Keep this
 custody when wiring the guarded wrapper; source controls are not app qualification.
+
+The directory factory is now implemented, with optional command binding to
+its held parent/directory identity. It preserves state after cancellation or close;
+it never removes an uncertain replacement. The future guarded wrapper must require
+this context rather than path-only command admission. A separate default-off
+`ios_audit_directory_only` profile runs finite filesystem controls on macOS and
+retains source/job/stat/FD observations. It invokes no simulator commands or builds.
+Its result can qualify only that filesystem boundary; boot, app/service ownership,
+family resources and installed-map qualification remain separate acceptance gates.

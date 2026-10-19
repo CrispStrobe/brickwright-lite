@@ -26,6 +26,10 @@ on:
         description: Verify Darwin SDK and one owned test process only; skips all app builds and delivery.
         type: boolean
         default: false
+      ios_audit_directory_only:
+        description: Check exclusive filesystem directory custody only; no simulator commands, app builds or delivery.
+        type: boolean
+        default: false
       ios_audit_interface_only:
         description: Retain bounded installed simulator tool help only; no app builds, launches or downloads.
         type: boolean
@@ -58,7 +62,7 @@ permissions:
 
 jobs:
   ios-audit-preflight:
-    if: github.event_name == 'workflow_dispatch' && inputs.ios_audit_preflight_only && !inputs.ios_audit_interface_only && !inputs.ios_audit_interface_diagnostic && !inputs.ios_audit_interface_manual_only && !inputs.ios_audit_interface_inventory_only && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'
+    if: github.event_name == 'workflow_dispatch' && inputs.ios_audit_preflight_only && !inputs.ios_audit_directory_only && !inputs.ios_audit_interface_only && !inputs.ios_audit_interface_diagnostic && !inputs.ios_audit_interface_manual_only && !inputs.ios_audit_interface_inventory_only && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'
     runs-on: macos-latest
     timeout-minutes: 8
     permissions:
@@ -469,7 +473,7 @@ jobs:
           retention-days: 7
 
   ios-audit-interface:
-    if: github.event_name == 'workflow_dispatch' && (inputs.ios_audit_interface_only || inputs.ios_audit_interface_diagnostic || inputs.ios_audit_interface_manual_only || inputs.ios_audit_interface_inventory_only) && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'
+    if: github.event_name == 'workflow_dispatch' && (inputs.ios_audit_interface_only || inputs.ios_audit_interface_diagnostic || inputs.ios_audit_interface_manual_only || inputs.ios_audit_interface_inventory_only) && !inputs.ios_audit_directory_only && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'
     runs-on: macos-latest
     timeout-minutes: 4
     permissions:
@@ -645,8 +649,137 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  ios-audit-directory:
+    if: github.event_name == 'workflow_dispatch' && inputs.ios_audit_directory_only && !inputs.ios_audit_preflight_only && !inputs.ios_audit_interface_only && !inputs.ios_audit_interface_diagnostic && !inputs.ios_audit_interface_manual_only && !inputs.ios_audit_interface_inventory_only && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'
+    runs-on: macos-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Check owned filesystem directory custody without simulator commands
+        timeout-minutes: 1
+        env:
+          BW_DIRECTORY_MODE: ${{ inputs.ios_audit_directory_only }}
+          BW_DIRECTORY_OTHER_MODE: ${{ inputs.ios_audit_preflight_only || inputs.ios_audit_interface_only || inputs.ios_audit_interface_diagnostic || inputs.ios_audit_interface_manual_only || inputs.ios_audit_interface_inventory_only }}
+          BW_DIRECTORY_RETAIN: ${{ inputs.retain_ios_audit_inputs }}
+          BW_DIRECTORY_SIGN: ${{ inputs.sign_ios }}
+          BW_DIRECTORY_DEVICE: ${{ inputs.device_ipa }}
+          BW_DIRECTORY_RUNTIME: ${{ inputs.ios_audit_runtime }}
+          BW_DIRECTORY_BUILD: ${{ inputs.ios_audit_runtime_build }}
+        run: |
+          set -euo pipefail
+          # BEGIN IOS DIRECTORY CUSTODY
+          python - <<'PY'
+          import ast
+          import hashlib
+          import json
+          import math
+          import os
+          from pathlib import Path
+          import platform
+          import re
+          import stat
+          import sys
+          import time
+
+          def need(value):
+              if not value:raise ValueError('device-set filesystem probe refused')
+          def classes(workflow):
+              match=re.search(r'# BEGIN IOS INPUT RETENTION\n          cat > "\$RUNNER_TEMP/bw-ios-audit-capture.py" <<\'PY\'\n([\s\S]*?)          PY\n          # END IOS INPUT RETENTION',workflow)
+              need(match is not None)
+              source=re.sub('^          ','',match[1],flags=re.M);tree=ast.parse(source)
+              names=('SimulatorDeviceSetRefused','SimulatorDeviceSetDirectory')
+              nodes=[node for node in tree.body if isinstance(node,ast.ClassDef) and node.name in names]
+              need(tuple(node.name for node in nodes)==names)
+              selected='\n\n'.join(ast.get_source_segment(source,node) for node in nodes)+'\n'
+              namespace=dict(os=os,Path=Path,stat=stat,time=time,math=math,need=need)
+              exec(compile(selected,'reviewed-directory-classes','exec'),namespace)
+              return namespace,hashlib.sha256(selected.encode()).hexdigest()
+          def record(path):
+              value=path.stat(follow_symlinks=False)
+              return {'device':value.st_dev,'inode':value.st_ino,'uid':value.st_uid,'gid':value.st_gid,'mode':value.st_mode,'links':value.st_nlink}
+          def main():
+              root=Path(os.environ['RUNNER_TEMP']).resolve()/'bw-ios-device-set-directory';root.mkdir(mode=0o700,exist_ok=False)
+              report={'schema':'brickwright.ios-directory-custody.v1','status':'partial','stage':'admission',
+                  'sourceCommit':os.environ['GITHUB_SHA'],'runID':os.environ['GITHUB_RUN_ID'],
+                  'attempt':os.environ['GITHUB_RUN_ATTEMPT'],'job':os.environ['GITHUB_JOB'],
+                  'host':{'platform':sys.platform,'architecture':platform.machine(),'python':platform.python_version()},
+                  'actualAppQualified':False,'namespaceOwnershipQualified':False,'processFamilyQualified':False,
+                  'resourceLifetimeQualified':False,'simulatorCommandsInvoked':False,'failure':None,'cleanupFailures':[]}
+              owners=[];started=time.monotonic();deadline=started+15
+              try:
+                  need(sys.platform=='darwin' and platform.machine()=='arm64' and sys.version_info[:2]==(3,13))
+                  need(os.environ['GITHUB_EVENT_NAME']=='workflow_dispatch' and os.environ['GITHUB_REPOSITORY']=='CrispStrobe/brickwright-lite' and
+                      os.environ['GITHUB_REF']=='refs/heads/lane/ios-active-asset-source-20261018' and os.environ['GITHUB_JOB']=='ios-audit-directory')
+                  need(os.environ['BW_DIRECTORY_MODE']=='true' and os.environ['BW_DIRECTORY_OTHER_MODE']=='false' and
+                      os.environ['BW_DIRECTORY_RETAIN']=='true' and os.environ['BW_DIRECTORY_SIGN']=='false' and os.environ['BW_DIRECTORY_DEVICE']=='false' and
+                      os.environ['BW_DIRECTORY_RUNTIME']==os.environ['BW_DIRECTORY_BUILD']=='')
+                  workflow=(Path(os.environ['GITHUB_WORKSPACE'])/'.github/workflows/mobile.yml').read_text()
+                  namespace,source_hash=classes(workflow);report['workflowSHA256']=hashlib.sha256(workflow.encode()).hexdigest();report['classesSHA256']=source_hash
+                  owner_type=namespace['SimulatorDeviceSetDirectory'];refused=namespace['SimulatorDeviceSetRefused']
+                  report['uid']=os.geteuid();report['fdBefore']=len(os.listdir('/dev/fd'))
+                  def parent(name):
+                      path=root/name;path.mkdir(mode=0o700);return path
+                  report['stage']='normal-custody';normal_parent=parent('normal')
+                  owner=owner_type(normal_parent,deadline=deadline);owners.append(owner)
+                  report['normal']={'parent':record(normal_parent),'created':record(owner.path)}
+                  need(owner.verify(deadline=deadline)==owner.path)
+                  (owner.path/'retained-state').write_bytes(b'owned-filesystem-probe\n')
+                  need(owner.close()==());report['normal']['afterClose']=record(owner.path)
+                  report['normal']['statePreserved']=(owner.path/'retained-state').read_bytes()==b'owned-filesystem-probe\n'
+                  need(report['normal']['statePreserved'])
+                  report['stage']='replacement-refusal';replacement_parent=parent('replacement')
+                  owner=owner_type(replacement_parent,deadline=deadline);owners.append(owner);before=record(owner.path)
+                  saved=replacement_parent/'retained-original';owner.path.rename(saved);owner.path.mkdir(mode=0o700)
+                  row={'original':before,'retained':record(saved),'replacement':record(owner.path),'refused':False}
+                  try:owner.verify(deadline=deadline)
+                  except ValueError:row['refused']=True
+                  need(row['refused'] and owner.close()==())
+                  row['bothPreserved']=saved.is_dir() and owner.path.is_dir();need(row['bothPreserved']);report['replacement']=row
+                  report['stage']='parent-change-refusal';changed_parent=parent('parent-change')
+                  owner=owner_type(changed_parent,deadline=deadline);owners.append(owner);before=record(changed_parent);changed_parent.chmod(0o750)
+                  row={'before':before,'changed':record(changed_parent),'refused':False}
+                  try:owner.verify(deadline=deadline)
+                  except ValueError:row['refused']=True
+                  need(row['refused'] and owner.close()==());changed_parent.chmod(0o700);report['parentChange']=row
+                  report['stage']='cancelled-creation';stop_parent=parent('stop');before=len(os.listdir('/dev/fd'))
+                  row={'refused':False}
+                  try:owner_type(stop_parent,deadline=deadline,stopped=lambda:bool(list(stop_parent.iterdir())))
+                  except refused as error:
+                      row.update(refused=True,creationAttempted=error.creation_attempted,cleanupFailures=list(error.cleanup_failures))
+                  entries=list(stop_parent.iterdir());need(row['refused'] and row['creationAttempted'] and not row['cleanupFailures'] and len(entries)==1)
+                  row['created']=record(entries[0]);row['fdBefore']=before;row['fdAfter']=len(os.listdir('/dev/fd'));need(row['fdBefore']==row['fdAfter']);report['cancelledCreation']=row
+                  need(time.monotonic()<deadline)
+                  report['stage']='complete';report['status']='filesystem-custody-controls-pass'
+              except BaseException as error:
+                  report['failure']={'type':type(error).__name__,'stage':report['stage']}
+              finally:
+                  for owner in reversed(owners):
+                      try:report['cleanupFailures'].extend(owner.close())
+                      except BaseException as error:report['cleanupFailures'].append(type(error).__name__)
+                  report['fdAfter']=len(os.listdir('/dev/fd'));report['elapsedSeconds']=time.monotonic()-started
+                  if report['cleanupFailures'] or report.get('fdBefore')!=report['fdAfter'] or report['elapsedSeconds']>=15:report['status']='partial'
+                  raw=(json.dumps(report,sort_keys=True)+'\n').encode();need(len(raw)<=65536)
+                  with (root/'report.json').open('xb') as output:output.write(raw)
+              print('Filesystem custody probe '+report['status']+'; app and service ownership remain unqualified')
+              return 0 if report['status']=='filesystem-custody-controls-pass' else 1
+          if __name__=='__main__':raise SystemExit(main())
+          PY
+          # END IOS DIRECTORY CUSTODY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: brickwright-ios-directory-custody
+          path: ${{ runner.temp }}/bw-ios-device-set-directory/report.json
+          if-no-files-found: error
+          retention-days: 7
+
   build-web:
-    if: github.event_name != 'workflow_dispatch' || (inputs.ios_audit_preflight_only != true && inputs.ios_audit_interface_only != true && inputs.ios_audit_interface_diagnostic != true && inputs.ios_audit_interface_manual_only != true && inputs.ios_audit_interface_inventory_only != true)
+    if: github.event_name != 'workflow_dispatch' || (inputs.ios_audit_preflight_only != true && inputs.ios_audit_interface_only != true && inputs.ios_audit_interface_diagnostic != true && inputs.ios_audit_interface_manual_only != true && inputs.ios_audit_interface_inventory_only != true && inputs.ios_audit_directory_only != true)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1144,7 +1277,139 @@ jobs:
                   self.cleanup_failures = tuple(cleanup_failures)
 
 
-          def bounded_simulator_command(arguments, *, device_set, deadline, output_limit, stopped=None, prepared_launch=None, cleanup_originals=None, command_originals=None):
+          class SimulatorDeviceSetRefused(RuntimeError):
+              def __init__(self, reason, cleanup_failures=(), *, creation_attempted=False):
+                  super().__init__('simulator device-set directory refused')
+                  self.reason = reason
+                  self.cleanup_failures = tuple(cleanup_failures)
+                  self.creation_attempted = creation_attempted
+
+
+          class SimulatorDeviceSetDirectory:
+              """Unwired filesystem custody only; no boot/app/service ownership capability.
+
+              Retain the exclusive directory and its parent across command boundaries.
+              Close releases descriptors only: never recursively remove simulator state or
+              delete a path whose current occupant may belong to somebody else.
+              """
+              def __init__(self, parent, *, deadline, now=time.monotonic, stopped=None):
+                  import re
+                  import uuid
+                  self._directory_fd = self._parent_fd = None
+                  self._closed = self._failed = self._active = False
+                  self._close_errors = ()
+                  self._last = None
+                  self._now = now
+                  self.creation_attempted = False
+                  stage = 'admission'
+                  try:
+                      need(callable(now) and (stopped is None or callable(stopped)))
+                      self._parent_path = Path(parent)
+                      need(self._parent_path.is_absolute() and self._parent_path.resolve(strict=True) == self._parent_path)
+                      self._parent_fd = os.open(self._parent_path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+                      self._parent_identity = self._identity(os.fstat(self._parent_fd))
+                      self._parent_matches()
+                      name = 'bw-ios-assets-'+uuid.uuid4().hex+'.deviceset'
+                      need(re.fullmatch(r'bw-ios-assets-[a-f0-9]{32}\.deviceset', name) is not None)
+                      self._path = self._parent_path/name
+                      def check_stop():
+                          self._tick(deadline)
+                          if stopped is not None:
+                              flag = stopped()
+                              need(type(flag) is bool and not flag)
+                          self._tick(deadline)
+                      check_stop()
+                      self._parent_matches()
+                      stage = 'exclusive-create'
+                      self.creation_attempted = True
+                      os.mkdir(name, 0o700, dir_fd=self._parent_fd)
+                      stage = 'directory-open'
+                      named = os.stat(name, dir_fd=self._parent_fd, follow_symlinks=False)
+                      self._directory_fd = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=self._parent_fd)
+                      self._directory_identity = self._identity(os.fstat(self._directory_fd))
+                      need(self._identity(named) == self._directory_identity)
+                      stage = 'created-readback'
+                      self.verify(deadline=deadline)
+                      check_stop()
+                  except BaseException as error:
+                      closing_interrupt = None
+                      try:
+                          self.close()
+                      except BaseException as closing:
+                          closing_interrupt = closing
+                      if not isinstance(error, Exception):
+                          error.device_set_cleanup_failures = self._close_errors
+                          error.device_set_secondary_interrupts = (() if closing_interrupt is None else (closing_interrupt,))
+                          raise
+                      if closing_interrupt is not None and not isinstance(closing_interrupt, Exception):
+                          closing_interrupt.device_set_primary_error = error
+                          raise closing_interrupt
+                      raise SimulatorDeviceSetRefused(stage, self._close_errors,
+                          creation_attempted=self.creation_attempted) from None
+
+              @staticmethod
+              def _identity(info):
+                  need(stat.S_ISDIR(info.st_mode) and info.st_uid == os.geteuid() and not info.st_mode & 0o022)
+                  return info.st_dev, info.st_ino, info.st_uid, stat.S_IMODE(info.st_mode)
+
+              @property
+              def path(self):
+                  return self._path
+
+              def _tick(self, deadline):
+                  tick = self._now()
+                  need(not self._closed and not self._failed and type(tick) in (int, float) and
+                       type(deadline) in (int, float) and math.isfinite(tick) and math.isfinite(deadline) and
+                       (self._last is None or tick >= self._last) and 0 < deadline-tick <= 15)
+                  self._last = tick
+
+              def _parent_matches(self):
+                  held = os.fstat(self._parent_fd)
+                  named = self._parent_path.stat(follow_symlinks=False)
+                  need(self._identity(held) == self._identity(named) == self._parent_identity and
+                       self._parent_path.resolve(strict=True) == self._parent_path)
+
+              def verify(self, *, deadline):
+                  try:
+                      need(not self._active)
+                      self._active = True
+                      self._tick(deadline)
+                      self._parent_matches()
+                      held = os.fstat(self._directory_fd)
+                      named = self._path.stat(follow_symlinks=False)
+                      need(self._identity(held) == self._identity(named) == self._directory_identity and
+                           stat.S_IMODE(held.st_mode) == 0o700 and self._path.resolve(strict=True) == self._path)
+                      self._tick(deadline)
+                      return self._path
+                  except BaseException:
+                      self._failed = True
+                      raise
+                  finally:
+                      self._active = False
+
+              def close(self):
+                  if not self._closed:
+                      errors = []
+                      interrupt = None
+                      for attribute in ('_directory_fd', '_parent_fd'):
+                          fd = getattr(self, attribute)
+                          setattr(self, attribute, None)  # Never retry a potentially reused descriptor number.
+                          if fd is not None:
+                              try:
+                                  os.close(fd)
+                              except BaseException as error:
+                                  errors.append(attribute+'-close')
+                                  if not isinstance(error, Exception) and interrupt is None:
+                                      interrupt = error
+                      self._close_errors = tuple(errors)
+                      self._closed = True
+                      if interrupt is not None:
+                          interrupt.add_note('device-set descriptor cleanup uncertain: '+','.join(errors))
+                          raise interrupt
+                  return self._close_errors
+
+
+          def bounded_simulator_command(arguments, *, device_set, deadline, output_limit, stopped=None, prepared_launch=None, cleanup_originals=None, command_originals=None, device_set_owner=None):
               """Unwired simctl client adapter; not containment of delegated services/apps.
 
               Requires non-reaping waitid (macOS Python 3.13+) and the default SIGCHLD
@@ -1187,6 +1452,7 @@ jobs:
                   need(type(deadline) in (int, float) and math.isfinite(deadline))
                   need(type(output_limit) is int and 0 < output_limit <= 1024*1024)
                   need(stopped is None or callable(stopped))
+                  need(device_set_owner is None or type(device_set_owner) is SimulatorDeviceSetDirectory)
                   need(cleanup_originals is None or (type(cleanup_originals) is list and not cleanup_originals))
                   need(command_originals is None or (type(command_originals) is list and not command_originals))
                   need(command_originals is None or command_originals is not cleanup_originals)
@@ -1230,12 +1496,16 @@ jobs:
                   directory = Path(device_set)
                   need(directory.is_absolute() and directory.resolve(strict=True) == directory and
                        re.fullmatch(r'bw-ios-assets-[a-f0-9]{32}\.deviceset', directory.name) is not None)
+                  if device_set_owner is not None:
+                      need(device_set_owner.verify(deadline=deadline) == directory)
                   directory_fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
                   identity = os.fstat(directory_fd)
                   need(stat.S_ISDIR(identity.st_mode))
                   # Path snapshots are not an atomic namespace lease; actual ownership is
                   # independently admitted before any future wiring of this adapter.
                   def same_directory():
+                      if device_set_owner is not None:
+                          need(device_set_owner.verify(deadline=deadline) == directory)
                       current = directory.stat(follow_symlinks=False)
                       need(stat.S_ISDIR(current.st_mode) and
                            (current.st_dev, current.st_ino) == (identity.st_dev, identity.st_ino) and
@@ -1253,6 +1523,9 @@ jobs:
                       stage = 'launch-binding'
                       prepared_launch._parent_matches()
                       environment['SIMCTL_CHILD_BW_EMBEDDED_ASSET_AUDIT_PATH'] = audit_path
+                  stage = 'device-set'
+                  same_directory()
+                  check()
                   stage = 'spawn'
                   process = subprocess.Popen(['xcrun', 'simctl', '--set', str(directory), *arguments],
                       stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -1356,6 +1629,13 @@ jobs:
                               if primary is not None:
                                   error.command_primary_error = primary
                               primary, reason = error, 'cleanup'
+              if primary is None and not cleanup and device_set_owner is not None:
+                  try:
+                      stage = 'device-set'
+                      same_directory()
+                      check()
+                  except BaseException as error:
+                      primary, reason = error, stage
               if primary is None and not cleanup and prepared_launch is not None:
                   try:
                       stage = 'launch-binding'

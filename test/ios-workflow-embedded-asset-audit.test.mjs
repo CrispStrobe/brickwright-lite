@@ -16,7 +16,7 @@ test('ad-hoc diagnostics print only device count and preserve the actual asserti
 function assertNoAuditEntry(body) {
     const start = body.indexOf('def main():');
     assert.ok(start >= 0, 'the actual entry point must exist');
-    assert.doesNotMatch(body.slice(start), /SIMCTL_CHILD_|BW_EMBEDDED_ASSET_AUDIT_PATH|prepared_launch|owned_simulator_transaction|prepare_installed_observation|release_installed_observation|bounded_simulator_command|darwin_owned_command_cleanup|DarwinProcessSampler|DarwinAuditIdentity|simulator_code_directory/);
+    assert.doesNotMatch(body.slice(start), /SIMCTL_CHILD_|BW_EMBEDDED_ASSET_AUDIT_PATH|prepared_launch|owned_simulator_transaction|prepare_installed_observation|release_installed_observation|bounded_simulator_command|darwin_owned_command_cleanup|DarwinProcessSampler|DarwinAuditIdentity|simulator_code_directory|SimulatorDeviceSetDirectory/);
 }
 
 test('asset source preparation adds no runtime download or delivery event', () => {
@@ -823,6 +823,20 @@ class AdapterControls(unittest.TestCase):
         until=time.monotonic()+2
         while time.monotonic()<until and not self.inactive(pid):time.sleep(0.01)
         self.assertTrue(self.inactive(pid),'owned test-group child stopped')
+    def test_exclusive_directory_context_refuses_cross_command_replacement_before_spawn(self):
+        with mock.patch('uuid.uuid4',return_value=mock.Mock(hex='b'*32)):
+            owner=SimulatorDeviceSetDirectory(self.root,deadline=time.monotonic()+2)
+        try:
+            value=json.loads(self.run_command(device_set=owner.path,device_set_owner=owner))
+            self.assertEqual(value['args'],['simctl','--set',str(owner.path),*ARGS])
+            retained=owner.path.with_suffix('.retained');owner.path.rename(retained);owner.path.mkdir(mode=0o700)
+            # Legacy path-only admission accepts the replacement; the held context must refuse.
+            self.assertEqual(json.loads(self.run_command(device_set=owner.path))['args'],['simctl','--set',str(owner.path),*ARGS])
+            with mock.patch.object(subprocess,'Popen') as spawn:
+                with self.assertRaises(SimulatorCommandRefused) as caught:self.run_command(device_set=owner.path,device_set_owner=owner)
+                self.assertEqual(caught.exception.reason,'device-set');spawn.assert_not_called()
+            self.assertTrue(retained.is_dir());self.assertTrue(owner.path.is_dir())
+        finally:owner.close()
     def test_exact_namespace_argv_and_environment_filter(self):
         raw=self.run_command();value=json.loads(raw)
         self.assertEqual(value['args'],['simctl','--set',str(self.directory),*ARGS]);self.assertTrue(value['clean'])
@@ -1011,7 +1025,7 @@ test('unwired bounded simctl adapter controls execute real owned subprocesses', 
             env: {...process.env, GITHUB_WORKSPACE: dir, RUNNER_TEMP: dir, TMPDIR: dir}, encoding: 'utf8', timeout: 20000
         });
         assert.equal(result.status, 0, result.stdout + result.stderr);
-        assert.match(result.stderr, /Ran 15 tests/);
+        assert.match(result.stderr, /Ran 16 tests/);
         assert.match(result.stderr, /OK/);
         assert.equal((retention.match(/bounded_simulator_command\(/g) || []).length, 1, 'adapter definition only');
     } finally { rmSync(dir, {recursive: true, force: true}); }
@@ -1981,9 +1995,9 @@ const preflight = preflightBlock[1].replace(/^          /gm, '');
 
 test('Darwin preflight-only dispatch is closed, unsigned and excludes existing app build jobs', () => {
     assert.match(workflow, /ios_audit_preflight_only:\n[^\n]+\n        type: boolean\n        default: false/);
-    const guard = "github.event_name == 'workflow_dispatch' && inputs.ios_audit_preflight_only && !inputs.ios_audit_interface_only && !inputs.ios_audit_interface_diagnostic && !inputs.ios_audit_interface_manual_only && !inputs.ios_audit_interface_inventory_only && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'";
+    const guard = "github.event_name == 'workflow_dispatch' && inputs.ios_audit_preflight_only && !inputs.ios_audit_directory_only && !inputs.ios_audit_interface_only && !inputs.ios_audit_interface_diagnostic && !inputs.ios_audit_interface_manual_only && !inputs.ios_audit_interface_inventory_only && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'";
     assert.ok(workflow.includes(`  ios-audit-preflight:\n    if: ${guard}\n`));
-    assert.ok(workflow.includes("  build-web:\n    if: github.event_name != 'workflow_dispatch' || (inputs.ios_audit_preflight_only != true && inputs.ios_audit_interface_only != true && inputs.ios_audit_interface_diagnostic != true && inputs.ios_audit_interface_manual_only != true && inputs.ios_audit_interface_inventory_only != true)\n"));
+    assert.ok(workflow.includes("  build-web:\n    if: github.event_name != 'workflow_dispatch' || (inputs.ios_audit_preflight_only != true && inputs.ios_audit_interface_only != true && inputs.ios_audit_interface_diagnostic != true && inputs.ios_audit_interface_manual_only != true && inputs.ios_audit_interface_inventory_only != true && inputs.ios_audit_directory_only != true)\n"));
     const job = workflow.slice(workflow.indexOf('  ios-audit-preflight:\n'), workflow.indexOf('  ios-audit-interface:\n'));
     assert.match(job, /permissions:\n      contents: read/);
     assert.match(job, /timeout-minutes: 8/);
@@ -2468,7 +2482,7 @@ test('interface inventory is disjoint, read-only and bounded to installed tool h
     const start = workflow.indexOf('  ios-audit-interface:\n');
     const job = workflow.slice(start, workflow.indexOf('  build-web:\n', start));
     assert.match(workflow, /ios_audit_interface_only:\n[^\n]+\n        type: boolean\n        default: false/);
-    assert.ok(job.includes("if: github.event_name == 'workflow_dispatch' && (inputs.ios_audit_interface_only || inputs.ios_audit_interface_diagnostic || inputs.ios_audit_interface_manual_only || inputs.ios_audit_interface_inventory_only) && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'"));
+    assert.ok(job.includes("if: github.event_name == 'workflow_dispatch' && (inputs.ios_audit_interface_only || inputs.ios_audit_interface_diagnostic || inputs.ios_audit_interface_manual_only || inputs.ios_audit_interface_inventory_only) && !inputs.ios_audit_directory_only && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'"));
     assert.match(job, /permissions:\n      contents: read/);
     assert.match(interfaceSource, /BW_INTERFACE_OTHER_MODE'\]=='false'/);
     assert.match(interfaceSource, /BW_INTERFACE_RUNTIME'\]=='' and os.environ\['BW_INTERFACE_BUILD'\]==''/);
@@ -2499,5 +2513,203 @@ test('interface inventory is disjoint, read-only and bounded to installed tool h
             assert.notEqual(cut.status,0,`undetected interface cut ${index}`);
             assert.match(cut.stderr,/FAIL:/,cut.stdout+cut.stderr);assert.doesNotMatch(cut.stderr,/SyntaxError|ImportError/);
         }
+    } finally {rmSync(dir,{recursive:true,force:true});}
+});
+
+const deviceSetDirectoryControls = String.raw`
+import tempfile
+import shutil
+import unittest
+import uuid
+from unittest import mock
+class DeviceSetDirectoryControls(unittest.TestCase):
+    def setUp(self):
+        self.root=Path(tempfile.mkdtemp(prefix='bw-device-set-custody-'));self.parent=self.root/'private';self.parent.mkdir(mode=0o700)
+        self.time=0.;self.owners=[];self.patch=mock.patch('uuid.uuid4',return_value=mock.Mock(hex='b'*32));self.patch.start()
+    def tearDown(self):
+        self.patch.stop()
+        for owner in self.owners:owner.close()
+        shutil.rmtree(self.root)
+    def create(self,**changes):
+        options=dict(deadline=10,now=lambda:self.time);options.update(changes)
+        owner=SimulatorDeviceSetDirectory(self.parent,**options);self.owners.append(owner);return owner
+    def test_normal_exclusive_custody_close_keeps_state_and_fd_count(self):
+        before=len(os.listdir('/dev/fd'));owner=self.create();self.assertTrue(owner.creation_attempted)
+        self.assertEqual(owner.verify(deadline=10),owner.path);self.assertEqual(owner.path.stat().st_mode&0o777,0o700)
+        (owner.path/'retained-state').write_bytes(b'AUTHORED')
+        self.assertEqual(len(os.listdir('/dev/fd')),before+2);self.assertEqual(owner.close(),())
+        self.assertEqual(owner.close(),());self.assertEqual(len(os.listdir('/dev/fd')),before)
+        self.assertEqual((owner.path/'retained-state').read_bytes(),b'AUTHORED')
+        with self.assertRaises(ValueError):owner.verify(deadline=10)
+    def test_collision_and_symlink_never_adopt_or_remove_existing_entry(self):
+        path=self.parent/('bw-ios-assets-'+'b'*32+'.deviceset');before=len(os.listdir('/dev/fd'))
+        for kind in ('directory','symlink'):
+            if kind=='directory':path.mkdir();(path/'original').write_bytes(b'KEEP')
+            else:path.symlink_to(self.root,target_is_directory=True)
+            with self.assertRaises(SimulatorDeviceSetRefused) as caught:self.create()
+            self.assertEqual(caught.exception.reason,'exclusive-create');self.assertTrue(path.exists())
+            self.assertEqual(len(os.listdir('/dev/fd')),before)
+            if kind=='directory':self.assertEqual((path/'original').read_bytes(),b'KEEP');shutil.rmtree(path)
+            else:path.unlink()
+    def test_parent_permissions_symlink_and_relative_path_refuse_before_create(self):
+        before=len(os.listdir('/dev/fd'));self.parent.chmod(0o777)
+        with mock.patch.object(os,'mkdir') as mkdir:
+            with self.assertRaises(SimulatorDeviceSetRefused):self.create()
+            mkdir.assert_not_called()
+        self.parent.chmod(0o700);link=self.root/'linked';link.symlink_to(self.parent,target_is_directory=True)
+        for parent in (link,Path('relative'),self.parent/'..'/'private'):
+            with self.assertRaises(SimulatorDeviceSetRefused):SimulatorDeviceSetDirectory(parent,deadline=10,now=lambda:0)
+        self.assertEqual(len(os.listdir('/dev/fd')),before)
+    def test_stop_before_creation_and_after_creation_closes_only_owned_fds(self):
+        before=len(os.listdir('/dev/fd'))
+        for flag in (True,1,None):
+            with mock.patch.object(os,'mkdir') as mkdir:
+                with self.assertRaises(SimulatorDeviceSetRefused):self.create(stopped=lambda:flag)
+                mkdir.assert_not_called()
+        with self.assertRaises(SimulatorDeviceSetRefused) as caught:self.create(stopped=lambda:bool(list(self.parent.iterdir())))
+        self.assertTrue(caught.exception.creation_attempted);self.assertEqual(len(list(self.parent.iterdir())),1)
+        self.assertEqual(len(os.listdir('/dev/fd')),before)
+    def test_directory_replacement_and_detected_aba_remain_refused(self):
+        owner=self.create();original=owner.path.with_suffix('.retained');owner.path.rename(original);owner.path.mkdir(mode=0o700)
+        with self.assertRaises(ValueError):owner.verify(deadline=10)
+        owner.path.rmdir();original.rename(owner.path)
+        with self.assertRaises(ValueError):owner.verify(deadline=10)
+        self.assertTrue(owner.path.is_dir())
+    def test_parent_replacement_or_permission_change_refuses(self):
+        owner=self.create();self.parent.chmod(0o750)
+        with self.assertRaises(ValueError):owner.verify(deadline=10)
+        owner.close();self.parent.chmod(0o700);shutil.rmtree(owner.path)
+        owner=self.create();old=self.root/'old';self.parent.rename(old);self.parent.mkdir(mode=0o700)
+        with self.assertRaises(ValueError):owner.verify(deadline=10)
+        self.assertTrue((old/owner.path.name).exists());self.assertEqual(list(self.parent.iterdir()),[])
+    def test_clocks_and_deadlines_refuse_and_failed_context_cannot_recover(self):
+        for deadline in (True,float('nan'),float('inf'),0,16):
+            with self.assertRaises(SimulatorDeviceSetRefused):self.create(deadline=deadline)
+        owner=self.create();self.time=1;owner.verify(deadline=10);self.time=0
+        with self.assertRaises(ValueError):owner.verify(deadline=10)
+        self.time=2
+        with self.assertRaises(ValueError):owner.verify(deadline=10)
+    def test_failure_after_mkdir_preserves_directory_and_releases_parent(self):
+        before=len(os.listdir('/dev/fd'));original=os.open
+        def fail(path,*args,**kwargs):
+            if str(path).endswith('.deviceset'):raise OSError('AUTHORED')
+            return original(path,*args,**kwargs)
+        with mock.patch.object(os,'open',side_effect=fail):
+            with self.assertRaises(SimulatorDeviceSetRefused) as caught:self.create()
+        self.assertEqual(caught.exception.reason,'directory-open');self.assertTrue(caught.exception.creation_attempted)
+        self.assertEqual(len(list(self.parent.iterdir())),1);self.assertEqual(len(os.listdir('/dev/fd')),before)
+    def test_close_interrupt_attempts_later_close_and_never_retries_fd_numbers(self):
+        before=len(os.listdir('/dev/fd'));owner=self.create();original=os.close;closed=[];first=KeyboardInterrupt()
+        def close(fd):
+            original(fd);closed.append(fd)
+            if len(closed)==1:raise first
+        with mock.patch.object(os,'close',side_effect=close),self.assertRaises(KeyboardInterrupt) as caught:owner.close()
+        self.assertIs(caught.exception,first);self.assertEqual(len(closed),2);self.assertEqual(len(os.listdir('/dev/fd')),before)
+        fd=os.open(self.root/'new-fd',os.O_CREAT|os.O_RDWR,0o600)
+        try:owner.close();os.fstat(fd)
+        finally:os.close(fd)
+        self.assertEqual(owner._close_errors,('_directory_fd-close',))
+    def test_constructor_interrupt_survives_cleanup_interrupt(self):
+        before=len(os.listdir('/dev/fd'));original=os.close;first=KeyboardInterrupt();second=SystemExit();calls=[]
+        def stop():raise first
+        def close(fd):original(fd);calls.append(fd);raise second
+        with mock.patch.object(os,'close',side_effect=close),self.assertRaises(KeyboardInterrupt) as caught:self.create(stopped=stop)
+        self.assertIs(caught.exception,first);self.assertEqual(caught.exception.device_set_secondary_interrupts,(second,))
+        self.assertEqual(len(calls),1);self.assertEqual(len(os.listdir('/dev/fd')),before)
+    def test_reentry_fails_sticky_and_no_directory_is_deleted(self):
+        owner=self.create();entered=[False]
+        def now():
+            if not entered[0]:
+                entered[0]=True
+                with self.assertRaises(ValueError):owner.verify(deadline=10)
+            return 0
+        owner._now=now
+        with self.assertRaises(ValueError):owner.verify(deadline=10)
+        self.assertTrue(owner.path.exists())
+    def test_identity_cut_exposes_replacement_acceptance(self):
+        cut='self._identity(held) == self._identity(named) == self._directory_identity'
+        self.assertEqual(SOURCE_PREFIX.count(cut),1);namespace={}
+        exec(compile(SOURCE_PREFIX.replace(cut,'self._identity(held) == self._directory_identity'),'authored-device-set-identity-mutant','exec'),namespace)
+        owner=namespace['SimulatorDeviceSetDirectory'](self.parent,deadline=10,now=lambda:0);self.owners.append(owner)
+        original=owner.path.with_suffix('.retained');owner.path.rename(original);owner.path.mkdir(mode=0o700)
+        self.assertEqual(owner.verify(deadline=10),owner.path)
+unittest.main(argv=['DeviceSetDirectoryControls'],defaultTest='DeviceSetDirectoryControls',verbosity=2)
+`;
+test('exclusive device-set directory retains identity across command boundaries', () => {
+    const prefix = retention.slice(0, retention.lastIndexOf('\ntry:\n'));
+    const dir = mkdtempSync(join(tmpdir(), 'bw-ios-device-set-controls-'));
+    try {
+        const controller = join(dir, 'controls.py');
+        writeFileSync(controller, `${prefix}\nSOURCE_PREFIX = ${JSON.stringify(prefix)}\n${deviceSetDirectoryControls}`);
+        const result = spawnSync('/usr/bin/python3', [controller], {
+            env: {...process.env, GITHUB_WORKSPACE: dir, RUNNER_TEMP: dir, TMPDIR: dir}, encoding: 'utf8', timeout: 15000
+        });
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        assert.match(result.stderr, /Ran 12 tests/);
+        assert.match(result.stderr, /OK/);
+        assertNoAuditEntry(retention);
+    } finally { rmSync(dir, {recursive: true, force: true}); }
+});
+
+const directoryBlock = workflow.match(/# BEGIN IOS DIRECTORY CUSTODY\n          python - <<'PY'\n([\s\S]*?)          PY\n          # END IOS DIRECTORY CUSTODY/);
+assert.ok(directoryBlock);
+const directorySource = directoryBlock[1].replace(/^          /gm, '');
+const directoryProfileControls = String.raw`
+import tempfile,shutil,unittest
+from unittest import mock
+class DirectoryProfileControls(unittest.TestCase):
+    def execute(self,workflow=WORKFLOW_TEXT,changes=None,host='darwin'):
+        root=Path(tempfile.mkdtemp(prefix='bw-directory-profile-'));self.addCleanup(shutil.rmtree,root)
+        (root/'.github/workflows').mkdir(parents=True);(root/'.github/workflows/mobile.yml').write_text(workflow)
+        env={'RUNNER_TEMP':str(root),'GITHUB_WORKSPACE':str(root),'GITHUB_EVENT_NAME':'workflow_dispatch',
+            'GITHUB_REPOSITORY':'CrispStrobe/brickwright-lite','GITHUB_REF':'refs/heads/lane/ios-active-asset-source-20261018',
+            'GITHUB_SHA':'a'*40,'GITHUB_RUN_ID':'123','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'ios-audit-directory',
+            'BW_DIRECTORY_MODE':'true','BW_DIRECTORY_OTHER_MODE':'false','BW_DIRECTORY_RETAIN':'true',
+            'BW_DIRECTORY_SIGN':'false','BW_DIRECTORY_DEVICE':'false','BW_DIRECTORY_RUNTIME':'','BW_DIRECTORY_BUILD':''}
+        env.update(changes or {})
+        with mock.patch.dict(os.environ,env),mock.patch.object(sys,'platform',host),mock.patch.object(platform,'machine',return_value='arm64'),mock.patch.object(sys,'version_info',(3,13)):
+            code=main()
+        raw=(root/'bw-ios-device-set-directory/report.json').read_bytes();return code,json.loads(raw),raw,root
+    def test_positive_observes_only_filesystem_custody(self):
+        code,r,raw,root=self.execute();self.assertEqual(code,0);self.assertEqual(r['status'],'filesystem-custody-controls-pass')
+        self.assertEqual(r['fdBefore'],r['fdAfter']);self.assertEqual(r['normal']['created'],r['normal']['afterClose'])
+        self.assertEqual(r['replacement']['original'],r['replacement']['retained']);self.assertNotEqual(r['replacement']['original']['inode'],r['replacement']['replacement']['inode'])
+        self.assertTrue(r['replacement']['refused']);self.assertTrue(r['parentChange']['refused']);self.assertTrue(r['cancelledCreation']['refused'])
+        self.assertLess(len(raw),65536);self.assertNotIn(str(root).encode(),raw);self.assertEqual(r['workflowSHA256'],hashlib.sha256(WORKFLOW_TEXT.encode()).hexdigest())
+        for flag in ('actualAppQualified','namespaceOwnershipQualified','processFamilyQualified','resourceLifetimeQualified','simulatorCommandsInvoked'):self.assertIs(r[flag],False)
+    def test_malformed_modes_and_platform_refuse_before_directory_factory(self):
+        for key,value in [('BW_DIRECTORY_MODE','false'),('BW_DIRECTORY_OTHER_MODE','true'),('BW_DIRECTORY_RETAIN','false'),('BW_DIRECTORY_SIGN','true'),('BW_DIRECTORY_DEVICE','true'),('BW_DIRECTORY_RUNTIME','selected'),('BW_DIRECTORY_BUILD','selected'),('GITHUB_REF','refs/heads/main')]:
+            code,r,_,root=self.execute(changes={key:value});self.assertEqual(code,1);self.assertEqual(r['failure']['stage'],'admission')
+            self.assertEqual(sorted(p.name for p in (root/'bw-ios-device-set-directory').iterdir()),['report.json'])
+        code,r,_,_=self.execute(host='linux');self.assertEqual(code,1);self.assertEqual(r['failure']['stage'],'admission')
+    def test_identity_mutant_is_refused_by_actual_platform_controller(self):
+        cut='self._identity(held) == self._identity(named) == self._directory_identity';self.assertEqual(WORKFLOW_TEXT.count(cut),1)
+        changed=WORKFLOW_TEXT.replace(cut,'self._identity(held) == self._directory_identity')
+        code,r,_,_=self.execute(workflow=changed);self.assertEqual(code,1);self.assertEqual(r['failure']['stage'],'replacement-refusal')
+        self.assertEqual(r['fdBefore'],r['fdAfter']);self.assertEqual(r['cleanupFailures'],[])
+    def test_missing_or_duplicate_selected_class_refuses(self):
+        for changed in (WORKFLOW_TEXT.replace('class SimulatorDeviceSetDirectory:','class MissingDirectory:'),WORKFLOW_TEXT.replace('class SimulatorDeviceSetRefused(RuntimeError):','class SimulatorDeviceSetDirectory(RuntimeError):')):
+            code,r,_,_=self.execute(workflow=changed);self.assertEqual(code,1);self.assertEqual(r['failure']['stage'],'admission')
+unittest.main(argv=['DirectoryProfileControls'],defaultTest='DirectoryProfileControls',verbosity=2)
+`;
+test('filesystem-only platform profile is closed and preserves actual directory assertions', () => {
+    assert.match(workflow, /ios_audit_directory_only:\n[^\n]+\n        type: boolean\n        default: false/);
+    const job = workflow.slice(workflow.indexOf('  ios-audit-directory:\n'), workflow.indexOf('  build-web:\n'));
+    assert.match(job, /permissions:\n      contents: read/);
+    assert.match(job, /inputs\.ios_audit_directory_only && !inputs\.ios_audit_preflight_only && !inputs\.ios_audit_interface_only/);
+    assert.match(job, /inputs\.retain_ios_audit_inputs && !inputs\.sign_ios && !inputs\.device_ipa/);
+    assert.doesNotMatch(job, /subprocess|Popen|tauri ios|simctl|downloadPlatform|secrets\./);
+    assert.match(workflow, /inputs\.ios_audit_directory_only != true\)/);
+    const prefix = directorySource.slice(0, directorySource.indexOf("\nif __name__=='__main__':"));
+    const dir = mkdtempSync(join(tmpdir(), 'bw-directory-profile-controls-'));
+    try {
+        const controller = join(dir, 'controls.py');
+        writeFileSync(controller, `${prefix}\nWORKFLOW_TEXT = ${JSON.stringify(workflow)}\n${directoryProfileControls}`);
+        const result = spawnSync('/usr/bin/python3', [controller], {
+            env: {...process.env, TMPDIR: dir}, encoding: 'utf8', timeout: 15000
+        });
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        assert.match(result.stderr, /Ran 4 tests/);
+        assert.match(result.stderr, /OK/);
     } finally {rmSync(dir,{recursive:true,force:true});}
 });
