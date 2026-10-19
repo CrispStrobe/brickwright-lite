@@ -113,6 +113,7 @@ on:
       - 'docs/RCX-FIRMWARE.md'
       - 'docs/ROBOT-LAB-ARCHITECTURE.md'
       - 'docs/ROBOT-LAB-SPIKE-EMULATION.md'
+      - 'docs/ROBOT-LAB-VALIDATION.md'
       - 'docs/SPIKE-CONSOLIDATION.md'
       - 'docs/SIM-LAB-PLAN.md'
       - 'docs/SPIKE-ARENA.md'
@@ -838,7 +839,8 @@ jobs:
           # A construction failure is the WORST kind to lose: the gate did not
           # run at all, so it cannot have found anything, and a green line says
           # it did. This repo has found five gates that could not fail; this one
-          # could not even be built. Classify the stream; TODO stays explicitly pending.
+          # could not even be built. Classify the stream; a TODO is pending, and check-test-run.mjs above
+          # requires its reason to name an existing docs/….md entry.
           node scripts/check-tap-failures.mjs /tmp/unit.tap
           exit "$rc"
 

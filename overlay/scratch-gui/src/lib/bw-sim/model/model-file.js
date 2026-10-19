@@ -69,6 +69,12 @@ export const formatOf = name => {
 /** Same name, other extension. */
 export const renameTo = (name, format) => `${String(name || 'model').replace(/\.[a-z0-9]+$/i, '') || 'model'}.${format}`;
 
+/**
+ * Largest model text read out of an archive, in bytes (as its directory declares it; a
+ * 2,000-part model is about 250 KB). A bigger entry is refused before it is inflated.
+ */
+export const MAX_ENTRY_BYTES = 32 * 1024 * 1024;
+
 const ZIP_MAGIC = [0x50, 0x4b, 0x03, 0x04];
 const isZip = bytes => bytes.length >= 4 && ZIP_MAGIC.every((b, i) => bytes[i] === b);
 
@@ -77,7 +83,8 @@ const isZip = bytes => bytes.length >= 4 && ZIP_MAGIC.every((b, i) => bytes[i] =
  * directory (general-purpose flag bit 0 = encrypted). Read here, not by JSZip,
  * so an encrypted archive is recognised before anything tries to inflate it.
  * @param {Uint8Array} bytes
- * @returns {{names: string[], encrypted: boolean}}
+ * @returns {{names: string[], encrypted: boolean, sizes: number[]}} sizes: each entry's declared
+ *          uncompressed size
  * @throws {ModelFileError} `not-a-zip` when there is no readable central directory
  */
 export const zipDirectory = bytes => {
@@ -90,6 +97,7 @@ export const zipDirectory = bytes => {
     const count = view.getUint16(eocd + 10, true);
     let at = view.getUint32(eocd + 16, true);
     const names = [];
+    const sizes = [];
     let encrypted = false;
     const text = new TextDecoder();
     for (let n = 0; n < count; n++) {
@@ -100,16 +108,40 @@ export const zipDirectory = bytes => {
         const nameLength = view.getUint16(at + 28, true);
         const extra = view.getUint16(at + 30, true);
         const comment = view.getUint16(at + 32, true);
+        if (at + 46 + nameLength > bytes.length) throw new ModelFileError('not-a-zip', 'the ZIP directory is damaged');
+        sizes.push(view.getUint32(at + 24, true));
         names.push(text.decode(bytes.subarray(at + 46, at + 46 + nameLength)));
         at += 46 + nameLength + extra + comment;
     }
-    return {names, encrypted};
+    return {names, encrypted, sizes};
 };
 
-const entryNamed = (zip, names, wanted) => {
-    const name = names.find(n => n.replace(/\\/g, '/').toLowerCase() === wanted);
-    return name ? zip.file(name) : null;
+/**
+ * The archive as JSZip reads it; a damaged one (a bad CRC, a size that does not match,
+ * entries cut off) is `not-a-zip`, not JSZip's own error.
+ */
+const loadZip = async bytes => {
+    if (zipDirectory(bytes).sizes.some(size => size > MAX_ENTRY_BYTES)) {
+        throw new ModelFileError('model-too-big', `the archive holds an entry larger than ${MAX_ENTRY_BYTES} bytes`);
+    }
+    try {
+        return await JSZip.loadAsync(bytes, {checkCRC32: true});
+    } catch (error) {
+        throw new ModelFileError('not-a-zip', `the ZIP archive is damaged (${error && error.message})`);
+    }
 };
+
+/** An entry's text; a damaged entry is `not-a-zip`. */
+const entryText = async entry => {
+    try {
+        return await entry.async('string');
+    } catch (error) {
+        throw new ModelFileError('not-a-zip', `the ZIP archive is damaged (${error && error.message})`);
+    }
+};
+
+/** The file entry (not a folder) whose path matches `test`, as JSZip names it. */
+const entryWhere = (zip, test) => Object.values(zip.files).find(e => !e.dir && test(e.name.replace(/\\/g, '/'))) || null;
 
 /**
  * The LDraw model inside a BrickLink Studio .io.
@@ -121,10 +153,10 @@ export const readStudioIo = async bytes => {
     if (!isZip(bytes)) throw new ModelFileError('not-a-zip', 'not a ZIP archive');
     const {names, encrypted} = zipDirectory(bytes);
     if (encrypted) throw new ModelFileError('io-encrypted', 'the Studio file is password-protected (an older Studio version)');
-    const zip = await JSZip.loadAsync(bytes);
-    const entry = entryNamed(zip, names, 'model.ldr');
+    const zip = await loadZip(bytes);
+    const entry = entryWhere(zip, n => n.toLowerCase() === 'model.ldr');
     if (!entry) throw new ModelFileError('io-no-model', 'the Studio file has no model.ldr');
-    const text = await entry.async('string');
+    const text = await entryText(entry);
     // Parts Studio carries itself: CustomParts/<name>.dat (any sub-folder below is a primitive).
     const studioOnly = new Set(names.map(n => n.replace(/\\/g, '/'))
         .filter(n => /^customparts\/(?:parts\/)?[^/]+\.dat$/i.test(n))
@@ -167,25 +199,27 @@ export const serializeMpd = (model, {name = 'model.ldr', title} = {}) => {
 /**
  * An LDD .lxf's model as LDraw text.
  * @param {Uint8Array} bytes
- * @param {{ldconfig: string}} options LDConfig.ldr text (the LEGO colour numbers)
+ * @param {{ldconfig: string, catalog?: Map<string, object>}} options ldconfig: LDConfig.ldr text (the LEGO colour
+ *        numbers); catalog: the Robot Lab's parts (a design outside ldd-parts.js may then be placed with a
+ *        derived frame: lxf-model.js)
  * @returns {Promise<{text: string, refusals: object[]}>}
  * @throws {ModelFileError} `not-a-zip`, `lxf-no-lxfml`, `lxf-unreadable`, `lxf-version`
  */
-export const readLxf = async (bytes, {ldconfig, name = 'model.lxf', title}) => {
+export const readLxf = async (bytes, {ldconfig, catalog, name = 'model.lxf', title}) => {
     let xml;
     if (isZip(bytes)) {
-        const {names, encrypted} = zipDirectory(bytes);
+        const {encrypted} = zipDirectory(bytes);
         if (encrypted) throw new ModelFileError('lxf-unreadable', 'the LDD file is encrypted');
-        const zip = await JSZip.loadAsync(bytes);
-        const lxfml = names.find(n => /(^|\/)[^/]*\.lxfml$/i.test(n));
+        const zip = await loadZip(bytes);
+        const lxfml = entryWhere(zip, n => /(^|\/)[^/]*\.lxfml$/i.test(n));
         if (!lxfml) throw new ModelFileError('lxf-no-lxfml', 'the LDD file has no .LXFML model');
-        xml = await zip.file(lxfml).async('string');
+        xml = await entryText(lxfml);
     } else {
         xml = new TextDecoder().decode(bytes); // a bare .lxfml
     }
     let parsed;
     try {
-        parsed = parseLxfml(xml, {colours: lddColours(ldconfig)});
+        parsed = parseLxfml(xml, {colours: lddColours(ldconfig), catalog});
     } catch (error) {
         if (error instanceof LxfError) throw new ModelFileError(error.code, error.message);
         throw error;
@@ -197,15 +231,16 @@ export const readLxf = async (bytes, {ldconfig, name = 'model.lxf', title}) => {
  * Open any supported model file as LDraw text.
  * @param {string} name the file's name (its extension picks the reader)
  * @param {Uint8Array} bytes its contents
- * @param {{ldconfig?: string, title?: string}} [options] ldconfig: needed for .lxf
+ * @param {{ldconfig?: string, title?: string, catalog?: Map<string, object>}} [options] ldconfig: needed for .lxf;
+ *        catalog: the Robot Lab's parts, for .lxf designs placed with a derived frame
  * @returns {Promise<{text: string, name: string, refusals: object[]}>} name: the model's name from now on (.ldr for converted files)
  * @throws {ModelFileError}
  */
-export const openModelFile = async (name, bytes, {ldconfig = '', title} = {}) => {
+export const openModelFile = async (name, bytes, {ldconfig = '', title, catalog} = {}) => {
     const format = formatOf(name);
     if (format === 'ldr' || format === 'mpd') return {text: new TextDecoder().decode(bytes), name, refusals: []};
     if (format === 'io') return {...await readStudioIo(bytes), name: renameTo(name, 'ldr')};
-    if (format === 'lxf') return {...await readLxf(bytes, {ldconfig, name, title}), name: renameTo(name, 'ldr')};
+    if (format === 'lxf') return {...await readLxf(bytes, {ldconfig, catalog, name, title}), name: renameTo(name, 'ldr')};
     throw new ModelFileError('unsupported-format', `files ending in ${(/\.[^.]*$/.exec(String(name)) || [''])[0] || '(nothing)'} are not model files the Robot Lab opens`);
 };
 

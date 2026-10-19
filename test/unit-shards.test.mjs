@@ -75,6 +75,13 @@ test('live shard census audit rejects missing, misplaced, uncounted-failure and 
         const missing={...files};delete missing[selected[0]];assert.notEqual(audit(missing,summary).status,0);
         assert.notEqual(audit({...files,[other]:files[selected[0]]},summary).status,0);
         assert.notEqual(audit(files,'not ok 1 - deliberately uncounted failure\n'+summary).status,0);
+        // Known-open tests: a TODO naming an existing docs/….md passes; without one, or naming a doc
+        // that does not exist, the step is red (owner decision 2026-10-19).
+        const todoSummary=summary.replace('# skipped 0','# skipped 0\n# todo 1');
+        const todoOk=audit(files,'not ok 1 - known open # TODO tracked; see docs/ROBOT-LAB-VALIDATION.md\n'+todoSummary);
+        assert.equal(todoOk.status,0,todoOk.stdout+todoOk.stderr);
+        assert.notEqual(audit(files,'not ok 1 - known open # TODO no pointer\n'+todoSummary).status,0);
+        assert.notEqual(audit(files,'not ok 1 - known open # TODO see docs/NO-SUCH-DOC.md\n'+todoSummary).status,0);
         const skipped={...files,[selected[0]]:{...files[selected[0]],skipped:[{name:'synthetic guard control',reason:'not an approved execution pointer'}]}};
         assert.notEqual(audit(skipped,summary.replace('# skipped 0','# skipped 1')).status,0);
     }finally{rmSync(dir,{recursive:true,force:true});}

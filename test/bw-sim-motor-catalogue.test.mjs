@@ -172,13 +172,14 @@ test('every motor number names its source: Philo, LEGO, Pybricks, or estimated w
     }
 });
 
-test('only the SPIKE motors have parts; LPF2 ids are unique; every part\'s device is in the catalogue', () => {
+test('only the SPIKE motors and the RCX mini-motor have parts; LPF2 ids are unique; every part\'s device is in the catalogue', () => {
     const lpf2 = MOTORS.map(d => d.ids.lpf2).filter(x => x !== undefined);
     assert.equal(new Set(lpf2).size, lpf2.length, `${lpf2}`);
-    for (const d of MOTORS) assert.deepEqual(d.parts.length > 0, d.id.startsWith('spike-'), `${d.id}: ${d.parts}`);
+    const WITH_PARTS = id => id.startsWith('spike-') || id === 'technic-minimotor-71427';
+    for (const d of MOTORS) assert.deepEqual(d.parts.length > 0, WITH_PARTS(d.id), `${d.id}: ${d.parts}`);
     const parts = JSON.parse(readFileSync(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json'), 'utf8')).parts;
     const motorDevices = parts.map(p => p.device).filter(id => id && deviceModels.get(id)?.class === 'motor').sort();
-    assert.deepEqual(motorDevices, ['spike-large-angular', 'spike-medium-angular']);
+    assert.deepEqual(motorDevices, ['spike-large-angular', 'spike-medium-angular', 'technic-minimotor-71427']);
     for (const id of motorDevices) {
         const part = parts.find(p => p.device === id);
         assert.deepEqual(deviceModels.get(id).parts, [part.part], `${id} names its part`);

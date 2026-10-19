@@ -1399,6 +1399,12 @@ class PseudocodeImporter extends React.Component {
         this._onLoadPseudocode = event => {
             const code = event && event.detail && event.detail.code;
             if (typeof code !== 'string') return;
+            // An NQC example (the Robot Lab's RCX models) goes into the NQC buffer as text:
+            // the pane compiles and downloads it itself.
+            if (event.detail.lang === 'nqc') {
+                this.setState({lang: 'nqc', output: null, status: '', buffers: {...this.state.buffers, nqc: code}});
+                return;
+            }
             this._animationImport = null;
             this._makeCodeRequest = null;
             this._codeArtwork = null;

@@ -22,8 +22,11 @@
 // by hand against the pattern they follow (a beam of n holes sits
 // (n-1)/2 × 0.8 LDD units from its end hole; an axle or pin of length L
 // studs at L × 0.4, half its length, from its end).
-// Every other design ID — including every SPIKE Prime element, which LDD never
-// had — is refused with code `lxf-unknown-design`, never guessed.
+// Any other design is placed only when it is a catalogue part whose LDD frame the
+// geometry rule of model/ldd-frame.js derives with a trusted rule (stud-grid parts;
+// warning `lxf-derived-frame`, scores in docs/ROBOT-LAB-LDD-FRAMES.md); every other
+// design ID — including every SPIKE Prime element, which LDD never had — is refused
+// with code `lxf-unknown-design`.
 // The sub-LDU offsets (0.02 LDD = 0.5 LDU) are kept as recorded.
 //
 // How a row is used (column vectors; LeoCAD's lc_lxf.cpp reads the same file

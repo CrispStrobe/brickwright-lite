@@ -1,0 +1,15 @@
+0 drop-on-beams (Brickwright Robot Lab validation machine)
+0 Name: drop-on-beams.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 // Drop test (Robot Lab validation, test/bw-sim-validation.test.mjs).
+0 // Two beam 15 lie flat on the floor side by side (z = -20 and +20, holes vertical); a 2 x 4 brick is held
+0 // crosswise 125 LDU (5 cm) above them, resting nowhere: it falls, lands across both beams and must stop on
+0 // them. Nothing is connected: these are loose parts by design (the test lifts the brick higher for the
+0 // tunnelling cases).
+0 !BW ID beamA
+1 72 0 0 -20 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID beamB
+1 72 0 0 20 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID brick
+1 4 0 -159 0 1 0 0 0 1 0 0 0 1 3001.dat

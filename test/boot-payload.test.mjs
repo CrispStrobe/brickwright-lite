@@ -29,8 +29,10 @@ test('boot payload accepts shared lazy engine bytes but rejects eager, absent an
             'bw-arena-3d': 'bw-spike-arena-3d-canvas', '1380.hash': three, 'bw-spike-simulator': 'the 2D arena pane',
             // The Sim Lab: its own chunk (the view's canvas id), Jolt in its own (shared) lazy chunk,
             // the physics worker in its own; the Sim Lab chunk carries neither.
-            'bw-sim-lab': 'bw-sim-lab-3d-canvas bw-sim-part-thumbnails bw-sim-instructions-canvas', 'bw-sim-jolt': 'JoltInterface_GetPhysicsSystem_',
-            'bw-sim-physics-worker': 'sim batch before sim load'
+            'bw-sim-lab': 'bw-sim-lab-3d-canvas bw-sim-part-thumbnails bw-sim-instructions-canvas Kugelrad-Halter', 'bw-sim-jolt': 'JoltInterface_GetPhysicsSystem_',
+            'bw-sim-physics-worker': 'sim batch before sim load',
+            // The part catalogue: the core in the Sim Lab chunk (above), the derived parts in their own.
+            'bw-sim-parts': 'Technic-Stein 1 x 1 mit Loch'
         })) put(`chunks/${name}.js`, bytes);
         let result = run();
         assert.equal(result.status, 0, result.stdout + result.stderr);
@@ -71,11 +73,28 @@ test('boot payload accepts shared lazy engine bytes but rejects eager, absent an
         put('chunks/1380.hash.js', three);
         assert.equal(run().status, 0, 'restored');
         // Jolt belongs to the worker (and the no-worker fallback), not to the Sim Lab's main chunk.
-        put('chunks/bw-sim-lab.js', 'bw-sim-lab-3d-canvas bw-sim-part-thumbnails JoltInterface_GetPhysicsSystem_');
+        put('chunks/bw-sim-lab.js', 'bw-sim-lab-3d-canvas bw-sim-part-thumbnails Kugelrad-Halter JoltInterface_GetPhysicsSystem_');
         result = run();
         assert.equal(result.status, 1);
         assert.match(result.stdout, /FAIL Jolt physics .* are not in chunks\/bw-sim-lab\*\.js/);
-        put('chunks/bw-sim-lab.js', 'bw-sim-lab-3d-canvas bw-sim-part-thumbnails');
+        // The whole catalogue bundled with the Sim Lab again (the derived parts' marker in its chunk): refused.
+        put('chunks/bw-sim-lab.js', 'bw-sim-lab-3d-canvas bw-sim-part-thumbnails bw-sim-instructions-canvas Kugelrad-Halter Technic-Stein 1 x 1 mit Loch');
+        result = run();
+        assert.equal(result.status, 1);
+        assert.match(result.stdout, /FAIL the Robot Lab catalogue's derived parts are not in chunks\/bw-sim-lab\*\.js/);
+        // The core missing from the Sim Lab chunk, or repeated in the derived chunk: refused.
+        put('chunks/bw-sim-lab.js', 'bw-sim-lab-3d-canvas bw-sim-part-thumbnails bw-sim-instructions-canvas');
+        result = run();
+        assert.equal(result.status, 1);
+        assert.match(result.stdout, /FAIL the marker for the Robot Lab catalogue's core parts still discriminates/);
+        put('chunks/bw-sim-lab.js', 'bw-sim-lab-3d-canvas bw-sim-part-thumbnails bw-sim-instructions-canvas Kugelrad-Halter');
+        put('chunks/bw-sim-parts.js', 'Technic-Stein 1 x 1 mit Loch Kugelrad-Halter');
+        result = run();
+        assert.equal(result.status, 1);
+        assert.match(result.stdout, /FAIL the Robot Lab catalogue's core parts are not in chunks\/bw-sim-parts\*\.js/);
+        put('chunks/bw-sim-parts.js', 'Technic-Stein 1 x 1 mit Loch');
+        assert.equal(run().status, 0, 'restored');
+        put('chunks/bw-sim-lab.js', 'bw-sim-lab-3d-canvas bw-sim-part-thumbnails Kugelrad-Halter');
         rmSync(join(build, 'chunks/bw-sim-physics-worker.js'));
         result = run();
         assert.equal(result.status, 1, 'the worker\'s own chunk is required');
@@ -89,12 +108,17 @@ test('3D and physics isolation checks name the simulator and Sim Lab chunks the 
     const name = gui.match(/webpackChunkName: "([^"]+)" \*\/ '\.\.\/tw-pseudocode\/spike-simulator-pane\.jsx'/)?.[1];
     assert.equal(name, 'bw-spike-simulator');
     // three.js, the arena 3D view, Jolt, the physics worker, the Sim Lab view, its palette
-    // thumbnails and its building instructions: all seven stay out of the simulator pane's chunk.
-    assert.equal(script.match(new RegExp(`notInChunks: \\[(?:'[^']+', )*'${name}'`, 'g'))?.length, 7,
-        'three.js, the arena 3D view, Jolt, the physics worker, the Sim Lab view, its palette thumbnails and its building instructions must all be excluded from the actual simulator chunk');
+    // thumbnails, its building instructions and both pieces of its part catalogue: all nine stay
+    // out of the simulator pane's chunk.
+    assert.equal(script.match(new RegExp(`notInChunks: \\[(?:'[^']+', )*'${name}'`, 'g'))?.length, 9,
+        'three.js, the arena 3D view, Jolt, the physics worker, the Sim Lab view, its palette thumbnails, its building instructions and both catalogue pieces must all be excluded from the actual simulator chunk');
     // Jolt and the physics worker also stay out of the Sim Lab's own main-thread chunk.
     const pane = readFileSync('overlay/scratch-gui/src/components/tw-pseudocode/sim-lab-pane.jsx', 'utf8');
     assert.equal(pane.match(/webpackChunkName: "([^"]+)" \*\/ '\.\.\/\.\.\/lib\/bw-sim\/sim-lab\.js'/)?.[1], 'bw-sim-lab');
-    assert.equal(script.match(/notInChunks: \[(?:'[^']+', )*'bw-sim-lab'/g)?.length, 2,
-        'Jolt and the physics worker must be excluded from the Sim Lab\'s main-thread chunk');
+    assert.equal(script.match(/notInChunks: \[(?:'[^']+', )*'bw-sim-lab'/g)?.length, 3,
+        'Jolt, the physics worker and the catalogue\'s derived parts must be excluded from the Sim Lab\'s main-thread chunk');
+    // The derived parts' chunk is the one sim-lab.js imports them as, and it does not repeat the core.
+    const lab = readFileSync('overlay/scratch-gui/src/lib/bw-sim/sim-lab.js', 'utf8');
+    assert.equal(lab.match(/webpackChunkName: "([^"]+)" \*\/ '\.\/part-meta\/parts\.json\?derived'/)?.[1], 'bw-sim-parts');
+    assert.equal(script.match(/notInChunks: \[(?:'[^']+', )*'bw-sim-parts'/g)?.length, 1, 'the core parts are excluded from the derived chunk');
 });

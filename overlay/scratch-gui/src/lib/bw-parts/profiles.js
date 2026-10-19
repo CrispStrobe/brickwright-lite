@@ -238,7 +238,11 @@ export const REFUSED = Object.freeze({
         'polarized_cap', 'rnet_sip', 'level_shifter4', 'vreg', 'adp151', 'adp7118', 'lt1763', 'lm7805',
         'lm7809', 'lm7812', 'ld1117v33', 'ams1117_33', 'ams1117_50',
         'vcc', 'gnd', 'resistor', 'capacitor', 'inductor', 'transformer',
-        'diode', 'zener', 'potentiometer', 'ntc', 'ldr', 'vsource', 'isource'
+        'diode', 'zener', 'potentiometer', 'ntc', 'ldr', 'vsource', 'isource',
+        // The three-pin photoresistor module (bw-board #659): the same LDR
+        // model as `ldr` plus a fixed load resistor, a passive divider driven
+        // by its own 0..1 light control — profiled exactly as `ldr` is.
+        'light_sensor'
     ],
     instrument: ['voltmeter', 'ammeter', 'analog_meter', 'logic_probe'],
     'analog-only': [

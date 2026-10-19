@@ -7,7 +7,7 @@
 // Ground added unless opts.ground===false.
 
 import {vecAdd, vecSub, mat3MulVec3, quatMul, quatFromLDrawMat, quatNormalize} from './vec.js';
-import {LDU_M, PART_FRICTION, lduToWorld, partMotorJoint} from '../contracts.js';
+import {LDU_M, PART_FRICTION, lduToWorld, partMotorJoint, colliderVolume} from '../contracts.js';
 
 /** Fraction of a v1 motor's mass that belongs to the output (turning) body (PartMeta v2: internalJoints[].massFraction). */
 export {MOTOR_OUTPUT_MASS_FRACTION} from '../contracts.js';
@@ -180,6 +180,11 @@ export const buildIslands = (nodes, edges, catalogMap, diagnostics = [], opts = 
                     colliderIndices = meta.colliders.map((_, idx) => idx);
                 }
                 const pwQuat = partWorldQuat(placed);
+                // This node's share of the part's mass, spread over its colliders by volume: a collider
+                // carries `massKg` (and `part`), so the core puts the body's centre of mass and inertia
+                // where the parts' masses are, not at the colliders' volume centroid (jolt-core.js).
+                const nodeMassKg = meta.massGrams / 1000 * (isMotor ? (isOutNode ? shaft.massFraction : 1 - shaft.massFraction) : 1);
+                const nodeVolume = colliderIndices.reduce((acc, idx) => acc + colliderVolume(meta.colliders[idx]), 0);
                 for (const idx of colliderIndices) {
                     const col = meta.colliders[idx];
                     // Compute world position of collider centre
@@ -224,6 +229,8 @@ export const buildIslands = (nodes, edges, catalogMap, diagnostics = [], opts = 
                     } else {
                         continue;
                     }
+                    outCol.part = pid;
+                    if (nodeVolume > 0 && nodeMassKg > 0) outCol.massKg = nodeMassKg * colliderVolume(col) / nodeVolume;
                     colliders.push(outCol);
                 }
             }
