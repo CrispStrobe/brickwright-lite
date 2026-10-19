@@ -8,7 +8,7 @@
  * TurboWarp is clean-room only: the .sb3 mode is a Scratch-format check, with no
  * TurboWarp-specific cases and no TurboWarp-sourced inputs.
  * Usage: node scripts/compat-audit.mjs [--target microbit|arcade] [--out report.json]
- *        [--corpus-commit SHA] [--compile] [--prepare-extensions] [--fetch-extensions] [--execute] [--context-catalogue FILE] [--context-root ID=directory] [--limit N] file-or-directory [...]
+ *        [--corpus-commit SHA] [--compile] [--prepare-extensions] [--fetch-extensions] [--execute] [--context-catalogue FILE] [--context-root ID=directory] [--progress-jsonl FILE] [--limit N] file-or-directory [...]
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -122,11 +122,16 @@ let prepareExtensions = false;
 let execute = false;
 let limit = Infinity;
 let contextCatalogue = null;
+let progressFile = null;
 const contextRoots = Object.create(null);
 const inputs = [];
 for (let i = 0; i < args.length; i++) {
     const a = args[i];
-    if (a === '--context-catalogue') contextCatalogue = args[++i];
+    if (a === '--progress-jsonl') {
+        if (progressFile !== null || !args[i + 1] || args[i + 1].startsWith('--')) throw new Error('--progress-jsonl requires one fresh file');
+        progressFile = args[++i];
+    }
+    else if (a === '--context-catalogue') contextCatalogue = args[++i];
     else if (a === '--context-root') {
         const value = args[++i]; const at = value?.indexOf('=') ?? -1;
         if (at <= 0 || !value.slice(at + 1) || Object.hasOwn(contextRoots, value.slice(0, at))) throw new Error('--context-root requires a unique ID=directory');
@@ -144,13 +149,22 @@ for (let i = 0; i < args.length; i++) {
     else if (a.startsWith('-')) throw new Error(`unknown option ${a}`);
     else inputs.push(a);
 }
+// No progress module/file/callback is acquired on the default path.
+const progress = progressFile === null ? null : (await import('./lib/conversion-progress.mjs')).createAuditProgress(progressFile,
+    {protectedPaths: [...inputs, contextCatalogue, ...Object.values(contextRoots),
+        ...(contextCatalogue ? [path.dirname(path.resolve(contextCatalogue))] : []), out, markdown]});
+let progressSubject = null;
+const mark = phase => {if (progress) progress.mark(phase, progressSubject);};
+mark('CLI_PROGRESS_BEGIN');
 const compiler = doCompile || prepareExtensions || execute ? await import('./lib/pxt-node.mjs') : null;
 const {compile, hasRuntime} = compiler || {};
+mark('PROVENANCE_BEGIN');
 invocationAt = new Date().toISOString();
 invocationIdentity = snapshotIdentity();
+mark('PROVENANCE_END');
 if ((!inputs.length && !contextCatalogue) || !['microbit', 'arcade', 'calliopemini', 'ev3', 'adafruit'].includes(target) ||
     !Number.isFinite(limit) && limit !== Infinity || limit < 0) {
-    console.error('usage: node scripts/compat-audit.mjs [--target microbit|arcade] [--out report.json] [--markdown report.md] [--corpus-commit SHA] [--compile] [--prepare-extensions] [--fetch-extensions] [--execute] [--context-catalogue FILE] [--context-root ID=directory] [--limit N] file-or-directory [...]');
+    console.error('usage: node scripts/compat-audit.mjs [--target microbit|arcade] [--out report.json] [--markdown report.md] [--corpus-commit SHA] [--compile] [--prepare-extensions] [--fetch-extensions] [--execute] [--context-catalogue FILE] [--context-root ID=directory] [--progress-jsonl FILE] [--limit N] file-or-directory [...]');
     process.exit(2);
 }
 
@@ -165,7 +179,9 @@ if (fetchExtensions && !doCompile && !prepareExtensions) throw new Error('--fetc
 
 if (corpusCommit !== null && !/^[a-f0-9]{40}$/i.test(corpusCommit)) throw new Error('--corpus-commit requires a full immutable commit SHA');
 const files = [...new Set(inputs.flatMap(collect))].slice(0, limit);
+mark('CATALOGUE_OPEN_BEGIN');
 const contexts = contextCatalogue ? openConversionCatalogue(contextCatalogue, {roots: contextRoots}) : null;
+mark('CATALOGUE_OPEN_END');
 const selectedContexts = contexts ? contexts.subjects.slice(0, Math.max(0, limit - files.length)) : [];
 if (contexts && args.includes('--target') && selectedContexts.some(subject => subject.target !== target)) throw new Error('--target differs from context target');
 const provenance = auditProvenance(contextCatalogue ? [...files, contextCatalogue] : files, corpusCommit);
@@ -182,6 +198,7 @@ const compileFailure = error => error?.code === 'NO_EXTENSION' ?
     {status: 'fail', reason: normalize(error)};
 
 function conversionRow (file, format, observation) {
+    mark('ROW_WIRE_CAPTURE_BEGIN');
     const row = {file, format, target: observation.target || target,
         sourceRecovered: !!observation.sourceRecovered, translated: !!observation.translated,
         unsupported: observation.unsupported || [], stage: observation.stage,
@@ -190,7 +207,28 @@ function conversionRow (file, format, observation) {
     if (observation.import.status === 'throw') row.reason = normalize(observation.import.exception.actual);
     else if (observation.creator.status === 'throw') row.reason = normalize(observation.creator.exception.actual);
     else if (row.stage === 'source-only') row.reason = `no blocks translator for ${row.target}`;
+    mark('ROW_WIRE_CAPTURE_END');
     return row;
+}
+
+async function observeConversion (subject) {
+    mark('CONVERSION_BEGIN');
+    const observed = await auditConversionSubject(subject, progress ?
+        {onObservation: event => progress.onObservation(event, progressSubject)} : undefined);
+    mark('CONVERSION_END');
+    return observed;
+}
+async function optionalGates (row, imported, preCompile = null) {
+    mark('OPTIONAL_GATES_BEGIN');
+    const result = await applyOptionalGates(row, imported, preCompile);
+    mark('OPTIONAL_GATES_END');
+    return result;
+}
+function observedFinalProvenance (value) {
+    mark('FINAL_PROVENANCE_BEGIN');
+    const result = finishProvenance(value);
+    mark('FINAL_PROVENANCE_END');
+    return result;
 }
 
 async function makecode (file) {
@@ -212,18 +250,22 @@ async function makecode (file) {
                         `${d.file}:${d.line + 1}: ${d.message}`)};
             } catch (error) { preCompile = compileFailure(error); }
         }
-        observed = await auditConversionSubject({kind: 'RAW_BASELINE', id: file, target,
+        if (progress) observed = await observeConversion({kind: 'RAW_BASELINE', id: file, target,
+            name: path.basename(file, ext), files: projectFiles});
+        else observed = await auditConversionSubject({kind: 'RAW_BASELINE', id: file, target,
             name: path.basename(file, ext), files: projectFiles});
         imported = observed.import.status === 'return' ? observed.import.value : null;
         if (!imported) return {...conversionRow(file, 'typescript', observed), compile: preCompile};
     } else {
         imported = await importArtefact(new Uint8Array(fs.readFileSync(file)), {name: path.basename(file)});
-        observed = await auditConversionSubject({kind: 'IMPORTED_ARTEFACT', id: file, target,
+        if (progress) observed = await observeConversion({kind: 'IMPORTED_ARTEFACT', id: file, target,
+            name: path.basename(file), imported});
+        else observed = await auditConversionSubject({kind: 'IMPORTED_ARTEFACT', id: file, target,
             name: path.basename(file), imported});
     }
     const row = conversionRow(file, ext === '.ts' ? 'typescript' : imported.format, observed);
     if (row.stage === 'source-only') return row;
-    return applyOptionalGates(row, imported, preCompile);
+    return progress ? optionalGates(row, imported, preCompile) : applyOptionalGates(row, imported, preCompile);
 }
 
 async function applyOptionalGates (row, imported, preCompile = null) {
@@ -351,6 +393,8 @@ async function sb3 (file) {
 }
 
 for (const file of files) {
+    progressSubject = {ordinal: rows.length, id: file, kind: 'POSITIONAL_INPUT', target};
+    mark('SUBJECT_BEGIN');
     try {
         const row = path.extname(file).toLowerCase() === '.sb3' ? await sb3(file) : await makecode(file);
         row.staticTranslation ||= {status: row.stage};
@@ -360,22 +404,30 @@ for (const file of files) {
             behavioralEquivalence: 'not-measured'};
         rows.push(row);
         tally[row.stage] = (tally[row.stage] || 0) + 1;
+        mark('ROW_GRAPH_CAPTURED_IN_MEMORY');
     } catch (error) {
+        if (progress) progress.throwIfFailed();
         rows.push({file, stage: 'read-failed', reason: normalize(error),
             observationFailure: conversionObservationGraph(conversionException(error))});
         tally['read-failed'] = (tally['read-failed'] || 0) + 1;
+        mark('ROW_GRAPH_CAPTURED_IN_MEMORY');
     }
 }
 // Contexts share the exact public conversion/classification operation above.
 // Original compiler data is retained independently, including failed originals.
 for (let index = 0; index < selectedContexts.length; index++) {
     const identity = selectedContexts[index];
+    progressSubject = {ordinal: rows.length, id: identity.id, kind: identity.kind, target: identity.target};
+    mark('SUBJECT_BEGIN');
     try {
+        mark('LOAD_SUBJECT_BEGIN');
         const subject = contexts.loadSubject(index);
-        const observed = await auditConversionSubject(subject);
+        mark('LOAD_SUBJECT_END');
+        const observed = progress ? await observeConversion(subject) : await auditConversionSubject(subject);
         let row = conversionRow(identity.id, 'retained-context', observed);
         if (observed.import.status === 'return' && row.stage !== 'source-only') {
-            row = await applyOptionalGates(row, observed.import.value);
+            if (progress) row = await optionalGates(row, observed.import.value);
+            else row = await applyOptionalGates(row, observed.import.value);
         }
         row.context = {id: identity.id, kind: identity.kind, originalCompile: subject.originalCompile,
             provenance: subject.provenance};
@@ -383,15 +435,19 @@ for (let index = 0; index < selectedContexts.length; index++) {
         row.qualification = {staticTranslation: row.stage, originalCompile: row.compile?.status || 'retained-original-data',
             runtimeSmoke: row.execution?.status || (execute ? 'not-run' : 'not-requested'), behavioralEquivalence: 'not-measured'};
         rows.push(row); tally[row.stage] = (tally[row.stage] || 0) + 1;
+        mark('ROW_GRAPH_CAPTURED_IN_MEMORY');
     } catch (error) {
+        if (progress) progress.throwIfFailed();
         rows.push({file: identity.id, stage: 'read-failed', reason: normalize(error),
             observationFailure: conversionObservationGraph(conversionException(error))});
         tally['read-failed'] = (tally['read-failed'] || 0) + 1;
+        mark('ROW_GRAPH_CAPTURED_IN_MEMORY');
     }
 }
+progressSubject = null;
 if (contexts) provenance.contextCatalogue.consumedInputBytes = contexts.consumedInputBytes();
 const report = {schema: 'brickwright/compat-audit/v1', outputEncoding: out?.endsWith('.json.gz') ? 'gzip-json' : 'utf8-json', generatedAt: new Date().toISOString(),
-    provenance: finishProvenance(provenance),
+    provenance: observedFinalProvenance(provenance),
     compilerPolicy: {extensionFetching: fetchExtensions ? 'explicitly-enabled' : 'offline',
         preparedInputs: prepareExtensions ? 'separately-audited' : 'not-requested'},
     preparedTally: rows.reduce((counts,row)=>{
@@ -406,14 +462,19 @@ const report = {schema: 'brickwright/compat-audit/v1', outputEncoding: out?.ends
         ...(['parse-failed', 'read-failed'].includes(row.stage) ? [row.stage] : [])
     ]), count: rows.length, tally, rows};
 if (out) {
+    mark('REPORT_JSON_BEGIN');
     const json = `${JSON.stringify(report, null, 2)}\n`;
+    mark('REPORT_JSON_END');
     // Explicit output name opts into full lossless compression, never row/field omission.
     if (out.endsWith('.json.gz')) {
+        mark('REPORT_GZIP_WRITE_BEGIN');
         const {gzipSync} = await import('node:zlib');
         fs.writeFileSync(out, gzipSync(Buffer.from(json, 'utf8')));
-    } else fs.writeFileSync(out, json);
+        mark('REPORT_GZIP_WRITE_END');
+    } else {mark('REPORT_WRITE_BEGIN'); fs.writeFileSync(out, json); mark('REPORT_WRITE_END');}
 }
 if (markdown) {
+    mark('MARKDOWN_BEGIN');
     const counts = values => {
         const map = new Map();
         for (const value of values) map.set(value, (map.get(value) || 0) + 1);
@@ -448,7 +509,11 @@ if (markdown) {
             [r.execution?.status, r.execution?.errors?.[0]].filter(Boolean).join(': '))} |`),
         ...(failed.length ? [] : ['| none | none |']), ''];
     fs.writeFileSync(markdown, lines.join('\n'));
+    mark('MARKDOWN_END');
 }
 console.log(JSON.stringify({count: report.count, tally, preparedTally:report.preparedTally, report: out}, null, 2));
 process.exitCode = rows.some(r => ['read-failed', 'parse-failed', 'missing-assets', 'unsupported-blocks'].includes(r.stage) ||
     ['preparation-failed','parse-failed'].includes(r.preparedTranslation?.stage)) ? 1 : 0;
+
+mark('CLI_REPORTS_FINISHED');
+if (progress) progress.close();

@@ -6989,3 +6989,14 @@ logical bounds, v1 behavior and the complete changed-realm fallback. No source
 conversion, diagnostic, supplier, runtime, input or execution-budget change.
 New full-graph controls and the existing complete controls require qualification;
 the timed-out complete census is preserved without a fit or hotspot claim.
+
+### Optional compatibility CLI phase observation — 2026-10-19
+
+SOURCE CANDIDATE / QUALIFICATION PENDING in the existing retained-context audit
+and lossless-report lane. Add an opt-in, bounded fresh progress journal using
+only the existing conversion observer seam and fixed CLI phase boundaries.
+Preserve default direct conversion/gate calls, all original controls, complete
+reports, input selection, product errors and execution limits. Journal failures
+remain sticky observer failures outside product classification. Earlier complete
+census attempts produced no report; all their current input outcomes remain
+unobserved. Progress prefixes confer no feature, runtime or corpus count credit.

@@ -425,3 +425,36 @@ complete 225-input episode timed out before its full report; all current subject
 outcomes remain unobserved. Component controls, actual measurement and a freshly
 bound complete run remain separate requirements. No cap increase, filtering or
 partial-prefix result is implied.
+
+### Optional phase progress journal
+
+`--progress-jsonl FILE` requests a separate, fresh JSONL observation journal.
+It is off by default and does not replace the complete JSON/gzip report,
+Markdown, provided diagnostics, source inputs or qualification gates. The file
+must not exist, alias an input/report, or lie inside a positional input directory,
+the catalogue directory or an explicitly supplied context root. This prevents
+journal creation from changing input collection or supplying a missing input.
+The CLI opens the leaf exclusively without following a leaf symlink. It does
+not claim continuous protection against concurrent ancestor-directory changes.
+
+Each complete line records its sequence, fixed phase, exact input identity when
+applicable, process CPU microseconds and monotonic nanoseconds. Core markers
+observe only existing dependency-callback, import and Creator phase/status
+scalars. They never read conversion values or error getters. A dependency
+callback marker precedes validation; import/Creator markers follow the actual
+return or throw. Row-in-memory markers do not establish a persisted full report,
+clean conversion, compiler result, runtime behavior or completed census.
+
+Intervals include all intervening process work, including collection, GC and
+observation. Cumulative observer write cost is measured before each event; the
+last event's write and close residual remain unmeasured. Missing markers or a
+partial last line remain unobserved. There are no timers or profiler hooks.
+
+The journal is bounded to 8 MiB, 65,536 events and 16 KiB per line. Partial
+writes are completed with explicit progress checks. Its first write, bound or
+close failure stays sticky, attempts a fixed stderr marker, and escapes the
+per-input error classifiers. It cannot become a product diagnostic or a new
+parse failure. Complete lines and any failed partial write remain available;
+normal completion closes the journal once. A killed process has no invented
+success footer. Full reports remain mandatory before census claims. This
+option neither raises execution limits nor makes an incomplete run successful.
