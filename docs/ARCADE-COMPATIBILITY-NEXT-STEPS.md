@@ -1,5 +1,12 @@
 # Arcade compatibility: integration and next steps
 
+## Current queue update — 2026-10-19
+
+The dated foundation heads below are historical snapshots. Refresh current [PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888) and main before integration. A newer local composition normally merges the Array, Camera/parser and shared conversion-CLI branches with recent main, preserving other lanes. It still needs final affected runtime and hosted qualification. Supplier [PR52](https://github.com/CrispStrobe/extensions/pull/52) is draft; a successful build does not override its formatting failure or pending checks.
+
+Use [the current failure work packages](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md) as the ordered repair queue and [the capability ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md) for concrete editor surfaces. Current priorities are the Array circular-module boot/value checks, complete lossless 225-input CLI measurement, then actual remaining producer/parser/runtime families and visible editor/export journeys. Input provenance is independently audited for all 184 raw and 41 complete contexts; conversion and execution are not inferred from that audit. Historical partials remain 36 until a complete measured replacement exists.
+
+
 ## Start here
 
 Read this document, `LANES.md`, and the Arcade handoff/capability documents

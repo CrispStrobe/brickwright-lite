@@ -1,5 +1,22 @@
 # Conversion capabilities and GUI closure ledger
 
+Current Array runtime limit: the rejection-routing follow-up has a verified normal installation but fails during circular CommonJS startup before its 45 native controls execute. A frozen export record with an explicit null prototype and real entry-order controls is the next scoped repair. Translation support and editor authoring remain separate from this unresolved runtime gate.
+
+## Current integration checkpoint — 2026-10-19
+
+The historical 184-input result remains **147 translated, 36 partial and one malformed**. The complete 225-input run, including all 41 retained contexts, is still unmeasured. No focused count below changes that result.
+
+| Area | Observed result | Next acceptance |
+| --- | --- | --- |
+| Literal Array text conversion | The newer normal installation passes its complete file audit. Its actual supplier admission passes, but the complete 40 native controls have **33 passing and seven failing**, including two regressions in the previous 32. | A follow-up rejection-routing source candidate is reviewed, with captured private state and original-call failure identity. Its fresh installation passes independent review, but its native episode stops during circular CommonJS startup before any of the 45 controls run. Repair the immutable export shape and qualify the complete controls. Preserve ownership, errors, unrelated scripts and cleanup, then qualify genuine original, Code and exported values. Do not reuse the earlier pin's 32-pass result for this candidate. |
+| Camera constants | The canonical enum candidate replaces the fixture call whitelist with the existing per-use lexical identity resolver. Together with the proper deletion parser/diagnostic correction, all 42 component controls pass, including the unchanged 34 controls and eight added operator checks. | Independent saved-data review accepted all 42 outcomes. Qualify the normal asset path, Code, runtime and saved/exported projects next. Deletion is explicitly unsupported; it is no longer silently parsed as unrelated reads. |
+| Conversion audit CLI | The shared reader/core passed 21 complete controls. Compact lossless reporting and its corrected source-policy control now pass all 29 component controls, with independent saved-data acceptance. An earlier actual shipped CLI translated two authored raw inputs into five blocks each; its warning-sensitive controller failure and independently audited reports remain retained. | Independent saved-data review accepted the complete 29-test result. Independent full-report review also accepted the actual shipped gzip-report CLI for two authored raw inputs, including native payloads, descriptors and complete returned-graph parity except inventoried generated IDs and input-path identity. Complete census and roundtrip CLI adoption remain pending. Full retained-input lineage has been independently audited; it is not a current conversion result. |
+| Retained input lineage | Independent saved-data review verified all 184 raw inputs and 41 complete contexts, retaining 29 historical compiler successes and 12 failures, generated resources, deduplication, original adapter source identities and notice gaps. | Run the complete current conversion census. Forty provenance reconstructions are not actual SDK returns; the one original identity conflict must naturally reject with no conversion credit. |
+| Visible authoring | Existing headless sprite, art, animation and import controls have their own recorded boundaries. | Exercise actual Blocks, Code and graphics edits, controller input, save/reopen and current MakeCode export/import. Track typed helper, class, callback and Array authoring separately from conversion support. |
+
+Preserve the original failures and every provided diagnostic channel. Missing channels remain missing. Translation success does not establish runtime behavior, a usable editor or a working full game. The later historical sections retain their original source boundaries.
+
+
 The [current project gap list](compatibility/arcade-current-remaining-project-gaps.md)
 separates measured conversion routes from native and authoring gates. Results
 below are dated checkpoints with their own source and evidence boundaries; a
@@ -5219,10 +5236,25 @@ pin result and the missing-input refusal.
 
 | Capability | Current evidence | Remaining user-facing acceptance |
 | --- | --- | --- |
-| Array operations and Number inputs | All 29 ownership cases and three Number-ingress cases pass with the explicitly pinned supplier. | Test connected Number reporters versus text, actual editor mutations, Stop/restart and save/reopen through the production registered extension. |
+| Array operations and Number inputs | The earlier hook pin passed 29 ownership cases and three Number-ingress cases. The newer literal-coercion candidate completed 40 controls with 33 passing and seven failing; a reviewed rejection-routing follow-up passes its fresh installation audit but stops during circular CommonJS startup before any of its 45 native controls run. | Test connected Number reporters versus text, actual editor mutations, Stop/restart and save/reopen through the production registered extension. |
 | Array conversion to text | A real original/imported/Code/exported three-context run exposed `[object Object]` where the element text was expected. A separate implementation is under review. | Preserve nested arrays, holes, aliases and cycles through the same operation used by Code and blocks. A global reference-prototype change is insufficient. Require real execution and MakeCode acceptance with unchanged expected values. |
-| Camera enum arguments to typed helpers | The actual public import refuses `CameraProperty.X/Y` as Number producers. The retained PXT compiler emits canonical enum members as numeric constants. | Complete the producer fix with shadowing/mutation negatives, then execute the unchanged camera module across Code, archive and MakeCode export/import. Existing camera dropdown blocks need visible selection/edit/save-reopen checks; typed helper authoring remains a separate gap. |
+| Camera enum arguments to typed helpers | Canonical per-use enum semantics and explicit deletion diagnostics pass all 42 component controls, independently audited. The actual camera fixture imports/parses cleanly; its observer without asset uploads stops at two missing-costume warnings. | Qualify normal assets, Code, archive, runtime and MakeCode export/import. Existing camera dropdown blocks need visible selection/edit/save-reopen checks; typed helper authoring remains a separate GUI gap. |
 
 Follow [the failure work packages](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md) for
 whole-module, original-compiler, complete-census and landing gates. Focused
 passes do not reduce the historical partial count.
+
+
+### Current Array and Camera authoring acceptance boundaries
+
+The initial CameraProperty Number profile has been replaced by canonical compile-time enum-member semantics with per-use lexical identity, preserving full compiler-owned validation and public eager analysis. Together with explicit unsupported deletion diagnostics, all 42 component controls pass and their saved data is independently accepted. The authored camera fixture imports/parses cleanly. Full camera/Code/archive/export execution with actual assets is pending; the asset-unprovided observer is not a rendering-defect result. Blocks must let users select and edit each camera property and author the corresponding typed helper parameters. Verify those choices survive Code, project save/reopen and MakeCode export/import.
+
+The newer Array coercion candidate reproduced the fresh normal VM installation; its complete 40 native controls ran with 33 passing and seven failing. The source-reviewed failure-routing follow-up passes its fresh installation audit, but its native episode stops during circular CommonJS startup before any of the 45 controls run. The immutable export-shape repair and complete native qualification remain pending. The genuine three-path runtime failure remains preserved; no changed semantics pass is inferred. Named and other nonliteral factories, fresh saved aliases, and supported native object elements remain compatibility work. Keep the existing Array addition and construction blocks editable, add any missing producer/value surfaces, and verify actual edited projects after save/reopen; a literal-only source result does not qualify general Arrays in the GUI.
+
+### Concrete existing authoring surfaces and pending journeys
+
+The shared [Arcade dialect](../overlay/scratch-gui/src/lib/arcadeDialect.js) already defines `new array reference from`, `reference to named array`, `calculate value … op … with`, `arcade camera property`, and `declare arcade source callable`. The [Creator](../overlay/scratch-gui/src/lib/sb3-creator.js) also maps named Array creation, range/2D/empty construction and push/set/insert/remove/delete statements. Source presence is not a rendered palette or editing acceptance result.
+
+Qualify users constructing and editing those connected Blocks and Code forms, Number versus text inputs, aliases and typed helper parameters; preserve the changed values through current Code, save/fresh reopen and MakeCode export/import. Named and dimensional/range/slice/concat factories and decoder cache-miss aliases need their own real allocation/coercion evidence.
+
+Graphics export must use the current VM costume SVG/raster/palette and sound assets, as the production [pseudocode importer](../overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx) does. Do not substitute an earlier Creator asset cache. Browser drawing, visible camera selection, controller use and the normal asset-bearing camera journey remain independent acceptance gates. Full roundtrip CLI integration and the complete 225-input current assessment are pending.
