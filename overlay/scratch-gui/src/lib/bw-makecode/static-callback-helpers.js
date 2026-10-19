@@ -2,12 +2,11 @@
  * procedures. Helper/callback bodies keep their control flow and call frames.
  * No closure values, invented captures or wrapper-body pattern matching.
  */
-export function lowerStaticCallbackHelpers(program) {
+export function lowerStaticCallbackHelpers(program, {registrationSpec = () => null} = {}) {
     const unsupported = [];
     const fail = message => { if (!unsupported.includes(message)) unsupported.push(message); };
     const functions = new Map(program.body.filter(node => node.type === 'FunctionDeclaration').map(node => [node.name, node]));
-    const templates = new Map([...functions].filter(([,fn]) => fn.params.some(name => /=>/.test(fn.paramTypes?.[name]?.text || ''))));
-    if (!templates.size) return {program, unsupported};
+    const templates = new Map([...functions].filter(([,fn]) => !fn.bwClassCallableMethod && fn.params.some(name => /=>/.test(fn.paramTypes?.[name]?.text || ''))));
     const taken = new Set();
     const scan = node => {
         if (!node || typeof node !== 'object') return;
@@ -120,13 +119,13 @@ export function lowerStaticCallbackHelpers(program) {
             return {...node,body:rewrite(node.body,scope,inherited)};
         }
         if (node.type === 'Block') return {...node,body:rewriteBody(node.body,locals,bindings)};
-        if (node.type === 'While') return {...node,test:rewrite(node.test,locals,bindings),body:rewriteBody(node.body,locals,bindings)};
-        if (node.type === 'If') return {...node,test:rewrite(node.test,locals,bindings),
+        if (node.type === 'While') return {...node,test:rewrite(node.test,locals,bindings,'truth'),body:rewriteBody(node.body,locals,bindings)};
+        if (node.type === 'If') return {...node,test:rewrite(node.test,locals,bindings,'truth'),
             consequent:rewriteBody(node.consequent,locals,bindings),alternate:rewriteBody(node.alternate || [],locals,bindings)};
         if (node.type === 'For') {
             const names=node.init?.type==='Declaration'?node.init.decls.map(decl=>decl.name):[];
             const scope=new Set([...locals,...names]),active=new Map([...bindings].filter(([name])=>!names.includes(name)));
-            return {...node,init:rewrite(node.init,scope,active),test:rewrite(node.test,scope,active),
+            return {...node,init:rewrite(node.init,scope,active),test:rewrite(node.test,scope,active,'truth'),
                 update:rewrite(node.update,scope,active),body:rewriteBody(node.body,scope,active)};
         }
         if (node.type === 'Call') {
@@ -138,9 +137,29 @@ export function lowerStaticCallbackHelpers(program) {
                 const specialized=specialize(fn,node.args || [],locals,bindings);
                 if (specialized) return {...node,callee:{type:'Identifier',name:specialized.name},args:rewrite(specialized.args,locals,bindings)};
             }
+            const path = value => value?.type==='Identifier'?value.name:value?.type==='Member'?`${path(value.object)}.${value.name}`:null;
+            const spec=registrationSpec(path(node.callee),node);
+            if(spec && node.args?.length===spec.arity){
+                const callback=node.args[spec.handlerIndex];
+                const name=callback?.type==='Identifier' && (bindings.get(callback.name) || callback.name);
+                const fn=name && functions.get(name);
+                if(fn && !templates.has(name) && (!locals.has(callback.name) || bindings.has(callback.name))){
+                    // A known global procedure needs no closure cells. The SDK
+                    // registration keeps its lifetime and invokes this ordinary
+                    // procedure through the existing managed-call mechanism.
+                    const params=fn.params.map(()=>fresh());
+                    const wrapper={type:'FunctionExpression',params,
+                        paramTypes:Object.fromEntries(fn.params.map((param,index)=>[params[index],fn.paramTypes?.[param]]).filter(([,type])=>type)),
+                        body:[{type:'ExpressionStatement',expr:{type:'Call',callee:{type:'Identifier',name},args:params.map(param=>({type:'Identifier',name:param}))}}]};
+                    return {...node,callee:rewrite(node.callee,locals,bindings,'callee'),
+                        args:node.args.map((arg,index)=>index===spec.handlerIndex?wrapper:rewrite(arg,locals,bindings))};
+                }
+            }
             return {...node,callee:rewrite(node.callee,locals,bindings,'callee'),args:rewrite(node.args,locals,bindings)};
         }
+        if(node.type==='Unary' && node.op==='!')return {...node,argument:rewrite(node.argument,locals,bindings,'truth')};
         if (node.type === 'Identifier' && bindings.has(node.name)) {
+            if(context==='truth')return {type:'Boolean',value:true};
             if (context !== 'callee') fail(`callback parameter ${node.name} escapes direct invocation or helper forwarding; closure support is required`);
             return {...node,name:bindings.get(node.name)};
         }

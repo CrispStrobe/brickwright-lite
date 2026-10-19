@@ -32,6 +32,7 @@ const StageComponent = props => {
         onDeactivateColorPicker,
         onDoubleClick,
         onArcadeDialogDismiss,
+        onArcadeDialogButtonEdge,
         onQuestionAnswered,
         ...boxProps
     } = props;
@@ -64,7 +65,7 @@ const StageComponent = props => {
                         }}
                         {...boxProps}
                     />
-                    {arcadeDialog ? <ArcadeDialog dialog={arcadeDialog} onDismiss={onArcadeDialogDismiss} /> : null}
+                    {arcadeDialog ? <ArcadeDialog dialog={arcadeDialog} onDismiss={onArcadeDialogDismiss} onButtonEdge={onArcadeDialogButtonEdge} /> : null}
                     <Box className={styles.monitorWrapper}>
                         <MonitorList
                             draggable={useEditorDragStyle}
@@ -151,6 +152,7 @@ StageComponent.propTypes = {
     micIndicator: PropTypes.bool,
     onDeactivateColorPicker: PropTypes.func,
     onArcadeDialogDismiss: PropTypes.func,
+    onArcadeDialogButtonEdge: PropTypes.func,
     onDoubleClick: PropTypes.func,
     onQuestionAnswered: PropTypes.func,
     question: PropTypes.string,

@@ -2,6 +2,7 @@
 // Host bindings around complete original PXT Settings/MessagePack algorithms.
 const original=require('./settings-pxt');
 const buffers=require('./buffer');
+const stringArrays=require('./string-array-settings');
 const bytesToBase64=bytes=>{let text='';for(const byte of bytes)text+=String.fromCharCode(byte);return btoa(text);};
 const fromBase64=text=>new buffers.PxtBuffer(Array.from(atob(text),c=>c.charCodeAt(0)));
 const bindings={control:{createBufferFromUTF8:buffers.fromUTF8,panic(code){const error=new Error('Arcade settings panic '+code);error.settingsPanic=code;throw error;}},
@@ -13,6 +14,9 @@ function initialize(state,touched) {
         stringToUint8Array:text=>Uint8Array.from(text,c=>c.charCodeAt(0))},
         RefBuffer:class {constructor(data){return new buffers.PxtBuffer(data);}},
         RefCollection:class {constructor(){this.data=[];}push(value){this.data.push(value);}}});
-    return original.initializeSettings({...bindings,...backend,_set:(key,value)=>backend._set(key,{data:value})}).settings;
+    const settings=original.initializeSettings({...bindings,...backend,_set:(key,value)=>backend._set(key,{data:value})}).settings;
+    const arrays=stringArrays.initialize(settings);
+    settings.writeStringArray=arrays.write;settings.readStringArray=arrays.read;
+    return settings;
 }
 module.exports={initialize,bytesToBase64,fromBase64,packNumbers:nums=>pure.msgpack.packNumberArray(nums),unpackNumbers:bytes=>pure.msgpack.unpackNumberArray(bytes)};

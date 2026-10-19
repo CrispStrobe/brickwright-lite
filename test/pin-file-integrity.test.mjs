@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtemp, readFile, writeFile, chmod, rm, mkdir} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
+import {pathToFileURL} from 'node:url';
 import {assertPinMoveAllowed, recordPin} from '../scripts/lib-pin.mjs';
 
 const oldSha = 'a'.repeat(40), newSha = 'b'.repeat(40);
@@ -69,4 +70,21 @@ test('only a missing file starts an empty registry; valid writes retain other pi
     assert.equal(await readFile(pinsFile, 'utf8'), bytes);
     await recordPin('sb3-creator', newSha, {pinsFile, explicit: true, log: quiet});
     assert.deepEqual(JSON.parse(await readFile(pinsFile, 'utf8')), {other: oldSha, 'sb3-creator': newSha});
+});
+
+
+test('the actual default workspace manifest cannot be reinitialized and compiler updates preserve every other component', async t => {
+    const pinsFile = await fixture(t), root=path.dirname(pinsFile), scripts=path.join(root,'scripts');
+    await mkdir(scripts);
+    const copied=path.join(scripts,'lib-pin.mjs');
+    await writeFile(copied,await readFile(new URL('../scripts/lib-pin.mjs',import.meta.url)));
+    const helper=await import(pathToFileURL(copied));
+    for(const operation of [helper.assertPinMoveAllowed,helper.recordPin]) {
+        await assert.rejects(operation('sb3-creator',newSha,{explicit:true,log:quiet}),/workspace vendor-pins.json is missing/);
+        await assert.rejects(readFile(helper.PINS_FILE),{code:'ENOENT'});
+    }
+    const original={'bw-circuit-ui':'c'.repeat(40),'bw-board':'d'.repeat(40),'stc-compiler-flasher':'e'.repeat(40),'arrays-values':'f'.repeat(40),'sb3-creator':oldSha};
+    await writeFile(helper.PINS_FILE,JSON.stringify(original));
+    await helper.recordPin('sb3-creator',newSha,{explicit:true,log:quiet});
+    assert.deepEqual(JSON.parse(await readFile(helper.PINS_FILE,'utf8')),{...original,'sb3-creator':newSha});
 });

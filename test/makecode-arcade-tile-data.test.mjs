@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {EventEmitter} from 'node:events';
+import {createArcadeRuntimeMock, startArcadeProject} from './helpers/arcade-runtime-mock.mjs';
 import BWValues from '../overlay/scratch-vm/src/util/bw-values.js';
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
@@ -57,7 +57,7 @@ test('unsupported dynamic tilemaps and terrain events remain named',()=>{
 
 
 test('tile locations reject foreign scopes, wrong resource kinds and ordinary ID text',()=>{
-    const Arcade=loadExtensionClass('arcade'),runtime=new EventEmitter(),otherRuntime=new EventEmitter();
+    const Arcade=loadExtensionClass('arcade'),runtime=createArcadeRuntimeMock(),otherRuntime=createArcadeRuntimeMock();
     const first=new Arcade(runtime),other=new Arcade(otherRuntime);
     const data=JSON.stringify({columns:2,rows:1,tileSize:8,indices:[0,0],walls:[0,0],images:[{width:1,height:1,pixels:[0]}]});
     first.setTilemap({DATA:data});other.setTilemap({DATA:data});
@@ -70,7 +70,7 @@ test('tile locations reject foreign scopes, wrong resource kinds and ordinary ID
         assert.equal(first.tileIsWall({LOCATION:invalid}),false);
         assert.equal(first.tileIsWall({LOCATION:location}),true,'invalid references cannot mutate the real location');
     }
-    runtime.emit('PROJECT_START');first.setTilemap({DATA:data});
+    startArcadeProject(runtime);first.setTilemap({DATA:data});
     first.setWallAt({LOCATION:location,WALL:true});assert.equal(first.tileIsWall({LOCATION:location}),false);
     assert.equal(first.tileIsWall({LOCATION:first.tileLocation({COLUMN:1,ROW:0})}),false);
 });

@@ -1,6 +1,6 @@
 # Primitive bitwise compound assignments
 
-## Missing operation
+## Original gap
 
 Arcade already supports primitive binary bitwise operations and arithmetic
 identifier compound assignments. Its identifier assignment statement branch
@@ -45,3 +45,27 @@ annotation authority or broad class/callback admission belongs in this lane.
 
 The raw corpus and authenticated complete-context counts remain distinct.
 Report only measured changes and do not promote a game from this operation.
+
+
+## Reached implementation and remaining acceptance — 2026-10-15
+
+Source `1e65f988c24df35ec99a33ba68520ec529f7fb7a` implements all six
+identifier operators with the existing primitive operations and setters. Eighteen
+focused checks pass independently in both integration and review; another 24
+source probes preserve actual numeric helper admission and reject opaque,
+reassigned and constructor callees. Controls cover ordinary globals, parameters,
+local shadowing, captured factories, aliases, right-side effects, current
+operator/operand edits, Code, same/fresh SB3 and current export/reimport.
+
+Two genuinely new exact source and edited-export programs compiled and executed
+successfully in the selected original SDK. Their input bytes match the tracked
+regression; this proves those bounded ordinary/parameter programs. The captured
+factory matrix currently has native and portable evidence only. Negative unary
+factory inputs remain a separate acceptance investigation; do not infer their
+support from the positive fractional/high-bit/overflow matrix.
+
+The existing `arrays_valueBinary` block and its connected operands carry these
+operations. Visible Code/Blocks authoring, operator menu accessibility, edited
+save/reopen and graphics integration still need browser qualification. This
+lane adds no graphics operation. The immutable raw184 corpus remains **147
+translated / 36 partial / one parse failure**; no complete game is promoted.

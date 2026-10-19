@@ -1,6 +1,6 @@
+import {createArcadeRuntimeMock} from './helpers/arcade-runtime-mock.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {EventEmitter} from 'node:events';
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
 import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
@@ -12,8 +12,8 @@ const Arcade=loadExtensionClass('arcade');
 const colors=[...DEFAULT_PROJECT_PALETTE];colors[1]='#123456';colors[2]='#654321';
 const hex=colors.map(c=>c.slice(1)).join('');
 function fixture({vector=false}={}){
- const runtime=new EventEmitter(),skins=new Map(),targets=[];let nextSkin=100;
- runtime.startHats=()=>[];runtime.requestRedraw=()=>{};
+ const runtime=createArcadeRuntimeMock(),skins=new Map(),targets=[];let nextSkin=100;
+ runtime.requestRedraw=()=>{};
  runtime.renderer={createSVGSkin(svg){const id=nextSkin++;skins.set(id,svg);return id;},updateSVGSkin(id,svg){assert.ok(skins.has(id));skins.set(id,svg);},
   destroySkin(id){assert.ok(skins.delete(id));},updateDrawableSkinId(){},updateDrawablePosition(){},setDrawableOrder(){},
   createDrawable(){return 500;},destroyDrawable(){},updateDrawableScale(){},updateDrawableVisible(){}};

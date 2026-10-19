@@ -291,12 +291,27 @@ controller.B.onEvent(ControllerButtonEvent.Pressed,function(){
         return Object.values(vm.runtime.bwArcadeDeviceState?.sprites || {})
             .map(({id, kind, x, y}) => ({id, kind, x, y}));
     });
+    await page.waitForFunction(()=>{
+        const vm=window.__brickwrightStore.getState().scratchGui.vm;
+        const variables=Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
+        return Boolean(vm.runtime.bwArcadeDeviceState?.sprites[variables.mySprite] && vm.runtime.bwArcadeDeviceState?.sprites[variables.hat]);
+    },null,{timeout:10000});
+    const kindBindings=await page.evaluate(()=>{
+        const vm=window.__brickwrightStore.getState().scratchGui.vm;
+        const variables=Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
+        const kinds=Object.fromEntries(['Player','Hat','Projectile'].map(name=>[name,vm.runtime._primitives.arcade_spriteKindValue({NAME:name})]));
+        const player=vm.runtime.bwArcadeDeviceState.sprites[variables.mySprite],hat=vm.runtime.bwArcadeDeviceState.sprites[variables.hat];
+        if(!Object.values(kinds).every(kind=>typeof kind==='number' && Number.isInteger(kind)) || player.kind!==kinds.Player || hat.kind!==kinds.Hat || kinds.Hat===kinds.Player || kinds.Hat===kinds.Projectile)throw new Error('Owned speech fixture handles must match their registered numeric kinds');
+        window.__bwSpeechKinds=kinds;return kinds;
+    });
+    assert.equal(kindBindings.Player,1000,'selected original SpriteKind.Player');
+    assert.equal(kindBindings.Projectile,1,'selected original SpriteKind.Projectile');
     const before = await state();
     await page.getByTestId('bw-arcade-a').click();
     await page.waitForFunction(before => {
         const sprites = Object.values(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.sprites);
-        const player = sprites.find(s => s.kind === 'Player');
-        const old = before.find(s => s.kind === 'Player');
+        const player = sprites.find(s => s.kind === window.__bwSpeechKinds.Player);
+        const old = before.find(s => s.kind === window.__bwSpeechKinds.Player);
         return player.x !== old.x || player.y !== old.y;
     }, before, {timeout: 10000});
     const afterController = await state();
@@ -304,8 +319,8 @@ controller.B.onEvent(ControllerButtonEvent.Pressed,function(){
         const vm = window.__brickwrightStore.getState().scratchGui.vm;
         vm.quit();
         const sprites = Object.values(vm.runtime.bwArcadeDeviceState.sprites);
-        const player = sprites.find(s => s.kind === 'Player');
-        const hat = sprites.find(s => s.kind === 'Hat');
+        const player = sprites.find(s => s.kind === window.__bwSpeechKinds.Player);
+        const hat = sprites.find(s => s.kind === window.__bwSpeechKinds.Hat);
         for (const sprite of [player, hat]) {
             vm.runtime._primitives.arcade_setSpriteProperty({ID: sprite.id, PROPERTY: 'x', VALUE: 80}, {});
             vm.runtime._primitives.arcade_setSpriteProperty({ID: sprite.id, PROPERTY: 'y', VALUE: 60}, {});
@@ -343,9 +358,14 @@ controller.B.onEvent(ControllerButtonEvent.Pressed,function(){
         });
         const palette = vm.runtime.getBlocksXML().some(category => category.xml?.includes('arcade_spriteSay'));
         vm.runtime._primitives.arcade_setSpriteProperty({ID: hat.id, PROPERTY: 'x', VALUE: 140}, {});
-        // Advance 600ms after separating the sprites. Immediate calls with no
-        // delta measure wall time and cannot establish a 500ms expiry.
-        for (let i = 0; i < 18; i++) { vm.runtime._step(1000 / 30); await Promise.resolve(); }
+        // Source timers use the platform clock. Observe actual elapsed time
+        // and render opportunities after separating the sprites; passing a
+        // synthetic delta to _step cannot establish the 500ms expiry.
+        const expiryStarted = performance.now();
+        while (Object.keys(vm.runtime.bwArcadeDeviceState.speech).length && performance.now() - expiryStarted < 3000) {
+            await new Promise(done => requestAnimationFrame(done));
+            vm.runtime._step();
+        }
         const corner = Array.from(data.slice(4 * (5 * capture.width + 5), 4 * (5 * capture.width + 5) + 3));
         return {speech, bubblePixels, corner, palette, renderState, afterExpiry: Object.keys(vm.runtime.bwArcadeDeviceState.speech).length};
     });
@@ -415,8 +435,8 @@ controller.B.onEvent(ControllerButtonEvent.Pressed,function(){
                 }
             }
             const state = vm.runtime.bwArcadeDeviceState;
-            const hat = Object.values(state.sprites).find(s => s.kind === 'Hat');
-            const player = Object.values(state.sprites).find(s => s.kind === 'Player');
+            const hat = Object.values(state.sprites).find(s => s.kind === window.__bwSpeechKinds.Hat);
+            const player = Object.values(state.sprites).find(s => s.kind === window.__bwSpeechKinds.Player);
             const target = state.spriteTargets[hat.id];
             return {coloredPixels, mask: hat.flags, visible: target.visible, stayInScreen: hat.stayInScreen,
                 keyDown: vm.runtime.ioDevices.keyboard.getKeyIsDown('z'),
@@ -444,7 +464,7 @@ controller.B.onEvent(ControllerButtonEvent.Pressed,function(){
             const vm = window.__brickwrightStore.getState().scratchGui.vm;
             for (let i = 0; i < 6; i++) vm.runtime._step();
             const state = vm.runtime.bwArcadeDeviceState;
-            const shot = Object.values(state.sprites).find(s => s.kind === 'Projectile');
+            const shot = Object.values(state.sprites).find(s => s.kind === window.__bwSpeechKinds.Projectile);
             const target = state.spriteTargets[shot.id];
             for (let i = 0; i < 120; i++) {
                 const skin = vm.runtime.renderer._allDrawables[target.drawableID]?.skin;
@@ -492,7 +512,7 @@ controller.B.onEvent(ControllerButtonEvent.Pressed,function(){
                 if(data[i]===255&&data[i+1]===246&&data[i+2]===9)counts.yellow++;
             }
             const vars=Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name,v.value]));
-            const hat=Object.values(vm.runtime.bwArcadeDeviceState.sprites).find(s=>s.kind==='Hat');
+            const hat=Object.values(vm.runtime.bwArcadeDeviceState.sprites).find(s=>s.kind===window.__bwSpeechKinds.Hat);
             return {counts,hit:vars.imageHit,miss:vars.imageMiss,opaque:hat.mask.reduce((a,b)=>a+b,0),
                 palette:['arcade_blitImage','arcade_imagesOverlap'].every(op=>vm.runtime.getBlocksXML().some(c=>c.xml?.includes(op)))};
         });
@@ -569,7 +589,7 @@ controller.B.onEvent(ControllerButtonEvent.Pressed,function(){
                 const i=4*(y*copy.width+x);if(pixels[i]===120&&pixels[i+1]===220&&pixels[i+2]===82)green++;
             }
             const values=Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name,v.value]));
-            const hat=Object.values(vm.runtime.bwArcadeDeviceState.sprites).find(s=>s.kind==='Hat');
+            const hat=Object.values(vm.runtime.bwArcadeDeviceState.sprites).find(s=>s.kind===window.__bwSpeechKinds.Hat);
             return {result:values.functionResult,sample:values.returnSample,width:hat.width,height:hat.height,green,
                 palette:['arcade_callFunction','arcade_functionArgument','arcade_returnValue'].every(op=>vm.runtime.getBlocksXML().some(c=>c.xml?.includes(op)))};
         });
@@ -581,7 +601,7 @@ controller.B.onEvent(ControllerButtonEvent.Pressed,function(){
             const vm=window.__brickwrightStore.getState().scratchGui.vm;
             for(let i=0;i<15;i++){vm.runtime._step();await new Promise(done=>requestAnimationFrame(done));}
             const sprites=Object.values(vm.runtime.bwArcadeDeviceState.sprites);
-            const hat=sprites.find(s=>s.kind==='Hat'),player=sprites.find(s=>s.kind==='Player');
+            const hat=sprites.find(s=>s.kind===window.__bwSpeechKinds.Hat),player=sprites.find(s=>s.kind===window.__bwSpeechKinds.Player);
             const values=Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name,v.value]));
             vm.runtime.renderer.draw();
             const canvas=vm.runtime.renderer.canvas,copy=document.createElement('canvas');copy.width=canvas.width;copy.height=canvas.height;
@@ -628,7 +648,7 @@ controller.B.onEvent(ControllerButtonEvent.Pressed,function(){
                 }
             }
             const state = vm.runtime.bwArcadeDeviceState;
-            const hat = Object.values(state.sprites).find(s => s.kind === 'Hat');
+            const hat = Object.values(state.sprites).find(s => s.kind === window.__bwSpeechKinds.Hat);
             return {green, red, colored, colors: [...new Set(hat.image?.pixels || [])],
                 opaque: hat.mask?.reduce((a,b) => a+b, 0),
                 palette: vm.runtime.getBlocksXML().some(c => c.xml?.includes('arcade_mutateSpriteImage'))};
@@ -663,7 +683,7 @@ controller.B.onEvent(ControllerButtonEvent.Pressed,function(){
                     if(data[i]===255 && data[i+1]===246 && data[i+2]===9) counts.yellow++;
                 }
             }
-            const hat = Object.values(vm.runtime.bwArcadeDeviceState.sprites).find(s=>s.kind==='Hat');
+            const hat = Object.values(vm.runtime.bwArcadeDeviceState.sprites).find(s=>s.kind===window.__bwSpeechKinds.Hat);
             const xml = vm.runtime.getBlocksXML().map(c=>c.xml||'').join('');
             return {counts, sample: vm.runtime.targets.flatMap(t=>Object.values(t.variables)).find(v=>v.name==='pixelSample')?.value,
                 center: hat.image?.pixels[16*32+16], opaque: hat.mask?.reduce((a,b)=>a+b,0),
@@ -677,7 +697,7 @@ controller.B.onEvent(ControllerButtonEvent.Pressed,function(){
         await page.evaluate(() => {
             const vm = window.__brickwrightStore.getState().scratchGui.vm;
             for (const sprite of Object.values(vm.runtime.bwArcadeDeviceState.sprites)) {
-                vm.runtime._primitives.arcade_setSpriteProperty({ID:sprite.id,PROPERTY:'x',VALUE:sprite.kind==='Hat'?110:40},{});
+                vm.runtime._primitives.arcade_setSpriteProperty({ID:sprite.id,PROPERTY:'x',VALUE:sprite.kind===window.__bwSpeechKinds.Hat?110:40},{});
                 vm.runtime._primitives.arcade_setSpriteProperty({ID:sprite.id,PROPERTY:'y',VALUE:60},{});
             }
         });
@@ -704,8 +724,8 @@ controller.B.onEvent(ControllerButtonEvent.Pressed,function(){
                     }
                 return count;
             };
-            const state=vm.runtime.bwArcadeDeviceState, hat=Object.values(state.sprites).find(s=>s.kind==='Hat'),
-                player=Object.values(state.sprites).find(s=>s.kind==='Player');
+            const state=vm.runtime.bwArcadeDeviceState, hat=Object.values(state.sprites).find(s=>s.kind===window.__bwSpeechKinds.Hat),
+                player=Object.values(state.sprites).find(s=>s.kind===window.__bwSpeechKinds.Player);
             return {same:hat.image===player.image,hatColors:[...new Set(hat.image?.pixels||[])],
                 playerColors:[...new Set(player.image?.pixels||[])],hatPixels:colored(110),playerPixels:colored(40),
                 masks:[hat.mask?.reduce((a,b)=>a+b,0),player.mask?.reduce((a,b)=>a+b,0)],
@@ -736,7 +756,7 @@ controller.B.onEvent(ControllerButtonEvent.Pressed,function(){
     assert.deepEqual(errors, []);
     await page.screenshot({path: join(root, 'test-results/arcade-speech-controller.png')});
     console.log(JSON.stringify({case: 'pinned hat overlap speech', sourceExtension: sourceMode,
-        before, afterController, background, flags, images, pixels, sharedImages, creationOrder, creationRegistration, imageProjectiles, imageBlits, functionReturns, spriteReturns, backgroundImages, referenceArrays, ...rendered}));
+        kindBindings, before, afterController, background, flags, images, pixels, sharedImages, creationOrder, creationRegistration, imageProjectiles, imageBlits, functionReturns, spriteReturns, backgroundImages, referenceArrays, ...rendered}));
 } finally {
     await browser.close(); await new Promise(done => server.close(done));
 }

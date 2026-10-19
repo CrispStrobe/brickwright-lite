@@ -6,7 +6,7 @@ import os from 'node:os';
 import {createServer} from 'node:http';
 import {chromium} from 'playwright';
 const folder=new URL('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/',import.meta.url);
-const modules=Object.fromEntries(['program-settings','settings-codec','settings-pxt','buffer','buffer-pxt','buffer-hash-pxt','buffer-helpers-pxt'].map(name=>[name,fs.readFileSync(new URL(name+'.js',folder),'utf8')]));
+const modules=Object.fromEntries(['program-settings','settings-codec','string-array-settings','settings-pxt','buffer','buffer-pxt','buffer-hash-pxt','buffer-helpers-pxt'].map(name=>[name,fs.readFileSync(new URL(name+'.js',folder),'utf8')]));
 // Load the exact production CommonJS modules in Chromium. There is no alternate
 // storage implementation; createProgramSettings uses the real localStorage.
 const install=async page=>page.evaluate(modules=>{

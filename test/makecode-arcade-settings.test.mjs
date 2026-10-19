@@ -82,8 +82,8 @@ test('settings survive Stop and greenFlag with stable program identity',async()=
     const run=await runProgram(imported.code,{frames:25,storage:true});const id=run.vm.runtime.getTargetForStage().bwArcadeSettings.id;assert.equal(values(run).count,1);
     run.vm.stopAll();run.vm.greenFlag();await stepFrames(run.vm,25);assert.equal(values(run).count,2);assert.equal(run.vm.runtime.getTargetForStage().bwArcadeSettings.id,id);assert.deepEqual(run.errors,[]);clearStrayTimers();
 });
-test('unsupported settings methods and the unreviewed StringArray dependency stay named gaps',()=>{
-    for(const source of ['settings.writeJSON("x",{})','blockSettings.writeStringArray("x",["A"])','settings.writeNumber("x")','settings.readString()'])assert.ok(arcadeToPseudocode(source).unsupported.length,source);
+test('unsupported Settings methods stay named gaps beside the supported StringArray port',()=>{
+    for(const source of ['settings.writeJSON("x",{})','settings.writeStringArray("x",["A"])','settings.writeNumber("x")','settings.readString()'])assert.ok(arcadeToPseudocode(source).unsupported.length,source);
 });
 
 

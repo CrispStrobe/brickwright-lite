@@ -952,8 +952,10 @@ implementation lands only after full CI and owner review.
 
 ## Arcade owned named function values — 2026-10-15
 
-PROPOSED — Codex named function declaration value lane.
-Merge this docs-only claim before product changes. Contract:
+IMPLEMENTED LOCALLY — Codex named function declaration value lane.
+The claim is merged; source/current native and two selected-original programs
+are qualified in the integration branch. Canonical creator PR154 is adopted;
+hosted final integration and visible authoring remain open. Contract:
 [owned named function values](docs/compatibility/arcade-named-function-values.md).
 Own the module/namespace declaration-site and current-body bridge, directed
 zero-argument Number/String/Void signature proof, native stable-label binding
@@ -966,8 +968,13 @@ class factories, scene/score API completion or whole-context promotion.
 
 ## Owned Images in ordinary class callbacks — 2026-10-15
 
-CLAIMED / PROPOSED — Codex Image domain in the existing ordinary class/callable bridge.
-Contract: [owned Image class callbacks](docs/compatibility/arcade-owned-image-class-callables.md).
+IMPLEMENTED LOCALLY / CONTINUING — Codex Image domain in the existing
+ordinary class/callable bridge. The claim is merged. Bounded default admission
+is integrated at `2211aeb61`: 119 affected and seven independent controls pass,
+and two byte-identical selected originals retain their compiler evidence.
+Literal-resource proof and exact source/current-artwork originals are now
+integrated at `d011d18fe`; six independent integrated controls pass. Hosted
+authoring and broader SDK domains remain open. Contract: [owned Image class callbacks](docs/compatibility/arcade-owned-image-class-callables.md).
 Own new actual Image producer/owner proof helpers and coordinated narrow source,
 v2 signature/plan, native field/invocation/result, current Blocks and export hooks.
 Preserve primitive/class/callable identity, all-writer and initialization proof,
@@ -983,8 +990,10 @@ ownership intact. Product changes wait for this claim's normal qualified merge.
 
 ## Primitive identifier bitwise compound assignments — 2026-10-15
 
-PROPOSED — Codex Arcade integration, isolated statement conversion lane.
-Merge this docs-only claim before product changes. Contract:
+IMPLEMENTED LOCALLY — Codex Arcade integration, source `1e65f988c`.
+Claim #943 is merged; 18 focused checks and independent review pass. Two
+exact ordinary source/export programs pass selected-original execution; captured
+factory original execution and visible editor journeys remain open. Contract:
 [primitive bitwise compound assignments](docs/compatibility/arcade-primitive-bitwise-compound.md).
 Own the identifier compound-assignment operator selection in
 `Arcade.expressionStatement` and focused source/current-block/native/export
@@ -1030,8 +1039,8 @@ Font, pins and whole-game/context promotion remain separate.
 
 ## Shared finite decimal source carriers — 2026-10-15
 
-PROPOSED — Codex source conversion, isolated shared numeric carrier lane.
-Merge this docs-only claim before product changes. Contract:
+QUALIFIED BOUNDED SLICE — Codex shared numeric source conversion.
+The merged claim owns the finite carrier and focused controls. Contract:
 [shared finite decimal source carriers](docs/compatibility/shared-finite-number-carriers.md).
 Own the finite decimal Number branch in `translate-base.js`, the existing
 `source-number-literal.js` helper and focused source/Code/Blocks/export tests.
@@ -1039,8 +1048,10 @@ Coordinate shared translator ownership. Preserve micro:bit, Calliope and EV3
 numeric values through current Code parsing, including signed scientific
 notation and subnormals where the existing target runtime admits them.
 Keep hexadecimal/binary, unary/member boundaries, string literals and target
-numeric conversions intact. No new words, pins, Number method admission,
-non-finite literal support, CPX TypeScript route or hardware claim.
+numeric conversions intact. Native Code, numeric fields, save/reload and actual
+edited export/reimport are qualified for these three routes. Non-finite literal
+overflow is explicitly refused pending a proper carrier. No new words, pins,
+Number method admission, CPX TypeScript route, hosted GUI or hardware claim.
 
 ## Owned callable typeof — 2026-10-15
 
@@ -1193,6 +1204,19 @@ field; supplier ROM/source/assembler/controller ranges and retained bytes are
 unchanged. Canonical BIOS recording verifies the same source/ROM and zero source
 commits behind the pin; no binary was rebuilt or replaced. Combined CI is pending.
 
+## Callable lexical export prototype — six-word declaration ABI
+
+The callable lane now owns a connected-variable source declaration in addition
+to the five resource/service words. Scope: versioned inert lexical provenance,
+current editable procedure-body export, actual frame capture ownership, and a
+narrow optional additional service in the atomic source declaration scanner.
+Keep Callable outside existing scalar/reference domains. Default callable source
+admission remains closed until the complete source/native/Code/SB3/selected-PXT
+export/reimport gate passes. Arrays transport and compiler vocabulary are
+separate prerequisite candidates; no held callable pin is adopted. GUI lexical
+body/signature/rename authoring remains tracked in the
+[bounded contract](docs/compatibility/arcade-callable-lexical-bridge.md).
+
 ## Explicit procedure calls in Code — 2026-10-14
 
 PROPOSED — Codex Arcade integration. Product edits begin after this claim lands.
@@ -1208,18 +1232,32 @@ peer-owned Arrays scalar-return, controller-repeat, callable or font hunks.
 
 # Who is doing what — merge the claim before implementation
 
+## Arcade live Font values — first read slice
+
+QUALIFIED READ SLICE — Codex Arcade value integration.
+Contract: [live Font values](docs/compatibility/arcade-live-font-values.md).
+The five canonical value/printing words preserve actual SDK Font identity,
+selection, scaling and shared glyph Buffer reads. Source, native, Code, saved
+projects, actual edited original export and reimport have bounded qualification.
+Public field and glyph mutations retain explicit refusals; the underlying SDK
+records remain mutable. General Font-valued class fields/callbacks, full mutation,
+hardware glyph subsets and complete library/GUI closure remain follow-up work.
+Preserve glyph notices, fixed metric words, class/callback ownership and Source
+frame contracts. No global scheduler ownership is claimed.
 ## Arcade primitive Number to text — 2026-10-15
 
-PROPOSED — Codex Arcade primitive source integration,
-`lane/arcade-number-text-claim-20261015`.
+QUALIFIED BOUNDED SLICE — Codex Arcade primitive source integration.
+The merged claim owns the source helper, literal carrier and focused controls.
 Contract: [primitive Number to text](docs/compatibility/arcade-number-to-text.md).
 Scope: zero-argument Number `toString` with actual producer/current-writer
 authority, narrow source/native primitive String representation, current Code
 and Blocks, original export and same/fresh saved-project reimport. Preserve
 class custom methods, SDK reference exclusions, Font proof and Source frame
 ownership. No new canonical word, pin change, radix, global String-name grant
-or whole-library promotion is claimed. Product work waits for the normal claim
-merge after every enabled exact-head check succeeds.
+or whole-library promotion is claimed. Source and actual edited export
+qualification preserve current connected operands and exact formatter effects.
+Non-finite literals, additional SDK/member producers and unresolved aliases
+remain explicit follow-up boundaries.
 
 
 ## CI fast and thorough tiers — 2026-10-14
@@ -1311,9 +1349,22 @@ missing public mode/value/time APIs retain diagnostics. Target-specific ignored
 flags/modes and internal timestamps need explicit original receipts, not invented
 hardware semantics. No whole-game or corpus promotion from registration/parsing.
 
+## Arcade Scene flags and user controller events — 2026-10-14
+
+CLAIMED continuation — existing merged native text-dialog, PR889 reference and
+PR881 scene lifecycle envelopes. Contract:
+[Scene flags and controller events](docs/compatibility/arcade-scene-flags-controller.md).
+Own narrow Scene flag getter/setter, real conditional render ordering/visibility/
+guard, current-scene z dirtying and controller user-event gating hunks, with
+matching producer and original/native/Code/export/SB3 controls. Coordinate shared
+index/converter/exporter hunks; preserve SDK object, Arrays, browser observer and
+independent GUI/device owners. Event-bus, multiplayer registration and console
+inspection remain separate followups. No source pruning, inert flag adapter,
+render bypass, guessed delay or whole-project promotion.
+
 ## Arcade source scalar cells — 2026-10-14
 
-PROPOSED — Codex Arcade scalar integration, `lane/arcade-source-scalars-20261014`.
+CLAIMED — claim PR900 is merged; Codex Arcade scalar integration, `lane/arcade-source-scalars-20261014`.
 Contract: [source scalar cells](docs/ARCADE-SOURCE-SCALARS.md).
 Envelope: new source scalar declaration/initialization and directed export flow
 helpers; their narrow Arcade source importer, export, native extension and source
@@ -1323,8 +1374,8 @@ Bind actual stock variable IDs, preserve typed undefined before source
 initialization and ordinary Scratch saved defaults. Do not use name-only cell
 binding, unknown mutation attributes or a project-wide typing switch. Preserve
 independent source phase, class/accessor, Scene/controller and supplier lanes.
-No product command or source prelude changes until this claim lands. Private
-prototypes and original controls are preparation only; no whole-game promotion.
+The documentation claim is merged. Implementation and focused qualification are
+active; no whole-game promotion.
 
 ## Arcade ordinary procedure parameter constraints — 2026-10-15
 
@@ -1419,9 +1470,24 @@ for full portable/current-edit/lifecycle proof, independent review and genuinely
 new selected-original controls; no complete library or corpus promotion follows
 from the first registry subset.
 
-## Arcade classes and mutable object semantics — proposed
+## Native Arcade splash and long text — 2026-10-13
 
-Claim proposed for the Arcade compatibility lane. Contract:
+CLAIMED — Codex Arcade dialog integration, `work/arcade-native-text-dialogs-20261013`.
+Envelope: Arcade native dialog lifecycle, controller event gating, dialog image
+host and scene composition in `overlay/scratch-vm/src/extensions/crispstrobe/arcade/`;
+`components/stage/arcade-dialog.jsx` and its dialog-only CSS/props in the GUI stage
+component and container; affected tracked mirrors; focused original/native,
+Code/blocks/export/SB3 and accessibility controls; this ledger and
+`docs/compatibility/arcade-native-text-dialogs.md`.
+Reuse the retained MIT text dialog classes. Render the live parent scene through
+the child scene, preserve scene and epoch ownership, and route accessible controls
+through actual controller edges. Preserve independent DEVICE/arena and question
+flows. No local full GUI build, source/actor substitution or dialog-dismiss shortcut.
+Initial and resumed scene frame timing remains a separately tracked scheduler gap.
+
+## Arcade classes and mutable object semantics — 2026-10-13
+
+CLAIMED — Codex Arcade class integration; claim PR889 is merged. Contract:
 [classes and objects](docs/ARCADE-CLASS-AND-OBJECT-SEMANTICS.md).
 Envelope: an explicit reference/descriptor helper alongside existing Arcade and
 Arrays values; Arcade-only AST lowering and native object operations; scoped
@@ -1429,16 +1495,18 @@ shared dialect producer additions with reviewed pin adoption; Code/Blocks and
 export/reimport authoring; tests and GUI closure records. Preserve other target
 translators, independent device/arena work and the separately claimed frame
 scheduler. No global scheduler hook is owned by this lane.
-Merge this claim and check concurrent ownership before implementation.
+Check concurrent ownership before continuing the ordered implementation.
 Constructor ordering, reference identity, alias mutation and original execution
 must qualify before class admission; source parsing alone is insufficient.
 
 
 ## Native Arcade frame phases — 2026-10-13
 
-PROPOSED CLAIM — Codex Arcade scheduler, `lane/arcade-frame-scheduler-20261013`,
-base `b86d1cb9f294052bd0ae6dc4cd97d5bc57193c55`.
-This publication is documentation only; merge the claim before product edits.
+CLAIMED — Codex Arcade scheduler; claim PR881 is merged. Initial branch
+`lane/arcade-frame-scheduler-20261013`, base
+`b86d1cb9f294052bd0ae6dc4cd97d5bc57193c55`.
+The claim landed before product implementation. Source-phase and timer controls
+are qualified; complete installed GUI cadence remains open.
 Envelope: the Arcade-specific phase hook in `scripts/apply-vm-overlay.mjs`,
 new `overlay/scratch-vm/src/extensions/crispstrobe/arcade/frame-phase.js`,
 necessary phase/lifecycle hunks in that directory's `index.js`, focused
@@ -1500,6 +1568,7 @@ the child scene, preserve scene and epoch ownership, and route accessible contro
 through actual controller edges. Preserve independent DEVICE/arena and question
 flows. No local full GUI build, source/actor substitution or dialog-dismiss shortcut.
 Initial and resumed scene frame timing remains a separately tracked scheduler gap.
+
 
 
 ## Two-way GPIO pin block ⇄ Forth — 2026-10-12
@@ -5160,11 +5229,13 @@ Hosted GUI, full build and immutable-app recensus remain separate gates.
 ## Arcade required unit workload split — 2026-10-12
 
 CLAIMED — Codex, `lane/arcade-unit-shards-20261012`, stacked on original
-Buffer hash. Partition the complete fast suite into two required, separately
+Buffer hash. Partition the complete fast suite into four required, separately
 audited unit legs; keep local full-suite behavior, corpus, all skip/file/GUI
 checks, build/distribution authority and exact-head publication requirements.
-Both Pages deployment and external main validation must require both legs.
-Preserve the actual30-minute PR845 build failure. Qualification contract:
+Both Pages deployment and external main validation must require all four legs.
+Preserve the actual30-minute PR845 build failure and later incomplete unit
+cancellation; the four-way partition exactly refines both historical legs.
+Qualification contract:
 [Arcade CI qualification](docs/ARCADE-CI-QUALIFICATION.md). Hosted duration and
 editor success remain pending; E10 importer and other source owners unchanged.
 
@@ -5229,9 +5300,138 @@ Blocks/Code/export/reimport/SB3 controls and authentic prepared pizza are
 required; immutable whole-app promotion remains separate.
 Claude takes over at the owner's request, 2026-10-19.
 
+## Arcade tile kind, image equality and next-button wait — 2026-10-13
+
+CLAIMED — Codex runtime/producer/export with namespace_buffers conversion,
+`lane/arcade-tile-kind-controller-20261013`, stacked on source Buffer PR858.
+Implement original tile-center direction/pixel tests, original image equality
+and real next-button suspension, with319 canonical words and typed genuine
+export. Original/native/Code/Blocks/SB3 controls pass10 without skips; producer
+passes362. Dedicated visible authoring qualification and full project evidence
+remain required. No invented assets or whole-app promotion.
+
+## Arcade authentic JRES recovery and prepared census — 2026-10-13
+
+CLAIMED — Codex integration with corpus_gap_analysis worker,
+`lane/arcade-tutorial-jres-integration-20261013`, stacked on PR859.
+Preserve standalone tutorial resources using original worker generation and
+record separate prepared-input audits without overwriting raw classifications.
+Four authentic terrain contexts pass original compilation/native import;
+11 recovery controls and9 audit controls pass without skips. Native gameplay,
+original comparisons and GUI qualifications remain explicit independent gates.
+
+## Arcade continuation: SpriteData and extension source syntax
+
+Owner: Codex integration. Claimed: native original SpriteData v0.0.5, exact
+source admission, original root tilemap generation, TS parameter properties,
+connection semantics and exponentiation qualification. Separate workers own
+connection and exponentiation hunks in isolated trees. Lower integration
+branches through the Buffer roots lane remain owned by the landing operator.
+Focused integrated source controls: 22 passed without skips. Hosted/editor
+checks and actual remaining-context qualification are pending. No raw corpus
+row is reclassified from focused tests alone.
+
+Continuation checkpoint: lower stack through PR856 is merged. Higher integration
+owns exponentiation, precise numeric constants, missing original asset factories
+and own-key SpriteData semantics. Settings worker owns durable typed settings;
+parser worker owns the next original-supported library syntax/runtime slice;
+corpus worker owns immutable context and behavior receipts. Keep separate trees
+and inspect the current producer before syncing: preserve every existing word
+and field choice. Parser-only success and finite map observations do not promote
+whole games. Visible Blocks/Code/graphics journeys remain acceptance gates.
+
+Compiler/authoring continuation: root owns original compile-context isolation,
+bounded16-package fetching, native Text Sprite host/index and asset-kind importer
+integration. Worker owns Text Sprite producer/converter/export/exact admission
+and managed value-function scheduling controls; another owns deployed-gallery
+snapshot attestation. Prompt Question/Stage forwarding is integrated with eight
+real input controls. Corpus worker owns immutable29-valid/12-invalid input
+records and older-library contracts. Keep the independent MakeCode CLI A6–A9
+and multi-board DEVICE lanes intact. No target SDK, board pin or hardware claim
+is changed by these Arcade source/host controls.
+
+### Arcade continuation after Text Sprite integration — 2026-10-13
+
+Root owns `lane/arcade-legacy-scroller-integration-20261013`: exact legacy
+background-scroll version dispatch, source admission and exporter/dependency
+selection. Root also owns the authentic asset factory integration.
+`namespace_buffers` owns distinct scene/program clock runtime hunks and shared
+compiler words, including the reserved scroller-version word.
+`extension_parser` owns deployed Gallery provenance and actual hosted token
+permission qualification. `corpus_gap_analysis` owns immutable authentic
+Smurfy observation and the private raw-evidence archive. Separate owned trees
+and file ownership apply; do not push the lower chains handled by Claude.
+Text Sprite integration is PR870; producer115. No whole-project corpus promotion
+is claimed from focused controls. GUI inspector/controller/game qualification
+remains required by the conversion/GUI gap ledger.
+
+
+### Owned Arcade TextSprite game GUI acceptance — 2026-10-13
+
+CLAIMED — `extension_parser`, `lane/arcade-owned-game-gui-20261013`.
+Own the new owned game/art fixture, production Playwright journey, one additive
+light-shard step and budget registration. Implementation files remain with the
+runtime, converter, exporter and GUI owners. The journey drives file import,
+Code keyboard editing, a native Blocks field, Costumes Pixel painting, the
+visible controller, actual SB3 download/fresh-context reopen, MakeCode export
+and file reimport. Original PXT runs compare label, positions and actual rendered
+pixels. Hosted full-IDE qualification is pending; focused original simulator
+checks do not establish an IDE pass or change the authentic corpus ledger.
+
+### Arcade continuation: primitive strings and numeric kind semantics
+
+Root owns `lane/arcade-legacy-scroller-integration-20261013`; exact scroller
+conversion/export and separate clocks are integrated with focused controls.
+Root also owns primitive string conversion/export and TypeScript assertion
+grammar. `namespace_buffers` owns matching345-form producer publication and
+Arrays string-source publication. `extension_parser` owns exact legacy
+character-animation admission/conversion/export and its roundtrip controls.
+`corpus_gap_analysis` owns isolated numeric kind registry/native membership,
+handler/default semantics and original probes. Kind translator/export follow
+the agreed native contract. Workers use separate trees and explicit file hunks.
+The independently owned multi-board DEVICE lane remains separate.
+
+The owned Text Sprite game production GUI gate is prepared and pending hosted
+execution. Raw corpus counts remain142 translated/41 partial/1 parser failure.
+No source-only adapter or focused test promotes a whole game.
+
+### Arcade numeric kinds and particle integration — 2026-10-13
+
+Root owns `lane/arcade-character-kind-integration-20261013`, stacked on PR877:
+exact older character-animation admission/export, 349-form producer integration,
+numeric kind source/native/export semantics, Scene numeric constants and typed
+primitive String composition. `extension_parser` delivered local original PXT
+particle collection removals; root integrated them. Focused qualification is
+bounded to the recorded controls; full hosted IDE and corpus promotions remain
+pending. Do not push lower branches owned by the independent integration session.
+
+`namespace_buffers` owns isolated default info loss presentation controls and
+implementation hunks. `corpus_gap_analysis` owns the proposed frame phase scope
+claim, private diagnostic prototype and original comparison controls; no product
+kernel hook change before its claim lands. `extension_parser` observes the owned
+GUI gate and prepares HUD visibility source/native/export/typed-authoring scope.
+Coordinate Arcade index hunks explicitly; preserve independent multi-board lanes.
+
+### Arcade HUD/camera continuation and qualification — 2026-10-13
+
+Root owns `lane/arcade-camera-flags-info-selection-20261013`: 351-form producer
+integration, exact raw camera-offset reporting, readable flags, native info-only
+life selection and the actual production GUI replacement-stage guard. HUD
+visibility/source-name collision controls and terminal HUD generator callbacks
+are integrated from their owners. Combined25PASS/2timingTODO and camera/latest
+main11PASS remain bounded controls; raw corpus41 partials is unchanged.
+
+`extension_parser` owns AST tile-map factory registration/alias/order/null
+semantics and its tilemap-call importer hunks, plus private Maze GUI preparation
+and final artifact observation. `corpus_gap_analysis` owns explicit portable
+source-loop eligibility/352-form producer preparation and the private phase
+prototype; global product hook waits for PR881's matched-head green merge.
+`namespace_buffers` owns the original native text-dialog contract and scoped
+implementation paths listed there. Shared runtime/translator hunks must be
+coordinated. Preserve independent multi-board/arena and engine lanes.
 ## Arcade editor startup dependency boundary — 2026-10-13
 
-PROPOSED CLAIM — Codex Arcade integration. Merge this claim before product edits.
+CLAIMED — Codex Arcade integration; [PR893](https://github.com/CrispStrobe/brickwright-lite/pull/893) merged after all 12 enabled checks passed.
 Envelope: a pure tilemap-block presence helper in `lib/bw-makecode/`, the presence
 read in `containers/costume-tab.jsx` and its tracked mirror, focused equivalence
 controls, this ledger and the linked contract. Existing painter decoding, legacy
@@ -5253,6 +5453,18 @@ coordinate board selection with the active multi-board owner. Product edits
 follow merged claim and exact-head checks. See
 [the acceptance contract](docs/ARCADE-SB3-DEVICE-PANE.md).
 
+
+## Arcade Image circle drawing — 2026-10-14
+
+CLAIMED — Codex Arcade integration, existing integration branch.
+Contract: [Image circle drawing](docs/ARCADE-CIRCLE-DRAWING.md).
+Root owns native Image drawing operations, converter/export hooks and canonical
+producer vocabulary; the pixel-oracle worker owns its new fixture and checks.
+Coordinate native index hunks with the stored class-callback owner. Radius gets
+its own Blocks input; no field overloading, fake artwork or opaque reference
+admission. Actual original full pixel arrays and editable portable routes are
+required before capability or corpus promotion. Preserve separate live Font,
+class callback and default numeric callable admission lanes.
 ## SPIKE deferred-storage observer cancellation — 2026-10-14
 
 ADOPTED — [PR928](https://github.com/CrispStrobe/brickwright-lite/pull/928), tested
@@ -5665,6 +5877,14 @@ new word or pin. The stopwatch Timer external writer and cyclic field/result
 invariant remain HELD pending complete separate proof. Native, selected-original
 and visible authoring gates remain independent; no whole-case promotion.
 
+Development source candidate now uses the existing before-input/invoke hooks for
+private finite scene-clock completions and current consumer receipts, with an
+independent game census and unchanged info producer. Focused source, modeled
+boundary and real-native controls are authored, not yet executed on this source.
+[Implementation boundary](docs/compatibility/arcade-scene-clock-number-completions.md)
+retains direct-service/clock policy and the external Timer writer/cycle holds.
+No engine ABI, word, pin, whole-case or visible GUI promotion.
+
 ## Ordinary procedure optional argument transport — 2026-10-16
 
 PROPOSED / DOCS ONLY — Codex Arcade integration. Product implementation waits
@@ -5736,6 +5956,12 @@ callback alias/formal allocation (**E**) remain tracked open work, not permissio
 for source changes here. No runtime/ABI/domain, supplier/pin, GUI or workflow
 change; no stable whole-project or compatibility-count claim from source shape.
 
+A allocator implementation coordination: the owner-aware lookup also covers the
+single ordinary field-initializer call emission in
+`overlay/scratch-gui/src/lib/bw-makecode/object-class-export.js`. Coordinated
+under the merged roundtrip contract's matching resolved-call scope; all other
+class bodies, field/default/type semantics and class admission stay unchanged.
+B empty-Array lowering remains a separate implementation.
 
 ## Ordinary local initializer transport: C1 — 2026-10-16
 
@@ -6647,3 +6873,4 @@ prototype; global product hook waits for PR881's matched-head green merge.
 `namespace_buffers` owns the original native text-dialog contract and scoped
 implementation paths listed there. Shared runtime/translator hunks must be
 coordinated. Preserve independent multi-board/arena and engine lanes.
+

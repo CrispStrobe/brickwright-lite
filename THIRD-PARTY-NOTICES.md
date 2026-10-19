@@ -2362,3 +2362,36 @@ those algorithms without replacing their font, outline, icon or setter logic.
 The native host uses the separately retained PXT image operations and font
 notices, including the existing SIL OFL font12 notice. Source identity and host
 qualification are distinct from native blocks and whole-game qualification.
+
+## MakeCode kickoff TeamData qualification source
+
+The complete unchanged `teamdata.ts` from Microsoft pxt-kickoff revision
+`c2c7f8193af1dafaebda3a7cda235df4c42b87ae` is retained in
+`test/fixtures/arcade-teamdata-source` for class qualification. It is MIT licensed;
+the original licence and fixed source provenance are retained beside it.
+This fixture does not admit or bundle the complete kickoff game library.
+
+## circuitplayground — MPL-2.0 (incorporating MIT-licensed pxt-adafruit code)
+
+The scoped `circuitplayground` pin selects the Circuit Playground extension
+authored by CrispStrobe from https://github.com/CrispStrobe/extensions (task
+A9). Its declared license is MPL-2.0. The complete source, including its
+author/license header, is retained in
+`overlay/scratch-vm/src/extensions/crispstrobe/circuitplayground/index.js` as a
+JSON source string; the host adapter is separate.
+
+It ports behaviour from pxt-adafruit 1.6.8 (Copyright (c) Microsoft
+Corporation, MIT License): the NeoPixel strip, colour helpers and ring
+animations, Math.isin (after FastLED, MIT), the animation queue, tempo and
+beats, and the simulator's sensor thresholds and button timing. Its built-in
+sounds and melody notation come from MicroPython on the micro:bit (Copyright
+(c) 2013-2016 The MicroPython-on-micro:bit Developers, MIT License). Both MIT
+notices are reproduced in the source header. No pxt-adafruit firmware or
+chip-restricted ASF4 code is included.
+
+The exact selected source is
+https://github.com/CrispStrobe/extensions/blob/0c4e3b4a0cee57d65474082938c352818426eebb/extensions/CrispStrobe/circuitplayground.js.
+`vendor-pins.json` and the generated per-file bundle receipt record the commit
+and content hash. This scopes the adoption to Circuit Playground; it does not
+advance other extension sources. MPL-2.0 text:
+https://www.mozilla.org/en-US/MPL/2.0/. MIT text: https://opensource.org/licenses/MIT.

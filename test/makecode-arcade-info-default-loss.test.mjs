@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
-import {EventEmitter} from 'node:events';
+import {createArcadeRuntimeMock, startArcadeProject} from './helpers/arcade-runtime-mock.mjs';
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 const palette=['#000000','#ffffff','#ff2121','#ff93c4','#ff8135','#fff609','#249ca3','#78dc52','#003fad','#87f2ff','#8e2ec4','#a4839f','#5c406c','#e5cdc4','#91463d','#000000'];
@@ -33,16 +33,16 @@ for(const [name,body] of [['countdown','info.startCountdown(0.2)'],['life zero',
 
 
 test('queued default loss belongs to its scene and run, with one terminal operation',async()=>{
- const runtime=new EventEmitter(),errors=[];runtime.on('BLOCKS_ERROR',error=>errors.push(String(error)));
+ const runtime=createArcadeRuntimeMock(),errors=[];runtime.on('BLOCKS_ERROR',error=>errors.push(String(error)));
  const native=new(loadExtensionClass('arcade'))(runtime)._inst,calls=[];
  native._runGameOver=(win,util,pixels)=>{calls.push({win,pixels});};
  let owner=native._infoState(),pixels=new Uint8Array(19200);pixels[0]=9;
  native._defaultInfoGameOver(owner,pixels);native._defaultInfoGameOver(owner,pixels);
  await Promise.resolve();assert.equal(calls.length,1);assert.equal(calls[0].win,false);assert.equal(calls[0].pixels[0],9);
- runtime.emit('PROJECT_START');owner=native._infoState();native._defaultInfoGameOver(owner,pixels);
+ startArcadeProject(runtime);owner=native._infoState();native._defaultInfoGameOver(owner,pixels);
  runtime.emit('PROJECT_STOP_ALL');await Promise.resolve();assert.equal(calls.length,1,'stop cancels pending loss');
- runtime.emit('PROJECT_START');owner=native._infoState();native._defaultInfoGameOver(owner,pixels);
- runtime.emit('PROJECT_START');await Promise.resolve();assert.equal(calls.length,1,'restart cancels old loss');
+ startArcadeProject(runtime);owner=native._infoState();native._defaultInfoGameOver(owner,pixels);
+ startArcadeProject(runtime);await Promise.resolve();assert.equal(calls.length,1,'restart cancels old loss');
  owner=native._infoState();native._defaultInfoGameOver(owner,pixels);
  runtime.bwArcadeDeviceState={};await Promise.resolve();assert.equal(calls.length,1,'replacement scene cancels old loss');
  assert.deepEqual(errors,[]);

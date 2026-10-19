@@ -1607,7 +1607,7 @@ class PseudocodeImporter extends React.Component {
     openCodeFile (e) {
         const file = (e.target.files || [])[0];
         e.target.value = '';           // so re-opening the same file fires again
-        if (!file) return;
+        if (!file || this.state.busy) return;
         this.publishGameControls(null);
         this._makeCodeProject = null;
         this._makeCodeImportedCode = null;
@@ -1878,36 +1878,45 @@ class PseudocodeImporter extends React.Component {
         }));
     }
 
+    makeCodeImportModule () {
+        return import(/* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js');
+    }
+
+    currentMakeCodeRequest (request) {
+        return !!request && !this._unmounted && this._makeCodeRequest === request &&
+            this.props.vm.runtime.getTargetForStage() === request.stage;
+    }
+
     openArtefactFile (file) {
-        const request = this._makeCodeRequest = {stage: this.props.vm.runtime.getTargetForStage()};
-        this.setState({status: this.L.mcReading(file.name)});
+        if (this._unmounted) return;
+        const request = this._makeCodeRequest = {stage:this.props.vm.runtime.getTargetForStage()};
+        this.setState({status:this.L.mcReading(file.name)});
         const reader = new FileReader();
         reader.onload = async () => {
+            if (!this.currentMakeCodeRequest(request)) return;
             let res;
             try {
-                const {importArtefact} = await import(
-                    /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js');
-                res = await importArtefact(new Uint8Array(reader.result), {name: file.name, animationResources: true});
+                const module = await this.makeCodeImportModule();
+                if (!this.currentMakeCodeRequest(request)) return;
+                res = await module.importArtefact(new Uint8Array(reader.result),
+                    {name:file.name,animationResources:true,prepareDependencies:true});
             } catch (err) {
-                this.setState({status: err && err.code === 'NO_EMBEDDED_SOURCE' ?
-                    this.L.mcNoSource(file.name, err.format) :
-                    this.L.mcFailed(file.name, (err && err.message) || String(err))});
+                if (!this.currentMakeCodeRequest(request)) return;
+                this.setState({status:err && err.code === 'NO_EMBEDDED_SOURCE' ?
+                    this.L.mcNoSource(file.name,err.format) :
+                    this.L.mcFailed(file.name,(err && err.message) || String(err))});
                 return;
             }
-            if (this._makeCodeRequest !== request || this.props.vm.runtime.getTargetForStage() !== request.stage) return;
-            // A downloaded MicroPython hex is runtime + script, so importing
-            // one to read its Python also hands us the runtime the flash
-            // button needs. Keeping it here means that button never has to
-            // ask.
+            if (!this.currentMakeCodeRequest(request)) return;
             if (res && res.kind === 'micropython') {
-                try {
-                    this._microbitFirmwareHex = new TextDecoder().decode(
-                        new Uint8Array(reader.result));
-                } catch (e) { /* not text; the button will ask instead */ }
+                try {this._microbitFirmwareHex = new TextDecoder().decode(new Uint8Array(reader.result));}
+                catch (error) { /* The flash button can ask for non-text firmware. */ }
             }
-            this.applyMakeCodeImport(res, file.name);
+            this.applyMakeCodeImport(res,file.name);
         };
-        reader.onerror = () => this.setState({status: this.L.mcFailed(file.name, 'read error')});
+        reader.onerror = () => {
+            if (this.currentMakeCodeRequest(request)) this.setState({status:this.L.mcFailed(file.name,'read error')});
+        };
         reader.readAsArrayBuffer(file);
     }
 
@@ -1940,7 +1949,8 @@ class PseudocodeImporter extends React.Component {
         this._makeCodeProject = res.kind === 'makecode' ? {
             files: res.files,
             name: res.project.name || String(label).replace(/\.[^.]+$/, ''),
-            target: res.project.target
+            target: res.project.target,
+            dependencyInputs: res.dependencyInputs || null
         } : null;
         // F10: the translation as it arrived. A build of exactly this code keeps
         // the original files in the project (bw-makecode-original.js); an edited
@@ -1969,6 +1979,7 @@ class PseudocodeImporter extends React.Component {
         this._animationImport = res.animationResources?.length ?
             {resources: res.animationResources, stage: this.props.vm.runtime.getTargetForStage()} : null;
         if (res.warnings?.length) status += ` · ${res.warnings.join(' · ')}`;
+        if (res.dependencyMessages?.length) status += ` · ${res.dependencyMessages.join(' · ')}`;
         this.setState({
             lang: res.lang,
             importedPython: res.kind === 'micropython',
@@ -1997,18 +2008,26 @@ class PseudocodeImporter extends React.Component {
      * laptop with no internet still have the .hex.
      */
     async openMakeCodeShare () {
-        const url = await promptAsync(this.L.mcSharePrompt, '');
-        if (!url || !url.trim()) return;
-        this.setState({status: this.L.mcShareLoading});
-        const request = this._makeCodeRequest = {stage: this.props.vm.runtime.getTargetForStage()};
+        if (this._unmounted) return;
+        // The prompt is asynchronous too: reserve this intent against the
+        // current stage before another file/share action can supersede it.
+        const request = this._makeCodeRequest = {stage:this.props.vm.runtime.getTargetForStage()};
+        let url = '';
         try {
-            const {importShareLink} = await import(
-                /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js');
-            const res = await importShareLink(url.trim(), {animationResources: true});
-            if (this._makeCodeRequest !== request || this.props.vm.runtime.getTargetForStage() !== request.stage) return;
-            this.applyMakeCodeImport(res, res.project.name || url.trim());
+            url = await promptAsync(this.L.mcSharePrompt,'');
+            if (!this.currentMakeCodeRequest(request)) return;
+            if (!url || !url.trim()) {
+                this._makeCodeRequest = null;
+                return;
+            }
+            this.setState({status:this.L.mcShareLoading});
+            const module = await this.makeCodeImportModule();
+            if (!this.currentMakeCodeRequest(request)) return;
+            const res = await module.importShareLink(url.trim(),{animationResources:true,prepareDependencies:true});
+            if (!this.currentMakeCodeRequest(request)) return;
+            this.applyMakeCodeImport(res,res.project.name || url.trim());
         } catch (err) {
-            this.setState({status: this.L.mcFailed(url.trim(), (err && err.message) || String(err))});
+            if (this.currentMakeCodeRequest(request)) this.setState({status:this.L.mcFailed(url ? url.trim() : this.L.mcSharePrompt,(err && err.message) || String(err))});
         }
     }
 
@@ -2556,6 +2575,7 @@ class PseudocodeImporter extends React.Component {
 
     componentWillUnmount () {
         this._unmounted = true;
+        this._makeCodeRequest = null;
         const vm = this.props.vm;
         if (vm && vm.runtime && this._onProjectChanged) {
             vm.runtime.removeListener('PROJECT_CHANGED', this._onProjectChanged);
@@ -5161,6 +5181,7 @@ class PseudocodeImporter extends React.Component {
                 typeof this._makeCodeImportedCode === 'string' && source === this._makeCodeImportedCode) {
                 creator.project.bwMakeCode = makeCodeOriginal.record(this._makeCodeProject.target,
                     this._makeCodeProject.files, this._makeCodeProject.name);
+                if (this._makeCodeProject.dependencyInputs) creator.project.bwMakeCode.dependencyInputs = this._makeCodeProject.dependencyInputs;
             }
             const blob = await creator.generateSB3();
             let projectBytes = await blob.arrayBuffer();
@@ -5516,10 +5537,10 @@ class PseudocodeImporter extends React.Component {
                     width: 220, padding: 6, background: '#fff', border: '1px solid #cbd5e1', borderRadius: 8,
                     boxShadow: '0 8px 24px rgba(15,23,42,.2)', display: 'flex', flexDirection: 'column', gap: 2}}>
                     <label style={item} title={this.L.openFileTitle(`${CODE_ACCEPT},${IMPORT_ACCEPT}`)}
-                        data-testid="bw-open-file">
+                        data-testid="bw-open-file" aria-disabled={this.state.busy}>
                         {this.L.openFile}
                         <input type="file" accept={`${CODE_ACCEPT},${IMPORT_ACCEPT}`} style={{display: 'none'}}
-                            onChange={this.openCodeFile} />
+                            disabled={this.state.busy} onChange={this.openCodeFile} />
                     </label>
                     <button type="button" onClick={this.saveCodeFile} style={item}
                         title={this.L.saveFileTitle(this.saveFileName())} data-testid="bw-save-file">

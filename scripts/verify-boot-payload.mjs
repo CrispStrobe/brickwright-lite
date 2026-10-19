@@ -41,6 +41,8 @@ const build = process.env.BW_BUILD
  * `chunk` is a prefix under build/chunks/ — production names carry a hash.
  */
 const LAZY = [
+    {what: 'Circuit Playground runtime', marker: 'ID: circuitplayground', chunk: 'ext-circuitplayground',
+        why: 'lazyBuiltinExtensions.circuitplayground in extension-manager.js'},
     {what: 'music extension samples', marker: "'drums/1-snare.mp3'", altMarkers: ['"drums/1-snare.mp3"'],
         chunk: 'ext-music', why: 'lazyBuiltinExtensions.music in overlay/scratch-vm/src/extension-support/extension-manager.js'},
     {what: 'render fonts', marker: 'x-font-ttf', chunk: 'render-fonts',

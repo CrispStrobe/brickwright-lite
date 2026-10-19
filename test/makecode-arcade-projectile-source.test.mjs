@@ -4,6 +4,7 @@ import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arc
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {compile, hasRuntime} from '../scripts/lib/pxt-node.mjs';
 import {SB3Creator, runProgram, projectOpcodes} from './helpers/bw-vm.mjs';
+import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 
 const source = `function launch() {
     let origin = sprites.createProjectileFromSide(img\`1 1\`, 0, 0)
@@ -46,17 +47,28 @@ test('projectiles inherit a source handle position and keep their PXT creation f
 });
 
 test('a null source keeps PXT edge placement', async () => {
-    const imported = arcadeToPseudocode(`function launch() {
+    const nullSource = `let initialX = 0
+    let initialVx = 0
+    function launch() {
         let shot = sprites.createProjectileFromSprite(img\`1\`, null, -40, 0)
+        initialX = shot.x
+        initialVx = shot.vx
     }
-    launch()`);
+    launch()
+    initialX += 0
+    initialVx += 0`;
+    const imported = arcadeToPseudocode(nullSource);
     assert.deepEqual(imported.unsupported, []);
     assert.match(imported.code, /mode sprite source ""/);
     const run = await runProgram(imported.code, {frames: 1});
     assert.deepEqual(run.errors, []);
-    const shot = Object.values(run.vm.runtime.bwArcadeDeviceState?.sprites || {})
-        .find(sprite => sprite.id);
-    assert.equal(shot?.x, 159);
+    // Observe placement where the authored program reads it. A later physical
+    // frame already moves this projectile, so its current x is not initial x.
+    const initial = run.vm.runtime.targets.flatMap(target => Object.values(target.variables || {}))
+        .find(variable => variable.name.replace(/^Game_/, '') === 'initialX');
+    const original = await runPxtArcade(nullSource, {fakeClock: true});
+    assert.equal(original.initialX, 159);
+    assert.equal(initial?.value, original.initialX);
     const creator = new SB3Creator();
     creator.parse(imported.code);
     for (const costume of imported.costumes) creator.applyCustomSVG(costume.sprite, costume.svg);
@@ -66,6 +78,9 @@ test('a null source keeps PXT edge placement', async () => {
         return asset?.type === 'svg' ? asset.data : null;
     }});
     assert.deepEqual(exported.unsupported, []);
-    // (-40 is imported as the unary value word, so it exports through its helper.)
-    assert.match(exported.ts, /sprites\.createProjectileFromSprite\([\s\S]*null, __bwUnarySubtract\(\(0 \+ 40\)\), 0\)/);
+    assert.match(exported.ts, /sprites\.createProjectileFromSprite\([\s\S]*null,/);
+    const roundtrip = await runPxtArcade(exported.files, {fakeClock: true});
+    assert.equal(roundtrip.initialX ?? roundtrip.Game_initialX, original.initialX);
+    assert.equal(original.initialVx, -40);
+    assert.equal(roundtrip.initialVx ?? roundtrip.Game_initialVx, original.initialVx);
 });

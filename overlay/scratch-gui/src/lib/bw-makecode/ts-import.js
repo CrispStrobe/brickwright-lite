@@ -35,6 +35,7 @@
 // ─── lexer ──────────────────────────────────────────────────────────────
 
 const PUNCT = [
+    '>>>=', '<<=', '>>=', '&=', '|=', '^=',
     '===', '!==', '==', '!=', '<=', '>=', '&&', '||', '++', '--',
     '+=', '-=', '*=', '/=', '%=', '**', '=>', '...', '>>>', '<<', '>>',
     '{', '}', '(', ')', '[', ']', ';', ',', '.', ':', '?',
@@ -55,7 +56,8 @@ const KEYWORDS = new Set([
     'let', 'const', 'var', 'function', 'if', 'else', 'while', 'for', 'do',
     'return', 'break', 'continue', 'enum', 'namespace', 'export', 'class',
     'true', 'false', 'null', 'undefined', 'new', 'interface', 'type', 'switch',
-    'case', 'default', 'public', 'private', 'static'
+    'case', 'default', 'public', 'private', 'static', 'instanceof',
+    'throw', 'try', 'catch', 'finally'
 ]);
 
 /**
@@ -66,13 +68,22 @@ export function tokenize (src) {
     const out = [];
     let i = 0;
     let line = 1;
-    const push = (type, value) => out.push({type, value, line});
+    let pendingWhenUsed=false, pendingUnknown=false, tokenLine=1;
+    const push = (type, value) => {
+        const whenUsed=pendingWhenUsed && ['const','let','var'].includes(type);
+        const token={type,value,line,...(whenUsed?{whenUsed:true}:{})};
+        // Internal lexical facts for restricted Throw grammar. Keep the public
+        // token shape and ordinary parser defaults unchanged.
+        Object.defineProperties(token,{startLine:{value:tokenLine},unknownBefore:{value:pendingUnknown}});
+        out.push(token);pendingUnknown=false;
+        if(type!=='export')pendingWhenUsed=false;
+    };
 
     while (i < src.length) {
-        const c = src[i];
-        if (c === '\n') {
+        const c = src[i];tokenLine=line;
+        if (/[\r\n\u2028\u2029]/.test(c)) {
             line++;
-            i++;
+            i += c === '\r' && src[i + 1] === '\n' ? 2 : 1;
             continue;
         }
         if (/\s/.test(c)) {
@@ -80,20 +91,22 @@ export function tokenize (src) {
             continue;
         }
         if (c === '/' && src[i + 1] === '/') {
-            while (i < src.length && src[i] !== '\n') i++;
+            const start=i;
+            while (i < src.length && !/[\r\n\u2028\u2029]/.test(src[i])) i++;
+            if(/^\/\/%.*\bwhenUsed(?:\s|=true\b|$)/.test(src.slice(start,i)))pendingWhenUsed=true;
             continue;
         }
         if (c === '/' && src[i + 1] === '*') {
             i += 2;
             while (i < src.length && !(src[i] === '*' && src[i + 1] === '/')) {
-                if (src[i] === '\n') line++;
+                if (/[\r\n\u2028\u2029]/.test(src[i]) && !(src[i] === '\n' && src[i - 1] === '\r')) line++;
                 i++;
             }
             i += 2;
             continue;
         }
         if (c === '"' || c === "'") {
-            let s = '';
+            let s = '', invalid=false;
             i++;
             while (i < src.length && src[i] !== c) {
                 if (src[i] === '\\') {
@@ -101,10 +114,13 @@ export function tokenize (src) {
                     i += 2;
                     continue;
                 }
+                if (/[\r\n\u2028\u2029]/.test(src[i])) invalid=true;
                 s += src[i++];
             }
+            invalid ||= src[i] !== c;
             i++;
             push('string', s);
+            if(invalid)Object.defineProperty(out[out.length-1],'invalidLiteral',{value:true});
             continue;
         }
         if (c === '`') {
@@ -117,8 +133,10 @@ export function tokenize (src) {
                 if (src[i] === '\n') line++;
                 s += src[i++];
             }
+            const invalid=src[i] !== '`';
             i++;
             push('template', s);
+            if(invalid)Object.defineProperty(out[out.length-1],'invalidLiteral',{value:true});
             continue;
         }
         if (/[0-9]/.test(c) || (c === '.' && /[0-9]/.test(src[i + 1]))) {
@@ -128,7 +146,9 @@ export function tokenize (src) {
                 i += 2;
                 while (i < src.length && /[0-9a-fA-F]/.test(src[i])) s += src[i++];
             } else {
-                while (i < src.length && /[0-9.eE]/.test(src[i])) s += src[i++];
+                const literal=/^(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?/.exec(src.slice(i));
+                s=literal[0];i+=s.length;
+                if(/[eE]/.test(src[i]||''))throw new Error(`MakeCode TS: malformed numeric exponent on line ${line}`);
             }
             push('number', s);
             continue;
@@ -145,7 +165,8 @@ export function tokenize (src) {
             push('punct', punct);
             continue;
         }
-        i++;                                             // an unknown byte is skipped, not fatal
+        pendingUnknown=true;
+        i++;                                             // ordinary parser retains its historical unknown-byte policy
     }
     push('eof', '');
     return out;
@@ -160,7 +181,7 @@ const BINARY_PRECEDENCE = {
     // read the rest as a new statement.
     '|': 3, '^': 3, '&': 3,
     '==': 4, '!=': 4, '===': 4, '!==': 4,
-    '<': 5, '>': 5, '<=': 5, '>=': 5,
+    '<': 5, '>': 5, '<=': 5, '>=': 5, 'instanceof': 5,
     '<<': 6, '>>': 6, '>>>': 6,
     '+': 7, '-': 7,
     '*': 8, '/': 8, '%': 8, '**': 9
@@ -344,6 +365,7 @@ class Parser {
         if (this.at('export')) {
             this.next();
             const statement = this.parseStatement();
+            if(statement?.type==='ThrowStatement')throw new Error('MakeCode TS: throw statement cannot be exported');
             return statement ? {...statement, exported: true} : statement;
         }
         if (this.at('let') || this.at('const') || this.at('var')) return this.parseDeclaration();
@@ -368,6 +390,11 @@ class Parser {
         }
         if (this.at('class')) return this.parseClass();
         if (this.at('switch')) return this.parseSwitch();
+        if (this.at('throw')) return this.parseThrow();
+        if (this.at('try') || this.at('catch') || this.at('finally')) {
+            const token=this.next();
+            throw new Error(`MakeCode TS: ${token.value} statement requires unsupported structured exception handling on line ${token.line}`);
+        }
         if (this.at('return')) {
             const ret = this.next();
             let value = null;
@@ -393,6 +420,25 @@ class Parser {
         const expr = this.parseExpression();
         this.eat('punct', ';');
         return {type: 'ExpressionStatement', expr};
+    }
+
+    parseThrow () {
+        const token=this.expect('throw'),start=this.pos,lineOf=row=>row.startLine??row.line;
+        if(lineOf(this.peek())!==token.line)
+            throw new Error(`MakeCode TS: line break is not allowed after throw on line ${token.line}`);
+        if(this.at('eof') || this.at('punct',';') || this.at('punct','}'))
+            throw new Error(`MakeCode TS: throw requires an expression on line ${token.line}`);
+        const previous=this.throwExpression;this.throwExpression=true;
+        let argument;
+        try {argument=this.parseExpression();} finally {this.throwExpression=previous;}
+        const unknown=node=>node && typeof node==='object' &&
+            (node.type==='Unknown' || Object.values(node).some(value=>Array.isArray(value)?value.some(unknown):unknown(value)));
+        if(unknown(argument) || this.toks.slice(start,this.pos).some(row=>row.unknownBefore||row.invalidLiteral) || this.peek().unknownBefore)
+            throw new Error(`MakeCode TS: throw requires a complete expression on line ${token.line}`);
+        if(!this.eat('punct',';') && !this.at('eof') && !this.at('punct','}') &&
+            lineOf(this.peek())<=this.toks[this.pos-1].line)
+            throw new Error(`MakeCode TS: unsupported trailing throw expression on line ${this.peek().line}`);
+        return {type:'ThrowStatement',argument};
     }
 
     /** Step over a `{...}` (or `(...)`) group whose contents we ignore. */
@@ -489,6 +535,11 @@ class Parser {
         this.expect('class');
         const name = this.at('ident') ? this.next().value : '';
         const node = {type: 'Class', name, fields: [], methods: [], ctor: null, unsupported: []};
+        if (this.retainClassHeritage && this.eat('ident','extends')) {
+            if (!this.at('ident')) throw new Error('MakeCode TS: class parent requires a name');
+            node.base=this.next().value;
+            while(this.eat('punct','.'))node.base+='.'+this.expect('ident').value;
+        }
         if (!this.at('punct', '{')) {
             // `class A extends B`, `implements`, generics: no lowering here.
             node.unsupported.push(`class ${name} with a heritage clause`);
@@ -501,13 +552,15 @@ class Parser {
         while (!this.at('punct', '}') && !this.at('eof')) {
             if (this.eat('punct', ';')) continue;
             let isStatic = false;
+            const modifiers = [];
             for (;;) {
                 const t = this.peek();
                 const nextIsName = this.peek(1).type === 'ident' || MODIFIERS.has(this.peek(1).value) ||
-                    ['get', 'set', 'constructor'].includes(this.peek(1).value);
+                    ['get', 'set', 'constructor', 'static'].includes(this.peek(1).value);
                 if ((t.type === 'public' || t.type === 'private' || t.type === 'static' ||
                     (t.type === 'ident' && MODIFIERS.has(t.value))) && nextIsName) {
                     if (t.type === 'static') isStatic = true;
+                    else modifiers.push(t.value);
                     this.next();
                     continue;
                 }
@@ -524,9 +577,12 @@ class Parser {
                 this.skipTypeAnnotation();
                 const returnType = this.lastType;
                 const body = this.parseBlock();
-                node.methods.push({name: prop, kind: member, params, paramTypes, returnType, body, isStatic});
+                node.methods.push({name: prop, kind: member, params, paramTypes, optionalParams:params.optionalParams, parameterDefaults:params.parameterDefaults, returnType, body, isStatic, modifiers});
                 continue;
             }
+            const typeParameters = this.at('punct', '<') ? this.parseTypeParameters() : [];
+            if (typeParameters.length && !this.at('punct', '('))
+                throw new Error('MakeCode TS: class method type parameters require a parameter list');
             if (this.at('punct', '(')) {
                 const params = this.parseParams();
                 const paramTypes = this.lastParamTypes;
@@ -534,6 +590,7 @@ class Parser {
                 const returnType = this.lastType;
                 const body = this.parseBlock();
                 if (member === 'constructor') {
+                    if (typeParameters.length) node.unsupported.push('generic class constructors');
                     // Parameter properties initialize instance fields before the constructor body.
                     // Retain their modifiers/types for later lowering and explicit diagnostics.
                     const properties = params.parameterProperties;
@@ -542,10 +599,13 @@ class Parser {
                         type: 'Assignment', op: '=', left: {type: 'Member', object: {type: 'Identifier', name: 'this'}, name},
                         right: {type: 'Identifier', name}
                     }}));
-                    node.ctor = {params, paramTypes, parameterProperties: properties,
+                    node.ctor = {...(this.retainClassHeritage?{originalBody:body}:{}),params, paramTypes, optionalParams:params.optionalParams, parameterDefaults:params.parameterDefaults, parameterProperties: properties,
                         body: [...this.defaultStatements(params), ...assignments, ...body]};
                 }
-                else node.methods.push({name: member, kind: 'method', params, paramTypes, returnType, body, isStatic});
+                else {
+                    if (typeParameters.length) node.unsupported.push('generic class methods');
+                    node.methods.push({name: member, kind: 'method', typeParameters, params, paramTypes, optionalParams:params.optionalParams, parameterDefaults:params.parameterDefaults, returnType, body:[...this.defaultStatements(params),...body], isStatic, modifiers});
+                }
                 continue;
             }
             this.eat('punct', '?');
@@ -553,7 +613,7 @@ class Parser {
             const typeName = this.lastType;
             let init = null;
             if (this.eat('punct', '=')) init = this.parseExpression();
-            node.fields.push({name: member, typeName, init, isStatic});
+            node.fields.push({name: member, typeName, init, isStatic, modifiers});
         }
         this.expect('punct', '}');
         node.calls = this.callsSince(start);
@@ -590,7 +650,8 @@ class Parser {
 
     parseDeclaration () {
         const start = this.pos;
-        const kind = this.next().value;
+        const token=this.next(),kind=token.value;
+        const whenUsed=this.retainWhenUsed && token.whenUsed;
         const decls = [];
         let destructured = false;
         do {
@@ -601,7 +662,7 @@ class Parser {
             const typeName = this.lastType;
             let init = null;
             if (this.eat('punct', '=')) init = this.parseExpression();
-            decls.push({name: pattern.name, pattern, init, isArray, typeName});
+            decls.push({name: pattern.name, pattern, init, isArray, typeName,...(whenUsed?{whenUsed:true}:{})});
         } while (this.eat('punct', ','));
         this.eat('punct', ';');
         // A destructuring declaration keeps its RHS once, and ordered property
@@ -664,9 +725,10 @@ class Parser {
             while (!this.at('eof')) {
                 let token = this.peek();
                 // Inside type syntax these are consecutive closing angle brackets,
-                // not expression shifts. Preserve each delimiter for its own level.
-                if (token.type === 'punct' && ['>>','>>>'].includes(token.value)) {
-                    this.toks.splice(this.pos, 1, ...Array.from(token.value, () => ({...token, value: '>'})));
+                // not expression shifts. An adjacent '=' begins a type default.
+                // Preserve each delimiter for its own level.
+                if (token.type === 'punct' && /^(?:>{2,3}|>{1,3}=)$/.test(token.value)) {
+                    this.toks.splice(this.pos, 1, ...Array.from(token.value, value => ({...token, value})));
                     token = this.peek();
                 }
                 if (depth === 0 && token.type === 'punct' && [',','>', ...(stopAtDefault ? ['='] : [])].includes(token.value)) break;
@@ -754,7 +816,19 @@ class Parser {
         this.skipTypeAnnotation();
         const returnType = this.lastType;
         const body = this.parseBlock();
+        // Ordinary primitive defaults need their actual conditional prologue,
+        // without opting mixed signatures or callback expressions into the
+        // separate callable metadata route.
+        const optional = params.optionalParams, firstOptional = params.findIndex(name => optional.includes(name));
+        const primitiveDefaults = this.retainPrimitiveProcedureDefaults && params.parameterDefaults.length > 0 &&
+            !typeParameters.length && params.every(name => ['number', 'string', 'boolean', 'any'].includes(paramTypes[name]?.text)) &&
+            optional.every(name => paramTypes[name]?.text === 'any') &&
+            params.slice(firstOptional).every(name => optional.includes(name));
         return {type: 'FunctionDeclaration', name, params, paramTypes, returnType, typeParameters,
+            ...(this.retainOrdinaryDefaultProvenance ? {ordinaryParameterDefaultNames:params.parameterDefaults.map(row => row.name)} : {}),
+            ...(this.retainCallableMetadata ? {functionKind: 'declaration', parameterDefaults: params.parameterDefaults,
+                parameterDefaultPrologue: this.parameterDefaults} : primitiveDefaults ? {
+                parameterDefaults: params.parameterDefaults, parameterDefaultPrologue: this.parameterDefaults} : {}),
             optionalParams: params.optionalParams, body: [...this.defaultStatements(params), ...body]};
     }
 
@@ -794,7 +868,8 @@ class Parser {
         this.expect('punct', ')');
         this.eat('punct', ';');
         const exit = {type: 'If', test: {type: 'Unary', op: '!', argument: test}, consequent: [{type: 'Break'}], alternate: null};
-        return {type: 'While', test: {type: 'Boolean', value: true}, body: [...body, exit]};
+        return {type: 'While', test: {type: 'Boolean', value: true}, body: [...body, exit],
+            doWhile: true, doWhileTest: test, doWhileBody: body};
     }
 
     parseFor () {
@@ -870,7 +945,10 @@ class Parser {
         const names = [this.expect('ident').value];
         while (this.eat('punct', '.')) names.push(this.expect('ident').value);
         let node = {type: 'Namespace', name: names.pop(), body: this.parseBlock()};
-        while (names.length) node = {type: 'Namespace', name: names.pop(), body: [node]};
+        while (names.length) {
+            // Dotted namespace syntax implicitly exports every inner segment.
+            node = {type: 'Namespace', name: names.pop(), body: [{...node, exported: true}]};
+        }
         return node;
     }
 
@@ -880,7 +958,7 @@ class Parser {
 
     parseAssignment () {
         const left = this.parseConditional();
-        for (const op of ['=', '+=', '-=', '*=', '/=', '%=']) {
+        for (const op of ['=', '+=', '-=', '*=', '/=', '%=', '&=', '|=', '^=', '<<=', '>>=', '>>>=']) {
             if (this.at('punct', op)) {
                 this.next();
                 const right = this.parseAssignment();
@@ -918,7 +996,7 @@ class Parser {
                 left={...left,assertedType:this.lastType,typeAssertions:[this.lastType,...(left.typeAssertions || [])]};
                 continue;
             }
-            if (t.type !== 'punct') break;
+            if (t.type !== 'punct' && t.type !== 'instanceof') break;
             const prec = BINARY_PRECEDENCE[t.value];
             if (!prec || prec < minPrec) break;
             this.next();
@@ -1083,7 +1161,7 @@ class Parser {
             // is "player " + p.id. Without one it stays a Template: micro:bit's
             // \`basic.showLeds(\`# . #…\`)\` is a picture, read by its translator.
             // (A tagged one, img\`…\`, is art: see the postfix loop.)
-            return (t.value.includes('${') && templateString(t.value)) || {type: 'Template', value: t.value};
+            return (t.value.includes('${') && templateString(t.value,this.throwExpression)) || {type: 'Template', value: t.value};
         }
         if (t.type === 'true' || t.type === 'false') {
             this.next();
@@ -1100,7 +1178,10 @@ class Parser {
             this.skipTypeAnnotation();
             const returnType = this.lastType;
             const body = this.parseBlock();
-            return {type: 'FunctionExpression', params, paramTypes, returnType, optionalParams:params.optionalParams || [], body: [...this.defaultStatements(params), ...body]};
+            return {type: 'FunctionExpression', params, paramTypes, returnType,
+                ...(this.retainCallableMetadata ? {functionKind: 'function', parameterDefaults: params.parameterDefaults,
+                    parameterDefaultPrologue: this.parameterDefaults} : {}),
+                optionalParams:params.optionalParams || [], body: [...this.defaultStatements(params), ...body]};
         }
         if (t.type === 'new') {
             // `new Player()`: a call, marked, so the translator knows it
@@ -1123,7 +1204,8 @@ class Parser {
                 this.next();
                 const body = this.at('punct', '{') ? this.parseBlock() :
                     [{type: 'Return', value: this.parseExpression()}];
-                return {type: 'FunctionExpression', params: [t.value], body};
+                return {type: 'FunctionExpression', params: [t.value],
+                    ...(this.retainCallableMetadata ? {functionKind: 'arrow', parameterDefaults: [], parameterDefaultPrologue: this.parameterDefaults} : {}), body};
             }
             return {type: 'Identifier', name: t.value};
         }
@@ -1137,14 +1219,17 @@ class Parser {
                     this.next();
                     const body = this.at('punct', '{') ? this.parseBlock() :
                         [{type: 'Return', value: this.parseExpression()}];
-                    return {type: 'FunctionExpression', params, paramTypes, optionalParams:params.optionalParams || [], body: [...this.defaultStatements(params), ...body]};
+                    return {type: 'FunctionExpression', params, paramTypes,
+                        ...(this.retainCallableMetadata ? {functionKind: 'arrow', parameterDefaults: params.parameterDefaults,
+                            parameterDefaultPrologue: this.parameterDefaults} : {}),
+                        optionalParams:params.optionalParams || [], body: [...this.defaultStatements(params), ...body]};
                 }
             } catch (e) { /* not a parameter list after all */ }
             this.pos = save;
             this.expect('punct', '(');
             const expr = this.parseExpression();
             this.expect('punct', ')');
-            return expr;
+            return this.retainParentheses ? {...expr,parenthesized:true} : expr;
         }
         if (this.eat('punct', '[')) {
             const items = [];
@@ -1186,7 +1271,7 @@ class Parser {
  */
 /**
  * @param {string} source
- * @param {{parameterDefaults?: boolean}} [opts] parameterDefaults: start each
+ * @param {{parameterDefaults?: boolean, retainParentheses?: boolean}} [opts] parameterDefaults: start each
  *   function body with `if (p === undefined) p = <default>` for its default
  *   parameters. Only a translator whose `undefined` is a real value (Arcade's
  *   value heap) may ask for it: one that lowers `undefined` to 0 would apply
@@ -1196,7 +1281,7 @@ class Parser {
  * An untagged template's text as string concatenation, or null when it cannot
  * be read as one. Each \`${…}\` is parsed as an expression of its own.
  */
-function templateString (raw) {
+function templateString (raw, strict = false) {
     const parts = [];
     let text = '';
     for (let i = 0; i < raw.length; i++) {
@@ -1213,11 +1298,14 @@ function templateString (raw) {
                 else if (raw[j] === '}') depth--;
                 j++;
             }
-            if (depth) return null;
-            const parser = new Parser(tokenize(raw.slice(i + 2, j - 1)));
+            const fail=()=>{if(strict)throw new Error('MakeCode TS: throw requires a complete template expression');return null;};
+            if (depth) return fail();
+            const tokens=tokenize(raw.slice(i + 2, j - 1));
+            if(strict&&tokens.some(token=>token.unknownBefore||token.invalidLiteral))return fail();
+            const parser = new Parser(tokens);parser.throwExpression=strict;
             let expr;
-            try { expr = parser.parseExpression(); } catch (e) { return null; }
-            if (!parser.at('eof')) return null;
+            try { expr = parser.parseExpression(); } catch (e) { if(strict)throw e;return null; }
+            if (!parser.at('eof')) return fail();
             parts.push({type: 'String', value: text}, expr);
             text = '';
             i = j - 1;
@@ -1233,5 +1321,11 @@ function templateString (raw) {
 export function parseMakeCodeTs (source, opts = {}) {
     const parser = new Parser(tokenize(source));
     parser.parameterDefaults = Boolean(opts.parameterDefaults);
+    parser.retainParentheses = Boolean(opts.retainParentheses);
+    parser.retainWhenUsed = Boolean(opts.retainWhenUsed);
+    parser.retainClassHeritage = Boolean(opts.retainClassHeritage);
+    parser.retainCallableMetadata = Boolean(opts.retainCallableMetadata);
+    parser.retainPrimitiveProcedureDefaults = Boolean(opts.retainPrimitiveProcedureDefaults);
+    parser.retainOrdinaryDefaultProvenance = Boolean(opts.retainOrdinaryDefaultProvenance);
     return parser.parseProgram();
 }

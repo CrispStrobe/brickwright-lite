@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
+import {parseMakeCodeTs} from '../overlay/scratch-gui/src/lib/bw-makecode/ts-import.js';
 import {compile, hasRuntime} from '../scripts/lib/pxt-node.mjs';
 import {SB3Creator, runProgram, projectOpcodes} from './helpers/bw-vm.mjs';
 
@@ -9,12 +10,24 @@ const source = `let horizontal = controller.dx(90)
 let vertical = controller.dy()
 let reversed = controller.dx(-60)`;
 
+const constant = node => {
+    if(node?.type==='Number')return Number(node.value);
+    if(node?.type==='Unary' && node.op==='-')return -constant(node.argument);
+    if(node?.type==='Binary' && node.op==='+')return constant(node.left)+constant(node.right);
+    assert.fail(`Unexpected controller speed expression ${JSON.stringify(node)}`);
+};
+const controllerCalls = node => {
+    if(!node || typeof node!=='object')return [];
+    const here=node.type==='Call' && node.callee?.type==='Member' && node.callee.object?.name==='controller'?
+        [[node.callee.name,constant(node.args[0])]]:[];
+    return [...here,...Object.values(node).flatMap(value=>Array.isArray(value)?value.flatMap(controllerCalls):controllerCalls(value))];
+};
+
 test('controller dx and dy keep their steps through Code, Blocks, and PXT', async () => {
     const imported = arcadeToPseudocode(source);
     assert.deepEqual(imported.unsupported, []);
     assert.match(imported.code, /arcade controller x step 90/);
     assert.match(imported.code, /arcade controller y step 100/);
-    assert.match(imported.code, /arcade controller x step \(0 - 60\)/);
     const creator = new SB3Creator();
     creator.parse(imported.code);
     assert.deepEqual(creator.warnings, []);
@@ -24,7 +37,7 @@ test('controller dx and dy keep their steps through Code, Blocks, and PXT', asyn
     assert.deepEqual(exported.unsupported, []);
     assert.match(exported.ts, /controller\.dx\(90\)/);
     assert.match(exported.ts, /controller\.dy\(100\)/);
-    assert.match(exported.ts, /controller\.dx\(\(0 - 60\)\)/);
+    assert.deepEqual(controllerCalls(parseMakeCodeTs(exported.ts)),[['dx',90],['dy',100],['dx',-60]]);
     if (hasRuntime('arcade')) {
         const compiled = await compile('arcade', exported.files);
         assert.equal(compiled.success, true, JSON.stringify(compiled.diagnostics));

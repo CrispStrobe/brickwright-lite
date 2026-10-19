@@ -13,8 +13,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {untar, CACHE_DIR} from './sync-makecode-runtime.mjs';
-import {tutorialProjectFiles, hasTutorialJres} from '../overlay/scratch-gui/src/lib/bw-makecode/tutorial-project.js';
-import {getTutorialTilemapGenerator} from './lib/pxt-node.mjs';
+import {tutorialProjectFiles, tutorialEditorProjectFiles, TUTORIAL_EDITOR_POLICY, hasTutorialJres} from '../overlay/scratch-gui/src/lib/bw-makecode/tutorial-project.js';
+import {getTutorialTilemapGenerator, STATIC} from './lib/pxt-node.mjs';
 import {makeCodeProjectFile} from '../overlay/scratch-gui/src/lib/bw-makecode/project-file.js';
 
 const argv = process.argv.slice(2);
@@ -23,8 +23,12 @@ const out = opt('--out');
 const arcadeDocs = opt('--arcade-docs');
 const snippets = argv.includes('--snippets');
 const projects = argv.includes('--projects');
-if (!out || argv.some(a => a.startsWith('--') && !['--out', '--arcade-docs', '--snippets', '--projects'].includes(a))) {
-    console.error('usage: node scripts/collect-makecode-corpus.mjs --out DIR [--arcade-docs DIR] [--snippets] [--projects]');
+const editorPolicy = opt('--editor-policy');
+if (argv.includes('--editor-policy') && !editorPolicy) throw new Error('Missing tutorial editor policy');
+if (editorPolicy && !projects) throw new Error('--editor-policy requires --projects');
+if (editorPolicy && editorPolicy !== TUTORIAL_EDITOR_POLICY) throw new Error('Unsupported tutorial editor policy');
+if (!out || argv.some(a => a.startsWith('--') && !['--out', '--arcade-docs', '--snippets', '--projects', '--editor-policy'].includes(a))) {
+    console.error('usage: node scripts/collect-makecode-corpus.mjs --out DIR [--arcade-docs DIR] [--snippets] [--projects] [--editor-policy pxt-13.2.1]');
     process.exit(2);
 }
 
@@ -54,7 +58,11 @@ async function add (target, source, text, origin, license) {
         const id = hash(Buffer.from(`${source}#${index}`)).slice(0, 16);
         try {
             const jresToTypeScript = hasTutorialJres(text) ? await getTutorialTilemapGenerator(target) : undefined;
-            const project = tutorialProjectFiles(text, `${code.trim()}\n`, {target, name: `${target}-${id}`, jresToTypeScript});
+            const useEditorPolicy = !!editorPolicy && target === 'arcade';
+            const targetBytes = useEditorPolicy ? fs.readFileSync(path.join(STATIC, target, 'target.json')) : null;
+            const targetBundle = targetBytes ? JSON.parse(targetBytes) : undefined;
+            const assemble = useEditorPolicy ? tutorialEditorProjectFiles : tutorialProjectFiles;
+            const project = assemble(text, `${code.trim()}\n`, {target, name: `${target}-${id}`, jresToTypeScript, targetBundle, targetBundleSHA256: targetBytes ? hash(targetBytes) : undefined});
             const envelope = makeCodeProjectFile(project.files, {target, name: `${target}-${id}`});
             const projectKey = `${target}:project:${JSON.stringify(project.files)}`;
             if (seen.has(projectKey)) return;
@@ -64,7 +72,7 @@ async function add (target, source, text, origin, license) {
             fs.writeFileSync(path.join(out, dir, name), envelope);
             entries.push({file: `${dir}/${name}`, target, source: `${origin}/${source}`,
                 sourceSha256: hash(Buffer.from(text)), sha256: hash(Buffer.from(envelope)),
-                mainKind: 'selected-code-fence', companionFiles: Object.keys(project.files),
+                mainKind: 'selected-code-fence', companionFiles: Object.keys(project.files), assembly: project.assembly || null,
                 boundary: 'Selected source with tutorial context; not a complete-game or execution claim.', license,
                 ...(jresToTypeScript ? {jresGeneration: jresToTypeScript.provenance} : {})});
         } catch (error) {
@@ -101,6 +109,6 @@ if (arcadeDocs) {
 entries.sort((a, b) => a.file.localeCompare(b.file));
 fs.mkdirSync(out, {recursive: true});
 fs.writeFileSync(path.join(out, 'manifest.json'), `${JSON.stringify({schema: 'brickwright/makecode-corpus/v1',
-    generatedAt: new Date().toISOString(), snippets, projects, count: entries.length, entries, collectionFailures}, null, 2)}\n`);
+    generatedAt: new Date().toISOString(), snippets, projects, editorPolicy: editorPolicy || null, count: entries.length, entries, collectionFailures}, null, 2)}\n`);
 console.log(`${entries.length} MakeCode files written to ${out}; ${collectionFailures.length} project collections failed`);
 if (collectionFailures.length) process.exitCode = 1;

@@ -258,7 +258,7 @@ jobs:
   # joins a group, whatever cancel-in-progress says.
   #
   # Instead: a commit that is no longer main's tip by the time its run starts
-  # still gets `build`, both `unit` shards and `corpus` (source and unit verdicts
+  # still gets `build`, all four `unit` shards and `corpus` (source and unit verdicts
   # remain attributable to that commit), and skips the heavy tail —
   # browser, fpga-surface, deploy, verify-gui — which the tip's own run re-covers
   # anyway, unless main advanced only through excluded documentation (which has
@@ -296,13 +296,13 @@ jobs:
   # Each shard retains identical integrated prerequisites and its own audited
   # file/skip/GUI-resolution census. No Pages artifact is produced here.
   unit:
-    name: unit (${{ matrix.shard }}/2)
+    name: unit (${{ matrix.shard }}/4)
     needs: scope
     if: needs.scope.outputs.fast == 'true'
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1, 2, 3, 4]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -778,7 +778,7 @@ jobs:
       - name: Run unit tests
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' && steps.unit_playwright.outcome == 'success' && steps.stc_flasher_pin.outcome == 'success' && steps.stc_flasher_source.outcome == 'success' }}
         env:
-          BW_TEST_SHARD: ${{ matrix.shard }}/2
+          BW_TEST_SHARD: ${{ matrix.shard }}/4
           STC_COMPILER_FLASHER_DIR: ${{ github.workspace }}/.stc-compiler-flasher
         run: |
           if ! grep -q '"test"' package.json; then
@@ -788,7 +788,7 @@ jobs:
           set -o pipefail
           # This shard partitions the complete non-corpus suite; the two corpus
           # walks remain in their existing required job. They run in the `corpus` job below, in parallel with this
-          # one, and deployment requires corpus, both unit shards and the build. `npm test` locally is still all of it.
+          # one, and deployment requires corpus, all four unit shards and the build. `npm test` locally is still all of it.
           mkdir -p test-results
           # The runner's OWN exit status is captured and returned at the end, so
           # the two readings below print on red runs too — the days they matter
@@ -809,7 +809,7 @@ jobs:
           node scripts/check-gui-scope.mjs --log test-results/fast.gui-scope.tsv
           # Did the run report on what it was handed? Every file
           # scripts/list-tests.mjs puts in this set must appear in the per-file
-          # census with at least one test, and any `not ok` must be counted by
+          # census with at least one test, and ordinary failures must be counted by
           # the summary (header of the script). On a red run this still names a
           # file that vanished or failed to construct, beside the real failure.
           node scripts/check-test-run.mjs --set fast --shard "$BW_TEST_SHARD" --tap /tmp/unit.tap --census test-results/fast.census.json --max-stdout-bytes 0
@@ -830,12 +830,8 @@ jobs:
           # A construction failure is the WORST kind to lose: the gate did not
           # run at all, so it cannot have found anything, and a green line says
           # it did. This repo has found five gates that could not fail; this one
-          # could not even be built. Read the stream, not the summary.
-          if grep -qE '^not ok ' /tmp/unit.tap; then
-            echo "::error::TAP reports failures the summary did not count — a suite probably threw while being CONSTRUCTED (a missing import, a fixture that cannot be built). Those are not counted in \`# fail\` and may not affect the exit code."
-            grep -E '^not ok ' /tmp/unit.tap | head -20
-            exit 1
-          fi
+          # could not even be built. Classify the stream; TODO stays explicitly pending.
+          node scripts/check-tap-failures.mjs /tmp/unit.tap
           exit "$rc"
 
       - name: Preserve unit shard evidence
@@ -1446,7 +1442,14 @@ jobs:
       # would have shown. Deploying is unaffected: the `deploy` job needs `build`
       # to have succeeded, so an artifact from a red run can be downloaded and
       # never published.
-      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+      - name: Write GUI build source manifest
+        if: ${{ !cancelled() && steps.build_editor.outcome == 'success' }}
+        env:
+          BW_GUI_GIT_EXECUTABLE: /usr/bin/git
+          BW_GUI_REVIEWED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/write-gui-build-manifest.mjs packages/scratch-gui/build
+      - name: Upload GUI Pages artifact
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         if: ${{ !cancelled() && steps.build_editor.outcome == 'success' }}
         with: { path: packages/scratch-gui/build }
 
@@ -1632,19 +1635,20 @@ jobs:
         # Installation is bounded and retried below, but failure remains a real
         # deployment failure: silently skipping every browser gate would turn
         # required acceptance evidence into a soft gate.
-        # The verify scripts import the playwright package from the repo
-        # root; install it ephemerally (--no-save) plus its chromium.
+        # npm ci already installed the root's locked Playwright dependency.
+        # Use that CLI directly; resolving it again adds an unnecessary registry
+        # request and can fail before any browser acceptance runs.
         run: |
           # Playwright's chromium download can hang on a flaky mirror; with no
           # timeout a stalled download froze the whole deploy for ~90 min. Bound
           # each attempt and retry so it fails fast and recovers.
-          npm install --no-save playwright
+          test -x ./node_modules/.bin/playwright
           # Install apt dependencies once under a root-owned timeout group. A
           # timed-out sudo child otherwise retains the dpkg lock across retries.
-          sudo env "PATH=$PATH" timeout --kill-after=15s 300 npx playwright install-deps chromium
+          sudo env "PATH=$PATH" timeout --kill-after=15s 300 ./node_modules/.bin/playwright install-deps chromium
           ok=0
           for i in 1 2 3; do
-            if timeout --kill-after=15s 300 npx playwright install chromium; then ok=1; break; fi
+            if timeout --kill-after=15s 300 ./node_modules/.bin/playwright install chromium; then ok=1; break; fi
             echo "playwright chromium install attempt $i failed/timed out; retrying"
             sleep 5
           done
@@ -3023,11 +3027,7 @@ jobs:
           if [ -s test-results/corpus.gui-scope.tsv ]; then cut -f1 test-results/corpus.gui-scope.tsv | sort | uniq -c | sort -rn; else echo "  (none)"; fi
           node scripts/check-gui-scope.mjs --log test-results/corpus.gui-scope.tsv
           node scripts/check-test-run.mjs --set corpus --tap /tmp/corpus.tap --census test-results/corpus.census.json --max-stdout-bytes 0
-          if grep -qE '^not ok ' /tmp/corpus.tap; then
-            echo "::error::TAP reports failures the summary did not count — a suite probably threw while being CONSTRUCTED."
-            grep -E '^not ok ' /tmp/corpus.tap | head -20
-            exit 1
-          fi
+          node scripts/check-tap-failures.mjs /tmp/corpus.tap
           exit "$rc"
 
   # THE FLAG-ON BROWSER JOB, the open follow-up named in test/gate-coverage.test.mjs.
@@ -3167,8 +3167,116 @@ jobs:
           if-no-files-found: warn
 
 
+  arcade-numeric-authoring:
+    name: Arcade numeric authoring (official build)
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    env:
+      BW_GUI_GIT_EXECUTABLE: /usr/bin/git
+      BW_GUI_RUN_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      BW_GUI_REVIEWED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with: {node-version: 22}
+      - name: Install gate inputs without building or syncing another SDK
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Admit completed producer and acquire sole original archive
+        id: admitted_gui
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/admit-official-gui-artifact.mjs test-results/numeric-gui-admission
+      - name: Bind compiler to admitted artifact SDK
+        env:
+          BW_ADMITTED_SITE: ${{ steps.admitted_gui.outputs.site }}
+        run: |
+          node --input-type=module - <<'JS'
+          import assert from 'node:assert/strict';
+          import {mkdir,symlink,lstat,realpath} from 'node:fs/promises';
+          import path from 'node:path';
+          const parent=path.resolve('packages/scratch-gui/static');
+          const expected=path.join(process.env.BW_ADMITTED_SITE,'static/makecode');
+          const link=path.join(parent,'makecode');
+          await mkdir(parent,{recursive:true});
+          try {await lstat(link);assert.equal(await realpath(link),await realpath(expected),'Existing SDK must already be admitted SDK');}
+          catch(error){if(error.code!=='ENOENT')throw error;await symlink(expected,link);}
+          JS
+      - name: Install Playwright Chromium for production UI and original SDK
+        run: npx --no-install playwright install --with-deps chromium
+      - name: Serve the admitted original app
+        env:
+          BW_ADMITTED_SITE: ${{ steps.admitted_gui.outputs.site }}
+        run: |
+          python3 -m http.server 8617 --directory "$BW_ADMITTED_SITE" &
+          echo "$!" > test-results/numeric-gui-admission/server.pid
+          node --input-type=module - <<'JS'
+          // Same 30-second readiness bound as the existing browser server.
+          const deadline=Date.now()+30000;
+          for(;;){
+            let ready=false;try{ready=(await fetch('http://localhost:8617/',{signal:AbortSignal.timeout(Math.max(1,deadline-Date.now()))})).status===200;}catch{}
+            if(ready)break;
+            if(Date.now()>=deadline)throw new Error('Admitted site did not become ready');
+            await new Promise(resolve=>setTimeout(resolve,100));
+          }
+          JS
+      - name: Actual production IDE numeric/settings/source-loop authoring
+        env:
+          PROOF_URL: http://localhost:8617/
+          BW_GUI_BUILD_RECEIPT: ${{ steps.admitted_gui.outputs.receiptPath }}
+          BW_GUI_BUILD_ARCHIVE: ${{ steps.admitted_gui.outputs.archivePath }}
+          BW_NUMERIC_GUI_REPORT_DIR: test-results/arcade-numeric-authoring-gui
+        run: node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-numeric-authoring-gui.mjs
+      - name: Actual production IDE event and multiplayer authoring
+        env:
+          PROOF_URL: http://localhost:8617/
+          BW_GUI_BUILD_RECEIPT: ${{ steps.admitted_gui.outputs.receiptPath }}
+          BW_GUI_BUILD_ARCHIVE: ${{ steps.admitted_gui.outputs.archivePath }}
+          BW_EVENT_GUI_REPORT_DIR: test-results/arcade-event-authoring-gui
+        run: node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-event-authoring-gui.mjs
+      - name: Actual production IDE live font metric authoring
+        env:
+          PROOF_URL: http://localhost:8617/
+          BW_GUI_BUILD_RECEIPT: ${{ steps.admitted_gui.outputs.receiptPath }}
+          BW_GUI_BUILD_ARCHIVE: ${{ steps.admitted_gui.outputs.archivePath }}
+          BW_FONT_GUI_REPORT_DIR: test-results/arcade-live-font-authoring-gui
+        run: node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-live-font-authoring-gui.mjs
+      - name: Actual production IDE owned Image authoring
+        env:
+          PROOF_URL: http://localhost:8617/
+          BW_GUI_BUILD_RECEIPT: ${{ steps.admitted_gui.outputs.receiptPath }}
+          BW_GUI_BUILD_ARCHIVE: ${{ steps.admitted_gui.outputs.archivePath }}
+          BW_IMAGE_GUI_REPORT_DIR: test-results/arcade-owned-image-authoring
+        run: node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-owned-image-authoring-browser.mjs
+      - name: Actual production IDE controller repeat authoring
+        env:
+          PROOF_URL: http://localhost:8617/
+          BW_GUI_BUILD_RECEIPT: ${{ steps.admitted_gui.outputs.receiptPath }}
+          BW_GUI_BUILD_ARCHIVE: ${{ steps.admitted_gui.outputs.archivePath }}
+          BW_REPEAT_GUI_REPORT_DIR: test-results/arcade-controller-repeat-authoring-gui
+        run: node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-controller-repeat-authoring-gui.mjs
+      - name: Retain admission and journey failures
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: arcade-numeric-authoring-proof
+          path: |
+            test-results/numeric-gui-admission/metadata.json
+            test-results/numeric-gui-admission/admission.json
+            test-results/numeric-gui-admission/failure.json
+            test-results/numeric-gui-admission/receipt.json
+            test-results/numeric-gui-admission/*.acquisition.json
+            test-results/arcade-numeric-authoring-gui
+            test-results/arcade-event-authoring-gui
+            test-results/arcade-live-font-authoring-gui
+            test-results/arcade-controller-repeat-authoring-gui
+            test-results/arcade-owned-image-authoring
+          if-no-files-found: error
+
   deploy:
-    needs: [build, unit, corpus, browser, fpga-surface, guard]
+    needs: [build, unit, corpus, browser, fpga-surface, arcade-numeric-authoring, guard]
     # TWO RATCHETS READ THESE EXACT CHARACTERS, so the line's shape is load-bearing
     # even though Actions treats `needs` as an unordered set and ignores comments:
     #   - pages-deploy-ordering matches /needs:\s*(?:build|\[\s*build\b...)/, so

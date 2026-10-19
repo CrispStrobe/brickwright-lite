@@ -1,6 +1,6 @@
 // Generated from pinned pxt-common-packages simulator image algorithms (MIT).
 // Copyright (c) Microsoft Corporation. See static/licenses/pxt-common-packages.MIT.txt.
-// Source algorithms SHA-256: f55e06de58ddd688f5d25cbeb0d99619a7222cbc06dd7a5c6838fcfaf0afc4db
+// Source algorithms SHA-256: 3b750a29ed2890d76e8d0e3744b4b6ae3b1178ad148e251f6ea6d0298cb138a6
 // Regenerate: node scripts/generate-arcade-image-operations.mjs
 module.exports = function initializePxtImageOperations() {
 function setPixel(img, x, y, c) {
@@ -222,6 +222,29 @@ function equals(img, other) {
                 }
             }
             return true;
+        }
+function fillCircle(img, cx, cy, r, c) {
+            let x = r - 1;
+            let y = 0;
+            let dx = 1;
+            let dy = 1;
+            let err = dx - (r << 1);
+            while (x >= y) {
+                fillRect(img, cx + x, cy - y, 1, 1 + (y << 1), c);
+                fillRect(img, cx + y, cy - x, 1, 1 + (x << 1), c);
+                fillRect(img, cx - x, cy - y, 1, 1 + (y << 1), c);
+                fillRect(img, cx - y, cy - x, 1, 1 + (x << 1), c);
+                if (err <= 0) {
+                    y++;
+                    err += dy;
+                    dy += 2;
+                }
+                if (err > 0) {
+                    x--;
+                    dx += 2;
+                    err += dx - (r << 1);
+                }
+            }
         }
 const TWO_PI = 2 * Math.PI;
         const HALF_PI = Math.PI / 2;
@@ -494,7 +517,38 @@ const TWO_PI = 2 * Math.PI;
             }
             return false;
         }
-return {setPixel, getPixel, fillRect, drawLine, drawImage, drawTransparentImage, overlapsWith, equals,
+function drawCircle(img, cx, cy, r, col) {
+        cx = cx | 0;
+        cy = cy | 0;
+        r = r | 0;
+        // short cuts
+        if (r < 0)
+            return;
+
+        // Bresenham's algorithm
+        let x = 0
+        let y = r
+        let d = 3 - 2 * r
+
+        while (y >= x) {
+            img.setPixel(cx + x, cy + y, col)
+            img.setPixel(cx - x, cy + y, col)
+            img.setPixel(cx + x, cy - y, col)
+            img.setPixel(cx - x, cy - y, col)
+            img.setPixel(cx + y, cy + x, col)
+            img.setPixel(cx - y, cy + x, col)
+            img.setPixel(cx + y, cy - x, col)
+            img.setPixel(cx - y, cy - x, col)
+            x++
+            if (d > 0) {
+                y--
+                d += 4 * (x - y) + 10
+            } else {
+                d += 4 * x + 6
+            }
+        }
+    }
+return {setPixel, getPixel, fillRect, drawLine, drawCircle, fillCircle, drawImage, drawTransparentImage, overlapsWith, equals,
     drawScaledRotatedImage, checkOverlapsScaledRotatedImage: _checkOverlapsScaledRotatedImage,
     checkOverlapsTwoScaledRotatedImages: _checkOverlapsTwoScaledRotatedImages};
 };

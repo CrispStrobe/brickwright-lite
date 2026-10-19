@@ -65,11 +65,10 @@ let last=counter`,['post','pre','down','preDown','skipped','chosen','receiverCal
 });
 
 
-// Pinned PXT evaluates a side-effecting array index twice for a consumed
-// update. The general TS lowerer deliberately retains JavaScript's once-only
-// lvalue evaluation. This is an explicit compatibility difference, not a
-// claim of complete PXT parity for side-effecting complex update targets.
-test('complex update index effects retain JS semantics; pinned PXT duplication stays named',async()=>{
+// Imported Arcade source uses the selected PXT expression staging, including
+// repeated evaluation of a consumed update's side-effecting array index.
+// Ordinary authored JavaScript lowering remains a separate source path.
+test('complex update index effects retain selected PXT staging',async()=>{
     const source=`let slots=[4]
 let indexCalls=0
 function slot(){indexCalls++;return 0}
@@ -82,6 +81,19 @@ let result=slots[0]`;
     assert.deepEqual(imported.unsupported,[]);
     const run=await runProgram(imported.code,{frames:30,storage:true});
     assert.deepEqual(run.errors,[]);
-    assert.equal(values(run).indexCalls,2,'each JS lvalue index evaluates once');
+    assert.equal(values(run).indexCalls,original.indexCalls,'imported Arcade retains selected index evaluation');
     for(const name of ['before','after','result'])assert.equal(values(run)[name],original[name],name);
+});
+
+
+test('native consumed complex update preserves selected index effects through editable routes',async()=>{
+ const source='let slots=[4]\nlet indexCalls=0\nfunction slot(){indexCalls++;return 0}\nlet before=slots[slot()]++\nlet after=++slots[slot()]\nlet result=slots[0]';
+ const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);const runs=[];
+ const check=run=>{const actual=values(run);assert.equal(actual.indexCalls,4);assert.equal(actual.before,4);assert.equal(actual.after,6);assert.equal(actual.result,6);assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);};
+ try {
+  const execute=async input=>{assert.deepEqual(input.unsupported,[]);const run=await runProgram(input.code,{frames:30,storage:true});runs.push(run);check(run);return run;};
+  const run=await execute(imported);await execute({...imported,code:run.creator.decompile()});
+  const exported=projectToArcade(run.creator.project);assert.deepEqual(exported.unsupported,[]);await execute(arcadeToPseudocode(exported.files));
+  await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,30);check(run);
+ } finally {for(const run of runs){run.vm.stopAll();run.vm.quit();}}
 });

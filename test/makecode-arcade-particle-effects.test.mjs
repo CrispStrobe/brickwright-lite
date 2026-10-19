@@ -1,6 +1,6 @@
+import {createArcadeRuntimeMock} from './helpers/arcade-runtime-mock.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {EventEmitter} from 'node:events';
 import {execFileSync} from 'node:child_process';
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
@@ -11,9 +11,9 @@ const Arcade = loadExtensionClass('arcade');
 
 // A renderer recording drawables, their order and skin contents.
 function fixture() {
-    const runtime = new EventEmitter(), drawables = new Map(), skins = new Map(), errors = [];
+    const runtime = createArcadeRuntimeMock(), drawables = new Map(), skins = new Map(), errors = [];
     let nextDrawable = 0, nextSkin = 0, nextOrder = 0;
-    runtime.startHats = () => [];
+
     runtime.requestRedraw = () => {};
     runtime.on('BLOCKS_ERROR', message => errors.push(message));
     runtime.renderer = {
@@ -151,6 +151,9 @@ test('particle overlays share the sprite z then id order and are removed on rese
     const spriteDrawable = id => f.arcade._inst._imageSkins.get(id).drawableId;
     assert.ok(f.drawables.get(overlay).order > f.drawables.get(spriteDrawable(high)).order, 'FireSource z=20 above z=0 sprites');
     f.arcade.setSpriteProperty({ID: high, PROPERTY: 'z', VALUE: 30});
+    assert.equal(f.state().flags & 1, 1, 'z writes dirty the actual current Scene until it renders');
+    await f.frames(1);
+    assert.equal(f.state().flags & 1, 0, 'the next actual Scene render performs and clears sorting');
     assert.ok(f.drawables.get(spriteDrawable(high)).order > f.drawables.get(overlay).order);
     f.runtime.emit('PROJECT_START');
     assert.equal(f.arcade._inst._particleOverlays.size, 0);

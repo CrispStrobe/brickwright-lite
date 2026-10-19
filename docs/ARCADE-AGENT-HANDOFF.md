@@ -1,6 +1,6 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
-Updated 2026-10-13. The current-state refresh below supersedes the older
+Updated 2026-10-16. The current-state refresh below supersedes the older
 2026-10-10 checkpoints retained later in this guide. This is the public
 entry point for continuing MakeCode compatibility work without chat history.
 Read the optional, gitignored `docs/ARCADE-AGENT-HANDOFF.local.md` for the
@@ -12,6 +12,1296 @@ The [native frame scheduler contract](ARCADE-FRAME-SCHEDULER.md) records the
 open startup and pause/callback phase limits and the claimed implementation
 envelope. Merge that lane claim before changing the product hook; finite
 prototype traces do not close its exact timing or installed-GUI gates.
+
+Latest hosted editor evidence: the five journeys on consumer `777aae8e`
+pass the official [authoring job](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38793608489/job/116659147575).
+They cover visible Blocks and Code edits, fresh-session save/reopen and current
+export/reimport. See the [exact scope and remaining limits](compatibility/arcade-numeric-authoring-gui.md#official-five-journey-result--2026-10-15).
+The same workflow retains three failed unit shards; this is not an all-checks
+passing integration. The corrected canonical compiler is separately under
+[PR158](https://github.com/CrispStrobe/sb3-creator/pull/158); it is not the
+compiler used by that hosted editor evidence.
+
+## Development results and next gaps — 2026-10-16
+
+These results concern the reviewed development composition. They do not establish
+that its source has landed on public main or that the latest editor build has
+passed every hosted check. The immutable corpus remains **147 translated /
+36 partial / one malformed input**; no whole-project totals changed.
+
+- The maintained null-Sprite regression suite passes all eight tests. The six
+  unaffected test bodies remain unchanged. The other two use the qualified
+  sequential VM lifecycle and current artwork callbacks, avoiding overlapping
+  VM dispatch owners. Five routes of the authentic flame project also match
+  its observed original x-getter fault boundary. Actual runtime image pixels
+  are checked separately from the blank Scratch clone costume; later projectile
+  and velocity effects remain blocked. This is bounded native evidence, with
+  controller timing and visible-editor limits retained.
+- Free throw passes current dependency-aware public import, Creator, Code, save
+  and export after the nested private-reset proof. All 35 focused controls and
+  all 42 current Array receivers pass while retaining every statement. An
+  earlier headless native controller observes a genuine shot, overlap, score
+  and ball destruction across public Code, current Code and same/fresh saved
+  projects, with actual runtime artwork. The current runtime composition has
+  separate saved-project qualification: it preserves the shot and reaches
+  the 30-second countdown, completes the game's original 400 ms and 500 ms
+  pauses, receives a real Right input at its pending button waiter, and lets
+  the game restart itself. New owned actors, score zero, retained high score
+  one, one handler per registration and the displayed score text/icon are
+  checked after restart. This does not qualify initial activation, rendered
+  editor output, terminal graphics/audio parity, or other terminal routes.
+  Repeated source growth and preparation of the latest distinct exported root
+  remain separate work.
+
+- Generic Image expressions and exact fixed-instance JRES owners have focused
+  controls. Rockscout retains all 48 resource pixel bodies and 43 unique helper
+  bodies, but its source still has 79 unsupported diagnostics. Holiday retains
+  all 58 helper bodies and 150 call records, but has 143 unsupported source
+  diagnostics and two Creator unparsed entries. Class ownership, callback
+  result flow and remaining default protocols need implementation.
+- Omitted ordinary arguments preserve original formal/default provenance and
+  pass 13 focused controls. This does not establish class or ambient receiver
+  proofs, or the remaining mixed Carnival default protocol.
+
+Next, close the remaining source-stability and complete-project gaps, and
+carry the newly qualified native behavior through visible editor/controller
+journeys. Keep the [scene-clock Number producer](ARCADE-CLOCK-NUMBER-PRODUCER.md)
+and [frame scheduler](ARCADE-FRAME-SCHEDULER.md) boundaries explicit. Preserve
+all current bodies, assets and diagnostic channels on each affected route.
+The [GUI capability ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md) tracks
+Code, Blocks, graphics, runtime/controller, persistence and export acceptance
+separately. The five older hosted editor journeys remain the latest hosted
+GUI evidence; these new native results do not extend their coverage.
+
+## Current method and qualification frontier — 2026-10-15
+
+Exact source `Math.idiv` now has [bounded native conversion and current-edit
+qualification](compatibility/arcade-source-math-idiv.md). A nested named helper
+capturing an outer parameter remains an explicit failing case; original-runtime
+and visible-authoring gates are open.
+
+Start with the [partial closure plan](ARCADE-PARTIAL-CLOSURE-PLAN.md) and
+[LANES.md](../LANES.md). The raw corpus remains **147 translated / 36 partial /
+one parse failure** with immutable inputs. A conservative 20-row floor contains
+external asset references absent from those raw files. Use authentic project
+context to investigate them; do not repair snippets or relabel the raw census.
+
+The latest separate 29-project profile at development composition `36805661`, using
+the complete canonical compiler `8b620dd`, selects the same retained
+original-compiler successes: **20 source/Creator clean, 20 current-export clean
+after clean input, 19 complete pure routes clean**. All twenty clean-input
+exports and nineteen complete identities from `d14e9ccf` remain clean. Two
+already partial graphs now receive explicit Array export diagnostics; neither
+was a complete case. See [the ten incomplete routes](compatibility/arcade-current-remaining-project-gaps.md)
+and [current Array export authority](compatibility/arcade-array-current-export-authority.md).
+The same identities remain clean after the source wait and Math.idiv composition;
+actual Creator `unparsed` diagnostics are now retained as well. This does not
+promote a whole project. It exercises import, Creator, Code feedback,
+saved Blocks/assets and current export/reimport, with all diagnostic channels
+retained. It runs no SDK, native game or GUI. The historical `a32d6ef0a` profile
+had eighteen complete routes; `b1ef5e4ea` measured
+20/18/16. Do not confuse structural source admission with complete roundtrips.
+
+Tile reservation fixes account for the two measured complete-route improvements.
+Freethrow's 26 root-only reimport refusals disappear with its actual declared
+`arcade-text` dependency context, but that focused check does not promote a whole
+profile. Lyla's current required primitive formal metadata survives the complete
+pure route, including its unused String helper. Its corrected source
+`pauseUntil` scheduling now passes five bounded native startup/input/restart
+routes; its selected original now also confirms bounded startup/A/Right behavior.
+[Pickup, current-export and visible-authoring gates remain open](compatibility/arcade-authentic-project-qualification.md#lyla-condition-wait-correction--2026-10-15).
+Never prune its unused helper or restore original source.
+
+The development composition `049bf6b5a` passes 155 affected controls against the
+complete corrected canonical compiler, with 785 unchanged file guards and 174
+matching VM overlays. This qualifies those native/portable controls only. A real
+selected-runtime comparison exposed an omission-versus-explicit-Undefined default
+argument mismatch. The corrected omission flags now preserve that distinction;
+a genuinely new edited export matches all six selected-runtime observations.
+See [the actual mismatch](#actual-default-argument-mismatch-and-visible-display-boundary).
+That older control batch does not qualify native behavior for the latest pure
+profile, shipped consumer adoption or whole-game compatibility.
+
+Existing `.mkcd` import/CLI support already accepts complete project files.
+Offline preparation must bind actual dependencies to the current exported root,
+preserve edited source/art and distinguish original files from prepared
+sidecars. Missing package context is a named input limitation, not automatically
+an unsupported API. Retain warning, error and unsupported channels independently;
+unknown channels cannot pass a strict gate.
+
+The selected-original Map semantic contract now records 69 global observations.
+Its first readiness observer failure and successful cached-binary recovery remain
+retained, with source unchanged. The native/source Map development prototype has focused conversion and lifetime
+controls; consumer adoption and visible authoring remain separate gates.
+
+### Animation resources and first authentic guest controls
+
+The development composition `0c135e407` includes the independently reviewed
+animation producer fix. Resource factories no longer allocate unused image
+costume targets that current export turned into an observable invisible Player.
+Actual frame resources remain editable and portable; genuine authored hidden
+actors remain actors. Fourteen affected native controls pass in the composition,
+with 764 unchanged guards and the same 174 VM overlays. Both affected authentic
+projects pass five native routes, including current export/reimport, with full
+actor inventories checked. Their earlier saved erroneous exports remain held;
+there is no heuristic repair of ambiguous user actors.
+
+One unchanged authentic project also passes its first cached-original startup
+and real DOM controller check: Right moves its sprite, release stops it, and
+life remains three. This reused its retained compiled binary without another
+compile. Its genuinely new current export also passes the selected startup and
+controller comparison described below. Neither result establishes complete gameplay or visible authoring,
+and neither changes the whole-project census.
+
+Two more authentic projects now pass the same five native routes. Basketball
+preserves its athlete, hoop, motion and countdown. Winter's complete context
+initializes three actors and a splash before registering the root interval;
+real A input resumes that scene, then its snow callbacks advance. The first two
+Winter observers made incorrect root-only assumptions and remain recorded as
+failures. The corrected observations preserve all actors and input files.
+These are bounded local controls with headless warnings, not original-runtime,
+visible-editor or whole-project promotions.
+
+The private development composition `50d863fbc` includes the reviewed optional
+Array owner and supplier pre-effect pairing. It validates after argument
+coercions and before corresponding writes, preventing the earlier observed
+mutation. Across 29 modules, 207 controls passed with one sparse-metadata setup
+failure; materializing the unchanged tracked metadata allowed only that module's
+six controls to pass. Six actual mutation-boundary probes and the production
+default-off control also pass. Independent review verifies all 175 installed VM
+overlays and the full canonical compiler source. Old failures remain evidence.
+This is an optional untyped host: the production supplier pin and registration
+are unchanged. Typed Array formals, derived views and named-registry restart
+policy still require real producer, writer and lifetime proofs.
+
+The [authentic project ledger](compatibility/arcade-authentic-project-qualification.md)
+now separates the sixteen retained compile-valid asset contexts by pure, native,
+selected-original and visible-authoring gates. Twelve have bounded five-route
+native controls. The difficulty sample uses the real prompt queue and one answer
+per route, then Right press/release. The flamethrower current export also matches
+all six retained selected-original observations, including measured clock/frame
+and trusted input edges, after one new compile and one start. Its actual emitted
+Sprite/Info bindings are derived independently from the new binary. No original
+replay, whole-game, visible-editor or census promotion follows.
+
+Both pizza contexts now pass their ten native routes with real splash input,
+complete resources and a four-second song wait. The conditional helper observes
+no connection before the splash and creates no actor; this is retained, not
+silently repaired. Exact selected-original startup remains a separate gate.
+The first observer failed after another VM replaced a global registry entry;
+sequential VM ownership preserves the same checks without dispatcher rebinding.
+See the ledger for the precise behavior and remaining qualification gates.
+
+### Current hosted checks and held candidates
+
+Canonical [PR157](https://github.com/CrispStrobe/sb3-creator/pull/157) is merged
+at `ca0e177b`, with every enabled check successful and reviewed/landed trees equal.
+Consumer adoption must preserve independently owned board/UI pins and use the
+normal compiler writer, including `procedureParameterConstraints.js`.
+
+Consumer [PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888) is now
+at CI-only `9133a871b`; [its new Build](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38763540246)
+is pending. The preceding `b190d3e7d` campaign is closed: heavy/light browser,
+build, corpus and FPGA passed; unit-three TODO accounting, unit-four event
+observation and the official Image selector wait failed. These original failures
+are retained. The new head changes seven test/workflow files, with product and
+pins unchanged; it needs its own hosted qualification. The prepared visible
+Game Console journey is a later candidate, not part of this published head.
+
+### Historical hosted checkpoint (superseded by the current head)
+
+[PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888),
+[Build38718916848](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38718916848),
+has successful build, corpus, both browser shards and FPGA checks. Completed
+unit censuses are:
+
+| Required shard | Total | Pass | Fail | Skip | TODO |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| [One](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38718916848/job/116380209371) | 2364 | 2356 | 1 | 6 | 1 |
+| [Three](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38718916848/job/116380209378) | 2436 | 2425 | 2 | 8 | 1 |
+
+Neither shard has cancelled tests. Shards two and four are successful; their
+censuses have not been acquired. All six parent campaigns and 24 actual child
+jobs are closed, including successful official numeric authoring and debugger
+checks. The original run remains failed on the two recorded shards. Local corrections `02b87cc72`, `40048a9c7` and `5c4b3a762`
+are reviewed stale-test candidates, not new hosted passes. The new GUI candidate
+`a11` has not run. Preserve earlier failures and cancelled/incomplete runs;
+the older eleven-failure/no-census text below describes those earlier runs.
+
+The six coordinated claims in
+[PR954](https://github.com/CrispStrobe/brickwright-lite/pull/954), head `e978`,
+merged normally at `8205ef07`, with every enabled exact-head check successful.
+Bounded implementation is in progress; product and GUI qualification remain open. The supplier's
+canonical protocol docs [PR156](https://github.com/CrispStrobe/sb3-creator/pull/156)
+are merged without a compiler pin move. No final all-enabled-checks, installed
+GUI or complete-game claim follows from these partial results.
+
+## Later measured frontier — 2026-10-15
+
+This section supersedes the earlier development and profile status above.
+The raw corpus remains **147 translated / 36 partial / one malformed input**.
+The new profile at `31abb5767`, using the same 29 original-valid complete
+projects, measures **20 source/Creator clean, 20 current-export clean and
+18 complete pure routes clean**. The full candidate compiler plus explicit
+Throw prototype measures the same counts. These are portable conversion
+results; no SDK game, controller or graphics-editor result follows from them.
+Nine projects still fail at source admission. The two later-stage cases retain
+a missing dependency context and unsupported helper constraints respectively.
+
+Private development composition `0fa7d5ff9` passes **138 affected controls**
+with the complete corrected canonical compiler candidate `9d3e222e`.
+All 779 selected source, installed and compiler file guards remain unchanged;
+174 VM overlay mirrors match. The tests cover native Procedure entry and
+writes, source annotation prefixes, primitive Throw, owned Sprite creation,
+Map lowering and current export. They do not establish production adoption.
+
+The ordinary Procedure source prototype retains required primitive constraints
+for supported ordinary and namespace declarations. Number compound writes
+require real Number operands. The later explicit prototype also preserves
+supported optional Any parameters and conditional primitive Any defaults.
+Typed optional/default, generic, reference and mixed signatures remain explicit
+diagnostics. The exact authentic Lyla source follow-up improves from six to
+five diagnostics through optional Any support; it is not whole-project closure. Constraints remain obligations and never become
+observations that a parameter has an actual value.
+
+The corrected [canonical candidate](https://github.com/CrispStrobe/sb3-creator/pull/157)
+rejects hidden inputs, inconsistent prototypes and malformed constrained
+calls instead of dropping executable data on Code reconstruction. Its 457
+focused controls pass. Its new exact-head hosted checks and normal merge are
+still required. Consumer adoption must use the repository's vendor writers,
+include the new constraint module in the identity mapping, and preserve other
+lanes' hardware pins. Do not edit copied vendor files to introduce the words.
+
+### Next work in dependency order
+
+1. Finish all actual hosted jobs for the current published consumer and
+   corrected compiler heads. Preserve the original failures. The consumer's
+   unit-four failure exposed missing editor-closing assertions; the reviewed
+   correction passes eleven focused controls with the baseline unchanged.
+   Its actual browser execution remains pending.
+2. Qualify and adopt the canonical words, then verify ordinary annotation,
+   Throw and owned Sprite authoring in the installed Blocks and Code editors.
+   Follow the [GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md); native
+   registration alone does not establish visible authoring.
+3. Extend the now passing optional Any/primitive Any-default prototype only
+   with proper invocation rules. Typed optional/default entry remains open;
+   do not place a strict Number constraint before a default initializer and
+   thereby reject a legal omitted argument.
+4. Add real Array operation and alias guards before admitting Array formal
+   constraints. Cover raw inputs, named aliases, all mutation paths, captured
+   lifetimes, foreign runtimes and failure completion. Existing Array transport
+   already preserves references; converting them to strings is not the gap.
+5. Prove Settings results from the real decoder. Numeric settings can return
+   an Array, Undefined or Null. An Undefined-only branch does not prove Array;
+   a nullish Map must not silently act like an empty Array. Only then reassess
+   the unchanged Settings project and handler-record Array cases.
+6. Re-run affected complete-project routes after genuine capabilities land.
+   Promote a case only when all diagnostic channels and current roundtrip
+   stages pass. Keep raw-input, authentic-context, native and GUI counts
+   separate. Missing authentic assets remain named input limitations.
+
+## Earlier composition and canonical creator adoption — 2026-10-15
+
+The following checkpoints are retained in chronological context and superseded
+by the method, stage counts and hosted status above where they differ.
+
+Implementation checkpoint `8aa1dfef0` includes main `06f647be5`, qualified
+creator repairs and default admission for the bounded owned Image class/callback bridge. The creator
+pin is `f2d4f879ba40dd9025070ed51af11ebe1ef14808`; standard sync checks all
+20 mapped files with zero downstream differences. Supplier
+[PR153](https://github.com/CrispStrobe/sb3-creator/pull/153) and
+[PR154](https://github.com/CrispStrobe/sb3-creator/pull/154) each passed all four
+enabled checks before normal merge, with reviewed and landed trees equal.
+The main branch's STM32/i8086 changes and board pin are retained.
+
+The Image/captured/named/Number composition passes 78 focused controls.
+After creator adoption, another 24 affected consumer controls and six vendor
+identity controls pass; these overlapping groups are not a full-suite census.
+Two exact Image source/edited-export SDK programs pass, as recorded in the
+[Image contract](compatibility/arcade-owned-image-class-callables.md).
+Default admission now passes 119 affected controls and seven independent
+controls. The source selector retains the actual completed proof identity;
+current export validates the full current graph and reconstructed source.
+Native, Code, edited blocks, same/fresh SB3 and export/reimport routes pass.
+Duplicate variable IDs across targets refuse; legitimate Stage globals retain
+their actual producer ownership. Hosted class authoring remains open.
+
+Literal factory producers are now integrated at `d011d18fe`. Six independent
+controls cover fresh allocations and aliases, all four pixels, actual editor
+save/rename methods, asset remapping, same/fresh SB3 and current export/reimport.
+Two genuinely new selected-original programs match their exact frozen inputs
+and native observations, with source and edited-art scores 19 and 23. Current
+resource export requires exclusive clone edges and actual target/costume
+identities before sharing one decoded snapshot. PNG, custom palettes, dynamic
+dimensions and Sprite producers remain excluded; hosted visual authoring is
+still open. See the Image contract for the exact admitted boundary.
+
+The bounded Image drawing follow-up now admits actual `fill` and `fillRect`
+receivers and Number operands in those callbacks. Two new exact source and
+connected-color-edited export programs match all nine pixels and one argument
+callback effect in the selected runtime. Native source, Code, same/fresh SB3,
+current edited export and reimport pass. An unused fill replacement socket
+cannot erase an evaluated reporter during export; only inert Number literals
+are admitted there. Existing drawing blocks implement the operations.
+
+Two integration regressions are locally corrected. Disposed Image services stay
+inert during shared Start events and become live only through a legitimate
+project replacement and subsequent Start. Existing static/forwarded callbacks
+and named scene procedures keep their complete established lowering route;
+stored named values still require their separate strict proof. Six routing
+controls and a nine-control routing/drawing composition pass. These are local
+corrections, not a passing final-head hosted claim.
+
+A follow-up at `e577d6547` fixes two actual class roundtrip boundaries:
+finite signed Number literals retain their existing carrier, and proved Void
+calls beginning with parentheses have explicit statement delimiters. Three
+independent source/native/export/reimport controls pass. General unary
+coercion remains refused; these repairs do not qualify a new SDK program.
+
+The [Arrays Number-input contract](compatibility/arcade-arrays-current-number-inputs.md)
+is merged. Shared current-input ownership and the candidate canonical source
+correct all nine authored-block controls, including four retained failures.
+The supplier's [PR48](https://github.com/CrispStrobe/extensions/pull/48) has two
+independent local reviews, but GitHub rejects its CI dispatch with “Actions has
+been disabled for this repository.” No supplier pin or bundle adoption follows
+from absent checks. Preserve that rejection while continuing independent work.
+
+The previous integration run passed both browser shards, FPGA and corpus;
+its build and unit prerequisites stopped on a stale expected compiler pin.
+The complete SPIKE artifact control now passes at the actual adopted revision.
+At published `a30cb432c`, both browser shards, the official numeric authoring
+journey, build and corpus now pass. The animation Pixel/Code/Blocks/export
+journey genuinely ran and passed on that source. Unit shard two has five
+failures; shard one reached its unchanged 30-minute bound without a census and
+contains one additional Sprite constructor-service export failure, now locally
+corrected as described below. Their
+original results remain retained. The local workload correction requires four
+complete, independently audited unit shards with the same budgets and hard
+publication gates. Fresh final-head hosted qualification is still required.
+
+The actual Sprite factory field-export correction is integrated at
+`8aa1dfef0`. Canonical factory blocks and actual registered Sprite subclass
+ancestry supply separate export constraints; annotations and raw IDs do not
+supply runtime ownership. Actual Number writes survive Code, same/fresh SB3,
+current connected edits and export/reimport. Text writes to Number fields,
+readonly/unknown SDK writes, malformed factories and mixed opaque receivers
+refuse, including local and returned aliases. Thirty-six affected owner
+controls and ten independent integrated controls pass; these overlap and are
+not a suite census. The retained full constructor-service current export now
+passes. Fresh hosted qualification remains required.
+
+The fresh raw184 audit at clean `8aa1dfef0` remains **147 translated /36 partial
+/one parse failure**, with every original Git blob verified. Authentic contexts
+remain a separate **29 original-valid /20 strict /nine blocked** observation.
+Next: the procedure parameter contract and value-map lanes; proper discarded
+expressions and Throw syntax/runtime contracts; canonical Arrays CI and
+consumer/GUI qualification. The under-20-partials milestone is not reached.
+
+## Captured cells and valid class exports integrated — 2026-10-15
+
+Local integration `ff720cda29320f352d24ad1b7cb18a5cdfafb089` adds reviewed
+[captured primitive cells](compatibility/arcade-console-captured-cells.md) and
+valid class-export repairs. A 73-control combined selection passes with named
+functions, Player producers, managed Number boundaries, Code/SB3 roundtrips,
+the two runtime repairs and the source/mirror check. Full hosted qualification
+is still required; this is not a full-suite or main-adoption claim.
+
+Captured inspection now follows actual globally unique registration tokens,
+scoped cells, forwarded formals and every local/captured writer, including
+nested registrations and mutable primitive siblings beside an opaque Image.
+Stop/restart and current graph edits retain their ownership guards. Lyla now
+exports without the captured-inspection refusal, but its unused text helper
+loses a parameter constraint on export and still prevents full reimport.
+Preserve that body and fix the parameter ABI; do not prune it or waive the
+text producer check. Selected-original captured controls are a separate gate.
+
+Class exports now retain actual Undefined/Null facts, concrete array allocation
+and element/writer flow, converged producer equations and exact inherited
+intrinsic constructor descriptors. Incompatible Number/Text edits still refuse.
+The producer repairs incorrect parent links in nested conditions; the matching
+canonical change is [sb3-creator PR153](https://github.com/CrispStrobe/sb3-creator/pull/153),
+with separate qualification and pin adoption. Malformed source roots, missing
+edges, shared children and cycles explicitly refuse; cyclic statement walks
+terminate. A genuine malformed-root bypass found during review remains retained.
+
+The static rerun at `e9f4a909b` still reports **147 translated / 36 partial /
+one parse failure**. Every input was compared again with its actual frozen Git
+blob. Authentic context structural counts remain 20 of 29 original-valid
+contexts; neither those counts nor focused passes establish complete gameplay.
+
+## Named values, Player producers and runtime follow-up — 2026-10-15
+
+Local integration `4638b66172ca53dc6154ebb01217e7eb0ddbbe40` adopts the
+reviewed named-function and Player Number lanes alongside two runtime repairs.
+These changes still require complete hosted qualification before adoption on
+main. The raw184 corpus remains **147 translated / 36 partial / one parse
+failure**; the fewer-than-20-partials milestone has not been reached.
+
+- [Named declaration values](compatibility/arcade-named-function-values.md)
+  retain real function identity, Number/String returns and Void continuation
+  across native, Code, saved-project and edited export routes. Two genuinely
+  new selected-original programs compile and execute: the actual edit changes
+  the Number result from seven to eleven while preserving identity and 19
+  once-only effects. The first fixture's compiler refusal from a global name
+  colliding with the SDK is retained. Capturing globals, mixed callable plans
+  and class Holder consumption remain explicit boundaries.
+- [Player Number producers](compatibility/arcade-player-number-producers.md)
+  require an actual unchanged registered connection-event Player and fixed
+  Number property. Aliases and forwarded arguments retain the value; falsey
+  pre-event states remain zero. Native, Code, same/fresh SB3 and current
+  export/reimport controls pass. In the authentic retained41 audit, 29 contexts
+  remain historically original-valid; 20 now pass current strict structural
+  checks and nine remain blocked. Lyla is the sole improvement, with 608 blocks
+  and 20 imported costumes. Its captured-variable inspection still prevents
+  current export; this is no runtime, full-game or GUI promotion.
+- [Runtime and hosted failures](ARCADE-UNIT-FAILURE-FOLLOWUP.md) track stale
+  executable caches after extension refresh and shared caller context lost
+  during nested Sprite callbacks. Both have actual native reproductions and
+  independently reviewed engine corrections. The cancelled hosted unit logs
+  retain eleven failed controls, including separate class-export proof gaps;
+  no complete unit census or hosted GUI repair is claimed.
+
+The named/runtime composition passes 35 selected controls; adding Player
+passes 31 affected controls. These overlapping selections are not an aggregate
+full-suite count. Image owner/source and captured-variable proof work remain
+separate lanes. Preserve Number/Text refusals while extending actual producers.
+
+## Console and real local defaults integrated — 2026-10-15
+
+Local integration `cceebcfc4d4109f216fb38e7db50e7860d9c0283` normally adopts
+reviewed console inspection and real primitive local declaration defaults. The
+consumer compiler pin is now qualified supplier
+`4e8a287244d31d82ac84dbef609f48f2c10efab2` (399 operations, 404 spellings).
+The qualified current VM overlay contains 162 source files. Source admission
+uses actual lexical producers, initialization and every writer; edited export
+independently checks directed primitive operands. Image operands and generic
+`console.inspect<number>` cannot obtain a primitive grant.
+
+Four genuinely new original compiler attempts produced three successful guests
+and one retained predeclaration compiler refusal. Primitive source and its
+actual edited export match their expected strings, once-only effects and all
+19,200 Image/display pixels. The original local-default program observes
+`undefined` for typed/untyped primitive locals and globals, aliases and returns.
+A fifth, genuinely changed current export separately compiles and executes with
+those same observations. The unchanged source was not replayed.
+
+Local declarations now emit actual Undefined at their declaration when the
+unique primitive/untyped `let` binding is proved. Predeclaration reads and
+unsupported reference declarations remain refused. No blanket local lookup
+fallback or annotation supplies the value. The composed selection reports 98
+passes and one environment failure from an obsolete external creator override;
+the affected local-default selection passes all three checks with the current
+bundled creator. Existing class, managed Number, bitwise and Font controls pass.
+
+The newly repeated immutable raw184 audit still reports **147 translated /
+36 partial / one parse failure**; all 184 files match the frozen corpus Git
+blobs. This bounded integration makes no complete-project promotion. PR888 is
+still published at `6350fba49` while that full diagnostic runs; do not overwrite
+it with this later local source until the surviving run finishes.
+
+A separate [Arrays input claim](https://github.com/CrispStrobe/brickwright-lite/pull/949)
+is under review in PR949. Actual authored Number shadows currently lose their
+intent in Arrays value operations: 20 + 1 yields text `"201"`, and Number zero
+is treated as truthy text. The canonical supplier and shared current-input
+bridge must be corrected with exact producer ownership. A global Scratch
+shadow conversion would exceed this contract.
+
+## Latest integration checkpoint — 2026-10-15
+
+Local `1e65f988c24df35ec99a33ba68520ec529f7fb7a` normally composes main
+`84da6d07e` and the qualified managed Number adapters. It also implements the
+[six identifier bitwise compounds](compatibility/arcade-primitive-bitwise-compound.md).
+Eighteen focused checks pass independently; two exact ordinary source/export
+programs pass selected-original execution. Captured factories have native and
+portable evidence, with original execution still open. The raw184 count remains
+**147 translated / 36 partial / one parse failure**.
+
+Published PR888 remains `60de95e9`. Its replacement full run is complete and
+failed: unit shard 1 reports 4,705 tests, 4,686 passes, three failures, 14 skips
+and two TODOs. Shard 2 was cancelled and supplies no completed census. The three
+failures concern legacy scene timer observation, yielding speech creation and
+terrain contact timing. Local test corrections preserve original source and
+assertions; their complete hosted rerun is still required. Keep the original
+failure record and distinguish these fixes from runtime feature changes.
+
+Class primitive export constraints are adopted locally after independent review;
+36 composed controls pass, preserving native text while refusing incompatible
+class source exports. Console inspection remains under review and is not adopted. Console supplier PR150 is merged, but
+the consumer compiler pin remains unchanged. Named function values have an
+approved separate declaration model under implementation. None of these
+checkpoints establishes full game or GUI compatibility.
+
+## Current local integration and next prerequisite — 2026-10-15
+
+Refresh [PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888) and
+its exact checks before adoption. Published `60de95e9c4dc4a6b4fe73ad30e7cf5713f85d750`
+contains focused corrections for all 34 top-level failures observed before the
+previous unit shard stopped; it has no completed replacement shard census yet.
+See [the full retained failure record](ARCADE-UNIT-FAILURE-FOLLOWUP.md).
+
+Local integration `8aae5ea3f4fa2786dd096c363f81f85b5a07d8f1` also normally
+composes source freeze `d511484d6b8458c6b961d433cc22f9a4b5ae1b91` and its
+contract clarification. It passes 122 composed native/pure checks. That source
+is not a claim that remote main or the published PR already contains the change.
+Its immutable raw184 audit remains **147 translated / 36 partial / one parse
+failure**; the below-20 milestone is not reached.
+
+Local integration `afa49ca09` additionally contains the proper managed
+Number-input correction: current argument packing, local/captured writes,
+ordinary class setters and managed returns interpret only their actual
+connected Number shadow. Text `"20"` stays text. Fifty affected controls pass
+with actual current-block edits, Code, same/fresh SB3 and export/reimport.
+The [GUI and export ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md) records a
+new confirmed class-export constraint failure: a text writer can still export
+under an unchanged Number field declaration. Its newly compiled Number control
+passes, while its newly compiled text export fails in the selected compiler.
+Do not treat native or pure reimport success as compiler-valid class export.
+
+Relevant implementation entry points:
+
+- `overlay/scratch-gui/src/lib/bw-makecode/source-value-producers.js`: one
+  read-only actual lexical producer/writer analysis shared with Font lowering.
+  Its copied occurrence facts, binding kinds, initialization and actual unique
+  function nodes do not derive authority from type annotations.
+- `overlay/scratch-gui/src/lib/bw-makecode/callable-source-gate.js`: validates
+  factory bodies, capture initialization, every writer/read and plain immutable
+  calls before issuing numeric Arrow result facts. Constructor and explicit
+  generic call descriptors must not be normalized away.
+- `test/makecode-callable-source-producers.test.mjs`: regression entry point for
+  misleading annotations, actual Image writers, unchanged callee identity,
+  initialization, aliases, unused writers and constructor/generic descriptors.
+- `test/helpers/arcade-timed-native.mjs`: actual shared timer observation for
+  source pauses; physical frame counts do not imply elapsed program deadlines.
+
+[Supplier PR148](https://github.com/CrispStrobe/sb3-creator/pull/148) normally
+merged the inspection word at `4cff9b6bda7129958590718152abc0a6b6b1181d`.
+Its reviewed head had the current compiler pin as parent, but supplier main
+advanced with an independent STM32 test during the merge. The reviewed actual
+combined-base tree matches the landed tree; it is not equal to the earlier
+reviewed head tree. Its canonical/runtime sources and notices are unchanged by
+that incoming test, with 399 operations and 404 spellings. Exact merged-main
+qualification is still pending; the consumer compiler pin remains unchanged.
+Inspection's source/native/current-project proofs and the
+[managed return Number gap](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md)
+remain required. A Number return must not be repaired with an inspector-specific
+text caster or source rewriting workaround. Preserve earlier candidate failures
+and separate native, selected-original and browser conclusions.
+
+## Latest integrated follow-up — 2026-10-14
+
+Integration `7878106481d56bf1d9722f75a9362aad44c169a7` normally composes
+main `1007a7979613668cd0ce20ea6e0ab6ee2b5c9569` and qualified live Font
+source `47147509a7f2b7d3ccf946c4ee8ba6ab50081ed5`. The compiler supplier is
+`432f611897a16adc59568a0d949f2dbc9455b6db`, with **398 commands / 403 spellings**;
+standard synchronization preserves the five unrelated supplier pins, gallery
+identity, vocabulary and tracked mirrors.
+
+- [Live Font values](compatibility/arcade-live-font-values.md) support actual
+  Font constants, text selection, scaling, field reads and printing through
+  editable Code, same/fresh SB3 and changed export/reimport. One changed exported
+  original matched all **1,536 pixels and seven values/aliases**. The current
+  export is byte-identical to that executed input; no replay was needed. Font
+  field and shared glyph writes remain explicit first-slice refusals.
+- The combined current runtime passes **75 native/frontend controls plus five
+  controller/renderer controls**, without SDK execution in that verification.
+  The owned VM projection applies the current source through the standard
+  overlay tool; all 155 overlay files match and three engine hooks are retained.
+- [Import readiness](compatibility/arcade-numeric-authoring-gui.md) and
+  [debug drawable ownership](compatibility/arcade-show-physics.md) have bounded
+  fixes and independent controls. The real numeric GUI failure and cancelled
+  unit shards remain preserved; current hosted acceptance is still required.
+- Default class callback [ownership PR937](https://github.com/CrispStrobe/brickwright-lite/pull/937)
+  merged after all eleven enabled checks passed. Its complete-source and
+  current-project implementation is now integrated for the bounded ordinary
+  Number/String profile; broader library and visible GUI qualification remain open.
+
+The reviewed screen operand follow-up `3d42e8855badbddf972b900b343671edbc299c49`
+is normally integrated at `990e0c961bdcb05e3c3b17fe5ba1213c8f3bb463`.
+It proves the unshadowed built-in screen Image, Image dimensions, primitive text
+concatenation and numeric derived expressions. Screen assignments invalidate
+that authority. It does not widen Image factory operands or admit opaque values.
+Independent review and root integration each pass **19 focused controls**.
+The edited Font export remains byte-identical to its executed original.
+
+The fresh immutable 184-input audit now reports **147 translated / 36 partial /
+one parse failure**. Exactly the two newly regressed rows, `30c9e6286a9cbe22`
+and `d9e8eb7569f760a9`, recover through that implementation. The earlier
+**145/38/1** result and original inputs remain preserved. This is a static audit,
+not whole-game qualification; the below-20 milestone has not been reached.
+
+## Current continuation checkpoint — 2026-10-14
+
+Start with [PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888),
+its exact head/checks and `LANES.md`; this consumer is not merged. Refresh main
+before implementation and preserve independently owned device/session changes.
+The canonical supplier [PR146](https://github.com/CrispStrobe/sb3-creator/pull/146)
+is merged at `7f74d75f3a574b5f74b5c62351326cd5d2e64c2a`: all four enabled
+checks passed and the declared Pages job skipped. Reviewed, predicted and landed
+trees match. Local consumer adoption uses the normal three-way sync and retains
+existing STM32 changes. Current vocabulary: 393 commands, 398 spellings.
+Arrays remains `4db2813d366af8a110fc79599afb55d1cd42d8df`. Later main adoption
+[PR929](https://github.com/CrispStrobe/brickwright-lite/pull/929) brings the
+qualified Board `370be6994dcc6ffcef852f8f1d67861e3e98dd70` and Circuit UI
+`9593a12056e72c10686232bb448f97471f98feec`; normal composition preserves them.
+
+Reached, with original failures retained:
+
+- [Circle drawing](ARCADE-CIRCLE-DRAWING.md): 57 selected original cases plus
+  aliases/clones, 60 Images and 4,860 complete pixels. Native, Code, same/fresh
+  saved SB3, executed MakeCode export and reimport pass. Standard radius edits
+  survive Code/project/export. Typed Sprite-image routing additionally passes
+  Code, executed export and reimport with three shared Images and 243 pixels.
+  Visible browser authoring is pending.
+- [Named Array helpers](ARCADE-NAMED-ARRAY-ITEMS.md): scalar and aggregate
+  semantics, nested aliases and both real exported originals pass. A uniquely
+  bound target-owned zero-argument procedure now supplies scalar values using
+  complete current return-graph proof; native/export/original/reimport controls
+  pass. Unknown/reference/recursive/parameter-dependent results remain refused.
+- Circuit Playground uses the existing asynchronous builtin loader. Seven
+  controls include real VM deduplication, runtime ownership and registration
+  readiness. The startup marker gate rejects eager CPX payload. Fresh hosted
+  bundle measurement remains required; the byte budget is unchanged.
+- The latest [unit follow-up](ARCADE-UNIT-FAILURE-FOLLOWUP.md) retains the
+  completed 4,610-control shard's 46 failures, cancelled shard without a census,
+  real light-browser replacement-stage failure, build catalogue failure and
+  startup-budget failure. Corrections require current hosted qualification.
+  Tracked VM/compiler mirrors now match their owned overlay sources at HEAD.
+  A genuine clone creation-after-render ordering defect is fixed in both scene
+  composition routes; nine focused clone/scene controls pass. Optional-call and
+  multiplayer negative expectations now match admitted behavior. The yielding
+  function control observes actual 199/200 ms deadlines and Stop/restart.
+
+The fresh immutable 184-input audit at
+`57ba525fc6120922f4e656d657b35ecec44841e1` remains **147 translated / 36 partial /
+1 parse failure**. All 184 committed input blobs and the unchanged content
+multiset were verified. This is pure translation, not runtime/whole-game
+qualification. The separately frozen authentic 41-context denominator remains
+29 original-valid, 19 strict, 10 blocked and 12 invalid. The below-20 milestone
+has not been reached.
+
+Next ordered work:
+
+1. Complete [stored class callbacks](ARCADE-STORED-CALLABLE-NEXT-SLICE.md) through
+   broader default and visible editor admission. The
+   [explicit prototype](compatibility/arcade-class-stored-callbacks.md) is now
+   composed with current consumer source. It passes Number/String invocation,
+   captured receiver ownership, pause/Stop, Code, same/fresh saved project,
+   edited current-body export and native reimport. Two selected-original programs
+   pass: source `3 / ok / 3`, edited export `8 / ok / 8`, with unchanged SDK guards.
+   Composed control batches pass 81 and 66 tests; eleven root controls confirm
+   current-body conversion and the retained default boundary. Class callbacks
+   remain explicitly opted in; general default and GUI admission are closed.
+   Independent review found generated discard temporaries could overwrite
+   authored parameters. All three affected families now use fresh allocation;
+   current-body export and actual native regression controls preserve the
+   authored values. The earlier failures remain in the private evidence.
+2. [Default numeric callable admission](compatibility/arcade-numeric-callable-default-admission.md)
+   claim [PR931](https://github.com/CrispStrobe/brickwright-lite/pull/931) merged
+   with all 11 enabled checks successful and reviewed/landed tree equality.
+   The local consumer now admits only proven Number factories returning captured
+   zero-argument Number arrows. Its 17 composed controls pass; current edited
+   export bytes match retained executed originals with all nine guards unchanged.
+   Wider class/generic/typeof forms remain separately gated. Hosted consumer
+   qualification and dedicated visible authoring are still required.
+3. Implement [live Font values](compatibility/arcade-live-font-values.md) from
+   measured selected-original records and glyph data. Fonts are mutable; an
+   immutable descriptor does not make the value immutable. A native prototype
+   and one original matrix exist privately. Source audit proves the selected
+   simulator uses the full Font12 resource; hardware subsets remain separate.
+   [Supplier PR147](https://github.com/CrispStrobe/sb3-creator/pull/147) prepares
+   five ordinary connected Font words, with 448 affected controls passing.
+   It is normally merged at `432f611897a16adc59568a0d949f2dbc9455b6db`:
+   all four enabled checks passed, the declared Pages job skipped, and reviewed,
+   predicted and landed trees match. Consumer adoption remains pending.
+   Native preparation preserves lazy initialization, owner identity, aliased
+   glyph storage and explicit mutation refusals. Complete source, Code, saved
+   project and edited-export routes before widening the read slice.
+4. Exercise actual Blocks/Code/graphics-editor authoring and keep every pending
+   route in the [GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md). Native
+   metadata and source conversion are not a completed browser journey.
+
+Use `scripts/compat-audit.mjs` with the exact frozen corpus for classification;
+`--compile` and execution are separate gates. Original SDK guests require shared
+reservation, immutable actual compilation inputs/executables/observations and
+all nine SDK/bridge hashes before/after. Reuse a retained original only when its
+actual input bytes match; preserve failed invocations. Private checkouts, command
+lines and receipts belong in the gitignored local companion or private repo.
+
+## Latest source qualification — 2026-10-14
+
+The next shared lane is [typed stored callbacks](ARCADE-STORED-CALLABLE-NEXT-SLICE.md).
+Generic class-method parsing now preserves actual names, type parameters,
+constraints, defaults and bodies instead of misreading them as fields. Six
+independent parser controls pass. Generic runtime lowering remains explicitly
+refused while invocation-local types and the actual captured-receiver bridge
+are implemented; this is a prerequisite, not a whole-library promotion.
+
+Physical [ExtendableSprite updates](ARCADE-EXTENDABLE-SPRITE-UPDATE.md) now retain
+constructor/image pauses, undefined fields, base destruction followed by the
+same public update, independent scene workers, scene-change delta lookup and
+live Sprite iteration order. Seven actual source controls and three newly
+exported original programs pass with unchanged SDK/bridge byte guards.
+The composed native check passes 17 update/activation controls together with
+34 source-type controls. Plain Sprite lifecycle and speech share the actual
+live update pass; an unset lifespan remains the original `undefined` value.
+GUI, cadence, audio and whole-game qualification remain separate.
+
+Array reference identity is now independent of sprite artwork routing. Actual
+module/local/procedure ownership, startup defaults, mutation and aliases survive
+Code, same/fresh saved projects, original source/export execution and reimport.
+Opaque alternatives remain refused. Five composed native/portable controls
+pass; missing artwork remains an explicit gap. The fresh unchanged 184-input
+audit after both changes is still 147 translated, 36 partial and one parse
+failure. Removing an Array alias diagnostic does not promote a project that
+still lacks its genuine assets or helpers.
+
+Source `typeof` now preserves the actual operator through native execution,
+edited numeric Blocks inputs, Code, same/fresh saved projects, selected-original
+export execution and reimport. The bounded E15 named-item control preserves
+thirteen authored strings, primitive/null/undefined values, JSON aggregate text
+and Array alias identity. The first exported Array receiver crash is retained;
+the exporter now uses its actual scope/type graph for mixed local Array receivers.
+It does not infer an Array from JSON-looking text. See the
+[source-type contract](compatibility/arcade-source-typeof-values.md).
+Composed-source review additionally passes 34 ownership/lowering/export/native
+controls and both native portable routes. This is not yet a merged Lite consumer
+or a visible editor qualification for this reporter. Sprite-backed and unowned
+callable representations remain explicit boundaries.
+
+The current compiler pin is qualified main
+`2cc15b9951109f3eaf1d207ade4e6a93b13cf5e5`: the source-type supplier was tested
+at `a1206d7508cf69c8f3cac0e0073827e8fb6a7698`, and the intervening
+[B18 merge](https://github.com/CrispStrobe/sb3-creator/pull/142) changes the C
+seven-segment generator, with unchanged Arcade vocabulary. Standard synchronization
+preserves every other component pin. Inventory is 385 canonical forms / 390
+including aliases; the composed canonical SPIKE artifact check also passes.
+
+The [current official build](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38586245394)
+passes numeric authoring and the heavy browser lane. Its second unit shard
+finishes with 3,550 tests: 3,503 pass, 40 fail, five skip and two TODO. The first
+shard has no completed census. The artwork reload journey fails because its
+unhandled replacement confirmation is dismissed by the browser test; the new
+test accepts that specific confirmation and retains stage, asset and pixel checks.
+Its new browser qualification is pending. Earlier failures remain preserved.
+The [unit follow-up list](ARCADE-UNIT-FAILURE-FOLLOWUP.md) names all forty
+recorded failures and the route-by-route method for closing them.
+
+The official [numeric authoring job](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38581351652/job/115917111987)
+passes on reviewed head `c1128242b39ace14e6b911a784ce9ee3118540f7`, with qualified
+compiler `3a2e423954ef9d6c6066c487e051c1e22496648d` and Arrays
+`40184f1917d164cf45fc543117d5c1f9254f9cb6`. Four owned fixtures each complete
+five journeys: import, visible block edits, Code edits, fresh saved-project
+reopening, and actual export/reimport. The font fixture records four original
+comparisons; the repeat fixture records twelve, including controller-pane
+hold/release/repress for both players. Both reports contain no page errors.
+These qualify the specific authoring controls, not the raw corpus or complete
+unrelated games. The same head's heavy browser job passes, while unit and
+artwork qualification remain separate; earlier failures are preserved.
+
+The [bounded BaseDialog subclass contract](ARCADE-BASE-DIALOG-SUBCLASSES.md)
+now covers authored `drawTextCore()` and `update()` overrides, explicit
+`super.update()`, ordered pause completion, Stop cancellation, and real old/new
+image aliases after resize. Source and newly exported original executions agree
+on seven observations and all 843 image pixels; Code, same/fresh saved projects,
+and export/reimport preserve them. Seven affected native/descriptor controls
+also pass on the composed integration source. Existing native dialog instances
+retain their actual SDK update method. Constructor virtual dispatch, layout
+overrides, Sprite physical subclassing and a class authoring GUI remain separate
+gaps. This does not qualify a complete Carnival game.
+
+The unchanged 184-input audit remains 147 translated, 36 partial and one parse
+failure after this integration, with every input checked against its original
+Git blob. The separate authentic-context audit remains 29 original-valid
+projects (19 structurally strict, ten blocked) and 12 original-invalid projects.
+Neither structural audit establishes runtime or GUI compatibility.
+
+Browser callback completion uses a separately authored, frame-observed profile:
+the yielding collision handler waits until its actor actually moves, then its
+inline successors must read that same position. It retains a bounded browser
+timeout and genuine controller input. The original fixed 70 ms source and its
+timed regression remain unchanged. A loaded browser need not service a positive
+scene frame during that wallclock interval; earlier cold-start failures remain
+recorded, and this browser-profile change is not a scheduler repair. The new
+profile passes native timed preflight and actual selected-original execution:
+both observe `before=15`, `after=12.609375`, with both following handlers and
+the inline caller reading that same final position. All nine selected SDK and
+bridge byte guards remain unchanged. Its browser qualification remains separate.
+
+### Integration refresh
+
+Integration source `33a469196cc648120d26c760796442bcfae036e3` adopts normally
+qualified supplier merges: compiler
+`3a2e423954ef9d6c6066c487e051c1e22496648d` and Arrays
+`40184f1917d164cf45fc543117d5c1f9254f9cb6`. Compiler inventory remains 384
+distinct operations / 389 forms including aliases; reserved `CALL:` is grammar,
+not an additional native operation. All supplier enabled checks passed and
+reviewed/predicted/landed trees matched. Lite integration checks remain pending;
+this is not a Lite main or all-games GUI claim.
+
+The fresh immutable audit at clean
+`1813c7721d` repeats **147 translated / 36 partial / one parse failure** with
+all 184 Git blobs independently matched and unchanged input multiset. Its
+query/export fixes do not change the raw snippet diagnostics. Complete-project
+context remains a separate denominator: 29 retained selected-original-valid
+inputs, 19 structurally strict and 10 blocked; 12 selected-invalid inputs are
+kept and must not be promoted by a permissive parser.
+
+Typed array lookup preserves receiver type and identity, with an argument-only
+search view and proper receiver/argument sequencing. See
+[the query contract](ARCADE-ARRAY-SEARCH-EXPORT.md). Arrays named-item correction
+is qualified independently of the held callable prototype. The bounded source
+`typeof` routes are qualified above under merged ownership
+[claim 913](https://github.com/CrispStrobe/brickwright-lite/pull/913); Sprite
+provenance and the reporter's visible editor journey remain open.
+
+Two genuine controller-repeat original controls now observe each press/release
+callback before sending the next input edge. The failed timed input schedule
+is retained; counts and all 19,200 image pixels were not relaxed. Assigned image
+editing retains its actual source carrier through native/Code/SB3/export paths;
+its new visible Pixel/save/reload journey still requires hosted execution.
+Browser callback motion during pause remains a failed gate: a real autonomous
+native timer control passes, but its browser cause is not established. Preserve
+the failure and collect actual clock/worker diagnostics instead of weakening
+motion assertions.
+
+[The ordered remaining-semantics plan](ARCADE-REMAINING-SHARED-SEMANTICS.md)
+records primary source URLs/hashes and Blocks/Code/graphics acceptance contracts.
+
+### Current immutable corpus audit
+
+The fresh raw audit at clean `5470796506f6d7bd5d44433b65e17bcd4282cd6a`
+reports **184 inputs: 147 translated, 36 partial, one parse failure**.
+Corpus commit is `c67f4854610ccc823682280b4d1fbdf737f4a585`; input content
+multiset SHA-256 is
+`a3dc8c21a33a9fb5e1808d2b2b2d2dbc2f7ce1ab33655b7b4cb14a16894b9f03`.
+An independent read-only comparison confirms all 184 files match that commit's
+blobs. The audit receipt itself retains its original `commitVerified: false`;
+the separate comparison supplies verification without rewriting evidence.
+This audit requested no original compilation, execution or behavioral comparison.
+The preceding clean `aa65b75733eb8abd3f14a6601c4f1608f0c10c5c` audit was
+143/40/1. Exactly four rows now move from partial to translated, removing five
+repeat-property diagnostics: `controller.A.repeatInterval` in all four and
+`controller.A.repeatDelay` in one. No other row changes or regressions occur.
+
+| Raw project identifier | Previous blocks | Current blocks | Removed diagnostic |
+| --- | ---: | ---: | --- |
+| `25b537cb2e5c14a1` | 405 | 406 | repeat interval |
+| `268aab83dc4ee9a5` | 5 | 7 | repeat delay and interval |
+| `30c9e6286a9cbe22` | 533 | 534 | repeat interval |
+| `d9e8eb7569f760a9` | 533 | 534 | repeat interval |
+
+The remaining 36 partial rows contain 120 diagnostic occurrences across
+92 distinct diagnostic families. Missing asset references, unresolved authored
+or dependency helper calls, and sprite/scene/tile stage-route diagnostics can
+overlap within a project. They are raw-input diagnostics, not proof that all
+underlying native APIs are absent. Array identity, song-expression format and
+an empty emitted Code body also remain named diagnostics. The same parse
+failure remains in `12904c83e83fe45a`.
+
+The earlier change from clean `3867e7d84` to `aa65b75733` was Snake
+`28379fc078a029bc`: the lexically qualified `randint` Number result now retains primitive and scalar
+authority. Four strict provenance controls and three original/native/Code/SB3/
+export authoring cases pass. The unchanged Snake source has separately observed
+finite controller/state behavior. Explicit `CALL` now retains its rendering
+procedure invocations and its screen contains drawn pixels. Its frame delta
+still differs (`0.06` native versus `0.04` original at the retained observation),
+and random food positions differ. Its whole-game verdict remains partial.
+**No whole corpus game is GUI-qualified.** Clean `3867e7d84` was 142/41/1. The earlier clean `22ccdcd6`
+audit was 140/43/1 with identical inputs. Only two creation-handler projects
+changed from partial to translated: `a5ad2a27e66886ae` and `d5bdcef480c08ffb`.
+Other recovered-project counts below describe historical profiles. Compare
+identical input/profile receipts before attributing count changes to a feature.
+
+Inline image-array artwork now groups ordered costumes while retaining ordinary
+array evaluation and identity. The selected callback tests use actual handler
+registration and timer authority: eight native controls pass without weakening
+numeric, cancellation or ownership assertions. Original/native collision timing
+has a separately preserved feature receipt; these results do not promote games.
+Fresh [Build run 38514362889](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38514362889)
+checks reviewed `0f2834b043bb7d59a6f94e6602cae96831c98021` at actual checkout
+`88e1857e060b850c6c48980e0fa78e00c7430ddc`. Numeric and event authoring
+each pass all five journeys and twelve original comparisons, with complete
+frames and empty page errors. Light, heavy and FPGA browser checks pass.
+Both unit shards fail; deployment and verification skip. The [combined proof](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38514362889/artifacts/11872663564)
+ZIP SHA-256 is `3e6edaa2c91ec035fe9ee4c080064096a908f2a82ae2b80c5c0d5ae7633e4595`.
+Later local source and supplier changes are not qualified by that build.
+
+Current canonical supplier is `08612be429512583e9c23564a589b9872ba28073`: **384
+distinct operations, 389 spellings including five aliases**, from normally merged
+[compiler PR137](https://github.com/CrispStrobe/sb3-creator/pull/137).
+All four enabled checks passed, with the declared Pages skip and matching
+reviewed/predicted/landed trees. Source reference and nullable array flows
+have bounded original/native/Code/SB3/export controls; their fresh production
+editor qualification remains open. Literal runtime `Sprite.setImage` creates
+a fresh image per evaluation, preserving dynamic kinds and instance identity;
+seven affected original/native/artwork controls pass.
+
+Three repeat words preserve initially undefined button properties, raw primitive
+writes, defaults, compound assignment order and scene lifetime. All 24 advertised
+player/button pairs have original-backed controls. Eight composed-root controls
+pass native source, Code, same and fresh saved SB3, exact retained original export
+inputs and reimport without replaying the SDK. Their real palette/controller-pane
+journey is prepared and wired, but needs a matching official production artifact.
+The raw count above measures translation only.
+
+### Authentic project context is a separate profile
+
+A fresh cached-source audit at clean `f679f214a2dd790d2a0a18e6cb57f2dcf957092f`
+and compiler 380 recompiles all 41 authentic contexts using the current CLI
+compiler bridge. Exact project inputs, resolved packages, source order and
+generated source match the prior canonical context profile. There are **29
+compiler-valid contexts, 12 compiler-invalid contexts, 19 strict structural
+candidates and 10 valid contexts still structurally blocked**. The comparable
+prior profile had 16 strict candidates; three improve and none regress.
+These counts differ from the repaired 37-context profile and the bare 184-input
+audit; do not mix their denominators. An incomplete interactive fragment still
+lacks its actor initialization, even though it structurally translates. No
+whole-game or GUI qualification follows from these structural counts.
+
+### Live font metrics and explicit procedure calls
+
+Supplier [font PR139](https://github.com/CrispStrobe/sb3-creator/pull/139) and
+[procedure PR138](https://github.com/CrispStrobe/sb3-creator/pull/138) are normally
+merged. Each passed all four enabled checks; only Pages publication skipped.
+Predicted and landed merge trees matched. The qualified predecessor canonical source was
+`3ee41478409b958e218735ce67fab5f866d80231`: 381 distinct Arcade operations.
+The current repeat-composed supplier above retains both changes.
+
+Six direct `image.font5/font8/font12.charWidth/charHeight` reads use the live
+renderer objects with Number provenance. Scene lifetime, restart, field edits,
+Code, saved projects, original export and reimport are covered. Raw selectors
+reject objects without invoking `toString`. Font writes, dynamic selectors and
+broader font-object authoring remain diagnosed. The hosted font journey is
+prepared and wired; its new visible scene requires fresh official-artifact proof.
+
+Generic `CALL show` and `CALL draw (x) (y)` preserve actual custom procedure
+labels, argument shapes and ownership. Five producer controls and 110 combined
+regression tests pass. Original/native/Code/same and fresh SB3/export/reimport
+call effects and all 19,200 background pixels match for the rendering fixture.
+The unchanged Snake witness now draws, while its cadence and random-position
+comparison remain open. No whole-game or current-head GUI promotion follows.
+
+The predecessor raw 184-input count was 143/40/1: two projects lost their font
+diagnostic but still required repeat properties. The current repeat-composed
+audit clears four partial rows to reach 147/36/1 as detailed above. Retained authentic project contexts and
+static snippets keep separate denominators. The palette export test now waits
+for the original simulator's genuine first screen update before comparing all
+16 colors; [PR916](https://github.com/CrispStrobe/brickwright-lite/pull/916) is
+pending final checks. No expected-color polling or guessed delay is used.
+
+### Prompt String provenance
+
+The selected SDK's `game.askForString` has String result authority. Three strict
+scope/provenance controls and one original/native/Code/same and fresh SB3/export/
+reimport case pass, including a read before declaration, entered text, character
+code and array alias identity. The original uses the simulator's real DOM input
+and Enter handler; native uses the ordinary QUESTION/ANSWER path. No SDK answer
+stub or broad array/Any inference is introduced. Hosted visible prompt controls
+remain open. This repairs a retained typed string receiver diagnostic; its map
+and exception diagnostics remain explicit.
+
+### Initializer and virtual-slot qualification
+
+`whenUsed` declarations now retain their emitted initializer effects as one
+private staging group. Reachability follows actual lexical bindings; unused
+functions and shadowed call names do not initialize global constants. Getter
+and setter access remain separate. Class-table reachability follows the selected
+MIT [PXT emitter](https://github.com/microsoft/pxt/blob/v13.2.1/pxtcompiler/emitter/emitter.ts)
+`fixpointVTables`/`markVTableUsed` rules: used virtual roots reach overrides in
+used tables, without making every declared class or method executable.
+Implicit inherited constructors use the actual ancestor constructor procedure.
+A staged class update retains its original update operation and the actual
+temporary receiver binding, preserving the selected SDK restriction on `any`
+property updates. Ordinary typed updates and permitted `any` assignments are
+not refused. The unchanged inheritance authoring regression and six selected
+original static-error controls pass; 21 text-member shape controls now inspect
+the reporter inside the actual assignment grouping.
+
+The unchanged TeamData and initializer-order regressions pass, including two
+allocations rather than all fixed instances. Four new scalar/accessor/virtual
+cases pass native, Code, same and fresh SB3, exported original execution and
+reimport; the two new initial sources were also executed in the original SDK,
+and the two virtual initial sources have separately retained original receipts.
+Six compilation observations retain actual inputs and binaries. Three new
+native/pure controls and six independent lexical/virtual retention probes pass.
+These bounded results do not qualify arbitrary callable/interface dispatch or
+an editor catalogue for unused fixed instances. Retain the declarations for
+future editable selection without executing their unused initializer effects;
+that user-facing authoring contract is still open.
+
+### Current integration and official GUI acceptance
+
+The preceding completed [Build run 38511065833](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38511065833) built reviewed `920e089927abd906d0608c2c8bad7462ec83ddf3` at actual checkout `adb3dc8689d37e7df9070c107a6b931a8cb9e4e6`. Its [combined authoring proof](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38511065833/artifacts/11870740594) passes all five numeric journeys and twelve original comparisons. Event import and visible block edits also pass, including controller input, waiter delivery, player selection and matching complete original frames. Event Code replay fails because its first text replacement edits the stopped game's saved trace rather than the handler message. The original proof ZIP SHA256 is `c5ab96b7858955a85fd4c75ecba47ae2e44ebacc40f29da16858ab19b19646d5`. Both unit shards and light/heavy browser jobs failed; deployment skipped. This is a preserved partial GUI result.
+
+Follow-up corrections retain both message occurrences and verify the actual visible editor text. A real VM snapshot/controller regression passes. Native animation resource factories now evaluate once: ordinary staging had appended old frames to the complete factory result, doubling frame counts and undoing visible pixel edits later in playback. The corrected factory retains its type/artwork provenance and omits duplicate pushes; ordinary arrays keep their evaluation order. Unused classes retain field/type metadata without executing initializers, and the selected SDK's missing-constructor restriction applies only to reachable construction, including ancestors and registered callbacks. Seven combined original/native/Code/SB3/export/reimport tests pass for animation pixels and unused-class semantics. Edited construction from synthesized class Code is a separate authoring contract, not proof of the original source's constructor refusal.
+
+Twenty-eight lifecycle/reference checks and six mock/startup controls pass after completing the native test Runtime contract; stale/foreign/disposal assertions remain intact and malformed nonempty source preludes still refuse before startup. Four controller-step tests now check exported numeric semantics and actual signed movement. The physics browser observer now waits for the game's own displacement observation as well as its velocity cap, retaining its numeric bounds and failing if the engine stalls. A fresh official browser run must verify these corrections before merge; no corpus project is promoted by these feature results.
+
+Current supplier is `aa7ea1697a08eb393e6a002a2216f26b741f4fbf` (379 canonical forms), from [compiler PR134](https://github.com/CrispStrobe/sb3-creator/pull/134). All four enabled checks succeeded; the declared Pages job skipped. Reviewed, predicted merge and landed trees agree. Its nine added forms cover scene-owned control event registration/raise/wait and multiplayer connection registration, controller event source allocation and raw connection assignment. Fixed player selectors are native fields; connection values retain the selected runtime's actual value semantics. Native services preserve queue order, listener replacement, scene contexts, Stop/restart and the selected Arcade simulator's unconfigured notify mapping. Named and dynamic handlers still need the separate callable service.
+
+The integrated event/scalar/staging/accessor/field/SDK-flag suite passes 32 tests through native Code, same/fresh SB3, selected original export and reimport; 15 further queue/scalar/SPIKE controls pass. The unchanged 433-input parser corpus passes all five controls, including zero unread lines, zero value/condition warnings, decompile fixed points and a failing mutation witness. Source lowering now produces 418 distinct outputs; the historical 417 count remains an older translator observation.
+
+The [event authoring journey](compatibility/arcade-event-authoring.md) is wired after numeric authoring against the same sole admitted production archive and SDK. It prepares visible palette, value/player edits, controller input, Code, fresh SB3 and actual MakeCode export/reimport checks. Preparation and local fixture checks are complete; a fresh hosted event result is required before claiming GUI qualification. Both unit shards and light/heavy browser checks failed on the previous `4c2f901` build; corrections below and mock-lifecycle qualification must finish before merge. The earlier raw profile reported 142 translated, 41 partial and one parse failure; the current immutable audit above supersedes that count. No whole corpus game is promoted by these feature checks.
+
+The subsequent [Build run 38508258984](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38508258984) built reviewed `4c2f901c73c3e98f2b57ef0472473e4c83bbf20a` at actual merge checkout `9b00057c993d6476136be348652ca8801efad921`, with compiler `8796b76eeb6d89a40d8f73bdffd8e78984796770` and Arrays `35719b72bb9280cc1e869616dd5019678f59b2f9`. Its [numeric authoring proof](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38508258984/artifacts/11868444530) passes all five authoring journeys and twelve selected-original comparisons with empty page errors. The original proof ZIP SHA256 is `ed4ab5eca8a69bdcb0ccb2005ad01de0a3f351b9517a496ed15b0dc610109d4c`. Light and heavy browser checks failed; unit checks were still running when this checkpoint was recorded. Keep these failures separate from the successful numeric journey.
+
+Follow-up resource integration fixes a staging regression: a fully validated literal `tiles.createTilemap` factory must retain its private literal tile-image array for static resource decoding. Lexically shadowed SDK receivers and effectful or malformed factories retain normal evaluation and diagnostics. Ten focused controls pass, including existing generated-factory original/native/Code/SB3/export/reimport cases and direct-resource Code/export roundtrips. Fresh hosted camera, terrain and tile identity checks remain required. Two math tests now inspect actual native dropdown contracts and numeric outcomes rather than obsolete opcode/text assumptions; both pass without changing their expected numeric results.
+
+The official [Build run 38504674776](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38504674776) built reviewed source `8d7f9776ac9d812289c26f696749968d0d65dcfa` at actual merge checkout `c3366ca72639e902cd792557b401effa4a92626b`. Build, light browser, heavy browser and numeric authoring succeeded. Unit shard 2 has 51 distinct failure blocks; shard 1 was cancelled. This is not an all-checks-passing integration or a corpus promotion.
+
+The [numeric authoring proof](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38504674776/artifacts/11867327857) covers unchanged import, visible palette/dropdown/number edits, edited Code → Blocks, fresh-session SB3 reopen and actual MakeCode export/reimport. Twelve original execution comparisons preserve expected variables and complete rendered frames; browser errors are empty. The proof admits the actual production artifact, selected SDK and immutable supplier inputs. It qualifies the owned numeric/settings/source-loop game, not the 41 partial corpus projects.
+
+Fixed native dropdown fields now preserve edited math operations, Text Sprite properties and Sprite Data types through Code and export. Recognized old literals and owned menu shadows migrate; computed or malformed fixed selections remain diagnostics. Compiler [PR130](https://github.com/CrispStrobe/sb3-creator/pull/130), [PR131](https://github.com/CrispStrobe/sb3-creator/pull/131), [PR132](https://github.com/CrispStrobe/sb3-creator/pull/132) and [PR133](https://github.com/CrispStrobe/sb3-creator/pull/133) merged after all four enabled checks passed, with the declared Pages skip and matching reviewed/predicted/landed trees.
+
+The next integrated source adds typed scalar cells and selected PXT evaluation order, using canonical supplier `8796b76eeb6d89a40d8f73bdffd8e78984796770` and 370 forms. [Source scalar declarations](ARCADE-SOURCE-SCALARS.md) bind actual stock variable IDs, initialize typed undefined before source initializers and preserve ordinary Scratch saved defaults. Directed export flow preserves scalar types and the separate reference graph. Nineteen evaluation-order cases, staged field initializers, accessor side effects, source defaults/rename/reload/callbacks and bounded SDK `Sprite.setFlag` pass 11 combined tests through native authoring and selected original export. Twenty-eight scalar/dropdown/SPIKE controls, 22 version/prefix/type controls and the committed mirror gate pass. These additions need their own fresh official GUI qualification after this integration.
+
+```text
+DEVICE ARCADE
+GLOBAL count
+SPRITE Game:
+WHEN arcade source starts:
+  declare arcade source scalar count as Number
+  set count to 0
+```
+
+The declaration is a source prelude, not an ordinary flag-time reset. Blocks use a connected stock variable reporter and a fixed type field. Graphics/class design, completion/signature help and debugger inspection remain tracked in [the GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md). Typed reference preinitialization, captured callables/dynamic callees, event-bus/multiplayer authoring and full subclass drawing services remain separate ongoing lanes. Keep their unqualified domains explicit. That historical raw profile was 184 / 142 translated / 41 partial / 1 parse failure. Use the current immutable audit above; no whole corpus game has been promoted from these focused controls.
+
+### Integrated accessor and Scene slices — 2026-10-14
+
+The ordinary getter/setter slice is integrated without the experimental general
+PXT staging or scalar prototypes. It retains inherited virtual halves, real
+accessor bodies and aliases, managed cancellation, source restrictions and
+receiver/quoted-string hygiene. Five integrated descriptor controls and one full
+original/native compound-assignment authoring route pass. Full
+isolated qualification and remaining package/GUI work are recorded in
+[the accessor contract](compatibility/arcade-class-accessor-scope.md).
+
+The [Scene flag/controller slice](compatibility/arcade-scene-flags-controller.md)
+now preserves the selected SDK's conditional z/public-ID selection sort, live
+render masks, transparent parent artwork and real controller state. Eleven
+isolated authoring, four rendering and 24 phase controls pass. One full
+original/native authoring control passes on integration. The native Scene flag
+palette default now has a numeric editor shadow while connected reporters
+retain their actual primitive values. Production GUI qualification remains open.
+The combined merged Settings/Scene supplier pin has 369 canonical forms.
+
+Official source-manifest checks continue to reject changed tracked build inputs.
+The latest rejected build identified one stale migration mirror; it is corrected.
+The existing committed mirror gate now runs in the bounded source suite before
+heavy integration, preserving the final manifest check.
+
+### Settings and array authoring — 2026-10-14
+
+The latest official GUI build passed artifact admission, then exposed a real
+Settings serialization defect: compiler menu inputs did not match native fixed
+dropdown fields, so the editor replaced StringArray with Number. The paired
+supplier correction is [producer PR129](https://github.com/CrispStrobe/sb3-creator/pull/129).
+It preserves all supported type fields and genuine old literal menu shadows;
+computed or malformed legacy types are diagnosed before replacing the open
+project. The supplier passes 606 expanded compiler/dialect/SPIKE controls;
+12 consumer controls include the actual native menu metadata and project-load
+boundary. Export and type inference now read the same native field or validated
+historical literal; 13 original/native/Code/saved-project/export/reimport
+Settings controls pass, plus four serialization-version and refusal controls.
+The default canonical array bundle passes its three full authoring controls.
+Producer PR129 merged after all four enabled checks passed, with the declared
+Pages skip and matching reviewed/landed tree. Fresh production GUI qualification
+remains required.
+
+[Producer PR127](https://github.com/CrispStrobe/sb3-creator/pull/127) and
+[extension PR43](https://github.com/CrispStrobe/extensions/pull/43) merged with
+successful enabled checks and matching reviewed/landed trees. Their three
+array/string reporters preserve shallow copy identity, nested aliases and
+selected PXT UTF16 indexing semantics. Integration now vendors those canonical
+bytes through the standard scoped bundle generator and adds the isolated
+array-copy/import/export slice. This array slice added three canonical
+forms; the combined current supplier inventory is recorded above. Reporter availability is not whole-game qualification.
+
+The official integration unit failure audit is ongoing. Distinct failing test
+blocks must be counted from actual failure records, excluding repeated log
+output and quoted examples. These counts never substitute for the unchanged
+41 partial corpus projects.
+
+### Latest integration work
+
+The integration branch now includes managed class/object references and static
+visibility metadata using producer [PR125](https://github.com/CrispStrobe/sb3-creator/pull/125),
+which merged after its enabled checks passed. Ordinary inheritance and the bounded
+SDK Sprite subclass slice are implemented and qualified below. Structured class
+authoring, drawing overrides and other intrinsic subclasses remain separate gaps. Source-entry
+palette editing and exact array helper recognition are repaired; scoped Arrays
+bundle provenance matches the selected immutable dependency.
+
+[Scene timer authority](compatibility/arcade-scene-timer-authority.md) now uses
+per-scene workers, shared condition polling and owned source wait deadlines.
+The isolated implementation passes 72 strict controls without skipped tests or
+TODOs. Recorded genuine Cherry startup and countdown boundaries match the
+unchanged original, including game over at 60,140 ms. The full probe's final
+unsupported event observer failed; the saved timing rows passed a separate
+read-only audit. This does not establish unseeded trajectory, full graphics or
+installed GUI cadence.
+
+Projectile finalization now applies the selected SDK's default flags after
+creation handlers and preserves retained destroyed references, tile-map edge
+placement and camera offsets. FreeThrow passes 44 raw and 90 authoring route
+controls across Code, same/fresh SB3 and prepared export/reimport. Full GUI
+qualification and unresolved asset licences still prevent whole-game promotion.
+The integrated inheritance/callback/heap/reload gate passes 16 controls. The
+full ordinary inheritance candidate passes 17 original/native authoring controls;
+[producer PR126](https://github.com/CrispStrobe/sb3-creator/pull/126) merged after all
+four enabled checks passed; its reviewed and landed trees match. Canonical mirrors
+and the 363-word inventory agree.
+Constructor and method string defaults are refused by the selected original SDK;
+native admission preserves those errors.
+
+The bounded SDK Sprite subclass slice retains canonical native Sprite identity,
+scene-local public IDs, image aliases and virtual constructor ordering. Raw Sprite
+and ExtendableSprite constructors retain their different physics and creation
+services. The frozen original/native/authoring suite passes 27 controls; after
+reserved internal descriptor refusal, the final SDK suite passes 11. Affected
+object-heap and renderer suites pass 13 and five respectively. Four source
+mutations are detected, and 503 source, VM and SDK inputs remain unchanged across
+the final gate. Four focused controls pass on integration. Handle lifetime is
+qualified within one loaded JavaScript realm; it does not establish persistent
+live handles across fresh realms. Drawing, update and hitbox overrides and
+status-bar accessors remain named admission boundaries.
+
+The bounded SDK dialog bridge now preserves BaseDialog/SplashDialog object and
+image identity through the existing managed class vocabulary. Seven integrated
+controls pass: actual original/native complete image pixels, Code, original
+export, reimport and same/fresh SB3, including fractional truncation and
+zero/negative default-frame dimensions. Seven unrelated diagnostics remain in
+the genuine multiplayer splash source. Oversized fault continuation, custom
+frame/font/subclass and production GUI behavior retain their explicit boundaries
+in [the dialog contract](compatibility/arcade-sdk-dialog-objects.md).
+
+Saved-project device publication now listens to actual project load, preserves
+newer explicit board selection and rejects late callbacks. Whole-project loads
+clear stale STC metadata; sprite imports retain it. Twelve headless controls
+pass, including real SB3 save/reload and sprite import. Fresh production GUI
+restoration is still pending. Read [the device-pane contract](ARCADE-SB3-DEVICE-PANE.md).
+
+Static SDK namespace receivers survive conditional argument lowering with
+lexical shadow checks. Fourteen controls pass. A separate selected-PXT argument
+staging mismatch remains: the original compiler can stage a later conditional
+before an earlier argument call. The passing bounded namespace case does not
+qualify that broader evaluation order.
+
+The clean `947130db87` audit newly compiles all 41 contexts and retains **29
+original-valid / 12 original-invalid / 19 strict structural candidates**, with
+unchanged compiler results, binaries and resolved inputs. Separate evidence-bound
+source-context repairs produce **37 original-valid / 24 structural candidates**:
+they recover exact earlier tutorial setup or author-declared dependency contexts,
+retain unchanged main/assets and preserve the failed envelopes. They do not
+rewrite the immutable raw census or establish complete games.
+
+Hero passes 101 and the recovered projectile demo passes 195 finite original/native
+and authoring route controls. Wakanda passes 214 finite controller, complete-frame
+and authoring route controls from its explicitly recovered context. Its source
+contains no point-loss handler or terminal, so neither is invented for acceptance.
+Genuine Corgio browser journeys verify imported map
+and art, controller-to-win behavior, Code roundtrip, all coral costume pixels,
+actual tile pixel editing, level painting, undo/redo and Save with unchanged walls
+and other cells. Painted-level controller repetition, fresh-project device/pane
+restoration and the matching later timer build remain unresolved. These observed
+routes do not promote the 41 raw partial projects to full GUI compatibility.
+
+
+Managed Arcade caller frames now preserve ordinary Scratch procedure recursion
+checks. Scalar results and early void returns match the selected original SDK,
+and native Code/export/reimport/SB3 routes pass. Two real-thread adversaries verify
+that only the owned non-executable caller root is exempt from block lookup;
+missing executable frames remain errors.
+
+The [numeric authoring GUI](compatibility/arcade-numeric-authoring-gui.md) now has
+an explicit CI consumer of the completed official build. Source/SDK manifests,
+official run/job/artifact identities, archive safety and extracted asset bytes
+are checked before the real editor journey. The 47 workflow controls pass,
+including partitioning, deployment dependencies and unchanged wait ceilings.
+Actual hosted browser qualification on that new artifact remains pending. The first hosted
+attempt stopped in the prerequisite SPIKE artifact test because its exact
+producer-pin assertion was stale. The assertion now names the adopted qualified
+pin and the complete SPIKE artifact test passes; a fresh official build is required.
+The browser audit also retries missing API step records and refuses permanent
+absence or duplicates; 27 focused controls pass.
+
+The editor-startup claim [PR893](https://github.com/CrispStrobe/brickwright-lite/pull/893)
+merged after all 12 enabled checks passed. The Costumes tab now checks tile-map
+block presence through a pure helper; the full painter and its decoding/parser
+remain lazy. Twenty-five controls preserve existing discovery for modern,
+legacy, computed, malformed and non-editable maps and avoid artwork decoding.
+The original startup byte budget is unchanged; a fresh production measurement
+is still required.
+
+The draft [integration PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888)
+contains source startup and positive-condition loops, invocation-local
+`break`/`continue` guards, native text dialogs, StringArray settings, null tilemap
+guards, ordered clamp and typed bitwise operations. Producer
+[PR120](https://github.com/CrispStrobe/sb3-creator/pull/120),
+[PR121](https://github.com/CrispStrobe/sb3-creator/pull/121),
+[PR122](https://github.com/CrispStrobe/sb3-creator/pull/122) and
+[PR123](https://github.com/CrispStrobe/sb3-creator/pull/123) merged after all enabled
+checks passed. The typed bitwise and writable-property vocabulary in
+[PR124](https://github.com/CrispStrobe/sb3-creator/pull/124) is also merged.
+Refresh the consumer's independent checks before adoption.
+
+The clean `455b529e9c` audit retains every importer warning as a blocker:
+**29 selected-SDK compile-valid, 12 compiler diagnostics; 19 of the 29 admit
+without unsupported elements, importer warnings or producer warnings; 10 remain
+blocked**. This establishes structural admission. The immutable raw census and
+the fewer-than20-partial goal remain unchanged pending complete-game evidence.
+The prior `dc3fc0d684` checkpoint admitted 18. Static event forwarding admits
+Free Throw; declared SDK reference inference preserves Winter's unused typed
+sprite helper under the stricter bitwise checker. Opaque and unknown operands
+remain diagnosed. Four bitwise controls pass, including original execution,
+Code, export/reimport and fresh SB3.
+
+The [scheduler claim](https://github.com/CrispStrobe/brickwright-lite/pull/881)
+and [class claim](https://github.com/CrispStrobe/brickwright-lite/pull/889) are
+merged. Actual product phase controls cover source bootstrap, due continuations,
+a shared work budget, owned host-turn continuation, managed callers and Stop/load
+cancellation. The combined scheduler, bitwise and writable-flags backend gate
+passes 32 controls. An additional actual reload control verifies that a cached
+driver resumes only after successful project load and detached drivers stay
+disposed; the combined phase/lifecycle gate passes 25 tests. Eight strict terminal/callback controls match original
+program and scene clocks, full pixels and sound. Earlier failures remain retained.
+The headless fixture now follows the production duplicate-extension guard.
+Earlier source disposal during load permanently disabled the cached phase driver;
+the product fix rearms a new generation on successful load.
+Matching installed GUI, native debugging and original 50 fps versus compatibility
+mode 30 fps behavior remain open; these controls do not promote whole games.
+
+Follow [the GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md). The prepared
+numeric/settings/loop editor journey requires a matching production artifact.
+[ShowPhysics](compatibility/arcade-show-physics.md) has original full-pixel and
+Code/SB3/export/reimport controls; general debugger graphics remain separate.
+[Writable flags](compatibility/arcade-writable-flags.md) preserve raw primitives,
+destruction masks and clipping state; seven original/native/Code/SB3/export/reimport profiles pass, including raw
+string/null/undefined values and clock-bound stationary physics.
+[Typed bitwise values](compatibility/arcade-bitwise-values.md) preserve unsigned
+shifts and once-only argument order, with explicit opaque-reference diagnostics.
+
+Statically bound callable helpers now forward into the existing SDK event
+registration schema through managed procedure calls. Truth guards preserve the
+known callable value, and opaque/stored callable values remain diagnosed. Original,
+Code, fresh SB3 and export/reimport controls cover button yields and overlaps.
+The real FreeThrow prepared project has zero conversion or producer diagnostics;
+its complete-game, asset-notice and GUI gates remain separate.
+
+Bounded complete-source authoring routes for Maze and Corgio also pass: Code,
+saved project reload in the same and fresh VM, actual artwork-aware export,
+original SDK execution and native reimport. The tested controller paths retain
+Maze's win/loss and Corgio's win, sampled full gameplay pixels and sound. These
+are runtime and serialization results. Actual editor edits, installed controller
+use and cadence remain separate requirements. Cherry Pickr retains a precise
+Splash-resume timing failure: original condition polling and immediate native
+continuation produce different startup and terminal times. Preserve that failure
+while implementing shared polling semantics; do not add a game-specific delay.
+
+Class implementation follows explicit reference identity, original constructor
+order and receiver binding. Parser support alone does not admit runtime classes.
+Keep the genuine selected-SDK do-while discrepancy and unsupported library
+operations visible while completing source, whole-game and GUI qualification.
 
 ## Current integration checkpoint — 2026-10-13
 
@@ -44,6 +1334,11 @@ The requested fewer-than20-partial checkpoint has not been established.
 Next priorities are typed Settings persistence, original-supported library and
 class operations, execution residuals, and visible authoring journeys. Continue
 through those areas without counting focused controls as whole-game success.
+
+The [native frame scheduler contract](ARCADE-FRAME-SCHEDULER.md) records the
+open startup and pause/callback phase limits and the claimed implementation
+envelope. Merge that lane claim before changing the product hook; finite
+prototype traces do not close its exact timing or installed-GUI gates.
 
 ## Current-state refresh — 2026-10-11
 
@@ -2276,3 +3571,227 @@ Next active areas are validated tile-map factory aliases/null/order; explicit
 source-loop eligibility and frame scheduling; and original native splash/long
 text rendering and controller input. Their respective controls and lane claims
 remain separate from whole-game promotions.
+
+
+## Source startup and source loops
+
+The [source-loop contract](compatibility/arcade-source-loops.md) records genuine
+Code/Blocks source-start and positive-condition loop forms, changing-bound and
+break lowering, fresh SB3/original export roundtrips, and the remaining frame
+scheduler and GUI qualifications. Updated consumer checks: four focused, five
+import-line/decompiler and eight legacy/kind roundtrip controls pass. No raw
+corpus partial is promoted by these focused results.
+
+Fresh immutable tile-factory baseline audit admits18 of29 selected-SDK valid
+samples with zero producer warnings;11 valid samples retain parser/semantic
+issues. The other12 retain selected-SDK compiler diagnostics. Raw184/142/41/1
+is unchanged. Complete-game execution and editor/save/export qualification remain
+required independently of structural admission.
+
+
+### Historical native text dialog and class follow-up (superseded by current qualification)
+
+Native text dialogs now use retained rendering with live parent scenes and
+controller release guards. The integrated source-loop/dialog controls pass20
+with one strictly failing scrolling TODO. Explicit required phase mode turns
+preserved timing/pixel TODOs into failures; the unchanged scroll event still
+fails. Hosted graphical application qualification remains pending.
+
+The [class contract](https://github.com/CrispStrobe/brickwright-lite/pull/889)
+requires globally unique reference identity and original constructor order.
+Read-only original controls expose argument/field order and cross-class identity
+failures in existing shared record lowering. Preserve its working same-class
+aliases while designing explicit object references; Arcade class admission is
+still unsupported. Source parser `instanceof` is supported syntactically and
+reports missing runtime identity.
+
+## Development continuation: typed procedures and exceptional completion
+
+The next canonical protocols have native prototypes and a separate supplier
+[candidate](https://github.com/CrispStrobe/sb3-creator/pull/157). Do not infer
+consumer adoption from the presence of source modules or native tests. Preserve
+the existing compiler and hardware pins until exact supplier qualification and
+the coordinated consumer review are complete.
+
+Actual ordinary parameter entry belongs before body effects for both stock
+`procedures_call` and managed `arcade_callFunction`. Scratch's `util.stackFrame`
+is execution context; the actual installed parameter map is
+`util.thread.peekStackFrame().params`. Validation must bind that real map.
+Constrained managed calls must reject malformed or non-array argument transport
+and inconsistent resolved definition/formal mappings before creating a callee.
+Keep unconstrained legacy behavior separate. Never turn a rejected constraint
+into successful Undefined or a normal zero result.
+
+The native exceptional coordinator distinguishes a primitive thrown value from
+a parameter diagnostic. Both retire the actual failing invocation lineage and
+prevent stale asynchronous completion; neither grants project metadata the
+ability to issue an exceptional completion. Keep other scripts running and
+retain scoped cleanup for actual managed frames and return values.
+
+Source normal-completion analysis does not produce a value type. A throwing
+branch is not an implicit Undefined return; unreachable returns must not supply
+normal result facts. Full-source constraint facts remain separate so that a
+dead incompatible return or formal assignment still reports its source error.
+Preserve ordinary no-Throw analysis, hoisted declarations and unknown/recursive
+call conservatism. Source Throw remains an explicit prototype until canonical
+adoption; ordinary annotations need their own prefix-preservation integration.
+
+Run the focused native procedure, constraint rejection, Throw, Sprite, source
+completion and Map controls together against byte-matched installed overlays.
+Record the entire candidate compiler actually consumed, not merely an injected
+dialect table. The helper `runArcadeSourceCode` supports an explicit compiler
+directory; `runProgram` does not honor that setting. Do not mistake a narrow
+table projection for qualification of parsing, decompilation or saved projects.
+GUI acceptance remains separately tracked in the
+[capability ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md#next-canonical-protocols-native-prototypes-and-gui-work--2026-10-15).
+
+
+### Combined optional/default and CI accounting follow-up
+
+Composition `196e61cc7` passes 151 affected controls with the complete corrected
+compiler candidate `9d3e222e`: zero failures, skips or TODOs in that focused run,
+784 selected file guards unchanged and 174 VM overlay mirrors equal. This adds
+portable actual optional/default Any behavior and the test-accounting repair;
+it does not change the measured raw corpus or complete-project profile.
+
+The original published consumer unit-three job remains failed. Its actual
+census was 2437 tests, 2428 pass, zero fail, eight skips and one TODO. The old
+auditor mistook that explicit pending compiler discrepancy for an ordinary
+failure. The development correction retains passing and failing pending bodies
+separately, distinguishes pending suites from leaf summary counts, and still
+rejects ordinary, escaped-name and construction failures. Actual hosted
+qualification of the corrected consumer remains required.
+
+The optional Arrays supplier hook has a separate 32-control frozen candidate
+and independent review, covering its actual 62-method inventory and no-host
+behavior. It provides before-operation/body/result boundaries; it does not yet
+supply a current VM execution loan, failed-continuation coordinator, typed Array
+formal, Settings certificate, compiler pin or visible authoring workflow.
+Physical Number input preservation is a separate supplier prerequisite.
+
+
+### Actual default-argument mismatch and visible-display boundary
+
+The next selected-original comparison compiled and ran two genuinely new numeric
+Any-default programs once each. In the original default-signature program,
+omission produced 50, explicit Undefined produced NaN, and supplied arguments
+produced 15. All actual completion, trace and call-count observations were retained.
+The development native routes instead produced 50 for explicit Undefined: this is
+a compatibility failure. The independently edited current conditional export
+matched its own native 60/60/15 observations, which does not close the original
+source mismatch. An earlier function-call-default program was rejected by the
+selected compiler before any runtime start. Neither result promotes corpus rows.
+
+The canonical supplier changes are merged in
+[sb3-creator PR157](https://github.com/CrispStrobe/sb3-creator/pull/157) after all
+enabled checks passed; the reviewed and landed trees match. Consumer adoption
+still requires the coordinated pin/writer handoff and its own qualification.
+The CI-only follow-up in [PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888)
+preserves product and dependency bytes while fixing TODO accounting and the Image
+journey's editor/target-selector waits. Its new hosted results remain pending.
+The [GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md#visible-console-and-default-argument-acceptance-follow-up--2026-10-15)
+records the untested real Game Console display workflow and omission controls.
+
+
+### Omission-only defaults corrected after the actual failure
+
+Successor `967668298` retains one editable default per formal and carries actual
+omission through hygienic visible Number1/0 formals and exact call operands.
+Supplied Undefined remains supplied. Original argument effects are preserved;
+all generated Number obligations are checked from actual producers. The
+integrated `049bf6b5a` passes 155 controls with 785 unchanged file guards and
+174 matching installed VM overlays. Independent review adds 22 controls and
+11 binding/default/alias/hygiene probes; the default conversion differential
+retains 406 exact prior outputs.
+
+One genuinely new edited omission-flag export then compiles and runs once in the
+selected runtime: all six observations match 60/NumberNaN/15/CCC/3/1, with 783
+source/runtime guards unchanged. The unchanged original source is bound to its
+retained successful compilation and actual observations, without replay. Earlier
+compiler rejections and the real Undefined mismatch remain intact. This closes
+the bounded numeric-default mismatch, not typed defaults, complete corpus games,
+visible default-authoring controls or production dependency adoption.
+
+
+### Three authentic asset-context native follow-ups
+
+Three retained authentic projects now pass 15 bounded native portable route
+controls: flamethrower movement, crystal-ball button input, and Froggy's authored
+scene/countdown setup. Each checks source import, current Code, same-VM SB3,
+fresh-VM SB3 and current export/reimport using genuine resources. Actual direction
+press/release moves and stops the flamethrower; the crystal-ball A edge produces
+its authored response; Froggy creates its two authored sprites and starts the
+countdown. All 5,225 selected source/provider/compiler hashes remain unchanged.
+
+First private observers incorrectly located a life field and saved SVG assets;
+their failures are retained separately from the corrected native controls.
+Headless renderer/audio and listener warnings remain in raw logs. These checks
+establish neither rendering nor zero runtime warnings. Original compiler success
+is not original gameplay: exact-input SDK runtime, visible editor/controller,
+artwork/save/reopen and complete-case qualification remain open. The raw census
+and the 29-project aggregate are unchanged.
+
+### Required primitive-formal preservation and genuine score producer
+
+The reviewed local native candidate now retains supported ordinary required
+primitive annotations by default, including an unused String formal, and admits
+the genuine player 1 score reporter through source and native producer checks.
+The focused 29-control batch covers current inputs/cache, trusted registration
+renewal and lifetime refusal; a separate full
+29-project pure profile retained twenty clean source/Creator inputs and twenty
+clean exports from those inputs, and improved complete measured pure routes
+from eighteen to nineteen through Lyla. No previously complete route was lost. Canonical compiler consumer adoption remains a gate.
+Do not infer native Lyla, selected-original or GUI acceptance.
+
+Track the Code/Blocks authoring journeys in the capability ledger: explicit
+Number/String/Boolean constraints, unused-formal preservation, procedure-specific
+selection, valid and invalid current callers/body writers, player 1 score numeric
+connections, and metadata-preserving Code/Blocks/SB3/save/reopen/export/reimport.
+Existing constraint blocks provide a starting interface; the shared text/number
+dialog and unfiltered formal menu need specific authoring work. The remaining
+GUI behaviors require actual browser evidence before they can be marked complete.
+
+
+### Correct tutorial input authority before closing converter gaps — 2026-10-15
+
+The explicit PXT 13.2.1 collector candidate preserves source, artwork and custom
+helpers while taking package identities from package fences and target defaults.
+Three actual offline CLI projections match their pure file maps. Corrected
+Rockscout and Holiday now compile successfully with the actual SDK; neither is
+a whole-case closure. Rockscout exposes 78 converter diagnostics and a Creator
+prototype failure, with every partial body and graph retained. Its later Code,
+SB3 and export/edit stages are unavailable. Do not add a whole-file native
+admission merely to remove these diagnostics: tile-map, world-map, class,
+callback and numeric producer semantics require actual support. See the
+[qualification ledger](compatibility/arcade-authentic-project-qualification.md#corrected-tutorial-inputs-and-newly-exposed-conversion-gaps--2026-10-15)
+for observations, source links and remaining gates. The original raw184 and
+pure29 counts are unchanged. The block-icons dependency authority hold remains.
+
+### Helper ownership and downstream image gaps — 2026-10-16
+
+The ordinary procedure emitter now uses actual owner/declaration identity across
+event roots. Six focused controls pass; fresh Holiday conversion retains all
+58 unique helper bodies while eliminating repeated definitions. Its 140 source
+diagnostics and two optional-reference argument parser failures remain. Correct
+the optional-argument semantics rather than padding unknown reference values or
+removing helpers. A normalized startup header does not identify the selected
+conversion route; compare actual emitted definitions and effects.
+
+Rockscout's 48 package image initializers can now be prepared with exact pixels,
+but generic conversion still lacks their actual image resources and emits
+placeholders. The unsupported count remains 78. Share proper image resource
+allocation with the native route, preserving literal evaluation position,
+alias identity, distinct allocations and editable artwork. Do not force whole
+program admission or hide unsupported classes. See the
+[measured boundary](compatibility/arcade-authentic-project-qualification.md#dependency-helpers-and-image-values-next-measured-boundary--2026-10-16).
+
+
+### Scene-clock Number completion candidate — 2026-10-16
+
+The [exact scene-clock contract](ARCADE-CLOCK-NUMBER-PRODUCER.md) now has an
+unqualified source candidate with [private finite-completion and current-input
+boundaries](compatibility/arcade-scene-clock-number-completions.md). It reuses
+existing execution hooks, preserves the info census and adds no word, engine
+ABI, pin or clock policy. Source/boundary-model/native controls are authored,
+not yet run on this candidate. Do not promote Sparks, its external Timer writer
+or its cyclic fields, nor visible editor acceptance, from this source change.

@@ -147,3 +147,28 @@ test('the dialect words run: parse -> blocks -> VM', async () => {
     assert.equal(String(value('same')), '1', 'two variables holding one reference are ===');
     assert.equal(value('text'), '[1,"two"]');
 });
+
+
+test('named item reporters preserve plaintext through the actual shared Lite codec', () => {
+    const values = require(path.join(INTEGRATED, 'node_modules/scratch-vm/src/util/bw-values.js'));
+    const {ext, runtime, errors} = makeExt();
+    const texts = ['abc', '', 'null', 'true', '[1,2]', '{"value":2}', '"quoted"', 'é雪😀', 'line\nnext'];
+    ext.create1D({NAME: 'items', JSON: JSON.stringify(texts)});
+    ext.create2D({NAME: 'grid', JSON: JSON.stringify([texts])});
+    for (let index = 0; index < texts.length; index++) {
+        assert.equal(values.decode(ext.get({NAME: 'items', INDEX: index})), texts[index]);
+        assert.equal(values.decode(ext.get2D({NAME: 'grid', ROW: 0, COL: index})), texts[index]);
+        assert.equal(values.decode(ext.getMulti({NAME: 'grid', INDICES: JSON.stringify([0, index])})), texts[index]);
+    }
+    for (const text of [...texts].reverse()) assert.equal(values.decode(ext.pop({NAME: 'items'})), text);
+    ext.create1D({NAME: 'aggregates', JSON: '[3,null,[1,2]]'});
+    assert.equal(values.decode(ext.get({NAME: 'aggregates', INDEX: 0})), 3);
+    assert.equal(values.decode(ext.get({NAME: 'aggregates', INDEX: 1})), null);
+    assert.equal(ext.get({NAME: 'aggregates', INDEX: 2}), '[1,2]');
+    const image = values.reference(runtime, 'image', 'item-owner');
+    ext.set({NAME: 'aggregates', INDEX: 3, VALUE: image});
+    const read = ext.get({NAME: 'aggregates', INDEX: 3});
+    assert.equal(values.referenceId(runtime, read, 'image'), 'item-owner');
+    assert.equal(values.referenceId({}, read, 'image'), null);
+    assert.deepEqual(errors, []);
+});

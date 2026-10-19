@@ -111,3 +111,80 @@ export function tutorialProjectFiles(markdown, mainSource, {
         files: [...new Set([...ordered, ...Object.keys(files).filter(filename => filename !== 'pxt.json')])]}, null, 2) + '\n';
     return {files, dependencies: deps, customFiles: Object.keys(files).filter(filename => /^tutorial\.custom\./.test(filename))};
 }
+
+
+/** Version-bound documentation recovery policy, never used for authored .mkcd
+ * imports. This is a projection of a selected snippet plus retained tutorial
+ * inputs, not an export observed from the original editor. The original editor
+ * regenerates art code after loading JRES; this helper preserves its four saved
+ * art inputs without pretending to have executed that generation.
+ */
+export const TUTORIAL_EDITOR_POLICY = 'pxt-13.2.1';
+export function tutorialEditorProjectFiles(markdown, mainSource, {
+    name = 'Recovered tutorial', target = 'arcade', targetBundle, targetBundleSHA256, jresToTypeScript
+} = {}) {
+    if (typeof markdown !== 'string' || typeof mainSource !== 'string') throw new Error('Tutorial and selected main.ts must be text.');
+    if (target !== 'arcade' || targetBundle?.id !== target || targetBundle?.versions?.pxt !== '13.2.1' || targetBundle?.versions?.target !== '4.2.1' ||
+        !/^[a-f0-9]{64}$/.test(targetBundleSHA256 || '')) {
+        throw new Error('Tutorial editor policy requires the actual Arcade 4.2.1 / PXT 13.2.1 target snapshot and its SHA256.');
+    }
+    const template = targetBundle.blocksprj;
+    if (!template || !fileMap(template.files) || !fileMap(template.config?.dependencies) ||
+        !Array.isArray(template.config.files) || !template.config.files.every(safeName)) {
+        throw new Error('Tutorial editor policy requires actual target blocksprj files and dependencies.');
+    }
+    const files = Object.assign(Object.create(null), template.files);
+    const config = JSON.parse(JSON.stringify(template.config));
+    const dependencies = {...config.dependencies};
+    const artNames = ['tilemap.g.jres', 'tilemap.g.ts', 'images.g.jres', 'images.g.ts'];
+    const blocks = [...markdown.matchAll(/``` *(assetjson|customts|jres|simtheme)\s*\n([\s\S]*?)\n```/gim)];
+    const last = language => blocks.filter(match => match[1].toLowerCase() === language).at(-1)?.[2];
+    const assets = last('assetjson');
+    if (assets !== undefined) {
+        const parsed = JSON.parse(assets);
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Tutorial assetjson must be an object.');
+        for (const key of artNames) if (own(parsed, key)) {
+            if (typeof parsed[key] !== 'string') throw new Error(`Tutorial art input must be text: ${key}`);
+            files[key] = parsed[key];
+        }
+    }
+    const standaloneJres = last('jres');
+    if (standaloneJres !== undefined) {
+        const parsed = JSON.parse(standaloneJres);
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Tutorial jres must contain a resource object.');
+        if (typeof jresToTypeScript !== 'function') throw new Error('Standalone tutorial jres requires the original PXT tilemap generator.');
+        const generated = jresToTypeScript(standaloneJres);
+        if (typeof generated !== 'string') throw new Error('Original PXT tilemap generator must return TypeScript text.');
+        // Actual editor prefers standalone tutorial JRES over the asset snapshot.
+        files['tilemap.g.jres'] = standaloneJres;
+        files['tilemap.g.ts'] = generated;
+    }
+    const simTheme = last('simtheme');
+    if (simTheme !== undefined) {
+        const parsed = JSON.parse(simTheme);
+        if (parsed?.theme) config.theme = parsed.theme;
+        if (parsed?.palette) config.palette = parsed.palette;
+    }
+    const customTs = last('customts');
+    if (customTs !== undefined) files['tutorial.custom.ts'] = customTs;
+    const packages = /```package\s+((.|\s)+?)\s*```/i.exec(markdown);
+    if (packages) for (const raw of packages[1].split('\n')) {
+        const compact = raw.replace(/\s*/g, '');
+        if (!compact) continue;
+        const parts = compact.split('=');
+        if (parts.length > 2 || !/^[\w-]+$/.test(parts[0])) throw new Error(`Unsupported tutorial package entry: ${raw}`);
+        const version = parts[1] || '*';
+        if (version.toLowerCase() === 'remove') delete dependencies[parts[0]];
+        else dependencies[parts[0]] = version;
+    }
+    files['main.ts'] = mainSource;
+    const ordered = [...new Set([...config.files, ...artNames.filter(key => own(files, key)),
+        ...(customTs !== undefined ? ['tutorial.custom.ts'] : [])])];
+    if (ordered.some(key => !own(files, key))) throw new Error('Actual target template references missing files.');
+    files['pxt.json'] = JSON.stringify({...config, name, dependencies, files: ordered}, null, 2) + '\n';
+    return {files, dependencies, customFiles: customTs === undefined ? [] : ['tutorial.custom.ts'],
+        assembly: {policy: TUTORIAL_EDITOR_POLICY, pxtCommit: 'c40f412dc5bebb915a5891cd62fe956e198fb194',
+            targetVersions: {...targetBundle.versions}, targetBundleSHA256, mode: 'selected-snippet-with-tutorial-inputs',
+            originalEditorExport: false, assetCodeRegenerated: false,
+            sourceOrder: 'actual target file order, saved art inputs, actual custom helper; SDK-generated final order unqualified'}};
+}

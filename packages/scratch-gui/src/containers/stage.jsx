@@ -30,6 +30,7 @@ class Stage extends React.Component {
             'handleDoubleClick',
             'handleQuestionAnswered',
             'handleArcadeDialogDismiss',
+            'handleArcadeDialogButtonEdge',
             'onMouseUp',
             'onMouseMove',
             'onMouseDown',
@@ -201,6 +202,9 @@ class Stage extends React.Component {
     }
     arcadeDialogListener (dialog) {
         this.setState({arcadeDialog: dialog});
+    }
+    handleArcadeDialogButtonEdge (button, held) {
+        this.props.vm.runtime.emit('ARCADE_DIALOG_BUTTON_EDGE', button, held);
     }
     handleArcadeDialogDismiss (answer) {
         const dialog = this.state.arcadeDialog;
@@ -524,6 +528,7 @@ class Stage extends React.Component {
                 arcadeDialog={this.state.arcadeDialog}
                 onDoubleClick={this.handleDoubleClick}
                 onArcadeDialogDismiss={this.handleArcadeDialogDismiss}
+                onArcadeDialogButtonEdge={this.handleArcadeDialogButtonEdge}
                 onQuestionAnswered={this.handleQuestionAnswered}
                 {...props}
             />
