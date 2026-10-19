@@ -6533,3 +6533,12 @@ branches through the Buffer roots lane remain owned by the landing operator.
 Focused integrated source controls: 22 passed without skips. Hosted/editor
 checks and actual remaining-context qualification are pending. No raw corpus
 row is reclassified from focused tests alone.
+
+Continuation checkpoint: lower stack through PR856 is merged. Higher integration
+owns exponentiation, precise numeric constants, missing original asset factories
+and own-key SpriteData semantics. Settings worker owns durable typed settings;
+parser worker owns the next original-supported library syntax/runtime slice;
+corpus worker owns immutable context and behavior receipts. Keep separate trees
+and inspect the current producer before syncing: preserve every existing word
+and field choice. Parser-only success and finite map observations do not promote
+whole games. Visible Blocks/Code/graphics journeys remain acceptance gates.

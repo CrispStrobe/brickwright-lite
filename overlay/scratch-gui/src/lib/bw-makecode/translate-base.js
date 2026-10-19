@@ -392,6 +392,7 @@ export class BaseTranslator {
             // parenthesised: two of them side by side were read as ONE item
             // whose index ran to the second (`item a of array "P_x" + item b`).
             const e = n => ofGuard(this.expr(n));
+            if (op === '**') return `${this.operand(node.left)} to the power of ${this.operand(node.right)}`;
             if (op === '&&') return `(${this.condition(node.left)}) and (${this.condition(node.right)})`;
             if (op === '||') return `(${this.condition(node.left)}) or (${this.condition(node.right)})`;
             if (op === '==' || op === '===') return `${e(node.left)} = ${e(node.right)}`;

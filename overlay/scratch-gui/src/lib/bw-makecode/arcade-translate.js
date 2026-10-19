@@ -618,7 +618,7 @@ class ArcadeTranslator extends BaseTranslator {
         // slot it is kept as literal text, so say so instead.
         if(isScratchPredicate(value)){this.unsupported.push(`${value} as a value (a Scratch condition has no value form here)`);return ARCADE_FALSE;}
         // Scratch string shadows must not turn a numeric array element into text.
-        return node?.type==='Number' ? `(0 + (${value}))` : value;
+        return node?.type==='Number' || /^-?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(value) ? `(0 + (${value}))` : value;
     }
 
     callExpression (node) {
@@ -804,6 +804,13 @@ class ArcadeTranslator extends BaseTranslator {
             this.unsupported.push('scene.cameraProperty requires one property selector and native camera support');return 'undefined value';
         case 'scene.screenWidth': return String(HALF_WIDTH * 2);
         case 'scene.screenHeight': return String(HALF_HEIGHT * 2);
+        case 'Math.pow':
+            if(!this.handleTemplates)return super.callExpression(node);
+            if(this.boundSourceGlobals?.has('Math') || this.sourceFunctions?.has('Math') || this.localVars?.has('Math') || this.currentParameters?.has('Math') || this.capturedBindings.has('Math')) {
+                this.unsupported.push('Math.pow refers to a shadowed Math binding');return 'undefined value';
+            }
+            if(a.length!==2){this.unsupported.push('Math.pow() requires exactly two numbers');return 'undefined value';}
+            return this.expr({type:'Binary',op:'**',left:a[0],right:a[1]});
         case 'Math.sign':
         case 'Math.trunc':
             if(this.boundSourceGlobals?.has('Math') || this.sourceFunctions?.has('Math') || this.localVars?.has('Math') || this.currentParameters?.has('Math') || this.capturedBindings.has('Math')) {
@@ -937,6 +944,13 @@ class ArcadeTranslator extends BaseTranslator {
     valueExpr (node) {
         const music=this.musicValue(node);
         if(music!==null)return music;
+        if(node?.type==='Member' && node.object?.type==='Identifier' && node.object.name==='Math' &&
+            ['E','LN2','LN10','LOG2E','LOG10E','PI','SQRT1_2','SQRT2'].includes(node.name)) {
+            if(this.boundSourceGlobals?.has('Math') || this.sourceFunctions?.has('Math') || this.localVars?.has('Math') || this.currentParameters?.has('Math') || this.capturedBindings.has('Math')) {
+                this.unsupported.push(`${this.path(node)} refers to a shadowed Math binding`);return 'undefined value';
+            }
+            return String(Math[node.name]);
+        }
         const core=this.coreValue(node);
         if(core!==null)return core;
         if(['MultiplayerState.score','MultiplayerState.life'].includes(this.path(node))) {
@@ -1024,7 +1038,7 @@ class ArcadeTranslator extends BaseTranslator {
             this.usesArrays=true;
             return `compare value (${this.arrayElementValue(node.left)}) op "${node.op}" with (${this.arrayElementValue(node.right)})`;
         }
-        if(this.handleTemplates && node?.type==='Binary' && ['+','-','*','/','%'].includes(node.op)) {
+        if(this.handleTemplates && node?.type==='Binary' && ['+','-','*','/','%','**'].includes(node.op)) {
             if([node.left,node.right].some(value=>this.spriteReferences?.has(value)))this.unsupported.push('sprite arithmetic conversion requires ToPrimitive support');
             if([node.left,node.right].some(value=>this.playerReferences?.has(value)))this.unsupported.push('player arithmetic conversion requires ToPrimitive support');
             this.usesArrays=true;return `calculate value (${this.arrayElementValue(node.left)}) op "${node.op}" with (${this.arrayElementValue(node.right)})`;
@@ -3474,6 +3488,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(t.bufferReferences.has(node))return true;
         if(node.type==='Declaration' && node.decls.some(decl=>decl.isArray && !decl.init))return true;
         const constantNumber=value=>value?.type==='Number'?Number(value.value):value?.type==='Unary' && value.op==='-' && value.argument?.type==='Number'?-Number(value.argument.value):value?.type==='Member' && value.object?.name==='Math' && value.name==='PI'?Math.PI:NaN;
+        if(node.type==='Binary' && node.op==='**')return true;
         if(node.type==='Binary' && node.op==='/' && (!Number.isFinite(constantNumber(node.right)) || constantNumber(node.right)===0))return true;
         if(node.type==='Unary' && node.op==='-' && constantNumber(node.argument)===0)return true;
         if(node.type==='Call' && (isIndependentRegistration(t.path(node.callee)) || ['game.ask','game.askForString','game.askForNumber','controller.pauseUntilAnyButtonIsPressed'].includes(t.path(node.callee))))return true;

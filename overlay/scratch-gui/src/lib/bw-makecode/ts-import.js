@@ -266,11 +266,11 @@ class Parser {
      * translator needs that to declare a Scratch LIST rather than a
      * variable, and `let a: number[] = []` carries the fact nowhere else.
      */
-    skipTypeAnnotation () {
+    skipTypeAnnotation (assertion = false) {
         // The type's text rides along (`lastType`): `let bird: game.LedSprite = null`
         // says it holds a sprite, and nothing else in the declaration does.
         this.lastType = '';
-        if (!this.eat('punct', ':')) return false;
+        if (!assertion && !this.eat('punct', ':')) return false;
         let depth = 0;
         let isArray = false;
         let prev = this.toks[this.pos - 1];
@@ -291,6 +291,9 @@ class Parser {
             // Once a type is complete, only a type suffix/operator can
             // continue it. A following declaration or expression belongs to
             // the program, even when an optional semicolon was omitted.
+            if (depth === 0 && complete && t.type === 'ident' && t.value === 'is') {
+                this.lastType += this.next().value;complete = false;continue;
+            }
             if (depth === 0 && complete && !(t.type === 'punct' && continuations.has(t.value))) return isArray;
             if (t.type === 'punct' && '<[({'.includes(t.value)) depth++;
             if (t.type === 'punct' && t.value === '[' && depth === 1) isArray = true;
@@ -586,18 +589,105 @@ class Parser {
     }
 
     parseDeclaration () {
+        const start = this.pos;
         const kind = this.next().value;
         const decls = [];
+        let destructured = false;
         do {
-            const name = this.expect('ident').value;
+            const pattern = this.at('punct', '{') || this.at('punct', '[') ? this.parseBindingPattern() :
+                {type: 'Identifier', name: this.expect('ident').value};
+            destructured ||= pattern.type !== 'Identifier';
             const isArray = this.skipTypeAnnotation();
             const typeName = this.lastType;
             let init = null;
             if (this.eat('punct', '=')) init = this.parseExpression();
-            decls.push({name, init, isArray, typeName});
+            decls.push({name: pattern.name, pattern, init, isArray, typeName});
         } while (this.eat('punct', ','));
         this.eat('punct', ';');
-        return {type: 'Declaration', kind, decls};
+        // A destructuring declaration keeps its RHS once, and ordered property
+        // bindings separately. A converter must lower that evaluation explicitly;
+        // expanding each binding to another RHS call would duplicate side effects.
+        if (destructured) return {type: 'DestructuringDeclaration', kind,
+            declarations: decls.map(({name, ...declaration}) => declaration), calls: this.callsSince(start)};
+        return {type: 'Declaration', kind, decls: decls.map(({pattern, ...declaration}) => declaration)};
+    }
+
+    parseBindingPattern () {
+        if (this.eat('punct', '{')) {
+            const properties = [];
+            while (!this.at('punct', '}') && !this.at('eof')) {
+                if (this.eat('punct', '...')) {
+                    properties.push({type: 'RestElement', argument: {type: 'Identifier', name: this.expect('ident').value}});
+                    if (!this.at('punct', '}')) throw new Error('MakeCode TS: object rest binding must be last');
+                } else {
+                    let key;
+                    const computed = Boolean(this.eat('punct', '['));
+                    if (computed) {key = this.parseExpression();this.expect('punct', ']');}
+                    else {
+                        const token = this.next();
+                        if (!['ident','string','number'].includes(token.type) && !KEYWORDS.has(token.type)) throw new Error(`MakeCode TS: invalid binding property "${token.value}" on line ${token.line}`);
+                        key = token.type === 'ident' || KEYWORDS.has(token.type) ? {type: 'Identifier', name: token.value} :
+                            {type: token.type === 'string' ? 'String' : 'Number', value: token.value};
+                    }
+                    const shorthand = !this.eat('punct', ':');
+                    if (shorthand && (computed || key.type !== 'Identifier')) throw new Error('MakeCode TS: binding property requires a target');
+                    let value = shorthand ? {...key} : this.parseBindingPattern();
+                    if (this.eat('punct', '=')) value = {type: 'AssignmentPattern', left: value, right: this.parseExpression()};
+                    properties.push({type: 'BindingProperty', key, computed, shorthand, value});
+                }
+                if (!this.eat('punct', ',')) break;
+            }
+            this.expect('punct', '}');
+            return {type: 'ObjectPattern', properties};
+        }
+        if (this.eat('punct', '[')) {
+            const elements = [];
+            while (!this.at('punct', ']') && !this.at('eof')) {
+                if (this.eat('punct', ',')) {elements.push(null);continue;}
+                let element = this.eat('punct', '...') ? {type: 'RestElement', argument: this.parseBindingPattern()} : this.parseBindingPattern();
+                if (element.type === 'RestElement' && !this.at('punct', ']')) throw new Error('MakeCode TS: array rest binding must be last');
+                if (this.eat('punct', '=')) element = {type: 'AssignmentPattern', left: element, right: this.parseExpression()};
+                elements.push(element);
+                if (!this.eat('punct', ',')) break;
+            }
+            this.expect('punct', ']');
+            return {type: 'ArrayPattern', elements};
+        }
+        return {type: 'Identifier', name: this.expect('ident').value};
+    }
+
+    parseTypeParameters () {
+        if (!this.eat('punct', '<')) return [];
+        const parameters = [];
+        const readType = stopAtDefault => {
+            let text = '', depth = 0, previous = null;
+            while (!this.at('eof')) {
+                let token = this.peek();
+                // Inside type syntax these are consecutive closing angle brackets,
+                // not expression shifts. Preserve each delimiter for its own level.
+                if (token.type === 'punct' && ['>>','>>>'].includes(token.value)) {
+                    this.toks.splice(this.pos, 1, ...Array.from(token.value, () => ({...token, value: '>'})));
+                    token = this.peek();
+                }
+                if (depth === 0 && token.type === 'punct' && [',','>', ...(stopAtDefault ? ['='] : [])].includes(token.value)) break;
+                if (token.type === 'punct' && '<[({'.includes(token.value)) depth++;
+                else if (token.type === 'punct' && '>])}'.includes(token.value)) depth--;
+                const current = this.next();
+                if (previous && ['ident','string','number'].includes(previous.type) && ['ident','string','number'].includes(current.type)) text += ' ';
+                text += current.type === 'string' ? `"${current.value}"` : current.value;
+                previous = current;
+            }
+            return text;
+        };
+        do {
+            const name = this.expect('ident').value;
+            let constraint = '', defaultType = '';
+            if (this.eat('ident', 'extends')) {constraint = readType(true);if (!constraint) throw new Error('MakeCode TS: generic constraint requires a type');}
+            if (this.eat('punct', '=')) {defaultType = readType(false);if (!defaultType) throw new Error('MakeCode TS: generic default requires a type');}
+            parameters.push({name, constraint, defaultType});
+        } while (this.eat('punct', ','));
+        this.expect('punct', '>');
+        return parameters;
     }
 
     parseParams () {
@@ -658,12 +748,13 @@ class Parser {
     parseFunction () {
         this.expect('function');
         const name = this.at('ident') ? this.next().value : null;
+        const typeParameters = this.parseTypeParameters();
         const params = this.parseParams();
         const paramTypes = this.lastParamTypes;
         this.skipTypeAnnotation();
         const returnType = this.lastType;
         const body = this.parseBlock();
-        return {type: 'FunctionDeclaration', name, params, paramTypes, returnType,
+        return {type: 'FunctionDeclaration', name, params, paramTypes, returnType, typeParameters,
             optionalParams: params.optionalParams, body: [...this.defaultStatements(params), ...body]};
     }
 
@@ -729,6 +820,12 @@ class Parser {
         }
         // `for (let x: T of list)`: the typed form the check above does not see.
         if (this.eat('ident', 'of')) {
+            if (init?.type === 'DestructuringDeclaration' && init.declarations.length === 1 && !init.declarations[0].init) {
+                const iterable = this.parseExpression();
+                this.expect('punct', ')');
+                return {type: 'DestructuringForOf', pattern: init.declarations[0].pattern,
+                    kind: init.kind, iterable, body: this.parseBlockOrStatement()};
+            }
             if (init?.type !== 'Declaration' || init.decls.length !== 1 || init.decls[0].init) {
                 throw new Error('for-of needs one declared loop variable');
             }
@@ -816,6 +913,7 @@ class Parser {
             // type; the expression's evaluation and identity are unchanged.
             if (t.type === 'ident' && t.value === 'as' && minPrec <= 5) {
                 this.next();
+                if (this.at('punct', '(') || this.at('punct', '{')) {this.skipTypeAnnotation(true);continue;}
                 this.expect('ident');
                 while (this.eat('punct', '.')) this.expect('ident');
                 while (this.eat('punct', '[')) this.expect('punct', ']');

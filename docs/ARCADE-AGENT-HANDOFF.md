@@ -1,6 +1,6 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
-Updated 2026-10-11. The current-state refresh below supersedes the older
+Updated 2026-10-13. The current-state refresh below supersedes the older
 2026-10-10 checkpoints retained later in this guide. This is the public
 entry point for continuing MakeCode compatibility work without chat history.
 Read the optional, gitignored `docs/ARCADE-AGENT-HANDOFF.local.md` for the
@@ -12,6 +12,36 @@ The [native frame scheduler contract](ARCADE-FRAME-SCHEDULER.md) records the
 open startup and pause/callback phase limits and the claimed implementation
 envelope. Merge that lane claim before changing the product hook; finite
 prototype traces do not close its exact timing or installed-GUI gates.
+
+## Current integration checkpoint — 2026-10-13
+
+The lower runtime and Buffer stack is integrated into main through
+[PR856](https://github.com/CrispStrobe/brickwright-lite/pull/856).
+The next source stack is PR858, PR859, PR861, PR862, PR864 and PR865;
+refresh their actual heads and checks before adoption. Follow the latest
+`LANES.md` ownership, including the independent device and board work.
+
+The higher integration adds exponentiation and original-compatible `Math.pow`,
+full-precision numeric constants, original image/tilemap factory generation
+before compilation, and own-key SpriteData semantics. Retained generic function
+types, constructor properties and destructuring syntax now parse, but parsing
+alone does not implement classes or destructuring execution. The pinned original
+compiler rejects the tested active destructuring forms as well; preserve that
+source boundary instead of using those tests to promote corpus cases.
+
+Original root image and tilemap companions are generated only when absent;
+authored companions and input bytes are preserved. An authentic recovered map
+matches all 800 indices and wall flags and four tile images in original/native
+observations. Random art and unreached callbacks remain unqualified. A prior
+original compilation succeeded with a black screen because image factories were
+missing: compiler success alone is insufficient acceptance evidence.
+
+The immutable raw census remains **142 translated /41 partial /1 parse-failed**.
+A prepared-context census and finite execution proofs are separate records.
+The requested fewer-than20-partial checkpoint has not been established.
+Next priorities are typed Settings persistence, original-supported library and
+class operations, execution residuals, and visible authoring journeys. Continue
+through those areas without counting focused controls as whole-game success.
 
 ## Current-state refresh — 2026-10-11
 

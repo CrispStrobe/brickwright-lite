@@ -1000,7 +1000,7 @@ class ArcadeEmitter {
         case 'arrays_valueBinary':
         case 'arrays_valueUnary': {
             const op=this.field(b,'OP') || this.literalInput(b,'OP'),unary=b.opcode==='arrays_valueUnary',compare=b.opcode==='arrays_valueCompare';
-            const names={'+':'Add','-':'Subtract','*':'Multiply','/':'Divide','%':'Remainder','==':'Equal','!=':'NotEqual','===':'StrictEqual','!==':'StrictNotEqual','<':'Less','>':'Greater','<=':'LessEqual','>=':'GreaterEqual'};
+            const names={'+':'Add','-':'Subtract','*':'Multiply','/':'Divide','%':'Remainder','**':'Power','==':'Equal','!=':'NotEqual','===':'StrictEqual','!==':'StrictNotEqual','<':'Less','>':'Greater','<=':'LessEqual','>=':'GreaterEqual'};
             if(!names[op] || unary && !['+','-'].includes(op)){this.note(`unsupported value operation ${op}`);return this.na();}
             const key=(unary?'Unary':compare?'Compare':'Binary')+names[op];
             if(!this.valueOperationHelpers.has(key)){

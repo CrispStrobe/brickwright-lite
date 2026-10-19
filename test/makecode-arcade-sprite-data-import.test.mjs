@@ -104,3 +104,49 @@ test('Sprite Data original helpers match native aliases, undefined values, boole
         await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,100);check(run);
     }finally{clearStrayTimers();}
 });
+
+const mapKeys=['__proto__','prototype','constructor','toString','hasOwnProperty','valueOf'];
+const keyMain=setup+'let other=sprites.create(img`2`,SpriteKind.Enemy);other.x=17;\nfunction inheritedKey(prefix:string){return prefix+"OwnProperty"}\nlet inheritedName=inheritedKey("has");\n'+mapKeys.map((key,i)=>{const expression=key==='hasOwnProperty'?'inheritedName':JSON.stringify(key);return `
+let missingNumber${i}=sprites.readDataNumber(actor,${expression})
+let missingText${i}=sprites.readDataString(actor,${expression})
+let missingBoolean${i}=sprites.readDataBoolean(actor,${expression})
+sprites.setDataNumber(actor,${expression},${i+1})
+sprites.changeDataNumberBy(actor,${expression},3)
+let number${i}=sprites.readDataNumber(actor,${expression})
+sprites.setDataString(actor,${expression},"value-${i}")
+let text${i}=sprites.readDataString(actor,${expression})
+sprites.setDataBoolean(actor,${expression},true)
+let flag${i}=sprites.readDataBoolean(actor,${expression})`;}).join('\n')+`
+sprites.setDataSprite(actor,"__proto__",other)
+sprites.setDataSprite(actor,"constructor",other)
+let friend=sprites.readDataSprite(actor,"__proto__")
+friend.x+=2
+let constructorFriend=sprites.readDataSprite(actor,"constructor")
+let aliasedX=constructorFriend.x
+let done=1
+done+=0`;
+const keySamples=mapKeys.flatMap((_,i)=>['missingNumber','missingText','missingBoolean','number','text','flag'].map(name=>name+i)).concat(['aliasedX','done']);
+
+test('original PXT own-key Sprite Data maps match native prototype-name reads and writes through editable roundtrips',async()=>{
+    try{
+        const original=await runPxtArcade(originals(keyMain));
+        for(const [i] of mapKeys.entries()){
+            assert.equal(original['missingNumber'+i],undefined);
+            assert.equal(original['missingText'+i],undefined);
+            assert.equal(original['missingBoolean'+i],false);
+            assert.equal(original['number'+i],i+4);
+            assert.equal(original['text'+i],'value-'+i);
+            assert.equal(original['flag'+i],true);
+        }
+        assert.equal(original.aliasedX,19);
+        const imported=arcadeToPseudocode(keyMain);assert.deepEqual(imported.unsupported,[]);
+        const check=run=>{assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);const actual=values(run);for(const name of keySamples)assert.equal(actual[name],original[name],name);};
+        const run=await runProgram(imported.code,{frames:100,storage:true,uploads:imported.costumes});check(run);
+        check(await runProgram(run.creator.decompile(),{frames:100,storage:true,uploads:imported.costumes}));
+        const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});assert.deepEqual(exported.unsupported,[]);
+        const pxt=await runPxtArcade(originals(exported.ts));for(const name of keySamples)assert.equal(pxt[name]??pxt['Game_'+name],original[name],name+' exported');
+        const again=arcadeToPseudocode(exported.ts);assert.deepEqual(again.unsupported,[]);check(await runProgram(again.code,{frames:100,storage:true,uploads:again.costumes}));
+        const saved=Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer());await run.vm.loadProject(saved);run.vm.greenFlag();await stepFrames(run.vm,100);check(run);
+        const fresh=await runProgram('SPRITE Placeholder:\nWHEN flag clicked:\n  hide',{frames:0,storage:true});await fresh.vm.loadProject(saved);fresh.vm.greenFlag();await stepFrames(fresh.vm,100);check(fresh);
+    }finally{clearStrayTimers();}
+});

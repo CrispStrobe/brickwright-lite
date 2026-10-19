@@ -5,10 +5,10 @@
     "files": {
         "arrays": {
             "path": "extensions/CrispStrobe/arrays.js",
-            "sha256": "f7d8edd2821e39f7b0b9fb5018db0a8d44b850145bc5a2a8e2d46f8ad15af282",
-            "bytes": 72625,
+            "sha256": "48e6616de6ef8ba3b4d4fe84d00ae8a9ee8ecd703e6d8853ba6df162681dab4a",
+            "bytes": 72675,
             "repo": "CrispStrobe/extensions",
-            "commit": "598fc9665a3ffdcc6fdeaa465f2c42ccaa814d8f"
+            "commit": "99f261feb5c1bcaa82015f8e156bedacf40d1b57"
         },
         "circuitplayground": {
             "path": "extensions/CrispStrobe/circuitplayground.js",
