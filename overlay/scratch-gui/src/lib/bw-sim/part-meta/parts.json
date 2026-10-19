@@ -114440,36 +114440,6 @@
    "massGrams": 2.43,
    "connectors": [
     {
-     "id": "x0",
-     "type": "axlehole",
-     "position": [
-      -20,
-      10,
-      -18
-     ],
-     "axis": [
-      0,
-      0,
-      1
-     ],
-     "length": 4
-    },
-    {
-     "id": "x1",
-     "type": "axlehole",
-     "position": [
-      -20,
-      10,
-      18
-     ],
-     "axis": [
-      0,
-      0,
-      1
-     ],
-     "length": 4
-    },
-    {
      "id": "s0",
      "type": "stud",
      "position": [

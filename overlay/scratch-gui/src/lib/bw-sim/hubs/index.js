@@ -5,14 +5,17 @@
 // docs/ROBOT-LAB-ARCHITECTURE.md §6.2). One line per family: its module is
 // its HubProfile plus its VirtualHub adapter. A hub part's metadata names
 // its profile (PartMeta v2 `hubProfile`; v1: `hub.profile`); a part without one
-// is SPIKE Prime, the only family before R1.
+// is SPIKE Prime, the only family before R1. The RCX (hubs/rcx/) runs NQC programs
+// in the clean-room bytecode VM (docs/ROBOT-LAB-RCX.md).
 
 import {HubRegistry} from '../registry/hubs.js';
 import {spikePrimeHub} from './spike/spike-virtual-hub.js';
+import {rcxHub} from './rcx/rcx-virtual-hub.js';
 
 /** The profile a hub part without a profile in its metadata is (contracts.js, so the compiler may read it too). */
 export {DEFAULT_HUB_PROFILE} from '../contracts.js';
 
 export const hubRegistry = new HubRegistry([
-    spikePrimeHub
+    spikePrimeHub,
+    rcxHub
 ]);

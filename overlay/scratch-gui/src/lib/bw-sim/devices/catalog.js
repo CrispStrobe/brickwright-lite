@@ -24,11 +24,9 @@ export const DEVICE_MODEL_CLASSES = Object.freeze(['motor', 'servo-motor', 'line
     'sensor-active', 'sensor-digital', 'sensor-lpf2', 'pneumatic-valve-actuator']);
 
 /**
- * What sensors.js measures for a device: the v1 kinds (contracts.js SENSOR_KINDS) and
+ * What sensors.js measures for a device (contracts.js SENSOR_KINDS): the v1 kinds and
  * 'rotation' (the RCX rotation sensor: the turn of the axle through its hole, read from the
- * hinge the compiler made there — sensors.js). contracts.js SENSOR_KINDS does not list
- * 'rotation' yet (the physics lane's file): validateCompiledMechanism flags a mechanism with
- * a rotation sensor until it does (docs/ROBOT-LAB-RCX.md, "Missing").
+ * hinge the compiler made there — sensors.js rotationJoint).
  */
 const SENSOR_MEASURES = Object.freeze(['distance', 'color', 'force', 'rotation']);
 
