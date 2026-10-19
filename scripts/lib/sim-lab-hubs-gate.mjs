@@ -75,10 +75,17 @@ export const hubsInteractions = async ({browser, errors, openSimLab, wallBudget}
 
     // ---- 1. legopoweredup on the Technic Hub, over Scratch Link ------------------------------
     await prepare(page, {file: 'technic-hub-bench.ldr', extension: 'legopoweredup'});
-    await runFor(page, 4500, wallBudget);
+    // 6 s: the turn, the 1 s wait and the turn back, with room for the program's first blocks to reach the hub.
+    await runFor(page, 6000, wallBudget);
     {
         const r = await samples(page);
-        const rest = r.filter(s => s.t > 1500 && s.t < 2000).map(s => s.a.angleDeg);
+        // The rest is the plateau between the forward turn and the turn back: the 300 ms of samples before the
+        // angle first drops 10° below its peak (when the program's first block runs varies with the connection's
+        // pace, so a fixed time window would judge the turn itself).
+        const peakAt = r.reduce((best, s, i) => (s.a.angleDeg > r[best].a.angleDeg ? i : best), 0);
+        const backAt = r.findIndex((s, i) => i > peakAt && s.a.angleDeg < r[peakAt].a.angleDeg - 2.5);
+        const until = backAt > 0 ? r[backAt - 1].t : r[r.length - 1].t;
+        const rest = r.filter((s, i) => i >= peakAt && s.t >= until - 300 && s.t <= until).map(s => s.a.angleDeg);
         const end = r[r.length - 1].a.angleDeg;
         out.technic = {rest: rest.length ? rest[rest.length - 1] : null, end, samples: r.length,
             transport: await page.evaluate(() => window.__bwSimLab._pane.props.vm.runtime.peripheralExtensions.legopoweredup?._connectionType)};
