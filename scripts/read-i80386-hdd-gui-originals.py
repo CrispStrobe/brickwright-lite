@@ -1629,6 +1629,9 @@ def verify_font_chain(original_raw,request_raw,expected):
     for index,row in enumerate(links):
         need(current not in visited and row['path']==current,'ordered chain links and cycle refusal');visited.add(current)
         required.update(str(p) for p in Path(current).parents)
+        try:font_chain_witness_row(row,True)
+        except ValueError:
+            need(not value['complete'] and index==len(links)-1 and value['terminal'] is None,'failed chain link witness ends observation before following hop');break
         if row['linkBefore'] is None:
             need(not value['complete'] and index==len(links)-1 and value['terminal'] is None,'missing link text ends failed chain with no ignored suffix or terminal');break
         try:current=font_chain_next(current,row['linkBefore'])
@@ -1643,6 +1646,14 @@ def verify_font_chain(original_raw,request_raw,expected):
         need(type(terminal['observation']) is dict and set(terminal['observation'])<=set('namedBefore heldBefore heldAfter namedAfter file close'.split()),'closed chain terminal observation role')
         required.update(str(p) for p in Path(terminal['path']).parents)
         font_file_row(terminal['observation'],value['complete'])
+    needed_parents={str(parent) for row in links for parent in Path(row['path']).parents}
+    if terminal is not None:needed_parents.update(str(parent) for parent in Path(terminal['path']).parents)
+    parentmap={row['path']:row for row in parents}
+    need(needed_parents<=set(parentmap),'all parents consumed by retained chain witnesses are present')
+    for path in needed_parents:font_chain_witness_row(parentmap[path],True)
+    for index,row in enumerate(parents):
+        try:font_chain_witness_row(row,True)
+        except ValueError:need(not value['complete'] and index==len(parents)-1 and row['path'] not in needed_parents,'failed parent ends unconsumed chain observation prefix')
     if value['complete']:
         need(links and terminal is not None and current not in visited and terminal['path']==current and current.startswith(FONT_CHAIN_ROOTS),'complete regular terminal ordered original-root path')
         need({x['path'] for x in parents}==required,'exact ancestor witnesses, no omitted intermediate parent')

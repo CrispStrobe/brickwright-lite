@@ -346,19 +346,26 @@ failures remain failed observations. These are mocked source controls, with no
 hosted chain observation or guest qualification. The earlier frozen reader and
 consumers remain selected for the retained v1 original; no consumer pin is
 silently changed by this source slice.
-Further bridge review exposed a separate partial-prefix limit in the held chain
-reader: a failed close or identity readback with retained link text can still
-authorize later rows in an incomplete packet. That format remains disabled and
-its verdicts are held in this continuation; review a separately scoped repair
-before any activation. Its manufactured full-suite positives do not close this
-independent counterexample.
-That repair belongs in `verify_font_chain` and focused manufactured controls in
-`test/i80386-hdd-gui-actual.test.mjs`: prove parent and link completion before
-accepting subsequent path facts; retain a genuinely failed final witness. Include
-coherently rehashed failed-close, identity-drift and writable-parent packets with
-later links or terminals, plus valid complete and failed-prefix positives. Keep
-the guard false, prior discovery/delivery versions, caps and baseline unchanged;
-obtain independent packet review before a separately qualified source merge.
+Further bridge review exposed a separate partial-prefix defect in the earlier
+chain reader: a failed close or identity readback with retained link text could
+still authorize later rows in an incomplete packet. The separately scoped repair
+now changes only `verify_font_chain` and adds focused manufactured controls in
+`test/i80386-hdd-gui-actual.test.mjs`. Each link must complete before its next
+hop can authorize further observations, and every parent consumed by a retained
+link or terminal must have a successful witness. A genuinely failed final link,
+parent or terminal remains admissible as failed evidence. No global parent-array
+ordering is invented, and shared ancestors remain supported.
+
+Earlier accepted counterexamples remain retained as failures of the old reader;
+the fix deliberately rejects those packets. Existing discovery, delivery and
+bridge versions, guards, caps and baseline remain unchanged. This is a disabled
+source repair with independent source review complete; exact-head CI remains
+pending. The full suite passes 65 Node tests including 128 Python controls.
+Three new focused methods detect both repair-omission mutations. All 125 earlier
+Python test bodies and helpers, and all reader bytes outside `verify_font_chain`,
+remain unchanged. Independent review rejects 13 negative packets and accepts six
+valid complete or partial packets. This grants no hosted chain observation,
+activation or guest qualification.
 
 A separate disabled `font-bridge` source slice asks only about a selected direct
 child of `/etc/alternatives/` named in the retained incomplete alias. Its request

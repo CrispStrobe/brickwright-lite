@@ -2198,6 +2198,49 @@ class Originals(unittest.TestCase):
             value,request,expected,events,status=self.font_bridge_fixture(cut=cut);self.assertEqual(status,1,cut);self.assertIsNone(value['terminal'])
             self.assertFalse(r.verify_font_bridge(E(value),request,expected)['complete'])
 
+    def test_font_chain_prefix_repairs_held_partial_dependency_counterexamples(self):
+        source=(root/'scripts/read-i80386-hdd-gui-originals.py').read_text()
+        link_gate="        try:font_chain_witness_row(row,True)\n        except ValueError:\n            need(not value['complete'] and index==len(links)-1 and value['terminal'] is None,'failed chain link witness ends observation before following hop');break\n"
+        parent_gate="    needed_parents={str(parent) for row in links for parent in Path(row['path']).parents}\n    if terminal is not None:needed_parents.update(str(parent) for parent in Path(terminal['path']).parents)\n    parentmap={row['path']:row for row in parents}\n    need(needed_parents<=set(parentmap),'all parents consumed by retained chain witnesses are present')\n    for path in needed_parents:font_chain_witness_row(parentmap[path],True)\n    for index,row in enumerate(parents):\n        try:font_chain_witness_row(row,True)\n        except ValueError:need(not value['complete'] and index==len(parents)-1 and row['path'] not in needed_parents,'failed parent ends unconsumed chain observation prefix')\n"
+        for gate in (link_gate,parent_gate):self.assertIn(gate,source)
+        mutants=[]
+        for gate in (link_gate,parent_gate):
+            namespace={'__name__':'chain_prefix_mutant'};exec(compile(source.replace(gate,'',1),'chain-prefix-mutant','exec'),namespace);mutants.append(namespace['verify_font_chain'])
+        for cut in ('link-close','link-drift','parent-close','parent-drift','parent-write'):
+            value,request,expected,events,status=self.chain_fixture();value['complete']=False;value['firstFailure']={'phase':'chain','path':None,'name':'OSError','message':'retained dependency failure'}
+            row=value['links'][0] if cut.startswith('link') else value['parents'][0]
+            if cut.endswith('close'):row['close']['succeeded']=False
+            elif cut.endswith('write'):
+                for key in ('namedBefore','heldBefore','heldAfter','namedAfter'):row[key]['mode']|=0o022
+            else:row['heldAfter']['ino']+=1
+            expected['original']=ROW(E(value))
+            with self.assertRaises(ValueError,msg=cut):r.verify_font_chain(E(value),request,expected)
+            # Each repair-omission mutant reproduces the held old-mode acceptance.
+            self.assertFalse(mutants[0 if cut.startswith('link') else 1](E(value),request,expected)['complete'])
+    def test_font_chain_prefix_failed_link_does_not_authorize_next_parent(self):
+        value,request,expected,events,status=self.chain_fixture(cut='drift');self.assertEqual(status,1);self.assertIsNone(value['terminal']);self.assertIsNotNone(value['links'][-1]['linkBefore'])
+        self.assertFalse(r.verify_font_chain(E(value),request,expected)['complete'])
+        extra=copy.deepcopy(value['parents'][0]);extra['path']='/usr/share/fonts/family';value['parents'].append(extra);expected['original']=ROW(E(value))
+        with self.assertRaisesRegex(ValueError,'derived chain ancestry'):r.verify_font_chain(E(value),request,expected)
+    def test_font_chain_prefix_preserves_complete_shared_and_real_failed_prefixes(self):
+        for two in (False,True):
+            value,request,expected,events,status=self.chain_fixture(two=two);self.assertEqual(status,0);self.assertTrue(r.verify_font_chain(E(value),request,expected)['complete'])
+            self.assertEqual(len({row['path'] for row in value['parents']}),len(value['parents']))
+        for cut in ('link-read-close','drift','parent-write','terminal-parent-write','close','read-close'):
+            value,request,expected,events,status=self.chain_fixture(cut=cut);self.assertEqual(status,1,cut)
+            verdict=r.verify_font_chain(E(value),request,expected);self.assertFalse(verdict['complete']);self.assertFalse(verdict['qualified'])
+            if cut in ('link-read-close','drift','parent-write','terminal-parent-write'):self.assertIsNone(value['terminal'])
+        with self.font_chain_edges() as (request,env,events,store):
+            close=c.os.close
+            def fail_link_close(fd):
+                if stat.S_ISLNK(c.os.fstat(fd).st_mode):raise OSError('FINAL_LINK_CLOSE')
+                return close(fd)
+            with patch.object(c.os,'close',fail_link_close):
+                self.assertEqual(c.main(['font-chain','--request','/request','--expected-sha256',H(request),'--output','/out/close.json']),1)
+            value=D(store['/out/close.json']);self.assertEqual(value['firstFailure']['message'],'FINAL_LINK_CLOSE');self.assertIsNotNone(value['links'][-1]['linkBefore']);self.assertIsNone(value['terminal'])
+        expected={'schema':'bw.gui-hdd.font-chain-expectation.v1','source':D(request)['source'],'request':ROW(request),'original':ROW(E(value)),'runId':200,'workflowSha':'d'*40}
+        self.assertFalse(r.verify_font_chain(E(value),request,expected)['complete'])
+
 suite=unittest.defaultTestLoader.loadTestsFromTestCase(Originals)
 result=unittest.TextTestRunner(verbosity=2).run(suite)
 print(json.dumps({'controls':result.testsRun,'failures':len(result.failures),'errors':len(result.errors)}))

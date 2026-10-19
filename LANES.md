@@ -5835,6 +5835,12 @@ regrades them independently. It cannot establish the old font entry's current
 association or reobserve its writable parent. Existing chain starting roots,
 strict parent/terminal policy, caps and actual guards remain held. No new hosted
 job, official outer-delivery path, input, event or consumer adoption is included.
+A scoped old-chain reader repair now requires successful link witnesses before
+deriving another hop and successful parents before accepting child observations.
+The old partial-prefix counterexamples remain retained; valid failed final
+witnesses stay supported. Only `verify_font_chain`, new focused controls and
+this lane's documentation change. Controller, bridge reader, formats, caps,
+baseline, workflows and all guards remain held; source qualification is pending.
 A separate delivery reader now joins externally selected official metadata,
 workflow proof and the bounded original ZIP before grading a retained discovery
 observation. Missing request/observation or raw evidence refuses. This is
