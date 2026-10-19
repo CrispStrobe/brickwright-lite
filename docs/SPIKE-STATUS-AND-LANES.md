@@ -713,6 +713,24 @@ claiming adoption. Doable now with the documented build prerequisites.
 
 ### G02 — Preserve lifecycle correctness under concurrent GUI actions
 
+A new source candidate on `lane/spike-g02-dual-preflight-stop-20261019` fences
+Stop during preflight frame observation and the awaiting continuation. Previously,
+a dual-ultrasonic observer could Stop and still allow SAVE, LOAD or START; upload
+could send an additional STOP, and dual/six-motor preflight could publish a frame
+after closure. Checks after frame acceptance and after the awaited validation
+prevent those effects. Fifteen controls use the real session, bridge and program
+client with authored native frames: ten baseline failures, five live controls,
+74 passing session tests and five detected guard mutations. This source is not
+installed-qualified; require the final tested package, affected own-guest cases,
+normal recovery and every enabled final-head check before merging it.
+
+The separately retained installed two-UI-Stop case passed on source
+`f7b3bf03b1468a81e26228d052c4164d7081dc73`. It does not qualify this newer source.
+The native-interface late-UART diagnostic failed during debugger attachment
+before submitting the test program, so generation/late-return acceptance remains
+open. Preserve that failure and the held process collector's original assertions;
+new source controls and older successful packages do not close the full G02 matrix.
+
 **Owner:** Lite. **Start:** `overlay/scratch-gui/src/lib/spike-arena/code-run-feedback.js`,
 `renode-arena-session.js` in that directory,
 `overlay/scratch-gui/src/components/tw-pseudocode/`,

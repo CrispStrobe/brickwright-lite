@@ -5149,6 +5149,20 @@ fetch restricted images, fabricate reference storage/mapping or infer physical
 safety, full G02 coverage or distribution closure from bounded simulations.
 
 
+
+Continuation candidate `lane/spike-g02-dual-preflight-stop-20261019` stays in this
+merged session/test envelope. A hub observer can Stop during acceptance of a
+fresh dual-ultrasonic or six-motor frame; a queued observer can Stop before an
+awaiting caller resumes. Recheck closure before publishing the frame and before
+storage, restart or upload sends its next command, including an extra upload STOP.
+Fifteen real-session/bridge/program-client controls use authored native frames:
+ten cancellation cases fail on the baseline, five normal operations remain live,
+and all 74 session tests pass with the fix. Five isolated guard mutations are
+detected while retaining all five normal controls. This is a source candidate;
+every enabled final-head check and affected clean installed own-guest cancellation,
+normal operation and recovery qualification remain required before integration.
+The retained two-UI-Stop result does not qualify this changed session source.
+
 PR879 merged the finite native Start and chooser intent fences. Installed
 consumer `f1772cf0fe96988f7a4a3c665a478ef8fac4b065` qualified seven UI cases
 and own-NuttX startup Code Stop separately from the whole evolving main package.
