@@ -6,7 +6,7 @@ import {mkdir, writeFile, readFile} from 'node:fs/promises';
 import {createServer} from 'node:http';
 import {resolve, extname, sep} from 'node:path';
 import {chromium, firefox} from 'playwright';
-import {verifyEditorTouch} from './lib/editor-touch-checks.mjs';
+import {verifyEditorTouch, verifyEditorChrome} from './lib/editor-touch-checks.mjs';
 import {privateSpikeEvidenceDirectory} from './lib/private-spike-evidence.mjs';
 
 const browserName = process.env.BW_BROWSER || 'chromium';
@@ -99,6 +99,16 @@ try {
         assert.ok(widths.left > 120, 'the main editor remains usable');
         check(`right pane reaches ${fraction * 100}% with conversion messages visible`, widths);
     }
+    const tabList = page.locator('[role="tablist"]');
+    assert.notEqual(await tabList.getAttribute('data-bw-tab-icons-only'), null,
+        'a narrow desktop editor switches to icons rather than squeezing labels');
+    assert.equal(await tabList.locator('[data-bw-tab-label]').evaluateAll(labels =>
+        labels.filter(label => getComputedStyle(label).display !== 'none').length), 0);
+    await page.getByRole('tab', {name: 'Code', exact: true}).focus();
+    await page.keyboard.press('ArrowRight');
+    assert.equal(await page.getByRole('tab', {name: 'Circuit', exact: true}).getAttribute('aria-selected'), 'true');
+    await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    check('narrow desktop tabs keep accessible names and keyboard switching in icon-only mode');
     await page.screenshot({path: `${evidence}/right-pane-75-percent.png`});
     const rightWidth = () => page.locator('[data-right-pane]').evaluate(element => element.getBoundingClientRect().width);
     const originalWidth = await rightWidth();
@@ -161,7 +171,10 @@ try {
     check('simulator Run is compact and firmware export is clearly labelled in the file menu');
     assert.equal(await page.getByTestId('bw-global-undo').locator('svg').count(), 1);
     assert.deepEqual(errors, [], 'no uncaught browser exceptions');
-    if (browserName === 'chromium') await verifyEditorTouch(browser, proofUrl, evidence, check);
+    if (browserName === 'chromium') {
+        await verifyEditorTouch(browser, proofUrl, evidence, check);
+        await verifyEditorChrome(browser, proofUrl, evidence, check);
+    }
 } catch (error) {
     process.exitCode = 1;
     console.error(error);

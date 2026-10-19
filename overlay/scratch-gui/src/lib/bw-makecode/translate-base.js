@@ -30,6 +30,18 @@
 const RADIANS_TO_DEGREES = '57.29578';
 
 /**
+ * Math's constants as the numbers they are (task E14). Only `Math.PI` had a
+ * value; `Math.E`, `Math.SQRT2`, … fell through to the bare-property read and
+ * became VARIABLES named `E`, `SQRT2` — which hold 0 (MakeCode's own
+ * reference/math/constant pages, census 2026-10-13). PI keeps the five places
+ * it always had; the others are the full doubles, as MakeCode computes with.
+ */
+const MATH_CONSTANTS = {
+    PI: '3.14159', E: String(Math.E), LN2: String(Math.LN2), LN10: String(Math.LN10),
+    LOG2E: String(Math.LOG2E), LOG10E: String(Math.LOG10E), SQRT1_2: String(Math.SQRT1_2), SQRT2: String(Math.SQRT2)
+};
+
+/**
  * The core grammar has no bitwise operators, but the bundled `bitops`
  * extension does, and the pseudocode spells them as words. Mapping to
  * those beats the alternative: `set x to x & 255` parses to a
@@ -157,6 +169,54 @@ const isCreateSprite = (node, t) => !!node && node.type === 'Call' && t.path(nod
 /** Does this case body `break` anywhere but its end (which switchStatement has already dropped)? */
 const switchBreaks = body => breaks(body);
 
+/**
+ * The Identifier nodes whose binding is DECLARED text: a `p: string`
+ * parameter, a `let s: string` (not `string[]`). By scope: a function's
+ * parameters and declarations shadow the names outside it, and a name the
+ * same function binds both as text and as something else is not counted.
+ * (Text known from a value, `let s = ""`, is isText's textVars.)
+ */
+const FUNCTION_NODES = new Set(['FunctionDeclaration', 'FunctionExpression']);
+export function stringTypedReferences (program) {
+    const refs = new WeakSet();
+    const isString = text => String(text || '').replace(/\s+/g, '') === 'string';
+    const scope = (outer, params, paramTypes, body) => {
+        const own = new Map();
+        const bind = (name, text) => own.set(name, own.has(name) ? own.get(name) && text : text);
+        for (const p of params || []) {
+            const t = (paramTypes || {})[p];
+            bind(p, !!t && isString(t.text));
+        }
+        const collect = node => {
+            if (!node || typeof node !== 'object') return;
+            if (Array.isArray(node)) return node.forEach(collect);
+            if (FUNCTION_NODES.has(node.type) || node.type === 'Class') return;
+            if (node.type === 'Declaration') for (const d of node.decls || []) bind(d.name, isString(d.typeName));
+            if (node.type === 'ForOf') bind(node.name, false);
+            for (const v of Object.values(node)) if (v && typeof v === 'object') collect(v);
+        };
+        collect(body);
+        return new Map([...outer, ...own]);
+    };
+    const seen = new Set();
+    const visit = (node, env) => {
+        if (!node || typeof node !== 'object' || seen.has(node)) return;
+        seen.add(node);
+        if (Array.isArray(node)) return node.forEach(n => visit(n, env));
+        if (node.type === 'Identifier' && env.get(node.name)) refs.add(node);
+        if (FUNCTION_NODES.has(node.type)) return visit(node.body, scope(env, node.params, node.paramTypes, node.body));
+        if (node.type === 'Class') {
+            for (const m of [...(node.methods || []), ...(node.ctor ? [node.ctor] : [])]) {
+                visit(m.body, scope(env, m.params, m.paramTypes, m.body));
+            }
+            return;
+        }
+        for (const v of Object.values(node)) if (v && typeof v === 'object') visit(v, env);
+    };
+    visit(program, program && program.type === 'Program' ? scope(new Map(), [], {}, program.body) : new Map());
+    return refs;
+}
+
 /** `(…)` whose first parenthesis closes at the very end: already one operand. */
 const wrapped = value => {
     if (!value.startsWith('(') || !value.endsWith(')')) return false;
@@ -212,7 +272,10 @@ export class BaseTranslator {
         // minutes` after `let time = ""` is a string, and as operator_add it
         // added "12:" to a number. Known text on the right makes the name text.
         if (!this.textVars) this.textVars = new Set();
-        const holds = (name, value) => { if (name && this.isText(value)) this.textVars.add(name); };
+        // Declared text (`p: string`), by scope, for a text's truthiness in
+        // condition(). Arcade replaces it with its type graph's strings.
+        if (node.type === 'Program') this.stringReferences = stringTypedReferences(node);
+        const holds =(name, value) => { if (name && this.isText(value)) this.textVars.add(name); };
         if (node.type === 'Declaration') for (const d of node.decls || []) holds(d.name, d.init);
         if (node.type === 'Assignment' && node.op === '=' && node.left && node.left.type === 'Identifier') holds(node.left.name, node.right);
         for (const value of Object.values(node)) {
@@ -366,10 +429,11 @@ export class BaseTranslator {
             // `Math.PI` is a constant, and a game that computes a bounce
             // angle wants the number, not a variable called PI.
             if (node.object && node.object.type === 'Identifier' &&
-                node.object.name === 'Math' && node.name === 'PI') return '3.14159';
+                node.object.name === 'Math' && Object.hasOwn(MATH_CONSTANTS, node.name)) return MATH_CONSTANTS[node.name];
             const arrayLength = node.name === 'length' && this.arrayName(node.object);
             if (arrayLength) return `length of ${this.arrayRef(arrayLength)}`;
-            // A text's length (`code.length`) — it came out as a variable
+            // A text's length (`code.length`, and a `s: string` parameter's:
+            // isText reads declared text too) — it came out as a variable
             // called `length`.
             if (node.name === 'length' && this.isText(node.object)) return `length of ${this.operand(node.object)}`;
             // A property read on a CALL (`a.filter(…).length`) must still
@@ -383,7 +447,14 @@ export class BaseTranslator {
             }
             const token = this.enumToken(node);
             if (token !== null) return /^-?\d+$/.test(token) ? token : `"${token}"`;
-            return node.name;                            // a bare property read
+            // Nothing above knows this member. It used to be returned as its
+            // bare name — `s.length` on a value of no known type became the
+            // VARIABLE `length`, `Math.E` the variable `E`, a property of a
+            // class that is not translated the variable of that name — all of
+            // which hold 0 and read as a working program (task E14). It is
+            // refused by name instead: never resolved as a variable.
+            this.unsupported.push(this.unknownMember(node));
+            return '0';
         }
         case 'Index': {
             const name = this.arrayName(node.object);
@@ -463,6 +534,15 @@ export class BaseTranslator {
     /** An expression used where a boolean is expected. */
     condition (node) {
         if (!node) return 'false';
+        // A text's truthiness is MakeCode's: "" is false and every other text
+        // ("0" too) true. The bare-value test below, `not (s = 0)`, is
+        // Scratch's comparison instead — "" = 0 is false (a blank side compares
+        // as text) and "0" = 0 true — so both came out inverted (E10 on the
+        // Arcade path, E12 here for micro:bit and EV3). The length is the
+        // text's own truthiness. A number stays `not (v = 0)`.
+        if (this.isText(node) || (this.stringReferences && this.stringReferences.has(node))) {
+            return `not ((length of ${this.operand(node)}) = 0)`;
+        }
         if (node.type === 'Binary' || node.type === 'Unary') return this.expr(node);
         if (node.type === 'Boolean') return node.value ? 'true' : 'false';
         const value = this.expr(node);
@@ -592,14 +672,43 @@ export class BaseTranslator {
     isText (node) {
         if (!node) return false;
         if (node.type === 'String' || node.type === 'Template') return true;
+        // A reference DECLARED text (`p: string`, `let s: string`), by scope
+        // (stringTypedReferences; Arcade's type graph on its path). Without
+        // it `s.length` on a string parameter was the variable `length`, and
+        // `s[i]` / `s.charAt(i)` on one were refused (task E14).
+        if (this.stringReferences && this.stringReferences.has(node)) return true;
         if (node.type === 'Identifier') return !!(this.textVars && this.textVars.has(node.name));
+        // A record's field declared `: string` (`this.name`, `p.name`).
+        if (node.type === 'Member' && this.recordTypes && this.recordTypes.size) {
+            const rt = this.recordTypes.get(this.recordTypeOfNode(node.object));
+            const field = rt && rt.fields.find(f => f.name === node.name);
+            return !!field && String(field.typeName || '').replace(/\s+/g, '') === 'string';
+        }
         if (node.type === 'Binary' && node.op === '+') return this.isText(node.left) || this.isText(node.right);
         if (node.type === 'Call') {
             const name = this.path(node.callee);
+            if (node.callee && node.callee.type === 'Member' && node.callee.name === 'concat' &&
+                this.isText(node.callee.object)) return true;
             return /(^|\.)(convertToText|toString|substr|charAt|join)$/.test(name || '') ||
                 /^(radio\.receivedString|control\.deviceName)$/.test(name || '');
         }
         return false;
+    }
+
+    /**
+     * The refusal for a member no rule knows (`v.length` of a value of no
+     * known type, a property of a class that is not translated): its dotted
+     * path, and why it is not read as a variable.
+     */
+    unknownMember (node) {
+        const where = this.path(node) || `….${node.name}`;
+        // The calls inside it (`a[f()].kind`) are named, not lost with it.
+        const calls = callList(this.callsIn(node.object));
+        if (node.name === 'length') {
+            return `${where} — not known to be a text or an array here, so its length is not read ` +
+                `(and not as a variable called length)${calls}`;
+        }
+        return `${where} — a property this importer has no word for (not read as a variable called ${node.name})${calls}`;
     }
 
     /** One side of a join: a nested join or a literal stays bare, anything else is parenthesised. */
@@ -966,6 +1075,27 @@ export class BaseTranslator {
         emit(0, indent);
     }
 
+    /**
+     * The target of an assignment that is not a plain name: what expr() reads
+     * it as (an array item, a subclass's property variable), or null when
+     * expr() could not read it — then the statement is refused by name. A
+     * property no rule knows (a class that is not translated: `message.kind
+     * = 1`) used to be `set kind to 1`, a variable of that name (task E14).
+     * The calls in the value are named with it, as for any construct refused
+     * whole (`message.fromSerialNumber = control.deviceSerialNumber()`).
+     */
+    memberTarget (node, op, push, value) {
+        const before = this.unsupported.length;
+        const target = this.expr(node);
+        if (this.unsupported.length === before) return target;
+        const why = this.unsupported.splice(before);
+        const where = this.path(node) || `….${node.name}`;
+        push(this.note((why.length === 1 && why[0] === this.unknownMember(node) ?
+            `${where}${op} — a property this importer cannot write (not a variable called ${node.name})` :
+            `${where}${op} — not written: ${why.join('; ')}`) + callList(this.callsIn(value))));
+        return null;
+    }
+
     expressionStatement (expr, indent, out) {
         const pad = '  '.repeat(indent);
         const push = line => out.push(pad + line);
@@ -1007,7 +1137,8 @@ export class BaseTranslator {
                 return;
             }
             const target = expr.left.type === 'Identifier' ?
-                this.varName(expr.left.name) : this.expr(expr.left);
+                this.varName(expr.left.name) : this.memberTarget(expr.left, ` ${expr.op} …`, push, expr.right);
+            if (target === null) return;
             this.declared.add(target);
             if (expr.op === '=') this.assign(target, expr.right, indent, out);
             else if (expr.op === '+=') push(`change ${target} by ${this.expr(expr.right)}`);
@@ -1017,7 +1148,8 @@ export class BaseTranslator {
         }
         if (expr.type === 'Update') {
             const target = expr.argument.type === 'Identifier' ?
-                this.varName(expr.argument.name) : this.expr(expr.argument);
+                this.varName(expr.argument.name) : this.memberTarget(expr.argument, expr.op, push);
+            if (target === null) return;
             push(`change ${target} by ${expr.op === '++' ? '1' : '0 - 1'}`);
             return;
         }
@@ -1589,6 +1721,10 @@ export class BaseTranslator {
         case 'reverse': return `reverse of ${ref}`;
         case 'slice': return a.length === 2 ? `slice of ${ref} from ${arg(0)} to ${arg(1)}` : null;
         case 'join': return `${ref} as text`;
+        // MakeCode's "get random value from array": an item at a random index.
+        case '_pickRandom':
+            if (a.length) return null;
+            return `item (pick random 0 to (length of ${ref}) - 1) of ${ref}`;
         default: return null;
         }
     }
@@ -1603,6 +1739,8 @@ export class BaseTranslator {
         switch (node.callee.name) {
         case 'push': push(`push ${arg(0)} to ${ref}`); return true;
         case 'insertAt': push(`insert ${arg(1)} at ${arg(0)} of ${ref}`); return true;
+        // `unshift(v)` puts v first: an insert at 0 (as a statement its new length is unused).
+        case 'unshift': if (a.length !== 1) return false; push(`insert ${arg(0)} at 0 of ${ref}`); return true;
         case 'set': push(`set item ${arg(0)} of ${ref} to ${arg(1)}`); return true;
         case 'removeAt': push(`remove item ${arg(0)} of ${ref}`); return true;
         // `shift()` removes the first element; as a statement the removed
@@ -1618,11 +1756,37 @@ export class BaseTranslator {
         }
     }
 
+    /**
+     * A text's method with a word in the dialect, or null (task E14). The
+     * rest of MakeCode's text API (substr, indexOf, includes, split,
+     * toUpperCase, compare, isEmpty, charCodeAt, String.fromCharCode, …) has
+     * none and stays refused by name in callExpression's default. `includes`
+     * is not `contains`: Scratch's ignores case, MakeCode's does not. (A
+     * number's toString() stays refused too: Arcade's sprite text pins
+     * `(2).toString()` as refused; pxt's string has no toString.)
+     */
+    textMethod (node) {
+        const c = node.callee;
+        if (!c || c.type !== 'Member' || this.arrayName(c.object)) return null;
+        const a = node.args || [];
+        // `s.charAt(i)` is `s[i]`: `letter i + 1 of s` (out of range, "" in both).
+        if (c.name === 'charAt' && a.length <= 1 && this.isText(c.object)) {
+            return this.expr({type: 'Index', object: c.object, index: a[0] || {type: 'Number', value: '0'}});
+        }
+        // `s.concat(t)` is `s + t`.
+        if (c.name === 'concat' && a.length === 1 && this.isText(c.object)) {
+            return `(${this.joinOperand(c.object)} join ${this.joinOperand(a[0])})`;
+        }
+        return null;
+    }
+
     callExpression (node) {
         const record = this.recordCall(node, null);
         if (record !== null) return record;
         const arrayValue = this.arrayValue(node);
         if (arrayValue !== null) return arrayValue;
+        const textValue = this.textMethod(node);
+        if (textValue !== null) return textValue;
         const name = this.path(node.callee);
         let fn = name && this.functions.find(f => f.name === name || f.source === name);
         if (fn) {

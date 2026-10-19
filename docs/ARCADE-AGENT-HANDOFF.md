@@ -8,6 +8,11 @@ operator's actual checkouts, tools, private corpus and original receipts.
 Historical checkpoints below are observations, not permission to assume that
 branches, checks, ownership or dependency pins remain unchanged.
 
+The [native frame scheduler contract](ARCADE-FRAME-SCHEDULER.md) records the
+open startup and pause/callback phase limits and the claimed implementation
+envelope. Merge that lane claim before changing the product hook; finite
+prototype traces do not close its exact timing or installed-GUI gates.
+
 ## Current-state refresh — 2026-10-11
 
 The earlier runtime and documentation stack through scrolling is integrated into

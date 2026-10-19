@@ -208,7 +208,11 @@ export async function runDosToolchain(routeId, source, opts = {}) {
         // A route may pin the CPU variant it was built for (uBASIC needs the
         // 80186 core: ia16-elf-gcc emits 186 opcodes). An explicit opts.variant
         // still wins, for a caller that knows better.
-        variant: opts.variant || route.variant, maxSteps: opts.maxSteps
+        variant: opts.variant || route.variant, maxSteps: opts.maxSteps,
+        // Pass a port observer through to the 8086 bench. A DOS Forth `pin!`
+        // OUTs to 0x378+pin, so the Code-tab run path uses this to drive a GPIO
+        // widget; routes that do not pass it see the bench behave as before.
+        onPortAccess: opts.onPortAccess
     });
 }
 

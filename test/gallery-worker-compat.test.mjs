@@ -165,8 +165,10 @@ test('published migration counts distinguish proven, awaiting-proof and ambient 
     // (it fell 25 -> 24 at the TurboWarp sync of 2026-09-21 when upstream
     // delisted CubesterYT/TurboHook in favour of CubesterYT/Webhooks); the new
     // arrival CrispStrobe/circuitcubes is deferred (Web Bluetooth), so only the
-    // deferred count moved 103 -> 104.
-    assert.deepEqual(counts, {worker: 24, deferred: 104, candidate: 1});
+    // deferred count moved 103 -> 104. 24/105/1 = 130 after the 2026-10-14
+    // sync: CrispStrobe/circuitplayground arrived deferred (VM runtime) and
+    // CrispStrobe/arrays, already deferred, was re-pinned; no worker source moved.
+    assert.deepEqual(counts, {worker: 24, deferred: 105, candidate: 1});
 });
 
 test('worker-safe fetch requirements remain measured while their proven cohort stays promoted', () => {

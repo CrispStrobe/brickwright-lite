@@ -203,6 +203,7 @@ export const DEVICE_GROUP_CORE = Object.freeze({
     'Arduino (AVR)': 'arduino',
     'Raspberry Pi': 'rp2040',
     'STM32 (ARM)': 'arm',
+    'ESP8266': 'esp8266',
     '6502': 'w65c02',
     'Z80': 'z80',
     'RISC-V': 'riscv32',
@@ -295,6 +296,18 @@ export const DEVICES = Object.freeze([
             tx('stm32-uart-bootloader-webserial', ['bin', 'hex'], 'stm32'),
             tx('cmsis-dap-swd-webusb', ['bin'], 'stm32')
         ]
+    }),
+    // The ESP8266 (Tensilica LX106): C from sb3-creator's DEVICE ESP8266 back
+    // end against the blob-free esp8266js runtime API, compiled by the hosted
+    // service's esp8266 target (in the pinned snapshot since stc-compiler
+    // e21b64c, plan N13) and run in bw-board's `esp8266` debug kind.
+    dev('esp8266', 'ESP8266', 'ESP8266', 'esp8266', {
+        pickerCompile: true,
+        pickerEmulator: 'esp8266',
+        sim: [eng('esp8266', ['bin'], {
+            note: 'bw-board esp8266 kind over the esp8266js fork; SDK-free firmware only, GPIO and serial'
+        })],
+        silicon: []
     }),
     dev('eater6502', 'Eater 6502', '6502', 'w65c02', {
         pickerCompile: true,
@@ -562,12 +575,15 @@ const JS_MIN = 'Kaluma and Espruino need a Cortex-M with 64 KB RAM or more';
 const STC_RAM = `STC12C5A60S2: 1,280 B RAM; ${MPY_MIN}`;
 const AVR_RAM = `ATmega328P: 2 KB RAM; ${MPY_MIN}`;
 const F030 = 'STM32F030: 16–32 KB flash, 4 KB RAM';
+const ESP_SDK = 'the MicroPython and NodeMCU ESP8266 ports link Espressif\'s closed SDK, which this simulator does not run';
 const MPY = shipped('py', 'MicroPython', 'none', {
     tier: '2a',
     note: 'the real interpreter; what is asserted is only the deploy protocol'
 });
 const CPY = shipped('py', 'CircuitPython', 'none', {evidence: EVIDENCE.DECLARED, tier: '3'});
 const TS = via('ts', {evidence: EVIDENCE.DECLARED});
+/** ESP8266 lowering lands on its C cell, hosted since stc-compiler e21b64c (plan N13). */
+const ESP_C = via('c');
 
 /**
  * cells[family][language] = { native, lowered[] }.
@@ -640,6 +656,23 @@ export const CELLS = Object.freeze({
         basic: {native: no('flash', `${F030}; no BASIC fits beside a program`), lowered: [via('c')]},
         asm: {native: shipped('hex', 'arm-none-eabi-as', 'hosted', {note: 'runs on the STM32F030 light tier (N4)'}), lowered: [LISTING]},
         micropython: {native: no('flash', `${F030}; ${MPY_MIN}`), lowered: [via('c')]}
+    },
+    esp8266: {
+        pseudocode: {native: AST, lowered: [ESP_C]},
+        python: {native: no('licence', ESP_SDK), lowered: [ESP_C]},
+        javascript: {native: no('licence', `${ESP_SDK} (Espruino's ESP8266 port links it too)`), lowered: [ESP_C]},
+        c: {
+            native: shipped('bin', 'xtensa-lx106-elf-gcc + bw8266 runtime', 'hosted', {
+                note: 'the image runs in bw-board\'s esp8266 kind (esp8266js fork, SDK-free firmware only)'
+            }),
+            lowered: [ESP_C]
+        },
+        basic: {native: no('no-port', 'no permissively licensed BASIC for the ESP8266 without the SDK found'), lowered: [ESP_C]},
+        asm: {
+            native: open('bin', 'xtensa-lx106-elf-as', 'hosted', null, {note: 'no LX106 assembler route in the ASM tab yet'}),
+            lowered: []
+        },
+        micropython: {native: no('licence', ESP_SDK), lowered: [ESP_C]}
     },
     microbit: {
         pseudocode: {native: AST, lowered: [via('micropython')]},
@@ -806,7 +839,15 @@ export const CELLS = Object.freeze({
             native: open('uf2', 'arm-none-eabi-as', 'hosted', null, {note: 'silicon only; no emulator'}),
             lowered: []
         },
-        micropython: {native: CPY, lowered: [TS]}
+        micropython: {native: CPY, lowered: [TS]},
+        // Not a Code-tab language: the landing cell the TS lowerings above
+        // reach. Its artefact runs in the Arcade simulator, so Arcade and
+        // PyBadge read "lowered via ts · sim"; UF2 to silicon stays open (L4).
+        ts: {
+            native: shipped('ts', 'PXT (MakeCode) static TypeScript', 'hosted',
+                {evidence: EVIDENCE.DECLARED, tier: '3'}),
+            lowered: []
+        }
     }
 });
 

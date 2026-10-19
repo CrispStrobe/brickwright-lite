@@ -22,6 +22,35 @@ use std::time::{Duration, Instant};
 
 const MAX_OUTPUT_BYTES: usize = 1024 * 1024;
 const MAX_SESSION_TIME: Duration = Duration::from_secs(120);
+/// Robot Lab lockstep (docs/ROBOT-LAB-SPIKE-EMULATION.md §2.7, R13a): the emulator then
+/// advances only in quanta at a real-time factor far below 1, so 120 s of wall time is a
+/// few seconds of simulated time. A session that BEGAN lockstep gets this bound instead;
+/// every other session keeps `MAX_SESSION_TIME`. Build-time `BW_RENODE_LOCKSTEP_SESSION_SECS`
+/// (120..=3600) overrides the default.
+const DEFAULT_LOCKSTEP_SESSION_SECS: u64 = 600;
+
+fn lockstep_session_time() -> Duration {
+    Duration::from_secs(
+        option_env!("BW_RENODE_LOCKSTEP_SESSION_SECS")
+            .and_then(|value| value.parse::<u64>().ok())
+            .filter(|value| (120..=3600).contains(value))
+            .unwrap_or(DEFAULT_LOCKSTEP_SESSION_SECS),
+    )
+}
+
+/// Fixed host environment for every Renode session on this platform. On macOS the packaged
+/// NuttX machine overflows the .NET default thread stack in the SPI-flash DMA path and never
+/// boots (renode-spike-prime#59); a 64 MiB default stack fixes it. A constant, never input.
+const RENODE_PLATFORM_ENV: &[(&str, &str)] = if cfg!(target_os = "macos") {
+    &[("DOTNET_DefaultStackSize", "0x4000000")]
+} else {
+    &[]
+};
+
+/// The wall bound the session worker enforces right now.
+fn session_bound(launch: Duration, lockstep: bool) -> Duration {
+    if lockstep { launch.max(lockstep_session_time()) } else { launch }
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum TeardownReason {
@@ -63,6 +92,8 @@ struct LaunchBounds {
 struct SessionControl {
     stop: Arc<AtomicBool>,
     done: Arc<(Mutex<bool>, Condvar)>,
+    /// Set once the session began Robot Lab lockstep; selects the lockstep wall bound.
+    lockstep: Arc<AtomicBool>,
 }
 
 impl SessionControl {
@@ -94,10 +125,12 @@ impl SessionControl {
 pub(crate) enum SpikeTopology {
     Default,
     SixMotors,
+    DualUltrasonic,
 }
 impl SpikeTopology {
     pub(crate) fn parse(value: Option<&str>) -> Result<Self, String> {
         match value { None | Some("default") => Ok(Self::Default), Some("six-motors") => Ok(Self::SixMotors),
+            Some("dual-ultrasonic") => Ok(Self::DualUltrasonic),
             _ => Err("unknown SPIKE topology".into()) }
     }
 }
@@ -106,6 +139,22 @@ fn topology_commands(config: &serde_json::Value, topology: SpikeTopology) -> Res
         return Err("invalid packaged motor-port declaration".into());
     }
     if topology == SpikeTopology::Default { return Ok(Vec::new()); }
+    if topology == SpikeTopology::DualUltrasonic {
+        let marker = &config["addressedSensorCapability"];
+        let image = config["identity"]["imageSha256"].as_str().unwrap_or("");
+        let valid_marker = marker.as_object().is_some_and(|m| m.len() == 3 &&
+            ["abi", "address", "userspaceSha256"].iter().all(|k| m.contains_key(*k))) &&
+            marker["abi"].as_u64() == Some(1) &&
+            marker["address"].as_u64().is_some_and(|a| a % 4 == 0 && (0x08060000..=0x080ffffc).contains(&a)) &&
+            image.len() == 64 && image.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)) &&
+            marker["userspaceSha256"].as_str() == Some(image);
+        if config["identity"]["firmware"] != "brickwright-nuttx" || config["identity"]["transport"] != "none" ||
+            !config["programMailbox"].as_u64().is_some_and(|a| a % 4 == 0 && (0x20020000..=0x20040000-112).contains(&a)) || !valid_marker {
+            return Err("dual ultrasonic requires image-bound own full NuttX addressed API".into());
+        }
+        return Ok(["portD Detach", "portE Attach \"ultrasonic\"", "portF Attach \"ultrasonic\""]
+            .into_iter().map(str::to_owned).collect());
+    }
     if config["identity"]["firmware"] != "brickwright-nuttx" || config["motorPorts"].as_u64() != Some(6) {
         return Err("six-motor topology is not supported by this own firmware package".into());
     }
@@ -492,8 +541,8 @@ impl RenodeSupervisor {
     }
 
     pub(crate) fn start_spike_profile(&self, backend: Option<&str>, topology: SpikeTopology) -> Result<RenodeEndpoint, String> {
-        if topology == SpikeTopology::SixMotors && backend != Some("nuttx") {
-            return Err("six-motor topology requires own NuttX firmware".into());
+        if topology != SpikeTopology::Default && backend != Some("nuttx") {
+            return Err("custom topology requires own NuttX firmware".into());
         }
         if backend.is_some_and(|name| !matches!(name, "guest" | "nuttx")) {
             return Err("unknown SPIKE execution backend".into());
@@ -544,8 +593,8 @@ impl RenodeSupervisor {
         if backend.is_some_and(|name| config["identity"]["firmware"].as_str() != Some(if name == "nuttx" {"brickwright-nuttx"} else {"brickwright-arena-demo"})) {
             return Err("requested SPIKE backend is not packaged in this desktop build".into());
         }
-        if topology == SpikeTopology::SixMotors && (config["identity"]["firmware"] != "brickwright-nuttx" || config.get("programMailbox").is_none()) {
-            return Err("six-motor topology requires own full NuttX firmware".into());
+        if topology != SpikeTopology::Default && (config["identity"]["firmware"] != "brickwright-nuttx" || config.get("programMailbox").is_none()) {
+            return Err("custom topology requires own full NuttX firmware".into());
         }
         if config["identity"]["firmware"] == "brickwright-arena-demo" {
             verify_arena_manifest(&root, &manifest)?;
@@ -803,6 +852,7 @@ impl RenodeSupervisor {
         command
             .env_remove("BW_SPIKE_FLASH_JOB_DIR")
             .env_remove("BW_SPIKE_FLASH_IMAGE_SHA256");
+        command.envs(RENODE_PLATFORM_ENV.iter().copied());
         if let Some(job) = &checkpoint {
             command
                 .env("BW_SPIKE_FLASH_JOB_DIR", &job.directory)
@@ -849,13 +899,15 @@ impl RenodeSupervisor {
         let overflow = Arc::new(AtomicBool::new(false));
         let total = Arc::new(AtomicUsize::new(0));
         let done = Arc::new((Mutex::new(false), Condvar::new()));
+        let lockstep = Arc::new(AtomicBool::new(false));
         let worker_stop = Arc::clone(&stop);
         let worker_done = Arc::clone(&done);
+        let worker_lockstep = Arc::clone(&lockstep);
         let worker_uart_evidence = uart_evidence.clone();
         let (ready_sender, ready_receiver) = std::sync::mpsc::sync_channel::<Result<(), String>>(1);
         // Register ownership before starting the worker. A timed-out launch
         // remains registered until its child and private resources are cleaned.
-        let control = SessionControl { stop, done };
+        let control = SessionControl { stop, done, lockstep };
         *slot = Some(control.clone());
         thread::spawn(move || {
             let fail_start = |message: &str| {
@@ -912,7 +964,8 @@ impl RenodeSupervisor {
             loop {
                 let terminate = worker_stop.load(Ordering::SeqCst)
                     || overflow.load(Ordering::SeqCst)
-                    || started.elapsed() >= bounds.timeout;
+                    || started.elapsed()
+                        >= session_bound(bounds.timeout, worker_lockstep.load(Ordering::SeqCst));
                 if terminate {
                     let _ = child.kill();
                     let _ = child.wait();
@@ -957,6 +1010,19 @@ impl RenodeSupervisor {
             token,
             uart_evidence,
         })
+    }
+
+    /// Gives the active session the lockstep wall bound (`lockstep_session_time`). False when
+    /// no live session exists. Never shortens a bound and never touches other sessions.
+    pub(crate) fn extend_for_lockstep(&self) -> bool {
+        let Ok(slot) = self.session.lock() else { return false; };
+        match slot.as_ref() {
+            Some(session) if !session.finished() && !session.stop.load(Ordering::SeqCst) => {
+                session.lockstep.store(true, Ordering::SeqCst);
+                true
+            }
+            _ => false,
+        }
     }
 
     pub(crate) fn teardown(&self, _reason: TeardownReason) {
@@ -1030,7 +1096,7 @@ pub(crate) fn verify_micropython_manifest(root: &Path, manifest: &Path) -> Resul
         "tools/ev3_state_observer.py", "tools/spike_arena_inputs.py", "tools/spike_arena_mailbox.py",
         "tools/spike_nuttx_mailbox.py", "tools/spike_program_uart.py",
         "licenses/renode-models-MIT.txt", "licenses/brickwright-BSD-3-Clause.txt",
-    ], &[], 16)?;
+    ], &["profile.json"], 17)?;
     if std::fs::metadata(root.join("boot-seed.bin")).map_err(|_| "boot seed unavailable")?.len() != 65536 {
         return Err("boot seed geometry mismatch".into());
     }
@@ -1050,7 +1116,8 @@ fn verify_arena_manifest(root: &Path, manifest: &Path) -> Result<(), String> {
         "tools/spike_arena_mailbox.py",
     ];
     verify_support_manifest(root, manifest, REQUIRED,
-        &["licenses/renode-MIT.txt", "licenses/arena-BSD-3-Clause.txt", "tools/spike_nuttx_mailbox.py", "tools/spike_program_uart.py"], 32)
+        &["licenses/renode-MIT.txt", "licenses/arena-BSD-3-Clause.txt", "tools/spike_nuttx_mailbox.py", "tools/spike_program_uart.py",
+          "tools/spike_lockstep.py"], 33)
 }
 fn verify_nuttx_manifest(root: &Path, manifest: &Path) -> Result<(), String> {
     verify_support_manifest(root, manifest, &[
@@ -1066,7 +1133,8 @@ fn verify_nuttx_manifest(root: &Path, manifest: &Path) -> Result<(), String> {
         "licenses/firmware-source-NOTICES.txt", "licenses/MicroPython-MIT.txt", "licenses/hubprogram-BSD-3-Clause.txt",
         "licenses/Apache-2.0.txt", "licenses/firmware-NuttX-NOTICE.txt", "licenses/NuttX-Apps-NOTICE.txt",
         "licenses/firmware-Brickwright-BSD-3-Clause.txt", "licenses/NuttX-Tickless-BSD-3-Clause.txt",
-        "licenses/Simulation-Firmware-NOTICES.txt", "initial-flash.bin", "tools/spike_program_uart.py"], 34)
+        "licenses/Simulation-Firmware-NOTICES.txt", "initial-flash.bin", "tools/spike_program_uart.py",
+        "tools/spike_lockstep.py"], 35)
 }
 fn verify_support_manifest(root: &Path, manifest: &Path, required: &[&str], allowed: &[&str], max_files: usize) -> Result<(), String> {
     if !manifest.starts_with(root) {
@@ -1097,6 +1165,11 @@ fn verify_support_manifest(root: &Path, manifest: &Path, required: &[&str], allo
         if service.windows(import.len()).any(|part| part == import)
             && !map.contains_key("tools/spike_program_uart.py") {
             return Err("program UART helper is missing from manifest".into());
+        }
+        // Robot Lab lockstep (renode-spike-prime#59): the service imports it unconditionally.
+        if service.split(|&b| b == b'\n').any(|line| line == b"import spike_lockstep")
+            && !map.contains_key("tools/spike_lockstep.py") {
+            return Err("lockstep helper is missing from manifest".into());
         }
     }
     let backport_notices = ["licenses/Apache-2.0.txt", "licenses/firmware-NuttX-NOTICE.txt",
@@ -1543,6 +1616,41 @@ mod tests {
     }
 
     #[test]
+    fn dual_ultrasonic_launch_requires_bound_marker_and_attaches_before_load() {
+        let config = serde_json::json!({"identity":{"firmware":"brickwright-nuttx", "transport":"none", "imageSha256":"a".repeat(64)},
+            "programMailbox":0x20020100u64, "addressedSensorCapability":{"abi":1,"address":0x08060100u64,"userspaceSha256":"a".repeat(64)}});
+        assert_eq!(SpikeTopology::parse(Some("dual-ultrasonic")).unwrap(),SpikeTopology::DualUltrasonic);
+        let user = Path::new("/trusted/nuttx-user.elf");
+        let mut args=spike_arguments(Path::new("/trusted/nuttx.resc"),user,
+            Path::new("/trusted/scripts/state.py"),Path::new("/trusted/config.json")).unwrap();
+        insert_topology_commands(&mut args,user,&config,SpikeTopology::DualUltrasonic).unwrap();
+        let load=args.iter().position(|a| a.starts_with("sysbus LoadELF")).unwrap();
+        for command in ["portD Detach","portE Attach \"ultrasonic\"","portF Attach \"ultrasonic\""] {
+            assert!(args.iter().position(|a| a==command).unwrap()<load);
+        }
+        assert!(!args.iter().any(|a| a=="portC Attach \"motor\""));
+        for field in ["addressedSensorCapability","programMailbox"] {
+            let mut bad=config.clone();bad.as_object_mut().unwrap().remove(field);
+            assert!(topology_commands(&bad,SpikeTopology::DualUltrasonic).is_err());
+        }
+        for marker in [serde_json::json!({"abi":true,"address":0x08060100u64,"userspaceSha256":"a".repeat(64)}),
+            serde_json::json!({"abi":1,"address":0x08060101u64,"userspaceSha256":"a".repeat(64)}),
+            serde_json::json!({"abi":1,"address":0x080ffffdu64,"userspaceSha256":"a".repeat(64)}),
+            serde_json::json!({"abi":1,"address":0x08060100u64,"userspaceSha256":"b".repeat(64)}),
+            serde_json::json!({"abi":1,"address":0x08060100u64,"userspaceSha256":"a".repeat(64),"path":"other"})] {
+            let mut bad=config.clone();bad["addressedSensorCapability"]=marker;
+            assert!(topology_commands(&bad,SpikeTopology::DualUltrasonic).is_err());
+        }
+        for (field,value) in [("firmware","micropython-prime"),("transport","ble"),("imageSha256","bad")] {
+            let mut bad=config.clone();bad["identity"][field]=value.into();
+            assert!(topology_commands(&bad,SpikeTopology::DualUltrasonic).is_err());
+        }
+        let supervisor=RenodeSupervisor::new();
+        assert!(supervisor.start_spike_profile(Some("guest"),SpikeTopology::DualUltrasonic).is_err());
+        assert!(supervisor.session.lock().unwrap().is_none());
+    }
+
+    #[test]
     fn tokens_are_secret_sized_and_unique() {
         let first = random_token().unwrap();
         let second = random_token().unwrap();
@@ -1610,6 +1718,7 @@ mod tests {
         let control = SessionControl {
             stop: Arc::new(AtomicBool::new(false)),
             done: Arc::new((Mutex::new(false), Condvar::new())),
+            lockstep: Arc::new(AtomicBool::new(false)),
         };
         *supervisor.session.lock().unwrap() = Some(control.clone());
         let (sender, receiver) = std::sync::mpsc::sync_channel(1);
@@ -1714,6 +1823,58 @@ mod tests {
         thread::sleep(Duration::from_millis(100));
         assert_eq!(unsafe {libc::getpgid(pid)}, pid, "session worker must keep the child alive");
         supervisor.teardown(TeardownReason::Reset);
+    }
+
+    #[test]
+    fn only_lockstep_sessions_get_the_longer_wall_bound() {
+        assert_eq!(lockstep_session_time(), Duration::from_secs(DEFAULT_LOCKSTEP_SESSION_SECS));
+        assert_eq!(session_bound(MAX_SESSION_TIME, false), Duration::from_secs(120));
+        assert_eq!(session_bound(MAX_SESSION_TIME, true), Duration::from_secs(600));
+        // Never shorter than the launch bound it replaces.
+        assert_eq!(session_bound(Duration::from_secs(4000), true), Duration::from_secs(4000));
+        assert!(!RenodeSupervisor::new().extend_for_lockstep(), "no session, nothing to extend");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn renode_sessions_get_the_fixed_platform_environment() {
+        assert_eq!(RENODE_PLATFORM_ENV.iter().any(|(name, value)|
+            *name == "DOTNET_DefaultStackSize" && *value == "0x4000000"), cfg!(target_os = "macos"));
+        let fixture = FlashFixture::new();
+        let executable = PathBuf::from("/bin/sh");
+        let supervisor = RenodeSupervisor::new();
+        supervisor.start_verified(&executable, &sha256(&executable).unwrap(),
+            &["-c".into(), "printf '%s' \"${DOTNET_DefaultStackSize-unset}\" > stack.env; sleep 30".into()],
+            &fixture.0, Duration::from_secs(10), 1024).unwrap();
+        let deadline = Instant::now() + Duration::from_secs(3);
+        let observed = loop {
+            if let Ok(value) = std::fs::read_to_string(fixture.0.join("stack.env")) {
+                if !value.is_empty() { break value; }
+            }
+            assert!(Instant::now() < deadline, "the launched process did not report its environment");
+            thread::sleep(Duration::from_millis(10));
+        };
+        supervisor.teardown(TeardownReason::Reset);
+        if cfg!(target_os = "macos") { assert_eq!(observed, "0x4000000"); }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_lockstep_session_outlives_the_ordinary_bound_and_others_do_not() {
+        let executable = PathBuf::from("/bin/sh");
+        let digest = sha256(&executable).unwrap();
+        for lockstep in [false, true] {
+            let supervisor = RenodeSupervisor::new();
+            supervisor.start_verified(&executable, &digest, &["-c".into(), "sleep 30".into()],
+                Path::new("."), Duration::from_millis(300), 1024).unwrap();
+            if lockstep { assert!(supervisor.extend_for_lockstep()); }
+            thread::sleep(Duration::from_millis(900));
+            let finished = supervisor.session.lock().unwrap().as_ref().unwrap().finished();
+            assert_eq!(finished, !lockstep, "lockstep={lockstep}");
+            supervisor.teardown(TeardownReason::Reset);
+            assert!(supervisor.session.lock().unwrap().is_none());
+            assert!(!supervisor.extend_for_lockstep());
+        }
     }
 
     #[cfg(unix)]
@@ -1913,6 +2074,17 @@ mod tests {
         let helper = root.join("tools/spike_program_uart.py");
         std::fs::write(&helper, b"synthetic UART helper").unwrap();
         map.insert("tools/spike_program_uart.py".to_owned(), sha256(&helper).unwrap().into());
+        std::fs::write(&manifest, serde_json::to_vec(&map).unwrap()).unwrap();
+        assert!(verify_arena_manifest(&root, &manifest).is_ok());
+        // A service that imports the lockstep helper (renode-spike-prime#59) needs it packaged.
+        std::fs::write(&service, b"from spike_program_uart import ProgramUartBinding\nimport spike_lockstep\n").unwrap();
+        map.insert("scripts/spike-state-server.py".to_owned(), sha256(&service).unwrap().into());
+        std::fs::write(&manifest, serde_json::to_vec(&map).unwrap()).unwrap();
+        assert_eq!(verify_arena_manifest(&root, &manifest).unwrap_err(),
+            "lockstep helper is missing from manifest");
+        let lockstep = root.join("tools/spike_lockstep.py");
+        std::fs::write(&lockstep, b"synthetic lockstep helper").unwrap();
+        map.insert("tools/spike_lockstep.py".to_owned(), sha256(&lockstep).unwrap().into());
         std::fs::write(&manifest, serde_json::to_vec(&map).unwrap()).unwrap();
         assert!(verify_arena_manifest(&root, &manifest).is_ok());
         std::fs::write(&helper, b"changed UART helper").unwrap();

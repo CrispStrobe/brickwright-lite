@@ -40,7 +40,7 @@ test('the build status reports what was produced and by which compiler', () => {
 });
 
 test('the handler runs the CHOSEN route and boots the shared riscv image path', () => {
-    assert.match(src, /async runCOnRiscv \(forceRoute\)/, 'the handler exists (takes an optional forced route)');
+    assert.match(src, /async runCOnRiscv \(forceRoute, sourceOverride\)/, 'the handler exists (optional forced route; optional source, used by fe)');
     // it passes the user's (or forced) route + the full-C hosted target
     assert.match(src, /const route = typeof forceRoute === 'string' \? forceRoute : this\.state\.riscvCRoute;/,
         'the chosen route (or a forced retry route) drives the build');

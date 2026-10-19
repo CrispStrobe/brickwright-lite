@@ -37,6 +37,7 @@ const ROOT = path.resolve(import.meta.dirname, '..');
  * UI rather than tweaking a selector.
  */
 const KNOWN_UNWIRED = {
+    'verify-multi-board-radio.mjs': 'manual/local: frames the pinned MakeCode micro:bit and Calliope mini simulators side by side through scripts/makecode/host.html and checks the radio relay and motor report (A held, B held, relay cut). It drives the host pages and message protocol from a plain page, not the built app, so it does not show the React pane; test/multi-board-radio-pair.test.mjs covers the per-board compile it loads. Not wired: it needs both served simulator trees and has no reading in browser-gate-readings.json yet',
     'verify-makecode-assets-roundtrip.mjs': 'opt-in live external editor qualification: imports the GUI-exported duplicate-animation .mkcd into arcade.makecode.com, edits Assets through native controls and returns its PNG to Brickwright. Routine CI must not depend on a mutable external editor/network. Passed four journeys against Arcade4.1.25/PXT13.1.23, zero final page errors, on2026-10-07. Run the wired verify-arcade-animation-resource-browser.mjs first, then node scripts/verify-makecode-assets-roundtrip.mjs --input test-results/arcade-animation-resource-browser/animation-duplicate-libraries.mkcd --out test-results/makecode-assets-roundtrip/current.json --bw-url http://localhost:8617/. The offline native-envelope tests and existing Arcade GUI export/reimport gates remain mandatory.',
     'verify-arcade-background-corpus.mjs': 'manual/local: reads programs from the private MakeCode corpus (CrispStrobe/brickwright-firmware-private compat-corpora/makecode/arcade, set BW_ARCADE_CORPUS or check it out beside this repo); the corpus is test data that is never committed here, so CI cannot reach it. Ported from the parked WIP (open task F3); passed against that corpus on main 2026-10-07.',
     'verify-arcade-lazy-value-corpus.mjs': 'manual/local: reads programs from the private MakeCode corpus (CrispStrobe/brickwright-firmware-private compat-corpora/makecode/arcade, set BW_ARCADE_CORPUS or check it out beside this repo); the corpus is test data that is never committed here, so CI cannot reach it. Ported from the parked WIP (open task F3); passed against that corpus on main 2026-10-07.',
@@ -49,6 +50,13 @@ const KNOWN_UNWIRED = {
         + 'a pinned local Renode package, proof driver and GUI build. Seven Code/web-presence checks exercise '
         + 'the real guest through a semantic test transport; receipts must stay private. Source compiler/session '
         + 'and broker checks run in CI. See docs/SPIKE-FIRMWARE-PROGRAMS.md; this is not a Tauri ACL proof.',
+    'verify-sim-lab-renode-lockstep.mjs': 'manual/local: the Robot Lab SPIKE firmware route end to end (R13e) — '
+        + 'a real Renode (stock 1.16.1 or newer) running the NuttX package restaged with the lockstep-capable '
+        + 'runtime (scripts/restage-spike-nuttx-package.mjs), stepped in lockstep with the Robot Lab physics. '
+        + 'CI has no Renode and the firmware CI publishes no image (its SAFETY.md), so it cannot run there; it '
+        + 'skips with a message when Renode or the package is absent. Run with npm run verify:sim-lab-renode '
+        + '(and :degrees); measured 2026-10-18 on a Mac: encoders = physics ≤ 0.16°, steady speed 301.4 vs '
+        + '299.1 °/s, 360° move ends at 358.7°. See docs/ROBOT-LAB-SPIKE-EMULATION.md §7.',
     'verify-spike-renode-arena-browser.mjs': 'manual/local: requires an immutable locally built own ARM demo, '
         + 'a pinned Renode package and the compiled tools/renode-arena-proof driver. Execution receipts stay '
         + 'in the private evidence repo. Five real-guest production GUI checks passed; see docs/SPIKE-ARENA.md '

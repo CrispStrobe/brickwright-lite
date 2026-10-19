@@ -22,6 +22,12 @@
   },
   "three": {
     "tests": [
+      "test/bw-sim-editor-v2.test.mjs",
+      "test/bw-sim-instancing.test.mjs",
+      "test/bw-sim-palette-ui.test.mjs",
+      "test/bw-sim-render-quality.test.mjs",
+      "test/bw-sim-scene3d.test.mjs",
+      "test/bw-sim-world.test.mjs",
       "test/spike-arena-3d-pane.test.mjs",
       "test/spike-arena-3d.test.mjs"
     ],
@@ -32,5 +38,43 @@
       "test/spike-arena-3d-pane.test.mjs"
     ],
     "why": "the pane test loads the real 3D view module (arena-view3d.js), which imports three's orbit control, and asserts its no-WebGL fallback"
+  },
+  "jolt-physics/wasm-compat": {
+    "tests": [
+      "test/bw-sim-collisions.test.mjs",
+      "test/bw-sim-colour-explorer-program.test.mjs",
+      "test/bw-sim-dc-motor.test.mjs",
+      "test/bw-sim-forklift.test.mjs",
+      "test/bw-sim-gear-trains.test.mjs",
+      "test/bw-sim-hub-boundary.test.mjs",
+      "test/bw-sim-imu.test.mjs",
+      "test/bw-sim-instructions.test.mjs",
+      "test/bw-sim-line-follower-program.test.mjs",
+      "test/bw-sim-line-follower.test.mjs",
+      "test/bw-sim-mats-b.test.mjs",
+      "test/bw-sim-mechanism-v2.test.mjs",
+      "test/bw-sim-model-insight.test.mjs",
+      "test/bw-sim-models-solid.test.mjs",
+      "test/bw-sim-models.test.mjs",
+      "test/bw-sim-persist.test.mjs",
+      "test/bw-sim-physics-cast-ray.test.mjs",
+      "test/bw-sim-physics-core.test.mjs",
+      "test/bw-sim-physics-worker-session.test.mjs",
+      "test/bw-sim-physics-worker.test.mjs",
+      "test/bw-sim-program-clock.test.mjs",
+      "test/bw-sim-render-quality.test.mjs",
+      "test/bw-sim-renode-lockstep-program.test.mjs",
+      "test/bw-sim-renode-lockstep.test.mjs",
+      "test/bw-sim-s1-driving-base.test.mjs",
+      "test/bw-sim-scene3d.test.mjs",
+      "test/bw-sim-sensors.test.mjs",
+      "test/bw-sim-session.test.mjs",
+      "test/bw-sim-sliders.test.mjs",
+      "test/bw-sim-sumo-program.test.mjs",
+      "test/bw-sim-wall-stopper-program.test.mjs",
+      "test/bw-sim-world.test.mjs",
+      "test/bw-sim-worm.test.mjs"
+    ],
+    "why": "the Sim Lab physics core (overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js) runs a CompiledMechanism in Jolt, a GUI-package dependency; its own test and the S1 end-to-end driving-base test run it headless via the wasm-compat build"
   }
 }

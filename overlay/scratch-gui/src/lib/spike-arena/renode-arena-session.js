@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 import {RenodeArenaBridge} from './renode-arena-bridge.js';
-import {NuttXProgramClient, encodePython, encodeInstructions} from '../spike-nuttx/upload-protocol.js';
-import {validateTopology, requireSixMotorFrame, prepareSixMotorHub} from '../spike-nuttx/motor-topology.js';
+import {NuttXProgramClient, encodePython, encodeInstructions, decodeReply} from '../spike-nuttx/upload-protocol.js';
+import {validateTopology, requireSixMotorFrame, prepareSixMotorHub, requireDualUltrasonicFrame, requireDualUltrasonicRobot} from '../spike-nuttx/motor-topology.js';
 import {exchangeStorage, DEFERRED_STORAGE_CAPABILITY} from '../spike-nuttx/storage-exchange.js';
 import {MicroPythonProgramClient, encodeSource} from '../spike-micropython/raw-repl.js';
 /** Owns only a session it successfully started; stopping invalidates outstanding polls. */
@@ -11,6 +11,10 @@ export class RenodeArenaSession {
         validateTopology(topology);
         if (topology === 'six-motors' && (!['nuttx', 'micropython'].includes(backend) || (!program && source === null) || bridge?.robot?.sensors?.length !== 0)) {
             throw new Error('Six motors require NuttX or MicroPython code and a sensorless sandbox');
+        }
+        if (topology === 'dual-ultrasonic') {
+            if (backend !== 'nuttx' || (!program && source === null)) throw new Error('Dual ultrasonic requires own NuttX code');
+            requireDualUltrasonicRobot(bridge?.robot);
         }
         this.topology = topology;
         this.adapter = new RenodeArenaBridge(bridge, {allMotors: topology === 'six-motors'});
@@ -37,6 +41,17 @@ export class RenodeArenaSession {
         this.programStartEpoch = 0;
         this.tail = Promise.resolve();
     }
+    acceptFrame (frame) {
+        if (this.topology === 'dual-ultrasonic') requireDualUltrasonicFrame(frame);
+        return this.adapter.accept(frame);
+    }
+    async verifyDualFrame () {
+        if (this.topology !== 'dual-ultrasonic') return;
+        const fresh = JSON.parse(await this.call('state.read'));
+        if (this.closed) throw new Error('NuttX session is closed');
+        this.acceptFrame(fresh);
+        this.latestFrame = fresh;
+    }
     call (operation, args = {}) {
         const handler = this.capabilities?.[`renode.spike.${operation}`];
         if (typeof handler !== 'function') throw new Error('The desktop simulation runtime is unavailable');
@@ -49,7 +64,8 @@ export class RenodeArenaSession {
             // Reserve only configuration controls while startup is pending;
             // native motors and clock ownership remain unchanged until a frame.
             hub.configurationOwner = this;hub.changed();
-            await this.call('session.start', this.backend ? {backend: this.backend, ...(this.topology === 'six-motors' ? {topology: this.topology} : {})} : {});
+            if (this.closed) return;
+            await this.call('session.start', this.backend ? {backend: this.backend, ...(this.topology !== 'default' ? {topology: this.topology} : {})} : {});
             this.started = true;
             if (this.closed) return;
             const first = JSON.parse(await this.call('state.read'));
@@ -68,6 +84,7 @@ export class RenodeArenaSession {
                 requireSixMotorFrame(first, this.micropython ? 'micropython-prime' : 'brickwright-nuttx');
                 prepareSixMotorHub(this.adapter.bridge.hubState);
             }
+            if (this.topology === 'dual-ultrasonic') requireDualUltrasonicFrame(first);
             this.outputSequence = first.lifecycle?.nuttxProgramOutput?.sequence;
             this.nuttx = first.target?.firmware === 'brickwright-nuttx' &&
                 first.target?.capabilities?.includes('nuttx-program/v1');
@@ -87,7 +104,8 @@ export class RenodeArenaSession {
                 await this.call('arena.program.load', this.program);
                 if (this.closed) return;
             }
-            const inputs = this.adapter.accept(first);
+            const inputs = this.acceptFrame(first);
+            if (this.closed) return;
             this.adapter.bridge.hubState.externalBackend = this;
             await this.call('arena.inputs.write', inputs);
             if (this.closed) return;
@@ -102,22 +120,35 @@ export class RenodeArenaSession {
                             sample: async () => JSON.parse(await this.call('state.read')),
                             closed: () => this.closed,
                             onFrame: frame => {
-                                this.adapter.accept(frame);
+                                this.acceptFrame(frame);
+                                if (this.closed) return;
                                 this.latestFrame = frame;
                                 this.observeOutput(frame);
+                                if (this.closed) return;
                                 this.onFrame(this.adapter.bridge.snapshot());
                             }});
                     }
                     const frame = JSON.parse(await this.call('program.packet', {bytes: Array.from(bytes)}));
+                    const reply = new Uint8Array(frame.lifecycle?.nuttxProgramReply || []);
                     if (!this.closed) {
+                        const inputs = this.acceptFrame(frame);
+                        // Every observer can synchronously Stop the owned session.
+                        if (this.closed) return reply;
                         this.observeProgram(frame.lifecycle?.nuttxProgram);
+                        if (this.closed) return reply;
+                        if (this.replacingProgram && bytes[2] === 3) {
+                            const id = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(4, true);
+                            const started = decodeReply(reply, {op: 3, id});
+                            this.replacementOutputReady = started.result === 0 && [2, 3, 5].includes(started.state);
+                        }
                         this.observeOutput(frame);
-                        const inputs = this.adapter.accept(frame);
+                        if (this.closed) return reply;
                         this.latestFrame = frame;
                         await this.call('arena.inputs.write', inputs);
+                        if (this.closed) return reply;
                         this.onFrame(this.adapter.bridge.snapshot());
                     }
-                    return new Uint8Array(frame.lifecycle?.nuttxProgramReply || []);
+                    return reply;
                 }, 1, {topology: this.topology});
                 this.uploading = true;
                 try {
@@ -233,7 +264,7 @@ export class RenodeArenaSession {
         }
         // The existing adapter checks image identity, sequence, clock, topology,
         // motor bounds and slew before changing the shared hub or arena.
-        this.adapter.accept(frame);
+        this.acceptFrame(frame);
         if (this.closed) return false;
         this.latestFrame = frame;
         this.onFrame(this.adapter.bridge.snapshot());
@@ -253,6 +284,9 @@ export class RenodeArenaSession {
         if (!Number.isSafeInteger(output.sequence) || output.sequence < 0 || typeof output.text !== 'string' ||
             output.text.length > 1024 || typeof output.truncated !== 'boolean') throw new Error('Invalid firmware output');
         this.outputSequence = output.sequence;
+        // Drain preceding polls and upload preparation without assigning their
+        // output to the replacement. New START output remains observable.
+        if (this.source === null || (this.replacingProgram && !this.replacementOutputReady)) return;
         this.onOutput(output);
     }
     schedule () {
@@ -261,6 +295,7 @@ export class RenodeArenaSession {
         this.timer = setTimeout(() => {
             this.tail = this.poll();
             this.tail.catch(async error => {
+                if (this.closed) return;
                 this.onError(error); await this.stop();
             }).catch(() => {});
         }, 50);
@@ -269,16 +304,23 @@ export class RenodeArenaSession {
         if (this.closed || this.finishingMicroPython) return;
         const frame = JSON.parse(await this.call('state.read'));
         if (this.closed) return;
+        const inputs = this.acceptFrame(frame);
+        if (this.closed) return;
         this.observeOutput(frame);
-        const inputs = this.adapter.accept(frame);
+        if (this.closed) return;
         this.latestFrame = frame;
         await this.call('arena.inputs.write', inputs);
         if (this.closed) return;
         this.onFrame(this.adapter.bridge.snapshot());
+        // Observers can Stop synchronously; their cancellation wins over the
+        // completion status from the frame that invoked them.
+        if (this.closed) return;
+        if (this.replacingProgram) return;
         if (this.nuttx && (this.program || this.source !== null)) {
             const status = frame.lifecycle?.nuttxProgram;
             if (!status || ![0, 1, 2, 3, 4, 5].includes(status.state)) throw new Error('Missing full firmware program status');
             this.observeProgram(status);
+            if (this.closed) return;
             if (status.state === 5 && this.storageSupported) { this.schedule(); return; }
             if (status.state === 5) throw new Error(`Firmware program failed (${status.error})`);
             if (status.state === 3 || status.state === 4) {
@@ -300,12 +342,16 @@ export class RenodeArenaSession {
         }
         this.schedule();
     }
-    observeProgram (status) {
+    observeProgram (status, publishReplacement = false) {
         if (!status || ![0, 1, 2, 3, 4, 5].includes(status.state)) return;
         this.programState = status.state;
         if (status.state === 0) this.retainedProgram = false;
         if (status.state !== 1) this.loaded = false;
-        this.onProgramState(status.state, this.storageSupported, status.error ?? status.runtimeError);
+        // Old poll/STOP and upload READY frames do not belong to the new Code run.
+        // Publish the replacement only after its upload (including START) succeeds.
+        if (!this.replacingProgram || publishReplacement) {
+            this.onProgramState(status.state, this.storageSupported, status.error ?? status.runtimeError);
+        }
     }
     async storage (operation) {
         if (!this.storageSupported || !this.programClient || this.closed) throw new Error('Program storage requires a supported live NuttX session');
@@ -317,7 +363,9 @@ export class RenodeArenaSession {
         try {
             await this.tail;
             if (this.closed) throw new Error('NuttX session is closed');
+            await this.verifyDualFrame();
             const reply = await this.programClient[operation]();
+            if (this.closed) throw new Error('NuttX session is closed');
             if (operation === 'load') { this.loaded = true; this.retainedProgram = true; }
             this.observeProgram(reply);
             return reply;
@@ -332,6 +380,8 @@ export class RenodeArenaSession {
         if (source !== null) encodePython(source);
         else encodeInstructions(program, {topology: this.topology});
         if (this.closed || this.storageUncertain || !this.storageSupported || !this.programClient || this.storageBusy || this.uploading) throw new Error('NuttX program is unavailable or busy');
+        this.replacingProgram = true;
+        this.replacementOutputReady = false;
         this.uploading = true; clearTimeout(this.timer);
         try {
             await this.tail;
@@ -340,16 +390,19 @@ export class RenodeArenaSession {
                 const fresh = JSON.parse(await this.call('state.read'));
                 if (this.closed) throw new Error('NuttX session is closed');
                 requireSixMotorFrame(fresh);
-                this.adapter.accept(fresh);
+                this.acceptFrame(fresh);
                 this.latestFrame = fresh;
             }
+            await this.verifyDualFrame();
             await this.programClient.stop();
+            if (this.closed) throw new Error('NuttX session is closed');
             this.program = program; this.source = source; this.loaded = false; this.completed = false;
             this.retainedProgram = false;
             const reply = await this.programClient.upload(source === null ? program : source, {python: source !== null});
+            if (this.closed) throw new Error('NuttX session is closed');
             this.retainedProgram = true;
-            this.observeProgram(reply); return reply;
-        } finally { this.uploading = false; this.schedule(); }
+            this.observeProgram(reply, true); return reply;
+        } finally { this.replacementOutputReady = false; this.replacingProgram = false; this.uploading = false; this.schedule(); }
     }
     async startProgram () {
         if (this.closed || this.storageUncertain || !this.storageSupported || !this.programClient || this.uploading || this.storageBusy) throw new Error('NuttX program is unavailable or busy');
@@ -403,6 +456,8 @@ export class RenodeArenaSession {
         try {
             await this.tail;
             if (this.closed) throw new Error('NuttX session is closed');
+            requireCurrentStart();
+            if (operation === 'start') await this.verifyDualFrame();
             requireCurrentStart();
             const reply = await this.programClient[operation]();
             if (this.closed) throw new Error('NuttX session is closed');

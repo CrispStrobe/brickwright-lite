@@ -22,12 +22,21 @@ import {highlightTarget} from '../reducers/targets';
 import {fetchSprite, fetchCode} from '../lib/backpack-api';
 import randomizeSpritePosition from '../lib/randomize-sprite-position';
 import downloadBlob from '../lib/download-blob';
+import BoardStrip from '../components/bw-board-strip/board-strip.jsx';
+import {runtimeBoards, boardSprites, projectPosition, publishBoardDevice} from '../lib/bw-boards/editor-boards.js';
+import {DEVICE_GROUPS} from '../lib/bw-matrix/capabilities.js';
+
+const coreOfDevice = device => {
+    const group = DEVICE_GROUPS.find(g => g.devices.some(d => d.id === device));
+    return group && group.core;
+};
 
 class TargetPane extends React.Component {
     constructor (props) {
         super(props);
         bindAll(this, [
             'handleActivateBlocksTab',
+            'handleSelectBoard',
             'handleBlockDragEnd',
             'handleChangeSpriteRotationStyle',
             'handleChangeSpriteDirection',
@@ -54,6 +63,33 @@ class TargetPane extends React.Component {
     }
     componentWillUnmount () {
         this.props.vm.removeListener('BLOCK_DRAG_END', this.handleBlockDragEnd);
+    }
+    /**
+     * Several boards in one project: the board being edited, as
+     * `{boards, index, sprites}`, or null for a project with one board.
+     * Read from the loaded project on every render, so a load or a recompile
+     * that changes the list needs no event; an index past the list (the
+     * previous project had more boards) falls back to the first board.
+     * @returns {?object} the board view
+     */
+    boardView () {
+        const boards = runtimeBoards(this.props.vm.runtime);
+        if (!boards) return null;
+        const chosen = (this.state && this.state.board) || 0;
+        const index = chosen < boards.length ? chosen : 0;
+        return {boards, index, sprites: boardSprites(this.props.sprites, boards, index)};
+    }
+    handleSelectBoard (index) {
+        const boards = runtimeBoards(this.props.vm.runtime);
+        if (!boards || !boards[index]) return;
+        this.setState({board: index});
+        publishBoardDevice(this.props.vm, boards[index], coreOfDevice);
+        // Edit something of this board: its first sprite, or the Stage, which is the first board's.
+        const shown = boardSprites(this.props.sprites, boards, index);
+        const editing = this.props.editingTarget;
+        if (shown[editing] || (index === 0 && this.props.stage && editing === this.props.stage.id)) return;
+        const first = Object.values(shown).sort((a, b) => a.order - b.order)[0];
+        if (first) this.props.vm.setEditingTarget(first.id);
     }
     handleChangeSpriteDirection (direction) {
         this.props.vm.postSpriteInfo({direction});
@@ -201,6 +237,13 @@ class TargetPane extends React.Component {
             [DragConstants.SOUND, DragConstants.BACKPACK_SOUND, DragConstants.BACKPACK_CODE].includes(dragInfo.dragType)) return;
         if (dragInfo.dragType === DragConstants.SPRITE) {
             // Add one to both new and target index because we are not counting/moving the stage
+            const view = this.boardView();
+            if (view) {
+                // The list shows one board's sprites; reordering works among all of them.
+                this.props.vm.reorderTarget(projectPosition(view.sprites, dragInfo.index) + 1,
+                    projectPosition(view.sprites, dragInfo.newIndex) + 1);
+                return;
+            }
             this.props.vm.reorderTarget(dragInfo.index + 1, dragInfo.newIndex + 1);
         } else if (dragInfo.dragType === DragConstants.BACKPACK_SPRITE) {
             // TODO storage does not have a way of loading zips right now, and may never need it.
@@ -251,9 +294,11 @@ class TargetPane extends React.Component {
             ...componentProps
         } = this.props;
         /* eslint-enable no-unused-vars */
-        return (
+        const view = this.boardView();
+        const pane = (
             <TargetPaneComponent
                 {...componentProps}
+                {...(view ? {sprites: view.sprites} : {})}
                 artworkOnly={Boolean(this.props.vm.editingTarget?.bwAssetLibrary)}
                 fileInputRef={this.setFileInput}
                 onActivateBlocksTab={this.handleActivateBlocksTab}
@@ -274,6 +319,17 @@ class TargetPane extends React.Component {
                 onSpriteUpload={this.handleSpriteUpload}
                 onSurpriseSpriteClick={this.handleSurpriseSpriteClick}
             />
+        );
+        if (!view) return pane;
+        return (
+            <div style={{display: 'flex', flexDirection: 'column', flexGrow: 1, minHeight: 0}}>
+                <BoardStrip
+                    active={view.index}
+                    boards={view.boards}
+                    onSelect={this.handleSelectBoard}
+                />
+                {pane}
+            </div>
         );
     }
 }

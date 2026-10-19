@@ -93,10 +93,22 @@ try {
     await device.selectOption('pico');
     const badge = page.getByTestId('bw-matrix-badge');
     await badge.waitFor({state: 'visible', timeout: 15000});
-    const pseudoPico = (await badge.textContent()) || '';
+    // The badge is an (i) button with a fixed accessible name (so it never
+    // matches a language tab's name): the summary is its data-summary, the
+    // sentence its title, and a click opens a popover showing both.
+    const pseudoPico = (await badge.getAttribute('data-summary')) || '';
     check('badge for pseudocode on the Pico says lowered', /lowered via/.test(pseudoPico), pseudoPico);
     const title = (await badge.getAttribute('title')) || '';
     check('badge title is the full sentence', /Pseudocode on Raspberry Pi Pico:/.test(title), title.slice(0, 80));
+    const popover = page.getByTestId('bw-matrix-badge-popover');
+    check('badge popover stays closed until asked', (await popover.count()) === 0);
+    await badge.click();
+    await popover.waitFor({state: 'visible', timeout: 5000});
+    const popoverText = (await popover.textContent()) || '';
+    check('badge popover shows the summary and the sentence',
+        /lowered via/.test(popoverText) && /Pseudocode on Raspberry Pi Pico:/.test(popoverText), popoverText.slice(0, 120));
+    await badge.click();
+    await popover.waitFor({state: 'detached', timeout: 5000});
 
     // The panel: one column per chip family, one row per language.
     await page.getByTestId('bw-matrix-toggle').click();
@@ -114,7 +126,7 @@ try {
     const rows = await panel.locator('tbody tr').count();
     const cols = await panel.locator('thead th').count() - 1;
     check('one row per language', rows === 7, `${rows}`);
-    check('one column per chip family', cols === 10, `${cols}`);   // riscv32 joined 2026-09-25
+    check('one column per chip family', cols === 11, `${cols}`);   // riscv32 joined 2026-09-25, esp8266 2026-10-14
 
     const kind = async (lang, dev) => page.getByTestId(`bw-matrix-cell-${lang}-${dev}`).getAttribute('data-kind');
     const text = async (lang, dev) => (await page.getByTestId(`bw-matrix-cell-${lang}-${dev}`).textContent()) || '';
@@ -133,7 +145,7 @@ try {
     const c89cell = page.getByTestId('bw-matrix-cell-c-stc89c52');
     await c89cell.waitFor({state: 'visible', timeout: 10000});
     const cols2 = await panel.locator('thead th').count() - 1;
-    check('a non-representative device gets its own column', cols2 === 11, `${cols2}`);
+    check('a non-representative device gets its own column', cols2 === 12, `${cols2}`);
     const c89 = (await c89cell.getAttribute('title')) || '';
     check('the STC89C52 override reaches the panel', /hosted compiler/.test(c89), c89.slice(0, 120));
     const c60 = (await page.getByTestId('bw-matrix-cell-c-stc12c5a60s2').getAttribute('title')) || '';

@@ -13,7 +13,7 @@ fn integer(value: &Value, min: i64, max: i64) -> bool {
 pub(crate) fn valid_spike_start(value: &Value) -> bool {
     keys(value, &[]) || (keys(value, &["backend"]) && matches!(value["backend"].as_str(), Some("guest" | "nuttx" | "micropython")))
         || (keys(value, &["backend", "topology"]) && value["backend"] == "nuttx"
-            && matches!(value["topology"].as_str(), Some("default" | "six-motors")))
+            && matches!(value["topology"].as_str(), Some("default" | "six-motors" | "dual-ultrasonic")))
         || (keys(value, &["backend", "topology"]) && value["backend"] == "micropython"
             && value["topology"] == "six-motors")
 }
@@ -92,10 +92,10 @@ mod tests {
     #[test]
     fn topology_launch_arguments_are_closed_and_explicit_for_supported_profiles() {
         for value in [json!({}),json!({"backend":"guest"}),json!({"backend":"nuttx"}),json!({"backend":"micropython"}),
-            json!({"backend":"nuttx","topology":"default"}),json!({"backend":"nuttx","topology":"six-motors"}),json!({"backend":"micropython","topology":"six-motors"})] {
+            json!({"backend":"nuttx","topology":"default"}),json!({"backend":"nuttx","topology":"six-motors"}),json!({"backend":"nuttx","topology":"dual-ultrasonic"}),json!({"backend":"micropython","topology":"six-motors"})] {
             assert!(valid_spike_start(&value));
         }
-        for value in [json!({"backend":"micropython","path":"secret.bin"}), json!({"backend":"micropython","topology":"default"}), json!({"backend":"guest","topology":"six-motors"}),json!({"topology":"six-motors"}),
+        for value in [json!({"backend":"micropython","topology":"dual-ultrasonic"}),json!({"backend":"micropython","path":"secret.bin"}), json!({"backend":"micropython","topology":"default"}), json!({"backend":"guest","topology":"six-motors"}),json!({"topology":"six-motors"}),
             json!({"backend":"nuttx","topology":"six-motors;quit"}),json!({"backend":"nuttx","topology":true}),
             json!({"backend":"nuttx","topology":"six-motors","path":"/tmp/model"})] {
             assert!(!valid_spike_start(&value));
@@ -280,5 +280,189 @@ mod hub_tests {
             *field = value;
             assert!(!valid(&bad));
         }
+    }
+}
+
+// Robot Lab lockstep (docs/ROBOT-LAB-SPIKE-EMULATION.md §2.1, §4 R13a). One quantum of
+// virtual time per exchange: the physics shafts and sensor readings at t_k in, the
+// emulator runs [t_k, t_k + quantum]. Closed DTOs: no monitor text, paths or addresses.
+const MAX_SAFE_INTEGER: u64 = 9_007_199_254_740_991;
+
+/// Exactly the quanta the Runtime admits (renode-spike-prime#59 `QUANTA_US`): one physics
+/// step (5 ms) or two. Anything else would pass here only to be refused there, and a
+/// refused lockstep command ends the feed.
+fn lockstep_quantum(value: &Value) -> bool {
+    matches!(value.as_i64(), Some(5000 | 10000)) && value.is_u64()
+}
+
+/// `lockstep.begin {quantumUs}`.
+pub(crate) fn valid_lockstep_begin(value: &Value) -> bool {
+    keys(value, &["quantumUs"]) && lockstep_quantum(&value["quantumUs"])
+}
+
+/// `lockstep.step {quantumUs, expectClockNs, shafts, sensors, hub?}`. Each port A–F
+/// appears at most once across shafts and sensors; sensors use the `arena.inputs`
+/// vocabulary and units; `hub` is the `prime-hub-io/v1` input as in `arena.inputs`.
+pub(crate) fn valid_lockstep_step(value: &Value) -> bool {
+    let base = ["quantumUs", "expectClockNs", "shafts", "sensors"];
+    if !(keys(value, &base)
+        || (keys(value, &["quantumUs", "expectClockNs", "shafts", "sensors", "hub"])
+            && valid_hub_input(&value["hub"])))
+    {
+        return false;
+    }
+    if !lockstep_quantum(&value["quantumUs"])
+        || !value["expectClockNs"].as_u64().is_some_and(|v| v <= MAX_SAFE_INTEGER)
+    {
+        return false;
+    }
+    let (Some(shafts), Some(sensors)) = (value["shafts"].as_array(), value["sensors"].as_array())
+    else {
+        return false;
+    };
+    if shafts.len() > 6 || sensors.len() > 6 {
+        return false;
+    }
+    let mut ports = BTreeSet::new();
+    for item in shafts.iter().chain(sensors) {
+        let Some(port) = item["port"].as_str() else {
+            return false;
+        };
+        if !matches!(port, "A" | "B" | "C" | "D" | "E" | "F") || !ports.insert(port) {
+            return false;
+        }
+    }
+    let shafts_ok = shafts.iter().all(|item| {
+        keys(item, &["port", "positionMdeg", "speedMdps"])
+            && integer(&item["positionMdeg"], -(i64::from(i32::MAX)), i64::from(i32::MAX))
+            && integer(&item["speedMdps"], -2_000_000, 2_000_000)
+    });
+    // A sensor entry is exactly one `arena.inputs` sensor: the same closed kinds and units.
+    shafts_ok
+        && sensors.iter().all(|item| {
+            keys(item, &["port", "kind", "values"])
+                && valid(&serde_json::json!({"sensors": [item], "loads": []}))
+        })
+}
+
+/// `nuttx.program.control.submit {bytes}` (Runtime capability
+/// `nuttx-program-deferred-start/v1`): a START (3) or STOP (4) packet that returns at
+/// once, for program control inside lockstep where `program.packet`'s wall wait cannot
+/// see a reply. Never upload, storage or execution of other operations.
+pub(crate) fn valid_nuttx_program_control(value: &Value) -> bool {
+    valid_nuttx_packet(value)
+        && value["bytes"].as_array().is_some_and(|bytes| bytes.len() == 8)
+        && matches!(value["bytes"][2].as_u64(), Some(3 | 4))
+}
+
+/// `lockstep.end {}`.
+pub(crate) fn valid_lockstep_end(value: &Value) -> bool {
+    keys(value, &[])
+}
+
+#[cfg(test)]
+mod lockstep_tests {
+    use super::*;
+    use serde_json::json;
+
+    /// The shapes overlay/scratch-gui/src/lib/bw-sim/routes/renode-lockstep/contract.js builds.
+    fn contract_step() -> Value {
+        json!({"quantumUs":5000,"expectClockNs":1_000_000_000u64,
+            "shafts":[{"port":"A","positionMdeg":-123456,"speedMdps":360000},
+                      {"port":"B","positionMdeg":2147483647,"speedMdps":-2000000}],
+            "sensors":[{"port":"C","kind":"color","values":{"colorId":255,"reflectionPercent":42,"ambientPercent":0}},
+                       {"port":"D","kind":"distance","values":{"distanceMillimeters":-1}},
+                       {"port":"E","kind":"force","values":{"forcePercent":0,"pressed":false}}]})
+    }
+
+    #[test]
+    fn program_control_is_start_or_stop_only() {
+        for op in [3, 4] {
+            assert!(valid_nuttx_program_control(&json!({"bytes":[112,1,op,0,1,0,0,0]})));
+            assert!(!valid_nuttx_program_control(&json!({"bytes":[112,1,op,0,0,0,0,0]})));
+            assert!(!valid_nuttx_program_control(&json!({"bytes":[112,1,op,0,1,0,0,0],"path":"x"})));
+        }
+        for op in [0, 1, 2, 5, 6, 7, 8, 9] {
+            assert!(!valid_nuttx_program_control(&json!({"bytes":[112,1,op,0,1,0,0,0]})));
+        }
+    }
+
+    #[test]
+    fn lockstep_begin_and_end_are_closed() {
+        for quantum in [5000, 10000] {
+            assert!(valid_lockstep_begin(&json!({"quantumUs": quantum})));
+        }
+        for quantum in [0, 1000, 4000, 4999, 5001, 6000, 7000, 9000, 15000, 20000, -5000] {
+            assert!(!valid_lockstep_begin(&json!({"quantumUs": quantum})), "{quantum}");
+        }
+        for bad in [json!({}), json!({"quantumUs":999}), json!({"quantumUs":20001}), json!({"quantumUs":7500}),
+            json!({"quantumUs":5000.5}), json!({"quantumUs":"5000"}), json!({"quantumUs":5000,"monitor":"start"}),
+            json!(null), json!([5000])] {
+            assert!(!valid_lockstep_begin(&bad), "{bad}");
+        }
+        assert!(valid_lockstep_end(&json!({})));
+        assert!(!valid_lockstep_end(&json!({"quantumUs":5000})));
+        assert!(!valid_lockstep_end(&json!(null)));
+    }
+
+    #[test]
+    fn lockstep_step_accepts_the_contract_shapes() {
+        assert!(valid_lockstep_step(&contract_step()));
+        assert!(valid_lockstep_step(&json!({"quantumUs":10000,"expectClockNs":0,"shafts":[],"sensors":[]})));
+        let mut six = contract_step();
+        six["sensors"] = json!([]);
+        six["shafts"] = json!(["A","B","C","D","E","F"].iter()
+            .map(|port| json!({"port":port,"positionMdeg":0,"speedMdps":0})).collect::<Vec<_>>());
+        assert!(valid_lockstep_step(&six));
+        let mut hub = contract_step();
+        hub["hub"] = json!({"buttons":{"left":false,"center":true,"right":false,"bluetooth":false},
+            "imuRaw":{"temperature":0,"angularRate":[0,0,0],"acceleration":[0,0,4096]}});
+        assert!(valid_lockstep_step(&hub));
+    }
+
+    #[test]
+    fn lockstep_step_refuses_each_malformed_variant() {
+        type Mutation = Box<dyn Fn(&mut Value)>;
+        let cases: Vec<(&str, Mutation)> = vec![
+            ("extra key", Box::new(|v| v["monitor"] = json!("start"))),
+            ("missing sensors", Box::new(|v| { v.as_object_mut().unwrap().remove("sensors"); })),
+            ("quantum not whole ticks", Box::new(|v| v["quantumUs"] = json!(7500))),
+            ("quantum below", Box::new(|v| v["quantumUs"] = json!(0))),
+            ("quantum above", Box::new(|v| v["quantumUs"] = json!(25000))),
+            ("quantum 4000", Box::new(|v| v["quantumUs"] = json!(4000))),
+            ("quantum 6000", Box::new(|v| v["quantumUs"] = json!(6000))),
+            ("quantum 20000", Box::new(|v| v["quantumUs"] = json!(20000))),
+            ("quantum float", Box::new(|v| v["quantumUs"] = json!(5000.0))),
+            ("negative clock", Box::new(|v| v["expectClockNs"] = json!(-1))),
+            ("float clock", Box::new(|v| v["expectClockNs"] = json!(1.5))),
+            ("unsafe clock", Box::new(|v| v["expectClockNs"] = json!(MAX_SAFE_INTEGER + 1))),
+            ("port G", Box::new(|v| v["shafts"][0]["port"] = json!("G"))),
+            ("lowercase port", Box::new(|v| v["shafts"][0]["port"] = json!("a"))),
+            ("duplicate shaft", Box::new(|v| v["shafts"][1]["port"] = json!("A"))),
+            ("shaft and sensor", Box::new(|v| v["sensors"][0]["port"] = json!("A"))),
+            ("duplicate sensor", Box::new(|v| v["sensors"][1]["port"] = json!("C"))),
+            ("float position", Box::new(|v| v["shafts"][0]["positionMdeg"] = json!(1.5))),
+            ("position 2^31", Box::new(|v| v["shafts"][0]["positionMdeg"] = json!(2147483648i64))),
+            ("position -2^31", Box::new(|v| v["shafts"][0]["positionMdeg"] = json!(-2147483648i64))),
+            ("speed too fast", Box::new(|v| v["shafts"][0]["speedMdps"] = json!(2000001))),
+            ("speed string", Box::new(|v| v["shafts"][0]["speedMdps"] = json!("0"))),
+            ("shaft extra key", Box::new(|v| v["shafts"][0]["address"] = json!(0x20000000))),
+            ("shaft missing speed", Box::new(|v| { v["shafts"][0].as_object_mut().unwrap().remove("speedMdps"); })),
+            ("unknown sensor kind", Box::new(|v| v["sensors"][0]["kind"] = json!("gyro"))),
+            ("sensor out of range", Box::new(|v| v["sensors"][1]["values"]["distanceMillimeters"] = json!(-2))),
+            ("sensor extra value", Box::new(|v| v["sensors"][2]["values"]["raw"] = json!(1))),
+            ("sensor extra key", Box::new(|v| v["sensors"][2]["load"] = json!(100))),
+            ("shafts not a list", Box::new(|v| v["shafts"] = json!({"A": 0}))),
+            ("seven shafts", Box::new(|v| v["shafts"] = json!(vec![json!({"port":"A","positionMdeg":0,"speedMdps":0}); 7]))),
+            ("hub malformed", Box::new(|v| v["hub"] = json!({"buttons":{}}))),
+            ("hub null", Box::new(|v| v["hub"] = json!(null))),
+        ];
+        for (name, mutate) in cases {
+            let mut bad = contract_step();
+            mutate(&mut bad);
+            assert!(!valid_lockstep_step(&bad), "{name} was admitted");
+        }
+        assert!(!valid_lockstep_step(&json!(null)));
+        assert!(!valid_lockstep_step(&json!([])));
     }
 }

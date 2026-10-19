@@ -45,6 +45,21 @@ on:
       - 'README.md'
       - 'ROADMAP.md'
   pull_request:
+    # The same nine prose files, for the same reason, on pull requests too:
+    # a PR that changes only these (a LANES claim, a plan) cannot change
+    # vendor-pins.json, overlay/** or scripts/**, so this run could only
+    # repeat main's verdict while taking a free-tier runner slot. The nightly
+    # schedule and the push run are unchanged.
+    paths-ignore:
+      - 'BLOCKED.md'
+      - 'BUILD.md'
+      - 'CLAUDE.md'
+      - 'HANDOFF.md'
+      - 'LANES.md'
+      - 'MBIT-BUILD.md'
+      - 'PLAN.md'
+      - 'README.md'
+      - 'ROADMAP.md'
   schedule:
     - cron: '17 4 * * *'
   workflow_dispatch:

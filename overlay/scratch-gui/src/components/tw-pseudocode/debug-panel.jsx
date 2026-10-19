@@ -687,7 +687,7 @@ class DebugPanel extends React.Component {
         const DEVICE_TO_KIND = {
             attiny88: 'attiny88', attiny85: 'attiny85',
             'arduino-mega': 'atmega2560', atmega2560: 'atmega2560',
-            pico: 'rp2040js', stm32f030: 'stm32f0', eater6502: 'eater6502',
+            pico: 'rp2040js', stm32f030: 'stm32f0', esp8266: 'esp8266', eater6502: 'eater6502',
             z80: 'z80', zx48: 'z80', zx128: 'z80', i8086: 'i8086',
         };
         // i8086 was MISSING from this map while the 8086 debug target,
@@ -697,7 +697,7 @@ class DebugPanel extends React.Component {
         // emulator by default — and the 8086 image would have been run as
         // 8051 opcodes. Plausible and wrong, which is the same shape as the
         // ATtiny88 note above.
-        const CORE_TO_KIND = { '8051': 'emulator', arduino: 'avr8js', rp2040: 'rp2040js', arm: 'stm32f0', micropython: 'rp2040js', w65c02: 'eater6502', z80: 'z80', i8086: 'i8086' };
+        const CORE_TO_KIND = { '8051': 'emulator', arduino: 'avr8js', rp2040: 'rp2040js', arm: 'stm32f0', esp8266: 'esp8266', micropython: 'rp2040js', w65c02: 'eater6502', z80: 'z80', i8086: 'i8086' };
         // The user's remembered pick for THIS device wins over the map:
         // choosing an engine in the picker persists per device (see
         // onChange below), so "I always debug my Uno on the 2560 engine"
@@ -739,13 +739,24 @@ class DebugPanel extends React.Component {
      * clearing it returns the panel to debugging the blocks.
      */
     _runSketch (detail) {
-        const {firmware, kind} = detail || {};
+        const {firmware, kind, labwiredChip} = detail || {};
         if (!firmware || (!firmware.text && !(firmware.bytes && firmware.bytes.length))) return;
+        // One hand-off reaches this panel more than once: the Circuit tab stashes
+        // it and re-dispatches it a frame later so a panel that was still mounting
+        // cannot miss it. The same image, already starting or running here, is not
+        // restarted — tearing down an attach that is still loading its engine
+        // reports that attach's failure over the run that replaced it.
+        if (this._userFirmware === firmware && this._runnerPromise &&
+            !this._runnerStoppedExplicitly && this.state.ui.phase !== 'error') return;
         this._userFirmware = firmware;
         this._teardownRunner();
         return new Promise(resolve => this.setState({
             firmwareName: firmware.name,
             kind: kind || this.state.kind,
+            // A hand-off that names its LabWired chip or board (the MakeCode
+            // emulator image: board:microbit-v2) runs there, not on whatever the
+            // chip picker was last left at.
+            ...(kind === 'labwired' && typeof labwiredChip === 'string' ? {labwiredChip} : {}),
             runner: null,
             ui: {phase: 'idle', message: ''}
         }, () => resolve(this.onStart())));

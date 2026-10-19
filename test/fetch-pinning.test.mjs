@@ -489,6 +489,17 @@ const CENSUS = [
            + 'BRANCH url serving a stale commit, and there is no branch here to resolve.'
     },
     {
+        file: 'scripts/sync-makecode-runtime.mjs',
+        kind: 'release',
+        text: 'github.com/CrispStrobe/brickwright-lite/releases/download/makecode-emu-bases-1/',
+        class: 'content-hash',
+        why: 'The micro:bit V2 EMULATOR bases (Bluetooth-free CODAL builds, task A8), published as '
+           + 'release assets by the build workflow\'s own bytes. The tag is movable, so it is not what '
+           + 'is trusted: MICROBIT_EMU_BASES holds each base\'s sha256 and emuBases() serves and caches '
+           + 'nothing else (test/makecode-emu-bases-fetch.test.mjs). The bytes are re-derived by '
+           + 'scripts/build-makecode-emu-bases.mjs, whose workflow syncs with --no-emu-fetch.'
+    },
+    {
         file: 'scripts/vendor-forward.mjs',
         kind: 'git',
         text: 'git ls-remote ${url} HEAD`);',

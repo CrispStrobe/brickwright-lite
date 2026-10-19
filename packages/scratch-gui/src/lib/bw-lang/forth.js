@@ -41,7 +41,11 @@
 import {collectScripts, decodeInput, field, procName, procPrototype, substackId} from './project-walk.js';
 
 const RESERVED = new Set(['var', 'variable', 'if', 'else', 'fi', 'begin', 'until', 'again', 'dup', 'drop', 'swap',
-    'over', 'rot', 'and', 'or', 'not', 'cr', 'emit', 'here', 'allot', 'exit', 'i', 'times', 'main']);
+    'over', 'rot', 'and', 'or', 'not', 'cr', 'emit', 'here', 'allot', 'exit', 'i', 'times', 'main',
+    // GPIO bridge words baked into the DOS Forth binary's prelude (dosmain.c):
+    // `pin! ( pin value -- )` drives an 8086 OUT to 0x378+pin, `pin@ ( pin -- )`
+    // an IN. A write lights the 8-pin GPIO strip widget via onPortAccess.
+    'pin!', 'pin@']);
 const MARK_VARS = '( --- variables --- )';
 const MARK_PROGRAM = '( --- program --- )';
 // Loop markers: Forth comments the tokenizer turns into marker tokens, so the
@@ -160,6 +164,8 @@ export function generateForth (project) {
         case 'operator_and': return `${e('OPERAND1')} ${e('OPERAND2')} and`;
         case 'operator_or': return `${e('OPERAND1')} ${e('OPERAND2')} or`;
         case 'operator_not': return `${e('OPERAND')} not`;
+        // GPIO input: `pin@ ( pin -- value )` reads 0x378+pin.
+        case 'bwgpio_readpin': return `${field(b, 'PIN')} pin@`;
         case 'operator_mod': refuse('Forth mod is not supported yet'); return '0';
         case 'operator_join':
             refuse('Forth cannot join text (zForth has no string building) — say the parts separately');
@@ -209,6 +215,9 @@ export function generateForth (project) {
         switch (b.opcode) {
         case 'data_setvariableto': return [`${e('VALUE')} ${varName(field(b, 'VARIABLE'))} !`];
         case 'data_changevariableby': return [`${e('VALUE')} ${varName(field(b, 'VARIABLE'))} +!`];
+        // GPIO output: `pin! ( pin value -- )` OUTs to 0x378+pin, lighting the
+        // Widgets pane's GPIO strip via the i8086 bench's onPortAccess bridge.
+        case 'bwgpio_setpin': return [`${field(b, 'PIN')} ${e('VALUE')} pin!`];
         case 'looks_say': case 'looks_think': case 'stc12_print':
             return sayStatement(b.inputs.MESSAGE ? b.inputs.MESSAGE : b.inputs.VALUE, blocks);
         case 'control_if': {
@@ -407,6 +416,7 @@ export default function forthToPseudocode (source) {
             if (/^[-+]?(\d+\.?\d*|\.\d+)$/.test(w)) { es.push({s: w}); continue; }
             if (w === 'not') { es.push({s: `(not ${es.pop().s})`}); continue; }
             if (BIN[w]) { const b = es.pop(); const a = es.pop(); es.push({s: `(${a.s} ${BIN[w]} ${b.s})`}); continue; }
+            if (w === 'pin@') { es.push({s: `(read pin ${es.pop().s})`}); continue; } // GPIO input reporter
             if (w === '@') continue; // the `@` of a var read `X @`
             if (peek() && peek().t === 'word' && peek().v === '@') { // bare word then @ = var read
                 next();
@@ -531,6 +541,15 @@ export default function forthToPseudocode (source) {
             if (w === 'else' || w === 'fi' || w === 'until' || w === 'again' || w === ';') return null;
             next();
             if (w === 'cr') continue;
+            if (w === 'pin@') { estack.push({s: `(read pin ${popExpr().s})`}); continue; } // GPIO input reporter
+            if (w === 'pin!') { // GPIO output: ( pin value -- ) drives 0x378+pin
+                const val = popExpr();
+                const pin = popExpr();
+                const lvl = val.atom && val.s === '1' ? 'high'
+                    : (val.atom && val.s === '0' ? 'low' : null);
+                return [lvl ? `${pad(depth)}set pin ${pin.s} ${lvl}`
+                    : `${pad(depth)}set pin ${pin.s} to ${val.s}`];
+            }
             if (procNames.has(w)) return [`${pad(depth)}${w}`]; // a custom-block call
             if (/^[-+]?(\d+\.?\d*|\.\d+)$/.test(w)) { estack.push({s: w, atom: true}); continue; }
             if (w === '@') continue;

@@ -1,11 +1,24 @@
 # Owned MicroPython direct application startup
 
 The native launch plan checks a host-supplied support-package pin and a closed
-16-file manifest: retained model source, bounded UART source, four offline board
+16-file legacy manifest: retained model source, bounded UART source, four offline board
 files, state service and its six helpers, an authored boot seed and licence texts.
 The seed must have the exact 65536-byte prefix geometry. The plan rechecks support
 files before handing them to the supervisor. The packaged executable pin remains
 separate. Package pins and staging roots are native inputs, never editor DTOs.
+
+An explicit compiled-model package adds a sealed `profile.json` as the seventeenth
+manifest entry and a native descriptor digest pin. It binds the runtime
+executable digest and immutable platform/model source contracts. The compiled
+route uses native platform type names and omits only the retained model-source
+include; the paced UART helper still loads. Both profiles attach additional
+motors after creating electrical ports and before loading the application.
+The descriptor cannot enable compiled mode without its native package pin, and
+compiled mode cannot use an unlisted or mismatched descriptor. The
+[resource packaging instructions](spike-micropython-installed-resources.md)
+describe offline assembly. Host planner controls cover admission, command order,
+configuration lifetime and distinct generations; installed compiled-route
+qualification remains separate and pending.
 
 This initial profile accepts canonical raw applications based at 0x08010000. It
 re-admits the bytes and compares all vector metadata. It stages both the image and

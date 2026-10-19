@@ -18,6 +18,30 @@ const feedbackFixture = () => {
     return {state, feedback};
 };
 
+test('startup feedback exposes Stop with starting text and cannot overwrite a later observation', () => {
+    const f = feedbackFixture();
+    f.feedback.callbacks.onStarting('Simulation wird gestartet…');
+    assert.deepEqual(f.state, {spike3Running: true, status: 'Simulation wird gestartet…'});
+    f.feedback.callbacks.onProgramState(2, true, 0);
+    f.feedback.callbacks.onStarting('late startup');
+    assert.deepEqual(f.state, {spike3Running: true, status: 'running'});
+    for (const finish of [
+        x => x.requestStop(),
+        x => x.callbacks.onCompleted(),
+        x => x.callbacks.onError(new Error('startup failed')),
+        x => x.callbacks.onProgramState(1, true, 0),
+        x => x.callbacks.onProgramState(4, true, 0)
+    ]) {
+        const next = feedbackFixture();
+        finish(next.feedback);
+        const terminal = {...next.state};
+        next.feedback.callbacks.onStarting('late startup');
+        next.feedback.started();
+        assert.deepEqual(next.state, terminal);
+        assert.equal(next.state.spike3Running, false);
+    }
+});
+
 test('firmware cancellation/failure clears running and preserves terminal state across startup completion', () => {
     for (const [state, message] of [[3, 'completed'], [4, 'Stopped.'], [5, 'Firmware program failed (7).']]) {
         const f = feedbackFixture();
@@ -82,21 +106,22 @@ test('reupload replaces the previous program callbacks instead of accumulating l
     pane.firmwareSession = session;
     for (const run of ['first', 'second']) {
         await pane.startFirmware(null, {source: 'pass',
+            onStarting: () => events.push([run, 'starting']),
             onProgramState: state => events.push([run, state]), onStopped: () => events.push([run, 'closed'])});
         assert.equal(pane.state.status, 'paused');
         assert.equal(pane.state.message, 'Program stopped.');
     }
     session.onStopped();
-    assert.deepEqual(events, [['first', 2], ['first', 4], ['second', 2], ['second', 4], ['second', 'closed']]);
+    assert.deepEqual(events, [['first', 'starting'], ['first', 2], ['first', 4], ['second', 'starting'], ['second', 2], ['second', 4], ['second', 'closed']]);
 });
 
-test('Code Stop is connected before a running observation during startup', async () => {
+test('actual Code Stop handler is usable during startup before any firmware observation', async () => {
     let finish, callbacks, stopped = 0;
     const pane = {bridge: {}, state: {}, setState(next, done) {Object.assign(this.state, next); done?.();},
         async stopProgram() {stopped++; this.firmwareSession = null; callbacks.onStopped();},
         async startFirmware(program, options) {
             callbacks = options; this.firmwareSession = {};
-            options.onProgramState(2, true, 0);
+            options.onStarting('Starting firmware simulation…');
             await new Promise(resolve => {finish = resolve;});
         }};
     const editor = {state: {}, L: {spike3Stopped: 'Stopped.'}, openSpikeArena() {}, activeCode: () => 'pass',
@@ -104,10 +129,68 @@ test('Code Stop is connected before a running observation during startup', async
     const result = runMethod({__bwSpikeArena: {_pane: pane, bridge: pane.bridge}}).call(editor);
     while (!finish) await new Promise(resolve => setImmediate(resolve));
     assert.equal(editor.state.spike3Running, true);
+    assert.equal(editor.state.status, 'Starting firmware simulation…');
     assert.equal(typeof editor._spike3Stop, 'function');
     await editor._spike3Stop(); finish(); await result;
     assert.equal(stopped, 1);
     assert.deepEqual({running: editor.state.spike3Running, status: editor.state.status}, {running: false, status: 'Stopped.'});
+});
+
+test('cold pane startup notifies after session startup and observer binding, then preserves cancellation', async () => {
+    const body = paneSource.slice(paneSource.indexOf('    firmwareProgramObserver ('), paneSource.indexOf('    async programStorage ('));
+    for (const locale of ['en', 'de']) {
+        let settle, session;
+        const events = [];
+        class PendingSession {
+            constructor () { session = this; }
+            start () {
+                assert.equal(typeof this.onStopped, 'function');
+                assert.equal(typeof this.onProgramState, 'function');
+                events.push('start');
+                return new Promise(resolve => {settle = resolve;});
+            }
+        }
+        const Pane = new Function('encodePython', 'encodeInstructions', 'RenodeArenaSession',
+            `return class {${body}};`)(encodePython, encodeInstructions, PendingSession);
+        const pane = new Pane(), f = feedbackFixture();
+        Object.assign(pane, {locale, bridge: {reset() {}}, state: {execution: 'nuttx', topology: 'default'},
+            hubState: {setSimulationEnabled() {}}, nativeCapabilities: () => ({}),
+            async stopProgram() {}, setState(next) {Object.assign(this.state, next);}});
+        const startup = pane.startFirmware(null, {source: 'pass', ...f.feedback.callbacks,
+            onStarting: message => {
+                assert.equal(pane.firmwareSession, session);
+                assert.deepEqual(events, ['start']);
+                events.push('notification');
+                f.feedback.callbacks.onStarting(message);
+            }});
+        for (let i = 0; i < 10 && !settle; i++) await new Promise(resolve => setImmediate(resolve));
+        assert.equal(typeof settle, 'function');
+        assert.deepEqual(events, ['start', 'notification']);
+        assert.deepEqual(f.state, {spike3Running: true,
+            status: locale === 'de' ? 'Simulation wird gestartet…' : 'Starting firmware simulation…'});
+        f.feedback.requestStop();
+        pane.firmwareSession = null;
+        session.onStopped();
+        settle(); await startup;
+        f.feedback.started();
+        session.onProgramState(2, true, 0);
+        assert.deepEqual(f.state, {spike3Running: false, status: 'Stopped.'});
+    }
+});
+
+test('invalid cold-start input does not notify, replace a session or reserve simulation', async () => {
+    const body = paneSource.slice(paneSource.indexOf('    firmwareProgramObserver ('), paneSource.indexOf('    async programStorage ('));
+    let mutations = 0;
+    class RefusedSession { constructor () {mutations++;} }
+    const Pane = new Function('encodePython', 'encodeInstructions', 'RenodeArenaSession',
+        `return class {${body}};`)(encodePython, encodeInstructions, RefusedSession);
+    const pane = new Pane(), existing = {topology: 'default'};
+    Object.assign(pane, {bridge: {}, firmwareSession: existing, state: {execution: 'nuttx', topology: 'default'},
+        hubState: {setSimulationEnabled() {mutations++;}},
+        async stopProgram() {mutations++;}, setState() {mutations++;}});
+    await assert.rejects(pane.startFirmware(null, {source: {}, onStarting: () => {mutations++;}}));
+    assert.equal(mutations, 0);
+    assert.equal(pane.firmwareSession, existing);
 });
 
 test('READY is not reported as running and closing it reports stopped', () => {

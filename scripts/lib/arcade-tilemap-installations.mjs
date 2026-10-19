@@ -32,6 +32,8 @@ export function observeTilemapInstallations({vm, blockId, expose = false}) {
         if (primitives[opcode] !== observed) throw new Error('tilemap primitive changed during observation');
         primitives[opcode] = original;
     }};
-    if (expose) globalThis.__bwTilemapInstallationProof = observer;
+    // `expose` may name the global, so two blocks can be observed at once
+    // (restore the later observer first).
+    if (expose) globalThis[typeof expose === 'string' ? expose : '__bwTilemapInstallationProof'] = observer;
     return observer;
 }

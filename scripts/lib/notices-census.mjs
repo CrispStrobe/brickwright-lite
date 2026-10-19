@@ -42,7 +42,9 @@ const LIB = 'overlay/scratch-gui/src/lib';
 const ROMS = 'overlay/scratch-gui/static/roms';
 // Scoped artifact pins name shipped bundles rather than whole vendored trees.
 const SCOPED_BUNDLES = {
-    'arrays-values': 'overlay/scratch-vm/src/extensions/crispstrobe/arrays/index.js'
+    'arrays-values': 'overlay/scratch-vm/src/extensions/crispstrobe/arrays/index.js',
+    circuitplayground: 'overlay/scratch-vm/src/extensions/crispstrobe/circuitplayground/index.js',
+    wedo2unified: 'overlay/scratch-vm/src/extensions/crispstrobe/wedo2unified/index.js'
 };
 
 /** Licence id from a LICENSE text or package.json `license` string. */
@@ -126,7 +128,13 @@ export const vendoredTrees = (root, owner) => {
             const header = JSON.parse(encoded[1]).split('\n').slice(0, 8).join('\n');
             const licence = licenceId(header);
             if (!licence) throw new Error(`Scoped pin ${name} has no readable source licence: ${evidence}`);
-            out.push({kind:'vendored-tree', name, licence, holder:holderOf(header), evidence, pinned:true});
+            // This source declares its author in a By header, not a copyright
+            // notice. Retain that attribution without changing holderOf or
+            // turning it into an own-code exemption.
+            const author = name === 'wedo2unified' ?
+                header.match(/^[ \t]*\/\/[ \t]*By:[ \t]*([^<\n]+)/m)?.[1].trim() : null;
+            if (name === 'wedo2unified' && !author) throw new Error(`Scoped pin ${name} has no readable source author: ${evidence}`);
+            out.push({kind:'vendored-tree', name, licence, holder:holderOf(header), author, evidence, pinned:true});
             continue;
         }
         // A pinned upstream taken as an npm PACKAGE (bw-board, bw-circuit-ui since
@@ -261,6 +269,7 @@ export const judge = ({notices, owner, items}) => {
             if (!ids.some(id => licenceRe(id).test(sec))) findings.push(`${it.name}: the notices section does not state its licence (${it.licence})`);
         }
         if (it.holder && !names(sec, it.holder) && !names(sec, it.holder.split(' ')[0])) findings.push(`${it.name}: the notices section does not name the holder ${it.holder}`);
+        if (it.author && !names(sec, it.author)) findings.push(`${it.name}: the notices section does not name the declared author ${it.author}`);
     }
     return findings;
 };

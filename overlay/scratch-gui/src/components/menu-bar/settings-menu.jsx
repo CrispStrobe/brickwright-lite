@@ -1,7 +1,7 @@
 import classNames from 'classnames';
 import PropTypes from 'prop-types';
 import React, {useState} from 'react';
-import {FormattedMessage} from 'react-intl';
+import {FormattedMessage, injectIntl, intlShape} from 'react-intl';
 import {connect} from 'react-redux';
 import locales from 'scratch-l10n';
 
@@ -25,7 +25,8 @@ const emit = (name, value) => {
     window.dispatchEvent(new CustomEvent(name, {detail: value}));
 };
 
-const SettingsMenu = ({canChangeLanguage, canChangeTheme, isRtl, onRequestClose, onRequestOpen, settingsMenuOpen}) => {
+const SettingsMenu = ({intl, canChangeLanguage, canChangeTheme, isRtl, onRequestClose, onRequestOpen, settingsMenuOpen}) => {
+    const t = (id, defaultMessage) => intl.formatMessage({id, defaultMessage});
     const [workspaceOpen, setWorkspaceOpen] = useState(false);
     const [preferencesOpen, setPreferencesOpen] = useState(false);
     const current = key => {
@@ -65,6 +66,7 @@ const SettingsMenu = ({canChangeLanguage, canChangeTheme, isRtl, onRequestClose,
     );
     return (
         <div
+            data-testid="bw-settings-menu-trigger"
             className={classNames(menuBarStyles.menuBarItem, menuBarStyles.hoverable, menuBarStyles.themeMenu, {
                 [menuBarStyles.active]: settingsMenuOpen
             })}
@@ -82,42 +84,41 @@ const SettingsMenu = ({canChangeLanguage, canChangeTheme, isRtl, onRequestClose,
                 <MenuSection>
                     <MenuItem expanded={workspaceOpen}>
                         <div className={styles.groupRow} onClick={() => setWorkspaceOpen(value => !value)}>
-                            <span>Workspace</span>
+                            <span>{t('gui.workspace.heading', 'Workspace')}</span>
                             <img className={styles.groupCaret} src={dropdownCaret} />
                         </div>
                         <Submenu place={isRtl ? 'left' : 'right'}>
-                            {workspaceSelect('Debugger', workspaceValue('bw-debug-dock', 'top'),
+                            {workspaceSelect(t('gui.workspace.debugger', 'Debugger'), workspaceValue('bw-debug-dock', 'top'),
                                 value => setWorkspace('bw-debug-dock', value), [
-                                    {value: 'top', label: 'Top'},
-                                    {value: 'right', label: 'Right'},
-                                    {value: 'solo', label: 'Full pane'},
-                                    {value: 'off', label: 'Off'}
-                                ], 'Choose where the circuit debugger appears — Full pane gives it the whole right pane while coding')}
-                            {workspaceSelect('While coding', workspaceValue('bw-stage-circuit', '1'),
+                                    {value: 'top', label: t('gui.workspace.top', 'Top')},
+                                    {value: 'right', label: t('gui.workspace.right', 'Right')},
+                                    {value: 'solo', label: t('gui.workspace.fullPane', 'Full pane')},
+                                    {value: 'off', label: t('gui.workspace.off', 'Off')}
+                                ], t('gui.workspace.debuggerHint', 'Choose where the circuit debugger appears — Full pane gives it the whole right pane while coding'))}
+                            {workspaceSelect(t('gui.workspace.whileCoding', 'While coding'), workspaceValue('bw-stage-circuit', '1'),
                                 value => setWorkspace('bw-stage-circuit', value), [
-                                    {value: '1', label: 'Circuit'},
-                                    {value: '0', label: 'Scratch stage'}
-                                ], 'Choose what replaces the normal right pane while coding')}
-                            {workspaceSelect('Circuit presentation', presentation, setPresentation, [
-                                {value: 'stage-light', label: 'Stage · light'},
-                                {value: 'stage-dark', label: 'Stage · dark'},
-                                {value: 'full-light', label: 'Full width · light'},
-                                {value: 'full-dark', label: 'Full width · dark'}
-                            ], 'Choose circuit layout and appearance')}
+                                    {value: '1', label: t('gui.workspace.circuit', 'Circuit')},
+                                    {value: '0', label: t('gui.workspace.scratchStage', 'Scratch stage')}
+                                ], t('gui.workspace.codingHint', 'Choose what replaces the normal right pane while coding'))}
+                            {workspaceSelect(t('gui.workspace.presentation', 'Circuit presentation'), presentation, setPresentation, [
+                                {value: 'stage-light', label: t('gui.workspace.stageLight', 'Stage · light')},
+                                {value: 'stage-dark', label: t('gui.workspace.stageDark', 'Stage · dark')},
+                                {value: 'full-light', label: t('gui.workspace.fullLight', 'Full width · light')},
+                                {value: 'full-dark', label: t('gui.workspace.fullDark', 'Full width · dark')}
+                            ], t('gui.workspace.presentationHint', 'Choose circuit layout and appearance'))}
                             {/* Build-time gate: DefinePlugin drops this whole item when the FPGA
                                 surface is not bundled, so it never offers a tab that cannot exist. */}
                             {process.env.BW_ENABLE_FPGA ? workspaceSelect(
-                                'FPGA lab (⬢ tab)', getFpgaEnabled() ? '1' : '0',
+                                t('gui.workspace.fpga', 'FPGA lab (⬢ tab)'), getFpgaEnabled() ? '1' : '0',
                                 value => { setFpgaEnabled(value === '1'); onRequestClose(); }, [
-                                    {value: '0', label: 'Off'},
-                                    {value: '1', label: 'On'}
-                                ], 'Show the ⬢ FPGA tab: synthesise Verilog for the Tang Nano 20K and '
-                                    + 'drive the on-screen board') : null}
-                            {workspaceSelect('Legacy SPIKE extensions', getLegacySpikeVisible() ? '1' : '0',
+                                    {value: '0', label: t('gui.workspace.off', 'Off')},
+                                    {value: '1', label: t('gui.workspace.on', 'On')}
+                                ], t('gui.workspace.fpgaHint', 'Show the ⬢ FPGA tab: synthesise Verilog for the Tang Nano 20K and drive the on-screen board')) : null}
+                            {workspaceSelect(t('gui.workspace.legacySpike', 'Legacy SPIKE extensions'), getLegacySpikeVisible() ? '1' : '0',
                                 value => { setLegacySpikeVisible(value === '1'); onRequestClose(); }, [
-                                    {value: '0', label: 'Off'},
-                                    {value: '1', label: 'Show for debugging'}
-                                ], 'Show four archived SPIKE Prime drivers in the extension gallery for hardware diagnosis')}
+                                    {value: '0', label: t('gui.workspace.off', 'Off')},
+                                    {value: '1', label: t('gui.workspace.showDebugging', 'Show for debugging')}
+                                ], t('gui.workspace.legacyHint', 'Show four archived SPIKE Prime drivers in the extension gallery for hardware diagnosis'))}
                         </Submenu>
                     </MenuItem>
                 </MenuSection>
@@ -145,7 +146,7 @@ const SettingsMenu = ({canChangeLanguage, canChangeTheme, isRtl, onRequestClose,
                     </MenuItem>
                     {(canChangeLanguage || canChangeTheme) && <MenuItem expanded={preferencesOpen}>
                         <div className={styles.groupRow} onClick={() => setPreferencesOpen(value => !value)}>
-                            <span>Preferences</span>
+                            <span>{t('gui.menuBar.preferences', 'Preferences')}</span>
                             <img className={styles.groupCaret} src={dropdownCaret} />
                         </div>
                         <PreferencesSubmenu
@@ -162,6 +163,12 @@ const SettingsMenu = ({canChangeLanguage, canChangeTheme, isRtl, onRequestClose,
                             id="gui.menuBar.scratchLinkTransport"
                         />
                     </MenuItem>
+                    {/* Peer sessions (task E11): only in a BW_ENABLE_PEERS=1 build, only in the app. */}
+                    {process.env.BW_ENABLE_PEERS === true && window.__TAURI__ ? (
+                        <MenuItem onClick={() => { emit('bw-open-peer-sessions'); onRequestClose(); }}>
+                            <FormattedMessage id="gui.menuBar.peerSessions" defaultMessage="Peer sessions…" />
+                        </MenuItem>
+                    ) : null}
                     <MenuItem onClick={() => { emit('bw-open-virtual-spike'); onRequestClose(); }}>
                         <FormattedMessage
                             defaultMessage="Virtual SPIKE Prime…"
@@ -191,10 +198,10 @@ const SettingsMenu = ({canChangeLanguage, canChangeTheme, isRtl, onRequestClose,
                         />
                     </MenuItem>
                     <MenuItem onClick={() => { emit('bw-open-about'); onRequestClose(); }}>
-                        About Brickwright…
+                        {t('gui.menuBar.aboutBrickwright', 'About Brickwright…')}
                     </MenuItem>
                     <MenuItem onClick={() => { emit('bw-open-i8086-lab'); onRequestClose(); }}>
-                        8086 execution diagnostics…
+                        {t('gui.menuBar.i8086Diagnostics', '8086 execution diagnostics…')}
                     </MenuItem>
                 </MenuSection>
             </MenuBarMenu>
@@ -204,13 +211,14 @@ const SettingsMenu = ({canChangeLanguage, canChangeTheme, isRtl, onRequestClose,
     );
 };
 
-const PreferencesSubmenuComponent = ({canChangeLanguage, canChangeTheme, currentLocale, currentTheme, isRtl, onChangeLocale, onChangeTheme, onRequestClose}) => {
+const PreferencesSubmenuComponent = ({intl, canChangeLanguage, canChangeTheme, currentLocale, currentTheme, isRtl, onChangeLocale, onChangeTheme, onRequestClose}) => {
+    const t = (id, defaultMessage) => intl.formatMessage({id, defaultMessage});
     const enabledThemes = [DEFAULT_THEME, HIGH_CONTRAST_THEME];
 
     return (
         <Submenu className={styles.preferencesSubmenu} place={isRtl ? 'left' : 'right'}>
             {canChangeLanguage && <label className={styles.preferenceRow}>
-                <span>Language</span>
+                <span>{t('gui.menuBar.language', 'Language')}</span>
                 <select value={currentLocale} onChange={event => {
                     onChangeLocale(event.target.value);
                     onRequestClose();
@@ -219,12 +227,12 @@ const PreferencesSubmenuComponent = ({canChangeLanguage, canChangeTheme, current
                 </select>
             </label>}
             {canChangeTheme && <label className={styles.preferenceRow}>
-                <span>Color mode</span>
+                <span>{t('gui.menuBar.colorMode', 'Color mode')}</span>
                 <select value={currentTheme} onChange={event => {
                     onChangeTheme(event.target.value);
                     onRequestClose();
                 }}>
-                    {enabledThemes.map(key => <option key={key} value={key}>{themeMap[key].label.defaultMessage}</option>)}
+                    {enabledThemes.map(key => <option key={key} value={key}>{intl.formatMessage(themeMap[key].label)}</option>)}
                 </select>
             </label>}
         </Submenu>
@@ -232,6 +240,7 @@ const PreferencesSubmenuComponent = ({canChangeLanguage, canChangeTheme, current
 };
 
 PreferencesSubmenuComponent.propTypes = {
+    intl: intlShape.isRequired,
     canChangeLanguage: PropTypes.bool,
     canChangeTheme: PropTypes.bool,
     currentLocale: PropTypes.string,
@@ -254,9 +263,10 @@ const PreferencesSubmenu = connect(
             persistTheme(theme);
         }
     })
-)(PreferencesSubmenuComponent);
+)(injectIntl(PreferencesSubmenuComponent));
 
 SettingsMenu.propTypes = {
+    intl: intlShape.isRequired,
     canChangeLanguage: PropTypes.bool,
     canChangeTheme: PropTypes.bool,
     isRtl: PropTypes.bool,
@@ -265,4 +275,4 @@ SettingsMenu.propTypes = {
     settingsMenuOpen: PropTypes.bool
 };
 
-export default SettingsMenu;
+export default injectIntl(SettingsMenu);

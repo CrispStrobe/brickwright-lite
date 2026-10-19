@@ -535,3 +535,350 @@ test('persistent storage requires both NuttX storage and checkpoint capabilities
         assert.equal(session.storagePersistent, expected, `${firmware}/${storage}/${checkpoint}`);
     }
 });
+
+
+test('Stop from a firmware completion frame suppresses the later completion callback', async () => {
+    let sequence = 0; let completed = 0; let closed = 0; let stopping;
+    const capabilities = Object.fromEntries(['session.start', 'session.close', 'run', 'state.read',
+        'arena.inputs.write', 'arena.program.load'].map(operation => [
+        `renode.spike.${operation}`, async () => {
+            if (operation === 'session.close') closed++;
+            if (operation !== 'state.read') return 'ready';
+            const frame = programFrame(sequence ? 2 : 0);
+            frame.seq = ++sequence; frame.clockNs = (sequence - 1) * 1000000;
+            return JSON.stringify(frame);
+        }
+    ]));
+    const session = new RenodeArenaSession({bridge: bridge(), capabilities,
+        program: {version: 1, instructions: [[0, 0, 0, 0]]},
+        onFrame: () => {
+            if (session.latestFrame?.lifecycle.arenaProgram.status === 2) stopping = session.stop();
+        }, onCompleted: () => { completed++; }});
+    await session.start(); await session.poll(); await stopping; await session.completion;
+    assert.equal(closed, 1);
+    assert.equal(session.closed, true);
+    assert.equal(completed, 0, 'Stop in the observed final frame must win over completion');
+});
+
+
+for (const boundary of ['frame', 'program-state']) {
+    test(`NuttX Stop from the ${boundary} callback suppresses completion`, async () => {
+        let sequence = 0; let state = 0; let completed = 0; let closed = 0; let stopping;
+        const makeFrame = () => {
+            const frame = programFrame(); frame.seq = ++sequence; frame.clockNs = sequence * 1000000;
+            frame.target.firmware = 'brickwright-nuttx';
+            frame.target.capabilities.push('nuttx-program/v1', 'nuttx-program-storage/v1');
+            frame.lifecycle.nuttxProgram = {state, error: 0}; return frame;
+        };
+        const capabilities = Object.fromEntries(['session.start', 'session.close', 'state.read', 'run',
+            'arena.inputs.write', 'program.packet'].map(operation => [`renode.spike.${operation}`, async args => {
+            if (operation === 'session.close') closed++;
+            if (operation === 'state.read') return JSON.stringify(makeFrame());
+            if (operation !== 'program.packet') return 'ready';
+            const packet = args.bytes;
+            if (packet[2] === 2 || packet[2] === 9) state = 1;
+            if (packet[2] === 3) state = 2;
+            if (packet[2] === 4) state = 4;
+            const frame = makeFrame(); const reply = new Uint8Array(20); const view = new DataView(reply.buffer);
+            reply.set([0x71, 1, packet[2], state]); view.setUint32(4, 1, true); view.setUint16(14, 1, true);
+            frame.lifecycle.nuttxProgramReply = [...reply]; return JSON.stringify(frame);
+        }]));
+        const session = new RenodeArenaSession({bridge: bridge(), capabilities, backend: 'nuttx',
+            program: {version: 1, instructions: [[0, 0, 0, 0]]},
+            onFrame: () => {
+                if (boundary === 'frame' && session.latestFrame?.lifecycle.nuttxProgram.state === 3) stopping = session.stop();
+            }, onProgramState: value => {
+                if (boundary === 'program-state' && value === 3) stopping = session.stop();
+            }, onCompleted: () => { completed++; }});
+        try {
+            await session.start(); clearTimeout(session.timer);
+            state = 3; await session.poll(); await stopping; await session.completion;
+            assert.equal(session.closed, true); assert.equal(closed, 1);
+            assert.equal(completed, 0, 'Callback Stop must invalidate the pending NuttX completion');
+        } finally { await session.stop(); }
+    });
+}
+
+
+// Full session/upload methods with an authored, delayed native boundary.
+// These controls exercise observer cancellation, not guest execution.
+const observerBoundarySession = async ({boundary, path}) => {
+    const b = bridge(); const events = []; let sequence = 0; let state = 0;
+    let armed = false; let stopping; let releaseInputs; let inputsEntered;
+    const pendingInputs = new Promise(resolve => { inputsEntered = resolve; });
+    const requestStop = () => { if (!stopping) stopping = session.stop(); };
+    const frame = () => {
+        const value = programFrame(); value.seq = ++sequence; value.clockNs = sequence * 1000000;
+        value.target.firmware = 'brickwright-nuttx';
+        value.target.capabilities.push('nuttx-program/v1', 'nuttx-program-storage/v1');
+        value.lifecycle.nuttxProgram = {state, error: 0};
+        value.lifecycle.nuttxProgramOutput = {sequence: armed ? 1 : 0, text: armed ? 'observed output' : '', truncated: false};
+        return value;
+    };
+    const capabilities = Object.fromEntries(['session.start', 'session.close', 'state.read', 'run',
+        'arena.inputs.write', 'program.packet'].map(operation => [`renode.spike.${operation}`, async args => {
+        if (operation === 'state.read') return JSON.stringify(frame());
+        if (operation === 'arena.inputs.write' && armed) {
+            events.push({event: 'inputs', closed: session.closed});
+            if (boundary === 'pending-input') { inputsEntered(); await new Promise(resolve => {releaseInputs = resolve;}); }
+        }
+        if (operation !== 'program.packet') return 'ready';
+        const packet = args.bytes;
+        if (packet[2] === 2 || packet[2] === 9) state = 1;
+        if (packet[2] === 3) state = 2;
+        if (packet[2] === 4) state = 4;
+        const value = frame(); const reply = new Uint8Array(20); const view = new DataView(reply.buffer);
+        reply.set([0x71, 1, packet[2], state]); view.setUint32(4, 1, true); view.setUint16(14, 1, true);
+        value.lifecycle.nuttxProgramReply = [...reply]; return JSON.stringify(value);
+    }]));
+    const session = new RenodeArenaSession({bridge: b, capabilities, backend: 'nuttx', source: 'print(1)',
+        onFrame: () => { if (armed) events.push({event: 'frame', closed: session.closed}); },
+        onOutput: () => {
+            if (!armed) return;
+            events.push({event: 'output', closed: session.closed});
+            if (boundary === 'output') requestStop();
+        }, onProgramState: () => {
+            if (!armed) return;
+            events.push({event: 'program-state', closed: session.closed});
+            if (boundary === 'program-state') requestStop();
+        }});
+    const unsubscribe = b.hubState.subscribe(() => { if (armed && boundary === 'hub') requestStop(); });
+    await session.start(); clearTimeout(session.timer); armed = true; state = 3;
+    const pending = path === 'poll' ? session.poll() : session.programClient.status();
+    if (boundary === 'pending-input') { await pendingInputs; requestStop(); releaseInputs(); }
+    await pending;
+    if (stopping) await stopping;
+    clearTimeout(session.timer); unsubscribe();
+    return {session, events};
+};
+
+for (const [path, boundary] of [['poll', 'output'], ['poll', 'hub'], ['packet', 'output'],
+    ['packet', 'program-state'], ['packet', 'hub'], ['packet', 'pending-input']]) {
+    test(`observer lifecycle ${path}: Stop at ${boundary} prevents later publication and inputs`, async () => {
+        const {session, events} = await observerBoundarySession({boundary, path});
+        try {
+            assert.equal(session.closed, true);
+            assert.deepEqual(events.filter(event => event.closed), [],
+                'No observer or input request may begin after synchronous Stop');
+            assert.equal(session.adapter.bridge.hubState.externalBackend, null);
+            assert.equal(session.adapter.bridge.hubState.configurationOwner, null);
+            assert.equal(session.adapter.bridge.hubState.clockOwner, null);
+        } finally { await session.stop(); }
+    });
+}
+
+test('observer lifecycle live packet still publishes state, output, input and frame', async () => {
+    const {session, events} = await observerBoundarySession({boundary: 'none', path: 'packet'});
+    try {
+        assert.equal(session.closed, false);
+        assert.deepEqual(events.map(event => event.event), ['program-state', 'output', 'inputs', 'frame']);
+        assert.ok(events.every(event => event.closed === false));
+    } finally { await session.stop(); }
+});
+
+// Authored native replies exercise the real deferred exchange and session callbacks.
+for(const phase of ['pending','terminal'])for(const boundary of ['output','hub','frame','live'])test(`deferred storage ${phase}/${boundary}: closure prevents later observers`,async()=>{
+ const bridge=new ArenaHubBridge({hubState:new Hub(),world:sandboxWorld()});
+ let sequence=0,state=0,metadata,lastReply,storageReads=0,armed=false,stopping;
+ const events=[];const calls=[];
+ const frame=()=>({schemaVersion:1,type:'snapshot',seq:++sequence,clockNs:sequence*1000000,
+  target:{board:'spike-prime',firmware:'brickwright-nuttx',transport:'none',imageSha256:'a'.repeat(64),
+   capabilities:['arena-inputs/v1','arena-clock/v1','guest-motor-output/v1','state-sample/v1','nuttx-program/v1','nuttx-program-storage/v1','nuttx-program-storage-deferred/v1']},
+  lifecycle:{connectionGeneration:1,generation:1,phase:'ready',nuttxProgram:{state,error:0},
+   nuttxProgramOutput:{sequence:armed?1:0,text:armed?'storage observation':'',truncated:false},
+   ...(metadata?{nuttxProgramStorage:{...metadata}}:{}),...(lastReply?{nuttxProgramReply:lastReply}:{})},
+  ports:[{id:'C',attached:true,kind:'color'},{id:'D',attached:true,kind:'distance'},{id:'E',attached:true,kind:'force'}],
+  motors:['A','B'].map(port=>({port,position:0,speedDps:0,demandDirection:0,stalled:false}))});
+ const reply=op=>{const bytes=new Uint8Array(20);const v=new DataView(bytes.buffer);bytes.set([0x71,1,op,state]);v.setUint32(4,1,true);v.setUint16(14,1,true);return [...bytes];};
+ const capabilities=Object.fromEntries(['session.start','session.close','state.read','run','arena.inputs.write','program.packet','program.storage.submit'].map(op=>[`renode.spike.${op}`,async args=>{
+  calls.push(op);
+  if(op==='program.packet'){
+   if(args.bytes[2]===2)state=1;if(args.bytes[2]===3)state=2;if(args.bytes[2]===4)state=4;
+   lastReply=reply(args.bytes[2]);return JSON.stringify(frame());
+  }
+  if(op==='program.storage.submit'){
+   assert.equal(args.bytes[2],8);metadata={requestSeq:12,replySeq:phase==='terminal'?12:10,operation:8,programId:1,pending:phase!=='terminal'};storageReads=0;if(phase==='terminal')lastReply=reply(8);
+   return JSON.stringify(frame());
+  }
+  if(op==='state.read'){
+   if(metadata && ++storageReads===2){metadata.pending=false;metadata.replySeq=12;lastReply=reply(8);}
+   return JSON.stringify(frame());
+  }
+  return 'ready';
+ }]));
+ let session;const stop=()=>{if(!stopping)stopping=session.stop();};
+ session=new RenodeArenaSession({bridge,capabilities,backend:'nuttx',source:'print(1)',
+  onOutput:()=>{if(armed){events.push({event:'output',closed:session.closed});if(boundary==='output')stop();}},
+  onFrame:()=>{if(armed){events.push({event:'frame',closed:session.closed});if(boundary==='frame')stop();}},
+  onProgramState:()=>{if(armed)events.push({event:'program-state',closed:session.closed});}});
+ const unsubscribe=bridge.hubState.subscribe(()=>{if(armed && boundary==='hub')stop();});
+ try{
+  await session.start();clearTimeout(session.timer);state=3;session.observeProgram({state});armed=true;
+  let storageError;
+  try{await session.storage('save');}catch(error){storageError=error;}
+  clearTimeout(session.timer);if(stopping)await stopping;
+  if(boundary==='live'){
+   assert.equal(storageError,undefined);assert.equal(session.closed,false);
+   assert.ok(events.some(e=>e.event==='output') && events.some(e=>e.event==='frame'));
+   assert.equal(session.latestFrame.lifecycle.nuttxProgramStorage.pending,false);
+  }else{
+   assert.ok(stopping,'actual observer must request Stop');assert.equal(session.closed,true);
+   assert.deepEqual(events.filter(e=>e.closed),[],'No later observer may run after synchronous Stop in deferred storage');
+   assert.equal(bridge.hubState.externalBackend,null);assert.equal(bridge.hubState.configurationOwner,null);
+   assert.match(String(storageError),/cancelled|closed/,'Stop invalidates the awaiting storage operation');
+  }
+ }finally{armed=false;unsubscribe();clearTimeout(session.timer);await session.stop();}
+});
+
+// Actual session with authored first-frame and configuration observer cancellation.
+for (const boundary of ['live','first-frame','configuration']) test(`startup observer ${boundary} preserves request boundary`,async()=>{
+ const cancel=boundary!=='live';
+ const b=new ArenaHubBridge({hubState:new Hub(),world:sandboxWorld()});const calls=[];let s,stopping;
+ const frame={schemaVersion:1,type:'snapshot',seq:1,clockNs:0,
+ target:{board:'spike-prime',firmware:'brickwright-arena-demo',transport:'none',imageSha256:'a'.repeat(64),capabilities:['arena-inputs/v1','arena-clock/v1','guest-motor-output/v1','state-sample/v1']},
+ lifecycle:{connectionGeneration:1},ports:[{id:'C',attached:true,kind:'color'},{id:'D',attached:true,kind:'distance'},{id:'E',attached:true,kind:'force'}],
+ motors:['A','B'].map(port=>({port,position:0,speedDps:0,demandDirection:0,stalled:false}))};
+ const capabilities=Object.fromEntries(['session.start','session.close','state.read','run','arena.inputs.write'].map(op=>[`renode.spike.${op}`,async()=>{calls.push({op,closed:s.closed});if(op==='session.start')await new Promise(resolve=>setTimeout(resolve,0));return op==='state.read'?JSON.stringify(frame):'ready';}]));
+ s=new RenodeArenaSession({bridge:b,capabilities});
+ const unsubscribe=b.hubState.subscribe(()=>{if(cancel && !s.closed && (boundary==='configuration'?b.hubState.configurationOwner===s:b.hubState.clockOwner==='renode')) stopping=s.stop();});
+ try {
+  await s.start();clearTimeout(s.timer);if(stopping)await stopping;
+  if(cancel){assert.ok(s.closed);assert.equal(b.hubState.configurationOwner,null);assert.equal(b.hubState.clockOwner,null);assert.notEqual(b.hubState.externalBackend,s);assert.deepEqual(calls.filter(c=>c.closed&&['session.start','arena.inputs.write','run','program.packet'].includes(c.op)),[],'No new native startup/input/run/program request after startup observer Stops');}
+  else {assert.ok(!s.closed);assert.deepEqual(calls.map(c=>c.op),['session.start','state.read','arena.inputs.write','run']);assert.equal(b.hubState.externalBackend,s);}
+ }finally{unsubscribe();await s.stop();}
+});
+
+// Real scheduled polling with authored delayed/error-capable native replies.
+for(const boundary of ['live-error','closed-result','closed-error'])test(`scheduled poll ${boundary}`,{timeout:5000},async()=>{
+ const b=new ArenaHubBridge({hubState:new Hub(),world:sandboxWorld()});let s,finish,fail,entered,reads=0;const events=[];
+ const pending=new Promise(resolve=>{entered=resolve;});
+ const frame=seq=>({schemaVersion:1,type:'snapshot',seq,clockNs:seq*1000000,target:{board:'spike-prime',firmware:'brickwright-arena-demo',transport:'none',imageSha256:'a'.repeat(64),capabilities:['arena-inputs/v1','arena-clock/v1','guest-motor-output/v1','state-sample/v1']},lifecycle:{connectionGeneration:1},ports:[{id:'C',attached:true,kind:'color'},{id:'D',attached:true,kind:'distance'},{id:'E',attached:true,kind:'force'}],motors:['A','B'].map(port=>({port,position:0,speedDps:0,demandDirection:0,stalled:false}))});
+ const capabilities=Object.fromEntries(['session.start','session.close','state.read','run','arena.inputs.write'].map(op=>[`renode.spike.${op}`,async()=>{
+  if(op==='state.read'){
+   if(++reads===1)return JSON.stringify(frame(1));
+   entered();return new Promise((resolve,reject)=>{finish=()=>resolve(JSON.stringify(frame(2)));fail=()=>reject(new Error('authored native poll failure'));});
+  }
+  events.push({op,closed:s.closed});return 'ready';
+ }]));
+ s=new RenodeArenaSession({bridge:b,capabilities,onError:error=>events.push({op:'onError',closed:s.closed,message:error.message}),onStopped:()=>events.push({op:'onStopped',closed:s.closed})});
+ try{
+  await s.start();await pending;
+  if(boundary==='live-error'){fail();await new Promise(resolve=>setTimeout(resolve,0));await s.completion;}
+  else{const stopping=s.stop();boundary==='closed-result'?finish():fail();await stopping;}
+  await new Promise(resolve=>setTimeout(resolve,0));
+  assert.ok(s.closed);assert.equal(events.filter(e=>e.op==='onStopped').length,1);
+  const errors=events.filter(e=>e.op==='onError');
+  assert.equal(errors.length,boundary==='live-error'?1:0,'Closed session must not announce an error from its late poll');
+  if(errors.length)assert.equal(errors[0].closed,false);
+  assert.equal(b.hubState.clockOwner,null);assert.equal(b.hubState.configurationOwner,null);assert.equal(b.hubState.externalBackend,null);
+ }finally{await s.stop();}
+});
+
+// Preserve the real session and serialized codec; delay only an authored STOP reply.
+for (const cancel of [false, true]) test(`replacement upload awaiting STOP: ${cancel ? 'close cancels upload' : 'live upload proceeds'}`, async () => {
+    const b = bridge(); let state = 0, sequence = 0, armed = false, blocked = false;
+    let entered, release;
+    const enteredStop = new Promise(resolve => {entered = resolve;});
+    const heldStop = new Promise(resolve => {release = resolve;});
+    const calls = [];
+    let session;
+    const frame = () => {
+        const value = programFrame(); value.seq = ++sequence; value.clockNs = sequence * 1000000;
+        value.target.firmware = 'brickwright-nuttx';
+        value.target.capabilities.push('nuttx-program/v1', 'nuttx-program-storage/v1');
+        value.lifecycle.nuttxProgram = {state, error: 0}; return value;
+    };
+    const capabilities = Object.fromEntries(['session.start', 'session.close', 'state.read', 'run',
+        'arena.inputs.write', 'program.packet'].map(op => [`renode.spike.${op}`, async args => {
+        if (op === 'state.read') return JSON.stringify(frame());
+        if (op !== 'program.packet') return 'ready';
+        const command = args.bytes[2];
+        if (armed) calls.push({command, closed: session.closed});
+        if (armed && command === 4 && !blocked) {blocked = true; entered(); await heldStop;}
+        if (command === 2) state = 1;
+        if (command === 3) state = 2;
+        if (command === 4) state = 4;
+        const value = frame(), reply = new Uint8Array(20), view = new DataView(reply.buffer);
+        reply.set([0x71, 1, command, state]); view.setUint32(4, 1, true); view.setUint16(14, 1, true);
+        value.lifecycle.nuttxProgramReply = [...reply]; return JSON.stringify(value);
+    }]));
+    session = new RenodeArenaSession({bridge: b, capabilities, backend: 'nuttx', source: 'print(1)'});
+    try {
+        await session.start(); clearTimeout(session.timer); state = 3; session.observeProgram({state}); armed = true;
+        const uploading = session.uploadProgram(null, 'print(2)');
+        // Attach rejection observation before releasing either native response.
+        const outcome = uploading.then(value => ({value}), error => ({error}));
+        await enteredStop;
+        const stopping = cancel ? session.stop() : null;
+        release(); const result = await outcome;
+        if (stopping) await stopping;
+        clearTimeout(session.timer);
+        if (cancel) {
+            assert.ok(result.error, 'A closed session must reject the replacement upload');
+            assert.match(String(result.error), /closed|cancelled/);
+            assert.deepEqual(calls.filter(call => call.command !== 4), [], 'No BEGIN/CHUNK/COMMIT/START after Stop');
+            assert.equal(session.source, 'print(1)', 'Cancelled replacement must not become current code');
+            assert.equal(b.hubState.configurationOwner, null); assert.equal(b.hubState.externalBackend, null);
+        } else {
+            assert.equal(result.error, undefined); assert.ok(calls.some(call => call.command === 3));
+            assert.equal(session.source, 'print(2)'); assert.equal(session.programState, 2);
+        }
+    } finally {release(); armed = false; clearTimeout(session.timer); await session.stop();}
+});
+
+// Authored return-delivery delay after the production codec really completes upload.
+for (const cancel of [false, true]) test(`replacement upload awaiting completed client reply: ${cancel ? 'close cancels upload' : 'live upload proceeds'}`, async () => {
+    const b = bridge(); let state = 0, sequence = 0, armed = false;
+    let entered, release;
+    const enteredStop = new Promise(resolve => {entered = resolve;});
+    const heldStop = new Promise(resolve => {release = resolve;});
+    const calls = [];
+    let session;
+    const frame = () => {
+        const value = programFrame(); value.seq = ++sequence; value.clockNs = sequence * 1000000;
+        value.target.firmware = 'brickwright-nuttx';
+        value.target.capabilities.push('nuttx-program/v1', 'nuttx-program-storage/v1');
+        value.lifecycle.nuttxProgram = {state, error: 0}; return value;
+    };
+    const capabilities = Object.fromEntries(['session.start', 'session.close', 'state.read', 'run',
+        'arena.inputs.write', 'program.packet'].map(op => [`renode.spike.${op}`, async args => {
+        if (op === 'state.read') return JSON.stringify(frame());
+        if (op !== 'program.packet') return 'ready';
+        const command = args.bytes[2];
+        if (armed) calls.push({command, closed: session.closed});
+        if (command === 2) state = 1;
+        if (command === 3) state = 2;
+        if (command === 4) state = 4;
+        const value = frame(), reply = new Uint8Array(20), view = new DataView(reply.buffer);
+        reply.set([0x71, 1, command, state]); view.setUint32(4, 1, true); view.setUint16(14, 1, true);
+        value.lifecycle.nuttxProgramReply = [...reply]; return JSON.stringify(value);
+    }]));
+    session = new RenodeArenaSession({bridge: b, capabilities, backend: 'nuttx', source: 'print(1)'});
+    try {
+        await session.start(); clearTimeout(session.timer); state = 3; session.observeProgram({state}); armed = true;
+        const originalUpload=session.programClient.upload.bind(session.programClient);
+        session.programClient.upload=async(...args)=>{const reply=await originalUpload(...args);entered();await heldStop;return reply;};
+        const publications=[];const observe=session.onProgramState.bind(session);
+        session.onProgramState=(...args)=>{publications.push({closed:session.closed,state:args[0]});return observe(...args);};
+        const uploading = session.uploadProgram(null, 'print(2)');
+        // Attach rejection observation before releasing either native response.
+        const outcome = uploading.then(value => ({value}), error => ({error}));
+        await enteredStop;
+        const stopping = cancel ? session.stop() : null;
+        release(); const result = await outcome;
+        if (stopping) await stopping;
+        clearTimeout(session.timer);
+        if (cancel) {
+            assert.deepEqual(publications.filter(call=>call.closed),[], 'No program-state publication after closure');
+            assert.ok(result.error, 'A closed session must reject the replacement upload');
+            assert.match(String(result.error), /closed|cancelled/);
+            assert.equal(session.retainedProgram, false, 'No retained-program publication after closure');
+            assert.deepEqual(calls.filter(call => call.closed && call.command !== 4), [], 'No BEGIN/CHUNK/COMMIT/START after Stop');
+            assert.equal(session.source, 'print(2)', 'Actual upload happened before this authored return delay; no rollback claim');
+            assert.equal(b.hubState.configurationOwner, null); assert.equal(b.hubState.externalBackend, null);
+        } else {
+            assert.equal(result.error, undefined); assert.ok(calls.some(call => call.command === 3));
+            assert.equal(session.source, 'print(2)'); assert.equal(session.programState, 2);
+        }
+    } finally {release(); armed = false; clearTimeout(session.timer); await session.stop();}
+});

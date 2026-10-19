@@ -218,6 +218,8 @@ export const REFUSED = Object.freeze({
         'arduino_mega', 'arduino_nano', 'arduino_uno', 'attiny85', 'attiny88', 'attiny88_qfn32',
         'eater6502', 'pi_pico', 'stc15_mcu', 'stm32f030', 'w65c02', 'z80',
         'i8086', 'i8088', 'mcu',
+        // The ESP8266 board (bw-board #580): its own DEVICE ESP8266 program runs on it.
+        'esp8266',
         // The MakeCode boards (bw-board #44): a MakeCode program drives them
         // from the MakeCode pane's runtime bridge, not from the Code tab.
         'calliopemini', 'circuit_playground_express', 'pybadge',

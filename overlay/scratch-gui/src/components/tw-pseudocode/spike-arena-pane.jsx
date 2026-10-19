@@ -2,6 +2,7 @@ import React from 'react';
 import {compileFirmwareProgram} from '../../lib/spike-arena/firmware-program.js';
 import {RenodeArenaSession} from '../../lib/spike-arena/renode-arena-session.js';
 import {encodePython, encodeInstructions} from '../../lib/spike-nuttx/upload-protocol.js';
+import {dualUltrasonicRobot} from '../../lib/spike-nuttx/motor-topology.js';
 import {encodeSource} from '../../lib/spike-micropython/raw-repl.js';
 import {createNativeRenodeCapabilities} from 'scratch-vm/src/extension-support/native-renode-capability.js';
 import {connectVirtualSpike} from '../../lib/virtual-hub/connect-virtual-spike.js';
@@ -107,19 +108,23 @@ class SpikeArenaPane extends React.Component {
 
     /** Loads a unit and selects one of its challenges (the first when `wanted` is not in it). */
     async openUnit (unitId, wanted) {
-        await this.stopProgram();
-        if (this.disposed) return;
         const token = this.unitToken = {};
+        const stopped = this.stopProgram();
+        const intent = this.programIntent;
+        const current = () => !this.disposed && this.unitToken === token &&
+            this.programIntent === intent && this.bridge === intent.bridge;
+        await stopped;
+        if (!current()) return;
         this.setState({status: 'loading', sandbox: null, topology: 'default', message: ''});
         try {
             const {unit, challenges, folder} = await loadUnit(unitId);
-            if (token !== this.unitToken) return;
+            if (!current()) return;
             this.folder = folder;
             const index = Math.max(0, wanted ? challenges.findIndex(c => c.id === wanted) : 0);
             this.bridge = null;
             this.setState({unit, challenges, index, readout: null, status: 'ready'}, () => this.select(index));
         } catch (error) {
-            if (token === this.unitToken) this.setState({status: 'failed', message: this.t('loadFailed', {error: error.message})});
+            if (current()) this.setState({status: 'failed', message: this.t('loadFailed', {error: error.message})});
         }
     }
 
@@ -151,12 +156,17 @@ class SpikeArenaPane extends React.Component {
     get world () { return this.state.sandbox || this.state.challenges[this.state.index] || null; }
 
     async select (index) {
-        await this.stopProgram();
-        if (this.disposed) return;
+        const stopped = this.stopProgram();
+        const intent = this.programIntent;
+        const current = () => !this.disposed && this.programIntent === intent && this.bridge === intent.bridge;
+        await stopped;
+        if (!current()) return;
         const world = this.state.challenges[index];
         if (!world) return;
         this.bridge = new ArenaHubBridge({hubState: this.hubState, world});
+        intent.bridge = this.bridge;
         this.setState({index, sandbox: null, topology: 'default', readout: null, verdict: null, status: 'ready', message: '', hintsOpen: false}, () => {
+            if (!current()) return;
             // A new world needs a new scene; the renderer is not reused across worlds.
             if (this.view3d) this.mountView3D();
             this.draw();
@@ -166,14 +176,19 @@ class SpikeArenaPane extends React.Component {
 
     async setSandbox (world) {
         this.unitToken = null;
-        await this.stopProgram();
-        if (this.disposed) return;
+        const stopped = this.stopProgram();
+        const intent = this.programIntent;
+        const current = () => !this.disposed && this.programIntent === intent && this.bridge === intent.bridge;
+        await stopped;
+        if (!current()) return;
         this.unitToken = null;
         this.bridge = new ArenaHubBridge({hubState: this.hubState, world});
+        intent.bridge = this.bridge;
         this.lastFrame = null;
         this.clock.clear();
         try { localStorage.setItem(SANDBOX_STORAGE_KEY, JSON.stringify(world)); } catch { /* local storage may be unavailable */ }
         this.setState({sandbox: world, status: 'ready', verdict: null, readout: null, message: ''}, () => {
+            if (!current()) return;
             if (this.view3d) this.mountView3D();
             this.draw();
         });
@@ -233,15 +248,21 @@ class SpikeArenaPane extends React.Component {
 
     async manualDrive (direction) {
         if (!this.state.sandbox || !this.bridge) return;
-        await this.stopProgram();
-        if (this.disposed) return;
+        const stopped = this.stopProgram();
+        const intent = this.programIntent;
+        const current = () => !this.disposed && this.programIntent === intent && this.bridge === intent.bridge;
+        await stopped;
+        if (!current()) return;
         this.hubState.setSimulationEnabled(true);
+        if (!current()) return;
         const speeds = {forward: [1, 1], back: [-1, -1], left: [-1, 1], right: [1, -1], stop: [0, 0]}[direction];
         if (!speeds) return;
         for (const [i, side] of [this.bridge.robot.left, this.bridge.robot.right].entries()) {
+            if (!current()) return;
             const speed = this.hubState.backend.percentToDps(side.port, this.state.driveSpeed * speeds[i] * (side.reversed ? -1 : 1));
             this.hubState.backend.runAtSpeed(side.port, speed);
         }
+        if (!current()) return;
         this.lastFrame = null;
         this.setState({execution: 'native', topology: 'default', status: 'running', message: ''});
     }
@@ -402,19 +423,25 @@ class SpikeArenaPane extends React.Component {
 
     // New MicroPython selection glue: BSD-3-Clause, (c) 2026 Brickwright contributors.
     async chooseMicroPythonImage () {
+        if (this.disposed || this.state.execution !== 'micropython') return false;
         const choose = this.nativeCapabilities()?.['renode.spike.micropython.image.choose'];
         if (!choose) throw new Error(this.locale === 'de' ? 'MicroPython benötigt das Desktop-Paket.' : 'MicroPython requires the desktop package.');
+        const choice = this.imageChoice = {};
+        const intent = this.programIntent;
+        const current = () => !this.disposed && this.imageChoice === choice &&
+            this.programIntent === intent && this.state.execution === 'micropython';
         this.setState({microImageSelected: false, status: 'choosing', message: this.locale === 'de' ? 'Lokales MicroPython-Anwendungsimage auswählen…' : 'Choose a local MicroPython application image…'});
         try {
             const result = await choose({});
-            if (this.disposed || this.state.execution !== 'micropython') return false;
+            if (!current()) return false;
             if (!['selected', 'cancelled'].includes(result)) throw new Error('Unexpected image selection result');
             this.setState({microImageSelected: result === 'selected', status: 'ready', message: result === 'selected' ?
                 (this.locale === 'de' ? 'Image ausgewählt. Python im Code-Tab ausführen.' : 'Image selected. Run Python from the Code tab.') :
                 (this.locale === 'de' ? 'Image-Auswahl abgebrochen.' : 'Image selection cancelled.')});
             return result === 'selected';
         } catch (error) {
-            if (!this.disposed) this.setState({status: 'failed', message: error.message});
+            if (!current()) return false;
+            this.setState({status: 'failed', message: error.message});
             throw error;
         }
     }
@@ -459,7 +486,7 @@ class SpikeArenaPane extends React.Component {
         } else this.setState({status: 'running', message});
     }
 
-    async startFirmware (program = null, {source = null, onOutput = () => {}, onCompleted = () => {}, onError = () => {}, onProgramState = () => {}, onStopped = () => {}} = {}) {
+    async startFirmware (program = null, {source = null, onOutput = () => {}, onStarting = () => {}, onCompleted = () => {}, onError = () => {}, onProgramState = () => {}, onStopped = () => {}} = {}) {
         if (this.disposed) throw new Error("The arena pane is closed");
         if (!this.bridge) return;
         const micro = this.state.execution === 'micropython';
@@ -472,31 +499,53 @@ class SpikeArenaPane extends React.Component {
             throw new Error(this.locale === 'de' ? 'Sechs Motoren benötigen NuttX oder MicroPython im Sandkasten.' :
                 'Six motors require NuttX or MicroPython in the sandbox.');
         }
+        if (topology === 'dual-ultrasonic' && (!this.state.sandbox || this.state.execution !== 'nuttx')) {
+            throw new Error(this.locale === 'de' ? 'Zwei Ultraschallsensoren benötigen NuttX im Sandkasten.' :
+                'Dual ultrasonic requires NuttX in the sandbox.');
+        }
         // Compile before stopping a running session: unsupported blocks never run a demo.
         if (['program', 'nuttx'].includes(this.state.execution) && !program && source === null) program = compileFirmwareProgram(this.vm, {topology});
         if (source !== null) (micro ? encodeSource : encodePython)(source);
         if (program) encodeInstructions(program, {topology});
         if (this.firmwareSession?.storageSupported && (source !== null || this.state.execution === 'nuttx')) {
             const session = this.firmwareSession;
-            session.onOutput = onOutput;
-            session.onProgramState = this.firmwareProgramObserver(session, onProgramState);
-            session.onStopped = this.firmwareStoppedObserver(session, 'nuttx', program, onStopped);
-            session.onError = this.firmwareErrorObserver(session, onError);
-            session.onCompleted = () => { onCompleted(); if (!this.disposed && this.firmwareSession === session) this.setState({message: this.locale === 'de' ? 'Firmware-Programm abgeschlossen.' : 'Firmware program completed.'}); };
+            const feedback = this.firmwareUploadFeedback = {active: true};
+            const owned = () => !this.disposed && this.firmwareUploadFeedback === feedback;
+            const consume = callback => (...args) => { if (owned() && feedback.active) return callback(...args); };
+            const observe = callback => (...args) => { if (owned()) return callback(...args); };
+            const reportError = consume(onError);
+            session.onOutput = consume(onOutput);
+            // The live native pane still observes firmware after an upload fails;
+            // the failed Code run must keep its error until a new run replaces it.
+            session.onProgramState = observe(this.firmwareProgramObserver(session, consume(onProgramState)));
+            session.onStopped = observe(this.firmwareStoppedObserver(session, 'nuttx', program, consume(onStopped)));
+            session.onError = observe(this.firmwareErrorObserver(session, reportError));
+            session.onCompleted = observe(() => { consume(onCompleted)(); if (this.firmwareSession === session) this.setState({message: this.locale === 'de' ? 'Firmware-Programm abgeschlossen.' : 'Firmware program completed.'}); });
             this.setState({status: 'starting', message: this.locale === 'de' ? 'Aktueller Code wird in die laufende Firmware geladen…' : 'Uploading current code to the live firmware…'});
             try {
+                consume(onStarting)(this.locale === 'de' ? 'Aktueller Code wird in die laufende Firmware geladen…' : 'Uploading current code to the live firmware…');
                 await session.uploadProgram(program, source);
                 this.firmwareStartedState(session, this.locale === 'de' ? 'Aktueller Code geladen; läuft in der ARM-Firmware.' : 'Current code uploaded and running in ARM firmware.');
             } catch (error) {
-                if (!this.disposed && this.firmwareSession === session) this.setState({status: session.programState === 2 ? 'running' : 'paused', message: error.message});
+                if (owned() && this.firmwareSession === session && !session.closed) {
+                    this.setState({status: session.programState === 2 ? 'running' : 'paused', message: error.message});
+                    try { reportError(error); }
+                    finally { feedback.active = false; }
+                }
                 throw error;
             }
             return;
         }
+        this.firmwareUploadFeedback = null;
         await this.stopProgram();
         if (this.disposed) throw new Error('The arena pane is closed');
         this.hubState.setSimulationEnabled(true);
         if (topology === 'six-motors') this.bridge = new ArenaHubBridge({hubState: this.hubState, world: this.world, robot: {sensors: []}});
+        if (topology === 'dual-ultrasonic') {
+            this.hubState.setPort('D', 'none');
+            this.bridge = new ArenaHubBridge({hubState: this.hubState, world: this.world, robot: dualUltrasonicRobot()});
+        }
+        this.arenaFirmwareTopology = topology;
         this.bridge.reset();
         const capabilities = this.nativeCapabilities();
         const backend = micro ? 'micropython' : source !== null || this.state.execution === 'nuttx' ? 'nuttx' : 'guest';
@@ -510,9 +559,12 @@ class SpikeArenaPane extends React.Component {
         session.onProgramState = this.firmwareProgramObserver(session, onProgramState);
         session.onStopped = this.firmwareStoppedObserver(session, backend, program, onStopped);
         session.onError = this.firmwareErrorObserver(session, onError);
-        this.setState({status: 'starting', storageSupported: false, programState: null, message: this.locale === 'de' ? 'Simulation wird gestartet…' : 'Starting firmware simulation…'});
+        const startingMessage = this.locale === 'de' ? 'Simulation wird gestartet…' : 'Starting firmware simulation…';
+        this.setState({status: 'starting', storageSupported: false, programState: null, message: startingMessage});
         try {
-            await session.start();
+            const startup = session.start();
+            onStarting(startingMessage);
+            await startup;
             this.firmwareStartedState(session, program || source !== null ? (this.locale === 'de' ? 'Code-Programm läuft in der ARM-Firmware.' : 'Code program running in ARM firmware.') : (this.locale === 'de' ?
                 'Die eingebaute Fahrdemo läuft.' : 'Running the built-in driving demo.'));
         } catch (error) {
@@ -549,6 +601,7 @@ class SpikeArenaPane extends React.Component {
     }
 
     async start () {
+        if (this.disposed) return;
         const session = this.firmwareSession;
         if (session?.storageSupported && !session.closed &&
             ((session.loaded && session.programState === 1) || [3, 4, 5].includes(session.programState))) {
@@ -578,7 +631,14 @@ class SpikeArenaPane extends React.Component {
             this.setState({status: 'running'});
             return;
         }
-        await this.stopProgram();
+        const bridge = this.bridge;
+        const execution = this.state.execution;
+        const stopped = this.stopProgram();
+        const intent = this.programIntent;
+        const current = () => !this.disposed && this.programIntent === intent &&
+            this.bridge === bridge && this.state.execution === execution;
+        await stopped;
+        if (!current()) return;
         this.hubState.setSimulationEnabled(true);
         this.bridge.reset();
         let message = '';
@@ -587,9 +647,10 @@ class SpikeArenaPane extends React.Component {
             try {
                 await this.connect();
             } catch (error) {
-                this.setState({message: this.t('connectFailed', {error: error.message})});
+                if (current()) this.setState({message: this.t('connectFailed', {error: error.message})});
                 return;
             }
+            if (!current()) return;
             this.bridge.reset();
             this.vm.greenFlag();
         } else message = this.t('noProgram');
@@ -599,16 +660,51 @@ class SpikeArenaPane extends React.Component {
         this.setState({status: 'running', verdict: this.bridge.verdict, message});
     }
 
-    async stopProgram ({restart = false} = {}) {
+    async stopProgram ({restart = false, clearMessage = false} = {}) {
+        // Invalidate a pending native Start even when Reset retains its bridge
+        // and execution backend, or a backend selection returns to native.
+        const intent = this.programIntent = {bridge: this.bridge};
+        const bridge = this.bridge;
+        const current = () => !this.disposed && this.programIntent === intent && this.bridge === bridge;
         const firmware = this.firmwareSession;
         this.firmwareSession = null;
-        if (firmware) await firmware.stop();
-        if (this.state.topology === 'six-motors' && this.bridge?.robot.sensors.length === 0 && this.world) {
+        let pending = this.pendingFirmwareStop;
+        if (firmware) {
+            // Publish the teardown before invoking stop: it can synchronously
+            // notify a listener which calls Stop again after detachment.
+            let resolveStop, rejectStop;
+            const stopped = new Promise((resolve, reject) => {
+                resolveStop = resolve; rejectStop = reject;
+            });
+            const stops = pending ? [pending, stopped] : [stopped];
+            pending = this.pendingFirmwareStop = Promise.allSettled(stops).then(results => {
+                const failed = results.find(result => result.status === 'rejected');
+                if (failed) throw failed.reason;
+            });
+            try { resolveStop(firmware.stop()); }
+            catch (error) { rejectStop(error); }
+        }
+        if (pending) {
+            try { await pending; }
+            catch (error) {
+                if (current()) throw error;
+                return;
+            } finally {
+                if (this.pendingFirmwareStop === pending) this.pendingFirmwareStop = null;
+            }
+            // Even a later Stop with no attached session must wait for native
+            // clock ownership release before restoring a bridge or backend.
+            if (!current()) return;
+        }
+        if (this.bridge && this.world && ['six-motors', 'dual-ultrasonic'].includes(this.arenaFirmwareTopology)) {
             this.hubState.setPort('F', 'none');
             this.bridge = new ArenaHubBridge({hubState: this.hubState, world: this.world});
         }
+        this.arenaFirmwareTopology = null;
+        // A topology teardown may replace the bridge while retaining its intent.
+        intent.bridge = this.bridge;
         this.clock.uninstall();
-        if (restart) this.setState({status: 'ready'});
+        if (restart) this.setState({status: 'ready', ...(clearMessage ? {message: ''} : {})});
         const external = this.hubState?.externalBackend;
         if (external) external.cancel();
         this.hubState.backend.cancel();
@@ -619,31 +715,63 @@ class SpikeArenaPane extends React.Component {
     }
 
     async pause () {
-        if (this.firmwareSession?.storageSupported) {
-            try { await this.firmwareSession.stopProgram(); this.setState({status: 'paused', message: this.locale === 'de' ? 'Programm gestoppt. Speicher verfügbar, sobald die Firmware vollständig angehalten hat.' : 'Program stopped. Storage is available when firmware finishes stopping.'}); }
-            catch (error) { this.setState({message: error.message}); }
+        if (this.firmwareSession?.uploading) {
+            const stopped = this.stopProgram({restart: true, clearMessage: true});
+            const intent = this.programIntent;
+            try { await stopped; }
+            catch (error) {
+                if (!this.disposed && this.programIntent === intent) {
+                    this.setState({status: 'failed', message: error.message});
+                }
+            }
             return;
         }
-        if (this.firmwareSession || this.hubState?.externalBackend) await this.stopProgram();
+        const session = this.firmwareSession;
+        if (session?.storageSupported) {
+            const current = () => !this.disposed && this.firmwareSession === session && !session.closed;
+            try {
+                await session.stopProgram();
+                if (current()) this.setState({status: 'paused', message: this.locale === 'de' ? 'Programm gestoppt. Speicher verfügbar, sobald die Firmware vollständig angehalten hat.' : 'Program stopped. Storage is available when firmware finishes stopping.'});
+            } catch (error) {
+                if (current()) this.setState({message: error.message});
+            }
+            return;
+        }
+        if (this.firmwareSession || this.hubState?.externalBackend) {
+            const stopped = this.stopProgram();
+            // stopProgram creates its intent before awaiting firmware teardown.
+            const intent = this.programIntent;
+            await stopped;
+            if (this.disposed || this.programIntent !== intent || this.bridge !== intent.bridge) return;
+        }
+        if (this.disposed) return;
         this.setState({status: 'paused'});
     }
 
     async reset () {
-        await this.stopProgram();
+        const stopped = this.stopProgram();
+        const intent = this.programIntent;
+        await stopped;
+        if (this.disposed || this.programIntent !== intent || this.bridge !== intent.bridge) return;
         if (this.bridge) this.bridge.reset();
         this.setState({status: 'ready', verdict: null, message: ''}, () => this.draw());
     }
 
     async step () {
-        if (!this.bridge) return;
+        if (this.disposed || !this.bridge) return;
         if (this.state.execution !== 'native') return;
-        if (this.hubState?.externalBackend) await this.stopProgram();
+        if (this.hubState?.externalBackend) {
+            const stopped = this.stopProgram();
+            const intent = this.programIntent;
+            await stopped;
+            if (this.disposed || this.programIntent !== intent || this.bridge !== intent.bridge) return;
+        }
         this.advance(STEP_BUTTON_MS);
         this.setState({status: 'paused'});
     }
 
     async loadReferenceSolution () {
-        if (this.state.topology === 'six-motors') {
+        if (this.state.topology !== 'default') {
             this.setState({message: this.locale === 'de' ? 'Lektionsvorlagen benötigen die Standardgeräte mit Sensoren.' : 'Lesson templates require the default devices with sensors.'});
             return;
         }
@@ -794,7 +922,7 @@ class SpikeArenaPane extends React.Component {
                     </select>
                     </>}
                     <div style={{display: 'flex', flexWrap: 'wrap', gap: 6}}>
-                        {status === 'running' || (status === 'starting' && this.firmwareSession) ? (
+                        {status === 'running' || (status === 'starting' && this.firmwareSession) || this.firmwareSession?.uploading ? (
                             <button type="button" style={btn} onClick={() => this.pause()} data-testid="bw-spike-arena-stop">{t('stop')}</button>
                         ) : (
                             <button type="button" style={{...btn, background: '#2f9e44', color: '#fff', border: '1px solid #2b8a3e'}}
@@ -803,7 +931,7 @@ class SpikeArenaPane extends React.Component {
                         <select aria-label={this.locale === 'de' ? 'Ausführung' : 'Execution'} data-testid="bw-spike-arena-execution"
                             value={this.state.execution} disabled={status === 'choosing' || status === 'starting'} onChange={async event => {
                                 const execution = event.target.value; await this.stopProgram();
-                                if (!this.disposed) this.setState({execution, topology: ['nuttx', 'micropython'].includes(execution) ? this.state.topology : 'default', status: 'ready', message: ''});
+                                if (!this.disposed) this.setState({execution, topology: execution === 'nuttx' || (execution === 'micropython' && this.state.topology !== 'dual-ultrasonic') ? this.state.topology : 'default', status: 'ready', message: ''});
                             }}>
                             <option value="native">{this.locale === 'de' ? 'Simulator' : 'Simulator'}</option>
                             <option value="renode" disabled={!this.props.renodeCapabilities && !window.__TAURI_INTERNALS__}>
@@ -834,11 +962,16 @@ class SpikeArenaPane extends React.Component {
                                 onChange={event => {
                                     if (this.firmwareSession || this.state.status === 'starting') return;
                                     const topology = event.target.value;
-                                    if (topology === 'default' || (topology === 'six-motors' && this.state.sandbox)) this.setState({topology});
+                                    if (topology === 'default' || (topology === 'six-motors' && this.state.sandbox) ||
+                                        (topology === 'dual-ultrasonic' && this.state.sandbox && this.state.execution === 'nuttx')) this.setState({topology});
                                 }}>
                                 <option value="default">{this.locale === 'de' ? 'Standard: A/B-Motoren und Sensoren' : 'Default: A/B motors and sensors'}</option>
                                 <option value="six-motors" disabled={!this.state.sandbox}>{this.locale === 'de' ? 'Sechs Motoren A–F (Sandkasten)' : 'Six motors A–F (sandbox)'}</option>
+                                <option value="dual-ultrasonic" disabled={!this.state.sandbox || this.state.execution !== 'nuttx'}>{this.locale === 'de' ? 'Ultraschall E/F (NuttX-Sandkasten)' : 'Ultrasonic E/F (NuttX sandbox)'}</option>
                             </select>
+                            {this.state.topology === 'dual-ultrasonic' ? <span style={{fontSize: 12, flex: '1 1 240px'}} data-testid="bw-spike-dual-ultrasonic-hint">
+                                {this.locale === 'de' ? 'Benötigt ein aktuelles NuttX-Paket mit adressierten Sensoren. A/B bewegen den Roboter, C ist Farbe, E/F sind Abstand, D ist frei.' : 'Requires an updated NuttX package with addressed sensors. A/B drive the rover, C is color, E/F are distance, D is detached.'}
+                            </span> : null}
                             {this.state.topology === 'six-motors' ? <span style={{fontSize: 12, flex: '1 1 240px'}} data-testid="bw-spike-six-motor-hint">
                                 {this.state.execution === 'micropython' ? (this.locale === 'de' ? 'Benötigt ein Image mit bwspike und aktualisierte Simulator-Unterstützung. Motoren A–F über bwspike verwenden. A/B bewegen den Roboter; C–F sind zusätzliche Motoren. Keine Arena-Sensoren.' : 'Requires an image containing bwspike and updated simulator support. Use bwspike for motors A–F. A/B drive the rover; C–F are extra motors. No arena sensors.') : this.locale === 'de' ? 'Benötigt ein NuttX-Paket mit sechs Motoren. Scratch-Motorbefehle unterstützen A–F; Positionsbewegungen verwenden einen Motor. Mehrportbefehle laufen nacheinander, ohne synchronisierten Start. A/B bewegen den Roboter; C–F sind zusätzliche Motoren. Keine Arena-Sensoren.' :
                                     'Requires a six-motor NuttX package. Scratch motor commands support A–F; position moves use one motor. Multiport commands execute sequentially, without synchronized starts. A/B drive the rover; C–F are extra motors. No arena sensors.'}

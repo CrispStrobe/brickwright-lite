@@ -1,4 +1,1512 @@
+## bw-circuit-ui pin bump for B24 terminal geometry — 2026-10-19
+
+CLAIMED and done in one PR — Claude (circuit-editor lane). Pin 6721d21 ->
+bda0157410a6704ae859a19398a8a742cdfae50b (bw-circuit-ui #96: terminals no longer collapse onto
+the part centre -- light_sensor, eeprom, seven_segment, oscilloscope,
+function_gen -- and the part-face census gates that no two terminals of one
+part share a point). CUI dependencies unchanged: exact SHA swap across the
+same 16 pin surfaces.
+
+## bw-circuit-ui pin bump for B23 faces — 2026-10-19
+
+CLAIMED and done in one PR — Claude (circuit-editor lane). Pin feb0557 ->
+6721d21e1ff8662dc4c21653833987a5bfd46b53 (bw-circuit-ui #95: terminal-dot names
+no longer pile up; symbol faces for npn, pnp, switch, ldr and the DIP switch,
+the most-used generic kinds in the examples census). CUI dependencies
+unchanged: exact SHA swap across the same 16 pin surfaces.
+
+## bw-circuit-ui pin bump for B22 chip faces — 2026-10-18
+
+CLAIMED and done in one PR — Claude (circuit-editor lane). Pin fe89e34 ->
+feb0557dbf7f8a11cc2a18fc946a269a4cd0fe09 (bw-circuit-ui #93: STC15, STC MCU and
+TMS9918A chip faces; census --generic-shots and generic/chips lists, which the
+example-faces report in production-sw-probe reads). CUI dependencies
+unchanged: exact SHA swap across the same 16 pin surfaces as the B21 bump.
+## CI: vendor-freshness skips prose-only pull requests — 2026-10-18
+
+CLAIMED and done in one PR — Claude. Free-tier runner slots: the `pull_request`
+trigger of `.github/workflows/vendor-freshness.yml` gets the same nine-file
+`paths-ignore` list its `push` trigger already has (BLOCKED, BUILD, CLAUDE,
+HANDOFF, LANES, MBIT-BUILD, PLAN, README, ROADMAP .md at the root). Such a PR
+cannot change vendor-pins.json, overlay/** or scripts/**. The push run, the
+nightly schedule, concurrency and the check itself are unchanged.
+## deploy-watchdog: age running jobs, not the run — 2026-10-18
+
+CLAIMED and done in one PR — Claude. Issue #1074: the watchdog's stuck-run
+step cancelled main Build 60f747223 although every finished job had passed;
+on the starved free-tier queue the run's first jobs finished early and the
+test shards waited for runners, and the selector aged the RUN from its
+earliest job start. Owns scripts/watchdog-stuck-runs.mjs (only jobs still
+running count, each from its own start), the jq field list in
+.github/workflows/deploy-watchdog.yml that feeds it, and new fixtures in
+test/deploy-watchdog-age.test.mjs. Budget, red-streak check, permissions and
+main-only scope unchanged; no existing assertion changed.
+
+## Production service-worker probe (#306) and example part-face census — 2026-10-18
+
+CLAIMED — Claude (circuit-editor lane). New files only:
+`scripts/probe-production-sw.mjs` and `.github/workflows/production-sw-probe.yml`
+(workflow_dispatch plus workflow_run after the production deploys). Stage `seed`
+loads a live site in a persistent Chromium profile and uploads it as an
+artifact; stage `check` restores that profile after a newer deploy, reloads,
+opens the lazy pseudocode importer and fails if any chunk fails to load or
+the importer chunk differs from the network copy. Targets: GitHub Pages and
+Vercel production. And `scripts/census-example-faces.mjs` run by the same new workflow:
+it loads every examples/*/circuit*.json in the circuit editor and lists parts
+drawn by the bw-circuit-ui generic module body (report, not a gate). No
+product source, pins or existing workflows change.
+
+## bw-circuit-ui pin bump for B21 pin labels — 2026-10-18
+
+CLAIMED — Claude (circuit-editor lane). Bump the bw-circuit-ui pin from 055930e to
+fe89e3425bf323b1acd9e3f98df6a7383e9b836b (bw-circuit-ui #91: pin names on the
+generic module body no longer overlap; the part-face census gates it). CUI
+dependencies are unchanged, so this is an exact SHA swap across the pin surfaces
+(vendor-pins.json, both package.json/package-lock.json, both
+bw-packages.sources.json, the i80386 circuits workflow and the
+*-package-adoption tests). No other source changes.
+
+## Robot Lab R13 — SPIKE firmware in Renode, lockstep (desktop) — 2026-10-17
+
+PROPOSED — Robot Lab lane. Plan: docs/ROBOT-LAB-SPIKE-EMULATION.md (on lane/simlab-next-20261017, PR #1049's follow-up). Owns new code only:
+`overlay/scratch-gui/src/lib/bw-sim/hubs/spike/spike-firmware-hub.js`,
+`overlay/scratch-gui/src/lib/bw-sim/routes/renode-lockstep/**`, `test/bw-sim-renode-lockstep*`,
+and, coordinated with the SPIKE native owners below, ADDITIVE native operations
+`renode.spike.lockstep.{begin,step,end}` (validator in `apps/tauri/src-tauri/src/arena_inputs.rs`,
+policy/capability entries, the lockstep wait in `renode_brick_state.rs`, the OPERATIONS map in
+`native-renode-capability.js`) behind the target capability `lockstep/v1`. Does not change the
+arena session/bridge, existing ops, frame formats, firmware, Runtime/model pins or packages.
+Consumes Runtime `lockstep/v1`, `motor-bridge-drive/v1`, `external-shaft/v1`,
+`nuttx-program-deferred-start/v1` only at reviewed exact pins. Desktop-only; the web build
+keeps the route disabled. First slice R13-M (measurement), then R13a.
+Coordination: renode-infrastructure-spike-prime#37 (external shaft), renode-spike-prime#58
+(lockstep command, profiling), brickwright-spike-prime-fw#54 (FYI), brickwright-lite#1055
+(broker ops, session bound — SPIKE G02 owners: please say whether you own the native part).
+
+## C9 — AVR instruction-cost layout investigation — 2026-10-17
+
+HANDOFF READY — diagnostic producer delivery is complete; a fresh agent may
+continue C9.2 within this scope; C9.1 intake is complete. Keep qualified controller branch
+`lane/c9-avr-layout-20261017` frozen in the owned LabWired Core fork. This is the C9 measurement/explanation
+lane, independent
+of A13, the SAMD replacement work and the existing C10/STM32 adoption owners.
+
+Own only a diagnostic profile producer and its pure controls under
+`scripts/perf/avr_layout_profile.py` and `scripts/perf/test_avr_layout_profile.py`,
+a separate manually dispatched `.github/workflows/avr-layout-profile.yml`,
+the corresponding Core engineering report, and this task's documentation.
+Keep the existing Core Perf gate, baselines, tolerances, source fixtures,
+release profiles, engine/model semantics, pins, captures and ACKs unchanged.
+No upstream workflow dispatch, issue/status automation or local heavy build.
+
+First compare fixed source snapshots from the owned fork: pre-sync `f1ca219d`,
+sync merge `6e03dd12`, current `715e1272`, and the already retained upstream
+source `49f656f5`. Hosted CI must retain each exact compiler/build identity,
+authored AVR firmware identity, step/batch counts, raw Callgrind profile and
+per-function annotation, using the existing measurement's fixture and bounds.
+The standalone reader must not execute a guest or import the producer.
+Freeze metadata/original admission before the first diagnostic dispatch and
+acquire each official original once. Keep original failures visible.
+
+This claim authorizes measurement and source explanation, not a decoder or
+profile optimization. A proposed implementation needs a separately reviewed
+precise scope and must improve both prescribed source trees without worsening
+any existing baseline row beyond its unchanged tolerance. No per-chip waiver,
+rebaselining, repeated unchanged run or release/physical-timing claim.
+
+### C9 continuation — 2026-10-17
+
+Diagnostic source delivered in [Core PR248](https://github.com/CrispStrobe/labwired-core/pull/248),
+merge `5b470d61`; investigation remains open. Continue only
+[run 39001605287](https://github.com/CrispStrobe/labwired-core/actions/runs/39001605287) at qualified controller `2201716d`.
+All four source jobs and the independent source/cohort audits passed. The four
+archives/logs were acquired once; **reuse retained originals, never download or
+dispatch again**. C9.1 is complete. Measured step costs are pre-sync 913.558531,
+sync 987.746057, current 1004.746098 and retained upstream 995.746146 Ir/step.
+The [Core results and C9.2–C9.3 handoff](https://github.com/CrispStrobe/labwired-core/blob/main/docs/engineering/avr-layout-cost.md#pending-tasks-and-acceptance)
+identify shared advance/time functions and scope the remaining causal/codegen
+review and separate implementation decision. Follow that contract
+for exact intake, attribution and decision acceptance. No optimization, baseline,
+profile, engine release or Lite pin change is included in this delivered phase.
+
+## H1 follow-up — stale lazy chunks from the service worker (#306) — 2026-10-17
+
+CLAIMED — Claude (Lite Code tab lane), branch `lane/h1-sw-chunks-20261017`.
+Read-only analysis found the likely cause of the owner's React #306 in the
+Code tab: lazy chunks are unhashed (`chunks/[name].js`), the service worker
+serves them stale-while-revalidate under a fixed cache name, so after a
+deploy a page can receive the new entry with an OLD `pseudocode-importer`
+chunk whose default export is undefined; a plain reload serves it again.
+Own: `overlay/scratch-gui/sw.js` (network-first with cache fallback for
+`/chunks/`, cache name bumped to purge stale entries), the H1 boundary's
+Reload button in `containers/lazy-pseudocode-importer.jsx` calling the
+existing `lib/hard-reload.js`, and a new stale-chunk scenario in
+`scripts/verify-service-worker.mjs`. No webpack output naming, entry
+caching, index.ejs recovery or offline-shell behaviour change otherwise.
+
+## H1–H7 — Code tab crash, layout, badge and language reach — 2026-10-16
+
+CLAIMED — VPS Claude (opus), branches `lane/code-tab-h*-20261016`, base main
+`fc455ff55`. Tasks H1–H7 of docs/OPEN-TASKS-2026-09-29.md, in that
+order, one PR each. Owns: `containers/lazy-pseudocode-importer.jsx` (H1 error
+naming/reload), the Code tab toolbar, status line, conversion-report and
+Animation rows in `components/tw-pseudocode/pseudocode-importer.jsx` and its
+CSS (H2, H4, H5), `lib/bw-matrix/capabilities.js` with the generated matrix
+(H3), the fe/Tcl/Forth routes in `lib/bw-debug/dos-toolchain-routes.js` and
+new non-DOS routes (H6), their tests and browser gates. Keeps test ids and the
+gates that click them. H7 (STM32 faces) edits bw-circuit-ui only after the
+owner of that repo's face lane agrees, then a CUI pin adoption sequenced after
+other open CUI adoptions. No pin, engine or workflow-budget change otherwise.
+
+## Sim Lab S1 — "it moves" vertical slice — 2026-10-16
+
+CLAIMED — Claude (master, auditing) with two hermes sub-agents on the VPS.
+Branches: `lane/simlab-20261016` (contracts, part metadata, LDraw sync,
+integration), `lane/simlab-phys-20261016` (physics core),
+`lane/simlab-mech-20261016` (mechanism compiler); sub-agent branches merge
+into `lane/simlab-20261016` only after review, which then lands by PR.
+Base main `664a37b57`. Contract: `docs/SIM-LAB-PLAN.md` §0 (the S1 slice).
+
+Owns new code only: `overlay/scratch-gui/src/lib/bw-sim/**`, `test/bw-sim-*`,
+`test/fixtures/bw-sim/**`, the `jolt-physics` dependency with its notice and
+gui-scope entry, `scripts/sync-ldraw-parts.mjs` with its pins and the vendored
+curated LDraw subset. Reads, never edits, `virtual-hub/` and `spike-arena/`; the
+S1 bridge to the virtual SPIKE hub honours the arena's one-clock contract
+(docs/SPIKE-ARENA.md). No editor UI, no GUI tab, no change to the boot payload
+in S1.
+
+## iOS embedded frontend packaging — 2026-10-16
+
+DONE candidate — Codex root, branch
+`lane/ios-embedded-assets-only-20261016`, base main `664a37b57`.
+The user requested a smaller iPad build and continued coding. The signed
+192.21 MiB app contains an 82.45 MiB executable (76.21 MB of __const) plus
+another full uncompressed frontend under `assets`. Tauri 2.11.5 release
+protocol serves `manager.get_asset` from the generated embedded asset provider;
+this application's mobile code does not open the copied frontend via filesystem.
+Own only the generated iOS preparation script, its packaging regression test,
+this ledger and narrowly necessary native packaging documentation. Remove the
+redundant frontend Resources entry while preserving the build inputs, Rust
+embedding, asset catalog, other resources and static linker entries. Refuse to
+change behavior for a different generated project shape. No Rust features,
+frontend/provider pins, runtime logic, desktop/Android packaging or CI budget
+changes. Require repeat-preparation controls, real release archive inspection,
+strict signing and an offline iOS simulator launch if available. Physical iPad
+and WeDo acceptance remain pending hardware availability; no launch is inferred
+from compilation. Merge this claim to remote main before implementation and
+qualify all enabled final-head checks before landing source.
+
+Claim PR1018 merged as 6420faaef before implementation. The preparation writer
+now resolves the generated source-root frontend folder and removes only its
+Resources build-file/phase references. Other identically named folders, asset
+catalogs, static linker inputs and staged frontend files remain. Four packaging
+controls pass on genuine Node22.23.3, including repeat preparation and refusing
+an unknown folder layout without modifying its project. Real native archive,
+signature and offline simulator proof are being run on this candidate; no new
+size or runtime acceptance is claimed until those results exist. Final enabled
+exact-head hosted checks remain required before source merge.
+
+## Compose STM32 PR975 after circuit PR965 — 2026-10-16
+
+DONE candidate / QUALIFICATION PENDING — Codex root, isolated `local worktree/receipt (see ignored local handoff)`,
+branch `lane/stm32-compose-20261016`, base main `5cb83052330b400b48293315260cb4293b4f6bcf`.
+The user explicitly requested completion of these integrations in order. PR965
+is now merged; a read-only merge of PR975 `943d540c7` reports thirteen conflicts.
+This lane owns only their combined integration and qualification. Preserve the
+original PR975 branch and all its authored STM32 runtime/generator changes;
+this is not a takeover of its supplier implementation or other ongoing lanes.
+
+Resolve shared vendor-pins/package specifications/locks, package provenance
+notices, exact-pin adoption readers and the FreeDOS workflow conflict through
+the canonical writers. Retain CUI `1db1bb9ee565338672c7acfefec4cf94b27196e1`
+from PR965, Board `f84ba60ead0a90deb9830f0c1468839c293ecf05` and SB3 creator
+`a13f92b8bc4b06f0cb9ffec22bab71f06db7ac76` from PR975. Keep every other pin,
+mirror, scoped extension and newer main change. The exact Board now passes the
+original complete upstream CI and Lite evidence reader (run38918125391).
+Own this ledger, conflict resolutions and any canonical derived regeneration
+needed by the composed graph; no new runtime semantics, engine, gate relaxation,
+workflow budget or private vendor changes. The original supplier owner's
+branch stays untouched. Recheck its head before landing; incorporate subsequent
+owner work rather than dropping it. Merge this claim to remote main before
+implementation. Require identity/notice/pin reader controls, affected STM32
+and circuit controls and all enabled exact-head CI before merging the combined
+candidate; no installed or physical validation is inferred.
+
+## bw-circuit-ui adoption 873f68b — taken over from A13 — 2026-10-17
+
+CLAIMED — Claude (Lite Code tab lane, H7), branch `lane/cui-pin-873f68b-20261017`,
+at the owner's direction while the A13 Codex lane is paused. Adopts
+bw-circuit-ui master 873f68b: A13's merged CPX live face (bw-circuit-ui #85),
+the STM32F030 chip body that replaces the LED-dimmer example's ghost outline
+(#88), and B20 ledger entries. bw-circuit-ui's dependencies are unchanged, so
+this is the same 16-surface SHA swap as earlier adoptions; history docs keep
+their recorded pins. A13's own Lite wiring (circuit-tab.jsx cpxState and
+onCpxInput) stays with A13 and is not part of this adoption.
+
+Composition receipts: claim PR1016 merged before implementation. All thirteen
+conflicts resolved without changing original assertions or supplier runtime;
+canonical package/lock/notice writers retain CUI1db, Boardf84 and SBCa13.
+Installed root and GUI provenance, metadata, notices and mirrored facts pass.
+Focused affected controls: 78 passed; the one source-identity skip was separately
+rerun against an isolated SBC checkout at a13 and passed all four controls with
+zero skips. Thirteen x86 reach/compiler/mutation controls also pass. The exact
+Board census, language matrix, 8086 report and part-profile readers pass; the
+matrix writer corrected a stale abbreviated Board label. The generic SBC sync
+check refuses an intentionally pinned checkout behind current supplier main;
+the exact-pin 19-file vendor-identity gate passes instead, with no bypass or pin
+expansion. The standard GUI build passes; explicit production build and browser
+qualification are in progress. All enabled final-head CI remains a landing gate.
+Original PR975 head rechecked unchanged at 943d540c7 before this candidate commit.
+
+STM32 composition reconciliation (2026-10-16): previous head7a82a14f passed
+every enabled hosted check in run38945321982. Current main6f2993d6b adds the
+qualified iOS packaging and independent Sim Lab slice, plus claims. Original
+PR975 advanced to4d0cabe24: its matrix label is already present; its register
+reader fix is incorporated with the explanatory comment while retaining this
+386-only gate's strict edi assertion and existing timeout, per the merged claim.
+Normal merges preserve both histories and all newer main changes. This changed
+combined head requires fresh exact-head CI before landing.
+
+Final integration reconciliation includes main8a63ad26f, preserving merged
+CPX1009, SPIKE pending-stop990 and the Arcade owner's new claim. The only
+conflict is ledger placement; keep this lane's receipts within its own section
+to avoid collisions with other appended claims. No supplier, assertion or
+workflow changes. Fresh exact-head full CI remains required on this composition.
+
+Implementation after claimPR1039 merged as8999ced4d: the new direct command
+`node scripts/verify-sim-physics.mjs` parses the actual reference LDraw model,
+compiles unchanged metadata, drives the unchanged hub/core and runs the actual
+physics-worker entry through a Node-only message adapter and original client.
+The two-second reference run moves0.491813m, with measured opposing encoders
+and negligible yaw. The worker advances100 fixed steps and returns measured
+wheel rotation. Unknown models/options fail with no successful output; all
+worker/core resources and clock ownership are released. Both original failing
+guards now pass without any allowlist or assertion change. Build includes only
+the missing governed plan path.
+
+Broader execution exposed an existing worker fixture's unlabelled root-to-GUI
+resolution. The original worker determinism test now uses the same adapter to
+the actual integrated worker, preserving every byte-identical snapshot assertion
+and protocol. This resolves through the GUI's native dependency scope, without
+new scope exemptions or suppressed diagnostics. All88 affected controls pass,
+zero skips/failures/raw stdout; the unchanged GUI boundary checker also passes.
+Retain original hosted failures and initial boundary log; final TAP+census are
+`local worktree/receipt (see ignored local handoff)`. Installed-source verification
+is in progress; final source-head CI still gates the integration merge.
+
+Main reconciliation (2026-10-17): compose the qualified Sim Lab GUI PR1030
+and release ownership claim PR1011 from main e2225bb05. Preserve both histories,
+all simulator runtime and browser controls, and the release owner's contract.
+The worker test keeps main's explicit test identity while exercising the actual
+integrated worker. Remove only the two newly added KNOWN_DEAD worker/client
+exceptions: the real headless command now consumes both, as the unchanged
+stale-exception assertion requires. Main already supplies the governed plan
+trigger, so retain its single entry rather than duplicating it. The original
+trigger and dead-module guards pass all14 controls, zero skips. Combined
+simulator execution and the fresh source-head qualification remain pending.
+
+Final reconciled controls: 100 passed, zero failures/skips/raw stdout; GUI
+dependency boundary passes. Fresh canonical dependency preparation and installed
+root/GUI exact-source provenance plus single-engine resolution pass. Retain
+`local worktree/receipt (see ignored local handoff)` and the
+provenance log. Internal npm scratch exhaustion was repaired using task-specific
+external npm cache/temporary directories; package pins and assertions unchanged.
+All enabled checks on this final composed source head remain required to land.
+
+## A13 CPX face Lite wiring — taken over — 2026-10-17
+
+CLAIMED — Claude (Lite Code tab lane), branch `lane/a13-cpx-face-takeover-20261017`,
+at the owner's direction while the A13 Codex lane is paused. Lands A13's
+Lite wiring as Codex left it on `lane/a13-cpx-face-adoption-20261016`
+(circuit-tab.jsx cpxState/onCpxInput forwarding, verify-cpx-circuit-face,
+cpx-circuit-face and file-menu tests, and their CI step), merged with
+current main. bw-circuit-ui stays at main's pin, which already contains the
+CPX face component. Heavy proofs run only in hosted CI.
+
+## A13 — CPX live circuit face adoption — 2026-10-16
+
+CLAIMED — Codex root, branch
+`lane/a13-cpx-face-adoption-20261016`. User requested this after the iOS and
+existing integrations. Supplier: bw-circuit-ui PR85, published claim 796bd2c.
+Preserve PR965/975's serialized dependency ownership and all newer main pins.
+
+Own CPX-only state subscription and cleanup plus input forwarding in
+`overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx` and its exact
+tracked package mirror; focused CPX wiring and actual-browser controls; this
+ledger. Feed runtime.bwCpxState to cpxState; route onCpxInput to the existing
+runtime.bwCpx.setButton/setSwitch. No copied simulation or second driver.
+Own immutable bw-circuit-ui adoption through canonical package/lock/notice
+writers and exact-pin readers only after qualified upstream landing and the
+existing serialized integrations. Acceptance: real CPX native blocks drive
+the same red ring on pane and face; face A triggers the existing hat; circuit
+round-trip identifies DEVICE CPX; swapped-index and removed-callback mutations
+fail. D13 is absent from the current runtime snapshot: trace the existing pin
+bridge before selecting a separately claimed supplier fix; never infer its state.
+No translator/parser, engine, unrelated pin, workflow budget or firmware changes.
+This claim must merge to remote main before Lite implementation. Require all
+enabled final-head checks and affected browser proofs before source merge.
+iPad/hub physical acceptance remains separately pending device availability.
+
+## A12 — Circuit Playground Express MakeCode translator — 2026-10-16
+
+DONE — Codex CPX translator lane. [PR1009](https://github.com/CrispStrobe/brickwright-lite/pull/1009)
+merged as `e0b89072` on 2026-10-16, with reviewed source `16dda603`.
+All 11 enabled exact-head checks passed; deploy and verify-gui were declared
+conditional skips. Both complete unit shards passed, including all fifteen
+CPX comparisons and the zero-raw-stdout census. Ten programs match exactly;
+five separately named controls enforce both exact documented timing boundaries.
+The complete actual CPX browser journey passed import, original-source export
+and simulation, native Start, button A and Shake. The reviewed merge preserves
+newer peer work, with landed parents and tree matching the prediction.
+[Behaviour, evidence and limits](docs/A12-CPX-TRANSLATOR.md).
+
+Own a new `overlay/scratch-gui/src/lib/bw-makecode/adafruit-translate.js`;
+CPX-only target inference/import dispatch in that directory's `index.js`;
+narrow CPX translated-view and named-export-refusal branches of
+`components/tw-pseudocode/pseudocode-importer.jsx`; and exact tracked packages
+mirrors. Existing translators, shared base/parser, conversion ownership,
+Arcade resources and other owners' importer methods remain outside this claim.
+Own focused CPX translator/inference/behaviour tests, the CPX section of
+`scripts/makecode-census.mjs` and its generated census document, affected CPX
+browser controls in the existing MakeCode verifier, and
+`docs/A12-CPX-TRANSLATOR.md`. Preserve CPX MakeCode simulation and the pin bridge.
+Also own only gesture/acceleration input injection in the existing
+`scripts/lib/{makecode-adafruit-sim,cpx-extension-run}.mjs` test helpers, so the
+same scheduled inputs reach each original device implementation. Existing
+clock, snapshots and sound decoding remain unchanged. Ten comparisons require
+exact equality; five named runtime-boundary tests assert both exact recorded
+sides at five exceptional frames and two tone sequences, with equality at all
+other captures. These explicit limits do not claim timing parity. Existing
+CPX event hats are preferred to invented polling when they express the source
+handler exactly; dynamic registration and unsupported event semantics stay
+named refusals.
+
+Acceptance: reproduce the hint-less inference defect first; account for all
+149 pinned pxt-adafruit docs programs without silent call loss; compare at least
+ten translated programs against the actual target simulator; preserve adjacent
+target inference; refuse CPX re-export by name until its emitter is separately
+qualified. Name polling/event and newer-API limits. Reuse existing 45 device
+words; missing supplier words require separate upstream work. No firmware
+execution, engine/package pin, workflow budget or threshold change. Land this
+claim before implementation; require fresh affected browser qualification and
+all enabled final-head checks before source merge. Preserve every other lane.
+
+## Proposed 386 Board HDD adoption handoff — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex x86, branch
+`docs/386-board-hdd-handoff-20261016`. Own only this ledger and
+`docs/X86-NEXT-LANES.md` for the
+[serialized adoption handoff](docs/X86-NEXT-LANES.md#proposed-386-board-hdd-adoption-handoff).
+This proposal reserves no implementation or dependency surface. A recorded
+handoff from the existing adoption owners and a merged implementation claim
+must precede any supplier, package, lock, generated output or shared runner edit.
+
+Preserve the STM32 adoption owner in PR975 (merged claim PR969), including its
+Board/SB3 pins, specifications, locks, notices, generated outputs and STM32
+`debug-runner` changes. PR975 is explicitly not for agent merge. Preserve the
+CUI adoption owner in PR965 (merged claim PR961), including its lock ownership;
+coordinate one serialized dependency writer. This proposal authorizes neither
+merging those PRs nor changing their pins or sequencing.
+
+Next work must select an exact qualified Board revision containing PR623's
+master-disk snapshot API, retain the qualified PR625/PR627 CLI persistence
+boundary, and review the complete installed blob graph and component diff.
+Compose the pending x86 consumers without dropping STM32, SB3 or CUI changes;
+qualify genuine hosted GUI download and fresh chooser reload through that exact
+supplier. Supplier checks, source controls and historical CLI results do not
+qualify an installed consumer. No source, pin, lock, notice, workflow or package
+change belongs to this docs-only proposal; all other owners retain their lanes.
+
+## Installed G02 Code caller and output qualification — 2026-10-15
+
+Frozen consumer `59ddd74174f644f330f06ce567fac6b8c5f7dde3` passes three
+installed own-NuttX cases and their standalone readers, with six successful
+native startup transactions, full cleanup and distinct recovery in every case.
+Official frontend checkout and consumer trees match; independent package/input
+audits pass. Its eleven enabled source-head checks pass in
+[run38790549120](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38790549120)
+and the separate vendor check; two conditional GUI/deployment jobs skip.
+
+- An older Code call's original successful return cannot clear a newer pending
+  caller's busy flag, completed status or exact `42\n` output.
+- An authored error delivered from the older call likewise leaves the newer
+  caller's feedback unchanged. Both cases begin through the real Code control,
+  preserve the original pane/native calls for two Python uploads, and explicitly
+  author concurrent mounted-handler entry while the ordinary toolbar is busy.
+  They do not establish two clickable busy toolbar runs or arbitrary scheduling.
+- A fresh original old-Python output frame is held across actual replacement,
+  STOP and upload preparation. No old/preparatory output reaches the new Code
+  consumer before the original START reply is accepted. Current output first
+  arrives in a later `state.read`; immediate START output remains host-covered.
+
+Three failed test attempts remain preserved: a missing expected print newline,
+a snapshot of a not-yet-created log, and a guest-time delay that did not fit the
+unchanged observation window. Corrected controls require exact print bytes,
+record absent logs explicitly and use a shorter authored guest delay. They
+retain fresh native frame/sequence/reply provenance, original calls, cleanup,
+recovery and the same observation/resource bounds. Successful cases were not
+replayed to read evidence. Product sources and the installed package did not
+change during these corrections.
+
+This result belongs to the named frozen package. Integration preserves its
+SPIKE/native inputs and both importer copies while retaining newer main work.
+Final documentation-head CI, the lifecycle integration in
+[PR979](https://github.com/CrispStrobe/brickwright-lite/pull/979), and exact-head
+merge review remain required. The repeated-Stop follow-up in
+[PR990](https://github.com/CrispStrobe/brickwright-lite/pull/990) is separate and
+not installed-qualified here. Whole G02, reference/physical behavior, rollback,
+licensing, distribution and release qualification remain open.
+
+## SPIKE replacement output phase continuation — 2026-10-15
+
+Continuation of the merged G02 session/feedback envelope, branch
+`lane/spike-g02-output-phase-20261015`, following the frozen composed batch.
+While replacement awaits its previous poll and STOP, then BEGIN/CHUNK/COMMIT,
+admit the observed output sequence without publishing its text to the new Code
+consumer. Admit execution output only after the original request's START reply
+passes the existing operation/id decoder, succeeds and reports RUNNING, COMPLETE
+or FAULT. Preserve immediate or terminal START output, later fresh output, retry
+and Stop reentry. The Code caller token change is separately scoped below.
+
+Thirteen authored controls execute the real session/client and shipped pane
+consumers; the baseline passes five and fails eight. All thirteen and 112
+affected host controls pass; ten broken output/sequence/reply guards are detected.
+An earlier candidate admitted preparation and rejected/foreign START output;
+those original failures remain preserved. A now-redundant source-null guard
+change was removed after admission moved to START. Shared protocol helpers,
+frame formats, native/firmware/Runtime/model sources and pins are unchanged.
+
+These host API controls are complemented by the named frozen installed capture
+above. Final documentation-head CI and exact-head merge review remain required. Do not infer physical UART attribution, new reference
+mapping, whole G02, rollback, licensing or release qualification. Keep this
+follow-up out of the already frozen composed-package qualification target.
+## Original Arcade profiler clock bootstrap — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this claim before
+implementation. Contract: [reference clock bootstrap](docs/ARCADE-REFERENCE-CLOCK-BOOTSTRAP.md).
+Own the original-simulator clock helper, its Arcade runtime initialization call
+site, focused controls and qualification notes. Preserve paused-zero document
+admission, then prove a deterministic complete-frame bootstrap before actual
+guest construction, positive profiling and unchanged relative timer/frame/input
+phases. No PXT vendor patch, guest-clock replacement, normalized result,
+expectation/budget reduction, dependency pin or workflow change. All unrelated
+source, runtime, editor and device owners retain their lanes.
+
+## Code conversion: preserve newer editor ownership — 2026-10-16
+
+IMPLEMENTED, hosted qualification pending — SPIKE integration follow-up.
+Ownership claim [PR1000](https://github.com/CrispStrobe/brickwright-lite/pull/1000)
+merged before implementation. Own the narrow conversion-completion and editor-buffer hooks in
+both `overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx`
+and its `packages/scratch-gui` mirror, a focused
+`test/code-conversion-editor-ownership.test.mjs`, and this ledger.
+
+The 8086 browser gate observed an empty ASM editor after choosing its 8255
+example during reconstruction following a reload. Separately, a host diagnostic
+executing the actual conversion and example-loading methods reproduces an ASM
+example being cleared when an earlier conversion resumes from an authored
+`loadProject` wait. This establishes a reachable source overwrite; it does not
+establish the exact browser scheduling cause. Preserve the original browser
+failure and all existing assertions and resource bounds.
+
+A finishing conversion may regenerate editors and publish conversion feedback
+only while it still owns the captured editor work. Preserve later edits,
+example loads, language changes and newer conversions, including edit/revert
+and asynchronous project/extension boundaries. Keep ordinary conversion,
+explicit device-retarget compilation, error reporting and current busy cleanup
+working. Existing source/project admission checks remain required. Do not
+pretend the already-applied VM load was rolled back or silently replace a newer
+project. Broader project-transaction cancellation remains separate work.
+
+Before source merge require baseline counterexamples, normal/current-error
+controls, nonvacuous guard mutations, every enabled exact-head CI check and
+affected clean application/own-guest qualification. Exercise the real 8086
+reload, example selection and local execution route; retain SPIKE caller,
+output and Stop controls. No timeout, assertion, baseline, dependency pin,
+compiler/runtime/firmware/model, protocol or workflow change. Coordinate other
+importer owners; preserve their existing hooks and all unrelated lane sections.
+
+The candidate identifies each conversion request and captures its editor buffer,
+language and import-intent revisions. Editor feedback, selection and queued busy
+cleanup retain their corresponding ownership. Applied-project metadata instead
+uses the newest conversion VM-load identity and its observed loaded stage: a
+newer request still preparing does not invalidate the device metadata of an
+already-applied load. A newer VM load or stage change revokes that metadata
+completion. Existing source/project admission remains required; this does not
+undo an applied VM load or establish general project transaction cancellation.
+
+Twenty-seven actual-method host controls pass; the previous source passes
+nineteen and fails eight. Eighteen guard mutations are detected. All 156 affected
+host controls and 24 existing VM-diagnostic/artwork controls pass with an
+explicitly selected prepared dependency registry. Earlier controls exposed a
+masking case where undefined-to-null import cleanup hid a missing request
+fence; an already-reset resource case now detects it. Original assertions and
+failures remain preserved. The existing diagnostic fixture handles React
+functional state updaters without changing its validation assertions.
+
+The previous source passed all 26 actual 8086 journey checks with an identical
+CI checkout tree, but its light job failed the Pico device-registration gate.
+A separate actual-method diagnostic establishes a source regression: an older
+load can apply, lose metadata publication to a newer request, then cause that
+newer preparation to refuse its changed stage. The exact failing browser
+schedule remains unestablished. The follow-up preserves applied metadata while
+retaining editor fences and the stage refusal. Final source qualification still
+requires every enabled exact-head check and fresh actual 8086 and Pico routes,
+including positive Pico execution and the firmware-withheld refusal. Host
+controls and the previous source's 8086 result do not qualify this new source,
+a new installed package or SPIKE G02.
+
+## Scoped WeDo2 inventory gate repair — 2026-10-15
+
+IMPLEMENTED, hosted qualification pending — SPIKE G02 integration follow-up.
+Ownership claim [PR994](https://github.com/CrispStrobe/brickwright-lite/pull/994)
+merged before implementation. Source branch `fix/scoped-wedo-inventory-20261016`.
+
+The existing `wedo2unified` artifact pin is present in `vendor-pins.json`, but
+the notices census treats it as an unknown vendored repository and the scoped
+pin inventory omits it. Both checks fail on the unchanged integration source.
+The retained generated bundle declares MPL-2.0 and records its source commit
+and SHA-256; those inputs must remain unchanged.
+
+Envelope: this ledger, `scripts/lib/notices-census.mjs`,
+`THIRD-PARTY-NOTICES.md`, `test/notices-drift.test.mjs`, and
+`test/pin-move-chain.test.mjs`. Register the already shipped scoped bundle,
+retain its declared author and license in the notices, and correlate the
+existing pin with its exact per-file bundle receipt. Missing, malformed,
+unlicensed, wrongly attributed or mismatched bundles must still fail.
+No dependency adoption, generated bundle, product runtime, firmware, model,
+workflow or budget change. This repair does not establish broader license or
+release clearance. The claim must land before implementation; then run the
+affected inventory controls and every enabled exact-head CI check.
+
+The repair reads the existing scoped bundle's MPL declaration and separate By
+attribution, requires its notice, and correlates the pin with the source repo,
+path, commit, byte count and SHA-256 in the retained per-file receipt. A By
+header does not grant a copyright-holder or own-code exemption. Seven focused
+host controls pass, including the actual bundled source and negative receipt
+and notice cases; the unchanged baseline fails the two intended inventory
+checks. Initial sparse-input and historical Git-object failures are retained
+separately from those baseline results. Runtime, generated bundles and pins
+remain unchanged. Full hosted checks remain required before merge; this does
+not qualify a new installed package or close SPIKE G02.
+
+
+## SPIKE pending Stop teardown implementation — 2026-10-15
+
+G02 continuation, branch `lane/spike-g02-pending-stop-20261015`, based on main
+after the Code caller/output follow-up [PR985](https://github.com/CrispStrobe/brickwright-lite/pull/985) merged.
+Its frozen-package qualification below does not
+qualify this new teardown change. A second Stop can see no
+attached session while native teardown still owns the hub clock. Remember the
+pending teardown before invoking the native Stop, and await it before restoring
+topology, cancelling the shared backend or continuing Start. A synchronous Stop
+listener joins that same teardown. Earlier completion cannot clear a later
+pending teardown; joined teardown failures wait for all outstanding stops and
+retain the original error for the current intent. Existing intent, bridge and
+disposal guards still admit shared cleanup.
+
+Ownership is limited to canonical `stopProgram`, new
+`test/spike-arena-pending-stop.test.mjs`, this ledger and the SPIKE guide. Extend
+the existing continuation contracts only to timing adaptations in the pane
+composition, lifecycle, Pause, teardown, world-ownership and upload-Stop tests.
+These controls now release native teardown before awaiting a later Stop. Where
+an older reply must arrive after replacement, hold its original promise delivery
+after teardown rather than creating a circular wait. Preserve success/error,
+replacement/disposal, retained-program and fresh-Start assertions.
+
+Twelve authored controls use the real hub clock guard and arena bridge. All
+pass, and six broken pending/intent/error guards are detected. The broader 220
+controls passed before adding the twelfth focused case; the final twelve pass
+separately. A rendered React test is unavailable locally and is not counted.
+No installed package or guest result qualifies this change yet. Require affected
+installed own-guest repeated Stop, cleanup and distinct recovery, plus every
+enabled exact-head check before merge. Firmware, Runtime/models, dependency
+pins, protocol, product budgets and other pane methods are unchanged. This does
+not close G02 or establish reference, physical, licensing or release results.
+
+## SPIKE G02 composed lifecycle integration — 2026-10-15
+
+Continuation of the merged SPIKE G02 pane/session claims, branch
+`lane/spike-g02-lifecycle-batch-20261015`. Integrate the existing Pause ownership,
+world-action ownership, pending-upload Arena Stop and replacement Code-feedback
+fixes in that order. Preserve shared importer/conversion and other lanes.
+The separate NuttX Code caller proposal remains outside this product change.
+
+The Pause conflict retains both the full-session upload cancellation prefix and
+the captured-session/teardown ownership branches. Stop keeps intent/bridge
+bookkeeping and optional upload-message clearing. Eleven other inherited pane
+methods and the feedback session file match their reviewed source inputs.
+A new authored sequence catches either single-fix baseline losing the other
+Pause branch. All 176 affected host controls pass. An attempted extra rendered
+unit suite lacked React in the sparse validation environment; its original
+failure is preserved and hosted CI must run with installed dependencies.
+
+The frozen composed consumer `f903a966ea348fd7c3abd0ba693194fc813b4997`
+passes all fifteen installed own-NuttX cases: four Pause, four representative
+world/manual-drive, four pending-upload Arena Stop cases with retained-session
+Stop positives, and three Code completion/error/retry/cancellation cases. All
+fifteen standalone readers and the combined cohort reader pass, including thirty
+successful native startup transactions, cleanup and distinct recovery per case.
+The official frontend checkout tree equals this consumer; package payload and
+input audits pass. Its eleven enabled CI checks pass in
+[run38769805667](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38769805667);
+the conditional GUI verification and deploy jobs skip.
+
+Original failed test attempts remain preserved: a circular held-reply cleanup
+wait, React component-pointer compatibility, recovery language conversion,
+retry recorder lifetime, and a direct duplicate Stop before pending teardown
+completed. Corrected tests retain the observation limits and two-START retry
+gate. Visible Code cancellation awaits the original Stop method's returned
+promise rather than issuing a second pane Stop. That direct repeated-Stop
+boundary remains open below.
+
+Current main's unrelated importer/debug changes are preserved exactly during
+integration; the SPIKE session/pane/native inputs and NuttX Code dispatcher
+method remain unchanged from the tested source. Final documentation-head CI
+and merge review remain required. This result qualifies the named frozen
+package, not every later frontend package or whole G02, hardware,
+reference boot, rollback, distribution or licensing. This lane
+changes no native input, firmware/Runtime/model/dependency pin, workflow or budget
+relative to its main base. Do not merge the older draft sources independently
+as a substitute for composed qualification.
+
+## WeDo clone 88005 polarity and power packet correction — 2026-10-15
+
+DONE — Codex, isolated existing adoption branch
+`lane/wedo-lights-adoption-20261015`, worktree `wt-wedo-adoption-sparse`.
+Follow-up to the published WeDo adoption claim and draft PR980. Human-observed
+CoreBluetooth testing on the user's unbranded clone: physical port A responds
+to protocol port 2; `[2,1,1,156]` lights the 88005 at full power and
+`[2,1,1,206]` visibly dims it. Positive power and the previous payload-length
+2 command did not light it. Internal RGB works. Standard 440/1000/1500 Hz
+piezo commands were acknowledged but produced no audible sound; do not claim
+this clone's advertised buzzer works or silently substitute host audio.
+
+Envelope: this ledger; existing dedicated `wedo2unified` pin and generated
+bundle/provenance table; focused `test/wedo2-lights-and-tones.test.mjs`.
+Source changes belong upstream in extensions PR49: one-byte signed power,
+explicit normal/reversed polarity with translated labels, and replaceable
+inferred motor/light types while preserving real attachment announcements.
+No global automatic clone detection, motor port remapping or other pin moves.
+Publish upstream first, then adopt the immutable commit with the canonical
+vendor script. Verify the measured packets, default positive polarity,
+Stop All/off, known-device protection, immutable bundle identity and local
+production build. Claim landed on remote main as `669107598` before Lite implementation.
+Upstream `5fe7033f` is published; 28 focused adoption tests and immutable
+targeted vendoring pass. Physical LED full power and dimming are user-confirmed;
+local production compilation is qualified separately.
+
+## iOS redundant static archive packaging — 2026-10-15
+
+DONE — Codex, isolated `fix/ios-static-archive-resources-20261015`, base `86daec14c`. User requested shrinking the
+current iPad app. Measured signed bundle: 371.43 MiB, including 151.98 MiB
+`libapp.a` copied as a resource despite already being linked into the executable.
+
+Envelope: this ledger, `apps/tauri/scripts/prepare-ios-device-build.mjs`, and
+`test/ios-device-build-command.test.mjs`. Remove only `libapp.a in Resources`
+build-file and resource-phase references from the generated project; preserve
+its Frameworks/linking entry. Exercise actual preparation on an Xcode fixture,
+including an already-anchored project. Verify the smaller signed app and iPad
+installation/launch. No feature, frontend asset or native code is removed.
+Claim landed as `139c01fe4` before implementation. Four preparation tests pass;
+the new real-script fixture fails on the prior implementation. The 219.45 MiB
+signed app (41% reduction) installed and launched on the paired iPad over Wi-Fi.
+All 41 executable sections remain byte-identical after removing the redundant
+archive; signature verification passes.
+
+## iOS shared validator compilation blocker — 2026-10-15
+
+CLAIMED — Codex, isolated `fix/ios-shared-validators-20261015`, base `10edc699d`. Bounded build repair
+found while fulfilling the user-requested current iPad deployment.
+
+Envelope: this ledger and only the module declarations for `arena_inputs` and
+`spike_program_uart_contract` in `apps/tauri/src-tauri/src/lib.rs`. Both contain
+pure JSON validators already called by the shared `native_policy` core; their
+current desktop gates cause eight E0433 errors on `aarch64-apple-ios`. Keep all
+native commands, adapters, supervisors and platform integrations gated exactly
+as before. Verify by the real signed iOS build, whose baseline failure is retained in operator diagnostics.
+No simulator behavior or policy admission
+rules change. Claim lands before implementation.
+
+## WeDo 88005 lights and piezo note adoption — 2026-10-15
+
+DONE — Codex, isolated branch `lane/wedo-lights-adoption-20261015`,
+worktree `wt-wedo-adoption-sparse`, base `5f790c24ae91931d51617ddd1e4c69e2d1e8cfeb`.
+User authorized publication of the upstream fixes and this adoption claim.
+
+Envelope: this ledger; a dedicated `wedo2unified` entry in `vendor-pins.json`
+and `scripts/spike/bundled-upstream.mjs`; the WeDo bundled source and its
+`bundled-upstream-pins.json` record; focused WeDo protocol tests. No other
+extension or package pin moves. Upstream: CrispStrobe/extensions PR49,
+`2cda0cf` (88005 brightness/off on A/B/both, Stop All, reliable piezo notes).
+
+Validation: 25 focused tests pass (light/tone packets, existing Scratch Link
+sessions, bundled extension identity including the planted-divergence negative);
+immutable targeted vendoring check passes. Production compilation is being
+qualified locally. iPad installation verifies app deployment; real 88005
+brightness and audible-tone verification remain explicitly pending. Claim
+landed as `10edc699d` before Lite implementation changes.
+
+## ASM example admission during pending Code compilation — 2026-10-15
+
+DONE — Codex circuit/instrument adoption owner, bounded blocker repair for
+PR965. Base `dccfd176b0043128b6a723e55f80a5e3b47fed4c`; isolated branch
+`docs/asm-example-serialization-claim-20261015` publishes ownership first.
+Production edits wait for this claim's merge and coordination with the A11
+owner of other blocks in the importer. Original exact-head Build38726686250
+failed only the 8086 browser journey after retarget/reload: its screenshot
+shows empty ASM and disabled Assemble. Pure actual-method/deferred-VM controls
+reproduce an example accepted during compile and then erased by its completion.
+This is not an engine or physical qualification.
+
+Envelope: this ledger; only `loadAsmExample` busy admission, including after
+asynchronous confirmation, and the ASM example picker's disabled state in
+`overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx`;
+its tracked `packages/scratch-gui` twin; new
+`test/asm-example-serialization.test.mjs`; and
+`scripts/verify-i8086-browser.mjs` for a deterministic pending-compile witness.
+Do not change `setDevice`, `compile`, MakeCode/export/device-routing blocks,
+engine models, dependency pins, timeouts, compiler interception or other lanes.
+PR965's already qualified CUI adoption bytes remain unchanged.
+
+Combined qualification contract (2026-10-16): the original busy-refusal
+candidate passed its exact-head controls, but the newer merged editor-ownership
+fix in PR998 accepts newer editor requests while a previous VM load completes.
+The UI picker stays disabled during compilation. An already accepted direct
+method request instead replaces editor buffers immediately; the unchanged
+compiler ownership fence preserves that buffer and its feedback across old
+load success, refresh and error. No VM-loading method is changed here.
+
+Require actual-method controls for immediate accepted buffer ownership,
+confirmation refusal, ordinary idle loading and confirmation overlapping busy
+work. A buffer-publication mutation must fail; preserve PR998's success/error/
+refresh ownership controls unchanged. The actual browser proof holds only the
+return of a real completed VM load, observes the disabled picker, accepts one
+direct newer editor request, releases/restores the wrapper and proves exact
+buffer identity/source/feedback survive. Then assemble through ordinary controls.
+Removing the picker guard must fail the held-state assertion. Retain the entire
+keyboard/CGA/8255/refusal/reload journey and all exact-head checks. No forced
+click, timeout increase, omitted scenario or invented guest. Original refusal
+results and the first integration conflicts remain separate historical evidence.
+Fresh combined hosted qualification remains required before landing.
+
+## STM32 faithful model pin adoption (sb3-creator + bw-board) — 2026-10-15
+
+CLAIM — Claude, branch chore/stm32-faithful-pins-20261015, [local path omitted].
+Adopt sb3-creator a13f92b8bc4b06f0cb9ffec22bab71f06db7ac76 (merge of its PR #155:
+clock setup, G030 GPIO, F103 pull-up/TIM2 PWM/DS18B20, G030 ADC and temperature,
+tone fixes, named refusals for servo/NeoPixel/LCD/OLED/broadcast, timer) and
+bw-board 04f19952cea008b7498c701c16be5cc7ea1bdf63 (merge of its PR #600: faithful
+STM32 F0/G0 model — G0 memory map, RCC clock tree so speed follows firmware, RAM
+pattern at reset, USART/PWM need AF; STM32 adapters refuse a `clockHz` option).
+Sequenced AFTER bw-circuit-ui adoption PR #965, whose pin is kept exactly.
+
+Envelope: this ledger; vendor-pins.json; root and packages/scratch-gui package
+specifications/locks; outputs of the repo's writers and their tracked packages
+twins; exact-pin and count assertions in existing tests the bump moves;
+removal of any `clockHz` Lite passes to the STM32 debug targets/adapters
+(debug-runner and its tracked twin) and tests or gates that depended on the
+old fixed clock or zeroed RAM; gallery/example/reach expectations regenerated
+by the repo's measurement scripts where the new refusals move them. Merge this
+claim first; implementation lands only after full CI and owner review.
+
+## A10: micro:bit V2 serial consumer adoption — 2026-10-15
+
+DONE 2026-10-16 — Codex, branch `lane/a10-v2-serial-consumer-20261015`, base `015e1bdc7`.
+Adopt the qualified deterministic LabWired engine release after its source fix
+lands. Remove V2 serial withholding and verify real compiled firmware through
+both CLI modes and the visible Debug console. Preserve A11's landed export fix.
+
+Consumer scope is engine-only. The affected nRF52833 and micro:bit V2 catalog
+payloads are unchanged. The producer's canonical catalog also carries the
+qualified STM32F103 C8 flash and clock-gate descriptor; do not describe every
+chip payload as identical to this shipped client. No client API change is
+needed for the UARTE source fix; actual released-engine qualification against
+this shipped client remains mandatory.
+The separate STM32 package/compiler adoption belongs to its existing owner.
+This lane leaves board, compiler and circuit-UI package pin fields untouched;
+qualified mainline changes from those owners are preserved when integrated.
+
+Envelope: this ledger and `docs/OPEN-TASKS-2026-09-29.md`;
+`scripts/sync-labwired-wasm.mjs` PIN/TAG/EXPECT and
+`.github/workflows/target-performance.yml` matching engine identity;
+`scripts/makecode.mjs`, `scripts/lib/makecode-run.mjs` if needed,
+`test/makecode-cli-run.test.mjs`,
+`overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx`
+and its tracked twin; `scripts/verify-makecode.mjs` serial assertions only;
+affected engine provenance/notices through canonical writers if required.
+No NPM package/compiler pin bump, copied engine, invented source/hash, SDK
+rebuild, optional motion run, physical-accuracy claim or threshold relaxation.
+
+The first release, `labwired-wasm-6a769a59`, passed its original 123-test suite,
+but consumer PR988's real compiled CLI and browser programs still produced
+corrupt serial bytes. Preserve those failures. The follow-up interrupt-completion
+fix is merged in labwired-core PR247 as `1ea67f9c`; its reviewed source
+`de14721e4ae1d34a428f91d232e4520d50f1ceba` is the adopted engine pin.
+Producer PR629 is merged as `a72acc06`: all 13 enabled final checks pass,
+including the five release jobs; four skips are declared. Fresh engine run
+38855838615 passed two independent matching builds and all 125 release tests
+with zero failures or skips. Release `labwired-wasm-de14721e` has five assets
+whose digests and sizes match the original build bytes. Node test and benchmark
+callers supply their CommonJS marker explicitly.
+[Consumer PR988](https://github.com/CrispStrobe/brickwright-lite/pull/988) now
+pins that source/tag and the two admitted web hashes. Its matching performance
+workflow verifies both downloaded Node executable hashes before benchmarking;
+methods, sample counts and thresholds are unchanged. The automatic pin-push benchmark
+(run 38861990788) passed all five targets with three samples each; its input
+blobs are byte-identical in the final candidate. Retain the original run identity
+and its finite CPU-loop/AVR-adapter scope.
+
+Consumer PR988 merged as `3753d3b48014d50574a417970dfd75b940129f16`, retaining
+tested head `18484cfeb1a124f2352f100c1a5d9744275ba879`. All 12 enabled exact-head
+checks passed across Build, vendor freshness and Rust notices; deploy/verify-gui
+were declared conditional skips. Both actual compiled JSON/text CLI proofs
+passed the complete greeting, ordered counters and unchanged matrix/fault/
+one-second bounds. The browser's own fresh nRF52833 V2 emulator ELF reached
+Running and printed its complete unique greeting in the visible Debug console.
+The full tracked-file inventory and notices passed in the clean hosted checkout.
+Reviewed, predicted and landed merge parents/tree match; peer notes and A11's
+export implementation are preserved.
+
+The authored proof guests explicitly set `serial.setWriteLinePadding(0)` because
+MakeCode otherwise pads `writeLine` records to 32 bytes including CRLF. Existing
+exact output assertions, waits and budgets are unchanged. Original first-engine
+corruption and the later padding-expectation failures remain retained. No
+physical re-capture, hardware or broader performance claim is added.
+
+## A11: Code-tab MakeCode export uses the project target — 2026-10-15
+
+DONE — merged 2026-10-15 in [PR #971](https://github.com/CrispStrobe/brickwright-lite/pull/971)
+as `f1440691`. Original branch `lane/a11-project-target-export-20261015`,
+base `c6f1ff5c3`. Single-board Code-tab MakeCode export selects the existing
+micro:bit, Calliope or EV3 emitter from the parsed project device and writes
+matching project metadata and editor guidance. Preserve unchanged imported
+original files for their own supported target and the multi-board early return.
+Envelope: `overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx`
+and its tracked `packages/` twin; a focused export-routing helper under
+`overlay/scratch-gui/src/lib/bw-makecode/` if needed; focused tests;
+`scripts/verify-makecode.mjs`; existing browser CI wiring only if needed;
+this ledger and `docs/OPEN-TASKS-2026-09-29.md`. Do not change exporters,
+applied-device routing, board model, dependency pins or another lane's behavior.
+Claim landed at `015e1bdc7`. The actual handler now selects each target's
+existing emitter and file metadata, retains matching unchanged originals,
+reports the correct editor in both locales and offers EV3 export. The target
+is captured with the source before lazy compiler loading; generated micro:bit
+filename conventions and the multi-board early return are preserved.
+Validation: 39 focused export/UI/document-policy checks pass without skips;
+the old source and wrong-routing/metadata/editor/original/visibility mutations
+fail. Final hosted browser job `116518382899` downloaded a Calliope export,
+checked its own packages/editor and polling loop, reopened those exact bytes,
+and compiled and ran it in the real Calliope PXT simulator. All 11 enabled
+checks passed on the reviewed head; deployment and deployed-site verification
+were conditional skips for the pull request. Heavy-browser retry `116562834180`
+ran all 31 assigned gates with zero skips. The original harness-policy and
+npm install connection-reset failures remain recorded. The normal matched-head
+merge preserved the separately qualified debugger-capability parent, and its
+landed tree and parents matched the reviewed composition.
+
+## Shared simulated world, step 1 — project world in Lite — 2026-10-15
+
+CLAIM — Claude, branch feat/world-step1-20261015, [local path omitted]
+isolated blobless clone. Expose bw-board's per-project world (bw-board
+`src/world.js`, its own claim/PR; adopted here by a normal pin bump through
+the repo's writers) in Lite: one world per project shared by every simulated
+board the Circuit tab and its runners build (ambient temperature, humidity,
+air pressure, light, sound); the existing bench-temperature control drives the
+world's temperature; new Lite-native `bwworld` blocks "set world [KEY] to
+[VALUE]" and "world [KEY]"; persistence with the project in a Stage comment
+written only when the world differs from its defaults, so projects without a
+world stay byte-for-byte unchanged.
+
+Envelope: this ledger; new `overlay/scratch-gui/src/lib/bw-world.js`;
+`overlay/scratch-gui/src/lib/bench-temperature.js`,
+`overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx` (world
+attach/handler lines only); new `overlay/scratch-vm/src/extensions/crispstrobe/bwworld/`;
+extension-manager builtin row, extension library entry and
+`scripts/spike/bundled-upstream.mjs` LITE_ONLY row; their tracked
+packages/ twins; new focused tests; `docs/WORLD.md`; the bw-board pin bump
+surfaces the writers move. No SPIKE arena/pane/native file and nothing the
+SPIKE G02/G03 lanes claim. Steps 2 (positioned sensors) and 3 (surface
+colour/distance) get their own claims. Merge this claim before implementation.
+
+## STM32 G0/F1 fix pin adoption (sb3-creator + bw-board) — 2026-10-15
+
+CLAIM — Claude, branch chore/stm32-fix-pins-20261015, [local path omitted].
+Adopt sb3-creator 6212f86eda4fb4e2c696e7c778a4de1703b197d3 (merge of its
+PR #151, tree 093e3908) and bw-board b4b4c87f70624dfb570a6d21391c5a2d5a40a0e8
+(merge of its PR #590, tree bf59c070). Fixes carried: STM32G030 print (USART
+clock APBENR2, PA9/PA10 AF), STM32F103 print (F1 USART registers, PA9 CRH) and
+PWM via CRL, a DEVICE line selecting that device's C, and bw-board's G0
+RCC_APBENR2 model. Both are fast-forwards of the current pins and carry the
+intermediate upstream commits unchanged (Arcade words, x86 docs/perf).
+
+Envelope: this ledger; vendor-pins.json; root and packages/scratch-gui package
+specifications/locks; outputs of the repo's writers (sync-sb3creator,
+sync-examples, pin-packages, package-upstream-notices, census, matrix,
+capability-report, part-profiles, vendor-bundles, arcade inventory) and their
+tracked packages twins; exact-pin and count assertions in existing tests the
+bump moves; gallery/example expectations regenerated by the repo's generators
+where the DEVICE-line behaviour changes output. No device, workflow or
+application behaviour beyond what the pins carry. Merge this claim first;
+implementation lands only after full CI and owner review.
+
+## Arcade owned named function values — 2026-10-15
+
+PROPOSED — Codex named function declaration value lane.
+Merge this docs-only claim before product changes. Contract:
+[owned named function values](docs/compatibility/arcade-named-function-values.md).
+Own the module/namespace declaration-site and current-body bridge, directed
+zero-argument Number/String/Void signature proof, native stable-label binding
+and source/Code/Blocks/export/SB3 controls. Coordinate namespace/callable
+lowering, class holder producer acceptance and lexical export hooks with their
+owners. Preserve unique actual bindings, all-writer refusal, target/procedure
+identity and stopped/stale/foreign-owner guards. No name or annotation grants,
+SDK signature widening, captured nested declarations, callable arrays, generic
+class factories, scene/score API completion or whole-context promotion.
+
+## Owned Images in ordinary class callbacks — 2026-10-15
+
+CLAIMED / PROPOSED — Codex Image domain in the existing ordinary class/callable bridge.
+Contract: [owned Image class callbacks](docs/compatibility/arcade-owned-image-class-callables.md).
+Own new actual Image producer/owner proof helpers and coordinated narrow source,
+v2 signature/plan, native field/invocation/result, current Blocks and export hooks.
+Preserve primitive/class/callable identity, all-writer and initialization proof,
+generic invocation-local substitution, lifecycle and conditional result tickets.
+Annotations, plain carriers and SDK-looking names grant no Image authority.
+Initial source producers are literal Images, actual unshadowed image.create
+and clone of a proved Image; screen/Sprite views need separate explicit proof.
+No Sprite/Buffer/Font signature widening, intrinsic class inheritance, Any grant,
+new word, pin or supplier adoption. Canonical Arrays already transports Images;
+any discovered supplier change requires a separately qualified claim.
+Keep Console942, shared finite Number carriers and identifier compound assignment
+ownership intact. Product changes wait for this claim's normal qualified merge.
+
+## Primitive identifier bitwise compound assignments — 2026-10-15
+
+PROPOSED — Codex Arcade integration, isolated statement conversion lane.
+Merge this docs-only claim before product changes. Contract:
+[primitive bitwise compound assignments](docs/compatibility/arcade-primitive-bitwise-compound.md).
+Own the identifier compound-assignment operator selection in
+`Arcade.expressionStatement` and focused source/current-block/native/export
+controls. Reuse existing primitive producer proof, native value operations and
+local/captured/global assignment paths. No opaque coercion, assignment-as-value,
+member/index widening, new vocabulary, dependency pin or frame-clock change.
+Coordinate the Arcade translator with callable, inspection and numeric owners.
+
+## ESP8266 follow-up: hosted generator and browser run gate — 2026-10-15
+
+CLAIM EXTENSION — Claude, of the merged ESP8266 device claim (#932; device
+work landed in #934). Branch feat/esp8266-followup-20261015,
+[local path omitted]. Production stc-compiler now serves `esp8266`
+(deployed e21b64c), so this also completes plan N13: refresh
+docs/generated/hosted-targets.json with the repo generator against the
+deployed source (taking whatever other targets it produces, unedited), mark
+the ESP8266 C cell and its lowered paths shipped and set its picker compile
+flag in the capabilities table (overlay and tracked twin) with the
+regenerated matrix doc.
+
+Envelope: this ledger; scripts/gen-hosted-targets.mjs (read stc-compiler's
+ESP8266_TARGETS so a post-deploy refresh picks it up) with a new fixture
+test; N13 in docs/LANGUAGE-DEVICE-MATRIX-PLAN.md; one new browser verify
+script driving the debug runner's ESP8266 attach path end to end with bw-board's
+SDK-free blink image (embedded, sha256-checked) through the user-picked .bin
+route, its light-shard step in .github/workflows/build.yml with a PROVISIONAL
+budget, and the companion browser-gate census entries the existing gates
+require. Existing budgets, gates and thresholds stay unchanged. Merge this
+extension before implementation.
+
+## Arcade console inspection values — 2026-10-15
+
+PROPOSED — `corpus_gap_analysis`, isolated console inspection lane.
+Merge the docs-only claim before production changes. Contract:
+[console inspection values](docs/compatibility/arcade-console-inspect-values.md).
+Own the dedicated native String reporter, strict actual producer/current-project
+proof, paired canonical word if needed, coordinated converter/export hooks and
+focused portable/original/hosted authoring controls. First qualify primitives;
+flat Arrays require a separate selected-original matrix within this contract.
+Preserve actual argument effects, String result, logging separation, all-writer
+and lifetime refusals. Opaque/cyclic/reference coercion, callable admission,
+Font, pins and whole-game/context promotion remain separate.
+
+## Shared finite decimal source carriers — 2026-10-15
+
+PROPOSED — Codex source conversion, isolated shared numeric carrier lane.
+Merge this docs-only claim before product changes. Contract:
+[shared finite decimal source carriers](docs/compatibility/shared-finite-number-carriers.md).
+Own the finite decimal Number branch in `translate-base.js`, the existing
+`source-number-literal.js` helper and focused source/Code/Blocks/export tests.
+Coordinate shared translator ownership. Preserve micro:bit, Calliope and EV3
+numeric values through current Code parsing, including signed scientific
+notation and subnormals where the existing target runtime admits them.
+Keep hexadecimal/binary, unary/member boundaries, string literals and target
+numeric conversions intact. No new words, pins, Number method admission,
+non-finite literal support, CPX TypeScript route or hardware claim.
+
+## Owned callable typeof — 2026-10-15
+
+PROPOSED — `extension_parser`, isolated owned callable reflection lane.
+Merge this docs-only claim before production changes. Contract:
+[owned callable typeof](docs/compatibility/arcade-owned-callable-typeof.md).
+Own the new source/current-project reflection authority helper and tests,
+exact callable operand/export hooks and the native typeof owner adapter.
+Coordinate native index, read-only atomic Callable binding and class-flow
+hooks with their current owners. Preserve selected MakeCode label `function`
+versus captured action `object`, current resource/graph/generation checks,
+whole-source diagnostics and plain-carrier refusals. Reuse the existing API;
+no new canonical word, pin, annotation producer, Sprite-string widening or
+class result-flow completion change. Original and hosted qualification remain
+separate required checkpoints.
+
+## Ordinary class callback effects and conditional results — 2026-10-15
+
+PROPOSED — `corpus_gap_analysis`, owned class callback result-flow lane.
+Merge this claim before product admission changes. Contract:
+[ordinary class callback effects and conditional results](docs/compatibility/arcade-class-callback-result-flow.md).
+Own directed source/current-project branch/result proofs, actual method result
+certificates and native completion integration, with coordinated lowerer/export
+hooks and focused native/portable/original controls. Void actions and genuine
+Undefined must preserve effects, serial followups and lifetime. Preserve numeric
+v1/default gates, Font exclusions, pins and frame phase. Physical Sprite/Image
+ABI, loops and whole StatusBar/context promotion remain separate.
+
+## Bounded ordinary class callback default admission — 2026-10-14
+
+PROPOSED — `corpus_gap_analysis`, owned ordinary-class default contract lane.
+Merge this claim before product selection or default admission changes.
+Contract: [ordinary class callback default admission](docs/compatibility/arcade-ordinary-class-callable-default-admission.md).
+Own new pure source/current-project gates and focused tests, plus coordinated
+selection hooks in Arcade converter/export. Require whole-program producer and
+writer proof, current editable bodies, typed generic invocation and lifecycle
+controls. Existing numeric gate, canonical pins and live Font hunks remain with
+their owners; intrinsic classes are excluded. Prototype source/export receipts
+are prerequisites; default and hosted GUI qualification remain pending.
+
+## STM32G030 and STM32F103 assembly route and simulation support — 2026-10-14
+
+CLAIM — VPS Claude, branch lane/arm-stm32-g030-f103, exact base 3958a28fefc39345fb42a878727f528f76dfd53a, isolated worktree wt-lite-stm32-20261014.
+Upstreams merged: stc-compiler PR #19 (c3a069b), sb3-creator PR #145 (9e5b18f), bw-board PR #584 (58ee2828).
+Scope:
+- overlay/scratch-gui/src/lib/bw-asm/assemble-route.js: map stm32g030 and stm32f103 devices to compiler targets.
+- overlay/scratch-gui/src/lib/bw-asm/arm-image.js: add stm32g030 (origin 0x08000000, kind 'stm32g0') to ARM_ASM_RUN.
+- overlay/scratch-gui/src/lib/bw-debug/debug-runner.js: support stm32g0 target kind and default 64 MHz clock.
+- test/arm-asm-run.test.mjs: verify stm32g030 and stm32f103 routing, simulation engines, and download-only status.
+- LANES.md claim.
+
+## Bounded numeric callable default admission — 2026-10-14
+
+PROPOSED — Codex Arcade integration. Merge this claim before default admission
+product edits or adoption. Own `callable-source-gate.js`, the callable selection
+hooks in `arcade-translate.js`, the callable export selection hooks in
+`export-arcade.js`, and new focused default-admission tests. Coordinate these
+hooks with existing parser, class, reference, typeof and current-body owners.
+The version 1 numeric factory profile and six-word ABI remain the boundary;
+class/version 2, generic, receiver and host callback admission are excluded.
+
+Require actual AST eligibility, current editable body/owner/variable-ID validation,
+selected-original source and edited-export receipts, native lifecycle refusals,
+and Code/same/fresh SB3/export/reimport proof before enabling the default path.
+Preserve unrelated diagnostics and ordinary source conversion. No callable
+`typeof`, whole-game, hosted GUI or general higher-order callback claim follows.
+See [the bounded admission contract](docs/compatibility/arcade-numeric-callable-default-admission.md).
+
+## ESP8266 device (sb3-creator + bw-board pin adoption) — 2026-10-14
+
+CLAIM — Claude, branch feat/esp8266-device-20261014, [local path omitted]
+isolated blobless clone. Make ESP8266 a selectable device: DEVICE ESP8266
+pseudocode/blocks emit C through the vendored sb3-creator back end, compile
+on the stc-compiler `esp8266` target (base64 main.bin), and run in the
+simulator through bw-board's `esp8266` debug-target kind.
+Adopt sb3-creator 8472098b99e129e4fbfec89b95d08b6b49d77931 (merge of its
+PR #144, tree caa77416) and bw-board 3b03d226cb1e7ecfcbbd28bc42fe492f8d2b6cf1
+(merge of its PR #580, tree 80ed7252). Both are fast-forwards of the current
+pins and carry intermediate upstream commits unchanged; the bw-board pin
+supersedes the precision-meter claim's 370be699 (an ancestor), so whichever
+lands second re-resolves the pin rows only.
+
+Envelope: this ledger; vendor-pins.json; root and packages/scratch-gui package
+specifications/locks; sync-script outputs of `sync:sb3creator` and
+`sync:gallery-pins`; pin-package/notices mirrors those scripts write;
+regenerated docs/generated surfaces (`gen:*`) and census snapshot mirrors;
+exact-pin assertions in existing tests that the bump moves; the device
+registration points (device picker, DEVICE→compile-target map, DEVICE→
+simulator-kind map, capability/matrix rows) in overlay and their tracked
+packages/scratch-gui twins; new focused tests. Every other device's behaviour
+and output stays unchanged. Production compile service does not yet expose
+`esp8266`, so tests use bw-board's checked-in fixture image or a mocked
+compile response, never the live service. No gallery retarget-pool change,
+no hardware flashing, no upstream contact. Merge this claim before
+implementation; implementation lands only after full CI and owner review.
+
+## Precision meter supplier package adoption — 2026-10-14
+
+DONE candidate — Codex, branch lane/precision-meter-package-adoption-20261014,
+exact base10886fb9ace046cdd29979018c957f038232349b, isolated task worktree.
+PR915 is merged; preserve its seated-terminal/census behavior unchanged.
+Adopt the compatible qualified pair: Board370be6994dcc6ffcef852f8f1d67861e3e98dd70
+and CUI9593a12056e72c10686232bb448f97471f98feec. Board executable source
+f7212733 passes CI38526574704/Harris38526574700/xv638526574737; CUI source
+933633d passes all four jobs in CI38545121692 with132 precision tests and67
+browser scenarios. Both supplier closeouts preserve tested executable bytes;
+their default-branch CI also passes. No source copy or consumer fork.
+
+Envelope: this ledger; vendor-pins.json; root and packages/scratch-gui package
+specifications/locks; the two static/licenses/bw-packages.sources.json mirrors;
+docs/generated/{I8086-CAPABILITY-REPORT.md,LANGUAGE-DEVICE-MATRIX.md,bw-board-census.json};
+the overlay/packages bw-matrix/census-snapshot.js mirrors; exact package-pin
+assertions in test/{adp7118-limiter-package-adoption,adp7118-package-adoption,
+cli-op-kcl-package-adoption,lm324-package-adoption,lm741-package-adoption,
+lt1001-package-adoption,lt1763-package-adoption,scope-reset-package-adoption}.test.mjs;
+only the supplier SHA bindings in .github/workflows/i80386-freedos-circuits-direct-actual.yml.
+The existing limiter test additionally gets an ideal-supply linear startup
+control, retaining all existing interactive/precision/reference/work/refusal
+cases. Use the canonical pin writer and regenerate derived surfaces; preserve
+all other dependency pins and license bytes. No workflow trigger/job/step,
+engine/model/profile/default, translator, device, gallery or application source
+change. Metadata generation/pure controls only locally; actual installed CLI,
+pin/content/single-engine/provenance gates and existing production circuit
+browser journey must pass in hosted full CI before landing. No precision GUI
+control, physical-model accuracy, licensed-guest execution or deployment claim.
+Claim PR927 merged before implementation. The candidate adds the ideal-supply
+500-ohm/2.2-uF linear startup control with unchanged 0.5-uV point and 1-uV mean
+bounds, alongside all existing finite-source cases. Local metadata tests and
+independent continuous-oracle quadrature are not installed-package evidence;
+source views used only for generation are not installed-content verification.
+Landing requires the new exact-head full-CI qualification, including installed
+package identity, actual CLI readings/receipts and the existing circuit browser
+journey. Supplier results above do not substitute for that consumer result.
+
+Red1 provenance-only envelope extension: the hosted exact651b3c0929 unit shard
+reports4074 pass/4 fail/14 skip; all four failures identify old Board-pin records.
+Refresh overlay static/dos/msdos200-base.provenance.json, static/roms/{cpm-roms,
+free-386-bios,i8086-bios,i8086-demos}.provenance.json and scratch-vm's
+extension-support/bundled-upstream-pins.json, plus the existing tracked DOS/CPM
+package twins. Prove the supplier asset/assembler/controller source ranges and
+all retained binary/source/hash identities unchanged before updating provenance;
+use canonical record/vendor writers where available. No binary, firmware,
+media, runtime source, profile or workflow behavior change. Preserve the original
+red and all latest-main CPX/producer pins; qualify the combined forward head.
+Both original shards completed:4074/4/14 and3214/1/5 pass/fail/skip. The fifth
+failure is the controller record already included above. The new ideal-supply
+CLI case passes120 actual samples: maximum point error4.278440269 nV and mean
+error1.461372356 nV. All eight repaired JSON records change only their Board-pin
+field; supplier ROM/source/assembler/controller ranges and retained bytes are
+unchanged. Canonical BIOS recording verifies the same source/ROM and zero source
+commits behind the pin; no binary was rebuilt or replaced. Combined CI is pending.
+
+## Explicit procedure calls in Code — 2026-10-14
+
+PROPOSED — Codex Arcade integration. Product edits begin after this claim lands.
+The unchanged Snake source defines and calls `show`; the current Code parser
+silently interprets those calls as Scratch's visibility command, leaving the
+rendering procedure uncalled through save/export. Preserve both operations.
+Envelope: canonical producer generic statement parser and pseudocode decompiler,
+focused producer call controls, Arcade source function statement emission and
+procedure ownership scan, matching generated mirrors/pin and focused original/
+native/Code/SB3/export controls; this ledger and linked contract. Do not edit
+peer-owned Arrays scalar-return, controller-repeat, callable or font hunks.
+[Contract](docs/ARCADE-EXPLICIT-PROCEDURE-CALLS.md).
+
 # Who is doing what — merge the claim before implementation
+
+## Arcade primitive Number to text — 2026-10-15
+
+PROPOSED — Codex Arcade primitive source integration,
+`lane/arcade-number-text-claim-20261015`.
+Contract: [primitive Number to text](docs/compatibility/arcade-number-to-text.md).
+Scope: zero-argument Number `toString` with actual producer/current-writer
+authority, narrow source/native primitive String representation, current Code
+and Blocks, original export and same/fresh saved-project reimport. Preserve
+class custom methods, SDK reference exclusions, Font proof and Source frame
+ownership. No new canonical word, pin change, radix, global String-name grant
+or whole-library promotion is claimed. Product work waits for the normal claim
+merge after every enabled exact-head check succeeds.
+
+
+## CI fast and thorough tiers — 2026-10-14
+
+PROPOSED — VPS Claude (opus), `lane/ci-tiers-20261014`. Owner decision
+2026-10-14: PR pushes run a fast tier; the thorough tier runs on main, dispatch
+and PRs labelled `ci:full`; documentation-only PRs skip both code tiers.
+Envelope: `.github/workflows/build.yml` (triggers, `concurrency:`, job-level
+`if:`/`needs:`, unit shard count 2 -> 4, new `change scope` and
+`full CI requested` jobs); new `scripts/ci-docs-only.mjs` and
+`test/ci-docs-only.test.mjs`; check-name lists in
+`scripts/verify-vercel-main-checks.mjs` and `scripts/gen-ci-skips.mjs`;
+`test/unit-shards.test.mjs` and `test/vercel-main-checks.test.mjs` (assert the
+four shard names); the repository label `ci:full`. No step, version, threshold,
+budget, receipt or pinned action changes. Docs-only is exactly the build push
+`paths:` filter applied to the PR's files. Merge this claim before the
+implementation is pushed.
+## Arcade source typeof values — 2026-10-14
+
+PROPOSED — Codex Arcade value integration, `lane/arcade-source-typeof-20261014`.
+Contract: [source typeof values](docs/compatibility/arcade-source-typeof-values.md).
+Own a narrow source type service and reporter, canonical producer vocabulary
+and tests based on the qualified producer foundation, and the corresponding
+Arcade expression/export hooks and focused qualification. This is an E15
+scalar-item export/reimport prerequisite. Preserve aggregate JSON transport,
+legacy input parsing, native reference identity and atomic source declarations.
+Coordinate native index and converter hunks with their current owners.
+Qualify selected original primitive, array, object and owned native-reference
+results; function labels and captured actions require their actual qualified
+metadata. Other callable or reference representations keep explicit diagnostics.
+Merge this claim before product edits. Keep callable source admission,
+class GUI authoring, scheduling and independent board ownership in their
+existing lanes. Producer adoption requires exact-head qualification and review.
+
+## Arcade live font metrics — 2026-10-14
+
+PROPOSED — `docs/arcade-live-font-metrics-20261014`.
+Contract: [live font metrics](docs/ARCADE-LIVE-FONT-METRICS.md).
+Own new metric helper/classification/tests and narrow Arcade source/scalar/type,
+native reporter/menu, export, canonical fixed-field vocabulary and pin hunks.
+Read actual selected font objects; preserve shadow/opaque guards, editable
+Code/Blocks/SB3 and original export rendering. Coordinate repeat, callable,
+reference and active converter/runtime owners. No product implementation before
+this claim is merged; no guessed constants, font-reference admission or whole-game
+promotion.
+
+## Arcade controller repeat properties — 2026-10-14
+
+PROPOSED — Codex Arcade controller integration, `lane/arcade-controller-repeat-20261014`.
+Contract: [controller repeat properties](docs/ARCADE-CONTROLLER-REPEAT.md).
+Own fixed-button repeat-delay/interval source read/write lowering and export,
+explicit native reporters/setters and canonical producer words with reviewed
+pin adoption; narrowly replace the existing controller repeat calculation.
+Preserve physical input edges, event contexts, scene ownership, dialogs,
+source reference/callable typing and frame authority. Coordinate shared
+translator, native index, inventory and supplier hunks with their owners.
+Merge this documentation claim before product edits. Qualify actual original
+traces, Code/Blocks edits, saved fresh SB3, export/reimport and installed GUI;
+no corpus promotion from successful parsing or isolated feature tests.
+
+
+## Arcade source reference initialization — 2026-10-14
+
+PROPOSED — `lane/arcade-source-reference-preinit-20261014`.
+Contract: [source reference initialization](docs/ARCADE-SOURCE-REFERENCES.md).
+Own new reference type/inventory/prelude helpers and focused tests; narrow source
+declaration, converter/export, startup and field/menu hunks; canonical producer
+quoted type-field grammar/word/tests and reviewed pin adoption. Preserve exact
+class and array typing, separate scalar/reference flow, atomic declaration
+validation and ordinary Scratch defaults. Coordinate class/callable/accessor and
+event owners. No product edits before this claim is merged; no heap/scheduler
+substitution, unknown-to-Any fallback or whole-project promotion.
+
+
+## Arcade control event bus and multiplayer connections — 2026-10-14
+
+CLAIMED — merged contract PR901; Codex Arcade event integration, `lane/arcade-control-events-20261014`.
+Contract: [control events and multiplayer connections](docs/ARCADE-CONTROL-EVENT-BUS.md).
+The documentation claim is merged. Envelope: new Arcade
+control-events helper; narrow native index event/context/controller lifecycle
+and metadata hunks; Arcade-only source/export cases; separately qualified own
+supplier authoring words and pin adoption; original/native/Code/Blocks/export/
+SB3 and official-build GUI controls. Preserve independent class/accessor,
+source-scalar, Scene flags/rendering, arrays, dialog and device lanes. Coordinate
+shared index/translator/export/phase hunks before implementation; no global
+scheduler or physical-input substitution. Initial profile is the selected
+Arcade public raiseEvent/onEvent/waitForEvent and mp.onControllerEvent APIs;
+missing public mode/value/time APIs retain diagnostics. Target-specific ignored
+flags/modes and internal timestamps need explicit original receipts, not invented
+hardware semantics. No whole-game or corpus promotion from registration/parsing.
+
+## Arcade source scalar cells — 2026-10-14
+
+PROPOSED — Codex Arcade scalar integration, `lane/arcade-source-scalars-20261014`.
+Contract: [source scalar cells](docs/ARCADE-SOURCE-SCALARS.md).
+Envelope: new source scalar declaration/initialization and directed export flow
+helpers; their narrow Arcade source importer, export, native extension and source
+prelude hooks; one explicit producer command and enum field with reviewed pin
+adoption; Code/Blocks/rename/SB3/original execution controls and this contract.
+Bind actual stock variable IDs, preserve typed undefined before source
+initialization and ordinary Scratch saved defaults. Do not use name-only cell
+binding, unknown mutation attributes or a project-wide typing switch. Preserve
+independent source phase, class/accessor, Scene/controller and supplier lanes.
+No product command or source prelude changes until this claim lands. Private
+prototypes and original controls are preparation only; no whole-game promotion.
+
+## Arcade ordinary procedure parameter constraints — 2026-10-15
+
+CLAIM — corpus-gap lane, branch `docs/arcade-procedure-constraints-20261015`.
+Bounded [ownership and acceptance contract](docs/compatibility/arcade-procedure-parameter-constraints.md)
+for one explicit editable ordinary-procedure parameter-constraint protocol and
+its canonical word, consumer/source/native/current-export integration, controls,
+and hosted GUI journey. Bind actual unique prototypes and ordered formals;
+retain constraints separately from actual producer facts and validate all
+callers, aliases, and local/captured writers. No annotation value seed, hidden
+source restoration, helper pruning, generic/reference/callable widening, or
+unrelated pin changes. Old already-erased projects remain refused until an
+actual constraint is authored and proved. Implementation is held until this
+claim lands normally; supplier, selected SDK, consumer, and GUI qualification
+are separate gates. Preserve every other lane.
+## Arcade Array.map values and callback iteration — 2026-10-15
+
+PROPOSED — Codex Array-map value lane. Merge this docs-only claim before product
+changes. Contract: [Array-map values](docs/compatibility/arcade-array-map-values.md).
+Own focused map lowering, optional actual Array/element producer facts, narrowly
+coordinated sequencing hooks and source/current-Code/Blocks/SB3/export controls.
+Preserve actual allocation/binding/all-writer authority, cached initial length,
+current indexed reads, callback order and fresh result/alias identity. Audit
+existing forEach/filter only against concrete selected-helper counterexamples.
+Reference-valued and generic results remain explicit residuals until proved;
+annotations, method names and opaque values do not grant Array authority.
+Coordinate shared source analysis and callable owners. No canonical physical
+Number-input Array changes, pin/vocabulary adoption or whole-context promotion.
+
+## Arcade discarded value statements — 2026-10-15
+
+CLAIM — root-owned bounded discarded-value expression lane.
+[Ownership and acceptance contract](docs/compatibility/arcade-discarded-value-statements.md)
+for once-only evaluation of already supported expressions in statement position,
+with proper activation ownership, collision-free generated storage if a current
+sink qualifies, current edited export and reversible Code/Blocks/SB3. Preserve
+selected PXT staging and effects, ordinary assignments/updates/command calls,
+and all independent producer/current-body proofs. Unknown bindings, operators,
+opaque coercions and unsupported constituent expressions remain refused.
+If a proper local sink cannot preserve the contract, a canonical editable
+command requires its own qualified supplier route; no vocabulary or pin move
+is assumed. Implementation waits for this claim's normal qualified merge.
+Procedure constraints, Array.map and independently owned API lanes remain separate.
+
+## Arcade Throw statements and exception handoff — 2026-10-15
+
+CLAIM — root-owned bounded Throw syntax and native exception handoff lane.
+[Ownership and acceptance contract](docs/compatibility/arcade-throw-statements.md)
+for a proper editable canonical throw command, actual supported primitive values,
+once-only operand effects, source/current-export integration and minimal managed
+call/engine failure handoff. Unwind real affected stock and managed activations,
+settle owned continuations exceptionally exactly once, and preserve ticket,
+capture, Stop/reload and current-input ownership. Determine current/other-fiber
+termination from the selected original; emitting an error and returning Undefined
+or normally completing the throwing child is insufficient. Keep neighboring
+try/catch/finally and unsupported reference/coercion forms explicitly refused.
+Implementation waits for this claim's normal qualified merge; supplier, original
+and visible GUI gates remain independent. No Array-map, parameter-constraint,
+discarded-value, Image or unrelated device scope is absorbed.
+
+## Owned SDK Sprite values in ordinary class callbacks — 2026-10-15
+
+CLAIM — root-owned bounded physical Sprite producer and ordinary class/callback
+bridge, coordinated with the existing class, Image and native ownership lanes.
+[Ownership and acceptance contract](docs/compatibility/arcade-owned-sprite-class-callables.md)
+requires actual unshadowed Sprite allocation, completed creation, current body and
+eligible scene ownership, and a private issued capability distinct from raw ID
+text. Current export signature/role constraints never issue runtime authority.
+Preserve fields, aliases, captures, arguments/results and single-use completion
+proofs; initially prove only x/y, width/height and setPosition operations listed
+in the contract. Preserve actual Stop/restart/Load and separate destruction/scene
+lifetimes, rejecting unqualified transfers and stale/forged ingress. Keep default
+admission closed until current source/Blocks, editable portable routes, native
+lifetime and genuinely new selected originals agree. No Sprite inheritance,
+reference Arrays, broad SDK APIs or complete-context promotion is included.
+Any required supplier schema remains separately claimed and qualified.
+
+## Ordinary handler-record Arrays with primitive callbacks — 2026-10-15
+
+CLAIM — root-owned bounded ordinary handler-record collection bridge.
+[Ownership and acceptance contract](docs/compatibility/arcade-handler-record-arrays.md)
+starts with one-dimensional actual Arrays of one completed ordinary handler
+class and one exact primitive or Void callback signature. Preserve shared Array,
+record, closure and captured-cell identities, all actual writers and callers,
+read presence, alias replacement/removal and exactly-once serial completion,
+including pause. Existing metadata and Array transports never issue callback
+or element authority; validate raw ingress and actual current resource/graph
+ownership before normalization. Keep direct callable Arrays, generic class
+containers, nested/mixed elements and SDK values refused. Primitive Map and
+future owned Sprite capability remain independent contracts. Implementation waits for normal qualified claim merge. Default admission waits
+for full portable/current-edit/lifecycle proof, independent review and genuinely
+new selected-original controls; no complete library or corpus promotion follows
+from the first registry subset.
+
+## Arcade classes and mutable object semantics — proposed
+
+Claim proposed for the Arcade compatibility lane. Contract:
+[classes and objects](docs/ARCADE-CLASS-AND-OBJECT-SEMANTICS.md).
+Envelope: an explicit reference/descriptor helper alongside existing Arcade and
+Arrays values; Arcade-only AST lowering and native object operations; scoped
+shared dialect producer additions with reviewed pin adoption; Code/Blocks and
+export/reimport authoring; tests and GUI closure records. Preserve other target
+translators, independent device/arena work and the separately claimed frame
+scheduler. No global scheduler hook is owned by this lane.
+Merge this claim and check concurrent ownership before implementation.
+Constructor ordering, reference identity, alias mutation and original execution
+must qualify before class admission; source parsing alone is insufficient.
+
+
+## Native Arcade frame phases — 2026-10-13
+
+PROPOSED CLAIM — Codex Arcade scheduler, `lane/arcade-frame-scheduler-20261013`,
+base `b86d1cb9f294052bd0ae6dc4cd97d5bc57193c55`.
+This publication is documentation only; merge the claim before product edits.
+Envelope: the Arcade-specific phase hook in `scripts/apply-vm-overlay.mjs`,
+new `overlay/scratch-vm/src/extensions/crispstrobe/arcade/frame-phase.js`,
+necessary phase/lifecycle hunks in that directory's `index.js`, focused
+`test/makecode-arcade-frame-phase*.test.mjs` controls, this ledger and
+[the scheduler contract](docs/ARCADE-FRAME-SCHEDULER.md).
+Coordinate shared-file hunks with the existing Arcade integration owner.
+Preserve other runtime patches, producer vocabulary/pins, particle factories,
+import/export and independently owned complete-game qualification.
+Qualify original startup through its first authored yield, initial frame delta0,
+due pause/callback continuations, frame-fiber eligibility, one shared work
+budget, scene ownership, Stop/disposal/restart and debugger guards. Retain the
+observed missing update0 and delayed pause/creation caller failures; preserve
+the separate original 50 fps / GUI compatibility-mode 30 fps cadence limit. No fixed tick delay,
+counter/registry patch or diagnostic execution-order promotion. Exact-source
+Code/Blocks/export/reimport/fresh SB3 and installed GUI comparisons are required
+before closure; a private prototype is separate from product qualification.
+
+## Several boards in one project (radio pair first) — 2026-10-13
+
+CLAIMED — VPS Claude (opus), `lane/multi-board-project-20261013`.
+Goal: one project holds several boards, each owning its own program and
+sprites, the board being a layer above sprites; first demo a micro:bit remote
+driving a Calliope mini car over the simulated radio. One-board projects must
+load, save, compile and decompile byte-for-byte as today.
+Envelope, in landing order (each its own PR): (1) a board model helper under
+`overlay/scratch-gui/src/lib/bw-boards/` and routing the existing applied-device
+reads through it (`gui.jsx`, `stage-header.jsx`, `controls.jsx`,
+`debug-panel.jsx`, `microbit-sim-pane.jsx`, `arcade-device-pane.jsx`,
+`bw-debug/block-menu.js`, `pseudocode-importer.jsx` applied-device path,
+`circuit-tab.jsx` device writers); (2) per-target board tag and additional
+board configuration comments in the sb3 hooks (`scripts/apply-vm-overlay.mjs`,
+`scripts/lib/*-sb3-hooks.mjs`); (3) in sb3-creator (own producer repository,
+then a pin move here): `DEVICE <id> AS <Name>:` board sections, the per-board
+configuration cursor, the decompiler's board sections, Calliope motor words;
+(4) per-board MakeCode export/compile in
+`overlay/scratch-gui/src/lib/bw-makecode/{export.js,microbit-translate.js}`;
+(5) radio relay between two MakeCode simulator frames
+(`scripts/makecode/host.html`, `makecode-sim-pane.jsx`) and a board strip in
+`components/target-pane/`; (6) later, the firmware tier: a Calliope mini board
+and a shared-air hook in bw-board, then a multi-machine runner here. Tracked
+`packages/scratch-gui` twins and tests follow each step.
+Not in scope: Arcade authoring, painter, Buffer, SPIKE and peer-session code;
+no change to what a one-board project does. Evidence so far (not committed):
+both tutorial programs compiled offline and run as firmware on the pinned
+engine with the emulated radio stack; holding a remote button runs the
+matching Calliope motor line on a shared air and nothing moves on separate airs.
+
+
+## Two-way GPIO pin block ⇄ Forth — 2026-10-12
+
+DONE candidate — VPS Claude (opus), `lane/gpio-pin-block-20261012`.
+Envelope: a new Lite-native `bwgpio` scratch-vm extension (`set pin` / `read pin`,
+numeric pins 0–7) under `overlay/scratch-vm/src/extensions/crispstrobe/bwgpio/`,
+its builtin registration in `overlay/scratch-vm/src/extension-support/extension-manager.js`,
+the `LITE_ONLY` classification in `scripts/spike/bundled-upstream.mjs`, the
+extension-library card in `overlay/scratch-gui/src/lib/libraries/extensions/index.jsx`,
+the `bwgpio_setpin`/`bwgpio_readpin` text↔JSON mapping in
+`overlay/scratch-gui/src/lib/sb3-creator.js`, the Forth generator cases in
+`overlay/scratch-gui/src/lib/bw-lang/forth.js`, the tracked `packages/scratch-gui`
+twins of those three files, and tests (`test/code-tab-forth.test.mjs`, new
+`test/bwgpio-extension.test.mjs`); plus this ledger. Closes the half-broken pin
+round-trip: a pin block now generates `N V pin!`, and the Forth reader's
+`set pin N …` / `(read pin N)` now compile back to blocks, so DOS Forth GPIO
+programs are fully two-way. The block drives the Widgets pane's GPIO strip
+(bw-fpga-leds/bw-fpga-output) when a green-flag script runs it — the same pump
+the Forth-on-DOS `onPortAccess` bridge uses. No dependency pin, compiler,
+simulator, `forth.exe` or peer implementation change.
+
 
 ## Forth packaged license notice — 2026-10-12
 
@@ -11,6 +1519,119 @@ executable digest. This closes only the zForth notice inclusion gap. Exact
 linked newlib/libi86 obligations and whole-package component review remain open.
 No executable, dependency pin, compiler, simulator or peer implementation change.
 
+
+## List monitor dependency import boundary — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge before implementation.
+Contract: [list monitor import boundary](docs/ARCADE-LIST-MONITOR-IMPORT-BOUNDARY.md).
+Own only the list-monitor-scroller owned overlay and tracked mirror, narrow
+normal production-resolution and real-widget controls, and documentation.
+Select the existing direct named List entry from the adopted dependency; keep
+its actual implementation, required initialization effects, props, locale,
+accessibility, layout, activation, scroll, resize and current save/reopen data.
+No dependency/pin/API/lazy behavior, package side-effect declaration, budget,
+workflow or unrelated editor/artwork change. Existing painter-presence startup
+ownership remains separate. Actual production size and widget qualification
+are required; source-byte attribution is no promise that the budget will pass.
+
+## Arcade per-player score Number producers — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this claim before
+implementation. Contract: [per-player score Number producers](docs/ARCADE-INFO-PLAYER-NUMBER-PRODUCERS.md).
+Own the narrow ordinary SDK source proof, any necessary existing producer
+consumer integration, and only the existing score Number proof's same-role
+fixed-player physical/cached argument binding in
+`overlay/scratch-vm/src/extensions/crispstrobe/arcade/console-inspect-values.js`.
+Own focused current Code/Blocks/saved/export and native controls and docs; keep
+all genuine registration/cache/source-owner/active-result/lifecycle checks. Prove actual unshadowed fixed-player API bindings,
+complete access/writer census and real score Number completion. Preserve the
+existing direct-info and scene-clock boundaries; no namespace/opcode type grant,
+refusal suppression, runtime semantic change, pin adoption or whole-case credit.
+Other per-player results and EV3 console/motor gaps remain separate.
+
+## Carnival package provenance and selected native APIs — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration, coordinated extension of the
+existing Carnival host/authoring and dependency-project/native-admission lanes.
+Merge [the selected Carnival source contract](docs/ARCADE-CARNIVAL-NATIVE-SOURCE-ADMISSION.md)
+before implementation. Own narrow current-package/declaration provenance,
+shared native-source admission and namespace handoff for already implemented
+countdown/scoring/dialog APIs; source identity/coverage companion and controls,
+current Code/Blocks/save/reopen/export, actual affected native and GUI journeys.
+Preserve complete module initialization including all five original SpriteKind
+allocations, source bodies/resources/order, effects and explicit unsupported
+APIs. No whole-package skip, prefix/opcode grant, source/diagnostic pruning,
+new runtime capability, pin or workflow change. Coordinate exact shared hunks;
+other adapters/importer/editor owners remain preserved. Dependency-free native
+Code authoring cannot replace authentic asynchronous package-import evidence.
+
+## Arcade managed SDK activation ownership — coordinated claim
+
+CLAIM — bounded construction continuation, existing physical Sprite update and
+synchronous nested VM handoff compatibility.
+[Ownership and acceptance contract](docs/ARCADE-MANAGED-SDK-OWNERSHIP.md)
+owns only the listed shared exception/primitive utilities, existing SDK Sprite
+activation paths and focused native/probe controls. Preserve genuine caller,
+registration/cache, instance, phase, generation and lineage authority; retain
+Stop/reload and exceptional once-only settlement. Do not fabricate a parent or
+allow arbitrary caller-less execution or reentry. Distinguish metadata-only
+second-instance probes from intentional same-runtime Buffer owner isolation.
+Coordinate existing Throw, Array, waits, Number, scene-clock and null-getter
+owners before shared edits. No blanket inheritance, SDK API, value domain,
+supplier/pin, timing or new host root-loan expansion. Implementation waits for
+this claim's normal qualified merge; affected clean native own-guest and current
+portable-route qualification remains mandatory, with GUI and whole-case gates
+separate.
+
+## Shared static Image Array source transport: F — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this coordinated contract
+before implementation: [shared Image Array transport](docs/ARCADE-SHARED-IMAGE-ARRAY-TRANSPORT.md).
+Own a narrow actual-binding, initialization, all-writer and configured-effect
+proof before eager staging, with one private current plan consumed by source
+lowering and current frame resource emission. Coordinate the exact
+`arcade-translate.js`, `lower-pxt-staged-values.js` and necessary
+`export-arcade.js` hooks with their owners; own the optional source transport
+helper, focused controls and capability notes listed in the contract.
+
+Preserve once-per-entry versus repeated fresh construction, shared Image aliases
+and mutations, clone independence, array-observable semantics, current artwork
+and lifecycle. Unknown, exposed, mutated or repeatedly allocated Arrays retain
+ordinary lowering and diagnostics, including generic and partial source routes.
+No generated-name pruning, body or diagnostic deletion, retained-source
+restoration, generic Array/Image grant, runtime/ABI/word, supplier or pin change.
+The earlier observed 204 connected blocks of growth remain an original failure;
+local initialization, startup and callback transport remain separately owned.
+
+Require complete actual Code → Blocks → SB3 → current export → fresh reimport,
+affected native guest identity/mutation/lifecycle and genuine original SDK
+compilation/simulator qualification. Existing static Image and authored animation
+Array proofs supply only their actual producer facts; the empty-Array contract
+does not authorize this nonempty transport. No whole-project stability,
+visible GUI or corpus promotion follows from focused source controls.
+
+## Arcade generated helper recognition maintenance — 2026-10-16
+
+PROPOSED / DOCS ONLY — Arcade integration, coordinated import and export
+maintenance. Product implementation waits for this claim's normal qualified
+merge. Contract: [generated helper recognition](docs/ARCADE-GENERATED-HELPER-RECOGNITION.md).
+
+Own canonical parsing and current declaration/use recognition of existing named
+Array parse/JSON/access helpers and existing stop/run-token machinery in
+`arcade-translate.js`, `named-array-item-helpers.js`, a coordinated source-proof
+helper, focused tests and documentation. Templates and input must share the
+actual admitted parser context without dropping semantic metadata. Require the
+complete canonical bodies and actual lexical bindings, all writers/escapes and
+storage relationships before a call or declaration can be replaced. Preserve
+extra effects, unknown metadata and unmatched source through existing behavior
+or explicit refusal; do not prune by generated spelling.
+
+Preserve default semantics, producer domains, runtime/stop/frame policy, engine
+ABI and pins. Generic optional/default values and nonempty Array staging remain
+outside this scope. Existing exact source, current Blocks/Code, same/fresh save,
+native effects/stop lifecycle, current export/reimport and visible GUI gates
+remain mandatory for their respective claims. Keep original failures; no corpus
+promotion from focused controls.
 
 ## Wide Arcade artwork documents and Pixel authoring — 2026-10-12
 
@@ -63,7 +1684,10 @@ lazy import for the actual CLI consumer and declare the existing validated
 
 ## Public lane metadata cleanup — 2026-10-12
 
-CLAIMED — Codex, isolated branch `fix/public-lane-metadata-20261012`.
+DONE candidate — Codex, isolated branch `fix/public-lane-metadata-followup-20261012`.
+Follow-up to [#824](https://github.com/CrispStrobe/brickwright-lite/pull/824):
+remove one newly introduced operator location and session identifier from a claim;
+keep its worker identity, task envelope and status unchanged.
 Envelope: this ledger only. Remove operator machine locations, private session
 and terminal identifiers from public coordination prose; preserve task owners,
 branch/source identities, statuses, evidence links and acceptance criteria.
@@ -89,7 +1713,7 @@ filesystem failure without claiming full G05 or distributed release closure.
 
 ## Documentation-only Build supersession — 2026-10-12
 
-DONE candidate — Codex bwcx, branch `fix/docs-only-build-supersession-20261012`.
+DONE candidate — Codex, branch `fix/docs-only-build-supersession-20261012`.
 Envelope: this ledger, `.github/workflows/build.yml`,
 `scripts/verify-vercel-main-checks.mjs` and its existing focused test.
 Build38217053222 skipped browser/FPGA after excluded documentation advanced
@@ -105,6 +1729,23 @@ documentation exclusions. Unknown API responses run the full tail. Focused
 controls preserve every required publication job and catch executable mutants
 that skip excluded docs, misclassify source changes or accept truncated evidence.
 Hosted exact-head qualification and guarded landing remain pending.
+
+## Public path projection follow-up — 2026-10-13
+
+CLAIMED — Codex SPIKE review, isolated branch
+`docs/spike-path-cleanup-claim-20261013`; implementation follows only after this
+claim merges. Envelope: this ledger, `docs/OPEN-TASKS-2026-09-29.md`,
+`scripts/gen-bw-board-census.mjs`, `test/bw-board-census.test.mjs`, and
+`docs/generated/bw-board-census.json`. Generalize remaining machine-specific
+operational prose and cover absolute paths immediately following an environment
+assignment delimiter in census public presentation. Preserve raw evidence in
+private records, all source identities, observation/stable fields, dependency
+pins and generated GUI join fields. Include a regression for the assignment
+case and prove projection idempotence and original-input preservation.
+No guest, simulator, native broker, executable asset or workflow changes.
+This claim does not clear historical commits, binary artifacts, all public
+content, or whole-package licensing. G02 qualification continues independently
+on its reviewed source and sole official frontend artifact.
 
 ## Public operational-path cleanup — 2026-10-12
 
@@ -147,7 +1788,7 @@ timeout increase, diagnostic suppression, invented assets or runtime bypass.
 
 ## Original Arcade display readiness proof — 2026-10-12
 
-DONE candidate — Codex bwcx, continuing `fix/painter-installation-proof-20261011`.
+DONE candidate — Codex, continuing `fix/painter-installation-proof-20261011`.
 Build38198014926 passes both browser shards, corpus and FPGA but fails the
 seven-segment exact-screen comparison (19200 pixels different). Program-global
 completion does not prove a presented frame: original ScreenState initially
@@ -199,7 +1840,7 @@ ownership.
 
 ### Painted-level installation proof repair — 2026-10-11
 
-DONE candidate — Codex bwcx, branch `fix/painter-installation-proof-20261011`.
+DONE candidate — Codex, branch `fix/painter-installation-proof-20261011`.
 Build38155522851 and the independent PR797/800 Builds38155089351 and
 38157758738 all failed the same saved-level runtime-after-reopen check.
 The saved maps compare exactly; the final runtime receipt instead contains
@@ -284,7 +1925,7 @@ journey passes 5 of 5 against a production build with the fix.
 
 ## Arcade sprite placement from the tile map painter — 2026-10-11
 
-CLAIMED — Claude (opus), owner request ("fix it all"), branch
+DONE candidate — Claude (opus), owner request ("fix it all"), branch
 `lane/arcade-tilemap-placement-20261011`, stacked on Codex's painter stack
 (PR793 → PR794) and agreed with Codex, who is not taking it. In the painter,
 show where sprites are placed on the map and let the user place or move a
@@ -297,6 +1938,14 @@ scripts/verify-arcade-tilemap-placement.mjs with its additive light-shard step
 and budget registration in build.yml, Arcade docs and this ledger. No change to
 Codex's tile identity, legacy layout or persistence code paths, circuit source
 or pins; legacy colour-tile placement (`placeOnLegacyTile`) stays out of scope.
+Done: Place sprite tool, placement list, markers and staged Save/Revert in the
+painter; model lib/bw-makecode/tilemap-placements.js. Four model tests run
+the real game and the MakeCode export (moved, added and removed placements;
+the map's own placements only, up to the next map; stale lists refused); three
+source mutants are caught. The new browser journey passes 17 of 17 twice
+against a production build; the painter, tile identity and legacy layout
+journeys still pass (19, 11, 8 checks).
+
 
 ## Arcade tile names and MakeCode asset identity — 2026-10-11
 
@@ -419,7 +2068,7 @@ integration session (merged: #786, #787, #788):
 
 ## Reactive live-clock package adoption — 2026-10-10
 
-SUPERSEDED candidate — Codex bwcx, isolated branch `lane/reactive-live-package-adoption-20261010`,
+SUPERSEDED candidate — Codex, isolated branch `lane/reactive-live-package-adoption-20261010`,
 exact base `9ac32a75562577c945baff383fbfb5dcddd02804`. Adopt bw-board
 `74b971b48a9ebe97d5dd2a793ba3f85a6ffa0d42` only; keep CUI, sb3 and flasher pins
 unchanged. Upstream CI37985452352 and Harris37985452331 are exact-head green;
@@ -952,12 +2601,87 @@ The [receipt](docs/receipts/2026-10-07-arcade-resource-picker-errors.json) recor
 exact boundaries. Hosted follow-up checks remain pending; corpus93 partial
 and original Assets-editor qualification remain open.
 
+## SPIKE Code Stop during native startup — 2026-10-13
+
+DONE — Codex SPIKE integration, `fix/spike-startup-stop-feedback-20261013`.
+Envelope: `overlay/scratch-gui/src/lib/spike-arena/code-run-feedback.js`,
+`overlay/scratch-gui/src/components/tw-pseudocode/spike-arena-pane.jsx`,
+`test/spike-code-run-feedback.test.mjs`, `test/spike-arena-pane-units.test.mjs`,
+this ledger and the SPIKE status guide; preserve tracked mirrors only where they
+still exist. The installed bb293 startup observation exposes Arena Stop but
+hides Code Stop until firmware feedback becomes active. Add an explicit starting
+notification through the existing feedback callbacks and arena pane, after
+validation and with the stop handler already installed. Show Code Stop while
+starting without reporting guest execution as RUNNING. Preserve terminal and
+cancellation guards, invalid-program refusal, existing retained uploads and
+cleanup ownership. Qualify the actual Code Stop action during pending native
+startup on a freshly built installed consumer, followed by cleanup and a new
+run; host controls alone do not close this lane. No importer, painter, peer,
+firmware, Runtime/model pin or workflow edits.
+
+At source candidate publication, localized cold-start feedback exposed Code Stop
+after session startup invocation. Fourteen Node 22 feedback controls passed;
+four notification, terminal and retained-upload mutants failed. Hosted and fresh
+installed qualification remained pending then; host controls alone did not close
+this claim.
+
+Closed by PR860, merge5e69e8ac85c006a0d5724e3be17bc3d03729f88b; tested source
+da37339468a1080d22812b8747eb9659ac85d6c5. All seven enabled checks passed;
+actual installed Code Stop before first frame, no upload, deferred cleanup,
+restoration and fresh successful run passed. Original failures remain preserved.
+Reviewed and actual merge trees match; broader G02 and distribution stay open.
+
 ## SPIKE handover
 
 The [SPIKE state and next lanes](docs/SPIKE-STATUS-AND-LANES.md) record the
-2026-10-05 tested GUI baseline and proposed cross-repository work. These are task
-definitions, not implementation claims; claim a lane below before source changes.
+2026-10-05 GUI baseline, the separately versioned 2026-10-12 installed Linux
+native/Python persistence and lifecycle checkpoint, and proposed cross-repository
+work. G01–G07 definitions do not imply full completion; claim a lane below before
+source changes. The checkpoint preserves earlier failures and package boundaries.
 This documentation-only handover owns no actuator or firmware implementation.
+
+## Stratified CLI instrument regression harness — 2026-10-17
+
+SCOPED HANDOFF — implementation not started; no active implementation owner
+after this documentation closeout. Preparation branch
+`lane/instrument-regression-20261017`, exact base
+`e2225bb05eb2464e31100de3a8060f59ab6f3062`. The user explicitly permits
+preparing this harness in parallel with iOS release work. Execution of the
+actual campaign remains after TestFlight; no mobile/release ownership takeover.
+
+The closing session releases this prospective implementation lane. A fresh
+agent must refresh main and PR1043, check overlapping claims, then publish and
+merge its own implementation claim before coding. This is not a finished
+harness or an executed campaign. The current status, case grid, file boundary,
+negative controls and follow-up acceptance are specified in
+[the implementation handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md).
+This closeout changes only this ledger, `PLAN.md`, `ROADMAP.md` and that handoff;
+the future implementation boundary below is unchanged.
+
+Bounded envelope: this ledger; `PLAN.md`;
+`.github/workflows/circuit-instrument-regression.yml`;
+`scripts/circuit-instrument-regression.mjs`;
+`scripts/lib/instrument-regression-cases.mjs`;
+`scripts/lib/instrument-regression-compare.mjs`;
+`test/circuit-instrument-regression.test.mjs`;
+`docs/CIRCUIT-INSTRUMENT-REGRESSION.md`. No package, lock, pin, production model,
+GUI, existing workflow, iOS helper, private corpus payload or deployment edit.
+
+Implement a deterministic manifest of 312 parameter cases across 12 authored
+topology templates: resistive 64, RC 64, RL 64, explicit diode DC 48, explicit
+NPN DC 24, nominal LM741 24 and ADP7118 startup 24. Preserve distinct direct
+ngspice (264) and analytic model (48) reference classes. These are planned
+parameter cases, not 312 imported schematics, predicted passes or physical
+accuracy evidence. Freeze clocks, signs, selectors, model cards and tolerances
+before results; preserve all refused, failed and not-run cases in denominators.
+
+Use the actual installed consumer CLI and independently verified pinned package
+sources, never a sibling checkout override. Keep raw input/reference/output
+and source/work receipts. Pure tests must reject numerical, current-sign,
+clock, missing/duplicate observation and aggregate denominator mutations, not
+merely unrelated parser refusals. Manual-only hosted campaign; no automatic
+campaign or dispatch during preparation. Merge this claim before implementation;
+require focused controls and all enabled exact-head qualification before landing.
 
 ## The protocol
 
@@ -1411,17 +3135,37 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 ## CLAIMS — work in progress
 
-| Original MakeCode files in the `.sb3`, kept but marked stale (task F10 of docs/OPEN-TASKS-2026-09-29.md; owner decision 2026-10-12) | VPS Claude (opus), `Claude-Session: fa1e9be5-1c83-4316-b417-b2d621c9e62f`, worktrees under `/mnt/volume1/code/wt/lite-f10*` | base `origin/main`; a new overlay module `overlay/scratch-vm/src/serialization/bw-makecode-original.js` (+ its save/load hooks in `scripts/apply-vm-overlay.mjs`), where an import records the original (`scripts/makecode.mjs to-sb3`, the GUI MakeCode import), the export's choice between original and regenerated files, the WIP test `test/arcade-metadata-sb3.test.mjs` re-ported plus a stale-case test; this row and the task file. Not the importer's translation (E10) nor the Arcade runtime/painter lanes. | **CLAIMED 2026-10-12.** |
+| Arrays extension: text items without JSON quotes (task E15 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `69b484691`; upstream CrispStrobe/extensions arrays.js + tests; Lite extensions-bundle pin surfaces + BWValues parity tests; this row and the task file. | **CLAIMED 2026-10-14 — parked** (owner decision): waits for the Codex arrays lane (#877, claim #949), which edits the same `arrays.js` paths. |
+
+| DONE — MakeCode export: type text results and string globals (task E16 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktree `wt-e16-export-types` | base `69b484691` (impl `8faa61643`, merged with main `a4708f694`); paths `overlay/scratch-gui/src/lib/bw-makecode/export.js`, `overlay/scratch-gui/src/lib/bw-makecode/export-ev3.js` (a mixed variable is shown as text), new `test/makecode-result-types.test.mjs`; this row and the task file. MakeCode census doc not regenerated. | **DONE 2026-10-14 — Lite PR #918** (merge `1b47c80dd`). Found by E14 (#902). **Checked first:** no open PR touched export.js. **Defect:** export.js typed a variable from its `set`s alone and read a copy of another variable as a number. The importer writes `g = f(3)` as `f 3` + `set _mc1 to f_result` + `set g to _mc1`, so `let _mc1 = 0` and pxt refused every re-export of a procedure returning text. A `let s: string` with no value (or `= null`) imports as `set s to 0` and was refused the same way. **Fix:** `variableTypes()` (was `textVariables`) spreads what a variable holds along its copies (slot `[12,…]` or a `data_variable` block) to a fixed point; a variable nothing sets is its 0. Text and numbers → `let v: any` (the leading-literal fold keeps `: any`). A variable that is computed with (arithmetic, `change by`, compared with a number) stays a number, so pxt still refuses it by name. As `any`, TypeScript would concatenate where Scratch adds. A mixed variable passed to a procedure makes the parameter `any` (E13 inference). An `any` parameter gives a variable set from it both kinds. EV3 shows a mixed variable with `showString`. **Round trip:** an imported program with two text-returning procedures, `let s: string` and `let u: string = null`, re-exports and compiles in pxt-microbit. The second trip is byte-identical. The MakeCode simulator prints `x3x3 a:2 b:4 c:6 d:3` for the original and the re-export. The same shape compiles in pxt-ev3. **Census before → after** (instrumented copy of `scripts/makecode-census.mjs` recording each export, full runs, default and `--snippets`): micro:bit apps 204 full / 8 partial / 2 not-a-program / 1 needs-extension, identical, export text identical 212/212. `--snippets` 891 full / 158 partial / 9 sim / 2 import-threw / 20 silent-loss / 18 needs-extension / 9 not-a-program / 6 recompile, identical, export text identical 1084/1084. EV3 100 / 157 / 1, identical, 257/257. Lite (354): recompile 31 → 30, full 150 → 151 (`mb05-faceplate-calc`: `oled_text` → `any`). Export text changed in 2 of 324: that program and `a2-faceplate-calculator`, still refused because `acc`/`entry` are computed with. A first draft without the computed-with rule compiled a2 with string concatenation in its arithmetic; the rule was added for that. No pxt-microbit doc program has a text-returning procedure that reaches export. **Tests:** `test/makecode-result-types.test.mjs` (20: one per rule, each export compiled by pxt; the imported fixed point; simulator equality; the pre-E16 receipt; EV3). On the pre-fix code 12 of the first 15 were red; the 3 green are no-regression guards. 18 mutations, each red. CI on `a4708f694`: all 9 checks green (vendor-freshness red on the first head `8faa61643` from the gallery `circuitplayground` drift that was red on main too; green after the merge-in). **Left:** the importer (translate-base.js) still writes `set s to 0` for a `let s: string` with no value, so such a global re-exports as `any`, not `string`. A mixed variable passed to a built-in number API compiles as `any`. |
+
+| Arcade export: `letter of` (task E17 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `69b484691`; `overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js` only if no open Arcade PR covers it; this row and the task file. | **DONE 2026-10-14 — PR #925.** No open Arcade PR touched `letter of`/`charAt`/`length of`; `letter n of s` exports as `("" + s).charAt(n - 1)`, checked against pinned pxt-arcade 4.2.1. |
+
+| DONE — Seated MCUs with no terminals in the gallery (task B17 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `69b484691`; measurement first; fix in designer seating (bw-circuit-ui) or gallery data (sb3-creator/Lite) upstream-first; census test; this row and the task file. | **DONE 2026-10-14 — Lite PR #915 (`lane/b17-seated-terminals`).** Found by B16 (#885). Upstream merged first: bw-circuit-ui #83 `9a1f06e5` (PR CI 38535170657: test, interaction-gate, kicad-oracle, spice-oracle green; master CI 38541394186 on `9a1f06e5` green). Lite pins bw-circuit-ui `9a1f06e5` (vendor-pins, root + packages/scratch-gui package.json/locks, package notices, eight package-adoption tests, i80386 workflow; old sha gone outside history). **Measured first** through the designer's load path (Node: `fromJSON` + nets/`_syncNetlist` with the app's engine injection; Chromium: the dev designer's circuitData effect): the 16 A2 benches (79-82 x default/stc89c52rc/stc12c5a60s2/stc15f2k60s2) store `"terminals": []`, and 0 of their 160 wired GPIO legs moved when driven (82-a2-led-row showed portByte 0, all LEDs lit; 79's display blank). Every other seated MCU (863 after load: STC, AVR, Pico, STM32, machine chips) already answered; the 608 declared-subset ones had undeclared but unwired legs. **Root cause**: bw-board drives only declared terminals; `Circuit.fromJSON` kept a seated part's stored list verbatim. **Fix**: `withSeatLegs`, so every seated leg is a terminal. After: 160/160 legs answer; LED row portByte 165 `01011010`; display `"       0"` (all three chips, Node + Chromium). Whole-gallery blast radius: no load-error or power-on voltage change except the stc15 A2 split pin nets merging; two schematic baselines redrawn (supply-pin order, looked at). **Gates**: cui `test/seated-legs-are-terminals.test.js` (7 families; mutation 7/7 red); Lite `test/b17-seated-mcu-legs-drive.test.mjs` (census; red at `5f336b24`: 624 MCUs / 160 legs); B16 test relies on the load path. |
+
+| DONE — Compiled-C keypad key 6 on stc12/stc15; 16-bit `show number` overflow (task B18 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `69b484691`; upstream stc-compiler and sb3-creator C target; Lite pin surfaces + tests; this row and the task file. | **DONE 2026-10-15.** Upstream: **stc-compiler #17 → `3fd47d67`** (KEYPAD4X4 rows/cols keep the default quasi-bidirectional mode instead of push-pull; `show_number` takes a `long`) and **sb3-creator #142 → `2cc15b99`** (the same long `show_number` helper, line-identical to stc-compiler's). Measured before (Lite `1b47c80dd`, sb3-creator `c47b9680`, stc-compiler `bcfe34e2`): stc-compiler's C showed **0/15 of keys 1..15 on stc12c5a60s2 and stc15f2k60s2** (16/16 on stc89c52rc) -- a push-pull column drives its own 1 against the row the key pulls low; B16 only saw key 6. sb3-creator's C (what Lite compiles) read 16/16 on all three. Both emitters took SDCC's 16-bit `int` for `show number`: 32768 → `  -32768`, 65536 → `       0`, 99999 → `  -31073`, 12345678 → `   24910`. **Lite pin:** no separate bump or backport was needed -- the pin had already moved to sb3-creator `8472098b` with the ESP8266 adoption (`abc3aa31b`), and `8472098b` contains #142 (compare: 3 ahead, 0 behind `2cc15b99`). The planned cherry-pick backport branch was therefore not created. Lite's stc-compiler pin covers only flasher.js, so no stc-compiler bump. **Test:** new `test/b18-compiled-keypad-and-show-number.test.mjs` (Lite's sb3-creator C → SDCC → emu8051 on the gallery's 79-a2-sampler benches, all three chips): 16/16 keys on every chip; `show number` for 15 values across the 16-bit edges, eight digits and wider-than-display equals what the stc12 block shows on the same bench. 2/2 at `8472098b`; **red at the previous pin `0e486e0f`** (32768 → `-32768`, 12345678 → `24910`). **Mutation:** keypad rows/cols set push-pull in the emitter's port-mode setup (the stc-compiler bug) → keypad test red, stc12 reads `0` for every key. The next sb3-creator bump keeps #142 (it is on sb3-creator main). Parked WIP branch `lane/b18-compiled-c-gaps-on-917` deleted. |
+
+| DONE — Importer: member access on string/array parameters resolved by name (`s.length` → variable `length`) (task E14 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktree `wt/e14-member-access` | base `6e204eec5` (impl `6275c33b2`, merged with main); paths `overlay/scratch-gui/src/lib/bw-makecode/translate-base.js`, new `test/makecode-member-access.test.mjs`; this row and the task file. No per-target translator changed; export-arcade.js not touched (open Arcade PRs). MakeCode census not regenerated: its counts did not move. | **DONE 2026-10-14 — Lite PR #902.** Found by E13 (#896). A member no rule knew was returned as its bare name (a variable holding 0); now translated (`.length`/`[i]`/`charAt`/`concat` of declared text and `: string` record fields, Math's constants, arrays `_pickRandom`/`unshift`) or refused by name, read (`unknownMember`) or written (`memberTarget`, naming the calls). Three-way: micro:bit/EV3 13 readings, Lite VM `0 0 2 2 2 1 2 2 0 0 12 0 0` → `5 0 1 1 1 5 1 1 2718 1414 73 5 1` = pxt-microbit sim = re-export in the sim (refused by pxt before; EV3 re-export compiled by pxt-ev3); Arcade 9 readings = pxt-arcade 4.2.1 sim (was 9 of 9 wrong). Silent fallbacks (property as a variable): micro:bit docs 7 → 0, EV3 0 → 0, Arcade corpus 1 → 0. Census (default and --snippets, full runs before and after): every stage count identical, 0 rows change stage. Tests `test/makecode-member-access.test.mjs` (54), 13 mutations red; MakeCode/Arcade suites 1589 tests 0 fail (5 LabWired skips); gates no-nul, fetch-pinning, ci-skip-census, browser-gate-*, build-trigger-paths, gate-shapes, overlay-packages-pairs, declared-pins-wired, check-mirrors, gate-coverage, no-dead-overlay-modules, notices-coverage, skips-are-counted, wait-census, workflow-trigger-coverage green. Found, not fixed: Lite's arrays extension returns text items JSON-quoted (length of `"abc"` is 5); export-arcade.js lacks `letter of`; export.js types hoisted text copies as number. |
+
+| DONE — MakeCode re-export: infer procedure parameter types instead of always `number` (task E13 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktree `wt/e13-param-types` | base `c474198da` (impl `c9afa0221`, merged with main); paths `overlay/scratch-gui/src/lib/bw-makecode/export.js`, new `test/makecode-parameter-types.test.mjs`, `test/makecode-text-truthiness.test.mjs` (E12's r8/r9 now compared after re-export); this row and the task file. export-arcade.js not touched: it declares its own parameters. MakeCode census not regenerated: its counts did not move. | **DONE 2026-10-13 — Lite PR #896.** Found by E12 (#882). **Checked first:** no LANES row or open PR claimed export.js's procedure emission. #884 touched export.js only for a motor case; it landed meanwhile and was merged in. **Measured** with an instrumented copy of `scripts/makecode-census.mjs --snippets` (pxt-microbit 9.1.1, pxt-ev3 1.4.41; all pxt diagnostics, not the first only). micro:bit docs, 1113 programs: 17 originals declare functions (27 functions; parameters 12 `number`, 3 `string`, 2 `boolean`, 2 arrays). The 3 programs with `string` parameters (`courses/blocks-to-javascript/writing-functions#5/#6/#7`) were the only ones pxt refused on re-export for a procedure parameter. `boolean` parameters import as 1/0 (the dialect has no booleans) and recompile as `number`. Array parameters are specialised away by the importer, so no array parameter reaches the dialect. EV3, 258 programs: 5 declare functions (28), none with parameters. Lite corpus, 353 retargeted: 4 programs have parameterised DEFINEs, none passes text, and 0 of its 30 recompile failures are procedure parameters (the `text "!"`/`text "A"` diagnostics are a display-text block). Arcade: export-arcade.js declares its own (`any`/Image) parameters, and its import closure (14 modules) never reaches export.js, so E2's 242/244 cannot move. **Rules** (`export.js`): `procedureParameterTypes()` :968. `<p>` → boolean :1079, and `argument_reporter_boolean` is a boolean reporter :57. A call passing text (non-numeric literal, `""`, text variable/reporter/array item) → string. A number or arithmetic (NUMBER_SLOTS) → number. Shown or sent as text (TEXT_SLOTS) needs text. `length of`/`letter of` (TEXT_HINT_SLOTS :933) or a numeric text literal (NUMERIC_TEXT :913) are hints. Text and number → `any` (pxt-microbit and pxt-ev3 accept it). Parameter-to-parameter flows spread their kinds monotonically to a fixed point :1065. A variable set from a string parameter is text :905, iterated with textVariables :1243. A numeric text literal passes as a number in a number parameter (`argument()` :296). Declaration :1288. **Round trip:** E12's 10 readings, re-export now `function f(p: string)`: micro:bit sim `2 1 1 2 1 1 2 2 1 1` = MakeCode's, all 10 including r8/r9 (before: r8/r9 left out, refused). EV3: pxt-ev3 compiles the re-export, which reads the same in the micro:bit sim. Imported typed programs reach a fixed point (second trip byte-equal) and compile. **Census before → after:** default census (the generated doc's corpus) identical in every row: micro:bit apps 204 full / 8 partial / 2 not-a-program / 1 needs-extension; Lite 150 full / 143 partial / 30 retarget / 30 recompile; EV3 100 full / 157 partial / 1 not-a-program. `--snippets` 1113: recompile 9 → 6 and full 888 → 891 (writing-functions #5/#6/#7), 0 rows worse, no other field changed; Lite and EV3 unchanged. Re-export text is byte-identical for 1661 of 1664 exported programs; only those 3 change. **Tests:** `test/makecode-parameter-types.test.mjs` (15: one per rule, each export compiled by pxt; the pre-E13 receipt; an imported fixed point; EV3) + E12's 6. 251/251 across 17 MakeCode test files. 13 mutations, each red: always `number`; mixed → string; `<p>` → number; no flows; no back hint; needs-text ignored; length hint ignored; numeric text not converted; variable-from-parameter link cut; boolean reporter removed; slot found via `parent`; call text not evidence; arithmetic not evidence (the last one was green at first, so a case was added). **Left:** (1) importer gap found here: translate-base.js reads `s.length` on a `string` PARAMETER as a variable named `length` (`isText` checks textVars, not E12's `stringTypedReferences`), so `function d(s: string) { r = s.length }` imports as `set r to length`, a silent wrong value. The export therefore keeps a string parameter's length as `("" + p).length`, which round-trips at a fixed point. (2) A parameter given non-numeric text AND used in arithmetic is `any`. It compiles, but TypeScript concatenates where Scratch adds. (3) The 6 remaining snippet recompile failures are API typing (`showString(number)`) and `0 == 1`, not parameters. |
+
+| DONE — Compiled 7-segment programs blank in the circuit view: persistence-based 7-segment model (task B16 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `60b1a18b6`; upstream bw-board 7-segment / multiplexed display model + tests; Lite bw-board pin-bump surfaces + a compiled-C display test; this row and the task file. | **DONE 2026-10-13 — Lite PR #885 (`lane/b16-sevenseg-persistence`).** Found by B14 (#867). Upstream merged first: bw-board #548 `0c5b0284` (PR-head CI 38405129067 green; master CI 38415904970 on `0c5b0284` green); Lite pins bw-board `0c5b0284` with every ripple surface regenerated (check twins green, old sha gone). **Measured first** (Prechin A2 wiring, emu8051, sb3-creator C and stc-compiler `stc_pseudocode.py` C): the ISR blanks P0, sets the 74HC138 address, writes the digit; `sevenseg8` latched at the address change, so every compiled program showed `"        "` on stc89c52rc, stc12c5a60s2 and stc15f2k60s2, while the stc12 block path (`_segpush`, zero-time Gray-code push) showed the digits. **Model** (`src/devices/a2-displays.js` `integrateSevenseg8`): per digit, each segment's on-time while that digit is selected over a 20 ms window (`PERSISTENCE_WINDOW_NS`, the LED brightness window), lit at >= 1/32 (`DUTY_THRESHOLD`, a quarter of one digit's 1/8 share; a 1 ms/digit scan gives 10-15 %, scan transients < 0.1 %); a digit the window never selected keeps the latched frame (the blocks' zero-time push). Running sums in integer ns, exact vs a direct integration of a 3000-write trace. New state `segDuty`/`selDuty`; the canvas keeps reading `digits` (not `segBrightness`, which it would draw raw). **After:** compiled C `"       0"` then `"       6"` (key 6) on all three chips on the 79-a2-sampler benches, `"     -42"` for `show number -42`; block path unchanged; a truly blank display stays blank; no transient ghost. **Mutations** (bw-board tests), each red: instant latch restored (8), threshold 0 (11), threshold 0 with strict > (2, incl. the ghost test), no latch fallback (4), 2 ms window (8); Lite test red at `7254f240` (compiled half), green at `0c5b0284`. **Consumers:** bw-circuit-ui canvas (path B, `digits`) improved knowingly; Lite B7/B14 block tests unchanged and green; B14's compiled test now also reads `sevenseg8`; no other board or bench in bw-board has a multiplexed `sevenseg8` (other displays are driver-chip registers or synthetic-LED composites already on `ledBrightness`). **Named, not fixed:** a digit held blank before a zero-time push lights 625 us after it (eye-true); with a LEDBANK8 on P2 the compiled C overwrites the select every tick and shows every digit's segments on digit 7 (as on silicon; the importer warns); 33 seated gallery MCUs declare `"terminals": []` and bw-board drives only declared terminals (the test declares the seat legs; whether the designer fills them is unverified here); stc-compiler's C on stc12/stc15 does not register key 6 on the sampler bench (sb3-creator's C does); `show number 12345678` in C is 16-bit `int` (shows 24910). |
+
+| DONE — Text truthiness in the shared MakeCode importer base: micro:bit and EV3 (task E12 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `e9c3373b4`; paths `overlay/scratch-gui/src/lib/bw-makecode/translate-base.js` (+ micro:bit/EV3 translate if needed), focused tests, regenerated MakeCode census if counts move; this row and the task file. | **DONE 2026-10-13 — Lite PR #882.** A text in a condition (isText, or a reference declared `: string`, by scope: new `stringTypedReferences()`) is `not ((length of s) = 0)` in translate-base.js `condition()`; numbers unchanged. Readings (sim / Lite before → after): `2 1 1 2 1 1 2 2 1 1` / `1 2 2 1 0 2 1 1 2 1` → `2 1 1 2 1 1 2 2 1 1`, micro:bit and EV3; re-export refused by pxt before → equals the sim after (parameter calls excluded: export.js types parameters `: number`). Census unchanged (204/8/2/1, 150/143/30/30, 100/157/1; 0 rows differ); importer output byte-identical over 1113 micro:bit, 258 EV3, 2097 Arcade inputs. Tests `test/makecode-text-truthiness.test.mjs` (6), 7 mutations red; MakeCode+sb3 suites 1404 (3 Arcade timing flakes at load 17, green alone); pre-push gates 94 green. Fix commit `c9c95f01c`. |
+
+| Original MakeCode files in the `.sb3`, kept but marked stale (task F10 of docs/OPEN-TASKS-2026-09-29.md; owner decision 2026-10-12) | VPS Claude (opus) | base `origin/main`; a new overlay module `overlay/scratch-vm/src/serialization/bw-makecode-original.js` (+ its save/load hooks in `scripts/apply-vm-overlay.mjs`), where an import records the original (`scripts/makecode.mjs to-sb3`, the GUI MakeCode import), the export's choice between original and regenerated files, the WIP test `test/arcade-metadata-sb3.test.mjs` re-ported plus a stale-case test; this row and the task file. Not the importer's translation (E10) nor the Arcade runtime/painter lanes. | **DONE 2026-10-12 — Lite PR #832 (merge `414b25e6`).** An imported MakeCode project saves its own files as `bwMakeCode` {version 2, target, name, files, fingerprint} (overlay module `serialization/bw-makecode-original.js`; two idempotent hooks in `apply-vm-overlay.mjs`: toJSON after E5's extensionURLs, deserializeProject load + settle after installTargets). The importer writes it unfingerprinted; the VM's first load fingerprints the program from its own serialization (blocks without positions/comments, variable/list/broadcast names, costume/sound assets, target names, extensions — not runtime state, so running the game is not an edit). CLI `to-ts`/`to-project`/`to-hex` export the original while current and say when it is stale; the Code tab records it only for a build of the unedited translation, and its run/download subject, Arcade `.mkcd` and micro:bit exports use it only while current; the source zip says when the program changed. `test/arcade-metadata-sb3.test.mjs` (the WIP test re-ported + stale case + GUI wiring): 4/4, red under never-stale, no-settle, position-counts and not-saved mutations. |
+| F10's GUI path in a real browser (task F10.1 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `origin/main`; `scripts/verify-makecode.mjs` (Arcade import section only), plus status text. No new CI step, budget or census entry; no runtime/importer change unless the browser check finds a real F10 defect. | **DONE 2026-10-13** (branch `lane/f10-1-gui-check-20261013`). Five new checks in `scripts/verify-makecode.mjs` section 2d′, after the Arcade run: ⇦ To blocks keeps `bwMakeCode` with a 16-hex fingerprint; the real `.sb3` save → reopen brings the same files and fingerprint back; ⤓ Arcade export of the unchanged project writes the original `main.ts` byte for byte; after deleting a script's top block the original is still saved; and the export then comes from the blocks. No new CI step. Found while reading 2d: since F10, ▶ Run as MakeCode Arcade on an unchanged import compiles the ORIGINAL files, so 2d no longer exercises the Scratch → Arcade exporter for this fixture; the post-edit export check covers that exporter again. |
+| MakeCode CLI + emulation: Calliope/EV3 CLI targets, `makecode run` on LabWired, micro:bit V2 emulated MakeCode (tasks A6, A7, A8 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `origin/main`; `scripts/makecode.mjs`, new `scripts/lib/makecode-run.mjs`, tests `test/makecode-cli-*.test.mjs`; for A8 the `pxt-runtime.js` emulator call sites, the Code-tab MakeCode run/emulate action and the Debug pane's firmware attach, plus the emu-bases serving step. Not the importer/translators themselves (Arcade lane), not Arcade export. One PR per task, in order A6, A7, A8. | **DONE 2026-10-13** (claimed 2026-10-13; A6 #873, A7 #873, A8 #874). A6 DONE 2026-10-13 (Calliope mini and EV3 CLI targets; status in the task row). A7 DONE 2026-10-13 (`makecode run` on the emulated micro:bit V1 / Calliope mini board; nRF51 ADC unmodelled). A8 DONE 2026-10-13 (micro:bit V2 emulated MakeCode in the CLI and the Code tab; V2 serial withheld, queued as A10). |
+| DONE — Circuit Playground Express: scope the device world, then the translator (task A9 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `origin/main`. Phase 1 (this claim) is SCOPING ONLY, delivered as a written plan for the owner to approve: what CPX MakeCode projects use (pxt-adafruit's block namespaces), which of it Lite's dialect, VM device state and the existing CPX board part can carry, whether LabWired's `atsamd21` model can back the board, and what is refused by name. No code, pin or dependency change in phase 1. Not the MakeCode CLI/emulation work of A6–A8 (that lane's row above). **Scoping delivered 2026-10-13:** `docs/A9-CPX-SCOPING.md`; owner chose an own CPX pane, core words + animations/sounds, pxt-adafruit's sim as the behavioural reference, and LabWired SAMD21 as a separate scoping note (`docs/A9-CPX-LABWIRED-SCOPING.md`, no code; licence route (b)+(c): own test firmware now, a from-source CPX image on a permissive ASF4 replacement later, the CDN base never executed). **Phase 1 (device world) delivered 2026-10-14:** extensions #41 + #45 (`circuitplayground`, 45 blocks, pxt-adafruit 1.6.8 behaviour; #45 fixes full-brightness unscaling and the switch starting right, both found by the simulator comparison), sb3-creator #136 (`DEVICE CPX`, `cpxDialect.js`, 45 words, census = pinned surface), and this Lite PR: sb3-creator pin `c47b9680` → `0e486e0f` (carries 75 other-lane commits; the Arcade word census 316 → 380 is theirs), the bundled extension on its own scoped `circuitplayground` pin, notices, the CPX dock + pane (stage-header button on DEVICE CPX), `scripts/lib/makecode-adafruit-sim.mjs` (pxt-adafruit's own simulator, headless, virtual clock) and `test/cpx-device-world.test.mjs`: 23 scenarios — ring operations, five animations frame by frame, tones and six melodies note by note, click / long click, switch, light and loud-sound events — read the same in Lite's extension and in MakeCode's simulator. The translator (phase 2) is queued separately as **A12**, live state on the circuit face as **A13**, and the LabWired CPX lane as **B19–B22**, all unclaimed; this claim is released. | **DONE 2026-10-14** (phase 1) |
 | The GUI package's avr8js follows bw-board's fork (task B15 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktrees under `[local path omitted]` | base `origin/main`; `packages/scratch-gui/package.json`, `scripts/integrate.mjs`'s avr8js default (via `scripts/lib/avr8js-spec.mjs`), one focused test; this row and the task file. Not B14 (gearmotor reverse, 7-segment minus) nor B9 (ESP32 LEDC). | **DONE 2026-10-12 — Lite PR (this branch, `lane/b14-pwm-closeout-avr8js-20261012`).** `packages/scratch-gui/package.json` declares `github:CrispStrobe/avr8js#feea84c4`, the commit bw-board pins (#413), instead of npm `^0.21.0`; `scripts/integrate.mjs` writes it from one constant, `scripts/lib/avr8js-spec.mjs`. `test/avr8js-one-version.test.mjs` holds the constant equal to the installed bw-board's declared avr8js, checks the GUI package.json and integrate.mjs use it, and where the GUI package is installed that it resolves the fork build (`-bw.N`): 2/2 locally with the GUI installed. **Follow-up 2026-10-12:** the tracked `packages/scratch-gui/package-lock.json` still locked npm 0.21.0 (and a nested copy under bw-board), so `worktree-deps verify` failed in every fresh worktree; it now locks the fork commit once at the top level, as installed, and the test checks the lockfile too (3/3; red on the old lockfile). |
-| Arcade importer gaps found by E9: text truthiness, shared functions across sprites, unreachable predicateBranches (task E10 of docs/OPEN-TASKS-2026-09-29.md; starts after C8) | VPS Claude (opus), worktrees under `[local path omitted]` | base `40cfe8107`; `overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js` + helpers, export side only if a round trip needs it, focused tests; this row and the task file. | **CLAIMED 2026-10-12.** |
+| DONE — Arcade importer gaps found by E9: text truthiness, shared functions across sprites, unreachable predicateBranches (task E10 of docs/OPEN-TASKS-2026-09-29.md; starts after C8) | VPS Claude (opus), worktrees under `[local path omitted]` | base `40cfe8107`; `overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js` + helpers, export side only if a round trip needs it, focused tests; this row and the task file. | **DONE 2026-10-13 — Lite PR #863.** Paths: `arcade-translate.js` (fixed-path text condition in `conditionInner`; fixed-path DEFINEs per calling sprite in the assembly; predicateBranches/predicateCell and their statement branch removed), `lower-lazy-values.js` (Switch), new `test/makecode-arcade-importer-gaps.test.mjs`. Before → after (sim / Lite / export): (1) text truthiness 9 readings: Lite 7 wrong, export 4 wrong → 0/0; (2) fixed-path function called from the setup sprite: Lite `0 0`, export `0 0` + refusal → `6 4` = sim; (3) switch-case lazy values: 2 unsupported + 1 condition-as-value warning, Lite/export `…20 0 5 <text> 0` → 0/0, = sim `…20 5 6 true 0`; predicateBranches was reachable only via switch, now unreachable and removed. Corpus: importer output byte-identical for all 433 inputs (E2 242/244, E9 0/0 hold). Mutations (6, each red): text override off; string-typed references dropped; functions back on the last sprite; uncalled fallback on the last sprite; Switch lowering off; case bodies unlowered. Local: Arcade suites + gates 962/962 (music and terrain-trajectories PXT-clock flakes under load 9–19 green on rerun). CI: see PR #863. Not done: the same `not (s = 0)` text truthiness exists in translate-base.js for micro:bit/EV3 (not this lane); a switch label whose value needs lines before it keeps `&&`/`||` as written. |
 
-| `peers` LAN sharing: security review, then salvage behind a build-time gate, default OFF (task E11 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktrees under `[local path omitted]` | base `40cfe8107`; `docs/PEERS-SECURITY-REVIEW.md` (new), `apps/tauri/src-tauri/**` behind a cargo feature / env gate, GUI peer client + settings behind the same gate, peer dialect words if they pass review, tests proving default builds contain none of it; this row and the task file. | **CLAIMED 2026-10-12.** |
+| DONE — `peers` LAN sharing: security review, then salvage behind a build-time gate, default OFF (task E11 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktrees under `[local path omitted]` | base `40cfe8107`; `docs/PEERS-SECURITY-REVIEW.md` (new), `apps/tauri/src-tauri/**` behind a cargo feature / env gate, GUI peer client + settings behind the same gate, peer dialect words if they pass review, tests proving default builds contain none of it; this row and the task file. | **DONE 2026-10-13 — Lite PR #821** (branch `lane/e11-peers`). Review `docs/PEERS-SECURITY-REVIEW.md` of WIP `23e9c7f44`: GO only behind a compile-time gate OFF by default, fixes F1–F10; NO-GO for default-on until F11 (shared bearer link, no forward secrecy) is redesigned. F1 critical: the WIP's four `window.confirm` consents (peer-sessions.js:176/191/352/360) were always-truthy Promises in the app (E6), so project/code offer+request never asked — consent now native (`peer/mod.rs` `blocking_show`) before the editor sees a request; F2 silent camera capture → Allow/Deny per photo; F3 remote green flag/broadcast/variables/sprites → one consent per sharing session, stop free; F4 24 MiB pre-auth allocation → protocol v2 hello tag before any length (72 bytes per stranger); F5 8×65 s slot hold → 5 s handshake, 8 pre-auth + 4 post-auth pools; F6 zero nonce → counter nonces; F7 one dialog at a time; F8 `peer_enable` asks natively, main window only; F9 private/loopback/link-local IPv4 only; F10 `get_if_addrs` (2018) dropped; F15 (found by the first feature-on CI run, 38222898790) bidi/zero-width characters in a peer-chosen project name stripped from the consent dialog; refused: tauri-plugin-fs, Info.plist strings (F12, F13). Peer dialect words Lite-only, gated (no sb3-creator PR). **Gate:** Cargo feature `peers` (not default): module, 5 commands (`#[cfg(feature = "peers")]` in `generate_handler!`, `build.rs` `CARGO_FEATURE_PEERS`), only grant `runtime-capabilities/peers.json` (main webview, added in a gated setup block); web `BW_ENABLE_PEERS=1` DefinePlugin boolean, `=== true` at 6 consumers. **Default-off proof:** `tauri-app-command-acl` (+10 mutations), new `peers-gate.test.mjs` (7 tests; 10 mutations each red), Build guard `scripts/verify-no-peer-surface.mjs` on the emitted bundle (refuses a vacuous scan; first CI reading, Build run 38225239896: 2779 files, 221 scripts, presence marker found, 0 peer markers), webpack 5.96.1 folding measured on all 5 gate shapes (off: 0 markers/1 file; on: 4/2). **Gate-on:** tauri workflow runs `cargo test --features peers peer::` + clippy (run 38225240012: 9/9 peer tests, clippy -D warnings clean; default test + e2e green); protocol tests 7/7 locally in a standalone crate, 3 mutations red; `peer-pseudocode` 5/5 on current sb3-creator. Notices: 10 RustCrypto crates recorded (MIT OR Apache-2.0); Rust notices check current. **Remains:** F11 redesign before any default-on; a peers-on iOS build needs `NSLocalNetworkUsageDescription`; no end-to-end two-app run (no feature-on app build exists). |
 
-| Gearmotor/encoder-motor reverse; stc12 7-segment minus sign (task B14 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktrees under `[local path omitted]` | base `40cfe8107`; bw-board motor models (gearmotor, dc_motor_encoder), CrispStrobe/extensions stc12 7-segment, the C emitter (stc-compiler/sb3-creator, upstream first), Lite pin-bump surfaces; this row and the task file. | **CLAIMED 2026-10-12.** |
+| Gearmotor/encoder-motor reverse; stc12 7-segment minus sign (task B14 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktrees under `[local path omitted]` | base `40cfe8107`; bw-board motor models (gearmotor, dc_motor_encoder), CrispStrobe/extensions stc12 7-segment, the C emitter (stc-compiler/sb3-creator, upstream first), Lite pin-bump surfaces; this row and the task file. | **DONE 2026-10-13 — Lite PR (this branch, `lane/b14-motor-sign`).** Upstream merged first: bw-board #535 `7254f240` (master CI 38364447706 green), CrispStrobe/extensions #35 `c13f4a9d`, stc-compiler #16 `bcfe34e2`, sb3-creator #109 `504abe93`; Lite pins bw-board `7254f240`, extensions `c13f4a9d`, sb3-creator `504abe93` (main's `2bc0bcb9` + #109) with every ripple surface regenerated. **(1) Motors, measured first** (bw-board `18fa8508`, L293D bench kV 0.05 / J 1e-5 / R 5, 200 ms): program reverse (IN1 low, IN2 high) left gearmotor and dc_motor_encoder at omega 0 (encoder angle 0); `set motor speed/direction` refused on both ("no simulator action"); "motor 1" counted dc_motor only. FOUND: both stamped the back-EMF as an INVERTED Norton pair (dc_motor's old bug): driven 17.5 rad/s vs V/kV 44 (50 % PWM pin 4.33 vs dc_motor 35.6), an open motor braked itself to 0 in 40 ms, and once signed crept into reverse. **Fix:** dc_motor's signed step shared (`stepMotorVelocity`/`motorDirectionOf` in `src/devices/dc-motor.js`), used by gearmotor (`tier1-parts.js`) and dc_motor_encoder (`misc-parts.js`: signed angle, quadrature runs backwards, signed `count`), both on dc_motor's Thevenin stamp; `DRIVEN_MOTOR_KINDS` in `board.js` routes speed/direction for all three; devices.js `MOTOR_KINDS` counts them. **After:** reverse velocity -42.40 (gearmotor) / -43.82 and count -91 (encoder), forward +42.40 / +43.82; devices blocks drive both ways, nothing refused. Forward: dc_motor bit-identical (150 ms traces); with the old stamp kept the signed integrator is bit-identical for gearmotor/encoder (bridge, PWM pin, supply); the stamp correction changes their forward speed by design. Mutations (8), each red: sign dropped (each model), count unsigned, slot unwrapped, routes dc_motor-only, EMF inverted (each), shared step clamping at 0. **(2) Minus sign, measured first:** `show number -42` = "    - 42" in the stc12 block (A2 latch) and in the compiled C (chain sdcc -> emu8051 -> A2 wiring, decoded from the pin writes; stc89c52rc/stc12c5a60s2/stc15f2k60s2); block `-1234567` lost its sign. Fixed the same way in stc12.js `seg_shownum`, stc_pseudocode.py (+ docs mirror) and sb3Creator.js `_cSevenSegHelpers` (sign directly before the most significant digit). After: "     -42", "      -7", "  -32768", block "-1234567". Mutations: old placement, `i > 0` guard, sign over the MSD: red; the C's `i > 1` guard survives (unreachable with a 16-bit int). **Lite:** `test/b14-motor-sign-and-minus.test.mjs` (4: devices on gearmotor/encoder, the stc12 block, the compiled C via SDCC WASM + emu8051), each red with the old bundle/emitter; `example-vm-execution` drops dc_motor/gearmotor from KNOWN_NO_CONTROL with a live route check. **Named, not fixed:** bw-board's sevenseg8 latches at the select change, so the compiled C's ISR order (blank, select, segments) reads blank on the model -- compiled 7-segment programs show nothing in the circuit (the tests decode the pin trace); sb3-creator CI skips its 8051 chains (no emu8051 build there), so the C chain runs in Lite's CI. |
 
-| Main red: Arcade painter browser check (saved painted level after reopen) (task C8 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktree `[local path omitted]` | base `af1f0ff84`; paths: whatever the root cause needs in the Arcade painter / SB3 reopen path or the browser gate; this row and the task file. Defers to an open Arcade-session PR if one already fixes it. | **CLAIMED 2026-10-12.** |
+| DONE — Main red: Arcade painter browser check (saved painted level after reopen) (task C8 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktree `[local path omitted]` | base `af1f0ff84`; paths: whatever the root cause needs in the Arcade painter / SB3 reopen path or the browser gate; this row and the task file. Defers to an open Arcade-session PR if one already fixes it. | **DONE 2026-10-12 — Lite PR #814** (branch `lane/c8-painter-red-20261012`). Flake in the gate, not the app: the reopened green flag runs the painter's new-level script (10x8 at ~30-60 ms) and the platformer's `setLevelTileMap` (32x8, ~350-670 ms later); the check read the live map and passed only if a 400 ms poll hit that window (main `8f2cdf8a8`, run 38197900088, missed it). Two converged repairs: the owner-landed `40cfe8107` (`scripts/lib/arcade-tilemap-installations.mjs`, per-block install receipts) fixed the race on main first; #814 (first qualified independently at `06e918fe2`/`afa5306ff`, Build 38209932025 and 38213358016 green) was converged onto that helper and keeps only its extra check that the platformer installs its own painted first level exactly, plus named observer globals and a unit test for two observers. Red→green: old assertion + injected 3 s wait 4/4 red; the gate green with and without the wait; mutations red. Details in the C8 cell. |
 
-| ESP32 LEDC pad edges in labwired + an ESP32 board in bw-board's labwired tier (task B9 of docs/OPEN-TASKS-2026-09-29.md; takeover of the released row) | VPS Claude (opus), worktrees under `[local path omitted]` | base `af1f0ff84`; upstream labwired-core fork (ESP32 LEDC → GPIO-matrix pad seam) + labwired-wasm release, bw-board labwired-tier ESP32 board, Lite pin-bump surfaces; this row and the task file. | **CLAIMED 2026-10-12.** |
 
 
 
@@ -1429,9 +3173,9 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 
 
-| SPIKE qualification: cold unit-test browser prerequisite | Codex SPIKE integration, 2026-10-09; isolated branch `lane/spike-dual-ultrasonic-topology-20261009` | Base `f36341cca8f9128b5aa391deed7849883d83d24b`; `.github/workflows/build.yml` build job only: install the lock-resolved Chromium browser before browser-backed unit tests. | **CLAIMED.** Repair the observed missing `chromium_headless_shell` prerequisite in SPIKE PR755 qualification. Preserve unit assertions, independent downstream checks and existing browser gate registration/budget/census owned by the Arcade lane; its PR700 workflow repair is already merged. No Arcade source, dependency pin, guest profile or browser-job changes. |
+| SPIKE qualification: cold unit-test browser prerequisite | Codex SPIKE integration, 2026-10-09; isolated branch `lane/spike-dual-ultrasonic-topology-20261009` | Base `f36341cca8f9128b5aa391deed7849883d83d24b`; `.github/workflows/build.yml` build job only: install the lock-resolved Chromium browser before browser-backed unit tests. | **DONE source candidate; hosted qualification pending.** Seven workflow controls pass. Repair the observed missing `chromium_headless_shell` prerequisite in SPIKE PR755 qualification. Preserve unit assertions, independent downstream checks and existing browser gate registration/budget/census owned by the Arcade lane; its PR700 workflow repair is already merged. No Arcade source, dependency pin, guest profile or browser-job changes. |
 | SPIKE dual ultrasonic E/F topology and callers | Codex SPIKE integration, 2026-10-09; isolated branch/worktree `lane/spike-dual-ultrasonic-topology-20261009` | Exact base `287b91c43dbb34b59e425c5a6cd4ff24ac67d7e2`; overlay/packages mirrors of scratch-gui lib/spike-nuttx/{motor-topology,upload-protocol}.js, lib/spike-arena/{firmware-program,renode-arena-session}.js, components/tw-pseudocode/spike-arena-pane.jsx; scratch-vm extension-support/capability-broker.js; apps/tauri/src-tauri/src/{arena_inputs,native_capability,renode_supervisor}.rs; focused dual-topology/compiler/protocol/GUI tests, existing Rust proof registration; scripts/verify-spike-renode-arena-browser.mjs, scripts/lib/spike-nuttx-browser-proof.mjs, test/spike-nuttx-browser-proof.test.mjs and tools/renode-arena-proof/README.md for bounded real-guest E/F preparation; scripts/prepare-spike-nuttx-package.mjs, scripts/lib/spike-package-model-loading.mjs and test/spike-package-model-loading.test.mjs for explicit compiled-model Runtime packaging after observed duplicate-type startup failure; docs/SPIKE-STATUS-AND-LANES.md and this row only. | **CLAIMED.** Add an explicit sandbox-only own-NuttX E/F ultrasonic profile with A/B motors and retained C color sensor; D detached. Require image-bound live addressed API and exact first-frame port/type observations before any native/Python upload. Preserve default D-distance/E-force and six-motor contracts. No stock image, physical firmware, device-model change or package-pin adoption. Actual installed consumer qualification remains mandatory before release claims. |
-| SPIKE PR755 qualification test repair | Codex SPIKE integration, 2026-10-09; isolated branch `lane/spike-dual-ultrasonic-topology-20261009` | `test/tauri-broker-topology.test.mjs`, `test/spike-proof-transport.test.mjs`, this row and bounded qualification status in docs/SPIKE-STATUS-AND-LANES.md only. | **CLAIMED.** Update the exact broker source audit for the supported SixMotors/DualUltrasonic match arm and retain rejection mutations for both; document the host CPython synthetic fixture prerequisite without raising audit baselines. Preserve live guest assertions, firmware pins, ACL checks and actual installed acceptance. |
+| SPIKE PR755 qualification test repair | Codex SPIKE integration, 2026-10-09; isolated branch `lane/spike-dual-ultrasonic-topology-20261009` | `test/tauri-broker-topology.test.mjs`, `test/spike-proof-transport.test.mjs`, this row and bounded qualification status in docs/SPIKE-STATUS-AND-LANES.md only. | **DONE source candidate; hosted qualification pending.** Seventeen focused controls pass without skips.  Update the exact broker source audit for the supported SixMotors/DualUltrasonic match arm and retain rejection mutations for both; document the host CPython synthetic fixture prerequisite without raising audit baselines. Preserve live guest assertions, firmware pins, ACL checks and actual installed acceptance. |
 
 | SPIKE addressed-reader package discovery | Codex SPIKE integration, 2026-10-09; isolated branch/worktree `lane/spike-addressed-capability-package-20261009` | Exact base `59dddb13ed53d941141c2476bec312047032e660`; `scripts/lib/spike-addressed-sensor-marker.mjs`, `scripts/prepare-spike-nuttx-package.mjs`, `test/spike-addressed-sensor-marker.test.mjs`, affected package contract tests, `docs/SPIKE-STATUS-AND-LANES.md` and this row only. | **DONE candidate 2026-10-09 for package metadata only.** Eight focused new/legacy controls pass, including three assertion-detected source mutants; hosted consumer qualification pending. Discover optional version1 from the exact own ELF and bind address/version to its SHA256; old images keep their legacy package behavior. Require allocated nonwritable OBJECT metadata, exact file/load mapping and virtual/physical overlap refusal. Firmware PR52 qualification remains pending; this preparation does not adopt firmware/model pins or advertise GUI/compiler E/F support. Runtime live capability and declared E/F topology are subsequent qualified lanes. |
 
@@ -1474,7 +3218,7 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 | DONE — Salvage E1: Arcade import runtime from the parked Codex WIP (task E1 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktree `[local path omitted]` | base `14b9338a7`; source: local branches `wip/main-checkout-brickwright-lite-20261005` (`23e9c7f44`) and `lane/e1-arcade-import` (`d33d97c1b`, attempt 1); paths `overlay/scratch-gui/src/lib/bw-makecode/{arcade-translate,namespace-bindings,lower-lazy-values,value-type-graph,legacy-array-values,tilemap-values,arcade-builtin-images,arcade-assets,pixel-image,ts-import,translate-base}.js`, `overlay/scratch-vm/src/extensions/crispstrobe/arcade/**`, `overlay/scratch-vm/src/extension-support/extension-manager.js` (arcade now loads on demand), `scripts/apply-vm-overlay.mjs`, `scripts/verify-boot-payload.mjs` + `test/boot-payload.test.mjs`, `scripts/verify-makecode.mjs` (the MakeCode import browser gate's Arcade checks), `scripts/generate-arcade-{builtin-images,image-operations,speech}.mjs`, `.github/workflows/build.yml` (one step: Chromium for the unit tests), `test/makecode-arcade*`, `test/makecode-{import,translate,pixel-image,namespace-bindings,export-arcade}.test.mjs`, `test/helpers/{bw-vm,bw-extensions,pxt-arcade-runtime,pxt-core-runtime}.mjs`, `test/fixtures/makecode/**`, notices (`THIRD-PARTY-NOTICES.md`, `static/licenses/pxt-*`, About, `test/notices-coverage.test.mjs`), this row and the task file. Not export-arcade (E2) or the TurboWarp extensions (E3). | **DONE 2026-10-05 — Lite PR #660** (branch `lane/e1-arcade-runtime`, impl `e2d347fe8` + `be4031a2b`). **Tests:** the 76 WIP test files 76/76 green locally (329 subtests) + `makecode-arcade-generated-sources` 3/3: 22 pass as ported, 9 fixed, 45 import-only (export half to E2), 3 export-only subtests to E2, 1 dropped (black default backdrop: the WIP's sb3-creator copy). Before: WIP tree 63/76, attempt 1 on main 21/76. Regression gate (attempt 1 broke 18): makecode-arcade 33/33, -runs 3/3 (now run with the import's costumes + storage, as the Code tab bakes them), makecode-export-arcade 7/7, -controls 4/4, -constructs 18/18. Other MakeCode/micro:bit/EV3/parser suites 565/567 (2 local emulator-base skips, as on main); 76 VM-touching suites 1161/1162 (1 = `three` unresolvable in local linked deps, unrelated). MakeCode census (964 s): no Arcade section; MakeCode and EV3 sections byte-unchanged by the shared parser work; not regenerated (its lite section only drifted with main's new STC12 examples). **Mutations, each red:** namespace private check off (makecode-namespace-bindings 1), lowerLazyValues identity (lazy-values 10), tilemap walls inverted (tile-data 3, terrain 1), value-type merge without union (reference-arrays 6), truth words `(0 < 1)` (terrain-import 1, flags 1), `!x` value form off (multi-physics 1, terrain-event-runtime 1), exact text literal off (named-arrays 1), for-of desugaring off (reference-arrays 3, sprite-collections 1), removeElement 1/0 off (reference-arrays 2, array-coercion 1), default params for all translators (makecode-translate 1), a hand edit to image-pxt.js (generated-sources 1). **Measured in the pinned PXT simulator** (where WIP tests disagreed with the runtime, the runtime matched PXT): onDestroyed score of a 1x1 sprite 79 (not 80); stay-in-screen of a 16-wide sprite at x 999 → 153 (not 152); 1x1 sprites at x 79.5/80 never overlap in 30 frames; removeElement reports 1/0; controller step = PXT's `Fx.idiv(Fx.imul(vx+ovx, idiv(dtMs,2)), 1000)` (9.59765625/3 frames, not the WIP's real-time-simulator 9.99609375). **Licences:** built-in images regenerated from the pinned pxt-arcade 4.2.1 `target.json` device/*.jres (507, table byte-identical to the WIP's; no checkout at 8ae4f42); image-pxt/speech-pxt/speech-fonts verified against the pinned bundle; each generator `--check`, held by a test. font12 = Source Han Sans v2.001R, SIL OFL 1.1, **Copyright 2014-2019 Adobe** per pxt-common-packages' ThirdPartyNotice (the WIP text said 2014-2025). **Findings for sb3-creator (not fixed here):** in a value slot the dialect keeps `not (…)`, `(a) and (b)`, `key … pressed?` as literal text with no warning; `min of -1.5 and 2` parses as variable "min of" minus text "1.5 and 2", no warning. **E2 inherits** (export assertions removed from the import-only files): scenes: unsupported []; ts game.pushScene(, game.popScene(, game.addScenePushHandler(, info.player2.setLife(; exported PXT equals original; re-import files. friction: verify() clean export; ts .fx/.fy; exported PXT equals; re-import; s1 ts function (Game_)?friction…Sprite…number. namespace-runtime: unsupported []; exported PXT values; re-import ts. local-projectiles: unsupported []; ts sprites.createProjectile( and .onDestroyed(function; compile. multi-physics: verify() unsupported [], exported PXT equals, re-import files. scaling: verify() unsupported [], ts .setScale(/.setScaleCore(, exported PXT, re-import; s1 ts sizeOf…Sprite…number; anchor subtest exported PXT leftAfter/topAfter/rightAfter/bottomAfter. Whole subtest moved: 'scale core exports an actual Boolean fourth argument including literal and reporter forms' (note: its '(0 < 1)' input now draws E0's comparison-as-value warning). terrain-events: unsupported []; ts scene.onHitWall(, scene.onOverlapTile(, : tiles.Location; executed export equals; re-import; s2 items: tiles.Location[] + inheritedColumn/touchedRow/nestedDone. pixel-drawing: unsupported []; compile; re-import pixels [2,5,5,0,0,5,5,0,7,7,7,7]. literal-images: roundtrip() unsupported [], compile, re-import check; s2 ts '): Image'. controller-bindings: roundtrip() unsupported [], compile, exercise(exported); s1 ts controller.moveSprite(first, 100, 0)/(second, 100, 100). created-order: s1 export+compile, re-import sampled 2 observed 12; projectile subtest unsupported [] + compile. array-coercion: s1,s3 unsupported [], compile, re-import execute. value-arithmetic: roundtrip() unsupported [], compile, re-import check. scene-registrations: verify() unsupported [], exported PXT (originalInput) equals, re-import; ts game.forever(, info.player2.onLifeZero(, info.onCountdownEnd(; sprites.onOverlap(, sprites.onDestroyed(, : Sprite[]; controller.A.onEvent(, game.onUpdateInterval(. function-returns: roundtrip() unsupported [], compile, verify(exported); ts '): Image', 'surface: Image', '): Sprite', 'sprite: Sprite', 'let hero: Sprite = null'. native-minmax: projectToArcade unsupported []; exported PXT run of 5 Game_* values; re-import of export, unsupported [], execute. camera: s1 export unsupported []; ts scene.centerCameraAt( / cameraFollowSprite( / cameraProperty(; 26 values in exported PXT; re-import files + execute. s2: export unsupported []; PXT left=bottom=160. interval: export unsupported []; ts game.onUpdateInterval(100/200, function; compiles. animation: export unsupported []; pxt.json animation dep; ts ': animation.Animation'; 8 values in exported PXT; re-import + execute. locals: export unsupported []; ts 'function Game_bump () {\n let value: any = 0'; compiles. sprite-collections: export unsupported []; ts ': Sprite[]'; 19 values in exported PXT; re-import+execute; second export matches PXT. image-values: export unsupported []; compiles; re-import + execute. created-registration: roundtrip() export/compile/re-import/execute + 4 caller checks (pixels [[1],[7]]; firstX/secondX 30/31; sampled 7; sampled 35). shared-images: reexport() export/compile/re-import + re-import checks (shared identity, pixels [0,8],[0,7],[[2],[7]]). background: s3 export unsupported []; ts scene.backgroundColor() & setBackgroundColor(value); compiles; re-import bg colour 2. s4 export unsupported []; no sprites.create(; ts setBackgroundColor(1). image-parameters: 4x export unsupported [] + compile + re-import/execute; s1 ts signatures Game_paint (canvas: Image, color: number), Game_forward (surface: Image), sampled/separate 3; s4 pixels [[7,7],[5,5]] after re-import. tile-data: s1 35 values in exported PXT, re-import/execute, second export; clear-tilemap ts tiles.setTilemap(null) + PXT + re-import; generated-factory ts TileScale.ThirtyTwo + PXT. image-mutation: export unsupported []; compiles; re-import Player pixels [0,3,5,1]. flags: literals ts setFlag(SpriteFlag.Ghost, true)/GhostThroughTiles, false/Invisible, (enabled == 1); compiles; re-import flags [128,6280]. controller-local export unsupported []. boolean-toggle compiles, re-import toggles, ts setFlag(SpriteFlag.Invisible,. ShowPhysics: exporter 'Unsupported Arcade sprite flag'. lazy-values: roundtrip() export unsupported [], compile, re-import/execute/check (10 subtests). terrain: export unsupported []; ts isHittingTile( + typed touching(Sprite, number): boolean; exported PXT equals oracle; re-import files. physics-engine: verify(): unsupported [], ts 'as ArcadePhysicsEngine', 'new ArcadePhysicsEngine(', exported PXT equals oracle, re-import; t1 ts typed engineOf/speedOf, engines: ArcadePhysicsEngine[], scenes: scene.Scene[]. update: unsupported []; game.onUpdate(function () {; compiles. controller-step: unsupported []; controller.dx(90), controller.dy(100), controller.dx((0 - 60)); compiles. background-images: roundtrip() unsupported [], compile, re-import/verify; t1 ts '): Image', scene.setBackgroundImage(picture). projectile-source: t1 unsupported [], createProjectileFromSprite(, createProjectile(…SpriteKind.Food, origin), compile; t2 createProjectileFromSprite(…null, (0 - 40), 0). image-blit: unsupported []; ts 'input: Image'; compile; re-import exported.ts unsupported [] + verify. splash: game.splash("Ready", "Press A"), no sprites.create(, compile; game.showLongText("Read this", DialogLayout.Right), compile. sprite-fixed-point: t1 exported PXT equals oracle + re-import/execute; t2 exported PXT + re-import run equals oracle. sprite-text: t1 compile, re-import, exported PXT equals oracle; t4 exported PXT equals source oracle (first/second/copied/strict) + re-import/run. named-arrays: t1,t3 PXT runs of authored Code's export (and twice-exported), re-import; t2 exported PXT equals oracle, re-import. destroyed: t1 ts sprites.onDestroyed(SpriteKind.Enemy, function (sprite: Sprite) + compile; t4 first.onDestroyed(function () {, let alias: Sprite = null, compile. generated-images: 4 tests unsupported [], compile, execute exported TS (+ image-sharing/pixel checks t2,t5). say-text: t3 compile + re-import speech tuples; t5 ts JSON.stringify(message) + reimport. reference-arrays: roundtrip() unsupported [], compile, re-import/check; ts types pictures: Image[], : Sprite[], : Sprite[][], : Image[][][], : Image[][], : any[]. **Boot payload:** the first exact-head run (37372919277) went red on two size guards — first load 1322 KiB gz > 1300 (main 1148) and the 8086 benchmark's P17 initial JS 4891624 > 4467136 bytes — because the arcade extension was an eager built-in and now carries MakeCode's speech fonts (font12 ~137 KiB gz). `arcade` moved to `lazyBuiltinExtensions` (chunk `ext-arcade`, 455 KiB) with a verify-boot-payload entry: local production build first load 4303 KiB raw / 1145 KiB gz. The same run's "Browser gate — MakeCode import" held the old one-sprite-per-Arcade-sprite design (4 checks); updated to the runtime design (5 sprites incl. Game and the templates, `GLOBAL mySprite` created from `__arcadeTemplate1`, To blocks builds the templates, the pixel editor opens `__arcadeTemplate1`). The next run (37379292791: build, corpus, both size guards and browser (heavy) green) failed only "reads it exactly, not by conversion": measured locally in a production build, the gate's click on `[class*="sprite-selector-item"]` by name matches the COSTUME tiles on the Costumes tab and selected nothing, so the editor showed the sprite To blocks auto-selects (first with scripts: now `Game`, no art; on main the old design's first scripted sprite happened to carry art). The gate now selects the template through `vm.setEditingTarget` and checks that it did; the local gate run is 31 ok, exit 0. CI verdict: the PR's exact-head run. |
 
-Static OP CLI KCL package adoption — **DONE candidate 2026-10-04**, Codex bwcx `/root`;
+Static OP CLI KCL package adoption — **DONE candidate 2026-10-04**, Codex;
 isolated reused `[local path omitted]`, branch
 lane/cli-op-kcl-package-adoption-20261004, exact fresh base
 fa1c32fd11ba1404d20fc1217238e6a8a5a09a59. Own CUI package boundary only:
@@ -1512,7 +3256,7 @@ match both mirrors; LICENSE bytes unchanged. No deployed or corpus KCL claim.
 One frozen exact-head Build remains required before guarded normal main landing.
 
 
-Linux browser boot timing boundary — **DONE candidate 2026-10-03**, Codex bwcx `/root`;
+Linux browser boot timing boundary — **DONE candidate 2026-10-03**, Codex;
 isolated `[local path omitted]`, exact base
 fb30f839f1498210e71da574f46650be8b57334e. Narrow evidence repair within the
 held ADP7118 package lane: scripts/verify-cpm-system.mjs, new pure
@@ -1530,7 +3274,7 @@ green, including three isolated executable mutants (transport as boot, inclusive
 half-time, invalid phases); full hosted combined qualification remains required.
 
 ADP7118 bounded precision package adoption — **DONE candidate 2026-10-03**, Codex
-bwcx `/root`; isolated wt-lite-adp-precision-20261003, branch
+Codex; isolated wt-lite-adp-precision-20261003, branch
 lane/adp7118-precision-package-adoption-20261003; exact base
 276a148fd819f8b7fd2e7b806781e3e5fa4b58d9. Own Board/CUI package boundary:
 adopt landed Board0f0092051eefb24a364645edbb371d8755dd1ad6 and
@@ -1567,7 +3311,7 @@ edit. No peer data moved. A premature pin-chain fixture red exposed the pending
 8086 report regeneration; no gate relaxed. One final hosted Build remains
 mandatory before package landing/publication; no deployment claimed yet.
 
-Visible Circuit browser-proof host — **DONE candidate 2026-10-03**, Codex bwcx `/root`,
+Visible Circuit browser-proof host — **DONE candidate 2026-10-03**, Codex,
 isolated `<owned checkout>`, branch
 `lane/circuit-proof-visible-host-20261003`, exact base
 `679da60c664b28ac66dfcad68b57adc175c95c68`. Test-only envelope: this paragraph,
@@ -1591,7 +3335,7 @@ Production bytes and pins unchanged. One frozen-head Build then guarded normal
 landing; no duplicate publication needed to change a test-only harness.
 
 ADP7118 current-limited installed package adoption — **DONE candidate 2026-10-03**, Codex
-bwcx `/root`, isolated `<owned checkout>`,
+Codex, isolated `<owned checkout>`,
 branch `lane/adp7118-limiter-package-adoption-20261003`, exact base
 `4fd860e6bb0e76d849053d916b94bb4257aedab2`. Own Board package boundary only:
 adopt qualified upstream `8eb5cf13013e49a6602fadc5077920efee144ba7`, retaining
@@ -1629,8 +3373,8 @@ bounds and all model/solver bytes unchanged; the ideal-source numerical
 discrepancy remains recorded, not claimed fixed. Fresh qualification and
 guarded landing pending; Pages/Vercel publication verified separately.
 
-ADP7118 startup installed package adoption — **DONE candidate 2026-10-02**, Codex bwcx
-`/root`, isolated `<owned checkout>`,
+ADP7118 startup installed package adoption — **DONE candidate 2026-10-02**, Codex
+, isolated `<owned checkout>`,
 branch `lane/adp7118-startup-package-adoption-20261002`, exact base
 `950f4856fe0fd699e89de28e6a4c23c4e131f94f`. Own Board/CUI package boundary:
 adopt Board `944d1357e093fdb4c65bed65de378e1128dfc1ac` and CUI
@@ -1670,8 +3414,8 @@ not force/rebase; the non-ledger lane diff remains byte-identical (SHA256
 Fresh combined-head hosted qualification is required before landing;
 the original green run is not its deployment receipt.
 
-Instantaneous meter operand package adoption — **DONE candidate 2026-10-02**, Codex bwcx
-`/root`, clean isolated `<owned checkout>`,
+Instantaneous meter operand package adoption — **DONE candidate 2026-10-02**, Codex
+, clean isolated `<owned checkout>`,
 branch `lane/meter-operand-package-adoption-20261002`, exact base
 `aba652b3bcb56223a56c3f32d8116d1969c5c50a`. Adopt qualified upstream CUI
 `e0aea6bd16b4fcde53f5f7a5b1e21c71c2092916` (all four jobs green in `36999818348`);
@@ -1704,7 +3448,7 @@ skips; non-LANES lane diff byte-identical (SHA256
 `98c2807c088d1f20997fddaf36ac86077f51b12b44ccdbe39bd096d4b7431807`).
 Fresh exact combined-head qualification is required; old run not evidence.
 
-Measurement browser package follow-up: Codex bwcx `/root` owns the CUI package
+Measurement browser package follow-up: Codex owns the CUI package
 boundary in `<owned checkout>`, branch
 `lane/measurement-browser-package-adoption-20261002`, exact base
 `7e61141fb1a29ed56f77500a4c6a2d82e818771a`. **DONE 2026-10-02.** Exact candidate
@@ -1749,7 +3493,7 @@ Red1 focused scanner/measurement/gate-shape surface 18/18; three actual injected
 API omissions still fail by name. Fresh replacement qualification is required;
 the old red is not a landing or deployment receipt.
 
-| Live measurement truthfulness package adoption and Pages release | Codex bwcx `/root`, worktree `<owned checkout>`, branch `lane/live-measurement-package-adoption-20261002` | exact base `4f8768b26a5f4c9cfe97fe22a8501d5a2d77fbed`; own bw-board/bw-circuit-ui package boundary only: vendor-pins, derived root/GUI package specs and locks, generated census/notices/reports/ROM and controller-bundle provenance and mirrors only where needed, this row, new installed consumer measurement test and five existing part-adoption tests' exact package assertions. Adopt upstream Board `c0dea37a` and CUI `c76dcc4` descendants; no source fork, sb3/flasher/other pin changes, unrelated UI or workflow changes. | **DONE candidate 2026-10-02.** Upstream exact-master Board CI `36978531759` is green; CUI exact `36978807700` all four jobs green. Installed root npm-pack bytes verified against both pinned Git trees (3578 Board/1299 CUI files), with single-engine resolution. Local supported Node 24: adjacent 23/23, part/measurement adoption 11/11; two runtime-injected helper mutants genuinely red (stale meter=1 and false native available=true), then pristine installed tests 2/2. Existing physical expectations unchanged. Both locks regenerated using CI's established GUI peer policy; only the selected packages move (plus identical xterm block reordering). Census is now 34 rows; 8086 report, matrix, profiles, reader coverage, census, package and Rust notices checks pass. Independent hosted-target check cannot reproduce its unchanged snapshot: recorded stc SHA `f1574b0f` is unavailable from that remote; not silently regenerated against another authority. DOS/CP/M/free-386 source directories and controller source unchanged across the pin range; four ROM byte comparisons pass, controller regenerated with unchanged hash. One branch Build qualification, guarded main landing, then Pages deployment/smoke; no deployment claim before evidence. |
+| Live measurement truthfulness package adoption and Pages release | Codex, worktree `<owned checkout>`, branch `lane/live-measurement-package-adoption-20261002` | exact base `4f8768b26a5f4c9cfe97fe22a8501d5a2d77fbed`; own bw-board/bw-circuit-ui package boundary only: vendor-pins, derived root/GUI package specs and locks, generated census/notices/reports/ROM and controller-bundle provenance and mirrors only where needed, this row, new installed consumer measurement test and five existing part-adoption tests' exact package assertions. Adopt upstream Board `c0dea37a` and CUI `c76dcc4` descendants; no source fork, sb3/flasher/other pin changes, unrelated UI or workflow changes. | **DONE candidate 2026-10-02.** Upstream exact-master Board CI `36978531759` is green; CUI exact `36978807700` all four jobs green. Installed root npm-pack bytes verified against both pinned Git trees (3578 Board/1299 CUI files), with single-engine resolution. Local supported Node 24: adjacent 23/23, part/measurement adoption 11/11; two runtime-injected helper mutants genuinely red (stale meter=1 and false native available=true), then pristine installed tests 2/2. Existing physical expectations unchanged. Both locks regenerated using CI's established GUI peer policy; only the selected packages move (plus identical xterm block reordering). Census is now 34 rows; 8086 report, matrix, profiles, reader coverage, census, package and Rust notices checks pass. Independent hosted-target check cannot reproduce its unchanged snapshot: recorded stc SHA `f1574b0f` is unavailable from that remote; not silently regenerated against another authority. DOS/CP/M/free-386 source directories and controller source unchanged across the pin range; four ROM byte comparisons pass, controller regenerated with unchanged hash. One branch Build qualification, guarded main landing, then Pages deployment/smoke; no deployment claim before evidence. |
 
 | SPIKE arena 3D view: three.js view over the same arena snapshot state, toggle beside the 2D view (task D3 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktree `[local path omitted]` | base `8d20f2722`; `overlay/scratch-gui/src/lib/spike-arena/**` view layer only (no physics), a pinned three.js dependency with notices, EN/DE strings, focused tests; this row and the task file. | **DONE 2026-09-30 — Lite PR #568** (branch `lane/d3-arena-3d`). A "3D view" toggle beside Start/Step/Reset draws the arena in three.js from the SAME `ArenaSim.snapshot()` the canvas draws; each frame the pane hands it to exactly one view. **Snapshot accessor:** the 2D renderer already read only world + snapshot + robot; added `snapshot().wheelTravel` (cm turned, slip included; nothing in the sim reads it — a test zeroes it every step and pose/sensors are identical) and factored `drawMat()` out of `drawArena()` (the 3D mat texture is the 2D mat drawing); `drawArena`'s canvas op stream is unchanged against the base tree (24 worlds, 3180 ops identical). **Scene** `arena-scene3d.js` (headless): mat, walls/crates extruded from the collision convex pieces (6/5 cm), rover (body, wheels spun by wheelTravel, notch, colour spot, distance beam, force tip), trail; arena (x, y) cm → scene (x, 0, y)×0.01 m, `rotation.y = −heading`. **View** `arena-view3d.js`: WebGLRenderer + OrbitControls, cameras orbit / follow / top-down (orthographic, canvas mapping); no WebGL 2 → `WebGLUnavailableError`, pane stays 2D with an EN/DE message (`window.__bwArenaForceNoWebGL` forces it). Pane checked at 400 and 330 px in a production build. **Dependency:** `three` 0.186.1 exact (MIT): integrate.mjs, GUI manifest + lockfile (integrity = registry), THIRD-PARTY-NOTICES.md, About dialog + twin, gui-scope-allowed.json. **Chunks** (local production build): `chunks/bw-arena-3d.js` 8 KiB, three in an anonymous split chunk 589 KiB raw / 144 KiB gz requested only from it; eager scripts 1122 KiB gz (budget 1300). `verify-boot-payload` now holds three + the view out of the first load and out of `chunks/bw-spike-arena*`; mutated build copies each red by name (three in the entry bundle, three in the arena chunk, view chunk deleted, three chunk deleted). **Tests:** `test/spike-arena-3d.test.mjs` 6/6 — every mission's scene vs its world; the rover over ~410 driven steps (position, yaw, body corners vs footprint, sensor positions + facing, beam, wheel spin); top-down vs canvas mapping, orbit start frames the mat; the capstone reference in the real VM rendered every 10 frames (rover + pushed crate tracked at every 10th frame, ≥ 30 checkpoints asserted, snapshot never written) with identical verdict, finishing time, pose and frame count as with no view. `test/spike-arena-3d-pane.test.mjs` 3/3 — real pane: fallback EN/DE through the real module; a render per frame, camera modes, rebuild per mission, dispose on toggle back, same verdict/time as 2D. Mutations each red: swap x/y (5), drop yaw (2), yaw sign (2), cm not m (5), cm for rover only (3), wheel sign (2), crate frozen (1), scene writes snapshot (1), beam in mm (2). Arena/notices/pairs suites 179/179; pre-push gates (no-nul, fetch-pinning, skip-census, gate-coverage, browser-gate budgets/timeouts/shards, wait census, build-trigger-paths, overlay-packages-pairs, notices, gui-scope) 118/118. **Browser gate** (`verify-lego-spike-roundtrip.mjs`, arena half): forced fallback; then the page's own WebGL 2 probe decides the asserted state; gt01 runs to a pass WITH the 3D view open; toggle back. Local production build: WebGL path, all ok. **Remains:** heights are the view's own (the world format has none); crates do not rotate (the sim does not rotate them); no shadows. |
 
@@ -1789,10 +3533,10 @@ the old red is not a landing or deployment receipt.
 
 | DONE candidate — MakeCode Arcade nested-source durability after the v0.1.21 tag alarm | Codex root, 2026-09-27, worktree `<owned checkout>`, branch `lane/makecode-source-durability` | claim merged as `b72d1ac72`; implementation base `b72d1ac72`; paths `scripts/build-makecode-arcade-bases.mjs`, `test/makecode-locked-source-acquisition.test.mjs`, `.github/workflows/makecode-arcade-bases.yml`, and this row | **DONE candidate; exact-head hosted base build pending.** Release `v0.1.21` run `36271540597` did finish all six builds, but RP2040 was non-reproducible: CODAL cloned `codal-rp2040`'s moving default branch recursively before checking out locked commit `ca54f854…`. That transient tree required deleted TinyUSB commit `edb1d194…`; its failed nested checkout left a mixed source tree, and the RP2040 image hash changed while the other five stayed pinned. The builder now pre-seeds the exact locked library and its exact `pico-sdk@acf638ac…` gitlink before CODAL dependency discovery, verifies both identities, and fails closed if the target lock moves. The focused acquisition contract is 3/3 green and proves checkout order, exact identities, drift refusal, and no effect on unrelated targets. A clean local RP2040 build completed from the preseeded tree with no visit to the deleted TinyUSB object; the Ubuntu hosted workflow remains the byte-for-byte gate because its pinned toolchain owns the expected image hash. No runtime behavior, compiled-base pin, camera/scanner, LEGO architecture, package adoption, or release metadata changed. |
 
-| ADP7118 exact package adoption and visible-browser proof | `/root` (Codex), `[local path omitted]`, branch `lane/adp7118-package-adoption` | exact base `7ace62297401706d28438ae33a9e3f8bfb93a3ea`; upstream Board `d009a4f757bc9b1dd190a49f40ea5e7a6596292b`, CUI `9c2ccdfc388492a2bf23f9131a4c4f0bf67c8a67`, parts `c56f5803f80fcce97bd2b9744b5cd8c93f028195` | **DONE candidate 2026-09-27.** Root and production-GUI package specs/locks, notices and pins advance together to the guarded-landed ADP7118 heads; both installed trees byte-verify against the exact upstream checkouts and resolve one Board engine. Census, 8086 report, language matrix, part profiles, package notices, controller receipt, BIOS/demo and unchanged DOS/CPM/free-BIOS provenance were re-derived; the Board range contains only the ADP7118 model/test/ledger and changes none of those payload sources. The shared fixture connects both VIN and VOUT bonds, SENSE, EN and ground, retains all eight physical SOIC pins, has no invented breadboard footprint, and settles an 8 V input to 5 V. The existing production browser rendering gate consumes that fixture, requires the labelled `200mA LDO` SOIC-8 face and every terminal name, then reads the live bundled output. Package/provenance/pin-history/bundle/profile and LM324/LM741 regression checks pass 42/42 plus the four focused package cases; every generator check twin is current (hosted targets checked against its own recorded `f1574b0` source revision). Three isolated mutations red by name: 5 V fixture consequence, passive-profile classification, and browser eight-terminal requirement. Heavy full suite, webpack build and browser drive are intentionally delegated to the single hosted Build on this small VPS. No copied upstream source, private regulator model, generic regulator behavior, unrelated pin, corpus/example payload, workflow, deployment, tolerance relaxation, or invented breadboard seating. |
-| LM741 exact package adoption and visible-browser proof | `/root` (Codex), `[local path omitted]`, branch `lane/lm741-package-adoption` | exact base `6f113092b41ea050e5ba460734cec138d4f52a0f`; upstream Board `a1a3ad893e6c8b0a5d423b3aa667c51bf1dc8397`, CUI `a83c58085352d461af28dd066d612134acc4a176` | **DONE candidate 2026-09-27.** Root and production-GUI manifests, locks, notices and `vendor-pins.json` advance together to the guarded-landed LM741 Board/CUI heads; installed package bytes verify against clean exact-sha checkouts and resolve one engine. Census, 8086 report, language matrix, package-source notices, controller receipt and unchanged BIOS/demo/DOS/CPM/free-BIOS provenance were re-derived; the Board range changes none of those payload sources. The shared dual-supply fixture loads through `Circuit.fromJSON`, retains all eight physical PDIP pins, and settles a 1 V follower to 1.001 V. The existing production browser rendering gate consumes that same fixture, requires the labelled `LM741` `DIP-8` face with every terminal name, and reads the live bundled output; no workflow/job was added. Focused package, provenance, mirror, history, part-conformance, LM324-regression and LM741 coverage passes 47/47; changing the shared input to 2 V makes the 1 V consequence red. First hosted Build `36284168195` found the one omitted consequence: the new real IC needed an explicit `analog-only` profile refusal so the compiler UI cannot mistake it for a programmable part. The forward repair adds that classification, its generated document, and an LM741-owned assertion. Owns this row, exact package/pin/lock/notices/generated receipts, the three unchanged-payload pin consequences, the analog-only classification, fixture/test, LM324 descendant-pin assertion, and bounded browser-gate addition. No generic ideal-opamp behavior, copied upstream source, solver/importer/exporter, unrelated package pin, corpus payload, tolerance, workflow, or deployment claim. |
+| ADP7118 exact package adoption and visible-browser proof | (Codex), `[local path omitted]`, branch `lane/adp7118-package-adoption` | exact base `7ace62297401706d28438ae33a9e3f8bfb93a3ea`; upstream Board `d009a4f757bc9b1dd190a49f40ea5e7a6596292b`, CUI `9c2ccdfc388492a2bf23f9131a4c4f0bf67c8a67`, parts `c56f5803f80fcce97bd2b9744b5cd8c93f028195` | **DONE candidate 2026-09-27.** Root and production-GUI package specs/locks, notices and pins advance together to the guarded-landed ADP7118 heads; both installed trees byte-verify against the exact upstream checkouts and resolve one Board engine. Census, 8086 report, language matrix, part profiles, package notices, controller receipt, BIOS/demo and unchanged DOS/CPM/free-BIOS provenance were re-derived; the Board range contains only the ADP7118 model/test/ledger and changes none of those payload sources. The shared fixture connects both VIN and VOUT bonds, SENSE, EN and ground, retains all eight physical SOIC pins, has no invented breadboard footprint, and settles an 8 V input to 5 V. The existing production browser rendering gate consumes that fixture, requires the labelled `200mA LDO` SOIC-8 face and every terminal name, then reads the live bundled output. Package/provenance/pin-history/bundle/profile and LM324/LM741 regression checks pass 42/42 plus the four focused package cases; every generator check twin is current (hosted targets checked against its own recorded `f1574b0` source revision). Three isolated mutations red by name: 5 V fixture consequence, passive-profile classification, and browser eight-terminal requirement. Heavy full suite, webpack build and browser drive are intentionally delegated to the single hosted Build on this small VPS. No copied upstream source, private regulator model, generic regulator behavior, unrelated pin, corpus/example payload, workflow, deployment, tolerance relaxation, or invented breadboard seating. |
+| LM741 exact package adoption and visible-browser proof | (Codex), `[local path omitted]`, branch `lane/lm741-package-adoption` | exact base `6f113092b41ea050e5ba460734cec138d4f52a0f`; upstream Board `a1a3ad893e6c8b0a5d423b3aa667c51bf1dc8397`, CUI `a83c58085352d461af28dd066d612134acc4a176` | **DONE candidate 2026-09-27.** Root and production-GUI manifests, locks, notices and `vendor-pins.json` advance together to the guarded-landed LM741 Board/CUI heads; installed package bytes verify against clean exact-sha checkouts and resolve one engine. Census, 8086 report, language matrix, package-source notices, controller receipt and unchanged BIOS/demo/DOS/CPM/free-BIOS provenance were re-derived; the Board range changes none of those payload sources. The shared dual-supply fixture loads through `Circuit.fromJSON`, retains all eight physical PDIP pins, and settles a 1 V follower to 1.001 V. The existing production browser rendering gate consumes that same fixture, requires the labelled `LM741` `DIP-8` face with every terminal name, and reads the live bundled output; no workflow/job was added. Focused package, provenance, mirror, history, part-conformance, LM324-regression and LM741 coverage passes 47/47; changing the shared input to 2 V makes the 1 V consequence red. First hosted Build `36284168195` found the one omitted consequence: the new real IC needed an explicit `analog-only` profile refusal so the compiler UI cannot mistake it for a programmable part. The forward repair adds that classification, its generated document, and an LM741-owned assertion. Owns this row, exact package/pin/lock/notices/generated receipts, the three unchanged-payload pin consequences, the analog-only classification, fixture/test, LM324 descendant-pin assertion, and bounded browser-gate addition. No generic ideal-opamp behavior, copied upstream source, solver/importer/exporter, unrelated package pin, corpus payload, tolerance, workflow, or deployment claim. |
 
-| LM324 package adoption and visible-browser proof | `/root` (Codex), `[local path omitted]`, branch `lane/lm324-package-adoption` | exact base `c2433273a0de7b5cc7c95148efac3d67e4cea776`; upstream Board `1df17d48fbd20cebe0be0b6e5dbd0545d34ad242`, CUI `2cf8dd10b075e23cae45c27eaafb7729079ec213` | **DONE candidate 2026-09-26.** Root and production-GUI manifests, locks, notices and `vendor-pins.json` now name the guarded-landed Board/CUI heads; both installed trees byte-verify against those exact git checkouts and resolve one engine. Pin-derived census, 8086 report, language/part matrices, package-source notices and ROM provenance were regenerated and every `:check` twin is green. The Board range necessarily also carries its landed ideal-inductor and experimental xv6/AT work; no downstream source was copied or selectively hidden, and the full hosted Build is the compatibility gate. A shared fixture loads the real LM324 through `Circuit.fromJSON`: all 14 physical terminals are present and four voltage followers solve independently to 0.5/1/2/3 V. The existing production-browser rendering gate imports that same fixture, requires the labelled `LM324` `DIP-14` face and terminal labels from the emitted static index, then reads all four live outputs from the bundled Board. Focused pin/provenance/notices/mirror/LM324 coverage passes 12/12; a stale-CUI-pin mutation and a changed-fourth-channel fixture each fail by name. First exact Build `36279878066` correctly stopped on three omitted pin consequences while its corpus, FPGA and LM324-containing browser stage were green: the Board-owned controller bundle still recorded the old SHA, `lm324` lacked its mandatory profile row, and three unchanged ROM payload manifests still named the old pin. The forward repair regenerates the controller receipt, classifies LM324 as `analog-only`, and advances those provenance pins only after `git diff a0461018..1df17d48 -- dos roms/cpm roms/free-at-bios src/controller-extension.js` proved zero source changes; all 30 focused bundle/profile/pin-chain/LM324/mirror checks pass with the three exact upstream histories. Owns this row, exact package/pin/lock/notices/generated-evidence files, the required part-profile/controller/ROM provenance consequences, `test/{fixtures/lm324-quad-follower.json,lm324-package-adoption.test.mjs}`, and the bounded addition to `scripts/verify-circuit-rendering.mjs`. The existing Build step already runs that browser gate, so no workflow edit or extra browser job was added. No generic-opamp rewrite, sb3/example pin move, corpus payload, deployment claim, tolerance relaxation, or private Lite package fork. |
+| LM324 package adoption and visible-browser proof | (Codex), `[local path omitted]`, branch `lane/lm324-package-adoption` | exact base `c2433273a0de7b5cc7c95148efac3d67e4cea776`; upstream Board `1df17d48fbd20cebe0be0b6e5dbd0545d34ad242`, CUI `2cf8dd10b075e23cae45c27eaafb7729079ec213` | **DONE candidate 2026-09-26.** Root and production-GUI manifests, locks, notices and `vendor-pins.json` now name the guarded-landed Board/CUI heads; both installed trees byte-verify against those exact git checkouts and resolve one engine. Pin-derived census, 8086 report, language/part matrices, package-source notices and ROM provenance were regenerated and every `:check` twin is green. The Board range necessarily also carries its landed ideal-inductor and experimental xv6/AT work; no downstream source was copied or selectively hidden, and the full hosted Build is the compatibility gate. A shared fixture loads the real LM324 through `Circuit.fromJSON`: all 14 physical terminals are present and four voltage followers solve independently to 0.5/1/2/3 V. The existing production-browser rendering gate imports that same fixture, requires the labelled `LM324` `DIP-14` face and terminal labels from the emitted static index, then reads all four live outputs from the bundled Board. Focused pin/provenance/notices/mirror/LM324 coverage passes 12/12; a stale-CUI-pin mutation and a changed-fourth-channel fixture each fail by name. First exact Build `36279878066` correctly stopped on three omitted pin consequences while its corpus, FPGA and LM324-containing browser stage were green: the Board-owned controller bundle still recorded the old SHA, `lm324` lacked its mandatory profile row, and three unchanged ROM payload manifests still named the old pin. The forward repair regenerates the controller receipt, classifies LM324 as `analog-only`, and advances those provenance pins only after `git diff a0461018..1df17d48 -- dos roms/cpm roms/free-at-bios src/controller-extension.js` proved zero source changes; all 30 focused bundle/profile/pin-chain/LM324/mirror checks pass with the three exact upstream histories. Owns this row, exact package/pin/lock/notices/generated-evidence files, the required part-profile/controller/ROM provenance consequences, `test/{fixtures/lm324-quad-follower.json,lm324-package-adoption.test.mjs}`, and the bounded addition to `scripts/verify-circuit-rendering.mjs`. The existing Build step already runs that browser gate, so no workflow edit or extra browser job was added. No generic-opamp rewrite, sb3/example pin move, corpus payload, deployment claim, tolerance relaxation, or private Lite package fork. |
 
 | DONE candidate — Release 0.1.19 camera scanner, RGB-D and sharing | Codex root, 2026-09-26 | `lane/release-0.1.19`, exact base `6cd9f0e17`, release commit `14f8688bc`; paths `apps/tauri/src-tauri/{tauri.conf.json,Cargo.toml,Cargo.lock}`, `docs/app-store-metadata.md`, this row, and operational tag/workflows | **DONE CANDIDATE 2026-09-26.** All authoritative native versions are 0.1.19 and the English/German TestFlight notes cover built-in/USB selection and disconnect fallback, supported controls, bounded scan ZIP round-trip, costume creation, honest LiDAR RGB-D versus UVC RGB-only behavior, AirDrop/LocalSend share targets, the expiring LAN URL and purpose-limited permissions. Metadata/version contract: 2/2 green. Tag only the qualified merge commit; the tag workflows must provide the signed upload, Internal/External group assignment and Beta App Review receipts. No implementation code changed in this release lane. |
 
@@ -1816,7 +3560,7 @@ the old red is not a landing or deployment receipt.
 | DONE — SPIKE family consolidated into one extension | Claude (Opus 5), `<owned checkout>`, branch `lane/spike-unified` | exact base `92d4a6811`; paths `overlay/scratch-vm/src/extensions/crispstrobe/{spikeprime,spikeprimeble,spikeprimeBTC,spikeprimeBridge,legospikeprimeBLE}/`, `overlay/scratch-vm/src/extension-support/extension-manager.js`, `overlay/scratch-gui/src/lib/{spike-legacy-migration.js,spike-project-migration.js,spike-runtime-ops.js,sb3-creator-register-art.js,vm-manager-hoc.jsx,libraries/extensions/index.jsx}`, `scripts/spike/`, `test/spike-*`, `test/virtual-spike-*-e2e.test.mjs`, `test/fixtures/spike-legacy-ledger.json`, `docs/SPIKE-CONSOLIDATION.md`, `docs/LEGO-ARCHITECTURE.md`, `LANES.md` | **DONE 2026-09-20.** `spikeprimeBTC`, `spikeprimeBridge`, `spikeprimeble` and `legospikeprimeBLE` merged into `spikeprime`: one hub vocabulary over two protocols (2.x REPL, SPIKE 3 COBS/FD02) and four transports (Scratch Link BT/BLE, Web Bluetooth, local bridge), with transport detected and firmware then confirmed by the hub. 236 legacy blocks frozen in `test/fixtures/spike-legacy-ledger.json` and judged block-by-block against the unified `getInfo()`; palette is the original 84 plus 17. Old projects migrate at `vm.deserializeProject`; retired ids resolve in the extension manager. 87 focused tests pass. NOT a vendoring change: no pin moved, `sb3-creator-runtime.js` is untouched and its identity gate is green — the unified registry entry is derived from the shipping extension and merged at `sb3-creator-register-art.js`, which `test/spike-runtime-registry.test.mjs` holds and which must be deleted once sb3-creator regenerates against the unified extension. Three live defects fixed: `spikeprime` sent RFCOMM as raw text with no `encoding` (Scratch Link takes base64; `spikeprimeBTC` had it right), `legospike_ble.js` read the SPIKE 3 motor record as 11 bytes while taking an int32 from offset 8, and several reporters answered fabricated values (`getBatteryTemperature` a flat 25) where the firmware had no such channel. FOLLOW-UP CLAIMED, NOT DONE: the extension belongs in `CrispStrobe/extensions` as source of truth; this lands the tested behaviour in Lite and the upstream move plus consumption-from-pin is the next lane. |
 | DONE — 80286 qualified upstream package adoption | Astra coordinator / Sol, astra-286-sept19 | `lane/astra-286-adoption`; `<owned checkout>`; base `3599c9c67` | **DONE 2026-09-19.** Adopted qualified bw-board `84842a8678ef08766a6447618e0662c0f7cd40f2` (PR #16); upstream CI run `35438804408` is green and Lite now requires its blocking FAST-286 step by exact name, successful job and exact pinned SHA. Root and GUI installs byte-match npm packs from the pin (1,249 bw-board files and one engine resolution); CUI `a1f7dc8`, sb3 `9173ca7` and flasher `30f4338` stayed fixed. Regenerated package specs/locks/notices, census and mirror, ROM provenance, matrix and capability report; BIOS and seven demo ROM bytes were unchanged. The report derives the 65,200-vector blocking sample, hash-checks the fresh 1,477,997-pass Harris semantic receipt, keeps its no-timing/no-physical-board boundary separate from the historical compiled-wired DOS receipt, and records the shipped i80286 target's 1 MiB/open-bus/no-A20 machine limit. GUI lock repair filled the already-declared but previously unlocked `@xyflow/react`, `digitaljs` and `yosys2digitaljs` closures; no unrelated dependency upgrade. Node 22 focused adoption evidence: 58 pass with one environment-setup failure from supplying only two of three history checkouts, corrected by the complete live-history run at 11/11 pass, zero skips; debug i80286 routing 8/8; all generator check twins and exact installed-package verification green. No CUI/sb3/flasher, controlled-source browser journey or workflow/package-script-registration change. |
 
-| DONE — Lite browser proof for signed controlled-source DC operating point | `/root` (Codex), `[local path omitted]`, branch `lane/circuit-op-browser-smoke` | exact base `d2ba84bf957196bfc48147e77b394500a355d6b2`; paths `LANES.md`, `scripts/verify-circuit-operating-point.mjs`, `package.json`, `.github/workflows/build.yml` | **DONE candidate 2026-09-19.** The shipped browser now has a dedicated production-route proof: File/import selects a signed E/G SPICE deck through the real picker; Instruments clicks DC operating point and observes the exact solver scope, supported kinds, controlled-source contract, `G1.outn = +1 mA`, and `R2.a = -1 mA`; File/export downloads SPICE and its re-import repeats the same result without semantic loss. The deployed current artifact passed end to end; reversing only the G output terminals fails on the signed load-current consequence. No package/source/pin/corpus/ADI-runner change; the active upstream 46,403-row ADI lane remains separate. The final commit is identified by `git log -- LANES.md`; its single exact-head Build is the landing gate. |
+| DONE — Lite browser proof for signed controlled-source DC operating point | (Codex), `[local path omitted]`, branch `lane/circuit-op-browser-smoke` | exact base `d2ba84bf957196bfc48147e77b394500a355d6b2`; paths `LANES.md`, `scripts/verify-circuit-operating-point.mjs`, `package.json`, `.github/workflows/build.yml` | **DONE candidate 2026-09-19.** The shipped browser now has a dedicated production-route proof: File/import selects a signed E/G SPICE deck through the real picker; Instruments clicks DC operating point and observes the exact solver scope, supported kinds, controlled-source contract, `G1.outn = +1 mA`, and `R2.a = -1 mA`; File/export downloads SPICE and its re-import repeats the same result without semantic loss. The deployed current artifact passed end to end; reversing only the G output terminals fails on the signed load-current consequence. No package/source/pin/corpus/ADI-runner change; the active upstream 46,403-row ADI lane remains separate. The final commit is identified by `git log -- LANES.md`; its single exact-head Build is the landing gate. |
 
 
 
@@ -1826,7 +3570,7 @@ the old red is not a landing or deployment receipt.
 | the FPGA surface was assembled into a flag-on build and driven — found and fixed 4 bugs isolation missed | this session (VPS Claude, opus) | docs-only record; the fixes landed as #149, #150 and bw-synth `04b4824` | First real compile+click of the surface (CI workflow_dispatch, flag on, endpoint = live synth; served at fpga.crispstro.be, driven in headless Chromium 151). All 4 paths pass: scroll, hosted synth → Download .fs, local 77 MB toolchain fetch, local synth → Download netlist. Caught 4 bugs every isolated test missed: unscrollable tab (flex min-height:auto trap), invisible success (result rendered only when !ok), /api/health racing the 3s probe (2.5s → 0.1s via memoize+warm), and the local tier forcing `-top top` (no netlist for any design not named top). Lesson recorded in §7.4: source-text gates on the flagged surface are necessary but NOT sufficient — the first scroll fix passed its gate and did not fix the browser; layout/wiring/runtime needs a flag-on build + real browser. staging/fpga-flag-on stays UNMERGED (carries --no-save dep + flag env). |
 | N11a limit narrowed on one half (bw-board b8faec5), and the pin-scope recorded as a correction to lego-a4 | this session (VPS Claude, opus) | `lane/n11-limit-narrowed` | Docs-only follow-on to #144. TWO things. (1) **Recorded as a correction to the peer at their own request:** lego-a4 had said N11a's premise was "dead" without checking lite's pin; my check (64850bc is 17 ahead of pin 76877a2, 0 behind → fix is upstream, NOT in lite's tree, so N5's hang stands for the current pin) corrected a conclusion that had acquired a scope it had not earned. lego-a4 acknowledged this as the right framing. (2) **Limit narrowed, not closed:** bw-board `b8faec5` (VERIFIED 19 ahead of our pin, 2 past 64850bc; test file confirmed present, 9375 bytes) adds `rp2040-bootrom-guest-abi.test.mjs` — a 24-halfword Thumb guest in SRAM using the documented ROM ABI (u16@0x16, rom_table_lookup@0x18, blx 'SF', load+blx), reaching every fixed-point conversion, agreeing with Math.fround, mutation-proven ('XF' → miss → 0 via null slide). Closes *can a loaded program use this ROM's ABI at all* (yes, from SRAM). Does NOT close *a compiled C image boots through the bootrom* — that guest enters at RAM_START, not the flash boot path, and the reset vector still spins. Flash-entry half kept UNMEASURED per the peer's explicit caution not to restate the limit as closed. |
 | N11a's "dodging the rom_table_lookup wall" premise is dead upstream (routed in by lego-a4) | this session (VPS Claude, opus) | `lane/n11-bootrom-wall-finding` | Docs-only, LANGUAGE-DEVICE-MATRIX-PLAN.md. A peer session measured that N5's "first GPIO call HANGS in rom_table_lookup from 0x1000463f" is GONE at bw-board `64850bc` — one-byte ROM version fix (version byte at 0x13 was zero → pico-sdk shim-table took its "old bootrom" leg → 31/32 double-precision op pointers null). **Verified here:** `64850bc` is 17 commits AHEAD of lite's pin `76877a2`, 0 behind (GitHub compare), so the fix is upstream, NOT in lite's tree — N5's hang stands for the current pin until it crosses. N11a's `entry: 'vector'` behaviour is KEPT, reframed on the ISOLATION reason it already stated (an oracle must not share a failure mode with our ROM) rather than "the bootrom would hang" — a different reason that excludes different Door 2 designs. Recorded the peer's own retraction/limit: `--blink` sends a REPL line, not a loaded program, so a compiled image entered THROUGH the bootrom is unmeasured and needs its own lane. No behaviour or code changed; measured claims left intact with dated pointers, per the §8c/§8d culture. |
-| DONE — Lite package pins advance: bw-board `0bd314e` → `44fe9e4`, bw-circuit-ui `51431e0` → `8387d3a` | Fable / lego-38 (simclaude2) | qualified head `8a2ecff9c`, Build run 34760424190: build, corpus, browser (light), browser (heavy) all green | Crosses bw-board's vf datasheet correction — the LED knee becomes vf − 0.020·rd — so ~99 numeric expectations were RE-DERIVED from hand oracles, never widened: `(5 − 1.8)/230 = 13.9130 mA`, `/480 = 6.6667`, `/1010 = 3.1683`. Two were corrections to what a bench TEACHES rather than stale numbers: 34-ohms-law's "within ~1%" held only while the solver shared the lesson's own simplification (the honest gap is 5.6% with the learner LOW), and motor-flyback's "spike below −8 V" was only reachable while silicon bulk resistance was 10 Ω, 18× a real 1N4148's 0.568. Four stale figures in lite's OWN lesson catalog were caught by `test/lesson-numeric-contract.test.mjs` — the gate that exists for exactly this — and corrected in both mirrors and both languages. Every pin-derived surface regenerated at the new pin with all `:check` twins green; both installed trees verified against checkouts AT the pins. KNOWN, and measured by lego-ac with `git merge-tree`: bwcx's `lane/flasher-provenance-return` adds a fourth `vendor-pins.json` key and conflicts TEXTUALLY with lines 2-3 here though the keys are disjoint. Sequenced, bwcx lands next; whoever merges must re-read `vendor-pins.json` and confirm all four keys, because taking one side whole silently drops the other's pin. NOT fixed here and reported: sb3-creator's example prose quotes numbers this correction moves — lego-ac measured 264 stale claims across 38 examples — and that text is a third repo's at its own pin. |
+| DONE — Lite package pins advance: bw-board `0bd314e` → `44fe9e4`, bw-circuit-ui `51431e0` → `8387d3a` | Fable / lego-38 (simclaude2) | qualified head `8a2ecff9c`, Build run 34760424190: build, corpus, browser (light), browser (heavy) all green | Crosses bw-board's vf datasheet correction — the LED knee becomes vf − 0.020·rd — so ~99 numeric expectations were RE-DERIVED from hand oracles, never widened: `(5 − 1.8)/230 = 13.9130 mA`, `/480 = 6.6667`, `/1010 = 3.1683`. Two were corrections to what a bench TEACHES rather than stale numbers: 34-ohms-law's "within ~1%" held only while the solver shared the lesson's own simplification (the honest gap is 5.6% with the learner LOW), and motor-flyback's "spike below −8 V" was only reachable while silicon bulk resistance was 10 Ω, 18× a real 1N4148's 0.568. Four stale figures in lite's OWN lesson catalog were caught by `test/lesson-numeric-contract.test.mjs` — the gate that exists for exactly this — and corrected in both mirrors and both languages. Every pin-derived surface regenerated at the new pin with all `:check` twins green; both installed trees verified against checkouts AT the pins. KNOWN, and measured by lego-ac with `git merge-tree`: Codex's `lane/flasher-provenance-return` adds a fourth `vendor-pins.json` key and conflicts TEXTUALLY with lines 2-3 here though the keys are disjoint. Sequenced, Codex lands next; whoever merges must re-read `vendor-pins.json` and confirm all four keys, because taking one side whole silently drops the other's pin. NOT fixed here and reported: sb3-creator's example prose quotes numbers this correction moves — lego-ac measured 264 stale claims across 38 examples — and that text is a third repo's at its own pin. |
 | Lite package pins advance: bw-board `7fbdfa9` → `0bd314e` (CI + Harris green; `208710e` plus the 8051 checkpoint-refusal shape fix), bw-circuit-ui `657e021` → `51431e0` (master, PR #20) | Fable/lego-38 | `lane/package-migration-land`, worktree `wt-lite-land`, base `ea9816884` | **LANDED 2026-09-12 21:40 UTC** on main by fast-forward as `170788b40`; on the exact sha: build 34716229056 (build, corpus, browser light+heavy), vendor-freshness 34716230181, debugger-focused 34716231247 all job-level green, and main's own run 34716794877 green through deploy and verify-gui. brickwright-lite-0c drove `orphan`/`stale` at the planted cases on the landed sha (a deleted test's pointer caught by name; a vanished file's reading routed to stale, unpointed stays 0). Record of the work: `pin-packages --set` ×2 (root + GUI installs), `--verify-installed` against local checkouts at both pins (root and GUI trees), `gen:package-notices` + `verify:package-notices`, census + both ROM provenance manifests + 8086 report + matrix + part profiles + reader coverage regenerated at `208710e`; every `:check` twin green (census/hosted-targets need `--dir`); `verify:bwboard-ci` green for `208710e` (run 34712503675). Same commit: the two orphan LANES pointers for the retired `vendor-identity` / `vendor-absent-by-design` deleted, and `judgeSkips` gains `orphan` (a pointer whose test file is gone) and `stale` (a reading whose file is gone) — 0c's Leftover 2, the half nobody had tested. 25 targeted gates 143/0/1 with all three upstream dirs set. First candidate `d701ba18a` (pin `208710e`): vendor-freshness green, debugger-focused RED by name — `test/emu8051-checkpoint-refusal.test.mjs`, because bw-board's 8051 capability block had started spreading `reason: undefined` beside code/missing (invisible to bw-board's own deepEqual/JSON comparisons, visible to a consumer enumerating keys). Fixed upstream (bw-board `0bd314e`: omit an absent reason; recursive undefined-value walk over the real `capabilities()`; oracle-census row), lite re-pinned, census/ROM provenance regenerated at `0bd314e`, 36 targeted gates green. Orphan pointers found in the wild by the new predicate on `fe2cf110` before this lane removed them: LANES.md:828 vendor-absent-by-design, :829 and :830 vendor-identity (lego-ac). CI on the immutable candidate decides. |
 | npm package migration takeover + execution-policy GUI adoption | Codex root, user-authorized 2026-09-12 | `feat/package-migration-takeover`, preserved checkpoint `44872243a`, base `411828a` | **LANDED 2026-09-12 19:35 UTC** on main by fast-forward to `ea9816884` (Fable/lego-38, owner: "go on"), after Build/corpus/browser light+heavy/vendor-freshness/debugger/Rust-notices were green on that exact sha. The vendored roots are gone; bw-board and bw-circuit-ui install from `vendor-pins.json` shas via `integrate.mjs` and `scripts/pin-packages.mjs`. The question the deleted `vendor-identity` / `vendor-residue-ratchet` / `vendor-rewrite-depth` trio asked ("is lite's copy upstream at the pin") now has two holders of a stronger kind: `test/package-provenance.test.mjs` (installed bytes vs the pinned commit's `git archive`) and `test/pinned-packages.test.mjs` (pin == package.json == lockfile == integrated tree). Retirement of any surviving copy-era gate belongs to the dependency bump that makes it dead (0c, VENDORING-REGIME). Pin advance to current masters: next row. |
 
@@ -1842,20 +3586,20 @@ the old red is not a landing or deployment receipt.
 | RP2040 run-to descriptor pin and divergence retirement | sim2cx (Codex), root audits/lands | `vendor/rp2040-runto-retirement`, exact base `b3974c15e`, upstream `8deff2a2f` | **LANDED — branch tip `ca069deb9` is an ancestor of main (verified 2026-09-25); the status below is the original candidate note, kept as history.** **LOCAL CANDIDATE 2026-09-09.** Pin `bc0928222` -> `8deff2a2f`; whole-file sync of `rp2040js-debug.js`; its `lineLevelOnly` declaration retires in the same commit. This is a sync because Lite holds zero independent content upstream lacks (unlike C3b-1's 553 Lite-only lines), regardless of which declaration list named it. The sync also gains upstream's shared run-to bound. The predicted stop condition moved exactly: declared 16 -> 15, identical 166 -> 167, `lineLevelOnly` 10 -> 9. Overlay/package/upstream SHA-256 is `5f152119cc91e9e7cfb22d12f1af55a6f5bc4af2c7ccf9f49da08e1d7e04ea6d`; focused proof is 41/41 with 0 skips and the integrated tree remains 3,161 files. Pin-derived 8086 report, matrix, census/snapshots, vendored index, and both ROM provenance manifests changed; all seven demo ROMs and the BIOS are byte-unchanged. The BIOS recorder needs an isolated single-branch clone because its `--all` scan otherwise selects an identical source on the experimental `feat/x86-backend-lab` branch; a separate recorder-selection repair is unclaimed. Part profiles, reader coverage, and hosted targets are byte-unchanged. Runs `34304297750` / `34304299567` belong to the superseded manifest-stale head and are disowned. Replacement Build and vendor-freshness are pending; expected Build census remains the base's 3,153/3,145/0/8 and 57 example skips because this lane adds no tests. |
 | C3b-2 lossless target-owned code listing in the debugger drawer | sim2cx (Codex), root audits/lands | `lane/c3b2-lossless-code-listing-v2`, exact base `07835eea3` | **LANDED — branch tip `c2e470dae` is an ancestor of main (verified 2026-09-25); the status below is the original candidate note, kept as history.** **LOCAL CANDIDATE 2026-09-09.** The runner now delegates initial normalization and every instruction advance to `nextCodeAddress`, and discards the whole listing on missing, malformed, throwing, or non-progressing answers. Listing rows and generic PC use a lossless formatter; the 8051 PC deliberately retains `hex16`. Real component acceptance renders `1F000`, clicks that row, and records exact `0x1f000`; real i8086 IP-wrap, 16-bit wrap, string/object disassemblers, late partial failure, and LabWired's explicit no-listing state are proven. Runner/trace/drawer mirrors are byte-identical; the focused surrounding suite is 46/46. Five mutations independently red high-address transport, target-owned advance, lossless formatting, deliberate 8051 formatting, and partial-list fail-closed consequences. Exact-base Build on `07835eea3` is 3144/3136/0/8 plus 57 example skips; seven route tests plus one root JSX harness predict 3152/3144/0/8 with the same skip set and 57. No pins, vendored targets, declarations, generators, notices, or upstream repos; exact-head hosted receipts pending. |
 | C3b-1 target-owned code-listing progression pin/graft | sim2cx (Codex), root audits/lands | `lane/c3b1-next-code-address-pin`, exact base `1bfb68b10`, upstream `bc0928222` | **LANDED — branch tip `b6a90a847` is an ancestor of main (verified 2026-09-25); the status below is the original candidate note, kept as history.** **LOCAL CANDIDATE 2026-09-09.** All four target files are declared divergences, correcting the original assignment: scoped three-way grafts add `nextCodeAddress` to emu8051/m6502/z80/i8086 while preserving every Lite-only line and C3a's wrapped-CS label repair. Per overlay file, candidate numstat exactly equals upstream `676d9e893..bc0928222`: `9/0`, `9/0`, `9/0`, `27/5`; both mirrors are byte-identical. New shipped-tree proof is 6/6; old source is 1 pass/5 fail, with wrapped-CS disassembly changing directly from anonymous `jmp 0010h` to `jmp wrapped_target`. Pin-derived docs/census/provenance only; BIOS and seven demo ROMs are byte-unchanged. No runner, trace, drawer, LabWired, notices, or declaration retirement. Baseline Build `34297828459` is 3129/3121/0/8 plus 57 example skips; candidate must keep the named unscoped-sync test live and compare exact skip sets. Hosted receipts pending. |
-| N1: bound the Rust-notices writer and add a fixture-proven local check | bwcx (Codex), root audits/lands | `fix/rust-notices-safe-check-n1-replay`, exact replay base `b6a90a847` | **LANDED — branch tip `07835eea3` is an ancestor of main (verified 2026-09-25); the status below is the original candidate note, kept as history.** **REPLAY CANDIDATE 2026-09-09.** Adds the missing END marker and makes rewrite preserve all bytes outside the marker pair; `--check` and rewrite use the same pure renderer, and Cargo metadata is requested with `--locked --format-version=1`. Fixture proofs cover version, licence, removed and added crate drift, missing/duplicated/reversed END, no-write checking, locked Cargo arguments, asserted/captured CLI diagnostics, and a post-END sentinel surviving rewrite. The real 596-row table remains deliberately stale, so the live check exits 1 by design until N2; no table reconciliation, licence disposition, workflow or CI wiring occurs here. Replayed after landed C3b-1 with the non-LANES diff hash preserved; replacement hosted receipts pending. |
-| N2: reconcile the Rust notices and run the bounded check in focused CI | bwcx (Codex), root audits/lands | `lane/rust-notices-reconcile-n2-replay`, exact replay base `c2e470dae` | **LANDED — branch tip `b3974c15e` is an ancestor of main (verified 2026-09-25); the status below is the original candidate note, kept as history.** **REPLAY CANDIDATE 2026-09-09.** The locked Cargo graph regenerates 596→604 rows: ten version replacements and eight net additions. The 423 physical lines after the END-marker line remain byte-identical (`db10c63a…` before and after). Licence prose distinguishes file-level MPL-2.0 from whole-binary copyleft and records the explicit MIT election for `unescaper`'s `MIT OR GPL-3.0-only`; inspection of every changed row found no other new copyleft disjunction. A dedicated path-filtered workflow explicitly installs pinned Node and Rust, runs the writer fixtures, and checks live locked metadata. Its path-filtered branch push bootstraps the first run because GitHub returns 404 when asked to dispatch a new workflow absent from default; branch-push and PR events share one cancellation group. The replay's deterministic delta matches at `e4efd696…` when the additive ledger and live-API census are excluded. The census was separately re-fetched at main head `c2e470dae`: 244 runs, 13 workflows and 199 steps; two Rust-notices runs are observed, with all five steps plus its job always run and no unobserved step. `build.yml` already triggers on the governed notices file and is unchanged. Focused gates are 71/71 plus the refreshed census 19/19. Against the new base's 3152/3144/0/8, the one new workflow-contract test predicts 3153/3145/0/8 and the same 57 example skips. Exact replay-head hosted receipts pending. No Tauri workflow, vendor, pin, debugger, or C3b-2 file moves. |
+| N1: bound the Rust-notices writer and add a fixture-proven local check | Codex (Codex), root audits/lands | `fix/rust-notices-safe-check-n1-replay`, exact replay base `b6a90a847` | **LANDED — branch tip `07835eea3` is an ancestor of main (verified 2026-09-25); the status below is the original candidate note, kept as history.** **REPLAY CANDIDATE 2026-09-09.** Adds the missing END marker and makes rewrite preserve all bytes outside the marker pair; `--check` and rewrite use the same pure renderer, and Cargo metadata is requested with `--locked --format-version=1`. Fixture proofs cover version, licence, removed and added crate drift, missing/duplicated/reversed END, no-write checking, locked Cargo arguments, asserted/captured CLI diagnostics, and a post-END sentinel surviving rewrite. The real 596-row table remains deliberately stale, so the live check exits 1 by design until N2; no table reconciliation, licence disposition, workflow or CI wiring occurs here. Replayed after landed C3b-1 with the non-LANES diff hash preserved; replacement hosted receipts pending. |
+| N2: reconcile the Rust notices and run the bounded check in focused CI | Codex (Codex), root audits/lands | `lane/rust-notices-reconcile-n2-replay`, exact replay base `c2e470dae` | **LANDED — branch tip `b3974c15e` is an ancestor of main (verified 2026-09-25); the status below is the original candidate note, kept as history.** **REPLAY CANDIDATE 2026-09-09.** The locked Cargo graph regenerates 596→604 rows: ten version replacements and eight net additions. The 423 physical lines after the END-marker line remain byte-identical (`db10c63a…` before and after). Licence prose distinguishes file-level MPL-2.0 from whole-binary copyleft and records the explicit MIT election for `unescaper`'s `MIT OR GPL-3.0-only`; inspection of every changed row found no other new copyleft disjunction. A dedicated path-filtered workflow explicitly installs pinned Node and Rust, runs the writer fixtures, and checks live locked metadata. Its path-filtered branch push bootstraps the first run because GitHub returns 404 when asked to dispatch a new workflow absent from default; branch-push and PR events share one cancellation group. The replay's deterministic delta matches at `e4efd696…` when the additive ledger and live-API census are excluded. The census was separately re-fetched at main head `c2e470dae`: 244 runs, 13 workflows and 199 steps; two Rust-notices runs are observed, with all five steps plus its job always run and no unobserved step. `build.yml` already triggers on the governed notices file and is unchanged. Focused gates are 71/71 plus the refreshed census 19/19. Against the new base's 3152/3144/0/8, the one new workflow-contract test predicts 3153/3145/0/8 and the same 57 example skips. Exact replay-head hosted receipts pending. No Tauri workflow, vendor, pin, debugger, or C3b-2 file moves. |
 | C2 exact-address code-breakpoint toggle in the Lite runner | sim2cx (Codex), root audits/lands | `lane/c2-exact-code-toggle`, exact base `d308edb1365e6217308e002614caeab5287c941a` | **LANDED — branch tip `1de30ac3c` is an ancestor of main (verified 2026-09-25); the status below is the original candidate note, kept as history.** **LOCAL CANDIDATE 2026-09-09.** API-level-only repair: the extracted helper validates host address shape, passes valid addresses unchanged, preserves a target refusal byte-for-byte, and records only numeric accepted handles. The runner delegates code toggles to it and emits only after an add or removal. `0x1f000` reaches the target and exact-address map without aliasing; malformed values make zero target calls. Restoring 16-bit normalization fails two named high-address consequences; bypassing the target refusal fails its named sentence/storage consequence. The three listing masks remain for C3, so this lane does not yet make high addresses visible in the GUI. Existing labwired code-breakpoint success returns `undefined`; the numeric-handle rule therefore arms a breakpoint without recording a removable runner entry. That separate target-contract defect is named here and at the helper, but is not normalized or encoded as expected behavior in C2. Both runner mirrors are byte-identical; focused contracts are 35/35 and integrated gate checks are 29/29. Exact-head Build and vendor-freshness receipts pending. |
-| LabWired breakpoint-handle return trip | bwcx (Codex), root audits/lands; C3 waits | `vendor/labwired-breakpoint-handles-v1`, exact base `1de30ac3c`, upstream `676d9e893` | **LANDED — branch tip `1bfb68b10` is an ancestor of main (verified 2026-09-25); the status below is the original candidate note, kept as history.** **CANDIDATE BUILDING 2026-09-09.** Guarded scoped sync moves bw-board `64bafdd40` → `676d9e893` and copies the now-conforming LabWired target into both mirrors; the runner comment retains the numeric-handle rule and names the upstream repair instead of claiming LabWired still returns void. Integrated shipped-path measurement at 3,161 package source files changes from refused / invisible / still halted after a second toggle to added handle 1 / visible address / removed / running. This retires no declaration: expected identity remains 166 identical / 16 declared / 8 lite-authored. Generated changes are pin stamps only. Exact main Build `34295730696` is 3129 tests / 3120 pass / 0 fail / 9 skipped with 57 example skips; the candidate must restore `vendor-absent-by-design`'s default-tip check and therefore return to 3129 / 3121 / 0 / 8 before any new tests. Both hosted receipts pending; no Lite main push by this lane owner. |
+| LabWired breakpoint-handle return trip | Codex (Codex), root audits/lands; C3 waits | `vendor/labwired-breakpoint-handles-v1`, exact base `1de30ac3c`, upstream `676d9e893` | **LANDED — branch tip `1bfb68b10` is an ancestor of main (verified 2026-09-25); the status below is the original candidate note, kept as history.** **CANDIDATE BUILDING 2026-09-09.** Guarded scoped sync moves bw-board `64bafdd40` → `676d9e893` and copies the now-conforming LabWired target into both mirrors; the runner comment retains the numeric-handle rule and names the upstream repair instead of claiming LabWired still returns void. Integrated shipped-path measurement at 3,161 package source files changes from refused / invisible / still halted after a second toggle to added handle 1 / visible address / removed / running. This retires no declaration: expected identity remains 166 identical / 16 declared / 8 lite-authored. Generated changes are pin stamps only. Exact main Build `34295730696` is 3129 tests / 3120 pass / 0 fail / 9 skipped with 57 example skips; the candidate must restore `vendor-absent-by-design`'s default-tip check and therefore return to 3129 / 3121 / 0 / 8 before any new tests. Both hosted receipts pending; no Lite main push by this lane owner. |
 | graft the upstream i8086 direct code-breakpoint range contract and advance the Lite bw-board pin | sim2cx (Codex), root audits/lands | `pin/bw-board-i8086-code-range-v1`, exact base `e671c811b`, upstream `64bafdd40` | **LANDED — branch tip `89c1af698` is an ancestor of main (verified 2026-09-25); the status below is the original candidate note, kept as history.** **LOCAL CANDIDATE 2026-09-08.** Scoped three-way graft keeps Lite debugger work and moves the pin from `64ecc940`; the exact safe-integer/20-bit guard sentence is present in both byte-identical `i8086-debug.js` mirrors. The unchanged trimmed-set `218/12` is recorded only as remaining-fork size, not graft evidence; `i8086-debug.js` stays declared and this lane retires no declaration. New runtime proof is 7/7; old source is 2 pass/5 fail, and safe-integer plus inclusive-top mutations red by name. The cross-tree pin/artifact/runtime suite is 105/105 with zero skips. Six check twins are current: 8086 report, matrix and census changed only for the pin; part profiles, reader coverage and hosted targets are byte-unchanged. Vendor index and BIOS/demo provenance were generator-refreshed; all ROM bytes are unchanged. Polarity is unchanged at both named engines (`64ecc940`: seated 745/54/691/0, flat 674/49/625/0; `64bafdd40`: same). Exact base Build `34287435706` is green; candidate Build and vendor-freshness receipts pending. `gen:notices` was not run. |
-| evaluate Moira, AmiBlitz3, SingleStepTests and 68k-nano for the M68K roadmap | bwcx (Codex), root audits/lands | `docs/m68k-input-evaluation-v2`, exact base `89c1af698` | **LANDED — branch tip `d308edb13` is an ancestor of main (verified 2026-09-25); the status below is the original candidate note, kept as history.** **REPLAY DOCS CANDIDATE 2026-09-08.** Moira becomes the preferred pinned-download WASM spike, not a selected core; the unlicensed SingleStepTests corpus is a hard no-fetch/no-redistribution stop; BSD-3 68k-nano becomes a bounded reset/UART reference profile; AmiBlitz3 is deferred because its Amiga host/runtime and component licences do not meet the standalone SBC compiler boundary. Exact upstream heads are evidence anchors, not floating pins. Envelope is PLAN/ROADMAP plus this row, with no workflow, production, dependency, vendor-pin, generated, declaration or divergence retirement. The cheap docs lane replayed after the now-landed i8086 pin/graft; the non-ledger diff is byte-identical to the audited first candidate. |
+| evaluate Moira, AmiBlitz3, SingleStepTests and 68k-nano for the M68K roadmap | Codex (Codex), root audits/lands | `docs/m68k-input-evaluation-v2`, exact base `89c1af698` | **LANDED — branch tip `d308edb13` is an ancestor of main (verified 2026-09-25); the status below is the original candidate note, kept as history.** **REPLAY DOCS CANDIDATE 2026-09-08.** Moira becomes the preferred pinned-download WASM spike, not a selected core; the unlicensed SingleStepTests corpus is a hard no-fetch/no-redistribution stop; BSD-3 68k-nano becomes a bounded reset/UART reference profile; AmiBlitz3 is deferred because its Amiga host/runtime and component licences do not meet the standalone SBC compiler boundary. Exact upstream heads are evidence anchors, not floating pins. Envelope is PLAN/ROADMAP plus this row, with no workflow, production, dependency, vendor-pin, generated, declaration or divergence retirement. The cheap docs lane replayed after the now-landed i8086 pin/graft; the non-ledger diff is byte-identical to the audited first candidate. |
 | preserve physical write-watch addresses in the Lite runner (Step B) | sim2cx (Codex), root audits/lands | `lane/lite-watchpoint-physical-address-v1`, exact base `3d543965f` | **LANDED — as the patch-equivalent `1739e7e89` on main (`git cherry` marks both branch commits `-`; the branch tip `18341e268` itself is not on main; verified 2026-09-25); the status below is the original candidate note, kept as history.** **LOCAL CANDIDATE 2026-09-08.** `toggleWatchpoint` now rejects malformed host addresses before the target call, passes valid integers unchanged, delegates engine bounds to the target, preserves its refusal sentence byte-for-byte, and stores only accepted handles. The complete mask census is three sites per mirror: listing walk is a different concern; code breakpoint masking is the same defect class but deferred to Step C; write-watch masking alone is removed here. Direct shipped-code proof: `0x1F000` arrives and keys unchanged, exact-handle removal works, a narrow target's sentence survives byte-for-byte with no stored handle, and five malformed forms make zero target calls. Focused runner/target suite is 24/24 plus gate-shapes 11/11; restoring `& 0xFFFF` and bypassing refusal each red the named consequence. Both mirrors are byte-identical; exact-head Build + vendor-freshness pending. |
 | Lite bw-board pin/sync for honest i8086 write-watch ranges | sim2cx (Codex), root audits/lands | `lane/lite-bwboard-watch-contract-v1`, exact base `b8da8e197`, upstream `8deaf1ea6` | **LANDED — branch tip `3d543965f` is an ancestor of main (verified 2026-09-25); the status below is the original candidate note, kept as history.** **LOCAL CANDIDATE 2026-09-08.** Guarded pin move from `b1e351ef5`. AVR and labwired become byte-identical; i8086's three-way graft moves trimmed-set L/U 218/12 → 218/12 while taking the write-range contract; RP2040 deliberately takes upstream's step-out union and retains Lite's run-to descriptor, shrinking 9/7 → 2/0. A new nested-call proof closes the old test's blind spot: deleting either LR or SP side now fails by name. The i8086 runtime proof is 14/14; old source fails 12 refusals, and six guard/union mutations fail by consequence. Both-pins polarity is unchanged: seated 745 attempted / 54 undecided / 691 agreeing / 0 inverted; flat 674 / 49 / 625 / 0. All four production mirrors are identical; generated census, matrix, capability report, vendor index, BIOS and demo provenance change only their pin stamps, while BIOS source, BIOS/demo binaries, census rows, matrix facts and vendor counts are byte-unchanged. Main Build `34279960458` baseline is 3093 tests / 3085 pass / 0 fail / 8 skipped; exact-head hosted comparison pending. The runner's uppercase `0xFFFF` mask is fenced to Step B and untouched. |
-| Lite bw-board pin bump retires converged `debug-session.js` declaration | bwcx (Codex), root audits/lands | branch `vendor/debug-session-retirement-v2`, exact base `1739e7e89`, upstream `64ecc940` | **LANDED — branch tip `e671c811b` is an ancestor of main (verified 2026-09-25); the status below is the original candidate note, kept as history.** **REPLAY CANDIDATE 2026-09-08.** Re-derived `8deaf1ea6..64ecc940` as exactly one upstream commit before syncing. The guarded `--only debug-session.js --pin` move reports the file already identical and changes zero vendored production bytes. Its now-stale line-level declaration retires in the same commit: bw-board identity moves 165→166 identical and 17→16 declared-divergent, with all 8 lite-authored files unchanged. Pin-stamped census, capability, vendor index and ROM provenance are regenerated; BIOS/demo binaries and source remain unchanged. The original exact head passed Build and vendor freshness; this replay follows Step B without touching its `debug-runner.js` work, and replacement exact-head receipts are pending. |
-| remove generated `packages/scratch-gui/examples` catalogue | bwcx (Codex), root audits/lands | `cleanup/package-examples-removal-v3` off exact Lite main `f917c1f12` | **LANDED — branch tip `ef1fa3e66` is an ancestor of main (verified 2026-09-25); the status below is the original candidate note, kept as history.** **CANDIDATE BUILDING 2026-09-08.** A runner-outward audit proved the 24-file source suite never reaches this subtree; production cannot use the tracked copies because `scripts/vendor.mjs` `freshDir()`-wipes `packages/scratch-gui` before extracting upstream. Remove all 1,529 force-added files (including 106 orphans) while leaving the 3,378-file overlay unchanged. A `git ls-files packages/scratch-gui/examples/` gate throws on Git failure and a pure-predicate mutation detects a force-added path. Exact-head source and hosted skip-count receipts required. |
+| Lite bw-board pin bump retires converged `debug-session.js` declaration | Codex (Codex), root audits/lands | branch `vendor/debug-session-retirement-v2`, exact base `1739e7e89`, upstream `64ecc940` | **LANDED — branch tip `e671c811b` is an ancestor of main (verified 2026-09-25); the status below is the original candidate note, kept as history.** **REPLAY CANDIDATE 2026-09-08.** Re-derived `8deaf1ea6..64ecc940` as exactly one upstream commit before syncing. The guarded `--only debug-session.js --pin` move reports the file already identical and changes zero vendored production bytes. Its now-stale line-level declaration retires in the same commit: bw-board identity moves 165→166 identical and 17→16 declared-divergent, with all 8 lite-authored files unchanged. Pin-stamped census, capability, vendor index and ROM provenance are regenerated; BIOS/demo binaries and source remain unchanged. The original exact head passed Build and vendor freshness; this replay follows Step B without touching its `debug-runner.js` work, and replacement exact-head receipts are pending. |
+| remove generated `packages/scratch-gui/examples` catalogue | Codex (Codex), root audits/lands | `cleanup/package-examples-removal-v3` off exact Lite main `f917c1f12` | **LANDED — branch tip `ef1fa3e66` is an ancestor of main (verified 2026-09-25); the status below is the original candidate note, kept as history.** **CANDIDATE BUILDING 2026-09-08.** A runner-outward audit proved the 24-file source suite never reaches this subtree; production cannot use the tracked copies because `scripts/vendor.mjs` `freshDir()`-wipes `packages/scratch-gui` before extracting upstream. Remove all 1,529 force-added files (including 106 orphans) while leaving the 3,378-file overlay unchanged. A `git ls-files packages/scratch-gui/examples/` gate throws on Git failure and a pure-predicate mutation detects a force-added path. Exact-head source and hosted skip-count receipts required. |
 | retire converged AVR code-breakpoint divergence at the bw-board pin | sim2cx (Codex), root audits/lands | `lane/lite-avr-retirement-v2`, exact base `0460b1c76`, upstream `b1e351ef5` | **LANDED — branch tip `f917c1f12` is an ancestor of main (verified 2026-09-25); the status below is the original candidate note, kept as history.** **FORWARD LOCAL CANDIDATE 2026-09-08; REPLACEMENT HOSTED RECEIPTS PENDING.** Pin `bc0ae45e` → `b1e351e` spans exactly two CI/test-only commits plus the reviewed AVR convergence. Scoped pin-aware sync reports `ok avr8js-debug.js`; all 351 tracked bw-board vendor paths remain byte-identical to base, including both AVR copies at `fd1e1bd7d24ec274`. Exact-pin identity is 7/7, zero skipped, and retires only `avr8js-debug.js`: stale declaration mutation reds `GONE`, stale pin mutation reds both undeclared and `APPEARED`. Generator-owned census JSON + two module mirrors, 8086 report, language matrix, vendored-files index, BIOS provenance and seven-demo provenance were regenerated; ROM/source bytes did not move. New-pin polarity re-derives unchanged from `bc0ae45e`: seated 745/54/691/0 and flat 674/49/625/0, with four mutations caught per surface. Focused cross-tree/pin/provenance/matrix suite is 88 tests, 87 pass, 0 fail, one unchanged `STC_COMPILER_DIR` skip outside this lane. First exact-head Build `34265892483` cleared on attempt 2 after the inherited Pause race; current main now includes that race fix. Replacement exact-main Build + vendor-freshness required; no local heavy build and no main push. |
-| DONE — debugger-history Pause race | bwcx | Lite main `4218ebb1e`; Build `34266508832`, debugger-focused `34266511938` | After forward execution created its child recording, the proof unconditionally clicked Pause. The program could reach its own pause first, disable the control, and leave Playwright waiting 30 seconds for actionability even though the behavior under test had succeeded. Phase read and click are now atomic inside the browser event loop: already paused is accepted, otherwise the real enabled control is clicked. Deterministic tests reproduce the delayed-action state; the exact hosted heavy browser proof is green. |
-| CUI singleton convergence | bwcx, root audits/lands | upstream PR 18 / `e18dad586`; Lite `vendor/cui-singleton-convergence-v3` | Upstream now owns the shared intro parser/render/localization module and the catalogue's confirm-dialog device-selection behavior. Guarded Lite sync measures 674 identical, 0 divergent, 2 downstream artefacts (licence and generated manifest); `ExamplesBrowser.jsx` leaves `lineLevelOnly` and `intro-doc.jsx` leaves `liteAuthored`. Exact Lite hosted receipts pending. |
-| DONE — sb3 corpus pin: active-low lessons plus upstream counter convergence | bwcx (Codex), root audited/landed | main `2bb7ad8b0`; exact Build `34264362972`, vendor freshness `34264363018` | Guarded sync advanced sb3-creator `33ab265f8` to exact promoted `9173ca756`; the active-low lesson content is at `c593574`, and the later range only converges the already-present `i8086_counter` catalogue entry plus upstream tests. The normalized catalogue delta is exactly 0 lite-only / 0 upstream-only, so the `sb3-creator-examples.js` declaration is retired and the executable exact-set inventory is empty. The emitter is byte-stable. With shipped bw-board `bc0ae45e` + bw-circuit-ui `59c4dce8b`, the production polarity census reads 745 attempted / 54 undecided / **691 agreeing, 0 inverted**, flat 674 / 49 / **625, 0**; all four mutations fire on both surfaces. Lesson 56 re-derived the reach populations 281→282, device C 48→49 and mixed generation 79→80. The replacement Build cleared all six jobs, including the heavy browser rerun, and vendor freshness is green. The package-only example backlog remains a separate cleanup lane. |
+| DONE — debugger-history Pause race | Codex | Lite main `4218ebb1e`; Build `34266508832`, debugger-focused `34266511938` | After forward execution created its child recording, the proof unconditionally clicked Pause. The program could reach its own pause first, disable the control, and leave Playwright waiting 30 seconds for actionability even though the behavior under test had succeeded. Phase read and click are now atomic inside the browser event loop: already paused is accepted, otherwise the real enabled control is clicked. Deterministic tests reproduce the delayed-action state; the exact hosted heavy browser proof is green. |
+| CUI singleton convergence | Codex, root audits/lands | upstream PR 18 / `e18dad586`; Lite `vendor/cui-singleton-convergence-v3` | Upstream now owns the shared intro parser/render/localization module and the catalogue's confirm-dialog device-selection behavior. Guarded Lite sync measures 674 identical, 0 divergent, 2 downstream artefacts (licence and generated manifest); `ExamplesBrowser.jsx` leaves `lineLevelOnly` and `intro-doc.jsx` leaves `liteAuthored`. Exact Lite hosted receipts pending. |
+| DONE — sb3 corpus pin: active-low lessons plus upstream counter convergence | Codex (Codex), root audited/landed | main `2bb7ad8b0`; exact Build `34264362972`, vendor freshness `34264363018` | Guarded sync advanced sb3-creator `33ab265f8` to exact promoted `9173ca756`; the active-low lesson content is at `c593574`, and the later range only converges the already-present `i8086_counter` catalogue entry plus upstream tests. The normalized catalogue delta is exactly 0 lite-only / 0 upstream-only, so the `sb3-creator-examples.js` declaration is retired and the executable exact-set inventory is empty. The emitter is byte-stable. With shipped bw-board `bc0ae45e` + bw-circuit-ui `59c4dce8b`, the production polarity census reads 745 attempted / 54 undecided / **691 agreeing, 0 inverted**, flat 674 / 49 / **625, 0**; all four mutations fire on both surfaces. Lesson 56 re-derived the reach populations 281→282, device C 48→49 and mixed generation 79→80. The replacement Build cleared all six jobs, including the heavy browser rerun, and vendor freshness is green. The package-only example backlog remains a separate cleanup lane. |
 | DONE — i8086-blink lite re-sync | landed before 2026-09-08 (verified by lego-ac while moving the pin) | on main at `1d849ee9b` | **This row's premise was already false when it was read.** It said the example is "UPSTREAM but NOT yet vendored here"; all five files (`program.bw`, `circuit.json`, `EXPECTED.md`, `intro.md`, `intro.de.md`) are present under `overlay/scratch-gui/examples/i8086-blink/` on `origin/main`, and the `0a0e82e` pin the row describes as the blocker had already been taken. Kept rather than deleted because its ANALYSIS is still true and load-bearing: lite's single `sb3-creator` vendor-pin governs two independently-versioned consumers — the gallery examples (`sync-examples.mjs`) and the emitter `src/lib/sb3-creator*.js` (`sync-sb3creator.mjs`) — so **examples can never be synced independently of the emitter**, and every example bump must be read for what emitter work rides along. The `0a0e82e` bump carried 44 emitter lines of tone work and needed a census re-derive; the `0a0e82e` → `6bda3b3` bump below carried none, and that was measured, not assumed. |
 | LED-polarity pin: `sb3-creator` `0a0e82e` → `6bda3b3` + the stale 21→19 union evidence | lego-ac | worktree `ac-fixall` → main | Upstream fix promoted and audited by lego-ac earlier tonight (hosted `34195871896`, 7415 tests / 0 fail / 335 skipped, skip count identical to the previous main). **The rare bump with no emitter drag, and that is measured:** `git diff --name-only 0a0e82e 6bda3b3 -- src/` is EMPTY, so every vendored `sb3-creator*.js` reads `ok` and no census needs re-deriving. Scope is 135 example files (69 benches re-wired to their target's output polarity + their 66 board-free twins), the pin, the `lego-spike-roundtrip` pin assertion, and 15 dual-tracked `packages/scratch-gui/examples/**` mirrors — the mirror is a SUBSET (15 of 135), so files were copied only where a counterpart already existed rather than created. Acceptance re-derived here, not inherited: census 792 decidable / 0 inverted, against 792 / 174 before, denominator unchanged. |
 | A TONE pin sounds its buzzer: `bw-board` `2c568ca` → `6145e8a` | lego-ac | upstream `CrispStrobe/bw-board` PR #3 `b5a20a2` → master `6145e8a`; lite worktree `ac-fixall` → main | The owner reported the two-tone buzzer broken and asked twice for the buzzer to be visible and audible. The audio path was ALREADY complete end to end — the emitter emits `_board().setTone(pin, hz)`, the designer reads `buzzerTone()` every frame, `buzzer-audio.js` drives a real oscillator — and no board implemented `setTone`, so a correct program was SILENT WITH NO ERROR. **Bumping the pin was not enough, and that is the point of this row.** bw-board `7b7f3b5` added `setTone`, but its `_buzzerOnPin()` matched `kind === 'mcu'` only, while the pin namespace lives on the MCU SURFACE — `kind === 'mcu' || getDevice(kind)?.gpioFollowsPinStates` — which is the predicate `_digitalFastInfo` and the readPin lookup already use, the latter with a comment recording this EXACT bug being fixed there for `readPin`. Measured on the shipped corpus at that pin: 12 of 25 TONE readings reached a buzzer and 13 reached nothing, every one of the 13 on an `arduino_uno` or `stc15_mcu` body. Upstream's own suite stayed green because its FAMILIES table varies the pin SPELLING across five families and holds the part KIND fixed at `mcu` — five green rows measuring one case five ways. The new SURFACES table is that missing axis; reverting the predicate fails 8 of its 10 cases. Lite side: `test/tone-reaches-the-buzzer.test.mjs` is a POSITIVE assertion — it drives the pin the PROGRAM declares, after the app's own retarget, against the bench the app would load, and asserts the board reports 440 Hz sounding. 25 readings, 25 reach. Fired at all three pins: `2c568ca` has no `setTone` at all, `7b7f3b5` fails 13, `6145e8a` passes. Synced `--only board.js`: 18 other vendored bw-board files carry declared lite divergences an unscoped sync would clobber. |
@@ -1868,8 +3612,8 @@ the old red is not a landing or deployment receipt.
 | matrix T7 completion: render-equals-DEVICES contract for Code-tab picker | sim2cx (Codex), lego-ac audit/landing | `lane/t7-picker-generated-contract-v4` replayed without force onto exact main `6b16cb904` | **READY FOR HOSTED CI 2026-09-07.** Production derivation first landed as `eae510a33`; this completion exports `deviceGroupsFor` + `DEVICE_GROUPS` beside the 25 capability rows, makes the picker consume that export, replaces its JSX sentinel with exact ordered/grouped field equality and a removal mutation that names `samd51`, and compares the rendered picker set with the panel's full capability set while preserving nine compact family columns. Overlay/package mirrors are exact; 53 focused matrix, mutation, pair, workflow, timeout and gate-shape tests pass; generated matrix is current. N2c landed first and its C/i8086 content is untouched. First hosted run `34115418610`: corpus + both browser shards green, exact 25-device UI receipt; build red only on N2c raw stdout, fixed on main by `c60f827b9`; replacement exact-head run required. Heavy build/browser only in CI; no force push or main push. **RECONCILED 2026-09-07 (lego-b9, at lego-ac's ask): LANDED at `3073fc103`.** Nothing is pending from sim2cx and no hosted audit is owed — the Codex sessions paused 2026-09-07 and this needs nothing from them. Its own main run `34119286701` was CANCELLED by supersession, so the first GREEN main verdict containing it is `34119648099` (`9d8e54319`). |
 | matrix P6a: a browser gate reaches the 8086 Machine Loader through a real circuit-board path | sim2cx (Codex), root audit/landing | `lane/p6a-machine-loader-browser-v2` replayed on exact main `dc9e44951` | **READY FOR HOSTED AUDIT 2026-09-07.** Measured stop: 0/311 gallery entries and 0 palette entries place an 8086/8088. The existing File > Open circuit route loads the extractable `e4-reseated-8086.json` fixture; the new heavy-shard gate then clicks `bw-machine-preset-timerdemo` and records no bench → no collector → empty collector. Mutations remove the CPU (red: `no 8086 on the board`) and return HTTP 404 for timerdemo (red names preset/status, dispatches no media). Envelope is only the two new gate/test files, build workflow, plan, and this row. Ea/lego-be collision files, N2c/N2d, sb3-creator, assemble-route, pins, and package mirrors remain untouched. No main push and no force push. **RECONCILED 2026-09-07 (lego-b9): LANDED at `39688b024`, green on its own main run `34112210638`.** Nothing pending from sim2cx. |
 | matrix P7: a first-class i8086 Circuit Designer example — the gallery reaches the 8086, not just the load menu | delegate `8086 coverage testing materials` | `lane/p7-i8086-circuit-example` off main (branch/sha/run id in the report) | P6a proved the loader after the file boundary; P7 closes the PRODUCT route the owner named — the gallery had 0/311 i8086 entries, so the 8086 was reachable only by hand from the Circuit Designer's load menu. Built `i8086-blink`: a standalone `kind:"program"` gallery entry (devices `["i8086"]`, authored `i8086`), circuit = `test/fixtures/reseat/e4-reseated-8086.json` (an 8086 + 8255 PPI + eight LEDs on port B) adapted to the gallery shape (dropped `_stage/_title/_description`, added `holeWires:[]`; provenance recorded), `program.bw` blinks one LED (`PIN led = P2.0`) with the intro explaining `P2.1`–`P2.7` are the rest of the 8255 port. Verified: program → 60 bytes of 8086 machine code; the adapted circuit extracts as an 8086 machine with the 8255 (ppi); the lessons/example-execution gates RUN it (286 pass) and assert the LED toggles — a broken program reddens it by name ("0 events, computed nothing observable"), the firing mutation. The ROM's chip select is PROVABLY bound, not assumed from a green run (`test/i8086-blink-rom-select.test.mjs`): `extract8086Machine` decodes the 28c256 as a `rom` region at 0xE0000–0xFFFFF only because its select is driven, and dropping the `rom86.ceb` wire reddens by name ("floating chip select is not a decode"). The first run caught a REAL circuit bug and a MODEL DIVERGENCE: a reseat fixture is bw-board-valid but not gallery-netlist-valid, because bw-board tolerates an inline `terminals` array that EXCEEDS the part (both memory chips carried the union `[csb, ceb]`) while the gallery netlist rejects the spurious pin. The two chips DO carry different selects by design — 62256 SRAM = `csb`, 28c256 EEPROM = `ceb` — so the fix trims each chip's inline terminals to its own silicon and leaves the (correct) wires untouched; my first repair over-normalised to one name (green for a reason that did not matter, lego-ac caught it) and was corrected per-chip. Browser gate (`verify-example-selector.mjs`, CI heavy shard): selects i8086 in the picker (a real `DEVICES`/`DEVICE_GROUP` entry, so offered), opens the catalog it serves, clicks `i8086-blink`, asserts it loads the 8086 program (`DEVICE i8086`, `P2.0`, `WHEN flag clicked`), sets the device to i8086, and runs on the live `__vm` runtime — mirroring the gate's proven selectors (`bw-device-select`/`bw-catalog-toggle`/`bw-catalog-item[title]`/`.cm-content`), since playwright can't run locally. The PALETTE half is SEPARATE and UPSTREAM: `PartPalette.jsx` is VENDORED from bw-circuit-ui (in its manifest, pinned `a879732`), so the i8086/i8255 `Chips` entries go to CrispStrobe/bw-circuit-ui (part data + capabilities device already exist upstream; only the palette list omits them) and ride a later pin bump — I built then reverted the lite fork rather than forking a vendored file. Follow-on P7b (owner ask): 8086 examples WITH `files.controller` widgets — a VGA one over `i8086-vga-demo.bin` and a keyboard one over `i8086-keyboard-demo.bin`, modelled on `eater6502-blink` (ROM shape) + `aurora65-workstation` (widget shape). |
-| matrix N2c: literal `wait` on the single-script 8086 C route | bwcx (Codex), audited/promoted by root | **DONE 2026-09-07** — upstream `sb3-creator` `2a0280e` (CI `34111516415`); Lite `3d5676c3a` (candidate CI `34113008050`) | Measurement corrected the premise: single-script ASM uses the exact/free INT 15h/86h DOS machine-time proxy, not the PIT; a PIT loop is 4.19x wrong on this bench and a busy loop burns host CPU. C conditionally injects that service behind `bw_delay_ms`; 0..65535 ms literals are admitted, while computed/negative/non-finite/over-ceiling waits and multi-script programs refuse by name. At the exact N2c pin the receipt was 44 emitted/compiled (from 5). Later `c8791ee` proved two were false compiles: blink-without-delay and debounce lowered timer-derived operands to commented zero. Current safety-correct pre-print reach is 42; the historical 44 remains labeled by pin. The toggle repair and wait differential remain green. **RECONCILED 2026-09-07 (lego-b9): LANDED at `3d5676c3a`.** Its own main run `34114426126` was RED at build / "Run unit tests", so the first GREEN main verdict containing it is `34117114146` (`c60f827b9`). The reach that stands is **42**, not the historical 44: `c8791ee` proved two false compiles, `blink-without-delay` and `debounce`, which lowered timer-derived operands to a commented zero. |
-| matrix N2d: implement the narrow 8086 C numeric-print boundary | bwcx (Codex) | `lane/n2d-i8086-c-print-v5`; upstream prerequisites through `a40a60d34`; forward Lite pin `e4e81b259` | **DONE 2026-09-07 — landed at `cc1dd0a43` (status corrected 2026-09-25; the next sentence is the original candidate note, kept as history).** ~~LOCAL CANDIDATE; exact-head hosted receipt pending.~~ Post-production v4 keeps the exact 83-output/41-program census but reports reality: 15 HOST C, 22 refused, four emitted, zero comment-only. Unsafe print values are structurally named (five print refusals); c879's complete-lowering defence separately names five programs, including blink-without-delay and debounce. Broad reach is 131 retarget + 31 host + 61 feature-choked + 5 print-refused + 5 lowering-refused + 1 computed-wait-refused + **46 emitted**. Thus the correction is N2c 44 → 42, then N2d 42 → 46. `bw_print_num` is conditional cdecl DOS AH=02h signed decimal + CRLF. Complete raw C/ASM screen arrays agree for four gallery programs and signed-16 boundaries; independent expected rows pin state-change `!=`; initializer, missing-helper, commented-zero and CRLF mutations are red. Require hosted 46 emitted = 46 compiled, zero failures, exact names, mirrors/pin provenance. No main push by this lane. **RECONCILED 2026-09-07 (lego-b9): LANDED at `cc1dd0a43`; NO RECEIPT IS PENDING and branch `lane/n2d-i8086-c-print-v5` (`84c968477`) is SUPERSEDED — do not chase it.** Honest reach is **46**, after the same safety correction that took N2c to 42. One caveat recorded rather than smoothed over: this sha has no green main VERDICT yet. Its run `34143734197` reads `queued` at RUN level, but that field says "has everything started?", not "is anything running?" — at job level build, both browser shards, corpus and deploy are all SUCCESS and only the `needs:`-gated `verify-gui` was still queued at 17:41. |
+| matrix N2c: literal `wait` on the single-script 8086 C route | Codex (Codex), audited/promoted by root | **DONE 2026-09-07** — upstream `sb3-creator` `2a0280e` (CI `34111516415`); Lite `3d5676c3a` (candidate CI `34113008050`) | Measurement corrected the premise: single-script ASM uses the exact/free INT 15h/86h DOS machine-time proxy, not the PIT; a PIT loop is 4.19x wrong on this bench and a busy loop burns host CPU. C conditionally injects that service behind `bw_delay_ms`; 0..65535 ms literals are admitted, while computed/negative/non-finite/over-ceiling waits and multi-script programs refuse by name. At the exact N2c pin the receipt was 44 emitted/compiled (from 5). Later `c8791ee` proved two were false compiles: blink-without-delay and debounce lowered timer-derived operands to commented zero. Current safety-correct pre-print reach is 42; the historical 44 remains labeled by pin. The toggle repair and wait differential remain green. **RECONCILED 2026-09-07 (lego-b9): LANDED at `3d5676c3a`.** Its own main run `34114426126` was RED at build / "Run unit tests", so the first GREEN main verdict containing it is `34117114146` (`c60f827b9`). The reach that stands is **42**, not the historical 44: `c8791ee` proved two false compiles, `blink-without-delay` and `debounce`, which lowered timer-derived operands to a commented zero. |
+| matrix N2d: implement the narrow 8086 C numeric-print boundary | Codex (Codex) | `lane/n2d-i8086-c-print-v5`; upstream prerequisites through `a40a60d34`; forward Lite pin `e4e81b259` | **DONE 2026-09-07 — landed at `cc1dd0a43` (status corrected 2026-09-25; the next sentence is the original candidate note, kept as history).** ~~LOCAL CANDIDATE; exact-head hosted receipt pending.~~ Post-production v4 keeps the exact 83-output/41-program census but reports reality: 15 HOST C, 22 refused, four emitted, zero comment-only. Unsafe print values are structurally named (five print refusals); c879's complete-lowering defence separately names five programs, including blink-without-delay and debounce. Broad reach is 131 retarget + 31 host + 61 feature-choked + 5 print-refused + 5 lowering-refused + 1 computed-wait-refused + **46 emitted**. Thus the correction is N2c 44 → 42, then N2d 42 → 46. `bw_print_num` is conditional cdecl DOS AH=02h signed decimal + CRLF. Complete raw C/ASM screen arrays agree for four gallery programs and signed-16 boundaries; independent expected rows pin state-change `!=`; initializer, missing-helper, commented-zero and CRLF mutations are red. Require hosted 46 emitted = 46 compiled, zero failures, exact names, mirrors/pin provenance. No main push by this lane. **RECONCILED 2026-09-07 (lego-b9): LANDED at `cc1dd0a43`; NO RECEIPT IS PENDING and branch `lane/n2d-i8086-c-print-v5` (`84c968477`) is SUPERSEDED — do not chase it.** Honest reach is **46**, after the same safety correction that took N2c to 42. One caveat recorded rather than smoothed over: this sha has no green main VERDICT yet. Its run `34143734197` reads `queued` at RUN level, but that field says "has everything started?", not "is anything running?" — at job level build, both browser shards, corpus and deploy are all SUCCESS and only the `needs:`-gated `verify-gui` was still queued at 17:41. |
 | matrix N2e: bounded numeric-list support on the 8086 C route | root (Codex) | upstream `8c17dfa898f80a875e2a4bf044144564f8a4cebc`; Lite `dec11a41f8e33cee20cd75e1f72863f34f6bef0d` | **DONE 2026-09-08.** Upstream exact-head run `34200030761`, upstream main run `34200529033`, and Lite exact-head run `34206351591` are green; Lite was fast-forwarded without rewrite. The pin adds signed-16 lists with 32 checked one-based items each and a 15-list/990-byte aggregate ceiling; generated data/length names are independently fresh and list identity/provenance fails closed. Real SmallerC → `.COM` → 80186 execution matches an independent array oracle for delete-all/add/insert/replace/delete/item/length and invalid-index no-ops/zero. Mutations prove a zero-based item read and silent overflow drop are visible; the latter terminates with forbidden row `32` while the real overflow traps. The 15×32 image is 1,618 bytes with 63,662 bytes remaining in the `.COM` segment. Measurement remains honest: the sole 281-program list candidate is `arduino-03-smoothing`; list lowering adds zero emitted programs because ADC still chokes it. Existing print reach stays four direct programs / broad 46. N2f subsequently landed in the completed production row below. |
 | matrix T6: the census snapshot join — every `needs` is a bw-board census row id, rendered standing / recorded / absent | lego-ac | `lane/t6-census-join` → main | `scripts/gen-bw-board-census.mjs` runs the PINNED bw-board tree's `oracle-census.mjs --snapshot` and refuses by name off-pin or pre-`a9fea52`; `docs/generated/bw-board-census.json` (19 rows at 88bbdcf78); `--check` on the stable fields only, because `present`/`via` are the reading box's. `needs` renamed to row ids; `test/bw-board-census.test.mjs` mutation-proved both ways (an unknown name red by name; a hidden non-standing marking red). Finding: STM32F030's sim 2a rests on `labwired-wasm`, absent and CI-less in bw-board's census — the standing check is lite's own heavy-tier gate, and the doc now says so. The bw-board pin itself did NOT move tonight: a full sync differs in 23 files across the debugger lane (forward-ports, not staleness); the next bump is a scoped `--only` for 8064729 (media-aware DPT) + bfd8b44 (`chipRefusals()`). |
 | matrix T2 (nightly half): the hosted-targets snapshot is diffed against the LIVE service's /health every night, report-only | delegate `8086 coverage testing materials` (a785629e4), audited by lego-ac | `t2/nightly-health-diff` → main | `scripts/check-hosted-live.mjs` in vendor-freshness.yml (`if: always()`, never fails): bounded fetch, network failure is "could not compare", diff by target name to the job summary; fixture-tested, mutation-proved. First run: live `82294bc` serves the same lists as the snapshot at `79df4b6d`; compile.6502 is not in /health and is reported as not compared. That run also found iteration FOUR of the sync guard: the pin-ordering check fired in `--check` mode on both vendor steps (the nightly checks out each upstream AT the pin, where HEAD == pin is healthy), exit 2 with PIN ALREADY MOVED; the guard is now skipped when `--check` is set, since a check writes nothing. Run 34011017591 green. |
@@ -1902,7 +3646,7 @@ the old red is not a landing or deployment receipt.
 | fix: the literal NUL in test/fetch-pinning.test.mjs (`'\0'` was meant) and the fixture sha it hid from T9 | lego-be (byte found by ea; hidden-set confirmed by lego-b9) | same stack | One character: the binary-detection check `text.indexOf('<NUL>')` had made its own file binary — grep withheld its matches, git gave `UU` with no conflict markers and diffed it as unreadable, and, the fourth and worst face, T9's stale-pin census SKIPPED it (`continue` on a NUL) and reported clean while an old bw-board pin `a301937d9` sat at :618 as a fixture value. Proved both ways (NUL back: 7 pass; NUL gone: red naming the sha) and from the other side by ea (main + the one-character fix only → the same red). The fixture is now `'deadbeef'.repeat(5)`: a value that only needs to be 40 hex characters must not be a value that means something elsewhere. Generalises: any file-skip predicate inside a scanner is a set the gate silently does not quantify over — lego-b9's skip-predicate sweep is the follow-up. The NUL gate's KNOWN entry for this file expires with this landing. |
 | gate: the chip-refusal line's DOS-bench expectation moves "port 03h" → "port 63h", plus one assertion that cannot go stale | brickwright-lite-ea | same stack, `58c4f0567` | Three lines, not two: the pinned number stays as a separately LABELLED assertion whose message says it is the vendored contract's and moves with the pin (so an out-of-order landing reads as "the pin moved", not "the gate is broken"), and a new assertion that the address in the RENDERED line equals the address in the ledger's row — true before and after the fix, mutation-proved three ways (a renderer emitting a constant, the anchor dropped, off by one) and measured green on OLD main where the pinned number failed. The breadboard case (base 0) stays "03h" untouched. Landed as one with the pin leg so main was never red between them. The marker that was at :165 fired for the right reason: on the rebased pin the failure message came back as ea's own sentence, not "expected /port 03h/". |
 | gate: fetch-pinning's tracked-file walk REPORTS what it skips — "skipped N file(s) holding a NUL" — instead of `continue`-ing in silence | lego-be (rule: lego-b9's SILENT-SKIP) | `ci/fetch-pinning-reports-skips` `6bb34e5fe` → main | The last of the four faces: a scanner's skip predicate is a set the gate silently does not quantify over. The walk now says by count and reason what it dropped (measured on today's main: 93 non-source files and 0 source files, the vendored trees being excluded before the read — lego-be's first count of 3 came from a reconstruction of the filter and the row says so), so lego-b9's SILENT-SKIP baseline goes from its measured 2 to 0 with this landing. Run 34113229631: fully green. |
-| fix: N2c's reach test wrote its receipt raw to the runner's stdout pipe — 298 B — and reddened main's build on three consecutive commits (3d5676c3a, 5ac83c663, 851ff42b8) | bwcx (Codex); landed directly by lego-ac | `fix/n2c-wait-reach-diagnostic` `c60f827b9` → main | The console.log that lego-ac asked for as a diagnostic became the exact species-26 instance the zero-raw-byte budget (lego-b9's flake fix) exists to catch: the gate named the file and the byte count on the first main run after N2c. Two lines: the test callback takes `t` and the receipt goes through `t.diagnostic()`. Verified with the exact gate locally (the census reporter's `stdoutBytes: 0` for the file; `check-test-run --max-stdout-bytes 0` no longer names it). LANDED WITHOUT A BRANCH RUN, deliberately: every branch rebased onto main inherits the red (sim2cx's T7 run 34115418610 was red only on this line), the change is test-only and two lines, and the gate that would judge it was run locally by name — the one exception to the per-step read tonight, stated here so it is not a precedent. |
+| fix: N2c's reach test wrote its receipt raw to the runner's stdout pipe — 298 B — and reddened main's build on three consecutive commits (3d5676c3a, 5ac83c663, 851ff42b8) | Codex (Codex); landed directly by lego-ac | `fix/n2c-wait-reach-diagnostic` `c60f827b9` → main | The console.log that lego-ac asked for as a diagnostic became the exact species-26 instance the zero-raw-byte budget (lego-b9's flake fix) exists to catch: the gate named the file and the byte count on the first main run after N2c. Two lines: the test callback takes `t` and the receipt goes through `t.diagnostic()`. Verified with the exact gate locally (the census reporter's `stdoutBytes: 0` for the file; `check-test-run --max-stdout-bytes 0` no longer names it). LANDED WITHOUT A BRANCH RUN, deliberately: every branch rebased onto main inherits the red (sim2cx's T7 run 34115418610 was red only on this line), the change is test-only and two lines, and the gate that would judge it was run locally by name — the one exception to the per-step read tonight, stated here so it is not a precedent. |
 | vendor: bw-board pin 2e7143af7 → 5547d43 (fadd/fsub/fmul/fdiv/int2float graded against Math.fround; board.js's four literal NULs fixed upstream and cleared through the pin) | lego-be, landed by lego-ac | `pin/bw-board-5547d43` `a1e89d05e` → main | The three-way Kaluma key, measured on this tree: rp2040-bootrom.js 22,009 → 50,440 bytes with the complete graded table reachable, and `2.5+1.0` STILL answers 0 — not NaN, so not a stubbed entry; the SF table is not the cause (chain: 0-not-NaN measured right → "not reached" inferred wrong → lego-a4's direct lookup read retired the inference → this leg retires the table). Where the zero comes from is lego-a4's to find; the probe no longer volunteers a guess. Five documents regenerated then derived (a tree-wide grep for the old pin returns nothing). lite's NUL-bearing source files 5 → 2 with NO lite-side edit (the fix went upstream and arrived through the pin — the vendored-file rule doing what it is for); the NUL gate's KNOWN entries for board.js and its mirror expired on this leg (the ratchet's red IS the expiry notice), leaving the two bw-circuit-ui entries until that branch is merged. vendor-pins merged KEY-WISE on the rebase (taking either side wholesale would have reverted sb3-creator to 5d17288 and undone N2c — a stealth pin move arriving through a merge). And a test NAME that said "exactly the FIVE measured files" while KNOWN held four: a number in a test name is a claim nothing checks; it now reads "exactly the files that still carry a NUL". Two runs: 34116197648 red only on the inherited N2c raw-stdout line; 34117354505 fully green. |
 | vendor sync: an "absent by design" allow-list kind — files lite deliberately does not have are refused by name, not created | lego-be, landed by lego-ac | `vendor/absent-by-design` `b59310131` → main | Found while moving the bw-board pin: an UNSCOPED `sync-bw-board.mjs` wrote three files the allow-list could not see — i8088-cycles.js and i8088-timing.js (the CycleEstimator path lite removed on purpose, ~983 KB of bundle for a mode lite does not expose) and reseat-gate.js (which turned out to be BEHIND, not trimmed; its own row follows). The guard protected lines that EXIST in lite and would be deleted; "missing" was not an entry kind. Now it is: `docs/VENDOR-DIVERGENCE-I8086-MACHINE.md` carries the absent-by-design entries with the reason each file is not here, the sync refuses to create them by name, and `test/vendor-absent-by-design` proves an unscoped sync against the current checkout writes nothing new. Standing rule, written where the sync usage lives: scoped by default, unscoped only to look, never to commit unread — and looking is not a formality, it is what found reseat-gate. Run 34094039616: fully green. Landing found a contract gap, named for lego-be: `BW_BOARD_DIR` is read by two tests that need it at DIFFERENT shas — `vendor-absent-by-design`'s functional proof needs the upstream HEAD (the sync refuses a source behind the default branch before it reaches the absent-by-design check) while `vendor-identity`'s convergence check needs the tree AT THE PIN (at head it reports a divergence that is really upstream moving); each is green with its own tree (verified both ways on this box), and CI runs neither (skips by name), so the functional proof has never run in CI. |
 | vendor sync: an "absent by design" allow-list kind — files lite deliberately does not have are refused by name, not created | lego-be, landed by lego-ac | `vendor/absent-by-design` `b59310131` → main | Found while moving the bw-board pin: an UNSCOPED `sync-bw-board.mjs` wrote three files the allow-list could not see — i8088-cycles.js and i8088-timing.js (the CycleEstimator path lite removed on purpose, ~983 KB of bundle for a mode lite does not expose) and reseat-gate.js (which turned out to be BEHIND, not trimmed; its own row follows). The guard protected lines that EXIST in lite and would be deleted; "missing" was not an entry kind. Now it is: `docs/VENDOR-DIVERGENCE-I8086-MACHINE.md` carries the absent-by-design entries with the reason each file is not here, the sync refuses to create them by name, and `test/vendor-absent-by-design` proves an unscoped sync against the current checkout writes nothing new. Standing rule, written where the sync usage lives: scoped by default, unscoped only to look, never to commit unread — and looking is not a formality, it is what found reseat-gate. Run 34094039616: fully green. Landing found a contract gap, named for lego-be: `BW_BOARD_DIR` is read by two tests that need it at DIFFERENT shas — `vendor-absent-by-design`'s functional proof needs the upstream HEAD (the sync refuses a source behind the default branch before it reaches the absent-by-design check) while `vendor-identity`'s convergence check needs the tree AT THE PIN (at head it reports a divergence that is really upstream moving); each is green with its own tree (verified both ways on this box), and CI runs neither (skips by name), so the functional proof has never run in CI. |
@@ -1932,7 +3676,7 @@ the old red is not a landing or deployment receipt.
 | T9: the pin-move chain enumerates itself (stale vendored-repo shas) + the ROM census widened to constructed paths | lego-b9 (VPS Claude session, worktree `wt/lego-b9-t9` — the old `wt/perf-boot` was removed by someone on 2026-09-07 07:04 with every branch already pushed; branches `lane/t9-pin-chain`, `lane/rom-census-widened`) | 2026-09-07 | **CLAIMED** (lego-ac's ask). T9: `test/pin-move-chain.test.mjs` — no tracked file outside a history role (ledgers, docs prose, comment lines, the provenance's lastTouchedBy field; each with its reason in the header) may carry a bw-board / sb3-creator / bw-circuit-ui sha other than the current pins; previous pins from the pins file's own history (refused by name when shallow), whole repo histories via `BW_*_DIR` or `BW_VENDOR_HISTORY_DIR` (build.yml makes blobless bare clones, ~1 s each, and unshallows without blobs, 3.2 s); measured on main: 0 findings outside history roles. ROM census: `test/rom-paths-exist.test.mjs` reads template / concat / join paths and resolves them through the file's `rom:` list; RED on main on exactly the seven missing i8086 preset ROMs (cga-gfx, vga, hercules, ega, keyboard, desk, blink) — lands after lego-be's ROMs. Files: the two tests, build.yml (one history step before the unit step), the plan's T9 entry. |
 | T9b: a file sync never moves the pin — a pin moves only with `--pin` | lego-b9 (VPS Claude session, worktree `wt/lego-b9-t9`, branch `lane/t9b-pin-only-with-flag`); the catch is lego-be's | 2026-09-07 | **CLAIMED** (lego-ac's ask). lego-be found that `sync-bw-board.mjs --only <file> --dir <tip>` silently rewrote vendor-pins.json to the tip — a stealth pin bump inside a one-file sync commit, seen only by reading `git status` before committing; there was no --no-pin. Now `scripts/lib-pin.mjs` refuses a pin move unless `--pin` is on the command line (`assertPinMoveAllowed`, naming old and new sha, saying whether the run is scoped), called by EVERY sync that records a pin BEFORE it writes — the list is derived from `scripts/sync-*.mjs` calling `recordPin`, which found a fifth (sync-flasher) — and again inside `recordPin` as the backstop; `vendor-forward.mjs`, the tool that exists to move pins, passes `--pin`; `--check` never refuses. The rule is written in every sync's usage header. `test/pin-only-moves-with-flag.test.mjs`: helper unit (refuse / no-op / --pin), the derived list pre-checks before its first write and carries the rule, vendor-forward passes --pin, and the live half runs each sync in a throwaway git worktree against BW_BOARD_DIR / SB3_CREATOR_DIR / BW_CIRCUIT_UI_DIR (skip by name when unset): pins byte-identical, refused by name, tree untouched — 8/8 here (the checkouts on this box are one ahead of the bw-board pin and beside the other two, which the sync's own stale guard refuses first; the pin still may not move). |
 | the "Unable to deserialize cloned data" flake: the writer named, silenced, and gated | lego-b9 (VPS Claude session, worktree `wt/lego-b9-t9`, branch `lane/flake-raw-stdout`) | 2026-09-07 | **CLAIMED** (lego-ac's ask after occurrence #2; #3 landed on lego-be's run while it was measured). MEASURED before the fix, clean main, Node 22.23.2, test:fast's reporter flags, 100 runs per file: 23 failures in 200 (virtual-spike-extension-e2e 20, -classic- 3); Node 20: 11 in 81. THE WRITER: the bundled SPIKE extension both tests evaluate with `Function('Scratch', source)` console.logs ~1.7 KB on load and connect; captured the child's raw fd-1 bytes and parsed them frame by frame — 777 and 1,664 foreign bytes every run. Mechanism: a child's console.log is RAW on the runner's own v8-frame pipe; the parent resyncs by scanning for the next header, and a burst of raw text moves chunk boundaries until one lands inside a header. Not a worker, not a stdout shim. FIX at the writer: `test/helpers/quiet-console.mjs` → 0 foreign bytes, 0 failures in 200. Fast-set census found four more raw writers (smallerc-to-i8086-asm 968 B, declared-pins-wired 458, wasm-compiler-routing 104 via intercept.js, bw-parts-conformance 57) → t.diagnostic() / captured console, same lines. GATE: the census reporter counts test:stdout bytes per file; `check-test-run --max-stdout-bytes 0` names every writer on every run and is red above the budget. Species 26 in GATES-THAT-CANNOT-FAIL. |
-| DONE — upstream the i8086_counter example to sb3-creator | bwcx + sim2cx, root audited/landed | upstream `9173ca756`; Lite main `2bb7ad8b0` | The 25-line `i8086_counter` example is now upstream. Lite pins that exact commit, the normalized catalogue delta is 0/0, and the former `sb3-creator-examples.js` divergence declaration is retired. A guarded sync now reproduces the file without restoring anything by hand. |
+| DONE — upstream the i8086_counter example to sb3-creator | Codex + sim2cx, root audited/landed | upstream `9173ca756`; Lite main `2bb7ad8b0` | The 25-line `i8086_counter` example is now upstream. Lite pins that exact commit, the normalized catalogue delta is 0/0, and the former `sb3-creator-examples.js` divergence declaration is retired. A guarded sync now reproduces the file without restoring anything by hand. |
 | matrix N2: SmallerC output → the existing NASM front end → DOS bench | lego-ac delegate (Opus), audited and integrated by lego-ac | 2026-09-05 | **DONE on the lane branch, awaiting main.** 5 of 5 SmallerC programs assemble through the NASM front end (`test/smallerc-to-i8086-asm.test.mjs` prints the tally); `requestCBuild`/`cRouteFor`/`LOCAL_C_TARGETS` in `bw-asm/assemble-route.js`; ▶ Run C on 8086 in the C tab; an Emscripten exit-code leak in `smallerc-wasm/compiler.js` fixed (a failed stage set `process.exitCode` on the host — a green test file exited 1). Seven mutation proofs. Cherry-picked onto `lane/language-device-matrix` (`6a9935fee`, run 33965400223); ROADMAP §4.6 rewritten there. Not done: browser gate (no playwright on this box today), `float` (soft-float helper does not link). |
 | matrix N3: MicroPython boots in rp2040js — from the spinlock-20 handoff | lego-ac delegate (Opus), verified independently by lego-ac | 2026-09-05 | **MEASURED — THE PREMISE WAS WRONG.** MicroPython v1.22.2 boots to a working REPL in rp2040js (`print(1+1)` → `2` over `pico-repl.js`, reproduced by lego-ac: 1,466,368 instructions, 2.7 s). The recorded panic was a probe artefact: entering at the vector table skips boot stage 2, which writes VTOR; the assert was `irq_set_exclusive_handler` on spinlock 9, and spinlock 20 was `panic()` taking the stdio mutex afterwards. The REAL gap is the flash filesystem: five bootrom table entries miss and the SDK calls address 0, so `deployMainPy` gets `ENODEV`. Fix measured and written as `docs/bw-board-rp2040-bootrom-flash-funcs.patch` (on `lane/language-device-matrix`); it belongs in **bw-board** `src/rp2040-bootrom.js` — lego-ac is landing it there as `lane/rp2040-bootrom-flash-funcs`. Deliverables: `docs/PICO-MICROPYTHON-BOOT.md`, `scripts/probe-pico-micropython.mjs`, `test/pico-micropython-boot.test.mjs` (4 tests, named skip without the cached firmware). Remaining N3a–c in the plan. |
 | matrix N1: Z80 C target (`sdcc -mz80`) on stc-compiler | lego-ac delegate (Opus), audited by lego-ac | 2026-09-05 | **BUILT on stc-compiler branch `lane/z80-c-target` (`6e40fb6e`), awaiting the owner's merge + deploy.** The vendored SDCC 4.0.0 already had the z80 port; missing was `share/sdcc/lib/z80` (crt0 + z80.lib), now vendored from the same .deb the fetch script pulls — without it the target passed locally and would have 500'd on Vercel. `z80` + alias `z80-bench` in `/compile`, map ROM $0000–$7FFF / RAM $8000–$FFFF from `examples/z80-pd-bench/EXPECTED.md`, 21 new tests (re-run by lego-ac: 21 passed), 432 repo tests green, ten mutation proofs. Bonus fix: `stages.py` dropped every exported `GR` symbol (8051 lane affected too). `/health` now reports `z80_targets` and `eater_targets`. Lite follow-up after deploy: `z80` → `compile: true, emulator: 'z80'` (and `eater6502` is stale the same way — T5), request `language: "c"`, bench boot proof asserting `$0000 == 0xC3` and `latch1.Q0` toggling. |
@@ -1961,7 +3705,7 @@ the old red is not a landing or deployment receipt.
 ## DONE — recently, so nobody redoes it
 
 Scope-reset and cooperative circuit-clock package adoption — **DONE candidate
-2026-10-08**, Codex bwcx, branch `lane/scope-reset-adoption-20261008`; canonical
+2026-10-08**, Codex, branch `lane/scope-reset-adoption-20261008`; canonical
 claim `59dddb13ed53d941141c2476bec312047032e660` from exact main
 `0441d5b6247e3b3c6a41fac68fba36f0c7387927`. Adopt bw-board
 `ac7595b609daa75717c696830982f59940c97e8b` and bw-circuit-ui
@@ -2018,7 +3762,7 @@ also failed before its journeys ran. No unchanged rerun or landing is authorized
 by the corrected unit tests. A forward hosted qualification must diagnose the
 green-flag failure before this package pair can be adopted.
 
-2026-10-09 forward adoption — DONE candidate, Codex bwcx, branch
+2026-10-09 forward adoption — DONE candidate, Codex, branch
 `lane/scope-reset-stiff-adoption-20261009`. Reconciled current main
 `287b91c43` into the held candidate without changing other owners' SPIKE work.
 The upstream winding repair is now landed at
@@ -2047,7 +3791,7 @@ must install and verify the new exact payload, run the new motor test, and pass
 both real scope-reset and green-flag browser journeys before landing.
 
 Vercel docs-only validation inheritance — **DONE candidate 2026-10-04**, Codex
-bwcx `/root`, `[local path omitted]`, branch
+Codex, `[local path omitted]`, branch
 `lane/vercel-doc-validation-20261004`; canonical claim `8732d8802` from exact
 base `0c511c3dbe399d2b34969368f9861c18c8b5e6cd`. Exactly three paths: LANES.md,
 scripts/verify-vercel-main-checks.mjs and test/vercel-main-checks.test.mjs.
@@ -2067,7 +3811,7 @@ relaxed. One frozen hosted qualification then guarded normal FF and separate
 actual Vercel publication/live-version evidence; no duplicate or forced push.
 
 ADP7118 finite precision stream package adoption — **DONE candidate 2026-10-04**,
-Codex bwcx `/root`; branch lane/adp7118-stream-package-adoption-20261004.
+Codex; branch lane/adp7118-stream-package-adoption-20261004.
 Exact main base f246c712a63e510d106266f806a3c2caeb6b4f3c; canonical claim 2bb56e40a
 merged first. Candidate moved from wt-lite-adp-stream-20261004 to isolated
 [local path omitted] because shared-volume ENOSPC
@@ -2101,7 +3845,8 @@ claimed locally; the implementation commit identifies its own candidate head.
 | DONE — Salvage E0: the WIP's arcade_*/arrays_* dialect words upstream (sb3-creator, on top of D5/D6) and the arrays reference blocks (extensions) (task E0 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktrees `[local path omitted],ext,lite}`, branch `lane/e0-dialect-words` (`lane/e0-arrays-reference` in extensions); claim merged in #643 (`5218f242d`) | sb3-creator #50 merged `0f14aedb` (PR CI 37310589045 on head `048cd29b`: Lint · test · build + Browser render (WebGL) green; main CI 37311742543 green); extensions #30 merged `70e36d41` (CI 37310669357/37310669413: ESLint + format-check, production build, lint, format, type-warnings green; the informational validators red only on the pre-existing CrispStrobe header-link and image-aspect rules, 32 files, identical to #29; main CI 37310942301 green). Lite PR #648: sb3-creator `5d8dcf05` -> `3125c1be` (#50's own commit, an ancestor of `0f14aedb`: the bump carries the words only, not #49's thirteen gallery examples, whose adoption has its own ripple — gallery counts, an i8086 `long` leaked by sense-noise-counter, driver-arming counts — and is left to that lane), bundled extensions `17987246` -> `70e36d41` (only the arrays bundle changes) | **DONE 2026-10-05.** WORDS: `src/utils/arcadeDialect.js`, one table read by parser and decompiler (the ev3Dialect.js design): 161 spellings, 156 opcodes = 138 arcade_* + 18 arrays_* (20 hats, 71 commands, 54 reporters, 11 Booleans), derived from the WIP diff (162 opcode mentions incl. menus/prefixes) and checked against what E1's translator emits. Every word matches through matchTopLevel (keyword-bounded lazy slots take a bracketed expression or an unbracketed reporter, the last slot the rest); field slots validated (a value the field lacks refuses the line); a value spelled `arcade …` that is no word is refused, not made a variable; Boolean-typed arguments (flags, loop, wall, proportional, animated) take a condition. Kept: the comparison-as-value warning. Not ported: comparisons as values, missing custom-block arguments defaulting to 0, the WIP's own escape/argument fixes (superseded by D5/D6). BLOCKS: arrays.js gained 18 reference/value blocks over one value helper (`Scratch.BWValues` when the host provides it, else a built-in copy with the same interface — the WIP called BWValues unconditionally). EMITTED LINES: the WIP importer (`lane/e1-arcade-import` `d33d97c1b`, instrumented in a scratch worktree) emitted 290 distinct programs (3571 distinct lines) for 65 of its 76 tests (the other 11 drive the runtime only, or translate only E2-exported TypeScript); at the old pin 67 parsed, now 289 — the one refusal is `repeatIt "Hello"` (an omitted optional argument, refused by name); 86 comparison-as-value warnings (the importer writes true/false as `(0 < 1)`/`(1 < 0)` in value positions); every parsed program decompiles to a fixed point except 4 whose hat has a comment-only body (a decompiler limit that reproduces with `WHEN flag clicked:` and a comment). The 24 authored dialect programs in those tests parse except `arcade set flag ShowPhysics …` (now refused; the WIP warned). TESTS: sb3-creator `test/arcade-dialect.test.mjs` (169: every spelling parses to its block, no warnings, parse -> decompile -> parse fixed point; no word claimed by an earlier one; slots, Boolean slots, refusals, a whole program) and the D5 suite drives 164 value slots; 10 mutations red (word dropped, middle slot one token, fields not canonical, conditions ignored, no unknown-word refusal, no early reporters, no Boolean hook, no decompiler speller, a reorder reverted). Found by the tests and fixed: `arcade player (n) has score` read as `score` of player "(n) has"; a variable in the `animated` slot taken for a literal. Lite `test/dialect-arcade-import-lines.test.mjs` (frozen corpus `test/fixtures/makecode/arcade-import-dialect-e1.json`) and `test/arrays-reference-blocks.test.mjs` (blocks, identity, MakeCode values, expiry, words through a VM); parser at the old pin -> 4 red, old arrays bundle -> 4 red; D5's `test/dialect-no-dropped-lines.test.mjs` green; vendor identity green against the pin checkout. E1 INHERITS: write a MakeCode Boolean value through a word (e.g. `compare value (0) op "<" with (1)`), not `(0 < 1)`; write an omitted optional argument (`undefined value`); expect `arcade set flag ShowPhysics` refused; numbers as `(0 + n)` stay needed (a literal in an input is text). E3a INHERITS: provide `Scratch.BWValues` in the adapter so arrays and arcade share one heap (arrays.js then uses it; a parity test of its built-in copy against bw-values belongs there). |
 | DONE — Two runtimes, one display: one run, one runtime, one board; the green flag no longer starts a second copy in the Debug pane (task B8 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktrees `[local path omitted],cui}`, branch `lane/b8-one-board`; claim merged in #642 (`8d2692e66`) | bw-circuit-ui #78 merged `9249775c` (PR CI 37308139884: test, interaction-gate, kicad-oracle, spice-oracle green); Lite PR #644 (exact-head qualification on its final head). Lite pin: bw-circuit-ui `404fd4d4` -> `9249775c` (src delta = this lane's CircuitDesigner.jsx + simulation.js; package notices regenerated); bw-board, sb3-creator unchanged | **DONE 2026-10-05.** Reproduced first, in a real browser on a production build (54-motor-driver, three green flags on one page, every board tagged by identity, every reset traced): run 1 showed the designer's board B1 until the Debug pane's runner built, then its private board B2; runs 2 and 3 showed B2 (never handed back) while the VM's blocks wrote B1, frozen at 500 ms of board time, never cleared or clocked (the designer skipped its flag clear and its clock while any external board was shown), so `turn off led` never appeared; run 3's shown board also froze ~3 s (the runner's target restarted at 0 under a board that had not). BOARD CREATORS/SWAPPERS, enumerated: circuit-tab `onBoardReady` (publishes the designer's `circuit.board` as `vm.runtime.circuitBoard`; created/rebuilt in cui `model/circuit.js`); circuit-tab `handleRunnerChange` (`state.board = runner.board()` -> the designer's `externalBoard`: THE SWAP, never released); debug-runner per-attach `new BoardImpl` (emu8051/AVR/rp2040/labwired/stm32f0) published as `bwRunBoard`, machine benches on the designer's board via `designerBoard()`; debug-panel `syncProjectTokens` runToken -> `onStart` (THE SECOND RUNTIME); pico-sim-run `bwRunBoard`; gui.jsx Widgets `bwRunBoard || circuitBoard`; readers pseudocode-importer, makecode-sim-pane, resolve-netlist. DESIGN: the green flag runs the program once, in the VM, on the designer's board (shown = written); the runner starts on the flag only when it runs something the VM does not (machine bench, boot media, user firmware: `runnerCompilesProjectBlocks`, evaluated against start()'s own expression), else the flag ends its session; the blocks on the emulator are the explicit Debug-pane Start, shown labelled "LIVE — emulator driving pins" and handed back when that run stops (idle/error, or teardown via `onRunnerGone`); `boardTimeBase` keeps a lived board's clock moving when the target's restarts; `destroy()` drops its `bwRunBoard`. Upstream: the flag arms the VM's board unless it IS the externally driven board, and the hand-back re-clocks it (resume, no clear). B7's first-write order unchanged. TESTS: browser `scripts/verify-green-flag-first-write.mjs` -> six consecutive runs on ONE page (flag/stop x3, a restart while running, a flag during a Debug-pane session; shown vs written board compared at every frame; waitForFunction only): pre-fix production build 28 checks red, fixed build green; `test/b8-one-board-per-run.test.mjs` (4; mutations red: flag -> onStart, onGreenFlag always starts, every kind the runner's, no release on stop, no release on teardown, pump without the base, no base); cui `test/simulation.test.js` +4 (mutations red: the old flag rule, any-external exempts, effect deps without the hand-back, resume dropped, reuse dropped). Pre-push: no-nul, fetch-pinning, ci-skip-census, gate-coverage, wait-census, browser-gate-budgets, build-trigger-paths, overlay-packages-pairs, package-provenance, pin-move-chain (with all three histories) green. NAMED RESIDUE: an explicit Debug-pane Start while the VM still runs the same blocks leaves the VM writing the unshown designer board until its run ends (labelled, not silent); the bench's PWM solve is slow on a loaded box (100 ms of board time took 1.5-25 s of wall time locally), absorbed by repeating a run read after the program's own turn-off. |
 | DONE — Remaining actuator/PWM gaps outside B6: motor direction through an H-bridge, stc12 PORT/PART/7-segment/LED-bank/keypad blocks, sb3-creator JS/Python setServo/setMotor, the green flag's first write (task B7 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktrees `[local path omitted],ext,cui,sb3,lite}`, branch `lane/b7-actuators` (and `lane/b7-actuators-gray` in extensions); claim merged in #632 (`c58c8572e`) | bw-board #403 merged `a1414c35` (PR CI 37277516803 + 37277511919: test/qualify/corpus/vectors green; master CI 37285828457, Harris 37285828465, RTx 37285828553 green); extensions #28 merged `155c41fd` (CI 37285793540/37285793558: lint, format, build, type-warnings green; the informational validators red only on the pre-existing CrispStrobe header-link and image-aspect rules, identical counts to every PR) and #29 merged `17987246` (CI 37289878759/37289878204, same); bw-circuit-ui #77 merged `404fd4d4` (CI 37285890164: test, interaction-gate, kicad-oracle, spice-oracle green); sb3-creator #48 merged `5d8dcf05` (CI 37286306872: lint/test/build, WebGL browser green). Lite pins: bw-board `31c6499a` -> `a1414c35` (src delta = this lane's three files; roms/ and dos/ untouched, provenance re-recorded), bw-circuit-ui `6cfe5561` -> `404fd4d4`, sb3-creator `3250c2ca` -> `5d8dcf05`, bundled extensions `e82ebcdc` -> `17987246` (only the stc12 bundle changed) | **DONE 2026-10-05** (named residue below). Each gap measured first. (1) MOTOR DIRECTION: `setDeviceControl(motor,'direction')` was refused, and dc_motor clamped omega at 0, so a motor driven backwards through an L293D sat still and `direction of motor` said "stopped" for every motor -> the board finds the h_bridge channel across the motor's leads and applies the L293D truth table (forward/reverse/brake/coast), speed is a PWM on the active IN with EN held high, dc_motor turns both ways (signed `velocity`, `omega` = speed, forward bit-identical to master, `direction`). Found on the way: a disabled h_bridge output was an open circuit, so one EN-low on a spinning motor took 347 s of wall time per 100 ms of board time (B5's EN-PWM speed route 66 s per 40 ms) -> the L293D's clamp diodes are solver diodes (first ms after EN-low: 20000-attempt backstop -> ~150). Refused by name: reverse/brake on a one-pin (single transistor) motor, unsteerable bridges, coast with EN tied. (2) STC12 BLOCKS (Prechin A2 wiring, real board): 16 of 19 checks red (display blank, LEDs off, key -1, 595 latched 0, PORT pins never driven) -> PORT drives/reads its 8 pins, a 595 PART is the C shift_out, SEVENSEG8 pushes changed digits in Gray-code order (counting order latched intermediate addresses on the A2's shared select nets: `12345678` showed `52547678`, fixed by #29), LEDBANK8 drives its port, KEYPAD4X4/`when key` scan the circuit, `show image` reads the TABLE. (3) SB3-CREATOR DRIVERS: setServo/setMotor/setDirection/setRelay/activate/deactivate empty in JS and Python, a devices-only program threw ReferenceError/NameError (no `_board`), setPort/setPart no-ops, readKeypad read a store nothing writes -> setDeviceControl with the extension's ordinal resolution, an own board accessor, the PORT/595/keypad verbs (test 0/5 at main). (4) GREEN FLAG, measured in a real browser on production (54-motor-driver): the designer's clear ran after the VM's first step (`turn on led` at 68.7 ms, clear at 174 ms, LED dark for the 2 s wait; with the VM's step forced into the click's task, every round wiped) -> controls.jsx dispatches `bw-green-flag` synchronously before vm.greenFlag(), the designer arms the run in that handler (armBoardForRun), and circuit-tab drops the VM stop that a start follows (vm.greenFlag() emits PROJECT_STOP_ALL then PROJECT_START; with the start event no longer last, that stop token would leave every run in build mode). Tests: Lite `test/b7-actuators-reach-the-circuit.test.mjs` (9; stc12 bundle at main reds 5, #28's counting order 2, compiler at main 2), `test/circuit-designer-ux-contract.test.mjs` (controls.jsx or circuit-tab.jsx at main each red), browser gate `scripts/verify-green-flag-first-write.mjs` (3 fresh-page rounds, the VM's step in the click's task; on production every round wiped, 6 checks red; PROVISIONAL budget; its first PR run 37293825910 showed the write held but was red on the gate itself: an LED threshold above the bench's lit 0.155, and rounds after the Debug pane's runner took the display); bw-board `test/h-bridge-direction.test.mjs` (16; 5 mutations red); cui `test/simulation.test.js` (+3; 2 mutations red); sb3-creator `test/simulator-driver-actuators.test.mjs` (5; 6 mutations red). NAMED RESIDUE: TWO RUNTIMES, ONE DISPLAY — the Debug pane also runs the program on every green flag (runToken -> onStart) on a board of its own, and once built (seconds after the first flag) the designer displays the runner's board while the Scratch VM's blocks keep writing to vm.runtime.circuitBoard, which is then neither shown nor clocked (measured on production: the displayed board is the runner's from the second flag on, a reload of the example does not release it); MATRIX8X8 stays off the circuit (persistence of vision; the VM has no tick on board time); gearmotor/dc_motor_encoder still clamp at 0; no gallery bench wires an L293D (54-motor-driver's EXPECTED.md describes one, its benches use one NPN); the drivers' showDigit/setRgb/setPixel/clearMatrix and Python neopixel/lcd/oled, and stc12 seg/led/matrix ops in JS/Python (emitted as comments); `show number -42` puts the minus one digit too far left (the C helper does too); bw-board reads an unwired pin as 0 V (a quasi-high 8051 pin reads 0); the gallery's NPN + flyback bench integrates at ~0.19 s of wall time per ms of PWM. |
-| DONE — PWM pad edges from labwired nRF52 PWM (task B6 of docs/OPEN-TASKS-2026-09-29.md; the ESP32 LEDC half split off as B9) | VPS Claude (opus), worktrees `[local path omitted]`, `[local path omitted]` (labwired-core), `[local path omitted]` (Lite, branch `lane/b6-done`); claim `b5cae5b19` | **labwired-core fork #128 merged `628b651f`**: nRF52 PWM holds its last sequence step and each connected `PSEL.OUT[n]` owns its pad through the nRF pin-claim table while playing (exact-cycle edges, 16 MHz/2^PRESCALER via `cpu_hz`, Up/UpAndDown, all four DECODER.LOAD modes, new values at the period boundary; STOP/ENABLE=0 hand the pad back; `PSEL.OUT` resets Disconnected, not P0.00). **fork #133 merged `547e165c`** — found by running a REAL MakeCode V2 image, not the register replay: PC-relative `VLDR.F32/.F64` and `LDRD` (literal) read 4 bytes early (Align(PC+4,4)), so CODAL's `setPeriodUs` loaded 1e6 as −0.5035 and wrote COUNTERTOP 0 — every hard-float literal on every Cortex-M part was wrong; fixing it exposed the STM32H5 RCC's missing PLL1/2/3 DIVR/FRACR (the wrong floats had masked them; H563 Arduino serial now computes SystemCoreClock 250000000). Release `labwired-wasm-628b651f` (bw-board run 37311219177: two-build determinism + bw-board real-engine tests green; published WITHOUT the optional LSM303AGR motion real-time gate by owner decision — it measured 0.997–1.014× then 0.79–0.84× on two runners; nothing in Lite selects that variant, it stays WASM-unqualified at this engine). **Lite**: labwired-wasm pin `a7c7cbdf` → `628b651f` only (bw-board package pin unchanged). Evidence: real MakeCode V2 `analogWrite(256)`/`(768)` on P0 = **25.00 % / 75.00 %** at 50 Hz (native `--release --features event-scheduler` probe on main + both PRs; before: 0 %); Lite engine tests 47/47, 0 skips (engineering-input WASM tests run with the synced web glue). Promotes all fork work since `a7c7cbdf` (PyBadge SPI/buttons, SAADC scan rework #135, LSM303AGR motion, WASM perf) by owner decision. Upstream: w1ne fixed VLDR + H5 RCC independently; only the LDRD-literal fix is owed upstream (sent and merged as w1ne#1324). **Follow-up 2026-10-06:** engine pin `628b651f` → `31b6f8aa` (release `labwired-wasm-31b6f8aa`): fork synced to w1ne/main twice (#154, #156) and fork #155 ends a Cortex-M batch on a due armed event, so nRF EasyDMA completions (SAADC, PWM SEQSTART) land on time on the browser path (nrf52840 TIER1 stepped == batched at every line); Lite engine tests 47/47, 0 skips. **Follow-up 2026-10-12:** engine pin `31b6f8aa` → `ce5091d8` (release `labwired-wasm-ce5091d8`, bw-board run 38215501425: two-build determinism + bw-board real-engine tests green, motion gate not selected): fork synced to w1ne/main `3a27b3f8` via fork #204 (104 upstream commits, among them the AVR Timer1/Timer2 + OCnx PWM pins, ESP32 GPIO edge fixes, the Cortex-M VMOV core-register-pair decode, GPIO nets and the timed CAN world); upstream also merged our batch cut as w1ne#1328. Lite engine/debug-runner tests 90/91 locally; the one red is `notices-coverage` finding no `packages/scratch-gui/node_modules/bw-board` in a worktree that has not run integrate, which CI does. B9 (ESP32 LEDC) is claimed by another session (#811), not by this follow-up. |
+| DONE — ESP32 LEDC pad edges in labwired + an ESP32 board in bw-board's labwired tier (task B9 of docs/OPEN-TASKS-2026-09-29.md; takeover of the released row) | VPS Claude (opus), worktrees under `[local path omitted]` | **labwired-core fork #206 merged `ae91f9ad`**: ESP32/C3/S3 LEDC channel outputs drive their pads through the GPIO matrix. Shared waveform `crates/core/src/peripherals/esp_ledc_wave.rs` (2^DUTY_RES counts at the source clock through the Q8 CLK_DIV, exact rational; high HPOINT..HPOINT+DUTY; edges at their exact cycle via `PadLines::set_line_at` with a scheduler wake per edge; a new duty on a running channel waits for the period boundary — B6's hold-last-level); one capability-driven wiring pass `SystemBus::wire_esp_matrix_outputs` (`Peripheral::matrix_output_lines`/`bind_matrix_output_lines`, matrix 71..86 classic, 45..50 C3, 73..80 S3) over the new `PadRoutes::bind_span`; real `gpio_matrix_out` thunks for the classic BROM (0x4000_9f0c) and the S3 harness (0x4000_1aa0) — both were no-ops, so on a real image no matrix-routed output ever reached a pad; classic DIV_NUM widened to its 18 bits (Arduino's 1 kHz/8-bit needs Q8 80000); found: the C3 LEDC overflow chain re-stamped its token on every register write and a real ledcSetup+ledcWrite image held 9 live events vs the scheduler's debug-asserted ceiling 8 — now re-stamps only when the deadline moves. Evidence `crates/cli/tests/esp32_ledc_pad.rs`, a real Arduino-ESP32 2.0.17 sketch per chip (fixtures + provenance in `crates/core/tests/fixtures/esp32-ledc-pwm`) through `labwired test --watch-gpio`: GPIO2 analogWrite 0/64/128/191/255 = rail low / 25.00 % / 50.00 % / 74.61 % / rail high at exactly 1 kHz, GPIO5 ledcWrite 1023/256/768/0/512 (10 bit) = rail high / 25.00 % / 75.00 % / rail low / 50.00 % at exactly 5 kHz, every whole period to the cycle on ESP32, C3 and S3 (before: flat); mutations red: no matrix wiring, channel→pad off by one, gpio_matrix_out back to a no-op. Fork CI green (all shards; esp32_ledc_pad 3/3 in shard 3). **Release `labwired-wasm-ae91f9ad`** (bw-board run 38263103384: two-build determinism, real-engine suite tests=113 fail=0 skipped=0, published). **bw-board #523 merged `c1f34017`**: labwired-tier board `esp32_devkit` (classic ESP32 DevKit; catalog descriptor at the PIN; Arduino-ESP32 ELF booted on the engine's Arduino thunks), engine PIN a7c7cbdf → ae91f9ad + catalog regen; `test/labwired-esp32-ledc.test.mjs` (real Arduino-ESP32 image, 220 Ω + red LED per pad): GPIO19 full on 6.099 mA, `analogWrite(64)` 1.525 mA = 25.00 %, `ledcWrite(768/1024)` 4.574 mA = 75.00 %, `analogWrite(0)` 0 mA; on labwired-wasm-31b6f8aa the two PWM LEDs read 0.000 mA. Also repaired two bw-board tests stricter than their gates (fastpath receipt hashed the live tree; the wasm floor pinned to exactly 108). **Lite**: labwired-wasm pin `ce5091d8` → `ae91f9ad` only (sync-labwired-wasm.mjs PIN/TAG/EXPECT, target-performance.yml); bw-board package pin unchanged — the ESP32 bench is not Lite-visible. **Remaining (named gaps):** no Lite ESP32 device/compile target, so no Lite-side ESP32 bench test; LEDC fade (DUTY_NUM/CYCLE/SCALE) and the fractional-duty dither unmodelled; the browser Arduino-ESP32 boot thunks `delay()` (steady duty unaffected); classic-ESP32 circuit inputs reach GPIO0..31 only. | **DONE 2026-10-12.** |
+| DONE — PWM pad edges from labwired nRF52 PWM (task B6 of docs/OPEN-TASKS-2026-09-29.md; the ESP32 LEDC half split off as B9) | VPS Claude (opus), worktrees `[local path omitted]`, `[local path omitted]` (labwired-core), `[local path omitted]` (Lite, branch `lane/b6-done`); claim `b5cae5b19` | **labwired-core fork #128 merged `628b651f`**: nRF52 PWM holds its last sequence step and each connected `PSEL.OUT[n]` owns its pad through the nRF pin-claim table while playing (exact-cycle edges, 16 MHz/2^PRESCALER via `cpu_hz`, Up/UpAndDown, all four DECODER.LOAD modes, new values at the period boundary; STOP/ENABLE=0 hand the pad back; `PSEL.OUT` resets Disconnected, not P0.00). **fork #133 merged `547e165c`** — found by running a REAL MakeCode V2 image, not the register replay: PC-relative `VLDR.F32/.F64` and `LDRD` (literal) read 4 bytes early (Align(PC+4,4)), so CODAL's `setPeriodUs` loaded 1e6 as −0.5035 and wrote COUNTERTOP 0 — every hard-float literal on every Cortex-M part was wrong; fixing it exposed the STM32H5 RCC's missing PLL1/2/3 DIVR/FRACR (the wrong floats had masked them; H563 Arduino serial now computes SystemCoreClock 250000000). Release `labwired-wasm-628b651f` (bw-board run 37311219177: two-build determinism + bw-board real-engine tests green; published WITHOUT the optional LSM303AGR motion real-time gate by owner decision — it measured 0.997–1.014× then 0.79–0.84× on two runners; nothing in Lite selects that variant, it stays WASM-unqualified at this engine). **Lite**: labwired-wasm pin `a7c7cbdf` → `628b651f` only (bw-board package pin unchanged). Evidence: real MakeCode V2 `analogWrite(256)`/`(768)` on P0 = **25.00 % / 75.00 %** at 50 Hz (native `--release --features event-scheduler` probe on main + both PRs; before: 0 %); Lite engine tests 47/47, 0 skips (engineering-input WASM tests run with the synced web glue). Promotes all fork work since `a7c7cbdf` (PyBadge SPI/buttons, SAADC scan rework #135, LSM303AGR motion, WASM perf) by owner decision. Upstream: w1ne fixed VLDR + H5 RCC independently; only the LDRD-literal fix is owed upstream (sent and merged as w1ne#1324). **Follow-up 2026-10-06:** engine pin `628b651f` → `31b6f8aa` (release `labwired-wasm-31b6f8aa`): fork synced to w1ne/main twice (#154, #156) and fork #155 ends a Cortex-M batch on a due armed event, so nRF EasyDMA completions (SAADC, PWM SEQSTART) land on time on the browser path (nrf52840 TIER1 stepped == batched at every line); Lite engine tests 47/47, 0 skips. **Follow-up 2026-10-12:** engine pin `31b6f8aa` → `ce5091d8` (release `labwired-wasm-ce5091d8`, bw-board run 38215501425: two-build determinism + bw-board real-engine tests green, motion gate not selected): fork synced to w1ne/main `3a27b3f8` via fork #204 (104 upstream commits, among them the AVR Timer1/Timer2 + OCnx PWM pins, ESP32 GPIO edge fixes, the Cortex-M VMOV core-register-pair decode, GPIO nets and the timed CAN world); upstream also merged our batch cut as w1ne#1328. Lite engine/debug-runner tests 90/91 locally; the one red is `notices-coverage` finding no `packages/scratch-gui/node_modules/bw-board` in a worktree that has not run integrate, which CI does. B9 (ESP32 LEDC) is claimed by another session (#811), not by this follow-up. **Follow-up 2026-10-13:** engine pin `ae91f9ad` (B9's release) → `80b46234` (release `labwired-wasm-80b46234`, bw-board run 38383866326: two-build determinism + real-engine tests green, motion gate not selected); it carries B9's LEDC work and adds fork #142 (Cortex-M T16 block cache copies only the current instruction: WASM motion same-runner A/B/B/A +2.6%, bw-board run 38362388291; native flat) and #215 (Core Perf green again on main since the 10-12 sync: RTx reports the declared-only rv1103 instead of refusing, four step baselines re-locked from CI). Lite engine/debug-runner/census tests 94/94. |
 | DONE — Visible micro:bit LED matrix on the labwired tier (task B2 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktrees `[local path omitted]` (labwired-core), `[local path omitted]` (bw-board), `[local path omitted]` (bw-circuit-ui), `<owned checkout>` (Lite, branch `lane/b2-labwired-nrf-led-matrix`); claim `76d21c170`, scope amended `858315bdb` | **labwired-core fork #123 merged `a7c7cbdf`** (all 19 checks green): nRF GPIOTE owns its pad (a Task-mode CONFIG drives OUTINIT; channels take pin-claim tokens so the pad reads the GPIOTE level over DIR/OUT; GPIOTE latched a whole IN word from a zeroed shadow, resetting the buttons to "pressed" — now per-pin), new `led_matrix` primitive (`led-matrix-mux`), micro:bit V1/V2 displays; release `labwired-wasm-a7c7cbdf`. **bw-board #143 merged `5eeb4922`**: the micro:bit's on-module matrix on the bench manifest, adapter `boardMatrix` → `Board.setPartMatrix`, `gray8` decode, catalog gains `microbit-v2`, `binToElf extraSegments` (UICR); labwired-wasm.yml run 36604174128 90/90 incl. the real-engine micro:bit tests (floor 60→88). **bw-circuit-ui #75 merged `b6b18822`**: the micro:bit (`mcu`) face draws its 5×5 from `deviceStates[id].matrix`. **Lite**: pins bw-board `5eeb4922`, bw-circuit-ui `b6b18822`, labwired-wasm `a7c7cbdf` (+ pin-bump surfaces); `labwired-firmware.js` loads the V2 section of a universal .hex (was the V1 image) and keeps UICR as `extraSegments` (was dropped → MakeCode V2 hard-faulted at boot). Evidence: a real MakeCode "show heart" V2 image on the engine shows `09090 99999 99999 09990 00900`, buttons stay released, greyscale 255/128/32 → 255/107/33 (local probe; image not committable — Nordic MBR). | **DONE 2026-09-29.** |
 | DONE — Linux lesson console: a real terminal (raw keys, Ctrl-C, arrows, escape sequences, paste) (task C3 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktree `[local path omitted]`, branch `lane/c3-linux-console` | Lite #550 (impl commit `d8009ee65`, base `9316d9ae5`): `lib/bw-debug/{terminal-keys,terminal-output,linux-console}.js`, `ready-gated-input.js` (FIFO pacing), `debug-runner.js` attachRiscV32Linux, `components/tw-pseudocode/{linux-terminal.jsx,debug-panel.jsx}`, `@xterm/xterm` 6.0.0 via `scripts/integrate.mjs` + GUI manifest/lockfile + THIRD-PARTY-NOTICES + About, two tests, the Linux part of `scripts/verify-cpm-system.mjs`, this row and the task file. No bw-board change; nothing on C2's boot/snapshot/loader path. | **DONE 2026-09-29.** The console took whole lines (an input box, Enter sent `line\r`). Now: KEYS — our DOM-free table (Enter `0d`, Backspace `7f`, Tab `09`, Esc `1b`, Ctrl-A..Z `01..1a`, arrows/Home/End `ESC[A..` or `ESC O ..` under DECCKM, Ins/Del/PgUp/PgDn `ESC[n~`, F-keys, xterm modifier params, UTF-8, Alt=ESC prefix); keys it leaves alone (IME, dead keys, Cmd, Ctrl-Shift-C/V) and pastes go through xterm's input path. SCREEN — xterm.js 6.0.0 (MIT, zero deps) lazily in its own chunk, CSS via `!!raw-loader!`, fixed 80×24 (the guest's winsize is 0×0 over a UART; busybox assumes 80×24; nothing is typed into the shell). RX FLOW — input held until ready (as before), then at most one 16-byte FIFO handed to the 16550A and only when LSR.DR is clear (≈1 KB/s per 60 fps); writes over 1 MiB refused whole. MEASURED: bw-board's UART RX array is unbounded, so unpaced 4/16/64/128 KB pastes all arrived intact (even while the reader slept) — the pacing is for a real 16550A and is held by an occupancy assertion, not a lost-byte count. PROOF — `test/linux-terminal.test.mjs` (real Linux 6.1 from the lesson's pinned media, app fetcher + sha256; `BW_LINUX_MEDIA_DIR` caches; fails, never skips, without media): raw-mode `xxd` probe = the table's bytes verbatim; Ctrl-C ends `sleep 100` and `yes` (rc 130); Up recalls history; Backspace edits; 4 KB paste `wc -c` 4096 + md5sum, max outstanding ≤16. Waits on guest-printed markers (a frame count flaked under load: keys reached ash before `stty raw`); 12/12 green at 4× parallel load. `test/terminal-keys.test.mjs` (table, paste, queue, output batching). Browser gate `verify-cpm-system.mjs` Linux part rewritten: real keystrokes into the terminal, reads xterm's rendered rows — clear, uname, Ctrl-C into sleep, Up+Enter, Backspace, SGR 31 cell `xterm-fg-1`, bare-CR overwrite, 2048-byte clipboard paste into `wc -c`; green locally on a production build. MUTATIONS red: Enter→LF (table + probe); arrows→nothing (table, probe, history; and the browser gate's history check on a rebuilt app); no FIFO pacing (occupancy); direct send without queue (occupancy + queue unit); wrong Ctrl-letters (table, probe, both Ctrl-C); Backspace→BS (table + probe); ready gate removed (every guest test). Local `npm run test:fast`: 5157 tests, 0 fail, 117 skipped. REMAINS: the guest tty has `-iutf8` (cooked-mode Backspace over a non-ASCII char erases one byte) — an initramfs/profile matter for the media, not the console; Ctrl-W/Ctrl-T/Ctrl-N cannot be captured from a browser tab. |
 | DONE (PARTIAL: named gaps) — PWM follow-ups named by B1: stc12 VM pin blocks, micro:bit+ analog/servo, motor speed, servo canvas, averaged meters, MakeCode servo/period (task B5 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktrees `[local path omitted],board,cui,lite}`, branch `lane/b5-pwm-followups` in each; claim merged `4afa86f45` (#541) | extensions #26 merged `4d65f562` (CI runs 36560865925, 36560866070: lint/format/build/type-warnings green; the informational gallery-validate is red on every CrispStrobe file, as on main); bw-board #139 merged `cfacdf60` (runs 36560225140 + 36560225053 green); bw-circuit-ui #74 merged `e9ebcf11` (run 36560910971 green); Lite pins bw-board `93185447` -> `cfacdf60`, bw-circuit-ui `c8b72ad8` -> `e9ebcf11`, bundled extensions `5966529a` -> `4d65f562` (vendor-bundles.mjs; the three bundles are byte-identical to the ones the tests were first run against) | **PARTIAL 2026-09-29.** Measured first, each at the old pins: stc12 VM pin blocks wrote `runtime._stc12Pins`, read by nothing — a wired LED read 0 mA for `turn on`, `set to 1`, `set 25 percent` (now: drive `runtime.circuitBoard` with the drivers' terminal/mode map; 25 % = 25 % of full-on; `read`/`when pressed` read the circuit). micro:bit+ analog 25 % = 0 mA (now setPwm 50 Hz, N % of full-on within 0.5 %); servo/continuous servo were stubs (now CODAL's 500-2500 us frame, 0/45/90/135/180 within 0.5 degree). devices `set motor 1 speed` refused (now N % duty on the motor's MCU pin, found through base resistor/NPN; omega equals setPwm on the pin exactly). `set servo 1 angle` gave no pulse, canvas "no signal" (now the pulse on the servo's pin + engine `signal` read by the face). Servo default calibration was 1000-2000 us against every driver's 500-2500 us (45 degrees read 0) — now 500-2500. Meters read the instant on a PWM net (now both Circuit-tab readers show bw-board's 100 ms mean; DC unchanged). MakeCode `servoWritePin` reached the circuit as a 0 % PWM (servo at 90) and `analogSetPeriod` was ignored (now host.html reports angle + period, pin-drive.js drives the servo frame / the program's carrier). Tests: Lite `stc12-vm-pins-reach-the-circuit` (7), `pwm-followups-reach-the-circuit` (7, 1 skipped without a synced MakeCode runtime), bw-board `actuator-intent-and-meter-mean` (10), cui `meter-average-and-servo-signal` (5); with the old bundles 4 + 4 Lite tests red; mutations recorded in each upstream PR and the task file. Remaining named gaps: labwired nRF52 PWM and ESP32 LEDC emit no pad edges (labwired-core `95774285`: registers/events only), so no duty reaches the circuit from those engines; motor `direction` (needs an H-bridge IN-pin map); stc12 `set PORT`/`set PART`/screen/segment/keypad state has no circuit reader yet; sb3-creator's devices JS/Python drivers still stub `setServo`/`setMotor`; the VM route was not driven in a browser (designer reset-at-start vs a one-shot first write is unmeasured). |
@@ -2124,9 +3869,9 @@ claimed locally; the implementation commit identifies its own candidate head.
 | SPIKE Prime palette CI contract closure | Codex root, 2026-09-27, worktree `<owned checkout>`, branch `fix/spikeprime-ci-contracts`; exact failing Build run `36302463134` | **DONE candidate 2026-09-27.** The repository generator now records the new Playwright step (provisional until five green readings), and every worker fixture byte was checked against its SHA-256 at gallery pin `6c42e059` before advancing the snapshot tie. The four exact failures are green locally; product source and release metadata remain untouched. |
 | Compact Widget Editor modes + active-editor global undo | Codex root, 2026-09-27, worktree `<owned checkout>`, branch `feat/global-editor-undo`; base `origin/main` (`02dd0f99e`) | **DONE candidate 2026-09-27.** The Widget Editor's translated Bearbeiten/Spielen text is now two fixed 34px pencil/play icons with German/English accessible names and pressed-state colour. A menu-row ↶ delegates to the last active Blocks, Code, Circuit or Widget surface: Blockly and CodeMirror retain their native histories, Circuit delegates to its existing designer control, and Widgets gain a bounded 100-snapshot history covering add/remove, drag/resize, config, binding, rename, inspector revert and binding visibility. The button disables when the selected native history reports empty (Circuit's existing control does not expose its depth, so availability there is the mounted designer). Focused tests pass 70/70; mirror and whitespace gates pass; a production webpack build succeeds. Playwright at 1024×768/de-DE proves both icon bounds/accessibility and add-widget → global undo → empty-history disable. The dirty shared `main` worktree was not touched. |
 
-| LT1001 exact package adoption and visible-browser proof | `/root` (Codex), `[local path omitted]`, branch `lane/lt1001-package-adoption`; claim `c3f45c118`; upstream Board `9044950cbb941d7b878019ad44da19afbd7986a9`, CUI `9febb957aabe6d9f80874ace1fd7cf3d2b3f5389`, parts `9308fa7dbfc28435427ecea0cf84e0c5ccd78c86` | **DONE candidate 2026-09-27.** Root and production-GUI specs/locks/pins advance together; both installed roots byte-match the exact upstream packages (Board 1,645 files, CUI 1,225) and resolve one engine. Census, matrices, capability/profile reports, notices, controller receipt and BIOS/demo/DOS/CPM/free-BIOS provenance were regenerated; the Board range changes only the LT1001 model plus an xv6 diagnostic script, so no payload source moved. The shared dual-supply fixture retains all eight PDIP pins and settles a 1 V follower to 1.00001 V with an explicit 10 µV offset. The production browser gate requires the labelled LT1001 face, every terminal name and the same live output. Focused package/provenance/mirror/history/regression coverage passes 81 tests with six named environment-only skips; all generator check twins are current. Three isolated mutations red by name: fixture output, analog-only refusal and browser eight-terminal requirement. Heavy full suite, webpack and browser drive belong to the single hosted Build. No copied upstream source, generic-op-amp rewrite, unrelated pin, corpus payload, workflow/deployment change or tolerance relaxation. |
+| LT1001 exact package adoption and visible-browser proof | (Codex), `[local path omitted]`, branch `lane/lt1001-package-adoption`; claim `c3f45c118`; upstream Board `9044950cbb941d7b878019ad44da19afbd7986a9`, CUI `9febb957aabe6d9f80874ace1fd7cf3d2b3f5389`, parts `9308fa7dbfc28435427ecea0cf84e0c5ccd78c86` | **DONE candidate 2026-09-27.** Root and production-GUI specs/locks/pins advance together; both installed roots byte-match the exact upstream packages (Board 1,645 files, CUI 1,225) and resolve one engine. Census, matrices, capability/profile reports, notices, controller receipt and BIOS/demo/DOS/CPM/free-BIOS provenance were regenerated; the Board range changes only the LT1001 model plus an xv6 diagnostic script, so no payload source moved. The shared dual-supply fixture retains all eight PDIP pins and settles a 1 V follower to 1.00001 V with an explicit 10 µV offset. The production browser gate requires the labelled LT1001 face, every terminal name and the same live output. Focused package/provenance/mirror/history/regression coverage passes 81 tests with six named environment-only skips; all generator check twins are current. Three isolated mutations red by name: fixture output, analog-only refusal and browser eight-terminal requirement. Heavy full suite, webpack and browser drive belong to the single hosted Build. No copied upstream source, generic-op-amp rewrite, unrelated pin, corpus payload, workflow/deployment change or tolerance relaxation. |
 
-| LT1763 exact package adoption and visible-browser proof | `/root` (Codex), `[local path omitted]`, branch `lane/lt1763-package-adoption`; claim `a4e3cdeea`; upstream Board `f64370b8d85bb49110508bc32f635319daf1412d`, CUI `acacd3ce6d02bcb192b756061c78a701bd44715e`, parts `1571698d5472ce97c21d969dc97767682f59865a` | **DONE candidate 2026-09-27.** Root and production-GUI specs/locks/pins advance together; both installed roots byte-match the exact upstream packages (Board 1,644 files, CUI 1,222) and resolve one engine. Census, matrices, capability/profile reports, notices, controller receipt and BIOS/demo/DOS/CPM/free-BIOS provenance were regenerated; the Board range changes only the LT1763 model/test/ledger, so every payload hash remains unchanged. The shared fixture uses the physical SO-8 pinout and solves 8 V to 5 V. The production browser gate requires the labelled `500mA LDO` face, all eight terminal names and live 5 V output. Focused package/provenance/mirror/history/regression checks pass 50 with two named environment skips; all generator check twins are current. Three isolated mutations red by name: fixture output, passive-profile refusal and browser eight-terminal requirement. Heavy full suite, webpack and browser drive belong to the single hosted Build. No copied upstream source, generic-regulator rewrite, unrelated pin, corpus payload, workflow/deployment change, tolerance relaxation or invented breadboard footprint. |
+| LT1763 exact package adoption and visible-browser proof | (Codex), `[local path omitted]`, branch `lane/lt1763-package-adoption`; claim `a4e3cdeea`; upstream Board `f64370b8d85bb49110508bc32f635319daf1412d`, CUI `acacd3ce6d02bcb192b756061c78a701bd44715e`, parts `1571698d5472ce97c21d969dc97767682f59865a` | **DONE candidate 2026-09-27.** Root and production-GUI specs/locks/pins advance together; both installed roots byte-match the exact upstream packages (Board 1,644 files, CUI 1,222) and resolve one engine. Census, matrices, capability/profile reports, notices, controller receipt and BIOS/demo/DOS/CPM/free-BIOS provenance were regenerated; the Board range changes only the LT1763 model/test/ledger, so every payload hash remains unchanged. The shared fixture uses the physical SO-8 pinout and solves 8 V to 5 V. The production browser gate requires the labelled `500mA LDO` face, all eight terminal names and live 5 V output. Focused package/provenance/mirror/history/regression checks pass 50 with two named environment skips; all generator check twins are current. Three isolated mutations red by name: fixture output, passive-profile refusal and browser eight-terminal requirement. Heavy full suite, webpack and browser drive belong to the single hosted Build. No copied upstream source, generic-regulator rewrite, unrelated pin, corpus payload, workflow/deployment change, tolerance relaxation or invented breadboard footprint. |
 
 | Release 0.1.18 — Camera Capture | Codex root, 2026-09-26 | branch `lane/release-0.1.18`, claim merge `e82a384d6`; paths `apps/tauri/src-tauri/{tauri.conf.json,Cargo.toml,Cargo.lock}`, `docs/app-store-metadata.md`, this row, and operational tag `v0.1.18` | **DONE candidate 2026-09-26.** All three authoritative package versions are 0.1.18 and bilingual tester notes cover lazy camera consent, rear/front selection, reusable JPEG/PNG/WebP data URLs, dimensions, repeated scanner captures, unmirrored rear images, stop/release, denial status, and deliberate absence of Photos access. `test/app-store-metadata.test.mjs`: 2/2 green. Exact-head hosted qualification, guarded merge, signed upload, both TestFlight groups, and Beta Review submission are the remaining operational receipts for this same candidate; no source scope remains open. |
 
@@ -2137,13 +3882,13 @@ claimed locally; the implementation commit identifies its own candidate head.
 | DONE — release current GitHub main as 0.1.17 to Internal + External TestFlight | Codex root, 2026-09-26 | claim `b0364bbb9`; `lane/release-0.1.17`, worktree `<owned checkout>`; paths `apps/tauri/src-tauri/{tauri.conf.json,Cargo.toml,Cargo.lock}`, `docs/app-store-metadata.md`, and this row; operational scope: guarded `v0.1.17` tag and existing GitHub mobile/release workflows | **DONE CANDIDATE 2026-09-26.** All application version declarations advance together from 0.1.16 to 0.1.17, with matching en-US/de-DE tester notes covering the user-visible work since `v0.1.16`. The exact implementation head must pass the focused metadata/version contract and hosted qualification, then land while its parent remains current `main`; only that resulting main commit may receive `v0.1.17`. The tag-triggered workflows build and upload fresh signed iOS/macOS artifacts, then send notes, assign Internal and External groups, and submit Beta App Review. Final workflow and App Store Connect receipts are operational follow-through recorded in the release report, not invented here before the tag exists. |
 
 | Generated FPGA header-pin correction | Astra coordinator / Sol fpga, session astra-sept19 | `lane/astra-fpga-header-pins`; `<owned checkout>`; base `b1767ea53` | **DONE 2026-09-19.** Replaced generated input pool `88/74/76/77/80/81/82/83` with pinned-schema header pins `74/76/77/80/75/85/27/28`; clock remains the intentional onboard pin 4. Pinned-part invariant covers AND, 4x4 RAM, and full 8-input/7-output allocator capacity with unique, nonoverlapping assignments. Mutation to the old pool fails on AND pin 88; restored invariant passes. Node 22 focused FPGA suites 55/55 pass; real hosted synthesis probe passes AND, DFF, 4x4 RAM, and hierarchy; gate-shape audit has no new findings (baseline 1 silent/6 ambient). Browser probe now rejects non-header inputs: prior artifact `bbd312c421` fails at the new breadboard-header check after real synthesis, as expected; exact follow-up artifact browser receipt pending coordinator CI. No package pins, hand-authored examples, or physical flashing claim. |
-| consolidated circuit package refresh: upstream drive handle, source-analysis/importer advances, and explicit 80286 surface | bwcx (Codex, session `/root`) | claim `273f1875a`; final implementation is the commit carrying this DONE row | **DONE 2026-09-19, pending its single exact-head hosted Build before guarded landing.** Pins advance bw-circuit-ui `6997596` → merged/current-master descendant `a1f7dc8` and bw-board `d4cb508` → exact-green `9058d51`; package specs, lock, notices, census, BIOS/demo provenance, matrix and capability report were regenerated. Installed trees equal the pinned archives byte-for-byte (board 1,244 files; CUI 1,194). Lite package/generated/routing gates are 96/96; exact board 80286/factory/SST set is 51 pass, 0 fail, 1 documented skip; all seven demo ROM binaries and the BIOS binary remain byte-identical. The honest consumer delta teaches the report generator the exact 80286 real-mode boundary and proves `i80286` reaches the `80286` machine variant. Mutations that silently routed it as 8086 and restored the old two-variant source contract both red by name. No upstream source copy, vendored fork, tolerance change, deployment claim, or unrelated FPGA edit. |
+| consolidated circuit package refresh: upstream drive handle, source-analysis/importer advances, and explicit 80286 surface | Codex (Codex, session) | claim `273f1875a`; final implementation is the commit carrying this DONE row | **DONE 2026-09-19, pending its single exact-head hosted Build before guarded landing.** Pins advance bw-circuit-ui `6997596` → merged/current-master descendant `a1f7dc8` and bw-board `d4cb508` → exact-green `9058d51`; package specs, lock, notices, census, BIOS/demo provenance, matrix and capability report were regenerated. Installed trees equal the pinned archives byte-for-byte (board 1,244 files; CUI 1,194). Lite package/generated/routing gates are 96/96; exact board 80286/factory/SST set is 51 pass, 0 fail, 1 documented skip; all seven demo ROM binaries and the BIOS binary remain byte-identical. The honest consumer delta teaches the report generator the exact 80286 real-mode boundary and proves `i80286` reaches the `80286` machine variant. Mutations that silently routed it as 8086 and restored the old two-variant source contract both red by name. No upstream source copy, vendored fork, tolerance change, deployment claim, or unrelated FPGA edit. |
 
 | DONE — FPGA renderer real CI execution | Astra coordinator / Sol planning, session astra-sept19 | `lane/astra-renderer-ci`; `<owned checkout>`; base `5f3207c9d` | **DONE 2026-09-19.** `render-fpga` accepts an existing Yosys JSON netlist and still runs the production `yosysToModel` + ElkJS + SVG path; Verilog input retains the Yosys synthesis route. The focused test executes from outside the repository with the checked-in hierarchical netlist, has no missing-Yosys skip or ambient PATH binding, and holds malformed-JSON refusal plus input preservation when input and output share a directory. No baseline widening, fabricated skip receipt, package pin, or synthesis-semantics change. Focused proof: renderer CLI 2/2 with 0 skips; gate-shapes 11/11 and AMBIENT-BINDING 6; `git diff --check`. Local dependencies were borrowed through untracked explicit symlinks to main's ElkJS and a prepared checkout's Commander 13.1; hosted CI's clean install remains canonical. |
 
 | DONE — FPGA read-only USB protocol identification | Astra coordinator / Sol hardware, session astra-sept19 | `lane/astra-usb-identification`; one implementation commit atop claim `0435b0336` | `usb-identification.js` inventories already-granted WebUSB devices through `getDevices()` and classifies `0403:6010` as an FT2232-compatible protocol while keeping `physicalBridge: unknown` for every descriptor, including SIPEED-labelled ones. Device strings are retained only as evidence. Poison-method tests prove inspection never prompts, opens, configures, claims or transfers; unsupported and ambiguous identities fail honestly. Tang Nano docs now reconcile Sipeed's documented BL616 with openFPGALoader's FT2232 transport and include a direct module-import browser-console capture; stale scaffold comments claiming physical bridge revisions and working native flashing were corrected without changing picker behavior. This VM has no board passthrough (only QEMU tablet `0627:0001`) and no openFPGALoader, so no hardware or flash result is claimed. Focused existing + new FPGA USB tests: 15/15 green; `git diff --check` clean. No picker/UI behavior, flasher, package pin or generated mirror changed. |
 
-| DONE — September 19 plan reconciliation | Astra coordinator / Sol planning, session astra-sept19 | `lane/astra-sept19-plan`; `<owned checkout>`; claimed base `97b68e5f4`, implemented on merged-claim base `1a48f9212` | **DONE 2026-09-19.** Replaced the stale copy-era next-session priority with the direct-package architecture and current FPGA/hardware boundaries; corrected the WIP workflow for package dependencies, the sole remaining `sb3-creator` vendored tree, and the path-scoped flasher pin. The FPGA boundary distinguishes the shipped, lazily loaded, runtime-default-off tab from an off build, records Tang Nano/`gate-level` as already pinned, and refuses to infer physical silicon from USB descriptors alone. Documentation only: no pin/spec/lock/source change and no overlap with bwcx's consolidated package refresh. Focused proof: current build workflow, preference/flag gates, Tang Nano phase ledger, whitespace check, and three-file diff review. |
+| DONE — September 19 plan reconciliation | Astra coordinator / Sol planning, session astra-sept19 | `lane/astra-sept19-plan`; `<owned checkout>`; claimed base `97b68e5f4`, implemented on merged-claim base `1a48f9212` | **DONE 2026-09-19.** Replaced the stale copy-era next-session priority with the direct-package architecture and current FPGA/hardware boundaries; corrected the WIP workflow for package dependencies, the sole remaining `sb3-creator` vendored tree, and the path-scoped flasher pin. The FPGA boundary distinguishes the shipped, lazily loaded, runtime-default-off tab from an off build, records Tang Nano/`gate-level` as already pinned, and refuses to infer physical silicon from USB descriptors alone. Documentation only: no pin/spec/lock/source change and no overlap with Codex's consolidated package refresh. Focused proof: current build workflow, preference/flag gates, Tang Nano phase ledger, whitespace check, and three-file diff review. |
 
 | FPGA unknown-state correctness and RAM canvas integration | Astra coordinator / Sol fpga, session astra-sept19 | `lane/astra-sept19-integration`; PR194 ancestry preserved; PR196 | **DONE 2026-09-19; PR #196 merged at `b1767ea53`.** RAM canvas geometry, hierarchy ports and EN/DE controls coexist. Captured unknown flip-flop state stays unknown; the temporal regression fails against the original false-zero mutation. Real toolchain AND, DFF, 4×4 RAM and hierarchical adder reach netlist + bitstream. Hosted Build run `35435256123` passed build, corpus, light browser and heavy browser; vendor-freshness run `35435256121` passed. PR194 was not duplicated: its work is retained through PR196 ancestry. |
 
@@ -2166,15 +3911,15 @@ claimed locally; the implementation commit identifies its own candidate head.
 
 | §5's hosted-tier reasoning checked the wrong limit | this session (VPS Claude, opus) | `lane/hosted-storage-finding`, base `fe2cf1103` | docs-only. `docs/TANG-NANO.md` §5 argued hosted-by-default partly because Fluid Compute's 5 GB package ceiling made the 250 MB figure in device-matrix.md stale. True, and it does not help: `CrispStrobe/bw-synth` is deployed and the package ceiling was never the binding constraint. **Measured inside the live function 2026-09-16:** `[local path omitted]` 525 MB total, 0 MB free after a 333 MB dependency install; the YoWASP packages then want to unpack ~100 MB of WebAssembly into that same filesystem and die with `OSError: [Errno 28] No space left on device`. The limit is WRITABLE EPHEMERAL STORAGE AT RUNTIME, not package size. §5's conclusion survives (261 MB of WASM is still wrong for the Chromebook the README names first); what dies is the unexamined assumption that *hosted* meant the same serverless platform the compile route uses. New §5.1 records it; TN3 gains a status line. Proven in production and unaffected: the contract, the routing, and the licence refusal — a GPL-3.0 source is refused by name with evidence before synthesis is reached. Re-homing to a host with a real disk is a platform decision, NOT taken here. **LANDED 2026-09-16 as `dd03d5073` (PR #130).** All five gates green on the head: check, corpus, build, browser (light), browser (heavy). Two further documents carried the same stale reasoning and were corrected in the same lane: `device-matrix.md`, which stated it in a GENERALISING form ("changes the hosted-toolchain arithmetic for any large toolchain") and reasoned from it about the pico-sdk — that bullet keeps its recommendation, ~100 MB beside a 32 MB AVR toolchain probably does fit in 525 MB, and stops citing a ceiling as the reason; and `LANGUAGE-DEVICE-MATRIX-PLAN.md` L4, whose ACCEPTANCE CRITERION said "measure whether it runs in the 250 MB function limit" — a wrong limit inside a measurement instruction is a wrong measurement later. §7.3's proof table gained a third row rather than flipping "it is deployed" to yes: everything above that row works in production, and synthesis does not, because of WHERE it runs rather than what it is. |
 
-| package refresh: foreign-SPICE oracle engine/UI heads | bwcx (Codex), sole owner | `lane/spice-oracle-package-refresh`; worktree `[local path omitted]`; exact Lite parent/claim `dd959068e2f768ad95091619b0e89a0f4cd9cbeb`; bw-board `51c3c9154` → `0a0480276`, bw-circuit-ui `991408f56` → `2f63ed5b6`; package specs/lock/pins and pin-derived generated evidence only | **DONE 2026-09-14.** Consolidated descendant refresh: upstream board 51/51 and CUI 149/149 focused tests green; installed npm-pack identity verified 1,201 board and 1,138 CUI files with one engine; Lite pin/provenance/generated surface 88/88 and every generator `:check` green. BIOS and all seven demo-ROM bytes are unchanged. Upstream oracle evidence judges 11,002/14,634 circuits (gallery 2,114/2,163 unchanged; ADI2005 8,888/12,471 newly reachable). Lite has no MOSFET-backed lesson, and the known finite-source classes move no lesson expectation, so no lesson oracle was rewritten. Exact hosted Build receipt decides landing; no copied source, vendor fork, tolerance change, workflow, browser-smoke ownership, or deployment claim. |
+| package refresh: foreign-SPICE oracle engine/UI heads | Codex (Codex), sole owner | `lane/spice-oracle-package-refresh`; worktree `[local path omitted]`; exact Lite parent/claim `dd959068e2f768ad95091619b0e89a0f4cd9cbeb`; bw-board `51c3c9154` → `0a0480276`, bw-circuit-ui `991408f56` → `2f63ed5b6`; package specs/lock/pins and pin-derived generated evidence only | **DONE 2026-09-14.** Consolidated descendant refresh: upstream board 51/51 and CUI 149/149 focused tests green; installed npm-pack identity verified 1,201 board and 1,138 CUI files with one engine; Lite pin/provenance/generated surface 88/88 and every generator `:check` green. BIOS and all seven demo-ROM bytes are unchanged. Upstream oracle evidence judges 11,002/14,634 circuits (gallery 2,114/2,163 unchanged; ADI2005 8,888/12,471 newly reachable). Lite has no MOSFET-backed lesson, and the known finite-source classes move no lesson expectation, so no lesson oracle was rewritten. Exact hosted Build receipt decides landing; no copied source, vendor fork, tolerance change, workflow, browser-smoke ownership, or deployment claim. |
 
-| package refresh: controlled static operating point plus hierarchy/ASC/EAGLE GUI integration | bwcx (Codex), sole owner | `lane/operating-point-package-refresh`; Lite parent `d0d6a1c3a`; bw-board `51c3c9154e0def15b1a0f6772f92ec942a133172`; bw-circuit-ui `991408f56fe78d153ea37f54b2d238d2e886d6a5` | **DONE in the final candidate, 2026-09-13.** The two pins are descendants of Lite's prior `44fe9e4`/`8387d3a` pair. Exact npm-pack identity is 1,195 board files and 1,129 CUI files with a single engine resolution. Installed focused proof: board operating-point/controlled-source/source-once/explicit-rail behavior 26/26; CUI operating-point action, rendered Instruments result/refusal, ideal E/G, EAGLE loss refusal and ASC R/C/V/I 20/20; Lite pin/provenance 9/9. Package notices, census, 8086 report, matrix, part profiles, reader coverage, hosted targets and both ROM provenance gates are current; all seven demo ROMs and BIOS bytes remain unchanged. Upstream evidence: board CI `34777046766` and CUI CI `34777516098` green. First Lite Build `34778254012` stopped on one honest numeric-contract red: `38-npn-switch` moved to collector `0.07829 V`, load `6.5036 mA`, brightness `0.32518`; the replacement re-derives the English/German hint and both independent bench oracles (focused 2/2, seven quoted quantities/zero unmatched, mirrors identical). No source copy, vendor fork, unrelated migration or deployment claim is included. One fresh exact-head Lite Build is the landing gate. |
+| package refresh: controlled static operating point plus hierarchy/ASC/EAGLE GUI integration | Codex (Codex), sole owner | `lane/operating-point-package-refresh`; Lite parent `d0d6a1c3a`; bw-board `51c3c9154e0def15b1a0f6772f92ec942a133172`; bw-circuit-ui `991408f56fe78d153ea37f54b2d238d2e886d6a5` | **DONE in the final candidate, 2026-09-13.** The two pins are descendants of Lite's prior `44fe9e4`/`8387d3a` pair. Exact npm-pack identity is 1,195 board files and 1,129 CUI files with a single engine resolution. Installed focused proof: board operating-point/controlled-source/source-once/explicit-rail behavior 26/26; CUI operating-point action, rendered Instruments result/refusal, ideal E/G, EAGLE loss refusal and ASC R/C/V/I 20/20; Lite pin/provenance 9/9. Package notices, census, 8086 report, matrix, part profiles, reader coverage, hosted targets and both ROM provenance gates are current; all seven demo ROMs and BIOS bytes remain unchanged. Upstream evidence: board CI `34777046766` and CUI CI `34777516098` green. First Lite Build `34778254012` stopped on one honest numeric-contract red: `38-npn-switch` moved to collector `0.07829 V`, load `6.5036 mA`, brightness `0.32518`; the replacement re-derives the English/German hint and both independent bench oracles (focused 2/2, seven quoted quantities/zero unmatched, mirrors identical). No source copy, vendor fork, unrelated migration or deployment claim is included. One fresh exact-head Lite Build is the landing gate. |
 
-| roadmap: replace the generated `flasher.js` copy with a build-time ESM package dependency | bwcx (Codex) | `docs/flasher-package-roadmap` | **DONE in the docs candidate.** `PLAN.md` states the preferred dedicated-package outcome and the offline/exact-SHA constraints; `ROADMAP.md` §3.6 splits delivery into F1 boundary measurement, F2 transcript-preserving extraction and upstream adoption, F3 exact-revision Lite package adoption with lazy subpaths, and F4 removal of the two mirrors/sync/scoped pin/provenance compatibility layer. The lane changes only `PLAN.md`, `ROADMAP.md`, and this ledger. |
+| roadmap: replace the generated `flasher.js` copy with a build-time ESM package dependency | Codex (Codex) | `docs/flasher-package-roadmap` | **DONE in the docs candidate.** `PLAN.md` states the preferred dedicated-package outcome and the offline/exact-SHA constraints; `ROADMAP.md` §3.6 splits delivery into F1 boundary measurement, F2 transcript-preserving extraction and upstream adoption, F3 exact-revision Lite package adoption with lazy subpaths, and F4 removal of the two mirrors/sync/scoped pin/provenance compatibility layer. The lane changes only `PLAN.md`, `ROADMAP.md`, and this ledger. |
 
-| stc `flasher.js` provenance convergence, Phase 3 scoped return | bwcx (Codex) | `lane/flasher-provenance-return-v2` | **DONE when this candidate lands.** Upstream Phase 2 is `30f43384`; `stc-compiler-flasher` is a path-scoped pin, unrelated stc revisions remain outside its authority, both shipped mirrors remain byte-identical at `sha256:c6477c6ebb62e0c6316ad1b03099e7a9261f3b880abd737e4e3d6cac2d62e595`, and local/remote sync inputs must match both the exact commit and canonical origin before writes. No production mirror byte or whole-file divergence declaration changed. |
+| stc `flasher.js` provenance convergence, Phase 3 scoped return | Codex (Codex) | `lane/flasher-provenance-return-v2` | **DONE when this candidate lands.** Upstream Phase 2 is `30f43384`; `stc-compiler-flasher` is a path-scoped pin, unrelated stc revisions remain outside its authority, both shipped mirrors remain byte-identical at `sha256:c6477c6ebb62e0c6316ad1b03099e7a9261f3b880abd737e4e3d6cac2d62e595`, and local/remote sync inputs must match both the exact commit and canonical origin before writes. No production mirror byte or whole-file divergence declaration changed. |
 
-| remote-first fast-lane protocol | `/root/sol_lane_coordination` (Codex) | 2026-09-13 | **DONE in the documentation commit containing this row** (use `git log -1 -- LANES.md docs/VENDORING-REGIME.md` for its exact non-self-referential commit identity), after remotely merged claim `33ffb7987`. The canonical registry now requires isolated one-task worktrees, remote-before-implementation claims, race-loser/explicit-takeover handling, proportional five-minute checks, one owner through landing, no routine audit-doc/pin-handoff loop, and submitted-CR peer messages. `docs/VENDORING-REGIME.md` distinguishes direct upstream package consumption from floating identity and preserves exact pins/lockfile integrity. Docs-only validation: changed-path envelope is exactly these two files, `git diff --check` green, links resolve, and root tree shape preserved. |
+| remote-first fast-lane protocol | Codex coordination lane | 2026-09-13 | **DONE in the documentation commit containing this row** (use `git log -1 -- LANES.md docs/VENDORING-REGIME.md` for its exact non-self-referential commit identity), after remotely merged claim `33ffb7987`. The canonical registry now requires isolated one-task worktrees, remote-before-implementation claims, race-loser/explicit-takeover handling, proportional five-minute checks, one owner through landing, no routine audit-doc/pin-handoff loop, and submitted-CR peer messages. `docs/VENDORING-REGIME.md` distinguishes direct upstream package consumption from floating identity and preserves exact pins/lockfile integrity. Docs-only validation: changed-path envelope is exactly these two files, `git diff --check` green, links resolve, and root tree shape preserved. |
 
 | the regime doc described deleted machinery as present, one day after being fixed for the opposite | brickwright-lite-0c, assigned by lego-38 | `lane/regime-hole-past-tense` `16df974ad` → main (docs only: VENDORING-REGIME.md +185/-86, VENDOR-DIVERGENCE-SB3-CREATOR.md +6/-2) | § "The hole" was rewritten 09-11 for describing a SHIPPED thing as pending; the package migration then deleted the machinery it had just been made accurate about, so it described a DELETED thing as present. **Same defect, opposite direction, one day apart, through a change nobody connected to the file.** SCOPE WIDENED PAST THE ASSIGNED SECTION ON PURPOSE: the paragraph above it read "Three upstreams are vendored ... bw-board, bw-circuit-ui, sb3-creator" — one is — and a careful past tense under a false premise is the same defect one level up. Also stale and fixed: the pipeline's `npm run sync:bwboard` (script deleted), the rule's exception member (the `../` depth rewrite left with bw-board; the sb3-creator flatten-rewrite remains and is still DERIVED), the appearing-table's citation of `vendor-identity` and its fourth row reading "NO — green" (that row WAS the hole), the persisting-section's ratchet in present tense, and the sb3 ledger's own first line "The other two vendored trees are compared BYTE FOR BYTE". NEW IN THE REWRITE: (a) the hole cannot regrow in sb3-creator STRUCTURALLY — `sb3-creator-vendor-identity` compares all 14 mapped files with no exemption path in it, `vendor-sb3creator-deltas` asserts the reported set is exactly the declared one, so declaring a delta cannot widen what the comparison forgives because the comparison forgives nothing; the old pair failed precisely by being ONE gate doing both jobs; (b) three closures not two — MECHANISM (region attribution, deleted), STATE (ledger emptied, file gone), STRUCTURE (the trees stopped being vendored, the only one still standing) — the 09-11 text warned against mistaking the state for a mechanism and was overtaken within a day by a change of structure, *when a defect keeps needing a gate, ask whether the thing being gated should exist*; (c) the retirement-belongs-to-the-pin-bump rule re-scoped to dependency bumps, accepted by lego-38 — a `github:` spec is a pin with different syntax. CHECKED BOTH DIRECTIONS: every file the doc names exists, every file it names only in past tense is confirmed absent. Gates with SB3_CREATOR_DIR at the pin: disposition-deadline, vendor-sb3creator-deltas, sb3-creator-vendor-identity, pinned-packages, overlay-packages-pairs, vendor-source-guard — 27 tests, 0 fail, 0 skips. (`pinned-packages` was opened to report vendor-pins.json and package.json as two records of one sha; the gap was already closed with mutation coverage for wrong host, wrong owner and a similarly-named repo. No finding, recorded because it would otherwise have been raised.) |
 
@@ -2205,11 +3950,11 @@ CI input census and ULA convergence: **DONE 2026-09-09**, Lite PR 108 merged at 
 | lane | who | landed | what |
 | --- | --- | --- | --- |
 | the NUL gate reclaimed the CI runner on a disk image (main's build red since #238) | Claude Opus 5 (lego session), branch `lane/nul-gate-disk-image` | 2026-09-21 | **DONE.** `test/no-nul-in-text.test.mjs` only. CAUSE, measured: `img` was not in `BINARY_BY_ROLE`, so the 360K MS-DOS image #238 tracks under `static/dos/` — TWICE, overlay and packages — was scanned as text, and it holds **338,112 NUL bytes** per copy. `nulsIn` then did `buf.subarray(0, i).toString('latin1').split('\n')` PER HIT: quadratic. Locally 555 MB RSS and still climbing after 138 s on one copy; on the runner, `exit code 143` / "The runner has received a shutdown signal" with **no `not ok` anywhere in the TAP**, always immediately after `no-dead-overlay-modules` completed, on every main run from b0ebc054 to 408ba862a. TWO FIXES, because the second is the one that matters next time. (1) A `disk` role: img/ima/iso/vhd/dsk — an empty FAT12 data area IS NUL, and nothing about that is a defect in anything. (2) The scan is linear and the report is bounded: newlines counted as they are passed, evidence for the first `MAX_DETAIL` hits only, and one closing line giving the TRUE total and naming the remedy. `.length` still means the exact NUL count, which KNOWN and the live-tree test compare against. This gate's own header had promised that a new binary format "fails by name once and gets its extension added with its reason"; that promise was false, and the cost of it was the whole job. It is true now, and proved: with `img` removed again the gate FAILS BY NAME in **1.85 s**, naming both copies, 338,112, and what to do. Measured after: the file runs in **0.84 s / 267 MB**, was 138 s+ / 555 MB+ and unterminated. Linearity is held by a budget that SEPARATES two measured costs — 471/164/110 ms linear vs **95,296 ms** quadratic on the same 256 KB buffer, budget 10 s — not by a guess at one. Both mutations bite: dropping the role reddens the role test, reverting the scan reddens the bound. 18/18 with gate-shapes. |
-| TN3 — hosted synthesis: the client half here, the service as its own repo | `screen://1971492.claudebw2` (opus) | 2026-09-16 — lite #124 #125 #128, plus CrispStrobe/bw-synth | **The client refuses honestly and the service is proven but undeployed.** lite carries the licence screen, the v1 contract, and a backend selector that mirrors `execution-policy`: probe for availability, name what it picked, and refuse an explicit request rather than falling back — quietly building somewhere other than asked is how two backends that disagree become irreproducible bug reports. **`CrispStrobe/bw-synth`** is Python because `gowin_pack` IS Apicula; all three tools are on PyPI, so one runtime installs the flow. A blinky reaches a **6.16 MB bitstream** in its CI; its request path has 11 tests; its HTTP transport has never run and it is **not deployed**. **The licence screen is duplicated there deliberately** — lite screens before upload for the user's sake, but that is a client, a client can be bypassed, and the rule is what keeps the service from being a GPL distributor. **The lesson worth stealing:** three of four CI rounds were guesses at plausible strings (a dependency version belonging to another package, a binary named after its package not its tool, a chipdb that does not exist). The fourth made the failure ENUMERATE what was valid and answered in one round — `GW2A-18C`. `device` is the ordering code you buy; `family` is the chipdb name. That is what apicula's "C devices require --vopt family" was distinguishing all along, and this plan repeated the rule four times without understanding it. **Open:** deployment (needs the owner's Vercel account), and TN6a's fetch/worker — whose capability gate landed in #127 after the first version of its own probe was found to be broken and refusing every browser. |
-| TN2 + TN2b — the FPGA surface and the pin bridge, and five gates | `screen://1971492.claudebw2` (opus) | 2026-09-15 — lite #113 #114 #115 #116 #117 #118 #119 #120, bw-circuit-ui #25 | **Claimed retrospectively: these were built and landed without a row, which is the protocol gap this file exists to prevent, so it is recorded rather than quietly skipped.** TN2 puts the HDL surface behind a build-time `BW_ENABLE_FPGA` — **verified, not asserted**: CI's shipped github-pages artifact was downloaded and grepped for six strings distinctive to the surface, zero hits in 123 MB. TN2b is the bridge — `.cst` parse/emit, Yosys port read, bind to the real board part, drive the real solver — and a test lights an actual LED at 2-6 mA through pin 73. **Four defects found, each by a different mechanism, which is the transferable part.** (1) CI caught a palette kind with no engine path that would EMPTY any board seating it — fixed with `PASSTHROUGH_KINDS`, not a `KNOWN_GAPS` entry, since that ledger is burned down and may only shrink. (2) That gate then went LOUD ABOUT NINE UNRELATED PARTS because one apostrophe in a comment shifted its quote-pairing regex; hardened, mutation-proven. (3) An emit/parse round-trip asserting MEANING-equality found `IO_PORT` before `IO_LOC` misreported as a duplicate placement — legal, and every hand-written fixture had placed first. (4) Reading my own diff found multi-pin `IO_LOC "x" 73,74;` losing a pin on the way back out, silently, into the file that goes to real silicon. **Also:** the board's own GND/3V3/5V pins are inert (PASSTHROUGH), so a loop through them reads 1.3e-10 A while working on real hardware — `board-rail-not-simulated` now says so. The pin move adopted 171 upstream commits including a current sign-convention change (positive-OUT) that four lite benches had encoded the old way. `VENDORING-REGIME.md` now carries the pin-move runbook that produced; it predicted the second move's single stranded artefact correctly, one round instead of three. **Open:** TN3/TN4/TN5a/TN5b/TN6 unbuilt; the flag-ON path is compiled by no build (#120 checks its imports, the full build gate is named as still open); TN4 blocked on which USB-JTAG bridge the 20K revision carries. |
-| TN0 — Tang Nano 20K board part + the 3.3 V rule (`bw-circuit-ui`) — LANDED UPSTREAM | `screen://1971492.claudebw2` (opus) | 2026-09-15 — upstream `1c8e827` (PR CrispStrobe/bw-circuit-ui#24, 4/4 green). **Lite pin NOT yet moved.** | **Upstream lane, PR CrispStrobe/bw-circuit-ui#24** on `lane/tangnano-board-part`; reaches lite as a pin move. Adds `parts-data/tang_nano_20k.json` + `.svg` (40 terminals: **34 gpio + 6 power**, matching the datasheet's own "2x20P 2.54mm DIP Pin Headers with 34 free IOs"), the palette entry, `board-geometry` specs (54.04 x 22.55 mm) and its board list, and generalises drc.js Rule 0 into a board table so the Pico rule is reused rather than copied. **The pinout is sourced:** Sipeed Datasheet v1.3 is authoritative over litex-boards' `sipeed_tang_nano_20k.py` (BSD-2, (c) 2023 Icenowy Zheng), which puts pins 75/76 on opposite headers and swaps 25/26 — the datasheet revision history says "Fixed the issue of pinout picture", so the 2023 LiteX file predates the fix. Recorded in `_pinmap_source` so nobody re-"fixes" it toward LiteX. **The rule respects direction:** the 5V header pin is the USB rail and a legitimate power OUTPUT; only 5 V arriving BACK on a bank pin is the danger. A checker that refused all 5 V would be wrong and would train learners to ignore it. **This rule family had no test at all before now** — five added, falsifiable both ways, including the first-ever Pico regression guard. Deferred deliberately: a PCB land pattern (`LAND_PATTERNS[kind] || {}` degrades gracefully). | **CI caught a real defect and the fix is worth knowing:** an unlisted sidecar kind reaches `setNetlist` RAW, the netlist is rejected and the designer board goes silently EMPTY — seating the part would have emptied the board. Fixed with `PASSTHROUGH_KINDS`, NOT a `KNOWN_GAPS` entry, because that ledger is fully burned down and may only shrink. **Also hardened `palette-engine-coverage` itself:** it parsed `PASSTHROUGH_KINDS` with a raw `/'([^']+)'/g`, so one apostrophe in a comment shifted every later pairing and made the gate go LOUD ABOUT NINE UNRELATED PARTS rather than quiet. Mutation-proven both ways.
-| TN1 — `gate-level` MACHINE_SEMANTICS value (`bw-board`) — LANDED UPSTREAM | `screen://1971492.claudebw2` (opus) | 2026-09-15 — upstream `76877a2` (PR CrispStrobe/bw-board#6, all checks green). **Lite pin NOT yet moved.** | **Upstream lane** at `<owned checkout>` on `lane/tangnano-gate-level`, brief in its gitignored `CLAUDE.md`. Adds a fourth value to the frozen `MACHINE_SEMANTICS` beneath `wired-digital` — a netlist is gates and nets, not bus phases, and stretching `wired-digital` would damage a definition the 8086 path depends on. **Longest lead in the whole plan: it cannot be validated in lite until the pin moves**, and TN3/TN5 both wait on it. Contract per EXECUTION-POLICY-AND-OPTIMIZATION.md — Auto may pick a faster implementation but must never silently lower fidelity, and an unavailable request is a NAMED REFUSAL. The 8086 paths must be unchanged. | Blast radius measured: `MACHINE_SEMANTICS` is referenced only by its own module, its test and one line of `EXECUTION-POLICY-API.md`. The doc's claim that TN1 was high-blast-radius was wrong; what is true is that it is the longest LEAD, because it cannot be validated in lite until the pin moves.
-| Tang Nano 20K (Gowin GW2AR-18) FPGA tiers — SCOPING ONLY, LANDED | `screen://1971492.claudebw2` (opus) | 2026-09-15 — `7cf317c29` + `87c9c8579`, merged `0c5f52a27` (PR #111, all five CI jobs green) | Architecture decided and written down; **no implementation claimed**. `docs/TANG-NANO.md` carries 15 decisions, a licence table verified against the GitHub licence API (Yosys/nextpnr ISC, apicula MIT, openFPGALoader **Apache-2.0**, LiteX BSD-2, Renode **MIT**, digitaljs BSD-2; Verilator `LGPL-3.0-only OR Artistic-2.0` stays a **dev-side oracle**), measured weights (`@yowasp/yosys` 78.3 MB + `@yowasp/nextpnr-himbaechel-gowin` 183.3 MB unpacked = 13x labwired, so P&R is hosted), and the TN0–TN6 phase plan. The model reuses `execution-policy.js`: a fourth `MACHINE_SEMANTICS` value **`gate-level`** beneath `wired-digital` (a netlist is gates and nets, not bus phases), with real silicon deliberately NOT a tier. **Two overlaps the next person must respect.** (1) TN5 overlaps this file's STM32 path lane, whose Renode phases are UNCLAIMED and which already records "legitimacy verified: Renode is MIT" — plus ~40 `wt-renode-*` worktrees on this box. Renode is NOT greenfield; reconcile, do not open a parallel track. (2) TN0 and TN1 are **upstream lanes plus a pin move**, not local edits: `bw-board` is clean at `<owned checkout>` (brief in its gitignored `CLAUDE.md`), `bw-circuit-ui` at `wt-pin-bw-circuit-ui` / `wt-cui-standard-parts`. A board part is not a drop-in JSON — `pi_pico` is referenced from ~10 modules outside `parts-data/`, and that repo's `npm test` is a literal path list, so an unregistered test silently never runs. Delivery is gated: own lane, HDL surface hidden behind a build-time `BW_ENABLE_FPGA` (no general flag mechanism exists in the GUI overlay today — only `BW_VERSION`/`BW_BUILD_TIME`), default-on a separate later decision that may never be taken. | **Implementation remains UNCLAIMED.** Two lane worktrees are prepared with briefs in their (gitignored) `CLAUDE.md`: `<owned checkout>` on `lane/tangnano-gate-level` for TN1, and `<owned checkout>` on `lane/tangnano-board-part` for TN0. Claim those as their own rows.
+| TN3 — hosted synthesis: the client half here, the service as its own repo | Claude worker (opus) | 2026-09-16 — lite #124 #125 #128, plus CrispStrobe/bw-synth | **The client refuses honestly and the service is proven but undeployed.** lite carries the licence screen, the v1 contract, and a backend selector that mirrors `execution-policy`: probe for availability, name what it picked, and refuse an explicit request rather than falling back — quietly building somewhere other than asked is how two backends that disagree become irreproducible bug reports. **`CrispStrobe/bw-synth`** is Python because `gowin_pack` IS Apicula; all three tools are on PyPI, so one runtime installs the flow. A blinky reaches a **6.16 MB bitstream** in its CI; its request path has 11 tests; its HTTP transport has never run and it is **not deployed**. **The licence screen is duplicated there deliberately** — lite screens before upload for the user's sake, but that is a client, a client can be bypassed, and the rule is what keeps the service from being a GPL distributor. **The lesson worth stealing:** three of four CI rounds were guesses at plausible strings (a dependency version belonging to another package, a binary named after its package not its tool, a chipdb that does not exist). The fourth made the failure ENUMERATE what was valid and answered in one round — `GW2A-18C`. `device` is the ordering code you buy; `family` is the chipdb name. That is what apicula's "C devices require --vopt family" was distinguishing all along, and this plan repeated the rule four times without understanding it. **Open:** deployment (needs the owner's Vercel account), and TN6a's fetch/worker — whose capability gate landed in #127 after the first version of its own probe was found to be broken and refusing every browser. |
+| TN2 + TN2b — the FPGA surface and the pin bridge, and five gates | Claude worker (opus) | 2026-09-15 — lite #113 #114 #115 #116 #117 #118 #119 #120, bw-circuit-ui #25 | **Claimed retrospectively: these were built and landed without a row, which is the protocol gap this file exists to prevent, so it is recorded rather than quietly skipped.** TN2 puts the HDL surface behind a build-time `BW_ENABLE_FPGA` — **verified, not asserted**: CI's shipped github-pages artifact was downloaded and grepped for six strings distinctive to the surface, zero hits in 123 MB. TN2b is the bridge — `.cst` parse/emit, Yosys port read, bind to the real board part, drive the real solver — and a test lights an actual LED at 2-6 mA through pin 73. **Four defects found, each by a different mechanism, which is the transferable part.** (1) CI caught a palette kind with no engine path that would EMPTY any board seating it — fixed with `PASSTHROUGH_KINDS`, not a `KNOWN_GAPS` entry, since that ledger is burned down and may only shrink. (2) That gate then went LOUD ABOUT NINE UNRELATED PARTS because one apostrophe in a comment shifted its quote-pairing regex; hardened, mutation-proven. (3) An emit/parse round-trip asserting MEANING-equality found `IO_PORT` before `IO_LOC` misreported as a duplicate placement — legal, and every hand-written fixture had placed first. (4) Reading my own diff found multi-pin `IO_LOC "x" 73,74;` losing a pin on the way back out, silently, into the file that goes to real silicon. **Also:** the board's own GND/3V3/5V pins are inert (PASSTHROUGH), so a loop through them reads 1.3e-10 A while working on real hardware — `board-rail-not-simulated` now says so. The pin move adopted 171 upstream commits including a current sign-convention change (positive-OUT) that four lite benches had encoded the old way. `VENDORING-REGIME.md` now carries the pin-move runbook that produced; it predicted the second move's single stranded artefact correctly, one round instead of three. **Open:** TN3/TN4/TN5a/TN5b/TN6 unbuilt; the flag-ON path is compiled by no build (#120 checks its imports, the full build gate is named as still open); TN4 blocked on which USB-JTAG bridge the 20K revision carries. |
+| TN0 — Tang Nano 20K board part + the 3.3 V rule (`bw-circuit-ui`) — LANDED UPSTREAM | Claude worker (opus) | 2026-09-15 — upstream `1c8e827` (PR CrispStrobe/bw-circuit-ui#24, 4/4 green). **Lite pin NOT yet moved.** | **Upstream lane, PR CrispStrobe/bw-circuit-ui#24** on `lane/tangnano-board-part`; reaches lite as a pin move. Adds `parts-data/tang_nano_20k.json` + `.svg` (40 terminals: **34 gpio + 6 power**, matching the datasheet's own "2x20P 2.54mm DIP Pin Headers with 34 free IOs"), the palette entry, `board-geometry` specs (54.04 x 22.55 mm) and its board list, and generalises drc.js Rule 0 into a board table so the Pico rule is reused rather than copied. **The pinout is sourced:** Sipeed Datasheet v1.3 is authoritative over litex-boards' `sipeed_tang_nano_20k.py` (BSD-2, (c) 2023 Icenowy Zheng), which puts pins 75/76 on opposite headers and swaps 25/26 — the datasheet revision history says "Fixed the issue of pinout picture", so the 2023 LiteX file predates the fix. Recorded in `_pinmap_source` so nobody re-"fixes" it toward LiteX. **The rule respects direction:** the 5V header pin is the USB rail and a legitimate power OUTPUT; only 5 V arriving BACK on a bank pin is the danger. A checker that refused all 5 V would be wrong and would train learners to ignore it. **This rule family had no test at all before now** — five added, falsifiable both ways, including the first-ever Pico regression guard. Deferred deliberately: a PCB land pattern (`LAND_PATTERNS[kind] || {}` degrades gracefully). | **CI caught a real defect and the fix is worth knowing:** an unlisted sidecar kind reaches `setNetlist` RAW, the netlist is rejected and the designer board goes silently EMPTY — seating the part would have emptied the board. Fixed with `PASSTHROUGH_KINDS`, NOT a `KNOWN_GAPS` entry, because that ledger is fully burned down and may only shrink. **Also hardened `palette-engine-coverage` itself:** it parsed `PASSTHROUGH_KINDS` with a raw `/'([^']+)'/g`, so one apostrophe in a comment shifted every later pairing and made the gate go LOUD ABOUT NINE UNRELATED PARTS rather than quiet. Mutation-proven both ways.
+| TN1 — `gate-level` MACHINE_SEMANTICS value (`bw-board`) — LANDED UPSTREAM | Claude worker (opus) | 2026-09-15 — upstream `76877a2` (PR CrispStrobe/bw-board#6, all checks green). **Lite pin NOT yet moved.** | **Upstream lane** at `<owned checkout>` on `lane/tangnano-gate-level`, brief in its gitignored `CLAUDE.md`. Adds a fourth value to the frozen `MACHINE_SEMANTICS` beneath `wired-digital` — a netlist is gates and nets, not bus phases, and stretching `wired-digital` would damage a definition the 8086 path depends on. **Longest lead in the whole plan: it cannot be validated in lite until the pin moves**, and TN3/TN5 both wait on it. Contract per EXECUTION-POLICY-AND-OPTIMIZATION.md — Auto may pick a faster implementation but must never silently lower fidelity, and an unavailable request is a NAMED REFUSAL. The 8086 paths must be unchanged. | Blast radius measured: `MACHINE_SEMANTICS` is referenced only by its own module, its test and one line of `EXECUTION-POLICY-API.md`. The doc's claim that TN1 was high-blast-radius was wrong; what is true is that it is the longest LEAD, because it cannot be validated in lite until the pin moves.
+| Tang Nano 20K (Gowin GW2AR-18) FPGA tiers — SCOPING ONLY, LANDED | Claude worker (opus) | 2026-09-15 — `7cf317c29` + `87c9c8579`, merged `0c5f52a27` (PR #111, all five CI jobs green) | Architecture decided and written down; **no implementation claimed**. `docs/TANG-NANO.md` carries 15 decisions, a licence table verified against the GitHub licence API (Yosys/nextpnr ISC, apicula MIT, openFPGALoader **Apache-2.0**, LiteX BSD-2, Renode **MIT**, digitaljs BSD-2; Verilator `LGPL-3.0-only OR Artistic-2.0` stays a **dev-side oracle**), measured weights (`@yowasp/yosys` 78.3 MB + `@yowasp/nextpnr-himbaechel-gowin` 183.3 MB unpacked = 13x labwired, so P&R is hosted), and the TN0–TN6 phase plan. The model reuses `execution-policy.js`: a fourth `MACHINE_SEMANTICS` value **`gate-level`** beneath `wired-digital` (a netlist is gates and nets, not bus phases), with real silicon deliberately NOT a tier. **Two overlaps the next person must respect.** (1) TN5 overlaps this file's STM32 path lane, whose Renode phases are UNCLAIMED and which already records "legitimacy verified: Renode is MIT" — plus ~40 `wt-renode-*` worktrees on this box. Renode is NOT greenfield; reconcile, do not open a parallel track. (2) TN0 and TN1 are **upstream lanes plus a pin move**, not local edits: `bw-board` is clean at `<owned checkout>` (brief in its gitignored `CLAUDE.md`), `bw-circuit-ui` at `wt-pin-bw-circuit-ui` / `wt-cui-standard-parts`. A board part is not a drop-in JSON — `pi_pico` is referenced from ~10 modules outside `parts-data/`, and that repo's `npm test` is a literal path list, so an unregistered test silently never runs. Delivery is gated: own lane, HDL surface hidden behind a build-time `BW_ENABLE_FPGA` (no general flag mechanism exists in the GUI overlay today — only `BW_VERSION`/`BW_BUILD_TIME`), default-on a separate later decision that may never be taken. | **Implementation remains UNCLAIMED.** Two lane worktrees are prepared with briefs in their (gitignored) `CLAUDE.md`: `<owned checkout>` on `lane/tangnano-gate-level` for TN1, and `<owned checkout>` on `lane/tangnano-board-part` for TN0. Claim those as their own rows.
 | i8086 checkpoint → machine-checkpoint.js convergence (B2) | this session (`8086 coverage testing materials`), assigned by lego-ac | `lane/i8086-checkpoint-converge`, commit `c00b963a4` | **DONE 2026-09-10.** The 8086 becomes the THIRD consumer of the lite-authored `machine-checkpoint.js`, after m6502/z80 — it hand-rolled its checkpoint in the DEBUG layer, THREW refusals, and used a bespoke envelope. Now the MACHINE owns the contract (checkpointSupport with busTrace/audio as `reasons`, checkpointTopology with variant, captureCheckpoint/restoreCheckpoint via the shared envelope; loadState keeps the deep 8086 validation and its throw is caught → INVALID_CHECKPOINT return; component-set → same INVALID_CHECKPOINT, no fourth code). **The module took a third consumer with ZERO amendment** — proved by the no-strangers diff not touching machine-checkpoint.js, which is the strongest argument for upstreaming it (lane A). The debug bridge delegates but is legitimately THICKER than the m6502/z80 thin bridges for TWO documented layer asymmetries stated in the file: hasExternalStepState (external step/live-input state outside I8086Machine) and the debugger's own run state — carried, not dropped. Callers measured first; B1 + the bisection-closure holder were the prerequisites. All checkpoint suites green incl. the cross-target certification harness (the 8086 now passes the SAME certification as m6502/z80). Mutation-verified (drop busTrace reason → fail-closed test reds; bypass envelope validation → five red). Both dual-tracked mirrors + i8086-checkpoints + i8086-input-recording updated to the returned-refusal/.state/variant-in-topology contract. Falsifier from the scoping stood: no chip codec resisted statePair, no v:2 field lacked a home. |
 | checkpoint bisection closure: hold the second reverse-capture closure (B1 follow-up) | this session (`8086 coverage testing materials`), assigned by lego-ac | `lane/bisection-closure-holder`, commit `372017928` | **DONE 2026-09-10.** B1 fixed BOTH reverse-execution capture closures to route through `wrapSourceState`, but only the cycle-replay one (`captureSourceState`) was held — by the source-text assertion at `debug-cycle-replay-runner-contract:28`. lego-ac found the bisection closure (`const capture` in `startDebugBisection`, debug-runner ~:3269) had NO holder: reverting it to the raw `{target, host}` wrapper reddened nothing, because the propagation test drives `createDivergenceBisection` with its own captureSource and never touches debug-runner's closure. Harmless today only because i8086 still THROWS and the try/catch catches it — but B2 removes that throw, so the sequence as it stood would land B2 into the one call site with no check and no catch, reintroducing the exact silent failure B1 exists to prevent. Fixed by a source-text assertion on the extracted `startDebugBisection` body (the same mechanism that test already uses, symmetric with closure 1) pinning `capture => wrapSourceState(...)`; mutation-verified (reverting the closure reds it). No behavioural hold because no test in the suite stands up a full runner and building one is disproportionate; a rename of the helper reds it loudly, which is the acceptable failure. Test-only, this row. |
 | checkpoint reverse-execution: capture closures propagate a returned refusal (B1 of the i8086 checkpoint convergence) | this session (`8086 coverage testing materials`), assigned by lego-ac | `lane/checkpoint-closure-return-convention`, commit `ac95df693` | **DONE 2026-09-10.** Prerequisite for B2 (i8086 checkpoint → machine-checkpoint.js), split out because the fix's own prerequisite was the thing the fix would break. The two reverse-execution capture closures in `debug-runner.js` wrap `{target: captureCheckpoint(), host}`, but cycle-replay's and divergence-bisection's `rejected()` inspect that wrapper, not `.target` — so a RETURNED refusal is falsy at the guard and only a THROW catches a failed capture (`rejected({target:{refused,code}, host})` → undefined; verified). Converting i8086 throw→return in B2 would remove the sole catch on that path. Fix: an exported `wrapSourceState(checkpoint, captureHost)` (thunked host so it's not captured on a refusal) that propagates a returned refusal unwrapped; both closures route through it. Test `checkpoint-source-refusal-propagation.test.mjs`: the helper propagates a refusal and wraps a real checkpoint, AND the real `createDivergenceBisection` source-guard CATCHES a returned refusal (`bisection-source-capture-failed`) where the pre-fix wrapper slips past it. No-op in practice today (capability-gated + i8086 still throws) — a change that stands on its own merit and holds the invariant B2 needs. Both dual-tracked mirrors, this row. | | this session (`8086 coverage testing materials`), assigned by lego-ac | `lane/vendor-identity-pin-selfverify`, commit `d08c3f0bc` | **DONE 2026-09-10.** `pinnedSrcDir` set `pinned = Boolean(env)`, but the gate JUDGES by reading the sibling's WORKING TREE, so a checkout at the wrong commit was judged as the pin (lego-b9's 2026-09-07 red). **Measured the size first, and it was smaller than the pitch: CI is NOT exposed** — build.yml and vendor-freshness.yml already re-read HEAD and refuse off-pin before setting the env var (all three repos), so no CI path judged a wrong tree; this is defence-in-depth for LOCAL runs + a future CI path that forgets the YAML check. `pin-move-chain` NOT affected (git-graph/ancestry, not working-tree bytes). One repo-agnostic helper `headAtPin(dir, repo)` (HEAD === `vendor-pins.json[repo]`) feeds all THREE judge-tests — byte-identity, cross-tree invariant, AND the rewrite-liveness test, which reads the working tree too and had the same exposure though it wasn't flagged. Off-pin → SPEAK (skip, both shas named the census way); at the pin → JUDGE. Mutation-proven BOTH halves: at the pin the three tests RUN and pass (skip 3→1) and a one-byte drift in the at-pin tree fails byte-identity (judge still bites); off the pin (master `cab9105` vs pin `5a0b197`) all three SKIP naming both shas. Envelope: one test file, this row. gate-shapes / vendored-files-index / vendor-base-per-file green. |
@@ -2221,9 +3966,9 @@ CI input census and ULA convergence: **DONE 2026-09-09**, Lite PR 108 merged at 
 | debugger parity closeout: Code, AVR, Z80, 6502 | Codex; root audit/landing | Code `a6d5e31c` / `34252014184`; AVR `4540cef3` with bw-board `bc0ae45`, focused `34254732092`, Build `34255736047`; Z80 `e64f24f5` / `34257773471`; 6502 `bd58c196` / `34259750895` | **DONE 2026-09-08.** Code opens the one existing debugger without duplicating state. AVR device, Z80 port/memory and 6502 RAM/MMIO matches use the same explicit instruction-retire boundary contract, defer interior-event actions to the following retire, and suppress replay side effects without CPU-name admission lists. Remaining owner decisions are the complete 8051 checkpoint ABI and selection/qualification of a W65C02 cycle provider; neither is implied by this closeout. Claims released. |
 | compiler recovery + SIM property exclusion | sim2cx; root audit/landing | bw-circuit-ui upstream `59c4dce8b92f6f0cc8dea5b7be051530b6d779f9`, run `34242742198`; Lite main `37f41c6da8b4926337076b4f5be1e472090102dd`, exact-head run `34246477283` | **DONE 2026-09-08.** Hash-routed `?localCompiler=on` now reaches the local toolchain, the empty page-query edge is covered, and explicit page query keeps precedence. Failure guidance names the working Settings download route. The exact upstream CUI pin centralizes edit permission in BoardCanvas so SIM blocks every property dialog path, hides adjust, clears stale state, and guards render. Mirrors, manifest, and generated vendored index are current; all four hosted jobs passed. Claim released. |
 | Milestone 0: one inferred seated buzzer is electrically equivalent to an explicit reference | Codex; root audit/landing | Lite main `cd26a7e9e590cec3d5c32c593ad22c161493db2c`; exact-head run `34230601507` | **DONE 2026-09-08.** The active-high `STC12C5A60S2` inferred fallback and an independently assembled reference agree through the real solver at LOW/HIGH: 0/4 V and 0/40 mA, including DC 2400 Hz and edge-driven 200/1000/4000 Hz tone behavior. An LED at the same seat, an opened ground jumper, and the non-no-op production-source buzzer-to-LED mutation fail by name. Active-low, other MCUs, authored benches, and the rest of the corpus remain explicitly outside this oracle. Build, corpus, browser light, and browser heavy passed. Claim released. |
-| N2f measurement: random-dependent literal output on the 8086 C route | bwcx measurement, root audit/landing | main `e15c2cb8ac98bfcc790852541a4eeaa8c73e5c35`; exact-head run `34217092106` | **DONE 2026-09-08; EVIDENCE ONLY.** Honest reach is 47 device C plus 31 HOST C, not 78 compiled. Parsed baseline/literal/random/both variants add exactly crystal-ball only in the combined case (device 47→48, mixed 78→79). The 48 named programs are 45 distinct bodies; the body-set delta is exactly one and all compile hosted. Source-plus-runtime refusal discovery fixes the omitted `_cPrintRefused` evidence bug and pairs structured buckets with terminal `activeUses`. The proposed deterministic signed-16 contract uses multiply-high rejection; low-word modulo was caught producing an eight-draw period for the candidate's 1..8 range. No production, pin, route, or mirror changed in this measurement lane; the production row immediately below subsequently discharged its seam and runtime obligations. |
+| N2f measurement: random-dependent literal output on the 8086 C route | Codex measurement, root audit/landing | main `e15c2cb8ac98bfcc790852541a4eeaa8c73e5c35`; exact-head run `34217092106` | **DONE 2026-09-08; EVIDENCE ONLY.** Honest reach is 47 device C plus 31 HOST C, not 78 compiled. Parsed baseline/literal/random/both variants add exactly crystal-ball only in the combined case (device 47→48, mixed 78→79). The 48 named programs are 45 distinct bodies; the body-set delta is exactly one and all compile hosted. Source-plus-runtime refusal discovery fixes the omitted `_cPrintRefused` evidence bug and pairs structured buckets with terminal `activeUses`. The proposed deterministic signed-16 contract uses multiply-high rejection; low-word modulo was caught producing an eight-draw period for the candidate's 1..8 range. No production, pin, route, or mirror changed in this measurement lane; the production row immediately below subsequently discharged its seam and runtime obligations. |
 | N2f production: deterministic random plus literal output on the 8086 C route | sim2cx (Codex), root audit/landing | upstream `5a0d5592be4c7586864babc1e72015aa819cd128`; Lite main `c77563dbf5e2336c7da90a8993d98415705a60d8`; exact-head run `34224675820` | **DONE 2026-09-08.** The guarded pin/sync carries the exact promoted emitter through both mirrors. Consumer helpers implement inclusive signed-16 normal/reversed/equal/full-span bounds, fixed seed `0x4d3d`, unbiased 16×16 multiply-high rejection, and direct zero-terminated literal DOS output with CR/LF. Honest production reach is 48 device C plus 31 HOST C = 79 mixed; every lattice variant compiled 48 programs, each complete set has 45 bodies, and all four variants cache 48 unique bodies. The real crystal-ball receipt emitted `Most likely, Ask again, Ask again, Ask again, Yes, Most likely, Without a doubt, No` for rolls `2,4,4,4,1,2,5,7` (1,745 steps / 44,020,502 cycles / 500 bytes). Boundary rows `225,7,4,-25002,-1` came from draws `2,1,1,1,1` (482 steps / 6,403 cycles / 264 bytes). Low-word modulo, branch/text mapping, missing-helper, zero-based-read, and silent-overflow mutations fired. The first hosted run found profile/emitter verb drift; the landed generator classifies `printText` and `random` as language/runtime controls and the conformance test asserts both are non-hardware. Build, corpus, browser light, and browser heavy are green. |
-| CI: HISTORY-only pushes skip Build | bwcx (Codex), root audit/landing | main `e1765b83c2905c78df830ce159e892f1ba135900`; branch `fix/history-only-ci-trigger`; run `34210227378` | **DONE 2026-09-08.** Root `HISTORY.md` is excluded beside the other ledger-only files. The named behavioral gate proves a history-only change skips Build, while executable source, the governed root notice, and a re-included docs build input still trigger; its mutation removes exactly `!HISTORY.md` and reddens that named assertion. Exact-head hosted build, corpus, browser light, and browser heavy all passed; deploy/verify skipped on the branch as designed. |
+| CI: HISTORY-only pushes skip Build | Codex (Codex), root audit/landing | main `e1765b83c2905c78df830ce159e892f1ba135900`; branch `fix/history-only-ci-trigger`; run `34210227378` | **DONE 2026-09-08.** Root `HISTORY.md` is excluded beside the other ledger-only files. The named behavioral gate proves a history-only change skips Build, while executable source, the governed root notice, and a re-included docs build input still trigger; its mutation removes exactly `!HISTORY.md` and reddens that named assertion. Exact-head hosted build, corpus, browser light, and browser heavy all passed; deploy/verify skipped on the branch as designed. |
 | U1: the example journey — owner-reported UI defects, measured before touched | brickwright-lite-ea, assigned by lego-ac | `lane/u1-example-ui` → main | **Measurement first, and two of the four were described in terms the code did not match.** **U1-1** (STC89 pick renders an STC12 board): `resolveExampleBench` was NOT at fault — it returns an explicit error for a device with no bench and every caller stops on it. `setDevice` already resolves the bench and refuses BY NAME. The whole defect is that it does so only `if (this._lastCatalogExample)`, which **only the importer's own catalogue path ever set** — an example loaded from the Examples browser left it null, so a later device pick retargeted the program with no bench check at all. Fixed by publishing `bw-example-loaded` from circuit-tab's `publishExampleTitle` and recording it in the importer, so ONE correct implementation serves both paths instead of a second one growing beside it. **U1-2** (catalogue annotated by a device chosen later): worse than reported — `catalogForDevice` **FILTERED incompatible examples out entirely**, not merely annotated, which also made this file's own "Needs:"/"Benötigt:" label unreachable dead code and its sort comment describe an ordering that could not occur. Filter, label and the now-false "all incompatible" empty state all removed; the per-row device chips (`bw-catalog-device`) were already the pick and stay. **U1-3** ((i) beside the example title): **my own first measurement was wrong** — I reported no anchor existed because nothing in circuit-tab or CircuitDesigner shows an example title. The owner corrected it: loading an example OVERWRITES THE PROJECT NAME, the editable field in the top row centre, so the name was already there and I had looked in the wrong component. The intro parser, renderer and labels were EXTRACTED to `lib/bw-circuit-ui/intro-doc.jsx` and imported by both readers rather than copied — a second renderer would have been a second thing to keep in agreement, which is the week's defect shape. **U1-4** (Poti where the program declares a sensor): reported, not decided, per the brief — `infer-seated.js:151` seats a `potentiometer` for EVERY analog pin with no reference to the pin's name, while `ldr` is fully seatable today (footprint, terminals, reseat list, BOM label). The generator can already do the right thing and never chooses it; hint-in-the-PIN-line versus name-inference differ in kind (a declaration the author controls versus a guess from an identifier) and the owner decides. Unit gate: 5 tests, **6 mutations red**, comments stripped first because every forbidden token now appears in the comment explaining why it is forbidden. Browser gate `verify-example-journey.mjs`, light shard, own timeout, three journeys in one session, driven through the gallery's own `loadExample` via the React-fiber walk a green gate already uses — never an invented selector. |
 | Post-N2e shared-doc reconciliation | sim2cx (Codex), root audit/landing | branch `docs/post-n2e-reconcile-sim2cx`; audited content head `1f763692ecbd6f0c47a9d49dc6b064aba8483dc8` | **DONE IN THE FORWARD REPLACEMENT CANDIDATE 2026-09-08.** The four-file envelope is exactly `PLAN.md`, `ROADMAP.md`, `HISTORY.md`, and `LANES.md`; no files were added or deleted. The stale `e6037bc84` / N2c shortlist is replaced by serialized N2f, one-small-divergence, and electrical-equivalence tracks; completed GPL/toolchain, i8086 re-sync, N2b, P21/P22, polarity, tone/flat-census, and N2e evidence is in history. The first audit accepted the current pin, 19-file inventory, N2e facts, anchors, and 31/31 focused checks, then required this final forward repair: close the ownership row and transfer N2b/P21/P22 from the removed shortlist into history. A subsequent audit addendum supplied the measured N2f 78→79 ceiling, the empty structured text-refusal defect, deterministic-RNG constraint, and a history-only CI resource finding. That CI fix then landed independently at exact `e1765b83c` / run `34210227378`; this forward integration removes it from the active shortlist while retaining its DONE row and history receipt. No production files, no new Markdown files, no force push, and no lane-owner main push. |
 | Current-shortlist reconciliation: stale payload list replaced by current correctness tracks | sim2cx (Codex), root audit/landing | branch `docs/next-shortlist-reconcile`, docs `3fa94705d` plus exact-main refresh | **DONE on branch, awaiting coordinator landing.** `PLAN.md` and `ROADMAP.md` retain P18–P22, Track A and N2b evidence; bind the shortlist to `e6037bc84`; name current ownership and both corrected premises; and keep rejected payload work closed without new attribution evidence. Focused document gates pass 10/10. No main push by the lane owner. |
@@ -2258,8 +4003,8 @@ CI input census and ULA convergence: **DONE 2026-09-09**, Lite PR 108 merged at 
 | matrix T7: the Code-tab picker is GENERATED from `bw-matrix/capabilities.js` | brickwright-lite-ea, audited by lego-ac | `lane/t7-picker-from-matrix` `eae510a33` → main | The 75-line `DEVICE_GROUPS` literal is derived from `DEVICES` + `DEVICE_GROUP_CORE`; the conformance test's JSX slice-and-regex reconciliation is gone, `device-choice-contract` reads the table. Two near-misses caught by an equivalence check written BEFORE the change: `family` is not `core` (11 devices' pin naming would have moved silently); a hand-written core map got 2 of 9 wrong, so it was derived from the literal instead. lego-ac's independent comparison: 9 groups, 25 devices, identical to main's literal in every field. `DEVICE_GROUP_CORE` is the one remaining seam and is gated both ways. Flag comments moved beside the rows they describe. Rule for every 'derive X from Y' task: write the equivalence check first. Run 33993597262: browser job (incl. the matrix gate) green; unit reds main's two. |
 | vendor: sb3-creator 73ac0b1 → c20e434 (procedures lift; parameterised def kept as grey block) + sync guards 'kept' rule | delegate (203d1d5, c20e434) + lego-ac | `lane/sb3-pin-c20e434` `e9bc6801c` → main | Coverage 368 → 366 clean of 663 — HONESTLY: 70-calculator and 70-calculator-simple were counted clean while their whole procedure body vanished; they now read degraded with the parameterised defs named. Third iteration of the sync guard, found by a real bump like the two before: 19 permanently lite-only lines (i8086_counter) refused every bump forever, so both scripts now say 'kept' when upstream has not changed the file since the old pin and refuse only when upstream changed it AND lite-only lines would go. A sync guard cannot be got right in the abstract; measure it against the next real event. Run 33992386571: browser job green; unit reds main's two. |
 | fetch-pinning census: the two `git ls-remote` sites red on main since f4ba84d62 | 8086 coverage testing materials (delegate), audited by lego-ac | `fix/fetch-census-ls-remote` `8c76b5158` → main `658321680` | Both declared `resolver` (deploy-daily.yml's publish guard, and the test that pins it); mutation-proved. Run 33989257057: the fetch-pinning guard step green again; remaining unit reds are main's `history-annotations.js` dead module and the z80 cycle-provider test (`avr8js` unresolvable in CI). |
-| first-load payload: lazy builtin extensions, lazy render fonts, text-encoding aliased away, lazy library manifests / lesson waves / example sources; local webpack cache | perf-boot (VPS Claude session, worktree `wt/perf-boot`, branch `perf/boot-payload`) + Codex `/root` reconciliation | integrated after hosted webpack ownership evidence 2026-09-05; current-main CI pending | Baseline stats in run `33952110716`: 11.52 MiB uncompressed eager JavaScript, led by scratch-vm 4.86 MiB, render fonts 1.31 MiB, library data 0.72 MiB and text-encoding 0.60 MiB. Earlier branch CI measured the candidate at 1,309 KB gzipped (−69%). Gates: `verify-boot-payload.mjs`, first-load network ratchet, and missing-chunk degradation. Write-up: ROADMAP §2.4. **LANDED on main 2026-09-05, in two merges, both on CI green PLUS audit.** (1) `cc805cefe` merges `perf/boot-payload` at `3610c3eed`, CI run `33952351087` build+corpus success. (2) `214651654` lands `perf/lazy-observability` at `c2f19166c`, CI run `33958576134`, first load **8.95 MB over 25 requests, first paint 0.8s**, ratchet tightened 11 -> 10. **Both verdicts were checked PER STEP, not per job**: zero skipped steps, and the degradation gate, the first-load guard and the arrays-table gate each recorded `success` individually. A green build containing a skipped gate is the failure this lane spent the day on, twice. The 8.95 was read out of CI's own log rather than taken from the branch author's local number — the same day their `snapshot.managedPaths` finding showed a local build can measure the PREVIOUS build. **The defect the campaign is really about was found after its first green**: a missing extension chunk opened an EMPTY project silently (`targets: 0`, no blocks, no page error) because `addTarget` sits inside a bare `Promise.all` over `loadExtensionURL` at `virtual-machine.js:568` and `1307` — unreachable before the split, when a builtin could not fail to load. Reproduced by `scripts/verify-lazy-extension-degradation.mjs`, which itself failed twice on its own abort counter first (a filename it assumed, then a request it could not see past the service worker) rather than reporting a degradation it had never exercised. **Known and left, agreed with the author**: the new `game-touch-controls` assertion uses an unbounded `[\s\S]*?` and is TRUNCATED-CAPTURE by our own rule, safe only while that argument form appears once among six `publishGameControls` sites; `scopeAfter` bounds it, and it goes in their next commit rather than costing a 25-minute re-dispatch for a regex. |
-| reconcile quarantined display/input and vendor divergences across lite, bw-circuit-ui, bw-board, and sb3-creator | codex `/root` (isolated worktrees) | bw-circuit-ui `dc720e8`; sb3-creator `4134b86`; lite `3a9d89d` + follow-ups | Recovered `4a01d431c` by ownership. Existing work was recognized rather than duplicated; Lite-only set-1 keyboard routing, focus-loss break codes, seated potentiometer sizing/input isolation, per-voice audio handling, machine input/output panels, and the 8086 pseudocode device/examples were upstreamed. All 46 Lite-ahead example layouts were upstreamed unchanged, their flat-pair proof manifest was refreshed, then exact upstream SHAs were re-vendored. Circuit UI, examples, and compiler freshness checks are zero-stale; newer upstream circuit work is now present in Lite. |
+| first-load payload: lazy builtin extensions, lazy render fonts, text-encoding aliased away, lazy library manifests / lesson waves / example sources; local webpack cache | perf-boot (VPS Claude session, worktree `wt/perf-boot`, branch `perf/boot-payload`) + Codex reconciliation | integrated after hosted webpack ownership evidence 2026-09-05; current-main CI pending | Baseline stats in run `33952110716`: 11.52 MiB uncompressed eager JavaScript, led by scratch-vm 4.86 MiB, render fonts 1.31 MiB, library data 0.72 MiB and text-encoding 0.60 MiB. Earlier branch CI measured the candidate at 1,309 KB gzipped (−69%). Gates: `verify-boot-payload.mjs`, first-load network ratchet, and missing-chunk degradation. Write-up: ROADMAP §2.4. **LANDED on main 2026-09-05, in two merges, both on CI green PLUS audit.** (1) `cc805cefe` merges `perf/boot-payload` at `3610c3eed`, CI run `33952351087` build+corpus success. (2) `214651654` lands `perf/lazy-observability` at `c2f19166c`, CI run `33958576134`, first load **8.95 MB over 25 requests, first paint 0.8s**, ratchet tightened 11 -> 10. **Both verdicts were checked PER STEP, not per job**: zero skipped steps, and the degradation gate, the first-load guard and the arrays-table gate each recorded `success` individually. A green build containing a skipped gate is the failure this lane spent the day on, twice. The 8.95 was read out of CI's own log rather than taken from the branch author's local number — the same day their `snapshot.managedPaths` finding showed a local build can measure the PREVIOUS build. **The defect the campaign is really about was found after its first green**: a missing extension chunk opened an EMPTY project silently (`targets: 0`, no blocks, no page error) because `addTarget` sits inside a bare `Promise.all` over `loadExtensionURL` at `virtual-machine.js:568` and `1307` — unreachable before the split, when a builtin could not fail to load. Reproduced by `scripts/verify-lazy-extension-degradation.mjs`, which itself failed twice on its own abort counter first (a filename it assumed, then a request it could not see past the service worker) rather than reporting a degradation it had never exercised. **Known and left, agreed with the author**: the new `game-touch-controls` assertion uses an unbounded `[\s\S]*?` and is TRUNCATED-CAPTURE by our own rule, safe only while that argument form appears once among six `publishGameControls` sites; `scopeAfter` bounds it, and it goes in their next commit rather than costing a 25-minute re-dispatch for a regex. |
+| reconcile quarantined display/input and vendor divergences across lite, bw-circuit-ui, bw-board, and sb3-creator | codex (isolated worktrees) | bw-circuit-ui `dc720e8`; sb3-creator `4134b86`; lite `3a9d89d` + follow-ups | Recovered `4a01d431c` by ownership. Existing work was recognized rather than duplicated; Lite-only set-1 keyboard routing, focus-loss break codes, seated potentiometer sizing/input isolation, per-voice audio handling, machine input/output panels, and the 8086 pseudocode device/examples were upstreamed. All 46 Lite-ahead example layouts were upstreamed unchanged, their flat-pair proof manifest was refreshed, then exact upstream SHAs were re-vendored. Circuit UI, examples, and compiler freshness checks are zero-stale; newer upstream circuit work is now present in Lite. |
 | CI fail-fast blindness + the two defects code-83 handed off | bw-ci (VPS Opus session) | `3ff05ab10`+`239788e8b` (CI), `bb8b2092b` (live circuit), `a026fcfc9`+`36c57dc1f` (refusal notice), `bc297bf09` (test), issues #2-#10 and #13 closed | **All four landed and CI-verified: run 33603018327 reports 30 of 31 browser gates green, and the four-surface gate that had been the sole failure on 17 consecutive builds since 2026-09-01 06:26 is GREEN.** The one red is bw-broker's own `native broker packaged assets`, already fixed in `8da3b17ff`. **(1) CI fail-fast.** Every gate step carried `if: steps.playwright.outcome == 'success'`, into which GitHub folds an implicit `success()` — so the first red gate SKIPPED every later one. Measured: one gate at step 41 silenced 17 steps covering 23 verify scripts, on all 17 runs of a 23-hour streak, while each run said only “build failed”. Fixed in two passes because the first drew the line at `Serve the built app` and run 33600000064 proved that was one step too late (a unit test at step 39 skipped all 31 gates); the twelve INDEPENDENT pre-build checks now hang off `steps.overlays.outcome` and `Serve` additionally requires `build_editor`. Nothing weakened: the job still fails and `deploy` still needs `build`. Two mutation-proved invariants in `gate-coverage.test.mjs`. **(2) The `circuitParts:6` defect.** Root-caused by MEASUREMENT after I circled the same static loop code-83 did: an ordered localStorage/event trace with a setter on the model's `parts` showed two `SET bw-circuit-file-loaded` + `ASSIGN parts len=6` when opened with the CIRCUIT tab active, and ONE set with no assign when opened with the CODE tab active. **circuit-tab's render returns early with two portals when the debugger is docked 'right' — the DEFAULT — while the Code tab is active, so `<Designer>` is not in the tree** and its circuitData effect cannot run; `vm.runtime.circuitModel` outlives it, and a learner who opens a project from the Code tab and presses the green flag drives the PREVIOUS project's board. Replacement now applies in the window listener. **(3) Refusal notice.** Three translatable per-reason alerts on the app-level surface, plus a browser assertion that waits for the notice BEFORE any tab click. **(4) Watchdog issues.** All ten closed with individual re-measured verdicts: six FALSE POSITIVES (queue time counted as execution; #2 reported 78 min for a 3m40s run) fixed 2026-08-27 in `579b37407`, four GENUINE hangs (#3/#5/#6/#7, 29-60 real minutes, all 2026-08-19) caused by the unbounded Playwright install and fixed the same day at 16:27 UTC in `1dbfc3fcf`, after all four. **I BROKE MAIN FOR ~38 MINUTES AND IT IS THE MOST USEFUL THING HERE.** `a026fcfc9` inserted the alert dispatch at the wrong `const saved = this.readAutosave();` — there are two, and the first is the mount-time restore where `refused` is not in scope — so the top-level component threw `ReferenceError: refused is not defined` on every start; 13 gates red. **The gate that should have caught it was mine and it passed on the broken tree**, because it checked that the mapping was total and every id registered and never asked WHERE the mapping lives — the exact grep-shaped shape I had criticised one commit earlier. Position is now asserted and mutation-proved. **FINDINGS FOR OTHERS, not taken:** `showStandardAlertWithMessage` is DEAD in its last hop — `components/alerts/alert.jsx` neither destructures nor renders `data.message`, so `exportError`'s reason is dropped, which is the silent-export failure it was written for. And a local-rig trap: a `python3 -m http.server` on 8617 from Aug 31, serving a `(deleted)` dir from another worktree, answered curl as healthy while my own server failed to bind silently — it cost one entirely wrong diagnosis. Check `ss -lptn 'sport = :8617'` and match the served `gui.<hash>.js` against `build/`. RECOMMENDED NEXT LANE, unclaimed by both bw-ci and code-83 pending owners: a sweep for grep-shaped and regex-truncated assertions across `test/` — seven found today between us. |
 | circuit export completeness: every view + trace downloads + TikZ | Codex coordinator + bounded audit agents, coordinator-integrated | bw-circuit-ui `bf74620`..`9b3abdb`; Lite `a6edb82f9`..`83214cb13` plus closure | **DONE — five-checkpoint cross-repo progression.** One persistent designer-level command owner makes export actionable from Realistic, Schematic and Board views; scope envelope/spectrum and sweep VI/Bode traces retain copy and gain real CSV downloads; the registry ships deterministic, escaped, connectivity-preserving complete Circuitikz documents. Coordinator reviewed every diff and caught a vacuous routed-wire test before acceptance; the strengthened mutation drops one of two routes and fails 9 vs 11 lines. Upstream focused gate 86/86, browser byte gate and full GitHub CI are green; Lite consumer/gate-coverage 9/9 and vendor freshness are green. Pages deployment `6182391235` names product commit `f9f997008` pinning upstream `9b3abdb`. Live proof loaded `50-rc-scope`, entered simulation, downloaded identical 1,212-byte `.tex` from 3/3 views (SHA-256 `dc81a507f9969c8d25b7675013d298a48f5d6c865c2478c7c8922db4feff7cc0`) and an envelope CSV with 8,192 numeric rows: 4 downloads, two hashed assets, zero page errors. Screenshot personally inspected: named RC circuit, Board view, active simulation and populated waveform are visible. Existing package-lock/translation edits stayed byte-identical and uncommitted. |
 | D38 AVR scheduler timebase + final lesson image | fab-avr-timebase (Codex coordinator + read-only audit agents) | sb3-creator `9e7f2f0`+`5d6d83c`; Lite `4d4c66f9b`+`068c5bafc` | **DONE, five-checkpoint cross-repo progression.** The scheduler now owns its `bw_now()` dependency; removing the promotion makes the focused AVR contracts and all five original reproducers fail. A committed sequential native gate forces device/debug output and links 80/80 tracked AVR programs across five MCU mappings with real avr-gcc. Lite pins the full upstream SHA and both example/vendor trees, ships the formerly refused `debug-timing-bugs` image as 14/14 with an empty refusal ratchet, executes it for 2,500 ms in the real AVR adapter, restores the lesson to v3 in EN/DE, and retains the edited-program hosted boundary. The watched production build loaded that exact bench with every cross-origin request blocked, showed avr-gcc provenance and `bw_task0 state 1` at SRAM `0x100`, advanced program time 333.334→483.335 ms across run/pause, then made a same-pin edit miss the image and attempt exactly one blocked hosted POST. 20/20, zero page errors; screenshot inspected. Coordinator integrated every agent audit, reviewed every diff, resolved concurrent main movement, and pushed each accepted checkpoint. |
@@ -2279,12 +4024,12 @@ CI input census and ULA convergence: **DONE 2026-09-09**, Lite PR 108 merged at 
 | debugger D25/D28/D29 real-browser proof + CI gate | Codex coordinator; probe contract independently audited read-only | lite `f028dca03` + `60d605c6f` + `f364beff3`; pre-promotion deployed proof 23/23; vendor-freshness `33316494733` GREEN; Build/new browser gate/screenshots/deploy/deployed-GUI `33316494730` GREEN | Turned the deliberately unwired debugger proof into a real blocking gate. The old 15/19 result contained two probe lies: panel text always contained “Pause”, so a running target looked paused and one cycle measured +2,580,492; the rendered variable was `count` at IRAM `0x0B`, but the probe searched only `counter` and silently armed fabricated fallback `0x30`. Added an exact `data-debug-phase` hook, scoped every control/readout to one visible debug panel, required a real MCU, removed all address fallback, and required the listed watchpoint to match the rendered variable. The shipped 05-counter example remains intact; after arming, the proof presses its real `BTN_button` through the active solved board. Decisive production result: paused exactly; cycle `4608021 -> 4608022`; watch halted on `iram 0x0B`, `0x00 -> 0x01`; scheduler pane names one task and program variable while refusing to invent a call stack; zero page errors. Three screenshots upload even when the gate fails. Also fixed the gate-coverage ratchet: executable workflow lines are inspected, so a comment saying “NOT WIRED” can no longer count as execution. Focused node/static suite 30/30; the wait census could not run locally because this intentionally dependency-light worktree lacks `acorn`, and passed in the clean full CI suite. |
 | vendor-freshness cancellation classification + verdict-preserving concurrency | Codex coordinator; historical classification independently repeated read-only | lite `25e473626`; push vendor run `33314193601` GREEN; simultaneous manual burst `33314202471` + `33314203946` + `33314205212` all GREEN; Build/deploy/deployed-GUI `33314193602` GREEN | Classified 13 cancellations from the latest 100 main runs without confusing a created job record for execution: one had zero jobs; twelve had `runner_name: ""`, zero steps, and never acquired a runner; zero running jobs were cancelled. Eleven predated the concurrency block, so their cause remains honestly unattributed. The later zero-job run `33277887086` was conclusively pending-entry eviction: it queued behind `33277776474`, then disappeared one second after `33277959378` arrived. Non-PR groups now use unique `github.run_id`; PR updates still share a PR group and cancel stale revisions. A static contract gate is mutation-proven: substituting `github.ref` fails by name. Live proof launched one push plus three simultaneous manual runs: four jobs, four verdicts, zero replacements. ROADMAP 2.1 now records the classification/causality distinction. |
 | X2.1 analytical AC sweep UI + nonlinear-region honesty | Codex coordinator, with an independent read-only contract audit | bw-circuit-ui `a05967e73` + `a3b5f81da`; lite `55c5bcd7c` + `403fb2bf3`; CUI CI `33312494057` + `33312667305` GREEN; Lite vendor-freshness `33313209066` GREEN; Lite Build/deploy/deployed-GUI verification `33313209121` GREEN | The Bode UI now uses `BoardImpl.runAc` analytical linearization by default while retaining the time-domain correlation method behind an explicit scope-method toggle. The analytical path preserves the source's DC bias, computes output/input transfer magnitude and wrapped phase, and carries every point's `outOfLinear` identity to a named `part:region` panel warning and the CSV `linearization_region` column. The historical single-frequency contract remains compatible through a tiny strict interval sliced back to one point. Added a real vendored railed-op-amp proof plus static UI/export reachability, updated measured RC lesson expectations for the analytical solver, and removed `export-png.js` from the dead-module ratchet after the vendor-forward made its Lite import reachable. Focused affected Lite suite 28/28 and the ratchet 5/5 locally; exact vendored upstream SHA and the entire production/browser/deploy matrix passed in GitHub CI. |
-| vendor-forward battery honesty chain into lite | codex `/root` (VPS isolated worktree), independently verified by GitHub CI | lite `5ec87a99d` + `cdde48aa1` + `194d4cd94`; sb3-creator `362e9bd` + `a711e85`; final CI sb3-creator `33310888996` GREEN, lite vendor-freshness `33310909814` GREEN, lite Build/deploy/verify `33310909808` GREEN | Vendored bw-board `6571648` and sb3-creator `a711e85` with the 31 provenance-restamped examples, mirrored overlay to the build tree, and replaced the obsolete downstream-dialect tripwire with a producer/consumer contract: the upstream compiler owns the injectable vector-art registry and Lite's pseudocode importer must load and register the app artwork. Mutation-proved by deleting the registration and observing the dedicated freshness failure. The first full Lite run then found what the focused source sync could not: retiring the downstream dialect had also retired micro:bit and Calliope retarget pools. Fixed at the producer, including per-device pin vocabulary, direct reparse tests, and an explicit separation between text retargetability and gallery benchability; 462 focused producer tests and the full producer CI pass. Lite's final matrix passes exact upstream equality, 1,494 unit tests, production webpack, every browser/hardware/debugger/labwired gate, Pages deployment, and deployed-GUI verification. Local proofs also include 69/69 game VM tests, the full numeric lesson contract plus its mutation, circuit corpus invariants, and a successful production build. |
+| vendor-forward battery honesty chain into lite | codex (VPS isolated worktree), independently verified by GitHub CI | lite `5ec87a99d` + `cdde48aa1` + `194d4cd94`; sb3-creator `362e9bd` + `a711e85`; final CI sb3-creator `33310888996` GREEN, lite vendor-freshness `33310909814` GREEN, lite Build/deploy/verify `33310909808` GREEN | Vendored bw-board `6571648` and sb3-creator `a711e85` with the 31 provenance-restamped examples, mirrored overlay to the build tree, and replaced the obsolete downstream-dialect tripwire with a producer/consumer contract: the upstream compiler owns the injectable vector-art registry and Lite's pseudocode importer must load and register the app artwork. Mutation-proved by deleting the registration and observing the dedicated freshness failure. The first full Lite run then found what the focused source sync could not: retiring the downstream dialect had also retired micro:bit and Calliope retarget pools. Fixed at the producer, including per-device pin vocabulary, direct reparse tests, and an explicit separation between text retargetability and gallery benchability; 462 focused producer tests and the full producer CI pass. Lite's final matrix passes exact upstream equality, 1,494 unit tests, production webpack, every browser/hardware/debugger/labwired gate, Pages deployment, and deployed-GUI verification. Local proofs also include 69/69 game VM tests, the full numeric lesson contract plus its mutation, circuit corpus invariants, and a successful production build. |
 | cui exporter wave X0 (+X1.1) | fab-export (VPS fable fleet, wave 4), verified by coordinator (CI green at c87e018 incl. interaction-gate 31/31 + spice-oracle 16/16; 54/54 spice suites re-run locally; the oracle itself re-run against REAL ngspice on this box, 16/16; the Is-model arithmetic re-derived by hand — backing out the 40 mV Rs drop gives Is 1.0e-20) | bw-circuit-ui `ee0d108` (X0.1+X0.2: decks get node 0, a source, an analysis directive; ngspice suffix semantics MEASURED — 1M=1e-3, 1MEG=1e6; the mega bug corrupted 19 of 5124 corpus values, all 1 MOhm resistors exporting 1e9 too small; a valueless resistor exported the 1 kOhm default as 1 Ohm), `1397493` (X0.3: SEVEN dead writers not three, two never-rendered menu components deleted with capabilities folded into reachable menus; X0.5-X0.7: four console-only instruction paths surfaced; the VCC/GND rename tested net-id SUBSTRINGS and fired on zero circuits), `6154745` (X1.1 SPICE importer + the 410-deck corpus whose FIRST run caught subckt/.control lines dropped unrecorded in 86 decks — now 408/410 balance), `c87e018` (the corpus gate runs in CI instead of skipping) | TWO GATE HOLES closed by mutation: ngspice courtesy-aliases `gnd` to node 0, so the ground mapping was numerically untestable (now structural); a SYMMETRIC read/write bug passes every self round-trip (the four foreign-dialect fixtures are the detector). F/H sources refused BY NAME citing E3.5b; E/G map (the ROADMAP note was stale). LICENCE CORRECTION: ngspice is BSD-3 core with LGPL-2.1+ numparam — bw-board had already adjudicated non-bundleable; treatment unchanged (external CI oracle). X0.4 untouched (not in lane). Sibling pin -> 6571648. |
 | pad-drive parity + DRC injection (lite) | fab-parity (VPS fable fleet, wave 4), verified by coordinator (oracle half 5/5 + surface gate 3/3 re-run at tips; all four CI runs confirmed success; BOTH screenshots downloaded from the CI artifact and inspected — bench 1 shows the 218 mA sum naming led (27 mA)x3, bench 2 shows Circuit Check 26 with the 125 mA rated-only danger; hand arithmetic re-derived: 1.3/1035 = 1.2560 mA -> 0.0628) | bw-board `4cd2f26` (pad-drive-parity test: tiers agree BY CONSTRUCTION — boundary A carries a MODE and both tiers draw Thevenin from the one shared pin-model.js; 0.06 is the RESISTOR not the duty — the 1 kOhm caps current 5.3x tighter than any duty; the 5 V gallery rail reads 0.1449, so the dimness was the improvised bench's 3.3 V rail; mutation-proven 7 ways incl. one-sided mode mutations as the anti-vacuity control); lite `fce761908`+`fbe420ee6` (getMaxCurrent + PORT_LIMITS injected; the surface test derives what cui CONSUMES from its own source, scans every file, strips comments — both subtleties found by its own mutations; browser gate 9/9 in CI with the two discriminating checks that FAILED against production; wait-census kept at 261 by condition-waits, ceiling untouched) | LEDGERED not patched, for other lanes: (1) OTYPER is carried by NEITHER tier (open-drain-high lights on both where silicon leaves dark) — asserted as an AGREEMENT so a one-sided repair cannot land silently; LABWIRED-BRIDGE §6 item 0; corpus impact today zero (codegen never writes OTYPER); (2) drc.js `rating > 0.005` hides an exactly-5 mA contributor from the consumers list — one character, lives in cui, needs re-vendor; (3) sb3 ENGINE_SURFACE append (getMaxCurrent, PORT_LIMITS) — TAKEN BY COORDINATOR. Full-corpus DRC sweep killed at load 29 rather than compete with the fleet; the bounded argument (3 of 133 kinds carry a positive chip rating) stated instead. |
 | lite resilience: SW failure tests + deploy starvation + dead-module ratchet | fab-sw (VPS fable fleet, wave 4), verified by coordinator (11/11 re-run of pages-deploy-ordering + dead-module gates at tip; lite Build 33296829625 green incl. the SW browser gate and a real deploy through the new guard; proof-repo runs confirmed) | lite `7679747fe` (SW failure gate — 4 scenarios against its own origin, no webpack; TWO of the five mutations were the SHIPPED CODE: unbounded network-first documents fixed with raceWithCache(3 s), and the .ok guard missing on one of two cache exits — a seeded 404 was measured being SERVED while the server answered 200), `4643c623e` (deploy starvation: measured 72/200 runs cancelled, 62 with ZERO JOBS; fix proven in CrispStrobe/bw-pages-concurrency-proof where the FIRST candidate moved a live site BACKWARDS — environment:github-pages creates the deployment record at job START so the guard read itself — and the second failed closed on a gh --jq arg bug; final: 5/5 verdicts, forward-only, guard proven positively by re-running an older commit -> skipped; the mismatched-tree hazard named as an invariant — build+upload one job, deploy never fetches by name — pinned with 9 mutations), `09e25fb86` (ratchet 16 -> 13, zero unowned; TWO "dead" modules were never dead — the scan never walked scripts/; flyout-resize.js deleted; 13 promoted to ROADMAP with anchor gate mutation-proven three ways), `c08719cf6` (deferrals stated: vendor-freshness has a DIFFERENT cancellation mechanism — 1 zero-job in 100 — so the fix is NOT copied across on resemblance; lite post-change sample is one build, said so). | Proof repo is a standing artifact, delete when §2.1 closes (its README says so). Unclaimed follow-up: vendor-freshness queue shape, measured and written down. |
 | lite debugger wave D25+D28+D29 | fab-debug (VPS fable fleet), verified by coordinator (42/42 re-run of debug-watchpoint-cycle + debug-frames + wave-open-defects at tip; Build green 33295933340; emu CI 33278513534 + bw-board 33278481144 verified earlier; the emu checkpoint additionally re-run by hand: 68/0+68/0+89/89+canary clean) | emu8051-stc `3c31e48`+`ecabd29`+`cf3c7c0`+`63b4d4b` (halt cause/address/value exports 79->89, cycle step, WASM rebuild, and the repo's FIRST push CI); bw-board `70c75d6`; lite `31d2160b1`+`1b367c8c9`+`c7eee0db6`+`195ea91f1`+`d7848ad6f`+`03d20c749`+`5dbbb97dc` | TWO LEDGER ROWS WERE WRONG, and that is the main finding: D29's missing-export premise was written from a source comment nobody had instantiated (the export existed; the REAL defects were the silent halt and lite's unwired addWatchpoint) — D25 named the wrong engine (all four others step whole instructions; emu8051's tick() is the one honest cycle, the rest refuse BY NAME). D28 closed as an honest REFUSAL (cooperative scheduler has no call stack to show; machine targets show their real one). Ledger 31 closed / 6 open; lessons v3 EN+DE; sentinels flipped per instruction (one ADJUDICATED not deleted — the 6502 must keep refusing). Three bugs found by its own testing: reset-fired watchpoints, any-space arming, the S+1 mask. Wait-census red was its own and fixed by CONDITION-WAITS, ceiling untouched. **OPEN GAP, stated not papered: the three browser screenshots were not obtained** (proof script in-tree, deliberately NOT in CI — landing an unpassed gate mid-chain blocked six gates + deploy once and was correctly withdrawn); node evidence 10/10+15/15 against the real vendored WASM stands in. FOLLOW-UP queued: land the browser proof + re-add the gate in the commit that passes it. |
-| battery_aa declared volts + internal resistance | codex `/root` (VPS isolated worktrees), independently verified by GitHub CI | bw-board `6571648`; sb3-creator `af509e8` + `ecde9dc`; CI bw-board 33306299775 GREEN, sb3-creator 33306580564 GREEN | `battery_aa` now honors declared volts/rInternal through ONE two-terminal Thevenin stamp; this also removes the old double-stamp that halved internal resistance and grounded a floating cell. Hand oracles: default 1.5 V / 0.3 ohm into 10 ohm = 1.4563106796 V; override 1.2 V / 2 ohm = 1.0 V. The real 75-battery-tester settings 1.45/1.30/1.10/0.90 V reach FULL/GOOD/WEAK/DEAD. sb3 pins the exact engine SHA in both places, all 31 measured EXPECTED pages are provenance-restamped after their quantities passed unchanged, and the tier-2 ratchet now actually fails when a KNOWN_INERT parameter begins moving a bench (mutation: 6 pass / 1 intentional fail; restored: 7/7). The stronger ratchet removed six other stale exemptions it exposed. Rule 5 consumer notification is this row; lite vendoring remains for a future unclaimed vendor lane. |
+| battery_aa declared volts + internal resistance | codex (VPS isolated worktrees), independently verified by GitHub CI | bw-board `6571648`; sb3-creator `af509e8` + `ecde9dc`; CI bw-board 33306299775 GREEN, sb3-creator 33306580564 GREEN | `battery_aa` now honors declared volts/rInternal through ONE two-terminal Thevenin stamp; this also removes the old double-stamp that halved internal resistance and grounded a floating cell. Hand oracles: default 1.5 V / 0.3 ohm into 10 ohm = 1.4563106796 V; override 1.2 V / 2 ohm = 1.0 V. The real 75-battery-tester settings 1.45/1.30/1.10/0.90 V reach FULL/GOOD/WEAK/DEAD. sb3 pins the exact engine SHA in both places, all 31 measured EXPECTED pages are provenance-restamped after their quantities passed unchanged, and the tier-2 ratchet now actually fails when a KNOWN_INERT parameter begins moving a bench (mutation: 6 pass / 1 intentional fail; restored: 7/7). The stronger ratchet removed six other stale exemptions it exposed. Rule 5 consumer notification is this row; lite vendoring remains for a future unclaimed vendor lane. |
 | sb3 hygiene: setEngine surfaces + dialect upstream | fab-sbx (VPS fable fleet), verified by coordinator (CI 33294755258 + cui 33279345146 confirmed green; engine-surface gate re-run 10/10; docs + refusal guard present) | sb3-creator `5fcdec3` (16 sites, 14 stale in 5 ways; single-source ENGINE_SURFACE copied from lite's PRODUCTION call; empty exception list; 2 dead-on-arrival scripts repaired), `92fd4b4` (generator adjudication: shipped files STAY — regen would revert AUDIT-L2's 91 wire_fix_* wires, now refused 6-way-mutation-proven; 60/61 premise FALSE at the pinned pair, ACCEPT, COVERAGE-ASSERT-PHYSICS's 46 false rows retracted), `e86bdec` (595 via cui de-alias — bw-board needed NOTHING; endpoint check now asks the ENGINE: 2 real offenders in 55561 endpoints incl. the P4.7-vs-RST catalog question, ratcheted open; not-<cond> DECISION MEMO: refuse, docs/BOOLEAN-IN-VALUE-POSITION.md), `fdb1334`+`3091280` (dialect upstreamed with INJECTABLE art registry — 246 lite entries register, 37/37 games parse; dead micropython refusal deleted with behaviour pinned; PB9-prints-PB1 tightened; lite re-vendor spec in docs/LITE-REVENDOR-VECTOR-ART.md), `9cef846` (31 EXPECTED pages restamped), `b963739` (CI HOLE: paths-ignore **.md silenced the very fix for a red main — narrowed, since examples/**.md is suite INPUT); bw-circuit-ui `14efc75` (ENGINE_MODEL_WINS in resolveKind, alias kept as the mutation proof, zero electrical movement across 42 files) | DEFERRED by name: P4.7/RST catalog decision (bw-parts/cui, owner-adjacent); not-<cond> refusal implementation (own false-positive sweep); pc05 generator/corpus divergence. LITE FOLLOW-UPS: the re-vendor spec (expects a false-positive tripwire refusal, then LOCAL_FILES -> zero) and the DRC injection gap (taken by fab-parity). |
 | browser gate into CI (cui) | fab-gate (VPS fable fleet), verified by coordinator (red-proof runs 33278282918 + 33278397665 both confirmed FAILURE — the second with 30/30 passing yet red on the roll-call; green 33280108078 at master tip; interaction-gate job present in ci.yml) | bw-circuit-ui `c4a0ca3` (gate job + the three probe fixes + named source hooks data-canvas-svg/data-wokwi-layer), `8b6c537`+`2fd807c`+`62ea3be`+`87165ff` (three further wrong aims the fix exposed), `6fc9f67` (aimed presses for live-clock controls), `5e4047d`+`d3437b3` (two gate-crash holes: navigations that outran compile now report as named failures and still reach the roll-call), `77ab613` HANDOFF | ALL THREE "pre-existing app defects" were the PROBE (the app always panned; the gesture was drawn inside the palette; the scope column was collapsed in the harness) — and the "load-sensitive" transport four were the same family, not load. 31 scenarios, count ASSERTED by roll-call (a silently-missing scenario reddens the run BY NAME — house rule 4 proven in run 2), CI_SKIPS empty and loud. sweep-canvas-live no longer passes vacuously. OWNER QUESTION recorded in HANDOFF: the standalone designer hides four instruments + the transport behind one unlabelled chevron, collapsed by default — reachable, but is it findable? |
 | measured thresholds: sb3-creator half — phase 2 | fab-thresh (VPS fable fleet), verified by coordinator (CI success at eb16b51; ratchet 6/6 re-run on node 22; independent glob re-count 2162 matches the stamped guard) | sb3-creator `d9df1bd`+`9f3c6d5`+`06a2792`+`eb16b51` | PARKED ROW RETIRED — phase 2 complete. Rig re-pinned a301937/af5cc08 -> 4ae89b5/60fd117 (the stale rig lacked rp2040js entirely — every verdict from it would have measured a missing module), known-answer verified (1198/1199 flip vs independent count). Literals 281: owing 126 -> 24, evidenced 39 -> 145, unprobed 3 -> 0, all dispositioned. Method: --expect-count (count + 2-run confirm) + threshold-observe.mjs (one run per FILE, 150/166 bounds) + threshold-stamp (98 written back). NOTHING RAISED (largest apparent slack was a truncated stream — raising it would manufacture a load-flake). arduino-import's invisible `# tests 0` green made a visible skip. RATCHET at zero headroom (24), mutation-proven both ways, already caught two live arrivals incl. fab-sbx's new floors (measured 187/10, not waived) — from `06a2792` a new bounding literal must carry a measurement comment or CI reddens. The 24 remaining each carry a reason (12 need the Java/Digital oracle; 6 gate-integrity self-referential; 4 fixture tolerances; 1 corpus-absent; 1 architectural constant left owing DELIBERATELY so the taxonomy cannot lie). Incident ledgered: OOM-killed probe child reads as a false RED — count-vs-gate disagreement is the tell; SIGTERM-safe restores added. |
@@ -2830,7 +4575,7 @@ exact original797/800/801 commits. No unpublished tracked implementation found;
 three probes privately archived. Combined source47982918f passes20 focused
 placement/countdown/original-terrain/mirror checks,0 skips. Fresh hosted package
 and GUI checks are required; original797/800 light failures preserved. Painter
-installation/original-display readiness repair stays with active Codex bwcx.
+installation/original-display readiness repair stays with active Codex.
 Original branches/worktrees remain unchanged; no failed-check main merge.
 
 ## Arcade extension project qualification — 2026-10-11
@@ -2967,7 +4712,7 @@ No unpublished tracked source was found; three diagnostic prototypes are archive
 privately. Keep original branches/worktrees and failures. No main adoption until
 fresh combined exact-head checks pass. PR797/800 both failed the same painted
 level after reopen assertion; that proof repair and original display readiness
-remain owned by the separately active Codex bwcx worker. Do not take its files.
+remain owned by the separately active Codex worker. Do not take its files.
 Named-song work remains in its own branch and is not discarded by this rescue.
 
 
@@ -3182,6 +4927,209 @@ original traces, function-return controls and actual fresh SB3. E10 retains
 importer/shared type helper ownership. Hosted qualification and corpus recensus
 remain separate from focused source controls.
 
+
+## SPIKE replacement Code feedback boundary — 2026-10-15
+
+Continuation in the merged G02 session/pane/feedback envelope, branch
+`lane/spike-g02-code-feedback-20261015`, stacked on the pending-upload Stop fix.
+Keep Code Stop available while replacement waits. Old poll/STOP and upload READY
+observations do not finish the replacement's feedback; publish its status after
+upload/START succeeds. A current live-session upload rejection notifies its Code
+error consumer and ends that consumer's running state. Later native observations
+remain live in the pane without replacing the failed Code run's error. A retry
+or fresh cold run invalidates retained-upload listeners; cancellation of an
+already closed session remains Stop rather than a new upload error.
+
+Twelve authored controls exercise the real session/client/feedback and original
+Code dispatcher with shipped pane methods. The original phase controls reproduced
+six failures; three additional error/consumer controls reproduced three failures.
+All twelve and 99 affected host controls pass; eleven broken guards are detected.
+The initial candidate's explicit-cancellation regression is retained and fixed.
+These are host protocol controls, not rendered or actual guest evidence.
+Fresh source-bound installed Code re-upload, visible Stop, completion, live error,
+late telemetry, retry/cold recovery and final-head CI remain required before merge.
+Cold-listener, output-attribution and concurrent caller completion boundaries are
+not promoted beyond their named controls. No importer, native/model/firmware/pin/
+workflow/deadline change or whole-G02/physical/rollback/release claim.
+
+## SPIKE pending-upload Arena Stop control — 2026-10-15
+
+Continuation in the merged G02 pane/lifecycle envelope, branch
+`lane/spike-g02-upload-stop-control-20261015`, stacked on PR962.
+An installed upload probe found no Arena Stop element at a pending return.
+Keep Stop visible whenever the current session is uploading, including paused
+program observations. Pending-upload Stop delegates to full session teardown
+with ready feedback and cleared upload text, using the qualified closure guards. Ordinary retained
+program Stop keeps its storage session. A delayed cancellation error must retain
+pane intent ownership before changing feedback.
+
+All 14 new controls and 14 existing pane lifecycle controls pass. The baseline
+passes five new cases and fails nine; five targeted visibility/routing/feedback
+mutations are detected. Host coverage evaluates the shipped JSX branch predicate
+and actual pane methods, with authored stop/error promises. Actual installed
+visible-control cancellation and distinct guest recovery remain required, along
+with every enabled exact-head check. Preserve parent merge gates and retarget
+only after PR962 integration. Code-feedback generation remains a separate open
+boundary. No importer, native, pin, firmware, Runtime, model, deadline or workflow
+change; no full G02, rendered-UI, guest, physical or release claim from host tests.
+
+## SPIKE G02 native startup diagnostics and deadlines — 2026-10-13
+
+CLAIMED — Codex SPIKE integration, isolated branch
+`docs/spike-g02-native-startup-claim-20261013`. Coordinated extension of the
+existing G02 lifecycle lane after PR879; implementation follows only after this
+claim merges. Envelope: this ledger, `docs/SPIKE-STATUS-AND-LANES.md`, native
+startup/session code in `apps/tauri/src-tauri/src/{renode_debugger,renode_supervisor,
+renode_brick_state,native_capability,native_broker_adapter,native_broker_transport}.rs`,
+their focused tests, `overlay/scratch-gui/static/native-broker/native-broker-host.js`,
+and `overlay/scratch-vm/src/extension-support/native-broker-protocol.js` only if
+required for the same validated startup/cancellation contract, with their focused
+broker tests. Preserve other owners and coordinate before extending this envelope.
+
+Acceptance: attribute the actual installed cold-start failure with bounded,
+non-sensitive native phase/error evidence before changing behavior. Review the
+request deadline against actual startup phases and supervisor limits; do not
+increase all-operation timeouts or let editor inputs set budgets. Keep cancellation,
+expired/late-reply refusal, ownership and ordinary operations live. Native diagnostic
+tests must initialize trusted resources and fresh owned storage as app setup does;
+preserve their original failures and distinguish private fixtures from product code.
+Any implementation change requires affected clean installed cold-start, Stop/reset/
+closure, fresh recovery and guest qualification plus enabled exact-head gates.
+No new firmware/model/runtime pins, restricted image acquisition/inspection, physical
+mapping, reference boot, release/licence, instantaneous abort or whole-G02 claim.
+
+Native observation continuation: isolated branch
+`lane/spike-g02-native-observation-20261013` prepares closed, bounded native
+phase/result/elapsed records in `renode_debugger.rs`. Three extracted std-only
+controls and three mutation adversaries pass; full native and fresh installed
+qualification remain pending. Builds on the separately qualified PR895 source
+candidate, whose hosted merge gates are still pending. No startup failure
+attribution, deadline fix or full G02 completion is claimed.
+
+## SPIKE replacement upload cancellation after STOP — 2026-10-15
+
+Continuation in the merged G02 session/test envelope, branch
+`lane/spike-g02-upload-cancellation-20261015`, same Codex owner.
+When a replacement upload awaits its initial STOP response, a concurrent session
+Stop used to let the resumed method replace the source and begin a new upload
+after closure. Check closure after that awaited response, before changing source
+or enqueueing BEGIN. Also check closure after the upload reply returns, before
+retained-program state or observers are published. An already executed upload
+cannot be rolled back by cancelling delivery of its result. Keep the serialized
+transport's existing STOP ordering.
+
+A real session and production codec with an authored delayed STOP response
+reproduce the gap: the normal control passes and cancellation fails on the
+baseline. A second completed-upload return control also reproduces late
+publication after closure while retaining real codec execution. All 59 session
+controls pass with both guards; each guard removal must fail its corresponding
+cancellation control. This is host boundary evidence, not a guest
+result. Source-bound installed own-NuttX cancellation, fresh recovery and every
+enabled exact-head CI check remain mandatory before integration. Firmware,
+Runtime, models, native code, pins, workflows and budgets are unchanged; no
+whole-G02, rollback, physical, reference or release claim.
+
+
+Installed qualification completed on tested consumer
+`516557dae2f3b29710318a0e9ee647715728376f`. Four real own-NuttX Code replacement
+cases pass: cancellation and normal delivery while the original STOP reply is
+held, and cancellation and normal delivery while a completed upload return is
+held. Actual Arena Reset invokes full pane/session Stop for cancellation. Each
+case releases ownership, completes a different fresh guest and releases it on
+final Stop. Standalone readers verify the original correlated STOP replies,
+completed-upload START replies, fixed guest identity and eight complete native
+startup transactions. The initial retained program is checked separately from
+the flag at the held-return boundary; no closed-session program/frame callback
+is admitted. Original selector and state-interval test failures remain preserved.
+
+This qualifies the frozen consumer and finite session boundaries. Pending-upload
+Arena Stop availability and Code feedback remain open; Reset coverage does not
+establish that UX. An executed upload remains executed. The session and test
+blobs are preserved during integration with separately qualified main changes;
+final-head CI remains required, and later whole packages need their own evidence.
+
+## SPIKE pane action ownership continuation — 2026-10-15
+
+Continuation in the merged G02 pane/lifecycle envelope, branch
+`lane/spike-g02-pause-ownership-20261015`, same Codex owner. Pause, Reset and Step
+admit their current teardown intent and owned bridge/session before continuing.
+The intent records its own restored topology bridge, preserving legitimate
+six-motor and dual-ultrasonic cleanup. All 44 affected host controls pass; six
+broken guard/bookkeeping variants are detected.
+
+Tested consumer `beb518eaba4597afe6ee75fe14a699cc7d9c8ab9` passed four fresh
+installed own-NuttX Pause cases: live success/error delivery and Reset before
+success/error delivery. Four standalone readers and the cohort reader passed
+with eight complete native startup transactions, released ownership and a
+distinct recovery guest per case. These qualify that finite consumer; generic
+Step/backend paths retain separate host controls.
+
+Main integration includes the separately qualified compiled MicroPython launch
+work. Three native source inputs differ from the earlier NuttX consumer, so a
+fresh source-bound NuttX matrix and every enabled final-head check remain
+required for this composed head. Keep both earlier passing and failure records.
+No firmware, Runtime/model or dependency pin is advanced by this lane. No full
+G02, physical safety, rollback, reference boot, release or licensing claim.
+
+## SPIKE remaining lifecycle boundaries — 2026-10-13
+
+Continuation candidate `lane/spike-g02-output-stop-20261014` stays in this
+merged session/test envelope. Six actual-method controls fail on the baseline:
+poll and packet hub/output callbacks, packet program-state callback, and a late
+packet input-write reply after Stop. Closure fences prevent subsequent input
+requests and observer publication while preserving correlated packet replies
+for serialized cancellation. All 41 affected controls pass, including the live
+packet publication control; removing each of the six new fences is detected.
+These use authored native boundaries. Fresh installed own-guest observer Stop,
+late-reply cleanup/recovery and all enabled exact-head checks remain required.
+No firmware, Runtime, model, native/Rust, deadline or workflow change; no full
+G02, physical or release claim.
+
+Continuation candidate `lane/spike-g02-terminal-fences-20261014` addresses
+synchronous Stop from final frame/program-state callbacks within this same
+session/test envelope. Three baseline failures, 34 passing affected host
+controls and two detected fence mutations are recorded. Fresh installed own
+NuttX cancellation/recovery and exact-head CI remain pending; no full G02 claim.
+
+
+CLAIMED — Codex SPIKE integration, `lane/spike-g02-lifecycle-20261013`.
+Envelope: `overlay/scratch-gui/src/lib/spike-arena/renode-arena-session.js`,
+`code-run-feedback.js` in that directory,
+`overlay/scratch-gui/src/components/tw-pseudocode/spike-arena-pane.jsx`,
+`test/spike-renode-arena-session.test.mjs`, `test/spike-code-run-feedback.test.mjs`,
+`test/spike-micropython-code-tab.test.mjs`, `test/spike-arena-pane-units.test.mjs`,
+small owned lifecycle fixtures/helpers if necessary, this ledger and the SPIKE
+status guide. First review and qualify existing guards using delayed/error-capable
+native boundaries: chooser cancellation/disposal/backend intent, Stop during
+final sampling, connection/UART generation change, late polls and stale session
+callbacks after replacement. Fix demonstrated gaps in owned session/pane/feedback
+files; qualify representative cases with a fresh source-bound actual installed
+own-guest package. Preserve PR631/755/860 regression and artifact boundaries.
+Require one terminal result, no late world publication or owned process leak,
+and no stale owner stopping a replacement; broken terminal/ownership/generation
+mutants must fail. No importer, painter, peer, native feature, firmware/Runtime/
+model pin or workflow changes. Any required shared-file or dependency extension
+needs a separately recorded coordinated envelope before implementation. Do not
+fetch restricted images, fabricate reference storage/mapping or infer physical
+safety, full G02 coverage or distribution closure from bounded simulations.
+
+
+PR879 merged the finite native Start and chooser intent fences. Installed
+consumer `f1772cf0fe96988f7a4a3c665a478ef8fac4b065` qualified seven UI cases
+and own-NuttX startup Code Stop separately from the whole evolving main package.
+
+Continuation: `lane/spike-g02-stale-cleanup-20261013`, same owner and envelope.
+A subsequent installed own-NuttX run reached the teardown boundary: after the
+disposed pane's real firmware session closed, delaying only that completed Stop
+return let a replacement pane start the shared VM. Releasing the old return
+then called `stopAll` on that replacement. The candidate checks pane disposal,
+Stop revision and bridge identity before resumed shared cleanup, and suppresses
+stale teardown errors while preserving current errors. All 14 actual-method
+controls pass; five guard/error mutations fail. Fresh candidate installed
+qualification and enabled exact-head checks remain required; this does not
+close G02. Earlier cold-start failures remain unresolved despite successful
+startup in the new diagnostic. No timeout, native feature or pin changed.
+
 ## Arcade Buffer hash and live-memory continuation — 2026-10-12
 
 CLAIMED — Codex, `lane/arcade-buffer-hash-20261012`, stacked on PR847.
@@ -3215,6 +5163,27 @@ Live root tracing and aggregate allocation budgets remain explicit next work;
 no whole-app corpus promotion follows from reset/disposal controls. Lower
 Arcade integration branches are landing separately by normal merges.
 
+## Arcade signed integer division through existing value blocks — 2026-10-15
+
+CLAIM — Codex Arcade integration, branch `lane/arcade-idiv-claim-20261015`.
+Implement exact selected `Math.idiv` import and current export through existing
+primitive divide and bitwise value operations. Convert both actual Number
+operands to signed32 before dividing, then convert the quotient; preserve each
+argument once, left to right. No new opcode, word, menu item or dependency pin.
+
+Envelope: this ledger; [the bounded contract](docs/ARCADE-INTEGER-DIVISION.md);
+a focused helper under `overlay/scratch-gui/src/lib/bw-makecode/`;
+coordinated narrow `arcade-translate.js` and actual shared source-producer hooks
+if needed; affected current-export validation only if needed; focused tests and
+a self-authored freely licensed original/export fixture. Reuse actual Number
+proof and complete SDK root/member write checks. No broad Math return seed,
+annotation producer, Text/reference coercion or unrelated Array/callable/default
+change. Merge this claim before product edits. Acceptance: signed/fractional/
+wrapped inputs, zero divisor, computed nonfinite inputs, effect order,
+source/Code/Blocks/same-fresh SB3/current export/reimport, meaningful refusal
+controls, exact selected-original and edited-export execution, and every enabled
+exact-head hosted check. This API alone does not close a whole stopwatch game.
+
 ## Arcade Buffer destination storage — 2026-10-13
 
 CLAIMED — Codex, `lane/arcade-buffer-storage-20261013`, stacked on PR853.
@@ -3243,3 +5212,1292 @@ blocks/runtime; preserve mutable identity, readonly bytes, typed forwarding,
 init order and dynamic song data. No new opcode or producer pin. Original PXT,
 Blocks/Code/export/reimport/SB3 controls and authentic prepared pizza are
 required; immutable whole-app promotion remains separate.
+Claude takes over at the owner's request, 2026-10-19.
+
+## Arcade editor startup dependency boundary — 2026-10-13
+
+PROPOSED CLAIM — Codex Arcade integration. Merge this claim before product edits.
+Envelope: a pure tilemap-block presence helper in `lib/bw-makecode/`, the presence
+read in `containers/costume-tab.jsx` and its tracked mirror, focused equivalence
+controls, this ledger and the linked contract. Existing painter decoding, legacy
+layout resolution, validation, saves, sprite placement and ownership remain intact.
+The startup byte gate has a concrete failure; preserve its exact budget and
+original result. Replace the eager full-editor import with the same presence
+semantics for original targets, modern/legacy blocks and malformed/computed data.
+Qualify emitted initial bytes through the unchanged hosted P17 gate, and retain
+actual painter and editor journeys. No local full GUI build, threshold change or
+claim that a structural source scan proves emitted bundle size. Contract:
+[editor load boundary](docs/ARCADE-EDITOR-LOAD-BOUNDARY.md).
+
+## Arcade SB3 device and pane restoration — 2026-10-13
+
+CLAIMED — Codex, `docs/arcade-sb3-device-pane-20261013`.
+Own saved-project device publication and Stage header observation for genuine
+Arcade fresh-session SB3 reopening. Diagnose the actual metadata/load path;
+coordinate board selection with the active multi-board owner. Product edits
+follow merged claim and exact-head checks. See
+[the acceptance contract](docs/ARCADE-SB3-DEVICE-PANE.md).
+
+## SPIKE deferred-storage observer cancellation — 2026-10-14
+
+ADOPTED — [PR928](https://github.com/CrispStrobe/brickwright-lite/pull/928), tested
+source `aaa60836f1375a44cb69224e95dc511dd56e8d1c`, merged
+`fff84dc6ead5c1da7a89fee52a256497d6cc32f2`. This continuation stays
+within the merged G02 session/test envelope. Deferred storage frames can invoke
+hub, output or frame observers that synchronously Stop the session. Check closure
+after frame admission and output notification, and after the awaited storage
+client reply, before later notifications or retained LOAD state are published.
+A storage write may already have committed; this does not promise rollback.
+
+Eight new actual-session/codec controls use authored pending/terminal storage
+replies: five fail on the baseline, two live controls and an already-safe pending
+frame cancellation pass. All 49 session controls pass with the candidate; removing
+each of the three new guards is detected. Preserve storage correlation, uncertain
+outcomes, durability checkpoints, native budgets and original failures. Fresh
+source-bound installed own-NuttX SAVE/hub and LOAD/frame cancellation/recovery
+cases passed standalone audits; all current enabled exact-head checks pass.
+The pending-SAVE native checkpoint refusal remains reported, with cleanup and
+recovery verified; no rollback or native-refusal fix is claimed. Firmware, Runtime, model,
+native/Rust, dependency pins and workflows are unchanged; full G02 remains open.
+
+
+## SPIKE startup observer cancellation — 2026-10-14
+
+ADOPTED — [PR930](https://github.com/CrispStrobe/brickwright-lite/pull/930), tested
+source `59c78f3bee80b496dcd2b76180397bbae563a634`, merged
+`9a6706dc430472345031a82a2f83e04d4ec79035`, in the merged G02 session/test
+envelope following the separately qualified deferred-storage consumer. A synchronous Stop from the configuration
+notification must prevent native startup; Stop from first-frame publication must
+prevent input writes and external-backend admission. Add closure checks at both
+boundaries, preserving ordinary startup and native close ownership. Authored
+controls reproduce both missing guards: the live control passes and both Stop
+controls fail on the prior consumer. All 52 session controls pass with the two
+checks; removing either check is detected by its Stop control. Both actual installed
+configuration/first-frame cancellation and fresh guest recovery cases passed
+standalone audits; all current required exact-head contexts pass. No dependency pin,
+native code, firmware, Runtime, model, budget or workflow changes. Full G02 and
+distribution qualification remain open.
+
+
+## SPIKE late scheduled-poll errors — 2026-10-14
+
+ADOPTED — [PR936](https://github.com/CrispStrobe/brickwright-lite/pull/936),
+qualified source `65494ed81b8751f2f6f2f3e9e6c57e5f07e125c0`, merged as
+`e22fd9fe0017b4e8291b4ff2af44ff6b9d6efde1`. Scheduled poll errors delivered
+after Stop stay silent; live errors still report and close their owned session.
+All 55 affected controls pass, with the late-error baseline/removal failure
+retained. Two installed own-NuttX cases use actual native observations followed
+by explicitly authored client-delivery failures: 0 closed error callbacks versus
+1 live callback, released ownership, distinct fresh guest completion and final
+Stop. Each standalone reader binds 191 control files and 28 raw startup records.
+These are client-delivery adversaries, not actual native/firmware fault evidence.
+
+All 11 current enabled readiness/vendor checks pass. The prior pre-label gate
+failure remains preserved; the final readiness run is successful. Predicted and
+landed merge trees match, as do qualified implementation/test blobs; current-main
+native source and dependency pins are preserved. The receipts qualify the frozen
+consumer and this finite fix, not every later package. Full G02, other images/
+backends/final-sampling/generation, physical/reference, G05 and release remain open.
+
+
+## SPIKE G03 sandbox and editor UI qualification — 2026-10-15
+
+CLAIMED — Codex SPIKE integration, branch `docs/spike-g03-ui-claim-20261015`.
+Implementation starts after PR948, PR962 and the remaining G02 acceptance review.
+Contract: [G03](docs/SPIKE-STATUS-AND-LANES.md#g03--qualify-usable-sandbox-and-responsive-editor-controls).
+First inventory working features in the actual rendered UI; fix demonstrated
+gaps rather than replacing existing controls or adding unsupported backends.
+
+Envelope: this ledger; `docs/SPIKE-ARENA.md` and
+`docs/SPIKE-STATUS-AND-LANES.md`; SPIKE presentation, sandbox editing/persistence,
+view switching and bounded Identify feedback in
+`overlay/scratch-gui/src/components/tw-pseudocode/{spike-arena-pane,spike-simulator-pane,spike-port-monitor}.jsx`;
+SPIKE-only text in `overlay/scratch-gui/src/lib/spike-arena/l10n.js`; focused
+`test/spike-arena-{3d-pane,pane-units}.test.mjs` and new scoped UI controls.
+In shared `pseudocode-importer.jsx`, only SPIKE entry/run/import toolbar labels
+and SPIKE-specific report presentation belong here. In shared
+`components/gui/gui.jsx`, only demonstrated SPIKE dock sizing/visibility defects
+belong here. Preserve other owners' Arcade/MakeCode/importer/lexical/type work
+and use only existing tracked package twins through repository-prescribed writers.
+Any wider shared-file or model change needs a separately coordinated envelope.
+
+Acceptance: free sandbox entry; shared 2D/3D world and one firmware owner;
+backend/topology admission; reset/edit/save/reopen; narrow desktop/mobile widths;
+long errors and conversion reports; keyboard/touch; EN/DE labels; explicit
+image/backdrop selection, clear import actions and compact run/undo controls;
+a usable right pane at 50–75 percent width. Identify A–F must show its actual
+observable boundary and a bounded failure instead of an indefinite pending state.
+Qualify real rendered behavior and relevant installed ownership paths; retain
+G02 regressions, immutable pins and product budgets. Merge this claim before
+implementation and require all enabled exact-head checks before integration.
+The separately claimed shared project-world work keeps its ownership. This
+claim changes no executable, dependency, fixture, capture or workflow and makes
+no fresh guest, performance, physical, reference, release or licence claim.
+
+## Proposed SPIKE pending Stop teardown continuation — 2026-10-15
+
+A direct second pane `stopProgram()` while the visible Code Stop's original
+teardown is pending can encounter `Clock is owned by another backend`. The
+closed flag and stopped Code feedback precede full ownership release. The
+frozen lifecycle qualification observes the original Stop promise and preserves
+this repeated-call failure separately; it does not claim arbitrary Stop reentry.
+
+Proposed next bounded G02 slice: serialize pending firmware teardown before a
+later Stop or Start tries shared clock/backend cleanup, while preserving pane
+intent ownership and original error delivery. Own only the existing pane's
+`stopProgram` method, a focused pending-Stop test, this ledger and the SPIKE
+guide; other shared pane methods require their existing contracts. Preserve
+current teardown/replacement/disposal positives, failure and listener reentry
+adversaries, and qualify the affected installed own-guest cleanup/recovery
+before exact-head merge. No implementation or new guest result is claimed here.
+
+## SPIKE NuttX Code caller ownership — 2026-10-15
+
+IN PROGRESS — Codex SPIKE G02 continuation, branch
+`lane/spike-g02-code-caller-20261015`. Scope claim [PR978](https://github.com/CrispStrobe/brickwright-lite/pull/978)
+merged before product changes. Extend the existing SPIKE session/pane/feedback envelope only
+to `runOnNuttxPython` in
+`overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx` and
+focused `test/spike-code-caller-ownership.test.mjs` controls, this ledger and the
+SPIKE status guide. Preserve the shared import, conversion, Arcade, namespace,
+lexical/type-lowering and other target dispatchers owned by their existing lanes.
+The separate G03 importer permission remains limited to SPIKE toolbar text.
+
+Two authored scheduling controls on the original dispatcher reproduce an earlier
+call's `finally` clearing a newer pending call's busy flag and an earlier `catch`
+replacing the newer call's status. They use the original feedback helper and
+controlled pane promises, with no native or guest execution. Bind callbacks,
+output, Stop ownership and post-await/catch/finally publication to the current
+NuttX Code caller; preserve current completion/error/Stop and retry/cold paths.
+
+Acceptance requires the baseline failures, positive current-owner controls,
+old callback/output/Stop and overlapping-call adversaries, affected session/pane
+regressions and guard mutations, then a source-bound installed Code scenario
+with actual owned firmware, visible controls, cleanup and distinct recovery.
+All enabled final-head CI checks must pass before normal exact-head merge.
+Do not claim host scheduling controls qualify installed concurrency, native UART
+output attribution, whole G02, physical behavior or a release. No native,
+firmware, Runtime, model, dependency pin, workflow or deadline change is included.
+
+Implementation now binds a NuttX caller token before opening the arena, installs
+Stop cancellation before either wait, checks ownership after each wait, and
+scopes feedback, captured callbacks/output, queued Stop and asynchronous Stop
+errors to that caller. Its existing tracked generated importer twin receives
+the same method projection; bytes outside this method remain unchanged in both
+files. No removed arena source mirror is recreated.
+
+All 20 focused authored scheduling controls pass; the unchanged dispatcher
+passes six and fails fourteen of those controls. Ten deliberate ownership,
+resume, cancellation, callback/output and error-publication mutations each fail
+a behavioral control with canonical and generated twin mutated together. These
+are host controls, including calls through the existing shared Stop handler;
+they do not establish that a Stop button is rendered during every cold phase.
+Installed overlapping-Code qualification, output attribution and final-head CI
+are pending. The independently frozen lifecycle-batch package does not contain
+this dispatcher change.
+
+## SPIKE G02 compiled-model MicroPython desktop profile — 2026-10-15
+
+IN PROGRESS — Codex, isolated implementation branch
+`lane/spike-g02-compiled-micropython-20261015`. Claim PR946 and predecessor PR936
+are merged. The existing desktop
+MicroPython launcher always includes source models; the retained desktop
+runtime already contains compiled Prime models. Earlier qualification kept
+those compiled and legacy source-overlay routes separate. Support metadata
+alone does not qualify a selected image or a current installed MicroPython boot.
+
+Envelope: this ledger; the MicroPython profile/launch contract in
+`apps/tauri/src-tauri/src/{spike_micropython_launch,renode_supervisor,renode_debugger}.rs`;
+`scripts/{prepare-spike-micropython-pins,build-spike-linux-desktop}.mjs`;
+`scripts/prepare-spike-compiled-micropython-support.mjs` if needed; focused
+`test/spike-compiled-micropython-profile.test.mjs` and inline Rust profile/launch
+controls; `docs/SPIKE-STATUS-AND-LANES.md` and
+`docs/spike-micropython-{launch-plan,installed-resources}.md`. Supplier staging
+changes require a separate supplier claim. Retain
+the qualified legacy source-overlay path and credited components. Make profile
+selection explicit and bound to the reviewed runtime/model closure; skipping
+includes without admitting compatible platform type names is insufficient.
+No silent dependency adoption, runtime/model implementation change, firmware
+bundling or image download. Use the existing operator-supplied application only
+after exact identity/format admission, with immutable original bytes retained.
+
+Acceptance: reject mixed or mismatched profiles before launch; retain positive
+legacy and compiled contracts with meaningful removal/admission negatives;
+qualify the actual selected-image Code path, normal raw-REPL completion/error,
+Stop during final sampling, ownership release and distinct fresh recovery on a
+source-bound installed package. Record generation/image adversaries separately
+from actual native attachment transitions. All enabled exact-head CI and the
+affected installed checks must pass before matched-head integration. Preserve
+failed originals and existing budgets; no full SDK, reference, physical,
+distribution/licence, release or whole-G02 claim from a finite profile slice.
+
+The implementation adds an explicit native descriptor pin, offline native
+platform assembly from immutable public inputs, and preserved legacy support.
+The 25 packaging controls, two actual Rust planner controls and meaningful
+guard/order-removal negatives pass. The source-bound installed Linux package
+passes six real MicroPython contexts: Code/raw-REPL completion, guest error,
+Stop during final sampling, two authored client-delivery identity adversaries
+and distinct fresh recovery. A wrong-caller native UART generation request is
+refused while the original attachment remains ready. An independent reader
+checks original UART envelopes, six completed startups, distinct generations
+and ownership release. Exact-head CI remains required before integration; this
+finite profile slice does not close G02 or qualify every evolving-main package.
+
+## Arrays physical Number input boundary — 2026-10-15
+
+CLAIMED — Codex shared input protocol and coordinated canonical Arrays lane.
+Contract: [physical Number inputs](docs/compatibility/arcade-arrays-current-number-inputs.md).
+Own shared current Number-input utility extraction, explicit primitive execution
+loan/value-input roles, focused current Blocks/native/Code/SB3/export controls,
+and a separately qualified CrispStrobe/extensions Arrays supplier adoption.
+Preserve text, reference identity and existing managed Number guards. No global
+Scratch shadow conversion, numeric-text coercion, annotation grant, source
+callback/class widening or independent generated-bundle edits. Coordinate
+primitive owner/index hooks with Image and console owners; other owners keep
+class/callable producer and lexical source graph files. Product implementation
+follows this claim's normal qualified merge.
+
+## Circuit instruments: coordinated consumer adoption — 2026-10-15
+
+DONE in the implementation commit containing this entry — Codex,
+branch lane/circuit-instrument-consumer-20261015. Canonical claim merged in
+PR961 before implementation. This is a CUI-only package adoption, not an
+engine-model change or a second Board/SB3 pin move.
+Exact base bf0d5cc23fa9321b63b9df3084965026d5054080, after STM32 PR952.
+Preserve its Board b4b4c87f70624dfb570a6d21391c5a2d5a40a0e8 and
+SB3 c9be966fc6cf2f4343ca96c1a4477c91e05854ee pins. Adopt qualified CUI
+1db1bb9ee565338672c7acfefec4cf94b27196e1 (CI38677905766 all four jobs pass,
+independent six-case precision audit passes). No competing Board/SB3 movement.
+Envelope: this ledger; vendor-pins.json; root and integrated GUI package
+specifications/locks; canonical package-upstream notices and required generated
+reports/census/matrix; affected existing exact-pin adoption assertions and their
+tracked generated twins; existing test/lm741-package-adoption.test.mjs for
+actual installed CLI precision receipt; README.md, PLAN.md and ROADMAP.md for
+current circuit campaign and removal of obsolete adoption priorities. Use the
+existing package writer, no source copies, vendor forks or engine behavior edits.
+Also update only the three CUI supplier-SHA bindings in the existing
+.github/workflows/i80386-freedos-circuits-direct-actual.yml; preserve its
+jobs, triggers, assertions and one-shot execution policy. No diagnostic dispatch.
+Require installed supplier identity, existing pin/integration/provenance gates,
+actual CLI numerical/receipt control and full built-GUI instrument checks.
+No STM32/Arcade/SPIKE/world implementation, new workflow, unrelated package,
+deployment or physical-accuracy claim. Publish claim before implementation.
+This is task 2 of the ordered circuit campaign in upstream CUI documentation;
+later stratified-regression and realism work needs its own measured envelope.
+
+Acceptance retained in the candidate: six actual installed-CLI signed/phase
+batch and finite-watch captures against an independent nominal follower
+calculation, raw sample clocks/CSV, signed meter means/KCL, cumulative native
+work receipts, named --current refusal and a process-isolated missing-receipt
+negative with restored control. Actual engine and browser execution is hosted;
+the final candidate must pass every enabled exact-head integration check before
+landing. Local metadata: both locks differ only in CUI spec/resolved/integrity;
+six pin-package tests and all seven generator checks pass. The full-tree
+stale-pin scan cannot qualify a sparse checkout and remains a hosted gate.
+No assertion, tolerance, raw sample rate, model default or one-shot workflow
+policy was relaxed. Source-only declarations do not prove deployment or hardware.
+
+## Qualified 386 consumer and media workflow continuation — 2026-10-15
+
+CLAIM — Codex x86, staged implementation after merged ownership and board
+qualification. Preserve PR961's coordinated supplier ownership; this claim
+owns no package/lock/vendor/generated matrix pin update. Obtain a recorded
+handoff before a later adoption change. Work follows the
+[contract](docs/X86-NEXT-LANES.md#qualified-386-debugging-and-media-workflows).
+Own focused debugger presentation in canonical overlay
+`src/components/tw-pseudocode/{debug-drawer,debug-panel}.jsx`, additive
+`src/lib/bw-debug/memory-view.js` and focused
+`test/i80386-debugger-user-paths.test.mjs`. Paths under `src/` here are relative
+to `overlay/scratch-gui`; tracked `packages/scratch-gui` mirrors follow the
+repository's generation policy, never independent implementation.
+
+A separately reviewed metadata extension in this section also owns canonical
+`overlay/scratch-gui/src/lib/bw-debug/debug-capabilities.js` and its existing
+`test/debug-capabilities.test.mjs` normalization controls. Preserve schema-1
+legacy spaces; retain validated optional physical bounds/kind/read-size fields
+without inferring them from code run-to. Absent metadata keeps legacy behavior;
+presence of any new metadata field requires complete strict validation, so
+partial or malformed descriptors fail closed. Lengths are nonnegative safe
+integers; allow the one-past endpoint only for an empty read, not a byte or UI
+jump/page start. Board target changes wait for PR599's
+merge and explicit owner handoff, with a separate new board test.
+
+Later in this same serialized lane, own new
+`src/lib/bw-machines/raw-hdd-download.js`,
+`test/i80386-hdd-download.test.mjs`, and a narrow export action in the already
+owned debug panel; extend `scripts/verify-i80386-local-hdd-gui.mjs` for actual
+download/reload acceptance. DOS package work owns new
+`src/lib/bw-machines/{local-dos-package,dos-package-zip}.js`,
+`test/local-dos-package.test.mjs`, a narrow package chooser in
+`src/components/tw-pseudocode/machine-manager.jsx`, and new
+`scripts/verify-dos-package-gui.mjs`. Claim any extra shared runner, further capability
+schema, further board metadata or dependency changes separately before coding.
+No private media, ISO picker, native addon backend or general OS claim.
+
+## SPIKE world action ownership continuation — 2026-10-15
+
+Continuation in the merged G02 pane/lifecycle envelope, branch
+`lane/spike-g02-world-action-ownership-20261015`, stacked on PR966.
+After delayed teardown, obsolete lesson loads, challenge selections, sandbox
+updates and manual-drive requests must not replace the current world, persist
+old sandbox data, or send motor commands. Admit the current teardown intent and
+its owned bridge before continuation; retain the selected bridge for delayed
+render callbacks. Unit-load success/error also checks ownership after fetching.
+Stop reentering manual-drive notifications suppresses subsequent motor commands
+and running feedback. This adds no sandbox feature or new model behavior.
+
+All 32 new actual-method authored-boundary controls and 44 inherited pane controls
+pass. The baseline passes fourteen new cases and fails eighteen; eight ownership,
+render-callback and bridge-recording mutations are detected. Fresh installed
+own-guest representative world/action cancellation and recovery plus every enabled
+final-head check remain required. Keep the parent qualification and merge gates;
+retarget to main only after parent integration and review composition again.
+No native, dependency, firmware, Runtime, model, deadline or workflow changes;
+no guest, whole-G02, physical, release or distribution claim from host controls.
+
+
+## 386 master-disk runner bridge — 2026-10-15
+
+CLAIM — Codex x86, serialized within the media workflow above, after required
+board qualification and explicit handoff.
+Additional ownership is limited to canonical
+`overlay/scratch-gui/src/lib/bw-debug/debug-runner.js`, its tracked generated
+`packages/scratch-gui/src/lib/bw-debug/debug-runner.js` mirror, and new
+`test/debug-runner-hdd-snapshot.test.mjs`. Publish and merge this contract before
+runner implementation. Preserve concurrent runner changes and the supplier
+owner's package/lock/vendor surfaces.
+
+Add only a focused `snapshotAtaMaster()` bridge to the current target's method.
+Keep the target private. Do not add arbitrary method dispatch, direct ATA access,
+auto-pause/resume, storage persistence, or a new capability schema. Require an
+active paused session and the underlying method, preserve structured refusals,
+and reject pending results after stop, replacement, or destroy using session
+ownership that cannot become valid again after stop/start. Mere target reference
+equality is insufficient. A completed copy remains a point-in-time snapshot;
+it does not grant a continuous paused lease or guest flush/completion.
+
+Execute the actual bridge and lifecycle paths in focused controls: unsupported
+and running targets make zero calls; board refusals survive; accepted bytes and
+boundary survive ordinary resume after copying; stale destroy/replacement/
+stop-start results fail closed. Preserve legacy targets and mirror equality.
+The separate download helper must recheck the active GUI session during awaits,
+clean up URLs on failure/disposal, and describe clicks as download initiation.
+Actual installed browser download and fresh chooser reload remain mandatory
+before a user-facing qualification claim. No supplier pin or chooser geometry
+limit changes belong to this extension. See the
+[handoff](docs/X86-NEXT-LANES.md#master-disk-export-continuation).
+
+## Arcade nested ordinary declarations with captures — proposed
+
+PROPOSED — Codex generic nested declaration/capture lane. Merge this separate
+contract before product changes: [nested declarations with captures](docs/ARCADE-NESTED-DECLARATION-CAPTURES.md).
+Own actual nested declaration initialization, source/caller/all-writer primitive
+proof, versioned lexical declaration-allocation schema, managed capture/label
+bridge, current-body export and focused source/native/Code/SB3 tests. Coordinate
+shared translator/source graph/export/native hooks with their existing owners.
+Preserve original helper bodies; no Arrow wrappers, expression substitution,
+annotation authority or generated-name grants. Existing module/namespace named
+labels and version 1 numeric factory admission remain unchanged. Visible GUI
+editing and precise diagnostics require their own actual authoring evidence.
+No SDK reference captures/results, callable arrays, generic/default/recursive
+nested functions or new supplier word/pin follows from this claim.
+
+## Arcade physical null Sprite getter failure — 2026-10-15
+
+CLAIM — root-owned bounded null Sprite getter fault and actual native failure
+handoff, coordinated with the existing Throw and physical Sprite owners.
+[Contract](docs/ARCADE-NULL-SPRITE-GETTER.md) covers x/y/width/height individually (only x has an original runtime observation),
+and requires an actual current
+primitive null receiver, private fault provenance, real managed-lineage unwind,
+exceptional exactly-once continuation settlement, preserved earlier effects and
+no later success effects. Existing non-null/missing-ID service behavior stays
+intact; strings, annotations, copied arguments and arbitrary Errors grant no
+fault or Sprite authority. Retain the selected original without replay; qualify
+authentic portable native routes and unrelated-fiber/restart/Load controls.
+Implementation waits for this clarification's normal qualified merge. No broad
+Sprite admission, caught exceptions, supplier/pin change or whole-case promotion.
+
+
+## Dependency-prepared Arcade import — 2026-10-15
+
+PROPOSED EXTENSION — Codex Arcade integration, extending the merged extension-
+project qualification lane. Merge this claim before product changes. Contract:
+[dependency-prepared Arcade import](docs/ARCADE-DEPENDENCY-PREPARED-IMPORT.md).
+Own one shared asynchronous dependency preparation/import boundary, coordinated
+public browser resolver and file/share entrypoints, existing CLI/Node resolver
+integration, focused controls and Arcade handoff. Resolve the actual current
+input or exported project's declared package/version/ref identities; retain
+original files, source provenance, resource order and every diagnostic channel.
+Preserve the synchronous offline path and existing fetch policy; missing,
+disabled, mismatched and ambiguous dependencies remain named failures. No
+original-source restoration, fixture-specific preparation, compile, guest run,
+pin adoption or whole-case promotion. Actual SDK package preparation requires
+its separately reviewed bounded execution and is not inferred from source tests.
+
+
+## Exact Arcade scene-clock Number producer — 2026-10-15
+
+PROPOSED CLARIFICATION — Codex Arcade integration, coordinated with the existing
+distinct scene/program clock and primitive producer owners. Merge before product
+changes. [Contract](docs/ARCADE-CLOCK-NUMBER-PRODUCER.md) owns only unchanged
+unshadowed zero-argument game.runtime source proof, actual current scene-clock
+primitive Number completion and current Code/Blocks/SB3/export controls. Bind
+all SDK accesses/writes and the real cached operation/registration/active loan;
+execution ownership alone is not a Number certificate. Preserve current graph,
+Stop/load and private proof lifetimes, direct-service compatibility and all other
+primitive roles. No control.millis, broad SDK result seed, class/callback widening,
+new word or pin. The stopwatch Timer external writer and cyclic field/result
+invariant remain HELD pending complete separate proof. Native, selected-original
+and visible authoring gates remain independent; no whole-case promotion.
+
+## Ordinary procedure optional argument transport — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Product implementation waits
+for this claim's normal qualified merge. Contract:
+[ordinary call omission](docs/ARCADE-ORDINARY-CALL-OMISSION.md).
+Own a narrow reusable per-call/per-formal missing-slot proof for uniquely bound,
+unchanged ordinary module or flattened namespace procedures. First admission has
+an actual optional trailing suffix and no signature defaults, rest/generic or
+constructor route. Emit canonical actual Undefined operands under that proof,
+independently of the selected translation route; do not pad by names or counts.
+Preserve full provided/forwarding calls, helper bodies, actual argument evaluation,
+caller/completion identity, all diagnostic channels and partial-stage boundaries.
+Optional type metadata describes a signature, never an actual reference producer.
+Unknown provided Effects/Melody or other reference inputs remain refused.
+
+After merge, own the new omission planner and coordinated narrow source-call,
+current prototype/formal/argument validation and export hooks, focused controls
+and docs. Reuse existing actual callee analysis, primitive constraints, Undefined
+reporters and default omission bits. Coordinate shared hooks with their owners.
+Current Blocks/Code, rename/reorder/reconnect/writers, save/reopen, native argument
+and exceptional completion, current export/reimport and hosted GUI each need their
+own evidence. Parsing or arity recovery is not whole-app success.
+
+No new SDK reference producer/service domain, annotation value grant, arbitrary
+reference default, generic/captured/nested callable expansion, new word, dependency
+pin or supplier adoption. Existing default-bearing protocols must preserve absent
+versus explicitly supplied Undefined behavior. All unrelated lane claims remain.
+
+
+## Current Array export: overwritten local initializers — 2026-10-16
+
+PROPOSED — Codex current Array authority continuation. Merge this documentation
+claim before implementation. Contract:
+[local initializer proof](docs/ARCADE-ARRAY-LOCAL-RESET-PROOF.md).
+Own narrow current Array receiver authority helper changes, focused authored
+controls and compatibility documentation. Prove the actual current lexical local,
+target/procedure/frame identity and definite overwrite without an intervening
+read, capture, escape, call, branch, yield, reentry or lifecycle exposure.
+Intervening palette/unrelated effects require an actual bounded implementation
+and operand effect proof; names, purity annotations and opcode whitelists grant
+nothing. Preserve every command/body and all other writer/initialization facts;
+retain the Null writer and named refusal whenever uncertain. No generic Null
+removal, new producer/domain, source lowering, runtime, supplier, pin or workflow
+change. Qualify all observed local sequences, adversarial current graph edits,
+Code/saved-project/current export/reimport and the affected actual application
+route without promoting native, GUI or whole-case results from source controls.
+
+
+## Arcade roundtrip shape: ordinary symbols and empty Arrays — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this separate contract
+before implementation: [roundtrip shape](docs/ARCADE-ROUNDTRIP-SHAPE.md).
+Own **A**, actual-owner ordinary exported function symbol inventory/allocation
+and matching resolved calls, and **B**, direct preservation of actual empty Array
+allocations only as complete declaration initializers or complete plain-Identifier
+assignment statements when scope/evaluation order is proved. Coordinate narrow
+export-arcade/staged-value hunks with their owners; own the optional pure symbol
+helper, focused controls and compatibility notes listed in the contract.
+
+Preserve every actual body, allocation, alias, effect, current binding, diagnostic
+and partial result. No prefix stripping, generated-name authority, operation
+deletion, original-source fallback or stale dependency preparation. Qualify
+collisions/recursion/current edits, identity/order/exceptions, Code/Blocks/save,
+actual current export/reimport and affected guest routes separately. Existing
+initializer receiver proof excludes lowering and does not absorb this scope.
+
+Local initialization transport (**C**), startup wrapper composition (**D**) and
+callback alias/formal allocation (**E**) remain tracked open work, not permission
+for source changes here. No runtime/ABI/domain, supplier/pin, GUI or workflow
+change; no stable whole-project or compatibility-count claim from source shape.
+
+
+## Ordinary local initializer transport: C1 — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this separate claim
+before implementation: [local initializer transport](docs/ARCADE-LOCAL-INITIALIZER-TRANSPORT.md).
+Own a narrow current-graph ordinary-procedure first primitive-write planner,
+coordinated local/header emission in `export-arcade.js`, focused controls and
+capability notes. At the actual proved first write, emit its initialized
+local declaration instead of adding a synthetic header plus that same write.
+Prove actual owner/cell/node identity, literal-prefix order, no earlier read or
+capture/exposure, and currentness across callbacks. Preserve every later explicit
+write, including identical null/zero resets; uncertain cases keep the old path.
+
+No generated-name authority, source restoration, default/Undefined/null policy
+change or generic declaration-only transport. Exclude callbacks/hats/startup,
+managed/class/captured locals, allocation/effectful initializers and C2/D/E.
+No runtime ABI, producer/domain, engine, supplier/pin or workflow changes.
+Existing Array receiver and A/B ownership remain separate. Require meaningful
+source/current Code/Blocks/save/export and affected own native controls; visible
+GUI, stable full projects and compatibility counts need their own evidence.
+All unrelated owners and retained failures remain preserved.
+
+
+## MakeCode CLI integrated GUI module boundary — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this separate claim
+before implementation: [CLI module boundary](docs/ARCADE-CLI-INTEGRATED-GUI-SCOPE.md).
+Continue the landed CLI target work and preserve its commands and target
+behavior. Own the `scripts/makecode.mjs` library-loading/prerequisite boundary, an
+optional focused `scripts/lib/` inspection helper, the coordinated exact
+dependency-free exception in `gui-scope-hooks.mjs`, focused controls and notes.
+
+Use actual current integrated GUI source with normal installed package scope
+and the same physical canonical VM model export. Prove the relevant integration
+prerequisites using the real copy/transform contract; no build or browser is
+required for headless conversion, no blanket raw-hash test for generated files.
+Preserve command-specific runtime requirements, exit codes, diagnostics, source
+bodies and assets. Missing/stale/conflicting installation refuses by name; no
+model aliases, fake root packages, hidden loaders, stale result/source fallback
+or implicit repair. Keep dependency-free pure consumers explicitly bounded.
+
+No translator/runtime/ABI, pin, workflow or GUI change. Coordinate any narrow
+integration receipt producer before editing it. Current Array and clock failures
+remain independent; this claim does not infer their cause from module identity
+or promote whole-project compatibility from source resolution controls.
+
+## Arcade animation resource Array producers — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this claim before
+implementation. Contract: [animation Array producers](docs/ARCADE-ANIMATION-ARRAY-PRODUCERS.md).
+Own the narrow resource-backed Array producer addition in the current Array
+export authority, its coordinated exporter resource admission, and focused
+source/export/native controls. Existing Array reset, ordinary parameter and
+editor ownership remain separate. Preserve unknown-resource Undefined behavior,
+shared-cache versus fresh-array identity, all writers, mutation and presence
+checks, and current graph/resource binding. No opcode-only type grant, default
+Array, dependency pin or runtime semantic change is authorized by this claim.
+
+## Arcade custom loop block theme media — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge the
+[loop block media contract](docs/ARCADE-LOOP-BLOCK-THEME-MEDIA.md) before source
+implementation. Own only the extension registration media argument in the
+Blocks container and its tracked mirror, the extension theme helper and its
+mirror/optional adjacent pure presentation helper, focused controls and docs.
+Use actual configured workspace media for the current theme/base path and the
+existing VM-generated loop-arrow shape. Preserve VM/headless behavior, every
+program field and unrelated icons; no server alias, asset duplication, supplier
+pin, workflow or broad runtime change. A fresh affected visible editor/theme
+qualification remains required; original missing-resource failures stay open
+until that evidence exists. Other lanes retain their owned surfaces.
+
+### Arcade ExtendableSprite update Throw source intersection — 2026-10-16
+
+Owner: Codex Arcade integration, coordinated with the existing Throw, owned
+Sprite class callable and managed SDK lanes. Status: claim pending qualified
+normal merge; no implementation under this amendment yet.
+
+Contract: [source admission and initialization](docs/ARCADE-EXTENDABLE-THROW-SOURCE-ADMISSION.md).
+Own the narrow GUI source issuer/currentness/normalization intersection in
+throw-source-gate.js, source-value-producers.js, lower-object-classes.js and the
+exact Arcade translator handoff, a focused helper if needed, affected controls
+and documentation. Preserve the original failing guest and all prior source
+refusals; no generic method admission, all-globals initialization, copied tags,
+scheduler/runtime/pin/worker change, skipped control or corpus promotion.
+
+### Shared-frame selected source provenance — coordinated amendment
+
+Owner: Codex Arcade integration. Claim pending qualified normal merge.
+Extend only the [shared-frame non-exposure contract](docs/ARCADE-SHARED-IMAGE-ARRAY-TRANSPORT.md)
+into dependency-project.js for a private actual-source/prepared-map receipt.
+Keep optional effect analysis private to the existing shared-frame helper and
+its exact translator hooks. Preserve actual source comparison, source ordering,
+all initializers, unused bodies and diagnostics; no public flag/namespace/tag
+can issue proof. This does not widen ordinary Number/reference producers,
+classes, runtime behavior, dependency fetching, pins or compiler execution.
+Implement only after this ownership amendment qualifies and merges.
+
+
+## 386 GUI HDD and forward-debug hosted acceptance — 2026-10-16
+
+The first metadata run [39106669518](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39106669518)
+failed on its required Droid font configuration; its sole original is already
+acquired. Do not repeat it or infer a runtime candidate. Subsequent owned source
+fixes wait for real GUI state commits and retain bounded failure-only inventory
+diagnostics. Required files, successful schemas and actual guards remain held.
+The matching guide scopes the distinct diagnostic selection and later affected
+browser/guest qualification; source controls alone cannot satisfy that gate.
+The subsequent diagnostic collector uses a 180-second cooperative budget inside
+the held four-minute step/fifteen-minute job, explicitly marking unvisited paths.
+All 63 source controls pass; actual guards and required-font selection stay held.
+Failure-only v2 additionally retains bounded exact event bytes and has a standalone
+reader that joins them against external pins; 65 embedded Python controls pass.
+Successful inventory/actual formats and positive executable size checks stay held.
+Metadata-only v3 now has a separately typed empty Python-source map and standalone
+original reader; that checkpoint passed 74 Python controls and 17 targeted mutations.
+The next source candidate adds explicit actual v4 typed-source mapping, a separately
+named prior-observation reference and before/after EOF/hash/identity/close checks.
+The candidate passes 63 Node tests including 80 embedded Python controls; the
+74 earlier Python test bodies and legacy v3 packet verdict remain unchanged;
+22 source mutations and eight independent packet counterexamples are detected.
+Actual activation and clean browser/guest qualification remain pending.
+A separately guarded font-discovery source continuation now collects bounded
+read-only package, configuration, alias and font-file observations. Its own
+request/original/independent-reader formats remain observation-only. A distinct
+conditional hosted job now enables that collector in the source candidate.
+Its final-head request/event admission and original observations remain pending;
+the request is unpublished, no discovery event was sent, and actual stays disabled. The original required roster and missing
+paths remain held. See the matching guide for selection and qualification gates.
+A separate delivery reader now joins externally selected official metadata,
+workflow proof and the bounded original ZIP before grading a retained discovery
+observation. Missing request/observation or raw evidence refuses. This is
+original admission only; it cannot activate discovery or approve a runtime.
+A separately versioned bounded compressed workflow proof now addresses recursive
+API originals whose v1 base64 wrapper exceeds the held proof cap. Exact originals,
+v1 support, JSON/proof limits and all workflow identity joins remain held. This
+reader change requires a fresh source21/request and explicit consumer selection;
+no hosted discovery or actual qualification is inferred.
+Actual frontend and original-delivery ZIP admission now rejects NUL-truncated
+names, special file types and ignored directory payloads before any inflation.
+The complete header census preserves existing limits, required files, TAR and
+actual v3/v4 semantics. This is a source repair; clean affected GUI/guest
+qualification remains pending.
+The explicit consumer CUI expectation now follows main
+PR1066 at `fe89e3425bf323b1acd9e3f98df6a7383e9b836b`; no dependency writer changed.
+
+
+
+
+SOURCE IMPLEMENTED; ACTUAL PENDING — Codex x86; ownership claim [PR1014](https://github.com/CrispStrobe/brickwright-lite/pull/1014)
+merged before implementation. Serialized after the existing media/debugger lane.
+The existing merged claims cover the source in PR986, PR987 and PR989; their normal local composition
+adds no supplier pin, lock, notice or other-owner change. This claim extends only
+the finite hosted acceptance boundary: new
+`scripts/run-i80386-hdd-gui-actual.py`,
+`scripts/read-i80386-hdd-gui-originals.py`,
+`test/i80386-hdd-gui-actual.test.mjs` and
+`.github/workflows/i80386-hdd-gui-actual.yml`, plus the existing
+`scripts/verify-i80386-local-hdd-gui.mjs` for bounded original witnesses and a
+separate forward-debug scenario. Own only this ledger entry and its matching x86-guide subsection.
+Reuse the existing Playwright persistence scenario and established hosted
+build/browser pipeline; do not introduce another provisioning framework or
+change unrelated workflows.
+
+
+PROPOSED SCOPED CENSUS EXTENSION — Codex x86, 2026-10-18. Extend this
+merged claim only to `docs/generated/ci-step-census.json`, refreshed with the
+existing `scripts/gen-ci-steps.mjs --fetch --workflow i80386-hdd-gui-actual.yml`
+scoped generator, plus this lane's exact conditional-step pointers. Merge this
+claim before writing the generated census. Retain every unrelated workflow's
+dated readings and main provenance. No generator, census test, gate baseline,
+workflow condition, supplier pin or other owner's section changes are included.
+The current failed unit originals establish a missing workflow census entry;
+metadata refresh and source controls grant no actual guest qualification.
+
+The composition consumes the adoption already merged through
+[PR975](https://github.com/CrispStrobe/brickwright-lite/pull/975), with later CUI
+selection from [PR1066](https://github.com/CrispStrobe/brickwright-lite/pull/1066):
+Board `f84ba60ead0a90deb9830f0c1468839c293ecf05`, CUI
+`fe89e3425bf323b1acd9e3f98df6a7383e9b836b` and SB3
+`a13f92b8bc4b06f0cb9ffec22bab71f06db7ac76` at the 2026-10-18 refresh.
+These are source selections, not this scenario's installed qualification.
+Refresh canonical declarations before admission; refuse missing dedicated
+386 target support. Never inject supplier modules or fake a snapshot.
+This claim transfers no dependency, package, lock or notice writers.
+
+Before a one-shot actual event, freeze the exact composed source, installed
+supplier/build graph, free inputs, browser/runtime identities, finite resource
+profile, closed original roles and independent reader. Preserve first failures
+and owned cleanup observations. Capture genuine image and metadata downloads,
+reload the exact saved data disk through the real chooser in a fresh machine,
+and verify the guest-written marker and unchanged paused original session.
+Qualify forward debugging separately through real UI pause, code breakpoint,
+instruction step, full-width registers, read-only physical memory, resume and
+pane switching, with source-backed refusals for unsupported operations.
+
+Pure controls must include a complete manufactured packet and fully rehashed
+semantic negatives. They do not establish browser or guest success. Every
+enabled exact-head source check and separately admitted original-only actual
+result remains mandatory; acquire each official original once and never replay
+a guest for the reader. No ISO/ATAPI, generalized DOSBox, new CPU/device, reverse
+execution, mode-aware disassembler, physical timing, whole-OS or release claim.
+
+Source continuation is composed in [draft PR1013](https://github.com/CrispStrobe/brickwright-lite/pull/1013).
+The controller, standalone reader, two real-UI scenario implementations, focused
+manufactured-original controls and guarded workflow are implemented. This is
+source work: no browser/guest acceptance is inferred from the manufactured
+packets. A separately reviewed follow-up enables metadata inventory only;
+actual source/workflow guards remain false. Exact immutable template/source/event
+admission is still required. Selected metadata excludes locally assumed Python
+cache entries; selected system interpreter/native libraries are an explicit
+trusted platform boundary, not a complete import-authenticity claim.
+The v2 follow-up implements bounded held proc reads, lazy capped censuses and
+explicit directory aliases; 42 Python methods pass with all prior 33 bodies
+held, and thirteen targeted source cuts are detected. These are mock controls.
+Before activation, review the selected hosted runtime template, acquire and audit one separate
+metadata inventory, and freeze the externally selected actual request and full
+frontend-source admission. Setup consumes the same 35-minute job budget; its
+sufficiency remains unqualified. Follow the matching guide's completion gates.
+
+The startup follow-up versions actual request/reader as v3 while holding the
+v2 inventory handler and workflow section. An exclusive empty prefix precedes
+isolated no-site CPython entry; original install/flags/path/directory and official
+step joins have 50 Python controls and nine detected cuts. Actual remains false.
+The separately reviewed first metadata event is consumed at source `671702949`;
+[run 39106669518](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39106669518)
+is pending at publication. Do not repeat its label or original acquisition.
+
+## A13 CPX production browser gate registration — 2026-10-16
+
+CLAIMED — Codex,
+branch `lane/a13-cpx-face-adoption-20261016`; amendment based on canonical
+`d544efb23`. Merge this claim before implementation. Extend the existing A13
+claim only to `.github/workflows/build.yml` for a standalone light-shard CPX
+production browser gate and its failure/success receipt upload, plus canonical
+`scripts/gen-gate-budgets.mjs --register` output in
+`docs/generated/browser-gate-readings.json` and focused registration controls.
+Reuse the existing browser job, server and immutable artifact action; introduce
+no workflow or job. The new gate uses the existing provisional three-minute
+floor; preserve every existing measured reading, timeout and threshold.
+
+The gate drives the real native CPX program, pane and circuit face through
+`scripts/verify-cpx-circuit-face.mjs`; it must retain actual VM output and input
+assertions and upload its JSON observations. This amendment permits registration
+work now, while preserving the A13 adoption order: qualified upstream CUI and
+the earlier serialized STM32/translator integrations precede the final supplier
+pin and full application qualification. It transfers no other owner's paths,
+changes no runtime semantics, and claims no physical hardware acceptance.
+
+## STM32 composition: original 386 boot register reader — 2026-10-16
+
+DONE candidate — Codex root, branch `lane/stm32-compose-20261016`, isolated
+`local worktree/receipt (see ignored local handoff)`, amendment based on main `e1e5bc30b`.
+Merge this claim before changing the existing synthetic boot assertion in
+`scripts/verify-i80386-local-hdd-gui.mjs`: read the selected supplier's `edi`
+instead of absent `di`, retaining equality to42, exact halted/PC/canvas checks
+and the existing timeout. The exact installed f84 supplier and a read-only
+production diagnostic expose `edi=42`, `pc=0x7c1a`, `halted=true`, VGA720×400;
+the original gate is retained as failed evidence. Own only this contract-reader
+hunk, a focused regression control and this ledger. No new engine or pin move.
+
+The x86 lane retains its distinct new persistence/original-witness and
+forward-debug scenarios in this same script, all supporting files, its branches
+and its acceptance requirements. Its published composition currently preserves
+the same stale original synthetic assertion. This narrow dependency-adoption
+reader repair carries no persistence or debugger acceptance and takes over none
+of those scenarios. Preserve any newer owner work during normal composition.
+No relaxed comparison, fallback register name, timeout increase, skipped gate,
+CI bypass or source rewrite is permitted. The corrected actual browser gate
+and all enabled final-head source checks must pass before integration merge.
+
+The original synthetic check now reads `edi` with all other comparisons and
+timeouts unchanged. The unchanged original failed locally at45000ms and in both
+hosted light jobs; those logs remain retained. The corrected production journey
+passes using the same selected Boardf84, owned disk SHA256
+`f9e63c15c20fc87058d053c3badbc0d146206543af0dc2af7a7e05537184474a`
+and unchanged config: halted PC31770, VGA720×400, actual guest pixels equal the
+video frame, nonblack marker and zero browser errors. Receipt and screenshot:
+`local worktree/receipt (see ignored local handoff)`, `local worktree/receipt (see ignored local handoff)`.
+The failed original is the regression negative; no duplicate source-spelling
+test is added for this one-line reader fix. One automatic fresh final-head CI
+set remains required before PR1017 merges; original PR975 remains untouched.
+## CPX translator qualification diagnostic transport — 2026-10-16
+
+RELEASED — completed by the existing CPX owner; verified by Codex root,
+branch `lane/cpx-qualification-compose-20261016`, supplier consumer source
+PR1009 at `9fbc8d97e87c6c6c9ee74d71c7ceae96996d5d4a`, base main `8fe41c722`.
+The user requested continued coding through the ordered integrations. Preserve
+the existing translator owner's branch and every assertion, corpus input,
+capture time, trace record, timing-limit fixture and runtime/compiler helper.
+Own only the four diagnostic console writers in
+`test/cpx-makecode-behaviour.test.mjs`: route the identical labels and serialized
+records through that test's `t.diagnostic` instead of raw stdout. Merge claim
+before implementation on a separate composition branch; preserve newer owner
+work during final integration. No translator source, pin or oracle semantics
+are transferred by this narrow qualification repair.
+
+Hosted artifact from run38931471960 contains all15 passed tests under the
+absolute file path, plus a separate relative-path stdout bucket with30125bytes.
+The checker collapses basenames and the latter bucket masks those15 tests;
+the genuine blocker is the prohibited raw stdout. Do not relax or edit the
+checker, merge away the stdout evidence, hide diagnostics, or claim test cases
+never executed. Require all15 existing cases to pass with zero raw stdout in
+the actual two-reporter run, retained full diagnostic records, and unchanged
+assertions. This does not claim timing parity for the five documented boundary
+programs. Final candidate still requires every enabled exact-head CI check.
+
+The existing owner published `16dda603dde74db3a820d88750b43aada25f91b8`
+while this repair was being qualified. Its four framed diagnostic writers match
+the proposed repair, with an explanatory comment. Preserve that implementation
+and original PR1009; no duplicate source PR or full CI was requested. In an
+isolated normal composition with current documentation-only main, the owner's
+unchanged executable tree passes all74 focused CPX/import/export checks under
+genuine Node22.23.3 and the actual TAP plus census reporters. All15 behaviour
+cases are accounted for, zero raw stdout bytes or skips, and all108 diagnostic
+lines are byte-for-byte identical to the proposed repair's passing trace.
+Original diagnostic trace and census are retained by the operator.
+Hosted final-head CI still
+qualifies PR1009; five documented timing limits remain limits, not parity.
+This narrow diagnostic claim is released; no translator ownership is retained.
+
+## A13 local combined graph preparation — 2026-10-16
+
+CLAIMED — Codex root, existing isolated A13 worktree and branch
+`lane/a13-cpx-face-adoption-20261016`, base canonical main `9052eee43`.
+The user again requested continued implementation. Extend only the timing of
+local candidate preparation: normally compose the unchanged existing STM32
+candidate PR1017 at7a82a14f and CPX translator owner PR1009 at16dda603 into
+the A13 branch, preserving newer owner work; then adopt the already qualified
+and merged CUI PR85 immutable source through canonical pin/lock/notice writers
+and exact-pin readers already owned by A13. This permits meaningful local
+production/browser qualification while the earlier hosted checks queue.
+
+Preserve all original integration branches, selected Boardf84/SBCa13/WeDo pins,
+translator assertions and documented timing limits. This is local composition,
+not permission to merge unqualified predecessors or dispatch duplicate source
+CI. Keep the user-requested main landing order and existing exact-head checks.
+Publish final A13 source PR/full qualification only after the earlier source
+integrations qualify and land; reconcile current main before that final head.
+No new runtime, translator, engine, firmware, physical acceptance or workflow
+budget scope is added. Merge this claim before composing/adopting the graph.
+
+## Owned Sprite callback fields and handler-record transport — 2026-10-16
+
+PROPOSED COORDINATED EXTENSION — Codex, source ownership for the existing
+[owned Sprite callback contract](docs/ARCADE-SPRITE-HANDLER-RECORD-EXTENSION.md#proposed-coordinated-sprite-handler-record-extension)
+and [handler-record Array contract](docs/ARCADE-SPRITE-HANDLER-RECORD-EXTENSION.md#proposed-coordinated-sprite-record-subset).
+Implementation waits for this amendment's normal qualified merge. Coordinate
+Sprite/class-callable, managed lifetime, handler-Array, current-export and
+translator owners; preserve their existing complete bodies and diagnostics.
+Own the exact narrow helper/shared-hook envelope in the contracts: actual
+existing owned Sprite values/bridge and source-producer extension (no parallel
+owner), constructor parameter-property metadata
+and ordered writes, callback field/all-writer/receiver/result proof, and only
+then one concrete ordinary handler Array and its exact owned Scene registry
+entry with that same Sprite callback domain. The implementation depends on the
+qualified integration foundation; this docs claim does not adopt pending source.
+No ID-string/annotation/name grant, generic SDK values, class partition, new
+word/reference kind, pin adoption or scheduler change is implicit. The existing
+no-SDK-values collection boundary remains until the corresponding foundation
+qualifies. Source/current Blocks, native lifecycle, saved/current-export,
+selected-original and visible GUI qualification are separate required gates;
+no library/game or corpus promotion follows from a foundational holder control.
+
+## Circuit File actions with a cached but unmounted designer — 2026-10-16
+
+CLAIMED — Codex root,
+branch `fix/circuit-file-wake-20261016`, claim base canonical main `7ce90fc38`.
+Prepare the implementation on the already qualified local combined A13 graph
+`6681f1868`, then reconcile current main, including the independent Sim Lab
+addition, before final source qualification. This does not change package pins.
+Actual combined browser evidence retains Save circuit from Code producing no
+download after the designer had already been loaded. The debugger-only right
+portal unmounts the designer, while `_circuitFileWake` mistakes cached
+`state.Designer` for a mounted command receiver. Cold cached-component loading
+and mounted-receiver readiness must remain distinct.
+
+Own only the File-command wake/replay and connected Circuit-tab activation in
+`overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx` and its exact
+package mirror, focused `test/circuit-file-menu-reach.test.mjs` controls, and
+cold/warm Code-tab actual File-menu journeys in existing
+`scripts/verify-circuit-export-completeness.mjs`, plus this ledger. Reveal the
+existing Circuit view on an explicit command that lacks a receiver, queue its
+action, and replay through the existing upstream channel after the receiver
+mounts. Preserve existing mounted single delivery, replay suppression, lazy
+loading, debugger sessions and all four existing actions.
+
+No supplier/pin, runtime, serialized circuit, new file format, editor-shell,
+workflow/budget or other owner's feature change. Preserve original failures
+and require actual menu-driven download/import and focused omitted-wake and
+omitted-replay negatives; no direct VM state injection or invented output.
+Merge this claim before implementation. Source merge requires all enabled
+exact-head CI, with normal composition preserving the pending A13 CPX bridge.
+
+### Current Array mandatory ordinary callee initialization — extension
+
+PROPOSED / DOCUMENTATION ONLY — Codex Arcade integration, coordinated with the
+current Array receiver authority and shared-frame owners. Merge this extension
+before product implementation. Contract:
+[current Array callee initialization](docs/ARCADE-ARRAY-CALLEE-INITIALIZATION.md).
+
+Own narrow `array-reference-export-authority.js` proofs for mandatory ordinary
+callee global Array writes and exact later caller/registration availability.
+Own focused controls and the contract; coordinate matching existing helpers
+explicitly. Prove the actual allocation and complete all-writer, call-target,
+frame, operand, completion, branch, recursion, alias, yield/reentry and currentness
+obligations. Uncertain paths retain named diagnostics and ordinary source.
+Preserve every allocation, body, effect and current Code/Blocks/SB3/export/reimport
+result. Existing index, nested-Array and element-presence proofs stay unchanged.
+
+No shared-frame effect boolean grants generic values, resources or presence.
+No annotation/default change, synthetic length/index, new numeric evaluator,
+source replacement, callback simulation, new domain/ABI, runtime, supplier/pin or
+workflow changes. Require affected clean genuine guest qualification in addition
+to current public roundtrip and adversarial graph controls. Pending unrelated
+handler/value claims confer no authority here.
+
+## Sim Lab S1 headless consumer and integration guards — 2026-10-17
+
+DONE candidate / QUALIFICATION PENDING — Codex root, implemented on the existing
+STM32 composition branch after claimPR1039 merged. User requested continued software
+integration. Hosted run38975443782 passes both browsers/build/corpus but unit2
+finds the Sim Lab plan missing from trigger paths and five S1 entry modules
+without a non-test consumer. Own only the already planned
+`scripts/verify-sim-physics.mjs` headless scenario command, a Node worker
+transport adapter in scripts/lib, its package command and CLI controls, plus
+the exact plan trigger entry and these receipts. Consume the unchanged parser,
+compiler, Jolt core, hub bridge, worker client and actual physics-worker entry
+to report real movement/encoders/IMU and a worker snapshot; refuse parse and
+compile errors, retain one-clock ownership and clean up worker/core resources.
+Use the existing driving-base asset/catalog and original physical expectations.
+
+Preserve the Sim Lab owner's runtime files, UI/engine/pins, worker protocol and
+all original guard assertions. No dead-code allowlist, fabricated import, test
+consumer counted as production, waived diagnostic, trigger bypass or workflow
+budget change. Add only the missing governed plan path to Build's trigger.
+Require the unchanged two failed controls and all enabled final-head source CI
+to pass before source merge. This creates a genuine headless diagnostic entry
+point; browser editor integration remains owned by Sim Lab's existing lane.
+
+## Release 0.1.24 ownership and qualified TestFlight follow-through — 2026-10-16
+
+CLAIMED — Codex release follow-through, branch
+`docs/release-0.1.24-claim-20261016`, exact base
+`27f473a738ff675db193ea689424f4ee3649910b`. Merge this ownership claim
+before changing release metadata. The earlier `v0.1.23` tag is immutable;
+its cancelled workflows are historical results, not a delivered new build.
+
+Envelope after this claim merges: this ledger;
+`apps/tauri/src-tauri/{tauri.conf.json,Cargo.toml,Cargo.lock}` for the three
+aligned application versions; `docs/app-store-metadata.md` for current English
+and German tester notes; operational creation of a new `v0.1.24` tag only on
+the admitted qualified main merge, using the existing mobile/release workflows.
+No product implementation, dependency pin, workflow, signing policy, transport,
+physical-device mapping or hardware behavior change belongs in this lane.
+
+Required prerequisites: retain merged WeDo adoption PR980 and its bounded
+brightness/polarity/piezo claims, the merged iOS validator repair PR981 and its
+independent actual native source binding. Review one combined release source
+candidate for actual unsigned mobile qualification before advancing versions
+or publishing; an older component build does not qualify newer frontend source.
+
+Explicit dependency correction: PR982 repairs the separate local generated-
+project helper, invoked by the local device-build npm hook. The existing
+mobile/TestFlight workflows invoke the Tauri CLI directly and do not execute
+that helper. Its actual generated-project qualification remains open in its
+own lane; lack of that uncalled-helper result alone does not block this
+release. Source CI or unsigned workflow success is not helper execution proof.
+This correction changes no workflow, signing policy or qualification threshold.
+
+Independently inspect the final source-bound unsigned app AND actual signed
+IPA resource/content inventories, including unintended libapp.a or other
+static archive packaging. Fresh project initialization and source checks do
+not prove such archives absent. Retain actual compile, source/artifact,
+signing, privacy, provisioning and icon checks. Preserve original failures and
+exact identities; no old tag move or successful qualification replay. Broader
+simulator and instrument candidates enter only after their own qualified
+merges, with honest tester boundaries.
+
+Release metadata must pass version/notes contracts and required exact-head
+checks. Review actual main composition and predicted/landed tree/parents before
+normal matched-head merges. Only then create the new tag. Completion requires
+original signed build/upload, Internal and External group assignment and Beta
+App Review receipts from the existing workflows. A queued workflow, unsigned
+build or App Store submission is not a delivery or approval claim. Keep the
+ordered five-task circuit campaign contract independent and unchanged.
+
+## iOS mobile workflow resource preparation — 2026-10-17
+
+CLAIMED — Codex integration owner, branch
+`docs/ios-workflow-resource-preparation-20261017`, base
+`e2225bb05eb2464e31100de3a8060f59ab6f3062`. The release ownership claim
+PR1011 is merged. PR1020's generated-project resource preparation is reached
+through the local device-build npm hook; the current mobile workflow invokes
+the Tauri CLI directly and does not execute that preparation. Its local signed
+archive and simulator results do not automatically qualify the workflow path.
+
+Own only `.github/workflows/mobile.yml`, focused workflow call-path controls,
+this ledger and narrowly necessary packaging documentation. Connect the
+existing reviewed preparation to the simulator, App Store signed and device
+IPA build paths after project initialization, with explicit ordering controls.
+Preserve the preparation implementation from PR1020, embedded frontend inputs,
+all other resources and static linker inputs, the Tauri CLI targets/export
+methods, privacy/icon/signing/provisioning checks and existing CI bounds.
+No application/runtime/firmware/dependency, version, tag, signing policy, secret
+handling or unrelated workflow change belongs in this lane. Coordinate any
+required helper implementation change as a separate envelope before editing.
+
+Merge this claim before implementation. Require nonvacuous call-path and
+ordering controls, every enabled exact-head check, and affected actual clean
+iOS qualification on the final combined source before merging implementation.
+Independently inspect source-bound unsigned app and actual signed IPA resource
+inventories, including duplicate frontend folders and unintended static
+archives; source checks or fresh initialization alone are not absence proof.
+Preserve embedded offline frontend, frameworks, privacy, icons and signatures.
+Existing component receipts remain bounded; physical device acceptance,
+release versions/tag, upload, both TestFlight groups and Beta App Review stay
+separate prerequisites. No new mobile or release event is performed by this
+documentation-only ownership claim.
+
+## iPad chrome fit, menu localization and WeDo acceptance — 2026-10-17
+
+SOURCE LANDED — Codex root, claim branch `docs/ipad-chrome-wedo-claim-20261017`; implementation PR1050 merged as `fc385cada4d2ff6aab21e22bdcc38dc696d9c787`. Signed delivery and physical acceptance remain in this lane.
+User reports cramped touch-screen editor tabs, invisible collapsed-toolbar
+ellipsis, untranslated menus, dim 88005 and silent clone piezo after installing
+the qualified local candidate. Preserve the completed H1–H5 Code-toolbar owner
+changes; no edits to their pseudocode toolbar/status/Animation implementation.
+
+Own bounded editor chrome in `components/gui/{gui.jsx,chrome-toggle.jsx,compact-chrome.css}`,
+`lib/phone-chrome.js`, narrowly necessary menu labels in `components/menu-bar/`
+and their EN/DE catalog entries, canonical generated mirrors, and the existing
+touch/chrome/menu localization tests and actual responsive browser gate. Tab
+labels remain visible when they fit, otherwise real icons with localized
+accessible names/tooltips; keep every tab and the expand control reachable,
+32px minimum touch targets, no hidden overflow or overlap with menu actions.
+Use the selected app locale, not an independent browser-language guess.
+Qualify portrait/landscape iPad and wide/narrow desktop, expanded/collapsed,
+English/German, including actual tab switching and menu activation. Localized
+labels must not change actions, serialized settings or extension identifiers.
+No engine, supplier pin, workflow budget, Code-toolbar takeover or release.
+Merge this claim before product edits; qualify final enabled source-head checks
+before normal matching-head source merge and a fresh signed iPad build.
+
+WeDo hardware diagnostics use the already owned LED/piezo acceptance scope:
+connect from the Mac only after the iPad releases BLE; inspect battery and
+known IO announcements, compare documented full-power versus dimmed light,
+and run the bounded acknowledged short-note pattern with quiet gaps on the
+announced piezo port. Record actual user light/audibility observations. No
+unbounded output, unknown-port experiment, firmware flash or silent host-audio
+substitution. Any demonstrated extension fix belongs upstream first, with a
+separate exact-pin adoption claim if necessary. All machine/device details
+and raw receipts stay in ignored local context. Acknowledge a working external
+LED separately from hub RGB; current user reports LED works but is too dim.
+
+Implementation checkpoint: claim PR1048 merged as `1e8c271e2` before source
+edits; source branch `fix/ipad-chrome-l10n-20261017` is locally qualified.
+Tabs now use measured label fit, separate icons and localized accessible names;
+the collapsed touch strip keeps its ellipsis visible. Settings and native File
+labels use the selected app's EN/DE catalog, including regional German locales.
+The catalog is applied through the existing locales reducer and preserved on
+catalog replacement. No action or serialized setting values were changed.
+The production build passed with two existing size warnings. All 77 focused and
+integration controls passed, followed by the complete Chromium responsive gate:
+22 browser observations, zero page errors, including actual tab switching,
+portrait/landscape touch contexts, icon-only desktop keyboard reach and EN/DE
+Settings/File actions with an English browser locale. These receipts describe
+the locally built working tree; final published-head CI, source merge and a
+fresh signed native build/install remain pending. Keep the A13 CPX/File candidate
+when composing that native build; do not replace it with the older main pins.
+
+Physical acceptance remains separate: full reversed LED power on numeric port
+2 was visibly brighter, but the prior iPad brightness value is unknown. Correct
+legacy piezo writes with and without response remained silent. LWP3 endpoints
+were absent from complete discovery; no valid LWP3 tone was sent. The actual
+node-poweredup encoder matches those bytes. Its independent Bluetooth retry
+connected, discovered the piezo and sent its own short low/high/low sequence;
+the user again reported no sound. The earlier scan-only failure remains separate.
+See [protocol findings and bounded next experiments](docs/WEDO-HUB-PROTOCOL-NOTES.md).
+Hardware/model identification or a genuine-hub comparison remains open; do not
+claim a new buzzer fix or change supplier pins without demonstrated evidence.
+
+Touch-size follow-up: the previously delivered native app predates this source
+candidate. Touch tabs now require 44px targets, 20px icons and 14px labels;
+the browser gate checks that visible icon/text boxes remain within each tab.
+Layout measurement loads in a local deferred chunk, and English defaults stay
+in the actual message descriptors instead of a duplicate catalog. This addresses
+the original startup-size failure without relaxing its budget. The solo-dock
+contract now checks the localized descriptor while retaining the stored `solo`
+value; the initial failed hosted receipts remain part of the record. About and
+8086 menu labels are localized too. Final production size/browser/native receipts
+and exact-head hosted qualification remain required for this follow-up.
+
+Delivery checkpoint: candidate `f869cb229` normally composes GUI `5aeddbc12`
+with the published A13 CPX/File candidate. Its production frontend passed with
+zero errors and two size warnings; initial JavaScript is 4,464,144 bytes against
+the unchanged 4,467,136-byte production ownership limit. The physical iOS archive
+passed strict signature/platform checks, contains the fresh frontend entrypoint,
+and contains neither duplicate frontend resources nor a bundled static archive.
+All 97 focused controls and 20 Chromium observations passed, including fresh
+iPad-sized contexts, EN/DE menus, visible-content containment and actual tab
+switching. The browser reader now waits for project-loading coverage to clear
+and creates fresh contexts for each orientation. WebKit's scaled automation
+coordinates require separate qualification; do not call its full matrix passed.
+
+The candidate was installed successfully over WLAN. Its launch command was
+blocked by the locked iPad; visible UI and hardware acceptance remain pending.
+The full-power LED implementation is included: this observed clone's physical A
+requires logical B, 100%, reversed polarity. No additional brightness defect or
+buzzer success is claimed. Source PR1050 and the earlier integration ownership
+still require final enabled exact-head hosted qualification before main landing.
+
+The user confirmed that the delivered tabs are much better, but reported a blank
+collapse button on iPad. Replace both font glyphs with explicit centered SVG
+chevron/dots, preserving the localized button name, pressed state and hit target.
+The browser reader now requires a visible 20px SVG with nonempty drawing bounds
+in both states. Qualify the rendering and send a fresh native candidate; physical
+icon acceptance remains pending that delivery.
+
+Physical follow-up: SVG candidate `9ba9a2e89` was installed over WLAN, but the
+user still sees a blank collapse button with a small white bar. Its desktop
+WebKit/Chromium SVG checks do not establish physical iPad rendering success.
+Replace the icon with CSS border/box-shadow shapes and disable native button
+appearance, keeping both 20px icon states and the existing 44px touch target.
+The reader checks the actual pseudo-element, and the delivery proof must also
+inspect painted pixels in both states before building/installing the next
+identified candidate. Ask for physical confirmation after delivery; do not
+claim the cause or the visual defect resolved from geometry checks alone.
+
+Direct physical-screen evidence now shows the button's left edge clipped at
+the scrolling tab-list boundary, with its remaining area missing. Reopening
+the app did not change it. The CSS-only candidate was stopped before delivery.
+Portal the toggle to the document body, outside the overflow container, and
+reserve space beside the compact tabs; keep tab measurement attached to the
+actual tab list. Explicitly hide the portaled control in stage fullscreen.
+Qualify both icon states, tab scrolling, hit targets, label fit and fullscreen
+entry/exit, then capture the installed iPad toolbar directly to check the
+result. Direct screenshots and machine-specific capture tooling stay ignored.
+
+Delivery checkpoint: candidate `bc5685b9e` normally composes this portal fix
+with the existing A13 candidate and is installed and launched on the physical
+iPad over WLAN. Strict signing/platform/fresh-frontend checks pass; app size
+remains 84.05 MiB. Eight EN/DE Chromium/WebKit icon paint checks pass with forced
+tab-strip clipping/scrolling and fullscreen entry/exit, plus twelve actual
+Chromium responsive tab/menu observations. Direct device screenshots now work.
+The post-install screenshot has a floating video covering the toggle, so final
+physical chevron acceptance is pending an unobstructed expanded toolbar capture.
+This is an installed candidate; final hosted source qualification/main landing
+remains separate. No connection-recovery supplier adoption is included.
+
+### H1–H3 main reconciliation — 2026-10-17
+
+Preserve the current Code-tab error recovery, matrix reach popover and TypeScript landing cell. The normal merge had only two ledger conflicts (privacy cleanup versus completed candidate status); retain both facts without restoring private locations. No source conflict resolution was required. Fresh combined controls and exact-head hosted qualification are required before integration landing.
+
+Reconciled H1–H3 controls: 113 passed, zero failures/skips. Initial stale generated lazy-loader check was retained as negative evidence; canonical integration regenerated the ignored installed copy. Assertions unchanged; final exact-head hosted CI still gates merge.
+
+### Delivery handoff — 2026-10-17
+
+See [current integration status and scoped next actions](docs/WEDO-IPAD-INTEGRATION-HANDOFF.md). Completed work is committed; source integration PR1017 requires reconciliation with the latest H1–H3 main changes before final CI/landing, followed by A13 source qualification. No hardware acceptance is claimed. Private machine/device details and continuation receipts are only in ignored local `CLAUDE.md`; all peer claims remain owned.
+
+## WeDo connection recovery adoption — 2026-10-17
+
+SOURCE LANDED — Codex root, claim branch `docs/wedo-recovery-adoption-20261017`; immutable adoption merged in PR1050 as `fc385cada4d2ff6aab21e22bdcc38dc696d9c787`. Native/device follow-ups retain the boundaries below.
+Adopt the published WeDo supplier connection-recovery commit `98eca46ed343ffe186e737062fdc68716f28ca6c` (upstream PR50 merged as `c0223a134d1be45dbe939a3f078224f22229b71f`). Own only the `wedo2unified` pin, its canonical generated extension wrapper, focused recovery/LED/tone conformance controls, and the associated public delivery/protocol records. Merge this claim to remote main before implementation. Use the supplier sync workflow; never hand-edit the bundled wrapper or other suppliers' pins. Qualify exact source freshness, failed-connect cleanup, bounded waits, concurrent attempts, retry without app restart, and existing light/tone commands. Native Bluetooth readiness/session ownership work remains separately scoped; do not claim physical connection or buzzer success from these deterministic controls. Compose this adoption with the owned iPad chrome fixes after their CI failures are resolved, qualify enabled exact-head CI, then build/sign/install an identified current-main candidate. Keep local paths, device identifiers, screenshots and raw receipts in ignored handoffs.
+
+### Reconciled UI and recovery follow-through
+
+Upstream recovery PR50 is merged; adoption claim PR1059 is merged before the
+WeDo pin/wrapper update. This branch now normally composes current main,
+preserving the completed STM32/A13/SimLab work and both ledger sections.
+The previous browser failures were the 46px toolbar exceeding its 44px limit
+and startup JavaScript exceeding the unchanged ownership cap. Restore the row
+to 44px with 44px targets and load packaged About credits only when needed,
+with localized loading/retry states. Qualify the actual credits content after
+loading, the phone chrome geometry, vendor freshness/recovery/LED controls,
+and exact-head hosted CI before normal merge. Earlier installed candidates
+remain identified separately; no new physical hub or buzzer acceptance is implied.
+
+### Reconciled delivery checkpoint — 2026-10-18
+
+STM32 PR1017, A13 PR1015/PR1057 and SimLab PR1058 have landed. Earlier
+instructions to wait for or restart their integration controllers are historical.
+WeDo supplier PR50 merged as `c0223a134d1be45dbe939a3f078224f22229b71f`;
+Lite claim PR1059 preceded the immutable recovery adoption in PR1050.
+PR1050 source `8b7ae49e239cbfa2e790c50ca0efd48f62046c10` passed all
+enabled checks and merged normally as `fc385cada4d2ff6aab21e22bdcc38dc696d9c787`. The existing iPad/WeDo lane
+retains qualification, main composition and signed-app delivery ownership.
+See [the updated handoff](docs/WEDO-IPAD-INTEGRATION-HANDOFF.md) for bounded
+acceptance tasks and explicit native Bluetooth, buzzer, D13 and size follow-ups.
+The installed earlier candidate does not yet establish current-main delivery
+or physical caret acceptance. Other owners' nondefault/dirty repository
+checkouts are preserved; no blanket rebase or supplier bump is claimed.
+
+### Integrated-main native checkpoint — 2026-10-18
+
+PR1050 is landed and every enabled exact-head gate passed. The qualified
+`fc385cada4d2ff6aab21e22bdcc38dc696d9c787` snapshot's production frontend,
+unchanged startup ownership budget, eight EN/DE Chromium/WebKit painted-icon
+controls, responsive actions and physical-iOS compilation pass. Original signing
+failures and the expired continuation are retained. A frozen compiled copy was
+signed in one bounded attempt, strictly verified and installed over WLAN on
+2026-10-18: 84.36 MiB, fresh embedded frontend, no duplicate frontend/archive.
+The shared compiled original was preserved. This delivers the qualified snapshot,
+not subsequent main. Automatic launch was explicitly denied because the iPad
+was locked; foreground and physical toolbar acceptance remain pending. Retry
+launch after unlock without rebuilding or resigning. The old watcher mistook an
+absent screen-lock field for locked; the replacement uses the signing result.
+Previous artifacts and receipts are retained privately. Native readiness,
+physical UI/connection/LED acceptance and clone buzzer tasks retain their bounds
+in the handoff; no additional native or firmware work is implicitly claimed.
+
+## Arcade foundation CI: isolated mutant import closure — 2026-10-18
+
+IMPLEMENTED CANDIDATE — integration owner, branch
+`docs/arcade-ci-fixture-closure-claim-20261018`, following the scoped Arcade
+handoff in PR1046. Own `test/i8086-reach-long-classifier.test.mjs` and
+`test/i8086-wait-reach.test.mjs`, this ledger and narrowly necessary task prose.
+The isolated mutant dependency lists must accommodate the real procedure
+parameter-constraints import when that source is present. Do not delete or
+replace the production import, bypass its validation or invent a substitute
+module. Preserve existing JSZip resolution and GUI attribution, every semantic
+mutation anchor, acceptance assertion and compiler/resource bound.
+
+Require explicit successful mutant module loading before either test evaluates
+the intended semantic mutation. A missing dependency is setup failure, never
+evidence that a mutation was detected. Preserve current-main behavior while
+supporting the later foundation dependency; adding a dangling unconditional
+module link is not a qualified solution. Product emitters, runtime, profiles,
+refusal census, pins, budgets and compiler semantics are outside this repair.
+
+Merge this documentation-only claim before implementation. Qualify the actual
+isolated module closure and both semantic mutants, run compiler-heavy gallery
+checks in hosted CI, and require every enabled final-head check before normal
+matched-head merge. This test-fixture repair does not close the six PR888
+failures or qualify its broader source foundation, runtime, GUI or corpus.
+
+The claim merged in PR1062 before source edits. Both isolated fixtures now link
+the constraint module only when the creator actually imports it, and explicitly
+load the mutant before checking its semantic effect. Focused controls cover
+the creator with and without that dependency; omitting the required link fails
+at module loading. Full gallery compilation and final enabled hosted checks
+remain required. Existing semantic assertions and resource bounds are unchanged.
+
+## iOS qualification: active embedded asset identity — 2026-10-18
+
+CLAIMED — integration owner, branch
+`docs/ios-active-asset-proof-claim-20261018`. This follows the resource-preparation
+claim and PR1044; its qualified resource inventories and signatures leave the
+active embedded frontend identity open.
+
+Own a new `apps/tauri/src-tauri/src/embedded_asset_audit.rs`, narrowly additive
+module declaration and Ready-event observation in `apps/tauri/src-tauri/src/lib.rs`,
+an optional default-off unsigned simulator audit in `.github/workflows/mobile.yml`,
+focused controls in `test/tauri-embedded-asset-audit.test.mjs` and
+`test/ios-workflow-embedded-asset-audit.test.mjs`, and this ledger/task handoff.
+Coordinate shared workflow edits with the existing iOS owner. Preserve the real
+context creation, `run_with_context` signature, setup/build/run sequence, current
+event handlers, native operations, CLI ownership and CSP. No second generated
+context or invented asset provider may stand in for the installed app's resolver.
+
+The audit must retain canonical ordered asset keys, served byte lengths and
+SHA-256 identities, complete source/configuration/executable/artifact joins, and
+explicit terminal or partial failure. Review actual iterator compression,
+resolver fallback and HTML/CSP transformations independently before comparing
+outputs. Reject development filesystem fallback. Admit finite entry, per-file,
+total-byte, output, time and resource budgets before an actual observation.
+Do not download simulator runtimes implicitly or expose a public diagnostic UI
+or remote trigger. Unsigned observation alone does not prove a signed target's
+embedded map; require a separate demonstrated signed-source/map join.
+
+Preserve helper ordering, targets, export methods, signing/provisioning checks,
+privacy/icons and branch/tag/release/TestFlight guards. Replace the existing
+device-list diagnostic with count/status output while preserving its assertions;
+retain historical originals privately. No guest, dependency/pin, delivery event,
+physical-device, G02 or release acceptance is included.
+
+Merge this docs-only claim before implementation. Require nonvacuous focused
+controls, every enabled exact-head source check, and fresh admitted actual
+candidate qualification before integrating source. Never repeat a successful
+original acquisition, reader or run merely to inspect it. See
+[the integration handoff](docs/INTEGRATION-NEXT-STEPS.md) for the remaining join.

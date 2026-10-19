@@ -119,7 +119,6 @@ test('lowered paths land in a native cell of the same family that is not null', 
     for (const [fam, langs] of Object.entries(CELLS)) {
         for (const [lang, c] of Object.entries(langs)) {
             for (const l of c.lowered) {
-                if (l.via === 'ts') continue; // Arcade TypeScript is not a Code-tab language yet
                 const landing = langs[l.via] && langs[l.via].native;
                 assert.ok(landing && !isNativeNull(landing), `${fam}/${lang}: lowered via ${l.via} lands on a null native cell`);
                 if (l.status === STATUS.SHIPPED) {

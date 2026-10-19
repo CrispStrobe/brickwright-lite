@@ -238,6 +238,42 @@
    "max": null,
    "readings": []
   },
+  "Browser gate \u2014 Robot Lab core, a real-parts model loads, drives, is built and saved": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab examples run their programs (line follower, wall stopper, colour explorer)": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab model insight, instructions and the no-WebGL fallback": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab on a school tablet, real touch input at 1024\u00d7768": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab layout at five window sizes (Simulate and Build)": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab build editor Studio tools (colour, hide, mirror, align, measure, groups, clipboard)": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
   "Browser gate \u2014 the debugger-only pane and its round trip": {
    "n": 20,
    "p95": 12,
@@ -7354,6 +7390,24 @@
    "readings": []
   },
   "Browser gate \u2014 Arcade Buffer editor controller and original export": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 ESP8266 image runs on the esp8266 debug kind with serial": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 CPX native program and live circuit face": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab scale, a 2,054-part model drawn instanced, and .lxf/.io model files": {
    "n": 0,
    "p95": null,
    "max": null,

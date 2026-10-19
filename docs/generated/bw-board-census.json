@@ -2,8 +2,8 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "9c8777d5b883aa121eb6ee2797c21ac05916f6a1",
-    "read": "2026-10-11"
+    "sha": "f84ba60ead0a90deb9830f0c1468839c293ecf05",
+    "read": "2026-10-15"
   },
   "rows": [
     {
@@ -122,7 +122,7 @@
       "kind": "oracle",
       "present": true,
       "ciAvailable": true,
-      "ci": "yes — the `vectors` job checks out v1_binary and grinds all 646,000 per push",
+      "ci": "yes — the `vectors` job checks out v1_binary and grinds all 646,000 nightly, on master pushes and on PRs labelled ci:full",
       "via": "[local path omitted]",
       "gates": [
         "test/i8086.test.mjs",
@@ -138,7 +138,7 @@
       "kind": "oracle",
       "present": false,
       "ciAvailable": true,
-      "ci": "yes — `vectors` blocks on 200 vectors from every opcode file; the dedicated 286 qualification runs the full pinned corpus and retains separate fast/Harris reports",
+      "ci": "yes — `vectors` blocks on 200 vectors from every opcode file; the dedicated 286 qualification runs the full pinned corpus and retains separate fast/Harris reports; `vectors` runs nightly, on master pushes and on PRs labelled ci:full",
       "via": "tried $I80286_VECTORS, [local path omitted]",
       "gates": [
         "scripts/grind-i8086-286.mjs",
@@ -164,7 +164,7 @@
       "kind": "oracle",
       "present": true,
       "ciAvailable": true,
-      "ci": "yes — the `vectors186` job checks out SingleStepTests/v20 at a pinned ref. This row said \"not yet\" while that job already existed; the claim was about the SCORES still moving, which is a different question from whether CI has the input",
+      "ci": "yes — the `vectors186` job checks out SingleStepTests/v20 at a pinned ref. This row said \"not yet\" while that job already existed; the claim was about the SCORES still moving, which is a different question from whether CI has the input. The job runs nightly, on master pushes and on PRs labelled ci:full",
       "via": "[local path omitted]",
       "gates": [
         "scripts/grind-i8088-cycles.mjs"
@@ -176,7 +176,7 @@
       "kind": "oracle",
       "present": true,
       "ciAvailable": true,
-      "ci": "yes — the `vectors-full` job, on a schedule rather than per push (1.6 GB unpacked)",
+      "ci": "yes — the `vectors-full` job, nightly, on demand and on PRs labelled ci:full rather than per push (1.6 GB unpacked)",
       "via": "[local path omitted]",
       "gates": [
         "test/z80-disasm.test.mjs",
@@ -189,7 +189,7 @@
       "kind": "oracle",
       "present": true,
       "ciAvailable": true,
-      "ci": "yes — the `vectors-full` job, on a schedule rather than per push",
+      "ci": "yes — the `vectors-full` job, nightly, on demand and on PRs labelled ci:full rather than per push",
       "via": "[local path omitted]",
       "gates": [
         "test/w65c02.test.mjs",
@@ -237,7 +237,13 @@
         "test/meter-waveform-integration.test.mjs",
         "test/inductor-meter-integral.test.mjs",
         "test/winding-turnoff-oracle.test.mjs",
-        "test/rlc-instrument-oracle.test.mjs"
+        "test/rlc-instrument-oracle.test.mjs",
+        "test/winding-uic-reference.test.mjs",
+        "test/winding-reference-comparison.test.mjs",
+        "test/winding-edge-instruments.test.mjs",
+        "test/current-scope-simulation-clock.test.mjs",
+        "test/transient-matrix.test.mjs",
+        "test/transistor-instrument-oracle.test.mjs"
       ],
       "what": "The reference NUMERIC circuit simulator. lcapy is symbolic and exact but cannot model a junction; ngspice models devices, so the two are complementary rather than redundant -- where both agree and we do not, it is us, and where THEY disagree the circuit is ill-posed and belongs in neither corpus. Note that the ngspice GOLDENS under test/golden/ are pre-recorded and need no binary; this row is for the gates that invoke ngspice LIVE."
     },
@@ -291,7 +297,9 @@
         "test/labwired-microbit-motion.test.mjs",
         "test/labwired-f0-timing.test.mjs",
         "test/labwired-f0-gpio-profile.test.mjs",
-        "test/labwired-f0-gpio-window-profile.test.mjs"
+        "test/labwired-f0-gpio-window-profile.test.mjs",
+        "test/labwired-esp32-ledc.test.mjs",
+        "test/labwired-radio-pair.test.mjs"
       ],
       "what": "The labwired engine as WASM — the differential oracle for the labwired bridge."
     },
@@ -348,7 +356,7 @@
       "kind": "fixture",
       "present": false,
       "ciAvailable": true,
-      "ci": "yes — the `corpus` job (ci.yml:287) checks out Amey-Thakur/…, asserts all 525 are present (ci.yml:304), and assembles and runs each per push on VERDICT COUNTS rather than a text diff. The unit test reads a local /tmp/amey copy and its corpus subtests skip without it, but the claim is standing via that job.",
+      "ci": "yes — the `corpus` job (ci.yml:287) checks out Amey-Thakur/…, asserts all 525 are present (ci.yml:304), and assembles and runs each nightly, on master pushes and on PRs labelled ci:full on VERDICT COUNTS rather than a text diff. The unit test reads a local /tmp/amey copy and its corpus subtests skip without it, but the claim is standing via that job.",
       "via": "tried [local path omitted] Code",
       "gates": [
         "test/i8086-asm.test.mjs"

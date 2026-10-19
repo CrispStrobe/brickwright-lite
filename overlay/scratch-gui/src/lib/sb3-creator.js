@@ -17,8 +17,9 @@ import { matchEv3Word, ev3WordFor, spellEv3Word, ev3WordLoose } from './ev3Diale
 // The MakeCode Arcade and array-reference words (arcade/arrays extensions):
 // one table as well, for the importer's dialect (Lite's arcade-translate.js).
 import {
-    compileArcadeWord, arcadeWordsOf, arcadeWordFor, spellArcadeWord, ARCADE_FIRST_WORDS
+    compileArcadeWord, arcadeWordsOf, arcadeWordFor, spellArcadeWord, legacyDirectMenuValue, ARCADE_FIRST_WORDS
 } from './arcadeDialect.js';
+import { cpxWordFor, cpxWordsOf } from './cpxDialect.js';
 
 // The emitted no-import JSON serializer (the sim firmware ships without
 // the json module — measured 2026-08-19). Shared by the marker debugger's
@@ -930,7 +931,7 @@ const spriteProperty = (word) => Math.max(0, MICROBIT_SPRITE_PROPERTIES.indexOf(
 
 const OPENS_A_BODY = new Set([
     'control_if', 'control_if_else', 'control_repeat',
-    'control_repeat_until', 'control_forever'
+    'control_repeat_until', 'control_forever', 'arcade_sourceWhile'
 ]);
 
 class SB3Creator {
@@ -2546,6 +2547,87 @@ class SB3Creator {
      * take. `read` reads a value slot (a statement's `val`, so a reporter
      * spilled over its slots is refused; parseValue for a reporter's slot).
      */
+    callableSourceEnvelope(value) {
+        if (!value || value.schema !== 'bw-callable-variable') return null;
+        const allowed = ['schema', 'version', 'binding', 'signature', 'variableId', 'variableName'];
+        if (Object.keys(value).some(key => !allowed.includes(key)) || value.version !== 1 ||
+            !/^binding_\d+$/.test(value.binding) || typeof value.variableName !== 'string' || !value.variableName ||
+            value.variableId !== undefined && (typeof value.variableId !== 'string' || !value.variableId) ||
+            !value.signature || value.signature.kind !== 'callable') {
+            throw new ParseError('Malformed lexical callable variable envelope');
+        }
+        return value;
+    }
+
+    materializeCallableVariable(inputs, context) {
+        const text = inputs.SIGNATURE?.[1];
+        if (!Array.isArray(text) || text[0] !== 10) throw new ParseError('Callable signature requires fixed text');
+        let value;
+        try { value = JSON.parse(text[1]); } catch { throw new ParseError('Malformed callable signature JSON'); }
+        const envelope = this.callableSourceEnvelope(value);
+        if (!envelope) {
+            if (!value || value.kind !== 'callable' || value.schema !== undefined) throw new ParseError('Unknown callable declaration signature');
+            return;
+        }
+        const input = inputs.VARIABLE?.[1];
+        const reporter = typeof input === 'string' ? context.extraBlocks[input] : null;
+        const tuple = Array.isArray(input) ? input : reporter?.opcode === 'data_variable' ?
+            [12, reporter.fields.VARIABLE[0], reporter.fields.VARIABLE[1]] : null;
+        const owner = this.project.targets.find(target => Object.prototype.hasOwnProperty.call(target.variables || {}, tuple?.[2]) &&
+            (target === context.target || target.isStage));
+        if (!tuple || tuple[0] !== 12 || typeof tuple[2] !== 'string' || !tuple[2] || !owner ||
+            owner.variables[tuple[2]][0] !== tuple[1] || tuple[1] !== envelope.variableName) {
+            throw new ParseError('Lexical callable declaration must retain its actual variable binding');
+        }
+        // Code is deliberately materialized again; an unchanged spelling seal
+        // permits fresh generated IDs, never declaration-only name rewiring.
+        inputs.SIGNATURE = [1, [10, JSON.stringify({...envelope, variableId: tuple[2]})]];
+    }
+
+    refreshCallableSourceBindings(project) {
+        if (!project.targets.some(target => Object.values(target.blocks || {}).some(block => block.opcode === 'arcade_declareSourceCallable'))) return project;
+        project = JSON.parse(JSON.stringify(project));
+        const literal = (blocks, input) => Array.isArray(input?.[1]) && input[1][0] === 10 ?
+            {get: () => input[1][1], set: value => {input[1][1] = value;}} :
+            blocks[input?.[1]]?.opcode === 'text' && blocks[input[1]].shadow ?
+                {get: () => blocks[input[1]].fields.TEXT[0], set: value => {blocks[input[1]].fields.TEXT[0] = value;}} : null;
+        for (const target of project.targets) {
+            const blocks = target.blocks || {}, renamed = new Map();
+            for (const block of Object.values(blocks)) {
+                if (block.opcode !== 'arcade_declareSourceCallable') continue;
+                const signature = literal(blocks, block.inputs.SIGNATURE);
+                if (!signature) throw new ParseError('Callable signature requires fixed text');
+                let value; try { value = JSON.parse(signature.get()); } catch { throw new ParseError('Malformed callable signature JSON'); }
+                const envelope = this.callableSourceEnvelope(value); if (!envelope) continue;
+                const input = block.inputs.VARIABLE?.[1], reporter = blocks[input];
+                const tuple = Array.isArray(input) ? input : reporter?.opcode === 'data_variable' ?
+                    [12, reporter.fields.VARIABLE[0], reporter.fields.VARIABLE[1]] : null;
+                const owner = project.targets.find(candidate => Object.prototype.hasOwnProperty.call(candidate.variables || {}, tuple?.[2]) && (candidate === target || candidate.isStage));
+                if (!tuple || tuple[0] !== 12 || !owner || envelope.variableId !== tuple[2] || renamed.has(envelope.binding))
+                    throw new ParseError('Current callable lexical variable ID seal changed');
+                const name = owner.variables[tuple[2]][0];
+                renamed.set(envelope.binding, {before: envelope.variableName, after: name});
+                signature.set(JSON.stringify({...envelope, variableName: name}));
+            }
+            for (const block of Object.values(blocks)) {
+                if (block.opcode !== 'arcade_declareCallable') continue;
+                const metadata = literal(blocks, block.inputs.METADATA);
+                if (!metadata) throw new ParseError('Callable plan requires fixed declaration metadata');
+                let value; try { value = JSON.parse(metadata.get()); } catch { throw new ParseError('Malformed callable plan JSON'); }
+                if (value?.schema !== 'bw-callable-declaration') continue;
+                if (![1, 3].includes(value.version) || !value.plan || !Array.isArray(value.plan.bindings)) throw new ParseError('Malformed callable lexical plan');
+                for (const [id, rename] of renamed) {
+                    const binding = value.plan.bindings.find(binding => binding.id === id);
+                    if (!binding || binding.owner !== value.plan.module || binding.kind !== 'global' || binding.nativeName !== rename.before)
+                        throw new ParseError('Callable spelling seal differs from its lexical plan');
+                    binding.nativeName = rename.after;
+                }
+                metadata.set(JSON.stringify(value));
+            }
+        }
+        return project;
+    }
+
     arcadeSlots(entry, groups, context, read) {
         const { parts } = compileArcadeWord(entry);
         const slots = [];
@@ -2553,7 +2635,14 @@ class SB3Creator {
         for (const p of parts) {
             if (p.literal !== undefined) continue;
             const text = groups[g++];
-            if (p.field || p.text) {
+            if (p.referenceType) {
+                let type;
+                try {type = JSON.parse(text);} catch {return null;}
+                // Grammar is portable; project class ownership is validated by
+                // the native source prelude and the original exporter.
+                if (typeof type !== 'string' || !/^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(?:\[\])?$/.test(type)) return null;
+                slots.push([p, type]);
+            } else if (p.field || p.text) {
                 const word = p.quoted ? text.slice(1, -1) : text;
                 const canonical = p.choices.find((c) => c.toLowerCase() === word.toLowerCase());
                 if (canonical === undefined) return null;
@@ -2567,7 +2656,7 @@ class SB3Creator {
             else if (p.menu) {
                 const canonical = p.choices.find(choice => choice.toLowerCase() === text.toLowerCase()) ??
                     (entry.literalMenu && /^"[^"]*"$/.test(text) ? text.slice(1, -1) : undefined);
-                const shadow = this.menuInput(context, `arcade_menu_${p.menu}`, p.menu, canonical ?? p.choices[0]);
+                const shadow = this.menuInput(context, `${entry.menuExtension || 'arcade'}_menu_${p.menu}`, p.menu, canonical ?? p.choices[0]);
                 const value = canonical === undefined ? read(text) : null;
                 inputs[p.slot] = !value ? shadow : typeof value[1] === 'string' ? [3, value[1], shadow[1]] : value;
                 if (value && typeof value[1] !== 'string') delete context.extraBlocks[shadow[1]];
@@ -2576,6 +2665,15 @@ class SB3Creator {
             else if (p.cond && this.arcadeConditionLike(text, context)) inputs[p.slot] = [2, this.parseCondition(text, context)];
             else inputs[p.slot] = read(text);
         }
+        for (const slot of entry.variableInputs || []) {
+            const input = inputs[slot];
+            const value = input?.[1];
+            const reporter = typeof value === 'string' ? context.extraBlocks[value] : null;
+            if (!(Array.isArray(value) && value[0] === 12) && reporter?.opcode !== 'data_variable') {
+                throw new ParseError('Source declaration requires an ordinary variable reporter');
+            }
+        }
+        if (entry.op === 'arcade_declareSourceCallable') this.materializeCallableVariable(inputs, context);
         for (const [slot, text] of Object.entries(entry.defaults || {})) inputs[slot] = this.parseValue(text, context);
         return { inputs, fields };
     }
@@ -2589,7 +2687,8 @@ class SB3Creator {
         // a slot that takes a condition takes all of them (task D7).
         if (context && this.booleanFormKind(s, context)) return true;
         if (this.splitBinary(s, [' or ', ' and ', '!=', '<=', '>=', '<', '>', '='], { ci: true })) return true;
-        return arcadeWordsOf(['boolean']).some((e) => matchTopLevel(s, compileArcadeWord(e).re));
+        return arcadeWordsOf(['boolean']).some((e) => matchTopLevel(s, compileArcadeWord(e).re))
+            || cpxWordsOf(['boolean']).some((e) => matchTopLevel(s, compileArcadeWord(e).re));
     }
 
     // A Boolean input from a slot: a condition as it stands; a literal is its
@@ -2615,9 +2714,13 @@ class SB3Creator {
      */
     matchArcadeReporter(s, context, { early = false, kinds = ['reporter', 'boolean'] } = {}) {
         const first = String(s).trim().split(/\s/, 1)[0].toLowerCase();
-        if (!ARCADE_FIRST_WORDS.has(first)) return null;
-        for (const entry of arcadeWordsOf(kinds)) {
-            if (early && !entry.early) continue;
+        // `cpx` opens a Circuit Playground word (cpxDialect.js). Those are all
+        // read early, before operator splitting: `cpx button A+B is pressed`
+        // holds a `+` that is a field value, not an operator.
+        const table = first === 'cpx' ? cpxWordsOf(kinds) : ARCADE_FIRST_WORDS.has(first) ? arcadeWordsOf(kinds) : null;
+        if (!table) return null;
+        for (const entry of table) {
+            if (early && !entry.early && first !== 'cpx') continue;
             const m = matchTopLevel(s, compileArcadeWord(entry).re);
             if (!m) continue;
             const id = this.pushBlock(context, entry.op);
@@ -2645,7 +2748,7 @@ class SB3Creator {
             menu: (name, menuName) => {
                 const input = b.inputs[name];
                 const menu = Array.isArray(input) && typeof input[1] === 'string' ? blocks[input[1]] : null;
-                if (menu?.opcode === `arcade_menu_${menuName}`) return menu.fields[menuName]?.[0] ?? '';
+                if (menu?.opcode === `${entry.menuExtension || 'arcade'}_menu_${menuName}`) return menu.fields[menuName]?.[0] ?? '';
                 const choices = compileArcadeWord(entry).parts.find(p => p.slot === name)?.choices || [];
                 if (!input && choices.includes(b.fields[name]?.[0])) return b.fields[name][0];
                 // Parentheses distinguish variables named x/y from bare menu
@@ -2654,6 +2757,11 @@ class SB3Creator {
                 return /^["(]/.test(value) ? value : `(${value})`;
             },
             field: (name) => {
+                if (entry.strictFields) {
+                    const part = compileArcadeWord(entry).parts.find(p => p.slot === name && p.field);
+                    if (b.inputs[name] || !part?.choices.includes(b.fields[name]?.[0]))
+                        throw new Error(`${entry.op} requires a fixed ${name} field`);
+                }
                 if (b.fields[name]) return b.fields[name][0];
                 // Read pre-schema-fix saved literal inputs, but never turn an
                 // arbitrary reporter into a direct dropdown field. Native
@@ -2663,12 +2771,12 @@ class SB3Creator {
                     const part = compileArcadeWord(entry).parts.find(p => p.slot === name && p.field);
                     if (Array.isArray(literal) && literal[0] === 10 && part?.choices.includes(literal[1])) return literal[1];
                 }
-                return '';
+                return legacyDirectMenuValue(b, name, blocks) ?? '';
             },
             cond: (name) => {
                 const input = b.inputs[name];
                 const ref = Array.isArray(input) && typeof input[1] === 'string' ? blocks[input[1]] : null;
-                if (ref && (BOOLEAN_OPS.test(ref.opcode) || (arcadeWordFor(ref.opcode) || {}).kind === 'boolean')) {
+                if (ref && (BOOLEAN_OPS.test(ref.opcode) || (arcadeWordFor(ref.opcode) || cpxWordFor(ref.opcode) || {}).kind === 'boolean')) {
                     return `(${this.dcond(input[1], blocks)})`;
                 }
                 return this.dval(input, blocks);
@@ -2927,6 +3035,12 @@ class SB3Creator {
         // RP2040, STM32F030; the 8051 parts have none and refuse it in C).
         if (/^chip\s+temperature$/i.test(s)) return B('stc12_chiptemp', {}, {});
         if (/^read\s+sound$/i.test(s)) return B('microbitplus_sound');
+        // Generic GPIO input: `read pin N` (numeric 0-7) ⇄ the DOS Forth bench's
+        // `N pin@`. Distinct from the micro:bit `pin P<n> digital` reporter below
+        // and the single-token STC `read <name>` rules (a numeric pin is neither).
+        if ((m = s.match(/^read\s+pin\s+(\d+)$/i))) {
+            return B('bwgpio_readpin', {}, { PIN: [m[1], null] });
+        }
         // micro:bit+ pin/button reporters
         if ((m = s.match(/^pin\s+(P\d+)\s+digital(?:\s+value)?$/i))) {
             return B('microbitplus_digitalread', {}, { PIN: [m[1].toUpperCase(), null] });
@@ -3605,22 +3719,34 @@ class SB3Creator {
         for (const p of this._cSevenSegParts()) {
             const n = p.name;
             out.push(
-                `/* ${n}: show a decimal number right-aligned across 8 digits. */`,
-                `static void bw_${n}_show_number(int n)`,
+                `/* ${n}: show a decimal number right-aligned across 8 digits.`,
+                ' * `long`, not `int`: SDCC\'s int is 16 bits, and eight digits need',
+                ' * 27. A number wider than the display shows its low eight digits',
+                ' * (and no minus), as the stc12 block does. */',
+                `static void bw_${n}_show_number(long n)`,
                 '{',
                 '    unsigned char i, neg = 0;',
-                '    unsigned int u;',
+                '    unsigned long u;',
+                '    unsigned int v;',
                 `    for (i = 0; i < 8; i++) bw_${n}_fb[i] = 0x00;`,
-                '    if (n < 0) { neg = 1; u = (unsigned int)(-n); }',
-                '    else       { u = (unsigned int)n; }',
-                '    i = 7;',
-                '    do {',
+                '    if (n < 0) { neg = 1; u = 0UL - (unsigned long)n; }',
+                '    else       { u = (unsigned long)n; }',
+                '    i = 8;',
+                '    /* 32-bit division is a library loop on the 8051: only the digits',
+                '     * of a number above 65535 pay for it (at most five). */',
+                '    while (u > 0xFFFFUL) {',
+                '        i--;',
                 `        bw_${n}_fb[i] = bw_7seg_font[u % 10];`,
                 '        u /= 10;',
-                '        if (i == 0) break;',
+                '    }',
+                '    v = (unsigned int)u;',
+                '    do {',
                 '        i--;',
-                '    } while (u);',
-                '    if (neg && i > 0)',
+                `        bw_${n}_fb[i] = bw_7seg_font[v % 10];`,
+                '        v /= 10;',
+                '    } while (v && i);',
+                '    /* i is the most significant digit: the minus goes just before it */',
+                '    if (neg && i)',
                 `        bw_${n}_fb[i - 1] = 0x40;  /* minus = segment g */`,
                 '}',
                 '',
@@ -4430,7 +4556,10 @@ class SB3Creator {
                 // the 8088's narrower bus is timing no program sees). Until
                 // unknown devices were refused (task D6) `DEVICE 8086` silently
                 // parsed as the default STC12 — Lite's own export gate wrote it.
-                8086: 'i8086', 8088: 'i8086', i8088: 'i8086'
+                8086: 'i8086', 8088: 'i8086', i8088: 'i8086',
+                // Adafruit Circuit Playground Express: the names bw-circuit-ui's
+                // seated inference already answers to (B3).
+                circuitplayground: 'cpx', adafruit: 'cpx', circuit_playground_express: 'cpx'
             };
             if (!SB3Creator.STC_PARTS[device] && DEVICE_ALIASES[device]) {
                 device = DEVICE_ALIASES[device];
@@ -4441,6 +4570,7 @@ class SB3Creator {
             const cfg = this.stcConfig();
             const wasDefault = cfg.clock === 11059200 && cfg.device === 'stc12c5a60s2';
             cfg.device = device;
+            cfg.deviceDeclared = true;
             // The seeded default clock belongs to the seeded default device.
             // A DEVICE line that changes chips takes the chip's own default
             // with it — an explicit CLOCK line still wins, before or after.
@@ -4546,7 +4676,7 @@ class SB3Creator {
             const LAST = { 'arduino-uno': { D: 13, A: 5 }, 'arduino-nano': { D: 13, A: 7 },
                 'atmega168p': { D: 13, A: 5 }, 'arduino-mega': { D: 53, A: 15 },
                 atmega328p: { D: 13, A: 5 }, microbit: { P: 20 }, calliopemini: { P: 20 }, pico: { GP: 28 },
-                arcade: { D: 31 }, pybadge: { D: 13, A: 5 }, 'pybadge-lc': { D: 31 },
+                arcade: { D: 31 }, pybadge: { D: 13, A: 5 }, 'pybadge-lc': { D: 31 }, cpx: { A: 7 },
                 samd51: { PA: 31, PB: 31 },
                 eater6502: { PA: 7, PB: 7 } };  // PB7: plain I/O while ACR7=0, same as the SPOKEN gate
             const edge = LAST[cfg.device] || {};
@@ -4567,10 +4697,25 @@ class SB3Creator {
             if (cfg.device === 'stm32f030' && /^analog$/i.test(direction) && !/^PA[0-7]$/i.test(where)) {
                 return this.refuseDeclaration(lineIndex, trimmed, `ANALOG on the STM32F030 means PA0-PA7 (ADC_IN0-7), not ${where.toUpperCase()}`);
             }
+            if (cfg.device === 'stm32g030' && /^analog$/i.test(direction) && !/^PA[0-7]$/i.test(where)) {
+                return this.refuseDeclaration(lineIndex, trimmed, `ANALOG on the STM32G030 means PA0-PA7 (ADC_IN0-7), not ${where.toUpperCase()}`);
+            }
+            if (cfg.device === 'stm32f103' && /^analog$/i.test(direction) && !/^(PA[0-7]|PB[01])$/i.test(where)) {
+                return this.refuseDeclaration(lineIndex, trimmed, `ANALOG on the STM32F103 means PA0-PA7 or PB0-PB1 (ADC1_IN0-9), not ${where.toUpperCase()}`);
+            }
             if (cfg.device === 'stm32f030' && /^pwm$/i.test(direction) && !/^(PA[67]|PB1)$/i.test(where)) {
                 return this.refuseDeclaration(lineIndex, trimmed, `PWM on the STM32F030 means PA6, PA7 or PB1 (TIM3 channels), not ${where.toUpperCase()}`);
             }
-            if (core === 'rp2040' && cfg.device !== 'stm32f030' && /^analog$/i.test(direction) && !/^GP2[678]$/i.test(where)) {
+            if (cfg.device === 'stm32g030' && /^pwm$/i.test(direction) && !/^(PA[67]|PB1)$/i.test(where)) {
+                return this.refuseDeclaration(lineIndex, trimmed, `PWM on the STM32G030 means PA6, PA7 or PB1 (TIM3 channels), not ${where.toUpperCase()}`);
+            }
+            if (cfg.device === 'stm32f103' && /^pwm$/i.test(direction) && !/^(PA[0-3]|PA[67]|PB[01])$/i.test(where)) {
+                return this.refuseDeclaration(lineIndex, trimmed, `PWM on the STM32F103 means PA0-PA3 (TIM2) or PA6, PA7, PB0, PB1 (TIM3), not ${where.toUpperCase()}`);
+            }
+            if (cfg.device === 'esp8266' && /^analog$/i.test(direction)) {
+                return this.refuseDeclaration(lineIndex, trimmed, `ANALOG is not available on the ESP8266: its runtime has no analogRead, so ${where.toUpperCase()} cannot be an ANALOG pin`);
+            }
+            if (core === 'rp2040' && !cfg.device.startsWith('stm32') && cfg.device !== 'esp8266' && /^analog$/i.test(direction) && !/^GP2[678]$/i.test(where)) {
                 return this.refuseDeclaration(lineIndex, trimmed, `ANALOG on the Pico means GP26, GP27 or GP28 (ADC0-2), not ${where.toUpperCase()}`);
             }
             // The ATtinys name their ADC pins by port: PC0-PC5 on the tiny88
@@ -5169,7 +5314,19 @@ class SB3Creator {
     // Parse a boolean condition expression into a block id.
     parseCondition(conditionStr, context) {
         let s = this.stripOuterParens((conditionStr || '').trim());
-        const push = (op, inputs = {}, fields = {}) => this.pushBlock(context, op, inputs, fields);
+        const push = (op, inputs = {}, fields = {}) => {
+            const id = this.pushBlock(context, op, inputs, fields);
+            // Condition children were parsed before their wrapper existed.
+            // Attach each newly owned reporter/shadow to its actual input owner.
+            for (const input of Object.values(inputs)) {
+                for (const child of input.slice(1)) {
+                    if (typeof child === 'string' && context.extraBlocks[child]) {
+                        context.extraBlocks[child].parent = id;
+                    }
+                }
+            }
+            return id;
+        };
 
         // Keypad phrase sugar (oracle parity, stc-compiler dec1f17): rewrite
         // to the canonical compare BEFORE any other parsing, so the blocks
@@ -5376,7 +5533,7 @@ class SB3Creator {
 
     // Split a line into top-level tokens: parenthesized groups and quoted strings
     // count as a single token, so custom-block args like `(pr + 1)` stay intact.
-    tokenizeTop(s) {
+    tokenizeTop(s, { strict = false } = {}) {
         const tokens = [];
         let i = 0;
         s = s.trim();
@@ -5385,13 +5542,23 @@ class SB3Creator {
             if (s[i] === '(') {
                 let depth = 0, j = i;
                 for (; j < s.length; j++) {
+                    if (s[j] === '"') {
+                        const end = closingQuote(s, j);
+                        if (end < 0) {
+                            if (strict) throw new ParseError('unterminated text in procedure argument');
+                            j = s.length; break;
+                        }
+                        j = end; continue;
+                    }
                     if (s[j] === '(') depth++;
                     else if (s[j] === ')') { depth--; if (depth === 0) { j++; break; } }
                 }
+                if (strict && depth !== 0) throw new ParseError('unclosed procedure argument');
                 tokens.push(s.slice(i, j)); i = j; continue;
             }
             if (s[i] === '"') {
                 let j = closingQuote(s, i);
+                if (strict && j < 0) throw new ParseError('unterminated text in procedure argument');
                 j = j < 0 ? s.length : j + 1;
                 tokens.push(s.slice(i, j)); i = j; continue;
             }
@@ -5415,7 +5582,8 @@ class SB3Creator {
             template: sig.template
         });
         // Longest templates first so a more specific signature wins call matching.
-        this.procedures.sort((a, b) => b.template.length - a.template.length);
+        this.procedures.sort((a, b) => b.template.length - a.template.length ||
+            b.template.filter(t => t.lit).length - a.template.filter(t => t.lit).length);
     }
 
     // Build the definition blocks. Returns { block, extraBlocks, args } where `args`
@@ -5465,8 +5633,8 @@ class SB3Creator {
 
     // Try to resolve a line as a call to a registered custom block, matching the
     // call's top-level tokens against the procedure's template token-for-token.
-    tryProcedureCall(line, target) {
-        const tokens = this.tokenizeTop(line);
+    tryProcedureCall(line, target, { strict = false, typed = false } = {}) {
+        const tokens = this.tokenizeTop(line, { strict });
         for (const proc of this.procedures) {
             if (proc.template.length !== tokens.length) continue;
             const rawArgs = [];
@@ -5474,7 +5642,16 @@ class SB3Creator {
             for (let i = 0; i < proc.template.length; i++) {
                 const t = proc.template[i];
                 if (t.lit) { if (tokens[i] !== t.lit) { ok = false; break; } }
-                else rawArgs.push(tokens[i]);
+                else {
+                    const group = tokens[i].startsWith('(') && this.matchParen(tokens[i], 0) === tokens[i].length - 1
+                        ? tokens[i].slice(1, -1).trim() : null;
+                    if (typed && group === null) { ok = false; break; }
+                    const markedBoolean = group !== null && group.startsWith('<') && group.endsWith('>');
+                    if (typed && (proc.argTypes[rawArgs.length] === 'b') !== markedBoolean) { ok = false; break; }
+                    const argument = typed && markedBoolean ? group.slice(1, -1).trim() : tokens[i];
+                    if (typed && markedBoolean && !argument) throw new ParseError('procedure Boolean argument requires a condition');
+                    rawArgs.push(argument);
+                }
             }
             if (!ok) continue;
             this.refuseTokenSpill(tokens, proc.template.map((t) => ({ value: Boolean(t.arg) })), target);
@@ -5484,6 +5661,17 @@ class SB3Creator {
             context.parentId = id;
             const inputs = {};
             proc.argIds.forEach((argId, i) => {
+                if (strict && proc.argTypes[i] === 'b') {
+                    const value = this.stripOuterParens(rawArgs[i]).trim();
+                    if (!this.arcadeConditionLike(value, context) &&
+                        (/^"/.test(value) || /^[+-]?(?:(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?|Infinity|NaN)$/i.test(value))) {
+                        throw new ParseError('procedure Boolean argument requires a condition or Boolean value');
+                    }
+                    if (/^(?:true|false)$/i.test(value)) {
+                        inputs[argId] = this.arcadeBoolean(value, context);
+                        return;
+                    }
+                }
                 inputs[argId] = proc.argTypes[i] === 'b'
                     ? [2, this.parseCondition(rawArgs[i], context)]
                     : this.parseValue(rawArgs[i], context);
@@ -5498,7 +5686,25 @@ class SB3Creator {
         return null;
     }
 
-    parseCommand(line, target) {
+    parseCommand(line, target, allowLoop = false) {
+        // CALL: is a reserved invocation form, distinct from a legacy procedure
+        // named "call" with one argument. Saved blocks retain the actual label.
+        // Unmarked CALL remains readable, but complete registered legacy labels
+        // take precedence: `call numbers` must not lose its first label word.
+        const reservedCall = /^CALL:\s*/i.test(line);
+        if (reservedCall || /^CALL\s+/i.test(line)) {
+            if (!reservedCall) {
+                const legacy = this.tryProcedureCall(line, target, { strict: true });
+                if (legacy) return legacy;
+            }
+            const text = line.replace(reservedCall ? /^CALL:\s*/i : /^CALL\s+/i, '').trim();
+            const wrapped = text.startsWith('(') && this.matchParen(text, 0) === text.length - 1;
+            if (reservedCall && !wrapped) throw new ParseError('CALL: requires one complete parenthesized procedure invocation');
+            const invocation = wrapped ? text.slice(1, -1).trim() : text;
+            const call = this.tryProcedureCall(invocation, target, { strict: true, typed: reservedCall });
+            if (!call) throw new ParseError(`unknown procedure or mismatched arguments: ${invocation}`);
+            return call;
+        }
         // Event hats reach here with their trailing ':' — strip it so the hat
         // patterns can anchor cleanly. Remember that it WAS a hat: an unrecognised
         // one must be refused rather than falling through to statement parsing,
@@ -5552,9 +5758,24 @@ class SB3Creator {
             return this.parseValue(s, context);
         };
 
+        // ---- Circuit Playground Express words (cpxDialect.js), DEVICE CPX only ----
+        // One table for both directions, read before every generic rule so none
+        // (`set X to`, `stop all`, `when loud sound`) claims a CPX line first.
+        if (this.project && this.project.stc && this.project.stc.device === 'cpx') {
+            for (const entry of cpxWordsOf(wasHat ? ['hat'] : ['command'])) {
+                const m = matchTopLevel(line, compileArcadeWord(entry).re);
+                if (!m) continue;
+                const { id, block } = cmd(entry.op, entry.kind === 'hat' ? { topLevel: true } : {});
+                const slots = this.arcadeSlots(entry, m, context, val);
+                if (!slots) continue;
+                Object.assign(block[id], slots);
+                return ret(block);
+            }
+        }
+
         // ---- MakeCode Arcade and array-reference statements and hats (arcadeDialect.js)
-        if (/^(?:arcade|when\s+arcade|mutate\s+array\s+reference)\s/i.test(line)) {
-            for (const entry of arcadeWordsOf(wasHat ? ['hat'] : ['command'])) {
+        if (/^(?:arcade|when\s+arcade|mutate\s+array\s+reference|declare\s+arcade)\s/i.test(line)) {
+            for (const entry of arcadeWordsOf(wasHat ? ['hat'] : allowLoop ? ['loop'] : ['command'])) {
                 const m = matchTopLevel(line, compileArcadeWord(entry).re);
                 if (!m) continue;
                 const { id, block } = cmd(entry.op, entry.kind === 'hat' ? { topLevel: true } : {});
@@ -6164,6 +6385,25 @@ class SB3Creator {
             block[id].inputs.LIVES = val(match[1]);
             return ret(block);
         }
+        // ---- generic GPIO pins (numeric 0-7) ⇄ the DOS Forth bench's pin! ----
+        // `set pin N high|low` and `set pin N to <expr>`; PIN is a menu field, the
+        // value is an input. The Forth reader (bw-lang/forth.js) writes exactly
+        // these, so a Forth pin program round-trips to blocks and back. Numeric,
+        // so it never shadows the micro:bit `set pin P<n> …` rules just below or
+        // the STC `set <pin-name> …` rules above (a digit is neither a P-pin nor
+        // a declared pin name).
+        if ((match = matchTopLevel(line, /^set\s+pin\s+(\d+)\s+(high|low)\s*$/i))) {
+            const { id, block } = cmd('bwgpio_setpin');
+            block[id].fields.PIN = [match[1], null];
+            block[id].inputs.VALUE = val(match[2].toLowerCase() === 'high' ? '1' : '0');
+            return ret(block);
+        }
+        if ((match = matchTopLevel(line, /^set\s+pin\s+(\d+)\s+to\s+(.+?)\s*$/i))) {
+            const { id, block } = cmd('bwgpio_setpin');
+            block[id].fields.PIN = [match[1], null];
+            block[id].inputs.VALUE = val(match[2]);
+            return ret(block);
+        }
         // ---- micro:bit+ PINS group (DUAL-LOWERING-ORACLE P1–P7) ----
         if ((match = matchTopLevel(line, /^set\s+pin\s+(P\d+)\s+(?:to\s+|digital\s+)([01])\s*$/i))) {
             const { id, block } = cmd('microbitplus_digitalwrite');
@@ -6175,6 +6415,14 @@ class SB3Creator {
             const { id, block } = cmd('microbitplus_analogwrite');
             block[id].fields.PIN = [match[1].toUpperCase(), null];
             block[id].inputs.PCT = val(match[2]);
+            return ret(block);
+        }
+        // Calliope mini on-board motor driver (MakeCode `motors.dualMotorPower`).
+        // The micro:bit has no motor, so the word names the board it is for.
+        if ((match = matchTopLevel(line, /^calliope\s+motor\s+(A|B)\s+power\s+(\S+)\s*%?\s*$/i))) {
+            const { id, block } = cmd('microbitplus_motorpower');
+            block[id].fields.MOTOR = [match[1].toUpperCase(), null];
+            block[id].inputs.POWER = val(match[2]);
             return ret(block);
         }
         if ((match = matchTopLevel(line, /^set\s+pin\s+(P\d+)\s+pull\s+(none|up|down)\s*$/i))) {
@@ -7587,7 +7835,7 @@ class SB3Creator {
             if (j >= lines.length) return own + 2;
             const ni = getIndent(lines[j]);
             if (ni > own) return nextIndent(idx);
-            return ni === own && !/^(WHEN|DEFINE|SPRITE|STAGE)\b/i.test(lines[j].trim()) ? own : own + 2;
+            return ni === own && !/^(WHEN|DEFINE|SPRITE|STAGE|DEVICE)\b/i.test(lines[j].trim()) ? own : own + 2;
         };
 
         const stage = this.createStage();
@@ -7673,7 +7921,9 @@ class SB3Creator {
                     let ownComment = this._pendingComment;
                     this._pendingComment = '';
 
-                    if (trimmed.toUpperCase().startsWith('FOREVER')) {
+                    if (/^arcade\s+repeat\s+while\b/i.test(trimmed)) {
+                        newBlockData = this.parseCommand(trimmed.slice(0, -1), target, true);
+                    } else if (trimmed.toUpperCase().startsWith('FOREVER')) {
                         newBlockData = {
                             block: this.createBlock('control_forever').block,
                             extraBlocks: {}
@@ -7806,6 +8056,12 @@ class SB3Creator {
                 continue;
             }
 
+            if (this._board && this._board !== this.project.boards[0] && /^GLOBAL\b/i.test(trimmed)) {
+                this.unreadable(i, trimmed, `GLOBAL belongs to the first board; board "${this._board.name}" has its own `
+                    + 'memory — declare it with LOCAL');
+                i++; continue;
+            }
+
             // Explicit scope declarations. `(.+)$` used to swallow an initializer into the
             // NAME, so `GLOBAL dist = 0` declared a variable literally called "dist = 0" and
             // threw the initial value away — then a second, correct-but-uninitialized `dist`
@@ -7831,6 +8087,20 @@ class SB3Creator {
                 if (decl[1].toUpperCase() === 'GLOBAL') this.declaredGlobals.add(name);
                 else this.declaredLocals.add(`${currentTarget.name}:${name}`);
                 this.getOrCreateVariable(name, currentTarget, this.parseScalarInitial(initial));
+                i++; continue;
+            }
+
+            // `DEVICE <id> AS <Name>:` opens a BOARD section: several boards in
+            // one project, each with its own declarations, program and sprites.
+            const boardHeader = trimmed.match(SB3Creator.BOARD_HEADER_RE);
+            if (boardHeader) {
+                const opened = this.openBoard(boardHeader[1], boardHeader[2].trim(), i, trimmed, stage);
+                if (opened) currentTarget = opened;
+                i++; continue;
+            }
+            if (this._board && /^DEVICE\b/i.test(trimmed)) {
+                this.unreadable(i, trimmed, `board "${this._board.name}" already names its device in its header; `
+                    + 'a second board starts with its own "DEVICE <id> AS <Name>:" line');
                 i++; continue;
             }
 
@@ -7872,6 +8142,10 @@ class SB3Creator {
                     }
                     currentTarget = this.createSprite(spriteName);
                     this.project.targets.push(currentTarget);
+                    if (this._board) this._board.targets.push(spriteName);
+                } else if (this._board && this._board !== this.project.boards[0]) {
+                    this.unreadable(i, trimmed, `the Stage belongs to the first board; scripts of board "${this._board.name}" `
+                        + 'go directly under its DEVICE header or under one of its sprites');
                 } else {
                     currentTarget = stage;
                 }
@@ -7952,6 +8226,10 @@ class SB3Creator {
         // A line that could not be read is refused, not skipped: see UnparsedLinesError.
         if (this.unparsed.length) throw new UnparsedLinesError(this.unparsed, this.warnings.slice());
 
+        if (this.project.boards) {
+            this.project.stc = this.project.boards[0].stc;
+            this._board = null;
+        }
         this.validateReferences();
         this.syncExtensions();
         for (const t of this.project.targets) this.layoutScripts(t);
@@ -7972,6 +8250,85 @@ class SB3Creator {
     // parse, so the two cannot drift within this library's own flows.
 
     /** Marker that identifies the persistence comment. */
+    /** `DEVICE <id> AS <Name>:` — the header of a board section. */
+    static BOARD_HEADER_RE = /^DEVICE\s+([\w-]+)\s+AS\s+(.+?):?$/i;
+
+    /**
+     * Open a board section. `project.boards` is `[{name, stc, targets}]`; while a
+     * section is being read `project.stc` IS that board's block, so every
+     * declaration and every device-dependent word binds to it. The first board
+     * owns the Stage; a later board gets a sprite named after it for the scripts
+     * written directly under its header. A project without a board header has no
+     * `boards` key at all and is read exactly as before.
+     * @returns {object | null} the target the following lines belong to
+     */
+    openBoard(deviceWord, name, lineIndex, trimmed, stage) {
+        const boards = this.project.boards || [];
+        if (!boards.length && this.project.stc) {
+            this.unreadable(lineIndex, trimmed, 'this program already has a plain DEVICE line or declarations; with several '
+                + 'boards every one of them starts with "DEVICE <id> AS <Name>:" and nothing is declared before the first');
+            return null;
+        }
+        if (!/^[A-Za-z][\w -]*$/.test(name)) {
+            this.unreadable(lineIndex, trimmed, `"${name}" is not a board name (a letter, then letters, digits, spaces, _ or -)`);
+            return null;
+        }
+        const taken = (n) => n.toLowerCase() === name.toLowerCase();
+        if (boards.some((b) => taken(b.name))
+            || (boards.length && this.project.targets.some((t) => !t.isStage && taken(t.name)))) {
+            this.unreadable(lineIndex, trimmed, `the name "${name}" is already used by a board or a sprite`);
+            return null;
+        }
+        const before = this.project.stc;
+        const refusedBefore = this.unparsed.length;
+        delete this.project.stc;
+        this.parseStcDeclaration(`DEVICE ${deviceWord}`, lineIndex);
+        if (this.unparsed.length !== refusedBefore || !this.project.stc) {
+            if (before) this.project.stc = before; else delete this.project.stc;
+            return null;
+        }
+        const board = { name, stc: this.project.stc, targets: [] };
+        boards.push(board);
+        this.project.boards = boards;
+        this._board = board;
+        if (boards.length === 1) return stage;
+        const main = this.createSprite(name);
+        this.project.targets.push(main);
+        this.targetNames.add(name);
+        board.targets.push(name);
+        return main;
+    }
+
+    static BOARDS_MAGIC = '_stcboards_';
+    static BOARDS_COMMENT_ID = 'stcboards';
+
+    /**
+     * The boards of a project: the top-level key when present, else the Stage
+     * comment that survives scratch-vm's serializer. Null for a one-board project.
+     * @param {object} project - sb3-shaped project JSON
+     * @returns {Array<{name: string, stc: object, targets: string[]}> | null}
+     */
+    static readBoards(project) {
+        if (!project) return null;
+        if (Array.isArray(project.boards)) return project.boards.length ? project.boards : null;
+        const stage = Array.isArray(project.targets) ? project.targets.find(t => t.isStage) : null;
+        if (!stage || !stage.comments) return null;
+        for (const c of Object.values(stage.comments)) {
+            const text = c && typeof c.text === 'string' ? c.text : '';
+            const at = text.indexOf(SB3Creator.BOARDS_MAGIC);
+            if (at === -1) continue;
+            try {
+                const boards = JSON.parse(text.slice(at + SB3Creator.BOARDS_MAGIC.length));
+                const ok = Array.isArray(boards) && boards.length && boards.every((b) => b && typeof b.name === 'string'
+                    && b.stc && typeof b.stc === 'object' && Array.isArray(b.targets));
+                return ok ? boards : null;
+            } catch {
+                return null; // corrupt comment: absent beats invented
+            }
+        }
+        return null;
+    }
+
     static STC_MAGIC = '_stcconfig_';
 
     /** Stable comment id, so rewrites replace rather than accumulate. */
@@ -7993,6 +8350,18 @@ class SB3Creator {
             text: 'BrickWright hardware declarations — regenerated on save, do not edit.\n'
                 + SB3Creator.STC_MAGIC + JSON.stringify(project.stc)
         };
+        // Several boards: the whole list rides beside it. A one-board project
+        // writes nothing more, so its file is what it always was.
+        if (Array.isArray(project.boards) && project.boards.length) {
+            stage.comments[SB3Creator.BOARDS_COMMENT_ID] = {
+                blockId: null,
+                x: 0, y: 160, width: 320, height: 140, minimized: true,
+                text: 'BrickWright boards — regenerated on save, do not edit.\n'
+                    + SB3Creator.BOARDS_MAGIC + JSON.stringify(project.boards)
+            };
+        } else if (stage.comments[SB3Creator.BOARDS_COMMENT_ID]) {
+            delete stage.comments[SB3Creator.BOARDS_COMMENT_ID];
+        }
     }
 
     /**
@@ -8301,20 +8670,10 @@ class SB3Creator {
 
     // ===== Decompiler: project blocks -> pseudocode (inverse of the parser) =========
 
-    // Decompile a whole project back into pseudocode.
-    decompile(project = this.project) {
-        const out = [];
-        const stage = project.targets.find(t => t.isStage);
-        // STC12 / 8051 device declarations first — they are read before any script.
-        // A project that lived through scratch-vm's serializer has lost the
-        // top-level key; recover it from the Stage persistence comment.
-        if (!project.stc) {
-            const recovered = SB3Creator.readStc(project);
-            if (recovered) project.stc = recovered;
-        }
-        if (project.stc) {
-            const cfg = project.stc;
-            out.push(`DEVICE ${String(cfg.device || 'stc12c5a60s2').toUpperCase()}`);
+    // The declarations of one board's block, as the lines the parser reads.
+    // `boardName` turns the DEVICE line into a board section header.
+    decompileStcDeclarations(cfg, out, boardName = null) {
+            out.push(`DEVICE ${String(cfg.device || 'stc12c5a60s2').toUpperCase()}${boardName ? ` AS ${boardName}:` : ''}`);
             out.push(`CLOCK ${cfg.clock || 11059200}`);
             if (cfg.machine) {
                 const hx = (n) => '$' + n.toString(16).toUpperCase().padStart(4, '0');
@@ -8373,7 +8732,90 @@ class SB3Creator {
             }
             if (cfg.ledcube) out.push(`LEDCUBE ${cfg.ledcube.size}`);
             out.push('');
+    }
+
+    // One sprite section, as decompile() writes it for a one-board project.
+    decompileSpriteSection(t, out) {
+        const scripts = this.decompileTargetScripts(t);
+        out.push(`SPRITE ${t.name}:`);
+        if (t.costumes && t.costumes[0] && t.costumes[0]._shapeSpec) out.push(`  SHAPE ${t.costumes[0]._shapeSpec}`);
+        for (const v of Object.values(t.variables || {})) out.push(`  LOCAL ${this.declarationText(v)}`);
+        for (const l of Object.values(t.lists || {})) out.push(`  LOCAL LIST ${this.declarationText(l)}`);
+        for (const cos of (t.costumes || []).slice(1)) out.push(`  COSTUME ${cos._spec || cos.name}`);
+        for (const snd of (t.sounds || []).slice(1)) out.push(`  SOUND ${snd.name}`);
+        out.push(...scripts.map(l => (l ? `  ${l}` : l)));
+        out.push('');
+    }
+
+    // Several boards: one section per board, in order. While a board's targets
+    // are written `project.stc` is that board's block, as it was when they were read.
+    decompileBoards(project, boards) {
+        const out = [];
+        const stage = project.targets.find(t => t.isStage);
+        const sprites = new Map(project.targets.filter(t => !t.isStage).map(t => [t.name, t]));
+        const claimed = new Set();
+        boards.forEach((b, bi) => { if (bi) claimed.add(b.name); for (const n of b.targets) claimed.add(n); });
+        const saved = project.stc;
+        try {
+            boards.forEach((board, bi) => {
+                project.stc = board.stc;
+                this.decompileStcDeclarations(board.stc, out, board.name);
+                if (bi === 0) {
+                    for (const v of Object.values(stage.variables || {})) out.push(`GLOBAL ${this.declarationText(v)}`);
+                    for (const l of Object.values(stage.lists || {})) out.push(`GLOBAL LIST ${this.declarationText(l)}`);
+                    for (const bd of (stage.costumes || []).slice(1)) out.push(`BACKDROP ${bd._spec || bd.name}`);
+                    for (const snd of (stage.sounds || []).slice(1)) out.push(`SOUND ${snd.name}`);
+                    out.push('');
+                    const scripts = this.decompileTargetScripts(stage);
+                    if (scripts.length) {
+                        out.push('STAGE:');
+                        out.push(...scripts.map(l => (l ? `  ${l}` : l)));
+                        out.push('');
+                    }
+                    // A sprite no board lists (added in the editor) stays with the first board.
+                    const own = [...board.targets, ...[...sprites.keys()].filter((n) => !claimed.has(n))];
+                    for (const n of own) if (sprites.has(n)) this.decompileSpriteSection(sprites.get(n), out);
+                    return;
+                }
+                const main = sprites.get(board.name);
+                if (main) {
+                    if (main.costumes && main.costumes[0] && main.costumes[0]._shapeSpec) out.push(`SHAPE ${main.costumes[0]._shapeSpec}`);
+                    for (const v of Object.values(main.variables || {})) out.push(`LOCAL ${this.declarationText(v)}`);
+                    for (const l of Object.values(main.lists || {})) out.push(`LOCAL LIST ${this.declarationText(l)}`);
+                    for (const cos of (main.costumes || []).slice(1)) out.push(`COSTUME ${cos._spec || cos.name}`);
+                    for (const snd of (main.sounds || []).slice(1)) out.push(`SOUND ${snd.name}`);
+                    out.push('');
+                    out.push(...this.decompileTargetScripts(main));
+                    out.push('');
+                }
+                for (const n of board.targets) {
+                    if (n !== board.name && sprites.has(n)) this.decompileSpriteSection(sprites.get(n), out);
+                }
+            });
+        } finally {
+            if (saved) project.stc = saved; else delete project.stc;
         }
+        return out.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n';
+    }
+
+    // Decompile a whole project back into pseudocode.
+    decompile(project = this.project) {
+        project = this.refreshCallableSourceBindings(project);
+        const out = [];
+        const stage = project.targets.find(t => t.isStage);
+        // STC12 / 8051 device declarations first — they are read before any script.
+        // A project that lived through scratch-vm's serializer has lost the
+        // top-level key; recover it from the Stage persistence comment.
+        if (!project.stc) {
+            const recovered = SB3Creator.readStc(project);
+            if (recovered) project.stc = recovered;
+        }
+        const boards = SB3Creator.readBoards(project);
+        if (boards) {
+            if (!project.boards) project.boards = boards;
+            return this.decompileBoards(project, boards);
+        }
+        if (project.stc) this.decompileStcDeclarations(project.stc, out);
         for (const v of Object.values(stage.variables || {})) out.push(`GLOBAL ${this.declarationText(v)}`);
         for (const l of Object.values(stage.lists || {})) out.push(`GLOBAL LIST ${this.declarationText(l)}`);
         for (const bd of (stage.costumes || []).slice(1)) out.push(`BACKDROP ${bd._spec || bd.name}`);
@@ -8577,6 +9019,7 @@ class SB3Creator {
             case 'microbitplus_sound': return 'read sound';
             // micro:bit+ pin/button/radio reporters (decompile to dialect).
             case 'microbitplus_digitalread': return `pin ${f('PIN')} digital`;
+            case 'bwgpio_readpin': return `read pin ${f('PIN')}`;
             case 'microbitplus_analogread': return `analog value of pin ${f('PIN')}`;
             case 'microbitplus_isbutton': return `read button_${f('BTN')}`;
             case 'microbitplus_ispinhigh': return `pin ${f('PIN')} is high`;
@@ -8660,7 +9103,7 @@ class SB3Creator {
             default: {
                 const ev3 = ev3WordFor(b.opcode);
                 if (ev3 && ev3.kind !== 'command') return this.spellEv3(ev3, b, blocks);
-                const arcade = arcadeWordFor(b.opcode);
+                const arcade = arcadeWordFor(b.opcode) || cpxWordFor(b.opcode);
                 if (arcade && (arcade.kind === 'reporter' || arcade.kind === 'boolean')) return this.spellArcade(arcade, b, blocks);
                 // A Boolean block of the condition grammar in a ROUND slot (a
                 // Scratch project may hold one): written as its condition, so
@@ -8670,7 +9113,7 @@ class SB3Creator {
                 if (cond !== null) return cond;
                 // An arcade menu shadow (a block dragged in the editor keeps its
                 // menu as a shadow input): the value it holds.
-                if (/^arcade_menu_/.test(b.opcode)) {
+                if (/^(arcade|circuitplayground)_menu_/.test(b.opcode)) {
                     const value = String(Object.values(b.fields || {})[0]?.[0] ?? '');
                     return /^-?\d+(\.\d+)?$/.test(value) ? value : escapeTextLiteral(value);
                 }
@@ -8771,7 +9214,7 @@ class SB3Creator {
                 return `DEFINE ${m.warp === 'true' ? 'FAST ' : ''}${sig}:`;
             }
             default: {
-                const arcade = arcadeWordFor(b.opcode);
+                const arcade = arcadeWordFor(b.opcode) || cpxWordFor(b.opcode);
                 return arcade && arcade.kind === 'hat' ? this.spellArcade(arcade, b, blocks) : null;
             }
         }
@@ -8945,7 +9388,9 @@ class SB3Creator {
             case 'microbitplus_setlife': return line(`set game life to ${v('VALUE')}`);
             case 'microbitplus_addlife': return line(`add game life ${v('LIVES')}`);
             case 'microbitplus_digitalwrite': return line(`set pin ${f('PIN')} to ${f('LEVEL')}`);
+            case 'bwgpio_setpin': return line(`set pin ${f('PIN')} to ${v('VALUE')}`);
             case 'microbitplus_analogwrite': return line(`set pin ${f('PIN')} analog ${v('PCT')} %`);
+            case 'microbitplus_motorpower': return line(`calliope motor ${f('MOTOR')} power ${v('POWER')} %`);
             case 'microbitplus_setpull': return line(`set pin ${f('PIN')} pull ${f('MODE')}`);
             case 'microbitplus_playtone': {
                 // -1 is "until the next tone" (MakeCode's ringTone), which is
@@ -9083,15 +9528,16 @@ class SB3Creator {
                 let ai = 0;
                 const text = m.proccode.replace(/%[sb]/g, (tok) => {
                     const input = b.inputs[argIds[ai++]];
-                    if (tok === '%b') return `(${this.dcond(input[1], blocks)})`;
-                    return this.dval(input, blocks);
+                    if (tok === '%b') return `(<${this.dcond(input[1], blocks)}>)`;
+                    return `(${this.dval(input, blocks)})`;
                 });
-                return line(text);
+                return line(`CALL: (${text})`);
             }
             default: {
                 const ev3 = ev3WordFor(b.opcode);
                 if (ev3 && ev3.kind === 'command') return line(this.spellEv3(ev3, b, blocks));
-                const arcade = arcadeWordFor(b.opcode);
+                const arcade = arcadeWordFor(b.opcode) || cpxWordFor(b.opcode);
+                if (arcade && arcade.kind === 'loop') return [pad + this.spellArcade(arcade, b, blocks) + ':', ...sub('SUBSTACK', level + 1)];
                 if (arcade && arcade.kind === 'command') return line(this.spellArcade(arcade, b, blocks));
                 return line(`# unsupported: ${b.opcode}`);
             }
@@ -10482,7 +10928,8 @@ class SB3Creator {
         if (!part) return null;
         // The board dialects name the C core differently (see generateC's
         // _core): 'rp2040' covers the Pico and the STM32F030, 'arduino' the AVRs.
-        if (part.core === 'rp2040') return part.stm32f0 ? 'stm32f0' : 'rp2040';
+        if (part.esp8266) return null;   // the runtime exposes no temperature reading
+        if (part.core === 'rp2040') return part.stm32f0 ? 'stm32f0' : (part.stm32g0 ? 'stm32g0' : (part.stm32f1 ? 'stm32f1' : 'rp2040'));
         if (part.core !== 'arduino') return null;
         if (part.tiny85) return 'attiny85';
         if (part.tiny88) return 'attiny88';
@@ -10679,6 +11126,111 @@ class SB3Creator {
         return out;
     }
 
+    /**
+     * The clock tree that makes F_CPU true on STM32 silicon. Every part
+     * leaves reset on its internal RC oscillator (F030 HSI 8 MHz, G030
+     * HSI16 16 MHz, F103 HSI 8 MHz); the generated timings (TIM3 prescaler,
+     * USART BRR, TIM14/TIM4 tone) are computed from F_CPU, so the PLL must
+     * actually be programmed to the value F_CPU claims. Two clocks are
+     * honoured per chip: the PLL default (48/64/72 MHz) and the reset clock
+     * (no PLL, nothing to program). Any other CLOCK refuses the program by
+     * name in generateC rather than ship timings that are silently wrong.
+     */
+    _cStm32ClockInit(clock) {
+        const chip = this._cStm32G0 ? 'STM32G030' : this._cStm32F1 ? 'STM32F103' : 'STM32F030';
+        const pll = this._cStm32G0 ? 64000000 : this._cStm32F1 ? 72000000 : 48000000;
+        const reset = this._cStm32G0 ? 16000000 : 8000000;
+        this._cStm32ClockRefused = null;
+        this._cStm32ClockPll = false;
+        if (clock === reset) {
+            return [`/* ${chip} runs on its reset clock (${reset / 1e6} MHz internal RC): no PLL,`,
+                ' * no flash wait states, every bus prescaler /1. */',
+                'static void bw_clock_init(void) { }', ''];
+        }
+        if (clock !== pll) {
+            this._cStm32ClockRefused = `CLOCK ${clock} Hz on the ${chip} (this C back end programs ${pll / 1e6} MHz `
+                + `through the PLL, or runs on the ${reset / 1e6} MHz reset clock)`;
+            return [];
+        }
+        this._cStm32ClockPll = true;
+        const wait = ['/* Bounded poll: 1 once (reg & mask) == want, 0 after 2^17 reads. On',
+            ' * silicon every wait below completes in microseconds (HSE start-up',
+            ' * excepted: a few ms); the bound only keeps a dead oscillator from',
+            ' * hanging the reset path forever (ST\'s HAL bounds the same waits). */',
+            'static int bw_wait(volatile uint32_t *reg, uint32_t mask, uint32_t want)',
+            '{',
+            '    uint32_t n = 0x20000u;',
+            '    while ((*reg & mask) != want) if (--n == 0u) return 0;',
+            '    return 1;',
+            '}', ''];
+        if (this._cStm32G0) {
+            return [...wait,
+                '/* RM0444 §5 (RCC) and §3.3.4 (FLASH_ACR): HSI16 -> PLL -> 64 MHz.',
+                ' *   VCO = 16 MHz / M(1) * N(8) = 128 MHz (64..344 MHz allowed),',
+                ' *   PLLRCLK = VCO / R(2) = 64 MHz = SYSCLK; AHB = APB = /1 (reset),',
+                ' *   so TIM3/TIM14 and USART1 (PCLK) also run at 64 MHz.',
+                ' * Flash needs 2 wait states above 48 MHz in range 1 (the reset range),',
+                ' * set and READ BACK before the clock rises. On failure the chip stays',
+                ' * on HSI16 (every timing then 4x slow): visible, not a hang. */',
+                'static void bw_clock_init(void)',
+                '{',
+                '    FLASH_ACR = (FLASH_ACR & ~7u) | (1u << 8) | 2u;   /* PRFTEN + LATENCY = 2 */',
+                '    if (!bw_wait(&FLASH_ACR, 7u, 2u)) return;',
+                '    RCC_PLLCFGR = (RCC_PLLCFGR & ~((7u << 29) | (1u << 28) | (0x7Fu << 8) | (7u << 4) | 3u))',
+                '                | (1u << 29) | (1u << 28) | (8u << 8) | 2u;   /* R=/2, PLLREN, N=8, M=/1, HSI16 */',
+                '    RCC_CR |= (1u << 24);                             /* PLLON */',
+                '    if (!bw_wait(&RCC_CR, 1u << 25, 1u << 25)) return;   /* PLLRDY */',
+                '    RCC_CFGR = (RCC_CFGR & ~7u) | 2u;                 /* SW = PLLRCLK */',
+                '    (void)bw_wait(&RCC_CFGR, 7u << 3, 2u << 3);       /* SWS = PLLRCLK */',
+                '}', ''];
+        }
+        if (this._cStm32F1) {
+            return [...wait,
+                '/* RM0008 §7 (RCC) and §3.3.3 (FLASH_ACR): the Blue Pill\'s 8 MHz HSE',
+                ' * crystal -> PLL x9 -> 72 MHz. AHB /1 and APB2 /1 = 72 MHz (USART1,',
+                ' * ADC via ADCPRE /6 = 12 MHz <= 14 MHz); APB1 /2 = 36 MHz (its 36 MHz',
+                ' * maximum), and because APB1 is prescaled its timers run at 2 x PCLK1',
+                ' * = 72 MHz (§7.2), so TIM2/TIM3/TIM4 count at F_CPU. Flash: 2 wait',
+                ' * states above 48 MHz, prefetch on, set before the clock rises.',
+                ' * No crystal (HSE never ready): fall back to HSI/2 x 16 = 64 MHz, the',
+                ' * fastest the internal RC reaches; timings then run 8/9 as fast. */',
+                'static void bw_clock_init(void)',
+                '{',
+                '    uint32_t cfgr = RCC_CFGR & ~((0xFu << 18) | (3u << 16) | (3u << 14) | (0x3Fu << 8) | (0xFu << 4));',
+                '    cfgr |= (2u << 14) | (4u << 8);                   /* ADCPRE = /6, PPRE1 = /2 */',
+                '    FLASH_ACR = (1u << 4) | 2u;                       /* PRFTBE + LATENCY = 2 */',
+                '    RCC_CR |= (1u << 16);                             /* HSEON */',
+                '    if (bw_wait(&RCC_CR, 1u << 17, 1u << 17))         /* HSERDY */',
+                '        cfgr |= (7u << 18) | (1u << 16);              /* PLLMUL = x9, PLLSRC = HSE */',
+                '    else {',
+                '        RCC_CR &= ~(1u << 16);                        /* HSE off again */',
+                '        cfgr |= (14u << 18);                          /* PLLMUL = x16, PLLSRC = HSI/2 */',
+                '    }',
+                '    RCC_CFGR = cfgr;',
+                '    RCC_CR |= (1u << 24);                             /* PLLON */',
+                '    if (!bw_wait(&RCC_CR, 1u << 25, 1u << 25)) return;   /* PLLRDY */',
+                '    RCC_CFGR = (RCC_CFGR & ~3u) | 2u;                 /* SW = PLL */',
+                '    (void)bw_wait(&RCC_CFGR, 3u << 2, 2u << 2);       /* SWS = PLL */',
+                '}', ''];
+        }
+        return [...wait,
+            '/* RM0360 §6 (RCC) and §3.5.1 (FLASH_ACR): HSI 8 MHz / 2 -> PLL x12 ->',
+            ' * 48 MHz. AHB = APB = /1 (reset), so TIM3/TIM14 and USART1 run at',
+            ' * 48 MHz too; the ADC keeps its own HSI14 clock. Flash: 1 wait state',
+            ' * above 24 MHz plus prefetch, set before the clock rises. On failure',
+            ' * the chip stays on HSI (every timing then 6x slow): visible, not a hang. */',
+            'static void bw_clock_init(void)',
+            '{',
+            '    FLASH_ACR = (1u << 4) | 1u;                       /* PRFTBE + LATENCY = 1 */',
+            '    RCC_CFGR = (RCC_CFGR & ~((0xFu << 18) | (3u << 15))) | (10u << 18);',
+            '                                                      /* PLLMUL = x12, PLLSRC = HSI/2 */',
+            '    RCC_CR |= (1u << 24);                             /* PLLON */',
+            '    if (!bw_wait(&RCC_CR, 1u << 25, 1u << 25)) return;   /* PLLRDY */',
+            '    RCC_CFGR = (RCC_CFGR & ~3u) | 2u;                 /* SW = PLL */',
+            '    (void)bw_wait(&RCC_CFGR, 3u << 2, 2u << 2);       /* SWS = PLL */',
+            '}', ''];
+    }
+
     /** `chip temperature` in C: bw_chip_temp(), or a stated 0 on a chip without a sensor. */
     cChipTemp() {
         const device = this.project && this.project.stc && this.project.stc.device;
@@ -10755,6 +11307,50 @@ class SB3Creator {
                 '    uv = (long)(BW_ADC_RESULT & 0xFFFu) * 103125L / 128L;   /* * 3300000 / 4096, exactly */',
                 '    t1000 = 27000L - (uv - 706000L) * 581L / 1000L;',
                 '    return (t1000 + 500L + 1000000L) / 1000L - 1000L;',
+                '}', ''];
+        }
+        if (sensor === 'stm32f1') {
+            return ['/* chip temperature (RM0008 §11.10): ADC1 channel 16 once CR2.TSVREFE',
+                ' * powers the sensor, sampled 239.5 cycles (SMPR1 SMP16, >= 17.1 us).',
+                ' * DS5319 typical: V25 = 1.43 V, slope 4.3 mV per degree. adc_read',
+                ' * keeps TSVREFE set. Hundredths of a mV throughout. */',
+                '#define ADC1_SMPR1   BW_MMIO(0x4001240cu)',
+                'static long bw_chip_temp(void)',
+                '{',
+                '    long mv100, t100;',
+                '    ADC1_SMPR1 |= (7u << 18);                    /* SMP16 = 239.5 cycles */',
+                '    ADC1_CR2 |= (1u << 23);                      /* TSVREFE */',
+                '    mv100 = adc_read(16) * 330000L / 4095L;',
+                '    t100 = 2500L + (143000L - mv100) * 100L / 430L;',
+                round,
+                '}', ''];
+        }
+        if (sensor === 'stm32g0') {
+            return ['/* chip temperature (RM0444 §15.10, DS12991 §5.3.21): ADC channel 12 once',
+                ' * ADC_CCR.TSEN powers the sensor (t_START, a 100 us wait, first use only);',
+                ' * adc_read samples 160.5 ADC clocks = 10 us >= the 5 us minimum. The',
+                ' * sensor RISES 2.5 mV per degree (Avg_Slope). Its 30 C point is the',
+                ' * factory TS_CAL1 (system memory 0x1FFF75A8, taken at VDDA = 3.0 V,',
+                ' * DS12991 Table "Temperature sensor calibration values"), rescaled to',
+                ' * the 3.3 V VDDA this program assumes; an erased word (0 or 0xFFFF)',
+                ' * falls back to the typical V30 = 0.76 V. Hundredths of a mV. */',
+                '#define BW_TS_CAL1   (*(volatile const uint16_t *)0x1FFF75A8u)',
+                'static long bw_chip_temp(void)',
+                '{',
+                '    static uint8_t on;',
+                '    long mv100, cal100, t100;',
+                '    uint32_t cal;',
+                '    if (!on) {',
+                '        volatile uint32_t d;',
+                '        ADC_CCR |= (1u << 23);                   /* TSEN */',
+                '        for (d = 0; d < 2000u; d++) { }          /* t_START */',
+                '        on = 1;',
+                '    }',
+                '    mv100 = adc_read(12) * 330000L / 4095L;',
+                '    cal = BW_TS_CAL1;',
+                '    cal100 = (cal == 0u || cal > 0xFFFu) ? 76000L : (long)cal * 300000L / 4095L;',
+                '    t100 = 3000L + (mv100 - cal100) * 100L / 250L;',
+                round,
                 '}', ''];
         }
         return ['/* chip temperature: ADC channel 16 once ADC_CCR.TSEN powers the sensor,',
@@ -10834,16 +11430,33 @@ class SB3Creator {
     /** The GPIO index for a Pico pin record (GP<n> -> n), or null. */
     armHw(pin) {
         if (this._cStm32) {
-            // F030 (TSSOP20): PA0-PA7 gpio 0-7, PA9/PA10 (USART pins,
-            // usable as GPIO when print is off) 9-10, PB1 gpio 17.
-            // Linear index: port = idx>>4 (0=A, 1=B), bit = idx&15 —
+            // F030/G030/F103: Linear index: port = idx>>4 (0=A, 1=B, 2=C), bit = idx&15 —
             // the C-side bw_pin_* helpers decode the same way.
-            const m = String(pin.where || '').toUpperCase().match(/^P([AB])(\d+)$/);
+            const m = String(pin.where || '').toUpperCase().match(/^P([A-C])(\d+)$/);
             if (!m) return null;
+            const port = m[1] === 'A' ? 0 : m[1] === 'B' ? 1 : 2;
             const bit = Number(m[2]);
-            const idx = (m[1] === 'B' ? 16 : 0) + bit;
-            const ok = m[1] === 'A' ? (bit <= 7 || bit === 9 || bit === 10) : bit === 1;
-            return ok ? { gpio: idx } : null;
+            const idx = (port << 4) + bit;
+            if (this._device === 'stm32f030') {
+                const ok = m[1] === 'A' ? (bit <= 7 || bit === 9 || bit === 10) : bit === 1;
+                return ok ? { gpio: idx } : null;
+            }
+            if (this._device === 'stm32g030') {
+                const ok = m[1] === 'A' ? bit <= 15 : m[1] === 'B' ? bit <= 9 : (bit === 14 || bit === 15);
+                return ok ? { gpio: idx } : null;
+            }
+            if (this._device === 'stm32f103') {
+                const ok = m[1] === 'A' ? bit <= 15 : m[1] === 'B' ? bit <= 15 : (bit >= 13 && bit <= 15);
+                return ok ? { gpio: idx } : null;
+            }
+            return { gpio: idx };
+        }
+        if (this._cEsp8266) {
+            // GPIO numbers as the runtime takes them; 6-11 are the SPI
+            // flash bus and 16 has no runtime support, so neither is a pin.
+            const e = String(pin.where || '').toUpperCase().match(/^GP(\d+)$/);
+            const n = e ? Number(e[1]) : -1;
+            return (n >= 0 && n <= 5) || (n >= 12 && n <= 15) ? { gpio: n } : null;
         }
         const m = String(pin.where || '').toUpperCase().match(/^GP(\d+)$/);
         return m && Number(m[1]) <= 28 ? { gpio: Number(m[1]) } : null;
@@ -10852,10 +11465,10 @@ class SB3Creator {
     /** Single-point pin-op emission for the arm cores: the pico writes
      *  SIO registers, the F0 goes through the bw_pin_* inline helpers
      *  (which gcc -Os folds to one store for constant pins). */
-    armSet (hw) { return this._cStm32 ? `bw_pin_set(${hw.gpio}u);` : `BW_SIO_GPIO_OUT_SET = (1UL << ${hw.gpio});`; }
-    armClr (hw) { return this._cStm32 ? `bw_pin_clr(${hw.gpio}u);` : `BW_SIO_GPIO_OUT_CLR = (1UL << ${hw.gpio});`; }
-    armXor (hw) { return this._cStm32 ? `bw_pin_xor(${hw.gpio}u);` : `BW_SIO_GPIO_OUT_XOR = (1UL << ${hw.gpio});`; }
-    armGet (hw) { return this._cStm32 ? `bw_pin_get(${hw.gpio}u)` : `((BW_SIO_GPIO_IN >> ${hw.gpio}) & 1u)`; }
+    armSet (hw) { if (this._cEsp8266) return `digitalWrite(${hw.gpio}, HIGH);`; return this._cStm32 ? `bw_pin_set(${hw.gpio}u);` : `BW_SIO_GPIO_OUT_SET = (1UL << ${hw.gpio});`; }
+    armClr (hw) { if (this._cEsp8266) return `digitalWrite(${hw.gpio}, LOW);`; return this._cStm32 ? `bw_pin_clr(${hw.gpio}u);` : `BW_SIO_GPIO_OUT_CLR = (1UL << ${hw.gpio});`; }
+    armXor (hw) { if (this._cEsp8266) return `digitalWrite(${hw.gpio}, !digitalRead(${hw.gpio}));`; return this._cStm32 ? `bw_pin_xor(${hw.gpio}u);` : `BW_SIO_GPIO_OUT_XOR = (1UL << ${hw.gpio});`; }
+    armGet (hw) { if (this._cEsp8266) return `digitalRead(${hw.gpio})`; return this._cStm32 ? `bw_pin_get(${hw.gpio}u)` : `((BW_SIO_GPIO_IN >> ${hw.gpio}) & 1u)`; }
 
     /** How each board spells a general pin (PIN and pin-role PART lines
      *  share it): [pattern, the words a refusal uses]. */
@@ -10878,6 +11491,7 @@ class SB3Creator {
         pybadge: [/^(?:D(?:2|3|5|6|9|10|11|12|13)|A[0-5]|SDA|SCL)$/i,
             'D2, D3, D5, D6, D9-D13, A0-A5, SDA or SCL'],
         'pybadge-lc': [/^D\d+$/i, 'virtual D0-D31'],
+        cpx: [/^A[0-7]$/i, 'A0-A7'],
         samd51: [/^P[AB]\d+$/i, 'PA0-PA31 or PB0-PB31'],
         pico: [/^GP\d+$/i, 'GP0-GP28'],
         // Spelled out rather than `P[AB]\d+`, which accepted PB9 and
@@ -10886,6 +11500,11 @@ class SB3Creator {
         // PA23/PB23) would have carried that looseness from one digit to
         // two, so the row now says what its own message says.
         stm32f030: [/^(PA[0-7]|PA9|PA10|PB1)$/i, 'PA0-PA7, PA9, PA10 or PB1'],
+        stm32g030: [/^(PA[0-9]|PA1[0-5]|PB[0-9]|PC1[45])$/i, 'PA0-PA15, PB0-PB9 or PC14-PC15'],
+        stm32f103: [/^(PA[0-9]|PA1[0-5]|PB[0-9]|PB1[0-5]|PC1[3-5])$/i, 'PA0-PA15, PB0-PB15 or PC13-PC15'],
+        // GPIO numbers, Pico-style: GPIO6-11 carry the SPI flash and the
+        // runtime does not drive GPIO16, so neither is offered.
+        esp8266: [/^GP([0-5]|1[2-5])$/i, 'GP0-GP5 or GP12-GP15 (GPIO6-11 are the flash bus; GPIO16 is unsupported)'],
         // PB7 is Timer 1's square-wave pin and the machine's timebase
         // guard: the emitter would refuse it anyway, refuse it here too.
         eater6502: [/^(PA[0-7]|PB[0-7]|MK\d+)$/i, 'PA0-PA7, PB0-PB7, or MK0-MK19 (matrix keypad)'],
@@ -10975,7 +11594,9 @@ class SB3Creator {
         if (this._core === 'arm') {
             const hw = this.armHw(pin);
             if (!hw) {
-                this.cWarn(`"${pin.name}" (${pin.where}) is not a Pico GPIO`);
+                this.cWarn(this._cEsp8266
+                    ? `"${pin.name}" (${pin.where}) is not a usable ESP8266 GPIO: use GP0-GP5 or GP12-GP15 (GPIO6-11 are the flash bus, GPIO16 is unsupported)`
+                    : `"${pin.name}" (${pin.where}) is not a Pico GPIO`);
                 return null;
             }
             return `BW_ARM:${pin.name}`;   // same non-lvalue discipline as the AVR
@@ -11046,9 +11667,16 @@ class SB3Creator {
                 return `adc_read(${ch})`;
             }
             if (this._core === 'arm') {
+                if (this._cEsp8266) {
+                    this.cWarn(`"${pin.name}" (${pin.where}) cannot be read as analog: `
+                        + 'the ESP8266 runtime has no analogRead');
+                    return `0 /* no analogRead on the ESP8266 */`;
+                }
                 if (this._cStm32) {
                     // ADC_IN0..7 sit on PA0..PA7 — channel = the pin number.
                     const hw = this.armHw(pin);
+                    // F103: PB0/PB1 add ADC12_IN8/IN9 (RM0008 §11, DS5319 pinout).
+                    if (this._cStm32F1 && hw && (hw.gpio === 16 || hw.gpio === 17)) return `adc_read(${hw.gpio - 8})`;
                     if (!hw || hw.gpio > 7) {
                         this.cWarn(`"${pin.name}" (${pin.where}) has no ADC channel: `
                             + 'the F030 ADC inputs are PA0-PA7 (ADC_IN0-7)');
@@ -11470,8 +12098,20 @@ class SB3Creator {
                     read: `((PIN${hw.reg} >> ${hw.bit}) & 1)` };
             }
             const hw = this.armHw(pin);
+            if (stm && this._cStm32F1) {
+                // RM0008 §9.1.6/Table 20: output open-drain (CNF=01, MODE=10 ->
+                // 0x6) — ODR 0 pulls the bus low, ODR 1 releases it, and IDR
+                // still reads the pad, which is exactly a 1-Wire DQ.
+                const P = 'ABC'[hw.gpio >> 4];
+                const n = hw.gpio & 15;
+                const cr = `GPIO${P}_${n < 8 ? 'CRL' : 'CRH'}`;
+                const s = (n & 7) * 4;
+                return { init: `bw_pin_set(${hw.gpio}u); ${cr} = (${cr} & ~(0xFu << ${s})) | (0x6u << ${s});   /* open drain, released */`,
+                    low: `bw_pin_clr(${hw.gpio}u);`, rel: `bw_pin_set(${hw.gpio}u);`,
+                    read: `bw_pin_get(${hw.gpio}u)` };
+            }
             if (stm) {
-                const reg = hw.gpio < 16 ? 'GPIOA_MODER' : 'GPIOB_MODER';
+                const reg = `GPIO${'ABC'[hw.gpio >> 4]}_MODER`;
                 const n = hw.gpio & 15;
                 return { init: `bw_pin_clr(${hw.gpio}u);`,
                     low: `${reg} |= (1u << ${2 * n});`, rel: `${reg} &= ~(3u << ${2 * n});`,
@@ -11995,6 +12635,17 @@ class SB3Creator {
             case 'devices_motion': { this._cUses.devices = true; this._cUses.button = true; return `bw_motion(${v('SENSOR')})`; }
             case 'devices_tilted': { this._cUses.devices = true; this._cUses.button = true; return `bw_tilted(${v('SENSOR')})`; }
             case 'devices_energised': { this._cUses.devices = true; this._cUses.relay = true; return `bw_energised(${v('DEVICE')})`; }
+            case 'sensing_timer':
+                if (this._cStm32) {
+                    // The STM32 build keeps a real millisecond count (TIM3's
+                    // tick), so the timer is that count since the last reset.
+                    // C numbers here are integers: whole seconds, truncated.
+                    this._cUses.timer = true;
+                    this._cUses.now = true;
+                    this.cWarn('timer counts whole seconds in STM32 C (integer arithmetic: 1.9 s reads 1)');
+                    return '((long)((bw_now() - bw_timer_t0) / 1000u))';
+                }
+                // falls through: elsewhere the timer has no C lowering yet
             default: {
                 const text = this.drep(b, blocks) || b.opcode;
                 this.cWarn(`no C equivalent for "${text}" — emitted as 0`);
@@ -12292,13 +12943,17 @@ class SB3Creator {
                 if (this._core === 'arm') {
                     const hw = pin ? this.armHw(pin) : null;
                     if (!hw) return line(`/* no PWM on ${this.cComment(f('PIN'))} */`);
-                    if (this._cStm32 && ![6, 7, 17].includes(hw.gpio)) {
-                        // TIM3's compare channels are the only PWM this
-                        // package routes to our header: PA6=CH1, PA7=CH2,
-                        // PB1=CH4. Refuse the rest at emit time, the same
-                        // policy as the AVR timer pins.
+                    const stmPwm = this._cStm32F1 ? [0, 1, 2, 3, 6, 7, 16, 17] : [6, 7, 17];
+                    if (this._cStm32 && !stmPwm.includes(hw.gpio)) {
+                        // TIM3's compare channels (and on the F103 TIM2's) are
+                        // the PWM this generator drives: PA6=CH1, PA7=CH2,
+                        // PB1=CH4, plus PB0=TIM3_CH3 and PA0-PA3=TIM2 on the
+                        // F103 — the same set its PIN declaration accepts.
+                        // Refuse the rest at emit time, the same policy as the
+                        // AVR timer pins.
                         this.cWarn(`"${pin.where}" has no usable PWM here: `
-                            + 'TIM3 drives PA6, PA7 and PB1 on the F030');
+                            + (this._cStm32F1 ? 'TIM2 drives PA0-PA3 and TIM3 PA6, PA7, PB0 and PB1 on the STM32F103'
+                                : `TIM3 drives PA6, PA7 and PB1 on the ${this._cStm32G0 ? 'STM32G030' : 'STM32F030'}`));
                         return line(`/* no PWM on ${this.cComment(pin.where)} */`);
                     }
                     return line(`pwm_set(${hw.gpio}, ${v('VALUE')});`);
@@ -12581,6 +13236,12 @@ class SB3Creator {
             case 'devices_oledcursor': { this._cUses.devices = true; this._cUses.oled = true; return line(`bw_oled_cursor(${v('DISPLAY')}, ${v('ROW')}, ${v('COL')});`); }
             case 'procedures_call': return line(this.cProcCall(b, blocks));
             default: {
+                if (this._cStm32 && b.opcode === 'sensing_resettimer') {
+                    // The timer's zero on the STM32 millisecond tick (cRep).
+                    this._cUses.timer = true;
+                    this._cUses.now = true;
+                    return line('bw_timer_t0 = bw_now();');
+                }
                 if (this._cListCore && this._core !== 'i8086' && b.opcode === 'sensing_askandwait') {
                     return [...this.cAskLines(b, blocks, pad),
                         `${pad}while (!(bw_got_line())) ;   /* the answer is the next line */`];
@@ -15413,7 +16074,15 @@ class SB3Creator {
         const hasHardware = hasPins || !!(stc && stc.ledcube)
             || !!(stc && stc.parts && stc.parts.length)
             || !!(stc && stc.ports && stc.ports.length);
-        const want = opts.target || (hasHardware ? 'device' : 'host');
+        // An explicit DEVICE line means "build for that chip", pins or no
+        // pins: `DEVICE STM32F030` + `print n` used to fall to host C
+        // (stdio.h) and fail the device compile. The parser records the
+        // line as stc.deviceDeclared; a project from elsewhere that names a
+        // non-default chip counts as declared too. No DEVICE line keeps the
+        // host-C default.
+        const declaredDevice = !!(stc && (stc.deviceDeclared
+            || (stc.device && String(stc.device).toLowerCase() !== 'stc12c5a60s2')));
+        const want = opts.target || ((hasHardware || declaredDevice) ? 'device' : 'host');
         if (want === 'host') return this.generateHostC(project, opts);
 
         this._cNames = new Map();
@@ -15457,9 +16126,13 @@ class SB3Creator {
                         : (part && part.core === 'i8086') ? 'i8086' : '8051';
         const parallelLcd = this._cLcdParallelPart();
         this._cMega = !!(part && part.mega);
-        this._cTiny88 = !!(part && part.tiny88);
         this._cTiny85 = !!(part && part.tiny85);
-        this._cStm32 = !!(part && part.stm32f0);
+        this._cTiny88 = !!(part && part.tiny88);
+        this._cStm32 = !!(part && (part.stm32f0 || part.stm32g0 || part.stm32f1 || part.stm32));
+        this._cStm32F0 = !!(part && part.stm32f0);
+        this._cStm32G0 = !!(part && part.stm32g0);
+        this._cStm32F1 = !!(part && part.stm32f1);
+        this._cEsp8266 = !!(part && part.esp8266);
         // The ATtinys' print/ask: a software UART on SOFT_SERIAL_PINS.
         this._cSoftSerial = (this._cTiny85 || this._cTiny88)
             ? SB3Creator.SOFT_SERIAL_PINS[String(device || '').toLowerCase()] || null : null;
@@ -15540,7 +16213,7 @@ class SB3Creator {
         // A sensor PART's driver reads time off the millisecond tick, which
         // the scheduler path is what starts on every core.
         const hasPinRoleParts = pins.some((p) => p.rolePart);
-        this._cTasks = hasPinRoleParts || scriptCount > 1 || hasEventHat || (scriptCount > 0 && debug) || (scriptCount > 0 && this._cStm32) || this._stcHasMatrix() || this._stcHasSevenSeg() || this._stcHasLedBank();
+        this._cTasks = hasPinRoleParts || scriptCount > 1 || hasEventHat || (scriptCount > 0 && debug) || (scriptCount > 0 && this._cStm32) || this._cEsp8266 || this._stcHasMatrix() || this._stcHasSevenSeg() || this._stcHasLedBank();
         const taskNames = Array.from({ length: scriptCount }, (_, n) => `bw_task${n}`);
         const yieldMap = [];   // only emitted for a debug build — see the marker header below
 
@@ -16095,7 +16768,7 @@ class SB3Creator {
                 }
                 return [];
             })()),
-            '/* Generated by Brickwright — blocks → C for the STC12 / 8051.',
+            `/* Generated by Brickwright — blocks → C for the ${this._cStm32 ? `${String(device).toUpperCase()} (Cortex-M${this._cStm32F1 ? '3' : this._cStm32G0 ? '0+' : '0'})` : 'STC12 / 8051'}.`,
             // This used to read "Hand edits will be lost; change the project
             // instead." The first half is still true and the second stopped
             // being true once the C reader landed: edits are no longer a dead
@@ -16348,55 +17021,134 @@ class SB3Creator {
                 'static unsigned char bw_port_b = 0;   /* shadow of port B */',
                 'static unsigned char bw_port_c = 0;   /* shadow of port C */',
                 '');
+        } else if (this._core === 'arm' && this._cEsp8266) {
+            out.push('#include <stdint.h>',
+                '#include "Arduino.h"', '');
+            out.push(`#define F_CPU ${clock}UL`, '');
+            out.push('/* ESP8266 (LX106) on the blob-free esp8266js runtime: every pin,',
+                ' * time, PWM, tone and serial operation goes through its Arduino-style',
+                ' * API. The runtime\'s arduino.c owns main(): it starts the millisecond',
+                ' * timer, enables interrupts, calls setup() once and loop() forever. */', '');
         } else if (this._core === 'arm' && this._cStm32) {
+            // GPIO ports: the F0 puts them on AHB2 at 0x48000000 (RM0360 §2.2.2);
+            // the G0 on the Cortex-M0+ single-cycle IOPORT at 0x50000000
+            // (RM0444 §2.2.2, Table 6). Same v2 register layout on both.
+            const gb = this._cStm32G0 ? 0x50000000 : 0x48000000;
+            const gpio = (port, off) => `0x${(gb + port * 0x400 + off).toString(16)}u`;
             out.push('#include <stdint.h>', '');
             out.push(`#define F_CPU ${clock}UL`, '');
-            out.push('/* Freestanding Cortex-M0: no HAL, no headers — the registers this',
-                ' * program touches, spelled as addresses from RM0360 (STM32F030).',
+            out.push('/* Freestanding Cortex-M0/M0+/M3: no HAL, no headers — the registers this',
+                ' * program touches, spelled as addresses from RM0360/RM0444/RM0008.',
                 ' * A peripheral with its RCC clock off does not function; the',
                 ' * enables come FIRST in bw_setup, on silicon and emulator alike. */',
                 '#define BW_MMIO(a) (*(volatile uint32_t *)(a))',
-                '#define RCC_AHBENR   BW_MMIO(0x40021014u)',
-                '#define RCC_APB1ENR  BW_MMIO(0x4002101cu)',
-                '#define RCC_APB2ENR  BW_MMIO(0x40021018u)',
-                '#define GPIOA_MODER  BW_MMIO(0x48000000u)',
-                '#define GPIOA_PUPDR  BW_MMIO(0x4800000cu)',
-                '#define GPIOA_IDR    BW_MMIO(0x48000010u)',
-                '#define GPIOA_ODR    BW_MMIO(0x48000014u)',
-                '#define GPIOA_BSRR   BW_MMIO(0x48000018u)',
-                '#define GPIOB_MODER  BW_MMIO(0x48000400u)',
-                '#define GPIOB_PUPDR  BW_MMIO(0x4800040cu)',
-                '#define GPIOB_IDR    BW_MMIO(0x48000410u)',
-                '#define GPIOB_ODR    BW_MMIO(0x48000414u)',
-                '#define GPIOB_BSRR   BW_MMIO(0x48000418u)',
+                '#define RCC_CR       BW_MMIO(0x40021000u)',
+                '#define FLASH_ACR    BW_MMIO(0x40022000u)',
+                ...(this._cStm32G0 ? [
+                    '#define RCC_CFGR     BW_MMIO(0x40021008u)',
+                    '#define RCC_PLLCFGR  BW_MMIO(0x4002100cu)',
+                    '#define RCC_IOPENR   BW_MMIO(0x40021034u)',
+                    '#define RCC_APBENR1  BW_MMIO(0x4002103cu)',
+                    '#define RCC_APBENR2  BW_MMIO(0x40021040u)',
+                ] : this._cStm32F1 ? [
+                    '#define RCC_CFGR     BW_MMIO(0x40021004u)',
+                    '#define RCC_APB2ENR  BW_MMIO(0x40021018u)',
+                    '#define RCC_APB1ENR  BW_MMIO(0x4002101cu)',
+                ] : [
+                    '#define RCC_CFGR     BW_MMIO(0x40021004u)',
+                    '#define RCC_AHBENR   BW_MMIO(0x40021014u)',
+                    '#define RCC_APB1ENR  BW_MMIO(0x4002101cu)',
+                    '#define RCC_APB2ENR  BW_MMIO(0x40021018u)',
+                ]),
+                ...(this._cStm32F1 ? [
+                    '#define GPIOA_CRL    BW_MMIO(0x40010800u)',
+                    '#define GPIOA_CRH    BW_MMIO(0x40010804u)',
+                    '#define GPIOA_IDR    BW_MMIO(0x40010808u)',
+                    '#define GPIOA_ODR    BW_MMIO(0x4001080cu)',
+                    '#define GPIOA_BSRR   BW_MMIO(0x40010810u)',
+                    '#define GPIOB_CRL    BW_MMIO(0x40010c00u)',
+                    '#define GPIOB_CRH    BW_MMIO(0x40010c04u)',
+                    '#define GPIOB_IDR    BW_MMIO(0x40010c08u)',
+                    '#define GPIOB_ODR    BW_MMIO(0x40010c0cu)',
+                    '#define GPIOB_BSRR   BW_MMIO(0x40010c10u)',
+                    '#define GPIOC_CRL    BW_MMIO(0x40011000u)',
+                    '#define GPIOC_CRH    BW_MMIO(0x40011004u)',
+                    '#define GPIOC_IDR    BW_MMIO(0x40011008u)',
+                    '#define GPIOC_ODR    BW_MMIO(0x4001100cu)',
+                    '#define GPIOC_BSRR   BW_MMIO(0x40011010u)',
+                ] : [0, 1, 2].flatMap((port) => {
+                    const P = 'ABC'[port];
+                    return [
+                        `#define GPIO${P}_MODER  BW_MMIO(${gpio(port, 0x00)})`,
+                        `#define GPIO${P}_PUPDR  BW_MMIO(${gpio(port, 0x0c)})`,
+                        `#define GPIO${P}_IDR    BW_MMIO(${gpio(port, 0x10)})`,
+                        `#define GPIO${P}_ODR    BW_MMIO(${gpio(port, 0x14)})`,
+                        `#define GPIO${P}_BSRR   BW_MMIO(${gpio(port, 0x18)})`,
+                    ];
+                })),
                 '#define TIM3_CR1     BW_MMIO(0x40000400u)',
                 '#define TIM3_DIER    BW_MMIO(0x4000040cu)',
                 '#define TIM3_SR      BW_MMIO(0x40000410u)',
                 '#define TIM3_PSC     BW_MMIO(0x40000428u)',
                 '#define TIM3_ARR     BW_MMIO(0x4000042cu)',
-                '#define USART1_CR1   BW_MMIO(0x40013800u)',
-                '#define USART1_BRR   BW_MMIO(0x4001380cu)',
-                '#define USART1_ISR   BW_MMIO(0x4001381cu)',
-                '#define USART1_TDR   BW_MMIO(0x40013828u)',
+                ...(this._cStm32F1 ? [
+                    // RM0008 §27.6: the F1 USART is the older layout — SR,
+                    // DR, BRR, CR1 — with TXE bit 7 / RXNE bit 5 in SR and
+                    // one DR for both directions. The ISR/TDR/RDR names
+                    // alias it so the shared print/ask helpers stay one.
+                    '#define USART1_SR    BW_MMIO(0x40013800u)',
+                    '#define USART1_DR    BW_MMIO(0x40013804u)',
+                    '#define USART1_BRR   BW_MMIO(0x40013808u)',
+                    '#define USART1_CR1   BW_MMIO(0x4001380cu)',
+                    '#define USART1_ISR   USART1_SR',
+                    '#define USART1_TDR   USART1_DR',
+                    '#define USART1_RDR   USART1_DR',
+                ] : [
+                    '#define USART1_CR1   BW_MMIO(0x40013800u)',
+                    '#define USART1_BRR   BW_MMIO(0x4001380cu)',
+                    '#define USART1_ISR   BW_MMIO(0x4001381cu)',
+                    '#define USART1_TDR   BW_MMIO(0x40013828u)',
+                    `#define GPIOA_AFRH   BW_MMIO(${gpio(0, 0x24)})`,
+                ]),
                 '#define TIM3_CCMR1   BW_MMIO(0x40000418u)',
                 '#define TIM3_CCMR2   BW_MMIO(0x4000041cu)',
                 '#define TIM3_CCER    BW_MMIO(0x40000420u)',
                 '#define TIM3_CCR1    BW_MMIO(0x40000434u)',
                 '#define TIM3_CCR2    BW_MMIO(0x40000438u)',
                 '#define TIM3_CCR4    BW_MMIO(0x40000440u)',
-                '#define GPIOA_AFRL   BW_MMIO(0x48000020u)',
-                '#define GPIOB_AFRL   BW_MMIO(0x48000420u)',
-                '#define ADC_ISR      BW_MMIO(0x40012400u)',
-                '#define ADC_CR       BW_MMIO(0x40012408u)',
-                '#define ADC_CHSELR   BW_MMIO(0x40012428u)',
-                '#define ADC_DR       BW_MMIO(0x40012440u)',
+                '#define TIM3_CCR3    BW_MMIO(0x4000043cu)',
+                ...(this._cStm32F1 ? [] : [
+                    `#define GPIOA_AFRL   BW_MMIO(${gpio(0, 0x20)})`,
+                    `#define GPIOB_AFRL   BW_MMIO(${gpio(1, 0x20)})`,
+                ]),
+                ...(this._cStm32F1 ? [
+                    // RM0008 §11.12: the F1 ADC1 register map.
+                    '#define ADC1_SR      BW_MMIO(0x40012400u)',
+                    '#define ADC1_CR2     BW_MMIO(0x40012408u)',
+                    '#define ADC1_SMPR2   BW_MMIO(0x40012410u)',
+                    '#define ADC1_SQR1    BW_MMIO(0x4001242cu)',
+                    '#define ADC1_SQR3    BW_MMIO(0x40012434u)',
+                    '#define ADC1_DR      BW_MMIO(0x4001244cu)',
+                ] : [
+                    '#define ADC_ISR      BW_MMIO(0x40012400u)',
+                    '#define ADC_CR       BW_MMIO(0x40012408u)',
+                    '#define ADC_CHSELR   BW_MMIO(0x40012428u)',
+                    '#define ADC_DR       BW_MMIO(0x40012440u)',
+                    ...(this._cStm32G0 ? [
+                        // RM0444 §15.12: CFGR2 (CKMODE), SMPR, CCR (TSEN/VREFEN).
+                        '#define ADC_CFGR2    BW_MMIO(0x40012410u)',
+                        '#define ADC_SMPR     BW_MMIO(0x40012414u)',
+                        '#define ADC_CCR      BW_MMIO(0x40012708u)',
+                    ] : []),
+                ]),
                 '#define NVIC_ISER    BW_MMIO(0xe000e100u)', '',
-                '/* Virtual pin n: port = n>>4 (0=A, 1=B), bit = n&15. With a',
+                ...this._cStm32ClockInit(clock),
+                '/* Virtual pin n: port = n>>4 (0=A, 1=B, 2=C), bit = n&15. With a',
                 ' * constant n, -Os folds each helper to a single store. */',
-                'static inline void bw_pin_set(uint32_t n) { if (n < 16u) GPIOA_BSRR = 1u << n; else GPIOB_BSRR = 1u << (n - 16u); }',
-                'static inline void bw_pin_clr(uint32_t n) { if (n < 16u) GPIOA_BSRR = 1u << (n + 16u); else GPIOB_BSRR = 1u << (n - 16u + 16u); }',
-                'static inline void bw_pin_xor(uint32_t n) { if (n < 16u) GPIOA_ODR ^= 1u << n; else GPIOB_ODR ^= 1u << (n - 16u); }',
-                'static inline uint32_t bw_pin_get(uint32_t n) { return n < 16u ? (GPIOA_IDR >> n) & 1u : (GPIOB_IDR >> (n - 16u)) & 1u; }', '');
+                'static inline void bw_pin_set(uint32_t n) { if (n < 16u) GPIOA_BSRR = 1u << n; else if (n < 32u) GPIOB_BSRR = 1u << (n - 16u); else GPIOC_BSRR = 1u << (n - 32u); }',
+                'static inline void bw_pin_clr(uint32_t n) { if (n < 16u) GPIOA_BSRR = 1u << (n + 16u); else if (n < 32u) GPIOB_BSRR = 1u << (n - 16u + 16u); else GPIOC_BSRR = 1u << (n - 32u + 16u); }',
+                'static inline void bw_pin_xor(uint32_t n) { if (n < 16u) GPIOA_ODR ^= 1u << n; else if (n < 32u) GPIOB_ODR ^= 1u << (n - 16u); else GPIOC_ODR ^= 1u << (n - 32u); }',
+                'static inline uint32_t bw_pin_get(uint32_t n) { return n < 16u ? (GPIOA_IDR >> n) & 1u : (n < 32u ? (GPIOB_IDR >> (n - 16u)) & 1u : (GPIOC_IDR >> (n - 32u)) & 1u); }', '');
         } else if (this._core === 'arm') {
             out.push('#include <stdint.h>', '');
             out.push(`#define F_CPU ${clock}UL`, '');
@@ -16594,9 +17346,28 @@ class SB3Creator {
                     '}', '');
             }
         }
-        if (this._cTasks && this._core === 'arm' && this._cStm32) {
+        if (this._cTasks && this._core === 'arm' && this._cEsp8266) {
             out.push('/* One script = one cooperative task; tasks yield at every wait and',
-                ' * at every loop iteration. TIM3 raises IRQ16 every millisecond; the',
+                ' * at every loop iteration. The runtime keeps the millisecond count',
+                ' * (millis()); idle waits for the next millisecond edge. */',
+                'static uint32_t bw_calm;',
+                'static uint32_t bw_now(void) { return (uint32_t)millis(); }',
+                'static void bw_idle(void) { uint32_t m = bw_now(); while (bw_now() == m) { } }', '');
+            this._cUses.now = true;
+            if (this._cUses.blockDelay) {
+                out.push('/* A wait inside a custom block: really blocks, on the runtime clock. */',
+                    'static void bw_block_ms(uint32_t ms)',
+                    '{',
+                    '    uint32_t start = bw_now();',
+                    '    while ((int32_t)(bw_now() - start - ms) < 0) bw_idle();',
+                    '}', '');
+            }
+        } else if (this._cTasks && this._core === 'arm' && this._cStm32) {
+            const stmSp = this._cStm32F1 ? '0x20005000' : (this._cStm32G0 ? '0x20002000' : '0x20001000');
+            const tim3Irq = this._cStm32F1 ? 29 : 16;
+            const numVectors = this._cStm32F1 ? 68 : 48;
+            out.push('/* One script = one cooperative task; tasks yield at every wait and',
+                ' * at every loop iteration. TIM3 raises IRQ every millisecond; the',
                 ' * handler maintains bw_ms (a 32-bit load is atomic on this core, so',
                 ' * bw_now needs no guard). WFI parks the core between ticks — the',
                 ' * vector table is real, so the wake VECTORS, unlike the pico\'s',
@@ -16608,14 +17379,16 @@ class SB3Creator {
                 ...(this._cUses.tone ? ['void bw_tone_irq(void);'] : []),
                 'int main(void);',
                 'static uint32_t bw_now(void) { return bw_ms; }',
+                ...(this._cUses.timer ? ['static uint32_t bw_timer_t0;                   /* the Scratch timer\'s zero (reset timer) */'] : []),
                 'static void bw_idle(void) { __asm__ volatile ("wfi"); }',
                 '__attribute__((section(".vectors"), used))',
-                'const void *bw_vectors[48] = {',
-                '    (void *)0x20001000,             /* initial SP: top of the F030\'s 4K */',
+                `const void *bw_vectors[${numVectors}] = {`,
+                `    (void *)${stmSp},             /* initial SP */`,
                 '    (void *)main,                   /* reset */',
                 '    [3] = (void *)bw_fault,         /* HardFault */',
-                '    [16 + 16] = (void *)bw_tick_irq, /* TIM3 = IRQ16 */',
-                ...(this._cUses.tone ? ['    [16 + 19] = (void *)bw_tone_irq, /* TIM14 = IRQ19: the tone */'] : []),
+                `    [16 + ${tim3Irq}] = (void *)bw_tick_irq, /* TIM3 = IRQ${tim3Irq} */`,
+                ...(this._cUses.tone ? [`    [16 + ${SB3Creator.stm32ToneIrq(this._cStm32F1)}] = (void *)bw_tone_irq, /* ${
+                    this._cStm32F1 ? 'TIM4 = IRQ30' : 'TIM14 = IRQ19'}: the tone */`] : []),
                 '};', '');
             this._cUses.now = true;
             if (this._cUses.blockDelay) {
@@ -16852,7 +17625,29 @@ class SB3Creator {
                 '    bw_putc(13); bw_putc(10);',
                 '}', '');
         }
-        if (this._core === 'arm' && this._cStm32 && this._cUses.print) {
+        if (this._core === 'arm' && this._cEsp8266 && this._cUses.print) {
+            out.push('/* print goes out the runtime\'s serial port at 9600 (bw_serial_begin',
+                ' * in bw_setup); bw_serial_write takes a NUL-terminated string. */',
+                'static void bw_putc(char c)',
+                '{',
+                '    char s[2];',
+                '    s[0] = c; s[1] = 0;',
+                '    bw_serial_write(s);',
+                '}', '',
+                'static void bw_print(const char *s)',
+                '{',
+                '    bw_serial_write(s);',
+                '    bw_serial_write("\\r\\n");',
+                '}', '',
+                'static void bw_print_num(long n)',
+                '{',
+                '    char b[12]; int i = 0;',
+                '    unsigned long u = n < 0 ? (bw_putc(45), (unsigned long)-(n)) : (unsigned long)n;',
+                '    do { b[i++] = (char)(48 + (u % 10)); u /= 10; } while (u);',
+                '    while (i) bw_putc(b[--i]);',
+                '    bw_putc(13); bw_putc(10);',
+                '}', '');
+        } else if (this._core === 'arm' && this._cStm32 && this._cUses.print) {
             out.push('/* print goes out USART1 at 9600 8N1. The model reports TXE always',
                 ' * ready; silicon paces on the ISR TXE bit the same loop checks. */',
                 'static void bw_putc(char c)',
@@ -17004,6 +17799,68 @@ class SB3Creator {
                 '    while (ADCSRA & (1 << ADSC)) ;',
                 '    return ADC;',
                 '}', '');
+        } else if (this._cUses.adc && this._core === 'arm' && this._cStm32F1) {
+            out.push('/* 12-bit ADC1, polled (RM0008 §11). First use: ADC clock = PCLK2/6',
+                ' * (ADCPRE=10, <= 14 MHz even at 72 MHz), ADON power-up, then the',
+                ' * RSTCAL/CAL self-calibration. Each read: one-conversion sequence',
+                ' * (SQR1.L=0) with SQ1 = channel, software trigger (EXTSEL=111 +',
+                ' * EXTTRIG + SWSTART), poll SR.EOC, read DR (which clears EOC).',
+                ' * Channel n is PA(n) for 0-7, PB0/PB1 for 8/9; the pins are analog',
+                ' * inputs (CRL nibble 0) from bw_setup. */',
+                'static long adc_read(unsigned char channel)',
+                '{',
+                '    static uint8_t ready;',
+                '    if (!ready) {',
+                '        volatile uint32_t d;',
+                '        RCC_CFGR = (RCC_CFGR & ~(3u << 14)) | (2u << 14);  /* ADCPRE = /6 */',
+                '        ADC1_SMPR2 = 0x3FFFFFFFu;                 /* 239.5-cycle sampling, ch0-9 */',
+                '        ADC1_CR2 |= 1u;                           /* ADON: power up (TSVREFE kept) */',
+                '        for (d = 0; d < 100u; d++) { }            /* tSTAB ~1 us */',
+                '        ADC1_CR2 |= (1u << 3);                    /* RSTCAL (another bit changes: no conversion) */',
+                '        while (ADC1_CR2 & (1u << 3)) ;',
+                '        ADC1_CR2 |= (1u << 2);                    /* CAL */',
+                '        while (ADC1_CR2 & (1u << 2)) ;',
+                '        ready = 1;',
+                '    }',
+                '    ADC1_SQR1 = 0u;                               /* L = 0: one conversion */',
+                '    ADC1_SQR3 = (uint32_t)channel & 0x1Fu;        /* SQ1 = channel */',
+                '    ADC1_CR2 = (ADC1_CR2 & (1u << 23)) | 1u | (7u << 17) | (1u << 20) | (1u << 22);',
+                '                                  /* keep TSVREFE; ADON, EXTSEL=SWSTART, EXTTRIG, SWSTART */',
+                '    while (!(ADC1_SR & (1u << 1))) ;              /* EOC */',
+                '    return (long)(ADC1_DR & 0xFFFu);',
+                '}', '');
+        } else if (this._cUses.adc && this._core === 'arm' && this._cStm32G0) {
+            out.push('/* 12-bit ADC, polled (RM0444 §15). First use, with ADEN = 0 throughout:',
+                ' *   CKMODE = PCLK/4 (16 MHz; fADC must stay <= 35 MHz, and the async',
+                ' *   default would be SYSCLK = 64 MHz), ADVREGEN then tADCVREG_STUP',
+                ' *   (20 us max, §15.3.2 — the loop gives ~40 us at 64 MHz), ADCAL',
+                ' *   self-calibration, SMP1 = 160.5 ADC clocks (10 us: the temperature',
+                ' *   sensor needs >= 5 us), then ADEN and ADRDY. Each read: CHSELR, wait',
+                ' *   CCRDY (the G0 applies a channel change asynchronously, §15.3.10),',
+                ' *   ADSTART, EOC, DR. Channel n is PA(n). */',
+                'static long adc_read(unsigned char channel)',
+                '{',
+                '    static uint8_t ready;',
+                '    if (!ready) {',
+                '        volatile uint32_t d;',
+                '        ADC_CFGR2 = (ADC_CFGR2 & ~(3u << 30)) | (2u << 30);   /* CKMODE = PCLK/4 */',
+                '        ADC_CR = (1u << 28);                      /* ADVREGEN */',
+                '        for (d = 0; d < 400u; d++) { }            /* tADCVREG_STUP */',
+                '        ADC_CR = (1u << 28) | (1u << 31);         /* ADCAL */',
+                '        while (ADC_CR & (1u << 31)) ;',
+                '        ADC_SMPR = 7u;                            /* SMP1 = 160.5 cycles, all channels */',
+                '        ADC_ISR = 1u;                             /* clear ADRDY (rc_w1) */',
+                '        ADC_CR = (1u << 28) | 1u;                 /* ADEN */',
+                '        while (!(ADC_ISR & 1u)) ;                 /* ADRDY */',
+                '        ready = 1;',
+                '    }',
+                '    ADC_ISR = (1u << 13);                         /* clear CCRDY */',
+                '    ADC_CHSELR = (1u << channel);',
+                '    while (!(ADC_ISR & (1u << 13))) ;             /* CCRDY */',
+                '    ADC_CR = (1u << 28) | 1u | (1u << 2);         /* + ADSTART */',
+                '    while (!(ADC_ISR & (1u << 2))) ;              /* EOC */',
+                '    return (long)(ADC_DR & 0xFFFu);',
+                '}', '');
         } else if (this._cUses.adc && this._core === 'arm' && this._cStm32) {
             out.push('/* 12-bit ADC, polled (RM0360 §12): enable, wait ADRDY, select the',
                 ' * channel, ADSTART, wait EOC, read DR. Channel n is PA(n). The RCC',
@@ -17066,14 +17923,33 @@ class SB3Creator {
 
         if (this._cUses.chipTemp) out.push(...this._cChipTempHelper(this._cUses.chipTemp));
 
-        if ((this._cUses.pwm || this._cUses.motor) && this._core === 'arm' && this._cStm32) {
-            out.push('/* PWM rides the tick timer: TIM3 already counts 0..999 at 1 MHz',
+        if (this._cUses.pwm && this._core === 'arm' && this._cEsp8266) {
+            out.push('/* PWM is the runtime\'s analogWrite: 0..255 at 1 kHz on any usable',
+                ' * GPIO. The program speaks percent, so scale once here. */',
+                'static void pwm_set(unsigned char gpio, unsigned int percent)',
+                '{',
+                '    if (percent > 100) percent = 100;',
+                '    analogWrite(gpio, (int)((percent * 255u + 50u) / 100u));',
+                '}', '');
+        } else if ((this._cUses.pwm || this._cUses.motor) && this._core === 'arm' && this._cStm32) {
+            out.push(...(this._cStm32F1 ? [
+                '/* F103 only: TIM2 (RM0008 §15) carries PA0-PA3 as CH1-CH4 (default',
+                ' * remap) on the same 1 MHz / 1000-count frame bw_setup gives it. */',
+                '#define TIM2_CR1     BW_MMIO(0x40000000u)',
+                '#define TIM2_CCMR1   BW_MMIO(0x40000018u)',
+                '#define TIM2_CCMR2   BW_MMIO(0x4000001cu)',
+                '#define TIM2_CCER    BW_MMIO(0x40000020u)',
+                '#define TIM2_PSC     BW_MMIO(0x40000028u)',
+                '#define TIM2_ARR     BW_MMIO(0x4000002cu)',
+                ''] : []),
+            '/* PWM rides the tick timer: TIM3 already counts 0..999 at 1 MHz',
                 ' * for the millisecond interrupt, and that same frame IS a 1 kHz PWM',
                 ' * period — compare channels cost no second timer. PA6=CH1, PA7=CH2,',
                 ' * PB1=CH4 (AF1, RM0360 alternate-function table); the call site',
                 ' * refused every other pin at emit time. CCR=0 is constant low and',
                 ' * CCR=1000 (> ARR) constant high, so 0%% and 100%% need no special',
-                ' * case. MODER moves to AF here — one pin, one job per program,',
+                ' * case. MODER (CRL on the F103: CNF=10 MODE=11, default TIM3',
+                ' * remap, RM0008 §9.3.7) moves to AF here — one pin, one job per program,',
                 ' * the same takeover rule as the pico\'s funcsel and the PCA. */',
                 'static void pwm_set(unsigned char gpio, unsigned int percent)',
                 '{',
@@ -17081,23 +17957,50 @@ class SB3Creator {
                 '    if (percent > 100) percent = 100;',
                 '    duty = (percent * 1000u + 50u) / 100u;',
                 '    if (gpio == 6u) {          /* PA6 = TIM3_CH1 */',
-                '        GPIOA_AFRL  = (GPIOA_AFRL & ~(0xFu << 24)) | (1u << 24);',
-                '        GPIOA_MODER = (GPIOA_MODER & ~(3u << 12)) | (2u << 12);',
+                ...(this._cStm32F1 ? [
+                    '        GPIOA_CRL   = (GPIOA_CRL & ~(0xFu << 24)) | (0xBu << 24);   /* AF push-pull 50 MHz */',
+                ] : [
+                    '        GPIOA_AFRL  = (GPIOA_AFRL & ~(0xFu << 24)) | (1u << 24);',
+                    '        GPIOA_MODER = (GPIOA_MODER & ~(3u << 12)) | (2u << 12);',
+                ]),
                 '        TIM3_CCMR1  = (TIM3_CCMR1 & ~0x00FFu) | 0x0060u;  /* OC1M=PWM1 */',
                 '        TIM3_CCER  |= 1u;',
                 '        TIM3_CCR1   = duty;',
                 '    } else if (gpio == 7u) {   /* PA7 = TIM3_CH2 */',
-                '        GPIOA_AFRL  = (GPIOA_AFRL & ~(0xFu << 28)) | (1u << 28);',
-                '        GPIOA_MODER = (GPIOA_MODER & ~(3u << 14)) | (2u << 14);',
+                ...(this._cStm32F1 ? [
+                    '        GPIOA_CRL   = (GPIOA_CRL & ~(0xFu << 28)) | (0xBu << 28);   /* AF push-pull 50 MHz */',
+                ] : [
+                    '        GPIOA_AFRL  = (GPIOA_AFRL & ~(0xFu << 28)) | (1u << 28);',
+                    '        GPIOA_MODER = (GPIOA_MODER & ~(3u << 14)) | (2u << 14);',
+                ]),
                 '        TIM3_CCMR1  = (TIM3_CCMR1 & ~0xFF00u) | 0x6000u;  /* OC2M=PWM1 */',
                 '        TIM3_CCER  |= (1u << 4);',
                 '        TIM3_CCR2   = duty;',
                 '    } else if (gpio == 17u) {  /* PB1 = TIM3_CH4 */',
-                '        GPIOB_AFRL  = (GPIOB_AFRL & ~(0xFu << 4)) | (1u << 4);',
-                '        GPIOB_MODER = (GPIOB_MODER & ~(3u << 2)) | (2u << 2);',
+                ...(this._cStm32F1 ? [
+                    '        GPIOB_CRL   = (GPIOB_CRL & ~(0xFu << 4)) | (0xBu << 4);   /* AF push-pull 50 MHz */',
+                ] : [
+                    '        GPIOB_AFRL  = (GPIOB_AFRL & ~(0xFu << 4)) | (1u << 4);',
+                    '        GPIOB_MODER = (GPIOB_MODER & ~(3u << 2)) | (2u << 2);',
+                ]),
                 '        TIM3_CCMR2  = (TIM3_CCMR2 & ~0xFF00u) | 0x6000u;  /* OC4M=PWM1 */',
                 '        TIM3_CCER  |= (1u << 12);',
                 '        TIM3_CCR4   = duty;',
+                ...(this._cStm32F1 ? [
+                    '    } else if (gpio == 16u) {  /* PB0 = TIM3_CH3 */',
+                    '        GPIOB_CRL   = (GPIOB_CRL & ~0xFu) | 0xBu;   /* AF push-pull 50 MHz */',
+                    '        TIM3_CCMR2  = (TIM3_CCMR2 & ~0x00FFu) | 0x0060u;  /* OC3M=PWM1 */',
+                    '        TIM3_CCER  |= (1u << 8);',
+                    '        TIM3_CCR3   = duty;',
+                    '    } else if (gpio <= 3u) {   /* PA0-PA3 = TIM2_CH1-CH4 */',
+                    '        uint32_t s = (uint32_t)gpio * 4u;   /* CRL nibble, CCER bit, CCR offset */',
+                    '        uint32_t f = ((uint32_t)gpio & 1u) * 8u;   /* OCxM byte in CCMR1/2 */',
+                    '        GPIOA_CRL   = (GPIOA_CRL & ~(0xFu << s)) | (0xBu << s);   /* AF push-pull 50 MHz */',
+                    '        if (gpio < 2u) TIM2_CCMR1 = (TIM2_CCMR1 & ~(0xFFu << f)) | (0x60u << f);',
+                    '        else TIM2_CCMR2 = (TIM2_CCMR2 & ~(0xFFu << f)) | (0x60u << f);',
+                    '        TIM2_CCER  |= (1u << s);',
+                    '        BW_MMIO(0x40000034u + s) = duty;   /* TIM2_CCR1..CCR4 */',
+                ] : []),
                 '    }',
                 '}', '');
         } else if ((this._cUses.pwm || this._cUses.motor) && this._core === 'arm') {
@@ -17471,29 +18374,51 @@ class SB3Creator {
         if (this._cUses.tone && this._core === 'arm') {
             const tonePin = pins.find(p => p.direction === 'tone');
             const hw = tonePin ? this.armHw(tonePin) : null;
-            if (hw && this._cStm32) {
-                // TIM14 (RM0360 §17): 1 MHz count, an update every half-period,
-                // its IRQ (19) toggling the pin. TIM3 stays the 1 ms tick.
-                out.push('/* tone_set: TIM14 update interrupt toggles the TONE pin every half-period. */',
-                    '#define TIM14_CR1    BW_MMIO(0x40002000u)',
-                    '#define TIM14_DIER   BW_MMIO(0x4000200cu)',
-                    '#define TIM14_SR     BW_MMIO(0x40002010u)',
-                    '#define TIM14_EGR    BW_MMIO(0x40002014u)',
-                    '#define TIM14_PSC    BW_MMIO(0x40002028u)',
-                    '#define TIM14_ARR    BW_MMIO(0x4000202cu)',
-                    'void bw_tone_irq(void) { TIM14_SR = 0; ' + this.armXor(hw) + ' }',
+            if (hw && this._cEsp8266) {
+                // tone(pin, freq, 0) plays until noTone — the runtime's
+                // three-argument form; 0 Hz means silence.
+                out.push('/* tone_set: the runtime\'s tone() plays until noTone(); 0 Hz is silence. */',
                     'static void tone_set(unsigned int freq)',
                     '{',
-                    '    TIM14_CR1 = 0;',
+                    `    if (freq == 0u) { noTone(${hw.gpio}); ${this.armClr(hw)} return; }`,
+                    `    tone(${hw.gpio}, freq, 0);`,
+                    '}', '');
+            } else if (hw && this._cStm32) {
+                // A spare basic-enough timer: 1 MHz count, an update every
+                // half-period, its IRQ toggling the pin. TIM3 stays the 1 ms tick.
+                //   F030 TIM14 @0x40002000, RCC_APB1ENR bit 8, IRQ 19 (RM0360 §17)
+                //   G030 TIM14 @0x40002000, RCC_APBENR2 bit 15, IRQ 19 (RM0444 §5.4.15, §22)
+                //   F103 has no TIM14 (and its IRQ 19 is USB/CAN): TIM4
+                //        @0x40000800, RCC_APB1ENR bit 2, IRQ 30 (RM0008 §15)
+                const T = this._cStm32F1 ? 'TIM4' : 'TIM14';
+                const tb = this._cStm32F1 ? 0x40000800 : 0x40002000;
+                const reg = (off) => `BW_MMIO(0x${(tb + off).toString(16)}u)`;
+                const irq = SB3Creator.stm32ToneIrq(this._cStm32F1);
+                const clk = this._cStm32G0 ? '    RCC_APBENR2 |= (1u << 15);         /* TIM14 clock (APBENR2) */'
+                    : this._cStm32F1 ? '    RCC_APB1ENR |= (1u << 2);          /* TIM4 clock */'
+                        : '    RCC_APB1ENR |= (1u << 8);          /* TIM14 clock */';
+                out.push(`/* tone_set: ${T} update interrupt toggles the TONE pin every half-period. */`,
+                    `#define BW_TONE_CR1  ${reg(0x00)}`,
+                    `#define BW_TONE_DIER ${reg(0x0c)}`,
+                    `#define BW_TONE_SR   ${reg(0x10)}`,
+                    `#define BW_TONE_EGR  ${reg(0x14)}`,
+                    `#define BW_TONE_PSC  ${reg(0x28)}`,
+                    `#define BW_TONE_ARR  ${reg(0x2c)}`,
+                    'void bw_tone_irq(void) { BW_TONE_SR = 0; ' + this.armXor(hw) + ' }',
+                    'static void tone_set(unsigned int freq)',
+                    '{',
+                    // The clock FIRST: a register write to a timer whose RCC
+                    // clock is off is lost on silicon.
+                    clk,
+                    '    BW_TONE_CR1 = 0;',
                     '    if (freq == 0u) { ' + this.armClr(hw) + ' return; }',
-                    '    RCC_APB1ENR |= (1u << 8);          /* TIM14 clock */',
-                    '    TIM14_PSC = (uint32_t)(F_CPU / 1000000UL - 1UL);',
-                    '    TIM14_ARR = (uint32_t)(500000UL / freq - 1UL);',
-                    '    TIM14_EGR = 1u;',
-                    '    TIM14_SR = 0;',
-                    '    TIM14_DIER = 1u;',
-                    '    NVIC_ISER = (1u << 19);',
-                    '    TIM14_CR1 = 1u;',
+                    '    BW_TONE_PSC = (uint32_t)(F_CPU / 1000000UL - 1UL);',
+                    '    BW_TONE_ARR = (uint32_t)(500000UL / freq - 1UL);',
+                    '    BW_TONE_EGR = 1u;',
+                    '    BW_TONE_SR = 0;',
+                    '    BW_TONE_DIER = 1u;',
+                    `    NVIC_ISER = (1u << ${irq});`,
+                    '    BW_TONE_CR1 = 1u;',
                     '}', '');
             } else if (hw) {
                 // RP2040: TIMER ALARM1 (IRQ 1) re-armed every half-period from its
@@ -18693,6 +19618,17 @@ class SB3Creator {
                 this.cWarn(`lists are numeric arrays of 32 items here; ${this._cListRefused.join(', ')}`);
             }
             const X = this._core === '8051' ? '__xdata ' : '';
+            // The STM32 builds used to drop the 33rd item in silence (a
+            // 200-item list printed length 32, item 200 = 0). The capacity is
+            // a RAM budget, not a Scratch rule, so say it at build time.
+            if (this._cStm32 && this._cUses.numericLists) {
+                this.cWarn(`lists hold at most 32 numbers each in ${String(device).toUpperCase()} C; `
+                    + 'an add or insert into a full list is dropped (Scratch allows 200000)');
+            }
+            if (this._cStm32 && this._cUses.ask) {
+                this.cWarn(`the answer holds at most 31 characters in ${String(device).toUpperCase()} C; `
+                    + 'the rest of a longer input line is dropped');
+            }
             if (this._cUses.numericLists) {
                 out.push('/* Lists: 32 numbers each (Scratch lists, numeric only). A one-based',
                     ' * index out of range is a no-op, or 0 when read, as Scratch coerces it;',
@@ -18746,7 +19682,7 @@ class SB3Creator {
                     // the moment of the draw -- when a button was pressed --
                     // is mixed in, so a game does not replay the same
                     // "random" sequence after every power-on.
-                    ...(this._cTasks ? [`    x ^= (unsigned long)${this._core === 'arm' && !this._cStm32 ? 'BW_TIMER_TIMELR' : 'bw_ms'} << 11;   /* WHEN the draw happens is chance too */`,
+                    ...(this._cTasks ? [`    x ^= (unsigned long)${this._cEsp8266 ? 'micros()' : this._core === 'arm' && !this._cStm32 ? 'BW_TIMER_TIMELR' : 'bw_ms'} << 11;   /* WHEN the draw happens is chance too */`,
                         '    if (!x) x = 0x6d2b79f5UL;'] : []),
                     '    x ^= x << 13; x ^= x >> 17; x ^= x << 5;',
                     '    bw_rng = x;',
@@ -18965,68 +19901,213 @@ class SB3Creator {
                     '    UCSR0C = (1 << UCSZ01) | (1 << UCSZ00);  /* 8N1 */');
             }
         }
-        if (this._core === 'arm' && this._cStm32) {
-            // RM0360 order: clocks first — a peripheral with its RCC clock
+        if (this._core === 'arm' && this._cEsp8266) {
+            for (const p of pins) {
+                const hw = this.armHw(p);
+                if (!hw) continue;
+                if (p.direction === 'output' || p.direction === 'tone' || p.direction === 'pwm') {
+                    // Level BEFORE mode: an ACTIVE LOW load never sees a
+                    // power-on glitch while the pin turns into an output.
+                    out.push(`    ${p.activeLow ? this.armSet(hw) : this.armClr(hw)}      /* ${p.name} = ${p.where}: start OFF */`,
+                        `    pinMode(${hw.gpio}, OUTPUT);`);
+                } else if (p.direction === 'input') {
+                    // ACTIVE LOW → internal pull-up (button to GND); the
+                    // runtime has no pull-down, so active high is plain INPUT.
+                    const mode = p.activeLow && !p.openDrain ? 'INPUT_PULLUP' : 'INPUT';
+                    out.push(`    pinMode(${hw.gpio}, ${mode});   /* ${p.name} = ${p.where} */`);
+                }
+            }
+            if (this._cUses.print) {
+                // UART0 is GPIO1 (TX) / GPIO3 (RX): a program that prints
+                // cannot also use them as pins.
+                for (const p of pins) {
+                    const hw = this.armHw(p);
+                    if (hw && (hw.gpio === 1 || hw.gpio === 3)) {
+                        this.cWarn(`"${p.name}" (${p.where}) is the serial ${hw.gpio === 1 ? 'TX' : 'RX'} pin, which print uses on the ESP8266`);
+                    }
+                }
+                out.push('    bw_serial_begin(9600);        /* print: 9600 baud */');
+            }
+        } else if (this._core === 'arm' && this._cStm32) {
+            // RM0360/RM0444/RM0008 order: clocks first — a peripheral with its RCC clock
             // off does not function, on silicon and in the emulator alike.
+            // Before even those: the clock tree, so F_CPU is true before any
+            // prescaler or baud divisor computed from it is written.
+            out.push(`    bw_clock_init();               /* SYSCLK = F_CPU (${this._cStm32ClockPll ? 'PLL' : 'reset clock'}) */`);
+            // F103 PWM on PA0-PA3 is TIM2 CH1-CH4 (RM0008 §9.3.7, default remap).
+            const f1Tim2 = this._cStm32F1 && (this._cUses.pwm || this._cUses.motor) && pins.some((p) => p.direction === 'pwm' && /^PA[0-3]$/i.test(String(p.where || '')));
             const usedPorts = new Set();
             for (const p of pins) {
                 const hw = this.armHw(p);
                 if (hw) usedPorts.add(hw.gpio >> 4);
             }
-            let ahb = 0;
-            if (usedPorts.has(0)) ahb |= (1 << 17);
-            if (usedPorts.has(1)) ahb |= (1 << 18);
-            out.push(`    RCC_AHBENR  = 0x${(ahb >>> 0).toString(16)}u;      /* GPIO clocks */`,
-                '    RCC_APB1ENR = (1u << 1);       /* TIM3: the millisecond tick */');
-            const apb2 = (this._cUses.print ? (1 << 14) : 0) | (this._cUses.adc ? (1 << 9) : 0);
-            if (apb2) {
-                out.push(`    RCC_APB2ENR = 0x${(apb2 >>> 0).toString(16)}u;      /*${
-                    this._cUses.print ? ' USART1' : ''}${this._cUses.adc ? ' ADC' : ''} */`);
-            }
-            let moderA = 0, moderB = 0, pupdrA = 0, pupdrB = 0;
-            for (const p of pins) {
-                const hw = this.armHw(p);
-                if (!hw) continue;
-                const bit = hw.gpio & 15;
-                if (p.direction === 'output' || p.direction === 'tone') {   // TIM14 toggles a tone pin
-                    if ((hw.gpio >> 4) === 0) moderA |= (1 << (2 * bit)); else moderB |= (1 << (2 * bit));
-                } else if (p.direction === 'analog') {
-                    // MODER 11 = analog: the Schmitt input stage disconnects,
-                    // which is what the ADC pad wants (RM0360 §8.3.12).
-                    if ((hw.gpio >> 4) === 0) moderA |= (3 << (2 * bit)); else moderB |= (3 << (2 * bit));
-                } else if (p.direction === 'input') {
-                    // ACTIVE LOW → pull-up (button to GND); active high →
-                    // pull-down — the same no-external-resistor idioms the
-                    // pico build keeps.
-                    // An open-drain line (1-Wire, I2C) gets none: its pull-up
-                    // is on the bus.
-                    const pull = p.openDrain ? 0 : p.activeLow ? 1 : 2;
-                    if ((hw.gpio >> 4) === 0) pupdrA |= (pull << (2 * bit)); else pupdrB |= (pull << (2 * bit));
+            if (this._cStm32G0) {
+                let iopenr = 0;
+                if (usedPorts.has(0)) iopenr |= (1 << 0);
+                if (usedPorts.has(1)) iopenr |= (1 << 1);
+                if (usedPorts.has(2)) iopenr |= (1 << 2);
+                // USART1 TX/RX are PA9/PA10: print needs port A clocked.
+                if (this._cUses.print) iopenr |= (1 << 0);
+                out.push(`    RCC_IOPENR  = 0x${(iopenr >>> 0).toString(16)}u;      /* GPIO clocks */`,
+                    '    RCC_APBENR1 = (1u << 1);       /* TIM3: the millisecond tick */');
+                // RM0444 §5.4.15: USART1EN is APBENR2 bit 14, ADCEN bit 20
+                // (not APB2ENR bit 9 as on the F0).
+                const apb2 = (this._cUses.print ? (1 << 14) : 0) | (this._cUses.adc ? (1 << 20) : 0);
+                if (apb2) {
+                    out.push(`    RCC_APBENR2 = 0x${(apb2 >>> 0).toString(16)}u;      /*${
+                        this._cUses.print ? ' USART1' : ''}${this._cUses.adc ? ' ADC' : ''} */`);
+                }
+            } else if (this._cStm32F1) {
+                let apb2 = 0;
+                if (usedPorts.has(0)) apb2 |= (1 << 2);
+                if (usedPorts.has(1)) apb2 |= (1 << 3);
+                if (usedPorts.has(2)) apb2 |= (1 << 4);
+                if (this._cUses.print) apb2 |= (1 << 14) | (1 << 2);   /* USART1 + IOPA (PA9/PA10) */
+                if (this._cUses.adc) apb2 |= (1 << 9);
+                out.push(`    RCC_APB2ENR = 0x${(apb2 >>> 0).toString(16)}u;      /* GPIO + peripheral clocks */`,
+                    f1Tim2 ? '    RCC_APB1ENR = (1u << 1) | 1u;  /* TIM3: the millisecond tick; TIM2: PWM on PA0-PA3 */'
+                        : '    RCC_APB1ENR = (1u << 1);       /* TIM3: the millisecond tick */');
+            } else {
+                let ahb = 0;
+                if (usedPorts.has(0)) ahb |= (1 << 17);
+                if (usedPorts.has(1)) ahb |= (1 << 18);
+                if (usedPorts.has(2)) ahb |= (1 << 19);
+                if (this._cUses.print) ahb |= (1 << 17);   /* PA9/PA10 carry USART1 */
+                out.push(`    RCC_AHBENR  = 0x${(ahb >>> 0).toString(16)}u;      /* GPIO clocks */`,
+                    '    RCC_APB1ENR = (1u << 1);       /* TIM3: the millisecond tick */');
+                const apb2 = (this._cUses.print ? (1 << 14) : 0) | (this._cUses.adc ? (1 << 9) : 0);
+                if (apb2) {
+                    out.push(`    RCC_APB2ENR = 0x${(apb2 >>> 0).toString(16)}u;      /*${
+                        this._cUses.print ? ' USART1' : ''}${this._cUses.adc ? ' ADC' : ''} */`);
                 }
             }
             for (const p of pins) {
                 // Level BEFORE mode: an ACTIVE LOW load must never see a
-                // power-on glitch while MODER flips the pin to output.
+                // power-on glitch while MODER/CRL flips the pin to output.
                 const hw = this.armHw(p);
-                if (!hw || (p.direction !== 'output' && p.direction !== 'tone')) continue;
-                out.push(`    ${p.activeLow ? this.armSet(hw) : this.armClr(hw)}      /* ${p.name}: start OFF */`);
+                if (!hw) continue;
+                if (p.direction === 'output' || p.direction === 'tone') {
+                    out.push(`    ${p.activeLow ? this.armSet(hw) : this.armClr(hw)}      /* ${p.name}: start OFF */`);
+                } else if (this._cStm32F1 && p.direction === 'input' && !p.openDrain) {
+                    // RM0008 §9.1, Table 20: input CNF=10 is "pull-up/pull-down"
+                    // and ODR picks which — 1 pulls up, 0 pulls down. ACTIVE LOW
+                    // (a button to GND) wants the pull-up; a plain INPUT gets the
+                    // pull-down, the same as PUPDR=10 on the F030/G030.
+                    out.push(`    ${p.activeLow ? this.armSet(hw) : this.armClr(hw)}      /* ${p.name}: pull-${p.activeLow ? 'up' : 'down'} (ODR) */`);
+                }
             }
-            if (usedPorts.has(0)) {
-                out.push(`    GPIOA_MODER = 0x${(moderA >>> 0).toString(16)}u;`,
-                    `    GPIOA_PUPDR = 0x${(pupdrA >>> 0).toString(16)}u;`);
-            }
-            if (usedPorts.has(1)) {
-                out.push(`    GPIOB_MODER = 0x${(moderB >>> 0).toString(16)}u;`,
-                    `    GPIOB_PUPDR = 0x${(pupdrB >>> 0).toString(16)}u;`);
+            if (this._cStm32F1) {
+                let crlA = 0x44444444, crhA = 0x44444444;
+                let crlB = 0x44444444, crhB = 0x44444444;
+                let crlC = 0x44444444, crhC = 0x44444444;
+                for (const p of pins) {
+                    const hw = this.armHw(p);
+                    if (!hw) continue;
+                    const port = hw.gpio >> 4;
+                    const bit = hw.gpio & 15;
+                    let modeBits = 0x4; // floating input default
+                    if (p.direction === 'output' || p.direction === 'tone') {
+                        modeBits = 0x2; // Output push-pull 2MHz
+                    } else if (p.direction === 'analog') {
+                        modeBits = 0x0; // Analog input
+                    } else if (p.direction === 'input') {
+                        modeBits = p.openDrain ? 0x4 : 0x8; // Input pull-up/down
+                    }
+                    const shift = (bit & 7) * 4;
+                    const mask = ~(0xF << shift);
+                    const val = (modeBits << shift);
+                    if (port === 0) {
+                        if (bit < 8) crlA = (crlA & mask) | val; else crhA = (crhA & mask) | val;
+                    } else if (port === 1) {
+                        if (bit < 8) crlB = (crlB & mask) | val; else crhB = (crhB & mask) | val;
+                    } else if (port === 2) {
+                        if (bit < 8) crlC = (crlC & mask) | val; else crhC = (crhC & mask) | val;
+                    }
+                }
+                if (this._cUses.print) {
+                    // PA9 = USART1_TX: AF push-pull 50 MHz (CNF=10 MODE=11 -> 0xB);
+                    // PA10 = USART1_RX: input floating (0x4). RM0008 §9.1.11.
+                    crhA = (crhA & ~0xFF0) | (0xB << 4) | (0x4 << 8);
+                }
+                if (usedPorts.has(0) || this._cUses.print) {
+                    out.push(`    GPIOA_CRL = 0x${(crlA >>> 0).toString(16)}u;`,
+                        `    GPIOA_CRH = 0x${(crhA >>> 0).toString(16)}u;`);
+                }
+                if (usedPorts.has(1)) {
+                    out.push(`    GPIOB_CRL = 0x${(crlB >>> 0).toString(16)}u;`,
+                        `    GPIOB_CRH = 0x${(crhB >>> 0).toString(16)}u;`);
+                }
+                if (usedPorts.has(2)) {
+                    out.push(`    GPIOC_CRL = 0x${(crlC >>> 0).toString(16)}u;`,
+                        `    GPIOC_CRH = 0x${(crhC >>> 0).toString(16)}u;`);
+                }
+            } else {
+                // Read-modify-write, touching only the declared pins' fields:
+                // PA13/PA14 reset to AF0 = SWDIO/SWCLK (RM0360 §8.4.1, RM0444
+                // §7.4.1), and a whole-register write turned them into GPIO and
+                // cut the debugger off. Inputs are written too (MODER = 00):
+                // the G0 resets unused pins to analog (11), not input.
+                let moderA = 0, moderB = 0, moderC = 0, pupdrA = 0, pupdrB = 0, pupdrC = 0;
+                const fieldMask = [0, 0, 0];
+                for (const p of pins) {
+                    const hw = this.armHw(p);
+                    if (!hw) continue;
+                    const port = hw.gpio >> 4;
+                    const bit = hw.gpio & 15;
+                    if (['output', 'tone', 'analog', 'input'].includes(p.direction)) fieldMask[port] |= (3 << (2 * bit));
+                    if (p.direction === 'output' || p.direction === 'tone') {
+                        if (port === 0) moderA |= (1 << (2 * bit));
+                        else if (port === 1) moderB |= (1 << (2 * bit));
+                        else moderC |= (1 << (2 * bit));
+                    } else if (p.direction === 'analog') {
+                        if (port === 0) moderA |= (3 << (2 * bit));
+                        else if (port === 1) moderB |= (3 << (2 * bit));
+                        else moderC |= (3 << (2 * bit));
+                    } else if (p.direction === 'input') {
+                        const pull = p.openDrain ? 0 : p.activeLow ? 1 : 2;
+                        if (port === 0) pupdrA |= (pull << (2 * bit));
+                        else if (port === 1) pupdrB |= (pull << (2 * bit));
+                        else pupdrC |= (pull << (2 * bit));
+                    }
+                }
+                if (this._cUses.print) {
+                    // PA9/PA10 to alternate function (MODER=10) — USART1 is AF1 on
+                    // both the F030 (RM0360/DS) and the G030 (RM0444/DS).
+                    moderA = (moderA & ~(0xF << 18)) | (2 << 18) | (2 << 20);
+                    pupdrA &= ~(0xF << 18);
+                    fieldMask[0] |= (0xF << 18);
+                }
+                const hex = (v) => `0x${(v >>> 0).toString(16)}u`;
+                const rmw = (P, port, moder, pupdr) => {
+                    const m = fieldMask[port];
+                    if (!m) return;
+                    out.push(`    GPIO${P}_MODER = (GPIO${P}_MODER & ~${hex(m)}) | ${hex(moder)};`,
+                        `    GPIO${P}_PUPDR = (GPIO${P}_PUPDR & ~${hex(m)}) | ${hex(pupdr)};`);
+                };
+                // AF number before the mode flips to AF: the pin never shows
+                // AF0 (on PA9/PA10 nothing, but keep the order uniform).
+                if (this._cUses.print) {
+                    out.push('    GPIOA_AFRH = (GPIOA_AFRH & ~0xFF0u) | (1u << 4) | (1u << 8);   /* PA9/PA10 = AF1 USART1 */');
+                }
+                rmw('A', 0, moderA, pupdrA);
+                rmw('B', 1, moderB, pupdrB);
+                rmw('C', 2, moderC, pupdrC);
             }
             out.push('    TIM3_PSC = (uint16_t)(F_CPU / 1000000UL - 1UL);  /* 1 MHz count */',
                 '    TIM3_ARR = 999u;               /* update every millisecond */',
                 '    TIM3_DIER = 1u;                /* UIE: the WFI wake */',
                 '    TIM3_CR1 = 1u;                 /* CEN */');
+            if (this._cUses.timer) out.push('    bw_timer_t0 = bw_now();         /* the timer starts at the green flag */');
+            if (f1Tim2) {
+                out.push('    TIM2_PSC = (uint16_t)(F_CPU / 1000000UL - 1UL);  /* the same 1 kHz frame as TIM3 */',
+                    '    TIM2_ARR = 999u;',
+                    '    TIM2_CR1 = 1u;                 /* CEN */');
+            }
             if (this._cUses.print) {
+                const ue = this._cStm32F1 ? '(1u << 13)' : '1u';   /* F1: UE is CR1 bit 13 */
                 out.push('    USART1_BRR = (uint32_t)(F_CPU / 9600UL);',
-                    this._cUses.ask ? '    USART1_CR1 = (1u << 3) | (1u << 2) | 1u;   /* TE + RE (ask) + UE */'
-                        : '    USART1_CR1 = (1u << 3) | 1u;   /* TE + UE */');
+                    this._cUses.ask ? `    USART1_CR1 = (1u << 3) | (1u << 2) | ${ue};   /* TE + RE (ask) + UE */`
+                        : `    USART1_CR1 = (1u << 3) | ${ue};   /* TE + UE */`);
             }
         } else if (this._core === 'arm') {
             out.push('    /* On real silicon the TIMER counts watchdog ticks; the bootrom',
@@ -19461,13 +20542,31 @@ class SB3Creator {
         // it, and an ATtiny85 program ending on `set buzz to 440 hz` went
         // silent the moment main returned.)
         const stayFinished = '    for (;;) { }                    /* the script has finished: stay finished */';
+        if (this._cEsp8266) {
+            // The runtime's arduino.c defines main(): it calls setup() once
+            // and loop() forever, so one scheduler pass IS loop's body.
+            out.push('}', '',
+                'void setup(void)',
+                '{',
+                '    bw_setup();',
+                '}', '',
+                'void loop(void)',
+                '{',
+                '    uint32_t pass_ms = bw_now();',
+                ...[...(this._cPollTasks || []), ...taskNames].map((n) => `    ${n}();`),
+                '    /* Two full passes inside one millisecond: wait for the next ms',
+                '     * edge instead of spinning against it (the pico/AVR contract). */',
+                '    if (bw_now() == pass_ms) { if (++bw_calm >= 2u) { bw_calm = 0u; bw_idle(); } }',
+                '    else bw_calm = 0u;',
+                '}', '');
+        } else {
         out.push('}', '',
             (this._core !== '8051' && this._core !== 'z80') ? 'int main(void)' : 'void main(void)',
             '{', '    bw_setup();');
         if (this._cTasks && this._core === 'arm') {
             out.push('',
                 ...(this._cStm32 ? [
-                    '    NVIC_ISER = (1u << 16);        /* TIM3 wakes bw_idle (vectors are real) */'
+                    `    NVIC_ISER = (1u << ${this._cStm32F1 ? 29 : 16});        /* TIM3 wakes bw_idle (vectors are real) */`
                 ] : [
                     '    BW_SCB_VTOR = (uint32_t)bw_vectors;  /* the wake handler owns every vector */',
                     '    BW_TIMER_INTE = 1u;            /* alarm 0 may interrupt */',
@@ -19542,7 +20641,7 @@ class SB3Creator {
             out.push(stayFinished);
         } else if (this._core === 'arm') {
             out.push(...(this._cStm32 ? [
-                '    NVIC_ISER = (1u << 16);        /* TIM3 wakes bw_idle (vectors are real) */'
+                `    NVIC_ISER = (1u << ${this._cStm32F1 ? 29 : 16});        /* TIM3 wakes bw_idle (vectors are real) */`
             ] : [
                 '    BW_SCB_VTOR = (uint32_t)bw_vectors;  /* the wake handler owns every vector */',
                 '    BW_TIMER_INTE = 1u;            /* alarm 0 may interrupt */',
@@ -19559,6 +20658,80 @@ class SB3Creator {
             if (this._core === '8051') out.push(stayFinished);
         }
         out.push('}', '');
+        }
+        // ESP8266: the same choke point as the i8086 below. Only verbs with a
+        // real runtime-API branch are emitted; anything else would fall to
+        // RP2040/STM32 register code that means nothing on an LX106, so the
+        // whole program refuses BY NAME instead. analogRead and Servo are
+        // absent from the runtime itself, not merely unported.
+        if (this._cEsp8266) {
+            const ESP8266_IMPLEMENTED = new Set([
+                'delay', 'blockDelay', 'blockingDelay', 'now', 'print', 'printText', 'printNumber',
+                'printPieces', 'pwm', 'tone', 'random', 'numericLists', 'table'
+            ]);
+            const named = {
+                adc: 'analog input (the runtime has no analogRead)',
+                servo: 'servo (the runtime has no Servo)',
+                ask: 'ask/answer (the runtime has no serial input)',
+                chipTemp: 'chip temperature (the runtime has no reading)'
+            };
+            let keys = Object.keys(this._cUses).filter((k) => this._cUses[k] && !ESP8266_IMPLEMENTED.has(k));
+            // 'devices' only says some device block ran; name the device itself.
+            if (keys.length > 1) keys = keys.filter((k) => k !== 'devices');
+            const used = keys.map((k) => named[k] || k);
+            if (this._cSensorParts && this._cSensorParts.size) used.push('sensor PARTs');
+            const unique = [...new Set(used)];
+            if (unique.length) {
+                this.cWarn(`the ESP8266 C back end emits pins, waits, print, PWM and tone through the `
+                    + `esp8266js runtime API — ${unique.join(', ')} ${unique.length > 1 ? 'are' : 'is'} `
+                    + 'not available for this board, so no C is emitted');
+                return `/* No C emitted for DEVICE ESP8266.\n`
+                    + ' *\n'
+                    + ' * The ESP8266 C back end targets the esp8266js runtime\'s Arduino-style\n'
+                    + ' * API: digital pins, waits, print, PWM (analogWrite) and tone. This\n'
+                    + ` * program also uses: ${unique.join(', ')}.\n`
+                    + ' * Emitting another chip\'s register code for them would be wrong on\n'
+                    + ' * an LX106. The pseudocode is unchanged.\n'
+                    + ' */\n';
+            }
+            const body = out.join('\n');
+            const leaked = [...new Set(body.match(/BW_SIO\w*|BW_IOBANK0\w*|BW_PADS\b|BW_TIMER_\w*|BW_UART0\w*|BW_WATCHDOG\w*|BW_PWM\w*|BW_ADC_\w*|BW_SCB\w*|BW_NVIC\w*|BW_MMIO|\bint main\b/g) || [])];
+            for (const l of leaked) this.cWarn(`internal: ${l} leaked into an ESP8266 build — that feature is not ported yet`);
+        }
+        // STM32: the same choke point. These features have a driver only for
+        // other cores (servo = RP2040 PWM slices, NeoPixel = 8051 cycle-timed
+        // asm, LCD/OLED/TFT = I2C macros that are no-ops on this chip), so the
+        // whole program refuses BY NAME rather than ship C that either fails
+        // to compile or silently does nothing. Broadcasts have no C lowering on
+        // any core yet. A CLOCK the generator cannot program is refused too.
+        if (this._cStm32) {
+            const chip = String(device || '').toUpperCase();
+            const named = {
+                servo: 'servo (no STM32 servo driver: the RP2040 one would be emitted)',
+                neopixel: 'NeoPixel (no STM32 WS2812 driver: the 8051 one would be emitted)',
+                lcd: 'LCD (no STM32 I2C/parallel LCD driver)',
+                oled: 'OLED (no STM32 I2C driver)',
+                tft: 'TFT display (no STM32 SPI driver)'
+            };
+            const unique = Object.keys(named).filter((k) => this._cUses[k]).map((k) => named[k]);
+            const opcodes = new Set();
+            for (const t of (project && project.targets) || []) {
+                for (const b of Object.values(t.blocks || {})) if (b && b.opcode) opcodes.add(b.opcode);
+            }
+            if (opcodes.has('event_broadcast') || opcodes.has('event_broadcastandwait') || opcodes.has('event_whenbroadcastreceived')) {
+                unique.push('broadcast / WHEN I receive (no C lowering for messages yet)');
+            }
+            if (this._cStm32ClockRefused) unique.push(this._cStm32ClockRefused);
+            if (unique.length) {
+                this.cWarn(`the ${chip} C back end has no implementation for: ${unique.join('; ')} — no C is emitted`);
+                return `/* No C emitted for DEVICE ${chip}.\n`
+                    + ' *\n'
+                    + ` * This program uses: ${unique.join('; ')}.\n`
+                    + ' * Emitting another chip\'s driver (or a silent stub) for them would be\n'
+                    + ` * wrong on the ${chip}. The pseudocode is unchanged.\n`
+                    + ' */\n';
+            }
+        }
         // i8086 emits 8255 PIN I/O only, for now. Every other verb falls to the
         // 8051 default above, which would be wrong 8051 code on an 8086 -- so if
         // the program used ANY hardware/util verb (each sets a `_cUses` flag; a
@@ -20045,6 +21218,14 @@ SB3Creator.RETARGET_POOLS = (() => {
             analog: ['PA0', 'PA1', 'PA2', 'PA3', 'PA4', 'PA5', 'PA6', 'PA7'],
             input: ['PA1', 'PA2', 'PA3', 'PA4', 'PA5', 'PA0', 'PB1', 'PA6', 'PA7'],
             pwm: ['PA6', 'PA7', 'PB1'], ledActiveLow: false },
+        stm32g030: { digital: ['PA0', 'PA1', 'PA2', 'PA3', 'PA4', 'PA5', 'PB1', 'PA6', 'PA7', 'PB0', 'PA8', 'PB2', 'PB3', 'PB4', 'PB5', 'PB6', 'PB7', 'PB8', 'PB9'],
+            analog: ['PA0', 'PA1', 'PA2', 'PA3', 'PA4', 'PA5', 'PA6', 'PA7'],
+            input: ['PA1', 'PA2', 'PA3', 'PA4', 'PA5', 'PA0', 'PB1', 'PA6', 'PA7', 'PB0', 'PA8', 'PB2', 'PB3', 'PB4', 'PB5', 'PB6', 'PB7', 'PB8', 'PB9'],
+            pwm: ['PA6', 'PA7', 'PB1'], ledActiveLow: false },
+        stm32f103: { digital: ['PC13', 'PB12', 'PB13', 'PB14', 'PB15', 'PA8', 'PB0', 'PB1', 'PB10', 'PB11', 'PA4', 'PA5', 'PA6', 'PA7', 'PA0', 'PA1', 'PA2', 'PA3'],
+            analog: ['PA0', 'PA1', 'PA2', 'PA3', 'PA4', 'PA5', 'PA6', 'PA7', 'PB0', 'PB1'],
+            input: ['PA0', 'PA1', 'PA2', 'PA3', 'PA4', 'PA5', 'PA6', 'PA7', 'PB0', 'PB1', 'PB10', 'PB11', 'PB12', 'PB13', 'PB14', 'PB15', 'PC13'],
+            pwm: ['PA1', 'PA2', 'PA3', 'PA6', 'PA7', 'PB0', 'PB1'], ledActiveLow: true },
         pico: { digital: ['GP25', 'GP15', 'GP14', 'GP13', 'GP12', 'GP11', 'GP10', ...seq('GP%', 0, 9), ...seq('GP%', 18, 22)],
             analog: ['GP26', 'GP27', 'GP28'],
             input: ['GP2', 'GP3', 'GP4', 'GP5', ...seq('GP%', 6, 15), ...seq('GP%', 18, 22), 'GP0', 'GP1'],
@@ -20160,6 +21341,7 @@ SB3Creator.I2C_PINS = {
     // pads, and they are silkscreened SDA/SCL rather than numbered. Arcade and
     // PyBadge LC are deliberately absent — a virtual target has no bus to name.
     pybadge: { sda: 'SDA', scl: 'SCL' },
+    cpx: { sda: 'A5', scl: 'A4' },          // the CPX's A4/A5 pads are SCL/SDA
     attiny85: { sda: 'PB0', scl: 'PB2' },   // USI
     attiny88: { sda: 'PC4', scl: 'PC5' },   // TWI
 };
@@ -20344,8 +21526,8 @@ SB3Creator.retargetPseudocode = function retargetPseudocode(src, device) {
     // The F0 tier cap (STM32-PATH.md): digital I/O, tick, print, ADC, PWM.
     // Servo needs a 50 Hz frame and TIM3's 1 kHz frame IS the tick — a
     // second timer is beyond the cap; displays need the I2C/SPI port.
-    if ((used.servo || used.motor) && device === 'stm32f030') reasons.push('servo/motor need a 50 Hz PWM frame — TIM3 is the 1 kHz tick, and a second timer is beyond the F0 tier cap');
-    if (used.display && device === 'stm32f030') reasons.push('displays need the I2C/SPI port, which is beyond the F0 tier cap');
+    if ((used.servo || used.motor) && (device === 'stm32f030' || device === 'stm32g030' || device === 'stm32f103')) reasons.push(`servo/motor need a 50 Hz PWM frame — TIM3 is the 1 kHz tick, and a second timer is beyond the ${device} tier cap`);
+    if (used.display && (device === 'stm32f030' || device === 'stm32g030' || device === 'stm32f103')) reasons.push(`displays need the I2C/SPI port, which is beyond the ${device} tier cap`);
     if (used.pwmPins.size && !pools.pwm.length) reasons.push(`${device} has no PWM-capable convention pins`);
 
     // ---- allocate pins from the pools ----------------------------------
@@ -20617,6 +21799,12 @@ SB3Creator.STC_PARTS = {
     'pybadge-lc': { core: 'samd51', header: null, portModes: false, aux1T: false, adc: true, arcade: true,
         display: 'st7735', displayWidth: 160, displayHeight: 128, neopixels: 1, accelerometer: null },
     samd51: { core: 'samd51', header: null, portModes: false, aux1T: false, adc: true },
+    // core: 'samd21' -- Adafruit Circuit Playground Express (ATSAMD21G18A).
+    // Its words are cpxDialect.js's and become `circuitplayground` blocks; the
+    // board runs them in the VM (Lite's CPX pane). generateC() names no
+    // samd21 core, so no firmware is ever emitted for it (task A9).
+    cpx: { core: 'samd21', header: null, portModes: false, aux1T: false, adc: true,
+        neopixels: 10, accelerometer: 'lis3dh' },
     // core: 'rp2040' -- GP0-GP28, and generateC() emits freestanding Cortex-M0
     // bare metal (SIO GPIO, the 1 MHz TIMER as an ISR-free timebase, UART0,
     // ADC over APB). Decided 2026-08-12 (stc docs/ROADMAP.md): bare-metal C
@@ -20628,6 +21816,20 @@ SB3Creator.STC_PARTS = {
     // bw-board's STM32-PATH.md and test/stm32f0-board.test.mjs — that
     // firmware IS this emission's contract.
     stm32f030: { core: 'rp2040', stm32f0: true, header: null, portModes: false, aux1T: false, adc: true },
+    stm32g030: { core: 'rp2040', stm32g0: true, header: null, portModes: false, aux1T: false, adc: true },
+    stm32f103: { core: 'rp2040', stm32f1: true, header: null, portModes: false, aux1T: false, adc: true },
+    // core 'rp2040' + esp8266: the ESP8266 (Tensilica LX106) is NOT an ARM
+    // part — it rides the same structural emission (cooperative scheduler,
+    // per-pin helpers) the way the STM32F030 does, but every hardware verb
+    // goes through the blob-free esp8266js runtime's Arduino-style API
+    // (firmware/arduino/Arduino.h: pinMode/digitalWrite/digitalRead,
+    // millis, analogWrite 0-255 at 1 kHz, tone/noTone, bw_serial_*).
+    // That runtime's arduino.c owns main(); the emission supplies setup()
+    // and loop(). Pins are GPIO numbers spelled GPn like the Pico's:
+    // GP0-GP5 and GP12-GP15 (GPIO6-11 are the flash bus, GPIO16 is not
+    // supported by the runtime). No analogRead and no Servo in that
+    // runtime, so those (and every other unported feature) refuse by name.
+    esp8266: { core: 'rp2040', esp8266: true, header: null, portModes: false, aux1T: false, adc: false },
     // core: 'w65c02' -- the composable 6502 breadboard machine (EATER6502
     // preset: W65C22 VIA at $6000, W65C51 ACIA at $5000, 1 MHz phi2).
     // generateC() emits cc65-compatible freestanding C; pins are VIA port
@@ -20668,12 +21870,18 @@ SB3Creator.STC_PARTS = {
  * @param {string} device
  * @returns {number}
  */
+/** NVIC line of the STM32 tone timer: TIM14 = 19 (F030/G030), TIM4 = 30 (F103). */
+SB3Creator.stm32ToneIrq = (f1) => (f1 ? 30 : 19);
+
 SB3Creator.defaultClock = (device) => {
     const part = SB3Creator.STC_PARTS[String(device || '').toLowerCase()];
     if (!part) return 11059200;
     if (part.tiny85 || part.tiny88) return 8000000;
     if (part.core === 'arduino') return 16000000;
     if (part.stm32f0) return 48000000;
+    if (part.stm32g0) return 64000000;
+    if (part.stm32f1) return 72000000;
+    if (part.esp8266) return 80000000;
     if (part.core === 'rp2040') return 125000000;
     if (part.core === 'w65c02') return 1000000;
     if (part.core === 'samd51') return 120000000;

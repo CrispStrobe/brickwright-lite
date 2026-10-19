@@ -23,8 +23,8 @@ export const profileFiles = Object.freeze({
 const backport = ['licenses/Apache-2.0.txt','licenses/firmware-NuttX-NOTICE.txt',
     'licenses/NuttX-Apps-NOTICE.txt','licenses/firmware-Brickwright-BSD-3-Clause.txt',
     'licenses/NuttX-Tickless-BSD-3-Clause.txt','licenses/Simulation-Firmware-NOTICES.txt'];
-const optional = {guest:['tools/spike_nuttx_mailbox.py','tools/spike_program_uart.py'],
-    nuttx:[...backport,'initial-flash.bin','tools/spike_program_uart.py']};
+const optional = {guest:['tools/spike_nuttx_mailbox.py','tools/spike_program_uart.py','tools/spike_lockstep.py'],
+    nuttx:[...backport,'initial-flash.bin','tools/spike_program_uart.py','tools/spike_lockstep.py']};
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const bounded = async (root,name,limit) => {
     const path=join(root,name), meta=await lstat(path), actual=await realpath(path);
@@ -59,6 +59,9 @@ export async function freezeResourceProfile (kind, sourceArg, outputArg, resourc
     if (files['scripts/spike-state-server.py'].includes('from spike_program_uart import') && !files['tools/spike_program_uart.py']) {
         throw new Error('Missing program UART helper');
     }
+    if (/^import spike_lockstep$/m.test(files['scripts/spike-state-server.py'].toString()) && !files['tools/spike_lockstep.py']) {
+        throw new Error('Missing lockstep helper');
+    }
     if (backport.some(n=>files[n]) && (!backport.every(n=>files[n]) || !files['initial-flash.bin'])) {
         throw new Error('Incomplete firmware backport notices or flash seed');
     }
@@ -78,9 +81,18 @@ export async function freezeResourceProfile (kind, sourceArg, outputArg, resourc
         `include @${join(source,'models.cs')}\nmach create\nmachine LoadPlatformDescription @${join(source,'platforms/boards/spike-prime.repl')}\nemulation CreatePrimeElectricalPorts "machine-0"\n${files['initial-flash.bin']?initialFlashScenario(source):''}`;
     const portable=kind==='guest'?'mach create\nmachine LoadPlatformDescription @arena-demo.repl\n':
         `include @models.cs\nmach create\nmachine LoadPlatformDescription @platforms/boards/spike-prime.repl\nemulation CreatePrimeElectricalPorts "machine-0"\n${files['initial-flash.bin']?initialFlashResourceScenario():''}`;
+    // Compiled Runtime profiles retain models.cs for provenance but must not
+    // load those types again. Preserve the producer's exact loading mode.
+    const templates = [[expected,portable],[portable,portable]];
+    if (kind==='nuttx') {
+        const compiledExpected=expected.slice(`include @${join(source,'models.cs')}\n`.length);
+        const compiledPortable=portable.slice('include @models.cs\n'.length);
+        templates.push([compiledExpected,compiledPortable],[compiledPortable,compiledPortable]);
+    }
     // Accept only the exact authored templates, never arbitrary monitor rewriting.
-    if (![expected,portable].includes(files[scenario].toString())) throw new Error('Unknown source-build scenario template');
-    files[scenario]=Buffer.from(portable);
+    const template=templates.find(([input])=>input===files[scenario].toString());
+    if (!template) throw new Error('Unknown source-build scenario template');
+    files[scenario]=Buffer.from(template[1]);
     await mkdir(output); // Preserve every existing output, even incomplete packages.
     const manifest={},mapping={};
     for (const [name,bytes] of Object.entries(files)) {

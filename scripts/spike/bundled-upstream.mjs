@@ -42,7 +42,7 @@ export const ROOT = resolve(here, '../..');
 export const BUNDLES = resolve(ROOT, 'overlay/scratch-vm/src/extensions/crispstrobe');
 
 /** CrispStrobe/extensions commit these sha256s were taken at. */
-export const UPSTREAM_COMMIT = '6bda206e5d9d6b18531ba60475fc1601acb00974';
+export const UPSTREAM_COMMIT = 'd7f51b73b8dab3d2f96330607cb2afcb30bf09fc';
 export const UPSTREAM_REPO = 'CrispStrobe/extensions';
 
 /**
@@ -55,6 +55,9 @@ export const UPSTREAM_REPO = 'CrispStrobe/extensions';
  */
 export const MAP = {
     arrays: {repo: 'CrispStrobe/extensions', pin: 'arrays-values', path: 'extensions/CrispStrobe/arrays.js'},
+    // Circuit Playground Express device world (task A9), scoped to its own pin
+    // so adding it moves no other bundled extension.
+    circuitplayground: {repo: 'CrispStrobe/extensions', pin: 'circuitplayground', path: 'extensions/CrispStrobe/circuitplayground.js'},
     csp: 'extensions/CrispStrobe/csp.js',
     circuit: 'extensions/CrispStrobe/circuit.js',
     // ev3lms and legoev3direct were mapped here until 2026-09-21. They were the
@@ -83,7 +86,7 @@ export const MAP = {
     stc12: 'extensions/CrispStrobe/stc12.js',
     stc12live: 'extensions/CrispStrobe/stc12live.js',
     universalgamepad: 'extensions/CrispStrobe/gamepad.js',
-    wedo2unified: 'extensions/CrispStrobe/lego_wedo2_universal.js',
+    wedo2unified: {repo: 'CrispStrobe/extensions', pin: 'wedo2unified', path: 'extensions/CrispStrobe/lego_wedo2_universal.js'},
 
     // Written in Lite, upstreamed 2026-09-20 (CrispStrobe/extensions#4), and
     // vendored back so the gate covers them like everything else. bitops and
@@ -129,6 +132,11 @@ export const LITE_ONLY = {
         'would mean upstreaming that contract too.',
     cameracapture: 'Lite-native. Integrates with the app\'s shared Video Sensing provider and preview ' +
         'to capture still images without opening a competing camera stream.',
+    peers: 'Lite-native and gated (task E11): the Peer Sessions blocks call the app\'s own native ' +
+        'peer commands, exist only in a BW_ENABLE_PEERS=1 build with the `peers` Cargo feature, and ' +
+        'must not be upstreamed while no default build carries them (docs/PEERS-SECURITY-REVIEW.md).',
+    bwgpio: 'Lite-native. Generic GPIO pin blocks (set pin / read pin) that drive the Widgets pane\'s ' +
+        'GPIO strip and round-trip with the DOS Forth bench\'s pin!/pin@ words through the Code tab.',
 };
 
 /**
@@ -138,7 +146,16 @@ export const LITE_ONLY = {
  * has been argued for in review rather than one that arrived unannounced —
  * which is the only difference between this and the situation the audit found.
  */
-export const ALLOWED_DIVERGENCE = {};
+export const ALLOWED_DIVERGENCE = {
+    // Reviewed 2026-10-18 (lane/simlab-forklift-ci-20261018); to be sent upstream to
+    // CrispStrobe/extensions and the entry removed when the pin moves past it.
+    spikeprime: 'run motor for N degrees/rotations waited a WALL-CLOCK estimate (degrees / (speed·6) + 0.5 s) ' +
+        'instead of the move: a motor slower than the estimate (loaded, or a simulated hub whose physics runs ' +
+        'slower than real time, as the Robot Lab worker does on a busy CI runner) had its move overridden ' +
+        'part-way by the next block — the Forklift lifted 38.1 mm of 40 in CI run 39079251326. It now waits ' +
+        'on the encoders like move forward (_waitForMovement), whose safety net is no encoder progress for ' +
+        '2 s (cap 120 s) instead of a 2·estimate + 1 s deadline.'
+};
 
 /**
  * The extension source a bundle holds, or null if it is not a bundle at all.

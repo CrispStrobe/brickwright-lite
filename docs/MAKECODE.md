@@ -420,6 +420,83 @@ The order therefore stands — import first, emulate later, and only if the
 demand is for playing other people's games rather than learning from them —
 but "later" is now a week of peripheral work rather than a rewrite.
 
+## The command line: every target, and `run` (2026-10-13)
+
+`npm run makecode -- <command>` (scripts/makecode.mjs) covers the targets the
+Code tab translates, and runs a micro:bit or Calliope program without the app.
+
+| `--target` | to-sb3 | to-ts / to-project | to-hex (firmware) | run |
+|---|---|---|---|---|
+| `microbit` | yes | yes | universal V1 + V2 `.hex` | yes, the V1 board model; `--board v2` the V2 |
+| `calliopemini` (`calliope`) | yes | yes, export-calliope.js | `.hex` | yes, the V1 board model |
+| `arcade` | yes | yes | `.uf2` for a `--board` | refused by name |
+| `ev3` | yes | yes, export-ev3.js | `.uf2` | refused by name |
+
+A Calliope project exports through the micro:bit walk with pxt-calliope's own
+packages (`core`, `radio`), and `wait until` becomes the polling loop it stands
+for: pxt-calliope 3.0.30 has no `pauseUntil` (pxt-microbit's core poll.ts), and
+a Calliope corpus program failed to compile on it until this (task A6).
+
+The Code tab also selects the micro:bit, Calliope or EV3 emitter from the
+project's device and writes the matching MakeCode target and editor guidance
+(task A11, PR971). A Calliope export uses the polling form of `wait until`;
+a real downloaded Calliope project has been reopened, compiled and run in the
+browser qualification. Unchanged imported MakeCode files retain their own
+target, and multi-board projects keep their existing export behavior.
+
+`run <file> [--target microbit|calliopemini] [--seconds N] [--json]` (task A7)
+runs the program on LabWired's `microbit-v1` board: an nRF51822 with the Nordic
+S110 SoftDevice EMULATED (only the application window of the `.hex` is loaded;
+no Nordic byte runs), the same board model the Debug pane uses. A firmware
+`.hex` runs as it is (a universal hex's V1 section); a `.ts`, `.sb3`/`.bw` or a
+`.hex` that only carries a project is compiled first. Time is GUEST time: the
+serial console prints as it arrives, the 5x5 matrix when it changes. It needs
+`npm run sync:labwiredwasm` (the app's own engine artifact, run in Node through
+its glue's `initSync`) and, to compile, `npm run sync:makecode`; either missing
+is exit 3, by name. A Calliope mini runs on the same board model: its matrix and
+serial are real, its RGB LED, motor driver and pin labels are not modelled.
+
+Found while building it: a program that reads an analog pin faults with a
+BusFault at `0x4000_7500`, the nRF51 ADC, which LabWired's nRF51822 descriptor
+does not model yet. `run` reports the fault and exits 1; it does not fake a
+reading.
+
+### The micro:bit V2: `run --board v2` and the Code tab's ▶ Run on the emulated micro:bit V2 (task A8)
+
+The V2 (nRF52833) has no emulated SoftDevice: the official V2 base carries
+Nordic's S113, MBR and bootloader, which the emulator never runs. So a V2 run
+is compiled for the EMULATOR: `compileMakeCodeForEmulator` in the app, and its
+CLI twin `compile(target, files, {emulator: true})` in scripts/lib/pxt-node.mjs,
+link the program onto a Bluetooth-free base (the `mbcodal` variant only,
+through the same `emulatorBase` check), and the plain V2 `.hex` that results
+becomes an ELF where its own records say (vector table at 0) for LabWired's
+`microbit-v2` board. A universal `.hex` is refused on `--board v2`: its V2
+section is linked onto the official base. A Calliope program is a V1 program.
+
+The bases reach a build from the published release `makecode-emu-bases-1` of
+this repository: the build workflow's own bytes (run 38091323448), pinned by
+sha256 in `MICROBIT_EMU_BASES`, with the manifest and the components' licence
+texts beside them. `npm run sync:makecode` fetches them unless a local build is
+present, and serves only the pinned bytes (test/makecode-emu-bases-fetch.test.mjs).
+The workflow that BUILDS them syncs with `--no-emu-fetch`, so the published
+copy can never stand in for the build it is meant to reproduce.
+
+In the Code tab, a micro:bit MakeCode project has **▶ Run on the emulated
+micro:bit V2**: the image goes to the Debug pane on the `board:microbit-v2`
+LabWired board through the same firmware hand-off a compiled sketch takes, and
+the LED matrix shows in Widgets.
+
+The CLI reports the V2 firmware's serial text in both JSON and text mode, and
+the Code tab sends it to the Debug console. The pinned
+`labwired-wasm-de14721e` engine fixes the UARTE buffer lifetime and interrupt
+completion faults that corrupted CODAL output. Real compiled programs passed
+complete greeting/ordered-counter checks with the matrix, fault and guest-time
+bounds intact; a fresh browser V2 ELF reached Running and printed its complete
+unique greeting ([A10, PR988](https://github.com/CrispStrobe/brickwright-lite/pull/988)).
+
+MakeCode's `serial.writeLine` pads records to 32 bytes including CRLF by default.
+Use `serial.setWriteLinePadding(0)` in the program for unpadded lines.
+
 ## Two things found on the way that are not built here
 
 **The pxteditor iframe protocol.** MakeCode editors accept
