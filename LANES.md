@@ -6948,3 +6948,16 @@ module tail: the final eager dependency still closes a loading cycle. Require
 all three null prototypes in each existing entry-order control. The earlier
 two-record source packet is held; installation acceptance alone is not boot or
 native feature qualification.
+
+
+### Owned Array computation Error disposition — 2026-10-19
+
+SOURCE CANDIDATE / QUALIFICATION PENDING in the existing Array/exception lane.
+Own the two host callsites for active-ticket throw completion and private
+coordinator adoption, preserving actual Error identity/subtype/cause/frozen
+fields and existing guard behavior. Retain computation cleanup errors privately.
+Add one genuine native linked-thread group; preserve all original 48 assertions
+and supplier pin bytes. Public flags confer no authority. Non-Error thrown
+values remain under existing unsupported policy. Supplier tracking/adoption is
+owned separately; fresh combined normal installation and affected native plus
+original/Code/exported semantics qualification remain mandatory.
