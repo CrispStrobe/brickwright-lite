@@ -77,6 +77,7 @@
       "test/bw-sim-sliders.test.mjs",
       "test/bw-sim-sumo-program.test.mjs",
       "test/bw-sim-turntable.test.mjs",
+      "test/bw-sim-validation-2.test.mjs",
       "test/bw-sim-validation.test.mjs",
       "test/bw-sim-wall-stopper-program.test.mjs",
       "test/bw-sim-world.test.mjs",

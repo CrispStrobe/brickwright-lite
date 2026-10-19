@@ -50,7 +50,8 @@ export const freePinWelds = (nodes, islands, joints) => {
         if (!metas.length || metas.some(m => solidColliders(m).length > 0 || m.gear || (m.connectors || []).some(c => TOOTH.has(c.type)))) continue;
         if (metas.some(m => m.internalJoints && m.internalJoints.length)) continue;
         const mine = joints.filter(j => j.body1 === body.id || j.body2 === body.id);
-        if (mine.length < 2 || mine.some(j => j.type !== 'hinge' || j.motor)) continue;
+        // A hinge with friction or end stops (a slip clutch's hub on its axle) is a joint that does something.
+        if (mine.length < 2 || mine.some(j => j.type !== 'hinge' || j.motor || j.frictionNm || j.limits)) continue;
         const others = mine.map(j => (j.body1 === body.id ? j.body2 : j.body1));
         if (new Set(others).size !== others.length) continue;
         const a = vecNormalize(mine[0].axis);

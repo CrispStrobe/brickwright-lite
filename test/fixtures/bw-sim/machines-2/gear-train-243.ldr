@@ -1,0 +1,53 @@
+0 gear-train-243 (Brickwright Robot Lab validation machine, round 2)
+0 Name: gear-train-243.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 // Five 8:24 stages, 1:243 (Robot Lab validation round 2, test/bw-sim-validation-2.test.mjs).
+0 // Bench: the SPIKE medium motor (port A) output up at the origin (LDraw, -y up); a Technic beam 15 under the
+0 // housing (centre x = 100, holes x = -40 ... 240) pinned into the housing's bottom holes u0/u1 by friction pins.
+0 // Axles k = 1..5 stand in the beam's holes at x = 40k (centres 10 + 30 = 40 LDU apart, pitch radii 1.25 LDU per
+0 // tooth). Stage k (k = 0..4) is one gear width (20 LDU) above the last: an 8T on axle k at y = -60 - 20k drives a
+0 // 24T on axle k+1 at the same height; axle k+1 carries the next stage's 8T one layer up. Layers rise
+0 // monotonically, so no 24T shares a layer with a non-meshing 8T 40 LDU away (two layers would close a
+0 // second, inconsistent mesh). Output/input = (-8/24)^5 = -1/243.
+0 !BW ID motor
+0 !BW PORT A
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ID frame
+1 72 100 40 0 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID framePin1
+1 0 20 30 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID framePin2
+1 0 -20 30 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID axle0
+1 4 0 -60 0 0 1 0 1 0 0 0 0 -1 4519.dat
+0 !BW ID axle1
+1 4 40 -30 0 0 1 0 1 0 0 0 0 -1 3707.dat
+0 !BW ID axle2
+1 4 80 -30 0 0 1 0 1 0 0 0 0 -1 3707.dat
+0 !BW ID axle3
+1 4 120 -50 0 0 1 0 1 0 0 0 0 -1 3737.dat
+0 !BW ID axle4
+1 4 160 -50 0 0 1 0 1 0 0 0 0 -1 3737.dat
+0 !BW ID axle5
+1 4 200 -50 0 0 1 0 1 0 0 0 0 -1 3737.dat
+0 !BW ID g0in8
+1 16 0 -60 0 1 0 0 0 0 1 0 -1 0 3647.dat
+0 !BW ID g1out24
+1 16 40 -60 0 1 0 0 0 0 1 0 -1 0 3648.dat
+0 !BW ID g1in8
+1 16 40 -80 0 1 0 0 0 0 1 0 -1 0 3647.dat
+0 !BW ID g2out24
+1 16 80 -80 0 1 0 0 0 0 1 0 -1 0 3648.dat
+0 !BW ID g2in8
+1 16 80 -100 0 1 0 0 0 0 1 0 -1 0 3647.dat
+0 !BW ID g3out24
+1 16 120 -100 0 1 0 0 0 0 1 0 -1 0 3648.dat
+0 !BW ID g3in8
+1 16 120 -120 0 1 0 0 0 0 1 0 -1 0 3647.dat
+0 !BW ID g4out24
+1 16 160 -120 0 1 0 0 0 0 1 0 -1 0 3648.dat
+0 !BW ID g4in8
+1 16 160 -140 0 1 0 0 0 0 1 0 -1 0 3647.dat
+0 !BW ID gOut
+1 16 200 -140 0 1 0 0 0 0 1 0 -1 0 3648.dat
