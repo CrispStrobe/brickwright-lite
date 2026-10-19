@@ -573,7 +573,7 @@ jobs:
 
           def main():
               root=Path(os.environ['RUNNER_TEMP'])/'bw-ios-interface-inventory';root.mkdir(exist_ok=False)
-              report={'schema':'brickwright.ios-tool-interface.v6','sourceCommit':os.environ['GITHUB_SHA'],
+              report={'schema':'brickwright.ios-tool-interface.v7','sourceCommit':os.environ['GITHUB_SHA'],
                   'runID':os.environ['GITHUB_RUN_ID'],'attempt':os.environ['GITHUB_RUN_ATTEMPT'],'job':os.environ['GITHUB_JOB'],
                   'profile':'unadmitted','status':'partial','commands':[],'diagnostics':[],'commandGraphComplete':False,'actualAppQualified':False,'namespaceOwnershipQualified':False}
               try:
@@ -602,8 +602,8 @@ jobs:
                           ('/bin/launchctl','help','procinfo'),('/bin/launchctl','help','managerpid'),
                           ('/usr/bin/man','-P','/bin/cat','sample')]
                   if inventory_only:
-                      commands=[('/usr/bin/xcodebuild','-version'),('/usr/bin/xcrun','simctl','help','runtime'),
-                          ('/usr/bin/xcrun','simctl','list','--json','runtimes'),
+                      commands=[('/usr/bin/xcodebuild','-version'),
+                          ('/usr/bin/xcrun','simctl','list','--json','runtimes','iOS 26.2'),
                           ('/usr/bin/xcrun','simctl','list','--json','devicetypes','iPhone-16'),
                           ('/usr/bin/xcrun','simctl','runtime','list','--json')]
                   def observe_owned_help(child,deadline):

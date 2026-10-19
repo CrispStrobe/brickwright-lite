@@ -488,3 +488,9 @@ no downloads. Collection completeness is distinct from selected-target admission
 review actual architecture/build/image/model fields before any create/boot event.
 The retained complete help graph is usable despite the separate failed sampler,
 without relabeling the whole event or making a startup-cause claim.
+
+The initial unfiltered runtime catalog exceeded the64KiB cap and remains refused.
+A new metadata-only query filters runtimes by the observed iOS26.2 description;
+it retains the cap and omits already retained runtime help. Candidate selection
+from a failed capture cannot admit the catalog or target. Require bounded new
+originals and independent image/build/architecture/model joins before proceeding.

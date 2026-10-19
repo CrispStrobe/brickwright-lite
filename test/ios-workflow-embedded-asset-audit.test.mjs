@@ -2388,7 +2388,7 @@ class InterfaceControls(unittest.TestCase):
                         retained_command.assert_not_called()
                     else:
                         main();self.assertEqual([call.args[0] for call in retained_command.call_args_list],
-                            [('/usr/bin/xcodebuild','-version'),('/usr/bin/xcrun','simctl','help','runtime'),('/usr/bin/xcrun','simctl','list','--json','runtimes'),('/usr/bin/xcrun','simctl','list','--json','devicetypes','iPhone-16'),('/usr/bin/xcrun','simctl','runtime','list','--json')])
+                            [('/usr/bin/xcodebuild','-version'),('/usr/bin/xcrun','simctl','list','--json','runtimes','iOS 26.2'),('/usr/bin/xcrun','simctl','list','--json','devicetypes','iPhone-16'),('/usr/bin/xcrun','simctl','runtime','list','--json')])
                         for call in retained_command.call_args_list:self.assertIsNone(call.kwargs['observe'])
                 report=json.loads((root/'bw-ios-interface-inventory/report.json').read_text());self.assertEqual(report['diagnostics'],[])
                 if manual==diagnostic=='false':self.assertEqual(report['profile'],'inventory-only')
