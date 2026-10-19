@@ -181,3 +181,23 @@ sb3-creator and Arrays supplier revisions and main's unrelated newer pins,
 with coherent canonical files, mirrors, notices and provenance. The composed
 source is a candidate until its independent source review, affected execution
 and exact-head hosted checks complete.
+
+### Tile painter palette projection candidate
+
+The tile painter now has a source candidate that reuses the existing project
+startup-palette inspector for modern maps, tile thumbnails, indexed color
+buttons and legacy tile-definition previews. It projects colors without changing
+the stored color indices. Equal RGB entries stay distinct indices; index zero
+remains transparent and index 15 remains an ordinary opaque color.
+
+Dynamic or conflicting startup palettes use a labeled neutral index preview.
+Later authored palette changes remain unchanged, with an explicit reminder that
+the preview describes startup colors. Project edits and loads refresh the
+projection; closing or replacing the editor releases its old listeners.
+
+Source controls are `test/tilemap-palette-projection.test.mjs`; genuine VM and
+artwork transport controls are separate in
+`test/arcade-tilemap-palette-artwork.test.mjs`. These are authored controls, not
+new pass claims. Current visible canvas/color-button editing, save/reopen and
+export/reimport acceptance is still required. The candidate adds no runtime,
+prototype, reference-domain or supplier changes and does not qualify a whole game.
