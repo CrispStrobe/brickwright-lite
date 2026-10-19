@@ -239,28 +239,25 @@ const SITES = [
     {
         name: 'MakeCode share link (pseudocode-importer openMakeCodeShare)',
         file: IMPORTER,
-        reverts: [s => s.replace("const url = await promptAsync(this.L.mcSharePrompt, '');",
-            "const url = window.prompt(this.L.mcSharePrompt, '');")],
+        reverts: [s => s.replace("url = await promptAsync(this.L.mcSharePrompt,'');",
+            "url = window.prompt(this.L.mcSharePrompt,'');")],
         answers: {ok: [' https://makecode.com/_abc '], cancel: [null]},
         expect: {ok: 'https://makecode.com/_abc', cancel: null},
         async drive (helper, src, answers) {
             let fetched = null;
-            // The network import is stopped where the method reaches it; what it would fetch
-            // is the URL handed to mcFailed.
+            // Stop at the actual lazy gateway. Keep the real request-identity
+            // predicate: a stale prompt must not reach the gateway or status.
             const method = methodSource(this.file, 'openMakeCodeShare', src);
-            const stopped = method.replace(
-                "await import(\n                /* webpackChunkName: \"bw-makecode\" */ '../../lib/bw-makecode/index.js')",
-                'await __stopImport()');
-            assert.notEqual(stopped, method, 'the MakeCode import could not be stopped');
+            assert.ok(method.includes('await this.makeCodeImportModule()'), 'the real lazy import gateway');
             const self = {
                 props: {vm: {runtime: {getTargetForStage: () => 'owned-stage'}}},
                 L: {mcSharePrompt: 'Paste a MakeCode share link', mcShareLoading: 'loading',
                     mcFailed: url => { fetched = url; return 'failed'; }},
-                setState () {}
+                setState () {},
+                currentMakeCodeRequest: asMethod(methodSource(this.file, 'currentMakeCodeRequest', src), {}),
+                makeCodeImportModule: () => Promise.reject(new Error('offline'))
             };
-            const open = asMethod(stopped, {
-                promptAsync: helper.promptAsync, __stopImport: () => Promise.reject(new Error('offline'))
-            });
+            const open = asMethod(method, {promptAsync: helper.promptAsync});
             const {asked} = await driveWith(() => open.call(self), answers);
             return {asked, result: fetched};
         }
