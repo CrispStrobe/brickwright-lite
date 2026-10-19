@@ -179,9 +179,8 @@ const checks = async (page, {shotsDir, shots}) => {
     const n0 = await count(page);
     await page.mouse.click(q.h3[0], q.h3[1]);
     assert.equal(await count(page), n0 + 1, 'one part added');
-    const seat = async id => {
+    const seat = async (id, hole = h.h3) => {
         const pin = await connectorOf(page, id, 'p');
-        const hole = h.h3;
         const dot = pin.axis[0] * hole.axis[0] + pin.axis[1] * hole.axis[1] + pin.axis[2] * hole.axis[2];
         const rel = pin.position.map((v, i) => v - hole.position[i]);
         const along = rel[0] * hole.axis[0] + rel[1] * hole.axis[1] + rel[2] * hole.axis[2];
@@ -315,18 +314,24 @@ const checks = async (page, {shotsDir, shots}) => {
     await lab(page, ids => window.__bwSimLab.editor.apply({type: 'batch', commands: [{type: 'ungroup', id: window.__bwSimLab.editor.model.groups[0].id},
         ...ids.map(id => ({type: 'delete', id}))]}), ids9);
 
-    // T10. Target-first: the beam selected (a click), a click on its lit h3, then the pin's tile.
+    // T10. Target-first: the beam selected (a click), a click on its lit h1, then the pin's tile. (h1, not h3:
+    // the selected beam's gizmo sits on its origin, h3, and a press there grabs the gizmo.)
     await page.keyboard.press('Escape');
-    await hover(page, q.h3);
-    await page.mouse.click(q.h3[0], q.h3[1]);
+    await tool(page, 'view-home');
+    await frames(page);
+    await hover(page, q.h1);
+    await page.mouse.click(q.h1[0], q.h1[1]);
     assert.equal(await page.getByTestId('bw-sim-lab-target-chip').count(), 0, 'the first click only selects');
-    await page.mouse.click(q.h3[0], q.h3[1]);
+    await page.mouse.move(q.h1[0] + 3, q.h1[1]);
+    await page.mouse.move(q.h1[0], q.h1[1]);
+    await page.mouse.click(q.h1[0], q.h1[1]);
     await page.getByTestId('bw-sim-lab-target-chip').waitFor({timeout: 5000});
     const n10 = await count(page);
     await page.getByTestId('bw-sim-lab-part-2780.dat').click();
     assert.equal(await count(page), n10 + 1, 'the pin went in');
-    const s10 = await seat((await parts(page)).at(-1).id);
-    assert.deepEqual({...s10}, {...s2}, `the same seat as a click: ${JSON.stringify({s10, s2})}`);
+    const s10 = await seat((await parts(page)).at(-1).id, h.h1);
+    assert.deepEqual({...s10, pairs: null}, {...s2, pairs: null}, `the same seat as a click (in h1): ${JSON.stringify({s10, s2})}`);
+    assert.deepEqual(s10.pairs, [beam]);
     await page.keyboard.press('ControlOrMeta+z');
 
     // T16. Keyboard only: Enter on the pin's tile, Tab to hole 4 (h3), Enter.

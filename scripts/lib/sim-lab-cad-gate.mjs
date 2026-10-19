@@ -351,9 +351,10 @@ const redPixels = (page, png, clip) => page.evaluate(async ([b64, c]) => {
 }, [png.toString('base64'), clip]);
 
 /**
- * A pin dragged over a beam's hole from above snaps in from the TOP: the pointer
- * aims at the beam's top face around the hole (not at the floor seen through
- * it), so the magnet prefers that side.
+ * A pin dragged over a beam's hole snaps into the hole pointed at, from the CAMERA's
+ * side (docs/ROBOT-LAB-UX.md §3.3): the pointer aims at the beam's top face around the
+ * hole (not at the floor seen through it), and the hole's entry face is the one that
+ * faces the camera.
  */
 const pinIntoHoleFromAbove = async (page, beamId, {shotsDir}) => {
     await focusOn(page, beamId, 'Technic beam 7');
@@ -388,10 +389,16 @@ const pinIntoHoleFromAbove = async (page, beamId, {shotsDir}) => {
     const d = p.position.map((v, i) => v - beam.position[i]);
     const local = [0, 1, 2].map(c => beam.rotation[c] * d[0] + beam.rotation[3 + c] * d[1] + beam.rotation[6 + c] * d[2]);
     assert.ok(Math.abs(local[0]) < 1e-6 && Math.abs(local[2] % 20) < 1e-6, `in a hole: ${local}`);
-    assert.ok(local[1] < 0, `snapped from the top side: the pin's centre is ${-local[1]} LDU above the beam's mid-plane`);
+    // From the camera's side (docs/ROBOT-LAB-UX.md §3.3: the entry face whose normal faces the camera): the pin's
+    // centre is on the same side of the beam's mid-plane, along the hole's axis (beam-frame y), as the camera.
+    const eye = await page.evaluate(() => window.__bwSimLab.editView.camera.position.map((v, i) => (i ? -v : v) / 0.0004));
+    const e = eye.map((v, i) => v - beam.position[i]);
+    const eyeLocalY = beam.rotation[1] * e[0] + beam.rotation[4] * e[1] + beam.rotation[7] * e[2];
+    assert.ok(local[1] * eyeLocalY > 0 && Math.abs(Math.abs(local[1]) - 10) < 1e-6,
+        `snapped from the camera's side: the pin's centre ${local[1]} LDU from the beam's mid-plane, the camera at ${eyeLocalY.toFixed(0)}`);
     assert.match(await statusText(page), /Snapped to Technic beam 7/);
     await page.screenshot({path: resolve(shotsDir, 'sim-lab-build-pin-from-above.png'), fullPage: true});
-    console.log(`PASS Build: a pin dragged over a beam hole from above snaps in from the top (${-local[1]} LDU above the mid-plane)`);
+    console.log(`PASS Build: a pin dragged over a beam hole snaps in from the camera's side (${Math.abs(local[1])} LDU from the mid-plane, towards the camera)`);
     await page.keyboard.press('Escape');
 };
 

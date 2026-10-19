@@ -1014,7 +1014,14 @@ export const snapAtPointer = (model, catalog, held, ray, project, opts = {}) => 
     const lit = all.filter(t => t.px <= nearPx);
     let targets = all.filter(t => t.px <= radiusPx);
     if (!targets.length && hit && !opts.allParts) {
-        const near = all.map(t => ({t, d: Math.min(...t.entries.map(e => vecDist(e.point, hit.point)))}))
+        // Nearest to the hit point: the distance to the connector's own segment (a hole's axis between its faces),
+        // so the top of a beam lying on its side, right over a hole, finds that hole.
+        const segDist = c => {
+            const L = c.length > 0 ? c.length : 0;
+            const along = Math.max(-L / 2, Math.min(L / 2, vecDot(vecSub(hit.point, c.position), c.axis)));
+            return vecDist(hit.point, vecAdd(c.position, vecScale(c.axis, along)));
+        };
+        const near = all.map(t => ({t, d: Math.min(segDist(t.conn), ...t.entries.map(e => vecDist(e.point, hit.point)))}))
             .filter(x => x.d <= FALLBACK_LDU).sort((a, b) => a.d - b.d);
         if (near.length) targets = [near[0].t];
     }
