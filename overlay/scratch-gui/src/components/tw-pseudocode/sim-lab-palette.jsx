@@ -77,6 +77,10 @@ class SimLabPalette extends React.Component {
         for (const el of scroller.querySelectorAll('[data-part]')) {
             const part = el.dataset.part;
             if (thumbs.has(part)) continue;
+            // A closed category draws nothing (its pictures wait until it is opened): a closed <details>
+            // may still lay its tiles out (content-visibility), so its state is asked, not its boxes.
+            const group = el.closest('details');
+            if (group && !group.open) continue;
             const r = el.getBoundingClientRect();
             if (r.height > 0 && r.bottom >= view.top - 120 && r.top <= view.bottom + 120) this.props.requestThumb(part);
         }
