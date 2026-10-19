@@ -2099,10 +2099,10 @@ class Originals(unittest.TestCase):
         for cut in ('prior-pin','prior-stat','prior-type','prior-target','prior-link','prior-run','prior-baseline','mode'):
             value,request,expected,events,status=self.font_bridge_fixture(cut=cut);self.assertEqual(status,1,cut);self.assertFalse(events,cut);self.assertFalse(value['complete']);self.assertEqual(value['sourceCommands'],[])
             with self.assertRaises((ValueError,KeyError),msg=cut):r.verify_font_bridge(E(value),request,expected)
-        with patch.object(c,'regular',side_effect=AssertionError('read input')),patch.object(c.Path,'cwd',side_effect=AssertionError('cwd')):
+        with patch.object(c,'FONT_BRIDGE_ENABLED',False),patch.object(c,'regular',side_effect=AssertionError('read input')),patch.object(c.Path,'cwd',side_effect=AssertionError('cwd')):
             for mode in ('font-bridge','font-bridge-guard'):
                 with self.assertRaisesRegex(ValueError,'font bridge disabled'):c.main([mode])
-        self.assertFalse(c.FONT_BRIDGE_ENABLED);self.assertFalse(c.FONT_CHAIN_ENABLED);self.assertFalse(c.ACTUAL_ENABLED)
+        self.assertTrue(c.FONT_BRIDGE_ENABLED);self.assertFalse(c.FONT_CHAIN_ENABLED);self.assertFalse(c.ACTUAL_ENABLED)
     def test_font_bridge_failed_reads_and_closed_mode_policies(self):
         for cut in ('close','read-close','escape'):
             value,request,expected,events,status=self.font_bridge_fixture(cut=cut);self.assertEqual(status,1);self.assertFalse(r.verify_font_bridge(E(value),request,expected)['complete'])
@@ -2432,6 +2432,43 @@ class Originals(unittest.TestCase):
         files['font-bridge-original.json']=E(value);archive,expected,metadata=self.bridge_delivery_seal(files,expected,metadata)
         self.assertFalse(r.verify_font_bridge_delivery(archive,request,expected,metadata,workflow)['complete'])
 
+    def test_font_bridge_live_guard_has_zero_observation_edges_and_held_modes_refuse(self):
+        self.assertTrue(c.FONT_BRIDGE_ENABLED)
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(patch.object(c.argparse,'_',lambda text:text))
+            for name in ('regular','collect_font_bridge','retain_font_bridge','font_read','Hosted','Originals'):
+                stack.enter_context(patch.object(c,name,side_effect=AssertionError('observation edge '+name)))
+            for name in ('cwd','lstat','resolve'):
+                stack.enter_context(patch.object(c.Path,name,side_effect=AssertionError('path edge '+name)))
+            for name in ('open','stat','lstat','readlink','scandir'):
+                stack.enter_context(patch.object(c.os,name,side_effect=AssertionError('OS edge '+name)))
+            stack.enter_context(patch.object(c.subprocess,'Popen',side_effect=AssertionError('process edge')))
+            self.assertEqual(c.main(['font-bridge-guard']),0)
+            for mode in ('font-chain-guard','guard'):
+                with self.assertRaisesRegex(ValueError,'disabled'):c.main([mode])
+        with patch.object(c,'FONT_BRIDGE_ENABLED',False):
+            with self.assertRaisesRegex(ValueError,'font bridge disabled'):c.main(['font-bridge-guard'])
+    def test_font_bridge_invalid_events_refuse_before_git_or_font_observation(self):
+        value,request,expected,events,status=self.font_bridge_fixture();head=D(request)['source']['head']
+        event={'action':'labeled','label':{'name':'x86-hdd-gui-font-bridge'},'sender':{'login':'CrispStrobe'},'repository':{'full_name':c.REPOSITORY},'number':123,'pull_request':{'number':123,'state':'open','head':{'sha':head,'repo':{'full_name':c.REPOSITORY,'fork':False}},'base':{'ref':'main','repo':{'full_name':c.REPOSITORY}},'body':'<!-- BW_GUI_HDD_FONT_BRIDGE_SHA256='+H(request)+' -->'}}
+        env={'GITHUB_REPOSITORY':c.REPOSITORY,'GITHUB_EVENT_NAME':'pull_request','GITHUB_ACTOR':'CrispStrobe','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'font-bridge','GITHUB_RUN_ID':'1234','BW_EXPECTED_HEAD':head,'GITHUB_WORKFLOW_SHA':'d'*40,'GITHUB_WORKFLOW_REF':c.REPOSITORY+'/.github/workflows/i80386-hdd-gui-actual.yml@refs/pull/123/merge','GITHUB_EVENT_PATH':'/event'}
+        c.font_bridge_event(E(event),H(request),head,env)
+        for cut in ('action','label','actor','fork','head','base','marker','attempt','job'):
+            e=copy.deepcopy(event);platform=copy.deepcopy(env)
+            if cut=='action':e['action']='opened'
+            elif cut=='label':e['label']['name']='x86-hdd-gui-font-discovery'
+            elif cut=='actor':e['sender']['login']='other'
+            elif cut=='fork':e['pull_request']['head']['repo']['fork']=True
+            elif cut=='head':e['pull_request']['head']['sha']='0'*40
+            elif cut=='base':e['pull_request']['base']['ref']='other'
+            elif cut=='marker':e['pull_request']['body']='unselected'
+            elif cut=='attempt':platform['GITHUB_RUN_ATTEMPT']='2'
+            else:platform['GITHUB_JOB']='font-discovery'
+            with patch.object(c,'regular',return_value=E(e)),patch.object(c,'font_read',side_effect=AssertionError('font edge')) as read,patch.object(c,'Hosted',side_effect=AssertionError('Git edge')) as hosted,patch.object(c,'Originals',side_effect=AssertionError('retention edge')) as retained:
+                observed=c.collect_font_bridge(request,H(request),pathlib.Path('/checkout'),platform,'/out/original.json')
+            self.assertFalse(observed['complete'],cut);self.assertEqual(observed['firstFailure']['name'],'ValueError',cut);self.assertEqual(observed['sourceCommands'],[],cut)
+            read.assert_not_called();hosted.assert_not_called();retained.assert_not_called()
+
 suite=unittest.defaultTestLoader.loadTestsFromTestCase(Originals)
 result=unittest.TextTestRunner(verbosity=2).run(suite)
 print(json.dumps({'controls':result.testsRun,'failures':len(result.failures),'errors':len(result.errors)}))
@@ -2735,8 +2772,8 @@ function fontBridgeDeliveryWorkflowContract (workflow, controller) {
     const [header,...steps]=job.split(/\n      - /);
     const conditions=["github.event_name == 'pull_request'","github.event.action == 'labeled'","github.event.label.name == 'x86-hdd-gui-font-bridge'","github.actor == 'CrispStrobe'","github.repository == 'CrispStrobe/brickwright-lite'",'github.run_attempt == 1','github.event.pull_request.head.repo.full_name == github.repository','github.event.pull_request.head.repo.fork == false',"github.event.pull_request.base.ref == 'main'"];
     const predicate=header.split('    if: >-\n')[1].split('\n    runs-on:')[0].trim().replace(/\s+/g,' ');
-    assert.equal(predicate,'${{ false && '+conditions.join(' && ')+' }}');
-    assert.match(controller,/FONT_BRIDGE_ENABLED = False/);
+    assert.equal(predicate,'${{ true && '+conditions.join(' && ')+' }}');
+    assert.match(controller,/FONT_BRIDGE_ENABLED = True/);
     assert.match(controller,/ACTUAL_ENABLED = False/);
     assert.equal(steps.length,7);assert.match(header,/runs-on: ubuntu-24\.04/);assert.match(header,/timeout-minutes: 16/);
     assert.doesNotMatch(job,/continue-on-error|\|\| true|npm (?:run )?build|fc-list|fc-cache/);
@@ -2752,12 +2789,13 @@ function fontBridgeDeliveryWorkflowContract (workflow, controller) {
     assert.match(upload,/actions\/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02/);assert.match(upload,/if: always\(\)/);assert.match(upload,/name: i80386-hdd-gui-font-bridge-\$\{\{ github.run_id \}\}-\$\{\{ github.run_attempt \}\}/);assert.match(upload,/path: gui-font-bridge/);
 }
 
-test('bridge delivery job is initially disabled with pinned bounded source guards',()=>{
+test('bridge delivery job uses exact owned event with pinned bounded source guards',()=>{
     const workflow=fs.readFileSync(new URL('../.github/workflows/i80386-hdd-gui-actual.yml',import.meta.url),'utf8');
     const controller=fs.readFileSync(new URL('../scripts/run-i80386-hdd-gui-actual.py',import.meta.url),'utf8');
     fontBridgeDeliveryWorkflowContract(workflow,controller);
     const marker='\n  font-bridge:\n',prefix=workflow.split(marker)[0]+marker,parts=workflow.split(marker)[1].split('\n  # Observation delivery only.'),job=parts[0],suffix='\n  # Observation delivery only.'+parts[1];
-    for(const [old,value] of [['${{ false &&','${{ true &&'],['github.run_attempt == 1','github.run_attempt == 2'],['font-bridge-guard','font-chain-guard'],['if: always()','if: success()'],['GH_TOKEN: \'\'','GH_TOKEN: ${{ github.token }}'],['timeout-minutes: 16','timeout-minutes: 8'],['--ignore-scripts','--foreground-scripts'],['node-version: 22.23.3','node-version: 22']]){
+    assert.throws(()=>fontBridgeDeliveryWorkflowContract(prefix+job.replace('${{ true &&','${{ true || true &&')+suffix,controller));
+    for(const [old,value] of [['${{ true &&','${{ false &&'],['github.run_attempt == 1','github.run_attempt == 2'],['font-bridge-guard','font-chain-guard'],['if: always()','if: success()'],['GH_TOKEN: \'\'','GH_TOKEN: ${{ github.token }}'],['timeout-minutes: 16','timeout-minutes: 8'],['--ignore-scripts','--foreground-scripts'],['node-version: 22.23.3','node-version: 22']]){
         assert.ok(job.includes(old));assert.throws(()=>fontBridgeDeliveryWorkflowContract(prefix+job.replace(old,value)+suffix,controller));
     }
 });

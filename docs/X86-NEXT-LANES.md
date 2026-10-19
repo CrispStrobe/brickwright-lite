@@ -380,7 +380,8 @@ standalone reader mode `--font-bridge`. The closed formats are
 `bw.gui-hdd.font-bridge-request.v1`, `bw.gui-hdd.font-bridge-original.v1`,
 `bw.gui-hdd.font-bridge-expectation.v1`, embedded
 `bw.gui-hdd.font-bridge-prior.v1` and externally selected
-`bw.gui-hdd.font-bridge-prior-reference.v1`. `FONT_BRIDGE_ENABLED` remains false.
+`bw.gui-hdd.font-bridge-prior-reference.v1`. The current source proposal enables
+`FONT_BRIDGE_ENABLED`; actual and chain guards remain false.
 Each embedded prior byte stream and the complete new request have a 1 MiB
 cap; the existing 4 MiB JSON cap and 2 MiB output reserve remain unchanged.
 Prior descriptors bind immutable bytes, source, run and workflow. Official
@@ -437,19 +438,35 @@ setup/source/retention failures, cancellation and
 official timeouts are refused; preserve unsupported originals externally. Existing
 discovery/delivery readers and their selected consumers remain unchanged.
 
-The new `font-bridge` workflow job has a literal-false condition, and
-`FONT_BRIDGE_ENABLED` remains false. It preserves the selected actions, package
+The `font-bridge` source proposal enables only its leading literal and source
+guard. Its full predicate still requires the exact owned label, actor, repository,
+first attempt, nonfork source and main base. It preserves the selected actions, package
 setup and runtime pins, installs one immutable request with credentials confined
 to that step, collects without credentials, and always retains the owned output.
 Its finite backstops have no measured sufficiency or containment claim. No new
 request, transport setting, event, archive acquisition or hosted bridge observation
 is selected by this source implementation.
 
+The activation proposal configures no variable, marker, immutable transport or
+event. A source proposal publication cannot select its reserved bridge label.
+The earlier disabled-source request is historical preparation: rebuild source21,
+request and current workflow bindings only after the final source commit, then
+independently review them and every enabled exact-head check before any event.
+The historical failed original and selected standalone consumer remain unchanged.
+
+Independent review of this activation proposal confirms exactly two production
+guard changes. Three focused Python controls pass, including nine invalid-event
+cases and zero-observation guard checks; nine workflow mutations are detected.
+The local full run passed 78 of 79 Node tests and hit the unchanged 60-second
+Python timeout. Its original failure is retained; host load was elevated, and
+the cause is not established. A complete exact-head hosted run remains required.
+Resource limits, event checks, baseline and actual-execution guards remain unchanged.
+
 The scoped census refresh records 19 recent completed runs at their actual source;
 new bridge steps are younger than those readings. Every unrelated workflow row,
 ordered run and main provenance remains held. Four inventory pointers preserve the
 two consumed failed events now outside that window, and five pointers explain the
-new disabled bridge job and named steps. No event was run to populate coverage;
+new bridge job and named steps, which require separate event admission. No event was run to populate coverage;
 the explicit generator check remains required alongside the census tests.
 
 This checkpoint passes 66 Node tests, including 135 embedded Python controls,

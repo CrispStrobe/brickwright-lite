@@ -1597,7 +1597,7 @@ def retain_font_chain(value,path):
 
 
 # Separate prior-reference mode: historical alias bytes select a question only.
-FONT_BRIDGE_ENABLED = False
+FONT_BRIDGE_ENABLED = True
 
 
 def font_bridge_blob(row):

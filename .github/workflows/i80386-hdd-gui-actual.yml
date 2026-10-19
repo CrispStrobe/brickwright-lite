@@ -220,7 +220,7 @@ jobs:
   # Variables transport a separately reviewed immutable request, never approval.
   font-bridge:
     if: >-
-      ${{ false && github.event_name == 'pull_request' && github.event.action == 'labeled' &&
+      ${{ true && github.event_name == 'pull_request' && github.event.action == 'labeled' &&
           github.event.label.name == 'x86-hdd-gui-font-bridge' && github.actor == 'CrispStrobe' &&
           github.repository == 'CrispStrobe/brickwright-lite' && github.run_attempt == 1 &&
           github.event.pull_request.head.repo.full_name == github.repository &&
