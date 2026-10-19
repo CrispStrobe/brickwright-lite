@@ -5816,9 +5816,18 @@ A separately guarded font-discovery source continuation now collects bounded
 read-only package, configuration, alias and font-file observations. Its own
 request/original/independent-reader formats remain observation-only. A distinct
 conditional hosted job now enables that collector in the source candidate.
-Its final-head request/event admission and original observations remain pending;
-the request is unpublished, no discovery event was sent, and actual stays disabled. The original required roster and missing
+The separately admitted source79af font event failed during collection; its sole
+retained original passed independent delivery validation as failed and incomplete.
+That event is consumed and cannot be replayed. Actual stays disabled. The original required roster and missing
 paths remain held. See the matching guide for selection and qualification gates.
+A separate disabled exact-entry font-chain source slice now adds closed request,
+original and inner-reader formats, typed parent/link/file witnesses and bounded
+alternatives traversal. Existing discovery/delivery v1 code and its baseline
+remain held. The new guard is false; there is no hosted chain job, official
+outer-delivery path, new input or event. Its strict parent policy refuses the
+retained mode040777 parent; manufactured positives do not qualify that layout.
+Raw source-command sidecars remain separate from inner descriptor validation.
+See the guide for source controls and the remaining trust/delivery gates.
 A separate delivery reader now joins externally selected official metadata,
 workflow proof and the bounded original ZIP before grading a retained discovery
 observation. Missing request/observation or raw evidence refuses. This is

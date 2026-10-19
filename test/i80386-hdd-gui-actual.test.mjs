@@ -1822,6 +1822,212 @@ class Originals(unittest.TestCase):
                 self.assertIn('discovery source Git/live/external join',observed['firstFailure']['message']);self.assertTrue(any(op=='git' for op,arg in events))
             else:self.assertFalse(events)
 
+    @contextlib.contextmanager
+    def font_chain_edges(self,two=True,cut=None,actual_sources=False):
+        entry='/usr/share/fonts/entry.ttf';bridge='/etc/alternatives/choice.ttf';terminal='/usr/share/fonts/family/end.ttf'
+        links={entry:bridge if two else terminal}
+        if two:links[bridge]=terminal
+        if cut=='escape':links[bridge]='/etc/passwd'
+        if cut=='cycle':links[bridge]=entry
+        if cut=='hop':links={entry:bridge,**{'/etc/alternatives/'+str(i):'/etc/alternatives/'+str(i+1) for i in range(12)}};links[bridge]='/etc/alternatives/0'
+        if cut=='wrong-intermediate':links[entry]='/etc/alternatives/nested/choice.ttf'
+        source=D(self.files['source.before.json']);selected={path:(root/path).read_bytes() if actual_sources else ('source:'+path).encode() for path in sorted(c.SOURCE)};source['files']={path:ROW(raw) for path,raw in selected.items()};baseline={'schema':'bw.gui-hdd.inventory-template.v3','files':['/etc/fonts/conf.avail/missing.conf'],'aliases':[]}
+        request=E({'schema':'bw.gui-hdd.font-chain-request.v1','source':source,'baseline':c.font_blob(E(baseline)),'entry':entry})
+        env={'GITHUB_REPOSITORY':r.REPOSITORY,'GITHUB_EVENT_NAME':'pull_request','GITHUB_ACTOR':'CrispStrobe','GITHUB_RUN_ID':'200','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'font-chain','GITHUB_WORKFLOW_SHA':'d'*40,'GITHUB_WORKFLOW_REF':r.REPOSITORY+'/.github/workflows/i80386-hdd-gui-actual.yml@refs/pull/123/merge','BW_EXPECTED_HEAD':source['head'],'GITHUB_EVENT_PATH':'/event'}
+        event={'action':'labeled','label':{'name':'x86-hdd-gui-font-chain'},'sender':{'login':'CrispStrobe'},'repository':{'full_name':r.REPOSITORY},'number':123,'pull_request':{'number':123,'state':'open','head':{'sha':source['head'],'repo':{'full_name':r.REPOSITORY,'fork':False}},'base':{'ref':'main','repo':{'full_name':r.REPOSITORY}},'body':'<!-- BW_GUI_HDD_FONT_CHAIN_SHA256='+H(request)+' -->'}}
+        if cut=='event':event['label']['name']='x86-hdd-gui-font-discovery'
+        store={'/request':request,'/event':E(event)};fdpaths={};at={};events=[];counts={}
+        def info(path):
+            path=str(path);counts[path]=counts.get(path,0)+1
+            if path in links:mode=stat.S_IFLNK|0o777;size=len(links[path])
+            elif path=='/usr/bin/git':mode=stat.S_IFREG|0o755;size=9
+            elif path==terminal:mode=(stat.S_IFDIR if cut=='directory' else stat.S_IFIFO if cut=='fifo' else stat.S_IFREG)|0o644;size=9
+            else:mode=stat.S_IFDIR|0o755;size=4096
+            uid=1000 if cut=='terminal-owner' and path==terminal and counts[path]>1 else 0
+            if cut=='parent-write' and path=='/usr/share/fonts' or cut=='terminal-parent-write' and path=='/usr/share/fonts/family':mode|=0o022
+            if cut=='link-swap' and path==bridge and counts[path]>1:mode=stat.S_IFDIR|0o755
+            values={'dev':1,'ino':sum(path.encode())+10,'mode':mode,'uid':uid,'gid':0,'nlink':1,'size':size,'mtime_ns':-2}
+            if cut=='drift' and path==bridge and counts[path]>3:values['ino']+=1
+            return SimpleNamespace(**{'st_'+k:v for k,v in values.items()})
+        def open_(path,flags):
+            path=str(path);events.append(('open',path));fd=100+len(fdpaths);fdpaths[fd]=path;at[fd]=0
+            if path in links:self.assertEqual(flags,os.O_PATH|os.O_NOFOLLOW)
+            elif path not in (terminal,'/usr/bin/git'):self.assertTrue(flags&os.O_DIRECTORY)
+            if cut=='open' and path==terminal:raise OSError('OPEN_FIRST')
+            return fd
+        def read_(fd,count):
+            if cut=='read-close' and fdpaths[fd]==terminal:raise OSError('READ_FIRST')
+            data=b'fontbytes'[at[fd]:at[fd]+count];at[fd]+=len(data);return data
+        def close_(fd):
+            events.append(('close',fdpaths[fd]))
+            if cut in ('close','read-close') and fdpaths[fd]==terminal or cut=='link-read-close' and fdpaths[fd]==bridge:raise OSError('CLOSE_SECOND')
+        def regular_(path,cap):
+            path=str(path);data=store.get(path)
+            if data is None and path.startswith('/checkout/'):data=selected[path[len('/checkout/'):]]
+            if cut=='live-source' and path.startswith('/checkout/'):data=b'wrong'
+            if cut=='git-retention' and path.endswith('git-0.stdout'):raise OSError('RETAIN_SECOND')
+            self.assertIsNotNone(data,path);self.assertLessEqual(len(data),cap);return data
+        class Output:
+            def __init__(self,path):self.root=pathlib.Path(path);self.files={}
+            def save(self,name,data):store[str(self.root/name)]=data;self.files[name]=ROW(data)
+        class Edge:
+            def __init__(self,root,output,env):self.output=output;self.attempts=[];self.deadline=10**20
+            def git(self,args):
+                role='git-'+str(len(self.attempts));self.attempts.append(role);events.append(('git',role))
+                data=(source['head' if args[1]=='HEAD' else 'tree']+'\n').encode() if args[0]=='rev-parse' else selected[args[2].split(':',1)[1]]
+                argv=['/usr/bin/git','--no-replace-objects','-c','gc.auto=0','-c','maintenance.auto=false','-c','core.fsmonitor=false','-c','core.hooksPath=/dev/null']+args
+                process=proc(argv,data,b'',c.clean_env(),seconds=.001);process['identity'].update(parentPid=900,state='S')
+                if cut=='git-retention':process.update(exitCode=1,firstFailure='GIT_FIRST')
+                for suffix,raw in (('stdout',data),('stderr',b''),('process.json',E(process))):self.output.save(role+'.'+suffix,raw)
+                if cut=='git-retention':raise OSError('GIT_FIRST')
+                return data
+            def run(self,*args):raise AssertionError('no package/native probe in passive chain')
+        class Writer:
+            def __init__(self,path,mode):self.path=str(path);self.data=b'';self.assert_mode=mode
+            def write(self,data):self.data+=data;return len(data)
+            def close(self):store[self.path]=self.data
+        def pathopen(path,mode):self.assertEqual(mode,'xb');self.assertNotIn(str(path),store);return Writer(path,mode)
+        def readlink(path,dir_fd=None):
+            self.assertEqual(path,'')
+            if cut=='link-read-close' and fdpaths[dir_fd]==bridge:raise OSError('LINK_READ_FIRST')
+            target=links[fdpaths[dir_fd]]
+            return target+'x' if cut=='link-text' and counts.get(fdpaths[dir_fd],0)>2 else target
+        with patch.object(c.Path,'cwd',return_value=pathlib.Path('/checkout')),patch.object(c,'FONT_CHAIN_ENABLED',True),patch.dict(c.os.environ,env,clear=True),patch.object(c,'Originals',Output),patch.object(c,'Hosted',Edge),patch.object(c,'regular',regular_),patch.object(c.Path,'lstat',lambda path:info(path)),patch.object(c.Path,'resolve',lambda path,strict=True:path),patch.object(c.Path,'exists',lambda path:str(path) in store),patch.object(c.Path,'open',pathopen),patch.object(c.os,'readlink',readlink),patch.object(c.os,'open',open_),patch.object(c.os,'read',read_),patch.object(c.os,'fstat',lambda fd:info(fdpaths[fd])),patch.object(c.os,'close',close_):
+            yield request,env,events,store
+    def chain_fixture(self,**kw):
+        with self.font_chain_edges(**kw) as (request,env,events,store):
+            status=c.main(['font-chain','--request','/request','--expected-sha256',H(request),'--output','/out/chain.json'])
+            raw=store['/out/chain.json']
+        expected={'schema':'bw.gui-hdd.font-chain-expectation.v1','source':D(request)['source'],'request':ROW(request),'original':ROW(raw),'runId':200,'workflowSha':'d'*40}
+        return D(raw),request,expected,events,status
+    def test_font_chain_real_cli_direct_twohop_and_reader_cli(self):
+        for two in (False,True):
+            value,request,expected,events,status=self.chain_fixture(two=two);self.assertEqual(status,0,value['firstFailure']);self.assertEqual(len(value['links']),2 if two else 1)
+            verdict=r.verify_font_chain(E(value),request,expected);self.assertTrue(verdict['complete']);self.assertFalse(verdict['qualified']);self.assertFalse(verdict['sourceRuntimeObserved'])
+            inputs={'/original':E(value),'/request':request,'/expected':E(expected)};out=io.StringIO()
+            with patch.object(r,'bounded_input',lambda path,cap:inputs[path]),contextlib.redirect_stdout(out):
+                self.assertEqual(r.main(['--font-chain','/original','--request','/request','--expected','/expected']),0)
+            self.assertEqual(D(out.getvalue().encode()),verdict);self.assertEqual(value['commands'],[]);self.assertIsNone(value['packages'])
+    def test_font_chain_disabled_guard_has_no_io_or_output(self):
+        with patch.object(c,'regular',side_effect=AssertionError('input')),patch.object(c.Path,'cwd',side_effect=AssertionError('cwd')),patch.object(c,'collect_font_chain',side_effect=AssertionError('collector')):
+            for mode in ('font-chain','font-chain-guard'):
+                with self.assertRaisesRegex(ValueError,'font chain disabled'):c.main([mode])
+        self.assertFalse(c.FONT_CHAIN_ENABLED);self.assertFalse(c.ACTUAL_ENABLED);self.assertTrue(c.FONT_DISCOVERY_ENABLED)
+    def test_font_chain_failed_os_paths_keep_first_failure_no_probes(self):
+        for cut in ('escape','cycle','hop','wrong-intermediate','directory','fifo','drift','link-swap','link-read-close','parent-write','terminal-owner','open','close','read-close','live-source','git-retention'):
+            value,request,expected,events,status=self.chain_fixture(cut=cut);self.assertEqual(status,1,cut);self.assertIsNotNone(value['firstFailure'],cut);self.assertFalse(value['complete']);self.assertEqual(value['commands'],[])
+            if cut=='link-read-close':self.assertEqual(value['firstFailure']['message'],'LINK_READ_FIRST');self.assertEqual(value['secondary'][0]['message'],'CLOSE_SECOND')
+            if cut=='read-close':self.assertEqual(value['firstFailure']['message'],'READ_FIRST');self.assertEqual(value['secondary'][0]['message'],'CLOSE_SECOND')
+            if cut=='git-retention':self.assertEqual(value['firstFailure']['message'],'GIT_FIRST');self.assertEqual(value['secondary'][0]['message'],'RETAIN_SECOND')
+            # Failed source/event admission has no valid inner-original join yet.
+            if cut not in ('live-source','git-retention'):self.assertFalse(r.verify_font_chain(E(value),request,expected)['complete'])
+    def test_font_chain_independent_coherent_semantic_refusals(self):
+        for cut in ('version','field','bool','float','kind','first','terminal','escape','cycle','parent-omit','parent-write','link-text','link-drift','file-eof','file-hash','file-size','file-close','source','event','packages','hop'):
+            value,request,expected,events,status=self.chain_fixture()
+            if cut=='version':value['schema']='bw.gui-hdd.font-chain-original.v2'
+            elif cut=='field':value['selfApproved']=True
+            elif cut=='bool':value['links'][0]['namedBefore']['uid']=False
+            elif cut=='float':value['links'][0]['namedBefore']['uid']=0.0
+            elif cut=='kind':value['links'][0]['kind']='directory-alias'
+            elif cut=='first':value['links'][0]['path']='/usr/share/fonts/other.ttf'
+            elif cut=='terminal':value['terminal']['path']='/usr/share/fonts/other.ttf'
+            elif cut=='escape':value['links'][1]['linkBefore']=value['links'][1]['linkAfter']='/etc/passwd'
+            elif cut=='cycle':value['links'][1]['linkBefore']=value['links'][1]['linkAfter']=value['links'][0]['path']
+            elif cut=='parent-omit':value['parents'].pop(0)
+            elif cut=='parent-write':
+                for key in ('namedBefore','heldBefore','heldAfter','namedAfter'):value['parents'][0][key]['mode']|=0o022
+            elif cut=='link-text':value['links'][0]['linkAfter']+='x'
+            elif cut=='link-drift':value['links'][0]['heldAfter']['ino']+=1
+            elif cut=='file-eof':value['terminal']['observation']['file']['eof']=False
+            elif cut=='file-hash':value['terminal']['observation']['file']['sha256']='invalid'
+            elif cut=='file-size':value['terminal']['observation']['file']['byteLength']+=1
+            elif cut=='file-close':value['terminal']['observation']['close']['succeeded']=False
+            elif cut=='source':value['sourceCommands'].pop()
+            elif cut=='event':
+                event=D(base64.b64decode(value['event']['base64']));event['label']['name']='x86-hdd-gui-font-discovery';value['event']=c.font_blob(E(event))
+            elif cut=='packages':value['packages']={}
+            elif cut=='hop':value['links']*=5
+            expected['original']=ROW(E(value))
+            with self.assertRaises((ValueError,KeyError),msg=cut):r.verify_font_chain(E(value),request,expected)
+    def test_font_chain_failed_suffix_terminal_and_role_counterexamples(self):
+        # Coherently re-pinned packets reproduce the independent review's
+        # accepted failed suffix/escape and irrelevant role-field counterexamples.
+        for cut in ('failed-suffix-garbage','failed-suffix-typed','failed-missing-link-terminal','failed-invalid-next-suffix','failed-invalid-next-typed','failed-terminal-escape','irrelevant-terminal-original','irrelevant-tool-original'):
+            value,request,expected,events,status=self.chain_fixture(cut='escape' if cut in ('failed-invalid-next-suffix','failed-invalid-next-typed') else None)
+            if cut.startswith('failed'):
+                value['complete']=False;value['firstFailure']={'phase':'chain','path':None,'name':'ValueError','message':'retained failure'}
+            if cut=='failed-suffix-garbage':
+                value['links'][0]['linkBefore']=None;value['links'][1]={'completelyUnvalidatedSuffix':True}
+            elif cut=='failed-suffix-typed':value['links'][0]['linkBefore']=None;value['terminal']=None
+            elif cut=='failed-missing-link-terminal':value['links'][-1]['linkBefore']=None
+            elif cut=='failed-invalid-next-suffix':value['links'].append({'completelyUnvalidatedSuffix':True})
+            elif cut=='failed-invalid-next-typed':value['links'].append(copy.deepcopy(value['links'][-1]))
+            elif cut=='failed-terminal-escape':value['terminal']['path']='/etc/passwd'
+            elif cut=='irrelevant-terminal-original':value['terminal']['observation']['original']={'invented':True}
+            else:value['tool']['original']={'invented':True}
+            expected['original']=ROW(E(value))
+            with self.assertRaises((ValueError,KeyError),msg=cut):r.verify_font_chain(E(value),request,expected)
+
+    def test_font_chain_failed_parent_ancestry_and_valid_prefixes(self):
+        value,request,expected,events,status=self.chain_fixture(cut='close')
+        extra=copy.deepcopy(value['parents'][0]);extra['path']='/home/secret';value['parents'].append(extra)
+        expected['original']=ROW(E(value))
+        with self.assertRaisesRegex(ValueError,'derived chain ancestry'):r.verify_font_chain(E(value),request,expected)
+        # Parent refusal can precede the first link or occur after the last
+        # derived hop but before any terminal/next-link row exists.
+        for cut,count in (('parent-write',0),('terminal-parent-write',2)):
+            value,request,expected,events,status=self.chain_fixture(cut=cut)
+            self.assertEqual(status,1);self.assertEqual(len(value['links']),count);self.assertIsNone(value['terminal'])
+            self.assertFalse(r.verify_font_chain(E(value),request,expected)['complete'])
+
+    def test_font_chain_request_version_and_closed_selection(self):
+        value,raw,expected,events,status=self.chain_fixture();request=D(raw)
+        for cut in ('version','extra','entry','type'):
+            changed=copy.deepcopy(request)
+            if cut=='version':changed['schema']='bw.gui-hdd.font-discovery-request.v1'
+            elif cut=='extra':changed['hopLimit']=100
+            elif cut=='entry':changed['entry']='/etc/alternatives/choice.ttf'
+            else:changed['entry']=True
+            for module in (c,r):
+                with self.assertRaises(ValueError,msg=cut):module.font_chain_request(E(changed),H(E(changed)))
+    def test_font_chain_frame_and_deadline_prevent_kernel_work(self):
+        for cut in ('frame','deadline'):
+            with self.font_chain_edges() as (request,env,events,store):
+                with patch.object(c,'JSON_CAP',(2<<20)+32) if cut=='frame' else patch.object(c.time,'monotonic',side_effect=[0,181]):
+                    value=c.collect_font_chain(request,H(request),pathlib.Path('/checkout'),env,'/out/chain.json')
+                self.assertIsNotNone(value['firstFailure']);self.assertFalse(value['complete']);self.assertFalse(events);self.assertFalse(value['commands'])
+
+    def test_font_chain_actual_source21_extent_fits_held_frame_reserve(self):
+        with self.font_chain_edges(actual_sources=True) as (request,env,events,store):
+            self.assertEqual(c.main(['font-chain','--request','/request','--expected-sha256',H(request),'--output','/out/chain.json']),0)
+            value=D(store['/out/chain.json']);selected=sum(row['byteLength'] for row in D(request)['source']['files'].values())
+            self.assertGreater(selected,1400000);self.assertLess(len(E(value)),c.JSON_CAP-(2<<20))
+            triples=[path for path in store if '-process-originals/' in path];self.assertEqual(len(triples),3*(len(c.SOURCE)+2))
+            self.assertEqual(sum(len(store[path]) for path in triples if path.endswith('.stdout')),selected+82)
+            expected={'schema':'bw.gui-hdd.font-chain-expectation.v1','source':D(request)['source'],'request':ROW(request),'original':ROW(E(value)),'runId':200,'workflowSha':'d'*40}
+            self.assertTrue(r.verify_font_chain(E(value),request,expected)['complete'])
+    def test_font_chain_critical_predicate_removal_mutations_detected(self):
+        source=(root/'scripts/run-i80386-hdd-gui-actual.py').read_text()
+        for old,new,method,cut in (
+          ("need(target.startswith(FONT_CHAIN_ROOTS) or target.startswith('/etc/alternatives/'),'finite font or alternatives bridge')","need(True,'finite font or alternatives bridge')",'font_chain_next','escape'),
+          ("need(not target.startswith('/etc/alternatives/') or target.count('/')==3,'single alternatives child')","need(True,'single alternatives child')",'font_chain_next','wrong-intermediate'),
+          ("need(path not in seen,'chain cycle refused')","need(True,'chain cycle refused')",'collect_font_chain','cycle'),
+          ("need(len(value['links'])<min(FONT_CHAIN_HOPS,256),'combined chain alias/hop cap')","need(True,'combined chain alias/hop cap')",'collect_font_chain','hop'),
+          ("before.st_mode&0o6022==0 and Path(path).resolve(strict=True)==Path(path)","Path(path).resolve(strict=True)==Path(path)",'font_chain_witness','parent-write'),
+          ("need(row['namedBefore']==row['heldBefore']==row['heldAfter']==row['namedAfter'],'stable chain witness readback')","need(True,'stable chain witness readback')",'font_chain_witness','drift'),
+          ("need(kind=='link' and stat.S_ISLNK(before.st_mode),'typed chain symlink')","need(True,'typed chain symlink')",'font_chain_witness','link-swap'),
+          ("else:source_error.font_chain_secondary=getattr(source_error,'font_chain_secondary',[])+[exc]","else:source_error=exc",'collect_font_chain','git-retention'),
+          ("terminal_info['uid']==0 and not terminal_info['mode']&0o6022","True",'collect_font_chain','terminal-owner')
+        ):
+            self.assertIn(old,source);namespace={'__name__':'chain_mutant'};exec(compile(source.replace(old,new,1),'chain-mutant','exec'),namespace)
+            # Other function globals must point at the mocked module kernel edges.
+            function=namespace[method];function=type(function)(function.__code__,c.__dict__,function.__name__,function.__defaults__,function.__closure__)
+            with patch.object(c,method,function):value,request,expected,events,status=self.chain_fixture(cut=cut)
+            # Removing one fence either wrongly completes collection or changes
+            # the actual refusal: the exact original gate must remain observable.
+            with self.font_chain_edges(cut=cut) as (raw,env,ops,store):baseline=c.collect_font_chain(raw,H(raw),pathlib.Path('/checkout'),env,'/out/chain.json')
+            self.assertNotEqual((status,value['firstFailure']),(1,baseline['firstFailure']),cut)
+
 suite=unittest.defaultTestLoader.loadTestsFromTestCase(Originals)
 result=unittest.TextTestRunner(verbosity=2).run(suite)
 print(json.dumps({'controls':result.testsRun,'failures':len(result.failures),'errors':len(result.errors)}))

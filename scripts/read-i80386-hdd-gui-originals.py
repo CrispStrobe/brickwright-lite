@@ -1508,8 +1508,158 @@ def verify_font_delivery(archive_raw,request_raw,expected,metadata,workflow_raw)
       'firstFailure':value['firstFailure'],'observation':verdict}
 
 
+
+# A deliberately separate passive route. No discovery/delivery v1 is reinterpreted.
+FONT_CHAIN_HOPS = 8
+FONT_CHAIN_ROOTS = ('/usr/share/fonts/','/usr/local/share/fonts/')
+
+
+def font_chain_request(raw,expected):
+    digest(expected);need(sha(raw)==expected,'selected chain request digest')
+    value=decode(raw);fields(value,'schema source baseline entry')
+    need(encode(value)==raw and value['schema']=='bw.gui-hdd.font-chain-request.v1','explicit canonical chain request version')
+    legacy={key:value[key] for key in ('source','baseline')};legacy['schema']='bw.gui-hdd.font-discovery-request.v1'
+    font_request(encode(legacy),sha(encode(legacy)))
+    runtime_path(value['entry']);need(value['entry'].startswith(FONT_CHAIN_ROOTS),'selected original font-root entry')
+    return value
+
+
+def font_chain_next(path,text):
+    import posixpath
+    need(type(text) is str and 0<len(text)<=512 and re.fullmatch('[A-Za-z0-9_./@+-]+',text),'bounded literal chain link')
+    need(not text.startswith('//') and all(part not in ('','.','..') for part in text.lstrip('/').split('/')),'no unobserved lexical traversal components')
+    target=posixpath.normpath(text if text.startswith('/') else posixpath.dirname(path)+'/'+text)
+    runtime_path(target)
+    need(target.startswith(FONT_CHAIN_ROOTS) or target.startswith('/etc/alternatives/'),'finite font or alternatives bridge')
+    need(not target.startswith('/etc/alternatives/') or target.count('/')==3,'single alternatives child')
+    return target
+
+def font_chain_event(raw,request_sha,head,env):
+    event=decode(raw);pr=event.get('pull_request',{})
+    need(event.get('action')=='labeled' and event.get('label',{}).get('name')=='x86-hdd-gui-font-chain' and
+         event.get('sender',{}).get('login')=='CrispStrobe' and event.get('repository',{}).get('full_name')==REPOSITORY,'owned discovery event')
+    integer(event.get('number'),1,2**31-1)
+    need(type(pr.get('number')) is int and event['number']==pr['number'] and pr.get('state')=='open' and
+         pr.get('head',{}).get('sha')==head and pr.get('head',{}).get('repo',{}).get('full_name')==REPOSITORY and
+         pr.get('head',{}).get('repo',{}).get('fork') is False and pr.get('base',{}).get('ref')=='main' and
+         pr.get('base',{}).get('repo',{}).get('full_name')==REPOSITORY,'exact own discovery source event')
+    marker='<!-- BW_GUI_HDD_FONT_CHAIN_SHA256='+request_sha+' -->'
+    need(type(pr.get('body')) is str and pr['body'].count('<!-- BW_GUI_HDD_FONT_CHAIN_SHA256=')==1 and pr['body'].count(marker)==1,'event transports selected discovery pin only')
+    need(env.get('GITHUB_REPOSITORY')==REPOSITORY and env.get('GITHUB_EVENT_NAME')=='pull_request' and env.get('GITHUB_ACTOR')=='CrispStrobe' and
+         env.get('GITHUB_RUN_ATTEMPT')=='1' and env.get('GITHUB_JOB')=='font-chain' and re.fullmatch('[1-9][0-9]{0,19}',env.get('GITHUB_RUN_ID','')) and
+         env.get('BW_EXPECTED_HEAD')==head,'first discovery platform observations')
+    digest(env.get('GITHUB_WORKFLOW_SHA'),40)
+    need(env.get('GITHUB_WORKFLOW_REF')==REPOSITORY+'/.github/workflows/i80386-hdd-gui-actual.yml@refs/pull/'+str(pr['number'])+'/merge','discovery workflow/event reference')
+
+
+
+def font_chain_expected(expected):
+    fields(expected,'schema source request original runId workflowSha')
+    need(expected['schema']=='bw.gui-hdd.font-chain-expectation.v1','explicit chain expectation version')
+    font_expected(dict(expected,schema='bw.gui-hdd.font-discovery-expectation.v1'))
+
+
+def font_chain_witness_row(row,complete):
+    fields(row,'path kind namedBefore heldBefore heldAfter namedAfter linkBefore linkAfter close')
+    if row['path']!='/':runtime_path(row['path'])
+    need(row['kind'] in ('link','parent'),'closed typed chain witness')
+    for key in ('namedBefore','heldBefore','heldAfter','namedAfter'):
+        if row[key] is not None:font_stat(row[key])
+    for key in ('linkBefore','linkAfter'):
+        if row[key] is not None:need(type(row[key]) is str and 0<len(row[key])<=512,'bounded observed link text')
+    fields(row['close'],'attempted succeeded');need(all(type(x) is bool for x in row['close'].values()),'strict chain close booleans')
+    if complete:
+        before=row['namedBefore'];need(before is not None and before['uid']==0,'root-owned completed witness')
+        need(all(encode(row[k])==encode(before) for k in ('heldBefore','heldAfter','namedAfter')),'chain identity readback')
+        need(row['close']=={'attempted':True,'succeeded':True},'chain witness successful close')
+        if row['kind']=='parent':
+            need(stat.S_ISDIR(before['mode']) and before['mode']&0o6022==0 and row['linkBefore'] is None and row['linkAfter'] is None,'typed nonwritable parent')
+        else:
+            need(stat.S_ISLNK(before['mode']) and type(row['linkBefore']) is str and row['linkBefore']==row['linkAfter'] and len(row['linkBefore'].encode())==before['size'],'stable held symlink text and extent')
+
+
+def verify_font_chain(original_raw,request_raw,expected):
+    font_chain_expected(expected)
+    for name,raw in (('original',original_raw),('request',request_raw)):
+        need(len(raw)==expected[name]['byteLength'] and sha(raw)==expected[name]['sha256'],'selected chain '+name)
+    request=font_chain_request(request_raw,expected['request']['sha256']);need(encode(request['source'])==encode(expected['source']),'chain external source21 request join')
+    value=decode(original_raw);fields(value,'schema observationOnly candidate qualified activeFontSelectionProved sourceRuntimeObserved request event platform tool sourceCommands parents links terminal complete firstFailure secondary commands packages')
+    need(encode(value)==original_raw and value['schema']=='bw.gui-hdd.font-chain-original.v1','canonical explicit chain original version')
+    need(value['observationOnly'] is True and all(value[k] is False for k in ('candidate','qualified','activeFontSelectionProved','sourceRuntimeObserved')),'chain no runtime/selection authority')
+    need(type(value['complete']) is bool and value['commands']==[] and value['packages'] is None,'passive chain only, no package probes')
+    need(font_original_blob(value['request'],JSON_CAP)==request_raw,'chain retained request')
+    platform=value['platform'];fields(platform,'GITHUB_RUN_ID GITHUB_RUN_ATTEMPT GITHUB_JOB GITHUB_REPOSITORY GITHUB_WORKFLOW_SHA GITHUB_WORKFLOW_REF GITHUB_EVENT_NAME GITHUB_ACTOR BW_EXPECTED_HEAD')
+    need(platform['GITHUB_RUN_ID']==str(expected['runId']) and platform['GITHUB_WORKFLOW_SHA']==expected['workflowSha'],'chain external run/workflow join')
+    font_chain_event(font_original_blob(value['event'],256<<10),expected['request']['sha256'],expected['source']['head'],platform)
+    need(type(value['secondary']) is list and len(value['secondary'])<=128,'bounded chain secondary failures')
+    errors=([value['firstFailure']] if value['firstFailure'] is not None else [])+value['secondary']
+    for error in errors:
+        fields(error,'phase path name message')
+        need(error['phase'] in ('chain','close','source-retention') and all(type(error[k]) is str and len(error[k])<=512 for k in ('name','message')),'typed retained chain refusal')
+        if error['path'] is not None:runtime_path(error['path'])
+    need(value['complete'] is (value['firstFailure'] is None) and (not value['secondary'] or value['firstFailure'] is not None),'chain success and first failure consistency')
+    arguments=[['rev-parse','HEAD'],['rev-parse','HEAD^{tree}']]+[['cat-file','blob',request['source']['head']+':'+p] for p in sorted(SOURCE)]
+    commands=value['sourceCommands'];need(type(commands) is list and len(commands)<=len(arguments),'bounded chain source commands')
+    if value['complete']:need(len(commands)==len(arguments),'complete chain source21 observations')
+    need(type(value['tool']) is dict and set(value['tool'])<=set('namedBefore heldBefore heldAfter namedAfter file close'.split()),'closed chain tool observation role')
+    font_file_row(value['tool'],bool(commands),bool(commands))
+    failed=False
+    for index,command in enumerate(commands):
+        fields(command,'argv stdout stderr exitCode');need(not failed,'ordered chain source prefix')
+        argv=['/usr/bin/git','--no-replace-objects','-c','gc.auto=0','-c','maintenance.auto=false','-c','core.fsmonitor=false','-c','core.hooksPath=/dev/null',*arguments[index]]
+        need(command['argv']==argv,'exact chain Git arguments')
+        for key in ('stdout','stderr'):
+            if command[key] is not None:
+                fields(command[key],'byteLength sha256');integer(command[key]['byteLength'],0,STREAM_CAP);digest(command[key]['sha256'])
+        if any(command[k] is None for k in ('stdout','stderr','exitCode')):
+            need(not value['complete'] and index==len(commands)-1,'incomplete source attempt only terminal failure');failed=True;continue
+        integer(command['exitCode'],-255,255)
+        failed=command['exitCode']!=0
+        if failed:need(not value['complete'] and index==len(commands)-1,'failed source attempt terminal only');continue
+        output={'byteLength':41,'sha256':sha((request['source']['head' if index==0 else 'tree']+'\n').encode())} if index<2 else request['source']['files'][sorted(SOURCE)[index-2]]
+        need(encode(command['stdout'])==encode(output) and encode(command['stderr'])==encode({'byteLength':0,'sha256':sha(b'')}),'chain exact source Git/live/external descriptors')
+    parents=value['parents'];links=value['links']
+    if parents or links or value['terminal'] is not None:need(len(commands)==len(arguments) and not failed,'all source21 before chain witnesses')
+    need(type(parents) is list and len(parents)<=128 and type(links) is list and len(links)<=min(FONT_CHAIN_HOPS,256),'combined chain parent/alias caps')
+    need(len({x['path'] for x in parents})==len(parents),'unique parent witnesses')
+    for row in parents:font_chain_witness_row(row,value['complete']);need(row['kind']=='parent','parent role')
+    for row in links:
+        font_chain_witness_row(row,value['complete']);need(row['kind']=='link','link role')
+    current=request['entry'];visited=set();required={str(parent) for parent in Path(current).parents}
+    for index,row in enumerate(links):
+        need(current not in visited and row['path']==current,'ordered chain links and cycle refusal');visited.add(current)
+        required.update(str(p) for p in Path(current).parents)
+        if row['linkBefore'] is None:
+            need(not value['complete'] and index==len(links)-1 and value['terminal'] is None,'missing link text ends failed chain with no ignored suffix or terminal');break
+        try:current=font_chain_next(current,row['linkBefore'])
+        except ValueError:
+            need(not value['complete'] and index==len(links)-1 and value['terminal'] is None,'invalid next link ends failed chain with no ignored suffix or terminal');break
+        required.update(str(parent) for parent in Path(current).parents)
+    need({row['path'] for row in parents}<=required,'every retained parent belongs to derived chain ancestry')
+    terminal=value['terminal']
+    if terminal is not None:
+        fields(terminal,'path observation');runtime_path(terminal['path'])
+        need(links and current not in visited and terminal['path']==current and current.startswith(FONT_CHAIN_ROOTS),'retained terminal always follows ordered original-root chain')
+        need(type(terminal['observation']) is dict and set(terminal['observation'])<=set('namedBefore heldBefore heldAfter namedAfter file close'.split()),'closed chain terminal observation role')
+        required.update(str(p) for p in Path(terminal['path']).parents)
+        font_file_row(terminal['observation'],value['complete'])
+    if value['complete']:
+        need(links and terminal is not None and current not in visited and terminal['path']==current and current.startswith(FONT_CHAIN_ROOTS),'complete regular terminal ordered original-root path')
+        need({x['path'] for x in parents}==required,'exact ancestor witnesses, no omitted intermediate parent')
+        info=terminal['observation']['namedBefore'];need(info['uid']==0 and info['mode']&0o6022==0 and info['size']>0,'positive nonwritable root-owned terminal')
+    return {'schema':'bw.gui-hdd.font-chain-reader.v1','observationOnly':True,'candidate':False,'qualified':False,'activeFontSelectionProved':False,'actualRequestSupported':False,
+      'actual':False,'sourceRuntimeObserved':False,'complete':value['complete'],'firstFailure':value['firstFailure'],'links':len(links),'sourceHead':request['source']['head']}
+
+
 def main(argv=None):
     raw_args=list(sys.argv[1:] if argv is None else argv)
+    if raw_args[:1]==['--font-chain']:
+        parser=argparse.ArgumentParser(description='Independent passive font chain observation',allow_abbrev=False)
+        for name in ('font-chain','request','expected'):parser.add_argument('--'+name,required=True)
+        need(len(raw_args)==6 and all(raw_args.count('--'+name)==1 for name in ('font-chain','request','expected')),'exact chain audit inputs')
+        args=parser.parse_args(raw_args);expected=decode(bounded_input(args.expected,JSON_CAP));font_chain_expected(expected)
+        original=bounded_input(args.font_chain,expected['original']['byteLength']);request=bounded_input(args.request,expected['request']['byteLength'])
+        print(encode(verify_font_chain(original,request,expected)).decode(),end='');return 0
     if raw_args[:1]==['--font-discovery-delivery']:
         parser=argparse.ArgumentParser(description='Independent font-delivery original admission',allow_abbrev=False)
         names=('font-discovery-delivery','request','expected','run','job','artifact','workflow-proof','workflow')

@@ -1439,14 +1439,173 @@ def retain_font_discovery(value,path):
     return 0 if value['complete'] is True and value['firstFailure'] is None else 1
 
 
+
+# A deliberately separate passive route. No discovery/delivery v1 is reinterpreted.
+FONT_CHAIN_ENABLED = False
+FONT_CHAIN_HOPS = 8
+FONT_CHAIN_ROOTS = ('/usr/share/fonts/','/usr/local/share/fonts/')
+
+
+def font_chain_request(raw,expected):
+    digest(expected);need(sha(raw)==expected,'selected chain request digest')
+    value=decode(raw);fields(value,'schema source baseline entry')
+    need(encode(value)==raw and value['schema']=='bw.gui-hdd.font-chain-request.v1','explicit canonical chain request version')
+    legacy={key:value[key] for key in ('source','baseline')};legacy['schema']='bw.gui-hdd.font-discovery-request.v1'
+    font_request(encode(legacy),sha(encode(legacy)))
+    runtime_path(value['entry']);need(value['entry'].startswith(FONT_CHAIN_ROOTS),'selected original font-root entry')
+    return value
+
+
+def font_chain_next(path,text):
+    import posixpath
+    need(type(text) is str and 0<len(text)<=512 and re.fullmatch('[A-Za-z0-9_./@+-]+',text),'bounded literal chain link')
+    need(not text.startswith('//') and all(part not in ('','.','..') for part in text.lstrip('/').split('/')),'no unobserved lexical traversal components')
+    target=posixpath.normpath(text if text.startswith('/') else posixpath.dirname(path)+'/'+text)
+    runtime_path(target)
+    need(target.startswith(FONT_CHAIN_ROOTS) or target.startswith('/etc/alternatives/'),'finite font or alternatives bridge')
+    need(not target.startswith('/etc/alternatives/') or target.count('/')==3,'single alternatives child')
+    return target
+
+def font_chain_event(raw,request_sha,head,env):
+    event=decode(raw);pr=event.get('pull_request',{})
+    need(event.get('action')=='labeled' and event.get('label',{}).get('name')=='x86-hdd-gui-font-chain' and
+         event.get('sender',{}).get('login')=='CrispStrobe' and event.get('repository',{}).get('full_name')==REPOSITORY,'owned discovery event')
+    integer(event.get('number'),1,2**31-1)
+    need(type(pr.get('number')) is int and event['number']==pr['number'] and pr.get('state')=='open' and
+         pr.get('head',{}).get('sha')==head and pr.get('head',{}).get('repo',{}).get('full_name')==REPOSITORY and
+         pr.get('head',{}).get('repo',{}).get('fork') is False and pr.get('base',{}).get('ref')=='main' and
+         pr.get('base',{}).get('repo',{}).get('full_name')==REPOSITORY,'exact own discovery source event')
+    marker='<!-- BW_GUI_HDD_FONT_CHAIN_SHA256='+request_sha+' -->'
+    need(type(pr.get('body')) is str and pr['body'].count('<!-- BW_GUI_HDD_FONT_CHAIN_SHA256=')==1 and pr['body'].count(marker)==1,'event transports selected discovery pin only')
+    need(env.get('GITHUB_REPOSITORY')==REPOSITORY and env.get('GITHUB_EVENT_NAME')=='pull_request' and env.get('GITHUB_ACTOR')=='CrispStrobe' and
+         env.get('GITHUB_RUN_ATTEMPT')=='1' and env.get('GITHUB_JOB')=='font-chain' and re.fullmatch('[1-9][0-9]{0,19}',env.get('GITHUB_RUN_ID','')) and
+         env.get('BW_EXPECTED_HEAD')==head,'first discovery platform observations')
+    digest(env.get('GITHUB_WORKFLOW_SHA'),40)
+    need(env.get('GITHUB_WORKFLOW_REF')==REPOSITORY+'/.github/workflows/i80386-hdd-gui-actual.yml@refs/pull/'+str(pr['number'])+'/merge','discovery workflow/event reference')
+
+
+def font_chain_witness(path,kind,check):
+    # O_PATH retains the symlink itself; readlink(empty,dir_fd) reads that handle.
+    row={'path':path,'kind':kind,'namedBefore':None,'heldBefore':None,'heldAfter':None,'namedAfter':None,
+         'linkBefore':None,'linkAfter':None,'close':{'attempted':False,'succeeded':False}}
+    fd=None;first=None
+    try:
+        check();before=Path(path).lstat();row['namedBefore']=identity(before)
+        need(before.st_uid==0,'root-owned chain witness')
+        if kind=='parent':
+            need(stat.S_ISDIR(before.st_mode) and before.st_mode&0o6022==0 and Path(path).resolve(strict=True)==Path(path),'canonical nonwritable chain parent')
+            flags=os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW|os.O_NONBLOCK
+        else:
+            need(kind=='link' and stat.S_ISLNK(before.st_mode),'typed chain symlink')
+            flags=os.O_PATH|os.O_NOFOLLOW
+        fd=os.open(path,flags);row['close']['attempted']=True;row['heldBefore']=identity(os.fstat(fd))
+        need(row['heldBefore']==row['namedBefore'],'chain held witness identity')
+        if kind=='link':
+            row['linkBefore']=os.readlink('',dir_fd=fd);row['linkAfter']=os.readlink('',dir_fd=fd)
+        check();row['heldAfter']=identity(os.fstat(fd));row['namedAfter']=identity(Path(path).lstat())
+        need(row['namedBefore']==row['heldBefore']==row['heldAfter']==row['namedAfter'],'stable chain witness readback')
+        need(row['linkBefore']==row['linkAfter'],'stable held chain link text')
+        if kind=='link':need(type(row['linkBefore']) is str and len(row['linkBefore'].encode())==before.st_size,'held link text extent')
+    except BaseException as exc:first=exc
+    finally:
+        if fd is not None:
+            try:os.close(fd);row['close']['succeeded']=True
+            except BaseException as exc:
+                if first is None:first=exc
+                else:first.font_secondary=getattr(first,'font_secondary',[])+[exc]
+    return row,first
+
+
+def collect_font_chain(request_raw,expected,root,env,output_path):
+    value={'schema':'bw.gui-hdd.font-chain-original.v1','observationOnly':True,'candidate':False,'qualified':False,
+      'activeFontSelectionProved':False,'sourceRuntimeObserved':False,'request':font_blob(request_raw),'event':None,
+      'platform':{key:env.get(key) for key in ('GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_JOB','GITHUB_REPOSITORY','GITHUB_WORKFLOW_SHA','GITHUB_WORKFLOW_REF','GITHUB_EVENT_NAME','GITHUB_ACTOR','BW_EXPECTED_HEAD')},
+      'tool':{},'sourceCommands':[],'parents':[],'links':[],'terminal':None,'complete':False,'firstFailure':None,'secondary':[], 'commands':[], 'packages':None}
+    deadline=time.monotonic()+180
+    def check():
+        need(time.monotonic()<deadline,'chain cooperative180s deadline')
+        need(len(encode(value))<JSON_CAP-(2<<20),'chain output reserve')
+    try:
+        request=font_chain_request(request_raw,expected)
+        event_raw=regular(env['GITHUB_EVENT_PATH'],256<<10);value['event']=font_blob(event_raw)
+        font_chain_event(event_raw,expected,request['source']['head'],env)
+        check();font_read('/usr/bin/git',FILE_CAP,value['tool'])
+        tool=value['tool']['namedBefore']
+        need(tool['uid']==0 and tool['mode']&0o6022==0 and tool['mode']&0o111,'root-owned nonwritable executable chain Git')
+        capture=Originals(Path(output_path).with_name(Path(output_path).stem+'-process-originals'))
+        edge=Hosted(root,capture,env);edge.deadline=min(edge.deadline,deadline)
+        arguments=[['rev-parse','HEAD'],['rev-parse','HEAD^{tree}']]+[['cat-file','blob',request['source']['head']+':'+p] for p in sorted(SOURCE)]
+        for index,args in enumerate(arguments):
+            check();role='git-'+str(index);record={'argv':['/usr/bin/git','--no-replace-objects','-c','gc.auto=0','-c','maintenance.auto=false','-c','core.fsmonitor=false','-c','core.hooksPath=/dev/null',*args],'stdout':None,'stderr':None,'exitCode':None};value['sourceCommands'].append(record)
+            source_error=None
+            try:raw=edge.git(args)
+            except BaseException as exc:source_error=exc
+            for suffix in ('stdout','stderr','process.json'):
+                try:
+                    saved=capture.root/(role+'.'+suffix)
+                    if saved.exists():
+                        limit=JSON_CAP if suffix=='process.json' else STREAM_CAP
+                        data=regular(saved,limit) if capture.files[role+'.'+suffix]['byteLength'] else b''
+                        if suffix=='process.json':
+                            process=decode(data);need(process.get('argv')==record['argv'],'chain retained process arguments')
+                            integer(process.get('exitCode'),-255,255);record['exitCode']=process['exitCode']
+                        else:record[suffix]={'byteLength':len(data),'sha256':sha(data)}
+                except BaseException as exc:
+                    if source_error is None:source_error=exc
+                    else:source_error.font_chain_secondary=getattr(source_error,'font_chain_secondary',[])+[exc]
+            if source_error is not None:raise source_error
+            if index<2:need(raw==(request['source']['head' if index==0 else 'tree']+'\n').encode(),'chain exact Git source identity')
+            else:
+                selected=sorted(SOURCE)[index-2]
+                need(raw==regular(Path(root)/selected,FILE_CAP) and {'byteLength':len(raw),'sha256':sha(raw)}==request['source']['files'][selected],'chain Git/live/external source join')
+        path=request['entry'];seen=set();parents=set()
+        while True:
+            check();need(path not in seen,'chain cycle refused');seen.add(path)
+            # Every ancestor is witnessed; no canonical-parent assumption hides
+            # an intermediate symlink. No directory contents are enumerated.
+            for parent in reversed(list(Path(path).parents)):
+                parent=str(parent)
+                if parent in parents:continue
+                check();need(len(value['parents'])<128,'combined chain parent cap')
+                row,error=font_chain_witness(parent,'parent',check);value['parents'].append(row)
+                if error is not None:raise error
+                parents.add(parent)
+            check();info=Path(path).lstat()
+            if stat.S_ISLNK(info.st_mode):
+                need(len(value['links'])<min(FONT_CHAIN_HOPS,256),'combined chain alias/hop cap')
+                row,error=font_chain_witness(path,'link',check);value['links'].append(row)
+                if error is not None:raise error
+                path=font_chain_next(path,row['linkBefore']);continue
+            need(len(value['links'])>0 and path.startswith(FONT_CHAIN_ROOTS),'regular terminal within original font roots')
+            value['terminal']={'path':path,'observation':{}}
+            raw=font_read(path,FILE_CAP,value['terminal']['observation'])
+            terminal_info=value['terminal']['observation']['namedBefore']
+            need(0<len(raw)<=256<<20 and terminal_info['uid']==0 and not terminal_info['mode']&0o6022,'positive root-owned nonwritable terminal font')
+            check();value['complete']=True;break
+    except BaseException as exc:
+        value['firstFailure']={'phase':'chain','path':locals().get('path'),'name':type(exc).__name__,'message':str(exc)[:512]}
+        later=[('close',e) for e in getattr(exc,'font_secondary',[])]+[('source-retention',e) for e in getattr(exc,'font_chain_secondary',[])]
+        value['secondary']=[{'phase':phase,'path':locals().get('path'),'name':type(e).__name__,'message':str(e)[:512]} for phase,e in later][:128]
+    return value
+
+
+def retain_font_chain(value,path):
+    # Separate format; same exclusive bounded retention and first-error policy.
+    need(value['schema']=='bw.gui-hdd.font-chain-original.v1' and value['commands']==[] and value['packages'] is None,'passive chain only')
+    return retain_font_discovery(value,path)
+
+
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__,allow_abbrev=False)
-    parser.add_argument('mode',choices=('guard','inventory-guard','install-input','inventory','preflight','actual','font-discovery-guard','font-discovery'))
+    parser.add_argument('mode',choices=('guard','inventory-guard','install-input','inventory','preflight','actual','font-discovery-guard','font-discovery','font-chain-guard','font-chain'))
     for option in ('request','expected-sha256','output','blob'):parser.add_argument('--'+option)
     raw=list(sys.argv[1:] if argv is None else argv)
     for option in ('--request','--expected-sha256','--output','--blob'):
         if raw.count(option)>1:parser.error('one fixed input per option')
     args=parser.parse_args(raw)
+    if args.mode in ('font-chain-guard','font-chain'):
+        need(FONT_CHAIN_ENABLED is True,'font chain disabled pending separate source/request/event/delivery review')
+        need(raw==['font-chain-guard'] if args.mode=='font-chain-guard' else len(raw)==7 and all(raw.count(option)==1 for option in ('--request','--expected-sha256','--output')),'exact passive chain CLI inputs')
     if args.mode in ('font-discovery-guard','font-discovery'):
         need(FONT_DISCOVERY_ENABLED is True,'font discovery disabled pending separate exact source/request/event review')
     if args.mode in ('guard','preflight','actual'):
@@ -1456,13 +1615,15 @@ def main(argv=None):
     if args.mode=='guard':observe_python_startup(Path.cwd(),'guard',[])
     if args.mode=='install-input' and Path('gui-setup/python-startup.original.txt').exists():
         observe_python_startup(Path.cwd(),'install-input',raw[1:])
-    if args.mode in ('guard','inventory-guard','font-discovery-guard'):return 0
+    if args.mode in ('guard','inventory-guard','font-discovery-guard','font-chain-guard'):return 0
     need(args.expected_sha256 and args.output,'fixed independent digest and output required')
     env=dict(os.environ)
     if args.mode=='install-input':
         need(args.blob,'fixed immutable input blob required');print(encode(install_input(args.blob,args.expected_sha256,args.output,env)).decode(),end='');return 0
     need(args.request,'fixed canonical input original required')
     request_raw=regular(args.request,JSON_CAP)
+    if args.mode=='font-chain':
+        return retain_font_chain(collect_font_chain(request_raw,args.expected_sha256,Path.cwd(),env,args.output),args.output)
     if args.mode=='font-discovery':
         return retain_font_discovery(collect_font_discovery(request_raw,args.expected_sha256,Path.cwd(),env,args.output),args.output)
     if args.mode=='inventory':
