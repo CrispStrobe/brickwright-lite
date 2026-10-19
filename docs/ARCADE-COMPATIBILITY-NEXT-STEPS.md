@@ -195,31 +195,52 @@ with coherent canonical files, mirrors, notices and provenance. The composed
 source is a candidate until its independent source review, affected execution
 and exact-head hosted checks complete.
 
-## Current qualification queue
+## Current qualification queue — 2026-10-19
 
-1. Repair source-control installation prerequisites and reconcile the obsolete
-   downstream parser wrapper with the already-fixed pinned supplier. Keep the
-   strict canonical identity check and supplier revision unchanged. Sixteen
-   affected workflow/parser controls passed; the final hosted check is pending.
-2. Classify all current unit failures from the retained official originals.
-   Preserve genuine implementation failures and repair obsolete fixtures only
-   with meaningful controls.
-3. The build source manifest correctly rejected a modified tracked GUI lockfile.
-   Diagnose which normal installation changes it; make the reviewed dependency
-   graph reproducible. Do not exempt the lockfile or erase an unexplained diff.
-4. The Carnival browser assertion reads a virtualized editor viewport. Capture
-   the actual full CodeMirror document and import state before applying the same
-   semantic assertion. Full-document behavior is currently unobserved; no
-   Carnival implementation fix is established.
-5. A project-palette painter candidate passed four pure controls and genuine
-   installation qualification. Its actual artwork test stopped before any test
-   or VM stage because jsdom imports a builtin blocked by the pure harness.
-   Correct that observation boundary while keeping process execution forbidden,
-   then qualify actual Code, archive save/reopen, export and reimport. Actual
-   rendered colors and browser interaction remain separate.
-6. Add graphical authoring for structured class fields/modifiers/parameters and
-   Number/Void callback signatures. Conversion support alone does not supply
-   these controls. Require blank-project creation and editable roundtrips.
+The reviewed local cost composition is `9dcecf0a1`; it is separate from the
+failed hosted `f288fd633` campaign and is not qualified for main. Its whole
+234-test attempt observed 210 passes; the last 24 and final summary remain
+unobserved. A separate sampling run retained nine windows covering tests
+1–144, published 159 passing tests, and ended before its next checkpoint.
+Sampling added measurable overhead and does not establish whole-suite capacity.
+
+1. The source-control prerequisites and obsolete parser wrapper are repaired
+   locally; 16 affected controls passed. The build candidate uses a lock-
+   preserving normal installation and keeps both strict manifest comparisons;
+   13 source controls passed. Actual final installation/build and hosted checks
+   remain pending. Do not exempt the lockfile or silently change pins.
+2. All 113 original hosted unit failures have been classified from retained
+   originals. Array and procedure symptom groups overlap; counts are not root
+   causes. One actual Array pipeline demonstrates a definite-assignment export
+   gap after an earlier observed undefined value. A separate per-occurrence
+   proof is under review: preserve the undefined operations, complete physical
+   writer inventory, alias identity, pre-assignment reads and sticky expiry.
+   Branches, callbacks and unsupported effects must retain conservative refusal.
+3. Metadata-only construction no longer attempts to attach runtime listeners
+   in the isolated Sprite candidate. Its permanently inert service passed seven
+   metadata controls. Three genuine VM controls also passed: update ordering
+   and Stop, a throwing update preserving unrelated input, and actual project
+   reload retaining the correct built-in service and driver ownership. This
+   is affected headless execution, not a rendered game or whole-runtime claim.
+4. The Carnival observer now reads the full CodeMirror document and retains
+   import state before its unchanged assertion. Actual browser qualification
+   remains pending; the old viewport failure does not prove missing code.
+5. The palette candidate's actual artwork journey passed all eight stages,
+   including edit, current Code, real SB3 save/reopen, export, Code execution
+   and reimport execution. Independent archive inspection verified current
+   SVG input bytes, packed tile indices, walls, names and palette distinctions.
+   The test now obtains artwork from current VM assets, matching production,
+   rather than the original Creator cache. Earlier failures remain retained.
+   Headless drawing uses a stub context: visible canvas colors, pointer editing
+   and full browser save/reopen are still unqualified.
+6. Address the measured repeated source-snapshot and shared-image derivation
+   costs while preserving physical identity, descriptor/intrinsic checks and
+   every public sticky validity fence. The focused helper, fixture and class
+   controls passed independently; none establishes a full run. Qualify one
+   genuinely changed complete suite before the complete conversion census.
+7. Add graphical authoring for structured class fields/modifiers/parameters and
+   Number/Void callback signatures. Require blank-project creation, meaningful
+   edits, Code/blocks roundtrips, save/reopen, export and visible controller use.
 
 The completion ledger remains **184 raw sources plus 41 project contexts**.
 Historical raw results remain **147 translated / 36 partial / 1 malformed**;
