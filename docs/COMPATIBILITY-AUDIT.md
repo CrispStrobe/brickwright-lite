@@ -288,3 +288,79 @@ HEX, original Arcade on-screen A press/release, actual PyBadge UF2 download and
 family validation, imported costume Pixel editor, live Scratch→Arcade
 compilation/drawing, EV3 simulator and invalid-file diagnostics. These are
 browser/compiler checks, not physical hardware qualification.
+
+## Explicit retained contexts and shared conversion operation
+
+The proposed `compat-audit.mjs --context-catalogue catalogue.json` input keeps
+raw source snippets and retained complete projects separate. Positional inputs
+retain their original target, generated configuration, public import and
+Creator classification. A retained context supplies its own target, exact root
+files, original resolved package graph, source order, resources and original
+compiler outcome. Failed original compilations remain in the input denominator.
+No compiler runs unless its existing explicit option is selected.
+
+The CLI and bounded conversion consumers use
+`scripts/lib/conversion-audit-core.mjs`. It calls the actual public importer and
+Creator; the legacy translated/partial/parse-failed label remains separate from
+all provided errors, warnings, unsupported and unparsed channels. Full actual
+returns, dependency callback data, Creator project/assets and own error data
+remain in the JSON observation graph. Absent channels and unobserved private or
+callable implementations are labelled explicitly. Data capture invokes no input-defined accessors or `toJSON` methods.
+Native collection iteration and byte views use held internal-slot operations;
+custom iterators and view-property accessors are recorded without invocation. This is conversion evidence, not semantic,
+archive, runtime, GUI or hardware equivalence.
+
+The shared reader is `scripts/lib/conversion-context-inputs.mjs`. A catalogue
+uses schema `brickwright/conversion-context-catalogue/v1`, an ordered `subjects`
+array and a `blobs` map. A blob records a physical root ID, relative path,
+length, SHA-256 and encoding (`utf8`, `json` or `gzip-json`). Gzip references also
+record decoded length and SHA-256. References select a blob and an exact JSON
+pointer. `--context-root ID=directory` explicitly binds additional local data
+roots; it does not fetch data or execute modules. Physical paths are bounded
+and reject symlink traversal. Logical MakeCode filenames, package IDs, Unicode,
+percent characters and prototype-spelled keys remain exact data in own maps.
+
+Each subject preserves its original opaque ID and has kind `RAW_BASELINE` or `RETAINED_CONTEXT`, target,
+name and complete root-file length/hash rows. Identity is the compound pair
+(kind, ID): raw and retained contexts can share an original ID, while duplicates
+within one kind refuse. A root must already be a record containing only string
+values; arrays and malformed values are rejected before any map copy. Retained contexts additionally
+provide original root/graph/compiler references, each selected package's full
+source/config/resource rows and complete JRES/source-order manifests. Available
+notice bytes can be referenced and checked; missing retained notices stay
+explicitly unavailable. Licence and historical producer claims are recorded
+separately from verified byte relations; the reader does not authenticate an
+SDK execution or issue a legal clearance.
+
+Legacy graph metadata is explicitly derived from current root and retained
+config data, with original fields preserved. Dependency identities use the
+current canonical identity helper. Conflicting declarations remain recorded;
+the unchanged public dependency validator makes the actual acceptance or
+rejection. No catalogue label bypasses it or repairs conflicting refs. A
+bounded full-input census additionally needs independent admission of its
+originals and historical source-contract evidence before execution.
+
+Input limits are distinct from output limits: at most 16 MiB per packed or
+decoded blob, 96 MiB aggregate catalogue/input reads, and an 8 MiB shared
+metadata-string cache. Decoded shared values are fresh per subject. The reader
+checks the declared whole-input budget before loading subjects. A particular
+corpus must have its exact budget checked; these limits do not promise it fits.
+Duplicate JSON keys, malformed UTF-8, corrupt or concatenated gzip members,
+wrong hashes, extra files and missing resource roles refuse rather than being
+silently dropped. Optional compiler/runtime work and normal CLI Git provenance
+remain outside the pure conversion core; default conversion no longer eagerly
+loads the SDK helper.
+
+SOURCE qualification and actual CLI/component results are still pending. The
+first integration covers the reader, shared core and compatibility CLI.
+`conversion-roundtrips.mjs` remains unchanged; sharing this reader and initial
+conversion operation there is an explicit follow-up, followed by its affected
+archive/export controls. Current raw partial counts and complete-context results
+must be observed afresh before a new corpus claim.
+
+Reached Creator module acquisition is setup outside the shared core's product
+catch. A missing or refused module propagates as an observation/setup failure,
+not a product parse failure. This deliberately tightens the former CLI routing,
+which included its lazy module import inside the parse catch. Actual constructor
+and parse exceptions still retain the legacy parse-failed label; valid-input
+classification is unchanged.

@@ -6894,3 +6894,16 @@ generated mutation controls; their earlier 5-pass/27-fail baseline is retained.
 Fresh complete native qualification and normal installed mirror validation are
 required. GUI/runtime coercion, trusted registration and broader qualification
 remain separate work; no public result or scope is promoted from a source edit.
+
+## Arcade retained-context conversion CLI — 2026-10-19
+
+SOURCE CANDIDATE / QUALIFICATION PENDING — Codex Arcade integration within the
+merged foundation reconciliation and compatibility scope. Add an explicit local
+context catalogue reader and shared actual public conversion/Creator operation
+to the compatibility audit CLI. Preserve raw classification, all complete inputs
+and original compiler failures, full provided diagnostics and current dependency
+validation. No SDK-return trust flag, case-specific source repair, supplier pin
+change, fetching, runtime or corpus qualification is included. The roundtrip
+script's common-reader integration and affected archive/export controls remain
+follow-up work. See the retained-context section of
+[the compatibility audit](docs/COMPATIBILITY-AUDIT.md).

@@ -8,7 +8,7 @@
  * TurboWarp is clean-room only: the .sb3 mode is a Scratch-format check, with no
  * TurboWarp-specific cases and no TurboWarp-sourced inputs.
  * Usage: node scripts/compat-audit.mjs [--target microbit|arcade] [--out report.json]
- *        [--corpus-commit SHA] [--compile] [--prepare-extensions] [--fetch-extensions] [--execute] [--limit N] file-or-directory [...]
+ *        [--corpus-commit SHA] [--compile] [--prepare-extensions] [--fetch-extensions] [--execute] [--context-catalogue FILE] [--context-root ID=directory] [--limit N] file-or-directory [...]
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -16,8 +16,9 @@ import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import JSZip from 'jszip';
-import {importArtefact, importProjectFiles} from '../overlay/scratch-gui/src/lib/bw-makecode/index.js';
-import {compile, hasRuntime} from './lib/pxt-node.mjs';
+import {importArtefact} from '../overlay/scratch-gui/src/lib/bw-makecode/index.js';
+import {auditConversionSubject, conversionObservationGraph, conversionException} from './lib/conversion-audit-core.mjs';
+import {openConversionCatalogue} from './lib/conversion-context-inputs.mjs';
 
 
 // Report identity contains hashes and declared public identities, never host paths.
@@ -45,8 +46,10 @@ function snapshotIdentity () {
 
 // Capture before collecting or processing corpus inputs. Never replace this with
 // the final HEAD: a long audit may span unrelated commits in its checkout.
-const invocationAt = new Date().toISOString();
-const invocationIdentity = snapshotIdentity();
+// Initialized after optional compiler acquisition below; selected compiler
+// module-load failures precede provenance/input work, as in the original CLI.
+let invocationAt;
+let invocationIdentity;
 
 function auditProvenance (files, corpusCommit) {
     const sha256 = value => createHash('sha256').update(value).digest('hex');
@@ -117,10 +120,18 @@ let fetchExtensions = false;
 let prepareExtensions = false;
 let execute = false;
 let limit = Infinity;
+let contextCatalogue = null;
+const contextRoots = Object.create(null);
 const inputs = [];
 for (let i = 0; i < args.length; i++) {
     const a = args[i];
-    if (a === '--target') target = args[++i];
+    if (a === '--context-catalogue') contextCatalogue = args[++i];
+    else if (a === '--context-root') {
+        const value = args[++i]; const at = value?.indexOf('=') ?? -1;
+        if (at <= 0 || !value.slice(at + 1) || Object.hasOwn(contextRoots, value.slice(0, at))) throw new Error('--context-root requires a unique ID=directory');
+        contextRoots[value.slice(0, at)] = value.slice(at + 1);
+    }
+    else if (a === '--target') target = args[++i];
     else if (a === '--corpus-commit') corpusCommit = args[++i];
     else if (a === '--out') out = args[++i];
     else if (a === '--markdown') markdown = args[++i];
@@ -132,9 +143,13 @@ for (let i = 0; i < args.length; i++) {
     else if (a.startsWith('-')) throw new Error(`unknown option ${a}`);
     else inputs.push(a);
 }
-if (!inputs.length || !['microbit', 'arcade', 'calliopemini', 'ev3', 'adafruit'].includes(target) ||
+const compiler = doCompile || prepareExtensions || execute ? await import('./lib/pxt-node.mjs') : null;
+const {compile, hasRuntime} = compiler || {};
+invocationAt = new Date().toISOString();
+invocationIdentity = snapshotIdentity();
+if ((!inputs.length && !contextCatalogue) || !['microbit', 'arcade', 'calliopemini', 'ev3', 'adafruit'].includes(target) ||
     !Number.isFinite(limit) && limit !== Infinity || limit < 0) {
-    console.error('usage: node scripts/compat-audit.mjs [--target microbit|arcade] [--out report.json] [--markdown report.md] [--corpus-commit SHA] [--compile] [--prepare-extensions] [--fetch-extensions] [--execute] [--limit N] file-or-directory [...]');
+    console.error('usage: node scripts/compat-audit.mjs [--target microbit|arcade] [--out report.json] [--markdown report.md] [--corpus-commit SHA] [--compile] [--prepare-extensions] [--fetch-extensions] [--execute] [--context-catalogue FILE] [--context-root ID=directory] [--limit N] file-or-directory [...]');
     process.exit(2);
 }
 
@@ -149,7 +164,12 @@ if (fetchExtensions && !doCompile && !prepareExtensions) throw new Error('--fetc
 
 if (corpusCommit !== null && !/^[a-f0-9]{40}$/i.test(corpusCommit)) throw new Error('--corpus-commit requires a full immutable commit SHA');
 const files = [...new Set(inputs.flatMap(collect))].slice(0, limit);
-const provenance = auditProvenance(files, corpusCommit);
+const contexts = contextCatalogue ? openConversionCatalogue(contextCatalogue, {roots: contextRoots}) : null;
+const selectedContexts = contexts ? contexts.subjects.slice(0, Math.max(0, limit - files.length)) : [];
+if (contexts && args.includes('--target') && selectedContexts.some(subject => subject.target !== target)) throw new Error('--target differs from context target');
+const provenance = auditProvenance(contextCatalogue ? [...files, contextCatalogue] : files, corpusCommit);
+if (contexts) provenance.contextCatalogue = {sha256: contexts.catalogueSHA256, selectedSubjects: selectedContexts,
+    scope: 'Exact local catalogue inputs; retained original compiler outcomes are data. Fresh compiler/runtime work occurs only under explicit flags.'};
 const rows = [];
 const tally = {};
 const normalize = e => String(e?.message || e).slice(0, 350);
@@ -160,9 +180,22 @@ const compileFailure = error => error?.code === 'NO_EXTENSION' ?
     {status: 'unavailable', reason: normalize(error), code: error.code, extensions: Array.from(error.extensions || [], String), refused: error.refused || [], fetchedExtensions: error.fetchedExtensions || []} :
     {status: 'fail', reason: normalize(error)};
 
+function conversionRow (file, format, observation) {
+    const row = {file, format, target: observation.target || target,
+        sourceRecovered: !!observation.sourceRecovered, translated: !!observation.translated,
+        unsupported: observation.unsupported || [], stage: observation.stage,
+        conversion: conversionObservationGraph(observation)};
+    if (observation.blockCount !== undefined) row.blockCount = observation.blockCount;
+    if (observation.import.status === 'throw') row.reason = normalize(observation.import.exception.actual);
+    else if (observation.creator.status === 'throw') row.reason = normalize(observation.creator.exception.actual);
+    else if (row.stage === 'source-only') row.reason = `no blocks translator for ${row.target}`;
+    return row;
+}
+
 async function makecode (file) {
     const ext = path.extname(file).toLowerCase();
     let imported;
+    let observed;
     let preCompile = null;
     if (ext === '.ts') {
         const source = fs.readFileSync(file, 'utf8');
@@ -178,34 +211,21 @@ async function makecode (file) {
                         `${d.file}:${d.line + 1}: ${d.message}`)};
             } catch (error) { preCompile = compileFailure(error); }
         }
-        try { imported = importProjectFiles(projectFiles, {target, name: path.basename(file, ext)}); }
-        catch (error) {
-            return {file, format: 'typescript', target, stage: 'parse-failed', reason: normalize(error),
-                compile: preCompile};
-        }
-        imported.format = 'typescript';
-    } else imported = await importArtefact(new Uint8Array(fs.readFileSync(file)), {name: path.basename(file)});
-    const row = {file, format: imported.format, target: imported.project?.target || target,
-        sourceRecovered: !!imported.source, translated: imported.lang === 'pseudocode',
-        unsupported: (imported.unsupported || []).map(String), stage: 'source'};
-    if (!row.translated) {
-        row.stage = 'source-only';
-        row.reason = `no blocks translator for ${row.target}`;
-        return row;
+        observed = await auditConversionSubject({kind: 'RAW_BASELINE', id: file, target,
+            name: path.basename(file, ext), files: projectFiles});
+        imported = observed.import.status === 'return' ? observed.import.value : null;
+        if (!imported) return {...conversionRow(file, 'typescript', observed), compile: preCompile};
+    } else {
+        imported = await importArtefact(new Uint8Array(fs.readFileSync(file)), {name: path.basename(file)});
+        observed = await auditConversionSubject({kind: 'IMPORTED_ARTEFACT', id: file, target,
+            name: path.basename(file), imported});
     }
-    try {
-        const {default: SB3Creator} = await import('../overlay/scratch-gui/src/lib/sb3-creator.js');
-        const creator = new SB3Creator();
-        creator.parse(imported.code);
-        row.blockCount = creator.project.targets.reduce((n, t) => n + Object.keys(t.blocks || {}).length, 0);
-        if (creator.warnings.length) {
-            row.unsupported.push(...creator.warnings.map(warning => `Code to Blocks: ${warning}`));
-        }
-        row.stage = row.unsupported.length ? 'partial' : 'translated';
-    } catch (error) {
-        row.stage = 'parse-failed';
-        row.reason = normalize(error);
-    }
+    const row = conversionRow(file, ext === '.ts' ? 'typescript' : imported.format, observed);
+    if (row.stage === 'source-only') return row;
+    return applyOptionalGates(row, imported, preCompile);
+}
+
+async function applyOptionalGates (row, imported, preCompile = null) {
     row.staticTranslation = {status: row.stage};
     if (prepareExtensions && row.target === 'arcade') {
         try {
@@ -340,10 +360,35 @@ for (const file of files) {
         rows.push(row);
         tally[row.stage] = (tally[row.stage] || 0) + 1;
     } catch (error) {
-        rows.push({file, stage: 'read-failed', reason: normalize(error)});
+        rows.push({file, stage: 'read-failed', reason: normalize(error),
+            observationFailure: conversionObservationGraph(conversionException(error))});
         tally['read-failed'] = (tally['read-failed'] || 0) + 1;
     }
 }
+// Contexts share the exact public conversion/classification operation above.
+// Original compiler data is retained independently, including failed originals.
+for (let index = 0; index < selectedContexts.length; index++) {
+    const identity = selectedContexts[index];
+    try {
+        const subject = contexts.loadSubject(index);
+        const observed = await auditConversionSubject(subject);
+        let row = conversionRow(identity.id, 'retained-context', observed);
+        if (observed.import.status === 'return' && row.stage !== 'source-only') {
+            row = await applyOptionalGates(row, observed.import.value);
+        }
+        row.context = {id: identity.id, kind: identity.kind, originalCompile: subject.originalCompile,
+            provenance: subject.provenance};
+        row.staticTranslation ||= {status: row.stage};
+        row.qualification = {staticTranslation: row.stage, originalCompile: row.compile?.status || 'retained-original-data',
+            runtimeSmoke: row.execution?.status || (execute ? 'not-run' : 'not-requested'), behavioralEquivalence: 'not-measured'};
+        rows.push(row); tally[row.stage] = (tally[row.stage] || 0) + 1;
+    } catch (error) {
+        rows.push({file: identity.id, stage: 'read-failed', reason: normalize(error),
+            observationFailure: conversionObservationGraph(conversionException(error))});
+        tally['read-failed'] = (tally['read-failed'] || 0) + 1;
+    }
+}
+if (contexts) provenance.contextCatalogue.consumedInputBytes = contexts.consumedInputBytes();
 const report = {schema: 'brickwright/compat-audit/v1', generatedAt: new Date().toISOString(),
     provenance: finishProvenance(provenance),
     compilerPolicy: {extensionFetching: fetchExtensions ? 'explicitly-enabled' : 'offline',
