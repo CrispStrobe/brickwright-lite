@@ -49,6 +49,7 @@ import {readFileSync, writeFileSync, existsSync} from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {flattenPart, bounds, circularFeatures, column, apply, parseLDraw} from '../overlay/scratch-gui/src/lib/bw-sim/ldraw/ldraw-geometry.js';
+import {SLIP_CLUTCH_24T_NM} from '../overlay/scratch-gui/src/lib/bw-sim/kinds/slip-clutch.js';
 
 /** ABS, g/cm³ (LEGO elements are moulded from ABS; 1.04–1.06). */
 export const ABS_DENSITY_G_PER_CM3 = 1.05;
@@ -389,11 +390,14 @@ export const deriveConnectors = (flat, {header = {}, read, system = false} = {})
     shaftRuns = merged;
 
     let h = 0; let pn = 0; let a = 0; let ah = 0;
+    /** Inward bore runs too short for a pin (a linear actuator's spindle bearing: deriveLinearActuator). */
+    const shortHoles = [];
     for (const run of holeRuns) {
         const blind = run.lines.map(l => l.prim).filter(p => base(p.file) === 'connhol3.dat');
         const L = run.hi - run.lo;
         if (L < 8) {
             notes.push(`bore run of ${round(L, 0.01)} LDU at ${roundVec(point(run, (run.lo + run.hi) / 2), 0.01)}: too short for a pin`);
+            shortHoles.push(run);
             continue;
         }
         // A hole through a plate is as deep as the plate (8 LDU), not a Technic lattice length.
@@ -494,7 +498,7 @@ export const deriveConnectors = (flat, {header = {}, read, system = false} = {})
         .map(p => ({position: p.x.t.slice(), axis: snapAxis(unit(scale(column(p.x, 1), -1))), height: 4 * len(column(p.x, 1)), radius: 6 * len(column(p.x, 0))}));
     studs.forEach((s, i) => connectors.push({id: `s${i}`, type: 'stud', position: s.position, axis: s.axis, length: s.height}));
     const tubes = prims.filter(p => OPEN_TUBE.test(base(p.file)) && !p.via.some(f => IN_A_STUD.test(base(f))));
-    return {connectors, notes, studs, tubes, tris, verts};
+    return {connectors, notes, studs, tubes, tris, verts, shortHoles};
 };
 
 // ---- the underside: anti-studs ------------------------------------------------
@@ -1052,6 +1056,225 @@ export const wormThread = (verts, hole) => {
         data: {pitchRadiusLdu: round(tip - MODULE_LDU, 0.01), hand: right > left ? 1 : -1, starts: 1}};
 };
 
+// ---- turntables, linear actuators, buckets (kinds/turntable.js, kinds/screw.js) ----------
+
+/** An axis-aligned box collider around the vertices `pick` selects (null when it selects none). */
+const fitBox = (verts, pick, extra = {}) => {
+    const vs = verts.filter(pick);
+    if (!vs.length) return null;
+    const b = bounds([vs]);
+    return boxCollider(b.min, b.max, extra);
+};
+
+/**
+ * A Technic turntable half: "Technic Turntable <n> Tooth Top|Bottom" (18938/18939). LDraw draws
+ * the two halves ASSEMBLED, about the y axis through the origin (their meshes nest there without
+ * interpenetrating: test/bw-sim-turntable.test.mjs), so each half's joint connector is at the
+ * origin on that axis — 'turntable-ring' on the top, 'turntable-race' on the bottom; the pair is
+ * a hinge (kinds/turntable.js). The top carries the teeth: a spur `gear` of <n> teeth (the
+ * description's number, which the test counts on the mesh) centred on the axis at the middle of
+ * the tooth crests' height. Colliders: the mounting blocks (the mesh beyond the disc's height,
+ * one box per side) and the disc as a cylinder of the mesh's radius over the height where the
+ * mesh reaches 80 % of it.
+ */
+export const TURNTABLE_DESC = /^Technic Turntable (\d+) Tooth (Top|Bottom)$/;
+export const deriveTurntable = (desc, verts, holes) => {
+    const m = TURNTABLE_DESC.exec(desc);
+    if (!m) return null;
+    const problems = [];
+    const teeth = Number(m[1]);
+    const top = m[2] === 'Top';
+    const b = bounds([verts]);
+    if (Math.abs(b.max[0] + b.min[0]) > 1 || Math.abs(b.max[2] + b.min[2]) > 1) problems.push('the turntable is not drawn about the y axis');
+    const radius = v => Math.hypot(v[0], v[2]);
+    const rMax = Math.max(...verts.map(radius));
+    // The mounting blocks: the mesh around each side's row of pin holes (one hole radius and a
+    // wall beyond the holes' extent).
+    const sides = [1, -1].map(sg => holes.filter(h => Math.sign(h.position[0]) === sg)).filter(hs => hs.length);
+    const blockOf = hs => {
+        const lo = [0, 1, 2].map(i => Math.min(...hs.map(h => h.position[i] - (h.axis[i] ? h.length / 2 : 10))) - 0.5);
+        const hi = [0, 1, 2].map(i => Math.max(...hs.map(h => h.position[i] + (h.axis[i] ? h.length / 2 : 10))) + 0.5);
+        return v => v.every((x, i) => x >= lo[i] && x <= hi[i]);
+    };
+    const inBlock = sides.map(blockOf);
+    const rest = verts.filter(v => !inBlock.some(f => f(v)));
+    // The rest: a hub (the mesh within half the radius) and the toothed disc around it.
+    const hub = rest.filter(v => radius(v) < 0.5 * rMax);
+    const disc = rest.filter(v => radius(v) >= 0.5 * rMax);
+    const cylinder = vs => {
+        const ys = vs.map(v => v[1]);
+        const y0 = Math.min(...ys); const y1 = Math.max(...ys);
+        return {shape: 'cylinder', radius: round(Math.max(...vs.map(radius)), 0.01), halfHeight: round((y1 - y0) / 2, 0.01), position: [0, round((y0 + y1) / 2, 0.01), 0]};
+    };
+    const dy = disc.map(v => v[1]);
+    const connectors = [...holes, {id: 't', type: top ? 'turntable-ring' : 'turntable-race', position: [0, 0, 0], axis: [0, -1, 0],
+        length: round(Math.max(...dy) - Math.min(...dy), 0.5)}];
+    const colliders = [cylinder(disc), ...(hub.length ? [cylinder(hub)] : []), ...inBlock.map(f => fitBox(verts, f)).filter(Boolean)];
+    let gear = null;
+    if (top) {
+        const crest = verts.filter(v => radius(v) > rMax - 0.3).map(v => v[1]);
+        const centre = round((Math.min(...crest) + Math.max(...crest)) / 2, 0.01);
+        if (Math.abs(rMax - (teeth * 1.25 + MODULE_LDU)) > 1) problems.push(`tip radius ${rMax.toFixed(2)} is not module 1 for ${teeth} teeth`);
+        gear = {type: 'spur', teeth, axis: [0, -1, 0], center: [0, centre, 0]};
+    }
+    return {connectors, colliders, gear, problems};
+};
+
+/**
+ * Linear actuators (kinds/screw.js). A family is the body assembly, the spindle part (LDraw's
+ * "Axle Actuator") and the piston, with LDraw's two reference assemblies (Contracted, Extended),
+ * and how many turns of the input the full stroke takes. That number is measured, not drawn:
+ * for the small LA (92693, "7–9 studs") 7112°, 7226°, 7144°, 7187°, 7169° and 7151° over the full
+ * stroke, mean 7165° = 19.90 turns (glowytheglowbug, Eurobricks "linear actuator degrees to full
+ * length", 2023-09-21/22, measured with a SPIKE/Powered Up motor's encoder; Davidz90 there:
+ * 19.75 turns for 23.4 mm, 0.84 turns/mm). LDraw's assemblies give the stroke: 60 LDU = 24 mm
+ * (3 studs), so the lead is 24 mm / 19.90 = 1.206 mm per turn. The hand is not drawn (LDraw draws
+ * the spindle as a smooth rod): right-hand, the common thread, is assumed.
+ */
+export const LINEAR_ACTUATORS = Object.freeze([{
+    body: '92693c01.dat', spindle: '92695.dat', piston: '92696.dat',
+    contracted: '92693c01-f1.dat', extended: '92693c01-f2.dat', turnsFullStroke: 7165 / 360, hand: 1
+}]);
+
+/** Placement of `part` in an LDraw assembly file: {R (row-major 3×3), t}. */
+const placementIn = (read, assembly, part) => {
+    const text = read(`parts/${assembly.toLowerCase()}`);
+    if (text === undefined) return null;
+    const ref = parseLDraw(text).refs.find(r => r.file.toLowerCase() === part.toLowerCase());
+    return ref ? ref.x : null;
+};
+/** Point p of a placed part, in the assembly frame. */
+const placePoint = (x, p) => apply(x, p);
+/** Point q of the assembly frame in a placed part's frame (rotation orthonormal). */
+const unplace = (x, q) => {
+    const d = sub(q, x.t);
+    return [0, 1, 2].map(i => dot(column(x, i), d));
+};
+
+/**
+ * A linear actuator part's connectors and colliders, or null for other parts. The LA's axis
+ * is the line of the body's coaxial bores (the piston's guide at the front, the spindle's
+ * bearing at the back: a bore run too short for a pin), measured; the piston's rear end is its
+ * nut (where the spindle's thread drives it); the spindle's thread is where that nut runs
+ * between the contracted and the extended assembly.
+ */
+export const deriveLinearActuator = (part, found, read) => {
+    const fam = LINEAR_ACTUATORS.find(f => [f.body, f.spindle, f.piston].includes(part.toLowerCase()));
+    if (!fam) return null;
+    const problems = [];
+    const {verts} = found;
+    const along = (v, a) => dot(v, a);
+    const fromAxis = (v, foot, a) => len(perp(sub(v, foot), a));
+    // The piston's nut and eye, in its own frame: the axis runs from its eye (the cross pin hole)
+    // to its far end; the nut is that far end.
+    const pistonFlat = flattenPart(fam.piston, read);
+    const pistonVerts = pistonFlat.polys.flat();
+    const pistonFound = deriveConnectors(pistonFlat, {read});
+    const eye = pistonFound.connectors.find(c => c.type === 'pinhole');
+    if (!eye) return {problems: ['the piston has no eye (pin hole)'], connectors: [], colliders: []};
+    // The rod's axis: perpendicular to the eye's hole, through its centre, along the longest extent.
+    const pb = bounds([pistonVerts]);
+    const k = [0, 1, 2].reduce((m, i) => (pb.max[i] - pb.min[i] > pb.max[m] - pb.min[m] ? i : m), 0);
+    const rodAxis = [0, 0, 0]; rodAxis[k] = Math.abs(pb.min[k] - eye.position[k]) > Math.abs(pb.max[k] - eye.position[k]) ? -1 : 1;
+    const nutAt = eye.position.map((v, i) => (i === k ? (rodAxis[k] < 0 ? pb.min[k] : pb.max[k]) : v));
+    const f1 = {piston: placementIn(read, fam.contracted, fam.piston), spindle: placementIn(read, fam.contracted, fam.spindle), body: placementIn(read, fam.contracted, fam.body)};
+    const f2 = {piston: placementIn(read, fam.extended, fam.piston), spindle: placementIn(read, fam.extended, fam.spindle)};
+    if (!f1.piston || !f1.spindle || !f1.body || !f2.piston || !f2.spindle) return {problems: ['the reference assemblies do not place the body, spindle and piston'], connectors: [], colliders: []};
+    const nut1 = placePoint(f1.piston, nutAt);
+    const nut2 = placePoint(f2.piston, nutAt);
+    const strokeLdu = len(sub(nut2, nut1));
+    const leadLdu = strokeLdu / fam.turnsFullStroke;
+    const out = {problems, connectors: [], colliders: [], strokeLdu, leadLdu};
+    if (part.toLowerCase() === fam.piston) {
+        // The rod: from the nut to where the eye begins (the mesh grows beyond a pin's collar), the
+        // shaft that runs in the body's front bore.
+        const t = v => along(v, rodAxis);
+        const eyeEdge = Math.max(...pistonVerts.filter(v => fromAxis(v, eye.position, rodAxis) > SHAFT_R).map(t));
+        const lo = eyeEdge; const hi = t(nutAt);
+        const mid = add(perp(eye.position, rodAxis), scale(rodAxis, (lo + hi) / 2));
+        out.connectors = [
+            {...eye, id: 'h0'},
+            {id: 'r', type: 'la-rod', position: roundVec(mid, 0.01), axis: rodAxis, length: round(hi - lo, 0.5)},
+            {id: 'n', type: 'screw-nut', position: roundVec(nutAt, 0.01), axis: rodAxis}
+        ];
+        out.colliders = [fitBox(pistonVerts, v => t(v) > lo), fitBox(pistonVerts, v => t(v) <= lo)].filter(Boolean);
+        return out;
+    }
+    if (part.toLowerCase() === fam.spindle) {
+        // The input stub is the derived axle; the spindle runs from the stub's collar on along the
+        // LA's axis. Its thread is where the piston's nut runs: from the contracted to the extended
+        // assembly, in the spindle's frame.
+        const stub = found.connectors.find(c => c.type === 'axle');
+        if (!stub) return {...out, problems: ['the spindle has no input axle']};
+        const a = stub.axis;
+        const n1 = along(unplace(f1.spindle, nut1), a);
+        const n2 = along(unplace(f2.spindle, nut2), a);
+        const ts = verts.map(v => along(v, a));
+        const sLo = Math.min(...ts); const sHi = Math.max(...ts);
+        const stubFar = along(stub.position, a) + stub.length / 2;
+        const spindle = verts.filter(v => along(v, a) > stubFar + 0.01);
+        const rSpindle = Math.max(...spindle.filter(v => along(v, a) > stubFar + 3).map(v => fromAxis(v, stub.position, a)));
+        const t0 = stubFar; const t1 = Math.max(sLo, sHi);
+        out.connectors = [
+            {...stub, id: 'a0'},
+            {id: 's', type: 'screw-spindle', position: roundVec(add(perp(stub.position, a), scale(a, (t0 + t1) / 2)), 0.01), axis: a, length: round(t1 - t0, 0.5),
+                data: {threadFrom: round(Math.min(n1, n2) - (t0 + t1) / 2, 0.01), threadTo: round(Math.max(n1, n2) - (t0 + t1) / 2, 0.01), leadLdu: round(leadLdu, 1e-4), hand: fam.hand, radiusLdu: round(rSpindle, 0.01)}}
+        ];
+        out.colliders = [shaftRegion(stub, verts), fitBox(verts, v => along(v, a) >= stubFar - 0.01)].filter(Boolean);
+        return out;
+    }
+    // The body: the bores on its axis — the longest (the piston's guide, at the front) and the
+    // short bearing behind it (the spindle's).
+    // The axis in the body's frame: the way the nut travels from the contracted to the extended assembly.
+    const laAxis = snapAxis(unit(sub(unplace(f1.body, nut2), unplace(f1.body, nut1))));
+    const kb = laAxis.findIndex(x => Math.abs(x) === 1);
+    if (kb < 0) return {...out, problems: ['the actuator\'s axis is not a coordinate axis of the body']};
+    const axisBore = found.connectors.filter(c => c.type === 'pinhole' && Math.abs(dot(c.axis, laAxis)) > COS_1);
+    if (axisBore.length !== 1) return {...out, problems: [`${axisBore.length} bores on the actuator's axis`]};
+    const guide = axisBore[0];
+    const bearing = found.shortHoles.find(r => Math.abs(dot(r.axis, laAxis)) > COS_1 && len(perp(sub(r.foot, perp(guide.position, laAxis)), laAxis)) <= LINE_EPS);
+    if (!bearing) return {...out, problems: ['no spindle bearing on the actuator\'s axis']};
+    out.connectors = [
+        ...found.connectors.filter(c => c !== guide),
+        {...guide, type: 'la-bore'},
+        {id: 'b', type: 'screw-bearing', position: roundVec(point(bearing, (bearing.lo + bearing.hi) / 2), 0.01), axis: snapAxis(bearing.axis), length: round(bearing.hi - bearing.lo, 0.5)}
+    ];
+    // Colliders: the fork's two lugs (either side of the axis, along the lug holes' axis), then
+    // the body along its axis in bands — the web around the bearing, the neck, the tube — each
+    // the box of its vertices.
+    const lug = found.connectors.find(c => c.type === 'pinhole' && c !== guide);
+    if (!lug) return {...out, problems: ['the body has no lug holes']};
+    const kl = lug.axis.findIndex(x => Math.abs(x) === 1);
+    const ax = v => v[kb] * laAxis[kb];
+    const tB = Math.min(ax(point(bearing, bearing.lo)), ax(point(bearing, bearing.hi)));
+    const lateral = v => Math.max(...[0, 1, 2].filter(i => i !== kb).map(i => Math.abs(v[i])));
+    out.colliders = [
+        fitBox(verts, v => ax(v) < tB - 5 && v[kl] > 0),
+        fitBox(verts, v => ax(v) < tB - 5 && v[kl] < 0),
+        fitBox(verts, v => ax(v) >= tB - 5 && ax(v) < tB + 5),
+        fitBox(verts, v => ax(v) >= tB + 5 && lateral(v) > 10.5),
+        fitBox(verts, v => ax(v) >= tB + 5 && lateral(v) <= 10.5)
+    ].filter(Boolean);
+    return out;
+};
+
+/**
+ * A bucket ("Technic Excavator Bucket", 24120): a scoop on a 1 × 3 lug. Its envelope is not
+ * box-like, so its colliders are slabs across its depth (20 LDU along its longest extent), each
+ * the box of its vertices — the lug's slab is the lug alone.
+ */
+export const deriveBucketColliders = (desc, verts) => {
+    if (!/^Technic Excavator Bucket\b/.test(desc)) return null;
+    const b = bounds([verts]);
+    const k = [0, 1, 2].reduce((m, i) => (b.max[i] - b.min[i] > b.max[m] - b.min[m] ? i : m), 0);
+    const out = [];
+    for (let t = b.max[k]; t > b.min[k] + 1e-6; t -= 20) {
+        const box = fitBox(verts, v => v[k] <= t + 1e-6 && v[k] > t - 20 + 1e-6);
+        if (box) out.push(box);
+    }
+    return out;
+};
+
 // ---- names, categories --------------------------------------------------------
 
 /** Palette categories (editor/palette.js PALETTE_CATEGORIES) by the LDraw description. */
@@ -1087,6 +1310,8 @@ export const nameOf = desc => desc.replace(/\s+/g, ' ').trim().split(' ').map((w
 const DE_PHRASES = [
     ['Technic Beam', 'Technic-Lochbalken'], ['Technic Liftarm', 'Technic-Liftarm'], ['Technic Axle Pin', 'Technic-Achspin'],
     ['Technic Axle Joiner', 'Technic-Achsverbinder'], ['Technic Axle', 'Technic-Achse'], ['Technic Pin', 'Technic-Pin'],
+    ['Technic Linear Actuator', 'Technic-Linearantrieb'], ['Body Assembly', 'Gehäuse'], ['Axle Actuator', 'Spindel'],
+    ['Technic Excavator Bucket', 'Technic-Baggerschaufel'],
     ['Technic Bush', 'Technic-Buchse'], ['Technic Worm Gear', 'Technic-Schnecke'], ['Technic Gear Rack', 'Technic-Zahnstange'],
     ['Technic Gear', 'Technic-Zahnrad'], ['Technic Angle Connector', 'Technic-Winkelverbinder'], ['Technic Cross Block', 'Technic-Kreuzblock'],
     ['Technic Connector', 'Technic-Verbinder'], ['Technic Turntable', 'Technic-Drehkranz'], ['Technic Universal Joint', 'Technic-Kardangelenk'],
@@ -1102,7 +1327,7 @@ const DE_WORDS = {
     Tooth: 'Zähne', Teeth: 'Zähne', Bevel: 'Kegel', Double: 'doppelt', with: 'mit', without: 'ohne', and: 'und', Holes: 'Löchern',
     Hole: 'Loch', Axlehole: 'Achsloch', Axleholes: 'Achslöchern', Pegholes: 'Pinlöchern', Peghole: 'Pinloch', Round: 'rund',
     Smooth: 'glatt', Reinforced: 'verstärkt', Clutch: 'Kupplung', Knob: 'Knauf', Worm: 'Schnecke', Rack: 'Zahnstange',
-    Turntable: 'Drehkranz', Top: 'Oberteil', Bottom: 'Unterteil', Base: 'Basis', Notched: 'mit Kerbe', Long: 'lang', Thin: 'dünn',
+    Turntable: 'Drehkranz', Piston: 'Kolben', Top: 'Oberteil', Bottom: 'Unterteil', Base: 'Basis', Notched: 'mit Kerbe', Long: 'lang', Thin: 'dünn',
     Bent: 'gebogen', Triangle: 'Dreieck', 'H-shaped': 'H-förmig', 'T-shaped': 'T-förmig', 'C-shaped': 'C-förmig', Groove: 'Rille',
     Inverted: 'umgekehrt', Convex: 'konvex', Connector: 'Verbinder', Joiner: 'Verbinder', Perpendicular: 'senkrecht', Liftarm: 'Liftarm',
     Friction: 'Reibung', Stop: 'Anschlag', Bush: 'Buchse', Centre: 'Mitte', Center: 'Mitte', Middle: 'mittig', Crown: 'Krone',
@@ -1171,8 +1396,21 @@ export const derivePart = (part, read) => {
         c.axis = roundVec(c.axis, 1e-9);
     }
 
-    const {colliders, notes: cn} = deriveColliders({...found, connectors}, {system});
+    let {colliders, notes: cn} = deriveColliders({...found, connectors}, {system});
     notes.push(...cn);
+    // Parts whose connectors and colliders the generic rules cannot see (kinds/turntable.js, kinds/screw.js).
+    let special = null;
+    const turntable = deriveTurntable(desc, found.verts, connectors.filter(c => c.type === 'pinhole'));
+    if (turntable) special = turntable;
+    const actuator = deriveLinearActuator(part, found, read);
+    if (actuator) special = actuator;
+    if (special) {
+        problems.push(...special.problems);
+        connectors.splice(0, connectors.length, ...special.connectors);
+        colliders = special.colliders;
+    }
+    const bucket = deriveBucketColliders(desc, found.verts);
+    if (bucket) colliders = bucket;
     if (!colliders) problems.push('no colliders');
     const volumeLdu = meshVolume(found.tris);
     const massGrams = round(volumeLdu * LDU_CM ** 3 * ABS_DENSITY_G_PER_CM3, 0.01);
@@ -1185,7 +1423,9 @@ export const derivePart = (part, read) => {
     if (g && category === 'gear' && !/Crown|Large Tooth|Rack|Ring|Stepper/.test(desc)) {
         const holes = connectors.filter(c => c.type === 'axlehole');
         const centre = holes.find(c => len(c.position) < 0.5) || (holes.length === 1 ? holes[0] : null);
+        const free = centre ? null : freeGearCentre(connectors);
         if (centre) meta.gear = {type: /Bevel/.test(desc) ? 'bevel' : 'spur', teeth: Number(g[1]), axis: centre.axis, center: centre.position};
+        else if (free) meta.gear = {type: /Bevel/.test(desc) ? 'bevel' : 'spur', teeth: Number(g[1]), axis: free.axis, center: free.center};
         else problems.push('gear without one centre axle hole');
     }
     if (category === 'gear' && /^Technic Gear Rack\b/.test(desc)) {
@@ -1197,13 +1437,275 @@ export const derivePart = (part, read) => {
         const w = hole && wormThread(found.verts, hole);
         if (w) connectors.push({id: 'w', type: 'worm', ...w});
     }
+    deriveTransmission({part, desc, meta, connectors, found, flat, read, problems, notes});
+    if (turntable && turntable.gear) meta.gear = turntable.gear;
     if (!connectors.length) problems.push('no connector found');
-    if (category === 'gear' && !meta.gear && !connectors.some(c => c.type === 'rack-teeth' || c.type === 'worm')) {
+    if (meta.category === 'gear' && !meta.gear && !connectors.some(c => c.type === 'rack-teeth' || c.type === 'worm' || c.type === 'turntable-race' || TRANSMISSION_TYPES.has(c.type))) {
         problems.push('a gear-category part without derivable gear data (no clean rack teeth or worm thread; crown, clutch, turntable, knob)');
     }
     return {meta, problems, notes, desc, ldrawCategory};
 };
 
+
+// ---- transmission parts (gearbox lane, 2026-10-18) -----------------------------------
+//
+// Kept in this one section so that it merges cleanly with other lanes' derivation work.
+// The connector kinds are bw-sim/kinds/transmission.js, slip-clutch.js and gear-seat.js.
+//
+//   clutch gears      (6542a/b, 18946, 81346, 2471, 35185) and peghole bevels (87407, 65413):
+//                     no centre axle hole but a centre PIN hole — on an axle they spin
+//                     freely (an axle in a pin hole is a hinge). The gear's centre is the
+//                     point of that hole's line nearest the part origin (freeGearCentre).
+//                     A "with Clutch" gear's socket is measured: rays parallel to the axis,
+//                     11.5 LDU out (between the 9 LDU hub and the 14.7 LDU socket wall),
+//                     from each face inwards; where they run ≥ 4 LDU into the gear before
+//                     meeting it, that face has a socket ('clutch', length = its depth).
+//   slip clutch       "Technic Gear 24 Tooth Clutch" (76019, 76244): its axle hole is a
+//                     'clutch-axlehole' with the stamped rating (kinds/slip-clutch.js).
+//   driving ring      "Technic Transmission Driving Ring" (6539): its radial profile along
+//                     its axis gives the colliders (a stack of cylinders), the ridged bore
+//                     ('spline-bore', the ring's length), a 'clutch-teeth' end at each end,
+//                     and the groove between its flanges ('fork-groove').
+//   ridged joiners    an axle joiner that draws the ridge sub-part ("Axle Joiner Ridge
+//                     Segment", s/6538s02.dat: 6538a, 6538b) carries a 'spline' over the
+//                     ridges' extent.
+//   changeover catch  "Technic Transmission Changeover Catch" (6641): its bar, the thin
+//                     cylinder (radius 2–3 LDU) it ends in, is a 'fork'.
+//   differential      65414 holds its satellites in cradles and is closed by 65413; where,
+//                     LDraw's own assembly 65414c01 says (TRANSMISSION_ASSEMBLIES): each
+//                     satellite turning across the casing's axis is a 'gear-seat' of the
+//                     casing (its axle hole centre, the 12T bevel's origin), and the cover's
+//                     placement is a 'snap' on both parts.
+
+/**
+ * Module-1 gears LDraw draws with their tips a little short (as test/bw-sim-part-meta.test.mjs
+ * allows for 94925): the 16T clutch gear 18946 measures 21.79 LDU for 22.5, the 24T slip clutch
+ * 76019 31.70 for 32.5. Their tooth counts and the gearboxes they are sold for are module 1;
+ * a gear of another module would be off by several LDU. Allowed 1 LDU instead of 0.5.
+ */
+export const SHORT_TEETH = new Set(['18946.dat', '76019.dat']);
+
+export const TRANSMISSION_TYPES = new Set(['spline', 'spline-bore', 'clutch', 'clutch-teeth', 'fork', 'fork-groove', 'clutch-axlehole', 'gear-seat', 'snap']);
+
+/** Official LDraw assemblies that place a part's inner parts: part → {assembly, satellite, cover}. */
+export const TRANSMISSION_ASSEMBLIES = Object.freeze({
+    '65414.dat': {assembly: '65414c01.dat', satellite: '6589.dat', cover: '65413.dat'}
+});
+
+/** A gear's centre pin hole: {axis, center} (the hole line's point nearest the origin), or null. */
+export const freeGearCentre = connectors => {
+    const holes = connectors.filter(c => c.type === 'pinhole' && len(perp(c.position, c.axis)) < 0.5);
+    if (holes.length !== 1) return null;
+    const h = holes[0];
+    return {axis: h.axis, center: roundVec(sub(h.position, scale(h.axis, dot(h.position, h.axis))), 0.001)};
+};
+
+/** Distance along d (unit) from p to the first triangle hit within maxT, or null. */
+const rayHit = (tris, p, d, maxT) => {
+    let best = null;
+    for (const tri of tris) {
+        const [a, b, c] = tri.v;
+        const e1 = sub(b, a); const e2 = sub(c, a);
+        const q = cross(d, e2);
+        const det = dot(e1, q);
+        if (Math.abs(det) < 1e-12) continue;
+        const sv = sub(p, a);
+        const u = dot(sv, q) / det;
+        if (u < -1e-9 || u > 1 + 1e-9) continue;
+        const r = cross(sv, e1);
+        const v = dot(d, r) / det;
+        if (v < -1e-9 || u + v > 1 + 1e-9) continue;
+        const t = dot(e2, r) / det;
+        if (t >= 0 && t <= maxT && (best === null || t < best)) best = t;
+    }
+    return best;
+};
+
+/** Two unit vectors across axis a. */
+const across = a => {
+    const e1 = unit(perp(Math.abs(a[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0], a));
+    return [e1, cross(a, e1)];
+};
+
+/** A clutch gear's sockets, measured (see the section's comment). */
+export const clutchSockets = (tris, verts, centre, axis) => {
+    const out = [];
+    const [e1, e2] = across(axis);
+    for (const side of [1, -1]) {
+        const a = scale(axis, side);
+        let face = -Infinity;
+        for (const v of verts) {
+            const d = sub(v, centre);
+            if (len(perp(d, axis)) <= 17.5) face = Math.max(face, dot(d, a));
+        }
+        let depth = Infinity;
+        for (let k = 0; k < 8; k++) {
+            const th = k * Math.PI / 4 + Math.PI / 8;
+            const p = add(add(centre, scale(a, face + 1)), add(scale(e1, 11.5 * Math.cos(th)), scale(e2, 11.5 * Math.sin(th))));
+            const t = rayHit(tris, p, scale(a, -1), face + 1);
+            depth = Math.min(depth, t === null ? face + 1 : t - 1);
+        }
+        if (depth >= 4) out.push({type: 'clutch', position: roundVec(add(centre, scale(a, face)), 0.01), axis: snapAxis(a), length: round(depth, 0.5)});
+    }
+    return out;
+};
+
+/**
+ * A round part's radial profile along axis a (through the origin): intervals [lo, hi] along a
+ * with the radius of the triangles that span them (a cylinder wall spans its whole length; the
+ * annular faces span nothing), adjacent equal radii merged.
+ */
+export const radialProfile = (tris, a) => {
+    const cuts = [...new Set(tris.flatMap(t => t.v.map(v => round(dot(v, a), 0.01))))].sort((p, q) => p - q);
+    const out = [];
+    for (let i = 0; i + 1 < cuts.length; i++) {
+        const [lo, hi] = [cuts[i], cuts[i + 1]];
+        if (hi - lo < 0.05) continue;
+        let r = 0;
+        for (const t of tris) {
+            const zs = t.v.map(v => dot(v, a));
+            if (Math.min(...zs) > lo + 0.01 || Math.max(...zs) < hi - 0.01) continue;
+            for (const v of t.v) r = Math.max(r, len(perp(v, a)));
+        }
+        if (r === 0) continue;
+        r = round(r, 0.1);
+        const last = out[out.length - 1];
+        if (last && Math.abs(last.hi - lo) < 0.06 && last.r === r) last.hi = hi;
+        else out.push({lo, hi, r});
+    }
+    return out;
+};
+
+const cylinderAlong = (a, lo, hi, r) => {
+    const c = {shape: 'cylinder', radius: r, halfHeight: round((hi - lo) / 2, 0.01)};
+    const q = quatYTo(a);
+    if (q) c.rotation = q;
+    const centre = roundVec(scale(a, (lo + hi) / 2), 0.01);
+    if (centre.some(v => v !== 0)) c.position = centre;
+    return c;
+};
+
+/**
+ * Boxes along coordinate axis k: the part cut into slabs where its outline along k changes, each
+ * slab the bounding box of the triangles that span it, equal neighbours merged. For a part whose
+ * envelope along its hole axis is one box but which narrows along its length (the changeover
+ * catch's neck and bar end).
+ */
+export const slabBoxes = (tris, k) => {
+    const cuts = [...new Set(tris.flatMap(t => t.v.map(v => round(v[k], 0.5))))].sort((p, q) => p - q);
+    const out = [];
+    for (let i = 0; i + 1 < cuts.length; i++) {
+        const [lo, hi] = [cuts[i], cuts[i + 1]];
+        const mn = [Infinity, Infinity, Infinity]; const mx = [-Infinity, -Infinity, -Infinity];
+        for (const t of tris) {
+            const ks = t.v.map(v => v[k]);
+            if (Math.min(...ks) > lo + 0.3 || Math.max(...ks) < hi - 0.3) continue;
+            for (const v of t.v) for (let j = 0; j < 3; j++) if (j !== k) { mn[j] = Math.min(mn[j], v[j]); mx[j] = Math.max(mx[j], v[j]); }
+        }
+        if (!Number.isFinite(mn[(k + 1) % 3])) continue;
+        mn[k] = lo; mx[k] = hi;
+        const box = [mn.map(v => round(v, 0.5)), mx.map(v => round(v, 0.5))];
+        const last = out[out.length - 1];
+        if (last && last[1][k] === lo && [0, 1, 2].every(j => j === k || (last[0][j] === box[0][j] && last[1][j] === box[1][j]))) last[1][k] = hi;
+        else out.push(box);
+    }
+    return out.map(([a, b]) => boxCollider(a, b));
+};
+
+/** The parts a transmission needs: connectors (and colliders, category) added to `meta` in place. */
+export const deriveTransmission = ({part, desc, meta, connectors, found, flat, read, problems, notes}) => {
+    const add1 = c => connectors.push(c);
+    // Clutch gears: the sockets.
+    if (meta.gear && /\bwith Clutch\b/.test(desc)) {
+        const sockets = clutchSockets(found.tris, found.verts, meta.gear.center, meta.gear.axis);
+        const bothSides = /\bon Both Sides\b/.test(desc);
+        if (!sockets.length) problems.push('a clutch gear without a measurable clutch socket');
+        else if (!bothSides && sockets.length > 1) problems.push('a clutch gear with its clutch on one side, but both faces measure as sockets: which face has the clutch teeth is not measurable');
+        else sockets.forEach((c, i) => add1({id: `k${i}`, ...c}));
+    }
+    if (meta.gear && meta.gear.type === 'spur' && /^Technic Gear 24 Tooth Clutch\b/.test(desc)) {
+        const hole = connectors.find(c => c.type === 'axlehole' && len(sub(c.position, meta.gear.center)) < 0.5);
+        if (hole) {
+            hole.type = 'clutch-axlehole';
+            hole.data = {slipTorqueNm: SLIP_CLUTCH_24T_NM};
+        } else problems.push('a slip clutch gear without its centre axle hole');
+    }
+    if (/^Technic Transmission Driving Ring$/.test(desc)) {
+        // The ring is drawn along z: its cylinder walls' axes.
+        const a = [0, 0, 1];
+        const prof = radialProfile(found.tris, a);
+        if (!prof.length) { problems.push('driving ring: no radial profile'); return; }
+        const lo = prof[0].lo; const hi = prof[prof.length - 1].hi;
+        const outer = Math.max(...prof.map(q => q.r));
+        // The groove: the middle interval (holding 0) narrower than the flanges, between two flange intervals.
+        const mid = prof.findIndex(q => q.lo <= 0 && q.hi >= 0);
+        let g0 = mid; let g1 = mid;
+        while (g0 > 0 && prof[g0 - 1].r < outer) g0--;
+        while (g1 < prof.length - 1 && prof[g1 + 1].r < outer) g1++;
+        const grooveR = Math.min(...prof.slice(g0, g1 + 1).map(q => q.r));
+        meta.colliders = prof.filter(q => q.hi - q.lo >= 0.5).map(q => cylinderAlong(a, q.lo, q.hi, q.r));
+        meta.category = 'gear';
+        add1({id: 'b', type: 'spline-bore', position: [0, 0, round((lo + hi) / 2, 0.01)], axis: a, length: round(hi - lo, 0.5)});
+        add1({id: 'e0', type: 'clutch-teeth', position: [0, 0, round(hi, 0.01)], axis: [0, 0, 1]});
+        add1({id: 'e1', type: 'clutch-teeth', position: [0, 0, round(lo, 0.01)], axis: [0, 0, -1]});
+        add1({id: 'g', type: 'fork-groove', position: [0, 0, round((prof[g0].lo + prof[g1].hi) / 2, 0.01)], axis: a,
+            data: {radiusLdu: grooveR, outerLdu: outer, widthLdu: round(prof[g1].hi - prof[g0].lo, 0.1)}});
+        notes.push(`driving ring profile: ${prof.map(q => `${q.lo}..${q.hi} r${q.r}`).join(', ')}`);
+    }
+    const ridges = flat.subparts.filter(sp => /Ridge Segment/.test(sp.description));
+    const joinerHole = connectors.find(c => c.type === 'axlehole');
+    if (ridges.length && joinerHole && /^Technic Axle Joiner\b/.test(desc)) {
+        const along = ridges.flatMap(sp => sp.polys.flat()).map(v => dot(v, joinerHole.axis));
+        const [l0, l1] = [Math.min(...along), Math.max(...along)];
+        const c = add(perp(joinerHole.position, joinerHole.axis), scale(joinerHole.axis, (l0 + l1) / 2));
+        add1({id: 'r', type: 'spline', position: roundVec(c, 0.01), axis: joinerHole.axis, length: latticeLength(l1 - l0)});
+        // A ridged joiner turns inside the driving ring: round, so a cylinder (the ridges' reach), not
+        // the box of its envelope, whose corners would rub what passes close by.
+        const extent = found.verts.map(v => dot(v, joinerHole.axis));
+        const rMax = Math.max(...found.verts.map(v => len(perp(sub(v, joinerHole.position), joinerHole.axis))));
+        meta.colliders = [cylinderAlong(joinerHole.axis, Math.min(...extent), Math.max(...extent), round(rMax, 0.01))];
+    }
+    if (/^Technic Transmission Changeover Catch\b/.test(desc)) {
+        const bars = flat.primitives.filter(q => /^p\/(4-4cyl[io])\.dat$/.test(q.file) && !q.via.length)
+            .map(q => ({r: len(column(q.x, 0)), h: column(q.x, 1), t: q.x.t}))
+            .filter(b => b.r >= 1.5 && b.r <= 3 && len(b.h) >= 10);
+        if (bars.length === 1) {
+            const b = bars[0];
+            add1({id: 'f', type: 'fork', position: roundVec(add(b.t, scale(b.h, 0.5)), 0.01), axis: snapAxis(unit(b.h)), length: round(len(b.h), 0.5),
+                data: {radiusLdu: round(b.r, 0.01)}});
+            // Its outline narrows from the block to the neck and the bar: boxes along the lever (z).
+            meta.colliders = slabBoxes(found.tris, 2);
+            meta.category = 'gear';
+        } else problems.push(`changeover catch: ${bars.length} bar cylinders, need one`);
+    }
+    // Differential casing and cover, from LDraw's assembly.
+    for (const [casing, spec] of Object.entries(TRANSMISSION_ASSEMBLIES)) {
+        if (part !== casing && part !== spec.cover) continue;
+        const text = read(`parts/${spec.assembly}`);
+        if (!text) { problems.push(`${spec.assembly}: not in the library`); continue; }
+        const refs = parseLDraw(text).refs.map(r => ({...r, file: r.file.toLowerCase().replace(/\\/g, '/')}));
+        const home = refs.find(r => r.file === casing);
+        if (!home) { problems.push(`${spec.assembly} does not place ${casing}`); continue; }
+        // Placement relative to the casing: x ↦ Mcᵀ(x − tc) (Mc a rotation).
+        const Mc = home.x.m;
+        const toCasing = v => { const d = sub(v, home.x.t); return [0, 1, 2].map(i => Mc[i] * d[0] + Mc[3 + i] * d[1] + Mc[6 + i] * d[2]); };
+        const dirToCasing = v => [0, 1, 2].map(i => Mc[i] * v[0] + Mc[3 + i] * v[1] + Mc[6 + i] * v[2]);
+        const casingAxis = [0, 0, 1];
+        if (part === casing) {
+            meta.category = 'gear';
+            let n = 0;
+            for (const r of refs.filter(q => q.file === spec.satellite)) {
+                const ax = unit(dirToCasing(column(r.x, 2)));
+                if (Math.abs(dot(ax, casingAxis)) > 0.5) continue; // a side gear: it rides its axle
+                add1({id: `q${n++}`, type: 'gear-seat', position: roundVec(toCasing(r.x.t), 0.001), axis: roundVec(snapAxis(ax), 1e-6), length: 10});
+            }
+            const cover = refs.find(q => q.file === spec.cover);
+            if (cover) add1({id: 'c', type: 'snap', position: roundVec(toCasing(cover.x.t), 0.001), axis: roundVec(snapAxis(unit(dirToCasing(column(cover.x, 2)))), 1e-6)});
+        } else {
+            add1({id: 'c', type: 'snap', position: [0, 0, 0], axis: [0, 0, 1]});
+        }
+    }
+};
 
 // ---- self-check: the contract (test/bw-sim-part-meta.test.mjs), before a part is admitted ----
 
@@ -1268,7 +1770,10 @@ export const selfCheck = (meta, flat, {validate, kinds, minEngage = 8}) => {
         let tip = 0;
         for (const v of verts) tip = Math.max(tip, len(perp(sub(v, center), axis)));
         const want = teeth * 1.25 + 2.5;
-        if (Math.abs(tip - want) > (meta.gear.type === 'bevel' ? 2 : 0.5)) out.push(`gear tip radius ${tip.toFixed(2)} ≠ ${teeth}·1.25 + 2.5 (not module 1)`);
+        // A turntable's ring is moulded with its teeth a little short of the full addendum (the
+        // 60T's tip is 0.75 LDU in): 1 LDU, as the metadata test allows for it.
+        const tol = meta.gear.type === 'bevel' ? 2 : SHORT_TEETH.has(meta.part) || meta.connectors.some(c => c.type === 'turntable-ring') ? 1 : 0.5;
+        if (Math.abs(tip - want) > tol) out.push(`gear tip radius ${tip.toFixed(2)} ≠ ${teeth}·1.25 + 2.5 (not module 1)`);
     }
     return out;
 };
@@ -1361,8 +1866,11 @@ export const coverageMarkdown = ({added, rejected, measured, compare, partsBytes
         '| Part | LDraw description | Why |', '|---|---|---|');
     for (const r of rejected) lines.push(`| ${r.part} | ${r.name} | ${r.why.join('; ').replace(/\|/g, '/')} |`);
     lines.push('', 'Not attempted: ball sockets, steering arms and links, click hinges, rubber/flex parts, panels, Bionicle/Hero Factory, Duplo.',
-        'Turntables, clutch gears, crown and knob gears need a coupling model of their own (a turntable is two parts that turn on each',
-        'other; a clutch gear slips); racks and worms are derived when their teeth measure cleanly.', '');
+        'Clutch gears, crown and knob gears need a coupling model of their own (a clutch gear slips); racks and worms are derived when',
+        'their teeth measure cleanly. Turntables (kinds/turntable.js: a ring and a race at the origin LDraw assembles them on, the top',
+        'half\'s teeth a spur gear) and the small linear actuator (kinds/screw.js: bearing, spindle thread, guide bore, rod and nut, the',
+        'stroke from LDraw\'s contracted and extended assemblies, the lead from the measured turns of a full stroke) have derivations of',
+        'their own (deriveTurntable, deriveLinearActuator); the excavator bucket\'s colliders are slabs across its depth.', '');
     lines.push('## Size', '', `parts.json is ${partsBytes.pretty} bytes as written (one-space JSON) and ${partsBytes.min} bytes minified (${partsBytes.gz} gzipped) in`,
         'the lazy Sim Lab chunk. If the library grows by another few hundred parts, split it: keep the hand-measured parts (motors, hub,',
         'sensors, the examples\' parts) in parts.json and move the derived ones to a second file the palette fetches on first open.', '');

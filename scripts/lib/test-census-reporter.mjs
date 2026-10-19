@@ -51,7 +51,9 @@ export default async function* testCensusReporter (source) {
         const file = event.data.file || '(unknown)';
         const b = bucket(file);
         b.tests++;
-        if (event.data.todo) b.todo.push({name: event.data.name,
+        // Keep every provided TODO separate, including an empty reason that
+        // the audit must refuse. False remains an ordinary outcome.
+        if (event.data.todo !== undefined && event.data.todo !== false) b.todo.push({name: event.data.name,
             reason: typeof event.data.todo === 'string' ? event.data.todo : '(no reason)',
             passed: event.type === 'test:pass', type: event.data.details?.type || 'test'});
         else if (event.type === 'test:pass') b.passed++; else b.failed++;

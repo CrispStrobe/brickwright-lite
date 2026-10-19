@@ -60,7 +60,7 @@ export const GLOBAL_VARS = 32;
 export const LOCAL_VARS = 16;          // RCX2: vars 32..47, one set per task
 export const LOOP_STACK_DEPTH = 4;     // RCX 1 repeat counters (memory)
 
-/** Boolean thresholds on the raw value (memory: SDK sensor chapter). */
+/** Boolean thresholds on the raw value: 45 % / 55 % of 1023 (RCX 2.0 Firmware Command Overview, source 13 "Sensor bool"). */
 export const BOOL_TRUE_BELOW = 460;
 export const BOOL_FALSE_ABOVE = 562;
 

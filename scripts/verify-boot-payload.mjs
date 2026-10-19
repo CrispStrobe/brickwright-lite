@@ -113,6 +113,16 @@ const LAZY = [
     {what: 'the Sim Lab building instructions', marker: 'bw-sim-instructions-canvas', chunk: 'bw-sim-lab',
         notInChunks: ['bw-spike-simulator'],
         why: 'instructions-view.js is reached only through sim-lab.js, the dynamic import in sim-lab-pane.jsx (webpackChunkName "bw-sim-lab")'},
+    // The Robot Lab part catalogue in two pieces (overlay/scratch-gui/parts-subset-loader.js): the
+    // hand-made core every shipped model uses rides in the Sim Lab chunk; the ~240 derived parts
+    // (Build's palette) are their own chunk, fetched when Build opens or a model names one. The
+    // markers: a derived part's German name and a core part's (the file's $comment, in both, names neither).
+    {what: 'the Robot Lab catalogue\'s derived parts', marker: 'Technic-Stein 1 x 1 mit Loch', chunk: 'bw-sim-parts',
+        notInChunks: ['bw-spike-simulator', 'bw-sim-lab'],
+        why: 'loadFullCatalog\'s import of parts.json?derived in overlay/scratch-gui/src/lib/bw-sim/sim-lab.js (webpackChunkName "bw-sim-parts")'},
+    {what: 'the Robot Lab catalogue\'s core parts', marker: 'Kugelrad-Halter', chunk: 'bw-sim-lab',
+        notInChunks: ['bw-spike-simulator', 'bw-sim-parts'],
+        why: 'sim-lab.js imports parts.json?core (parts-subset-loader.js); the derived chunk must not repeat it'},
     {what: 'lesson waves', marker: '"journeyId":"lesson-waves', altMarkers: ['journeyId:"lesson-waves'], chunk: 'guided-lessons',
         why: 'React.lazy(GuidedLessons) in src/components/gui/gui.jsx',
         // The core lessons.json IS eager (gui.jsx needs it for journey routing), so the

@@ -65,7 +65,7 @@ test('live shard census audit rejects missing, misplaced, uncounted-failure and 
     const dir=mkdtempSync(path.join(os.tmpdir(),'bw-unit-shard-control-'));
     try {
         const selected=listTests('fast','1/4'),other=listTests('fast','2/4')[0];
-        const files=Object.fromEntries(selected.map(file=>[file,{tests:1,passed:1,failed:0,stdoutBytes:0,skipped:[]}]));
+        const files=Object.fromEntries(selected.map(file=>[file,{tests:1,passed:1,failed:0,stdoutBytes:0,skipped:[],todo:[]}]));
         const summary=`# tests ${selected.length}\n# pass ${selected.length}\n# fail 0\n# cancelled 0\n# skipped 0\n`;
         const audit=(entries,tap)=>{
             writeFileSync(path.join(dir,'census.json'),JSON.stringify({files:entries,events:selected.length}));writeFileSync(path.join(dir,'run.tap'),tap);
@@ -75,6 +75,21 @@ test('live shard census audit rejects missing, misplaced, uncounted-failure and 
         const missing={...files};delete missing[selected[0]];assert.notEqual(audit(missing,summary).status,0);
         assert.notEqual(audit({...files,[other]:files[selected[0]]},summary).status,0);
         assert.notEqual(audit(files,'not ok 1 - deliberately uncounted failure\n'+summary).status,0);
+        // Known-open tests: a TODO naming an existing docs/….md passes; without one, or naming a doc
+        // that does not exist, the step is red (owner decision 2026-10-19).
+        const todoSummary=summary.replace(`# pass ${selected.length}`,`# pass ${selected.length-1}`).replace('# skipped 0','# skipped 0\n# todo 1');
+        const todoFiles={...files,[selected[0]]:{...files[selected[0]],passed:0,
+            todo:[{name:'known open',reason:'tracked; see docs/ROBOT-LAB-VALIDATION.md',passed:false,type:'test'}]}};
+        const todoOk=audit(todoFiles,'not ok 1 - known open # TODO tracked; see docs/ROBOT-LAB-VALIDATION.md\n'+todoSummary);
+        assert.equal(todoOk.status,0,todoOk.stdout+todoOk.stderr);
+        assert.notEqual(audit(todoFiles,'not ok 1 - known open # TODO no pointer\n'+todoSummary).status,0);
+        assert.notEqual(audit(todoFiles,'not ok 1 - known open # TODO see docs/NO-SUCH-DOC.md\n'+todoSummary).status,0);
+        assert.notEqual(audit(files,'not ok 1 - known open # TODO tracked; see docs/ROBOT-LAB-VALIDATION.md\n'+todoSummary).status,0,
+            'a doc pointer cannot replace a missing detailed pending record');
+        const ordinaryLegacy=Object.fromEntries(Object.entries(files).map(([file,bucket])=>{
+            const copy={...bucket};delete copy.todo;return [file,copy];
+        }));
+        assert.equal(audit(ordinaryLegacy,summary).status,0,'ordinary buckets may retain the old absent-todo representation');
         const skipped={...files,[selected[0]]:{...files[selected[0]],skipped:[{name:'synthetic guard control',reason:'not an approved execution pointer'}]}};
         assert.notEqual(audit(skipped,summary.replace('# skipped 0','# skipped 1')).status,0);
     }finally{rmSync(dir,{recursive:true,force:true});}

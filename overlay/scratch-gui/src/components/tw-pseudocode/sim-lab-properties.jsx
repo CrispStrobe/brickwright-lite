@@ -44,7 +44,8 @@ const SimLabProperties = ({T, lib, editor, view, selectionIds, palette, colourNa
     onColour, onTick, onClose, button, field, docked}) => {
     const [alignAxis, setAlignAxis] = React.useState('x');
     const model = editor ? editor.model : {parts: []};
-    const parts = selectionIds.map(id => model.parts.find(p => p.id === id)).filter(Boolean);
+    const byId = lib.partsByIdOf(model);
+    const parts = selectionIds.map(id => byId.get(id)).filter(Boolean);
     const one = parts.length === 1 ? parts[0] : null;
     const meta = one ? lib.CATALOG.get(one.part) : null;
     const small = {...button, padding: '3px 7px', marginRight: 0};

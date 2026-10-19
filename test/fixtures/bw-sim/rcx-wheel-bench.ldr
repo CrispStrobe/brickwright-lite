@@ -1,0 +1,25 @@
+0 RCX motor bench (test fixture)
+0 Name: rcx-wheel-bench.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 // An RCX 2.0 on three legs of two 2 x 4 x 3 bricks each, high enough that the 56 mm wheel
+0 // on its 9 V mini-motor (output A) turns in the air: the motor's only load is the wheel.
+0 !BW ID hub
+1 7 0 0 0 1 0 0 0 1 0 0 0 1 76454c02.dat
+0 !BW ID motor
+0 !BW PORT A
+1 0 -40 96 -80 0 0 1 0 1 0 -1 0 0 71427.dat
+0 !BW ID wheel
+1 15 -99 138 -80 0 0 1 0 -1 0 1 0 0 39367p01.dat
+0 !BW ID legFL1
+1 72 -40 96 60 1 0 0 0 1 0 0 0 1 30144.dat
+0 !BW ID legFL2
+1 72 -40 168 60 1 0 0 0 1 0 0 0 1 30144.dat
+0 !BW ID legFR1
+1 72 40 96 60 1 0 0 0 1 0 0 0 1 30144.dat
+0 !BW ID legFR2
+1 72 40 168 60 1 0 0 0 1 0 0 0 1 30144.dat
+0 !BW ID legR1
+1 72 40 96 -80 1 0 0 0 1 0 0 0 1 30144.dat
+0 !BW ID legR2
+1 72 40 168 -80 1 0 0 0 1 0 0 0 1 30144.dat
