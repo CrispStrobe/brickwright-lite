@@ -467,6 +467,19 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     // set, insertion or unshift, and no named-array write route.
     const positionalStable=a=>!a.shrinks?.size&&!a.elements.has(bad)&&mutations.every(({target,node})=>
         !readInput(input(node,'ARRAY',target)).has(a)||node.opcode==='arrays_mutateReference'&&literal(node,'OP',target)==='push');
+    // A procedure whose every return is a read of one formal that only its
+    // actual call arguments write returns, at each call, that call's argument.
+    const passthroughIndex=fn=>{
+        if(!fn||fn.invalid||!fn.returns?.length||!Array.isArray(fn.params))return -1;
+        let index=-1;
+        for(const value of fn.returns){
+            const n=value?.node;if(!n||!['arcade_getLocal'].includes(n.opcode)&&!n.opcode?.startsWith('argument_reporter_'))return -1;
+            const c=binding(value.target,n);if(!c||c.formal!==fn||c.writers.some(w=>!w.argument))return -1;
+            const name=n.opcode==='arcade_getLocal'?literal(n,'NAME',value.target):n.fields?.VALUE?.[0],i=fn.params.indexOf(name);
+            if(i<0||index>=0&&index!==i)return -1;index=i;
+        }
+        return index;
+    };
     const readInput=value=>{
         if(!value)return new Set([bad]);if(value.cell)return cellTypesAt(value.cell,value.at);if(value.jsonArray)return new Set([jsonArray(value.jsonArray,value.identity,null,value.origin)]);if(value.node)return readNode(value.target,value.node);return new Set([bad]);
     };
@@ -600,6 +613,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(node.opcode==='arcade_objectField'){const f=literal(node,'FIELD',target);return !dynamicFields&&typeof f==='string'&&exactKeys(node,['OBJECT','FIELD'])&&cells.has('field:'+f)?new Set(fieldCell(f).types):new Set([bad]);}
         if(node.opcode==='arcade_callFunction'){
             const call=calls.find(call=>call.node===node);if(!call?.fn||call.fn.invalid||!call.args||!returnsAlways(target,call.fn.root.next))return new Set([bad]);
+            const through=passthroughIndex(call.fn);if(through>=0)return readInput(call.args[through]);
             const out=new Set();for(const value of call.fn.returns)for(const type of readInput(value))out.add(type);return out;
         }
         return new Set([bad]);
@@ -857,9 +871,24 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(depth>6||!scope.proc||scope.unknownEntry||implicitEntries.has(scope)||!scope.callers.length)return false;
         return scope.callers.every(call=>call.node&&owners.get(call.node)===call.scope&&pushedBefore(push,call.node,depth+1));
     };
+    const singleShrink=(target,node)=>node.opcode==='arrays_referenceTake'&&['pop','shift'].includes(literal(node,'OP',target))||
+        node.opcode==='arrays_mutateReference'&&['pop','shift','removeAt'].includes(literal(node,'OP',target))||node.opcode==='arrays_referenceRemove';
+    const shrinkBefore=(shrink,at)=>{
+        const scope=owners.get(at),statement=statementOf(at),earlier=statementOf(shrink);
+        if(!scope||owners.get(shrink)!==scope||!statement||!earlier||statement===earlier||!singleShrink(scope.target,shrink)||!onceNode(statement)||!onceNode(earlier))return false;
+        return !!scope.executedBefore.get(statement)?.has(earlier);
+    };
     const minimumAt=(allocation,at,qualifies=()=>true)=>{
-        if([...allocation.shrinks||[]].some(node=>node!==at&&!shrinkAfter(node,at)))return 0;
-        const scope=owners.get(at),before=scope?.executedBefore.get(at)||new Set();let length=allocation.minLength;
+        // A single-element shrink in a once-only statement that definitely ran
+        // earlier in the same scope removes at most one element; any other
+        // possibly earlier shrink forfeits all presence credit.
+        let removed=0;
+        for(const node of allocation.shrinks||[]){
+            if(node===at||shrinkAfter(node,at))continue;
+            if(shrinkBefore(node,at)){removed++;continue;}
+            return 0;
+        }
+        const scope=owners.get(at),before=scope?.executedBefore.get(at)||new Set();let length=allocation.minLength-removed;
         // A possible target receives element-type obligations below, but only
         // a unique actual target receives guaranteed-presence credit.
         for(const {target,node}of mutations){const receiver=readInput(input(node,'ARRAY',target));if(pushedBefore(node,at)&&['push','unshift'].includes(literal(node,'OP',target))&&receiver.size===1&&receiver.has(allocation)&&uniqueAllocation(allocation)&&qualifies(target,node))length++;}
@@ -944,6 +973,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(['arcade_animationAssetFrames','arcade_animationAssetFreshFrames'].includes(node.opcode))return !!animationProducers.resolve(target,node);
         if(node.opcode==='arrays_namedReference')return singleArray(namedBinding(target,node)||new Set());
         if(node.opcode==='arcade_callFunction'){
+            const passing=calls.find(c=>c.node===node);if(passing?.fn&&!passing.fn.invalid&&passing.args&&passthroughIndex(passing.fn)>=0)return initialized(passing.args[passthroughIndex(passing.fn)],next);
             const call=calls.find(c=>c.node===node);return !!call?.fn&&!call.fn.invalid&&!!call.args&&call.args.every(arg=>singleArray(readInput(arg))?initialized(arg,next):true)&&call.fn.returns.every(result=>initialized(result,next));
         }
         if(['arrays_referenceSlice','arrays_referenceConcat','arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom','arrays_mutateReference'].includes(node.opcode)){
