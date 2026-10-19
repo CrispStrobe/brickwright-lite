@@ -84,7 +84,8 @@ export const applyCameraAction = (camera, controls, action, heightPx) => {
     const distance = Math.hypot(...offset);
     if (action.orbit) {
         const maxPolar = Number.isFinite(controls.maxPolarAngle) ? controls.maxPolarAngle : Math.PI / 2;
-        const next = orbitOffset(offset, action.orbit[0], -action.orbit[1], {maxPolar});
+        const minPolar = Number.isFinite(controls.minPolarAngle) && controls.minPolarAngle > 0 ? controls.minPolarAngle : 1e-3;
+        const next = orbitOffset(offset, action.orbit[0], -action.orbit[1], {minPolar, maxPolar});
         camera.position.set(target.x + next[0], target.y + next[1], target.z + next[2]);
     } else if (action.pan) {
         const px = Math.max(1, heightPx);
@@ -118,4 +119,101 @@ export const framePosition = ({centre, radius, direction, fovDeg, aspect, margin
     const distance = Math.max(0.02, radius) / Math.sin(Math.min(vHalf, hHalf)) * margin;
     const n = Math.hypot(...direction) || 1;
     return {position: centre.map((c, i) => c + direction[i] / n * distance), distance};
+};
+
+// ---- Build's camera (docs/ROBOT-LAB-UX.md §3.7) ----------------------------------------------
+//
+//   orbit        about the point under the pointer when the gesture starts (else the target):
+//                camera and target turn together about it, so that point stays where it is on
+//                screen and nothing jumps
+//   polar range  Build looks from 5° to 175° (under a part too); Simulate keeps the floor
+//   wheel        a mouse wheel zooms to the point under the pointer; a trackpad's two-finger
+//                scroll orbits, Shift+scroll pans, a pinch (ctrlKey wheel) zooms
+//   animation    a camera move the program makes (Fit, a view, a double click, the view cube)
+//                eases over CAMERA_ANIMATION_MS; with prefers-reduced-motion it jumps
+
+/** Build's polar range (radians from straight up): a look underneath, never quite at the poles. */
+export const BUILD_POLAR = Object.freeze({min: 5 * Math.PI / 180, max: 175 * Math.PI / 180});
+/** How long a programmatic camera move takes (ms). */
+export const CAMERA_ANIMATION_MS = 300;
+
+const sub3 = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const add3 = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+const len3 = v => Math.hypot(v[0], v[1], v[2]);
+/** v turned by `angle` about the unit `axis` (Rodrigues). */
+const turn3 = (v, axis, angle) => {
+    const c = Math.cos(angle);
+    const s = Math.sin(angle);
+    const d = axis[0] * v[0] + axis[1] * v[1] + axis[2] * v[2];
+    const x = [axis[1] * v[2] - axis[2] * v[1], axis[2] * v[0] - axis[0] * v[2], axis[0] * v[1] - axis[1] * v[0]];
+    return [0, 1, 2].map(k => v[k] * c + x[k] * s + axis[k] * d * (1 - c));
+};
+const polarOf = offset => Math.acos(Math.max(-1, Math.min(1, offset[1] / (len3(offset) || 1))));
+
+/**
+ * Camera and target turned together about `pivot` (world, y up): `theta` about the vertical through
+ * the pivot, then `phi` (positive: the camera goes lower) about the camera's horizontal axis through
+ * it. The view's polar angle (camera from target) stays within [minPolar, maxPolar].
+ * @returns {{position: number[], target: number[]}}
+ */
+export const orbitAboutPivot = ({position, target, pivot, theta, phi, minPolar = BUILD_POLAR.min, maxPolar = BUILD_POLAR.max}) => {
+    const offset = sub3(position, target);
+    const polar = polarOf(offset);
+    const clamped = Math.min(maxPolar, Math.max(minPolar, polar + phi)) - polar;
+    let p = sub3(position, pivot);
+    let t = sub3(target, pivot);
+    p = turn3(p, [0, 1, 0], theta);
+    t = turn3(t, [0, 1, 0], theta);
+    const off = sub3(p, t);
+    const h = Math.hypot(off[0], off[2]);
+    if (h > 1e-12 && Math.abs(clamped) > 0) {
+        // The camera's right, horizontal: turning about it tips the view up or down.
+        const right = [off[2] / h, 0, -off[0] / h];
+        p = turn3(p, right, clamped);
+        t = turn3(t, right, clamped);
+    }
+    return {position: add3(pivot, p), target: add3(pivot, t)};
+};
+
+/** Camera and target scaled about `point` by `factor` (< 1 closer): `point` stays put on screen. */
+export const zoomAbout = ({position, target, point, factor}) => ({
+    position: add3(point, sub3(position, point).map(v => v * factor)),
+    target: add3(point, sub3(target, point).map(v => v * factor))
+});
+
+/**
+ * What a wheel event means in Build: 'zoom', 'orbit' or 'pan'. A pinch is a ctrlKey wheel. A
+ * mouse wheel scrolls by lines, or by whole pixel steps of 100 or more; a trackpad by small or
+ * fractional pixels. `mode` overrides the guess: 'mouse' (every scroll zooms), 'trackpad'.
+ */
+export const wheelIntent = ({deltaMode = 0, deltaX = 0, deltaY = 0, ctrlKey = false, shiftKey = false}, mode = 'auto') => {
+    if (ctrlKey) return 'zoom';
+    const mouse = mode === 'mouse' || (mode !== 'trackpad' && (deltaMode === 1 || deltaMode === 2 ||
+        [deltaX, deltaY].some(d => d !== 0 && Number.isInteger(d) && Math.abs(d) >= 100)));
+    if (mouse) return 'zoom';
+    return shiftKey ? 'pan' : 'orbit';
+};
+
+/** The distance factor of one zooming wheel event (< 1: closer). A pinch's deltas are small, a wheel's big. */
+export const wheelZoomFactor = ({deltaMode = 0, deltaY = 0, ctrlKey = false}) => {
+    const px = deltaY * (deltaMode === 1 ? 16 : deltaMode === 2 ? 400 : 1);
+    return Math.exp(px * (ctrlKey ? 0.01 : 0.0015));
+};
+
+/** Ease-out (cubic) at t in [0, 1]. */
+export const easeOut = t => 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 3);
+
+/**
+ * The view-cube direction for a point on a unit cube's surface (cube coordinates in [-0.5, 0.5]):
+ * a face, an edge or a corner, by which coordinates lie within `band` of the surface.
+ * @returns {number[]} a direction from the target (y up), never exactly vertical
+ */
+export const viewCubeDirection = (point, band = 0.18) => {
+    const d = point.map(v => (Math.abs(v) >= 0.5 - band ? Math.sign(v) : 0));
+    if (!d.some(Boolean)) {
+        const k = [0, 1, 2].reduce((best, i) => (Math.abs(point[i]) > Math.abs(point[best]) ? i : best), 0);
+        d[k] = Math.sign(point[k]) || 1;
+    }
+    if (d[0] === 0 && d[2] === 0) d[2] = 0.0001;
+    return d;
 };

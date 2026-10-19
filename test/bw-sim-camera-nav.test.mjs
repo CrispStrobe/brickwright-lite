@@ -11,7 +11,8 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {MOUSE, PerspectiveCamera, Vector3} from 'three';
 import {
-    ORBIT_STEP, PAN_STEP_SHARE, VIEW_DIRECTIONS, ZOOM_STEP, applyCameraAction, cameraKeyAction, configureOrbitControls, framePosition
+    BUILD_POLAR, ORBIT_STEP, PAN_STEP_SHARE, VIEW_DIRECTIONS, ZOOM_STEP, applyCameraAction, cameraKeyAction, configureOrbitControls, easeOut, framePosition,
+    orbitAboutPivot, viewCubeDirection, wheelIntent, wheelZoomFactor, zoomAbout
 } from '../overlay/scratch-gui/src/lib/bw-sim/view/camera-nav.js';
 
 /** A stand-in for OrbitControls: the fields the module reads, and update() counted. */
@@ -87,4 +88,58 @@ test('a named view frames a sphere whole from its side', () => {
         const n = Math.hypot(...direction);
         assert.ok(offset.every((v, i) => Math.abs(v / d - direction[i] / n) < 1e-9), `${name} looks from its side`);
     }
+});
+
+/** Where a world point lands on a 1000×800 screen for a camera at `position` looking at `target`. */
+const screenOf = ({position, target}, point) => {
+    const cam = new PerspectiveCamera(40, 1.25, 0.001, 100);
+    cam.position.fromArray(position);
+    cam.lookAt(new Vector3().fromArray(target));
+    cam.updateMatrixWorld();
+    const v = new Vector3().fromArray(point).project(cam);
+    return [(v.x + 1) * 500, (1 - v.y) * 400];
+};
+const polar = ({position, target}) => {
+    const o = position.map((v, i) => v - target[i]);
+    return Math.acos(o[1] / Math.hypot(...o));
+};
+
+test('Build orbits about the point under the pointer: that point stays put on screen, the distance stays, the polar range holds', () => {
+    const start = {position: [0.3, 0.25, 0.4], target: [0, 0.05, 0]};
+    const pivot = [0.08, 0.02, -0.05];
+    const before = screenOf(start, pivot);
+    const after = orbitAboutPivot({...start, pivot, theta: 0.7, phi: 0.3});
+    const moved = screenOf(after, pivot);
+    assert.ok(Math.hypot(moved[0] - before[0], moved[1] - before[1]) < 1e-6, `the pivot stayed on screen: ${before} → ${moved}`);
+    const d = s => Math.hypot(...s.position.map((v, i) => v - s.target[i]));
+    assert.ok(Math.abs(d(after) - d(start)) < 1e-12);
+    assert.ok(Math.abs(polar(after) - (polar(start) + 0.3)) < 1e-9, 'phi tips the view down by phi');
+    // Far below the floor: stopped at Build's 175°, past Simulate's 90°.
+    let s = start;
+    for (let i = 0; i < 40; i++) s = orbitAboutPivot({...s, pivot, theta: 0, phi: 0.2});
+    assert.ok(Math.abs(polar(s) - BUILD_POLAR.max) < 1e-9 && polar(s) > Math.PI / 2 + 0.1);
+});
+
+test('zoom about a point keeps it under the pointer; the wheel and the trackpad are told apart; the view cube names faces, edges and corners', () => {
+    const start = {position: [0.3, 0.25, 0.4], target: [0, 0.05, 0]};
+    const point = [0.05, 0.01, 0.07];
+    const z = zoomAbout({...start, point, factor: 0.6});
+    const a = screenOf(start, point);
+    const b = screenOf(z, point);
+    assert.ok(Math.hypot(a[0] - b[0], a[1] - b[1]) < 1e-6);
+    assert.equal(wheelIntent({deltaMode: 0, deltaY: -100}), 'zoom', 'a mouse wheel notch zooms');
+    assert.equal(wheelIntent({deltaMode: 1, deltaY: 3}), 'zoom', 'a wheel scrolling by lines zooms');
+    assert.equal(wheelIntent({deltaMode: 0, deltaY: 4.5, deltaX: 1}), 'orbit', 'a trackpad scroll orbits');
+    assert.equal(wheelIntent({deltaMode: 0, deltaY: 4, shiftKey: true}), 'pan');
+    assert.equal(wheelIntent({deltaMode: 0, deltaY: 3, ctrlKey: true}), 'zoom', 'a pinch zooms');
+    assert.equal(wheelIntent({deltaMode: 0, deltaY: -100}, 'trackpad'), 'orbit', 'the setting overrides the guess');
+    assert.equal(wheelIntent({deltaMode: 0, deltaY: 2}, 'mouse'), 'zoom');
+    assert.ok(wheelZoomFactor({deltaY: -400}) < 0.95 && wheelZoomFactor({deltaY: 100}) > 1);
+    assert.deepEqual(viewCubeDirection([0.5, 0.1, -0.05]), [1, 0, 0]);
+    assert.deepEqual(viewCubeDirection([0.45, 0.5, 0.0]), [1, 1, 0]);
+    assert.deepEqual(viewCubeDirection([-0.45, 0.5, 0.42]), [-1, 1, 1]);
+    assert.deepEqual(viewCubeDirection([0.0, 0.5, 0.0]), [0, 1, 0.0001], 'straight down is never exactly vertical');
+    assert.equal(easeOut(0), 0);
+    assert.equal(easeOut(1), 1);
+    assert.ok(easeOut(0.5) > 0.5);
 });
