@@ -1746,7 +1746,7 @@ motors: A/B wheels, C slew, D boom, E stick, F bucket.
 
 ### Gear meshes as built: the Jolt fork (2026-10-19, `lane/simlab-next6-20261019`)
 
-Owner decision: patch Jolt in our fork. `jolt-physics` is now **1.1.0-bw.1**, the Brickwright fork
+Owner decision: patch Jolt in our fork. `jolt-physics` is now **1.1.0-bw.2**, the Brickwright fork
 of JoltPhysics.js (<https://github.com/CrispStrobe/JoltPhysics.js>, branch `brickwright/gear-mesh`,
 `BRICKWRIGHT.md`), built against <https://github.com/CrispStrobe/JoltPhysics> (Jolt v5.6.0 + the
 fix). It is pinned to its release tarball by URL and sha512 (`scripts/integrate.mjs`

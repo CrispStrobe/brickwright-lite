@@ -65,15 +65,15 @@ pkg.dependencies['@xyflow/react'] = pkg.dependencies['@xyflow/react'] || '^12.3.
 pkg.dependencies['@xterm/xterm'] = '6.0.0';                       // MIT — the Linux lesson's terminal emulator (lazy-imported, exact pin)
 pkg.dependencies['three'] = '0.186.1';                               // MIT — the SPIKE arena's 3D view (lazy-imported, exact pin)
 // MIT — the Sim Lab physics engine (WASM, lazy-imported). OUR FORK, pinned to an immutable release
-// tarball (sha256 6ba56b5743046f7ccbb650f05dc5c369567715faa5cf852a10f6d6b220db6fd4): upstream Jolt's GearConstraint passed
+// tarball (sha256 e45f1c127c6d0bcb79f5c87124106700746493e898246ad31dead483004ac516): upstream Jolt's GearConstraint passed
 // torque across a mesh 1:1 (an 8:24 train put 3× the load on its motor) and is angular-only (no axle
 // reaction: a gearbox on a free frame gained angular momentum). The fork fixes the ratio and adds
-// GearMeshConstraint (a tooth contact at the pitch point); everything else is bit-identical to 1.1.0.
-// https://github.com/CrispStrobe/JoltPhysics.js/blob/brickwright/gear-mesh/BRICKWRIGHT.md
+// GearMeshConstraint (a tooth contact at the pitch point); built on upstream Jolt master 01adafb (release v1.1.0-bw.2, branch brickwright/gear-mesh-master).
+// https://github.com/CrispStrobe/JoltPhysics.js/blob/brickwright/gear-mesh-master/BRICKWRIGHT.md
 // The release URL names a tag, which can move; the bytes are what is trusted: npm checks the tarball
 // against the lockfile's integrity before it unpacks anything, and the lockfile must carry THIS value.
-const JOLT_PHYSICS_URL = 'https://github.com/CrispStrobe/JoltPhysics.js/releases/download/v1.1.0-bw.1/jolt-physics-1.1.0-bw.1.tgz';
-const JOLT_PHYSICS_INTEGRITY = 'sha512-4rL7nWPcCKRaQOPozSSXb9FnuftEdybCJIAeF4QGdY1T3zYs7T5syqBqf/8RjHkWJmlBhZVokoXU1EFEn9rOzw==';
+const JOLT_PHYSICS_URL = 'https://github.com/CrispStrobe/JoltPhysics.js/releases/download/v1.1.0-bw.2/jolt-physics-1.1.0-bw.2.tgz';
+const JOLT_PHYSICS_INTEGRITY = 'sha512-1Vajqb4Dht8WQemXrOIl8lRiic378m5NhlFU8PyYFx0EfaO4QJebvkMxzw7nc5x1sJJJN8xBJBVwdx5dR3EYIA==';
 pkg.dependencies['jolt-physics'] = JOLT_PHYSICS_URL;
 {
     const lockPath = path.join(GUI, 'package-lock.json');

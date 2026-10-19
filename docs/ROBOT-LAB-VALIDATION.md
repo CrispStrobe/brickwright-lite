@@ -119,7 +119,7 @@ only its bucket actuator ran). Neither can be fixed around the solver (tried and
 tooth contact re-made every step — no warm start, did not converge against the hinges; the missing
 impulses applied after each step — unstable).
 
-The Robot Lab now runs on the Brickwright fork of Jolt (`jolt-physics` 1.1.0-bw.1, pinned by release
+The Robot Lab now runs on the Brickwright fork of Jolt (`jolt-physics` 1.1.0-bw.2, pinned by release
 tarball and integrity; <https://github.com/CrispStrobe/JoltPhysics.js/blob/brickwright/gear-mesh/BRICKWRIGHT.md>,
 Jolt v5.6.0 + the fix in <https://github.com/CrispStrobe/JoltPhysics>). Its `GearConstraint` passes
 torque × ratio, and its new `GearMeshConstraint` is the mesh as a tooth contact at the pitch point:

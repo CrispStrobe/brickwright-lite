@@ -500,6 +500,17 @@ const CENSUS = [
            + 'scripts/build-makecode-emu-bases.mjs, whose workflow syncs with --no-emu-fetch.'
     },
     {
+        file: 'scripts/integrate.mjs',
+        kind: 'release',
+        text: 'github.com/CrispStrobe/JoltPhysics.js/releases/download/v1.1.0-bw.2/jolt-physics-1.1.0-bw.2.tgz',
+        class: 'content-hash',
+        why: 'The Sim Lab physics engine: the Brickwright JoltPhysics.js fork build 1.1.0-bw.2 (Jolt master '
+           + 'plus the gear fixes), taken as an npm tarball dependency. The tag is movable, so it is not what '
+           + 'is trusted: packages/scratch-gui/package-lock.json holds the tarball\'s sha512 integrity '
+           + '(sha256 e45f1c127c6d0bcb79f5c87124106700746493e898246ad31dead483004ac516) and npm refuses '
+           + 'different bytes. The fork\'s brickwright-release.yml re-derives the bytes from the pinned commits.'
+    },
+    {
         file: 'scripts/vendor-forward.mjs',
         kind: 'git',
         text: 'git ls-remote ${url} HEAD`);',
@@ -551,20 +562,6 @@ const CENSUS = [
            + 'Same discipline as sync-labwired-wasm and sync-emu8051-wasm. Deliberately NOT in '
            + 'REMOTE_SYNCS below: resolveRef resolves a git BRANCH to a sha, and there is no '
            + 'branch here — the version literal IS the immutable name.'
-    },
-    {
-        file: 'scripts/integrate.mjs',
-        kind: 'release',
-        text: 'github.com/CrispStrobe/JoltPhysics.js/releases/download/v1.1.0-bw.1/jolt-physics-1.1.0-bw.1.tgz',
-        class: 'content-hash',
-        why: 'The Robot Lab\'s physics engine: our MIT fork of JoltPhysics.js (GearMeshConstraint, the '
-           + 'gear torque fix; BRICKWRIGHT.md on its brickwright/gear-mesh branch), published as a '
-           + 'release tarball rather than to npm. The tag is movable, so the tag is not what is '
-           + 'trusted: JOLT_PHYSICS_INTEGRITY in this same file is the tarball\'s sha512, integrate '
-           + 'refuses a GUI lockfile whose jolt-physics entry does not carry exactly that value, and npm '
-           + 'checks the downloaded bytes against the lockfile\'s integrity before it unpacks anything, '
-           + 'so a moved tag or a replaced asset fails the install closed. The fork\'s release workflow '
-           + 'rebuilds the same bytes from its pinned sources (sha256 6ba56b57…6fd4).'
     },
     {
         file: 'scripts/probe-pico-kaluma.mjs',

@@ -674,7 +674,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     }
 
     // Gears are tooth contacts between the two GEAR bodies: Jolt's GearMeshConstraint, which the
-    // Brickwright fork of Jolt adds (jolt-physics 1.1.0-bw.1; the fork's BRICKWRIGHT.md,
+    // Brickwright fork of Jolt adds (jolt-physics 1.1.0-bw.2; the fork's BRICKWRIGHT.md,
     // https://github.com/CrispStrobe/JoltPhysics.js/blob/brickwright/gear-mesh/BRICKWRIGHT.md).
     // The mesh is what it physically is: n·(V2(P) − V1(P)) = 0 at the pitch point P along the
     // line of action n, with V_i(P) the velocity of gear i's material point there. The impulse is an

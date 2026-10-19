@@ -1,3 +1,16 @@
+## Robot Lab: jolt-physics -> Brickwright fork 1.1.0-bw.2 (Jolt master) — 2026-10-19
+
+CLAIMED and done in one PR — Claude (Robot Lab lane, owner request). The Sim
+Lab engine moves from npm `jolt-physics` 1.1.0 to the JoltPhysics.js fork
+release `v1.1.0-bw.2` (tarball sha256 e45f1c12...ac516, lockfile sha512
+integrity): upstream Jolt master 01adafb plus the GearConstraint ratio fix and
+GearMeshConstraint. Owns the pin surfaces only: scripts/integrate.mjs,
+packages/scratch-gui/package.json and package-lock.json, the Jolt notice in
+THIRD-PARTY-NOTICES.md, and the fetch-pinning census row. jolt-core.js and its
+gear workarounds are unchanged (adopting GearMeshConstraint is a later step).
+Non-gear physics changes come from upstream Jolt since v5.6.0 (control build
+without the gear commits: JoltPhysics.js Actions run 39223975871).
+
 ## bw-circuit-ui pin bump for B24 terminal geometry — 2026-10-19
 
 CLAIMED and done in one PR — Claude (circuit-editor lane). Pin 6721d21 ->
@@ -6490,3 +6503,32 @@ controls, every enabled exact-head source check, and fresh admitted actual
 candidate qualification before integrating source. Never repeat a successful
 original acquisition, reader or run merely to inspect it. See
 [the integration handoff](docs/INTEGRATION-NEXT-STEPS.md) for the remaining join.
+
+
+## Native Scratch Link cancellation and reconnect ordering — 2026-10-19
+
+CLAIMED — Codex root, branch `fix/native-bridge-recovery-20261019`.
+Current-source deterministic deferred-promise probes reproduce a closed socket
+reopening after event registration, a listener retained after native open fails,
+and a new open dispatched before the previous native close completes. These
+are source defects; they do not establish the cause of the reported physical
+iPad cold-start symptom.
+
+Own `overlay/scratch-gui/src/lib/native-scratch-link-bridge.js`, its canonical
+`packages/scratch-gui` mirror, focused `test/scratchlink-bridge.test.mjs` controls,
+and this ledger plus the WeDo/iPad handoff. Guard asynchronous opening and
+outbound delivery against cancellation, release listeners on every failure,
+and serialize bridge open/close transitions so a late old close cannot tear
+down the next connection. Close must also cancel a pending real-socket fallback
+without later starting its bridge. Keep unrelated WebSockets and explicit
+transport preferences working. Reject stale work; retain bounded extension
+waits, existing protocol semantics, service permissions and supplier pins.
+
+No automatic retry loop, new timeout, native Rust/Swift change, firmware or
+buzzer claim is included. Native readiness/session changes need separate
+source evidence and ownership. Merge this claim before implementation; require
+deferred cancellation/failure/overlap controls that fail on the baseline,
+canonical mirror freshness and every enabled exact-head check before source
+merge. Hardware acceptance separately requires cold launch, cancel, immediate
+retry and disconnect/reconnect on the iPad without restarting the app. Keep
+receipts, screenshots, device identifiers and machine paths gitignored.

@@ -300,7 +300,7 @@ test('motor under load, direct: a medium motor against the slip clutch settles o
 // Until 2026-10-19 the next two were todos: upstream Jolt's GearConstraint passed torque across a mesh
 // 1:1 (GearConstraintPart applied λ, not ratio·λ, to body 2), so the motor worked against the full slip
 // torque (11.796 rad/s, the direct bench's) and η was 1/3. The mesh is now the Brickwright fork's
-// GearMeshConstraint (jolt-physics 1.1.0-bw.1; jolt-core.js); see docs/ROBOT-LAB-VALIDATION.md.
+// GearMeshConstraint (jolt-physics 1.1.0-bw.2; jolt-core.js); see docs/ROBOT-LAB-VALIDATION.md.
 test('motor under load through an 8:24 mesh: the clutch\'s torque reaches the motor divided by 3', async t => {
     // The 8T drives the clutch gear (24T) whose hub is held: its ring turns at ω/3 and slips at SLIP_NM,
     // which an ideal mesh brings to the motor as SLIP_NM·8/24: ω = ω0·(1 − SLIP_NM/(3·τs)). Tolerance 1 %.
