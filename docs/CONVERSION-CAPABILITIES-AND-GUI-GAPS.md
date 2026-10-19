@@ -1,14 +1,31 @@
 # Conversion capabilities and GUI closure ledger
 
-Current Array runtime limit: the rejection-routing follow-up has a verified normal installation but fails during circular CommonJS startup before its 45 native controls execute. A frozen export record with an explicit null prototype and real entry-order controls is the next scoped repair. Translation support and editor authoring remain separate from this unresolved runtime gate.
+## Latest bounded qualification checkpoint — 2026-10-19
+
+Both complete 225-subject CLI attempts ended without reports; **all 225 current
+outcomes remain unobserved**. The historical 184 raw-input result stays **147 translated / 36
+partial / one malformed**; the 41 original contexts retain 29 compiler successes and 12 failures
+separately. Neither incomplete episode establishes its kill cause,
+a bottleneck or a successful prefix.
+
+C6 ran all 48 native Array controls: 45 passed and three failed. The composed
+supplier/host repair has an independently audited C7 installation (363 outputs,
+179 current VM files) and a complete pass of all 49 native tests, independently audited from the saved results.
+Genuine original/Code/export-reimport comparison remains pending. Supplier final checks, new emitted-map SDK acceptance and visible GUI
+journeys remain separate. The first optional-progress episode passed 44 of 45 tests, including all
+eight new tests. The corrected successor passed all 45 unchanged tests;
+independent saved-data review passes.
+See [the current acceptance checklist](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md#methodical-acceptance-still-required).
+
+Current Array runtime status: C6 completed 48 native controls with 45 passing and three failing. The composed supplier/host successor has a verified C7 installation; all 49 native tests pass with independent saved-data acceptance; genuine-value qualification remains pending.
 
 ## Current integration checkpoint — 2026-10-19
 
-The historical 184-input result remains **147 translated, 36 partial and one malformed**. The complete 225-input run, including all 41 retained contexts, is still unmeasured. No focused count below changes that result.
+The historical 184-input result remains **147 translated, 36 partial and one malformed**. Two complete 225-input attempts ended without reports; all 225 current outcomes remain unobserved. No focused count below changes that result.
 
 | Area | Observed result | Next acceptance |
 | --- | --- | --- |
-| Literal Array text conversion | The newer normal installation passes its complete file audit. Its actual supplier admission passes, but the complete 40 native controls have **33 passing and seven failing**, including two regressions in the previous 32. | A follow-up rejection-routing source candidate is reviewed, with captured private state and original-call failure identity. Its fresh installation passes independent review, but its native episode stops during circular CommonJS startup before any of the 45 controls run. Repair the immutable export shape and qualify the complete controls. Preserve ownership, errors, unrelated scripts and cleanup, then qualify genuine original, Code and exported values. Do not reuse the earlier pin's 32-pass result for this candidate. |
+| Literal Array text conversion | The complete C6 native episode ran 48 controls: 45 passed and three failed. The prior 40-control 33/7 result and earlier boot-before-TAP failure remain retained. Supplier operation-map hardening and current computation-error disposition are composed; the fresh C7 installation passed its full 363-file audit, including 179 current VM files. | The full 49-test suite pass has independent saved-data acceptance. Qualify genuine original/Code/export-reimport values without changing the expected Array text `5`. Preserve errors, unrelated scripts, ownership and cleanup. Supplier final checks, visible editing and SDK acceptance remain separate. |
 | Camera constants | The canonical enum candidate replaces the fixture call whitelist with the existing per-use lexical identity resolver. Together with the proper deletion parser/diagnostic correction, all 42 component controls pass, including the unchanged 34 controls and eight added operator checks. | Independent saved-data review accepted all 42 outcomes. Qualify the normal asset path, Code, runtime and saved/exported projects next. Deletion is explicitly unsupported; it is no longer silently parsed as unrelated reads. |
 | Conversion audit CLI | The shared reader/core passed 21 complete controls. Compact lossless reporting and its corrected source-policy control now pass all 29 component controls, with independent saved-data acceptance. An earlier actual shipped CLI translated two authored raw inputs into five blocks each; its warning-sensitive controller failure and independently audited reports remain retained. | Independent saved-data review accepted the complete 29-test result. Independent full-report review also accepted the actual shipped gzip-report CLI for two authored raw inputs, including native payloads, descriptors and complete returned-graph parity except inventoried generated IDs and input-path identity. Complete census and roundtrip CLI adoption remain pending. Full retained-input lineage has been independently audited; it is not a current conversion result. |
 | Retained input lineage | Independent saved-data review verified all 184 raw inputs and 41 complete contexts, retaining 29 historical compiler successes and 12 failures, generated resources, deduplication, original adapter source identities and notice gaps. | Run the complete current conversion census. Forty provenance reconstructions are not actual SDK returns; the one original identity conflict must naturally reject with no conversion credit. |

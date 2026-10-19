@@ -1,14 +1,31 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
+## Latest bounded qualification checkpoint — 2026-10-19
+
+Both complete 225-subject CLI attempts ended without reports; **all 225 current
+outcomes remain unobserved**. The historical 184 raw-input result stays **147 translated / 36
+partial / one malformed**; the 41 original contexts retain 29 compiler successes and 12 failures
+separately. Neither incomplete episode establishes its kill cause,
+a bottleneck or a successful prefix.
+
+C6 ran all 48 native Array controls: 45 passed and three failed. The composed
+supplier/host repair has an independently audited C7 installation (363 outputs,
+179 current VM files) and a complete pass of all 49 native tests, independently audited from the saved results.
+Genuine original/Code/export-reimport comparison remains pending. Supplier final checks, new emitted-map SDK acceptance and visible GUI
+journeys remain separate. The first optional-progress episode passed 44 of 45 tests, including all
+eight new tests. The corrected successor passed all 45 unchanged tests;
+independent saved-data review passes.
+See [the current acceptance checklist](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md#methodical-acceptance-still-required).
+
 ## Current continuation checkpoint — 2026-10-19
 
 Read [the current failure work packages](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md) and [the GUI capability ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md) before the dated historical results below. Local component work has been normally composed with a pinned recent main; it is not a merged, fully qualified public release. Refresh main, foundation [PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888), and supplier [PR52](https://github.com/CrispStrobe/extensions/pull/52) before acting. Preserve their owners' work and exact dependency pins.
 
-The recorded historical census remains **147 translated / 36 partial / one malformed** out of 184. All 184 raw sources and 41 complete dependency-bearing inputs now have an independent input-lineage audit; their 29 original compiler successes and 12 failures are retained. The current 225-input conversion census remains unmeasured. Original compiler validity, conversion, runtime and visible authoring are separate results.
+The recorded historical census remains **147 translated / 36 partial / one malformed** out of 184. All 184 raw sources and 41 complete dependency-bearing inputs now have an independent input-lineage audit; their 29 original compiler successes and 12 failures are retained. Two complete current 225-input attempts ended without reports; all current outcomes remain unobserved. Original compiler validity, conversion, runtime and visible authoring are separate results.
 
-Recent component results: Camera/parser 42 controls pass; lossless report codec/CLI 29 controls pass; an actual two-input compressed CLI report has a complete independent payload/descriptor audit. The normal Array installation reproduces all 363 outputs, but the following 45-test native episode fails during circular-module startup before any tests run. An immutable null-prototype export repair and three real loader entry-order controls are pending qualification. Do not substitute the preceding 33-pass/seven-fail result or the installation audit for runtime success.
+Recent component results: Camera/parser 42 controls pass; lossless report codec/CLI 29 controls pass; compact native-byte observation passes 37 controls. An actual two-input compressed CLI report has an independent full payload/descriptor audit. The earlier Array episode failed during circular-module startup before any of its 45 tests ran. The repaired export cycle later ran all 48 tests, with 45 passing and three failing. The composed supplier/host successor now has a complete installation audit and an independently audited pass of all 49 native tests; genuine original/Code/export-reimport execution remains pending. These results retain their separate source boundaries.
 
-Continue in order: finish current Array boot and value semantics; run the same public CLI/core over all 225 inputs once with complete reports; group actual unsupported constructs by cause and source location; close each family with negative controls and complete affected modules; qualify real Blocks/Code/graphics/controller/save-reopen/export journeys. The public failure table scopes those gates. The ignored local handoff holds exact source heads, commands, original evidence and recovery information.
+Continue in order: qualify the composed current Array value/error semantics; obtain a complete bounded report from the same shipped public CLI/core over all 225 inputs; group actual unsupported constructs by cause and source location; close each family with negative controls and complete affected modules; qualify real Blocks/Code/graphics/controller/save-reopen/export journeys. The public failure table scopes those gates. The ignored local handoff holds exact source heads, commands, original evidence and recovery information.
 
 
 Updated 2026-10-19. The checkpoint above supersedes the historical
