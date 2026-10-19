@@ -116,3 +116,22 @@ test('hub adapters and the hub registry import nothing from bw-sim/physics', () 
     const bad = [...via.keys()].filter(f => rel(f).startsWith('bw-sim/physics/')).map(f => chain(via, f));
     assert.deepEqual(bad, [], `hub modules reach the physics:\n${bad.join('\n')}`);
 });
+
+test('the RCX stays behind the VirtualHub boundary: its adapter reaches the bytecode VM and no physics; the download targets reach no hub', () => {
+    const rcx = [...filesUnder(path.join(LIB, 'bw-sim/hubs/rcx'))];
+    assert.deepEqual(rcx.map(rel).sort(), ['bw-sim/hubs/rcx/profile.js', 'bw-sim/hubs/rcx/rcx-lab-target.js',
+        'bw-sim/hubs/rcx/rcx-virtual-hub.js']);
+    const via = closure(rcx);
+    const reached = [...via.keys()].map(rel);
+    assert.ok(reached.includes('bw-sim/routes/rcx-vm/rcx-vm.js'), 'the adapter runs the clean-room VM');
+    assert.ok(reached.includes('bw-sim/devices/rcx-sensors.js'), 'and reads the sensors through their device models');
+    const physics = [...via.keys()].filter(f => rel(f).startsWith('bw-sim/physics/') || rel(f).startsWith('bw-sim/mech/') ||
+        rel(f) === 'bw-sim/hub-bridge.js' || rel(f) === 'bw-sim/sensors.js').map(f => chain(via, f));
+    assert.deepEqual(physics, [], `the RCX reaches the physics side:\n${physics.join('\n')}`);
+    // The tower hook and its target registry know no hub: the Lab registers its target at run time.
+    const hook = closure([path.join(LIB, 'rcx-download-hook.js')]);
+    const bad = [...hook.keys()].filter(f => rel(f).startsWith('bw-sim/')).map(f => chain(hook, f));
+    assert.deepEqual(bad, [], `the download hook reaches the Robot Lab:\n${bad.join('\n')}`);
+    // The pane's route to the RCX goes through the registry: hubs/index.js lists the family.
+    assert.ok([...closure([path.join(LIB, 'bw-sim/hubs/index.js')]).keys()].map(rel).includes('bw-sim/hubs/rcx/rcx-virtual-hub.js'));
+});

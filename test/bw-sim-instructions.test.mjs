@@ -110,18 +110,25 @@ for (const {name, text} of MODELS_UNDER_TEST) {
         // A pin or axle goes on with the later of the two parts it joins; one joining one part, with it.
         const adj = touching(model);
         let checked = 0;
+        let fasteners = 0;
         for (const p of model.parts) {
             if (!['pin', 'axle'].includes(category(model, p.id))) continue;
+            fasteners++;
             const joins = [...adj.get(p.id)];
             assert.ok(joins.length >= 1, `${name}: ${p.id} holds something`);
             if (joins.length > 2) continue;
             assert.equal(at.get(p.id), Math.max(...joins.map(id => at.get(id))), `${name}: ${p.id} joins ${joins.join(', ')}`);
             checked++;
         }
-        assert.ok(checked >= 4, `${name}: ${checked} pins and axles checked`);
+        // The RCX bumper car is a studded build: its three pins are all it has (two of them join three parts).
+        assert.ok(checked >= (fasteners >= 4 ? 4 : 1), `${name}: ${checked} of ${fasteners} pins and axles checked`);
         // Each wheel shares its step with the axle it sits on.
         for (const wheel of model.parts.filter(p => category(model, p.id) === 'wheel')) {
             const axles = [...adj.get(wheel.id)].filter(id => category(model, id) === 'axle');
+            // A wheel straight on a motor's output stub (the RCX bumper car's mini-motors) needs no axle
+            // of its own: it sits on one motor, and may go on in a later step.
+            const motors = [...adj.get(wheel.id)].filter(id => category(model, id) === 'motor');
+            if (axles.length === 0 && motors.length === 1) continue;
             assert.equal(axles.length, 1, `${name}: ${wheel.id} sits on one axle`);
             assert.equal(at.get(axles[0]), at.get(wheel.id), `${name}: ${wheel.id} with ${axles[0]}`);
         }

@@ -16,7 +16,7 @@ Abbreviations: X = `overlay/scratch-vm/src/extensions/crispstrobe`, G = `overlay
 | WeDo 2.0 | `X/wedo2unified` | as above | — | Web Bluetooth (own WeDo service, not LWP3) | no |
 | EV3 | `X/ev3comprehensive`, `X/ev3dev` | `DEVICE EV3`, MakeCode EV3 | LMS → RBF in the extension | Scratch Link BT, serial, bridge, HTTP | no |
 | NXT | `X/legonxt` | — | NXC hosted compile → `.rxe` | Scratch Link BT, Web Serial, bridge | no |
-| RCX | `X/legorcx` (NQC) | NQC tab | NQC WASM; clean-room `RcxVm` (`G/bw-sim/routes/rcx-vm/`, unused yet) | IR tower (`G/rcx-download-hook.js`) | no |
+| RCX | `X/legorcx` (NQC) | NQC tab | NQC WASM; clean-room `RcxVm` (`G/bw-sim/routes/rcx-vm/`) | IR tower (`G/rcx-download-hook.js`) | **yes** (`RcxVirtualHub`; download target "Robot Lab RCX", 2026-10-19) |
 
 ## Design
 
@@ -53,6 +53,10 @@ executable spec); RCX (A–C, 1–3; the existing `RcxVm`).
 - **P1 Robot Lab API** + `robotlab` blocks + `lab` words + `_robotlab` for Python/JS. Accept: `setMotor`
   drives an encoder to 360 ± 2° with no hub program; part poses deterministic across rollback.
 - **P2 RCX** (pulled forward: the VM exists): `hubs/rcx/`, virtual `rcxDownload`, RCX sensors.
+  **Done 2026-10-19** (lane/simlab-rcx-hub-20261019): RCX 2.0, mini-motor 71427, touch/light/rotation
+  sensors as parts and devices; "Robot Lab RCX" as an explicitly chosen download target; the RCX
+  bumper car with a bumper and a line-follower NQC example; docs/ROBOT-LAB-RCX.md "The hub".
+  Open: the 9 V motor 2838 as a part, RCX readouts in the pane, the direction-change pause.
 - **P3 LWP3 hubs and WeDo 2:** Technic L motor on port A by 360 ± 2° from `legopoweredup` blocks; a
   WeDo 2 conveyor; DEVICE words for WEDO2/BOOST/POWEREDUP.
 - **P4 EV3:** direct commands, then the LMS VM; the wall-stop scenario through `DEVICE EV3` and RBF.

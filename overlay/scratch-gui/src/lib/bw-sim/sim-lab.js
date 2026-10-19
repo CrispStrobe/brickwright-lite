@@ -28,6 +28,8 @@ export {isPortPart} from './contracts.js';
 export {fetchLDrawClosure, LDRAW_BASE} from './ldraw/ldraw-fetch.js';
 export {connectVirtualSpike} from '../virtual-hub/connect-virtual-spike.js';
 export {createSimView3D, WebGLUnavailableError, webglAvailable} from './view/sim-view3d.js';
+export {robotLabRcxTarget, ROBOT_LAB_RCX_TARGET} from './hubs/rcx/rcx-lab-target.js';
+export {registerRcxTarget, selectRcxTarget, rcxTargetOf, TOWER_TARGET} from '../rcx/rcx-targets.js';
 export {openFirmwareRoute, desktopRenodeCapabilities, lockstepAvailable, firmwareRouteReady, compileRouteProgram} from './routes/renode-lockstep/index.js';
 export {createEditor, partsByIdOf} from './editor/editor-state.js';
 export {colorPalette, rotationToDegrees, degreesToRotation} from './editor/editor-parity.js';

@@ -50,8 +50,10 @@ export const pitchRadiusLdu = teeth => teeth * 1.25;
 
 export const CONNECTOR_TYPES = Object.freeze(['pinhole', 'axlehole', 'axle', 'pin', 'stud', 'antistud', 'ball', 'ballsocket']);
 export const GEAR_TYPES = Object.freeze(['spur', 'bevel', 'worm', 'rack']);
-export const HUB_PORTS = Object.freeze(['A', 'B', 'C', 'D', 'E', 'F']);
-export const SENSOR_KINDS = Object.freeze(['distance', 'color', 'force']);
+/** Port ids: hub output letters, and the numbered inputs of the RCX (1–3) and NXT/EV3 (1–4); the hub profile refuses ports it lacks. */
+export const HUB_PORTS = Object.freeze(['A', 'B', 'C', 'D', 'E', 'F', '1', '2', '3', '4']);
+/** What sensors.js measures; 'rotation' is the RCX rotation sensor (the hinge in its hole). */
+export const SENSOR_KINDS = Object.freeze(['distance', 'color', 'force', 'rotation']);
 
 /** The hub profile a hub part is when its metadata names none (v1 parts: SPIKE Prime). */
 export const DEFAULT_HUB_PROFILE = 'spike-prime';

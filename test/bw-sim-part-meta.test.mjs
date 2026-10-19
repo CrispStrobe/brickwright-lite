@@ -258,7 +258,7 @@ test('axle and axlehole connectors sit on an axle-profile line', () => {
     for (const p of META.parts) {
         const f = flat.get(p.part);
         const lines = axleLines(f.primitives);
-        for (const c of p.connectors.filter(k => k.type === 'axle' || k.type === 'axlehole')) {
+        for (const c of p.connectors.filter(k => k.type === 'axle' || k.type === 'axlehole' || k.type === 'sensor-axlehole')) {
             if (onLine(c, lines).length > 0) continue;
             const centre = axleHoleSubpartCentre(f);
             assert.ok(centre && len(sub(centre, c.position)) <= POS_EPS,
@@ -688,6 +688,16 @@ test('sensor origin lies on the mesh box surface and direction points outward', 
     assert.ok(sensors.length >= 3, 'the colour, distance and force sensors have probes');
     for (const p of sensors) {
         const {origin, direction} = p.probe;
+        if (p.device === 'rcx-rotation') {
+            // The rotation sensor senses no surface: its probe is the axis of the turning insert's
+            // axle hole (sensors.js rotationJoint), so it is the sensor-axlehole connector's line.
+            const hole = p.connectors.find(c => c.type === 'sensor-axlehole');
+            assert.ok(hole, `${p.part}: the rotation sensor has its insert's axle hole`);
+            assert.deepEqual(origin, hole.position, `${p.part}: the probe is at the hole`);
+            assert.ok(Math.abs(Math.abs(direction[0] * hole.axis[0] + direction[1] * hole.axis[1] + direction[2] * hole.axis[2]) - 1) < 1e-9,
+                `${p.part}: the probe runs along the hole`);
+            continue;
+        }
         const b = bounds(flat.get(p.part).polys);
         // Distance from origin to the closest face of the axis-aligned bounding box.
         const d = Math.min(

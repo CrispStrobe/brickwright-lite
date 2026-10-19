@@ -1,9 +1,74 @@
-# Robot Lab: the RCX bytecode VM (slice R5, first part)
+# Robot Lab: the RCX (slice R5)
 
-Status: **the VM is built and tested; nothing in the app uses it yet.** It is a pure route module
-waiting for its hub adapter (`hubs/rcx/rcx-virtual-hub.js`, after slice R1's `VirtualHub` lands).
-Owner item: ROADMAP §4.10. Design context: docs/ROBOT-LAB-ARCHITECTURE.md §3.3, §3.5, §5.1, §6.4,
-§7 R5 and owner decision D4.
+Status (2026-10-19): **the RCX runs in the Robot Lab.** NQC (the NQC tab, or the RCX blocks'
+generated NQC) → the in-browser `nqc-wasm` → `.rcx` → `runtime.rcxDownload` with "Robot Lab RCX"
+chosen as its target → the clean-room bytecode VM below, resident in the scene's RCX on the Lab's
+one clock → the mini-motors' DC model and the touch, light and rotation sensors' probes. Owner
+item: ROADMAP §4.10; plan: docs/ROBOT-LAB-HUBS-PLAN.md phase "RCX". Design context:
+docs/ROBOT-LAB-ARCHITECTURE.md §3.3, §3.5, §5.1, §6.4, §7 R5 and owner decision D4.
+
+## The hub (2026-10-19)
+
+| File | What it is |
+|---|---|
+| `hubs/rcx/profile.js` | the RCX as a HubProfile: outputs A–C (`rcx-output`, motor/lamp, 9 V, 8 PWM levels), inputs 1–3 (`rcx-input`, passive/active sensors), drive `pwm`, part `76454c02.dat` |
+| `hubs/rcx/rcx-virtual-hub.js` | the VirtualHub: `advanceTo(t)` runs the VM exactly to t; outputs → PortDrives; probes → raw ADC values; `exportState` carries the image, the VM snapshot and the held inputs, so the physics worker's mirror redoes a batch bit-identically (tested) |
+| `hubs/rcx/rcx-lab-target.js` | "Robot Lab RCX": the virtual `rcxDownload` target (loads the image, starts it unless `run: false`) |
+| `lib/rcx/rcx-targets.js` | the target registry the download hook consults: the user's **explicit** choice (`runtime.rcxDownloadTarget`, or `options.target`), default the IR tower; a chosen target that is gone refuses, never falls back |
+| `devices/rcx-sensors.js` | probe → raw 10-bit value per RCX sensor |
+| `kinds/rotation-sensor.js` | connector kind `sensor-axlehole`: the rotation sensor's turning insert; an axle in it is a hinge, which `sensors.js` reads as the sensor's angle |
+
+**Outputs.** `on` at power p → a `pwm` drive of duty ±(p+1)/8 with `coast` decay; `off` → brake
+(winding shorted); `float` → coast. The standard firmware rotates an 8-bit pattern per output every
+millisecond (00000001 … 11111111 for power 0 … 7) and floats the motor in its clear bits ("on-float-
+on-float; brake is not used": Dick Swan, LUGNET robotics #17185, 2002 — community, from the ROM; his
+prose says power 4 is "on for 4 msec", his table gives 5; the table is used). The 8 ms pattern is
+applied as its average; `physics/actuators.js` now gives a `coast`-decay PWM the back-EMF damping
+only for the driven fraction, τ = d·τs − |d|·(τs/ω0)·ω. Consequence, as on a real RCX: an unloaded
+motor turns at its no-load speed at every power level and the level sets the torque (tested on a
+bench: the wheel reaches Philo's 360 rpm at powers 0, 1, 3, 7, and the first-step response scales
+with (p+1)/8 to 2 %).
+
+**Inputs.** Touch (879, `75973.dat`): the SPIKE force probe along the button; pressed → raw 40
+(a switch to ground; estimated), released → 1023. Light (9758, `72634.dat`): the colour probe's
+reflectance R (mat colour, falling off with the 32 mm reach) → percent 30 + 26·R/100 (black … white
+paper; **estimated** from builders' reports, not measured) → raw = 7·(146 − percent), the inverse of
+the firmware's percent scale (Gasperi, quoted on LUGNET robotics.rcx.legos #2539 — community). On
+the line-oval mat at 8 mm: white ≈ 51 %, black ≈ 31 %. Rotation (2977, `72632.dat`): the angle of
+the hinge through the sensor's hole (`sensors.js rotationJoint`), 16 counts a turn truncated toward
+zero, passed to the VM as `{raw, rotation}`.
+
+**Parts** (LDraw 2026-09-30, vendored by `sync:ldraw`, connectors derived by
+`scripts/derive-part-meta.mjs` and completed by hand): 76454c02 RCX 2.0 (BrickLink 884c; 46 studs,
+the 8 × 12 anti-stud grid, four side pin holes; 258 g = the derived shell plus six AA cells, an
+estimate), 71427 Technic mini-motor 9 V (BrickLink 71427c01; its output axle u9345 is the internal
+hinge, device `technic-minimotor-71427` with Philo's numbers), 75973 touch sensor (BrickLink 879;
+its two 4 LDU back holes are left out: shallower than any seat), 72634 light sensor, 72632
+rotation sensor. 884 is LDraw's obsolete shortcut and 2838c01 moved to 74569p01 (the 9 V motor, in
+the catalogue as a device, not yet a part).
+
+**Example** (`static/sim-lab/models/rcx-bumper-car.ldr`, two MODELS entries): see docs/SIM-LAB.md.
+Test fixtures: `test/fixtures/bw-sim/rcx-rotation-bench.ldr` (a motor's output in a rotation
+sensor), `rcx-wheel-bench.ldr` (a wheel turning in the air).
+
+**Tests** (`test/bw-sim-rcx-hub.test.mjs`): profile/registry/refusals; the explicit download target
+(tower by default, nothing reaches the Lab without the choice, a gone target refuses); the shipped
+bumper car (reaches the wall, the bumper presses, reverses on the next VM turn, backs off > 10 cm,
+stops braked); the shipped line follower (one lap, centre within the half track, light raw on
+white and black = the device model at the probe's height, the example's threshold between them);
+power levels vs the DC model; rotation counts vs the hinge angle; the mirror hub's replay.
+`test/bw-sim-hub-boundary-imports.test.mjs`: the RCX adapter reaches the VM and no physics; the
+download hook reaches no Robot Lab module.
+
+**Not modelled / missing:** the 60 ms pause on a direction change (Firmware Command Overview
+p. 101), the 500 mA output current limit and battery sag; the light sensor's percent line is an
+estimate and ambient light is ignored; sensor sample timing (3 ms scan) is per physics step;
+the rotation sensor's analog phase levels; temperature sensor, lamps, the IR link to other bricks,
+sound as audio and the LCD (recorded as events, `hub.events`); the 9 V motor 2838 as a part; the
+pane shows no RCX readouts yet. `contracts.js` (the physics lane's file) gained two words to make
+this possible: input ports `1`–`4` in `HUB_PORTS` and `rotation` in `SENSOR_KINDS`.
+
+## The VM
 
 Code: `overlay/scratch-gui/src/lib/bw-sim/routes/rcx-vm/`
 
@@ -80,7 +145,10 @@ No firmware image, no GPL emulator, no brickEmu, legOS or brickOS code was consu
 
 Each is a single constant or branch in `rcx-vm.js` marked "(memory)" or "uncertain":
 
-- boolean thresholds: true below raw 460, false above 562, unchanged between;
+- ~~boolean thresholds~~ — verified 2026-10-19 against LEGO's "RCX 2.0 Firmware Command Overview"
+  (2000-07-04, BrickBot Archive): "Sensor bool: the raw value, with thresholds and hysteresis at
+  45/55 %" = raw 460 / 562. The same document confirms the angle sensor's 1/16 ticks, the slope
+  sampling interval ("dt is fixed 3 ms") and the default modes per sensor type;
 - slope mode: a fall faster than `slope` per sample → true, a rise → false; sampled once per
   `advance`, not at the firmware's own input scan rate (~3 ms, also memory);
 - pulse mode counts true → false transitions; edge mode counts both;
@@ -106,5 +174,4 @@ Each is a single constant or branch in `rcx-vm.js` marked "(memory)" or "uncerta
 - Decoding the rotation sensor's analog phase levels into counts (the device model must supply
   counts), the light sensor's LED, sensor sample-and-hold timing.
 - Scout/CyberMaster images (refused at load: different firmware).
-- The hub side of R5: `hubs/rcx/` profile and `RcxVirtualHub`, the RCX device models, the
-  virtual `rcxDownload` target, the worker residency, and the cross-route acceptance tests.
+- (Done 2026-10-19: the hub side — see "The hub" above.)

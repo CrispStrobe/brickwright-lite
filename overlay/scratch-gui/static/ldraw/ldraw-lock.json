@@ -313,6 +313,12 @@
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Willy Tschager [Holly-Wood]"
   },
+  "p/1-8ring2.dat": {
+   "sha256": "e455551969062c34d061d1b74df9b18f63deffb3efdbeb175a4a80a674f5ff68",
+   "release": "G Primitive UPDATE 2024-01",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Willy Tschager [Holly-Wood]"
+  },
   "p/1-8ring3.dat": {
    "sha256": "641f3ae7395e7d38e57ab918928ac19209ed72e8474fd1646e2d70f223c4a0ce",
    "release": "G Primitive UPDATE 2012-01",
@@ -378,6 +384,12 @@
    "release": "G Primitive UPDATE 2012-01",
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Mark Kennedy [mkennedy]"
+  },
+  "p/2-4con3.dat": {
+   "sha256": "1428ba9e3e813a1f1b778308cc9e77ac249e16f1976f72773545165173e1314e",
+   "release": "G Primitive UPDATE 2024-01",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Willy Tschager [Holly-Wood]"
   },
   "p/2-4con4.dat": {
    "sha256": "cb5c0bcd7006e448a2a5681bc6fbfc71e1f424b9f8de8d47b7731b32ce5090a6",
@@ -948,6 +960,12 @@
    "release": "G Primitive UPDATE 2024-01",
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Magnus Forsberg [MagFors]"
+  },
+  "p/4-8sphe.dat": {
+   "sha256": "37fa33d0b13605e0e1a84b8e0917953d42beebee08dc444e1bd44015acd64d9e",
+   "release": "G Primitive UPDATE 2003-02",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "James Jessiman"
   },
   "p/48/1-12chrd.dat": {
    "sha256": "fe2a0252d971dc65126755c4fdb7db900e229dfdce712b42ce9510c7b0390e26",
@@ -1800,6 +1818,12 @@
    "release": "G Primitive UPDATE 2024-02",
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Alex Taylor [anathema]"
+  },
+  "p/7-8chrd.dat": {
+   "sha256": "6d114fcb89e1caadaf3e35cbe2b2142fe085ddb80b223226bf49edad5fbcc8a4",
+   "release": "G Primitive UPDATE 2015-01",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Philippe Hurbain [Philo]"
   },
   "p/7-8cyli.dat": {
    "sha256": "65877ef8bdc2f6162bc5db53d62e6bde48349969e3370afa99623e082d6eee23",
@@ -2857,6 +2881,12 @@
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Willy Tschager [Holly-Wood]"
   },
+  "p/studel.dat": {
+   "sha256": "c36d12694cf758c352f788d63c5a4c6fbe112b3133cd3dbb4aa525cb8e9ffb94",
+   "release": "G Primitive UPDATE 2024-01",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Willy Tschager [Holly-Wood]"
+  },
   "p/stug-1x10.dat": {
    "sha256": "9e1c58cc380ef260e2222e69fc7dc7dae439e5548f3a68b9a1c9c9c15b2a6eca",
    "release": "G Primitive UPDATE 2011-01",
@@ -2905,6 +2935,12 @@
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Steffen [Steffen]"
   },
+  "p/stug-2x1.dat": {
+   "sha256": "03d08cea230e892e1b6cbfe523c19b568a834c5888aac5c789d1fb8d6ee93d96",
+   "release": "G Primitive UPDATE 2011-01",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Magnus Forsberg [MagFors]"
+  },
   "p/stug-2x2.dat": {
    "sha256": "16114159ea25719341a852d5403dc9982a6211f2fcb23f5c4c3eac05a2ad43f7",
    "release": "G Primitive UPDATE 2012-01",
@@ -2928,6 +2964,12 @@
    "release": "G Primitive UPDATE 2011-01",
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Tore Eriksson [Tore_Eriksson]"
+  },
+  "p/stug-6x1.dat": {
+   "sha256": "dd1e100388d799a6a4dcecbb1e8fa53aaa2e542470d5dd8acb6446a0324e6fb4",
+   "release": "G Primitive UPDATE 2011-01",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Magnus Forsberg [MagFors]"
   },
   "p/stug-6x6.dat": {
    "sha256": "c9863cf7834123f831cccd04f5e6d9b20c7681c63f906378d7c9a1f82ba47b67",
@@ -2956,6 +2998,12 @@
   "p/stug2-1x3.dat": {
    "sha256": "e3944f4657c3e4620509cca9b6923ddb2d88fc9e4ca52d102579f90f6680d6ad",
    "release": "G Primitive UPDATE 2011-02",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Steffen [Steffen]"
+  },
+  "p/stug2-2x2.dat": {
+   "sha256": "7598876867b19a9dd40e058188967a0ea0250e1ec07cdb4aae338ad782ae8097",
+   "release": "G Primitive UPDATE 2012-01",
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Steffen [Steffen]"
   },
@@ -3067,6 +3115,12 @@
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Steffen [Steffen]"
   },
+  "p/stugel-2x2.dat": {
+   "sha256": "b9fcc070d081f4618756f26824aaf6e0b3f678bdc5b10e1fa62490f2e9454ca4",
+   "release": "G Primitive UPDATE 2024-05",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Steffen [Steffen]"
+  },
   "p/t01i2000.dat": {
    "sha256": "877574c6be908beb7a51832d7cf7d3abee5cc13c404377c56632b7611b7c54e7",
    "release": "G Primitive UPDATE 2013-02",
@@ -3162,6 +3216,12 @@
    "release": "G Primitive UPDATE 2010-01",
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Mark Kennedy [mkennedy]"
+  },
+  "p/tri4.dat": {
+   "sha256": "07a081c02210b682b195089e5370d1b20c1112f3a5d77133f16d3abc90e9497b",
+   "release": "G Primitive UPDATE 2012-03",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Donald Sutter [technog]"
   },
   "p/triangle.dat": {
    "sha256": "67e7a72ed488412a974d622570704c4a734d9ba9fe671b03261fcec8520e01f2",
@@ -3276,6 +3336,12 @@
    "release": "G Part UPDATE 2015-01",
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Philippe Hurbain [Philo]"
+  },
+  "parts/22702.dat": {
+   "sha256": "a68581937fb94d63ddd74e59bdf928239a408e620fd639f31f5b00ea37552581",
+   "release": "G Shortcut UPDATE 2022-06",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Magnus Forsberg [MagFors]"
   },
   "parts/22961.dat": {
    "sha256": "25d433f263ff4dc2164bb4afa96a8bd6ed8d196999412b92c3f74c73da67f3da",
@@ -3438,6 +3504,42 @@
    "release": "G Part UPDATE 2023-05",
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "James Jessiman"
+  },
+  "parts/2976.dat": {
+   "sha256": "01caee2a8335c566acac195441d45f90fb6493393defee3fb5e5fd8239e6c410",
+   "release": "G Part UPDATE 2017-01",
+   "license": "Licensed under CC BY 2.0 and CC BY 4.0 : see CAreadme.txt",
+   "author": "Jonathan P. Brown"
+  },
+  "parts/2976c01.dat": {
+   "sha256": "80f79250b1622ed5857080932f2b830046b4569f5383e8ed039beb79b6ce2f12",
+   "release": "G Shortcut UPDATE 2017-01",
+   "license": "Licensed under CC BY 2.0 and CC BY 4.0 : see CAreadme.txt",
+   "author": "Jonathan P. Brown"
+  },
+  "parts/2977.dat": {
+   "sha256": "2233a2ce704ec65f9a0bd3f37cae62faf0f63faf76c23494047b05b4191669d9",
+   "release": "G Part UPDATE 2017-01",
+   "license": "Licensed under CC BY 2.0 and CC BY 4.0 : see CAreadme.txt",
+   "author": "Jonathan P. Brown"
+  },
+  "parts/2978.dat": {
+   "sha256": "6b9a2649f692424beb6d318d59505eb04766c5fcb8b7c9797df2c7d0247836ab",
+   "release": "G Part UPDATE 2017-01",
+   "license": "Licensed under CC BY 2.0 and CC BY 4.0 : see CAreadme.txt",
+   "author": "Jonathan P. Brown"
+  },
+  "parts/2981.dat": {
+   "sha256": "48d3d56e8f319f568c60c1d9c15679948cd71215b05c1f80ae43dbf9c9f89b9c",
+   "release": "G Part UPDATE 2018-02",
+   "license": "Licensed under CC BY 2.0 and CC BY 4.0 : see CAreadme.txt",
+   "author": "John Van Zwieten [jvan]"
+  },
+  "parts/2982.dat": {
+   "sha256": "fc0276b22c4aad75a81bae432e89354925da167639a6c1833f5d03a7f671b3e5",
+   "release": "G Part UPDATE 2018-02",
+   "license": "Licensed under CC BY 2.0 and CC BY 4.0 : see CAreadme.txt",
+   "author": "John Van Zwieten [jvan]"
   },
   "parts/3001.dat": {
    "sha256": "70968cb5e4baa92dc6a1939aca7526b8566a17dbea49da9b91182aa864e412c4",
@@ -3763,6 +3865,30 @@
    "license": "Licensed under CC BY 2.0 and CC BY 4.0 : see CAreadme.txt",
    "author": "Remco Braak [remco1974]"
   },
+  "parts/32025.dat": {
+   "sha256": "f3c9f621649ca17ce1474012a0137ed3a9e9001d6a5973b68bd21e954c93f82c",
+   "release": "G Part UPDATE 2024-11",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Magnus Forsberg [MagFors]"
+  },
+  "parts/32026.dat": {
+   "sha256": "9e3b066c099d849041beca864159b807244b9731d2c794b834c39b95ce0f342b",
+   "release": "G Part UPDATE 2018-02",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Magnus Forsberg [MagFors]"
+  },
+  "parts/32026c01.dat": {
+   "sha256": "8135b3ce021e0514f96a6b4d4e3f68d1b587628f2cc803f4f46be94a45ed6f8f",
+   "release": "G Shortcut UPDATE 2018-02",
+   "license": "Licensed under CC BY 2.0 and CC BY 4.0 : see CAreadme.txt",
+   "author": "John Van Zwieten [jvan]"
+  },
+  "parts/32027.dat": {
+   "sha256": "3dde4d2744886642ccfca7445f5f0d6d094e6e210c001c21878e622f3f597b37",
+   "release": "G Part UPDATE 2018-02",
+   "license": "Licensed under CC BY 2.0 and CC BY 4.0 : see CAreadme.txt",
+   "author": "John Van Zwieten [jvan]"
+  },
   "parts/32034.dat": {
    "sha256": "ea201fb99f5cee5dd6118ab7ef698b49f04c56f2b25ea10e5986e29a6ee9e236",
    "release": "G Part UPDATE 2010-01",
@@ -3834,6 +3960,30 @@
    "release": "G Part UPDATE 2025-09",
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Magnus Forsberg [MagFors]"
+  },
+  "parts/32108.dat": {
+   "sha256": "e570118b7604f3f234c6369f759032412d4c5040557b863e2073e805272cadcf",
+   "release": "G Part UPDATE 2022-06",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Magnus Forsberg [MagFors]"
+  },
+  "parts/32109.dat": {
+   "sha256": "f468b8eefdbcac001e08f35d67c0dfd291a09191a34926caabf93bbfeeb41fb8",
+   "release": "G Part UPDATE 2022-06",
+   "license": "Licensed under CC BY 2.0 and CC BY 4.0 : see CAreadme.txt",
+   "author": "John Van Zwieten [jvan]"
+  },
+  "parts/32110.dat": {
+   "sha256": "12131d69f3732a6e119299d451c20992be3415e93f3514dacee9cfea581cf4f0",
+   "release": "G Part UPDATE 2022-06",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Magnus Forsberg [MagFors]"
+  },
+  "parts/32116.dat": {
+   "sha256": "d526127d95bcb88624f96d465860134c497cdde7f41be445048fb0b671a38914",
+   "release": "G Part UPDATE 2011-02",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Philippe Hurbain [Philo]"
   },
   "parts/32123.dat": {
    "sha256": "ca4f5739b970454de05968e5be3a2d137f1c4b5e0dc048db938f6494547671ee",
@@ -3984,6 +4134,18 @@
    "release": "G Part UPDATE 2024-02",
    "license": "Licensed under CC BY 2.0 and CC BY 4.0 : see CAreadme.txt",
    "author": "Ishino Keiichiro"
+  },
+  "parts/32374p02.dat": {
+   "sha256": "02ad33662c3bf815095685e292631500b63b52922b0779cf94639eafc85cdb0b",
+   "release": "G Part UPDATE 2022-06",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Magnus Forsberg [MagFors]"
+  },
+  "parts/32374p02c01.dat": {
+   "sha256": "b0fb51d2b417e8d76c70d0d77d84c61da155fe35df5340e9d1d665857f6935f2",
+   "release": "G Shortcut UPDATE 2022-06",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Magnus Forsberg [MagFors]"
   },
   "parts/32449.dat": {
    "sha256": "ed228c17c1ef9a3147ba988bbe08057aeb717dd816d3036af4f2feff13967612",
@@ -4933,6 +5095,18 @@
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "James Jessiman"
   },
+  "parts/6554.dat": {
+   "sha256": "17a8c4fb983827d310c9efffc237fb0ada7c7a4ef927aaf45025485d8d95c637",
+   "release": "G Part UPDATE 2025-11",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Max Martin Richter [MMR1988]"
+  },
+  "parts/6554c01.dat": {
+   "sha256": "93e4c72d0d4c710c173dc469e627ed109210068eba8447b3ee02bd793eaab156",
+   "release": "G Shortcut UPDATE 2015-02",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Max Martin Richter [MMR1988]"
+  },
   "parts/6558.dat": {
    "sha256": "28d5dfb1009599f84edfae076be13eb648bbfae32cdba57b12b7d7829465057c",
    "release": "G Part UPDATE 2009-01",
@@ -5023,6 +5197,30 @@
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Philippe Hurbain [Philo]"
   },
+  "parts/70839.dat": {
+   "sha256": "dfec94fb801d1dc3f0ac8fc98f7c502f601acb48f10c9ba0532471a4f7b9c452",
+   "release": "G Part UPDATE 2018-02",
+   "license": "Licensed under CC BY 2.0 and CC BY 4.0 : see CAreadme.txt",
+   "author": "John Van Zwieten [jvan]"
+  },
+  "parts/71427.dat": {
+   "sha256": "8193ef266b0c36336d77bc3602c1badc0431fd2be512df55eddfce4f246db3a9",
+   "release": "G Shortcut UPDATE 2020-01",
+   "license": "Licensed under CC BY 2.0 and CC BY 4.0 : see CAreadme.txt",
+   "author": "John Van Zwieten [jvan]"
+  },
+  "parts/71645p01.dat": {
+   "sha256": "ede0d292ee2910cb8e836cd50e0f1819e4a57c870284188b84923e0e97a7d3b0",
+   "release": "G Part UPDATE 2022-06",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Magnus Forsberg [MagFors]"
+  },
+  "parts/71645p02.dat": {
+   "sha256": "c23599060037ee591c535252c42e4db84113c31d47d978caaae9cf30c09b67ea",
+   "release": "G Part UPDATE 2022-06",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Magnus Forsberg [MagFors]"
+  },
   "parts/71708.dat": {
    "sha256": "cb3588c9571b532eebe2902a3d36aff69ecaad2667af6ffcbabb279dffdc7752",
    "release": "G Part UPDATE 2024-08",
@@ -5041,6 +5239,18 @@
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Rene Rechthaler [Blechtaler]"
   },
+  "parts/72632.dat": {
+   "sha256": "3a0ecf30ec9522f70b48552ab8c6623e237fde4e5f676ebe6b0a6ed52160a3f0",
+   "release": "G Shortcut UPDATE 2017-01",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Magnus Forsberg [MagFors]"
+  },
+  "parts/72634.dat": {
+   "sha256": "a116f6ac32571c8e063132727f618618a72b8691263d11815086c6d34eb692a5",
+   "release": "G Shortcut UPDATE 2018-02",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Steffen [Steffen]"
+  },
   "parts/73230.dat": {
    "sha256": "ec023f3811316edc70dd0422b1c87ed2630cc299b63382168076947414a3deaf",
    "release": "G Part UPDATE 2022-02",
@@ -5053,11 +5263,23 @@
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Gerald Lasser [GeraldLasser]"
   },
+  "parts/75973.dat": {
+   "sha256": "fd520f467a9069d2f077a0c44fa56cea3320e91a6331508080b8ec76d5403a26",
+   "release": "G Shortcut UPDATE 2018-02",
+   "license": "Licensed under CC BY 2.0 and CC BY 4.0 : see CAreadme.txt",
+   "author": "John Van Zwieten [jvan]"
+  },
   "parts/76019.dat": {
    "sha256": "e355f57eebfd1b607869695ed6e10ee06e1b7ba0f55b9a3e54b3a48b83d865ce",
    "release": "G Shortcut UPDATE 2024-04",
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Michael Heidemann [mikeheide]"
+  },
+  "parts/76454c02.dat": {
+   "sha256": "3a3a035fbbaebf0078f96ffec2db6869910385be93ddf68387bfe5681f064b79",
+   "release": "G Shortcut UPDATE 2022-06",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Magnus Forsberg [MagFors]"
   },
   "parts/77765.dat": {
    "sha256": "2fb7777a7bb22a293b40704bbcaaaf2f113a336bc3ed193edb7ceacfd5f1be8e",
@@ -5232,6 +5454,12 @@
    "release": "G Part UPDATE 2024-02",
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Philippe Hurbain [Philo]"
+  },
+  "parts/993.dat": {
+   "sha256": "9929c6a4446c184f07601b5cf930a42e6d7cc44e06b32b02aa44f798970589f8",
+   "release": "G Part UPDATE 2013-02",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Michael Heidemann [mikeheide]"
   },
   "parts/99773.dat": {
    "sha256": "98396831e8dde0d1ba255936a70f44597d5a9134f3e681e00bc05eec0044b005",
@@ -5509,11 +5737,47 @@
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Philippe Hurbain [Philo]"
   },
+  "parts/s/32021s03.dat": {
+   "sha256": "061f8311a5217bfab3c938bfb0900c657109547249f2caee4ce60db2373da2ef",
+   "release": "G Subpart UPDATE 2014-02",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Max Martin Richter [MMR1988]"
+  },
   "parts/s/32039s01.dat": {
    "sha256": "35ba3e48aa94b3c4717af31263112a14ab4884f136451dc222e9614b813decd1",
    "release": "G Subpart UPDATE 2024-08",
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Philippe Hurbain [Philo]"
+  },
+  "parts/s/32058p01s01.dat": {
+   "sha256": "a3aedb8cadd82a7f68235436d5b643b0640fc32f77977b7a49138936a2453e52",
+   "release": "G Subpart UPDATE 2022-06",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Magnus Forsberg [MagFors]"
+  },
+  "parts/s/32058s01.dat": {
+   "sha256": "8121a4025bf2338c6db938372ee098ef9473e5525c4ced49dbe06b6771926535",
+   "release": "G Subpart UPDATE 2022-06",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Magnus Forsberg [MagFors]"
+  },
+  "parts/s/32058s02.dat": {
+   "sha256": "fe6f9abc9df0859655bf7f4df8d0fc0145f2e88474d2a41464485838922f2598",
+   "release": "G Subpart UPDATE 2022-06",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Magnus Forsberg [MagFors]"
+  },
+  "parts/s/32109s01.dat": {
+   "sha256": "baa6cad0ed72bb651ac1ff4073b1efa8bfbb907c4d7670d03c81ae5239d4a9b9",
+   "release": "G Subpart UPDATE 2022-06",
+   "license": "Licensed under CC BY 2.0 and CC BY 4.0 : see CAreadme.txt",
+   "author": "John Van Zwieten [jvan]"
+  },
+  "parts/s/32109s02.dat": {
+   "sha256": "f0b9a0e85a3894b95965858a8fedd2218ec0bc8af3b38644b76e2d53e73a264e",
+   "release": "G Subpart UPDATE 2022-06",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Magnus Forsberg [MagFors]"
   },
   "parts/s/32138s01.dat": {
    "sha256": "9013930c8f2040be8280194b6bf72ce3c3a0278c39333c3d7d13da0de1b72bbe",
@@ -5995,6 +6259,12 @@
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Philippe Hurbain [Philo]"
   },
+  "parts/s/71645s01.dat": {
+   "sha256": "c9872d2bfb58983e1b8ad3b64931420efe0cb352da786e2c2d6bab2df6e111ac",
+   "release": "G Subpart UPDATE 2022-06",
+   "license": "Licensed under CC BY 2.0 and CC BY 4.0 : see CAreadme.txt",
+   "author": "John Van Zwieten [jvan]"
+  },
   "parts/s/71708s01.dat": {
    "sha256": "a34805ecd0bd9801bf94fd4bab7f58b3bffb7f6e0cc610d1656747203a1b29fc",
    "release": "G Subpart UPDATE 2024-08",
@@ -6187,11 +6457,53 @@
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Max Martin Richter [MMR1988]"
   },
+  "parts/u9289.dat": {
+   "sha256": "95db76a04aeb1a06e6e847229aeabf52e27a4c4661ab8fddab32c65920f22970",
+   "release": "G Part UPDATE 2015-02",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Max Martin Richter [MMR1988]"
+  },
+  "parts/u9301.dat": {
+   "sha256": "06f856d7b705dedffcf2c99468d8f0dee8c2a49f4145f13aea807aecb103cff8",
+   "release": "G Part UPDATE 2015-02",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Max Martin Richter [MMR1988]"
+  },
   "parts/u9320.dat": {
    "sha256": "72d8edb7b8405c99299f3fe168c591d1e3d2813a0764a6a93cb6099caf93abb9",
    "release": "G Part UPDATE 2022-03",
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "[PTadmin]"
+  },
+  "parts/u9345.dat": {
+   "sha256": "b6683b96e3f95c489fed2d5990eddff6842a8ba3eec0097d3f516b2a9748f818",
+   "release": "G Part UPDATE 2026-04",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Magnus Forsberg [MagFors]"
+  },
+  "parts/u9346.dat": {
+   "sha256": "390e487de13ee3c86e1cb3dc4a65174009e8b9162b24b623c232a098b886ea18",
+   "release": "G Part UPDATE 2019-02",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Magnus Forsberg [MagFors]"
+  },
+  "parts/u9346c01.dat": {
+   "sha256": "767cb89bc5b90e5c58f3de2a16f33e252b0aba5c8a47ec203142cc0d14298343",
+   "release": "G Shortcut UPDATE 2019-03",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Magnus Forsberg [MagFors]"
+  },
+  "parts/u9347.dat": {
+   "sha256": "24e158a41bb3e8419babc19652e3f2558aa4fd1b3bdbce4215be665a371a7c9c",
+   "release": "G Part UPDATE 2025-11",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Magnus Forsberg [MagFors]"
+  },
+  "parts/u9348.dat": {
+   "sha256": "c530641bdf666b6ca9b45d14a86b74eab85286d0cf1bcd66f88fe96b7d679e01",
+   "release": "G Part UPDATE 2019-02",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Magnus Forsberg [MagFors]"
   },
   "parts/u9363.dat": {
    "sha256": "c43fabb55c6b23c92fc8f44ef32478a28bf210855df52da7423689216b8cc462",
@@ -6342,6 +6654,12 @@
    "release": "G Part UPDATE 2020-03",
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Philippe Hurbain [Philo]"
+  },
+  "parts/u9450.dat": {
+   "sha256": "46457fe696450bde19ed7153f0d3c8bcdda8e54d56a1aaa748030292471758e1",
+   "release": "G Shortcut UPDATE 2022-06",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Magnus Forsberg [MagFors]"
   },
   "parts/u9460.dat": {
    "sha256": "ed8c6ac0343bc37b1f59ca5a792a321ff070a5518525a2432940079710322b23",

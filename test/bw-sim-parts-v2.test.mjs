@@ -88,7 +88,9 @@ test('parts.json is PartMeta v2: version 2, every entry valid, no v1 field left,
     const kinds = Object.fromEntries(FILE.parts.filter(p => p.device || p.hubProfile)
         .map(p => [p.part, partMotor(p) ? 'motor' : partSensor(p) ? partSensor(p).device.sensor.kind : partHubProfile(p)]));
     assert.deepEqual(kinds, {'54696p01.dat': 'motor', '54675.dat': 'motor', '45601.dat': 'spike-prime',
-        '37308.dat': 'color', '37316.dat': 'distance', '37312.dat': 'force'});
+        '37308.dat': 'color', '37316.dat': 'distance', '37312.dat': 'force',
+        // The RCX (hubs/rcx/, docs/ROBOT-LAB-RCX.md): the brick, its mini-motor and its three sensors.
+        '76454c02.dat': 'rcx', '71427.dat': 'motor', '75973.dat': 'force', '72634.dat': 'color', '72632.dat': 'rotation'});
 });
 
 test('migrating the v1 file gives exactly the shipped file, and migrating again changes nothing', () => {
