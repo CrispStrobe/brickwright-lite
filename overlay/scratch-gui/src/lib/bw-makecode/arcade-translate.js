@@ -19,7 +19,7 @@ import {validateClassCallablePlan} from './class-callable-plan.js';
 import {sourceCallableDeclarations} from './source-callable-declarations.js';
 import {callableDeclarationEnvelope,callableVariableEnvelope} from './callable-export-graph.js';
 import {lowerNamedArrayItemHelpers} from './named-array-item-helpers.js';
-import {GENERATED_HELPER_PROFILES,hasGeneratedHelperShape,inspectGeneratedHelperBindings,normalizeCompilerOwnedLegacyArrayHelpers,mapGeneratedSourceArray} from './generated-helper-recognition.js';
+import {GENERATED_HELPER_PROFILES,inspectGeneratedHelperBindings,normalizeCompilerOwnedLegacyArrayHelpers,mapGeneratedSourceArray} from './generated-helper-recognition.js';
 import {lowerLiveFontMetrics} from './live-font-metrics.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 import {sourceReferenceDeclarations} from './source-reference-declarations.js';
