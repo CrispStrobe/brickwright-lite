@@ -105,6 +105,10 @@ const builtinExtensions = {
     // DOS Forth bench's pin!/pin@ words through the Code tab. LITE_ONLY (no
     // upstream file); classified in scripts/spike/bundled-upstream.mjs.
     bwgpio: () => require('../extensions/crispstrobe/bwgpio'),
+    // Lite-native Robot Lab blocks: every block one call of runtime.robotLab, the API the
+    // Robot Lab pane installs (gui lib/bw-sim/api/robot-lab-api.js). LITE_ONLY, classified in
+    // scripts/spike/bundled-upstream.mjs.
+    robotlab: () => require('../extensions/crispstrobe/robotlab'),
     circuit: () => require('../extensions/crispstrobe/circuit'),
     // Vendored from the bw-board PACKAGE, not from CrispStrobe/extensions —
     // bw-board ships this extension and Lite had carried a five-block copy of
