@@ -57,3 +57,17 @@ modules require execution. Actual camera import, editable Code, saved projects,
 export, original-compiler behavior and affected native execution need their own
 observations. No complete-suite, corpus, browser, runtime or performance result
 is inferred from the source change.
+
+## Deletion syntax
+
+Source `delete receiver.property` and `delete receiver[index]` are parsed as
+actual unary mutations. They cannot appear as an unrelated identifier followed
+by a harmless member read. The common translator explicitly reports deletion
+as unsupported in both value and statement positions, including ordinary user
+objects. It does not substitute an operand read, emit a successful Boolean
+result, or implement property deletion semantics. Arcade routes this operation
+before numeric folding; micro:bit uses the same common diagnostic path.
+
+This parser and diagnostic correction preserves the Camera identity/mutation
+refusals. It does not make deletion a supported target operation or qualify
+runtime behavior.
