@@ -986,7 +986,39 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         const before=owners.get(at)?.executedBefore.get(at)||new Set();
         return mutations.some(({target,node})=>before.has(node)&&['push','unshift'].includes(literal(node,'OP',target))&&readInput(input(node,'ARRAY',target)).size===0);
     };
+    // The for-of lowering reads `item i of a` as the FIRST statement of
+    // `repeat while i < length(a)`, where i is a local written only by a literal
+    // zero before the loop and by `i := +i + 1` inside it, and a is a local
+    // written once before the loop. The just-checked bound
+    // makes that read present.
+    const forOfPresent=(allocation,target,node)=>{
+        // No shrink matters: nothing can run between the bound check and the
+        // first body statement in one thread step, and every iteration re-checks.
+        if(node.opcode!=='arrays_referenceItem')return false;
+        const indexRead=input(node,'INDEX',target).node,arrayRead=input(node,'ARRAY',target).node;
+        if(indexRead?.opcode!=='arcade_getLocal'||arrayRead?.opcode!=='arcade_getLocal')return false;
+        const scope=owners.get(node),i=binding(target,indexRead),a=binding(target,arrayRead),statement=statementOf(node);
+        if(!scope||!i||!a||i===a||!statement)return false;
+        const loop=block(target,statement.parent);
+        if(loop?.opcode!=='arcade_sourceWhile'||!exactKeys(loop,['CONDITION','SUBSTACK'])||loop.inputs.SUBSTACK?.[1]!==Object.keys(target.blocks).find(k=>target.blocks[k]===statement))return false;
+        const condition=block(target,loop.inputs.CONDITION?.[1]);
+        if(condition?.opcode!=='arrays_valueCompare'||!exactKeys(condition,['LEFT','RIGHT'],['OP'])||literal(condition,'OP',target)!=='<')return false;
+        const left=input(condition,'LEFT',target).node,right=input(condition,'RIGHT',target).node;
+        if(left?.opcode!=='arcade_getLocal'||binding(target,left)!==i||right?.opcode!=='arrays_referenceLength'||!exactKeys(right,['ARRAY']))return false;
+        const lengthRead=input(right,'ARRAY',target).node;if(lengthRead?.opcode!=='arcade_getLocal'||binding(target,lengthRead)!==a)return false;
+        const inLoop=n=>{for(let p=n,seen=new Set();p&&!seen.has(p);seen.add(p),p=block(target,p.parent))if(p===loop)return true;return false;};
+        if(a.writers.length!==1||a.writers[0].scope!==scope||inLoop(a.writers[0].node))return false;
+        const zero=v=>{const n=v?.node;if(v?.raw)return Number(v.raw[1])===0;if(n?.opcode==='operator_add'&&exactKeys(n,['NUM1','NUM2']))return literalNumber(target,n,'NUM1')===0&&literalNumber(target,n,'NUM2')===0;return n?.shadow&&n.opcode==='math_number'&&Number(n.fields?.NUM?.[0])===0;};
+        const step=v=>{const n=v?.node;if(n?.opcode!=='arrays_valueBinary'||literal(n,'OP',target)!=='+'||!exactKeys(n,['LEFT','RIGHT'],['OP']))return false;
+            const l=input(n,'LEFT',target).node,plus=l?.opcode==='arrays_valueUnary'&&literal(l,'OP',target)==='+'?input(l,'VALUE',target).node:l,r=input(n,'RIGHT',target);
+            const one=r.raw?Number(r.raw[1])===1:r.node?.opcode==='operator_add'&&literalNumber(target,r.node,'NUM1')===0&&literalNumber(target,r.node,'NUM2')===1;
+            return plus?.opcode==='arcade_getLocal'&&binding(target,plus)===i&&one;};
+        const inits=i.writers.filter(w=>!inLoop(w.node)),steps=i.writers.filter(w=>inLoop(w.node));
+        return inits.length===1&&inits[0].scope===scope&&zero(inits[0].value)&&steps.length>=1&&steps.every(w=>step(w.value))&&
+            !!scope.executedBefore.get(loop)?.has(inits[0].node)&&!!scope.executedBefore.get(loop)?.has(a.writers[0].node);
+    };
     const presentAt=(allocation,target,node,qualifies)=>{
+        if(forOfPresent(allocation,target,node))return true;
         const length=minimumAt(allocation,node,qualifies),index=literalNumber(target,node,'INDEX');
         return node.opcode==='arrays_referenceRandom'||node.opcode==='arrays_referenceTake'&&['pop','shift'].includes(literal(node,'OP',target))?length>0:index!==null&&Number.isInteger(index)&&index>=0&&index<length;
     };
