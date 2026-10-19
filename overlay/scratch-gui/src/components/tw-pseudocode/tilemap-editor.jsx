@@ -13,7 +13,7 @@ import PropTypes from 'prop-types';
 import LegacyTileDefinitionEditor from './legacy-tile-definition-editor.jsx';
 import React from 'react';
 import {makeT, browserLocale} from '../../lib/bw-i18n.js';
-import {ARCADE_PALETTE} from '../../lib/bw-makecode/pixel-image.js';
+import {inspectTilemapPalette, observeTilemapPalette, tilemapPixelColor, drawTilemapImage} from '../../lib/bw-makecode/tilemap-palette.js';
 import {
     TILE_SIZES, findTilemapBlocks, writeTilemapBlock, tilemapText, paintCell, eraseCell, fillCells, setWall, resizeTilemap,
     setTileSize, addTile, removeTile, paintTilePixel, renameTile, createHistory, commit, undo, redo, createTilemap, addTilemapBlock
@@ -30,6 +30,8 @@ const L10N = {
         'tm.columns': 'Columns', 'tm.rows': 'Rows', 'tm.tileSize': 'Tile size', 'tm.resize': 'Resize',
         'tm.tiles': 'Tiles', 'tm.tile': 'Tile {n}', 'tm.emptyTile': 'Tile 0 (empty)', 'tm.addTile': 'Add tile',
         'tm.removeTile': 'Remove tile', 'tm.colour': 'Colour {n}', 'tm.save': 'Save', 'tm.revert': 'Revert',
+        'tm.paletteStartup': 'Preview uses the project startup palette; later code can change it while running.',
+        'tm.paletteUnknown': 'The startup palette is dynamic or conflicting. Gray is an index preview, not the game colors. Edit the palette in Code or Blocks.',
         'tm.saved': 'Saved into the block of {target}.', 'tm.saveFailed': 'Could not save: the block is gone or the level is invalid.',
         'tm.unsaved': 'Unsaved changes', 'tm.wallHint': 'Click cells to add walls; click a wall to remove it.',
         'tm.zoom': 'Zoom', 'tm.new': 'New tile map', 'tm.created': 'New tile map added to {target}: a "when green flag clicked" script sets it.',
@@ -52,6 +54,8 @@ const L10N = {
         'tm.columns': 'Spalten', 'tm.rows': 'Zeilen', 'tm.tileSize': 'Kachelgröße', 'tm.resize': 'Größe ändern',
         'tm.tiles': 'Kacheln', 'tm.tile': 'Kachel {n}', 'tm.emptyTile': 'Kachel 0 (leer)', 'tm.addTile': 'Kachel hinzufügen',
         'tm.removeTile': 'Kachel entfernen', 'tm.colour': 'Farbe {n}', 'tm.save': 'Speichern', 'tm.revert': 'Verwerfen',
+        'tm.paletteStartup': 'Die Vorschau verwendet die Projekt-Startpalette; späterer Code kann sie beim Ausführen ändern.',
+        'tm.paletteUnknown': 'Die Startpalette ist dynamisch oder widersprüchlich. Grau zeigt nur die Indizes, nicht die Spielfarben. Bearbeite die Palette in Code oder Blöcken.',
         'tm.saved': 'In den Block von {target} gespeichert.', 'tm.saveFailed': 'Speichern nicht möglich: Der Block fehlt oder das Level ist ungültig.',
         'tm.unsaved': 'Ungespeicherte Änderungen', 'tm.wallHint': 'Klicke Zellen an, um Wände zu setzen; ein Klick auf eine Wand entfernt sie.',
         'tm.zoom': 'Zoom', 'tm.new': 'Neue Kachelkarte', 'tm.created': 'Neue Kachelkarte zu {target} hinzugefügt: Ein Skript „Wenn die grüne Flagge angeklickt“ setzt sie.',
@@ -70,18 +74,6 @@ const L10N = {
 };
 const t = makeT(L10N);
 
-/** Draw one palette image at (x, y) with `scale` screen pixels per pixel. */
-const drawImage = (ctx, image, x, y, scale) => {
-    for (let py = 0; py < image.height; py++) {
-        for (let px = 0; px < image.width; px++) {
-            const colour = image.pixels[py * image.width + px];
-            if (!colour) continue;
-            ctx.fillStyle = ARCADE_PALETTE[colour];
-            ctx.fillRect(x + px * scale, y + py * scale, scale, scale);
-        }
-    }
-};
-
 const checker = (ctx, w, h, size = 8) => {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, w, h);
@@ -97,7 +89,7 @@ class TilemapEditor extends React.Component {
         this.stroke = null;
         const maps = findTilemapBlocks(props.vm);
         const first = maps.findIndex(map => map.editable);
-        this.state = {maps, selected: first, history: first >= 0 ? createHistory(maps[first].data) : null,
+        this.state = {palette: inspectTilemapPalette(props.vm), maps, selected: first, history: first >= 0 ? createHistory(maps[first].data) : null,
             saved: first >= 0 ? maps[first].data : null, tool: 'paint', tile: maps[first]?.data?.images.length > 1 ? 1 : 0,
             tileNameDraft: null, colour: 2, showWalls: true, zoom: 2, status: '', columns: maps[first]?.data?.columns || 10,
             rows: maps[first]?.data?.rows || 8, ...this.placementState(maps[first])};
@@ -106,10 +98,24 @@ class TilemapEditor extends React.Component {
         this.handleMapPointerUp = this.handleMapPointerUp.bind(this);
         this.handleTilePointerDown = this.handleTilePointerDown.bind(this);
         this.handleKeyDown = this.handleKeyDown.bind(this);
+        this.refreshPalette = this.refreshPalette.bind(this);
     }
 
-    componentDidMount () { this.draw(); }
-    componentDidUpdate () { this.draw(); }
+    componentDidMount () {
+        this.releasePalette = observeTilemapPalette(this.props.vm, this.refreshPalette);
+        this.draw();
+    }
+    componentDidUpdate (previous) {
+        if (previous.vm !== this.props.vm) {
+            this.releasePalette();
+            this.releasePalette = observeTilemapPalette(this.props.vm, this.refreshPalette);
+        }
+        this.draw();
+    }
+    componentWillUnmount () { this.releasePalette(); }
+    refreshPalette (palette) {
+        if (JSON.stringify(palette) !== JSON.stringify(this.state.palette)) this.setState({palette});
+    }
 
     get data () { return this.stroke ? this.stroke.data : this.state.history?.present; }
 
@@ -274,7 +280,7 @@ class TilemapEditor extends React.Component {
             for (let r = 0; r < data.rows; r++) {
                 for (let c = 0; c < data.columns; c++) {
                     const index = data.indices[r * data.columns + c];
-                    if (index) drawImage(ctx, data.images[index], c * size, r * size, this.state.zoom);
+                    if (index) drawTilemapImage(ctx, data.images[index], c * size, r * size, this.state.zoom, this.state.palette);
                     if (this.state.showWalls && data.walls[r * data.columns + c]) {
                         // Tinted, outlined and crossed: a red tint alone vanishes on red tiles.
                         const x = c * size, y = r * size;
@@ -314,7 +320,7 @@ class TilemapEditor extends React.Component {
             tileCanvas.height = image.height * scale;
             const ctx = tileCanvas.getContext('2d');
             checker(ctx, tileCanvas.width, tileCanvas.height, scale);
-            drawImage(ctx, image, 0, 0, scale);
+            drawTilemapImage(ctx, image, 0, 0, scale, this.state.palette);
         }
     }
 
@@ -361,7 +367,12 @@ class TilemapEditor extends React.Component {
             return (
                 <div data-testid="bw-tilemap-editor" style={{padding: 24, color: '#64748b'}}>
                     {this.props.editorTools}
-                <LegacyTileDefinitionEditor vm={this.props.vm} locale={locale} />
+                <div data-testid="bw-tilemap-palette-state" data-palette-kind={this.state.palette.kind} role="status"
+                    style={{fontSize: 12, flexShrink: 0}}>
+                    {!this.state.palette.colors ? t(locale, 'tm.paletteUnknown') :
+                        this.state.palette.laterChanges ? t(locale, 'tm.paletteStartup') : null}
+                </div>
+                <LegacyTileDefinitionEditor vm={this.props.vm} locale={locale} palette={this.state.palette} />
                     <p data-testid="bw-tilemap-none">{t(locale, maps.length ? 'tm.noneEditable' : 'tm.none')}</p>
                     <ul>{maps.filter(map => map.reason).map(map => <li key={map.blockId}>{map.targetName}: {t(locale, `tm.${map.reason}`)}</li>)}</ul>
                     <button type="button" data-testid="bw-tilemap-new" style={btn(true)} onClick={() => this.newMap()}>
@@ -379,7 +390,12 @@ class TilemapEditor extends React.Component {
                 style={{display: 'flex', flexDirection: 'column', gap: 8, padding: 12, height: '100%',
                     boxSizing: 'border-box', overflow: 'hidden'}}>
                 {this.props.editorTools}
-                <LegacyTileDefinitionEditor vm={this.props.vm} locale={locale} />
+                <div data-testid="bw-tilemap-palette-state" data-palette-kind={this.state.palette.kind} role="status"
+                    style={{fontSize: 12, flexShrink: 0}}>
+                    {!this.state.palette.colors ? t(locale, 'tm.paletteUnknown') :
+                        this.state.palette.laterChanges ? t(locale, 'tm.paletteStartup') : null}
+                </div>
+                <LegacyTileDefinitionEditor vm={this.props.vm} locale={locale} palette={this.state.palette} />
                 <div role="toolbar" style={{display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap'}}>
                     <select data-testid="bw-tilemap-select" aria-label={t(locale, 'tm.map')} value={selected}
                         onChange={event => this.selectMap(Number(event.target.value))}>
@@ -433,7 +449,7 @@ class TilemapEditor extends React.Component {
                                     title={image.displayName || image.tileId || (i ? t(locale, 'tm.tile', {n: i}) : t(locale, 'tm.emptyTile'))}
                                     onClick={() => this.setState({tile: i, tileNameDraft: null, tool: tool === 'wall' ? 'paint' : tool})}
                                     style={{...btn(tile === i), width: 40, height: 40, padding: 2}}>
-                                    <TileSwatch image={image} />
+                                    <TileSwatch image={image} palette={this.state.palette} />
                                 </button>
                             ))}
                         </div>
@@ -461,12 +477,12 @@ class TilemapEditor extends React.Component {
                                     style={{imageRendering: 'pixelated', width: 192, height: 192, touchAction: 'none', border: '1px solid #cbd5e1'}}
                                     onPointerDown={this.handleTilePointerDown} onContextMenu={event => event.preventDefault()} />
                                 <div style={{display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 2}}>
-                                    {ARCADE_PALETTE.map((hex, i) => (
+                                    {Array.from({length: 16}, (_, i) => (
                                         <button key={i} type="button" data-testid={`bw-tilemap-colour-${i}`} aria-pressed={colour === i}
                                             title={t(locale, 'tm.colour', {n: i})} onClick={() => this.setState({colour: i})}
                                             style={{height: 22, borderRadius: 3, cursor: 'pointer',
                                                 border: colour === i ? '2px solid #0f172a' : '1px solid #cbd5e1',
-                                                background: hex || 'repeating-conic-gradient(#e2e8f0 0 25%, #fff 0 50%) 50% / 8px 8px'}} />
+                                                background: tilemapPixelColor(this.state.palette, i) || 'repeating-conic-gradient(#e2e8f0 0 25%, #fff 0 50%) 50% / 8px 8px'}} />
                                     ))}
                                 </div>
                             </>
@@ -483,7 +499,7 @@ class TilemapEditor extends React.Component {
 }
 
 /** A tile drawn small for the palette. */
-const TileSwatch = ({image}) => {
+const TileSwatch = ({image, palette}) => {
     const ref = React.useRef(null);
     React.useEffect(() => {
         const canvas = ref.current;
@@ -492,11 +508,11 @@ const TileSwatch = ({image}) => {
         canvas.height = image.height;
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, image.width, image.height);
-        drawImage(ctx, image, 0, 0, 1);
-    }, [image]);
+        drawTilemapImage(ctx, image, 0, 0, 1, palette);
+    }, [image, palette]);
     return <canvas ref={ref} style={{width: '100%', height: '100%', imageRendering: 'pixelated'}} />;
 };
-TileSwatch.propTypes = {image: PropTypes.object.isRequired};
+TileSwatch.propTypes = {image: PropTypes.object.isRequired, palette: PropTypes.object.isRequired};
 
 TilemapEditor.propTypes = {
     editorTools: PropTypes.node,

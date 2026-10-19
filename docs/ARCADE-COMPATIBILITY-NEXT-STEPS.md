@@ -225,3 +225,22 @@ The completion ledger remains **184 raw sources plus 41 project contexts**.
 Historical raw results remain **147 translated / 36 partial / 1 malformed**;
 the complete current 225-subject result is **unmeasured**. Focused passes,
 fixture improvements and SDK acceptance do not reduce that count.
+### Tile painter palette projection candidate
+
+The tile painter now has a source candidate that reuses the existing project
+startup-palette inspector for modern maps, tile thumbnails, indexed color
+buttons and legacy tile-definition previews. It projects colors without changing
+the stored color indices. Equal RGB entries stay distinct indices; index zero
+remains transparent and index 15 remains an ordinary opaque color.
+
+Dynamic or conflicting startup palettes use a labeled neutral index preview.
+Later authored palette changes remain unchanged, with an explicit reminder that
+the preview describes startup colors. Project edits and loads refresh the
+projection; closing or replacing the editor releases its old listeners.
+
+Source controls are `test/tilemap-palette-projection.test.mjs`; genuine VM and
+artwork transport controls are separate in
+`test/arcade-tilemap-palette-artwork.test.mjs`. These are authored controls, not
+new pass claims. Current visible canvas/color-button editing, save/reopen and
+export/reimport acceptance is still required. The candidate adds no runtime,
+prototype, reference-domain or supplier changes and does not qualify a whole game.
