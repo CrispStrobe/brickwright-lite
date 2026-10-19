@@ -302,6 +302,34 @@ Owner (2026-10-18): *"all must be steerable also by pseudocode and blocks and ot
 
 **The API for gates and hosts** (`window.__bwSimLab.api`, `runtime.robotLab`): scene — `status()`, `models()`, `loadModel(id | LDraw text)`, `start()`, `stop()`, `reset()`, `setTimeScale(0.1…1)` (slow motion), `camera('home'|'top'|'front'|'side'|'fit' | {follow: partId})`; lists — `motors()`, `sensors()`, `parts()`; control — `setMotor(actuator | part | port, {power} | {speedDps} | {degrees, speedDps, then} | {position, speedDps, then} | {stop: 'brake'|'coast'|'hold'})` → `{ok, done?}` or `{ok: false, code, message}`, `stopMotor(ref, action)`; reads — `encoder(ref)`, `readSensor(ref)`, `pose(partId)` (world position, quaternion, heading), `touching(a, b)`, `onContact(a, b, fn)` (a part, `ground`, or a mat obstacle such as `wall`; checked after every step, edge-triggered; boxes from the compiled colliders with a 1 mm margin). It reads the session only through its public surface and imports nothing from `physics/` or `mech/` (`test/bw-sim-hub-boundary-imports.test.mjs`).
 
+## Powered Up, BOOST and WeDo 2.0 hubs
+
+The Lab simulates the LEGO hubs a program reaches over Bluetooth Low Energy, and the **real** LEGO extensions
+drive them, unchanged: their transport is swapped underneath (docs/LWP3-VIRTUAL-HUB-NOTES.md has the protocol
+coverage and every source).
+
+| Hub | Part | Extension(s) | Example model |
+|---|---|---|---|
+| Technic Hub (Control+) | 22127 | **LEGO Powered Up** (`legopoweredup`) | *Technic Hub motor bench* — motor A turns one full turn and back |
+| BOOST Move Hub (motors A, B built in) | 26910 | **LEGO Boost** (`legoboostunified`), scratch-vm's *LEGO BOOST* | *BOOST rover* — drives ahead, then turns |
+| Powered Up Hub (City), SPIKE Essential | 28738, 67351c01 | `legopoweredup` | — (parts and hubs; build your own) |
+| WeDo 2.0 Smart Hub | 19071 | **LEGO WeDo 2.0** (`wedo2unified`), scratch-vm's *LEGO Education WeDo 2.0* | *WeDo 2.0 rover with motion sensor* — drives until the sensor sees the wall |
+
+- **Run** connects the program's LEGO extension to the scene's hub — the extension's own *connect* (its block's
+  function), over whatever connection it is set to: *Web Bluetooth* reaches the hub through the Web Bluetooth shim,
+  *Scratch Link* through a Scratch Link double that answers only while the Lab connects (a real Scratch Link is used
+  any other time) — then presses the green flag. The hubs speak the hub's own bytes: LWP3 for the Powered Up family
+  (LEGO's public document), the WeDo 2.0 GATT service for WeDo. Motors with a tacho are regulated by the hub
+  (StartSpeed, ForDegrees, GotoAbsolutePosition, end states float/brake/hold, MaxPower), WeDo's are not.
+- **Words**: `pup …`, `boost …`, `wedo …` are the three extensions' commands and reporters, one table for the parser
+  and the decompiler (`lib/legoHubsDialect.js`), under any DEVICE line: `pup turn motor A on for 360 degrees`,
+  `boost turn motor A on`, `wait until (wedo distance) < 5`. **⇦ To blocks** makes the real extension's blocks.
+- **Ports**: a motor or sensor part says its port with `!BW PORT`; the Move Hub's motors A and B are inside the hub.
+- **Not modelled**: the extensions' Python/JS calls in the Lab; hats and Boolean blocks as words; Port Mode
+  Information; synchronised (virtual) ports. **Found in the extensions** (left as they are, the point is to test
+  them unchanged): the BOOST blocks send 10 % max power, a block for "AB" reaches A only (a 50 ms rate limit), and
+  they address the Move Hub's pre-1.0.00.0224 port map — so the Lab's Move Hub reports that firmware.
+
 ## Seeing the model
 
 Kids cannot read `motor-without-port`; the Lab shows what a model is made of and what is wrong with it (`bw-sim/mech/insight.js` computes it, `bw-sim/view/insight-layer.js` draws it, the words are in `components/tw-pseudocode/sim-lab-insight-text.js`, EN and DE):
@@ -481,6 +509,8 @@ From `overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json` (grouped by `cate
 - **sensor (3):** SPIKE colour sensor (37308.dat), SPIKE distance sensor (37316.dat), SPIKE force sensor (37312.dat)
 - **wheel (2):** Wheel 56×14 with medium azure tyre (SPIKE Prime) (39367p01.dat), Wheel 88×14 with medium azure tyre (SPIKE Prime large) (49295p01.dat)
 
+**Radio hubs and their devices (2026-10-19; docs/LWP3-VIRTUAL-HUB-NOTES.md "Devices"):** BOOST Move Hub (26910.dat, its motors A and B built in), Powered Up Hub (28738.dat), Technic Hub (22127.dat), SPIKE Essential hub (67351c01.dat), WeDo 2.0 Smart Hub (19071.dat); Control+ Technic L and XL motors (22169.dat, 22172.dat), BOOST interactive motor (26913.dat), WeDo 2.0 motor (21980.dat); BOOST colour and distance sensor (26912.dat), WeDo 2.0 tilt (20841.dat) and motion (20844.dat) sensors — numbers checked against the LDraw library, connectors derived by `scripts/derive-part-meta.mjs` and completed by hand.
+
 Every connector in that file is checked against the part's LDraw mesh by `test/bw-sim-part-meta.test.mjs`, including where a pin seats: a pin-hole connector's two ends must be where its bore opens and ends (±2 LDU).
 
 **Sensor pin holes, measured (2026-10-17).** The SPIKE colour, force and distance sensors have *blind* side holes (LDraw `p/connhol3.dat`, "Technic Connector Hole One-Sided"): the bore opens on the side face at |x| = 30 LDU (distance sensor: 70) and ends 18 LDU in, at |x| = 12 (52). Their connectors used to sit at the bottom of the bore (|x| = 12 / 52) instead of the middle of the pin seat (|x| = 20 / 60), so a pin through a beam pulled the sensor 8 LDU (3.2 mm) into the beam: the shipped Line follower's sensor was inside its mounting beam, and the Wall stopper and Colour explorer used 3L pins to reach, which would end 12 LDU (Wall stopper) and 20 LDU (Colour explorer) past the bottom of the sensor's blind hole, inside its body. The large motor (54675.dat) had the same error on its side holes (bore |x| 32..50, connector at 32) and two end holes on the wrong end of the housing (z = +12, where there is no bore; the bore is z 132..150). All are now at the measured seat; the Line follower's sensor moved 8 LDU forward (z 152 → 160, still 8.4 mm above the floor) to rest on its beam, and the two examples use ordinary 2L pins. `test/bw-sim-models-solid.test.mjs` checks every shipped model and fixture against the real meshes (no point of a solid part inside another, no pin reaching past its hole).
@@ -540,6 +570,9 @@ Part geometry is a curated subset of the official **LDraw Parts Library** (CC BY
 - `bw-sim-turntable.test.mjs` — each turntable pair is one hinge on its axis; slewing turns the turntable by the tooth ratio.
 - `bw-sim-excavator.test.mjs` — the Excavator: couplings from the parts, the boom against the law of cosines, and its example program's dig cycle.
 - `bw-sim-robot-lab-api.test.mjs` — the Robot Lab API and the `lab-direct` hub: a hubless motor turned to 360 ± 2° (bound derived from the controller's window and the motor's time constant), power/speed/hold/coast and an interrupted wait, part poses bit-identical through a redone worker batch, a SPIKE hub from blocks allowed and a hub running its own program refused (EN, DE), sensors, positions and contact with the ground and the wall, neutral answers without a model.
+- `lwp3-virtual-hub.test.mjs`, `wedo2-virtual-hub.test.mjs` (not `bw-sim-*`) — the radio hubs byte by byte against layouts written out from LEGO's LWP3 document and the WeDo sources; StartSpeedForDegrees 360 on the physics; the worker mirror.
+- `lab-hubs-extensions.test.mjs` — the real `legopoweredup`, `legoboostunified` and `wedo2unified` through the Scratch VM, Web Bluetooth and the Scratch Link double, on Jolt: the Technic L motor 360 ± 2°, the BOOST rover drives and turns, the WeDo rover stops at the wall (and the judge fails without the stop).
+- `scratch-link-ble-double.test.mjs`, `lego-hubs-dialect.test.mjs` — the Scratch Link BLE double (fall-through, JSON-RPC, manufacturer data) and connectVirtualHub; the `pup`/`boost`/`wedo` words counted against the extensions' getInfo and round-tripped.
 - `robot-lab-dialect.test.mjs` (not `bw-sim-*`) — one method list: every robotlab block is one `lab` word, one `_robotlab` op and one API method; every block round-trips blocks → words → blocks and through Python and JavaScript; the words under any DEVICE; the simulator driver; EN/DE block texts; the blocks with no Lab open.
 
 Plus `test/bw-sim-persist.test.mjs` ↔ `test/project-bundle-archive.test.mjs` (real bundle writer/reader) and `scripts/verify-boot-payload.mjs` (the Sim Lab view stays out of the first load, chunk `bw-sim-lab`; Jolt and the physics worker stay out of that chunk too, chunks `bw-sim-jolt` and `bw-sim-physics-worker`).
@@ -549,6 +582,7 @@ Plus `test/bw-sim-persist.test.mjs` ↔ `test/project-bundle-archive.test.mjs` (
 - `scripts/lib/sim-lab-insight-gate.mjs` — port badges in both views, "Show how it moves" (overlay objects and red axis pixels) in both, unplugging a motor from its badge lists the issue, the issue selects the motor, the badge's picker plugs it back in, "Before you press Run" with no motor, the issue pulses the motors in Simulate.
 - `scripts/lib/sim-lab-cad-gate.mjs` — `npm run test:sim-lab-cad` places a part on the floor, drags the gizmo, turns with R/ring, slides on the work plane, Shift+multi-select and box-select, groups/ungroups, pins snap from above and beams stack, pushing into the hub is refused.
 - `scripts/lib/sim-lab-api-gate.mjs` (`--part=api`) — a Blocks project of robotlab blocks (built in the VM, saved and reloaded as an `.sb3`) loads the Motor bench and turns its motor 360 ± 2° through `runtime.robotLab`, in the worker; the Motor bench's example in `lab` words, through the UI only (Load example program, Run), turns 360°, rests there through its wait, runs on at 90 °/s and brakes.
+- `scripts/lib/sim-lab-hubs-gate.mjs` (`--part=hubs-ble`) — through the UI only, the three radio-hub examples: Load example program turns their words into the real extensions' blocks, Run connects them (Scratch Link double for Powered Up and WeDo, Web Bluetooth for BOOST): motor A at 360 ± 2° and back, the rover drives ahead and turns, the WeDo rover stops at the wall.
 - `scripts/lib/sim-lab-toolbar-gate.mjs` (`--part=ui`) — the Robot Lab tab is selected and filled by the Lab; Help holds the description; every toolbar control (bar and More) has a name and a tooltip starting with it and giving its shortcut, in English and on a de-DE page in German (*Roboter-Labor*, *Rückgängig (Strg+Z)*); the File menu; every Build action by click and by its key (W/E, R/Shift+R/T, Ctrl+A/Esc, Ctrl+Z/Y, Ctrl+D, Delete, copy/paste, Ctrl+G/Ctrl+Shift+G, H/Shift+H/I, M, K, F, ?) with its effect; in both modes Top/Front/Side/Home frame the model, a left drag on empty space orbits about a fixed target, a right drag pans, Shift+drag pans (Simulate), the wheel zooms, arrows/Shift+arrows/− move the focused view; a drag on a part moves the part and leaves the camera, and with a part selected the arrows leave the camera. The core part reaches the Lab through the arena's **Open in Robot Lab** and checks the arena stands aside.
 - `scripts/lib/sim-lab-layout-gate.mjs` (`--part=layout`) — the tab alone at 1024×768 … 1920×1080, with the stage column beside it at 1024×768 and 1366×768, and with the stage dragged wide so the Lab is ~470 px: the view big enough and wholly visible, primary controls pressable, the toolbar never wider than the pane (More when narrower than 1000 px, its Top view works), the palette (drawer when compact) places a part and Undo removes it.
 - `scripts/lib/sim-lab-touch-gate.mjs` — a school tablet (1024×768, `hasTouch`, real touch through CDP `Input.dispatchTouchEvent`): tap a tile then the floor places a part, one finger drags a part by grid steps and a tile out of the palette, a long press adds to the selection, a long press then drag on open floor box-selects, a finger drags the gizmo's X arrow (x only), the build bar's Select all / Copy / Paste / Turn ↺ / Undo, one finger orbits and two pinch-zoom in Build and Simulate, holding ▲ drives (sliding off keeps driving) and lifting the finger stops both motors; two fingers moving together pan the Simulate view. It starts with the stage column beside the tab (compact), then hides it so the tab takes the whole width.
