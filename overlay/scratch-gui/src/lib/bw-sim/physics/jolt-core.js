@@ -424,7 +424,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             // each sub-shape gets the density massKg / volume, so Jolt's compound mass properties put
             // the centre of mass and the inertia (parallel axis per sub-shape) where the parts' masses
             // are. Without them (a hand-built mechanism) every collider has one density, as before.
-            const byMass = b.colliders.every(c => typeof c.massKg === 'number' && c.massKg > 0);
+            const byMass = !globalThis.__X_COM && b.colliders.every(c => typeof c.massKg === 'number' && c.massKg > 0);
             for (const col of b.colliders) {
                 const pos = col.position ? new J.Vec3(...col.position) : new J.Vec3(0, 0, 0);
                 const rot = col.rotation ? new J.Quat(...col.rotation) : new J.Quat(0, 0, 0, 1);
@@ -472,7 +472,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             // only a body that moves more than mLinearCastThreshold (0.25, below) of its inner radius
             // in one step, so a slow body costs one comparison; measured cost in
             // docs/ROBOT-LAB-ARCHITECTURE.md ("Motion quality").
-            bcs.mMotionQuality = J.EMotionQuality_LinearCast;
+            if (!globalThis.__X_CAST) bcs.mMotionQuality = J.EMotionQuality_LinearCast;
             bcs.mOverrideMassProperties = J.EOverrideMassProperties_CalculateInertia;
             const mp = bcs.mMassPropertiesOverride;
             mp.mMass = b.massKg;
@@ -732,6 +732,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
      * @returns {object|null} a relativeGear-shaped coupling {gear1, gear2, frame, anchor1, anchor2, tangent}
      */
     const movingFrameMesh = g => {
+        if (globalThis.__NOMFM) return null;
         const j1 = jointMap.get(g.joint1);
         const j2 = jointMap.get(g.joint2);
         if (!j1 || !j2 || j1.type !== 'hinge' || j2.type !== 'hinge') return null;
@@ -752,7 +753,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         // constraint its tuning was measured with (documented limit).
         const up = mechanism.gravity.map(v => -v);
         const gn = Math.hypot(...up) || 1;
-        if (Math.abs((a1[0] * up[0] + a1[1] * up[1] + a1[2] * up[2]) / gn) < Math.cos(Math.PI / 180)) return null;
+        if (globalThis.__VERT && Math.abs((a1[0] * up[0] + a1[1] * up[1] + a1[2] * up[2]) / gn) < Math.cos(Math.PI / 180)) return null;
         // External: the two gears turn opposite ways seen along one axis.
         if (s1.s * s2.s * g.ratio * along >= 0) return null;
         const d = j2.point.map((v, i) => v - j1.point[i]);
@@ -946,7 +947,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             const t = quatRotateVecRG(f.q, r.t);
             const n = perpForAxis(t);
             const tmp = [new J.RVec3(...world(r.a1)), new J.RVec3(...world(r.a2)), new J.Vec3(...t), new J.Vec3(...n)];
-            if (r.g.slip) {
+            if (r.g.slip && !globalThis.__NOSLIP) {
                 // Arc slipped along t: gear 2's pitch point ahead of gear 1's (both relative to the frame).
                 const sl = r.g.slip;
                 const delta = sl.u2 * hingeMap.get(sl.joint2).unwrapped - sl.u1 * hingeMap.get(sl.joint1).unwrapped;
@@ -1410,7 +1411,28 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                 setInertia(mp, inertiaOf(mp).map((row, r) => row.map((v, k) => v + delta * a[r] * a[k])));
             }
             entry.rotorInertia = I;
-            setMotorSteps(entry, j);
+            if (!globalThis.__X_STEPS) setMotorSteps(entry, j);
+        },
+        __angularMomentum() {
+            const L = [0, 0, 0];
+            for (const [id, e] of bodyMap) {
+                if (e.motionType === J.EMotionType_Static) continue;
+                const mp = e.body.GetMotionProperties();
+                const m = 1 / mp.GetInverseMass();
+                const c = e.body.GetCenterOfMassPosition(); const x = [c.GetX(), c.GetY(), c.GetZ()];
+                const lv = e.body.GetLinearVelocity(); const v = [lv.GetX(), lv.GetY(), lv.GetZ()];
+                const av = e.body.GetAngularVelocity(); const w = [av.GetX(), av.GetY(), av.GetZ()];
+                const r = e.body.GetRotation(); const q = [r.GetX(), r.GetY(), r.GetZ(), r.GetW()];
+                const Ib = inertiaOf(mp);
+                const qc = [-q[0], -q[1], -q[2], q[3]];
+                const wl = quatRotateVec(qc, w);
+                const Lb = [0, 1, 2].map(i => Ib[i][0] * wl[0] + Ib[i][1] * wl[1] + Ib[i][2] * wl[2]);
+                const Lw = quatRotateVec(q, Lb);
+                L[0] += m * (x[1] * v[2] - x[2] * v[1]) + Lw[0];
+                L[1] += m * (x[2] * v[0] - x[0] * v[2]) + Lw[1];
+                L[2] += m * (x[0] * v[1] - x[1] * v[0]) + Lw[2];
+            }
+            return L;
         },
         /** A hinge: {angle, velocity} (rad, rad/s); a slider: {position, velocity} (m, m/s), body2 relative to body1 along the axis, zero at t = 0. */
         jointState(jointId) {

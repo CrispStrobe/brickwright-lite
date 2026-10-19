@@ -14,6 +14,7 @@ WHEN flag clicked:
   set motor stop action F hold
   run motor A clockwise 1 degrees
   run motor B clockwise 1 degrees
+  run motor C clockwise 1 degrees
   set motor speed C 10
   set motor speed D 100
   set motor speed E 100

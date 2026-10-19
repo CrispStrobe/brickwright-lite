@@ -407,9 +407,9 @@ export const compile = (model, catalog, opts = {}) => {
     const couplings = [...gearResult.gears.map(({id, type, ...rest}) => ({id, kind: type, ...rest})), ...relativeCouplings, ...detectedCouplings];
     const mechanismV2 = {...mechanism, version: 2, bodies: withBodyRoles(mechanism.bodies), hubs: v2.hubs, actuators: v2.actuators,
         couplings, devices: v2.devices, noCollide: noCollidePairs(joints, couplings, kinds,
-            [...seatedBodyPairs(graphEdges, islands), ...sharedAxisBodyPairs(graphEdges, islands)])};
+            [...seatedBodyPairs(graphEdges, islands), ...(globalThis.__X_AXIS ? [] : sharedAxisBodyPairs(graphEdges, islands))])};
     const local = localNoCollide(mechanismV2.bodies, joints, mechanismV2.noCollide, couplingBodyPairs(joints, couplings, kinds), graphEdges, islands, nodes);
-    if (local.length) mechanismV2.noCollideParts = local;
+    if (local.length && !globalThis.__X_LOCAL) mechanismV2.noCollideParts = local;
     const problemsV2 = validateCompiledMechanism(mechanismV2, {kinds});
     if (problemsV2.length > 0) {
         throw new Error(`compile produced invalid mechanism v2: ${problemsV2.join('; ')}`);

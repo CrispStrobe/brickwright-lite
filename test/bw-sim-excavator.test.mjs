@@ -217,15 +217,16 @@ if (!existsSync(missing)) {
             low: heights[lowAt], lowAt, raised: Math.max(...heights.slice(lowAt)),
             swingMin: swings.length ? Math.min(...swings) : 0, swingMax: swings.length ? Math.max(...swings) : 0,
             swingEnd: swings.length ? swings.at(-1) : 0,
+            series: track.filter((_, i) => i % 20 === 0).map(p => `${(yaw(p.bodies[hub].rotation) * DEG).toFixed(0)}:${(p.joints[slew].angle * DEG).toFixed(0)}:${(ttAngle(p) * DEG).toFixed(0)}`).join(' '),
             baseYaw: Math.max(...track.map(p => Math.abs(yaw(p.bodies[hub].rotation) - yaw(track[0].bodies[hub].rotation)))) * DEG,
             busy: track.at(-1).busy
         };
     };
     const report = r => `bucket teeth down to ${(r.low * 1000).toFixed(1)} mm over the floor (frame ${r.lowAt}), then up to ${(r.raised * 1000).toFixed(1)} mm; ` +
-        `turntable swung ${r.swingMin.toFixed(1)}° … ${r.swingMax.toFixed(1)}°, ending ${r.swingEnd.toFixed(1)}° from where it started; base yawed ${r.baseYaw.toFixed(1)}°`;
+        `turntable swung ${r.swingMin.toFixed(1)}° … ${r.swingMax.toFixed(1)}°, ending ${r.swingEnd.toFixed(1)}° from where it started; base yawed ${r.baseYaw.toFixed(1)}°; ${r.series}`;
 
     test('the example program digs to the floor, lifts, swings a quarter turn each way and comes back', async t => {
-        const result = await run(PROGRAM);
+        const result = await run(process.env.TRUNC ? PROGRAM.slice(0, PROGRAM.indexOf(process.env.TRUNC)) : process.env.DIGN ? PROGRAM.replace('run motor D counterclockwise 5000 degrees', `run motor D counterclockwise ${process.env.DIGN} degrees`) : PROGRAM);
         assert.deepEqual(result.issues, []);
         assert.deepEqual(result.run.unsupported, [], 'every command was understood by the hub');
         const r = judge(result);
