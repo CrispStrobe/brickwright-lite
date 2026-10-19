@@ -28,7 +28,7 @@ export const DEVICE_MODEL_CLASSES = Object.freeze(['motor', 'servo-motor', 'line
  * 'rotation' (the RCX rotation sensor: the turn of the axle through its hole, read from the
  * hinge the compiler made there — sensors.js rotationJoint).
  */
-const SENSOR_MEASURES = Object.freeze(['distance', 'color', 'force', 'rotation']);
+const SENSOR_MEASURES = Object.freeze(['distance', 'color', 'force', 'rotation', 'gyro']);
 
 const V1_SOURCE = 'part-meta/parts.json v1 (LEGO published stall torque 18 / 38 Ncm; speed limits of SPIKE 3 as in docs/SPIKE-ARENA.md)';
 
@@ -341,18 +341,18 @@ const MOTORS = [
                 '(1240 · 23/17 ≈ 1680) and only the outermost output is load-tested',
             loadPoints: [[4.5, 5.7, 150, 1.36], [6, 5.7, 380, 1.38], [7.5, 5.7, 580, 1.37], [9, 5.7, 780, 1.40], [10.5, 5.7, 1030, 1.46]]}}),
     // MINDSTORMS NXT / EV3.
-    philoMotor({id: 'nxt-motor', name: 'MINDSTORMS NXT motor (53787, set 9842)', numbers: {part: '53787', set: '9842'},
+    philoMotor({id: 'nxt-motor', name: 'MINDSTORMS NXT motor (53787, set 9842)', parts: ['53787.dat'], numbers: {part: '53787', set: '9842'},
         numbersSource: SET_NUMBER, supply: 'nxt',
         philo: {column: 'NXT', noLoadRpm: 170, noLoadA: 0.060, stallNcm: 50, stallA: 2.0,
             loadPoints: [[4.5, 16.7, 33, 0.6], [7, 16.7, 82, 0.55], [9, 16.7, 117, 0.55], [12, 16.7, 177, 0.58]]},
         pyb: PYBRICKS_NXT, encoder: RELATIVE_1DEG, encoderSource: PHILO_ENCODER}),
-    philoMotor({id: 'ev3-large-motor', name: 'MINDSTORMS EV3 Large motor (45502)', numbers: {set: '45502'},
+    philoMotor({id: 'ev3-large-motor', name: 'MINDSTORMS EV3 Large motor (45502)', parts: ['95658.dat'], numbers: {set: '45502'},
         numbersSource: SET_NUMBER, supply: 'ev3',
         philo: {column: 'EV3 Large', noLoadRpm: 175, noLoadA: 0.060, stallNcm: 43, stallA: 1.8,
             loadPoints: [[4.5, 17.3, 24, 0.69], [6, 17.3, 51, 0.69], [7.5, 17.3, 78, 0.69], [9, 17.3, 105, 0.69],
                 [10.5, 17.3, 132, 0.69], [12, 17.3, 153, 0.69]]},
         pyb: PYBRICKS_EV3_L, encoder: RELATIVE_1DEG, encoderSource: PYBRICKS_ENCODED}),
-    philoMotor({id: 'ev3-medium-motor', name: 'MINDSTORMS EV3 Medium motor (45503)', numbers: {set: '45503'},
+    philoMotor({id: 'ev3-medium-motor', name: 'MINDSTORMS EV3 Medium motor (45503)', parts: ['99455.dat'], numbers: {set: '45503'},
         numbersSource: SET_NUMBER, supply: 'ev3',
         philo: {column: 'EV3 Medium', noLoadRpm: 260, noLoadA: 0.080, stallNcm: 15, stallA: 0.78,
             loadPoints: [[4.5, 6.64, 24, 0.35], [6, 6.64, 72, 0.35], [7.5, 6.64, 120, 0.35], [9, 6.64, 165, 0.37],
@@ -436,6 +436,44 @@ const RCX_SENSORS = [
         sensor: {kind: 'rotation', encoder: 'rcx-rotation'}, encoder: {countsPerRev: 16, absolute: false}}
 ];
 
+// EV3 AND NXT SENSORS (docs/ROBOT-LAB-EV3-NXT.md). The EV3's are UART devices that identify
+// themselves (devices/ev3-sensors.js: type and mode numbers from LEGO's EV3 Firmware Developer Kit
+// §5), its touch sensor a switch the brick reads on an analog pin; the NXT's are a switch, an
+// active light sensor and an I2C ultrasonic sensor the program configures (devices/nxt-sensors.js,
+// LEGO's NXT Bluetooth and Hardware Developer Kits). The probes are sensors.js's: a ray, as for
+// SPIKE's sensors; the gyro reads the yaw of the brick's body.
+const EV3_FDK = 'lego-ev3-fdk: LEGO MINDSTORMS "EV3 Firmware Developer Kit" (2013), §5 "Device type list"';
+const NXT_BDK = 'lego-nxt-bdk: LEGO MINDSTORMS "NXT Bluetooth Developer Kit" (2006), Appendix 2 "Direct commands", SETINPUTMODE';
+const EV3_SENSORS = [
+    {id: 'ev3-touch', class: 'sensor-passive', name: 'EV3 touch sensor (45507)', parts: ['95648.dat'], ids: {ev3: 16},
+        numbers: {part: '95648', set: '45507'}, source: `${EV3_FDK}: type 16 EV3-Touch, modes 0 Touch, 1 Bump`,
+        sensor: {kind: 'force', encoder: 'ev3-touch'}},
+    {id: 'ev3-color', class: 'sensor-digital', name: 'EV3 colour sensor (45506)', parts: ['95650.dat'], ids: {ev3: 29},
+        numbers: {part: '95650', set: '45506'}, source: `${EV3_FDK}: type 29 EV3-Color, modes 0 Reflected, 1 Ambient, 2 Color, ` +
+            '3 Reflected-Raw, 4 RGB-Raw; colours 0-7 (none, black, blue, green, yellow, red, white, brown)',
+        sensor: {kind: 'color', encoder: 'ev3-color'}},
+    {id: 'ev3-ultrasonic', class: 'sensor-digital', name: 'EV3 ultrasonic sensor (45504)', parts: ['95652.dat'], ids: {ev3: 30},
+        numbers: {part: '95652', set: '45504'}, source: `${EV3_FDK}: type 30 EV3-Ultrasonic, modes 0 Cm, 1 Inch, 2 Listen; ` +
+            'LEGO\'s product page: 3-250 cm, 255 when nothing echoes',
+        sensor: {kind: 'distance', encoder: 'ev3-ultrasonic'}},
+    {id: 'ev3-gyro', class: 'sensor-digital', name: 'EV3 gyro sensor (45505)', parts: ['99380.dat'], ids: {ev3: 32},
+        numbers: {part: '99380', set: '45505'}, source: `${EV3_FDK}: type 32 EV3-Gyro, modes 0 Angle, 1 Rate, 2 Fast, 3 Rate & Angle`,
+        sensor: {kind: 'gyro', encoder: 'ev3-gyro'}}
+];
+const NXT_SENSORS = [
+    {id: 'nxt-touch', class: 'sensor-passive', name: 'NXT touch sensor (9843)', parts: ['53793.dat'], ids: {},
+        numbers: {part: '53793', set: '9843'}, source: `${NXT_BDK}: sensor type SWITCH (0x01), BOOLEANMODE (0x20)`,
+        sensor: {kind: 'force', encoder: 'nxt-touch'}},
+    {id: 'nxt-light', class: 'sensor-active', name: 'NXT light sensor (9844)', parts: ['55969.dat'], ids: {},
+        numbers: {part: '55969', set: '9844'}, source: `${NXT_BDK}: sensor types LIGHT_ACTIVE (0x05) / LIGHT_INACTIVE (0x06), ` +
+            'PCTFULLSCALEMODE (0x80); the reflectance → percent line is estimated (devices/nxt-sensors.js)',
+        sensor: {kind: 'color', encoder: 'nxt-light'}},
+    {id: 'nxt-ultrasonic', class: 'sensor-digital', name: 'NXT ultrasonic sensor (9846)', parts: ['53792.dat'], ids: {},
+        numbers: {part: '53792', set: '9846'}, source: `${NXT_BDK}: sensor type LOWSPEED_9V (0x0B); LEGO MINDSTORMS "NXT Hardware ` +
+            'Developer Kit", Appendix 7 "Ultrasonic sensor I2C communication protocol": address 0x02, measurement byte 0 at 0x42, cm',
+        sensor: {kind: 'distance', encoder: 'nxt-ultrasonic'}}
+];
+
 /** @type {DeviceModel[]} */
 export const DEVICE_MODELS = Object.freeze([
     ...MOTORS,
@@ -445,7 +483,9 @@ export const DEVICE_MODELS = Object.freeze([
         sensor: {kind: 'distance', encoder: 'spike-distance'}},
     {id: 'spike-force', class: 'sensor-lpf2', parts: ['37312.dat'], ids: {lpf2: 63}, source: V1_SOURCE,
         sensor: {kind: 'force', encoder: 'spike-force'}},
-    ...RCX_SENSORS
+    ...RCX_SENSORS,
+    ...EV3_SENSORS,
+    ...NXT_SENSORS
 ].map(d => Object.freeze(d)));
 
 /** id → DeviceModel */

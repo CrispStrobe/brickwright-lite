@@ -69,8 +69,10 @@ export const ev3SensorSi = (type, mode, state) => {
         return [pct];
     }
     if (type === EV3_TYPE.ultrasonic) {
-        const mm = Number(probe.distance);
-        const none = !(mm >= 0);
+        // The echo's own distance when the scene gives it (sensors.js rangeMm), else SPIKE's windowed one.
+        const mm = Number(probe.rangeMm ?? probe.distance);
+        // Nothing echoes within reach, or beyond the sensor's 255 cm.
+        const none = !(mm >= 0) || mm > US_NOTHING_CM * 10;
         if (mode === 2) return [0];
         // The sensor resolves 0.1 cm (and 0.1 in).
         if (mode === 1 || mode === 4 || mode === 6) return [none ? US_NOTHING_IN : Math.round(mm / 25.4 * 10) / 10];

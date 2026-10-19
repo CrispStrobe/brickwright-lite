@@ -24,6 +24,7 @@
 //     white, 0 for black, scaled by 1 − distance/0.032.
 //   force: castRay along the plunger up to ~5 mm; if a hit is within 2 mm,
 //     force = 100·(1 − d/0.002) (clamped), pressed when >10.
+//   gyro (the EV3 gyro): no ray and no value here — the EV3 reads its body's yaw from the pose.
 //   rotation (the RCX rotation sensor): no ray — the angle of the hinge that
 //     turns in the sensor's hole (rotationJoint), radians since t = 0.
 
@@ -156,7 +157,7 @@ const vecSub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const vecAdd = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
 
 /**
- * A mechanism's sensors as {port, kind, body, origin, direction, hub}: CompiledMechanism
+ * A mechanism's sensors as {port, kind, body, origin, direction, hub, device}: CompiledMechanism
  * v2's sensor devices (hub: the hub they plug into, null = the scene's one hub), or v1's
  * `sensors` (hub null).
  */
@@ -164,7 +165,7 @@ export const sensorsOf = mechanism => {
     if (!mechanism) return [];
     if (mechanism.version === 2) {
         return mechanism.devices.filter(d => d.sensor).map(d => ({port: d.port, kind: d.sensor, body: d.body,
-            origin: d.probe.origin, direction: d.probe.direction, hub: d.hub}));
+            origin: d.probe.origin, direction: d.probe.direction, hub: d.hub, device: d.device ?? null}));
     }
     return Array.isArray(mechanism.sensors) ? mechanism.sensors.map(s => ({...s, hub: null})) : [];
 };
@@ -253,6 +254,12 @@ export const readSensors = (core, mechanism, robotBodies = [], sensors = sensors
                 const mm = Math.round(hit.distance * 1000);
                 out[sensor.port] = {kind: 'distance', distance: (mm >= 50 && mm <= 2000) ? mm : -1};
             }
+            // A MINDSTORMS ultrasonic sensor has its own range (EV3 3-250 cm, NXT 0-255 cm): it also
+            // gets the echo's distance outside SPIKE's 50..2000 mm window (-1: nothing within 2.5 m).
+            // SPIKE's readings stay as they were.
+            if (sensor.device && !String(sensor.device).startsWith('spike-')) {
+                out[sensor.port].rangeMm = hit ? Math.round(hit.distance * 1000) : -1;
+            }
         } else if (sensor.kind === 'color') {
             const maxDist = 0.032;
             let hit = null;
@@ -324,6 +331,10 @@ export const readSensors = (core, mechanism, robotBodies = [], sensors = sensors
                     };
                 }
             }
+        } else if (sensor.kind === 'gyro') {
+            // The EV3 gyro: no ray. The hub reads the yaw of the body that carries it (its pose,
+            // hubs/ev3/ev3-virtual-hub.js writeReadings): the probe only says it is there.
+            out[sensor.port] = {kind: 'gyro'};
         } else if (sensor.kind === 'rotation') {
             // The RCX rotation sensor: the turn of the axle through its hole relative to the
             // sensor's own body — the hinge the compiler made there (kinds/rotation-sensor.js),

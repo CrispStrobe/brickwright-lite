@@ -116606,6 +116606,3078 @@
      ]
     }
    }
+  },
+  {
+   "part": "95646.dat",
+   "name": "MINDSTORMS EV3",
+   "nameDe": "MINDSTORMS EV3",
+   "category": "hub",
+   "massGrams": 232.94,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      -80,
+      0,
+      -40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      80,
+      0,
+      -40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      -80,
+      0,
+      -80
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      80,
+      0,
+      -80
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h4",
+     "type": "pinhole",
+     "position": [
+      -80,
+      0,
+      -60
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h5",
+     "type": "pinhole",
+     "position": [
+      80,
+      0,
+      -60
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h6",
+     "type": "pinhole",
+     "position": [
+      -80,
+      20,
+      -80
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h7",
+     "type": "pinhole",
+     "position": [
+      80,
+      20,
+      -80
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h8",
+     "type": "pinhole",
+     "position": [
+      -80,
+      40,
+      -80
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h9",
+     "type": "pinhole",
+     "position": [
+      80,
+      40,
+      -80
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h10",
+     "type": "pinhole",
+     "position": [
+      -80,
+      0,
+      40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h11",
+     "type": "pinhole",
+     "position": [
+      80,
+      0,
+      40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h12",
+     "type": "pinhole",
+     "position": [
+      -80,
+      0,
+      80
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h13",
+     "type": "pinhole",
+     "position": [
+      80,
+      0,
+      80
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h14",
+     "type": "pinhole",
+     "position": [
+      -80,
+      0,
+      60
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h15",
+     "type": "pinhole",
+     "position": [
+      80,
+      0,
+      60
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h16",
+     "type": "pinhole",
+     "position": [
+      -80,
+      20,
+      80
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h17",
+     "type": "pinhole",
+     "position": [
+      80,
+      20,
+      80
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h18",
+     "type": "pinhole",
+     "position": [
+      -80,
+      40,
+      80
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h19",
+     "type": "pinhole",
+     "position": [
+      80,
+      40,
+      80
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h20",
+     "type": "pinhole",
+     "position": [
+      20,
+      80,
+      -120
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h21",
+     "type": "pinhole",
+     "position": [
+      40,
+      82,
+      -120
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h22",
+     "type": "pinhole",
+     "position": [
+      60,
+      80,
+      -120
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h23",
+     "type": "pinhole",
+     "position": [
+      -20,
+      80,
+      -120
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h24",
+     "type": "pinhole",
+     "position": [
+      -40,
+      80,
+      -120
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h25",
+     "type": "pinhole",
+     "position": [
+      -60,
+      80,
+      -120
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h26",
+     "type": "pinhole",
+     "position": [
+      20,
+      80,
+      120
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h27",
+     "type": "pinhole",
+     "position": [
+      40,
+      80,
+      120
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h28",
+     "type": "pinhole",
+     "position": [
+      60,
+      80,
+      120
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h29",
+     "type": "pinhole",
+     "position": [
+      -20,
+      80,
+      120
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h30",
+     "type": "pinhole",
+     "position": [
+      -40,
+      80,
+      120
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h31",
+     "type": "pinhole",
+     "position": [
+      -60,
+      80,
+      120
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      90,
+      54.5,
+      139
+     ],
+     "position": [
+      0,
+      35.5,
+      0
+     ]
+    }
+   ],
+   "hubProfile": "ev3",
+   "mirrorOf": null
+  },
+  {
+   "part": "53788.dat",
+   "name": "MINDSTORMS NXT",
+   "nameDe": "MINDSTORMS NXT",
+   "category": "hub",
+   "massGrams": 239.1,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      40,
+      -8,
+      -120
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      60,
+      -10,
+      -120
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      20,
+      -10,
+      -120
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      -40,
+      -8,
+      -120
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h4",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -10,
+      -120
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h5",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -10,
+      -120
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h6",
+     "type": "pinhole",
+     "position": [
+      40,
+      -10,
+      120
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h7",
+     "type": "pinhole",
+     "position": [
+      60,
+      -10,
+      120
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h8",
+     "type": "pinhole",
+     "position": [
+      20,
+      -10,
+      120
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h9",
+     "type": "pinhole",
+     "position": [
+      -40,
+      -8,
+      120
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h10",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -10,
+      120
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h11",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -10,
+      120
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h12",
+     "type": "pinhole",
+     "position": [
+      -80,
+      -70,
+      -40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h13",
+     "type": "pinhole",
+     "position": [
+      80,
+      -70,
+      -40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h14",
+     "type": "pinhole",
+     "position": [
+      -80,
+      -50,
+      -40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h15",
+     "type": "pinhole",
+     "position": [
+      80,
+      -50,
+      -40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h16",
+     "type": "pinhole",
+     "position": [
+      -80,
+      -90,
+      -40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h17",
+     "type": "pinhole",
+     "position": [
+      80,
+      -90,
+      -40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h18",
+     "type": "pinhole",
+     "position": [
+      -80,
+      -90,
+      -60
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h19",
+     "type": "pinhole",
+     "position": [
+      80,
+      -90,
+      -60
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h20",
+     "type": "pinhole",
+     "position": [
+      -80,
+      -90,
+      -80
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h21",
+     "type": "pinhole",
+     "position": [
+      80,
+      -90,
+      -80
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h22",
+     "type": "pinhole",
+     "position": [
+      -80,
+      -70,
+      40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h23",
+     "type": "pinhole",
+     "position": [
+      80,
+      -70,
+      40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h24",
+     "type": "pinhole",
+     "position": [
+      -80,
+      -50,
+      40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h25",
+     "type": "pinhole",
+     "position": [
+      80,
+      -50,
+      40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h26",
+     "type": "pinhole",
+     "position": [
+      -80,
+      -90,
+      40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h27",
+     "type": "pinhole",
+     "position": [
+      80,
+      -90,
+      40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h28",
+     "type": "pinhole",
+     "position": [
+      -80,
+      -90,
+      60
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h29",
+     "type": "pinhole",
+     "position": [
+      80,
+      -90,
+      60
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    },
+    {
+     "id": "h30",
+     "type": "pinhole",
+     "position": [
+      -80,
+      -90,
+      80
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": 1
+    },
+    {
+     "id": "h31",
+     "type": "pinhole",
+     "position": [
+      80,
+      -90,
+      80
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
+     "closedEnd": -1
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      90,
+      50,
+      139
+     ],
+     "position": [
+      0,
+      -50,
+      0
+     ]
+    }
+   ],
+   "hubProfile": "nxt",
+   "mirrorOf": null
+  },
+  {
+   "part": "95658.dat",
+   "name": "EV3 large motor",
+   "nameDe": "EV3-Großmotor",
+   "category": "motor",
+   "massGrams": 82,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      -20,
+      0,
+      -180
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      20,
+      0,
+      -180
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      -20,
+      0,
+      -140
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      20,
+      0,
+      -140
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h4",
+     "type": "pinhole",
+     "position": [
+      0,
+      -60,
+      -80
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h5",
+     "type": "pinhole",
+     "position": [
+      0,
+      -60,
+      -40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h6",
+     "type": "pinhole",
+     "position": [
+      0,
+      -20,
+      -200
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h7",
+     "type": "pinhole",
+     "position": [
+      20,
+      -20,
+      -200
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h8",
+     "type": "pinhole",
+     "position": [
+      0,
+      -100,
+      -200
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h9",
+     "type": "pinhole",
+     "position": [
+      20,
+      -100,
+      -200
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h10",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -20,
+      -200
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h11",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -100,
+      -200
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h12",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 16
+    },
+    {
+     "id": "h13",
+     "type": "pinhole",
+     "position": [
+      20,
+      -20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 16
+    },
+    {
+     "id": "h14",
+     "type": "pinhole",
+     "position": [
+      -20,
+      0,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 16
+    },
+    {
+     "id": "h15",
+     "type": "pinhole",
+     "position": [
+      20,
+      0,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 16
+    },
+    {
+     "id": "h16",
+     "type": "pinhole",
+     "position": [
+      -20,
+      20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 16
+    },
+    {
+     "id": "h17",
+     "type": "pinhole",
+     "position": [
+      20,
+      20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 16
+    },
+    {
+     "id": "h18",
+     "type": "pinhole",
+     "position": [
+      -20,
+      0,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 16
+    },
+    {
+     "id": "h19",
+     "type": "pinhole",
+     "position": [
+      20,
+      0,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 16
+    },
+    {
+     "id": "x0",
+     "type": "axlehole",
+     "position": [
+      -20,
+      0,
+      -160
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x1",
+     "type": "axlehole",
+     "position": [
+      20,
+      0,
+      -160
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x2",
+     "type": "axlehole",
+     "position": [
+      0,
+      -60,
+      -60
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x3",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 60
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      50,
+      44.5,
+      45
+     ],
+     "position": [
+      0,
+      -64.5,
+      -165
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      26,
+      29.5,
+      14.5
+     ],
+     "position": [
+      0,
+      -60.5,
+      -224.5
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      45,
+      5,
+      50
+     ],
+     "position": [
+      0,
+      -15,
+      -160
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      30,
+      9.5,
+      30
+     ],
+     "position": [
+      0,
+      -0.5,
+      -160
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      30,
+      29.5,
+      20
+     ],
+     "position": [
+      0,
+      -20.5,
+      -110
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      10,
+      30
+     ],
+     "position": [
+      0,
+      -60,
+      -60
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      20,
+      29.5,
+      40
+     ],
+     "position": [
+      0,
+      -20.5,
+      -50
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      20,
+      29.5,
+      34.5
+     ],
+     "position": [
+      0,
+      -0.5,
+      -5.5
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 29,
+     "halfHeight": 30,
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "rotation": [
+      0,
+      0,
+      0.7071067811865476,
+      0.7071067811865476
+     ]
+    }
+   ],
+   "internalJoints": [
+    {
+     "id": "motor",
+     "type": "hinge",
+     "point": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "movingConnectors": [
+      "h12",
+      "h13",
+      "h14",
+      "h15",
+      "h16",
+      "h17",
+      "h18",
+      "h19",
+      "x3"
+     ],
+     "movingColliders": [
+      8
+     ],
+     "massFraction": 0.15,
+     "actuatedBy": "device"
+    }
+   ],
+   "device": "ev3-large-motor",
+   "mirrorOf": null
+  },
+  {
+   "part": "99455.dat",
+   "name": "EV3 medium motor",
+   "nameDe": "EV3-Mittelmotor",
+   "category": "motor",
+   "massGrams": 39,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      -20,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      0,
+      -20,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -20,
+      10
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      20,
+      -20,
+      10
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h4",
+     "type": "pinhole",
+     "position": [
+      0,
+      20,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h5",
+     "type": "pinhole",
+     "position": [
+      -20,
+      20,
+      10
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h6",
+     "type": "pinhole",
+     "position": [
+      20,
+      20,
+      10
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h7",
+     "type": "pinhole",
+     "position": [
+      -20,
+      40,
+      30
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h8",
+     "type": "pinhole",
+     "position": [
+      20,
+      40,
+      30
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h9",
+     "type": "pinhole",
+     "position": [
+      -20,
+      40,
+      70
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h10",
+     "type": "pinhole",
+     "position": [
+      20,
+      40,
+      70
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h11",
+     "type": "pinhole",
+     "position": [
+      20,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "x0",
+     "type": "axlehole",
+     "position": [
+      -20,
+      40,
+      50
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x1",
+     "type": "axlehole",
+     "position": [
+      20,
+      40,
+      50
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x2",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      30,
+      39,
+      90.5
+     ],
+     "position": [
+      0,
+      10,
+      90.5
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 20,
+     "halfHeight": 15.5,
+     "position": [
+      0,
+      0,
+      15.5
+     ],
+     "rotation": [
+      0.7071067811865476,
+      0,
+      0,
+      0.7071067811865476
+     ]
+    }
+   ],
+   "internalJoints": [
+    {
+     "id": "motor",
+     "type": "hinge",
+     "point": [
+      0,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "movingConnectors": [
+      "h0",
+      "h1",
+      "h4",
+      "h11",
+      "x2"
+     ],
+     "movingColliders": [
+      1
+     ],
+     "massFraction": 0.15,
+     "actuatedBy": "device"
+    }
+   ],
+   "device": "ev3-medium-motor",
+   "mirrorOf": null
+  },
+  {
+   "part": "53787.dat",
+   "name": "NXT motor",
+   "nameDe": "NXT-Motor",
+   "category": "motor",
+   "massGrams": 80,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -20,
+      -140
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      20,
+      -20,
+      -140
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -20,
+      -160
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      20,
+      -20,
+      -160
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h4",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -20,
+      -180
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h5",
+     "type": "pinhole",
+     "position": [
+      20,
+      -20,
+      -180
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h6",
+     "type": "pinhole",
+     "position": [
+      0,
+      40,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h7",
+     "type": "pinhole",
+     "position": [
+      0,
+      40,
+      -40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h8",
+     "type": "pinhole",
+     "position": [
+      0,
+      40,
+      -60
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h9",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      -201
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h10",
+     "type": "pinhole",
+     "position": [
+      20,
+      0,
+      -201
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h11",
+     "type": "pinhole",
+     "position": [
+      -20,
+      0,
+      -201
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h12",
+     "type": "pinhole",
+     "position": [
+      -20,
+      20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 16
+    },
+    {
+     "id": "h13",
+     "type": "pinhole",
+     "position": [
+      20,
+      20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 16
+    },
+    {
+     "id": "h14",
+     "type": "pinhole",
+     "position": [
+      -20,
+      0,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 16
+    },
+    {
+     "id": "h15",
+     "type": "pinhole",
+     "position": [
+      20,
+      0,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 16
+    },
+    {
+     "id": "h16",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 16
+    },
+    {
+     "id": "h17",
+     "type": "pinhole",
+     "position": [
+      20,
+      -20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 16
+    },
+    {
+     "id": "h18",
+     "type": "pinhole",
+     "position": [
+      -20,
+      0,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 16
+    },
+    {
+     "id": "h19",
+     "type": "pinhole",
+     "position": [
+      20,
+      0,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 16
+    },
+    {
+     "id": "x0",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 60
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      30,
+      9.5,
+      37.5
+     ],
+     "position": [
+      0,
+      -19.5,
+      -167.5
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      50,
+      46.5,
+      42.5
+     ],
+     "position": [
+      0,
+      36.5,
+      -167.5
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      30,
+      37.5,
+      18
+     ],
+     "position": [
+      0,
+      32.5,
+      -223
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      30,
+      30,
+      30
+     ],
+     "position": [
+      0,
+      0,
+      -100
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      20,
+      30,
+      25
+     ],
+     "position": [
+      0,
+      0,
+      -45
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      10,
+      35
+     ],
+     "position": [
+      0,
+      40,
+      -45
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      20,
+      29.5,
+      29.5
+     ],
+     "position": [
+      0,
+      -0.5,
+      -0.5
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 29,
+     "halfHeight": 30,
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "rotation": [
+      0,
+      0,
+      0.7071067811865476,
+      0.7071067811865476
+     ]
+    }
+   ],
+   "internalJoints": [
+    {
+     "id": "motor",
+     "type": "hinge",
+     "point": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "movingConnectors": [
+      "h12",
+      "h13",
+      "h14",
+      "h15",
+      "h16",
+      "h17",
+      "h18",
+      "h19",
+      "x0"
+     ],
+     "movingColliders": [
+      7
+     ],
+     "massFraction": 0.15,
+     "actuatedBy": "device"
+    }
+   ],
+   "device": "nxt-motor",
+   "mirrorOf": null
+  },
+  {
+   "part": "95648.dat",
+   "name": "EV3 touch sensor",
+   "nameDe": "EV3-Berührungssensor",
+   "category": "sensor",
+   "massGrams": 10.44,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x0",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x1",
+     "type": "axlehole",
+     "position": [
+      0,
+      -40,
+      -69.5
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      30,
+      39,
+      54.5
+     ],
+     "position": [
+      0,
+      -30,
+      -25.5
+     ]
+    }
+   ],
+   "device": "ev3-touch",
+   "probe": {
+    "kind": "ray",
+    "origin": [
+     0,
+     -40,
+     -80.5
+    ],
+    "direction": [
+     0,
+     0,
+     -1
+    ]
+   },
+   "mirrorOf": null
+  },
+  {
+   "part": "95650.dat",
+   "name": "EV3 colour sensor",
+   "nameDe": "EV3-Farbsensor",
+   "category": "sensor",
+   "massGrams": 11.02,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x0",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      30,
+      39,
+      49.5
+     ],
+     "position": [
+      0,
+      -30,
+      -20.5
+     ]
+    }
+   ],
+   "device": "ev3-color",
+   "probe": {
+    "kind": "ray",
+    "origin": [
+     0,
+     -42,
+     -70.5
+    ],
+    "direction": [
+     0,
+     0,
+     -1
+    ]
+   },
+   "mirrorOf": null
+  },
+  {
+   "part": "95652.dat",
+   "name": "EV3 ultrasonic sensor",
+   "nameDe": "EV3-Ultraschallsensor",
+   "category": "sensor",
+   "massGrams": 21.22,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      40,
+      -40,
+      -19
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 18
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      -40,
+      -40,
+      -19
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 18
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x0",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      69,
+      30,
+      29.75
+     ],
+     "position": [
+      0,
+      -40,
+      -59.75
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      60,
+      15,
+      10
+     ],
+     "position": [
+      0,
+      -45,
+      -20
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      30,
+      30,
+      29.5
+     ],
+     "position": [
+      0,
+      -40,
+      -0.5
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      9.5,
+      29.5
+     ],
+     "position": [
+      0,
+      -0.5,
+      -0.5
+     ]
+    }
+   ],
+   "device": "ev3-ultrasonic",
+   "probe": {
+    "kind": "ray",
+    "origin": [
+     0,
+     -40,
+     -90
+    ],
+    "direction": [
+     0,
+     0,
+     -1
+    ]
+   },
+   "mirrorOf": {
+    "part": "95652.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  {
+   "part": "99380.dat",
+   "name": "EV3 gyro sensor",
+   "nameDe": "EV3-Gyrosensor",
+   "category": "sensor",
+   "massGrams": 9.76,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x0",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      30,
+      39,
+      49.5
+     ],
+     "position": [
+      0,
+      -30,
+      -20.5
+     ]
+    }
+   ],
+   "device": "ev3-gyro",
+   "probe": {
+    "kind": "ray",
+    "origin": [
+     0,
+     -30,
+     -70.5
+    ],
+    "direction": [
+     0,
+     0,
+     -1
+    ]
+   },
+   "mirrorOf": null
+  },
+  {
+   "part": "53793.dat",
+   "name": "NXT touch sensor",
+   "nameDe": "NXT-Berührungssensor",
+   "category": "sensor",
+   "massGrams": 12.530000000000001,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x0",
+     "type": "axlehole",
+     "position": [
+      0,
+      -40,
+      -85
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 10
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      30,
+      30,
+      54.5
+     ],
+     "position": [
+      0,
+      -40,
+      -25.5
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      23,
+      23,
+      5
+     ],
+     "position": [
+      0,
+      -39,
+      -85
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      9.5,
+      29.5
+     ],
+     "position": [
+      0,
+      -0.5,
+      -0.5
+     ]
+    }
+   ],
+   "device": "nxt-touch",
+   "probe": {
+    "kind": "ray",
+    "origin": [
+     0,
+     -39,
+     -90.5
+    ],
+    "direction": [
+     0,
+     0,
+     -1
+    ]
+   },
+   "mirrorOf": null
+  },
+  {
+   "part": "55969.dat",
+   "name": "NXT light sensor",
+   "nameDe": "NXT-Lichtsensor",
+   "category": "sensor",
+   "massGrams": 9.26,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      30,
+      39.5,
+      53.6
+     ],
+     "position": [
+      0,
+      -30.5,
+      -24.6
+     ]
+    }
+   ],
+   "device": "nxt-light",
+   "probe": {
+    "kind": "ray",
+    "origin": [
+     0,
+     -35,
+     -78.7
+    ],
+    "direction": [
+     0,
+     0,
+     -1
+    ]
+   },
+   "mirrorOf": null
+  },
+  {
+   "part": "53792.dat",
+   "name": "NXT ultrasonic sensor",
+   "nameDe": "NXT-Ultraschallsensor",
+   "category": "sensor",
+   "massGrams": 16.93,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      69,
+      39.5,
+      54.5
+     ],
+     "position": [
+      0,
+      -30.5,
+      -25.5
+     ]
+    }
+   ],
+   "device": "nxt-ultrasonic",
+   "probe": {
+    "kind": "ray",
+    "origin": [
+     0,
+     -45,
+     -80.5
+    ],
+    "direction": [
+     0,
+     0,
+     -1
+    ]
+   },
+   "mirrorOf": {
+    "part": "53792.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   }
  ]
 }

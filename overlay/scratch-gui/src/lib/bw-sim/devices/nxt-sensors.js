@@ -92,7 +92,8 @@ export const nxtScaled = (mode, normalized, memory) => {
 
 /** The ultrasonic sensor's distance byte: centimetres, 255 when nothing echoes (sensors.js: −1). */
 export const usDistanceCm = probe => {
-    const mm = probe ? Number(probe.distance) : -1;
+    // The echo's own distance when the scene gives it (sensors.js rangeMm), else SPIKE's windowed one.
+    const mm = probe ? Number(probe.rangeMm ?? probe.distance) : -1;
     return mm >= 0 ? clamp(Math.round(mm / 10), 0, 254) : 255;
 };
 
