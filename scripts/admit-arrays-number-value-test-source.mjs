@@ -9,10 +9,10 @@ import {fileURLToPath, pathToFileURL} from 'node:url';
 const REPO = fileURLToPath(new URL('..', import.meta.url));
 export const ARRAYS_INPUT = Object.freeze({
     repo: 'CrispStrobe/extensions',
-    commit: 'd4015c4ac7653f50f1bfa28fbb43a284a55337ca',
+    commit: '1c7eb396173673c858e6c80a66529cb9dce87553',
     path: 'extensions/CrispStrobe/arrays.js',
-    bytes: 108020,
-    sha256: 'e9ec39cd2b4a29853783905df3bb0026704e221ab708a9f0bf4c0068b2b91c86',
+    bytes: 108862,
+    sha256: '28e88ecfbb26feedea25baaaffc9c9bc552c3d9c621c7c38eec71e334e71cca3',
     licence: 'MPL-2.0',
     outputDirectory: 'test-results/arrays-number-value-input',
     outputSource: 'test-results/arrays-number-value-input/arrays.js'

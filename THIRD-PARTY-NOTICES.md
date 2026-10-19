@@ -2301,7 +2301,7 @@ header, is retained in `overlay/scratch-vm/src/extensions/crispstrobe/arrays/ind
 as a JSON source string; the host adapter is separate.
 
 The exact selected source is
-https://github.com/CrispStrobe/extensions/blob/d4015c4ac7653f50f1bfa28fbb43a284a55337ca/extensions/CrispStrobe/arrays.js.
+https://github.com/CrispStrobe/extensions/blob/1c7eb396173673c858e6c80a66529cb9dce87553/extensions/CrispStrobe/arrays.js.
 `vendor-pins.json` and the generated per-file bundle receipt record the commit
 and content hash. This scopes the adoption to Arrays; it does not advance other
 extension sources. MPL-2.0 text: https://www.mozilla.org/en-US/MPL/2.0/.

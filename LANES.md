@@ -6948,3 +6948,18 @@ module tail: the final eager dependency still closes a loading cycle. Require
 all three null prototypes in each existing entry-order control. The earlier
 two-record source packet is held; installation acceptance alone is not boot or
 native feature qualification.
+
+
+### Explicit Arrays supplier operation-map adoption — 2026-10-19
+
+SOURCE CANDIDATE / QUALIFICATION PENDING in the existing owned Arrays lane.
+Advance only the Arrays source to supplier commit
+`1c7eb396173673c858e6c80a66529cb9dce87553`, retaining MPL-2.0 and its complete
+source. Update pin, canonical carrier, per-file receipt, scoped notice and
+explicit test-input admission identities together. The supplier holds private
+operation-map get/set/delete methods and legacy own-property checks; no host
+value/type/ownership rule is changed by this adoption. Preserve all 48 native
+semantic controls and the earlier original failures. Existing installation and
+native results for the earlier pin remain attached to that earlier source;
+fresh installation, complete affected native controls and genuine original/
+Code/exported behavior remain mandatory. No installed mirror is rewritten here.

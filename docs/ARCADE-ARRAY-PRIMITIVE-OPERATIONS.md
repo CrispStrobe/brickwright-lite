@@ -67,3 +67,29 @@ exports near the end of the module does not mark the module loaded while its
 final eager exception dependency is still initializing. The three entry-order
 controls require null prototypes for all three records. No module is allowed
 to defer dispatch capture, expose mutable exports or bypass the native loader.
+
+
+## Explicit supplier operation-map revision
+
+The source candidate selects supplier commit
+`1c7eb396173673c858e6c80a66529cb9dce87553`: 108862 source bytes, SHA-256
+`28e88ecfbb26feedea25baaaffc9c9bc552c3d9c621c7c38eec71e334e71cca3`.
+Its MPL-2.0 source and author header remain in the canonical carrier. Pin,
+receipt, notice and explicit admission agree on that exact body. Canonical
+producer scripts and registration remain unchanged; a fresh installation must
+reproduce the installed mirror before native qualification.
+
+The supplier captures native WeakMap get/set/delete methods for every private
+operation-record lookup, publication and retirement, through its already-held
+Reflect.apply. It also retains the compatible captured own-property check for
+hosts without Object.hasOwn. Later WeakMap prototype hooks cannot substitute
+that private record or intercept its retirement. The complete supplier protocol
+controls pass for this revision; that does not transfer to Lite native results.
+
+The existing C6 installation and its completed 45-pass/three-fail native episode
+apply to the earlier `d4015c4ac7653f50f1bfa28fbb43a284a55337ca` body. Preserve
+those failures. This adoption changes supplier identity without changing the
+48 native semantic assertions. Fresh normal installation, all affected native
+controls and genuine original, Code and exported expected values are still
+required. Active Throw completion is a separate host-runtime repair; this pin
+does not establish its correctness or general Array coercion support.
