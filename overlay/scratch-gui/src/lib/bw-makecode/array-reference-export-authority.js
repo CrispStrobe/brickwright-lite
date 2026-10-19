@@ -459,6 +459,10 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             return out;
         }finally{computingCells.delete(c);}
     };
+    // Only appends (push) and reads may touch a positional Array: no shrink,
+    // set, insertion or unshift, and no named-array write route.
+    const positionalStable=a=>!a.shrinks?.size&&!a.elements.has(bad)&&mutations.every(({target,node})=>
+        !readInput(input(node,'ARRAY',target)).has(a)||node.opcode==='arrays_mutateReference'&&literal(node,'OP',target)==='push');
     const readInput=value=>{
         if(!value)return new Set([bad]);if(value.cell)return cellTypesAt(value.cell,value.at);if(value.jsonArray)return new Set([jsonArray(value.jsonArray,value.identity,null,value.origin)]);if(value.node)return readNode(value.target,value.node);return new Set([bad]);
     };
@@ -578,6 +582,12 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                     // argument facts reach a dominating mutation receiver.
                     if(pendingPresence(a,node))return new Set();
                     result.add(missing);
+                }
+                // A fixed literal slot of a positional (JSON/literal) Array whose
+                // earlier slots never move holds exactly its own item.
+                const index=node.opcode==='arrays_referenceItem'?literalNumber(target,node,'INDEX'):null;
+                if(index!==null&&Number.isInteger(index)&&index>=0&&Array.isArray(a.items)&&index<a.items.length&&positionalStable(a)){
+                    for(const item of readInput(a.items[index]))result.add(item);continue;
                 }
                 for(const item of a.elements)result.add(item);
             }return result;
