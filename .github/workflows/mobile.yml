@@ -34,6 +34,10 @@ on:
         description: Sample only the owned slow simctl help child during interface inventory; keeps the original deadline.
         type: boolean
         default: false
+      ios_audit_interface_manual_only:
+        description: Read installed sample and launchctl manuals only; never starts simctl or a sampler.
+        type: boolean
+        default: false
       ios_audit_runtime:
         description: Optional exact installed iOS runtime identifier for admission only; never launches an app.
         type: string
@@ -50,7 +54,7 @@ permissions:
 
 jobs:
   ios-audit-preflight:
-    if: github.event_name == 'workflow_dispatch' && inputs.ios_audit_preflight_only && !inputs.ios_audit_interface_only && !inputs.ios_audit_interface_diagnostic && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'
+    if: github.event_name == 'workflow_dispatch' && inputs.ios_audit_preflight_only && !inputs.ios_audit_interface_only && !inputs.ios_audit_interface_diagnostic && !inputs.ios_audit_interface_manual_only && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'
     runs-on: macos-latest
     timeout-minutes: 8
     permissions:
@@ -461,7 +465,7 @@ jobs:
           retention-days: 7
 
   ios-audit-interface:
-    if: github.event_name == 'workflow_dispatch' && (inputs.ios_audit_interface_only || inputs.ios_audit_interface_diagnostic) && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'
+    if: github.event_name == 'workflow_dispatch' && (inputs.ios_audit_interface_only || inputs.ios_audit_interface_diagnostic || inputs.ios_audit_interface_manual_only) && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'
     runs-on: macos-latest
     timeout-minutes: 4
     permissions:
@@ -474,6 +478,7 @@ jobs:
       - name: Retain installed tool interface facts without an app operation
         timeout-minutes: 2
         env:
+          BW_INTERFACE_MANUAL_ONLY: ${{ inputs.ios_audit_interface_manual_only }}
           BW_INTERFACE_MODE: ${{ inputs.ios_audit_interface_only }}
           BW_INTERFACE_DIAGNOSTIC: ${{ inputs.ios_audit_interface_diagnostic }}
           BW_INTERFACE_OTHER_MODE: ${{ inputs.ios_audit_preflight_only }}
@@ -563,13 +568,17 @@ jobs:
 
           def main():
               root=Path(os.environ['RUNNER_TEMP'])/'bw-ios-interface-inventory';root.mkdir(exist_ok=False)
-              report={'schema':'brickwright.ios-tool-interface.v3','sourceCommit':os.environ['GITHUB_SHA'],
+              report={'schema':'brickwright.ios-tool-interface.v4','sourceCommit':os.environ['GITHUB_SHA'],
                   'runID':os.environ['GITHUB_RUN_ID'],'attempt':os.environ['GITHUB_RUN_ATTEMPT'],'job':os.environ['GITHUB_JOB'],
-                  'status':'partial','commands':[],'diagnostics':[],'commandGraphComplete':False,'actualAppQualified':False,'namespaceOwnershipQualified':False}
+                  'profile':'unadmitted','status':'partial','commands':[],'diagnostics':[],'commandGraphComplete':False,'actualAppQualified':False,'namespaceOwnershipQualified':False}
               try:
                   require(sys.platform=='darwin' and platform.machine()=='arm64' and sys.version_info>=(3,13) and signal.getsignal(signal.SIGCHLD)==signal.SIG_DFL)
                   require(os.environ['BW_INTERFACE_MODE']=='true' and os.environ['BW_INTERFACE_OTHER_MODE']=='false' and os.environ['BW_INTERFACE_RUNTIME']=='' and os.environ['BW_INTERFACE_BUILD']=='')
                   require(os.environ['BW_INTERFACE_DIAGNOSTIC'] in ('true','false'))
+                  require(os.environ['BW_INTERFACE_MANUAL_ONLY'] in ('true','false'))
+                  manual_only=os.environ['BW_INTERFACE_MANUAL_ONLY']=='true'
+                  require(not manual_only or os.environ['BW_INTERFACE_DIAGNOSTIC']=='false')
+                  report['profile']='manual-only' if manual_only else 'simctl-help'
                   workflow=(Path(os.environ['GITHUB_WORKSPACE'])/'.github/workflows/mobile.yml').read_text()
                   report['workflowSHA256']=hashlib.sha256(workflow.encode()).hexdigest()
                   block=re.search(r'# BEGIN IOS INPUT RETENTION\n          cat > "\$RUNNER_TEMP/bw-ios-audit-capture.py" <<\'PY\'\n([\s\S]*?)          PY\n          # END IOS INPUT RETENTION',workflow)
@@ -580,6 +589,10 @@ jobs:
                       ('/bin/launchctl','help')]
                   for subcommand in ('','spawn','launch','get_app_container','appinfo','list'):
                       commands.append(('/usr/bin/xcrun','simctl','help',*(() if not subcommand else (subcommand,))))
+                  if manual_only:
+                      commands=[('/usr/bin/xcodebuild','-version'),('/bin/launchctl','help','print'),
+                          ('/bin/launchctl','help','procinfo'),('/bin/launchctl','help','managerpid'),
+                          ('/usr/bin/man','-P','/bin/cat','sample')]
                   def observe_owned_help(child,deadline):
                       # This unreaped Popen PID cannot be recycled. No name lookup or
                       # shared service PID is admitted. Sampling is diagnostic only.
@@ -619,7 +632,7 @@ jobs:
           retention-days: 7
 
   build-web:
-    if: github.event_name != 'workflow_dispatch' || (inputs.ios_audit_preflight_only != true && inputs.ios_audit_interface_only != true && inputs.ios_audit_interface_diagnostic != true)
+    if: github.event_name != 'workflow_dispatch' || (inputs.ios_audit_preflight_only != true && inputs.ios_audit_interface_only != true && inputs.ios_audit_interface_diagnostic != true && inputs.ios_audit_interface_manual_only != true)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0

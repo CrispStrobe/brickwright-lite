@@ -4,6 +4,12 @@ Refresh PR heads, checks and `LANES.md` before acting. This file records the
 integration owner's remaining work; other lanes retain their own ownership.
 Historical results qualify their named source and artifact, not later builds.
 
+Current blocker: the unsigned installed embedded-map proof remains open. Both the
+initial simulator-tool query and its sampler diagnostic failed within their
+admitted bounds. A manual-only profile reads installed documentation without
+starting simctl or a sampler. Source controls and completed tool prefixes do not
+qualify an installed app, delivery or the remaining SPIKE lifecycle matrix.
+
 ## Landed and ready for continuation
 
 - [PR990](https://github.com/CrispStrobe/brickwright-lite/pull/990) merged as
@@ -455,3 +461,9 @@ that isolation: primary commands retain their original deadlines and requested
 sampler failures still prevent whole-profile success. Independent reader outputs
 separate primary-graph completeness from diagnostic completeness. No new actual
 result or startup cause is inferred from the source controls.
+
+A separate manual-only selection reads the installed sample manual and launchctl
+print/procinfo/managerpid help, without starting simctl or a sampler. It refuses
+mixed manual/sampler requests, requires interface selection and excludes app
+builds. Preserve earlier failures and limits; use the actual retained manuals to
+choose supported diagnostics instead of inventing flags or raising timeouts.
