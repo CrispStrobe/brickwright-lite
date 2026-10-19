@@ -1,5 +1,6 @@
 // Explicit offline input for the native Arrays tests. This decodes data only;
 // it never imports/evaluates the supplier or substitutes an unreviewed source.
+import {ARRAYS_PREFIX as PREFIX, ARRAYS_SUFFIX as SUFFIX} from './lib/arrays-carrier.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -8,10 +9,10 @@ import {fileURLToPath, pathToFileURL} from 'node:url';
 const REPO = fileURLToPath(new URL('..', import.meta.url));
 export const ARRAYS_INPUT = Object.freeze({
     repo: 'CrispStrobe/extensions',
-    commit: '022ab1682d9477a5d0dc5b7b01e707917d61cd41',
+    commit: 'd4015c4ac7653f50f1bfa28fbb43a284a55337ca',
     path: 'extensions/CrispStrobe/arrays.js',
-    bytes: 103951,
-    sha256: '47f50e20773c417fb0a7d164b70a354f66cd5c1daa871608e0af9eb0cfdd3db5',
+    bytes: 108020,
+    sha256: 'e9ec39cd2b4a29853783905df3bb0026704e221ab708a9f0bf4c0068b2b91c86',
     licence: 'MPL-2.0',
     outputDirectory: 'test-results/arrays-number-value-input',
     outputSource: 'test-results/arrays-number-value-input/arrays.js'
@@ -21,8 +22,6 @@ const MIRROR = 'packages/scratch-gui/node_modules/scratch-vm/src/extensions/cris
 const PINS = 'vendor-pins.json';
 const RECEIPT = 'overlay/scratch-vm/src/extension-support/bundled-upstream-pins.json';
 const NOTICE = 'THIRD-PARTY-NOTICES.md';
-const PREFIX = "const makeExt = require('../adapter');\nmodule.exports = makeExt(";
-const SUFFIX = ');\n';
 const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const requireFact = (ok, message) => {if (!ok) throw new Error(message);};
 
