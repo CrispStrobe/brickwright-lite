@@ -103,6 +103,10 @@
 //      docs/ROBOT-LAB-ARCHITECTURE.md §5.4.1), against a stand-in mirror: "+" finds, adds and places a
 //      part the app does not ship; a sticker joins as decoration; credits name the files; a model with
 //      both simulates; both are back after a reload.
+//  22. Simulate's speed, Readings, sensor rays and replay (scripts/lib/sim-lab-simulate-ux-gate.mjs,
+//      --part=ui), on the Wall stopper: ½× halves simulated time; Readings shows motors A, B and the
+//      distance sensor, moving as it drives; the sensor's ray is drawn; paused, the replay slider shows
+//      an earlier pose, and Run goes on from now.
 //
 // Every Sim Lab here runs its physics in the Web Worker (ROADMAP §4.9): each load
 // asserts `window.__bwSimLab.worker === true`, so the line-follower lap, the wall
@@ -127,6 +131,7 @@ import {layoutInteractions, MIN_CANVAS_PX} from './lib/sim-lab-layout-gate.mjs';
 import {editorParityInteractions} from './lib/sim-lab-editor-parity-gate.mjs';
 import {connectInteractions} from './lib/sim-lab-connect-gate.mjs';
 import {catalogueInteractions} from './lib/sim-lab-catalogue-gate.mjs';
+import {simulateUxInteractions} from './lib/sim-lab-simulate-ux-gate.mjs';
 import {apiInteractions, DEGREES_TOLERANCE} from './lib/sim-lab-api-gate.mjs';
 import {hubsInteractions, HUB_DEGREES_TOLERANCE} from './lib/sim-lab-hubs-gate.mjs';
 import {hubsBtInteractions} from './lib/sim-lab-hubs-bt-gate.mjs';
@@ -901,6 +906,15 @@ try {
         await fallback.waitForFunction(t => window.__bwSimLab._pane.session.time > t + 500, f0.time, {timeout: 30000});
         console.log('PASS without WebGL the pane says so and the simulation still runs');
         await fallback.close();
+        // 22. Simulate's speed, Readings, sensor rays and replay (scripts/lib/sim-lab-simulate-ux-gate.mjs).
+        const ux = await browser.newPage({viewport: {width: 1440, height: 900}, serviceWorkers: 'block'});
+        ux.on('pageerror', error => errors.push(error.message));
+        ux.on('dialog', dialog => dialog.accept());
+        await openSimLab(ux, {program: null});
+        const u = await simulateUxInteractions(ux, {shotsDir: artifacts});
+        console.log(`PASS simulate: ½× runs at ${u.halfRate.toFixed(2)} of 1×'s rate; Readings shows ${u.readings} rows that move with the robot; ` +
+            `the distance sensor's ray is drawn (${u.rayCm} cm); paused, the replay goes back ${u.replayBackM.toFixed(2)} m of motion and Run goes on from now`);
+        await ux.close();
     }
 
     if (want('tablet')) { // a 1024×768 touch page, real fingers only

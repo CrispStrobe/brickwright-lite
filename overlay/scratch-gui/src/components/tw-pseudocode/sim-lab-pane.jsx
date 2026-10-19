@@ -27,6 +27,7 @@ import {pickLocale, browserLocale} from '../../lib/bw-i18n.js';
 import {SIM_LAB_STORAGE_KEY, simLabRecordFromText, readSimLabStorage, isStorableName} from '../../lib/bw-sim/model/sim-lab-persist.js';
 import SimLabPalette from './sim-lab-palette.jsx';
 import SimLabInfo from './sim-lab-info.jsx';
+import SimLabReadings from './sim-lab-readings.jsx';
 import SimLabInstructions from './sim-lab-instructions.jsx';
 import {INSIGHT_TEXT, issueSentence, fillText} from './sim-lab-insight-text.js';
 import {firmwareRefusalSentence} from './sim-lab-firmware-text.js';
@@ -98,6 +99,10 @@ const TEXT = {
         noMatches: 'No part matches “{q}”.', partTitle: '{name} · part {number}',
         paletteHelp: 'Click a part, then click in the view. Or drag it into the view.',
         helpBuild: 'How to build', helpParts: 'Placing parts',
+        readingsTitle: 'Readings', readingsMotors: 'Motors', readingsSensors: 'Sensors', readingsEmpty: 'This model has no motors or sensors.',
+        readingsMotor: 'Motor {port}', readingsSensor: '{kind} {port}', readingsClose: 'Close',
+        kinds: {distance: 'Distance', color: 'Colour', force: 'Force', touch: 'Touch', light: 'Light', rotation: 'Rotation', tilt: 'Tilt', motion: 'Motion'},
+        replay: 'Replay', replayHelp: 'Look back at the last seconds. Run goes on from now.', replayNow: 'now', speedValue: '{n}×',
         catalogueOpen: 'Add a part from the LDraw catalogue', catalogueTitle: 'LDraw catalogue', catalogueBack: 'Back to the parts',
         catalogueHint: 'Number or name, e.g. 3001, slope 45', catalogueLoading: 'Loading the catalogue…',
         catalogueUnavailable: 'The LDraw catalogue could not be loaded ({error}). It needs a network connection.',
@@ -191,6 +196,10 @@ const TEXT = {
         noMatches: 'Kein Teil passt zu „{q}“.', partTitle: '{name} · Teil {number}',
         paletteHelp: 'Klicke ein Teil an, dann in die Ansicht. Oder zieh es in die Ansicht.',
         helpBuild: 'So baust du', helpParts: 'Teile platzieren',
+        readingsTitle: 'Messwerte', readingsMotors: 'Motoren', readingsSensors: 'Sensoren', readingsEmpty: 'Dieses Modell hat keine Motoren oder Sensoren.',
+        readingsMotor: 'Motor {port}', readingsSensor: '{kind} {port}', readingsClose: 'Schließen',
+        kinds: {distance: 'Abstand', color: 'Farbe', force: 'Kraft', touch: 'Berührung', light: 'Licht', rotation: 'Drehung', tilt: 'Neigung', motion: 'Bewegung'},
+        replay: 'Wiederholung', replayHelp: 'Auf die letzten Sekunden zurückschauen. Start geht ab jetzt weiter.', replayNow: 'jetzt', speedValue: '{n}×',
         catalogueOpen: 'Ein Teil aus dem LDraw-Katalog hinzufügen', catalogueTitle: 'LDraw-Katalog', catalogueBack: 'Zurück zu den Teilen',
         catalogueHint: 'Nummer oder Name, z. B. 3001, slope 45', catalogueLoading: 'Katalog wird geladen…',
         catalogueUnavailable: 'Der LDraw-Katalog konnte nicht geladen werden ({error}). Er braucht eine Netzwerkverbindung.',
@@ -245,6 +254,11 @@ const TEXT = {
  * firmware route, or a VM whose step hook is inert): a backgrounded tab must not jump seconds ahead.
  */
 const MAX_FRAME_MS = 50;
+/** Replay (Simulate, paused): the last 20 s of simulated time, a pose about every 33 ms of it. */
+const REPLAY_MS = 20000;
+const REPLAY_STEP_MS = 33;
+/** Readings: 10 samples per simulated second, the last 10 s drawn. */
+const READINGS_SAMPLES = 100;
 /** The real-time factor is shown below this (a timer's jitter keeps a machine that keeps up near 1). */
 const SHOW_RTF_BELOW = 0.95;
 /** Build mode recompiles the model this long after the last edit (ms), for the issues and the motion overlay. */
@@ -306,6 +320,8 @@ class SimLabPane extends React.Component {
             mode: 'simulate', placing: null, selection: [], editorTick: 0, mat: null,
             buildStatus: {kind: 'idle'}, gizmoMode: 'move', grid: 10, recent: [], thumbTick: 0,
             showPorts: true, showMotion: false, blockers: [], portPicker: null, instructions: null, coarse: false,
+            // Simulate: sensor rays, the Readings panel, slow motion, and the replay position (null: live)
+            showSensors: false, readings: false, timeScale: 1, replayAt: null, replayFrames: 0, readingsTick: 0,
             paneWidth: 0, menu: null, drawer: false, paletteDragging: false, infoOpen: false, route: 'scratch',
             paletteOpen: true, paletteShare: null, propsShare: null, propsDocked: true,
             hidden: [], editGroup: null, pick: null, measurement: null, placeColor: null, propsOpen: false, shortcuts: false,
@@ -452,10 +468,7 @@ class SimLabPane extends React.Component {
             stop: () => this.apiStop(),
             reset: () => this.reset(),
             ensureRunning: () => this.apiEnsureRunning(),
-            setTimeScale: scale => {
-                this.timeScale = scale;
-                if (this.clock) this.clock.timeScale = scale;
-            },
+            setTimeScale: scale => this.setSpeed(scale),
             camera: view => this.apiCamera(view),
             locale: () => this.locale
         });
@@ -782,6 +795,7 @@ class SimLabPane extends React.Component {
             const shown = {ports: this.state.showPorts, motion: this.state.showMotion};
             this.editView?.setOverlay(shown);
             this.view?.setOverlay?.(shown);
+            this.view?.setSensors?.(this.sensorRays(), this.state.showSensors);
         });
     }
 
@@ -990,6 +1004,7 @@ class SimLabPane extends React.Component {
 
     async openText (text, name, shipped = null) {
         const token = this.loadToken = {};
+        this.clearReplay();
         this.opened = {text, name};
         this.teardown();
         this.setState({status: 'loading', message: '', issues: [], blockers: [], modelFile: name, shipped, simMs: 0, rtf: null, view3d: 'loading'});
@@ -1060,6 +1075,7 @@ class SimLabPane extends React.Component {
             this.view.setPorts(insight.ports.map(item => ({...item, label: this.portLabelText(item)})));
             this.view.setMotion({joints: insight.joints, gears: insight.gears, tints: insight.tints.bodies});
             this.view.setOverlay({ports: this.state.showPorts, motion: this.state.showMotion});
+            this.view.setSensors(this.sensorRays(), this.state.showSensors);
             this.view.render(session.snapshot());
         } catch (error) {
             view3d = 'fallback';
@@ -1187,7 +1203,149 @@ class SimLabPane extends React.Component {
         if (Math.floor(this.session.time / 100) !== Math.floor(this.state.simMs / 100)) {
             this.setState({simMs: this.session.time, rtf: this.clock && this.clock.installed ? this.clock.realTimeFactor : null});
         }
-        if (this.view) this.view.render(this.session.snapshot());
+        if (this.state.status === 'running') this.record();
+        if (this.state.readings && this.api) this.sample();
+        const replayed = this.state.replayAt !== null && this.replay ? this.replay.frames[this.state.replayAt] : null;
+        if (this.view) this.view.render(replayed ? replayed.snapshot : this.session.snapshot());
+    }
+
+    // ---- Simulate: slow motion, replay, readings, sensor rays --------------------------------
+
+    /** Slow motion: simulated per real time, 1, 1/2 or 1/4 (also the Robot Lab API's setTimeScale). */
+    setSpeed (scale) {
+        const s = Math.min(1, Math.max(0.05, Number(scale) || 1));
+        this.timeScale = s;
+        if (this.clock) this.clock.timeScale = s;
+        if (this.state.timeScale !== s) this.setState({timeScale: s});
+    }
+
+    /** Keeps the last REPLAY_MS of the run (body poses, about 30 per simulated second) for the replay slider. */
+    record () {
+        const t = this.session.time;
+        if (!this.replay) this.replay = {frames: []};
+        const frames = this.replay.frames;
+        if (frames.length && t - frames[frames.length - 1].t < REPLAY_STEP_MS) return;
+        const snap = this.session.snapshot();
+        frames.push({t, snapshot: {bodyIds: snap.bodyIds, bodies: Float32Array.from(snap.bodies)}});
+        while (frames.length && t - frames[0].t > REPLAY_MS) frames.shift();
+        if (this.state.replayAt !== null || frames.length % 15 === 0) this.setState({replayAt: null, replayFrames: frames.length});
+    }
+
+    clearReplay () {
+        this.replay = null;
+        this.readingsHistory = new Map();
+        this.lastSample = null;
+        if (this.state.replayAt !== null || this.state.replayFrames) this.setState({replayAt: null, replayFrames: 0});
+    }
+
+    /** Every motor's angle and speed and every sensor's value, 10 times a simulated second, for the Readings panel. */
+    sample () {
+        const t = this.session.time;
+        if (this.lastSample !== null && this.lastSample !== undefined && t - this.lastSample < 100 && t >= this.lastSample) return;
+        this.lastSample = t;
+        const history = this.readingsHistory || (this.readingsHistory = new Map());
+        const push = (key, value, now) => {
+            const h = history.get(key) || {values: [], now: ''};
+            h.values.push(value);
+            if (h.values.length > READINGS_SAMPLES) h.values.shift();
+            h.now = now;
+            history.set(key, h);
+        };
+        const api = this.api;
+        for (const m of api.motors()) {
+            const ref = m.port ?? m.id;
+            const angle = api.motorAngle(ref);
+            push(`motor-${ref}`, angle, `${Math.round(angle)}° · ${Math.round(api.motorSpeed(ref))} °/s`);
+        }
+        for (const x of api.sensors()) {
+            const ref = x.port ?? x.id;
+            const v = api.sensorValue(ref);
+            const now = x.kind === 'distance' ? (v < 0 ? '–' : `${v} cm`) : typeof v === 'number' ? String(v) : String(v);
+            push(`sensor-${ref}`, typeof v === 'number' && v >= 0 ? v : null, now);
+        }
+        this.setState(s => ({readingsTick: s.readingsTick + 1}));
+    }
+
+    /** The Readings panel's rows. */
+    readingsRows () {
+        const api = this.api;
+        const history = this.readingsHistory || new Map();
+        const T = this.text;
+        const rows = (list, prefix, label) => list.map(x => {
+            const ref = x.port ?? x.id;
+            const h = history.get(`${prefix}-${ref}`) || {values: [], now: '…'};
+            return {key: `${prefix}-${ref}`, label: label(x), now: h.now, values: h.values};
+        });
+        if (!api || !this.session) return {motors: [], sensors: []};
+        return {
+            motors: rows(api.motors(), 'motor', m => fillText(T.readingsMotor, {port: m.port ?? m.id})),
+            sensors: rows(api.sensors(), 'sensor', x => fillText(T.readingsSensor, {kind: T.kinds[x.kind] || x.kind, port: x.port ?? x.id}))
+        };
+    }
+
+    /**
+     * The sensor rays for the view: each sensor part's probe (PartMeta `probe`, part frame), a distance
+     * sensor's as long as it measures (1 cm = 25 LDU; nothing seen: its 2 m range), the others 2 cm.
+     */
+    sensorRays () {
+        if (!this.session || !this.api) return [];
+        const model = this.session.runModel || this.session.model;
+        const byId = new Map(model.parts.map(p => [p.id, p]));
+        const out = [];
+        for (const x of this.api.sensors()) {
+            const placed = byId.get(x.part);
+            const meta = placed && this.lib.CATALOG.get(placed.part);
+            const probe = meta && (meta.probe || meta.device?.probe);
+            if (!probe || !probe.origin || !probe.direction) continue;
+            const ref = x.port ?? x.id;
+            out.push({id: x.part, origin: probe.origin, direction: probe.direction,
+                lengthOf: x.kind === 'distance' ? () => {
+                    const cm = this.api.sensorValue(ref);
+                    return (typeof cm === 'number' && cm > 0 ? cm : 200) * 25;
+                } : () => 50});
+        }
+        return out;
+    }
+
+    /** Paused with a recorded run: a slider back through its last seconds (the run goes on from now). */
+    renderReplay () {
+        const n = this.state.replayFrames;
+        if (this.state.mode !== 'simulate' || this.state.status === 'running' || !this.replay || n < 2) return null;
+        const frames = this.replay.frames;
+        const at = this.state.replayAt === null ? frames.length - 1 : this.state.replayAt;
+        const back = (frames[frames.length - 1].t - frames[at].t) / 1000;
+        const T = this.text;
+        return (
+            <div data-testid="bw-sim-lab-replay" style={{position: 'absolute', left: 8, right: 8, bottom: 8, zIndex: 5, display: 'flex', alignItems: 'center', gap: 8,
+                background: 'rgba(255, 255, 255, 0.94)', border: '1px solid #cbd5e1', borderRadius: 8, padding: '4px 10px', fontSize: 12}}>
+                <span style={{fontWeight: 600}} title={T.replayHelp}>{T.replay}</span>
+                <input type="range" data-testid="bw-sim-lab-replay-slider" aria-label={T.replay} title={T.replayHelp}
+                    min={0} max={frames.length - 1} step={1} value={at} style={{flex: '1 1 auto'}}
+                    onChange={e => {
+                        const i = Number(e.target.value);
+                        this.setState({replayAt: i >= frames.length - 1 ? null : i});
+                    }} />
+                <span data-testid="bw-sim-lab-replay-time" style={{fontVariantNumeric: 'tabular-nums', minWidth: 52, textAlign: 'right'}}>
+                    {at >= frames.length - 1 ? T.replayNow : `−${back.toFixed(1)} s`}
+                </span>
+            </div>
+        );
+    }
+
+    /** Slow motion: an icon and a list (1×, ½×, ¼×). */
+    renderSpeed (inMenu) {
+        const A = this.ttext.actions;
+        const field = this.state.coarse ? {minHeight: 40} : {height: 28};
+        return (
+            <label title={A.speed} style={{display: 'inline-flex', alignItems: 'center', gap: 4, padding: inMenu ? '0 8px' : '0 4px', fontSize: 12, flex: '0 0 auto'}}>
+                <Icon name="speed" />
+                {inMenu ? <span style={{flex: '1 1 auto'}}>{A.speed}</span> : null}
+                <select data-testid="bw-sim-lab-speed" aria-label={A.speed} value={this.state.timeScale} style={field}
+                    onChange={e => this.setSpeed(Number(e.target.value))}>
+                    {[1, 0.5, 0.25].map(v => <option key={v} value={v}>{fillText(this.text.speedValue, {n: v === 1 ? '1' : v === 0.5 ? '½' : '¼'})}</option>)}
+                </select>
+            </label>
+        );
     }
 
     /** The scene's RCX (hubs/rcx/), or null. */
@@ -1821,16 +1979,20 @@ class SimLabPane extends React.Component {
         const info = this.state.info;
         if (!info || this.state.mode !== 'simulate') return null;
         const box = {fontSize: 12, color: '#1e3a8a', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 6, padding: '6px 8px'};
-        if (!this.compact()) return <div role="status" data-testid="bw-sim-lab-info" style={box}>{info}</div>;
+        // One line at every width (owner request: no long text on screen); a click shows all of it.
         const open = this.state.infoOpen;
         return (
-            <div role="status" data-testid="bw-sim-lab-info" style={{...box, padding: '4px 8px', minWidth: 0}}>
-                <button type="button" data-testid="bw-sim-lab-info-toggle" aria-expanded={open} title={this.text.infoToggle}
+            <div role="status" data-testid="bw-sim-lab-info" style={{...box, padding: '4px 8px', minWidth: 0, display: 'flex', alignItems: 'flex-start', gap: 6}}>
+                {/* the toggle is its own small button: the note's words are not part of any button's name */}
+                <button type="button" data-testid="bw-sim-lab-info-toggle" aria-expanded={open} aria-label={this.text.infoToggle} title={this.text.infoToggle}
                     onClick={() => this.setState(s => ({infoOpen: !s.infoOpen}))}
-                    style={{display: 'block', width: '100%', font: 'inherit', color: 'inherit', textAlign: 'left', background: 'none', border: 'none',
-                        padding: 0, cursor: 'pointer', ...(open ? {} : {whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'})}}>
-                    <span aria-hidden="true">{open ? '▾ ' : '▸ '}</span>{info}
+                    style={{flex: '0 0 auto', font: 'inherit', color: 'inherit', background: 'none', border: 'none', padding: 0, cursor: 'pointer'}}>
+                    {open ? '▾' : '▸'}
                 </button>
+                <span onClick={() => this.setState(s => ({infoOpen: !s.infoOpen}))}
+                    style={{flex: '1 1 auto', minWidth: 0, cursor: 'pointer', ...(open ? {} : {whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'})}}>
+                    {info}
+                </span>
             </div>
         );
     }
@@ -1912,6 +2074,11 @@ class SimLabPane extends React.Component {
                 run: () => this.setState(st => (docked ? {propsDocked: !st.propsDocked} : {propsOpen: !st.propsOpen}))},
             shortcuts: {id: 'shortcuts', label: A.shortcuts, title: this.etext.shortcutsHelp, run: () => this.setState({shortcuts: true, menu: null}), pri: 3},
             grid: {id: 'grid', label: A.grid, pri: 3, width: 96, render: inMenu => this.renderGrid(inMenu)},
+            speed: {id: 'speed', label: A.speed, pri: 2, width: 84, render: inMenu => this.renderSpeed(inMenu)},
+            'show-sensors': {id: 'show-sensors', label: A['show-sensors'], kind: 'switch', pressed: this.state.showSensors,
+                run: () => this.setOverlay({showSensors: !this.state.showSensors}), pri: 3},
+            readings: {id: 'readings', label: A.readings, kind: 'switch', pressed: this.state.readings,
+                run: () => this.setState(s => ({readings: !s.readings})), pri: 2},
             file: {id: 'file-menu', label: A['file-menu'], pri: 2, width: 46, render: inMenu => this.renderFile(inMenu)}
         };
     }
@@ -1936,9 +2103,9 @@ class SimLabPane extends React.Component {
             ];
         }
         return [
-            pick('run', G.run, ['run', 'reset']),
+            pick('run', G.run, ['run', 'reset', 'speed']),
             pick('view', G.view, ['view-home', 'view-fit', 'view-top', 'view-front', 'view-side']),
-            pick('show', G.show, ['show-ports', 'show-motion']),
+            pick('show', G.show, ['show-ports', 'show-motion', 'show-sensors', 'readings']),
             pick('file', G.file, ['file'])
         ];
     }
@@ -2324,6 +2491,11 @@ class SimLabPane extends React.Component {
                         background: '#fff', borderRadius: 6}}>
                         <div ref={this.box} data-testid="bw-sim-lab-view" style={{flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative'}} />
                         {build && this.editView && this.renderHoldOverlays()}
+                        {simulate && this.state.readings && (
+                            <SimLabReadings text={{...this.text, close: this.text.readingsClose}} {...this.readingsRows()}
+                                onClose={() => this.setState({readings: false})} />
+                        )}
+                        {simulate && this.renderReplay()}
                         {this.renderPortPicker(button)}
                         {build && !this.dockProperties() && this.state.propsOpen && (
                             <div data-testid="bw-sim-lab-properties-drawer" style={{position: 'absolute', right: 0, top: 0, bottom: 0, zIndex: 6, maxWidth: 'calc(100% - 48px)',

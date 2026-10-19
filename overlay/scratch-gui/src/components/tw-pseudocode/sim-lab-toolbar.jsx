@@ -46,6 +46,10 @@ export const ICONS = {
     grid: 'M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18',
     'show-ports': 'M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0zM12 18v4',
     'show-motion': 'M4 12h9M2 7h8M6 17h8M15 7l5 5-5 5',
+    // Simulate: a gauge (speed), a sensor with its beam, a small chart (readings)
+    speed: 'M4 17a8 8 0 1 1 16 0M12 17l4-6M3 17h2M19 17h2',
+    'show-sensors': 'M3 9h5v6H3zM8 12h3M13 12h2M17 12h2M21 10v4',
+    readings: 'M3 3v18h18M7 15l4-5 3 3 5-7',
     'mirror-x': 'M12 3v18M9 7l-6 5 6 5zM15 7l6 5-6 5z',
     'mirror-z': 'M3 12h18M7 9l5-6 5 6zM7 15l5 6 5-6z',
     hide: 'M3 3l18 18M10.6 6.1A10 10 0 0 1 12 6c6 0 10 6 10 6a17 17 0 0 1-3.2 3.7M6.6 6.6A17 17 0 0 0 2 12s4 6 10 6a9.7 9.7 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2',

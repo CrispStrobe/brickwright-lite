@@ -6,9 +6,11 @@
 // view (lib/spike-arena/arena-view3d.js) and reached the same way, only through
 // the pane's dynamic import of bw-sim/sim-lab.js (chunk "bw-sim-lab").
 
-import {Box3, Color, GridHelper, MOUSE, PerspectiveCamera, Sphere, Vector2, Vector3, WebGLRenderer} from 'three';
+import {Box3, BufferGeometry, Color, Float32BufferAttribute, GridHelper, LineBasicMaterial, LineSegments, MOUSE, Mesh, MeshBasicMaterial,
+    PerspectiveCamera, Sphere, SphereGeometry, Vector2, Vector3, WebGLRenderer} from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {parseLDConfig} from './ldraw-colors.js';
+import {LDU_M, dirToWorld, lduToWorld} from '../contracts.js';
 import {buildSimScene, applySnapshot} from './sim-scene3d.js';
 import {addPartLights} from './part-style.js';
 import {createInsightLayer, createPulse, tintMaterial} from './insight-layer.js';
@@ -209,6 +211,62 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
             for (const m of [].concat(mesh.material)) tintMaterial(m, tint || null);
         }
     };
+    // Sensor rays (Show sensor rays): each sensor's probe (PartMeta probe: origin and direction in the
+    // part's LDraw frame, LDU) as a line from the sensor, with a dot at its end. A part's mesh holds its
+    // geometry in metres in the world's axes (part-geometry.js: x, -y, -z), so the probe is taken there
+    // first. A distance sensor's line is as long as what it measures; the others are short.
+    let sensorItems = [];
+    let lastRays = [];
+    const rayMaterial = new LineBasicMaterial({color: 0xdc2626, depthTest: false, transparent: true, opacity: 0.9});
+    const rays = new LineSegments(new BufferGeometry(), rayMaterial);
+    rays.renderOrder = 10;
+    rays.frustumCulled = false;
+    rays.visible = false;
+    built.scene.add(rays);
+    const tipGeometry = new SphereGeometry(1, 12, 8);
+    const tipMaterial = new MeshBasicMaterial({color: 0xdc2626, depthTest: false, transparent: true, opacity: 0.9});
+    let tips = [];
+    const updateSensors = () => {
+        if (!rays.visible) return;
+        const points = [];
+        sensorItems.forEach((item, i) => {
+            const mesh = built.partMeshes.get(item.id);
+            if (!mesh) return;
+            const len = Math.max(1, item.lengthOf()) * LDU_M;
+            const origin = new Vector3(...lduToWorld(item.origin));
+            const direction = new Vector3(...dirToWorld(item.direction)).normalize();
+            const from = mesh.localToWorld(origin.clone());
+            const to = mesh.localToWorld(origin.clone().addScaledVector(direction, len));
+            points.push(...from.toArray(), ...to.toArray());
+            lastRays[i] = {from: from.toArray(), to: to.toArray()};
+            const tip = tips[i];
+            if (tip) {
+                tip.position.copy(to);
+                tip.scale.setScalar(3 * LDU_M); // a dot 6 LDU across
+            }
+        });
+        rays.geometry.setAttribute('position', new Float32BufferAttribute(points, 3));
+        rays.geometry.computeBoundingSphere();
+    };
+    /**
+     * The sensors whose rays can be shown: items {id (the part in the model), origin, direction (part frame),
+     * lengthOf: () => LDU}; `shown` turns the overlay on or off.
+     */
+    const setSensors = (items, shown) => {
+        sensorItems = items.filter(item => built.partMeshes.has(item.id));
+        lastRays = [];
+        for (const tip of tips) built.scene.remove(tip);
+        tips = sensorItems.map(() => {
+            const tip = new Mesh(tipGeometry, tipMaterial);
+            tip.renderOrder = 10;
+            built.scene.add(tip);
+            return tip;
+        });
+        rays.visible = Boolean(shown) && sensorItems.length > 0;
+        for (const tip of tips) tip.visible = rays.visible;
+        dirty = true;
+    };
+
     /** Port badges: items {id, port, label} (motors and sensors). */
     const setPorts = items => {
         insight.setPorts(items.map(item => ({...item, anchor: partCentre(item.id)})));
@@ -291,6 +349,7 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
             controls.update();
         }
         followed = centre;
+        updateSensors();
         pulse.tick(performance.now());
         built.scene.updateMatrixWorld();
         camera.updateMatrixWorld();
@@ -301,6 +360,10 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
 
     const dispose = () => {
         insight.dispose();
+        rays.geometry.dispose();
+        rayMaterial.dispose();
+        tipGeometry.dispose();
+        tipMaterial.dispose();
         if (grid) {
             grid.geometry.dispose();
             grid.material.dispose();
@@ -324,7 +387,9 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         dirty = true;
         resetCamera();
     };
-    return {canvas, render, resize, resetCamera: recentre, dispose, setPorts, setMotion, setOverlay, highlight,
+    return {canvas, render, resize, resetCamera: recentre, dispose, setPorts, setMotion, setOverlay, setSensors, highlight,
+        /** The sensor rays as last drawn, {from, to} in world space (metres), for the browser gate. */
+        sensorRays: () => (rays.visible ? lastRays.filter(Boolean).map(r => ({...r})) : []),
         /** The pane's view buttons: 'home', 'top', 'front' or 'side'; and Fit. */
         view: name => { viewFrom(name); dirty = true; },
         fit: () => { fit(); dirty = true; },
