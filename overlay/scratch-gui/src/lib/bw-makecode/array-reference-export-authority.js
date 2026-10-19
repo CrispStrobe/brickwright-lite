@@ -415,7 +415,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         return false;
     };
     const topChain=(scope,node)=>{const seen=new Set();let id=scope.root?.next;while(id&&!seen.has(id)){seen.add(id);const n=block(scope.target,id);if(n===node)return true;id=n?.next;}return false;};
-    let resetFlowReady=false;
+    let resetFlowReady=false,spriteDataReady=false;
     const killedReset=(c,w,at)=>{
         if(!resetFlowReady||!resetValue(w.value?.node)||invalid.has(w.node)||w.scope.invalid)return false;
         const scope=owners.get(at);if(!scope||w.scope!==scope||!scope.executedBefore)return false;
@@ -596,6 +596,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                 for(const item of a.elements)result.add(item);
             }return result;
         }
+        if(node.opcode==='arcade_spriteProperty'){const w=spriteDataReady?spriteDataWriter(target,node):null;return w?readInput(w.value):new Set([bad]);}
         if(node.opcode==='arcade_objectField'){const f=literal(node,'FIELD',target);return !dynamicFields&&typeof f==='string'&&exactKeys(node,['OBJECT','FIELD'])&&cells.has('field:'+f)?new Set(fieldCell(f).types):new Set([bad]);}
         if(node.opcode==='arcade_callFunction'){
             const call=calls.find(call=>call.node===node);if(!call?.fn||call.fn.invalid||!call.args||!returnsAlways(target,call.fn.root.next))return new Set([bad]);
@@ -817,6 +818,33 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(!scope||owners.get(shrink)!==scope||!statement||!later||statement===later||!onceNode(statement)||!onceNode(later))return false;
         return !!scope.executedBefore.get(shrink)?.has(statement);
     };
+    // Sprite.data of a sprite variable: exactly one actual data write targets
+    // that variable, once and earlier in the reading scope, and the variable
+    // holds exactly one fresh sprite creation. Every other data write must
+    // target a distinct variable that also holds only its own fresh creation.
+    const SPRITE_CREATIONS=new Set(['arcade_createSprite','arcade_createImageSprite']);
+    // The one fresh sprite creation a cell holds, following plain aliases.
+    const liveCreation=(c,at,path=new Set())=>{
+        if(!c||c.directBad||path.has(c))return null;path.add(c);
+        const live=c.writers.filter(w=>!killedReset(c,w,at));if(live.length!==1||invalid.has(live[0].node))return null;
+        const value=live[0].value,source=value?.cell||(value?.node&&binding(live[0].target,value.node));
+        if(source)return liveCreation(source,live[0].node,path);
+        return SPRITE_CREATIONS.has(value?.node?.opcode)?value.node:null;
+    };
+    const idCell=(target,node)=>{const v=input(node,'ID',target);return v?.cell||(v?.node&&binding(target,v.node))||null;};
+    const spriteDataWriter=(target,node)=>{
+        if(!exactKeys(node,['ID'],['PROPERTY'])||literal(node,'PROPERTY',target)!=='data')return null;
+        const c=idCell(target,node),creation=liveCreation(c,node);if(!creation)return null;
+        const writes=records.filter(r=>r.node.opcode==='arcade_setSpriteProperty'&&literal(r.node,'PROPERTY',r.target)==='data');
+        if(records.some(r=>r.node.opcode==='arcade_setSpriteProperty'&&literal(r.node,'PROPERTY',r.target)===null))return null;
+        const own=[];
+        for(const r of writes){if(!exactKeys(r.node,['ID','VALUE'],['PROPERTY'])||invalid.has(r.node))return null;const other=idCell(r.target,r.node);
+            const made=other===c?creation:liveCreation(other,r.node);if(!made)return null;if(made===creation)own.push(r);}
+        if(own.length!==1)return null;const w=own[0],scope=owners.get(node);
+        if(w.scope!==scope||!onceNode(w.node)||!scope.executedBefore?.get(statementOf(node))?.has(w.node))return null;
+        return {value:input(w.node,'VALUE',w.target),node:w.node};
+    };
+    spriteDataReady=true;
     resetFlowReady=true;
     // A push precedes an occurrence in every activation when it executed
     // earlier in the occurrence's own scope (directly or on a called
@@ -930,6 +958,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             return true;
         }
         if(node.opcode==='arcade_objectField')return fieldInitialized(target,node,next);
+        if(node.opcode==='arcade_spriteProperty'){const w=spriteDataWriter(target,node);return !!w&&initialized(w.value,next);}
         if(node.opcode==='arcade_spritesOfKind'&&exactKeys(node,['KIND']))return numericKindInitialized(input(node,'KIND',target));
         if(Object.hasOwn(FRESH_SDK_ARRAYS,node.opcode))return exactKeys(node,FRESH_SDK_ARRAYS[node.opcode]);
         return false;
