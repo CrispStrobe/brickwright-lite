@@ -111,5 +111,18 @@ pointer (a thin 1 × 3 on the output axle at LDraw y −20) swept through the dr
 turn — it now sits at the top of a 12L output axle (3708, y −170), 25 LDU above the 16T gears.
 Gearbox program: output/motor −0.3333 / −1.0000 (tooth ratios), the differential tests pass.
 
+## Open: gear meshes do not conserve angular momentum (excavator base yaw, `todo`)
+
+`test/bw-sim-excavator.test.mjs` "the dig cycle leaves the base where it stands" is a `todo`. The
+base yaws far beyond 10° during the DIG, before any slew (the slew's own reaction is ≈ 0.015 N·m:
+speed 10 %, 1500 °/s² on the motor, I ≈ 2e-3 kg·m² about the turntable). Floating without floor or
+gravity, the Excavator gains ≈ 2.6e-2 N·m·s of angular momentum in 1.75 s and spins ≈ 285° while only
+its bucket actuator runs (at rest it stays still). Jolt's GearConstraint applies angular impulses
+λ·a1, λ·r·a2 to the two gears only; a real mesh also pushes both axles, and that couple reaches the
+frame. On a moving frame (every actuator's 16T pair, the slew mesh) each mesh that transmits torque
+puts λ·(a1 + r·a2) into the machine. Clamped benches hide it. The fix is a momentum-conserving mesh
+for every gear kind (next task). The slew mesh is already a tooth contact relative to its frame
+(the merge with the excavator lane), which keeps the swings within 12° of ±90°.
+
 Minor, recorded by the passing tests: Jolt's default linear damping (0.05 s⁻¹, not set by
 `jolt-core.js`) acts as a weak, velocity-proportional air drag (−0.4 % on free fall at 0.15 s).
