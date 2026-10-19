@@ -30,7 +30,7 @@ const SIM = path.join(LIB, 'bw-sim');
 const {SimSession, catalogFrom} = await import(path.join(SIM, 'sim-session.js'));
 const {registerVirtualClassicPeripheral, clearVirtualClassicPeripheralsForTest, installVirtualClassicScratchLink} =
     await import(path.join(LIB, 'virtual-hub', 'bt-classic-registry.js'));
-const {connectVirtualBtHub} = await import(path.join(LIB, 'virtual-hub', 'connect-virtual-bt-hub.js'));
+const {connectVirtualHub} = await import(path.join(LIB, 'virtual-hub', 'connect-virtual-hub.js'));
 const {ev3ClassicPeripheral, EV3_PERIPHERAL_ID} = await import(path.join(SIM, 'hubs', 'ev3', 'ev3-peripheral.js'));
 const {nxtClassicPeripheral, NXT_PERIPHERAL_ID} = await import(path.join(SIM, 'hubs', 'nxt', 'nxt-peripheral.js'));
 const Timer = createRequire(import.meta.url)(path.join(INTEGRATED, 'node_modules', 'scratch-vm', 'src', 'util', 'timer.js'));
@@ -140,7 +140,7 @@ export async function runOnBtHub (program, {modelText, mat = null, profile, exte
         let connectError = null;
         if (connect) {
             try {
-                await connectVirtualBtHub({vm, extensionId, peripheralId: profile === 'ev3' ? EV3_PERIPHERAL_ID : NXT_PERIPHERAL_ID,
+                await connectVirtualHub({vm, extensionId, peripheralId: profile === 'ev3' ? EV3_PERIPHERAL_ID : NXT_PERIPHERAL_ID,
                     wait: ms => clock.advance(ms)});
             } catch (error) {
                 connectError = error;

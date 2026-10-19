@@ -1,0 +1,12 @@
+# BOOST rover: the LEGO BOOST blocks (legoboostunified) drive the Move Hub's built-in motors A and B
+# ahead for three seconds, then turn the rover on wheel A by 540 degrees. Each motor gets its own
+# block: the extension sends one message per 50 ms, so a block for "AB" reaches motor A only.
+WHEN flag clicked:
+  boost set motor A power to 100 %
+  boost set motor B power to 100 %
+  boost turn motor A on
+  boost turn motor B on
+  wait 3 seconds
+  boost turn motor A off
+  boost turn motor B off
+  boost turn motor A on for 540 degrees

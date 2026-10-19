@@ -170,6 +170,9 @@ export const sensorsOf = mechanism => {
     return Array.isArray(mechanism.sensors) ? mechanism.sensors.map(s => ({...s, hub: null})) : [];
 };
 
+/** How far (m) a proximity probe reaches (the WeDo 2.0 motion sensor's range is about 15 cm; estimated). */
+export const PROXIMITY_REACH_M = 0.25;
+
 /** How far (m) a hinge's line may pass from a rotation sensor's probe and still be the axle in its hole. */
 const ROTATION_AXLE_REACH_M = 0.004;
 
@@ -335,6 +338,23 @@ export const readSensors = (core, mechanism, robotBodies = [], sensors = sensors
             // The EV3 gyro: no ray. The hub reads the yaw of the body that carries it (its pose,
             // hubs/ev3/ev3-virtual-hub.js writeReadings): the probe only says it is there.
             out[sensor.port] = {kind: 'gyro'};
+        } else if (sensor.kind === 'proximity') {
+            // A short infrared proximity probe (the WeDo 2.0 motion sensor, devices/catalog.js wedo2-motion):
+            // the distance to whatever the ray meets within PROXIMITY_REACH_M, in mm, or −1 for nothing.
+            let hit = null;
+            try { hit = core.castRay(worldOrigin, worldDir, PROXIMITY_REACH_M, {ignoreBodies}); } catch (_) {}
+            out[sensor.port] = {kind: 'proximity', distanceMm: hit ? Math.round(hit.distance * 1000) : -1};
+        } else if (sensor.kind === 'tilt') {
+            // A tilt sensor (WeDo 2.0 45305): how far its probe direction (the sensor's forward, level when
+            // the model was placed) points above the horizon (pitch), and how far the sensor's right side,
+            // level at t = 0 too, has dropped (roll), degrees. World up is +y.
+            const up0 = quatRotateVec(invInit, [0, 1, 0]);
+            const right0 = [localDir[1] * up0[2] - localDir[2] * up0[1], localDir[2] * up0[0] - localDir[0] * up0[2],
+                localDir[0] * up0[1] - localDir[1] * up0[0]];
+            const rightWorld = quatRotateVec(pose.rotation, right0);
+            const rn = Math.hypot(...rightWorld) || 1;
+            out[sensor.port] = {kind: 'tilt', pitchDeg: Math.asin(Math.max(-1, Math.min(1, worldDir[1]))) * 180 / Math.PI,
+                rollDeg: -Math.asin(Math.max(-1, Math.min(1, rightWorld[1] / rn))) * 180 / Math.PI};
         } else if (sensor.kind === 'rotation') {
             // The RCX rotation sensor: the turn of the axle through its hole relative to the
             // sensor's own body — the hinge the compiler made there (kinds/rotation-sensor.js),

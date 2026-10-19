@@ -162,3 +162,24 @@ test('the robotlab blocks know only runtime.robotLab: the extension imports noth
     const code = text.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
     assert.doesNotMatch(code, /scratch-gui|bw-sim\//, 'no path into the GUI or the simulator (outside comments)');
 });
+
+test('the LWP3 and WeDo 2.0 hubs stay behind the VirtualHub boundary; their GATT peripherals reach only the hubs\' protocol', () => {
+    // docs/ROBOT-LAB-HUBS-PLAN.md P3: a radio hub is a profile plus an adapter that speaks its protocol; the physics
+    // is reached only through PortDrive/PortReading data, and the BLE surface only through the hub object.
+    for (const dir of ['bw-sim/hubs/lwp3', 'bw-sim/hubs/wedo2']) {
+        const files = filesUnder(path.join(LIB, dir));
+        assert.ok(files.length >= 2, `${dir} is scanned`);
+        const via = closure(files);
+        const bad = [...via.keys()].filter(f => /^bw-sim\/(physics|mech)\//.test(rel(f)) || rel(f) === 'bw-sim/hub-bridge.js' ||
+            rel(f).startsWith('virtual-hub/')).map(f => chain(via, f));
+        assert.deepEqual(bad, [], `${dir} reaches:\n${bad.join('\n')}`);
+    }
+    const peripherals = closure([path.join(LIB, 'virtual-hub/lab-ble-peripherals.js'), path.join(LIB, 'virtual-hub/scratch-link-ble.js'),
+        path.join(LIB, 'virtual-hub/connect-virtual-hub.js')]);
+    const reached = [...peripherals.keys()].map(rel);
+    assert.ok(reached.includes('bw-sim/hubs/lwp3/lwp3-protocol.js'), 'the LWP3 peripheral reads the protocol constants');
+    const physics = [...peripherals.keys()].filter(f => /^bw-sim\/(physics|mech)\//.test(rel(f)) || rel(f) === 'bw-sim/sim-session.js')
+        .map(f => chain(peripherals, f));
+    assert.deepEqual(physics, [], `the BLE surface reaches the physics:\n${physics.join('\n')}`);
+    assert.ok([...closure([path.join(LIB, 'bw-sim/hubs/index.js')]).keys()].map(rel).includes('bw-sim/hubs/lwp3/lwp3-virtual-hub.js'));
+});

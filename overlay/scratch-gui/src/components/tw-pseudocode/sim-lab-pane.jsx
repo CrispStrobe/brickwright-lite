@@ -38,6 +38,15 @@ import {TOOLBAR_TEXT} from './sim-lab-toolbar-text.js';
 import {sharedSpikeHubState} from '../../lib/virtual-hub/shared-spike-hub.js';
 import {ROBOT_LAB_EVENTS} from '../../lib/robot-lab-events.js';
 
+/**
+ * The LEGO extensions that program a radio hub (hub `protocol`, bw-sim/hubs/lwp3 and hubs/wedo2), in the
+ * order Run looks for them: the bundled unified ones first, then scratch-vm's own.
+ */
+const HUB_EXTENSIONS = Object.freeze({
+    lwp3: Object.freeze(['legopoweredup', 'legoboostunified', 'boost']),
+    wedo2: Object.freeze(['wedo2unified', 'wedo2'])
+});
+
 /** A MODELS entry's key: its `id` when one model file is listed more than once, else its file. */
 const modelKey = m => m.id || m.file;
 
@@ -58,10 +67,14 @@ const TEXT = {
             'rcx-line-follower.nqc': 'The NQC program is in the NQC tab and in the Lab\'s RCX. Press Run and watch it follow the line\'s edge with its light sensor. Challenge: change THRESHOLD and see what happens.',
             'motor-bench.bw': 'The example program is in the Code tab now, in lab words: no hub, the Robot Lab turns the motor itself. Press Run. Challenge: make it turn back the other way.',
             'ev3-wall-stopper.bw': 'The example program is in the Code tab now, in EV3 words. Press Run: the program connects to the Lab\'s EV3 over Scratch Link and drives at the wall until its ultrasonic sensor sees it closer than 15 cm.',
-            'nxt-bumper-bot.blocks.json': 'The NXT blocks are on the sprite now. Press Run: the program connects to the Lab\'s NXT over Scratch Link, turns both wheels once, then drives until the bumper touches the wall.'
+            'nxt-bumper-bot.blocks.json': 'The NXT blocks are on the sprite now. Press Run: the program connects to the Lab\'s NXT over Scratch Link, turns both wheels once, then drives until the bumper touches the wall.',
+            'technic-hub-bench.bw': 'The example program is in the Code tab now, in pup words: the LEGO Powered Up blocks. Press ⇦ To blocks, then Run: the blocks connect to the Lab\'s Technic Hub and turn motor A one full turn. Challenge: make it turn three quarters.',
+            'boost-rover.bw': 'The example program is in the Code tab now, in boost words: the LEGO BOOST blocks. Press ⇦ To blocks, then Run: the Move Hub drives ahead with its motors A and B, then turns. Challenge: make it turn the other way.',
+            'wedo-milo.bw': 'The example program is in the Code tab now, in wedo words: the LEGO WeDo 2.0 blocks. Press ⇦ To blocks, then Run: the rover drives until its motion sensor sees the wall. Challenge: make it stop further away.'
         },
         noProgramLab: 'Nothing tells this motor to turn yet. Use the Robot Lab blocks (Add Extension) or lab words in the Code tab, press ⇦ To blocks, then press Run.',
         noProgramBt: 'No {brick} program is loaded yet, so nothing tells the motors to turn. Add the {brick} blocks (Add Extension) or load the example program, then press Run.',
+        noProgramHub: 'No program for this hub is loaded yet. Add its blocks ({extensions}) or write pup, boost or wedo words in the Code tab, press ⇦ To blocks, then press Run.',
         exampleFailed: 'Could not load the example program: {error}',
         mat: 'Mat', drive: 'Drive', forward: 'Forward', back: 'Back', left: 'Left', right: 'Right', stop: 'Stop', speed: 'Speed',
         driveHelp: 'Hold an arrow (or use the arrow keys) to drive with motors A and B.', readout: 'Hub',
@@ -136,10 +149,14 @@ const TEXT = {
             'rcx-line-follower.nqc': 'Das NQC-Programm steht jetzt im NQC-Tab und im RCX des Labors. Drücke Start und schau zu, wie er mit dem Lichtsensor dem Rand der Linie folgt. Aufgabe: Ändere THRESHOLD und schau, was passiert.',
             'motor-bench.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in lab-Wörtern: ohne Hub dreht das Robot Lab den Motor selbst. Drücke Start. Aufgabe: Lass ihn wieder zurückdrehen.',
             'ev3-wall-stopper.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in EV3-Wörtern. Drücke Start: Das Programm verbindet sich über Scratch Link mit dem EV3 des Labors und fährt auf die Wand zu, bis sein Ultraschallsensor sie näher als 15 cm sieht.',
-            'nxt-bumper-bot.blocks.json': 'Die NXT-Blöcke sind jetzt bei der Figur. Drücke Start: Das Programm verbindet sich über Scratch Link mit dem NXT des Labors, dreht beide Räder einmal und fährt dann, bis der Stoßfänger die Wand berührt.'
+            'nxt-bumper-bot.blocks.json': 'Die NXT-Blöcke sind jetzt bei der Figur. Drücke Start: Das Programm verbindet sich über Scratch Link mit dem NXT des Labors, dreht beide Räder einmal und fährt dann, bis der Stoßfänger die Wand berührt.',
+            'technic-hub-bench.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in pup-Wörtern: die Blöcke von LEGO Powered Up. Drücke ⇦ Zu Blöcken und dann Start: Die Blöcke verbinden sich mit dem Technic-Hub des Labors und drehen Motor A einmal ganz herum. Aufgabe: Lass ihn eine Dreivierteldrehung machen.',
+            'boost-rover.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in boost-Wörtern: die Blöcke von LEGO BOOST. Drücke ⇦ Zu Blöcken und dann Start: Der Move Hub fährt mit seinen Motoren A und B geradeaus und dreht dann. Aufgabe: Lass ihn andersherum drehen.',
+            'wedo-milo.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in wedo-Wörtern: die Blöcke von LEGO WeDo 2.0. Drücke ⇦ Zu Blöcken und dann Start: Der Rover fährt, bis sein Bewegungssensor die Wand sieht. Aufgabe: Lass ihn weiter vorher anhalten.'
         },
         noProgramLab: 'Noch sagt dem Motor niemand, dass er sich drehen soll. Nimm die Robot-Lab-Blöcke (Erweiterung hinzufügen) oder lab-Wörter im Code-Tab, drücke ⇦ Zu Blöcken und dann Start.',
         noProgramBt: 'Es ist noch kein {brick}-Programm geladen, darum dreht sich kein Motor. Füge die {brick}-Blöcke hinzu (Erweiterung hinzufügen) oder lade das Beispielprogramm, dann drücke Start.',
+        noProgramHub: 'Für diesen Hub ist noch kein Programm geladen. Füge seine Blöcke hinzu ({extensions}) oder schreibe pup-, boost- oder wedo-Wörter im Code-Tab, drücke ⇦ Zu Blöcken und dann Start.',
         exampleFailed: 'Das Beispielprogramm konnte nicht geladen werden: {error}',
         mat: 'Matte', drive: 'Fahren', forward: 'Vorwärts', back: 'Rückwärts', left: 'Links', right: 'Rechts', stop: 'Stopp', speed: 'Tempo',
         driveHelp: 'Halte einen Pfeil gedrückt (oder nutze die Pfeiltasten), um mit den Motoren A und B zu fahren.', readout: 'Hub',
@@ -386,6 +403,9 @@ class SimLabPane extends React.Component {
         }
         if (this.disposed) return;
         this.registerRcxTarget();
+        // The scene's radio hubs (LWP3: BOOST, Powered Up, Technic, SPIKE Essential; WeDo 2.0) as virtual BLE
+        // peripherals, for the LEGO extensions to reach over Web Bluetooth or Scratch Link (virtual-hub/lab-ble-peripherals.js).
+        this.unregisterBle = this.lib.registerRobotLabBlePeripherals(() => (this.session ? this.session.hubs.map(h => h.hub) : []));
         this.registerBtBricks();
         this.installApi();
         this.raf = requestAnimationFrame(this.frame);
@@ -475,6 +495,80 @@ class SimLabPane extends React.Component {
         return Boolean(this.session && this.session.hubs && this.session.hubs.some(h => h.profile === 'spike-prime'));
     }
 
+    /** The scene's radio hub (an LWP3 hub or the WeDo 2.0 hub: hubs/lwp3, hubs/wedo2), or null. */
+    radioHub () {
+        const h = this.session && this.session.hubs && this.session.hubs.find(x => x.hub && x.hub.protocol);
+        return h ? h.hub : null;
+    }
+
+    /**
+     * The LEGO extension of the Code tab's program that speaks to this hub, or null: the first of
+     * HUB_EXTENSIONS whose blocks the project uses (an extension stays loaded after its blocks are
+     * gone, so being loaded is not enough), else the first loaded.
+     */
+    hubExtension (hub = this.radioHub()) {
+        const vm = this.props.vm;
+        if (!hub || !vm || !vm.extensionManager) return null;
+        const loaded = (HUB_EXTENSIONS[hub.protocol] || []).filter(id => vm.extensionManager.isExtensionLoaded(id));
+        const used = id => (vm.runtime.targets || []).some(t => Object.values((t.blocks && t.blocks._blocks) || {})
+            .some(b => typeof b.opcode === 'string' && b.opcode.startsWith(`${id}_`)));
+        return loaded.find(used) || loaded[0] || null;
+    }
+
+    /**
+     * Connect the program's LEGO extension to the scene's hub, exactly as a person would connect it to a
+     * real one — the extension's own connect (its block's function), over whatever transport it is set to
+     * (Web Bluetooth, Scratch Link) — with connectVirtualHub choosing this hub. scratch-vm's own boost and
+     * wedo2 connect through the runtime's peripheral scan, as the connection dialog does.
+     */
+    async connectRadioHub (hub, id) {
+        const vm = this.props.vm;
+        const prim = name => vm.runtime._primitives[`${id}_${name}`];
+        const stock = id === 'boost' || id === 'wedo2';
+        const connected = () => Boolean(stock ? vm.getPeripheralIsConnected(id) : prim('isConnected')?.({}));
+        await this.lib.connectVirtualHub({host: window, extensionId: id, hubState: hub, timeoutMs: 15000, connected,
+            disconnect: () => (stock ? vm.disconnectPeripheral(id) : prim('disconnect')?.({})),
+            connect: () => {
+                if (!stock) return prim('connect')({});
+                return new Promise(resolve => {
+                    const onList = list => {
+                        const first = Object.keys(list || {})[0];
+                        if (!first) return;
+                        vm.runtime.removeListener('PERIPHERAL_LIST_UPDATE', onList);
+                        vm.connectPeripheral(id, first);
+                        resolve();
+                    };
+                    vm.runtime.on('PERIPHERAL_LIST_UPDATE', onList);
+                    vm.scanForPeripheral(id);
+                });
+            }});
+    }
+
+    /** Run for a radio hub: the program's extension connects to it, then the green flag. */
+    async runRadioHub (hub, {greenFlag = true} = {}) {
+        const vm = this.props.vm;
+        this.stopClock();
+        this.setState({status: 'running'});
+        const id = this.hubExtension(hub);
+        if (!id) {
+            this.startClock();
+            const none = this.t('noProgramHub', {extensions: (HUB_EXTENSIONS[hub.protocol] || []).join(', ')});
+            this.setState({info: this.shippedModel()?.example ? `${none} ${this.text.exampleOffer}` : none});
+            return;
+        }
+        this.setState({info: ''});
+        try {
+            await this.connectRadioHub(hub, id);
+        } catch (error) {
+            this.setState({message: this.t('connectFailed', {error: error.message})});
+            return;
+        }
+        if (this.state.status === 'running') {
+            this.startClock();
+            if (greenFlag) vm.greenFlag();
+        }
+    }
+
     componentWillUnmount () {
         // Flush first: a Build-mode edit made just before handing the hub to the
         // arena must still be in the next save.
@@ -494,6 +588,7 @@ class SimLabPane extends React.Component {
         this.teardown();
         this.teardownEditor();
         if (this.unregisterRcx) this.unregisterRcx();
+        if (this.unregisterBle) this.unregisterBle();
         if (this.unregisterBt) this.unregisterBt();
         if (this.physics) this.physics.terminate();
         this.physics = null;
@@ -1175,7 +1270,7 @@ class SimLabPane extends React.Component {
         }
         this.setState({info: ''});
         try {
-            await this.lib.connectVirtualBtHub({vm, extensionId,
+            await this.lib.connectVirtualHub({vm, extensionId,
                 peripheralId: profile === 'ev3' ? this.lib.EV3_PERIPHERAL_ID : this.lib.NXT_PERIPHERAL_ID});
         } catch (error) {
             // Said, and the world still runs: the program's own connect block may yet reach the brick.
@@ -1213,6 +1308,7 @@ class SimLabPane extends React.Component {
         if (!this.session) return;
         if (this.session.lockstep) { await this.runFirmware(); return; }
         if (this.rcxHub()) { this.runRcx(); return; }
+        if (this.radioHub()) { await this.runRadioHub(this.radioHub(), {greenFlag}); return; }
         if (this.btProfile()) { await this.runBt({greenFlag}); return; }
         const hubState = this.hub;
         hubState.setSimulationEnabled(true);
@@ -1302,7 +1398,9 @@ class SimLabPane extends React.Component {
         if (!this.session) return;
         if (this.session.lockstep) { this.pauseFirmware(); return; }
         // Pause stops the program too (a Robot Lab program's next motor command would run the world again).
-        if (this.spikeLoaded() || this.robotLabLoaded()) { try { this.props.vm.stopAll(); } catch { /* the VM may be mid-load */ } }
+        if (this.spikeLoaded() || this.robotLabLoaded() || this.hubExtension()) {
+            try { this.props.vm.stopAll(); } catch { /* the VM may be mid-load */ }
+        }
         this.hub.backend.cancel();
         this.stopClock();
         this.setState({status: 'paused'});

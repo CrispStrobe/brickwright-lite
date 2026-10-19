@@ -11,9 +11,9 @@ Abbreviations: X = `overlay/scratch-vm/src/extensions/crispstrobe`, G = `overlay
 | Hub | Blocks | Code flavours | Compile / emulate | Real hardware | In the Lab |
 |---|---|---|---|---|---|
 | SPIKE Prime / Robot Inventor | `X/spikeprime` (+ BLE/BTC/bridge variants) | `DEVICE SPIKE`; SPIKE 3 Python → blocks | Renode firmware lockstep (`G/bw-sim/routes/renode-lockstep/`) | Web Bluetooth, Scratch Link, bridge | **yes** (`SpikeVirtualHub`; Renode route) |
-| SPIKE Essential | via `X/legopoweredup` | — | — | BLE (LWP3) | no |
-| Boost / Powered Up (City, Technic, Move) | `X/legoboostunified`, `X/legopoweredup` | Python/JS `_legopoweredup.*` calls only | — | Web Bluetooth LWP3, Scratch Link BLE, bridge | no |
-| WeDo 2.0 | `X/wedo2unified` | as above | — | Web Bluetooth (own WeDo service, not LWP3) | no |
+| SPIKE Essential | via `X/legopoweredup` | `pup` words | LWP3 virtual hub (`G/bw-sim/hubs/lwp3/`) | BLE (LWP3) | **yes** (`Lwp3VirtualHub`, part 67351c01; 2026-10-19) |
+| Boost / Powered Up (City, Technic, Move) | `X/legoboostunified`, `X/legopoweredup` | `pup` / `boost` words; Python/JS `_legopoweredup.*` calls only | LWP3 virtual hub (`G/bw-sim/hubs/lwp3/`) | Web Bluetooth LWP3, Scratch Link BLE, bridge | **yes** (Move Hub 26910, City Hub 28738, Technic Hub 22127; 2026-10-19) |
+| WeDo 2.0 | `X/wedo2unified` | `wedo` words | WeDo 2.0 virtual hub (`G/bw-sim/hubs/wedo2/`, its own GATT protocol) | Web Bluetooth, Scratch Link BLE (own WeDo service, not LWP3) | **yes** (Smart Hub 19071; 2026-10-19) |
 | EV3 | `X/ev3comprehensive`, `X/ev3dev`; stock `ev3` | `DEVICE EV3`, MakeCode EV3 | LMS → RBF in the extension | Scratch Link BT, serial, bridge, HTTP | **yes, L1** (`Ev3VirtualHub`, direct commands over Scratch Link, 2026-10-19; ev3comprehensive blocked upstream) |
 | NXT | `X/legonxt` | — | NXC hosted compile → `.rxe` | Scratch Link BT, Web Serial, bridge | **yes, L1** (`NxtVirtualHub`, direct commands over Scratch Link, 2026-10-19) |
 | RCX | `X/legorcx` (NQC) | NQC tab | NQC WASM; clean-room `RcxVm` (`G/bw-sim/routes/rcx-vm/`) | IR tower (`G/rcx-download-hook.js`) | **yes** (`RcxVirtualHub`; download target "Robot Lab RCX", 2026-10-19) |
@@ -22,8 +22,10 @@ Abbreviations: X = `overlay/scratch-vm/src/extensions/crispstrobe`, G = `overlay
 
 **Programs on a simulated hub.** Never edit the extensions; swap the transport underneath them, so the
 real extensions are what is tested:
-- LWP3 hubs (Boost, Powered Up, Technic, SPIKE Essential) and WeDo 2: a virtual GATT peripheral through
-  `registerVirtualPeripheral` (`G/virtual-hub/web-bluetooth-shim.js`), plus a Scratch Link BLE socket double.
+- LWP3 hubs (Boost, Powered Up, Technic, SPIKE Essential) and, separately, WeDo 2 — whose hub speaks its own
+  GATT service, NOT LWP3 (docs/WEDO-HUB-PROTOCOL-NOTES.md "Which protocol applies") — each a virtual GATT
+  peripheral through `registerVirtualPeripheral` (`G/virtual-hub/web-bluetooth-shim.js`), plus a Scratch Link
+  BLE socket double. **Done 2026-10-19**, docs/LWP3-VIRTUAL-HUB-NOTES.md.
 - EV3 and NXT: a Scratch Link BT-classic virtual peripheral (JSON-RPC `discover`/`connect`/`send` with
   direct-command / telegram bytes), generalising `VirtualSpikeClassicSocket` into a registry.
 - RCX: `runtime.rcxDownload` gains a "Robot Lab RCX" target that loads the `.rcx` into `RcxVm`.
@@ -53,11 +55,12 @@ executable spec); RCX (A–C, 1–3; the existing `RcxVm`).
   **`lab-direct` done 2026-10-19** (lane/simlab-api-20261019): `G/bw-sim/hubs/lab-direct/` (profile + VirtualHub,
   the SPIKE controller structure, exported to the worker's mirror), registered in `hubs/index.js`; a model with
   motors and no hub part runs on it (`sim-session.js` `sceneHubDefs`); the *Motor bench* model shows it.
-  Open: `connectVirtualHub` and the BLE peripheral registry (they serve P3).
+  **`connectVirtualHub` and the BLE registry + Scratch Link BLE double done 2026-10-19** (lane/simlab-hubs-ble-20261019:
+  `G/virtual-hub/connect-virtual-hub.js`, `scratch-link-ble.js`, `lab-ble-peripherals.js`; connectVirtualSpike delegates).
   **BT-classic registry done 2026-10-19** (lane/simlab-hubs-bt-20261019): `G/virtual-hub/bt-classic-registry.js`
   (Scratch Link BT JSON-RPC, peripherals by name and device class, replies after the send's result; SPIKE's 2.x
-  REPL simulation claims first, unchanged); a local `G/virtual-hub/connect-virtual-bt-hub.js` until
-  `connectVirtualHub` lands (docs/ROBOT-LAB-EV3-NXT.md "Merge notes").
+  REPL simulation claims first, unchanged); EV3/NXT extensions connect through `connectVirtualHub`'s BT-classic branch
+  (merged in next7, 2026-10-19).
 - **P1 Robot Lab API** + `robotlab` blocks + `lab` words + `_robotlab` for Python/JS. Accept: `setMotor`
   drives an encoder to 360 ± 2° with no hub program; part poses deterministic across rollback.
   **Done 2026-10-19** (lane/simlab-api-20261019; docs/SIM-LAB.md "Steering the Lab"): `G/bw-sim/api/robot-lab-api.js`
@@ -79,6 +82,15 @@ executable spec); RCX (A–C, 1–3; the existing `RcxVm`).
   Open: the 9 V motor 2838 as a part, RCX readouts in the pane, the direction-change pause.
 - **P3 LWP3 hubs and WeDo 2:** Technic L motor on port A by 360 ± 2° from `legopoweredup` blocks; a
   WeDo 2 conveyor; DEVICE words for WEDO2/BOOST/POWEREDUP.
+  **Done 2026-10-19** (lane/simlab-hubs-ble-20261019; docs/LWP3-VIRTUAL-HUB-NOTES.md, docs/SIM-LAB.md "Powered Up,
+  BOOST and WeDo 2.0 hubs"): `G/bw-sim/hubs/lwp3/` (LWP3 3.0.00 framing and a port controller from LEGO's
+  document; Move Hub with built-in motors A/B, City Hub, Technic Hub, SPIKE Essential) and `G/bw-sim/hubs/wedo2/`
+  behind the VirtualHub boundary; the real `legopoweredup`, `legoboostunified`, `wedo2unified` (and scratch-vm's
+  `boost`, `wedo2`) connect from Run over Web Bluetooth or Scratch Link; parts and three examples (Technic Hub
+  bench: 360 ± 2°; BOOST rover drives and turns; WeDo rover stops at the wall with its motion sensor).
+  Words: `pup` / `boost` / `wedo` (`G/legoHubsDialect.js`, one table, under any DEVICE line); a `DEVICE POWEREDUP`
+  declaration line is open (the pinned compiler's DEVICE names a build target). Extension findings (MaxPower 10,
+  the AB rate limit, the Move Hub port map) in the notes, the extensions unchanged.
 - **P4 EV3:** direct commands, then the LMS VM; the wall-stop scenario through `DEVICE EV3` and RBF.
   **L1 done 2026-10-19** (lane/simlab-hubs-bt-20261019; docs/ROBOT-LAB-EV3-NXT.md): `G/bw-sim/hubs/ev3/` — the EV3
   direct-command executor (EV3 Communication and Firmware Developer Kits: frame, parameter encoding, output/input/

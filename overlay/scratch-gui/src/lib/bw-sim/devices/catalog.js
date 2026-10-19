@@ -28,7 +28,7 @@ export const DEVICE_MODEL_CLASSES = Object.freeze(['motor', 'servo-motor', 'line
  * 'rotation' (the RCX rotation sensor: the turn of the axle through its hole, read from the
  * hinge the compiler made there — sensors.js rotationJoint).
  */
-const SENSOR_MEASURES = Object.freeze(['distance', 'color', 'force', 'rotation', 'gyro']);
+const SENSOR_MEASURES = Object.freeze(['distance', 'color', 'force', 'rotation', 'tilt', 'proximity', 'gyro']);
 
 const V1_SOURCE = 'part-meta/parts.json v1 (LEGO published stall torque 18 / 38 Ncm; speed limits of SPIKE 3 as in docs/SPIKE-ARENA.md)';
 
@@ -168,7 +168,9 @@ export const HUB_SUPPLY_VOLTS = Object.freeze({
     'power-functions': Object.freeze({volts: 9, source: 'PF AA battery box (6 × 1.5 V); the PF Li-ion box is 7.4 V',
         estimated: true}),
     'powered-up': Object.freeze({volts: 9, source: 'Powered Up hub 88009, Technic hub 88012 and Boost Move hub 88006: ' +
-        '6 AAA/AA cells (6 × 1.5 V)', estimated: true})
+        '6 AAA/AA cells (6 × 1.5 V)', estimated: true}),
+    wedo2: Object.freeze({volts: 3, source: 'WeDo 2.0 Smart Hub 45301: 2 AA cells (2 × 1.5 V) or its rechargeable battery; ' +
+        'the motor port is taken to see the cells\' voltage (no boost converter modelled)', estimated: true})
 });
 
 /**
@@ -378,7 +380,7 @@ const MOTORS = [
             loadPoints: [[3, 0.85, 135, 0.35], [4.5, 0.85, 468, 0.36], [6, 0.85, 792, 0.37], [7.5, 0.85, 1107, 0.38],
                 [9, 0.85, 1458, 0.38], [10.5, 0.85, 1782, 0.39], [12, 0.85, 2124, 0.40]]}}),
     // Powered Up (LPF2: the hub reads the id).
-    philoMotor({id: 'pup-medium-motor', name: 'Powered Up Medium motor (45303)', ids: {lpf2: 1}, numbers: {set: '45303'},
+    philoMotor({id: 'pup-medium-motor', name: 'Powered Up Medium motor (45303)', parts: ['21980.dat'], ids: {lpf2: 1}, numbers: {set: '45303'},
         idsSource: `${PYBRICKS_IDS} (LEGO_DEVICE_TYPE_ID_LPF2_MMOTOR = 1, "45303 Powered Up Medium Motor")`, numbersSource: PYBRICKS_IDS, supply: 'powered-up',
         philo: {column: 'PUP medium', noLoadRpm: 380, noLoadA: 0.060, stallNcm: 11, stallA: 0.8, extrapolated: true,
             loadPoints: [[4.5, 4.08, 66, 0.29], [6, 4.08, 135, 0.29], [7.5, 4.08, 201, 0.30], [9, 4.08, 270, 0.30],
@@ -388,7 +390,7 @@ const MOTORS = [
         philo: {column: 'PUP Train', noLoadRpm: 1760, noLoadA: 0.100, stallNcm: 2.9, stallA: 1.1, extrapolated: true,
             loadPoints: [[4.5, 0.88, 237, 0.36], [6, 0.88, 540, 0.38], [7.5, 0.88, 855, 0.40], [9, 0.88, 1242, 0.41],
                 [10.5, 0.88, 1539, 0.43], [12, 0.88, 1872, 0.44]]}}),
-    philoMotor({id: 'boost-interactive-motor', name: 'BOOST interactive (external) motor (88008)', ids: {lpf2: 38}, numbers: {set: '88008'},
+    philoMotor({id: 'boost-interactive-motor', name: 'BOOST interactive (external) motor (88008)', parts: ['26913.dat'], ids: {lpf2: 38}, numbers: {set: '88008'},
         idsSource: `${PYBRICKS_IDS} (LUMP_TYPE_ID_INTERACTIVE_MOTOR = 38)`, numbersSource: SET_NUMBER, supply: 'powered-up',
         philo: {column: 'Boost Ext.', noLoadRpm: 255, noLoadA: 0.041, stallNcm: 9.5, stallA: 0.45, extrapolated: true,
             loadPoints: [[4.5, 4.08, 39, 0.18], [6, 4.08, 84, 0.18], [7.5, 4.08, 126, 0.19], [9, 4.08, 171, 0.19],
@@ -400,13 +402,13 @@ const MOTORS = [
             loadPoints: [[4.5, 4.08, 81, 0.33], [6, 4.08, 141, 0.34], [7.5, 4.08, 201, 0.35], [9, 4.08, 264, 0.37],
                 [10.5, 4.08, 327, 0.38], [12, 4.08, 384, 0.39]]},
         pyb: PYBRICKS_MOVEHUB, encoder: RELATIVE_1DEG, encoderSource: PYBRICKS_ENCODED}),
-    philoMotor({id: 'technic-large-motor', name: 'Control+ Technic Large motor (88013)', ids: {lpf2: 46}, numbers: {set: '88013'},
+    philoMotor({id: 'technic-large-motor', name: 'Control+ Technic Large motor (88013)', parts: ['22169.dat'], ids: {lpf2: 46}, numbers: {set: '88013'},
         idsSource: `${PYBRICKS_IDS} (LUMP_TYPE_ID_TECHNIC_L_MOTOR = 46)`, numbersSource: SET_NUMBER, supply: 'powered-up',
         philo: {column: 'Control+ L', noLoadRpm: 315, noLoadA: 0.120, stallNcm: 26, stallA: 1.4, extrapolated: true,
             loadPoints: [[4.5, 8.81, 36, 0.49], [6, 8.81, 93, 0.48], [7.5, 8.81, 141, 0.51], [9, 8.81, 198, 0.52],
                 [10.5, 8.81, 255, 0.52], [12, 8.81, 312, 0.53]]},
         pyb: PYBRICKS_TECHNIC_L, encoder: SPIKE_ENCODER, encoderSource: `${PHILO_ENCODER} "and an absolute encoder"`}),
-    philoMotor({id: 'technic-xl-motor', name: 'Control+ Technic XL motor (88014)', ids: {lpf2: 47}, numbers: {set: '88014'},
+    philoMotor({id: 'technic-xl-motor', name: 'Control+ Technic XL motor (88014)', parts: ['22172.dat'], ids: {lpf2: 47}, numbers: {set: '88014'},
         idsSource: `${PYBRICKS_IDS} (LUMP_TYPE_ID_TECHNIC_XL_MOTOR = 47)`, numbersSource: SET_NUMBER, supply: 'powered-up',
         philo: {column: 'Control+ XL', noLoadRpm: 330, noLoadA: 0.060, stallNcm: 22, stallA: 1.1, extrapolated: true,
             loadPoints: [[4.5, 8.81, 33, 0.45], [6, 8.81, 93, 0.46], [7.5, 8.81, 147, 0.46], [9, 8.81, 198, 0.47],
@@ -473,6 +475,26 @@ const NXT_SENSORS = [
             'Developer Kit", Appendix 7 "Ultrasonic sensor I2C communication protocol": address 0x02, measurement byte 0 at 0x42, cm',
         sensor: {kind: 'distance', encoder: 'nxt-ultrasonic'}}
 ];
+// POWERED UP / WeDo 2.0 SENSORS (docs/LWP3-VIRTUAL-HUB-NOTES.md, docs/WEDO-HUB-PROTOCOL-NOTES.md). The hub
+// reports the id (LWP3 §3.8.4 IO Type IDs: 0x22 External Tilt Sensor, 0x23 Motion Sensor, 0x25 Vision Sensor —
+// LEGO); what each mode reads is modelled from the probe (hubs/lwp3/, hubs/wedo2/ say how).
+const LWP3_IO_TYPES = 'lego-lwp3: LEGO Wireless Protocol 3.0.00 §3.8.4 IO Type IDs (lego.github.io/lego-ble-wireless-protocol-docs)';
+const POWERED_UP_SENSORS = [
+    {id: 'boost-color-distance', class: 'sensor-lpf2', name: 'BOOST colour and distance sensor (88007)', parts: ['26912.dat'],
+        ids: {lpf2: 37}, numbers: {set: '88007'}, source: `${LWP3_IO_TYPES}: 0x0025 Vision Sensor; colour index and ` +
+            'reflection from the colour probe (sensors.js), proximity only as "something within the probe\'s 32 mm" (estimated)',
+        sensor: {kind: 'color', encoder: 'boost-color-distance'}},
+    {id: 'wedo2-tilt', class: 'sensor-lpf2', name: 'WeDo 2.0 tilt sensor (45305)', parts: ['20841.dat'],
+        ids: {lpf2: 34}, numbers: {set: '45305'}, source: `${LWP3_IO_TYPES}: 0x0022 External Tilt Sensor; the WeDo 2.0 ` +
+            'SDK\'s angle mode reports two signed bytes (scratch-vm extensions/scratch3_wedo2: tiltX, tiltY), here the ' +
+            'sensor body\'s pitch and roll in degrees (sensors.js tilt)',
+        sensor: {kind: 'tilt', encoder: 'wedo2-tilt'}},
+    {id: 'wedo2-motion', class: 'sensor-lpf2', name: 'WeDo 2.0 motion sensor (45304)', parts: ['20844.dat'],
+        ids: {lpf2: 35}, numbers: {set: '45304'}, source: `${LWP3_IO_TYPES}: 0x0023 Motion Sensor; an infrared ` +
+            'proximity sensor, its detect mode 0..10 (raw) / 0..100 (percent) modelled from a short ray (sensors.js ' +
+            'proximity) as hubs/wedo2/wedo2-virtual-hub.js MOTION_RANGE_MM says (estimated)',
+        sensor: {kind: 'proximity', encoder: 'wedo2-motion'}}
+];
 
 /** @type {DeviceModel[]} */
 export const DEVICE_MODELS = Object.freeze([
@@ -485,7 +507,8 @@ export const DEVICE_MODELS = Object.freeze([
         sensor: {kind: 'force', encoder: 'spike-force'}},
     ...RCX_SENSORS,
     ...EV3_SENSORS,
-    ...NXT_SENSORS
+    ...NXT_SENSORS,
+    ...POWERED_UP_SENSORS
 ].map(d => Object.freeze(d)));
 
 /** id → DeviceModel */

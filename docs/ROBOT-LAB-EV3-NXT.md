@@ -3,7 +3,7 @@
 *2026-10-19 — plan phases P4 (EV3) and P5 (NXT) of [ROBOT-LAB-HUBS-PLAN.md](ROBOT-LAB-HUBS-PLAN.md), level 1
 (direct commands). Code: `overlay/scratch-gui/src/lib/bw-sim/hubs/ev3/`, `hubs/nxt/`, `hubs/mindstorms-output.js`,
 `devices/ev3-sensors.js`, `devices/nxt-sensors.js`, `lib/virtual-hub/bt-classic-registry.js`,
-`lib/virtual-hub/connect-virtual-bt-hub.js`.*
+`lib/virtual-hub/connect-virtual-hub.js` (its BT-classic branch).*
 
 The EV3 and NXT blocks reach a real brick over Bluetooth Classic through Scratch Link. The Robot Lab
 swaps **the transport, never the extension**: the app's WebSocket wrapper hands an extension's Scratch Link
@@ -22,11 +22,10 @@ order: SPIKE's 2.x REPL simulation first (unchanged), then the registry, then th
 Replies go out on a later macrotask, after the JSON-RPC result of the `send` that caused them: the stock
 and NXT extensions start listening for a reply only once their send has resolved.
 
-**Merge notes.** The plan's `connectVirtualHub({extensionId, hubState})` is being written for the BLE hubs in
-a parallel lane. `connect-virtual-bt-hub.js` is this lane's local adapter for the BT-classic side (scan →
-wait for the virtual brick in the peripheral list → connect; ev3comprehensive through its own
-set-mode/connect blocks); when the shared one lands, this becomes its BT-classic branch. Shared files were
-changed additively only: `hubs/index.js` (two registry lines), `sim-session.js` MODELS (two entries).
+**Merge notes.** The BT-classic connect began as a local adapter in this lane; in the next7 merge it was folded
+into the BLE lane's `connectVirtualHub` (`lib/virtual-hub/connect-virtual-hub.js`) as its BT-classic branch: given
+`vm` and a `peripheralId`, it scans → waits for the virtual brick in the peripheral list → connects
+(ev3comprehensive through its own set-mode/connect blocks).
 
 ## EV3 direct commands
 

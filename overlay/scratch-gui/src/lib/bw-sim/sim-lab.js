@@ -28,13 +28,15 @@ export {createRobotLabApi} from './api/robot-lab-api.js';
 export {isPortPart} from './contracts.js';
 export {fetchLDrawClosure, LDRAW_BASE} from './ldraw/ldraw-fetch.js';
 export {connectVirtualSpike} from '../virtual-hub/connect-virtual-spike.js';
+// Radio hubs (LWP3, WeDo 2.0): the scene's hubs offered to the LEGO extensions, and the connect that picks one.
+export {connectVirtualHub} from '../virtual-hub/connect-virtual-hub.js';
+export {registerRobotLabBlePeripherals} from '../virtual-hub/lab-ble-peripherals.js';
 export {createSimView3D, WebGLUnavailableError, webglAvailable} from './view/sim-view3d.js';
 export {robotLabRcxTarget, ROBOT_LAB_RCX_TARGET} from './hubs/rcx/rcx-lab-target.js';
 export {registerRcxTarget, selectRcxTarget, rcxTargetOf, TOWER_TARGET} from '../rcx/rcx-targets.js';
 export {ev3ClassicPeripheral, EV3_PERIPHERAL_ID} from './hubs/ev3/ev3-peripheral.js';
 export {nxtClassicPeripheral, NXT_PERIPHERAL_ID} from './hubs/nxt/nxt-peripheral.js';
 export {registerVirtualClassicPeripheral} from '../virtual-hub/bt-classic-registry.js';
-export {connectVirtualBtHub} from '../virtual-hub/connect-virtual-bt-hub.js';
 export {vmBlocksOf} from './blocks-example.js';
 export {openFirmwareRoute, desktopRenodeCapabilities, lockstepAvailable, firmwareRouteReady, compileRouteProgram} from './routes/renode-lockstep/index.js';
 export {createEditor, partsByIdOf} from './editor/editor-state.js';

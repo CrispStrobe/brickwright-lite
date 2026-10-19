@@ -1763,6 +1763,11 @@ jobs:
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
         run: npm run verify:sim-lab -- --part=api
 
+      - name: Browser gate — Robot Lab LEGO radio hubs, Powered Up, BOOST and WeDo 2.0 blocks drive their virtual hubs over Scratch Link and Web Bluetooth
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
+        run: npm run verify:sim-lab -- --part=hubs-ble
+
       - name: Browser gate — Robot Lab EV3 and NXT, their blocks drive the Lab's bricks over Scratch Link (bumper bot, wall stopper)
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}

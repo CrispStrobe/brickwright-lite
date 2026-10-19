@@ -94,7 +94,11 @@ test('parts.json is PartMeta v2: version 2, every entry valid, no v1 field left,
         // The EV3 and NXT (hubs/ev3/, hubs/nxt/, docs/ROBOT-LAB-EV3-NXT.md): bricks, motors and sensors.
         '95646.dat': 'ev3', '95658.dat': 'motor', '99455.dat': 'motor', '95648.dat': 'force', '95650.dat': 'color',
         '95652.dat': 'distance', '99380.dat': 'gyro',
-        '53788.dat': 'nxt', '53787.dat': 'motor', '53793.dat': 'force', '55969.dat': 'color', '53792.dat': 'distance'});
+        '53788.dat': 'nxt', '53787.dat': 'motor', '53793.dat': 'force', '55969.dat': 'color', '53792.dat': 'distance',
+        // The LWP3 hubs and the WeDo 2.0 hub (hubs/lwp3/, hubs/wedo2/), their motors and sensors.
+        '26910.dat': 'boost-move-hub', '28738.dat': 'pup-city-hub', '22127.dat': 'technic-hub', '67351c01.dat': 'spike-essential',
+        '19071.dat': 'wedo2', '22169.dat': 'motor', '22172.dat': 'motor', '26913.dat': 'motor', '21980.dat': 'motor',
+        '26912.dat': 'color', '20841.dat': 'tilt', '20844.dat': 'proximity'});
 });
 
 test('migrating the v1 file gives exactly the shipped file, and migrating again changes nothing', () => {

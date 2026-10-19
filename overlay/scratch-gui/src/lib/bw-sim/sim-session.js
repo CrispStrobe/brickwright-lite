@@ -94,7 +94,16 @@ export const MODELS = Object.freeze([
     // No hub at all: the Robot Lab's own lab-direct hub owns the motor, and its example steers it
     // with `lab` words (docs/SIM-LAB.md "Steering the Lab").
     {file: 'motor-bench.ldr', title: {en: 'Motor bench (no hub)', de: 'Motorprüfstand (ohne Hub)'},
-        example: 'motor-bench.bw'}
+        example: 'motor-bench.bw'},
+    // LEGO radio hubs (hubs/lwp3, hubs/wedo2; docs/LWP3-VIRTUAL-HUB-NOTES.md): their examples are written in the
+    // pup / boost / wedo words (lib/legoHubsDialect.js), which ⇦ To blocks turns into the real LEGO extensions'
+    // blocks; Run connects those blocks to the scene's hub over Web Bluetooth or Scratch Link.
+    {file: 'technic-hub-bench.ldr', title: {en: 'Technic Hub motor bench (Powered Up)', de: 'Technic-Hub-Motorprüfstand (Powered Up)'},
+        example: 'technic-hub-bench.bw'},
+    {file: 'boost-rover.ldr', title: {en: 'BOOST rover (Move Hub)', de: 'BOOST-Rover (Move Hub)'},
+        example: 'boost-rover.bw', mat: 'plain'},
+    {file: 'wedo-milo.ldr', title: {en: 'WeDo 2.0 rover with motion sensor', de: 'WeDo-2.0-Rover mit Bewegungssensor'},
+        example: 'wedo-milo.bw', mat: 'wall'}
 ]);
 export const MODELS_BASE = 'static/sim-lab/models/';
 export const PROGRAMS_BASE = 'static/sim-lab/programs/';
@@ -144,6 +153,12 @@ export const hubsOf = (model, mechanism, catalog, {all = false} = {}) => {
     // Every hub (CompiledMechanism v2 hubs[], in body order) when the caller runs several.
     if (all && Array.isArray(mechanism.hubs) && mechanism.hubs.length) {
         return mechanism.hubs.map(h => ({id: h.id, profile: h.profile, body: h.body}));
+    }
+    // The first hub of CompiledMechanism v2 (the body that carries its housing: a hub with built-in
+    // motors, the BOOST Move Hub, is a part of its output bodies too).
+    if (Array.isArray(mechanism.hubs) && mechanism.hubs.length) {
+        const h = mechanism.hubs[0];
+        return [{id: h.id, profile: h.profile, body: h.body}];
     }
     const hubParts = new Map(model.parts.filter(p => partHubProfile(catalog.get(p.part))).map(p => [p.id, partHubProfile(catalog.get(p.part))]));
     const body = mechanism.bodies.find(b => b.parts.some(id => hubParts.has(id)));

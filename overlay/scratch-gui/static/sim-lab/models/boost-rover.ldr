@@ -1,0 +1,44 @@
+0 BOOST rover (Brickwright Robot Lab reference model)
+0 Name: boost-rover.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 // The BOOST Move Hub drives two wheels with its built-in motors A (left) and B (right);
+0 // two ball castors, each pinned to a 7-hole beam on the hub's side, hold it level at the back.
+0 !BW ID hub
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 26910.dat
+0 !BW ID axleL
+1 0 -100 66 140 1 0 0 0 1 0 0 0 1 3706.dat
+0 !BW ID wheelL
+1 15 -85 66 140 0 0 1 0 -1 0 1 0 0 39367p01.dat
+0 !BW ID axleR
+1 0 100 66 140 1 0 0 0 1 0 0 0 1 3706.dat
+0 !BW ID wheelR
+1 15 85 66 140 0 0 1 0 -1 0 1 0 0 39367p01.dat
+0 !BW ID beamL
+1 71 -70 66 -80 0 1 0 -1 0 0 0 0 1 32524.dat
+0 !BW ID pinL1
+1 0 -60 66 -140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID pinL2
+1 0 -60 66 -100 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID castorL
+1 71 -90 66 -80 1 0 0 0 1 0 0 0 1 39370.dat
+0 !BW ID ballL
+1 15 -90 112 -80 1 0 0 0 1 0 0 0 1 52629.dat
+0 !BW ID pinL3
+1 0 -80 66 -80 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID pinL4
+1 0 -80 66 -40 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID beamR
+1 71 70 66 -80 0 1 0 -1 0 0 0 0 1 32524.dat
+0 !BW ID pinR1
+1 0 60 66 -140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID pinR2
+1 0 60 66 -100 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID castorR
+1 71 90 66 -80 1 0 0 0 1 0 0 0 1 39370.dat
+0 !BW ID ballR
+1 15 90 112 -80 1 0 0 0 1 0 0 0 1 52629.dat
+0 !BW ID pinR3
+1 0 80 66 -80 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID pinR4
+1 0 80 66 -40 1 0 0 0 1 0 0 0 1 2780.dat
