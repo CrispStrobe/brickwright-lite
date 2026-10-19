@@ -217,6 +217,12 @@ const HIDDEN_STORAGE_KEY = 'bw-sim-lab-hidden';
  * keeps one row and what does not fit goes to its More menu (sim-lab-toolbar.jsx splitToolbar).
  */
 const WRAP_TOOLBAR_PX = 1000;
+/**
+ * The GUI's show/hide-stage button (gui.jsx data-right-pane-toggle) floats over the editor's top
+ * right corner; when the tab strip folds away (compact chrome) it sits on the toolbar's row, so the
+ * toolbar keeps that corner free.
+ */
+const RIGHT_PANE_TOGGLE_PX = 36;
 /** From this pane width the mode switch shows its words beside the icons. */
 const MODE_WORDS_PX = 760;
 /** Never wider than this share of the pane, the parts panel (dragged by its divider). */
@@ -1536,11 +1542,12 @@ class SimLabPane extends React.Component {
         const wrap = !this.state.paneWidth || this.state.paneWidth >= WRAP_TOOLBAR_PX;
         const modeWidth = this.modeWords() ? 330 : 3 * (s.size + 2) + 6;
         // The pane's padding, the mode switch and Help never leave the bar.
-        const {bar, more} = splitToolbar(groups, {width: this.state.paneWidth - 16, coarse, reserved: modeWidth + s.size + 8, wrap});
+        const {bar, more} = splitToolbar(groups, {width: this.state.paneWidth - 16 - RIGHT_PANE_TOGGLE_PX, coarse, reserved: modeWidth + s.size + 8, wrap});
         const TT = this.ttext;
         return (
             <div role="toolbar" aria-label={TT.toolbar} data-testid="bw-sim-lab-toolbar"
-                style={{display: 'flex', alignItems: 'center', gap: 2, flexWrap: wrap ? 'wrap' : 'nowrap', minWidth: 0, rowGap: 4}}>
+                style={{display: 'flex', alignItems: 'center', gap: 2, flexWrap: wrap ? 'wrap' : 'nowrap', minWidth: 0, rowGap: 4,
+                    paddingRight: RIGHT_PANE_TOGGLE_PX}}>
                 {this.renderModeSwitch()}
                 {bar.map(g => (
                     <React.Fragment key={g.id}>

@@ -2,7 +2,43 @@
 
 The Robot Lab simulates a model built from real LEGO Technic parts and lets a program drive it through the **virtual SPIKE Prime hub**, the same hub the SPIKE arena uses. Scratch blocks, DEVICE SPIKE pseudocode and imported SPIKE 3 programs reach it unchanged: they cannot tell the hub is simulated.
 
-The code and its paths call it **Sim Lab** (`lib/bw-sim/`, `sim-lab-pane.jsx`); the tab the learner sees is **Robot Lab (beta)** / **Roboter-Labor (Beta)**.
+The code and its paths call it **Sim Lab** (`lib/bw-sim/`, `sim-lab-pane.jsx`); the learner sees the **Robot Lab** / **Roboter-Labor** tab.
+
+## Where it lives
+
+The Robot Lab is **its own editor tab**, after Blocks, Costumes, Sounds, Code and Circuit (and FPGA when that is switched on): `components/tw-pseudocode/robot-lab-tab.jsx`, appended last in `gui.jsx` so no existing tab index moves (its own index is 5, or 6 with the FPGA tab). The 3D view fills the tab. The tab costs nothing until it is first shown: the pane and its toolbar arrive then (chunk `bw-robot-lab`), the scene, the catalogue and the 3D views after that (chunk `bw-sim-lab`), the physics in its worker (`bw-sim-physics-worker`, Jolt in `bw-sim-jolt`) — `scripts/verify-boot-payload.mjs` checks all four stay out of the first load and out of the arena's chunk. Once shown, the tab stays mounted: the model, the camera and a running program survive a trip to the Code tab.
+
+**One hub, one world.** The Robot Lab and the SPIKE arena (right pane, **SPIKE arena** button in the Code tab) share one virtual SPIKE hub (`lib/virtual-hub/shared-spike-hub.js`), so they never both drive it. The arena no longer embeds the Lab: it offers **Open in Robot Lab**, which shows the tab. While the Robot Lab holds a session the arena is not mounted and says *“The Robot Lab tab is driving the virtual hub now…”*, with **Show the Robot Lab** and **Use the arena here**; the latter closes the Lab's session (its model is saved with the project first) and the tab then offers **Open the Robot Lab here**. The hand-over is three window events named in `lib/robot-lab-events.js`. *Why not show the Lab inside the arena as well:* two views of one session would need two WebGL contexts and two render loops on school hardware, and the arena's own mat would still be a second world; one session in one place, with a button from the other, is the honest model.
+
+**The program it runs** is the project's, on the green flag (Run), through the project's hub: today the virtual SPIKE Prime, behind the VirtualHub boundary (docs/ROBOT-LAB-ARCHITECTURE.md R1); the tab knows nothing SPIKE-specific, so other hubs plug in at that boundary.
+
+## The toolbar
+
+One row of grouped icon buttons (`sim-lab-toolbar.jsx`, words in `sim-lab-toolbar-text.js`, EN and DE). Every button has its name as its accessible name and a tooltip with the name and the shortcut, e.g. *“Turn 90° (R)”* / *“Um 90° drehen (R)”*, *“Undo (Ctrl+Z)”* / *“Rückgängig (Strg+Z)”*. Icons are inline SVG strokes, as the Code tab's icon is: no icon font, no new dependency.
+
+- **Mode** — a segmented control: **Simulate · Build · Instructions**.
+- **Simulate:** **Run/Pause**, **Reset**; **View**: Home, Fit, Top, Front, Side; **Show**: ports, how it moves (switches); **File** menu (Open a model…, Save as .ldr / .mpd / .io). Under the toolbar one line holds the Model and Mat lists, the program route (desktop), **Load example program** and the status.
+- **Build:** **Edit**: Move with arrows (W), Turn with rings (E), Turn 90° (R), Turn back 90° (Shift+R), Tip 90° (T); **Arrange**: Delete, Duplicate, Copy, Paste, Select all, Group, Ungroup, Cancel (Esc); **Undo / Redo**; **View**: Home, Fit (F), Top, Front, Side, Grid; **Show**: ports, how it moves; **Tools**: mirror ↔ / ⇅, Hide (H), Isolate (I), Show all (Shift+H), Measure (M), Eyedropper (K); **Panels**: Parts, Properties, Shortcuts (?); **File**. Under the toolbar: the selection as a chip, its Port list, the hidden-parts chip, and a one-line hint of what a click will do now.
+- **Help (?)** at the right end holds what used to be the paragraph above everything: what the Lab is, and how to move the view (and, in Build, how to select and the full shortcut sheet).
+- **Narrow panes.** From 1000 px wide the toolbar may take a second row and shows everything; narrower it keeps one row and the rarer tools go to **More** (⋯), with their names and shortcuts; below 720 px the Lab is compact (the parts palette is a drawer over the view, notes fold to one line). Under a finger every button is at least 40 × 40 px.
+- **Side panels (Build).** The parts palette is a panel left of the view and the properties a panel on its right (from 1280 px; narrower they open over the view); both close from the toolbar and are resized with the app's pane divider (`gui/pane-divider.jsx`; double-click closes).
+
+## Moving the view
+
+The same in Simulate and Build (`lib/bw-sim/view/camera-nav.js`):
+
+| Input | Does |
+|---|---|
+| Left-drag on empty space, middle-drag | orbit about the target |
+| Right-drag; Shift+drag in Simulate | pan (in Build, Shift+drag draws a selection box, so Build pans with the right button) |
+| Wheel | zoom toward the pointer |
+| One finger / two fingers | orbit / pinch-zoom and pan |
+| ← → ↑ ↓ on the focused view | orbit 15° (in Build only with nothing selected) |
+| Shift+arrows | pan a tenth of the view |
+| + / − | zoom in / out |
+| Home · Fit (F) · Top · Front · Side | the whole model from that side; Fit keeps the direction |
+
+In Build a press on a part (or on the gizmo) belongs to the part: a drag there moves the part and leaves the camera.
 
 How it is built, and what comes next, is in `docs/SIM-LAB-PLAN.md`.
 
@@ -16,7 +52,7 @@ How it is built, and what comes next, is in `docs/SIM-LAB-PLAN.md`.
    Zones mat) and the **Maze runner** (the base with a distance sensor on port **D** looking ahead and a
    colour sensor on port **C** looking down, for the Maze mat). Each of the last four comes with an
    example program: the examples are below.
-2. Open the SPIKE simulator (**SPIKE arena** button in the Code tab) and pick the **Robot Lab (beta)** tab.
+2. Open the **Robot Lab** tab (or press **Open in Robot Lab** in the SPIKE arena).
 3. Press **Run**. As the arena's Start does, Run connects the program to the virtual hub and starts it on the green flag. **Pause** stops the program and the clock; **Reset** reloads the model.
    The program's clock is the simulation's: `wait 2 seconds` is 2 s of simulated time on every computer. When a computer cannot simulate in real time, the whole program runs slower and the status line says how fast, e.g. *“0.40× real time”* (*“0,40× Echtzeit”*); what the robot does stays the same.
 
@@ -267,7 +303,7 @@ Build is a small CAD editor (`bw-sim/editor/editor-view3d.js`; arithmetic in `ed
 - **Drag a part** slides the selection on the work plane (the floor or the top face of another part), grid-snapped.
 - **Gizmo:** when a part is selected, three coloured arrows (X red, Y green, Z blue) and planes move it along axes or in planes (W for move, E for rotate). Coloured rings turn it (see R/T below). Dragging the gizmo shows the “Moving x…/Turning …” status.
 - **Magnet:** a single part dragged or placed near a matching hole or axle shows a green ghost and snaps there on release (all connector pairs that would connect are counted). **Hold Alt** to turn the magnet off. A pin must be within 0.5 LDU sideways and reach at least 8 LDU into the hole (the compiler's seating rule, below); a placed part that would overlap another is refused (see below).
-- **Camera:** left-drag on empty space or right-drag orbits; middle-drag or Shift+right-drag pans; wheel zooms toward the pointer.
+- **Camera:** left-drag on empty space or middle-drag orbits; right-drag pans; wheel zooms toward the pointer; with nothing selected the arrows orbit, Shift+arrows pan and + / − zoom (see *Moving the view*).
 
 **Fingers (tablets: iPad, touch Chromebooks; `editor/touch-gestures.js`)** — Pointer Events with `pointerType === 'touch'`, `touch-action: none` on the canvas; the mouse is unchanged.
 - **One finger on a part** selects it and drags it on the work plane: the mouse's drag (magnet, resting on top, overlap refusal). A **tap** selects just that part.
@@ -299,19 +335,19 @@ Build is a small CAD editor (`bw-sim/editor/editor-view3d.js`; arithmetic in `ed
 - **Esc** — stop a placing tool or clear the selection.
 - Every key has a button on the build bar (below) for a tablet without a keyboard; only Alt (magnet off) and Shift's 15° ring steps have none.
 
-**Build bar (sim-lab-pane.jsx)**
-- **Move (W) / Turn (E)** toggle the gizmo mode.
+**Build toolbar (sim-lab-pane.jsx, sim-lab-toolbar.jsx; see *The toolbar* above)**
+- **Move with arrows (W) / Turn with rings (E)** toggle the gizmo mode.
 - **Grid** — 1 / 5 / 10 / 20 LDU (default 10 = half a hole pitch).
-- **Turn ↻ (R)**, **Turn ↺ (Shift+R)** and **Tip (T)** — same as the keys (they also turn a part being placed).
+- **Turn 90° (R)**, **Turn back 90° (Shift+R)** and **Tip 90° (T)** — same as the keys (they also turn a part being placed).
 - **Group / Ungroup** — buttons for Ctrl+G / Shift+Ctrl+G (disabled unless the selection qualifies).
 - **Duplicate / Delete** — same as Ctrl+D / Delete.
 - **Copy / Paste / Select all** — same as Ctrl+C / Ctrl+V / Ctrl+A.
 - **Cancel (Esc)** — same as Esc: calls off a drag, stops the placing tool, or clears the selection.
 - **Undo / Redo** — same as Ctrl+Z / Ctrl+Y.
-- **Home / Fit (F) / Top / Front / Side** — camera views.
-- **Save .ldr** — downloads `my-model.ldr` (the editor's current model, title `Robot Lab model`).
-- When one part is selected, a **Port** dropdown (none / A–F) binds a motor or sensor; it is only shown for motors and sensors.
-- The Build and Simulate tabs switch modes; Simulate compiles the built model and starts the session.
+- **Home / Fit (F) / Top / Front / Side** — camera views (Simulate has them too).
+- **File › Save as** — downloads the model as `.ldr`, `.mpd` or `.io` (the editor's current model, title `Robot Lab model`).
+- When one part is selected, a **Port** list (none / A–F) beside the selection chip binds a motor or sensor; it is only shown for motors and sensors.
+- **Simulate / Build** in the mode switch change modes; Simulate compiles the built model and starts the session.
 
 **Overlap and what may sit inside**
 A move, turn or place that would make two solid parts intersect is refused: the status says *“Would go into <target>: let go and it stays where it was”* and on release nothing changes. The test is exact primitive SAT on the PartMeta colliders (box / cylinder / sphere, tolerance 1 LDU), ignoring the parts the move is meant to connect to.
@@ -447,6 +483,8 @@ Part geometry is a curated subset of the official **LDraw Parts Library** (CC BY
 - `bw-sim-session.test.mjs` — session tick, snapshot, time and yaw.
 - `bw-sim-snap-rotate.test.mjs` — magnet snapping and `rotateAboutSnap`.
 - `bw-sim-snap.test.mjs` — snap candidates (pins, axles, studs, ball).
+- `bw-sim-camera-nav.test.mjs` — the camera keys (arrows orbit, Shift+arrows pan, + / − zoom; modified keys are not camera keys), orbiting keeps target and distance and never goes under the floor, panning carries camera and target sideways, OrbitControls' button set-up, named views frame a sphere from their side.
+- `spike-simulator-pane.test.mjs` — the arena offers **Open in Robot Lab**, stands aside while the Robot Lab drives the shared hub and hands it over either way.
 - `bw-sim-touch.test.mjs` — fingers: tap, drag, long press, long-press drag and pinch from touch event sequences (slop, long-press time, a late lift), one-finger orbit against an independent rotation, pinch zoom and two-finger pan.
 - `bw-sim-world.test.mjs` — mats and obstacles in the compiled mechanism and scene.
 
@@ -456,4 +494,6 @@ Plus `test/bw-sim-persist.test.mjs` ↔ `test/project-bundle-archive.test.mjs` (
 - `npm run verify:sim-lab` — `scripts/verify-sim-lab-browser.mjs` loads the reference driving base with a WebGL view, runs with no program (hint shown, robot stays put, Drive pad moves it), chooses the line-oval mat (robot on the line), checks palette place/snap/undo, palette pictures (drawn, lazily), search, drag from the palette onto the floor and onto a beam hole, Esc cancelling a drag, Build→Simulate compile, a green-flag Scratch program drives with physical encoders, saved model reopens byte-identical, project load replaces the model, no-WebGL fallback still runs.
 - `scripts/lib/sim-lab-insight-gate.mjs` — port badges in both views, "Show how it moves" (overlay objects and red axis pixels) in both, unplugging a motor from its badge lists the issue, the issue selects the motor, the badge's picker plugs it back in, "Before you press Run" with no motor, the issue pulses the motors in Simulate.
 - `scripts/lib/sim-lab-cad-gate.mjs` — `npm run test:sim-lab-cad` places a part on the floor, drags the gizmo, turns with R/ring, slides on the work plane, Shift+multi-select and box-select, groups/ungroups, pins snap from above and beams stack, pushing into the hub is refused.
-- `scripts/lib/sim-lab-touch-gate.mjs` — a school tablet (1024×768, `hasTouch`, real touch through CDP `Input.dispatchTouchEvent`): tap a tile then the floor places a part, one finger drags a part by grid steps and a tile out of the palette, a long press adds to the selection, a long press then drag on open floor box-selects, a finger drags the gizmo's X arrow (x only), the build bar's Select all / Copy / Paste / Turn ↺ / Undo, one finger orbits and two pinch-zoom in Build and Simulate, holding ▲ drives (sliding off keeps driving) and lifting the finger stops both motors.
+- `scripts/lib/sim-lab-toolbar-gate.mjs` (`--part=ui`) — the Robot Lab tab is selected and filled by the Lab; Help holds the description; every toolbar control (bar and More) has a name and a tooltip starting with it and giving its shortcut, in English and on a de-DE page in German (*Roboter-Labor*, *Rückgängig (Strg+Z)*); the File menu; every Build action by click and by its key (W/E, R/Shift+R/T, Ctrl+A/Esc, Ctrl+Z/Y, Ctrl+D, Delete, copy/paste, Ctrl+G/Ctrl+Shift+G, H/Shift+H/I, M, K, F, ?) with its effect; in both modes Top/Front/Side/Home frame the model, a left drag on empty space orbits about a fixed target, a right drag pans, Shift+drag pans (Simulate), the wheel zooms, arrows/Shift+arrows/− move the focused view; a drag on a part moves the part and leaves the camera, and with a part selected the arrows leave the camera. The core part reaches the Lab through the arena's **Open in Robot Lab** and checks the arena stands aside.
+- `scripts/lib/sim-lab-layout-gate.mjs` (`--part=layout`) — the tab alone at 1024×768 … 1920×1080, with the stage column beside it at 1024×768 and 1366×768, and with the stage dragged wide so the Lab is ~470 px: the view big enough and wholly visible, primary controls pressable, the toolbar never wider than the pane (More when narrower than 1000 px, its Top view works), the palette (drawer when compact) places a part and Undo removes it.
+- `scripts/lib/sim-lab-touch-gate.mjs` — a school tablet (1024×768, `hasTouch`, real touch through CDP `Input.dispatchTouchEvent`): tap a tile then the floor places a part, one finger drags a part by grid steps and a tile out of the palette, a long press adds to the selection, a long press then drag on open floor box-selects, a finger drags the gizmo's X arrow (x only), the build bar's Select all / Copy / Paste / Turn ↺ / Undo, one finger orbits and two pinch-zoom in Build and Simulate, holding ▲ drives (sliding off keeps driving) and lifting the finger stops both motors; two fingers moving together pan the Simulate view. It starts with the stage column beside the tab (compact), then hides it so the tab takes the whole width.
