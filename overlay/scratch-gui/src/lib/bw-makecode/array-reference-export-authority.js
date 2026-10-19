@@ -74,10 +74,10 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(!nodes.has(actual))return null;let map=globalCell.maps.get(actual);if(!map)globalCell.maps.set(actual,map=new Map());if(!map.has(id))map.set(id,{});const value=cell(map.get(id));value.global=true;return value;
     };globalCell.maps=new Map();
     const localCell=(scope,name)=>{if(!scope||scope.invalid||typeof name!=='string'||name==='__proto__')return null;let map=localCell.maps.get(scope);if(!map)localCell.maps.set(scope,map=new Map());if(!map.has(name))map.set(name,{});return cell(map.get(name));};localCell.maps=new Map();
-    const capturedCell=(scope,name)=>{const origin=captures.captured(captures.scopeOf(scope.root.next?block(scope.target,scope.root.next):scope.root),name);const value=origin?localCell(scopes.find(s=>s.root===origin.scope.root),name):null;if(value&&!captures.proof(origin))value.types.add(bad);return value;};
+    const capturedCell=(scope,name)=>{const origin=captures.captured(captures.scopeOf(scope.root.next?block(scope.target,scope.root.next):scope.root),name);const value=origin?localCell(scopes.find(s=>s.root===origin.scope.root),name):null;if(value&&!captures.proof(origin))(value.directBad=true,value.types.add(bad));return value;};
     const binding=(target,node)=>{
         const scope=owners.get(node);if(node.opcode==='data_variable'){const id=node.fields?.VARIABLE?.[1],declaration=targets.find(t=>Object.hasOwn(t.variables||{},id))?.variables[id];return declaration?.[0]===node.fields?.VARIABLE?.[0]?globalCell(target,id):null;}
-        if(node.opcode==='arcade_getLocal'){const name=literal(node,'NAME',target),value=localCell(scope,name),origin=captures.local(captures.scopeOf(node),name);if(value&&origin&&!captures.proof(origin))value.types.add(bad);return value;}
+        if(node.opcode==='arcade_getLocal'){const name=literal(node,'NAME',target),value=localCell(scope,name),origin=captures.local(captures.scopeOf(node),name);if(value&&origin&&!captures.proof(origin))(value.directBad=true,value.types.add(bad));return value;}
         if(node.opcode==='arcade_getCaptured')return capturedCell(scope,literal(node,'NAME',target));
         if(node.opcode.startsWith('argument_reporter_'))return localCell(scope,node.fields?.VALUE?.[0]);return null;
     };
@@ -117,7 +117,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(node.opcode==='data_setvariableto'||node.opcode==='data_changevariableby')destination=globalCell(target,node.fields?.VARIABLE?.[1]);
         else if(node.opcode==='arcade_setLocal')destination=localCell(scope,literal(node,'NAME',target));
         else if(node.opcode==='arcade_setCaptured')destination=capturedCell(scope,literal(node,'NAME',target));
-        if(destination&&['arcade_setLocal','arcade_setCaptured'].includes(node.opcode)&&(!exactKeys(node,['NAME','VALUE'])||node.mutation!=null))destination.types.add(bad);
+        if(destination&&['arcade_setLocal','arcade_setCaptured'].includes(node.opcode)&&(!exactKeys(node,['NAME','VALUE'])||node.mutation!=null))(destination.directBad=true,destination.types.add(bad));
         if(destination)destination.writers.push({target,node,scope,value:node.opcode==='data_changevariableby'?null:input(node,'VALUE',target)});
         if(node.opcode==='arcade_returnValue')scope.returns.push(input(node,'VALUE',target));
         if(['arcade_callFunction','procedures_call'].includes(node.opcode)){
@@ -382,8 +382,8 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         !deadReset(destination,writer)&&!overwrittenPrivateReset(destination,writer));
     // Orphan writes and dynamic local names cannot disappear from all-writer proof.
     for(const target of targets)for(const node of Object.values(target.blocks||{})){
-        if(!owners.has(node)&&['data_setvariableto','data_changevariableby'].includes(node.opcode)){const c=globalCell(target,node.fields?.VARIABLE?.[1]);if(c)c.types.add(bad);}
-        if(['arcade_setLocal','arcade_setCaptured'].includes(node.opcode)&&literal(node,'NAME',target)===null){const owner=owners.get(node);for(const c of cells.values())if(localCell.maps.get(owner)&&[...localCell.maps.get(owner).values()].includes(c.key))c.types.add(bad);}
+        if(!owners.has(node)&&['data_setvariableto','data_changevariableby'].includes(node.opcode)){const c=globalCell(target,node.fields?.VARIABLE?.[1]);if(c)(c.directBad=true,c.types.add(bad));}
+        if(['arcade_setLocal','arcade_setCaptured'].includes(node.opcode)&&literal(node,'NAME',target)===null){const owner=owners.get(node);for(const c of cells.values())if(localCell.maps.get(owner)&&[...localCell.maps.get(owner).values()].includes(c.key))(c.directBad=true,c.types.add(bad));}
     }
     const singleArray=types=>types.size>0&&[...types].every(type=>type&&typeof type==='object'&&type.array===true);
     const token=(node,target,items,minLength=items.length)=>{if(!tokens.has(node))tokens.set(node,{array:true,node,target,items,minLength,elements:new Set(),sources:new Set(items)});return tokens.get(node);};
@@ -393,8 +393,58 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         for(const value of allocation.items)if(value.jsonArray)value.origin=allocation;
         return allocation;
     };
+    // A declaration reset (set to undefined/null) cannot reach an occurrence
+    // when its overwrite of the same cell definitely executed between them:
+    // - a global reset and overwrite on the top-level chain of the once-only
+    //   source-start script, with the occurrence later in that script;
+    // - a local reset immediately followed by its definite overwrite.
+    // The overwrite value must not read the cell. Every other writer and every
+    // other occurrence keeps the full writer set.
+    const resetValue=n=>n?.opcode==='arrays_specialValue'&&exactKeys(n,[],['KIND'])&&['undefined','null'].includes(n.fields?.KIND?.[0]);
+    const readsCell=(target,node,c,seen=new Set())=>{
+        if(!node||seen.has(node))return false;seen.add(node);if(binding(target,node)===c)return true;
+        for(const [name,slot]of Object.entries(node.inputs||{})){if(name.startsWith('SUBSTACK'))continue;
+            for(const raw of [slot?.[1],slot?.[2]]){if(Array.isArray(raw)&&raw[0]===12&&globalCell(target,raw[2])===c)return true;
+                if(typeof raw==='string'&&readsCell(target,block(target,raw),c,seen))return true;}}
+        return false;
+    };
+    const topChain=(scope,node)=>{const seen=new Set();let id=scope.root?.next;while(id&&!seen.has(id)){seen.add(id);const n=block(scope.target,id);if(n===node)return true;id=n?.next;}return false;};
+    let resetFlowReady=false;
+    const killedReset=(c,w,at)=>{
+        if(!resetFlowReady||!resetValue(w.value?.node)||invalid.has(w.node)||w.scope.invalid)return false;
+        const scope=owners.get(at);if(!scope||w.scope!==scope||!scope.executedBefore)return false;
+        const st=statementOf(at),before=st&&scope.executedBefore.get(st);if(!before)return false;
+        const valid=o=>o!==w&&o.scope===scope&&o.value&&!resetValue(o.value.node)&&!invalid.has(o.node)&&before.has(o.node)&&
+            !(o.value.cell===c)&&!(o.value.node&&readsCell(o.target,o.value.node,c));
+        if(c.global){
+            if(scope.root.opcode!=='arcade_whenSourceStarts'||!onceNode(w.node)||!topChain(scope,w.node))return false;
+            return c.writers.some(o=>valid(o)&&topChain(scope,o.node)&&!!scope.executedBefore.get(o.node)?.has(w.node));
+        }
+        // A local reset must be followed IMMEDIATELY by its definite overwrite:
+        // a direct writer, or an if/else whose both branches write the cell
+        // before any exit. Nothing else may run between reset and overwrite.
+        const next=block(w.target,w.node.next);
+        if(!next||!before.has(next))return false;
+        if(c.writers.some(o=>valid(o)&&o.node===next))return true;
+        const branchAssigns=id=>{const seen=new Set();for(let n=block(w.target,id);n&&!seen.has(n);n=block(w.target,n.next)){seen.add(n);
+            if(c.writers.some(o=>o.node===n&&o.scope===scope&&o.value&&!resetValue(o.value.node)&&!invalid.has(n)&&!(o.value.cell===c)&&!(o.value.node&&readsCell(o.target,o.value.node,c))))return true;
+            if(/return|stop|break|continue|throw/i.test(n.opcode))return false;}return false;};
+        return next.opcode==='control_if_else'&&!invalid.has(next)&&branchAssigns(next.inputs?.SUBSTACK?.[1])&&branchAssigns(next.inputs?.SUBSTACK2?.[1]);
+    };
+    const computingCells=new Set();
+    const cellTypesAt=(c,at)=>{
+        if(!c||c.directBad||!at||computingCells.has(c))return new Set(c?c.types:[bad]);
+        const live=c.writers.filter(w=>!killedReset(c,w,at));
+        if(live.length===c.writers.length)return new Set(c.types);
+        computingCells.add(c);
+        try{
+            const out=new Set();if(!live.length)out.add(bad);
+            for(const w of live)for(const type of w.value&&!invalid.has(w.node)&&!w.scope.invalid?readInput(w.value):[bad])out.add(type);
+            return out;
+        }finally{computingCells.delete(c);}
+    };
     const readInput=value=>{
-        if(!value)return new Set([bad]);if(value.cell)return new Set(value.cell.types);if(value.jsonArray)return new Set([jsonArray(value.jsonArray,value.identity,null,value.origin)]);if(value.node)return readNode(value.target,value.node);return new Set([bad]);
+        if(!value)return new Set([bad]);if(value.cell)return cellTypesAt(value.cell,value.at);if(value.jsonArray)return new Set([jsonArray(value.jsonArray,value.identity,null,value.origin)]);if(value.node)return readNode(value.target,value.node);return new Set([bad]);
     };
     const literalNumber=(target,node,name)=>{const v=input(node,name,target);if(v.raw&&[4,5,6,7,8].includes(v.raw[0]))return Number(v.raw[1]);if(v.node?.shadow&&v.node.opcode==='math_number')return Number(v.node.fields?.NUM?.[0]);return null;};
     // A reset can be ignored for KIND facts only when a synchronous source-start
@@ -488,7 +538,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     }
     function computeNode(target,node){
         if(!node||invalid.has(node)||owners.get(node)?.invalid)return new Set([bad]);
-        const c=binding(target,node);if(c)return new Set(c.types);
+        const c=binding(target,node);if(c)return cellTypesAt(c,node);
         const allocated=factories(target,node);if(allocated)return allocated;const named=namedBinding(target,node);if(named)return named;
         if(node.opcode==='arcade_spritesOfKind')return exactKeys(node,['KIND'])&&numericKind(input(node,'KIND',target))?new Set([token(node,target,[{raw:[10,'SDK Sprite element not an Array']}],0)]):new Set([bad]);
         if(Object.hasOwn(FRESH_SDK_ARRAYS,node.opcode))return exactKeys(node,FRESH_SDK_ARRAYS[node.opcode])?new Set([token(node,target,[{raw:[10,'SDK element not an Array']}],0)]):new Set([bad]);
@@ -736,6 +786,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(!scope||owners.get(shrink)!==scope||!statement||!later||statement===later||!onceNode(statement)||!onceNode(later))return false;
         return !!scope.executedBefore.get(shrink)?.has(statement);
     };
+    resetFlowReady=true;
     const minimumAt=(allocation,at,qualifies=()=>true)=>{
         if([...allocation.shrinks||[]].some(node=>node!==at&&!shrinkAfter(node,at)))return 0;
         const scope=owners.get(at),before=scope?.executedBefore.get(at)||new Set();let length=allocation.minLength;
@@ -797,7 +848,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     const checkingWriterInitialization=new Set();
     const initialized=(value,path=new Set())=>{
         if(!value)return false;if(value.jsonArray)return true;
-        const initializedCell=(c,scope,at)=>{if(!available(c,scope,at))return false;if(checkingWriterInitialization.has(c))return true;checkingWriterInitialization.add(c);try{return c.writers.length>0&&c.writers.every(w=>w.value&&initialized(w.value));}finally{checkingWriterInitialization.delete(c);}};
+        const initializedCell=(c,scope,at)=>{if(!available(c,scope,at))return false;if(checkingWriterInitialization.has(c))return true;checkingWriterInitialization.add(c);try{const live=c.directBad?c.writers:c.writers.filter(w=>!killedReset(c,w,at));return live.length>0&&live.every(w=>w.value&&initialized(w.value));}finally{checkingWriterInitialization.delete(c);}};
         if(value.cell)return initializedCell(value.cell,owners.get(value.at),value.at);
         if(!value.node)return false;const {target,node}=value;if(path.has(node))return false;const next=new Set([...path,node]),c=binding(target,node);
         if(c)return initializedCell(c,owners.get(node),node);
