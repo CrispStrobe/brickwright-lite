@@ -85,6 +85,10 @@
 //      Tab alternatives, a red refusal when blocked, R and [ ] turns, a multi-part group seating both pins,
 //      Target-first and keyboard-only placement; the camera orbits and zooms about the point under the
 //      pointer, looks from below in Build, eases a double-click focus, and the view cube turns the view.
+//  18. the Lab steered from code (scripts/lib/sim-lab-api-gate.mjs, --part=api, docs/ROBOT-LAB-HUBS-PLAN.md P1):
+//      a Blocks project of robotlab blocks (saved and reloaded as an .sb3) loads the hubless motor bench and
+//      turns its motor 360 ± 2° through runtime.robotLab; the bench's example in `lab` words, through the UI
+//      only, turns it 360°, rests there through its wait, runs on at 90 °/s and brakes.
 //
 // Every Sim Lab here runs its physics in the Web Worker (ROADMAP §4.9): each load
 // asserts `window.__bwSimLab.worker === true`, so the line-follower lap, the wall
@@ -108,6 +112,7 @@ import {touchInteractions} from './lib/sim-lab-touch-gate.mjs';
 import {layoutInteractions, MIN_CANVAS_PX} from './lib/sim-lab-layout-gate.mjs';
 import {editorParityInteractions} from './lib/sim-lab-editor-parity-gate.mjs';
 import {connectInteractions} from './lib/sim-lab-connect-gate.mjs';
+import {apiInteractions, DEGREES_TOLERANCE} from './lib/sim-lab-api-gate.mjs';
 import {openRobotLabTab, tool, toolbarInteractions} from './lib/sim-lab-toolbar-gate.mjs';
 import {scaleInteractions, OPEN_BUDGET_MS, DRAW_CALL_BUDGET, BUILD_OPEN_BUDGET_MS, IDLE_FRAME_BUDGET_MS, POINTER_MOVE_BUDGET_MS} from './lib/sim-lab-scale-gate.mjs';
 import {brakingBound, judgeWallStop} from './lib/sim-lab-wall-stopper-judge.mjs';
@@ -275,9 +280,9 @@ const reading = page => page.evaluate(() => {
 });
 
 // One gate, six CI steps (each within the per-step budget, gen-gate-budgets.mjs):
-// `--part=core|examples|ui|tablet|layout|editor|scale` runs one section; no flag runs all of them.
+// `--part=core|examples|ui|tablet|layout|editor|scale|api` runs one section; no flag runs all of them.
 const PART = (process.argv.find(a => a.startsWith('--part=')) || '--part=all').slice('--part='.length);
-const PARTS = ['core', 'examples', 'ui', 'tablet', 'layout', 'editor', 'scale'];
+const PARTS = ['core', 'examples', 'ui', 'tablet', 'layout', 'editor', 'scale', 'api'];
 if (PART !== 'all' && !PARTS.includes(PART)) throw new Error(`--part must be one of ${PARTS.join(', ')} (got ${PART})`);
 const want = part => PART === 'all' || PART === part;
 
@@ -940,6 +945,14 @@ try {
         console.log('PASS the hand-made .lxf opens with its unknown, mirrored and uncoloured parts listed; a password-protected .io is refused and the model stays');
         console.log('PASS Save as… → BrickLink Studio (.io) downloads a ZIP whose model.ldr is the model\'s LDraw text, and it reopens to it');
         await page.close();
+    }
+
+    if (want('api')) { // the Lab steered from blocks and from `lab` words (runtime.robotLab)
+        const r = await apiInteractions({browser, errors, openSimLab, wallBudget});
+        console.log(`PASS a Blocks project (robotlab blocks, saved and reloaded as .sb3) loads the hubless motor bench on the lab-direct hub ` +
+            `and turns motor A ${r.blocks.angle}° for "run for 360 degrees" (±${DEGREES_TOLERANCE}), in the worker; Robot Lab status "${r.blocks.status}"`);
+        console.log(`PASS the motor bench's example in lab words (Load example program, Run): rests at ${r.words.restAngle.toFixed(2)}° ` +
+            `for ${r.words.restMs.toFixed(0)} ms of simulated time, runs on to ${r.words.final.toFixed(1)}° at 90 °/s and brakes`);
     }
 
     assert.deepEqual(errors, [], `page errors: ${errors.join('\n')}`);

@@ -53,8 +53,10 @@ const TEXT = {
             'line-follower.bw': 'The example program is in the Code tab now. Press Run and watch the robot follow the black line.',
             'wall-stopper.bw': 'The example program is in the Code tab now. Press Run and watch the robot stop before the wall. Challenge: make it stop 20 cm away.',
             'colour-explorer.bw': 'The example program is in the Code tab now. Press Run and watch the robot find the red square. Challenge: make it find the green one.',
-            'sumo.bw': 'The example program is in the Code tab now. Press Run: the robot drives around and turns back whenever it sees the black ring. Challenge: make it turn the other way, or faster.'
+            'sumo.bw': 'The example program is in the Code tab now. Press Run: the robot drives around and turns back whenever it sees the black ring. Challenge: make it turn the other way, or faster.',
+            'motor-bench.bw': 'The example program is in the Code tab now, in lab words: no hub, the Robot Lab turns the motor itself. Press Run. Challenge: make it turn back the other way.'
         },
+        noProgramLab: 'Nothing tells this motor to turn yet. Use the Robot Lab blocks (Add Extension) or lab words in the Code tab, press ⇦ To blocks, then press Run.',
         exampleFailed: 'Could not load the example program: {error}',
         mat: 'Mat', drive: 'Drive', forward: 'Forward', back: 'Back', left: 'Left', right: 'Right', stop: 'Stop', speed: 'Speed',
         driveHelp: 'Hold an arrow (or use the arrow keys) to drive with motors A and B.', readout: 'Hub',
@@ -121,8 +123,10 @@ const TEXT = {
             'line-follower.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start und schau zu, wie der Roboter der schwarzen Linie folgt.',
             'wall-stopper.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start und schau zu, wie der Roboter vor der Wand anhält. Aufgabe: Lass ihn 20 cm vor der Wand anhalten.',
             'colour-explorer.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start und schau zu, wie der Roboter das rote Feld findet. Aufgabe: Lass ihn das grüne finden.',
-            'sumo.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start: Der Roboter fährt herum und kehrt um, sobald er den schwarzen Ring sieht. Aufgabe: Lass ihn andersherum oder schneller drehen.'
+            'sumo.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start: Der Roboter fährt herum und kehrt um, sobald er den schwarzen Ring sieht. Aufgabe: Lass ihn andersherum oder schneller drehen.',
+            'motor-bench.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in lab-Wörtern: ohne Hub dreht das Robot Lab den Motor selbst. Drücke Start. Aufgabe: Lass ihn wieder zurückdrehen.'
         },
+        noProgramLab: 'Noch sagt dem Motor niemand, dass er sich drehen soll. Nimm die Robot-Lab-Blöcke (Erweiterung hinzufügen) oder lab-Wörter im Code-Tab, drücke ⇦ Zu Blöcken und dann Start.',
         exampleFailed: 'Das Beispielprogramm konnte nicht geladen werden: {error}',
         mat: 'Matte', drive: 'Fahren', forward: 'Vorwärts', back: 'Rückwärts', left: 'Links', right: 'Rechts', stop: 'Stopp', speed: 'Tempo',
         driveHelp: 'Halte einen Pfeil gedrückt (oder nutze die Pfeiltasten), um mit den Motoren A und B zu fahren.', readout: 'Hub',
@@ -338,6 +342,8 @@ class SimLabPane extends React.Component {
             highlights () { return this._pane.editView ? this._pane.editView.debug.highlights() : []; },
             candidate () { return this._pane.editView ? this._pane.editView.debug.candidate() : null; },
             ghostTone () { return this._pane.editView ? this._pane.editView.debug.ghostTone() : null; },
+            /** The Robot Lab API (lib/bw-sim/api/robot-lab-api.js), the object blocks reach as runtime.robotLab; null until the chunk is in. */
+            get api () { return this._pane.api || null; },
             _pane: this
         };
         // The SPIKE arena stands aside while this session drives the shared hub (lib/robot-lab-events.js).
@@ -363,8 +369,92 @@ class SimLabPane extends React.Component {
             return;
         }
         if (this.disposed) return;
+        this.installApi();
         this.raf = requestAnimationFrame(this.frame);
         await this.openStored();
+    }
+
+    /**
+     * The Robot Lab API (docs/SIM-LAB.md "Steering the Lab") over this pane: blocks reach it as
+     * `runtime.robotLab` (looked up at each call, the runtime.nqcCompile hook pattern), the gates
+     * and the JS driver as window.__bwSimLab.api. It is ours while this pane is mounted.
+     */
+    installApi () {
+        this.api = this.lib.createRobotLabApi({
+            getSession: () => this.session,
+            getStatus: () => this.state.status,
+            listModels: () => this.lib.MODELS.map(m => ({id: modelKey(m).replace(/\.ldr$/i, ''), title: m.title})),
+            loadModel: spec => this.apiLoadModel(spec),
+            start: () => this.apiStart(),
+            stop: () => this.apiStop(),
+            reset: () => this.reset(),
+            ensureRunning: () => this.apiEnsureRunning(),
+            setTimeScale: scale => {
+                this.timeScale = scale;
+                if (this.clock) this.clock.timeScale = scale;
+            },
+            camera: view => this.apiCamera(view),
+            locale: () => this.locale
+        });
+        const runtime = this.props.vm && this.props.vm.runtime;
+        if (runtime) runtime.robotLab = this.api;
+    }
+
+    /** loadModel from a block, a word or a call: a shipped model by id, or LDraw text. */
+    async apiLoadModel (spec) {
+        if (this.disposed || !this.lib) return {ok: false, code: 'no-model'};
+        if (this.state.status === 'running') this.apiStop();
+        if (this.editor) {
+            this.teardownEditor();
+            this.setState({mode: 'simulate', placing: null, selection: []});
+        }
+        const entry = this.lib.MODELS.find(m => modelKey(m).replace(/\.ldr$/i, '') === spec);
+        if (entry) await this.openShipped(modelKey(entry));
+        else {
+            this.lastText = spec;
+            await this.openText(spec, 'my-model.ldr');
+        }
+        return {ok: Boolean(this.session), status: this.state.status, issues: this.state.issues.length};
+    }
+
+    /** start from a block: run the world (never the green flag: the program asking is already running). */
+    async apiStart () {
+        if (!this.session || this.state.status === 'running') return;
+        await this.run({greenFlag: false});
+    }
+
+    /** stop from a block: pause the world, leave the program running (it may start it again). */
+    apiStop () {
+        if (!this.session) return;
+        if (this.session.lockstep) { this.pauseFirmware(); return; }
+        this.stopClock();
+        this.setState({status: 'paused'});
+    }
+
+    /** A motor was told to turn: the world runs, as when the drive pad's arrow is held. */
+    apiEnsureRunning () {
+        if (!this.session || this.session.lockstep || this.state.status === 'running') return;
+        this.hub.setSimulationEnabled(true);
+        this.startClock();
+        this.setState({status: 'running'});
+    }
+
+    apiCamera (view) {
+        const v = this.view;
+        if (!v) return;
+        if (view && typeof view === 'object') v.followPart?.(view.follow || null);
+        else if (view === 'fit') v.fit();
+        else v.view(view);
+    }
+
+    robotLabLoaded () {
+        const vm = this.props.vm;
+        return Boolean(vm && vm.extensionManager && vm.extensionManager.isExtensionLoaded('robotlab'));
+    }
+
+    /** The scene has a SPIKE hub (its drive pad and readout make sense); a hubless model runs on lab-direct. */
+    spikeScene () {
+        return Boolean(this.session && this.session.hubs && this.session.hubs.some(h => h.profile === 'spike-prime'));
     }
 
     componentWillUnmount () {
@@ -387,6 +477,11 @@ class SimLabPane extends React.Component {
         this.teardownEditor();
         if (this.physics) this.physics.terminate();
         this.physics = null;
+        const runtime = this.props.vm && this.props.vm.runtime;
+        if (this.api) {
+            if (runtime && runtime.robotLab === this.api) delete runtime.robotLab;
+            this.api.dispose();
+        }
         if (window.__bwSimLab && window.__bwSimLab._pane === this) {
             delete window.__bwSimLab;
             window.dispatchEvent(new CustomEvent(ROBOT_LAB_EVENTS.owner, {detail: {active: false}}));
@@ -661,6 +756,7 @@ class SimLabPane extends React.Component {
         const vm = this.props.vm;
         if (!this.session || this.session.lockstep || !vm || !vm.runtime || this.clockInert) return;
         if (!this.clock) this.clock = new this.lib.SimLabClock();
+        this.clock.timeScale = this.timeScale || 1;
         this.clock.install(vm.runtime, this.session);
     }
 
@@ -675,6 +771,7 @@ class SimLabPane extends React.Component {
         this.view = null;
         if (this.session) this.session.dispose();
         this.session = null;
+        if (this.api) this.api.sessionChanged();
     }
 
     /** Opens a MODELS entry by its key (`id`, else its file): one model file may be listed twice, with different examples. */
@@ -806,6 +903,7 @@ class SimLabPane extends React.Component {
         }
         const insight = this.lib.insightOf(runModel, session.mechanism, CATALOG, issues);
         this.session = session;
+        if (this.api) this.api.sessionChanged();
         // The worker could not run the scene (no WebAssembly in workers, say): the physics runs
         // here, and later models do not try the worker again.
         if (session.workerError && this.physics && !session.lockstep) { this.physics.terminate(); this.physics = false; }
@@ -939,7 +1037,7 @@ class SimLabPane extends React.Component {
         // 'stopping': the firmware route keeps its clock until the emulated hub has taken STOP.
         // With the program clock installed the VM's steps tick the world (sim-clock.js), not frames.
         if ((this.state.status === 'running' || this.state.status === 'stopping') && dt > 0 && !(this.clock && this.clock.installed)) {
-            this.session.tick(dt);
+            this.session.tick(dt * (this.timeScale || 1));
         }
         // With the physics in the worker, simulated time advances when a batch comes back.
         if (Math.floor(this.session.time / 100) !== Math.floor(this.state.simMs / 100)) {
@@ -954,7 +1052,7 @@ class SimLabPane extends React.Component {
     }
 
     /** As the arena's Start: connect the spikeprime blocks to the shared virtual hub, then green flag. */
-    async run () {
+    async run ({greenFlag = true} = {}) {
         if (!this.session) return;
         if (this.session.lockstep) { await this.runFirmware(); return; }
         const hubState = this.hub;
@@ -964,14 +1062,22 @@ class SimLabPane extends React.Component {
         this.stopClock();
         this.setState({status: 'running'});
         const vm = this.props.vm;
-        // Without a SPIKE program the clock still runs (the arrows below drive the motors),
-        // but say plainly why nothing moves on its own.
-        if (!this.spikeLoaded()) {
+        // Without a SPIKE or Robot Lab program the clock still runs (the arrows below drive the
+        // motors), but say plainly why nothing moves on its own.
+        const spike = this.spikeLoaded();
+        if (!spike && !this.robotLabLoaded()) {
             this.startClock();
-            this.setState({info: this.shippedModel()?.example ? `${this.text.noProgram} ${this.text.exampleOffer}` : this.text.noProgram});
+            const none = this.spikeScene() ? this.text.noProgram : this.text.noProgramLab;
+            this.setState({info: this.shippedModel()?.example ? `${none} ${this.text.exampleOffer}` : none});
             return;
         }
         this.setState({info: ''});
+        // A Robot Lab program alone (robotlab blocks, `lab` words): no hub to connect, the flag starts it.
+        if (!spike) {
+            this.startClock();
+            if (greenFlag) vm.greenFlag();
+            return;
+        }
         const peripheral = vm.runtime.peripheralExtensions && vm.runtime.peripheralExtensions.spikeprime;
         try {
             const {connectVirtualSpike} = this.lib;
@@ -988,7 +1094,7 @@ class SimLabPane extends React.Component {
         }
         if (this.state.status === 'running') {
             this.startClock();
-            vm.greenFlag();
+            if (greenFlag) vm.greenFlag();
         }
     }
     /** Puts the current model on another mat (its start pose, if the mat has one) and reloads it. */
@@ -1001,7 +1107,7 @@ class SimLabPane extends React.Component {
 
     /** Hold-to-drive with the movement pair (A left, mounted mirrored; B right), as the arena's drive pad. */
     drive (direction) {
-        if (!this.session || !this.session.bridge) return;
+        if (!this.session || !this.session.bridge || !this.spikeScene()) return;
         const hub = this.hub;
         hub.setSimulationEnabled(true);
         if (this.state.status !== 'running') {
@@ -1036,7 +1142,8 @@ class SimLabPane extends React.Component {
     pause () {
         if (!this.session) return;
         if (this.session.lockstep) { this.pauseFirmware(); return; }
-        if (this.spikeLoaded()) { try { this.props.vm.stopAll(); } catch { /* the VM may be mid-load */ } }
+        // Pause stops the program too (a Robot Lab program's next motor command would run the world again).
+        if (this.spikeLoaded() || this.robotLabLoaded()) { try { this.props.vm.stopAll(); } catch { /* the VM may be mid-load */ } }
         this.hub.backend.cancel();
         this.stopClock();
         this.setState({status: 'paused'});
@@ -1908,7 +2015,7 @@ class SimLabPane extends React.Component {
                     </div>
                     {this.renderDockedProperties(button)}
                 </div>
-                {simulate && this.session && this.session.bridge && !this.session.lockstep && this.renderDrive(button)}
+                {simulate && this.session && this.session.bridge && !this.session.lockstep && this.spikeScene() && this.renderDrive(button)}
                 {build && this.state.shortcuts && (
                     <SimLabShortcuts T={this.etext} wheelMode={this.state.wheelMode} onWheelMode={mode => this.setWheelMode(mode)} onClose={() => {
                         this.setState({shortcuts: false});
