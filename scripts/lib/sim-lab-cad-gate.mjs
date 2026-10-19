@@ -43,10 +43,21 @@ const exactRotation = r => r.every(v => v === 0 || v === 1 || v === -1) &&
  */
 const grabPoint = async (page, id, name) => {
     for (const z of [10, 30, 50, -30, -50, -10]) {
-        const at = await screenOf(page, id, [0, -10, z]);
-        await page.mouse.move(at[0], at[1]);
-        const text = await page.getByTestId('bw-sim-lab-build-status').textContent();
-        if (text.startsWith(`${name}:`)) return at;
+        // Hover text can wrap differently, resizing the canvas and its camera.
+        // Observe the rendered hover/layout before accepting its old projection;
+        // re-aim without clicking if the part moved under the stationary pointer.
+        for (let aim = 0; aim < 3; aim++) {
+            const at = await screenOf(page, id, [0, -10, z]);
+            await page.mouse.move(at[0], at[1]);
+            await page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
+            const now = await screenOf(page, id, [0, -10, z]);
+            if (Math.hypot(now[0] - at[0], now[1] - at[1]) > 0.25) continue;
+            const onCanvas = await page.evaluate(([x, y]) => document.elementFromPoint(x, y) ===
+                document.querySelector('[data-testid="bw-sim-lab-editor-canvas"]'), at);
+            const text = await page.getByTestId('bw-sim-lab-build-status').textContent();
+            if (onCanvas && text.startsWith(`${name}:`)) return at;
+            break;
+        }
     }
     throw new Error(`no free spot on ${id} to press`);
 };
