@@ -68,6 +68,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             owners.set(node,scope);records.push({target,node,scope});if(node.next)visit(all[node.next],new Set([node]));
         }
     }
+    let dynamicFields=false;const fieldCell=name=>cell('field:'+name);
     const cell=key=>{if(!cells.has(key))cells.set(key,{key,writers:[],types:new Set(),formal:null});return cells.get(key);};
     const globalCell=(target,id)=>{
         const own=targets.filter(t=>Object.hasOwn(t.variables||{},id));if(own.length!==1)return null;
@@ -128,6 +129,9 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             if(node.opcode==='procedures_call'&&fn){let ids;try{ids=JSON.parse(node.mutation.argumentids);}catch{}if(JSON.stringify(ids)===JSON.stringify(fn.ids)&&Object.keys(node.inputs||{}).sort().join('|')===[...fn.ids].sort().join('|'))args=fn.ids.map(id=>input(node,id,target));}
             const call={target,node,scope,fn,args};calls.push(call);if(fn){fn.callers.push(call);if(!args||args.length!==fn.params.length)fn.invalid=true;else fn.params.forEach((name,index)=>localCell(fn,name)?.writers.push({target,node,scope,value:args[index],argument:true}));}
         }
+        // Object fields: one pseudo cell per literal field name, written by every
+        // actual setObjectField with that name. A dynamic name poisons all.
+        if(node.opcode==='arcade_setObjectField'){const f=literal(node,'FIELD',target);if(typeof f==='string'&&exactKeys(node,['OBJECT','FIELD','VALUE']))fieldCell(f).writers.push({target,node,scope,value:input(node,'VALUE',target)});else dynamicFields=true;}
         if(['arrays_mutateReference','arrays_referenceTake','arrays_referenceRemove'].includes(node.opcode))mutations.push({target,node,value:input(node,'VALUE',target)});
     }
     // An unproved dynamic or value-based entry cannot disappear from a
@@ -592,6 +596,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                 for(const item of a.elements)result.add(item);
             }return result;
         }
+        if(node.opcode==='arcade_objectField'){const f=literal(node,'FIELD',target);return !dynamicFields&&typeof f==='string'&&exactKeys(node,['OBJECT','FIELD'])&&cells.has('field:'+f)?new Set(fieldCell(f).types):new Set([bad]);}
         if(node.opcode==='arcade_callFunction'){
             const call=calls.find(call=>call.node===node);if(!call?.fn||call.fn.invalid||!call.args||!returnsAlways(target,call.fn.root.next))return new Set([bad]);
             const out=new Set();for(const value of call.fn.returns)for(const type of readInput(value))out.add(type);return out;
@@ -882,6 +887,24 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         const next=new Set([...path,c]);
         return c.writers.length>0&&c.writers.every(writer=>deadKindReset(c,writer)||numericKindInitialized(writer.value,next));
     };
+    // A field read is initialized when every writer of that field name is a
+    // straight-prefix statement of an actual class constructor/field
+    // initializer that no call can precede, and its value is initialized;
+    // a read inside that same procedure must follow the write.
+    const callOpcodes=new Set(['arcade_callFunction','procedures_call','arcade_callObjectMethod','arcade_createObject']);
+    const callsIn=(target,node,seen=new Set())=>{if(!node||seen.has(node))return false;seen.add(node);if(callOpcodes.has(node.opcode))return true;return Object.values(node.inputs||{}).some(slot=>typeof slot?.[1]==='string'&&callsIn(target,block(target,slot[1]),seen));};
+    const constructorPrefix=w=>{
+        const scope=w.scope;if(!scope?.proc||!/^__bwClass_.+_(constructor|fields)( |$)/.test(scope.proc))return false;
+        const seen=new Set();for(let n=block(scope.target,scope.root.next);n&&!seen.has(n);n=block(scope.target,n.next)){seen.add(n);if(n===w.node)return true;
+            if(Object.keys(n.inputs||{}).some(name=>name.startsWith('SUBSTACK'))||callsIn(scope.target,n))return false;}
+        return false;
+    };
+    const fieldInitialized=(target,node,path)=>{
+        const f=literal(node,'FIELD',target);if(dynamicFields||typeof f!=='string'||!cells.has('field:'+f))return false;
+        const c=fieldCell(f),scope=owners.get(node);
+        return c.writers.length>0&&c.writers.every(w=>w.value&&constructorPrefix(w)&&initialized(w.value,path)&&
+            (w.scope!==scope||!!scope.executedBefore?.get(statementOf(node))?.has(w.node)));
+    };
     const checkingWriterInitialization=new Set();
     const initialized=(value,path=new Set())=>{
         if(!value)return false;if(value.jsonArray)return true;
@@ -906,6 +929,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             }
             return true;
         }
+        if(node.opcode==='arcade_objectField')return fieldInitialized(target,node,next);
         if(node.opcode==='arcade_spritesOfKind'&&exactKeys(node,['KIND']))return numericKindInitialized(input(node,'KIND',target));
         if(Object.hasOwn(FRESH_SDK_ARRAYS,node.opcode))return exactKeys(node,FRESH_SDK_ARRAYS[node.opcode]);
         return false;
