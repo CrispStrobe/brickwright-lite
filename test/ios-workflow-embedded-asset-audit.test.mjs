@@ -1669,6 +1669,71 @@ class SDKReportControls(unittest.TestCase):
                 with self.assertRaises(ValueError):validate_api_exports()
         with mock.patch.object(ctypes,'CDLL',side_effect=OSError('missing library')):
             with self.assertRaises(OSError):validate_api_exports()
+    def cleanup_fixture(self):
+        from types import SimpleNamespace
+        process=SimpleNamespace(pid=37,returncode=None,wait=mock.Mock(return_value=0))
+        info=SimpleNamespace(si_pid=37,si_uid=501,si_signo=int(signal.SIGCHLD),si_status=0,si_code=os.CLD_EXITED)
+        report={}
+        self.enterContext(mock.patch.object(os,'geteuid',return_value=501))
+        self.enterContext(mock.patch.object(os,'waitid',return_value=info))
+        self.enterContext(mock.patch.object(os,'waitpid',side_effect=ChildProcessError()))
+        census=self.enterContext(mock.patch.dict(globals(),{'preflight_group_original':mock.Mock()}))
+        signal_call=self.enterContext(mock.patch.object(os,'killpg'))
+        return process,info,report,signal_call
+    def test_fixed_helper_success_reaps_and_preserves_wait_original(self):
+        process,info,report,signal_call=self.cleanup_fixture()
+        finish_preflight_helper(process,info,report)
+        self.assertTrue(report['fixedProbeGroupChecked']);self.assertTrue(report['leaderReaped'])
+        self.assertEqual(report['probeExitOriginal']['si_pid'],37)
+        process.wait.assert_called_once_with(timeout=2);signal_call.assert_called_once_with(37,signal.SIGKILL)
+    def test_fixed_helper_eperm_needs_both_censuses_and_same_owned_exit(self):
+        import errno
+        process,info,report,signal_call=self.cleanup_fixture();signal_call.side_effect=PermissionError(errno.EPERM,'authored')
+        finish_preflight_helper(process,info,report)
+        self.assertTrue(report['zombieOnlyGroupNegativeObserved']);self.assertEqual(preflight_group_original.call_count,2)
+        self.assertEqual(report['probeGroupSignal'],{'status':-1,'errno':errno.EPERM})
+        self.assertTrue(report['leaderReaped'])
+    def test_fixed_helper_signal_error_never_skips_reap_or_becomes_success(self):
+        import errno
+        process,info,report,signal_call=self.cleanup_fixture();signal_call.side_effect=OSError(errno.EIO,'authored')
+        with self.assertRaises(ValueError):finish_preflight_helper(process,info,report)
+        self.assertNotIn('fixedProbeGroupChecked',report);process.wait.assert_called_once_with(timeout=2)
+        self.assertTrue(report['leaderReaped'])
+    def test_bad_exit_or_group_or_second_wait_refuses_but_reaps(self):
+        from types import SimpleNamespace
+        for mode in ('pid','uid','status','code','group','second-wait'):
+            with self.subTest(mode=mode):
+                process,info,report,signal_call=self.cleanup_fixture()
+                if mode in ('pid','uid','status','code'):setattr(info,'si_'+mode,getattr(info,'si_'+mode)+1)
+                elif mode=='group':preflight_group_original.side_effect=ValueError('authored foreign group')
+                else:os.waitid.return_value=None
+                with self.assertRaises(ValueError):finish_preflight_helper(process,info,report)
+                process.wait.assert_called_once_with(timeout=2)
+                self.assertNotIn('fixedProbeGroupChecked',report)
+    def test_cleanup_primary_survives_reap_error(self):
+        process,info,report,signal_call=self.cleanup_fixture()
+        primary=ValueError('authored primary');preflight_group_original.side_effect=primary
+        process.wait.side_effect=TimeoutError('authored reap error')
+        with self.assertRaises(ValueError) as caught:finish_preflight_helper(process,info,report)
+        self.assertIs(caught.exception,primary);self.assertEqual(report['helperReapFailure'],'TimeoutError')
+    def test_actual_group_binding_and_closed_singleton_buffer(self):
+        original_function=globals()['preflight_group_original']
+        class Query:
+            def __init__(self,count=1,pid=37,error=0):self.count,self.pid,self.error=count,pid,error
+            def __call__(self,pid,raw,size):
+                if pid!=37 or size!=8:raise AssertionError('wrong group API arguments')
+                ctypes.cast(raw,ctypes.POINTER(ctypes.c_int32))[0]=self.pid
+                ctypes.set_errno(self.error);return self.count
+        for count,pid,error in ((1,37,0),(0,37,0),(2,37,0),(-1,37,0),(1,38,0),(1,37,1)):
+            query=Query(count,pid,error);library=type('Library',(),{'proc_listpgrppids':query})()
+            report={}
+            with self.subTest(count=count,pid=pid,error=error),mock.patch.object(ctypes,'CDLL',return_value=library) as load:
+                if (count,pid,error)==(1,37,0):original_function(37,report)
+                else:
+                    with self.assertRaises(ValueError):original_function(37,report)
+                self.assertEqual(report['probeGroupOriginals'][0]['count'],count)
+                self.assertEqual(len(bytes.fromhex(report['probeGroupOriginals'][0]['rawHex'])),8)
+                load.assert_called_once_with('/usr/lib/libproc.dylib',use_errno=True)
     def test_unsupported_host_refuses_before_compiler(self):
         import tempfile
         with tempfile.TemporaryDirectory() as directory,mock.patch.dict(os.environ,{'RUNNER_TEMP':directory,
@@ -1716,12 +1781,14 @@ test('Darwin SDK report controls reject layout, identity, CPU-unit and resource 
     try {
         const baseline = run(definitions, 'baseline');
         assert.equal(baseline.status, 0, baseline.stdout + baseline.stderr);
-        assert.match(baseline.stderr, /Ran 7 tests/);
+        assert.match(baseline.stderr, /Ran 13 tests/);
         for (const [index, [before, after]] of [
             ["value[k] == v", 'True'],
             ["value['pid'] == pid", 'True'],
             ["value['rssBytes'] <= 1024**3", 'True'],
-            ["(value['userTicks']+value['systemTicks'])*value['numer']//value['denom'] <= 5_000_000_000", 'True']
+            ["(value['userTicks']+value['systemTicks'])*value['numer']//value['denom'] <= 5_000_000_000", 'True'],
+            ["type(count) is int and count==1 and row['errno']==0 and buffer[0]==pid", 'True'],
+            ['again is not None and {key:getattr(again,key) for key in fields}==original', 'True']
         ].entries()) {
             assert.equal(definitions.split(before).length, 2);
             const result = run(definitions.replace(before, after), `cut-${index}`);

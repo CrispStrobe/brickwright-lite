@@ -329,6 +329,17 @@ read-only ABI using SDK types, records its XNU declaration provenance separately
 from SDK layout, and requires the actual library exports before compilation.
 No Apple implementation or private header is bundled. A corrected event still
 needs its own exact source-bound platform evidence.
+The third event compiled and passed SDK layout, executable pages, kernel audit
+identity and resource sampling, then failed group signaling after the helper's
+nonreaping zero-exit observation. Preserve that `PermissionError` and cleanup
+failure. Apple's [signal-group implementation](https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/bsd/kern/kern_sig.c)
+is consistent with a zombie-only group returning
+`EPERM`; the runner kernel is not source-joined to that research revision.
+The next probe checks two bounded singleton group originals and the same owned
+UID/PID/zero-exit record before classifying this fixed, nonforking-helper negative.
+It always attempts the owned reap despite signal errors. This does not admit
+simulator command-group cleanup, service families or app observation. General
+process-group qualification remains explicitly false.
 
 `DarwinAuditIdentity` and `simulator_code_directory` remain unwired for app
 observation. The former obtains a kernel task-name right and audit token, uses

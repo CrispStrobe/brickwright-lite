@@ -166,6 +166,72 @@ jobs:
               return exports
 
 
+          def preflight_group_original(pid, report):
+              """Fixed nonforking probe only; not a simulator or general child census."""
+              library=ctypes.CDLL('/usr/lib/libproc.dylib',use_errno=True)
+              query=library.proc_listpgrppids
+              query.argtypes=[ctypes.c_int,ctypes.c_void_p,ctypes.c_int]
+              query.restype=ctypes.c_int
+              buffer=(ctypes.c_int32*2)()
+              ctypes.set_errno(0)
+              count=query(pid,ctypes.byref(buffer),ctypes.sizeof(buffer))
+              row={'kind':'fixed-probe-group','count':count,'errno':ctypes.get_errno(),
+                   'rawHex':bytes(buffer).hex()}
+              report.setdefault('probeGroupOriginals',[]).append(row)
+              require(type(count) is int and count==1 and row['errno']==0 and buffer[0]==pid)
+              return row
+
+
+          def finish_preflight_helper(process, exit_info, report):
+              """Reap the observed owned exit even when group signalling refuses.
+
+              Darwin's zombie-only negative is classified only for the exact fixed probe,
+              with two singleton kernel group originals and stable WNOWAIT/UID/zero exit.
+              It supplies no general process-group or simulator cleanup qualification.
+              """
+              primary=None
+              try:
+                  require(process.returncode is None)
+                  fields=('si_pid','si_uid','si_signo','si_status','si_code')
+                  original={key:getattr(exit_info,key) for key in fields}
+                  report['probeExitOriginal']=original
+                  require(all(type(v) is int for v in original.values()) and original=={
+                      'si_pid':process.pid,'si_uid':os.geteuid(),'si_signo':signal.SIGCHLD,
+                      'si_status':0,'si_code':os.CLD_EXITED})
+                  preflight_group_original(process.pid,report)
+                  signal_error=None
+                  try:
+                      os.killpg(process.pid,signal.SIGKILL)
+                      report['probeGroupSignal']={'status':0,'errno':0}
+                  except OSError as error:
+                      report['probeGroupSignal']={'status':-1,'errno':error.errno}
+                      signal_error=error
+                  preflight_group_original(process.pid,report)
+                  again=os.waitid(os.P_PID,process.pid,os.WEXITED|os.WNOHANG|os.WNOWAIT)
+                  require(again is not None and {key:getattr(again,key) for key in fields}==original)
+                  if signal_error is not None:
+                      import errno
+                      require(isinstance(signal_error,PermissionError) and signal_error.errno==errno.EPERM)
+                      report['zombieOnlyGroupNegativeObserved']=True
+                  report['fixedProbeGroupChecked']=True
+              except BaseException as error:
+                  primary=error
+                  raise
+              finally:
+                  # A signalling exception must never skip reaping our exact exited child.
+                  report['helperReapAttempted']=True
+                  try:
+                      code=process.wait(timeout=2)
+                      report['helperReturnCode']=code
+                      require(code==0)
+                      try:os.waitpid(process.pid,os.WNOHANG)
+                      except ChildProcessError:report['leaderReaped']=True
+                      else:raise ValueError('owned leader was not reaped')
+                  except BaseException as error:
+                      report['helperReapFailure']=type(error).__name__
+                      if primary is None:raise
+
+
           def producer_namespace(workflow):
               match = re.search(r'# BEGIN IOS INPUT RETENTION\n          cat > "\$RUNNER_TEMP/bw-ios-audit-capture.py" <<\'PY\'\n([\s\S]*?)          PY\n          # END IOS INPUT RETENTION',workflow)
               require(match is not None)
@@ -179,10 +245,10 @@ jobs:
           def main():
               root=Path(os.environ['RUNNER_TEMP']).resolve()/'bw-ios-darwin-preflight'
               root.mkdir(exist_ok=False)
-              report={'schema':'brickwright.darwin-sdk-preflight.v3','status':'partial',
+              report={'schema':'brickwright.darwin-sdk-preflight.v4','status':'partial',
                       'sourceCommit':os.environ['GITHUB_SHA'],'runID':os.environ['GITHUB_RUN_ID'],
                       'attempt':os.environ['GITHUB_RUN_ATTEMPT'],'job':os.environ['GITHUB_JOB'],
-                      'actualAppQualified':False,'processFamilyQualified':False,'cleanupSucceeded':False}
+                      'actualAppQualified':False,'processFamilyQualified':False,'processGroupQualified':False,'cleanupSucceeded':False}
               process=None
               identity=None
               report['stage']='platform-admission'
@@ -224,9 +290,9 @@ jobs:
                   report['sdkSettingsSHA256']=hashlib.sha256(settings.read_bytes()).hexdigest()
                   source=root/'probe.c';source.write_text(C_SOURCE)
                   executable=root/'probe'
+                  report['probeSourceSHA256']=hashlib.sha256(source.read_bytes()).hexdigest()
                   report['stage']='probe-compile'
                   command([compiler,'-std=c11','-Wall','-Wextra','-Werror','-isysroot',sdk,str(source),'-o',str(executable)])
-                  report['probeSourceSHA256']=hashlib.sha256(source.read_bytes()).hexdigest()
                   report['probeExecutableSHA256']=hashlib.sha256(executable.read_bytes()).hexdigest()
                   environment={key:os.environ[key] for key in ('HOME','PATH','TMPDIR') if key in os.environ}
                   report['stage']='probe-start'
@@ -279,15 +345,10 @@ jobs:
                   while os.waitid(os.P_PID,process.pid,os.WEXITED|os.WNOHANG|os.WNOWAIT) is None:
                       require(time.monotonic()<deadline)
                       time.sleep(0.01)
+                  exit_info=os.waitid(os.P_PID,process.pid,os.WEXITED|os.WNOHANG|os.WNOWAIT)
                   report['nonReapingWaitObserved']=True
-                  # Consume the group identity while its leader is still ours to reap.
-                  try:os.killpg(process.pid,signal.SIGKILL)
-                  except ProcessLookupError:pass
-                  require(process.wait(timeout=2)==0)
+                  finish_preflight_helper(process,exit_info,report)
                   report['cleanupSucceeded']=True
-                  try:os.waitpid(process.pid,os.WNOHANG)
-                  except ChildProcessError:report['leaderReaped']=True
-                  else:raise ValueError('owned leader was not reaped')
                   report['stage']='exit-refusal'
                   try:sampler(process.pid)
                   except ValueError:report['exitedPIDRefused']=True
@@ -323,6 +384,8 @@ jobs:
                           if process.returncode is None:
                               try:os.killpg(process.pid,signal.SIGKILL)
                               except ProcessLookupError:pass
+                              except Exception as error:errors.append('group-'+type(error).__name__)
+                              # Never skip the owned wait because signalling failed.
                               process.wait(timeout=2)
                   except Exception as error:errors.append(type(error).__name__)
                   finally:
