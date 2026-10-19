@@ -1138,7 +1138,7 @@ class Parser {
             return {...expression,assertedType:types[0],typeAssertions:[types[0],...(expression.typeAssertions || [])]};
         }
         if (this.at('punct', '!') || this.at('punct', '-') || this.at('punct', '+') ||
-            this.at('punct', '~') || this.at('ident', 'typeof')) {
+            this.at('punct', '~') || this.at('ident', 'typeof') || this.at('ident', 'delete')) {
             const op = this.next().value;
             return {type: 'Unary', op, argument: this.parseUnary()};
         }

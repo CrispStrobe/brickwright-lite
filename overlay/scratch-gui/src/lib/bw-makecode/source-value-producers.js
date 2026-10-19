@@ -1,5 +1,4 @@
 import {constraints} from './ordinary-procedure-constraint-metadata.js';
-import {analyseCallableBindings} from './callable-bindings.js';
 import {CAMERA_PROPERTIES} from './camera-property-constants.js';
 import {declarationIdentityInput} from './declaration-identity-input.js';
 import {consumeSharedImageEntryEffects,sharedImageEntryArrayDomain} from './shared-image-array-source-effects.js';
@@ -1130,7 +1129,7 @@ function validatePrimitiveConstraintGraph(program,graph,onlyFunctions) {
 // parser/normalizer preparation path; own-data rows are not a Proxy-origin token.
 const cameraRealm=globalThis,cameraKeys=Reflect.ownKeys,cameraDescriptor=Object.getOwnPropertyDescriptor;
 const cameraPrototype=Object.getPrototypeOf,cameraOwn=Object.hasOwn,cameraSame=Object.is,cameraApply=Reflect.apply;
-const CameraSet=Set,CameraMap=Map,CameraWeakSet=WeakSet,cameraFreeze=Object.freeze,cameraDefine=Object.defineProperty;
+const CameraSet=Set,CameraWeakSet=WeakSet,cameraFreeze=Object.freeze,cameraDefine=Object.defineProperty;
 const cameraWeakHas=WeakSet.prototype.has,cameraWeakAdd=WeakSet.prototype.add;
 const cameraSetHas=Set.prototype.has,cameraSetAdd=Set.prototype.add,cameraSetDelete=Set.prototype.delete;
 const cameraSetValues=Set.prototype.values,cameraSetNext=cameraPrototype(new Set().values()).next;
@@ -1251,70 +1250,56 @@ function compilerCameraNumberInput(program){
             for(const[key,value]of Object.entries(node))if(!metadata.has(key))collect(value,node);
         };
         collect(program);if(unsafe)return null;
-        const sdk=staticSdkNamespaceReceivers(program),lexical=analyseCallableBindings(program),counts=new CameraMap();
-        const count=b=>{if(b)counts.set(b,(counts.get(b)||0)+1);};
+        // Reuse the existing lexical SDK resolver, after proving that every
+        // binding-bearing executable form is covered at this owned normalizer
+        // seam. Residual destructuring/namespace/enum/ForOf and unknown forms
+        // decline this optional derivation rather than inventing a binding.
+        const knownForms=new CameraSet(['Program','Block','Declaration','FunctionDeclaration','FunctionExpression',
+            'Class','For','While','If','Switch','ExpressionStatement','Return','Break','Continue',
+            'Identifier','Member','Index','Call','Assignment','Update','Binary','Unary','Conditional',
+            'Array','Object','Number','String','Boolean','Null','Undefined','Template','Interface']);
         for(const node of nodes){
-            const scope=lexical.scopes.get(node);
-            if(node.type==='Declaration')for(const decl of node.decls)count(scope?.names.get(decl.name));
-            else if(node.type==='FunctionDeclaration')count(scope?.parent?.names.get(node.name));
-            if(node.type==='Class'||node.type==='Enum'||node.type==='Namespace'||node.type==='ThrowStatement'||node.type==='Unknown')unsafe=true;
+            if(node.type!==undefined&&!knownForms.has(node.type))unsafe=true;
+            if(node.type==='Declaration'&&(!['let','const','var'].includes(node.kind)||!Array.isArray(node.decls)||
+                node.decls.some(decl=>typeof decl.name!=='string')))unsafe=true;
+            if(node.type==='FunctionDeclaration'||node.type==='FunctionExpression'){
+                if(!Array.isArray(node.params)||node.params.some(name=>typeof name!=='string')||!Array.isArray(node.body)||
+                    node.type==='FunctionDeclaration'&&typeof node.name!=='string')unsafe=true;
+            }
+            if(node.type==='Object'&&!Array.isArray(node.props))unsafe=true;
+            if(node.type==='Template'&&typeof node.tag==='string'&&
+                (node.tag==='CameraProperty'||node.tag.startsWith('CameraProperty.')))unsafe=true;
+            if(node.type==='Class'){
+                if(node.unsupported?.length)unsafe=true;
+                if(typeof node.name!=='string'||!Array.isArray(node.fields)||!Array.isArray(node.methods))unsafe=true;
+                for(const method of [...(node.methods||[]),...(node.ctor?[node.ctor]:[])]){
+                    if(!Array.isArray(method.params)||method.params.some(name=>typeof name!=='string')||!Array.isArray(method.body))unsafe=true;
+                }
+            }
         }
-        if(lexical.bindings.some(binding=>binding.name==='CameraProperty'))unsafe=true;
-        const route=node=>node?.type==='Identifier'?node.name:node?.type==='Member'?route(node.object)+'.'+node.name:null;
-        const sdkArities=new CameraMap([['image.create',2],['sprites.create',2],['scene.cameraProperty',1],
-            ['scene.cameraFollowSprite',1],['scene.centerCameraAt',2],['tiles.setTilemap',1],['tiles.createTilemap',4]]);
-        const sdkConstants=new CameraSet(['TileScale.Eight','SpriteKind.Player','SpriteKind.Food','SpriteFlag.RelativeToCamera']);
-        const directSdkCall=node=>node?.type==='Call'&&!node.isNew&&!node.constructorCall&&!node.typeArguments?.length&&
-            Array.isArray(node.args)&&!node.args.some(arg=>arg?.type==='Spread')&&sdk.has(node.callee)&&
-            sdkArities.has(route(node.callee))&&node.args.length===sdkArities.get(route(node.callee));
-        // Only unchanged unique physical factory declarations classify method
-        // effects. Names/annotations cannot establish an Image or Sprite origin.
-        const handleOf=node=>{
-            if(node?.type!=='Identifier')return null;
-            const binding=lexical.references.get(node),decl=binding?.node,init=decl?.init;
-            if(!binding||binding.written||counts.get(binding)!==1||!directSdkCall(init))return null;
-            const name=route(init.callee);return name==='image.create'?'Image':name==='sprites.create'?'Sprite':null;
-        };
-        const handleMethod=node=>{
-            if(node?.type!=='Call'||node.isNew||node.constructorCall||node.typeArguments?.length||
-                !Array.isArray(node.args)||node.args.some(arg=>arg?.type==='Spread')||node.callee?.type!=='Member')return false;
-            const kind=handleOf(node.callee.object),name=node.callee.name;
-            return kind==='Image'&&name==='fill'&&node.args.length===1||kind==='Sprite'&&
-                (name==='setPosition'||name==='setFlag')&&node.args.length===2;
-        };
+        if(unsafe||!current())return null;
+        const sdk=staticSdkNamespaceReceivers(program);
         const candidates=new CameraWeakSet();let candidateCount=0;
         for(const node of nodes){
             const parent=parents.get(node);
-            if(node.type==='Identifier'&&['globalThis','window','self','eval','Function','Reflect','Object','arguments','this'].includes(node.name))unsafe=true;
-            if(node.assertedType||node.type==='As'||node.type==='TypeAssertion')unsafe=true;
-            if(node.type==='Index'||node.type==='FunctionExpression'||node.type==='Unary'&&node.op==='delete')unsafe=true;
-            if(node.type==='Member'){
-                if(['constructor','prototype','__proto__'].includes(node.name))unsafe=true;
-                const leaf=node.object?.type==='Identifier'&&node.object.name==='CameraProperty'&&sdk.has(node)&&Object.hasOwn(CAMERA_PROPERTIES,node.name);
-                const enumConstant=sdk.has(node)&&sdkConstants.has(route(node));
-                const sdkCallee=parent?.type==='Call'&&parent.callee===node&&directSdkCall(parent);
-                const handleCallee=parent?.type==='Call'&&parent.callee===node&&handleMethod(parent);
-                const handleRead=handleOf(node.object)==='Sprite'&&['x','y'].includes(node.name);
-                if(leaf){candidates.add(node);candidateCount++;}
-                if(!leaf&&!enumConstant&&!sdkCallee&&!handleCallee&&!handleRead)unsafe=true;
-                if(parent?.type==='Assignment'&&parent.left===node||parent?.type==='Update'&&parent.argument===node)unsafe=true;
+            // These dynamic lexical/reflective constructs remain uncertain.
+            // Unrelated ordinary calls, callbacks, arrays, classes and local
+            // writes do not execute during compilation and cannot alter the
+            // canonical EnumMember's compile-time constant value.
+            if(node.type==='Identifier'&&['eval','Function'].includes(node.name))unsafe=true;
+            if(node.type!=='Identifier'||node.name!=='CameraProperty'||!sdk.has(node))continue;
+            const member=parent;
+            if(member?.type!=='Member'||member.object!==node||!sdk.has(member)||
+                !cameraOwn(CAMERA_PROPERTIES,member.name)||member.optional||member.computed||node.assertedType||member.assertedType){unsafe=true;continue;}
+            const owner=parents.get(member);
+            if(owner?.type==='Assignment'&&owner.left===member||owner?.type==='Update'&&owner.argument===member||
+                owner?.type==='Unary'&&owner.op==='delete'||owner?.type==='Call'&&owner.callee===member){unsafe=true;continue;}
+            let ancestor=owner;
+            while(ancestor){
+                if(ancestor.assertedType||ancestor.type==='As'||ancestor.type==='TypeAssertion'){unsafe=true;break;}
+                ancestor=parents.get(ancestor);
             }
-            if(node.type==='Identifier'){
-                const binding=lexical.references.get(node);
-                const root=sdk.has(node)&&parent?.type==='Member'&&parent.object===node;
-                if(!binding&&!root)unsafe=true;
-                if(node.name==='CameraProperty'&&(!root||!Object.hasOwn(CAMERA_PROPERTIES,parent.name)))unsafe=true;
-                if(binding?.kind==='function'&&!(parent?.type==='Call'&&parent.callee===node))unsafe=true;
-            }
-            if(node.type==='Call'&&!directSdkCall(node)&&!handleMethod(node)){
-                const binding=node.callee?.type==='Identifier'?lexical.references.get(node.callee):null;
-                if(node.isNew||node.constructorCall||node.typeArguments?.length||node.args.some(arg=>arg?.type==='Spread')||
-                    binding?.kind!=='function'||binding.written||counts.get(binding)!==1||binding.node?.type!=='FunctionDeclaration')unsafe=true;
-            }
-            if(node.type==='Assignment'||node.type==='Update'){
-                const target=node.type==='Assignment'?node.left:node.argument;
-                if(target?.type!=='Identifier'||sdk.has(target))unsafe=true;
-            }
+            candidates.add(member);candidateCount++;
         }
         if(unsafe||!candidateCount||!current())return null;
         return cameraFreeze({current,has:node=>cameraApply(cameraWeakHas,candidates,[node])&&current()});

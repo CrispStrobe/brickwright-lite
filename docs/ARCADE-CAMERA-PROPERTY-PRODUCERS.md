@@ -14,16 +14,25 @@ and [property emission](https://github.com/microsoft/pxt/blob/v13.2.1/pxtcompile
 These links describe the source semantics; they do not qualify a new compiler
 execution or every current upstream revision.
 
-The producer requires an actual physical member expression with an unshadowed
-SDK binding. A Number annotation, a user object with an `X` field, a matching
-variable name, or a cast cannot establish that binding. Namespace aliases,
-extraction, writes, dynamic indexing, reflection and unknown calls remain outside
-this bounded proof. The initial effect census supports the existing camera
-fixture's tilemap/scene operations and unchanged, uniquely bound physical
-`image.create` and `sprites.create` allocations. Image fill and Sprite position,
-flag, and coordinate accesses are checked against those allocations, never just
-the method spelling. This does not introduce Image, Sprite or generic enum
-producer authority.
+The producer requires an actual physical member expression with the builtin SDK
+binding at that lexical use. A Number annotation, a user object with an `X`
+field, a matching variable name, or a cast cannot establish that binding.
+Namespace escapes, root/member writes, dynamic indexing, unknown members and
+reflection involving that root remain outside this proof. A shadow in an
+unrelated local scope does not change a genuine builtin use elsewhere.
+
+The enum member is a compile-time numeric constant. Unrelated ordinary calls,
+callbacks, arrays, classes and local writes therefore do not remove its numeric
+producer. Their own translation, type and diagnostic checks still apply. This
+operation grants no Image, Sprite, method, allocation or generic enum authority.
+It does not require a fixture-wide list of SDK calls or method names.
+
+The private compiler resolver reuses the existing lexical SDK classifier after
+a structural binding-form check. Residual destructuring declarations, raw
+ForOf, enum/namespace forms not handled by normal lowering, unknown forms,
+dynamic lexical constructs and Throw retain the original conservative path.
+These are pending binding/completion coverage gaps, not a permanent rejection
+of valid language constructs. Every transformed Program needs a fresh derivation.
 
 ## Validation boundary
 
@@ -48,3 +57,17 @@ modules require execution. Actual camera import, editable Code, saved projects,
 export, original-compiler behavior and affected native execution need their own
 observations. No complete-suite, corpus, browser, runtime or performance result
 is inferred from the source change.
+
+## Deletion syntax
+
+Source `delete receiver.property` and `delete receiver[index]` are parsed as
+actual unary mutations. They cannot appear as an unrelated identifier followed
+by a harmless member read. The common translator explicitly reports deletion
+as unsupported in both value and statement positions, including ordinary user
+objects. It does not substitute an operand read, emit a successful Boolean
+result, or implement property deletion semantics. Arcade routes this operation
+before numeric folding; micro:bit uses the same common diagnostic path.
+
+This parser and diagnostic correction preserves the Camera identity/mutation
+refusals. It does not make deletion a supported target operation or qualify
+runtime behavior.
