@@ -1,0 +1,296 @@
+# Robot Lab Build mode: connection-first UX spec
+
+Status (2026-10-19, lane `lane/simlab-tab-20261018`): **P1 and P2 implemented**, P3 not yet (see §7). Items below are marked ✅ implemented, ◐ implemented with a stated difference, ☐ not implemented. The pure core is `overlay/scratch-gui/src/lib/bw-sim/editor/snap.js` (`snapAtPointer`, `connectorUnderPointer`, `connectionLine`, `turnAboutLine`, `connectedComponent`) and `view/camera-nav.js` (`orbitAboutPivot`, `zoomAbout`, `wheelIntent`, `viewCubeDirection`); the view is `editor/editor-view3d.js`; the words are `components/tw-pseudocode/sim-lab-editor-text.js` (`connect`, EN and DE). Tests: `test/bw-sim-snap-pointer.test.mjs`, `test/bw-sim-camera-nav.test.mjs`, and the browser gate `scripts/lib/sim-lab-connect-gate.mjs` (`npm run verify:sim-lab -- --part=editor`).
+
+2026-10-19. Code read in `wt-simlab-tab`: `lib/bw-sim/editor/*`, `view/camera-nav.js`, `part-meta/parts.json` and `docs/SIM-LAB.md` § Build mode. Units are LDU; one hole pitch is 20 LDU. Claims marked UNVERIFIED could not be confirmed from a source.
+
+## 1. How established editors do it
+
+- **Connection data**
+  - LDCad snaps "100% through meta information": `!LDCAD SNAP_CYL/CLP/FGR/GEN/SPH` lines in a shadow library, written on primitives and inherited by parts ([meta spec](http://www.melkert.net/LDCad/tech/meta), [shadowLib](http://www.melkert.net/LDCad/tech/shadowLib), [forum](https://forums.ldraw.org/thread-11110.html)).
+  - A cylinder connector has a gender, a section profile (R round / A axle / S square), caps, a grid of copies, and a slide flag.
+  - LDCad left anti-studs off the tube primitive because it lacked "multi matching" ([stud4.dat](https://raw.githubusercontent.com/RolandMelkert/LDCadShadowLibrary/master/p/stud4.dat)). Our derived connectors carry the same information, so we can do the multi-matching LDCad skipped.
+- **Hover and preview**
+  - Studio's Connect tool draws a part's connectors as small blue cubes and cylinders, and lights the compatible points on the second part ([Studio Connect](https://studiohelp.bricklink.com/hc/en-us/articles/6481651047319-Connect)).
+  - Mecabricks shows snap points as dots. You click one, and the next part from the palette lands there ([Brickset](https://brickset.com/article/52336/let-s-build-in-mecabricks)).
+  - LDD makes the carried brick translucent ([LDD 4.3 manual p.9](https://www.blinklearning.com/useruploads/r/a/234389417/activity_other_imported/ManualdeusuariodeLEGODigitalDesigner.pdf)).
+  - LDCad shows its grid only when no connection is near ([basicEdit](http://www.melkert.net/LDCad/docs/basicEdit)).
+  - UNVERIFIED: whether Studio or LDD highlight the target connector during an ordinary drag.
+- **Choosing the target**
+  - LDCad v2 snaps "based on the actual part shape and not the cursor location", but needs the part roughly oriented first (forum above).
+  - Studio "tries to place parts in a valid, connected position" and re-orients them to sit flush ([Moving parts](https://studiohelp.bricklink.com/hc/en-us/articles/5410338956695-Moving-parts)).
+  - Studio has hysteresis: a moving part "will tend to jump to connect", a part at rest is "a bit sticky". Axles step one stud at a time, and Ctrl lets them glide ([Snap](https://studiohelp.bricklink.com/hc/en-us/articles/5412087360919)).
+  - UNVERIFIED: any editor's numeric tolerances.
+- **Rotation**
+  - LDD: the arrows turn a held brick 90°. The hinge tool (H) has a Tab key that cycles candidate pivots (green = active, yellow = alternatives) and steps of 45° (manual pp.7–8).
+  - Studio: arrows 90°, Shift+arrows 45°, and both work while dragging ([shortcuts](https://studiohelp.bricklink.com/hc/en-us/articles/5410055533207)).
+  - Studio's hinge tool turns "around a shared connection point" and carries the connected side with it. Mouse turns respect collision; arrow keys do not ([Hinge](https://studiohelp.bricklink.com/hc/en-us/articles/5411433123351-Hinge-and-Rotation-tool)).
+  - LDCad: 90°, Ctrl 45°, Home resets ([keys](http://www.melkert.net/LDCad/docs/keys)).
+- **Several connectors at once**
+  - Studio's Connect tool adds points with Ctrl. It turns "only as much as needed" and refuses a misalignment over 45°.
+  - UNVERIFIED: any editor's documented all-or-nothing best fit.
+- **Collision**
+  - LDD refuses the slightest collision ([Eurobricks](https://eurobricks.com/forum/forums/topic/145733-ldd-collision-confusion-conundrum/)).
+  - Studio has a Collision toggle (Ctrl+Alt+C). UNVERIFIED: how Studio shows a collision (its help page returned 403).
+- **Palette**
+  - Studio offers click-then-place (the camera stays usable) and drag-in. Click or Space places, Esc or a right-click cancels, and repeat-insert is on by default (shortcuts above).
+- **Connected parts**
+  - Studio's Shift+V selection modes include "By Connected" ([selection](https://studiohelp.bricklink.com/hc/en-us/articles/5410231515543)).
+  - UNVERIFIED: whether a plain drag carries connected parts along in LDD or Studio.
+- **Camera**
+  - LDD: right-drag orbits, Shift+right-drag pans, the wheel zooms.
+  - Studio: right-drag or Ctrl+left-drag orbits; middle or Space+drag pans. F means "pan to cursor", and there is a view cube ([camera](https://studiohelp.bricklink.com/hc/en-us/articles/5409213150487-Camera-control-in-the-viewport)).
+  - LDCad: C centres on the selection, Z fits the model.
+  - UNVERIFIED: any LEGO editor's rule for the orbit pivot.
+- **Touch**
+  - Mecabricks "works even on touch screens". UNVERIFIED: its gesture mapping.
+
+## 2. Robot Lab today and the gaps
+
+Already working:
+- The magnet (`snap.js` `snapCandidates`) counts every pair a pose makes and checks overlap exactly (`overlap.js`, SAT).
+- A green ghost appears, with marker spheres on the paired connectors. Alt turns the magnet off.
+- R turns a part about its connection axis.
+- Palette: click-arm and drag-in.
+- Zoom to the cursor, touch gestures, and a red refusal on overlap.
+
+| # | Gap | Where |
+|---|---|---|
+| G1 | Hovering outlines the whole part. No connector lights up, and nothing shows which holes the part in hand could use. | `drawOutlines`, `showMagnet` |
+| G2 | The target is driven by the pose, not the cursor. The palette ghost seeds the snap with `{hit.point, IDENTITY}` and a 40 LDU 3D radius; a drag seeds it with the grid-snapped pose and `MAGNET_RADIUS = 32`. So the winning hole depends on where the held part's connectors happen to land. The score is `pairs×1000 − dist`, with no hysteresis, so the target flickers. | `updateGhost`, `magnetFor` |
+| G3 | The axis sign is the one nearest the current pose, not "sticking out towards the viewer". The twist is always rounded to 90°, even for round pins. | `rotationForAxis` |
+| G4 | You cannot cycle through alternatives (other face, other pin end, next hole). | — |
+| G5 | The magnet runs only for a single part (`moves.length === 1`), so a beam carrying its pins never seats. | `showMove` |
+| G6 | A colliding candidate is dropped silently, and the user sees a free ghost somewhere else instead of a red one where they aimed. | `snap.js` overlap `continue` |
+| G7 | The orbit turns about a fixed `controls.target`, and `maxPolarAngle = π/2`, so you cannot look under a part. | `editor-view3d.js:645` |
+| G8 | Double-click enters a group but does not focus the view. There is no view cube, and Fit jumps without animating. | `onDblClick`, `fitBox` |
+| G9 | A trackpad's two-finger scroll zooms, as a wheel does; it never pans or orbits. | OrbitControls |
+| G10 | There is no keyboard-only placement, no hint bar that follows the state, and the cursor never changes. | pane |
+
+## 3. Spec
+
+### 3.1 States
+
+- **Idle.** Hovering a part outlines it and lights the connector under the pointer (§3.2). Cursor: `grab` over a part.
+- **Holding.** Entered from a palette tile, or by dragging the selection more than 4 px. The ghost follows the pointer. Cursor: `grabbing`.
+  - **Free:** a neutral translucent ghost resting on the surface, at today's `restingPose`.
+  - **Snapped:** a green ghost. The active target shows amber, the held connector green.
+  - **Blocked:** a red ghost at the aimed pose. The colliding part is tinted, the status reads *"Would go into …"*, releasing changes nothing, and the cursor is `not-allowed`.
+- **Target-first** (Mecabricks style).
+  - In Idle, clicking a lit free connector pins it as the target. It gets a pulsing ring and a chip such as *"Target: Beam 7, hole 3"*.
+  - Palette tiles that cannot connect to that target dim. Clicking a compatible tile places the part straight into the target.
+  - This is the owner's "hover a pin hole, a fresh part slots in". Esc, or a click on empty space, clears the target.
+
+### 3.2 Connector highlight
+
+- **Compatibility comes from the registry**, never from a hard-coded list:
+  - pin–pinhole, axle–axlehole and axle–pinhole (`kinds/pin-axle.js` `edgeKind`);
+  - stud–antistud and stud–tube (`kinds/stud.js`);
+  - ball–ballsocket;
+  - any registered rule: gear-seat, clutch, spline, slide.
+- **Free** means no current pair uses the connector, judged by the compiler's own pairing.
+- **Idle:** only the single connector nearest the pointer lights up. Its projected entry face must be within 16 px (mouse) or 28 px (touch).
+- **Holding:**
+  - Every free connector compatible with any free held connector lights up faintly, on visible parts within 160 px of the pointer.
+  - The active target is drawn opaque and 1.3× larger.
+  - The held part's matching connector is green on the ghost.
+- **Style** (depth-tested, so holes behind a part stay dark):
+  - Holes and anti-studs: a ring at the entry face. Axle holes add a "+" inside the ring.
+  - Shafts and studs: a ring at the tip.
+  - Balls and sockets: a sphere.
+  - Colours: cyan `#38bdf8` for candidates, amber `#f59e0b` for the active target, green for the held connector, red when Blocked.
+- **Performance:** studs and anti-studs are about 3,900 of the roughly 4,000 catalogue connectors. Show them only on parts whose screen bounding box contains the pointer.
+
+### 3.3 Choosing the target
+
+This is cursor-driven. A new pure export, `snapAtPointer(model, catalog, held, ray, project, opts)` in `snap.js`, replaces the pose seed.
+
+1. **Ray.** Cast the existing collider-aware ray to get the part P and the hit point h.
+2. **Targets T.** Take the free compatible connectors on P and its spatial-index neighbours whose entry face projects within R_px of the pointer (24 px mouse, 40 px touch).
+   - A hole's entry face is the end (±length/2) whose outward normal faces the camera.
+   - If none qualifies, fall back to the connector nearest h, within 12 LDU.
+3. **Seating pose** for each target t and each compatible held connector m:
+   - **Axis.** Align m's axis with t's. Choose the sign that puts the held part's centre of mass on the camera side of the entry face.
+   - **Depth.** Keep today's rules:
+     - A shaft's centre sits at the hole face, so a 40 LDU pin goes 20 LDU in.
+     - A hole on a shaft is clamped onto the shaft.
+     - Studs, tubes and balls coincide.
+     - The pose must have `shaftEngagement` ≥ 8 LDU and a lateral error ≤ 0.5 LDU.
+   - **Twist.** Keep the current twist, rounded to the connection's symmetry step: 90° by default; round pins also allow 15° (§3.5).
+4. **Evaluate the whole pose.**
+   - Count all pairs (the existing second phase) and run `partOverlaps`, ignoring the parts being paired.
+   - **All-or-nothing:** reject the pose if any held shaft is laterally aligned with a compatible hole but seated less than 8 LDU deep. No half-seated pins.
+5. **Rank** in this order:
+   1. Target nearest the pointer, in px.
+   2. Not blocked.
+   3. More pairs.
+   4. Smaller twist change.
+   5. Model order.
+   - If the nearest target's best pose is blocked, show it red. Do not jump to another hole.
+6. **Hysteresis.** Keep the current target until another is at least 8 px nearer the pointer, or offers more pairs at equal distance.
+7. **Tab / Shift+Tab** cycle the alternatives at the same pointer position: the other entry face, the other pin end, another held connector as the lead, the next hole.
+8. **Alt** turns the magnet off: the ghost goes back to Free, on the grid.
+
+### 3.4 Selections and multi-connector parts
+
+- The held set's connectors are the members' free connectors, minus the pairs between members.
+- The lead connector is the held connector nearest the grab point. It chooses the target (§3.3); then the whole rigid set is evaluated, all-or-nothing, and ranked by pairs.
+  - So two pins 20 LDU apart seat in two holes together, and that beats a one-pin pose.
+- The move commits as one `moveMany`, so one Ctrl+Z undoes it.
+- Dragging breaks the pairs with parts outside the selection. The status says *"Released from Beam 7"*.
+- **P2:** "Select connected" (Ctrl+click, or a button) grows the selection along the pair graph, like Studio's "By Connected". A plain drag moves only the selection.
+
+### 3.5 Turning
+
+- **R / Shift+R:** ±90° about the active connection axis while Snapped (`rotateAboutSnap`), and about the vertical while Free. Both also work mid-drag.
+- **[ / ]:** ±15° on round connections (pin in pinhole, axle in pinhole, ball).
+  - On an axle in an axle hole, or on studs, they are refused: *"An axle only turns in quarter turns here"*.
+- **T:** tips 90° about the screen-horizontal axis.
+- **X:** flips the part end for end along the connection axis.
+- Every turn is collision-checked, and a blocked turn shows red (unlike Studio's arrow turns).
+
+### 3.6 Palette
+
+- **Click a tile:** the ghost appears under the pointer, and orbit, pan and zoom keep working.
+  - A click or Space places the part.
+  - Esc, or a right-click without dragging, cancels.
+  - Shift+click places and keeps the part in hand.
+- **Drag a tile in:** the same behaviour. Letting go outside the view cancels.
+- **Orientation:** a Free ghost uses the canonical orientation. On the first snap the axis comes from the target, so a pin always points into the hole you hover.
+
+### 3.7 Camera
+
+- **Orbit pivot,** fixed when the gesture starts. This is a design choice, not one documented by LEGO editors.
+  - The pivot is the 3D point under the pointer. Without one, it is the selection centre; without a selection, the model centre.
+  - The camera and its target turn together about the pivot, so nothing jumps. A dot marks the pivot during the drag.
+- **Mouse:** left-drag on empty space or middle-drag orbits, right-drag pans, the wheel zooms to the cursor. These are kept as they are.
+  - P3: an "LDD/Studio" preset where right-drag orbits.
+- **Trackpad:**
+  - A pinch (`ctrlKey` wheel) zooms to the cursor.
+  - A two-finger scroll orbits; Shift+scroll pans.
+  - Tell a wheel from a trackpad by `deltaMode === LINE` or integer deltas ≥ 100, and offer a setting to override the guess.
+- **Build polar range:** 5°–175°, so you can look under parts. Simulate keeps π/2.
+- **Double-click:**
+  - On an ungrouped part: the target animates to the clicked point (300 ms ease-out) at the same distance.
+  - On a grouped part: enter the group, as today.
+  - On empty space: leave the group.
+- **F:** fit, animated.
+- **P2:** a corner view cube (faces, edges and corners clickable, animated). The Top/Front/Side buttons stay.
+- **Animation:** every programmatic camera move animates for 250–400 ms. Under `prefers-reduced-motion` it jumps.
+- **Keys:**
+  - Idle: the arrows orbit 15°, Shift+arrows pan, + and − zoom.
+  - Holding: the arrows nudge the held part one grid step along the screen-projected plane axes.
+
+### 3.8 Touch
+
+- **Tapping a tile:** the ghost appears, snapped to the target nearest the view centre.
+- **One-finger drag:** the ghost is drawn 60 px above the finger, so the finger does not hide it.
+- **Lifting the finger:** places the part when the ghost is Snapped or unblocked.
+- **Floating buttons:** a ✓ / ✕ / ⟳ cluster for place, cancel and R.
+- **Two fingers:** camera only. They also call off a part drag, as today.
+
+### 3.9 Discoverability and accessibility
+
+- **Hint bar** that follows the state. Holding: *"Click to place · R turn · Tab other spot · Alt no magnet · Esc cancel"*. Snapped on a round connection, add *"[ ] fine turn"*.
+- **Cursor:** changes per §3.1.
+- **P3:** coach marks the first time, which can be dismissed (try/catch around localStorage).
+- **Keyboard-only placement:**
+  1. Enter on a focused tile arms the part. The ghost appears at the target nearest the view centre.
+  2. Tab cycles targets in reading order, then the §3.3 alternatives.
+  3. R, [, ], X and T turn the part.
+  4. Enter places it; Esc cancels.
+- **Announcements:** an `aria-live="polite"` region speaks each new target, e.g. *"Pin with friction → Technic beam 7, hole 3 of 7, from the front; 1 connection"*, and speaks every refusal.
+
+## 4. Priorities
+
+- **P1:**
+  - ✅ the connector highlight (§3.2);
+  - ✅ cursor-driven targets with entry-face orientation, hysteresis and red Blocked (§3.3), which close G1–G3 and G6;
+  - ✅ R mid-drag (§3.5);
+  - ◐ the camera pivot, the 5°–175° polar range, trackpad support, double-click focus and animated Fit (§3.7) — see §7 for the pivot fallback;
+  - ✅ the hint bar and cursor changes.
+- **P2:**
+  - ✅ Tab alternatives (G4);
+  - ✅ snapping for selections and groups (G5);
+  - ◐ the Target-first flow (a static amber double ring, not a pulsing one: §7);
+  - ✅ 15° turns;
+  - ✅ the view cube;
+  - ✅ Select connected (Ctrl+click, and a button in the properties panel's Group section);
+  - ◐ the touch offset and button cluster (the 60 px lift applies to a part from the palette, not to dragging a placed part: §7);
+  - ✅ keyboard-only placement with aria-live.
+- **P3:** ☐ the mouse preset, ☐ coach marks, ☐ Ctrl-glide for axles in holes, ☐ a Studio-style hinge tool, ☐ flexible parts.
+
+## 5. Browser-gate acceptance tests
+
+**Fixture:** Beam 7 (32524) at the origin, holes along z, hole axes along y. Home camera, 1280×800 view.
+
+**Hooks the gate needs:** `view.debug.highlights()` → `[{partId, connectorId, active}]`, `view.debug.candidate()` → `{pose, pairs, blocked}`, `view.debug.ghostTone()`, and the existing `view.camera()`.
+
+**Highlight and placement**
+
+| ID | Prio | Action | Expected |
+|---|---|---|---|
+| T1 | P1 | Arm 2780 and point at the projected top face of hole h3. | `highlights()` lists only free pinholes and axleholes, on parts within 160 px. Exactly one is active: h3. No studs or anti-studs. |
+| T2 | P1 | Then click. | One part is added. Its axis ∥ ±y (\|dot\| > 0.9999). Lateral error ≤ 0.5 LDU. Its centre is 10 LDU above h3's centre, on the hole face. `shaftEngagement` = 20. The pin protrudes on the camera side. The compiler finds 1 pair. |
+| T3 | P1 | Arm gear 3648 and hover h3. | No highlights, and the ghost is Free. With axle 4519 seated in h3, hovering the axle makes its connector active. |
+| T4 | P1 | Pin in hand on h3, then move 5 px towards h4. | h3 stays active. Moving fully onto h4 makes h4 active. |
+| T5 | P1 | Idle, pointer on h3. | Exactly one highlight (h3). 30 px away from every hole, none. |
+| T10 | P2 | Click h3, then click the pin tile. | Same result as T2. |
+
+**Blocked, turning and selections**
+
+| ID | Prio | Action | Expected |
+|---|---|---|---|
+| T6 | P1 | A Brick 2×4 sits over h3's top face. Pin in hand on h3. | `blocked` is true and `ghostTone() === 'blocked'`. A click adds no part, and the status kind is `refused`. |
+| T7 | P1 | Drag Beam 3 (32523) with its end hole over a seated pin, then press R. | The ghost turns 90° about the pin axis, and the pin's world point is unchanged to within 0.5 LDU. Releasing commits one command; Ctrl+Z restores the beam. |
+| T8 | P2 | Pin on h3, then Tab. | The active target changes. Shift+Tab goes back to h3. |
+| T9 | P2 | A grouped Beam 3 with pins in both end holes, dragged so the lead pin is over Beam 7's h1. | At least 2 pairs (h1 and h3), and one undo step. If Beam 7 is moved so only one pin fits, no half-seated pose is offered. |
+| T17 | P1 | `[` on an axle in an axle hole; then `[` on a pin. | Axle: the pose is unchanged and the status names the quarter-turn rule. Pin: a 15° turn, with the pin's point fixed. |
+
+**Camera and keyboard**
+
+| ID | Prio | Action | Expected |
+|---|---|---|---|
+| T11 | P1 | Middle-drag 200 px starting over point Q on the beam. | Q's projection stays within 2 px of where it started. |
+| T12 | P1 | Pinch (`ctrlKey` wheel) or wheel at pixel q over the beam. | The world point under q stays within 2 px of q, and no part moves. |
+| T13 | P1 | Orbit downwards with the arrow keys. | Build passes a 100° polar angle. Simulate stops at 90°. |
+| T14 | P1 | Double-click an ungrouped part at Q. | Within 400 ms the target is Q (≤ 0.5 LDU) at the same distance. With reduced motion, on the next frame. |
+| T15 | P1 | Trackpad scroll (`deltaMode` 0, small deltas, no ctrl). | The camera orbits, and its distance changes by less than 1%. |
+| T16 | P2 | Keyboard only: Tab to the pin tile, Enter, Tab to "hole 3", Enter. | The model matches T2, and the aria-live text contained "hole 3". |
+
+## 6. Honesty notes
+
+- §1 lists what I could not confirm: target highlighting during a drag in Studio and LDD, numeric tolerances, all-or-nothing fitting, whether LDD carries connected parts in a drag, orbit pivots, Studio's collision visuals, and touch gestures.
+- Where this spec covers those points, the behaviour is a design decision, not a copy of an editor.
+- The pixel thresholds (16, 24, 40 and 160 px, and the 8 px hysteresis) are starting values to tune in the gate.
+- The key layout is a proposal and is open to change:
+  - F stays Fit and X is Flip, so no key means two things.
+  - Double-click focuses, except on a grouped part, which keeps its group-edit meaning.
+
+## 7. Implementation notes (2026-10-19)
+
+**Thresholds** (`snap.js` `SNAP_PX`), checked in the browser gate at the Home view on the fixture (Beam 7 holes 38 px apart at 1280×800):
+
+| Threshold | Value | Why it holds |
+|---|---|---|
+| Idle highlight radius | 16 px mouse, 28 px touch | under half the hole pitch on screen, so at most one hole is ever within reach; 30 px from every hole nothing lights (T5) |
+| Target radius | 24 px mouse, 40 px touch | a hole is reachable from anywhere over its own face, never from the next hole's |
+| Holding highlight radius | 160 px | about four hole pitches around the pointer: enough to see where the part could go without lighting the whole model |
+| Hysteresis | 8 px | 5 px towards h4 keeps h3; at the midpoint plus 3 px h3 is still kept; fully on h4 switches (T4). The current target counts up to radius + hysteresis, or the hysteresis could not hold it past the radius |
+| Fallback | 12 LDU | the connector nearest the ray's hit point when none projects within the radius |
+
+The starting values from §6 were kept: every gate reading lies well inside them (camera checks: a middle-drag orbit moves its point 0.00 px, a wheel zoom 0.38 px, a pinch 0.12 px; a double click centres in 299 ms, at once with reduced motion).
+
+**Differences from the text above, and why**
+
+- *Orbit pivot fallback.* With no part under the pointer the pivot is the camera's current target (not the selection or the model centre). Fit, F, Home, a double click and the view cube put the target on the selection or the model, so the result is the same in practice, and an orbit started on empty space never moves the target (the toolbar gate relies on that).
+- *Lead connector.* The held connector nearest the grab point does not exclude the others: options are ranked not blocked, more pairs, then nearest the grab point, then least turning (at most four leads per target). A Beam 3 carrying two pins, grabbed near its free middle hole, still seats both pins.
+- *Pinning a target.* A click on a lit hole pins it only when its part is already selected: the first click selects (as everywhere else in the editor), the next pins. Pinning on the first click turned every click that selects a beam into a target, so the next palette pick jumped into a hole the learner never meant.
+- *Pinned target.* A static amber double ring and a chip ("Target: Technic beam 7, hole 4") with a ✕; no pulse, because the view draws only when something changes (a pulsing ring would redraw every frame).
+- *Touch.* The 60 px lift is for a part carried from the palette; dragging a placed part keeps the finger on the part (the tablet gate's grid-step drag depends on it). The ✓ / ⟳ / ✕ cluster shows while a palette part is in hand on a touch device.
+- *Hole numbers.* The screen and the screen reader count holes from 1 (h3 is "hole 4 of 7"); §5's h-numbers are connector ids.
+- *X* flips a part in hand to the other way round; for a placed part sitting on one connection line it turns half a turn about the world axis most across that line, through the part's middle on the line.
+- *Scroll setting.* "Scrolling in the 3D view" (Guess / Always zoom / Trackpad) is in the shortcut sheet (?), kept in localStorage (try/catch).
+- *Animation.* Every programmatic camera move eases over 300 ms (Fit, Home/Top/Front/Side, a double click, the view cube); the other browser-gate parts run with `prefers-reduced-motion: reduce`, so they read the camera right after a button; the connect checks test the easing.
+
+**Gate coverage of §5:** T1–T17 run in `scripts/lib/sim-lab-connect-gate.mjs` except the second half of T9 (a moved Beam 7 so only one pin fits), which `test/bw-sim-snap-pointer.test.mjs` covers ("all-or-nothing"). Debug hooks: `window.__bwSimLab.highlights()`, `candidate()`, `ghostTone()`, and `editView.debug.viewCube()` / `animating()`.

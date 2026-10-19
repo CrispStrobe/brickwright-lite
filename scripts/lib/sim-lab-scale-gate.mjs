@@ -305,7 +305,7 @@ export const scaleInteractions = async (page, {root, shotsDir, JSZip}) => {
     assert.equal(await page.evaluate(() => window.__bwSimLab._pane.state.modelFile), 'interop-fixture.ldr', 'the model on show stays');
 
     const before = await page.evaluate(() => window.__bwSimLab._pane.lastText);
-    await clickWhenReady(page, 'bw-sim-lab-save', OPEN_BUDGET_MS);
+    await clickWhenReady(page, 'bw-sim-lab-file-menu', OPEN_BUDGET_MS); // the toolbar's File menu
     const [download] = await Promise.all([page.waitForEvent('download'), clickWhenReady(page, 'bw-sim-lab-save-io', OPEN_BUDGET_MS)]);
     assert.equal(download.suggestedFilename(), 'interop-fixture.io');
     const zipBytes = await readFile(await download.path());

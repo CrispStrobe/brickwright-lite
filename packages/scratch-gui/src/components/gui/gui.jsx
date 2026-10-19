@@ -7,6 +7,7 @@ import {connect} from 'react-redux';
 import MediaQuery from 'react-responsive';
 import {Tab, Tabs, TabList, TabPanel} from 'react-tabs';
 import CircuitTab from '../tw-pseudocode/circuit-tab.jsx';
+import RobotLabTab from '../tw-pseudocode/robot-lab-tab.jsx';
 import {getFpgaEnabled, FPGA_TOGGLE_EVENT} from '../../lib/bw-fpga-preferences.js';
 import {pinsToValue} from '../../lib/bw-fpga/pin-value.js';
 // FpgaTab ships only in a build that carries it (BW_ENABLE_FPGA), and even then
@@ -144,6 +145,12 @@ const CODE_TAB_INDEX = 3;
 // BUILD-time: is the FPGA surface bundled at all? Never gates visibility alone —
 // see showFpga below, which also requires the user's opt-in.
 const FPGA_BUILT = process.env.BW_ENABLE_FPGA;
+
+// The Robot Lab (docs/SIM-LAB.md) is appended after everything else, FPGA included, so
+// no existing index moves (CODE_TAB_INDEX, circuit-tab.jsx's 4, pseudocode-importer.jsx's
+// FPGA_TAB_INDEX 5). Its own index therefore depends on whether the FPGA tab is shown;
+// robot-lab-tab.jsx is handed it rather than hard-coding one.
+const robotLabTabIndex = showFpgaTab => (showFpgaTab ? 6 : 5);
 
 const GUIComponent = props => {
     const [starterOpen, setStarterOpen] = React.useState(false);
@@ -999,6 +1006,14 @@ const GUIComponent = props => {
                                             <span data-bw-tab-label=""><FormattedMessage defaultMessage="FPGA" description="Brickwright FPGA/HDL surface tab" id="gui.gui.fpgaTab" /></span>
                                         </Tab>
                                     ) : null}
+                                    <Tab className={tabClassNames.tab}
+                                        title={intl.formatMessage({id: 'gui.gui.robotLabTab', defaultMessage: 'Robot Lab'})}
+                                        aria-label={intl.formatMessage({id: 'gui.gui.robotLabTab', defaultMessage: 'Robot Lab'})}>
+                                        <svg aria-hidden="true" data-bw-tab-icon="" viewBox="0 0 24 24" focusable="false">
+                                            <path d="M7 8h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2zM12 4v4M9.5 12.5h.01M14.5 12.5h.01M3 12v3M21 12v3M8 21h8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                        </svg>
+                                        <span data-bw-tab-label=""><FormattedMessage defaultMessage="Robot Lab" description="Brickwright Robot Lab (3D LEGO model and physics) tab" id="gui.gui.robotLabTab" /></span>
+                                    </Tab>
                                 </TabList>
                                 <TabPanel className={tabClassNames.tabPanel}>
                                     {middleContent === 'code' ? (
@@ -1067,6 +1082,14 @@ const GUIComponent = props => {
                                         </React.Suspense>
                                     </TabPanel>
                                 ) : null}
+                                <TabPanel className={tabClassNames.tabPanel}>
+                                    <RobotLabTab
+                                        isVisible={activeTabIndex === robotLabTabIndex(showFpga)}
+                                        locale={intl.locale}
+                                        tabIndex={robotLabTabIndex(showFpga)}
+                                        vm={vm}
+                                    />
+                                </TabPanel>
                             </Tabs>
                             <button
                                 type="button"

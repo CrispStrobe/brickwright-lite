@@ -73,6 +73,8 @@ const filesUnder = dir => readdirSync(dir).flatMap(name => {
 
 /** A hub or route module: what physics and the compiler must never reach. */
 const HUB_OR_ROUTE = [
+    // The Robot Lab API is a program route too (blocks, `lab` words, Python/JS all end there).
+    /^bw-sim\/api\//,
     /^bw-sim\/hubs\//, /^bw-sim\/registry\/hubs\.js$/, /^bw-sim\/routes\//,
     /^bw-sim\/hub-bridge\.js$/, /^bw-sim\/sim-worker-protocol\.js$/, /^bw-sim\/physics-worker\.js$/,
     /^virtual-hub\//, /^spike-sim\//, /^spike-arena\//, /^spike-nuttx\//, /^spike-micropython\//,
@@ -112,6 +114,7 @@ test('bw-sim/physics and bw-sim/mech import no hub and no route module, not even
 test('hub adapters and the hub registry import nothing from bw-sim/physics', () => {
     const starts = [...filesUnder(path.join(LIB, 'bw-sim/hubs')), path.join(LIB, 'bw-sim/registry/hubs.js')];
     assert.ok(starts.some(f => rel(f) === 'bw-sim/hubs/spike/spike-virtual-hub.js'), 'the SPIKE adapter is scanned');
+    assert.ok(starts.some(f => rel(f) === 'bw-sim/hubs/lab-direct/lab-direct-hub.js'), 'the lab-direct adapter is scanned');
     const via = closure(starts);
     const bad = [...via.keys()].filter(f => rel(f).startsWith('bw-sim/physics/')).map(f => chain(via, f));
     assert.deepEqual(bad, [], `hub modules reach the physics:\n${bad.join('\n')}`);
@@ -134,4 +137,28 @@ test('the RCX stays behind the VirtualHub boundary: its adapter reaches the byte
     assert.deepEqual(bad, [], `the download hook reaches the Robot Lab:\n${bad.join('\n')}`);
     // The pane's route to the RCX goes through the registry: hubs/index.js lists the family.
     assert.ok([...closure([path.join(LIB, 'bw-sim/hubs/index.js')]).keys()].map(rel).includes('bw-sim/hubs/rcx/rcx-virtual-hub.js'));
+});
+
+test('the Robot Lab API reaches the scene only through the session: no physics, no compiler, no hub module', () => {
+    // docs/ROBOT-LAB-HUBS-PLAN.md P1: a direct motor command crosses the VirtualHub boundary (the
+    // hub that owns the port, via the session's hubs), never the physics core; reads go through
+    // the session's core answers (bodyPose/jointState), which the worker's mirror gives too.
+    const api = path.join(LIB, 'bw-sim/api/robot-lab-api.js');
+    const via = closure([api]);
+    const reached = [...via.keys()].map(rel);
+    assert.ok(reached.includes('bw-sim/contracts.js'), `the scan follows the API's imports: ${reached.join(', ')}`);
+    const bad = [...via.keys()].filter(f => f !== api && (/^bw-sim\/(physics|mech)\//.test(rel(f)) || isHubOrRoute(f))).map(f => chain(via, f));
+    assert.deepEqual(bad, [], `the API reaches:\n${bad.join('\n')}`);
+});
+
+test('the robotlab blocks know only runtime.robotLab: the extension imports nothing from the GUI', () => {
+    const ext = path.join(ROOT, 'overlay/scratch-vm/src/extensions/crispstrobe/robotlab/index.js');
+    const text = readFileSync(ext, 'utf8');
+    const required = [...text.matchAll(/require\(\s*['"]([^'"]+)['"]\s*\)/g)].map(m => m[1]);
+    assert.ok(required.length > 0, 'the scan sees the extension\'s requires');
+    const foreign = required.filter(r => !/^\.\.\/\.\.\/\.\.\/(extension-support|util)\//.test(r) && r !== 'format-message');
+    assert.deepEqual(foreign, [], 'the extension reaches the Lab only through runtime.robotLab');
+    assert.match(text, /runtime\.robotLab/);
+    const code = text.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+    assert.doesNotMatch(code, /scratch-gui|bw-sim\//, 'no path into the GUI or the simulator (outside comments)');
 });

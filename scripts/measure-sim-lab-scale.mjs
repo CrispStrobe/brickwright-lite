@@ -59,13 +59,12 @@ const measure = async (browser, instancing) => {
     await page.addInitScript(on => {
         localStorage.clear();
         localStorage.setItem('bw-starter-v1-complete', '1');
-        localStorage.setItem('bw-right-pane-hidden', '0');
+        localStorage.setItem('bw-right-pane-hidden', '1');
         window.__bwSimLabInstancing = on;
     }, instancing);
     await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 90000});
-    await page.getByRole('tab', {name: 'Code', exact: true}).click({timeout: 180000});
-    await page.getByTestId('bw-open-spike-arena').click({timeout: 180000});
-    await page.getByTestId('bw-spike-simulator-tab-simLab').click({timeout: 180000});
+    // The Robot Lab is its own editor tab (robot-lab-tab.jsx).
+    await page.getByRole('tab', {name: 'Robot Lab', exact: true}).click({timeout: 180000});
     await page.waitForFunction(() => window.__bwSimLab?.status === 'ready', null, {timeout: 120000});
     const heapBefore = await heapMb(page);
     const openMs = await openFile(page, {name: 'stress-model.ldr', buffer: Buffer.from(text), mimeType: 'text/plain', timeout: 600000});

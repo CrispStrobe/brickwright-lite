@@ -87,7 +87,7 @@ const SimLabProperties = ({T, lib, editor, view, selectionIds, palette, colourNa
     return (
         <div data-testid="bw-sim-lab-properties-panel" role="region" aria-label={T.properties}
             style={{display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, padding: 8, boxSizing: 'border-box',
-                width: docked ? 236 : 260, maxWidth: '100%', height: '100%', overflowY: 'auto', background: '#fff',
+                width: docked ? '100%' : 260, maxWidth: '100%', height: '100%', overflowY: 'auto', background: '#fff',
                 border: '1px solid #cbd5e1', borderRadius: 8}}>
             <div style={{display: 'flex', alignItems: 'center', gap: 6}}>
                 <strong style={{flex: '1 1 auto'}}>{T.properties}</strong>
@@ -188,6 +188,8 @@ const SimLabProperties = ({T, lib, editor, view, selectionIds, palette, colourNa
                             {!editGroup && <button type="button" style={small} onClick={run(() => view?.ungroupSelection())}>{T.ungroup}</button>}
                         </div>
                     ))}
+                    <button type="button" style={small} data-testid="bw-sim-lab-select-connected" title={T.connect.selectConnected}
+                        onClick={run(() => view?.selectConnected())}>{T.connect.selectConnected}</button>
                 </Section>
             )}
 

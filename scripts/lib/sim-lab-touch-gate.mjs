@@ -107,13 +107,13 @@ export const touchInteractions = async (page, {shotsDir}) => {
     const finger = await touchInput(page);
     const coarse = await page.evaluate(() => matchMedia('(pointer: coarse)').matches);
 
-    // ---- Beside the Code tab, not full screen: the compact layout under a finger ----------
-    assert.equal(await page.getByTestId('bw-sim-lab').getAttribute('data-layout'), 'compact', 'beside the Code tab the Robot Lab is compact');
+    // ---- Beside the stage column, not the whole width: the compact layout under a finger ----
+    assert.equal(await page.getByTestId('bw-sim-lab').getAttribute('data-layout'), 'compact', 'beside the stage column the Robot Lab tab is compact');
     const hubOf = () => page.evaluate(() => {
         const pane = window.__bwSimLab._pane;
         const s = pane.session;
         const i = s.snapshot().bodyIds.indexOf(s.bridge.hubBody);
-        return {z: s.snapshot().bodies[i * 7 + 2], speeds: pane.props.hubState.data.motors.slice(0, 2).map(m => m.speed), time: s.time};
+        return {z: s.snapshot().bodies[i * 7 + 2], speeds: pane.hub.data.motors.slice(0, 2).map(m => m.speed), time: s.time};
     });
     const up = await page.getByTestId('bw-sim-lab-drive-forward').boundingBox();
     const h0 = await hubOf();
@@ -121,7 +121,7 @@ export const touchInteractions = async (page, {shotsDir}) => {
     await page.waitForFunction(t => window.__bwSimLab._pane.session.time > t + 1000, h0.time, {timeout: 60000});
     assert.ok((await hubOf()).speeds.every(v => v !== 0), 'compact: holding ▲ with a finger runs both drive motors');
     await finger.end();
-    await page.waitForFunction(() => window.__bwSimLab._pane.props.hubState.data.motors.slice(0, 2).every(m => m.speed === 0), null, {timeout: 10000});
+    await page.waitForFunction(() => window.__bwSimLab._pane.hub.data.motors.slice(0, 2).every(m => m.speed === 0), null, {timeout: 10000});
     const h1 = await hubOf();
     assert.ok(h1.z < h0.z - 0.02, `compact: the finger drove the robot forward (${h0.z.toFixed(3)} → ${h1.z.toFixed(3)} m)`);
     console.log(`PASS touch, not full screen: holding ▲ in the compact pane drives ${((h0.z - h1.z) * 100).toFixed(1)} cm; lifting stops it`);
@@ -147,8 +147,9 @@ export const touchInteractions = async (page, {shotsDir}) => {
     await settled(page);
     console.log('PASS touch, not full screen: the parts drawer, a tapped tile and a tap on the floor place a part; Undo takes it away');
     await page.screenshot({path: resolve(shotsDir, 'sim-lab-touch-narrow.png')});
-    // On a tablet the Robot Lab gets the whole screen: the stage's full-screen button.
-    await page.getByAltText('Enter full screen mode').tap();
+    // On a tablet the Robot Lab tab takes the whole width: the button that hides the stage column.
+    await page.locator('[data-right-pane-toggle]').tap();
+    await page.waitForFunction(() => document.querySelector('[data-testid="bw-sim-lab"]')?.dataset.layout === 'wide', null, {timeout: 10000});
     await page.getByTestId('bw-sim-lab-editor-canvas').waitFor({timeout: 60000});
     await page.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab.editor, null, {timeout: 60000});
     if (coarse) {
@@ -343,7 +344,7 @@ export const touchInteractions = async (page, {shotsDir}) => {
         const s = pane.session;
         const i = s.snapshot().bodyIds.indexOf(s.bridge.hubBody);
         const b = s.snapshot().bodies;
-        const m = pane.props.hubState.data.motors;
+        const m = pane.hub.data.motors;
         return {pos: [b[i * 7], b[i * 7 + 1], b[i * 7 + 2]], speeds: [m[0].speed, m[1].speed], time: s.time};
     });
     const fwd = await page.getByTestId('bw-sim-lab-drive-forward').boundingBox();
@@ -358,7 +359,7 @@ export const touchInteractions = async (page, {shotsDir}) => {
     await page.waitForFunction(t => window.__bwSimLab._pane.session.time > t + 500, holding.time, {timeout: 60000});
     assert.ok((await reading()).speeds.every(v => v !== 0), 'sliding off the arrow keeps driving until the finger lifts');
     await finger.end();
-    await page.waitForFunction(() => window.__bwSimLab._pane.props.hubState.data.motors.slice(0, 2).every(m => m.speed === 0), null, {timeout: 10000});
+    await page.waitForFunction(() => window.__bwSimLab._pane.hub.data.motors.slice(0, 2).every(m => m.speed === 0), null, {timeout: 10000});
     const stopped = await reading();
     assert.ok(stopped.pos[2] < d0.pos[2] - 0.03, `the finger drove the robot forward: ${JSON.stringify({d0: d0.pos, stopped: stopped.pos})}`);
     await page.waitForFunction(t => window.__bwSimLab._pane.session.time > t + 500, stopped.time, {timeout: 60000});
@@ -377,6 +378,13 @@ export const touchInteractions = async (page, {shotsDir}) => {
     await finger.pinch(mid, 80, 160);
     const s2 = await simCamera(page);
     assert.ok(s2.distance < s1.distance * 0.8, `pinching out zooms the Simulate view in: ${s1.distance.toFixed(3)} → ${s2.distance.toFixed(3)} m`);
+    // Two fingers moving together slide the view (the target moves with the camera).
+    await finger.start([[mid[0] - 50, mid[1]], [mid[0] + 50, mid[1]]]);
+    for (let i = 1; i <= 8; i++) await finger.move([[mid[0] - 50 + 10 * i, mid[1] + 4 * i], [mid[0] + 50 + 10 * i, mid[1] + 4 * i]]);
+    await finger.end();
+    const s3 = await simCamera(page);
+    const slid = Math.hypot(...s3.target.map((v, i) => v - s2.target[i]));
+    assert.ok(slid > 0.005, `two fingers moving together pan the Simulate view (target moved ${slid.toFixed(4)} m)`);
     console.log(`PASS touch: one finger orbits the Simulate view (${simTurn.toFixed(2)} rad), two fingers zoom ` +
-        `(${s1.distance.toFixed(3)} → ${s2.distance.toFixed(3)} m)`);
+        `(${s1.distance.toFixed(3)} → ${s2.distance.toFixed(3)} m) and pan (${(slid * 100).toFixed(1)} cm)`);
 };
