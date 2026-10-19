@@ -803,6 +803,14 @@ class AdapterControls(unittest.TestCase):
         self.environment=mock.patch.dict(os.environ,{'PATH':str(self.root)+os.pathsep+os.environ['PATH'],
             'SIMCTL_CHILD_AUTHORED_SECRET':'AUTHORED-SECRET','BW_AUTHORED_SECRET':'AUTHORED-SECRET'})
         self.environment.start()
+        self.launchers=[];self.real_popen=subprocess.Popen
+        def authored_launcher(arguments,**options):
+            self.launchers.append(arguments[0])
+            # Explicit unit boundary only: exercise the adapter with real authored
+            # subprocesses while retaining the production launcher argument.
+            if arguments[0]=='/usr/bin/xcrun':arguments=[str(self.actor),*arguments[1:]]
+            return self.real_popen(arguments,**options)
+        self.enterContext(mock.patch.object(subprocess,'Popen',side_effect=authored_launcher))
     def tearDown(self):
         self.environment.stop();shutil.rmtree(self.root)
     def write_actor(self,mode):
@@ -837,6 +845,13 @@ class AdapterControls(unittest.TestCase):
                 self.assertEqual(caught.exception.reason,'device-set');spawn.assert_not_called()
             self.assertTrue(retained.is_dir());self.assertTrue(owner.path.is_dir())
         finally:owner.close()
+    def test_launcher_is_absolute_and_path_lookup_cut_is_observable(self):
+        self.run_command();self.assertEqual(self.launchers[-1],'/usr/bin/xcrun')
+        cut="subprocess.Popen(['/usr/bin/xcrun', 'simctl', '--set'"
+        self.assertEqual(SOURCE_PREFIX.count(cut),1);namespace={}
+        exec(compile(SOURCE_PREFIX.replace(cut,"subprocess.Popen(['xcrun', 'simctl', '--set'"),'authored-path-launcher-mutant','exec'),namespace)
+        namespace['bounded_simulator_command'](ARGS,device_set=self.directory,deadline=time.monotonic()+2,output_limit=1024)
+        self.assertEqual(self.launchers[-1],'xcrun')
     def test_exact_namespace_argv_and_environment_filter(self):
         raw=self.run_command();value=json.loads(raw)
         self.assertEqual(value['args'],['simctl','--set',str(self.directory),*ARGS]);self.assertTrue(value['clean'])
@@ -1025,7 +1040,7 @@ test('unwired bounded simctl adapter controls execute real owned subprocesses', 
             env: {...process.env, GITHUB_WORKSPACE: dir, RUNNER_TEMP: dir, TMPDIR: dir}, encoding: 'utf8', timeout: 20000
         });
         assert.equal(result.status, 0, result.stdout + result.stderr);
-        assert.match(result.stderr, /Ran 16 tests/);
+        assert.match(result.stderr, /Ran 17 tests/);
         assert.match(result.stderr, /OK/);
         assert.equal((retention.match(/bounded_simulator_command\(/g) || []).length, 1, 'adapter definition only');
     } finally { rmSync(dir, {recursive: true, force: true}); }
@@ -1465,7 +1480,11 @@ class ContainerControls(unittest.TestCase):
     def test_real_bounded_command_adapter_queries_authored_containers_only(self):
         actor=self.f.root/'xcrun';actor.write_text('#!/usr/bin/python3\nimport sys\nfrom pathlib import Path\nassert sys.argv[4:7]==["get_app_container",'+repr(NEW)+',"com.example.authored"]\nassert sys.argv[7] in ("app","data")\nprint((Path(__file__).parent/(sys.argv[7]+"-path")).read_text())\n');actor.chmod(0o755)
         for role in ('app','data'):(self.f.root/(role+'-path')).write_text(str(self.paths[role]))
-        with mock.patch.dict(os.environ,{'PATH':str(self.f.root)+os.pathsep+os.environ['PATH']}):
+        real_popen=subprocess.Popen
+        def authored_launcher(arguments,**options):
+            self.assertEqual(arguments[0],'/usr/bin/xcrun')
+            return real_popen([str(actor),*arguments[1:]],**options)
+        with mock.patch.dict(os.environ,{'PATH':str(self.f.root)+os.pathsep+os.environ['PATH']}),mock.patch.object(subprocess,'Popen',side_effect=authored_launcher):
             invoke=functools.partial(bounded_simulator_command,device_set=self.directory)
             receiver=prepare_installed_observation(self.spec,NEW,invoke,deadline=time.monotonic()+10)
         release_installed_observation(receiver)
@@ -1545,6 +1564,11 @@ class LaunchControls(unittest.TestCase):
             'SIMCTL_CHILD_BW_EMBEDDED_ASSET_AUDIT_PATH':'AUTHORED-WRONG-PATH','SIMCTL_CHILD_AUTHORED_SECRET':'AUTHORED-SECRET',
             'BW_EMBEDDED_ASSET_AUDIT_PATH':'AUTHORED-WRONG-UNPREFIXED','BW_AUTHORED_SECRET':'AUTHORED-SECRET'})
         self.environment.start()
+        real_popen=subprocess.Popen
+        def authored_launcher(arguments,**options):
+            self.assertEqual(arguments[0],'/usr/bin/xcrun')
+            return real_popen([str(self.actor),*arguments[1:]],**options)
+        self.enterContext(mock.patch.object(subprocess,'Popen',side_effect=authored_launcher))
     def tearDown(self):
         self.environment.stop()
         for receiver,release in self.receivers:release(receiver)
@@ -2672,7 +2696,10 @@ class DirectoryProfileControls(unittest.TestCase):
         raw=(root/'bw-ios-device-set-directory/report.json').read_bytes();return code,json.loads(raw),raw,root
     def test_positive_observes_only_filesystem_custody(self):
         code,r,raw,root=self.execute();self.assertEqual(code,0);self.assertEqual(r['status'],'filesystem-custody-controls-pass')
-        self.assertEqual(r['fdBefore'],r['fdAfter']);self.assertEqual(r['normal']['created'],r['normal']['afterClose'])
+        self.assertEqual(r['fdBefore'],r['fdAfter'])
+        # Link count can change when retained state is added; it is not directory identity.
+        for key in ('device','inode','uid','gid','mode'):self.assertEqual(r['normal']['created'][key],r['normal']['afterClose'][key])
+        for row in ('created','afterClose'):self.assertGreater(r['normal'][row]['links'],0)
         self.assertEqual(r['replacement']['original'],r['replacement']['retained']);self.assertNotEqual(r['replacement']['original']['inode'],r['replacement']['replacement']['inode'])
         self.assertTrue(r['replacement']['refused']);self.assertTrue(r['parentChange']['refused']);self.assertTrue(r['cancelledCreation']['refused'])
         self.assertLess(len(raw),65536);self.assertNotIn(str(root).encode(),raw);self.assertEqual(r['workflowSHA256'],hashlib.sha256(WORKFLOW_TEXT.encode()).hexdigest())

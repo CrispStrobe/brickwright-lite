@@ -17,12 +17,13 @@ the remaining SPIKE matrix.
 Continue inside the merged optional iOS audit lane; keep the workflow entry closed
 until these acceptance criteria are met:
 
-1. Qualify the new exclusive directory factory and its held descriptor identity
-   on the admitted platform. Its finite checks refuse observed replacement across
-   commands; they grant no atomic namespace lease. Join the boot, app and delegated
-   services through an
-   authoritative platform observation. Paths, callback assertions and returned
-   PIDs alone cannot grant cleanup authority; missing permissions must refuse.
+1. Reuse the retained directory identity/refusal observations at their named source;
+   they grant no atomic namespace lease. Build the authentic SDK invocation context:
+   bind the actual executable and selected developer/SDK environment, then join
+   owned creation, UUID readback, boot, app and delegated services through platform
+   responses and kernel/code identity. The absolute launcher alone is insufficient.
+   Paths, callback assertions and returned PIDs alone cannot grant cleanup authority;
+   missing permissions or service-family facts must refuse.
 2. Qualify kernel identity, executable/code identity, family membership and resource
    accounting on owned actors. Include exit, exec, PID reuse, membership changes,
    failed readback and cleanup controls. Preserve current limits and failed
@@ -543,3 +544,16 @@ this context rather than path-only command admission. A separate default-off
 retains source/job/stat/FD observations. It invokes no simulator commands or builds.
 Its result can qualify only that filesystem boundary; boot, app/service ownership,
 family resources and installed-map qualification remain separate acceptance gates.
+
+The directory-only event39239129340 passed atb880ca774. The first full-stat reader
+refused because it incorrectly assumed link count would remain fixed after adding
+state. Preserve that refusal. A distinct narrower reader joins directory identity,
+replacement/permission refusals and cancellation cleanup while recording the changed
+link count without a stability or filesystem-semantics claim. The directory class
+is byte-identical in the subsequent launcher candidate; the whole later workflow
+is not relabelled as the observed source.
+
+The bounded simulator command adapter now names `/usr/bin/xcrun` explicitly.
+Its source controls detect a return to PATH lookup. This closes launcher selection
+through PATH; actual SDK selection, immutable invocation environment, executable
+provenance and app/service ownership still need the invocation factory above.
