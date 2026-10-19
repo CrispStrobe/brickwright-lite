@@ -136,6 +136,8 @@ const HALF_HEIGHT = 60;
 
 // Pinned game/sprite.ts: obstacle slots are left, top, right, bottom.
 const COLLISION_DIRECTIONS = Object.freeze({Left:0, Top:1, Right:2, Bottom:3});
+// Retained Arcade game/sprite.ts TileDirection; Center also covers default.
+const TILE_DIRECTIONS = Object.freeze({...COLLISION_DIRECTIONS, Center:4});
 const CAMERA_PROPERTIES = Object.freeze({X:0, Y:1, Left:2, Right:3, Top:4, Bottom:5});
 const BUTTON_EVENTS = Object.freeze({Pressed:2049, Released:2048, Repeated:2054});
 
@@ -702,6 +704,17 @@ class ArcadeTranslator extends BaseTranslator {
             }
             return this.characterRule(node);
         }
+        if (this.handleTemplates && node.callee?.type==='Member' && node.callee.name==='equals' && this.imageReferences?.has(node.callee.object)) {
+            if(a.length===1 && (this.imageReferences.has(a[0]) || this.imageOf(a[0])))return `arcade image (${this.expr(node.callee.object)}) equals image (${this.expr(a[0])})`;
+            this.unsupported.push('Image.equals requires one typed Image argument');return ARCADE_FALSE;
+        }
+        if (node.callee?.type==='Member' && node.callee.name==='tileKindAt') {
+            const handle=this.handleTemplates && this.handleRef(node.callee.object);
+            if(!handle || a.length!==2 || !this.imageReferences?.has(a[1]) && !this.imageOf(a[1])) {
+                this.unsupported.push('Sprite.tileKindAt requires a typed sprite reference, direction and tile Image');return ARCADE_FALSE;
+            }
+            return `arcade sprite (${handle}) tile kind at (${this.expr(a[0])}) equals image (${this.expr(a[1])})`;
+        }
         if (node.callee?.type==='Member' && node.callee.name==='isHittingTile') {
             const handle=this.handleTemplates && this.handleRef(node.callee.object);
             if (!handle || a.length!==1) {
@@ -969,6 +982,10 @@ class ArcadeTranslator extends BaseTranslator {
             if(Object.prototype.hasOwnProperty.call(CAMERA_PROPERTIES,node.name))return String(CAMERA_PROPERTIES[node.name]);
             this.unsupported.push(`${this.path(node)} is not a declared Arcade CameraProperty member`);return 'undefined value';
         }
+        if(node?.type==='Member' && node.object?.type==='Identifier' && node.object.name==='TileDirection' && !this.bindsName('TileDirection')) {
+            if(Object.prototype.hasOwnProperty.call(TILE_DIRECTIONS,node.name))return String(TILE_DIRECTIONS[node.name]);
+            this.unsupported.push(`${this.path(node)} is not a declared Arcade TileDirection member`);return 'undefined value';
+        }
         if(node?.type==='Member' && node.object?.type==='Identifier' && node.object.name==='CollisionDirection' &&
             !this.boundSourceGlobals?.has('CollisionDirection') && !this.localVars?.has('CollisionDirection') && !this.currentParameters?.has('CollisionDirection') && !this.capturedBindings.has('CollisionDirection')) {
             if(Object.prototype.hasOwnProperty.call(COLLISION_DIRECTIONS,node.name))return String(COLLISION_DIRECTIONS[node.name]);
@@ -1189,6 +1206,11 @@ class ArcadeTranslator extends BaseTranslator {
         if(['mp.setPlayerState','mp.changePlayerStateBy'].includes(name) && a.length===3){push(name==='mp.setPlayerState'?`arcade set state (${this.expr(a[1])}) of player (${this.expr(a[0])}) to (${this.expr(a[2])})`:`arcade change state (${this.expr(a[1])}) of player (${this.expr(a[0])}) by (${this.expr(a[2])})`);return;}
         if(name==='mp.moveWithButtons' && a.length>=1 && a.length<=3){push(`arcade move player (${this.expr(a[0])}) with buttons vx (${a[1]?this.expr(a[1]):100}) vy (${a[2]?this.expr(a[2]):100})`);return;}
         if(name==='mp.setPlayerSprite' && a.length===2){push(`arcade set sprite of player (${this.expr(a[0])}) to (${this.expr(a[1])})`);return;}
+        if(name==='controller.pauseUntilAnyButtonIsPressed' && this.handleTemplates && !this.bindsName('controller')) {
+            if(!a.length)push('arcade wait until any button pressed');
+            else push(this.note('controller.pauseUntilAnyButtonIsPressed requires no arguments'));
+            return;
+        }
         // Lite's own export's stop machinery, lifted back by liftExporterStops.
         if (name === '__bwStopAll') { push('stop all'); return; }
         if (name === '__bwStopOthers') { push('stop other scripts in sprite'); return; }
@@ -2903,6 +2925,7 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
         if(node?.type==='Number')return new Set(['number']);
         if(node?.type==='Null')return new Set(['null']);
         if(node?.type==='Member' && node.object?.name==='CameraProperty' && Object.prototype.hasOwnProperty.call(CAMERA_PROPERTIES,node.name))return new Set(['number']);
+        if(node?.type==='Member' && node.object?.name==='TileDirection' && Object.prototype.hasOwnProperty.call(TILE_DIRECTIONS,node.name))return new Set(['number']);
         if(node?.type==='Member' && node.object?.name==='CollisionDirection' && Object.prototype.hasOwnProperty.call(COLLISION_DIRECTIONS,node.name))return new Set(['number']);
         if(node?.type==='String')return new Set(['string']);
         if(node?.type==='Boolean' || node?.type==='Unary' && node.op==='!' || node?.type==='Binary' && ['==','!=','===','!==','<','>','<=','>='].includes(node.op))return new Set(['boolean']);
@@ -2937,7 +2960,7 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
             if(api==='mp.allPlayers')return new Set(['array']);
             if(api==='mp.getPlayerState' || api==='MultiplayerState.create')return new Set(['number']);
             if(api==='mp.getPlayerProperty')return new Set(['number']);
-            if(api==='mp.isButtonPressed' || api==='game.ask')return new Set(['boolean']);
+            if(api==='mp.isButtonPressed' || api==='game.ask' || node.callee?.type==='Member' && (node.callee.name==='tileKindAt' && typeOf(node.callee.object,owner).has('sprite') || node.callee.name==='equals' && typeOf(node.callee.object,owner).has('image')))return new Set(['boolean']);
             if(api==='game.currentScene' && !node.args.length)return new Set(['scene']);
             if(api==='ArcadePhysicsEngine' && node.constructorCall && node.args.length<=3)return new Set(['physics-engine']);
             if(api==='scene.cameraProperty' && node.args.length===1 || /^info(?:\.player[1-4])?\.(life|score)$/.test(api||'') && !node.args.length)return new Set(['number']);
@@ -3433,7 +3456,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         const constantNumber=value=>value?.type==='Number'?Number(value.value):value?.type==='Unary' && value.op==='-' && value.argument?.type==='Number'?-Number(value.argument.value):value?.type==='Member' && value.object?.name==='Math' && value.name==='PI'?Math.PI:NaN;
         if(node.type==='Binary' && node.op==='/' && (!Number.isFinite(constantNumber(node.right)) || constantNumber(node.right)===0))return true;
         if(node.type==='Unary' && node.op==='-' && constantNumber(node.argument)===0)return true;
-        if(node.type==='Call' && (isIndependentRegistration(t.path(node.callee)) || t.path(node.callee)==='game.ask'))return true;
+        if(node.type==='Call' && (isIndependentRegistration(t.path(node.callee)) || ['game.ask','controller.pauseUntilAnyButtonIsPressed'].includes(t.path(node.callee))))return true;
         if(node.type==='Call' && t.path(node.callee)==='MultiplayerState.create')return true;
         if(node.type==='Call' && /^controller\.player[1-4]\.(?:moveSprite|stopControllingSprite)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^mp\./.test(t.path(node.callee)||''))return true;
@@ -3466,7 +3489,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if (node.type === 'Call' && /^characterAnimations\./.test(t.path(node.callee) || '')) return true;
         if (node.type === 'Call' && ['image.setPalette','image.create','scene.setTileMap','scene.setTile','scene.getTile','scene.getTilesByType','scene.setTileAt','scene.place','scene.placeOnRandomTile','scene.setBackgroundImage','scene.backgroundImage', 'animation.createAnimation','animation.attachAnimation','animation.setAction','animation.runImageAnimation','animation.stopAnimation'].includes(t.path(node.callee))) return true;
         if (node.type === 'Call' && node.callee?.type === 'Member' &&
-            (['follow', 'unfollow', 'setScaleCore', 'setScale', 'changeScale', 'setStayInScreen', 'setBounceOnWall', 'setFlag', 'setVelocity', 'setImage', 'isHittingTile'].includes(node.callee.name) ||
+            (['follow', 'unfollow', 'setScaleCore', 'setScale', 'changeScale', 'setStayInScreen', 'setBounceOnWall', 'setFlag', 'setVelocity', 'setImage', 'isHittingTile', 'tileKindAt'].includes(node.callee.name) ||
                 (node.callee.object?.type === 'Member' && node.callee.object.name === 'image' &&
                     ['copyFrom', 'scroll', 'fill', 'replace', 'flipX', 'flipY', 'setPixel', 'getPixel', 'fillRect', 'drawLine', 'drawImage', 'drawTransparentImage', 'overlapsWith'].includes(node.callee.name)))) return true;
         return Object.values(node).some(value => Array.isArray(value) ?
@@ -4306,7 +4329,9 @@ export function arcadeToPseudocode (files, opts = {}) {
     projectInputDiagnostics.push(...callbacks.unsupported);
     const ast = lowerLazyValues(callbacks.program);
     const flattened = namespaceBindings.program ? ast : null;
-    const tileImageOf = node => node?.type==='Template' && node.tag==='img' ? parseImageLiteral(node.value) : node?.type==='Template' && /^assets\./.test(node.tag||'') ? assets[node.value.trim()] : node?.type==='Member' ? assets[`${node.object.name}.${node.name}`] || assets[node.name] :
+    const tileImagePath = node => node?.type==='Identifier' ? node.name : node?.type==='Member' ? `${tileImagePath(node.object)}.${node.name}` : null;
+    const tileImageOf = node => node?.type==='Template' && node.tag==='img' ? parseImageLiteral(node.value) : node?.type==='Template' && /^assets\./.test(node.tag||'') ? assets[node.value.trim()] : node?.type==='Member' ?
+        assets[tileImagePath(node)] || assets[node.name] || (BUILTIN_IMAGES[tileImagePath(node)] ? decodeMkcdImage(BUILTIN_IMAGES[tileImagePath(node)]) : null) :
         node?.type==='Identifier' ? assets[node.name] : null;
     const nativeTilemaps = {};
     for(const [filename,text] of Object.entries(map))if(/\.g\.ts$/.test(filename))Object.assign(nativeTilemaps,parseNativeTilemaps(text,tileImageOf));

@@ -2030,3 +2030,24 @@ remain diagnosed. Authentic prepared pizza has zero original compiler and
 native translation diagnostics. Broader project execution and the fresh full
 census remain required before a case is promoted. Namespace/source and runtime
 work use separate file ownership; original evidence is retained privately.
+
+## Original tile and controller operations — 2026-10-13
+
+The next source candidate adds sprite.tileKindAt, image.equals and
+controller.pauseUntilAnyButtonIsPressed to runtime, native Blocks/Code, source
+import and genuine export. Image equality is extracted from the pinned
+original PXT simulator. Tile probes use the sprite's center, signed tile-scale
+shift, direction offsets and original outside-map tile-zero behavior. Pending
+native button waits are released on Stop/disposal without resuming a later run.
+
+Producer110787e7 exposes319 canonical forms;362 dialect controls pass. Native
+and original focused batch10 passes without skips, including exported Boolean
+values and fresh roundtrips. First oracle fixture had a compile-eliminated
+constant; keep its failed receipt. A subsequent real export error inferred new
+Boolean reporters as numbers; the exporter now classifies both reporters as
+Boolean. Native comparison succeeded before that export correction. New visible
+GUI interaction acceptance and immutable project recensus remain required.
+
+Builtin tile-map companion lookup now reads exact pinned builtin images after
+project-provided assets, preserving override precedence and unknown-image
+refusal. This enables authentic recovered JRES maps without substitute pixels.

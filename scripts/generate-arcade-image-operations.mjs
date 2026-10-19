@@ -6,7 +6,7 @@ import {createHash} from 'node:crypto';
 import {resolve} from 'node:path';
 const root = resolve(import.meta.dirname, '..');
 const source = readFileSync(resolve(root, 'packages/scratch-gui/static/makecode/arcade/sim/common-sim.js'), 'utf8');
-const methods = ['setPixel', 'getPixel', 'fillRect', 'drawLineLow', 'drawLineHigh', 'drawLine', 'drawImageCore', 'drawImage', 'drawTransparentImage', 'overlapsWith'];
+const methods = ['setPixel', 'getPixel', 'fillRect', 'drawLineLow', 'drawLineHigh', 'drawLine', 'drawImageCore', 'drawImage', 'drawTransparentImage', 'overlapsWith', 'equals'];
 const declarations = methods.map(name => {
     const start = source.indexOf(`function ${name}(img`);
     if (start < 0) throw new Error(`Missing pinned PXT method ${name}`);
@@ -40,7 +40,7 @@ const output = `// Generated from pinned pxt-common-packages simulator image alg
 module.exports = function initializePxtImageOperations() {
 ${declarations}
 ${rotation}
-return {setPixel, getPixel, fillRect, drawLine, drawImage, drawTransparentImage, overlapsWith,
+return {setPixel, getPixel, fillRect, drawLine, drawImage, drawTransparentImage, overlapsWith, equals,
     drawScaledRotatedImage, checkOverlapsScaledRotatedImage: _checkOverlapsScaledRotatedImage,
     checkOverlapsTwoScaledRotatedImages: _checkOverlapsTwoScaledRotatedImages};
 };
@@ -48,8 +48,8 @@ return {setPixel, getPixel, fillRect, drawLine, drawImage, drawTransparentImage,
 const target = resolve(root, 'overlay/scratch-vm/src/extensions/crispstrobe/arcade/image-pxt.js');
 if (process.argv.includes('--check')) {
     if (readFileSync(target, 'utf8') !== output) throw new Error('image-pxt.js differs from the pinned PXT simulator — run scripts/generate-arcade-image-operations.mjs');
-    console.log(`Verified ten image operations (${hash.slice(0,12)}) against the pinned PXT simulator.`);
+    console.log(`Verified eleven image operations (${hash.slice(0,12)}) against the pinned PXT simulator.`);
 } else {
     writeFileSync(target, output);
-    console.log(`Generated ten image operations (${hash.slice(0,12)}).`);
+    console.log(`Generated eleven image operations (${hash.slice(0,12)}).`);
 }

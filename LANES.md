@@ -6501,3 +6501,14 @@ controls, every enabled exact-head source check, and fresh admitted actual
 candidate qualification before integrating source. Never repeat a successful
 original acquisition, reader or run merely to inspect it. See
 [the integration handoff](docs/INTEGRATION-NEXT-STEPS.md) for the remaining join.
+
+
+## Arcade tile kind, image equality and next-button wait — 2026-10-13
+
+CLAIMED — Codex runtime/producer/export with namespace_buffers conversion,
+`lane/arcade-tile-kind-controller-20261013`, stacked on source Buffer PR858.
+Implement original tile-center direction/pixel tests, original image equality
+and real next-button suspension, with319 canonical words and typed genuine
+export. Original/native/Code/Blocks/SB3 controls pass10 without skips; producer
+passes362. Dedicated visible authoring qualification and full project evidence
+remain required. No invented assets or whole-app promotion.
