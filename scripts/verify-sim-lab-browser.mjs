@@ -114,7 +114,8 @@ import {editorParityInteractions} from './lib/sim-lab-editor-parity-gate.mjs';
 import {connectInteractions} from './lib/sim-lab-connect-gate.mjs';
 import {apiInteractions, DEGREES_TOLERANCE} from './lib/sim-lab-api-gate.mjs';
 import {openRobotLabTab, tool, toolbarInteractions} from './lib/sim-lab-toolbar-gate.mjs';
-import {scaleInteractions, OPEN_BUDGET_MS, DRAW_CALL_BUDGET, BUILD_OPEN_BUDGET_MS, IDLE_FRAME_BUDGET_MS, POINTER_MOVE_BUDGET_MS} from './lib/sim-lab-scale-gate.mjs';
+import {scaleInteractions, OPEN_BUDGET_MS, DRAW_CALL_BUDGET, BUILD_OPEN_BUDGET_MS, IDLE_FRAME_BUDGET_MS, POINTER_MOVE_BUDGET_MS,
+    DRAG_LINK_BUDGET, UNDO_DRAW_BUDGET} from './lib/sim-lab-scale-gate.mjs';
 import {brakingBound, judgeWallStop} from './lib/sim-lab-wall-stopper-judge.mjs';
 import {STEP_MS} from '../overlay/scratch-gui/src/lib/bw-sim/hub-bridge.js';
 
@@ -941,7 +942,9 @@ try {
         console.log(`PASS Build opens on the whole ${r.buildParts}-part model in ${(r.buildMs / 1000).toFixed(1)} s (budget ${BUILD_OPEN_BUDGET_MS / 1000} s); ` +
             `an idle frame ${r.idle.median.toFixed(1)} ms (budget ${IDLE_FRAME_BUDGET_MS}; a forced full frame ${r.buildFrame.median.toFixed(0)} ms); ` +
             `a pointer move ${r.hover.median.toFixed(1)} ms hovering, ${r.drag.median.toFixed(1)} ms dragging the gizmo (medians, budget ${POINTER_MOVE_BUDGET_MS}); ` +
-            `a click on grid beam ${r.picked} selects it (${r.clickMs} ms), its X arrow moves it ${r.dragged} LDU and one undo puts it back`);
+            `a click on grid beam ${r.picked} selects it (${r.clickMs} ms), its X arrow moves it ${r.dragged} LDU ` +
+            `(${r.dragLinks} shader programs linked, budget ${DRAG_LINK_BUDGET}) and one undo puts it back ` +
+            `(${r.undoDraws} frame drawn, budget ${UNDO_DRAW_BUDGET}; on screen ${(r.undoShotMs / 1000).toFixed(1)} s)`);
         console.log('PASS the hand-made .lxf opens with its unknown, mirrored and uncoloured parts listed; a password-protected .io is refused and the model stays');
         console.log('PASS Save as… → BrickLink Studio (.io) downloads a ZIP whose model.ldr is the model\'s LDraw text, and it reopens to it');
         await page.close();

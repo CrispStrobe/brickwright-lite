@@ -148,6 +148,45 @@ export const DRAW_CALL_BUDGET = 150;
 export const BUILD_OPEN_BUDGET_MS = 65000;
 export const IDLE_FRAME_BUDGET_MS = 100;
 export const POINTER_MOVE_BUDGET_MS = 100;
+// Shader programs the Build view links while the gizmo drags the beam 12 moves (it snaps: a green ghost):
+// 2 (the ghost's and a gizmo look, each once). Before the ghosts shared their materials it was one per
+// move (11-12): a disposed ghost took its program along, and on SwiftShader each re-link cost seconds,
+// the GPU queue growing until the screenshot after the undo timed out in CI (runs 39253765099, 39299934793).
+export const DRAG_LINK_BUDGET = 3;
+// Full Build frames one undo costs, once the pane's recompile after it has also run: the undo's own. More
+// is a view that keeps redrawing after an edit; the recompile also drew the 2,054 parts again for a hidden
+// motion overlay when the undo's frame was drawn before it (seconds a frame on SwiftShader).
+export const UNDO_DRAW_BUDGET = 1;
+
+/** Counts shader programs linked on the Build view's canvas from now on (read with `linksSince`). */
+const countLinks = page => page.evaluate(() => {
+    const P = WebGL2RenderingContext.prototype;
+    if (!P.bwLinkCount) {
+        const link = P.linkProgram;
+        P.bwLinkCount = {n: 0};
+        P.linkProgram = function (program) {
+            if (this.canvas && this.canvas.dataset && this.canvas.dataset.testid === 'bw-sim-lab-editor-canvas') P.bwLinkCount.n++;
+            return link.call(this, program);
+        };
+    }
+    P.bwLinkCount.n = 0;
+});
+const linksSince = page => page.evaluate(() => WebGL2RenderingContext.prototype.bwLinkCount.n);
+/** Counts the frames the Build view draws from now on (its render() returning true; read with `drawsSince`). */
+const countDraws = page => page.evaluate(() => {
+    const view = window.__bwSimLab.editView;
+    if (!view.bwDraws) {
+        const render = view.render;
+        view.bwDraws = {n: 0};
+        view.render = options => {
+            const drew = render(options);
+            if (drew) view.bwDraws.n++;
+            return drew;
+        };
+    }
+    view.bwDraws.n = 0;
+});
+const drawsSince = page => page.evaluate(() => window.__bwSimLab.editView.bwDraws.n);
 
 /**
  * Finds a gizmo handle the way a person does: move the pointer over the gizmo until that handle
@@ -261,11 +300,14 @@ export const scaleInteractions = async (page, {root, shotsDir, JSZip}) => {
     const dir = [handle.at[0] - handle.centre[0], handle.at[1] - handle.centre[1]];
     const len = Math.hypot(...dir);
     await pointerMoves(page);
+    await countLinks(page);
     await page.mouse.move(handle.at[0], handle.at[1]);
     await page.mouse.down();
     for (let i = 1; i <= 12; i++) await page.mouse.move(handle.at[0] + dir[0] / len * 10 * i, handle.at[1] + dir[1] / len * 10 * i);
     results.drag = await pointerMoves(page);
     await page.mouse.up();
+    results.dragLinks = await linksSince(page);
+    assert.ok(results.dragLinks <= DRAG_LINK_BUDGET, `a gizmo drag of 12 moves linked ${results.dragLinks} shader programs (budget ${DRAG_LINK_BUDGET}): a material made per move?`);
     const p1 = await pose();
     const grid = await page.evaluate(() => window.__bwSimLab.editView.grid);
     const dx = p1.position[0] - p0.position[0];
@@ -275,9 +317,19 @@ export const scaleInteractions = async (page, {root, shotsDir, JSZip}) => {
     assert.ok(results.drag.n >= 12 && results.drag.median < POINTER_MOVE_BUDGET_MS,
         `a gizmo-drag pointer move took ${results.drag.median.toFixed(1)} ms (median of ${results.drag.n}, budget ${POINTER_MOVE_BUDGET_MS})`);
     results.dragged = dx;
+    // Marks the pane's last compile; the next one (after the undo) replaces the object, mark and all.
+    await page.evaluate(() => { window.__bwSimLab._pane.lastInsight.bwBeforeUndo = true; });
+    await countDraws(page);
+    const undoStart = Date.now();
     await page.keyboard.press('Control+z');
     assert.deepEqual(await pose(), p0, 'one undo puts the beam back');
     await page.screenshot({path: resolve(shotsDir, 'sim-lab-scale-build.png'), timeout: 120000});
+    results.undoShotMs = Date.now() - undoStart;
+    // The pane's recompile after the undo (debounced) has run, and a frame has passed since.
+    await page.waitForFunction(() => !window.__bwSimLab._pane.lastInsight.bwBeforeUndo, null, {timeout: OPEN_BUDGET_MS, polling: 250});
+    await nextFrames(page);
+    results.undoDraws = await drawsSince(page);
+    assert.ok(results.undoDraws <= UNDO_DRAW_BUDGET, `one undo drew the 2,054-part Build view ${results.undoDraws} times (budget ${UNDO_DRAW_BUDGET})`);
     await clickWhenReady(page, 'bw-sim-lab-mode-simulate', OPEN_BUDGET_MS);
     await page.waitForFunction(() => window.__bwSimLab.mode === 'simulate' && window.__bwSimLab.status === 'ready', null, {timeout: OPEN_BUDGET_MS, polling: 250});
 
