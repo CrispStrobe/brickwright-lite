@@ -2,6 +2,8 @@
  * No filesystem, process, compiler, SDK or runtime helper is imported here.
  */
 import {importProjectFiles, importProjectFilesWithDependencies} from '../../overlay/scratch-gui/src/lib/bw-makecode/index.js';
+import {encodeObservationBytePayload, appendObservationByteField} from './conversion-observation-codec.mjs';
+export {expandConversionObservationGraph} from './conversion-observation-codec.mjs';
 
 const own = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
 // Observer reads native collection/view slots without input property lookup.
@@ -180,7 +182,12 @@ export async function auditConversionSubject (subject, {onObservation = async ()
  * values, maps, byte payloads, special primitives and sharing remain explicit;
  * callable/accessor implementations are declared unobserved, never executed.
  */
-export function conversionObservationGraph (root) {
+export function conversionObservationGraph (root) {return observeConversionGraph(root, false);}
+
+/** Same full observation, with explicitly versioned lossless byte packing. */
+export function compactConversionObservationGraph (root) {return observeConversionGraph(root, true);}
+
+function observeConversionGraph (root, compactBytes) {
     const known = new Map(); const nodes = []; let entries = 0;
     const value = (input, depth = 0) => {
         if (input === undefined) return {kind: 'undefined'};
@@ -191,6 +198,7 @@ export function conversionObservationGraph (root) {
         if (known.has(input)) return {ref: known.get(input)};
         if (depth > 128 || nodes.length >= 262144) throw new Error('Conversion observation graph bound');
         const id = nodes.length; known.set(input, id); const node = {id, kind: 'object', fields: []}; nodes.push(node);
+        let byteSnapshot = null;
         if (typeof input === 'function') {node.kind = 'callable'; node.implementation = 'unobserved'; return {ref: id};}
         const mapIterator = nativeIterator(mapEntries, input);
         const setIterator = mapIterator ? null : nativeIterator(setValues, input);
@@ -205,10 +213,16 @@ export function conversionObservationGraph (root) {
                     [value(step.value[0], depth + 1), value(step.value[1], depth + 1)] : value(step.value, depth + 1);
             }
         } else if (bytes) {
-            node.kind = 'bytes'; node.bytes = []; node.byteLength = observeApply(typedSlots[2], bytes, []);
-            // Fresh native view and indexed octets; no Array.from/iterator or
-            // ordinary buffer/offset/length read on the supplied view.
-            for (let i = 0; i < node.byteLength; i++) node.bytes[i] = bytes[i];
+            node.kind = 'bytes'; node.byteLength = observeApply(typedSlots[2], bytes, []);
+            // Snapshot octets once before own descriptors: concurrent/retained
+            // native backing changes cannot make a run refer to later bytes.
+            if (compactBytes) {
+                const encoded = encodeObservationBytePayload(bytes, node.byteLength);
+                node.bytePayload = encoded.payload; byteSnapshot = encoded.octets;
+            } else {
+                node.bytes = [];
+                for (let i = 0; i < node.byteLength; i++) node.bytes[i] = bytes[i];
+            }
         } else if (Array.isArray(input)) node.kind = 'array';
         const prototype = Object.getPrototypeOf(input);
         node.prototype = prototype === null ? 'null' : prototype === Object.prototype ? 'Object' :
@@ -217,12 +231,14 @@ export function conversionObservationGraph (root) {
             if (++entries > 1048576) throw new Error('Conversion observation entry bound');
             const d = Object.getOwnPropertyDescriptor(input, key);
             if (!d) throw new Error('Conversion observation property disappeared');
-            node.fields.push({key: value(key), enumerable: d.enumerable, configurable: d.configurable,
+            const field = {key: value(key), enumerable: d.enumerable, configurable: d.configurable,
                 ...(own(d, 'value') ? {writable: d.writable, value: value(d.value, depth + 1)} :
-                    {kind: 'accessor', implementation: 'unobserved', get: !!d.get, set: !!d.set})});
+                    {kind: 'accessor', implementation: 'unobserved', get: !!d.get, set: !!d.set})};
+            if (byteSnapshot) appendObservationByteField(node.fields, field, byteSnapshot, node.byteLength);
+            else node.fields.push(field);
         }
         return {ref: id};
     };
     const symbols = new Map(); const symbolID = input => {if (!symbols.has(input)) symbols.set(input, symbols.size); return symbols.get(input);};
-    const result = value(root); return {schema: 'brickwright/conversion-observation-graph/v1', root: result, nodes};
+    const result = value(root); return {schema: compactBytes ? 'brickwright/conversion-observation-graph/v2' : 'brickwright/conversion-observation-graph/v1', root: result, nodes};
 }

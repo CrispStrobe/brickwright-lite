@@ -6907,3 +6907,13 @@ change, fetching, runtime or corpus qualification is included. The roundtrip
 script's common-reader integration and affected archive/export controls remain
 follow-up work. See the retained-context section of
 [the compatibility audit](docs/COMPATIBILITY-AUDIT.md).
+
+### Lossless conversion report representation — 2026-10-19
+
+SOURCE CANDIDATE / QUALIFICATION PENDING — Codex within the retained-context
+conversion CLI scope above. Add explicitly versioned lossless byte payload and
+own-descriptor packing, a bounded data decoder and opt-in full-report gzip.
+Preserve the existing v1 observer API, actual conversion operation, full provided
+diagnostics and legacy classification. No input trust, supplier pin, compiler,
+SDK, runtime, corpus coverage or performance grant is included. Existing controls
+and new encoding controls require actual qualification before selection.

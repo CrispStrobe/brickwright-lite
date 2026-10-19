@@ -102,7 +102,9 @@ test('own error observations preserve causes special values sharing and accessor
 test('pure shared core excludes CLI filesystem subprocess SDK and runtime imports while real product boundaries stay present', () => {
     const source = fs.readFileSync(new URL('../scripts/lib/conversion-audit-core.mjs', import.meta.url), 'utf8');
     const imports = [...source.matchAll(/^import .*from ['"]([^'"]+)['"]/gm)].map(match => match[1]);
-    assert.deepEqual(imports, ['../../overlay/scratch-gui/src/lib/bw-makecode/index.js']);
+    assert.deepEqual(imports, ['../../overlay/scratch-gui/src/lib/bw-makecode/index.js', './conversion-observation-codec.mjs']);
+    const codec = fs.readFileSync(new URL('../scripts/lib/conversion-observation-codec.mjs', import.meta.url), 'utf8');
+    assert.doesNotMatch(codec, /^import\s|import\s*\(|require\s*\(|spawnSync|readFileSync|process\.argv|fetch\s*\(/m);
     assert.match(source, /await import\('.*sb3-creator\.js'\)/);
     const acquisition = source.indexOf("const {default: SB3Creator} = await import(");
     const construction = source.indexOf('try { creator = new SB3Creator(); }');

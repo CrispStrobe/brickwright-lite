@@ -364,3 +364,46 @@ not a product parse failure. This deliberately tightens the former CLI routing,
 which included its lazy module import inside the parse catch. Actual constructor
 and parse exceptions still retain the legacy parse-failed label; valid-input
 classification is unchanged.
+
+### Lossless report encoding
+
+The CLI's conversion records use the explicitly versioned
+`brickwright/conversion-observation-graph/v2` encoding. Native byte payloads
+are base64. Consecutive own numeric-index descriptors may be stored as runs
+containing their exact index range and enumerable, configurable and writable
+attributes. Values are derived from the stored payload only when they were
+actually equal to those octets. Named properties, accessors, differing signed,
+wide or floating values, graph references and special primitives remain explicit.
+A run does not grant a type, dependency identity or compiler result.
+
+`expandConversionObservationGraph` in `scripts/lib/conversion-audit-core.mjs`
+expands parsed v1 or v2 JSON into the original v1 data representation. It checks
+versions, references, descriptors, payload sizes and the original logical graph
+limits, including every expanded run entry. It rejects getters in supplied JSON
+metadata. Its payload budget defaults to 16 MiB and can be explicitly selected
+up to 64 MiB within the consumer's resource envelope; this is a decoder memory
+bound, not a compatibility or source-trust option. Decoder inputs are parsed
+own-data JSON, not proof of arbitrary proxy or hostile-realm provenance.
+
+The existing `conversionObservationGraph` API still returns v1. The CLI selects
+`compactConversionObservationGraph`, which observes the same full values and
+uses v2 byte packing. Conversion, Creator calls, provided diagnostic channels,
+legacy classifications and original compiler outcomes are unchanged.
+
+An output name ending in `.json.gz` explicitly selects gzip of the **complete**
+JSON report. Other names keep plain UTF-8 JSON. `outputEncoding` records that
+choice; Markdown and console summaries remain separate. Node's gzip module is
+acquired only on the compressed output path. For example:
+
+```sh
+node scripts/compat-audit.mjs --target arcade \
+  --context-catalogue contexts.json --out report.json.gz --markdown report.md
+```
+
+Packing and compression do not guarantee that a particular corpus fits an
+execution budget. Report-write, decode or resource failures remain observation
+failures. Rows, diagnostics, assets and original failures must not be omitted to
+fit a limit. Static translation still does not establish runtime behavior or
+behavioral equivalence. The current Markdown gap tables use historical legacy
+labels; presenting modern Creator errors and unparsed channels alongside those
+labels remains separate reporting work.

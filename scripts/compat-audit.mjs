@@ -18,6 +18,7 @@ import {fileURLToPath} from 'node:url';
 import JSZip from 'jszip';
 import {importArtefact} from '../overlay/scratch-gui/src/lib/bw-makecode/index.js';
 import {auditConversionSubject, conversionObservationGraph, conversionException} from './lib/conversion-audit-core.mjs';
+import {compactConversionObservationGraph} from './lib/conversion-audit-core.mjs';
 import {openConversionCatalogue} from './lib/conversion-context-inputs.mjs';
 
 
@@ -184,7 +185,7 @@ function conversionRow (file, format, observation) {
     const row = {file, format, target: observation.target || target,
         sourceRecovered: !!observation.sourceRecovered, translated: !!observation.translated,
         unsupported: observation.unsupported || [], stage: observation.stage,
-        conversion: conversionObservationGraph(observation)};
+        conversion: compactConversionObservationGraph(observation)};
     if (observation.blockCount !== undefined) row.blockCount = observation.blockCount;
     if (observation.import.status === 'throw') row.reason = normalize(observation.import.exception.actual);
     else if (observation.creator.status === 'throw') row.reason = normalize(observation.creator.exception.actual);
@@ -389,7 +390,7 @@ for (let index = 0; index < selectedContexts.length; index++) {
     }
 }
 if (contexts) provenance.contextCatalogue.consumedInputBytes = contexts.consumedInputBytes();
-const report = {schema: 'brickwright/compat-audit/v1', generatedAt: new Date().toISOString(),
+const report = {schema: 'brickwright/compat-audit/v1', outputEncoding: out?.endsWith('.json.gz') ? 'gzip-json' : 'utf8-json', generatedAt: new Date().toISOString(),
     provenance: finishProvenance(provenance),
     compilerPolicy: {extensionFetching: fetchExtensions ? 'explicitly-enabled' : 'offline',
         preparedInputs: prepareExtensions ? 'separately-audited' : 'not-requested'},
@@ -404,7 +405,14 @@ const report = {schema: 'brickwright/compat-audit/v1', generatedAt: new Date().t
         ...(row.missingOpcodes || []).map(x => `scratch: ${x.opcode}`),
         ...(['parse-failed', 'read-failed'].includes(row.stage) ? [row.stage] : [])
     ]), count: rows.length, tally, rows};
-if (out) fs.writeFileSync(out, `${JSON.stringify(report, null, 2)}\n`);
+if (out) {
+    const json = `${JSON.stringify(report, null, 2)}\n`;
+    // Explicit output name opts into full lossless compression, never row/field omission.
+    if (out.endsWith('.json.gz')) {
+        const {gzipSync} = await import('node:zlib');
+        fs.writeFileSync(out, gzipSync(Buffer.from(json, 'utf8')));
+    } else fs.writeFileSync(out, json);
+}
 if (markdown) {
     const counts = values => {
         const map = new Map();
