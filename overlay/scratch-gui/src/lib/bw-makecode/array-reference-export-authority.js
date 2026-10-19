@@ -506,6 +506,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         }
         return false;
     };
+    const concatLengths=new Set();
     const readInput=value=>{
         if(!value)return new Set([bad]);if(value.cell)return cellTypesAt(value.cell,value.at);if(value.jsonArray)return new Set([jsonArray(value.jsonArray,value.identity,null,value.origin)]);if(value.node)return readNode(value.target,value.node);return new Set([bad]);
     };
@@ -614,7 +615,18 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             const left=readInput(input(node,'ARRAY',target)),right=node.opcode==='arrays_referenceConcat'?readInput(input(node,'OTHER',target)):new Set();
             if(!operationShape(node))return new Set([bad]);if(!left.size||node.opcode==='arrays_referenceConcat'&&!right.size)return new Set();
             if(!singleArray(left)||node.opcode==='arrays_referenceConcat'&&!singleArray(right))return new Set([bad]);
-            const t=token(node,target,[],0);for(const a of [...left,...right]){for(const v of a.elements)t.elements.add(v);for(const source of a.sources)t.sources.add(source);}return new Set([t]);
+            const t=token(node,target,[],0);for(const a of [...left,...right]){for(const v of a.elements)t.elements.add(v);for(const source of a.sources)t.sources.add(source);}
+            // A concatenation holds at least both operands' proven lengths at the
+            // concat occurrence; its own result then shrinks only by its own ops.
+            if(node.opcode==='arrays_referenceConcat'&&!Object.getOwnPropertyDescriptor(t,'minLength').get){
+                const operand=name=>[...readInput(input(node,name,target))];
+                Object.defineProperty(t,'minLength',{configurable:true,enumerable:true,get(){
+                    if(concatLengths.has(t))return 0;concatLengths.add(t);
+                    try{const l=operand('ARRAY'),r=operand('OTHER');if(!singleArray(new Set(l))||!singleArray(new Set(r)))return 0;
+                        return Math.min(...l.map(a=>a===t?0:minimumAt(a,node)))+Math.min(...r.map(a=>a===t?0:minimumAt(a,node)));}
+                    finally{concatLengths.delete(t);}}});
+            }
+            return new Set([t]);
         }
         if(['arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom'].includes(node.opcode)||node.opcode==='arrays_mutateReference'&&['pop','shift','removeAt'].includes(literal(node,'OP',target))){
             const receiver=readInput(input(node,'ARRAY',target));if(!operationShape(node))return new Set([bad]);if(!receiver.size)return new Set();if(!singleArray(receiver))return new Set([bad]);const result=new Set();
