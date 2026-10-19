@@ -93,3 +93,30 @@ those failures. This adoption changes supplier identity without changing the
 controls and genuine original, Code and exported expected values are still
 required. Active Throw completion is a separate host-runtime repair; this pin
 does not establish its correctness or general Array coercion support.
+
+
+## Current computation Error disposition candidate
+
+The complete native run exposed a remaining error path: an actual operand
+conversion can throw before an Array operation returns. The candidate handles
+that completion only for the active `valueBinary` or `createReference` ticket
+and an Error accepted by the existing own-data string-message policy.
+Its private single-use failure lease authorizes retirement of that call's
+lineage. A coordinator-private identity distinguishes this disposition from
+ordinary guard rejection; public Error fields or completion flags cannot grant
+it. The actual Error object, subtype, frozen own descriptors and existing cause
+are preserved. Already adopted signals remain unchanged. Ordinary guard errors
+keep their existing Error-with-cause route, and other legacy operations retain
+their throw policy. This does not add support for arbitrary non-Error thrown
+JavaScript values or grant any value, Number or Cast authority.
+
+A failed managed cleanup is retained in the private computation signal record,
+with a read-only diagnostic count; it does not replace the original Error's
+cause or modify a frozen Error. The new focused native group uses the actual
+registered Arrays implementation and real linked VM threads for Error,
+TypeError and RangeError identities, including an actual registered cleanup
+failure and an unrelated continuing script. All previous 48 native assertions
+remain unchanged. Supplier private-operation tracking corrections and explicit
+supplier adoption are separate changes. A fresh combined normal installation,
+complete native execution and the unchanged original/Code/exported semantic
+journey remain required; no full-game or GUI acceptance follows from source.

@@ -2,7 +2,7 @@
 // failure routing call is made until all three cyclic modules finish loading.
 const failureApply=Reflect.apply,failureFreeze=Object.freeze;
 const failureDescriptor=Object.getOwnPropertyDescriptor,failureOwn=Object.hasOwn;
-const failureError=Error;
+const failureError=Error,failureErrorInstance=Function.prototype[Symbol.hasInstance];
 const nativeWeakGet=WeakMap.prototype.get,nativeWeakSet=WeakMap.prototype.set;
 const nativeWeakHas=WeakMap.prototype.has,nativeWeakDelete=WeakMap.prototype.delete;
 const nativeSetAdd=WeakSet.prototype.add,nativeSetHas=WeakSet.prototype.has;
@@ -25,6 +25,8 @@ const publishedSignals = new WeakSet();
 const failedThreads = new WeakMap();
 const promiseLeases = new WeakMap();
 const callerLeases = new WeakMap();
+// Identity is private to this coordinator, never a public completion flag.
+const computationMarker=failureFreeze({__proto__:null});
 
 function failureStack(thread) {
     const saved=[];for(let i=0;i<thread.stack.length;i++)saved[i]=thread.stack[i];
@@ -49,7 +51,7 @@ function create(runtime, readValue, consumePhysicalUpdate = null) {
     const listeners = new Map();
     const listen = (event, handler) => {listeners.set(event, handler);runtime.on(event, handler);};
     const cancel = () => {active = false;generation++;};
-    const retireLineage = (thread,signal) => {
+    const retireLineage = (thread,signal,preserveOriginal=false) => {
         // Mark the complete actual lineage before any cleanup can settle
         // a pending operation. A detached event has no implicit parent.
         const lineage = [];
@@ -66,7 +68,12 @@ function create(runtime, readValue, consumePhysicalUpdate = null) {
                 try {edge?.cleanup(signal);} catch (error) {cleanupErrors[cleanupErrors.length]=error;}
                 finally {runtime.sequencer.retireThread(current);}
             }
-            if (cleanupErrors.length) signal.cause = new AggregateError(cleanupErrors, 'Arcade invocation cleanup failed');
+            if (cleanupErrors.length) {
+                if(preserveOriginal){
+                    const record=failureGet(signals,signal);
+                    failureSet(signals,signal,failureFreeze({...record,cleanupErrors:failureFreeze(cleanupErrors)}));
+                }else signal.cause = new AggregateError(cleanupErrors, 'Arcade invocation cleanup failed');
+            }
             runtime.emit('BLOCKS_ERROR', signal);
             signalAdd(publishedSignals,signal);
         } finally {throw signal;}
@@ -143,18 +150,22 @@ function create(runtime, readValue, consumePhysicalUpdate = null) {
             const thread=util?.thread;
             if(failureGet(signals,error)?.runtime===runtime&&failure(thread)===error)throw error;
             if(failureHas(signals,error))throw error;
-            const message=error instanceof failureError&&failureDescriptor(error,'message');
+            const message=failureApply(failureErrorInstance,failureError,[error])&&failureDescriptor(error,'message');
             if(!message||!failureOwn(message,'value')||typeof message.value!=='string')throw Error('Array operation rejection requires its private Error');
             const prior=failure(thread);if(prior)throw prior;
             // A graph/cache/registration change may itself require rejection.
             // The unforgeable lease validates the original still-active call,
             // not the now-invalid source metadata. No other Error is adopted.
             if(!live(thread)||util.runtime!==runtime)throw Error('Array operation rejection requires its private failure lease');
-            const witness=consumeArrayFailureLease(runtime,args,util,error,lease,failureBlock);
+            const witness=consumeArrayFailureLease(runtime,args,util,error,lease,failureBlock,computationMarker);
             if(!witness)throw Error('Array operation rejection requires its private failure lease');
-            const signal=new failureError(message.value,{cause:error});
-            failureSet(signals,signal,failureFreeze({owner,runtime,generation,kind:'array-constraint',message:message.value,target:thread.target,block:witness.block,stack:failureStack(thread)}));
-            retireLineage(thread,signal);
+            // Only a consumed private computation lease can return this module's
+            // marker. Public Error fields or completion flags cannot select adoption.
+            const marker=failureDescriptor(witness,'computationMarker');
+            const computation=!!(marker&&failureOwn(marker,'value')&&marker.value===computationMarker);
+            const signal=computation?error:new failureError(message.value,{cause:error});
+            failureSet(signals,signal,failureFreeze({owner,runtime,generation,kind:computation?'array-computation':'array-constraint',message:message.value,target:thread.target,block:witness.block,stack:failureStack(thread)}));
+            retireLineage(thread,signal,computation);
         },
         rejectPrimitiveFault(args,util,error,lease) {
             const thread=util?.thread;
@@ -224,6 +235,7 @@ function failed(runtime, thread) {return failureGet(failedThreads,thread)?.runti
 function capture(runtime,thread) {return failureGet(owners,runtime)?.capture(thread) || null;}
 function diagnostic(runtime,error) {
     const record=failureGet(signals,error);
+    if(record?.runtime===runtime&&record.kind==='array-computation')return failureFreeze({kind:record.kind,message:record.message,block:record.block,target:record.target.id,cleanupFailureCount:record.cleanupErrors?.length||0});
     return record?.runtime===runtime ? ['constraint','array-constraint','condition-wait','primitive-fault'].includes(record.kind) ? Object.freeze({kind:record.kind,message:record.message,block:record.block,target:record.target.id}) : Object.freeze({value:record.value,block:record.block,target:record.target.id}) : null;
 }
 // A copied message or privately issued but unpublished signal is insufficient.
