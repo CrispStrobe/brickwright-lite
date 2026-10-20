@@ -1,0 +1,389 @@
+name: 386 GUI HDD and forward-debug acceptance
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: gui-hdd-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.event_name }}
+  cancel-in-progress: false
+
+jobs:
+  controls:
+    if: github.event_name == 'pull_request' && github.event.action != 'labeled'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22.23.3
+      - name: Source and manufactured-original controls only
+        run: >-
+          node --test test/i80386-hdd-gui-actual.test.mjs
+          test/i80386-hdd-download.test.mjs
+
+  # These two literal guards require a later reviewed activation commit. Variables
+  # transport independently frozen Git blobs/digests; they never approve them.
+  inventory:
+    if: >-
+      ${{ true && github.event_name == 'pull_request' && github.event.action == 'labeled' &&
+          github.event.label.name == 'x86-hdd-gui-inventory' && github.actor == 'CrispStrobe' &&
+          github.run_attempt == 1 && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      NODE_OPTIONS: ''
+      NODE_PATH: ''
+      LD_PRELOAD: ''
+      LD_AUDIT: ''
+      NODE_V8_COVERAGE: ''
+      BW_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+      BW_TEMPLATE_BLOB: ${{ vars.BW_GUI_HDD_TEMPLATE_BLOB }}
+      BW_TEMPLATE_SHA256: ${{ vars.BW_GUI_HDD_TEMPLATE_SHA256 }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Refuse unreviewed inventory before setup or input retrieval
+        run: /usr/bin/python3 -B scripts/run-i80386-hdd-gui-actual.py inventory-guard
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22.23.3
+      - name: Install unchanged selected packages and Chromium without frontend build
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts --no-audit --no-fund
+          node node_modules/playwright/cli.js install --with-deps chromium
+      - name: Install externally selected immutable template and record observations
+        timeout-minutes: 4
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir gui-inventory
+          /usr/bin/python3 -B scripts/run-i80386-hdd-gui-actual.py install-input \
+            --blob "$BW_TEMPLATE_BLOB" --expected-sha256 "$BW_TEMPLATE_SHA256" \
+            --output "$GITHUB_WORKSPACE/gui-inventory/runtime-template.json" \
+            > gui-inventory/input-install.stdout 2> gui-inventory/input-install.stderr
+          /usr/bin/python3 -B scripts/run-i80386-hdd-gui-actual.py inventory \
+            --request "$GITHUB_WORKSPACE/gui-inventory/runtime-template.json" \
+            --expected-sha256 "$BW_TEMPLATE_SHA256" \
+            --output "$GITHUB_WORKSPACE/gui-inventory/inventory-original.json" \
+            > gui-inventory/controller.stdout 2> gui-inventory/controller.stderr
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: i80386-hdd-gui-inventory-${{ github.run_id }}-${{ github.run_attempt }}
+          path: gui-inventory
+          if-no-files-found: error
+          retention-days: 14
+
+  actual:
+    if: >-
+      ${{ false && github.event_name == 'pull_request' &&
+          github.event.action == 'labeled' && github.event.label.name == 'x86-hdd-gui-actual' &&
+          github.actor == 'CrispStrobe' && github.run_attempt == 1 &&
+          github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-24.04
+    # Setup consumes this same job budget. The31min step ceiling is not a
+    # sufficiency claim; later resource review must admit measured setup margin.
+    timeout-minutes: 35
+    env:
+      BW_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+      BW_REQUEST_BLOB: ${{ vars.BW_GUI_HDD_REQUEST_BLOB }}
+      BW_REQUEST_SHA256: ${{ vars.BW_GUI_HDD_REQUEST_SHA256 }}
+      NODE_OPTIONS: ''
+      NODE_PATH: ''
+      LD_PRELOAD: ''
+      LD_AUDIT: ''
+      NODE_V8_COVERAGE: ''
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Install empty Python cache prefix and refuse unreviewed actual source
+        run: |
+          set -euo pipefail
+          export LC_ALL=C
+          umask 022
+          prefix=/home/runner/work/_temp/bw-gui-hdd-python-cache
+          for parent in / /home /home/runner /home/runner/work /home/runner/work/_temp; do
+            test -d "$parent" && test ! -L "$parent"
+            test "$(realpath -e "$parent")" = "$parent"
+          done
+          mkdir gui-setup
+          mkdir -m 0555 "$prefix"
+          entry_marker="$(find "$prefix" -mindepth 1 -maxdepth 1 -printf x -quit)"
+          test -z "$entry_marker"
+          set -o noclobber
+          {
+            echo bw.gui-hdd.python-startup-install.v1
+            echo "$prefix"
+            echo created-exclusive
+            echo empty-before-entry
+            stat -c '%d %i %f %u %g %h %s %Y' "$prefix"
+          } > gui-setup/python-startup.original.txt
+          chmod 0444 gui-setup/python-startup.original.txt
+          /usr/bin/python3.12 -I -S -B -X pycache_prefix=/home/runner/work/_temp/bw-gui-hdd-python-cache scripts/run-i80386-hdd-gui-actual.py guard
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22.23.3
+      - name: Repeat inventory installation exactly, without frontend build
+        timeout-minutes: 8
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts --no-audit --no-fund
+          node node_modules/playwright/cli.js install --with-deps chromium
+      - name: Install externally admitted request and refuse runtime/source drift
+        timeout-minutes: 3
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir gui-inputs gui-originals
+          python_actual() {
+            local prefix=/home/runner/work/_temp/bw-gui-hdd-python-cache
+            test "$(realpath -e "$prefix")" = "$prefix" && test ! -L "$prefix"
+            test "$(LC_ALL=C stat -c '%d %i %f %u %g %h %s %Y' "$prefix")" = "$(tail -n 1 gui-setup/python-startup.original.txt)"
+            local entry_marker
+            entry_marker="$(find "$prefix" -mindepth 1 -maxdepth 1 -printf x -quit)"
+            test -z "$entry_marker"
+            /usr/bin/python3.12 -I -S -B -X pycache_prefix=/home/runner/work/_temp/bw-gui-hdd-python-cache "$@"
+          }
+          python_actual scripts/run-i80386-hdd-gui-actual.py install-input \
+            --blob "$BW_REQUEST_BLOB" --expected-sha256 "$BW_REQUEST_SHA256" \
+            --output "$GITHUB_WORKSPACE/gui-inputs/request.json" \
+            > gui-setup/input-install.stdout 2> gui-setup/input-install.stderr
+          python_actual scripts/run-i80386-hdd-gui-actual.py preflight \
+            --request "$GITHUB_WORKSPACE/gui-inputs/request.json" --expected-sha256 "$BW_REQUEST_SHA256" \
+            --output "$GITHUB_WORKSPACE/gui-setup/preflight" \
+            > gui-setup/preflight.stdout 2> gui-setup/preflight.stderr
+      - name: Prepare unchanged authenticated free media once
+        timeout-minutes: 4
+        run: |
+          set -euo pipefail
+          timeout 120s curl --fail --location --silent --show-error --max-filesize 33554432 \
+            https://download.freedos.org/1.4/FD14-FloppyEdition.zip \
+            -o gui-inputs/FD14-FloppyEdition.zip 2> gui-setup/media-download.stderr
+          echo '45b1fa7c52dd996c3bfa5e352ffcd410781b952a6ad629f15a4c9ec4bbaefc5a  gui-inputs/FD14-FloppyEdition.zip' | sha256sum --check
+          unzip -p gui-inputs/FD14-FloppyEdition.zip 120m/x86BOOT.img > gui-inputs/floppy.img
+          timeout 30s node scripts/prepare-i80386-freedos-interaction.mjs \
+            node_modules/bw-board gui-inputs/hdd.img > gui-setup/owned-hdd.stdout 2> gui-setup/owned-hdd.stderr
+          cp overlay/scratch-gui/static/roms/free-386-bochs-bios.rom gui-inputs/bios.bin
+          cp overlay/scratch-gui/static/roms/free-386-vgabios-lgpl.bin gui-inputs/vga.bin
+      - name: One official frontend acquisition and two serial genuine UI scenarios
+        timeout-minutes: 31
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python_actual() {
+            local prefix=/home/runner/work/_temp/bw-gui-hdd-python-cache
+            test "$(realpath -e "$prefix")" = "$prefix" && test ! -L "$prefix"
+            test "$(LC_ALL=C stat -c '%d %i %f %u %g %h %s %Y' "$prefix")" = "$(tail -n 1 gui-setup/python-startup.original.txt)"
+            local entry_marker
+            entry_marker="$(find "$prefix" -mindepth 1 -maxdepth 1 -printf x -quit)"
+            test -z "$entry_marker"
+            /usr/bin/python3.12 -I -S -B -X pycache_prefix=/home/runner/work/_temp/bw-gui-hdd-python-cache "$@"
+          }
+          python_actual scripts/run-i80386-hdd-gui-actual.py actual \
+            --request "$GITHUB_WORKSPACE/gui-inputs/request.json" --expected-sha256 "$BW_REQUEST_SHA256" \
+            --output "$GITHUB_WORKSPACE/gui-originals/originals" \
+            > gui-originals/controller.stdout 2> gui-originals/controller.stderr
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: i80386-hdd-gui-${{ github.run_id }}-${{ github.run_attempt }}
+          path: gui-originals
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: i80386-hdd-gui-setup-${{ github.run_id }}-${{ github.run_attempt }}
+          path: gui-setup
+          if-no-files-found: error
+          retention-days: 14
+
+  # Observation delivery only. Source and job guards need separate activation.
+  # Variables transport a separately reviewed immutable request, never approval.
+  font-bridge:
+    if: >-
+      ${{ true && github.event_name == 'pull_request' && github.event.action == 'labeled' &&
+          github.event.label.name == 'x86-hdd-gui-font-bridge' && github.actor == 'CrispStrobe' &&
+          github.repository == 'CrispStrobe/brickwright-lite' && github.run_attempt == 1 &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.event.pull_request.head.repo.fork == false && github.event.pull_request.base.ref == 'main' }}
+    runs-on: ubuntu-24.04
+    # Separate diagnostic backstop; setup sufficiency has not been observed.
+    timeout-minutes: 16
+    env:
+      BW_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+      BW_FONT_BRIDGE_BLOB: ${{ vars.BW_GUI_HDD_FONT_BRIDGE_BLOB }}
+      BW_FONT_BRIDGE_SHA256: ${{ vars.BW_GUI_HDD_FONT_BRIDGE_SHA256 }}
+      NODE_OPTIONS: ''
+      NODE_PATH: ''
+      NODE_V8_COVERAGE: ''
+      LD_PRELOAD: ''
+      LD_AUDIT: ''
+      LD_LIBRARY_PATH: ''
+      PYTHONPATH: ''
+      PYTHONHOME: ''
+      PYTHONSTARTUP: ''
+      PYTHONUSERBASE: ''
+      PYTHONINSPECT: ''
+      PYTHONPYCACHEPREFIX: ''
+      BASH_ENV: ''
+      ENV: ''
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Refuse unreviewed bridge before setup or input retrieval
+        run: |
+          set -euo pipefail
+          set -o noclobber
+          mkdir gui-font-bridge
+          /usr/bin/python3 -I -B scripts/run-i80386-hdd-gui-actual.py font-bridge-guard \
+            > gui-font-bridge/guard.stdout 2> gui-font-bridge/guard.stderr
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22.23.3
+      - name: Install unchanged selected packages and Chromium for bridge observation
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          set -o noclobber
+          npm ci --ignore-scripts --no-audit --no-fund \
+            > gui-font-bridge/npm.stdout 2> gui-font-bridge/npm.stderr
+          node node_modules/playwright/cli.js install --with-deps chromium \
+            > gui-font-bridge/chromium-install.stdout 2> gui-font-bridge/chromium-install.stderr
+      - name: Install externally selected immutable bridge request
+        timeout-minutes: 1
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          set -o noclobber
+          /usr/bin/python3 -I -B scripts/run-i80386-hdd-gui-actual.py install-input \
+            --blob "$BW_FONT_BRIDGE_BLOB" --expected-sha256 "$BW_FONT_BRIDGE_SHA256" \
+            --output "$GITHUB_WORKSPACE/gui-font-bridge/request.json" \
+            > gui-font-bridge/input-install.stdout 2> gui-font-bridge/input-install.stderr
+      - name: Record bounded read-only font bridge without credentials
+        timeout-minutes: 4
+        env:
+          GH_TOKEN: ''
+          GITHUB_TOKEN: ''
+        run: |
+          set -euo pipefail
+          set -o noclobber
+          /usr/bin/python3 -I -B scripts/run-i80386-hdd-gui-actual.py font-bridge \
+            --request "$GITHUB_WORKSPACE/gui-font-bridge/request.json" \
+            --expected-sha256 "$BW_FONT_BRIDGE_SHA256" \
+            --output "$GITHUB_WORKSPACE/gui-font-bridge/font-bridge-original.json" \
+            > gui-font-bridge/controller.stdout 2> gui-font-bridge/controller.stderr
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: i80386-hdd-gui-font-bridge-${{ github.run_id }}-${{ github.run_attempt }}
+          path: gui-font-bridge
+          if-no-files-found: error
+          retention-days: 14
+
+  # Observation delivery only. Source and job guards need separate activation.
+  # Variables transport a separately reviewed immutable request, never approval.
+  font-discovery:
+    if: >-
+      ${{ true && github.event_name == 'pull_request' && github.event.action == 'labeled' &&
+          github.event.label.name == 'x86-hdd-gui-font-discovery' && github.actor == 'CrispStrobe' &&
+          github.repository == 'CrispStrobe/brickwright-lite' && github.run_attempt == 1 &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.event.pull_request.head.repo.fork == false && github.event.pull_request.base.ref == 'main' }}
+    runs-on: ubuntu-24.04
+    # Separate diagnostic backstop; setup sufficiency has not been observed.
+    timeout-minutes: 16
+    env:
+      BW_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+      BW_FONT_DISCOVERY_BLOB: ${{ vars.BW_GUI_HDD_FONT_DISCOVERY_BLOB }}
+      BW_FONT_DISCOVERY_SHA256: ${{ vars.BW_GUI_HDD_FONT_DISCOVERY_SHA256 }}
+      NODE_OPTIONS: ''
+      NODE_PATH: ''
+      NODE_V8_COVERAGE: ''
+      LD_PRELOAD: ''
+      LD_AUDIT: ''
+      LD_LIBRARY_PATH: ''
+      PYTHONPATH: ''
+      PYTHONHOME: ''
+      PYTHONSTARTUP: ''
+      PYTHONUSERBASE: ''
+      PYTHONINSPECT: ''
+      PYTHONPYCACHEPREFIX: ''
+      BASH_ENV: ''
+      ENV: ''
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Refuse unreviewed discovery before setup or input retrieval
+        run: |
+          set -euo pipefail
+          set -o noclobber
+          mkdir gui-font-discovery
+          /usr/bin/python3 -I -B scripts/run-i80386-hdd-gui-actual.py font-discovery-guard \
+            > gui-font-discovery/guard.stdout 2> gui-font-discovery/guard.stderr
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22.23.3
+      - name: Install unchanged selected packages and Chromium for font observation
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          set -o noclobber
+          npm ci --ignore-scripts --no-audit --no-fund \
+            > gui-font-discovery/npm.stdout 2> gui-font-discovery/npm.stderr
+          node node_modules/playwright/cli.js install --with-deps chromium \
+            > gui-font-discovery/chromium-install.stdout 2> gui-font-discovery/chromium-install.stderr
+      - name: Install externally selected immutable discovery request
+        timeout-minutes: 1
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          set -o noclobber
+          /usr/bin/python3 -I -B scripts/run-i80386-hdd-gui-actual.py install-input \
+            --blob "$BW_FONT_DISCOVERY_BLOB" --expected-sha256 "$BW_FONT_DISCOVERY_SHA256" \
+            --output "$GITHUB_WORKSPACE/gui-font-discovery/request.json" \
+            > gui-font-discovery/input-install.stdout 2> gui-font-discovery/input-install.stderr
+      - name: Record bounded read-only font discovery without credentials
+        timeout-minutes: 4
+        env:
+          GH_TOKEN: ''
+          GITHUB_TOKEN: ''
+        run: |
+          set -euo pipefail
+          set -o noclobber
+          /usr/bin/python3 -I -B scripts/run-i80386-hdd-gui-actual.py font-discovery \
+            --request "$GITHUB_WORKSPACE/gui-font-discovery/request.json" \
+            --expected-sha256 "$BW_FONT_DISCOVERY_SHA256" \
+            --output "$GITHUB_WORKSPACE/gui-font-discovery/font-discovery-original.json" \
+            > gui-font-discovery/controller.stdout 2> gui-font-discovery/controller.stderr
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: i80386-hdd-gui-font-discovery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: gui-font-discovery
+          if-no-files-found: error
+          retention-days: 14

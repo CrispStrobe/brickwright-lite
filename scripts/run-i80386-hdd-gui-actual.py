@@ -1,0 +1,1811 @@
+#!/usr/bin/env python3
+"""MIT. One admitted hosted GUI attempt; never a frontend builder or media fetcher.
+
+The independently retained request digest is authority. Repository variables and
+platform fields only transport it. The source and workflow guards need separate
+activation review. Inventory records metadata only; it cannot approve an actual.
+"""
+import argparse
+import base64
+import hashlib
+import io
+import json
+import os
+from pathlib import Path, PurePosixPath
+import re
+import resource
+import selectors
+import signal
+import stat
+import subprocess
+import sys
+import tarfile
+import time
+import urllib.request
+import zipfile
+
+ACTUAL_ENABLED = False
+INVENTORY_ENABLED = True
+REPOSITORY = 'CrispStrobe/brickwright-lite'
+LABEL = 'x86-hdd-gui-actual'
+BOARD = 'fac3a5a9928c8b53a778b0c42d8d91d5e693e4b7'
+CUI = 'a7621be4d40d089826d78cd1e656b7c592ef16db'
+SB3 = 'a13f92b8bc4b06f0cb9ffec22bab71f06db7ac76'
+JSON_CAP = 4 << 20
+STREAM_CAP = 1 << 20
+FILE_CAP = 32 << 20
+BUILD_CAP = 512 << 20
+ARCHIVE_CAP = 256 << 20
+TOTAL_SECONDS = 1800
+SCENARIOS = ('freedos-hdd-persistence', 'forward-debug')
+PROBE = 'scripts/verify-i80386-local-hdd-gui.mjs'
+CRITICAL = ('vendor-pins.json', 'package.json', 'packages/scratch-gui/package.json',
+ 'node_modules/bw-board/package.json', 'node_modules/bw-board/src/i80386-debug.js',
+ 'node_modules/bw-board/src/i80386-adapter.js', 'node_modules/bw-board/src/i8086-cga.js',
+ 'scripts/lib/i80386-vga-text.mjs', 'scripts/package-provenance.mjs', PROBE,
+ 'overlay/scratch-gui/src/lib/bw-debug/debug-runner.js',
+ 'overlay/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx',
+ 'packages/scratch-gui/src/lib/bw-debug/debug-runner.js',
+ 'packages/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx',
+ 'overlay/scratch-gui/src/lib/bw-machines/raw-hdd-download.js',
+ 'overlay/scratch-gui/src/components/tw-pseudocode/debug-drawer.jsx',
+ 'overlay/scratch-gui/src/lib/bw-debug/debug-capabilities.js',
+ 'overlay/scratch-gui/src/lib/bw-debug/memory-view.js')
+SOURCE = frozenset(x for x in CRITICAL if not x.startswith('node_modules/')) | frozenset((
+ 'scripts/run-i80386-hdd-gui-actual.py', 'scripts/read-i80386-hdd-gui-originals.py',
+ 'test/i80386-hdd-gui-actual.test.mjs', '.github/workflows/i80386-hdd-gui-actual.yml',
+ 'package-lock.json', 'scripts/lib/i80386-freedos-interaction.mjs',
+ 'scripts/prepare-i80386-freedos-interaction.mjs'))
+INPUTS = {
+ 'floppy': (1228800, '03df6088be016e57a6c44275f5bb9ab0244db71de1360957fd76ba83243b6a77'),
+ 'hdd': (10653696, '2fa9c252f22cec4f8c5bdc82d1587293ffcaed791e0982384628d19a7316a851'),
+ 'bios': (65536, '6481181809b58a9f805346a7ecf9bebdaf5b322c32825fb49ee89da51552c4ac'),
+ 'vgaRom': (38400, '76af53f14955df3edd6365daa64393e91fafe55241c2c00384ff05b740431da1')}
+
+
+def need(ok, message):
+    if not ok:
+        raise ValueError(message)
+
+
+def sha(raw):
+    return hashlib.sha256(raw).hexdigest()
+
+
+def encode(value):
+    return (json.dumps(value, sort_keys=True, separators=(',', ':'), allow_nan=False)+'\n').encode()
+
+
+def decode(raw):
+    need(type(raw) is bytes and len(raw) <= JSON_CAP, 'bounded JSON original')
+    def pairs(items):
+        out = {}
+        for key, value in items:
+            need(key not in out, 'duplicate JSON field'); out[key] = value
+        return out
+    def constant(value):
+        raise ValueError('nonfinite JSON number')
+    def number(token):
+        value=float(token);need(-float('inf')<value<float('inf'),'finite JSON number');return value
+    return json.loads(raw, object_pairs_hook=pairs, parse_constant=constant,parse_float=number)
+
+
+def fields(value, keys):
+    need(type(value) is dict and set(value) == set(keys.split()), 'closed object fields: '+keys)
+
+
+def digest(value, length=64):
+    need(type(value) is str and re.fullmatch('[0-9a-f]{'+str(length)+'}', value), 'exact hexadecimal digest')
+
+
+def integer(value, low, high):
+    need(type(value) is int and low <= value <= high, 'bounded integer')
+
+
+def relative(value):
+    need(type(value) is str and 0 < len(value) <= 512 and not value.startswith('/') and
+         all(re.fullmatch('[A-Za-z0-9_.@+-]+', x) and x not in ('.', '..')
+             for x in value.split('/')), 'plain relative path')
+    return value
+
+
+def rows(value, *, required=(), count=16384, total=BUILD_CAP, file_cap=FILE_CAP):
+    need(type(value) is dict and 0 < len(value) <= count and set(required) <= set(value), 'bounded complete file inventory')
+    size = 0
+    for name, item in value.items():
+        relative(name); fields(item, 'byteLength sha256'); integer(item['byteLength'], 1, file_cap)
+        digest(item['sha256']); size += item['byteLength']
+    need(size <= total, 'aggregate inventory bytes')
+    return value
+
+
+def runtime_path(value):
+    need(type(value) is str and 1<len(value)<=512 and re.fullmatch('/[A-Za-z0-9_./@+-]+',value) and
+         not value.startswith('//') and str(Path(value))==value and '..' not in Path(value).parts,'canonical selected absolute runtime path')
+    return value
+
+
+def declared_alias_resolution(path,aliases):
+    pending=path.split('/');resolved=[];seen=set();steps=0
+    while pending:
+        steps+=1;need(steps<=4096,'finite alias component resolution')
+        part=pending.pop(0)
+        if part in ('','.'):continue
+        if part=='..':
+            need(resolved,'alias cannot escape filesystem root');resolved.pop();continue
+        current='/'+('/'.join(resolved+[part]))
+        if current in aliases:
+            need(current not in seen and len(seen)<256,'finite acyclic declared alias resolution');seen.add(current)
+            text=aliases[current]['linkText']
+            if text.startswith('/'):resolved=[]
+            pending=text.split('/')+pending
+        else:resolved.append(part)
+    return '/'+('/'.join(resolved))
+
+
+def runtime_alias_policy(runtime):
+    files=runtime['files'];file_aliases=runtime['aliases'];directories=runtime['directoryAliases']
+    need(type(file_aliases) is dict and type(directories) is dict and len(file_aliases)+len(directories)<=256 and
+         not set(file_aliases)&set(directories),'one bounded disjoint file/directory alias roster')
+    aliases=dict(file_aliases,**directories)
+    for name in files:runtime_path(name)
+    for name,row in aliases.items():
+        runtime_path(name);fields(row,'linkText target');runtime_path(row['target'])
+        need(type(row['linkText']) is str and 0<len(row['linkText'])<=512 and
+             re.fullmatch('[A-Za-z0-9_./@+-]+',row['linkText']),'bounded literal alias link text')
+    for name,row in aliases.items():
+        need(declared_alias_resolution(name,aliases)==row['target'] and
+             declared_alias_resolution(row['target'],aliases)==row['target'],'declared aliases reach exact canonical targets')
+        if name in file_aliases:need(row['target'] in files,'file alias reaches selected regular file')
+        else:need(any(path.startswith(row['target']+'/') for path in set(files)|set(file_aliases)),
+                  'directory alias target contains selected file descendants')
+    for path in files:need(declared_alias_resolution(path,aliases)==path,'selected file paths already canonical')
+    return aliases
+
+
+PYTHON_EXECUTABLE = '/usr/bin/python3.12'
+PYTHON_CACHE = '/home/runner/work/_temp/bw-gui-hdd-python-cache'
+PYTHON_OPTIONS = [PYTHON_EXECUTABLE, '-I', '-S', '-B', '-X', 'pycache_prefix='+PYTHON_CACHE]
+PYTHON_PATH = ['/usr/lib/python312.zip', '/usr/lib/python3.12', '/usr/lib/python3.12/lib-dynload']
+STARTUP_STEPS = ('Install empty Python cache prefix and refuse unreviewed actual source',
+ 'Install externally admitted request and refuse runtime/source drift',
+ 'One official frontend acquisition and two serial genuine UI scenarios')
+
+
+def startup_policy():
+    # This selects startup mechanics, not a complete imported/native runtime graph.
+    return {'schema':'bw.gui-hdd.python-startup.v1','executable':PYTHON_EXECUTABLE,
+      'options':PYTHON_OPTIONS[1:],'path':PYTHON_PATH,'cachePrefix':PYTHON_CACHE,
+      'sourceImportClosureQualified':False,'nativeImportClosureQualified':False}
+
+
+def startup_installation(raw):
+    need(type(raw) is bytes and len(raw)<=4096,'bounded outside Python startup original')
+    lines=raw.decode('ascii').splitlines()
+    need(len(lines)==5 and raw==('\n'.join(lines)+'\n').encode() and lines[:4]==[
+      'bw.gui-hdd.python-startup-install.v1',PYTHON_CACHE,'created-exclusive','empty-before-entry'],
+      'fixed outside Python exclusive installation original')
+    tokens=lines[4].split(' ')
+    need(len(tokens)==8 and all(re.fullmatch('[0-9]+',x) for i,x in enumerate(tokens) if i!=2) and
+         re.fullmatch('[0-9a-f]+',tokens[2]),'canonical stat installation fields')
+    values=[int(x,16 if i==2 else 10) for i,x in enumerate(tokens)]
+    need(tokens==[format(x,'x') if i==2 else str(x) for i,x in enumerate(values)],'canonical installation stat numbers')
+    need(values[2]==stat.S_IFDIR|0o555 and values[1]>0 and all(0<=x<2**63 for x in values),
+         'fresh readonly directory installation identity')
+    return dict(zip(('dev','ino','mode','uid','gid','nlink','size','mtimeSeconds'),values))
+
+
+def validate_startup(snapshot, installed, mode, arguments):
+    fields(snapshot,'schema options arguments flags dontWriteBytecode path cachePrefix xoptions prefix zipAbsent')
+    need(snapshot['schema']=='bw.gui-hdd.python-startup-observation.v1' and snapshot['options']==PYTHON_OPTIONS and
+         snapshot['arguments']==['scripts/run-i80386-hdd-gui-actual.py',mode]+arguments and
+         encode(snapshot['flags'])==encode({'isolated':1,'no_site':1,'no_user_site':1,'dont_write_bytecode':1,'ignore_environment':1,'safe_path':True,'optimize':0}) and
+         snapshot['dontWriteBytecode'] is True and snapshot['path']==PYTHON_PATH and
+         snapshot['cachePrefix']==PYTHON_CACHE and snapshot['xoptions']=={'pycache_prefix':PYTHON_CACHE} and
+         snapshot['zipAbsent'] is True,'fixed isolated no-site no-bytecode startup observations')
+    prefix=snapshot['prefix'];fields(prefix,'dev ino mode uid gid nlink size mtimeNs empty')
+    for key in ('dev','ino','mode','uid','gid','nlink','size','mtimeNs'):integer(prefix[key],0,2**63-1)
+    need(prefix['empty'] is True and all(prefix[key]==installed[key] for key in installed if key!='mtimeSeconds') and
+         prefix['mtimeNs']//1000000000==installed['mtimeSeconds'],'outside installation/empty held prefix identity join')
+    return snapshot
+
+
+def actual_inventory_reference(reference):
+    """External prior-observation reference, never an automatic metadata approval."""
+    fields(reference,'schema metadataAdmission jobId artifactId artifactSha256 workflow')
+    need(reference['schema']=='bw.gui-hdd.actual-inventory-reference.v1','explicit actual typed inventory reference')
+    for name in ('jobId','artifactId'):integer(reference[name],1,2**63-1)
+    digest(reference['artifactSha256']);fields(reference['workflow'],'commit path sha256')
+    digest(reference['workflow']['commit'],40);digest(reference['workflow']['sha256'])
+    need(reference['workflow']['path']=='.github/workflows/i80386-hdd-gui-actual.yml','prior metadata producer workflow')
+    selected=reference['metadataAdmission'];fields(selected,'schema source template original runId workflowSha')
+    need(selected['schema']=='bw.gui-hdd.inventory-admission.v3','unchanged metadata v3 descriptor shape')
+    integer(selected['runId'],1,2**63-1);digest(selected['workflowSha'],40)
+    source=selected['source'];fields(source,'head tree files');digest(source['head'],40);digest(source['tree'],40)
+    rows(source['files']);need(set(source['files'])==SOURCE,'separately reviewed prior metadata source21')
+    for name in ('template','original'):
+        fields(selected[name],'byteLength sha256');integer(selected[name]['byteLength'],1,JSON_CAP);digest(selected[name]['sha256'])
+    need(selected['workflowSha']==reference['workflow']['commit'] and
+         reference['workflow']['sha256']==source['files'][reference['workflow']['path']]['sha256'],'prior observation/executing workflow/content join')
+    return selected
+
+
+def parse_request(raw, expected):
+    digest(expected); need(type(raw) is bytes and 0 < len(raw) <= JSON_CAP and sha(raw) == expected,
+                           'independently selected request digest')
+    request = decode(raw)
+    version=4 if request.get('schema')=='bw.gui-hdd.actual-request.v4' else 3
+    fields(request, 'schema repository pullRequest source build criticalFiles installedFiles runtime inventoryAdmission inputs pythonStartup')
+    need(encode(request) == raw and request['schema'] == 'bw.gui-hdd.actual-request.v'+str(version) and
+         request['repository'] == REPOSITORY, 'canonical owned approval request')
+    need(encode(request['pythonStartup'])==encode(startup_policy()) and request['runtime']['python']==PYTHON_EXECUTABLE,'explicit v3 startup policy and selected CPython')
+    integer(request['pullRequest'], 1, 2**31-1)
+    source = request['source']; fields(source, 'head tree files'); digest(source['head'], 40); digest(source['tree'], 40)
+    rows(source['files']); need(set(source['files']) == SOURCE, 'exact tracked source closure')
+    rows(request['criticalFiles']); need(set(request['criticalFiles']) == set(CRITICAL), 'exact existing probe critical roster')
+    for name in SOURCE & set(CRITICAL):
+        need(encode(source['files'][name]) == encode(request['criticalFiles'][name]), 'critical/source identity join')
+    build = request['build']
+    fields(build, 'runId attempt head jobId jobName artifactId name metadataBytes zipBytes sha256 checkoutHead sourceFiles sourceAdmission')
+    for key in ('runId', 'jobId', 'artifactId'): integer(build[key], 1, 2**63-1)
+    need(build['attempt'] == 1 and type(build['attempt']) is int, 'single build attempt')
+    digest(build['head'], 40); digest(build['checkoutHead'], 40); digest(build['sha256'])
+    need(type(build['jobName']) is str and build['jobName'] == 'build' and build['name'] == 'github-pages', 'official frontend build descriptor')
+    integer(build['metadataBytes'], 1, ARCHIVE_CAP); integer(build['zipBytes'], 1, ARCHIVE_CAP)
+    rows(build['sourceFiles']); need(encode(build['sourceFiles']) == encode(source['files']), 'independently admitted build checkout matches source closure')
+    prior = build['sourceAdmission']; fields(prior,'schema checkoutHead checkoutTree sourceFiles checkoutLog workflow')
+    need(prior['schema']=='bw.gui-hdd.frontend-source-admission.v1' and prior['checkoutHead']==build['checkoutHead'] and
+         encode(prior['sourceFiles'])==encode(source['files']), 'prior independently reviewed frontend source admission')
+    digest(prior['checkoutTree'],40);fields(prior['checkoutLog'],'byteLength sha256')
+    integer(prior['checkoutLog']['byteLength'],1,32<<20);digest(prior['checkoutLog']['sha256'])
+    fields(prior['workflow'],'commit path sha256');digest(prior['workflow']['commit'],40);digest(prior['workflow']['sha256'])
+    need(prior['workflow']['path']=='.github/workflows/build.yml','exact previously reviewed producer workflow')
+    rows(request['installedFiles'])
+    need(any(x.startswith('node_modules/bw-board/') for x in request['installedFiles']) and
+         any(x.startswith('node_modules/playwright-core/') for x in request['installedFiles']), 'complete selected supplier/browser package inventories required')
+    runtime = request['runtime']; fields(runtime, 'files aliases directoryAliases node python chromium tools resources'+(' emptyPythonSources' if version==4 else ''))
+    need(type(runtime['files']) is dict and 1 <= len(runtime['files']) <= 512, 'bounded independently admitted runtime graph')
+    for name, item in runtime['files'].items():
+        need(type(name) is str and name.startswith('/') and '..' not in Path(name).parts, 'absolute runtime file')
+        fields(item, 'byteLength sha256'); integer(item['byteLength'], 1, 256 << 20); digest(item['sha256'])
+    need(type(runtime['aliases']) is dict and len(runtime['aliases']) <= 256, 'bounded runtime aliases')
+    for name, item in runtime['aliases'].items():
+        fields(item,'linkText target')
+        need(type(name) is str and name.startswith('/') and '..' not in Path(name).parts and
+             type(item['linkText']) is str and 0<len(item['linkText'])<=512 and '\0' not in item['linkText'] and
+             type(item['target']) is str and item['target'].startswith('/') and '..' not in Path(item['target']).parts and
+             item['target'] in runtime['files'], 'bounded actual symlink text and selected canonical target')
+    runtime_alias_policy(runtime)
+    fields(runtime['tools'],'git gh')
+    need(runtime['tools']=={'git':'/usr/bin/git','gh':'/usr/bin/gh'} and
+         all(path in runtime['files'] for path in runtime['tools'].values()), 'required selected Git and gh runtime files')
+    for key in ('node', 'python', 'chromium'):
+        need(runtime[key] in runtime['files'], 'selected executable belongs to admitted runtime graph')
+    need(runtime['files'][runtime['node']] == {'byteLength': 124827920,
+         'sha256': 'fde6a4bf8d0562f7751d1a2d6cb9b417c4cfe107bbcb0aa3e9a24e125e348f48'}, 'independent selected Node identity')
+    need(encode(runtime['resources']) == encode({'jobMinutes':35,'controllerSeconds':1800,
+         'scenarioSeconds':{'freedos-hdd-persistence':1250,'forward-debug':180},
+         'perProcessCoreBytes':0,'perProcessFileBytes':FILE_CAP,'perProcessOpenFiles':256,
+         'aggregateContainmentQualified':False}), 'fixed finite hosted envelope; no aggregate containment claim')
+    if version==4:empty_python_policy(runtime['emptyPythonSources'],runtime['files'],runtime['aliases'],runtime['directoryAliases'])
+    prior_inventory=request['inventoryAdmission']
+    if version==4:actual_inventory_reference(prior_inventory)
+    else:
+        fields(prior_inventory,'schema sourceHead runId jobId artifactId artifactSha256 original templateSha256 workflow')
+        need(prior_inventory['schema']=='bw.gui-hdd.inventory-admission.v2','separately reviewed prior inventory admission')
+        digest(prior_inventory['sourceHead'],40);digest(prior_inventory['artifactSha256']);digest(prior_inventory['templateSha256'])
+        for key in ('runId','jobId','artifactId'):integer(prior_inventory[key],1,2**63-1)
+        fields(prior_inventory['original'],'byteLength sha256');integer(prior_inventory['original']['byteLength'],1,JSON_CAP);digest(prior_inventory['original']['sha256'])
+        fields(prior_inventory['workflow'],'commit path sha256');digest(prior_inventory['workflow']['commit'],40);digest(prior_inventory['workflow']['sha256'])
+        need(prior_inventory['workflow']['path']=='.github/workflows/i80386-hdd-gui-actual.yml','prior inventory producer workflow')
+    fields(request['inputs'], 'floppy hdd bios vgaRom')
+    input_paths={'floppy':'gui-inputs/floppy.img','hdd':'gui-inputs/hdd.img','bios':'gui-inputs/bios.bin','vgaRom':'gui-inputs/vga.bin'}
+    for name, row in request['inputs'].items():
+        fields(row, 'path byteLength sha256'); relative(row['path']);integer(row['byteLength'],1,FILE_CAP)
+        need(row['path']==input_paths[name],'fixed workflow free-input path')
+        need((row['byteLength'], row['sha256']) == INPUTS[name], 'fixed free input identity')
+    return request
+
+
+def bind_inventory_event(raw, head, expected, env):
+    digest(head,40);digest(expected);event=decode(raw);pr=event.get('pull_request',{});repo=event.get('repository',{})
+    need(event.get('action')=='labeled' and event.get('label',{}).get('name')=='x86-hdd-gui-inventory' and
+         event.get('sender',{}).get('login')=='CrispStrobe' and repo.get('full_name')==REPOSITORY,'owned inventory label event')
+    integer(event.get('number'),1,2**31-1)
+    need(type(pr.get('number')) is int and event['number']==pr['number'] and pr.get('state')=='open' and
+         pr.get('head',{}).get('sha')==head and pr.get('head',{}).get('repo',{}).get('full_name')==REPOSITORY and
+         pr.get('head',{}).get('repo',{}).get('fork') is False and pr.get('base',{}).get('ref')=='main' and
+         pr.get('base',{}).get('repo',{}).get('full_name')==REPOSITORY,'exact own inventory source event')
+    marker='<!-- BW_GUI_HDD_INVENTORY_SHA256='+expected+' -->'
+    need(type(pr.get('body')) is str and pr['body'].count('<!-- BW_GUI_HDD_INVENTORY_SHA256=')==1 and pr['body'].count(marker)==1,
+         'immutable event inventory template pin transport')
+    need(env.get('GITHUB_REPOSITORY')==REPOSITORY and env.get('GITHUB_EVENT_NAME')=='pull_request' and
+         env.get('GITHUB_ACTOR')=='CrispStrobe' and env.get('GITHUB_RUN_ATTEMPT')=='1' and env.get('GITHUB_JOB')=='inventory' and
+         re.fullmatch('[1-9][0-9]{0,19}',env.get('GITHUB_RUN_ID','')) and env.get('BW_EXPECTED_HEAD')==head,
+         'first official inventory platform observations')
+    return event
+
+
+def bind_event(raw, request, expected, env):
+    event = decode(raw); pr = event.get('pull_request', {}); repo = event.get('repository', {})
+    need(event.get('action') == 'labeled' and event.get('label', {}).get('name') == LABEL and
+         event.get('sender', {}).get('login') == 'CrispStrobe' and repo.get('full_name') == REPOSITORY,
+         'owned operator labeled event')
+    need(type(event.get('number')) is int and event['number'] == request['pullRequest'] and
+         type(pr.get('number')) is int and pr.get('number') == request['pullRequest'] and pr.get('state') == 'open' and
+         pr.get('head', {}).get('sha') == request['source']['head'] and
+         pr.get('head', {}).get('repo', {}).get('full_name') == REPOSITORY and
+         pr.get('head', {}).get('repo', {}).get('fork') is False and
+         pr.get('base', {}).get('repo', {}).get('full_name') == REPOSITORY and
+         pr.get('base', {}).get('ref') == 'main', 'exact own PR source event')
+    marker = '<!-- BW_GUI_HDD_REQUEST_SHA256='+expected+' -->'
+    need(type(pr.get('body')) is str and pr['body'].count('<!-- BW_GUI_HDD_REQUEST_SHA256=') == 1 and
+         pr['body'].count(marker) == 1, 'immutable event request pin transport')
+    need(env.get('GITHUB_REPOSITORY') == REPOSITORY and env.get('GITHUB_EVENT_NAME') == 'pull_request' and
+         env.get('GITHUB_ACTOR') == 'CrispStrobe' and env.get('GITHUB_RUN_ATTEMPT') == '1' and
+         re.fullmatch('[1-9][0-9]{0,19}', env.get('GITHUB_RUN_ID', '')) and
+         env.get('GITHUB_JOB') == 'actual' and env.get('BW_EXPECTED_HEAD') == request['source']['head'], 'official platform observations')
+    return event
+
+
+def identity(info):
+    return {key: getattr(info, 'st_'+key) for key in ('dev', 'ino', 'mode', 'uid', 'gid', 'nlink', 'size', 'mtime_ns')}
+
+
+def regular(path, cap):
+    path = Path(path).absolute(); before = path.lstat()
+    need(path.resolve(strict=True) == path and stat.S_ISREG(before.st_mode) and 0 < before.st_size <= cap,
+         'canonical bounded regular original')
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK); first = None
+    try:
+        need(identity(os.fstat(fd)) == identity(before), 'held original identity')
+        chunks = bytearray()
+        while len(chunks) <= cap:
+            part = os.read(fd, min(65536, cap+1-len(chunks)))
+            if not part: break
+            chunks.extend(part)
+        need(len(chunks) == before.st_size and identity(os.fstat(fd)) == identity(before) == identity(path.lstat()),
+             'stable original bytes/extent/path'); return bytes(chunks)
+    except BaseException as error: first = error; raise
+    finally:
+        try: os.close(fd)
+        except BaseException:
+            if first is None: raise
+
+
+def check_file(path, row):
+    raw = regular(path, row['byteLength'])
+    need(len(raw) == row['byteLength'] and sha(raw) == row['sha256'], 'admitted file changed: '+str(path))
+    return raw
+
+
+def inventory(root, cap=BUILD_CAP):
+    root = Path(root); need(root.resolve(strict=True) == root.absolute() and root.is_dir(), 'canonical inventory root')
+    out = {}; total = 0; count = 0
+    for base, dirs, files in os.walk(root, followlinks=False):
+        dirs.sort(); files.sort(); need(len(Path(base).relative_to(root).parts) <= 32, 'inventory depth')
+        for name in dirs+files:
+            count += 1; need(count <= 32768, 'inventory entry cap')
+            need(not (Path(base)/name).is_symlink(), 'inventory symlink refused')
+        for name in files:
+            path = Path(base)/name; relative_name = relative(path.relative_to(root).as_posix())
+            raw = regular(path, FILE_CAP); total += len(raw); need(total <= cap and len(out) < 16384, 'inventory aggregate cap')
+            out[relative_name] = {'byteLength': len(raw), 'sha256': sha(raw)}
+    return out
+
+
+def frontend_files(archive):
+    """Derive observations only AFTER externally pinned whole-ZIP admission.
+
+    The complete original digest is authority; producer-generated member hashes
+    are not selected expectations. Both this controller and the independent
+    reader apply their own finite path/type/extent policy to those exact bytes.
+    """
+    with zipfile.ZipFile(io.BytesIO(archive)) as source:
+        need(len(source.infolist())<=16384,'bounded ZIP census');members={};total=0;names=set();selected=[]
+        for info in source.infolist():
+            need(info.orig_filename==info.filename and '\x00' not in info.orig_filename,'untruncated frontend ZIP name')
+            need(not info.flag_bits&1 and info.compress_type in (zipfile.ZIP_STORED,zipfile.ZIP_DEFLATED),'unencrypted stored/deflated frontend ZIP')
+            directory=info.is_dir();name=relative(info.filename[:-1] if directory else info.filename)
+            need(name not in names,'unique frontend ZIP header path');names.add(name)
+            mode=stat.S_IFMT(info.external_attr>>16)
+            need(mode in ((0,stat.S_IFDIR) if directory else (0,stat.S_IFREG)),'regular frontend ZIP file/directory types')
+            if directory:need(info.file_size==0,'empty frontend ZIP directory');continue
+            limit=BUILD_CAP if name=='artifact.tar' else FILE_CAP
+            need(0<info.file_size<=limit,'ZIP member bound BEFORE inflate');total+=info.file_size;need(total<=BUILD_CAP,'ZIP aggregate extent')
+            selected.append((name,info))
+        # Admit every header before inflating any selected member.
+        for name,info in selected:members[name]=source.read(info)
+    if set(members)=={'artifact.tar'}:
+        files={};total=0;entries=0
+        with tarfile.open(fileobj=io.BytesIO(members['artifact.tar']),mode='r:') as source:
+            for member in source:
+                entries+=1;need(entries<=16384,'bounded Pages TAR census');name=member.name.removeprefix('./')
+                if member.isdir():
+                    if name not in ('','.'):relative(name.rstrip('/'))
+                    continue
+                relative(name);need(member.isfile() and name not in files and 0<member.size<=FILE_CAP,'regular bounded unique TAR member')
+                total+=member.size;need(total<=BUILD_CAP and len(files)<8192,'inflated build aggregate/count')
+                files[name]=source.extractfile(member).read(FILE_CAP+1)
+    else:files=members
+    need({'index.html','brickwright-build.json'}<=set(files),'required frontend entry/provenance originals')
+    for name in files:need(len(PurePosixPath(name).parts)<=32,'build path depth cap')
+    members_={name:{'byteLength':len(raw),'sha256':sha(raw)} for name,raw in members.items()}
+    files_={name:{'byteLength':len(raw),'sha256':sha(raw)} for name,raw in files.items()}
+    return members_,files_,files
+
+
+def install_members(archive,target):
+    need(not Path(target).exists(),'fresh build extraction only')
+    members,inventory_,files=frontend_files(archive);Path(target).mkdir(mode=0o700)
+    for name,raw in files.items():
+        path=Path(target)/name;path.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
+        with path.open('xb') as output:need(output.write(raw)==len(raw),'complete authenticated build installation')
+    return members,inventory_
+
+
+class Originals:
+    def __init__(self, path):
+        self.root = Path(path).absolute(); need(not self.root.exists() and self.root.parent.resolve(strict=True) == self.root.parent,
+                                               'new canonical evidence root')
+        self.root.mkdir(mode=0o700); self.files = {}; self.total = 0
+    def save(self, name, raw):
+        relative(name); need(type(raw) is bytes and len(raw) <= (ARCHIVE_CAP if name in ('frontend.original.zip','frontend.partial.zip') else FILE_CAP) and name not in self.files, 'exclusive bounded original')
+        self.total += len(raw); need(self.total <= 384 << 20 and len(self.files) < 128, 'aggregate original cap')
+        path = self.root/name; path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        with path.open('xb') as output: need(output.write(raw) == len(raw), 'complete original write')
+        self.files[name] = {'byteLength': len(raw), 'sha256': sha(raw)}
+    def seal(self, result):
+        self.save('result.json', encode(result))
+        (self.root/'inventory.json').write_bytes(encode({'schema': 'bw.gui-hdd.originals.v1', 'files': self.files}))
+
+
+class Hosted:
+    """Real edges are called only after the literal source guard and external pin."""
+    def __init__(self, root, output, env):
+        self.root = Path(root).absolute(); self.output = output; self.env = dict(env)
+        self.deadline = time.monotonic()+TOTAL_SECONDS; self.children = []; self.attempts = set()
+    def api(self, route):
+        need(re.fullmatch('/(?:actions/(?:runs/[0-9]+/attempts/1|jobs/[0-9]+|artifacts/[0-9]+)|git/blobs/[0-9a-f]{40})', route), 'fixed owned metadata route')
+        url = 'https://api.github.com/repos/'+REPOSITORY+route
+        class NoRedirect(urllib.request.HTTPRedirectHandler):
+            def redirect_request(self, *args, **kwargs): raise ValueError('metadata redirect refused')
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
+        headers = {'Accept': 'application/vnd.github+json', 'User-Agent': 'bw-gui-hdd-v1', 'X-GitHub-Api-Version': '2022-11-28'}
+        if self.env.get('GH_TOKEN'): headers['Authorization'] = 'Bearer '+self.env['GH_TOKEN']
+        with opener.open(urllib.request.Request(url, headers=headers), timeout=15) as response:
+            need(response.status == 200 and response.geturl() == url, 'fixed successful metadata endpoint')
+            raw = response.read(JSON_CAP+1)
+        need(len(raw) <= JSON_CAP, 'metadata extent'); return raw
+    def run(self, role, argv, env, seconds, stdout_cap=STREAM_CAP):
+        need(role not in self.attempts, 'one-shot child role'); self.attempts.add(role)
+        need(time.monotonic() < self.deadline and type(argv) is list and all(type(x) is str for x in argv), 'finite child descriptor')
+        # Sole waiter and default SIGCHLD policy while this child is owned.
+        signal.signal(signal.SIGCHLD, signal.SIG_DFL)
+        def before_exec():
+            resource.setrlimit(resource.RLIMIT_CORE, (0, 0)); resource.setrlimit(resource.RLIMIT_FSIZE, (FILE_CAP, FILE_CAP))
+            resource.setrlimit(resource.RLIMIT_NOFILE, (256, 256))
+        began = time.monotonic_ns(); child = subprocess.Popen(argv, cwd=self.root, env=env, stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True, preexec_fn=before_exec)
+        self.children.append(child)
+        child_identity = None; known = {}; samples = []
+        streams = {'stdout': bytearray(), 'stderr': bytearray()}; overflow = {}; first = None
+        selector = None; remaining = []; secondary=[]; retention_failed=False
+        def retain(error,phase):
+            nonlocal first
+            if first is None:first=error
+            else:secondary.append({'phase':phase,'name':type(error).__name__,'message':str(error)})
+        try:
+            child_identity = process_identity(child.pid)
+            need(child_identity['pgid'] == child.pid and child_identity['sessionId']==child.pid and
+                 child_identity['parentPid'] == os.getpid(), 'owned fresh child session')
+            selector = selectors.DefaultSelector()
+            for name, stream in (('stdout', child.stdout), ('stderr', child.stderr)):
+                os.set_blocking(stream.fileno(), False); selector.register(stream, selectors.EVENT_READ, name)
+            end = min(self.deadline, time.monotonic()+seconds)
+            while selector.get_map() or child.poll() is None:
+                need(time.monotonic() < end, 'bounded child wall interval')
+                census = descendants(child.pid); known.update({item['pid']:item for item in census})
+                if census and len(samples)<64:samples.append({'atNs':time.monotonic_ns(),'descendants':census})
+                for key, _ in selector.select(min(.1, max(0, end-time.monotonic()))):
+                    part = os.read(key.fileobj.fileno(), 65536)
+                    if not part: selector.unregister(key.fileobj); continue
+                    cap = stdout_cap if key.data=='stdout' else STREAM_CAP
+                    available = max(0,cap-len(streams[key.data]));streams[key.data].extend(part[:available])
+                    if len(part)>available:overflow[key.data]=len(part)-available
+                    need(key.data not in overflow, 'child stream cap; bounded prefix retained')
+            terminal = child.wait(timeout=2); need(terminal == 0, 'child nonzero exit')
+        except BaseException as error: first = error
+        finally:
+            # Only a still-unreaped own leader permits a group signal. A reaped
+            # leader never authorizes signaling a possibly reused group number.
+            try:unreaped=child.poll() is None
+            except BaseException as error:retain(error,'leader-status');unreaped=False
+            if unreaped:
+                try:
+                    need(signal.getsignal(signal.SIGCHLD)==signal.SIG_DFL,'sole default waiter cleanup policy')
+                    os.killpg(child.pid, signal.SIGKILL)
+                except ProcessLookupError:pass
+                except BaseException as error:retain(error,'group-signal')
+                try:child.wait(timeout=5)
+                except BaseException as error:retain(error,'leader-reap')
+            try:
+                remaining=remaining_processes(child.pid,known)
+                if remaining:retain(ValueError('observed descendants/session members remain; outside job owner required'),'terminal-census')
+            except BaseException as error:retain(error,'terminal-census')
+            for stream in (child.stdout,child.stderr):
+                try:stream.close()
+                except BaseException as error:retain(error,'stream-close')
+            if selector is not None:
+                try:selector.close()
+                except BaseException as error:retain(error,'selector-close')
+            for name,raw in streams.items():
+                try:
+                    # Failure retains the exact capped prefix; success has one ZIP.
+                    if role=='frontend-acquisition' and name=='stdout':
+                        if first:self.output.save('frontend.partial.zip',bytes(raw))
+                    else:self.output.save(role+'.'+name,bytes(raw))
+                except BaseException as error:retain(error,'retain-'+name);retention_failed=True
+            safe_env={key:value for key,value in env.items() if key!='GH_TOKEN'}
+            try:
+                self.output.save(role+'.process.json', encode({'argv':argv,'environment':safe_env,
+                    'identity':child_identity,'descendantSamples':samples,'remainingDescendants':remaining,'startedNs':began,
+                    'endedNs':time.monotonic_ns(),'exitCode':child.returncode,
+                    'streams':{key:{'byteLength':len(value),'sha256':sha(value)} for key,value in streams.items()},
+                    'overflowObservedBytes':overflow,'firstFailure':str(first) if first else None,'secondaryFailures':secondary,
+                    'sameProcessGroupCleanupContinuousOwnershipQualified':False}))
+            except BaseException as error:retain(error,'retain-process');retention_failed=True
+            if retention_failed:
+                try:sys.stderr.write(encode({'firstFailure':str(first),'secondaryFailures':secondary}).decode()[:16384])
+                except BaseException as error:retain(error,'retention-diagnostic')
+        if first: raise first
+        return bytes(streams['stdout'])
+    def git(self, arguments):
+        argv = ['/usr/bin/git', '--no-replace-objects', '-c', 'gc.auto=0', '-c', 'maintenance.auto=false',
+                '-c', 'core.fsmonitor=false', '-c', 'core.hooksPath=/dev/null', *arguments]
+        return self.run('git-'+str(len(self.attempts)), argv, clean_env(), 15)
+
+
+def proc_stat(pid):
+    integer(pid,1,2**31-1);path='/proc/'+str(pid)+'/stat';descriptor=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK)
+    first=None;raw=bytearray()
+    try:
+        before=os.fstat(descriptor);need(stat.S_ISREG(before.st_mode),'regular held proc stat observation')
+        while len(raw)<=4096:
+            part=os.read(descriptor,min(1024,4097-len(raw)))
+            if not part:break
+            raw.extend(part)
+        need(0<len(raw)<=4096,'proc stat cap before parsing')
+        after=os.fstat(descriptor)
+        need((before.st_dev,before.st_ino,before.st_mode)==(after.st_dev,after.st_ino,after.st_mode),'held proc stat identity')
+        return bytes(raw)
+    except BaseException as error:first=error;raise
+    finally:
+        try:os.close(descriptor)
+        except BaseException:
+            if first is None:raise
+
+
+def proc_pids():
+    count=0
+    with os.scandir('/proc') as entries:
+        for entry in entries:
+            count+=1;need(count<=8192,'bounded lazy host process census')
+            if re.fullmatch('[1-9][0-9]{0,9}',entry.name):yield int(entry.name)
+
+
+def process_identity(pid):
+    raw=proc_stat(pid);need(raw.startswith(str(pid).encode()+b' ('),'proc stat exact PID binding')
+    fields_=raw.rsplit(b')',1)[1].split();need(len(fields_)>=20,'complete bounded proc stat fields')
+    return {'pid':pid,'state':fields_[0].decode(),'parentPid':int(fields_[1]),
+            'pgid':int(fields_[2]),'sessionId':int(fields_[3]),'startTicks':int(fields_[19])}
+
+
+def descendants(parent):
+    all_ = {}
+    for pid in proc_pids():
+        try:all_[pid] = process_identity(pid)
+        except (FileNotFoundError,ProcessLookupError):continue
+    selected = {parent}; found = []
+    for _ in range(32):
+        next_ = [item for pid,item in all_.items() if pid not in selected and item['parentPid'] in selected]
+        if not next_:break
+        need(len(found)+len(next_)<=256, 'bounded owned descendant census')
+        found.extend(next_);selected.update(item['pid'] for item in next_)
+    else:raise ValueError('owned descendant depth cap')
+    for item in found:
+        path=Path('/proc')/str(item['pid'])/'exe'
+        try:
+            item['executable']=str(path.resolve(strict=True));info=path.stat()
+            item['executableIdentity']={'dev':info.st_dev,'ino':info.st_ino}
+        except (FileNotFoundError,ProcessLookupError):item['executable']=None
+    return sorted(found,key=lambda item:item['pid'])
+
+
+def remaining_processes(leader,known):
+    out={}
+    for pid in proc_pids():
+        try:item=process_identity(pid)
+        except (FileNotFoundError,ProcessLookupError):continue
+        if item['state']=='Z':continue
+        retained=known.get(item['pid'])
+        if item['sessionId']==leader or item['pgid']==leader or (retained and retained['startTicks']==item['startTicks']):
+            out[item['pid']]=item
+        need(len(out)<=256,'bounded conservative terminal process census')
+    return sorted(out.values(),key=lambda item:item['pid'])
+
+
+def clean_env():
+    return {'LANG': 'C.UTF-8', 'HOME': '/nonexistent', 'PATH': '/usr/bin:/bin',
+            'GIT_CONFIG_NOSYSTEM': '1', 'GIT_CONFIG_GLOBAL': '/dev/null', 'GIT_NO_LAZY_FETCH': '1', 'GIT_TERMINAL_PROMPT': '0'}
+
+
+def observed_alias_resolution(path,aliases):
+    pending=path.split('/');resolved=[];seen=set();snapshots=[];steps=0
+    while pending:
+        steps+=1;need(steps<=4096,'finite observed alias component resolution')
+        part=pending.pop(0)
+        if part in ('','.'):continue
+        if part=='..':
+            need(resolved,'observed alias cannot escape filesystem root');resolved.pop();continue
+        current='/'+('/'.join(resolved+[part]));before=os.lstat(current)
+        if stat.S_ISLNK(before.st_mode):
+            need(current in aliases and current not in seen and len(seen)<256,'declared finite observed symlink chain')
+            seen.add(current);text=os.readlink(current);need(text==aliases[current]['linkText'],'actual selected alias text')
+            snapshots.append((current,identity(before)))
+            if text.startswith('/'):resolved=[]
+            pending=text.split('/')+pending
+        else:
+            if pending:need(stat.S_ISDIR(before.st_mode),'runtime alias parent directory')
+            resolved.append(part)
+    for name,before in snapshots:need(identity(os.lstat(name))==before,'observed alias path identity after resolution')
+    return '/'+('/'.join(resolved))
+
+
+def directory_identity(path):
+    before=os.lstat(path);descriptor=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK|os.O_DIRECTORY);first=None
+    try:
+        held=os.fstat(descriptor);need(stat.S_ISDIR(held.st_mode) and identity(before)==identity(held),'held canonical directory target')
+        need(identity(os.fstat(descriptor))==identity(held)==identity(os.lstat(path)),'directory target snapshot readback')
+        return {'dev':held.st_dev,'ino':held.st_ino,'mode':held.st_mode}
+    except BaseException as error:first=error;raise
+    finally:
+        try:os.close(descriptor)
+        except BaseException:
+            if first is None:raise
+
+
+def empty_python_prefix():
+    path=Path(PYTHON_CACHE)
+    need(str(path.resolve(strict=True))==PYTHON_CACHE,'canonical startup prefix and ancestors')
+    before=os.lstat(path);fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK|os.O_DIRECTORY);first=None
+    try:
+        held=os.fstat(fd);need(identity(before)==identity(held) and held.st_mode==stat.S_IFDIR|0o555,'held readonly startup prefix')
+        with os.scandir(fd) as entries:need(next(entries,None) is None,'startup cache prefix must remain empty')
+        need(identity(os.fstat(fd))==identity(held)==identity(os.lstat(path)),'empty prefix readback identity')
+        return {'dev':held.st_dev,'ino':held.st_ino,'mode':held.st_mode,'uid':held.st_uid,'gid':held.st_gid,
+          'nlink':held.st_nlink,'size':held.st_size,'mtimeNs':held.st_mtime_ns,'empty':True}
+    except BaseException as error:first=error;raise
+    finally:
+        try:os.close(fd)
+        except BaseException:
+            if first is None:raise
+
+
+def observe_python_startup(root,mode,arguments):
+    raw=regular(Path(root)/'gui-setup/python-startup.original.txt',4096);installed=startup_installation(raw)
+    snapshot={'schema':'bw.gui-hdd.python-startup-observation.v1','options':list(sys.orig_argv[:6]),
+      'arguments':list(sys.orig_argv[6:]),'flags':{key:getattr(sys.flags,key) for key in
+       ('isolated','no_site','no_user_site','dont_write_bytecode','ignore_environment','safe_path','optimize')},
+      'dontWriteBytecode':sys.dont_write_bytecode,'path':list(sys.path),'cachePrefix':sys.pycache_prefix,
+      'xoptions':dict(sys._xoptions),'prefix':empty_python_prefix(),'zipAbsent':not os.path.lexists(PYTHON_PATH[0])}
+    need(sys.executable==PYTHON_EXECUTABLE and str(Path('/proc/self/exe').resolve(strict=True))==PYTHON_EXECUTABLE,
+         'actual selected startup executable')
+    validate_startup(snapshot,installed,mode,arguments)
+    return raw,snapshot
+
+
+def observe_runtime(request):
+    runtime = request['runtime']; aliases=runtime_alias_policy(runtime)
+    facts = {'files': {}, 'aliases': {},'directoryAliases':{},'directoryIdentities':{},'identities':{}}
+    need(str(Path('/proc/self/exe').resolve(strict=True))==runtime['python']==str(Path(sys.executable).resolve(strict=True)),
+         'selected actual executing CPython identity')
+    for path, row in runtime['files'].items():
+        need(observed_alias_resolution(path,aliases)==path,'actual canonical selected runtime file')
+        raw = check_file(path, row); facts['files'][path] = {'byteLength': len(raw), 'sha256': sha(raw)}
+        info=Path(path).stat();facts['identities'][path]={'dev':info.st_dev,'ino':info.st_ino}
+    for path,item in aliases.items():
+        before=os.lstat(path);need(stat.S_ISLNK(before.st_mode),'actual selected alias is symlink')
+        need(os.readlink(path)==item['linkText'] and observed_alias_resolution(path,aliases)==item['target'] and
+             identity(os.lstat(path))==identity(before),'selected alias snapshot text/target identity')
+        role='directoryAliases' if path in runtime['directoryAliases'] else 'aliases';facts[role][path]=dict(item)
+        if role=='directoryAliases':facts['directoryIdentities'][item['target']]=directory_identity(item['target'])
+    facts['resources'] = runtime['resources']
+    facts['availableCpus'] = sorted(os.sched_getaffinity(0))
+    facts['rlimits'] = {str(key):list(resource.getrlimit(key)) for key in (resource.RLIMIT_CORE,resource.RLIMIT_FSIZE,resource.RLIMIT_NOFILE)}
+    facts['aggregateContainmentQualified'] = False
+    if request.get('schema')=='bw.gui-hdd.actual-request.v4':observe_actual_empty_sources(request,facts)
+    return facts
+
+
+def observe_actual_empty_sources(request,facts):
+    selected=request['runtime']['emptyPythonSources']
+    empty_python_policy(selected,request['runtime']['files'],request['runtime']['aliases'],request['runtime']['directoryAliases'])
+    facts.update(schema='bw.gui-hdd.runtime-observation.v4',emptyPythonSources={})
+    for path,selection in selected.items():
+        row={'attempted':True,'status':'failed','source':{}};facts['emptyPythonSources'][path]=row
+        try:read_empty_python_source(path,selection,row['source']);row['status']='observed'
+        except BaseException as error:
+            error.gui_runtime_original=encode(facts);raise
+
+
+def capture_actual_runtime(output,stage,request):
+    try:observed=observe_runtime(request)
+    except BaseException as error:
+        raw=getattr(error,'gui_runtime_original',None)
+        if raw is not None:
+            try:output.save('runtime.'+stage+'.json',raw)
+            except BaseException as extra:error.gui_secondary=getattr(error,'gui_secondary',[])+[('typed-runtime-retention',extra)]
+        raise
+    output.save('runtime.'+stage+'.json',encode(observed));return observed
+
+
+def admit_build_metadata(request, run, job, artifact):
+    build = request['build']
+    for obj,keys in ((run,('id','run_attempt')),(job,('id','run_id')),(artifact,('id','size_in_bytes'))):
+        for key in keys:integer(obj.get(key),1,2**63-1)
+    integer(artifact.get('workflow_run',{}).get('id'),1,2**63-1)
+    need(run.get('id') == build['runId'] and run.get('run_attempt') == 1 and run.get('status') == 'completed' and
+         run.get('conclusion') == 'success' and run.get('head_sha') == build['head'] and
+         run.get('path') == '.github/workflows/build.yml' and run.get('repository', {}).get('full_name') == REPOSITORY,
+         'successful independently selected official Build run')
+    need(job.get('id') == build['jobId'] and job.get('run_id') == build['runId'] and job.get('name') == build['jobName'] and
+         job.get('status') == 'completed' and job.get('conclusion') == 'success', 'official frontend producing job')
+    need(artifact.get('id') == build['artifactId'] and artifact.get('name') == build['name'] and artifact.get('expired') is False and
+         artifact.get('size_in_bytes') == build['metadataBytes'] and artifact.get('workflow_run', {}).get('id') == build['runId'] and
+         artifact.get('workflow_run', {}).get('head_sha') == build['head'] and
+         artifact.get('digest') == 'sha256:'+build['sha256'], 'artifact metadata admitted before one retrieval')
+
+
+def execute(request_raw, expected, root, output_path, env, factory=Hosted, preflight=False):
+    request = parse_request(request_raw, expected); output = Originals(output_path); first = None; secondary = []
+    result = {'schema': 'bw.gui-hdd.result.v1', 'pass': False, 'requestSha256': expected,
+              'scenarios': [], 'firstFailure': None, 'secondary': secondary}
+    def retain(error,phase):
+        nonlocal first
+        record={'phase':phase,'name':type(error).__name__,'message':str(error)}
+        if first is None:first=error;result['firstFailure']=record
+        else:secondary.append(record)
+        result['pass']=False
+    output.save('request.original.json', request_raw)
+    try:
+        startup_mode='preflight' if preflight else 'actual'
+        startup_args=['--request',str(Path(root)/'gui-inputs/request.json'),'--expected-sha256',expected,'--output',str(output_path)]
+        startup_raw,startup_before=observe_python_startup(root,startup_mode,startup_args)
+        output.save('python-startup.original.txt',startup_raw);output.save('python-startup.before.json',encode(startup_before))
+        hosted = factory(root, output, env)
+        event_raw = regular(env['GITHUB_EVENT_PATH'], JSON_CAP); bind_event(event_raw, request, expected, env)
+        output.save('event.original.json', event_raw)
+        runtime_before=capture_actual_runtime(output,'before',request)
+        need(hosted.git(['rev-parse', 'HEAD']).decode().strip() == request['source']['head'] and
+             hosted.git(['rev-parse', 'HEAD^{tree}']).decode().strip() == request['source']['tree'], 'actual source HEAD/tree')
+        observed_source={}
+        for path, row in request['source']['files'].items():
+            raw = check_file(Path(root)/path, row)
+            need(hosted.git(['cat-file', 'blob', request['source']['head']+':'+path]) == raw, 'live tracked source/Git blob')
+            observed_source[path]={'byteLength':len(raw),'sha256':sha(raw)}
+        output.save('source.before.json', encode({'head':request['source']['head'],'tree':request['source']['tree'],'files':observed_source}))
+        for path, row in request['criticalFiles'].items(): check_file(Path(root)/path, row)
+        # Complete selected package census; expected rows originate outside this attempt.
+        installed = {}
+        for prefix in ('node_modules/bw-board', 'node_modules/playwright', 'node_modules/playwright-core'):
+            for path, row in inventory(Path(root)/prefix).items(): installed[prefix+'/'+path] = row
+        need(encode(installed) == encode(request['installedFiles']), 'closed selected installed supplier/browser graph')
+        pins = decode(regular(Path(root)/'vendor-pins.json', JSON_CAP))
+        need({key: pins[key] for key in ('bw-board', 'bw-circuit-ui', 'sb3-creator')} ==
+             {'bw-board': BOARD, 'bw-circuit-ui': CUI, 'sb3-creator': SB3}, 'held adopted dependency identities')
+        output.save('installed.before.json', encode(installed))
+        if preflight:
+            result['schema']='bw.gui-hdd.preflight.v1';result['pass']=True
+        else:
+            metadata = []
+            for role, route in (('build-run', '/actions/runs/'+str(request['build']['runId'])+'/attempts/1'),
+                                ('build-job', '/actions/jobs/'+str(request['build']['jobId'])),
+                                ('build-artifact', '/actions/artifacts/'+str(request['build']['artifactId']))):
+                raw = hosted.api(route); output.save(role+'.original.json', raw); metadata.append(decode(raw))
+            admit_build_metadata(request, *metadata)
+            token = env.get('GH_TOKEN'); need(type(token) is str and token, 'scoped Actions read credential')
+            download_env = dict(clean_env(), GH_TOKEN=token, GH_HOST='github.com')
+            archive = hosted.run('frontend-acquisition', ['/usr/bin/gh', 'api', 'repos/'+REPOSITORY+
+                 '/actions/artifacts/'+str(request['build']['artifactId'])+'/zip'], download_env, 180, ARCHIVE_CAP)
+            output.save('frontend.original.zip', archive)
+            need(len(archive) == request['build']['zipBytes'] and sha(archive) == request['build']['sha256'], 'one official frontend archive digest')
+            build_root = output.root.parent/(output.root.name+'-build')
+            members,build_files=install_members(archive,build_root)
+            output.save('frontend.members.json',encode(members));output.save('build.inventory.json', encode(inventory(build_root)))
+            need(inventory(build_root)==build_files,'authenticated build installation readback')
+            build_manifest = decode(regular(build_root/'brickwright-build.json', JSON_CAP))
+            need(build_manifest.get('commit') == request['build']['checkoutHead'][:7], 'admitted actual frontend checkout identity')
+            for role, row in request['inputs'].items(): check_file(Path(root)/row['path'], row)
+            manifest = {'schema': 'bw.gui-hdd-persistence-admission.v1', 'boardPin': BOARD,
+                'sourceHead': request['source']['head'], 'criticalFiles': request['criticalFiles'],
+                'buildRoot': str(build_root), 'buildFiles': build_files,
+                'inputPaths': {name: str(Path(root)/row['path']) for name, row in request['inputs'].items()}}
+            output.save('probe-admission.json', encode(manifest))
+            for scenario, seconds in zip(SCENARIOS, (1250, 180)):
+                child_env = dict(clean_env(), PROOF_SCENARIO=scenario, PROOF_ADMISSION=str(output.root/'probe-admission.json'),
+                    PROOF_OUTPUT=str(output.root/scenario), PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=request['runtime']['chromium'],
+                    PROOF_BROWSER_SHA256=request['runtime']['files'][request['runtime']['chromium']]['sha256'])
+                hosted.run(scenario, [request['runtime']['node'], PROBE], child_env, seconds)
+                result['scenarios'].append(scenario)
+            # Actual originals, not producer truthiness, are graded by the separate reader.
+            need(hosted.git(['rev-parse','HEAD']).decode().strip()==request['source']['head'] and
+                 hosted.git(['rev-parse','HEAD^{tree}']).decode().strip()==request['source']['tree'],'actual after source HEAD/tree')
+            observed_after={}
+            for path,row in request['source']['files'].items():
+                raw=check_file(Path(root)/path,row);observed_after[path]={'byteLength':len(raw),'sha256':sha(raw)}
+            output.save('source.after.json',encode({'head':request['source']['head'],'tree':request['source']['tree'],'files':observed_after}))
+            installed_after={}
+            for prefix in ('node_modules/bw-board','node_modules/playwright','node_modules/playwright-core'):
+                for name,row in inventory(Path(root)/prefix).items():installed_after[prefix+'/'+name]=row
+            need(installed_after==request['installedFiles'],'complete installed graph after both scenarios')
+            output.save('installed.after.json', encode(installed_after)); runtime_after=capture_actual_runtime(output,'after',request)
+            if request['schema']=='bw.gui-hdd.actual-request.v4':
+                need(encode(runtime_before['emptyPythonSources'])==encode(runtime_after['emptyPythonSources']),'actual typed source before/after identity unchanged')
+            need(inventory(build_root) == build_files, 'served build changed after scenarios')
+            for role, row in request['inputs'].items(): check_file(Path(root)/row['path'], row)
+            result['pass'] = True
+        startup_after_raw,startup_after=observe_python_startup(root,startup_mode,startup_args)
+        need(startup_after_raw==startup_raw and startup_after==startup_before,'startup prefix and flags after attempt unchanged')
+        output.save('python-startup.after.json',encode(startup_after))
+    except BaseException as error:
+        retain(error,'attempt')
+        for extra in getattr(error,'inventory_secondary',[]):retain(extra,'typed-source-close')
+        for phase,extra in getattr(error,'gui_secondary',[]):retain(extra,phase)
+    finally:
+        # Collect only bounded regular owned probe originals, including partial failures.
+        for scenario in SCENARIOS:
+            path = output.root/scenario
+            if path.exists():
+                try:
+                    for item in sorted(path.iterdir()):
+                        relative(item.name); raw = regular(item, FILE_CAP)
+                        name=scenario+'/'+item.name;need(name not in output.files,'exclusive probe original role')
+                        output.total+=len(raw);need(output.total<=384<<20 and len(output.files)<128,'aggregate probe/archive original cap')
+                        output.files[name] = {'byteLength': len(raw), 'sha256': sha(raw)}
+                except BaseException as error:
+                    retain(error,'probe-collector')
+        try:output.seal(result)
+        except BaseException as error:
+            retain(error,'seal')
+            try:sys.stderr.write(encode(result).decode()[:16384])
+            except BaseException as error:retain(error,'seal-diagnostic')
+    if first: return 1
+    return 0 if result['pass'] and not secondary else 1
+
+
+def install_input(blob,expected,target,env):
+    """Immutable own-repository input transport, never an approval decision."""
+    digest(blob,40);digest(expected);target=Path(target).absolute()
+    need(target.name in ('request.json','runtime-template.json') and target.parent.resolve(strict=True)==target.parent and
+         not target.exists(),'fixed fresh canonical input installation')
+    # The fixed metadata adapter does not launch a process or acquire an artifact.
+    class Edge:
+        API = Hosted.api
+    edge=Edge();edge.env=dict(env)
+    raw=Hosted.api(edge,'/git/blobs/'+blob);response=decode(raw)
+    need(response.get('sha')==blob and response.get('encoding')=='base64' and type(response.get('size')) is int and
+         0<response['size']<=JSON_CAP and type(response.get('content')) is str,'bounded immutable input Git blob')
+    content=response['content'].replace('\n','');payload=base64.b64decode(content,validate=True)
+    need(len(payload)==response['size'] and sha(payload)==expected and
+         hashlib.sha1(b'blob '+str(len(payload)).encode()+b'\0'+payload).hexdigest()==blob and
+         base64.b64encode(payload).decode()==content,'independent input digest/Git object/extent')
+    decode(payload)
+    descriptor=os.open(target,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600);first=None
+    try:
+        need(os.write(descriptor,payload)==len(payload),'complete immutable input installation');os.fchmod(descriptor,0o444)
+    except BaseException as error:first=error;raise
+    finally:
+        try:os.close(descriptor)
+        except BaseException:
+            if first is None:raise
+    need(regular(target,JSON_CAP)==payload,'installed input bytes readback')
+    return {'byteLength':len(payload),'sha256':sha(payload),'gitBlob':blob}
+
+
+EMPTY_PYTHON_PATH='/usr/lib/python3.12/urllib/__init__.py'
+EMPTY_PYTHON_SHA256='e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+
+
+def empty_python_policy(selected,files,aliases,directory_aliases):
+    need(type(selected) is dict and set(selected)=={EMPTY_PYTHON_PATH},'fixed typed empty Python source roster')
+    row=selected[EMPTY_PYTHON_PATH];fields(row,'role byteLength sha256 uid gid mode')
+    integer(row['byteLength'],0,0);integer(row['uid'],0,0);integer(row['gid'],0,0);integer(row['mode'],0o644,0o644)
+    need(row['role']=='python-empty-package-source' and row['sha256']==EMPTY_PYTHON_SHA256,'fixed typed empty Python source identity')
+    need(len(files)+len(selected)<=512 and not set(selected)&(set(files)|set(aliases)|set(directory_aliases)),
+         'typed source disjoint from positive files/aliases within held cap')
+
+
+def read_empty_python_source(path,selection,observed):
+    """Read only this separately selected empty package source; never execute it."""
+    empty_python_policy({path:selection},[],[],[])
+    named=Path(path);before=named.lstat();observed['namedBefore']=identity(before)
+    need(named.absolute()==named and named.resolve(strict=True)==named and before.st_mode==stat.S_IFREG|0o644 and
+         before.st_uid==before.st_gid==0 and before.st_nlink==1 and before.st_size==0,'canonical root0644 single-link empty Python source')
+    descriptor=os.open(named,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK);first=None;secondary=[]
+    observed['close']={'attempted':False,'succeeded':False}
+    try:
+        observed['heldBefore']=identity(os.fstat(descriptor));need(observed['heldBefore']==observed['namedBefore'],'held empty source identity')
+        raw=os.read(descriptor,1);observed['read']={'byteLength':len(raw),'sha256':sha(raw),'eof':raw==b''}
+        need(raw==b'' and sha(raw)==selection['sha256'],'held empty source EOF/digest')
+        observed['heldAfter']=identity(os.fstat(descriptor));observed['namedAfter']=identity(named.lstat())
+        need(observed['heldAfter']==observed['namedAfter']==observed['namedBefore'],'stable held/named empty source readback')
+    except BaseException as error:first=error
+    finally:
+        observed['close']['attempted']=True
+        try:os.close(descriptor);observed['close']['succeeded']=True
+        except BaseException as error:
+            if first is None:first=error
+            else:secondary.append(error)
+    if first is not None:
+        first.inventory_secondary=secondary;raise first
+    return observed
+
+
+INVENTORY_FAILURE_EVENT_CAP=256<<10
+
+
+def inventory_error(value,error,phase,path=None):
+    # Error messages are observations, never arbitrary-length file contents.
+    row={'phase':phase,'name':type(error).__name__.encode('ascii','backslashreplace')[:128].decode('ascii'),
+      'message':str(error).encode('ascii','backslashreplace')[:1024].decode('ascii')}
+    if path is not None:row['path']=path
+    if value['firstFailure'] is None:value['firstFailure']=row
+    else:value['secondary'].append(row)
+    return row
+
+
+def inventory_observation(template_raw,expected,root,env,output_path):
+    version=2
+    try:
+        if decode(template_raw).get('schema')=='bw.gui-hdd.inventory-template.v3':version=3
+    except BaseException:pass
+    failure={'schema':'bw.gui-hdd.inventory-failure.v'+str(version),'observationOnly':True,'candidate':False,'qualified':False,
+      'template':{'byteLength':len(template_raw),'sha256':sha(template_raw),'expectedSha256':None,'sourceHead':None,'bindingVerified':False},
+      'event':None,'platform':{key:(env[key] if type(env.get(key)) is str and len(env[key].encode())<=1024 else None) for key in ('GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_JOB','GITHUB_REPOSITORY',
+       'GITHUB_WORKFLOW_SHA','GITHUB_WORKFLOW_REF','GITHUB_EVENT_NAME','GITHUB_ACTOR','BW_EXPECTED_HEAD')},
+      'diagnostic':{'pathBytes':0,'limitBytes':0,'complete':False},
+      'files':{},'aliases':{},'directoryAliases':{},'gitSource':{'reached':False,'head':None,'tree':None,'files':{}},
+      'firstFailure':None,'secondary':[]}
+    if version==3:failure['emptyPythonSources']={}
+    try:
+        value=collect_inventory_observation(template_raw,expected,root,env,output_path,failure)
+        if value is not failure:return value  # Successful v2 bytes and predicates stay held.
+    except BaseException as error:inventory_error(failure,error,'inventory')
+    event=failure['event']
+    if event is None or event['original']['available'] is not True:
+        inventory_error(failure,ValueError('exact raw event original unavailable: '+('not read' if event is None else event['original']['reason'])),'inventory-event-original')
+    return failure
+
+
+def retain_inventory_observation(value,output_path):
+    failed=value.get('schema') in ('bw.gui-hdd.inventory-failure.v2','bw.gui-hdd.inventory-failure.v3')
+    need(failed or value.get('schema') in ('bw.gui-hdd.inventory-original.v2','bw.gui-hdd.inventory-original.v3'),'explicit inventory original version')
+    if failed:need(value['firstFailure'] is not None and value['candidate'] is False and value['qualified'] is False,'failure-only inventory cannot qualify')
+    target=Path(output_path).with_name('inventory-failure.json') if failed else Path(output_path)
+    output=None;first=None;secondary=[]
+    try:
+        raw=encode(value);need(len(raw)<=JSON_CAP,'bounded inventory original')
+        output=target.open('xb');need(output.write(raw)==len(raw),'complete inventory original')
+    except BaseException as error:first=error
+    finally:
+        if output is not None:
+            try:output.close()
+            except BaseException as error:
+                if first is None:first=error
+                else:secondary.append(error)
+    if first is not None:
+        if not failed:
+            first.inventory_secondary=secondary;raise first
+        inventory_error(value,first,'inventory-failure-retention')
+        for error in secondary:inventory_error(value,error,'inventory-failure-close')
+        # Never overwrite a partial/uncertain original. A bounded canonical
+        # stderr diagnostic preserves the first refusal and retention uncertainty.
+        diagnostic={'schema':value['schema'],'candidate':False,'qualified':False,'firstFailure':value['firstFailure'],
+          'secondary':value['secondary'][-4:],'secondaryCount':len(value['secondary'])}
+        try:sys.stderr.write(encode(diagnostic).decode())
+        except BaseException as secondary:inventory_error(value,secondary,'inventory-failure-diagnostic')
+        return 1
+    return 1 if failed else 0
+
+
+def collect_inventory_observation(template_raw,expected,root,env,output_path,failure):
+    """Metadata only. No browser/tool probe/guest, and never self-approval."""
+    digest(expected);failure['template']['expectedSha256']=expected
+    need(sha(template_raw)==expected,'independently selected inventory template')
+    template=decode(template_raw);version=3 if template.get('schema')=='bw.gui-hdd.inventory-template.v3' else 2
+    fields(template,'schema sourceHead files aliases directoryAliases node python chromium tools'+(' emptyPythonSources' if version==3 else ''))
+    need(encode(template)==template_raw and template['schema']=='bw.gui-hdd.inventory-template.v'+str(version),'canonical bounded inventory template')
+    digest(template['sourceHead'],40);failure['template'].update(sourceHead=template['sourceHead'],bindingVerified=True)
+    event_raw=regular(env['GITHUB_EVENT_PATH'],JSON_CAP)
+    available=len(event_raw)<=INVENTORY_FAILURE_EVENT_CAP
+    failure['event']={'byteLength':len(event_raw),'sha256':sha(event_raw),'bindingVerified':False,
+      'original':{'available':available,'base64':base64.b64encode(event_raw).decode() if available else None,
+       'reason':None if available else 'event exceeds256KiB retained-original cap'}}
+    bind_inventory_event(event_raw,template['sourceHead'],expected,env);failure['event']['bindingVerified']=True
+    need(type(template['files']) is list and 1<=len(template['files'])<=512 and len(set(template['files']))==len(template['files']) and
+         type(template['aliases']) is list and len(template['aliases'])<=256 and len(set(template['aliases']))==len(template['aliases']) and type(template['directoryAliases']) is list and
+         len(set(template['directoryAliases']))==len(template['directoryAliases']) and len(template['aliases'])+len(template['directoryAliases'])<=256,
+         'closed independently selected runtime path roster')
+    runtime={'files':{},'aliases':{},'directoryAliases':{},'node':template['node'],'python':template['python'],'chromium':template['chromium'],
+        'tools':template['tools'],'resources':{'jobMinutes':35,'controllerSeconds':1800,
+        'scenarioSeconds':{'freedos-hdd-persistence':1250,'forward-debug':180},'perProcessCoreBytes':0,
+        'perProcessFileBytes':FILE_CAP,'perProcessOpenFiles':256,'aggregateContainmentQualified':False}}
+    # Validate the entire finite roster before any selected-path access.
+    for role in ('files','aliases','directoryAliases'):
+        for path in template[role]:runtime_path(path)
+    need(set(template['files']).isdisjoint(set(template['aliases'])|set(template['directoryAliases'])) and
+         set(template['aliases']).isdisjoint(template['directoryAliases']),'disjoint fixed inventory roles')
+    if version==3:empty_python_policy(template['emptyPythonSources'],template['files'],template['aliases'],template['directoryAliases'])
+    # Reserve the actual encoded raw event/frame and bounded terminal errors
+    # BEFORE path diagnostics. An incomplete capped diagnostic never qualifies.
+    failure['diagnostic']['limitBytes']=JSON_CAP-len(encode(failure))-8192
+    need(failure['diagnostic']['limitBytes']>0,'failure event/frame leaves no path diagnostic budget')
+    failure['diagnostic']['complete']=True
+    def keep(role,path,row):
+        cost=len(encode({path:row}))+len(encode(row.get('error')))+32
+        if failure['diagnostic']['pathBytes']+cost>failure['diagnostic']['limitBytes']:
+            failure[role].pop(path,None);failure['diagnostic']['complete']=False
+            if row.get('error') is not None and failure['secondary'] and failure['secondary'][-1] is row['error']:failure['secondary'].pop()
+            raise ValueError('path diagnostic cap; remaining selected paths not observed')
+        failure['diagnostic']['pathBytes']+=cost
+    deadline=time.monotonic()+180
+    def metadata(info):return {key:getattr(info,'st_'+key) for key in ('dev','ino','mode','uid','gid','nlink','size','mtime_ns')}
+    for path in template['files']:
+        row={'attempted':False};failure['files'][path]=row
+        try:
+            need(time.monotonic()<deadline,'inventory selected-path deadline; remaining paths not read')
+            row['attempted']=True;row['metadataBefore']=metadata(os.lstat(path))
+            raw=regular(path,256<<20);row['file']={'byteLength':len(raw),'sha256':sha(raw)}
+            row['metadataAfter']=metadata(os.lstat(path));need(row['metadataBefore']==row['metadataAfter'],'inventory diagnostic file metadata drift')
+            need(time.monotonic()<deadline,'inventory selected-path deadline after bounded read')
+            runtime['files'][path]=row['file'];row['status']='observed'
+        except BaseException as error:
+            row['status']='failed' if row['attempted'] else 'unvisited-deadline';row['error']=inventory_error(failure,error,'inventory-file',path)
+        keep('files',path,row)
+    if version==3:
+        for path,selection in template['emptyPythonSources'].items():
+            row={'attempted':False};failure['emptyPythonSources'][path]=row
+            try:
+                need(time.monotonic()<deadline,'inventory selected-path deadline; remaining typed source not read')
+                row['attempted']=True;row['source']={};read_empty_python_source(path,selection,row['source'])
+                need(time.monotonic()<deadline,'inventory selected-path deadline after typed source read')
+                row['status']='observed'
+            except BaseException as error:
+                row['status']='failed' if row['attempted'] else 'unvisited-deadline';row['error']=inventory_error(failure,error,'inventory-empty-python-source',path)
+                for secondary in getattr(error,'inventory_secondary',[]):inventory_error(failure,secondary,'inventory-empty-python-close',path)
+            keep('emptyPythonSources',path,row)
+    all_aliases={}
+    for role in ('aliases','directoryAliases'):
+        for path in template[role]:
+            observed={'attempted':False};failure[role][path]=observed
+            try:
+                need(time.monotonic()<deadline,'inventory selected-path deadline; remaining aliases not read')
+                observed['attempted']=True;before=os.lstat(path);observed['metadataBefore']=metadata(before);need(stat.S_ISLNK(before.st_mode),'selected inventory alias is symlink')
+                text=os.readlink(path);need(type(text) is str and 0<len(text)<=512,'bounded selected inventory link text');observed['linkText']=text
+                after=os.lstat(path);observed['metadataAfter']=metadata(after);need(identity(after)==identity(before),'inventory alias snapshot readback')
+                need(time.monotonic()<deadline,'inventory selected-path deadline after alias read')
+                row={'linkText':text,'target':None};runtime[role][path]=row;need(path not in all_aliases,'disjoint alias template rosters');all_aliases[path]=row
+                observed['status']='observed'
+            except BaseException as error:
+                observed['status']='failed' if observed['attempted'] else 'unvisited-deadline';observed['error']=inventory_error(failure,error,'inventory-alias',path)
+            keep(role,path,observed)
+    if failure['firstFailure'] is not None:return failure  # No tools, Git, runtime probes or candidate after ANY required read failure.
+    for path,row in all_aliases.items():row['target']=declared_alias_resolution(path,all_aliases)
+    runtime_alias_policy(runtime)
+    for name in ('node','python','chromium'):need(runtime[name] in runtime['files'],'selected inventory executable')
+    need(runtime['files'][runtime['node']]=={'byteLength':124827920,'sha256':'fde6a4bf8d0562f7751d1a2d6cb9b417c4cfe107bbcb0aa3e9a24e125e348f48'},'known independently admitted Node identity')
+    fields(runtime['tools'],'git gh');need(runtime['tools']=={'git':'/usr/bin/git','gh':'/usr/bin/gh'} and
+        all(path in runtime['files'] for path in runtime['tools'].values()),'explicit inventory bootstrap tool closure')
+    observe_runtime({'runtime':runtime})
+    # Only fixed read-only Git metadata; these observations do not approve their
+    # source, inventory template, future request or changed activation code.
+    git=['/usr/bin/git','--no-replace-objects','-c','gc.auto=0','-c','maintenance.auto=false',
+        '-c','core.fsmonitor=false','-c','core.hooksPath=/dev/null']
+    failure['gitSource']['reached']=True
+    capture=Originals(Path(output_path).parent/(Path(output_path).stem+'-git-originals'))
+    edge=Hosted(root,capture,env);edge.deadline=min(edge.deadline,time.monotonic()+300)
+    commands=[]
+    def command(arguments):
+        role='git-'+str(len(edge.attempts));raw=edge.git(arguments)
+        process=decode(regular(capture.root/(role+'.process.json'),JSON_CAP))
+        commands.append({'argv':process['argv'],'stdout':capture.files[role+'.stdout'],
+                         'stderr':capture.files[role+'.stderr'],'exitCode':process['exitCode']})
+        return raw
+    head=command(['rev-parse','HEAD']).decode().strip();failure['gitSource']['head']=head
+    tree=command(['rev-parse','HEAD^{tree}']).decode().strip();failure['gitSource']['tree']=tree;digest(head,40);digest(tree,40)
+    need(head==template['sourceHead'],'externally selected inventory source head')
+    files={};failure['gitSource']['files']=files
+    for path in sorted(SOURCE):
+        raw=regular(Path(root)/path,FILE_CAP);need(command(['cat-file','blob',head+':'+path])==raw,'inventory source actual Git/live identity')
+        files[path]={'byteLength':len(raw),'sha256':sha(raw)}
+    installed={}
+    for prefix in ('node_modules/bw-board','node_modules/playwright','node_modules/playwright-core'):
+        for path,row in inventory(Path(root)/prefix).items():installed[prefix+'/'+path]=row
+    result={'schema':'bw.gui-hdd.inventory-original.v'+str(version),'observationOnly':True,'templateSha256':expected,
+        'source':{'head':head,'tree':tree,'files':files},'installedFiles':installed,'runtime':runtime,
+        'event':{'byteLength':len(event_raw),'sha256':sha(event_raw),'base64':base64.b64encode(event_raw).decode()},
+        'commands':commands,'platform':{name:env.get(name) for name in ('GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_JOB',
+        'GITHUB_REPOSITORY','GITHUB_WORKFLOW_SHA','GITHUB_WORKFLOW_REF','GITHUB_EVENT_NAME','GITHUB_ACTOR','BW_EXPECTED_HEAD')}}
+    if version==3:result['emptyPythonSources']=failure['emptyPythonSources']
+    return result
+
+
+# A separate observation format; it cannot select fonts or approve an actual.
+FONT_DISCOVERY_ENABLED = True
+FONT_ROOTS = ('/etc/fonts/conf.d','/usr/share/fonts','/usr/local/share/fonts')
+FONT_PREFIXES = ('/etc/fonts/','/usr/share/fontconfig/','/usr/share/fonts/','/usr/local/share/fonts/')
+FONT_STREAM_CAP = 128 << 10
+
+
+def font_blob(raw):
+    return {'byteLength':len(raw),'sha256':sha(raw),'base64':base64.b64encode(raw).decode()}
+
+
+def font_request(raw,expected):
+    digest(expected);need(sha(raw)==expected,'independently selected font discovery request')
+    value=decode(raw);fields(value,'schema source baseline')
+    need(encode(value)==raw and value['schema']=='bw.gui-hdd.font-discovery-request.v1','canonical explicit font discovery request')
+    source=value['source'];fields(source,'head tree files');digest(source['head'],40);digest(source['tree'],40)
+    rows(source['files']);need(set(source['files'])==SOURCE,'exact discovery source21')
+    baseline=value['baseline'];fields(baseline,'byteLength sha256 base64');integer(baseline['byteLength'],1,JSON_CAP//4);digest(baseline['sha256'])
+    need(type(baseline['base64']) is str and len(baseline['base64'])==4*((baseline['byteLength']+2)//3),'bounded retained baseline template')
+    original=base64.b64decode(baseline['base64'],validate=True)
+    need(font_blob(original)==baseline,'exact baseline template original')
+    template=decode(original);need(encode(template)==original and template.get('schema') in ('bw.gui-hdd.inventory-template.v2','bw.gui-hdd.inventory-template.v3'),'unmodified versioned baseline template')
+    selected=[]
+    for key in ('files','aliases'):
+        roster=template.get(key);need(type(roster) is list and len(roster)<=512,'finite baseline roster')
+        for path in roster:
+            runtime_path(path)
+            if path.startswith(FONT_PREFIXES):selected.append(path)
+    need(len(selected)==len(set(selected)) and len(selected)<=512,'unique bounded baseline font paths')
+    return value,sorted(selected)
+
+
+def font_event(raw,request_sha,head,env):
+    event=decode(raw);pr=event.get('pull_request',{})
+    need(event.get('action')=='labeled' and event.get('label',{}).get('name')=='x86-hdd-gui-font-discovery' and
+         event.get('sender',{}).get('login')=='CrispStrobe' and event.get('repository',{}).get('full_name')==REPOSITORY,'owned discovery event')
+    integer(event.get('number'),1,2**31-1)
+    need(type(pr.get('number')) is int and event['number']==pr['number'] and pr.get('state')=='open' and
+         pr.get('head',{}).get('sha')==head and pr.get('head',{}).get('repo',{}).get('full_name')==REPOSITORY and
+         pr.get('head',{}).get('repo',{}).get('fork') is False and pr.get('base',{}).get('ref')=='main' and
+         pr.get('base',{}).get('repo',{}).get('full_name')==REPOSITORY,'exact own discovery source event')
+    marker='<!-- BW_GUI_HDD_FONT_DISCOVERY_SHA256='+request_sha+' -->'
+    need(type(pr.get('body')) is str and pr['body'].count('<!-- BW_GUI_HDD_FONT_DISCOVERY_SHA256=')==1 and pr['body'].count(marker)==1,'event transports selected discovery pin only')
+    need(env.get('GITHUB_REPOSITORY')==REPOSITORY and env.get('GITHUB_EVENT_NAME')=='pull_request' and env.get('GITHUB_ACTOR')=='CrispStrobe' and
+         env.get('GITHUB_RUN_ATTEMPT')=='1' and env.get('GITHUB_JOB')=='font-discovery' and re.fullmatch('[1-9][0-9]{0,19}',env.get('GITHUB_RUN_ID','')) and
+         env.get('BW_EXPECTED_HEAD')==head,'first discovery platform observations')
+    digest(env.get('GITHUB_WORKFLOW_SHA'),40)
+    need(env.get('GITHUB_WORKFLOW_REF')==REPOSITORY+'/.github/workflows/i80386-hdd-gui-actual.yml@refs/pull/'+str(pr['number'])+'/merge','discovery workflow/event reference')
+
+
+def font_xml(raw):
+    # This is a structural reference census, never Fontconfig execution semantics.
+    import xml.etree.ElementTree as ET
+    need(len(raw)<=65536,'bounded config original')
+    text=raw.decode('utf-8');doctype='<!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">'
+    if doctype in text:need(text.count(doctype)==1,'single opaque standard prolog');text=text.replace(doctype,'',1)
+    need(not re.search(r'<!\s*(?:DOCTYPE|ENTITY)',text,re.I),'no DTD loading, internal subset or entities')
+    root=ET.fromstring(text);need(root.tag=='fontconfig' and not root.attrib,'fontconfig structural root')
+    references=[];unsupported=[]
+    for item in root:
+        if item.tag in ('include','dir'):
+            content=(item.text or '').strip()
+            allowed={'ignore_missing','prefix'} if item.tag=='include' else {'prefix','salt'}
+            if len(item) or not set(item.attrib)<=allowed or item.attrib.get('prefix','default')!='default' or not content or len(content)>512:
+                unsupported.append('unsupported '+item.tag+' reference');continue
+            if item.tag=='include' and item.attrib.get('ignore_missing','no') not in ('yes','no'):
+                unsupported.append('unsupported include ignore_missing');continue
+            references.append({'kind':item.tag,'text':content,'ignoreMissing':item.attrib.get('ignore_missing','no')=='yes'})
+        else:unsupported.append('opaque element '+str(item.tag)[:80])
+    need(len(references)+len(unsupported)<=512,'bounded XML child census')
+    return {'references':references,'unsupported':unsupported,'nativeSelectionInterpreted':False}
+
+
+def font_config_links(configs,files,aliases,directories):
+    import posixpath
+    references=[];edges={path:[] for path in configs}
+    for path,config in sorted(configs.items()):
+        for ref in config['references']:
+            text=ref['text'];target=text if text.startswith('/') else posixpath.normpath(posixpath.dirname(path)+'/'+text)
+            supported=target.startswith(FONT_PREFIXES) and '..' not in target.split('/') and '~' not in text
+            targets=[];status='unsupported' if not supported else 'missing-ignored' if ref['ignoreMissing'] else 'missing'
+            if supported:
+                if target in aliases:target=aliases[target].get('target',target)
+                if ref['kind']=='dir':status='observed-directory' if target in directories and 'after' in directories[target] else status
+                elif target in configs:targets=[target];status='observed-config'
+                elif target in directories and 'entries' in directories[target]:
+                    for name in directories[target]['entries']:
+                        if re.fullmatch(r'[0-9].*\.conf',name):
+                            child=target+'/'+name;child=aliases.get(child,{}).get('target',child)
+                            if child in configs:targets.append(child)
+                            else:status='incomplete-directory'
+                    if status!='incomplete-directory':status='observed-config-directory'
+                edges[path].extend(targets)
+            references.append({'from':path,**ref,'target':target,'targets':targets,'status':status})
+    cycles=[]
+    # Bound expansion without claiming native traversal order or complete grammar.
+    visits=0
+    for path in edges:
+        todo=[(path,[])]
+        while todo:
+            item,stack=todo.pop();visits+=1;need(visits<=8192 and len(stack)<=128,'finite config reference traversal')
+            if item in stack:
+                cycle=stack[stack.index(item):]+[item]
+                if cycle not in cycles:cycles.append(cycle)
+            else:todo.extend((target,stack+[item]) for target in edges.get(item,[]))
+    return {'references':references,'cycles':cycles,'nativeSelectionInterpreted':False}
+
+
+def font_read(path,cap,row):
+    """Held EOF/readback/close observations; partial errors remain in row."""
+    runtime_path(path);fd=None;first=None;secondary=[]
+    try:
+        before=Path(path).lstat();row['namedBefore']=identity(before)
+        need(Path(path).resolve(strict=True)==Path(path) and stat.S_ISREG(before.st_mode) and 0<=before.st_size<=cap,'canonical bounded discovery regular file')
+        fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK);row['heldBefore']=identity(os.fstat(fd))
+        need(row['heldBefore']==row['namedBefore'],'discovery held identity')
+        data=bytearray()
+        while len(data)<=cap:
+            part=os.read(fd,min(65536,cap+1-len(data)))
+            if not part:break
+            data.extend(part)
+        row['file']={'byteLength':len(data),'sha256':sha(data),'eof':not part}
+        row['heldAfter']=identity(os.fstat(fd));row['namedAfter']=identity(Path(path).lstat())
+        need(len(data)==before.st_size and row['file']['eof'] is True and row['namedBefore']==row['heldBefore']==row['heldAfter']==row['namedAfter'],'stable bounded discovery EOF/identity')
+        return bytes(data)
+    except BaseException as error:first=error;raise
+    finally:
+        row['close']={'attempted':fd is not None,'succeeded':False}
+        if fd is not None:
+            try:os.close(fd);row['close']['succeeded']=True
+            except BaseException as error:
+                if first is None:raise
+                secondary.append(error);first.font_secondary=secondary
+
+
+def collect_font_discovery(request_raw,expected,root,env,output_path):
+    value={'schema':'bw.gui-hdd.font-discovery-original.v1','observationOnly':True,'candidate':False,'qualified':False,'activeFontSelectionProved':False,'perPackageManifestBoundariesProved':False,
+      'request':font_blob(request_raw),'event':None,'platform':{key:env.get(key) for key in ('GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_JOB','GITHUB_REPOSITORY',
+      'GITHUB_WORKFLOW_SHA','GITHUB_WORKFLOW_REF','GITHUB_EVENT_NAME','GITHUB_ACTOR','BW_EXPECTED_HEAD')},'sourceCommands':[],
+      'tools':{},'directories':{},'files':{},'aliases':{},'configs':{},'configReferences':None,'baselineMissing':[],'commands':[],'packages':None,'complete':False,'firstFailure':None,'secondary':[]}
+    deadline=time.monotonic()+180;capture=None;baseline=[]
+    def error(exc,phase,path=None):
+        item={'phase':phase,'path':path,'name':type(exc).__name__,'message':str(exc)[:512]}
+        if value['firstFailure'] is None:value['firstFailure']=item
+        elif len(value['secondary'])<128:value['secondary'].append(item)
+        for extra in getattr(exc,'font_secondary',[]):error(extra,'close',path)
+    def check():need(time.monotonic()<deadline,'discovery cooperative180s deadline')
+    def budget(row=None):
+        if len(encode(value))>JSON_CAP-(2<<20):
+            if row is not None:row.pop('entries',None)
+            raise ValueError('discovery frame/config reserve before package streams')
+    try:
+        request,baseline=font_request(request_raw,expected)
+        event_raw=regular(env['GITHUB_EVENT_PATH'],256<<10);value['event']=font_blob(event_raw)
+        font_event(event_raw,expected,request['source']['head'],env)
+        capture=Originals(Path(output_path).with_name(Path(output_path).stem+'-process-originals'))
+        edge=Hosted(root,capture,env);edge.deadline=min(edge.deadline,deadline)
+        # Root-owned selected system tools are an explicit platform trust boundary.
+        for path in ('/usr/bin/git','/usr/bin/dpkg-query'):
+            row={};value['tools'][path]=row;font_read(path,FILE_CAP,row)
+            info=row['namedBefore'];need(info['uid']==0 and info['mode']&0o6022==0 and info['mode']&0o111,'nonwritable root-owned discovery tool before invocation')
+        arguments=[['rev-parse','HEAD'],['rev-parse','HEAD^{tree}']]+[['cat-file','blob',request['source']['head']+':'+p] for p in sorted(SOURCE)]
+        outputs=[(request['source'][k]+'\n').encode() for k in ('head','tree')]
+        for index,args in enumerate(arguments):
+            check();raw=edge.git(args);role='git-'+str(index);process=decode(regular(capture.root/(role+'.process.json'),JSON_CAP))
+            record={'argv':process['argv'],'stdout':{'byteLength':len(raw),'sha256':sha(raw)},'stderr':capture.files[role+'.stderr'],'exitCode':process['exitCode']}
+            value['sourceCommands'].append(record)
+            if index<2:need(raw==outputs[index],'exact selected discovery head/tree')
+            else:
+                path=sorted(SOURCE)[index-2];need(raw==regular(Path(root)/path,FILE_CAP) and record['stdout']==request['source']['files'][path],'discovery source Git/live/external join')
+        pending=list(FONT_ROOTS);targets={'/etc/fonts/fonts.conf'};total=0
+        while pending:
+            check();path=pending.pop(0);need(len(value['directories'])<128,'discovery directory cap')
+            row={};value['directories'][path]=row
+            try:
+                info=Path(path).lstat();row['before']=identity(info)
+                need(stat.S_ISDIR(info.st_mode) and Path(path).resolve(strict=True)==Path(path),'canonical discovery directory')
+                names=[]
+                with os.scandir(path) as entries:
+                    for entry in entries:
+                        check();need(len(names)<1024 and re.fullmatch('[A-Za-z0-9_.@+ -]{1,255}',entry.name) and entry.name not in ('.','..'),'bounded plain directory entries')
+                        names.append(entry.name)
+                row['entries']=sorted(names);row['after']=identity(Path(path).lstat());need(row['before']==row['after'],'directory census identity readback')
+                budget(row)
+                for name in row['entries']:
+                    child=path+'/'+name;info=Path(child).lstat()
+                    if stat.S_ISDIR(info.st_mode):need(len(Path(child).parts)<=12,'finite font directory depth');pending.append(child)
+                    elif stat.S_ISREG(info.st_mode):targets.add(child)
+                    elif stat.S_ISLNK(info.st_mode):
+                        need(len(value['aliases'])<256,'font alias cap');item={'namedBefore':identity(info)};value['aliases'][child]=item
+                        text=os.readlink(child);need(type(text) is str and 0<len(text)<=512 and re.fullmatch('[A-Za-z0-9_./@+ -]+',text),'bounded font alias text')
+                        item['linkText']=text;item['namedAfter']=identity(Path(child).lstat());need(item['namedBefore']==item['namedAfter'],'font alias drift')
+                        target=declared_alias_resolution(child,{child:{'linkText':text}});runtime_path(target)
+                        need(target.startswith(FONT_PREFIXES) and Path(target).resolve(strict=True)==Path(target),'font alias canonical allowed regular target')
+                        item['target']=target;targets.add(target)
+                    else:raise ValueError('unsupported special font/config entry')
+                budget(row)
+            except BaseException as exc:
+                error(exc,'directory',path)
+                if str(exc).startswith('discovery frame/config'):raise
+        need(len(targets)<=512,'font file census cap')
+        for path in sorted(targets):
+            check();row={};value['files'][path]=row
+            try:
+                raw=font_read(path,65536 if path.endswith('.conf') else FILE_CAP,row);total+=len(raw);need(total<=256<<20,'aggregate font/config read cap')
+                if path.endswith('.conf'):
+                    original=font_blob(raw)
+                    need(len(encode(value))+len(encode(original))<=JSON_CAP-(2<<20),'raw config reservation before diagnostic')
+                    row['original']=original
+                    try:value['configs'][path]=font_xml(raw)
+                    except BaseException as exc:value['configs'][path]={'unsupported':[str(exc)[:512]],'references':[],'nativeSelectionInterpreted':False}
+                budget()
+            except BaseException as exc:
+                error(exc,'file',path)
+                if str(exc).startswith(('discovery frame/config','raw config reservation')):raise
+        observed=set(value['files'])|set(value['aliases']);value['baselineMissing']=sorted(set(baseline)-observed)
+        value['configReferences']=font_config_links(value['configs'],value['files'],value['aliases'],value['directories'])
+        if value['firstFailure'] is not None:return value  # no package process after a failed required census read
+        def probe(role,argv):
+            check();first=None;tool={}
+            font_read('/usr/bin/dpkg-query',FILE_CAP,tool)
+            need(encode(tool)==encode(value['tools']['/usr/bin/dpkg-query']),'package tool identity/hash/mode unchanged before each probe')
+            try:edge.run(role,argv,clean_env(),15,FONT_STREAM_CAP)
+            except BaseException as exc:first=exc;error(exc,role)
+            item={'role':role,'argv':argv,'tool':tool,'stdout':None,'stderr':None,'process':None};value['commands'].append(item)
+            for stream in ('stdout','stderr'):
+                path=capture.root/(role+'.'+stream)
+                if path.exists():item[stream]=font_blob(regular(path,FONT_STREAM_CAP) if capture.files[role+'.'+stream]['byteLength'] else b'')
+            path=capture.root/(role+'.process.json')
+            if path.exists():item['process']=decode(regular(path,64<<10))
+            need(len(encode(value))<=JSON_CAP-16384,'bounded discovery probe/frame original')
+            return first is None
+        if not probe('font-packages',['/usr/bin/dpkg-query','-W','-f=${binary:Package}\t${Version}\t${db:Status-Status}\n']):return value
+        package_raw=base64.b64decode(value['commands'][-1]['stdout']['base64']);packages=font_packages(package_raw);value['packages']=packages
+        query=sorted(observed|set(baseline));need(len(query)<=1024 and sum(len(p)+1 for p in query)<=128<<10,'finite ownership query')
+        if not probe('font-owners',['/usr/bin/dpkg-query','-S','--',*query]):return value
+        owners=font_owners(base64.b64decode(value['commands'][-1]['stdout']['base64']),query,packages)
+        selected=sorted({owner for names in owners.values() for owner in names});need(selected,'nonempty observed font owners')
+        if not probe('font-manifests',['/usr/bin/dpkg-query','-L','--',*selected]):return value
+        listed=font_manifest(base64.b64decode(value['commands'][-1]['stdout']['base64']))
+        need(all(path in listed for path in owners),'owner lookup paths present in selected package manifests')
+        value['complete']=True
+    except BaseException as exc:
+        if value['firstFailure'] is None or value['firstFailure']['message']!=str(exc)[:512]:error(exc,'discovery')
+    value['baselineMissing']=sorted(set(baseline)-(set(value['files'])|set(value['aliases'])))
+    return value
+
+
+def font_packages(raw):
+    need(type(raw) is bytes and len(raw)<=FONT_STREAM_CAP,'bounded package table');out={}
+    for line in raw.decode('utf-8').splitlines():
+        pieces=line.split('\t');need(len(pieces)==3 and re.fullmatch('[a-z0-9][a-z0-9+.:~-]{0,127}',pieces[0]) and 0<len(pieces[1])<=256 and pieces[2] in ('installed','not-installed','config-files'),'strict installed-package observation')
+        need(pieces[0] not in out,'unique package observation');out[pieces[0]]={'version':pieces[1],'status':pieces[2]}
+    need(0<len(out)<=8192,'finite package census');return out
+
+
+def font_owners(raw,query,packages):
+    out={}
+    for line in raw.decode('utf-8').splitlines():
+        names,sep,path=line.partition(': ');need(sep and path in query and path not in out,'ownership matches exact queried path')
+        owners=names.split(', ');need(0<len(owners)<=8 and len(set(owners))==len(owners) and all(name in packages and packages[name]['status']=='installed' for name in owners),'installed package ownership observation')
+        out[path]=owners
+    need(set(out)==set(query),'every queried path has observed ownership; no missing/unowned fallback');return out
+
+
+def font_manifest(raw):
+    out=set()
+    for path in raw.decode('utf-8').splitlines():
+        need(path.startswith('/') and len(path)<=1024 and '\x00' not in path,'bounded package manifest path');out.add(path)
+    need(len(out)<=32768,'finite package manifest census');return out
+
+
+def retain_font_discovery(value,path):
+    need(value['candidate'] is False and value['qualified'] is False and value['activeFontSelectionProved'] is False,'discovery cannot qualify')
+    stream=None;first=None;phase='retention';later=[]
+    try:
+        raw=encode(value);need(len(raw)<=JSON_CAP,'bounded discovery original')
+        stream=Path(path).open('xb');need(stream.write(raw)==len(raw),'complete exclusive discovery original')
+    except BaseException as exc:first=exc
+    finally:
+        if stream is not None:
+            try:stream.close()
+            except BaseException as exc:
+                if first is None:first=exc;phase='retention-close'
+                else:later.append({'phase':'retention-close','path':None,'name':type(exc).__name__,'message':str(exc)[:512]})
+    if first is not None:
+        item={'phase':phase,'path':None,'name':type(first).__name__,'message':str(first)[:512]}
+        if value['firstFailure'] is None:value['firstFailure']=item
+        else:value['secondary'].append(item)
+        value['secondary'].extend(later)
+        try:
+            diagnostic=encode({'firstFailure':value['firstFailure'],'secondary':value['secondary'][-4:]})
+            sys.stderr.write(diagnostic[:8192].decode('utf-8','replace'))
+        except BaseException as exc:value['secondary'].append({'phase':'retention-diagnostic','path':None,'name':type(exc).__name__,'message':str(exc)[:512]})
+        return 1
+    return 0 if value['complete'] is True and value['firstFailure'] is None else 1
+
+
+
+# A deliberately separate passive route. No discovery/delivery v1 is reinterpreted.
+FONT_CHAIN_ENABLED = False
+FONT_CHAIN_HOPS = 8
+FONT_CHAIN_ROOTS = ('/usr/share/fonts/','/usr/local/share/fonts/')
+
+
+def font_chain_request(raw,expected):
+    digest(expected);need(sha(raw)==expected,'selected chain request digest')
+    value=decode(raw);fields(value,'schema source baseline entry')
+    need(encode(value)==raw and value['schema']=='bw.gui-hdd.font-chain-request.v1','explicit canonical chain request version')
+    legacy={key:value[key] for key in ('source','baseline')};legacy['schema']='bw.gui-hdd.font-discovery-request.v1'
+    font_request(encode(legacy),sha(encode(legacy)))
+    runtime_path(value['entry']);need(value['entry'].startswith(FONT_CHAIN_ROOTS),'selected original font-root entry')
+    return value
+
+
+def font_chain_next(path,text):
+    import posixpath
+    need(type(text) is str and 0<len(text)<=512 and re.fullmatch('[A-Za-z0-9_./@+-]+',text),'bounded literal chain link')
+    need(not text.startswith('//') and all(part not in ('','.','..') for part in text.lstrip('/').split('/')),'no unobserved lexical traversal components')
+    target=posixpath.normpath(text if text.startswith('/') else posixpath.dirname(path)+'/'+text)
+    runtime_path(target)
+    need(target.startswith(FONT_CHAIN_ROOTS) or target.startswith('/etc/alternatives/'),'finite font or alternatives bridge')
+    need(not target.startswith('/etc/alternatives/') or target.count('/')==3,'single alternatives child')
+    return target
+
+def font_chain_event(raw,request_sha,head,env):
+    event=decode(raw);pr=event.get('pull_request',{})
+    need(event.get('action')=='labeled' and event.get('label',{}).get('name')=='x86-hdd-gui-font-chain' and
+         event.get('sender',{}).get('login')=='CrispStrobe' and event.get('repository',{}).get('full_name')==REPOSITORY,'owned discovery event')
+    integer(event.get('number'),1,2**31-1)
+    need(type(pr.get('number')) is int and event['number']==pr['number'] and pr.get('state')=='open' and
+         pr.get('head',{}).get('sha')==head and pr.get('head',{}).get('repo',{}).get('full_name')==REPOSITORY and
+         pr.get('head',{}).get('repo',{}).get('fork') is False and pr.get('base',{}).get('ref')=='main' and
+         pr.get('base',{}).get('repo',{}).get('full_name')==REPOSITORY,'exact own discovery source event')
+    marker='<!-- BW_GUI_HDD_FONT_CHAIN_SHA256='+request_sha+' -->'
+    need(type(pr.get('body')) is str and pr['body'].count('<!-- BW_GUI_HDD_FONT_CHAIN_SHA256=')==1 and pr['body'].count(marker)==1,'event transports selected discovery pin only')
+    need(env.get('GITHUB_REPOSITORY')==REPOSITORY and env.get('GITHUB_EVENT_NAME')=='pull_request' and env.get('GITHUB_ACTOR')=='CrispStrobe' and
+         env.get('GITHUB_RUN_ATTEMPT')=='1' and env.get('GITHUB_JOB')=='font-chain' and re.fullmatch('[1-9][0-9]{0,19}',env.get('GITHUB_RUN_ID','')) and
+         env.get('BW_EXPECTED_HEAD')==head,'first discovery platform observations')
+    digest(env.get('GITHUB_WORKFLOW_SHA'),40)
+    need(env.get('GITHUB_WORKFLOW_REF')==REPOSITORY+'/.github/workflows/i80386-hdd-gui-actual.yml@refs/pull/'+str(pr['number'])+'/merge','discovery workflow/event reference')
+
+
+def font_chain_witness(path,kind,check):
+    # O_PATH retains the symlink itself; readlink(empty,dir_fd) reads that handle.
+    row={'path':path,'kind':kind,'namedBefore':None,'heldBefore':None,'heldAfter':None,'namedAfter':None,
+         'linkBefore':None,'linkAfter':None,'close':{'attempted':False,'succeeded':False}}
+    fd=None;first=None
+    try:
+        check();before=Path(path).lstat();row['namedBefore']=identity(before)
+        need(before.st_uid==0,'root-owned chain witness')
+        if kind=='parent':
+            need(stat.S_ISDIR(before.st_mode) and before.st_mode&0o6022==0 and Path(path).resolve(strict=True)==Path(path),'canonical nonwritable chain parent')
+            flags=os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW|os.O_NONBLOCK
+        else:
+            need(kind=='link' and stat.S_ISLNK(before.st_mode),'typed chain symlink')
+            flags=os.O_PATH|os.O_NOFOLLOW
+        fd=os.open(path,flags);row['close']['attempted']=True;row['heldBefore']=identity(os.fstat(fd))
+        need(row['heldBefore']==row['namedBefore'],'chain held witness identity')
+        if kind=='link':
+            row['linkBefore']=os.readlink('',dir_fd=fd);row['linkAfter']=os.readlink('',dir_fd=fd)
+        check();row['heldAfter']=identity(os.fstat(fd));row['namedAfter']=identity(Path(path).lstat())
+        need(row['namedBefore']==row['heldBefore']==row['heldAfter']==row['namedAfter'],'stable chain witness readback')
+        need(row['linkBefore']==row['linkAfter'],'stable held chain link text')
+        if kind=='link':need(type(row['linkBefore']) is str and len(row['linkBefore'].encode())==before.st_size,'held link text extent')
+    except BaseException as exc:first=exc
+    finally:
+        if fd is not None:
+            try:os.close(fd);row['close']['succeeded']=True
+            except BaseException as exc:
+                if first is None:first=exc
+                else:first.font_secondary=getattr(first,'font_secondary',[])+[exc]
+    return row,first
+
+
+def collect_font_chain(request_raw,expected,root,env,output_path):
+    value={'schema':'bw.gui-hdd.font-chain-original.v1','observationOnly':True,'candidate':False,'qualified':False,
+      'activeFontSelectionProved':False,'sourceRuntimeObserved':False,'request':font_blob(request_raw),'event':None,
+      'platform':{key:env.get(key) for key in ('GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_JOB','GITHUB_REPOSITORY','GITHUB_WORKFLOW_SHA','GITHUB_WORKFLOW_REF','GITHUB_EVENT_NAME','GITHUB_ACTOR','BW_EXPECTED_HEAD')},
+      'tool':{},'sourceCommands':[],'parents':[],'links':[],'terminal':None,'complete':False,'firstFailure':None,'secondary':[], 'commands':[], 'packages':None}
+    deadline=time.monotonic()+180
+    def check():
+        need(time.monotonic()<deadline,'chain cooperative180s deadline')
+        need(len(encode(value))<JSON_CAP-(2<<20),'chain output reserve')
+    try:
+        request=font_chain_request(request_raw,expected)
+        event_raw=regular(env['GITHUB_EVENT_PATH'],256<<10);value['event']=font_blob(event_raw)
+        font_chain_event(event_raw,expected,request['source']['head'],env)
+        check();font_read('/usr/bin/git',FILE_CAP,value['tool'])
+        tool=value['tool']['namedBefore']
+        need(tool['uid']==0 and tool['mode']&0o6022==0 and tool['mode']&0o111,'root-owned nonwritable executable chain Git')
+        capture=Originals(Path(output_path).with_name(Path(output_path).stem+'-process-originals'))
+        edge=Hosted(root,capture,env);edge.deadline=min(edge.deadline,deadline)
+        arguments=[['rev-parse','HEAD'],['rev-parse','HEAD^{tree}']]+[['cat-file','blob',request['source']['head']+':'+p] for p in sorted(SOURCE)]
+        for index,args in enumerate(arguments):
+            check();role='git-'+str(index);record={'argv':['/usr/bin/git','--no-replace-objects','-c','gc.auto=0','-c','maintenance.auto=false','-c','core.fsmonitor=false','-c','core.hooksPath=/dev/null',*args],'stdout':None,'stderr':None,'exitCode':None};value['sourceCommands'].append(record)
+            source_error=None
+            try:raw=edge.git(args)
+            except BaseException as exc:source_error=exc
+            for suffix in ('stdout','stderr','process.json'):
+                try:
+                    saved=capture.root/(role+'.'+suffix)
+                    if saved.exists():
+                        limit=JSON_CAP if suffix=='process.json' else STREAM_CAP
+                        data=regular(saved,limit) if capture.files[role+'.'+suffix]['byteLength'] else b''
+                        if suffix=='process.json':
+                            process=decode(data);need(process.get('argv')==record['argv'],'chain retained process arguments')
+                            integer(process.get('exitCode'),-255,255);record['exitCode']=process['exitCode']
+                        else:record[suffix]={'byteLength':len(data),'sha256':sha(data)}
+                except BaseException as exc:
+                    if source_error is None:source_error=exc
+                    else:source_error.font_chain_secondary=getattr(source_error,'font_chain_secondary',[])+[exc]
+            if source_error is not None:raise source_error
+            if index<2:need(raw==(request['source']['head' if index==0 else 'tree']+'\n').encode(),'chain exact Git source identity')
+            else:
+                selected=sorted(SOURCE)[index-2]
+                need(raw==regular(Path(root)/selected,FILE_CAP) and {'byteLength':len(raw),'sha256':sha(raw)}==request['source']['files'][selected],'chain Git/live/external source join')
+        path=request['entry'];seen=set();parents=set()
+        while True:
+            check();need(path not in seen,'chain cycle refused');seen.add(path)
+            # Every ancestor is witnessed; no canonical-parent assumption hides
+            # an intermediate symlink. No directory contents are enumerated.
+            for parent in reversed(list(Path(path).parents)):
+                parent=str(parent)
+                if parent in parents:continue
+                check();need(len(value['parents'])<128,'combined chain parent cap')
+                row,error=font_chain_witness(parent,'parent',check);value['parents'].append(row)
+                if error is not None:raise error
+                parents.add(parent)
+            check();info=Path(path).lstat()
+            if stat.S_ISLNK(info.st_mode):
+                need(len(value['links'])<min(FONT_CHAIN_HOPS,256),'combined chain alias/hop cap')
+                row,error=font_chain_witness(path,'link',check);value['links'].append(row)
+                if error is not None:raise error
+                path=font_chain_next(path,row['linkBefore']);continue
+            need(len(value['links'])>0 and path.startswith(FONT_CHAIN_ROOTS),'regular terminal within original font roots')
+            value['terminal']={'path':path,'observation':{}}
+            raw=font_read(path,FILE_CAP,value['terminal']['observation'])
+            terminal_info=value['terminal']['observation']['namedBefore']
+            need(0<len(raw)<=256<<20 and terminal_info['uid']==0 and not terminal_info['mode']&0o6022,'positive root-owned nonwritable terminal font')
+            check();value['complete']=True;break
+    except BaseException as exc:
+        value['firstFailure']={'phase':'chain','path':locals().get('path'),'name':type(exc).__name__,'message':str(exc)[:512]}
+        later=[('close',e) for e in getattr(exc,'font_secondary',[])]+[('source-retention',e) for e in getattr(exc,'font_chain_secondary',[])]
+        value['secondary']=[{'phase':phase,'path':locals().get('path'),'name':type(e).__name__,'message':str(e)[:512]} for phase,e in later][:128]
+    return value
+
+
+def retain_font_chain(value,path):
+    # Separate format; same exclusive bounded retention and first-error policy.
+    need(value['schema']=='bw.gui-hdd.font-chain-original.v1' and value['commands']==[] and value['packages'] is None,'passive chain only')
+    return retain_font_discovery(value,path)
+
+
+
+# Separate prior-reference mode: historical alias bytes select a question only.
+FONT_BRIDGE_ENABLED = True
+
+
+def font_bridge_blob(row):
+    fields(row,'byteLength sha256 base64');integer(row['byteLength'],1,JSON_CAP//4);digest(row['sha256'])
+    need(type(row['base64']) is str and len(row['base64'])==4*((row['byteLength']+2)//3),'bounded prior encoding before decode')
+    raw=base64.b64decode(row['base64'],validate=True)
+    need(len(raw)==row['byteLength'] and sha(raw)==row['sha256'] and base64.b64encode(raw).decode()==row['base64'],'exact prior original bytes')
+    return raw
+
+
+def font_bridge_prior(prior,entry):
+    fields(prior,'schema sourceEntry request original expectation')
+    need(prior['schema']=='bw.gui-hdd.font-bridge-prior.v1','explicit immutable prior version')
+    runtime_path(prior['sourceEntry']);runtime_path(entry)
+    need(prior['sourceEntry'].startswith(FONT_CHAIN_ROOTS) and entry.startswith('/etc/alternatives/') and entry.count('/')==3,'historical font entry and single-child bridge question')
+    selected=prior['expectation'];fields(selected,'schema source request original runId workflowSha')
+    need(selected['schema']=='bw.gui-hdd.font-discovery-expectation.v1','explicit prior discovery expectation')
+    source=selected['source'];fields(source,'head tree files');digest(source['head'],40);digest(source['tree'],40)
+    rows(source['files']);need(set(source['files'])==SOURCE,'exact prior source21')
+    integer(selected['runId'],1,2**63-1);digest(selected['workflowSha'],40)
+    for role in ('request','original'):
+        fields(selected[role],'byteLength sha256');integer(selected[role]['byteLength'],1,JSON_CAP//4);digest(selected[role]['sha256'])
+        need(encode(selected[role])==encode({key:prior[role][key] for key in ('byteLength','sha256')}),'externally selected prior pin join')
+    request_raw=font_bridge_blob(prior['request']);original_raw=font_bridge_blob(prior['original'])
+    request,baseline=font_request(request_raw,selected['request']['sha256'])
+    need(encode(request['source'])==encode(source),'prior request/source selection join')
+    value=decode(original_raw)
+    fields(value,'schema observationOnly candidate qualified activeFontSelectionProved perPackageManifestBoundariesProved request event platform sourceCommands tools directories files aliases configs configReferences baselineMissing commands packages complete firstFailure secondary')
+    need(encode(value)==original_raw and value['schema']=='bw.gui-hdd.font-discovery-original.v1' and value['observationOnly'] is True and value['complete'] is False and
+      all(value[k] is False for k in ('candidate','qualified','activeFontSelectionProved','perPackageManifestBoundariesProved')),'canonical failed historical discovery only')
+    need(font_bridge_blob(value['request'])==request_raw,'prior retained request bytes')
+    platform=value['platform'];fields(platform,'GITHUB_RUN_ID GITHUB_RUN_ATTEMPT GITHUB_JOB GITHUB_REPOSITORY GITHUB_WORKFLOW_SHA GITHUB_WORKFLOW_REF GITHUB_EVENT_NAME GITHUB_ACTOR BW_EXPECTED_HEAD')
+    need(platform['GITHUB_RUN_ID']==str(selected['runId']) and platform['GITHUB_WORKFLOW_SHA']==selected['workflowSha'],'prior externally selected run/workflow')
+    need(type(value['event']) is dict and type(value['event'].get('byteLength')) is int and value['event']['byteLength']<=256<<10,'bounded prior event before decode')
+    font_event(font_bridge_blob(value['event']),selected['request']['sha256'],source['head'],platform)
+    need(type(value['aliases']) is dict and len(value['aliases'])<=256 and prior['sourceEntry'] in value['aliases'],'bounded recorded prior alias')
+    alias=value['aliases'][prior['sourceEntry']];fields(alias,'namedBefore namedAfter linkText')
+    for snapshot in ('namedBefore','namedAfter'):
+        info=alias[snapshot];fields(info,'dev ino mode uid gid nlink size mtime_ns')
+        for key,item in info.items():integer(item,-2**63 if key=='mtime_ns' else 0,2**63-1 if key=='mtime_ns' else 2**64-1)
+        need(info['uid']==0 and stat.S_ISLNK(info['mode']),'root-owned historical symlink')
+    need(encode(alias['namedBefore'])==encode(alias['namedAfter']) and alias['linkText']==entry and type(alias['linkText']) is str and
+      alias['namedBefore']['size']==len(entry.encode()),'stable incomplete prior alias with exact literal bridge text/extent')
+    error=value['firstFailure'];fields(error,'phase path name message')
+    need(error['phase']=='directory' and error['path']==str(Path(prior['sourceEntry']).parent) and error['name']=='ValueError' and error['message']=='font alias canonical allowed regular target','recorded alias boundary refusal')
+    need(entry not in value['aliases'] and entry not in value['files'] and entry not in value['directories'],'bridge hop previously unobserved')
+    return request,original_raw
+
+
+def font_bridge_reference(prior,entry):
+    selected=prior['expectation']
+    return {'schema':'bw.gui-hdd.font-bridge-prior-reference.v1','sourceEntry':prior['sourceEntry'],'entry':entry,'source':selected['source'],
+      'runId':selected['runId'],'workflowSha':selected['workflowSha'],'request':selected['request'],'original':selected['original']}
+
+
+def font_bridge_request(raw,expected):
+    digest(expected);need(type(raw) is bytes and len(raw)<=JSON_CAP//4 and sha(raw)==expected,'bounded selected bridge request')
+    value=decode(raw);fields(value,'schema source baseline entry prior')
+    need(encode(value)==raw and value['schema']=='bw.gui-hdd.font-bridge-request.v1','explicit canonical bridge request version')
+    legacy={key:value[key] for key in ('source','baseline')};legacy['schema']='bw.gui-hdd.font-discovery-request.v1'
+    font_request(encode(legacy),sha(encode(legacy)))
+    previous,original=font_bridge_prior(value['prior'],value['entry'])
+    need(encode(value['baseline'])==encode(previous['baseline']),'unchanged prior baseline descriptor')
+    return value
+
+
+def font_bridge_event(raw,request_sha,head,env):
+    event=decode(raw);pr=event.get('pull_request',{})
+    need(event.get('action')=='labeled' and event.get('label',{}).get('name')=='x86-hdd-gui-font-bridge' and
+         event.get('sender',{}).get('login')=='CrispStrobe' and event.get('repository',{}).get('full_name')==REPOSITORY,'owned discovery event')
+    integer(event.get('number'),1,2**31-1)
+    need(type(pr.get('number')) is int and event['number']==pr['number'] and pr.get('state')=='open' and
+         pr.get('head',{}).get('sha')==head and pr.get('head',{}).get('repo',{}).get('full_name')==REPOSITORY and
+         pr.get('head',{}).get('repo',{}).get('fork') is False and pr.get('base',{}).get('ref')=='main' and
+         pr.get('base',{}).get('repo',{}).get('full_name')==REPOSITORY,'exact own discovery source event')
+    marker='<!-- BW_GUI_HDD_FONT_BRIDGE_SHA256='+request_sha+' -->'
+    need(type(pr.get('body')) is str and pr['body'].count('<!-- BW_GUI_HDD_FONT_BRIDGE_SHA256=')==1 and pr['body'].count(marker)==1,'event transports selected discovery pin only')
+    need(env.get('GITHUB_REPOSITORY')==REPOSITORY and env.get('GITHUB_EVENT_NAME')=='pull_request' and env.get('GITHUB_ACTOR')=='CrispStrobe' and
+         env.get('GITHUB_RUN_ATTEMPT')=='1' and env.get('GITHUB_JOB')=='font-bridge' and re.fullmatch('[1-9][0-9]{0,19}',env.get('GITHUB_RUN_ID','')) and
+         env.get('BW_EXPECTED_HEAD')==head,'first discovery platform observations')
+    digest(env.get('GITHUB_WORKFLOW_SHA'),40)
+    need(env.get('GITHUB_WORKFLOW_REF')==REPOSITORY+'/.github/workflows/i80386-hdd-gui-actual.yml@refs/pull/'+str(pr['number'])+'/merge','discovery workflow/event reference')
+
+def collect_font_bridge(request_raw,expected,root,env,output_path):
+    value={'schema':'bw.gui-hdd.font-bridge-original.v1','observationOnly':True,'candidate':False,'qualified':False,
+      'activeFontSelectionProved':False,'sourceRuntimeObserved':False,'sourceEntryReobserved':False,'currentEntryAssociationObserved':False,'request':font_blob(request_raw),'event':None,
+      'platform':{key:env.get(key) for key in ('GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_JOB','GITHUB_REPOSITORY','GITHUB_WORKFLOW_SHA','GITHUB_WORKFLOW_REF','GITHUB_EVENT_NAME','GITHUB_ACTOR','BW_EXPECTED_HEAD')},
+      'tool':{},'sourceCommands':[],'parents':[],'links':[],'terminal':None,'complete':False,'firstFailure':None,'secondary':[], 'commands':[], 'packages':None}
+    deadline=time.monotonic()+180
+    def check():
+        need(time.monotonic()<deadline,'chain cooperative180s deadline')
+        need(len(encode(value))<JSON_CAP-(2<<20),'chain output reserve')
+    try:
+        request=font_bridge_request(request_raw,expected)
+        event_raw=regular(env['GITHUB_EVENT_PATH'],256<<10);value['event']=font_blob(event_raw)
+        font_bridge_event(event_raw,expected,request['source']['head'],env)
+        check();font_read('/usr/bin/git',FILE_CAP,value['tool'])
+        tool=value['tool']['namedBefore']
+        need(tool['uid']==0 and tool['mode']&0o6022==0 and tool['mode']&0o111,'root-owned nonwritable executable chain Git')
+        capture=Originals(Path(output_path).with_name(Path(output_path).stem+'-process-originals'))
+        edge=Hosted(root,capture,env);edge.deadline=min(edge.deadline,deadline)
+        arguments=[['rev-parse','HEAD'],['rev-parse','HEAD^{tree}']]+[['cat-file','blob',request['source']['head']+':'+p] for p in sorted(SOURCE)]
+        for index,args in enumerate(arguments):
+            check();role='git-'+str(index);record={'argv':['/usr/bin/git','--no-replace-objects','-c','gc.auto=0','-c','maintenance.auto=false','-c','core.fsmonitor=false','-c','core.hooksPath=/dev/null',*args],'stdout':None,'stderr':None,'exitCode':None};value['sourceCommands'].append(record)
+            source_error=None
+            try:raw=edge.git(args)
+            except BaseException as exc:source_error=exc
+            for suffix in ('stdout','stderr','process.json'):
+                try:
+                    saved=capture.root/(role+'.'+suffix)
+                    if saved.exists():
+                        limit=JSON_CAP if suffix=='process.json' else STREAM_CAP
+                        data=regular(saved,limit) if capture.files[role+'.'+suffix]['byteLength'] else b''
+                        if suffix=='process.json':
+                            process=decode(data);need(process.get('argv')==record['argv'],'chain retained process arguments')
+                            integer(process.get('exitCode'),-255,255);record['exitCode']=process['exitCode']
+                        else:record[suffix]={'byteLength':len(data),'sha256':sha(data)}
+                except BaseException as exc:
+                    if source_error is None:source_error=exc
+                    else:source_error.font_chain_secondary=getattr(source_error,'font_chain_secondary',[])+[exc]
+            if source_error is not None:raise source_error
+            if index<2:need(raw==(request['source']['head' if index==0 else 'tree']+'\n').encode(),'chain exact Git source identity')
+            else:
+                selected=sorted(SOURCE)[index-2]
+                need(raw==regular(Path(root)/selected,FILE_CAP) and {'byteLength':len(raw),'sha256':sha(raw)}==request['source']['files'][selected],'chain Git/live/external source join')
+        path=request['entry'];seen=set();parents=set()
+        while True:
+            check();need(path!=request['prior']['sourceEntry'],'historical source entry cannot be reobserved')
+            need(path not in seen,'chain cycle refused');seen.add(path)
+            # Every ancestor is witnessed; no canonical-parent assumption hides
+            # an intermediate symlink. No directory contents are enumerated.
+            for parent in reversed(list(Path(path).parents)):
+                parent=str(parent)
+                if parent in parents:continue
+                check();need(len(value['parents'])<128,'combined chain parent cap')
+                row,error=font_chain_witness(parent,'parent',check);value['parents'].append(row)
+                if error is not None:raise error
+                parents.add(parent)
+            check();info=Path(path).lstat()
+            if stat.S_ISLNK(info.st_mode):
+                need(len(value['links'])<min(FONT_CHAIN_HOPS,256),'combined chain alias/hop cap')
+                row,error=font_chain_witness(path,'link',check);value['links'].append(row)
+                if error is not None:raise error
+                path=font_chain_next(path,row['linkBefore']);continue
+            need(len(value['links'])>0 and path.startswith(FONT_CHAIN_ROOTS),'regular terminal within original font roots')
+            value['terminal']={'path':path,'observation':{}}
+            raw=font_read(path,FILE_CAP,value['terminal']['observation'])
+            terminal_info=value['terminal']['observation']['namedBefore']
+            need(0<len(raw)<=256<<20 and terminal_info['uid']==0 and not terminal_info['mode']&0o6022,'positive root-owned nonwritable terminal font')
+            check();value['complete']=True;break
+    except BaseException as exc:
+        value['firstFailure']={'phase':'chain','path':locals().get('path'),'name':type(exc).__name__,'message':str(exc)[:512]}
+        later=[('close',e) for e in getattr(exc,'font_secondary',[])]+[('source-retention',e) for e in getattr(exc,'font_chain_secondary',[])]
+        value['secondary']=[{'phase':phase,'path':locals().get('path'),'name':type(e).__name__,'message':str(e)[:512]} for phase,e in later][:128]
+    return value
+
+
+def retain_font_bridge(value,path):
+    # Separate format; same exclusive bounded retention and first-error policy.
+    need(value['schema']=='bw.gui-hdd.font-bridge-original.v1' and value['commands']==[] and value['packages'] is None,'passive chain only')
+    return retain_font_discovery(value,path)
+
+
+
+def main(argv=None):
+    parser=argparse.ArgumentParser(description=__doc__,allow_abbrev=False)
+    parser.add_argument('mode',choices=('guard','inventory-guard','install-input','inventory','preflight','actual','font-discovery-guard','font-discovery','font-chain-guard','font-chain','font-bridge-guard','font-bridge'))
+    for option in ('request','expected-sha256','output','blob'):parser.add_argument('--'+option)
+    raw=list(sys.argv[1:] if argv is None else argv)
+    for option in ('--request','--expected-sha256','--output','--blob'):
+        if raw.count(option)>1:parser.error('one fixed input per option')
+    args=parser.parse_args(raw)
+    if args.mode in ('font-bridge-guard','font-bridge'):
+        need(FONT_BRIDGE_ENABLED is True,'font bridge disabled pending separate prior/source/request/event/delivery review')
+        need(raw==['font-bridge-guard'] if args.mode=='font-bridge-guard' else len(raw)==7 and all(raw.count(option)==1 for option in ('--request','--expected-sha256','--output')),'exact passive bridge CLI inputs')
+    if args.mode in ('font-chain-guard','font-chain'):
+        need(FONT_CHAIN_ENABLED is True,'font chain disabled pending separate source/request/event/delivery review')
+        need(raw==['font-chain-guard'] if args.mode=='font-chain-guard' else len(raw)==7 and all(raw.count(option)==1 for option in ('--request','--expected-sha256','--output')),'exact passive chain CLI inputs')
+    if args.mode in ('font-discovery-guard','font-discovery'):
+        need(FONT_DISCOVERY_ENABLED is True,'font discovery disabled pending separate exact source/request/event review')
+    if args.mode in ('guard','preflight','actual'):
+        need(ACTUAL_ENABLED is True,'GUI actual disabled pending exact source/input/event/resource admission')
+    if args.mode in ('inventory-guard','inventory'):
+        need(INVENTORY_ENABLED is True,'GUI inventory disabled pending exact source/template/event admission')
+    if args.mode=='guard':observe_python_startup(Path.cwd(),'guard',[])
+    if args.mode=='install-input' and Path('gui-setup/python-startup.original.txt').exists():
+        observe_python_startup(Path.cwd(),'install-input',raw[1:])
+    if args.mode in ('guard','inventory-guard','font-discovery-guard','font-chain-guard','font-bridge-guard'):return 0
+    need(args.expected_sha256 and args.output,'fixed independent digest and output required')
+    env=dict(os.environ)
+    if args.mode=='install-input':
+        need(args.blob,'fixed immutable input blob required');print(encode(install_input(args.blob,args.expected_sha256,args.output,env)).decode(),end='');return 0
+    need(args.request,'fixed canonical input original required')
+    request_raw=regular(args.request,JSON_CAP)
+    if args.mode=='font-bridge':
+        return retain_font_bridge(collect_font_bridge(request_raw,args.expected_sha256,Path.cwd(),env,args.output),args.output)
+    if args.mode=='font-chain':
+        return retain_font_chain(collect_font_chain(request_raw,args.expected_sha256,Path.cwd(),env,args.output),args.output)
+    if args.mode=='font-discovery':
+        return retain_font_discovery(collect_font_discovery(request_raw,args.expected_sha256,Path.cwd(),env,args.output),args.output)
+    if args.mode=='inventory':
+        result=inventory_observation(request_raw,args.expected_sha256,Path.cwd(),env,args.output)
+        return retain_inventory_observation(result,args.output)
+    return execute(request_raw,args.expected_sha256,Path.cwd(),args.output,env,preflight=args.mode=='preflight')
+
+
+if __name__=='__main__':
+    try:sys.exit(main())
+    except Exception as error:
+        raw=encode({'pass':False,'firstFailure':{'name':type(error).__name__,'message':str(error)}})
+        sys.stderr.buffer.write(raw[:16384]);sys.exit(1)

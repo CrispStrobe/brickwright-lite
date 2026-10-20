@@ -311,6 +311,194 @@ full-OS, broad DOSBox, physical-timing, RTx or release claim.
 
 ## Next finite GUI composition and hosted acceptance
 
+A separate source-only exact-entry chain slice is being reviewed on top of
+PR1013's `79afc8bc` checkpoint. It adds `font-chain-guard` and `font-chain`
+controller modes plus independent `--font-chain` observation validation, all
+behind `FONT_CHAIN_ENABLED = False`. Closed `bw.gui-hdd.font-chain-request.v1`,
+`bw.gui-hdd.font-chain-original.v1` and `bw.gui-hdd.font-chain-expectation.v1` formats are distinct
+from the retained discovery/delivery v1 formats. No hosted chain job or outer
+official-delivery validation is implemented, and no new input or event is sent.
+
+The slice follows one selected font-root entry, with root-owned canonical
+parent witnesses, held symbolic-link text/readback/close, eight-link and cycle
+limits, an explicit finite alternatives bridge, and an observed terminal regular
+file under the original font roots. It does not enumerate directories, run
+package probes or establish font-format/native/browser selection. Source command
+hash/extent descriptors join selected source21; raw process/stream sidecars are
+retained separately and need a future outer reader. Output caps and reserve,
+first/secondary failures and all legacy formats remain held.
+
+The independently audited consumed observation contains a root-owned parent
+with mode040777. This stricter source policy would refuse before that alias;
+its mock positives cannot establish traversal of that layout. Before a future
+hosted event, separately resolve the observation-policy boundary. An independently
+selected, already observed alternatives-bridge entry would be a different bounded
+question; it must not imply a current link through the writable font parent or
+silently widen this request's admitted starting roots. Current actual execution
+and this new mode stay disabled pending those separate decisions.
+
+The focused source controls pass 65 Node tests including 117 Python controls.
+All 107 earlier Python test bodies remain unchanged. Nine critical source
+predicate-removal mutations are detected, and independently retained failed-packet
+counterexamples now refuse. Failed link suffixes, unrelated terminal/parent paths
+and irrelevant role fields are rejected while legitimate partial read/close
+failures remain failed observations. These are mocked source controls, with no
+hosted chain observation or guest qualification. The earlier frozen reader and
+consumers remain selected for the retained v1 original; no consumer pin is
+silently changed by this source slice.
+Further bridge review exposed a separate partial-prefix defect in the earlier
+chain reader: a failed close or identity readback with retained link text could
+still authorize later rows in an incomplete packet. The separately scoped repair
+now changes only `verify_font_chain` and adds focused manufactured controls in
+`test/i80386-hdd-gui-actual.test.mjs`. Each link must complete before its next
+hop can authorize further observations, and every parent consumed by a retained
+link or terminal must have a successful witness. A genuinely failed final link,
+parent or terminal remains admissible as failed evidence. No global parent-array
+ordering is invented, and shared ancestors remain supported.
+
+Earlier accepted counterexamples remain retained as failures of the old reader;
+the fix deliberately rejects those packets. Existing discovery, delivery and
+bridge versions, guards, caps and baseline remain unchanged. This is a disabled
+source repair with independent source review complete; exact-head CI remains
+pending. The full suite passes 65 Node tests including 128 Python controls.
+Three new focused methods detect both repair-omission mutations. All 125 earlier
+Python test bodies and helpers, and all reader bytes outside `verify_font_chain`,
+remain unchanged. Independent review rejects 13 negative packets and accepts six
+valid complete or partial packets. This grants no hosted chain observation,
+activation or guest qualification.
+
+A separate disabled `font-bridge` source slice asks only about a selected direct
+child of `/etc/alternatives/` named in the retained incomplete alias. Its request
+must carry bounded exact prior request/original bytes and independently selected
+source, run, workflow and digest bindings. The independent reader must regrade
+that prior discovery observation and additionally require stable root-owned
+symlink witnesses and the exact historical literal link text. Prior discovery
+validation alone does not establish those new reference requirements.
+
+Its distinct controller modes are `font-bridge-guard` and `font-bridge`, with
+standalone reader mode `--font-bridge`. The closed formats are
+`bw.gui-hdd.font-bridge-request.v1`, `bw.gui-hdd.font-bridge-original.v1`,
+`bw.gui-hdd.font-bridge-expectation.v1`, embedded
+`bw.gui-hdd.font-bridge-prior.v1` and externally selected
+`bw.gui-hdd.font-bridge-prior-reference.v1`. The current source proposal enables
+`FONT_BRIDGE_ENABLED`; actual and chain guards remain false.
+Each embedded prior byte stream and the complete new request have a 1 MiB
+cap; the existing 4 MiB JSON cap and 2 MiB output reserve remain unchanged.
+Prior descriptors bind immutable bytes, source, run and workflow. Official
+metadata authenticity still requires the separately admitted delivery boundary.
+
+This question must never read the old font entry or its writable parent to
+claim a current association. Both source-entry reobservation and current-entry
+association stay explicitly false. New bridge parents, held links and terminal
+font files retain the strict ownership, identity, path and output limits; a later
+unsafe terminal parent can still produce a failed observation. Existing discovery
+and font-chain versions retain their admission rules. New formats, manufactured
+controls and independent source review precede any job activation, official
+observation, consumer selection or distinct event. Actual execution remains disabled.
+The new bridge reader must also reject newly derived historical-entry ancestors
+after a forbidden rebound, and suffixes after failed link close or identity
+readback. Preserve the original failed witnesses and legitimate common ancestors;
+do not discard failures or make every incomplete packet unacceptable.
+The corrected source passes 65 Node tests, including 125 Python controls. Eight
+new focused methods exercise the bridge, with six detected predicate-removal
+mutations. All 117 earlier Python test bodies and helpers, and the existing
+controller/reader module code apart from CLI dispatch, remain unchanged. The
+retained prior also fits the new request limits without any observation calls;
+that parser check neither selects a new event nor approves the current host.
+
+A further source-only bridge delivery slice adds separate
+`--font-bridge-metadata` and `--font-bridge-delivery` reader modes. Its closed
+`bw.gui-hdd.font-bridge-delivery-expectation.v1` selects the current source,
+request, historical prior reference, executing workflow and official
+run/job/artifact metadata independently of the uploaded ZIP. Metadata grading
+does not read an archive and does not authorize acquisition. Raw labeled-event
+and marker checks remain deferred until original grading; the run API's
+`pull_request` value alone cannot establish those bytes. The executing merge
+commit remains distinct from source head, while selected workflow bytes must
+match the current source's workflow descriptor.
+
+The archive reader checks the complete header census before inflation: 81 exact
+file roles, optional uniform upload prefix, bounded known directories, and no
+extra, mixed, duplicate, encrypted, truncated or special-file members. It retains
+the 32 MiB archive/inflation and 96-entry caps. Twenty-three Git commands have
+69 raw process/stdout/stderr sidecars joined to the inner descriptors, selected
+source bytes, fixed argv, environment, identity and serial chronology. These are
+finite original-consistency checks, not complete host or continuous ownership
+authentication. All runtime, qualification and current-association flags stay false.
+The selected aggregate child span is bounded to 200 seconds; it does not bound
+controller work before the first child or after the last child, prove preemption,
+or anchor monotonic observations to official API UTC timestamps.
+
+The initial supported profile requires all source commands to succeed, then a
+complete observation or an ordinary retained chain/close failure. Failed
+collection remains a failed producing job even when the reader validates its
+evidence. A primary failure must name the rederived attempted path, and secondary
+close failures must refer to that same path. Missing raw triples,
+setup/source/retention failures, cancellation and
+official timeouts are refused; preserve unsupported originals externally. Existing
+discovery/delivery readers and their selected consumers remain unchanged.
+
+The `font-bridge` source proposal enables only its leading literal and source
+guard. Its full predicate still requires the exact owned label, actor, repository,
+first attempt, nonfork source and main base. It preserves the selected actions, package
+setup and runtime pins, installs one immutable request with credentials confined
+to that step, collects without credentials, and always retains the owned output.
+Its finite backstops have no measured sufficiency or containment claim. No new
+request, transport setting, event, archive acquisition or hosted bridge observation
+is selected by this source implementation.
+
+The activation proposal configures no variable, marker, immutable transport or
+event. A source proposal publication cannot select its reserved bridge label.
+The earlier disabled-source request is historical preparation: rebuild source21,
+request and current workflow bindings only after the final source commit, then
+independently review them and every enabled exact-head check before any event.
+The historical failed original and selected standalone consumer remain unchanged.
+
+Independent review of this activation proposal confirms exactly two production
+guard changes. Three focused Python controls pass, including nine invalid-event
+cases and zero-observation guard checks; nine workflow mutations are detected.
+The local full run passed 78 of 79 Node tests and hit the unchanged 60-second
+Python timeout. Its original failure is retained; host load was elevated, and
+the cause is not established. A complete exact-head hosted run remains required.
+Resource limits, event checks, baseline and actual-execution guards remain unchanged.
+
+The hosted source suite at `3f71e4eafc2d60c2c885b3cca3aba520161d31ff`
+passes 67 tests on Node 22.23.3 with no failures or skips. This suite includes
+the embedded original-reader controls; the separate HDD snapshot suite is not
+attributed to that job. Its retained workflow selection and limited diagnostic
+resource review are prepared, while the remaining enabled checks still gate any
+event. These results do not qualify a browser, guest or runtime.
+
+Keep `ci:full` present before publishing the final source checkpoint: the CI tier
+uses the triggering event's label snapshot. A later label event cannot change an
+earlier run's captured tier. Preserve the earlier results, require every enabled
+check on the final head, and rebind source/request/workflow selections after any
+new commit. Do not rerun or relabel a consumed diagnostic to obtain a green gate.
+
+The scoped census refresh records 19 recent completed runs at their actual source;
+new bridge steps are younger than those readings. Every unrelated workflow row,
+ordered run and main provenance remains held. Four inventory pointers preserve the
+two consumed failed events now outside that window, and five pointers explain the
+new bridge job and named steps, which require separate event admission. No event was run to populate coverage;
+the explicit generator check remains required alongside the census tests.
+
+This checkpoint passes 66 Node tests, including 135 embedded Python controls,
+with no failures or skips. Seven new focused methods include eight detected
+critical omissions; eight workflow mutations are also detected. Independent
+reader-only checks accept four manufactured positive cases, reject 30 coherent
+metadata/raw mutations, and reject 19 malformed archive cases before inflation.
+All 128 earlier Python methods/helpers, legacy reader branches and existing
+workflow bytes remain held. These controls qualify the source checkpoint only.
+
+Next, review this draft and its parent composition against current main and
+finish every enabled exact-head check. Before any activation, separately freeze
+the full source/request/prior/consumer selections, executing workflow, resource
+envelope and official event/job/artifact joins. The metadata-only verdict cannot
+authorize retrieval; acquisition requires that external admission, once. Audit
+the retained original independently, preserve failed producing conclusions, then
+close native font selection and the complete runtime/frontend graph before any
+clean affected browser/guest qualification. Keep actual execution disabled.
+
 The existing runner bridge [PR986](https://github.com/CrispStrobe/brickwright-lite/pull/986),
 download action [PR987](https://github.com/CrispStrobe/brickwright-lite/pull/987)
 and persistence scenario [PR989](https://github.com/CrispStrobe/brickwright-lite/pull/989)
@@ -701,6 +889,30 @@ earlier Python test bodies stay unchanged. Twelve source mutations and 21
 independent coherent header counterexamples are detected. Valid frontend formats
 and both actual versions retain their earlier prefixed/unprefixed verdicts.
 
+The full source CI then found two integration failures: the GUI workflow was
+absent from generated CI readings, and the original-control test parsed only the
+last stdout line. The helper now requires one complete JSON summary and rejects
+prefix, suffix and concatenated output. Ten Node tests including all 107 Python
+controls pass, as do the eleven existing gate-shape tests; two parsing mutations
+are detected. No threshold, detector baseline, runtime or workflow condition
+changed. The earlier failed CI results remain failures.
+
+The scoped census claim
+[PR1079](https://github.com/CrispStrobe/brickwright-lite/pull/1079) is merged.
+The unchanged generator refreshed only this workflow from 19 completed historical
+runs, retaining all 21 unrelated workflow rows, their 299 ordered runs and main
+provenance. Eleven exact dated pointers document the actual/font paths that
+those readings never executed. Actual remains disabled; font discovery still
+requires its separate source/request/workflow/event admission. The two failed
+inventory runs remain failed observations, with no replay or new event to seed
+coverage. No generator, census assertion, detector baseline or workflow condition
+changed. Run the existing census tests and explicit generator `--check`; `--fetch`
+alone prints uncovered steps without failing for them. Finish final-head CI and
+rebuild source21/request/workflow selections before any discovery event.
+The explicit generator check and 25 affected census, gate-shape and build-trigger
+controls pass. These are source and metadata checks; final hosted CI and clean
+affected browser/guest qualification remain separate requirements.
+
 The one admitted font event is consumed:
 [run39170725966](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39170725966),
 [job117803003700](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39170725966/job/117803003700).
@@ -793,6 +1005,34 @@ explicitly matches that canonical selection without writing dependencies. The
 four CUI commits change five module-label/layout and supporting files; existing
 386 target/API source is unchanged. Full rendering and this scenario's browser
 acceptance still need their own qualification. Board and SB3 selections stay held.
+
+The current-main composition explicitly advances only the GUI consumer expectation
+to canonical CUI `bda0157410a6704ae859a19398a8a742cdfae50b`, checking root
+devDependencies, GUI dependencies, both lock roots/resolutions and vendor pins.
+The dependency declarations remain main bytes. Earlier request/source selections
+are historical and cannot admit this source without rebuilding their bindings.
+All actual and new observation guards remain held; no browser qualification is inferred.
+The supplier changes chip/discrete faces, crowded terminal labels and aliased
+terminal geometry. No 386 engine API files change, but rendering needs fresh
+qualification. The composed source passes 79 Node tests, including 135 embedded
+Python controls and HDD snapshot controls, with no failures or skips. The new
+canonical consistency control detects the stale consumer and drift in all seven
+declarations. The original reader and historical requests remain tied to their
+selected source; this composition does not authorize a hosted event.
+
+Both controller and reader CUI declarations must match the canonical package,
+lock and vendor selection. A synthetic noncurrent consumer tests refusal without
+retaining a stale active supplier pin. The earlier CI failure stays retained;
+this repair changes no dependency version or runtime qualification.
+
+The current-main pin adoption now explicitly selects Board
+`fac3a5a9928c8b53a778b0c42d8d91d5e693e4b7` and CUI
+`a7621be4d40d089826d78cd1e656b7c592ef16db` in both consumers, preserving main
+package/lock/vendor declarations. Board controls actual v3/v4 admission and
+scenario proof grading; historical actual originals require their retained
+historical reader. Font-prior formats and bytes remain held. New source, reader
+and request bindings, exact-head CI and affected guest qualification remain
+pending; this pin refresh establishes no new runtime result.
 
 The dependency-free focused check is:
 
