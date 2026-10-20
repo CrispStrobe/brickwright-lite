@@ -22,7 +22,8 @@
 //     −1 reflection 0. In S1 the ground is uniform: colour is the ground
 //     body's colour (opts.groundColor, default 10 white), reflection 100 for
 //     white, 0 for black, scaled by 1 − distance/0.032.
-//   force: castRay along the plunger up to ~5 mm; if a hit is within 2 mm,
+//   force: castRay along the plunger up to ~5 mm, from the button's centre and from four points
+//     FORCE_FACE_RADIUS_M around it (the button's face); the nearest hit within 2 mm counts:
 //     force = 100·(1 − d/0.002) (clamped), pressed when >10.
 //   gyro (the EV3 gyro): no ray and no value here — the EV3 reads its body's yaw from the pose.
 //   rotation (the RCX rotation sensor): no ray — the angle of the hinge that
@@ -155,6 +156,25 @@ const quatRotateVec = (q, v) => {
 
 const vecSub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const vecAdd = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+const vecCross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const vecScale = (a, k) => [a[0] * k, a[1] * k, a[2] * k];
+
+/**
+ * A touch sensor's button is a face, not a point: a wall met at an angle touches its edge first. The
+ * NXT bumper bot pushed against the Wall about 9.5° askew had that edge on the wall and the centre
+ * 1.6 mm off it (force 7: never pressed), and drove on into the wall forever (CI run 39327216331).
+ * The rays start on the centre and on four points this far from it (the NXT/EV3 buttons are 8-9 mm
+ * across, SPIKE's force sensor's tip about 10 mm).
+ */
+export const FORCE_FACE_RADIUS_M = 0.004;
+/** The centre of a button's face and four points around it, at `radius` across `dir` (unit). */
+const faceOrigins = (origin, dir, radius) => {
+    const u0 = vecCross(dir, Math.abs(dir[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0]);
+    const u = vecScale(u0, 1 / Math.hypot(...u0));
+    const v = vecCross(dir, u);
+    return [origin, vecAdd(origin, vecScale(u, radius)), vecAdd(origin, vecScale(u, -radius)),
+        vecAdd(origin, vecScale(v, radius)), vecAdd(origin, vecScale(v, -radius))];
+};
 
 /**
  * A mechanism's sensors as {port, kind, body, origin, direction, hub, device}: CompiledMechanism
@@ -366,10 +386,14 @@ export const readSensors = (core, mechanism, robotBodies = [], sensors = sensors
             }
             out[sensor.port] = {kind: 'rotation', angleRad: found ? found.sign * angle : 0, joint: found ? found.joint.id : null};
         } else if (sensor.kind === 'force') {
-            // Tip probe: cast up to 5 mm, but only 0..2 mm counts.
+            // Tip probe: cast up to 5 mm, but only 0..2 mm counts; the button's whole face, nearest hit.
             const maxDist = 0.01;
             let hit = null;
-            try { hit = core.castRay(worldOrigin, worldDir, maxDist, {ignoreBodies}); } catch (_) {}
+            for (const from of faceOrigins(worldOrigin, worldDir, FORCE_FACE_RADIUS_M)) {
+                let h = null;
+                try { h = core.castRay(from, worldDir, maxDist, {ignoreBodies}); } catch (_) {}
+                if (h && (!hit || h.distance < hit.distance)) hit = h;
+            }
             if (!hit) {
                 out[sensor.port] = {kind: 'force', force: 0, pressed: false};
             } else {

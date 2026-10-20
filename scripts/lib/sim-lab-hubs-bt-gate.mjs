@@ -22,6 +22,13 @@ import assert from 'node:assert/strict';
 
 /** The 360° move's accuracy, as the headless test (test/bw-sim-bt-hubs-program.test.mjs). */
 export const DEGREES_TOLERANCE = 2;
+/**
+ * The bumper bot's run ends, pressed or not, after this much simulated time. It presses at about 2.8 s
+ * and is done at about 3.8 s. A run that went wrong is judged at this limit: CI run 39327216331's
+ * first attempt met the wall about 9.5° askew, where the button's edge touched it and its centre stayed
+ * 1.6 mm off it, so the sensor (then one ray from the centre, bw-sim/sensors.js) never read pressed.
+ */
+export const NXT_RUN_LIMIT_MS = 15000;
 
 const openModel = async (page, file) => {
     await page.getByTestId('bw-sim-lab-model').selectOption(file);
@@ -38,7 +45,9 @@ const instrument = page => page.evaluate(() => {
     s.onAdvance(() => {
         const hub = entry.hub;
         const pose = s.core.bodyPose(entry.body);
-        const sample = {t: s.time - rec.start, x: pose.position[0]};
+        // yaw: the heading's turn about +y (degrees), from the pose's quaternion [x, y, z, w]
+        const q = pose.rotation;
+        const sample = {t: s.time - rec.start, x: pose.position[0], yaw: Math.atan2(2 * (q[3] * q[1] + q[0] * q[2]), 1 - 2 * (q[0] * q[0] + q[1] * q[1])) * 180 / Math.PI};
         if (entry.profile === 'nxt') {
             sample.moves = [1, 2].map(i => ({limit: hub.s.outputs[i].tachoLimit, run: hub.s.outputs[i].runState,
                 tacho: hub.getOutputState(i).tachoCount, angle: hub.s.outputs[i].angleDeg}));
@@ -112,24 +121,35 @@ export const hubsBtInteractions = async ({browser, errors, openSimLab, wallBudge
             window.__bwSimLab._pane.session, null, {timeout: 60000});
         await instrument(page);
         await page.getByTestId('bw-sim-lab-run').click();
-        // Connect (wall time), 360° (~1 s), the 2 s wait, the drive to the wall (~1 s): 8 s of simulated time.
-        await page.waitForFunction(() => {
-            const r = window.__bwBt;
-            return r.samples.length && r.samples[r.samples.length - 1].t > 8000;
-        }, null, {timeout: wallBudget(8000)});
+        // Judged on the end state, not at a fixed time: the run is over once the bumper has been pressed
+        // and the motors have stood still for half a second (about 3.5 s of simulated time: 360° ~1 s,
+        // the 2 s wait, the drive to the wall), or after NXT_RUN_LIMIT_MS of simulated time without that.
+        await page.waitForFunction(limit => {
+            const r = window.__bwBt.samples;
+            const last = r[r.length - 1];
+            if (!last) return false;
+            if (last.t > limit) return true;
+            const pressed = r.find(p => p.touch === 1);
+            if (!pressed || last.t < pressed.t + 1000) return false;
+            const before = r.find(p => p.t >= last.t - 500);
+            return [0, 1].every(k => Math.abs(last.moves[k].angle - before.moves[k].angle) < 3);
+        }, NXT_RUN_LIMIT_MS, {timeout: wallBudget(NXT_RUN_LIMIT_MS), polling: 250});
         const r = await page.evaluate(() => window.__bwBt.samples);
+        // A connection that failed (the program then runs late, or not at all) is named first.
+        assert.equal(await page.evaluate(() => window.__bwSimLab._pane.state.message || ''), '', 'no connection message');
         const moved = r.filter(p => p.moves.every(m => m.limit === 360 && m.run === 0)).at(-1);
         assert.ok(moved, 'the 360° moves ran and ended');
         out.nxt = {tacho: moved.moves.map(m => m.tacho)};
         for (const m of moved.moves) assert.ok(Math.abs(m.tacho - 360) <= DEGREES_TOLERANCE, `TachoCount ${m.tacho} after the 360° move`);
         const pressed = r.find(p => p.touch === 1);
-        assert.ok(pressed, 'the bumper was pressed');
+        const end = r.at(-1);
+        assert.ok(pressed, `the bumper was pressed (by ${Math.round(end.t)} ms of simulated time; robot at x ${end.x.toFixed(4)} m turned ${end.yaw.toFixed(1)}°, ` +
+            `motors at ${end.moves.map(m => Math.round(m.angle)).join('° and ')}°)`);
         const last = r.at(-1);
         const before = r.find(p => p.t >= last.t - 500);
         out.nxt.pressedAtMs = Math.round(pressed.t);
         for (const k of [0, 1]) assert.ok(Math.abs(last.moves[k].angle - before.moves[k].angle) < 3, 'the motors stopped on the touch');
         assert.equal(last.touch, 1, 'it stays against the wall');
-        assert.equal(await page.evaluate(() => window.__bwSimLab._pane.state.message || ''), '', 'no connection message');
         await page.close();
     }
     // ---- 2. EV3 wall stopper, stock Scratch EV3 blocks -------------------------------------------

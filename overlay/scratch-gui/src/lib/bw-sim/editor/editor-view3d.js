@@ -2743,6 +2743,27 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     };
     const drawnCamera = new Matrix4();
     const drawnProjection = new Matrix4();
+    // One frame in flight. A pointer move that changes a highlight or drags the gizmo asks for a
+    // frame; on a software GPU (SwiftShader) a 2,054-part frame takes seconds to draw, and the
+    // browser does not hold the animation loop back, so every move queued another whole frame: 23
+    // for one hover, click and drag, up to minutes of GPU work that the next screenshot, readback or
+    // pick waited behind. A fence after each frame says when the GPU is done with it; until then the
+    // view stays dirty and draws the latest state once the GPU is free. (Two in flight let the
+    // renderer stall in the browser's own queue instead: a 12-move drag took 15 s, not 0.3 s.)
+    const MAX_FRAMES_IN_FLIGHT = 1;
+    const gl = renderer.getContext();
+    const canFence = typeof gl.fenceSync === 'function';
+    const inFlight = [];
+    const dropFences = () => {
+        if (!gl.isContextLost()) for (const f of inFlight) gl.deleteSync(f);
+        inFlight.length = 0;
+    };
+    /** Frees the finished frames' fences; true while MAX_FRAMES_IN_FLIGHT are still pending. */
+    const gpuBusy = () => {
+        if (gl.isContextLost()) { inFlight.length = 0; return false; }
+        while (inFlight.length && gl.getSyncParameter(inFlight[0], gl.SYNC_STATUS) === gl.SIGNALED) gl.deleteSync(inFlight.shift());
+        return inFlight.length >= MAX_FRAMES_IN_FLIGHT;
+    };
     /**
      * Draws a frame when anything in it changed since the last one (`invalidate`: the model, a
      * highlight, a ghost, the gizmo, the controls; or the camera, compared here), or when `force`d.
@@ -2754,6 +2775,10 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         fitGizmo();
         camera.updateMatrixWorld();
         if (!force && !dirty && camera.matrixWorld.equals(drawnCamera) && camera.projectionMatrix.equals(drawnProjection)) return false;
+        if (!force && gpuBusy()) {
+            dirty = true; // drawn once the GPU has finished the frame before
+            return false;
+        }
         dirty = false;
         drawnCamera.copy(camera.matrixWorld);
         drawnProjection.copy(camera.projectionMatrix);
@@ -2763,10 +2788,16 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         placeMeasureLabel();
         renderer.render(s, camera);
         drawViewCube();
+        if (canFence && !gl.isContextLost()) {
+            // a forced frame while one is in flight: the newest fence covers the ones before it
+            while (inFlight.length >= MAX_FRAMES_IN_FLIGHT) gl.deleteSync(inFlight.shift());
+            inFlight.push(gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0));
+        }
         return true;
     };
     const dispose = () => {
         unsubscribe();
+        dropFences();
         if (paletteDrag) detachPaletteDrag();
         insight.dispose();
         canvas.removeEventListener('pointermove', onMove);
@@ -2827,6 +2858,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     status({kind: 'idle'});
     return {
         canvas, render, resize, dispose, setTool, frameModel, pressPalettePart,
+        /** A frame waits to be drawn, or the GPU has not finished the frames drawn (render's fences). */
+        get drawing () { gpuBusy(); return dirty || inFlight.length > 0; },
         /** Target-first: whether a palette part could go into the pinned target, and placing it there. */
         fitsTarget, placeIntoTarget,
         get pinnedTarget () { return pinned ? {partId: pinned.partId, connectorId: pinned.connectorId, part: pinned.part} : null; },
