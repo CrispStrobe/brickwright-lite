@@ -50,6 +50,7 @@
       "test/bw-sim-collisions.test.mjs",
       "test/bw-sim-colour-explorer-program.test.mjs",
       "test/bw-sim-dc-motor.test.mjs",
+      "test/bw-sim-differential-car.test.mjs",
       "test/bw-sim-excavator.test.mjs",
       "test/bw-sim-forklift.test.mjs",
       "test/bw-sim-gear-trains.test.mjs",

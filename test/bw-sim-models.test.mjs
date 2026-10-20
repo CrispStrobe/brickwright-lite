@@ -27,7 +27,7 @@ const FIXTURE = JSON.parse(readFileSync(path.join(ROOT, 'test/fixtures/bw-sim/li
 
 test('every model in the list is a shipped file that compiles cleanly, motors and sensors on ports', () => {
     assert.deepEqual(MODELS.map(m => m.id || m.file), ['driving-base.ldr', 'line-follower.ldr', 'wall-stopper.ldr', 'colour-explorer.ldr', 'sumo', 'forklift.ldr', 'maze-runner.ldr',
-        'gearbox.ldr', 'differential.ldr', 'chain-drive.ldr', 'drawing-robot.ldr', 'excavator.ldr', 'rcx-bumper-car.ldr', 'rcx-line-follower', 'ev3-wall-stopper.ldr', 'nxt-bumper-bot.ldr',
+        'gearbox.ldr', 'differential.ldr', 'differential-car.ldr', 'chain-drive.ldr', 'drawing-robot.ldr', 'excavator.ldr', 'rcx-bumper-car.ldr', 'rcx-line-follower', 'ev3-wall-stopper.ldr', 'nxt-bumper-bot.ldr',
         'motor-bench.ldr', 'technic-hub-bench.ldr', 'boost-rover.ldr', 'wedo-milo.ldr']);
     // The pane lists entries by key (id, else file): keys are unique, and a file listed twice needs an id.
     const keys = MODELS.map(m => m.id || m.file);
