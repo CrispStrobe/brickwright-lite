@@ -117,9 +117,14 @@ test('the enum helper refuses cyclic or shared executable containers before lexi
 test('delete source grammar remains an explicit refusal and a real Unary operand cannot be readonly',async()=>{
  const {controllerButtonEventNumberLeaves}=await module('overlay/scratch-gui/src/lib/bw-makecode/controller-button-event-number-source.js');
  const source=parse(wrap('delete ControllerButtonEvent.Released;'));
- // The current parser retains delete as an unresolved Identifier statement,
- // not a supported deletion operation. It must invalidate the closed proof.
- assert.ok(source.body.some(node=>node.type==='ExpressionStatement'&&node.expr?.type==='Identifier'&&node.expr.name==='delete'));
+ // Deletion now parses as its actual unary mutation, while target emission
+ // remains unsupported. The exact builtin member cannot retain readonly proof.
+ const deletion=source.body.filter(node=>node.type==='ExpressionStatement'&&node.expr?.type==='Unary'&&node.expr.op==='delete');
+ assert.equal(deletion.length,1);
+ assert.deepEqual(deletion[0].expr,{type:'Unary',op:'delete',argument:{
+  type:'Member',object:{type:'Identifier',name:'ControllerButtonEvent'},name:'Released'
+ }});
+ assert.equal(source.body.some(node=>node.type==='ExpressionStatement'&&node.expr?.type==='Identifier'&&node.expr.name==='delete'),false);
  assert.equal(controllerButtonEventNumberLeaves(source).has(call(source).args[0]),false);
  const ast=parse(wrap()),read=call(ast).args[0],target=parse('ControllerButtonEvent.Released;').body[0].expr;
  ast.body.splice(1,0,{type:'ExpressionStatement',expr:{type:'Unary',op:'delete',argument:target}});
