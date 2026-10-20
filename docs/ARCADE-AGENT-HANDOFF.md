@@ -31,13 +31,16 @@ A later source-arithmetic candidate has a separately accepted normal installatio
 six passing VM controls, three passing intrinsic-refusal controls and one passing
 importer writer-union control. The original combined native episode retains its
 two fixture failures; its corrected six-test successor passes separately.
-Original SDK export/runtime acceptance is still failed, and the native export
-oracle reaches compilation but rejects asynchronous execution in its synchronous
-oracle. The CSV-only eight-control module passes with the installed Papa parser on
-string inputs; native File/browser and emitted-size qualification remain pending. Read the
-[current work package](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md#current-original-pxt-array-coercion-work-package)
-for the remaining causal repairs and original-runtime acceptance; these results
-do not replace the earlier regression cohorts or qualify the browser failures.
+The final hosted original SDK module is still required. Three focused scalar
+export/metadata/capture controls and the corrected reference/SB3 case now pass.
+The native export oracle passes full-file compilation and separate exact emitted
+TypeScript execution in the original PXT Runtime/core board, including values and
+aliases; its zero observed child fibers do not qualify background tasks or games.
+The CSV eight-control module passes with the installed Papa parser on string
+inputs; native File/browser and emitted-size qualification remain pending. Read
+the [current work package](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md#current-original-pxt-array-coercion-work-package)
+for final gates and the remaining browser diagnostics. These results do not
+replace earlier regression cohorts or promote corpus entries.
 
 Main has been normally merged into the current integration successor, including
 [PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888) and the latest

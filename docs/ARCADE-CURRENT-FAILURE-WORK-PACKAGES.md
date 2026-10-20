@@ -72,30 +72,38 @@ proved normal primitive returns. It refuses supplied private tags, aggregate
 JSON text, unknown calls and unproved global or indexed writers. The original
 parser and its errors still execute; no helper name supplies operand authority.
 
-The genuine original-SDK three-group module remains failed. Initial imported
-and captured-Code execution reach matching original results, but an export
-scaffold containing `Array.removeElement` is rejected by the native flat-domain
-proof. The separate reference/SB3 group exposes an Array-operation failure; the
-complete attempt ends at its diagnostic CPU limit. Keep these observations
-separate and retain every original comparison. The first repair belongs to the
-actual source producer/effect model; the second needs its actual primitive and
-ownership context. Do not exempt a helper by spelling or silence its error.
+The complete original-SDK three-group module remains a final hosted gate after
+its recorded failed/bounded attempt. Its scalar removal scaffold now has a
+separate closed producer proof: genuine removal results and literal/numeric
+expressions are primitive, while every variable, local, captured cell, parameter
+and unknown producer declines. The existing incomplete scalar writer flow is
+not used as new authority. Actual native lowering now preserves parser default
+metadata with the existing array mapper. All three complete focused
+import/Creator/export/reimport controls pass, including the captured-writer
+negative and native Array alias/reset roundtrip.
 
-A separate native export oracle retains the authored empty, one-element and
-two-element text results in both operand orders, the item result and actual
-alias identity. Native execution, export and full-file compilation pass. The
-unchanged synchronous PXT oracle then rejects an asynchronous operation while
-executing the exact emitted TypeScript. That final stage has not passed. Use an
-original runtime scheduler that supports the emitted program, or prove a valid
-synchronous program boundary; do not replace original shims with a shortcut.
+A separately qualified reference/SB3 case preserves its serialization, kind,
+id, text separation and recreation assertions. It explicitly refuses an
+inactive operation after load, starts a genuine run, refuses the known stale
+token with exactly one error, retains the separate NULL reference's zero
+fallback, then verifies the next real green flag recreates a working reference.
+No product ownership check or backing Array was relaxed or fabricated.
 
-Next acceptance is the complete original coercion module and native export
-oracle on the corrected source, followed by unchanged native Array regressions,
-authored Code/export/reimport cases, SB3 reload and visible creation/editing of
-the operator blocks. Browser intrinsic diagnostics must identify the exact
-changed descriptor under the failing journey. Native diagnostic success cannot
-supply that browser observation. No assertion update, new TODO, blanket Array
-admission, raised limit or type annotation supplies semantic evidence.
+The native export oracle passes native values and aliases, full-file compilation,
+and separate execution of the exact emitted TypeScript through the original PXT
+Runtime with the original bare-board initializer. All seven values and both
+alias identities agree. The earlier synchronous harness failure remains a
+recorded limitation. The passing case has zero background child fibers and uses
+a core fixture: it does not qualify a background-task workload, the Arcade board,
+a complete game or execution of the previous full-package binary.
+
+Next acceptance is the complete original coercion module on the final hosted
+head, unchanged native Array regressions, authored Code/export/reimport and
+visible creation/editing of operator blocks. Browser intrinsic diagnostics must
+identify the exact changed descriptor under the failing journey; native
+success cannot supply that observation. Keep every original semantic comparison,
+refusal, budget and baseline. These component observations do not change the
+historical partial count or replace a complete current corpus report.
 
 ## Live editor mutation work package
 

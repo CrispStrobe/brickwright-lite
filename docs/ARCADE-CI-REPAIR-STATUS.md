@@ -48,13 +48,22 @@ that episode also retained two fixture failures. A separate corrected six-test
 episode passes. The complete importer writer-union control also passes. These
 are separate observations, not one clean combined run or a full regression run.
 
-Original SDK acceptance remains open. Initial import and captured-Code results
-match the original runtime, but the complete three-group module fails during
-export and exported execution, then reaches its CPU limit. A native Array export
-oracle confirms native values, aliases, export and compilation of the full file
-map; its separate synchronous PXT execution rejects an asynchronous operation.
-It is not a passing original-runtime oracle. Preserve those failures and use the
-[ordered semantic work package](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md#current-original-pxt-array-coercion-work-package).
+The complete original SDK module still requires final hosted qualification after
+its recorded failures and bounded local attempt. Targeted repairs now pass all
+three import/Creator/export/reimport controls: a closed scalar removal calculation
+avoids an unnecessary Array join, parser metadata survives native-helper lowering,
+and captured-variable inputs cannot use that scalar exception. The separate
+reference/SB3 case passes with explicit inactive and stale-token refusals, a
+NULL reference's zero fallback and real green-flag resource recreation.
+
+The native Array export oracle also passes. It compiles the full exported file
+map, then separately compiles the exact emitted TypeScript as a core fixture and
+executes it using the original PXT Runtime and bare-board initializer. All seven
+values and alias identities match native execution. This finite case observes
+zero background child fibers; it does not qualify background tasks, an Arcade
+board, complete games or execution of the earlier full-package binary. The old
+synchronous-oracle failure remains recorded. See the
+[ordered work package](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md#current-original-pxt-array-coercion-work-package).
 
 The optional parser claim #1140 has landed. The CSV-only candidate preserves
 synchronous picker activation and defers the actual parser until selection.
