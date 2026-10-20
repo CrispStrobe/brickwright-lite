@@ -7000,3 +7000,16 @@ reports, input selection, product errors and execution limits. Journal failures
 remain sticky observer failures outside product classification. Earlier complete
 census attempts produced no report; all their current input outcomes remain
 unobserved. Progress prefixes confer no feature, runtime or corpus count credit.
+
+### Compact observation native-brand candidate — 2026-10-20
+
+SOURCE CANDIDATE / QUALIFICATION PENDING within the retained-context CLI and
+lossless-report lane. Compact capture may use held `node:util.types` native
+brand predicates solely to avoid impossible collection/view slot probes. Every
+positive candidate still executes the existing complete native operation; the
+v1 observer, graph traversal, descriptors, aliases, payload and bounds remain.
+This explicitly adds the Node utility module to the core's import policy. It
+grants no value type, source trust, conversion success or runtime authority.
+Retain all earlier incomplete complete-census attempts. New full-graph controls,
+actual representative cost evidence and complete unchanged-budget qualification
+are required before selection; no speed or fit is established by SOURCE review.
