@@ -82,9 +82,9 @@ test('the model keeps a band: valid, through LDraw and back, gone with its part 
     assert.throws(() => ed.apply({type: 'addBelt', around: ['g8'], band: '85545.dat'}));
 });
 
-test('a band round two gears on axles in one frame is a belt drive: the 24T turns the motor\'s way at about 1/3', async () => {
+test('a band round two gears on axles in one frame is a band drive: the 24T turns the motor\'s way at about 1/3', async () => {
     const mech = compile(withBand(bench(), ['g8', 'g24']), CATALOG, {version: 2});
-    const belts = mech.couplings.filter(c => c.kind === 'belt');
+    const belts = mech.couplings.filter(c => c.kind === 'band');
     assert.equal(belts.length, 1, JSON.stringify(mech.couplings.map(c => c.kind)));
     assert.ok(Math.abs(Math.abs(belts[0].ratio) - 1 / 3) < 1e-9 || Math.abs(Math.abs(belts[0].ratio) - 3) < 1e-9, `ratio ${belts[0].ratio}`);
     const J = await loadJolt();

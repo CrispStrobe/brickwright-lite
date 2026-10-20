@@ -920,10 +920,10 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             // contact: for two equal sprockets that contact would sit at infinity on the line of centres.
             chainDrive(g.id, jointMap.get(g.joint1), jointMap.get(g.joint2), g.ratio);
             gearInfos.push({ type: 'chain', id: g.id, joint1: g.joint1, joint2: g.joint2, ratio: g.ratio });
-        } else if (g.kind === 'belt') {
+        } else if (g.kind === 'band') {
             // kinds/belt.js: a rubber band round pulleys, the chain's coupling with few velocity steps, so it gives under load.
             chainDrive(g.id, jointMap.get(g.joint1), jointMap.get(g.joint2), g.ratio, { velocitySteps: BELT_VELOCITY_STEPS });
-            gearInfos.push({ type: 'belt', id: g.id, joint1: g.joint1, joint2: g.joint2, ratio: g.ratio });
+            gearInfos.push({ type: 'band', id: g.id, joint1: g.joint1, joint2: g.joint2, ratio: g.ratio });
         } else if (g.kind === 'spring') {
             // kinds/belt.js: a rubber band pulling two bodies together beyond its rest length.
             bandSpring(g);

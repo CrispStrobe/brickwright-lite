@@ -22,6 +22,8 @@ export const EDITOR_TEXT = {
         position: 'Position (LDU, 20 = one hole)', positionMany: 'Move all by (LDU)', x: 'X', y: 'Y ↑', z: 'Z',
         rotation: 'Rotation (°)', turnAbout: 'Turn about {axis}', minus90: '−90°', plus90: '+90°',
         hinge: 'On its hinge', minus15: '−15°', plus15: '+15°', nextHinge: 'Next hinge (N)',
+        bandRound: 'Rubber band round', bandRoundHelp: 'Put a rubber band round the selected parts: round turning pulleys it drives, between an arm and the frame it pulls',
+        bandOff: 'Take off rubber band',
         chainRound: 'Chain or tread round', chainRoundHelp: 'Lay a closed chain round the selected gears, or a tread round the selected sprocket wheels: they then turn together',
         group: 'Group', notInGroup: 'Not in a group', groupName: 'Name', editGroup: 'Edit inside', leaveGroup: 'Leave group (Esc)',
         ungroup: 'Ungroup',
@@ -123,7 +125,18 @@ export const EDITOR_TEXT = {
             chain_notOnePlane: 'The gears must sit side by side in one plane for a chain: move one along its axle.',
             chain_tooClose: 'These gears are too close for a chain between them: their teeth would touch.',
             chain_gearInside: 'One gear lies inside the chain round the others: select only the outer ones.',
-            chain_tooShort: 'These gears are too close together for a chain of whole links.'
+            chain_tooShort: 'These gears are too close together for a chain of whole links.',
+            banded: 'A {mm} mm rubber band round them, stretched {stretch} times',
+            unbanded: 'Took off {n} rubber band(s)',
+            band_needTwo: 'Select two or more parts to put a rubber band round them.',
+            band_notRound: 'A rubber band needs something round: a bush, a pulley, a wheel, a gear, a pin or an axle.',
+            band_notParallel: 'The parts\' axles must point the same way for a rubber band.',
+            band_notOnePlane: 'The parts must sit side by side for a rubber band: move one along its axle.',
+            band_tooClose: 'These parts are too close together for a rubber band between them.',
+            band_inside: 'One part lies inside the band round the others: select only the outer ones.',
+            band_tooShort: 'Even the smallest rubber band would hang loose here: the parts are too close.',
+            band_tooLong: 'Even the biggest rubber band would snap here: the parts are too far apart.',
+            band_none: 'No rubber band goes round the selected parts.'
         }
     },
     de: {
@@ -140,6 +153,8 @@ export const EDITOR_TEXT = {
         position: 'Position (LDU, 20 = ein Loch)', positionMany: 'Alle verschieben um (LDU)', x: 'X', y: 'Y ↑', z: 'Z',
         rotation: 'Drehung (°)', turnAbout: 'Um {axis} drehen', minus90: '−90°', plus90: '+90°',
         hinge: 'Im Gelenk', minus15: '−15°', plus15: '+15°', nextHinge: 'Nächstes Gelenk (N)',
+        bandRound: 'Gummiband herum', bandRoundHelp: 'Ein Gummiband um die gewählten Teile legen: Um drehende Riemenscheiben treibt es an, zwischen einem Arm und dem Rahmen zieht es',
+        bandOff: 'Gummiband abnehmen',
         chainRound: 'Kette oder Raupe herum', chainRoundHelp: 'Eine geschlossene Kette um die gewählten Zahnräder legen oder eine Raupenkette um die gewählten Kettenräder: Sie drehen sich dann zusammen',
         group: 'Gruppe', notInGroup: 'In keiner Gruppe', groupName: 'Name', editGroup: 'Innen bearbeiten', leaveGroup: 'Gruppe verlassen (Esc)',
         ungroup: 'Gruppe lösen',
@@ -240,7 +255,18 @@ export const EDITOR_TEXT = {
             chain_notOnePlane: 'Für eine Kette müssen die Zahnräder nebeneinander in einer Ebene sitzen: Schieb eins auf seiner Achse.',
             chain_tooClose: 'Diese Zahnräder stehen zu nah für eine Kette dazwischen: Ihre Zähne würden sich berühren.',
             chain_gearInside: 'Ein Zahnrad liegt innerhalb der Kette um die anderen: Wähle nur die äußeren.',
-            chain_tooShort: 'Diese Zahnräder stehen zu nah für eine Kette aus ganzen Gliedern.'
+            chain_tooShort: 'Diese Zahnräder stehen zu nah für eine Kette aus ganzen Gliedern.',
+            banded: 'Ein {mm}-mm-Gummiband um sie, {stretch}-fach gedehnt',
+            unbanded: '{n} Gummiband/-bänder abgenommen',
+            band_needTwo: 'Wähle zwei oder mehr Teile, um ein Gummiband um sie zu legen.',
+            band_notRound: 'Ein Gummiband braucht etwas Rundes: eine Buchse, eine Riemenscheibe, ein Rad, ein Zahnrad, einen Pin oder eine Achse.',
+            band_notParallel: 'Für ein Gummiband müssen die Achsen der Teile in dieselbe Richtung zeigen.',
+            band_notOnePlane: 'Für ein Gummiband müssen die Teile nebeneinander sitzen: Schieb eins auf seiner Achse.',
+            band_tooClose: 'Diese Teile stehen zu nah für ein Gummiband dazwischen.',
+            band_inside: 'Ein Teil liegt innerhalb des Bands um die anderen: Wähle nur die äußeren.',
+            band_tooShort: 'Selbst das kleinste Gummiband hinge hier lose: Die Teile stehen zu nah.',
+            band_tooLong: 'Selbst das größte Gummiband würde hier reißen: Die Teile stehen zu weit auseinander.',
+            band_none: 'Um die gewählten Teile läuft kein Gummiband.'
         },
         colourNames: {
             15: 'Weiß', 0: 'Schwarz', 71: 'Hellgrau', 72: 'Dunkelgrau', 4: 'Rot', 320: 'Dunkelrot', 25: 'Orange', 191: 'Hellorange',

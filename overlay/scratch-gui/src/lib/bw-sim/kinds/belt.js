@@ -4,7 +4,7 @@
 // Rubber bands (docs/ROBOT-LAB-UX.md §12, architecture M11), from the model's `belts` (a band is
 // not a placed part: editor/belt-path.js lays its path round the parts' circles):
 //
-//   - a BELT DRIVE ('belt'): two or more of the parts turn on hinges in one frame F. They turn
+//   - a BAND DRIVE ('band'): two or more of the parts turn on hinges in one frame F. They turn
 //     the same way, ω_i = (r₀ / r_i) · ω₀ (equal speeds where the band runs), a_i the signed hinge
 //     axes as for gears. A band slips under load: the core's coupling gets few velocity steps
 //     (physics/jolt-core.js, BELT_VELOCITY_STEPS), so it gives where a chain would not;
@@ -45,7 +45,7 @@ const analyse = ({nodes, islands, joints, model}) => {
             anchors.push({partId: id, islandId, centerLdu: c.center, axisLdu: c.axis, r: c.r});
         }
         if (anchors.length < 2) {
-            out.push({belt, problem: 'belt-not-round'});
+            out.push({belt, notRound: true});
             continue;
         }
         const hinged = anchors.map(g => ({g, hinges: gearHinges(g, joints)}));
@@ -64,15 +64,15 @@ const analyse = ({nodes, islands, joints, model}) => {
     return out;
 };
 
-export const BELT = {
-    id: 'belt',
-    kind: 'belt',
+export const BAND_DRIVE = {
+    id: 'band-drive',
+    kind: 'band',
     detect (ctx) {
         const couplings = [];
         const diagnostics = [];
         for (const r of analyse(ctx)) {
-            if (r.problem) {
-                diagnostics.push({severity: 'warning', code: r.problem, parts: r.belt.around,
+            if (r.notRound) {
+                diagnostics.push({severity: 'warning', code: 'belt-not-round', parts: r.belt.around,
                     message: `The rubber band ${r.belt.id} goes round a part it cannot hold on to, so it does nothing.`});
                 continue;
             }

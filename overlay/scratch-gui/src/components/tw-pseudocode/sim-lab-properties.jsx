@@ -201,6 +201,14 @@ const SimLabProperties = ({T, lib, editor, view, selectionIds, palette, colourNa
                         <button type="button" style={small} data-testid="bw-sim-lab-prop-chain" title={T.chainRoundHelp}
                             onClick={run(() => view?.chainRoundSelection())}>{T.chainRound}</button>
                     )}
+                    {parts.length > 1 && (
+                        <button type="button" style={small} data-testid="bw-sim-lab-prop-band" title={T.bandRoundHelp}
+                            onClick={run(() => view?.beltRoundSelection())}>{T.bandRound}</button>
+                    )}
+                    {(editor.model.belts || []).some(b => b.around.some(id => parts.some(p => p.id === id))) && (
+                        <button type="button" style={small} data-testid="bw-sim-lab-prop-band-off"
+                            onClick={run(() => view?.removeBeltsOfSelection())}>{T.bandOff}</button>
+                    )}
                 </Section>
             )}
 

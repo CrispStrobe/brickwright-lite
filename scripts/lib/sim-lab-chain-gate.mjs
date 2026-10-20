@@ -16,7 +16,10 @@
 //      the motor's way, 3 to 1), with no chain warning;
 //   3. two gears too close for a chain: refused, nothing placed;
 //   4. two tread sprockets on a beam: the same button lays a tread round them; in Simulate they
-//      turn together, and each is a wheel of the tread's outer radius (it carries the frame).
+//      turn together, and each is a wheel of the tread's outer radius (it carries the frame);
+//   5. a rubber band round the 8T and the 24T: "Rubber band round" picks the 26 mm band and draws
+//      it; Simulate drives the 24T by it (a 'band' coupling); "Take off rubber band" removes it, Ctrl+Z
+//      puts it back.
 
 import assert from 'node:assert/strict';
 import {resolve} from 'node:path';
@@ -144,5 +147,35 @@ const checks = async (page, {shotsDir}) => {
     assert.deepEqual(treadMech.chains.map(r => Math.abs(r)), [1], `the sprockets turn together: ${JSON.stringify(treadMech)}`);
     const outer = (15 / Math.sin(Math.PI / 10) + 14) * 0.0004;
     for (const w of treadMech.wheels) assert.ok(w.some(r => Math.abs(r - outer) < 1e-6), `a wheel of the tread's outer radius: ${w}`);
+
+    // 5. A rubber band.
+    await page.getByTestId('bw-sim-lab-mode-build').click();
+    await page.waitForFunction(() => window.__bwSimLab.mode === 'build' && window.__bwSimLab.status === 'ready' && window.__bwSimLab.editView);
+    const banded = await layOut(page, bench(60));
+    await lab(page, () => window.__bwSimLab.editView.frameModel());
+    await select(page, [banded[2], banded[7]]);
+    await openProperties(page);
+    await page.getByTestId('bw-sim-lab-prop-band').click();
+    await waitKind(page, 'banded');
+    assert.match(await statusText(page), /A 26 mm rubber band round them, stretched 1\.\d times/);
+    assert.deepEqual(await lab(page, () => window.__bwSimLab.editor.model.belts.map(b => b.band)), ['85545.dat']);
+    await page.waitForFunction(() => window.__bwSimLab.editView.debug.bands() === 1);
+    await page.screenshot({path: resolve(shotsDir, 'sim-lab-band.png')});
+    await page.getByTestId('bw-sim-lab-mode-simulate').click();
+    await page.waitForFunction(() => window.__bwSimLab.mode === 'simulate' && window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.session,
+        null, {timeout: 60000});
+    const beltKinds = await lab(page, () => window.__bwSimLab._pane.session.mechanism.couplings.map(c => c.kind));
+    assert.ok(beltKinds.includes('band'), `a band drive: ${beltKinds}`);
+    await page.getByTestId('bw-sim-lab-mode-build').click();
+    await page.waitForFunction(() => window.__bwSimLab.mode === 'build' && window.__bwSimLab.status === 'ready' && window.__bwSimLab.editView);
+    await select(page, [banded[2]]);
+    await openProperties(page);
+    await page.getByTestId('bw-sim-lab-prop-band-off').click();
+    await waitKind(page, 'unbanded');
+    await page.waitForFunction(() => !window.__bwSimLab.editor.model.belts && window.__bwSimLab.editView.debug.bands() === 0);
+    await page.getByTestId('bw-sim-lab-editor-canvas').focus();
+    await page.keyboard.press('Control+z');
+    await page.waitForFunction(() => window.__bwSimLab.editor.model.belts?.length === 1 && window.__bwSimLab.editView.debug.bands() === 1);
+    out.band = '26 mm';
     return out;
 };

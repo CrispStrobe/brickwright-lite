@@ -218,7 +218,7 @@ This is cursor-driven. A new pure export, `snapAtPointer(model, catalog, held, r
   - ✅ Select connected (Ctrl+click, and a button in the properties panel's Group section);
   - ◐ the touch offset and button cluster (the 60 px lift applies to a part from the palette, not to dragging a placed part: §7);
   - ✅ keyboard-only placement with aria-live.
-- **P3:** ☐ the mouse preset, ☐ coach marks, ☐ Ctrl-glide for axles in holes, ✅ a Studio-style hinge tool (§10), ◐ flexible parts (chains and treads: §11; rubber bands and cables to come).
+- **P3:** ☐ the mouse preset, ☐ coach marks, ☐ Ctrl-glide for axles in holes, ✅ a Studio-style hinge tool (§10), ◐ flexible parts (chains and treads: §11; rubber bands: §12; cables to come).
 
 ## 5. Browser-gate acceptance tests
 
@@ -381,3 +381,29 @@ The starting values from §6 were kept: every gate reading lies well inside them
   two 8Ts 1:1, links running round, a tread's wheels, a tracked frame driving);
   `test/bw-sim-part-meta.test.mjs` (the sprocket's teeth from the mesh, its pivot chord the tread's
   pitch); gate `scripts/lib/sim-lab-chain-gate.mjs` (`--part=editor`).
+
+## 12. Rubber bands (2026-10-20)
+
+- **Rubber band round** in the properties panel puts a band round the selected parts: round a
+  part's circle — its pulley, else a round collider on its hole (a bush, a wheel, a gear: the band
+  sits 2 LDU into it), else a pin or an axle (radius 4) — on parallel axles side by side, round
+  the outside of them (`lib/bw-sim/editor/belt-path.js`). The band is LEGO's 15, 26 or 33 mm one
+  (85543/85545/85546), the one stretched nearest 1.4 times (at most 2.5). Refused when nothing is
+  round, the axles cross, even the smallest band would hang loose or the biggest would snap.
+- LDraw has bands only as fixed rings, so a band is the model's `belts` record ({id, band,
+  around}; `0 !BW BELT <id> <band> <part…>` in LDraw) and its path is drawn as a tube
+  (`view/belt-layer.js`). It goes with a part it is round when that is deleted (and comes back
+  on undo); **Take off rubber band** removes it.
+- Simulate (`lib/bw-sim/kinds/belt.js`, architecture M11):
+  - round parts turning on hinges in one frame it is a **band drive** ('band'): the same way round,
+    ω_i = (r₀ / r_i)·ω₀, as a chain, but with few velocity steps, so it slips under a load a chain
+    would carry;
+  - round two parts on other bodies it is a **spring** ('spring'): slack up to
+    d₀ = (L₀ − π(r₁ + r₂)) / 2 between the circles' centres, beyond that 4k·(d − d₀) (two strands,
+    each k·ΔL), k = 25 N/m for the 15 mm band and softer in proportion for longer ones. The core:
+    a distance constraint free from 0 to d₀, a spring beyond;
+  - Simulate draws each band round its parts where the bodies are, every frame, so a spring band
+    stretches and slackens.
+- Tests: `test/bw-sim-belt.test.mjs` (circles, band choice and refusals, the model and LDraw, the
+  band drive at 1/3 and the spring pulling an arm in the real core); gate step 5 of
+  `scripts/lib/sim-lab-chain-gate.mjs` (`--part=editor`).
