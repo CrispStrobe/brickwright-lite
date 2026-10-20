@@ -46,6 +46,26 @@ Review the remaining hosted failures from their saved originals, fix their
 actual causes and batch necessary pushes. Do not weaken assertions or repeat
 full-CI requests while these repairs are in progress.
 
+### Hosted failure families under repair
+
+The observed delivery unit shard contains20 ordinary failures, separate from
+16 declared TODOs. These are CI test results, not the historical36 corpus
+partials. Preserve the original reports and rerun each complete affected module.
+
+| Family | Observed failures | Required repair and acceptance |
+| --- | ---: | --- |
+| Catalogue fixtures | 6 | Explicit runner-owned TMPDIR; preserve missing-root refusal and cleanup. All11 focused policy/input-reader tests pass locally. |
+| Browser gate shape | 1 | Wait for the persistent imported editor document; retain notification as a separate observation. All11 source gate-shape tests pass; actual browser result remains required. |
+| Sprite physics/viewport fixture | 3 | Replace EventEmitter-only fixture with a real admitted runtime and cleanup. Preserve physics expectations and inert metadata guards. |
+| Lazy Array values | 5 | Replace off-thread primitive calls in observers with real VM reads or exact backing inspection. Preserve value, staging and identity expectations and native refusal tests. |
+| Array occurrence authority | 5 | Trace primary/occurrence authority and currentness on the actual physical graph. Fix the causal ownership defect and retain every negative mutation/ABA assertion. |
+
+The delivery build also failed its fetch-pinning test. Its census repair keeps
+all other tracked inputs and thresholds, passes all13 checks locally, and the
+unchanged complete mutation prover detects all11 injected failures. Final
+integration heads still need the enabled hosted checks; local repairs do not
+make the earlier failed run successful.
+
 ### Ordered next work
 
 1. Complete the fresh named-empty Array candidate qualification described in
