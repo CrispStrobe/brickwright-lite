@@ -1,0 +1,1 @@
+Package migration schematic sidecars — Codex policy_review, `fix/schematic-installed-package-data` (2026-09-12): `scripts/render-schematic.mjs` now reads the pinned root installation's `src/parts-data`, with no overlay/sibling fallback. Syntax and diff checks passed; parent integration runs the four visual baselines with its installed packages. No dependency or browser changes.
