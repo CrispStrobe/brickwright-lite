@@ -34,6 +34,24 @@ report, original SDK comparisons, visible Blocks/Code/artwork authoring and
 complete playable-game checks remain required. Preserve each original failed
 run and do not re-download or replay successful originals for inspection.
 
+## Final-campaign integration finding — 2026-10-20
+
+The exact-head hosted x86 controls reported one additional composition failure:
+the app's seven canonical Circuit UI declarations already select the newer B27
+revision, while the GUI audit controller and reader still require the previous
+revision. Both consumer declarations now explicitly follow the existing app
+selection. Dependency pins, drift assertions, workflow activation guards and
+limits are unchanged. Historical originals keep their historical readers; a
+new actual observation needs a fresh complete source/request/event/artifact
+envelope and the existing affected qualification.
+
+The intended canonical-selection test passes locally after this repair. The
+complete 67-control local attempt is **not qualified**: an unchanged manufactured
+reader control reached the diagnostic CPU limit. Its original failure is
+retained, with no assertion or limit change. The complete hosted module remains
+required at the repaired final head. This source-selection repair establishes
+no new browser or guest result.
+
 ## Registered-carrier CI fixture repair — 2026-10-20
 
 All13 tests in the complete notice-drift and targeted-vendoring modules now pass
