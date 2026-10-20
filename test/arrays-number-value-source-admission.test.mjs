@@ -31,8 +31,8 @@ test('the exact decoded pinned source and installed mirror produce one explicit 
     const original = JSON.parse(wrapper.slice(ARRAYS_PREFIX.length, -ARRAYS_SUFFIX.length));
     const provenance = admitArraysNumberValueTestSource(root), actual = fs.readFileSync(path.join(root, ARRAYS_INPUT.outputSource));
     assert.equal(actual.toString('utf8'), original, 'complete original body, not a stub or source label');
-    assert.equal(actual.length, 109672); assert.equal(sha(actual), expectedRecord.sha256);
-    assert.equal(provenance.supplier.commit, 'd7eb7e4c50275bd375b37b64d84ba60e59f17564');
+    assert.equal(actual.length, 112514); assert.equal(sha(actual), expectedRecord.sha256);
+    assert.equal(provenance.supplier.commit, '035ab22a4d946fe5b8e367013caf898cd763e5f4');
     assert.equal(provenance.supplier.licence, 'MPL-2.0'); assert.equal(provenance.installedCanonicalMirrorEqual, true);
     assert.deepEqual(provenance.inputs.map(r => r.path), [pins, receipt, carrier, mirror, notice]);
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root, ARRAYS_INPUT.outputDirectory, 'provenance.json'))), provenance);
@@ -44,6 +44,7 @@ test('wrong or missing pins and per-file repo revision path size and hash refuse
     for (const change of [
         root => editJSON(root, pins, p => {delete p['arrays-values'];}),
         root => editJSON(root, pins, p => {p['arrays-values'] = 'main';}),
+        root => editJSON(root, pins, p => {p['arrays-values'] = 'd7eb7e4c50275bd375b37b64d84ba60e59f17564';}),
         root => editJSON(root, pins, p => {p['arrays-values'] = '4db2813d366af8a110fc79599afb55d1cd42d8df';}),
         root => editJSON(root, pins, p => {p['arrays-values'] = '022ab1682d9477a5d0dc5b7b01e707917d61cd41';}),
         root => editJSON(root, pins, p => {p['arrays-values'] = 'd4015c4ac7653f50f1bfa28fbb43a284a55337ca';}),
@@ -76,7 +77,7 @@ test('a missing or changed installed mirror and missing MPL source notice cannot
         root => fs.unlinkSync(path.join(root, mirror)),
         root => put(root, mirror, fs.readFileSync(path.join(root, mirror), 'utf8') + '\n'),
         root => put(root, notice, fs.readFileSync(path.join(root, notice), 'utf8').replace('## arrays-values — MPL-2.0', '## other — MPL-2.0')),
-        root => put(root, notice, fs.readFileSync(path.join(root, notice), 'utf8').replaceAll('extensions/blob/d7eb7e4c50275bd375b37b64d84ba60e59f17564/', 'extensions/blob/0000000000000000000000000000000000000000/'))
+        root => put(root, notice, fs.readFileSync(path.join(root, notice), 'utf8').replaceAll('extensions/blob/035ab22a4d946fe5b8e367013caf898cd763e5f4/', 'extensions/blob/0000000000000000000000000000000000000000/'))
     ]) fixture(root => {change(root); rejected(root, /ENOENT|ARRAY_INPUT_(INSTALLED_MIRROR_MISMATCH|NOTICE_LICENCE)/);});
     fixture(root => {const results = path.join(root, 'test-results'); fs.symlinkSync(path.join(root, 'elsewhere'), results); rejected(root, /ARRAY_INPUT_RESULTS_DIRECTORY/);});
 });

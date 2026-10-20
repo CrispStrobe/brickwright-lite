@@ -110,3 +110,20 @@ installation and the public authoring/export journeys. Malformed JSON must
 retain each original factory fallback and actual Error behavior; custom parsers,
 nonarray JSON, object elements and legacy/no-ticket cases must keep their
 separate semantics. Protocol success is not runtime or MakeCode acceptance.
+
+
+## Combined JSON and replacement qualification proposal
+
+The current local proposal advances Arrays to
+`035ab22a4d946fe5b8e367013caf898cd763e5f4`. All40 supplier protocol tests pass
+with zero skips. The canonical targeted producer generated the matching carrier
+and per-file receipt; the source-admission contract and MPL notice move with
+that explicit pin. Other component pins and receipt rows remain unchanged.
+
+This combines named JSON allocation, Arrays-only coordinator initialization
+and prior-binding replacement. The earlier C10 whole64 run had61 passes and
+three failures; it does not qualify this candidate. Two fixture corrections and
+a real reload ownership repair are now composed. A fresh normal installation,
+all64 existing native controls, all14 new JSON/replacement controls and the
+public Code/export/reimport journeys remain required. The proposal is not an
+adoption on Lite main or a reduction of corpus partial counts.
