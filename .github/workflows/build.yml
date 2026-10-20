@@ -790,6 +790,8 @@ jobs:
       - name: Run unit tests
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' && steps.unit_playwright.outcome == 'success' && steps.stc_flasher_pin.outcome == 'success' && steps.stc_flasher_source.outcome == 'success' && steps.arrays_number_value_source.outcome == 'success' }}
         env:
+          # Fixtures create and remove unique children; never fall back to a host temp root.
+          TMPDIR: ${{ runner.temp }}
           BW_TEST_SHARD: ${{ matrix.shard }}/4
           BW_ARRAY_NUMBER_VALUE_SOURCE: ${{ github.workspace }}/test-results/arrays-number-value-input/arrays.js
           STC_COMPILER_FLASHER_DIR: ${{ github.workspace }}/.stc-compiler-flasher

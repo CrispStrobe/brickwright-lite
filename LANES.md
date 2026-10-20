@@ -7250,3 +7250,13 @@ and migrate stale compiler-only and fallback assertions against actual public
 validation. Preserve the original 42-test composition failures and all existing
 shadow/write/index/alias/wrong-producer controls. No current corpus, GUI, SDK or
 runtime qualification is inferred; unchanged resource and hosted gates apply.
+
+
+### Unit conversion fixture owned temporary root — 2026-10-20
+
+SOURCE CANDIDATE — coordinated Arcade tooling/CI lane. The existing unit shard
+step explicitly supplies the runner-owned temporary root to child tests.
+Conversion context fixtures keep their missing-root refusal and unique child
+creation/finally cleanup; no host default fallback or product change. Focused
+source-policy controls and the complete affected input-reader tests must pass
+before relying on the workflow fix. No SDK/browser/full-suite result inferred.
