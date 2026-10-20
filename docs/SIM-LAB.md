@@ -505,32 +505,41 @@ Groups are declared before the parts, in definition order. Each member carries `
   the output evenly. A joint bends at most 45° (warning `uj-too-bent`); ends whose forks are not at
   right angles do not join (`uj-not-square`). Tests: `test/bw-sim-universal-joint.test.mjs`.
 - **Materials** (since 2026-10-20, `MATERIALS` in `bw-sim/contracts.js`): a part is ABS unless its
-  catalogue entry says `"material": "rubber"` (the tyred SPIKE wheels). A body bounces and rolls like
-  the part it touches the ground with (its grippiest):
+  catalogue entry says `"material": "rubber"` (the tyred SPIKE wheels); a tread's sprockets are `tread`.
+  A body bounces and rolls like the part it touches the ground with (its grippiest):
 
-  | material | friction | restitution e | rolling resistance c_rr |
-  |---|---|---|---|
-  | ABS | 0.4 | 0.1 | — |
-  | rubber (tyres) | 1 | 0.05 | 0.02 |
-  | the floor (mat) | 0.8 | 0 | — |
+  | material | friction | restitution e | Young's modulus | rolling resistance c_rr |
+  |---|---|---|---|---|
+  | ABS | 0.4 | 0.4 | 2.3 GPa | — |
+  | rubber (tyres) | 1 | 0.05 | 5.5 MPa | 0.02 |
+  | tread (link tracks) | 1 | 0.4 | 2.3 GPa | 0.05 |
+  | the floor and walls | 0.8 | — | rigid | — |
 
-  *Bounce:* Jolt combines two bodies' restitution as the larger, so the floor's 0 leaves a part's own;
-  a brick dropped 20 cm bounces off at 0.10 of its landing speed and rebounds to e² = 1 % of the height.
-  Impacts slower than 1 m/s (`LEGO_MIN_BOUNCE_SPEED_M_S`, a 5 cm drop) do not bounce at all: a robot
-  driving into a wall at SPIKE speeds (≤ 0.5 m/s) stops dead, as a real build's give takes that energy.
-  The e are low on purpose: Jolt resolves a fast part's impact at one body's contact (its continuous
-  collision), so a part landing across two others at once would spin off with a larger e (a brick on two
-  beams turned over with e 0.2–0.4; docs/ROBOT-LAB-VALIDATION.md "Materials"). *Rolling:* a tyred wheel on
-  a hinge gets a torque c_rr·N·r against its roll (`bw-sim/physics/rolling.js`), N its normal load read
-  each step from what its axle does not carry, so a coasting cart slows at c_rr·g·M/(M + ΣI/r²) and stops
-  (the carts of `test/bw-sim-validation-2.test.mjs`: 0.1377 m/s² measured, 0.1378 predicted). Source for
-  c_rr: rubber on hard floors 0.010–0.025 (a drum rig's deceleration method, Hungarian Journal of
-  Industry and Chemistry, "Laboratory Measurement of Rolling Resistance Coefficient under Different
-  Conditions"); the restitutions are estimates (no published LEGO numbers). *Limits:* restitution is per
-  body, not per pair (a brick hitting a tyre bounces like ABS on ABS); rolling resistance does not hold a
-  wheel still on a slope, acts only on tyred wheels that turn on a hinge, and treads have none.
+  *Bounce, per material pair:* two materials meet with e_ab² = (e_a²/E_a + e_b²/E_b)/(1/E_a + 1/E_b)
+  (`restitutionOf`: each side stores the impact's energy in proportion to its compliance and gives back
+  e² of it), installed in Jolt as a pair table (our Jolt fork's `MaterialPairs`, jolt-physics 1.1.0-bw.3).
+  A part on the floor: its own e; ABS on ABS 0.4; a brick on a tyre 0.054 (Jolt's own rule, the larger of
+  the two, said 0.4). A brick dropped 20 cm bounces off at 0.41 of its landing speed and rebounds to e² ≈
+  16 % of the height. Impacts slower than 1 m/s (`LEGO_MIN_BOUNCE_SPEED_M_S`, a 5 cm drop) do not bounce:
+  a robot driving into a wall at SPIKE speeds (≤ 0.5 m/s) stops dead, as a real build's give takes that
+  energy. A part landing across two others bounces straight (the fork leaves such an impact to the full
+  contact solve; 1.1.0-bw.2 turned a brick over on two beams). *Rolling:* a tyred or tracked wheel on a
+  hinge feels c_rr·N·r against its roll (`bw-sim/physics/rolling.js`), N its normal load read each step
+  from what its axle does not carry: as its hinge's friction while nothing drives it (Coulomb: it also
+  HOLDS a parked cart on a slope up to tan α = c_rr, 1.15° for tyres) and as a torque on a driven wheel.
+  A coasting cart slows at c_rr·g·M/(M + ΣI/r²) and stops (0.1376 m/s² measured, 0.1376 predicted);
+  on 3° a cart rolls down at g·(sin α − c_rr·cos α)·M/(M + ΣI/r²) (within 0.1 %), on 0.5° it stays put.
+  Sources: tyres, rubber on hard floors 0.010–0.025 (Hungarian Journal of Industry and Chemistry,
+  "Laboratory Measurement of Rolling Resistance Coefficient under Different Conditions"); treads, link
+  tracks on concrete 0.03–0.06 (the literature table in Łopatka & Muszyński, "Validation of rolling and
+  steer resistance of articulated tracked robot", ISARC 2013); ABS e, solid polymers rebound with
+  0.6–0.9 (J. Phys.: Conf. Ser. 2557 012057; Bull. Mater. Sci. 22(6) 1009), a hollow brick less: 0.4 is
+  an estimate, as is the tyre's 0.05. *Limits:* Jolt's solver resolves a flat multi-point bounce
+  non-uniquely, so a part bouncing off two others leaves with a little spin (0.1–0.3 rad/s) and a tall
+  drop's second landing can leave it leaning; a part's whole island bounces with one material; hard
+  plastic rolling on its rim has no rolling resistance.
 - A frictionless pin or axle that only joins two parts is one hinge between them (`bw-sim/mech/free-pins.js`).
-- Not yet simulated: flexible parts (belts, hoses), tracks, and the colour sensor's ambient-light modes.
+- Not yet simulated: flexible parts (hoses) and the colour sensor's ambient-light modes.
 
 ## The parts it knows (56)
 
