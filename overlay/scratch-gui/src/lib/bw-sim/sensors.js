@@ -28,6 +28,9 @@
 //   gyro (the EV3 gyro): no ray and no value here — the EV3 reads its body's yaw from the pose.
 //   rotation (the RCX rotation sensor): no ray — the angle of the hinge that
 //     turns in the sensor's hole (rotationJoint), radians since t = 0.
+//   listening (a MINDSTORMS ultrasonic sensor, EV3 or NXT): `usHeard`, how many OTHER MINDSTORMS
+//     ultrasonic sensors in the scene ping towards it (ultrasonicHeard) — what the EV3's listen mode
+//     and the NXT's event-capture mode report (devices/ev3-sensors.js, devices/nxt-sensors.js).
 
 /** LEGO device ids, matching lib/spike-arena/arena-hub-bridge.js. */
 import {createMat} from './world/mats.js';
@@ -216,6 +219,63 @@ export const rotationJoint = (mechanism, sensor) => {
     return null;
 };
 
+/** How far (m) another ultrasonic sensor's ping is heard: the NXT/EV3 sensor's 255 cm full scale (estimated). */
+export const US_HEAR_REACH_M = 2.55;
+/** The ping's cone: half-angle (degrees) about the emitter's direction (estimated). */
+export const US_HEAR_HALF_ANGLE_DEG = 30;
+
+/** A MINDSTORMS ultrasonic sensor (the EV3's or the NXT's; SPIKE's distance sensor is not one). */
+export const isMindstormsUltrasonic = sensor => sensor.kind === 'distance' && /^(ev3|nxt)-ultrasonic$/.test(String(sensor.device || ''));
+
+/** A sensor's probe in the world now: {origin, dir} (dir unit), or null when its body has no pose. */
+const worldProbe = (core, initialBody, sensor) => {
+    if (!initialBody) return null;
+    let pose;
+    try { pose = core.bodyPose(sensor.body); } catch (_) { return null; }
+    if (!pose) return null;
+    const invInit = quatConj(initialBody.rotation);
+    const localOrigin = quatRotateVec(invInit, vecSub(sensor.origin, initialBody.position));
+    const localDir = quatRotateVec(invInit, sensor.direction);
+    const origin = vecAdd(quatRotateVec(pose.rotation, localOrigin), pose.position);
+    const raw = quatRotateVec(pose.rotation, localDir);
+    const len = Math.hypot(...raw);
+    return len < 1e-12 ? null : {origin, dir: raw.map(v => v / len)};
+};
+
+/**
+ * How many other MINDSTORMS ultrasonic sensors `listener` hears: each one in the scene is taken to
+ * ping (OUR MODEL: the scene does not know a sensor's mode, and both sensors ping by default — the
+ * NXT's continuous measurement, the EV3's distance modes), heard when the listener is within
+ * US_HEAR_REACH_M of it, inside its cone, and nothing stands between them.
+ * @param {object} core the physics core (bodyPose, castRay)
+ * @param {object} mechanism the CompiledMechanism (all its hubs' sensors are candidates)
+ * @param {{origin:number[]}} listener the listener's world probe
+ * @param {object} self the listener's sensorsOf entry (not heard by itself)
+ */
+export const ultrasonicHeard = (core, mechanism, listener, self) => {
+    const bodies = new Map(mechanism.bodies.map(b => [b.id, b]));
+    const cosMax = Math.cos(US_HEAR_HALF_ANGLE_DEG * Math.PI / 180);
+    let heard = 0;
+    for (const other of sensorsOf(mechanism)) {
+        if (!isMindstormsUltrasonic(other) || (other.body === self.body && other.port === self.port && other.hub === self.hub)) continue;
+        const emitter = worldProbe(core, bodies.get(other.body), other);
+        if (!emitter) continue;
+        const to = vecSub(listener.origin, emitter.origin);
+        const dist = Math.hypot(...to);
+        if (dist > US_HEAR_REACH_M || dist < 1e-6) continue;
+        const along = (to[0] * emitter.dir[0] + to[1] * emitter.dir[1] + to[2] * emitter.dir[2]) / dist;
+        if (along < cosMax) continue;
+        // Something in between (other than the two sensors' own bodies) blocks the ping.
+        let hit = null;
+        try {
+            hit = core.castRay(emitter.origin, to.map(v => v / dist), dist, {ignoreBodies: [other.body, self.body]});
+        } catch (_) {}
+        if (hit && hit.distance < dist - 0.01) continue;
+        heard += 1;
+    }
+    return heard;
+};
+
 /**
  * Read all sensors of a mechanism at the core's current time.
  * @param {object} core a physics core from createPhysicsCore (with bodyPose, castRay)
@@ -283,6 +343,7 @@ export const readSensors = (core, mechanism, robotBodies = [], sensors = sensors
             if (sensor.device && !String(sensor.device).startsWith('spike-')) {
                 out[sensor.port].rangeMm = hit ? Math.round(hit.distance * 1000) : -1;
             }
+            if (isMindstormsUltrasonic(sensor)) out[sensor.port].usHeard = ultrasonicHeard(core, mechanism, {origin: worldOrigin}, sensor);
         } else if (sensor.kind === 'color') {
             const maxDist = 0.032;
             let hit = null;
