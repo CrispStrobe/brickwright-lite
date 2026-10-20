@@ -16,7 +16,10 @@
 import {validatePlacedModel, validateCompiledMechanism, GROUND_FRICTION, LDU_M, lduToWorld, dirToWorld,
     partHubProfile, partSensor, portRefOf, withBodyRoles, noCollidePairs, couplingBodyPairs, V1_COUPLING_KINDS} from '../contracts.js';
 import {BUILTIN_KINDS} from '../kinds/index.js';
-import {mat3MulVec3, vecAdd} from './vec.js';
+import {mat3MulVec3, vecAdd, quatNormalize} from './vec.js';
+
+/** A tread wheel's collider adds next to nothing to its sprocket's mass (the tread's links are on the frame). */
+const TREAD_WHEEL_MASS_KG = 0.0001;
 import {buildGraph} from './graph.js';
 import {buildIslands} from './islands.js';
 import {buildJoints} from './joints.js';
@@ -166,6 +169,12 @@ export const compile = (model, catalog, opts = {}) => {
     }
 
     const filteredModel = {version: 1, parts: knownParts};
+    // Rubber bands round known parts only (kinds/belt.js reads them).
+    if (model.belts) {
+        const known = new Set(knownParts.map(p => p.id));
+        const belts = model.belts.filter(b => b.around.every(id => known.has(id)));
+        if (belts.length) filteredModel.belts = belts;
+    }
 
     // If filtered model has no valid parts, we still need to produce a mechanism with maybe ground only plus diagnostics
     // Build graph (even if empty)
@@ -191,7 +200,7 @@ export const compile = (model, catalog, opts = {}) => {
     let jointsResult;
     let gearResult;
     let gearDiagnostics;
-    let detected = {couplings: [], diagnostics: [], limits: []};
+    let detected = {couplings: [], diagnostics: [], limits: [], wheels: []};
     // Every weld merges two islands, so this settles in at most one pass per node.
     for (let pass = 0; pass <= nodes.size + 1; pass++) {
         islands = buildIslands(nodes, graphEdges, catalogMap, diagnostics, opts, extraRigidPairs);
@@ -218,7 +227,7 @@ export const compile = (model, catalog, opts = {}) => {
         gearResult = buildGears(nodes, islands, jointsResult.joints, catalogMap, gearDiagnostics, jointsResult.jointEntries, kinds);
         if (gearResult.lockedPairs.length === 0) {
             // Registered coupling detectors (kinds/worm.js, kinds/rack.js): their welds re-run the fixpoint too.
-            detected = detectCouplings(kinds, {nodes, islands, joints: jointsResult.joints, jointEntries: jointsResult.jointEntries, catalog: catalogMap});
+            detected = detectCouplings(kinds, {nodes, islands, joints: jointsResult.joints, jointEntries: jointsResult.jointEntries, catalog: catalogMap, model: filteredModel});
             if (detected.welds.length === 0) break;
             // A lock a detector found (a worm or a rack fixed to its partner's frame) is said once, here.
             for (const d of detected.diagnostics) if (d.code === 'gear-on-frame') diagnostics.push(d);
@@ -258,6 +267,21 @@ export const compile = (model, catalog, opts = {}) => {
     // not held by the robot: they fall off or lie where they are.
     for (const group of looseGroups(islands.bodies, joints, catalogMap, nodes)) {
         diagnostics.push({severity: 'warning', code: 'loose-part', message: `Not connected to the rest of the model: ${group.join(', ')}`, parts: group});
+    }
+
+    // A tread's sprockets meet the floor at the tread's outer face (kinds/chain.js `wheels`): a
+    // cylinder of that radius on the sprocket's body, with the tread's grip; before the ground,
+    // which goes under the lowest collider.
+    for (const w of detected.wheels) {
+        const body = islands.bodies.find(b => b.id === w.islandId);
+        if (!body) continue;
+        const axis = dirToWorld(w.axisLdu);
+        // the cylinder's own axis is y: the shortest turn from y onto the sprocket's axis
+        const q = Math.abs(axis[1] + 1) < 1e-9 ? [1, 0, 0, 0] : quatNormalize([axis[2], 0, -axis[0], 1 + axis[1]]);
+        const c = lduToWorld(w.centerLdu).map((v, i) => v - body.position[i]);
+        body.colliders.push({shape: 'cylinder', radius: w.radiusLdu * LDU_M, halfHeight: Math.max(w.halfWidthLdu, 1) * LDU_M,
+            position: c, rotation: q, part: w.part, massKg: TREAD_WHEEL_MASS_KG});
+        body.friction = Math.max(body.friction ?? 0, w.friction);
     }
 
     // Bodies final list: islands.bodies plus ground
@@ -430,13 +454,14 @@ const seatedBodyPairs = (edges, islands) => {
 
 /** Every registered coupling detector, in registration order (registry/kinds.js CouplingKindRegistry). */
 const detectCouplings = (kinds, ctx) => {
-    const out = {couplings: [], welds: [], diagnostics: [], limits: []};
+    const out = {couplings: [], welds: [], diagnostics: [], limits: [], wheels: []};
     for (const module of kinds.couplings.detectors()) {
         const r = module.detect(ctx) || {};
         for (const c of r.couplings || []) out.couplings.push({...c, kind: module.kind});
         out.welds.push(...(r.welds || []));
         out.diagnostics.push(...(r.diagnostics || []));
         out.limits.push(...(r.limits || []));
+        out.wheels.push(...(r.wheels || []));
     }
     return out;
 };

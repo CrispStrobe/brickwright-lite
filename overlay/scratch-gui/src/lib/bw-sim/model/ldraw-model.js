@@ -269,6 +269,7 @@ export const parseModel = (text, {catalog} = {}) => {
     };
     const groupsById = new Map(); // id -> {id, name, parts: []}
     const groupOrder = []; // to preserve order
+    const belts = []; // `0 !BW BELT id band part…` lines, checked against the parts at the end
     const partToGroup = new Map(); // partId -> groupId (for checking duplicate part in two groups)
     // Building steps: `0 STEP` (or `0 ROTSTEP …`) in the main model ends a step (instructions/steps.js).
     const steps = [];
@@ -445,6 +446,12 @@ export const parseModel = (text, {catalog} = {}) => {
             }
             continue;
         }
+        if (/^0\s+!BW\s+BELT(\s|$)/i.test(trimmed)) {
+            const words = trimmed.split(/\s+/).slice(3);
+            if (words.length < 4) refusals.push({line: lineNo, code: 'bad-belt', message: `Bad BELT at line ${lineNo}`});
+            else belts.push({line: lineNo, id: words[0], band: words[1], around: words.slice(2)});
+            continue;
+        }
         if (/^0\s+!BW\s+GROUP(\s|$)/i.test(trimmed)) {
             const m = trimmed.match(/^0\s+!BW\s+GROUP\s+(\S+)\s+(.+?)\s*$/i);
             if (!m) {
@@ -571,6 +578,18 @@ export const parseModel = (text, {catalog} = {}) => {
         // Remove empty groups (should not happen, but for safety, filter out groups with 0 parts? But spec says groups with <2 dissolve, but parser should keep whatever was defined, even if empty, and let validator catch it)
         // We keep all groups as defined, even if empty, so that malformed ones are visible
     }
+    if (belts.length) {
+        // A rubber band round a part the file does not have, or a second band with one id, is not opened.
+        const ids = new Set(parts.map(p => p.id));
+        const kept = [];
+        for (const b of belts) {
+            const missing = b.around.filter(id => !ids.has(id));
+            if (missing.length) refusals.push({line: b.line, code: 'bad-belt', message: `Rubber band '${b.id}' goes round unknown parts ${missing.join(', ')}`, parts: missing});
+            else if (kept.some(k => k.id === b.id)) refusals.push({line: b.line, code: 'bad-belt', message: `Duplicate rubber band '${b.id}' at line ${b.line}`});
+            else kept.push({id: b.id, band: b.band, around: b.around});
+        }
+        if (kept.length) model.belts = kept;
+    }
     if (sawStep) {
         // Parts after the last STEP line are the last step; steps with no parts are dropped.
         if (stepParts.length) steps.push(stepParts);
@@ -598,6 +617,8 @@ export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright 
             lines.push(`0 !BW GROUP ${g.id} ${g.name}`);
         }
     }
+    // Rubber bands (no LDraw part draws a stretched one): one line each, round parts written below.
+    for (const b of model.belts || []) lines.push(`0 !BW BELT ${b.id} ${b.band} ${b.around.join(' ')}`);
     // Build a map from part id to group id for quick lookup
     const partGroupMap = new Map();
     if (model.groups) {

@@ -2040,6 +2040,8 @@ class SimLabPane extends React.Component {
         case 'groupEdit': case 'groupLeft': return fill(E[st.kind], {name: st.name || ''});
         case 'turnedBy': return fill(E.turnedBy, {deg: st.degrees});
         case 'hinged': case 'hingeShown': return fill(E[st.kind], {n: st.count, deg: st.degrees, i: st.index + 1, of: st.of});
+        case 'chained': return fill(st.tread ? E.treaded : E.chained, {n: st.count, g: st.gears});
+        case 'banded': return fill(E.banded, {mm: st.mm, stretch: this.decimal(st.stretch)});
         case 'idle': return ''; // nothing to report; the (i) beside the status explains how to build
         default:
             if (E[st.kind]) return fill(E[st.kind], {n: st.count});

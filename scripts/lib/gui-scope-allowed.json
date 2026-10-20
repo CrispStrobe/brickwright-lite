@@ -23,6 +23,7 @@
   "three": {
     "tests": [
       "test/bw-sim-camera-nav.test.mjs",
+      "test/bw-sim-chain.test.mjs",
       "test/bw-sim-editor-v2.test.mjs",
       "test/bw-sim-instancing.test.mjs",
       "test/bw-sim-palette-ui.test.mjs",
@@ -42,7 +43,9 @@
   },
   "jolt-physics/wasm-compat": {
     "tests": [
+      "test/bw-sim-belt.test.mjs",
       "test/bw-sim-bt-hubs-program.test.mjs",
+      "test/bw-sim-chain.test.mjs",
       "test/bw-sim-collisions.test.mjs",
       "test/bw-sim-colour-explorer-program.test.mjs",
       "test/bw-sim-dc-motor.test.mjs",
