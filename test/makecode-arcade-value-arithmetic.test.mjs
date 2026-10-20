@@ -6,6 +6,7 @@ const BW=createRequire(import.meta.url)(VM_SRC+'/util/bw-values.js');
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
+import {arrayOperation} from './helpers/arrays-current-operation.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 import {compile} from '../scripts/lib/pxt-node.mjs';
 const vars=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
@@ -44,10 +45,11 @@ if(nan!==nan){checks+=1}
 if(!(nan<1) && !(nan>=1)){checks+=2}
 if("10"<"2"){checks+=4}
 if("2"<10){checks+=8}
-if(!(absent<=0)){checks+=16}`,run=>{
-        const v=vars(run),p=run.vm.runtime._primitives;
+if(!(absent<=0)){checks+=16}`,async run=>{
+        const v=vars(run);
         assert.equal(Number(v.checks),31);
-        const actual=Array.from({length:11},(_,i)=>p.arrays_referenceItem({ARRAY:v.values,INDEX:i}));
+        const actual=[];
+        for(let i=0;i<11;i++)actual.push(await arrayOperation(run.vm,'referenceItem',{ARRAY:v.values,INDEX:i}));
         assert.deepEqual(actual,['52',3,3,2,NaN,Infinity,-Infinity,-1,1,5,-5]);
     });
 });
@@ -68,8 +70,9 @@ let copiedZero=echo(minusZero)
 let values=[text,counter,rows[0],rows[1],returned,minusZero,copiedZero]`,async run=>{
         const deadline=Date.now()+3000;
         while(vars(run).values?.bwReference?.kind!=='array' && Date.now()<deadline){await stepFrames(run.vm,4);await new Promise(done=>setTimeout(done,10));}
-        const v=vars(run),p=run.vm.runtime._primitives;
-        const actual=Array.from({length:7},(_,i)=>p.arrays_referenceItem({ARRAY:v.values,INDEX:i}));
+        const v=vars(run);
+        const actual=[];
+        for(let i=0;i<7;i++)actual.push(await arrayOperation(run.vm,'referenceItem',{ARRAY:v.values,INDEX:i}));
         assert.deepEqual(actual,['52',6,'52',NaN,NaN,0,0]);
         assert.equal(v.text,'52');assert.equal(v.counter,6);assert.ok(Number.isNaN(v.returned));assert.ok(Object.is(v.minusZero,0));
     });

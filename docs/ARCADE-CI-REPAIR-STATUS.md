@@ -17,6 +17,27 @@ The historical 184-input census remains **147 translated, 36 partial and one
 malformed input**. Focused controls below do not change that census or establish
 complete game compatibility.
 
+## Array unit fixture repair candidate
+
+The saved hosted failures include behavior tests that construct the registered
+Array extension on inert fake runtimes, and roundtrip assertions that call
+tracked Array primitives outside a VM operation. The candidate runs these calls
+through actual registered blocks, cached inputs and VM threads. Metadata-only
+probes and low-level value tests retain their separate scopes. No product
+admission rule, supplier pin or runtime fallback changes.
+
+The reference and table assertions retain their value, alias, escaping, mark,
+style and renderer-absence checks. Table rows are observed during an actual
+named operation and passed to the unchanged pure SVG builder. After restart,
+the lifecycle control checks the actual ownership refusal and exact issued
+error for stale reference reads, writes and named access, with unchanged old
+backing contents.
+
+Complete affected modules and their original compiler comparisons still require
+qualification. Existing compiler disagreements, TODOs and original hosted
+failures remain open; this source candidate establishes no runtime or corpus
+result.
+
 ## Current areas
 
 | Area | Implemented or observed | Next required evidence |
