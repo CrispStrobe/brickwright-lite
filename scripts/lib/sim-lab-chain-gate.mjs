@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 //
-// Chain round gears (editor/chain-path.js, kinds/chain.js, docs/ROBOT-LAB-UX.md §11) for
+// Chains and treads round gears (editor/chain-path.js, kinds/chain.js, docs/ROBOT-LAB-UX.md §11) for
 // scripts/verify-sim-lab-browser.mjs `--part=editor`, by the properties panel's button.
 // Internal APIs lay out the parts (set-up), select them as a click would, and READ the
 // results (the model, the status line, the compiled mechanism).
@@ -10,11 +10,13 @@
 // output, a beam pinned under the housing) with the 24T's axle in the beam's end hole, 60 LDU
 // out: the gears do not mesh.
 //
-//   1. both gears selected, "Chain round gears" lays a closed chain of links in one undo step
+//   1. both gears selected, "Chain or tread round" lays a closed chain of links in one undo step
 //      and selects it; Ctrl+Z takes it all away, the button lays it again;
 //   2. in Simulate the compiled mechanism couples the two gears' hinges by the chain (the 24T
 //      the motor's way, 3 to 1), with no chain warning;
-//   3. two gears too close for a chain: refused, nothing placed.
+//   3. two gears too close for a chain: refused, nothing placed;
+//   4. two tread sprockets on a beam: the same button lays a tread round them; in Simulate they
+//      turn together, and each is a wheel of the tread's outer radius (it carries the frame).
 
 import assert from 'node:assert/strict';
 import {resolve} from 'node:path';
@@ -117,5 +119,30 @@ const checks = async (page, {shotsDir}) => {
     await page.waitForFunction(() => /too close for a chain/.test(document.querySelector('[data-testid="bw-sim-lab-build-status"]')?.textContent || ''),
         null, {timeout: 10000});
     assert.equal(await count(page, '3711.dat'), 0, 'a refused chain places nothing');
+
+    // 4. A tread round two sprockets.
+    const tracks = await layOut(page, [
+        ['32524.dat', [0, 0, 0], [0, 1, 0, -1, 0, 0, 0, 0, 1]], ['3707.dat', [30, 0, -60], I], ['3707.dat', [30, 0, 60], I],
+        ['57519.dat', [40, 0, -60], [0, 0, 1, 0, 1, 0, -1, 0, 0]], ['57519.dat', [40, 0, 60], [0, 0, 1, 0, 1, 0, -1, 0, 0]]]);
+    await lab(page, () => window.__bwSimLab.editView.frameModel());
+    await select(page, [tracks[3], tracks[4]]);
+    await openProperties(page);
+    await page.getByTestId('bw-sim-lab-prop-chain').click();
+    await page.waitForFunction(() => /A tread of \d+ links round 2 sprocket wheels/.test(document.querySelector('[data-testid="bw-sim-lab-build-status"]')?.textContent || ''),
+        null, {timeout: 10000});
+    out.treadLinks = await count(page, '57518.dat');
+    assert.equal(out.treadLinks, 18, 'a tread of 18 links round two sprockets 120 LDU apart');
+    await page.screenshot({path: resolve(shotsDir, 'sim-lab-tread.png')});
+    await page.getByTestId('bw-sim-lab-mode-simulate').click();
+    await page.waitForFunction(() => window.__bwSimLab.mode === 'simulate' && window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.session,
+        null, {timeout: 60000});
+    const treadMech = await lab(page, ids => {
+        const m = window.__bwSimLab._pane.session.mechanism;
+        const wheels = ids.map(id => m.bodies.find(b => b.parts.includes(id)).colliders.filter(c => c.shape === 'cylinder').map(c => c.radius));
+        return {chains: m.couplings.filter(c => c.kind === 'chain').map(c => c.ratio), wheels};
+    }, [tracks[3], tracks[4]]);
+    assert.deepEqual(treadMech.chains.map(r => Math.abs(r)), [1], `the sprockets turn together: ${JSON.stringify(treadMech)}`);
+    const outer = (15 / Math.sin(Math.PI / 10) + 14) * 0.0004;
+    for (const w of treadMech.wheels) assert.ok(w.some(r => Math.abs(r - outer) < 1e-6), `a wheel of the tread's outer radius: ${w}`);
     return out;
 };

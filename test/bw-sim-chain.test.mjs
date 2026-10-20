@@ -178,3 +178,76 @@ test('in Simulate the links run round: a sprocket turned by one link\'s angle pu
     assert.ok(delta.every(d => Math.abs(d - delta[0]) < 1e-6) && [1, n - 1].includes(Math.round(delta[0])) && Math.abs(delta[0] - Math.round(delta[0])) < 1e-6,
         `every link moved one place along: ${delta}`);
 });
+
+// A tread (57518) round two sprockets (57519) on 8L axles in a Beam 7's end holes, 120 LDU apart:
+// the beam's holes turned to run along x, the sprockets beside it, their axles along x.
+const treadBench = () => ({version: 1, parts: [
+    {id: 'frame', part: '32524.dat', position: [0, 0, 0], rotation: [0, 1, 0, -1, 0, 0, 0, 0, 1]},
+    {id: 'ax1', part: '3707.dat', position: [30, 0, -60], rotation: [1, 0, 0, 0, 1, 0, 0, 0, 1]},
+    {id: 'ax2', part: '3707.dat', position: [30, 0, 60], rotation: [1, 0, 0, 0, 1, 0, 0, 0, 1]},
+    {id: 's1', part: '57519.dat', position: [40, 0, -60], rotation: [0, 0, 1, 0, 1, 0, -1, 0, 0]},
+    {id: 's2', part: '57519.dat', position: [40, 0, 60], rotation: [0, 0, 1, 0, 1, 0, -1, 0, 0]}]});
+
+test('a tread round two sprockets: its links, the sprockets coupled 1:1, each a wheel of the tread\'s outer radius', () => {
+    const m = treadBench();
+    const r = chainRound(m, CATALOG, ['s1', 's2']);
+    assert.ok(!r.error, JSON.stringify(r));
+    const R = 15 / Math.sin(Math.PI / 10);
+    assert.ok(Math.abs(r.lengthLdu - (240 + 2 * Math.PI * R)) < 0.5, `length ${r.lengthLdu}`);
+    assert.equal(r.links.length, Math.round(r.lengthLdu / 30));
+    assert.ok(r.links.every(l => l.part === '57518.dat'));
+    // The tread's outer face (part −y) points away from the sprockets: from a link on the bottom run, down (LDraw +y).
+    const bottom = r.links.reduce((a, b) => (b.position[1] > a.position[1] ? b : a));
+    assert.ok(mulVec(bottom.rotation, [0, -1, 0])[1] > 0.99, `outward on the bottom run: ${mulVec(bottom.rotation, [0, -1, 0])}`);
+    const model = {...m, parts: [...m.parts, ...r.links.map((l, i) => ({id: `t${i}`, ...l}))]};
+    const mech = compile(model, CATALOG, {version: 2});
+    assert.deepEqual(mech.diagnostics.filter(d => d.severity !== 'info' && d.code !== 'loose-part'), [], JSON.stringify(mech.diagnostics));
+    const chains = mech.couplings.filter(c => c.kind === 'chain');
+    assert.equal(chains.length, 1);
+    assert.ok(Math.abs(Math.abs(chains[0].ratio) - 1) < 1e-9);
+    for (const s of ['s1', 's2']) {
+        const body = mech.bodies.find(b => b.parts.includes(s));
+        const wheel = body.colliders.find(c => c.shape === 'cylinder' && Math.abs(c.radius - (R + 14) * 0.0004) < 1e-6);
+        assert.ok(wheel, `${s}: a wheel of the tread's outer radius`);
+        assert.equal(body.friction, 1, `${s}: the tread's grip`);
+    }
+    const frame = mech.bodies.find(b => b.parts.includes('frame'));
+    assert.ok(model.parts.filter(p => p.part === '57518.dat').every(l => frame.parts.includes(l.id)), 'the tread rides on the frame');
+    assert.ok(!mech.bodies.some(b => b.colliders.some(c => /^t\d+$/.test(c.part))), 'the tread\'s links have no colliders in the core');
+    // The ground is under the wheels' bottom: the lowest point of the model is now the tread's outer face.
+    const ground = mech.bodies.find(b => b.motion === 'static' && b.colliders.length === 1 && b.colliders[0].halfExtents);
+    const top = ground.position[1] + ground.colliders[0].halfExtents[1];
+    assert.ok(Math.abs(top - (-(R + 14) * 0.0004)) < 0.0005, `ground top ${top} under the wheels' bottom ${-(R + 14) * 0.0004}`);
+});
+
+test('a tracked frame drives: a motor on one sprocket moves it along at the tread\'s outer speed', async () => {
+    const m = treadBench();
+    const r = chainRound(m, CATALOG, ['s1', 's2']);
+    const model = {...m, parts: [...m.parts, ...r.links.map((l, i) => ({id: `t${i}`, ...l}))]};
+    const mech = compile(model, CATALOG, {version: 2});
+    // The medium motor's drive, borrowed from the gear bench, on the hinge of the rear sprocket.
+    const bench8 = compile(json('test/fixtures/bw-sim/gears/8-24.json'), CATALOG, {version: 2});
+    const s1Body = mech.bodies.find(b => b.parts.includes('s1')).id;
+    const hinge = mech.joints.find(j => j.type === 'hinge' && (j.body1 === s1Body || j.body2 === s1Body));
+    hinge.motor = {...bench8.joints.find(j => j.motor).motor};
+    mech.actuators = [{...bench8.actuators[0], joint: hinge.id}];
+    const J = await loadJolt();
+    const core = createPhysicsCore(J, mech, {stepHz: HZ});
+    const frame = mech.bodies.find(b => b.parts.includes('frame')).id;
+    for (let i = 0; i < 0.5 * HZ; i++) core.step(1 / HZ); // settle on the floor
+    const p0 = core.bodyPose(frame).position;
+    const a0 = core.jointState(hinge.id).angle;
+    const omega = 2; // rad/s
+    core.setMotor(hinge.id, {mode: 'velocity', radPerSec: omega});
+    const seconds = 2;
+    for (let i = 0; i < seconds * HZ; i++) core.step(1 / HZ);
+    const p1 = core.bodyPose(frame).position;
+    const turned = core.jointState(hinge.id).angle - a0;
+    core.destroy();
+    const R = (15 / Math.sin(Math.PI / 10) + 14) * 0.0004;
+    const along = Math.abs(p1[2] - p0[2]);
+    const expected = Math.abs(turned) * R;
+    assert.ok(Math.abs(turned) > omega * seconds * 0.8, `the sprocket turned ${turned} rad`);
+    assert.ok(Math.abs(along - expected) / expected < 0.2, `moved ${along.toFixed(4)} m along, the tread's outer face ran ${expected.toFixed(4)} m`);
+    assert.ok(Math.abs(p1[0] - p0[0]) < 0.2 * along, `straight on: ${(p1[0] - p0[0]).toFixed(4)} m sideways`);
+});

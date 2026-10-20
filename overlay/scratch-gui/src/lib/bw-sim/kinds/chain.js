@@ -6,8 +6,17 @@
 //
 // Connector kind 'chain-link': one per link, at the middle between its two pivots (the pins its
 // neighbours turn on), `axis` along the pivots' pins, and `data`
-//   along     the direction from one pivot to the other (part frame, unit), and
-//   pitchLdu  the distance between them (16 LDU: one link spans two teeth, 2 × 7.85 LDU).
+//   along     the direction from one pivot to the other (part frame, unit),
+//   pitchLdu  the distance between them (3711: 16 LDU, one link spans two teeth, 2 × 7.85 LDU;
+//             the tread 57518: 30 LDU, one tooth of its sprocket), and for a tread
+//   outward   the side that faces away from the sprockets (part frame, unit),
+//   outerLdu  how far its outer face is from the pivots, and widthLdu its width.
+//
+// A tread is a chain round sprockets (gear type 'sprocket', with its own pitchRadiusLdu: the
+// circle its pivots ride on). It runs on the ground, so its links are `drawnOnly` (no colliders
+// in the core) and every sprocket it wraps becomes a WHEEL of the tread's outer radius
+// (`wheels`: the compiler adds the collider to the sprocket's body, with a tyre's grip) — the
+// architecture's M6 approximation of a tracked vehicle.
 //
 // Coupling module 'chain' (kind 'chain'):
 //   - links join into a chain where a pivot of one is on a pivot of another (CHAIN_JOIN_LDU);
@@ -29,6 +38,11 @@ import {vecAdd, vecSub, vecDot, vecLen, vecScale, vecNormalize} from '../mech/ve
 import {dirToWorld} from '../contracts.js';
 import {gearHinges, parallelAxes} from './gear-mesh.js';
 import {spurGears, toothConnectors, placedSpur, placedTooth} from './tooth-parts.js';
+
+/** The gears a chain or a tread goes round. */
+export const WRAPPED_GEARS = Object.freeze(['spur', 'sprocket']);
+/** A tread's grip on the floor: a tyre's (parts.json tyres have friction 1). */
+export const TREAD_FRICTION = 1;
 
 /** Two links join when a pivot of one is this close to a pivot of the other (LDU). */
 export const CHAIN_JOIN_LDU = 2;
@@ -105,9 +119,10 @@ export const CHAIN = {
         const couplings = [];
         const welds = [];
         const diagnostics = [];
+        const wheels = [];
         const links = toothConnectors(nodes, islands, 'chain-link', ['along']).filter(l => l.data.along);
-        if (!links.length) return {couplings, welds, diagnostics};
-        const gears = spurGears(nodes, islands);
+        if (!links.length) return {couplings, welds, diagnostics, wheels};
+        const gears = spurGears(nodes, islands, WRAPPED_GEARS);
         for (const chain of chainsOf(links)) {
             const linkParts = [...new Set(chain.map(l => l.partId))];
             const round = gearsRound(chain, gears).filter(g => !chain.some(l => l.islandId === g.islandId))
@@ -116,6 +131,14 @@ export const CHAIN = {
                 diagnostics.push({severity: 'warning', code: 'chain-not-round-gears', parts: linkParts,
                     message: `The chain of ${linkParts.length} links does not go round two gears, so it drives nothing.`});
                 continue;
+            }
+            // A tread: every sprocket it wraps meets the floor at the tread's outer face.
+            const tread = chain[0].data.outerLdu > 0 ? chain[0].data : null;
+            if (tread) {
+                for (const g of round) {
+                    wheels.push({islandId: g.islandId, centerLdu: g.centerLdu, axisLdu: g.axisLdu, radiusLdu: g.r + tread.outerLdu,
+                        halfWidthLdu: (tread.widthLdu || 0) / 2, friction: TREAD_FRICTION, part: g.partId});
+                }
             }
             const hinged = round.map(g => ({g, hinges: gearHinges(g, joints)}));
             const g0 = hinged.find(x => x.hinges.length);
@@ -147,7 +170,7 @@ export const CHAIN = {
                 couplings.push({joint1: h0.joint.id, joint2: h.joint.id, ratio, parts: [...parts, ...linkParts]});
             }
         }
-        return {couplings, welds, diagnostics};
+        return {couplings, welds, diagnostics, wheels};
     },
     validate (c, m) {
         const out = [];
@@ -180,7 +203,7 @@ export const CHAIN = {
         const linksB = placedTooth(b, metaB, 'chain-link', ['along']);
         if (linksA.length && linksB.length) return linksA.some(p => linksB.some(q => joined(p, q)));
         for (const [links, pl, meta] of [[linksA, b, metaB], [linksB, a, metaA]]) {
-            const gear = links.length ? placedSpur(pl, meta) : null;
+            const gear = links.length ? placedSpur(pl, meta, WRAPPED_GEARS) : null;
             if (gear && links.some(l => pivotsOnGear(l, gear) === 2 || restsOnTeeth(l, gear))) return true;
         }
         return false;
@@ -195,6 +218,9 @@ export const CHAIN_LINK = {
         if (!c.data || !isUnit(c.data.along)) out.push('data.along: the unit direction from one pivot to the other');
         else if (Math.abs(vecDot(c.data.along, c.axis)) > 1e-6) out.push('data.along: must be perpendicular to the pivots\' pins (axis)');
         if (!c.data || !(c.data.pitchLdu > 0)) out.push('data.pitchLdu: the distance between the pivots (LDU)');
+        if (c.data && c.data.outward !== undefined && (!isUnit(c.data.outward) || Math.abs(vecDot(c.data.outward, c.axis)) > 1e-6 ||
+            Math.abs(vecDot(c.data.outward, c.data.along || [0, 0, 0])) > 1e-6)) out.push('data.outward: a unit direction across the pins and the link');
+        if (c.data && c.data.outerLdu !== undefined && !(c.data.outerLdu > 0 && c.data.widthLdu > 0)) out.push('data.outerLdu, widthLdu: a tread\'s outer face and width (LDU)');
         return out;
     }
 };

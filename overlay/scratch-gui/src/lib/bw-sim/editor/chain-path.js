@@ -6,17 +6,19 @@
 //
 // The gears must be spur gears on parallel axles in one plane. The chain runs round the
 // outside of their pitch circles (the convex hull of the circles: a gear inside it is not
-// wrapped), and its links' pivots sit on that path, CHAIN_PITCH apart: a link spans two teeth
+// wrapped), and its links' pivots sit on that path, a link's pitch apart: a chain link spans two teeth
 // (2π · 1.25 LDU each), so on a sprocket every pivot is on the pitch circle, and the compiler's
 // chain detector (kinds/chain.js) finds the same gears round. The path's length is rarely a whole
 // number of links: the pivots are spaced a little apart or together (`slackLdu`, per link, at most
 // CHAIN_JOIN_LDU), as a real chain takes up a fraction of a link's play.
 
 import {CHAIN_JOIN_LDU} from '../kinds/chain.js';
-import {pitchRadiusLdu} from '../contracts.js';
+import {gearPitchRadius} from '../contracts.js';
 
 export const CHAIN_LINK_PART = '3711.dat';
 export const CHAIN_PITCH = 16;
+/** The link each kind of gear takes: a chain round spur gears, the 5-wide tread round its sprockets. */
+export const LINK_FOR = Object.freeze({spur: CHAIN_LINK_PART, sprocket: '57518.dat'});
 /** Black: the colour LEGO chain links come in. */
 export const CHAIN_COLOUR = 0;
 const SAMPLES = 720;
@@ -48,7 +50,7 @@ const hull = points => {
 /**
  * The links of a chain round the gears `ids` of `model`:
  * {links: [{part, position, rotation, color}], gears: [ids round], slackLdu, lengthLdu} or
- * {error: 'needTwoGears'|'notSpur'|'notParallel'|'notOnePlane'|'tooClose'|'gearInside'|'tooShort', parts?}.
+ * {error: 'needTwoGears'|'notSpur'|'mixed'|'notParallel'|'notOnePlane'|'tooClose'|'gearInside'|'tooShort', parts?}.
  * @param {{parts: object[]}} model
  * @param {Map<string, object>} catalogMap
  * @param {string[]} ids
@@ -60,11 +62,16 @@ export const chainRound = (model, catalogMap, ids) => {
         const pl = byId.get(id);
         const meta = pl && catalogMap.get(pl.part);
         if (!meta || !meta.gear) continue;
-        if (meta.gear.type !== 'spur') return {error: 'notSpur', parts: [id]};
-        gears.push({id, r: pitchRadiusLdu(meta.gear.teeth), c: add(mulVec(pl.rotation, meta.gear.center), pl.position),
+        if (!LINK_FOR[meta.gear.type]) return {error: 'notSpur', parts: [id]};
+        if (gears.length && gears[0].type !== meta.gear.type) return {error: 'mixed', parts: [gears[0].id, id]};
+        gears.push({id, type: meta.gear.type, r: gearPitchRadius(meta.gear), c: add(mulVec(pl.rotation, meta.gear.center), pl.position),
             a: norm(mulVec(pl.rotation, meta.gear.axis))});
     }
     if (gears.length < 2) return {error: 'needTwoGears'};
+    const linkPart = LINK_FOR[gears[0].type];
+    const conn = ((catalogMap.get(linkPart) || {}).connectors || []).find(k => k.type === 'chain-link');
+    if (!conn) return {error: 'needTwoGears'};
+    const pitch = conn.data.pitchLdu;
     const a = gears[0].a;
     for (const g of gears) {
         if (Math.abs(Math.abs(dot(g.a, a)) - 1) > 1 - Math.cos(Math.PI / 180)) return {error: 'notParallel', parts: [gears[0].id, g.id]};
@@ -97,7 +104,7 @@ export const chainRound = (model, catalogMap, ids) => {
     // Arc length round the closed path.
     const seg = path.map((p, i) => Math.hypot(path[(i + 1) % path.length][0] - p[0], path[(i + 1) % path.length][1] - p[1]));
     const length = seg.reduce((s, x) => s + x, 0);
-    const n = Math.round(length / CHAIN_PITCH);
+    const n = Math.round(length / pitch);
     if (n < 4) return {error: 'tooShort'};
     // Pivots a chord `c` apart along the path (a link is straight): from one, the next is where the
     // path first leaves the circle of radius c round it. The chain closes when the last pivot is c
@@ -129,8 +136,8 @@ export const chainRound = (model, catalogMap, ids) => {
         }
         return {pivots: out, closing: Math.hypot(out.at(-1)[0] - out[0][0], out.at(-1)[1] - out[0][1])};
     };
-    let lo = CHAIN_PITCH - CHAIN_JOIN_LDU;
-    let hi = CHAIN_PITCH + CHAIN_JOIN_LDU;
+    let lo = pitch - CHAIN_JOIN_LDU;
+    let hi = pitch + CHAIN_JOIN_LDU;
     let best = null;
     for (let it = 0; it < 60; it++) {
         const c = (lo + hi) / 2;
@@ -140,16 +147,21 @@ export const chainRound = (model, catalogMap, ids) => {
     }
     if (!best || Math.abs(best.closing - best.c) > 0.05) return {error: 'tooShort'};
     const pivots = best.pivots;
-    // Each link: its wide end (part z = 0) on pivot k, its narrow end (z = 16) towards pivot k+1,
-    // its pins (part x) along the axles.
+    // Each link: its pivots on pivots k and k+1, its pins along the axles, its outward side (a tread's
+    // tread face) away from the sprockets. In the part's frame those are the connector's axis, `along`
+    // and `outward` (default along × axis); R maps that triple onto the world's.
+    const P = [conn.axis, conn.data.along, conn.data.outward || cross(conn.data.along, conn.axis)];
     const links = pivots.map((p, k) => {
-        const P = to3(p);
-        const along = norm(add(to3(pivots[(k + 1) % n]), P.map(x => -x)));
-        const y = cross(along, a);
-        const rotation = [a[0], y[0], along[0], a[1], y[1], along[1], a[2], y[2], along[2]].map(tidy);
-        return {part: CHAIN_LINK_PART, position: P.map(tidy), rotation, color: CHAIN_COLOUR};
+        const from = to3(p);
+        const along = norm(add(to3(pivots[(k + 1) % n]), from.map(x => -x)));
+        const W = [a, along, cross(along, a)];
+        const rotation = [0, 1, 2].flatMap(r => [0, 1, 2].map(c => W.reduce((acc, w, i) => acc + w[r] * P[i][c], 0))).map(tidy);
+        // the connector's middle halfway between the pivots
+        const mid = from.map((x, i) => x + along[i] * pitch / 2);
+        const position = mid.map((x, i) => x - mulVec(rotation, conn.position)[i]).map(tidy);
+        return {part: linkPart, position, rotation, color: CHAIN_COLOUR};
     });
-    // A link's pivots are CHAIN_PITCH apart, the chain's `c`: the ends meet within the detector's reach.
-    const slackLdu = best.c - CHAIN_PITCH;
+    // A link's pivots are `pitch` apart, the chain's `c`: the ends meet within the detector's reach.
+    const slackLdu = best.c - pitch;
     return {links, gears: flat.map(g => g.id), slackLdu, lengthLdu: length};
 };

@@ -110,9 +110,10 @@
 //  23. the mats' challenges (scripts/lib/sim-lab-challenges-gate.mjs, --part=ui): the Wall stopper's
 //      own program wins "Stop at the wall" (stars, the gap, kept as the best); "Stay in the ring" moves
 //      the robot to the sumo mat, where driving straight on leaves the ring and loses.
-//  25. chain round gears (scripts/lib/sim-lab-chain-gate.mjs, --part=editor): an 8T and a 24T selected,
+//  25. chains and treads (scripts/lib/sim-lab-chain-gate.mjs, --part=editor): an 8T and a 24T selected,
 //      the properties panel's button lays a closed chain of links in one undo step; Simulate couples
-//      the gears by it; two gears too close for a chain are refused.
+//      the gears by it; two gears too close for a chain are refused; round two sprockets it lays a
+//      tread, and each sprocket becomes a wheel of the tread's outer radius.
 //
 // Every Sim Lab here runs its physics in the Web Worker (ROADMAP §4.9): each load
 // asserts `window.__bwSimLab.worker === true`, so the line-follower lap, the wall
@@ -993,8 +994,9 @@ try {
         chainPage.on('dialog', dialog => dialog.accept());
         await openSimLab(chainPage, {program: null});
         const ch = await chainInteractions(chainPage, {shotsDir: artifacts});
-        console.log(`PASS chain: "Chain round gears" lays ${ch.links} links round an 8T and a 24T in one undo step; Simulate couples them by the chain ` +
-            `(ratio ${ch.ratio.toFixed(4)}, the same way round); gears too close are refused`);
+        console.log(`PASS chain: "Chain or tread round" lays ${ch.links} links round an 8T and a 24T in one undo step; Simulate couples them by the chain ` +
+            `(ratio ${ch.ratio.toFixed(4)}, the same way round); gears too close are refused; a tread of ${ch.treadLinks} links round two sprockets ` +
+            'couples them 1:1 and makes each a wheel of its outer radius');
         await chainPage.close();
         // 21. Parts from the whole LDraw catalogue (scripts/lib/sim-lab-catalogue-gate.mjs, docs/ROBOT-LAB-ARCHITECTURE.md §5.4.1).
         const cat = await browser.newPage({viewport: {width: 1280, height: 800}, serviceWorkers: 'block'});

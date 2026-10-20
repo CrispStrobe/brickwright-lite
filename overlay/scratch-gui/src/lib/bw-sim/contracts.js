@@ -47,9 +47,11 @@ export const LDU_M = 0.0004;
  *  = tooth count), so r = teeth/2 mm = teeth · 1.25 LDU: 8T → 10, 24T → 30,
  *  and 8T + 24T mesh at 40 LDU = 2 holes apart. */
 export const pitchRadiusLdu = teeth => teeth * 1.25;
+/** A part's `gear` pitch radius (LDU): its own `pitchRadiusLdu` (a tread sprocket: the circle its tread's pivots ride on), else from the teeth. */
+export const gearPitchRadius = gear => (gear.pitchRadiusLdu > 0 ? gear.pitchRadiusLdu : pitchRadiusLdu(gear.teeth));
 
 export const CONNECTOR_TYPES = Object.freeze(['pinhole', 'axlehole', 'axle', 'pin', 'stud', 'antistud', 'ball', 'ballsocket']);
-export const GEAR_TYPES = Object.freeze(['spur', 'bevel', 'worm', 'rack']);
+export const GEAR_TYPES = Object.freeze(['spur', 'bevel', 'worm', 'rack', 'sprocket']);
 /** Port ids: hub output letters, and the numbered inputs of the RCX (1–3) and NXT/EV3 (1–4); the hub profile refuses ports it lacks. */
 export const HUB_PORTS = Object.freeze(['A', 'B', 'C', 'D', 'E', 'F', '1', '2', '3', '4']);
 /** What sensors.js measures; 'rotation' is the RCX rotation sensor (the hinge in its hole), 'gyro' the EV3 gyro (its body's yaw);
@@ -371,7 +373,9 @@ export const validatePartMeta = (meta, {connectorKinds = null} = {}) => {
         if (!(Number.isInteger(meta.gear.teeth) && meta.gear.teeth > 0)) out.push(`${p}.gear.teeth: need a positive integer`);
         checkUnit(meta.gear.axis, `${p}.gear.axis`, out);
         if (!isVec(meta.gear.center)) out.push(`${p}.gear.center: not a Vec3`);
+        if (meta.gear.pitchRadiusLdu !== undefined && !(meta.gear.pitchRadiusLdu > 0)) out.push(`${p}.gear.pitchRadiusLdu: a positive number (LDU)`);
     }
+    if (meta.drawnOnly !== undefined && typeof meta.drawnOnly !== 'boolean') out.push(`${p}.drawnOnly: true or false`);
     if (meta.hub && !(Array.isArray(meta.hub.ports) && meta.hub.ports.every(x => HUB_PORTS.includes(x)))) {
         out.push(`${p}.hub.ports: need a list of ${HUB_PORTS.join('|')}`);
     }

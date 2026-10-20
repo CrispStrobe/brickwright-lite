@@ -1539,8 +1539,9 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         if (run({type: 'moveMany', moves: [move]}, {turned: 1})) status({kind: 'flipped'});
     };
     /**
-     * Chain round the selected gears (editor/chain-path.js): Technic chain links laid round their
-     * pitch circles in one undo step, then selected; refused when a link would go into a part.
+     * Chain round the selected gears, or a tread round the selected sprockets (editor/chain-path.js):
+     * the links laid round their pitch circles in one undo step, then selected; refused when a link
+     * would go into a part.
      */
     const chainRoundSelection = () => {
         if (!needSelection()) return;
@@ -1552,7 +1553,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         const commands = r.links.map(l => ({type: 'place', part: l.part, position: l.position, rotation: l.rotation, color: l.color}));
         if (!run({type: 'batch', commands}, {placed: commands[0].part})) return;
         setSelection(editor.model.parts.filter(p => !before.has(p.id)).map(p => p.id));
-        status({kind: 'chained', count: commands.length, gears: r.gears.length});
+        status({kind: 'chained', count: commands.length, gears: r.gears.length, tread: r.links[0].part !== '3711.dat'});
     };
     /** Selects every part joined to the selection through pairs (Studio's "By Connected"). */
     const selectConnected = () => {

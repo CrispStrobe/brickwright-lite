@@ -218,7 +218,7 @@ This is cursor-driven. A new pure export, `snapAtPointer(model, catalog, held, r
   - ✅ Select connected (Ctrl+click, and a button in the properties panel's Group section);
   - ◐ the touch offset and button cluster (the 60 px lift applies to a part from the palette, not to dragging a placed part: §7);
   - ✅ keyboard-only placement with aria-live.
-- **P3:** ☐ the mouse preset, ☐ coach marks, ☐ Ctrl-glide for axles in holes, ☐ a Studio-style hinge tool, ◐ flexible parts (chains: §11; tracks, rubber bands and cables to come).
+- **P3:** ☐ the mouse preset, ☐ coach marks, ☐ Ctrl-glide for axles in holes, ☐ a Studio-style hinge tool, ◐ flexible parts (chains and treads: §11; rubber bands and cables to come).
 
 ## 5. Browser-gate acceptance tests
 
@@ -329,10 +329,10 @@ The starting values from §6 were kept: every gate reading lies well inside them
   gate `scripts/lib/sim-lab-challenges-gate.mjs` (`--part=ui`): the Wall stopper's own program
   wins "Stop at the wall"; on the sumo mat, driving straight on leaves the ring.
 
-## 11. Chains round gears (2026-10-20)
+## 11. Chains and treads round gears (2026-10-20)
 
 - The first flexible part: the Technic chain link (3711). Select two or more spur gears side by
-  side in one plane and press **Chain round gears** in the properties panel: a closed chain runs
+  side in one plane and press **Chain or tread round** in the properties panel: a closed chain runs
   round the outside of their pitch circles (a gear inside it is not wrapped), its links' pivots
   16 LDU apart (one link spans two teeth), laid in one undo step and then selected
   (`lib/bw-sim/editor/chain-path.js`). The pivots are spaced by the link's straight chord, and the
@@ -344,10 +344,20 @@ The starting values from §6 were kept: every gate reading lies well inside them
   pivot of the next; a chain goes round a gear when two of its pivots are on the gear's pitch
   circle. Gears on hinges in one frame then turn the same way at the teeth's ratio (the fork's
   `GearConstraint` on the two hinges; a step-up is built the other way round, as |mRatio| < 1
-  diverges). The links are welded to the frame: drawn, not simulated. They do not run round yet.
+  diverges). The links are welded to the frame: in the core they do not move, but the view runs
+  them round with their first sprocket (`view/chain-motion.js`: each link slides along the loop of
+  the links' places by the chain's travel).
   So a chain in a Studio or LDraw file works as well: the detector reads the links, not a record
   of the tool.
+- **Treads**: the same button round two or more tread sprockets (57519, gear type `sprocket`, its
+  pivot circle r = 48.54 LDU: one 30-LDU tread link per tooth of ten) lays the 5-wide tread (57518),
+  its tread face outward. A tread runs on the floor, so its links are `drawnOnly` (no colliders in
+  the core: welded to the frame, they would drag), and each sprocket it wraps gets a wheel collider
+  of the tread's outer radius (r + 14 LDU) with a tyre's grip — architecture M6's approximation. A
+  frame on two such sprockets drives straight on at the tread's outer speed (test, ±20 %).
 - Warnings: a chain round fewer than two gears; gears whose axles sit in different parts; a gear
   fixed to the frame locks the chain.
 - Tests: `test/bw-sim-chain.test.mjs` (the path, the compile, the real core: 8T→24T turns +1/3,
-  two 8Ts 1:1); gate `scripts/lib/sim-lab-chain-gate.mjs` (`--part=editor`).
+  two 8Ts 1:1, links running round, a tread's wheels, a tracked frame driving);
+  `test/bw-sim-part-meta.test.mjs` (the sprocket's teeth from the mesh, its pivot chord the tread's
+  pitch); gate `scripts/lib/sim-lab-chain-gate.mjs` (`--part=editor`).
