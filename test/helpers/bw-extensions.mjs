@@ -42,6 +42,7 @@ const SUPPORT = {
     'target-type': 'extension-support/target-type',
     cast: 'util/cast',
     'bw-values': 'util/bw-values',
+    'bw-array-operations': 'util/bw-array-operations',
     'bw-primitive-owner': 'util/bw-primitive-owner',
     'bw-source-condition-waits': 'util/bw-source-condition-waits',
     'bw-procedure-entry': 'util/bw-procedure-entry',
@@ -54,7 +55,7 @@ const SUPPORT = {
     'bw-animation-resource-menu': 'util/bw-animation-resource-menu'
 };
 // Overlay-owned support modules: same installed instance, but only when its bytes are the overlay's.
-const OVERLAY_SUPPORT = new Set(['bw-scene-clock-number', 'bw-null-sprite-getter', 'bw-procedure-entry', 'bw-procedure-constraint-model', 'bw-values', 'bw-animation-resource-menu', 'bw-primitive-owner', 'bw-current-number-input', 'bw-cached-primitive-owner', 'bw-arcade-exceptions', 'bw-source-condition-waits']);
+const OVERLAY_SUPPORT = new Set(['bw-scene-clock-number', 'bw-null-sprite-getter', 'bw-procedure-entry', 'bw-procedure-constraint-model', 'bw-values', 'bw-array-operations', 'bw-animation-resource-menu', 'bw-primitive-owner', 'bw-current-number-input', 'bw-cached-primitive-owner', 'bw-arcade-exceptions', 'bw-source-condition-waits']);
 function installedOverlaySupport (base) {
     const installed = path.join(VM_SRC, `${SUPPORT[base]}.js`);
     const overlay = path.join(REPO, 'overlay', 'scratch-vm', 'src', `${SUPPORT[base]}.js`);

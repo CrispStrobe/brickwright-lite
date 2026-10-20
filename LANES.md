@@ -7166,3 +7166,13 @@ and supplier pin bytes. Public flags confer no authority. Non-Error thrown
 values remain under existing unsupported policy. Supplier tracking/adoption is
 owned separately; fresh combined normal installation and affected native plus
 original/Code/exported semantics qualification remain mandatory.
+
+### Genuine Array loader support — 2026-10-20
+
+The headless genuine-program loader now includes `bw-array-operations` in its
+existing support catalogue and installed-overlay equality set. It requires the
+real installed singleton; no generic require fallback, replacement implementation
+or new value authority is added. The prior genuine attempt failed before any
+completed context at this missing module. Qualify the changed helper against a
+fresh current installation and the unchanged original/Code/export-reimport case,
+including expected Array text `5`, original diagnostics and cleanup.
