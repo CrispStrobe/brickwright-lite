@@ -52,11 +52,14 @@ classification. Do not implement the deferred regex shortcut on this evidence.
 After the current vendor and hosted repairs, inspect these actual complete
 projects in order. Historical diagnostics alone do not establish a current bug.
 
-1. **Freethrow tutorial callbacks.** Include the authentic tutorial library and
-   project configuration. Use the public dependency importer and actual returned
-   identity. Diagnose its namespace, callback argument and registration order
-   before adding an opcode. Acceptance includes real input/overlap delivery,
-   Stop/restart, Blocks/Code editing, save/reopen and exported-file reimport.
+1. **Freethrow remaining workflow boundaries.** Its complete dependency-aware
+   import/Creator/Code/save/export and bounded native shot/restart already have
+   evidence in the historical handoff. Read those originals before executing
+   again. Work on source-growth stability, the latest distinct exported root
+   with its own genuinely resolved dependency identity, or still-unobserved
+   visible authoring; do not reimplement its tutorial callbacks or count missing
+   offline packages as converter defects. Preserve actual input/overlap ordering,
+   Stop/restart and saved artwork during any newly scoped acceptance.
 2. **Named song assets.** Carry the actual JRES, generated namespace alias and
    package configuration through selection, music execution and export. Same-name
    root/package assets must remain unambiguous. Preserve literal-song behavior,

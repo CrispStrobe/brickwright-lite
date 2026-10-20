@@ -371,3 +371,15 @@ are retained. Refresh the mirror and generated file, then deliver the identical
 fixed-selector row to the canonical supplier and explicitly adopt its qualified
 revision. Do not add a divergence exception or relax the identity tests. Final
 composed hosted checks and affected browser qualification remain required.
+
+The GIF upload fault observer has an additional source correction: the app's
+service worker can intercept a chunk before Playwright's route sees it. Run
+only the new GIF fault/native upload journey in a fresh context with service
+workers blocked, after every original artwork/performance assertion. Keep the
+original contexts, baseline, failure assertions and three-minute job limit.
+Record the absence of a worker controller and require exactly one actual
+aborted chunk request, followed by a real picker retry and native PNG pixels.
+Cleanup attempts retain an original journey error and record secondary errors;
+a cleanup failure still fails a successful journey. This scopes a controlled
+network-fault context, not default service-worker/cache behavior. Hosted browser
+execution and budget fit remain pending.
