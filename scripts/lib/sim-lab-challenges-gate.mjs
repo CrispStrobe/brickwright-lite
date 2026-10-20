@@ -9,6 +9,8 @@
 //      the robot back at the start;
 //   2. Run: the example program stops before the wall and the challenge is won, with stars and
 //      the gap it left; the world pauses; the best result is kept on this device and listed;
+//   4. the Drawing robot (its castor ball a pen) and its own program win "Draw a square" on the plain mat,
+//      judged from what the pen drew;
 //   3. "Stay in the ring" moves the robot to the sumo mat. There the program stops at once (its
 //      distance sensor sees nothing: -1 < 10 cm), so the motors are driven straight on through the
 //      Robot Lab API, out of the ring, and the challenge says so.
@@ -48,7 +50,7 @@ const checks = async (page, {shotsDir}) => {
     const panel = page.getByTestId('bw-sim-lab-challenges-panel');
     await panel.waitFor();
     const listed = await panel.locator('li').evaluateAll(lis => lis.map(li => li.dataset.testid));
-    assert.equal(listed.length, 5, `one challenge per mat: ${listed}`);
+    assert.equal(listed.length, 6, `one challenge per mat but Warehouse: ${listed}`);
     await page.getByTestId('bw-sim-lab-challenge-start-wall-stop').click();
     await ready(page, 'wall');
     assert.match(await page.getByTestId('bw-sim-lab-challenge-status').textContent(), /without touching it.*Press Run/);
@@ -89,5 +91,25 @@ const checks = async (page, {shotsDir}) => {
     await panel.waitFor({state: 'detached'});
     assert.equal(await panel.count(), 0, 'the panel is gone after ✕');
     assert.equal(await page.getByTestId('bw-sim-lab-challenges').getAttribute('aria-checked'), 'false');
+
+    // 4. The Drawing robot draws a square with its own program.
+    await page.getByTestId('bw-sim-lab-model').selectOption('drawing-robot.ldr');
+    await page.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.modelFile === 'drawing-robot.ldr' &&
+        window.__bwSimLab._pane.session, null, {timeout: 60000});
+    await page.getByRole('button', {name: 'Load example program'}).click();
+    await page.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'), null, {timeout: 60000});
+    await tool(page, 'challenges');
+    await panel.waitFor();
+    await page.getByTestId('bw-sim-lab-challenge-start-draw-square').click();
+    await ready(page, 'plain');
+    await tool(page, 'run');
+    await page.waitForFunction(() => ['done', 'failed'].includes(window.__bwSimLab._pane.state.challengeResult?.status), null, {timeout: 180000});
+    const drawn = await lab(page, () => ({...window.__bwSimLab._pane.state.challengeResult, strokes: window.__bwSimLab.api.drawing().length}));
+    assert.equal(drawn.status, 'done', `the Drawing robot's square: ${JSON.stringify(drawn)}`);
+    assert.ok(drawn.stars >= 1 && drawn.strokes >= 1, JSON.stringify(drawn));
+    assert.match(await page.getByTestId('bw-sim-lab-challenge-result').textContent(), /% off a square/);
+    await page.screenshot({path: resolve(shotsDir, 'sim-lab-challenge-square.png')});
+    out.squareStars = drawn.stars;
+    out.squareOff = Math.round(drawn.value * 100);
     return out;
 };
