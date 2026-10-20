@@ -383,3 +383,15 @@ Cleanup attempts retain an original journey error and record secondary errors;
 a cleanup failure still fails a successful journey. This scopes a controlled
 network-fault context, not default service-worker/cache behavior. Hosted browser
 execution and budget fit remain pending.
+
+The candidate explicitly selects canonical supplier commit
+`74f89846eed496a2326bd8d328948eafc1e284f4` from
+[supplier #159](https://github.com/CrispStrobe/sb3-creator/pull/159). Its complete
+three-test dialect module passes, including all six selector choices and an
+actual SB3 save/reparse. The normal sync and unchanged gallery check pass;
+all seven controls across the complete supplier identity, declared-delta and
+HEAD mirror modules pass, with zero skips and zero declared deltas. Generated
+vocabulary and tracked mirrors follow that exact selection. Both the supplier's
+remaining hosted qualification/normal merge and the consumer's complete final-head
+qualification are required before merging the consumer. This is a reviewed
+candidate adoption, not a completed release or a supplier-check waiver.
