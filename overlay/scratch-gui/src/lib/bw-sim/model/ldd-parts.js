@@ -25,7 +25,8 @@
 // Any other design is placed only when it is a catalogue part whose LDD frame the
 // geometry rule of model/ldd-frame.js derives with a trusted rule (stud-grid parts;
 // warning `lxf-derived-frame`, scores in docs/ROBOT-LAB-LDD-FRAMES.md); every other
-// design ID — including every SPIKE Prime element, which LDD never had — is refused
+// design that is a catalogue part is placed by its connections in the model (model/ldd-snap.js);
+// every other design ID — including every SPIKE Prime element, which LDD never had — is refused
 // with code `lxf-unknown-design`.
 // The sub-LDU offsets (0.02 LDD = 0.5 LDU) are kept as recorded.
 //

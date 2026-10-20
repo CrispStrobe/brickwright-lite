@@ -41,7 +41,7 @@
 
 import JSZip from 'jszip';
 import {serializeModel} from './ldraw-model.js';
-import {LxfError, parseLxfml} from './lxf-model.js';
+import {LxfError, parseLxfml, lxfDesigns, LDD_ASSEMBLIES} from './lxf-model.js';
 import {lddColours} from './ldd-parts.js';
 import {LcdError, leoCadToLdraw} from './lcd-model.js';
 
@@ -210,13 +210,15 @@ export const serializeMpd = (model, {name = 'model.ldr', title} = {}) => {
 /**
  * An LDD .lxf's model as LDraw text.
  * @param {Uint8Array} bytes
- * @param {{ldconfig: string, catalog?: Map<string, object>}} options ldconfig: LDConfig.ldr text (the LEGO colour
- *        numbers); catalog: the Robot Lab's parts (a design outside ldd-parts.js may then be placed with a
- *        derived frame: lxf-model.js)
+ * @param {{ldconfig: string, catalog?: Map<string, object>, prepareCatalog?: (parts: string[]) => Promise<*>}} options
+ *        ldconfig: LDConfig.ldr text (the LEGO colour numbers); catalog: the Robot Lab's parts (a design outside
+ *        ldd-parts.js may then be placed with a derived frame or by its connections: lxf-model.js);
+ *        prepareCatalog: loads the LDraw parts the designs may be into `catalog` first (the app derives the
+ *        ones it lacks from the LDraw library, sim-lab.js catalogFor)
  * @returns {Promise<{text: string, refusals: object[]}>}
  * @throws {ModelFileError} `not-a-zip`, `lxf-no-lxfml`, `lxf-unreadable`, `lxf-version`
  */
-export const readLxf = async (bytes, {ldconfig, catalog, name = 'model.lxf', title}) => {
+export const readLxf = async (bytes, {ldconfig, catalog, prepareCatalog, name = 'model.lxf', title}) => {
     let xml;
     if (isZip(bytes)) {
         const {encrypted} = zipDirectory(bytes);
@@ -227,6 +229,12 @@ export const readLxf = async (bytes, {ldconfig, catalog, name = 'model.lxf', tit
         xml = await entryText(lxfml);
     } else {
         xml = new TextDecoder().decode(bytes); // a bare .lxfml
+    }
+    if (prepareCatalog && catalog) {
+        const designs = lxfDesigns(xml).filter(d => /^[0-9A-Za-z]+$/.test(d));
+        try {
+            await prepareCatalog(designs.map(d => LDD_ASSEMBLIES[d] || `${d.toLowerCase()}.dat`));
+        } catch (_) { /* offline: the designs the catalogue lacks are refused by name */ }
     }
     let parsed;
     try {
@@ -262,11 +270,11 @@ export const readLeoCad = (bytes, {name = 'model.lcd'} = {}) => {
  * @returns {Promise<{text: string, name: string, refusals: object[]}>} name: the model's name from now on (.ldr for converted files)
  * @throws {ModelFileError}
  */
-export const openModelFile = async (name, bytes, {ldconfig = '', title, catalog} = {}) => {
+export const openModelFile = async (name, bytes, {ldconfig = '', title, catalog, prepareCatalog} = {}) => {
     const format = formatOf(name);
     if (format === 'ldr' || format === 'mpd') return {text: new TextDecoder().decode(bytes), name, refusals: []};
     if (format === 'io') return {...await readStudioIo(bytes), name: renameTo(name, 'ldr')};
-    if (format === 'lxf') return {...await readLxf(bytes, {ldconfig, catalog, name, title}), name: renameTo(name, 'ldr')};
+    if (format === 'lxf') return {...await readLxf(bytes, {ldconfig, catalog, prepareCatalog, name, title}), name: renameTo(name, 'ldr')};
     if (format === 'lcd') return {...readLeoCad(bytes, {name}), name: renameTo(name, 'ldr')};
     throw new ModelFileError('unsupported-format', `files ending in ${(/\.[^.]*$/.exec(String(name)) || [''])[0] || '(nothing)'} are not model files the Robot Lab opens`);
 };

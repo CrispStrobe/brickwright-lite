@@ -159,8 +159,10 @@ test('.lxf: bricks outside the recorded table load and stack — every anti-stud
         ['lxf-derived-frame', '3001', 'warning'],
         ['lxf-derived-frame', '3004', 'warning'],
         ['lxf-derived-frame', '3004', 'warning'],
-        ['lxf-unknown-design', '32140', 'error'], // a Technic beam: its derived frame is not trusted for import
-        ['lxf-unknown-design', '54696', 'error'] // not a catalogue part
+        ['lxf-unknown-design', '54696', 'error'], // not a catalogue part
+        // A Technic beam: its derived frame is not trusted for import, and floating apart it connects to nothing,
+        // so its frame cannot be worked out from connections either (model/ldd-snap.js; test/bw-sim-ldd-snap).
+        ['lxf-unplaced-design', '32140', 'error']
     ]);
     const [base, top, turned] = model.parts;
     // Independent expectations, from the parts' own connectors (parts.json) and LDraw's frame:

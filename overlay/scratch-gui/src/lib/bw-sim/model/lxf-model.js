@@ -11,7 +11,12 @@
 // whose number is a catalogue part (`<designID>.dat`) and whose frame the
 // geometry rule of model/ldd-frame.js derives with confidence (a stud-grid part:
 // brick, plate, tile, slope — docs/ROBOT-LAB-LDD-FRAMES.md) is placed with that
-// derived frame and a warning `lxf-derived-frame`. Every other part
+// derived frame and a warning `lxf-derived-frame`. Any other design that is a catalogue part
+// (its own number, or an EV3 body LDraw draws as part of an assembly: LDD_ASSEMBLIES) is placed
+// where its connectors meet the parts already placed (model/ldd-snap.js "snap to connections",
+// warning `lxf-snapped-frame`), or refused as `lxf-unplaced-design` when nothing tells where.
+// A piece LDD keeps apart from its catalogue part, or a cable plug, is left out with a note
+// (`lxf-absorbed`, LDD_ABSORBED). Every other part
 // is a refusal with code `lxf-unknown-design` naming the design number; a material LDraw's
 // colour table has no LEGO number for keeps the part in the catalog default
 // colour and says so (`lxf-unknown-material`); a mirrored or stretched bone is
@@ -21,6 +26,8 @@
 import {det3} from '../contracts.js';
 import {LDD_PARTS, LDD_UNIT_LDU} from './ldd-parts.js';
 import {lddFrameOf, rowOfFrame, DERIVED_RULES} from './ldd-frame.js';
+import {Anchors, placedConnectors, snapFrames} from './ldd-snap.js';
+import {BUILTIN_KINDS} from '../kinds/index.js';
 import {MAX_COORDINATE} from './ldraw-model.js';
 
 /** The colour an unmapped material gets: LDraw 71, light bluish grey (the Technic default). */
@@ -115,6 +122,41 @@ const derivedRow = (design, catalog) => {
 };
 
 /**
+ * LDD designs that are a catalogue part LDraw draws as an assembly: LDD places the assembly's body,
+ * and the LDraw part puts that body at its own origin unturned (LDD's mapping file ldraw.xml names
+ * the body: 74042 is 99550c01, the EV3 large motor's case, in 95658; 74043 is 99535c01, the EV3 medium
+ * motor's body, in 99455; 74665 is 99385c01, the EV3 touch sensor's body, in 95648 — names only). Their
+ * LDD frames are worked out from the model's connections (model/ldd-snap.js).
+ */
+export const LDD_ASSEMBLIES = Object.freeze({'74042': '95658.dat', '74043': '99455.dat', '74665': '95648.dat'});
+
+/**
+ * LDD designs that are a piece of a catalogue part LDD keeps apart, or a cable: left out, with a note
+ * (ldraw.xml names them 99543, the EV3 medium motor's output hub — the catalogue's 99455 has it; 99386,
+ * the EV3 touch sensor's button — in 95648; 933c01, a MINDSTORMS cable's plug: cables are drawn, never
+ * simulated, and LDD gives only their plugs).
+ */
+export const LDD_ABSORBED = Object.freeze({
+    '59158': 'the EV3 medium motor\'s output hub, part of the motor',
+    '99386': 'the EV3 touch sensor\'s button, part of the sensor',
+    '60410': 'a MINDSTORMS cable plug: cables are not simulated'
+});
+
+/** Every design ID an LXFML places (for a caller that loads those parts into the catalogue first). */
+export const lxfDesigns = xml => {
+    const out = new Set();
+    for (const m of String(xml).matchAll(/<Part\b[^>]*\bdesignID\s*=\s*["']([^"']+)["']/g)) out.add(m[1].trim());
+    return [...out];
+};
+
+/** The catalogue part an LDD design is, when it is one with no recorded row (null: none). */
+export const lddCataloguePart = (design, catalog) => {
+    if (!catalog || !/^[0-9A-Za-z]+$/.test(design)) return null;
+    const part = LDD_ASSEMBLIES[design] || `${design.toLowerCase()}.dat`;
+    return catalog.get(part) ? part : null;
+};
+
+/**
  * Read LXFML text into a PlacedModel.
  * @param {string} xml
  * @param {{colours: Map<number, number>, catalog?: Map<string, object>}} options colours: LEGO colour number →
@@ -129,47 +171,10 @@ export const parseLxfml = (xml, {colours, catalog}) => {
     if (!root || root.name !== 'LXFML') throw new LxfError('lxf-unreadable', 'not an LXFML document');
     const major = Number(root.attrs.versionMajor);
     if (major !== 5) throw new LxfError('lxf-version', `LXFML version ${root.attrs.versionMajor || '?'} is not supported (only version 5, LDD 4)`);
-    const parts = [];
-    const refusals = [];
+    // Every <Part> of <Bricks>, in file order: {designID, materials, bone}.
+    const records = [];
     let inBricks = false;
-    let part = null; // {designID, materials, bone}
-    const finish = () => {
-        const design = String(part.designID || '').trim();
-        let row = LDD_PARTS.get(design);
-        let derived = null;
-        if (!row) {
-            derived = derivedRow(design, catalog);
-            if (!derived) {
-                refusals.push({code: 'lxf-unknown-design', design, message: `LDD design ${design || '?'} has no LDraw part in the Robot Lab`});
-                return;
-            }
-            row = derived;
-        }
-        const bone = part.bone ? part.bone.split(',').map(Number) : null;
-        if (!bone || bone.length !== 12 || bone.some(v => !Number.isFinite(v)) ||
-            Math.abs(det3([bone[0], bone[3], bone[6], bone[1], bone[4], bone[7], bone[2], bone[5], bone[8]]) - 1) > 1e-3) {
-            refusals.push({code: 'lxf-bad-transform', design, message: `LDD design ${design}: its transformation is missing, mirrored or stretched`});
-            return;
-        }
-        const material = Number(String(part.materials || '').split(',')[0]);
-        let color = colours.get(material);
-        if (color === undefined) {
-            color = LXF_FALLBACK_COLOUR;
-            refusals.push({severity: 'warning', code: 'lxf-unknown-material', design,
-                message: `LDD design ${design}: material ${part.materials || '?'} has no LDraw colour; it is light bluish grey`});
-        }
-        const {rotation, position} = lddToLdraw(bone, row);
-        // A bone with absurd numbers (1e308) places nothing a model can hold: refused like a bad one.
-        if (![...rotation, ...position].every(Number.isFinite) || position.some(v => Math.abs(v) > MAX_COORDINATE)) {
-            refusals.push({code: 'lxf-bad-transform', design, message: `LDD design ${design}: its transformation places it out of range`});
-            return;
-        }
-        if (derived) {
-            refusals.push({severity: 'warning', code: 'lxf-derived-frame', design,
-                message: `LDD design ${design}: placed as ${row.part} with its LDD frame worked out from the part's studs (not from a recorded row)`});
-        }
-        parts.push({id: `p${parts.length + 1}`, part: row.part, color, position, rotation});
-    };
+    let part = null;
     for (const t of list) {
         if (t.name === 'Bricks') {
             inBricks = t.open && !t.close;
@@ -178,13 +183,92 @@ export const parseLxfml = (xml, {colours, catalog}) => {
         if (!inBricks) continue;
         if (t.name === 'Part' && t.open) {
             part = {designID: t.attrs.designID, materials: t.attrs.materials, bone: null};
-            if (t.close) { finish(); part = null; }
+            if (t.close) { records.push(part); part = null; }
         } else if (t.name === 'Bone' && t.open && part && part.bone === null) {
             part.bone = t.attrs.transformation || '';
         } else if (t.name === 'Part' && !t.open && part) {
-            finish();
+            records.push(part);
             part = null;
         }
     }
+    const refusals = [];
+    const placed = new Array(records.length).fill(null);
+    const anchors = catalog ? new Anchors() : null;
+    /** design → {meta, part, items: [{i, bone, color}]}: designs whose frame the model's connections decide */
+    const pending = new Map();
+    /** Places record i as `partName` with frame row `row`; false when its bone places it out of range. */
+    const put = (i, {design, bone, color}, partName, row) => {
+        const {rotation, position} = lddToLdraw(bone, row);
+        // A bone with absurd numbers (1e308) places nothing a model can hold: refused like a bad one.
+        if (![...rotation, ...position].every(Number.isFinite) || position.some(v => Math.abs(v) > MAX_COORDINATE)) {
+            refusals.push({code: 'lxf-bad-transform', design, message: `LDD design ${design}: its transformation places it out of range`});
+            return false;
+        }
+        placed[i] = {part: partName, color, position, rotation};
+        const meta = catalog && catalog.get(partName);
+        if (anchors && meta) anchors.add(placedConnectors(meta, {rotation, position}));
+        return true;
+    };
+    records.forEach((rec, i) => {
+        const design = String(rec.designID || '').trim();
+        if (LDD_ABSORBED[design]) {
+            refusals.push({severity: 'warning', code: 'lxf-absorbed', design, message: `LDD design ${design} is ${LDD_ABSORBED[design]}; it is left out`});
+            return;
+        }
+        const row = LDD_PARTS.get(design);
+        const derived = row ? null : derivedRow(design, catalog);
+        const catalogued = row || derived ? null : lddCataloguePart(design, catalog);
+        if (!row && !derived && !catalogued) {
+            refusals.push({code: 'lxf-unknown-design', design, message: `LDD design ${design || '?'} has no LDraw part in the Robot Lab`});
+            return;
+        }
+        const bone = rec.bone ? rec.bone.split(',').map(Number) : null;
+        if (!bone || bone.length !== 12 || bone.some(v => !Number.isFinite(v)) ||
+            Math.abs(det3([bone[0], bone[3], bone[6], bone[1], bone[4], bone[7], bone[2], bone[5], bone[8]]) - 1) > 1e-3) {
+            refusals.push({code: 'lxf-bad-transform', design, message: `LDD design ${design}: its transformation is missing, mirrored or stretched`});
+            return;
+        }
+        const material = Number(String(rec.materials || '').split(',')[0]);
+        let color = colours.get(material);
+        if (color === undefined) {
+            color = LXF_FALLBACK_COLOUR;
+            refusals.push({severity: 'warning', code: 'lxf-unknown-material', design,
+                message: `LDD design ${design}: material ${rec.materials || '?'} has no LDraw colour; it is light bluish grey`});
+        }
+        const item = {design, bone, color};
+        if (row) {
+            put(i, item, row.part, row);
+        } else if (derived) {
+            if (put(i, item, derived.part, derived)) {
+                refusals.push({severity: 'warning', code: 'lxf-derived-frame', design,
+                    message: `LDD design ${design}: placed as ${derived.part} with its LDD frame worked out from the part's studs (not from a recorded row)`});
+            }
+        } else {
+            if (!pending.has(design)) pending.set(design, {meta: catalog.get(catalogued), part: catalogued, items: []});
+            pending.get(design).items.push({i, ...item});
+        }
+    });
+    if (pending.size) {
+        const snapInput = new Map([...pending].map(([design, d]) => [design, {meta: d.meta, bones: d.items.map(x => x.bone)}]));
+        const solved = snapFrames({pending: snapInput, anchors, place: lddToLdraw, rowOf: rowOfFrame, kinds: BUILTIN_KINDS.connectors,
+            frameOf: meta => lddFrameOf(meta)});
+        for (const [design, d] of pending) {
+            const s = solved.get(design);
+            if (!s) {
+                for (let k = 0; k < d.items.length; k++) {
+                    refusals.push({code: 'lxf-unplaced-design', design, message: `LDD design ${design} is ${d.part}, but where its LDD frame ` +
+                        'sits in the part could not be worked out from its connections in this model'});
+                }
+                continue;
+            }
+            for (const item of d.items) {
+                if (!put(item.i, item, d.part, s.row)) continue;
+                refusals.push({severity: 'warning', code: 'lxf-snapped-frame', design,
+                    message: `LDD design ${design}: placed as ${d.part} where its connectors meet the model's (${Math.floor(s.score + 1e-6)} connections over ` +
+                        `${s.instances} part${s.instances === 1 ? '' : 's'}${s.ambiguous ? '; another placement fits as well' : ''})`});
+            }
+        }
+    }
+    const parts = placed.filter(Boolean).map((p, k) => ({id: `p${k + 1}`, ...p}));
     return {model: {version: 1, parts}, refusals};
 };
