@@ -392,7 +392,7 @@ if (!existsSync(missing)) {
         // Rolling with the differential: each tyre's speed is its ground speed (1 %).
         assert.ok(Math.abs(open.slipL) < 0.01 && Math.abs(open.slipR) < 0.01, 'the differential lets both rear tyres roll');
         // One axle: both tyres turn at one speed but travel two circles, so the inner one spins and the outer one
-        // drags — by about t/(2R) each (17 % here).
+        // drags — by about t/(2R) each (the spool's track 88.8 mm on R ≈ 288 mm: 15 %).
         assert.ok(Math.min(Math.abs(locked.slipL), Math.abs(locked.slipR)) > 0.05, 'locked, the rear tyres scrub');
         assert.ok(Math.sign(locked.slipL) !== Math.sign(locked.slipR), 'one spins, the other drags');
         assert.ok(locked.R >= open.R * 0.99, `and the car does not turn tighter (${locked.R} vs ${open.R})`);
