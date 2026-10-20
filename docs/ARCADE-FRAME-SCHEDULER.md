@@ -2,10 +2,15 @@
 
 ## Status and scope
 
-This is a proposed implementation and qualification contract. Merge its
-[lane claim](../LANES.md) before changing the product hook. The current timing
-failures remain open. A diagnostic execution order or passing value controls
-do not qualify a scheduler fix or a complete game.
+The lane claim is merged and the scoped product phase driver is implemented.
+The original/native phase suite passes 24 focused controls, and the actual
+cached-extension project-reload control passes separately. The raw sprite flags
+routes also exercise the resumed source clock through Code, SB3 and export.
+These results qualify the tested phase and lifecycle behavior; matching installed
+GUI, native debugger behavior and original 50 fps versus compatibility-mode
+30 fps cadence remain open. See the [current handoff](ARCADE-AGENT-HANDOFF.md)
+for source checkpoints and remaining acceptance gates. No complete game is
+promoted by these controls.
 
 The implementation envelope is the Arcade phase hook in
 `scripts/apply-vm-overlay.mjs`, a new
@@ -39,12 +44,15 @@ physics precedes user updates. Physics uses elapsed time to determine its
 movement rounds; the initial zero delta does not create an overlap round.
 Overlap callbacks are queued independently from the frame callback sequence.
 
-## Current observed limits
+## Preserved observations before the phase fix
 
-The native hook emits `ARCADE_FRAME` before the normal sequencer pass. Finite
+These failures are retained as regression controls; their focused phase cases
+now pass on the product driver. They describe the earlier synchronous hook.
+
+The earlier native hook emits `ARCADE_FRAME` before the normal sequencer pass. Finite
 authored controls with a controlled program clock exposed these differences:
 
-| Authored case | Original observation | Current native observation |
+| Authored case | Original observation | Earlier native observation |
 | --- | --- | --- |
 | Synchronous startup installs an update handler and creates overlapping sprites | Main completes at 0ms; update runs at 0ms with zero delta | A natural first tick runs main at 0ms, but its first update is at 20ms |
 | Main sets sprite x to 80, pauses 20ms, then sets x to 100 | Main resumes before frame 20; that update observes x=100 | Frame 20 observes x=80; main resumes after it; update 40 observes x=100 |
@@ -97,7 +105,12 @@ pass could execute previously yielded work again.
 
 Stop, disposal, project replacement and restart must cancel the old run's
 scheduled work and internal continuations. Late completions must not publish
-state into a replacement run. Restart creates fresh program/scene epochs;
+state into a replacement run. The ordinary runtime also disposes project state
+while loading another project, and reuses its cached extension instance. A
+successful `PROJECT_LOADED` starts a new driver generation and restores scheduling;
+an explicitly detached driver remains disposed even after later loads. The
+project-reload control uses that actual singleton lifecycle and confirms the
+reloaded source resumes before its due frame. Restart creates fresh program/scene epochs;
 scene push/pop preserves the original ownership rules within a run.
 
 Breakpoints, stepping and debugger pause must retain suspended source state
@@ -127,3 +140,38 @@ phases; a smoke run or roundtrip alone does not establish equivalent behavior.
 Keep prototype results separate from product qualification, preserve all
 failures and report any remaining phase/cadence limits. Corpus classifications
 and whole-game compatibility remain separate acceptance gates.
+
+## Current positive source-presence witness
+
+The phase query can retain one positive source-block witness to avoid repeatedly
+materializing every block in a large current project. Each read still checks
+disposal and real scene-update ownership first. The witness must still belong
+to the actual current runtime target, its same Blocks object and dictionary,
+an enumerable own data entry with the same block object, and an own data opcode
+that satisfies the original current source/callback predicate. Any mismatch
+requires a fresh census. False results are never cached, so a newly added
+source hat is detected immediately. Existing lifecycle cancellation clears the
+witness without changing timer, epoch, continuation or frame behavior.
+
+This is an existential presence query over native Blocks data dictionaries, not
+a general graph validator or a Number/value producer certificate. It does not
+claim preservation of incidental effects from privileged host-created neighboring
+getters, proxies or malformed graph corruption. Accessor/inherited witness fields
+use the ordinary uncached census. No clock adjustment, callback skipping, renderer
+shortcut or new source capability follows from a positive witness.
+
+The twelve focused controls cover repeated census avoidance, newly added hats,
+current target/Blocks/dictionary ownership, replacement, deletion, opcode and
+callback-set changes, inherited/accessor entries, and lifecycle invalidation.
+Affected headless native execution also preserves the real controller shot,
+owned artwork, overlap scoring and ball retirement.
+
+A separate current saved-project run reaches a 30-second countdown expiry,
+retains the completed game scene while its original 400 ms and 500 ms pauses
+finish, and accepts a real Right input only at the actual pending button waiter.
+The game itself stops and restarts execution. The new scene has fresh actors,
+score zero, high score one, the expected score text/icon and one handler per
+registration; the old projectile is absent. The controller does not manually
+reset the game after countdown expiry. These are bounded headless native
+observations. Initial activation, visible editor cadence, terminal graphics/audio
+parity and complete-game compatibility remain separate gates.

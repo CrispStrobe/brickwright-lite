@@ -1,6 +1,6 @@
+import {createArcadeRuntimeMock} from './helpers/arcade-runtime-mock.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {EventEmitter} from 'node:events';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
 import {createRequire} from 'node:module';
@@ -76,7 +76,7 @@ let width=shot.width`,12);
 });
 
 test('stopping and restarting cancels pending creation callbacks without starting later handlers',async()=>{
-    const Arcade=loadExtensionClass('arcade');const rt=new EventEmitter();rt.threads=[];rt.startHats=()=>[];
+    const Arcade=loadExtensionClass('arcade');const rt=createArcadeRuntimeMock();rt.threads=[];rt.startHats=()=>[];
     const target={blocks:{getBlock:id=>id==='hat'?{inputs:{KIND:{block:'kind'}}}:{opcode:'text',fields:{TEXT:{value:'Player'}}}}};
     rt.allScriptsByOpcodeDo=(opcode,visit)=>{visit({blockId:'hat'},target);visit({blockId:'hat'},target);};
     rt._pushThread=()=>{const thread={status:0};rt.threads.push(thread);return thread;};
@@ -87,15 +87,23 @@ test('stopping and restarting cancels pending creation callbacks without startin
     rt.emit('PROJECT_START');assert.equal(await next,'');assert.deepEqual(ext._state().sprites,{});
 });
 
-test('a yielding creation callback suspends its caller while controller events remain active',async()=>{
-    const run=await execute(`let released=false
+const yieldingCreationSource=`let released=false
 let sampled=0
 controller.A.onEvent(ControllerButtonEvent.Pressed,function(){released=true})
 sprites.onCreated(SpriteKind.Player,function(sprite){while(!released){pause(0)};sprite.image.fill(7)})
 let hero=sprites.create(img\`1\`,SpriteKind.Player)
-sampled=hero.image.getPixel(0,0)`,4);
+sampled=hero.image.getPixel(0,0)`;
+
+test('a yielding creation callback suspends its caller while controller events remain active',async()=>{
+    const imported=arcadeToPseudocode(yieldingCreationSource);assert.deepEqual(imported.unsupported,[]);
+    const run=await runProgram(imported.code,{frames:4,uploads:imported.costumes,storage:true,retainExtensionTimers:true});
+    assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
     assert.equal(Number(value(run,'sampled')),0);assert.equal(Number(value(run,'hero')),0);
-    run.vm.postIOData('keyboard',{key:' ',isDown:true});await stepFrames(run.vm,12);
+    run.vm.postIOData('keyboard',{key:' ',isDown:true});
+    // pause(0) yields to an actual timer turn. Keep that timer alive after the
+    // initial observation and let it run between the same twelve VM frames.
+    for(let i=0;i<12;i++){await new Promise(resolve=>setTimeout(resolve,0));await stepFrames(run.vm,1);}
     assert.equal(value(run,'sampled'),7);assert.match(value(run,'hero'),/^arcade:/);
     assert.equal(run.vm.runtime.threads.length,0);
+    run.vm.stopAll();run.vm.quit();
 });

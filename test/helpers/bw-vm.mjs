@@ -110,6 +110,10 @@ function registerBundledExtensions (vm, calls) {
     manager.loadExtensionURL = id => {
         const key = String(id);
         if (EXTENSION_IDS.has(key)) {
+            // Production rejects a second built-in instance for the same ID.
+            // Reopening an SB3 must reset the existing extension through its
+            // lifecycle events, without adding another frame listener.
+            if (manager.isExtensionLoaded(key)) return Promise.resolve();
             const instance = new (extensionClass(key))(vm.runtime);
             for (const name of Object.getOwnPropertyNames(instance)) {
                 const method = instance[name];
@@ -190,14 +194,21 @@ function variableSnapshot (vm) {
  */
 export async function stepFrames(vm, frames, frameMs = 1000 / 30) {
     for (let i = 0; i < frames; i++) {
-        vm.runtime._step(frameMs);
+        await vm.runtime._step(frameMs);
         await new Promise(resolve => setImmediate(resolve));
     }
 }
 
-export async function runProgram (source, {frames = 12, keys = [], uploads = [], storage = false, retainExtensionTimers = false} = {}) {
+export async function runProgram (source, {frames = 12, keys = [], uploads = [], storage = false, retainExtensionTimers = false, frameAuthority = 'manual', observeCreator = null} = {}) {
     const creator = new SB3Creator();
-    creator.parse(source);
+    try { creator.parse(source); }
+    catch (parseError) {
+        // Observing a failed parse must never replace the actual parser error.
+        try { if (observeCreator) observeCreator(creator, parseError); }
+        catch (observerError) { try { process.stderr.write(JSON.stringify({kind:'creator-observer-failed',message:String(observerError?.message ?? observerError),stack:observerError?.stack})+'\n'); } catch {} }
+        throw parseError;
+    }
+    if (observeCreator) observeCreator(creator, null);
     for (const upload of uploads) {
         if (upload.mode === 'add') {
             // Code read back from blocks already declares the frame (COSTUME name);
@@ -213,7 +224,13 @@ export async function runProgram (source, {frames = 12, keys = [], uploads = [],
         } else creator.applyCustomSVG(upload.sprite, upload.svg);
     }
     const buffer = Buffer.from(await (await creator.generateSB3()).arrayBuffer());
+    if(!['manual','timed'].includes(frameAuthority))throw new Error('Frame authority must be manual or timed');
     const vm = new VM();
+    // Historical finite fixtures explicitly supply manual physical frames and
+    // retain their real program/wait clock. GUI runtimes never receive this flag.
+    // Exact source timer/scene controls select timed and inject an independent
+    // now/setTimeout/clearTimeout platform; a frame delta is not a timer clock.
+    vm.runtime.bwArcadeFrameAuthority=frameAuthority;
     if (storage) {
         const Storage = (await importGuiDependency('scratch-storage/dist/node/scratch-storage.js')).default;
         vm.attachStorage(new Storage());

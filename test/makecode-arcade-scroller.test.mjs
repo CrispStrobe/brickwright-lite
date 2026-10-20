@@ -76,7 +76,9 @@ for (const [name, source] of Object.entries(SCENARIOS)) {
         const run = await runProgram(imported.code, {frames: 0, uploads: imported.costumes, storage: true});
         try {
             const first = Number(expected[0].at(-1)) * 1000;
-            for (let guard = 0; Number(values(run).frame) < 1; guard++) {
+            // A not-yet-initialized source frame is encoded undefined (Number -> NaN).
+            // Wait for the actual first recording instead of treating NaN as ready.
+            for (let guard = 0; !(Number(values(run).frame) >= 1); guard++) {
                 assert.ok(guard < 200, 'the native recording started');
                 await stepFrames(run.vm, 1, first);
             }

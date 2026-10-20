@@ -1,3 +1,34 @@
+import {capturePreparedSharedImageSources,parseSharedImageSourceBoundary,parseSharedImageSourceProgram,bindPreparedSharedImageSource,sharedImageSourceContextCurrent} from './shared-image-array-source-effects.js';
+import {prepareSharedImageArrayTransport,projectSharedImageArrayTransport,finishSharedImageArrayTransport,currentSharedImageArrayTransport,reproveSharedImageArrayTransport} from './source-shared-image-array-transport.js';
+import {prepareProcedureConstraintSourceForTranslation,procedureConstraintAstMetadata} from './procedure-constraint-source.js';
+import {BUTTON_EVENTS,controllerButtonEventNumberLeaves} from './controller-button-event-number-source.js';
+import {createProcedureOwnerEmission} from './procedure-owner-emission.js';
+import {prepareThrowSource,prepareThrowEmission,reproveThrowEmission,hasThrowEmission} from './throw-source-gate.js';
+import {proveArrayMapValues} from './lower-array-map-values.js';
+import {selectNamedFunctionSourceProof} from './named-function-source-selection.js';
+import {lowerNamedFunctionValues} from './lower-named-function-values.js';
+import {selectClassCallableSourceProofForTranslation} from './class-callable-source-gate.js';
+import {withClassResultFlowProof} from './class-callable-result-flow-proof.js';
+import {numberLiteralCode,containsNonFiniteNumberLiteral} from './source-number-literal.js';
+import {lowerMathIdivValues} from './math-idiv-source.js';
+import {lowerConsoleInspectValues} from './lower-console-inspect-values.js';
+import {lowerSdkFontValues} from './lower-sdk-font-values.js';
+import {callableSourceGate} from './callable-source-gate.js';
+import {lowerCallableValues} from './lower-callable-values.js';
+import {validateClassCallablePlan} from './class-callable-plan.js';
+import {sourceCallableDeclarations} from './source-callable-declarations.js';
+import {callableDeclarationEnvelope,callableVariableEnvelope} from './callable-export-graph.js';
+import {lowerNamedArrayItemHelpers} from './named-array-item-helpers.js';
+import {GENERATED_HELPER_PROFILES,inspectGeneratedHelperBindings,mapGeneratedSourceArray} from './generated-helper-recognition.js';
+import {lowerLiveFontMetrics} from './live-font-metrics.js';
+import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
+import {sourceReferenceDeclarations} from './source-reference-declarations.js';
+import {sourceScalarDeclarations} from './source-scalar-declarations.js';
+import {lowerObjectClasses} from './lower-object-classes.js';
+import {foldPxtNumeric,pxtFoldedNumberCode} from './pxt-numeric-fold.js';
+import {TEXT_SPRITE_INITIALIZER} from './text-source-admission.generated.js';
+import {LEGACY_CHARACTER_NATIVE_IDENTITY} from './legacy-character-source-admission.generated.js';
+const LEGACY_CHARACTER_REVISION=LEGACY_CHARACTER_NATIVE_IDENTITY.revision;
 import {applyDeclaredValueType} from './declared-value-types.js';
 // PXT effects.ParticleEffect instances; the screen ones are ScreenEffects.
 const SCREEN_PARTICLE_EFFECTS = new Set(['confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none']);
@@ -12,11 +43,19 @@ const MUSIC_MELODIES = new Set(['baDing', 'wawawawaa', 'jumpUp', 'jumpDown', 'po
 // The seven segment extension's enums by member name (sevenseg.ts).
 // The sprite extensions' calls and adjustable fields (darts.ts, corgio.ts).
 // arcade-character-animations: Predicate bits and FacingDirection (= the facing predicates).
+// Numeric enum values of the selected MIT Arcade Sprite/physics sources.
+const SPRITE_FLAG_VALUES=Object.freeze({AutoDestroy:4,StayInScreen:8,DestroyOnWall:16,BounceOnWall:32,ShowPhysics:64,Invisible:128,RelativeToCamera:512,GhostThroughTiles:1024,GhostThroughWalls:2048,GhostThroughSprites:4096,Ghost:7168});
+const PRIVATE_SPRITE_FLAG_VALUES=Object.freeze({...SPRITE_FLAG_VALUES,None:0,Destroyed:2,IsClipping:256,HitboxOverlaps:8192});
+// Only source animation lowering issues this complete Array factory node. Its
+// validated resource owns the frames; child literals are inference payload only.
+const isAnimationResourceFactory = node => node?.type === 'Array' &&
+    typeof node.bwAnimationResourceId === 'string' && node.bwAnimationResourceId.length > 0;
 const CHARACTER_PREDICATES = Object.freeze({NotMoving: 1, Moving: 2, FacingUp: 4, FacingRight: 8, FacingDown: 16, FacingLeft: 32,
     MovingUp: 64, MovingRight: 128, MovingDown: 256, MovingLeft: 512, HittingWallUp: 1024, HittingWallRight: 2048,
     HittingWallDown: 4096, HittingWallLeft: 8192});
 const CHARACTER_FACINGS = Object.freeze({Up: 4, Right: 8, Down: 16, Left: 32});
 const DART_SWITCHES = ['setTrace', 'controlWithArrowKeys'], DART_ACTIONS = ['throwDart', 'stopDart'];
+const TEXT_SPRITE_PROPERTIES = ['text','bg','fg','maxFontHeight','borderWidth','borderColor','padding','outlineWidth','outlineColor','icon'];
 const DART_PROPERTIES = ['angle', 'pow', 'iter', 'traceColor', 'gravity', 'wind', 'angleRate', 'powerRate'];
 const CORGI_MODES = ['horizontalMovement', 'verticalMovement', 'updateSprite', 'cameraFollow'];
 const CORGI_PROPERTIES = ['maxMoveVelocity', 'gravity', 'jumpVelocity', 'maxJump', 'decelerationRate'];
@@ -73,16 +112,24 @@ const NOTE_FREQUENCIES = {C: 262, CSharp: 277, D: 294, Eb: 311, E: 330, F: 349, 
  */
 
 import {parseTileAssets} from './tile-assets.js';
-import {decodeTilemap, parseNativeTilemaps} from './tilemap-values.js';
+import {createAssetKindLookup, lookupAssetTemplate} from './asset-kind-lookup.js';
+import {decodeTilemap, createNativeTilemapRegistry, resolveNativeTilemap} from './tilemap-values.js';
 import {LEGACY_PARSE_SOURCE, LEGACY_JSON_SOURCE, ARRAY_ACCESS_SOURCE} from './legacy-array-values.js';
 import {prepareAnimationImport} from '../bw-animation-import.js';
 import {ValueTypeGraph} from './value-type-graph.js';
+import {lowerSourceLoopControl} from './lower-source-loop-control.js';
 import {lowerLazyValues} from './lower-lazy-values.js';
+import {arrayCopyCall} from './array-copy-calls.js';
+import {indexedStringValue} from './indexed-string-values.js';
+import {lowerPxtStagedValues} from './lower-pxt-staged-values.js';
 import {lowerNamespaceBindings} from './namespace-bindings.js';
+import {ARCADE_SCENE_CONSTANTS} from './arcade-scene-constants.js';
 import {lowerStaticCallbackHelpers} from './static-callback-helpers.js';
 import {arcadeProjectSource} from './project-source.js';
 import {parseMakeCodeTs} from './ts-import.js';
 import {BaseTranslator, bodyOf, num, tsText} from './translate-base.js';
+import {analyseSourceValueProducers} from './source-value-producers.js';
+import {prepareOrdinaryCallOmissions} from './ordinary-call-omission.js';
 import {
     parseImageLiteral,
     parseJres,
@@ -105,6 +152,8 @@ const BUILTIN_IMAGE_GROUPS = new Set(Object.keys(BUILTIN_IMAGES).map(key => key.
 const ARCADE_TRUE = '(compare value (0) op "<" with (1))';
 const ARCADE_FALSE = '(compare value (1) op "<" with (0))';
 const DELEGATE = Symbol('base statement');
+// NumberFormat ordinal order from retained pxt-core13.2.1 BufferMethods.
+const BUFFER_FORMATS=['Int8LE','UInt8LE','Int16LE','UInt16LE','Int32LE','Int8BE','UInt8BE','Int16BE','UInt16BE','Int32BE','UInt32LE','UInt32BE','Float32LE','Float64LE','Float32BE','Float64BE'];
 // MakeCode text as a dialect string literal, exactly. The dialect decodes
 // only \n \t \r \\ and \" inside quotes (it keeps \f, \b and \uXXXX as
 // literal text) and reads any other character as itself, so those five are
@@ -134,8 +183,10 @@ const HALF_HEIGHT = 60;
 
 // Pinned game/sprite.ts: obstacle slots are left, top, right, bottom.
 const COLLISION_DIRECTIONS = Object.freeze({Left:0, Top:1, Right:2, Bottom:3});
+// Retained Arcade game/sprite.ts TileDirection; Center also covers default.
+const TILE_DIRECTIONS = Object.freeze({...COLLISION_DIRECTIONS, Center:4});
 const CAMERA_PROPERTIES = Object.freeze({X:0, Y:1, Left:2, Right:3, Top:4, Bottom:5});
-const BUTTON_EVENTS = Object.freeze({Pressed:2049, Released:2048, Repeated:2054});
+
 
 /**
  * Velocity divisor: Arcade's vx is pixels per second and a Scratch
@@ -172,6 +223,7 @@ const MAX_ANIMATION_FRAMES = 24;
  * something we cannot resolve is reported rather than turned into a
  * variable of that name — see the note in expr().
  */
+const LEGACY_SCROLLER_REVISION='43651f88b917a98ad886fdd4c1c2ad8001ce9b9c';
 const SPRITE_PROPERTIES = new Set([
     'x', 'y', 'vx', 'vy', 'ax', 'ay', 'fx', 'fy', 'sx', 'sy', 'scale',
     'width', 'height', 'left', 'right', 'top', 'bottom',
@@ -193,16 +245,23 @@ const CONTROLLER_KEYS = {
 };
 
 class ArcadeTranslator extends BaseTranslator {
-    constructor (assets, tilemaps) {
+    sourceLoopHeader (condition) {return `arcade repeat while ${condition}:`;}
+    constructor (assets, tilemaps, assetKindLookup = null, scrollerVersion = 'v0.1.2', characterVersion = 'v0.1.0') {
         super();
+        // The legacy Arcade exporter gives global score/lives HUD meaning.
+        // Ordinary source bindings retain independent storage under safe names.
+        this.reservedVariableNames=new Set(['score','lives']);
         this.assets = assets || {};      // jres images by name
+        this.assetKindLookup = assetKindLookup;
+        this.scrollerVersion = scrollerVersion;
+        this.characterVersion = characterVersion;
         this.tilemaps = tilemaps || {};  // level name → grid of tile indexes
         this.sprites = [];               // {name, image, kind, velocity}
         this.self = null;                // the sprite the current script is on
         this.aliases = new Map();        // handler parameter → sprite name
         this.pendingClone = null;        // a sprite spawned in this block
-        this.kinds = 0;                  // SpriteKind.create() hands out ids
         this.handleTemplates = null;     // enabled for creation-event projects
+        this.referenceArrayProgram = false; // value ownership does not require sprite artwork
         this.projectileTemplates = new Map(); // projectile calls inside functions
         this.handleAliases = new Map();  // callback parameter -> event handle
         this.handleVars = new Set();      // MakeCode variables holding handles
@@ -237,6 +296,8 @@ class ArcadeTranslator extends BaseTranslator {
         this.pendingClone = outer;
     }
 
+    get nativeValues () {return !!this.handleTemplates || this.referenceArrayProgram || this.fontValueProgram || this.throwValueProgram;}
+
     sprite (name) {
         return this.sprites.find(s => s.name === name) || null;
     }
@@ -267,12 +328,35 @@ class ArcadeTranslator extends BaseTranslator {
     claimNames(node, seen = new Set()) {
         super.claimNames(node, seen);
         if (node?.type !== 'Program') return;
+        // Parameters are strings rather than Identifier nodes, so the base name
+        // walk cannot reserve them. Generated local cells share their native map.
+        const parameterNodes=new WeakSet();
+        const reserveNativeParameters=value=>{
+            if(!value||typeof value!=='object'||parameterNodes.has(value))return;
+            parameterNodes.add(value);
+            if(Array.isArray(value)){value.forEach(reserveNativeParameters);return;}
+            for(const name of value.params || [])if(typeof name==='string'){this.taken.add(name);this.taken.add(this.varName(name));}
+            for(const binding of value.bwCallableLexicalPlan?.bindings || []){this.taken.add(binding.nativeName);this.taken.add(binding.sourceName);}
+            Object.values(value).forEach(reserveNativeParameters);
+        };
+        reserveNativeParameters(node);
         this.boundSourceGlobals=new Set(node.body.filter(st=>st.type==='Declaration').flatMap(st=>st.decls.map(decl=>decl.name)));
+        this.sourceScalarTypes=new Map(sourceScalarDeclarations(node).map(({name,type})=>[name,type]));
+        this.sourceReferenceTypes=new Map((node.sourceReferenceDeclarations || sourceReferenceDeclarations(node)).map(({name,type})=>[name,type]));
         this.sourceFunctions=new Map(node.body.filter(fn=>fn.type==='FunctionDeclaration').map(fn=>[fn.name,fn]));
-        const references = inferImageReferences(node, value => this.path(value), value => this.imageOf(value));
-        this.imageReferences = references.images;this.spriteReferences = references.sprites;this.dataReferences = references.data;
-        this.playerReferences=references.players;this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.legacyTileReferences=references.legacyTiles;this.animationReferences = references.animations;this.sevensegDigitReferences=references.sevensegDigits;this.sevensegCounterReferences=references.sevensegCounters;this.dartReferences=references.darts;this.corgiReferences=references.corgis;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
+        const references = inferImageReferences(node, value => this.path(value), value => this.imageOf(value), value => !!this.assetKindLookup && value?.type === 'Template' && ['assets.image', 'assets.tile'].includes(value.tag));
+        this.objectReferences = references.objects;this.fontReferences=references.fonts;
+        this.bufferReferences = references.buffers;this.imageReferences = references.images;this.spriteReferences = references.sprites;this.dataReferences = references.data;
+        this.textSpriteReferences=references.textSprites;this.playerReferences=references.players;this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.legacyTileReferences=references.legacyTiles;this.animationReferences = references.animations;this.sevensegDigitReferences=references.sevensegDigits;this.sevensegCounterReferences=references.sevensegCounters;this.dartReferences=references.darts;this.corgiReferences=references.corgis;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
+        this.referenceArrayProgram=containsAst(node,value=>value.type==='Array' || references.arrays.has(value));
+        this.fontValueProgram=containsAst(node,value=>!!value.bwFontIntrinsic);
+        this.throwValueProgram=hasThrowEmission(node);this.throwSourceProgram=node;
+        this.procedureConstraintSource=node.bwProcedureConstraintSource || null;
+        this.provenArrayReferences=references.provenArrays;
         this.inferredSpriteParameters = references.parameters;
+        this.primitiveReferences=references.primitives;
+        this.sourceTypeOfOperands=references.sourceTypeOfOperands;
+        this.strictStringReferences=references.strictStrings;
         this.spriteResultFunctions = references.spriteFunctions;
         this.spriteResultBindings = new Set();
         const bindings = [];
@@ -295,13 +379,15 @@ class ArcadeTranslator extends BaseTranslator {
                 this.spriteResultBindings.add(name);added = true;
             }
         } while (added);
-        this.sceneStackProgram=containsAst(node,value=>value.type==='Call' && /^(?:mp\.(?:onButtonEvent|getPlayerState|setPlayerState|changePlayerStateBy)|game\.(?:pushScene|popScene|addScenePushHandler|addScenePopHandler|removeScenePushHandler|removeScenePopHandler))$/.test(this.path(value.callee)||''));
+        this.kindRuntimeProgram=containsAst(node,value=>value.type==='SpriteKindReset' || value.type==='Member' && this.path(value.object)==='SpriteKind' || value.type==='Call' && (this.path(value.callee)==='SpriteKind.create' || value.callee?.type==='Member' && ['kind','setKind'].includes(value.callee.name)));
+        this.sceneStackProgram=this.kindRuntimeProgram || containsAst(node,value=>value.type==='Call' && /^(?:mp\.(?:onControllerEvent|onButtonEvent|getPlayerState|setPlayerState|changePlayerStateBy)|game\.(?:pushScene|popScene|addScenePushHandler|addScenePopHandler|removeScenePushHandler|removeScenePopHandler))$/.test(this.path(value.callee)||''));
         this.nativeInfoProgram=this.sceneStackProgram || containsAst(node,value=>value.type==='Call' && isInfoRegistration(this.path(value.callee)));
         const registrations=discoverRuntimeRegistrations(node,this);
         this.createdRegistrations=new Map([...registrations].filter(([,record])=>record.kind==='creation'));
         this.terrainRegistrations=new Map([...registrations].filter(([,record])=>['wall','tile','legacyWall'].includes(record.kind)));
         this.sceneRegistrations=new Map([...registrations].filter(([,record])=>!['creation','wall','tile','legacyWall'].includes(record.kind)));
         this.returnFunctions = new Map();
+        this.classCallableFactoryFunctions=new Set(node.bwCallableLexicalPlan?.version===2?node.bwCallableLexicalPlan.owners.filter(owner=>owner.kind==='declaration').map(owner=>owner.sourceName):[]);
         const hasReturn = value => value && typeof value === 'object' &&
             (value.type === 'Return' || (!['FunctionDeclaration', 'FunctionExpression'].includes(value.type) &&
                 Object.values(value).some(child=>Array.isArray(child)?child.some(hasReturn):hasReturn(child))));
@@ -318,6 +404,9 @@ class ArcadeTranslator extends BaseTranslator {
     }
 
     imageRef(node, allowValueCall = true) {
+        if(node?.type==='Index' && this.planImageValue)this.planImageValue(node);
+        if (node?.type === 'Template' && this.assetKindLookup &&
+            lookupAssetTemplate(this.assetKindLookup,node.tag,node.value) === null) return 'null value';
         const background = this.imageValueResources.get(node);
         if (background) {
             const resource = `arcade frame image array "${background.key}" index (${background.value ? this.expr(background.value) : 0}) template "${background.name}" start 0 count ${background.count || 1}`;
@@ -393,6 +482,10 @@ class ArcadeTranslator extends BaseTranslator {
      * rather than a guess.
      */
     imageOf (node) {
+        if(node?.type === 'Template' && this.assetKindLookup) {
+            const scoped=lookupAssetTemplate(this.assetKindLookup,node.tag,node.value);
+            if(scoped !== undefined)return scoped;
+        }
         const tileAsset = node?.type === 'Member' && (this.assets[this.path(node)] ||
             (['myTiles','assets','tiles'].includes(this.path(node.object)) && this.assets[node.name]));
         if(tileAsset)return tileAsset;
@@ -406,15 +499,12 @@ class ArcadeTranslator extends BaseTranslator {
         return parseImageLiteral(node.value);
     }
 
-    /**
-     * An array REFERENCE (a value a variable holds), as the value-type graph
-     * says, unless the name was declared as a named Scratch list on the
-     * fixed-sprite path (\`new array "frameList"\`): then the list's own
-     * blocks read it, and a reference read would find an unset variable.
-     */
+    /** Array values retain their ownership independently of sprite artwork. */
     isArrayReference (node) {
         if (!this.arrayReferences?.has(node)) return false;
-        return !(node?.type === 'Identifier' && this.arrays?.has(node.name) && !this.handleTemplates);
+        // The artwork fallback must not acquire a reference from an opaque
+        // alternative merely because another branch produces an Array.
+        return !!this.handleTemplates || !!this.provenArrayReferences?.has(node);
     }
 
     isBooleanValue (value) {
@@ -445,6 +535,7 @@ class ArcadeTranslator extends BaseTranslator {
      * statement's, not the enclosing one's.
      */
     statement(st, indent, out) {
+        const before=this.unsupported.length;
         const outerPre=this.pre,mark=out.length;
         this.pre=[];
         let delegated=false;
@@ -455,11 +546,46 @@ class ArcadeTranslator extends BaseTranslator {
             this.pre=outerPre;
         }
         if(delegated)super.statement(st,indent,out);
+        const added=this.unsupported.slice(before);
+        const missing=[...new Set(added)].filter(reason=>!out.slice(mark).some(line=>line.trim()===`# unsupported: ${reason}`));
+        if(missing.length)out.splice(mark,0,...missing.map(reason=>`${'  '.repeat(indent)}# unsupported: ${reason}`));
+        const kindBinding=st.type==='ExpressionStatement' && st.expr?.spriteKindName;
+        if(kindBinding)out.push(`${'  '.repeat(indent)}arcade bind sprite kind name ${JSON.stringify(kindBinding)} to (${this.expr({type:'Identifier',name:st.expr.spriteKindBinding})})`);
     }
     arcadeStatement(st, indent, out) {
+        if(st.type==='ThrowStatement'){
+            if(!this.throwValueProgram||!hasThrowEmission(this.throwSourceProgram)){out.push(`${'  '.repeat(indent)}${this.note('Throw source requires qualified source context and canonical protocol')}`);return;}
+            out.push(`${'  '.repeat(indent)}arcade throw (${this.arrayElementValue(st.argument)})`);return;
+        }
+        if(st.type==='ExpressionStatement' && st.expr?.bwNativeNamedArray && st.expr.bwNativeNamedArray.kind!=='get') {
+            this.usesArrays=true;
+            const node=st.expr,{kind,registry}=node.bwNativeNamedArray,name=JSON.stringify(registry),args=node.args.slice(1).map(arg=>this.expr(arg));
+            const line=kind==='push'?`push (${args[0]}) to array ${name}`:kind==='set'?`set item (${args[0]}) of array ${name} to (${args[1]})`:`insert (${args[1]}) at (${args[0]}) of array ${name}`;
+            out.push(`${'  '.repeat(indent)}${line}`);return;
+        }
+        if (st.type === 'Declaration') {
+            const declarations = st.decls.filter(declaration => declaration.init || (!this.sourceScalarTypes?.has(declaration.name) && !this.sourceReferenceTypes?.has(declaration.name)) ||
+                this.localVars?.has(declaration.name) || this.currentParameters?.has(declaration.name));
+            if (!declarations.length) return;
+            if (declarations.length !== st.decls.length) st = {...st, decls: declarations};
+        }
+
+        if(st.type==='SpriteKindReset'){out.push(`${'  '.repeat(indent)}set ${this.varName(st.name)} to (undefined value)`);return;}
+        if(st?.type==='ExpressionStatement' && this.bufferStatement(st.expr,indent,out))return;
+        if(st?.type==='ExpressionStatement' && st.expr?.type==='Call' && this.path(st.expr.callee)==='controller._setUserEventsEnabled' && !this.bindsName('controller')){
+            const pad='  '.repeat(indent);
+            if(st.expr.args.length!==1)out.push(pad+this.note('controller._setUserEventsEnabled requires one Boolean argument'));
+            else out.push(`${pad}arcade set user controller events enabled ${this.boolSlot(st.expr.args[0])}`);return;
+        }
         const target=st?.type==='ExpressionStatement' && st.expr?.type==='Assignment' && st.expr.left;
         if(target?.type==='Member' && (this.physicsEngineReferences?.has(target.object) || this.sceneReferences?.has(target.object))) {
             const n=st.expr,pad='  '.repeat(indent);
+            if(this.sceneReferences?.has(target.object) && target.name==='flags'){
+                if(!this.primitiveReferences?.has(n.right)){out.push(pad+this.note('Scene.flags assignment requires a proven primitive value; opaque conversion is not implemented'));return;}
+                const result=n.op==='='?this.expr(n.right):['+=','-=','*=','/=','%=','|=','&=','^=','<<=','>>=','>>>='].includes(n.op)?this.expr({type:'Binary',op:n.op.slice(0,-1),left:target,right:n.right}):null;
+                if(result===null)out.push(pad+this.note(`Scene.flags assignment ${n.op} is not implemented`));
+                else out.push(`${pad}arcade scene (${this.expr(target.object)}) set flags to (${result})`);return;
+            }
             if(this.sceneReferences?.has(target.object) && target.name==='physicsEngine' && n.op==='=' && !['Null','Undefined'].includes(n.right?.type) && this.physicsEngineReferences?.has(n.right)) {
                 out.push(`${pad}arcade set physics engine of scene (${this.expr(target.object)}) to (${this.expr(n.right)})`);return;
             }
@@ -469,26 +595,32 @@ class ArcadeTranslator extends BaseTranslator {
             const owner=this.physicsEngineReferences?.has(target.object)?'PhysicsEngine':'Scene';
             out.push(`${pad}${this.note(`Arcade ${owner}.${target.name} assignment ${n.op} is not supported`)}`);return;
         }
-        if(this.handleTemplates && st.type==='ExpressionStatement' && st.expr?.type==='Assignment' && st.expr.left?.temporary) {
+        if(this.nativeValues && st.type==='ExpressionStatement' && st.expr?.type==='Assignment' && st.expr.left?.temporary) {
             out.push(`${'  '.repeat(indent)}arcade set local ${st.expr.left.name} to (${this.arrayElementValue(st.expr.right)})`);return;
         }
-        if (st.type==='Declaration' && this.handleTemplates) {
+        if (st.type==='Declaration' && this.nativeValues) {
             const pad='  '.repeat(indent);
             for(const d of st.decls){
                 const gaps=this.unsupported.length;
-                let value=d.init?this.arrayElementValue(d.init):d.isArray?this.expr({type:'Undefined'}):'0';
+                if(d.spriteKindLibrary)out.push(`${pad}arcade initialize sprite kind library ${JSON.stringify(d.spriteKindLibrary.library)} version ${JSON.stringify(d.spriteKindLibrary.version)}`);
+                let value=d.spriteKindLibrary?`arcade sprite kind value ${JSON.stringify(d.spriteKindName)}`:d.init?this.arrayElementValue(d.init):d.spriteKindName || d.isArray?this.expr({type:'Undefined'}):'0';
                 // An array we could not translate (already named as a gap) stands in as an
                 // EMPTY array, so \`for (const t of unknownArrayFactory())\` runs no times
                 // instead of failing at run time on "Array reference is null or expired".
                 if(d.isArray && d.init && value==='0' && this.unsupported.length>gaps)value='new array reference from ("[]")';
                 if(d.temporary || this.localVars?.has(d.name))out.push(`${pad}arcade set local ${d.name} to (${value})`);
                 else out.push(`${pad}set ${this.varName(d.name)} to (${value})`);
+                if(d.spriteKindName && d.init && !d.spriteKindLibrary)out.push(`${pad}arcade bind sprite kind name ${JSON.stringify(d.spriteKindName)} to (${this.expr({type:'Identifier',name:d.name})})`);
             }
             return;
         }
         if(st.type==='ExpressionStatement' && st.expr?.type==='Assignment' && st.expr.op==='=' && st.expr.left?.type==='Identifier' && this.isArrayReference(st.expr.left)) {
             const name=st.expr.left.name,value=this.expr(st.expr.right),pad='  '.repeat(indent);
             out.push((st.expr.left.temporary || this.localVars?.has(name))?`${pad}arcade set local ${name} to (${value})`:`${pad}set ${this.varName(name)} to ${value}`);return;
+        }
+        if(this.handleTemplates && st.type==='ExpressionStatement' && st.expr?.type==='Assignment' && st.expr.left?.type==='Member' && this.textSpriteReferences?.has(st.expr.left.object) && TEXT_SPRITE_PROPERTIES.includes(st.expr.left.name)) {
+            const n=st.expr,l=n.left,value=n.op==='='?this.arrayElementValue(n.right):this.arrayElementValue({type:'Binary',op:n.op.slice(0,-1),left:l,right:n.right});
+            out.push(`${'  '.repeat(indent)}arcade set text sprite (${this.expr(l.object)}) property ${l.name} to (${value})`);return;
         }
         if(this.handleTemplates && st.type==='ExpressionStatement' && st.expr?.type==='Assignment' && st.expr.left?.type==='Member' && this.spriteExtensionOf(st.expr.left.object) &&
             (this.spriteExtensionOf(st.expr.left.object)==='dart'?DART_PROPERTIES:CORGI_PROPERTIES).includes(st.expr.left.name)) {
@@ -524,16 +656,9 @@ class ArcadeTranslator extends BaseTranslator {
                 out.push(`${'  '.repeat(indent)}mutate array reference (${this.expr(n.callee.object)}) op "${op}" index (${index}) value (${value})`);return;
             }
         }
-        if (st.type === 'For' && st.init?.type === 'Declaration' && this.localVars?.has(st.init.decls[0]?.name)) {
-            this.statement(st.init,indent,out);
-            out.push(`${'  '.repeat(indent)}REPEAT UNTIL not (${this.repeatedCondition(st.test)}):`);
-            this.block(st.body,indent+1,out);
-            if(st.update)this.expressionStatement(st.update,indent+1,out);
-            return;
-        }
         // A counter the body reads must start as a number value: the shared
         // loop writes \`set i to 0\`, a text "0" that \`x + i\` would join.
-        if (this.handleTemplates && st.type === 'For' && st.init?.type === 'Declaration' && st.init.decls.length === 1 &&
+        if (this.nativeValues && st.type === 'For' && st.init?.type === 'Declaration' && st.init.decls.length === 1 &&
             JSON.stringify(st.body).includes(`"name":${JSON.stringify(st.init.decls[0].name)}`)) {
             this.declared?.add(st.init.decls[0].name);
             this.statement(st.init,indent,out);
@@ -544,7 +669,7 @@ class ArcadeTranslator extends BaseTranslator {
     }
 
     varName(name) {
-        if(this.handleTemplates && String(name).toLowerCase()==='score') {
+        if(this.nativeValues && String(name).toLowerCase()==='score') {
             if(!this.renamed)this.renamed=new Map();
             if(!this.renamed.has(String(name))){let mapped='score_';while(this.taken?.has(mapped))mapped+='_';this.renamed.set(String(name),mapped);}
             return this.renamed.get(String(name));
@@ -567,18 +692,18 @@ class ArcadeTranslator extends BaseTranslator {
         // value slots (assignments, arguments), where the dialect has no value
         // form for a comparison (it warns and keeps the text), so a word that
         // reports a real boolean carries it (E0).
-        if(this.handleTemplates && node?.type==='Boolean')return node.value?ARCADE_TRUE:ARCADE_FALSE;
+        if(this.nativeValues && node?.type==='Boolean')return node.value?ARCADE_TRUE:ARCADE_FALSE;
         // \`!x\` AS A CONDITION is the dialect's \`not\`; E9's \`x === false\` value form is
         // for value slots only. Written through it, Lite's own export (\`while (!(!c))\`)
         // came back as nested value comparisons and lost every operator_not.
-        if(this.handleTemplates && node?.type==='Unary' && node.op==='!') {
+        if(this.nativeValues && node?.type==='Unary' && node.op==='!') {
             const inner=node.argument;
             if(inner?.type==='Unary' && inner.op==='!')return this.condition(inner.argument);
             return `not (${this.condition(inner)})`;
         }
         if(node?.type==='Index' && this.isArrayReference(node.object))
             return `truthiness of item (${this.expr(node.index)}) of array reference (${this.expr(node.object)})`;
-        if(this.handleTemplates && node && node.type!=='Boolean' &&
+        if(this.nativeValues && node && node.type!=='Boolean' &&
             !(node.type==='Binary' && ['==','!=','===','!==','<','>','<=','>=','&&','||'].includes(node.op)) &&
             !(node.type==='Unary' && node.op==='!')) {
             const value=this.expr(node);
@@ -593,7 +718,7 @@ class ArcadeTranslator extends BaseTranslator {
         // compares as text) and "0" = 0 is true, so both came out inverted.
         // The length is the text's own truthiness. (A number stays `not (v = 0)`:
         // its Scratch value may be the literal text "0".)
-        if(!this.handleTemplates && node && (this.isText(node) || this.stringReferences?.has(node)))
+        if(!this.nativeValues && node && (this.isText(node) || this.stringReferences?.has(node)))
             return `not ((length of ${this.operand(node)}) = 0)`;
         return super.condition(node);
     }
@@ -607,16 +732,30 @@ class ArcadeTranslator extends BaseTranslator {
     }
 
     arrayElementValue (node) {
+        if(node?.bwPrimitiveNumberText)return `(${this.arrayElementValue(node.left)}) join ("")`;
         if(node?.type==='Boolean')return node.value?ARCADE_TRUE:ARCADE_FALSE;
         const value=this.expr(node);
         // The dialect has no value form for a Scratch predicate: in a value
         // slot it is kept as literal text, so say so instead.
         if(isScratchPredicate(value)){this.unsupported.push(`${value} as a value (a Scratch condition has no value form here)`);return ARCADE_FALSE;}
         // Scratch string shadows must not turn a numeric array element into text.
-        return node?.type==='Number' ? `(0 + (${value}))` : value;
+        return node?.type==='Number' || /^-?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(value) ? `(0 + (${value}))` : value;
     }
 
     callExpression (node) {
+        const objectValue=this.objectExpression(node);if(objectValue!==null)return objectValue;
+        if(this.textSpriteStatement(node,node.args||[],line=>this.pre.push(line)))return 'undefined value';
+        const importedBuffer=this.bufferExpression(node);
+        if(importedBuffer!==null)return importedBuffer;
+        const settingsValue=this.settingsExpression(node);
+        if(settingsValue!==null)return settingsValue;
+        const dataApi=this.path(node.callee),dataArgs=node.args||[];
+        const dataRead=/^sprites\.readData(Number|String|Boolean|Sprite)$/.exec(dataApi||'');
+        if(this.handleTemplates && dataRead && !this.bindsName('sprites')) {
+            if(dataArgs.length===2)return dataRead[1]==='Boolean'?`arcade sprite (${this.expr(dataArgs[0])}) boolean data (${this.expr(dataArgs[1])})`:
+                `arcade sprite (${this.expr(dataArgs[0])}) data (${this.expr(dataArgs[1])}) type ${dataRead[1]}`;
+            this.unsupported.push(`${dataApi} requires a sprite and data key`);return 'undefined value';
+        }
         const engineApi=this.path(node.callee),engineArgs=node.args||[];
         if(engineApi?.startsWith('mp.') && (this.boundSourceGlobals?.has('mp') || this.sourceFunctions?.has('mp') || this.localVars?.has('mp') || this.currentParameters?.has('mp') || this.capturedBindings.has('mp'))) {
             this.unsupported.push(`${engineApi} refers to a shadowed mp binding`);return 'undefined value';
@@ -636,6 +775,7 @@ class ArcadeTranslator extends BaseTranslator {
             this.unsupported.push(`${engineApi} requires ${arity} argument`);return 'undefined value';
         }
         if(engineApi==='mp.allPlayers' && !engineArgs.length)return 'arcade all players';
+        if(engineApi==='mp.isConnected' && engineArgs.length===1)return `arcade player (${this.expr(engineArgs[0])}) connected`;
         if(engineApi==='mp.isButtonPressed' && engineArgs.length===2)return `arcade player (${this.expr(engineArgs[0])}) button (${this.expr(engineArgs[1])}) pressed`;
         if(engineApi==='mp.getPlayerProperty' && engineArgs.length===2)return `arcade player safe property (${this.expr(engineArgs[1])}) of (${this.expr(engineArgs[0])})`;
         if(engineApi==='game.currentScene') {
@@ -674,6 +814,11 @@ class ArcadeTranslator extends BaseTranslator {
         }
         const name = this.path(node.callee);
         const a = node.args || [];
+        const arrayCopy = arrayCopyCall(this,node);
+        if(arrayCopy!==null)return arrayCopy;
+        const indexedString = indexedStringValue(this,node);
+        if(indexedString!==null)return indexedString;
+        if(this.handleTemplates && node.callee?.type==='Member' && node.callee.name==='kind' && !a.length && this.spriteReferences?.has(node.callee.object))return `arcade property kind of (${this.expr(node.callee.object)})`;
         const fn = node.callee?.type === 'Identifier' && this.returnFunctions?.get(node.callee.name);
         if (fn) {
             if (a.length > fn.params.length || fn.params.slice(a.length).some(name=>!fn.optionalParams?.includes(name))) {this.unsupported.push(`${fn.name}() argument count differs from its declaration`);return '0';}
@@ -683,19 +828,35 @@ class ArcadeTranslator extends BaseTranslator {
             const code = [fn.name, ...fn.params.map(()=>'%s')].join(' ');
             return `(arcade call function ${JSON.stringify(code)} arguments (${args}))`;
         }
-        if (this.handleTemplates && /^characterAnimations\.(rule|matchesRule|_predicate|_direction)$/.test(this.path(node.callee)||'') && !this.bindsName('characterAnimations')) {
+        if (this.handleTemplates && /^characterAnimations\.(rule|ruleToString|matchesRule|_predicate|_direction)$/.test(this.path(node.callee)||'') && !this.bindsName('characterAnimations')) {
             const method=this.path(node.callee).slice(20);
+            if(method==='ruleToString'){
+                if(a.length!==1){this.unsupported.push('characterAnimations.ruleToString() takes one rule');return '""';}
+                return `arcade character rule string (${this.characterRule(a[0])})`;
+            }
             if(method==='matchesRule'){
                 const sprite=a.length===2 && this.handleRef(a[0]);
                 if(!sprite){this.unsupported.push('characterAnimations.matchesRule() takes a typed sprite and a rule');return ARCADE_FALSE;}
                 return `arcade character (${sprite}) matches rule (${this.characterRule(a[1])})`;
             }
             if(method==='_direction'){
+                if(this.characterVersion===LEGACY_CHARACTER_REVISION){this.unsupported.push('characterAnimations._direction() is not implemented in v0.0.2');return '0';}
                 const direction=a.length===1 && this.characterFacing(a[0]);
                 if(direction===null || direction===false){this.unsupported.push('characterAnimations._direction() takes a FacingDirection member');return '0';}
                 return String(CHARACTER_FACINGS[direction]);
             }
             return this.characterRule(node);
+        }
+        if (this.handleTemplates && node.callee?.type==='Member' && node.callee.name==='equals' && this.imageReferences?.has(node.callee.object)) {
+            if(a.length===1 && (this.imageReferences.has(a[0]) || this.imageOf(a[0])))return `arcade image (${this.expr(node.callee.object)}) equals image (${this.expr(a[0])})`;
+            this.unsupported.push('Image.equals requires one typed Image argument');return ARCADE_FALSE;
+        }
+        if (node.callee?.type==='Member' && node.callee.name==='tileKindAt') {
+            const handle=this.handleTemplates && this.handleRef(node.callee.object);
+            if(!handle || a.length!==2 || !this.imageReferences?.has(a[1]) && !this.imageOf(a[1])) {
+                this.unsupported.push('Sprite.tileKindAt requires a typed sprite reference, direction and tile Image');return ARCADE_FALSE;
+            }
+            return `arcade sprite (${handle}) tile kind at (${this.expr(a[0])}) equals image (${this.expr(a[1])})`;
         }
         if (node.callee?.type==='Member' && node.callee.name==='isHittingTile') {
             const handle=this.handleTemplates && this.handleRef(node.callee.object);
@@ -707,6 +868,12 @@ class ArcadeTranslator extends BaseTranslator {
                 this.unsupported.push(`${direction} is not a declared Arcade CollisionDirection member`);return ARCADE_FALSE;
             }
             return `arcade sprite (${handle}) hitting wall (${this.expr(a[0])})`;
+        }
+        if(node.callee?.type==='Member' && node.callee.name==='concat' && this.stringReferences?.has(node.callee.object)) {
+            if(a.length!==1) {this.note('String.concat() requires exactly one argument');return 'undefined value';}
+            if(!this.strictStringReferences?.has(node.callee.object)) {this.note('String.concat() receiver must be a proven string value');return 'undefined value';}
+            if(!this.primitiveReferences?.has(a[0])) {this.note('String.concat() requires a proven primitive argument; object, reference or unknown conversion is not implemented');return 'undefined value';}
+            return `concatenate text (${this.arrayElementValue(node.callee.object)}) with (${this.arrayElementValue(a[0])})`;
         }
         if (node.callee?.type==='Member' && node.callee.name==='toString' && this.spriteReferences?.has(node.callee.object)) {
             if(a.length) {this.unsupported.push('Sprite.toString() requires zero arguments');return '""';}
@@ -721,10 +888,10 @@ class ArcadeTranslator extends BaseTranslator {
             if (source && !sourceHandle) this.unsupported.push(`${name}() source must be a sprite handle or null`);
             const vx = mode === 'sprite' ? a[2] : a[1];
             const vy = mode === 'sprite' ? a[3] : a[2];
-            if (template.dynamicImage) return `arcade projectile image (${this.imageRef(a[0])}) template "${template.name}" kind "${template.kind}" ` +
+            if (template.dynamicImage) return `arcade projectile image (${this.imageRef(a[0])}) template "${template.name}" kind ${this.kindSlot(name==='sprites.createProjectile'?a[3]:undefined)} ` +
                 `vx ${this.expr(vx)} vy ${this.expr(vy)} mode ${mode}` +
                 (source ? ` source ${sourceHandle || this.expr(source)}` : '');
-            return `arcade projectile template "${template.name}" kind "${template.kind}" ` +
+            return `arcade projectile template "${template.name}" kind ${this.kindSlot(name==='sprites.createProjectile'?a[3]:undefined)} ` +
                 `vx ${this.expr(vx)} vy ${this.expr(vy)} width ${template.width} ` +
                 `height ${template.height} mode ${mode}` +
                 (source ? ` source ${sourceHandle || this.expr(source)}` : '');
@@ -737,8 +904,8 @@ class ArcadeTranslator extends BaseTranslator {
                 this.unsupported.push('sprites.create() — image could not be used as a sprite template');
                 return '0';
             }
-            if (template.dynamicImage) return `arcade create image (${this.imageRef(a[0])}) template "${template.name}" kind "${template.kind}"`;
-            return `arcade create template "${template.name}" kind "${template.kind}" ` +
+            if (template.dynamicImage) return `arcade create image (${this.imageRef(a[0])}) template "${template.name}" kind ${this.kindSlot(a[1])}`;
+            return `arcade create template "${template.name}" kind ${this.kindSlot(a[1])} ` +
                 `width ${template.width} height ${template.height}`;
         }
         if(this.handleTemplates && /^info(?:\.player[1-4])?\.life$/.test(name||'')) {
@@ -754,7 +921,7 @@ class ArcadeTranslator extends BaseTranslator {
         // Arcade's score is the game's on-screen score: the extension's own, on both
         // paths. (The fixed-sprite path used to keep it in a Scratch variable named
         // `score`, which the export could not tell from a user's, so the HUD was lost.)
-        case 'info.score': return 'arcade score';
+        case 'info.score': return 'arcade player (1) score';
         case 'info.life': return 'lives';
         case 'game.ask':
             if(a.length>=1 && a.length<=2)return `arcade ask yes ${this.expr(a[0])} subtitle ${a[1]?this.expr(a[1]):'""'}`;
@@ -767,6 +934,10 @@ class ArcadeTranslator extends BaseTranslator {
             if (a.length === 1) return `arcade ask text ${this.expr(a[0])}`;
             this.unsupported.push('game.askForString() with length limit or other options');
             return '""';
+        case 'scene.cameraLeft':
+        case 'scene.cameraTop':
+            if(this.handleTemplates && !a.length)return `arcade camera draw offset ${name==='scene.cameraLeft'?'x':'y'}`;
+            this.unsupported.push(`${name} requires no arguments and native camera support`);return 'undefined value';
         case 'scene.cameraProperty':
             if(this.handleTemplates && a.length===1) {
                 const property=this.path(a[0]);
@@ -778,6 +949,32 @@ class ArcadeTranslator extends BaseTranslator {
             this.unsupported.push('scene.cameraProperty requires one property selector and native camera support');return 'undefined value';
         case 'scene.screenWidth': return String(HALF_WIDTH * 2);
         case 'scene.screenHeight': return String(HALF_HEIGHT * 2);
+        case 'Math.pow':
+            if(!this.handleTemplates)return super.callExpression(node);
+            if(this.boundSourceGlobals?.has('Math') || this.sourceFunctions?.has('Math') || this.localVars?.has('Math') || this.currentParameters?.has('Math') || this.capturedBindings.has('Math')) {
+                this.unsupported.push('Math.pow refers to a shadowed Math binding');return 'undefined value';
+            }
+            if(a.length!==2){this.unsupported.push('Math.pow() requires exactly two numbers');return 'undefined value';}
+            return this.expr({type:'Binary',op:'**',left:a[0],right:a[1]});
+        case 'Math.random':
+        case 'Math.randomRange':
+        case 'Math.min':
+        case 'Math.max':
+        case 'Math.percentChance':
+        case 'Math.clamp':
+            if(this.bindsName('Math')) {this.note(`${name} refers to a shadowed Math binding`);return 'undefined value';}
+            {const arity=name==='Math.random'?0:name==='Math.percentChance'?1:name==='Math.clamp'?3:2;
+            if(a.length!==arity){this.note(`${name}() requires exactly ${arity} arguments`);return 'undefined value';}
+            if(name==='Math.random')return 'arcade random fraction';
+            if(name==='Math.percentChance')return `arcade percent chance (${this.arrayElementValue(a[0])})`;
+            if(name==='Math.clamp'){
+                if(a.some(value=>!['Null','Undefined'].includes(value?.type) &&
+                    (['Array','Object'].includes(value?.type) || this.arrayReferences?.has(value) || this.spriteReferences?.has(value) || this.bufferReferences?.has(value) || this.imageReferences?.has(value)))){
+                    this.note('Math.clamp reference argument conversion is not implemented');return 'undefined value';
+                }
+                return `arcade clamp minimum (${this.arrayElementValue(a[0])}) maximum (${this.arrayElementValue(a[1])}) value (${this.arrayElementValue(a[2])})`;
+            }
+            return `arcade math ${name.slice(5)} first (${this.arrayElementValue(a[0])}) second (${this.arrayElementValue(a[1])})`;}
         case 'Math.sign':
         case 'Math.trunc':
             if(this.boundSourceGlobals?.has('Math') || this.sourceFunctions?.has('Math') || this.localVars?.has('Math') || this.currentParameters?.has('Math') || this.capturedBindings.has('Math')) {
@@ -785,8 +982,17 @@ class ArcadeTranslator extends BaseTranslator {
             }
             if(a.length!==1){this.unsupported.push(`${name}() requires exactly one number`);return 'undefined value';}
             return `arcade ${name==='Math.sign'?'sign of':'truncate'} (${this.expr(a[0])})`;
-        case 'randint': return `pick random ${this.mathOperand(a[0])} to ${this.mathOperand(a[1])}`;
-        case 'game.runtime': return 'timer * 1000';
+        case 'randint':
+            if(a.length!==2){this.note('randint() requires exactly two arguments');return 'undefined value';}
+            return `arcade math randomRange first (${this.arrayElementValue(a[0])}) second (${this.arrayElementValue(a[1])})`;
+        case 'String.fromCharCode':
+            if(a.length!==1 || this.bindsName('String')) {this.note('String.fromCharCode() requires its unshadowed single-argument primitive conversion');return 'undefined value';}
+            if(!this.primitiveReferences?.has(a[0])) {this.note('String.fromCharCode() requires a proven primitive argument; object, reference or unknown conversion is not implemented');return 'undefined value';}
+            return `text from char code (${this.arrayElementValue(a[0])})`;
+        case 'game.runtime':
+        case 'control.millis':
+            if(a.length || this.bindsName(name.split('.')[0])) {this.note(`${name}() needs its unshadowed zero-argument clock`);return 'undefined value';}
+            return name==='game.runtime'?'arcade scene runtime milliseconds':'arcade program runtime milliseconds';
         case 'controller.dx': return `arcade controller x step ${this.expr(a[0] || {type: 'Number', value: 100})}`;
         case 'controller.dy': return `arcade controller y step ${this.expr(a[0] || {type: 'Number', value: 100})}`;
         // Math.min/max/pow/map: the base translator's (task #400) — every
@@ -795,7 +1001,9 @@ class ArcadeTranslator extends BaseTranslator {
         // A sprite KIND is a compile-time label; every Arcade game defines
         // a few, and reporting them as unsupported would bury the real
         // refusals under noise. A number is exactly what they are.
-        case 'SpriteKind.create': return String(100 + (++this.kinds));
+        case 'SpriteKind.create':
+            if(a.length || this.bindsName('SpriteKind')){this.unsupported.push('SpriteKind.create() requires no arguments and the original namespace');return 'undefined value';}
+            return 'arcade create sprite kind';
         case 'animation.createAnimation':
             if (this.handleTemplates && a.length === 2) return `arcade create animation action (${this.expr(a[0])}) interval (${this.expr(a[1])})`;
             this.unsupported.push('animation.createAnimation requires an action, interval and runtime animation support');
@@ -834,11 +1042,13 @@ class ArcadeTranslator extends BaseTranslator {
             }
             if (name === 'scene.backgroundColor' && a.length === 0) return 'arcade background color';
 
-            // `controller.left.isPressed()` is `key left arrow pressed?`,
-            // which is the second most common way an Arcade game reads
-            // input after controller.moveSprite.
+            // Native queries read the SDK button state, including internal event
+            // changes which intentionally do not mutate Scratch keyboard IO.
             const button = /^controller\.(\w+)\.isPressed$/.exec(name || '');
             if (button && CONTROLLER_KEYS[button[1]]) {
+                if(this.bindsName('controller')){this.unsupported.push(`${name} refers to a shadowed controller binding`);return 'undefined value';}
+                if(this.handleTemplates && button[1]==='menu'){this.unsupported.push('controller.menu.isPressed requires a qualified SDK menu button state reporter');return 'undefined value';}
+                if(this.handleTemplates && Object.prototype.hasOwnProperty.call({A:0,B:1,up:2,right:3,down:4,left:5},button[1]))return `arcade player (arcade player by number 1) button (${{A:0,B:1,up:2,right:3,down:4,left:5}[button[1]]}) pressed`;
                 return `key ${CONTROLLER_KEYS[button[1]]} pressed?`;
             }
 
@@ -875,12 +1085,23 @@ class ArcadeTranslator extends BaseTranslator {
      * The condition() a node is being written for is not a value slot.
      */
     expr (node) {
-        if (node?.bwAnimationResourceId) return `arcade animation fresh frames resource ${JSON.stringify(node.bwAnimationResourceId)}`;
+        if(node?.type==='Unary'&&containsNonFiniteNumberLiteral(node.argument)){this.unsupported.push('Non-finite source Number literals lack a qualified Code carrier');return 'undefined value';}
+        if(node?.type==='Number'){
+            if(!Number.isFinite(Number(node.value))){this.unsupported.push('Non-finite source Number literals lack a qualified Code carrier');return 'undefined value';}
+            return numberLiteralCode(node.value);
+        }
+        if(node?.bwPrimitiveNumberText)return `(${this.arrayElementValue(node.left)}) join ("")`;
+        if(node?.type==='FontMetric')return `arcade font ${JSON.stringify(node.font)} metric ${JSON.stringify(node.property)}`;
+        if(node?.type === 'Template' && this.assetKindLookup &&
+            lookupAssetTemplate(this.assetKindLookup,node.tag,node.value) === null) {
+            this.usesArrays=true;return 'null value';
+        }
+        if (isAnimationResourceFactory(node)) return `arcade animation fresh frames resource ${JSON.stringify(node.bwAnimationResourceId)}`;
         const value=this.valueExpr(node);
         if(!node || node===this.conditionNode)return value;
         // On the fixed-sprite path a truth node's value text IS its condition
         // (the base writes `!`, comparisons, && and || in that grammar).
-        if(!isConditionCall(node,value) && !(isTruthNode(node) && !this.handleTemplates))return value;
+        if(!isConditionCall(node,value) && !(isTruthNode(node) && !this.nativeValues))return value;
         const repeated=this.inLoopCondition || this.inRepeatedCondition;
         if(this.pre && !repeated)return this.truthAsValue(value);
         this.unsupported.push(`${value} as a value ${repeated ? 'in a condition tested on every pass' : 'outside a statement'} (it cannot be chosen into a variable first)`);
@@ -894,7 +1115,7 @@ class ArcadeTranslator extends BaseTranslator {
     truthAsValue (condition) {
         const name=`_mc${++this.temps}`;
         this.declared.add(name);
-        const [yes,no]=this.handleTemplates?[ARCADE_TRUE,ARCADE_FALSE]:['1','0'];
+        const [yes,no]=this.nativeValues?[ARCADE_TRUE,ARCADE_FALSE]:['1','0'];
         this.pre.push(`IF ${condition} THEN:`,`  set ${name} to ${yes}`,'ELSE:',`  set ${name} to ${no}`);
         return name;
     }
@@ -908,9 +1129,28 @@ class ArcadeTranslator extends BaseTranslator {
      * Another sprite's position is readable (`x position of ball`) even
      * though writing it is not.
      */
+    controllerRepeatSlot(node) {
+        if(node?.type!=='Member' || !['repeatDelay','repeatInterval'].includes(node.name))return null;
+        const receiver=this.path(node.object)||'';
+        if(!receiver.startsWith('controller.'))return null;
+        if(this.bindsName('controller'))return {error:'Controller repeat property refers to a shadowed controller binding'};
+        const match=/^controller(?:\.player([1-4]))?\.(A|B|up|down|left|right)$/.exec(receiver);
+        return match?{player:match[1]||'1',button:match[2],property:node.name}:{error:'Controller repeat property requires a fixed supported player and button'};
+    }
     valueExpr (node) {
+        const repeat=this.controllerRepeatSlot(node);
+        if(repeat){if(repeat.error){this.unsupported.push(repeat.error);return 'undefined value';}return `arcade player ${repeat.player} button ${repeat.button} repeat property ${repeat.property}`;}
+        const indexedString=indexedStringValue(this,node);
+        if(indexedString!==null)return indexedString;
         const music=this.musicValue(node);
         if(music!==null)return music;
+        if(node?.type==='Member' && node.object?.type==='Identifier' && node.object.name==='Math' &&
+            ['E','LN2','LN10','LOG2E','LOG10E','PI','SQRT1_2','SQRT2'].includes(node.name)) {
+            if(this.boundSourceGlobals?.has('Math') || this.sourceFunctions?.has('Math') || this.localVars?.has('Math') || this.currentParameters?.has('Math') || this.capturedBindings.has('Math')) {
+                this.unsupported.push(`${this.path(node)} refers to a shadowed Math binding`);return 'undefined value';
+            }
+            return String(Math[node.name]);
+        }
         const core=this.coreValue(node);
         if(core!==null)return core;
         if(['MultiplayerState.score','MultiplayerState.life'].includes(this.path(node))) {
@@ -936,12 +1176,30 @@ class ArcadeTranslator extends BaseTranslator {
         }
         if(node?.type==='Member' && this.sceneReferences?.has(node.object)) {
             if(node.name==='physicsEngine')return `arcade physics engine of scene (${this.expr(node.object)})`;
+            if(node.name==='flags')return `arcade flags of scene (${this.expr(node.object)})`;
             this.unsupported.push(`Arcade Scene.${node.name} requires native Scene member support`);return 'undefined value';
         }
         if(node?.type==='Member' && this.physicsEngineReferences?.has(node.object)) {
             if(['maxSpeed','minStep','maxStep'].includes(node.name))return `arcade physics engine property ${node.name} of (${this.expr(node.object)})`;
             this.unsupported.push(`Arcade PhysicsEngine.${node.name} requires native physics-engine member support`);return 'undefined value';
         }
+        if(this.handleTemplates && node?.type==='Call' && this.path(node.callee)==='control.allocateNotifyEvent') {
+            if(this.boundSourceGlobals?.has('control') || this.sourceFunctions?.has('control') || this.localVars?.has('control') || this.currentParameters?.has('control') || this.capturedBindings.has('control')){this.unsupported.push('control.allocateNotifyEvent refers to a shadowed control binding');return 'undefined value';}
+            if(node.args.length){this.unsupported.push('control.allocateNotifyEvent requires no arguments');return 'undefined value';}return 'arcade allocate control event source';
+        }
+        if(this.handleTemplates && node?.type==='Member' && /^controller\.player[1-4]$/.test(this.path(node.object)||'') && ['id','connected'].includes(node.name)) {
+            if(this.boundSourceGlobals?.has('controller') || this.sourceFunctions?.has('controller') || this.localVars?.has('controller') || this.currentParameters?.has('controller') || this.capturedBindings.has('controller')){this.unsupported.push(`${this.path(node)} refers to a shadowed controller binding`);return 'undefined value';}
+            const player=this.path(node.object).slice(-1);
+            return node.name==='id'?`arcade controller event source player ${player}`:`arcade player (arcade player by number ${player}) connected`;
+        }
+        if(this.handleTemplates && node?.type==='Member' && node.object?.type==='Identifier' && node.object.name==='ControllerEvent') {
+            if(this.boundSourceGlobals?.has('ControllerEvent') || this.localVars?.has('ControllerEvent') || this.currentParameters?.has('ControllerEvent') || this.capturedBindings.has('ControllerEvent')){this.unsupported.push(`${this.path(node)} refers to a shadowed ControllerEvent binding`);return 'undefined value';}
+            const values={Connected:1,Disconnected:2};if(Object.prototype.hasOwnProperty.call(values,node.name))return String(values[node.name]);
+            this.unsupported.push(`${this.path(node)} is not a declared Arcade ControllerEvent member`);return 'undefined value';
+        }
+        // Generic emission accepts the same actual readonly leaves as the
+        // caller producer proof; spelling or parameter types are insufficient.
+        if(this.buttonEventNumberLeaves?.has(node))return String(BUTTON_EVENTS[node.name]);
         if(this.handleTemplates && node?.type==='Member' && node.object?.type==='Identifier' && node.object.name==='ControllerButtonEvent') {
             if(this.boundSourceGlobals?.has('ControllerButtonEvent') || this.localVars?.has('ControllerButtonEvent') || this.currentParameters?.has('ControllerButtonEvent') || this.capturedBindings.has('ControllerButtonEvent')) {
                 this.unsupported.push(`${this.path(node)} refers to a shadowed ControllerButtonEvent binding`);return 'undefined value';
@@ -964,35 +1222,74 @@ class ArcadeTranslator extends BaseTranslator {
             if(Object.prototype.hasOwnProperty.call(CAMERA_PROPERTIES,node.name))return String(CAMERA_PROPERTIES[node.name]);
             this.unsupported.push(`${this.path(node)} is not a declared Arcade CameraProperty member`);return 'undefined value';
         }
+        if(node?.type==='Member' && node.object?.type==='Identifier' && node.object.name==='TileDirection' && !this.bindsName('TileDirection')) {
+            if(Object.prototype.hasOwnProperty.call(TILE_DIRECTIONS,node.name))return String(TILE_DIRECTIONS[node.name]);
+            this.unsupported.push(`${this.path(node)} is not a declared Arcade TileDirection member`);return 'undefined value';
+        }
         if(node?.type==='Member' && node.object?.type==='Identifier' && node.object.name==='CollisionDirection' &&
             !this.boundSourceGlobals?.has('CollisionDirection') && !this.localVars?.has('CollisionDirection') && !this.currentParameters?.has('CollisionDirection') && !this.capturedBindings.has('CollisionDirection')) {
             if(Object.prototype.hasOwnProperty.call(COLLISION_DIRECTIONS,node.name))return String(COLLISION_DIRECTIONS[node.name]);
             this.unsupported.push(`${this.path(node)} is not a declared Arcade CollisionDirection member`);return '0';
         }
+        if (this.nativeValues && node?.type === 'Unary' && node.op === 'typeof') {
+            const value = node.argument;
+            if (!this.sourceTypeOfOperands?.has(value) && node.bwSourceCallableTypeOf!==true) {
+                this.unsupported.push('Source typeof requires a proven primitive or owned Array, class, Image or Buffer; Sprite, callable and opaque ownership is not qualified');
+                return 'undefined value';
+            }
+            return `arcade source type of (${this.arrayElementValue(value)})`;
+        }
+        if(this.nativeValues && ['Unary','Binary'].includes(node?.type)) {
+            const folded=foldPxtNumeric(node,name=>['NaN','Infinity'].includes(name) && !this.bindsName(name) ? {value:name==='NaN'?NaN:Infinity} : null);
+            if(folded){this.usesArrays=true;return pxtFoldedNumberCode(folded.value);}
+        }
         if(node?.type==='Identifier' && ['NaN','Infinity'].includes(node.name) && !this.boundSourceGlobals?.has(node.name) && !this.localVars?.has(node.name) && !this.currentParameters?.has(node.name) && !this.capturedBindings.has(node.name)) {
             return this.expr({type:'Binary',op:'/',left:{type:'Number',value:node.name==='NaN'?'0':'1'},right:{type:'Number',value:'0'}});
         }
+        if(['NativeNamedArrayCreate','NativeNamedArrayDelete'].includes(node?.type)) {
+            this.usesArrays=true;
+            if(!this.pre){this.unsupported.push('Named Array construction requires its validated statement owner');return 'undefined value';}
+            this.pre.push(node.type==='NativeNamedArrayCreate'?`new array ${JSON.stringify(node.registry)} = ${node.json}`:`delete array ${JSON.stringify(node.registry)}`);
+            return node.type==='NativeNamedArrayCreate'?`reference to named array (${JSON.stringify(node.registry)})`:'null value';
+        }
+        if(node?.type==='Call' && node.bwNativeNamedArray?.kind==='get') {this.usesArrays=true;return `item (${this.expr(node.args[1])}) of array ${JSON.stringify(node.bwNativeNamedArray.registry)}`;}
         if(node?.type==='LegacyParsedValue'){this.usesArrays=true;return `parse array input (${this.arrayElementValue(node.value)})`;}
         if(node?.type==='NativeArrayAccess')return this.expr(node.value);
+        const importedBuffer=this.bufferExpression(node);
+        if(importedBuffer!==null)return importedBuffer;
         if(node?.type==='LegacyJsonValue'){this.usesArrays=true;return `JSON text of value (${this.arrayElementValue(node.value)})`;}
-        if(this.handleTemplates && node?.type==='Identifier' && node.temporary)return `arcade local ${node.name}`;
-        if(this.handleTemplates && node?.type==='Boolean')return node.value?ARCADE_TRUE:ARCADE_FALSE;
+        if(this.nativeValues && node?.type==='Identifier' && node.temporary)return `arcade local ${node.name}`;
+        if(this.nativeValues && node?.type==='Boolean')return node.value?ARCADE_TRUE:ARCADE_FALSE;
+        if(this.handleTemplates && node?.type==='Member' && ['SpriteFlag','sprites.Flag'].includes(this.path(node.object))) {
+            const prefix=this.path(node.object),root=prefix.split('.')[0],values=prefix==='SpriteFlag'?SPRITE_FLAG_VALUES:PRIVATE_SPRITE_FLAG_VALUES;
+            if(this.bindsName(root)){this.unsupported.push(prefix+' refers to a shadowed flag binding');return 'undefined value';}
+            if(Object.prototype.hasOwnProperty.call(values,node.name))return `(0 + (${values[node.name]}))`;
+            this.unsupported.push(prefix+'.'+node.name+' is not a declared sprite flag');return 'undefined value';
+        }
         if(this.handleTemplates && node?.type==='Member' && this.path(node.object)==='TileScale') {
             if(this.boundSourceGlobals?.has('TileScale') || this.sourceFunctions?.has('TileScale') || this.localVars?.has('TileScale') || this.currentParameters?.has('TileScale') || this.capturedBindings.has('TileScale')){this.unsupported.push('TileScale refers to a shadowed binding');return 'undefined value';}
             const values={Four:2,Eight:3,Sixteen:4,ThirtyTwo:5};
             if(Object.prototype.hasOwnProperty.call(values,node.name))return String(values[node.name]);
             this.unsupported.push(`TileScale.${node.name} is not a declared tile scale`);return '4';
         }
-        if(this.handleTemplates && node?.type==='String')return arcadeTextLiteral(tsText(node.value));
-        if(this.handleTemplates && ['Update','Assignment'].includes(node?.type)){this.unsupported.push(`${node.type.toLowerCase()} expression used as a value`);return '0';}
-        if (this.handleTemplates && ['Null','Undefined'].includes(node?.type)) {
+        if(this.handleTemplates && node?.type==='Member' && this.path(node.object)==='SpriteKind' && !this.bindsName('SpriteKind'))return `arcade sprite kind value ${JSON.stringify(node.name)}`;
+        if(this.nativeValues && node?.type==='String')return arcadeTextLiteral(tsText(node.value));
+        if(this.nativeValues && ['Update','Assignment'].includes(node?.type)){this.unsupported.push(`${node.type.toLowerCase()} expression used as a value`);return '0';}
+        if (node?.type === 'Undefined' || this.nativeValues && node?.type === 'Null') {
             this.usesArrays=true;return `${node.type.toLowerCase()} value`;
         }
-        if(this.handleTemplates && node?.type==='Binary' && ['==','!=','===','!==','<','>','<=','>='].includes(node.op)) {
+        if(this.nativeValues && node?.type==='Binary' && ['==','!=','===','!==','<','>','<=','>='].includes(node.op)) {
             this.usesArrays=true;
             return `compare value (${this.arrayElementValue(node.left)}) op "${node.op}" with (${this.arrayElementValue(node.right)})`;
         }
-        if(this.handleTemplates && node?.type==='Binary' && ['+','-','*','/','%'].includes(node.op)) {
+        if(this.nativeValues && (node?.type==='Binary' && ['&','|','^','<<','>>','>>>'].includes(node.op) || node?.type==='Unary' && node.op==='~')) {
+            const operands=node.type==='Binary'?[node.left,node.right]:[node.argument];
+            if(operands.some(value=>!this.primitiveReferences?.has(value))){this.unsupported.push('Bitwise operation requires proven primitive operands; opaque reference, object or unknown conversion is not implemented');return 'undefined value';}
+            this.usesArrays=true;
+            return node.type==='Binary'?`calculate value (${this.arrayElementValue(node.left)}) op "${node.op}" with (${this.arrayElementValue(node.right)})`:
+                `convert value (${this.arrayElementValue(node.argument)}) op "~"`;
+        }
+        if(this.nativeValues && node?.type==='Binary' && ['+','-','*','/','%','**'].includes(node.op)) {
             if([node.left,node.right].some(value=>this.spriteReferences?.has(value)))this.unsupported.push('sprite arithmetic conversion requires ToPrimitive support');
             if([node.left,node.right].some(value=>this.playerReferences?.has(value)))this.unsupported.push('player arithmetic conversion requires ToPrimitive support');
             this.usesArrays=true;return `calculate value (${this.arrayElementValue(node.left)}) op "${node.op}" with (${this.arrayElementValue(node.right)})`;
@@ -1000,23 +1297,39 @@ class ArcadeTranslator extends BaseTranslator {
         // `!x` as a value. The value words have no unary `!` (BWValues.unary
         // is + and -), and `not (…)` in a value slot is kept as text, so it is
         // JavaScript's own definition: truthiness of x === false.
-        if(this.handleTemplates && node?.type==='Unary' && node.op==='!') {
+        if(this.nativeValues && node?.type==='Unary' && node.op==='!') {
             this.usesArrays=true;
             return `compare value (${this.truthValue(node.argument)}) op "===" with (${ARCADE_FALSE})`;
         }
-        if(this.handleTemplates && node?.type==='Unary' && ['+','-'].includes(node.op)) {
-            this.usesArrays=true;return `convert value (${this.arrayElementValue(node.argument)}) op "${node.op}"`;
+        if(this.nativeValues && node?.type==='Unary' && ['+','-'].includes(node.op)) {
+            this.usesArrays=true;
+            // PXT's nonfolded prefix emitter subtracts for unary signs. If the
+            // operand itself emits a numeric literal, both branches negate it.
+            // Parentheses can block the outer constant fold but not this step.
+            if(containsNonFiniteNumberLiteral(node.argument)){this.unsupported.push('Non-finite source Number literals lack a qualified Code carrier');return 'undefined value';}
+            const operand=foldPxtNumeric(node.argument,name=>['NaN','Infinity'].includes(name) && !this.bindsName(name) ? {value:name==='NaN'?NaN:Infinity} : null);
+            if(operand)return pxtFoldedNumberCode(-operand.value);
+            return node.op==='-' ? `calculate value ((0 + (0))) op "-" with (${this.arrayElementValue(node.argument)})` :
+                `convert value (${this.arrayElementValue(node.argument)}) op "+"`;
         }
-        if(this.handleTemplates && node?.type==='Binary' && ['&&','||'].includes(node.op))
+        if(this.nativeValues && node?.type==='Binary' && ['&&','||'].includes(node.op))
             this.unsupported.push(`logical ${node.op} as a value needs operand-preserving lazy evaluation`);
-        if (node?.type==='Array' && this.handleTemplates) {
+        if (node?.type==='Array' && this.nativeValues) {
             let values='"[]"';for(let i=node.items.length-1;i>=0;i--)values=`array value (${this.arrayElementValue(node.items[i])}) rest (${values})`;
             return `new array reference from (${values})`;
         }
         if(this.handleTemplates && node?.type==='Call' && /^scroller\.getBackground[XY]Offset$/.test(this.path(node.callee)||'') && !this.bindsName('scroller')) {
             const a=node.args||[],layer=this.scrollerLayer(a[0]);
+            if(this.scrollerVersion===LEGACY_SCROLLER_REVISION && a.length) {this.note('Legacy background offset getters take no layer argument');return 'undefined value';}
             if(a.length>1 || layer===null){this.unsupported.push(`${this.path(node.callee)}() takes an optional layer`);return '0';}
             return `arcade background scroll offset ${/X/.test(this.path(node.callee))?'x':'y'} layer (${layer})`;
+        }
+        if(this.handleTemplates && node?.type==='Member' && this.textSpriteReferences?.has(node.object) && TEXT_SPRITE_PROPERTIES.includes(node.name))
+            return `arcade text sprite (${this.expr(node.object)}) property ${node.name}`;
+        if(this.handleTemplates && node?.type==='Call' && this.path(node.callee)==='textsprite.create' && !this.bindsName('textsprite')) {
+            const a=node.args||[];
+            if(a.length<1 || a.length>3){this.note('textsprite.create() requires text and optional background and foreground');return 'undefined value';}
+            return `arcade create text sprite text (${this.arrayElementValue(a[0])}) background (${a[1]?this.arrayElementValue(a[1]):0}) foreground (${a[2]?this.arrayElementValue(a[2]):1})`;
         }
         if(this.handleTemplates && node?.type==='Member' && this.spriteExtensionOf(node.object)) {
             const kind=this.spriteExtensionOf(node.object);
@@ -1025,6 +1338,10 @@ class ArcadeTranslator extends BaseTranslator {
         }
         if(this.handleTemplates && node?.type==='Call' && /^(darts|corgio)\.create$/.test(this.path(node.callee)||'') && !this.bindsName(this.path(node.callee).split('.')[0]))
             return this.spriteExtensionCreate(node);
+        if(node?.type==='Member' && Object.prototype.hasOwnProperty.call(ARCADE_SCENE_CONSTANTS,this.path(node))) {
+            if(this.bindsName('scene')){this.note(`${this.path(node)} refers to a shadowed scene binding`);return 'undefined value';}
+            return String(ARCADE_SCENE_CONSTANTS[this.path(node)]);
+        }
         if(this.handleTemplates && node?.type==='Member' && this.isSevensegDisplay(node.object)) {
             const counter=this.sevensegCounterReferences?.has(node.object);
             if((counter?['x','y','count']:['x','y','width','height','value']).includes(node.name))return `arcade seven segment (${this.expr(node.object)}) property ${node.name}`;
@@ -1068,11 +1385,13 @@ class ArcadeTranslator extends BaseTranslator {
             if(node.args.length!==1 || !fixedKind(kind)) {
                 this.unsupported.push('sprites.allOfKind requires a supported SpriteKind member or fixed negative numeric kind');return '0';
             }
-            return `arcade sprite array kind ${JSON.stringify(kindOf(kind))}`;
+            return `arcade sprite array kind ${this.kindSlot(kind)}`;
         }
+        if(node?.type==='Index' && this.planImageValue)this.planImageValue(node);
         if (node?.type==='Index' && this.isArrayReference(node.object) && !this.imageValueResources.has(node)) return `item (${this.expr(node.index)}) of array reference (${this.expr(node.object)})`;
         if (node?.type==='Member' && node.name==='length' && this.isArrayReference(node.object)) return `length of array reference (${this.expr(node.object)})`;
 
+        if (node?.type === 'Template' && this.planImageValue) this.planImageValue(node);
         if (this.imageValueResources.has(node)) return this.imageRef(node);
         // The Arcade exporter writes a Scratch join as `"" + left + right`.
         // Preserve its string coercion and block shape on the way back in.
@@ -1088,7 +1407,7 @@ class ArcadeTranslator extends BaseTranslator {
         if (node?.type === 'Identifier' && this.capturedBindings.has(node.name)) return `arcade captured ${this.capturedBindings.get(node.name)}`;
         if (node?.type === 'Member' && node.name === 'length' && node.object?.type === 'Call' &&
             this.path(node.object.callee) === 'sprites.allOfKind') {
-            return `arcade count kind "${kindOf(node.object.args?.[0])}"`;
+            return `arcade count kind ${this.kindSlot(node.object.args?.[0])}`;
         }
         if (node?.type === 'Identifier' && this.handleAliases.has(node.name)) {
             return this.handleAliases.get(node.name);
@@ -1099,7 +1418,7 @@ class ArcadeTranslator extends BaseTranslator {
         const handle = node?.type === 'Member' && this.handleRef(node.object);
         if (handle) {
             if (['x', 'y', 'left', 'right', 'top', 'bottom', 'vx', 'vy', 'ax', 'ay', 'fx', 'fy', 'sx', 'sy', 'scale',
-                'width', 'height', 'z', 'lifespan', 'rotation', 'rotationDegrees', 'data'].includes(node.name)) {
+                'width', 'height', 'z', 'lifespan', 'rotation', 'rotationDegrees', 'data', 'flags'].includes(node.name)) {
                 return `arcade property ${node.name} of ${handle}`;
             }
             if (node.name === 'image') return `arcade image of ${handle}`;
@@ -1178,10 +1497,33 @@ class ArcadeTranslator extends BaseTranslator {
         const push = line => out.push(pad + line);
         const name = this.path(node.callee);
         const a = node.args || [];
+        if(this.objectStatement(node,push))return;
         if(name?.startsWith('mp.') && (this.boundSourceGlobals?.has('mp') || this.sourceFunctions?.has('mp') || this.localVars?.has('mp') || this.currentParameters?.has('mp') || this.capturedBindings.has('mp'))) {push(this.note(`${name} refers to a shadowed mp binding`));return;}
         if(['mp.setPlayerState','mp.changePlayerStateBy'].includes(name) && a.length===3){push(name==='mp.setPlayerState'?`arcade set state (${this.expr(a[1])}) of player (${this.expr(a[0])}) to (${this.expr(a[2])})`:`arcade change state (${this.expr(a[1])}) of player (${this.expr(a[0])}) by (${this.expr(a[2])})`);return;}
         if(name==='mp.moveWithButtons' && a.length>=1 && a.length<=3){push(`arcade move player (${this.expr(a[0])}) with buttons vx (${a[1]?this.expr(a[1]):100}) vy (${a[2]?this.expr(a[2]):100})`);return;}
         if(name==='mp.setPlayerSprite' && a.length===2){push(`arcade set sprite of player (${this.expr(a[0])}) to (${this.expr(a[1])})`);return;}
+        if(name==='controller.setRepeatDefault' && this.handleTemplates) {
+            if(this.bindsName('controller'))push(this.note('controller.setRepeatDefault refers to a shadowed controller binding'));
+            else if(a.length!==2)push(this.note('controller.setRepeatDefault requires delay and interval'));
+            else push(`arcade set button repeat defaults delay (${this.expr(a[0])}) interval (${this.expr(a[1])})`);
+            return;
+        }
+        if(name==='controller.pauseUntilAnyButtonIsPressed' && this.handleTemplates && !this.bindsName('controller')) {
+            if(!a.length)push('arcade wait until any button pressed');
+            else push(this.note('controller.pauseUntilAnyButtonIsPressed requires no arguments'));
+            return;
+        }
+        if(this.handleTemplates && !this.bindsName('sprites')) {
+            const dataSet=/^sprites\.setData(Number|String|Boolean|Sprite)$/.exec(name||'');
+            if(dataSet || name==='sprites.changeDataNumberBy') {
+                if(a.length!==3){push(this.note(`${name} requires a sprite, data key and value`));return;}
+                const receiver=`(${this.expr(a[0])})`,key=`(${this.expr(a[1])})`,value=`(${this.arrayElementValue(a[2])})`;
+                push(dataSet?`arcade set sprite ${receiver} data ${key} type ${dataSet[1]} to ${value}`:
+                    `arcade change sprite ${receiver} number data ${key} by ${value}`);
+                return;
+            }
+        }
+        if(this.settingsStatement(name,a,push))return;
         // Lite's own export's stop machinery, lifted back by liftExporterStops.
         if (name === '__bwStopAll') { push('stop all'); return; }
         if (name === '__bwStopOthers') { push('stop other scripts in sprite'); return; }
@@ -1191,11 +1533,15 @@ class ArcadeTranslator extends BaseTranslator {
                 if(fn.params.slice(a.length).some(param=>!fn.optionalParams?.includes(param)))this.unsupported.push(`${name}() argument count differs from its declaration`);
                 while(actual.length<fn.params.length)actual.push({type:'Undefined'});
             }
-            const values=actual.map(arg=>{
-                const value=this.arrayElementValue(arg);
-                return /^[-\w.]+$/.test(value) || /^"(?:[^"\\]|\\.)*"$/.test(value) ? value : `(${value})`;
-            });
-            push([name,...values].join(' '));return;
+            if(this.classCallableFactoryFunctions.has(name)){
+                if(!fn||actual.length!==fn.params.length){push(this.note('Class callable factory argument mapping differs'));return;}
+                let args='"[]"';for(let index=actual.length-1;index>=0;index--)args=`arcade function argument (${this.arrayElementValue(actual[index])}) rest (${args})`;
+                const code=[fn.name,...fn.params.map(()=>'%s')].join(' ');
+                const discarded=this.freshName('__bwDiscardCallableFactoryResult');
+                push(`arcade set local ${discarded} to (arcade call function ${JSON.stringify(code)} arguments (${args}))`);return;
+            }
+            const values=actual.map(arg=>`(${this.arrayElementValue(arg)})`);
+            push(`CALL: (${[name,...values].join(' ')})`);return;
         }
 
         if(['pauseUntil','control.waitUntil'].includes(name)) {
@@ -1229,7 +1575,7 @@ class ArcadeTranslator extends BaseTranslator {
                 push(this.note('sprites.onCreated() runtime kind expressions need support'));return;
             }
             const registration = this.createdRegistrations.get(node);
-            if (registration && this.handleTemplates) push(`arcade register creation kind "${kindOf(a[0])}" as "${registration.token}" capturing ${JSON.stringify([...registration.ownCaptures].join(' '))}`);
+            if (registration && this.handleTemplates) push(`arcade register creation kind ${this.kindSlot(a[0])} as "${registration.token}" capturing ${JSON.stringify([...registration.ownCaptures].join(' '))}`);
             else push(this.note('sprites.onCreated() needs a supported callback'));
             return;
         }
@@ -1238,14 +1584,20 @@ class ArcadeTranslator extends BaseTranslator {
             const registration=this.terrainRegistrations.get(node);
             if(!registration){push(this.note(`${name} requires a fixed SpriteKind, exact arguments and an inline callback with at most two parameters`));return;}
             const captures=JSON.stringify([...registration.ownCaptures].join(' '));
-            if(registration.kind==='legacyWall')push(`arcade register color wall kind "${kindOf(a[0])}" index (${this.expr(a[1])}) as "${registration.token}" capturing ${captures}`);
-            else if(registration.kind==='wall')push(`arcade register wall kind "${kindOf(a[0])}" as "${registration.token}" capturing ${captures}`);
-            else push(`arcade register tile kind "${kindOf(a[0])}" image (${this.expr(a[1])}) as "${registration.token}" capturing ${captures}`);
+            if(registration.kind==='legacyWall')push(`arcade register color wall kind ${this.kindSlot(a[0])} index (${this.expr(a[1])}) as "${registration.token}" capturing ${captures}`);
+            else if(registration.kind==='wall')push(`arcade register wall kind ${this.kindSlot(a[0])} as "${registration.token}" capturing ${captures}`);
+            else push(`arcade register tile kind ${this.kindSlot(a[0])} image (${this.expr(a[1])}) as "${registration.token}" capturing ${captures}`);
             return;
         }
         if(this.handleTemplates && ['game.pushScene','game.popScene'].includes(name)) {
             if(a.length){push(this.note(`${name} requires no arguments`));return;}
             push(name==='game.pushScene'?'arcade push scene':'arcade pop scene');return;
+        }
+        if(this.handleTemplates && /^info\.(showScore|showLife|showCountdown)$/.test(name||'')) {
+            if(this.bindsName('info')){push(this.note(`${name} refers to a shadowed info binding`));return;}
+            if(a.length!==1){push(this.note(`${name} requires one Boolean visibility value`));return;}
+            const element=name.slice('info.show'.length).toLowerCase();
+            push(`arcade set hud ${element} visible ${this.boolSlot(a[0])}`);return;
         }
         if(this.handleTemplates && /^info(?:\.player[1-4])?\.(setLife|changeLifeBy)$/.test(name||'')) {
             if(a.length!==1){push(this.note(`${name} requires one life value`));return;}
@@ -1265,12 +1617,23 @@ class ArcadeTranslator extends BaseTranslator {
         if(isSpriteRegistration(name)){
             for(const binding of ['sprites','SpriteKind'])if(this.boundSourceGlobals?.has(binding) || this.sourceFunctions?.has(binding) || this.localVars?.has(binding) || this.currentParameters?.has(binding) || this.capturedBindings.has(binding)){push(this.note(`${name} refers to a shadowed ${binding} binding`));return;}
         }
+        if(name==='control.allocateNotifyEvent'){
+            if(a.length){push(this.note('control.allocateNotifyEvent requires no arguments'));return;}if(!this.discardedEventSourceName){let n=0,name;do{name=`__bwDiscardedEventSource${++n}`;}while(this.taken.has(name));this.taken.add(name);this.discardedEventSourceName=name;}push(`set ${this.discardedEventSourceName} to (${this.expr(node)})`);return;
+        }
+        if(/^control\.(?:onEvent|raiseEvent|waitForEvent)$/.test(name||'')) {
+            if(this.boundSourceGlobals?.has('control') || this.sourceFunctions?.has('control') || this.localVars?.has('control') || this.currentParameters?.has('control') || this.capturedBindings.has('control')){push(this.note(`${name} refers to a shadowed control binding`));return;}
+            if(name!=='control.onEvent'){
+                if(a.length!==2){push(this.note(`${name} requires exactly two event identity arguments`));return;}
+                push(`arcade ${name==='control.raiseEvent'?'raise control event':'wait for control event'} source (${this.expr(a[0])}) value (${this.expr(a[1])})`);return;
+            }
+        }
         const sceneSpec=(this.sceneStackProgram || isIndependentRegistration(name)) && sceneRegistrationSpec(name);
         if(this.handleTemplates && sceneSpec) {
             const registration=this.sceneRegistrations.get(node);
             if(!registration){push(this.note(isParallelLaunch(name)?'control.runInParallel requires one inline callback without parameters':`${name} requires exact arguments, fixed sprite kinds and a supported inline callback; lifecycle oldScene access is not yet supported`));return;}
             const suffix=`as "${registration.token}" capturing ${JSON.stringify([...registration.ownCaptures].join(' '))}`;
             switch(registration.kind) {
+            case 'controlEvent':push(`arcade register control event source (${this.expr(a[0])}) value (${this.expr(a[1])}) flags (${a[3]?this.expr(a[3]):'16'}) ${suffix}`);break;
             case 'update':push(`arcade register update ${suffix}`);break;
             case 'paint':push(`arcade register paint ${suffix}`);break;
             case 'shade':push(`arcade register shade ${suffix}`);break;
@@ -1279,10 +1642,11 @@ class ArcadeTranslator extends BaseTranslator {
             case 'lifeZero':push(`arcade register life zero player (${playerOf(name)}) ${suffix}`);break;
             case 'countdown':push(`arcade register countdown ${suffix}`);break;
             case 'interval':push(`arcade register interval (${this.expr(a[0])}) ${suffix}`);break;
+            case 'multiplayerConnection':push(`arcade register multiplayer connection event (${this.expr(a[0])}) ${suffix}`);break;
             case 'multiplayerButton':push(`arcade register multiplayer button (${this.expr(a[0])}) event (${this.expr(a[1])}) ${suffix}`);break;
             case 'button':push(`arcade register button "${/^controller\.(\w+)\./.exec(name)[1]}" event (${this.expr(a[0])}) ${suffix}`);break;
-            case 'destroyed':push(`arcade register destroyed kind "${kindOf(a[0])}" ${suffix}`);break;
-            case 'overlap':push(`arcade register overlap kind "${kindOf(a[0])}" with kind "${kindOf(a[1])}" ${suffix}`);break;
+            case 'destroyed':push(`arcade register destroyed kind ${this.kindSlot(a[0])} ${suffix}`);break;
+            case 'overlap':push(`arcade register overlap kind ${this.kindSlot(a[0])} with kind ${this.kindSlot(a[1])} ${suffix}`);break;
             case 'scenePush':push(`arcade register scene push ${suffix}`);break;
             case 'scenePop':push(`arcade register scene pop ${suffix}`);break;
             }
@@ -1290,6 +1654,7 @@ class ArcadeTranslator extends BaseTranslator {
         }
         if(this.scrollerStatement(name,a,push))return;
         if(this.characterStatement(name,a,push))return;
+        if(this.textSpriteStatement(node,a,push))return;
         if(this.spriteExtensionStatement(node,a,push))return;
         if(this.sevensegStatement(node,a,push))return;
         if(this.musicStatement(name,a,push))return;
@@ -1387,8 +1752,15 @@ class ArcadeTranslator extends BaseTranslator {
         if(this.handleTemplates && ['tiles.setTilemap','tiles.setCurrentTilemap','scene.setTileMapLevel'].includes(name)) {
             const value=a[0];
             if(a.length===1 && value?.type==='Null'){push('arcade set tilemap data \"null\"');return;}
-            const data=value?.type==='Template' && /^(tilemap|assets\.tilemap)$/.test(value.tag||'') ? this.tilemaps[value.value.trim()] : decodeTilemap(value,node=>this.imageOf(node),node=>this.path(node));
-            if(!data){this.unsupported.push(`${name}() requires a readable literal tile map with wall layer and tile scale`);return;}
+            let data;
+            if(value?.type==='Template' && /^(tilemap|assets\.tilemap)$/.test(value.tag||'')) {
+                if(a.length!==1 || value.value.includes('${')){push(this.note(`${name}() requires a literal tilemap name`));return;}
+                const resolved=resolveNativeTilemap(this.tilemaps,value.value);
+                if(resolved.unsupported.length){push(this.note(`${name}(): ${resolved.unsupported.join('; ')}`));return;}
+                data=resolved.value;
+                if(data===null){push('arcade set tilemap data \"null\"');return;}
+            } else data=decodeTilemap(value,node=>this.imageOf(node),node=>this.path(node));
+            if(a.length!==1 || !data){this.unsupported.push(`${name}() requires a readable literal tile map with wall layer and tile scale`);return;}
             // Terrain physics is measured frame by frame against the original
             // (test/makecode-arcade-terrain-trajectories.test.mjs).
             push(`arcade set tilemap data ${JSON.stringify(JSON.stringify(data))}`);
@@ -1432,6 +1804,14 @@ class ArcadeTranslator extends BaseTranslator {
             if (a.length !== 3 || !source) { push(this.note(`${name}() needs an image source and x/y offsets`));return; }
             push(`arcade blit image ${node.callee.name} (${resource}) source (${source}) x (${this.expr(a[1])}) y (${this.expr(a[2])})`);return;
         }
+        if(resource && ['print','printCenter'].includes(node.callee.name)){
+            const center=node.callee.name==='printCenter',fontIndex=center?3:4;
+            if(a.length===fontIndex+1 && this.fontReferences?.has(a[fontIndex])){
+                const text=this.expr(a[0]),color=this.expr(a[fontIndex-1]),font=this.expr(a[fontIndex]);
+                push(center?`arcade print centered (${text}) on image (${resource}) y (${this.expr(a[1])}) color (${color}) using font (${font})`:
+                    `arcade print (${text}) on image (${resource}) x (${this.expr(a[1])}) y (${this.expr(a[2])}) color (${color}) using font (${font})`);return;
+            }
+        }
         if(resource && node.callee.name==='print') {
             // Image.print(text, x, y, color?, font?): an omitted font is chosen by
             // image.getFontForText, an omitted color is 1.
@@ -1449,6 +1829,10 @@ class ArcadeTranslator extends BaseTranslator {
             if(a.length!==2){push(this.note(`${name}() requires two scrolling offsets`));return;}
             push(`arcade scroll image (${resource}) x (${this.expr(a[0])}) y (${this.expr(a[1])})`);return;
         }
+        if(resource && !imageHandle && ['drawCircle','fillCircle'].includes(node.callee.name)) {
+            if(a.length!==4){push(this.note(`${name}() requires center x/y, radius and color`));return;}
+            push(`arcade draw image circle ${node.callee.name} (${resource}) x ${this.expr(a[0])} y ${this.expr(a[1])} radius ${this.expr(a[2])} color ${this.expr(a[3])}`);return;
+        }
         if (resource && !imageHandle && ['copyFrom', 'scroll', 'fill', 'replace', 'flipX', 'flipY', 'setPixel', 'fillRect', 'drawLine'].includes(node.callee.name)) {
             const operation = node.callee.name;
             const expected = {fill:1, replace:2, flipX:0, flipY:0, setPixel:3, fillRect:5, drawLine:5}[operation];
@@ -1458,7 +1842,11 @@ class ArcadeTranslator extends BaseTranslator {
             else push(`arcade mutate image ${operation} (${resource}) color ${a[0] ? this.expr(a[0]) : 0} replacement ${a[1] ? this.expr(a[1]) : 0}`);
             return;
         }
-        if (imageHandle && ['copyFrom', 'scroll', 'fill', 'replace', 'flipX', 'flipY', 'setPixel', 'getPixel', 'fillRect', 'drawLine', 'drawImage', 'drawTransparentImage', 'overlapsWith'].includes(node.callee.name)) {
+        if(imageHandle && ['drawCircle','fillCircle'].includes(node.callee.name)) {
+            if(a.length!==4){push(this.note(`${name}() requires center x/y, radius and color`));return;}
+            push(`arcade draw circle ${node.callee.name} of ${imageHandle} x ${this.expr(a[0])} y ${this.expr(a[1])} radius ${this.expr(a[2])} color ${this.expr(a[3])}`);return;
+        }
+        if (imageHandle && ['copyFrom', 'scroll', 'fill', 'replace', 'flipX', 'flipY', 'setPixel', 'getPixel', 'fillRect', 'drawLine', 'drawCircle', 'fillCircle', 'drawImage', 'drawTransparentImage', 'overlapsWith'].includes(node.callee.name)) {
             const operation = node.callee.name;
             if (operation === 'setPixel' && a.length === 3) {
                 push(`arcade set pixel of ${imageHandle} x ${this.expr(a[0])} y ${this.expr(a[1])} color ${this.expr(a[2])}`);
@@ -1512,7 +1900,7 @@ class ArcadeTranslator extends BaseTranslator {
                 if (registration) push(`arcade register instance destruction of (${handle}) as "${registration.token}" capturing ${JSON.stringify([...registration.ownCaptures].join(' '))}`);
                 else push(this.note('sprite.onDestroyed() requires one inline callback without parameters and a typed sprite reference'));
             }
-            else if (node.callee.name === 'setKind') push(`arcade set kind of ${handle} to "${kindOf(a[0])}"`);
+            else if (node.callee.name === 'setKind') push(`arcade set kind of ${handle} to ${this.kindSlot(a[0])}`);
             else if (node.callee.name === 'setFlag' && this.path(a[0]) === 'SpriteFlag.AutoDestroy') {
                 push(`arcade auto destroy ${handle} outside screen ${this.expr(a[1])}`);
             }
@@ -1532,7 +1920,7 @@ class ArcadeTranslator extends BaseTranslator {
                 push(`arcade keep ${handle} in screen ${this.expr(a[1])}`);
             }
             else if (node.callee.name === 'setFlag' &&
-                ['Invisible', 'Ghost', 'GhostThroughWalls', 'GhostThroughTiles', 'DestroyOnWall', 'RelativeToCamera'].some(flag =>
+                ['Invisible', 'Ghost', 'GhostThroughWalls', 'GhostThroughTiles', 'DestroyOnWall', 'RelativeToCamera', 'ShowPhysics'].some(flag =>
                     this.path(a[0]) === `SpriteFlag.${flag}`)) {
                 if(a.length!==2)push(this.note(`SpriteFlag.${a[0].name} requires a flag and one Boolean value`));
                 else push(`arcade set flag ${a[0].name} of ${handle} to ${this.expr(a[1])}`);
@@ -1633,14 +2021,16 @@ class ArcadeTranslator extends BaseTranslator {
                 push(this.note('game.splash() arguments'));
                 return;
             }
-            push(`arcade splash ${this.expr(a[0])} subtitle ${a[1] ? this.expr(a[1]) : '""'}`);
+            if(a.some(value=>!this.primitiveReferences?.has(value))){push(this.note('game.splash() requires proven primitive text; opaque or unknown inspection is not implemented'));return;}
+            push(`arcade splash (${this.arrayElementValue(a[0])}) subtitle (${a[1] ? this.arrayElementValue(a[1]) : '""'})`);
             return;
         case 'game.showLongText':
             if (a.length !== 2 || !/^DialogLayout\.(Left|Right|Top|Bottom|Center|Full)$/.test(this.path(a[1]) || '')) {
                 push(this.note('game.showLongText() layout must be a fixed DialogLayout value'));
                 return;
             }
-            push(`arcade long text ${this.expr(a[0])} layout "${this.path(a[1]).split('.')[1]}"`);
+            if(!this.primitiveReferences?.has(a[0])){push(this.note('game.showLongText() requires proven primitive text; opaque or unknown inspection is not implemented'));return;}
+            push(`arcade long text (${this.arrayElementValue(a[0])}) layout "${this.path(a[1]).split('.')[1]}"`);
             return;
 
         case 'music.playTone':
@@ -1742,6 +2132,152 @@ class ArcadeTranslator extends BaseTranslator {
 
     // effects.<name> as one of PXT's ParticleEffect instances.
     /** A program binding (global, function, local, parameter or capture) named `name`. */
+    objectArguments(node) {
+        if(node?.type!=='Array'){this.unsupported.push('Class arguments require an explicit ordered argument list');return '"[]"';}
+        let rest='"[]"';
+        for(let i=node.items.length-1;i>=0;i--)rest=`arcade function argument (${this.arrayElementValue(node.items[i])}) rest (${rest})`;
+        return rest;
+    }
+    objectExpression(node) {
+        if(node?.bwPrimitiveNumberText)return `(${this.arrayElementValue(node.left)}) join ("")`;
+        const name=this.path(node?.callee),a=node?.args || [];
+        if(node.bwConsoleInspectIntrinsic===true&&name==='__bwConsoleInspectValue'&&a.length===2)return `arcade inspect value (${this.arrayElementValue(a[0])}) limit (${this.arrayElementValue(a[1])})`;
+        if(node.bwFontIntrinsic && name==='__bwSdkFont_'+node.bwFontIntrinsic){
+            if(node.bwFontIntrinsic==='constant' && a.length===1)return `arcade font value ${a[0].value}`;
+            if(node.bwFontIntrinsic==='getFontForText' && a.length===1)return `arcade font for text (${this.expr(a[0])})`;
+            if(node.bwFontIntrinsic==='scaledFont' && a.length===2)return `arcade scaled font (${this.expr(a[0])}) by (${this.expr(a[1])})`;
+            if(node.bwFontIntrinsic==='field' && a.length===2)return `arcade object (${this.expr(a[0])}) field (${this.expr(a[1])})`;
+        }
+        if(node.bwCallableIntrinsic==='create' && name==='__bwCallables.create' && a.length===1) {
+            const procedure=this.callableProcedures?.get(a[0]?.value);
+            if(!procedure){this.unsupported.push('Callable creation requires its exact emitted source procedure');return 'undefined value';}
+            return `arcade callable ${JSON.stringify(procedure)}`;
+        }
+        if(node.bwCallableIntrinsic==='invoke' && name==='__bwCallables.invoke' && a.length===2)
+            return `arcade invoke callable (${this.expr(a[0])}) arguments (${this.objectArguments(a[1])})`;
+        if(name==='__bwObjects.assign' && a.length===5) {
+            const fresh=base=>{let name;do{name='__bwObject'+base+'_'+(this.objectTemporaryCounter=(this.objectTemporaryCounter||0)+1);}while(this.taken?.has(name));this.taken?.add(name);return name;};
+            const receiver=fresh('Receiver'),old=fresh('Old'),next=fresh('Next');
+            this.pre.push(`arcade set local ${receiver} to (${this.expr(a[0])})`);
+            this.pre.push(`arcade set local ${old} to (arcade object (arcade local ${receiver}) field (${this.expr(a[1])}))`);
+            const op=a[2].value,increment=['++','--'].includes(op);
+            const left=increment?`convert value (arcade local ${old}) op "+"`:`arcade local ${old}`;
+            const right=this.arrayElementValue(a[3]);
+            this.pre.push(`arcade set local ${next} to (calculate value (${left}) op ${JSON.stringify(increment?op==='++'?'+':'-':op)} with (${right}))`);
+            this.pre.push(`arcade set object (arcade local ${receiver}) field (${this.expr(a[1])}) to (arcade local ${next})`);
+            return `arcade local ${a[4].value==='old'?old:next}`;
+        }
+        if(name==='__bwObjects.procedure' && a.length===2)return `arcade call function (${this.expr(a[0])}) arguments (${this.objectArguments(a[1])})`;
+        if(name==='__bwObjects.create' && a.length===2)return `arcade new object class (${this.expr(a[0])}) arguments (${this.objectArguments(a[1])})`;
+        if(name==='__bwObjects.get' && a.length===2)return `arcade object (${this.expr(a[0])}) field (${this.expr(a[1])})`;
+        if(name==='__bwObjects.call' && a.length===3)return `arcade object (${this.expr(a[0])}) call method (${this.expr(a[1])}) arguments (${this.objectArguments(a[2])})`;
+        return null;
+    }
+    objectStatement(node,push) {
+        const name=this.path(node?.callee),a=node?.args || [];
+        if(node.bwFontIntrinsic && name==='__bwSdkFont_'+node.bwFontIntrinsic){
+            if(node.bwFontIntrinsic==='constant' && a.length===1)return `arcade font value ${a[0].value}`;
+            if(node.bwFontIntrinsic==='getFontForText' && a.length===1)return `arcade font for text (${this.expr(a[0])})`;
+            if(node.bwFontIntrinsic==='scaledFont' && a.length===2)return `arcade scaled font (${this.expr(a[0])}) by (${this.expr(a[1])})`;
+            if(node.bwFontIntrinsic==='field' && a.length===2)return `arcade object (${this.expr(a[0])}) field (${this.expr(a[1])})`;
+        }
+        if(node.bwCallableIntrinsic==='invoke' && name==='__bwCallables.invoke'){push(`arcade set local ${this.freshName('__bwDiscardCallableResult')} to (${this.objectExpression(node)})`);return true;}
+        if(name==='__bwObjects.declareSubclass' && a.length===7){push(`arcade declare subclass (${this.expr(a[0])}) of (${this.expr(a[1])}) fields (${this.expr(a[2])}) initializer (${this.expr(a[3])}) constructor (${this.expr(a[4])}) parameters (${this.expr(a[5])}) methods (${this.expr(a[6])})`);return true;}
+        if(name==='__bwObjects.procedure'){push(`arcade set local ${this.freshName('__bwDiscardObjectResult')} to (${this.objectExpression(node)})`);return true;}
+        if(name==='__bwObjects.declare' && a.length===6){push(`arcade declare class (${this.expr(a[0])}) fields (${this.expr(a[1])}) initializer (${this.expr(a[2])}) constructor (${this.expr(a[3])}) parameters (${this.expr(a[4])}) methods (${this.expr(a[5])})`);return true;}
+        if(name==='__bwObjects.set' && a.length===3){push(`arcade set object (${this.expr(a[0])}) field (${this.expr(a[1])}) to (${this.arrayElementValue(a[2])})`);return true;}
+        if(name==='__bwObjects.assign'){push(`arcade set local ${this.freshName('__bwDiscardObjectResult')} to (${this.objectExpression(node)})`);return true;}
+        if(name==='__bwObjects.call'){push(`arcade set local ${this.freshName('__bwDiscardObjectResult')} to (${this.objectExpression(node)})`);return true;}
+        return false;
+    }
+    settingsExpression(node) {
+        if(!this.handleTemplates || node?.type!=='Call')return null;
+        let api=this.path(node.callee);
+        if(api==='bwStringArraySettings.read' && !this.bindsName('bwStringArraySettings'))api='blockSettings.readStringArray';
+        if(api==='bwStringArraySettings.write' && !this.bindsName('bwStringArraySettings'))api='blockSettings.writeStringArray';
+        const match=/^(settings|blockSettings)\.(read(Number|String|NumberArray|StringArray|Buffer)|exists|list|remove|clear|write(Number|String|NumberArray|StringArray|Buffer))$/.exec(api||'');
+        if(!match || this.bindsName(match[1]))return null;
+        if(match[1]==='settings' && (match[3]==='StringArray' || match[4]==='StringArray')){this.note(`${api} is not an original SDK API; use bwStringArraySettings with its owned helper`);return 'undefined value';}
+        const method=match[2],a=node.args||[];
+        if(method==='exists' && a.length===1)return `arcade setting (${this.expr(a[0])}) exists`;
+        if(method==='list' && a.length<=(match[1]==='blockSettings'?0:1))return `arcade read setting (${a[0]?this.expr(a[0]):'""'}) type List`;
+        if(match[3] && a.length===1)return `arcade read setting (${this.expr(a[0])}) type ${match[3]}`;
+        if(this.settingsStatement(api,a,line=>this.pre.push(line)))return 'undefined value';
+        this.note(`${api} arguments do not match the original Settings API`);return 'undefined value';
+    }
+    settingsStatement(api,a,push) {
+        if(!this.handleTemplates)return false;
+        if(api==='bwStringArraySettings.write' && !this.bindsName('bwStringArraySettings'))api='blockSettings.writeStringArray';
+        const match=/^(settings|blockSettings)\.(write(Number|String|NumberArray|StringArray|Buffer)|remove|clear)$/.exec(api||'');
+        if(!match || this.bindsName(match[1]))return false;
+        if(match[1]==='settings' && match[3]==='StringArray'){push(this.note(`${api} is not an original SDK API; use bwStringArraySettings with its owned helper`));return true;}
+        const method=match[2];
+        if(match[3] && a.length===2)push(`arcade write setting (${this.expr(a[0])}) type ${match[3]} value (${this.arrayElementValue(a[1])})`);
+        else if(method==='remove' && a.length===1)push(`arcade remove setting (${this.expr(a[0])})`);
+        else if(method==='clear' && !a.length)push('arcade clear user settings');
+        else push(this.note(`${api} arguments do not match the original Settings API`));
+        return true;
+    }
+
+    bufferFormat(node) {
+        if(node?.type==='Member' && node.object?.name==='NumberFormat' && !this.bindsName('NumberFormat')) {
+            if(BUFFER_FORMATS.includes(node.name))return node.name;
+            this.note(`Unknown Buffer NumberFormat.${node.name}`);return '(undefined value)';
+        }
+        return `(${this.expr(node)})`;
+    }
+    bufferExpression(node) {
+        if(!this.handleTemplates)return null;
+        const value=n=>`(${this.expr(n)})`;
+        if(node?.type==='Member' && node.object?.name==='NumberFormat' && !this.bindsName('NumberFormat')) {
+            if(BUFFER_FORMATS.includes(node.name))return String(BUFFER_FORMATS.indexOf(node.name)+1);
+            this.note(`Unknown Buffer NumberFormat.${node.name}`);return 'undefined value';
+        }
+        if(node?.type==='Template' && node.tag==='hex') {
+            const hex=node.value.replace(/\s/g,'');
+            if(!/^(?:[0-9a-f]{2})*$/i.test(hex)){this.note('Buffer hex literal requires complete hexadecimal bytes');return 'undefined value';}
+            return `arcade byte buffer literal hex ${JSON.stringify(hex)}`;
+        }
+        if(node?.type==='Index' && this.bufferReferences?.has(node.object))return `arcade byte buffer ${value(node.object)} byte at ${value(node.index)}`;
+        if(node?.type==='Member' && this.bufferReferences?.has(node.object)) {
+            if(node.name==='length')return `arcade byte buffer ${value(node.object)} length`;
+            this.note(`Buffer.${node.name} property requires supported Buffer member access`);return 'undefined value';
+        }
+        if(node?.type!=='Call')return null;
+        const api=this.path(node.callee),a=node.args||[];
+        if(['control.createBuffer','control.createBufferFromUTF8','Buffer.fromHex','Buffer.fromUTF8'].includes(api) && !this.bindsName(api.split('.')[0])) {
+            if(a.length!==1){this.note(`${api} requires one argument`);return 'undefined value';}
+            if(api==='control.createBuffer')return `arcade create byte buffer size ${value(a[0])}`;
+            return `arcade byte buffer from ${api==='Buffer.fromHex'?'hex':'UTF8'} text ${value(a[0])}`;
+        }
+        if(node.callee?.type!=='Member' || !this.bufferReferences?.has(node.callee.object))return null;
+        const receiver=value(node.callee.object),op=node.callee.name;
+        if(op==='getNumber' && a.length===2)return `arcade byte buffer ${receiver} number ${this.bufferFormat(a[0])} at ${value(a[1])}`;
+        if(['toHex','toString','isReadOnly'].includes(op) && !a.length)return `arcade byte buffer ${receiver} ${ {toHex:'to hex',toString:'to UTF8 text',isReadOnly:'is read only'}[op]}`;
+        if(op==='slice' && a.length<=2)return `arcade byte buffer ${receiver} slice at ${a[0]?value(a[0]):0} length ${a[1]?value(a[1]):-1}`;
+        // The original shared view needs its own native block; do not copy it.
+        if(op==='subarray'){this.note('Buffer.subarray requires a native shared-view block');return 'undefined value';}
+        this.note(`Buffer.${op} requires supported Buffer expression arguments`);return 'undefined value';
+    }
+    bufferStatement(node,indent,out) {
+        if(!this.handleTemplates)return false;
+        const target=node?.type==='Assignment' && node.left;
+        if(target?.type==='Index' && this.bufferReferences?.has(target.object)) {
+            if(node.op!=='='){out.push(`${'  '.repeat(indent)}${this.note('Buffer byte compound assignment requires single-evaluation lowering')}`);return true;}
+            out.push(`${'  '.repeat(indent)}arcade set byte buffer (${this.expr(target.object)}) byte at (${this.expr(target.index)}) to (${this.expr(node.right)})`);return true;
+        }
+        if(node?.type!=='Call' || node.callee?.type!=='Member' || !this.bufferReferences?.has(node.callee.object))return false;
+        const a=node.args||[],op=node.callee.name,receiver=`(${this.expr(node.callee.object)})`,v=(i,fallback)=>a[i]?`(${this.expr(a[i])})`:fallback;
+        let code;
+        if(op==='setNumber' && a.length===3)code=`arcade set byte buffer ${receiver} number ${this.bufferFormat(a[0])} at ${v(1)} to ${v(2)}`;
+        if(op==='fill' && a.length>=1 && a.length<=3)code=`arcade fill byte buffer ${receiver} with ${v(0)} at ${v(1,0)} length ${v(2,-1)}`;
+        if(op==='write' && a.length>=2 && a.length<=4)code=`arcade write byte buffer ${receiver} at ${v(0)} from ${v(1)}`;
+        if(['shift','rotate'].includes(op) && a.length>=1 && a.length<=3)code=`arcade ${op} byte buffer ${receiver} by ${v(0)} at ${v(1,0)} length ${v(2,-1)}`;
+        if(!code)return false;
+        if(op==='write' && a.length>2){out.push(`${'  '.repeat(indent)}${this.note('Buffer.write source offset and length require native block arguments')}`);return true;}
+        out.push(`${'  '.repeat(indent)}${code}`);return true;
+    }
+
     bindsName (name) {
         return Boolean(this.boundSourceGlobals?.has(name) || this.sourceFunctions?.has(name) || this.localVars?.has(name) ||
             this.currentParameters?.has(name) || this.capturedBindings?.has(name));
@@ -1800,10 +2336,18 @@ class ArcadeTranslator extends BaseTranslator {
         if (node?.type === 'Call' && this.path(node.callee) === 'characterAnimations._direction' && node.args?.length === 1) return this.characterFacing(node.args[0]);
         return false;
     }
+    kindSlot(node) {
+        if(!node)return '(undefined value)';
+        if(['Array','Object','ObjectLiteral','FunctionExpression'].includes(node.type) || this.arrayReferences?.has(node) || this.imageReferences?.has(node) || this.spriteReferences?.has(node)) {
+            this.unsupported.push('SpriteKind argument requires a numeric value, null or undefined');return '(undefined value)';
+        }
+        return `(${this.expr(node)})`;
+    }
     /** arcade-character-animations calls. */
     characterStatement (name, a, push) {
         if (!this.handleTemplates || !/^characterAnimations\./.test(name || '') || this.bindsName('characterAnimations')) return false;
         const method = name.slice(20), fail = message => { push(this.note(`characterAnimations.${method}() ${message}`)); return true; };
+        if(this.characterVersion===LEGACY_CHARACTER_REVISION && ['setController','lockFacingDirection','unlockFacingDirection'].includes(method))return fail('is not implemented in v0.0.2');
         const sprite = this.handleRef(a[0]);
         if (!sprite) return fail('needs a typed sprite');
         const frames = node => node?.type === 'Call' && this.path(node.callee) === 'characterAnimations._animationFrames' && node.args?.length === 1 ? node.args[0] : node;
@@ -1855,6 +2399,10 @@ class ArcadeTranslator extends BaseTranslator {
         }, method = name.slice(9);
         const layer = i => this.scrollerLayer(a[i]);
         const fail = message => { push(this.note(`scroller.${method}() ${message}`)); return true; };
+        if(this.scrollerVersion===LEGACY_SCROLLER_REVISION) {
+            const arity={scrollBackgroundWithCamera:[1,1],scrollBackgroundWithSpeed:[2,2],setCameraScrollingMultipliers:[0,2],setBackgroundScrollOffset:[2,2]}[method];
+            if(!arity || a.length<arity[0] || a.length>arity[1])return fail('is not available with these arguments in the selected single-background library');
+        }
         switch (method) {
         case 'scrollBackgroundWithCamera': {
             const mode = /^scroller\.CameraScrollMode\.(OnlyHorizontal|OnlyVertical|BothDirections)$/.exec(this.path(a[0]) || '');
@@ -1882,6 +2430,21 @@ class ArcadeTranslator extends BaseTranslator {
             return fail('is not supported');
         }
     }
+    textSpriteStatement(node,a,push) {
+        const callee=node?.callee;
+        if(!this.handleTemplates || callee?.type!=='Member' || !this.textSpriteReferences?.has(callee.object))return false;
+        const id=this.expr(callee.object),method=callee.name,value=i=>this.arrayElementValue(a[i]);
+        if(method==='setText' && a.length===1)push(`arcade text sprite (${id}) set text (${value(0)})`);
+        else if(method==='setMaxFontHeight' && a.length===1)push(`arcade text sprite (${id}) set max font height (${value(0)})`);
+        else if(method==='setIcon' && a.length===1)push(`arcade text sprite (${id}) set icon (${value(0)})`);
+        else if(method==='setBorder' && a.length>=2 && a.length<=3)push(`arcade text sprite (${id}) set border width (${value(0)}) color (${value(1)}) padding (${a[2]?value(2):0})`);
+        else if(method==='setOutline' && a.length===2)push(`arcade text sprite (${id}) set outline width (${value(0)}) color (${value(1)})`);
+        else if(method==='update' && !a.length)push(`arcade text sprite (${id}) update`);
+        else if(['setText','setMaxFontHeight','setIcon','setBorder','setOutline','update'].includes(method))push(this.note(`TextSprite.${method} arguments do not match original source`));
+        else return false;
+        return true;
+    }
+
     /** 'dart' or 'corgio' for a tracked extension sprite, else null. */
     spriteExtensionOf (node) {
         return !node ? null : this.dartReferences?.has(node) ? 'dart' : this.corgiReferences?.has(node) ? 'corgio' : null;
@@ -1889,11 +2452,11 @@ class ArcadeTranslator extends BaseTranslator {
     spriteExtensionCreate (node) {
         const dart = this.path(node.callee) === 'darts.create', a = node.args || [], first = dart ? 1 : 0;
         if (a.length < first + 1 || a.length > first + 3) { this.unsupported.push(`${dart ? 'darts' : 'corgio'}.create() takes ${dart ? 'an image, a kind' : 'a kind'} and an optional x and y`); return 'undefined value'; }
-        const kind = kindOf(a[first]), x = a.length > first + 1 ? this.expr(a[first + 1]) : '10', y = a.length > first + 2 ? this.expr(a[first + 2]) : dart ? '110' : '70';
-        if (!dart) return `arcade create corgi kind "${kind}" x (${x}) y (${y})`;
+        const kind = this.kindSlot(a[first]), x = a.length > first + 1 ? this.expr(a[first + 1]) : '10', y = a.length > first + 2 ? this.expr(a[first + 2]) : dart ? '110' : '70';
+        if (!dart) return `arcade create corgi kind ${kind} x (${x}) y (${y})`;
         const image = this.imageRef(a[0]);
         if (!image) { this.unsupported.push('darts.create() needs an image'); return 'undefined value'; }
-        return `arcade create dart image (${image}) kind "${kind}" x (${x}) y (${y})`;
+        return `arcade create dart image (${image}) kind ${kind} x (${x}) y (${y})`;
     }
     /** darts and corgio method calls on a tracked extension sprite. */
     spriteExtensionStatement (node, a, push) {
@@ -1975,8 +2538,7 @@ class ArcadeTranslator extends BaseTranslator {
                     `arcade song named ${JSON.stringify(buffer.bwSongName)} hex ${JSON.stringify(text.toLowerCase())}` :
                     `arcade song playable hex ${JSON.stringify(text.toLowerCase())}`;
             }
-            if (buffer?.type === 'Call' && this.path(buffer.callee) === 'Buffer.fromHex' && !this.bindsName('Buffer') && buffer.args.length === 1)
-                return `arcade song playable hex (${this.expr(buffer.args[0])})`;
+            if (this.bufferReferences?.has(buffer))return `arcade song playable byte buffer (${this.expr(buffer)})`;
             this.note('music.createSong requires a hex literal or Buffer.fromHex expression');
             return '0';
         }
@@ -2160,22 +2722,23 @@ class ArcadeTranslator extends BaseTranslator {
         const pad = '  '.repeat(indent);
         const push = line => out.push(pad + line);
         const dataTarget=expr.type==='Assignment'?expr.left:expr.type==='Update'?expr.argument:null;
+        if(dataTarget?.type==='Member' && Object.prototype.hasOwnProperty.call(ARCADE_SCENE_CONSTANTS,this.path(dataTarget))){push(this.note(`${this.path(dataTarget)} assignment requires a mutable object; SDK Scene constants are readonly`));return;}
         if(dataTarget?.type==='Member' && this.playerReferences?.has(dataTarget.object)){push(this.note(`mp.Player.${dataTarget.name} assignment requires native player member support`));return;}
         if(dataTarget?.type==='Member' && this.dataReferences?.has(dataTarget.object) && !this.spriteReferences?.has(dataTarget.object)) {
             push(this.note(`Sprite.data.${dataTarget.name} assignment requires arbitrary object member support`));return;
         }
 
-        if(this.handleTemplates && (expr.type==='Assignment' && expr.left?.type==='Identifier' || expr.type==='Update' && expr.argument?.type==='Identifier')) {
+        if(this.nativeValues && (expr.type==='Assignment' && expr.left?.type==='Identifier' || expr.type==='Update' && expr.argument?.type==='Identifier')) {
             const target=expr.type==='Update'?expr.argument:expr.left;
             const op=expr.type==='Update'?(expr.op==='++'?'+':'-'):expr.op.slice(0,-1);
             let value;
             if(expr.type==='Assignment' && expr.op==='=')value=this.arrayElementValue(expr.right);
-            else if(['+','-','*','/','%'].includes(op)) {
+            else if(['+','-','*','/','%','|','&','^','<<','>>','>>>'].includes(op)) {
                 const left=expr.type==='Update'?{type:'Unary',op:'+',argument:target}:target;
                 value=this.expr({type:'Binary',op,left,right:expr.type==='Update'?{type:'Number',value:'1'}:expr.right});
             } else {push(this.note(`${target.name} ${expr.op} — unsupported value assignment`));return;}
             if(this.capturedBindings.has(target.name))push(`arcade set captured ${this.capturedBindings.get(target.name)} to (${value})`);
-            else if(target.temporary || this.localVars?.has(target.name) || this.currentParameters?.has(target.name))push(`arcade set local ${this.varName(target.name)} to (${value})`);
+            else if(target.temporary || this.localVars?.has(target.name) || this.currentParameters?.has(target.name))push(`arcade set local ${this.currentParameters?.has(target.name)?this.varName(target.name):target.name} to (${value})`);
             else push(`set ${this.varName(target.name)} to (${value})`);
             return;
         }
@@ -2227,13 +2790,14 @@ class ArcadeTranslator extends BaseTranslator {
         if (handle) {
             const property = expr.left.name;
             if (!['x', 'y', 'left', 'right', 'top', 'bottom', 'vx', 'vy', 'ax', 'ay', 'fx', 'fy', 'sx', 'sy', 'scale',
-                'width', 'height', 'z', 'lifespan', 'rotation', 'rotationDegrees', 'data'].includes(property)) {
+                'width', 'height', 'z', 'lifespan', 'rotation', 'rotationDegrees', 'data', 'flags'].includes(property)) {
                 push(this.note(`${this.path(expr.left)} = … — unsupported Arcade handle property`));
                 return;
             }
+            if(property==='flags' && !this.primitiveReferences?.has(expr.right)){push(this.note('Sprite.flags assignment requires a proven primitive value; opaque or unknown conversion is not implemented'));return;}
             const value = this.expr(expr.right);
             const result = expr.op === '=' ? value :
-                ['+=','-=','*=','/=','%='].includes(expr.op) ? this.expr({type:'Binary',op:expr.op.slice(0,-1),left:expr.left,right:expr.right}) : null;
+                ['+=','-=','*=','/=','%=','|=','&=','^=','<<=','>>=','>>>='].includes(expr.op) ? this.expr({type:'Binary',op:expr.op.slice(0,-1),left:expr.left,right:expr.right}) : null;
             if (result === null) push(this.note(`${this.path(expr.left)} ${expr.op} — unsupported assignment`));
             else push(`arcade set ${property} of ${handle} to ${result}`);
             return;
@@ -2249,6 +2813,20 @@ class ArcadeTranslator extends BaseTranslator {
             }
         }
 
+        if(expr.type==='Assignment') {
+            const repeat=this.controllerRepeatSlot(expr.left);
+            if(repeat){
+                if(repeat.error)push(this.note(repeat.error));
+                else if(expr.op!=='=')push(this.note('Controller repeat compound assignment requires qualified selected-SDK staging'));
+                else push(`arcade set player ${repeat.player} button ${repeat.button} repeat property ${repeat.property} to (${this.expr(expr.right)})`);
+                return;
+            }
+        }
+        if(expr.type==='Assignment' && expr.left?.type==='Member' && expr.left.name==='connected' && /^controller\.player[1-4]$/.test(this.path(expr.left.object)||'')) {
+            if(this.boundSourceGlobals?.has('controller') || this.sourceFunctions?.has('controller') || this.localVars?.has('controller') || this.currentParameters?.has('controller') || this.capturedBindings.has('controller')){push(this.note(`${this.path(expr.left)} refers to a shadowed controller binding`));return;}
+            if(expr.op!=='='){push(this.note('Controller connected compound assignment requires a qualified controller value receiver'));return;}
+            push(`arcade set controller player ${this.path(expr.left.object).slice(-1)} connected (${this.expr(expr.right)})`);return;
+        }
         if (expr.type === 'Assignment' && expr.left.type === 'Member') {
             const owner = this.resolveSprite(expr.left.object);
             // \`paddle.x = …\` where \`paddle\` is a loop variable or a parameter: no
@@ -2329,8 +2907,7 @@ const negativeKind = node => {
             -Number(node.argument.value) : NaN;
     return Number.isFinite(value) && value < 0 ? value : null;
 };
-const fixedKind = node => negativeKind(node) !== null ||
-    node?.type === 'Member' && node.object?.type === 'Identifier' && node.object.name === 'SpriteKind';
+const fixedKind = node => !!node && ['Number','Unary','Identifier','Member','Call','Binary','Null','Undefined','Conditional'].includes(node.type);
 
 /** SpriteKind member or fixed negative numeric kind → native kind identity. */
 const kindOf = node => {
@@ -2344,7 +2921,6 @@ const kindOf = node => {
  * Match the full body and every use before inlining; names alone never grant
  * intrinsic semantics. Evaluating the operands preserves call argument order.
  */
-let legacyArrayHelperTemplates;
 // Arcade destroys the current kind collection, not a live query on each
 // iteration. Lower through the same snapshot-array and handle destruction
 // primitives exposed in Blocks. Newly created callback sprites survive.
@@ -2467,7 +3043,7 @@ const lowerArrayCallbacks = (program, source) => {
     const lowerStatement = statement => {
         const call = statement.type === 'ExpressionStatement' && statement.expr;
         // A statement-level map discards its result array, so it visits like forEach.
-        if (call?.type !== 'Call' || call.callee?.type !== 'Member' || !['forEach', 'map'].includes(call.callee.name) || call.args.length !== 1) return null;
+        if (call?.type !== 'Call' || call.callee?.type !== 'Member' || call.callee.name !== 'forEach' || call.args.length !== 1) return null;
         const fn = call.args[0];
         if (fn?.type !== 'FunctionExpression' || !fn.params.length || fn.params.length > 2) return null;
         const statements = callbackStatements(fn);
@@ -2533,142 +3109,152 @@ const desugarForOf = (program, source) => {
 // the \`stop all\` itself was lost. When that machinery is present VERBATIM, this
 // lifts it back: \`_stopAll()\` is \`stop all\`, a mark of \`_stopOthers\` is \`stop
 // other scripts in sprite\`, and the run-token lines and their guards vanish.
-let exporterTokenTemplates;
-const liftExporterStops = program => {
-    const shape = node => JSON.stringify(node, (key, value) => (key === 'line' ? undefined : value));
-    const templates = exporterTokenTemplates || (exporterTokenTemplates = new Map(
-        parseMakeCodeTs(`${HELPERS.tok.ts}\n${HELPERS.others.ts}`).body
-            .filter(st => st.type === 'FunctionDeclaration').map(fn => [fn.name, shape(fn)])));
-    const declared = new Map(program.body.filter(st => st.type === 'FunctionDeclaration').map(fn => [fn.name, fn]));
-    const stopAll = declared.get('_stopAll');
-    const generated = ['_tok', '_dead'].every(name => declared.has(name) && shape(declared.get(name)) === templates.get(name)) &&
-        (!stopAll || stopAll.body?.[0]?.type === 'ExpressionStatement' && stopAll.body[0].expr?.type === 'Assignment' &&
-            stopAll.body[0].expr.left?.name === '_stopMark' && stopAll.body[0].expr.right?.name === '_tokens');
-    if (!generated) return program;
-    const helpers = new Set(['_tok', '_dead', '_stopAll',
-        ...['_stopOthers', '_othersStopped'].filter(name => declared.has(name) && shape(declared.get(name)) === templates.get(name))]);
-    const isId = (node, name) => node?.type === 'Identifier' && (name instanceof RegExp ? name.test(node.name) : node.name === name);
-    const isCall = (node, name) => node?.type === 'Call' && isId(node.callee, name);
-    const marker = name => ({type: 'ExpressionStatement', expr: {type: 'Call', callee: {type: 'Identifier', name}, args: []}});
-    // A guard term the export adds at each yield; anything else in the test stays.
-    const guardTerm = node => isCall(node, '_dead') && isId(node.args?.[0], '_t') ||
-        isCall(node, '_othersStopped') && isId(node.args?.[1], '_t') ||
-        node?.type === 'Binary' && node.op === '&&' && node.left?.type === 'Binary' && node.left.op === '<=' &&
-            isId(node.left.left, '_t') && isId(node.left.right, /^_som_/);
-    const terms = node => node?.type === 'Binary' && node.op === '||' ? [...terms(node.left), ...terms(node.right)] : [node];
-    const bareReturn = st => st?.type === 'Return' && !st.value ||
-        st?.type === 'Block' && st.body?.length === 1 && bareReturn(st.body[0]) ||
-        Array.isArray(st) && st.length === 1 && bareReturn(st[0]);
-    const statements = list => {
-        const out = [];
-        for (let i = 0; i < list.length; i++) {
-            const st = list[i];
-            if (st?.type === 'FunctionDeclaration' && helpers.has(st.name)) continue;
-            if (st?.type === 'Declaration' && st.decls.every(d => /^(_tokens|_stopMark|_som_\w+|_sok_\w+)$/.test(d.name) && !d.init?.type?.startsWith('Call') ||
-                d.name === '_t' && isCall(d.init, '_tok'))) continue;
-            if (st?.type === 'If' && !st.alternate && bareReturn(st.consequent)) {
-                const all = terms(st.test);
-                const kept = all.filter(term => !guardTerm(term));
-                if (kept.length === 0) continue;
-                if (kept.length < all.length) {
-                    out.push({...st, test: kept.reduce((left, right) => ({type: 'Binary', op: '||', left, right}))});
-                    continue;
-                }
-            }
-            const expr = st?.type === 'ExpressionStatement' && st.expr;
-            if (isCall(expr, '_stopAll') && !expr.args?.length) {
-                out.push(marker('__bwStopAll'));
-                if (bareReturn(list[i + 1])) i++;
-                continue;
-            }
-            if (isCall(expr, '_stopOthers') && isId(expr.args?.[1], '_t')) {
-                out.push(marker('__bwStopOthers'));
-                continue;
-            }
-            // \`_som_X = _tokens\` then \`_sok_X = _t\`: stop other scripts of a sprite that is never cloned.
-            if (expr?.type === 'Assignment' && isId(expr.left, /^_som_/) && isId(expr.right, '_tokens')) {
-                const next = list[i + 1]?.expr;
-                if (next?.type === 'Assignment' && isId(next.left, /^_sok_/) && isId(next.right, '_t')) i++;
-                out.push(marker('__bwStopOthers'));
-                continue;
-            }
-            out.push(visit(st));
-        }
-        return out;
+// This recognizer admits the complete no-clone/no-speech recipe. Other
+// stop recipes remain ordinary source until their full receiver/effect proof
+// is available; a matching first assignment never authorizes deleting a body.
+const liftExporterStops = (program,profile) => {
+    const proof=inspectGeneratedHelperBindings(program,profile);
+    if(!proof.isCurrent())return program;
+    const functions=program.body.filter(n=>n.type==='FunctionDeclaration');
+    const fn=name=>functions.find(n=>n.name===name);
+    const tok=fn('_tok'),dead=fn('_dead'),stop=fn('_stopAll');
+    if(!proof.root(tok)||!proof.root(dead)||!stop||!proof.root(stop))return program;
+    const tokSource=HELPERS.tok.ts;
+    // matches selects the function from a source fragment by its declaration.
+    const tokText=tokSource.slice(tokSource.indexOf('function _tok'),tokSource.indexOf('function _dead'));
+    const deadText=tokSource.slice(tokSource.indexOf('function _dead'));
+    if(!proof.matches(tok,tokText)||!proof.matches(dead,deadText)||
+        !proof.matches(stop,'function _stopAll () {_stopMark = _tokens\n music.stopAllSounds()}'))return program;
+    const helpers=new Set([tok,dead,stop]),allowed=new Set(),remove=new Set(helpers),replacements=new Map(),guards=new Map();
+    const include=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(include);return;}
+        allowed.add(node);for(const v of Object.values(node))include(v);};
+    helpers.forEach(include);
+    const call=(n,target,arity)=>n?.type==='Call'&&n.args?.length===arity&&proof.declarationAt(n.callee)===target;
+    const zero=n=>n?.type==='Number'&&Number(n.value)===0;
+    const rootDecl=name=>program.body.find(n=>n.type==='Declaration'&&n.decls.length===1&&n.decls[0].name===name&&zero(n.decls[0].init));
+    const tokens=rootDecl('_tokens'),mark=rootDecl('_stopMark');
+    if(!tokens||!mark||tokens.kind!=='let'||mark.kind!=='let'||!proof.unique('_tokens')||!proof.unique('_stopMark'))return program;
+    const storage=(n,d)=>n?.type==='Identifier'&&proof.declarationAt(n)===d.decls[0];
+    const path=n=>n?.type==='Identifier'?n.name:n?.type==='Member'?path(n.object)+'.'+n.name:null;
+    const activation=node=>{
+        let owner=node;while(owner&&!['FunctionDeclaration','FunctionExpression'].includes(owner.type))owner=proof.parentOf(owner);
+        if(owner?.type!=='FunctionExpression')return null;
+        const registration=proof.parentOf(owner),api=path(registration?.callee);
+        if(registration?.type!=='Call'||!registration.args.includes(owner)||registration.isNew||
+            !(['game.onUpdate','game.onUpdateInterval','control.runInParallel','info.onCountdownEnd','info.onLifeZero'].includes(api)||
+                /^controller\.(?:A|B|up|down|left|right|menu)\.onEvent$/.test(api||'')))return null;
+        let base=registration.callee;while(base?.type==='Member')base=base.object;
+        return proof.unbound(base)?owner:null;
     };
-    const visit = node => {
-        if (Array.isArray(node)) return statements(node);
-        if (!node || typeof node !== 'object') return node;
-        const copy = {...node};
-        for (const key of Object.keys(copy)) {
-            if (Array.isArray(copy[key])) copy[key] = copy[key].every(x => x && typeof x === 'object' && 'type' in x) &&
-                ['body', 'consequent', 'alternate', 'cases'].includes(key) ? statements(copy[key]) : copy[key].map(visit);
-            else if (copy[key] && typeof copy[key] === 'object') copy[key] = visit(copy[key]);
-        }
-        return copy;
+    const tokenDecls=new Map(),tokenOwners=new Map();
+    for(const n of proof.nodes)if(n.type==='Declaration'&&n.kind==='const'&&n.decls.length===1&&call(n.decls[0].init,tok,0)){
+        const owner=activation(n);if(!owner||owner.body?.[0]!==n)return program;
+        tokenDecls.set(n.decls[0],n);tokenOwners.set(n.decls[0],owner);include(n);remove.add(n);
+    }
+    const token=n=>n?.type==='Identifier'&&tokenDecls.has(proof.declarationAt(n));
+    const marker=name=>({type:'ExpressionStatement',expr:{type:'Call',callee:{type:'Identifier',name},args:[]}});
+    const pairs=[];
+    const lists=[];const collectLists=n=>{if(!n||typeof n!=='object')return;if(Array.isArray(n)){lists.push(n);n.forEach(collectLists);}
+        else for(const v of Object.values(n))collectLists(v);};collectLists(program);
+    for(const list of lists)for(let i=0;i<list.length-1;i++){
+        const a=list[i],b=list[i+1],x=a?.type==='ExpressionStatement'&&a.expr,y=b?.type==='ExpressionStatement'&&b.expr;
+        if(x?.type!=='Assignment'||x.op!=='='||!storage(x.right,tokens)||y?.type!=='Assignment'||y.op!=='='||!token(y.right))continue;
+        const md=proof.declarationAt(x.left),kd=proof.declarationAt(y.left);
+        const ms=program.body.find(n=>n.type==='Declaration'&&n.decls.length===1&&n.decls[0]===md&&zero(md.init));
+        const ks=program.body.find(n=>n.type==='Declaration'&&n.decls.length===1&&n.decls[0]===kd&&zero(kd.init));
+        if(!ms||!ks||ms.kind!=='let'||ks.kind!=='let'||md===kd||[tokens.decls[0],mark.decls[0]].includes(md)||
+            [tokens.decls[0],mark.decls[0]].includes(kd)||!proof.unique(md.name)||!proof.unique(kd.name))return program;
+        if(activation(a)!==tokenOwners.get(proof.declarationAt(y.right)))return program;
+        pairs.push({md,kd,token:proof.declarationAt(y.right)});include(a);include(b);include(ms);include(ks);
+        remove.add(ms);remove.add(ks);remove.add(b);replacements.set(a,marker('__bwStopOthers'));
+    }
+    if(pairs.length){
+        // The initial mark recipe is limited to ordinary scripts emitted on
+        // Game. A source Sprite/scene/class route needs its own target recipe;
+        // marker spellings do not prove the receiver of stop-other scripts.
+        const roots=new Set(['game','control','controller','music','basic','pause','console','Math','Array','Object','JSON','String','Number','isNaN','undefined','Infinity','NaN']);
+        if(proof.nodes.some(n=>['Class','ClassDeclaration','Method'].includes(n.type)||
+            n.type==='Identifier'&&(['sprites','SpriteKind','scene','mp','self','this'].includes(n.name)||
+                !proof.declarationAt(n)&&!roots.has(n.name))||
+            n.type==='Call'&&(n.isNew||n.constructorCall||n.callee?.type==='Index')))return program;
+    }
+    const bareReturn=n=>Array.isArray(n)?n.length===1&&bareReturn(n[0]):n?.type==='Return'&&!n.value||n?.type==='Block'&&bareReturn(n.body);
+    const terms=n=>n?.type==='Binary'&&n.op==='||'?[...terms(n.left),...terms(n.right)]:[n];
+    const guard=n=>{
+        if(call(n,dead,1)&&token(n.args[0])&&activation(n)===tokenOwners.get(proof.declarationAt(n.args[0])))return true;
+        if(n?.type!=='Binary'||n.op!=='&&')return false;
+        const a=n.left,b=n.right;if(a?.type!=='Binary'||a.op!=='<='||b?.type!=='Binary'||b.op!='!=')return false;
+        return token(a.left)&&token(b.left)&&activation(n)===tokenOwners.get(proof.declarationAt(a.left))&&proof.declarationAt(a.left)===proof.declarationAt(b.left)&&
+            pairs.some(p=>p.token===proof.declarationAt(a.left)&&proof.declarationAt(a.right)===p.md&&proof.declarationAt(b.right)===p.kd);
     };
-    return {...program, body: statements(program.body)};
+    for(const n of proof.nodes){
+        if(n.type==='If'&&!n.alternate&&bareReturn(n.consequent)){
+            const all=terms(n.test),kept=all.filter(t=>!guard(t));if(kept.length===all.length)continue;
+            all.filter(guard).forEach(include);guards.set(n,kept);
+        }
+        if(n.type==='ExpressionStatement'&&call(n.expr,stop,0)){
+            const owner=activation(n),list=lists.find(rows=>rows.includes(n)),at=list?.indexOf(n);
+            if(!owner||![...tokenOwners.values()].includes(owner)||!list||
+                !(bareReturn(list[at+1])||list===owner.body&&at===list.length-1))return program;
+            include(n);replacements.set(n,marker('__bwStopAll'));
+        }
+    }
+    include(tokens);include(mark);remove.add(tokens);remove.add(mark);
+    // Every actual binding reference is accounted for before deleting any
+    // storage, token, guard or helper. Foreign writes/reads/escapes refuse all.
+    const protectedDeclarations=new Set([tok,dead,stop,tokens.decls[0],mark.decls[0],...tokenDecls.keys(),...pairs.flatMap(p=>[p.md,p.kd])]);
+    for(const n of proof.nodes)if(n.type==='Identifier'){
+        if(protectedDeclarations.has(proof.declarationAt(n))&&!allowed.has(n))return program;
+        if(n.name==='music'&&(!allowed.has(n)||!proof.unbound(n)))return program;
+    }
+    if(!proof.ambient(helpers)||!proof.calls(tok,[0],helpers)||!proof.calls(dead,[1],helpers)||!proof.calls(stop,[0],helpers)||!proof.isCurrent())return program;
+    const rewrite=n=>{
+        if(!n||typeof n!=='object')return n;
+        if(Array.isArray(n)){
+            const kept=n.filter(x=>!remove.has(x)&&!(guards.has(x)&&!guards.get(x).length));
+            return mapGeneratedSourceArray(kept.length===n.length?n:kept,rewrite);
+        }
+        if(replacements.has(n))return replacements.get(n);
+        if(guards.has(n)){const kept=guards.get(n);return {...n,test:kept.map(rewrite).reduce((left,right)=>({type:'Binary',op:'||',left,right})),consequent:rewrite(n.consequent)};}
+        return Object.fromEntries(Object.entries(n).map(([k,v])=>[k,rewrite(v)]));
+    };
+    return rewrite(program);
 };
 
 // PXT library calls that are, by their own definition, expressions the
 // translator already has, rewritten to those before translation:
-//   Math.percentChance(p) is \`Math.randomRange(0, 99) < p\` (pxt-core math.ts),
-//   Math.clamp(lo, hi, v) is min(max(v, lo), hi), each argument read once,
-//   control.millis() is the time since the program started, as game.runtime().
-const lowerLibraryCalls = program => {
-    const callee = node => node?.type === 'Call' && node.callee?.type === 'Member' && node.callee.object?.type === 'Identifier' ?
-        `${node.callee.object.name}.${node.callee.name}` : null;
-    const call = (object, name, args) => ({type: 'Call', callee: {type: 'Member', object: {type: 'Identifier', name: object}, name}, args});
-    const visit = node => {
-        if (Array.isArray(node)) return node.map(visit);
-        if (!node || typeof node !== 'object') return node;
-        const copy = {...node};
-        for (const key of Object.keys(copy)) copy[key] = visit(copy[key]);
-        const name = callee(copy), a = copy.args || [];
-        if (name === 'Math.percentChance' && a.length === 1) {
-            return {type: 'Binary', op: '<', left: {type: 'Call', callee: {type: 'Identifier', name: 'randint'},
-                args: [{type: 'Number', value: 0}, {type: 'Number', value: 99}]}, right: a[0]};
-        }
-        if (name === 'Math.clamp' && a.length === 3) return call('Math', 'min', [call('Math', 'max', [a[2], a[0]]), a[1]]);
-        if (name === 'control.millis' && a.length === 0) return call('game', 'runtime', []);
-        return copy;
-    };
-    return visit(program);
-};
+// Math.percentChance retains a dedicated operation: boundary guards consume no entropy.
+// Math.clamp retains its original three-argument evaluation and raw selection order.
+// Scene and program clocks keep distinct native reporters; no clock alias is lowered.
+// These Math APIs use dedicated native reporters. Retain the source expression
+// tree: rewriting calls changed caller order and raw numeric selection.
+const lowerLibraryCalls = program => program;
 
-const inlineLegacyArrayHelpers = program => {
-    if(!program.body.some(fn=>fn.type==='FunctionDeclaration' && /^__bw(?:Named(?:Parse|Json)Value|ArrayAccess)/.test(fn.name)))return program;
-    const templates=legacyArrayHelperTemplates || (legacyArrayHelperTemplates=new Map([
-        ['__bwNamedParseValue',{fn:parseMakeCodeTs(LEGACY_PARSE_SOURCE, {parameterDefaults: true}).body[0],type:'LegacyParsedValue'}],
-        ['__bwNamedJsonValue',{fn:parseMakeCodeTs(LEGACY_JSON_SOURCE, {parameterDefaults: true}).body[0],type:'LegacyJsonValue'}],
-        ['__bwArrayAccess',{fn:parseMakeCodeTs(ARRAY_ACCESS_SOURCE, {parameterDefaults: true}).body[0],type:'NativeArrayAccess'}]
-    ]));
-    const normalize=(fn,base)=>{
-        const rename=node=>Array.isArray(node)?node.map(rename):node && typeof node==='object'?
-            Object.fromEntries(Object.entries(node).map(([key,value])=>[key,(key==='name' && value===fn.name)?base:rename(value)])):node;
-        return JSON.stringify(rename(fn));
-    };
-    const helpers=new Map();
-    for(const fn of program.body)if(fn.type==='FunctionDeclaration')for(const [base,template] of templates)
-        if(new RegExp('^'+base+'_*$').test(fn.name) && normalize(fn,base)===normalize(template.fn,base))helpers.set(fn.name,template);
-    const unsafe=new Set();
-    const inspect=(node,parent,key)=>{
-        if(!node || typeof node!=='object')return;
-        if(node.type==='Identifier' && helpers.has(node.name) && !(parent?.type==='Call' && key==='callee' && parent.args.length===1))unsafe.add(node.name);
-        for(const [key,value] of Object.entries(node))if(Array.isArray(value))value.forEach(child=>inspect(child,node,key));else inspect(value,node,key);
-    };
-    for(const node of program.body)if(!helpers.has(node.name))inspect(node);
-    for(const name of unsafe)helpers.delete(name);
+const inlineLegacyArrayHelpers = (program,profile) => {
+    const proof=inspectGeneratedHelperBindings(program,profile);
+    if(!proof.isCurrent())return program;
+    const recipes=[['__bwNamedParseValue',LEGACY_PARSE_SOURCE,'LegacyParsedValue'],
+        ['__bwNamedJsonValue',LEGACY_JSON_SOURCE,'LegacyJsonValue'],
+        ['__bwArrayAccess',ARRAY_ACCESS_SOURCE,'NativeArrayAccess']];
+    const candidates=new Map();
+    for(const fn of program.body)if(proof.root(fn))for(const [base,source,type]of recipes)
+        if(proof.matches(fn,source,new Map([[fn.name,base]])))candidates.set(fn,{type});
+    // A retained helper body becomes an external consumer of its dependencies.
+    // Recompute until removing one declaration cannot strand a retained caller.
+    const selected=new Set(candidates.keys());let changed;
+    do {changed=false;for(const fn of selected)if(!proof.closed(fn,selected)||proof.calls(fn,[1],selected)===null){selected.delete(fn);changed=true;}}while(changed);
+    const calls=new Map();for(const fn of selected)for(const call of proof.calls(fn,[1],selected))calls.set(call,candidates.get(fn));
+    if(!selected.size||!proof.isCurrent())return program;
     const rewrite=node=>{
-        if(!node || typeof node!=='object')return node;
-        if(Array.isArray(node))return node.map(rewrite);
-        if(node.type==='Call' && node.callee?.type==='Identifier' && helpers.has(node.callee.name))return {type:helpers.get(node.callee.name).type,value:rewrite(node.args[0])};
+        if(!node||typeof node!=='object')return node;
+        if(Array.isArray(node))return mapGeneratedSourceArray(node,rewrite);
+        if(calls.has(node))return {type:calls.get(node).type,value:rewrite(node.args[0])};
         return Object.fromEntries(Object.entries(node).map(([key,value])=>[key,rewrite(value)]));
     };
-    return rewrite({...program,body:program.body.filter(fn=>!(fn.type==='FunctionDeclaration' && helpers.has(fn.name)))});
+    return rewrite({...program,body:program.body.filter(fn=>!selected.has(fn))});
 };
 
-const inlineValueHelpers = program => {
+const inlineValueHelpers = (program, requireUnshadowedBindings = false) => {
     const helpers=new Map();
     for(const fn of program.body) {
         if(fn.type!=='FunctionDeclaration' || !/^__bw(?:Binary|Unary|Compare)/.test(fn.name) || fn.body.length!==1 || fn.body[0].type!=='Return')continue;
@@ -2683,10 +3269,23 @@ const inlineValueHelpers = program => {
         for(const [key,value] of Object.entries(node))if(Array.isArray(value))value.forEach(child=>inspect(child,node,key));else inspect(value,node,key);
     };
     inspect(program);for(const name of unsafe)helpers.delete(name);
+    if(requireUnshadowedBindings){
+        const counts=new Map();
+        const add=name=>{if(helpers.has(name))counts.set(name,(counts.get(name)||0)+1);};
+        const bindings=node=>{
+            if(!node || typeof node!=='object')return;
+            if(Array.isArray(node)){node.forEach(bindings);return;}
+            if(node.type==='Declaration')node.decls.forEach(decl=>add(decl.name));
+            if(['FunctionDeclaration','Class','ForOf'].includes(node.type))add(node.name);
+            if(Array.isArray(node.params))node.params.forEach(add);
+            Object.values(node).forEach(bindings);
+        };
+        bindings(program);for(const name of helpers.keys())if(counts.get(name)!==1)helpers.delete(name);
+    }
     if(!helpers.size)return program;
     const rewrite=node=>{
         if(!node || typeof node!=='object')return node;
-        if(Array.isArray(node))return node.map(rewrite);
+        if(Array.isArray(node))return mapGeneratedSourceArray(node,rewrite);
         if(node.type==='Call' && node.callee?.type==='Identifier' && helpers.has(node.callee.name)) {
             const {value}=helpers.get(node.callee.name),args=node.args.map(rewrite);
             return value.type==='Binary'?{...value,left:args[0],right:args[1]}:{...value,argument:args[0]};
@@ -2707,7 +3306,7 @@ const inferProcedureHandleParameters = (ast, functions, globalHandles, pathOf) =
             if (!node || typeof node !== 'object' || node.type === 'FunctionExpression') return;
             const owner = node.type === 'Call' && node.callee?.object;
             if (owner?.type === 'Member' && owner.name === 'image' && owner.object?.type === 'Identifier' &&
-                fn.params.includes(owner.object.name) && ['copyFrom', 'scroll', 'fill', 'replace', 'flipX', 'flipY', 'setPixel', 'getPixel', 'fillRect', 'drawLine', 'drawImage', 'drawTransparentImage', 'overlapsWith'].includes(node.callee.name)) {
+                fn.params.includes(owner.object.name) && ['copyFrom', 'scroll', 'fill', 'replace', 'flipX', 'flipY', 'setPixel', 'getPixel', 'fillRect', 'drawLine', 'drawCircle', 'fillCircle', 'drawImage', 'drawTransparentImage', 'overlapsWith'].includes(node.callee.name)) {
                 handles.get(fn.name).add(owner.object.name);
             }
             for (const value of Object.values(node)) {
@@ -2785,12 +3384,29 @@ const inferProcedureHandleParameters = (ast, functions, globalHandles, pathOf) =
 /** Infer Image references from bindings and calls, retaining lexical scope.
  * Passing a resource does not copy it. Forwarded parameters and local aliases
  * reach a fixed point, including recursive procedures and callback callers. */
-const inferImageReferences = (ast, pathOf, imageOf) => {
-    const players = new WeakSet(), references = new WeakSet(), tiles = new WeakSet(), legacyTiles = new WeakSet(), sprites = new WeakSet(), animations = new WeakSet(), sevensegDigits = new WeakSet(), sevensegCounters = new WeakSet(), darts = new WeakSet(), corgis = new WeakSet(), scenes = new WeakSet(), physicsEngines = new WeakSet(), nulls = new WeakSet(), arrays = new WeakSet(), numbers = new WeakSet(), strings = new WeakSet(), booleans = new WeakSet();
+const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () => false) => {
+    const sdkNumericCalls=staticSdkNamespaceReceivers(ast,{builtinIdentifiers:['randint']});
+    const textSprites=new WeakSet(), objects=new WeakSet();
+    const buffers = new WeakSet(), players = new WeakSet(), references = new WeakSet(), tiles = new WeakSet(), legacyTiles = new WeakSet(), sprites = new WeakSet(), animations = new WeakSet(), sevensegDigits = new WeakSet(), sevensegCounters = new WeakSet(), darts = new WeakSet(), corgis = new WeakSet(), scenes = new WeakSet(), physicsEngines = new WeakSet(), nulls = new WeakSet(), arrays = new WeakSet(), numbers = new WeakSet(), strings = new WeakSet(), booleans = new WeakSet();
     const entries = [];
     const functions = new Map();
     const scope = parent => ({parent, bindings: new Map()});
     const global = scope(null);
+    // The early member/result fixed point and the later constraint graph must
+    // agree on declared SDK references, even for an uncalled helper. Reuse the
+    // annotation decoder; it does not admit unknown aliases or callable types.
+    const declaredGraph = new ValueTypeGraph();
+    const declaredNames = {Image:'image',Sprite:'sprite',TileLocation:'tile',LegacyTile:'legacy-tile',
+        Animation:'animation',SevenSegDigit:'sevenseg-digit',DigitCounter:'sevenseg-counter',
+        Dart:'dart',Corgio:'corgio',TextSprite:'text-sprite',Scene:'scene',PhysicsEngine:'physics-engine',
+        Player:'player',number:'number',string:'string',boolean:'boolean',array:'array'};
+    const seedDeclared = (value,annotation) => {
+        const key=String(annotation || '');
+        applyDeclaredValueType(declaredGraph,key,key);
+        for(const name of declaredGraph.node(key).types)if(declaredNames[name])value.add(declaredNames[name]);
+        if(declaredGraph.has(key,'array'))for(const name of declaredGraph.node(declaredGraph.element(key)).types)
+            if(declaredNames[name])value.add(`${declaredNames[name]}-array`);
+    };
     const binding = (owner, name, declare = false) => {
         if (declare) {
             if (!owner.bindings.has(name)) owner.bindings.set(name, new Set());
@@ -2807,15 +3423,19 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
             owner = scope(owner);
             for (const [i, name] of (node.params || []).entries()) {
                 const value = binding(owner, name, true);
+                seedDeclared(value,node.paramTypes?.[name]?.text);
                 if (eventParameters[i]) value.add(eventParameters[i]);
             }
-            if (node.type === 'FunctionDeclaration') functions.set(node.name, {node, owner});
+            if (node.type === 'FunctionDeclaration') {
+                const returns=new Set();seedDeclared(returns,node.returnType);
+                functions.set(node.name, {node, owner, returns});
+            }
         }
         entries.push({node, owner});
-        if (node.type === 'Declaration') for (const decl of node.decls) {const value=binding(owner,decl.name,true);if(decl.isArray)value.add('array');}
+        if (node.type === 'Declaration') for (const decl of node.decls) {const value=binding(owner,decl.name,true);seedDeclared(value,decl.typeName);if(decl.isArray)value.add('array');}
         if (node.type === 'Call') {
             const api = pathOf(node.callee);
-            const types = api==='mp.onButtonEvent'?['player']:api==='sprites.onOverlap'?['sprite','sprite']:
+            const types = ['mp.onButtonEvent','mp.onControllerEvent'].includes(api)?['player']:api==='sprites.onOverlap'?['sprite','sprite']:
                 api==='scene.onHitTile'?['sprite']:['scene.onHitWall','scene.onOverlapTile'].includes(api)?['sprite','tile']:
                 ['sprites.onCreated','sprites.onDestroyed'].includes(api)?['sprite']:[];
             visit(node.callee, owner);
@@ -2833,33 +3453,62 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
         ['FunctionDeclaration','FunctionExpression'].includes(node.type) && (node.params||[]).includes('screen') ||
         node.type==='FunctionDeclaration' && node.name==='screen');
     const isScreen=node=>node?.type==='Identifier' && node.name==='screen' && !screenDeclared;
+    const mathDeclared=entries.some(({node})=>node.type==='Declaration' && node.decls?.some(decl=>decl.name==='Math') ||
+        ['FunctionDeclaration','FunctionExpression'].includes(node.type) && (node.params || []).includes('Math'));
     const typeOf = (node, owner) => {
-        if (imageOf(node) || isScreen(node)) return new Set(['image']);
+        if(node?.bwConsoleInspectIntrinsic===true && node.callee?.name==='__bwConsoleInspectValue')return new Set(['string']);
+        if(node?.bwFontIntrinsic && node.bwFontType==='image.Font')return new Set(['font']);
+        if(node?.bwFontIntrinsic==='field' && node.bwFontType==='number')return new Set(['number']);
+        if(node?.bwFontIntrinsic==='field' && node.bwFontType==='Buffer')return new Set(['buffer']);
+        if(node?.bwObjectTypes?.length)return new Set(node.bwObjectTypes);
+        if (imageOf(node) || isScreen(node) || isScopedAssetFactory(node)) return new Set(['image']);
         if(node?.type==='Number')return new Set(['number']);
+        if(node?.type==='FontMetric')return new Set(['number']);
+        if(node?.type==='Member' && (Object.prototype.hasOwnProperty.call(ARCADE_SCENE_CONSTANTS,pathOf(node)) || node.object?.type==='Identifier' && node.object.name==='SpriteKind'))return new Set(['number']);
         if(node?.type==='Null')return new Set(['null']);
+        if(node?.type==='Undefined')return new Set(['undefined']);
+        if(node?.type==='Object')return new Set(['object']);
+        if(node?.type==='Identifier' && ['NaN','Infinity'].includes(node.name) && !global.bindings.has(node.name))return new Set(['number']);
+        if(node?.type==='Member' && ((pathOf(node.object)==='SpriteFlag' && !binding(owner,'SpriteFlag').size && Object.prototype.hasOwnProperty.call(SPRITE_FLAG_VALUES,node.name)) || (pathOf(node.object)==='sprites.Flag' && !binding(owner,'sprites').size && Object.prototype.hasOwnProperty.call(PRIVATE_SPRITE_FLAG_VALUES,node.name))))return new Set(['number']);
+        if(node?.type==='Member' && node.object?.name==='Math' && !mathDeclared && ['E','LN2','LN10','LOG2E','LOG10E','PI','SQRT1_2','SQRT2'].includes(node.name))return new Set(['number']);
         if(node?.type==='Member' && node.object?.name==='CameraProperty' && Object.prototype.hasOwnProperty.call(CAMERA_PROPERTIES,node.name))return new Set(['number']);
+        if(node?.type==='Member' && node.object?.name==='TileDirection' && Object.prototype.hasOwnProperty.call(TILE_DIRECTIONS,node.name))return new Set(['number']);
         if(node?.type==='Member' && node.object?.name==='CollisionDirection' && Object.prototype.hasOwnProperty.call(COLLISION_DIRECTIONS,node.name))return new Set(['number']);
         if(node?.type==='String')return new Set(['string']);
         if(node?.type==='Boolean' || node?.type==='Unary' && node.op==='!' || node?.type==='Binary' && ['==','!=','===','!==','<','>','<=','>='].includes(node.op))return new Set(['boolean']);
-        if(node?.type==='Unary' && ['+','-'].includes(node.op))return new Set(['number']);
-        if(node?.type==='Binary' && ['-','*','/','%','**'].includes(node.op))return new Set(['number']);
+        if(node?.type==='Unary' && ['+','-','~'].includes(node.op))return new Set(['number']);
+        if(node?.type==='Binary' && ['-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(node.op))return new Set(['number']);
         if(node?.type==='Binary' && node.op==='+') {
             const left=typeOf(node.left,owner),right=typeOf(node.right,owner);
             if(left.has('string')||right.has('string'))return new Set(['string']);
             if(left.has('number')&&right.has('number'))return new Set(['number']);
         }
-        if(node?.type==='NativeArrayAccess')return new Set(['array']);
+        if(node?.type==='NativeArrayAccess' || node?.type==='NativeNamedArrayCreate')return new Set(['array']);
+        if(node?.type==='NativeNamedArrayDelete')return new Set(['null']);
         if(node?.type==='LegacyJsonValue')return new Set(['string']);
         if(node?.type==='LegacyParsedValue')return new Set(['any']);
         if (node?.type === 'Array') return new Set(['array',...node.items.flatMap(item=>[...typeOf(item,owner)].filter(t=>['image','sprite','tile','number','string','scene','physics-engine'].includes(t)).map(t=>`${t}-array`))]);
         if (node?.type === 'Index') return new Set([...typeOf(node.object,owner)].filter(t=>['image-array','sprite-array','tile-array','legacy-tile-array','number-array','string-array','scene-array','physics-engine-array'].includes(t)).map(t=>t.slice(0,-6)));
         if (node?.type === 'Identifier') return binding(owner, node.name);
+        if(node?.type==='Member' && node.name==='length' && node.object?.type==='Index' && typeOf(node.object,owner).has('string'))return new Set(['number']);
+        if(node?.type==='Call' && node.callee?.type==='Member') {
+            const receiver=typeOf(node.callee.object,owner),operation=node.callee.name;
+            if(receiver.has('string') && operation==='charCodeAt')return new Set(['number']);
+            if(receiver.has('array') && ['slice','concat'].includes(operation)) {
+                const result=new Set(['array',...[...receiver].filter(type=>type.endsWith('-array'))]);
+                if(operation==='concat' && node.args.length===1)for(const type of typeOf(node.args[0],owner))
+                    if(type.endsWith('-array'))result.add(type);
+                return result;
+            }
+        }
         if(node?.type==='Member' && ['index','number'].includes(node.name) && typeOf(node.object,owner).has('player'))return new Set(['number']);
         if(node?.type==='Member' && ['maxSpeed','minStep','maxStep'].includes(node.name) && typeOf(node.object,owner).has('physics-engine'))return new Set(['number']);
         if(node?.type==='Member' && node.name==='physicsEngine' && typeOf(node.object,owner).has('scene'))return new Set(['physics-engine']);
-        if(node?.type==='Member' && ['fx','fy','sx','sy','scale'].includes(node.name) && typeOf(node.object,owner).has('sprite'))return new Set(['number']);
+        if(node?.type==='Member' && node.name==='flags' && typeOf(node.object,owner).has('scene'))return new Set(['number']);
+        if(node?.type==='Member' && ['fx','fy','sx','sy','scale','flags'].includes(node.name) && typeOf(node.object,owner).has('sprite'))return new Set(['number']);
         if (node?.type === 'Member' && node.name === 'image' && (typeOf(node.object, owner).has('sprite') || typeOf(node.object, owner).has('animation'))) return new Set(['image']);
         if (node?.type === 'Member' && ['action','interval'].includes(node.name) && typeOf(node.object,owner).has('animation')) return new Set(['number']);
+        if(node?.type==='Member' && typeOf(node.object,owner).has('text-sprite') && TEXT_SPRITE_PROPERTIES.includes(node.name))return new Set([node.name==='text'?'string':node.name==='icon'?'image':'number']);
         if (node?.type === 'Member' && node.name === 'sprite' && (typeOf(node.object,owner).has('dart') || typeOf(node.object,owner).has('corgio'))) return typeOf(node.object,owner);
         if (node?.type === 'Member' && ((DART_PROPERTIES.includes(node.name) && typeOf(node.object,owner).has('dart')) ||
             (CORGI_PROPERTIES.includes(node.name) && typeOf(node.object,owner).has('corgio')))) return new Set(['number']);
@@ -2867,19 +3516,42 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
             (typeOf(node.object,owner).has('sevenseg-digit') || typeOf(node.object,owner).has('sevenseg-counter'))) return new Set(['number']);
         if (node?.type === 'Call') {
             const api = pathOf(node.callee);
+            if(api==='randint' && node.callee?.type==='Identifier' && node.args.length===2 && !node.isNew && sdkNumericCalls.has(node.callee))return new Set(['number']);
+            if(api==='game.askForString' && node.callee?.type==='Member' && node.args.length>=1 && node.args.length<=3 && !node.isNew && sdkNumericCalls.has(node.callee.object))return new Set(['string']);
+            if(api==='SpriteKind.create' || node.callee?.type==='Member' && node.callee.name==='kind' && typeOf(node.callee.object,owner).has('sprite'))return new Set(['number']);
+            if(api==='characterAnimations.ruleToString' && node.args.length===1)return new Set(['string']);
+            if(['characterAnimations.rule','characterAnimations._predicate','characterAnimations._direction'].includes(api))return new Set(['number']);
+            if(api==='characterAnimations.matchesRule')return new Set(['boolean']);
+            if(!mathDeclared && /^Math\.(?:abs|min|max|pow|round|floor|ceil|trunc|sign|sqrt|sin|cos|tan|asin|acos|atan|atan2|log|exp|random|randomRange|clamp|imul)$/.test(api || ''))return new Set(['number']);
             if(['mp.playerSelector','mp.getPlayerByNumber','mp.getPlayerByIndex','mp.getPlayerBySprite'].includes(api))return new Set(['player']);
+            if(api==='bwStringArraySettings.read')return new Set(['array','string-array']);
+            if(['control.createBuffer','control.createBufferFromUTF8','Buffer.fromHex','Buffer.fromUTF8'].includes(api) && !binding(owner,api.split('.')[0]).size)return new Set(['buffer']);
+            const settingRead=/^(?:settings|blockSettings)\.(read(Number|String|NumberArray|StringArray|Buffer)|exists|list)$/.exec(api||'');
+            if(settingRead){
+                if(settingRead[1]==='list')return new Set(['array','string-array']);
+                if(settingRead[1]==='exists')return new Set(['boolean']);
+                if(settingRead[2]==='StringArray')return new Set(['array','string-array']);
+                if(settingRead[2]==='NumberArray')return new Set(['array','number-array']);
+                if(settingRead[2]==='Number')return new Set(['number']);
+                if(settingRead[2]==='String')return new Set(['string']);
+            }
+            const dataRead=/^sprites\.readData(Number|String|Boolean|Sprite)$/.exec(api||'');
+            if(dataRead && node.args.length===2)return new Set([dataRead[1].toLowerCase()]);
             if(api==='mp.getPlayerSprite')return new Set(['sprite']);
             if(api==='mp.allPlayers')return new Set(['array']);
             if(api==='mp.getPlayerState' || api==='MultiplayerState.create')return new Set(['number']);
             if(api==='mp.getPlayerProperty')return new Set(['number']);
-            if(api==='mp.isButtonPressed' || api==='game.ask')return new Set(['boolean']);
+            if(api==='mp.isConnected' || api==='mp.isButtonPressed' || api==='game.ask' || node.callee?.type==='Member' && (node.callee.name==='tileKindAt' && typeOf(node.callee.object,owner).has('sprite') || node.callee.name==='equals' && typeOf(node.callee.object,owner).has('image')))return new Set(['boolean']);
             if(api==='game.currentScene' && !node.args.length)return new Set(['scene']);
             if(api==='ArcadePhysicsEngine' && node.constructorCall && node.args.length<=3)return new Set(['physics-engine']);
-            if(api==='scene.cameraProperty' && node.args.length===1 || /^info(?:\.player[1-4])?\.(life|score)$/.test(api||'') && !node.args.length)return new Set(['number']);
+            if(api==='scene.cameraProperty' && node.args.length===1 || ['scene.cameraLeft','scene.cameraTop'].includes(api) && !node.args.length || /^info(?:\.player[1-4])?\.(life|score)$/.test(api||'') && !node.args.length)return new Set(['number']);
             if(/^info(?:\.player[1-4])?\.(hasLife|hasScore)$/.test(api||'') && !node.args.length)return new Set(['boolean']);
             if(api==='animation.createAnimation')return new Set(['animation']);
             if(api==='sevenseg.createDigit')return new Set(['sevenseg-digit']);
             if(api==='sevenseg.createCounter')return new Set(['sevenseg-counter']);
+            if(api==='String.fromCharCode' && node.args.length===1)return new Set(['string']);
+            if(node.callee?.type==='Member' && node.callee.name==='concat' && node.args.length===1 && typeOf(node.callee.object,owner).has('string'))return new Set(['string']);
+            if(api==='textsprite.create')return new Set(['sprite','text-sprite']);
             if(api==='darts.create')return new Set(['sprite','dart']);
             if(api==='corgio.create')return new Set(['sprite','corgio']);
             if(node.callee?.type==='Member' && typeOf(node.callee.object,owner).has('animation') && node.args.length===0){
@@ -2935,6 +3607,11 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
     // Join array element constraints as a graph, so nested arrays and aliases
     // retain their element types without unrolling recursive array types.
     const graph = new ValueTypeGraph();
+    const primitiveTypes=new Set(['number','string','boolean','null','undefined']);
+    const applyPrimitiveAnnotation=(value,annotation)=>{
+        const types=String(annotation || '').replace(/\s+/g,'').split('|');
+        if(types.length && types.every(type=>primitiveTypes.has(type)))for(const type of types)graph.add(value,type);
+    };
     const cell = (node, owner) => {
         if(isScreen(node)){const value=binding(owner,node.name);graph.add(value,'Image');return value;}
         if(node?.type === 'Identifier')return binding(owner,node.name);
@@ -2946,24 +3623,33 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
     const connect = (left,right) => {if(left && right)graph.merge(left,right);};
     for (const fn of functions.values()) {
         fn.resultCell = Symbol('procedure result');
-        applyDeclaredValueType(graph, fn.resultCell, fn.node.returnType);
+        if(fn.node.returnType!=='image.Font')applyDeclaredValueType(graph, fn.resultCell, fn.node.returnType);
+        applyPrimitiveAnnotation(fn.resultCell,fn.node.returnType);
     }
     for (const {node, owner} of entries) {
         if (['FunctionDeclaration', 'FunctionExpression'].includes(node.type)) {
             for (const name of node.params || []) {
-                applyDeclaredValueType(graph, binding(owner, name), node.paramTypes?.[name]?.text);
+                if(node.paramTypes?.[name]?.text!=='image.Font')applyDeclaredValueType(graph, binding(owner, name), node.paramTypes?.[name]?.text);
+                applyPrimitiveAnnotation(binding(owner,name),node.paramTypes?.[name]?.text);
             }
         }
         if (node.type === 'Declaration') for (const decl of node.decls) {
-            applyDeclaredValueType(graph, binding(owner, decl.name), decl.typeName);
+            if(decl.typeName!=='image.Font')applyDeclaredValueType(graph, binding(owner, decl.name), decl.typeName);
+            applyPrimitiveAnnotation(binding(owner,decl.name),decl.typeName);
         }
     }
     for (const {node,owner} of entries) {
         const value=cell(node,owner);
+        applyPrimitiveAnnotation(value,node.assertedType);
         for (const type of typeOf(node,owner)) {
-            const name={image:'Image',sprite:'Sprite',tile:'TileLocation','legacy-tile':'LegacyTile',animation:'Animation','sevenseg-digit':'SevenSegDigit','sevenseg-counter':'DigitCounter',dart:'Dart',corgio:'Corgio',scene:'Scene','physics-engine':'PhysicsEngine',player:'Player',number:'number',string:'string',boolean:'boolean',array:'array'}[type];
+            const name={font:'Font',buffer:'Buffer',image:'Image',sprite:'Sprite',tile:'TileLocation','legacy-tile':'LegacyTile',animation:'Animation','sevenseg-digit':'SevenSegDigit','sevenseg-counter':'DigitCounter',dart:'Dart',corgio:'Corgio','text-sprite':'TextSprite',scene:'Scene','physics-engine':'PhysicsEngine',player:'Player',number:'number',string:'string',boolean:'boolean',null:'null',undefined:'undefined',object:'object',any:'unknown',array:'array'}[type];
             if(name)graph.add(value,name);
         }
+        if(node.bwConsoleInspectIntrinsic===true && node.callee?.name==='__bwConsoleInspectValue')graph.add(value,'string');
+        if(node.bwFontType==='image.Font' && ['constant','getFontForText','scaledFont'].includes(node.bwFontIntrinsic))graph.add(value,'Font');
+        if(node.bwFontIntrinsic==='field' && node.bwFontType==='number')graph.add(value,'number');
+        if(node.bwFontIntrinsic==='field' && node.bwFontType==='Buffer')graph.add(value,'Buffer');
+        if(node.type==='Template' && node.tag==='hex' || node.type==='Call' && ['control.createBuffer','control.createBufferFromUTF8','Buffer.fromHex','Buffer.fromUTF8','settings.readBuffer','blockSettings.readBuffer'].includes(pathOf(node.callee)))graph.add(value,'Buffer');
         if(node.type==='Call' && pathOf(node.callee)==='mp.allPlayers'){graph.add(value,'array');graph.add(graph.element(value),'Player');}
         if(node.type==='Call' && pathOf(node.callee)==='sprites.allOfKind'){graph.add(value,'array');graph.add(graph.element(value),'Sprite');}
         if(node.type==='Call' && pathOf(node.callee)==='scene.getTilesByType'){graph.add(value,'array');graph.add(graph.element(value),'LegacyTile');}
@@ -2972,9 +3658,13 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
         if(node.type==='Declaration')for(const decl of node.decls){
             const variable=binding(owner,decl.name);
             if(decl.isArray)graph.add(variable,'array');
+            if(!decl.init && !decl.bwFontProducer && !graph.node(variable).types.size)graph.add(variable,'unknown');
             connect(variable,cell(decl.init,owner));
         }
         if(node.type==='Assignment' && node.op==='=')connect(cell(node.left,owner),cell(node.right,owner));
+        if(node.type==='Conditional'){
+            connect(value,cell(node.consequent,owner));connect(value,cell(node.alternate,owner));
+        }
         if(node.type==='Return')for(const fn of functions.values())if(fn.owner===owner)connect(fn.resultCell,cell(node.value,owner));
         if(node.type==='Call' && node.callee?.type==='Identifier'){
             const fn=functions.get(node.callee.name);
@@ -2994,16 +3684,46 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
             if(node.type!=='Call')continue;
             const receiver=node.callee?.type==='Member' && cell(node.callee.object,owner),op=node.callee?.name;
             if(receiver && graph.has(receiver,'array')){
+                if(['slice','concat'].includes(op)){
+                    graph.add(value,'array');connect(graph.element(value),graph.element(receiver));
+                    if(op==='concat' && node.args.length===1)connect(graph.element(value),graph.element(cell(node.args[0],owner)));
+                }
                 if(['push','unshift','insertAt','set'].includes(op))connect(graph.element(receiver),cell(node.args[['insertAt','set'].includes(op)?1:0],owner));
                 if(['pop','shift','removeAt','get'].includes(op) || op==='_pickRandom' && !node.args.length)connect(value,graph.element(receiver));
             }
             if(pathOf(node.callee)==='Math.pickRandom' && node.args.length===1 && graph.has(cell(node.args[0],owner),'array'))connect(value,graph.element(cell(node.args[0],owner)));
+            if(receiver && graph.has(receiver,'Buffer') && ['slice','subarray'].includes(op))graph.add(value,'Buffer');
             if(receiver && op==='clone' && !node.args.length && graph.has(receiver,'Image'))graph.add(value,'Image');
         }
     } while(revision!==graph.revision);
-    const data = new WeakSet();
+    // Unknown value leaves must survive joins with known primitive branches.
+    // An assertion adds metadata but never erases an observed object/reference.
+    for(const {node,owner} of entries){
+        const asserted=String(node.assertedType || '').replace(/\s+/g,'').split('|');
+        const primitiveAssertion=asserted.every(type=>primitiveTypes.has(type));
+        const receiver=node.callee?.type==='Member' && cell(node.callee.object,owner);
+        const arrayResult=receiver && graph.has(receiver,'array') && ['get','pop','shift','removeAt','_pickRandom'].includes(node.callee.name);
+        const unknownCall=node.type==='Call' && !typeOf(node,owner).size && !arrayResult && !(node.callee?.type==='Identifier' && functions.has(node.callee.name));
+        const unknownMember=node.type==='Member' && !typeOf(node,owner).size;
+        if(!primitiveAssertion && (unknownCall || unknownMember) || ['Identifier','Call','Member','Index','Object'].includes(node.type) && !graph.node(cell(node,owner)).types.size)graph.add(cell(node,owner),'unknown');
+    }
+    const primitives=new WeakSet(),strictStrings=new WeakSet(),sourceTypeOfOperands=new WeakSet(),provenArrays=new WeakSet();
+    const sourceTypeOfOpaque=new Set(entries.filter(({node})=>node.bwSourceTypeOfOpaque).map(({node,owner})=>graph.node(cell(node,owner))));
+    const sourceTypeOfKinds=new Set(['number','boolean','string','null','undefined','array','Image','Buffer','object']);
+    for(const {node,owner} of entries){
+        const types=graph.node(cell(node,owner)).types;
+        if(types.has('array') && [...types].every(type=>['array','null','undefined'].includes(type)))provenArrays.add(node);
+        if(types.size && [...types].every(type=>primitiveTypes.has(type)))primitives.add(node);
+        if(types.has('string') && [...types].every(type=>primitiveTypes.has(type)))strictStrings.add(node);
+        if(!sourceTypeOfOpaque.has(graph.node(cell(node,owner))) && types.size && [...types].every(type=>sourceTypeOfKinds.has(type)) &&
+            (!types.has('object') || node.bwObjectTypes?.includes('object')))sourceTypeOfOperands.add(node);
+    }
+    const data = new WeakSet(),fonts=new WeakSet();
     for (const {node, owner} of entries) {
         const value=cell(node,owner);
+        if(graph.has(value,'Font') && [...graph.node(value).types].every(type=>['Font','null','undefined'].includes(type)))fonts.add(node);
+        if(graph.has(value,'object'))objects.add(node);
+        if(graph.has(value,'Buffer'))buffers.add(node);
         if(graph.has(value,'SpriteData'))data.add(node);
         if (graph.has(value,'array')) arrays.add(node);
         if (graph.has(value,'string')) strings.add(node);
@@ -3017,6 +3737,7 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
         if (graph.has(value,'Animation')) animations.add(node);
         if (graph.has(value,'SevenSegDigit')) sevensegDigits.add(node);
         if (graph.has(value,'DigitCounter')) sevensegCounters.add(node);
+        if(graph.has(value,'TextSprite'))textSprites.add(node);
         if (graph.has(value,'Dart')) darts.add(node);
         if (graph.has(value,'Corgio')) corgis.add(node);
         const types=typeOf(node,owner);
@@ -3024,7 +3745,7 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
         if(types.has('physics-engine') || graph.has(value,'PhysicsEngine') && !['number','string','boolean','Image','Sprite','Scene'].some(type=>graph.has(value,type)))physicsEngines.add(node);
         if(types.has('null') && [...types].every(type=>type==='null'||type==='sprite'))nulls.add(node);
     }
-    return {players, images: references, tiles, legacyTiles, sprites, animations, sevensegDigits, sevensegCounters, darts, corgis, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
+    return {fonts,objects,primitives,strictStrings,sourceTypeOfOperands,provenArrays,textSprites, buffers, players, images: references, tiles, legacyTiles, sprites, animations, sevensegDigits, sevensegCounters, darts, corgis, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
         spriteFunctions:new Set([...functions].filter(([,fn])=>graph.has(fn.resultCell,'Sprite')).map(([name])=>name)),
         parameters:new Map([...functions].map(([name,fn])=>[name,new Set(fn.node.params.filter(param=>graph.has(binding(fn.owner,param),'Sprite')))]))};
 };
@@ -3037,9 +3758,12 @@ const isInfoRegistration = name => /^info(?:\.player[1-4])?\.onLifeZero$/.test(n
 const isForeverRegistration = name => ['forever','game.forever','basic.forever'].includes(name);
 const isSpriteRegistration = name => ['sprites.onDestroyed','sprites.onOverlap'].includes(name);
 const isParallelLaunch = name => name==='control.runInParallel';
-const isIndependentRegistration = name => isParallelLaunch(name) || isFrameRegistration(name) || isButtonRegistration(name) || isInfoRegistration(name) || isForeverRegistration(name) || isSpriteRegistration(name);
+const isControlRegistration = name => name==='control.onEvent';
+const isIndependentRegistration = name => isControlRegistration(name) || isParallelLaunch(name) || isFrameRegistration(name) || isButtonRegistration(name) || isInfoRegistration(name) || isForeverRegistration(name) || isSpriteRegistration(name);
 const sceneRegistrationSpec = name => {
     const specs={
+        'mp.onControllerEvent':{kind:'multiplayerConnection',handlerIndex:1,arity:2,prefix:'__bwMPConnection',maxParams:1},
+        'control.onEvent':{kind:'controlEvent',handlerIndex:2,arities:[3,4],prefix:'__bwControlEvent',maxParams:0},
         'game.addScenePushHandler':{kind:'scenePush',handlerIndex:0,arity:1,prefix:'__bwScenePush',maxParams:1},
         'game.addScenePopHandler':{kind:'scenePop',handlerIndex:0,arity:1,prefix:'__bwScenePop',maxParams:1},
         'forever':{kind:'forever',handlerIndex:0,arity:1,prefix:'__bwForever',maxParams:0},
@@ -3094,7 +3818,7 @@ const discoverRuntimeRegistrations = (ast, translator) => {
             const validScene=nativeScene && handler?.params?.length<=spec.maxParams &&
                 (spec.kinds||[]).every(index=>fixedKind(node.args[index])) &&
                 (!['scenePush','scenePop'].includes(spec.kind) || !handler.params.length || !containsAst(handler.body,value=>value.type==='Identifier' && value.name===handler.params[0]));
-            if (handler?.type==='FunctionExpression' && node.args.length===spec.arity &&
+            if (handler?.type==='FunctionExpression' && (spec.arities?spec.arities.includes(node.args.length):node.args.length===spec.arity) &&
                 (nativeScene?validScene:spec.kind==='creation' || handler.params.length<=2 && fixedKind(kind))) {
                 const captures = new Map(bindings);
                 for (const name of [...(handler.params || []), ...localNames(handler.body)]) captures.delete(name);
@@ -3155,9 +3879,9 @@ const emitSceneRegistrations = (translator,out,localHandles=new Map(),callbackLo
         const spriteParams=kind==='destroyed'?handler.params.slice(0,1):kind==='overlap'?handler.params.slice(0,2):[];
         translator.localHandleVars=new Set([...(localHandles.get(callbackLocals.get(handler)) || []),...spriteParams]);
         translator.handleAliases=new Map();
-        const label=kind==='multiplayerButton'?'multiplayer button':kind==='scenePush'?'scene push':kind==='scenePop'?'scene pop':kind==='instanceDestroyed'?'instance destruction':kind==='destroyed'?'destroyed kind':kind==='lifeZero'?'life zero':kind;
+        const label=kind==='controlEvent'?'control event':kind==='multiplayerConnection'?'multiplayer connection':kind==='multiplayerButton'?'multiplayer button':kind==='scenePush'?'scene push':kind==='scenePop'?'scene pop':kind==='instanceDestroyed'?'instance destruction':kind==='destroyed'?'destroyed kind':kind==='lifeZero'?'life zero':kind;
         out.push(`WHEN arcade ${label} handler "${token}" runs:`);
-        if(kind==='multiplayerButton' && handler.params[0])out.push(`  arcade set local ${translator.varName(handler.params[0])} to arcade event player`);
+        if(['multiplayerButton','multiplayerConnection'].includes(kind) && handler.params[0])out.push(`  arcade set local ${translator.varName(handler.params[0])} to arcade event player`);
         for(const [index,param] of spriteParams.entries())out.push(`  arcade set local ${translator.varName(param)} to arcade event ${index===0?'first':'second'}`);
         translator.block(handler.body,1,out);out.push('');
         translator.capturedBindings=previous.captures;translator.localVars=previous.locals;translator.currentParameters=previous.parameters;translator.localHandleVars=previous.handles;translator.handleAliases=previous.aliases;
@@ -3169,6 +3893,7 @@ const appendHandleProcedures = (translator, functions, parameterHandles, out, lo
         const signature = fn.params?.length ?
             `${fn.name} ${fn.params.map(param => `(${translator.varName(param)})`).join(' ')}` : fn.name;
         const lines = [`DEFINE ${signature}:`];
+        lines.push(...(translator.procedureConstraintSource?.prefix(fn,fn.name+(fn.params||[]).map(()=> ' %s').join(''),name=>translator.varName(name)) || []));
         const collectLocals = body => {
             for (const st of body || []) {
                 if (st.type === 'Declaration') for (const decl of st.decls) translator.localVars.add(decl.name);
@@ -3179,6 +3904,8 @@ const appendHandleProcedures = (translator, functions, parameterHandles, out, lo
         };
         translator.localVars = new Set();
         translator.currentParameters = new Set(fn.params || []);
+        const previousCaptures=translator.capturedBindings;
+        translator.capturedBindings=new Map((fn.bwCallableDefinition?.captures || []).map(capture=>[capture.name,translator.varName(capture.name)]));
         collectLocals(fn.body);
         translator.parameterHandleVars = new Set([...(parameterHandles.get(fn.name) || []), ...(translator.inferredSpriteParameters?.get(fn.name) || [])]);
         translator.localHandleVars = localHandles.get(fn.name) || new Set();
@@ -3187,6 +3914,7 @@ const appendHandleProcedures = (translator, functions, parameterHandles, out, lo
         translator.localHandleVars = new Set();
         translator.currentParameters = null;
         translator.localVars = null;
+        translator.capturedBindings=previousCaptures;
         out.push(...lines, '');
     }
 };
@@ -3198,8 +3926,8 @@ const appendHandleProcedures = (translator, functions, parameterHandles, out, lo
  * older translator for programs with named sprites or other setup until the
  * handle path covers their full control flow.
  */
-const translateCreationEvents = (ast, assets) => {
-    const t = new ArcadeTranslator(assets, {});
+const translateCreationEvents = (ast, assets, assetKindLookup = null, scrollerVersion = 'v0.1.2', characterVersion = 'v0.1.0') => {
+    const t = new ArcadeTranslator(assets, {}, assetKindLookup, scrollerVersion, characterVersion);
     const calls = ast.body.map(st => st.type === 'ExpressionStatement' && st.expr?.type === 'Call' ? st.expr : null);
     const nameOf = call => call && t.path(call.callee);
     const created = calls.filter(call => nameOf(call) === 'sprites.onCreated');
@@ -3244,7 +3972,7 @@ const translateCreationEvents = (ast, assets) => {
             t.path(d.init.callee) === 'game.askForString') t.stringVars.add(d.name);
     }
     t.functions.push(...ast.body.filter(st => st.type === 'FunctionDeclaration')
-        .map(fn => ({name: fn.name, params: fn.params, body: fn.body})));
+        .map(fn => ({name: fn.name, params: fn.params, body: fn.body,...(t.procedureConstraintSource?{source:fn.source,paramTypes:fn.paramTypes}:{})})));
     const parameterHandles = inferProcedureHandleParameters(ast, t.functions, new Set(), node => t.path(node));
     const imageArrays = new Map();
     let nextCostume = 1;
@@ -3308,14 +4036,171 @@ const translateCreationEvents = (ast, assets) => {
         names.push(template.name);
         out.push(`SPRITE ${template.name}:`, 'WHEN flag clicked:', '  hide', '');
     }
-    return {code: `${out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd()}\n`,
+    return {sourceReferences:(ast.sourceReferenceDeclarations || sourceReferenceDeclarations(ast)).map(({name,type})=>({name:t.varName(name),type})),sourceScalars:sourceScalarDeclarations(ast).map(({name,type})=>({name:t.varName(name),type})),code: `${out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd()}\n`,
         unsupported: [...new Set(t.unsupported)], costumes, sprites: names};
+};
+
+// Resource planning is independent of whole-program route admission. A partial
+// program still evaluates each admitted image literal at its original position;
+// artwork carriers are hidden templates, never additional live actors.
+const planImageValues = (t, ast, {creationApis, requiresSpriteRuntime, directImageOwners,
+    frameArrays = new Map(), wrappedFrameValue = () => null, usedFrameArrays = new Set(),
+    acceptImage = () => true, eager = true,
+    allocateName = null}) => {
+    const nameOf = call => call && t.path(call.callee);
+    const sharedTransport = currentSharedImageArrayTransport(ast);
+    const occupied = new Set(['Game','Stage']);
+    containsAst(ast,node=>{if(typeof node.name==='string')occupied.add(node.name);for(const decl of node.decls||[])occupied.add(decl.name);for(const name of node.params||[])occupied.add(name);return false;});
+    let nextResource=0;
+    const resourceName = index => {
+        const base=allocateName?allocateName(index):`__arcadeBackground${++nextResource}`;
+        let name=base,suffix=1;
+        while(occupied.has(name) || occupied.has(`${name}Image`))name=`${base}_${++suffix}`;
+        occupied.add(name);occupied.add(`${name}Image`);return name;
+    };
+    const imageValueCostumes = [];
+    const builtinImageResources = new Map();
+    const sharedFrameResources = new Map();
+    const stagedImageGroups = new Map(), stagedImageAliases = new Map(), artworkNames = {};
+    const artworkUserName = name => /^__bwNamespace_[A-Za-z0-9]+_([A-Za-z_]\w*)$/.exec(name || '')?.[1] ||
+        (typeof name==='string' && !/^__/.test(name)?name:null);
+    const visitArtworkSource = (node, visit, seen = new Set()) => {
+        if (!node || typeof node !== 'object' || seen.has(node)) return;
+        seen.add(node);visit(node);
+        for (const value of Object.values(node)) {
+            if (Array.isArray(value)) value.forEach(child=>visitArtworkSource(child,visit,seen));
+            else visitArtworkSource(value,visit,seen);
+        }
+    };
+    if (eager) {
+        visitArtworkSource(ast,node=>{
+            if(node.type!=='Template' || node.tag!=='img' || !acceptImage(node) || typeof node.bwImageArrayGroup!=='string')return;
+            const {bwImageArrayGroup:id,bwImageArrayIndex:index,bwImageArrayCount:count}=node,image=t.imageOf(node);
+            if(!image || !Number.isInteger(index) || !Number.isInteger(count) || count<2 || index<0 || index>=count)return;
+            if(!stagedImageGroups.has(id))stagedImageGroups.set(id,{count,members:new Map(),nodes:[],invalid:false});
+            const group=stagedImageGroups.get(id),prior=group.members.get(index);
+            if(group.count!==count || prior && (prior.width!==image.width || prior.height!==image.height ||
+                prior.pixels.length!==image.pixels.length || prior.pixels.some((pixel,i)=>pixel!==image.pixels[i])))group.invalid=true;
+            group.members.set(index,image);group.nodes.push(node);
+        });
+        for(const [id,group] of stagedImageGroups) {
+            if(group.invalid || group.members.size!==group.count){stagedImageGroups.delete(id);continue;}
+            stagedImageAliases.set(id,new Set([id]));
+        }
+        // Union assignments conservatively: a reused name must not label a later
+        // image group as if it belonged to a unique animation/actor.
+        let artworkAliasesChanged;
+        do {
+            artworkAliasesChanged=false;
+            visitArtworkSource(ast,node=>{
+                const entries=node.type==='Declaration'?node.decls.map(d=>[d.name,d.init]):
+                    node.type==='Assignment' && node.op==='=' && node.left?.type==='Identifier'?[[node.left.name,node.right]]:[];
+                for(const [name,value]of entries)if(value?.type==='Identifier' && stagedImageAliases.has(value.name)) {
+                    const ids=stagedImageAliases.get(name)||new Set();
+                    for(const id of stagedImageAliases.get(value.name))if(!ids.has(id)){ids.add(id);artworkAliasesChanged=true;}
+                    stagedImageAliases.set(name,ids);
+                    for(const id of ids)if(artworkUserName(name) && !stagedImageGroups.get(id).label)stagedImageGroups.get(id).label=artworkUserName(name);
+                }
+            });
+        }while(artworkAliasesChanged);
+        visitArtworkSource(ast,node=>{
+            if(node.type!=='Call' || !['animation.runImageAnimation','characterAnimations.loopFrames','characterAnimations.runFrames'].includes(nameOf(node)))return;
+            const frames=node.args?.[1],ids=frames?.type==='Identifier' && stagedImageAliases.get(frames.name);
+            const actor=node.args?.[0];
+            if(ids?.size===1 && actor?.type==='Identifier' && artworkUserName(actor.name)) {
+                const group=stagedImageGroups.get([...ids][0]);if(!group.label)group.label=artworkUserName(actor.name)+'Animation';
+            }
+        });
+        for(const group of stagedImageGroups.values()) {
+            const name=resourceName(imageValueCostumes.length+1);
+            const resource={name,key:`${name}Image`,count:group.count,fresh:true};
+            for(let index=0;index<group.count;index++)imageValueCostumes.push({sprite:name,name:`${name}-frame-${index}`,svg:imageToSvg(group.members.get(index)),mode:index?'add':'replace'});
+            for(const node of group.nodes)t.imageValueResources.set(node,{...resource,value:{type:'Number',value:node.bwImageArrayIndex}});
+            if(group.label)artworkNames[name]=group.label;
+        }
+    }
+    const collectImageValues = (node, parent) => {
+        if (!node || typeof node !== 'object') return;
+        if (t.imageValueResources.has(node)) return;
+        // Emission consumes this whole factory, so allocating its child images
+        // would leave an unused ordinary target that export makes an actor.
+        if (isAnimationResourceFactory(node)) return;
+        if (sharedTransport?.declarations.has(node)) return;
+        if (node.type==='Declaration' && node.decls.every(d=>frameArrays.has(d.name))) return;
+        // Map resources are embedded in tile data; they are not sprite image values.
+        if(node.type==='Call' && nameOf(node)==='tiles.createTilemap')return;
+        // An inline array of image literals (animation frames) is one resource
+        // with a costume per frame, so the frames stay together in the costume
+        // editor's timeline. Each element is still a fresh copy of its frame.
+        if (node.type === 'Array' && node.items?.length >= 2 && node.items.every(item => item?.type === 'Template' && item.tag === 'img' && acceptImage(item) && t.imageOf(item))) {
+            const name = resourceName(imageValueCostumes.length+1);
+            const resource = {name, key:`${name}Image`, count:node.items.length, fresh:true};
+            node.items.forEach((item, i) => {
+                imageValueCostumes.push({sprite:name, name:`${name}-frame-${i}`, svg:imageToSvg(t.imageOf(item)), mode:i ? 'add' : 'replace'});
+                t.imageValueResources.set(item, {...resource, value:{type:'Number', value:i}});
+            });
+            return;
+        }
+        const selected = sharedTransport?.selection(node);
+        if (selected) {
+            let resource=sharedFrameResources.get(selected.key);
+            if (!resource) {
+                const name=resourceName(imageValueCostumes.length+1);
+                resource={name,key:selected.key,count:selected.images.length};
+                sharedFrameResources.set(selected.key,resource);
+                selected.images.forEach((image,i)=>imageValueCostumes.push({sprite:name,name:`${name}-frame-${i}`,svg:imageToSvg(image),mode:i?'add':'replace'}));
+            }
+            usedFrameArrays.add(selected.key);
+            t.imageValueResources.set(node,{...resource,value:{type:'Number',value:selected.index}});
+            return;
+        }
+        const image = acceptImage(node) ? t.imageOf(node) : null;
+        // Runtime setImage owns a newly evaluated Image, including a creation
+        // callback whose kind can be computed. Static costume-slot matching
+        // cannot bind that image to every possible future sprite template.
+        const directArt = parent?.type === 'Call' && parent.args?.[0] === node &&
+            (creationApis.has(nameOf(parent)) || parent.callee?.name === 'setImage' &&
+                !requiresSpriteRuntime && directImageOwners.has(parent.callee.object?.name) || nameOf(parent) === 'scene.setBackgroundImage');
+        if (image && (!directArt || node.type === 'Member')) {
+            const builtin = node.type === 'Member' ? t.path(node) : node.type === 'Template' && node.tag === 'assets.tile' && image.tileId ? image.tileId : null;
+            let resource = builtin && builtinImageResources.get(builtin);
+            if (!resource) {
+                const name = resourceName(imageValueCostumes.length+1);
+                resource = {name,key:`${name}Image`,fresh:!builtin};
+                imageValueCostumes.push({sprite:name,name:`${name}-art`,svg:imageToSvg(image),mode:'replace'});
+                if (builtin) builtinImageResources.set(builtin,resource);
+            }
+            t.imageValueResources.set(node,resource);
+            return;
+        }
+        const spriteFrame = parent?.type === 'Call' && parent.args?.[0] === node && parent.callee?.name === 'setImage';
+        if (node.type === 'Index' && !spriteFrame) {
+            const arrayName=node.object?.type==='Identifier' && node.object.name;
+            const frames=frameArrays.get(arrayName),value=frames && wrappedFrameValue(node.index,frames.length);
+            if (frames && value) {
+                let resource=sharedFrameResources.get(arrayName);
+                if (!resource) {
+                    const name=resourceName(imageValueCostumes.length+1);
+                    resource={name,key:arrayName,count:frames.length};sharedFrameResources.set(arrayName,resource);
+                    frames.forEach((image,i)=>imageValueCostumes.push({sprite:name,name:`${name}-frame-${i}`,svg:imageToSvg(image),mode:i?'add':'replace'}));
+                }
+                usedFrameArrays.add(arrayName);t.imageValueResources.set(node,{...resource,value});
+            }
+        }
+        for (const value of Object.values(node)) {
+            if (Array.isArray(value)) value.forEach(child=>collectImageValues(child,node));
+            else if (value && typeof value === 'object') collectImageValues(value,node);
+        }
+    };
+    if (eager) collectImageValues(ast);
+    return {imageValueCostumes, artworkNames, collectImageValue: node => collectImageValues(node)};
 };
 
 /** Handle-valued globals plus onCreated/onOverlap callbacks. Kept separate
  * from the fixed-target path until its other sprite APIs can use handles. */
-const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRuntime = false) => {
-    const t = new ArcadeTranslator(assets, tilemaps);
+const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRuntime = false, assetKindLookup = null, scrollerVersion = 'v0.1.2', characterVersion = 'v0.1.0') => {
+    const t = new ArcadeTranslator(assets, tilemaps, assetKindLookup, scrollerVersion, characterVersion);
+    t.callableProcedures=new Map(ast.body.filter(fn=>fn.bwCallableDefinition).map(fn=>[fn.name,fn.name+fn.params.map(()=> ' %s').join('')]));
     const needsProjectileHandles = node => {
         if (!node || typeof node !== 'object') return false;
         if (node.type === 'Call' && ['sprites.onCreated', 'image.create'].includes(t.path(node.callee))) return true;
@@ -3337,16 +4222,29 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
     // A declaration with a sprite-valued initializer creates a handle at that
     // exact point, just like a later assignment to the same variable. Lower
     // only this form so the existing ordered setup path owns both forms.
-    ast = {...ast, body: ast.body.flatMap(st => {
+    const beforeHandleProjection=ast;
+    let changedCreation=false;
+    const orderedBody = ast.body.flatMap(st => {
         if (st.type !== 'Declaration' || !st.decls.some(d => !d.temporary && d.init?.type === 'Call' &&
             creationApis.has(t.path(d.init.callee)))) return [st];
+        changedCreation=true;
         return st.decls.flatMap(d => !d.temporary && d.init?.type === 'Call' &&
             creationApis.has(t.path(d.init.callee)) ? [
                 {...st, decls: [{...d, init: {type: 'Null',spritePlaceholder:true}}]},
                 {type: 'ExpressionStatement', expr: {type: 'Assignment', op: '=',
                     left: {type: 'Identifier', name: d.name}, right: d.init}}
             ] : [{...st, decls: [d]}]);
-    })};
+    });
+    if(changedCreation) {
+        const next={...ast,body:orderedBody};
+        if(currentSharedImageArrayTransport(ast)) {
+            const projected=reproveSharedImageArrayTransport(ast,next);
+            // The outer current AST remains untouched for the generic route.
+            if(!projected)return null;
+            ast=projected;
+        } else ast=next;
+    }
+    if(ast!==beforeHandleProjection&&hasThrowEmission(beforeHandleProjection))t.unsupported.push(...reproveThrowEmission(ast,beforeHandleProjection));
     const callOf = st => st.type === 'ExpressionStatement' && st.expr?.type === 'Call' ? st.expr : null;
     const nameOf = call => call && t.path(call.callee);
     const calls = ast.body.map(callOf);
@@ -3360,11 +4258,21 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if (!node || typeof node !== 'object') return false;
         if(node.loweredStaticCallbacks || node.optionalParams?.length || node.loweredLazyValues || node.type==='Undefined' || node.type==='Null' && !node.spritePlaceholder || t.hasLazyCondition(node))return true;
         if(['LegacyParsedValue','LegacyJsonValue','NativeArrayAccess'].includes(node.type) || node.type==='Identifier' && ['NaN','Infinity'].includes(node.name) && !t.boundSourceGlobals.has(node.name))return true;
+        if(node.type==='SpriteKindReset' || node.type==='Member' && t.path(node.object)==='SpriteKind' || node.type==='Call' && (t.path(node.callee)==='SpriteKind.create' || node.callee?.type==='Member' && ['kind','setKind'].includes(node.callee.name) || t.path(node.callee)==='sprites.create' && (!node.args[1] || !['Member'].includes(node.args[1].type))))return true;
+        if(node.type==='Call' && (isSpriteRegistration(t.path(node.callee)) || t.path(node.callee)==='sprites.onCreated'))return true;
+        if(node.type==='Call' && /^info\.(showScore|showLife|showCountdown)$/.test(t.path(node.callee)||''))return true;
+        if(t.bufferReferences.has(node))return true;
         if(node.type==='Declaration' && node.decls.some(decl=>decl.isArray && !decl.init))return true;
         const constantNumber=value=>value?.type==='Number'?Number(value.value):value?.type==='Unary' && value.op==='-' && value.argument?.type==='Number'?-Number(value.argument.value):value?.type==='Member' && value.object?.name==='Math' && value.name==='PI'?Math.PI:NaN;
+        if(node.type==='Binary' && ['**','&','|','^','<<','>>','>>>'].includes(node.op) || node.type==='Unary' && node.op==='~')return true;
         if(node.type==='Binary' && node.op==='/' && (!Number.isFinite(constantNumber(node.right)) || constantNumber(node.right)===0))return true;
         if(node.type==='Unary' && node.op==='-' && constantNumber(node.argument)===0)return true;
-        if(node.type==='Call' && (isIndependentRegistration(t.path(node.callee)) || t.path(node.callee)==='game.ask'))return true;
+        if(node.type==='Unary' && ['+','-'].includes(node.op))return true;
+        if(node.type==='Call' && (isIndependentRegistration(t.path(node.callee)) || ['control.allocateNotifyEvent','control.raiseEvent','control.waitForEvent','game.ask','game.askForString','game.askForNumber','controller.pauseUntilAnyButtonIsPressed'].includes(t.path(node.callee))))return true;
+        if(node.type==='Call' && /^bwStringArraySettings\.(?:read|write)$/.test(t.path(node.callee)||''))return true;
+        if(node.type==='Call' && /^(?:settings|blockSettings)\.(?:(?:write|read)(?:Number|String|NumberArray|StringArray|Buffer)|exists|list|remove|clear)$/.test(t.path(node.callee)||''))return true;
+        if(t.textSpriteReferences?.has(node) || node.type==='Call' && t.path(node.callee)==='textsprite.create')return true;
+        if(node.type==='Call' && /^sprites\.(?:(?:set|read)Data(?:Number|String|Boolean|Sprite)|changeDataNumberBy)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && t.path(node.callee)==='MultiplayerState.create')return true;
         if(node.type==='Call' && /^controller\.player[1-4]\.(?:moveSprite|stopControllingSprite)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^mp\./.test(t.path(node.callee)||''))return true;
@@ -3373,8 +4281,10 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(node.type==='Call' && /^carnival\.(?:startCountdownGame|onGameOverExpanded|customGameOverExpanded)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^game\.(?:gameOver|over|setGameOver\w+)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && (node.callee.name==='startEffect' || node.callee.name==='destroy' && node.args?.length))return true;
-        if(node.type==='Call' && (['game.currentScene','ArcadePhysicsEngine','sprites.allOfKind','scene.onHitTile','scene.tileHitFrom','scene.onHitWall','scene.onOverlapTile','scene.centerCameraAt','scene.cameraShake','scene.cameraFollowSprite','scene.cameraProperty','game.pushScene','game.popScene','game.addScenePushHandler','game.addScenePopHandler','game.removeScenePushHandler','game.removeScenePopHandler'].includes(t.path(node.callee)) || /^tiles\./.test(t.path(node.callee)||'')))return true;
-        if(node.type==='Member' && ['fx','fy','sx','sy','scale'].includes(node.name))return true;
+        if(node.type==='Call' && (['controller.setRepeatDefault','controller._setUserEventsEnabled','game.splash','game.showLongText','game.currentScene','ArcadePhysicsEngine','sprites.allOfKind','scene.onHitTile','scene.tileHitFrom','scene.onHitWall','scene.onOverlapTile','scene.centerCameraAt','scene.cameraShake','scene.cameraFollowSprite','scene.cameraProperty','scene.cameraLeft','scene.cameraTop','game.pushScene','game.popScene','game.addScenePushHandler','game.addScenePopHandler','game.removeScenePushHandler','game.removeScenePopHandler'].includes(t.path(node.callee)) || /^tiles\./.test(t.path(node.callee)||'')))return true;
+        if(node.type==='Call' && /^info(?:\.player[1-4])?\.(?:life|hasLife|setLife|changeLifeBy|onLifeZero)$/.test(t.path(node.callee)||''))return true;
+        if(node.type==='Member' && ['repeatDelay','repeatInterval'].includes(node.name) && (t.path(node.object)||'').startsWith('controller.'))return true;
+        if(node.type==='Member' && ['fx','fy','sx','sy','scale','flags'].includes(node.name))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='toString' && t.spriteReferences.has(node.callee.object))return true;
         const mixedValue=value=>['String','Boolean','Null','Undefined','Array'].includes(value?.type) || t.stringReferences.has(value) || t.booleanReferences.has(value) || t.arrayReferences.has(value) || t.imageReferences.has(value);
         if(node.type==='Binary' && (node.op==='%' || ['+','-','*','/','==','!=','===','!==','<','>','<=','>='].includes(node.op) && (mixedValue(node.left) || mixedValue(node.right))) || node.type==='Unary' && ['+','-'].includes(node.op) && mixedValue(node.argument))return true;
@@ -3385,7 +4295,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(['FunctionDeclaration','FunctionExpression'].includes(node.type) && node.body.some(st=>st.type==='Declaration'))return true;
         if (node.type==='Array' && node.items.some(item=>t.imageReferences.has(item)||t.spriteReferences.has(item))) return true;
         if(node.type==='Index' && (t.imageReferences.has(node)||t.spriteReferences.has(node)||t.arrayReferences.has(node.object)))return true;
-        if(node.type==='Call' && ['Math.sign','Math.trunc','Math.sqrt','Math.log','Math.log10','Math.asin','Math.acos','Math.pow','Math.pickRandom'].includes(t.path(node.callee)))return true;
+        if(node.type==='Call' && ['Math.random','Math.randomRange','Math.percentChance','Math.clamp','Math.min','Math.max','randint','Math.sign','Math.trunc','Math.sqrt','Math.log','Math.log10','Math.asin','Math.acos','Math.pow','Math.pickRandom'].includes(t.path(node.callee)))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && t.arrayReferences.has(node.callee.object))return true;
         if (node.type === 'Declaration' && node.decls.some(d => t.imageOf(d.init))) return true;
         if (node.type === 'Return' && (t.imageOf(node.value) || t.imageReferences.has(node.value))) return true;
@@ -3397,9 +4307,9 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if (node.type === 'Call' && /^characterAnimations\./.test(t.path(node.callee) || '')) return true;
         if (node.type === 'Call' && ['image.setPalette','image.create','scene.setTileMap','scene.setTile','scene.getTile','scene.getTilesByType','scene.setTileAt','scene.place','scene.placeOnRandomTile','scene.setBackgroundImage','scene.backgroundImage', 'animation.createAnimation','animation.attachAnimation','animation.setAction','animation.runImageAnimation','animation.stopAnimation'].includes(t.path(node.callee))) return true;
         if (node.type === 'Call' && node.callee?.type === 'Member' &&
-            (['follow', 'unfollow', 'setScaleCore', 'setScale', 'changeScale', 'setStayInScreen', 'setBounceOnWall', 'setFlag', 'setVelocity', 'setImage', 'isHittingTile'].includes(node.callee.name) ||
+            (['follow', 'unfollow', 'setScaleCore', 'setScale', 'changeScale', 'setStayInScreen', 'setBounceOnWall', 'setFlag', 'setVelocity', 'setImage', 'isHittingTile', 'tileKindAt'].includes(node.callee.name) ||
                 (node.callee.object?.type === 'Member' && node.callee.object.name === 'image' &&
-                    ['copyFrom', 'scroll', 'fill', 'replace', 'flipX', 'flipY', 'setPixel', 'getPixel', 'fillRect', 'drawLine', 'drawImage', 'drawTransparentImage', 'overlapsWith'].includes(node.callee.name)))) return true;
+                    ['copyFrom', 'scroll', 'fill', 'replace', 'flipX', 'flipY', 'setPixel', 'getPixel', 'fillRect', 'drawLine', 'drawCircle', 'fillCircle', 'drawImage', 'drawTransparentImage', 'overlapsWith'].includes(node.callee.name)))) return true;
         return Object.values(node).some(value => Array.isArray(value) ?
             value.some(usesRuntimeSpriteMethods) : usesRuntimeSpriteMethods(value));
     };
@@ -3413,7 +4323,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
     if(['scene.setTileMap','scene.setTile','scene.getTile','scene.getTilesByType','scene.setTileAt','scene.place','scene.placeOnRandomTile'].some(name=>mapCalls.has(name)) &&
         ['tiles.setTilemap','tiles.setCurrentTilemap','scene.setTileMapLevel','tiles.getTilesByType','tiles.tileAtLocationEquals','tiles.setTileAt','tiles.setWallAt','tiles.placeOnRandomTile'].some(name=>mapCalls.has(name)))
         t.unsupported.push('Mixing legacy color-coded maps with modern map replacement, image lookup or per-location mutation is not yet supported');
-    const requiresSpriteRuntime = forceSpriteRuntime || usesRuntimeSpriteMethods(ast);
+    const requiresSpriteRuntime = !!ast.bwCallables?.length || !!ast.bwObjectClasses || forceSpriteRuntime || !!ast.loweredSourceLoopControl || usesRuntimeSpriteMethods(ast);
     const callbackLocals = new Map();
     const createAssignments = [];
     const localCreateAssignments = [];
@@ -3476,12 +4386,8 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         ['Identifier','Call','Index'].includes(st.expr.left.object?.type);
     const ordinaryAssignment = st => st.type === 'ExpressionStatement' &&
         st.expr?.type === 'Assignment' && st.expr.left?.type === 'Identifier' && !assignsCreate(st);
-    const frameArrays = new Map();
-    for (const st of ast.body) if (st.type === 'Declaration') for (const d of st.decls) {
-        if (!d.name.startsWith('__bwFrames_') || d.init?.type !== 'Array') continue;
-        const images = d.init.items.map(item => t.imageOf(item));
-        if (images.length && images.every(Boolean)) frameArrays.set(d.name, images);
-    }
+    const sharedTransport = currentSharedImageArrayTransport(ast);
+    const frameArrays = sharedTransport?.frames || new Map();
     const wrappedFrameValue = (node, count) => {
         const isCount = item => item?.type === 'Number' && Number(item.value) === count;
         if (node?.type !== 'Binary' || node.op !== '%' || !isCount(node.right)) return null;
@@ -3517,11 +4423,11 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         'pause', 'game.splash', 'game.showLongText', 'image.setPalette', 'scene.setBackgroundColor', 'scene.setBackgroundImage']);
     for (const [index, st] of ast.body.entries()) {
         if (st.type === 'Namespace' && st.name === 'SpriteKind') continue;
-        if (st.type === 'FunctionDeclaration') continue;
+        if (st.type === 'FunctionDeclaration' || st.type==='SpriteKindReset') continue;
         if (plainDeclaration(st) || frameDeclaration(st)) continue;
         if (assignsCreate(st)) continue;
         if (handleProperty(st)) continue;
-        if (ordinaryAssignment(st) || ['If', 'For', 'While','Block'].includes(st.type) || requiresSpriteRuntime && st.type==='ExpressionStatement' && ['Assignment','Update'].includes(st.expr?.type)) continue;
+        if (ordinaryAssignment(st) || ['If', 'For', 'While','Block'].includes(st.type) || ast.loweredSourceLoopControl && ['Switch','Enum','Interface'].includes(st.type) || requiresSpriteRuntime && st.type==='ExpressionStatement' && ['Assignment','Update'].includes(st.expr?.type)) continue;
         const name = names[index];
         if (allowedCalls.has(name) || functionNames.has(name) ||
             /^controller\.(A|B|up|down|left|right)\.onEvent$/.test(name || '') || /^info\.player[1-4]\.onLifeZero$/.test(name || '') ||
@@ -3579,7 +4485,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
             }
         }
     } while (aliasesChanged);
-    t.functions.push(...functions.map(fn => ({name: fn.name, params: fn.params, body: fn.body})));
+    t.functions.push(...functions.map(fn => ({name: fn.name, params: fn.params, body: fn.body,...(t.procedureConstraintSource?{source:fn.source,paramTypes:fn.paramTypes}:{}),...(fn.bwCallableDefinition?{bwCallableDefinition:fn.bwCallableDefinition}:{})})));
     const parameterHandles = inferProcedureHandleParameters(ast, functions, t.handleVars, node => t.path(node));
     t.handleTemplates = new Map();
     t.handleImageArrays = new Map();
@@ -3594,77 +4500,15 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         const handler=call.args?.find(arg=>arg.type==='FunctionExpression');
         if(handler?.params?.[0])directImageOwners.add(handler.params[0]);
     }
-    const imageValueCostumes = [];
-    const builtinImageResources = new Map();
-    const sharedFrameResources = new Map();
-    const collectImageValues = (node, parent) => {
-        if (!node || typeof node !== 'object') return;
-        if (node.type==='Declaration' && node.decls.every(d=>frameArrays.has(d.name))) return;
-        // Map resources are embedded in tile data; they are not sprite image values.
-        if(node.type==='Call' && nameOf(node)==='tiles.createTilemap')return;
-        // An inline array of image literals (animation frames) is one resource
-        // with a costume per frame, so the frames stay together in the costume
-        // editor's timeline. Each element is still a fresh copy of its frame.
-        if (node.type === 'Array' && node.items?.length >= 2 && node.items.every(item => item?.type === 'Template' && item.tag === 'img' && t.imageOf(item))) {
-            const name = `__arcadeBackground${imageValueCostumes.length+1}`;
-            const resource = {name, key:`${name}Image`, count:node.items.length, fresh:true};
-            node.items.forEach((item, i) => {
-                imageValueCostumes.push({sprite:name, name:`${name}-frame-${i}`, svg:imageToSvg(t.imageOf(item)), mode:i ? 'add' : 'replace'});
-                t.imageValueResources.set(item, {...resource, value:{type:'Number', value:i}});
-            });
-            return;
-        }
-        const image = t.imageOf(node);
-        const directArt = parent?.type === 'Call' && parent.args?.[0] === node &&
-            (creationApis.has(nameOf(parent)) || parent.callee?.name === 'setImage' && directImageOwners.has(parent.callee.object?.name) || nameOf(parent) === 'scene.setBackgroundImage');
-        if (image && (!directArt || node.type === 'Member')) {
-            const builtin = node.type === 'Member' ? t.path(node) : null;
-            let resource = builtin && builtinImageResources.get(builtin);
-            if (!resource) {
-                const name = `__arcadeBackground${imageValueCostumes.length+1}`;
-                resource = {name,key:`${name}Image`,fresh:!builtin};
-                imageValueCostumes.push({sprite:name,name:`${name}-art`,svg:imageToSvg(image),mode:'replace'});
-                if (builtin) builtinImageResources.set(builtin,resource);
-            }
-            t.imageValueResources.set(node,resource);
-            return;
-        }
-        const spriteFrame = parent?.type === 'Call' && parent.args?.[0] === node && parent.callee?.name === 'setImage';
-        if (node.type === 'Index' && !spriteFrame) {
-            const arrayName=node.object?.type==='Identifier' && node.object.name;
-            const frames=frameArrays.get(arrayName),value=frames && wrappedFrameValue(node.index,frames.length);
-            if (frames && value) {
-                let resource=sharedFrameResources.get(arrayName);
-                if (!resource) {
-                    const name=`__arcadeBackground${imageValueCostumes.length+1}`;
-                    resource={name,key:arrayName,count:frames.length};sharedFrameResources.set(arrayName,resource);
-                    frames.forEach((image,i)=>imageValueCostumes.push({sprite:name,name:`${name}-frame-${i}`,svg:imageToSvg(image),mode:i?'add':'replace'}));
-                }
-                usedFrameArrays.add(arrayName);t.imageValueResources.set(node,{...resource,value});
-            }
-        }
-        for (const value of Object.values(node)) {
-            if (Array.isArray(value)) value.forEach(child=>collectImageValues(child,node));
-            else if (value && typeof value === 'object') collectImageValues(value,node);
-        }
-    };
-    collectImageValues(ast);
+    const {imageValueCostumes, artworkNames} = planImageValues(t, ast,
+        {creationApis, requiresSpriteRuntime, directImageOwners, frameArrays, wrappedFrameValue, usedFrameArrays});
     for (const [index, call] of creates.entries()) {
         const api = nameOf(call), projectile = api !== 'sprites.create';
         const dynamicImage = t.imageRef(call.args[0]);
         const image = dynamicImage ? {width: 1, height: 1, pixels: new Uint8Array(1)} : t.imageOf(call.args[0]);
         if (!image) return null;
         const kindArgument = projectile ? api === 'sprites.createProjectile' ? call.args[3] : null : call.args[1];
-        let kind = projectile ? 'Projectile' : 'Player';
-        if (negativeKind(kindArgument) !== null) kind = kindOf(kindArgument);
-        else if (kindArgument?.type === 'Number') {
-            const builtinKind = ['Player','Projectile','Food','Enemy'][Number(kindArgument.value)];
-            if (builtinKind) kind = builtinKind;
-            else t.unsupported.push(`${api}() numeric sprite kind ${kindArgument.value} needs kind identity support`);
-        } else if (kindArgument?.type === 'Member' && t.path(kindArgument.object) === 'SpriteKind') kind = kindArgument.name;
-        else if (kindArgument) t.unsupported.push(`${api}() dynamic sprite kind needs kind expression support`);
-        // PXT's optional projectile kind uses `kind || SpriteKind.Projectile`.
-        if (projectile && kind === 'Player') kind = 'Projectile';
+        const kind = kindArgument?.type==='Member' && t.path(kindArgument.object)==='SpriteKind'?kindArgument.name:projectile?'Projectile':'Player';
         const template = {name: `__arcadeTemplate${index + 1}`, dynamicImage: !!dynamicImage, kind,
             width: image.width, height: image.height};
         t.handleTemplates.set(call, template);
@@ -3838,7 +4682,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
     const out = ['DEVICE ARCADE', '', ...[...new Set([...t.handleVars, ...declaredGlobals])]
         .map(name => `GLOBAL ${t.varName(name)}`),
         '', 'SPRITE Game:'];
-    const setup = ast.body.filter(st => assignsCreate(st) || handleProperty(st) || ordinaryAssignment(st) ||
+    const setup = ast.body.filter(st => st.type==='SpriteKindReset' || assignsCreate(st) || handleProperty(st) || ordinaryAssignment(st) ||
         st.type==='ExpressionStatement' && ['Assignment','Update'].includes(st.expr?.type) ||
         plainDeclaration(st) ||
         ['If', 'For', 'While','Block'].includes(st.type) ||
@@ -3852,20 +4696,27 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
     emitTerrainRegistrations(t,out,localHandles,callbackLocals);
     emitSceneRegistrations(t,out,localHandles,callbackLocals);
     appendHandleProcedures(t, t.functions, parameterHandles, out, localHandles);
+    const callablePlan=ast.bwCallableLexicalPlan && structuredClone(ast.bwCallableLexicalPlan);
+    if(callablePlan)for(const binding of callablePlan.bindings)if(['global','parameter'].includes(binding.kind))binding.nativeName=t.varName(binding.nativeName);
+    const sourceCallables=(callablePlan?ast.bwCallables || []:[]).map(definition=>({procedure:t.callableProcedures.get(definition.name),
+        metadata:callablePlan?.version===2 ? {schema:'bw-callable-declaration',version:2,site:definition.site,plan:validateClassCallablePlan(callablePlan)} : callableDeclarationEnvelope(callablePlan,definition.site)}));
+    for(const definition of sourceCallables)out.push(`WHEN arcade callable ${JSON.stringify(definition.procedure)} dispatched:`, '  arcade run dispatched callable','');
+    const sourceCallableGlobals=(callablePlan?ast.sourceCallableDeclarations || []:[]).map(({name})=>{const binding=callablePlan.bindings.find(row=>row.owner===callablePlan.module&&row.kind==='global'&&row.sourceName===name);return {name:t.varName(name),signature:callableVariableEnvelope(callablePlan,binding.id)};});
+
     const spriteNames = ['Game'];
     for (const template of t.handleTemplates.values()) {
         spriteNames.push(template.name);
         out.push(`SPRITE ${template.name}:`, 'WHEN flag clicked:', '  hide', '');
     }
     for (const name of imageTemplates) {spriteNames.push(name);out.push(`SPRITE ${name}:`, 'WHEN flag clicked:', '  hide', '');}
-    return {code: `${out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd()}\n`,
-        unsupported: [...new Set(t.unsupported)], costumes, sprites: spriteNames};
+    return {sourceCallables,sourceCallableGlobals,sourceReferences:(ast.sourceReferenceDeclarations || sourceReferenceDeclarations(ast)).map(({name,type})=>({name:t.varName(name),type})),sourceScalars:sourceScalarDeclarations(ast).map(({name,type})=>({name:t.varName(name),type})),code: `${out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd()}\n`,
+        unsupported: [...new Set(t.unsupported)], costumes, sprites: spriteNames, artworkNames};
 };
 
 /** Top-level projectile creation with a named handle. PXT starts side
  * projectiles one pixel inside the incoming edge, then integrates velocity. */
-const translateSideProjectiles = (ast, assets) => {
-    const t = new ArcadeTranslator(assets, {});
+const translateSideProjectiles = (ast, assets, assetKindLookup = null, scrollerVersion = 'v0.1.2', characterVersion = 'v0.1.0') => {
+    const t = new ArcadeTranslator(assets, {}, assetKindLookup, scrollerVersion, characterVersion);
     const path = call => call && t.path(call.callee);
     const literal = node => node?.type === 'Number' ? Number(node.value) :
         node?.type === 'Unary' && node.op === '-' && node.argument?.type === 'Number' ?
@@ -3929,15 +4780,15 @@ const translateSideProjectiles = (ast, assets) => {
     for (const template of templates.values()) {
         out.push('', `SPRITE ${template.name}:`, 'WHEN flag clicked:', '  hide');
     }
-    return {code: `${out.join('\n').trimEnd()}\n`, unsupported: [...new Set(t.unsupported)],
+    return {sourceReferences:(ast.sourceReferenceDeclarations || sourceReferenceDeclarations(ast)).map(({name,type})=>({name:t.varName(name),type})),sourceScalars:sourceScalarDeclarations(ast).map(({name,type})=>({name:t.varName(name),type})),code: `${out.join('\n').trimEnd()}\n`, unsupported: [...new Set(t.unsupported)],
         costumes, sprites: ['Game', ...[...templates.values()].map(template => template.name)]};
 };
 
 /** Event-only Arcade snippets can be imported as real kind-filtered hats.
  * Their callback parameters are runtime handles even when the snippet itself
  * contains no sprite creation. */
-const translateOverlapOnly = (ast, assets) => {
-    const t = new ArcadeTranslator(assets, {});
+const translateOverlapOnly = (ast, assets, assetKindLookup = null, scrollerVersion = 'v0.1.2', characterVersion = 'v0.1.0') => {
+    const t = new ArcadeTranslator(assets, {}, assetKindLookup, scrollerVersion, characterVersion);
     const call = st => st.type === 'ExpressionStatement' && st.expr?.type === 'Call' ? st.expr : null;
     const overlap = st => call(st) && t.path(call(st).callee) === 'sprites.onOverlap';
     if (!ast.body.some(overlap)) return null;
@@ -3963,7 +4814,7 @@ const translateOverlapOnly = (ast, assets) => {
         t.block(handler.body, 1, out);
         out.push('');
     }
-    return {code: `${out.join('\n').trimEnd()}\n`, unsupported: [...new Set(t.unsupported)],
+    return {sourceReferences:(ast.sourceReferenceDeclarations || sourceReferenceDeclarations(ast)).map(({name,type})=>({name:t.varName(name),type})),sourceScalars:sourceScalarDeclarations(ast).map(({name,type})=>({name:t.varName(name),type})),code: `${out.join('\n').trimEnd()}\n`, unsupported: [...new Set(t.unsupported)],
         costumes: [], sprites: ['Game']};
 };
 
@@ -3996,6 +4847,7 @@ export function nameArtworkSprites (result) {
         return /^__/.test(variable) ? null : variable;
     };
     const labelOf = name => {
+        if(result.artworkNames?.[name])return userName(result.artworkNames[name]) || result.artworkNames[name];
         for (const line of lines) {
             const at = line.indexOf(quote(name));
             if (at < 0) continue;
@@ -4070,13 +4922,15 @@ export function arcadeToPseudocode (files, opts = {}) {
     const map = typeof files === 'string' ? {'main.ts': files} : (files || {});
     const selectedSource = arcadeProjectSource(map);
     const source = selectedSource.source;
+    const sharedSourcePreparation = capturePreparedSharedImageSources(map,selectedSource);
+    let sharedSourceConsumed=false;
     const projectInputDiagnostics = [...selectedSource.diagnostics];
     // Parse each boundary independently before the combined parse. This keeps
     // syntax errors in one file from consuming the following file's tokens,
     // while the combined parser allocates its generated temporary names once.
     if (selectedSource.entries.length > 1) {
         for (const entry of selectedSource.entries) {
-            try { parseMakeCodeTs(entry.source, {parameterDefaults: true}); }
+            try { parseSharedImageSourceBoundary(sharedSourcePreparation,entry); }
             catch (error) { throw new Error(`${entry.name}: ${error.message}`, {cause: error}); }
         }
     }
@@ -4099,6 +4953,17 @@ export function arcadeToPseudocode (files, opts = {}) {
         } catch (error) { projectInputDiagnostics.push(`Project pxt.json could not be read: ${error.message}`); }
     }
 
+    // Internal dependency resources are qualified constants, not root image
+    // factories. Keep incomplete standalone snippets diagnosed when their
+    // galleries are absent; only supplied root galleries establish null lookup.
+    const rootAssetFiles=Object.fromEntries(Object.entries(map).filter(([name])=>!name.startsWith('__bwDependencyInputs/')));
+    let characterVersion='v0.1.0';
+    try {const cfg=JSON.parse(map['pxt.json'] || '{}');if(cfg.bwArcadeNativeLibraries?.characterAnimations===LEGACY_CHARACTER_REVISION || Object.values(cfg.dependencies || {}).some(ref=>[`github:microsoft/arcade-character-animations#${LEGACY_CHARACTER_REVISION}`,'github:microsoft/arcade-character-animations#v0.0.2'].includes(ref)))characterVersion=LEGACY_CHARACTER_REVISION;}catch{}
+    let scrollerVersion='v0.1.2';
+    try {const cfg=JSON.parse(map['pxt.json'] || '{}');if(cfg.bwArcadeNativeLibraries?.scroller===LEGACY_SCROLLER_REVISION || Object.values(cfg.dependencies || {}).some(ref=>ref===`github:riknoll/arcade-background-scroll#${LEGACY_SCROLLER_REVISION}`))scrollerVersion=LEGACY_SCROLLER_REVISION;}catch{}
+    let assetFileOrder;try{assetFileOrder=JSON.parse(map['pxt.json'] || '{}').files;}catch{}
+    const assetKindLookup=Object.keys(rootAssetFiles).some(name=>/\.g\.jres$/.test(name)) ?
+        createAssetKindLookup(rootAssetFiles,assetFileOrder?{fileOrder:assetFileOrder}:{}) : null;
     const assets = Object.create(null);
     const tilemaps = {};
     const songAliases = new Map();
@@ -4180,8 +5045,32 @@ export function arcadeToPseudocode (files, opts = {}) {
         if (Array.isArray(node)) return node.map(lowerAnimationAssets);
         return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, lowerAnimationAssets(value)]));
     };
-    const parsed = inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerArrayCallbacks(lowerIifes(lowerDestroyAllSprites(lowerLibraryCalls(liftExporterStops(
-        lowerAnimationAssets(parseMakeCodeTs(source, {parameterDefaults: true})))), source), source), source), source)));
+    const callableParseOptions={parameterDefaults:true,retainParentheses:true,retainWhenUsed:true,retainClassHeritage:true,retainOrdinaryDefaultProvenance:true};
+    const ordinarySource=parseSharedImageSourceProgram(sharedSourcePreparation,source,opts.procedureConstraintsPrototype===true,opts.procedureConstraintsPrototype!==true);
+    const callableSourceParsed=parseMakeCodeTs(source,{...callableParseOptions,retainCallableMetadata:true});
+    const namedEligibility=selectNamedFunctionSourceProof(callableSourceParsed,{ordinaryProgram:ordinarySource,registrationSpec:sceneRegistrationSpec});
+    const namedEnabled=namedEligibility.eligible;
+    const namedLowering=namedEnabled?lowerNamedFunctionValues(callableSourceParsed):null;
+    const callableEligibility=callableSourceGate(callableSourceParsed,{normalize:true});
+    const callableEnabled=opts.callableLexicalPrototype===true || callableEligibility.eligible;
+    const {proof:classEligibility,sdkImageEnabled}=selectClassCallableSourceProofForTranslation(callableSourceParsed,{sdkImagePrototype:opts.sdkImagePrototype===true});
+    const classEnabled=opts.classCallablePrototype===true || classEligibility.eligible;
+    if(opts.sdkImagePrototype===true&&!classEligibility.eligible)projectInputDiagnostics.push(...classEligibility.unsupported,'SDK Image prototype requires its completed actual source producer proof');
+    // Ordinary programs retain their ordinary parse. Only the proved numeric
+    // surface uses lexical metadata and the existing callable lowering path.
+    const callableSourceInput=namedEnabled ? namedLowering.program : classEnabled ? withClassResultFlowProof(callableSourceParsed,classEligibility) : callableEnabled ? (callableEligibility.program || callableSourceParsed) : ordinarySource;
+    if(!namedEnabled&&!opts.callableLexicalPrototype&&!opts.classCallablePrototype&&!classEligibility.eligible){
+        projectInputDiagnostics.push(...callableEligibility.unsupported,...classEligibility.unsupported,...namedEligibility.unsupported);
+    }
+    const sharedSourceContext = !namedEnabled&&!callableEnabled&&!classEnabled ? bindPreparedSharedImageSource(sharedSourcePreparation,ordinarySource) : null;
+    const generatedProfile=(namedEnabled||classEnabled||callableEnabled||opts.procedureConstraintsPrototype===true)?
+        GENERATED_HELPER_PROFILES.metadata:GENERATED_HELPER_PROFILES.ordinary;
+    const namedArrayInputs=lowerNamedArrayItemHelpers(inlineValueHelpers(callableSourceInput,true),{profile:generatedProfile});
+    // Recognition consumes the selected parse context before clone-heavy
+    // lowerings erase its parameter descriptors or alter canonical bodies.
+    const generatedSource=inlineLegacyArrayHelpers(liftExporterStops(namedArrayInputs.program,generatedProfile),generatedProfile);
+    const parsed = lowerSourceLoopControl(inlineValueHelpers(desugarForOf(lowerArrayCallbacks(lowerIifes(lowerDestroyAllSprites(lowerLibraryCalls(
+        lowerAnimationAssets(generatedSource)), source), source), source), source)));
     const containsPaletteCall = node => {
         if(!node || typeof node!=='object')return false;
         if(node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='setPalette' &&
@@ -4189,9 +5078,15 @@ export function arcadeToPseudocode (files, opts = {}) {
         return Object.values(node).some(value=>Array.isArray(value)?value.some(containsPaletteCall):containsPaletteCall(value));
     };
     const runtimePaletteRequested=containsPaletteCall(parsed);
+    let admittedThrowProgram=null;
     const withAnimationDiagnostics = result => {
         result = nameArtworkSprites(result);
+        if(admittedThrowProgram&&!hasThrowEmission(admittedThrowProgram))result={...result,unsupported:[...(result.unsupported||[]),'Throw source changed during actual emission']};
         let code = result.code;
+        const sourceWarnings=[...(parsed.sourceWarnings || []),...(namespaceBindings.warnings || [])];
+        if(sourceWarnings.length)code=code.replace(/^(DEVICE ARCADE.*)$/m, (_,header)=>header+'\n'+sourceWarnings.map(warning=>'# source warning: '+warning).join('\n'));
+        if(scrollerVersion===LEGACY_SCROLLER_REVISION)code=code.replace(/^WHEN flag clicked:$/m, `WHEN flag clicked:\n  arcade use background scroll version "${scrollerVersion}"`);
+        if(characterVersion===LEGACY_CHARACTER_REVISION)code=code.replace(/^WHEN flag clicked:$/m, `WHEN flag clicked:\n  arcade use character animation version "${characterVersion}"`);
         let costumes = result.costumes;
         if (projectPaletteHex) {
             const command = `  arcade set palette hex "${projectPaletteHex}"`;
@@ -4217,10 +5112,36 @@ export function arcadeToPseudocode (files, opts = {}) {
             (result.costumes || []).some(costume=>costume.sprite==='background' && !/shape-rendering="crispEdges"/.test(costume.svg || ''))) {
             paletteDiagnostics.push('Project palette index zero on a fixed Scratch background requires native Arcade background rendering');
         }
-        return {...result,code,costumes,animationResources,warnings:recovered.warnings,
-            unsupported:[...new Set([...animationDiagnostics,...projectInputDiagnostics,...paletteDiagnostics,...result.unsupported])]};
+        code = code.replace(/^WHEN flag clicked:$/gm, 'WHEN arcade source starts:');
+        const globalNames = new Set([...code.matchAll(/^GLOBAL (.+)$/gm)].map(match=>match[1]));
+        const callableGlobals=new Map((result.sourceCallableGlobals || []).map(row=>[row.name,row.signature]));
+        const sourceDeclarations = (result.sourceScalars || []).filter(({name})=>globalNames.has(name)&&!callableGlobals.has(name))
+            .map(({name,type})=>`  declare arcade source scalar ${name} as ${type}`);
+        sourceDeclarations.push(...(result.sourceReferences || []).filter(({name})=>globalNames.has(name)&&!callableGlobals.has(name)).map(({name,type})=>`  declare arcade source reference ${name} as ${JSON.stringify(type)}`));
+        sourceDeclarations.push(...[...callableGlobals].filter(([name])=>globalNames.has(name)).map(([name,signature])=>`  declare arcade source callable ${name} signature ${JSON.stringify(JSON.stringify(signature))}`));
+        if (sourceDeclarations.length) {
+            if (!/^WHEN arcade source starts:$/m.test(code)) code += '\nSPRITE Game:\nWHEN arcade source starts:\n';
+            code = code.replace(/^WHEN arcade source starts:$/m, header=>header+'\n'+sourceDeclarations.join('\n'));
+        }
+
+        const callableDeclarations=(result.sourceCallables || []).map(({procedure,metadata})=>`  arcade declare callable ${JSON.stringify(procedure)} metadata ${JSON.stringify(JSON.stringify(metadata))}`);
+        if(callableDeclarations.length) {
+            if(result.sourceCallables.some(row=>row.metadata.version===2)) {
+                const rows=code.split('\n'),source=rows.findIndex(row=>row==='WHEN arcade source starts:');
+                let last=-1;
+                for(let index=source+1;index<rows.length&&rows[index].startsWith('  ');index++)
+                    if(/^  arcade declare (?:class|subclass) /.test(rows[index]))last=index;
+                if(source<0||last<0)result.unsupported.push('Class callable declarations require their actual source class registration prefix');
+                else {rows.splice(last+1,0,...callableDeclarations);code=rows.join('\n');}
+            }else code=code.replace(/^WHEN arcade source starts:((?:\n  declare arcade source (?:scalar|reference|callable) .+)*)/m,prefix=>prefix+'\n'+callableDeclarations.join('\n'));
+        }
+        const sourceReceiptDiagnostics=sharedSourceConsumed&&!sharedImageSourceContextCurrent(sharedSourceContext)?['Shared Image Array selected-source receipt expired; admitted source and artwork retained']:[];
+        return {...result,code,costumes,animationResources,warnings:[...recovered.warnings,...sourceWarnings],
+            unsupported:[...new Set([...namedArrayInputs.unsupported,...animationDiagnostics,...projectInputDiagnostics,...paletteDiagnostics,...sourceReceiptDiagnostics,...result.unsupported])]};
     };
-    const namespaceBindings = lowerNamespaceBindings(parsed);
+    let textSpriteInitializer=false;
+    try {const cfg=JSON.parse(map['pxt.json'] || '{}');textSpriteInitializer=cfg.bwArcadeNativeLibraries?.textsprite==='v1.3.0' && selectedSource.entries.some(entry=>entry.name.startsWith('__bwDependencyInputs/arcade-text/') && entry.source===TEXT_SPRITE_INITIALIZER);}catch{}
+    const namespaceBindings = lowerNamespaceBindings(parsed,{spriteKinds:true,textSpriteInitializer});
     // Namespace image constants (\`namespace myTiles { export const tile0 = img\`...\` }\`)
     // become generated top-level consts; they are immutable, so read them as images.
     for (const statement of namespaceBindings.program?.body || []) {
@@ -4233,27 +5154,164 @@ export function arcadeToPseudocode (files, opts = {}) {
             if (image && !Object.prototype.hasOwnProperty.call(assets, decl.name)) assets[decl.name] = image;
         }
     }
-    const callbacks = lowerStaticCallbackHelpers(namespaceBindings.program || parsed);
-    projectInputDiagnostics.push(...callbacks.unsupported);
-    const ast = lowerLazyValues(callbacks.program);
-    const flattened = namespaceBindings.program ? ast : null;
-    const tileImageOf = node => node?.type==='Template' && node.tag==='img' ? parseImageLiteral(node.value) : node?.type==='Template' && /^assets\./.test(node.tag||'') ? assets[node.value.trim()] : node?.type==='Member' ? assets[`${node.object.name}.${node.name}`] || assets[node.name] :
+    const tileImagePath = node => node?.type==='Identifier' ? node.name : node?.type==='Member' ? `${tileImagePath(node.object)}.${node.name}` : null;
+    const tileImageOf = node => node?.type==='Template' && node.tag==='img' ? parseImageLiteral(node.value) : node?.type==='Template' && assetKindLookup && ['assets.image','assets.tile'].includes(node.tag) ? lookupAssetTemplate(assetKindLookup,node.tag,node.value) : node?.type==='Template' && /^assets\./.test(node.tag||'') ? assets[node.value.trim()] : node?.type==='Member' ?
+        assets[tileImagePath(node)] || assets[node.name] || (BUILTIN_IMAGES[tileImagePath(node)] ? decodeMkcdImage(BUILTIN_IMAGES[tileImagePath(node)]) : null) :
         node?.type==='Identifier' ? assets[node.name] : null;
-    const nativeTilemaps = {};
-    for(const [filename,text] of Object.entries(map))if(/\.g\.ts$/.test(filename))Object.assign(nativeTilemaps,parseNativeTilemaps(text,tileImageOf));
-    const namedEvents = flattened && translateNamedHandleEvents(flattened, assets, nativeTilemaps, !!projectPaletteHex || runtimePaletteRequested);
+    const ordinaryProgram=namespaceBindings.program || parsed;
+    const integerDivisions=lowerMathIdivValues(ordinaryProgram);
+    projectInputDiagnostics.push(...integerDivisions.unsupported);
+    const ordinaryOmissions = prepareOrdinaryCallOmissions(integerDivisions.program);
+    projectInputDiagnostics.push(...ordinaryOmissions.unsupported);
+    const procedureConstraints=prepareProcedureConstraintSourceForTranslation(ordinaryOmissions.program,{mode:opts.procedureConstraintsPrototype===true?'prototype':'supported-default'});
+    if(procedureConstraints)projectInputDiagnostics.push(...procedureConstraints.diagnostics);
+    // Never attach the preparation's Program inside the executable AST: general
+    // walkers would otherwise see a second copy of all declarations and effects.
+    const protocolProgram=procedureConstraints?{...procedureConstraints.program,bwProcedureConstraintSource:procedureConstraintAstMetadata(procedureConstraints)}:integerDivisions.program;
+    const throwSource=prepareThrowSource(protocolProgram);
+    projectInputDiagnostics.push(...throwSource.unsupported);
+    if(throwSource.present&&opts.throwPrototype!==true)projectInputDiagnostics.push('Throw source requires its qualified canonical protocol; prototype admission is not enabled');
+    const throwProgram=throwSource.program;
+    const inspectionValues=lowerConsoleInspectValues(throwProgram);
+    projectInputDiagnostics.push(...inspectionValues.unsupported);
+    const fontValues = lowerSdkFontValues(inspectionValues.program);
+    projectInputDiagnostics.push(...fontValues.unsupported);
+    const fontSource = lowerLiveFontMetrics(fontValues.program);
+    const sharedPreparation = !namedEnabled && !callableEnabled && !classEnabled ? prepareSharedImageArrayTransport(fontSource,{sourceContext:sharedSourceContext}) : null;
+    const buildCurrentAst = (input, transport = null) => {
+        const diagnostics = [];
+        const queryReferences = inferImageReferences(input,tileImagePath,tileImageOf,
+            node => !!assetKindLookup && node?.type==='Template' && ['assets.image','assets.tile'].includes(node.tag));
+        const arrayMaps=proveArrayMapValues(input,source);
+        diagnostics.push(...arrayMaps.unsupported);
+        const stagedSource = lowerPxtStagedValues(input, {
+            sharedImageArrayPlan: transport?.plan || null,
+            lowerArrayMap:arrayMaps.lower,
+            isStaticResource: node => !!decodeTilemap(node,tileImageOf,tileImagePath),
+            isArrayQuery: node => node.callee?.type==='Member' &&
+                ['indexOf','removeElement'].includes(node.callee.name) && queryReferences.arrays.has(node.callee.object)
+        });
+        stagedSource.sourceReferenceDeclarations = sourceReferenceDeclarations(stagedSource);
+        stagedSource.sourceCallableDeclarations=namedEnabled?stagedSource.sourceCallableDeclarations || []:callableEnabled?sourceCallableDeclarations(stagedSource).declarations:[];
+        const callables=namedEnabled?{program:stagedSource,unsupported:namedLowering.unsupported}:classEnabled?lowerCallableValues(stagedSource,{classPrototype:true,sdkImagePrototype:sdkImageEnabled}):callableEnabled?lowerCallableValues(stagedSource):{program:stagedSource,unsupported:[]};
+        diagnostics.push(...callables.unsupported);
+        // This actual build/fallback owns its own fresh source proof.
+        const stagedThrow=throwSource.physicalUpdateSource?prepareThrowSource(callables.program):throwSource;
+        if(stagedThrow!==throwSource)diagnostics.push(...stagedThrow.unsupported);
+        const objectClasses = lowerObjectClasses(callables.program,{classCallablePrototype:classEnabled,sdkImagePrototype:sdkImageEnabled,
+            physicalUpdateSource:stagedThrow.physicalUpdateSource});
+        if(classEnabled && !callables.unsupported.length && !objectClasses.unsupported.length) {
+            try {objectClasses.program.bwCallableLexicalPlan=callables.finishClassPlan(objectClasses.program.bwClassCallableProcedures || []);}
+            catch(error){objectClasses.unsupported.push(String(error.message));}
+        }
+        diagnostics.push(...objectClasses.unsupported);
+        const callbacks = lowerStaticCallbackHelpers(objectClasses.program, {registrationSpec:sceneRegistrationSpec});
+        diagnostics.push(...callbacks.unsupported);
+        const ast = lowerLazyValues(callbacks.program);
+        return {ast:transport ? projectSharedImageArrayTransport(ast,transport.plan) : ast,diagnostics,stagedThrow,physicalUpdateLowering:objectClasses.physicalUpdateLowering};
+    };
+    let built = buildCurrentAst(sharedPreparation?.program || fontSource,sharedPreparation);
+    if(sharedPreparation && !finishSharedImageArrayTransport(built.ast,sharedPreparation.plan)) {
+        // No emitter/artwork callback has run. Recompile this SAME current AST
+        // with ordinary staging, retaining both diagnostics and explicit refusal.
+        const refused = built.diagnostics;
+        built = buildCurrentAst(fontSource);
+        built.diagnostics.push(...refused,'Shared Image Array transport projection refused; ordinary current source staging retained');
+    }
+    projectInputDiagnostics.push(...built.diagnostics);
+    const ast = built.ast;
+    const sharedImageTransport = currentSharedImageArrayTransport(ast);
+    // Issue only for the actual chosen output, after transport finishing or
+    // ordinary-current fallback. No abandoned build transfers an emission fact.
+    if(throwSource.present&&!throwSource.unsupported.length&&!built.stagedThrow.unsupported.length&&opts.throwPrototype===true){
+        const finalThrow=prepareThrowEmission(ast,built.stagedThrow,built.physicalUpdateLowering,throwSource);
+        projectInputDiagnostics.push(...finalThrow);if(!finalThrow.length)admittedThrowProgram=ast;
+    }
+    sharedSourceConsumed=!!sharedImageTransport&&!!sharedSourceContext;
+    const flattened = namespaceBindings.program ? ast : null;
+    const nativeTilemaps = createNativeTilemapRegistry(map,tileImageOf,assetFileOrder?{fileOrder:assetFileOrder}:{});
+    const namedEvents = flattened && translateNamedHandleEvents(flattened, assets, nativeTilemaps, !!projectPaletteHex || runtimePaletteRequested || sourceScalarDeclarations(flattened).length > 0, assetKindLookup, scrollerVersion, characterVersion);
     if (namedEvents) return withAnimationDiagnostics(namedEvents);
-    const creationEvents = flattened && translateCreationEvents(flattened, assets);
+    const creationEvents = flattened && translateCreationEvents(flattened, assets, assetKindLookup, scrollerVersion, characterVersion);
     if (creationEvents) return withAnimationDiagnostics(creationEvents);
-    const sideProjectiles = namespaceBindings.program && translateSideProjectiles(ast, assets);
+    const sideProjectiles = namespaceBindings.program && translateSideProjectiles(ast, assets, assetKindLookup, scrollerVersion, characterVersion);
     if (sideProjectiles) return withAnimationDiagnostics(sideProjectiles);
-    const overlapOnly = namespaceBindings.program && translateOverlapOnly(ast, assets);
+    const overlapOnly = namespaceBindings.program && translateOverlapOnly(ast, assets, assetKindLookup, scrollerVersion, characterVersion);
     if (overlapOnly) return withAnimationDiagnostics(overlapOnly);
-    const t = new ArcadeTranslator(assets, tilemaps);
+    const t = new ArcadeTranslator(assets, tilemaps, assetKindLookup, scrollerVersion, characterVersion);
     t.unsupported.push(...animationDiagnostics, ...namespaceBindings.unsupported);
     // Before anything is emitted: a variable this program has to be
     // renamed must not land on a name the program already uses.
     t.claimNames(ast);
+    t.buttonEventNumberLeaves = controllerButtonEventNumberLeaves(ast);
+    // A retained unsupported class/helper must not discard neighboring Image
+    // values. Claim only actual literals here: a variable or namespace alias
+    // reads the single value allocated by its initializer, not a new copy.
+    // Conservative binding refusal also covers a parameter/local named img in
+    // an otherwise untranslatable neighbor; a tag's spelling is no authority.
+    const tagWriter = node => {
+        const value = node.type === 'Assignment' ? node.left : node.type === 'Update' ? node.argument : null;
+        let root = value;
+        while (['Member', 'Index'].includes(root?.type)) root = root.object;
+        if (root?.type === 'Identifier' && root.name === 'img') return true;
+        // An ambient global write is also a configured replacement of the tag.
+        if (!['globalThis', 'window', 'self'].includes(value?.object?.name)) return false;
+        return value.type === 'Member' ? value.name === 'img' : value.type === 'Index' &&
+            (value.index?.type !== 'String' || value.index.value === 'img');
+    };
+    let imageIndexFacts = null;
+    if (containsAst(parsed, node => node.type === 'Index')) {
+        try {
+            imageIndexFacts = analyseSourceValueProducers(parsed, {arrayValues:true, parenthesized:true,
+                unboundIsOpaque:true, opaqueDeclarationValues:true, uninitializedLocalsAreOpaque:true,
+                declaredLocalUndefined:true});
+        } catch (error) {
+            t.unsupported.push(`Image literal configured Array index proof refused: ${error.message}`);
+        }
+    }
+    const safeImageIndex = node => {
+        const facts = imageIndexFacts;
+        if (!facts || !facts.arrayAllocationsAt(node.object).length ||
+            !facts.arrayMapReceiverSafeAt(node.object) || facts.arrayConstraintErrorsAt(node.object).length ||
+            node.object?.type === 'Identifier' && !facts.isInitializedAt(node.object)) return false;
+        const types = facts.typesAt(node.index);
+        if (types.size !== 1 || !types.has('Number')) return false;
+        return !containsAst(node.index, value => value.type === 'Identifier' && !facts.isInitializedAt(value));
+    };
+    const imgBound = containsAst(parsed, node =>
+        node.type === 'Declaration' && node.decls.some(decl => decl.name === 'img') ||
+        ['FunctionDeclaration', 'FunctionExpression', 'Class', 'Enum', 'Namespace', 'ForOf'].includes(node.type) && node.name === 'img' ||
+        Array.isArray(node.params) && node.params.includes('img') || tagWriter(node) ||
+        // This bounded source domain does not interpret ambient objects, tag
+        // escapes or dynamic code/reflection. Refuse them even in unused bodies
+        // rather than trying to prove every possible aliased host mutation.
+        node.type === 'Identifier' && ['img', 'this', 'globalThis', 'window', 'self', 'eval', 'Function', 'Reflect'].includes(node.name) ||
+        node.type === 'Member' && node.name === 'constructor' ||
+        node.type === 'Index' && !safeImageIndex(node) ||
+        node.type === 'Unknown');
+    const occupiedImageNames = new Set(['Game', 'Stage']);
+    containsAst(ast, node => {
+        if (typeof node.name === 'string') occupiedImageNames.add(node.name);
+        for (const decl of node.decls || []) occupiedImageNames.add(decl.name);
+        for (const param of node.params || []) occupiedImageNames.add(param);
+        return false;
+    });
+    let nextImageName = 0;
+    const allocateImageName = () => {
+        let name;
+        do { name = `__arcadeBackground${++nextImageName}`; } while (occupiedImageNames.has(name));
+        occupiedImageNames.add(name);
+        return name;
+    };
+    const {imageValueCostumes, artworkNames, collectImageValue} = planImageValues(t, ast, {
+        creationApis: new Set(['sprites.create', 'sprites.createProjectile',
+            'sprites.createProjectileFromSide', 'sprites.createProjectileFromSprite']),
+        requiresSpriteRuntime: false, directImageOwners: new Set(),
+        acceptImage: node => node?.type === 'Template' && node.tag === 'img' && !imgBound,
+        eager: false, allocateName: allocateImageName
+    });
+    if (imgBound && containsAst(ast, node => node.type === 'Template' && node.tag === 'img'))
+        t.unsupported.push('Image literal requires an unshadowed img binding; ambient handles, tag escapes, dynamic code and incomplete configured tag-writer census remain unsupported');
     const costumes = [];
 
     // ── pass 1: find the sprites, because everything else refers to them
@@ -4431,7 +5489,7 @@ export function arcadeToPseudocode (files, opts = {}) {
                 registerSprite(st.expr.left.name, st.expr.right);
             }
             if (st.type === 'Enum') t.statement(st, 0, []);
-            if (st.type === 'FunctionDeclaration') t.functions.push({name: st.name, params: st.params, body: st.body});
+            if (st.type === 'FunctionDeclaration') t.functions.push({name: st.name, params: st.params, body: st.body,...(t.procedureConstraintSource?{source:st.source,paramTypes:st.paramTypes}:{})});
         }
     };
     walkForSprites(ast.body);
@@ -4603,6 +5661,9 @@ export function arcadeToPseudocode (files, opts = {}) {
     /** name → array of script line-blocks */
     const scriptsFor = new Map(t.sprites.map(s => [s.name, []]));
     const setup = [];
+    // Pass-one probes (including enum bookkeeping into discarded output) must
+    // not register resources. Only the actual script/procedure emission does.
+    t.planImageValue = collectImageValue;
 
     /** Which sprite a body is about: the first one it mentions. */
     const ownerOf = body => {
@@ -4649,7 +5710,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     };
 
     for (const st of ast.body) {
-        if (st.type === 'Enum' || st.type === 'FunctionDeclaration') continue;
+        if (st.type === 'Enum' || st.type === 'FunctionDeclaration' || sharedImageTransport?.declarations.has(st)) continue;
         const call = st.type === 'ExpressionStatement' && st.expr.type === 'Call' ? st.expr : null;
         const name = call ? t.path(call.callee) : null;
         const handler = call ? (call.args || []).find(arg => arg.type === 'FunctionExpression') : null;
@@ -4801,6 +5862,11 @@ export function arcadeToPseudocode (files, opts = {}) {
     // ── assemble
     const out = [];
     out.push('DEVICE ARCADE', '');
+    if(t.referenceArrayProgram || t.fontValueProgram || t.throwValueProgram){
+        const globals=ast.body.filter(st=>st.type==='Declaration' && !sharedImageTransport?.declarations.has(st)).flatMap(st=>st.decls)
+            .filter(decl=>!decl.temporary && !t.sprite(decl.name) && !(decl.init?.type==='Call' && t.path(decl.init.callee)==='sprites.create'));
+        out.push(...globals.map(decl=>`GLOBAL ${t.varName(decl.name)}`),'');
+    }
     if (opts.name) out.push(`# Imported from MakeCode Arcade: ${opts.name}`);
     out.push('# Arcade is 160x120 with y downwards; the stage is 480x360 centred,',
         `# so positions are scaled x${SCALE} and y is mirrored.`, '');
@@ -4841,6 +5907,7 @@ export function arcadeToPseudocode (files, opts = {}) {
         const signature = fn.params && fn.params.length ?
             `${fn.name} ${fn.params.map(p => `(${t.varName(p)})`).join(' ')}` : fn.name;
         const lines = [`DEFINE ${signature}:`];
+        lines.push(...(procedureConstraints?.prefix(fn,fn.name+(fn.params||[]).map(()=> ' %s').join(''),name=>t.varName(name)) || []));
         const collectLocals = body => {
             for (const st of body || []) {
                 if (st.type === 'Declaration') for (const decl of st.decls) t.localVars.add(decl.name);
@@ -4866,18 +5933,17 @@ export function arcadeToPseudocode (files, opts = {}) {
     // or the reporter `arcade call function "name …"`.
     const calledIn = lines => t.functions.filter(fn => {
         const name = escaped(fn.name);
-        const command = new RegExp(`^\\s*${name}(?:\\s|$)`), reporter = new RegExp(`arcade call function "${name}(?:\\s|")`);
+        const command = new RegExp(`^\\s*(?:CALL:?\\s+(?:\\(\\s*)?)?${name}(?:\\s|\\)|$)`), reporter = new RegExp(`arcade call function "${name}(?:\\s|")`);
         return lines.some(line => command.test(line) || reporter.test(line));
     });
     const definesFor = new Map(t.sprites.map(s => [s.name, []]));
     const defined = new Set();
+    const markProcedureEmitted = createProcedureOwnerEmission();
     const defineOn = (sprite, roots) => {
-        const done = new Set();
         const queue = [...roots];
         while (queue.length) {
             const fn = queue.shift();
-            if (done.has(fn)) continue;
-            done.add(fn);
+            if (!markProcedureEmitted(sprite, fn)) continue;
             defined.add(fn);
             const lines = translateFunction(fn, sprite);
             definesFor.get(sprite.name).push(lines);
@@ -4916,11 +5982,19 @@ export function arcadeToPseudocode (files, opts = {}) {
         out.push(`SPRITE ${template.name}:`, 'WHEN flag clicked:', '  hide', '');
     }
 
+    // Only actual emitted value expressions register generic artwork. A
+    // diagnostic-only class body cannot leave an unreferenced actor on export.
+    costumes.push(...imageValueCostumes);
+    const imageTemplates = [...new Set(imageValueCostumes.map(costume => costume.sprite))];
+    for (const name of imageTemplates)
+        out.push(`SPRITE ${name}:`, 'WHEN flag clicked:', '  hide', '');
+
     return withAnimationDiagnostics({
+        sourceReferences:(ast.sourceReferenceDeclarations || sourceReferenceDeclarations(ast)).map(({name,type})=>({name:t.varName(name),type})),sourceScalars:sourceScalarDeclarations(ast).map(({name,type})=>({name:t.varName(name),type})),
         code: `${out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd()}\n`,
         unsupported: [...new Set(t.unsupported)],
-        costumes,
-        sprites: [...t.sprites.map(s => s.name), ...[...t.projectileTemplates.values()].map(t => t.name)]
+        costumes, artworkNames,
+        sprites: [...t.sprites.map(s => s.name), ...[...t.projectileTemplates.values()].map(t => t.name), ...imageTemplates]
     });
 }
 

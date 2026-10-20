@@ -20,7 +20,7 @@
  * multi-file run — TAP and junit both lose the file):
  *
  *   1. the summary exists — a runner that died before summarising is not green;
- *   2. any `not ok` at any depth is COUNTED: `# fail` + `# cancelled` > 0;
+ *   2. any non-pending `not ok` at any depth is COUNTED: `# fail` + `# cancelled` > 0;
  *   3. every file scripts/list-tests.mjs says belongs to this set appears in the
  *      census with at least one test, and nothing else appears — a file that
  *      vanished, or that constructed nothing, is a failure by name;
@@ -42,6 +42,7 @@
 import {existsSync, readFileSync} from 'node:fs';
 import path from 'node:path';
 import {listTests} from './list-tests.mjs';
+import {tapOutcomes} from './lib/tap-outcomes.mjs';
 import {parsePointers, judgeSkips, skipsFromCensus, tapSkips, HEADING} from './lib/skip-pointers.mjs';
 
 const args = Object.fromEntries(process.argv.slice(2).map((a, i, all) => a.startsWith('--') ? [a.slice(2), all[i + 1]] : null).filter(Boolean));
@@ -68,22 +69,23 @@ for (const l of lines) {
 check('the runner printed a summary', 'tests' in summary && 'fail' in summary,
     'tests' in summary ? `tests ${summary.tests}, pass ${summary.pass}, fail ${summary.fail}, cancelled ${summary.cancelled ?? 0}`
         : 'no `# tests` / `# fail` lines — the runner died before summarising, and a partial TAP reads as green to a grep');
+const outcomes = tapOutcomes(tap);
+const notOk = outcomes.filter(row => !row.ok && !row.directive).map(row => row.line);
+const tapTodos = outcomes.filter(row => row.directive === 'TODO');
 // A known-open test (`{todo: …}`) prints `not ok N - name # TODO reason` and is counted under
 // `# todo`, not `# fail`. It is accepted only when its reason points at the doc entry that tracks
 // it (an existing `docs/….md`), the way a skip must point at where it executes; a TODO without
-// one, and every other `not ok`, still fails here (owner decision 2026-10-19).
+// one still fails here (owner decision 2026-10-19).
 const TODO_DOC = /# TODO\b.*?\b(docs\/[A-Za-z0-9._/-]+\.md)/;
 const repoRoot = path.join(path.dirname(new URL(import.meta.url).pathname), '..');
 const todoWithDoc = l => {
     const m = l.match(TODO_DOC);
     return Boolean(m) && existsSync(path.join(repoRoot, m[1]));
 };
-const todos = lines.filter(l => /^\s*not ok \d+.*# TODO\b/.test(l));
-const strayTodos = todos.filter(l => !todoWithDoc(l));
+const strayTodos = tapTodos.filter(row => !todoWithDoc(row.line));
 check('every known-open (TODO) test points at the doc entry that tracks it', strayTodos.length === 0,
-    strayTodos.length ? `${strayTodos.length} TODO(s) without an existing docs/….md in the reason: ${strayTodos[0].trim().slice(0, 120)}`
-        : `${todos.length} TODO(s), each with its doc`);
-const notOk = lines.filter(l => /^\s*not ok \d+/.test(l) && !todoWithDoc(l));
+    strayTodos.length ? `${strayTodos.length} TODO(s) without an existing docs/….md in the reason: ${strayTodos[0].line.trim().slice(0, 120)}`
+        : `${tapTodos.length} TODO(s), each with its doc`);
 const counted = (summary.fail ?? 0) + (summary.cancelled ?? 0);
 check('every `not ok` is counted by the summary', notOk.length === 0 || counted > 0,
     notOk.length === 0 ? 'no failures' : counted > 0 ? `${notOk.length} not-ok line(s), summary counts ${counted}`
@@ -140,6 +142,17 @@ if (!args.census) {
         const problems = [...verdict.unpointed, ...verdict.moved, ...verdict.undated, ...verdict.deadWorkflow];
         check(`every skipped test (${skips.length}) points at the place it executes ("${HEADING}", ${pointers.length} pointer(s))`, problems.length === 0,
             problems.length ? '\n      ' + problems.join('\n      ') : (skips.length ? skips.map(s => `${path.basename(s.file)}: ${s.name.slice(0, 50)}`).join('; ') : 'nothing skipped'));
+        // test-census-reporter.mjs records pending outcomes per file. A census
+        // without that record (an older or hand-written census) is held to the
+        // TAP doc-pointer rule above only.
+        if (Object.values(census.files).some(c => Array.isArray(c.todo))) {
+            const todos = Object.values(census.files).flatMap(c => Array.isArray(c.todo) ? c.todo : []);
+            check('the census records every TODO the TAP printed', todos.length === tapTodos.length,
+                `TAP # TODO lines ${tapTodos.length}, census TODOs ${todos.length}`);
+            const todoTests = todos.filter(row => row.type !== 'suite');
+            check('pending leaf tests agree with the runner summary', todoTests.length === (summary.todo ?? 0),
+                `census pending tests ${todoTests.length}, summary TODO ${summary.todo ?? 0}; pending suites are separate outcomes`);
+        }
         const censusFailed = Object.values(census.files).reduce((a, c) => a + c.failed, 0);
         check('the census and the summary agree on whether anything failed',
             (censusFailed > 0) === (counted > 0),

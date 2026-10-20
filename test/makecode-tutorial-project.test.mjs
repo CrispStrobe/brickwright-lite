@@ -4,7 +4,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
-import {tutorialProjectFiles} from '../overlay/scratch-gui/src/lib/bw-makecode/tutorial-project.js';
+import {tutorialProjectFiles, hasTutorialJres} from '../overlay/scratch-gui/src/lib/bw-makecode/tutorial-project.js';
+import {getTutorialTilemapGenerator, compile, hasRuntime} from '../scripts/lib/pxt-node.mjs';
+import {encodeTileImage} from '../overlay/scratch-gui/src/lib/bw-makecode/tile-assets.js';
 import {readMakeCodeProjectText} from '../overlay/scratch-gui/src/lib/bw-makecode/project-file.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 const block=(lang,text,mark='```')=>`${mark}${lang}\n${text}\n${mark}\n`;
@@ -30,6 +32,64 @@ test('invalid or ambiguous tutorial inputs fail explicitly',()=>{
         assert.throws(()=>tutorialProjectFiles(text,'let x=1'),undefined,text);
     }
 });
+
+test('standalone JRES input errors and conflicts remain explicit', () => {
+    const resources = '{"*":{"namespace":"myTiles"}}';
+    const windows = block('jres', resources).replaceAll('\n', '\r\n');
+    assert.equal(tutorialProjectFiles(windows, '', {jresToTypeScript: () => '// generated'}).files['tilemap.g.jres'], resources + '\r\n');
+    assert.equal(hasTutorialJres(block('jres', resources, '~~~~')), true);
+    assert.equal(hasTutorialJres(block('typescript', 'let x=1')), false);
+    assert.throws(() => tutorialProjectFiles(block('jres', resources), ''), /original PXT tilemap generator/);
+    for (const text of [block('jres', '{bad'), block('jres', '[]'), '```jres\n{}']) {
+        assert.throws(() => tutorialProjectFiles(text, '', {jresToTypeScript: () => '// generated'}));
+    }
+    assert.throws(() => tutorialProjectFiles(block('jres', resources), '', {jresToTypeScript: () => null}), /TypeScript text/);
+    const assets = block('assetjson', JSON.stringify({'tilemap.g.jres': '{"other":true}'}));
+    assert.throws(() => tutorialProjectFiles(assets + block('jres', resources), '',
+        {jresToTypeScript: () => '// generated'}), /Conflicting tutorial file/);
+});
+
+test('original PXT standalone JRES generation preserves map cells, factories and selected source',
+    {skip: hasRuntime('arcade') ? false : 'Original Arcade worker not synced'}, async () => {
+        const image = pixels => encodeTileImage({width: 16, height: 16, pixels: new Uint8Array(256).fill(pixels)});
+        // PXT JRES tilemap data: tile width in pixels, u16 columns/rows, cell IDs,
+        // then the original packed wall bitmap. The map is authored here.
+        const resources = {
+            transparency16: {data: image(0), mimeType: 'image/x-mkcd-f4', tilemapTile: true},
+            ground: {data: image(7), mimeType: 'image/x-mkcd-f4', tilemapTile: true},
+            level: {id: 'level', displayName: 'authored level', mimeType: 'application/mkcd-tilemap',
+                data: Buffer.from('1002000200000101000000').toString('base64'),
+                tileset: ['myTiles.transparency16', 'myTiles.ground']},
+            '*': {mimeType: 'image/x-mkcd-f4', dataEncoding: 'base64', namespace: 'myTiles'}
+        };
+        const jres = JSON.stringify(resources, null, 4);
+        const main = 'tiles.setTilemap(tilemap`level`)\r\nlet player = sprites.create(img`1`, SpriteKind.Player)\r\n';
+        const emitter = await getTutorialTilemapGenerator('arcade');
+        const project = tutorialProjectFiles(block('jres', jres), main, {jresToTypeScript: emitter});
+        assert.equal(project.files['main.ts'], main);
+        assert.equal(project.files['tilemap.g.jres'], jres + '\n');
+        assert.equal(project.files['tilemap.g.ts'], emitter(jres));
+        assert.match(project.files['tilemap.g.ts'], /case "authored level":\s*case "level":return tiles.createTilemap/);
+        const imported = arcadeToPseudocode(project.files);
+        assert.deepEqual(imported.unsupported, []);
+        assert.match(imported.code, /arcade set tilemap data/);
+        const compiled = await compile('arcade', project.files);
+        assert.equal(compiled.success, true, JSON.stringify(compiled.diagnostics));
+        assert.match(emitter.provenance.workerSha256, /^[a-f0-9]{64}$/);
+        assert.equal(emitter.provenance.emitter, 'pxt.emitTilemapsFromJRes');
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-tutorial-jres-'));
+        try {
+            const document = path.join(dir, 'tutorial.md'), source = path.join(dir, 'main.ts'), output = path.join(dir, 'project.mkcd');
+            fs.writeFileSync(document, block('jres', jres));fs.writeFileSync(source, main);
+            const run = spawnSync(process.execPath, ['scripts/makecode.mjs', 'tutorial-to-project', document,
+                '--main', source, '--target', 'arcade', '-o', output], {encoding: 'utf8', timeout: 30000});
+            assert.equal(run.status, 0, run.stderr);
+            const reopened = readMakeCodeProjectText(fs.readFileSync(output, 'utf8'), 'mkcd').files;
+            assert.equal(reopened['main.ts'], main);
+            assert.equal(reopened['tilemap.g.jres'], jres + '\n');
+            assert.equal(reopened['tilemap.g.ts'], project.files['tilemap.g.ts']);
+        } finally { fs.rmSync(dir, {recursive: true, force: true}); }
+    });
 
 test('unversioned GitHub tutorial packages retain the same repository explicit pin',()=>{
     const pinned='github:riknoll/arcade-background-scroll#43651f88b917a98ad886fdd4c1c2ad8001ce9b9c';

@@ -44,6 +44,6 @@ test('independent player movement and rebinding agree with pinned PXT across Cod
  await execute(arcadeToPseudocode(exported.ts));
  await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,3);await exercise(run);
 });
-test('movement arity and multiplayer event/data gaps stay explicit',()=>{
- for(const source of ['mp.moveWithButtons()','mp.moveWithButtons(null,1,2,3)','mp.onControllerEvent(ControllerEvent.Connected,function(p){})'])assert.ok(arcadeToPseudocode(source).unsupported.length>0,source);
+test('movement arity and unknown multiplayer events stay explicit',()=>{
+ for(const source of ['mp.moveWithButtons()','mp.moveWithButtons(null,1,2,3)','mp.onControllerEvent(ControllerEvent.Unknown,function(p){})'])assert.ok(arcadeToPseudocode(source).unsupported.length>0,source);
 });

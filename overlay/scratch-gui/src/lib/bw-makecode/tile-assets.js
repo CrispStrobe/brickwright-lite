@@ -14,16 +14,11 @@ export const validTileId = id => typeof id === 'string' && id.split('.').length 
     id.split('.').every(part => IDENTIFIER.test(part) && !RESERVED.has(part));
 
 /** Read tile resources separately from image aliases; ambiguous aliases refuse resolution. */
-export function parseTileAssets (text) {
+export function parseTileAssetEntries (text) {
     let jres;
-    try { jres = JSON.parse(text); } catch (error) { return {}; }
-    if (!jres || typeof jres !== 'object') return {};
-    const out = Object.create(null);
-    const aliases = (key, image) => {
-        if (!key) return;
-        if (Object.prototype.hasOwnProperty.call(out, key) && out[key]?.tileId !== image.tileId) out[key] = null;
-        else if (!Object.prototype.hasOwnProperty.call(out, key)) out[key] = image;
-    };
+    try { jres = JSON.parse(text); } catch (error) { return []; }
+    if (!jres || typeof jres !== 'object') return [];
+    const entries = [];
     for (const [key, entry] of Object.entries(jres)) {
         if (!entry || typeof entry !== 'object' || !entry.tilemapTile || typeof entry.data !== 'string') continue;
         const image = decodeMkcdImage(entry.data);
@@ -33,7 +28,17 @@ export function parseTileAssets (text) {
         const tileId = entry.id || (key.includes('.') ? key : `${namespace.replace(/\.$/, '')}.${key}`);
         if (!validTileId(tileId)) continue;
         const tile = {...image, tileId, displayName: typeof entry.displayName === 'string' && entry.displayName ? entry.displayName : tileId.split('.').pop()};
-        for (const alias of new Set([tileId, key, tileId.split('.').pop(), tile.displayName])) aliases(alias, tile);
+        entries.push({key,tile,aliases:[...new Set([tileId,key,tileId.split('.').pop(),tile.displayName])],factoryDisplayName:entry.displayName});
+    }
+    return entries;
+}
+
+
+export function parseTileAssets (text) {
+    const out = Object.create(null);
+    for (const {tile,aliases} of parseTileAssetEntries(text)) for (const key of aliases) {
+        if (Object.prototype.hasOwnProperty.call(out,key) && out[key]?.tileId !== tile.tileId) out[key] = null;
+        else if (!Object.prototype.hasOwnProperty.call(out,key)) out[key] = tile;
     }
     return out;
 }
@@ -57,17 +62,23 @@ export function encodeTileImage (image) {
 
 /** Collect resources across all maps without conflating distinct names or edited pixels. */
 export class TileAssetExporter {
-    constructor (warnings = []) { this.entries = new Map(); this.warnings = warnings; }
+    constructor (warnings = []) { this.entries = new Map(); this.warnings = warnings; this.reservedIds = new Set(); }
+
+    reserve (images) {
+        for (const image of images) if (validTileId(image?.tileId)) this.reservedIds.add(image.tileId);
+    }
 
     register (image, index) {
         const data = encodeTileImage(image);
-        const originalId = validTileId(image.tileId) ? image.tileId : `myTiles.tile${index}`;
+        const named = validTileId(image.tileId);
+        const originalId = named ? image.tileId : `myTiles.tile${index}`;
         const displayName = typeof image.displayName === 'string' && image.displayName.trim() ? image.displayName.trim() : originalId.split('.').pop();
         let id = originalId;
         let suffix = 2;
-        while (this.entries.has(id)) {
+        const reserved = candidate => this.reservedIds.has(candidate) && (!named || candidate !== originalId);
+        while (this.entries.has(id) || reserved(id)) {
             const previous = this.entries.get(id);
-            if (previous.data === data && previous.displayName === displayName) return id;
+            if (!reserved(id) && previous?.data === data && previous.displayName === displayName) return id;
             id = `${originalId}_${suffix++}`;
         }
         if (id !== originalId && image.tileId) this.warnings.push(`Tile ${originalId} has conflicting edits or names; exported separately as ${id}`);

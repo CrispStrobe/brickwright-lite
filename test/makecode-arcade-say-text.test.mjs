@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
-import {SB3Creator, projectOpcodes, runProgram} from './helpers/bw-vm.mjs';
+import {SB3Creator, projectOpcodes, runProgram, stepFrames} from './helpers/bw-vm.mjs';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {compile} from '../scripts/lib/pxt-node.mjs';
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
@@ -23,13 +23,15 @@ test('a pinned speech sequence keeps each persistent sayText bubble', () => {
 });
 
 test('timed sayText uses a nonblocking Arcade speech command', async () => {
-    const result = arcadeToPseudocode('let hero = sprites.create(img`1`, SpriteKind.Player)\nhero.sayText("Hi", 500)');
+    const result = arcadeToPseudocode('let hero = sprites.create(img`1`, SpriteKind.Player)\nhero.sayText("Hi", 500)\nlet continued = 1');
     assert.deepEqual(result.unsupported, []);
     assert.match(result.code, /arcade say hero text "Hi" for 500 ms/);
     const run = await runProgram(result.code, {frames: 2, uploads: result.costumes, storage: true});
     assert.deepEqual(run.errors, []);
     assert.equal(Object.values(run.vm.runtime.bwArcadeDeviceState.speech)[0].text, 'Hi');
-    for (let i = 0; i < 16; i++) run.vm.runtime._step(1000 / 30);
+    const continued=run.vm.runtime.targets.flatMap(target=>Object.values(target.variables)).find(value=>value.name.replace(/^Game_/, '')==='continued');
+    assert.equal(continued?.value,1,'the caller continues before the speech expires');
+    await stepFrames(run.vm,16);
     assert.deepEqual(run.vm.runtime.bwArcadeDeviceState.speech, {});
 });
 
@@ -138,8 +140,10 @@ test('the pinned hat overlap game speaks from the colliding handle while its scr
         run.vm.runtime._primitives.arcade_setSpriteProperty({ID: sprite.id, PROPERTY: 'x', VALUE: 80}, {});
         run.vm.runtime._primitives.arcade_setSpriteProperty({ID: sprite.id, PROPERTY: 'y', VALUE: 60}, {});
     }
-    run.vm.runtime._step(1000 / 30);
-    const player = Object.values(state.sprites).find(sprite => sprite.kind === 'Player');
+    await stepFrames(run.vm, 1);
+    const playerKind = run.vm.runtime._primitives.arcade_spriteKindValue({NAME: 'Player'}, {});
+    const player = Object.values(state.sprites).find(sprite => sprite.kind === playerKind);
+    assert.ok(player, 'the current numeric Player kind identifies the colliding sprite');
     assert.equal(state.speech[player.id].text, 'Excuse Me!');
     assert.equal(state.speech[player.id].duration, 500);
     assert.equal(state.speech[player.id].animated, false);

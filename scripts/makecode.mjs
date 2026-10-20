@@ -45,13 +45,15 @@
 import fs from 'node:fs';
 import {createHash} from 'node:crypto';
 import path from 'node:path';
-import {fileURLToPath, pathToFileURL} from 'node:url';
+import {fileURLToPath} from 'node:url';
 import JSZip from 'jszip';
 import {createRequire} from 'node:module';
 import {compile, hasRuntime} from './lib/pxt-node.mjs';
+import {integratedGuiLibrary} from './lib/integrated-gui-library.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const lib = rel => import(pathToFileURL(path.join(ROOT, 'overlay/scratch-gui/src/lib', rel)).href);
+const guiLibraries = integratedGuiLibrary(ROOT);
+const lib = rel => guiLibraries.import(rel);
 // F10: an imported MakeCode project's own files, kept in the .sb3 (the VM overlay module).
 const makeCodeOriginal = createRequire(import.meta.url)(
     path.join(ROOT, 'overlay/scratch-vm/src/serialization/bw-makecode-original.js'));
@@ -208,9 +210,12 @@ async function main () {
             return 2;
         }
         if (!a.mainSource) { console.error(`tutorial-to-project requires --main <main.ts>\n${USAGE}`); return 2; }
-        const {tutorialProjectFiles} = await import('../overlay/scratch-gui/src/lib/bw-makecode/tutorial-project.js');
+        const {tutorialProjectFiles, hasTutorialJres} = await lib('bw-makecode/tutorial-project.js');
         const {makeCodeProjectFile} = await lib('bw-makecode/project-file.js');
-        const project = tutorialProjectFiles(fs.readFileSync(a.input, 'utf8'), fs.readFileSync(a.mainSource, 'utf8'), {name: base(a.input), target: a.target});
+        const markdown = fs.readFileSync(a.input, 'utf8');
+        const {getTutorialTilemapGenerator} = await import('./lib/pxt-node.mjs');
+        const project = tutorialProjectFiles(markdown, fs.readFileSync(a.mainSource, 'utf8'), {name: base(a.input), target: a.target,
+            jresToTypeScript: hasTutorialJres(markdown) ? await getTutorialTilemapGenerator(a.target) : undefined});
         const dest = a.output || `${base(a.input)}.${a.target}.mkcd`;
         fs.writeFileSync(dest, makeCodeProjectFile(project.files, {name: base(a.input), target: a.target}));
         console.log(`wrote ${dest} (${Object.keys(project.files).length} project files; package dependencies preserved, not fetched)`);
@@ -287,6 +292,8 @@ async function main () {
     }
     if (a.cmd === 'to-sb3') {
         const mc = await lib('bw-makecode/index.js');
+        const dependencyOptions = a.fetchExtensions ? {prepareDependencies:true,fetchExtensions:true,
+            resolveProjectInputs:async (...args) => (await import('./lib/pxt-node.mjs')).resolveProjectInputs(...args)} : {};
         let res;
         if (/\.ts$/i.test(a.input)) {
             // A bare main.ts carries no pxt.json: give it the target's default
@@ -294,34 +301,27 @@ async function main () {
             const dependencies = DEFAULT_DEPENDENCIES[a.target];
             const files = {'main.ts': fs.readFileSync(a.input, 'utf8'),
                 'pxt.json': JSON.stringify({name: base(a.input), dependencies, files: ['main.ts']})};
-            res = mc.importProjectFiles(files, {target: a.target, name: base(a.input), animationResources: true});
+            res = a.fetchExtensions ? await mc.importProjectFilesWithDependencies(files,{target:a.target,name:base(a.input),animationResources:true,...dependencyOptions}) :
+                mc.importProjectFiles(files,{target:a.target,name:base(a.input),animationResources:true});
         } else {
             res = /^https?:\/\//.test(a.input) || /^[_S][A-Za-z0-9-]{10,}$/.test(a.input) ?
-                await mc.importShareLink(a.input, {animationResources: true}) :
-                await mc.importArtefact(new Uint8Array(fs.readFileSync(a.input)), {name: path.basename(a.input), animationResources: true});
+                await mc.importShareLink(a.input,{animationResources:true,...dependencyOptions}) :
+                await mc.importArtefact(new Uint8Array(fs.readFileSync(a.input)),{name:path.basename(a.input),animationResources:true,...dependencyOptions});
         }
-        if (a.fetchExtensions) {
-            if (res.project?.target !== 'arcade') throw new Error('Native dependency preparation is currently for Arcade projects');
-            const {resolveProjectInputs} = await import('./lib/pxt-node.mjs');
-            const {prepareArcadeDependencyInputs} = await import('../overlay/scratch-gui/src/lib/bw-makecode/dependency-project.js');
-            const originalFiles = res.files;
-            const resolved = await resolveProjectInputs('arcade', originalFiles, {fetchExtensions: true});
-            const prepared = prepareArcadeDependencyInputs(originalFiles, resolved);
-            res = {...mc.importProjectFiles(prepared.files, {target: 'arcade', name: res.project.name, animationResources: true}),
-                files: originalFiles, dependencyInputs: {provenance: prepared.provenance, skippedPackages: prepared.skippedPackages,
-                    fetchedExtensions: prepared.fetchedExtensions}};
-            for (const e of prepared.fetchedExtensions) console.error(`  dependency: ${e.id} (${e.repo}#${e.ref}) — ${e.licence || 'unidentified licence'}`);
-        }
+        if (a.fetchExtensions && res.project?.target !== 'arcade') throw new Error('Native dependency preparation is currently for Arcade projects');
+        for (const e of res.dependencyInputs?.fetchedExtensions || []) console.error(`  dependency: ${e.id} (${e.repo}#${e.ref}) — ${e.licence || 'unidentified licence'}`);
         if (res.lang !== 'pseudocode') {
             console.error(`this is a ${res.project && res.project.target} project in ${res.lang}; only translated projects become .sb3`);
             return 1;
         }
         report(res);
+        for (const message of res.dependencyMessages || []) console.error('  dependency: '+message);
         const {default: SB3Creator} = await lib('sb3-creator.js');
         const cr = new SB3Creator();
         cr.parse(res.code);
         // F10: keep the imported files; the first VM load fingerprints the program.
         cr.project.bwMakeCode = makeCodeOriginal.record(res.project.target, res.files, res.project.name);
+        if (res.dependencyInputs) cr.project.bwMakeCode.dependencyInputs = res.dependencyInputs;
         for (const c of res.costumes || []) {
             if (c.mode === 'add') cr.addCustomSVGCostume(c.sprite, c.svg, c.name);
             else cr.applyCustomSVG(c.sprite, c.svg);

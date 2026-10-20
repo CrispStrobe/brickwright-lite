@@ -2327,10 +2327,75 @@ header, is retained in `overlay/scratch-vm/src/extensions/crispstrobe/arrays/ind
 as a JSON source string; the host adapter is separate.
 
 The exact selected source is
-https://github.com/CrispStrobe/extensions/blob/598fc9665a3ffdcc6fdeaa465f2c42ccaa814d8f/extensions/CrispStrobe/arrays.js.
+https://github.com/CrispStrobe/extensions/blob/4db2813d366af8a110fc79599afb55d1cd42d8df/extensions/CrispStrobe/arrays.js.
 `vendor-pins.json` and the generated per-file bundle receipt record the commit
 and content hash. This scopes the adoption to Arrays; it does not advance other
 extension sources. MPL-2.0 text: https://www.mozilla.org/en-US/MPL/2.0/.
+
+## circuitplayground — MPL-2.0 (incorporating MIT-licensed pxt-adafruit code)
+
+The scoped `circuitplayground` pin selects the Circuit Playground extension
+authored by CrispStrobe from https://github.com/CrispStrobe/extensions (task
+A9). Its declared license is MPL-2.0. The complete source, including its
+author/license header, is retained in
+`overlay/scratch-vm/src/extensions/crispstrobe/circuitplayground/index.js` as a
+JSON source string; the host adapter is separate.
+
+It ports behaviour from pxt-adafruit 1.6.8 (Copyright (c) Microsoft
+Corporation, MIT License): the NeoPixel strip, colour helpers and ring
+animations, Math.isin (after FastLED, MIT), the animation queue, tempo and
+beats, and the simulator's sensor thresholds and button timing. Its built-in
+sounds and melody notation come from MicroPython on the micro:bit (Copyright
+(c) 2013-2016 The MicroPython-on-micro:bit Developers, MIT License). Both MIT
+notices are reproduced in the source header. No pxt-adafruit firmware or
+chip-restricted ASF4 code is included.
+
+The exact selected source is
+https://github.com/CrispStrobe/extensions/blob/0c4e3b4a0cee57d65474082938c352818426eebb/extensions/CrispStrobe/circuitplayground.js.
+`vendor-pins.json` and the generated per-file bundle receipt record the commit
+and content hash. This scopes the adoption to Circuit Playground; it does not
+advance other extension sources. MPL-2.0 text:
+https://www.mozilla.org/en-US/MPL/2.0/. MIT text: https://opensource.org/licenses/MIT.
+
+## Arcade Sprite Data
+
+The native Sprite Data API adapter follows Microsoft arcade-sprite-data v0.0.5
+(commit `332026d12c46286c7afe59bc4829ccf08471d5b1`), licensed under MIT.
+Copyright (c) Microsoft Corporation. Original source, license and provenance:
+`overlay/scratch-vm/src/extensions/crispstrobe/arcade/sprite-data-source/`.
+The adapter covers the original nine Number, String, Boolean and
+Sprite methods; arbitrary object data and Image/array methods are separate.
+
+## Arcade typed Settings byte storage
+
+The generated `settings-pxt.js` retains the pinned Arcade 4.2.1 bundle's
+PXT common-package Settings, MessagePack and simulator storage algorithms
+under MIT, copyright Microsoft Corporation. Existing pxt-common-packages
+notices apply; input SHA256 values are retained in the generated header.
+`scripts/generate-arcade-settings.mjs --check` verifies the reviewed inputs.
+The application storage host uses the existing program-owned identity, device
+records and portable SB3 snapshots; physical flash and SDK startup scopes are
+separate qualification boundaries.
+
+### Microsoft Arcade Text Sprite
+
+The complete Text Sprite v1.3.0 source is retained at
+`overlay/scratch-vm/src/extensions/crispstrobe/arcade/text-sprite-source/text.ts`,
+from Microsoft `arcade-text` commit `fa2439314c6633943666a763fdae32a5c67a9ae8`.
+It is MIT licensed, Copyright (c) Microsoft Corporation; the original notice is
+retained beside the source. `scripts/generate-arcade-text-sprite.mjs` transpiles
+those algorithms without replacing their font, outline, icon or setter logic.
+The native host uses the separately retained PXT image operations and font
+notices, including the existing SIL OFL font12 notice. Source identity and host
+qualification are distinct from native blocks and whole-game qualification.
+
+## MakeCode kickoff TeamData qualification source
+
+The complete unchanged `teamdata.ts` from Microsoft pxt-kickoff revision
+`c2c7f8193af1dafaebda3a7cda235df4c42b87ae` is retained in
+`test/fixtures/arcade-teamdata-source` for class qualification. It is MIT licensed;
+the original licence and fixed source provenance are retained beside it.
+This fixture does not admit or bundle the complete kickoff game library.
 
 ## circuitplayground — MPL-2.0 (incorporating MIT-licensed pxt-adafruit code)
 

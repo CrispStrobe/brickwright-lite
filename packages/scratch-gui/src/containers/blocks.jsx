@@ -538,7 +538,8 @@ class Blocks extends React.Component {
                     if (blockInfo.info && blockInfo.info.isDynamic) {
                         dynamicBlocksInfo.push(blockInfo);
                     } else if (blockInfo.json) {
-                        staticBlocksJson.push(injectExtensionBlockTheme(blockInfo.json, this.props.theme));
+                        staticBlocksJson.push(injectExtensionBlockTheme(blockInfo.json, this.props.theme,
+                            this.workspace?.options?.pathToMedia, blockInfo.info));
                     }
                     // otherwise it's a non-block entry such as '---'
                 });

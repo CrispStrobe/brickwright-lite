@@ -97,7 +97,6 @@ const builtinExtensions = {
     // 404'd and the blocks were dropped (gallery sweep, 2026-08-10).
     bitops: () => require('../extensions/crispstrobe/bitops'),
     microbitplus: () => require('../extensions/crispstrobe/microbitplus'),
-    circuitplayground: () => require('../extensions/crispstrobe/circuitplayground'),
     stc12: () => require('../extensions/crispstrobe/stc12'),
     stc12live: () => require('../extensions/crispstrobe/stc12live'),
     // Lite-native generic GPIO pins: `set pin N to V` / `read pin N`, driving the
@@ -145,6 +144,8 @@ const builtinExtensions = {
 // where `import()` follows ES-module resolution even from CommonJS, and that
 // has no directory imports. webpack is indifferent.
 const lazyBuiltinExtensions = {
+    // This board belongs to CPX projects and its dock, not the initial editor.
+    circuitplayground: () => import(/* webpackChunkName: "ext-circuitplayground" */ '../extensions/crispstrobe/circuitplayground/index.js'),
     // The Arcade runtime (task E1) carries MakeCode's speech fonts (font12 alone is
     // ~137 KiB gzipped) and sprite/image engines: needed only by an Arcade project.
     arcade: () => import(/* webpackChunkName: "ext-arcade" */ '../extensions/crispstrobe/arcade/index.js'),

@@ -58,14 +58,19 @@ test('native speech replays original completed frames: '+name,async()=>{
  assert.ok(deltas.length>=planes.size);assert.ok(planes.size>=6);
  assert.ok(deltas.reduce((a,b)=>a+b,0)>=end);
  const imported=arcadeToPseudocode(source(duration,text));assert.deepEqual(imported.unsupported,[]);
- const run=await runProgram(imported.code,{frames:1,uploads:imported.costumes,storage:true});
+ const run=await runProgram(imported.code,{frames:0,uploads:imported.costumes,storage:true});
+ // Initialize source registrations without adding a physical frame before
+ // replaying the original runtime's first observed frame.
+ await run.vm.runtime._arcadeFramePhase.requestContinuation();
+ const ticks=run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).find(v=>v.name==='ticks'||v.name==='Game_ticks');
+ assert.equal(ticks?.value,0,'no authored update has run before original frame replay');
  assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
  assert.equal(Object.keys(run.vm.runtime.bwArcadeDeviceState.speech || {}).length,0,'authored update callback waits for next frame');
  for(let i=0;i<deltas.length;i++){
   run.vm.runtime.emit('ARCADE_FRAME',deltas[i]*1000);
   await new Promise(resolve=>setImmediate(resolve));
   if(images.has(i)){
-   const bubble=Object.values(run.vm.runtime.bwArcadeDeviceState.sprites).find(s=>s.kind==='-1');
+   const bubble=Object.values(run.vm.runtime.bwArcadeDeviceState.sprites).find(s=>s.kind===-1);
    assert.ok(bubble,'native bubble exists at original frame '+i);
    const pixels=Array.from(bubble.image.pixels,p=>p.toString(16)).join('');
    assert.equal(pixels,images.get(i),name+' bubble image frame '+i);

@@ -23,6 +23,18 @@ jobs:
           node-version: 22
       - name: Layout and ledger contracts
         run: node --test test/makecode-arcade-controls.test.mjs test/target-checkpoint-ledger.test.mjs
+      # pxt-node.mjs admits only the integrated GUI libraries and the pinned,
+      # overlaid scratch-vm. Prepare exactly that source tree; no frontend build.
+      - name: Install source dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Vendor the pinned permissive Scratch sources
+        run: npm run vendor
+      - name: Integrate the owned GUI libraries
+        run: node scripts/integrate.mjs
+      - name: Install the declared GUI dependencies
+        run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
+      - name: Apply the scratch-vm overlay
+        run: node scripts/apply-vm-overlay.mjs
       - name: Sync pinned MakeCode runtimes
         run: node scripts/sync-makecode-runtime.mjs
       - name: Install isolated browser tooling

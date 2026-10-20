@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {EventEmitter} from 'node:events';
+import {createArcadeRuntimeMock} from './helpers/arcade-runtime-mock.mjs';
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
 import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 const Arcade=loadExtensionClass('arcade');
-function fixture(){const runtime=new EventEmitter();runtime.startHats=()=>[];const arcade=new Arcade(runtime);return {runtime,arcade};}
+function fixture(){const runtime=createArcadeRuntimeMock();const arcade=new Arcade(runtime);return {runtime,arcade};}
 test('boolean question guards first 500 ms and requires released A/B before confirming',async()=>{
  const {runtime,arcade}=fixture();let settled=false;
  const answer=arcade.ask({TITLE:'Continue?',SUBTITLE:'A/B'}).then(value=>{settled=true;return value;});
@@ -39,8 +39,8 @@ for(const [button,expected] of [['a',true],['b',false]])test(`game.ask ${button}
   assert.deepEqual(run.errors,[]);assert.equal(value('reply'),expected);assert.equal(value('branch'),expected?1:2);
   const code=run.creator.decompile();assert.match(code,/arcade ask yes/);
   const exported=projectToArcade(run.creator.project);assert.deepEqual(exported.unsupported,[]);assert.match(exported.ts,/game\.ask\(/);
-  const original=await runPxtArcade(source,{buttonActions:{steps:[{delay:650},{button:button==='a'?5:6,held:true}]}});
-  const actual=await runPxtArcade(exported.files,{waitForGlobals:{ready:true},buttonActions:{steps:[{delay:650},{button:button==='a'?5:6,held:true}]}});
+  const original=await runPxtArcade(source,{fakeClock:true,buttonActions:{steps:[{delay:650},{button:button==='a'?5:6,held:true}]}});
+  const actual=await runPxtArcade(exported.files,{fakeClock:true,waitForGlobals:{ready:true},buttonActions:{steps:[{delay:650},{button:button==='a'?5:6,held:true}]}});
   assert.equal(original.reply,expected);assert.equal(actual.reply,expected);assert.equal(actual.branch,original.branch);
   const back=arcadeToPseudocode(exported.files);assert.deepEqual(back.unsupported,[]);
   const codeRun=await runProgram(code,{frames:5});await stepFrames(codeRun.vm,20);
@@ -73,8 +73,10 @@ test('queued questions sample current held input and each starts its own guard',
 });
 
 test('keyboard/controller input belongs to the question while scene updates are paused',async()=>{
- const {runtime,arcade}=fixture();let callbacks=0,updates=0;
- arcade._inst._controllerButtonCallbacks=function*(){callbacks++;};
+ const {runtime,arcade}=fixture();let callbacks=0,updates=0,resolveReleased;
+ const released=new Promise(resolve=>{resolveReleased=resolve;});
+ arcade._inst._controllerButtonCallbacks=function*(){callbacks++;resolveReleased();};
+ arcade.registerButtonHandler({BUTTON:'b',EVENT:2048,TOKEN:'released',CAPTURES:''});
  arcade._inst._advanceFrameSteps=function*(){updates++;};
  const reply=arcade.ask({TITLE:'Continue?',SUBTITLE:''});
  runtime.emit('ARCADE_FRAME',500);assert.equal(updates,0);
@@ -82,7 +84,7 @@ test('keyboard/controller input belongs to the question while scene updates are 
  assert.equal(runtime.bwArcadeDialogOpen,true);assert.equal(callbacks,0);
  runtime.emit('KEY_STATE_CHANGED','Z',true);runtime.emit('ARCADE_FRAME',30);
  assert.equal(await reply,false);assert.equal(callbacks,0);assert.equal(updates,1);
- runtime.emit('KEY_STATE_CHANGED','Z',false);assert.equal(callbacks,1,'normal handlers resume after the modal');
+ runtime.emit('KEY_STATE_CHANGED','Z',false);await released;assert.equal(callbacks,1,'the actual registered released handler resumes after the modal');
 });
 
 test('dialog readiness publishes a new snapshot so pure UI consumers can enable choices',async()=>{

@@ -37,6 +37,7 @@
  * @module
  */
 
+import {makeCodeWorkerErrorEnvelope} from './dependency-diagnostics.js';
 import {BASE_LICENCES, emulatorBaseVerdict} from './base-licences.js';
 import {VENDORED_EXTENSIONS} from './extensions-vendored.js';
 import {fetchMakeCodeExtensions, unresolvedGithubDependencies} from './extension-fetch.js';
@@ -101,24 +102,41 @@ var bwMakeCode = {
     // \`extra\`: extensions fetched on demand for this compile (extension-fetch.js).
     resolveExtensions: function (deps, target, extra) {
         var table = bwMakeCode.extensions.concat(extra || []);
-        var overrides = {}, unresolved = [], queue = [];
+        var overrides = Object.create(null), requested = Object.create(null), unresolved = [], queue = [];
         var push = function (d) { for (var k in d) queue.push([k, String(d[k])]); };
         push(deps || {});
         while (queue.length) {
             var dep = queue.shift(), id = dep[0], spec = dep[1];
             var m = /^github:([^#]+?)(?:#(.+))?$/i.exec(spec);
-            if (!m || overrides[id]) continue;
-            var repo = m[1].toLowerCase().replace(/[/]$/, '').replace(/\\.git$/, ''), ref = m[2] || '';
+            if (!m && /^github:/i.test(spec)) {
+                var unsupported = new Error('Unsupported MakeCode dependency identity for ' + id + ' (' + spec + ')');
+                unsupported.code = 'UNSUPPORTED_EXTENSION';unsupported.extensions = [id + ' (' + spec + ')'];throw unsupported;
+            }
+            var repo = m ? m[1].toLowerCase().replace(/[/]$/, '').replace(/\\.git$/, '') : null;
+            var ref = m ? m[2] || '' : null;
+            var identity = m ? 'github:' + repo + '#' + ref : 'target:' + spec;
+            if (Object.prototype.hasOwnProperty.call(requested,id) && requested[id] !== identity) {
+                var conflict = new Error('Conflicting MakeCode dependency identity for ' + id + ': ' + requested[id] + ' versus ' + identity);
+                conflict.code = 'DEPENDENCY_CONFLICT';conflict.extensions = [id];throw conflict;
+            }
+            requested[id] = identity;
+            if (!m || Object.prototype.hasOwnProperty.call(overrides,id)) continue;
             var hit = null;
             for (var i = 0; i < table.length; i++) {
                 var e = table[i];
-                if (e.repo === repo && e.refs.indexOf(ref) >= 0 && e.targets.indexOf(target) >= 0) { hit = e; break; }
+                if (e.repo === repo && e.refs.indexOf(ref) >= 0 && e.targets.indexOf(target) >= 0) {
+                    if (hit) {
+                        var ambiguous = new Error('Ambiguous MakeCode dependency source for ' + id + ' (' + spec + ')');
+                        ambiguous.code = 'AMBIGUOUS_EXTENSION';ambiguous.extensions = [id];throw ambiguous;
+                    }
+                    hit = e;
+                }
             }
             if (!hit) { unresolved.push(id + ' (' + spec + ')'); continue; }
             overrides[id] = hit.files;
             push(JSON.parse(hit.files['pxt.json']).dependencies);
         }
-        return {overrides: overrides, unresolved: unresolved};
+        return {overrides: overrides, unresolved: unresolved, identities: requested};
     },
     configure: function () {
         if (bwMakeCode.configured) return;
@@ -159,6 +177,35 @@ var bwMakeCode = {
         bwMakeCode.configure();
         var before = bwMakeCode.netAttempts.length;
         var cfg = JSON.parse(files['pxt.json']);
+        var generatedRootFiles = {};
+        var generatedRootProvenance = [];
+        var authoredFiles = files;
+        for (var rootName of (cfg.files || [])) {
+            if (!/\\.g\\.jres$/.test(rootName) || typeof authoredFiles[rootName] !== 'string') continue;
+            var companion = rootName.replace(/\\.jres$/, '.ts');
+            if (Object.prototype.hasOwnProperty.call(authoredFiles, companion)) continue;
+            var rootGallery = JSON.parse(authoredFiles[rootName]);
+            var hasMaps = Object.keys(rootGallery).some(function (key) {
+                return rootGallery[key] && rootGallery[key].mimeType === 'application/mkcd-tilemap';
+            });
+            var hasImages = rootName === 'images.g.jres' || Object.keys(rootGallery).some(function (key) {
+                var entry = rootGallery[key];
+                return key !== '*' && entry && !entry.tilemapTile && entry.mimeType &&
+                    entry.mimeType !== 'application/mkcd-tilemap';
+            });
+            var emitted = [];
+            for (var emitter of (hasMaps ? ['emitTilemapsFromJRes'] : []).concat(hasImages ? ['emitProjectImages'] : [])) {
+                var text = pxt[emitter](rootGallery);
+                if (typeof text !== 'string') throw new Error('Original PXT asset emitter did not return TypeScript');
+                emitted.push(text);
+                generatedRootProvenance.push({input: rootName, file: companion, emitter: 'pxt.' + emitter,
+                    versions: Object.assign({}, pxt.appTarget.versions || {}),
+                    workerSha256: typeof __bwOriginalWorkerSha256 === 'string' ? __bwOriginalWorkerSha256 : null});
+            }
+            if (emitted.length) generatedRootFiles[companion] = emitted.join('\\n');
+        }
+        cfg.files = Object.keys(generatedRootFiles).concat(cfg.files || []);
+        files = Object.assign({}, authoredFiles, generatedRootFiles);
         cfg.binaryonly = true;
         files = Object.assign({}, files, {'pxt.json': JSON.stringify(cfg, null, 4)});
         if (files['main.ts'] === undefined) files['main.ts'] = '';
@@ -228,7 +275,7 @@ var bwMakeCode = {
                 }
                 var ownedResources = collectResources(ext.overrides[id], config, namespace);
                 var vendored = bwMakeCode.extensions.some(function (entry) { return entry.files === ext.overrides[id]; });
-                packageInputs[id] = {files: inputs, assetPack: config.assetPack === true, assetNamespace: namespace,
+                packageInputs[id] = {files: inputs, identity: ext.identities[id], dependencyConfig: config, assetPack: config.assetPack === true, assetNamespace: namespace,
                     vendored: vendored, resourceIds: ownedResources,
                     sourceFiles: (copts.sourceFiles || []).filter(function (name) {
                     return name.indexOf(prefix) === 0;
@@ -244,8 +291,20 @@ var bwMakeCode = {
             }
             var resources = {};
             for (var key in resourceIds) if (copts.jres && copts.jres[key]) resources[key] = copts.jres[key];
-            return {packages: packageInputs, sourceOrder: sourceOrder, jres: resources,
-                rootResourceIds: rootResourceIds,
+            // MainPackage.getJRes snapshots the effective palette actually
+            // consumed by this compilation. appTarget.runtime may subsequently
+            // change as PXT visits packages, so prefer the compiler resource.
+            var originalPalette = copts.jres && copts.jres.__palette;
+            var paletteHex = originalPalette && originalPalette.dataEncoding === 'hex' && originalPalette.data;
+            var runtime = pxt.appTarget && pxt.appTarget.runtime;
+            var palette = typeof paletteHex === 'string' && /^(?:[0-9a-f]{6})+$/i.test(paletteHex) ?
+                paletteHex.match(/.{6}/g).map(function (color) { return '#' + color; }) :
+                runtime && Array.isArray(runtime.palette) ? runtime.palette.slice() : null;
+            var runtimeConfig = {palette: palette};
+            return {target:pxt.appTarget.id,inputFiles:Object.assign({},authoredFiles),dependencyBindings:ext.identities,
+                packages: packageInputs, sourceOrder: sourceOrder, jres: resources, runtimeConfig: runtimeConfig,
+                rootResourceIds: rootResourceIds, generatedRootFiles: generatedRootFiles,
+                generatedRootProvenance: generatedRootProvenance,
                 netAttempts: bwMakeCode.netAttempts.slice(before)};
         }
         if (opts.native && copts.extinfo && copts.extinfo.sha) {
@@ -279,6 +338,7 @@ var bwMakeCode = {
         return {
             success: !!res.success,
             outfiles: res.outfiles || {},
+            generatedRootFiles: generatedRootFiles, generatedRootProvenance: generatedRootProvenance,
             diagnostics: (res.diagnostics || []).map(function (d) {
                 var m = d.messageText;
                 while (m && typeof m === 'object') m = m.messageText;
@@ -297,7 +357,8 @@ var bwMakeCode = {
  * goes to pxt's handler, which never answers in this format, and a compile hangs
  * (measured: the first browser run did exactly that).
  */
-const WORKER_JS = `${PXT_GLUE_JS}
+export const WORKER_JS = `${PXT_GLUE_JS}
+var bwWorkerErrorEnvelope = ${makeCodeWorkerErrorEnvelope.toString()};
 var bwOnMessage = async function (e) {
     var m = e.data;
     try {
@@ -308,6 +369,13 @@ var bwOnMessage = async function (e) {
             importScripts(m.base + 'pxtworker.js');
             self.onmessage = bwOnMessage;
             postMessage({id: m.id, ok: true});
+        } else if (m.op === 'resolveProjectInputs') {
+            // Package loading and resource generation only. The glue returns
+            // at projectInputs before the compiler service is invoked.
+            var prepared = await bwMakeCode.compile(m.files, {
+                projectInputs: true, native: false, extensions: m.extensions
+            });
+            postMessage({id: m.id, ok: true, result: prepared});
         } else if (m.op === 'compile') {
             var out = await bwMakeCode.compile(m.files, {
                 native: m.native,
@@ -327,7 +395,7 @@ var bwOnMessage = async function (e) {
             postMessage({id: m.id, ok: true, result: out});
         }
     } catch (err) {
-        postMessage({id: m.id, ok: false, error: {message: String(err && err.message || err), code: err && err.code, sha: err && err.sha, baseSha256: err && err.baseSha256}});
+        postMessage({id: m.id, ok: false, error: bwWorkerErrorEnvelope(err)});
     }
 };
 self.onmessage = bwOnMessage;
@@ -347,31 +415,42 @@ export class MakeCodeError extends Error {
     }
 }
 
-const workers = new Map();
-
-/** One worker per target, initialised once (the target bundle is large). */
-function workerFor (target, base) {
-    if (workers.has(target)) return workers.get(target);
+/** A fresh compiler context per operation: PXT package/compiler state from a
+ * previous project, including failed installations, must not affect this one.
+ * The browser's HTTP cache still supplies the immutable target/runtime assets.
+ */
+function workerFor (base) {
     const url = URL.createObjectURL(new Blob([WORKER_JS], {type: 'application/javascript'}));
-    const worker = new Worker(url);
+    let worker;
+    try {worker = new Worker(url);} catch (error) {URL.revokeObjectURL(url);throw error;}
     let next = 0;
     const pending = new Map();
+    worker.onerror = event => {
+        for (const p of pending.values()) p.reject(new MakeCodeError(event.message || 'MakeCode worker failed', 'COMPILE'));
+        pending.clear();
+    };
     worker.onmessage = e => {
         const p = pending.get(e.data.id);
         if (!p) return;
         pending.delete(e.data.id);
         if (e.data.ok) p.resolve(e.data.result);
-        else p.reject(new MakeCodeError(e.data.error.message, e.data.error.code || 'COMPILE', {sha: e.data.error.sha, baseSha256: e.data.error.baseSha256}));
+        else {
+            const envelope = e.data.error;
+            p.reject(new MakeCodeError(envelope.message, envelope.code || 'COMPILE',
+                {...envelope,name:'MakeCodeError',workerError:envelope}));
+        }
     };
     const call = msg => new Promise((resolve, reject) => {
         const id = ++next;
         pending.set(id, {resolve, reject});
         worker.postMessage(Object.assign({id, base}, msg));
     });
-    const entry = {call, ready: call({op: 'init'})};
-    entry.ready.catch(() => workers.delete(target));   // a failed init is retried next time
-    workers.set(target, entry);
-    return entry;
+    return {call, ready: call({op: 'init'}), dispose() {
+        worker.terminate();
+        URL.revokeObjectURL(url);
+        for (const p of pending.values()) p.reject(new MakeCodeError('MakeCode worker disposed', 'COMPILE'));
+        pending.clear();
+    }};
 }
 
 /**
@@ -399,9 +478,30 @@ export async function compileMakeCode ({target, files, native = false, embedSour
     if (!files || !files['pxt.json']) throw new MakeCodeError('a MakeCode project needs its pxt.json', 'COMPILE');
     const extensions = await onDemandExtensions(target, files, fetchExtensions, fetch);
     const base = new URL(runtimeBase(target), baseUrl || document.baseURI).href;
-    const w = workerFor(target, base);
-    await w.ready;
-    return withFetched(await callWithExtensions(w, {op: 'compile', files, native, embedSource, hwVariant}, extensions), extensions);
+    const w = workerFor(base);
+    try {
+        await w.ready;
+        return withFetched(await callWithExtensions(w, {op: 'compile', files, native, embedSource, hwVariant}, extensions), extensions);
+    } catch (error) {retainExtensionFailure(error,extensions);throw error;}
+    finally { w.dispose(); }
+}
+
+/** Install the CURRENT project's declared package inputs without compiling.
+ * Fetch policy and disposable worker lifetime match the existing compile route.
+ */
+export async function resolveProjectInputsMakeCode({target,files,baseUrl,
+    fetchExtensions = remoteExtensionsAllowed(),fetch} = {}) {
+    if (!MAKECODE_TARGETS.includes(target)) throw new MakeCodeError('Unsupported MakeCode target: '+target,'UNSUPPORTED_TARGET');
+    if (!files || typeof files['pxt.json'] !== 'string') throw new MakeCodeError('a MakeCode project needs its pxt.json','COMPILE');
+    const extensions = await onDemandExtensions(target,files,fetchExtensions,fetch);
+    const base = new URL(runtimeBase(target),baseUrl || document.baseURI).href;
+    let worker;
+    try {
+        worker = workerFor(base);
+        await worker.ready;
+        return withFetched(await callWithExtensions(worker,{op:'resolveProjectInputs',files},extensions),extensions);
+    } catch (error) {retainExtensionFailure(error,extensions);throw error;}
+    finally {if (worker) worker.dispose();}
 }
 
 /**
@@ -417,10 +517,17 @@ export async function onDemandExtensions (target, files, enabled, fetch) {
     return fetchMakeCodeExtensions({dependencies: deps, target, table: EXTENSION_TABLE, ...(fetch ? {fetch} : {})});
 }
 
+function retainExtensionFailure(error,onDemand) {
+    if (!error || typeof error !== 'object') return;
+    error.fetchRefusals = onDemand.refused;error.fetchedExtensions = fetchedExtensions(onDemand);
+    if (onDemand.disabled) error.fetchDisabled = true;
+}
+
 async function callWithExtensions (w, msg, onDemand) {
     try {
         return await w.call({...msg, extensions: onDemand.extensions.map(({id, repo, refs, targets, files}) => ({id, repo, refs, targets, files}))});
     } catch (e) {
+        retainExtensionFailure(e,onDemand);
         if (e && e.code === 'NO_EXTENSION') {
             const why = onDemand.disabled ? ' (this build does not fetch extensions)' :
                 onDemand.refused.length ? ' — could not fetch: ' + onDemand.refused.map(r => `${r.id} (${r.reason})`).join('; ') : '';
@@ -431,8 +538,10 @@ async function callWithExtensions (w, msg, onDemand) {
     }
 }
 
-const withFetched = (result, onDemand) => ({...result, fetchedExtensions: onDemand.extensions.map(e =>
-    ({id: e.id, repo: e.repo, ref: e.refs[0], ...e.fetched}))});
+const fetchedExtensions = onDemand => onDemand.extensions.map(e =>
+    ({id:e.id,repo:e.repo,ref:e.refs[0],...e.fetched}));
+const withFetched = (result,onDemand) => ({...result,fetchedExtensions:fetchedExtensions(onDemand),
+    fetchRefusals:onDemand.refused,...(onDemand.disabled ? {fetchDisabled:true} : {})});
 
 /**
  * Refuse, by name, a firmware base the emulator must not run. The one check
@@ -466,14 +575,14 @@ export async function compileMakeCodeForEmulator ({target = 'microbit', files, b
     if (!files || !files['pxt.json']) throw new MakeCodeError('a MakeCode project needs its pxt.json', 'COMPILE');
     const extensions = await onDemandExtensions(target, files, fetchExtensions, fetch);
     const base = new URL(runtimeBase(target), baseUrl || document.baseURI).href;
-    const w = workerFor(target, base);
-    await w.ready;
+    const w = workerFor(base);
     try {
+        await w.ready;
         return withFetched(await callWithExtensions(w, {op: 'compile', files, native: true, appVariant: 'mbcodal', emulator: true, cleanBases: EMULATOR_CLEAN_BASES}, extensions), extensions);
     } catch (e) {
         if (e && e.code === 'BASE_REFUSED') assertEmulatorBase(e.baseSha256);
         throw e;
-    }
+    } finally { w.dispose(); }
 }
 
 /**

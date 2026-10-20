@@ -77,3 +77,50 @@ journeys remain separate GUI acceptance, not an inference from native tests.
 Stored arbitrary free handlers, scene registration, score APIs, generic State
 factories, class/callable arrays and SDK Image/Sprite signatures remain separate
 lanes. This label bridge alone does not close either complete game context.
+
+## Initial declaration profile
+
+The declaration profile uses a separate version 3 lexical plan. Existing
+version 1 Arrow and version 2 ordinary-class plans keep their separate admission
+paths. The new profile retains each real declaration and one stable site per
+actual procedure; multiple module reads reuse that site. Variable declarations
+retain their connected stock variable ID seals and concrete declaration targets.
+
+Current graph validation derives results from actual connected reporters and
+complete procedure bodies. It checks startup ordering, every alias writer,
+source variable constraints, service hats, unique prototypes and foreign-target
+writers. Native labels require the current runtime, project graph and cached
+creation operation. Stop and reload invalidate prior resources; current edits
+require a new run. Export emits current function declarations and current label
+reads, including edited numeric bodies, without restoring a retained source body.
+
+The initial body proof is straight-line and zero-argument. Deferred global reads,
+control-dependent results, stored Void results, mixed callable profiles, class
+holder forwarding and unproved adjacent operations retain explicit refusals.
+Namespace source symbols supply provenance before flattening; the initial export
+may retain flattened real declarations. This does not reconstruct namespace
+objects or admit arbitrary property references. These are bounded implementation
+controls; complete-game and hosted-editor qualification remain separate.
+
+A strict equality helper needs a unique unchanged declaration, distinct actual
+formal bindings, compatible unrestricted parameter constraints and the exact
+ordered comparison body. Its arguments still need actual producer proof. Only
+those proved calls lower to the existing comparison operation; a helper name or
+an `any` annotation cannot manufacture a declaration label.
+
+## Bounded qualification reached
+
+The affected native and source gate passes 68 controls, including existing Arrow,
+class, conditional-result and Font behavior. Declaration source, visible Code,
+same and fresh saved projects, current-body edits and export/reimport are covered.
+Actual labels refuse class-signature access, stale runs, changed graphs and
+unowned callers; holder forwarding remains outside this profile.
+
+Two newly compiled selected-SDK programs qualify the declaration fixture and its
+actual edited export. Number results change from 7 to 11; both retain the String
+result, Void side effect, subsequent module continuation, repeated-label equality
+and distinct-declaration inequality. Complete actual compiler inputs and outputs
+were captured, and the SDK and bridge byte guards remained unchanged. The initial
+fixture's namespace collision was retained as a compiler refusal before guest
+execution; the separately named observation fixture supplies the successful
+qualification. No hosted GUI journey or complete-game closure is claimed.

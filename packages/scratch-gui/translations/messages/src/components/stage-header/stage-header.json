@@ -45,6 +45,11 @@
     "defaultMessage": "Arduboy Console"
   },
   {
+    "id": "gui.stageHeader.cpxBoard",
+    "description": "Button to show the Circuit Playground Express board in the right pane",
+    "defaultMessage": "Circuit Playground"
+  },
+  {
     "id": "gui.stageHeader.arcadeConsole",
     "description": "Button to show the MakeCode Arcade or PyBadge console",
     "defaultMessage": "Game Console"

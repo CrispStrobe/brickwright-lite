@@ -144,3 +144,31 @@ test('failed native block refresh is reported and never announces loaded', async
     assert.equal(strict.state.busy, false);
     assert.notEqual(strict.state.status, 'loaded');
 });
+
+
+test('file import cannot clear authored state during a pending device replacement', async () => {
+    const {component, finishLoad} = setup({deferred: true});
+    const original = {files: {'main.ts': 'retained source'}};
+    component._makeCodeProject = original;
+    component._makeCodeImportedCode = 'retained code';
+    const opened = [];
+    component.publishGameControls = () => opened.push('cleared controls');
+    component.openArtefactFile = file => opened.push(file.name);
+    component.openCodeFile = new Function('isImportableArtefact',
+        `return function (e) ${scopeAfter(source, 'openCodeFile (e) {')}`)(() => true);
+    const retargeting = component.setDevice('calliopemini');
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(component.state.busy, true);
+    const file = {name: 'game.mkcd'};
+    const input = {files: [file], value: 'game.mkcd'};
+    component.openCodeFile({target: input});
+    assert.equal(input.value, '', 'The same file can be chosen again after completion');
+    assert.deepEqual(opened, []);
+    assert.equal(component._makeCodeProject, original);
+    assert.equal(component._makeCodeImportedCode, 'retained code');
+    finishLoad(); await retargeting;
+    assert.equal(component.state.busy, false);
+    component.openCodeFile({target: {files: [file], value: 'game.mkcd'}});
+    assert.deepEqual(opened, ['cleared controls', 'game.mkcd']);
+    assert.equal(component._makeCodeProject, null);
+});
