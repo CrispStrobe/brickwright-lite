@@ -70,7 +70,8 @@ export const posesOf = (core, mechanism) => {
             joints[i * 2 + 1] = velocity;
         }
     });
-    return {t: core.time, bodies, joints};
+    // Each air network's pressure (physics/air.js), for the pane's readout.
+    return {t: core.time, bodies, joints, air: core.airState ? core.airState() : []};
 };
 
 /**
@@ -127,21 +128,25 @@ export const createSimRunner = ({J, createPhysicsCore, mechanism, hubs = [], ste
  * step — is not here: those run in the worker, inside the step they belong to.
  */
 export class MirrorCore {
-    constructor (mechanism, {t, bodies, joints}) {
+    constructor (mechanism, poses) {
         this.bodyIds = mechanism.bodies.map(b => b.id);
         this.jointIds = mechanism.joints.map(j => j.id);
         this.bodyIndex = new Map(this.bodyIds.map((id, i) => [id, i]));
         this.jointIndex = new Map(this.jointIds.map((id, i) => [id, i]));
         this.hinges = new Set(mechanism.joints.filter(j => j.type === 'hinge').map(j => j.id));
         this.sliders = new Set(mechanism.joints.filter(j => j.type === 'slider').map(j => j.id));
-        this.update({t, bodies, joints});
+        this.update(poses);
     }
 
-    update ({t, bodies, joints}) {
+    update ({t, bodies, joints, air = []}) {
         this.t = t;
         this.bodies = bodies;
         this.joints = joints;
+        this.air = air;
     }
+
+    /** Each air network's pressure, as the worker's core last had it. */
+    airState () { return this.air; }
 
     get time () { return this.t; }
 

@@ -37,6 +37,7 @@ import { BUILTIN_KINDS } from '../kinds/index.js';
 import { createStateRegistry } from './state-registry.js';
 import { createScrewDrives } from './screw.js';
 import { createRopes } from './rope.js';
+import { createAir } from './air.js';
 
 let joltPromise = null;
 
@@ -120,6 +121,11 @@ const MESH_VELOCITY_STEPS = 120;
  * — 6° (2 mm at the tip) inside the block — and at 13.7–13.9° with 5 to 20 (measured).
  */
 const GEAR_POSITION_STEPS = 10;
+/** How near its limit a joint counts as at its end (m for a slider, rad for a hinge), and the brake (N·m) on a pinion driven into it. */
+const RACK_STOP_M = 0.0005;
+const HINGE_STOP_RAD = 0.01;
+const RACK_STOP_NM = 5;
+
 /** A slider spring (kinds/shock.js) pushes with at most this (N): far beyond a LEGO spring, never the limit. */
 const SPRING_MAX_FORCE_N = 50;
 /** A chain whose sprockets' ratio is this close to 1 is driven 1:1 by the GearConstraint (kinds/chain.js). */
@@ -924,6 +930,20 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     const screwCouplings = [];
     /** Ropes (kinds/rope.js): built after the couplings, from the drum's hinge (physics/rope.js). */
     const ropeCouplings = [];
+    /**
+     * End stops through couplings: gears, chains, bands and racks tie WORLD rates, so with a joint they
+     * drive at its end (a rack's slider limit, a boom hinge's) a motor still driving on is satisfied by
+     * turning the whole frame (the forklift's lift motor, the excavator's boom motor tipped them over).
+     * Each joint with limits is walked through the couplings (gears, chains, bands, racks)
+     * to every hinge that drives it (rate = k·ω(hinge)); at the end, a motor pushing further is held at
+     * speed 0 (it stalls against the end, as a real one does), any other hinge pushing further brakes
+     * with RACK_STOP_NM until it turns back (applyEndStops).
+     */
+    let endStops = [];
+    /** Pneumatic cylinders and their valves (kinds/pneumatic.js): driven before each step (physics/air.js). */
+    const pneumaticCouplings = [];
+    /** Pumps (kinds/pneumatic.js PUMP): their sliders put air into their networks (physics/air.js). */
+    const pumpCouplings = [];
     /** Driving rings and their clutch gears (kinds/transmission.js): {gear (hinge entry), ring (slider entry), engage, holdNm, engaged}. */
     const dogClutches = [];
     for (const g of mechanism.couplings) {
@@ -943,6 +963,12 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             if (Math.abs(Math.abs(g.ratio) - 1) < CHAIN_EQUAL) chainDrive(g.id, jointMap.get(g.joint1), jointMap.get(g.joint2), g.ratio, { velocitySteps: BELT_VELOCITY_STEPS });
             else hingeMesh(g.id, jointMap.get(g.joint1), jointMap.get(g.joint2), g.ratio, { velocitySteps: BELT_VELOCITY_STEPS });
             gearInfos.push({ type: 'band', id: g.id, joint1: g.joint1, joint2: g.joint2, ratio: g.ratio });
+        } else if (g.kind === 'pneumatic') {
+            pneumaticCouplings.push(g);
+            gearInfos.push({ type: 'pneumatic', id: g.id, sliderJoint: g.sliderJoint, valveJoint: g.valveJoint });
+        } else if (g.kind === 'pump') {
+            pumpCouplings.push(g);
+            gearInfos.push({ type: 'pump', id: g.id, sliderJoint: g.sliderJoint });
         } else if (g.kind === 'rope') {
             ropeCouplings.push(g);
             gearInfos.push({ type: 'rope', id: g.id, drumJoint: g.drumJoint });
@@ -1301,6 +1327,11 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             physicsSystem, allConstraints, dt: dtFixed })
         : null;
     if (ropes) stateRegistry.register('ropes', ropes.registrant);
+    // Pneumatics (kinds/pneumatic.js, physics/air.js): the air networks, valves, cylinders and pumps.
+    const air = pneumaticCouplings.length || pumpCouplings.length
+        ? createAir({ J, cylinders: pneumaticCouplings, pumps: pumpCouplings, hingeMap, sliderMap, bodyInterface, applySliderForce })
+        : null;
+    if (air) stateRegistry.register('air', air.registrant);
     if (dogClutches.length) {
         stateRegistry.register('dogClutches', {
             save: () => dogClutches.map(c => c.engaged),
@@ -1325,6 +1356,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     const setSliderMotor = (jointId, entry, cmd) => {
         if (!cmd || typeof cmd.mode !== 'string') throw new Error(`invalid motor command for ${jointId}`);
         if (entry.mode === 'spring') throw new Error(`slider ${jointId} is a spring (a shock absorber), not a motor`);
+        if (entry.mode === 'pneumatic') throw new Error(`slider ${jointId} is a pneumatic cylinder: its valve moves it`);
         if (cmd.maxForceN !== undefined) {
             if (typeof cmd.maxForceN !== 'number' || !Number.isFinite(cmd.maxForceN) || cmd.maxForceN < 0) throw new Error(`maxForceN must be a non-negative number`);
             applySliderForce(entry, cmd.maxForceN);
@@ -1354,6 +1386,85 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         }
     };
 
+    // The end stops (endStops above). A joint's position against its limits: which end it is at, if any.
+    const atEndOf = (jointId, limits) => {
+        const h = hingeMap.get(jointId);
+        const s = h ? null : sliderMap.get(jointId);
+        const x = h ? h.unwrapped : s ? s.position : null;
+        if (x === null) return 0;
+        const tol = h ? HINGE_STOP_RAD : RACK_STOP_M;
+        return x >= limits[1] - tol ? 1 : x <= limits[0] + tol ? -1 : 0;
+    };
+    // Every joint with limits, and the hinges that drive it: the couplings walked from it, rates multiplied.
+    const buildEndStops = () => {
+        const edges = new Map();
+        const link = (a, b, k) => {
+            if (!edges.has(a)) edges.set(a, []);
+            if (!edges.has(b)) edges.set(b, []);
+            edges.get(a).push([b, k]);
+            if (k !== 0) edges.get(b).push([a, 1 / k]);
+        };
+        for (const g of mechanism.couplings || []) {
+            if (['gear', 'chain', 'band', 'relativeGear'].includes(g.kind) && g.joint1 && g.joint2 && g.ratio) link(g.joint1, g.joint2, g.ratio);
+            // (Not a linear actuator's screw: its clutch lets the spindle turn on at the end, physics/screw.js.)
+            else if (['rackAndPinion', 'shiftFork'].includes(g.kind) && g.ratio) link(g.hingeJoint, g.sliderJoint, g.ratio);
+        }
+        const out = [];
+        for (const j of mechanism.joints) {
+            if (!j.limits || !edges.has(j.id)) continue;
+            // rate(j) = k · ω(hinge): walked from j, k(hinge) is 1 / (the product from j to it).
+            const seen = new Map([[j.id, 1]]);
+            const queue = [j.id];
+            while (queue.length) {
+                const at = queue.shift();
+                for (const [next, k] of edges.get(at) || []) {
+                    if (seen.has(next)) continue;
+                    seen.set(next, seen.get(at) * k);
+                    queue.push(next);
+                }
+            }
+            for (const [hingeId, kTo] of seen) {
+                const entry = hingeMap.get(hingeId);
+                if (entry && hingeId !== j.id && kTo !== 0) out.push({ hinge: entry, joint: j.id, k: 1 / kTo, limits: j.limits });
+            }
+        }
+        return out;
+    };
+    const braked = new Set();
+    const applyEndStops = () => {
+        const brake = new Set();
+        for (const st of endStops) {
+            const end = atEndOf(st.joint, st.limits);
+            if (end === 0) continue;
+            const h = st.hinge;
+            if (h.isMotor) {
+                const drive = h.hinge.GetTargetAngularVelocity();
+                if (drive !== 0 && h.hinge.GetMotorState() === J.EMotorState_Velocity && Math.sign(st.k * drive) === end) h.hinge.SetTargetAngularVelocity(0);
+            } else if (Math.sign(st.k * h.velocity) === end) {
+                brake.add(h);
+            }
+        }
+        for (const h of new Set([...braked, ...brake])) {
+            const on = brake.has(h);
+            if (on === braked.has(h)) continue;
+            if (on) braked.add(h); else braked.delete(h);
+            h.hinge.SetMaxFrictionTorque(on ? RACK_STOP_NM : h.frictionNm);
+        }
+    };
+    endStops = buildEndStops();
+    // The brakes are hinge friction, which Jolt's state does not record: a rollback puts them back as they were.
+    if (endStops.length) stateRegistry.register('endStops', {
+        save: () => [...hingeMap].filter(([, h]) => braked.has(h)).map(([id]) => id),
+        restore: ids => {
+            const want = new Set(ids.map(id => hingeMap.get(id)));
+            for (const h of new Set([...braked, ...want])) {
+                const on = want.has(h);
+                if (on) braked.add(h); else braked.delete(h);
+                h.hinge.SetMaxFrictionTorque(on ? RACK_STOP_NM : h.frictionNm);
+            }
+        }
+    });
+
     const core = {
         get time() { ensureAlive(); return timeSteps * dtFixed; },
         step(dtSeconds) {
@@ -1376,9 +1487,11 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                     entry.slider.SetTargetVelocity(clamp(err * entry.kp, -lim, lim));
                     if (entry.slider.GetMotorState() !== J.EMotorState_Velocity) entry.slider.SetMotorState(J.EMotorState_Velocity);
                 }
+                if (endStops.length) applyEndStops();
                 if (worms.length) applyWormHolds();
                 if (screws) screws.beforeStep();
                 if (ropes) ropes.beforeStep();
+                if (air) air.beforeStep();
                 if (dogClutches.length) applyDogClutches();
                 // Re-base every mesh's phase on its hinges' angles now (see the gears' header comment).
                 for (const m of meshes) m.constraint.SetConstraints(m.hinge1, m.hinge2);
@@ -1501,6 +1614,10 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
          */
         /** Each rope's free length (m) and tension (N) now (physics/rope.js); [] without a rope. */
         ropeState() { ensureAlive(); return ropes ? ropes.state() : []; },
+        /** Each pneumatic cylinder's state now: 'out', 'in' or 'held' (kinds/pneumatic.js). */
+        pneumaticState() { ensureAlive(); return air ? air.cylinders() : []; },
+        /** Each air network's pressure now (kPa above the air's; physics/air.js). */
+        airState() { ensureAlive(); return air ? air.networks() : []; },
         contactPairs() {
             ensureAlive();
             if (!contactLog) throw new Error('contacts are recorded only with createPhysicsCore(…, {recordContacts: true})');
@@ -1585,7 +1702,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                 else if (sl) { joints[jiIdx++] = sl.position; joints[jiIdx++] = sl.velocity; }
                 else { joints[jiIdx++] = 0; joints[jiIdx++] = 0; }
             }
-            return { t, bodyIds: [...bodyOrder], jointIds: [...jointOrder], bodies, joints };
+            return { t, bodyIds: [...bodyOrder], jointIds: [...jointOrder], bodies, joints, ...(air ? { air: air.networks() } : {}) };
         },
         castRay(origin, direction, maxDistance, { ignoreBodies = [] } = {}) {
             ensureAlive();

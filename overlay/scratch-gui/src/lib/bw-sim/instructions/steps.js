@@ -34,6 +34,19 @@
 // Every derived step is buildable: each new part touches a part already built,
 // directly or through other parts of the same step (test/bw-sim-instructions.test.mjs).
 // Parts that do not connect to the rest at all start a step marked `loose`.
+//
+// Pins first (pinsFirst), as a LEGO manual does it: a step's pins and axles that go into the
+// model built so far get a step of their own (`pins: true`) before the part that goes onto
+// them, so the page shows them sticking out of their holes before anything covers them. A step
+// that starts the model (the hub and the motors pinned to it) puts its first part on alone, then
+// its pins, then the rest.
+//
+// Each step also says which way its new parts slide in (`moves`: part id → unit direction in
+// the model's LDU frame, pointing AWAY from where the part goes, along the connection that seats
+// it in a part already built): the view draws them flying in, or exploded with an arrow. And from
+// which corner the page looks (`view`: [sx, sz], LDU frame, always from above): the one facing the
+// side the new parts come from, keeping the last page's when it does as well (a manual turns the
+// model only when it must; the pane then says so).
 
 import {buildGraph} from '../mech/graph.js';
 import {partHubProfile} from '../contracts.js';
@@ -107,6 +120,167 @@ export const partAdjacency = (model, catalog) => {
         });
     }
     return adjacency;
+};
+
+const vSub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const vDot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const vUnit = a => { const n = Math.hypot(...a) || 1; return a.map(v => v / n); };
+
+/**
+ * Which way new parts slide onto the parts on the page: for each connection between a new part
+ * and a part already built (mech/graph.js edges: a shaft in a hole), along the connection's axis,
+ * from the built part's connector toward the new part's; a stud in its socket (where the two
+ * connectors meet at one point) says it by the stud, which points out of its own part: a part set
+ * onto a built stud comes from the stud's side, a part whose stud goes into a built one from the
+ * other; any other connection centred on its partner (a wheel on the middle of its axle) says the
+ * side of the page's centre the part is on (outboard).
+ * A part whose connections disagree (it goes on in two directions at once) has none.
+ * @returns {(fresh: string[], onPage: Set<string>) => Map<string, number[]>} unit directions (LDU frame), away from home
+ */
+export const insertDirections = (model, catalog) => {
+    const {nodes, edges} = buildGraph(model, catalog, []);
+    const joints = [];
+    for (const e of edges) {
+        if (e._isMotorInternal || !e.axis) continue;
+        const [na, nb] = [nodes.get(e.a.part), nodes.get(e.b.part)];
+        if (!na || !nb || na.partId === nb.partId) continue;
+        const ca = na.connectors.find(c => c.id === e.a.connector);
+        const cb = nb.connectors.find(c => c.id === e.b.connector);
+        if (ca && cb) joints.push({a: na.partId, b: nb.partId, axis: vUnit(e.axis), pa: ca.position, pb: cb.position, ta: ca, tb: cb});
+    }
+    const at = new Map(model.parts.map(p => [p.id, p.position]));
+    return (fresh, onPage) => {
+        const out = new Map();
+        const page = [...onPage].map(id => at.get(id)).filter(Boolean);
+        const centre = page.length ? [0, 1, 2].map(i => page.reduce((sum, p) => sum + p[i], 0) / page.length) : null;
+        for (const id of fresh) {
+            let dir = null;
+            let clash = false;
+            for (const j of joints) {
+                const mine = j.a === id ? [j.pa, j.pb, j.b, j.ta, j.tb] : j.b === id ? [j.pb, j.pa, j.a, j.tb, j.ta] : null;
+                if (!mine || !onPage.has(mine[2])) continue;
+                let s = vDot(vSub(mine[0], mine[1]), j.axis);
+                // A stud in its socket: the stud's own axis points out of its part.
+                if (Math.abs(s) < 1e-6 && (mine[3].type === 'stud' || mine[4].type === 'stud')) {
+                    const stud = mine[3].type === 'stud' ? mine[3] : mine[4];
+                    s = vDot(stud.axis, j.axis) * (stud === mine[3] ? -1 : 1);
+                }
+                // Centred on its partner: the side of the page's centre it is on.
+                if (Math.abs(s) < 1e-6 && centre) s = vDot(vSub(at.get(id), centre), j.axis);
+                if (Math.abs(s) < 1e-6) continue;
+                const d = j.axis.map(v => (v * Math.sign(s)) || 0);
+                if (dir && vDot(dir, d) < 0.99) { clash = true; break; }
+                dir = dir || d;
+            }
+            if (dir && !clash) out.set(id, dir);
+        }
+        return out;
+    };
+};
+
+/**
+ * Pins first: splits a step whose pins and axles go into parts on the page (or into its own first
+ * part) so they go in on their own step, before the parts that cover them; the first step of the
+ * model (or of a sub-assembly) puts its first part on alone. Steps stay buildable.
+ */
+const pinsFirst = (steps, adjacency, meta, groups) => {
+    const out = [];
+    const builtIn = new Map();
+    const groupParts = id => groups.find(g => g.id === id)?.parts || [];
+    const touches = (id, set) => [...(adjacency.get(id) || [])].some(n => set.has(n));
+    for (const step of steps) {
+        const scope = step.subassembly || null;
+        if (!builtIn.has(scope)) builtIn.set(scope, new Set());
+        const built = builtIn.get(scope);
+        const attached = new Set(step.attach.flatMap(groupParts));
+        let rest = step.parts.slice();
+        const pieces = [];
+        for (;;) {
+            const fasteners = rest.filter(id => isFastener(meta(id)));
+            const covers = new Set([...rest.filter(id => !isFastener(meta(id))), ...attached]);
+            // Pins in the model so far that a part of this step goes onto.
+            const first = covers.size ? fasteners.filter(f => touches(f, built) && touches(f, covers)) : [];
+            if (first.length) {
+                pieces.push({parts: first, pins: true});
+                for (const id of first) built.add(id);
+                rest = rest.filter(id => !first.includes(id));
+                continue;
+            }
+            // The step's first part goes on alone when it starts the model (or its sub-assembly) with others
+            // (the RCX, then the motors and the plate under it), or when its pins join it to another new part.
+            const lead = rest.find(id => !isFastener(meta(id)));
+            const joined = lead && fasteners.some(f => adjacency.get(f)?.has(lead) && [...covers].some(c => c !== lead && adjacency.get(f)?.has(c)));
+            if (!lead || covers.size < 2 || (built.size > 0 && !joined)) break;
+            pieces.push({parts: [lead], pins: false});
+            built.add(lead);
+            rest = rest.filter(id => id !== lead);
+        }
+        pieces.push({parts: rest, pins: false, last: true});
+        const kept = pieces.filter(p => p.parts.length || (p.last && step.attach.length));
+        kept.forEach((p, i) => {
+            out.push({...step, parts: p.parts, attach: p.last ? step.attach : [], loose: i === 0 && step.loose, pins: p.pins});
+            for (const id of p.parts) built.add(id);
+        });
+        for (const id of attached) built.add(id);
+    }
+    return out;
+};
+
+/** The four corners a page looks from (LDU frame: x right, z toward the back; the camera is above). */
+export const VIEWS = Object.freeze([[1, -1], [-1, -1], [1, 1], [-1, 1]]);
+/**
+ * The corner that shows where a step's parts come from best: each corner scores how much the parts'
+ * ways in face it; the front-right corner (a manual's usual view) and the page before's are preferred.
+ */
+export const stepCorner = (moves, before = VIEWS[0]) => {
+    const score = ([sx, sz]) => {
+        const d = vUnit([sx, 0, sz]); // the camera is always above: the side it faces
+        let s = 0;
+        for (const m of moves) s += Math.max(0, vDot(m, d));
+        if (sx === VIEWS[0][0] && sz === VIEWS[0][1]) s += 0.2;
+        if (sx === before[0] && sz === before[1]) s += 0.9;
+        return s;
+    };
+    return VIEWS.reduce((best, v) => (score(v) > score(best) + 1e-9 ? v : best), before);
+};
+
+/**
+ * Each step's `moves` (insertDirections against what is on its page) and `view`; an attaching sub-assembly moves
+ * as one. A new part no connection gives a way (a chain link: no connector edges; a part held two ways at once)
+ * comes from away from the built parts it touches (adjacency): a link out of its sprocket.
+ */
+const withMoves = (plan, directions, {adjacency, positions} = {}) => {
+    const awayFrom = (id, onPage) => {
+        if (!adjacency || !positions) return null;
+        const near = [...(adjacency.get(id) || [])].filter(n => onPage.has(n) && positions.has(n));
+        if (!near.length) return null;
+        const c = [0, 1, 2].map(i => near.reduce((sum, n) => sum + positions.get(n)[i], 0) / near.length);
+        const d = vSub(positions.get(id), c);
+        return Math.hypot(...d) > 1e-6 ? vUnit(d).map(v => v || 0) : null;
+    };
+    let corner = VIEWS[0];
+    plan.steps.forEach((step, n) => {
+        const {built, fresh} = stepView(plan, n);
+        const dirs = directions(fresh, new Set(built));
+        const moves = {};
+        for (const g of step.attach) {
+            const parts = plan.groups.find(x => x.id === g)?.parts || [];
+            const found = parts.map(id => dirs.get(id)).filter(Boolean);
+            if (found.length && found.every(d => vDot(d, found[0]) > 0.99)) for (const id of parts) moves[id] = found[0];
+        }
+        const onPage = new Set(built);
+        for (const id of step.parts) {
+            if (dirs.has(id)) moves[id] = dirs.get(id);
+            else if (!moves[id]) {
+                const away = awayFrom(id, onPage);
+                if (away) moves[id] = away;
+            }
+        }
+        step.moves = moves;
+        corner = stepCorner(Object.values(moves), corner);
+        step.view = corner;
+    });
+    return plan;
 };
 
 /** Is every id in `ids` reachable from the first through `adjacency`, staying inside `ids`? */
@@ -430,10 +604,12 @@ const deriveUnits = ({ids, adjacency, metaOf: meta, index, built = new Set(), gr
  * The steps to build a model.
  * @param {object} model PlacedModel (model.steps: part ids per `0 STEP`, when the file had them)
  * @param {Map|object} catalog part catalog
- * @returns {{source: 'meta'|'auto', steps: Array<{parts: string[], attach: string[], subassembly: string|null, loose: boolean}>,
- *            groups: Array<{id: string, name: string, parts: string[]}>}}
+ * @returns {{source: 'meta'|'auto', steps: Array<{parts: string[], attach: string[], subassembly: string|null, loose: boolean,
+ *            pins: boolean, moves: object, view: number[]}>, groups: Array<{id: string, name: string, parts: string[]}>}}
  *          `parts` are the parts new in a step; `attach` names sub-assemblies (groups) joined to the
- *          model in it; a step with `subassembly` builds that group on its own
+ *          model in it; a step with `subassembly` builds that group on its own; `pins`: a step that
+ *          only puts pins and axles in (pinsFirst); `moves`: which way each new part slides in;
+ *          `view`: the corner the page looks from (stepCorner)
  */
 export const buildSteps = (model, catalog) => {
     const adjacency = partAdjacency(model, catalog);
@@ -454,8 +630,9 @@ export const buildSteps = (model, catalog) => {
         }
         // Parts added since (in the editor) follow in derived steps.
         const rest = allIds.filter(id => !seen.has(id));
-        if (rest.length) steps.push(...deriveSteps({ids: rest, adjacency, metaOf: meta, index, built: seen, pairs}));
-        return {source: 'meta', steps, groups: []};
+        if (rest.length) steps.push(...pinsFirst(deriveSteps({ids: rest, adjacency, metaOf: meta, index, built: seen, pairs}), adjacency, meta, []));
+        return withMoves({source: 'meta', steps: steps.map(s => ({pins: false, ...s})), groups: []}, insertDirections(model, catalog),
+            {adjacency, positions: new Map(model.parts.map(p => [p.id, p.position]))});
     }
 
     // Sub-assemblies: groups of two or more parts that hold together on their own.
@@ -464,8 +641,9 @@ export const buildSteps = (model, catalog) => {
         .filter(g => g.parts.length >= 2 && holdsTogether(g.parts, adjacency));
     const subSteps = group => deriveSteps({ids: group.parts, adjacency, metaOf: meta, index, pairs})
         .map(step => ({...step, attach: [], subassembly: group.id, loose: false}));
-    const steps = deriveSteps({ids: allIds, adjacency, metaOf: meta, index, groups, subSteps, pairs});
-    return {source: 'auto', steps, groups};
+    const steps = pinsFirst(deriveSteps({ids: allIds, adjacency, metaOf: meta, index, groups, subSteps, pairs}), adjacency, meta, groups);
+    return withMoves({source: 'auto', steps, groups}, insertDirections(model, catalog),
+        {adjacency, positions: new Map(model.parts.map(p => [p.id, p.position]))});
 };
 
 /**

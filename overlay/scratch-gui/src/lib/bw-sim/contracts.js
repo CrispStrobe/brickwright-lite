@@ -187,8 +187,18 @@ export const GROUND_FRICTION = 0.8;
  *   parts: {id: string, part: string, color?: number, position: Vec3, rotation: Mat3, port?: string}[],
  *   groups?: {id: string, name: string, parts: string[]}[],
  *   belts?: {id: string, band: string, around: string[]}[],
- *   ropes?: {id: string, lengthLdu: number, around: string[]}[]
+ *   ropes?: {id: string, lengthLdu: number, around: string[]}[],
+ *   hoses?: {id: string, a: {part: string, port: string}, b: {part: string, port: string}}[],
+ *   decor?: {part: string, color: number, position: number[], matrix: number[]}[],
+ *   files?: {[name: string]: string}
  * }} PlacedModel
+ *
+ * `decor` is what a file has that is drawn but not simulated: a flexible element's stretched segments
+ * (a cable, a hose, a string), a mirrored part, a part not in the catalogue; `files` are the parts
+ * an MPD ships itself (model/ldraw-model.js).
+ *
+ * `hoses` are pneumatic tubes from one part's air port to another's (docs/ROBOT-LAB-UX.md §16):
+ * `0 !BW HOSE <id> <part> <port> <part> <port>` in LDraw text.
  *
  * `ropes` are strings from a winch drum over sheaves to a hook (docs/ROBOT-LAB-UX.md §15):
  * `around` [drum, sheave…, hook], `lengthLdu` the string's length. In LDraw text each is a
@@ -653,6 +663,32 @@ export const validatePlacedModel = (model, catalog) => {
                 if (typeof b?.band !== 'string' || !b.band) out.push(`${wb}.band: the band's part`);
                 if (!Array.isArray(b?.around) || b.around.length < 2) out.push(`${wb}.around: at least 2 parts`);
                 else for (const pid of b.around) if (!partIds.has(pid)) out.push(`${wb}.around: unknown part '${pid}'`);
+            }
+        }
+    }
+    // Decoration (model/ldraw-model.js): drawn as the file has it, never simulated; its parts need not be catalogued.
+    if (model.decor !== undefined) {
+        if (!Array.isArray(model.decor)) out.push('model.decor: not an array');
+        else {
+            model.decor.forEach((d, i) => {
+                if (typeof d?.part !== 'string' || !isVec(d?.position) || !isVec(d?.matrix, 9)) {
+                    out.push(`model.decor[${i}]: {part, color, position: Vec3, matrix: 9 numbers}`);
+                }
+            });
+        }
+    }
+    if (model.files !== undefined && (typeof model.files !== 'object' || model.files === null ||
+        Object.values(model.files).some(t => typeof t !== 'string'))) out.push('model.files: {name: LDraw text}');
+    if (model.hoses !== undefined) {
+        if (!Array.isArray(model.hoses)) out.push('model.hoses: not an array');
+        else {
+            uniqueIds(model.hoses, 'model.hoses', out);
+            const partIds = new Set(model.parts.map(pr => pr.id));
+            for (const h of model.hoses) {
+                for (const k of ['a', 'b']) {
+                    const e = h?.[k];
+                    if (!e || !partIds.has(e.part) || typeof e.port !== 'string') out.push(`model.hoses[${h?.id}].${k}: {part, port} of a part of the model`);
+                }
             }
         }
     }

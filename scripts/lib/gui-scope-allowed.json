@@ -95,6 +95,9 @@
       "test/lab-hubs-extensions.test.mjs",
       "test/lwp3-virtual-hub.test.mjs",
       "test/bw-sim-shock.test.mjs",
+      "test/bw-sim-pneumatic.test.mjs",
+      "test/bw-sim-motor-stops.test.mjs",
+      "test/bw-sim-model-real-robot.test.mjs",
       "test/bw-sim-rope.test.mjs"
     ],
     "why": "the Sim Lab physics core (overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js) runs a CompiledMechanism in Jolt, a GUI-package dependency; its own test and the S1 end-to-end driving-base test run it headless via the wasm-compat build"

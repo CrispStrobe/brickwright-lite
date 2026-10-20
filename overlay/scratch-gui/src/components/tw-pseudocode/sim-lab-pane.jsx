@@ -36,6 +36,7 @@ import {EDITOR_TEXT} from './sim-lab-editor-text.js';
 import SimLabProperties from './sim-lab-properties.jsx';
 import SimLabShortcuts from './sim-lab-shortcuts.jsx';
 import SimLabCoach from './sim-lab-coach.jsx';
+import SimLabMotorMixer, {MIXER_OPEN_KEY} from './sim-lab-motor-mixer.jsx';
 import PaneDivider from '../gui/pane-divider.jsx';
 import {Icon, Popup, Separator, ToolButton, splitToolbar, toolStyles, tooltipOf} from './sim-lab-toolbar.jsx';
 import {TOOLBAR_TEXT} from './sim-lab-toolbar-text.js';
@@ -81,7 +82,7 @@ const TEXT = {
         noProgramHub: 'No program for this hub is loaded yet. Add its blocks ({extensions}) or write pup, boost or wedo words in the Code tab, press ⇦ To blocks, then press Run.',
         exampleFailed: 'Could not load the example program: {error}',
         mat: 'Mat', drive: 'Drive', forward: 'Forward', back: 'Back', left: 'Left', right: 'Right', stop: 'Stop', speed: 'Speed',
-        driveHelp: 'Hold an arrow (or use the arrow keys) to drive with motors A and B.', readout: 'Hub',
+        driveHelp: 'Hold an arrow (or use the arrow keys) to drive with motors A and B.', readout: 'Hub', air: 'Air',
         issues: 'Notes about this model', time: 'Simulated time: {s} s', canvasLabel: '3D view of the simulated model',
         parts: 'Parts', saveHelp: 'Save the model as a file', port: 'Port', none: 'none',
         saveFormats: {ldr: 'LDraw (.ldr)', mpd: 'LDraw multi-part (.mpd)', io: 'BrickLink Studio (.io)'},
@@ -194,7 +195,7 @@ const TEXT = {
         noProgramHub: 'Für diesen Hub ist noch kein Programm geladen. Füge seine Blöcke hinzu ({extensions}) oder schreibe pup-, boost- oder wedo-Wörter im Code-Tab, drücke ⇦ Zu Blöcken und dann Start.',
         exampleFailed: 'Das Beispielprogramm konnte nicht geladen werden: {error}',
         mat: 'Matte', drive: 'Fahren', forward: 'Vorwärts', back: 'Rückwärts', left: 'Links', right: 'Rechts', stop: 'Stopp', speed: 'Tempo',
-        driveHelp: 'Halte einen Pfeil gedrückt (oder nutze die Pfeiltasten), um mit den Motoren A und B zu fahren.', readout: 'Hub',
+        driveHelp: 'Halte einen Pfeil gedrückt (oder nutze die Pfeiltasten), um mit den Motoren A und B zu fahren.', readout: 'Hub', air: 'Luft',
         issues: 'Hinweise zu diesem Modell', time: 'Simulierte Zeit: {s} s', canvasLabel: '3D-Ansicht des simulierten Modells',
         parts: 'Teile', saveHelp: 'Das Modell als Datei speichern', port: 'Port', none: 'keiner',
         saveFormats: {ldr: 'LDraw (.ldr)', mpd: 'LDraw mehrteilig (.mpd)', io: 'BrickLink Studio (.io)'},
@@ -363,6 +364,7 @@ class SimLabPane extends React.Component {
             mode: 'simulate', placing: null, selection: [], editorTick: 0, mat: null,
             buildStatus: {kind: 'idle'}, gizmoMode: 'move', grid: 10, recent: [], thumbTick: 0,
             showPorts: true, showMotion: false, blockers: [], portPicker: null, instructions: null, coarse: false,
+            mixerOpen: (() => { try { return localStorage.getItem(MIXER_OPEN_KEY) === '1'; } catch { return false; } })(), mixer: {session: null, power: {}},
             // Simulate: sensor rays, the Readings panel, slow motion, and the replay position (null: live)
             showSensors: false, readings: false, timeScale: 1, replayAt: null, replayFrames: 0, readingsTick: 0,
             challengesOpen: false, challenge: null, challengeResult: null, challengeBest: readBest(),
@@ -705,7 +707,7 @@ class SimLabPane extends React.Component {
 
     /** Build mode: the current model (or an empty one) in the editor. */
     async enterBuild () {
-        const {createEditor, createEditorView3D, createPartThumbnails, fetchLDrawClosure, parseLDConfig, CATALOG, DEFAULT_COLOR} = this.lib;
+        const {createEditor, createEditorView3D, createPartThumbnails, fetchLDrawClosure, fetchModelDrawing, parseLDConfig, CATALOG, DEFAULT_COLOR} = this.lib;
         const model = this.session ? this.session.model : {version: 1, parts: []};
         this.pause();
         this.teardown();
@@ -722,7 +724,14 @@ class SimLabPane extends React.Component {
         if (this.disposed) return;
         if (!this.catalogFiles) this.catalogFiles = await fetchLDrawClosure([...CATALOG.keys()], {withConfig: true});
         if (this.disposed) return;
-        const {read} = this.catalogFiles;
+        let {read} = this.catalogFiles;
+        // A model with decoration (a cable's segments) or parts of its own: those files too, its own first.
+        if (model.decor || model.files) {
+            const drawing = await fetchModelDrawing({parts: [], decor: model.decor, files: model.files});
+            if (this.disposed) return;
+            const catalogRead = read;
+            read = path => drawing.read(path) ?? catalogRead(path);
+        }
         this.editor = createEditor({model, catalog: CATALOG});
         const colors = parseLDConfig(read('ldconfig.ldr'));
         try {
@@ -1079,7 +1088,7 @@ class SimLabPane extends React.Component {
         this.opened = {text, name};
         this.teardown();
         this.setState({status: 'loading', message: '', issues: [], blockers: [], modelFile: name, shipped, simMs: 0, rtf: null, view3d: 'loading'});
-        const {SimSession, fetchLDrawClosure, createSimView3D, CATALOG} = this.lib;
+        const {SimSession, fetchModelDrawing, createSimView3D, CATALOG} = this.lib;
         // The SPIKE firmware route (desktop): the emulated hub starts first; the scene then runs
         // in lockstep with it (lib/bw-sim/routes/renode-lockstep).
         let firmware = null;
@@ -1139,7 +1148,8 @@ class SimLabPane extends React.Component {
         if (session.workerError && this.physics && !session.lockstep) { this.physics.terminate(); this.physics = false; }
         let view3d = 'webgl';
         try {
-            const {read} = await fetchLDrawClosure([...new Set(model.parts.map(p => p.part))], {withConfig: true});
+            // The parts, the decoration (a cable's segments) and the model's own embedded parts.
+            const {read} = await fetchModelDrawing(runModel, {withConfig: true});
             if (token !== this.loadToken || this.disposed) return;
             this.view = createSimView3D({container: this.box.current, model: runModel, mechanism: session.mechanism, read, catalog: CATALOG});
             this.view.setMousePreset(this.state.mousePreset);
@@ -1763,6 +1773,34 @@ class SimLabPane extends React.Component {
         this.armChallenge();
     }
 
+    /** The motor mixer (sim-lab-motor-mixer.jsx): every motor of the model, through the Robot Lab API as the blocks use it. */
+    renderMixer (button) {
+        if (!this.api) return null;
+        const s = this.session;
+        const power = this.state.mixer.session === s ? this.state.mixer.power : {};
+        const lang = this.locale === 'de' ? 'de' : 'en';
+        const motors = this.api.motors().map(m => {
+            const enc = this.api.encoder(m.id);
+            return {id: m.id, port: m.port, hub: m.hub, direct: m.direct,
+                hubName: (m.profile && m.profile.name && (m.profile.name[lang] || m.profile.name.en)) || m.hub || '',
+                angleDeg: enc && enc.ok ? enc.angleDeg : null};
+        });
+        const setPower = (id, pct) => {
+            const r = pct === 0 ? this.api.stopMotor(id, 'brake') : this.api.setMotor(id, {power: pct});
+            if (r && r.ok === false) return;
+            this.setState(st => ({mixer: {session: s, power: {...(st.mixer.session === s ? st.mixer.power : {}), [id]: pct}}}));
+        };
+        return (
+            <SimLabMotorMixer motors={motors} power={power} open={this.state.mixerOpen} locale={this.locale} button={button}
+                onToggle={() => this.setState(st => {
+                    try { localStorage.setItem(MIXER_OPEN_KEY, st.mixerOpen ? '0' : '1'); } catch { /* private window: this session only */ }
+                    return {mixerOpen: !st.mixerOpen};
+                })}
+                onPower={setPower} onStop={id => setPower(id, 0)}
+                onStopAll={() => motors.filter(m => m.direct).forEach(m => setPower(m.id, 0))} />
+        );
+    }
+
     renderDrive (button) {
         // The arrow follows the finger (or button) that pressed it: captured, so sliding off does not
         // let go, and it stops when THAT finger lifts or the browser takes it away (another finger on
@@ -1789,6 +1827,8 @@ class SimLabPane extends React.Component {
         const hub = this.hub.data;
         const ports = [...new Set(this.session.mechanism.joints.filter(j => j.motor).map(j => j.motor.port))].sort();
         const sensorPorts = (this.session.mechanism.sensors || []).map(s => s.port).sort();
+        // Each air network's pressure (physics/air.js): a tank that empties as its cylinders move.
+        const air = this.session.core && this.session.core.airState ? this.session.core.airState() : [];
         const fmt = (port, s) => {
             if (!s) return '–';
             if (s.kind === 'distance') return s.distance < 0 ? '–' : `${s.distance} mm`;
@@ -1816,6 +1856,7 @@ class SimLabPane extends React.Component {
                     {this.text.readout}: {ports.map(p => `${p} ${Math.round(hub.motors['ABCDEF'.indexOf(p)].position)}°`).join(' · ')}
                     {sensorPorts.length ? ' · ' + sensorPorts.map(p => `${p} ${fmt(p, hub.sensors['ABCDEF'.indexOf(p)])}`).join(' · ') : ''}
                     {hub.imu ? ` · yaw ${Math.round(hub.imu.yaw)}°` : ''}
+                    {air.length ? ` · ${this.text.air} ${air.map(n => `${Math.round(n.kPa)} kPa`).join(' / ')}` : ''}
                 </span>
             </div>
         );
@@ -2094,6 +2135,7 @@ class SimLabPane extends React.Component {
         case 'banded': return fill(E.banded, {mm: st.mm, stretch: this.decimal(st.stretch)});
         case 'gliding': return fill(E.gliding, {ldu: this.decimal(st.ldu)});
         case 'roped': return fill(E.roped, {cm: this.decimal(st.cm)});
+        case 'hosed': return fill(E.hosed, {from: E.hosePort[st.from] || st.from, to: E.hosePort[st.to] || st.to});
         case 'idle': return ''; // nothing to report; the (i) beside the status explains how to build
         default:
             if (E[st.kind]) return fill(E[st.kind], {n: st.count});
@@ -2740,6 +2782,7 @@ class SimLabPane extends React.Component {
                     {this.renderDockedProperties(button)}
                 </div>
                 {simulate && this.session && this.session.bridge && !this.session.lockstep && this.spikeScene() && this.renderDrive(button)}
+                {simulate && this.session && !this.session.lockstep && this.renderMixer(button)}
                 {build && this.state.shortcuts && (
                     <SimLabShortcuts T={this.etext} wheelMode={this.state.wheelMode} onWheelMode={mode => this.setWheelMode(mode)}
                         mousePreset={this.state.mousePreset} onMousePreset={preset => this.setMousePreset(preset)}
