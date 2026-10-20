@@ -37,6 +37,7 @@ import { BUILTIN_KINDS } from '../kinds/index.js';
 import { createStateRegistry } from './state-registry.js';
 import { createScrewDrives } from './screw.js';
 import { createRopes } from './rope.js';
+import { VALVE_DEG as PNEU_VALVE_DEG } from '../kinds/pneumatic.js';
 
 let joltPromise = null;
 
@@ -120,6 +121,9 @@ const MESH_VELOCITY_STEPS = 120;
  * — 6° (2 mm at the tip) inside the block — and at 13.7–13.9° with 5 to 20 (measured).
  */
 const GEAR_POSITION_STEPS = 10;
+/** A shut valve holds its cylinder's rod with up to this (N): the air in it does not give (v1). */
+const PNEU_HOLD_FORCE_N = 40;
+
 /** A slider spring (kinds/shock.js) pushes with at most this (N): far beyond a LEGO spring, never the limit. */
 const SPRING_MAX_FORCE_N = 50;
 /** A chain whose sprockets' ratio is this close to 1 is driven 1:1 by the GearConstraint (kinds/chain.js). */
@@ -924,6 +928,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     const screwCouplings = [];
     /** Ropes (kinds/rope.js): built after the couplings, from the drum's hinge (physics/rope.js). */
     const ropeCouplings = [];
+    /** Pneumatic cylinders and their valves (kinds/pneumatic.js): driven before each step (pneumaticDrives). */
+    const pneumaticCouplings = [];
     /** Driving rings and their clutch gears (kinds/transmission.js): {gear (hinge entry), ring (slider entry), engage, holdNm, engaged}. */
     const dogClutches = [];
     for (const g of mechanism.couplings) {
@@ -943,6 +949,9 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             if (Math.abs(Math.abs(g.ratio) - 1) < CHAIN_EQUAL) chainDrive(g.id, jointMap.get(g.joint1), jointMap.get(g.joint2), g.ratio, { velocitySteps: BELT_VELOCITY_STEPS });
             else hingeMesh(g.id, jointMap.get(g.joint1), jointMap.get(g.joint2), g.ratio, { velocitySteps: BELT_VELOCITY_STEPS });
             gearInfos.push({ type: 'band', id: g.id, joint1: g.joint1, joint2: g.joint2, ratio: g.ratio });
+        } else if (g.kind === 'pneumatic') {
+            pneumaticCouplings.push(g);
+            gearInfos.push({ type: 'pneumatic', id: g.id, sliderJoint: g.sliderJoint, valveJoint: g.valveJoint });
         } else if (g.kind === 'rope') {
             ropeCouplings.push(g);
             gearInfos.push({ type: 'rope', id: g.id, drumJoint: g.drumJoint });
@@ -1301,6 +1310,34 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             physicsSystem, allConstraints, dt: dtFixed })
         : null;
     if (ropes) stateRegistry.register('ropes', ropes.registrant);
+    // Pneumatics (kinds/pneumatic.js): the valve's lever angle from where the model had it opens the air to
+    // the cylinder's extend or retract port, and the rod moves at the flow's speed with at most p·A; a shut
+    // valve holds it (v1: an ideal supply, air that does not compress).
+    const pneumatics = pneumaticCouplings.map(c => {
+        const valve = hingeMap.get(c.valveJoint);
+        const slider = sliderMap.get(c.sliderJoint);
+        if (!valve || !slider) throw new Error(`pneumatic ${c.id}: its valve hinge and cylinder slider must exist`);
+        slider.mode = 'pneumatic';
+        return { c, valve, slider, theta0: valve.unwrapped, state: null };
+    });
+    const pneumaticDrives = () => {
+        for (const d of pneumatics) {
+            const deg = d.c.valveSign * (d.valve.unwrapped - d.theta0) * 180 / Math.PI;
+            const open = deg > PNEU_VALVE_DEG ? 'outA' : deg < -PNEU_VALVE_DEG ? 'outB' : null;
+            // Which way the rod goes: out when the open outlet feeds the extend port, in when the retract one.
+            const way = open && open === d.c.extendFrom ? 1 : open && open === d.c.retractFrom ? -1 : 0;
+            const state = way > 0 ? 'out' : way < 0 ? 'in' : 'held';
+            if (state === d.state) continue;
+            d.state = state;
+            applySliderForce(d.slider, way ? d.c.forceN : PNEU_HOLD_FORCE_N);
+            d.slider.slider.SetMotorState(J.EMotorState_Velocity);
+            d.slider.slider.SetTargetVelocity(way * d.c.outSign * d.c.speedMPerS);
+        }
+    };
+    if (pneumatics.length) stateRegistry.register('pneumatics', {
+        save: () => pneumatics.map(d => [d.theta0, d.state]),
+        restore: saved => pneumatics.forEach((d, i) => { [d.theta0] = saved[i]; d.state = null; })
+    });
     if (dogClutches.length) {
         stateRegistry.register('dogClutches', {
             save: () => dogClutches.map(c => c.engaged),
@@ -1325,6 +1362,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     const setSliderMotor = (jointId, entry, cmd) => {
         if (!cmd || typeof cmd.mode !== 'string') throw new Error(`invalid motor command for ${jointId}`);
         if (entry.mode === 'spring') throw new Error(`slider ${jointId} is a spring (a shock absorber), not a motor`);
+        if (entry.mode === 'pneumatic') throw new Error(`slider ${jointId} is a pneumatic cylinder: its valve moves it`);
         if (cmd.maxForceN !== undefined) {
             if (typeof cmd.maxForceN !== 'number' || !Number.isFinite(cmd.maxForceN) || cmd.maxForceN < 0) throw new Error(`maxForceN must be a non-negative number`);
             applySliderForce(entry, cmd.maxForceN);
@@ -1379,6 +1417,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                 if (worms.length) applyWormHolds();
                 if (screws) screws.beforeStep();
                 if (ropes) ropes.beforeStep();
+                if (pneumatics.length) pneumaticDrives();
                 if (dogClutches.length) applyDogClutches();
                 // Re-base every mesh's phase on its hinges' angles now (see the gears' header comment).
                 for (const m of meshes) m.constraint.SetConstraints(m.hinge1, m.hinge2);
@@ -1501,6 +1540,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
          */
         /** Each rope's free length (m) and tension (N) now (physics/rope.js); [] without a rope. */
         ropeState() { ensureAlive(); return ropes ? ropes.state() : []; },
+        /** Each pneumatic cylinder's state now: 'out', 'in' or 'held' (kinds/pneumatic.js). */
+        pneumaticState() { ensureAlive(); return pneumatics.map(d => ({ slider: d.c.sliderJoint, state: d.state || 'held' })); },
         contactPairs() {
             ensureAlive();
             if (!contactLog) throw new Error('contacts are recorded only with createPhysicsCore(…, {recordContacts: true})');

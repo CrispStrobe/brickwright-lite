@@ -175,6 +175,12 @@ export const compile = (model, catalog, opts = {}) => {
         const belts = model.belts.filter(b => b.around.every(id => known.has(id)));
         if (belts.length) filteredModel.belts = belts;
     }
+    // Hoses between known parts (kinds/pneumatic.js).
+    if (model.hoses) {
+        const known = new Set(knownParts.map(p => p.id));
+        const hoses = model.hoses.filter(h => known.has(h.a.part) && known.has(h.b.part));
+        if (hoses.length) filteredModel.hoses = hoses;
+    }
     // Ropes likewise (kinds/rope.js).
     if (model.ropes) {
         const known = new Set(knownParts.map(p => p.id));

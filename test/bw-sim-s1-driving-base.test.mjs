@@ -168,7 +168,8 @@ test('no two solid parts of the driving base overlap; only pins and axles sit in
     // Derived: pins and axles on blocks, cross blocks with pins, the pin with a stop bush type 2.
     const partly = [...CATALOG.values()].filter(m => !sitsInside(m) && m.colliders.some(c => c.region && c.region !== 'stud')).map(m => m.part).sort();
     // 71427, the RCX's 9 V mini-motor: its output axle stub is an axle region (a wheel's hole takes it).
-    assert.deepEqual(partly, ['15100.dat', '22961.dat', '27940.dat', '32054.dat', '32138.dat', '44874.dat', '48496.dat', '48989.dat',
+    // 19474-f1, the pneumatic valve: its lever's handle stub is an axle (region), its box is solid (kinds/pneumatic.js).
+    assert.deepEqual(partly, ['15100.dat', '19474-f1.dat', '22961.dat', '27940.dat', '32054.dat', '32138.dat', '44874.dat', '48496.dat', '48989.dat',
         '5713.dat', '65304.dat', '65487.dat', '6553.dat', '71427.dat', '87082.dat',
         // The linear actuator's spindle: its input stub is an axle (region), its threaded rod is solid (kinds/screw.js).
         '92695.dat']);

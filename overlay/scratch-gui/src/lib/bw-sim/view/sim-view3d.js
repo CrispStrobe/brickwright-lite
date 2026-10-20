@@ -16,6 +16,7 @@ import {createChainMotion} from './chain-motion.js';
 import {createSimBelts} from './belt-layer.js';
 import {createPenLayer} from './pen-layer.js';
 import {createSimRopes} from './rope-layer.js';
+import {createSimHoses} from './hose-layer.js';
 import {addPartLights} from './part-style.js';
 import {createInsightLayer, createPulse, tintMaterial} from './insight-layer.js';
 import {VIEW_DIRECTIONS, applyCameraAction, cameraKeyAction, configureOrbitControls, framePosition} from './camera-nav.js';
@@ -97,6 +98,8 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     const pens = createPenLayer({model, mechanism, built, colors: ldColors});
     // Ropes from their bodies' points (view/rope-layer.js).
     const simRopes = createSimRopes({mechanism, built});
+    // Pneumatic hoses between their parts' nozzles, following the bodies (view/hose-layer.js).
+    const simHoses = createSimHoses({model, mechanism, catalog, built});
     // The scene builder owns the model; the view adds light only when the builder brought none.
     if (!built.scene.children.some(c => c.isLight)) addPartLights(built.scene);
     // A light sky and a 1 cm grid on the floor (10 cm major lines): without them a
@@ -357,6 +360,7 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         if (snapshot && simBelts) simBelts.update();
         if (snapshot && pens) pens.update();
         if (snapshot && simRopes) simRopes.update();
+        if (snapshot && simHoses) simHoses.update();
         const centre = (followPartId && partCentre(followPartId)()) || modelBox().getCenter(new Vector3());
         if (followed) {
             const delta = centre.clone().sub(followed);
@@ -380,6 +384,7 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         if (simBelts) simBelts.dispose();
         if (pens) pens.dispose();
         if (simRopes) simRopes.dispose();
+        if (simHoses) simHoses.dispose();
         rays.geometry.dispose();
         rayMaterial.dispose();
         tipGeometry.dispose();

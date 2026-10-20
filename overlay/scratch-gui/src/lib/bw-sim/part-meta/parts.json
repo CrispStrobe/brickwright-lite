@@ -6373,6 +6373,538 @@
    }
   },
   {
+   "part": "u9145c01.dat",
+   "name": "Technic pneumatic cylinder 1 x 11 (body)",
+   "category": "other",
+   "massGrams": 1.7,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "s",
+     "type": "pneu-bore",
+     "position": [
+      0,
+      -94,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 168,
+     "data": {
+      "strokeLdu": 120,
+      "boreMm": 10
+     }
+    },
+    {
+     "id": "a",
+     "type": "air-port",
+     "position": [
+      0,
+      -10,
+      -26
+     ],
+     "axis": [
+      0,
+      0,
+      -1
+     ],
+     "data": {
+      "role": "extend"
+     }
+    },
+    {
+     "id": "b",
+     "type": "air-port",
+     "position": [
+      0,
+      -170,
+      -26
+     ],
+     "axis": [
+      0,
+      0,
+      -1
+     ],
+     "data": {
+      "role": "retract"
+     }
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      94,
+      18
+     ],
+     "position": [
+      0,
+      -84,
+      -8
+     ]
+    }
+   ],
+   "nameDe": "Technic-Pneumatikzylinder 1 x 11 (Körper)",
+   "mirrorOf": {
+    "part": "u9145c01.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  {
+   "part": "21828c01.dat",
+   "name": "Technic pneumatic cylinder 1 x 11 piston rod",
+   "category": "other",
+   "massGrams": 1,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "r",
+     "type": "pneu-rod",
+     "position": [
+      0,
+      90,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 200
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      3.99,
+      85,
+      4
+     ],
+     "position": [
+      0,
+      105,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      8,
+      8
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      9.81,
+      3,
+      8
+     ],
+     "position": [
+      0,
+      17,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      10,
+      6
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      6,
+      10
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      5.99,
+      2,
+      6
+     ],
+     "position": [
+      0,
+      12,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      1.95,
+      3,
+      2
+     ],
+     "position": [
+      0,
+      11,
+      -8
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      1.95,
+      3,
+      2
+     ],
+     "position": [
+      0,
+      11,
+      8
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      5.83,
+      3,
+      1
+     ],
+     "position": [
+      0,
+      17,
+      9
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      1.95,
+      4,
+      1
+     ],
+     "position": [
+      0,
+      10,
+      -9
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      1.95,
+      4,
+      1
+     ],
+     "position": [
+      0,
+      10,
+      9
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      9.81,
+      1,
+      9
+     ],
+     "position": [
+      0,
+      15,
+      -1
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      9.81,
+      1,
+      9
+     ],
+     "position": [
+      0,
+      17,
+      -1
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      9.81,
+      1,
+      9
+     ],
+     "position": [
+      0,
+      19,
+      -1
+     ]
+    }
+   ],
+   "nameDe": "Technic-Pneumatikzylinder 1 x 11 Kolbenstange",
+   "mirrorOf": {
+    "part": "21828c01.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    },
+    "others": [
+     {
+      "m": [
+       1,
+       0,
+       0,
+       0,
+       1,
+       0,
+       0,
+       0,
+       -1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "part": "19474-f1.dat",
+   "name": "Technic pneumatic valve with axle hole",
+   "category": "other",
+   "massGrams": 2.4,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      -40,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      0,
+      40,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "lever",
+     "type": "valve-lever",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "p",
+     "type": "air-port",
+     "position": [
+      0,
+      0,
+      53
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "data": {
+      "role": "supply"
+     }
+    },
+    {
+     "id": "a",
+     "type": "air-port",
+     "position": [
+      0,
+      -20,
+      53
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "data": {
+      "role": "outA"
+     }
+    },
+    {
+     "id": "b",
+     "type": "air-port",
+     "position": [
+      0,
+      20,
+      53
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "data": {
+      "role": "outB"
+     }
+    },
+    {
+     "id": "handle",
+     "type": "axle",
+     "position": [
+      0,
+      0,
+      -33.7
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 27.5
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      8.5,
+      8.5,
+      13.75
+     ],
+     "position": [
+      0,
+      0,
+      -33.75
+     ],
+     "region": "axle"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      49,
+      36.5
+     ],
+     "position": [
+      0,
+      0,
+      16.5
+     ]
+    }
+   ],
+   "nameDe": "Technic-Pneumatikventil mit Achsloch",
+   "mirrorOf": {
+    "part": "19474-f1.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  {
    "part": "6589.dat",
    "name": "Technic gear 12 tooth bevel",
    "category": "gear",

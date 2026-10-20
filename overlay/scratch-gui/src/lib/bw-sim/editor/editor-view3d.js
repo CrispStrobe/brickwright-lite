@@ -103,6 +103,8 @@ import {beltRound, beltPoints, BANDS} from './belt-path.js';
 import {createBeltLayer} from '../view/belt-layer.js';
 import {createRopeLayer, ropesFromModel} from '../view/rope-layer.js';
 import {ropeTie, ropePoints} from './rope-path.js';
+import {hoseTie, hosePoints} from './hose-path.js';
+import {createHoseLayer} from '../view/hose-layer.js';
 import {createSpatialIndex, partBounds} from '../mech/spatial-index.js';
 import {
     DEFAULT_GRID, GRID_STEPS, HOLE_PITCH, IDENTITY, cleanRotation, expandToGroups, facingAxis, gizmoSize, mul3, mulVec3,
@@ -593,16 +595,19 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     let beltsDrawnFor = null;
     const ropeLayer = createRopeLayer();
     s.add(ropeLayer.group);
+    const hoseLayer = createHoseLayer();
+    s.add(hoseLayer.group);
     const drawBelts = model => {
         if (beltsDrawnFor === model) return;
         beltsDrawnFor = model;
         beltLayer.draw((model.belts || []).map(b => ({id: b.id, band: b.band, points: beltPoints(model, catalogMap, b)})));
         ropeLayer.draw(ropesFromModel(model, r => ropePoints(model, catalogMap, r.around)));
+        hoseLayer.draw((model.hoses || []).map(h => ({id: h.id, points: hosePoints(model, catalogMap, h)})));
         invalidate();
     };
     const rebuild = () => {
         const model = editor.model;
-        if (model.belts || model.ropes || beltLayer.count || ropeLayer.count) drawBelts(model);
+        if (model.belts || model.ropes || model.hoses || beltLayer.count || ropeLayer.count || hoseLayer.count) drawBelts(model);
         const instancing = useInstancing(model.parts.length);
         let changed = false;
         if (instancing !== Boolean(instanced) || !meshes.size) {
@@ -1655,6 +1660,20 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         const r = ropeTie(editor.model, catalogMap, selection);
         if (r.error) { status({kind: 'refused', reason: `rope_${r.error}`}); return; }
         if (run({type: 'addRope', around: r.around, lengthLdu: r.lengthLdu})) status({kind: 'roped', cm: Math.round(r.lengthLdu * 0.04 * 10) / 10});
+    };
+    /** A hose between the two selected parts' nearest free air ports, a valve's outlet to a cylinder first (editor/hose-path.js). */
+    const hoseSelection = () => {
+        if (!needSelection()) return;
+        const h = hoseTie(editor.model, catalogMap, selection);
+        if (h.error) { status({kind: 'refused', reason: `hose_${h.error}`}); return; }
+        if (run({type: 'addHose', a: h.a, b: h.b})) status({kind: 'hosed', from: `${h.a.part}.${h.a.port}`, to: `${h.b.part}.${h.b.port}`});
+    };
+    /** Removes every hose on a selected part, one undo step. */
+    const removeHosesOfSelection = () => {
+        if (!needSelection()) return;
+        const ids = (editor.model.hoses || []).filter(h => selection.includes(h.a.part) || selection.includes(h.b.part)).map(h => h.id);
+        if (!ids.length) { status({kind: 'refused', reason: 'hose_none'}); return; }
+        if (run({type: 'batch', commands: ids.map(id => ({type: 'removeHose', id}))})) status({kind: 'unhosed', count: ids.length});
     };
     /** Unties every rope from or to a selected part, one undo step. */
     const removeRopesOfSelection = () => {
@@ -3010,6 +3029,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         hingeLine.dispose();
         beltLayer.dispose();
         ropeLayer.dispose();
+        hoseLayer.dispose();
         measureDiv.remove();
         clearGhost();
         for (const mesh of meshes.values()) for (const m of [].concat(mesh.material)) m.dispose();
@@ -3062,7 +3082,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         /** Rubber bands: one round the selection, or off the selection. */
         beltRoundSelection, removeBeltsOfSelection,
         /** Ropes: one from the first selected part (the drum) to the last (the hook); untied. */
-        ropeSelection, removeRopesOfSelection,
+        ropeSelection, removeRopesOfSelection, hoseSelection, removeHosesOfSelection,
         /** The hinge tool: the next hinge (N), and a turn of the selection on it (±15° is [ ]). */
         nextHinge, turnOnHinge,
         /** How a scroll is read: 'auto' (wheel or trackpad, guessed), 'mouse' (zoom), 'trackpad' (orbit). */
@@ -3098,6 +3118,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             bands: () => beltLayer.count,
             /** How many ropes are drawn. */
             ropes: () => ropeLayer.count,
+            hoses: () => hoseLayer.count,
             /** The hinge [ ] would turn on now (null: none, or not asked for yet): its line, what moves, what stays. */
             hinge: () => {
                 const c = hinge.key === selection.join(',') && hinge.list[hinge.index];

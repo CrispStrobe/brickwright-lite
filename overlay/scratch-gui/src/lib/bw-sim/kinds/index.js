@@ -29,6 +29,7 @@
 //               chain.js: chain links round two or more spur gears → 'chain' (same sense);
 //               belt.js: the model's rubber bands → 'band' (a drive that slips) or 'spring';
 //               rope.js: the model's ropes → 'rope' (a winch drum, sheaves, a hook);
+//               pneumatic.js: a cylinder fed by a valve through the model's hoses → 'pneumatic';
 //               shock.js: a shock absorber's rod in its cylinder — no coupling, the slider's
 //               stroke (limits) and its spring (springs)
 //   gearbox     transmission.js: spline, spline-bore (slider), clutch, clutch-teeth,
@@ -59,6 +60,7 @@ import {CHAIN, CHAIN_LINK} from './chain.js';
 import {BAND_DRIVE, BAND_SPRING} from './belt.js';
 import {SHOCK, SHOCK_BORE, SHOCK_ROD} from './shock.js';
 import {ROPE} from './rope.js';
+import {PNEUMATIC, PNEU_BORE, PNEU_ROD, VALVE_LEVER, AIR_PORT} from './pneumatic.js';
 
 export const JOINT_KINDS = [
     {type: 'hinge', dof: 1},
@@ -70,8 +72,9 @@ export const JOINT_KINDS = [
 export const BUILTIN_KINDS = Object.freeze({
     connectors: new ConnectorKindRegistry([...PIN_AXLE_KINDS, SLIDE_BORE, WORM_THREAD, RACK_TEETH, TUBE,
         SPLINE, SPLINE_BORE, CLUTCH, CLUTCH_TEETH, FORK, FORK_GROOVE, CLUTCH_AXLEHOLE, GEAR_SEAT, SNAP,
-        TURNTABLE_RING, TURNTABLE_RACE, ...SCREW_CONNECTORS, SENSOR_AXLEHOLE, CHAIN_LINK, SHOCK_BORE, SHOCK_ROD]),
-    couplings: new CouplingKindRegistry([SPUR, BEVEL, WORM, RACK, DOG_CLUTCH, SHIFT_FORK, RELATIVE_GEAR, SCREW, TURNTABLE_NEST, CHAIN, BAND_DRIVE, BAND_SPRING, SHOCK, ROPE]),
+        TURNTABLE_RING, TURNTABLE_RACE, ...SCREW_CONNECTORS, SENSOR_AXLEHOLE, CHAIN_LINK, SHOCK_BORE, SHOCK_ROD,
+        PNEU_BORE, PNEU_ROD, VALVE_LEVER, AIR_PORT]),
+    couplings: new CouplingKindRegistry([SPUR, BEVEL, WORM, RACK, DOG_CLUTCH, SHIFT_FORK, RELATIVE_GEAR, SCREW, TURNTABLE_NEST, CHAIN, BAND_DRIVE, BAND_SPRING, SHOCK, ROPE, PNEUMATIC]),
     joints: new JointKindRegistry(JOINT_KINDS)
 });
 

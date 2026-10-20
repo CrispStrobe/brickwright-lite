@@ -187,8 +187,12 @@ export const GROUND_FRICTION = 0.8;
  *   parts: {id: string, part: string, color?: number, position: Vec3, rotation: Mat3, port?: string}[],
  *   groups?: {id: string, name: string, parts: string[]}[],
  *   belts?: {id: string, band: string, around: string[]}[],
- *   ropes?: {id: string, lengthLdu: number, around: string[]}[]
+ *   ropes?: {id: string, lengthLdu: number, around: string[]}[],
+ *   hoses?: {id: string, a: {part: string, port: string}, b: {part: string, port: string}}[]
  * }} PlacedModel
+ *
+ * `hoses` are pneumatic tubes from one part's air port to another's (docs/ROBOT-LAB-UX.md §16):
+ * `0 !BW HOSE <id> <part> <port> <part> <port>` in LDraw text.
  *
  * `ropes` are strings from a winch drum over sheaves to a hook (docs/ROBOT-LAB-UX.md §15):
  * `around` [drum, sheave…, hook], `lengthLdu` the string's length. In LDraw text each is a
@@ -653,6 +657,19 @@ export const validatePlacedModel = (model, catalog) => {
                 if (typeof b?.band !== 'string' || !b.band) out.push(`${wb}.band: the band's part`);
                 if (!Array.isArray(b?.around) || b.around.length < 2) out.push(`${wb}.around: at least 2 parts`);
                 else for (const pid of b.around) if (!partIds.has(pid)) out.push(`${wb}.around: unknown part '${pid}'`);
+            }
+        }
+    }
+    if (model.hoses !== undefined) {
+        if (!Array.isArray(model.hoses)) out.push('model.hoses: not an array');
+        else {
+            uniqueIds(model.hoses, 'model.hoses', out);
+            const partIds = new Set(model.parts.map(pr => pr.id));
+            for (const h of model.hoses) {
+                for (const k of ['a', 'b']) {
+                    const e = h?.[k];
+                    if (!e || !partIds.has(e.part) || typeof e.port !== 'string') out.push(`model.hoses[${h?.id}].${k}: {part, port} of a part of the model`);
+                }
             }
         }
     }

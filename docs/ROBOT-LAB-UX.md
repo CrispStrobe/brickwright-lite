@@ -464,3 +464,26 @@ The starting values from §6 were kept: every gate reading lies well inside them
 - Tests: `test/bw-sim-rope.test.mjs` (tied taut, LDraw, undo; in the real core a held drum holds the
   hook, ±6 rad/s winds it up or down by r·Δθ, a free drum pays out under the weight); gate step 6 of
   `scripts/lib/sim-lab-chain-gate.mjs` (`--part=editor`).
+
+## 16. Pneumatics v1 (2026-10-20)
+
+- Parts: the 1 x 11 cylinder (body u9145c01 with its rod 21828c01, a 120 LDU stroke) and the valve
+  with axle hole (19474-f1). The valve's lever turns on an axle put through its pivot; its angle
+  from where the model has it is the valve's state: past +15° air goes to outlet A, past −15° to B,
+  in between the valve is shut.
+- **Connect a hose** in the properties panel (two parts selected): a hose from the nearest free valve
+  outlet to the nearest free cylinder port (`lib/bw-sim/editor/hose-path.js`), in one undo step;
+  **Remove hose** takes off the selection's hoses. It is the model's `hoses` record
+  (`0 !BW HOSE <id> <part> <port> <part> <port>` in LDraw: LDraw's tubes are fixed shapes), drawn
+  as a blue tube that sags between the nozzles and follows them in Simulate (`view/hose-layer.js`),
+  and it goes with either of its parts.
+- Simulate (`kinds/pneumatic.js`, `physics/jolt-core.js` `pneumaticDrives`, architecture M12's v1):
+  the cylinder is a slider narrowed to its stroke. Before each step the valve's hinge angle picks
+  the way: towards the port the open outlet feeds the rod moves at 6 cm/s with at most p·A
+  (150 kPa on a 10 mm bore, about 12 N); a shut valve holds it. A program cannot drive the cylinder
+  itself; it turns the valve's lever with a motor, as a real motorised valve does.
+- Left out, and said so: the air supply is ideal (no pump, tank or compressor yet), the air does not
+  compress (a shut valve holds rigidly, up to 40 N), and the lever is drawn where the model has it.
+  The lumped-pressure network (pumps, tanks, T-pieces) is the next step of M12.
+- Tests: `test/bw-sim-pneumatic.test.mjs` (hoses through LDraw and undo, the stroke and p·A, the
+  hose tool's port choice; in the real core one way out by 48 mm, the other way back, shut holds).
