@@ -1123,6 +1123,7 @@
     }
    ],
    "friction": 1,
+   "material": "rubber",
    "nameDe": "Rad 56 mm",
    "mirrorOf": {
     "part": "39367p01.dat",
@@ -8630,6 +8631,7 @@
    "category": "wheel",
    "massGrams": 18,
    "friction": 1,
+   "material": "rubber",
    "connectors": [
     {
      "id": "c",
@@ -27321,7 +27323,6 @@
    "part": "62520.dat",
    "name": "Technic universal joint 3L end",
    "nameDe": "Technic-Kardangelenk 3L Ende",
-   "nameDeGenerated": true,
    "category": "connector",
    "massGrams": 0.19,
    "connectors": [
@@ -27339,6 +27340,27 @@
       1
      ],
      "length": 20
+    },
+    {
+     "id": "u",
+     "type": "uj-fork",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "data": {
+      "shaft": [
+       0,
+       0,
+       1
+      ]
+     }
     }
    ],
    "colliders": [
@@ -27359,7 +27381,6 @@
      ]
     }
    ],
-   "derived": true,
    "mirrorOf": {
     "part": "62520.dat",
     "transform": {
@@ -27406,7 +27427,6 @@
    "part": "3712.dat",
    "name": "Technic universal joint 4L end with bush end",
    "nameDe": "Technic-Kardangelenk 4L Ende mit Buchse Ende",
-   "nameDeGenerated": true,
    "category": "connector",
    "massGrams": 0.29,
    "connectors": [
@@ -27424,6 +27444,27 @@
       1
      ],
      "length": 20
+    },
+    {
+     "id": "u",
+     "type": "uj-fork",
+     "position": [
+      0,
+      0,
+      -30
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "data": {
+      "shaft": [
+       0,
+       0,
+       1
+      ]
+     }
     }
    ],
    "colliders": [
@@ -27444,7 +27485,6 @@
      ]
     }
    ],
-   "derived": true,
    "mirrorOf": {
     "part": "3712.dat",
     "transform": {
@@ -27491,7 +27531,6 @@
    "part": "575.dat",
    "name": "Technic universal joint 4L end with slotted end",
    "nameDe": "Technic-Kardangelenk 4L Ende mit Slotted Ende",
-   "nameDeGenerated": true,
    "category": "connector",
    "massGrams": 0.37,
    "connectors": [
@@ -27509,6 +27548,27 @@
       1
      ],
      "length": 20
+    },
+    {
+     "id": "u",
+     "type": "uj-fork",
+     "position": [
+      0,
+      0,
+      -30
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "data": {
+      "shaft": [
+       0,
+       0,
+       1
+      ]
+     }
     }
    ],
    "colliders": [
@@ -27529,7 +27589,6 @@
      ]
     }
    ],
-   "derived": true,
    "mirrorOf": {
     "part": "575.dat",
     "transform": {
