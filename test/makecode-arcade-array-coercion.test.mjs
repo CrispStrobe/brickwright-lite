@@ -6,6 +6,7 @@ import {runPxtCore} from './helpers/pxt-core-runtime.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
+import {arrayOperation} from './helpers/arrays-current-operation.mjs';
 import {compile} from '../scripts/lib/pxt-node.mjs';
 const vars=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
 
@@ -74,9 +75,9 @@ test('reference tags survive JSON and SB3 without aliasing ordinary text or anot
     assert.equal(BWValues.indexOf(sparse,undefined),2);assert.equal(BWValues.indexOf([first],first,Infinity),-1);
     a.emit('PROJECT_START');assert.equal(BWValues.compare(first,'===',BWValues.reference(a,'array','array-reference:1')),false);
     const imported=arcadeToPseudocode('let rows=[[1]];let ordinary="array-reference:1"'),run=await runProgram(imported.code,{frames:30,storage:true});
-    const before=vars(run),p=run.vm.runtime._primitives;
-    assert.equal(p.arrays_referenceLength({ARRAY:before.rows}),1);
-    assert.equal(p.arrays_referenceItem({ARRAY:before.rows.bwReference.id,INDEX:0}),'', 'ordinary text cannot access the reference table');
+    const before=vars(run);
+    assert.equal(await arrayOperation(run.vm,'referenceLength',{ARRAY:before.rows}),1);
+    assert.equal(await arrayOperation(run.vm,'referenceItem',{ARRAY:before.rows.bwReference.id,INDEX:0},{expectedDiagnostic:'Array reference is null or expired'}),'', 'ordinary text cannot access the reference table');
     assert.equal(run.errors.length,1);
     await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));
     // E3b: a reference reopens as a reference of the same kind and id that
@@ -84,9 +85,9 @@ test('reference tags survive JSON and SB3 without aliasing ordinary text or anot
     // re-creates the program's resources.
     const after=vars(run);assert.equal(after.ordinary,'array-reference:1');assert.ok(BWValues.isReference(after.rows));
     assert.equal(after.rows.bwReference.id,before.rows.bwReference.id);assert.equal(String(after.rows),String(before.rows));
-    assert.equal(run.vm.runtime._primitives.arrays_referenceLength({ARRAY:after.rows}),0,'a reopened reference resolves to nothing');
+    assert.equal(await arrayOperation(run.vm,'referenceLength',{ARRAY:after.rows},{expectedDiagnostic:'Array reference is null or expired'}),0,'a reopened reference resolves to nothing');
     run.vm.greenFlag();await stepFrames(run.vm,30);
-    const again=vars(run);assert.equal(run.vm.runtime._primitives.arrays_referenceLength({ARRAY:again.rows}),1,'the green flag re-creates the array');
+    const again=vars(run);assert.equal(await arrayOperation(run.vm,'referenceLength',{ARRAY:again.rows}),1,'the green flag re-creates the array');
 });
 
 test('an uninitialized typed array stays undefined until an explicit array assignment',async()=>{
