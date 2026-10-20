@@ -515,3 +515,18 @@ This is a source candidate. Fresh installation, the complete existing native
 suite and the new lifecycle cases, then the actual public authoring roundtrip
 are still pending. It does not qualify browser rendering, saved-project alias
 normalization, other Array factories, full games or corpus counts.
+
+### Hosted Sprite runtime fixture maintenance
+
+The additional hosted unit logs contain twenty Sprite binding refusal reports
+across six modules (including aggregate reports). Their native fixtures omitted
+the Runtime targets array, so the constructor correctly retained its permanently
+inert metadata binding. The source repair uses the existing native-only helper
+for physics, scaling and bundle cases, and owned actual VM runtimes for the
+speech and wide-animation cases in modules that already exercise the VM.
+
+No product ownership guard or behavior assertion changes. The six complete
+modules contain 41 tests, including both bundle modes; their existing original
+PXT simulator, compilation and webpack paths still require qualification. The
+repair is unqualified until those affected modules run on the admitted current
+installation. This is fixture maintenance, not new Sprite or game support.

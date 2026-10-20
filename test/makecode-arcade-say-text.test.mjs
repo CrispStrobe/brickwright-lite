@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
-import {SB3Creator, projectOpcodes, runProgram, stepFrames} from './helpers/bw-vm.mjs';
+import {VM, clearStrayTimers, SB3Creator, projectOpcodes, runProgram, stepFrames} from './helpers/bw-vm.mjs';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {compile} from '../scripts/lib/pxt-node.mjs';
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
@@ -72,9 +72,18 @@ let completed = 1`;
         messages.map(s => [s.text, s.mode, s.duration, s.foreground, s.background]));
 });
 
-test('speech replacement, clearing, zero duration and destruction own their lifetime', () => {
+test('speech replacement, clearing, zero duration and destruction own their lifetime', t => {
     const Arcade = loadExtensionClass('arcade');
-    const ext = new Arcade({on() {}, emit() {}});
+    const vm = new VM();
+    t.after(() => {
+        const failures = [];
+        for (const action of ['stopAll', 'quit']) {
+            try { vm[action](); } catch (error) { failures.push(error); }
+        }
+        clearStrayTimers();
+        assert.deepEqual(failures, [], 'all owned VM cleanup completes');
+    });
+    const ext = new Arcade(vm.runtime);
     const id = ext.spawnSprite({KIND: 'Player', X: 80, Y: 60, WIDTH: 1, HEIGHT: 1});
     const speak = args => ext.spriteSay({ID: id, TEXT: 'Hello', DURATION: -1, ANIMATED: false,
         FOREGROUND: 15, BACKGROUND: 1, MODE: 'text', ...args});
