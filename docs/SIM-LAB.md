@@ -495,6 +495,40 @@ Groups are declared before the parts, in definition order. Each member carries `
 - **Mats and obstacles (`bw-sim/world/`):** the Mat selector above; obstacles are static box bodies (compile option `obstacles: [{id, shape:'box', size:[w,h,d], position:[x,y,z], yawDeg, color}]`) — colour is a SPIKE colour id 0–10 shown as a box mesh; the S1 driving base collides and stops against them, and the distance sensor's ray meets them. A mat may carry obstacles (`createMat(id).obstacles`, same shape); `prepareModel` compiles them with the model, which is how the Wall mat's wall gets into the scene.
 - **Turntables** (60 and 28 teeth): the two halves turn on each other; the toothed top is a spur gear for a pinion on the base (`bw-sim/kinds/turntable.js`).
 - **Linear actuators** (the small one, 92693): the spindle's turn moves the piston by its thread's lead (1.206 mm per turn), it holds any load up to its slip clutch (self-locking), it stops at the ends of its stroke while the spindle turns on, and the motor feels the load (`bw-sim/kinds/screw.js`, `bw-sim/physics/screw.js`).
+- **Universal joints** (since 2026-10-20): two universal joint ends (62520 the 3L end, 3712 and 575 the
+  old 4L ends) placed fork in fork, the second turned 90° so the cross fits, join the two axles they
+  sit on (`bw-sim/kinds/universal-joint.js`; the cross itself, 62519/3326, is not a catalogue part and
+  is implied). It is simulated as what it is, a cross on two hinges (`bw-sim/physics/universal-joint.js`),
+  so a bent joint turns its output unevenly, as the real one does: at a bend β the output's speed swings
+  between cos β and 1/cos β of the input's twice a turn (ω₂/ω₁ = cos β / (1 − sin²β·cos²θ)), on
+  average 1:1; two joints in phase (the shaft between them with its forks in line, equal bends) turn
+  the output evenly. A joint bends at most 45° (warning `uj-too-bent`); ends whose forks are not at
+  right angles do not join (`uj-not-square`). Tests: `test/bw-sim-universal-joint.test.mjs`.
+- **Materials** (since 2026-10-20, `MATERIALS` in `bw-sim/contracts.js`): a part is ABS unless its
+  catalogue entry says `"material": "rubber"` (the tyred SPIKE wheels). A body bounces and rolls like
+  the part it touches the ground with (its grippiest):
+
+  | material | friction | restitution e | rolling resistance c_rr |
+  |---|---|---|---|
+  | ABS | 0.4 | 0.1 | — |
+  | rubber (tyres) | 1 | 0.05 | 0.02 |
+  | the floor (mat) | 0.8 | 0 | — |
+
+  *Bounce:* Jolt combines two bodies' restitution as the larger, so the floor's 0 leaves a part's own;
+  a brick dropped 20 cm bounces off at 0.10 of its landing speed and rebounds to e² = 1 % of the height.
+  Impacts slower than 1 m/s (`LEGO_MIN_BOUNCE_SPEED_M_S`, a 5 cm drop) do not bounce at all: a robot
+  driving into a wall at SPIKE speeds (≤ 0.5 m/s) stops dead, as a real build's give takes that energy.
+  The e are low on purpose: Jolt resolves a fast part's impact at one body's contact (its continuous
+  collision), so a part landing across two others at once would spin off with a larger e (a brick on two
+  beams turned over with e 0.2–0.4; docs/ROBOT-LAB-VALIDATION.md "Materials"). *Rolling:* a tyred wheel on
+  a hinge gets a torque c_rr·N·r against its roll (`bw-sim/physics/rolling.js`), N its normal load read
+  each step from what its axle does not carry, so a coasting cart slows at c_rr·g·M/(M + ΣI/r²) and stops
+  (the carts of `test/bw-sim-validation-2.test.mjs`: 0.1377 m/s² measured, 0.1378 predicted). Source for
+  c_rr: rubber on hard floors 0.010–0.025 (a drum rig's deceleration method, Hungarian Journal of
+  Industry and Chemistry, "Laboratory Measurement of Rolling Resistance Coefficient under Different
+  Conditions"); the restitutions are estimates (no published LEGO numbers). *Limits:* restitution is per
+  body, not per pair (a brick hitting a tyre bounces like ABS on ABS); rolling resistance does not hold a
+  wheel still on a slope, acts only on tyred wheels that turn on a hinge, and treads have none.
 - A frictionless pin or axle that only joins two parts is one hinge between them (`bw-sim/mech/free-pins.js`).
 - Not yet simulated: flexible parts (belts, hoses), tracks, and the colour sensor's ambient-light modes.
 

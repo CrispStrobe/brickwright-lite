@@ -26,7 +26,7 @@ import {fileURLToPath} from 'node:url';
 import {compile} from '../overlay/scratch-gui/src/lib/bw-sim/mech/compile.js';
 import {parseModel} from '../overlay/scratch-gui/src/lib/bw-sim/model/ldraw-model.js';
 import {catalogFrom, MODELS_BASE} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
-import {LDU_M} from '../overlay/scratch-gui/src/lib/bw-sim/contracts.js';
+import {LDU_M, MATERIALS} from '../overlay/scratch-gui/src/lib/bw-sim/contracts.js';
 import {loadJolt, createPhysicsCore} from '../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js';
 import {SimHubBridge, STEP_MS} from '../overlay/scratch-gui/src/lib/bw-sim/hub-bridge.js';
 import VirtualSpikeHubState from '../overlay/scratch-gui/src/lib/virtual-hub/spike-hub-state.js';
@@ -42,6 +42,7 @@ const MACHINES = path.join(ROOT, 'test/fixtures/bw-sim/machines-2');
 const STEP_HZ = 1000 / STEP_MS; // 200 Hz, the app's step
 const DT = 1 / STEP_HZ;
 const DEG = 180 / Math.PI;
+const G = 9.81;
 
 const ldr = file => parseModel(readFileSync(file, 'utf8'), {catalog: CATALOG}).model;
 const machine = name => ldr(path.join(MACHINES, name));
@@ -690,36 +691,52 @@ const cartsRun = async ({heavyBumper = false} = {}) => {
     return r;
 };
 
-test('two carts collide: the sum of momenta is conserved', async t => {
-    // During the 50 ms around the impact the only external horizontal forces are rolling losses
-    // (Jolt's default 0.05 s⁻¹ damping: 0.25 % over 50 ms): Σ m·v before = Σ m·v after within 1 %.
+test('two carts collide: the sum of momenta changes only by the rolling resistance\'s impulse', async t => {
+    // During the 70 ms around the impact the only external horizontal forces are the tyres' rolling
+    // resistance (physics/rolling.js) and Jolt's default 0.05 s⁻¹ damping. Their deceleration a is a cart's
+    // own while it coasts alone, a0 + 0.05·v: a0 measured on cart 1 over the 50 ms before the window. Each step a
+    // cart moves it loses m·(a0 + 0.05·v)·dt, so Σ m·v after = Σ m·v before − that sum, within 1 %.
     const c = await cartsRun();
     const p0 = c.m1 * c.before.v1 + c.m2 * c.before.v2;
     const p1 = c.m1 * c.after.v1 + c.m2 * c.after.v2;
+    const i0 = Math.max(0, c.hit - 4);
+    const i1 = c.hit + 10;
+    assert.ok(i0 >= 10, 'cart 1 coasted alone for 50 ms before the window');
+    const dt = STEP_MS / 1000;
+    // a = a0 + 0.05·v: the rolling part a0 is constant, the damping's is the speed's.
+    const a = (c.trace[i0 - 10].v1 - c.trace[i0].v1) / (10 * dt);
+    const a0 = a - 0.05 * (c.trace[i0 - 10].v1 + c.trace[i0].v1) / 2;
+    let lost = 0;
+    for (let i = i0 + 1; i <= i1; i++) {
+        for (const [m, v] of [[c.m1, c.trace[i].v1], [c.m2, c.trace[i].v2]]) if (v > 1e-4) lost += m * (a0 + 0.05 * v) * dt;
+    }
+    const want = p0 - lost;
     t.diagnostic(`carts ${(c.m1 * 1000).toFixed(1)} g / ${(c.m2 * 1000).toFixed(1)} g (catalogue ${(c.cat1 * 1000).toFixed(1)} g); ` +
         `before: v1 ${c.before.v1.toFixed(4)}, v2 ${c.before.v2.toFixed(4)} m/s; after: v1 ${c.after.v1.toFixed(4)}, v2 ${c.after.v2.toFixed(4)} m/s; ` +
-        `momentum ${(p0 * 1000).toFixed(3)} → ${(p1 * 1000).toFixed(3)} g·m/s (${((p1 / p0 - 1) * 100).toFixed(2)} %)`);
+        `coasting deceleration ${a.toFixed(4)} m/s²; momentum ${(p0 * 1000).toFixed(3)} → ${(p1 * 1000).toFixed(3)} g·m/s, ` +
+        `rolling impulse ${(lost * 1000).toFixed(3)}: ${((p1 / want - 1) * 100).toFixed(2)} % off`);
     assert.ok(Math.abs(c.m1 - c.cat1) < 1e-9 && Math.abs(c.m2 - c.cat2) < 1e-9, 'compiled masses are the catalogue\'s');
     assert.ok(c.hit > 4, 'cart 1 was rolling free before it hit cart 2');
-    assert.ok(relErr(p1, p0) <= 0.01, `momentum ${p0} → ${p1}`);
+    assert.ok(relErr(p1, want) <= 0.01, `momentum ${p0} → ${p1}, want ${want}`);
 });
 
-test('two carts collide: with restitution 0 (no part sets one) they leave together', {
-    todo: 'they bounce apart (e ≈ 0.24, measured 2026-10-19): the bumper beam is a 4.8 g body hinged to two 25 g ' +
-        'wheel sets, and the hinges\' compliance stores the impact and gives it back (control: the same carts with all ' +
-        'their mass in the bumper body leave together, e ≈ 0); the light-body-between-hinges problem of round 1, bug 2. ' +
-        'Not the body model (restitution is 0 on every body) and not fixable by the 20 g solver floor the gears and ' +
-        'actuators use: in an impact the floored mass IS the mass, so momentum (the check above) would not be conserved; see docs/ROBOT-LAB-VALIDATION.md'
+test('two carts collide: below the bounce speed (1 m/s) they leave together', {
+    todo: 'they bounce apart (e ≈ 0.065 measured 2026-10-20 with rolling resistance; 0.24 on 2026-10-19 without): the ' +
+        'bumper beam is a 4.8 g body hinged to two 25 g wheel sets, and the hinges\' compliance stores the impact and gives ' +
+        'it back (control: the same carts with all their mass in the bumper body leave together, e ≈ 0); the ' +
+        'light-body-between-hinges problem of round 1, bug 2. Not the material model (at 0.12 m/s no restitution acts: ' +
+        'jolt-core.js LEGO_MIN_BOUNCE_SPEED_M_S) and not fixable by the 20 g solver floor the gears and actuators use: in an ' +
+        'impact the floored mass IS the mass, so momentum (the check above) would not be conserved; see docs/ROBOT-LAB-VALIDATION.md'
 }, async t => {
-    // Jolt's restitution is 0 unless a body sets it (jolt-core.js; compile sets none for parts): a
-    // perfectly inelastic impact, both carts at the common speed. e = (v2' − v1') / (v1 − v2) ≤ 0.05.
+    // Restitution acts only on impacts faster than LEGO_MIN_BOUNCE_SPEED_M_S (1 m/s; the carts meet at 0.12 m/s):
+    // a perfectly inelastic impact, both carts at the common speed. e = (v2' − v1') / (v1 − v2) ≤ 0.05.
     const c = await cartsRun();
     t.diagnostic(`e ${restitution(c).toFixed(3)} (v1' ${c.after.v1.toFixed(4)}, v2' ${c.after.v2.toFixed(4)} m/s)`);
     assert.ok(Math.abs(restitution(c)) <= 0.05, `e ${restitution(c)}`);
 });
 const restitution = c => (c.after.v2 - c.after.v1) / (c.before.v1 - c.before.v2);
 
-test('two carts collide, control (all of each cart\'s mass in its bumper body): restitution 0, they leave together', async t => {
+test('two carts collide, control (all of each cart\'s mass in its bumper body): they leave together', async t => {
     // The same carts and run with each cart's catalogue mass given to its beam body (the wheel sets
     // keep theirs too: the momentum check above does not apply to this altered machine). With the
     // bumper no longer a light body between two hinges, the impact is inelastic: e ≤ 0.05.
@@ -728,34 +745,38 @@ test('two carts collide, control (all of each cart\'s mass in its bumper body): 
     assert.ok(Math.abs(restitution(c)) <= 0.05, `e ${restitution(c)}`);
 });
 
-test('a free cart coasts with rolling resistance: deceleration ≥ c_rr·g, c_rr ≥ 0.005', {
-    todo: 'there is no rolling resistance: the cart loses only Jolt\'s default 0.05 s⁻¹ velocity damping ' +
-        '(a = 0.05·v, c_rr-equivalent ~0.0004 at 0.08 m/s), an order of magnitude below a hard tyre on a hard floor. ' +
-        'Jolt has no rolling friction; a c_rr·N·r torque per tyre needs each tyre\'s normal load, which the core does ' +
-        'not read (its contact listener sees contact points, not impulses) — a contact-force readout is the next step; ' +
-        'see docs/ROBOT-LAB-VALIDATION.md'
-}, async t => {
-    // A rolling tyre on a hard floor loses c_rr·m·g (textbook range for rubber on concrete-like floors
-    // 0.005 … 0.03): over the last 1.5 s of the run cart 2 coasts alone; its deceleration should be at
-    // least 0.005·g = 0.049 m/s².
+test('a free cart coasts with rolling resistance: a = c_rr·g·M / (M + ΣI/r²) + 0.05·v, and stops', async t => {
+    // physics/rolling.js: each tyre's c_rr·N·r against its roll (contracts.js MATERIALS rubber, c_rr 0.02).
+    // The cart's tyres carry its whole weight, so the floor's drag is c_rr·M·g; it decelerates the cart's mass
+    // and spins down its wheels: a = c_rr·g·M / (M + ΣI/r²), with I = ½·m·r² per SPIKE wheel (its collider is
+    // a solid cylinder, r 28 mm, 12 g: ΣI/r² = 4 · 6 g = 24 g), plus Jolt's default damping 0.05 s⁻¹·v.
+    // Measured on cart 2 coasting alone (from 100 ms after the impact while it is faster than 1 cm/s).
     const c = await cartsRun();
-    const late = c.trace.filter(s => s.ms >= c.trace[c.trace.length - 1].ms - 1500);
-    const a = (late[0].v2 - late[late.length - 1].v2) / ((late[late.length - 1].ms - late[0].ms) / 1000);
-    t.diagnostic(`cart 2 at ${late[0].v2.toFixed(4)} → ${late[late.length - 1].v2.toFixed(4)} m/s: deceleration ${a.toFixed(4)} m/s² ` +
-        `(c_rr-equivalent ${(a / 9.81).toFixed(5)}; 0.05·v = ${(0.05 * late[0].v2).toFixed(4)})`);
-    assert.ok(a >= 0.005 * 9.81, `deceleration ${a}`);
+    const crr = MATERIALS.rubber.rollingResistance;
+    const r = meta('39367p01.dat').colliders[0].radius * LDU_M;
+    const M = c.m2;
+    const spin = 4 * 0.5 * meta('39367p01.dat').massGrams / 1000;
+    const late = c.trace.slice(c.hit + 20).filter(s => s.v2 > 0.01);
+    assert.ok(late.length >= 10, `cart 2 coasted ${late.length} steps`);
+    const ts = late.map(s => s.ms / 1000);
+    const vs = late.map(s => s.v2);
+    const mt = ts.reduce((x, y) => x + y) / ts.length;
+    const mv = vs.reduce((x, y) => x + y) / vs.length;
+    const a = -ts.reduce((acc, x, i) => acc + (x - mt) * (vs[i] - mv), 0) / ts.reduce((acc, x) => acc + (x - mt) ** 2, 0);
+    const want = crr * G * M / (M + spin) + 0.05 * mv;
+    const end = c.trace[c.trace.length - 1].v2;
+    t.diagnostic(`cart 2 from ${late[0].v2.toFixed(4)} m/s: deceleration ${a.toFixed(4)} m/s² vs ${want.toFixed(4)} ` +
+        `(c_rr·g ${(crr * G).toFixed(4)}, r ${(r * 1000).toFixed(1)} mm, M ${(M * 1000).toFixed(1)} g, ΣI/r² ${(spin * 1000).toFixed(1)} g); at 2 s ${end.toFixed(5)} m/s`);
+    assert.ok(relErr(a, want) <= 0.05, `deceleration ${a} vs ${want}`);
+    assert.ok(Math.abs(end) < 1e-3, `cart 2 still moves at ${end} m/s`);
+    assert.ok(c.trace.every(s => s.v2 > -1e-3), 'it never rolls back');
 });
 
 // ---- H. universal joint --------------------------------------------------------------------------------
-test('universal joint: ω2/ω1 = cos β / (1 − sin²β·cos²θ); two in phase cancel', {
-    todo: 'not buildable: the catalogue has only the U-joint\'s ends (62520, 3712, 575) as parts with an axle hole ' +
-        'each and no connector between them, and no coupling kind joins two ends (the cross is not modelled), so ' +
-        'two ends placed fork in fork are two loose parts; see docs/ROBOT-LAB-VALIDATION.md'
-}, () => {
-    // What a universal joint must do (the closed form), stated for when the kind exists: at β = 30° the
-    // output speed swings between cos β = 0.866 and 1/cos β = 1.155 of the input's, twice per turn.
+test('universal joint: the U-joint ends join fork in fork (the closed form is checked in test/bw-sim-universal-joint.test.mjs)', () => {
+    // Since 2026-10-20 each end has a 'uj-fork' connector (kinds/universal-joint.js) that joins it to another
+    // end; ω2/ω1 = cos β / (1 − sin²β·cos²θ), the double joint and torque are measured in bw-sim-universal-joint.
     const ends = ['62520.dat', '3712.dat', '575.dat'].map(meta);
     assert.ok(ends.every(Boolean), 'the U-joint ends are in the catalogue');
-    const joins = ends.some(e => e.connectors.some(c => !['axlehole', 'pinhole'].includes(c.type)));
-    assert.ok(joins, 'a U-joint end has a connector that joins it to the other end (a cross/fork kind)');
+    assert.ok(ends.every(e => e.connectors.some(c => c.type === 'uj-fork')), 'every U-joint end has its fork connector');
 });
