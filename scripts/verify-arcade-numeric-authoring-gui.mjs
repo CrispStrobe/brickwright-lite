@@ -74,7 +74,35 @@ const fresh = async () => {
     await tab.addInitScript(() => { localStorage.clear(); sessionStorage.clear(); localStorage.setItem('bw-starter-v1-complete', '1'); localStorage.setItem('bw-right-pane-hidden', '0'); });
     await tab.goto(base, {waitUntil: 'domcontentloaded', timeout: 90000});
     await tab.waitForFunction(() => !!window.__brickwrightStore?.getState()?.scratchGui?.vm, null, {timeout: 60000});
-    await tab.evaluate(() => { window.__bwNumericErrors = []; window.__brickwrightStore.getState().scratchGui.vm.runtime.on('BLOCKS_ERROR', error => window.__bwNumericErrors.push(String(error))); });
+    await tab.evaluate(() => {
+        const ownDescriptor=Object.getOwnPropertyDescriptor,own=Object.hasOwn,define=Object.defineProperty;
+        const summaryFields=['rootIndex','rootLabel','keyKind','key','symbolPosition','comparison','changedField',
+            'actualType','savedType','actualFlag','savedFlag'];
+        const intrinsicSummary=error=>{try{
+            // No property getters, primitive calls, stack reads or coercion.
+            // Constraint signals wrap the newly-created native error as cause.
+            const direct=error&&(typeof error==='object'||typeof error==='function')?ownDescriptor(error,'bwArrayIntrinsicMismatch'):null;
+            const cause=error&&(typeof error==='object'||typeof error==='function')?ownDescriptor(error,'cause'):null;
+            const source=direct&&own(direct,'value')?direct:
+                cause&&own(cause,'value')&&cause.value&&typeof cause.value==='object'?ownDescriptor(cause.value,'bwArrayIntrinsicMismatch'):null;
+            if(!source||!own(source,'value')||!source.value||typeof source.value!=='object')return null;
+            const copy={};
+            for(let i=0;i<summaryFields.length;i++){
+                const key=summaryFields[i],descriptor=ownDescriptor(source.value,key);
+                if(!descriptor||!own(descriptor,'value'))return null;
+                const value=descriptor.value;
+                if(value!==null&&typeof value!=='string'&&typeof value!=='number'&&typeof value!=='boolean')return null;
+                define(copy,key,{value,enumerable:true});
+            }
+            return copy;
+        }catch(_observationFailure){return null;}};
+        window.__bwNumericErrors = [];
+        window.__bwNumericIntrinsicRefusals = [];
+        window.__brickwrightStore.getState().scratchGui.vm.runtime.on('BLOCKS_ERROR', error => {
+            window.__bwNumericIntrinsicRefusals.push(intrinsicSummary(error));
+            window.__bwNumericErrors.push(String(error));
+        });
+    });
     return tab;
 };
 const apply = async () => {
@@ -135,7 +163,7 @@ const editMenu = async (spec, choice, required) => {
 const observe = () => page.evaluate(() => {
     const vm = window.__brickwrightStore.getState().scratchGui.vm;
     const variables = Object.fromEntries(vm.runtime.targets.filter(t => t.isOriginal).flatMap(t => Object.values(t.variables)).map(v => [v.name.replace(/^(?:Game_)+/, ''), v.value]));
-    return {variables, errors: window.__bwNumericErrors};
+    return {variables, errors: window.__bwNumericErrors, intrinsicRefusals: window.__bwNumericIntrinsicRefusals};
 });
 const waitSample = sample => page.waitForFunction(sample => {
     const variables = Object.fromEntries(window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.filter(t => t.isOriginal).flatMap(t => Object.values(t.variables)).map(v => [v.name.replace(/^(?:Game_)+/, ''), v.value]));

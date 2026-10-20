@@ -118,7 +118,7 @@ identifying the changed intrinsic or proving the later numeric journeys.
 A candidate refusal diagnostic records the first failed descriptor comparison
 as immutable scalar error metadata. It preserves strict refusal decisions,
 existing error messages and custom Error-factory behavior. The rotation
-verifier captures that metadata alongside its original error strings. The
+and numeric verifiers capture that metadata alongside their original error strings. The
 three new native controls require a fresh composed installation; source review
 alone does not qualify them or establish the polyfill hypothesis.
 
