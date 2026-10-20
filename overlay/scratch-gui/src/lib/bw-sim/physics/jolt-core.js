@@ -43,6 +43,15 @@ let joltPromise = null;
 
 /** Contact tolerances at LEGO scale, metres (see the PhysicsSettings block below). */
 export const LEGO_SPECULATIVE_CONTACT_M = 0.002;
+/**
+ * Bodies with more colliders than this move without a continuous sweep (EMotionQuality_Discrete). Jolt
+ * sweeps a body that moves more than mLinearCastThreshold of its inner radius in a step, and a compound's
+ * inner radius is its thinnest sub-shape (a plate: 1.6 mm), so a 500-part frame was swept against
+ * everything near it nearly every step: 350–600 ms a step on real Technic sets (2026-10-20, 42099/42052,
+ * docs/ROBOT-LAB-REAL-MODELS.md), 10–30 ms without. A body of many parts is thick as a whole and does not
+ * tunnel at the speeds a model reaches; the brick that fell through a beam is one part.
+ */
+export const CCD_MAX_COLLIDERS = 8;
 export const LEGO_PENETRATION_SLOP_M = 0.0002;
 
 /**
@@ -232,7 +241,7 @@ const quatFromColumns = ([c0, c1, c2]) => {
  *        kinds: the kind registries the mechanism was compiled with (default the built-in
  *        ones, kinds/index.js) — what a coupling of a registered kind (worm) is validated by
  */
-export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = false, kinds = BUILTIN_KINDS } = {}) => {
+export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = false, kinds = BUILTIN_KINDS, experiments = {} } = {}) => {
     const problems = validateCompiledMechanism(compiled, { kinds });
     if (problems.length) throw new Error(problems.join('\n'));
     const mechanism = upgradeMechanismV1(compiled);
@@ -295,15 +304,18 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     {
         const ps = new J.PhysicsSettings();
         ps.mDeterministicSimulation = true;
-        ps.mAllowSleeping = false;
-        if (typeof ps.mUseBodyPairContactCache !== 'undefined') ps.mUseBodyPairContactCache = false;
+        // Speed experiments (A/B, docs/ROBOT-LAB-REAL-MODELS.md): off unless asked for.
+        ps.mAllowSleeping = Boolean(experiments.sleeping);
+        if (typeof ps.mUseBodyPairContactCache !== 'undefined') ps.mUseBodyPairContactCache = Boolean(experiments.contactCache);
+        if (experiments.velocitySteps) ps.mNumVelocitySteps = experiments.velocitySteps;
+        if (experiments.positionSteps) ps.mNumPositionSteps = experiments.positionSteps;
         // Jolt's defaults are tuned for metre-scale game worlds (2 cm speculative contacts,
         // 2 cm penetration slop). LEGO parts are millimetres: a motor hub turning 16 mm above
         // the floor sat inside the default speculative distance and dragged the driving base
         // 15 % slower than its wheels. Scale the tolerances to the parts.
         ps.mSpeculativeContactDistance = LEGO_SPECULATIVE_CONTACT_M;
         ps.mPenetrationSlop = LEGO_PENETRATION_SLOP_M;
-        ps.mLinearCastThreshold = 0.25;
+        ps.mLinearCastThreshold = experiments.linearCastThreshold || 0.25;
         physicsSystem.SetPhysicsSettings(ps);
         J.destroy(ps);
     }
@@ -452,15 +464,18 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             const shapeResult = compoundSettings.Create();
             if (shapeResult.HasError()) {
                 const err = shapeResult.GetError();
-                J.destroy(shapeResult);
+                shapeResult.Clear();
                 J.destroy(compoundSettings);
                 throw new Error(`shape creation failed for body ${b.id}: ${err}`);
             }
             shape = shapeResult.Get();
             // The compound shape is reference-counted and, until the body below takes
             // its own reference, owned only by the settings cache and this result:
-            // releasing them first would free the shape under the body.
-            releaseAfterBody = [shapeResult, compoundSettings];
+            // releasing them first would free the shape under the body. The result is the
+            // binding's static temporary (Create() returns by value): it is cleared, never
+            // destroyed — destroy freed memory that was never allocated (the debug build aborts;
+            // the release build went on with a damaged heap).
+            releaseAfterBody = [() => shapeResult.Clear(), compoundSettings];
         }
 
         const posR = new J.RVec3(...b.position);
@@ -476,12 +491,13 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             J.destroy(group);
         }
         if (b.motion === 'dynamic') {
-            // Continuous collision (LinearCast) for every moving body: with Discrete, a brick dropped
+            // Continuous collision (LinearCast) for every moving body of up to CCD_MAX_COLLIDERS: with Discrete, a brick dropped
             // 50 cm (3.1 m/s, 16 mm per 5 ms step) passed through an 8 mm beam (measured). Jolt casts
             // only a body that moves more than mLinearCastThreshold (0.25, below) of its inner radius
             // in one step, so a slow body costs one comparison; measured cost in
             // docs/ROBOT-LAB-ARCHITECTURE.md ("Motion quality").
-            bcs.mMotionQuality = J.EMotionQuality_LinearCast;
+            const sweep = !experiments.discrete && b.colliders.length <= (experiments.ccdMaxColliders ?? CCD_MAX_COLLIDERS);
+            bcs.mMotionQuality = sweep ? J.EMotionQuality_LinearCast : J.EMotionQuality_Discrete;
             bcs.mOverrideMassProperties = J.EOverrideMassProperties_CalculateInertia;
             const mp = bcs.mMassPropertiesOverride;
             mp.mMass = b.massKg;
@@ -499,7 +515,9 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         bodyMap.set(b.id, { body, bodyID, motionType, layer, shape });
         allBodyIDs.push(bodyID);
         J.destroy(bcs);
-        for (const o of releaseAfterBody) J.destroy(o);
+        for (const o of releaseAfterBody) {
+            if (typeof o === 'function') o(); else J.destroy(o);
+        }
     }
 
     // Self-collision is local (D2, mech/collision-filter.js localNoCollide): for a body pair in
@@ -509,7 +527,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     // phase, so it is installed only when the mechanism has such a pair (measured: 0.19 µs a call, ~2,000
     // calls a step on the 2,054-part stress model, +28 % — which has none).
     let simShapeFilter = null;
-    if (localPairs.size) {
+    if (localPairs.size && !experiments.noShapeFilter) {
         const byPtr = new Map();
         for (const b of mechanism.bodies) {
             const e = bodyMap.get(b.id);
@@ -1729,7 +1747,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             const bpFilter = new J.DefaultBroadPhaseLayerFilter(permissiveOVB, 0);
             const objectFilter = new J.ObjectLayerFilterJS();
             objectFilter.ShouldCollide = () => true;
-            let bodyFilter = new J.BodyFilter();
+            let bodyFilter = null;
             if (ignoreBodies.length) {
                 const ignoreFilter = new J.IgnoreMultipleBodiesFilter();
                 for (const id of ignoreBodies) {
@@ -1737,7 +1755,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                     if (e) ignoreFilter.IgnoreBody(e.bodyID);
                 }
                 bodyFilter = ignoreFilter;
-            }
+            } else bodyFilter = new J.BodyFilter();
             const shapeFilter = new J.ShapeFilter();
             const query = physicsSystem.GetNarrowPhaseQuery();
             query.CastRay(ray, raySettings, collector, bpFilter, objectFilter, bodyFilter, shapeFilter);
@@ -1794,7 +1812,9 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                         const localHit = new J.Vec3(lx, ly, lz);
                         const nLocal = shape.GetSurfaceNormal(subShapeID, localHit);
                         let nx = nLocal.GetX(), ny = nLocal.GetY(), nz = nLocal.GetZ();
-                        J.destroy(localHit); J.destroy(nLocal);
+                        // nLocal is the binding's static temporary (GetSurfaceNormal returns by value):
+                        // never destroyed (that freed memory never allocated, under every hit).
+                        J.destroy(localHit);
                         // Local normal → world: rotate by body quat (no translation).
                         const cx = by * nz - bz * ny;
                         const cy = bz * nx - bx * nz;
@@ -1811,6 +1831,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                 result = { distance, bodyId: hitBodyId, point, normal };
             }
             J.destroy(ray);
+            J.destroy(originVec);
+            J.destroy(dirVec);
             J.destroy(raySettings);
             J.destroy(collector);
             J.destroy(bpFilter);

@@ -1689,9 +1689,13 @@ numbers per machine); all 22 of its tests pass with their original expectations 
   with its compiled joints, so it also covers a pin rigid with a bush, and it knows the screw and
   turntable kinds; the validation lane's case of three beams on one pin was added (two or more
   joints, not exactly two). Balance droop 0.07°, pendulum period +0.1 %.
-- **Motion quality.** Every dynamic body is `EMotionQuality_LinearCast` (cast only when it moves
-  more than `mLinearCastThreshold` 0.25 of its inner radius in a step). Cost: a fixed ~13 µs per
-  step (35 → 48 µs on the shipped examples, +1.5 % on the stress model).
+- **Motion quality.** Every dynamic body of up to `CCD_MAX_COLLIDERS` (8) colliders is
+  `EMotionQuality_LinearCast` (cast only when it moves more than `mLinearCastThreshold` 0.25 of its
+  inner radius in a step). Cost: a fixed ~13 µs per step (35 → 48 µs on the shipped examples, +1.5 %
+  on the stress model). Bigger bodies are Discrete (2026-10-20): a compound's inner radius is its
+  thinnest sub-shape, so a real set's 500-part frame was swept nearly every step — 350–600 ms a step
+  on the 4x4 Off-Roader and a wheel loader, 15–30 ms Discrete (CPU time, same motors turning, nothing
+  flung).
 - **Solver iterations of motorised hinges.** The rotor's reflected inertia (3e-4 kg·m²) on a few
   grams of output makes a contact's impulse mostly translate the body (the hinge takes it back):
   per iteration the turn a contact must stop shrinks only by ε = m·r² / (I_axis + m·r²)
