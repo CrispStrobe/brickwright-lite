@@ -1,3 +1,16 @@
+## Pulse Percussion and original dynamics machine — 2026-10-21
+
+CLAIMED — Codex, existing model-design lane / draft PR #1138. Qualify the supplied
+one-motor percussion mechanism with actual peg contact, gravity release and strikes;
+connect its console, repair genuine design or collision gaps, and add native programs,
+bilingual library entries and connected instructions. Then construct an original
+motorised dynamics experiment and qualify its physical output, controls and manual.
+Owner's supplied original designs use CrispStrobe / BSD-3-Clause; preserve separate
+LDraw authors/licences and exact source provenance. Do not execute downloaded code.
+Preserve peer worktrees and protected Jolt/compiler/collision implementation files.
+Only locally qualified models join the offline library; hosted CI/integration remain
+release gates. No audio output or physical hardware success is inferred from CAD.
+
 ## Tidal Trio phase-machine adaptation — 2026-10-20
 
 IMPLEMENTED / locally qualified — Codex, existing model-design lane / draft PR #1138. Review the owner's
