@@ -1775,6 +1775,17 @@ motors: A/B wheels, C slew, D boom, E stick, F bucket.
   `test/bw-sim-excavator.test.mjs`; the model is in `test/bw-sim-models-solid.test.mjs` and the
   instructions tests like every MODELS entry.
 
+### The Jolt fork, 1.1.0-bw.3 (2026-10-20): a bounce across two bodies, restitution per material pair
+
+`jolt-physics` is **1.1.0-bw.3** (same pinning as below: `scripts/integrate.mjs` URL + sha512, the GUI lockfile).
+Two additions, both documented in the forks' `BRICKWRIGHT.md` files: (3) JoltPhysics `a40ff0b`,
+`JobResolveCCDContacts` leaves a CCD impact that would bounce while the body touches another body as well to the
+next step's discrete solve (a brick landing across two beams turned over; single-body bounces and impacts that do
+not bounce are upstream's bit for bit); (4) JoltPhysics.js `MaterialPairs` (bindings only): restitution from a
+material-pair table, a body's material in its user data. The core installs the table from `contracts.js
+restitutionOf` (`physics/materials.js`); a Jolt build without it falls back to Jolt's max rule. Results:
+docs/ROBOT-LAB-VALIDATION.md "Materials".
+
 ### Gear meshes as built: the Jolt fork (2026-10-19, `lane/simlab-next6-20261019`)
 
 Owner decision: patch Jolt in our fork. `jolt-physics` is now **1.1.0-bw.2**, the Brickwright fork

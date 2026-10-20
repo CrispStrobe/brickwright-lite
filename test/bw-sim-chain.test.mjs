@@ -17,6 +17,7 @@ import {STEP_MS} from '../overlay/scratch-gui/src/lib/bw-sim/hub-bridge.js';
 import {chainRound, CHAIN_PITCH} from '../overlay/scratch-gui/src/lib/bw-sim/editor/chain-path.js';
 import {solidOverlaps} from '../overlay/scratch-gui/src/lib/bw-sim/editor/overlap.js';
 import {CHAIN_ON_PITCH_LDU} from '../overlay/scratch-gui/src/lib/bw-sim/kinds/chain.js';
+import {MATERIALS} from '../overlay/scratch-gui/src/lib/bw-sim/contracts.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const json = p => JSON.parse(readFileSync(path.join(ROOT, p), 'utf8'));
@@ -250,6 +251,62 @@ test('a tracked frame drives: a motor on one sprocket moves it along at the trea
     assert.ok(Math.abs(turned) > omega * seconds * 0.8, `the sprocket turned ${turned} rad`);
     assert.ok(Math.abs(along - expected) / expected < 0.2, `moved ${along.toFixed(4)} m along, the tread's outer face ran ${expected.toFixed(4)} m`);
     assert.ok(Math.abs(p1[0] - p0[0]) < 0.2 * along, `straight on: ${(p1[0] - p0[0]).toFixed(4)} m sideways`);
+});
+
+test('a coasting tracked frame slows at c_rr·g·M / (M + ΣI/r²) with the tread\'s rolling resistance, and stops', async t => {
+    // contracts.js MATERIALS.tread: c_rr 0.05 (link tracks on hard ground), on each sprocket's wheel of the tread's
+    // outer radius (physics/rolling.js). Driven at 4 rad/s, then the motor coasts: the floor's drag c_rr·M·g slows
+    // the frame and the sprockets' spin, I the solver's (the chain floors a sprocket's inertia, GEAR_MIN_INERTIA).
+    const m = treadBench();
+    const r = chainRound(m, CATALOG, ['s1', 's2']);
+    const model = {...m, parts: [...m.parts, ...r.links.map((l, i) => ({id: `t${i}`, ...l}))]};
+    const mech = compile(model, CATALOG, {version: 2});
+    const bench8 = compile(json('test/fixtures/bw-sim/gears/8-24.json'), CATALOG, {version: 2});
+    const sprockets = ['s1', 's2'].map(p => mech.bodies.find(b => b.parts.includes(p)));
+    for (const b of sprockets) assert.equal(b.rollingResistance, MATERIALS.tread.rollingResistance, `${b.id}: the tread's c_rr`);
+    const hinge = mech.joints.find(j => j.type === 'hinge' && (j.body1 === sprockets[0].id || j.body2 === sprockets[0].id));
+    hinge.motor = {...bench8.joints.find(j => j.motor).motor};
+    mech.actuators = [{...bench8.actuators[0], joint: hinge.id}];
+    const J = await loadJolt();
+    const core = createPhysicsCore(J, mech, {stepHz: HZ});
+    const frame = mech.bodies.find(b => b.parts.includes('frame')).id;
+    const frame0 = core.bodyPose(frame).position;
+    for (let i = 0; i < 0.5 * HZ; i++) core.step(1 / HZ);
+    core.setMotor(hinge.id, {mode: 'velocity', radPerSec: 4});
+    for (let i = 0; i < 1 * HZ; i++) core.step(1 / HZ);
+    core.setMotor(hinge.id, {mode: 'coast'});
+    const radius = core.rollingWheel(sprockets[0].id).radius;
+    // The sprockets' moment about their axles, as the solver has it: L / ω about the axle through the centre.
+    const axisOf = b => { const j = mech.joints.find(x => x.type === 'hinge' && (x.body1 === b.id || x.body2 === b.id)); return {j, a: j.axis}; };
+    const spinI = sprockets.reduce((acc, b) => {
+        const {j, a} = axisOf(b);
+        // About the axle where it is now (the frame only translates): no m·d × v term from the frame's motion.
+        const shift = core.bodyPose(frame).position.map((v, i) => v - frame0[i]);
+        const L = core.bodyAngularMomentum(b.id, j.point.map((v, i) => v + shift[i]));
+        const w = core.bodyAngularVelocity(b.id);
+        const wa = w[0] * a[0] + w[1] * a[1] + w[2] * a[2];
+        return acc + (L[0] * a[0] + L[1] * a[1] + L[2] * a[2]) / wa;
+    }, 0);
+    // The weight is the parts' (M·g); the mass the floor's drag decelerates is the solver's: the chain floors a
+    // sprocket body's mass at 20 g (jolt-core.js GEAR_MIN_MASS_KG, its weight kept).
+    const M = mech.bodies.filter(b => b.motion === 'dynamic').reduce((acc, b) => acc + b.massKg, 0);
+    const inertial = mech.bodies.filter(b => b.motion === 'dynamic').reduce((acc, b) => acc + (sprockets.includes(b) ? Math.max(b.massKg, 0.02) : b.massKg), 0);
+    const trace = [];
+    for (let i = 0; i < 1.5 * HZ; i++) {
+        core.step(1 / HZ);
+        trace.push({t: i / HZ, v: Math.abs(core.bodyLinearVelocity(frame)[2]), load: sprockets.reduce((acc, b) => acc + core.rollingWheel(b.id).load, 0)});
+        if (i === 0) assert.ok(Math.abs(trace[0].load / (M * 9.81) - 1) < 0.02, `the sprockets carry ${trace[0].load} N of ${M * 9.81}`);
+    }
+    core.destroy();
+    const moving = trace.filter(s => s.v > 0.01).slice(2);
+    assert.ok(moving.length >= 5, `it coasted ${moving.length} steps`);
+    const a = (moving[0].v - moving[moving.length - 1].v) / (moving[moving.length - 1].t - moving[0].t);
+    const meanV = moving.reduce((acc, s) => acc + s.v, 0) / moving.length;
+    const want = MATERIALS.tread.rollingResistance * 9.81 * M / (inertial + spinI / radius ** 2) + 0.05 * meanV;
+    t.diagnostic(`frame ${(M * 1000).toFixed(1)} g (solver ${(inertial * 1000).toFixed(1)} g), sprockets ΣI/r² ${(spinI / radius ** 2 * 1000).toFixed(1)} g (r ${(radius * 1000).toFixed(1)} mm): ` +
+        `from ${moving[0].v.toFixed(4)} m/s deceleration ${a.toFixed(4)} m/s² vs ${want.toFixed(4)}; at the end ${trace[trace.length - 1].v.toFixed(5)} m/s`);
+    assert.ok(Math.abs(a / want - 1) <= 0.1, `deceleration ${a} vs ${want}`);
+    assert.ok(trace[trace.length - 1].v < 1e-3, 'it stops');
 });
 
 test('a tread\'s links run round at its sprocket\'s pivot circle: one tooth\'s turn moves each one place', async () => {
