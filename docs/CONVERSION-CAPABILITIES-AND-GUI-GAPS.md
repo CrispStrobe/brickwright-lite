@@ -5242,6 +5242,22 @@ The optional Image Array entry proof now handles the parser's opaque root proced
 
 The complete 22 request-fence and 13 editor-contract tests pass. Browser work must still exercise pending file/share imports, replacement imports, stage changes and disposal visibly, including answer/cancel/error outcomes. Verify Code, connected Blocks, artwork, save/reopen and edited export together. The remaining native-prompt suite and installed dialogs have no new qualification from these source tests.
 
+## Array authoring follow-up — 2026-10-20
+
+This checkpoint supersedes the older Array runtime results below. The composed
+candidate passes its normal installation audit, actual source-admission CLI and
+all 64 existing native controls. The 14 new JSON/replacement controls report
+13 passes and one custom-parser guard failure. The
+[allocation contract](ARCADE-NAMED-ARRAY-ALLOCATION.md) records the repair and
+qualification queue. These results establish no new visible editor acceptance.
+
+| Surface | Required connected user journey |
+| --- | --- |
+| Blocks | Create empty and JSON-backed named arrays, obtain aliases, push a Number and add text in both operand orders. Edit the actual names and inputs; an Arrays-only project must run without inserting unrelated Arcade blocks. |
+| Code | Regenerate the same blocks, edit the program and convert back. Preserve nested values, evaluated-once inputs and named getters when export reconstructs through JSON. Do not change the emitted factory to hide a runtime refusal. |
+| Save/reopen and errors | Reopen in a fresh session, run and restart. A factory can replace an expired binding; reading that binding must still reject the dependent script while unrelated scripts continue. Show the actual block/location and original error. |
+| MakeCode and graphics | Export current values and actual edited resources, compile/import the emitted files in the original target, and reimport into Lite. Native Array tests do not qualify sprite, tile, animation, sound or controller behavior. |
+
 ## Current Array and camera acceptance boundaries — 2026-10-19
 
 The local candidate explicitly adopts the number-input and operation-ownership

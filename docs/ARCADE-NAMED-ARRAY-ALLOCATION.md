@@ -57,8 +57,8 @@ counts or establish Blocks, Code, graphics, SDK or full-game compatibility.
 
 This branch proposes source `d7eb7e4c50275bd375b37b64d84ba60e59f17564` from
 [extensions PR #56](https://github.com/CrispStrobe/extensions/pull/56). The
-supplier's complete 26-group protocol module passes; the supplier PR remains a
-draft and its hosted checks and Lite native qualification are pending. The
+supplier's complete 26-group protocol module passes; that supplier PR is now
+merged after all seven enabled checks passed. The
 local pin, carrier, receipt, source admission, exact admission controls and MPL
 notice are prepared together to make that qualification reproducible. This is
 not adoption on main or acceptance of the shipped feature.
@@ -74,8 +74,8 @@ actual heap/late completion substitutions, original Error identity and inherited
 private-field access. The combined episode used21.37 CPU seconds and23.84 wall
 seconds within its existing limits. Independent saved-result checks pass.
 
-These are local component/runtime results. Supplier PR56 and the Lite adoption
-remain pending; browser authoring, named-factory Code/export/reimport and
+These are local component/runtime results. Lite adoption
+remains pending; browser authoring, named-factory Code/export/reimport and
 MakeCode SDK acceptance have not passed from these tests. Source review predicts
 that a named getter can make export/reimport reconstruct through create1D.
 Capture that actual route and support its distinct JSON allocation semantics;
@@ -115,7 +115,9 @@ separate semantics. Protocol success is not runtime or MakeCode acceptance.
 ## Combined JSON and replacement qualification proposal
 
 The current local proposal advances Arrays to
-`035ab22a4d946fe5b8e367013caf898cd763e5f4`. All40 supplier protocol tests pass
+`035ab22a4d946fe5b8e367013caf898cd763e5f4`, published for review in
+[extensions PR #57](https://github.com/CrispStrobe/extensions/pull/57).
+All40 supplier protocol tests pass
 with zero skips. The canonical targeted producer generated the matching carrier
 and per-file receipt; the source-admission contract and MPL notice move with
 that explicit pin. Other component pins and receipt rows remain unchanged.
@@ -123,9 +125,17 @@ that explicit pin. Other component pins and receipt rows remain unchanged.
 This combines named JSON allocation, Arrays-only coordinator initialization
 and prior-binding replacement. The earlier C10 whole64 run had61 passes and
 three failures; it does not qualify this candidate. Two fixture corrections and
-a real reload ownership repair are now composed. A fresh normal installation,
-all64 existing native controls, all14 new JSON/replacement controls and the
-public Code/export/reimport journeys remain required. The proposal is not an
+a real reload ownership repair are now composed. The fresh normal installation
+passes its independent saved-output audit. The actual shipped source-admission
+CLI and all64 existing native controls pass with zero failures or skips,
+including the previously failing reload. The combined episode used23.42 CPU
+seconds and25.44 wall seconds within the existing bounds. All14 new
+JSON/replacement controls ran next:13 pass and one fails because the new
+replacement guard preempts a custom JSON parser. Preserve that parser's actual
+one-call expectation and original fallback behavior. The narrow replacement
+notice must not borrow the stricter native allocation requirement; native birth
+eligibility must still refuse changed parsers. This repair and the public
+Code/export/reimport journeys remain required. The proposal is not an
 adoption on Lite main or a reduction of corpus partial counts.
 
 All three native input names (Number values, named JSON and replacement fault

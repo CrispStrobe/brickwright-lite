@@ -26,27 +26,35 @@ test or an unfinished prefix from these counts.
 
 Two authored Code journeys reproduced an Arrays-only project failure: the
 exception coordinator was initialized only when Arcade was present. A shared
-private coordinator is implemented as a candidate. A fresh normal installation
-passed its independent saved-output audit. The complete 64-test execution then
+private coordinator is implemented as a candidate. The earlier 64-test execution
 reported **61 passes and three failures**, with no skipped tests or resource
-limit failure. This is not a completed qualification.
+limit failure. Its original failures remain retained.
 
-Two failures are fixture defects: a literal assignment stores text rather than
-a Number, and a nested-call fixture uses an opcode outside the actual callable
-protocol. Correct these fixtures without changing the runtime rules. The third
-failure is real: after saving and loading an SB3, a named factory rejects the
+Two failures were fixture defects: a literal assignment stores text rather than
+a Number, and a nested-call fixture used an opcode outside the actual callable
+protocol. These fixtures now use explicit numeric computation and the actual
+callable opcode, preserving the runtime rules. The third
+failure was real: after saving and loading an SB3, a named factory rejected the
 expired Array binding it is about to replace. Both raw reload and restored
 project-metadata runs reproduce the same error while an unrelated script keeps
 running. Keep the original failing execution and its captures.
 
-The repair must distinguish discarding an old binding from reading it. A
-replacement notice must grant no authority to the discarded value. Preserve
-current-operation checks for reads, aliases and writes, and verify the actual
+The repair distinguishes discarding an old binding from reading it. A
+replacement notice grants no authority to the discarded value. The repair
+preserves current-operation checks for reads, aliases and writes, and verifies the actual
 new registry binding before granting native allocation eligibility. Do not clear
 the entire registry or admit stale values. Named JSON allocation and the
-coordinator are composed in a source candidate; their combined supplier adoption,
-fresh installation and complete runtime/Code/export/reload qualification remain
-required.
+coordinator are composed with that repair. All40 supplier protocol tests pass.
+The proposed supplier, carrier, receipt and notice agree, and the fresh normal
+installation passes its independent saved-output audit. The shipped admission
+CLI and all64 existing native tests now pass, with no skips, within the unchanged
+execution bounds. The complete new14 then reported13 passes and one failure:
+the new replacement guard rejects a changed `JSON.parse` before the existing
+custom-parser path can call it. Preserve its one-call expectation. Separate
+replacement currentness from native allocation eligibility, keeping all other
+intrinsic checks and the stricter birth checks. Rerun the complete affected
+modules and genuine public Code/export/reimport journeys before claiming this
+family complete. Hosted checks and Lite main adoption remain pending.
 
 Hosted delivery checks also exposed a stale fetch-policy census and missing
 owned temporary-directory setup for six catalogue fixture tests. The census
