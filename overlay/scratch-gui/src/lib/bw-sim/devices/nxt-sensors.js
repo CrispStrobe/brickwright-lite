@@ -111,6 +111,9 @@ export const US_DEFAULT_INTERVAL = 1;
 export const usFreshState = () => ({command: US_COMMAND.continuous, interval: US_DEFAULT_INTERVAL,
     zero: US_FACTORY.zero, scale: US_FACTORY.scale, divisor: US_FACTORY.divisor, held: null});
 
+/** Event capture's first byte: 1 while another ultrasonic sensor is heard (estimated reading). */
+export const usHearing = probe => (probe && Number(probe.usHeard) > 0 ? 1 : 0);
+
 /** The eight measurement bytes for a probe: the first echo, the other seven none (estimated: one echo per probe). */
 const usMeasure = probe => [usDistanceCm(probe), 255, 255, 255, 255, 255, 255, 255];
 
@@ -129,8 +132,7 @@ export const usWrite = (us, register, bytes, probe) => {
             }
             // Off keeps the last measurement; single shot takes one now (Appendix 7: a new measurement
             // only each time the command is sent).
-            const live = us.command === US_COMMAND.continuous || us.command === US_COMMAND.eventCapture;
-            if (value === US_COMMAND.off && live) us.held = usMeasure(probe);
+            if (value === US_COMMAND.off && us.command === US_COMMAND.continuous) us.held = usMeasure(probe);
             if (value === US_COMMAND.singleShot) us.held = usMeasure(probe);
             us.command = value;
         } else if (at === 0x40) us.interval = value;
@@ -172,8 +174,12 @@ export const usRegister = (address, probe, us = usFreshState()) => {
     if (address >= 0x42 && address <= 0x49) {
         // Continuous (and event capture: no other sensor in the scene) measure now; single shot and off
         // report what was held (nothing measured yet: 255, estimated).
-        const live = us.command === US_COMMAND.continuous || us.command === US_COMMAND.eventCapture;
-        const bytes = live ? usMeasure(probe) : (us.held || Array(8).fill(255));
+        // Event capture listens instead of pinging (Appendix 7: it "listens for other ultrasonic sensors"):
+        // the first byte reads 1 while another sensor's ping is heard (sensors.js usHeard), else 0, the
+        // other seven 255 (estimated: Appendix 7 names the mode, not its reading). Continuous measures
+        // now; single shot and off report what was held (nothing measured yet: 255, estimated).
+        if (us.command === US_COMMAND.eventCapture) return address === 0x42 ? usHearing(probe) : 255;
+        const bytes = us.command === US_COMMAND.continuous ? usMeasure(probe) : (us.held || Array(8).fill(255));
         return bytes[address - 0x42];
     }
     if (address === 0x50) return us.zero;

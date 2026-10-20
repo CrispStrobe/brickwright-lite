@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Brickwright contributors
 //
 // The NXT VM's system calls (SYSCALL id, cluster of arguments): the subset NXC programs for the Robot
-// Lab need — sound, the display (recorded as events), buttons (never pressed in the Lab), the
+// Lab need — sound, the display (recorded as events), the buttons (pressed from the Lab), the
 // low-speed (I²C) port for the ultrasonic sensor, Random, the start tick, the mailboxes, keep-alive.
 //
 // CLEAN ROOM. The numbering (0..47), each call's argument order and what it returns are FACTS read from
@@ -89,11 +89,14 @@ export const SYSCALLS = Object.freeze([
         vm._event('display', {what: 'screen-mode', mode: num(vm, mode)});
         vm._set(result, 0);
     }},
-    // The Lab has no buttons to press: every button reads released, never counted.
-    {name: 'ReadButton', run (vm, [result, index, pressed, count]) {
-        vm._set(pressed, 0);
-        vm._set(count, 0);
-        vm._set(result, num(vm, index) < 4 ? 0 : (ERR.ERR_INVALID_PORT >>> 0));
+    // ReadButton (result, index, pressed, count, reset): the button held and its releases, the count
+    // optionally cleared; an index past the four buttons is ERR_INVALID_PORT with FALSE and 0.
+    {name: 'ReadButton', run (vm, [result, index, pressed, count, reset], io) {
+        const i = num(vm, index);
+        const b = i < 4 && io && io.readButton ? io.readButton(i, reset !== undefined && num(vm, reset) !== 0) : null;
+        vm._set(pressed, b && b.pressed ? 1 : 0);
+        vm._set(count, b ? b.count : 0);
+        vm._set(result, i < 4 ? 0 : (ERR.ERR_INVALID_PORT >>> 0));
     }},
     {name: 'CommLSWrite', run (vm, [result, port, buffer, rxLength], io) {
         const p = num(vm, port);
