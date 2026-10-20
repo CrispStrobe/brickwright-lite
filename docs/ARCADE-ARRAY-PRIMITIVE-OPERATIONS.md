@@ -150,3 +150,58 @@ this birth keep their previous unqualified behavior. Other factories, range
 coercion/loop semantics, derived slice/concat, opaque elements and fresh decoder
 normalization remain separate work. The named-empty component result does not
 qualify these families, public roundtrips or whole games.
+
+
+## Named JSON factory candidate
+
+A separate source candidate covers current `create1D` and `create2D` calls with
+primitive string names and JSON. The host performs the one native parse and
+records the actual fresh Array tree. Only JSON primitive elements and nested
+Arrays can receive a primitive conversion proof at final publication. Object
+entries stay plain JSON values; this path does not decode tagged objects.
+
+The original parser position, name evaluation and catch remain: native syntax
+errors enter the existing `[]` or `[[]]` fallback, which stays unqualified.
+Nonstring inputs, custom parsers and non-Array roots retain legacy behavior.
+The names do not impose dimensionality. Trees beyond the bounded conversion
+profile remain legacy allocations. A failed ownership guard never becomes a
+parse fallback. Current calls, graph/lifetime checks, native descriptors and
+selected named-reference identity remain necessary through publication.
+
+This is unexecuted source, with separate supplier protocol and genuine native
+controls. Explicit supplier publication, canonical carrier adoption, a fresh
+normal installation and the authored Blocks → current Code → TypeScript →
+reimport journey remain pending. Zeros, range and other derived factories are
+outside this candidate; their behavior is not inferred from these controls.
+
+### Coordinator regression scope
+
+The Arrays-only coordinator controls require genuine callable frames and an
+explicit arithmetic Number marker; a numeric-looking Scratch literal retains
+its string value. The initial 64-test run had 61 passes and three failures.
+Reload ownership remains pending a separate complete-state diagnostic; these
+control corrections do not establish a runtime fix or qualify public reload.
+
+### Replacing an existing named binding
+
+A constructor overwrites its destination; its previous Array body is not an
+operand. The proposed replacement notice therefore carries the actual current
+String destination, with no prior body payload or primitive permission. Genuine
+reads of stale bodies remain refused. A native empty or eligible JSON birth is
+published only if the current own-data named binding still identifies that same
+body after callbacks, immediately before its final native validation/enrollment.
+
+Object/nonstring names and calls without a successful operation ticket keep the
+old coercion and checking path. Older pure hosts may decline the optional notice.
+Custom-parser and other generic factory results retain their previous unqualified
+publication behavior and gain no native primitive-birth proof. Atomic generic
+factory enrollment remains separate work. Source controls cover old accessor
+bodies, genuine Start/SB3 reload, stale true reads and callback registry replacement;
+actual affected execution and explicit supplier adoption remain pending.
+
+The host also denies replacement-role declarations outside the actual five
+named-binding constructors. This is a necessary permission/schema check; it
+never certifies a new allocation or primitive eligibility. Registered alternate
+sources cannot turn read, write or alias calls into binding discard. The focused
+negative control uses real registered source variants and the actual adapter/VM;
+those fault variants are admission tests, not candidate feature executions.

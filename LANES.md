@@ -1,3 +1,18 @@
+## Arrays-only shared failure coordinator — 2026-10-20
+
+SOURCE candidate in the existing Arcade/Array exception lane. Native Arrays
+bindings initialize a runtime failure coordinator without requiring an Arcade
+block. Arcade claims a separate exclusive facet of the same coordinator; old
+facets cannot acquire a replacement claim. Project cancellation and runtime
+disposal retain failure tombstones and current-operation checks. No supplier,
+pin, fallback conversion or successful-value authority changes.
+
+New controls cover real authored Arrays-only execution, both actual extension
+load orders, duplicate Arcade rejection, retired facet arguments, shared listener
+ownership and fresh SB3 reload. Source review, fresh normal installation, all
+existing native controls plus these cases, and the public two-case roundtrip
+remain required. No runtime or public feature qualification is claimed here.
+
 ## Robot Lab rubber bands — 2026-10-20
 
 CLAIMED and folded into the flexible-parts PR #1116
@@ -7936,3 +7951,37 @@ Existing local/caller-frame and all-writer controls stay intact, with explicit
 local-alias and unrelated-global interactions. A source-policy expectation is
 corrected for already-supported Array-only handlers and pauses. Actual affected
 module qualification remains required; no corpus/runtime/UI claim is inferred.
+
+
+### Named JSON Array primitive birthplace candidate — 2026-10-20
+
+SOURCE ONLY — existing coordinated Array runtime lane. Own the operation host,
+a narrow supplier `create1D`/`create2D` parse-outcome request and focused tests.
+Require actual host native parse identities and current-call publication proof;
+no method-name or supplied-body certificate. Preserve original key/RHS/catch,
+nonstring/custom-parser/non-Array legacy behavior and unqualified syntax-error
+fallback. Existing native controls remain unchanged. Supplier publication,
+canonical adoption, fresh installed runtime and public roundtrip acceptance are
+pending. No zeros/range or generic reference conversion expansion.
+
+### Arrays-only coordinator control reconciliation — 2026-10-20
+
+SOURCE CANDIDATE in the existing Array ownership lane. Preserve the complete
+57-test prefix and all seven coordinator titles. Use an explicit numeric
+operation for the authored Number marker, and use the admitted callable opcode
+for both physical nested cancellation frames. The original 61-pass/3-failure
+run is retained. SB3 reload ownership remains unresolved; compare complete
+actual reload observations before a product change or qualification claim.
+
+### Named Array prior-binding replacement — 2026-10-20
+
+SOURCE CANDIDATE within the existing Array ownership lane. A current declared
+bind operation with an original primitive String name can acknowledge discard
+of its prior binding without traversing or granting that discarded body. Keep
+all actual reads, aliases, writes and escapes checked. New native empty/JSON
+publication must still join the current own-data registry binding after runtime
+callbacks and before callback-free birth enrollment. Preserve uncertain names,
+no-ticket calls and older pure-host fallback. Generic/custom publication keeps
+its old unqualified semantics; this is not a transactional factory guarantee.
+Supplier publication/pin adoption, fresh normal installation and complete
+affected native controls are mandatory before a qualified runtime claim.

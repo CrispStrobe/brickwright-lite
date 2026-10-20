@@ -448,3 +448,24 @@ loaders only after checking both importing entry methods delegate to it. Keep
 `test/makecode-import-request-fences.test.mjs`, the modal answer/cancel controls
 and the deliberate revert-to-native-prompt failures as qualification gates.
 These checks establish source and DOM wiring, not a rendered Arcade game.
+
+
+### Arrays-only coordinator initialization candidate
+
+An authored project containing only Arrays blocks loads the Arrays extension,
+without constructing Arcade. The existing native fixtures created an Arcade
+exception owner explicitly, so their successes did not cover this startup path.
+The first public two-case journey reached the original programs and both refused
+the Array primitive loan before export or reimport.
+
+The proposed host correction separates the runtime failure coordinator from the
+exclusive Arcade capability claim. Admitted Arrays bindings retain the core;
+Arcade can claim it later in either load order. Releasing an Arcade facet cancels
+its generation and permanently retires its capabilities. Runtime disposal closes
+the core, while existing private failure leases and lineage guards remain required.
+No dummy Arcade block, supplier change or fallback value path is introduced.
+
+This is a source candidate. Fresh installation, the complete existing native
+suite and the new lifecycle cases, then the actual public authoring roundtrip
+are still pending. It does not qualify browser rendering, saved-project alias
+normalization, other Array factories, full games or corpus counts.
