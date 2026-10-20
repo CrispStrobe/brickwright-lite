@@ -1,5 +1,15 @@
 # Arcade integration repairs and qualification order
 
+## Registered-carrier CI fixture repair — 2026-10-20
+
+All13 tests in the complete notice-drift and targeted-vendoring modules now pass
+locally, with zero skips. The Arrays notice fixture uses the current registered
+carrier and explicitly rejects the legacy unregistered form. The isolated vendor
+fixture copies the carrier helper imported by the actual vendoring script.
+Original immutable-fetch, pin-receipt, unrelated-bundle and licence assertions
+remain intact. No product code, pins or notice declarations changed. Hosted
+qualification and the other recorded CI failure families remain pending.
+
 Updated 2026-10-16. This records the development integration candidate. Its
 source is being assembled for the next hosted qualification campaign.
 
