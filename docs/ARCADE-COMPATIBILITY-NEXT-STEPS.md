@@ -114,6 +114,22 @@ The exact member list, original URLs and local recovery paths are private.
 The public contracts in this document and the GUI capability ledger describe
 implementation and acceptance without publishing that corpus inventory.
 
+One authentic resource-bearing tutorial fragment has now completed all eight
+diagnostic stages on the preceding candidate: dependency preparation, public
+import, Creator/VM execution, Code regeneration and execution, export, exact-file
+reimport and execution. Every provided unsupported/warning channel and all three
+runtime error arrays were empty. All five ordered SVG payloads survived exactly.
+The exporter inlined the artwork and retained the dependency revision, while
+changing gallery names, resource packaging and editor metadata. The three
+historical raw-only missing-art diagnostics were absent with the supplied inputs.
+
+This used the existing preparation API with the exact retained legacy snapshot
+and the public synchronous importer. It does not qualify modern asynchronous
+dependency identity, edited artwork, live animation/pixels, the original SDK or
+the complete game. Test those boundaries next; do not treat serialized handle
+text as an observed live-value defect or subtract this diagnostic from the raw
+census.
+
 ### Ordered next work
 
 1. Complete the fresh named-empty Array candidate qualification described in

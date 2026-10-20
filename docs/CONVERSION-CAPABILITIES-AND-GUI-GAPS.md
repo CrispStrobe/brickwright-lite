@@ -5258,6 +5258,15 @@ qualification queue. These results establish no new visible editor acceptance.
 | Save/reopen and errors | Reopen in a fresh session, run and restart. A factory can replace an expired binding; reading that binding must still reject the dependent script while unrelated scripts continue. Show the actual block/location and original error. |
 | MakeCode and graphics | Export current values and actual edited resources, compile/import the emitted files in the original target, and reimport into Lite. Native Array tests do not qualify sprite, tile, animation, sound or controller behavior. |
 
+An authentic supplied-input tutorial diagnostic preserves all five ordered SVG
+payloads through export/reimport with empty provided diagnostic and runtime
+error channels. Its inline export changes gallery names, animation-resource
+grouping, editor metadata and file layout. Track these as explicit editor
+acceptance work: retain readable resource identities, edit the frames in the
+graphics editor, verify live animation and current pixels, save/reopen, and
+export the edited assets. These captures show no artwork loss and do not qualify
+that visible journey or the modern asynchronous dependency resolver.
+
 ## Current Array and camera acceptance boundaries — 2026-10-19
 
 The local candidate explicitly adopts the number-input and operation-ownership
