@@ -12,7 +12,7 @@ import {selectClassCallableSourceProofForTranslation} from './class-callable-sou
 import {withCompilerOwnedClassResultFlowProof} from './class-callable-result-flow-proof.js';
 import {numberLiteralCode,containsNonFiniteNumberLiteral} from './source-number-literal.js';
 import {lowerMathIdivValues} from './math-idiv-source.js';
-import {lowerConsoleInspectValuesForTranslation} from './lower-console-inspect-values.js';
+import {lowerConsoleInspectValues} from './lower-console-inspect-values.js';
 import {lowerSdkFontValues} from './lower-sdk-font-values.js';
 import {callableSourceGate} from './callable-source-gate.js';
 import {lowerCallableValues} from './lower-callable-values.js';
@@ -5152,7 +5152,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     projectInputDiagnostics.push(...throwSource.unsupported);
     if(throwSource.present&&opts.throwPrototype!==true)projectInputDiagnostics.push('Throw source requires its qualified canonical protocol; prototype admission is not enabled');
     const throwProgram=throwSource.program;
-    const inspectionValues=lowerConsoleInspectValuesForTranslation(throwProgram);
+    const inspectionValues=lowerConsoleInspectValues(throwProgram);
     projectInputDiagnostics.push(...inspectionValues.unsupported);
     const fontValues = lowerSdkFontValues(inspectionValues.program);
     projectInputDiagnostics.push(...fontValues.unsupported);

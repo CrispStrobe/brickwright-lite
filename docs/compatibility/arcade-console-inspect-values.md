@@ -139,30 +139,3 @@ actual diagnostic. Image, Font and Array declarations receive no primitive grant
 ordinary Scratch local defaults and unresolved local reads are unchanged.
 
 Arrays and reference values remain outside this initial inspection slice.
-
-
-### Compiler preparation with no inspection calls
-
-A source candidate adds a translator-only preparation entry for the actual
-parser/lowering call chain. When the unchanged lexical inspection scan finds
-no candidate calls and the private lowering own-data/currentness observation remains
-valid, it avoids constructing a producer graph whose only consumed declaration
-set would be empty. The complete AST clone and reserved internal-name
-diagnostics still run. Positive calls, accessor/unknown/Throw shapes or changed
-intrinsics retain eager analysis. The existing public lowering API remains
-eager, including its callback observations.
-
-The optional guard is an own-data/currentness check, not proof that an arbitrary
-host object is not a Proxy. It grants no value/type authority, is not a reusable
-cache and is scoped to the compiler-owned AST entry. This candidate is pending
-focused and full current qualification; no speedup, corpus promotion, runtime
-or browser result is claimed.
-
-The private lowering-input observation also retains the actual root
-`bwProcedureConstraintSource` singleton prefix envelope, including its original
-frozen form and the complete clone made by earlier lowering. The function is
-opaque identity only and is never invoked by this observation. Other function
-leaves, envelope aliases and malformed metadata keep the eager route. Captured
-iteration and primitive-conversion surfaces are checked before omission; the
-original public lowering entry remains eager. Focused controls include actual
-procedure metadata and Throw preparation, and changed iterator/Symbol fallback.
