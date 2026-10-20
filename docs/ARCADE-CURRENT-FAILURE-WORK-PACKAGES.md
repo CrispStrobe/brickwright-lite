@@ -65,12 +65,27 @@ identity, aliases, current-operation ownership, primitive operand evaluation
 order, exceptions and all export producer proofs. A dedicated MakeCode operator
 route is a candidate design, not yet implemented or qualified.
 
-The isolated typed native-helper generator and complete-body recognizer now
-pass their two complete pure test groups, including altered bodies and binding
-escapes. This qualifies syntax recognition only. Operand-domain authority,
-original PXT execution, imported-source operators and native authored
-roundtrips still require their own complete acceptance. Do not infer those
-properties from a helper name or from these parser tests.
+The isolated typed native-helper generator, complete-body recognizer and
+flat-operand domain model pass all six current pure controls. The two earlier
+failed candidates remain diagnostic failures: the first mixed helper identity
+with ambient effects, and the second confused formal parameter references
+with calls to their containing helper. The correction retains both independent
+closure checks and every original assertion.
+
+The full candidate remains blocked by an authentic exported named-Array getter.
+Its canonical parse helper returns a primitive for the actual numeric writer,
+but a path-insensitive model includes the unreachable JSON result and loses
+flatness. Reuse the existing exact canonical helper and complete binding/call
+proof. A private domain model may account for the proved non-String primitive
+input domain; actual parser execution, coercion and errors must stay intact.
+JSON text can produce aggregates and cannot gain flat-Array authority.
+Keep global parser bindings, all alias writers and indexed property effects
+closed. Add the retained getter export as a positive control and an aggregate
+JSON-text writer as a negative before fresh runtime qualification.
+
+These component tests do not qualify original PXT execution, the complete
+import/export composition or native authored roundtrips. Do not infer those
+properties from a helper name or from parser tests.
 
 Acceptance includes the complete original coercion module, its alias/cycle/
 undefined/numeric/comparison cases, native Array regression groups and authored
