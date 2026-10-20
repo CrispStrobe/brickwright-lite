@@ -10,7 +10,10 @@
  *     SETOUTPUTSTATE with a tacho limit, then the robot drives until the touch sensor's bumper
  *     meets the wall, and stops there.
  *   NXT motor reporters (legonxt): TachoLimit, TachoCount, BlockTachoCount and RotationCount read from
- *     their GETOUTPUTSTATE fields after three moves and a position reset.
+ *     their GETOUTPUTSTATE fields after three moves and a position reset. Direct commands never reset
+ *     TachoCount (SETOUTPUTSTATE raises no RESET_COUNT: docs/NXT-PROTOCOL-FACTS.md "Outputs"), so the
+ *     test resets the block count once on the brick, between the second and third move, to tell
+ *     TachoCount and BlockTachoCount apart.
  *   EV3 wall stopper (the stock Scratch `ev3` extension): drives at the wall and stops before it
  *     on the ultrasonic sensor's distance.
  *   EV3 wall stopper (DEVICE EV3, the shipped example → ev3comprehensive): the same scenario through
@@ -143,10 +146,19 @@ if (!existsSync(missing)) {
         const project = projectOfBlocks({extensions: ['legonxt'], blocks: b.blocks});
         project.targets[1].variables = variables;
         let state = null;
+        let blockReset = false;
+        let rotationAtReset = null;
         const {vm, connectError} = await runOnBtHub({project}, {
             modelText: text(nxt.file), mat: nxt.mat, profile: 'nxt', extensionId: 'legonxt', timeLimitMs: 8000,
             // The brick's counters when the script has ended (the reads are its last blocks).
             stopWhen: (point, all, hub) => {
+                // Once the 180° move has ended: RESETMOTORPOSITION relative (BlockTachoCount only).
+                const now = hub.getOutputState(1);
+                if (!blockReset && now.tachoLimit === 180 && now.runState === 0) {
+                    hub.resetMotorPosition(1, true);
+                    blockReset = true;
+                    rotationAtReset = now.rotationCount;
+                }
                 if (point.t < 1000 || point.running) return false;
                 state = hub.getOutputState(1);
                 return true;
@@ -157,10 +169,15 @@ if (!existsSync(missing)) {
         const sprite = vm.runtime.targets.find(target => !target.isStage);
         const read = Object.fromEntries(Object.keys(READS).map(name => [name, Number(sprite.variables[`var-${name}`].value)]));
         t.diagnostic(`reporters ${JSON.stringify(read)}; brick ${JSON.stringify(state)}`);
-        // The brick's own counters first: what the moves made them.
-        assert.ok(Math.abs(state.tachoCount - 90) <= 3, `TachoCount ${state.tachoCount}`);
+        // The brick's own counters first: what the moves made them. TachoCount counts all three moves
+        // (no direct command resets it), RotationCount the two after the script's reset, BlockTachoCount
+        // what the shaft turned after the brick-side relative reset (about the last 90° move).
+        assert.ok(blockReset, 'the block count was reset after the 180° move');
+        assert.ok(Math.abs(state.tachoCount - 630) <= 9, `TachoCount ${state.tachoCount}`);
         assert.ok(Math.abs(state.rotationCount - 270) <= 6, `RotationCount ${state.rotationCount}`);
-        assert.ok(Math.abs(state.blockTachoCount - 630) <= 9, `BlockTachoCount ${state.blockTachoCount}`);
+        assert.ok(Math.abs(state.blockTachoCount - (state.rotationCount - rotationAtReset)) <= 1,
+            `BlockTachoCount ${state.blockTachoCount} (RotationCount ${state.rotationCount}, ${rotationAtReset} at the reset)`);
+        assert.ok(Math.abs(state.blockTachoCount - 90) <= 9, `BlockTachoCount ${state.blockTachoCount}`);
         // Then each reporter against the field it names (the motor stands still once the moves end).
         assert.equal(read.limit, 90, 'TachoLimit (9–12)');
         assert.ok(Math.abs(read.tacho - state.tachoCount) <= 1, `TachoCount (13–16): ${read.tacho}`);

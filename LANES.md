@@ -1,3 +1,11 @@
+## NXT motor reporters test: TachoCount per the firmware — 2026-10-20
+
+CLAIMED and done in one PR to main — Claude (main-green fix, owner request). The #1113 test
+expected direct-command SETOUTPUTSTATE to restart TachoCount; the firmware never raises
+RESET_COUNT from a direct command (docs/NXT-PROTOCOL-FACTS.md "Outputs"), which the Virtual NXT
+models. Test-only: test/bw-sim-bt-hubs-program.test.mjs expects TachoCount over all moves and
+resets BlockTachoCount once on the brick so each field stays distinct. No Virtual NXT change.
+
 ## Robot Lab hinge tool — 2026-10-20
 
 CLAIMED and done in one PR to main — Claude (Robot Lab lane, owner request "yes do all that":
