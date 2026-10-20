@@ -66,7 +66,7 @@ test('source Number result signatures require a genuine opcode and fixed support
 });
 
 test('fixed bitwise result signatures describe normal return without granting operand authority',async()=>{
-    const {analyseSourceValueProducers}=await import('../overlay/scratch-gui/src/lib/bw-makecode/source-value-producers.js');
+    const {analyseSourceValueProducers,validateProcedureConstraintSource}=await import('../overlay/scratch-gui/src/lib/bw-makecode/source-value-producers.js');
     for(const op of ['&','|','^','<<','>>','>>>']){
         const ast=parse(`let a:any=[5];let alias=a;let answer=alias ${op} true`),value=ast.body.at(-1).decls[0].init;
         const producers=analyseSourceValueProducers(ast);
@@ -77,5 +77,13 @@ test('fixed bitwise result signatures describe normal return without granting op
     for(const source of ['let a:any={};a=[5];let answer=a&1','let a:any=foreign();a=[];let answer=~a']){
         const program=parse(source),value=program.body.at(-1).decls[0].init,types=analyseSourceValueProducers(program,{arrayValues:true}).typesAt(value);
         assert.deepEqual([...types],['Number'],source+' has a Number result signature, not permission to execute its operands');
+    }
+    for(const op of ['&','|','^','<<','>>','>>>'])for(const name of ['ordinary','renamed']){
+        const program=parse(`function ${name}(left:any,right:any):number{return left ${op} right};function receive(value:number){let observed=value};let rows:any=[5];receive(${name}(rows,1));`);
+        assert.deepEqual(validateProcedureConstraintSource(program),[],op+' actual complete body, not helper spelling');
+    }
+    for(const body of ['return left','return foreign()','return left+right']){
+        const program=parse(`function ordinary(left:any,right:any):number{${body}};function receive(value:number){let observed=value};let rows:any=[5];receive(ordinary(rows,1));`);
+        assert.ok(validateProcedureConstraintSource(program).some(value=>value.includes('receive.value requires Number from actual producers')),body+' annotation alone is no result proof');
     }
 });

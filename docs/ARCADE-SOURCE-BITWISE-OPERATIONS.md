@@ -37,3 +37,18 @@ The new export operand-domain gate applies only to bitwise selectors and unary
 complement. The six pre-existing source arithmetic selectors retain their
 previous export admission. Their physical edited-operand parity needs a separate
 review; this candidate does not claim to close that inherited boundary.
+
+A follow-up keeps two producer boundaries explicit. Only bitwise words consult
+the existing actual source-value writer analysis for no-initializer scalar
+Undefined values; the general image/annotation classifier is unchanged.
+Unknown, object and Sprite writers still refuse. The actual Array constructor has
+a normal-return Array-or-String union (including its legacy error fallback).
+Only the source bitwise operand domain accepts both alternatives independently
+of Any aliases in the export annotation graph. This fact grants no Array-only,
+input or backing-body access; complete constructor emission validation remains.
+
+Ordinary Number-formal validation analyzes a fixed bitwise helper's actual
+normal-return Number body. The arithmetic helper specialization retains its
+Number-input requirement; helper names and result annotations supply no proof.
+Unknown operands can still be diagnosed by the importer even when an operation
+has a Number result on normal return. Calls and their effects are not erased.

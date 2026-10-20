@@ -1112,10 +1112,12 @@ function primitiveConstraintGraphOptions(program,ordinaryPrimitiveSdkNumbers,sce
  // Structural binary helpers (`function h(a,b){return a OP b}` at the top
  // level, declared once and never written) are specialized per call site, as
  // the callable source gate does: each call is Number only from Number operands.
+ // Fixed bitwise helpers use their actual body normal-return Number fact instead;
+ // specializing them by numeric operands would incorrectly reject Array input.
  const helperNames=new Map();
  for(const fn of program.body||[]){
   const value=fn?.type==='FunctionDeclaration'&&fn.params?.length===2&&new Set(fn.params).size===2&&fn.body?.length===1&&fn.body[0].type==='Return'&&fn.body[0].value;
-  if(value?.type==='Binary'&&['+','-','*','/','%','&','|','^','<<','>>','>>>'].includes(value.op)&&value.left?.type==='Identifier'&&value.right?.type==='Identifier'&&value.left.name===fn.params[0]&&value.right.name===fn.params[1])
+  if(value?.type==='Binary'&&['+','-','*','/','%'].includes(value.op)&&value.left?.type==='Identifier'&&value.right?.type==='Identifier'&&value.left.name===fn.params[0]&&value.right.name===fn.params[1])
    helperNames.set(fn.name,helperNames.has(fn.name)?null:fn);
  }
  const written=new Set();const scanWrites=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(scanWrites);return;}
