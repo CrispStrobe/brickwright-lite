@@ -26,6 +26,7 @@ import path from 'node:path';
 import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import {REPO, INTEGRATED, importGuiDependency} from './helpers/bw-integrated.mjs';
+import {registeredArraysSource} from '../scripts/lib/arrays-carrier.mjs';
 
 const VM_SRC = path.join(INTEGRATED, 'node_modules', 'scratch-vm', 'src');
 const OVERLAY_VM = path.join(REPO, 'overlay', 'scratch-vm', 'src');
@@ -238,9 +239,9 @@ test('arrays: one heap per runtime, by identity, cleared with the run', () => {
 const ARRAYS_ENTRY = path.join(REPO, 'overlay', 'scratch-vm', 'src', 'extensions', 'crispstrobe', 'arrays', 'index.js');
 const arraysSource = () => {
     const bundled = readFileSync(ARRAYS_ENTRY, 'utf8');
-    const literal = bundled.match(/makeExt\(("(?:[^"\\]|\\.)*")\)/);
-    assert.ok(literal, 'arrays/index.js is no longer makeExt("<source>") — read its source another way');
-    return JSON.parse(literal[1]);
+    const source = registeredArraysSource(bundled);
+    assert.equal(typeof source, 'string', 'Arrays carrier must have the exact registered source contract');
+    return source;
 };
 const builtinValues = () => {
     const source = arraysSource();

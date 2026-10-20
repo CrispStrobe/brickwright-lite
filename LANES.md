@@ -7912,3 +7912,15 @@ Conversion context fixtures keep their missing-root refusal and unique child
 creation/finally cleanup; no host default fallback or product change. Focused
 source-policy controls and the complete affected input-reader tests must pass
 before relying on the workflow fix. No SDK/browser/full-suite result inferred.
+
+
+### Canonical Arrays source readers in existing unit controls — 2026-10-20
+
+SOURCE CANDIDATE — coordinated Arcade CI lane. Replace the obsolete one-argument
+carrier regex and positional bundle slicing in the existing value and string
+controls with the shared, strict, non-evaluating registered carrier decoder.
+Preserve every parity operation, matrix, runtime construction and assertion.
+This extraction change does not grant an adapter registration token, establish
+an actual primitive operation, or repair stale inert/fake-runtime fixtures.
+Affected module execution and any separate runtime fixture migration remain
+required; no supplier adoption, product, SDK or runtime result is inferred.
