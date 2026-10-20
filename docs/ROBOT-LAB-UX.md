@@ -373,6 +373,8 @@ The starting values from §6 were kept: every gate reading lies well inside them
   the core: welded to the frame, they would drag), and each sprocket it wraps gets a wheel collider
   of the tread's outer radius (r + 14 LDU) with a tyre's grip — architecture M6's approximation. A
   frame on two such sprockets drives straight on at the tread's outer speed (test, ±20 %).
+  The classic 2.5-wide tread (3873) round its sprocket (32007) is not in yet: LDraw draws 32007's
+  bore as a pin hole, so it could only be an idler.
 - Warnings: a chain round fewer than two gears; gears whose axles sit in different parts; a gear
   fixed to the frame locks the chain.
 - Tests: `test/bw-sim-chain.test.mjs` (the path, the compile, the real core: 8T→24T turns +1/3,
