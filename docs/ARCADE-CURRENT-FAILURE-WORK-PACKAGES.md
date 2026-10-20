@@ -49,8 +49,11 @@ classification. Do not implement the deferred regex shortcut on this evidence.
 
 ## Next complete-input checks and source bitwise scope — 2026-10-20
 
-After the current vendor and hosted repairs, inspect these actual complete
-projects in order. Historical diagnostics alone do not establish a current bug.
+After the current vendor and hosted repairs, prioritize the concrete Sprite
+callback-field gap below. These additional workflow candidates need their
+existing evidence checked before selecting another execution; historical
+diagnostics alone do not establish a current bug. The named-song slice is
+unselected pending that review.
 
 1. **Freethrow remaining workflow boundaries.** Its complete dependency-aware
    import/Creator/Code/save/export and bounded native shot/restart already have
@@ -91,6 +94,44 @@ insufficient. New runtime bytes require fresh normal-installation qualification.
 These scopes do not promote historical partials or replace the still-missing
 complete current corpus report. Retained third-party source and raw diagnostic
 records remain private unless redistribution rights are established.
+
+## SDK Sprite fields and stored class callbacks — scoped next implementation
+
+The correctly prepared Holiday tutorial compiles with its original SDK, while
+its retained source conversion preserves all 58 helper bodies and 150 calls but
+reports 143 unsupported diagnostics and two Creator unparsed entries. A stale
+input with duplicated dependency declarations failed originally; do not use that
+failure to invalidate the corrected complete input or treat all diagnostics as
+independent missing APIs.
+
+One current source boundary is concrete: `class-callable-source-flow.js` admits
+ordinary classes and the qualified SDK Image domain, but does not admit a genuine
+SDK Sprite parameter-property together with a stored `(Sprite) => void` callback.
+A same-named local class or a type annotation cannot grant this domain.
+
+Claim a separate narrow implementation envelope before changing it:
+
+- Add actual SDK Sprite producer, assignment and receiver proofs through
+  constructor fields, owned callback capture, invocation and normal returns.
+  Preserve all-writer, shadowing, escape, callback arity and single-evaluation
+  checks; distinguish real Sprite values from strings, null and foreign objects.
+- Carry the proof through class plans, lowering, runtime argument/field storage,
+  export types/provider and complete generated-helper recognition. Reuse existing
+  genuine Sprite identity and lifecycle boundaries. Stop, destruction, stale and
+  foreign references must retain their established behavior and failures.
+- Test an independently authored class with a Sprite field, callback field and
+  numeric interval. Include constructor aliases, callback arguments/order,
+  reentrancy, disposal and failed construction. Run complete affected class-flow,
+  plan/lowering, native runtime and original/export roundtrip modules.
+- Qualify public import, real Blocks/Code editing of the constructor/callback,
+  controller delivery, graphics, same/fresh SB3 and current exported-file
+  reimport. New runtime bytes need fresh normal-installation qualification and
+  independent saved-result review. Keep original assertions and resource bounds.
+
+Do not broaden inheritance, SceneData, unknown objects or public experimental
+options to bypass this missing domain proof. Preserve the historical originals;
+this source diagnosis establishes neither a completed game nor a reduced partial
+count. The separately corrected public SDK Image option remains its own boundary.
 
 ## Current original-PXT Array coercion work package
 
