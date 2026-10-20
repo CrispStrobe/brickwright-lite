@@ -7250,3 +7250,13 @@ and migrate stale compiler-only and fallback assertions against actual public
 validation. Preserve the original 42-test composition failures and all existing
 shadow/write/index/alias/wrong-producer controls. No current corpus, GUI, SDK or
 runtime qualification is inferred; unchanged resource and hosted gates apply.
+
+
+## Named empty Array text semantics — 2026-10-20
+
+ACTIVE within the merged Arcade Array ownership/compatibility lane. Qualify
+connected `createEmpty` -> `namedReference` -> text addition in the actual VM.
+A dedicated host-owned empty allocation witness must preserve current calls,
+registration, original errors, foreign/stale rejection and publication fences.
+The initial test intentionally records the existing unsupported boundary; it is
+not a qualified implementation. Other factory families remain separate.
