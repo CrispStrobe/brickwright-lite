@@ -120,3 +120,7 @@ On the 4x4 Off-Roader (42099), 56 unknown parts and 51 loose groups were down to
 42099 after these fixes: 0 unknown and 18 small loose groups (from 51). Over 1 s with every motor at 60 %, nothing is
 flung, all three motors turn, and it runs at 13 ms per 5 ms step (headless, CPU). Our own files
 (`0 Author: Brickwright`) get neither 3 nor 4: there a loose or overlapping part is the builder's to fix.
+5. **Obsolete pieces.** `~… (Obsolete)` files are real pieces a newer one replaced (minifig hips 3815, the 1x2x5
+   brick 2454, the 4.5 V Technic motor 6216m), so they derive like any part. Other `~` files are pieces of a part
+   (a cable's or hose's segment, a shock absorber's rod) and stay drawings. Across the 148 models, the
+   most-refused files were 3660 (inverted slope, 22 models), the minifig hips and legs (15) and 61409 (12).

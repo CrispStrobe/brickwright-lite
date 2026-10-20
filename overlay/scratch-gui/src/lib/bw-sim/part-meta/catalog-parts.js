@@ -105,7 +105,10 @@ export const catalogPartMeta = (part, read, check, depth = 0) => {
     const text = read(`parts/${part.toLowerCase()}`);
     if (text === undefined) return {meta: null, decoration: false, why: [`${part}: not in the library`], desc: ''};
     const desc = (text.split(/\r?\n/, 1)[0] || '').replace(/^0\s*/, '').replace(/\s+/g, ' ').trim();
-    if (/^~|^=|^_/.test(desc)) {
+    // '~… (Obsolete)' is a real piece with all its geometry, marked only because a newer one replaced it (minifig hips
+    // 3815, the 4.5 V motor 6216m): it derives like any part. Other '~' files are pieces of a part (a cable's segment,
+    // a shock absorber's rod) and stay drawings.
+    if (/^~|^=|^_/.test(desc) && !/^~.*\(Obsolete\)$/.test(desc)) {
         const target = depth < 3 && /^~Moved to |^=/.test(desc) ? aliasTarget(text) : null;
         if (!target) return {meta: null, decoration: false, why: [`${part}: '${desc}' is an alias or obsolete file`], desc};
         const r = catalogPartMeta(target, read, check, depth + 1);

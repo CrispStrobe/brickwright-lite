@@ -1366,7 +1366,8 @@ export const derivePart = (part, read) => {
     const parsed = parseLDraw(text);
     const desc = parsed.header.description.replace(/\s+/g, ' ').trim();
     const ldrawCategory = (/^0 !CATEGORY (.+)$/m.exec(text) || [])[1]?.trim() || '';
-    if (/^~|^=|^_/.test(desc)) return {meta: null, problems: [`${part}: '${desc}' is an alias or obsolete file`], notes: []};
+    // '~… (Obsolete)': a real piece a newer one replaced (catalog-parts.js says more); other '~' files are pieces of a part.
+    if (/^~|^=|^_/.test(desc) && !/^~.*\(Obsolete\)$/.test(desc)) return {meta: null, problems: [`${part}: '${desc}' is an alias or obsolete file`], notes: []};
     const flat = flattenPart(part, read);
     if (flat.missing.length) problems.push(`missing subfiles ${flat.missing.join(', ')}`);
     const category = categoryOf(desc, ldrawCategory);
