@@ -4,7 +4,7 @@ import {VM,clearStrayTimers} from './helpers/bw-vm.mjs';
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
 const Arcade=loadExtensionClass('arcade');
 const ownedVMs=[];
-afterEach(()=>{try{for(const vm of ownedVMs.splice(0)){try{vm.stopAll();}finally{vm.quit();}}}finally{clearStrayTimers();}});
+afterEach(()=>{const failures=[];for(const vm of ownedVMs.splice(0)){for(const action of ['stopAll','quit']){try{vm[action]();}catch(error){failures.push(error);}}}clearStrayTimers();assert.deepEqual(failures,[],'all owned VM cleanup completes');});
 function runtimeFixture(){const vm=new VM();ownedVMs.push(vm);assert.ok(Array.isArray(vm.runtime.targets));return vm.runtime;}
 function setup(){
  const runtime=runtimeFixture(),skins=new Map(),updates=[];let next=0;

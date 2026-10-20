@@ -5,7 +5,7 @@ import {loadExtensionClass} from './helpers/bw-extensions.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 const Arcade=loadExtensionClass('arcade');
 const ownedVMs=[];
-afterEach(()=>{try{for(const vm of ownedVMs.splice(0)){try{vm.stopAll();}finally{vm.quit();}}}finally{clearStrayTimers();}});
+afterEach(()=>{const failures=[];for(const vm of ownedVMs.splice(0)){for(const action of ['stopAll','quit']){try{vm[action]();}catch(error){failures.push(error);}}}clearStrayTimers();assert.deepEqual(failures,[],'all owned VM cleanup completes');});
 function runtimeFixture(){const vm=new VM();ownedVMs.push(vm);assert.ok(Array.isArray(vm.runtime.targets));return vm.runtime;}
 function game(){return new Arcade(runtimeFixture());}
 function actor(a){const image=a.createImage({WIDTH:1,HEIGHT:1});a.drawImage({IMAGE:image,OP:'fillRect',X:0,Y:0,W:1,H:1,COLOR:2});const id=a.createImageSprite({IMAGE:image,TEMPLATE:'',KIND:'Player'});a.setSpritePosition({ID:id,X:80,Y:60});return id;}
