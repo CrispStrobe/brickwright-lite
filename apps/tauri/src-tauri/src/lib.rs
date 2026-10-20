@@ -4,6 +4,9 @@
 mod arena_inputs;
 mod assetserver;
 mod downloads;
+// Passive unless explicitly requested in a release iOS simulator process.
+#[allow(dead_code)]
+mod embedded_asset_audit;
 mod fileio;
 #[cfg(desktop)]
 mod native_broker;
@@ -279,6 +282,10 @@ pub fn run_with_context(context: tauri::Context<tauri::Wry>) {
         // deliver these as an Opened run event with file:// URLs; the variant
         // doesn't exist on Linux/Windows, where deep links cover it instead).
         .run(move |_app, _event| {
+            #[cfg(all(target_os = "ios", target_abi = "sim", not(dev)))]
+            if matches!(&_event, tauri::RunEvent::Ready) {
+                embedded_asset_audit::observe(_app);
+            }
             #[cfg(any(target_os = "macos", target_os = "ios"))]
             if let tauri::RunEvent::Opened { urls } = _event {
                 for url in urls {

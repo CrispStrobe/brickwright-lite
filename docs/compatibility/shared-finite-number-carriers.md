@@ -46,3 +46,36 @@ successful original merely to read its result.
 No compiler supplier, vocabulary, dependency pin or non-finite representation
 is changed by this contract. Arcade Number-to-text remains a separate bounded
 operation with its own qualification.
+
+## Qualified boundary
+
+The merged ownership claim precedes the two-file frontend/control change. The
+shared Number branch now uses the existing finite decimal helper and explicitly
+reports non-finite literal overflow instead of emitting a misleading finite
+expression. Full Infinity/NaN literal representation remains follow-up work.
+
+The focused native controls cover micro:bit, Calliope and EV3 source conversion,
+actual numeric input shadows, arithmetic and aliases, tiny and maximum finite
+values, subnormals, underflow, hexadecimal/binary values, unary negatives and
+scientific-looking text. A genuine numeric block field is edited from 1000 to
+12.5, then survives native restart, saved-project reload, target export and fresh
+source reimport. The current connected field remains authoritative.
+
+The same controls detect the old shared translator: six failures and one passing
+lexical control. The fixed gate passes seven controls. Existing Calliope and
+Arcade Number controls plus the explicitly selected EV3 conversion controls
+also pass. Source, creator and native-engine file hashes are bound before and
+after those runs. The EV3 original compiler test is outside that selected gate.
+
+### GUI and target limits
+
+The numeric fields are standard editable blocks; no new selector or authoring
+word is introduced. This qualification uses the actual native Code/SB3 route,
+not a hosted browser journey. Visible editing of tiny/exponent fields in each
+target pane remains a hosted GUI acceptance item. Decimal expansion can be long
+for subnormals; a more readable scientific Code grammar is separate work.
+
+No target hardware precision, integer cast, sensor/motor operation or new target
+compiler execution is inferred from these numeric carrier tests. CPX TypeScript
+import, general Number methods and full non-finite carriers remain outside this
+bounded change.

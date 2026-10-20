@@ -73,6 +73,16 @@ const tauri = () => {
     return invoke && listen ? {invoke, listen} : null;
 };
 
+// The native endpoint owns one session. Keep its transitions ordered across
+// socket instances: an old asynchronous close must finish before a new open.
+let nativeTransition = Promise.resolve();
+let nativeOwner = null;
+const transitionNative = operation => {
+    const result = nativeTransition.then(operation);
+    nativeTransition = result.catch(() => {});
+    return result;
+};
+
 /**
  * A WebSocket-shaped object backed by the native bridge. Only the surface
  * scratch-vm and the extensions actually use is implemented — constructing a
@@ -95,6 +105,9 @@ class BridgedSocket {
         this.onmessage = null;
         this._listeners = {};
         this._unlisten = null;
+        this._closed = false;
+        this._starting = null;
+        this._closing = null;
     }
 
     addEventListener (type, fn) {
@@ -111,52 +124,108 @@ class BridgedSocket {
         (this._listeners[type] || []).forEach(fn => fn.call(this, event));
     }
 
-    async _start () {
-        const t = tauri();
-        if (!t) {
-            this.readyState = 3;
-            this._emit('error', new Event('error'));
-            this._emit('close', {code: 1006, wasClean: false});
-            return;
+    _start () {
+        if (!this._starting) this._starting = this._open();
+        return this._starting;
+    }
+
+    _releaseListener () {
+        const unlisten = this._unlisten;
+        this._unlisten = null;
+        if (unlisten) {
+            try { unlisten(); } catch (e) { /* already gone */ }
         }
-        try {
-            this._unlisten = await t.listen('scratchlink://message', event => {
-                this._emit('message', {data: event.payload});
+    }
+
+    _releaseNative () {
+        if (!this._closing) {
+            this._closing = transitionNative(async () => {
+                // A cancelled opening may never have reached native code. It
+                // must not close a different socket's active session.
+                if (nativeOwner !== this) return;
+                const t = tauri();
+                if (!t) throw new Error('the native bridge is unavailable during close');
+                await t.invoke('scratchlink_bridge_close');
+                nativeOwner = null;
             });
-            // A listen that did not hand back an unsubscribe function did not
-            // register. Without it the channel is one-way: `invoke` still
-            // succeeds, the socket reports itself OPEN, and then every single
-            // request hangs until its 20s timeout because no reply can ever
-            // arrive. Failing here turns a silent black hole into a normal
-            // "this transport is unavailable".
-            if (typeof this._unlisten !== 'function') {
+        }
+        return this._closing;
+    }
+
+    async _fail (error) {
+        if (this._closed) return;
+        this._closed = true;
+        this.readyState = 3;
+        this._releaseListener();
+        let reason = String(error);
+        try {
+            await this._releaseNative();
+        } catch (cleanupError) {
+            reason += `; native close failed: ${String(cleanupError)}`;
+        }
+        this._emit('error', new Event('error'));
+        this._emit('close', {code: 1006, wasClean: false, reason});
+    }
+
+    async _open () {
+        if (this._closed) return;
+        try {
+            const t = tauri();
+            if (!t) throw new Error('the native bridge is unavailable');
+            const unlisten = await t.listen('scratchlink://message', event => {
+                if (!this._closed && this.readyState === 1 && nativeOwner === this) {
+                    this._emit('message', {data: event.payload});
+                }
+            });
+            // A missing unsubscribe function means the receive channel did not
+            // register. Do not report OPEN on a channel which cannot reply.
+            if (typeof unlisten !== 'function') {
                 throw new Error('the native event channel did not register');
             }
-            await t.invoke('scratchlink_bridge_open', {kind: this._kind});
-            this.readyState = 1;             // OPEN
-            this._emit('open', new Event('open'));
+            this._unlisten = unlisten;
+            if (this._closed) {
+                this._releaseListener();
+                return;
+            }
+            const opened = await transitionNative(async () => {
+                if (this._closed) return false;
+                if (nativeOwner) throw new Error('another native bridge session is still active');
+                // Retain ownership even if open rejects: it may have partially
+                // initialized native state, which must close before reuse.
+                nativeOwner = this;
+                await t.invoke('scratchlink_bridge_open', {kind: this._kind});
+                return true;
+            });
+            if (opened && !this._closed) {
+                this.readyState = 1;
+                this._emit('open', new Event('open'));
+            }
         } catch (e) {
-            this.readyState = 3;
-            this._emit('error', new Event('error'));
-            this._emit('close', {code: 1006, wasClean: false, reason: String(e)});
+            await this._fail(e);
         }
     }
 
     send (data) {
-        if (this.readyState !== 1) return;
-        const t = tauri();
-        if (t) t.invoke('scratchlink_bridge_send', {frame: String(data)}).catch(() => {});
+        if (this.readyState !== 1 || this._closed || nativeOwner !== this) return;
+        try {
+            const t = tauri();
+            if (!t) throw new Error('the native bridge is unavailable');
+            t.invoke('scratchlink_bridge_send', {frame: String(data)}).catch(e => this._fail(e));
+        } catch (e) {
+            this._fail(e);
+        }
     }
 
     close () {
-        if (this.readyState === 3) return;
+        if (this._closed) return;
+        this._closed = true;
         this.readyState = 3;
-        const t = tauri();
-        if (t) t.invoke('scratchlink_bridge_close').catch(() => {});
-        if (this._unlisten) {
-            try { this._unlisten(); } catch (e) { /* already gone */ }
-            this._unlisten = null;
-        }
+        this._releaseListener();
+        this._releaseNative().catch(() => {
+            // Keep nativeOwner on failure. A subsequent open must fail rather
+            // than race a session whose teardown has not been acknowledged.
+            this._emit('error', new Event('error'));
+        });
         this._emit('close', {code: 1000, wasClean: true});
     }
 }
@@ -171,10 +240,17 @@ const socketWithBridgeFallback = (NativeWebSocket, url) => {
     const facade = new BridgedSocket(transportOf(url));
     let real = null;
     let settled = false;
+    const closeFacade = () => BridgedSocket.prototype.close.call(facade);
+    facade.close = () => {
+        settled = true;
+        closeFacade();
+        if (real) real.close();
+    };
 
     const useBridge = why => {
-        if (settled) return;
+        if (settled || facade._closed) return;
         settled = true;
+        if (real) real.close();
         if (typeof console !== 'undefined') {
             console.info(`[scratchlink] ${url} did not open (${why}); using the native bridge`);
         }
@@ -189,15 +265,28 @@ const socketWithBridgeFallback = (NativeWebSocket, url) => {
     }
 
     real.onopen = event => {
-        if (settled) return;
+        if (settled || facade._closed) {
+            real.close();
+            return;
+        }
         settled = true;
         // The socket works here: hand the facade over to it wholesale so this
         // module adds nothing but a failed-open safety net.
         facade.readyState = 1;
-        facade.send = data => real.send(data);
-        facade.close = () => real.close();
-        real.onmessage = m => facade._emit('message', m);
+        facade.send = data => {
+            if (facade.readyState === 1 && !facade._closed) real.send(data);
+        };
+        facade.close = () => {
+            if (facade.readyState >= 2) return;
+            facade.readyState = 2;
+            real.close();
+        };
+        real.onmessage = m => {
+            if (!facade._closed && facade.readyState === 1) facade._emit('message', m);
+        };
         real.onclose = c => {
+            if (facade._closed) return;
+            facade._closed = true;
             facade.readyState = 3;
             facade._emit('close', c);
         };

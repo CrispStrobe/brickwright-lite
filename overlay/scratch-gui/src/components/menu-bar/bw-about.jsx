@@ -10,7 +10,9 @@ const BUILD_TIME = (typeof process.env.BW_BUILD_TIME === 'string' && process.env
 const POLICY = Object.freeze({
     extensions: process.env.BW_REMOTE_EXTENSIONS_POLICY === 'deny' ? 'deny' : 'allow',
     toolchains: process.env.BW_REMOTE_TOOLCHAINS_POLICY === 'deny' ? 'deny' : 'allow',
-    machineImages: process.env.BW_REMOTE_MACHINE_IMAGES_POLICY === 'deny' ? 'deny' : 'allow'
+    machineImages: process.env.BW_REMOTE_MACHINE_IMAGES_POLICY === 'deny' ? 'deny' : 'allow',
+    // data, not code: the Robot Lab's parts from the LDraw catalogue (webpack.config.js)
+    parts: process.env.BW_REMOTE_PARTS_POLICY === 'deny' ? 'deny' : 'allow'
 });
 const POLICY_RECEIPT = process.env.BW_DISTRIBUTION_POLICY_RECEIPT;
 
@@ -37,7 +39,11 @@ const BUNDLED_LICENCES = [
     ['SmallerC + ucpp (BSD-2-Clause / BSD)', 'static/licenses/smallerc.BSD-2-Clause.txt'],
     ['Bochs BIOS + VGABios firmware (LGPL-2.1)', 'static/licenses/free-386-firmware.LGPL-2.1.txt'],
     ['bw-circuit-ui (MPL-2.0)', 'static/licenses/bw-circuit-ui.MPL-2.0.txt'],
-    ['NQC (MPL-2.0)', 'static/licenses/nqc.MPL-2.0.txt']
+    ['NQC (MPL-2.0)', 'static/licenses/nqc.MPL-2.0.txt'],
+    // The Robot Lab's parts (vendored, and those added from the LDraw catalogue):
+    ['LDraw Parts Library: CAreadme', 'static/ldraw/CAreadme.txt'],
+    ['LDraw Parts Library (CC BY 4.0)', 'static/ldraw/CAlicense4.txt'],
+    ['LDraw Parts Library (CC BY 2.0)', 'static/ldraw/CAlicense.txt']
 ];
 const COMPILER_ABOUT_URL = 'https://stc-compiler.vercel.app/#about';
 const COMPILER_HEALTH_URL = 'https://stc-compiler.vercel.app/health';
@@ -60,6 +66,7 @@ const L10N = {
         remoteExtensions: 'URL extensions',
         remoteToolchains: 'Executable toolchains',
         remoteMachineImages: 'Machine images',
+        remoteParts: 'Parts from the LDraw catalogue',
         policyAllow: 'Allowed',
         policyDeny: 'Restricted',
         source: 'Source code',
@@ -115,6 +122,7 @@ const L10N = {
         remoteExtensions: 'URL-Erweiterungen',
         remoteToolchains: 'Ausfuhrbare Toolchains',
         remoteMachineImages: 'Maschinenabbilder',
+        remoteParts: 'Teile aus dem LDraw-Katalog',
         policyAllow: 'Erlaubt',
         policyDeny: 'Eingeschrankt',
         source: 'Quellcode',
@@ -347,6 +355,11 @@ class BwAbout extends React.Component {
                                 <dd className={styles.mono} data-testid="about-machine-image-policy">
                                     {POLICY.machineImages === 'allow' ? t('policyAllow') : t('policyDeny')}
                                     {` (${POLICY.machineImages})`}
+                                </dd>
+                                <dt>{t('remoteParts')}</dt>
+                                <dd className={styles.mono} data-testid="about-parts-policy">
+                                    {POLICY.parts === 'allow' ? t('policyAllow') : t('policyDeny')}
+                                    {` (${POLICY.parts})`}
                                 </dd>
                             </dl>
 

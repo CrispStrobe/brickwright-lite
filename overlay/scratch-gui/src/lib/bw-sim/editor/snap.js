@@ -9,8 +9,10 @@ import {mat3MulVec3, vecAdd, vecSub, vecScale, vecDot, vecCross, vecLen, vecNorm
 import {edgeKind, shaftEngagement} from '../mech/graph.js';
 import {BUILTIN_KINDS} from '../kinds/index.js';
 import {validatePlacedModel, det3} from '../contracts.js';
-import {partOverlaps} from './overlap.js';
+import {collidersOf, partOverlaps, primitivesOverlap, rayHitParts, solidColliders, solidOverlaps} from './overlap.js';
 import {PAIR_REACH_LDU, boxOfPoints, grow, indexFor, partBounds} from '../mech/spatial-index.js';
+import {MIN_ENGAGE_LDU} from '../kinds/pin-axle.js';
+import {cleanRotation} from './transform-math.js';
 
 const TOL = 0.5 + 1e-9;
 const RADIUS_DEFAULT = 40;
@@ -491,4 +493,798 @@ export const placePart = (model, {part, position, rotation, id, port}) => {
     };
     if (model.groups) newModel.groups = model.groups.map(g => ({id: g.id, name: g.name, parts: g.parts.slice()}));
     return newModel;
+};
+
+// ============================================================================================
+// Connection-first placement (docs/ROBOT-LAB-UX.md §3.2–§3.5): the target is the free,
+// compatible connector the POINTER is on, not whichever hole the held part's connectors
+// happen to come near. Pure: the view hands in a ray, a projection to pixels and the eye.
+//
+//   targets      free connectors of the parts under and around the pointer that a free held
+//                connector can join (the connector kind registry decides, never a list here),
+//                whose entry face projects within `radiusPx` of the pointer
+//   seating      the held connector's axis on the target's; the side that keeps the held
+//                part's centre on the camera side of the entry face; a fresh shaft's centre
+//                on the hole face (a 40 LDU pin goes 20 LDU in), a shaft already in a held
+//                part goes in as far as it sticks out (at most the hole's depth), a hole goes
+//                on a shaft's free tip, studs/tubes/balls coincide; the twist kept, rounded
+//                to 90° (15° on round connections: pin or axle in a round hole, a ball)
+//   all-or-nothing  every pair the pose makes is counted (the compiler's own pair rule); a
+//                pose that leaves a held shaft coaxial with a hole but half seated is never
+//                offered; a pose that pushes into a part is kept but `blocked` (shown red)
+//   ranking      nearest target (px), then not blocked, more pairs, less turning, model order;
+//                the current target is kept until another is `hysteresisPx` nearer
+// ============================================================================================
+
+/** Pixel thresholds (tuned in the browser gate, docs/ROBOT-LAB-UX.md §6). */
+export const SNAP_PX = Object.freeze({idleMouse: 16, idleTouch: 28, targetMouse: 24, targetTouch: 40, near: 160, hysteresis: 8});
+/** With no connector near the pointer: the one nearest the ray's hit point within this (LDU). */
+export const FALLBACK_LDU = 12;
+const FINE_STEP = Math.PI / 12;
+const QUARTER_STEP = Math.PI / 2;
+const COS_1 = Math.cos(Math.PI / 180);
+
+const REGISTRY = BUILTIN_KINDS.connectors;
+const asCatalogMap = c => (c instanceof Map ? c : new Map(Object.entries(c || {})));
+const COINCIDE_TYPES = new Set(['stud', 'antistud', 'ball', 'ballsocket']);
+const isCoincideType = t => COINCIDE_TYPES.has(t) || Boolean(REGISTRY.get(t) && REGISTRY.get(t).coincide);
+const isShaftType = t => Boolean(REGISTRY.get(t) && REGISTRY.get(t).shaft);
+
+/**
+ * Whether two connectors can join at all (the registry has a rule and it names an edge), and
+ * which is the shaft: {shaft, hole, kind, coincide} or null. Geometry is not looked at.
+ */
+export const joinRule = (a, b) => {
+    for (const [s, h] of [[a, b], [b, a]]) {
+        const r = REGISTRY.rule(s.type, h.type);
+        if (!r) continue;
+        let kind = null;
+        try { kind = r.edge(s, h); } catch { kind = null; }
+        if (!kind) continue;
+        const coincide = isCoincideType(s.type) || isCoincideType(h.type) || !(s.length > 0) || !(h.length > 0);
+        return {shaft: s, hole: h, kind, coincide};
+    }
+    return null;
+};
+
+/** A round connection turns in fine steps: a pin or an axle in a round hole, a ball in its socket. */
+export const isRoundJoin = (shaftType, holeType) => (holeType === 'pinhole' && (shaftType === 'pin' || shaftType === 'axle')) ||
+    (shaftType === 'ball' && holeType === 'ballsocket') || (shaftType === 'ballsocket' && holeType === 'ball');
+
+const worldConnector = (pl, c) => {
+    const out = {partId: pl.id, connectorId: c.id, id: c.id, type: c.type, position: transformPoint(pl.position, pl.rotation, c.position),
+        axis: transformAxis(pl.rotation, c.axis), length: c.length, friction: c.friction};
+    if (c.closedEnd !== undefined) out.closedEnd = c.closedEnd;
+    return out;
+};
+
+// Per model (its parts array: the editor's model is immutable, so a new array is a new model):
+// each part's world connectors and the connectors they pair with, worked out when first asked.
+const modelCaches = new WeakMap();
+const cacheFor = (model, catalogMap) => {
+    let c = modelCaches.get(model.parts);
+    if (!c || c.catalog !== catalogMap || c.size !== catalogMap.size) {
+        c = {catalog: catalogMap, size: catalogMap.size, byId: new Map(model.parts.map(p => [p.id, p])), conns: new Map(), partners: new Map()};
+        modelCaches.set(model.parts, c);
+    }
+    return c;
+};
+const connsOf = (cache, pl) => {
+    let w = cache.conns.get(pl.id);
+    if (!w) {
+        const meta = cache.catalog.get(pl.part);
+        w = meta ? meta.connectors.map(c => worldConnector(pl, c)) : [];
+        cache.conns.set(pl.id, w);
+    }
+    return w;
+};
+const nearPartsOf = (model, catalogMap, box) => {
+    const index = indexFor(model.parts, catalogMap);
+    if (index) return index.queryBox(box).map(i => model.parts[i]);
+    return model.parts.filter(p => {
+        const b = partBounds(p, catalogMap.get(p.part));
+        return b && b.min.every((v, k) => v <= box.max[k]) && b.max.every((v, k) => v >= box.min[k]);
+    });
+};
+/** For each connector of `pl`: what it pairs with in the model now (registry.pair, as mech/graph.js). */
+const partnersOf = (model, cache, pl) => {
+    let out = cache.partners.get(pl.id);
+    if (out) return out;
+    const mine = connsOf(cache, pl);
+    out = mine.map(() => []);
+    const box = partBounds(pl, cache.catalog.get(pl.part));
+    if (box) {
+        for (const other of nearPartsOf(model, cache.catalog, grow(box, PAIR_REACH_LDU))) {
+            if (other.id === pl.id) continue;
+            const theirs = connsOf(cache, other);
+            mine.forEach((a, i) => {
+                for (const b of theirs) {
+                    const p = REGISTRY.pair(a, b);
+                    if (p) out[i].push({partId: other.id, other: b, mineIsShaft: p.shaft === a});
+                }
+            });
+        }
+    }
+    cache.partners.set(pl.id, out);
+    return out;
+};
+
+/**
+ * How far a shaft sticks out of the holes around it at each end (LDU, along its own axis):
+ * {plus, minus, fresh}; a shaft in no hole is `fresh` (both ends its whole length).
+ */
+const exposure = (conn, partners) => {
+    const L = conn.length;
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (const p of partners) {
+        if (!p.mineIsShaft || !(p.other.length > 0)) continue;
+        const axial = vecDot(vecSub(p.other.position, conn.position), conn.axis);
+        const a = Math.max(-L / 2, axial - p.other.length / 2);
+        const b = Math.min(L / 2, axial + p.other.length / 2);
+        if (b > a) { lo = Math.min(lo, a); hi = Math.max(hi, b); }
+    }
+    if (hi === -Infinity) return {plus: L, minus: L, fresh: true};
+    return {plus: L / 2 - hi, minus: lo + L / 2, fresh: false};
+};
+
+/**
+ * Where a connector can be entered (LDU): a hole's two faces (not a blind hole's bottom), a
+ * shaft's free tips (at least MIN_ENGAGE_LDU sticking out), a stud's tip / an anti-stud's, a
+ * tube's or a ball's own point. `normal` points out of the connector, towards whatever comes in.
+ * Empty when the connector is taken.
+ */
+export const connectorEntries = (conn, partners = []) => {
+    const t = conn.type;
+    if (isCoincideType(t) || !(conn.length > 0)) {
+        if (partners.length) return [];
+        const tip = t === 'stud' && conn.length > 0 ? vecAdd(conn.position, vecScale(conn.axis, conn.length)) : conn.position;
+        return [{point: tip, normal: conn.axis.slice(), side: 1}];
+    }
+    const L = conn.length;
+    if (isShaftType(t)) {
+        const e = exposure(conn, partners);
+        const out = [];
+        for (const side of [1, -1]) {
+            const free = side > 0 ? e.plus : e.minus;
+            if (!e.fresh && free < MIN_ENGAGE_LDU - 1e-9) continue;
+            out.push({point: vecAdd(conn.position, vecScale(conn.axis, side * L / 2)), normal: vecScale(conn.axis, side), side,
+                exposed: e.fresh ? L : free, fresh: e.fresh});
+        }
+        return out;
+    }
+    if (partners.length) return [];
+    const out = [];
+    for (const side of [1, -1]) {
+        if (conn.closedEnd === side) continue;
+        out.push({point: vecAdd(conn.position, vecScale(conn.axis, side * L / 2)), normal: vecScale(conn.axis, side), side});
+    }
+    return out;
+};
+
+/** The entry facing the eye first (its outward normal towards the camera). */
+const byFacing = (entries, eye) => entries.slice().sort((a, b) =>
+    vecDot(b.normal, vecSub(eye, b.point)) / (vecDist(eye, b.point) || 1) - vecDot(a.normal, vecSub(eye, a.point)) / (vecDist(eye, a.point) || 1));
+
+// ---- rotations -------------------------------------------------------------------------------
+const transpose3 = m => [m[0], m[3], m[6], m[1], m[4], m[7], m[2], m[5], m[8]];
+const axisAngle = (axis, angle) => {
+    const [x, y, z] = vecNormalize(axis);
+    const c = Math.cos(angle); const s = Math.sin(angle); const t = 1 - c;
+    return [t * x * x + c, t * x * y - s * z, t * x * z + s * y, t * x * y + s * z, t * y * y + c, t * y * z - s * x, t * x * z - s * y, t * y * z + s * x, t * z * z + c];
+};
+/** The smallest rotation taking unit vector a onto unit vector b. */
+const rotationBetween = (a, b) => {
+    const d = Math.max(-1, Math.min(1, vecDot(a, b)));
+    const cross = vecCross(a, b);
+    const len = vecLen(cross);
+    if (len < 1e-9) {
+        if (d > 0) return [1, 0, 0, 0, 1, 0, 0, 0, 1];
+        const perp = Math.abs(a[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
+        return axisAngle(vecNormalize(vecCross(a, perp)), Math.PI);
+    }
+    return axisAngle(vecScale(cross, 1 / len), Math.atan2(len, d));
+};
+/** The angle (radians) of the rotation m. */
+const rotationAngle = m => Math.acos(Math.max(-1, Math.min(1, (m[0] + m[4] + m[8] - 1) / 2)));
+/** The rotation (row-major 3×3) by `angle` about unit `axis`. */
+export const axisRotation = (axis, angle) => axisAngle(axis, angle);
+const tidyNumber = v => {
+    const r = Math.round(v * 1e6) / 1e6;
+    return Object.is(r, -0) ? 0 : r;
+};
+
+/**
+ * A rotation R' of a part now at rotation R such that R'·u = w (u: the connector's axis in the
+ * part, w: the world axis it must take), its twist about w kept from R, rounded to `step`.
+ */
+const seatRotation = (R, u, w, step) => {
+    const uu = vecNormalize(u);
+    const base = rotationBetween(uu, w); // base·u = w
+    // The twist R has about w once its axis is brought there the short way.
+    const R1 = mat3MulMat3(rotationBetween(vecNormalize(mat3MulVec3(R, uu)), w), R);
+    let ref = Math.abs(uu[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
+    ref = vecNormalize(vecSub(ref, vecScale(uu, vecDot(ref, uu))));
+    const a = mat3MulVec3(base, ref);
+    const b = mat3MulVec3(R1, ref);
+    const theta = Math.atan2(vecDot(vecCross(a, b), w), vecDot(a, b));
+    const k = Math.round(theta / step);
+    return cleanRotation(mat3MulMat3(axisAngle(w, k * step), base));
+};
+
+// ---- the held set ----------------------------------------------------------------------------
+/**
+ * The held parts' connectors at their current poses, each with its own entries (what is free of
+ * it): pairs between held parts stay (a beam carries its pins), pairs with the rest are broken.
+ */
+const heldConnectors = (catalogMap, held) => {
+    const conns = held.parts.map(pl => {
+        const meta = catalogMap.get(pl.part);
+        return meta ? meta.connectors.map(c => worldConnector(pl, c)) : [];
+    });
+    const out = [];
+    held.parts.forEach((pl, i) => {
+        conns[i].forEach(a => {
+            const partners = [];
+            held.parts.forEach((other, j) => {
+                if (j === i) return;
+                for (const b of conns[j]) {
+                    const p = REGISTRY.pair(a, b);
+                    if (p) partners.push({partId: other.id, other: b, mineIsShaft: p.shaft === a});
+                }
+            });
+            out.push({conn: a, partIndex: i, partners, entries: connectorEntries(a, partners)});
+        });
+    });
+    return out;
+};
+
+/** The held set's centre (the middle of its parts' bounds), for which side it sits on. */
+const heldCentre = (catalogMap, parts) => {
+    const pts = [];
+    for (const pl of parts) {
+        const b = partBounds(pl, catalogMap.get(pl.part));
+        if (b) pts.push(b.min, b.max);
+    }
+    if (!pts.length) return parts[0].position.slice();
+    const lo = [0, 1, 2].map(k => Math.min(...pts.map(p => p[k])));
+    const hi = [0, 1, 2].map(k => Math.max(...pts.map(p => p[k])));
+    return lo.map((v, k) => (v + hi[k]) / 2);
+};
+
+/** The held set moved rigidly so that point `from` goes to `to`, turned by Q about it. */
+const movedSet = (parts, Q, from, to) => parts.map(pl => ({
+    id: pl.id,
+    part: pl.part,
+    position: vecAdd(mat3MulVec3(Q, vecSub(pl.position, from)), to).map(tidyNumber),
+    rotation: cleanRotation(mat3MulMat3(Q, pl.rotation))
+}));
+
+/**
+ * Seating poses of the held set with held connector `h` on target entry `te` of target `t`:
+ * one per way the held connector may face (the preferred one first: the held set's centre on the
+ * camera side of the entry face). Each: {moves, sign, rotationChange, round}.
+ */
+const seatings = (catalogMap, held, h, t, te, centre) => {
+    const rule = joinRule(h.conn, t);
+    if (!rule) return [];
+    const lead = held.parts[h.partIndex];
+    const m = h.conn;
+    const local = catalogMap.get(lead.part).connectors.find(c => c.id === m.connectorId);
+    const shaftT = rule.shaft.type;
+    const holeT = rule.hole.type;
+    const round = isRoundJoin(shaftT, holeT);
+    const step = round ? FINE_STEP : QUARTER_STEP;
+    const n = te.normal;
+    const ways = [];
+    const finish = (w, at) => {
+        const R2 = w ? seatRotation(lead.rotation, local.axis, w, step) : lead.rotation.slice();
+        const Q = mat3MulMat3(R2, transpose3(lead.rotation));
+        const moves = movedSet(held.parts, Q, m.position, at(R2));
+        const c2 = vecAdd(mat3MulVec3(Q, vecSub(centre, m.position)), at(R2));
+        return {moves, side: vecDot(vecSub(c2, te.point), n), rotationChange: rotationAngle(Q), round};
+    };
+    if (rule.coincide) {
+        // Studs, anti-studs, tubes: the same way round (kinds/stud.js); a ball keeps its turn.
+        const ball = shaftT === 'ball' || holeT === 'ball';
+        ways.push(finish(ball ? null : t.axis, () => t.position));
+    } else if (rule.shaft === m) {
+        // A held shaft into the target hole through the entry face: each free end of it may go in
+        // (a fresh shaft's two ends are its two ways round).
+        const closed = t.closedEnd === 1 || t.closedEnd === -1;
+        for (const end of h.entries) {
+            // This end goes in: its outward direction points into the hole (-n).
+            const w = vecScale(n, -end.side);
+            const depth = end.fresh ? (closed ? Math.min(m.length / 2, t.length) : m.length / 2) : Math.min(end.exposed, t.length);
+            // The entering tip `depth` inside the face; the shaft's centre L/2 back from the tip.
+            const centrePoint = vecAdd(te.point, vecScale(n, m.length / 2 - depth));
+            const way = finish(w, () => centrePoint);
+            way.end = end.side;
+            ways.push(way);
+        }
+    } else {
+        // A held hole onto the target shaft's free tip, flush with it.
+        const centrePoint = vecSub(te.point, vecScale(n, m.length / 2));
+        if (m.closedEnd === 1 || m.closedEnd === -1) {
+            ways.push(finish(vecScale(n, m.closedEnd), () => centrePoint));
+        } else {
+            ways.push(finish(n, () => centrePoint), finish(vecScale(n, -1), () => centrePoint));
+        }
+    }
+    // The preferred way: the held set's centre furthest out on the camera side, then the least turning.
+    const order = ways.map((w, i) => ({w, i})).sort((a, b) => (Math.abs(a.w.side - b.w.side) > 0.5 ? b.w.side - a.w.side : 0) ||
+        a.w.rotationChange - b.w.rotationChange || a.i - b.i).map(x => x.w);
+    return order;
+};
+
+// ---- judging a pose ----------------------------------------------------------------------------
+const shaftIndices = meta => {
+    const solid = new Set(solidColliders(meta));
+    return meta.colliders.map((_, i) => i).filter(i => !solid.has(i));
+};
+const primsOverlap = (pa, ia, pb, ib) => {
+    for (const i of ia) for (const j of ib) if (primitivesOverlap(pa[i], pb[j], 1)) return true;
+    return false;
+};
+
+/**
+ * What a held set at `moves` would push into, or null: a solid part into a solid part (overlap.js
+ * solidOverlaps), a held pin or axle into a solid part it does not pair with, or a pin or axle of
+ * the model into a held solid part it does not pair with. Overlaps a held part already had where
+ * it stands do not count (overlap.js moveVerdict's rule).
+ */
+const poseBlocked = (model, catalogMap, held, moves, pairs, exclude) => {
+    const heldIds = held.parts.map(p => p.id);
+    const ignore = [...heldIds, ...exclude];
+    const pairedWith = id => new Set(pairs.filter(p => p.moving.part === id).map(p => p.fixed.part));
+    const anyPaired = new Set(pairs.map(p => p.fixed.part));
+    const byId = cacheFor(model, catalogMap).byId;
+    const hits = (pl, partnerIds) => {
+        const meta = catalogMap.get(pl.part);
+        const out = new Set(solidOverlaps(model, catalogMap, pl, {ignore: [...ignore, ...anyPaired]}).map(o => o.part));
+        const box = partBounds(pl, meta);
+        if (!box) return out;
+        const mine = collidersOf(pl, meta);
+        const myShaft = shaftIndices(meta);
+        const mySolid = solidColliders(meta);
+        for (const other of nearPartsOf(model, catalogMap, grow(box, 1))) {
+            if (ignore.includes(other.id) || partnerIds.has(other.id) || out.has(other.id)) continue;
+            const om = catalogMap.get(other.part);
+            if (!om) continue;
+            const theirs = collidersOf(other, om);
+            if ((myShaft.length && primsOverlap(mine, myShaft, theirs, solidColliders(om))) ||
+                (mySolid.length && primsOverlap(mine, mySolid, theirs, shaftIndices(om)))) out.add(other.id);
+        }
+        return out;
+    };
+    for (const mv of moves) {
+        const partners = pairedWith(mv.id);
+        const now = hits({id: mv.id, part: mv.part, position: mv.position, rotation: mv.rotation}, partners);
+        if (!now.size) continue;
+        const was = byId.has(mv.id) ? hits(byId.get(mv.id), partners) : new Set();
+        const into = [...now].find(id => !was.has(id));
+        if (into) return {part: mv.id, into};
+    }
+    return null;
+};
+
+/** Is connector `s` of the model free now (its partners, the held parts' left out)? */
+const freeEntries = (model, cache, pl, index, heldIds) => {
+    const partners = partnersOf(model, cache, pl)[index].filter(p => !heldIds.has(p.partId));
+    return connectorEntries(connsOf(cache, pl)[index], partners);
+};
+
+/**
+ * Every pair a held set at `moves` makes with the model's free connectors, and whether it leaves
+ * a shaft half seated (coaxial with a hole it could join, overlapping it, but not held by it).
+ */
+const posePairs = (model, catalogMap, held, moves, h0, exclude) => {
+    const cache = cacheFor(model, catalogMap);
+    const heldIds = new Set(held.parts.map(p => p.id));
+    const skip = new Set([...heldIds, ...exclude]);
+    const pairs = [];
+    let halfSeated = false;
+    const byHeld = new Map(held.parts.map((p, i) => [p.id, i]));
+    const free = new Map();
+    for (const hc of h0) {
+        if (!hc.entries.length) continue;
+        const mv = moves[hc.partIndex];
+        const meta = catalogMap.get(mv.part);
+        const local = meta.connectors.find(c => c.id === hc.conn.connectorId);
+        const a = worldConnector({id: mv.id, position: mv.position, rotation: mv.rotation}, local);
+        const box = boxOfPoints([vecAdd(a.position, vecScale(a.axis, (a.length || 0) / 2)), vecSub(a.position, vecScale(a.axis, (a.length || 0) / 2))]);
+        for (const pl of nearPartsOf(model, catalogMap, grow(box, PAIR_REACH_LDU + 1))) {
+            if (skip.has(pl.id)) continue;
+            const theirs = connsOf(cache, pl);
+            theirs.forEach((b, k) => {
+                const rule = joinRule(a, b);
+                if (!rule) return;
+                const key = `${pl.id}\u0000${k}`;
+                if (!free.has(key)) free.set(key, freeEntries(model, cache, pl, k, heldIds).length > 0);
+                const p = REGISTRY.pair(a, b);
+                if (p && free.get(key)) {
+                    pairs.push({moving: {part: mv.id, connector: a.connectorId}, fixed: {part: pl.id, connector: b.connectorId}, kind: p.kind,
+                        heldIndex: byHeld.get(mv.id)});
+                    return;
+                }
+                if (p || rule.coincide) return;
+                // Coaxial and overlapping, but not seated (less than MIN_ENGAGE_LDU in, or past a blind bottom).
+                const s = rule.shaft; const ho = rule.hole;
+                if (Math.abs(vecDot(s.axis, ho.axis)) < COS_1 - 1e-12) return;
+                const d = vecSub(ho.position, s.position);
+                const axial = vecDot(d, s.axis);
+                if (vecLen(vecSub(d, vecScale(s.axis, axial))) > 0.5 + 1e-9) return;
+                const engaged = Math.min(s.length / 2, axial + ho.length / 2) - Math.max(-s.length / 2, axial - ho.length / 2);
+                if (engaged > 0.5 + 1e-9) halfSeated = true;
+            });
+        }
+    }
+    return {pairs: pairs.map(({heldIndex, ...p}) => p), halfSeated};
+};
+
+// ---- the pointer ---------------------------------------------------------------------------
+const pxDist = (project, point, pointer) => {
+    const q = project(point);
+    return q ? Math.hypot(q[0] - pointer[0], q[1] - pointer[1]) : Infinity;
+};
+
+/**
+ * The model's free connectors a held set could join, near the pointer: each with its entries
+ * (facing the eye first) and the pixel distance of its first entry from the pointer.
+ * `allParts` looks at every part (keyboard placement); otherwise the parts under the pointer's
+ * ray and those around its hit point. Studs and anti-studs only on parts the ray passes through.
+ */
+const candidateTargets = (model, catalogMap, h0, ray, project, opts) => {
+    const cache = cacheFor(model, catalogMap);
+    const heldIds = new Set(opts.heldIds);
+    const skip = new Set([...heldIds, ...(opts.exclude || [])]);
+    const eye = opts.eye;
+    const hits = ray ? rayHitParts(model, catalogMap, ray.origin, ray.direction, {exclude: [...skip]}) : [];
+    const under = new Set(hits.map(h => h.part));
+    const hit = hits[0] || null;
+    let parts;
+    if (opts.allParts) parts = model.parts.filter(p => !skip.has(p.id));
+    else if (hit) {
+        const r = opts.nearLdu || 60;
+        parts = nearPartsOf(model, catalogMap, {min: hit.point.map(v => v - r), max: hit.point.map(v => v + r)}).filter(p => !skip.has(p.id));
+        for (const id of under) if (!parts.some(p => p.id === id)) parts.push(cache.byId.get(id));
+    } else parts = [];
+    const heldFree = h0.filter(h => h.entries.length);
+    const out = [];
+    for (const pl of parts) {
+        if (!pl) continue;
+        const conns = connsOf(cache, pl);
+        conns.forEach((c, k) => {
+            if ((c.type === 'stud' || c.type === 'antistud' || c.type === 'tube') && !under.has(pl.id) && !opts.allParts) return;
+            if (!heldFree.some(h => joinRule(h.conn, c))) return;
+            const entries = freeEntries(model, cache, pl, k, heldIds);
+            if (!entries.length) return;
+            const sorted = byFacing(entries, eye);
+            out.push({partId: pl.id, connectorId: c.connectorId, type: c.type, conn: c, entries: sorted,
+                px: pxDist(project, sorted[0].point, opts.pointer), order: cache.byId.size ? model.parts.indexOf(pl) : 0});
+        });
+    }
+    return {targets: out, hit};
+};
+
+const targetKey = t => `${t.partId}\u0000${t.connectorId}`;
+
+/**
+ * The connection the pointer asks for (docs/ROBOT-LAB-UX.md §3.3).
+ * @param {object} model PlacedModel
+ * @param {Map|object} catalog PartMeta by part
+ * @param {{parts: {id: string, part: string, position: number[], rotation: number[]}[], grab?: number[]}} held
+ *        the held set at its current poses (a palette part: one part with an id not in the model);
+ *        `grab`: the pressed point (LDU), whose nearest held connector leads a dragged selection
+ * @param {{origin: number[], direction: number[]}|null} ray the pointer's ray (LDU)
+ * @param {(p: number[]) => number[]|null} project an LDU point to view pixels (null behind the eye)
+ * @param {object} opts {pointer: [x, y] px, eye: LDU, radiusPx, nearPx, previous (a target key),
+ *        hysteresisPx, cycle (Tab), flip (X), exclude (hidden ids), allParts (keyboard), lead
+ *        ({partId, connectorId}: the held connector that leads)}
+ * @returns {{hit: object|null, lit: object[], targets: object[], chosen: object|null, alternatives: object[]}}
+ */
+export const snapAtPointer = (model, catalog, held, ray, project, opts = {}) => {
+    const catalogMap = asCatalogMap(catalog);
+    const radiusPx = opts.radiusPx ?? SNAP_PX.targetMouse;
+    const nearPx = opts.nearPx ?? SNAP_PX.near;
+    const hysteresisPx = opts.hysteresisPx ?? SNAP_PX.hysteresis;
+    const exclude = opts.exclude || [];
+    const h0 = heldConnectors(catalogMap, held);
+    // The lead: the held connector nearest the grab point (a dragged selection), else any free one.
+    let leads = h0.filter(h => h.entries.length);
+    if (opts.lead) {
+        const l = leads.filter(h => held.parts[h.partIndex].id === opts.lead.partId && h.conn.connectorId === opts.lead.connectorId);
+        if (l.length) leads = l;
+    }
+    // How near each held connector is to the pressed point: of two equally good poses, the one led by the
+    // connector nearest where the hand holds the set wins (a beam grabbed by its end leads with that end's pin).
+    const leadDist = new Map(leads.map(h => [h, held.grab ? Math.min(...h.entries.map(e => vecDist(e.point, held.grab)), vecDist(h.conn.position, held.grab)) : 0]));
+    const {targets: all, hit} = candidateTargets(model, catalogMap, leads, ray, project, {...opts, heldIds: held.parts.map(p => p.id)});
+    if (opts.only) {
+        for (let i = all.length - 1; i >= 0; i--) if (all[i].partId !== opts.only.partId || all[i].connectorId !== opts.only.connectorId) all.splice(i, 1);
+    }
+    if (opts.viewport) {
+        const [w, h] = opts.viewport;
+        for (let i = all.length - 1; i >= 0; i--) {
+            const q = project(all[i].entries[0].point);
+            if (!q || q[0] < 0 || q[1] < 0 || q[0] > w || q[1] > h) all.splice(i, 1);
+        }
+    }
+    all.sort((a, b) => a.px - b.px || a.order - b.order || (a.connectorId < b.connectorId ? -1 : 1));
+    const lit = all.filter(t => t.px <= nearPx);
+    let targets = all.filter(t => t.px <= radiusPx);
+    if (!targets.length && hit && !opts.allParts) {
+        // Nearest to the hit point: the distance to the connector's own segment (a hole's axis between its faces),
+        // so the top of a beam lying on its side, right over a hole, finds that hole.
+        const segDist = c => {
+            const L = c.length > 0 ? c.length : 0;
+            const along = Math.max(-L / 2, Math.min(L / 2, vecDot(vecSub(hit.point, c.position), c.axis)));
+            return vecDist(hit.point, vecAdd(c.position, vecScale(c.axis, along)));
+        };
+        const near = all.map(t => ({t, d: Math.min(segDist(t.conn), ...t.entries.map(e => vecDist(e.point, hit.point)))}))
+            .filter(x => x.d <= FALLBACK_LDU).sort((a, b) => a.d - b.d);
+        if (near.length) targets = [near[0].t];
+    }
+    if (opts.allParts) {
+        // Keyboard placement: reading order (rows of 12 px, then left to right).
+        // The 60 nearest the view's centre, so a big model stays quick.
+        targets = all.filter(t => Number.isFinite(t.px)).slice(0, 60).map(t => ({t, q: project(t.entries[0].point)}))
+            .sort((a, b) => Math.round(a.q[1] / 12) - Math.round(b.q[1] / 12) || a.q[0] - b.q[0]).map(x => x.t);
+    }
+    const centre = heldCentre(catalogMap, held.parts);
+    /** Every valid pose for target t through entry e: the held connectors that may lead, each way round. */
+    const optionsFor = (t, entryIndex) => {
+        const te = t.entries[entryIndex];
+        const out = [];
+        // The (at most four) held connectors nearest the hand that can join it: a big selection stays quick.
+        for (const h of leads.filter(x => joinRule(x.conn, t.conn)).sort((a, b) => leadDist.get(a) - leadDist.get(b)).slice(0, 4)) {
+            const ways = seatings(catalogMap, held, h, t.conn, te, centre);
+            ways.forEach((way, wi) => {
+                const {pairs, halfSeated} = posePairs(model, catalogMap, held, way.moves, h0, exclude);
+                if (halfSeated) return;
+                if (!pairs.some(p => p.fixed.part === t.partId && p.fixed.connector === t.connectorId)) return;
+                const blocked = poseBlocked(model, catalogMap, held, way.moves, pairs, exclude);
+                out.push({
+                    key: `${targetKey(t)}\u0000${entryIndex}\u0000${held.parts[h.partIndex].id}\u0000${h.conn.connectorId}\u0000${wi}`,
+                    target: {partId: t.partId, connectorId: t.connectorId, type: t.type, entry: entryIndex, point: te.point, normal: te.normal, px: t.px},
+                    lead: {partId: held.parts[h.partIndex].id, connectorId: h.conn.connectorId, type: h.conn.type}, leadDist: leadDist.get(h),
+                    moves: way.moves, pairs, blocked, rotationChange: way.rotationChange, round: way.round, way: wi,
+                    axis: t.conn.axis.slice(), point: t.conn.position.slice(),
+                    position: way.moves[0].position, rotation: way.moves[0].rotation
+                });
+            });
+        }
+        return out;
+    };
+    const rank = (a, b) => (Boolean(a.blocked) - Boolean(b.blocked)) || (b.pairs.length - a.pairs.length) ||
+        (a.leadDist - b.leadDist > 1e-6 ? 1 : b.leadDist - a.leadDist > 1e-6 ? -1 : 0) || (a.rotationChange - b.rotationChange > 1e-6 ? 1 : b.rotationChange - a.rotationChange > 1e-6 ? -1 : 0);
+    /** A target's own choice: its entry facing the eye, the preferred way round (X flips it), best lead. */
+    const primary = t => {
+        const opts0 = optionsFor(t, 0);
+        if (!opts0.length) return [];
+        const preferred = opts0.filter(o => o.way === 0);
+        const flipped = opts0.filter(o => o.way !== 0);
+        const first = (opts.flip && flipped.length ? flipped : preferred.length ? preferred : flipped).slice().sort(rank);
+        const rest = opts0.filter(o => !first.includes(o)).sort(rank);
+        return [...first, ...rest];
+    };
+    // The nearest target with a valid pose; the current one is kept until another is clearly nearer.
+    let chosenTarget = null;
+    let chosenOptions = [];
+    const evaluated = new Map();
+    const optionsOf = t => {
+        if (!evaluated.has(targetKey(t))) evaluated.set(targetKey(t), primary(t));
+        return evaluated.get(targetKey(t));
+    };
+    for (const t of targets) {
+        if (optionsOf(t).length) { chosenTarget = t; break; }
+    }
+    if (opts.previous && chosenTarget && !opts.allParts) {
+        // The current target counts a little beyond the radius too, or the hysteresis could not hold it.
+        const prev = all.find(t => targetKey(t) === opts.previous && t.px <= radiusPx + hysteresisPx);
+        if (prev && prev !== chosenTarget && optionsOf(prev).length) {
+            const nearer = chosenTarget.px < prev.px - hysteresisPx;
+            const morePairs = Math.abs(chosenTarget.px - prev.px) < 0.5 && optionsOf(chosenTarget)[0].pairs.length > optionsOf(prev)[0].pairs.length;
+            if (!nearer && !morePairs) chosenTarget = prev;
+        }
+    }
+    if (chosenTarget) chosenOptions = optionsOf(chosenTarget);
+    // Tab: the chosen pose, the other ways at this target (other face, other end, other lead), then the next targets.
+    const alternatives = [];
+    const seen = new Set();
+    const add = o => {
+        // Two poses that look the same (a symmetric pin either way round) are one alternative.
+        const k = o.moves.map(m => collidersOf(m, catalogMap.get(m.part)).map(c => c.centre.map(v => v.toFixed(2)).join(',')).sort().join(' ')).join(';') +
+            o.pairs.map(p => `${p.fixed.part}:${p.fixed.connector}`).sort().join(',');
+        if (seen.has(k)) return;
+        seen.add(k);
+        alternatives.push(o);
+    };
+    if (chosenTarget) {
+        if (opts.allParts) {
+            for (const t of targets) for (const o of optionsOf(t).slice(0, 1)) add(o);
+        }
+        chosenOptions.forEach(add);
+        if (opts.cycle) {
+            for (let e = 1; e < chosenTarget.entries.length; e++) optionsFor(chosenTarget, e).sort(rank).forEach(add);
+            for (const t of targets.slice(0, 8)) if (t !== chosenTarget) for (const o of optionsOf(t).slice(0, 1)) add(o);
+        }
+    }
+    let chosen = null;
+    if (alternatives.length) {
+        let start = 0;
+        if (opts.allParts && opts.startNearest) {
+            // Keyboard: start at the target nearest the view centre.
+            let best = Infinity;
+            alternatives.forEach((o, i) => { if (o.target.px < best) { best = o.target.px; start = i; } });
+        } else if (opts.allParts) start = 0;
+        const n = alternatives.length;
+        chosen = alternatives[(((start + (opts.cycle || 0)) % n) + n) % n];
+    }
+    const strip = t => ({partId: t.partId, connectorId: t.connectorId, type: t.type, point: t.entries[0].point, normal: t.entries[0].normal, px: t.px});
+    return {hit: hit ? {partId: hit.part, point: hit.point} : null, lit: lit.map(strip), targets: targets.map(strip), chosen, alternatives,
+        chosenKey: chosen ? `${chosen.target.partId}\u0000${chosen.target.connectorId}` : null};
+};
+
+/**
+ * Idle (nothing held): the one free connector of the parts under the pointer whose entry is
+ * nearest it, within `radiusPx` (docs/ROBOT-LAB-UX.md §3.2), or null.
+ */
+export const connectorUnderPointer = (model, catalog, ray, project, {pointer, eye, radiusPx = SNAP_PX.idleMouse, exclude = []} = {}) => {
+    const catalogMap = asCatalogMap(catalog);
+    const cache = cacheFor(model, catalogMap);
+    const hits = rayHitParts(model, catalogMap, ray.origin, ray.direction, {exclude});
+    if (!hits.length) return null;
+    const hit = hits[0];
+    const skip = new Set(exclude);
+    const parts = nearPartsOf(model, catalogMap, {min: hit.point.map(v => v - 30), max: hit.point.map(v => v + 30)}).filter(p => !skip.has(p.id));
+    let best = null;
+    for (const pl of parts) {
+        connsOf(cache, pl).forEach((c, k) => {
+            const entries = freeEntries(model, cache, pl, k, new Set());
+            if (!entries.length) return;
+            const e = byFacing(entries, eye)[0];
+            const px = pxDist(project, e.point, pointer);
+            if (px <= radiusPx && (!best || px < best.px)) best = {partId: pl.id, connectorId: c.connectorId, type: c.type, point: e.point, normal: e.normal, px};
+        });
+    }
+    return best;
+};
+
+/** The parts a part's connectors pair with now (the compiler's pair rule), for "select connected". */
+export const pairedParts = (model, catalog, id) => {
+    const catalogMap = asCatalogMap(catalog);
+    const cache = cacheFor(model, catalogMap);
+    const pl = cache.byId.get(id);
+    if (!pl) return [];
+    return [...new Set(partnersOf(model, cache, pl).flat().map(p => p.partId))];
+};
+
+/** Every part joined to `ids` through pairs, `ids` first (Studio's "By Connected"). */
+export const connectedComponent = (model, catalog, ids) => {
+    const seen = new Set(ids);
+    const queue = [...ids];
+    while (queue.length) {
+        for (const next of pairedParts(model, catalog, queue.shift())) {
+            if (!seen.has(next)) { seen.add(next); queue.push(next); }
+        }
+    }
+    return [...seen];
+};
+
+/**
+ * A pose turned by `angle` about a connection's line (`axis` through `point`): a snap option's
+ * moves, or any poses. Pure; positions to 1e-6 LDU.
+ */
+export const turnAboutLine = (moves, axis, point, angle) => {
+    const R = axisAngle(axis, angle);
+    return moves.map(m => ({...m, position: vecAdd(point, mat3MulVec3(R, vecSub(m.position, point))).map(tidyNumber),
+        rotation: cleanRotation(mat3MulMat3(R, m.rotation))}));
+};
+
+/**
+ * How a placed part sits on the model (its pairs with other parts), for turning it in place:
+ * {axis, point, round, quarterOnly, kinds} for one connection line, or null (none, or two lines).
+ */
+export const connectionLine = (model, catalog, id) => {
+    const catalogMap = asCatalogMap(catalog);
+    const cache = cacheFor(model, catalogMap);
+    const pl = cache.byId.get(id);
+    if (!pl) return null;
+    const mine = connsOf(cache, pl);
+    const lines = [];
+    partnersOf(model, cache, pl).forEach((ps, i) => {
+        for (const p of ps) {
+            const a = mine[i];
+            const [shaft, hole] = p.mineIsShaft ? [a, p.other] : [p.other, a];
+            lines.push({axis: hole.axis, point: hole.position, round: isRoundJoin(shaft.type, hole.type), shaft: shaft.type, hole: hole.type});
+        }
+    });
+    if (!lines.length) return null;
+    const l0 = lines[0];
+    const sameLine = lines.every(l => Math.abs(vecDot(l.axis, l0.axis)) >= COS_1 - 1e-12 &&
+        vecLen(vecSub(vecSub(l.point, l0.point), vecScale(l0.axis, vecDot(vecSub(l.point, l0.point), l0.axis)))) <= 0.5 + 1e-9);
+    if (!sameLine) return {axis: l0.axis, point: l0.point, round: false, many: true, shaft: l0.shaft, hole: l0.hole};
+    return {axis: l0.axis.slice(), point: l0.point.slice(), round: lines.every(l => l.round), many: false, shaft: l0.shaft, hole: l0.hole};
+};
+
+/** At most this many parts turn on a hinge: a bigger side is not offered (and not searched further). */
+export const HINGE_MAX_PARTS = 400;
+
+const onLine = (l, axis, point) => Math.abs(vecDot(l.axis, axis)) >= COS_1 - 1e-12 &&
+    vecLen(vecSub(vecSub(point, l.point), vecScale(l.axis, vecDot(vecSub(point, l.point), l.axis)))) <= 0.5 + 1e-9;
+
+/**
+ * Where a selection can turn on the model like a hinge (Studio's hinge tool, LDD's pivots):
+ * [{axis, point, moving: [ids], fixed: [ids]}], the fewest moving parts first. A hinge is one
+ * round connection line (a pin or an axle in a round hole, a ball in its socket) next to the
+ * selection: cut every joint on it and the selection comes free with everything that hangs
+ * off it (`moving`, the selection first), while the parts across the line (`fixed`) stay. A
+ * joint between two parts is cut only when all their pairs are round and on that line (two
+ * parts held at two places stay together), and the fixed side must be more than the pins on the
+ * line, so an arm pinned at two holes has no hinge.
+ * @param {{parts: object[]}} model
+ * @param {Map|object} catalog
+ * @param {string[]} ids the selection
+ * @param {{maxParts?: number}} [opts]
+ */
+export const hingeCandidates = (model, catalog, ids, {maxParts = HINGE_MAX_PARTS} = {}) => {
+    const catalogMap = asCatalogMap(catalog);
+    const cache = cacheFor(model, catalogMap);
+    if (!ids.length || ids.length > maxParts || ids.some(id => !cache.byId.has(id))) return [];
+    // partId → Map(partner id → [{axis, point, round, shaft (this part's connector is the shaft)}]) of the pairs between them
+    const joints = new Map();
+    const jointsOf = id => {
+        let m = joints.get(id);
+        if (m) return m;
+        m = new Map();
+        const pl = cache.byId.get(id);
+        const mine = connsOf(cache, pl);
+        partnersOf(model, cache, pl).forEach((ps, i) => {
+            for (const p of ps) {
+                const [shaft, hole] = p.mineIsShaft ? [mine[i], p.other] : [p.other, mine[i]];
+                if (!m.has(p.partId)) m.set(p.partId, []);
+                m.get(p.partId).push({axis: hole.axis, point: hole.position, round: isRoundJoin(shaft.type, hole.type), shaft: p.mineIsShaft});
+            }
+        });
+        joints.set(id, m);
+        return m;
+    };
+    // The round lines on the selection's joints and its partners' joints (an axle the selected wheel sits on).
+    const lines = [];
+    const near = new Set(ids);
+    for (const id of ids) for (const other of jointsOf(id).keys()) near.add(other);
+    for (const id of near) {
+        for (const pairs of jointsOf(id).values()) {
+            for (const pr of pairs) {
+                if (pr.round && !lines.some(l => onLine(l, pr.axis, pr.point))) lines.push({axis: pr.axis, point: pr.point});
+            }
+        }
+    }
+    const out = [];
+    for (const line of lines) {
+        const cut = (a, b) => jointsOf(a).get(b).every(pr => pr.round && onLine(line, pr.axis, pr.point));
+        const moving = new Set(ids);
+        const fixed = new Set();
+        const queue = [...ids];
+        let ok = true;
+        while (queue.length && ok) {
+            const id = queue.shift();
+            for (const other of jointsOf(id).keys()) {
+                if (moving.has(other)) continue;
+                if (cut(id, other)) { fixed.add(other); continue; }
+                moving.add(other);
+                queue.push(other);
+                if (moving.size > maxParts) { ok = false; break; }
+            }
+        }
+        // Something across the line must stay (a part reached around it moves after all), and more
+        // than the pins and axles on the line itself (an arm held by two pins is not hinged on one).
+        for (const id of moving) fixed.delete(id);
+        const onlyShaft = id => [...jointsOf(id)].every(([other, prs]) => moving.has(other) && prs.every(pr => pr.shaft && onLine(line, pr.axis, pr.point)));
+        if (!ok || !fixed.size || [...fixed].every(onlyShaft)) continue;
+        if (out.some(c => c.moving.length === moving.size && c.moving.every(id => moving.has(id)))) continue;
+        out.push({axis: line.axis.slice(), point: line.point.slice(), moving: [...moving], fixed: [...fixed]});
+    }
+    return out.sort((a, b) => a.moving.length - b.moving.length);
 };

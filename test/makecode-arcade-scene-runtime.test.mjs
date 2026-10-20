@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {EventEmitter} from 'node:events';
+import {createArcadeRuntimeMock} from './helpers/arcade-runtime-mock.mjs';
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 const Arcade=loadExtensionClass('arcade');
-function game(){const runtime=new EventEmitter();return {runtime,a:new Arcade(runtime)};}
+function game(){const runtime=createArcadeRuntimeMock();return {runtime,a:new Arcade(runtime)};}
 function actor(a){const image=a.createImage({WIDTH:1,HEIGHT:1});a.drawImage({IMAGE:image,OP:'fillRect',X:0,Y:0,W:1,H:1,COLOR:2});return a.createImageSprite({IMAGE:image,TEMPLATE:'',KIND:'Player'});}
 const prop=(a,id,name)=>a.spriteProperty({ID:id,PROPERTY:name});
 test('scene worlds, info, cameras and popped object references match original PXT',async()=>{
@@ -55,7 +55,7 @@ let oldReference=outer.x`);
 });
 test('scene-local registries/timers restore and resource heaps survive while reset disposes stacks',()=>{
  const {runtime,a}=game();const outer=actor(a),image=a.spriteImage({ID:outer});a.registerUpdateHandler({TOKEN:'outer',CAPTURES:''});a.registerIntervalHandler({INTERVAL:100,TOKEN:'tick',CAPTURES:''});a.registerButtonHandler({BUTTON:'a',EVENT:2049,TOKEN:'first',CAPTURES:''});a.registerButtonHandler({BUTTON:'a',EVENT:2049,TOKEN:'second',CAPTURES:''});a._advance(.033);const elapsed=a._state().elapsedMs;
- const animation=a.createAnimation({ACTION:1,INTERVAL:100});a.addAnimationFrame({ANIMATION:animation,IMAGE:image});a.pushScene();assert.equal(a._state().elapsedMs,undefined);a._advance(.1);a.setLife({PLAYER:2,VALUE:0});a.registerLifeZeroHandler({PLAYER:2,TOKEN:'life',CAPTURES:''});a._advance(.01);assert.equal(a.getLife({PLAYER:2}),0);assert.equal(a._state().players[1].life,null);
+ const animation=a.createAnimation({ACTION:1,INTERVAL:100});a.addAnimationFrame({ANIMATION:animation,IMAGE:image});a.pushScene();assert.equal(a._state().elapsedMs,0,'selected Scene EventContext starts at elapsed zero');a._advance(.1);a.setLife({PLAYER:2,VALUE:0});a.registerLifeZeroHandler({PLAYER:2,TOKEN:'life',CAPTURES:''});a._advance(.01);assert.equal(a.getLife({PLAYER:2}),0);assert.equal(a._state().players[1].life,null);
  a.popScene();assert.equal(a._state().elapsedMs,elapsed);assert.equal(a.getLife({PLAYER:2}),3);assert.equal(a.animationProperty({ANIMATION:animation,PROPERTY:'action'}),1);assert.equal(a.imageProperty({IMAGE:image,PROPERTY:'width'}),1);a._advance(.033);assert.equal(a._state().elapsedMs,elapsed+33);
  a.pushScene();runtime.emit('PROJECT_START');a.popScene();assert.equal(a.spriteCount({KIND:'Player'}),0);assert.equal(a.getscore(),0);
 });
@@ -127,12 +127,22 @@ test('repeated inline lifecycle registrations preserve distinct captured closure
  const target={blocks:{getBlock:id=>id==='hat'?{inputs:{TOKEN:{block:'token'}}}:{fields:{TEXT:{value:'same-site'}}}}};runtime.allScriptsByOpcodeDo=(opcode,callback)=>{if(opcode==='arcade_whenRegisteredScenePush')callback({blockId:'hat'},target);};runtime._pushThread=()=>{const thread={status:0,constructor:{STATUS_DONE:4}};runtime.threads.push(thread);return thread;};runtime.sequencer={activeThread:null,stepThread(thread){seen.push(thread.bwArcadeCaptures.get('value').values.value);thread.status=4;runtime.threads=runtime.threads.filter(t=>t!==thread);}};
  for(const value of [1,2]){const util={thread:{}};a.setLocal({NAME:'value',VALUE:value},util);a.registerScenePushHandler({TOKEN:'same-site',CAPTURES:'value'},util);}a.pushScene();assert.deepEqual(seen,[1,2]);a.popScene();a.pushScene();assert.deepEqual(seen,[1,2,1,2]);
 });
-test('native button registrations use app keyboard bindings and pane signals do not cross-fire A/B',()=>{
- const {runtime,a}=game(),events=[];let keys=new Set();runtime.ioDevices={keyboard:{getKeyIsDown:key=>keys.has(key)}};runtime.threads=[];
- const target={blocks:{getBlock:id=>id.startsWith('hat-')?{inputs:{TOKEN:{block:'token-'+id.slice(4)}}}:{fields:{TEXT:{value:id.slice(6)}}}}};runtime.allScriptsByOpcodeDo=(opcode,callback)=>{if(opcode==='arcade_whenRegisteredButton')for(const token of ['a','b','start','select'])callback({blockId:'hat-'+token},target);};runtime._pushThread=()=>{const thread={status:0,constructor:{STATUS_DONE:4}};runtime.threads.push(thread);return thread;};runtime.sequencer={activeThread:null,stepThread(thread){events.push(thread.bwArcadeEvent.TOKEN);thread.status=4;runtime.threads=runtime.threads.filter(t=>t!==thread);}};
- for(const button of ['a','b','start','select'])a.registerButtonHandler({BUTTON:button,EVENT:2049,TOKEN:button,CAPTURES:''});
- for(const [button,key] of [['a','space'],['b','z'],['start','enter'],['select','m']]){
-  keys=new Set([key]);a._advance(.01);assert.deepEqual(events.splice(0),[button],key+' physical keyboard');keys=new Set();a._advance(.01);
-  a._state().buttons[button]=true;keys=new Set([key]);a._advance(.01);assert.deepEqual(events.splice(0),[button],button+' pane signal plus keyboard');a._state().buttons[button]=false;keys=new Set();a._advance(.01);
- }
+test('native button registrations use app keyboard bindings and pane signals do not cross-fire A/B',async()=>{
+ const {runTimedArcadeProgram}=await import('./helpers/arcade-timed-native.mjs');
+ const buttons=['a','b','start','select'];
+ const code='DEVICE ARCADE\n'+buttons.map(button=>'GLOBAL '+button).join('\n')+'\nSPRITE Game:\nWHEN arcade source starts:\n'+buttons.map(button=>'  set '+button+' to (0 + 0)\n  arcade register button '+JSON.stringify(button)+' event 2049 as "'+button+'" capturing ""').join('\n')+'\n'+buttons.map(button=>'WHEN arcade button handler "'+button+'" runs:\n  change '+button+' by 1').join('\n');
+ const run=await runTimedArcadeProgram(code,{milliseconds:0,storage:true});
+ try {
+  assert.deepEqual(run.creator.warnings,[]);const runtime=run.vm.runtime;
+  const counts=()=>Object.fromEntries(runtime.targets.flatMap(target=>Object.values(target.variables)).filter(value=>buttons.includes(value.name)).map(value=>[value.name,value.value]));
+  const expected=Object.fromEntries(buttons.map(button=>[button,0]));let now=0;
+  const advance=async()=>{await run.clock.advanceTo(now+=40);assert.deepEqual(run.errors,[]);};
+  assert.deepEqual(counts(),expected);
+  for(const [button,key] of [['a',' '],['b','z'],['start','Enter'],['select','m']]){
+   run.vm.postIOData('keyboard',{key,isDown:true});await advance();expected[button]++;assert.deepEqual(counts(),expected,key+' physical keyboard');
+   run.vm.postIOData('keyboard',{key,isDown:false});await advance();
+   runtime.emit('ARCADE_PLAYER_BUTTON_EDGE',1,button,true);run.vm.postIOData('keyboard',{key,isDown:true});await advance();expected[button]++;assert.deepEqual(counts(),expected,button+' pane plus keyboard dispatches once');
+   run.vm.postIOData('keyboard',{key,isDown:false});runtime.emit('ARCADE_PLAYER_BUTTON_EDGE',1,button,false);await advance();
+  }
+ } finally {run.vm.stopAll();run.vm.quit();}
 });

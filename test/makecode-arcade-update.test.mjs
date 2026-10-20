@@ -1,9 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import {INTEGRATED} from './helpers/bw-integrated.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {compile, hasRuntime} from '../scripts/lib/pxt-node.mjs';
 import {SB3Creator, runProgram, stepFrames, projectOpcodes} from './helpers/bw-vm.mjs';
+
+const values = createRequire(import.meta.url)(`${INTEGRATED}/node_modules/scratch-vm/src/util/bw-values.js`);
 
 const source = `let ticks = 0
 game.onUpdate(function () { ticks += 1 })`;
@@ -30,13 +34,17 @@ test('onUpdate fires once per Arcade frame without any sprites', async () => {
     const imported = arcadeToPseudocode(source);
     const run = await runProgram(imported.code, {frames: 0});
     const ticks = () => Number(run.vm.runtime.targets.flatMap(target => Object.values(target.variables || {})).find(variable => variable.name === 'ticks')?.value);
-    assert.equal(ticks(), 0);
+    const initial = run.vm.runtime.targets.flatMap(target => Object.values(target.variables || {})).find(variable => variable.name === 'ticks');
+    assert.equal(values.decode(initial.value), undefined, 'source cell remains uninitialized until startup executes');
     await stepFrames(run.vm, 1);
-    assert.equal(ticks(), 0, 'registration takes place before the first callback');
-    await stepFrames(run.vm, 6);
+    assert.equal(ticks(), 1, 'startup registers the callback before the first supplied physical frame');
+    for (let frame = 2; frame <= 7; frame++) {
+        await stepFrames(run.vm, 1);
+        assert.equal(ticks(), frame, 'one update per supplied physical frame');
+    }
     assert.deepEqual(run.errors, []);
     const vars = run.vm.runtime.targets.flatMap(target => Object.values(target.variables || {}));
-    assert.equal(Number(vars.find(variable => variable.name === 'ticks')?.value), 6);
+    assert.equal(Number(vars.find(variable => variable.name === 'ticks')?.value), 7);
     assert.equal(run.calls.get('arcade_registerUpdateHandler'), 1);
 });
 

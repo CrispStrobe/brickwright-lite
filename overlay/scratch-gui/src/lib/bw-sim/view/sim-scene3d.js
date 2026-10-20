@@ -131,7 +131,12 @@ export const buildSimScene = ({model, mechanism, read, colors, catalog = null, i
 
     for (const pl of model.parts) {
         const motor = catalog && partMotorJoint(catalogGet(catalog, pl.part)) ? motorBodies(pl) : null;
-        const body = motor ? motor.housing : (bodiesOf.get(pl.id) || [])[0];
+        // A hub with built-in motors (the BOOST Move Hub) is on its housing and each output body:
+        // it is drawn in the housing (body1 of its own hinges), as mech/insight.js partBodyMap places it.
+        const own = bodiesOf.get(pl.id) || [];
+        const housing = !motor && own.length > 1 ? own.find(b => (mechanism.joints || []).some(j => j.type === 'hinge' && j.body1 === b.id &&
+            own.some(o => o.id === j.body2))) : null;
+        const body = motor ? motor.housing : (housing || own[0]);
         if (!body || !bodyGroups.get(body.id)) continue;
         // Material with placed colour
         const colInfo = colors.get(pl.color ?? 16) || colors.get(16);

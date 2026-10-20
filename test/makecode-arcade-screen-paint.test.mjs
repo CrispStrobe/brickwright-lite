@@ -7,6 +7,7 @@ import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arc
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram, stepFrames, clearStrayTimers} from './helpers/bw-vm.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
+import {runTimedArcadeProgram} from './helpers/arcade-timed-native.mjs';
 const Arcade = loadExtensionClass('arcade');
 
 // The original display holds RGBA words; native frames hold palette indices.
@@ -44,7 +45,7 @@ test('paint draws below sprites and shade above them, matching the original disp
     assert.match(imported.code, /arcade register paint as/);
     assert.match(imported.code, /arcade register shade as/);
     assert.match(imported.code, /arcade print \("paint"\) on image \(arcade screen image\) x \(4\) y \(4\) color \(1\) font auto/);
-    assert.match(imported.code, /font small/);
+    assert.match(imported.code, /using font \(arcade font value font5\)/);
     const run = await runProgram(imported.code, {frames: 12, storage: true, uploads: imported.costumes});
     try {
         assert.deepEqual(run.errors, []);
@@ -78,8 +79,7 @@ pause(100)`;
     assert.equal(drawables.length, 0, 'no overlay presents the raw screen');
 });
 
-test('screen reads return the last composed frame, as in the original', async () => {
-    const source = `let done = false
+const SCREEN_READ_SOURCE = `let done = false
 let early = 0
 let late = 0
 let copied = 0
@@ -97,11 +97,40 @@ let snap = screen.clone()
 copied = snap.getPixel(40, 30) * 100 + snap.getPixel(0, 0)
 done = true
 done = true`;
+
+async function observeScreenReads(imported) {
+    const run = await runTimedArcadeProgram(imported.code, {milliseconds: 199, storage: true, uploads: imported.costumes});
+    try {
+        const value = name => run.vm.runtime.targets.flatMap(target => Object.values(target.variables)).find(variable => variable.name === name)?.value;
+        assert.equal(value('early'), 4);
+        assert.equal(value('done'), false, 'the actual pause deadline has not elapsed');
+        await run.clock.advanceTo(200);
+        assert.equal(value('done'), true, 'read the frame only after the actual continuation finishes');
+    } catch (error) {
+        run.vm.stopAll(); run.vm.quit(); clearStrayTimers();
+        throw error;
+    }
+    return run;
+}
+
+test('native screen reads wait for the actual pause continuation and observe composed pixels', async () => {
+    const imported = arcadeToPseudocode(SCREEN_READ_SOURCE);
+    assert.deepEqual(imported.unsupported, []);
+    const run = await observeScreenReads(imported);
+    try {
+        const values = run.vm.runtime.targets.flatMap(target => Object.values(target.variables));
+        assert.deepEqual(['early', 'late', 'copied'].map(name => values.find(value => value.name === name)?.value), [4, 9, 209]);
+        assert.deepEqual(run.errors, []);
+    } finally { run.vm.stopAll(); run.vm.quit(); clearStrayTimers(); }
+});
+
+test('screen reads return the last composed frame, as in the original', async () => {
+    const source = SCREEN_READ_SOURCE;
     const original = await runPxtArcade(source, {waitForGlobals: {done: true}});
     assert.deepEqual([original.early, original.late, original.copied], [4, 9, 209]);
     const imported = arcadeToPseudocode(source);
     assert.deepEqual(imported.unsupported, []);
-    const run = await runProgram(imported.code, {frames: 20, storage: true, uploads: imported.costumes});
+    const run = await observeScreenReads(imported);
     try {
         assert.deepEqual(run.errors, []);
         const variables = run.vm.runtime.targets.flatMap(target => Object.values(target.variables));
@@ -141,7 +170,7 @@ test('screen painting is editable through Code and Blocks, saved SB3 and origina
         assert.deepEqual(run.creator.warnings, []);
         const opcodes = run.creator.project.targets.flatMap(t => Object.values(t.blocks)).map(b => b.opcode);
         for (const op of ['arcade_registerPaintHandler', 'arcade_whenRegisteredPaint', 'arcade_registerShadeHandler',
-            'arcade_whenRegisteredShade', 'arcade_screenImage', 'arcade_printImageText']) assert.ok(opcodes.includes(op), op);
+            'arcade_whenRegisteredShade', 'arcade_screenImage', 'arcade_printImageText', 'arcade_fontValue', 'arcade_printImageFont']) assert.ok(opcodes.includes(op), op);
         const again = await runProgram(run.creator.decompile(), {frames: 8, storage: true, uploads: imported.costumes});
         assert.deepEqual(again.errors, []);
         assert.deepEqual(again.creator.warnings, []);
@@ -169,4 +198,17 @@ test('font and screen diagnostics stay explicit', () => {
     native._inst._runtime.on('BLOCKS_ERROR', message => errors.push(message));
     native.printImageText({IMAGE: native.createImage({WIDTH: 4, HEIGHT: 4}), TEXT: 'a', X: 0, Y: 0, COLOR: 1, FONT: 'gothic'});
     assert.equal(errors.length, 1);
+});
+
+
+test('native paint and shade retain nested Font values through source Code and saved reload',async()=>{
+ const imported=arcadeToPseudocode(PAINT);assert.deepEqual(imported.unsupported,[]);assert.match(imported.code,/using font \(arcade font value font5\)/);
+ const runs=[];let pixels;
+ const check=run=>{assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);const frame=run.vm.runtime.bwArcadeDeviceState.sceneFrame;assert.ok(frame.coverage.includes('renderables'));const actual=[...frame.pixels];assert.equal(actual.length,19200);assert.equal(actual[20*160+30],7);assert.equal(actual[30*160+40],2);assert.equal(actual[26*160+36],5);if(pixels)assert.deepEqual(actual,pixels);else pixels=actual;};
+ try {
+  const execute=async input=>{assert.deepEqual(input.unsupported,[]);const run=await runProgram(input.code,{frames:8,storage:true,uploads:input.costumes});runs.push(run);check(run);return run;};
+  const run=await execute(imported);await execute({...imported,code:run.creator.decompile()});
+  const exported=projectToArcade(run.creator.project,{costumeSvg:(target,costume)=>run.creator.assets.get(costume.assetId)?.data});assert.deepEqual(exported.unsupported,[]);await execute(arcadeToPseudocode(exported.files));
+  await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,8);check(run);
+ } finally {for(const run of runs){run.vm.stopAll();run.vm.quit();}}
 });

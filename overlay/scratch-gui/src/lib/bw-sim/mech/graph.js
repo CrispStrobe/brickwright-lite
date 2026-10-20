@@ -10,7 +10,7 @@
 // internal hinge.
 
 import {mat3MulVec3, vecAdd, vecNormalize} from './vec.js';
-import {upgradePartMeta, partMotorJoint, partMotor, portRefOf} from '../contracts.js';
+import {upgradePartMeta, partDrivenJoints, partMotor, portRefOf} from '../contracts.js';
 import {BUILTIN_KINDS} from '../kinds/index.js';
 import {PAIR_REACH_LDU, connectorBounds, createSpatialIndex, grow} from './spatial-index.js';
 
@@ -51,23 +51,26 @@ export const buildGraph = (model, catalog, diagnostics = [], kinds = BUILTIN_KIN
         const meta = upgradePartMeta(catalogMap.get(pl.part));
         if (!meta) continue; // unknown, caller handles diagnostic
         const rot = pl.rotation;
-        const shaftJoint = partMotorJoint(meta);
-        if (shaftJoint) {
-            const outIds = new Set(shaftJoint.movingConnectors || []);
-            const housingConns = meta.connectors.filter(c => !outIds.has(c.id));
-            const outConns = meta.connectors.filter(c => outIds.has(c.id));
-
+        const driven = partDrivenJoints(meta);
+        if (driven.length) {
+            // One node per driven joint's moving side (a motor's output; each built-in motor of a
+            // hub, contracts.js partDrivenJoints) and one for the rest of the part (the housing).
+            const movingIds = new Set(driven.flatMap(d => d.joint.movingConnectors || []));
+            const housingConns = meta.connectors.filter(c => !movingIds.has(c.id));
             const housingTrans = housingConns.map(c => transformConnector(c, pl.position, rot));
-            const outTrans = outConns.map(c => transformConnector(c, pl.position, rot));
-
             const housingNodeId = pl.id;
-            const outNodeId = `${pl.id}#out`;
-
             nodes.set(housingNodeId, {id: housingNodeId, partId: pl.id, placed: pl, meta, connectors: housingTrans});
-            nodes.set(outNodeId, {id: outNodeId, partId: pl.id, placed: pl, meta, connectors: outTrans});
-
-            // Motor internal hinge between housing and out
-            if (outTrans.length > 0) {
+            const ref = portRefOf(pl);
+            for (const {joint: shaftJoint, suffix, device: jointDevice, port: builtInPort} of driven) {
+                const outIds = new Set(shaftJoint.movingConnectors || []);
+                const outConns = meta.connectors.filter(c => outIds.has(c.id));
+                const outTrans = outConns.map(c => transformConnector(c, pl.position, rot));
+                const outNodeId = `${pl.id}${suffix}`;
+                nodes.set(outNodeId, {id: outNodeId, partId: pl.id, placed: pl, meta, connectors: outTrans});
+                if (outTrans.length === 0) {
+                    diagnostics.push({severity: 'warning', code: 'motor-without-port', message: `Motor ${pl.id} has no output connectors`, parts: [pl.id]});
+                    continue;
+                }
                 // Use the axlehole output if present (the centre shaft), otherwise centroid of all outputs.
                 // The real SPIKE motor has one axlehole in the centre and 4 pinholes around it 20 LDU off; taking the first
                 // connector (which may be a pinhole) would put the hinge 20 LDU off the shaft.
@@ -101,22 +104,21 @@ export const buildGraph = (model, catalog, diagnostics = [], kinds = BUILTIN_KIN
                     _aNode: housingNodeId,
                     _bNode: outNodeId,
                 };
-                const ref = portRefOf(pl);
-                const motor = partMotor(meta);
-                if (ref && motor) {
+                // A built-in motor plugs into its own hub's port; a motor part into the port its `!BW PORT` names.
+                const portRef = builtInPort ? {hub: pl.id, port: builtInPort} : ref;
+                const motor = builtInPort ? (jointDevice && jointDevice.motor ? {device: jointDevice} : null) : partMotor(meta);
+                if (portRef && motor) {
                     const {device} = motor;
                     const maxSpeedRadPerSec = device.motor.servoMaxDegPerSec * Math.PI / 180;
-                    edge.motor = {port: ref.port, maxTorqueNm: device.motor.stallTorqueNm, maxSpeedRadPerSec};
+                    edge.motor = {port: portRef.port, maxTorqueNm: device.motor.stallTorqueNm, maxSpeedRadPerSec};
                     if (device.ids && Number.isInteger(device.ids.lpf2)) edge.motor.deviceId = device.ids.lpf2;
-                    edge.actuator = {port: ref, device: device.id};
-                } else if (ref) {
+                    edge.actuator = {port: portRef, device: device.id};
+                } else if (portRef) {
                     diagnostics.push({severity: 'warning', code: 'motor-without-device', message: `Motor ${pl.id} names no motor device`, parts: [pl.id]});
                 } else {
                     diagnostics.push({severity: 'warning', code: 'motor-without-port', message: `Motor ${pl.id} has no port`, parts: [pl.id]});
                 }
                 edges.push(edge);
-            } else {
-                diagnostics.push({severity: 'warning', code: 'motor-without-port', message: `Motor ${pl.id} has no output connectors`, parts: [pl.id]});
             }
         } else {
             const trans = meta.connectors.map(c => transformConnector(c, pl.position, rot));

@@ -1,6 +1,6 @@
+import {createArcadeRuntimeMock} from './helpers/arcade-runtime-mock.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {EventEmitter} from 'node:events';
 import {execFileSync} from 'node:child_process';
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
@@ -11,9 +11,9 @@ const Arcade = loadExtensionClass('arcade');
 
 // A renderer recording drawables, their order and skin contents.
 function fixture() {
-    const runtime = new EventEmitter(), drawables = new Map(), skins = new Map(), errors = [];
+    const runtime = createArcadeRuntimeMock(), drawables = new Map(), skins = new Map(), errors = [];
     let nextDrawable = 0, nextSkin = 0, nextOrder = 0;
-    runtime.startHats = () => [];
+
     runtime.requestRedraw = () => {};
     runtime.on('BLOCKS_ERROR', message => errors.push(message));
     runtime.renderer = {
@@ -151,6 +151,9 @@ test('particle overlays share the sprite z then id order and are removed on rese
     const spriteDrawable = id => f.arcade._inst._imageSkins.get(id).drawableId;
     assert.ok(f.drawables.get(overlay).order > f.drawables.get(spriteDrawable(high)).order, 'FireSource z=20 above z=0 sprites');
     f.arcade.setSpriteProperty({ID: high, PROPERTY: 'z', VALUE: 30});
+    assert.equal(f.state().flags & 1, 1, 'z writes dirty the actual current Scene until it renders');
+    await f.frames(1);
+    assert.equal(f.state().flags & 1, 0, 'the next actual Scene render performs and clears sorting');
     assert.ok(f.drawables.get(spriteDrawable(high)).order > f.drawables.get(overlay).order);
     f.runtime.emit('PROJECT_START');
     assert.equal(f.arcade._inst._particleOverlays.size, 0);
@@ -243,4 +246,37 @@ sceneAt750 = game.currentScene().allSprites.indexOf(hero) >= 0`;
     const sceneAt250 = !!f.state().sprites[hero], eventsAt250 = events;
     await f.frames(16, 1 / 32);
     assert.deepEqual([events, ghost, countedAt0, sceneAt250, eventsAt250, !!f.state().sprites[hero]], ['rd', true, 0, true, 'r', false]);
+});
+
+test('actual original AshFactory exhausts its single and multiple color collections without losing particles',async()=>{
+    const source=`let bare:particles.ParticleAnchor={x:80,y:60,vx:0,vy:0}
+let defaultFactory=new particles.AshFactory(bare,false)
+let emitted=0
+let defaultColorSum=0
+for(let i=0;i<25;i++){let particle=defaultFactory.createParticle(bare);if(particle){emitted++;defaultColorSum+=particle.color;}}
+let hero=sprites.create(img\`2 3\n4 5\`,SpriteKind.Player)
+let coloredFactory=new particles.AshFactory(hero,true,100)
+let colored=0
+let coloredSum=0
+for(let i=0;i<8;i++){let particle=coloredFactory.createParticle(hero);if(particle){colored++;coloredSum+=particle.color;}}
+let imageSum=hero.image.getPixel(0,0)+hero.image.getPixel(1,0)+hero.image.getPixel(0,1)+hero.image.getPixel(1,1)
+let done=1;done+=0;`;
+    const original=await runPxtArcade(source,{fakeClock:true});assert.equal(original.emitted,20);assert.equal(original.defaultColorSum,20);assert.equal(original.colored,4);assert.equal(original.coloredSum,14);assert.equal(original.imageSum,0);
+    const f=fixture(),module=f.arcade._inst._particles(),bare={x:80,y:60,vx:0,vy:0};
+    const plain=new module.particles.AshFactory(bare,false);let emitted=0,defaultColorSum=0;
+    for(let i=0;i<25;i++){const particle=plain.createParticle(bare);if(particle){emitted++;defaultColorSum+=particle.color;}}
+    const image=f.arcade.createImage({WIDTH:2,HEIGHT:2});for(const [x,y,c] of [[0,0,2],[1,0,3],[0,1,4],[1,1,5]])f.arcade.drawImage({IMAGE:image,OP:'fillRect',X:x,Y:y,W:1,H:1,COLOR:c});
+    const id=f.arcade.createImageSprite({IMAGE:image,TEMPLATE:'',KIND:'Player'}),hero=f.state().sprites[id],anchor=f.arcade._inst._particleAnchor(hero);
+    const coloredFactory=new module.particles.AshFactory(anchor,true,100);let colored=0,coloredSum=0;
+    for(let i=0;i<8;i++){const particle=coloredFactory.createParticle(anchor);if(particle){colored++;coloredSum+=particle.color;}}
+    const imageSum=hero.image.pixels.reduce((sum,value)=>sum+value,0);
+    assert.deepEqual({emitted,defaultColorSum,colored,coloredSum,imageSum},{emitted:original.emitted,defaultColorSum:original.defaultColorSum,colored:original.colored,coloredSum:original.coloredSum,imageSum:original.imageSum});
+    assert.equal(plain.colors.length,0);assert.equal(coloredFactory.colors.length,0);assert.deepEqual(f.errors,[]);
+});
+
+test('ashes destroy effects execute depleted collection removal and finish destruction',async()=>{
+    const original=await runPxtArcade('let hero=sprites.create(img`2 2\n2 2`,SpriteKind.Player);let destroyed=0;sprites.onDestroyed(SpriteKind.Player,function(sprite){destroyed++;});hero.destroy(effects.ashes,500);pause(1000);let remaining=sprites.allOfKind(SpriteKind.Player).length;let done=1;done+=0;',{fakeClock:true});
+    const f=fixture(),id=f.sprite(2,80,60);let destroyed=0;f.runtime.startHats=opcode=>{if(opcode==='arcade_whenSpriteDestroyed')destroyed++;return [];};
+    f.arcade.destroySpriteWithEffect({ID:id,EFFECT:'ashes',DURATION:500});await f.frames(32,1/32);
+    assert.equal(destroyed,original.destroyed);assert.equal(f.arcade.spriteCount({KIND:'Player'}),original.remaining);assert.equal(original.destroyed,1);assert.deepEqual(f.errors,[]);
 });

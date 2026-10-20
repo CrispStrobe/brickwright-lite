@@ -7,7 +7,7 @@
 
 import React from 'react';
 
-const SimLabShortcuts = ({T, onClose}) => {
+const SimLabShortcuts = ({T, onClose, wheelMode = 'auto', onWheelMode = null}) => {
     const closeRef = React.useRef(null);
     React.useEffect(() => { closeRef.current?.focus(); }, []);
     return (
@@ -23,6 +23,17 @@ const SimLabShortcuts = ({T, onClose}) => {
                     <button ref={closeRef} type="button" data-testid="bw-sim-lab-shortcuts-close" onClick={onClose}
                         style={{padding: '4px 10px', borderRadius: 6, border: '1px solid #94a3b8', background: '#fff', cursor: 'pointer'}}>{T.close}</button>
                 </div>
+                {onWheelMode && T.connect && (
+                    <label style={{display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 8}}>
+                        <strong>{T.connect.wheel}</strong>
+                        <select data-testid="bw-sim-lab-wheel-mode" value={wheelMode} onChange={e => onWheelMode(e.target.value)}
+                            style={{font: 'inherit', fontSize: 12, padding: '2px 4px'}}>
+                            <option value="auto">{T.connect.wheelAuto}</option>
+                            <option value="mouse">{T.connect.wheelMouse}</option>
+                            <option value="trackpad">{T.connect.wheelTrackpad}</option>
+                        </select>
+                    </label>
+                )}
                 <div style={{display: 'flex', flexWrap: 'wrap', gap: 14}}>
                     {T.sheet.map(([title, rows]) => (
                         <section key={title} style={{flex: '1 1 200px', minWidth: 0}}>

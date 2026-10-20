@@ -6,12 +6,17 @@
 // view (lib/spike-arena/arena-view3d.js) and reached the same way, only through
 // the pane's dynamic import of bw-sim/sim-lab.js (chunk "bw-sim-lab").
 
-import {Box3, Color, GridHelper, PerspectiveCamera, Vector2, Vector3, WebGLRenderer} from 'three';
+import {Box3, BufferGeometry, Color, Float32BufferAttribute, GridHelper, LineBasicMaterial, LineSegments, MOUSE, Mesh, MeshBasicMaterial,
+    PerspectiveCamera, Sphere, SphereGeometry, Vector2, Vector3, WebGLRenderer} from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {parseLDConfig} from './ldraw-colors.js';
+import {LDU_M, dirToWorld, lduToWorld} from '../contracts.js';
 import {buildSimScene, applySnapshot} from './sim-scene3d.js';
+import {createChainMotion} from './chain-motion.js';
+import {createSimBelts} from './belt-layer.js';
 import {addPartLights} from './part-style.js';
 import {createInsightLayer, createPulse, tintMaterial} from './insight-layer.js';
+import {VIEW_DIRECTIONS, applyCameraAction, cameraKeyAction, configureOrbitControls, framePosition} from './camera-nav.js';
 
 export class WebGLUnavailableError extends Error {
     constructor (reason) {
@@ -81,6 +86,10 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     container.appendChild(canvas);
 
     const built = buildSimScene({model, mechanism, read, colors: parseLDConfig(config), catalog});
+    // Chain links run round with their sprocket (drawing only: the core welds them to the frame).
+    const chainMotion = createChainMotion({model, mechanism, catalog, built});
+    // Rubber bands laid round their parts where the bodies are (drawing; kinds/belt.js simulates them).
+    const simBelts = createSimBelts({model, mechanism, catalog, built});
     // The scene builder owns the model; the view adds light only when the builder brought none.
     if (!built.scene.children.some(c => c.isLight)) addPartLights(built.scene);
     // A light sky and a 1 cm grid on the floor (10 cm major lines): without them a
@@ -95,9 +104,23 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     }
     const camera = new PerspectiveCamera(40, 1, 0.005, 50);
     const controls = new OrbitControls(camera, canvas);
+    // camera-nav.js: left or middle drag orbits, right (or Shift+left) drag pans, the wheel zooms toward the pointer.
+    configureOrbitControls(controls, MOUSE);
     controls.maxPolarAngle = Math.PI / 2 - 0.02; // never under the floor
     controls.minDistance = 0.05;
     controls.maxDistance = 5;
+    // The view takes the keyboard when clicked: arrows orbit, Shift+arrows pan, + and - zoom.
+    canvas.tabIndex = 0;
+    canvas.style.outline = 'none';
+    const onKey = event => {
+        if (applyCameraAction(camera, controls, cameraKeyAction(event), canvas.clientHeight)) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+    };
+    canvas.addEventListener('keydown', onKey);
+    const focusCanvas = () => canvas.focus({preventScroll: true});
+    canvas.addEventListener('pointerdown', focusCanvas);
 
     const modelBox = () => {
         const box = new Box3();
@@ -110,6 +133,33 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         camera.position.copy(position);
         controls.target.copy(target);
         controls.update();
+    };
+
+    /** Home, Top, Front or Side: the whole model, seen from that side. */
+    const viewFrom = name => {
+        const box = modelBox();
+        const sphere = box.isEmpty() ? new Sphere(new Vector3(), 0.1) : box.getBoundingSphere(new Sphere());
+        const size = renderer.getSize(new Vector2());
+        const {position} = framePosition({centre: sphere.center.toArray(), radius: sphere.radius,
+            direction: VIEW_DIRECTIONS[name] || VIEW_DIRECTIONS.home, fovDeg: camera.fov, aspect: size.x / Math.max(1, size.y)});
+        camera.position.set(...position);
+        controls.target.copy(sphere.center);
+        controls.update();
+        followed = null;
+    };
+    /** Fit: the whole model in view, from where the camera looks now. */
+    const fit = () => {
+        const dir = camera.position.clone().sub(controls.target).toArray();
+        const box = modelBox();
+        if (box.isEmpty()) return;
+        const sphere = box.getBoundingSphere(new Sphere());
+        const size = renderer.getSize(new Vector2());
+        const {position} = framePosition({centre: sphere.center.toArray(), radius: sphere.radius, direction: dir,
+            fovDeg: camera.fov, aspect: size.x / Math.max(1, size.y)});
+        camera.position.set(...position);
+        controls.target.copy(sphere.center);
+        controls.update();
+        followed = null;
     };
 
     const onLost = event => {
@@ -137,6 +187,8 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     // Follow: the camera and its orbit target move with the model's centre, so
     // the robot stays in view while the learner can still orbit around it.
     let followed = null;
+    /** A part the camera follows instead of the model's centre (the Robot Lab API's camera({follow})), or null. */
+    let followPartId = null;
     // ---- seeing the model (mech/insight.js data, view/insight-layer.js) -------------
     const insight = createInsightLayer({container, scene: built.scene});
     const pulse = createPulse();
@@ -165,6 +217,62 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
             for (const m of [].concat(mesh.material)) tintMaterial(m, tint || null);
         }
     };
+    // Sensor rays (Show sensor rays): each sensor's probe (PartMeta probe: origin and direction in the
+    // part's LDraw frame, LDU) as a line from the sensor, with a dot at its end. A part's mesh holds its
+    // geometry in metres in the world's axes (part-geometry.js: x, -y, -z), so the probe is taken there
+    // first. A distance sensor's line is as long as what it measures; the others are short.
+    let sensorItems = [];
+    let lastRays = [];
+    const rayMaterial = new LineBasicMaterial({color: 0xdc2626, depthTest: false, transparent: true, opacity: 0.9});
+    const rays = new LineSegments(new BufferGeometry(), rayMaterial);
+    rays.renderOrder = 10;
+    rays.frustumCulled = false;
+    rays.visible = false;
+    built.scene.add(rays);
+    const tipGeometry = new SphereGeometry(1, 12, 8);
+    const tipMaterial = new MeshBasicMaterial({color: 0xdc2626, depthTest: false, transparent: true, opacity: 0.9});
+    let tips = [];
+    const updateSensors = () => {
+        if (!rays.visible) return;
+        const points = [];
+        sensorItems.forEach((item, i) => {
+            const mesh = built.partMeshes.get(item.id);
+            if (!mesh) return;
+            const len = Math.max(1, item.lengthOf()) * LDU_M;
+            const origin = new Vector3(...lduToWorld(item.origin));
+            const direction = new Vector3(...dirToWorld(item.direction)).normalize();
+            const from = mesh.localToWorld(origin.clone());
+            const to = mesh.localToWorld(origin.clone().addScaledVector(direction, len));
+            points.push(...from.toArray(), ...to.toArray());
+            lastRays[i] = {from: from.toArray(), to: to.toArray()};
+            const tip = tips[i];
+            if (tip) {
+                tip.position.copy(to);
+                tip.scale.setScalar(3 * LDU_M); // a dot 6 LDU across
+            }
+        });
+        rays.geometry.setAttribute('position', new Float32BufferAttribute(points, 3));
+        rays.geometry.computeBoundingSphere();
+    };
+    /**
+     * The sensors whose rays can be shown: items {id (the part in the model), origin, direction (part frame),
+     * lengthOf: () => LDU}; `shown` turns the overlay on or off.
+     */
+    const setSensors = (items, shown) => {
+        sensorItems = items.filter(item => built.partMeshes.has(item.id));
+        lastRays = [];
+        for (const tip of tips) built.scene.remove(tip);
+        tips = sensorItems.map(() => {
+            const tip = new Mesh(tipGeometry, tipMaterial);
+            tip.renderOrder = 10;
+            built.scene.add(tip);
+            return tip;
+        });
+        rays.visible = Boolean(shown) && sensorItems.length > 0;
+        for (const tip of tips) tip.visible = rays.visible;
+        dirty = true;
+    };
+
     /** Port badges: items {id, port, label} (motors and sensors). */
     const setPorts = items => {
         insight.setPorts(items.map(item => ({...item, anchor: partCentre(item.id)})));
@@ -238,7 +346,9 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         if (onDemand && !force && !dirty && !changed(snapshot, renderer.getSize(new Vector2()))) return;
         dirty = false;
         if (snapshot) applySnapshot(built, snapshot);
-        const centre = modelBox().getCenter(new Vector3());
+        if (snapshot && chainMotion) chainMotion.update();
+        if (snapshot && simBelts) simBelts.update();
+        const centre = (followPartId && partCentre(followPartId)()) || modelBox().getCenter(new Vector3());
         if (followed) {
             const delta = centre.clone().sub(followed);
             delta.y = 0;
@@ -247,6 +357,7 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
             controls.update();
         }
         followed = centre;
+        updateSensors();
         pulse.tick(performance.now());
         built.scene.updateMatrixWorld();
         camera.updateMatrixWorld();
@@ -257,11 +368,18 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
 
     const dispose = () => {
         insight.dispose();
+        if (simBelts) simBelts.dispose();
+        rays.geometry.dispose();
+        rayMaterial.dispose();
+        tipGeometry.dispose();
+        tipMaterial.dispose();
         if (grid) {
             grid.geometry.dispose();
             grid.material.dispose();
         }
         canvas.removeEventListener('webglcontextlost', onLost);
+        canvas.removeEventListener('keydown', onKey);
+        canvas.removeEventListener('pointerdown', focusCanvas);
         controls.dispose();
         built.dispose();
         renderer.dispose();
@@ -278,7 +396,21 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         dirty = true;
         resetCamera();
     };
-    return {canvas, render, resize, resetCamera: recentre, dispose, setPorts, setMotion, setOverlay, highlight,
+    return {canvas, render, resize, resetCamera: recentre, dispose, setPorts, setMotion, setOverlay, setSensors, highlight,
+        /** The sensor rays as last drawn, {from, to} in world space (metres), for the browser gate. */
+        sensorRays: () => (rays.visible ? lastRays.filter(Boolean).map(r => ({...r})) : []),
+        /** The pane's view buttons: 'home', 'top', 'front' or 'side'; and Fit. */
+        view: name => { viewFrom(name); dirty = true; },
+        fit: () => { fit(); dirty = true; },
+        /** Follow a part (its id in the model) instead of the whole model's centre; null: the model again. */
+        followPart: id => {
+            followPartId = id && built.partMeshes.has(id) ? id : null;
+            followed = null;
+            dirty = true;
+            return followPartId;
+        },
+        /** A camera key (camera-nav.js), as if pressed on the focused view; true when the camera moved. */
+        nudge: event => { const moved = applyCameraAction(camera, controls, cameraKeyAction(event), canvas.clientHeight); dirty = dirty || moved; return moved; },
         /** The camera now (for the browser gate to read what a gesture did): position, target, distance (metres). */
         get camera () {
             return {position: camera.position.toArray(), target: controls.target.toArray(), distance: camera.position.distanceTo(controls.target)};

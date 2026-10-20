@@ -461,15 +461,10 @@ export class Emitter {
         // MakeCode's TypeScript has the operators the pseudocode had to
         // borrow an extension for, so these go back as themselves.
         case 'bitops_and': return `(${v('NUM1')} & ${v('NUM2')})`;
-        // `(a / b) bitor 0` is Math.idiv's own definition, which is how the
-        // importer writes it; the way back names the call.
-        case 'bitops_or': {
-            const quotient = this.numberInput(b, 'NUM2') === 0 ? this.inputBlock(b, 'NUM1') : null;
-            if (quotient && quotient.opcode === 'operator_divide') {
-                return `Math.idiv(${this.value(quotient, 'NUM1')}, ${this.value(quotient, 'NUM2')})`;
-            }
-            return `(${v('NUM1')} | ${v('NUM2')})`;
-        }
+        // Keep the current conversions: Math.idiv also converts both operands
+        // to signed integers before dividing. Naming (a / b) | 0 as that call
+        // changes fractional and out-of-range inputs.
+        case 'bitops_or': return `(${v('NUM1')} | ${v('NUM2')})`;
         case 'bitops_xor': return `(${v('NUM1')} ^ ${v('NUM2')})`;
         case 'bitops_shl': return `(${v('NUM1')} << ${v('NUM2')})`;
         case 'bitops_shr': return `(${v('NUM1')} >> ${v('NUM2')})`;

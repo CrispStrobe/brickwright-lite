@@ -189,17 +189,21 @@ try {
     check('nothing else changed in the map', saved.indices.every((v, i) => i === cell || v === firstData.indices[i]) &&
         saved.walls.every((v, i) => i === cell + 1 || v === firstData.walls[i]));
 
-    // The running game uses the painted level.
-    await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.greenFlag());
-    const running = await waitFor(() => page.evaluate(([w, h]) => {
-        const map = window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState?.tilemap;
-        return map && map.columns === w && map.rows === h ? {
-            indices: Array.from(map.indices), walls: Array.from(map.walls), pixel: map.images[1]?.pixels?.[0]
-        } : null;
-    }, [saved.columns, saved.rows]), value => value && value.indices[cell] === 1, 30000);
+    // Observe this block's real installation before the game clears spawn
+    // tiles in place. The same observer is used below for the fresh SB3 replay.
+    await page.evaluate(observeTilemapInstallations, {blockId: levels[0].blockId, expose: true});
+    let running;
+    try {
+        await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.greenFlag());
+        running = await waitFor(() => page.evaluate(() => window.__bwTilemapInstallationProof.receipts[0]?.map || null),
+            value => value && value.indices[cell] === 1, 30000);
+        report.initialLevelInstallations = await page.evaluate(() => window.__bwTilemapInstallationProof.receipts);
+    } finally {
+        await page.evaluate(() => { window.__bwTilemapInstallationProof.restore(); delete window.__bwTilemapInstallationProof; });
+    }
     check('the running game draws the painted cell', running?.indices[cell] === 1);
     check('and collides with the new wall', running?.walls[cell + 1] === 1);
-    check('and draws the edited tile', running?.pixel === 2, `pixel ${running?.pixel}`);
+    check('and draws the edited tile', running?.images[1]?.pixels[0] === 2, `pixel ${running?.images[1]?.pixels[0]}`);
 
     // Stop the game and answer any dialog it opened (the platformer greets the
     // player), so the tab bar is reachable again.

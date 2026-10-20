@@ -1,0 +1,39 @@
+// Functions, subroutines, inline and safecall functions (Brickwright NXT .rxe VM fixture).
+int square(int x)
+{
+    return x * x;
+}
+
+sub beep()
+{
+    PlayTone(880, 100);
+    Wait(100);
+}
+
+inline int twice(int x)
+{
+    return 2 * x;
+}
+
+safecall int add3(int a, int b, int c)
+{
+    return a + b + c;
+}
+
+int fact(int n)
+{
+    int r = 1;
+    for (int i = 2; i <= n; i++) r *= i;
+    return r;
+}
+
+task main()
+{
+    NumOut(0, LCD_LINE1, square(12));
+    beep();
+    NumOut(0, LCD_LINE2, twice(21));
+    NumOut(0, LCD_LINE3, add3(1, 2, 3));
+    NumOut(0, LCD_LINE4, fact(7));
+    int nine = square(3);
+    NumOut(0, LCD_LINE5, square(nine));
+}

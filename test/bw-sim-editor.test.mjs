@@ -131,8 +131,15 @@ test('6. palette categories, DE labels, SOLID_COLORS', () => {
     const allPartsDe = paletteDe.flatMap(g => g.parts.map(p => p.part));
     assert.deepEqual(new Set(allPartsEn), new Set([...CATALOG.keys()]));
     assert.deepEqual(new Set(allPartsDe), new Set([...CATALOG.keys()]));
-    assert.equal(paletteEn.length, PALETTE_CATEGORIES.length);
-    assert.deepEqual(paletteEn.map(g => g.category), PALETTE_CATEGORIES.map(c => c.id));
+    // Every category the shipped catalogue fills is shown, in order. `decoration` is only for parts
+    // added from the LDraw catalogue (part-meta/catalog-parts.js), so the shipped palette has none.
+    const shipped = PALETTE_CATEGORIES.filter(c => c.id !== 'decoration');
+    assert.equal(paletteEn.length, shipped.length);
+    assert.deepEqual(paletteEn.map(g => g.category), shipped.map(c => c.id));
+    const withDeco = new Map([...CATALOG, ['zz-flag.dat', {part: 'zz-flag.dat', name: 'Flag', nameDe: 'Fahne', category: 'decoration',
+        massGrams: 0.3, connectors: [], colliders: [{shape: 'box', halfExtents: [1, 1, 1]}]}]]);
+    const deco = paletteFrom(withDeco, {locale: 'de'}).find(g => g.category === 'decoration');
+    assert.deepEqual([deco.label, deco.parts.map(p => p.part)], ['Deko', ['zz-flag.dat']]);
     assert.ok(paletteDe.some(g => g.label === 'Lochbalken'));
     assert.ok(paletteDe.some(g => g.label === 'Achse'));
     // SOLID_COLORS

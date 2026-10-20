@@ -104,14 +104,14 @@ Contents
 
 Two facts about the *existing* use matter for every mechanism below:
 
-- **Gears couple world rates.** `jolt-core.js:357–360` documents it: exact only while the
-  frame holding both axles does not itself rotate about the gear axes. Jolt's
-  `GearConstraint` velocity part is `ω1·a1 + r·ω2·a2 = 0` with world angular velocities;
-  `SetConstraints(hinge1, hinge2)` only adds position-drift correction, it does not make
-  the rates relative. The core does not call it today.
-- **Jolt 1.1.0 gear constraint diverges for `r < 1` or negative `r`** (`jolt-core.js:354–357`,
-  measured); the core orders the pair so `r = 1/|ratio| ≥ 1`. Every new coupling must keep
-  that normalisation (it belongs in one `normalizeGearPair` helper, §6).
+- *(Superseded 2026-10-19, see "Gear meshes as built: the Jolt fork" at the end of this document.)* **Gears
+  couple world rates.** Jolt's `GearConstraint` velocity part is `ω1·a1 + r·ω2·a2 = 0` with world
+  angular velocities, exact only while the frame holding both axles does not rotate about the gear
+  axes; and upstream it passes torque 1:1 and puts no reaction on the axles. The core now uses the
+  fork's `GearMeshConstraint` for every mesh: rates relative to each gear's frame, torque × ratio,
+  the reaction on the frames.
+- *(Superseded.)* **Jolt 1.1.0 gear constraint diverges for `r < 1` or negative `r`**: that was the
+  ratio bug (the fork's `GearConstraint` takes any ratio); the pair-ordering workaround is gone.
 
 ### 1.2 Mechanism catalogue
 
@@ -122,17 +122,17 @@ custom constraint (§8 D1).
 
 | # | Mechanism | Parts (LDraw ids to verify against the library) | Physics mapping |
 |---|---|---|---|
-| M1 | Spur / bevel gear mesh (exists) | 8/16/24/40T, 12/20T bevel, 36T/28T double bevel, 12T/20T double bevel | `GearConstraint` on the two gear bodies (today). Stock, exact on a non-rotating frame. |
-| M2 | Gear train on a turning frame (crane slewing ring with a vertical gear inside the superstructure; any vertical-axis gear on a yawing robot) | as M1 | Stock is off by the frame rate (documented limit). **Custom**: frame-relative gear (`ToothContact`, §5.3). Approx: none good; diagnose with a `gear-on-turning-frame` warning when the frame's hinge axis is parallel to the gear axis. |
-| M3 | Worm drive, **non-backdrivable** | worm 4716, 24T, worm gear box | `GearConstraint` ratio `1/teeth` (worm = 1 start). Self-locking: the worm's hinge gets `mMaxFrictionTorque = holdTorqueNm` (Jolt applies hinge friction only while the motor is **off**), and a worm whose input is not motor-driven is held by that friction; a load on the wheel then cannot turn the worm. When the worm is motor-driven, back-driving would need `teeth × motor torque` — far above any realistic load, so the motor simply stalls first. Stock. Efficiency loss (real worms ~40–60 %) as an optional extra friction on the wheel hinge. |
+| M1 | Spur / bevel gear mesh (exists) | 8/16/24/40T, 12/20T bevel, 36T/28T double bevel, 12T/20T double bevel | Since 2026-10-19 the fork's `GearMeshConstraint` (a tooth contact at the pitch point) on the two gear bodies, with both gears' hinges: exact on any frame, torque × ratio, reaction on the frame. (Was: stock `GearConstraint`.) |
+| M2 | Gear train on a turning frame (crane slewing ring with a vertical gear inside the superstructure; any vertical-axis gear on a yawing robot) | as M1 | Built (2026-10-19): the same `GearMeshConstraint` — the rates are relative to the gears' frame, so a turning frame needs nothing extra (this is the §8 `ToothContact`, made in our Jolt fork). |
+| M3 | Worm drive, **non-backdrivable** | worm 4716, 24T, worm gear box | `GearMeshConstraint` ratio `1/teeth` (worm = 1 start) at the worm's pitch point (was `GearConstraint`). Self-locking: the worm's hinge gets `mMaxFrictionTorque = holdTorqueNm` (Jolt applies hinge friction only while the motor is **off**), and a worm whose input is not motor-driven is held by that friction; a load on the wheel then cannot turn the worm. When the worm is motor-driven, back-driving would need `teeth × motor torque` — far above any realistic load, so the motor simply stalls first. Stock. Efficiency loss (real worms ~40–60 %) as an optional extra friction on the wheel hinge. |
 | M4 | Rack and pinion (forklift mast, steering, plotter axis) | gear racks (1×4 3743 and longer racks), 8T/16T/24T pinion, rack guides (beams with holes, axle connectors as runners) | `SliderConstraint` (rack body in its guide; a rack in a beam's slot is a new connector kind `rack-slot`) + `RackAndPinionConstraint` (`ratio` m/rad = pitch radius in m). Stock — the core must create it (today ignored). Limits from the rack length (end stops). |
 | M5 | Linear actuator (old 2790 / new 61927, 92693 mini) — **as built for the 92693 mini: see "Excavator as built" below** | LA housing, piston | Two bodies (housing, piston) + `SliderConstraint` with limits = stroke; input axle hinge + `RackAndPinionConstraint` with ratio = screw lead / 2π; self-locking as M3 via slider `mMaxFrictionForce`. The real LA's **end-of-stroke slip clutch**: approx = disable the rack-pinion (`SetEnabled(false)`) while the piston is at a limit and the input pushes outward, re-enable when it reverses (a 1-bit state in the core's checkpoint). **Custom** exact: torque-limited coupling. |
-| M6 | Chain / track drive | chain link 3711, tread link 3873, sprockets (gear 8T/16T/24T/40T act as sprockets), track 57518 with sprocket 57519 | Chain between two sprockets on one frame = `GearConstraint` with **positive** ratio `teeth1/teeth2` (same direction). Links are rendered, not simulated. Stock. Tracks on a vehicle (approx): the sprocket and idlers become wheels with tread friction, coupled 1:1 by `chain` couplings, plus a non-colliding visual track. `TrackedVehicleController` is not used: it owns the whole vehicle, and here the compiler owns the bodies. |
+| M6 | Chain / track drive | chain link 3711, tread link 3873, sprockets (gear 8T/16T/24T/40T act as sprockets), track 57518 with sprocket 57519 | Chain between two sprockets on one frame = `GearConstraint` with **positive** ratio `teeth1/teeth2` (same direction). Links are rendered, not simulated. Stock. Tracks on a vehicle (approx): the sprocket and idlers become wheels with tread friction, coupled 1:1 by `chain` couplings, plus a non-colliding visual track. `TrackedVehicleController` is not used: it owns the whole vehicle, and here the compiler owns the bodies. **Chain built 2026-10-20** (kinds/chain.js, editor/chain-path.js; docs/ROBOT-LAB-UX.md §11): the fork's `GearConstraint` with both hinges, mRatio = −1/ratio, a step-up built the other way round (|mRatio| < 1 diverges); links welded to the sprockets' frame (the view runs them round). **Treads built 2026-10-20**: 57518 round 57519 sprockets; links drawnOnly, each wrapped sprocket gets a wheel collider of the tread's outer radius with tyre grip. |
 | M7 | Differential (car, open diff) | differential 28T/24T housing (62821 new, 6573 old), 12T bevel spiders, side gears | Mechanically: carrier hinge on the chassis, two side-gear hinges on the chassis (output half-axles), spider hinges on the carrier, four bevel meshes. The spider–side meshes are on a frame (the carrier) that turns about the side-gear axis — exactly M2's limit; stock Jolt gives the wrong relation. **Custom** (`ToothContact`). Approx (no custom build): a lumped **differential coupling** solved by a JS step listener as `ω_L + ω_R = 2·ω_C` (relative to the chassis) with velocity-level impulses each step: correct kinematics, weaker under load (not inside the solver iterations). Locked diff = `FixedConstraint` carrier–side gear. |
 | M8 | Clutch gears and driving ring (shifting gearbox, Schaltgetriebe) | driving ring 6539, driving ring extension, driving-ring hub axle, 16T clutch gear 6542, 20T double bevel with clutch, changeover catch 6641, gear shift lever | Clutch gears spin freely on the hub axle: hinge (new connector kind `clutch-bore`). The ring is a body on a **slider** along the hub (new connector kind `ring-hub`) with **detents** (3 positions) as a slider position motor with a low force limit snapping to the nearest detent. A **`selectableCoupling`** per clutch gear: engaged when the ring's slider position is within ±0.6 mm of that gear's engage position; engaged = the gear's hinge to the hub axle is locked (hinge motor velocity 0, torque limit = `couplingTorqueNm`, ~0.5 N·m) — disengaged = motor off, free. The coupling state machine runs in the core per step and is saved in the checkpoint. Tooth alignment (the ring engages only at 4 angular positions) is modelled as: engagement waits until the relative angle is within ±10° of a multiple of 90°. Stock. |
 | M9 | Turntable (crane slewing, excavator upper) — **as built (28T 99010/99009, 60T 18938/18939): see "Excavator as built"** | turntable 28T old (2856/2855), 56T large turntable (48452 / 18938+18939), small 24T | Two halves = a hinge (new connector kind `turntable-ring` pair, axis through the centre); the outer half's teeth are a `gear` of type `spur` (or `ring`) with its tooth count, meshing with a worm or a pinion (M1/M3). Stock. Bearing friction as hinge `mMaxFrictionTorque`. |
 | M10 | Winch / rope / pulley (crane hoist) | string with end studs (several lengths), winch drum (a wedge belt wheel or a dedicated drum), hook, pulley wheels | Rope = **unilateral length constraint** `Σ|segments| + r_drum·θ_drum ≤ L0` through sheave points on bodies. Jolt's `PulleyConstraint` has world-**fixed** sheave points and no drum term, so it fits only a crane whose boom does not move. **Approx (stock, recommended for v1)**: `DistanceConstraint` from the hook body to the last sheave point (min 0 — slack allowed — max = current rope length), with `SetDistance` updated every step from the drum angle; the measured rope tension (`GetTotalLambdaPosition`/dt) is applied back to the drum as a torque `T·r` on the next step (one-step explicit coupling; stable because hoists are worm- or gear-reduced). Multi-segment ropes over boom-tip sheaves: rope length is split at the sheaves the compiler found, only the last segment is a real constraint, the others' lengths are geometric (they change when the boom luffs, and that change is added to `L`). **Custom** exact: a `Rope` constraint over moving sheaves. Soft-body rods: not for v1 (cost, and SaveState of soft bodies is unmeasured here). |
-| M11 | Rubber band | rubber bands (several sizes), as return springs and belt drives | Spring: `DistanceConstraint` min 0, max = rest length, `mLimitsSpringSettings` with the band's stiffness (pulls only). Belt drive over pulleys = `GearConstraint` ratio `r1/r2`, positive, with slip approximated by a lower velocity-step count. Stock. |
+| M11 | Rubber band | rubber bands (several sizes), as return springs and belt drives | Spring: `DistanceConstraint` min 0, max = rest length, `mLimitsSpringSettings` with the band's stiffness (pulls only). Belt drive over pulleys = `GearConstraint` ratio `r1/r2`, positive, with slip approximated by a lower velocity-step count. Stock. **Built 2026-10-20** (kinds/belt.js, editor/belt-path.js; docs/ROBOT-LAB-UX.md §12): the model's `belts`; a band round pulleys in one frame is a 'band' coupling (the chain's GearConstraint with 4 velocity steps), round two bodies a 'spring' (DistanceConstraint 0..d₀, soft beyond, 4k). |
 | M12 | Pneumatics | pump (small 2797 / large 19475), cylinder (small 4692, large 2793/47224), switch/valve 4694, tank 75974, hoses, T-pieces, PF/Control+ compressor | Not a Jolt problem. A **lumped-pressure network** module (`fluid/`): nodes = hose-connected volumes with pressure state; valves switch connectivity (3 positions, a hinge with detents read like a sensor); pumps add air mass per stroke (pump = slider with a return spring, stroke volume); cylinder force = (p_A − p_B)·area applied as the cylinder **slider motor**: velocity mode, target ±large, force limits from the pressures, so Jolt does the dynamics and the end stops. Network state stepped once per physics step, saved in the checkpoint. Stock + module. |
 | M13 | Sliding joints (fork carriage, plotter carriage, telescopic boom) | beams on axles, axle connectors sliding on axles (frictionless), 6538 sliding on 3L axles | Axle in a **round** hole today is a hinge; a part that slides **and** turns on an axle needs a hinge+slider = Jolt `SixDOF` with rotation-about-axis and translation-along-axis free (new joint kind `cylindrical`). Stock. Axial friction and end stops from the axle's length (both connectors' extents are already in `PartMeta`). |
 | M14 | Limit switch / touch sensor | RCX touch 879, NXT/EV3 touch, SPIKE force, Technic Control touch sensor | Contact-based, not a raycast: `ContactListenerJS` collects contact impulses on the plunger collider (a separate small body on a slider with a spring, so it really travels), pressed = plunger travel > threshold. Requires dynamic–dynamic collisions between plunger and robot parts (`GroupFilterTable`). Stock. |
@@ -862,6 +862,37 @@ movingColliders: outputColliders, massFraction: 0.15, actuatedBy:'device'}]` + `
 `hubProfile: 'spike-prime'`. The **file** is migrated once (a script), so the loader's
 upgrade path is only for user catalogs and old fixtures.
 
+#### 5.4.1 Parts from the whole LDraw catalogue (2026-10-19)
+
+The palette ships the parts in `parts.json`; the palette's **+** adds any of the ~23,700
+parts of the LDraw.org Parts Library at run time (owner decision 2026-10-19: fetch from the
+ldraw-stl mirror; parts the deriver cannot connect are offered as decoration).
+
+- **Source.** `ldraw/ldraw-catalog.js` reads the ldraw-stl mirror
+  (https://crispstrobe.github.io/ldraw-stl/library/, built weekly from the official
+  `complete.zip` by https://github.com/CrispStrobe/ldraw-stl): the CC BY files only,
+  unmodified, one zip cut into chunks; one HTTP range request per file. `fetchLDrawClosure`
+  takes vendored files from `static/ldraw/` (ldraw-lock.json lists them, so nothing else is
+  asked for there) and the rest from the catalogue (`setLDrawFallback`).
+- **Metadata.** The deriver moved from `scripts/derive-part-meta.mjs` to
+  `part-meta/derive.js` (the script is its command line; output byte-identical).
+  `part-meta/catalog-parts.js` runs it with `selfCheck` in a worker
+  (`part-meta/catalog-worker.js`, 20 s budget). A part that passes is a normal derived part.
+  One that does not becomes a **decoration** (category `decoration`, no connectors,
+  `deriveColliders`' envelope or its bounding box as colliders, at least 0.5 LDU thick, mass
+  from the mesh volume): a free body that rests and collides but joins nothing.
+- **Persistence.** Added parts are kept per device (`localStorage` `bw-sim-catalog-parts`,
+  with the library build and the files' attribution) and are in `CATALOG` from the start. A
+  model naming a part no catalogue piece has derives it from the catalogue when it is opened
+  (`sim-lab.js catalogFor`), so a model made elsewhere opens the same.
+- **Policy.** `BW_REMOTE_PARTS_POLICY=deny` (webpack.config.js) builds the app without the
+  catalogue; it is data, not code, so it is separate from the remote-code policies and their
+  receipt. The About dialog shows it.
+- **Licence.** Every library file is CC BY 4.0 or CC BY 2.0 + 4.0. The app renders parts
+  (2D, which LDraw.org does not count as an adaptation) and saves models as references.
+  The palette's catalogue view names, for each added part, every fetched file's author,
+  licence and source; the About dialog's LDraw entry says where the files come from.
+
 ### 5.5 The world
 
 File: `world/world.js` (contract), `world/mats.js` (stays), `world/objects.js`,
@@ -1303,8 +1334,8 @@ the part-meta checks of the new connectors, and the browser `examples` gate. Whe
   on that axle), then narrowed by the rack to its teeth. The slider locks the bore's turn about the axle
   (a cylindrical pair, §5.3, is not built): exact on two guides, an approximation on one (the Forklift
   has one guide; the pinion holds the rack's other side).
-- **The worm's self-lock** is a GearConstraint (1/teeth, signed by the thread's hand, measured from the
-  mesh) plus a hold on the WHEEL's hinge, decided per step: while the motor that drives the worm (its own
+- **The worm's self-lock** is a gear mesh (1/teeth, signed by the thread's hand, measured from the
+  mesh; since 2026-10-19 a `GearMeshConstraint` at the worm's pitch point, which has no friction) plus a hold on the WHEEL's hinge, decided per step: while the motor that drives the worm (its own
   hinge's, or the first actuated hinge a chain of gear couplings reaches) commands motion, no hold; while
   it coasts or brakes, or nothing drives the worm, friction `holdTorqueNm/|ratio|` on the wheel's hinge
   (Jolt applies hinge friction while the hinge's own motor is off: the wheel has none). Physics: a LEGO
@@ -1332,7 +1363,7 @@ the part-meta checks of the new connectors, and the browser `examples` gate. Whe
 What R6/R7 should know: couplings that are connectors (`worm`, `rack-teeth`) are free detectors in
 `kinds/` that reuse `gearHinges` (now in `kinds/gear-mesh.js`) for the frame rules; a detector may bound a
 joint's travel (`limits`); the core's coupling builders are still an if-chain in `jolt-core.js`
-(`buildGearConstraint` is the shared gear part). A worm-driven turntable (R7 slewing) and a worm winch get
+(`buildGearConstraint` was the shared gear part; since 2026-10-19 `meshGear`). A worm-driven turntable (R7 slewing) and a worm winch get
 the self-lock for free; the hold acts on the wheel's hinge, so a wheel that is itself motorised is not
 handled. A clutch (R6) is a per-step decision like the worm hold: register its state with
 `core.registerState` and act before `Step` (see `applyWormHolds`). The editor's snap still uses the v1
@@ -1595,14 +1626,14 @@ for the parts and kinds that exist).
   gear's axle). Anchors are tooth points fixed in F one pitch radius from each axis, so |ratio|
   is the tooth ratio even where LDraw seats a bevel off its pitch cone (the official
   differential seats its 12T satellites 17 LDU from the apex; `kinds/bevel.js` SEAT_TOL_LDU 2).
-- **Physics** (`physics/jolt-core.js`): a `relativeGear` whose F does not turn about the gears
-  is a GearConstraint on the two gear bodies' world rates (warm-started, exact while F does not
-  turn — the v1 limit); a carrier mesh is the teeth's no-slip condition, a SixDOF constraint with
-  only the tangent translation fixed, re-made at F's current tooth points before every step
-  (exact for any motion of F; 240 velocity iterations: a held-side differential measures 1.992×
-  the casing for Willis' 2). This is the §8 `ToothContact` without a custom Jolt build; the
-  re-made constraints are the last in the system and are removed last-first, so the Jolt
-  constraint order that checkpoints rely on never changes.
+- **Physics** (`physics/jolt-core.js`, since 2026-10-19): every `relativeGear` is the fork's
+  `GearMeshConstraint` between the two gear bodies (the same as the 'gear' kind). A carrier mesh
+  (both hinges turn in F) gets those two hinges, so F carries the reaction and the mesh is exact
+  however F moves (a held-side differential: 1.9999× / 2.0000× the casing for Willis' 2). A chain
+  mesh (the gear's own hinge turns in an axle, not in F) gets no hinges — its frames count as at
+  rest, exact while F does not turn, as before. (Until 2026-10-19: a GearConstraint, and for a
+  carrier a SixDOF tooth-point contact re-made before every step with 240 velocity iterations,
+  1.992×.)
 - **Clutches**: `kinds/transmission.js` — the driving ring's spline bore on a ridged joiner is a
   slider; `dogClutch` locks the clutch gear's hinge (a friction of 2.5 N·m) while the ring's
   teeth are ≥ 4 LDU in its socket, and narrows the ring's travel to the sockets' depth;
@@ -1670,7 +1701,7 @@ numbers per machine); all 22 of its tests pass with their original expectations 
   motorised hinge gets 30 velocity steps and 0.33/ε position steps in [5, 40], set when the rotor
   inertia is (`setMotorSteps`): the arm 30, a wheel 7. Position steps are the cost (they re-solve
   every contact of the island).
-- **Meshes on a moving frame (merge with the excavator lane, 2026-10-19).** Jolt's GearConstraint
+- *(Superseded the same day by the Jolt fork, below.)* **Meshes on a moving frame (merge with the excavator lane, 2026-10-19).** Jolt's GearConstraint
   couples the gear bodies' WORLD rates; a frame turning about the gear axes at Ω drives the gears
   (1 + |ratio|)·Ω wrong relative to it. A 'gear' coupling of parallel, vertical axes (external mesh)
   whose shared frame is dynamic is now built as the gearbox lane's tooth contact (`movingFrameMesh` →
@@ -1680,7 +1711,7 @@ numbers per machine); all 22 of its tests pass with their original expectations 
   Measured: slew motor −336° / +293° → turntable +96 / −84 expected at 8/28, +99.5 / −84.9 seen.
   Horizontal-axis meshes on moving frames (an actuator's 16T pair on a boom) keep the gear
   constraint they were tuned with — a documented limit.
-- **Open: the Excavator's base yaw.** With the mesh exact, the dig cycle's base yaws far beyond the
+- *(Resolved by the Jolt fork, below: 5.0°.)* **Open: the Excavator's base yaw.** With the mesh exact, the dig cycle's base yaws far beyond the
   test's 10° (139° measured; 68.7° with every validation fix off): the upper structure's moment about
   the turntable axis (≈ 2.0e-3 kg·m², point masses) is ~5× the base's (≈ 3.8e-4), so a free base turns
   ~75° against a 90° swing, and the floor's grip (≈ 0.3 N·m: 0.47 kg on tyres 70 mm out) is below the
@@ -1743,3 +1774,60 @@ motors: A/B wheels, C slew, D boom, E stick, F bucket.
 - Tests: `test/bw-sim-linear-actuator.test.mjs`, `test/bw-sim-turntable.test.mjs`,
   `test/bw-sim-excavator.test.mjs`; the model is in `test/bw-sim-models-solid.test.mjs` and the
   instructions tests like every MODELS entry.
+
+### Gear meshes as built: the Jolt fork (2026-10-19, `lane/simlab-next6-20261019`)
+
+Owner decision: patch Jolt in our fork. `jolt-physics` is now **1.1.0-bw.2**, the Brickwright fork
+of JoltPhysics.js (<https://github.com/CrispStrobe/JoltPhysics.js>, branch `brickwright/gear-mesh`,
+`BRICKWRIGHT.md`), built against <https://github.com/CrispStrobe/JoltPhysics> (Jolt v5.6.0 + the
+fix). It is pinned to its release tarball by URL and sha512 (`scripts/integrate.mjs`
+`JOLT_PHYSICS_URL` / `JOLT_PHYSICS_INTEGRITY`; the GUI lockfile must carry exactly that integrity,
+and npm checks the bytes before unpacking; `test/fetch-pinning.test.mjs` lists the site). MIT, as
+upstream. Everything but the gear constraints is bit-identical to 1.1.0 (the fork's regression scene).
+
+- **What the fork fixes.** Upstream `GearConstraintPart` applied λ, not ratio·λ, to gear 2: torque
+  crossed a mesh 1:1 (an 8:24 train put 3× the load on its motor; ratios < 1 or negative diverged).
+  And a gear constraint is angular-only: no reaction on the axles, so a machine on a free frame gained
+  angular momentum. The fork's `GearConstraint` passes torque × ratio; its new `GearMeshConstraint` is
+  the mesh as a 1-D tooth contact at the pitch point P along the line of action n:
+  n·(V2(P) − V1(P)) = 0, each V the gear's material point velocity written relative to its frame (the
+  other body of its hinge). The impulse is a force pair at P: torque × ratio, the reaction on the
+  frame(s), momentum conserved. Parallel axes (spur, internal): P from the ratio on the line of
+  centres. Crossed axes (worm, bevel): P given (`mContactPoint`), n chosen so the ratio holds.
+- **The core** (`physics/jolt-core.js` `meshGear`, `hingeMesh`): every 'gear', 'worm' and
+  'relativeGear' coupling is a `GearMeshConstraint` between the two gear bodies. Axes are the hinge
+  axes signed by the gear's side (+ on body2), so the contract ratio ω(joint2) = ratio·ω(joint1) is
+  `mRatio` as it is — no pair ordering, no axis flip. `SetConstraints(hinge1, hinge2)` hands over each
+  gear's hinge (its other body is the frame); a chain relativeGear (the gear's own hinge turns in an
+  axle, not in F) hands over none. Worm: `mContactPoint` on the common perpendicular of the axes,
+  the wheel's pitch radius (0.5 mm per tooth) from the wheel's axis; the self-lock hold is unchanged
+  (the mesh has no friction). A 'gear' bevel (crossed axes, no pitch point in the coupling): P in the
+  plane of the axes at P − O ∝ a1 − ratio·a2 — the pitch speeds are then ratio : 1, and with both gears
+  in one frame the reaction is a couple, so P's scale does not matter. Deleted: `buildGearConstraint`
+  and its |ratio| ≤ 1 swap, `movingFrameMesh` with its per-step re-made contact and slip memory, the
+  carrier SixDOF contact (`anchorRelativeGears`, `CARRIER_VELOCITY_STEPS` 240). Rack and pinion is
+  unchanged (Jolt's was right).
+- **Phase re-based every step.** The fork's mesh can also correct accumulated phase error from the
+  hinges' angles (Baumgarte, in the position steps). Kept across steps that correction fought the rest
+  of the solve: a stalled DC motor's arm on a driven 24T went 7.7° into a static block (the contact on
+  a light arm gives way before the mesh does), and the Excavator's bucket actuator chain rang and
+  diverged (NaN) within a second of curling. `SetConstraints` is called again before every step, so
+  the position steps remove each step's own drift; slip the solver cannot prevent stays slipped (the
+  stalled arm's impact: 10.5° of the 24T), as it did with the gear constraint.
+- **Solver floors.** Gear bodies get a mass of at least 20 g (`GEAR_MIN_MASS_KG`, weight kept by the
+  gravity factor, inertia kept; screw.js does the same for an actuator's parts): a light gear between
+  its hinge and a contact or a mesh is pushed sideways and turns only a little per iteration (without
+  it the slew pinion slipped 17° of the turntable in a dig cycle and the stalled arm kept rocking).
+  `GEAR_MIN_INERTIA` 3e-5 re-measured and kept (1e-5 and 3e-6 let the stalled arm bounce off its
+  block). A mesh island solves with `MESH_VELOCITY_STEPS` 120 (the Excavator's boom left its
+  law-of-cosines angle by 1.73° with 30, 0.73° with 120).
+- **Results** (docs/ROBOT-LAB-VALIDATION.md): 8:24 dyno 16.205 rad/s for 16.253 (was 11.796), η 0.979
+  (was 0.332); Excavator dig-cycle base yaw 5.0° (was 139.4°), swings −81.1° / +98.7°; a free-floating
+  gearbox keeps its angular momentum to 1.1e-3 of its parts' spin (the integrator's residual: Jolt has
+  no gyroscopic term); Willis 1.9999. `core.bodyAngularMomentum(id, about)` reads a body's L with the
+  solver's mass and inertia.
+- **Cost** (node, 200 Hz, µs per step over a 3 s run with every motor turning, min of 3 runs
+  alternating Jolt 1.1.0 + the old core and the fork + this core): Excavator 2048 → 1705 (−17 %),
+  Differential 611 → 427 (−30 %), Two-speed gearbox 468 → 568 (+21 %: 120 iterations instead of 30),
+  Forklift 121 → 118; models without gears and the 2,054-part stress model unchanged within the
+  noise (60–80 µs; 1855 → 1891).

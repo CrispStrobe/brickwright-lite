@@ -7,22 +7,22 @@
 // Pure helpers; no compiler import (the compiler imports the kinds).
 
 import {mat3MulVec3, vecAdd, vecNormalize} from '../mech/vec.js';
-import {pitchRadiusLdu} from '../contracts.js';
+import {gearPitchRadius} from '../contracts.js';
 
-/** Spur gears, one per placed part: {partId, islandId, centerLdu, axisLdu, r, teeth}. */
-export const spurGears = (nodes, islands) => {
+/** Spur gears (or the gear `types` given), one per placed part: {partId, islandId, type, centerLdu, axisLdu, r, teeth}. */
+export const spurGears = (nodes, islands, types = ['spur']) => {
     const out = [];
     const seen = new Set();
     for (const [nodeId, node] of nodes.entries()) {
         if (seen.has(node.partId)) continue;
         seen.add(node.partId);
         const gear = node.meta && node.meta.gear;
-        if (!gear || gear.type !== 'spur') continue;
+        if (!gear || !types.includes(gear.type)) continue;
         const islandId = islands.nodeToBody.get(nodeId);
         if (!islandId) continue;
         const rot = node.placed.rotation;
         out.push({
-            partId: node.partId, islandId, teeth: gear.teeth, r: pitchRadiusLdu(gear.teeth),
+            partId: node.partId, islandId, type: gear.type, teeth: gear.teeth, r: gearPitchRadius(gear),
             centerLdu: vecAdd(mat3MulVec3(rot, gear.center), node.placed.position),
             axisLdu: vecNormalize(mat3MulVec3(rot, gear.axis))
         });
@@ -51,8 +51,8 @@ export const toothConnectors = (nodes, islands, type, directions = []) => {
 };
 
 /** The same two kinds of thing for a placed part outside the compiler (the editor's overlap rule). */
-export const placedSpur = (pl, meta) => (meta && meta.gear && meta.gear.type === 'spur' ? {
-    partId: pl.id, r: pitchRadiusLdu(meta.gear.teeth), teeth: meta.gear.teeth,
+export const placedSpur = (pl, meta, types = ['spur']) => (meta && meta.gear && types.includes(meta.gear.type) ? {
+    partId: pl.id, r: gearPitchRadius(meta.gear), teeth: meta.gear.teeth,
     centerLdu: vecAdd(mat3MulVec3(pl.rotation, meta.gear.center), pl.position),
     axisLdu: vecNormalize(mat3MulVec3(pl.rotation, meta.gear.axis))
 } : null);

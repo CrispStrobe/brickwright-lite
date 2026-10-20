@@ -5,11 +5,11 @@ import path from 'node:path';
 import {chromium} from 'playwright';
 import {makeCodeProjectFile} from '../overlay/scratch-gui/src/lib/bw-makecode/project-file.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
-import {CALLBACK_COMPLETION_SOURCE} from '../test/fixtures/arcade-callback-completion.mjs';
+import {CALLBACK_COMPLETION_FRAME_SOURCE as CALLBACK_COMPLETION_SOURCE} from '../test/fixtures/arcade-callback-completion.mjs';
 const imported=arcadeToPseudocode(CALLBACK_COMPLETION_SOURCE);assert.deepEqual(imported.unsupported,[]);
 const out=process.env.BW_CALLBACK_REPORT || 'test-results/arcade-callback-completion-browser.json';
 await fs.mkdir(path.dirname(out),{recursive:true});
-const browser=await chromium.launch();const report={errors:[],samples:[]};let page;
+const browser=await chromium.launch();const report={profile:'authored-frame-observed-callback',source:CALLBACK_COMPLETION_SOURCE,errors:[],samples:[]};let page;
 try{
  page=await browser.newPage({viewport:{width:1600,height:1000}});
  page.on('pageerror',e=>report.errors.push(e.message));
@@ -38,7 +38,19 @@ try{
   if(completed===2)await page.getByTestId('bw-arcade-a').click();
   await page.waitForFunction(n=>window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).some(v=>v.name.replace(/^Game_/,'')==='completed' && v.value===n),completed,{timeout:30000});
   const values=await page.evaluate(()=>Object.fromEntries(window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value])));
-  report.samples.push({completed,before:values.before,after:values.after,inB:values.inB,inC:values.inC,finalX:values.finalX});
+  const timing = await page.evaluate(() => {
+    const runtime = window.__brickwrightStore.getState().scratchGui.vm.runtime;
+    const phase = runtime._arcadeFramePhase, ext = phase?.ext;
+    return {wall: runtime.currentMSecs, elapsed: runtime.bwArcadeDeviceState?.elapsedMs,
+      sourceTimers: ext?._sourceSceneTimers(), frameWorkerActive: ext?._sceneFrameHost?.active,
+      phaseActive: phase?.active, pendingPhase: phase?.pending?.phase,
+      workNotes: phase?.notes?.slice(-12),
+      threads: runtime.threads.map(thread => ({status: thread.status,
+        opcode: thread.target.blocks.getBlock(thread.peekStack())?.opcode})),
+      sprites: Object.values(runtime.bwArcadeDeviceState?.sprites || {}).map(sprite =>
+        ({x: sprite.x, vx: sprite.vx, kind: sprite.kind}))};
+  });
+  report.samples.push({completed,before:values.before,after:values.after,inB:values.inB,inC:values.inC,finalX:values.finalX,timing});
   assert.ok(values.after<values.before,'motion continues during pause');for(const key of ['inB','inC','finalX'])assert.equal(values[key],values.after,key);
  }
  await page.locator('[class*="stop-all_stop-all"]').first().click();await page.getByRole('tab',{name:'Code',exact:true}).click();
@@ -50,8 +62,19 @@ try{
  await page.getByRole('button',{name:'⇦ To blocks',exact:true}).click();
  await page.waitForFunction(id=>{const stage=window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage();return Boolean(stage && stage.id!==id);},priorStage2);await page.getByText('Blocks loaded.',{exact:true}).waitFor({state:'visible'});
  await page.getByRole('tab',{name:'Blocks',exact:true}).click();await page.locator('[class*="green-flag_green-flag"]').first().click();
- await page.waitForFunction(()=>Object.values(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.sprites).some(s=>s.kind==='Player'));
- const measure=()=>page.evaluate(()=>{const r=window.__brickwrightStore.getState().scratchGui.vm.runtime,s=Object.values(r.bwArcadeDeviceState.sprites).find(s=>s.kind==='Player');return {wall:r.currentMSecs,elapsed:r.bwArcadeDeviceState.elapsedMs,x:s.x};});
+ await page.waitForFunction(()=>{
+  const vm=window.__brickwrightStore.getState().scratchGui.vm;
+  const variables=Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
+  return Boolean(vm.runtime.bwArcadeDeviceState?.sprites[variables.actor]);
+ });
+ const motionKind=await page.evaluate(()=>{
+  const vm=window.__brickwrightStore.getState().scratchGui.vm;
+  const variables=Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
+  const actor=vm.runtime.bwArcadeDeviceState.sprites[variables.actor],kind=vm.runtime._primitives.arcade_spriteKindValue({NAME:'Player'});
+  if(typeof kind!=='number' || actor.kind!==kind)throw new Error('Authored motion actor must retain its registered numeric Player kind');
+  window.__bwMotionPlayerKind=kind;return kind;
+ });assert.equal(motionKind,1000,'selected original SpriteKind.Player');report.kindBindings={Player:motionKind};
+ const measure=()=>page.evaluate(()=>{const r=window.__brickwrightStore.getState().scratchGui.vm.runtime,s=Object.values(r.bwArcadeDeviceState.sprites).find(s=>s.kind===window.__bwMotionPlayerKind);return {wall:r.currentMSecs,elapsed:r.bwArcadeDeviceState.elapsedMs,x:s.x};});
  const right=page.getByTestId('bw-arcade-right');await right.hover();await page.mouse.down();const before=await measure();
  await page.waitForFunction(start=>window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.elapsedMs-start>=500,before.elapsed);
  const after=await measure();await page.mouse.up();

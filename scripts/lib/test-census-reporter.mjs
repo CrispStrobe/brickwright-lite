@@ -11,6 +11,9 @@
  *   {"files": {"<path>": {"tests": n, "passed": n, "failed": n, "stdoutBytes": n,
  *                          "skipped": [{"name": "...", "reason": "..."}]}}, "events": n}
  *
+ * todo records pending outcomes separately, including whether the body passed;
+ * a failed pending body is not an ordinary failure or a successful test.
+ *
  * skipped (2026-09-07, plan T13): every test the file SKIPPED, with the reason
  * the test gave (`{skip: 'why'}`, `t.skip('why')`; a bare `skip: true` is
  * recorded as "(no reason)"). The TAP shows `# SKIP why` with no file; this is
@@ -37,7 +40,7 @@
 export default async function* testCensusReporter (source) {
     const files = {};
     let events = 0;
-    const bucket = file => (files[file] ||= {tests: 0, passed: 0, failed: 0, stdoutBytes: 0, skipped: []});
+    const bucket = file => (files[file] ||= {tests: 0, passed: 0, failed: 0, stdoutBytes: 0, skipped: [], todo: []});
     for await (const event of source) {
         if (event.type === 'test:stdout') {
             bucket(event.data.file || '(unknown)').stdoutBytes += Buffer.byteLength(String(event.data.message || ''));
@@ -48,9 +51,11 @@ export default async function* testCensusReporter (source) {
         const file = event.data.file || '(unknown)';
         const b = bucket(file);
         b.tests++;
-        // A known-open test (`{todo: …}`) is counted under `todo`, as TAP's `# todo` counts it, not as
-        // a failure: check-test-run.mjs holds every such test to a docs/….md pointer instead.
-        if (event.data.todo !== undefined && event.data.todo !== false) b.todo = (b.todo || 0) + 1;
+        // A known-open test (`{todo: …}`) is recorded as pending, not as a failure:
+        // check-test-run.mjs holds every such test to a docs/….md pointer.
+        if (event.data.todo !== undefined && event.data.todo !== false) b.todo.push({name: event.data.name,
+            reason: typeof event.data.todo === 'string' && event.data.todo ? event.data.todo : '(no reason)',
+            passed: event.type === 'test:pass', type: event.data.details?.type || 'test'});
         else if (event.type === 'test:pass') b.passed++; else b.failed++;
         if (event.data.skip) b.skipped.push({name: event.data.name, reason: typeof event.data.skip === 'string' ? event.data.skip : '(no reason)'});
     }

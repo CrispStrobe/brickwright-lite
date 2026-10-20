@@ -297,11 +297,11 @@ test('motor under load, direct: a medium motor against the slip clutch settles o
     assert.ok(relErr(r.motor, expected) <= 0.01, `ω ${r.motor} vs ${expected}`);
 });
 
-test('motor under load through an 8:24 mesh: the clutch\'s torque reaches the motor divided by 3', {
-    todo: 'GEAR TORQUE 1:1 — the gear constraint (Jolt GearConstraint as jolt-core.js buildGearConstraint makes it) ' +
-        'enforces ω2 = ratio·ω1 but passes torque 1:1: the motor works against the full slip torque, as if direct ' +
-        '(upstream Jolt GearConstraintPart applies λ, not ratio·λ, to body 2); see docs/ROBOT-LAB-VALIDATION.md'
-}, async t => {
+// Until 2026-10-19 the next two were todos: upstream Jolt's GearConstraint passed torque across a mesh
+// 1:1 (GearConstraintPart applied λ, not ratio·λ, to body 2), so the motor worked against the full slip
+// torque (11.796 rad/s, the direct bench's) and η was 1/3. The mesh is now the Brickwright fork's
+// GearMeshConstraint (jolt-physics 1.1.0-bw.2; jolt-core.js); see docs/ROBOT-LAB-VALIDATION.md.
+test('motor under load through an 8:24 mesh: the clutch\'s torque reaches the motor divided by 3', async t => {
     // The 8T drives the clutch gear (24T) whose hub is held: its ring turns at ω/3 and slips at SLIP_NM,
     // which an ideal mesh brings to the motor as SLIP_NM·8/24: ω = ω0·(1 − SLIP_NM/(3·τs)). Tolerance 1 %.
     const r = await dyno('dyno-geared.ldr');
@@ -314,9 +314,7 @@ test('motor under load through an 8:24 mesh: the clutch\'s torque reaches the mo
     assert.ok(relErr(r.motor, expected) <= 0.01, `ω ${r.motor} vs ${expected}`);
 });
 
-test('gearbox efficiency under load: power out of the 8:24 mesh = power in (ideal gears)', {
-    todo: 'the same gear-torque bug: the motor puts in 3× the power the slipping clutch takes out (η = 1/3); see docs/ROBOT-LAB-VALIDATION.md'
-}, async t => {
+test('gearbox efficiency under load: power out of the 8:24 mesh = power in (ideal gears)', async t => {
     // Input power at the shaft: the DC line's torque at the measured speed (full duty) times that
     // speed, τ_in = τs·(1 − ω/ω0) (it contains the gearbox friction, which is the motor's, not the
     // mesh's). Output: the clutch slipping at SLIP_NM at the ring's speed. Ideal spur gears: η = 1;
@@ -327,6 +325,62 @@ test('gearbox efficiency under load: power out of the 8:24 mesh = power in (idea
     t.diagnostic(`in ${(tauIn * r.motor * 1000).toFixed(1)} mW (${(tauIn * 100).toFixed(2)} N·cm at ${r.motor.toFixed(2)} rad/s), ` +
         `out ${(SLIP_NM * r.ring * 1000).toFixed(1)} mW (${(SLIP_NM * 100).toFixed(2)} N·cm at ${r.ring.toFixed(2)} rad/s): η ${eta.toFixed(3)}`);
     assert.ok(Math.abs(eta - 1) <= 0.03, `η ${eta}`);
+});
+
+test('a free-floating gearbox conserves angular momentum: its motor turns the 8T, the 24T and the frame counter-rotate', async t => {
+    // The 8:24 bench gearbox (test/fixtures/bw-sim/gears/8-24.json) NOT clamped and without gravity:
+    // the motor is internal (its hinge between the housing, which is the gearbox frame, and the 8T), so
+    // nothing outside acts and the total angular momentum stays what it was, zero. A mesh that only
+    // couples the gears' rates (Jolt's GearConstraint) puts no reaction on the frame: the gears spin
+    // up while the frame does not answer, and L grows with them (the fork's own measurement: 0.68 of
+    // the gear's I·ω). The tooth contact (GearMeshConstraint, the reaction at the pitch point on the
+    // frame) conserves it. Measured: |ΔΣL| over 2 s against the largest Σ|L_i| of the parts' own spins;
+    // tolerance 2e-3, which is the integrator's, not the mesh's: Jolt turns bodies without the
+    // gyroscopic term (ω × I·ω), so a part spinning about an axis that is not a principal one drifts —
+    // the same gearbox with its mesh removed (only the 8T and the housing turning) drifts 4e-3 of its
+    // spin (measured 2026-10-19), the fork's bare two-disc scene 5.6e-7. A mesh without the reaction
+    // is off by order 1. The 24T turns −1/3 of the 8T RELATIVE to the frame (0.5 %), and the frame
+    // turns: the reaction reached it.
+    const fixture = JSON.parse(readFileSync(path.join(ROOT, 'test/fixtures/bw-sim/gears/8-24.json'), 'utf8'));
+    const mech = compile(fixture, CATALOG, {version: 2, ground: false});
+    mech.gravity = [0, 0, 0];
+    // Jolt's default velocity damping (0.05 s⁻¹ on each body's own rates) is an outside torque on every
+    // part: off here, so that what remains is the joints' and the mesh's.
+    for (const b of mech.bodies) { b.linearDamping = 0; b.angularDamping = 0; }
+    const mj = motorJoint(mech);
+    const g24 = hingeOf(mech, bodyOf(mech, 'g24').id);
+    const core = createPhysicsCore(J, mech, {stepHz: STEP_HZ});
+    const bodies = mech.bodies.filter(b => b.motion !== 'static').map(b => b.id);
+    const total = () => bodies.map(b => core.bodyAngularMomentum(b)).reduce((acc, l) => acc.map((v, i) => v + l[i]), [0, 0, 0]);
+    const spins = () => bodies.reduce((acc, b) => {
+        const c = core.bodyPose(b).position; // any point: each body's own spin is what scales the check
+        return acc + Math.hypot(...core.bodyAngularMomentum(b, c));
+    }, 0);
+    const housing = mj.body1;
+    const q0 = core.bodyPose(housing).rotation;
+    const L0 = total();
+    const m0 = core.jointState(mj.id).angle;
+    const o0 = core.jointState(g24.id).angle;
+    core.setMotor(mj.id, {mode: 'velocity', radPerSec: 6});
+    let worst = 0;
+    let scale = 0;
+    run(core, 2, i => {
+        if (i % 10) return;
+        worst = Math.max(worst, Math.hypot(...total().map((v, k) => v - L0[k])));
+        scale = Math.max(scale, spins());
+    });
+    const wm = (core.jointState(mj.id).angle - m0) * sideOf(mj, mj.body2);
+    const wo = (core.jointState(g24.id).angle - o0) * sideOf(g24, bodyOf(mech, 'g24').id);
+    const frameTurn = 2 * Math.acos(Math.min(1, Math.abs(qmul(qconj(q0), core.bodyPose(housing).rotation)[3]))) * DEG;
+    core.destroy();
+    const expected = -teeth(fixture.parts.find(p => p.id === 'g8').part) / teeth(fixture.parts.find(p => p.id === 'g24').part) *
+        dot(mj.axis, g24.axis);
+    t.diagnostic(`max |ΔL| ${worst.toExponential(2)} kg·m²/s against Σ|L_i| up to ${scale.toExponential(2)}: ${(worst / scale).toExponential(2)}; ` +
+        `24T/8T relative to the frame ${(wo / wm).toFixed(5)} (expected ${expected.toFixed(5)}); the frame turned ${frameTurn.toFixed(1)}°`);
+    assert.ok(Math.abs(wm) > 5, `the motor turned ${wm} rad`);
+    assert.ok(worst <= 2e-3 * scale, `angular momentum changed by ${worst} against ${scale}`);
+    assert.ok(relErr(wo / wm, expected) <= 0.005, `24T/8T ${wo / wm} vs ${expected}`);
+    assert.ok(frameTurn > 1, `the frame turned only ${frameTurn}°`);
 });
 
 test('rack and pinion carries force in proportion (control for the gear bug): the Forklift holds its carriage with m·g·r', t => {
@@ -534,11 +588,10 @@ test('colour sensor (the Colour Explorer\'s) over the colour-zones mat: each zon
 });
 
 // ---- F. a brick tower on a tilting table ------------------------------------------------------------
-test('tilting table: a loose tower of two 1 × 1 × 3 bricks tips at tan θ = (half base) / (COM height)', {
-    todo: 'the tower tips between 5° and 10° (direction-dependent) against 7.8°: it rocks on its 8 mm footprint — ' +
-        'the loaded edge sinks into the 0.2 mm penetration slop (jolt-core.js LEGO_PENETRATION_SLOP_M; ' +
-        'atan(0.2/8) = 1.4°, a static lean of 1.5° measured with the table still) and the table\'s steps set it rocking; see docs/ROBOT-LAB-VALIDATION.md'
-}, async t => {
+// Until 2026-10-19 a todo (it tipped at 10.00° one way, 6.45° the other, rocking on its 8 mm footprint in
+// the 0.2 mm penetration slop). Measured 2026-10-19 (the same with Jolt 1.1.0 and the fork): it tips at
+// 7.38° / −7.43° (θc 7.83°), inside the 0.5° of the table's steps. The margin is small (0.1°).
+test('tilting table: a loose tower of two 1 × 1 × 3 bricks tips at tan θ = (half base) / (COM height)', async t => {
     // Statics: the tower (one body: the bricks clutch stud in tube) stands on the table's top face
     // (y = −9 LDU) and tips over its bottom edge, 10 LDU (its collider's half width) from its centre
     // line, once the table is tilted by θc = atan(10 / h), h the centre of mass above the face —
@@ -652,9 +705,11 @@ test('two carts collide: the sum of momenta is conserved', async t => {
 });
 
 test('two carts collide: with restitution 0 (no part sets one) they leave together', {
-    todo: 'they bounce apart (e ≈ 0.67): the bumper beam is a 4.8 g body hinged to two 25 g wheel sets, and the ' +
-        'hinges\' compliance stores the impact and gives it back (control: the same carts with all their mass in ' +
-        'the bumper body leave together, e ≈ 0); the light-body-between-hinges problem of round 1, bug 2; see docs/ROBOT-LAB-VALIDATION.md'
+    todo: 'they bounce apart (e ≈ 0.24, measured 2026-10-19): the bumper beam is a 4.8 g body hinged to two 25 g ' +
+        'wheel sets, and the hinges\' compliance stores the impact and gives it back (control: the same carts with all ' +
+        'their mass in the bumper body leave together, e ≈ 0); the light-body-between-hinges problem of round 1, bug 2. ' +
+        'Not the body model (restitution is 0 on every body) and not fixable by the 20 g solver floor the gears and ' +
+        'actuators use: in an impact the floored mass IS the mass, so momentum (the check above) would not be conserved; see docs/ROBOT-LAB-VALIDATION.md'
 }, async t => {
     // Jolt's restitution is 0 unless a body sets it (jolt-core.js; compile sets none for parts): a
     // perfectly inelastic impact, both carts at the common speed. e = (v2' − v1') / (v1 − v2) ≤ 0.05.
@@ -675,7 +730,10 @@ test('two carts collide, control (all of each cart\'s mass in its bumper body): 
 
 test('a free cart coasts with rolling resistance: deceleration ≥ c_rr·g, c_rr ≥ 0.005', {
     todo: 'there is no rolling resistance: the cart loses only Jolt\'s default 0.05 s⁻¹ velocity damping ' +
-        '(a = 0.05·v, c_rr-equivalent ~0.0006 at 0.11 m/s), an order of magnitude below a hard tyre on a hard floor; see docs/ROBOT-LAB-VALIDATION.md'
+        '(a = 0.05·v, c_rr-equivalent ~0.0004 at 0.08 m/s), an order of magnitude below a hard tyre on a hard floor. ' +
+        'Jolt has no rolling friction; a c_rr·N·r torque per tyre needs each tyre\'s normal load, which the core does ' +
+        'not read (its contact listener sees contact points, not impulses) — a contact-force readout is the next step; ' +
+        'see docs/ROBOT-LAB-VALIDATION.md'
 }, async t => {
     // A rolling tyre on a hard floor loses c_rr·m·g (textbook range for rubber on concrete-like floors
     // 0.005 … 0.03): over the last 1.5 s of the run cart 2 coasts alone; its deceleration should be at

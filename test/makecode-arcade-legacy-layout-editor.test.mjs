@@ -107,8 +107,8 @@ test('single-assignment image aliases edit source artwork and preserve live pixe
         const out = projectToArcade(JSON.parse(run.vm.toJSON()), {costumeSvg: (target, costume) =>
             run.vm.runtime.getSpriteTargetByName(target.name)?.getCostumes().find(candidate => candidate.name === costume.name)?.asset?.decodeText()});
         assert.deepEqual(out.unsupported, []);
-        assert.match(out.ts, /let layout: Image = null/);
-        assert.match(out.ts, /let alias: Image = null/);
+        assert.match(out.ts, /let layout: Image\n/);
+        assert.match(out.ts, /let alias: Image\n/);
         assert.doesNotMatch(out.ts, /\[image reference /);
         const original = await runPxtArcade({...out.files, 'main.ts': out.files['main.ts'] +
             '\nlet aliasMutation = scene.getTile(0,0).tileSet\nlet aliasPainted = scene.getTile(1,0).tileSet\n' +

@@ -1,3 +1,105 @@
+## Robot Lab rubber bands — 2026-10-20
+
+CLAIMED and folded into the flexible-parts PR #1116
+— Claude (Robot Lab lane). The model's `belts` (validated, `0 !BW BELT` in LDraw, addBelt /
+removeBelt, a band goes with its part); editor/belt-path.js (circles, path, band size);
+kinds/belt.js ('band' drive that slips, 'spring'); jolt-core band drive and DistanceConstraint
+spring; view/belt-layer.js draws bands in Build and Simulate; properties panel "Rubber band
+round" / "Take off rubber band". Tests: test/bw-sim-belt.test.mjs; gate step 5 of
+scripts/lib/sim-lab-chain-gate.mjs (--part=editor).
+
+## Robot Lab chains and treads round gears — 2026-10-20
+
+CLAIMED and done in one PR to main — Claude (Robot Lab lane, owner request "yes do all that":
+flexible parts, chains first). Part 3711 (Technic chain link) vendored from the 2026-09-30
+library. kinds/chain.js: a 'chain-link' connector and a 'chain' coupling detector (links joined
+pivot on pivot, round two or more spur gears in one frame: same sense, teeth ratio; links welded
+to the frame); physics/jolt-core.js chainDrive (GearConstraint on both hinges). editor/chain-path.js
+lays a closed chain round the selected gears (or a 57518 tread round 57519 sprockets: links
+drawnOnly, each sprocket a wheel of the tread's outer radius); view/chain-motion.js runs the links
+round; properties panel "Chain or tread round". Tests:
+test/bw-sim-chain.test.mjs; gate scripts/lib/sim-lab-chain-gate.mjs (--part=editor).
+
+## Arcade stale PR integration — 2026-10-19
+
+CLAIMED and done in one PR — Claude takes over at the owner's request,
+2026-10-19, while the Codex Arcade lane is paused. Branch
+`lane/arcade-integration-20261019` merges the current heads of PRs 858, 859,
+861, 862, 864, 865, 869, 870, 877, 883, 887, 888 and 916 with normal merges
+(no rebase), keeping main's other-owner work. Only sb3-creator (7d3f8be) and
+arrays-values (4db2813) pins move, both strict descendants of main's pins.
+The Codex claims below for those lanes are adopted, not replaced.
+
+## Robot Lab hinge tool — 2026-10-20
+
+CLAIMED and done in one PR to main — Claude (Robot Lab lane, owner request "yes do all that":
+Robot Lab UX). editor/snap.js hingeCandidates: the round connection lines next to a selection
+where it comes free with what hangs off it; [ ] turn that side 15° (collision-checked, one undo
+step), N shows the hinge's axis and steps to the next, Shift+N back; the properties panel has
+−15° / +15° / N. docs/ROBOT-LAB-UX.md §10. Tests: test/bw-sim-hinge.test.mjs; gate
+scripts/lib/sim-lab-hinge-gate.mjs (--part=editor).
+
+## Robot Lab challenges on the mats — 2026-10-20
+
+CLAIMED and done in one PR — Claude (Robot Lab lane, owner request "yes do all that": Robot
+Lab UX). Pushed to the combined branch (#1108). world/challenges.js: one challenge per mat
+(One lap, Stop at the wall, Stay in the ring, Through the maze, Four corners), each a judge
+of what anyone watching the mat could see (the robot's outline on the floor, its contacts
+with the mat's obstacles, the simulated time), so it works for every hub and program; 1-3
+stars for a time, a gap or a margin, the shipped examples earning 2. Simulate's Challenges
+button (sim-lab-challenges.jsx) starts one on its mat with the robot at the start; a result
+pauses the world and the best is kept on this device. Robot Lab API: partOutline(part).
+Tests: test/bw-sim-challenges.test.mjs; gate scripts/lib/sim-lab-challenges-gate.mjs
+(--part=ui).
+
+## Robot Lab catalogue: result pictures, My parts with remove — 2026-10-19
+
+CLAIMED and done in one PR — Claude (Robot Lab lane, owner request). Stacked on #1104.
+The palette's "+" results show a picture of each part (drawn when the row scrolls into
+view, four at a time, by the palette's own renderer; the files stay in the editor's map, so
+adding the part fetches nothing new). Parts added from the catalogue sit in "My parts" at
+the top of the palette instead of in the categories, each with a remove button; a part the
+model in Build holds is not removed (the note says why). Gate: sim-lab-catalogue-gate.mjs
+steps 7-8 (--part=editor).
+
+## Robot Lab Simulate: speed, Readings, sensor rays, replay; slow motion fixed — 2026-10-19
+
+CLAIMED and done in one PR — Claude (Robot Lab lane, owner request). Stacked on #1102.
+Simulate gets a speed control (1×, ½×, ¼× over the existing time scale), a Readings panel
+(sim-lab-readings.jsx: every motor's angle and speed and every sensor's value with a 10 s
+line, through the Robot Lab API, so every hub kind reads the same), Show sensor rays
+(sim-view3d.js setSensors: each sensor part's PartMeta probe; a distance ray as long as it
+measures) and an instant replay while paused (the last 20 s of body poses; Run goes on from
+now; physics and program are not rolled back). Fix: slow motion added a fixed wait after
+each step and ran ½× at about 0.72 of real time; sim-clock.js slowMotionWait paces against
+the wall clock (test/bw-sim-slow-motion.test.mjs). The no-program note is one line at
+every width (owner request: no long text). The touch gate waits for a tap's effect (the
+same change as #1103). Gate: scripts/lib/sim-lab-simulate-ux-gate.mjs (--part=ui).
+
+## Robot Lab: parts from the whole LDraw catalogue (palette "+") — 2026-10-19
+
+CLAIMED and done in one PR — Claude (Robot Lab lane, owner request and decisions: fetch
+from the ldraw-stl mirror; offer parts that cannot connect as decoration). The deriver moves
+from scripts/derive-part-meta.mjs into overlay/.../bw-sim/part-meta/derive.js (the script is
+its command line; --compare and --generate output byte-identical). New:
+bw-sim/ldraw/ldraw-catalog.js (mirror reader, range requests), part-meta/catalog-parts.js and
+catalog-worker.js, sim-lab.js addCatalogPart/catalogueParts/catalogFor, the palette's "+"
+catalogue view with per-part CC BY credits, the `decoration` palette category, and
+BW_REMOTE_PARTS_POLICY (webpack, About row). Owns those files plus fetchLDrawClosure's
+fallback; parts.json, the vendored static/ldraw/ subset and the physics are unchanged.
+docs/ROBOT-LAB-ARCHITECTURE.md §5.4.1. Also in this PR (owner requests): the tab label
+Robots / Roboter; the long idle help (build status, hint bar, palette help) moves into
+two (i) buttons (sim-lab-info.jsx); part-geometry.js and part-thumbnails.js no longer
+cache an empty result for a part whose files arrive late. Stacked on
+lane/simlab-next7-20261019 (merge order: #1097, next7, this).
+
+## bw-circuit-ui pin bump for B27 part faces — 2026-10-20
+
+CLAIMED and done in one PR — Claude (circuit-editor lane). bw-circuit-ui
+a7621be -> 989f9541de610d2a742b36867c12df61d36b0c24 (#99: faces for piezo, rgb_led, nmos,
+tip120, battery_aa, optocoupler, ds18b20 and a DS1302 chip face). CUI
+dependencies unchanged: exact SHA swap across the same 16 pin surfaces.
+
 ## bw-circuit-ui + bw-board pin bump for light_sensor (B25/B26) — 2026-10-19
 
 CLAIMED and done in one PR — Claude (circuit-editor lane). bw-circuit-ui
@@ -517,14 +619,21 @@ mapping, whole G02, rollback, licensing or release qualification. Keep this
 follow-up out of the already frozen composed-package qualification target.
 ## Original Arcade profiler clock bootstrap — 2026-10-16
 
-PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this claim before
-implementation. Contract: [reference clock bootstrap](docs/ARCADE-REFERENCE-CLOCK-BOOTSTRAP.md).
+CLAIMED — Codex Arcade integration; documentation claim
+[PR1001](https://github.com/CrispStrobe/brickwright-lite/pull/1001) merged after
+all four enabled checks passed. Source candidate and runtime qualification are
+pending. Contract: [reference clock bootstrap](docs/ARCADE-REFERENCE-CLOCK-BOOTSTRAP.md).
 Own the original-simulator clock helper, its Arcade runtime initialization call
 site, focused controls and qualification notes. Preserve paused-zero document
 admission, then prove a deterministic complete-frame bootstrap before actual
 guest construction, positive profiling and unchanged relative timer/frame/input
 phases. No PXT vendor patch, guest-clock replacement, normalized result,
-expectation/budget reduction, dependency pin or workflow change. All unrelated
+expectation/budget reduction, dependency pin or workflow change.
+The exact elapsed-wait control uses program `control.millis()`; scene
+`game.runtime()` is a separate frame-phase contract and cannot borrow elapsed
+wait expectations. The incorrect newly authored guest and its failure remain
+retained; corrected-guest qualification is pending. No simulator or native
+clock policy changes. All unrelated
 source, runtime, editor and device owners retain their lanes.
 
 ## Code conversion: preserve newer editor ownership — 2026-10-16
@@ -987,8 +1096,10 @@ implementation lands only after full CI and owner review.
 
 ## Arcade owned named function values — 2026-10-15
 
-PROPOSED — Codex named function declaration value lane.
-Merge this docs-only claim before product changes. Contract:
+IMPLEMENTED LOCALLY — Codex named function declaration value lane.
+The claim is merged; source/current native and two selected-original programs
+are qualified in the integration branch. Canonical creator PR154 is adopted;
+hosted final integration and visible authoring remain open. Contract:
 [owned named function values](docs/compatibility/arcade-named-function-values.md).
 Own the module/namespace declaration-site and current-body bridge, directed
 zero-argument Number/String/Void signature proof, native stable-label binding
@@ -1001,8 +1112,13 @@ class factories, scene/score API completion or whole-context promotion.
 
 ## Owned Images in ordinary class callbacks — 2026-10-15
 
-CLAIMED / PROPOSED — Codex Image domain in the existing ordinary class/callable bridge.
-Contract: [owned Image class callbacks](docs/compatibility/arcade-owned-image-class-callables.md).
+IMPLEMENTED LOCALLY / CONTINUING — Codex Image domain in the existing
+ordinary class/callable bridge. The claim is merged. Bounded default admission
+is integrated at `2211aeb61`: 119 affected and seven independent controls pass,
+and two byte-identical selected originals retain their compiler evidence.
+Literal-resource proof and exact source/current-artwork originals are now
+integrated at `d011d18fe`; six independent integrated controls pass. Hosted
+authoring and broader SDK domains remain open. Contract: [owned Image class callbacks](docs/compatibility/arcade-owned-image-class-callables.md).
 Own new actual Image producer/owner proof helpers and coordinated narrow source,
 v2 signature/plan, native field/invocation/result, current Blocks and export hooks.
 Preserve primitive/class/callable identity, all-writer and initialization proof,
@@ -1018,8 +1134,10 @@ ownership intact. Product changes wait for this claim's normal qualified merge.
 
 ## Primitive identifier bitwise compound assignments — 2026-10-15
 
-PROPOSED — Codex Arcade integration, isolated statement conversion lane.
-Merge this docs-only claim before product changes. Contract:
+IMPLEMENTED LOCALLY — Codex Arcade integration, source `1e65f988c`.
+Claim #943 is merged; 18 focused checks and independent review pass. Two
+exact ordinary source/export programs pass selected-original execution; captured
+factory original execution and visible editor journeys remain open. Contract:
 [primitive bitwise compound assignments](docs/compatibility/arcade-primitive-bitwise-compound.md).
 Own the identifier compound-assignment operator selection in
 `Arcade.expressionStatement` and focused source/current-block/native/export
@@ -1065,8 +1183,8 @@ Font, pins and whole-game/context promotion remain separate.
 
 ## Shared finite decimal source carriers — 2026-10-15
 
-PROPOSED — Codex source conversion, isolated shared numeric carrier lane.
-Merge this docs-only claim before product changes. Contract:
+QUALIFIED BOUNDED SLICE — Codex shared numeric source conversion.
+The merged claim owns the finite carrier and focused controls. Contract:
 [shared finite decimal source carriers](docs/compatibility/shared-finite-number-carriers.md).
 Own the finite decimal Number branch in `translate-base.js`, the existing
 `source-number-literal.js` helper and focused source/Code/Blocks/export tests.
@@ -1074,8 +1192,10 @@ Coordinate shared translator ownership. Preserve micro:bit, Calliope and EV3
 numeric values through current Code parsing, including signed scientific
 notation and subnormals where the existing target runtime admits them.
 Keep hexadecimal/binary, unary/member boundaries, string literals and target
-numeric conversions intact. No new words, pins, Number method admission,
-non-finite literal support, CPX TypeScript route or hardware claim.
+numeric conversions intact. Native Code, numeric fields, save/reload and actual
+edited export/reimport are qualified for these three routes. Non-finite literal
+overflow is explicitly refused pending a proper carrier. No new words, pins,
+Number method admission, CPX TypeScript route, hosted GUI or hardware claim.
 
 ## Owned callable typeof — 2026-10-15
 
@@ -1228,6 +1348,19 @@ field; supplier ROM/source/assembler/controller ranges and retained bytes are
 unchanged. Canonical BIOS recording verifies the same source/ROM and zero source
 commits behind the pin; no binary was rebuilt or replaced. Combined CI is pending.
 
+## Callable lexical export prototype — six-word declaration ABI
+
+The callable lane now owns a connected-variable source declaration in addition
+to the five resource/service words. Scope: versioned inert lexical provenance,
+current editable procedure-body export, actual frame capture ownership, and a
+narrow optional additional service in the atomic source declaration scanner.
+Keep Callable outside existing scalar/reference domains. Default callable source
+admission remains closed until the complete source/native/Code/SB3/selected-PXT
+export/reimport gate passes. Arrays transport and compiler vocabulary are
+separate prerequisite candidates; no held callable pin is adopted. GUI lexical
+body/signature/rename authoring remains tracked in the
+[bounded contract](docs/compatibility/arcade-callable-lexical-bridge.md).
+
 ## Explicit procedure calls in Code — 2026-10-14
 
 PROPOSED — Codex Arcade integration. Product edits begin after this claim lands.
@@ -1243,18 +1376,32 @@ peer-owned Arrays scalar-return, controller-repeat, callable or font hunks.
 
 # Who is doing what — merge the claim before implementation
 
+## Arcade live Font values — first read slice
+
+QUALIFIED READ SLICE — Codex Arcade value integration.
+Contract: [live Font values](docs/compatibility/arcade-live-font-values.md).
+The five canonical value/printing words preserve actual SDK Font identity,
+selection, scaling and shared glyph Buffer reads. Source, native, Code, saved
+projects, actual edited original export and reimport have bounded qualification.
+Public field and glyph mutations retain explicit refusals; the underlying SDK
+records remain mutable. General Font-valued class fields/callbacks, full mutation,
+hardware glyph subsets and complete library/GUI closure remain follow-up work.
+Preserve glyph notices, fixed metric words, class/callback ownership and Source
+frame contracts. No global scheduler ownership is claimed.
 ## Arcade primitive Number to text — 2026-10-15
 
-PROPOSED — Codex Arcade primitive source integration,
-`lane/arcade-number-text-claim-20261015`.
+QUALIFIED BOUNDED SLICE — Codex Arcade primitive source integration.
+The merged claim owns the source helper, literal carrier and focused controls.
 Contract: [primitive Number to text](docs/compatibility/arcade-number-to-text.md).
 Scope: zero-argument Number `toString` with actual producer/current-writer
 authority, narrow source/native primitive String representation, current Code
 and Blocks, original export and same/fresh saved-project reimport. Preserve
 class custom methods, SDK reference exclusions, Font proof and Source frame
 ownership. No new canonical word, pin change, radix, global String-name grant
-or whole-library promotion is claimed. Product work waits for the normal claim
-merge after every enabled exact-head check succeeds.
+or whole-library promotion is claimed. Source and actual edited export
+qualification preserve current connected operands and exact formatter effects.
+Non-finite literals, additional SDK/member producers and unresolved aliases
+remain explicit follow-up boundaries.
 
 
 ## CI fast and thorough tiers — 2026-10-14
@@ -1346,9 +1493,22 @@ missing public mode/value/time APIs retain diagnostics. Target-specific ignored
 flags/modes and internal timestamps need explicit original receipts, not invented
 hardware semantics. No whole-game or corpus promotion from registration/parsing.
 
+## Arcade Scene flags and user controller events — 2026-10-14
+
+CLAIMED continuation — existing merged native text-dialog, PR889 reference and
+PR881 scene lifecycle envelopes. Contract:
+[Scene flags and controller events](docs/compatibility/arcade-scene-flags-controller.md).
+Own narrow Scene flag getter/setter, real conditional render ordering/visibility/
+guard, current-scene z dirtying and controller user-event gating hunks, with
+matching producer and original/native/Code/export/SB3 controls. Coordinate shared
+index/converter/exporter hunks; preserve SDK object, Arrays, browser observer and
+independent GUI/device owners. Event-bus, multiplayer registration and console
+inspection remain separate followups. No source pruning, inert flag adapter,
+render bypass, guessed delay or whole-project promotion.
+
 ## Arcade source scalar cells — 2026-10-14
 
-PROPOSED — Codex Arcade scalar integration, `lane/arcade-source-scalars-20261014`.
+CLAIMED — claim PR900 is merged; Codex Arcade scalar integration, `lane/arcade-source-scalars-20261014`.
 Contract: [source scalar cells](docs/ARCADE-SOURCE-SCALARS.md).
 Envelope: new source scalar declaration/initialization and directed export flow
 helpers; their narrow Arcade source importer, export, native extension and source
@@ -1358,8 +1518,8 @@ Bind actual stock variable IDs, preserve typed undefined before source
 initialization and ordinary Scratch saved defaults. Do not use name-only cell
 binding, unknown mutation attributes or a project-wide typing switch. Preserve
 independent source phase, class/accessor, Scene/controller and supplier lanes.
-No product command or source prelude changes until this claim lands. Private
-prototypes and original controls are preparation only; no whole-game promotion.
+The documentation claim is merged. Implementation and focused qualification are
+active; no whole-game promotion.
 
 ## Arcade ordinary procedure parameter constraints — 2026-10-15
 
@@ -1454,9 +1614,24 @@ for full portable/current-edit/lifecycle proof, independent review and genuinely
 new selected-original controls; no complete library or corpus promotion follows
 from the first registry subset.
 
-## Arcade classes and mutable object semantics — proposed
+## Native Arcade splash and long text — 2026-10-13
 
-Claim proposed for the Arcade compatibility lane. Contract:
+CLAIMED — Codex Arcade dialog integration, `work/arcade-native-text-dialogs-20261013`.
+Envelope: Arcade native dialog lifecycle, controller event gating, dialog image
+host and scene composition in `overlay/scratch-vm/src/extensions/crispstrobe/arcade/`;
+`components/stage/arcade-dialog.jsx` and its dialog-only CSS/props in the GUI stage
+component and container; affected tracked mirrors; focused original/native,
+Code/blocks/export/SB3 and accessibility controls; this ledger and
+`docs/compatibility/arcade-native-text-dialogs.md`.
+Reuse the retained MIT text dialog classes. Render the live parent scene through
+the child scene, preserve scene and epoch ownership, and route accessible controls
+through actual controller edges. Preserve independent DEVICE/arena and question
+flows. No local full GUI build, source/actor substitution or dialog-dismiss shortcut.
+Initial and resumed scene frame timing remains a separately tracked scheduler gap.
+
+## Arcade classes and mutable object semantics — 2026-10-13
+
+CLAIMED — Codex Arcade class integration; claim PR889 is merged. Contract:
 [classes and objects](docs/ARCADE-CLASS-AND-OBJECT-SEMANTICS.md).
 Envelope: an explicit reference/descriptor helper alongside existing Arcade and
 Arrays values; Arcade-only AST lowering and native object operations; scoped
@@ -1464,16 +1639,18 @@ shared dialect producer additions with reviewed pin adoption; Code/Blocks and
 export/reimport authoring; tests and GUI closure records. Preserve other target
 translators, independent device/arena work and the separately claimed frame
 scheduler. No global scheduler hook is owned by this lane.
-Merge this claim and check concurrent ownership before implementation.
+Check concurrent ownership before continuing the ordered implementation.
 Constructor ordering, reference identity, alias mutation and original execution
 must qualify before class admission; source parsing alone is insufficient.
 
 
 ## Native Arcade frame phases — 2026-10-13
 
-PROPOSED CLAIM — Codex Arcade scheduler, `lane/arcade-frame-scheduler-20261013`,
-base `b86d1cb9f294052bd0ae6dc4cd97d5bc57193c55`.
-This publication is documentation only; merge the claim before product edits.
+CLAIMED — Codex Arcade scheduler; claim PR881 is merged. Initial branch
+`lane/arcade-frame-scheduler-20261013`, base
+`b86d1cb9f294052bd0ae6dc4cd97d5bc57193c55`.
+The claim landed before product implementation. Source-phase and timer controls
+are qualified; complete installed GUI cadence remains open.
 Envelope: the Arcade-specific phase hook in `scripts/apply-vm-overlay.mjs`,
 new `overlay/scratch-vm/src/extensions/crispstrobe/arcade/frame-phase.js`,
 necessary phase/lifecycle hunks in that directory's `index.js`, focused
@@ -1520,7 +1697,6 @@ no change to what a one-board project does. Evidence so far (not committed):
 both tutorial programs compiled offline and run as firmware on the pinned
 engine with the emulated radio stack; holding a remote button runs the
 matching Calliope motor line on a shared air and nothing moves on separate airs.
-
 
 ## Two-way GPIO pin block ⇄ Forth — 2026-10-12
 
@@ -4332,6 +4508,27 @@ executed in 20 green main runs, five files recorded nowhere.
 
 ## Steps that run elsewhere
 
+- i80386-hdd-gui-actual.yml :: inventory :: Owned metadata-only `x86-hdd-gui-inventory` label path, absent from the current 19-run window. Historical failed runs 39106669518 and 39111308927 are consumed and their originals already audited; never replay them to populate this census. A new request/source/workflow/event requires separate admission; no successful runtime inventory or actual is inferred. 2026-10-19 Codex x86.
+- i80386-hdd-gui-actual.yml :: Refuse unreviewed inventory before setup or input retrieval :: Owned metadata-only `x86-hdd-gui-inventory` label path, absent from the current 19-run window. Historical failed runs 39106669518 and 39111308927 are consumed and their originals already audited; never replay them to populate this census. A new request/source/workflow/event requires separate admission; no successful runtime inventory or actual is inferred. 2026-10-19 Codex x86.
+- i80386-hdd-gui-actual.yml :: Install unchanged selected packages and Chromium without frontend build :: Owned metadata-only `x86-hdd-gui-inventory` label path, absent from the current 19-run window. Historical failed runs 39106669518 and 39111308927 are consumed and their originals already audited; never replay them to populate this census. A new request/source/workflow/event requires separate admission; no successful runtime inventory or actual is inferred. 2026-10-19 Codex x86.
+- i80386-hdd-gui-actual.yml :: Install externally selected immutable template and record observations :: Owned metadata-only `x86-hdd-gui-inventory` label path, absent from the current 19-run window. Historical failed runs 39106669518 and 39111308927 are consumed and their originals already audited; never replay them to populate this census. A new request/source/workflow/event requires separate admission; no successful runtime inventory or actual is inferred. 2026-10-19 Codex x86.
+- i80386-hdd-gui-actual.yml :: font-bridge :: Owned `x86-hdd-gui-font-bridge` label condition: source/job guards are enabled in this proposal, while exact source/prior/request/workflow/resource/event admission and explicit consumer selection remain required. No bridge observation or official delivery is qualified; never dispatch it to populate the census. 2026-10-19 Codex x86.
+- i80386-hdd-gui-actual.yml :: Refuse unreviewed bridge before setup or input retrieval :: Owned `x86-hdd-gui-font-bridge` label condition: source/job guards are enabled in this proposal, while exact source/prior/request/workflow/resource/event admission and explicit consumer selection remain required. No bridge observation or official delivery is qualified; never dispatch it to populate the census. 2026-10-19 Codex x86.
+- i80386-hdd-gui-actual.yml :: Install unchanged selected packages and Chromium for bridge observation :: Owned `x86-hdd-gui-font-bridge` label condition: source/job guards are enabled in this proposal, while exact source/prior/request/workflow/resource/event admission and explicit consumer selection remain required. No bridge observation or official delivery is qualified; never dispatch it to populate the census. 2026-10-19 Codex x86.
+- i80386-hdd-gui-actual.yml :: Install externally selected immutable bridge request :: Owned `x86-hdd-gui-font-bridge` label condition: source/job guards are enabled in this proposal, while exact source/prior/request/workflow/resource/event admission and explicit consumer selection remain required. No bridge observation or official delivery is qualified; never dispatch it to populate the census. 2026-10-19 Codex x86.
+- i80386-hdd-gui-actual.yml :: Record bounded read-only font bridge without credentials :: Owned `x86-hdd-gui-font-bridge` label condition: source/job guards are enabled in this proposal, while exact source/prior/request/workflow/resource/event admission and explicit consumer selection remain required. No bridge observation or official delivery is qualified; never dispatch it to populate the census. 2026-10-19 Codex x86.
+- i80386-hdd-gui-actual.yml :: actual :: Intentionally disabled source-only actual path: the current job condition is literal false and ACTUAL_ENABLED remains false. No genuine hosted actual is qualified. Exact source/runtime/resource/request/event admission and separate activation plus one clean affected browser/guest qualification remain required; do not enable or dispatch it to populate the census. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: Install empty Python cache prefix and refuse unreviewed actual source :: Intentionally disabled source-only actual path: the current job condition is literal false and ACTUAL_ENABLED remains false. No genuine hosted actual is qualified. Exact source/runtime/resource/request/event admission and separate activation plus one clean affected browser/guest qualification remain required; do not enable or dispatch it to populate the census. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: Repeat inventory installation exactly, without frontend build :: Intentionally disabled source-only actual path: the current job condition is literal false and ACTUAL_ENABLED remains false. No genuine hosted actual is qualified. Exact source/runtime/resource/request/event admission and separate activation plus one clean affected browser/guest qualification remain required; do not enable or dispatch it to populate the census. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: Install externally admitted request and refuse runtime/source drift :: Intentionally disabled source-only actual path: the current job condition is literal false and ACTUAL_ENABLED remains false. No genuine hosted actual is qualified. Exact source/runtime/resource/request/event admission and separate activation plus one clean affected browser/guest qualification remain required; do not enable or dispatch it to populate the census. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: Prepare unchanged authenticated free media once :: Intentionally disabled source-only actual path: the current job condition is literal false and ACTUAL_ENABLED remains false. No genuine hosted actual is qualified. Exact source/runtime/resource/request/event admission and separate activation plus one clean affected browser/guest qualification remain required; do not enable or dispatch it to populate the census. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: One official frontend acquisition and two serial genuine UI scenarios :: Intentionally disabled source-only actual path: the current job condition is literal false and ACTUAL_ENABLED remains false. No genuine hosted actual is qualified. Exact source/runtime/resource/request/event admission and separate activation plus one clean affected browser/guest qualification remain required; do not enable or dispatch it to populate the census. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: font-discovery :: Owned metadata-only `x86-hdd-gui-font-discovery` label condition: source/job guards are enabled but the exact request, current executing workflow, all-enabled source CI and one distinct event still require independent admission. No font-discovery event is inferred from source controls; preserve consumed inventory events and actual false. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: Refuse unreviewed discovery before setup or input retrieval :: Owned metadata-only `x86-hdd-gui-font-discovery` label condition: source/job guards are enabled but the exact request, current executing workflow, all-enabled source CI and one distinct event still require independent admission. No font-discovery event is inferred from source controls; preserve consumed inventory events and actual false. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: Install unchanged selected packages and Chromium for font observation :: Owned metadata-only `x86-hdd-gui-font-discovery` label condition: source/job guards are enabled but the exact request, current executing workflow, all-enabled source CI and one distinct event still require independent admission. No font-discovery event is inferred from source controls; preserve consumed inventory events and actual false. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: Install externally selected immutable discovery request :: Owned metadata-only `x86-hdd-gui-font-discovery` label condition: source/job guards are enabled but the exact request, current executing workflow, all-enabled source CI and one distinct event still require independent admission. No font-discovery event is inferred from source controls; preserve consumed inventory events and actual false. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: Record bounded read-only font discovery without credentials :: Owned metadata-only `x86-hdd-gui-font-discovery` label condition: source/job guards are enabled but the exact request, current executing workflow, all-enabled source CI and one distinct event still require independent admission. No font-discovery event is inferred from source controls; preserve consumed inventory events and actual false. 2026-10-18 Codex x86.
+
 Every workflow step and job must run somewhere the readings can see (plan T14, T13's rule one
 level up). `scripts/gen-ci-steps.mjs --fetch` reads the jobs API for the last runs of every
 workflow into docs/generated/ci-step-census.json; test/ci-step-census.test.mjs reddens on a
@@ -5180,11 +5377,13 @@ Hosted GUI, full build and immutable-app recensus remain separate gates.
 ## Arcade required unit workload split — 2026-10-12
 
 CLAIMED — Codex, `lane/arcade-unit-shards-20261012`, stacked on original
-Buffer hash. Partition the complete fast suite into two required, separately
+Buffer hash. Partition the complete fast suite into four required, separately
 audited unit legs; keep local full-suite behavior, corpus, all skip/file/GUI
 checks, build/distribution authority and exact-head publication requirements.
-Both Pages deployment and external main validation must require both legs.
-Preserve the actual30-minute PR845 build failure. Qualification contract:
+Both Pages deployment and external main validation must require all four legs.
+Preserve the actual30-minute PR845 build failure and later incomplete unit
+cancellation; the four-way partition exactly refines both historical legs.
+Qualification contract:
 [Arcade CI qualification](docs/ARCADE-CI-QUALIFICATION.md). Hosted duration and
 editor success remain pending; E10 importer and other source owners unchanged.
 
@@ -5238,9 +5437,149 @@ No automatic sweep, complete-root claim, new opcode or producer pin change.
 Explicit hidden-owner leases and preallocation reservations remain required.
 Scope and followup method are in the Buffer contract;142/41/1 unchanged.
 
+## Arcade source Buffer import — 2026-10-13
+
+CLAIMED — Codex integration with namespace_buffers worker,
+`lane/arcade-buffer-source-import-20261013`, stacked on PR856.
+Implement genuine source and namespace Buffer flow using existing native
+blocks/runtime; preserve mutable identity, readonly bytes, typed forwarding,
+init order and dynamic song data. No new opcode or producer pin. Original PXT,
+Blocks/Code/export/reimport/SB3 controls and authentic prepared pizza are
+required; immutable whole-app promotion remains separate.
+Claude takes over at the owner's request, 2026-10-19.
+
+## Arcade tile kind, image equality and next-button wait — 2026-10-13
+
+CLAIMED — Codex runtime/producer/export with namespace_buffers conversion,
+`lane/arcade-tile-kind-controller-20261013`, stacked on source Buffer PR858.
+Implement original tile-center direction/pixel tests, original image equality
+and real next-button suspension, with319 canonical words and typed genuine
+export. Original/native/Code/Blocks/SB3 controls pass10 without skips; producer
+passes362. Dedicated visible authoring qualification and full project evidence
+remain required. No invented assets or whole-app promotion.
+
+## Arcade authentic JRES recovery and prepared census — 2026-10-13
+
+CLAIMED — Codex integration with corpus_gap_analysis worker,
+`lane/arcade-tutorial-jres-integration-20261013`, stacked on PR859.
+Preserve standalone tutorial resources using original worker generation and
+record separate prepared-input audits without overwriting raw classifications.
+Four authentic terrain contexts pass original compilation/native import;
+11 recovery controls and9 audit controls pass without skips. Native gameplay,
+original comparisons and GUI qualifications remain explicit independent gates.
+
+## Arcade continuation: SpriteData and extension source syntax
+
+Owner: Codex integration. Claimed: native original SpriteData v0.0.5, exact
+source admission, original root tilemap generation, TS parameter properties,
+connection semantics and exponentiation qualification. Separate workers own
+connection and exponentiation hunks in isolated trees. Lower integration
+branches through the Buffer roots lane remain owned by the landing operator.
+Focused integrated source controls: 22 passed without skips. Hosted/editor
+checks and actual remaining-context qualification are pending. No raw corpus
+row is reclassified from focused tests alone.
+
+Continuation checkpoint: lower stack through PR856 is merged. Higher integration
+owns exponentiation, precise numeric constants, missing original asset factories
+and own-key SpriteData semantics. Settings worker owns durable typed settings;
+parser worker owns the next original-supported library syntax/runtime slice;
+corpus worker owns immutable context and behavior receipts. Keep separate trees
+and inspect the current producer before syncing: preserve every existing word
+and field choice. Parser-only success and finite map observations do not promote
+whole games. Visible Blocks/Code/graphics journeys remain acceptance gates.
+
+Compiler/authoring continuation: root owns original compile-context isolation,
+bounded16-package fetching, native Text Sprite host/index and asset-kind importer
+integration. Worker owns Text Sprite producer/converter/export/exact admission
+and managed value-function scheduling controls; another owns deployed-gallery
+snapshot attestation. Prompt Question/Stage forwarding is integrated with eight
+real input controls. Corpus worker owns immutable29-valid/12-invalid input
+records and older-library contracts. Keep the independent MakeCode CLI A6–A9
+and multi-board DEVICE lanes intact. No target SDK, board pin or hardware claim
+is changed by these Arcade source/host controls.
+
+### Arcade continuation after Text Sprite integration — 2026-10-13
+
+Root owns `lane/arcade-legacy-scroller-integration-20261013`: exact legacy
+background-scroll version dispatch, source admission and exporter/dependency
+selection. Root also owns the authentic asset factory integration.
+`namespace_buffers` owns distinct scene/program clock runtime hunks and shared
+compiler words, including the reserved scroller-version word.
+`extension_parser` owns deployed Gallery provenance and actual hosted token
+permission qualification. `corpus_gap_analysis` owns immutable authentic
+Smurfy observation and the private raw-evidence archive. Separate owned trees
+and file ownership apply; do not push the lower chains handled by Claude.
+Text Sprite integration is PR870; producer115. No whole-project corpus promotion
+is claimed from focused controls. GUI inspector/controller/game qualification
+remains required by the conversion/GUI gap ledger.
+
+
+### Owned Arcade TextSprite game GUI acceptance — 2026-10-13
+
+CLAIMED — `extension_parser`, `lane/arcade-owned-game-gui-20261013`.
+Own the new owned game/art fixture, production Playwright journey, one additive
+light-shard step and budget registration. Implementation files remain with the
+runtime, converter, exporter and GUI owners. The journey drives file import,
+Code keyboard editing, a native Blocks field, Costumes Pixel painting, the
+visible controller, actual SB3 download/fresh-context reopen, MakeCode export
+and file reimport. Original PXT runs compare label, positions and actual rendered
+pixels. Hosted full-IDE qualification is pending; focused original simulator
+checks do not establish an IDE pass or change the authentic corpus ledger.
+
+### Arcade continuation: primitive strings and numeric kind semantics
+
+Root owns `lane/arcade-legacy-scroller-integration-20261013`; exact scroller
+conversion/export and separate clocks are integrated with focused controls.
+Root also owns primitive string conversion/export and TypeScript assertion
+grammar. `namespace_buffers` owns matching345-form producer publication and
+Arrays string-source publication. `extension_parser` owns exact legacy
+character-animation admission/conversion/export and its roundtrip controls.
+`corpus_gap_analysis` owns isolated numeric kind registry/native membership,
+handler/default semantics and original probes. Kind translator/export follow
+the agreed native contract. Workers use separate trees and explicit file hunks.
+The independently owned multi-board DEVICE lane remains separate.
+
+The owned Text Sprite game production GUI gate is prepared and pending hosted
+execution. Raw corpus counts remain142 translated/41 partial/1 parser failure.
+No source-only adapter or focused test promotes a whole game.
+
+### Arcade numeric kinds and particle integration — 2026-10-13
+
+Root owns `lane/arcade-character-kind-integration-20261013`, stacked on PR877:
+exact older character-animation admission/export, 349-form producer integration,
+numeric kind source/native/export semantics, Scene numeric constants and typed
+primitive String composition. `extension_parser` delivered local original PXT
+particle collection removals; root integrated them. Focused qualification is
+bounded to the recorded controls; full hosted IDE and corpus promotions remain
+pending. Do not push lower branches owned by the independent integration session.
+
+`namespace_buffers` owns isolated default info loss presentation controls and
+implementation hunks. `corpus_gap_analysis` owns the proposed frame phase scope
+claim, private diagnostic prototype and original comparison controls; no product
+kernel hook change before its claim lands. `extension_parser` observes the owned
+GUI gate and prepares HUD visibility source/native/export/typed-authoring scope.
+Coordinate Arcade index hunks explicitly; preserve independent multi-board lanes.
+
+### Arcade HUD/camera continuation and qualification — 2026-10-13
+
+Root owns `lane/arcade-camera-flags-info-selection-20261013`: 351-form producer
+integration, exact raw camera-offset reporting, readable flags, native info-only
+life selection and the actual production GUI replacement-stage guard. HUD
+visibility/source-name collision controls and terminal HUD generator callbacks
+are integrated from their owners. Combined25PASS/2timingTODO and camera/latest
+main11PASS remain bounded controls; raw corpus41 partials is unchanged.
+
+`extension_parser` owns AST tile-map factory registration/alias/order/null
+semantics and its tilemap-call importer hunks, plus private Maze GUI preparation
+and final artifact observation. `corpus_gap_analysis` owns explicit portable
+source-loop eligibility/352-form producer preparation and the private phase
+prototype; global product hook waits for PR881's matched-head green merge.
+`namespace_buffers` owns the original native text-dialog contract and scoped
+implementation paths listed there. Shared runtime/translator hunks must be
+coordinated. Preserve independent multi-board/arena and engine lanes.
 ## Arcade editor startup dependency boundary — 2026-10-13
 
-PROPOSED CLAIM — Codex Arcade integration. Merge this claim before product edits.
+CLAIMED — Codex Arcade integration; [PR893](https://github.com/CrispStrobe/brickwright-lite/pull/893) merged after all 12 enabled checks passed.
 Envelope: a pure tilemap-block presence helper in `lib/bw-makecode/`, the presence
 read in `containers/costume-tab.jsx` and its tracked mirror, focused equivalence
 controls, this ledger and the linked contract. Existing painter decoding, legacy
@@ -5262,6 +5601,18 @@ coordinate board selection with the active multi-board owner. Product edits
 follow merged claim and exact-head checks. See
 [the acceptance contract](docs/ARCADE-SB3-DEVICE-PANE.md).
 
+
+## Arcade Image circle drawing — 2026-10-14
+
+CLAIMED — Codex Arcade integration, existing integration branch.
+Contract: [Image circle drawing](docs/ARCADE-CIRCLE-DRAWING.md).
+Root owns native Image drawing operations, converter/export hooks and canonical
+producer vocabulary; the pixel-oracle worker owns its new fixture and checks.
+Coordinate native index hunks with the stored class-callback owner. Radius gets
+its own Blocks input; no field overloading, fake artwork or opaque reference
+admission. Actual original full pixel arrays and editable portable routes are
+required before capability or corpus promotion. Preserve separate live Font,
+class callback and default numeric callable admission lanes.
 ## SPIKE deferred-storage observer cancellation — 2026-10-14
 
 ADOPTED — [PR928](https://github.com/CrispStrobe/brickwright-lite/pull/928), tested
@@ -5674,6 +6025,14 @@ new word or pin. The stopwatch Timer external writer and cyclic field/result
 invariant remain HELD pending complete separate proof. Native, selected-original
 and visible authoring gates remain independent; no whole-case promotion.
 
+Development source candidate now uses the existing before-input/invoke hooks for
+private finite scene-clock completions and current consumer receipts, with an
+independent game census and unchanged info producer. Focused source, modeled
+boundary and real-native controls are authored, not yet executed on this source.
+[Implementation boundary](docs/compatibility/arcade-scene-clock-number-completions.md)
+retains direct-service/clock policy and the external Timer writer/cycle holds.
+No engine ABI, word, pin, whole-case or visible GUI promotion.
+
 ## Ordinary procedure optional argument transport — 2026-10-16
 
 PROPOSED / DOCS ONLY — Codex Arcade integration. Product implementation waits
@@ -5745,6 +6104,12 @@ callback alias/formal allocation (**E**) remain tracked open work, not permissio
 for source changes here. No runtime/ABI/domain, supplier/pin, GUI or workflow
 change; no stable whole-project or compatibility-count claim from source shape.
 
+A allocator implementation coordination: the owner-aware lookup also covers the
+single ordinary field-initializer call emission in
+`overlay/scratch-gui/src/lib/bw-makecode/object-class-export.js`. Coordinated
+under the merged roundtrip contract's matching resolved-call scope; all other
+class bodies, field/default/type semantics and class admission stay unchanged.
+B empty-Array lowering remains a separate implementation.
 
 ## Ordinary local initializer transport: C1 — 2026-10-16
 
@@ -5770,8 +6135,8 @@ All unrelated owners and retained failures remain preserved.
 
 ## MakeCode CLI integrated GUI module boundary — 2026-10-16
 
-PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this separate claim
-before implementation: [CLI module boundary](docs/ARCADE-CLI-INTEGRATED-GUI-SCOPE.md).
+Claim merged; Codex Arcade integration owns the source boundary and focused
+qualification:  [CLI module boundary](docs/ARCADE-CLI-INTEGRATED-GUI-SCOPE.md).
 Continue the landed CLI target work and preserve its commands and target
 behavior. Own the `scripts/makecode.mjs` library-loading/prerequisite boundary, an
 optional focused `scripts/lib/` inspection helper, the coordinated exact
@@ -5791,6 +6156,11 @@ integration receipt producer before editing it. Current Array and clock failures
 remain independent; this claim does not infer their cause from module identity
 or promote whole-project compatibility from source resolution controls.
 
+CLI boundary source implementation coordinates the three existing
+`scripts/lib/pxt-node.mjs` runtime-library imports with the same installed GUI
+library loader. No worker/compiler behavior or runtime source authority is
+changed. Source and actual CLI qualification remain pending.
+
 ## Arcade animation resource Array producers — 2026-10-16
 
 PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this claim before
@@ -5802,6 +6172,19 @@ editor ownership remain separate. Preserve unknown-resource Undefined behavior,
 shared-cache versus fresh-array identity, all writers, mutation and presence
 checks, and current graph/resource binding. No opcode-only type grant, default
 Array, dependency pin or runtime semantic change is authorized by this claim.
+
+### Controller event literals and ordinary primitive callers — maintenance
+
+Coordinate the existing unified controller registration and ordinary procedure
+parameter constraint lanes. The three existing `ControllerButtonEvent` scalar
+payloads share one immutable source map between emission and the selected
+ordinary producer proof. Only actual unshadowed readonly builtin leaves in a
+closed source/callee/effect domain qualify; annotations, fake objects, unknown
+members, writers, escaping roots and dynamic effects remain refused. Other SDK
+enums and Number results, native certificates, words and pins are unchanged.
+Focused controls and fresh affected native/browser qualification are required;
+source authoring alone does not close the original hosted regression or promote
+a whole game.
 
 ## Arcade custom loop block theme media — 2026-10-16
 
@@ -5817,11 +6200,43 @@ pin, workflow or broad runtime change. A fresh affected visible editor/theme
 qualification remains required; original missing-resource failures stay open
 until that evidence exists. Other lanes retain their owned surfaces.
 
+Loop media development source now binds the current workspace media at actual
+static registration and adapts only the final generated legacy arrow field.
+The merged contract's focused source controls are authored, not yet run; actual
+visible theme/base-path and fresh official artifact gates remain open. Headless
+VM JSON, unrelated icons, default colors and dynamic factories remain unchanged.
+
+### Animation malformed-file browser qualification message — 2026-10-16
+
+Continuation of the claimed Wide Arcade artwork documents and Pixel authoring
+qualification scripts. The original hosted browser reached malformed companion
+import after its editable-resource, save/reopen and original-PXT pixel checks.
+The observed visible error includes the dependency translation stage; the
+previous exact text fixture omitted that stage. Update only that exact message
+while preserving the loaded-VM, Code and published-resource identity assertions.
+No product exception, diagnostic, import behavior, timeout or assertion is
+removed. [Qualification boundary](docs/ARCADE-ANIMATION-ERROR-MESSAGE-QUALIFICATION.md).
+Fresh production browser qualification remains required; the original failure
+is retained and this source correction alone promotes no game.
+
+### Arcade repair composition and measured gates — 2026-10-16
+
+The [current repair status](docs/ARCADE-CI-REPAIR-STATUS.md) records the normally
+composed source and its distinct qualification boundaries. The complete
+original five-test animation suite passes on the normal installation, including
+three plain CLI conversions and one original Arcade compile/simulator run.
+The corrected program-clock guest separately passes exact0/20/40 through the
+original helper on its reviewed source context. Visible GUI, final-head hosted
+checks and whole-game promotion remain pending. Preserve all original failures.
+The List, per-player, Carnival, managed SDK and shared Image Array contracts
+landed in joint documentation claim1007; bounded implementation is authorized.
+Its claim checks do not qualify subsequent source implementation.
+
 ### Arcade ExtendableSprite update Throw source intersection — 2026-10-16
 
 Owner: Codex Arcade integration, coordinated with the existing Throw, owned
-Sprite class callable and managed SDK lanes. Status: claim pending qualified
-normal merge; no implementation under this amendment yet.
+Sprite class callable and managed SDK lanes. Claim1010 has merged after all
+enabled checks; bounded source implementation is authorized.
 
 Contract: [source admission and initialization](docs/ARCADE-EXTENDABLE-THROW-SOURCE-ADMISSION.md).
 Own the narrow GUI source issuer/currentness/normalization intersection in
@@ -5833,7 +6248,7 @@ scheduler/runtime/pin/worker change, skipped control or corpus promotion.
 
 ### Shared-frame selected source provenance — coordinated amendment
 
-Owner: Codex Arcade integration. Claim pending qualified normal merge.
+Owner: Codex Arcade integration. Claim1012 has merged after all enabled checks.
 Extend only the [shared-frame non-exposure contract](docs/ARCADE-SHARED-IMAGE-ARRAY-TRANSPORT.md)
 into dependency-project.js for a private actual-source/prepared-map receipt.
 Keep optional effect analysis private to the existing shared-frame helper and
@@ -5841,7 +6256,7 @@ its exact translator hooks. Preserve actual source comparison, source ordering,
 all initializers, unused bodies and diagnostics; no public flag/namespace/tag
 can issue proof. This does not widen ordinary Number/reference producers,
 classes, runtime behavior, dependency fetching, pins or compiler execution.
-Implement only after this ownership amendment qualifies and merges.
+Bounded implementation is authorized; claim checks do not qualify its source.
 
 
 ## 386 GUI HDD and forward-debug hosted acceptance — 2026-10-16
@@ -5871,9 +6286,38 @@ A separately guarded font-discovery source continuation now collects bounded
 read-only package, configuration, alias and font-file observations. Its own
 request/original/independent-reader formats remain observation-only. A distinct
 conditional hosted job now enables that collector in the source candidate.
-Its final-head request/event admission and original observations remain pending;
-the request is unpublished, no discovery event was sent, and actual stays disabled. The original required roster and missing
+The separately admitted source79af font event failed during collection; its sole
+retained original passed independent delivery validation as failed and incomplete.
+That event is consumed and cannot be replayed. Actual stays disabled. The original required roster and missing
 paths remain held. See the matching guide for selection and qualification gates.
+A separate disabled exact-entry font-chain source slice now adds closed request,
+original and inner-reader formats, typed parent/link/file witnesses and bounded
+alternatives traversal. Existing discovery/delivery v1 code and its baseline
+remain held. The new guard is false; there is no hosted chain job, official
+outer-delivery path, new input or event. Its strict parent policy refuses the
+retained mode040777 parent; manufactured positives do not qualify that layout.
+Raw source-command sidecars remain separate from inner descriptor validation.
+See the guide for source controls and the remaining trust/delivery gates.
+A separately disabled bridge-only continuation observes an explicitly selected
+alternatives child referenced by a stable incomplete historical alias. Its
+separate versioned request retains and pins prior discovery bytes; the reader
+regrades them independently. It cannot establish the old font entry's current
+association or reobserve its writable parent. Existing chain starting roots,
+strict parent/terminal policy, caps and actual guards remain held. That inner-only
+checkpoint includes no activation, input, event or consumer adoption.
+A separate bridge delivery source slice adds independently selected official
+metadata and ZIP/raw-source joins, with metadata-only grading before archive
+access and separate mode/version policy. The bridge source proposal now enables
+only its source guard and exact owned-label job predicate. Actual and chain stay
+disabled. No official observation or acquisition is approved.
+Its scoped census and dated conditional pointers preserve every other workflow's
+readings and all consumed failures. Original discovery/delivery consumers remain held.
+A scoped old-chain reader repair now requires successful link witnesses before
+deriving another hop and successful parents before accepting child observations.
+The old partial-prefix counterexamples remain retained; valid failed final
+witnesses stay supported. Only `verify_font_chain`, new focused controls and
+this lane's documentation change. Controller, bridge reader, formats, caps,
+baseline, workflows and all guards remain held; source qualification is pending.
 A separate delivery reader now joins externally selected official metadata,
 workflow proof and the bounded original ZIP before grading a retained discovery
 observation. Missing request/observation or raw evidence refuses. This is
@@ -5888,8 +6332,10 @@ names, special file types and ignored directory payloads before any inflation.
 The complete header census preserves existing limits, required files, TAR and
 actual v3/v4 semantics. This is a source repair; clean affected GUI/guest
 qualification remains pending.
-The explicit consumer CUI expectation now follows main
-PR1066 at `fe89e3425bf323b1acd9e3f98df6a7383e9b836b`; no dependency writer changed.
+The explicit consumer CUI expectation now follows the composed main selection
+`bda0157410a6704ae859a19398a8a742cdfae50b`; root and GUI package/lock and
+vendor declarations remain unchanged. Historical requests require fresh source
+selection; all guards and actual qualification remain held.
 
 
 
@@ -5910,11 +6356,12 @@ build/browser pipeline; do not introduce another provisioning framework or
 change unrelated workflows.
 
 
-PROPOSED SCOPED CENSUS EXTENSION — Codex x86, 2026-10-18. Extend this
+CLAIMED SCOPED CENSUS EXTENSION — Codex x86, 2026-10-18. Extend this
 merged claim only to `docs/generated/ci-step-census.json`, refreshed with the
 existing `scripts/gen-ci-steps.mjs --fetch --workflow i80386-hdd-gui-actual.yml`
-scoped generator, plus this lane's exact conditional-step pointers. Merge this
-claim before writing the generated census. Retain every unrelated workflow's
+scoped generator, plus this lane's exact conditional-step pointers. Claim
+[PR1079](https://github.com/CrispStrobe/brickwright-lite/pull/1079) merged before
+the scoped refresh. Retain every unrelated workflow's
 dated readings and main provenance. No generator, census test, gate baseline,
 workflow condition, supplier pin or other owner's section changes are included.
 The current failed unit originals establish a missing workflow census entry;
@@ -6455,6 +6902,15 @@ Previous artifacts and receipts are retained privately. Native readiness,
 physical UI/connection/LED acceptance and clone buzzer tasks retain their bounds
 in the handoff; no additional native or firmware work is implicitly claimed.
 
+Implementation candidate on `lane/ios-workflow-resource-preparation-20261017`:
+the three mobile iOS build blocks invoke the existing preparation immediately
+after CLI initialization. Focused controls execute each actual block with
+authored build/signing command shims, require per-job ordering, stop on helper
+failure, and detect removed, commented or moved calls. All 19 focused workflow
+and existing preparation controls pass. The preparation implementation and
+all other workflow bytes are preserved. This is source wiring evidence only;
+final combined unsigned app and signed IPA qualification remains pending.
+
 ## Arcade foundation CI: isolated mutant import closure — 2026-10-18
 
 IMPLEMENTED CANDIDATE — integration owner, branch
@@ -6526,6 +6982,342 @@ candidate qualification before integrating source. Never repeat a successful
 original acquisition, reader or run merely to inspect it. See
 [the integration handoff](docs/INTEGRATION-NEXT-STEPS.md) for the remaining join.
 
+Source candidate on `lane/ios-active-asset-source-20261018`, after claim PR1070
+merged. The release-simulator-only Ready hook observes the actual installed
+resolver only when explicitly requested through its process environment. It
+retains sorted embedded storage identities and served identities separately,
+including current CSP-header hashes, finite structural/byte/output/time caps and
+partial refusals. Device-profile diagnostics retain their actual assertions
+while printing counts instead of device identifiers. The resource-preparation
+parent and all three helper call paths are preserved.
+
+This candidate does not wire a workflow observation or qualify the Apple adapter,
+installed map, resource/lifetime envelope or signed target. Next: freeze the
+independent expected-map and source/configuration/executable/artifact joins;
+prepare an opt-in unsigned simulator controller that admits an already available
+runtime and finite process/resource/output boundaries without implicit downloads;
+then qualify the exact candidate once. Preserve separate signed-map admission
+and release/TestFlight guards. Do not merge this source on pure collector tests.
+
+Optional unsigned input retention now uses the claimed mobile workflow and focused
+control file, without adding public script paths. `retain_ios_audit_inputs` defaults
+off and excludes tag, signing and device-IPA requests; only main and the owned
+source branch are admitted. Capture preserves the real build and app upload,
+retains exact selected tracked sources, downloaded web bytes and toolchain version
+observations, then checks source/web stability and retains all observed codegen
+candidates and one simulator executable/plist. It never launches an app. Partial
+retention fails; retained candidates are not proof of active codegen references,
+compiler input use, expanded configuration, complete input graph or process bounds.
+Independent joins, existing-runtime/resource admission, actual affected observation
+and all final-head checks remain prerequisites. Signed map and release holds remain.
+
+The normally composed candidate also retains separate before/after installed
+compiler/tool/SDK-settings identity observations. Only role, byte length and hash
+are exported; binaries and host paths are excluded. Changed observations refuse.
+The separate artifact preserves the existing retained-input manifest format and
+all original jobs/build/upload ordering. Toolchain use, complete SDK/toolchain
+closure and expanded effective configuration remain unproved; no app is launched.
+
+Runtime asset receipts now use an explicit v2 envelope. A pure helper projects
+only the reviewed asset-related settings from the actual typed configuration,
+with a hash of its full serialization; unsupported settings preserve a partial
+refusal. Frontend paths, plugin values and raw configuration are not emitted.
+Independent readers require a separately admitted exact typed projection. This
+is a limited configuration observation, not a full-configuration/compiler-input,
+installed-map, resource, signed-target or release qualification. The original
+collector production bytes and context/Ready/provider boundaries remain intact.
+
+Oversized serialized envelopes now emit an explicit bounded refusal with the
+candidate length/hash and no map body, instead of leaving an empty receipt. The
+8 MiB output cap is unchanged; allocation and process lifetime remain unqualified.
+
+The optional unsigned controller now has a preparation-only runtime admission
+phase in the already claimed workflow and focused control file. Explicit runtime
+identifier/build inputs default empty. After retained products, a bounded installed
+runtime inventory request joins exact source/job/manifest/producer/executable/plist
+identities and checks the thin ARM64 simulator build header and minimum OS version.
+Only reviewed runtime fields and inventory length/hash are exported. No simulator
+lifecycle operation or app launch occurs; device/runtime-architecture/loadability/
+process-resource/cleanup qualification remain open. This phase never authorizes a
+launch. Original jobs, build/upload ordering, delivery and signing guards remain.
+
+The claimed workflow now also contains an unwired owned-simulator transaction
+core, with focused authored adapter controls. No entry-point phase invokes it.
+It snapshots the plan, refuses pre-existing created UUIDs, verifies owned identity
+before targeted operations, and preserves primary failures plus independent cleanup
+failures. A late bounded observation stays partial; cleanup has a separate budget
+and continues after an earlier command failure. Bounds at callback returns are
+cooperative, not process containment. Supplied plan flags do not authenticate an
+admission. Real adapters, runtime/device/resource admission and installed-code/
+receipt joins remain required before wiring an actual launch. Existing workflow
+steps, default inputs, delivery/signing guards and native hook remain unchanged.
+
+The optional controller's unwired command adapter now runs only a closed simctl
+argument grammar against an explicit named device set. It bounds combined streamed
+output, checks absolute deadline/stop, filters environment and closes inherited
+FDs/stdin. Non-reaping exit observation retains the direct-child identity until
+owned group signaling; leader reap and pipe/selector/directory cleanup follow.
+It preserves primary and cleanup failures separately. Feature admission requires
+waitid/WNOWAIT and exception notes before spawn; no workflow Python setup changes.
+Real Linux subprocess controls use authored command shims and detect removed byte
+and descriptor guards. No workflow caller, Apple qualification, app launch, device
+set ownership lease, delegated-service containment or app-resource claim is added.
+
+The existing optional runtime-inventory helper now also uses non-reaping exit
+observation before group signaling, fixing its prior reap-before-signal ordering.
+It checks API/default-SIGCHLD availability before spawning. Its 15 s/1 MiB caps
+remain unchanged; unsupported interpreters refuse optional inventory. No Python
+provisioning/pin, ordinary build or retained-input phase is changed. A real owned
+process control checks signal-before-reap ordering in both helpers.
+
+The optional controller now also has an unwired, single-use installed receipt
+receiver. Before launch it checks executable/plist pins and output absence, holds
+an output-directory FD, and later pins the first original receipt FD. It rejects
+replacement paths/inodes and nonregular or linked files, preserves bounded partial
+bytes, and checks source/configuration/profile headers plus supplied PID/identity/
+RSS samples. A final file fingerprint and installed-code readback prevent accepting
+late changes. Results remain header-only: no sampler authentication, running-code,
+asset-content, hard-memory or app qualification. Pre-launch integration, actual
+Darwin process sampling, container/environment/code joins and runtime-image/device
+admission remain open. No workflow caller or launch trigger is added. Focused
+Python controls now run from owned files to avoid command-line size limits.
+
+A source-only reproduction found Stop during the final sample could still accept
+a header. The receiver now rechecks Stop after callbacks and final readback; bounded
+original bytes remain partial. A runtime cut removing these boundary checks
+reproduces the stale acceptance. No actual app or G02 lifecycle claim follows.
+
+The unwired transaction core now requires preparation after installation and
+before launch. A returned opaque context is passed unchanged to observation and
+released once, including late or null returns, primary failures and interrupts.
+The preparation callback owns any resources it acquires before raising; the core
+cannot release an object it never received. Preparation has a 15 s cooperative
+return fence; release is attempted even with a broken clock and checked against
+a separate 5 s return fence when possible. Release errors stay separate from the
+primary failure, and bounded observation bytes remain retained. These checks do
+not interrupt blocked callbacks or authenticate supplied contexts.
+
+The release runs in a nested finally after device cleanup, so an interrupt from
+device cleanup still closes the returned context. An interrupt can still leave
+device cleanup incomplete; it is propagated, not reported as successful cleanup.
+Focused controls join this hook to the actual file-descriptor receiver on owned
+files with an authored launch and process samples. They detect omitted preparation,
+late-return fencing and release. There is still no workflow caller, real container
+resolver, admitted launch environment or Darwin sampler. Actual platform/runtime/
+namespace/resource admission and candidate-bound observation remain prerequisites.
+
+The unwired preparation adapter now uses only explicit-device, explicit-bundle
+`get_app_container` queries for `app` and `data`. It copies a closed typed plan,
+holds device-set/device/data-root and returned-container descriptors during
+preparation, rejects noncanonical or outside-device paths, overlapping containers,
+changed identities and changed query readbacks, then prepares the pinned installed
+receiver at an absent fixed filename in the existing Documents directory. No
+folder creation, output overwrite, launch or environment forwarding is added.
+The two paths are queried again after preparation under one 15 s cooperative
+budget; command output is capped at 4097 bytes. Invocation owns private originals.
+
+A release adapter translates receiver close uncertainty into explicit refusal.
+Directory and receiver close interrupts attempt the other owned closes before
+propagating; uncertain descriptor numbers are never retried. Focused controls use
+real owned files/FDs and authored container commands, including the real bounded
+subprocess adapter and five runtime mutations. Directory identity snapshots and
+path containment are not an authenticated namespace lease or bundle-data binding.
+No workflow phase invokes preparation, release or the transaction core. Actual
+Xcode/container semantics, launch-path/environment binding, Darwin sampling,
+runtime-image/model/namespace/resource admission and affected qualification remain
+open. Stronger installed-code/content/whole-event/release claims stay false.
+
+The container adapter also rechecks Stop and deadline after its temporary directory
+FDs close, before returning the receiver. A source-only reproduction accepted a
+receiver when either boundary changed during close; the final check now refuses
+and closes the receiver. The original reproduction and pre-fix test pass remain
+separate from final-source evidence. A runtime mutation removes this final check.
+
+## iOS audit controls: explicit Cargo selection — 2026-10-19
+
+The active-asset candidate's hosted unit shard found two new ambient-binding
+sites in `test/tauri-embedded-asset-audit.test.mjs`: both compiler calls selected
+Cargo by bare PATH lookup. The controls now require the Cargo installation's
+absolute executable path, from absolute `CARGO_HOME` or the standard home Cargo
+installation, preserving the proxy basename and toolchain selection. Missing or
+relative installations refuse; there is no PATH fallback. This binds tool selection
+without pinning its version or proving which compiler built an installed app.
+
+The gate-shape baseline and detector are unchanged. Its 11 controls pass, with
+ambient findings restored from 11 to the existing allowance of 9. All three Rust
+control tests pass, including the 12 collector methods and three semantic mutations,
+with a decoy Cargo first on PATH that is never invoked. Explicit missing-tool and
+relative-root negative runs fail as required. Original hosted failure metadata and
+log are retained privately. No workflow, native code, dependency pin, compiler
+threshold, mutation assertion or actual-app qualification changes in this repair.
+Launch-environment binding and Darwin monitoring remain the next implementation
+work; the active-asset source candidate stays draft pending its actual qualification.
+
+## iOS audit: one prepared launch environment — 2026-10-19
+
+The unwired command adapter accepts an optional prepared receiver only for an
+explicit launch. Preparation records the device-set, device, bundle and directory
+identity snapshots. Launch admission checks that binding, the installed file pins,
+output-parent identity and receipt absence, and consumes the attempt before clock
+or filesystem callbacks. Closed, already captured, unbound or previously attempted
+receivers refuse. A failed spawn also consumes the attempt; there is no implicit
+retry. This is an internal consistency binding, not an authenticated capability.
+
+The adapter adds only `SIMCTL_CHILD_BW_EMBEDDED_ASSET_AUDIT_PATH`, derived from
+that receiver's fixed output. Inherited audit and arbitrary child variables remain
+filtered, including on ordinary launches. The binding, file pins and namespace
+snapshots are rechecked after the client cleanup, with a final Stop/deadline fence
+before returning its reply. This does not contain delegated services or prove
+which executable ran. The transaction owner must still clean up a possibly started
+app after a refused reply. No arbitrary environment dictionary, workflow caller,
+launch input, signing/delivery change or actual observation is added.
+
+Ten new controls run actual owned command processes and file descriptors with
+authored responses, including a receipt capture that retains false app claims.
+Five runtime mutations detect removed target binding, attempt fencing, old-output
+refusal, environment assignment and final cancellation checking. Actual Xcode
+prefix/path semantics, namespace ownership, Darwin monitoring, complete joins and
+fresh affected candidate qualification remain open. Existing build/helper/input
+ordering and the native Ready hook are preserved.
+
+## iOS audit: unwired Darwin kernel sampler — 2026-10-19
+
+The existing owned workflow producer now defines a single-PID Darwin arm64
+sampler using absolute system libraries and explicit ctypes signatures. Each
+sample brackets the executable-path query with rusage-v0 observations. Nonzero
+birth time and executable UUID must remain stable, exit must remain absent,
+and user/system counters cannot regress. The returned identity digest is derived
+from those kernel observations and the expected path; callers cannot supply it.
+A matching path and UUID do not prove mapped code bytes or continuous identity.
+
+Mach CPU counters are converted with the actual timebase ratio using integer
+arithmetic. The sampled limits are 1 GiB RSS and five cumulative CPU seconds
+since process birth, including time before the first sample. Observation is
+cooperative, capped at 30 seconds and 100 samples; raw syscall records have a
+1 MiB total budget and a 2048-record ceiling. Capacity is reserved before each
+process syscall. Failed buffers and statuses remain available privately; records
+are returned as copies. Stop, deadline, rollback and reentry refuse and seal the
+sampler. It neither signals a process nor spawns a sampling command.
+
+Thirteen authored kernel controls and five runtime mutations cover these source
+contracts. Linux controls mock the Darwin API; they establish no actual Darwin
+ABI, resource enforcement, process ownership, family census, exec-generation or
+running-image join. SDK layout verification and actual kernel controls must
+precede wiring. The workflow entry point remains unchanged and has no sampler
+caller. Existing receipt qualification flags stay false and PR1078 stays draft.
+
+The first broader source run retained 56 passes and one timeout-fixture error:
+the child could be killed before writing its PID marker. That control now records
+the real parent-owned Popen handle and still requires deadline refusal, terminal
+status, kill and reap under the unchanged deadline. No process behavior is mocked
+or timeout enlarged by this fixture correction.
+
+## iOS audit: isolated Darwin SDK preflight — 2026-10-19
+
+The existing optional unsigned audit scope now includes a default-off
+`ios_audit_preflight_only` dispatch mode in the same workflow. It requires input
+retention, the owned source branch and both signing/device flags off. Its separate
+read-only-permission Mac job uses an explicitly pinned setup-python action for
+Python 3.13 and compiles one tiny SDK probe. Preflight mode skips the web build;
+all existing app jobs depend on that build, so no app, signing or delivery runs.
+Ordinary dispatches and tags retain their existing behavior.
+
+The probe checks actual SDK structure offsets, library calls, timebase ratio and
+one parent-owned process against the workflow sampler. It verifies non-reaping
+wait, group cleanup before reaping, and refusal after exit. The bounded structured
+report binds workflow, producer, probe source/executable, SDK settings and compiler
+version identities. The executable and runner path are not uploaded; pidpath keeps
+only its buffer hash/size. This is platform admission, not an installed-app map,
+process-family census, exec-generation, simulator or physical-device result.
+No simulator runtime is downloaded or started by this mode. Actual platform
+results must be reviewed before any observation-controller wiring or admission.
+
+## iOS audit: audit-token identity and diagnostic retention — 2026-10-19
+
+The first isolated SDK preflight failed with no report artifact and only a generic
+refusal. Its original event/job log is retained; the failing boundary is unknown.
+The revised preflight records the admission and cleanup stages, host capabilities
+and sanitized compiler diagnostics, and prints a bounded summary if artifact
+upload is unavailable. Cleanup errors cannot skip writing the partial report.
+The original failure remains a failure; no deadline, resource limit, assertion or
+permission requirement is relaxed.
+
+Unwired identity preparation now obtains a task-name right, reads the kernel's
+audit token and compares read-only code-status/code-directory results through
+`csops_audittoken`. It rejects changed tokens, UID/PID mismatch, invalid code status,
+hash drift, short/error replies, cancellation and reentry. Port release is once
+only; an undefined output after failed acquisition is never treated as an owned
+right. Constructor failure retains its primary error and available originals.
+There is no debugger/task-for-pid privilege fallback or target mutation.
+
+The matching thin-arm64 reader verifies a supported primary SHA-256 ad-hoc
+CodeDirectory against every covered executable page and derives its standard
+truncated code hash. Unsupported versions, alternate directories, scatter tables,
+truncated/overlapping ranges and changed pages refuse. This checks file consistency,
+not signature trust. Its file digest still needs the independent source/build and
+installed-file join. The SDK probe now checks these kernel APIs and the reader
+against its one owned program; it still has no simulator or app launch.
+
+Twelve authored identity/page controls and five runtime mutations cover the source
+contracts. Original failed output-port cleanup and a fixture that changed the wrong
+byte are preserved with their corrected controls. Actual SDK exports, task-name
+permissions and installed-app behavior remain unqualified until their exact report
+passes. Platform helper success cannot substitute for the actual target's permission,
+resource, ownership, map and cleanup evidence.
+
+
+## iOS audit: explicit observer-tool ABI after missing SDK header — 2026-10-19
+
+The second retained preflight stopped at compilation because the installed SDK
+lacks `sys/codesign.h`. Python wait prerequisites were present; no helper or
+kernel identity call ran. Keep this failure and the first unknown-boundary failure.
+The same claimed workflow now declares only the two read-only code-sign operations
+and `csops_audittoken` ABI using SDK types, with pinned XNU provenance in its v3
+report. It checks the required real library exports before compilation, with no
+privilege fallback. SDK Mach layouts and all kernel, identity, CPU/RSS and cleanup
+assertions remain mandatory. No Apple implementation is vendored. This is observer
+tool interop, not a shipped-app API or SDK-header availability claim. One corrected
+source-bound preflight is needed before platform admission; actual app/family
+qualification remains false.
+
+
+## iOS audit: fixed helper exit and reap controls — 2026-10-19
+
+The third isolated platform preflight passed compilation, SDK layouts, executable
+page checks, kernel identity and resource sampling, then failed with PermissionError
+when signaling its exited unreaped group. Original failure/report remain retained.
+The same claimed workflow now checks bounded before/after singleton group originals
+and the same owned UID/PID/zero-exit WNOWAIT record before distinguishing this
+fixed nonforking helper's zombie-only EPERM. Other or uncertain group results
+refuse. A signaling failure cannot skip the owned reap; primary failures survive
+reap errors. This is a tool-specific platform control, not an EPERM-success rule
+for the general simulator command adapter. Process-group, process-family and app
+qualification flags remain false, with separate actual cleanup admission required.
+The runner kernel is not source-joined to the cited XNU signal implementation.
+
+
+## Arcade foundation reconciliation and composed analysis — 2026-10-19
+
+ACTIVE / QUALIFICATION PENDING — Codex Arcade integration, within the existing
+Arcade compatibility lane and the ordered PR1046 handoff. Normally compose the
+retained foundation and declaration/Sprite analysis with current main; preserve
+the independently landed timer classification, refusal census, fixture repairs
+and concurrent UI/native work. The declaration demand uses an internal fourth
+argument, retaining the Sprite proof's third argument and the eager/Throw paths.
+
+The required sb3-creator `7d3f8be7` descends from main's `a13f92b8`; required
+Arrays `4db2813d` descends from main's `598fc966`. Retain those required newer
+supplier revisions with matching canonical source, notices and provenance,
+while preserving main's other supplier pins. This is explicit prerequisite
+reconciliation, not a blanket supplier or runtime qualification.
+
+The first complete 218-test attempt observed 210 consecutive passes before
+SIGKILL, with eight tests and the summary unobserved. Child CPU was 24.90 seconds
+under the unchanged 25-second bound; the precise kill cause remains unproved.
+No complete suite or new corpus count is claimed. Investigate actual repeated
+analysis cost; do not raise bounds, shard the suite or repeat unchanged source.
+Main composition needs its own controls, affected guest qualification and all
+enabled final-head hosted checks before normal matched-head landing.
 
 ## Native Scratch Link cancellation and reconnect ordering — 2026-10-19
 
@@ -6572,3 +7364,270 @@ cold-start, Stop/reset/closure and distinct recovery qualification before merge.
 The retained installed failure does not exercise this new diagnostic. No pin,
 firmware, model, timeout, workflow, broker policy or public error change; broader
 G02 and release gates remain open.
+
+
+### Native bridge cancellation candidate — 2026-10-19
+
+Claim PR1087 merged as `162398c09082470d586dcba21cb04187fafc844e` before
+implementation. The candidate closes cancelled openings, releases late or failed
+listeners, serializes native open/close and rejects replacement of a live owner.
+Stale callbacks and repeated old closes cannot act on a new session. Failed
+sends close the owner instead of silently discarding the error. Cancelling the
+real-socket attempt also prevents its late failure from opening a fallback.
+Canonical integration refreshes the packaged mirror; supplier pins and native
+Rust/Swift remain unchanged.
+
+The 17 original bridge controls pass. Seven new cancellation/failure/ownership
+controls fail on the unchanged baseline and pass on the candidate, alongside
+four additional registration/send/late-socket controls (28 total). Enabled
+exact-head hosted checks remain mandatory before merge. No new iPad build or
+physical connection acceptance is implied. A rejected native close reports an
+error and blocks reuse of uncertain state; a native call which never settles
+still requires the separately scoped native cancellation/readiness work.
+
+## iOS audit: unwired transaction Stop and publication fences — 2026-10-19
+
+The same claimed workflow core now accepts a typed optional Stop callback, keeps
+cancellation sticky, fences active effects after readback/preparation/observation,
+and refuses successful publication if Stop occurs during cleanup/release. A valid
+returned create identity is resolved before cancellation cleanup; other devices
+remain untouched. Returned observation bytes remain retained with partial status.
+Cleanup/release continue on cancellation. Six new authored lifecycle controls and
+a publication-fence mutant complement normal and existing failure controls.
+This is cooperative source behavior only: callback interruption, shared Stop
+intent in the full wrapper, target/service/process-group authority and actual app
+qualification remain open. No workflow phase invokes the transaction core.
+
+
+## iOS audit: authenticated exit ownership instead of wait UID — 2026-10-19
+
+The fourth actual preflight refused the wait-UID comparison: Darwin returned zero,
+while the authenticated pre-exit token had the helper's actual UID. The child was
+reaped with zero exit and no cleanup errors; group census was never reached.
+Retain this failed original. The probe now ties exit ownership to the already
+verified live kernel audit token's PID/UID, retains wait UID as information and
+refuses changed ownership tokens. Reviewed XNU wait code zeros but does not fill
+that exit UID; runner kernel source identity is still unjoined. This changes no
+permission requirement and gives supplied UID fields no authority. A separately
+source-bound corrected platform event and independent original joins are still
+required. General simulator group/family/app qualification remains false.
+
+
+## iOS audit: bounded fixed-helper platform result — 2026-10-19
+
+Corrected event39216035612 on ecc8d063 passed its one owned C-helper profile with
+SDK26.5/Darwinarm64; five app/web/signing/delivery jobs skipped. Exact originals were
+acquired once. Layout, kernel audit-token/code hash, page consistency, resource,
+nonreaping zero exit, both singleton groups, exit refusal and owned port/reap checks
+passed. The zombie-only EPERM remains an explicit bounded negative; cleanup had
+no errors. The independent source-bound packet reader passed limited joins, with
+independent executable bytes and path-original claims false. Earlier four failures
+are retained. This admits no simulator/group/family/app, full compiler/SDK closure,
+physical or release result. Continue ownership/resource/wrapper/actual-map work;
+keep draft and all final-head/affected-actual merge gates. Never repeat this
+successful event, acquisition or reader merely to inspect it.
+
+## iOS audit: command cleanup candidate — 2026-10-19
+
+The unwired command adapter now has a Darwin-specific cleanup candidate. It holds
+its unreaped direct child through group signaling and retains bounded wait/group
+originals. An exited singleton permits only the observed EPERM classification,
+with two exact singleton censuses and an unchanged terminal wait record. Unknown,
+foreign, multi-member or truncated observations refuse. Live groups require a
+successful signal; ESRCH and other permission errors are not accepted. Linux
+signaling behavior is preserved. Cleanup interruptions still attempt remaining
+owned waits and descriptor releases, retaining the earlier failure.
+
+Controls cover the actual adapter using authored subprocesses and mock Darwin
+kernel edges, including four detected mutations. The optional fixed-helper
+preflight v6 exercises this primitive before independent helper teardown and
+retains its originals even on failure. It remains default-off, unsigned and
+app-free. A new frozen platform event is required; the earlier successful v5
+original is never replayed or relabeled. No general process-family, delegated
+service, simulator, installed-app or resource containment qualification follows.
+Bounded command stream/wait journals retain observed prefixes privately; journal
+limits and cleanup uncertainty refuse. Authoritative device/boot/app/service joins
+and the guarded installed wrapper remain open. Keep the draft and actual-qualification
+merge holds.
+
+## iOS audit: installed tool interface inventory — 2026-10-19
+
+The command cleanup primitive passed one newly source-bound v6 fixed-helper event;
+its independent original reader passed, with general simulator/app/family claims
+still false. Continue the existing optional simulator-audit workflow claim with a
+separate default-off interface-only job. It runs fixed installed-tool help/version
+commands, with bounded output, time, originals and owned command cleanup. Mixed
+helper/interface modes and nonempty runtime selectors refuse. All app/web/signing/
+delivery jobs are excluded; the fixed-helper job keeps its own no-simctl boundary.
+No boot, create, install, launch, spawn, service mutation or runtime download is
+executed by this inventory. Help arguments naming launch/spawn are documentation
+queries only. Source-bound actual interface originals are required before using
+them to choose an ownership API. Help observation does not admit a device, boot,
+app process, delegated service, resource envelope or installed-asset result.
+
+## iOS audit: retained interface failure and owned-child diagnostic — 2026-10-19
+
+The first interface-only event failed on its initial `simctl help`: no stream bytes
+were observed before command refusal, its direct child was still pending at cleanup,
+and the owned group was signaled and the leader reaped with signal exit. Earlier
+Xcode/tool-location/launchctl-help queries completed; the selected Xcode was 26.6.
+Original log/artifact/report and the independent partial-reader refusal are retained.
+The cause is unknown. No simulator ownership or complete interface result passed.
+
+Prepare an explicitly opt-in diagnostic within the same audit workflow envelope:
+retain command phase, PID and monotonic boundaries; after two seconds sample only
+that still-unreaped owned help child. The sample requests one second at ten-ms
+intervals, has its own bounded output and a deadline inside the original ten-second
+help deadline. It targets no shared service and adds no warm-up, retry, download,
+simulator operation, or timeout expansion. Sampling can perturb the target; it is
+not a performance measurement or resource/ownership admission. Diagnostic-only
+requests exclude app builds even when the interface flag is missing, and then
+refuse admission. A separately frozen source-bound event is required; keep the
+first event failed and all app/main/release holds.
+
+## iOS audit: auxiliary failure isolation — 2026-10-19
+
+The owned-child diagnostic event also failed. The sampler announced that sampling
+began, but supplied no stack report before its three-second deadline. Both owned
+children were reaped. The bounded standalone reader joined the actual command and
+nested diagnostic packets with interfaceComplete false; it did not prove a cause.
+
+Those timing originals exposed a controller issue: the auxiliary failure shortened
+the primary help observation to about five seconds. The v3 candidate preserves an
+auxiliary failure while letting the primary command retain its original deadline.
+It still refuses final success if any requested diagnostic failed. Controls prove
+that all primary help queries finish when possible, while the failed auxiliary
+keeps the overall result partial. No time/output limit is increased, no original
+failure is relabeled and no new actual event is admitted by this source correction.
+
+## iOS audit: installed manuals without simulator startup — 2026-10-19
+
+The same optional-audit workflow now has a separate default-off manual-only
+selection: Xcode version, launchctl help for print/procinfo/managerpid, and the
+installed sample manual through a fixed noninteractive pager. It executes no
+simctl command and no sampler. Interface selection is still required; mixing
+manual and sampler modes refuses before commands. Any audit-only selection
+excludes normal app builds, including malformed mixed requests. Existing command,
+output, time and cleanup bounds remain unchanged. Authored controls verify the
+exact five-command graph and negative selection cases. A new source-bound actual
+manual observation and independent packet joins are required before relying on
+the installed text; manuals alone admit no app, service, runtime or resource scope.
+
+## iOS audit: installed manual result and default sampling order — 2026-10-19
+
+The manual-only event39229551289 passed on Xcode26.6/17F113. Exact original metadata,
+log and report were retained once; independent packet joins passed with manualComplete
+true and simulator-interface/app/root-cause claims false. The installed sample manual
+confirms that mayDie requests symbol information immediately, before sampling.
+The next diagnostic candidate omits that optional prefetch and uses documented
+default ordering. It preserves one-second/ten-ms sampling, the nested three-second
+budget and original ten-second help deadline. This is a different diagnostic
+configuration, not proof of the earlier cause or a waiver of either failed event.
+The auxiliary-isolation fix and final requested-diagnostic failure gate remain.
+
+## iOS audit: cleanup callback and interrupt custody — 2026-10-19
+
+The unwired transaction core now accepts a separately admitted cleanup callback,
+so an active adapter's sticky Stop refusal cannot also block cleanup catalogs,
+terminate, shutdown or delete. Default callback behavior remains available for
+existing source controls. Identity readback, command counts and cleanup deadlines
+still apply to the cleanup route; this callback grants no ownership authority.
+
+Interrupts during an owned cleanup command are deferred until later cleanup and
+receiver release have been attempted. The first interrupt survives subsequent
+cleanup interrupts; private immutable result/retained-observation snapshots remain
+attached to it. Broken cleanup-clock admission refuses further command dispatch.
+Thirty-three authored lifecycle cases and routing/continuation mutations pass;
+normal behavior and prior failures remain covered. No workflow entry invokes the
+core, no simulator/app event ran and callback/resource admission remains false.
+
+## iOS audit: installed runtime inventory — 2026-10-19
+
+The default-order diagnostic39230490047 retained a complete nine-command help graph
+within the original bounds, independently joined. Its sampler completed sampling
+but timed out during reported symbol processing. The event remains failed; the
+reader distinguishes interfaceComplete true from diagnosticComplete false. No
+cause for the older cold-start refusal is established and no sampler retry is needed
+merely to use the retained CLI interfaces.
+
+A separate default-off inventory-only selection now collects Xcode version,
+the iOS-26.2-filtered runtime catalog, the iPhone-16-filtered device-type catalog
+and installed runtime-image metadata. The search filter is supported by the retained
+list help and keeps the original output cap. No device is created, booted, installed,
+launched or spawned; no image acquisition or service control is requested. Mixing
+inventory with manual/sampler modes refuses, and any audit-only flag excludes normal
+app builds. Existing time, output and cleanup limits remain. Independent JSON and
+packet checks establish collection only; selected target, ownership and app admission
+remain false until the actual image/architecture/model joins are reviewed.
+
+The first unfiltered catalog event39234080601 exceeded the unchanged64KiB command
+output cap and was refused; its owned child was reaped and original failure retained.
+A complete object in the failed capture is used only to scope a new supported search
+for iOS26.2. It admits no target or catalog. The new four-command query omits runtime
+help already retained, keeps all bounds and requires fresh bounded collection and
+independent joins. The search is diagnostic selection, not a production target pin.
+
+## iOS audit: bounded catalog compatibility and receiver interrupt custody — 2026-10-19
+
+Scoped metadata event39236224347 at5865830b completed all four commands within
+existing limits; original metadata/log/artifact were retained once. Independent
+packet joins passed, followed by a distinct semantic join: installed iOS26.2/23C54
+runtime and ready/verified image both advertise arm64; the exact iPhone16 model
+is supported and its runtime range includes26.2. This describes that job's catalog;
+it does not authenticate a future runner, installed executable, namespace, service
+or resource lifetime. Rejoin these facts in the eventual admitted app job. No
+simulator device, app or release event was requested.
+
+The unwired receipt receiver now preserves the first cancellation when descriptor
+cleanup is also interrupted. It still attempts later owned closes; private immutable
+capture metadata and partial bytes survive on the original interrupt, with secondary
+interrupts retained separately. Cleanup uncertainty forces partial status. Two new
+actual-method controls fail on the previous source and pass on the fix; existing
+normal/header/refusal/file/FD controls remain. The controls target held receiver descriptors and check exact interrupt identity,
+partial-byte custody and later close attempts. This is source control only, not
+simulator/app qualification. Wrapper entry remains disabled.
+
+## iOS audit: exclusive device-set directory custody — 2026-10-19
+
+The optional controller now has an unwired directory factory. It creates a fresh
+private directory exclusively and holds both its parent and directory descriptors
+across commands. Identity includes device, inode, owner and permissions. Detected
+replacement, parent drift or clock failure refuses subsequent use. Close releases
+only held descriptors, continues through interruption and never removes directory
+contents or a replacement at the original path.
+
+The bounded command adapter accepts this context separately from the path and
+checks it before spawn, after the command and after command cleanup. Real authored
+subprocess controls show path-only admission accepting a between-command replacement
+while held-context admission refuses it before spawn. Existing path-only controls
+remain separate; the eventual wrapper must require the held context. These finite
+filesystem readbacks are not an atomic namespace lease or boot/app/service authority.
+
+Twelve filesystem controls and an identity mutation, sixteen command controls and
+four platform-profile controls pass. The new default-off directory-only job selects
+only these filesystem cases on macOS, starts no simulator or child command, compiles
+nothing and excludes normal builds/delivery even when its selector is set alone.
+It retains bounded source/job/stat/FD observations for an independent reader.
+Namespace, process family, resources and app qualification remain false. Actual
+platform originals are required before relying on its Darwin filesystem boundary.
+
+## iOS audit: observed directory identity and absolute launcher — 2026-10-19
+
+Directory-only event39239129340 completed successfully atb880ca774, with seven other
+jobs skipped. Official originals were acquired once. The original full-stat reader
+refused its invalid link-count stability assumption after adding a state file; that
+refusal remains retained. A distinct independent reader passed only the directory
+identity/refusal/cancellation joins, explicitly recording changed link counts and
+refusing any full-stat immutability, link-semantics, namespace or app claim. Five
+reader controls include changed link count and changed inode as separate cases.
+The directory class bytes remain unchanged in this candidate.
+
+The unwired bounded command adapter now uses the absolute system xcrun launcher.
+A new regression fails on the old PATH-resolved launcher and detects its restoration
+through a source mutation. Authored subprocess controls redirect only the explicit
+unit execution boundary, preserving production argv assertions and real owned
+process/stream/cleanup behavior. Container and launch fixtures use the same explicit
+boundary. The directory profile control compares stable identity fields rather
+than promoting mutable link count to identity. No production directory guard or
+threshold changed. Actual SDK/environment binding, service/family ownership,
+resources, guarded wrapper and affected installed qualification remain open.

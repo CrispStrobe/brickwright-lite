@@ -1,0 +1,14 @@
+0 Motor bench, no hub (Brickwright Robot Lab reference model)
+0 Name: motor-bench.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 // A SPIKE medium motor standing on the floor with an 8-tooth gear on a vertical axle in its
+0 // output. There is no hub: the Robot Lab's own lab-direct hub owns the motor, and the robotlab
+0 // blocks, the lab words and Python/JS _robotlab calls turn it directly.
+0 !BW ID motor
+0 !BW PORT A
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ID axle
+1 4 0 -90 0 0 1 0 1 0 0 0 0 -1 3706.dat
+0 !BW ID gear
+1 72 0 -70 0 1 0 0 0 0 1 0 -1 0 3647.dat

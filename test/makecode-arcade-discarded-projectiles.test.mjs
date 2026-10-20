@@ -1,3 +1,4 @@
+import {ORIGINAL_SPRITE_KINDS as Kinds} from './helpers/arcade-original-kind-values.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
@@ -29,6 +30,6 @@ for(const call of ['sprites.createProjectile(img`2`,0,0,SpriteKind.Enemy)',
         const imported=arcadeToPseudocode(call);assert.deepEqual(imported.unsupported,[]);
         const run=await runProgram(imported.code,{frames:1,uploads:imported.costumes,storage:true});assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
         const sprites=Object.values(run.vm.runtime.bwArcadeDeviceState.sprites).filter(s=>s.id);assert.equal(sprites.length,1);
-        assert.equal(sprites[0].kind,call.includes('SpriteKind.Enemy')?'Enemy':'Projectile');
+        assert.equal(sprites[0].kind,call.includes('SpriteKind.Enemy')?Kinds.Enemy:Kinds.Projectile);
     });
 }
