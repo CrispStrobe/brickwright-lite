@@ -83,31 +83,59 @@ export const GROUND_FRICTION = 0.8;
 /**
  * What a part is made of (PartMeta `material`, default PART_MATERIAL): the surface numbers the physics
  * core gives the body that part makes its island touch the ground with (mech/islands.js: the grippiest
- * part's). docs/ROBOT-LAB-VALIDATION.md "Materials" has the sources and the limits.
+ * part's; the body's `material`). docs/ROBOT-LAB-VALIDATION.md "Materials" has the sources and the limits.
  *   friction            Coulomb coefficient (Jolt combines two bodies' as √(μ1·μ2)); a part's own
  *                       `friction` still wins over its material's.
- *   restitution         e, the speed ratio of a bounce (rebound height = e²·drop height). Jolt combines two
- *                       bodies' as max(e1, e2), so the floor is 0 (GROUND_RESTITUTION) and a part's own e is
- *                       the pair's. Estimates, not measurements, and held LOW on purpose: ABS 0.1 (on a hard table a
- *                       brick bounces more, e ≈ 0.4, but Jolt's continuous collision resolves a fast body's impact at
- *                       ONE body's contact point, so a part landing across two others at once gets a spurious spin
- *                       from any larger e: a 2 × 4 brick dropped 20–100 cm across two loose beams turned over with
- *                       e 0.2–0.4 and lands flat with 0.1, measured; docs/ROBOT-LAB-VALIDATION.md "Materials"),
- *                       a LEGO tyre 0.05 (soft rubber on a hollow rim). Only impacts faster than
+ *   restitution         e against a rigid surface (a hard table): the speed ratio of a bounce, rebound height
+ *                       e²·drop height. Two materials meet with restitutionOf(a, b) (below). ABS 0.4: solid
+ *                       polymers rebound with e 0.6–0.9 (particles: ~0.9, Journal of Physics: Conference Series
+ *                       2557 012057, "Restitution coefficient of various particles"; polymer composites 0.63–0.82,
+ *                       Bulletin of Materials Science 22(6) 1009), a hollow moulded brick lands on its rim and
+ *                       rings, so less: 0.4 is an estimate (rebound 16 % of the height), not a measurement. A LEGO
+ *                       tyre 0.05 (soft rubber on a hollow rim: it barely bounces). Only impacts faster than
  *                       physics/jolt-core.js LEGO_MIN_BOUNCE_SPEED_M_S bounce.
- *   rollingResistance   c_rr, the rolling drag over the normal load (physics/rolling.js: a torque c_rr·N·r on a
- *                       tyred wheel's body). Rubber on a hard floor 0.010–0.025 (a drum rig's deceleration
- *                       method: Hungarian Journal of Industry and Chemistry, "Laboratory Measurement of Rolling
- *                       Resistance Coefficient under Different Conditions", hjic.mk.uni-pannon.hu/index.php/hjic/article/view/1197);
- *                       a LEGO tyre on a vinyl mat 0.02. Hard plastic rolling on its rim is not modelled (0).
+ *   modulusGPa          Young's modulus: how the two sides of an impact share it (restitutionOf). ABS 2.3
+ *                       (datasheet range 2.0–2.6); the tyres' soft rubber 0.0055 (Shore A ≈ 70, Gent's
+ *                       relation E ≈ 0.0981·(56 + 7.62336·S)/(0.137505·(254 − 2.54·S)) MPa); a LEGO tread's
+ *                       hard plastic links as ABS.
+ *   rollingResistance   c_rr, the rolling drag over the normal load (physics/rolling.js: c_rr·N·r on a wheel that
+ *                       rolls, and up to that holding a parked one). Rubber on a hard floor 0.010–0.025 (a drum
+ *                       rig's deceleration method: Hungarian Journal of Industry and Chemistry, "Laboratory
+ *                       Measurement of Rolling Resistance Coefficient under Different Conditions"); a LEGO tyre on
+ *                       a vinyl mat 0.02. A tread 0.05: link (steel) tracks on concrete 0.03–0.06 in the literature
+ *                       table of Łopatka & Muszyński, "Validation of rolling and steer resistance of articulated
+ *                       tracked robot", ISARC 2013 (whose elastomeric belt tracks measured 0.14); LEGO's are
+ *                       pinned plastic links on plastic sprockets. Hard plastic rolling on its rim is not modelled.
  */
 export const MATERIALS = Object.freeze({
-    abs: Object.freeze({friction: PART_FRICTION, restitution: 0.1, rollingResistance: 0}),
-    rubber: Object.freeze({friction: 1, restitution: 0.05, rollingResistance: 0.02})
+    abs: Object.freeze({friction: PART_FRICTION, restitution: 0.4, modulusGPa: 2.3, rollingResistance: 0}),
+    rubber: Object.freeze({friction: 1, restitution: 0.05, modulusGPa: 0.0055, rollingResistance: 0.02}),
+    tread: Object.freeze({friction: 1, restitution: 0.4, modulusGPa: 2.3, rollingResistance: 0.05}),
+    // The floor and the arena's walls: a hard table under a thin mat, rigid next to any part (it takes no share
+    // of an impact's energy), so a part bounces off it with its own e.
+    floor: Object.freeze({friction: GROUND_FRICTION, restitution: 1, modulusGPa: Infinity, rollingResistance: 0})
 });
 export const PART_MATERIAL = 'abs';
-/** The floor (a printed mat on a table) takes the bounce out of nothing: with Jolt's max rule a part's own e counts. */
+/** The floor's material (a printed mat on a table): see MATERIALS.floor. */
+export const GROUND_MATERIAL = 'floor';
+/** The floor body's own restitution, for Jolt's max rule where a body has no material: 0, so a part's own e counts. */
 export const GROUND_RESTITUTION = 0;
+
+/**
+ * The restitution of an impact between two materials. Each side stores the impact's energy in proportion to its
+ * compliance 1/E (two springs in series) and gives back e² of what it stored, so
+ *   e_ab² = (e_a²/E_a + e_b²/E_b) / (1/E_a + 1/E_b).
+ * A part on the rigid floor: its own e. ABS on ABS: 0.4. A brick on a tyre: the soft rubber takes the impact,
+ * e ≈ 0.05. (A model, as Jolt's rules are; it keeps both materials' numbers, which max(e_a, e_b) does not.)
+ */
+export const restitutionOf = (a, b) => {
+    const A = MATERIALS[a] || MATERIALS[PART_MATERIAL];
+    const B = MATERIALS[b] || MATERIALS[PART_MATERIAL];
+    const ca = 1 / A.modulusGPa;
+    const cb = 1 / B.modulusGPa;
+    if (ca + cb === 0) return Math.min(A.restitution, B.restitution);
+    return Math.sqrt((A.restitution ** 2 * ca + B.restitution ** 2 * cb) / (ca + cb));
+};
 
 /**
  * @typedef {[number, number, number]} Vec3
@@ -273,8 +301,9 @@ export const portRefOf = placed => {
  *   gravity: Vec3,
  *   bodies: {id: string, motion: 'static'|'dynamic', position: Vec3, rotation: Quat,
  *            massKg: number, com?: Vec3, colliders: Collider[], parts: string[],
- *            friction?: number, restitution?: number, rollingResistance?: number, color?: number, mat?: string}[],
- *     (restitution 0..1 and rollingResistance ≥ 0: MATERIALS; c_rr acts on a body that turns on a hinge)
+ *            friction?: number, restitution?: number, rollingResistance?: number, material?: string, color?: number, mat?: string}[],
+ *     (restitution 0..1 and rollingResistance ≥ 0: MATERIALS; c_rr acts on a body that turns on a hinge; `material`
+ *      a MATERIALS key: two bodies with one meet with restitutionOf, others with Jolt's max of `restitution`)
  *   joints: ({id: string, type: 'hinge', body1: string, body2: string, point: Vec3, axis: Vec3,
  *             motor?: {port: string, maxTorqueNm: number, maxSpeedRadPerSec: number, deviceId?: number}} |
  *            {id: string, type: 'slider', body1: string, body2: string, point: Vec3, axis: Vec3} |
@@ -753,6 +782,7 @@ const checkMechanismV1 = (m, out, v2 = false, jointTypes = JOINT_TYPES_V1) => {
         if (b?.color !== undefined && !(Number.isInteger(b.color) && b.color >= 0 && b.color <= 10)) out.push(`${w}.color: need an integer 0..10`);
         if (b?.mat !== undefined && typeof b.mat !== 'string') out.push(`${w}.mat: need a string`);
         if (b?.restitution !== undefined && !(isNum(b.restitution) && b.restitution >= 0 && b.restitution <= 1)) out.push(`${w}.restitution: need a number in 0..1`);
+        if (b?.material !== undefined && !Object.prototype.hasOwnProperty.call(MATERIALS, b.material)) out.push(`${w}.material: '${b.material}' is not one of ${Object.keys(MATERIALS).join('|')}`);
         if (b?.rollingResistance !== undefined && !(isNum(b.rollingResistance) && b.rollingResistance >= 0 && b.rollingResistance < 1)) {
             out.push(`${w}.rollingResistance: need a number in 0..1`);
         }

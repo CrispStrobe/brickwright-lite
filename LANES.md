@@ -164,6 +164,16 @@ docs/NXT-PROTOCOL-FACTS.md §Sync, §Buttons; docs/ROBOT-LAB-EV3-NXT.md. Tests:
 test/bw-sim-mindstorms-model-limits.test.mjs. Follow-up (after #1127 and #1123): EV3 sync turn ratio and
 buttons, the runtime.robotLab button API and its Lab UI.
 
+## micro:bit importer arithmetic: Math.idiv semantics and bitwise grouping — 2026-10-20
+
+CLAIMED and done in one PR to main — Claude (owner decision 2026-10-20: Math.idiv imports with
+real semantics). Math.idiv(a, b) imports as `(((a bitor 0) / (b bitor 0)) bitor 0)`, pxt's own
+definition (both operands and the quotient truncated), and only that exact shape exports back as
+Math.idiv. Bitwise words and unary minus/bitnot now group compound operands: `(v / 4) | 0` no
+longer comes back as `v / (4 | 0)`, nor `-(a + b)` as `(0 - a) + b`. Files: bw-makecode
+translate-base.js, microbit-translate.js, export.js. Tests:
+test/makecode-arithmetic-roundtrip.test.mjs (both sides evaluated), updated idiv assertions.
+
 ## Robot Lab: cables, Studio mouse, coach marks, Ctrl-glide — 2026-10-20
 
 CLAIMED, stacked for one comprehensive PR (owner: "cables go in a comprehensive PR") on
@@ -282,6 +292,17 @@ symbols for dc_motor, ntc, inductor, slide_switch, tilt_sensor, opamp, relay;
 f84ba60 -> fac3a5a9928c8b53a778b0c42d8d91d5e693e4b7 (bw-board #659 light_sensor
 divider model; 393 commits, owner-approved, dependencies unchanged). Exact SHA
 swap across the same 16 pin surfaces; licence hashes unchanged.
+
+## Robot Lab physics 2: jolt-physics 1.1.0-bw.3, pair restitution, static rolling resistance — 2026-10-20
+
+CLAIMED and done in one PR — Claude (Robot Lab lane, owner request "fix it all"; follow-up to #1126).
+jolt-physics 1.1.0-bw.2 -> 1.1.0-bw.3 (JoltPhysics.js fork release `v1.1.0-bw.3`, tarball sha256
+112f6281...df890c, lockfile sha512 integrity; JoltPhysics fork commit a40ff0b): a CCD impact that would
+bounce while the body touches a second body is left to the discrete solve (a brick on two beams turned
+over), and a MaterialPairs restitution table. Owns the pin surfaces (scripts/integrate.mjs,
+packages/scratch-gui/package.json and package-lock.json, THIRD-PARTY-NOTICES.md, the fetch-pinning row)
+and bw-sim's materials and rolling resistance (contracts.js MATERIALS, physics/rolling.js,
+physics/materials.js), plus jolt-core.js's material table install and light-body iterations.
 
 ## Robot Lab: jolt-physics -> Brickwright fork 1.1.0-bw.2 (Jolt master) — 2026-10-19
 
