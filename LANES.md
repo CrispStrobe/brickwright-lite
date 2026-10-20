@@ -8027,3 +8027,11 @@ registered Arrays carrier and explicit supplier pin. Host and supplier complete
 codec factories have independent reviewed hashes because host-only allocation
 origin bookkeeping is intentional. Callable behavioral controls and all source
 rejection controls remain required. No product, pin or value authority changes.
+
+## Registered Arrays dialog census coverage — 2026-10-20
+
+Test-only security census maintenance in the existing Arcade lane. Prompt and
+confirm scans decode the strict registered Arrays carrier as well as existing
+legacy carriers. Added controls require bundled calls to be reported; prior
+scanner scope, reviewed ledgers and thresholds remain unchanged. Product and
+dependency pins are untouched. Complete hosted module qualification is pending.
