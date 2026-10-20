@@ -21,6 +21,8 @@ export const PALETTE_CATEGORIES = [
     {id: 'plate', en: 'Plate', de: 'Platte'},
     {id: 'tile', en: 'Tile', de: 'Fliese'},
     {id: 'slope', en: 'Slope', de: 'Schräge'},
+    // Parts added from the LDraw catalogue with nothing to connect to (part-meta/catalog-parts.js).
+    {id: 'decoration', en: 'Decoration', de: 'Deko'},
     {id: 'other', en: 'Other', de: 'Sonstiges'}
 ];
 
@@ -102,6 +104,39 @@ export const searchScore = (part, meta, query) => {
         else return 0;
     }
     return score;
+};
+
+/** The LDraw catalogue's search (the palette's "+", sim-lab-palette.jsx). */
+const CATALOGUE_LIMIT = 60;
+
+/**
+ * Catalogue parts matching a search, best first: every word must appear in the part
+ * number, the title or the keywords (foldSearch: case, accents, umlaut spellings).
+ * Subparts, aliases and obsolete files (titles starting ~ = _ |) are not offered.
+ */
+export const searchCatalogue = (list, query, limit = CATALOGUE_LIMIT) => {
+    const words = foldSearch(query).split(/[\s,;]+/).filter(Boolean);
+    if (!words.length) return {total: 0, results: []};
+    const out = [];
+    for (const p of list) {
+        if (/^[~=_|]/.test(p.title)) continue;
+        const number = foldSearch(p.part.replace(/\.dat$/i, ''));
+        const text = foldSearch(`${p.title} ${p.keywords}`);
+        let score = 0;
+        let ok = true;
+        for (const w of words) {
+            if (number === w) score += 1000;
+            else if (number.startsWith(w)) score += 300;
+            else {
+                const i = text.indexOf(w);
+                if (i < 0) { ok = false; break; }
+                score += i === 0 ? 40 : /[\s(,-]/.test(text[i - 1]) ? 20 : 2;
+            }
+        }
+        if (ok) out.push([score - p.title.length / 100, p]);
+    }
+    out.sort((a, b) => b[0] - a[0] || a[1].part.localeCompare(b[1].part, undefined, {numeric: true}));
+    return {total: out.length, results: out.slice(0, limit).map(([, p]) => p)};
 };
 
 /**

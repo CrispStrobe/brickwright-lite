@@ -37,7 +37,7 @@
 // motor coasts or brakes, or no motor reaches it) the wheel's hinge holds
 // with friction holdTorqueNm / |ratio| (the hold, referred to the wheel);
 // while the worm's motor drives, the hold is released and the mesh is the
-// gear constraint alone. holdTorqueNm is the torque at the worm the hold
+// gear mesh alone. holdTorqueNm is the torque at the worm the hold
 // stands for: WORM_HOLD_TORQUE_NM below.
 
 import {vecAdd, vecSub, vecDot, vecCross, vecScale, vecLen, vecNormalize, SIN_1_DEG} from '../mech/vec.js';

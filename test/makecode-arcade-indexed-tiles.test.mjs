@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
+import {runTimedArcadeProgram} from './helpers/arcade-timed-native.mjs';
 const capture=`
 pause(60)
 let raster=""
@@ -75,7 +76,8 @@ map.setPixel(0,0,2)
 `;
  const original=await runPxtArcade(source+capture,{dependencies:{device:'*','color-coded-tilemap':'*'}});
  const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
- const run=await runProgram(imported.code,{frames:15,uploads:imported.costumes,storage:true});
+ // Observe both the source pause and a subsequent rendered frame on the same timer platform.
+ const run=await runTimedArcadeProgram(imported.code,{milliseconds:120,uploads:imported.costumes,storage:true});
  assert.deepEqual(run.errors,[]);assert.deepEqual([...run.vm.runtime.bwArcadeDeviceState.sceneFrame.pixels],Array.from(original.raster,ch=>parseInt(ch,16)));
  const frame=run.vm.runtime.bwArcadeDeviceState.sceneFrame,buffer=frame.pixels;await stepFrames(run.vm,2);assert.strictEqual(frame.pixels,buffer);
 });

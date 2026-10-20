@@ -104,6 +104,7 @@ import { join } from 'node:path';
  */
 export const SB3_CREATOR_FILES = Object.freeze([
     ['sb3-creator.js', 'src/utils/sb3Creator.js'],
+    ['procedureParameterConstraints.js', 'src/utils/procedureParameterConstraints.js'],
     ['trace-oracle.js', 'src/utils/traceOracle.js'],
     ['sb3-creator-examples.js', 'src/utils/examples.js'],
     ['sb3-creator-python.js', 'src/utils/pythonToPseudocode.js'],
@@ -119,6 +120,7 @@ export const SB3_CREATOR_FILES = Object.freeze([
     ['sb3-creator-basic.js', 'src/utils/basicToPseudocode.js'],
     ['cubeDirections.js', 'src/utils/cubeDirections.js'],
     ['ev3Dialect.js', 'src/utils/ev3Dialect.js'],
+    ['cpxDialect.js', 'src/utils/cpxDialect.js'],
     ['arcadeDialect.js', 'src/utils/arcadeDialect.js'],
     ['cpxDialect.js', 'src/utils/cpxDialect.js'],
     ['pinRoleParts.js', 'src/utils/pinRoleParts.js'],

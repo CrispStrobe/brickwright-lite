@@ -1,3 +1,4 @@
+import {STRING_ARRAY_SETTINGS_PATH,STRING_ARRAY_SETTINGS_SOURCE} from './string-array-settings.generated.js';
 /** Local Arcade source order, matching the pinned PXT root package and compiler:
  * config.files + testFiles; main.ts last, then _onCodeStop.ts last.
  * Generated resource factories are consumed by the image/tile readers instead.
@@ -29,11 +30,15 @@ export function arcadeProjectSource(files) {
         if (typeof files[name] !== 'string') {
             diagnostics.push(`Missing declared project source file: ${JSON.stringify(name)}`);continue;
         }
+        // Exact owned helper contains only namespace function installation;
+        // the native Settings adapter installs those same two functions.
+        if(name===STRING_ARRAY_SETTINGS_PATH && files[name]===STRING_ARRAY_SETTINGS_SOURCE)continue;
         if (/\.g\.ts$/.test(name)) continue;
         if (/\.d\.ts$/.test(name) || !/\.ts$/.test(name)) {
             diagnostics.push(`Project source ${JSON.stringify(name)} requires ambient, assembly or Python translation support`);continue;
         }
-        entries.push({name, source: files[name]});
+        const source=files[name].startsWith(STRING_ARRAY_SETTINGS_SOURCE+'\n') ? files[name].slice(STRING_ARRAY_SETTINGS_SOURCE.length+1) : files[name];
+        entries.push({name, source});
     }
     return {entries, source: entries.map(entry => entry.source).join('\n;\n'), diagnostics};
 }

@@ -981,10 +981,32 @@ test('Arcade Math.percentChance, Math.clamp and control.millis translate as thei
         'let t = control.millis()'
     ].join('\n'));
     assert.deepEqual(out.unsupported, []);
-    // pxt-core: percentChance(p) is randomRange(0, 99) < p, exact at 0 and 100 too.
-    assert.match(out.code, /IF \(pick random 0 to 99\) < 25 THEN:/);
-    assert.match(out.code, /set c to min of \(max of \(n \+ 3\) and 0\) and 10/);
-    assert.match(out.code, /set t to timer \* 1000/);
+    // Pinned game/mathUtil.ts short-circuits the deterministic endpoints;
+    // interior probabilities use randomRange(0, 99) < p. The native word
+    // retains that function instead of substituting Scratch random casts.
+    assert.match(out.code, /IF truthiness of value \(arcade percent chance \(\(0 \+ \(25\)\)\)\) THEN:/);
+    assert.match(out.code, /set c to \(arcade clamp minimum \(\(0 \+ \(0\)\)\) maximum \(\(0 \+ \(10\)\)\) value \(calculate value \(n\) op "\+" with \(\(0 \+ \(3\)\)\)\)\)/);
+    // PXT millis is the monotonic program clock, independent of scene time
+    // and Scratch timer resets. Exact clock behavior has dedicated controls.
+    assert.match(out.code, /set t to \(arcade program runtime milliseconds\)/);
+    const {runPxtArcade} = await import('./helpers/pxt-arcade-runtime.mjs');
+    const {runProgram, clearStrayTimers} = await import('./helpers/bw-vm.mjs');
+    const {projectToArcade} = await import('../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js');
+    const source = 'let never=Math.percentChance(0);let always=Math.percentChance(100);let below=Math.clamp(0,10,-3);let above=Math.clamp(0,10,13);let middle=Math.clamp(0,10,4);';
+    const original = await runPxtArcade(source, {fakeClock: true});
+    const expected = {never: false, always: true, below: 0, above: 10, middle: 4};
+    for (const [key, value] of Object.entries(expected)) assert.equal(original[key], value);
+    const imported = arcadeToPseudocode(source); assert.deepEqual(imported.unsupported, []);
+    const run = await runProgram(imported.code, {frames: 6});
+    try {
+        assert.deepEqual(run.errors, []); assert.deepEqual(run.creator.warnings, []);
+        const values = Object.fromEntries(run.vm.runtime.targets.flatMap(t => Object.values(t.variables)).map(v => [v.name, v.value]));
+        for (const [key, value] of Object.entries(expected)) assert.equal(values[key], value);
+        const back = projectToArcade(run.creator.project); assert.deepEqual(back.unsupported, []);
+        const restored = await runPxtArcade(back.files, {fakeClock: true});
+        for (const [key, value] of Object.entries(expected)) assert.equal(restored[key], value);
+    } finally {run.vm.quit(); clearStrayTimers();}
+
 });
 
 test('typed sprite arrays compile property writes without a placeholder destination', async () => {

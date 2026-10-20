@@ -13,7 +13,7 @@ const PixelArtEditor = React.lazy(() =>
 // The Arcade tile map painter: also loaded on first use.
 const TilemapEditor = React.lazy(() =>
     import(/* webpackChunkName: "bw-tilemap-editor" */ '../components/tw-pseudocode/tilemap-editor.jsx'));
-import {findTilemapBlocks} from '../lib/bw-makecode/tilemap-editor.js';
+import {hasTilemapBlocks} from '../lib/bw-makecode/tilemap-presence.js';
 import {confirmAsync} from '../lib/native-dialog.js';
 import getFonts from '../lib/lazy-render-fonts.js';
 import {connect} from 'react-redux';
@@ -363,7 +363,7 @@ class CostumeTab extends React.Component {
         };
         // A level lives in a `set Arcade tilemap` block; the painter is offered
         // when the project has one or uses the Arcade extension.
-        const hasTilemaps = this.state.tilemapMode || findTilemapBlocks(vm).length > 0 ||
+        const hasTilemaps = this.state.tilemapMode || hasTilemapBlocks(vm) ||
             Boolean(vm.extensionManager?.isExtensionLoaded?.('arcade'));
         const tilemapLabel = intl.locale.startsWith('de') ? 'Kachelkarten' : 'Tile maps';
         const toggleTilemap = async () => {

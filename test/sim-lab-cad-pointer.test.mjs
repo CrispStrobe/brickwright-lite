@@ -1,18 +1,16 @@
 // SPDX-License-Identifier: BSD-3-Clause
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
-const source = await readFile(new URL('../scripts/lib/sim-lab-cad-gate.mjs', import.meta.url), 'utf8');
-const {grabPoint} = await import(`data:text/javascript;base64,${Buffer.from(source + '\nexport {grabPoint};').toString('base64')}`);
+import {grabPoint} from '../scripts/lib/sim-lab-cad-gate.mjs';
 const name = 'Technic beam 7';
 // Authored DOM/frame boundary, not a simulated guest or replacement editor.
 function pageFor ({resize = false, drift = false, covered = false, hover = true} = {}) {
-    const state = {y: 100, pointer: null, moves: [], frames: 0, status: `${name}: old hover`};
+    const state = {y: 100, pointer: null, moves: [], keys: [], frames: 0, status: `${name}: old hover`};
     const canvas = {};
     const window = {__bwSimLab: {
         editor: {model: {parts: [{id: 'p16', rotation: [1,0,0,0,1,0,0,0,1]}]}},
-        editView: {debugPoint: (_id, local) => local, toScreen: point => [200 + point[2], state.y]}
+        editView: {debugPoint: (_id, local) => local || [0, 0, 0], toScreen: point => [200 + point[2], state.y]}
     }};
     const document = {querySelector: () => canvas, elementFromPoint: () => covered ? {} : canvas};
     const requestAnimationFrame = callback => {
@@ -23,6 +21,8 @@ function pageFor ({resize = false, drift = false, covered = false, hover = true}
     };
     const page = {
         mouse: {move: async (x,y) => {state.pointer = [x,y]; state.moves.push([x,y]);}},
+        keyboard: {press: async key => {state.keys.push(key);}},
+        screenshot: async () => {},
         evaluate: async (fn, args) => vm.runInNewContext(`(${fn.toString()})(args)`,
             {window, document, requestAnimationFrame, args, Promise, Math}),
         getByTestId: () => ({textContent: async () => state.status})
@@ -43,8 +43,9 @@ test('hover layout resize re-aims before returning a point to click', async () =
     assert.deepEqual(state.pointer, Array.from(at));
 });
 test('stale matching hover text does not admit an empty point', async () => {
-    const {page} = pageFor({hover:false});
+    const {page,state} = pageFor({hover:false});
     await assert.rejects(grabPoint(page, 'p16', name), /no free spot/);
+    assert.deepEqual(state.keys, ['f']);
 });
 test('a covering DOM element cannot reuse the canvas hover status', async () => {
     const {page} = pageFor({covered:true});
@@ -53,5 +54,6 @@ test('a covering DOM element cannot reuse the canvas hover status', async () => 
 test('a continuously moving projection refuses within a finite move bound', async () => {
     const {page,state} = pageFor({drift:true});
     await assert.rejects(grabPoint(page, 'p16', name), /no free spot/);
-    assert.ok(state.moves.length <= 18);
+    // 20 part-frame spots (6 before F, 14 after) and 15 x 16 spiral spots, each aimed at most 3 times.
+    assert.ok(state.moves.length <= (20 + 15 * 16) * 3);
 });

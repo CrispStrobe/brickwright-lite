@@ -47,13 +47,16 @@ export const LDU_M = 0.0004;
  *  = tooth count), so r = teeth/2 mm = teeth · 1.25 LDU: 8T → 10, 24T → 30,
  *  and 8T + 24T mesh at 40 LDU = 2 holes apart. */
 export const pitchRadiusLdu = teeth => teeth * 1.25;
+/** A part's `gear` pitch radius (LDU): its own `pitchRadiusLdu` (a tread sprocket: the circle its tread's pivots ride on), else from the teeth. */
+export const gearPitchRadius = gear => (gear.pitchRadiusLdu > 0 ? gear.pitchRadiusLdu : pitchRadiusLdu(gear.teeth));
 
 export const CONNECTOR_TYPES = Object.freeze(['pinhole', 'axlehole', 'axle', 'pin', 'stud', 'antistud', 'ball', 'ballsocket']);
-export const GEAR_TYPES = Object.freeze(['spur', 'bevel', 'worm', 'rack']);
+export const GEAR_TYPES = Object.freeze(['spur', 'bevel', 'worm', 'rack', 'sprocket']);
 /** Port ids: hub output letters, and the numbered inputs of the RCX (1–3) and NXT/EV3 (1–4); the hub profile refuses ports it lacks. */
 export const HUB_PORTS = Object.freeze(['A', 'B', 'C', 'D', 'E', 'F', '1', '2', '3', '4']);
-/** What sensors.js measures; 'rotation' is the RCX rotation sensor (the hinge in its hole). */
-export const SENSOR_KINDS = Object.freeze(['distance', 'color', 'force', 'rotation']);
+/** What sensors.js measures; 'rotation' is the RCX rotation sensor (the hinge in its hole), 'gyro' the EV3 gyro (its body's yaw);
+ * 'tilt' and 'proximity' the WeDo 2.0 sensors. */
+export const SENSOR_KINDS = Object.freeze(['distance', 'color', 'force', 'rotation', 'tilt', 'proximity', 'gyro']);
 
 /** The hub profile a hub part is when its metadata names none (v1 parts: SPIKE Prime). */
 export const DEFAULT_HUB_PROFILE = 'spike-prime';
@@ -69,7 +72,9 @@ export const BODY_ROLES = Object.freeze(['robot', 'frame', 'ground', 'obstacle',
 /** Joint types the physics core builds (registry/kinds.js JointKindRegistry adds more for v2 mechanisms). */
 export const JOINT_TYPES_V1 = Object.freeze(['hinge', 'slider', 'ball']);
 const INTERNAL_JOINT_TYPES = Object.freeze(['hinge', 'slider']);
-const ACTUATED_BY = Object.freeze(['device', 'fluid', 'none']);
+// 'built-in': a motor inside a hub part (the BOOST Move Hub's A and B), driven by the joint's own
+// `device` and plugged into the joint's own `port` of the hub it is part of (partBuiltInMotors).
+const ACTUATED_BY = Object.freeze(['device', 'fluid', 'none', 'built-in']);
 
 /** Friction of a part with no `friction` (ABS plastic on a mat) and of the ground (a printed mat). */
 export const PART_FRICTION = 0.4;
@@ -180,8 +185,13 @@ export const GROUND_FRICTION = 0.8;
  * @typedef {{
  *   version: 1,
  *   parts: {id: string, part: string, color?: number, position: Vec3, rotation: Mat3, port?: string}[],
- *   groups?: {id: string, name: string, parts: string[]}[]
+ *   groups?: {id: string, name: string, parts: string[]}[],
+ *   belts?: {id: string, band: string, around: string[]}[]
  * }} PlacedModel
+ *
+ * `belts` are rubber bands (docs/ROBOT-LAB-UX.md §12): `band` the LDraw part of its size (85543
+ * …), `around` the parts it goes round, in order. LDraw draws no stretched band, so in LDraw
+ * text each is a `0 !BW BELT <id> <band> <part id> <part id> …` line.
  *
  * PlacedModel v2 (§5.7, for models with several hubs): `version: 2`, and `port` may be
  * {hub?: string, port: string} — the placed id of the hub part it plugs into and that
@@ -368,7 +378,9 @@ export const validatePartMeta = (meta, {connectorKinds = null} = {}) => {
         if (!(Number.isInteger(meta.gear.teeth) && meta.gear.teeth > 0)) out.push(`${p}.gear.teeth: need a positive integer`);
         checkUnit(meta.gear.axis, `${p}.gear.axis`, out);
         if (!isVec(meta.gear.center)) out.push(`${p}.gear.center: not a Vec3`);
+        if (meta.gear.pitchRadiusLdu !== undefined && !(meta.gear.pitchRadiusLdu > 0)) out.push(`${p}.gear.pitchRadiusLdu: a positive number (LDU)`);
     }
+    if (meta.drawnOnly !== undefined && typeof meta.drawnOnly !== 'boolean') out.push(`${p}.drawnOnly: true or false`);
     if (meta.hub && !(Array.isArray(meta.hub.ports) && meta.hub.ports.every(x => HUB_PORTS.includes(x)))) {
         out.push(`${p}.hub.ports: need a list of ${HUB_PORTS.join('|')}`);
     }
@@ -416,6 +428,12 @@ const checkPartMetaV2 = (meta, p, out) => {
                 if (!(isNum(j?.massFraction) && j.massFraction > 0 && j.massFraction < 1)) out.push(`${w}.massFraction: need a number in (0, 1)`);
                 if (j?.actuatedBy !== undefined && !ACTUATED_BY.includes(j.actuatedBy)) out.push(`${w}.actuatedBy: one of ${ACTUATED_BY.join('|')}`);
                 if (j?.actuatedBy === 'device') actuatedJoints++;
+                if (j?.actuatedBy === 'built-in') {
+                    const d = typeof j.device === 'string' ? deviceModels.get(j.device) : null;
+                    if (!(d && d.motor)) out.push(`${w}.device: a built-in motor names a motor of the device catalogue`);
+                    if (!(typeof j.port === 'string' && j.port)) out.push(`${w}.port: a built-in motor names its hub port`);
+                    if (!(typeof meta.hubProfile === 'string' || meta.hub)) out.push(`${w}: only a hub part has built-in motors`);
+                }
                 if (j?.limitsLdu !== undefined && !(isVec(j.limitsLdu, 2) && j.limitsLdu[0] <= j.limitsLdu[1])) out.push(`${w}.limitsLdu: [min, max]`);
             }
         }
@@ -533,6 +551,42 @@ export const partMotorJoint = meta => {
     return (m && Array.isArray(m.internalJoints) && m.internalJoints.find(j => j && j.actuatedBy === 'device')) || null;
 };
 
+/** A hub part's built-in motors (internal joints actuatedBy 'built-in', each with its device and port). */
+export const partBuiltInMotors = meta => {
+    const m = upgradePartMeta(meta);
+    return (m && Array.isArray(m.internalJoints) ? m.internalJoints.filter(j => j && j.actuatedBy === 'built-in') : []);
+};
+
+/**
+ * Every motor-driven internal joint of a part, with the graph node its moving side becomes:
+ * a motor part's one joint ('#out', its device the part's) and a hub's built-in motors
+ * ('#out-<joint id>', each its own device and port). [{joint, suffix, device, port}]; port is
+ * null for a motor part (the placed part's `!BW PORT` names it).
+ */
+export const partDrivenJoints = meta => {
+    const out = [];
+    const motor = partMotorJoint(meta);
+    if (motor) out.push({joint: motor, suffix: '#out', device: resolveDevice(upgradePartMeta(meta).device), port: null});
+    for (const j of partBuiltInMotors(meta)) out.push({joint: j, suffix: `#out-${j.id}`, device: resolveDevice(j.device), port: j.port});
+    return out;
+};
+
+/**
+ * A graph node's share of its part (mech/graph.js makes one node per driven joint's moving side
+ * and one for the rest): {fraction of the part's mass, collider indices}, or null for a part
+ * with no driven joint (one node, everything).
+ */
+export const motorNodeShare = (meta, nodeId) => {
+    const driven = partDrivenJoints(meta);
+    if (!driven.length) return null;
+    const moving = driven.find(d => nodeId.endsWith(d.suffix));
+    if (moving) return {fraction: moving.joint.massFraction, colliders: [...(moving.joint.movingColliders || [])]};
+    const taken = new Set(driven.flatMap(d => d.joint.movingColliders || []));
+    const m = upgradePartMeta(meta);
+    return {fraction: 1 - driven.reduce((a, d) => a + d.joint.massFraction, 0),
+        colliders: m.colliders.map((_, i) => i).filter(i => !taken.has(i))};
+};
+
 /** {joint, device} of a motor part (v1 or v2 meta), or null. */
 export const partMotor = meta => {
     const joint = partMotorJoint(meta);
@@ -580,6 +634,19 @@ export const validatePlacedModel = (model, catalog) => {
             if (!ref || !ref.port) out.push(`${w}.port: need a port id or {hub, port}`);
             else if (typeof pl.port === 'object' && pl.port.hub !== undefined && !(typeof pl.port.hub === 'string' && model.parts.some(q => q?.id === pl.port.hub))) {
                 out.push(`${w}.port.hub: '${pl.port.hub}' is not a part of this model`);
+            }
+        }
+    }
+    if (model.belts !== undefined) {
+        if (!Array.isArray(model.belts)) out.push('model.belts: not an array');
+        else {
+            uniqueIds(model.belts, 'model.belts', out);
+            const partIds = new Set(model.parts.map(pr => pr.id));
+            for (const b of model.belts) {
+                const wb = `model.belts[${b?.id}]`;
+                if (typeof b?.band !== 'string' || !b.band) out.push(`${wb}.band: the band's part`);
+                if (!Array.isArray(b?.around) || b.around.length < 2) out.push(`${wb}.around: at least 2 parts`);
+                else for (const pid of b.around) if (!partIds.has(pid)) out.push(`${wb}.around: unknown part '${pid}'`);
             }
         }
     }

@@ -42,7 +42,10 @@ if(g===undefined){result+=64}`,run=>{
         assert.deepEqual(Array.from({length:7},(_,i)=>p.arrays_referenceItem({ARRAY:values,INDEX:i})),[7,'0',false,null,'','false',{bwUndefined:true}]);
     });
 });
-test('nested logical arguments and array elements retain left-to-right evaluation order',async()=>{
+// Direct selected-original source probes retain 214356978 rather than normal
+// JavaScript order. Compound index reads also occur twice in PXT; their RHS
+// staging and captured receiver are measured separately below.
+test('nested logical arguments and array elements retain selected PXT staging order',async()=>{
     await roundtrip(`let trace=0
 function tap(value:number){trace=trace*10+value;return value}
 function pair(a:number,b:number){return a+b}
@@ -55,7 +58,7 @@ let indexCalls=0
 function getRow(){receiverCalls+=1;tap(7);return rows[0]}
 function index(){indexCalls+=1;tap(8);return 0}
 getRow()[index()]=0||tap(9)`,run=>{
-        assert.equal(Number(vars(run).trace),123456789);assert.equal(Number(vars(run).sum),3);assert.equal(Number(vars(run).paired),7);
+        assert.equal(Number(vars(run).trace),214356978);assert.equal(Number(vars(run).sum),3);assert.equal(Number(vars(run).paired),7);
         assert.equal(Number(vars(run).receiverCalls),1);assert.equal(Number(vars(run).indexCalls),1);
         const p=run.vm.runtime._primitives,row=p.arrays_referenceItem({ARRAY:vars(run).rows,INDEX:0});
         assert.equal(p.arrays_referenceItem({ARRAY:row,INDEX:0}),9);
@@ -102,7 +105,7 @@ selected=choose(true)+(false?limit():choose(false))`,async run=>{
         assert.equal(Number(vars(run).calls),4,JSON.stringify({vars:vars(run),code:run.creator.decompile()}));assert.equal(Number(vars(run).i),3);assert.equal(Number(vars(run).j),2);assert.equal(Number(vars(run).selected),30);
     });
 });
-test('compound array assignment snapshots its reference, index and old value before a lazy right operand',async()=>{
+test('compound array assignment retains selected PXT lazy staging and repeated index reads',async()=>{
     await roundtrip(`let rows=[[5]]
 let receivers=0
 let indexes=0
@@ -111,11 +114,11 @@ function index(){indexes+=1;return 0}
 function change(){rows[0][0]=100;return 7}
 receiver()[index()]+=false?0:change()`,run=>{
         const p=run.vm.runtime._primitives,row=p.arrays_referenceItem({ARRAY:vars(run).rows,INDEX:0});
-        assert.equal(p.arrays_referenceItem({ARRAY:row,INDEX:0}),12);
-        assert.equal(Number(vars(run).receivers),1);assert.equal(Number(vars(run).indexes),1);
+        assert.equal(p.arrays_referenceItem({ARRAY:row,INDEX:0}),107);
+        assert.equal(Number(vars(run).receivers),1);assert.equal(Number(vars(run).indexes),2);
     });
 });
-test('ordinary compound assignments evaluate array receivers and indexes once before mutating calls',async()=>{
+test('ordinary compound assignments retain selected PXT receiver and index evaluation counts',async()=>{
     await roundtrip(`let rows=[[5],[30]]
 let selected=rows[0]
 let receivers=0
@@ -127,8 +130,8 @@ function change(){trace=trace*10+3;selected[0]=100;selected=rows[1];return 7}
 receiver()[index()]+=change()
 let result=rows[0][0]
 let other=rows[1][0]`,run=>{
-        assert.equal(Number(vars(run).receivers),1);assert.equal(Number(vars(run).indexes),1);
-        assert.equal(Number(vars(run).trace),123);assert.equal(vars(run).result,12);assert.equal(vars(run).other,30);
+        assert.equal(Number(vars(run).receivers),1);assert.equal(Number(vars(run).indexes),2);
+        assert.equal(Number(vars(run).trace),1223);assert.equal(vars(run).result,12);assert.equal(vars(run).other,30);
     });
 });
 test('array increments and decrements convert old values and evaluate nested targets once',async()=>{

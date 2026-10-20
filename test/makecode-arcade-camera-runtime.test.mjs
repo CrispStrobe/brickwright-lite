@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {EventEmitter} from 'node:events';
+import {createArcadeRuntimeMock, startArcadeProject} from './helpers/arcade-runtime-mock.mjs';
 import {createRequire} from 'node:module';
 import {loadExtensionClass,VM_SRC} from './helpers/bw-extensions.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 import {cameraMap} from './fixtures/arcade-camera.mjs';
 const Arcade=loadExtensionClass('arcade');
 const BW=createRequire(import.meta.url)(`${VM_SRC}/util/bw-values`);
-function game(){const runtime=new EventEmitter(),arcade=new Arcade(runtime);return {runtime,arcade};}
+function game(){const runtime=createArcadeRuntimeMock(),arcade=new Arcade(runtime);return {runtime,arcade};}
 function actor(a,w,h,color=5){const image=a.createImage({WIDTH:w,HEIGHT:h});a.drawImage({IMAGE:image,OP:'fillRect',X:0,Y:0,W:w,H:h,COLOR:color});return a.createImageSprite({IMAGE:image,TEMPLATE:'',KIND:'Player'});}
 const value=(a,id,p)=>a.spriteProperty({ID:id,PROPERTY:p});
 function map(a){a.setTilemap({DATA:JSON.stringify({columns:64,rows:48,tileSize:8,indices:Array(3072).fill(0),walls:Array(3072).fill(0),images:[{width:1,height:1,pixels:[0]}]})});}
@@ -60,7 +60,7 @@ test('camera cancellation, invalid selector, frame-only draw update and lifecycl
  const {runtime,arcade:a}=game();const id=actor(a,4,8);a.setSpritePosition({ID:id,X:200,Y:100});a.cameraFollowSprite({ID:id});assert.equal(a.cameraProperty({PROPERTY:1}),98);
  a.cameraFollowSprite({ID:BW.encode(null)});a.setSpritePosition({ID:id,X:250,Y:150});assert.equal(a.cameraProperty({PROPERTY:0}),200);
  a.centerCameraAt({X:-10.25,Y:30.75});assert.equal(a.cameraProperty({PROPERTY:0}),-11);assert.equal(a.cameraProperty({PROPERTY:1}),30);assert.equal(a._camera().drawOffsetX,120,'centering does not redraw before a frame');assert.equal(BW.decode(a.cameraProperty({PROPERTY:99})),undefined);
- a._advance(.01);assert.equal(a._camera().drawOffsetX,-91);runtime.emit('PROJECT_START');assert.equal(a.cameraProperty({PROPERTY:0}),80);assert.equal(a.cameraProperty({PROPERTY:1}),60);
+ a._advance(.01);assert.equal(a._camera().drawOffsetX,-91);startArcadeProject(runtime);assert.equal(a.cameraProperty({PROPERTY:0}),80);assert.equal(a.cameraProperty({PROPERTY:1}),60);
 });
 test('camera-relative and wall-ghost explicit large placement preserve original clipping semantics',async()=>{
  const expected=await runPxtArcade(`tiles.setTilemap(tiles.createTilemap(hex\`0400040000000000000000000000000000000000\`,img\`0 0 2 0

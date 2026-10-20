@@ -75,7 +75,10 @@ let hero=sprites.create(img\`1\`,SpriteKind.Player)
 hero.setPosition(12.123,23.456)
 let placed=hero.toString()`;
     const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
-    const code=imported.code.replace(/arcade create template ("[^"]+") kind ("[^"]+") width 1 height 1/,'arcade spawn template $1 kind $2 x 12.123 y 23.456 width 1 height 1').replace(/^  arcade set position of .*\n/m,'');
+    const creation=/arcade create template (.+) width 1 height 1/;
+    assert.equal(imported.code.match(new RegExp(creation.source,'g'))?.length,1,'one actual creation command to author as positioned factory');
+    const code=imported.code.replace(creation,'arcade spawn template $1 x 12.123 y 23.456 width 1 height 1').replace(/^  arcade set position of .*\n/m,'');
+    assert.notEqual(code,imported.code);assert.match(code,/arcade spawn template/);assert.doesNotMatch(code,/arcade set position of/);
     const expected=await runPxtArcade(source);assert.equal(expected.seenX,79.5);assert.equal(expected.seenY,59.5);
     const names=['seenX','seenY','placed'];
     const run=await runProgram(code,{frames:40,uploads:imported.costumes,storage:true});assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);

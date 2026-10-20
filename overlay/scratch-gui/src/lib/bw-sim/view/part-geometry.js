@@ -203,7 +203,9 @@ export const partVisual = (name, read, colors, piece = null) => {
         edges: linesGeometry(flat.edges, flat.edgeColours, flat.edgeDirect, colors, false),
         conditional: linesGeometry(flat.optional, flat.optionalColours, flat.optionalDirect, colors, true)
     };
-    cache.set(key, visual);
+    // A part whose own file is not there yet (one being added from the LDraw catalogue, its
+    // files on the way) is drawn empty this once and not remembered, so the next draw has it.
+    if (!flat.missing.includes(refKey(name))) cache.set(key, visual);
     return visual;
 };
 

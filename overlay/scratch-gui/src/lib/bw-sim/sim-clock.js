@@ -61,6 +61,27 @@ const wallNow = () => (typeof performance !== 'undefined' ? performance.now() : 
 /** Reports an error thrown by a program-clock timer as a real timer's would be: uncaught, not swallowed. */
 const rethrow = error => { setTimeout(() => { throw error; }, 0); };
 
+/** A pause longer than this (Pause, a hidden tab) starts slow motion's pacing afresh instead of catching up. */
+export const SLOW_MOTION_GAP_MS = 250;
+
+/**
+ * Slow motion's wait before a step counts as done. Simulated time is paced against the wall clock
+ * from where slow motion (or this scale) began: simulated ms `simMs` is due at
+ * `start.wall + (simMs - start.sim) / scale`. Waiting a fixed `ms * (1 / scale - 1)` after every
+ * step instead ran too fast, because each wait came on top of the step's own time and the VM's
+ * frame cadence (½× measured 0.72 of real time).
+ * @param {{scale: number, wall: number, sim: number, last: number}|null} pace the pacing so far, or null
+ * @param {{scale: number, simMs: number, nowMs: number}} now
+ * @returns {{ms: number, pace: object}} how long to wait, and the pacing to keep
+ */
+export const slowMotionWait = (pace, {scale, simMs, nowMs}) => {
+    const fresh = !pace || pace.scale !== scale || nowMs - pace.last > SLOW_MOTION_GAP_MS + (simMs - pace.lastSim) / scale;
+    const base = fresh ? {scale, wall: nowMs, sim: simMs, last: nowMs, lastSim: simMs} : pace;
+    const due = base.wall + (simMs - base.sim) / scale;
+    const ms = Math.max(0, due - nowMs);
+    return {ms, pace: {...base, last: nowMs + ms, lastSim: simMs}};
+};
+
 export class SimLabClock {
     /**
      * @param {object} [options]
@@ -73,6 +94,8 @@ export class SimLabClock {
         this.steps = new VmStepClock({beforeStep: () => this._beforeStep(), afterStep: ms => this._afterStep(ms)});
         this.runtime = null;
         this.session = null;
+        /** Simulated per real time, (0, 1]: slow motion below 1 (the Robot Lab API's setTimeScale). */
+        this.timeScale = 1;
         this._reset();
     }
 
@@ -196,6 +219,19 @@ export class SimLabClock {
         const applied = () => { if (generation === this._generation) this._applied(ms); };
         if (!session || session.failed || session._disposed) { applied(); return; }
         session.tick(ms);
+        // Slow motion (setTimeScale < 1): the step is held back until the wall clock says simulated time
+        // may have advanced this far (slowMotionWait), whatever the step and the VM's own cadence took.
+        // At 1 (always, unless asked) the order of operations is exactly as it was.
+        if (this.timeScale > 0 && this.timeScale < 1) {
+            const until = this.programMs + ms;
+            session.idle().then(() => {
+                const wait = slowMotionWait(this._pace, {scale: this.timeScale, simMs: until, nowMs: wallNow()});
+                this._pace = wait.pace;
+                return wait.ms > 0 ? new Promise(resolve => setTimeout(resolve, wait.ms)) : null;
+            }).then(applied, applied);
+            return;
+        }
+        this._pace = null;
         session.idle().then(applied, applied);
     }
 

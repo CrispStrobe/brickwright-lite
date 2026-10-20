@@ -26,22 +26,36 @@ import React from 'react';
 import {pickLocale, browserLocale} from '../../lib/bw-i18n.js';
 import {SIM_LAB_STORAGE_KEY, simLabRecordFromText, readSimLabStorage, isStorableName} from '../../lib/bw-sim/model/sim-lab-persist.js';
 import SimLabPalette from './sim-lab-palette.jsx';
+import SimLabInfo from './sim-lab-info.jsx';
+import SimLabReadings from './sim-lab-readings.jsx';
+import SimLabChallenges from './sim-lab-challenges.jsx';
 import SimLabInstructions from './sim-lab-instructions.jsx';
 import {INSIGHT_TEXT, issueSentence, fillText} from './sim-lab-insight-text.js';
 import {firmwareRefusalSentence} from './sim-lab-firmware-text.js';
 import {EDITOR_TEXT} from './sim-lab-editor-text.js';
 import SimLabProperties from './sim-lab-properties.jsx';
 import SimLabShortcuts from './sim-lab-shortcuts.jsx';
+import PaneDivider from '../gui/pane-divider.jsx';
+import {Icon, Popup, Separator, ToolButton, splitToolbar, toolStyles, tooltipOf} from './sim-lab-toolbar.jsx';
+import {TOOLBAR_TEXT} from './sim-lab-toolbar-text.js';
+import {sharedSpikeHubState} from '../../lib/virtual-hub/shared-spike-hub.js';
+import {ROBOT_LAB_EVENTS} from '../../lib/robot-lab-events.js';
+
+/**
+ * The LEGO extensions that program a radio hub (hub `protocol`, bw-sim/hubs/lwp3 and hubs/wedo2), in the
+ * order Run looks for them: the bundled unified ones first, then scratch-vm's own.
+ */
+const HUB_EXTENSIONS = Object.freeze({
+    lwp3: Object.freeze(['legopoweredup', 'legoboostunified', 'boost']),
+    wedo2: Object.freeze(['wedo2unified', 'wedo2'])
+});
 
 /** A MODELS entry's key: its `id` when one model file is listed more than once, else its file. */
 const modelKey = m => m.id || m.file;
 
 const TEXT = {
     en: {
-        title: 'Robot Lab (beta)',
-        intro: 'A model from real LEGO® Technic parts with physics. Write a SPIKE Prime program (ports A and B drive the wheels) and press Run: it starts on the green flag.',
-        model: 'Model', importModel: 'Open…', importHelp: 'Open a model: LDraw (.ldr, .mpd), BrickLink Studio (.io) or LEGO Digital Designer (.lxf)', run: 'Run', pause: 'Pause', reset: 'Reset',
-        loading: 'Loading the model and the physics engine…', ready: 'Ready', running: 'Running', paused: 'Paused',
+        model: 'Model', importHelp: 'Open a model: LDraw (.ldr, .mpd), BrickLink Studio (.io) or LEGO Digital Designer (.lxf)', loading: 'Loading the model and the physics engine…', ready: 'Ready', running: 'Running', paused: 'Paused',
         failed: 'Could not load the model: {error}', physicsFailed: 'The physics stopped: {error}. Press Reset to start again.', noWebgl: 'This browser cannot show the 3D view ({error}). The simulation still runs.',
         connectFailed: 'Could not connect the program to the virtual hub: {error}',
         noProgram: 'No SPIKE program is loaded yet, so nothing tells the motors to turn. Write one in the Code tab and press ⇦ To blocks (or build it with blocks), then press Run — or drive the robot with the arrows below.',
@@ -53,14 +67,22 @@ const TEXT = {
             'colour-explorer.bw': 'The example program is in the Code tab now. Press Run and watch the robot find the red square. Challenge: make it find the green one.',
             'sumo.bw': 'The example program is in the Code tab now. Press Run: the robot drives around and turns back whenever it sees the black ring. Challenge: make it turn the other way, or faster.',
             'rcx-bumper-car.nqc': 'The NQC program is in the NQC tab and in the Lab\'s RCX. Press Run: the robot drives to the wall, backs off when its bumper is pressed and turns away. Challenge: make it back off further.',
-            'rcx-line-follower.nqc': 'The NQC program is in the NQC tab and in the Lab\'s RCX. Press Run and watch it follow the line\'s edge with its light sensor. Challenge: change THRESHOLD and see what happens.'
+            'rcx-line-follower.nqc': 'The NQC program is in the NQC tab and in the Lab\'s RCX. Press Run and watch it follow the line\'s edge with its light sensor. Challenge: change THRESHOLD and see what happens.',
+            'motor-bench.bw': 'The example program is in the Code tab now, in lab words: no hub, the Robot Lab turns the motor itself. Press Run. Challenge: make it turn back the other way.',
+            'ev3-wall-stopper.bw': 'The example program is in the Code tab now, in EV3 words. Press Run: the program connects to the Lab\'s EV3 over Scratch Link and drives at the wall until its ultrasonic sensor sees it closer than 15 cm.',
+            'nxt-bumper-bot.blocks.json': 'The NXT blocks are on the sprite now. Press Run: the program connects to the Lab\'s NXT over Scratch Link, turns both wheels once, then drives until the bumper touches the wall.',
+            'technic-hub-bench.bw': 'The example program is in the Code tab now, in pup words: the LEGO Powered Up blocks. Press ⇦ To blocks, then Run: the blocks connect to the Lab\'s Technic Hub and turn motor A one full turn. Challenge: make it turn three quarters.',
+            'boost-rover.bw': 'The example program is in the Code tab now, in boost words: the LEGO BOOST blocks. Press ⇦ To blocks, then Run: the Move Hub drives ahead with its motors A and B, then spins on the spot. Challenge: make it spin the other way.',
+            'wedo-milo.bw': 'The example program is in the Code tab now, in wedo words: the LEGO WeDo 2.0 blocks. Press ⇦ To blocks, then Run: the rover drives until its motion sensor sees the wall. Challenge: make it stop further away.'
         },
+        noProgramLab: 'Nothing tells this motor to turn yet. Use the Robot Lab blocks (Add Extension) or lab words in the Code tab, press ⇦ To blocks, then press Run.',
+        noProgramBt: 'No {brick} program is loaded yet, so nothing tells the motors to turn. Add the {brick} blocks (Add Extension) or load the example program, then press Run.',
+        noProgramHub: 'No program for this hub is loaded yet. Add its blocks ({extensions}) or write pup, boost or wedo words in the Code tab, press ⇦ To blocks, then press Run.',
         exampleFailed: 'Could not load the example program: {error}',
         mat: 'Mat', drive: 'Drive', forward: 'Forward', back: 'Back', left: 'Left', right: 'Right', stop: 'Stop', speed: 'Speed',
         driveHelp: 'Hold an arrow (or use the arrow keys) to drive with motors A and B.', readout: 'Hub',
         issues: 'Notes about this model', time: 'Simulated time: {s} s', canvasLabel: '3D view of the simulated model',
-        simulate: 'Simulate', build: 'Build', parts: 'Parts', undo: 'Undo', redo: 'Redo', remove: 'Delete',
-        save: 'Save as…', saveHelp: 'Save the model as a file', port: 'Port', none: 'none',
+        parts: 'Parts', saveHelp: 'Save the model as a file', port: 'Port', none: 'none',
         saveFormats: {ldr: 'LDraw (.ldr)', mpd: 'LDraw multi-part (.mpd)', io: 'BrickLink Studio (.io)'},
         fileFailed: 'Could not open {name}: {error}',
         fileErrors: {
@@ -73,16 +95,42 @@ const TEXT = {
             'lxf-version': 'this LEGO Digital Designer file is from a version the Robot Lab cannot read (only LDD 4).',
             'unsupported-format': 'the Robot Lab opens .ldr, .mpd, .io and .lxf files.'
         },
-        instructions: 'Instructions', instructionsHelp: 'Step-by-step building instructions for this robot, to build it from real LEGO® parts',
+        instructionsHelp: 'Step-by-step building instructions for this robot, to build it from real LEGO® parts',
         search: 'Search parts', searchHint: 'Search: name or number', clearSearch: 'Clear the search', recent: 'Recently used',
         noMatches: 'No part matches “{q}”.', partTitle: '{name} · part {number}',
         paletteHelp: 'Click a part, then click in the view. Or drag it into the view.',
-        move: 'Move (W)', turn: 'Turn (E)', grid: 'Grid', ldu: 'LDU', turnUp: 'Turn ↻ (R)', tip: 'Tip (T)',
-        turnBack: 'Turn ↺ (Shift+R)', copy: 'Copy', paste: 'Paste', selectAll: 'Select all', cancel: 'Cancel (Esc)',
-        copyKey: 'Ctrl+C', pasteKey: 'Ctrl+V', selectAllKey: 'Ctrl+A',
-        duplicate: 'Duplicate', group: 'Group', ungroup: 'Ungroup', groupKey: 'Ctrl+G', ungroupKey: 'Ctrl+Shift+G', home: 'Home', fit: 'Fit (F)', top: 'Top', front: 'Front', side: 'Side',
+        helpBuild: 'How to build', helpParts: 'Placing parts',
+        readingsTitle: 'Readings', readingsMotors: 'Motors', readingsSensors: 'Sensors', readingsEmpty: 'This model has no motors or sensors.',
+        readingsMotor: 'Motor {port}', readingsSensor: '{kind} {port}', readingsClose: 'Close',
+        challengesTitle: 'Challenges', challengeStart: 'Start', challengeRestart: 'Start again', challengeAgain: 'Try again',
+        challengeOthers: 'All challenges', challengeReady: 'Press Run to begin.', challengeTime: '{s} s',
+        challengeStars: '{n} of 3 stars', challengeBest: 'Best: {n} of 3 stars, {text}',
+        challengeMeasure: {time: '{v} s', gap: '{v} cm to the wall', overshoot: '{v} cm past the edge'},
+        challengeWhy: {offTrack: 'The robot left the line.', touched: 'The robot touched the wall.',
+            leftRing: 'The robot left the ring.', timeUp: 'Time is up.'},
+        challenges: {
+            'oval-lap': {title: 'One lap', goal: 'Follow the line once around the oval.'},
+            'wall-stop': {title: 'Stop at the wall', goal: 'Drive at the wall and stop close to it without touching it.'},
+            'sumo-stay': {title: 'Stay in the ring', goal: 'Keep the robot inside the ring for 30 seconds.'},
+            'maze-goal': {title: 'Through the maze', goal: 'Find the way to the green square.'},
+            'zones-tour': {title: 'Four corners', goal: 'Drive into all four coloured corners, in any order.'}
+        },
+        kinds: {distance: 'Distance', color: 'Colour', force: 'Force', touch: 'Touch', light: 'Light', rotation: 'Rotation', tilt: 'Tilt', motion: 'Motion'},
+        replay: 'Replay', replayHelp: 'Look back at the last seconds. Run goes on from now.', replayNow: 'now', speedValue: '{n}×',
+        catalogueOpen: 'Add a part from the LDraw catalogue', catalogueTitle: 'LDraw catalogue', catalogueBack: 'Back to the parts',
+        catalogueHint: 'Number or name, e.g. 3001, slope 45', catalogueLoading: 'Loading the catalogue…',
+        catalogueUnavailable: 'The LDraw catalogue could not be loaded ({error}). It needs a network connection.',
+        catalogueAbout: 'Search all {total} LDraw parts. Added parts stay on this device.',
+        catalogueCount: '{shown} of {total} parts', catalogueAdd: 'Add', catalogueAdding: 'Adding…', catalogueHave: 'Added',
+        catalogueAdded: '{name} added. Click in the view to place it.',
+        catalogueDecoration: '{name} added as decoration: it does not connect ({why}).',
+        catalogueFailed: '{part} could not be added: {error}',
+        catalogueCredits: 'Credits for the {n} parts you added',
+        myParts: 'My parts', catalogueRemove: 'Remove {name} from my parts', catalogueRemoved: '{name} removed.',
+        catalogueInUse: '{name} is in this model: delete it from the model first.',
+        catalogueCredit: 'Parts: LDraw.org Parts Library, CC BY.',
         selectedOne: 'Selected: {name}', selectedMany: 'Selected: {n} parts',
-        more: 'More…', moreHelp: 'More actions', large: 'Open the Robot Lab large (full screen)', timeShort: '{s} s',
+        timeShort: '{s} s',
         partsToggle: 'Show or hide the parts', infoToggle: 'Show or hide the whole note',
         route: 'Program', routeScratch: 'SPIKE blocks', routeFirmware: 'SPIKE firmware (desktop)',
         rcxTarget: 'RCX downloads go to', rcxTargetTower: 'IR tower (a real RCX)', rcxTargetLab: 'Robot Lab RCX',
@@ -119,10 +167,7 @@ const TEXT = {
         }
     },
     de: {
-        title: 'Roboter-Labor (Beta)',
-        intro: 'Ein Modell aus echten LEGO®-Technic-Teilen mit Physik. Schreibe ein SPIKE-Prime-Programm (Ports A und B treiben die Räder an) und drücke Start: es beginnt mit der grünen Flagge.',
-        model: 'Modell', importModel: 'Öffnen…', importHelp: 'Ein Modell öffnen: LDraw (.ldr, .mpd), BrickLink Studio (.io) oder LEGO Digital Designer (.lxf)', run: 'Start', pause: 'Pause', reset: 'Zurücksetzen',
-        loading: 'Modell und Physik-Engine werden geladen…', ready: 'Bereit', running: 'Läuft', paused: 'Pausiert',
+        model: 'Modell', importHelp: 'Ein Modell öffnen: LDraw (.ldr, .mpd), BrickLink Studio (.io) oder LEGO Digital Designer (.lxf)', loading: 'Modell und Physik-Engine werden geladen…', ready: 'Bereit', running: 'Läuft', paused: 'Pausiert',
         failed: 'Das Modell konnte nicht geladen werden: {error}', physicsFailed: 'Die Physik ist stehen geblieben: {error}. Mit Zurücksetzen geht es neu los.', noWebgl: 'Dieser Browser kann die 3D-Ansicht nicht zeigen ({error}). Die Simulation läuft trotzdem.',
         connectFailed: 'Das Programm konnte nicht mit dem virtuellen Hub verbunden werden: {error}',
         noProgram: 'Es ist noch kein SPIKE-Programm geladen, darum dreht sich kein Motor. Schreibe eins im Code-Tab und drücke ⇦ Zu Blöcken (oder baue es aus Blöcken), dann Start — oder fahre den Roboter mit den Pfeilen unten.',
@@ -134,14 +179,22 @@ const TEXT = {
             'colour-explorer.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start und schau zu, wie der Roboter das rote Feld findet. Aufgabe: Lass ihn das grüne finden.',
             'sumo.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start: Der Roboter fährt herum und kehrt um, sobald er den schwarzen Ring sieht. Aufgabe: Lass ihn andersherum oder schneller drehen.',
             'rcx-bumper-car.nqc': 'Das NQC-Programm steht jetzt im NQC-Tab und im RCX des Labors. Drücke Start: Der Roboter fährt zur Wand, setzt zurück, sobald sein Stoßfänger gedrückt wird, und dreht ab. Aufgabe: Lass ihn weiter zurücksetzen.',
-            'rcx-line-follower.nqc': 'Das NQC-Programm steht jetzt im NQC-Tab und im RCX des Labors. Drücke Start und schau zu, wie er mit dem Lichtsensor dem Rand der Linie folgt. Aufgabe: Ändere THRESHOLD und schau, was passiert.'
+            'rcx-line-follower.nqc': 'Das NQC-Programm steht jetzt im NQC-Tab und im RCX des Labors. Drücke Start und schau zu, wie er mit dem Lichtsensor dem Rand der Linie folgt. Aufgabe: Ändere THRESHOLD und schau, was passiert.',
+            'motor-bench.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in lab-Wörtern: ohne Hub dreht das Robot Lab den Motor selbst. Drücke Start. Aufgabe: Lass ihn wieder zurückdrehen.',
+            'ev3-wall-stopper.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in EV3-Wörtern. Drücke Start: Das Programm verbindet sich über Scratch Link mit dem EV3 des Labors und fährt auf die Wand zu, bis sein Ultraschallsensor sie näher als 15 cm sieht.',
+            'nxt-bumper-bot.blocks.json': 'Die NXT-Blöcke sind jetzt bei der Figur. Drücke Start: Das Programm verbindet sich über Scratch Link mit dem NXT des Labors, dreht beide Räder einmal und fährt dann, bis der Stoßfänger die Wand berührt.',
+            'technic-hub-bench.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in pup-Wörtern: die Blöcke von LEGO Powered Up. Drücke ⇦ Zu Blöcken und dann Start: Die Blöcke verbinden sich mit dem Technic-Hub des Labors und drehen Motor A einmal ganz herum. Aufgabe: Lass ihn eine Dreivierteldrehung machen.',
+            'boost-rover.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in boost-Wörtern: die Blöcke von LEGO BOOST. Drücke ⇦ Zu Blöcken und dann Start: Der Move Hub fährt mit seinen Motoren A und B geradeaus und dreht sich dann auf der Stelle. Aufgabe: Lass ihn andersherum drehen.',
+            'wedo-milo.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in wedo-Wörtern: die Blöcke von LEGO WeDo 2.0. Drücke ⇦ Zu Blöcken und dann Start: Der Rover fährt, bis sein Bewegungssensor die Wand sieht. Aufgabe: Lass ihn weiter vorher anhalten.'
         },
+        noProgramLab: 'Noch sagt dem Motor niemand, dass er sich drehen soll. Nimm die Robot-Lab-Blöcke (Erweiterung hinzufügen) oder lab-Wörter im Code-Tab, drücke ⇦ Zu Blöcken und dann Start.',
+        noProgramBt: 'Es ist noch kein {brick}-Programm geladen, darum dreht sich kein Motor. Füge die {brick}-Blöcke hinzu (Erweiterung hinzufügen) oder lade das Beispielprogramm, dann drücke Start.',
+        noProgramHub: 'Für diesen Hub ist noch kein Programm geladen. Füge seine Blöcke hinzu ({extensions}) oder schreibe pup-, boost- oder wedo-Wörter im Code-Tab, drücke ⇦ Zu Blöcken und dann Start.',
         exampleFailed: 'Das Beispielprogramm konnte nicht geladen werden: {error}',
         mat: 'Matte', drive: 'Fahren', forward: 'Vorwärts', back: 'Rückwärts', left: 'Links', right: 'Rechts', stop: 'Stopp', speed: 'Tempo',
         driveHelp: 'Halte einen Pfeil gedrückt (oder nutze die Pfeiltasten), um mit den Motoren A und B zu fahren.', readout: 'Hub',
         issues: 'Hinweise zu diesem Modell', time: 'Simulierte Zeit: {s} s', canvasLabel: '3D-Ansicht des simulierten Modells',
-        simulate: 'Simulieren', build: 'Bauen', parts: 'Teile', undo: 'Rückgängig', redo: 'Wiederholen', remove: 'Löschen',
-        save: 'Speichern unter…', saveHelp: 'Das Modell als Datei speichern', port: 'Port', none: 'keiner',
+        parts: 'Teile', saveHelp: 'Das Modell als Datei speichern', port: 'Port', none: 'keiner',
         saveFormats: {ldr: 'LDraw (.ldr)', mpd: 'LDraw mehrteilig (.mpd)', io: 'BrickLink Studio (.io)'},
         fileFailed: '{name} konnte nicht geöffnet werden: {error}',
         fileErrors: {
@@ -154,16 +207,42 @@ const TEXT = {
             'lxf-version': 'Diese LEGO-Digital-Designer-Datei stammt aus einer Version, die das Roboter-Labor nicht lesen kann (nur LDD 4).',
             'unsupported-format': 'Das Roboter-Labor öffnet .ldr-, .mpd-, .io- und .lxf-Dateien.'
         },
-        instructions: 'Bauanleitung', instructionsHelp: 'Bauanleitung für diesen Roboter, Schritt für Schritt, zum Nachbauen mit echten LEGO®-Teilen',
+        instructionsHelp: 'Bauanleitung für diesen Roboter, Schritt für Schritt, zum Nachbauen mit echten LEGO®-Teilen',
         search: 'Teile suchen', searchHint: 'Suche: Name oder Nummer', clearSearch: 'Suche löschen', recent: 'Zuletzt benutzt',
         noMatches: 'Kein Teil passt zu „{q}“.', partTitle: '{name} · Teil {number}',
         paletteHelp: 'Klicke ein Teil an, dann in die Ansicht. Oder zieh es in die Ansicht.',
-        move: 'Schieben (W)', turn: 'Drehen (E)', grid: 'Raster', ldu: 'LDU', turnUp: 'Drehen ↻ (R)', tip: 'Kippen (T)',
-        turnBack: 'Drehen ↺ (Umschalt+R)', copy: 'Kopieren', paste: 'Einfügen', selectAll: 'Alle wählen', cancel: 'Abbrechen (Esc)',
-        copyKey: 'Strg+C', pasteKey: 'Strg+V', selectAllKey: 'Strg+A',
-        duplicate: 'Verdoppeln', group: 'Gruppieren', ungroup: 'Gruppe lösen', groupKey: 'Strg+G', ungroupKey: 'Strg+Umschalt+G', home: 'Start', fit: 'Einpassen (F)', top: 'Oben', front: 'Vorne', side: 'Seite',
+        helpBuild: 'So baust du', helpParts: 'Teile platzieren',
+        readingsTitle: 'Messwerte', readingsMotors: 'Motoren', readingsSensors: 'Sensoren', readingsEmpty: 'Dieses Modell hat keine Motoren oder Sensoren.',
+        readingsMotor: 'Motor {port}', readingsSensor: '{kind} {port}', readingsClose: 'Schließen',
+        challengesTitle: 'Aufgaben', challengeStart: 'Starten', challengeRestart: 'Neu starten', challengeAgain: 'Nochmal',
+        challengeOthers: 'Alle Aufgaben', challengeReady: 'Drücke Start, um zu beginnen.', challengeTime: '{s} s',
+        challengeStars: '{n} von 3 Sternen', challengeBest: 'Bestes: {n} von 3 Sternen, {text}',
+        challengeMeasure: {time: '{v} s', gap: '{v} cm bis zur Wand', overshoot: '{v} cm über den Rand'},
+        challengeWhy: {offTrack: 'Der Roboter hat die Linie verlassen.', touched: 'Der Roboter hat die Wand berührt.',
+            leftRing: 'Der Roboter hat den Ring verlassen.', timeUp: 'Die Zeit ist um.'},
+        challenges: {
+            'oval-lap': {title: 'Eine Runde', goal: 'Folge der Linie einmal um das Oval.'},
+            'wall-stop': {title: 'Halt an der Wand', goal: 'Fahre auf die Wand zu und halte dicht davor, ohne sie zu berühren.'},
+            'sumo-stay': {title: 'Im Ring bleiben', goal: 'Halte den Roboter 30 Sekunden lang im Ring.'},
+            'maze-goal': {title: 'Durchs Labyrinth', goal: 'Finde den Weg zum grünen Feld.'},
+            'zones-tour': {title: 'Vier Ecken', goal: 'Fahre in alle vier farbigen Ecken, in beliebiger Reihenfolge.'}
+        },
+        kinds: {distance: 'Abstand', color: 'Farbe', force: 'Kraft', touch: 'Berührung', light: 'Licht', rotation: 'Drehung', tilt: 'Neigung', motion: 'Bewegung'},
+        replay: 'Wiederholung', replayHelp: 'Auf die letzten Sekunden zurückschauen. Start geht ab jetzt weiter.', replayNow: 'jetzt', speedValue: '{n}×',
+        catalogueOpen: 'Ein Teil aus dem LDraw-Katalog hinzufügen', catalogueTitle: 'LDraw-Katalog', catalogueBack: 'Zurück zu den Teilen',
+        catalogueHint: 'Nummer oder Name, z. B. 3001, slope 45', catalogueLoading: 'Katalog wird geladen…',
+        catalogueUnavailable: 'Der LDraw-Katalog konnte nicht geladen werden ({error}). Er braucht eine Netzwerkverbindung.',
+        catalogueAbout: 'Durchsuche alle {total} LDraw-Teile. Hinzugefügte Teile bleiben auf diesem Gerät.',
+        catalogueCount: '{shown} von {total} Teilen', catalogueAdd: 'Hinzufügen', catalogueAdding: 'Wird hinzugefügt…', catalogueHave: 'Vorhanden',
+        catalogueAdded: '{name} hinzugefügt. Klicke in die Ansicht, um es zu platzieren.',
+        catalogueDecoration: '{name} als Deko hinzugefügt: es verbindet sich nicht ({why}).',
+        catalogueFailed: '{part} konnte nicht hinzugefügt werden: {error}',
+        catalogueCredits: 'Credits für deine {n} hinzugefügten Teile',
+        myParts: 'Meine Teile', catalogueRemove: '{name} aus meinen Teilen entfernen', catalogueRemoved: '{name} entfernt.',
+        catalogueInUse: '{name} ist in diesem Modell: lösche es zuerst aus dem Modell.',
+        catalogueCredit: 'Teile: LDraw.org Parts Library, CC BY.',
         selectedOne: 'Ausgewählt: {name}', selectedMany: 'Ausgewählt: {n} Teile',
-        more: 'Mehr…', moreHelp: 'Weitere Aktionen', large: 'Roboter-Labor groß öffnen (Vollbild)', timeShort: '{s} s',
+        timeShort: '{s} s',
         partsToggle: 'Teile zeigen oder ausblenden', infoToggle: 'Den ganzen Hinweis zeigen oder einklappen',
         route: 'Programm', routeScratch: 'SPIKE-Blöcke', routeFirmware: 'SPIKE-Firmware (Desktop)',
         rcxTarget: 'RCX-Übertragung an', rcxTargetTower: 'IR-Tower (ein echter RCX)', rcxTargetLab: 'Robot-Lab-RCX',
@@ -206,6 +285,17 @@ const TEXT = {
  * firmware route, or a VM whose step hook is inert): a backgrounded tab must not jump seconds ahead.
  */
 const MAX_FRAME_MS = 50;
+/** Replay (Simulate, paused): the last 20 s of simulated time, a pose about every 33 ms of it. */
+const REPLAY_MS = 20000;
+const REPLAY_STEP_MS = 33;
+/** Readings: 10 samples per simulated second, the last 10 s drawn. */
+const READINGS_SAMPLES = 100;
+/** A challenge is judged this often (simulated ms); its best results are kept on this device. */
+const CHALLENGE_STEP_MS = 100;
+const CHALLENGE_BEST_KEY = 'bw-sim-challenge-best';
+const readBest = () => {
+    try { return JSON.parse(localStorage.getItem(CHALLENGE_BEST_KEY) || '{}') || {}; } catch { return {}; }
+};
 /** The real-time factor is shown below this (a timer's jitter keeps a machine that keeps up near 1). */
 const SHOW_RTF_BELOW = 0.95;
 /** Build mode recompiles the model this long after the last edit (ms), for the issues and the motion overlay. */
@@ -225,42 +315,31 @@ const MODEL_TITLE = 'Robot Lab model';
  * the pane is compact: icon toolbars with a "More…" menu, the parts palette as a drawer over
  * the view, notes folded to one line, so the 3D view keeps most of the height.
  */
-const COMPACT_BELOW_PX = 640;
+const COMPACT_BELOW_PX = 720;
 /** Below this pane width the compact toolbars show glyphs only (a 1024 px tablet's side pane). */
 const NARROW_BELOW_PX = 420;
 /** From this pane width the properties panel stands beside the 3D view; narrower, it opens over the view's right edge. */
 const DOCK_PROPERTIES_PX = 1280;
 /** What is hidden in Build stays hidden for the browser session (view state, not the model). */
 const HIDDEN_STORAGE_KEY = 'bw-sim-lab-hidden';
+/** How Build's 3D view reads a scroll (camera-nav.js wheelIntent), kept in this browser. */
+const WHEEL_STORAGE_KEY = 'bw-sim-lab-wheel-mode';
 
-/** The compact toolbars' faces: drawn, not font glyphs, so every school device shows the same icon. */
-const ICONS = {
-    parts: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
-    move: 'M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3',
-    rotate: 'M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5',
-    turn: 'M18 12a6 6 0 1 1-1.8-4.3M18 5v4h-4',
-    reset: 'M4 12a8 8 0 1 0 2.3-5.7M4 4v5h5',
-    undo: 'M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3',
-    redo: 'M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3',
-    delete: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
-    cancel: 'M6 6l12 12M18 6L6 18',
-    run: 'M7 4l13 8-13 8z',
-    pause: 'M8 5v14M16 5v14',
-    more: 'M5 12h.01M12 12h.01M19 12h.01',
-    large: 'M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7'
-};
-const drawIcon = name => (
-    <svg aria-hidden="true" width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"
-        strokeWidth={name === 'more' ? 3.5 : 2} style={{display: 'block', flex: '0 0 auto'}}>
-        <path d={ICONS[name]} />
-    </svg>
-);
-/** A button's face: an icon, and words beside it when there is room. */
-const face = (name, words) => (
-    <span style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4, whiteSpace: 'nowrap'}}>
-        {drawIcon(name)}{words}
-    </span>
-);
+/**
+ * From this pane width the toolbar may take a second row and shows every action; narrower, it
+ * keeps one row and what does not fit goes to its More menu (sim-lab-toolbar.jsx splitToolbar).
+ */
+const WRAP_TOOLBAR_PX = 1000;
+/**
+ * The GUI's show/hide-stage button (gui.jsx data-right-pane-toggle) floats over the editor's top
+ * right corner; when the tab strip folds away (compact chrome) it sits on the toolbar's row, so the
+ * toolbar keeps that corner free.
+ */
+const RIGHT_PANE_TOGGLE_PX = 36;
+/** From this pane width the mode switch shows its words beside the icons. */
+const MODE_WORDS_PX = 760;
+/** Never wider than this share of the pane, the parts panel (dragged by its divider). */
+const MAX_PANEL_SHARE = 0.45;
 
 class SimLabPane extends React.Component {
     constructor (props) {
@@ -270,14 +349,22 @@ class SimLabPane extends React.Component {
         this.text = TEXT[locale];
         this.itext = INSIGHT_TEXT[locale] || INSIGHT_TEXT.en;
         this.etext = EDITOR_TEXT[locale] || EDITOR_TEXT.en;
+        this.ttext = TOOLBAR_TEXT[locale] || TOOLBAR_TEXT.en;
+        // The project's hub (docs/ROBOT-LAB-ARCHITECTURE.md R1: the VirtualHub boundary): the one the
+        // SPIKE arena shares (lib/virtual-hub/shared-spike-hub.js), unless a host hands one in.
+        this.hub = props.hubState || sharedSpikeHubState();
         this.state = {status: 'loading', message: '', info: '', driveSpeed: 50, issues: [], modelFile: null, shipped: null, simMs: 0, rtf: null, view3d: 'loading',
             mode: 'simulate', placing: null, selection: [], editorTick: 0, mat: null,
             buildStatus: {kind: 'idle'}, gizmoMode: 'move', grid: 10, recent: [], thumbTick: 0,
             showPorts: true, showMotion: false, blockers: [], portPicker: null, instructions: null, coarse: false,
-            paneWidth: 0, more: false, drawer: false, paletteDragging: false, infoOpen: false, route: 'scratch', saveMenu: false,
-            hidden: [], editGroup: null, pick: null, measurement: null, placeColor: null, propsOpen: false, shortcuts: false};
+            // Simulate: sensor rays, the Readings panel, slow motion, and the replay position (null: live)
+            showSensors: false, readings: false, timeScale: 1, replayAt: null, replayFrames: 0, readingsTick: 0,
+            challengesOpen: false, challenge: null, challengeResult: null, challengeBest: readBest(),
+            paneWidth: 0, menu: null, drawer: false, paletteDragging: false, infoOpen: false, route: 'scratch',
+            paletteOpen: true, paletteShare: null, propsShare: null, propsDocked: true,
+            hidden: [], editGroup: null, pick: null, measurement: null, placeColor: null, propsOpen: false, shortcuts: false,
+            hold: null, announce: '', wheelMode: this.storedWheelMode()};
         this.root = React.createRef();
-        this.moreRef = React.createRef();
         this.viewWrap = React.createRef();
         this.box = React.createRef();
         this.file = React.createRef();
@@ -288,6 +375,10 @@ class SimLabPane extends React.Component {
         this.onBundleCollect = this.onBundleCollect.bind(this);
         this.onBundleLoaded = this.onBundleLoaded.bind(this);
         this.requestThumb = this.requestThumb.bind(this);
+        this.openCatalogue = this.openCatalogue.bind(this);
+        this.addCatalogPart = this.addCatalogPart.bind(this);
+        this.cataloguePreview = this.cataloguePreview.bind(this);
+        this.removeCatalogPart = this.removeCatalogPart.bind(this);
         this.armPart = this.armPart.bind(this);
         this.pressPart = this.pressPart.bind(this);
         this.onPointerKind = this.onPointerKind.bind(this);
@@ -320,9 +411,16 @@ class SimLabPane extends React.Component {
         return this.state.paneWidth > 0 && this.state.paneWidth < NARROW_BELOW_PX;
     }
 
-    /** A press outside the open "More…" menu closes it. */
+    /** A press outside the open pop-up (More, File, Help) closes it. */
     onOutsidePress (event) {
-        if (this.state.more && this.moreRef.current && !this.moreRef.current.contains(event.target)) this.setState({more: false});
+        const open = this.state.menu;
+        if (!open) return;
+        const inside = event.target && event.target.closest && event.target.closest(`[data-sim-lab-popup="${open}"]`);
+        if (!inside) this.setState({menu: null});
+    }
+
+    toggleMenu (id) {
+        this.setState(s => ({menu: s.menu === id ? null : id}));
     }
 
     /** A number as the learner's language writes it (German: decimal comma). */
@@ -354,8 +452,16 @@ class SimLabPane extends React.Component {
             get firmwareProgram () { return this._pane.firmware?.program?.stateName ?? null; },
             /** The last Build-mode compile for the issues and the overlay: {ms, parts}. */
             get insight () { return this._pane.lastInsight || null; },
+            /** Build (docs/ROBOT-LAB-UX.md §5): the lit connectors [{partId, connectorId, active}], the candidate pose, the ghost's tone. */
+            highlights () { return this._pane.editView ? this._pane.editView.debug.highlights() : []; },
+            candidate () { return this._pane.editView ? this._pane.editView.debug.candidate() : null; },
+            ghostTone () { return this._pane.editView ? this._pane.editView.debug.ghostTone() : null; },
+            /** The Robot Lab API (lib/bw-sim/api/robot-lab-api.js), the object blocks reach as runtime.robotLab; null until the chunk is in. */
+            get api () { return this._pane.api || null; },
             _pane: this
         };
+        // The SPIKE arena stands aside while this session drives the shared hub (lib/robot-lab-events.js).
+        window.dispatchEvent(new CustomEvent(ROBOT_LAB_EVENTS.owner, {detail: {active: true}}));
         window.addEventListener('bw-project-bundle-collect', this.onBundleCollect);
         window.addEventListener('bw-project-bundle-loaded', this.onBundleLoaded);
         // A tablet (a finger is the main pointer): bigger buttons and touch wording.
@@ -378,14 +484,177 @@ class SimLabPane extends React.Component {
         }
         if (this.disposed) return;
         this.registerRcxTarget();
+        // The scene's radio hubs (LWP3: BOOST, Powered Up, Technic, SPIKE Essential; WeDo 2.0) as virtual BLE
+        // peripherals, for the LEGO extensions to reach over Web Bluetooth or Scratch Link (virtual-hub/lab-ble-peripherals.js).
+        this.unregisterBle = this.lib.registerRobotLabBlePeripherals(() => (this.session ? this.session.hubs.map(h => h.hub) : []));
+        this.registerBtBricks();
+        this.installApi();
         this.raf = requestAnimationFrame(this.frame);
         await this.openStored();
     }
 
+    /**
+     * The Robot Lab API (docs/SIM-LAB.md "Steering the Lab") over this pane: blocks reach it as
+     * `runtime.robotLab` (looked up at each call, the runtime.nqcCompile hook pattern), the gates
+     * and the JS driver as window.__bwSimLab.api. It is ours while this pane is mounted.
+     */
+    installApi () {
+        this.api = this.lib.createRobotLabApi({
+            getSession: () => this.session,
+            getStatus: () => this.state.status,
+            listModels: () => this.lib.MODELS.map(m => ({id: modelKey(m).replace(/\.ldr$/i, ''), title: m.title})),
+            loadModel: spec => this.apiLoadModel(spec),
+            start: () => this.apiStart(),
+            stop: () => this.apiStop(),
+            reset: () => this.reset(),
+            ensureRunning: () => this.apiEnsureRunning(),
+            setTimeScale: scale => this.setSpeed(scale),
+            camera: view => this.apiCamera(view),
+            locale: () => this.locale
+        });
+        const runtime = this.props.vm && this.props.vm.runtime;
+        if (runtime) runtime.robotLab = this.api;
+    }
+
+    /** loadModel from a block, a word or a call: a shipped model by id, or LDraw text. */
+    async apiLoadModel (spec) {
+        if (this.disposed || !this.lib) return {ok: false, code: 'no-model'};
+        if (this.state.status === 'running') this.apiStop();
+        if (this.editor) {
+            this.teardownEditor();
+            this.setState({mode: 'simulate', placing: null, selection: []});
+        }
+        const entry = this.lib.MODELS.find(m => modelKey(m).replace(/\.ldr$/i, '') === spec);
+        if (entry) await this.openShipped(modelKey(entry));
+        else {
+            this.lastText = spec;
+            await this.openText(spec, 'my-model.ldr');
+        }
+        return {ok: Boolean(this.session), status: this.state.status, issues: this.state.issues.length};
+    }
+
+    /** start from a block: run the world (never the green flag: the program asking is already running). */
+    async apiStart () {
+        if (!this.session || this.state.status === 'running') return;
+        await this.run({greenFlag: false});
+    }
+
+    /** stop from a block: pause the world, leave the program running (it may start it again). */
+    apiStop () {
+        if (!this.session) return;
+        if (this.session.lockstep) { this.pauseFirmware(); return; }
+        this.stopClock();
+        this.setState({status: 'paused'});
+    }
+
+    /** A motor was told to turn: the world runs, as when the drive pad's arrow is held. */
+    apiEnsureRunning () {
+        if (!this.session || this.session.lockstep || this.state.status === 'running') return;
+        this.hub.setSimulationEnabled(true);
+        this.startClock();
+        this.setState({status: 'running'});
+    }
+
+    apiCamera (view) {
+        const v = this.view;
+        if (!v) return;
+        if (view && typeof view === 'object') v.followPart?.(view.follow || null);
+        else if (view === 'fit') v.fit();
+        else v.view(view);
+    }
+
+    robotLabLoaded () {
+        const vm = this.props.vm;
+        return Boolean(vm && vm.extensionManager && vm.extensionManager.isExtensionLoaded('robotlab'));
+    }
+
+    /** The scene has a SPIKE hub (its drive pad and readout make sense); a hubless model runs on lab-direct. */
+    spikeScene () {
+        return Boolean(this.session && this.session.hubs && this.session.hubs.some(h => h.profile === 'spike-prime'));
+    }
+
+    /** The scene's radio hub (an LWP3 hub or the WeDo 2.0 hub: hubs/lwp3, hubs/wedo2), or null. */
+    radioHub () {
+        const h = this.session && this.session.hubs && this.session.hubs.find(x => x.hub && x.hub.protocol);
+        return h ? h.hub : null;
+    }
+
+    /**
+     * The LEGO extension of the Code tab's program that speaks to this hub, or null: the first of
+     * HUB_EXTENSIONS whose blocks the project uses (an extension stays loaded after its blocks are
+     * gone, so being loaded is not enough), else the first loaded.
+     */
+    hubExtension (hub = this.radioHub()) {
+        const vm = this.props.vm;
+        if (!hub || !vm || !vm.extensionManager) return null;
+        const loaded = (HUB_EXTENSIONS[hub.protocol] || []).filter(id => vm.extensionManager.isExtensionLoaded(id));
+        const used = id => (vm.runtime.targets || []).some(t => Object.values((t.blocks && t.blocks._blocks) || {})
+            .some(b => typeof b.opcode === 'string' && b.opcode.startsWith(`${id}_`)));
+        return loaded.find(used) || loaded[0] || null;
+    }
+
+    /**
+     * Connect the program's LEGO extension to the scene's hub, exactly as a person would connect it to a
+     * real one — the extension's own connect (its block's function), over whatever transport it is set to
+     * (Web Bluetooth, Scratch Link) — with connectVirtualHub choosing this hub. scratch-vm's own boost and
+     * wedo2 connect through the runtime's peripheral scan, as the connection dialog does.
+     */
+    async connectRadioHub (hub, id) {
+        const vm = this.props.vm;
+        const prim = name => vm.runtime._primitives[`${id}_${name}`];
+        const stock = id === 'boost' || id === 'wedo2';
+        const connected = () => Boolean(stock ? vm.getPeripheralIsConnected(id) : prim('isConnected')?.({}));
+        await this.lib.connectVirtualHub({host: window, extensionId: id, hubState: hub, timeoutMs: 15000, connected,
+            disconnect: () => (stock ? vm.disconnectPeripheral(id) : prim('disconnect')?.({})),
+            connect: () => {
+                if (!stock) return prim('connect')({});
+                return new Promise(resolve => {
+                    const onList = list => {
+                        const first = Object.keys(list || {})[0];
+                        if (!first) return;
+                        vm.runtime.removeListener('PERIPHERAL_LIST_UPDATE', onList);
+                        vm.connectPeripheral(id, first);
+                        resolve();
+                    };
+                    vm.runtime.on('PERIPHERAL_LIST_UPDATE', onList);
+                    vm.scanForPeripheral(id);
+                });
+            }});
+    }
+
+    /** Run for a radio hub: the program's extension connects to it, then the green flag. */
+    async runRadioHub (hub, {greenFlag = true} = {}) {
+        const vm = this.props.vm;
+        this.stopClock();
+        this.setState({status: 'running'});
+        const id = this.hubExtension(hub);
+        if (!id) {
+            this.startClock();
+            const none = this.t('noProgramHub', {extensions: (HUB_EXTENSIONS[hub.protocol] || []).join(', ')});
+            this.setState({info: this.shippedModel()?.example ? `${none} ${this.text.exampleOffer}` : none});
+            return;
+        }
+        this.setState({info: ''});
+        try {
+            await this.connectRadioHub(hub, id);
+        } catch (error) {
+            this.setState({message: this.t('connectFailed', {error: error.message})});
+            return;
+        }
+        if (this.state.status === 'running') {
+            this.startClock();
+            if (greenFlag) vm.greenFlag();
+        }
+    }
+
     componentWillUnmount () {
-        // Flush first: a Build-mode edit made just before switching to the arena
-        // tab must still be in the next save.
+        // Flush first: a Build-mode edit made just before handing the hub to the
+        // arena must still be in the next save.
         this.onBundleCollect();
+        // A running program lets go of the hub before the arena takes it.
+        if (this.session && (this.state.status === 'running' || this.state.status === 'stopping')) {
+            try { this.pause(); } catch { /* the session may be half gone */ }
+        }
         window.removeEventListener('bw-project-bundle-collect', this.onBundleCollect);
         window.removeEventListener('bw-project-bundle-loaded', this.onBundleLoaded);
         window.removeEventListener('pointerdown', this.onOutsidePress, true);
@@ -397,9 +666,19 @@ class SimLabPane extends React.Component {
         this.teardown();
         this.teardownEditor();
         if (this.unregisterRcx) this.unregisterRcx();
+        if (this.unregisterBle) this.unregisterBle();
+        if (this.unregisterBt) this.unregisterBt();
         if (this.physics) this.physics.terminate();
         this.physics = null;
-        if (window.__bwSimLab && window.__bwSimLab._pane === this) delete window.__bwSimLab;
+        const runtime = this.props.vm && this.props.vm.runtime;
+        if (this.api) {
+            if (runtime && runtime.robotLab === this.api) delete runtime.robotLab;
+            this.api.dispose();
+        }
+        if (window.__bwSimLab && window.__bwSimLab._pane === this) {
+            delete window.__bwSimLab;
+            window.dispatchEvent(new CustomEvent(ROBOT_LAB_EVENTS.owner, {detail: {active: false}}));
+        }
     }
 
     teardownEditor () {
@@ -456,8 +735,12 @@ class SimLabPane extends React.Component {
                 onViewState: view => this.onEditorViewState(view),
                 onColorPicked: color => this.pickColour(color),
                 measureLabel: m => fillText(this.etext.measureLabel, {ldu: this.decimal(m.ldu), studs: this.decimal(m.studs), mm: this.decimal(m.mm)}),
-                onShortcuts: () => this.setState({shortcuts: true})});
+                onShortcuts: () => this.setState({shortcuts: true}),
+                onHold: hold => this.setState({hold}),
+                onAnnounce: info => this.setState({announce: this.announceText(info)}),
+                viewCubeLabels: this.etext.connect.cube});
             this.editView.setGrid(this.state.grid);
+            this.editView.setWheelMode(this.state.wheelMode);
             this.colors = colors;
             const palette = this.lib.colorPalette(colors);
             this.palette = {...palette, byCode: new Map([...palette.common, ...palette.more].map(c => [c.code, c]))};
@@ -552,6 +835,7 @@ class SimLabPane extends React.Component {
             const shown = {ports: this.state.showPorts, motion: this.state.showMotion};
             this.editView?.setOverlay(shown);
             this.view?.setOverlay?.(shown);
+            this.view?.setSensors?.(this.sensorRays(), this.state.showSensors);
         });
     }
 
@@ -645,7 +929,7 @@ class SimLabPane extends React.Component {
 
     /** "Save as…": the model on show (built or simulated) as a .ldr, .mpd or .io file (lib/bw-sim/model/model-file.js). */
     async saveAs (format) {
-        this.setState({saveMenu: false});
+        this.setState({menu: null});
         const model = this.editor ? this.editor.model : this.session?.model;
         if (!model || !this.lib) return;
         const name = !this.editor && isStorableName(this.state.modelFile) ? this.state.modelFile : 'my-model.ldr';
@@ -658,22 +942,6 @@ class SimLabPane extends React.Component {
         setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
-    /** The "Save as…" button and, while it is open, one button per format. */
-    renderSaveAs (style, disabled) {
-        const T = this.text;
-        const open = this.state.saveMenu && !disabled;
-        return (
-            <span key="save-as" style={{display: 'inline-flex', alignItems: 'center', gap: 4, flexWrap: 'wrap'}}>
-                <button type="button" style={style} data-testid="bw-sim-lab-save" disabled={disabled} title={T.saveHelp}
-                    aria-haspopup="true" aria-expanded={open} onClick={() => this.setState(s => ({saveMenu: !s.saveMenu}))}>{T.save}</button>
-                {open && SAVE_FORMATS.map(format => (
-                    <button key={format} type="button" style={style} data-testid={`bw-sim-lab-save-${format}`}
-                        onClick={() => this.saveAs(format)}>{T.saveFormats[format]}</button>
-                ))}
-            </span>
-        );
-    }
-
     /**
      * Puts the VM on the session's clock (sim-clock.js). Not for the firmware route: its emulated
      * hub runs the program and paces the scene itself (routes/renode-lockstep).
@@ -682,6 +950,7 @@ class SimLabPane extends React.Component {
         const vm = this.props.vm;
         if (!this.session || this.session.lockstep || !vm || !vm.runtime || this.clockInert) return;
         if (!this.clock) this.clock = new this.lib.SimLabClock();
+        this.clock.timeScale = this.timeScale || 1;
         this.clock.install(vm.runtime, this.session);
     }
 
@@ -696,6 +965,7 @@ class SimLabPane extends React.Component {
         this.view = null;
         if (this.session) this.session.dispose();
         this.session = null;
+        if (this.api) this.api.sessionChanged();
     }
 
     /** Opens a MODELS entry by its key (`id`, else its file): one model file may be listed twice, with different examples. */
@@ -738,6 +1008,7 @@ class SimLabPane extends React.Component {
         if (this.disposed) return;
         if (this.state.status === 'running') this.pause();
         if (entry.example.endsWith('.nqc')) await this.loadRcxExample(code);
+        else if (entry.example.endsWith('.blocks.json')) await this.loadBlocksExample(code);
         else window.dispatchEvent(new CustomEvent('bw-load-pseudocode', {detail: {code, source: `sim-lab:${entry.file}`}}));
         this.setState({info: this.text.exampleGoal[entry.example] || this.text.exampleLoaded});
         if (entry.mat && this.state.mat !== entry.mat) await this.setMat(entry.mat);
@@ -773,6 +1044,7 @@ class SimLabPane extends React.Component {
 
     async openText (text, name, shipped = null) {
         const token = this.loadToken = {};
+        this.clearReplay();
         this.opened = {text, name};
         this.teardown();
         this.setState({status: 'loading', message: '', issues: [], blockers: [], modelFile: name, shipped, simMs: 0, rtf: null, view3d: 'loading'});
@@ -789,7 +1061,7 @@ class SimLabPane extends React.Component {
             const compiled = this.compileFirmware();
             refusal = compiled.error;
             try {
-                firmware = await this.lib.openFirmwareRoute({capabilities: this.renodeCapabilities(), hubState: this.props.hubState,
+                firmware = await this.lib.openFirmwareRoute({capabilities: this.renodeCapabilities(), hubState: this.hub,
                     program: compiled.program, onProgramChange: control => this.onFirmwareProgram(control)});
             } catch (error) {
                 if (token !== this.loadToken) return;
@@ -807,7 +1079,7 @@ class SimLabPane extends React.Component {
             // A model naming a part beyond the catalogue's core (sim-lab.js) loads the rest first.
             await this.lib.catalogFor(text);
             if (token !== this.loadToken || this.disposed) { firmware?.driver.end().catch(() => {}); return; }
-            result = await SimSession.fromText(text, {hubState: this.props.hubState, catalog: CATALOG, mat: this.state.mat,
+            result = await SimSession.fromText(text, {hubState: this.hub, catalog: CATALOG, mat: this.state.mat,
                 worker: this.physicsClient(), ...(firmware ? {createHub: firmware.createHub} : {})});
         } catch (error) {
             firmware?.driver.end().catch(() => {});
@@ -830,6 +1102,7 @@ class SimLabPane extends React.Component {
         this.session = session;
         // A real RCX keeps its program through a reset; the Lab's does too (a new scene, the same image).
         if (this.rcxHub() && this.rcxImage) this.rcxHub().loadProgram(this.rcxImage);
+        if (this.api) this.api.sessionChanged();
         // The worker could not run the scene (no WebAssembly in workers, say): the physics runs
         // here, and later models do not try the worker again.
         if (session.workerError && this.physics && !session.lockstep) { this.physics.terminate(); this.physics = false; }
@@ -842,6 +1115,7 @@ class SimLabPane extends React.Component {
             this.view.setPorts(insight.ports.map(item => ({...item, label: this.portLabelText(item)})));
             this.view.setMotion({joints: insight.joints, gears: insight.gears, tints: insight.tints.bodies});
             this.view.setOverlay({ports: this.state.showPorts, motion: this.state.showMotion});
+            this.view.setSensors(this.sensorRays(), this.state.showSensors);
             this.view.render(session.snapshot());
         } catch (error) {
             view3d = 'fallback';
@@ -963,13 +1237,156 @@ class SimLabPane extends React.Component {
         // 'stopping': the firmware route keeps its clock until the emulated hub has taken STOP.
         // With the program clock installed the VM's steps tick the world (sim-clock.js), not frames.
         if ((this.state.status === 'running' || this.state.status === 'stopping') && dt > 0 && !(this.clock && this.clock.installed)) {
-            this.session.tick(dt);
+            this.session.tick(dt * (this.timeScale || 1));
         }
         // With the physics in the worker, simulated time advances when a batch comes back.
         if (Math.floor(this.session.time / 100) !== Math.floor(this.state.simMs / 100)) {
             this.setState({simMs: this.session.time, rtf: this.clock && this.clock.installed ? this.clock.realTimeFactor : null});
         }
-        if (this.view) this.view.render(this.session.snapshot());
+        if (this.state.status === 'running') this.record();
+        if (this.state.readings && this.api) this.sample();
+        if (this.challengeRun && this.state.status === 'running') this.judgeChallenge();
+        const replayed = this.state.replayAt !== null && this.replay ? this.replay.frames[this.state.replayAt] : null;
+        if (this.view) this.view.render(replayed ? replayed.snapshot : this.session.snapshot());
+    }
+
+    // ---- Simulate: slow motion, replay, readings, sensor rays --------------------------------
+
+    /** Slow motion: simulated per real time, 1, 1/2 or 1/4 (also the Robot Lab API's setTimeScale). */
+    setSpeed (scale) {
+        const s = Math.min(1, Math.max(0.05, Number(scale) || 1));
+        this.timeScale = s;
+        if (this.clock) this.clock.timeScale = s;
+        if (this.state.timeScale !== s) this.setState({timeScale: s});
+    }
+
+    /** Keeps the last REPLAY_MS of the run (body poses, about 30 per simulated second) for the replay slider. */
+    record () {
+        const t = this.session.time;
+        if (!this.replay) this.replay = {frames: []};
+        const frames = this.replay.frames;
+        if (frames.length && t - frames[frames.length - 1].t < REPLAY_STEP_MS) return;
+        const snap = this.session.snapshot();
+        frames.push({t, snapshot: {bodyIds: snap.bodyIds, bodies: Float32Array.from(snap.bodies)}});
+        while (frames.length && t - frames[0].t > REPLAY_MS) frames.shift();
+        if (this.state.replayAt !== null || frames.length % 15 === 0) this.setState({replayAt: null, replayFrames: frames.length});
+    }
+
+    clearReplay () {
+        this.replay = null;
+        this.readingsHistory = new Map();
+        this.lastSample = null;
+        if (this.state.replayAt !== null || this.state.replayFrames) this.setState({replayAt: null, replayFrames: 0});
+    }
+
+    /** Every motor's angle and speed and every sensor's value, 10 times a simulated second, for the Readings panel. */
+    sample () {
+        const t = this.session.time;
+        if (this.lastSample !== null && this.lastSample !== undefined && t - this.lastSample < 100 && t >= this.lastSample) return;
+        this.lastSample = t;
+        const history = this.readingsHistory || (this.readingsHistory = new Map());
+        const push = (key, value, now) => {
+            const h = history.get(key) || {values: [], now: ''};
+            h.values.push(value);
+            if (h.values.length > READINGS_SAMPLES) h.values.shift();
+            h.now = now;
+            history.set(key, h);
+        };
+        const api = this.api;
+        for (const m of api.motors()) {
+            const ref = m.port ?? m.id;
+            const angle = api.motorAngle(ref);
+            push(`motor-${ref}`, angle, `${Math.round(angle)}° · ${Math.round(api.motorSpeed(ref))} °/s`);
+        }
+        for (const x of api.sensors()) {
+            const ref = x.port ?? x.id;
+            const v = api.sensorValue(ref);
+            const now = x.kind === 'distance' ? (v < 0 ? '–' : `${v} cm`) : typeof v === 'number' ? String(v) : String(v);
+            push(`sensor-${ref}`, typeof v === 'number' && v >= 0 ? v : null, now);
+        }
+        this.setState(s => ({readingsTick: s.readingsTick + 1}));
+    }
+
+    /** The Readings panel's rows. */
+    readingsRows () {
+        const api = this.api;
+        const history = this.readingsHistory || new Map();
+        const T = this.text;
+        const rows = (list, prefix, label) => list.map(x => {
+            const ref = x.port ?? x.id;
+            const h = history.get(`${prefix}-${ref}`) || {values: [], now: '…'};
+            return {key: `${prefix}-${ref}`, label: label(x), now: h.now, values: h.values};
+        });
+        if (!api || !this.session) return {motors: [], sensors: []};
+        return {
+            motors: rows(api.motors(), 'motor', m => fillText(T.readingsMotor, {port: m.port ?? m.id})),
+            sensors: rows(api.sensors(), 'sensor', x => fillText(T.readingsSensor, {kind: T.kinds[x.kind] || x.kind, port: x.port ?? x.id}))
+        };
+    }
+
+    /**
+     * The sensor rays for the view: each sensor part's probe (PartMeta `probe`, part frame), a distance
+     * sensor's as long as it measures (1 cm = 25 LDU; nothing seen: its 2 m range), the others 2 cm.
+     */
+    sensorRays () {
+        if (!this.session || !this.api) return [];
+        const model = this.session.runModel || this.session.model;
+        const byId = new Map(model.parts.map(p => [p.id, p]));
+        const out = [];
+        for (const x of this.api.sensors()) {
+            const placed = byId.get(x.part);
+            const meta = placed && this.lib.CATALOG.get(placed.part);
+            const probe = meta && (meta.probe || meta.device?.probe);
+            if (!probe || !probe.origin || !probe.direction) continue;
+            const ref = x.port ?? x.id;
+            out.push({id: x.part, origin: probe.origin, direction: probe.direction,
+                lengthOf: x.kind === 'distance' ? () => {
+                    const cm = this.api.sensorValue(ref);
+                    return (typeof cm === 'number' && cm > 0 ? cm : 200) * 25;
+                } : () => 50});
+        }
+        return out;
+    }
+
+    /** Paused with a recorded run: a slider back through its last seconds (the run goes on from now). */
+    renderReplay () {
+        const n = this.state.replayFrames;
+        if (this.state.mode !== 'simulate' || this.state.status === 'running' || !this.replay || n < 2) return null;
+        const frames = this.replay.frames;
+        const at = this.state.replayAt === null ? frames.length - 1 : this.state.replayAt;
+        const back = (frames[frames.length - 1].t - frames[at].t) / 1000;
+        const T = this.text;
+        return (
+            <div data-testid="bw-sim-lab-replay" style={{position: 'absolute', left: 8, right: 8, bottom: 8, zIndex: 5, display: 'flex', alignItems: 'center', gap: 8,
+                background: 'rgba(255, 255, 255, 0.94)', border: '1px solid #cbd5e1', borderRadius: 8, padding: '4px 10px', fontSize: 12}}>
+                <span style={{fontWeight: 600}} title={T.replayHelp}>{T.replay}</span>
+                <input type="range" data-testid="bw-sim-lab-replay-slider" aria-label={T.replay} title={T.replayHelp}
+                    min={0} max={frames.length - 1} step={1} value={at} style={{flex: '1 1 auto'}}
+                    onChange={e => {
+                        const i = Number(e.target.value);
+                        this.setState({replayAt: i >= frames.length - 1 ? null : i});
+                    }} />
+                <span data-testid="bw-sim-lab-replay-time" style={{fontVariantNumeric: 'tabular-nums', minWidth: 52, textAlign: 'right'}}>
+                    {at >= frames.length - 1 ? T.replayNow : `−${back.toFixed(1)} s`}
+                </span>
+            </div>
+        );
+    }
+
+    /** Slow motion: an icon and a list (1×, ½×, ¼×). */
+    renderSpeed (inMenu) {
+        const A = this.ttext.actions;
+        const field = this.state.coarse ? {minHeight: 40} : {height: 28};
+        return (
+            <label title={A.speed} style={{display: 'inline-flex', alignItems: 'center', gap: 4, padding: inMenu ? '0 8px' : '0 4px', fontSize: 12, flex: '0 0 auto'}}>
+                <Icon name="speed" />
+                {inMenu ? <span style={{flex: '1 1 auto'}}>{A.speed}</span> : null}
+                <select data-testid="bw-sim-lab-speed" aria-label={A.speed} value={this.state.timeScale} style={field}
+                    onChange={e => this.setSpeed(Number(e.target.value))}>
+                    {[1, 0.5, 0.25].map(v => <option key={v} value={v}>{fillText(this.text.speedValue, {n: v === 1 ? '1' : v === 0.5 ? '½' : '¼'})}</option>)}
+                </select>
+            </label>
+        );
     }
 
     /** The scene's RCX (hubs/rcx/), or null. */
@@ -1031,31 +1448,115 @@ class SimLabPane extends React.Component {
         if (!sent.ok) fail(sent.log);
     }
 
+    /** 'ev3' or 'nxt' when the scene's hub is a MINDSTORMS brick its blocks reach over Scratch Link (hubs/ev3, hubs/nxt), else null. */
+    btProfile () {
+        const h = this.session && this.session.hubs.find(x => x.profile === 'ev3' || x.profile === 'nxt');
+        return h ? h.profile : null;
+    }
+
+    /**
+     * "Virtual EV3" and "Virtual NXT" in the Scratch Link BT-classic registry (lib/virtual-hub/
+     * bt-classic-registry.js): while the scene has that brick, an EV3 or NXT extension that looks for
+     * a brick over Scratch Link finds the Lab's, and its direct commands drive it.
+     */
+    registerBtBricks () {
+        if (this.unregisterBt) return;
+        const hubOf = profile => () => {
+            const h = this.session && this.session.hubs.find(x => x.profile === profile);
+            return h ? h.hub : null;
+        };
+        const unregister = [
+            this.lib.registerVirtualClassicPeripheral(this.lib.ev3ClassicPeripheral(hubOf('ev3'))),
+            this.lib.registerVirtualClassicPeripheral(this.lib.nxtClassicPeripheral(hubOf('nxt')))
+        ];
+        this.unregisterBt = () => {
+            for (const fn of unregister) fn();
+            this.unregisterBt = null;
+        };
+    }
+
+    /**
+     * Run with an EV3 or NXT: the loaded extension (ev3comprehensive or the stock `ev3`; legonxt)
+     * connects to the Lab's brick over Scratch Link, then the green flag.
+     */
+    async runBt ({greenFlag = true} = {}) {
+        const profile = this.btProfile();
+        const vm = this.props.vm;
+        const brick = profile === 'ev3' ? 'EV3' : 'NXT';
+        const ids = profile === 'ev3' ? ['ev3comprehensive', 'ev3'] : ['legonxt'];
+        const extensionId = ids.find(id => vm && vm.extensionManager && vm.extensionManager.isExtensionLoaded(id));
+        this.stopClock();
+        this.setState({status: 'running'});
+        if (!extensionId) {
+            this.startClock();
+            this.setState({info: this.t('noProgramBt', {brick})});
+            return;
+        }
+        this.setState({info: ''});
+        try {
+            await this.lib.connectVirtualHub({vm, extensionId,
+                peripheralId: profile === 'ev3' ? this.lib.EV3_PERIPHERAL_ID : this.lib.NXT_PERIPHERAL_ID});
+        } catch (error) {
+            // Said, and the world still runs: the program's own connect block may yet reach the brick.
+            this.setState({message: this.t('connectFailed', {error: error.message})});
+        }
+        if (this.state.status === 'running') {
+            this.startClock();
+            if (greenFlag) vm.greenFlag();
+        }
+    }
+
+    /** A blocks example (`.blocks.json`: an extension's blocks for a sprite): the extension in, the script onto the editing sprite. */
+    async loadBlocksExample (code) {
+        const vm = this.props.vm;
+        if (!vm || !vm.editingTarget) return;
+        try {
+            const example = JSON.parse(code);
+            for (const id of example.extensions || []) {
+                if (!vm.extensionManager.isExtensionLoaded(id)) await vm.extensionManager.loadExtensionURL(id);
+            }
+            await vm.shareBlocksToTarget(this.lib.vmBlocksOf(example.blocks), vm.editingTarget.id);
+            vm.emitWorkspaceUpdate();
+        } catch (error) {
+            this.setState({message: this.t('exampleFailed', {error: error.message})});
+        }
+    }
+
     spikeLoaded () {
         const vm = this.props.vm;
         return Boolean(vm && vm.extensionManager && vm.extensionManager.isExtensionLoaded('spikeprime'));
     }
 
     /** As the arena's Start: connect the spikeprime blocks to the shared virtual hub, then green flag. */
-    async run () {
+    async run ({greenFlag = true} = {}) {
         if (!this.session) return;
         if (this.session.lockstep) { await this.runFirmware(); return; }
         if (this.rcxHub()) { this.runRcx(); return; }
-        const hubState = this.props.hubState;
+        if (this.radioHub()) { await this.runRadioHub(this.radioHub(), {greenFlag}); return; }
+        if (this.btProfile()) { await this.runBt({greenFlag}); return; }
+        const hubState = this.hub;
         hubState.setSimulationEnabled(true);
         // Connecting runs on wall time (its timeouts are the browser's); the program clock goes in
         // just before the green flag, so the program's first `wait` starts on the world's clock.
         this.stopClock();
         this.setState({status: 'running'});
         const vm = this.props.vm;
-        // Without a SPIKE program the clock still runs (the arrows below drive the motors),
-        // but say plainly why nothing moves on its own.
-        if (!this.spikeLoaded()) {
+        // Without a SPIKE or Robot Lab program the clock still runs (the arrows below drive the
+        // motors), but say plainly why nothing moves on its own.
+        const spike = this.spikeLoaded();
+        if (!spike && !this.robotLabLoaded()) {
             this.startClock();
-            this.setState({info: this.shippedModel()?.example ? `${this.text.noProgram} ${this.text.exampleOffer}` : this.text.noProgram});
+            const none = this.spikeScene() ? this.text.noProgram : this.text.noProgramLab;
+            this.setState({info: this.shippedModel()?.example ? `${none} ${this.text.exampleOffer}` : none});
             return;
         }
         this.setState({info: ''});
+        // A Robot Lab program alone (robotlab blocks, `lab` words): no hub to connect, the flag starts it.
+        if (!spike) {
+            this.startClock();
+            if (greenFlag) vm.greenFlag();
+            return;
+        }
         const peripheral = vm.runtime.peripheralExtensions && vm.runtime.peripheralExtensions.spikeprime;
         try {
             const {connectVirtualSpike} = this.lib;
@@ -1072,7 +1573,7 @@ class SimLabPane extends React.Component {
         }
         if (this.state.status === 'running') {
             this.startClock();
-            vm.greenFlag();
+            if (greenFlag) vm.greenFlag();
         }
     }
     /** Puts the current model on another mat (its start pose, if the mat has one) and reloads it. */
@@ -1080,13 +1581,103 @@ class SimLabPane extends React.Component {
         if (!this.session) return;
         const text = this.lib.serializeModel(this.session.model, {name: this.state.modelFile || 'model.ldr'});
         this.pause();
-        this.setState({mat: mat || null}, () => this.openText(text, this.state.modelFile, this.state.shipped));
+        const challenge = this.state.challenge && this.lib.CHALLENGES.find(c => c.id === this.state.challenge);
+        if (challenge && challenge.mat !== (mat || 'plain')) this.endChallenge();
+        await new Promise(resolve => this.setState({mat: mat || null}, resolve));
+        await this.openText(text, this.state.modelFile, this.state.shipped);
+    }
+
+    // ---- Challenges: a goal on a mat, judged while the robot runs (lib/bw-sim/world/challenges.js) ----
+
+    /** Starts a challenge on its mat, the robot back at the start; Run begins it. null: back to the list. */
+    async startChallenge (id) {
+        if (!id) { this.endChallenge(); return; }
+        const challenge = this.lib.CHALLENGES.find(c => c.id === id);
+        if (!challenge || !this.session) return;
+        this.challengeRun = null;
+        this.setState({challenge: id, challengeResult: null, challengesOpen: true});
+        if ((this.state.mat || 'plain') !== challenge.mat) await this.setMat(challenge.mat);
+        else await this.reset();
+        this.armChallenge();
+    }
+
+    /** A fresh judge for the challenge under way (after a start or a Reset: the robot is at the start). */
+    armChallenge () {
+        if (!this.state.challenge) return;
+        this.challengeRun = this.lib.createChallengeRun(this.state.challenge);
+        this.challengeFrom = null;
+        this.challengeLast = null;
+        this.setState({challengeResult: null});
+    }
+
+    endChallenge () {
+        this.challengeRun = null;
+        if (this.state.challenge) this.setState({challenge: null, challengeResult: null});
+    }
+
+    /** What the judge sees: the robot's outline on the floor (its parts' collider corners, metres) and which of the mat's obstacles it touches. */
+    challengeObservation (tS) {
+        const api = this.api;
+        const parts = api.parts();
+        const points = parts.flatMap(p => api.partOutline(p.id));
+        const touching = {};
+        for (const o of this.lib.createMat(this.state.mat || 'plain').obstacles) {
+            touching[o.id] = parts.some(p => api.touching(p.id, o.id));
+        }
+        return {tS, points, touching};
+    }
+
+    judgeChallenge () {
+        const run = this.challengeRun;
+        const t = this.session.time;
+        if (this.challengeFrom === null || this.challengeFrom === undefined || t < this.challengeFrom) this.challengeFrom = t;
+        if (this.challengeLast !== null && this.challengeLast !== undefined && t - this.challengeLast < CHALLENGE_STEP_MS) return;
+        this.challengeLast = t;
+        const before = run.result;
+        const r = run.step(this.challengeObservation((t - this.challengeFrom) / 1000));
+        if (r.status !== 'running') {
+            this.challengeRun = null;
+            if (r.status === 'done') this.keepBest(run.challenge, r);
+            this.pause();
+        }
+        if (r.status !== before.status || Math.round(r.timeS * 10) !== Math.round(before.timeS * 10)) this.setState({challengeResult: r});
+    }
+
+    keepBest (challenge, r) {
+        const best = readBest();
+        if (!this.lib.betterResult(r, best[challenge.id])) return;
+        best[challenge.id] = {stars: r.stars, value: r.value};
+        try { localStorage.setItem(CHALLENGE_BEST_KEY, JSON.stringify(best)); } catch { /* private mode: kept for this visit */ }
+        this.setState({challengeBest: best});
+    }
+
+    /** How a result's measure reads: a time, a gap, an overshoot. */
+    measureText (challenge, value) {
+        const v = challenge.measure === 'time' ? value.toFixed(1) : String(Math.round(value * 100));
+        return fillText(this.text.challengeMeasure[challenge.measure], {v: this.decimal(v)});
+    }
+
+    renderChallenges () {
+        const T = this.text;
+        const mats = new Map(this.lib.MATS.map(m => [m.id, m.title[this.locale] || m.title.en]));
+        const list = this.lib.CHALLENGES.map(c => {
+            const best = this.state.challengeBest[c.id];
+            return {id: c.id, mat: mats.get(c.mat) || c.mat, ...T.challenges[c.id],
+                best: best ? {stars: best.stars, text: this.measureText(c, best.value)} : null};
+        });
+        const challenge = this.state.challenge && this.lib.CHALLENGES.find(c => c.id === this.state.challenge);
+        const r = this.state.challengeResult;
+        const active = challenge ? {id: challenge.id, result: r, measureText: r && r.status === 'done' ? this.measureText(challenge, r.value) : ''} : null;
+        return (
+            <SimLabChallenges text={{...T, close: T.readingsClose}} challenges={list} active={active}
+                onStart={id => this.startChallenge(id)} onClose={() => this.setState({challengesOpen: false})} />
+        );
     }
 
     /** Hold-to-drive with the movement pair (A left, mounted mirrored; B right), as the arena's drive pad. */
     drive (direction) {
-        if (!this.session || !this.session.bridge) return;
-        const hub = this.props.hubState;
+        if (!this.session || !this.session.bridge || !this.spikeScene()) return;
+        const hub = this.hub;
         hub.setSimulationEnabled(true);
         if (this.state.status !== 'running') {
             this.startClock();
@@ -1120,18 +1711,22 @@ class SimLabPane extends React.Component {
     pause () {
         if (!this.session) return;
         if (this.session.lockstep) { this.pauseFirmware(); return; }
-        if (this.spikeLoaded()) { try { this.props.vm.stopAll(); } catch { /* the VM may be mid-load */ } }
-        this.props.hubState.backend.cancel();
+        // Pause stops the program too (a Robot Lab program's next motor command would run the world again).
+        if (this.spikeLoaded() || this.robotLabLoaded() || this.hubExtension()) {
+            try { this.props.vm.stopAll(); } catch { /* the VM may be mid-load */ }
+        }
+        this.hub.backend.cancel();
         this.stopClock();
         this.setState({status: 'paused'});
     }
 
     async reset () {
         if (!this.session) return;
-        this.props.hubState.stopAll?.();
+        this.hub.stopAll?.();
         const name = this.state.modelFile;
         if (this.state.shipped) await this.openShipped(this.state.shipped);
         else if (this.lastText) await this.openText(this.lastText, name);
+        this.armChallenge();
     }
 
     renderDrive (button) {
@@ -1157,7 +1752,7 @@ class SimLabPane extends React.Component {
         const compact = this.compact();
         const arrow = {...button, minWidth: this.state.coarse ? 48 : 34, fontSize: 15, lineHeight: '18px', userSelect: 'none',
             WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'none', ...(compact ? {padding: '4px 6px', flex: '0 0 auto'} : {})};
-        const hub = this.props.hubState.data;
+        const hub = this.hub.data;
         const ports = [...new Set(this.session.mechanism.joints.filter(j => j.motor).map(j => j.motor.port))].sort();
         const sensorPorts = (this.session.mechanism.sensors || []).map(s => s.port).sort();
         const fmt = (port, s) => {
@@ -1192,6 +1787,64 @@ class SimLabPane extends React.Component {
         );
     }
 
+    /** The whole LDraw catalogue's part list, for the palette's "+" (lib/bw-sim/ldraw/ldraw-catalog.js). */
+    openCatalogue () {
+        return this.lib.ldrawCatalogue().then(catalogue => catalogue.catalog());
+    }
+
+    /**
+     * Adds a catalogue part: derived (lib/bw-sim/part-meta/catalog-parts.js), its LDraw files joined to
+     * the editor's (the view and the palette pictures read from that one map), and armed for placing.
+     */
+    async addCatalogPart (part) {
+        // the files join the editor's map before the part joins the catalogue (sim-lab.js addCatalogPart)
+        const added = await this.lib.addCatalogPart(part, {into: this.catalogFiles ? this.catalogFiles.files : null});
+        if (this.disposed) return added;
+        this.requestThumb(part); // its picture, now that its files are here (a draw before them kept none)
+        this.editView?.setTool(part);
+        this.setState(s => ({placing: part, recent: this.lib.pushRecent(s.recent, part),
+            drawer: this.compact() ? false : s.drawer}));
+        return added;
+    }
+
+    /**
+     * A catalogue result's picture: its LDraw files from the catalogue, kept in the editor's map (so
+     * adding the part later fetches nothing new), drawn by the palette's renderer. Four at a time.
+     */
+    cataloguePreview (part) {
+        const run = async () => {
+            if (!this.thumbs || !this.catalogFiles) return null;
+            await this.lib.ldrawCatalogue();
+            const closure = await this.lib.fetchLDrawClosure([part]);
+            if (!closure.files.has(`parts/${part.toLowerCase()}`) || this.disposed || !this.thumbs) return null;
+            for (const [path, text] of closure.files) this.catalogFiles.files.set(path, text);
+            return this.thumbs.render(part) || null;
+        };
+        const queue = this.previewQueue || (this.previewQueue = {active: 0, waiting: []});
+        return new Promise((resolve, reject) => {
+            const start = () => {
+                queue.active++;
+                run().then(resolve, reject).finally(() => {
+                    queue.active--;
+                    const next = queue.waiting.shift();
+                    if (next) next();
+                });
+            };
+            if (queue.active < 4) start();
+            else queue.waiting.push(start);
+        });
+    }
+
+    /** Removes a part added from the catalogue, unless the model in Build uses it. */
+    removeCatalogPart (part) {
+        const model = this.editor ? this.editor.model : null;
+        if (model && model.parts.some(p => p.part === part)) return {ok: false, reason: 'in-use'};
+        if (this.state.placing === part) this.editView?.setTool(null);
+        this.lib.removeCatalogPart(part);
+        this.setState(s => ({recent: s.recent.filter(p => p !== part), placing: s.placing === part ? null : s.placing}));
+        return {ok: true};
+    }
+
     /** A palette tile came into view: its picture is drawn in a coming frame. */
     requestThumb (part) {
         if (this.thumbs && !this.thumbs.has(part)) this.thumbQueue.add(part);
@@ -1210,10 +1863,17 @@ class SimLabPane extends React.Component {
     }
 
     /** A click on a palette tile arms (or disarms) the placing tool, unless the press was dragged out. */
-    armPart (part) {
+    armPart (part, how = {}) {
         if (this.paletteDragged) { this.paletteDragged = false; return; }
+        // Target-first: a lit connector was clicked; a part that fits goes straight into it.
+        if (this.editView && this.editView.pinnedTarget && this.editView.fitsTarget(part)) {
+            this.editView.placeIntoTarget(part);
+            this.setState(s => ({placing: null, drawer: this.compact() ? false : s.drawer}));
+            return;
+        }
         const next = this.state.placing === part ? null : part;
-        this.editView?.setTool(next);
+        // Enter on a tile, or a finger's tap: the ghost starts on the target nearest the view's centre.
+        this.editView?.setTool(next, {centre: Boolean(next && (how.keyboard || this.tilePointer === 'touch'))});
         // The drawer closes once a part is armed, so the whole view is free for the click that places it.
         this.setState({placing: next, drawer: next && this.compact() ? false : this.state.drawer});
     }
@@ -1221,6 +1881,7 @@ class SimLabPane extends React.Component {
     /** A press on a palette tile: the editor view follows it; dragged into the view, it places the part there. */
     pressPart (part, event) {
         this.paletteDragged = false;
+        this.tilePointer = event.pointerType;
         if (event.button !== 0 || !this.editView) return;
         event.preventDefault(); // no text selection or native image drag while it is dragged out
         this.editView.pressPalettePart(part, event, ({dragged}) => {
@@ -1233,7 +1894,106 @@ class SimLabPane extends React.Component {
         return (
             <SimLabPalette key={this.thumbs ? 'pictures' : 'names'} text={this.text} lib={this.lib} locale={this.locale}
                 placing={this.state.placing} recent={this.state.recent} thumbs={this.thumbs} thumbTick={this.state.thumbTick}
-                requestThumb={this.requestThumb} onArm={this.armPart} onPress={this.pressPart} />
+                requestThumb={this.requestThumb} onArm={this.armPart} onPress={this.pressPart}
+                fits={this.state.hold && this.state.hold.pinned && this.editView ? part => this.editView.fitsTarget(part) : null}
+                onOpenCatalogue={this.openCatalogue} onAddCatalogPart={this.addCatalogPart}
+                onCataloguePreview={this.cataloguePreview} onRemoveCatalogPart={this.removeCatalogPart} />
+        );
+    }
+
+    /** What the screen reader hears for a new target or a refusal (aria-live). */
+    announceText (info) {
+        const C = this.etext.connect;
+        const fill = (template, values) => template.replace(/\{(\w+)\}/g, (_, k) => String(values[k] ?? ''));
+        if (!info) return '';
+        if (info.kind === 'refused') return fill(C.refusedPlace, {target: info.target ? this.partName(info.target) : ''});
+        const values = {part: this.partName(info.part), target: info.target ? this.partName(info.target) : '',
+            connector: C.connector[this.connectorType(info)] || C.connectorOther, n: info.index + 1, of: info.of,
+            face: C.faces[info.face] || '', pairs: info.pairs === 1 ? C.pairsOne : fill(C.pairsMany, {n: info.pairs}),
+            into: info.into ? this.partName(info.into) : ''};
+        return fill(info.kind === 'blocked' ? C.announceBlocked : C.announce, values);
+    }
+
+    /** A connector's type, from the part's metadata. */
+    connectorType ({target, connector}) {
+        const m = this.lib && target && this.lib.CATALOG.get(target);
+        const c = m && m.connectors.find(x => x.id === connector);
+        return c ? c.type : null;
+    }
+
+    /** How the 3D view reads a scroll ('auto', 'mouse', 'trackpad'), kept in this browser. */
+    storedWheelMode () {
+        try {
+            const v = localStorage.getItem(WHEEL_STORAGE_KEY);
+            return ['auto', 'mouse', 'trackpad'].includes(v) ? v : 'auto';
+        } catch {
+            return 'auto';
+        }
+    }
+
+    setWheelMode (wheelMode) {
+        this.setState({wheelMode});
+        this.editView?.setWheelMode(wheelMode);
+        try { localStorage.setItem(WHEEL_STORAGE_KEY, wheelMode); } catch { /* private window: this session only */ }
+    }
+
+    /**
+     * Build: the hint bar (what the keys do now), the target chip (Target-first) and, for a finger,
+     * the ✓ / ⟳ / ✕ buttons for the part in hand; plus the screen reader's announcements.
+     */
+    renderHoldOverlays () {
+        const C = this.etext.connect;
+        const hold = this.state.hold || {holding: false};
+        const view = this.editView;
+        let hint;
+        if (hold.holding) {
+            const dragging = !hold.part;
+            hint = dragging ? C.hintDragging : hold.touch ? C.hintHoldingTouch : hold.keyboard ? C.hintHoldingKeyboard : C.hintHolding;
+            if (hold.round) hint = `${hint} · ${C.hintFine}`;
+            if (hold.tone === 'blocked') hint = `${C.hintBlocked} · ${hint}`;
+        } else if (hold.pinned) {
+            hint = C.hintTarget;
+        } else {
+            hint = null; // idle: the build (i) holds the how-to, the view stays clear
+        }
+        const pin = hold.pinned;
+        const pinNumber = pin && /(\d+)$/.exec(pin.connectorId);
+        const chipBase = {display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 8px', borderRadius: 999, fontSize: 12, boxShadow: '0 1px 4px rgba(15, 23, 42, 0.2)'};
+        const touchButton = {minWidth: 48, minHeight: 48, borderRadius: 999, border: '1px solid #94a3b8', background: '#fff', fontSize: 20, cursor: 'pointer',
+            boxShadow: '0 2px 6px rgba(15, 23, 42, 0.25)'};
+        return (
+            <React.Fragment>
+                {hint && <div data-testid="bw-sim-lab-hint-bar" data-holding={hold.holding ? 'yes' : 'no'} data-tone={hold.tone || ''}
+                    style={{position: 'absolute', left: 8, bottom: 8, right: 108, zIndex: 3, pointerEvents: 'none', display: 'flex', justifyContent: 'flex-start'}}>
+                    <span style={{background: hold.tone === 'blocked' ? 'rgba(254, 226, 226, 0.95)' : 'rgba(248, 250, 252, 0.92)', color: hold.tone === 'blocked' ? '#991b1b' : '#334155',
+                        borderRadius: 6, padding: '3px 8px', fontSize: 12, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        boxShadow: '0 1px 3px rgba(15, 23, 42, 0.15)'}}>{hint}</span>
+                </div>}
+                {pin && (
+                    <div data-testid="bw-sim-lab-target-chip" style={{position: 'absolute', left: 8, top: 8, zIndex: 4, ...chipBase, background: '#fef3c7', color: '#92400e', fontWeight: 600}}>
+                        {C.targetChip.replace('{target}', this.partName(pin.part))
+                            .replace('{connector}', C.connector[this.connectorType({target: pin.part, connector: pin.connectorId})] || C.connectorOther)
+                            .replace('{n}', pinNumber ? Number(pinNumber[1]) + 1 : '')}
+                        <button type="button" data-testid="bw-sim-lab-target-clear" title={C.clearTarget} aria-label={C.clearTarget}
+                            onClick={() => view?.clearTarget()} style={{border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 14, color: '#92400e', padding: 0}}>✕</button>
+                    </div>
+                )}
+                {hold.holding && hold.part && (hold.touch || this.state.coarse) && (
+                    <div role="group" aria-label={C.touchControls} data-testid="bw-sim-lab-touch-hold"
+                        style={{position: 'absolute', right: 108, bottom: 44, zIndex: 5, display: 'flex', gap: 8}}>
+                        <button type="button" data-testid="bw-sim-lab-touch-place" title={C.touchPlace} aria-label={C.touchPlace} style={touchButton}
+                            onClick={() => view?.placeHeld()}>✓</button>
+                        <button type="button" data-testid="bw-sim-lab-touch-turn" title={C.touchTurn} aria-label={C.touchTurn} style={touchButton}
+                            onClick={() => view?.turn('up', 1)}>⟳</button>
+                        <button type="button" data-testid="bw-sim-lab-touch-cancel" title={C.touchCancel} aria-label={C.touchCancel} style={touchButton}
+                            onClick={() => { view?.setTool(null); this.setState({placing: null}); }}>✕</button>
+                    </div>
+                )}
+                <div data-testid="bw-sim-lab-announce" aria-live="polite" role="status"
+                    style={{position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap'}}>
+                    {this.state.announce}
+                </div>
+            </React.Fragment>
         );
     }
 
@@ -1264,49 +2024,34 @@ class SimLabPane extends React.Component {
         case 'turning': return fill(T.turning, {deg: st.degrees});
         case 'placed': return fill(T.placed, {part: name(st.part)});
         case 'blocked': return fill(T.blocked, {target: name(st.target)});
-        case 'refused': return fill(T[st.reason] || E[st.reason] || T.invalid, {detail: st.detail || '', target: st.target ? name(st.target) : ''});
+        case 'refused': return fill(T[st.reason] || E[st.reason] || this.etext.connect.st[st.reason] || T.invalid, {detail: st.detail || '', target: st.target ? name(st.target) : ''});
+        case 'released': return fill(this.etext.connect.st.released, {target: name(st.target)});
+        case 'targetPinned': {
+            const C = this.etext.connect;
+            const num = st.connector && /(\d+)$/.exec(st.connector);
+            return fill(C.st.targetPinned, {target: name(st.target), connector: C.connector[this.connectorType(st)] || C.connectorOther, hole: num ? Number(num[1]) + 1 : ''});
+        }
+        case 'targetCleared': case 'flipped': return this.etext.connect.st[st.kind];
+        case 'connectedSelected': return fill(this.etext.connect.st.connectedSelected, {n: st.count});
         case 'painted': return fill(E.painted, {n: st.count, colour: this.colourName(st.color)});
         case 'pickedColor': return fill(E.pickedColor, {colour: this.colourName(st.color), part: name(st.part)});
         case 'measured': return fill(E.measured, {ldu: this.decimal(st.ldu), studs: this.decimal(st.studs), mm: this.decimal(st.mm)});
         case 'mirrored': return fill(st.kept ? E.mirroredKept : st.swapped ? E.mirroredSwapped : E.mirrored, {n: st.count, s: st.swapped, k: st.kept});
         case 'groupEdit': case 'groupLeft': return fill(E[st.kind], {name: st.name || ''});
         case 'turnedBy': return fill(E.turnedBy, {deg: st.degrees});
-        case 'idle': return this.state.coarse ? T.idleTouch : T.idle;
+        case 'hinged': case 'hingeShown': return fill(E[st.kind], {n: st.count, deg: st.degrees, i: st.index + 1, of: st.of});
+        case 'chained': return fill(st.tread ? E.treaded : E.chained, {n: st.count, g: st.gears});
+        case 'banded': return fill(E.banded, {mm: st.mm, stretch: this.decimal(st.stretch)});
+        case 'idle': return ''; // nothing to report; the (i) beside the status explains how to build
         default:
             if (E[st.kind]) return fill(E[st.kind], {n: st.count});
-            return T[st.kind] ? fill(T[st.kind], {n: st.count}) : (this.state.coarse ? T.idleTouch : T.idle);
+            return T[st.kind] ? fill(T[st.kind], {n: st.count}) : '';
         }
     }
 
     partName (part) {
         const m = this.lib && this.lib.CATALOG.get(part);
         return m ? ((this.locale === 'de' && m.nameDe) || m.name) : part;
-    }
-
-    /**
-     * The "More…" menu: the actions a compact toolbar has no room for, with their full
-     * labels (and the same test ids as on the wide toolbar). Picking an action closes it.
-     */
-    renderMore (button, children) {
-        const open = this.state.more;
-        return (
-            <div ref={this.moreRef} style={{position: 'relative', flex: '0 0 auto'}}>
-                <button type="button" style={{...button, marginRight: 0}} data-testid="bw-sim-lab-more" aria-haspopup="true" aria-expanded={open}
-                    aria-label={this.text.moreHelp} title={this.text.moreHelp} onClick={() => this.setState(s => ({more: !s.more}))}>
-                    {this.narrow() ? face('more') : this.text.more}
-                </button>
-                {open && (
-                    <div role="group" aria-label={this.text.moreHelp} data-testid="bw-sim-lab-more-menu"
-                        onKeyDown={e => { if (e.key === 'Escape') this.setState({more: false}); }}
-                        onClick={e => { if (e.target.closest('button')) this.setState({more: false}); }}
-                        style={{position: 'absolute', right: 0, top: 'calc(100% + 4px)', zIndex: 30, width: 260, maxWidth: '80vw', maxHeight: '60vh',
-                            overflowY: 'auto', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 4, padding: 8, fontSize: 12,
-                            background: '#fff', border: '1px solid #94a3b8', borderRadius: 8, boxShadow: '0 6px 18px rgba(15, 23, 42, 0.25)', boxSizing: 'border-box'}}>
-                        {children}
-                    </div>
-                )}
-            </div>
-        );
     }
 
     /** Wide enough for the properties panel to stand beside the 3D view. */
@@ -1324,168 +2069,6 @@ class SimLabPane extends React.Component {
                 pick={this.state.pick} editGroup={this.state.editGroup} partName={part => this.partName(part)} tick={this.state.editorTick}
                 onColour={code => this.pickColour(code)} onTick={() => this.setState(s => ({editorTick: s.editorTick + 1}))}
                 onClose={docked ? null : () => this.setState({propsOpen: false})} button={button} field={field} docked={docked} />
-        );
-    }
-
-    renderBuildBar (button) {
-        const editor = this.editor;
-        const view = this.editView;
-        const parts = editor ? editor.model.parts : [];
-        const byId = editor ? this.lib.partsByIdOf(editor.model) : new Map();
-        const selection = this.state.selection.map(id => byId.get(id)).filter(Boolean);
-        const sel = selection.length === 1 ? selection[0] : null;
-        const meta = sel ? this.lib.CATALOG.get(sel.part) : null;
-        const portable = meta && this.lib.isPortPart(meta);
-        const tick = () => this.setState(s => ({editorTick: s.editorTick + 1}));
-        const compact = this.compact();
-        const narrow = this.narrow();
-        const small = {...button, padding: this.state.coarse ? '6px 10px' : '3px 8px', marginRight: 0};
-        const icon = {...small, padding: this.state.coarse ? '4px 6px' : '3px 6px', minWidth: this.state.coarse ? 40 : 32, minHeight: this.state.coarse ? 40 : 30};
-        const field = this.state.coarse ? {minHeight: 40} : undefined;
-        const pressed = (on, base = small) => ({...base, background: on ? '#dbeafe' : '#fff', borderColor: on ? '#2563eb' : '#94a3b8', fontWeight: on ? 600 : 400});
-        const st = this.state.buildStatus || {};
-        const refused = st.kind === 'refused';
-        const blocked = st.kind === 'blocked';
-        const T = this.text;
-        const E = this.etext;
-        const docked = this.dockProperties();
-        const nothing = !selection.length && !this.state.placing;
-        /** Every Build action once: id, label, what it does; `glyph` is its face on the compact toolbar. */
-        const act = {
-            turn: {label: T.turnUp, glyph: 'turn', words: '90°', disabled: nothing, run: () => view?.turn('up', 1)},
-            'turn-back': {label: T.turnBack, disabled: nothing, run: () => view?.turn('up', -1)},
-            tip: {label: T.tip, disabled: !selection.length, run: () => view?.turn('facing', 1)},
-            group: {label: T.group, title: T.groupKey, disabled: selection.length < 2, run: () => { view?.groupSelection(); tick(); }},
-            ungroup: {label: T.ungroup, title: T.ungroupKey,
-                disabled: !(editor?.model.groups || []).some(g => g.parts.some(id => this.state.selection.includes(id))),
-                run: () => { view?.ungroupSelection(); tick(); }},
-            duplicate: {label: T.duplicate, disabled: !selection.length, run: () => view?.duplicate()},
-            delete: {label: T.remove, glyph: 'delete', disabled: !selection.length, run: () => view?.deleteSelection()},
-            copy: {label: T.copy, title: T.copyKey, disabled: !selection.length, run: () => view?.copy()},
-            paste: {label: T.paste, title: T.pasteKey, run: () => view?.paste()},
-            'select-all': {label: T.selectAll, title: T.selectAllKey, disabled: !parts.length, run: () => view?.selectAll()},
-            cancel: {label: T.cancel, glyph: 'cancel', disabled: nothing, run: () => view?.escape()},
-            undo: {label: T.undo, glyph: 'undo', disabled: !editor?.canUndo, run: () => { view?.undo(); tick(); }},
-            redo: {label: T.redo, glyph: 'redo', disabled: !editor?.canRedo, run: () => { view?.redo(); tick(); }},
-            'view-home': {label: T.home, run: () => view?.view('home')},
-            'view-fit': {label: T.fit, run: () => view?.fitSelection()},
-            'view-top': {label: T.top, run: () => view?.view('top')},
-            'view-front': {label: T.front, run: () => view?.view('front')},
-            'view-side': {label: T.side, run: () => view?.view('side')},
-            // Studio's tools (sim-lab-editor-text.js): mirror, hide / isolate, measure, eyedropper, properties, shortcuts.
-            'mirror-x': {label: E.mirrorX, title: E.mirrorXHelp, disabled: !selection.length, run: () => { view?.mirror('x'); tick(); }},
-            'mirror-z': {label: E.mirrorZ, title: E.mirrorZHelp, disabled: !selection.length, run: () => { view?.mirror('z'); tick(); }},
-            hide: {label: E.hide, disabled: !selection.length, run: () => view?.hideSelection()},
-            isolate: {label: E.isolate, disabled: !selection.length, run: () => view?.isolate()},
-            'show-all': {label: E.showAll, disabled: !this.state.hidden.length, run: () => view?.showAll()},
-            measure: {label: E.measure, pressed: this.state.pick === 'measure', run: () => view?.setPick('measure')},
-            eyedropper: {label: E.eyedropper, title: E.eyedropperHelp, pressed: this.state.pick === 'color', run: () => view?.setPick('color')},
-            properties: {label: E.properties, title: E.propertiesHelp, pressed: this.state.propsOpen, run: () => this.setState(s => ({propsOpen: !s.propsOpen}))},
-            shortcuts: {label: E.shortcuts, title: E.shortcutsHelp, run: () => this.setState({shortcuts: true})}
-        };
-        const full = id => {
-            const a = act[id];
-            return (
-                <button key={id} type="button" style={a.pressed === undefined ? small : pressed(a.pressed)} data-testid={`bw-sim-lab-${id}`}
-                    disabled={a.disabled} title={a.title} aria-pressed={a.pressed} onClick={a.run}>{a.label}</button>
-            );
-        };
-        // On the compact toolbar a glyph carries the action; its name is the accessible name and the tooltip.
-        const glyph = id => {
-            const a = act[id];
-            return (
-                <button key={id} type="button" style={icon} data-testid={`bw-sim-lab-${id}`} disabled={a.disabled}
-                    aria-label={a.label} title={a.title ? `${a.label} · ${a.title}` : a.label} onClick={a.run}>{face(a.glyph, a.words)}</button>
-            );
-        };
-        const gap = key => <span key={key} style={{width: 6}} />;
-        const modes = [['move', T.move], ['rotate', T.turn]].map(([m, label]) => (
-            <button key={m} type="button" style={pressed(this.state.gizmoMode === m, compact ? icon : small)} data-testid={`bw-sim-lab-mode-${m}`}
-                aria-pressed={this.state.gizmoMode === m} aria-label={compact ? label : undefined} title={compact ? label : undefined}
-                onClick={() => view?.setMode(m)}>{compact ? face(m) : label}</button>
-        ));
-        const grid = (
-            <label key="grid" style={{marginLeft: compact ? 0 : 4}}>{T.grid}{' '}
-                <select data-testid="bw-sim-lab-grid" value={this.state.grid} style={field}
-                    onChange={e => { const g = Number(e.target.value); view?.setGrid(g); this.setState({grid: g}); }}>
-                    {[1, 5, 10, 20].map(g => <option key={g} value={g}>{g} {T.ldu}</option>)}
-                </select>
-            </label>
-        );
-        const oneLine = compact ? {flexWrap: 'nowrap', minWidth: 0} : {flexWrap: 'wrap'};
-        return (
-            <div style={{display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, minWidth: 0}}>
-                {compact ? (
-                    <div data-testid="bw-sim-lab-build-bar" style={{display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap'}}>
-                        <button type="button" style={pressed(this.state.drawer, icon)} data-testid="bw-sim-lab-parts-toggle"
-                            aria-expanded={this.state.drawer} aria-label={T.partsToggle} title={T.partsToggle}
-                            onClick={() => this.setState(s => ({drawer: !s.drawer}))}>{face('parts', narrow && this.state.coarse ? null : T.parts)}</button>
-                        {modes}
-                        {glyph('turn')}
-                        {/* While a part is armed there is nothing to delete; the same place stops placing. */}
-                        {this.state.placing ? glyph('cancel') : glyph('delete')}
-                        {glyph('undo')}
-                        {!narrow && glyph('redo')}
-                        <span style={{flex: '1 1 0'}} />
-                        {this.renderMore(button, [
-                            grid,
-                            ...[...(narrow ? ['redo'] : []), 'turn-back', 'tip', 'duplicate', 'copy', 'paste', 'select-all', 'group', 'ungroup',
-                                ...(this.state.placing ? ['delete'] : ['cancel']),
-                                'mirror-x', 'mirror-z', 'hide', 'isolate', 'show-all', 'measure', 'eyedropper', 'properties',
-                                'view-home', 'view-fit', 'view-top', 'view-front', 'view-side', 'shortcuts'].map(full),
-                            this.renderSaveAs(small, !editor),
-                            this.renderInsightBar()
-                        ])}
-                    </div>
-                ) : (
-                    <div data-testid="bw-sim-lab-build-bar" style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4}}>
-                        {modes}
-                        {grid}
-                        {gap('g1')}
-                        {['turn', 'turn-back', 'tip', 'group', 'ungroup', 'duplicate', 'delete', 'copy', 'paste', 'select-all', 'cancel'].map(full)}
-                        {gap('g2')}
-                        {['undo', 'redo'].map(full)}
-                        {gap('g3')}
-                        {['view-home', 'view-fit', 'view-top', 'view-front', 'view-side'].map(full)}
-                        {gap('g4')}
-                        {this.renderSaveAs(small, !editor)}
-                        {gap('g5')}
-                        {['mirror-x', 'mirror-z', 'hide', 'isolate', 'show-all', 'measure', 'eyedropper', ...(docked ? [] : ['properties']), 'shortcuts'].map(full)}
-                    </div>
-                )}
-                <div style={{display: 'flex', alignItems: 'center', gap: 8, minHeight: 22, ...oneLine}}>
-                    {this.state.hidden.length > 0 && (
-                        <button type="button" data-testid="bw-sim-lab-hidden-count" title={E.showAll} onClick={() => view?.showAll()}
-                            style={{...small, padding: '1px 6px', background: '#f1f5f9', whiteSpace: 'nowrap'}}>
-                            {E.hiddenCount.replace('{n}', this.state.hidden.length)}
-                        </button>
-                    )}
-                    {this.state.editGroup && (
-                        <span data-testid="bw-sim-lab-group-edit-chip" style={{whiteSpace: 'nowrap', color: '#5b21b6', fontWeight: 600}}>
-                            {E.groupBanner.replace('{name}', this.state.editGroup.name)}
-                        </span>
-                    )}
-                    {selection.length > 0 && (
-                        <span data-testid="bw-sim-lab-selection" style={{fontWeight: 600, color: '#1e3a8a', whiteSpace: compact ? 'nowrap' : undefined}}>
-                            {sel ? this.t('selectedOne', {name: this.partName(sel.part)}) : this.t('selectedMany', {n: selection.length})}
-                        </span>
-                    )}
-                    {portable && (
-                        <label style={{whiteSpace: 'nowrap'}}>{T.port}{': '}
-                            <select data-testid="bw-sim-lab-port" value={sel.port || ''} style={field}
-                                onChange={e => { editor.apply({type: 'setPort', id: sel.id, port: e.target.value || null}); tick(); }}>
-                                <option value="">{T.none}</option>
-                                {['A', 'B', 'C', 'D', 'E', 'F'].map(p => <option key={p} value={p}>{p}</option>)}
-                            </select>
-                        </label>
-                    )}
-                    <span role="status" data-testid="bw-sim-lab-build-status" data-kind={st.kind || 'idle'} title={compact ? this.buildStatusText() : undefined}
-                        style={{color: refused || blocked ? '#b91c1c' : '#475569', fontWeight: refused ? 600 : 400,
-                            ...(compact ? {flex: '1 1 0', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'} : {})}}>
-                        {this.buildStatusText()}
-                    </span>
-                </div>
-            </div>
         );
     }
 
@@ -1537,23 +2120,6 @@ class SimLabPane extends React.Component {
         );
     }
 
-    /** The overlay switches: port badges, and "show how it moves" (tints, axes, gear pairs). */
-    renderInsightBar () {
-        const T = this.itext;
-        return (
-            <div data-testid="bw-sim-lab-insight-bar" style={{display: 'flex', alignItems: 'center', gap: 12, fontSize: 12}}>
-                <label title={T.showPortsHelp}>
-                    <input type="checkbox" data-testid="bw-sim-lab-show-ports" checked={this.state.showPorts}
-                        onChange={e => this.setOverlay({showPorts: e.target.checked})} />{' '}{T.showPorts}
-                </label>
-                <label title={T.showMotionHelp}>
-                    <input type="checkbox" data-testid="bw-sim-lab-show-motion" checked={this.state.showMotion}
-                        onChange={e => this.setOverlay({showMotion: e.target.checked})} />{' '}{T.showMotion}
-                </label>
-            </div>
-        );
-    }
-
     /** Build: the ports offered next to a clicked port badge. */
     renderPortPicker (button) {
         const picker = this.state.portPicker;
@@ -1587,32 +2153,317 @@ class SimLabPane extends React.Component {
         const info = this.state.info;
         if (!info || this.state.mode !== 'simulate') return null;
         const box = {fontSize: 12, color: '#1e3a8a', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 6, padding: '6px 8px'};
-        if (!this.compact()) return <div role="status" data-testid="bw-sim-lab-info" style={box}>{info}</div>;
+        // One line at every width (owner request: no long text on screen); a click shows all of it.
         const open = this.state.infoOpen;
         return (
-            <div role="status" data-testid="bw-sim-lab-info" style={{...box, padding: '4px 8px', minWidth: 0}}>
-                <button type="button" data-testid="bw-sim-lab-info-toggle" aria-expanded={open} title={this.text.infoToggle}
+            <div role="status" data-testid="bw-sim-lab-info" style={{...box, padding: '4px 8px', minWidth: 0, display: 'flex', alignItems: 'flex-start', gap: 6}}>
+                {/* the toggle is its own small button: the note's words are not part of any button's name */}
+                <button type="button" data-testid="bw-sim-lab-info-toggle" aria-expanded={open} aria-label={this.text.infoToggle} title={this.text.infoToggle}
                     onClick={() => this.setState(s => ({infoOpen: !s.infoOpen}))}
-                    style={{display: 'block', width: '100%', font: 'inherit', color: 'inherit', textAlign: 'left', background: 'none', border: 'none',
-                        padding: 0, cursor: 'pointer', ...(open ? {} : {whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'})}}>
-                    <span aria-hidden="true">{open ? '▾ ' : '▸ '}</span>{info}
+                    style={{flex: '0 0 auto', font: 'inherit', color: 'inherit', background: 'none', border: 'none', padding: 0, cursor: 'pointer'}}>
+                    {open ? '▾' : '▸'}
                 </button>
+                <span onClick={() => this.setState(s => ({infoOpen: !s.infoOpen}))}
+                    style={{flex: '1 1 auto', minWidth: 0, cursor: 'pointer', ...(open ? {} : {whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'})}}>
+                    {info}
+                </span>
             </div>
         );
     }
 
-    render () {
-        const {status, message, issues, simMs, modelFile, shipped} = this.state;
+    /** The Build view or the Simulate view, whichever is on show (both take the camera actions). */
+    camera3d () {
+        return this.state.mode === 'build' ? this.editView : this.view;
+    }
+
+    /**
+     * Every toolbar action once: id (its test id is `bw-sim-lab-<id>`, its tooltip's shortcut is
+     * TOOLBAR_TEXT.keys[id]), label, icon, what it does, and its priority on a narrow bar
+     * (pri 1 stays, 2 and 3 go to the More menu first).
+     */
+    actions () {
+        const A = this.ttext.actions;
+        const T = this.text;
+        const I = this.itext;
+        const editor = this.editor;
+        const view = this.editView;
+        const parts = editor ? editor.model.parts : [];
+        const selection = this.state.selection;
+        const nothing = !selection.length && !this.state.placing;
+        const tick = () => this.setState(s => ({editorTick: s.editorTick + 1}));
+        const busy = this.state.status === 'loading';
+        const running = this.state.status === 'running';
+        const narrow = this.narrow();
+        const cam = this.camera3d();
+        const noCam = !cam || busy;
+        const docked = this.dockProperties();
+        const s = toolStyles(this.state.coarse);
+        return {
+            run: running ?
+                {id: 'pause', label: A.pause, icon: 'pause', words: narrow ? null : A.pause, style: s.stop, run: () => this.pause(), pri: 1, pin: true} :
+                {id: 'run', label: A.run, icon: 'run', words: narrow ? null : A.run, style: s.primary, pri: 1, pin: true,
+                    disabled: !this.session || busy || this.state.status === 'stopping', run: () => this.run()},
+            reset: {id: 'reset', label: A.reset, disabled: !this.session || busy, run: () => this.reset(), pri: 1, pin: true},
+            'mode-move': {id: 'mode-move', label: A['mode-move'], pressed: this.state.gizmoMode === 'move', run: () => view?.setMode('move'), pri: 1, pin: true},
+            'mode-rotate': {id: 'mode-rotate', label: A['mode-rotate'], pressed: this.state.gizmoMode === 'rotate', run: () => view?.setMode('rotate'), pri: 1, pin: true},
+            turn: {id: 'turn', label: A.turn, disabled: nothing, run: () => view?.turn('up', 1), pri: 1},
+            'turn-back': {id: 'turn-back', label: A['turn-back'], disabled: nothing, run: () => view?.turn('up', -1), pri: 3},
+            tip: {id: 'tip', label: A.tip, disabled: !selection.length, run: () => view?.turn('facing', 1), pri: 3},
+            group: {id: 'group', label: A.group, disabled: selection.length < 2, run: () => { view?.groupSelection(); tick(); }, pri: 3},
+            ungroup: {id: 'ungroup', label: A.ungroup, pri: 3,
+                disabled: !(editor?.model.groups || []).some(g => g.parts.some(id => selection.includes(id))),
+                run: () => { view?.ungroupSelection(); tick(); }},
+            duplicate: {id: 'duplicate', label: A.duplicate, disabled: !selection.length, run: () => view?.duplicate(), pri: 3},
+            delete: {id: 'delete', label: A.delete, disabled: !selection.length, run: () => view?.deleteSelection(), pri: 1},
+            cancel: {id: 'cancel', label: A.cancel, disabled: nothing, run: () => view?.escape(), pri: 1},
+            copy: {id: 'copy', label: A.copy, disabled: !selection.length, run: () => view?.copy(), pri: 3},
+            paste: {id: 'paste', label: A.paste, run: () => view?.paste(), pri: 3},
+            'select-all': {id: 'select-all', label: A['select-all'], disabled: !parts.length, run: () => view?.selectAll(), pri: 3},
+            undo: {id: 'undo', label: A.undo, disabled: !editor?.canUndo, run: () => { view?.undo(); tick(); }, pri: 1, pin: true},
+            redo: {id: 'redo', label: A.redo, disabled: !editor?.canRedo, run: () => { view?.redo(); tick(); }, pri: 2},
+            'view-home': {id: 'view-home', label: A['view-home'], disabled: noCam, run: () => cam?.view?.('home'), pri: 2},
+            'view-fit': {id: 'view-fit', label: A['view-fit'], disabled: noCam,
+                run: () => (this.state.mode === 'build' ? view?.fitSelection() : this.view?.fit?.()), pri: 2},
+            'view-top': {id: 'view-top', label: A['view-top'], disabled: noCam, run: () => cam?.view?.('top'), pri: 3},
+            'view-front': {id: 'view-front', label: A['view-front'], disabled: noCam, run: () => cam?.view?.('front'), pri: 3},
+            'view-side': {id: 'view-side', label: A['view-side'], disabled: noCam, run: () => cam?.view?.('side'), pri: 3},
+            'show-ports': {id: 'show-ports', label: I.showPorts, title: I.showPortsHelp, kind: 'switch', pressed: this.state.showPorts,
+                run: () => this.setOverlay({showPorts: !this.state.showPorts}), pri: 3},
+            'show-motion': {id: 'show-motion', label: I.showMotion, title: I.showMotionHelp, kind: 'switch', pressed: this.state.showMotion,
+                run: () => this.setOverlay({showMotion: !this.state.showMotion}), pri: 3},
+            'mirror-x': {id: 'mirror-x', label: A['mirror-x'], disabled: !selection.length, run: () => { view?.mirror('x'); tick(); }, pri: 3},
+            'mirror-z': {id: 'mirror-z', label: A['mirror-z'], disabled: !selection.length, run: () => { view?.mirror('z'); tick(); }, pri: 3},
+            hide: {id: 'hide', label: A.hide, disabled: !selection.length, run: () => view?.hideSelection(), pri: 3},
+            isolate: {id: 'isolate', label: A.isolate, disabled: !selection.length, run: () => view?.isolate(), pri: 3},
+            'show-all': {id: 'show-all', label: A['show-all'], disabled: !this.state.hidden.length, run: () => view?.showAll(), pri: 3},
+            measure: {id: 'measure', label: A.measure, pressed: this.state.pick === 'measure', run: () => view?.setPick('measure'), pri: 3},
+            eyedropper: {id: 'eyedropper', label: A.eyedropper, title: this.etext.eyedropperHelp, pressed: this.state.pick === 'color',
+                run: () => view?.setPick('color'), pri: 3},
+            'parts-toggle': {id: 'parts-toggle', label: A['parts-toggle'], title: T.partsToggle, pri: 1, pin: true,
+                pressed: this.compact() ? this.state.drawer : this.state.paletteOpen,
+                words: this.compact() && this.state.paneWidth >= 560 && !this.state.coarse ? A['parts-toggle'] : null,
+                run: () => this.setState(st => (this.compact() ? {drawer: !st.drawer} : {paletteOpen: !st.paletteOpen}))},
+            properties: {id: 'properties', label: A.properties, title: this.etext.propertiesHelp, pri: 2,
+                pressed: docked ? this.state.propsDocked : this.state.propsOpen,
+                run: () => this.setState(st => (docked ? {propsDocked: !st.propsDocked} : {propsOpen: !st.propsOpen}))},
+            shortcuts: {id: 'shortcuts', label: A.shortcuts, title: this.etext.shortcutsHelp, run: () => this.setState({shortcuts: true, menu: null}), pri: 3},
+            grid: {id: 'grid', label: A.grid, pri: 3, width: 96, render: inMenu => this.renderGrid(inMenu)},
+            speed: {id: 'speed', label: A.speed, pri: 2, width: 84, render: inMenu => this.renderSpeed(inMenu)},
+            'show-sensors': {id: 'show-sensors', label: A['show-sensors'], kind: 'switch', pressed: this.state.showSensors,
+                run: () => this.setOverlay({showSensors: !this.state.showSensors}), pri: 3},
+            readings: {id: 'readings', label: A.readings, kind: 'switch', pressed: this.state.readings,
+                run: () => this.setState(s => ({readings: !s.readings})), pri: 2},
+            challenges: {id: 'challenges', label: A.challenges, kind: 'switch', pressed: this.state.challengesOpen,
+                run: () => this.setState(s => ({challengesOpen: !s.challengesOpen})), pri: 2},
+            file: {id: 'file-menu', label: A['file-menu'], pri: 2, width: 46, render: inMenu => this.renderFile(inMenu)}
+        };
+    }
+
+    /** The toolbar's groups after the mode switch, for the mode on show. */
+    toolbarGroups () {
+        const a = this.actions();
+        const G = this.ttext.groups;
+        const pick = (id, label, ids) => ({id, label, items: ids.map(k => (typeof k === 'string' ? a[k] : k))});
+        if (this.state.mode === 'build') {
+            return [
+                pick('edit', G.edit, ['mode-move', 'mode-rotate', 'turn', 'turn-back', 'tip']),
+                // While a part is armed there is nothing to delete: Cancel takes Delete's place up front.
+                pick('arrange', G.arrange, [this.state.placing ? 'cancel' : 'delete', 'duplicate', 'copy', 'paste', 'select-all', 'group', 'ungroup',
+                    {...a[this.state.placing ? 'delete' : 'cancel'], pri: 3}]),
+                pick('history', G.edit, ['undo', 'redo']),
+                pick('view', G.view, ['view-home', 'view-fit', 'view-top', 'view-front', 'view-side', 'grid']),
+                pick('show', G.show, ['show-ports', 'show-motion']),
+                pick('tools', G.tools, ['mirror-x', 'mirror-z', 'hide', 'isolate', 'show-all', 'measure', 'eyedropper']),
+                pick('panels', G.panels, ['parts-toggle', 'properties', 'shortcuts']),
+                pick('file', G.file, ['file'])
+            ];
+        }
+        return [
+            pick('run', G.run, ['run', 'reset', 'speed', 'challenges']),
+            pick('view', G.view, ['view-home', 'view-fit', 'view-top', 'view-front', 'view-side']),
+            pick('show', G.show, ['show-ports', 'show-motion', 'show-sensors', 'readings']),
+            pick('file', G.file, ['file'])
+        ];
+    }
+
+    /** One toolbar entry: a button, or a control of its own (the grid step, the File menu). */
+    renderTool (item, inMenu) {
+        if (item.render) return <React.Fragment key={item.id}>{item.render(inMenu)}</React.Fragment>;
+        return <ToolButton key={item.id} item={item} T={this.ttext} coarse={this.state.coarse} inMenu={inMenu} />;
+    }
+
+    /** Build's grid step: an icon and a list. */
+    renderGrid (inMenu) {
+        const A = this.ttext.actions;
+        const field = this.state.coarse ? {minHeight: 40} : {height: 28};
+        return (
+            <label title={A.grid} style={{display: 'inline-flex', alignItems: 'center', gap: 4, padding: inMenu ? '0 8px' : '0 4px', fontSize: 12, flex: '0 0 auto'}}>
+                <Icon name="grid" />
+                {inMenu ? <span style={{flex: '1 1 auto'}}>{A.grid}</span> : null}
+                <select data-testid="bw-sim-lab-grid" aria-label={A.grid} value={this.state.grid} style={field}
+                    onChange={e => { const g = Number(e.target.value); this.editView?.setGrid(g); this.setState({grid: g}); }}>
+                    {[1, 5, 10, 20].map(g => <option key={g} value={g}>{this.ttext.gridValue.replace('{n}', g)}</option>)}
+                </select>
+            </label>
+        );
+    }
+
+    /** "Open…" and "Save as" the three formats: a File menu on the bar, rows in the More menu. */
+    renderFile (inMenu) {
+        const A = this.ttext.actions;
+        const T = this.text;
+        const busy = this.state.status === 'loading';
+        const model = this.editor ? this.editor.model : this.session?.model;
+        const rows = [
+            {id: 'open', label: A.open, title: T.importHelp, icon: 'open', disabled: busy || !this.lib, run: () => this.file.current.click()},
+            ...SAVE_FORMATS.map(format => ({id: `save-${format}`, label: `${A.save} ${T.saveFormats[format]}`, title: T.saveHelp, icon: 'save',
+                disabled: busy || !model, run: () => this.saveAs(format)}))
+        ];
+        const items = rows.map(item => <ToolButton key={item.id} item={item} T={this.ttext} coarse={this.state.coarse} inMenu />);
+        if (inMenu) return items;
+        const s = toolStyles(this.state.coarse);
+        return (
+            <Popup id="file" open={this.state.menu === 'file'} label={A['file-menu']} width={250} testId="bw-sim-lab-file-list"
+                onToggle={() => this.toggleMenu('file')} onClose={() => this.setState({menu: null})}
+                button={(
+                    <button type="button" data-testid="bw-sim-lab-file-menu" aria-label={A['file-menu']} title={A['file-menu']} style={s.button}>
+                        <Icon name="file-menu" /><Icon name="caret" size={12} />
+                    </button>
+                )}>
+                {items}
+            </Popup>
+        );
+    }
+
+    /** Help: what the Lab is (the sentence that used to sit above everything) and how the view moves. */
+    renderHelp () {
+        const TT = this.ttext;
+        const s = toolStyles(this.state.coarse);
+        const rows = list => (
+            <table style={{borderCollapse: 'collapse', width: '100%', margin: '2px 0 8px'}}>
+                <tbody>
+                    {list.map(([keys, what]) => (
+                        <tr key={keys} style={{borderTop: '1px solid #e2e8f0'}}>
+                            <td style={{padding: '3px 6px 3px 0', width: '45%', verticalAlign: 'top', fontWeight: 600}}>{keys}</td>
+                            <td style={{padding: '3px 0', color: '#334155'}}>{what}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        );
+        return (
+            <Popup id="help" open={this.state.menu === 'help'} label={TT.actions.help} width={360} align="right" closeOnPick
+                onToggle={() => this.toggleMenu('help')} onClose={() => this.setState({menu: null})}
+                button={(
+                    <button type="button" data-testid="bw-sim-lab-help" aria-label={TT.actions.help} title={TT.actions.help} style={s.button}>
+                        <Icon name="help" />
+                    </button>
+                )}>
+                <div data-testid="bw-sim-lab-help-popover" style={{padding: 4, lineHeight: 1.4}}>
+                    <strong style={{fontSize: 13}}>{TT.helpTitle}</strong>
+                    <p style={{margin: '4px 0 8px', color: '#334155'}}>{TT.helpIntro}</p>
+                    <strong>{TT.cameraTitle}</strong>
+                    {rows(TT.camera)}
+                    {this.state.mode === 'build' && <strong>{TT.buildTitle}</strong>}
+                    {this.state.mode === 'build' && rows(TT.build)}
+                    {this.state.mode === 'build' && (
+                        <button type="button" data-testid="bw-sim-lab-help-shortcuts" style={{...s.button, border: '1px solid #94a3b8'}}
+                            onClick={() => this.setState({shortcuts: true})}>{TT.allShortcuts}</button>
+                    )}
+                </div>
+            </Popup>
+        );
+    }
+
+    /** Simulate | Build | Instructions, as one segmented control. */
+    renderModeSwitch () {
+        const A = this.ttext.actions;
+        const busy = this.state.status === 'loading';
+        const words = this.modeWords();
+        const model = this.editor ? this.editor.model : this.session?.model;
+        const s = toolStyles(this.state.coarse);
+        const seg = on => ({...s.button, borderRadius: 6, padding: words ? '0 9px' : '0 6px', fontWeight: on ? 600 : 400,
+            ...(on ? {background: '#fff', borderColor: '#6366f1', color: '#312e81', boxShadow: '0 1px 2px rgba(15, 23, 42, 0.18)'} : {})});
+        const items = [
+            {id: 'mode-simulate', icon: 'simulate', label: A.simulate, on: this.state.mode === 'simulate', disabled: busy || !this.lib,
+                run: () => this.state.mode !== 'simulate' && this.exitBuild()},
+            {id: 'mode-build', icon: 'build', label: A.build, on: this.state.mode === 'build', disabled: busy || !this.lib,
+                run: () => this.state.mode !== 'build' && this.enterBuild()},
+            {id: 'instructions', icon: 'instructions', label: A.instructions, on: Boolean(this.state.instructions), title: this.text.instructionsHelp,
+                disabled: busy || !this.lib || !model?.parts.length, run: () => this.setState({instructions: model})}
+        ];
+        return (
+            <div role="group" aria-label={this.ttext.groups.mode} data-testid="bw-sim-lab-mode-switch"
+                style={{display: 'inline-flex', gap: 2, padding: 2, borderRadius: 8, background: '#e2e8f0', flex: '0 0 auto'}}>
+                {items.map(item => (
+                    <button key={item.id} type="button" data-testid={`bw-sim-lab-${item.id}`} aria-pressed={item.on} disabled={item.disabled}
+                        aria-label={item.label} title={tooltipOf(this.ttext, item.id, item.label, item.title)} onClick={item.run}
+                        style={{...seg(item.on), opacity: item.disabled ? 0.45 : 1}}>
+                        <Icon name={item.icon} />{words ? <span>{item.label}</span> : null}
+                    </button>
+                ))}
+            </div>
+        );
+    }
+
+    /** Whether the mode switch has room for its words. */
+    modeWords () {
+        return !this.state.paneWidth || this.state.paneWidth >= MODE_WORDS_PX;
+    }
+
+    /** The icon toolbar: the mode switch, the groups that fit, Help, and More for the rest. */
+    renderToolbar () {
+        const coarse = this.state.coarse;
+        const s = toolStyles(coarse);
+        const groups = this.toolbarGroups();
+        const wrap = !this.state.paneWidth || this.state.paneWidth >= WRAP_TOOLBAR_PX;
+        const modeWidth = this.modeWords() ? 330 : 3 * (s.size + 2) + 6;
+        // The pane's padding, the mode switch and Help never leave the bar.
+        const {bar, more} = splitToolbar(groups, {width: this.state.paneWidth - 16 - RIGHT_PANE_TOGGLE_PX, coarse, reserved: modeWidth + s.size + 8, wrap});
+        const TT = this.ttext;
+        return (
+            <div role="toolbar" aria-label={TT.toolbar} data-testid="bw-sim-lab-toolbar"
+                style={{display: 'flex', alignItems: 'center', gap: 2, flexWrap: wrap ? 'wrap' : 'nowrap', minWidth: 0, rowGap: 4,
+                    paddingRight: RIGHT_PANE_TOGGLE_PX}}>
+                {this.renderModeSwitch()}
+                {bar.map(g => (
+                    <React.Fragment key={g.id}>
+                        <Separator coarse={coarse} />
+                        <div role="group" aria-label={g.label} data-testid={`bw-sim-lab-group-${g.id}`} style={{display: 'flex', alignItems: 'center', gap: 2}}>
+                            {g.items.map(item => this.renderTool(item, false))}
+                        </div>
+                    </React.Fragment>
+                ))}
+                <span style={{flex: '1 1 0', minWidth: 0}} />
+                {this.renderHelp()}
+                {more.length > 0 && (
+                    <Popup id="more" open={this.state.menu === 'more'} label={TT.actions.more} width={270} align="right"
+                        onToggle={() => this.toggleMenu('more')} onClose={() => this.setState({menu: null})}
+                        button={(
+                            <button type="button" data-testid="bw-sim-lab-more" aria-label={TT.actions.more} title={TT.actions.more} style={s.button}>
+                                <Icon name="more" />
+                            </button>
+                        )}>
+                        {more.map(g => (
+                            <div key={g.id} role="group" aria-label={g.label} style={{display: 'flex', flexDirection: 'column', gap: 1, paddingBottom: 3,
+                                marginBottom: 3, borderBottom: '1px solid #e2e8f0'}}>
+                                {g.items.map(item => this.renderTool(item, true))}
+                            </div>
+                        ))}
+                    </Popup>
+                )}
+            </div>
+        );
+    }
+
+    /** Below the toolbar in Simulate: the model, the mat, the program route, the example, and the status. */
+    renderSimulateRow () {
+        const {status, simMs, modelFile, shipped} = this.state;
         const busy = status === 'loading';
         const compact = this.compact();
-        const narrow = this.narrow();
-        const button = {padding: compact ? '4px 8px' : '4px 10px', marginRight: compact ? 0 : 6, borderRadius: 6, border: '1px solid #94a3b8', background: '#fff', cursor: 'pointer',
-            // Under a finger: at least 40 px each way.
-            ...(this.state.coarse ? {minHeight: 40, minWidth: 40, padding: compact ? '6px 8px' : '6px 12px'} : {})};
-        const icon = {...button, minWidth: this.state.coarse ? 40 : 32, minHeight: this.state.coarse ? 40 : 30, padding: this.state.coarse ? '4px 6px' : '3px 6px'};
         const T = this.text;
-        const simulate = this.state.mode === 'simulate';
         const running = status === 'running';
+        const field = {minWidth: 0, maxWidth: compact ? 'none' : 260, flex: compact ? '1 1 0' : '0 1 auto', ...(this.state.coarse ? {minHeight: 40} : {height: 28})};
         // The firmware route's emulator pace (always shown); the program clock's only when the world holds
         // the program back (sim-clock.js): on a machine that keeps up there is nothing to say.
         const programRtf = this.state.rtf !== null && this.state.rtf !== undefined && this.state.rtf < SHOW_RTF_BELOW ? this.state.rtf : null;
@@ -1622,90 +2473,182 @@ class SimLabPane extends React.Component {
         // Desktop only (the web build has no managed Renode runtime): the program route.
         const firmwareReady = this.lib && this.desktop() &&
             this.lib.firmwareRouteReady(this.renodeCapabilities(), {unsupported: this.state.firmwareUnsupported});
-        const routeSelect = this.lib && this.desktop() && (
-            <label style={{fontSize: 12}}>{T.route}{': '}
-                <select data-testid="bw-sim-lab-route" disabled={busy} value={this.state.route} onChange={e => this.setRoute(e.target.value)}>
-                    <option value="scratch">{T.routeScratch}</option>
-                    <option value="firmware" disabled={!firmwareReady} title={firmwareReady ? undefined : T.routeUnavailable}>{T.routeFirmware}</option>
-                </select>
-            </label>
-        );
+        const icon = name => <span style={{color: '#475569'}}><Icon name={name} size={16} /></span>;
+        const labelled = {display: 'inline-flex', alignItems: 'center', gap: 4, minWidth: 0, flex: compact ? '1 1 0' : '0 1 auto'};
         const runtime = this.props.vm && this.props.vm.runtime;
-        const rcxTargetSelect = this.lib && runtime && this.rcxHub() && (
-            <label style={{fontSize: 12}}>{T.rcxTarget}{': '}
-                <select data-testid="bw-sim-lab-rcx-target" value={this.lib.rcxTargetOf(runtime)} onChange={e => this.setRcxTarget(e.target.value)}>
-                    <option value={this.lib.TOWER_TARGET}>{T.rcxTargetTower}</option>
-                    <option value={this.lib.ROBOT_LAB_RCX_TARGET}>{T.rcxTargetLab}</option>
-                </select>
-            </label>
-        );
-        const modelSelect = (
-            <select data-testid="bw-sim-lab-model" disabled={busy || !this.lib} value={shipped || ''}
-                aria-label={compact ? T.model : undefined} title={compact ? T.model : undefined}
-                style={compact ? {flex: '1 1 0', minWidth: 0, ...(this.state.coarse ? {minHeight: 40} : {})} : undefined}
-                onChange={e => e.target.value && this.openShipped(e.target.value)}>
-                {this.lib && this.lib.MODELS.map(m => <option key={modelKey(m)} value={modelKey(m)}>{m.title[this.locale] || m.title.en}</option>)}
-                {modelFile && !shipped && <option value="">{modelFile}</option>}
-            </select>
-        );
-        const matSelect = (
-            <select data-testid="bw-sim-lab-mat" disabled={busy || !this.session} value={this.state.mat || 'plain'}
-                aria-label={compact ? T.mat : undefined} title={compact ? T.mat : undefined}
-                style={compact ? {flex: '1 1 0', minWidth: 0, ...(this.state.coarse ? {minHeight: 40} : {})} : undefined}
-                onChange={e => this.setMat(e.target.value === 'plain' ? null : e.target.value)}>
-                {this.lib && this.lib.MATS.map(m => <option key={m.id} value={m.id}>{m.title[this.locale] || m.title.en}</option>)}
-            </select>
-        );
-        const importButton = (
-            <button key="import" type="button" style={button} data-testid="bw-sim-lab-open" title={T.importHelp} disabled={busy || !this.lib}
-                onClick={() => this.file.current.click()}>{T.importModel}</button>
-        );
-        const saveAsControl = this.renderSaveAs(button, busy || !this.session);
-        const runButton = running ?
-            <button type="button" style={button} data-testid="bw-sim-lab-pause" onClick={() => this.pause()}>{compact ? face('pause', T.pause) : T.pause}</button> :
-            <button type="button" style={button} data-testid="bw-sim-lab-run" disabled={!this.session || busy || status === 'stopping'} onClick={() => this.run()}>{compact ? face('run', T.run) : T.run}</button>;
-        const resetButton = (
-            <button type="button" style={compact ? icon : button} data-testid="bw-sim-lab-reset" disabled={!this.session || busy}
-                aria-label={compact ? T.reset : undefined} title={compact ? T.reset : undefined} onClick={() => this.reset()}>
-                {compact ? face('reset') : T.reset}
-            </button>
-        );
-        const exampleButton = this.shippedModel()?.example && (
-            <button type="button" style={button} data-testid="bw-sim-lab-example" disabled={busy} onClick={() => this.loadExample()}>{T.example}</button>
-        );
-        const statusLine = (
-            <span role="status" data-testid="bw-sim-lab-status"
-                style={{fontSize: 12, color: '#475569', ...(compact ? {flex: '1 1 0', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'} : {})}}>
-                {statusText}
-            </span>
-        );
-        const large = compact && this.props.onEnterFullScreen && !this.props.isFullScreen;
         return (
-            <div ref={this.root} data-testid="bw-sim-lab" data-status={status} data-layout={compact ? 'compact' : 'wide'}
-                style={{position: 'relative', display: 'flex', flexDirection: 'column', gap: compact ? 6 : 8, padding: compact ? 8 : 10, height: '100%', boxSizing: 'border-box', minWidth: 0}}>
-                {!compact && <div style={{fontSize: 12, color: '#334155'}}>{T.intro}</div>}
-                <div style={{display: 'flex', alignItems: 'center', gap: 4, minWidth: 0}}>
-                    <div role="tablist" style={{display: 'flex', gap: 4}}>
-                        {['simulate', 'build'].map(mode => (
-                            <button key={mode} type="button" role="tab" aria-selected={this.state.mode === mode} disabled={busy || !this.lib}
-                                data-testid={`bw-sim-lab-mode-${mode}`} style={{...button, marginRight: 0, fontWeight: this.state.mode === mode ? 600 : 400,
-                                    ...(this.state.mode === mode ? {background: '#e0e7ff', borderColor: '#4f46e5'} : {})}}
-                                onClick={() => (mode === 'build' ? this.state.mode !== 'build' && this.enterBuild() : this.state.mode !== 'simulate' && this.exitBuild())}>
-                                {T[mode]}
-                            </button>
-                        ))}
-                    </div>
-                    <button type="button" style={button} data-testid="bw-sim-lab-instructions" title={T.instructionsHelp}
-                        disabled={busy || !this.lib || !(this.editor ? this.editor.model : this.session?.model)?.parts.length}
-                        onClick={() => this.setState({instructions: this.editor ? this.editor.model : this.session.model})}>
-                        {T.instructions}
+            <div data-testid="bw-sim-lab-context" style={{display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minWidth: 0, fontSize: 12}}>
+                <label style={labelled} title={T.model}>{icon('build')}
+                    <select data-testid="bw-sim-lab-model" disabled={busy || !this.lib} value={shipped || ''} aria-label={T.model} style={field}
+                        onChange={e => e.target.value && this.openShipped(e.target.value)}>
+                        {this.lib && this.lib.MODELS.map(m => <option key={modelKey(m)} value={modelKey(m)}>{m.title[this.locale] || m.title.en}</option>)}
+                        {modelFile && !shipped && <option value="">{modelFile}</option>}
+                    </select>
+                </label>
+                <label style={labelled} title={T.mat}>{icon('grid')}
+                    <select data-testid="bw-sim-lab-mat" disabled={busy || !this.session} value={this.state.mat || 'plain'} aria-label={T.mat} style={field}
+                        onChange={e => this.setMat(e.target.value === 'plain' ? null : e.target.value)}>
+                        {this.lib && this.lib.MATS.map(m => <option key={m.id} value={m.id}>{m.title[this.locale] || m.title.en}</option>)}
+                    </select>
+                </label>
+                {this.lib && this.desktop() && (
+                    <label style={labelled} title={T.route}>{icon('run')}
+                        <select data-testid="bw-sim-lab-route" disabled={busy} value={this.state.route} aria-label={T.route} style={field}
+                            onChange={e => this.setRoute(e.target.value)}>
+                            <option value="scratch">{T.routeScratch}</option>
+                            <option value="firmware" disabled={!firmwareReady} title={firmwareReady ? undefined : T.routeUnavailable}>{T.routeFirmware}</option>
+                        </select>
+                    </label>
+                )}
+                {/* An RCX scene: where `rcxDownload` (the NQC tab, the RCX blocks) sends — the IR tower or the Lab's RCX. */}
+                {this.lib && runtime && this.rcxHub() && (
+                    <label style={labelled} title={T.rcxTarget}>{icon('save')}
+                        <select data-testid="bw-sim-lab-rcx-target" value={this.lib.rcxTargetOf(runtime)} aria-label={T.rcxTarget} style={field}
+                            onChange={e => this.setRcxTarget(e.target.value)}>
+                            <option value={this.lib.TOWER_TARGET}>{T.rcxTargetTower}</option>
+                            <option value={this.lib.ROBOT_LAB_RCX_TARGET}>{T.rcxTargetLab}</option>
+                        </select>
+                    </label>
+                )}
+                {this.shippedModel()?.example && (
+                    <button type="button" data-testid="bw-sim-lab-example" disabled={busy} onClick={() => this.loadExample()}
+                        style={{...toolStyles(this.state.coarse).button, border: '1px solid #94a3b8', background: '#fff'}}>
+                        <Icon name="example" size={16} /><span>{T.example}</span>
                     </button>
-                    {large && <span style={{flex: '1 1 0'}} />}
-                    {large && (
-                        <button type="button" data-testid="bw-sim-lab-large" aria-label={T.large} title={T.large} onClick={() => this.props.onEnterFullScreen()}
-                            style={{...icon, background: '#4f46e5', borderColor: '#4338ca', color: '#fff'}}>{face('large')}</button>
-                    )}
+                )}
+                <span role="status" data-testid="bw-sim-lab-status"
+                    style={{marginLeft: 'auto', color: '#475569', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
+                    {statusText}
+                </span>
+            </div>
+        );
+    }
+
+    /** Below the toolbar in Build: the selection as a chip, its port, what is hidden, and a one-line hint. */
+    renderBuildRow () {
+        const editor = this.editor;
+        const view = this.editView;
+        const TT = this.ttext;
+        const T = this.text;
+        const E = this.etext;
+        const byId = editor ? this.lib.partsByIdOf(editor.model) : new Map();
+        const selection = this.state.selection.map(id => byId.get(id)).filter(Boolean);
+        const sel = selection.length === 1 ? selection[0] : null;
+        const meta = sel ? this.lib.CATALOG.get(sel.part) : null;
+        const portable = meta && this.lib.isPortPart(meta);
+        const st = this.state.buildStatus || {};
+        const refused = st.kind === 'refused';
+        const blocked = st.kind === 'blocked';
+        const field = this.state.coarse ? {minHeight: 40} : {height: 26};
+        const chip = {display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap', padding: '2px 8px', borderRadius: 999, fontSize: 12};
+        const hint = this.buildStatusText();
+        const selectionText = sel ? TT.selectedOne.replace('{name}', this.partName(sel.part)) : TT.selectedMany.replace('{n}', selection.length);
+        return (
+            <div data-testid="bw-sim-lab-context" style={{display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, minHeight: 26, fontSize: 12}}>
+                {selection.length > 0 && (
+                    <span data-testid="bw-sim-lab-selection" title={sel ? this.t('selectedOne', {name: this.partName(sel.part)}) : this.t('selectedMany', {n: selection.length})}
+                        style={{...chip, background: '#dbeafe', color: '#1e3a8a', fontWeight: 600, maxWidth: '40%', overflow: 'hidden', textOverflow: 'ellipsis'}}>
+                        <Icon name="select-all" size={14} />{selectionText}
+                    </span>
+                )}
+                {portable && (
+                    <label style={{...chip, padding: 0}}>{T.port}{': '}
+                        <select data-testid="bw-sim-lab-port" value={sel.port || ''} style={field}
+                            onChange={e => { editor.apply({type: 'setPort', id: sel.id, port: e.target.value || null}); this.setState(s => ({editorTick: s.editorTick + 1})); }}>
+                            <option value="">{T.none}</option>
+                            {['A', 'B', 'C', 'D', 'E', 'F'].map(p => <option key={p} value={p}>{p}</option>)}
+                        </select>
+                    </label>
+                )}
+                {this.state.hidden.length > 0 && (
+                    <button type="button" data-testid="bw-sim-lab-hidden-count" title={E.showAll} onClick={() => view?.showAll()}
+                        style={{...chip, border: '1px solid #cbd5e1', background: '#f1f5f9', cursor: 'pointer', font: 'inherit', fontSize: 12}}>
+                        <Icon name="hide" size={14} />{E.hiddenCount.replace('{n}', this.state.hidden.length)}
+                    </button>
+                )}
+                {this.state.editGroup && (
+                    <span data-testid="bw-sim-lab-group-edit-chip" style={{...chip, background: '#ede9fe', color: '#5b21b6', fontWeight: 600}}>
+                        {E.groupBanner.replace('{name}', this.state.editGroup.name)}
+                    </span>
+                )}
+                <SimLabInfo testid="bw-sim-lab-help-build" label={T.helpBuild}
+                    text={<React.Fragment>
+                        <span style={{display: 'block', marginBottom: 6}}>{this.state.coarse ? T.idleTouch : T.idle}</span>
+                        <span style={{display: 'block'}}>{this.state.coarse ? this.etext.connect.hintIdleTouch : this.etext.connect.hintIdle}</span>
+                    </React.Fragment>} />
+                <span role="status" data-testid="bw-sim-lab-build-status" data-kind={st.kind || 'idle'} title={hint}
+                    style={{color: refused || blocked ? '#b91c1c' : '#475569', fontWeight: refused ? 600 : 400,
+                        flex: '1 1 0', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
+                    {hint}
+                </span>
+            </div>
+        );
+    }
+
+    /** Build: the parts panel (beside the view, resizable, closable) or, compact, the drawer over the view. */
+    renderPalettePanel () {
+        if (this.state.mode !== 'build') return null;
+        if (this.compact()) {
+            // The palette as a drawer over the view's left edge; it stays mounted (search and open
+            // categories survive), and steps aside while a part is carried out of it.
+            return (
+                <div data-testid="bw-sim-lab-palette-drawer" style={{position: 'absolute', left: 0, top: 0, bottom: 0, zIndex: 6, width: 230,
+                    display: this.state.drawer ? 'flex' : 'none', visibility: this.state.paletteDragging ? 'hidden' : 'visible',
+                    maxWidth: 'calc(100% - 48px)', background: '#fff', padding: '6px 0 6px 6px', borderRadius: '0 8px 8px 0',
+                    boxShadow: '4px 0 14px rgba(15, 23, 42, 0.25)', boxSizing: 'border-box'}}>
+                    {this.renderPalette()}
                 </div>
+            );
+        }
+        if (!this.state.paletteOpen) return null;
+        const share = this.state.paletteShare;
+        return (
+            <React.Fragment>
+                <div data-testid="bw-sim-lab-palette-panel"
+                    style={{display: 'flex', minWidth: 160, minHeight: 0, flex: share ? `0 0 ${(share * 100).toFixed(2)}%` : '0 0 224px'}}>
+                    {this.renderPalette()}
+                </div>
+                <PaneDivider sizedSide="previous" share={share || 'm'} label={this.ttext.resizeParts} title={this.ttext.resizeTip}
+                    testId="bw-sim-lab-palette-divider"
+                    onResize={f => this.setState({paletteShare: Math.min(MAX_PANEL_SHARE, f)})}
+                    onCollapseToggle={() => this.setState({paletteOpen: false})} />
+            </React.Fragment>
+        );
+    }
+
+    /** Build, wide: the properties panel docked beside the view, resizable and closable. */
+    renderDockedProperties (button) {
+        if (this.state.mode !== 'build' || !this.dockProperties() || !this.state.propsDocked) return null;
+        const share = this.state.propsShare;
+        return (
+            <React.Fragment>
+                <PaneDivider share={share || 'm'} label={this.ttext.resizeProperties} title={this.ttext.resizeTip}
+                    testId="bw-sim-lab-properties-divider"
+                    onResize={f => this.setState({propsShare: Math.min(MAX_PANEL_SHARE, f)})}
+                    onCollapseToggle={() => this.setState({propsDocked: false})} />
+                <div data-testid="bw-sim-lab-properties-dock"
+                    style={{display: 'flex', minHeight: 0, minWidth: 180, flex: share ? `0 0 ${(share * 100).toFixed(2)}%` : '0 0 240px'}}>
+                    {this.renderProperties(button, true)}
+                </div>
+            </React.Fragment>
+        );
+    }
+
+    render () {
+        const {status, message, issues} = this.state;
+        const compact = this.compact();
+        const coarse = this.state.coarse;
+        const button = {padding: compact ? '4px 8px' : '4px 10px', marginRight: compact ? 0 : 6, borderRadius: 6, border: '1px solid #94a3b8', background: '#fff', cursor: 'pointer',
+            // Under a finger: at least 40 px each way.
+            ...(coarse ? {minHeight: 40, minWidth: 40, padding: compact ? '6px 8px' : '6px 12px'} : {})};
+        const T = this.text;
+        const simulate = this.state.mode === 'simulate';
+        const build = this.state.mode === 'build';
+        return (
+            <div ref={this.root} data-testid="bw-sim-lab" data-status={status} data-layout={compact ? 'compact' : 'wide'} data-mode={this.state.mode}
+                style={{position: 'relative', display: 'flex', flexDirection: 'column', gap: 6, padding: compact ? 6 : 8, height: '100%', width: '100%',
+                    flex: '1 1 auto', boxSizing: 'border-box', minWidth: 0, minHeight: 0, background: '#f8fafc'}}>
+                {this.renderToolbar()}
                 {this.state.instructions && (
                     <SimLabInstructions lib={this.lib} model={this.state.instructions} locale={this.locale}
                         title={this.editor ? null : this.shippedModel()?.title[this.locale] || this.state.modelFile}
@@ -1713,83 +2656,46 @@ class SimLabPane extends React.Component {
                 )}
                 <input ref={this.file} type="file" accept={OPEN_ACCEPT} style={{display: 'none'}} data-testid="bw-sim-lab-file"
                     onChange={e => this.openImported(e)} />
-                {simulate && !compact && <div style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6}}>
-                    <label style={{fontSize: 12}}>{T.model}{': '}{modelSelect}</label>
-                    {importButton}
-                    {saveAsControl}
-                    <label style={{fontSize: 12}}>{T.mat}{': '}{matSelect}</label>
-                    {routeSelect}
-                    {rcxTargetSelect}
-                    {runButton}
-                    {resetButton}
-                    {exampleButton}
-                    {statusLine}
-                </div>}
-                {simulate && compact && (
-                    <React.Fragment>
-                        <div style={{display: 'flex', alignItems: 'center', gap: 4, minWidth: 0}}>
-                            {runButton}
-                            {resetButton}
-                            {statusLine}
-                            {this.renderMore(button, [
-                                <div key="intro" style={{fontSize: 12, color: '#334155', flex: '1 1 100%'}}>{T.intro}</div>,
-                                importButton,
-                                saveAsControl,
-                                this.lib ? <div key="insight" style={{flex: '1 1 100%'}}>{this.renderInsightBar()}</div> : null
-                            ])}
-                        </div>
-                        <div style={{display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, flexWrap: narrow && exampleButton ? 'wrap' : 'nowrap'}}>
-                            {modelSelect}
-                            {matSelect}
-                            {routeSelect}
-                            {rcxTargetSelect}
-                            {exampleButton}
-                        </div>
-                    </React.Fragment>
-                )}
+                {simulate && this.renderSimulateRow()}
+                {build && this.editor && this.renderBuildRow()}
                 {message && <div role="alert" data-testid="bw-sim-lab-message" style={{fontSize: 12, color: '#b91c1c'}}>{message}</div>}
                 {this.renderInfo()}
-                {simulate && this.session && this.session.bridge && !this.session.lockstep && this.renderDrive(button)}
-                {this.state.mode === 'build' && this.renderBuildBar(button)}
-                {this.lib && !compact && this.renderInsightBar()}
                 {this.renderBlockers()}
-                <div style={{display: 'flex', flex: '1 1 auto', minHeight: compact ? 220 : 240, gap: 8, position: 'relative'}}>
-                    {this.state.mode === 'build' && (compact ? (
-                        // The palette as a drawer over the view's left edge; it stays mounted (search and open
-                        // categories survive), and steps aside while a part is carried out of it.
-                        <div data-testid="bw-sim-lab-palette-drawer" style={{position: 'absolute', left: 0, top: 0, bottom: 0, zIndex: 6,
-                            display: this.state.drawer ? 'flex' : 'none', visibility: this.state.paletteDragging ? 'hidden' : 'visible',
-                            maxWidth: 'calc(100% - 48px)', background: '#fff', padding: '6px 0 6px 6px', borderRadius: '0 8px 8px 0',
-                            boxShadow: '4px 0 14px rgba(15, 23, 42, 0.25)', boxSizing: 'border-box'}}>
-                            {this.renderPalette()}
-                        </div>
-                    ) : this.renderPalette())}
-                    <div ref={this.viewWrap} style={{flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative', display: 'flex'}}>
+                <div data-testid="bw-sim-lab-main" style={{display: 'flex', flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative'}}>
+                    {this.renderPalettePanel()}
+                    <div ref={this.viewWrap} style={{flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative', display: 'flex',
+                        background: '#fff', borderRadius: 6}}>
                         <div ref={this.box} data-testid="bw-sim-lab-view" style={{flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative'}} />
+                        {build && this.editView && this.renderHoldOverlays()}
+                        {simulate && this.state.readings && (
+                            <SimLabReadings text={{...this.text, close: this.text.readingsClose}} {...this.readingsRows()}
+                                onClose={() => this.setState({readings: false})} />
+                        )}
+                        {simulate && this.state.challengesOpen && this.lib && this.renderChallenges()}
+                        {simulate && this.renderReplay()}
                         {this.renderPortPicker(button)}
-                        {this.state.mode === 'build' && !this.dockProperties() && this.state.propsOpen && (
+                        {build && !this.dockProperties() && this.state.propsOpen && (
                             <div data-testid="bw-sim-lab-properties-drawer" style={{position: 'absolute', right: 0, top: 0, bottom: 0, zIndex: 6, maxWidth: 'calc(100% - 48px)',
                                 display: 'flex', boxShadow: '-4px 0 14px rgba(15, 23, 42, 0.25)', borderRadius: '8px 0 0 8px'}}>
                                 {this.renderProperties(button, false)}
                             </div>
                         )}
                     </div>
-                    {this.state.mode === 'build' && this.dockProperties() && (
-                        <div style={{flex: '0 0 auto', display: 'flex', minHeight: 0}}>{this.renderProperties(button, true)}</div>
-                    )}
+                    {this.renderDockedProperties(button)}
                 </div>
-                {this.state.mode === 'build' && this.state.shortcuts && (
-                    <SimLabShortcuts T={this.etext} onClose={() => {
+                {simulate && this.session && this.session.bridge && !this.session.lockstep && this.spikeScene() && this.renderDrive(button)}
+                {build && this.state.shortcuts && (
+                    <SimLabShortcuts T={this.etext} wheelMode={this.state.wheelMode} onWheelMode={mode => this.setWheelMode(mode)} onClose={() => {
                         this.setState({shortcuts: false});
                         this.editView?.canvas.focus();
                     }} />
                 )}
                 {issues.length > 0 && (
                     <details data-testid="bw-sim-lab-issues" style={{fontSize: 12}} open={!compact}>
-                        <summary style={compact ? {whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer'} : undefined}>
+                        <summary style={compact ? {whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer'} : {cursor: 'pointer'}}>
                             {T.issues} ({issues.length})
                         </summary>
-                        <ul style={{margin: '4px 0', paddingLeft: 18}}>{issues.map((i, n) => this.renderIssue(i, n))}</ul>
+                        <ul style={{margin: '4px 0', paddingLeft: 18, maxHeight: 120, overflowY: 'auto'}}>{issues.map((i, n) => this.renderIssue(i, n))}</ul>
                     </details>
                 )}
             </div>

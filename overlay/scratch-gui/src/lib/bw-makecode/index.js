@@ -34,6 +34,7 @@ import {arcadeToPseudocode} from './arcade-translate.js';
 import {ev3ToPseudocode} from './ev3-translate.js';
 import {adafruitToPseudocode} from './adafruit-translate.js';
 import {fetchSharedProject} from './share.js';
+import {importDependencyProjectFiles} from './dependency-import.js';
 
 export {sniffFormat, unpackMakeCodeSource, describeProject} from './embedded-source.js';
 export {decodePng} from './png.js';
@@ -191,6 +192,13 @@ export function importProjectFiles (files = {}, opts = {}) {
     };
 }
 
+/** Resolve the CURRENT Arcade dependency graph before translating. The sync
+ * reader remains the offline API; this async entrypoint explicitly prepares.
+ */
+export function importProjectFilesWithDependencies(files = {}, opts = {}) {
+    return importDependencyProjectFiles(files,{...opts,target:opts.target || inferTarget(files)},importProjectFiles);
+}
+
 /**
  * Import from a MakeCode share link. Needs the network; the file
  * importer is what works offline and in the packaged app.
@@ -201,7 +209,8 @@ export function importProjectFiles (files = {}, opts = {}) {
  */
 export async function importShareLink (input, opts = {}) {
     const shared = await fetchSharedProject(input, opts);
-    const result = importProjectFiles(shared.files, {
+    const result = await (opts.prepareDependencies === true ? importProjectFilesWithDependencies : importProjectFiles)(shared.files, {
+        ...opts,
         animationResources: opts.animationResources,
         target: inferTarget(shared.files, String(input)),
         name: shared.meta.name || shared.id
@@ -286,7 +295,8 @@ export async function importArtefact (bytes, opts = {}) {
     }
     const project = describeProject(res.meta);
     const files = res.files || {};
-    const shaped = importProjectFiles(files, {
+    const shaped = await (opts.prepareDependencies === true ? importProjectFilesWithDependencies : importProjectFiles)(files, {
+        ...opts,
         animationResources: opts.animationResources,
         target: project.target === 'unknown' ? inferTarget(files) : project.target,
         name: project.name || name,

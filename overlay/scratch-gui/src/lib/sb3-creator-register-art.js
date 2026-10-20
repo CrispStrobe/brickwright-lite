@@ -26,6 +26,7 @@ import SB3Creator from './sb3-creator.js';
 import art from './sb3-creator-vector-art.js';
 import spikeRuntimeOps from './spike-runtime-ops.js';
 import {LEGACY_IDS as SPIKE_LEGACY_IDS} from './spike-legacy-migration.js';
+import {withRobotLab, ROBOTLAB_RUNTIME} from './robot-lab-pseudocode.js';
 
 // Returns the entry count; ignored here, asserted by the tests (246 as of 2026-08-30).
 SB3Creator.registerVectorArt(art);
@@ -51,12 +52,20 @@ for (const legacyId of SPIKE_LEGACY_IDS) {
     delete SB3Creator.RUNTIME_EXTENSIONS[legacyId];
 }
 
+// THE ROBOT LAB (docs/SIM-LAB.md "Steering the Lab"): its `lab` words, the robotlab
+// runtime ops for Python/JS (`_robotlab.<method>`) and their 'simulator' driver are lite's,
+// because the robotlab blocks and the Robot Lab API they name are. Layered here, at the one
+// door, on the byte-identical vendored compiler (lib/robot-lab-pseudocode.js); the word
+// table is lib/robotLabDialect.js. test/robot-lab-dialect.test.mjs holds the round trips.
+SB3Creator.RUNTIME_EXTENSIONS.robotlab = ROBOTLAB_RUNTIME;
+const WithRobotLab = withRobotLab(SB3Creator);
+
 // Peer sessions (task E11): the peer dialect words are Lite-only and exist only in a build
 // made with BW_ENABLE_PEERS=1 (a DefinePlugin literal; in node, process.env holds strings, so
 // `=== true` keeps this off). They are not upstreamed to sb3-creator because no build that
 // lacks the gate may parse them. test/peers-gate.test.mjs holds the gate.
 const Creator = process.env.BW_ENABLE_PEERS === true ?
-    require('./peer-pseudocode.js').default(SB3Creator) : // eslint-disable-line global-require
-    SB3Creator;
+    require('./peer-pseudocode.js').default(WithRobotLab) : // eslint-disable-line global-require
+    WithRobotLab;
 
 export default Creator;

@@ -11,6 +11,7 @@ let raster=""
 let digits="0123456789abcdef"
 for(let y=0;y<120;y++)for(let x=0;x<160;x++)raster+=digits.charAt(screen.getPixel(x,y))
 let negativeKindCount=sprites.allOfKind(-1).length
+let bubbleKind=bubble.kind()
 let bx=bubble.x
 let by=bubble.y
 let bz=bubble.z
@@ -56,7 +57,7 @@ for(const c of cases)test('legacy bridge matches complete original PXT bubble fr
  assert.ok(ext._state().sceneFrame.remaining.includes('legacySpeech'));
  assert.equal(Object.values(ext._state().sprites).length,2);
  const native=ext._state().sprites[entry.nativeBubbleId];
- assert.equal(native.kind,'-1');assert.equal(native.pxtId,1);
+ assert.equal(native.kind,original.bubbleKind);assert.equal(native.pxtId,1);
 });
 test('legacy camera speech remains editable and executes after Code/Blocks/MakeCode roundtrip',async()=>{
  const imported=arcadeToPseudocode(sourceFor(cases[0]));assert.deepEqual(imported.unsupported,[]);

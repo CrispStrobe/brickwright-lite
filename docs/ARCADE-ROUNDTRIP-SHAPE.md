@@ -141,3 +141,100 @@ Those mechanisms can still grow source after A and B pass. They require their
 own reviewed ownership and qualification before product changes. Runtime
 prototype-sensitive dictionaries, graphics/editor authoring, missing assets and
 all unrelated compatibility gaps remain separately tracked.
+
+## A implementation coordination
+
+The matching resolved-call scope includes the existing class field-initializer
+ordinary-call lookup in
+`overlay/scratch-gui/src/lib/bw-makecode/object-class-export.js`. Its narrow
+lookup adapter is coordinated with the ordinary symbol owner. It does not
+change class bodies, defaults, field types or class admission. Wider class
+changes require separate coordination.
+
+The A candidate reserves the closed current runtime/helper/resource/generated
+identifier families and all actual current lexical binders for name hygiene.
+Those reservations never establish an owner or runtime value. Ordinary names
+come from unique actual target/definition/prototype and ordered formal records;
+validated signature placeholders are removed once before sanitization. Actual
+current project semantics and object identity are rechecked after rendering,
+including artwork callbacks. Unresolved foreign calls remain diagnostics.
+Prototype-sensitive native procedure dictionaries remain an unresolved runtime
+name-support gap; a conservative owner refusal does not implement that support.
+Source and authored controls alone do not qualify the candidate.
+
+Owner schema checks include actual definition/prototype/formal socket tags,
+arity, parent/role/shadow identity and stock-call input shapes. Plain-project
+snapshots reject hidden or symbol properties and accessors without invoking
+getters; ordinary Array length is the schema exception. Generated legacy
+callback `sprite`/`otherSprite` formals and restart-script `_g` declarations
+also reserve lexical hygiene. Authored source controls cover these actual
+callback/restart bodies as well as malformed and post-plan hidden edits.
+
+## B source implementation boundary
+
+The first source candidate keeps a literal empty Array directly only in an
+actual single `let`/`const` initializer or a complete plain Identifier assignment
+statement to a unique existing `let`/parameter binding. Lexical binding identity
+is read from the current pure source graph; no result type is inferred from it.
+Only current unique syntax nodes with the ordinary empty-Array shape qualify.
+
+Programs containing `var`, unsupported scope syntax, unknown nodes or exceptional
+lowering retain existing staging. Multiple declarators, for-init positions,
+class/resource metadata, shared syntax and every consumed/member/index/nonempty
+expression also retain existing staging. These conservative limits preserve the
+previous behavior; they are not newly supported source features. The source
+candidate has no runtime, supplier, GUI or primitive-domain changes. Focused
+controls and actual affected current-program qualification remain required.
+
+The existing root procedure-constraint prefix envelope is not executable syntax.
+Its actual frozen or current lowering-clone container and prefix function identity remain bound separately;
+this shortcut neither calls that function nor obtains a lexical/value fact from
+it. Unknown metadata and changed current syntax keep their previous lowering.
+Existing value-lowering hooks and resource protocols still run before deciding
+whether only the empty allocation transport can be omitted.
+
+Actual parser parameter arrays carry three nonenumerable data channels. Only
+those exact parser descriptor roles, with their current function optional-name
+identity and empty default/property protocols, participate in the lexical census.
+Unrecognized hidden fields, substituted metadata and unproved default protocols
+keep previous staging. JSON snapshots do not preserve these descriptors; source
+controls must inspect the actual parser objects.
+
+
+The existing namespace lowering can prepend real `SpriteKindReset` statements.
+The empty-Array census admits only their exact data-only root leaves, in the
+producer's order and linked one-to-one to unique current flattened kind
+Declarations. These remain actual Undefined writes in place; the shortcut does
+not remove them, treat them as Array/value producers or admit arbitrary unknown
+syntax. Malformed, foreign, nested, shared or mutated reset/declaration contexts
+keep existing staging. Focused source and public Code/graph controls qualify
+this bounded syntax model; affected complete-project and native evidence remain
+separate requirements.
+
+
+## Observed authoring and conversion capabilities
+
+These observations describe the reviewed source composition; they do not mean
+that the full composition is already adopted on public main.
+
+| Capability | Observed boundary | Still required |
+| --- | --- | --- |
+| Ordinary function names | Current owner-based allocation preserves legal names, resolves collisions and keeps declaration/call bindings through authored conversion cycles, including parameterized functions. | Full-project roundtrip stability and affected native/editor qualification. |
+| Direct empty Arrays | Eligible declarations and complete assignments retain their actual allocation sites. Code conversion controls preserve aliases, repeated allocation positions and a current edit from `[]` to `[5]` in blocks and export. | Native behavior of affected complete projects and visible editor journeys. |
+| Namespace kinds beside Arrays | Actual root kind-reset statements and their order survive alongside eligible direct Arrays; unknown or changed syntax keeps prior staging. | Broader syntax and project coverage. |
+| Complete project conversion | Import, both Creator passes and export reported no diagnostics for one affected project; its actual asset-bearing SB3 was retained and audited. | Fresh preparation/compile/reimport of that new export, and native execution of its new saved graph. |
+
+The retained saved outputs were audited for the bounded Array transport changes,
+owner-scoped internal local names, unused automatic capture entries and derived
+script layout. All remaining graph metadata, variable monitors and ordered
+costume/sound bytes were preserved. An initial comparison failure remains
+retained; the later audit is a saved-graph comparison, not emitted-source AST
+equality, native or export equivalence, visible GUI qualification or a
+compatibility-corpus promotion.
+
+A separate [ordinary local initializer transport contract](https://github.com/CrispStrobe/brickwright-lite/blob/main/docs/ARCADE-LOCAL-INITIALIZER-TRANSPORT.md)
+now defines **C1**: represent a proved first literal write at the same position
+without adding a duplicate declaration initializer. Its reviewed foundation must
+qualify before implementation. A no-value declaration protocol (**C2**), startup
+wrappers (**D**) and callback formal/alias allocation (**E**) remain separate work;
+A/B observations do not close those gaps.

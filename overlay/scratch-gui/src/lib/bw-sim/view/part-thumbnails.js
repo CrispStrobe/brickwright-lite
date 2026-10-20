@@ -71,6 +71,9 @@ export const createPartThumbnails = ({read, colors, color, size = THUMBNAIL_PX})
             faces[0].color.set(info ? info.value : '#cccccc');
             const lines = linesFor(code);
             const geometry = partGeometry(part, read, colors);
+            // No faces yet (a part from the LDraw catalogue whose files are still coming): no
+            // picture, and nothing remembered, so it is drawn when asked again.
+            if (!geometry.attributes.position) return null;
             if (!geometry.boundingBox) geometry.computeBoundingBox();
             const box = geometry.boundingBox;
             const mesh = new Mesh(geometry, faces);

@@ -34,7 +34,7 @@ import {mechanismIssues} from './mech/insight.js';
 import {loadJolt, createPhysicsCore} from './physics/jolt-core.js';
 import {SimHubBridge, HubReplay, STEP_MS} from './hub-bridge.js';
 import {MirrorCore} from './sim-worker-protocol.js';
-import {hubRegistry} from './hubs/index.js';
+import {hubRegistry, LAB_DIRECT_ID} from './hubs/index.js';
 import {upgradePartMeta, partHubProfile} from './contracts.js';
 import {createMat} from './world/mats.js';
 import {placeOnStart, driveAnchor} from './world/place.js';
@@ -52,7 +52,7 @@ export const catalogFrom = partsJson => new Map(partsJson.parts.map(p => [p.part
 /**
  * Reference models shipped in static/sim-lab/models/ (file name → titles). A model
  * may name an example program in static/sim-lab/programs/ (DEVICE SPIKE text; for the
- * RCX, NQC source `.nqc`) and
+ * RCX, NQC source `.nqc`; DEVICE EV3 text; legonxt blocks `.blocks.json`) and
  * the mat it is meant for: the pane offers to load it into the Code tab.
  */
 export const MODELS = Object.freeze([
@@ -82,7 +82,28 @@ export const MODELS = Object.freeze([
     {file: 'rcx-bumper-car.ldr', title: {en: 'RCX bumper car', de: 'RCX-Rempelauto'},
         example: 'rcx-bumper-car.nqc', mat: 'wall'},
     {id: 'rcx-line-follower', file: 'rcx-bumper-car.ldr', title: {en: 'RCX line follower', de: 'RCX-Linienfolger'},
-        example: 'rcx-line-follower.nqc', mat: 'line-oval'}
+        example: 'rcx-line-follower.nqc', mat: 'line-oval'},
+    // MINDSTORMS EV3 and NXT (hubs/ev3/, hubs/nxt/, docs/ROBOT-LAB-EV3-NXT.md): their blocks reach the
+    // Lab's brick as direct commands over the Scratch Link BT-classic registry. The EV3's example is
+    // DEVICE EV3 text (the ev3comprehensive blocks); the NXT's, legonxt blocks (`.blocks.json`: a
+    // sprite's script, added to the editing sprite) — the NXT has no DEVICE words yet.
+    {file: 'ev3-wall-stopper.ldr', title: {en: 'EV3 wall stopper', de: 'EV3-Wandstopper'},
+        example: 'ev3-wall-stopper.bw', mat: 'wall'},
+    {file: 'nxt-bumper-bot.ldr', title: {en: 'NXT bumper bot', de: 'NXT-Rempelroboter'},
+        example: 'nxt-bumper-bot.blocks.json', mat: 'wall'},
+    // No hub at all: the Robot Lab's own lab-direct hub owns the motor, and its example steers it
+    // with `lab` words (docs/SIM-LAB.md "Steering the Lab").
+    {file: 'motor-bench.ldr', title: {en: 'Motor bench (no hub)', de: 'Motorprüfstand (ohne Hub)'},
+        example: 'motor-bench.bw'},
+    // LEGO radio hubs (hubs/lwp3, hubs/wedo2; docs/LWP3-VIRTUAL-HUB-NOTES.md): their examples are written in the
+    // pup / boost / wedo words (lib/legoHubsDialect.js), which ⇦ To blocks turns into the real LEGO extensions'
+    // blocks; Run connects those blocks to the scene's hub over Web Bluetooth or Scratch Link.
+    {file: 'technic-hub-bench.ldr', title: {en: 'Technic Hub motor bench (Powered Up)', de: 'Technic-Hub-Motorprüfstand (Powered Up)'},
+        example: 'technic-hub-bench.bw'},
+    {file: 'boost-rover.ldr', title: {en: 'BOOST rover (Move Hub)', de: 'BOOST-Rover (Move Hub)'},
+        example: 'boost-rover.bw', mat: 'plain'},
+    {file: 'wedo-milo.ldr', title: {en: 'WeDo 2.0 rover with motion sensor', de: 'WeDo-2.0-Rover mit Bewegungssensor'},
+        example: 'wedo-milo.bw', mat: 'wall'}
 ]);
 export const MODELS_BASE = 'static/sim-lab/models/';
 export const PROGRAMS_BASE = 'static/sim-lab/programs/';
@@ -133,11 +154,32 @@ export const hubsOf = (model, mechanism, catalog, {all = false} = {}) => {
     if (all && Array.isArray(mechanism.hubs) && mechanism.hubs.length) {
         return mechanism.hubs.map(h => ({id: h.id, profile: h.profile, body: h.body}));
     }
+    // The first hub of CompiledMechanism v2 (the body that carries its housing: a hub with built-in
+    // motors, the BOOST Move Hub, is a part of its output bodies too).
+    if (Array.isArray(mechanism.hubs) && mechanism.hubs.length) {
+        const h = mechanism.hubs[0];
+        return [{id: h.id, profile: h.profile, body: h.body}];
+    }
     const hubParts = new Map(model.parts.filter(p => partHubProfile(catalog.get(p.part))).map(p => [p.id, partHubProfile(catalog.get(p.part))]));
     const body = mechanism.bodies.find(b => b.parts.some(id => hubParts.has(id)));
     if (!body) return [];
     const id = body.parts.find(partId => hubParts.has(partId));
     return [{id, profile: hubParts.get(id), body: body.id}];
+};
+
+/**
+ * The hubs a scene runs: the model's (hubsOf), or — for a model with motors or sensors and
+ * no hub part — the Robot Lab's own `lab-direct` hub (hubs/lab-direct), which owns them all so
+ * blocks, `lab` words and Python/JS can turn them directly through the same port boundary.
+ * Its pose is not an IMU (nothing reads it): it rides on the first moving body.
+ */
+export const sceneHubDefs = (model, mechanism, catalog, {all = false, registry = hubRegistry} = {}) => {
+    const defs = hubsOf(model, mechanism, catalog, {all});
+    if (defs.length || !registry.has('lab-direct')) return defs;
+    const wired = mechanism.joints.some(j => j.motor) || (mechanism.sensors || []).length > 0;
+    if (!wired) return [];
+    const body = (mechanism.bodies.find(b => b.motion === 'dynamic') || mechanism.bodies[0]).id;
+    return [{id: LAB_DIRECT_ID, profile: 'lab-direct', body}];
 };
 
 /** The body that carries the (first) hub, or null. */
@@ -151,6 +193,8 @@ export const hubBodyOf = (model, mechanism, catalog) => hubsOf(model, mechanism,
 const makeHubs = ({defs, registry, hubState, createHub}) => {
     let shared = false;
     return defs.map((h, index) => {
+        // The Robot Lab's own hub wraps no hub state and is no firmware's to emulate.
+        if (h.profile === 'lab-direct') return {...h, hub: registry.create(h.profile, {id: h.id})};
         const made = createHub ? createHub({...h, index}) : null;
         if (made) return {...h, hub: made};
         if (shared) throw new Error(`hub '${h.id}': two hubs of a scene cannot share one hub state`);
@@ -190,9 +234,11 @@ export class SimSession {
         this.runModel = runModel;
         this.mat = mat;
         this.mechanism = mechanism;
+        /** The part catalogue the model was compiled with (the Robot Lab API reads part kinds from it). */
+        this.catalog = catalog;
         this.hubState = hubState;
         /** [{id, profile, body, hub}]: the model's hubs, each a VirtualHub (hubs/hub-profile.js). */
-        this.hubs = made || makeHubs({defs: hubsOf(model, mechanism, catalog, {all: Boolean(createHub)}), registry, hubState, createHub});
+        this.hubs = made || makeHubs({defs: sceneHubDefs(model, mechanism, catalog, {all: Boolean(createHub), registry}), registry, hubState, createHub});
         /** A hub of the scene cannot be rewound: in-thread, one step per lockstep exchange. */
         this.lockstep = this.hubs.some(({hub}) => isNonRewindable(hub));
         if (worker && this.lockstep) {
@@ -241,7 +287,7 @@ export class SimSession {
         const {model, runModel, mechanism, issues} = prepareModel(text, catalog, {mat});
         if (!mechanism) return {session: null, issues, model, runModel};
         let workerError = null;
-        const defs = hubsOf(model, mechanism, catalog, {all: Boolean(createHub)});
+        const defs = sceneHubDefs(model, mechanism, catalog, {all: Boolean(createHub), registry});
         const hubs = makeHubs({defs, registry, hubState, createHub});
         if (worker && hubs.some(({hub}) => isNonRewindable(hub))) {
             // Refused, not failed: the worker stays usable for the next scene.

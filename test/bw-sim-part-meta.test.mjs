@@ -313,7 +313,8 @@ test('a motor\'s output connectors belong to its drive hub, its housing connecto
 });
 
 test('gear tip radius is pitch radius plus one module, centred on the axle hole', () => {
-    for (const p of META.parts.filter(q => q.gear)) {
+    // A tread's sprocket is not module 1: its own test below.
+    for (const p of META.parts.filter(q => q.gear && q.gear.type !== 'sprocket')) {
         const {teeth, axis, center} = p.gear;
         let tip = 0;
         for (const poly of flat.get(p.part).polys) {
@@ -372,6 +373,37 @@ test('gear tip radius is pitch radius plus one module, centred on the axle hole'
 
 /** Component of v perpendicular to unit a. */
 const perpOf = (v, a) => v.map((x, i) => x - dot(v, a) * a[i]);
+
+test('a tread sprocket: its teeth are the mesh\'s, and its pivot circle takes one tread link per tooth', () => {
+    const treadPitch = new Map(META.parts.flatMap(p => p.connectors.filter(c => c.type === 'chain-link' && c.data.outerLdu).map(c => [p.part, c.data.pitchLdu])));
+    const sprockets = META.parts.filter(q => q.gear && q.gear.type === 'sprocket');
+    assert.ok(sprockets.length > 0 && treadPitch.size > 0);
+    for (const p of sprockets) {
+        const {teeth, axis, center, pitchRadiusLdu: R} = p.gear;
+        const perp = v => { const d = sub(v, center); return d.map((x, i) => x - dot(d, axis) * axis[i]); };
+        const verts = flat.get(p.part).polys.flat();
+        const tip = Math.max(...verts.map(v => len(perp(v))));
+        // Tooth crests: vertices within 1 LDU of the tip, by angle (whole degrees); a tooth is a run of them,
+        // and the runs repeat every 360°/teeth.
+        const e1 = Math.abs(axis[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
+        const u = perp(e1.map((x, i) => x + center[i])); // e1 across the axis
+        const un = u.map(x => x / len(u));
+        const w = [axis[1] * un[2] - axis[2] * un[1], axis[2] * un[0] - axis[0] * un[2], axis[0] * un[1] - axis[1] * un[0]];
+        const bins = new Array(360).fill(false);
+        for (const v of verts) {
+            const d = perp(v);
+            if (len(d) > tip - 1) bins[(Math.round(Math.atan2(dot(d, w), dot(d, un)) * 180 / Math.PI) + 360) % 360] = true;
+        }
+        const period = 360 / teeth;
+        let mismatches = 0;
+        for (let a = 0; a < 360; a++) if (bins[a] !== bins[Math.round(a + period) % 360]) mismatches++;
+        assert.ok(mismatches <= 2 * teeth, `${p.part}: the crests repeat every ${period}° (${mismatches} degrees differ)`);
+        // One tread link per tooth: neighbouring pivots on the circle are one tread pitch apart.
+        const chord = 2 * R * Math.sin(Math.PI / teeth);
+        assert.ok([...treadPitch.values()].some(pitch => Math.abs(chord - pitch) < 0.01), `${p.part}: pivot chord ${chord.toFixed(3)} is a tread's pitch`);
+        assert.ok(tip > R && tip < R + 5, `${p.part}: the teeth (tip ${tip.toFixed(1)}) reach just past the pivots (${R})`);
+    }
+});
 
 test('a worm\'s thread: tip radius, threaded length and hand are the mesh\'s', () => {
     const worms = META.parts.flatMap(p => p.connectors.filter(c => c.type === 'worm').map(c => [p, c]));

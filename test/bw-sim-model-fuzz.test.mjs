@@ -31,8 +31,13 @@ const dec = b => new TextDecoder().decode(b);
 
 /** Whole-file refusal codes the pane has a sentence for. */
 const FILE_CODES = new Set([...PANE.matchAll(/^\s*'([a-z0-9-]+)': '/gm)].map(m => m[1]));
-/** Slowest a case may take, in ms (a hang would be seconds or forever). */
-const CASE_BUDGET_MS = 3000;
+/**
+ * Slowest a case may take, in ms. This catches a hang or an exponential blow-up (a sub-model
+ * doubling at every level without the depth/part caps runs for minutes or forever), not slowness:
+ * a loaded CI runner took over 3 s for an ordinary case, so the bound sits far above any honest
+ * run and far below a blow-up.
+ */
+const CASE_BUDGET_MS = 20000;
 
 /**
  * Open `bytes` as the pane does. Returns a sentence when the outcome breaks the contract,

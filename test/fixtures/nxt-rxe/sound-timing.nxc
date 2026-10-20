@@ -1,0 +1,14 @@
+// Tones, waits and the tick counter (Brickwright NXT .rxe VM fixture).
+task main()
+{
+    long t0 = CurrentTick();
+    PlayTone(440, 200);
+    Wait(250);
+    PlayToneEx(880, 100, 2, false);
+    Wait(150);
+    long dt = CurrentTick() - t0;
+    NumOut(0, LCD_LINE1, dt);
+    NumOut(0, LCD_LINE2, FirstTick() <= t0);
+    int r = Random(10);
+    NumOut(0, LCD_LINE3, r >= 0 && r < 10);
+}

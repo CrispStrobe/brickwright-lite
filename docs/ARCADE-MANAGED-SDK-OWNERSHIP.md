@@ -156,3 +156,30 @@ The runtime entry contract alone does not admit class/update Throw source. The
 [bounded source amendment](ARCADE-EXTENDABLE-THROW-SOURCE-ADMISSION.md) coordinates
 actual structural method ownership, earliest entry initialization and fresh
 normalization proof before the existing runtime entry can execute that source.
+
+## Physical-frame exceptional iterator completion
+
+The physical frame's internal terrain generator must receive a rejected yielded
+operation through that same iterator's `throw`, preserving the original rejection
+and delegated `finally` blocks. An abandoned iterator cannot retain a current
+Sprite-update entry. Preserve the existing successful `next()` contract, including
+its absence of a forwarded fulfillment value. Do not bypass scene reentry checks,
+retire unrelated input fibers or suppress updates during partial construction.
+
+Cancellation closes the existing internal iterator with return completion;
+yielded cleanup continues only within that completion, without resuming its
+ordinary body. The current physical Sprite cleanup performs registry deletion
+without yielding. The defensive limit of 64 cleanup steps applies only to these
+framework iterators; exhaustion rejects explicitly and cannot qualify successful
+cleanup or authorize a new ordinary continuation. This is not a public guest
+iterator API, a new timing policy or a guarantee that an arbitrary external
+Promise completes. Real bounded controls must retain cleanup failures and limits.
+
+A duplicate frame diagnostic may be suppressed only by the same runtime's
+private issued signal and a successful original diagnostic publication. A copied
+message, foreign runtime or unpublished signal is insufficient. Stale frame
+feedback must not enter a new epoch; current unrelated errors keep their normal
+diagnostic path. The private publication query grants no activation or parent
+lease. Qualification still requires the unchanged complete image-pause and
+throwing-update guests on a fresh normal production installation, with earlier
+effects, independent input progress, future updates and Stop preserved.

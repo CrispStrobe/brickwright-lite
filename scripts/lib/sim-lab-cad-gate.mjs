@@ -8,6 +8,7 @@
 
 import assert from 'node:assert/strict';
 import {resolve} from 'node:path';
+import {tool} from './sim-lab-toolbar-gate.mjs';
 
 /** A part's pose and the editor's selection (reading results only). */
 const pose = (page, id) => page.evaluate(i => {
@@ -37,41 +38,71 @@ const exactRotation = r => r.every(v => v === 0 || v === 1 || v === -1) &&
     Math.abs(r[0] * (r[4] * r[8] - r[5] * r[7]) - r[1] * (r[3] * r[8] - r[5] * r[6]) + r[2] * (r[3] * r[7] - r[4] * r[6]) - 1) < 1e-12;
 
 /**
+ * Point the mouse at `project()` and report the spot only once the page has drawn what that
+ * hover did. Hover text can wrap differently, resizing the canvas and its camera: observe the
+ * rendered hover/layout before accepting the old projection, and re-aim (without clicking) if
+ * the part moved under the stationary pointer. A spot covered by another element, or a status
+ * line still naming the part from before, is not a spot on the part.
+ */
+const aimAt = async (page, name, project) => {
+    for (let aim = 0; aim < 3; aim++) {
+        const at = await project();
+        await page.mouse.move(at[0], at[1]);
+        await page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
+        const now = await project();
+        if (Math.hypot(now[0] - at[0], now[1] - at[1]) > 0.25) continue;
+        const onCanvas = await page.evaluate(([x, y]) => document.elementFromPoint(x, y) ===
+            document.querySelector('[data-testid="bw-sim-lab-editor-canvas"]'), at);
+        const text = await page.getByTestId('bw-sim-lab-build-status').textContent();
+        return onCanvas && text.startsWith(`${name}:`) ? at : null;
+    }
+    return null;
+};
+
+/**
  * Like a person aiming at a part partly covered by the gizmo: move along the
  * part's top face until the status line says the pointer is on the part (not
  * on a gizmo handle), and press there.
  */
-const grabPoint = async (page, id, name) => {
-    for (const z of [10, 30, 50, -30, -50, -10]) {
-        // Hover text can wrap differently, resizing the canvas and its camera.
-        // Observe the rendered hover/layout before accepting its old projection;
-        // re-aim without clicking if the part moved under the stationary pointer.
-        for (let aim = 0; aim < 3; aim++) {
-            const at = await screenOf(page, id, [0, -10, z]);
-            await page.mouse.move(at[0], at[1]);
-            await page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
-            const now = await screenOf(page, id, [0, -10, z]);
-            if (Math.hypot(now[0] - at[0], now[1] - at[1]) > 0.25) continue;
-            const onCanvas = await page.evaluate(([x, y]) => document.elementFromPoint(x, y) ===
-                document.querySelector('[data-testid="bw-sim-lab-editor-canvas"]'), at);
-            const text = await page.getByTestId('bw-sim-lab-build-status').textContent();
-            if (onCanvas && text.startsWith(`${name}:`)) return at;
-            break;
+export const grabPoint = async (page, id, name) => {
+    // As a person would: along the top face; if the gizmo covers all of that, look again with the
+    // part filling the view (F) and try its sides too.
+    for (const fit of [false, true]) {
+        if (fit) await page.keyboard.press('f');
+        for (const local of [[0, -10, 10], [0, -10, 30], [0, -10, 50], [0, -10, -30], [0, -10, -50], [0, -10, -10],
+            ...(fit ? [[0, -10, 70], [0, -10, -70], [10, 0, 30], [-10, 0, 30], [10, 0, -30], [-10, 0, -30], [0, 10, 30], [0, 10, -30]] : [])]) {
+            const at = await aimAt(page, name, () => screenOf(page, id, local));
+            if (at) return at;
         }
     }
-    throw new Error(`no free spot on ${id} to press`);
+    // Last, however it lies: spots spiralling out from its centre on screen, where the pointer is on it.
+    const centre = () => page.evaluate(i => { const v = window.__bwSimLab.editView; return v.toScreen(v.debugPoint(i)); }, id);
+    for (let r = 12; r <= 180; r += 12) {
+        for (let a = 0; a < 16; a++) {
+            const at = await aimAt(page, name, async () => {
+                const c = await centre();
+                return [c[0] + r * Math.cos(a * Math.PI / 8), c[1] + r * Math.sin(a * Math.PI / 8)];
+            });
+            if (at) return at;
+        }
+    }
+    await page.screenshot({path: resolve('artifacts/sim-lab', 'sim-lab-build-grab-failure.png')}).catch(() => {});
+    const said = await page.getByTestId('bw-sim-lab-build-status').textContent();
+    throw new Error(`no free spot on ${id} to press (status: ${said})`);
 };
 
 /** A human drag: press, move in small steps, release. */
-const drag = async (page, from, to, {steps = 12, shift = false} = {}) => {
+const drag = async (page, from, to, {steps = 12, shift = false, alt = false} = {}) => {
     await page.mouse.move(from[0], from[1]);
     if (shift) await page.keyboard.down('Shift');
+    if (alt) await page.keyboard.down('Alt');
     await page.mouse.down();
     for (let i = 1; i <= steps; i++) await page.mouse.move(from[0] + (to[0] - from[0]) * i / steps, from[1] + (to[1] - from[1]) * i / steps);
     // What the status line promised just before letting go.
     const promised = await page.getByTestId('bw-sim-lab-build-status').textContent();
     await page.mouse.up();
     if (shift) await page.keyboard.up('Shift');
+    if (alt) await page.keyboard.up('Alt');
     return promised;
 };
 
@@ -104,7 +135,7 @@ export const cadInteractions = async (page, beamId, {shotsDir}) => {
     assert.equal(grid, 10, 'default grid is half a hole pitch');
 
     // Home shows the whole model; select the free beam with a click on it, then F frames it.
-    await page.getByTestId('bw-sim-lab-view-home').click();
+    await tool(page, 'view-home');
     const beamAt = await screenOf(page, beamId, ON_BEAM);
     const view = await canvas.boundingBox();
     assert.ok(beamAt[0] > view.x && beamAt[0] < view.x + view.width && beamAt[1] > view.y && beamAt[1] < view.y + view.height,
@@ -147,11 +178,19 @@ export const cadInteractions = async (page, beamId, {shotsDir}) => {
     const sign = toward[0] * away[0] + toward[1] * away[1] < 0 ? -1 : 1;
     const dir = toward.map(v => v * sign);
     const len = Math.hypot(...dir);
-    const xPromised = await drag(page, xArrow.at, [xArrow.at[0] + dir[0] / len * 120, xArrow.at[1] + dir[1] / len * 120]);
+    // Far enough to take the beam off the pin seated in its end hole (about 200 LDU, more than its
+    // length), measured on screen along the beam: a pixel count alone means a different distance in
+    // a bigger view, and a short slide re-seats the beam on the pin hole by hole.
+    const ends = [await screenOf(page, beamId, [0, 0, 0]), await screenOf(page, beamId, [0, 0, 20])];
+    const pxPerHole = Math.max(4, Math.hypot(ends[1][0] - ends[0][0], ends[1][1] - ends[0][1]));
+    const reach = Math.min(400, pxPerHole * 10);
+    const xPromised = await drag(page, xArrow.at, [xArrow.at[0] + dir[0] / len * reach, xArrow.at[1] + dir[1] / len * reach], {steps: 20});
     const p1 = await pose(page, beamId);
     const dx = p1.position[0] - p0.position[0];
     assert.ok(dx !== 0 && Number.isInteger(dx / grid), `the X arrow moved the beam by a grid multiple (${dx} LDU; status: ${xPromised} → ${await statusText(page)})`);
-    assert.deepEqual([p1.position[1], p1.position[2]], [p0.position[1], p0.position[2]], 'only x changed');
+    // Only x changed (the magnet may seat the slid beam on the pin again: float noise far below a micro-LDU).
+    assert.ok([1, 2].every(i => Math.abs(p1.position[i] - p0.position[i]) < 1e-9),
+        `only x changed: ${JSON.stringify(p0.position)} → ${JSON.stringify(p1.position)}`);
     assert.deepEqual(p1.rotation, p0.rotation);
     await page.screenshot({path: resolve(shotsDir, 'sim-lab-build-gizmo.png'), fullPage: true});
     console.log(`PASS Build: dragging the gizmo's X arrow moves the part ${dx} LDU (grid ${grid})`);
@@ -159,10 +198,20 @@ export const cadInteractions = async (page, beamId, {shotsDir}) => {
     // R turns it a quarter turn about the vertical: an exact proper rotation, y axis kept.
     await page.keyboard.press('r');
     const p2 = await pose(page, beamId);
-    assert.notDeepEqual(p2.rotation, p1.rotation, 'R turned the part');
+    assert.notDeepEqual(p2.rotation, p1.rotation, `R turned the part (status: ${await statusText(page)})`);
     assert.ok(exactRotation(p2.rotation), `exact rotation ${p2.rotation}`);
-    // A turn about the world vertical (R' = Ry·R) keeps every part axis's height: row y of R.
-    assert.deepEqual([p2.rotation[3], p2.rotation[4], p2.rotation[5]], [p1.rotation[3], p1.rotation[4], p1.rotation[5]], 'turned about the vertical');
+    // A beam still sitting on the pin (the X arrow slides it along its length, hole by hole) turns
+    // about that connection, as documented (docs/SIM-LAB.md, R); a free one about the vertical
+    // (R' = Ry·R keeps every part axis's height: row y of R).
+    const turnStatus = await statusText(page);
+    if (/^Turned about its connection/.test(turnStatus)) {
+        // About the pin's axis, not the part's centre: the part swings round the pin, and its own
+        // rotation is still an exact quarter turn (checked above).
+        assert.notDeepEqual(p2.position, p1.position, `swung round its pin: ${JSON.stringify({p1, p2})}`);
+    } else {
+        assert.deepEqual([p2.rotation[3], p2.rotation[4], p2.rotation[5]], [p1.rotation[3], p1.rotation[4], p1.rotation[5]],
+            `turned about the vertical (status: ${turnStatus})`);
+    }
     console.log('PASS Build: R turns the selection 90° (exact rotation matrix)');
 
     // The rotate ring (E): dragging along the vertical ring turns by quarter turns.
@@ -216,7 +265,7 @@ export const cadInteractions = async (page, beamId, {shotsDir}) => {
     const both1 = [await pose(page, beamId), await pose(page, second)];
     const moved = both1.map((p, i) => p.position[0] - both0[i].position[0]);
     assert.ok(moved[0] !== 0 && moved[0] === moved[1], `both parts moved together: ${moved}`);
-    await page.getByTestId('bw-sim-lab-undo').click();
+    await tool(page, 'undo');
     assert.deepEqual([await pose(page, beamId), await pose(page, second)], both0, 'ONE undo restores both parts');
     await page.screenshot({path: resolve(shotsDir, 'sim-lab-build-multi.png'), fullPage: true});
     console.log(`PASS Build: Shift+click selects two parts, the gizmo moves both (${moved[0]} LDU), one undo restores both`);
@@ -254,10 +303,15 @@ export const cadInteractions = async (page, beamId, {shotsDir}) => {
     console.log('PASS Build: Ctrl+G groups (a click selects the whole group), Ctrl+Shift+G ungroups');
     await page.keyboard.press('Escape');
 
-    await pinIntoHoleFromAbove(page, beamId, {shotsDir});
+    // A fresh beam on open floor for the pin, turned half round as R and the ring left the first one
+    // in the original flow (that one has since been slid and turned in ways that depend on how big
+    // the view is), so its hole faces the camera's side.
+    const flat = await page.evaluate(() => { window.__bwSimLab.editView.placeAt('32524.dat', [-0.3, 0, 0.25], 2); return window.__bwSimLab.editor.model.parts.at(-1).id; });
+    await page.keyboard.press('Escape');
+    await pinIntoHoleFromAbove(page, flat, {shotsDir});
     const third = await beamOntoBeam(page, second, {shotsDir});
     await beamIntoHub(page, third, {shotsDir});
-    await paletteInteractions(page, beamId, {shotsDir});
+    await paletteInteractions(page, flat, {shotsDir});
 };
 
 const statusText = page => page.getByTestId('bw-sim-lab-build-status').textContent();
@@ -265,9 +319,14 @@ const partsCount = page => page.evaluate(() => window.__bwSimLab.editor.model.pa
 const lastPartId = page => page.evaluate(() => window.__bwSimLab.editor.model.parts.at(-1).id);
 /** Selects a part with a click on it and frames it (F), as a person zooms in to work on it. */
 const focusOn = async (page, id, name) => {
-    await page.getByTestId('bw-sim-lab-view-home').click();
-    const at = await grabPoint(page, id, name);
-    await page.mouse.click(at[0], at[1]);
+    await tool(page, 'view-home');
+    // The status line follows the pointer a frame late on a busy machine: aim again if the click missed.
+    for (let attempt = 0; attempt < 3; attempt++) {
+        const at = await grabPoint(page, id, name);
+        await page.mouse.click(at[0], at[1]);
+        if ((await selectionOf(page)).join() === id) break;
+        await page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
+    }
     assert.deepEqual(await selectionOf(page), [id]);
     await page.keyboard.press('f');
 };
@@ -298,6 +357,13 @@ const grabOn = async (page, id, name, locals) => {
 /** A point in a part's frame (LDU) in the model frame. */
 const modelPoint = (p, local) => [0, 1, 2].map(i => p.rotation[i * 3] * local[0] + p.rotation[i * 3 + 1] * local[1] + p.rotation[i * 3 + 2] * local[2] + p.position[i]);
 /** Strongly red pixels of a screenshot region (PNG decoded in the page). */
+/**
+ * The Build view has drawn what it shows and the GPU has finished it: it keeps one frame in flight
+ * (editor-view3d.js render), so a change made while the GPU is still busy with the frame before is
+ * drawn a frame later, not at once — a screenshot taken straight after the change can miss it.
+ */
+const buildDrawn = page => page.waitForFunction(() => !window.__bwSimLab.editView.drawing, null, {timeout: 30000, polling: 50});
+
 const redPixels = (page, png, clip) => page.evaluate(async ([b64, c]) => {
     const img = new Image();
     img.src = `data:image/png;base64,${b64}`;
@@ -314,9 +380,10 @@ const redPixels = (page, png, clip) => page.evaluate(async ([b64, c]) => {
 }, [png.toString('base64'), clip]);
 
 /**
- * A pin dragged over a beam's hole from above snaps in from the TOP: the pointer
- * aims at the beam's top face around the hole (not at the floor seen through
- * it), so the magnet prefers that side.
+ * A pin dragged over a beam's hole snaps into the hole pointed at, from the CAMERA's
+ * side (docs/ROBOT-LAB-UX.md §3.3): the pointer aims at the beam's top face around the
+ * hole (not at the floor seen through it), and the hole's entry face is the one that
+ * faces the camera.
  */
 const pinIntoHoleFromAbove = async (page, beamId, {shotsDir}) => {
     await focusOn(page, beamId, 'Technic beam 7');
@@ -327,21 +394,40 @@ const pinIntoHoleFromAbove = async (page, beamId, {shotsDir}) => {
         return [Math.min(box.x + box.width - 40, b[0] + 60), Math.min(box.y + box.height - 40, b[1] + 150)];
     }, /On the floor/);
     const beam = await pose(page, beamId);
-    const grab = await grabOn(page, pin, 'Technic pin with friction', [[0, -7, 0], [8, -7, 0], [-8, -7, 0], [14, -7, 0], [-14, -7, 0]]);
-    // Onto the middle of hole 4 (h3, the beam's centre hole), where a person sees the hole: the
-    // pointer looks through the hole at the floor, but the hole counts as the beam's top face.
-    const hole = await screenOf(page, beamId, [0, -10, 0]);
+    // Nothing selected, so no gizmo sits over the small pin: a drag on it selects and carries it.
+    await page.keyboard.press('Escape');
+    const grab = await grabOn(page, pin, 'Technic pin with friction', [[0, -7, 0], [8, -7, 0], [-8, -7, 0], [14, -7, 0], [-14, -7, 0], [0, 0, 0], [0, -4, 0]]);
+    // Onto the middle of the free hole nearest the beam's centre (hole 4 unless an earlier pin is
+    // in it), where a person sees the hole: the pointer looks through the hole at the floor, but
+    // the hole counts as the beam's top face.
+    const holeZ = await page.evaluate(([b, p]) => {
+        const parts = window.__bwSimLab.editor.model.parts;
+        const beam = parts.find(x => x.id === b);
+        const taken = parts.filter(x => x.id !== p && x.part === '2780.dat').map(x => {
+            const d = x.position.map((v, i) => v - beam.position[i]);
+            const l = [0, 1, 2].map(c => beam.rotation[c] * d[0] + beam.rotation[3 + c] * d[1] + beam.rotation[6 + c] * d[2]);
+            return Math.abs(l[0]) < 1 ? Math.round(l[2]) : null;
+        });
+        return [0, -20, 20, -40, 40].find(z => !taken.includes(z));
+    }, [beamId, pin]);
+    const hole = await screenOf(page, beamId, [0, -10, holeZ]);
     const promised = await drag(page, grab, hole, {steps: 16});
-    assert.match(promised, /Snaps to Technic beam 7 hole 4/, 'the magnet offered the hole pointed at');
+    assert.match(promised, new RegExp(`Snaps to Technic beam 7 hole ${holeZ / 20 + 4}`), `the magnet offered the hole pointed at, z ${holeZ} (status: ${promised}; ${JSON.stringify(await page.evaluate(() => window.__bwSimLab.editor.model.parts.filter(x => x.part === "2780.dat" || x.part === "32524.dat").map(x => [x.id, x.part, x.position])))})`);
     const p = await pose(page, pin);
     // In the beam's frame: on a hole's axis, the pin's centre ABOVE the beam's mid-plane (LDraw -y up).
     const d = p.position.map((v, i) => v - beam.position[i]);
     const local = [0, 1, 2].map(c => beam.rotation[c] * d[0] + beam.rotation[3 + c] * d[1] + beam.rotation[6 + c] * d[2]);
     assert.ok(Math.abs(local[0]) < 1e-6 && Math.abs(local[2] % 20) < 1e-6, `in a hole: ${local}`);
-    assert.ok(local[1] < 0, `snapped from the top side: the pin's centre is ${-local[1]} LDU above the beam's mid-plane`);
+    // From the camera's side (docs/ROBOT-LAB-UX.md §3.3: the entry face whose normal faces the camera): the pin's
+    // centre is on the same side of the beam's mid-plane, along the hole's axis (beam-frame y), as the camera.
+    const eye = await page.evaluate(() => window.__bwSimLab.editView.camera.position.map((v, i) => (i ? -v : v) / 0.0004));
+    const e = eye.map((v, i) => v - beam.position[i]);
+    const eyeLocalY = beam.rotation[1] * e[0] + beam.rotation[4] * e[1] + beam.rotation[7] * e[2];
+    assert.ok(local[1] * eyeLocalY > 0 && Math.abs(Math.abs(local[1]) - 10) < 1e-6,
+        `snapped from the camera's side: the pin's centre ${local[1]} LDU from the beam's mid-plane, the camera at ${eyeLocalY.toFixed(0)}`);
     assert.match(await statusText(page), /Snapped to Technic beam 7/);
     await page.screenshot({path: resolve(shotsDir, 'sim-lab-build-pin-from-above.png'), fullPage: true});
-    console.log(`PASS Build: a pin dragged over a beam hole from above snaps in from the top (${-local[1]} LDU above the mid-plane)`);
+    console.log(`PASS Build: a pin dragged over a beam hole snaps in from the camera's side (${Math.abs(local[1])} LDU from the mid-plane, towards the camera)`);
     await page.keyboard.press('Escape');
 };
 
@@ -384,7 +470,7 @@ const beamOntoBeam = async (page, lowerId, {shotsDir}) => {
  */
 const beamIntoHub = async (page, beamId, {shotsDir}) => {
     const canvas = page.getByTestId('bw-sim-lab-editor-canvas');
-    await page.getByTestId('bw-sim-lab-view-home').click();
+    await tool(page, 'view-home');
     // Nothing selected (no gizmo in the way): press on the beam and drag it, which also selects it.
     await canvas.focus();
     await page.keyboard.press('Escape');
@@ -399,6 +485,7 @@ const beamIntoHub = async (page, beamId, {shotsDir}) => {
     const box = await canvas.boundingBox();
     const at = await screenOf(page, beamId);
     const clip = {x: Math.max(box.x, at[0] - 160), y: Math.max(box.y, at[1] - 120), width: 320, height: 240};
+    await buildDrawn(page);
     const redBefore = await redPixels(page, await page.screenshot(), clip);
     // Push down along the Y arrow, as a person does, until the status line says it would go in.
     await page.mouse.down();
@@ -409,6 +496,7 @@ const beamIntoHub = async (page, beamId, {shotsDir}) => {
     }
     assert.match(said, /Would go into SPIKE Prime hub/, 'the status names the hub');
     assert.equal(await page.evaluate(() => window.__bwSimLab.editView.blockedInto), hub);
+    await buildDrawn(page);
     const shot = await page.screenshot({path: resolve(shotsDir, 'sim-lab-build-blocked.png')});
     const redDuring = await redPixels(page, shot, clip);
     assert.ok(redDuring > redBefore + 150, `the beam turns red: ${redBefore} → ${redDuring} red pixels`);
@@ -483,7 +571,7 @@ const paletteInteractions = async (page, beamId, {shotsDir}) => {
     const canvas = page.getByTestId('bw-sim-lab-editor-canvas');
     await canvas.focus();
     await page.keyboard.press('Escape');
-    await page.getByTestId('bw-sim-lab-view-home').click();
+    await tool(page, 'view-home');
 
     // Pictures: an open category's tile shows its part, drawn (not blank) and shaded (many colours).
     await page.waitForFunction(() => document.querySelector('[data-testid="bw-sim-lab-part-32524.dat"] img[data-testid="bw-sim-lab-thumb"]'),
@@ -570,7 +658,7 @@ const paletteInteractions = async (page, beamId, {shotsDir}) => {
     console.log(`PASS Palette: a pin dragged from the palette onto a beam hole snaps in (${promised})`);
 
     // Esc during a drag: nothing is placed, even when the button is let go over the view.
-    await page.getByTestId('bw-sim-lab-view-home').click();
+    await tool(page, 'view-home');
     before = await partsCount(page);
     await pressAndDragTo(page, '32316.dat', [box.x + box.width * 0.5, box.y + box.height * 0.5]);
     await findOpenFloor(page);

@@ -18,17 +18,15 @@
 //   carrier                 true when F turns about a gear axis (a planet carrier)
 //   joint1, joint2          the gears' own hinges (for views); parts the two gears
 //
-// Physics (physics/jolt-core.js): in a planet carrier, the teeth's no-slip condition
-// itself — the two anchors move alike along the tangent, (v₁(anchor1) −
-// v₂(anchor2))·tangent = 0 — as a Jolt SixDOF constraint with only that translation
-// fixed, re-anchored at the current tooth points (carried along by F) before every
-// step. That is exact for any motion of F, which a gear constraint on the two bodies'
-// world rates is not. In a frame that does not turn about the gears (carrier false:
-// the gearbox frame, the chassis) it is the gear constraint on the two gear bodies'
-// world rates, as for 'gear' (exact while F does not turn, and it keeps Jolt's warm
-// start, which a constraint re-made every step loses: measured, a clutch gear on the
-// re-anchored contact lagged its driver by 1.8 % under load, on the gear constraint by
-// none).
+// Physics (physics/jolt-core.js): the same tooth contact as every mesh — a Jolt
+// GearMeshConstraint (the Brickwright fork of Jolt) between the two gear bodies at the
+// pitch point, with ratio and axes as above. In a planet carrier both gears' hinges turn
+// in F, and they are handed to the mesh: F carries the tooth reaction and the coupling is
+// exact however F moves. In a chain (a gear on an axle turning, coaxially, in F) the gear's
+// own hinge turns in that axle, so no hinges are handed over and the frames count as at
+// rest — exact while F does not turn, as the gear constraint it replaces was. (Until
+// 2026-10-19 a carrier mesh was a SixDOF contact re-made every step: it lagged without
+// Jolt's warm start and needed 240 solver iterations.)
 
 /** The no-op detector: mech/gears.js emits these couplings. */
 const detect = () => ({couplings: []});

@@ -118,6 +118,11 @@ class PaneDivider extends React.Component {
         }
     }
 
+    /** Is the sized column's width measured from the row's left edge? */
+    fromLeft () {
+        return this.props.sizedSide === 'previous' ? !this.props.isRtl : Boolean(this.props.isRtl);
+    }
+
     /** @returns {?DOMRect} The row both columns live in, or null before mount. */
     rowRect () {
         const row = this.el && this.el.parentElement;
@@ -142,8 +147,10 @@ class PaneDivider extends React.Component {
         if (!rect) return null;
 
         // In RTL the stage column is on the left, so the distance that means
-        // "how wide is that column" is measured from the other edge.
-        const px = this.props.isRtl ? clientX - rect.left : rect.right - clientX;
+        // "how wide is that column" is measured from the other edge. So it is for
+        // a column sized on the divider's left (sizedSide 'previous': the Robot
+        // Lab's parts panel).
+        const px = this.fromLeft() ? clientX - rect.left : rect.right - clientX;
 
         return clampFraction(px / rect.width, rect.width);
     }
@@ -242,11 +249,11 @@ class PaneDivider extends React.Component {
         // ArrowRight always means "move the boundary right", so in RTL — where
         // the stage is on the left — that grows the stage column instead of
         // shrinking it.
-        const grow = this.props.isRtl ? e.key === 'ArrowRight' : e.key === 'ArrowLeft';
+        const grow = this.fromLeft() ? e.key === 'ArrowRight' : e.key === 'ArrowLeft';
         const next = (this.currentFraction() * rect.width) + (grow ? KEY_STEP : -KEY_STEP);
 
         const fraction = this.fractionForPointer(
-            this.props.isRtl ? rect.left + next : rect.right - next
+            this.fromLeft() ? rect.left + next : rect.right - next
         );
         if (fraction === null) return;
         this.props.onResize(fraction);
@@ -266,7 +273,7 @@ class PaneDivider extends React.Component {
     currentFraction () {
         if (isCollapsed(this.props.share)) return 0;
         const rect = this.rowRect();
-        const column = this.el && this.el.nextElementSibling;
+        const column = this.el && (this.props.sizedSide === 'previous' ? this.el.previousElementSibling : this.el.nextElementSibling);
         if (!rect || !column) return 0.3;
         return column.getBoundingClientRect().width / rect.width;
     }
@@ -275,7 +282,7 @@ class PaneDivider extends React.Component {
         const {percent} = this.state;
         return (
             <div
-                aria-label={at(browserLocale(), 'a11y.resize')}
+                aria-label={this.props.label || at(browserLocale(), 'a11y.resize')}
                 aria-orientation="vertical"
                 aria-valuemax={100}
                 aria-valuemin={0}
@@ -284,7 +291,8 @@ class PaneDivider extends React.Component {
                 ref={this.setRef}
                 role="separator"
                 tabIndex={0}
-                title={at(browserLocale(), 'tip.resize')}
+                data-testid={this.props.testId}
+                title={this.props.title || at(browserLocale(), 'tip.resize')}
                 onKeyDown={this.handleKeyDown}
                 onPointerCancel={this.handlePointerUp}
                 onPointerDown={this.handlePointerDown}
@@ -299,6 +307,15 @@ PaneDivider.propTypes = {
     /** Current size of the column being resized: a name, or a dragged fraction. */
     share: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
     isRtl: PropTypes.bool,
+    /**
+     * Which neighbour the divider sizes: 'next' (default: the stage column after it) or
+     * 'previous' (a panel before it, e.g. the Robot Lab's parts panel).
+     */
+    sizedSide: PropTypes.oneOf(['next', 'previous']),
+    /** The accessible name and tooltip, for a divider that does not size the stage column. */
+    label: PropTypes.string,
+    title: PropTypes.string,
+    testId: PropTypes.string,
     onResize: PropTypes.func.isRequired,
     onCollapseToggle: PropTypes.func.isRequired
 };

@@ -51,14 +51,11 @@ animation.runImageAnimation(actor,frames,-20,false)`);
     const project=new SB3Creator().parse(result.code);
     const target=project.targets.find(target=>Object.values(target.blocks).filter(block=>block.opcode==='arcade_runImageAnimation').length===3);
     const animations=Object.values(target.blocks).filter(block=>block.opcode==='arcade_runImageAnimation');
-    const unary=target.blocks[animations[2].inputs.INTERVAL[1]];
-    assert.equal(unary.opcode,'arrays_valueUnary');
-    assert.equal(unary.fields.OP[0],'-');
-    assert.equal(unary.inputs.OP, undefined, 'native unary menu is a field, not a stale input shadow');
-    const numeric=target.blocks[unary.inputs.VALUE[1]];
-    assert.equal(numeric.opcode,'operator_add','numeric literal retains its typed number wrapper');
+    const numeric=target.blocks[animations[2].inputs.INTERVAL[1]];
+    assert.equal(numeric.opcode,'operator_add','selected SDK folds the negative literal into a typed number');
     assert.equal(Number(numeric.inputs.NUM1[1][1]),0);
-    assert.equal(Number(numeric.inputs.NUM2[1][1]),20);
+    assert.equal(Number(numeric.inputs.NUM2[1][1]),-20);
+    assert.equal(Number(numeric.inputs.NUM1[1][1])+Number(numeric.inputs.NUM2[1][1]),-20,'provided negative interval is preserved, not replaced with a default');
 });
 
 test('supplied interval and loop procedures are lowered once in argument order',()=>{

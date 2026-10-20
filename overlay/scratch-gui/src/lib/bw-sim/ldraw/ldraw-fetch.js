@@ -7,10 +7,33 @@
 // use them. Same-origin only; the closure is discovered by parsing each file's
 // type-1 references, in waves, so a model costs one round trip per nesting
 // level rather than one per file.
+//
+// A part beyond the vendored subset (one added from the LDraw catalogue,
+// part-meta/catalog-parts.js) resolves through the fallback (setLDrawFallback):
+// the whole library, read file by file from the ldraw-stl mirror (ldraw-catalog.js).
+// The vendored file list (ldraw-lock.json) then says which files are here, so a
+// catalogue part's files are not first asked for here, 404 after 404.
 
 import {parseLDraw, refKey, SEARCH_DIRS} from './ldraw-geometry.js';
 
 export const LDRAW_BASE = 'static/ldraw/';
+
+let defaultFallback = null;
+/**
+ * Where files the vendored subset lacks come from: {library: Promise<catalogue>, local?: Promise<Set<string>>},
+ * or null (only the vendored files). sim-lab.js sets it once a learner uses the LDraw catalogue.
+ * @param {object|null} fallback
+ */
+export const setLDrawFallback = fallback => {
+    defaultFallback = fallback;
+};
+
+/** The vendored files (ldraw-lock.json's list), lower case, for a fallback's `local`. */
+export const vendoredFiles = async ({fetchImpl = globalThis.fetch, base = LDRAW_BASE} = {}) => {
+    const response = await fetchImpl(`${base}ldraw-lock.json`);
+    if (!response.ok) return null;
+    return new Set(Object.keys((await response.json()).files).map(f => f.toLowerCase()));
+};
 
 /**
  * @param {string[]} parts part file names, e.g. ['45601.dat', '54696p01.dat']
@@ -18,14 +41,23 @@ export const LDRAW_BASE = 'static/ldraw/';
  * @param {typeof fetch} [options.fetchImpl]
  * @param {string} [options.base]
  * @param {boolean} [options.withConfig] also load LDConfig.ldr (the colour table), readable as 'LDConfig.ldr'
- * @returns {Promise<{read: (path: string) => string|undefined, files: Map<string, string>, missing: string[]}>}
+ * @param {object|null} [options.fallback] the LDraw catalogue for files not vendored (setLDrawFallback's)
+ * @returns {Promise<{read: (path: string) => string|undefined, files: Map<string, string>, missing: string[], fromCatalogue: string[]}>}
  *          read() takes library-relative paths ('parts/3001.dat', 'p/4-4cyli.dat');
- *          missing lists references found in no search directory
+ *          missing lists references found in no search directory; fromCatalogue the paths the fallback supplied
  */
-export const fetchLDrawClosure = async (parts, {fetchImpl = globalThis.fetch, base = LDRAW_BASE, withConfig = false} = {}) => {
+export const fetchLDrawClosure = async (parts, {fetchImpl = globalThis.fetch, base = LDRAW_BASE, withConfig = false,
+    fallback = defaultFallback} = {}) => {
     const files = new Map();
     const missing = [];
     const tried = new Set();
+    const fromCatalogue = [];
+    const local = fallback?.local ? await fallback.local.catch(() => null) : null;
+    let library;
+    const catalogue = () => {
+        if (library === undefined) library = fallback ? fallback.library.catch(() => null) : Promise.resolve(null);
+        return library;
+    };
     // One reference resolves to the first search directory that has it.
     const resolveOne = async ref => {
         const key = refKey(ref);
@@ -33,11 +65,20 @@ export const fetchLDrawClosure = async (parts, {fetchImpl = globalThis.fetch, ba
             const path = dir + key;
             if (files.has(path)) return path;
             if (!dir) continue;
+            if (local && !local.has(path)) continue; // not vendored: no request that can only 404
             const response = await fetchImpl(`${base}${path}`);
             if (response.ok) {
                 files.set(path, await response.text());
                 return path;
             }
+        }
+        const lib = fallback ? await catalogue() : null;
+        for (const dir of lib ? SEARCH_DIRS : []) {
+            const path = dir + key;
+            if (!dir || !lib.has(path)) continue;
+            files.set(path, await lib.read(path));
+            fromCatalogue.push(path);
+            return path;
         }
         missing.push(ref);
         return null;
@@ -63,5 +104,5 @@ export const fetchLDrawClosure = async (parts, {fetchImpl = globalThis.fetch, ba
         if (response.ok) files.set('ldconfig.ldr', await response.text());
         else missing.push('LDConfig.ldr');
     }
-    return {read: p => files.get(p.toLowerCase()), files, missing};
+    return {read: p => files.get(p.toLowerCase()), files, missing, fromCatalogue};
 };

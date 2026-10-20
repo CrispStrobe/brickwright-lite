@@ -164,3 +164,20 @@ commands in ignored private notes/evidence. Public documentation should describe
 capabilities, relative source paths, reproducible contracts and honest limits.
 Do not launch new large local builds or duplicate hosted workflows to read an
 already successful result.
+
+## Integration checkpoint — 2026-10-19
+
+The isolated declaration/Sprite composition preserves both proof arguments. Its
+complete 218-test attempt observed 210 consecutive passes before SIGKILL, with
+eight tests and the whole-run summary unobserved. The child consumed 24.90 CPU
+seconds under the unchanged 25-second bound; this observation alone does not
+prove the kill cause. A genuine analysis-cost fix and complete qualification
+remain necessary. No corpus totals change.
+
+Current main already contains the timer classification, clock-refusal census
+and isolated mutant-fixture repairs. Reconcile those actual landed changes
+rather than implementing duplicate fixes. Preserve the required newer
+sb3-creator and Arrays supplier revisions and main's unrelated newer pins,
+with coherent canonical files, mirrors, notices and provenance. The composed
+source is a candidate until its independent source review, affected execution
+and exact-head hosted checks complete.

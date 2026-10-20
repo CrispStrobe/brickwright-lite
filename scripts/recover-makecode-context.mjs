@@ -9,13 +9,14 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
-import {tutorialProjectFiles} from '../overlay/scratch-gui/src/lib/bw-makecode/tutorial-project.js';
+import {tutorialProjectFiles, tutorialEditorProjectFiles, TUTORIAL_EDITOR_POLICY, hasTutorialJres} from '../overlay/scratch-gui/src/lib/bw-makecode/tutorial-project.js';
+import {getTutorialTilemapGenerator, STATIC} from './lib/pxt-node.mjs';
 import {makeCodeProjectFile} from '../overlay/scratch-gui/src/lib/bw-makecode/project-file.js';
 
 const args = process.argv.slice(2), options = {};
 for (let i = 0; i < args.length; i++) {
     const key = args[i];
-    if (!['--manifest', '--audit', '--corpus-dir', '--out'].includes(key) || !args[i + 1] || args[i + 1].startsWith('--')) {
+    if (!['--manifest', '--audit', '--corpus-dir', '--out', '--editor-policy'].includes(key) || !args[i + 1] || args[i + 1].startsWith('--')) {
         throw new Error(`Expected --manifest, --audit, --corpus-dir and --out; invalid argument ${key}`);
     }
     if (options[key]) throw new Error(`Duplicate option ${key}`);
@@ -24,6 +25,8 @@ for (let i = 0; i < args.length; i++) {
 for (const key of ['--manifest', '--audit', '--corpus-dir', '--out']) {
     if (!options[key]) throw new Error(`Missing ${key}`);
 }
+const editorPolicy = options['--editor-policy'];
+if (editorPolicy && editorPolicy !== TUTORIAL_EDITOR_POLICY) throw new Error('Unsupported tutorial editor policy');
 const manifest = JSON.parse(await fs.readFile(options['--manifest'], 'utf8'));
 const audit = JSON.parse(await fs.readFile(options['--audit'], 'utf8'));
 if (!Array.isArray(manifest.entries) || !Array.isArray(audit.rows)) throw new Error('Manifest entries and audit rows are required.');
@@ -71,14 +74,19 @@ for (const {entry, name, bytes, revision, document} of selected) {
         await fs.mkdir(path.join(out, directory));
         await fs.writeFile(path.join(out, directory, 'tutorial.md'), markdown);
         Object.assign(record, {documentationUrl: url, documentationSha256: hash(Buffer.from(markdown))});
-        const project = tutorialProjectFiles(markdown, bytes.toString('utf8'), {target: 'arcade', name: name.replace(/\.ts$/, '')});
+        const jresToTypeScript = hasTutorialJres(markdown) ? await getTutorialTilemapGenerator('arcade') : undefined;
+        const targetBytes = editorPolicy ? await fs.readFile(path.join(STATIC, 'arcade', 'target.json')) : null;
+        const targetBundle = targetBytes ? JSON.parse(targetBytes) : undefined;
+        const assemble = editorPolicy ? tutorialEditorProjectFiles : tutorialProjectFiles;
+        const project = assemble(markdown, bytes.toString('utf8'), {target: 'arcade', name: name.replace(/\.ts$/, ''), jresToTypeScript, targetBundle, targetBundleSHA256: targetBytes ? hash(targetBytes) : undefined});
         if (project.files['main.ts'] !== bytes.toString('utf8')) throw new Error('Recovered project changed original main.ts');
         await fs.writeFile(path.join(out, directory, 'project.mkcd'), makeCodeProjectFile(project.files, {target: 'arcade', name: directory}));
         const packageJson = JSON.parse(project.files['pxt.json']);
         Object.assign(record, {status: 'context-recovered', documentationUrl: url,
             documentationSha256: hash(Buffer.from(markdown)), project: `${directory}/project.mkcd`,
             files: Object.keys(project.files), dependencies: packageJson.dependencies,
-            packageSourcesFetched: false, originalMainPreserved: true});
+            packageSourcesFetched: false, originalMainPreserved: true, assembly: project.assembly || null,
+            ...(jresToTypeScript ? {jresGeneration: jresToTypeScript.provenance} : {})});
     } catch (error) {
         Object.assign(record, {status: 'recovery-failed', error: error.message});
         process.exitCode = 1;

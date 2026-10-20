@@ -15,6 +15,12 @@
  * - `onWrite(uuid, bytes, withResponse)` accepting bytes;
  * - optional `setNotificationSink(fn)`, where `fn(uuid, bytes)` emits a GATT
  *   notification. The sink is removed by passing `null` on disconnect.
+ * - optional `onStartNotifications(uuid)`, told when the host subscribes to a
+ *   characteristic (after the subscription is in place, so a notification sent
+ *   from it is delivered);
+ * - optional `hubState`: the hub this peripheral is (connectVirtualHub chooses by it);
+ * - optional `manufacturerData` ({companyId: byte[]}): what it advertises, for a
+ *   Scratch Link filter that names manufacturer data (scratch-link-ble.js).
  */
 
 import {canonicalUuid} from '../native-web-bluetooth.js';
@@ -89,6 +95,10 @@ class VirtualCharacteristic extends EventTarget {
     // eslint-disable-next-line require-await -- Web Bluetooth specifies a promise
     async startNotifications () {
         this._notifying = true;
+        // Optional hook: a peripheral that speaks only once someone listens (an LWP3 hub's
+        // Attached I/O, a WeDo hub's input values) learns of the subscription.
+        const peripheral = this.service._server._peripheral;
+        if (typeof peripheral.onStartNotifications === 'function') peripheral.onStartNotifications(this.uuid);
         return this;
     }
 
@@ -209,7 +219,11 @@ export const registerVirtualPeripheral = factory => {
 
 export const clearVirtualPeripheralsForTest = () => factories.clear();
 
-const chooseVirtual = async (candidates, hasReal) => {
+/**
+ * Which virtual peripheral to use: the host's chooser (`__brickwrightChooseVirtualBluetooth`,
+ * connectVirtualHub's), else the only one when no real radio exists, else ask.
+ */
+export const chooseVirtual = async (candidates, hasReal) => {
     if (typeof globalThis.__brickwrightChooseVirtualBluetooth === 'function') {
         return globalThis.__brickwrightChooseVirtualBluetooth(candidates, hasReal);
     }
@@ -224,6 +238,13 @@ const hasUnsupportedVirtualFilters = options => !!(options?.exclusionFilters?.le
     (options?.filters || []).some(filter => filter?.manufacturerData !== undefined ||
         filter?.serviceData !== undefined));
 const dispose = peripheral => peripheral && typeof peripheral.dispose === 'function' && peripheral.dispose();
+
+/**
+ * The registry and its filter match, read by the other transport that offers the same virtual
+ * peripherals: the Scratch Link BLE double (scratch-link-ble.js, in the Robot Lab's chunk — its
+ * candidate helpers live there, not in this first-load module).
+ */
+export {factories as virtualFactories, matches as matchesVirtual};
 
 /**
  * Wrap the currently installed Web Bluetooth object. Safe to call repeatedly.
