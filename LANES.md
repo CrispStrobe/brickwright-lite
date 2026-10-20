@@ -1,3 +1,14 @@
+## Tidal Trio phase-machine adaptation — 2026-10-20
+
+CLAIMED — Codex, existing model-design lane / draft PR #1138. Review the owner's
+supplied CC BY 4.0 three-motor crank-rocker sculpture. Preserve its source notice;
+qualify all three physical linkages, four phase presets, manual controls and
+building instructions, then register the working adaptation in the offline
+English/German examples library. Envelope: adapted assets and reproducible
+adapter, catalogue/registry entries, focused geometry/program/browser checks and
+notices. Preserve peer-owned Jolt/compiler/collider files and other worktrees.
+Published models in this branch are not yet merged-main/released app claims.
+
 ## Orbital loom import and live drawing — 2026-10-20
 
 IMPLEMENTED / locally qualified — Codex, existing model-design lane / comprehensive draft PR #1138.
