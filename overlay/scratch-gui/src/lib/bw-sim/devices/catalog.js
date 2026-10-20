@@ -170,7 +170,14 @@ export const HUB_SUPPLY_VOLTS = Object.freeze({
     'powered-up': Object.freeze({volts: 9, source: 'Powered Up hub 88009, Technic hub 88012 and Boost Move hub 88006: ' +
         '6 AAA/AA cells (6 × 1.5 V)', estimated: true}),
     wedo2: Object.freeze({volts: 3, source: 'WeDo 2.0 Smart Hub 45301: 2 AA cells (2 × 1.5 V) or its rechargeable battery; ' +
-        'the motor port is taken to see the cells\' voltage (no boost converter modelled)', estimated: true})
+        'the motor port is taken to see the cells\' voltage (no boost converter modelled)', estimated: true}),
+    // The old systems' supplies: no hub, a battery box or a speed regulator on the motor's wires (the Robot Lab's
+    // lab-direct hub drives these motors at their nominal voltage, hubs/lab-direct).
+    'train-9v': Object.freeze({volts: 9, source: '9 V train speed regulator 4548 / 9 V battery box: 9 V DC at full throttle',
+        estimated: true}),
+    'train-12v': Object.freeze({volts: 12, source: '12 V train transformer and speed regulator (7864): 12 V DC at full throttle',
+        estimated: true}),
+    'technic-4.5v': Object.freeze({volts: 4.5, source: '4.5 V Technic battery box (3 × 1.5 V C cells)', estimated: true})
 });
 
 /**
@@ -319,11 +326,12 @@ const MOTORS = [
         v1: {maxTorqueNm: 0.38, maxSpeedDegPerSec: 1050}}),
     // RCX-era 9 V motors (passive: no id; the hub reports nothing).
     philoMotor({id: 'technic-motor-2838', name: 'Electric Technic Motor 9V (2838c01)', numbers: {part: '2838c01'},
+        parts: ['74569p01.dat', '74569.dat', '2838c01.dat'],
         numbersSource: PHILO_PARTREF, supply: 'rcx',
         philo: {column: '2838', noLoadRpm: 4100, noLoadA: 0.035, stallNcm: 0.85, stallA: 0.70,
             note: 'ungeared; his load points were taken through a 1:5 reduction and corrected',
             loadPoints: [[6, 0.45, 580, 0.32], [7, 0.45, 1000, 0.32], [9, 0.45, 2000, 0.32], [12, 0.45, 3300, 0.33]]}}),
-    philoMotor({id: 'technic-minimotor-71427', name: 'Electric Technic Mini-Motor 9V (71427c01)', parts: ['71427.dat'],
+    philoMotor({id: 'technic-minimotor-71427', name: 'Electric Technic Mini-Motor 9V (71427c01)', parts: ['71427.dat', '71427c01.dat'],
         numbers: {part: '71427c01'},
         numbersSource: PHILO_PARTREF, supply: 'rcx',
         philo: {column: '71427', noLoadRpm: 360, noLoadA: 0.0035, stallNcm: 6, stallA: 0.36,
@@ -333,6 +341,7 @@ const MOTORS = [
         philo: {column: '43362', noLoadRpm: 340, noLoadA: 0.009, stallNcm: 5.5, stallA: 0.34,
             loadPoints: [[4.5, 2.25, 50, 0.12], [7, 2.25, 140, 0.12], [9, 2.25, 219, 0.12], [12, 2.25, 333, 0.12]]}}),
     philoMotor({id: 'technic-motor-47154', name: 'Electric Technic Motor 9V Geared (47154)', numbers: {part: '47154'},
+        parts: ['47154c01.dat'],
         numbersSource: PHILO_PARTREF, supply: 'rcx',
         philo: {column: '47154', noLoadRpm: 460, noLoadA: 0.031, stallNcm: 6, stallA: 0.58,
             loadPoints: [[4.5, 2.25, 90, 0.19], [7, 2.25, 210, 0.19], [9, 2.25, 315, 0.19], [12, 2.25, 468, 0.19]]}}),
@@ -342,6 +351,29 @@ const MOTORS = [
             note: 'the outermost output: his no-load cell reads "1700 rpm / 1240 rpm", the inner hole is geared up 23/17 ' +
                 '(1240 · 23/17 ≈ 1680) and only the outermost output is load-tested',
             loadPoints: [[4.5, 5.7, 150, 1.36], [6, 5.7, 380, 1.38], [7.5, 5.7, 580, 1.37], [9, 5.7, 780, 1.40], [10.5, 5.7, 1030, 1.46]]}}),
+    // The 4.5 V Technic motor (6216, 1980s sets such as 8054): Philo did not measure it. Stand-in: the 9 V
+    // Technic motor 2838 (the same ungeared, fast design), its fitted line evaluated at the 4.5 V battery box.
+    philoMotor({id: 'technic-motor-4.5v', name: 'Electric Technic Motor 4.5V (6216)', numbers: {part: '6216'}, parts: ['6216m.dat'],
+        numbersSource: SET_NUMBER, supply: 'technic-4.5v',
+        philo: {column: '2838', noLoadRpm: 4100, noLoadA: 0.035, stallNcm: 0.85, stallA: 0.70,
+            note: 'a stand-in: no published measurement of the 4.5 V motor 6216; the 9 V Technic motor 2838 is the same ' +
+                'ungeared design, so its numbers are used and the line is taken at the 4.5 V supply',
+            loadPoints: [[6, 0.45, 580, 0.32], [7, 0.45, 1000, 0.32], [9, 0.45, 2000, 0.32], [12, 0.45, 3300, 0.33]]}}),
+    // TRAIN MOTORS: a bogie with its wheels built in (parts.json: the driven wheelset an internal hinge the device
+    // drives, the other a free one, kinds/wheelset.js). Philo's figures are at the wheel axle.
+    philoMotor({id: 'train-motor-9v', name: 'Electric Train Motor 9V (2894c01)', numbers: {part: '2894c01'},
+        parts: ['2894c01.dat', '70358.dat'], numbersSource: PHILO_PARTREF, supply: 'train-9v',
+        philo: {column: '9V Train', noLoadRpm: 2000, noLoadA: 0.090, stallNcm: 2.8, stallA: 0.95,
+            note: 'Stefan Vorst\'s measurement, published on the page',
+            loadPoints: [[4.5, 0.9, 375, 0.40], [6, 0.9, 667, 0.39], [7.5, 0.9, 1071, 0.38], [9, 0.9, 1250, 0.38]]}}),
+    // The 12 V train motor (501, 1980s sets 77xx): Philo did not measure it. Stand-in: the 9 V train motor (the
+    // same bogie, its successor), its fitted line taken at the 12 V supply.
+    philoMotor({id: 'train-motor-12v', name: 'Electric Train Motor 12V (501bc01)', numbers: {part: '501bc01'},
+        parts: ['501bc01.dat'], numbersSource: SET_NUMBER, supply: 'train-12v',
+        philo: {column: '9V Train', noLoadRpm: 2000, noLoadA: 0.090, stallNcm: 2.8, stallA: 0.95,
+            note: 'a stand-in: no published measurement of the 12 V train motor; the 9 V train motor\'s (Stefan Vorst, ' +
+                'published on the page) is used and the line is taken at the 12 V supply',
+            loadPoints: [[4.5, 0.9, 375, 0.40], [6, 0.9, 667, 0.39], [7.5, 0.9, 1071, 0.38], [9, 0.9, 1250, 0.38]]}}),
     // MINDSTORMS NXT / EV3.
     philoMotor({id: 'nxt-motor', name: 'MINDSTORMS NXT motor (53787, set 9842)', parts: ['53787.dat'], numbers: {part: '53787', set: '9842'},
         numbersSource: SET_NUMBER, supply: 'nxt',
@@ -379,6 +411,18 @@ const MOTORS = [
         philo: {column: 'PF Train', noLoadRpm: 1900, noLoadA: 0.090, stallNcm: 3.6, stallA: 1.3, extrapolated: true,
             loadPoints: [[3, 0.85, 135, 0.35], [4.5, 0.85, 468, 0.36], [6, 0.85, 792, 0.37], [7.5, 0.85, 1107, 0.38],
                 [9, 0.85, 1458, 0.38], [10.5, 0.85, 1782, 0.39], [12, 0.85, 2124, 0.40]]}}),
+    // The Power Functions servo motor (88004, LDraw 99498): its output turns to an angle within 90° either way,
+    // proportional to the speed step it is sent (hubs/lab-direct: power or speed → angle), and stops there
+    // (parts.json internalJoints[].limitsDeg, kinds/servo-stops.js). Philo did not measure it. Stand-in: the
+    // PF Medium motor, whose gear-motor size it shares.
+    {...philoMotor({id: 'pf-servo-motor', name: 'Power Functions Servo motor (88004)', parts: ['99498.dat'],
+        numbers: {set: '88004'}, numbersSource: SET_NUMBER, supply: 'power-functions',
+        philo: {column: 'PF Medium', noLoadRpm: 405, noLoadA: 0.065, stallNcm: 11, stallA: 0.85,
+            note: 'a stand-in: no published measurement of the servo motor; the PF Medium motor\'s numbers are used',
+            loadPoints: [[4.5, 3.63, 73, 0.28], [7, 3.63, 185, 0.29], [9, 3.63, 275, 0.31], [12, 3.63, 405, 0.32]]}}),
+    class: 'servo-motor',
+    servo: Object.freeze({rangeDeg: 90, steps: 7, source: 'lego-catalogue: LEGO product page 88004 "Power Functions Servo Motor": ' +
+        '15 positions, 90° clockwise or counter-clockwise; with the speed remote, 7 steps to each side of the centre'})},
     // Powered Up (LPF2: the hub reads the id).
     philoMotor({id: 'pup-medium-motor', name: 'Powered Up Medium motor (45303)', parts: ['21980.dat'], ids: {lpf2: 1}, numbers: {set: '45303'},
         idsSource: `${PYBRICKS_IDS} (LEGO_DEVICE_TYPE_ID_LPF2_MMOTOR = 1, "45303 Powered Up Medium Motor")`, numbersSource: PYBRICKS_IDS, supply: 'powered-up',

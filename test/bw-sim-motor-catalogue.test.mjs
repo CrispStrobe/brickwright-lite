@@ -179,19 +179,22 @@ test('the SPIKE, RCX, NXT/EV3 and Powered Up motors with parts have them; LPF2 i
     const PUP_PARTS = ['pup-medium-motor', 'boost-interactive-motor', 'technic-large-motor', 'technic-xl-motor'];
     // The Power Functions M, L and XL motors got theirs for real models from the LDraw library (OMR sets 42065, 42095).
     const PF_PARTS = ['pf-medium-motor', 'pf-large-motor', 'pf-xl-motor'];
+    // The old motors (RCX-era 9 V Technic, 4.5 V Technic, 9 V and 12 V train) got theirs for the real sets that use them.
+    const OLD_PARTS = ['technic-motor-2838', 'technic-motor-47154', 'technic-motor-4.5v', 'train-motor-9v', 'train-motor-12v'];
     const WITH_PARTS = id => id.startsWith('spike-') || ['technic-minimotor-71427', 'nxt-motor', 'ev3-large-motor', 'ev3-medium-motor'].includes(id) ||
-        PUP_PARTS.includes(id) || PF_PARTS.includes(id);
+        PUP_PARTS.includes(id) || PF_PARTS.includes(id) || OLD_PARTS.includes(id);
     for (const d of MOTORS) assert.deepEqual(d.parts.length > 0, WITH_PARTS(d.id), `${d.id}: ${d.parts}`);
     const parts = JSON.parse(readFileSync(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json'), 'utf8')).parts;
-    const motorDevices = parts.map(p => p.device).filter(id => id && deviceModels.get(id)?.class === 'motor').sort();
+    const motorDevices = [...new Set(parts.map(p => p.device).filter(id => id && deviceModels.get(id)?.class === 'motor'))].sort();
     assert.deepEqual(motorDevices, ['boost-interactive-motor', 'ev3-large-motor', 'ev3-medium-motor', 'nxt-motor', 'pf-large-motor', 'pf-medium-motor', 'pf-xl-motor', 'pup-medium-motor',
-        'spike-large-angular', 'spike-medium-angular', 'technic-large-motor', 'technic-minimotor-71427', 'technic-xl-motor']);
+        'spike-large-angular', 'spike-medium-angular', 'technic-large-motor', 'technic-minimotor-71427', 'technic-motor-2838', 'technic-motor-4.5v',
+        'technic-motor-47154', 'technic-xl-motor', 'train-motor-12v', 'train-motor-9v']);
     // The BOOST Move Hub's two motors are built into the hub part (internal joints actuatedBy 'built-in').
     const moveHub = parts.find(p => p.part === '26910.dat');
     assert.deepEqual(moveHub.internalJoints.filter(j => j.actuatedBy === 'built-in').map(j => [j.port, j.device]),
         [['A', 'boost-move-hub-motor'], ['B', 'boost-move-hub-motor']]);
-    for (const id of motorDevices) {
-        const part = parts.find(p => p.device === id);
-        assert.deepEqual(deviceModels.get(id).parts, [part.part], `${id} names its part`);
+    // A device names every part that is it (an LDraw alias, another colour of the same mould: 71427 and 71427c01).
+    for (const id of [...motorDevices, 'pf-servo-motor']) {
+        assert.deepEqual(parts.filter(p => p.device === id).map(p => p.part).sort(), [...deviceModels.get(id).parts].sort(), `${id} names its parts`);
     }
 });

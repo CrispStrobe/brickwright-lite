@@ -175,6 +175,14 @@ export const referencedFiles = text => {
 };
 
 /**
+ * LDraw assemblies that are a catalogue part with its cable: the file places the part unmoved and
+ * then the cable's segments (a coiled cable sticking out of the motor's back). Such a line is the
+ * part itself, drawn and simulated without the cable (a stiff coil would only collide with the
+ * model it hangs through).
+ */
+export const WITH_CABLE = Object.freeze({'99498c01.dat': '99498.dat', '22169c01.dat': '22169.dat', '22172c01.dat': '22172.dat'});
+
+/**
  * Parse LDraw text into PlacedModel and refusals.
  * @param {string} text
  * @param {{catalog?: Map|object}} opts
@@ -265,6 +273,7 @@ export const parseModel = (text, {catalog} = {}) => {
         if (!catalogMap) return null;
         const bare = /^.+? - (.+\.dat)$/.exec(file)?.[1] || file;
         if (catalogMap.has(bare)) return bare;
+        if (WITH_CABLE[bare] && catalogMap.has(WITH_CABLE[bare])) return WITH_CABLE[bare];
         const printed = /^(.+?)p[0-9a-z]{2}\.dat$/.exec(bare);
         if (printed) for (const alt of [`${printed[1]}p01.dat`, `${printed[1]}.dat`]) if (catalogMap.has(alt)) return alt;
         return null;

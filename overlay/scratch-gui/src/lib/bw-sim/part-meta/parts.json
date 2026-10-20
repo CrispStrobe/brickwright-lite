@@ -130330,6 +130330,5636 @@
      ]
     }
    }
+  },
+  {
+   "part": "2894c01.dat",
+   "name": "Train motor 9V",
+   "nameDe": "Zugmotor 9V",
+   "category": "motor",
+   "massGrams": 72,
+   "friction": 0.6,
+   "connectors": [
+    {
+     "id": "p0",
+     "type": "pin",
+     "position": [
+      0,
+      -7,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 14,
+     "friction": false
+    },
+    {
+     "id": "s0",
+     "type": "stud",
+     "position": [
+      -10,
+      16,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s1",
+     "type": "stud",
+     "position": [
+      -10,
+      16,
+      -90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s2",
+     "type": "stud",
+     "position": [
+      10,
+      16,
+      -90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s3",
+     "type": "stud",
+     "position": [
+      10,
+      16,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s4",
+     "type": "stud",
+     "position": [
+      30,
+      16,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s5",
+     "type": "stud",
+     "position": [
+      -30,
+      16,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s6",
+     "type": "stud",
+     "position": [
+      -30,
+      16,
+      -90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s7",
+     "type": "stud",
+     "position": [
+      30,
+      16,
+      -90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s8",
+     "type": "stud",
+     "position": [
+      30,
+      16,
+      90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s9",
+     "type": "stud",
+     "position": [
+      30,
+      16,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s10",
+     "type": "stud",
+     "position": [
+      10,
+      16,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s11",
+     "type": "stud",
+     "position": [
+      -10,
+      16,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s12",
+     "type": "stud",
+     "position": [
+      -30,
+      16,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s13",
+     "type": "stud",
+     "position": [
+      -30,
+      16,
+      90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s14",
+     "type": "stud",
+     "position": [
+      -10,
+      16,
+      90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s15",
+     "type": "stud",
+     "position": [
+      10,
+      16,
+      90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "w0",
+     "type": "wheel-axle",
+     "position": [
+      0,
+      42,
+      -60
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 106
+    },
+    {
+     "id": "w1",
+     "type": "wheel-axle",
+     "position": [
+      0,
+      42,
+      60
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 106
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      8.5,
+      7,
+      8.5
+     ],
+     "position": [
+      0,
+      -7,
+      0
+     ],
+     "region": "pin"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      36,
+      2,
+      96
+     ],
+     "position": [
+      0,
+      14,
+      0
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      40,
+      31,
+      107.5
+     ],
+     "position": [
+      0,
+      31,
+      0
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 29,
+     "halfHeight": 6.5,
+     "position": [
+      46.5,
+      42,
+      -60
+     ],
+     "rotation": [
+      0,
+      0,
+      -0.7071067811865476,
+      0.7071067811865476
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 29,
+     "halfHeight": 6.5,
+     "position": [
+      -46.5,
+      42,
+      -60
+     ],
+     "rotation": [
+      0,
+      0,
+      -0.7071067811865476,
+      0.7071067811865476
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 29,
+     "halfHeight": 6.5,
+     "position": [
+      46.5,
+      42,
+      60
+     ],
+     "rotation": [
+      0,
+      0,
+      -0.7071067811865476,
+      0.7071067811865476
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 29,
+     "halfHeight": 6.5,
+     "position": [
+      -46.5,
+      42,
+      60
+     ],
+     "rotation": [
+      0,
+      0,
+      -0.7071067811865476,
+      0.7071067811865476
+     ]
+    }
+   ],
+   "internalJoints": [
+    {
+     "id": "motor",
+     "type": "hinge",
+     "point": [
+      0,
+      42,
+      -60
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "movingConnectors": [
+      "w0"
+     ],
+     "movingColliders": [
+      3,
+      4
+     ],
+     "massFraction": 0.1,
+     "actuatedBy": "device"
+    },
+    {
+     "id": "wheels1",
+     "type": "hinge",
+     "point": [
+      0,
+      42,
+      60
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "movingConnectors": [
+      "w1"
+     ],
+     "movingColliders": [
+      5,
+      6
+     ],
+     "massFraction": 0.1,
+     "actuatedBy": "none"
+    }
+   ],
+   "device": "train-motor-9v",
+   "mirrorOf": {
+    "part": "2894c01.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    },
+    "others": [
+     {
+      "m": [
+       1,
+       0,
+       0,
+       0,
+       1,
+       0,
+       0,
+       0,
+       -1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "part": "70358.dat",
+   "name": "Train motor 9V (black, 70358)",
+   "nameDe": "Zugmotor 9V (schwarz, 70358)",
+   "category": "motor",
+   "massGrams": 72,
+   "friction": 0.6,
+   "connectors": [
+    {
+     "id": "p0",
+     "type": "pin",
+     "position": [
+      0,
+      -7,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 14,
+     "friction": false
+    },
+    {
+     "id": "s0",
+     "type": "stud",
+     "position": [
+      -10,
+      16,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s1",
+     "type": "stud",
+     "position": [
+      -10,
+      16,
+      -90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s2",
+     "type": "stud",
+     "position": [
+      10,
+      16,
+      -90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s3",
+     "type": "stud",
+     "position": [
+      10,
+      16,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s4",
+     "type": "stud",
+     "position": [
+      30,
+      16,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s5",
+     "type": "stud",
+     "position": [
+      -30,
+      16,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s6",
+     "type": "stud",
+     "position": [
+      -30,
+      16,
+      -90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s7",
+     "type": "stud",
+     "position": [
+      30,
+      16,
+      -90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s8",
+     "type": "stud",
+     "position": [
+      30,
+      16,
+      90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s9",
+     "type": "stud",
+     "position": [
+      30,
+      16,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s10",
+     "type": "stud",
+     "position": [
+      10,
+      16,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s11",
+     "type": "stud",
+     "position": [
+      -10,
+      16,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s12",
+     "type": "stud",
+     "position": [
+      -30,
+      16,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s13",
+     "type": "stud",
+     "position": [
+      -30,
+      16,
+      90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s14",
+     "type": "stud",
+     "position": [
+      -10,
+      16,
+      90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s15",
+     "type": "stud",
+     "position": [
+      10,
+      16,
+      90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "w0",
+     "type": "wheel-axle",
+     "position": [
+      0,
+      42,
+      -60
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 106
+    },
+    {
+     "id": "w1",
+     "type": "wheel-axle",
+     "position": [
+      0,
+      42,
+      60
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 106
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      8.5,
+      7,
+      8.5
+     ],
+     "position": [
+      0,
+      -7,
+      0
+     ],
+     "region": "pin"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      36,
+      2,
+      96
+     ],
+     "position": [
+      0,
+      14,
+      0
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      40,
+      31,
+      107.5
+     ],
+     "position": [
+      0,
+      31,
+      0
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 29,
+     "halfHeight": 6.5,
+     "position": [
+      46.5,
+      42,
+      -60
+     ],
+     "rotation": [
+      0,
+      0,
+      -0.7071067811865476,
+      0.7071067811865476
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 29,
+     "halfHeight": 6.5,
+     "position": [
+      -46.5,
+      42,
+      -60
+     ],
+     "rotation": [
+      0,
+      0,
+      -0.7071067811865476,
+      0.7071067811865476
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 29,
+     "halfHeight": 6.5,
+     "position": [
+      46.5,
+      42,
+      60
+     ],
+     "rotation": [
+      0,
+      0,
+      -0.7071067811865476,
+      0.7071067811865476
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 29,
+     "halfHeight": 6.5,
+     "position": [
+      -46.5,
+      42,
+      60
+     ],
+     "rotation": [
+      0,
+      0,
+      -0.7071067811865476,
+      0.7071067811865476
+     ]
+    }
+   ],
+   "internalJoints": [
+    {
+     "id": "motor",
+     "type": "hinge",
+     "point": [
+      0,
+      42,
+      -60
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "movingConnectors": [
+      "w0"
+     ],
+     "movingColliders": [
+      3,
+      4
+     ],
+     "massFraction": 0.1,
+     "actuatedBy": "device"
+    },
+    {
+     "id": "wheels1",
+     "type": "hinge",
+     "point": [
+      0,
+      42,
+      60
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "movingConnectors": [
+      "w1"
+     ],
+     "movingColliders": [
+      5,
+      6
+     ],
+     "massFraction": 0.1,
+     "actuatedBy": "none"
+    }
+   ],
+   "device": "train-motor-9v",
+   "mirrorOf": {
+    "part": "70358.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    },
+    "others": [
+     {
+      "m": [
+       1,
+       0,
+       0,
+       0,
+       1,
+       0,
+       0,
+       0,
+       -1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "part": "501bc01.dat",
+   "name": "Train motor 12V",
+   "nameDe": "Zugmotor 12V",
+   "category": "motor",
+   "massGrams": 65.5,
+   "friction": 0.6,
+   "connectors": [
+    {
+     "id": "s0",
+     "type": "stud",
+     "position": [
+      -30,
+      16,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s1",
+     "type": "stud",
+     "position": [
+      -30,
+      16,
+      -90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s2",
+     "type": "stud",
+     "position": [
+      -10,
+      16,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s3",
+     "type": "stud",
+     "position": [
+      -10,
+      16,
+      -90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s4",
+     "type": "stud",
+     "position": [
+      10,
+      16,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s5",
+     "type": "stud",
+     "position": [
+      10,
+      16,
+      -90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s6",
+     "type": "stud",
+     "position": [
+      30,
+      16,
+      -70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s7",
+     "type": "stud",
+     "position": [
+      30,
+      16,
+      -90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s8",
+     "type": "stud",
+     "position": [
+      30,
+      16,
+      90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s9",
+     "type": "stud",
+     "position": [
+      30,
+      16,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s10",
+     "type": "stud",
+     "position": [
+      10,
+      16,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s11",
+     "type": "stud",
+     "position": [
+      -10,
+      16,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s12",
+     "type": "stud",
+     "position": [
+      -30,
+      16,
+      70
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s13",
+     "type": "stud",
+     "position": [
+      -30,
+      16,
+      90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s14",
+     "type": "stud",
+     "position": [
+      56,
+      40,
+      -72
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s15",
+     "type": "stud",
+     "position": [
+      55,
+      40,
+      -60
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s16",
+     "type": "stud",
+     "position": [
+      56,
+      40,
+      48
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s17",
+     "type": "stud",
+     "position": [
+      55,
+      40,
+      60
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s18",
+     "type": "stud",
+     "position": [
+      -56,
+      52,
+      60
+     ],
+     "axis": [
+      -1,
+      0,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s19",
+     "type": "stud",
+     "position": [
+      -55,
+      40,
+      60
+     ],
+     "axis": [
+      -1,
+      0,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s20",
+     "type": "stud",
+     "position": [
+      -56,
+      52,
+      -60
+     ],
+     "axis": [
+      -1,
+      0,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s21",
+     "type": "stud",
+     "position": [
+      -55,
+      40,
+      -60
+     ],
+     "axis": [
+      -1,
+      0,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s22",
+     "type": "stud",
+     "position": [
+      -10,
+      16,
+      90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s23",
+     "type": "stud",
+     "position": [
+      10,
+      16,
+      90
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s24",
+     "type": "stud",
+     "position": [
+      56,
+      40,
+      -12
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s25",
+     "type": "stud",
+     "position": [
+      55,
+      40,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s26",
+     "type": "stud",
+     "position": [
+      -56,
+      52,
+      0
+     ],
+     "axis": [
+      -1,
+      0,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s27",
+     "type": "stud",
+     "position": [
+      -55,
+      40,
+      0
+     ],
+     "axis": [
+      -1,
+      0,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "w0",
+     "type": "wheel-axle",
+     "position": [
+      0,
+      40,
+      -60
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 120
+    },
+    {
+     "id": "w1",
+     "type": "wheel-axle",
+     "position": [
+      0,
+      40,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 120
+    },
+    {
+     "id": "w2",
+     "type": "wheel-axle",
+     "position": [
+      0,
+      40,
+      60
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 120
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      36,
+      2,
+      96
+     ],
+     "position": [
+      0,
+      14,
+      0
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      2,
+      6,
+      66
+     ],
+     "position": [
+      58,
+      40,
+      -12
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      2,
+      6.0200000000000005,
+      66
+     ],
+     "position": [
+      57,
+      40,
+      0
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      2,
+      6,
+      66
+     ],
+     "position": [
+      -58,
+      52,
+      0
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      2,
+      6,
+      66.02
+     ],
+     "position": [
+      -57,
+      40,
+      0
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      26,
+      40,
+      18
+     ],
+     "position": [
+      0,
+      22,
+      88
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      26,
+      40,
+      18
+     ],
+     "position": [
+      0,
+      22,
+      -88
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      34,
+      40,
+      106
+     ],
+     "position": [
+      0,
+      22,
+      0
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 28,
+     "halfHeight": 13,
+     "position": [
+      47,
+      40,
+      -60
+     ],
+     "rotation": [
+      0,
+      0,
+      -0.7071067811865476,
+      0.7071067811865476
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 28,
+     "halfHeight": 13,
+     "position": [
+      -47,
+      40,
+      -60
+     ],
+     "rotation": [
+      0,
+      0,
+      -0.7071067811865476,
+      0.7071067811865476
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 28,
+     "halfHeight": 13,
+     "position": [
+      47,
+      40,
+      0
+     ],
+     "rotation": [
+      0,
+      0,
+      -0.7071067811865476,
+      0.7071067811865476
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 28,
+     "halfHeight": 13,
+     "position": [
+      -47,
+      40,
+      0
+     ],
+     "rotation": [
+      0,
+      0,
+      -0.7071067811865476,
+      0.7071067811865476
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 28,
+     "halfHeight": 13,
+     "position": [
+      47,
+      40,
+      60
+     ],
+     "rotation": [
+      0,
+      0,
+      -0.7071067811865476,
+      0.7071067811865476
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 28,
+     "halfHeight": 13,
+     "position": [
+      -47,
+      40,
+      60
+     ],
+     "rotation": [
+      0,
+      0,
+      -0.7071067811865476,
+      0.7071067811865476
+     ]
+    }
+   ],
+   "internalJoints": [
+    {
+     "id": "motor",
+     "type": "hinge",
+     "point": [
+      0,
+      40,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "movingConnectors": [
+      "w1"
+     ],
+     "movingColliders": [
+      10,
+      11
+     ],
+     "massFraction": 0.1,
+     "actuatedBy": "device"
+    },
+    {
+     "id": "wheels0",
+     "type": "hinge",
+     "point": [
+      0,
+      40,
+      -60
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "movingConnectors": [
+      "w0"
+     ],
+     "movingColliders": [
+      8,
+      9
+     ],
+     "massFraction": 0.1,
+     "actuatedBy": "none"
+    },
+    {
+     "id": "wheels2",
+     "type": "hinge",
+     "point": [
+      0,
+      40,
+      60
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "movingConnectors": [
+      "w2"
+     ],
+     "movingColliders": [
+      12,
+      13
+     ],
+     "massFraction": 0.1,
+     "actuatedBy": "none"
+    }
+   ],
+   "device": "train-motor-12v",
+   "mirrorOf": null
+  },
+  {
+   "part": "74569p01.dat",
+   "name": "Technic motor 9V (2838)",
+   "nameDe": "Technic-Motor 9V (2838)",
+   "category": "motor",
+   "massGrams": 48,
+   "connectors": [
+    {
+     "id": "a0",
+     "type": "axle",
+     "position": [
+      0,
+      26,
+      -60
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "s0",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s1",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s2",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s3",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s4",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s5",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s6",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s7",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s8",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s9",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s10",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      -20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s11",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      -40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s12",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      -20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s13",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      -40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s14",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s15",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s16",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s17",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s18",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s19",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "u0",
+     "type": "antistud",
+     "position": [
+      -30,
+      56,
+      -40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u1",
+     "type": "antistud",
+     "position": [
+      -30,
+      56,
+      -20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u2",
+     "type": "antistud",
+     "position": [
+      -30,
+      56,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u3",
+     "type": "antistud",
+     "position": [
+      -30,
+      56,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u4",
+     "type": "antistud",
+     "position": [
+      -30,
+      56,
+      40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u5",
+     "type": "antistud",
+     "position": [
+      -10,
+      56,
+      -40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u6",
+     "type": "antistud",
+     "position": [
+      -10,
+      56,
+      -20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u7",
+     "type": "antistud",
+     "position": [
+      -10,
+      56,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u8",
+     "type": "antistud",
+     "position": [
+      -10,
+      56,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u9",
+     "type": "antistud",
+     "position": [
+      -10,
+      56,
+      40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u10",
+     "type": "antistud",
+     "position": [
+      10,
+      56,
+      -40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u11",
+     "type": "antistud",
+     "position": [
+      10,
+      56,
+      -20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u12",
+     "type": "antistud",
+     "position": [
+      10,
+      56,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u13",
+     "type": "antistud",
+     "position": [
+      10,
+      56,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u14",
+     "type": "antistud",
+     "position": [
+      10,
+      56,
+      40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u15",
+     "type": "antistud",
+     "position": [
+      30,
+      56,
+      -40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u16",
+     "type": "antistud",
+     "position": [
+      30,
+      56,
+      -20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u17",
+     "type": "antistud",
+     "position": [
+      30,
+      56,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u18",
+     "type": "antistud",
+     "position": [
+      30,
+      56,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u19",
+     "type": "antistud",
+     "position": [
+      30,
+      56,
+      40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      8.5,
+      8.5,
+      10
+     ],
+     "position": [
+      0,
+      26,
+      -60
+     ],
+     "region": "axle"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      36,
+      2,
+      46
+     ],
+     "position": [
+      0,
+      -2,
+      0
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      40,
+      28,
+      50
+     ],
+     "position": [
+      0,
+      28,
+      0
+     ]
+    }
+   ],
+   "internalJoints": [
+    {
+     "id": "motor",
+     "type": "hinge",
+     "point": [
+      0,
+      26,
+      -60
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "movingConnectors": [
+      "a0"
+     ],
+     "movingColliders": [
+      0
+     ],
+     "massFraction": 0.15,
+     "actuatedBy": "device"
+    }
+   ],
+   "device": "technic-motor-2838",
+   "mirrorOf": null
+  },
+  {
+   "part": "74569.dat",
+   "name": "Technic motor 9V (2838, light grey bottom)",
+   "nameDe": "Technic-Motor 9V (2838, hellgraue Unterseite)",
+   "category": "motor",
+   "massGrams": 48,
+   "connectors": [
+    {
+     "id": "a0",
+     "type": "axle",
+     "position": [
+      0,
+      26,
+      -60
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "s0",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s1",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s2",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s3",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s4",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s5",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s6",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s7",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s8",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s9",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s10",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      -20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s11",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      -40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s12",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      -20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s13",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      -40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s14",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s15",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s16",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s17",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s18",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s19",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "u0",
+     "type": "antistud",
+     "position": [
+      -30,
+      56,
+      -40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u1",
+     "type": "antistud",
+     "position": [
+      -30,
+      56,
+      -20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u2",
+     "type": "antistud",
+     "position": [
+      -30,
+      56,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u3",
+     "type": "antistud",
+     "position": [
+      -30,
+      56,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u4",
+     "type": "antistud",
+     "position": [
+      -30,
+      56,
+      40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u5",
+     "type": "antistud",
+     "position": [
+      -10,
+      56,
+      -40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u6",
+     "type": "antistud",
+     "position": [
+      -10,
+      56,
+      -20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u7",
+     "type": "antistud",
+     "position": [
+      -10,
+      56,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u8",
+     "type": "antistud",
+     "position": [
+      -10,
+      56,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u9",
+     "type": "antistud",
+     "position": [
+      -10,
+      56,
+      40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u10",
+     "type": "antistud",
+     "position": [
+      10,
+      56,
+      -40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u11",
+     "type": "antistud",
+     "position": [
+      10,
+      56,
+      -20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u12",
+     "type": "antistud",
+     "position": [
+      10,
+      56,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u13",
+     "type": "antistud",
+     "position": [
+      10,
+      56,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u14",
+     "type": "antistud",
+     "position": [
+      10,
+      56,
+      40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u15",
+     "type": "antistud",
+     "position": [
+      30,
+      56,
+      -40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u16",
+     "type": "antistud",
+     "position": [
+      30,
+      56,
+      -20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u17",
+     "type": "antistud",
+     "position": [
+      30,
+      56,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u18",
+     "type": "antistud",
+     "position": [
+      30,
+      56,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u19",
+     "type": "antistud",
+     "position": [
+      30,
+      56,
+      40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      8.5,
+      8.5,
+      10
+     ],
+     "position": [
+      0,
+      26,
+      -60
+     ],
+     "region": "axle"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      36,
+      2,
+      46
+     ],
+     "position": [
+      0,
+      -2,
+      0
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      40,
+      28,
+      50
+     ],
+     "position": [
+      0,
+      28,
+      0
+     ]
+    }
+   ],
+   "internalJoints": [
+    {
+     "id": "motor",
+     "type": "hinge",
+     "point": [
+      0,
+      26,
+      -60
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "movingConnectors": [
+      "a0"
+     ],
+     "movingColliders": [
+      0
+     ],
+     "massFraction": 0.15,
+     "actuatedBy": "device"
+    }
+   ],
+   "device": "technic-motor-2838",
+   "mirrorOf": null
+  },
+  {
+   "part": "2838c01.dat",
+   "name": "Technic motor 9V (2838c01)",
+   "nameDe": "Technic-Motor 9V (2838c01)",
+   "category": "motor",
+   "massGrams": 48,
+   "connectors": [
+    {
+     "id": "a0",
+     "type": "axle",
+     "position": [
+      0,
+      26,
+      -60
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "s0",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s1",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s2",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s3",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s4",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s5",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s6",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s7",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s8",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s9",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s10",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      -20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s11",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      -40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s12",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      -20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s13",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      -40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s14",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s15",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s16",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s17",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s18",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s19",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "u0",
+     "type": "antistud",
+     "position": [
+      -30,
+      56,
+      -40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u1",
+     "type": "antistud",
+     "position": [
+      -30,
+      56,
+      -20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u2",
+     "type": "antistud",
+     "position": [
+      -30,
+      56,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u3",
+     "type": "antistud",
+     "position": [
+      -30,
+      56,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u4",
+     "type": "antistud",
+     "position": [
+      -30,
+      56,
+      40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u5",
+     "type": "antistud",
+     "position": [
+      -10,
+      56,
+      -40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u6",
+     "type": "antistud",
+     "position": [
+      -10,
+      56,
+      -20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u7",
+     "type": "antistud",
+     "position": [
+      -10,
+      56,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u8",
+     "type": "antistud",
+     "position": [
+      -10,
+      56,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u9",
+     "type": "antistud",
+     "position": [
+      -10,
+      56,
+      40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u10",
+     "type": "antistud",
+     "position": [
+      10,
+      56,
+      -40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u11",
+     "type": "antistud",
+     "position": [
+      10,
+      56,
+      -20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u12",
+     "type": "antistud",
+     "position": [
+      10,
+      56,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u13",
+     "type": "antistud",
+     "position": [
+      10,
+      56,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u14",
+     "type": "antistud",
+     "position": [
+      10,
+      56,
+      40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u15",
+     "type": "antistud",
+     "position": [
+      30,
+      56,
+      -40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u16",
+     "type": "antistud",
+     "position": [
+      30,
+      56,
+      -20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u17",
+     "type": "antistud",
+     "position": [
+      30,
+      56,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u18",
+     "type": "antistud",
+     "position": [
+      30,
+      56,
+      20
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u19",
+     "type": "antistud",
+     "position": [
+      30,
+      56,
+      40
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      8.5,
+      8.5,
+      10
+     ],
+     "position": [
+      0,
+      26,
+      -60
+     ],
+     "region": "axle"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      36,
+      2,
+      46
+     ],
+     "position": [
+      0,
+      -2,
+      0
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      40,
+      28,
+      50
+     ],
+     "position": [
+      0,
+      28,
+      0
+     ]
+    }
+   ],
+   "internalJoints": [
+    {
+     "id": "motor",
+     "type": "hinge",
+     "point": [
+      0,
+      26,
+      -60
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "movingConnectors": [
+      "a0"
+     ],
+     "movingColliders": [
+      0
+     ],
+     "massFraction": 0.15,
+     "actuatedBy": "device"
+    }
+   ],
+   "device": "technic-motor-2838",
+   "mirrorOf": null
+  },
+  {
+   "part": "47154c01.dat",
+   "name": "Technic motor 9V geared (47154)",
+   "nameDe": "Technic-Getriebemotor 9V (47154)",
+   "category": "motor",
+   "massGrams": 40,
+   "connectors": [
+    {
+     "id": "x0",
+     "type": "axlehole",
+     "position": [
+      0,
+      58,
+      -30
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "s0",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s1",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s2",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s3",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s4",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s5",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s6",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s7",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s8",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s9",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s10",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s11",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s12",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s13",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s14",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s15",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "u0",
+     "type": "antistud",
+     "position": [
+      -30,
+      80,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u1",
+     "type": "antistud",
+     "position": [
+      -30,
+      80,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u2",
+     "type": "antistud",
+     "position": [
+      -30,
+      80,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u3",
+     "type": "antistud",
+     "position": [
+      -30,
+      80,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u4",
+     "type": "antistud",
+     "position": [
+      -10,
+      80,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u5",
+     "type": "antistud",
+     "position": [
+      -10,
+      80,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u6",
+     "type": "antistud",
+     "position": [
+      -10,
+      80,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u7",
+     "type": "antistud",
+     "position": [
+      -10,
+      80,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u8",
+     "type": "antistud",
+     "position": [
+      10,
+      80,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u9",
+     "type": "antistud",
+     "position": [
+      10,
+      80,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u10",
+     "type": "antistud",
+     "position": [
+      10,
+      80,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u11",
+     "type": "antistud",
+     "position": [
+      10,
+      80,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u12",
+     "type": "antistud",
+     "position": [
+      30,
+      80,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u13",
+     "type": "antistud",
+     "position": [
+      30,
+      80,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u14",
+     "type": "antistud",
+     "position": [
+      30,
+      80,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u15",
+     "type": "antistud",
+     "position": [
+      30,
+      80,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      36,
+      2,
+      36
+     ],
+     "position": [
+      0,
+      -2,
+      0
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      40,
+      40,
+      40
+     ],
+     "position": [
+      0,
+      40,
+      0
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 9,
+     "halfHeight": 11,
+     "position": [
+      0,
+      58,
+      -29
+     ],
+     "rotation": [
+      0.7071067811865476,
+      0,
+      0,
+      0.7071067811865476
+     ]
+    }
+   ],
+   "internalJoints": [
+    {
+     "id": "motor",
+     "type": "hinge",
+     "point": [
+      0,
+      58,
+      -30
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "movingConnectors": [
+      "x0"
+     ],
+     "movingColliders": [
+      2
+     ],
+     "massFraction": 0.15,
+     "actuatedBy": "device"
+    }
+   ],
+   "device": "technic-motor-47154",
+   "mirrorOf": {
+    "part": "47154c01.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  {
+   "part": "6216m.dat",
+   "name": "Technic motor 4.5V (6216)",
+   "nameDe": "Technic-Motor 4,5V (6216)",
+   "category": "motor",
+   "massGrams": 8.98,
+   "connectors": [
+    {
+     "id": "s0",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s1",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s2",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s3",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s4",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s5",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s6",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s7",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s8",
+     "type": "stud",
+     "position": [
+      10,
+      16,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s9",
+     "type": "stud",
+     "position": [
+      -10,
+      16,
+      50
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "u0",
+     "type": "antistud",
+     "position": [
+      -25,
+      56,
+      -29
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u1",
+     "type": "antistud",
+     "position": [
+      -25,
+      56,
+      -9
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u2",
+     "type": "antistud",
+     "position": [
+      -25,
+      56,
+      11
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u3",
+     "type": "antistud",
+     "position": [
+      -5,
+      56,
+      -29
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u4",
+     "type": "antistud",
+     "position": [
+      -5,
+      56,
+      -9
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u5",
+     "type": "antistud",
+     "position": [
+      -5,
+      56,
+      11
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u6",
+     "type": "antistud",
+     "position": [
+      -5,
+      56,
+      31
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u7",
+     "type": "antistud",
+     "position": [
+      15,
+      56,
+      -29
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u8",
+     "type": "antistud",
+     "position": [
+      15,
+      56,
+      -9
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u9",
+     "type": "antistud",
+     "position": [
+      15,
+      56,
+      11
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u10",
+     "type": "antistud",
+     "position": [
+      15,
+      56,
+      31
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "a0",
+     "type": "axle",
+     "position": [
+      0,
+      26,
+      -49.5
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 19
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      16,
+      2,
+      36
+     ],
+     "position": [
+      0,
+      -2,
+      0
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      16,
+      2,
+      6
+     ],
+     "position": [
+      0,
+      14,
+      50
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      35,
+      28,
+      50
+     ],
+     "position": [
+      0,
+      28,
+      10
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      6,
+      6,
+      9.5
+     ],
+     "position": [
+      0,
+      26,
+      -49.5
+     ],
+     "region": "axle"
+    }
+   ],
+   "internalJoints": [
+    {
+     "id": "motor",
+     "type": "hinge",
+     "point": [
+      0,
+      26,
+      -49.5
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "movingConnectors": [
+      "a0"
+     ],
+     "movingColliders": [
+      3
+     ],
+     "massFraction": 0.15,
+     "actuatedBy": "device"
+    }
+   ],
+   "device": "technic-motor-4.5v",
+   "mirrorOf": null
+  },
+  {
+   "part": "99498.dat",
+   "name": "Power Functions servo motor",
+   "nameDe": "Power-Functions-Servomotor",
+   "category": "motor",
+   "massGrams": 46,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      -20,
+      0,
+      90
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      20,
+      0,
+      90
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      -20,
+      0,
+      130
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      20,
+      0,
+      130
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h4",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -40,
+      10
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h5",
+     "type": "pinhole",
+     "position": [
+      20,
+      -40,
+      10
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h6",
+     "type": "pinhole",
+     "position": [
+      -20,
+      0,
+      10
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h7",
+     "type": "pinhole",
+     "position": [
+      20,
+      0,
+      10
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h8",
+     "type": "pinhole",
+     "position": [
+      0,
+      -20,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h9",
+     "type": "pinhole",
+     "position": [
+      0,
+      -40,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h10",
+     "type": "pinhole",
+     "position": [
+      0,
+      -60,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h11",
+     "type": "pinhole",
+     "position": [
+      0,
+      20,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h12",
+     "type": "pinhole",
+     "position": [
+      20,
+      -20,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h13",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -20,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "x0",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "x1",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      50
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      30,
+      49.5,
+      69.5
+     ],
+     "position": [
+      0,
+      -20,
+      69.5
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 12,
+     "halfHeight": 30,
+     "position": [
+      0,
+      0,
+      30
+     ],
+     "rotation": [
+      0.7071067811865476,
+      0,
+      0,
+      0.7071067811865476
+     ]
+    }
+   ],
+   "internalJoints": [
+    {
+     "id": "motor",
+     "type": "hinge",
+     "point": [
+      0,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "movingConnectors": [
+      "x0",
+      "x1"
+     ],
+     "movingColliders": [
+      1
+     ],
+     "massFraction": 0.15,
+     "actuatedBy": "device",
+     "limitsDeg": [
+      -90,
+      90
+     ]
+    }
+   ],
+   "device": "pf-servo-motor",
+   "mirrorOf": {
+    "part": "99498.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  {
+   "part": "71427c01.dat",
+   "name": "Technic mini-motor 9V (71427c01)",
+   "nameDe": "Technic-Minimotor 9V (71427c01)",
+   "category": "motor",
+   "massGrams": 12.02,
+   "connectors": [
+    {
+     "id": "a0",
+     "type": "axle",
+     "position": [
+      0,
+      42,
+      -49.75
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "s0",
+     "type": "stud",
+     "position": [
+      30,
+      20,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 8
+    },
+    {
+     "id": "s1",
+     "type": "stud",
+     "position": [
+      30,
+      20,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 8
+    },
+    {
+     "id": "s2",
+     "type": "stud",
+     "position": [
+      -30,
+      20,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 8
+    },
+    {
+     "id": "s3",
+     "type": "stud",
+     "position": [
+      -30,
+      20,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 8
+    },
+    {
+     "id": "s4",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s5",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s6",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s7",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s8",
+     "type": "stud",
+     "position": [
+      -30,
+      0,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s9",
+     "type": "stud",
+     "position": [
+      -10,
+      0,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s10",
+     "type": "stud",
+     "position": [
+      10,
+      0,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s11",
+     "type": "stud",
+     "position": [
+      30,
+      0,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s12",
+     "type": "stud",
+     "position": [
+      10,
+      16,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s13",
+     "type": "stud",
+     "position": [
+      10,
+      16,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s14",
+     "type": "stud",
+     "position": [
+      -10,
+      16,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "s15",
+     "type": "stud",
+     "position": [
+      -10,
+      16,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ],
+     "length": 4
+    },
+    {
+     "id": "u0",
+     "type": "antistud",
+     "position": [
+      -30,
+      75,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u1",
+     "type": "antistud",
+     "position": [
+      -30,
+      75,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u2",
+     "type": "antistud",
+     "position": [
+      -30,
+      75,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u3",
+     "type": "antistud",
+     "position": [
+      -30,
+      75,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u4",
+     "type": "antistud",
+     "position": [
+      -10,
+      75,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u5",
+     "type": "antistud",
+     "position": [
+      -10,
+      75,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u6",
+     "type": "antistud",
+     "position": [
+      10,
+      75,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u7",
+     "type": "antistud",
+     "position": [
+      10,
+      75,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u8",
+     "type": "antistud",
+     "position": [
+      30,
+      75,
+      -30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u9",
+     "type": "antistud",
+     "position": [
+      30,
+      75,
+      -10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u10",
+     "type": "antistud",
+     "position": [
+      30,
+      75,
+      10
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "u11",
+     "type": "antistud",
+     "position": [
+      30,
+      75,
+      30
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      8.5,
+      8.5,
+      10
+     ],
+     "position": [
+      0,
+      42,
+      -49.75
+     ],
+     "region": "axle"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      36,
+      4,
+      16
+     ],
+     "position": [
+      0,
+      16,
+      -20
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      36,
+      2,
+      16
+     ],
+     "position": [
+      0,
+      -2,
+      20
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      16,
+      2,
+      16
+     ],
+     "position": [
+      0,
+      14,
+      -20
+     ],
+     "region": "stud"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      40,
+      37.5,
+      40
+     ],
+     "position": [
+      0,
+      37.5,
+      0
+     ]
+    }
+   ],
+   "internalJoints": [
+    {
+     "id": "motor",
+     "type": "hinge",
+     "point": [
+      0,
+      42,
+      -49.75
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "movingConnectors": [
+      "a0"
+     ],
+     "movingColliders": [
+      0
+     ],
+     "massFraction": 0.15,
+     "actuatedBy": "device"
+    }
+   ],
+   "device": "technic-minimotor-71427",
+   "mirrorOf": {
+    "part": "71427c01.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   }
  ]
 }
