@@ -76,7 +76,7 @@ const freshPort = () => ({
     ...freshOutput(), device: null,
     power: 0, mode: 0, regulation: 0, turnRatio: 0, runState: RUN_STATE.IDLE, tachoLimit: 0,
     tachoZero: 0, blockZero: 0, rotationZero: 0, moveStartDeg: 0, targetDeg: 0, stalledMs: 0, lastProgressDeg: 0,
-    holdDeg: null
+    holdDeg: null, zeroHoldDeg: null
 });
 
 const freshInput = () => ({device: null, type: NXT_SENSOR_TYPE.none, mode: 0, probe: null, valid: false,
@@ -210,6 +210,13 @@ export class NxtVirtualHub {
             }
             return;
         }
+        // Speed regulation to zero holds the shaft where the command found it (our model: the firmware's
+        // speed loop at set speed 0, no ramp outside RAMPUP / RAMPDOWN) — how NXC's RotateMotor ends a move.
+        if (regulated && level === 0) {
+            if (port.zeroHoldDeg === null || port.zeroHoldDeg === undefined) port.zeroHoldDeg = port.angleDeg;
+            driveHold(port, port.zeroHoldDeg, spec, dtMs);
+            return;
+        }
         if (regulated) driveRegulated(port, level / 100 * FULL_SCALE_DPS, spec, dtMs, ACCEL_DPS2);
         else driveOpen(port, level, port.mode & MODE.BRAKE ? 'brake' : 'coast');
     }
@@ -310,6 +317,7 @@ export class NxtVirtualHub {
         const p = this.s.outputs[i];
         Object.assign(p, {power, mode, regulation, turnRatio, runState, tachoLimit});
         p.holdDeg = null;
+        p.zeroHoldDeg = null;
         if (tachoLimit > 0) {
             // The new target is the previous one plus the limit, in the power's direction (firmware
             // output driver); TachoCount is not reset.
@@ -523,6 +531,7 @@ export class NxtVirtualHub {
             Object.assign(p, {power: state.power, mode: state.mode, regulation: state.regulation, turnRatio: state.turnRatio,
                 runState: state.runState});
             p.holdDeg = null;
+            p.zeroHoldDeg = null;
             this._changed();
         }
     }
