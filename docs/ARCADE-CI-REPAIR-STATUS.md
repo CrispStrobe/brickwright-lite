@@ -1,5 +1,28 @@
 # Arcade integration repairs and qualification order
 
+## Supplier adoption guard follow-up — 2026-10-20
+
+The arithmetic supplier adoption at `74f89846` exposed one further exact-pin
+expectation in `test/lego-spike-roundtrip.test.mjs`. Three hosted unit shards
+stopped at that shared guard, before their shard-specific tests. The guard now
+names the adopted revision and retains every executable artifact and roundtrip
+assertion. Its complete one-test module passes locally. This is an artifact
+producer check, not ARM, hardware or native SPIKE guest qualification.
+
+The vendor-freshness and debugger-focused checks pass at the earlier repair
+head. Other enabled hosted checks remain required at the final successor head;
+old-head successes cannot qualify a new push.
+
+Supplier [#159](https://github.com/CrispStrobe/sb3-creator/pull/159) also requires
+its full cross-repository gates. Its corrected arithmetic census passes all 461
+tests in the three affected modules, but the explicit current Board/circuit-UI
+adoption exposes F030 execution, new device coverage, circuit fixed-point and
+measurement-provenance failures. Fix those causes and re-derive affected results;
+do not weaken assertions, silently restore stale pins or restamp provenance
+without the actual measurements. Consumer merge remains blocked on that supplier
+qualification and every enabled consumer check. Historical corpus counts are
+unchanged.
+
 ## Current batch and acceptance boundary — 2026-10-20
 
 The saved failures on [#1128](https://github.com/CrispStrobe/brickwright-lite/pull/1128)
