@@ -38,6 +38,28 @@ const exactRotation = r => r.every(v => v === 0 || v === 1 || v === -1) &&
     Math.abs(r[0] * (r[4] * r[8] - r[5] * r[7]) - r[1] * (r[3] * r[8] - r[5] * r[6]) + r[2] * (r[3] * r[7] - r[4] * r[6]) - 1) < 1e-12;
 
 /**
+ * Hover where `project()` says the spot is and accept it only once the rendered
+ * hover has settled. Hover text can wrap differently, resizing the canvas and its
+ * camera: observe two frames before trusting the old projection, re-aim (without
+ * clicking) if the part moved under the stationary pointer, and refuse a point a
+ * DOM element covers even when the status line still names the part.
+ */
+const hoverSettled = async (page, project, name) => {
+    for (let aim = 0; aim < 3; aim++) {
+        const at = await project();
+        if (!at) return null;
+        await page.mouse.move(at[0], at[1]);
+        await page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
+        const now = await project();
+        if (!now || Math.hypot(now[0] - at[0], now[1] - at[1]) > 0.25) continue;
+        const onCanvas = await page.evaluate(([x, y]) => document.elementFromPoint(x, y) ===
+            document.querySelector('[data-testid="bw-sim-lab-editor-canvas"]'), at);
+        const text = await page.getByTestId('bw-sim-lab-build-status').textContent();
+        return onCanvas && text.startsWith(`${name}:`) ? at : null;
+    }
+    return null;
+};
+/**
  * Like a person aiming at a part partly covered by the gizmo: move along the
  * part's top face until the status line says the pointer is on the part (not
  * on a gizmo handle), and press there.
@@ -49,19 +71,19 @@ const grabPoint = async (page, id, name) => {
         if (fit) await page.keyboard.press('f');
         for (const local of [[0, -10, 10], [0, -10, 30], [0, -10, 50], [0, -10, -30], [0, -10, -50], [0, -10, -10],
             ...(fit ? [[0, -10, 70], [0, -10, -70], [10, 0, 30], [-10, 0, 30], [10, 0, -30], [-10, 0, -30], [0, 10, 30], [0, 10, -30]] : [])]) {
-            const at = await screenOf(page, id, local);
-            await page.mouse.move(at[0], at[1]);
-            const text = await page.getByTestId('bw-sim-lab-build-status').textContent();
-            if (text.startsWith(`${name}:`)) return at;
+            const at = await hoverSettled(page, () => screenOf(page, id, local), name);
+            if (at) return at;
         }
     }
     // Last, however it lies: spots spiralling out from its centre on screen, where the pointer is on it.
-    const c = await page.evaluate(i => { const v = window.__bwSimLab.editView; return v.toScreen(v.debugPoint(i)); }, id);
+    const centre = () => page.evaluate(i => { const v = window.__bwSimLab.editView; return v.toScreen(v.debugPoint(i)); }, id);
     for (let r = 12; r <= 180; r += 12) {
         for (let a = 0; a < 16; a++) {
-            const at = [c[0] + r * Math.cos(a * Math.PI / 8), c[1] + r * Math.sin(a * Math.PI / 8)];
-            await page.mouse.move(at[0], at[1]);
-            if ((await page.getByTestId('bw-sim-lab-build-status').textContent()).startsWith(`${name}:`)) return at;
+            const at = await hoverSettled(page, async () => {
+                const c = await centre();
+                return c && [c[0] + r * Math.cos(a * Math.PI / 8), c[1] + r * Math.sin(a * Math.PI / 8)];
+            }, name);
+            if (at) return at;
         }
     }
     await page.screenshot({path: resolve('artifacts/sim-lab', 'sim-lab-build-grab-failure.png')}).catch(() => {});

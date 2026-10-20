@@ -805,6 +805,12 @@
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Donald Sutter [technog]"
   },
+  "p/3-8con4.dat": {
+   "sha256": "4a96e03c6bef7b63038890b1ce78c94d19a39efee3ba04ad0693e944f1b6b8a5",
+   "release": "G Primitive UPDATE 2011-02",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "J.C. Tchang [tchang]"
+  },
   "p/3-8con7.dat": {
    "sha256": "a2de84e9d0e1b10f1f329e80937d2b0f756d907571565abe68362066ca9b134d",
    "release": "G Primitive UPDATE 2014-01",
@@ -852,6 +858,12 @@
    "release": "G Primitive UPDATE 2005-01",
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Niels Karsdorp [nielsk]"
+  },
+  "p/3-8ring4.dat": {
+   "sha256": "d7905adaffe0e864cb0338cd10f7bfdf40d57483a89a137c1c618d5ad3bf7761",
+   "release": "G Primitive UPDATE 2024-01",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Willy Tschager [Holly-Wood]"
   },
   "p/3-8ring7.dat": {
    "sha256": "6749b6c145c24a89f14200dc025e716f9c2880f5099689907caf6ce5b6236b90",
@@ -4254,6 +4266,18 @@
    "release": "G Part UPDATE 2023-05",
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "James Jessiman"
+  },
+  "parts/2909.dat": {
+   "sha256": "45b5c15bf540dcce5904c33ba2ae7aa8044ddd3bde919b1b6d7ce3f079db276e",
+   "release": "G Part UPDATE 2022-02",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Marc Klein [marckl]"
+  },
+  "parts/2910.dat": {
+   "sha256": "5764c8ebc933500b8a119619bc835a7710768cdbbbf960d11735752f98e343c5",
+   "release": "G Part UPDATE 2018-02",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Marc Klein [marckl]"
   },
   "parts/29124.dat": {
    "sha256": "946914afa2ccd29229e1606382307c1ed60c96c3060e12b57d682a894e3c7d81",

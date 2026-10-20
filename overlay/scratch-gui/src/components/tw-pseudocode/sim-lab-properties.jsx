@@ -205,6 +205,14 @@ const SimLabProperties = ({T, lib, editor, view, selectionIds, palette, colourNa
                         <button type="button" style={small} data-testid="bw-sim-lab-prop-band" title={T.bandRoundHelp}
                             onClick={run(() => view?.beltRoundSelection())}>{T.bandRound}</button>
                     )}
+                    {parts.length > 1 && (
+                        <button type="button" style={small} data-testid="bw-sim-lab-prop-rope" title={T.ropeTieHelp}
+                            onClick={run(() => view?.ropeSelection())}>{T.ropeTie}</button>
+                    )}
+                    {(editor.model.ropes || []).some(r => r.around.some(id => parts.some(p => p.id === id))) && (
+                        <button type="button" style={small} data-testid="bw-sim-lab-prop-rope-off"
+                            onClick={run(() => view?.removeRopesOfSelection())}>{T.ropeOff}</button>
+                    )}
                     {(editor.model.belts || []).some(b => b.around.some(id => parts.some(p => p.id === id))) && (
                         <button type="button" style={small} data-testid="bw-sim-lab-prop-band-off"
                             onClick={run(() => view?.removeBeltsOfSelection())}>{T.bandOff}</button>
@@ -246,6 +254,13 @@ const SimLabProperties = ({T, lib, editor, view, selectionIds, palette, colourNa
                         <button type="button" style={small} data-testid="bw-sim-lab-prop-hide" onClick={run(() => view?.hideSelection())}>{T.hide}</button>
                         <button type="button" style={small} data-testid="bw-sim-lab-prop-isolate" onClick={run(() => view?.isolate())}>{T.isolate}</button>
                     </div>
+                    {one && (
+                        <label style={{display: 'flex', alignItems: 'center', gap: 4, marginTop: 4}} title={T.penHelp}>
+                            <input type="checkbox" data-testid="bw-sim-lab-prop-pen" checked={Boolean(parts[0].pen)}
+                                onChange={e => { editor.apply({type: 'setPen', id: parts[0].id, pen: e.target.checked}); onTick(); }} />
+                            {T.pen}
+                        </label>
+                    )}
                 </Section>
             )}
         </div>
