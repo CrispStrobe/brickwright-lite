@@ -1,3 +1,4 @@
+import {sourceValueOperation} from './source-value-operator-helpers.js';
 import {createArrayOccurrenceExportAuthority} from './array-occurrence-export-authority.js';
 import {analyseConsoleCaptures} from './console-capture-provenance.js';
 import {createAnimationFrameArrayProducers, isAnimationFrameArrayProducer} from './animation-frame-array-producers.js';
@@ -577,6 +578,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(node.shadow&&node.opcode==='math_number')return !Number.isNaN(Number(node.fields?.NUM?.[0]));
         if(node.opcode==='arcade_createSpriteKind')return exactKeys(node,[]);
         if(node.opcode==='arcade_spriteKindValue')return exactKeys(node,['NAME'])&&typeof literal(node,'NAME',value.target)==='string';
+        if(sourceValueOperation(node)?.result==='Number')return true;
         if(node.opcode==='arrays_valueBinary')return ['+','-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(literal(node,'OP',value.target))&&numericKind(input(node,'LEFT',value.target),next)&&numericKind(input(node,'RIGHT',value.target),next);
         // Scratch arithmetic reporters always cast their operands and return a Number.
         if(['operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod'].includes(node.opcode))return exactKeys(node,['NUM1','NUM2']);
@@ -734,6 +736,8 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(parent.opcode==='arcade_callFunction')return name==='ARGS'&&exactKeys(parent,['NAME','ARGS'])&&typeof literal(parent,'NAME',owners.get(parent).target)==='string';
         if(parent.opcode==='procedures_call'){const call=calls.find(call=>call.node===parent);return !!call?.fn&&!call.fn.invalid&&!!call.args&&Object.keys(parent.fields||{}).length===0;}
         if(schemas[parent.opcode])return operationShape(parent);
+        const sourceOperation=sourceValueOperation(parent);
+        if(sourceOperation)return sourceOperation.inputs.includes(name);
         const scalarInputs={arrays_valueBinary:['LEFT','RIGHT'],arrays_valueUnary:['VALUE'],operator_add:['NUM1','NUM2'],operator_subtract:['NUM1','NUM2'],operator_multiply:['NUM1','NUM2'],operator_divide:['NUM1','NUM2'],operator_mod:['NUM1','NUM2'],operator_lt:['OPERAND1','OPERAND2'],operator_gt:['OPERAND1','OPERAND2'],operator_equals:['OPERAND1','OPERAND2'],operator_and:['OPERAND1','OPERAND2'],operator_or:['OPERAND1','OPERAND2'],operator_not:['OPERAND'],operator_join:['STRING1','STRING2'],operator_length:['STRING'],operator_letter_of:['LETTER','STRING'],operator_contains:['STRING1','STRING2'],operator_round:['NUM']};
         const inputs=scalarInputs[parent.opcode];if(!inputs)return false;
         if(parent.opcode.startsWith('arrays_value'))return exactKeys(parent,Object.hasOwn(parent.fields||{},'OP')?inputs:[...inputs,'OP'],['OP'])&&inputs.includes(name);

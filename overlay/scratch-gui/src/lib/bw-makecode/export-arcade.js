@@ -1,3 +1,4 @@
+import {sourceValueOperation} from './source-value-operator-helpers.js';
 import {nativeArrayAddHelperSource} from './native-array-binary-helper-source.js';
 import {inspectNativeArrayBinaryDomains} from './native-array-binary-domain.js';
 import {GENERATED_HELPER_PROFILES} from './generated-helper-recognition.js';
@@ -1378,13 +1379,16 @@ class ArcadeEmitter {
         case 'arcade_getscore':return 'info.score()';
         case 'arrays_specialValue':return (this.field(b,'KIND') || this.literalInput(b,'KIND'))==='null'?'null':'undefined';
         case 'arcade_sourceValueBinary':
+        case 'arcade_sourceValueUnary':
         case 'arrays_valueCompare':
         case 'arrays_valueBinary':
         case 'arrays_valueUnary': {
-            const op=this.field(b,'OP') || this.literalInput(b,'OP'),unary=b.opcode==='arrays_valueUnary',compare=b.opcode==='arrays_valueCompare',source=b.opcode==='arcade_sourceValueBinary';
+            const op=this.field(b,'OP') || this.literalInput(b,'OP'),unary=['arrays_valueUnary','arcade_sourceValueUnary'].includes(b.opcode),compare=b.opcode==='arrays_valueCompare',source=['arcade_sourceValueBinary','arcade_sourceValueUnary'].includes(b.opcode);
             const names={'+':'Add','-':'Subtract','*':'Multiply','/':'Divide','%':'Remainder','**':'Power','&':'BitAnd','|':'BitOr','^':'BitXor','<<':'ShiftLeft','>>':'ShiftRight','>>>':'UnsignedShiftRight','~':'BitNot','==':'Equal','!=':'NotEqual','===':'StrictEqual','!==':'StrictNotEqual','<':'Less','>':'Greater','<=':'LessEqual','>=':'GreaterEqual'};
-            if(source&&!['+','-','*','/','%','**'].includes(op)){this.note(`unsupported Arcade source value operation ${op}`);return this.na();}
+            if(source&&!sourceValueOperation(b)){this.note(`unsupported Arcade source value operation ${op}`);return this.na();}
             if(!names[op] || unary && !['+','-','~'].includes(op)){this.note(`unsupported value operation ${op}`);return this.na();}
+            if(source&&(unary||['&','|','^','<<','>>','>>>'].includes(op))&&!this.sourceBitwiseExportOperands?.has(b)){this.note('Arcade source bitwise operation requires actual Array or primitive operand producers');return this.na();}
+            if(!source&&!compare&&(unary?op==='~':['&','|','^','<<','>>','>>>'].includes(op))&&!this.nativeBitwiseExportOperands?.has(b)){this.note('Native bitwise operation requires actual primitive operand producers');return this.na();}
             // A qualified class-callable graph can retain primitive Number
             // addition directly. Generic Any helpers lose the Arrow's actual
             // result signature on source reparse; declarations alone cannot
@@ -1403,7 +1407,7 @@ class ArcadeEmitter {
             // by this separate proof; inferred writer flow is not authority.
             if(!source&&!unary&&!compare&&op==='+'&&closedRemovalScalarAddition(this.blocks,b))
                 return `(<any>(${this.arrayValue(b,'LEFT')}) + <any>(${this.arrayValue(b,'RIGHT')}))`;
-            const key=(unary?'Unary':compare?'Compare':source?'SourceBinary':'Binary')+names[op];
+            const key=(source?(unary?'SourceUnary':'SourceBinary'):unary?'Unary':compare?'Compare':'Binary')+names[op];
             if(!this.valueOperationHelpers.has(key)){
                 let name='__bw'+key;
                 const occupied=new Set([...this.globals.values(),...this.functionNames(),...this.spriteVar.values(),...this.artVar.values(),...this.valueOperationHelpers.values()].map(x=>typeof x==='string'?x:x.name));
@@ -3092,7 +3096,7 @@ class ArcadeEmitter {
         const dataProperties=[], parameters = new Map(), edges = [], images = new Set(), sprites = new Set(), tiles = new Set(), legacyTiles = new Set(), arrays = new Set(), numbers = new Set(), booleans=new Set(), strings=new Set(), anys=new Set(), specialTypes=[],valueOperations=[], elements=[],arrayCopies=[];
         const definitions = [],captureLinks=[],callbackScopes=new Map(),callbackCaptureNames=new Map();
         const inspectionOperatorProofs=new Map(),inspectionLeaves=new Map(),inspectionProducers=new Map(),inspectionOpaqueCells=new Set(),inspectionOperators=[],inspectionGlobalReaders=new Map(),inspectionVisited=new Set();
-        const throwInputs=new Map(),procedureInputs=[],inspectionInputs=new Map(),sourceTypeOfInputs=new Map(),sourceTypeOfClasses=new Map(),opaqueCells=new Set(),arrayLocalReaders=new Map();
+        const throwInputs=new Map(),procedureInputs=[],inspectionInputs=new Map(),nativeBitwiseInputs=new Map(),sourceBitwiseInputs=new Map(),sourceTypeOfInputs=new Map(),sourceTypeOfClasses=new Map(),opaqueCells=new Set(),arrayLocalReaders=new Map();
         const inputBlock = (blocks, b, name) => {
             const input=b.inputs?.[name]?.[1];
             if(Array.isArray(input) && input[0]===12) return {opcode:'data_variable',fields:{VARIABLE:[input[1],input[2]]}};
@@ -3222,8 +3226,13 @@ class ArcadeEmitter {
                 if(currentSceneClockNumber(blocks,value)) {const id=Symbol('current scene clock Number');numbers.add(id);inspectionLeaves.set(id,'number');return id;}
                 if(value.opcode==='bw_numberLiteral' || value.opcode==='math_number') {const id=Symbol('number value');numbers.add(id);inspectionLeaves.set(id,'number');return id;}
                 if(value.opcode==='bw_stringLiteral') {const id=Symbol('string value');strings.add(id);inspectionLeaves.set(id,'string');return id;}
-                if(['arrays_valueBinary','arrays_valueUnary','arcade_sourceValueBinary'].includes(value.opcode)) {
+                if(['arrays_valueBinary','arrays_valueUnary','arcade_sourceValueBinary','arcade_sourceValueUnary'].includes(value.opcode)) {
                     const id=`${key}:value-operation:${Object.keys(blocks).find(id=>blocks[id]===value)}`;
+                    const source=['arcade_sourceValueBinary','arcade_sourceValueUnary'].includes(value.opcode),operation=source&&sourceValueOperation(value);
+                    if(source&&!operation){inspectionOpaqueCells.add(id);anys.add(id);return id;}
+                    // A valid fixed source bitwise opcode returns Number or
+                    // refuses; this signature lends no domain to its operands.
+                    if(operation&&(operation.unary||['&','|','^','<<','>>','>>>'].includes(operation.op))){numbers.add(id);inspectionLeaves.set(id,'number');return id;}
                     const operands=(value.opcode==='arrays_valueUnary'?['VALUE']:['LEFT','RIGHT']).map(name=>ref(inputBlock(blocks,value,name)));
                     if(value.opcode==='arcade_sourceValueBinary'&&literal(blocks,value,'OP')==='+')anys.add(id);
                     else if(value.opcode==='arrays_valueBinary' && literal(blocks,value,'OP')==='+')valueOperations.push([id,...operands]);
@@ -3322,6 +3331,11 @@ class ArcadeEmitter {
                     procedureInputs.push({block,obligation,value:ref(operand)});
                 }
                 if(block.opcode==='arcade_inspectValue')inspectionInputs.set(block,{value:ref(inputBlock(blocks,block,'VALUE')),limit:ref(inputBlock(blocks,block,'LIMIT'))});
+                if(block.opcode==='arrays_valueUnary'&&literal(blocks,block,'OP')==='~'||block.opcode==='arrays_valueBinary'&&['&','|','^','<<','>>','>>>'].includes(literal(blocks,block,'OP')))
+                    nativeBitwiseInputs.set(block,(block.opcode==='arrays_valueUnary'?['VALUE']:['LEFT','RIGHT']).map(name=>ref(inputBlock(blocks,block,name))));
+                const sourceOperation=sourceValueOperation(block);
+                if(sourceOperation&&(sourceOperation.unary||['&','|','^','<<','>>','>>>'].includes(sourceOperation.op)))
+                    sourceBitwiseInputs.set(block,sourceOperation.inputs.map(name=>ref(inputBlock(blocks,block,name))));
                 if(block.opcode==='arcade_sourceTypeOf'){
                     const operand=inputBlock(blocks,block,'VALUE');
                     sourceTypeOfInputs.set(block,operand?ref(operand):null);
@@ -3510,6 +3524,12 @@ class ArcadeEmitter {
             if(seen.has(value))return true;const next=new Set([...seen,value]);
             return [...producers].every(producer=>inspectionTypes(producer,allowed,next,origins));
         };
+        // Source result signatures above never prove their operands. Follow
+        // every actual directed writer/capture through the same closed graph.
+        this.sourceBitwiseExportOperands=new Set();
+        for(const [block,operands]of sourceBitwiseInputs)if(operands.every(value=>inspectionTypes(value,['array','number','boolean','string','null','undefined'])))this.sourceBitwiseExportOperands.add(block);
+        this.nativeBitwiseExportOperands=new Set();
+        for(const [block,operands]of nativeBitwiseInputs)if(operands.every(value=>inspectionTypes(value,['number','boolean','string','null','undefined'])))this.nativeBitwiseExportOperands.add(block);
         for(const expected of this.procedureConstraints?.allObligations||[]){
             const actual=procedureInputs.find(item=>item.block===expected.block&&item.obligation===expected.obligation);
             if(!actual||actual.obligation.type!=='Any'&&!inspectionTypes(actual.value,[actual.obligation.type.toLowerCase()]))this.note('Procedure parameter constraint: actual current caller or writer requires '+expected.obligation.type);

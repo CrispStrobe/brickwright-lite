@@ -118,6 +118,8 @@
       "test/arcade-owned-text-game-original.test.mjs",
       "test/arcade-project-palette-authoring.test.mjs",
       "test/arcade-scene-clock-number-native.test.mjs",
+      "test/arcade-source-bitwise-export.test.mjs",
+      "test/arcade-source-bitwise-unary-native.test.mjs",
       "test/arcade-template-palette.test.mjs",
       "test/arcade-tilemap-palette-artwork.test.mjs",
       "test/arcade-whenused-staging.test.mjs",

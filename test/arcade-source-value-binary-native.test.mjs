@@ -103,7 +103,7 @@ test('source arithmetic requires the exact current registered operation and cach
  for(const options of [{copyArgs:true},{copyUtil:true}]){
   const run=await fixture(options);try{clean(run);assert.equal(run.stage.variables.result.value,'[object Object]');}finally{run.close();}
  }
- const unsupported=await fixture({op:'&'});try{refused(unsupported);}finally{unsupported.close();}
+ const unsupported=await fixture({op:'~'});try{refused(unsupported);}finally{unsupported.close();}
  const run=await fixture({text:'!'});
  try{clean(run);assert.throws(()=>run.arcade.sourceValueBinary(run.saved.args,run.saved.util),/current|owner|operation|active/i);}
  finally{run.close();}

@@ -367,6 +367,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'whenRegisteredShade',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade shade handler [TOKEN] runs',arguments:str('TOKEN','handler')},
           {opcode:'screenImage',blockType:Scratch.BlockType.REPORTER,text:'Arcade screen image'},
           {opcode:'sourceValueBinary',blockType:Scratch.BlockType.REPORTER,text:'Arcade source value [LEFT] [OP] with [RIGHT]',arguments:{...str('LEFT',''),OP:{type:Scratch.ArgumentType.STRING,menu:'sourceBinaryOperations',defaultValue:'+'},...str('RIGHT','')}},
+          {opcode:'sourceValueUnary',blockType:Scratch.BlockType.REPORTER,text:'Arcade source unary [OP] of [VALUE]',arguments:{OP:{type:Scratch.ArgumentType.STRING,menu:'sourceUnaryOperations',defaultValue:'~'},...str('VALUE','')}},
           {opcode:'sourceTypeOf',blockType:Scratch.BlockType.REPORTER,text:'Arcade source type of [VALUE]',arguments:{VALUE:{type:Scratch.ArgumentType.STRING}}},
           {opcode:'inspectValue',blockType:Scratch.BlockType.REPORTER,text:'Arcade inspect value [VALUE] limit [LIMIT]',output:'String',arguments:{...str('VALUE',''),...n('LIMIT',20)}},
           {opcode:'fontValue',blockType:Scratch.BlockType.REPORTER,text:'Arcade font [FONT]',arguments:{FONT:{type:Scratch.ArgumentType.STRING,menu:'fontValueNames',defaultValue:'font8'}}},
@@ -1005,7 +1006,8 @@ module.exports = makeExt(`// Name: Arcade
           sourceReferenceTypes:{acceptReporters:false,items:'_sourceReferenceChoices'},
           constraintProcedures:{acceptReporters:false,items:'_constraintProcedures'},
           constraintParameters:{acceptReporters:false,items:'_constraintParameters'},
-          sourceBinaryOperations:{acceptReporters:false,items:['+','-','*','/','%','**']},
+          sourceBinaryOperations:{acceptReporters:false,items:['+','-','*','/','%','**','&','|','^','<<','>>','>>>']},
+          sourceUnaryOperations:{acceptReporters:false,items:['~']},
           sourceScalarTypes:{acceptReporters:false,items:['Number','Boolean','String','Any']},
           mathOperations:{acceptReporters:false,items:['min','max','randomRange']},
           hudElements:{acceptReporters:false,items:['score','life','countdown']},
@@ -5249,6 +5251,10 @@ module.exports = makeExt(`// Name: Arcade
       try {this._sourceTypeOf.assertOwner();return dependencies.sourceValueBinary(this._runtime,args,util);}
       catch(error){return exceptionOwners.get(this).rejectConstraint(args,util,error);}
     }
+    sourceValueUnary(args,util) {
+      try {this._sourceTypeOf.assertOwner();return dependencies.sourceValueUnary(this._runtime,args,util);}
+      catch(error){return exceptionOwners.get(this).rejectConstraint(args,util,error);}
+    }
     inspectValue(args,util) {return this._consoleInspectValues.inspect(args,util,error=>this._objectError(error));}
     sourceTypeOf(args,util) {
       try {this._sourceTypeOf.assertOwner();const literalType=this._sourceTypeOf.validateInput(this._sourceScalarCells,util,args.VALUE,args);return literalType || this._sourceTypeOf(args.VALUE);}catch(error){return this._objectError(error);}
@@ -6115,6 +6121,7 @@ module.exports = makeExt(`// Name: Arcade
   cachedPrimitiveOwner: require('../../../util/bw-cached-primitive-owner'),
   arcadeExceptions: require('../../../util/bw-arcade-exceptions'),
   sourceValueBinary: require('../../../util/bw-array-operations').sourceValueBinary,
+  sourceValueUnary: require('../../../util/bw-array-operations').sourceValueUnary,
   createClassCallableHost: require('./class-callable-host'),
   CallableDispatch: require('./callable-dispatch'),
   sourceReferenceTypes: require('./source-reference-types'),

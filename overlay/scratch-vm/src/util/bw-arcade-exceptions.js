@@ -220,7 +220,7 @@ function createCoordinator(runtime) {
             const thread=util?.thread,priorIssued=failureGet(signals,error);
             if(priorIssued?.runtime===runtime&&failure(thread)===error)throw error;
             const block=primitiveOwner.current(util,args);
-            if(!live(thread)||util.runtime!==runtime||!['procedures_call','arcade_callFunction','arcade_setLocal','arcade_setCaptured','arcade_sourceValueBinary'].includes(block?.opcode))
+            if(!live(thread)||util.runtime!==runtime||!['procedures_call','arcade_callFunction','arcade_setLocal','arcade_setCaptured','arcade_sourceValueBinary','arcade_sourceValueUnary'].includes(block?.opcode))
                 throw new Error('Arcade constraint rejection requires its actual current primitive');
             cachedPrimitiveOwner(runtime,util,args,block.opcode,[]);
             // Existing issued failures never become a second failure or acquire
