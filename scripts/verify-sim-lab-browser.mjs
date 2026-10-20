@@ -114,6 +114,10 @@
 //      N shows its hinge and ] turns it 15° with the arm hanging off it (one undo step); N steps to
 //      the other hinge and back; the properties panel's +15°; a turn into a part is refused; a loose
 //      part has no hinge.
+//  25. chains and treads (scripts/lib/sim-lab-chain-gate.mjs, --part=editor): an 8T and a 24T selected,
+//      the properties panel's button lays a closed chain of links in one undo step; Simulate couples
+//      the gears by it; two gears too close for a chain are refused; round two sprockets it lays a
+//      tread, and each sprocket becomes a wheel of the tread's outer radius.
 //
 // Every Sim Lab here runs its physics in the Web Worker (ROADMAP §4.9): each load
 // asserts `window.__bwSimLab.worker === true`, so the line-follower lap, the wall
@@ -141,6 +145,7 @@ import {catalogueInteractions} from './lib/sim-lab-catalogue-gate.mjs';
 import {simulateUxInteractions} from './lib/sim-lab-simulate-ux-gate.mjs';
 import {challengesInteractions} from './lib/sim-lab-challenges-gate.mjs';
 import {hingeInteractions} from './lib/sim-lab-hinge-gate.mjs';
+import {chainInteractions} from './lib/sim-lab-chain-gate.mjs';
 import {apiInteractions, DEGREES_TOLERANCE} from './lib/sim-lab-api-gate.mjs';
 import {hubsInteractions, HUB_DEGREES_TOLERANCE} from './lib/sim-lab-hubs-gate.mjs';
 import {hubsBtInteractions} from './lib/sim-lab-hubs-bt-gate.mjs';
@@ -997,6 +1002,17 @@ try {
         console.log(`PASS hinge: N shows an arm's hinge (1 of ${hg.hinges}: its pin's line), ] turns the arm and what hangs off it 15° in one undo step, ` +
             'N steps to the other hinge and back, the panel\'s +15°, a turn into a beam refused, a loose beam has none');
         await hingePage.close();
+        // 25. Chain round gears (scripts/lib/sim-lab-chain-gate.mjs).
+        const chainPage = await browser.newPage({viewport: {width: 1280, height: 800}, serviceWorkers: 'block'});
+        chainPage.on('pageerror', error => errors.push(error.message));
+        chainPage.on('dialog', dialog => dialog.accept());
+        await openSimLab(chainPage, {program: null});
+        const ch = await chainInteractions(chainPage, {shotsDir: artifacts});
+        console.log(`PASS chain: "Chain or tread round" lays ${ch.links} links round an 8T and a 24T in one undo step; Simulate couples them by the chain ` +
+            `(ratio ${ch.ratio.toFixed(4)}, the same way round); gears too close are refused; a tread of ${ch.treadLinks} links round two sprockets ` +
+            `couples them 1:1 and makes each a wheel of its outer radius; "Rubber band round" puts a ${ch.band} band round 8T and 24T that drives it, ` +
+            'taken off and put back with Ctrl+Z');
+        await chainPage.close();
         // 21. Parts from the whole LDraw catalogue (scripts/lib/sim-lab-catalogue-gate.mjs, docs/ROBOT-LAB-ARCHITECTURE.md §5.4.1).
         const cat = await browser.newPage({viewport: {width: 1280, height: 800}, serviceWorkers: 'block'});
         cat.on('pageerror', error => errors.push(error.message));

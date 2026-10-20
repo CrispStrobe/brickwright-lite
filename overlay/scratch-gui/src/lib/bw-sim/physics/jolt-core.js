@@ -119,6 +119,9 @@ const MESH_VELOCITY_STEPS = 120;
  * — 6° (2 mm at the tip) inside the block — and at 13.7–13.9° with 5 to 20 (measured).
  */
 const GEAR_POSITION_STEPS = 10;
+/** A rubber band's drive: few velocity steps, so it slips under a load a chain would carry. */
+const BELT_VELOCITY_STEPS = 4;
+
 
 /**
  * Solver iterations for an island holding a motorised hinge (Jolt's defaults 10 / 2). The DC motor
@@ -846,6 +849,61 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         return meshGear({ b1: s1.body, b2: s2.body, a1, a2, c1: j1.point, c2: j2.point, ratio, contact,
             hinge1: hingeMap.get(j1.id).hinge, hinge2: hingeMap.get(j2.id).hinge, velocitySteps });
     };
+    /** A chain drive (kinds/chain.js): ω(joint2) = ratio · ω(joint1), each the hinge's own rate. */
+    // The constraint holds the contract's ω2 = ratio·ω1 with mRatio = −1/ratio (measured: test/bw-sim-chain.test.mjs).
+    // With |mRatio| < 1 the fork's GearConstraint diverges (a 1:3 step-up spun the driven gear and stalled the
+    // motor), so a step-up is built the other way round: ω1 = (1/ratio)·ω2, |mRatio| = |ratio| ≥ 1.
+    const chainDrive = (id, jA, jB, ratioAB, { velocitySteps = MESH_VELOCITY_STEPS } = {}) => {
+        if (!jA || !jB || jA.type !== 'hinge' || jB.type !== 'hinge') throw new Error(`chain ${id} must couple two hinges`);
+        const [j1, j2, ratio] = Math.abs(ratioAB) > 1 ? [jB, jA, 1 / ratioAB] : [jA, jB, ratioAB];
+        const shared = [j1.body1, j1.body2].find(b => b === j2.body1 || b === j2.body2);
+        const gearSide = j => (shared !== undefined && j.body2 === shared ? { body: j.body1, sign: -1 } : { body: j.body2, sign: 1 });
+        const s1 = gearSide(j1);
+        const s2 = gearSide(j2);
+        const gs = new J.GearConstraintSettings();
+        gs.mSpace = J.EConstraintSpace_WorldSpace;
+        const tmp = [new J.Vec3(...unit(j1.axis).map(v => v * s1.sign)), new J.Vec3(...unit(j2.axis).map(v => v * s2.sign))];
+        [gs.mHingeAxis1, gs.mHingeAxis2] = tmp;
+        gs.mRatio = -1 / ratio;
+        gs.mNumVelocityStepsOverride = velocitySteps;
+        gs.mNumPositionStepsOverride = GEAR_POSITION_STEPS;
+        const constraint = J.castObject(gs.Create(getBodyForId(s1.body), getBodyForId(s2.body)), J.GearConstraint);
+        J.destroy(gs);
+        for (const o of tmp) J.destroy(o);
+        constraint.SetConstraints(hingeMap.get(j1.id).hinge, hingeMap.get(j2.id).hinge);
+        physicsSystem.AddConstraint(constraint);
+        allConstraints.push(constraint);
+        for (const bid of [s1.body, s2.body]) { floorInertia(bid); floorMass(bid); }
+        return constraint;
+    };
+    /**
+     * A rubber band as a spring (kinds/belt.js): a distance constraint between the two anchor points,
+     * free from 0 to the rest distance, soft beyond it (stiffness N/m, damping N·s/m).
+     */
+    const bandSpring = g => {
+        const b1 = mechanism.bodies.find(b => b.id === g.body1);
+        const b2 = mechanism.bodies.find(b => b.id === g.body2);
+        if (!b1 || !b2) throw new Error(`spring ${g.id}: bodies not found`);
+        const ds = new J.DistanceConstraintSettings();
+        ds.mSpace = J.EConstraintSpace_WorldSpace;
+        const p1 = new J.RVec3(...g.local1.map((v, i) => v + b1.position[i]));
+        const p2 = new J.RVec3(...g.local2.map((v, i) => v + b2.position[i]));
+        ds.mPoint1 = p1;
+        ds.mPoint2 = p2;
+        ds.mMinDistance = 0;
+        ds.mMaxDistance = g.restM;
+        const spring = ds.mLimitsSpringSettings;
+        spring.mMode = J.ESpringMode_StiffnessAndDamping;
+        spring.mStiffness = g.stiffness;
+        spring.mDamping = g.damping;
+        const constraint = ds.Create(getBodyForId(g.body1), getBodyForId(g.body2));
+        J.destroy(ds);
+        J.destroy(p1);
+        J.destroy(p2);
+        physicsSystem.AddConstraint(constraint);
+        allConstraints.push(constraint);
+        return constraint;
+    };
     /** Self-locking worms (built below): {wormJoint, wheel (hinge entry), holdNm, driver (hinge entry|null), held}. */
     const worms = [];
     /** Linear actuators' screw couplings (physics/screw.js drives them). */
@@ -856,6 +914,19 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         if (g.kind === 'gear') {
             hingeMesh(g.id, jointMap.get(g.joint1), jointMap.get(g.joint2), g.ratio);
             gearInfos.push({ type: 'gear', id: g.id, joint1: g.joint1, joint2: g.joint2, ratio: g.ratio });
+        } else if (g.kind === 'chain') {
+            // kinds/chain.js: a chain round two gears in one frame turns them the same way at the teeth's
+            // ratio. The fork's GearConstraint on the two hinges' relative rates (torque × ratio), not a tooth
+            // contact: for two equal sprockets that contact would sit at infinity on the line of centres.
+            chainDrive(g.id, jointMap.get(g.joint1), jointMap.get(g.joint2), g.ratio);
+            gearInfos.push({ type: 'chain', id: g.id, joint1: g.joint1, joint2: g.joint2, ratio: g.ratio });
+        } else if (g.kind === 'band') {
+            // kinds/belt.js: a rubber band round pulleys, the chain's coupling with few velocity steps, so it gives under load.
+            chainDrive(g.id, jointMap.get(g.joint1), jointMap.get(g.joint2), g.ratio, { velocitySteps: BELT_VELOCITY_STEPS });
+            gearInfos.push({ type: 'band', id: g.id, joint1: g.joint1, joint2: g.joint2, ratio: g.ratio });
+        } else if (g.kind === 'spring') {
+            // kinds/belt.js: a rubber band pulling two bodies together beyond its rest length.
+            bandSpring(g);
         } else if (g.kind === 'worm') {
             // A worm and its wheel (kinds/worm.js): the mesh, ratio = 1/teeth (signed by the thread's
             // hand), at the worm's pitch point; the mesh has no friction, so the SELF-LOCK is a hold on

@@ -5179,6 +5179,12 @@
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "James Jessiman"
   },
+  "parts/3711.dat": {
+   "sha256": "ddd4c9a38f974a891b1998356ca38e85e7672e72810d19c838cae6f17bc0f97d",
+   "release": "G Part UPDATE 2025-06",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Fredrik Hareide [fhareide]"
+  },
   "parts/3712.dat": {
    "sha256": "5a9bb06d58ac846ae32f645bad4b5b9fc52bb93c1d6f6cbabd10d6c9054e7820",
    "release": "G Part UPDATE 2019-03",
@@ -5916,6 +5922,18 @@
    "release": "G Part UPDATE 2019-03",
    "license": "Licensed under CC BY 2.0 and CC BY 4.0 : see CAreadme.txt",
    "author": "Guy Vivan [guyvivan]"
+  },
+  "parts/57518.dat": {
+   "sha256": "6264358e12c13e393ade7a94f4f85fbd123646e6f8f3d544313a0dbd697209f2",
+   "release": "G Part UPDATE 2022-04",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Donald Sutter [technog]"
+  },
+  "parts/57519.dat": {
+   "sha256": "070126d75e69f64727d54fb7c0c54be415d631cab3bef173e33c5129dc17177b",
+   "release": "G Part UPDATE 2010-02",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Donald Sutter [technog]"
   },
   "parts/59426.dat": {
    "sha256": "d199b792bf7a94b1e1f19ba8169d754c4d99640e7076e3836c13c2f735931655",
@@ -7327,6 +7345,24 @@
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Massimo Maso [Sirio]"
   },
+  "parts/s/3711s01.dat": {
+   "sha256": "a9e4d0a3c56eca5bcc8e0f780f60c53491937d76b091ed34c6d4820f2b269ed7",
+   "release": "G Subpart UPDATE 2025-06",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Fredrik Hareide [fhareide]"
+  },
+  "parts/s/3711s02.dat": {
+   "sha256": "9635fa241de3c82eb8b0d9427daceb1e53feb4acf66178be7cfc5c1203dd85ff",
+   "release": "G Subpart UPDATE 2025-06",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Fredrik Hareide [fhareide]"
+  },
+  "parts/s/3711s03.dat": {
+   "sha256": "5bfeb0dafa13d9e47dbb10f3a37f5803f7699bda454071af7fa5f2cf17329cc5",
+   "release": "G Subpart UPDATE 2025-06",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Gerald Lasser [GeraldLasser]"
+  },
   "parts/s/3754s01.dat": {
    "sha256": "9928a154a565f9946deaaecdb0c8dc019c864061a77c13e6e17ff84bb4d0bbe0",
    "release": "G Subpart UPDATE 2025-09",
@@ -7596,6 +7632,30 @@
    "release": "G Subpart UPDATE 2013-01",
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Philippe Hurbain [Philo]"
+  },
+  "parts/s/57518s01.dat": {
+   "sha256": "3cd549f71cb00011be8fadc7ccc70b6d1bfc565d78c6874b20c8a799233fac35",
+   "release": "G Subpart UPDATE 2024-02",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Philippe Hurbain [Philo]"
+  },
+  "parts/s/57518s02.dat": {
+   "sha256": "2ec1ccc011301cbc4d13b83d96334e077be4015d923287cf500174e4677b3720",
+   "release": "G Subpart UPDATE 2022-04",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Gerald Lasser [GeraldLasser]"
+  },
+  "parts/s/57519s01.dat": {
+   "sha256": "bd0f67762da407b73bab5681a2ea2157852ee28bb9106d945549923dfca35efa",
+   "release": "G Subpart UPDATE 2010-02",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Donald Sutter [technog]"
+  },
+  "parts/s/57519s02.dat": {
+   "sha256": "88cd10b1c48de9c4b2d6f1fb0bf7e393ec4866aa67c95192eab3d5a47771438e",
+   "release": "G Subpart UPDATE 2010-02",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Donald Sutter [technog]"
   },
   "parts/s/60483s01.dat": {
    "sha256": "19502854a4f0a692bdf46cf90f901fbdf443aa96221fe8436965c6bd97d0b803",

@@ -173,7 +173,8 @@ export const buildIslands = (nodes, edges, catalogMap, diagnostics = [], opts = 
                     // We'll handle de-duplication: if we already processed this pid, skip remaining nodes
                     // For non-motor, nodesForPart length should be 1, but if 2 due to bug, we include once
                     if (nid !== nodesForPart[0]) continue;
-                    colliderIndices = meta.colliders.map((_, idx) => idx);
+                    // A part only drawn (a tread link: its sprockets carry it on the floor, kinds/chain.js) has none in the core.
+                    colliderIndices = meta.drawnOnly ? [] : meta.colliders.map((_, idx) => idx);
                 }
                 const pwQuat = partWorldQuat(placed);
                 // This node's share of the part's mass, spread over its colliders by volume: a collider

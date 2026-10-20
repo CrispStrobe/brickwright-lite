@@ -84,7 +84,7 @@ export const projectOfBlocks = program => ({
  * @param {'ev3'|'nxt'} options.profile the brick
  * @param {string} options.extensionId the extension the program's blocks are ('ev3comprehensive', 'ev3', 'legonxt')
  * @param {number} options.timeLimitMs
- * @param {function} [options.stopWhen] (frame, track, hub) => true ends the run
+ * @param {function} [options.stopWhen] (frame, track, hub, {vm, extension}) => true ends the run
  * @param {boolean} [options.connect] false: leave the connection to the test
  * @returns {Promise<{track, hub, session, vm, extension, connectError}>}
  */
@@ -159,7 +159,7 @@ export async function runOnBtHub (program, {modelText, mat = null, profile, exte
             const point = {t: session.time, position: [...pose.position], rotation: [...pose.rotation],
                 motors: Object.fromEntries(hub.motorPortIds().map(p => [p, hub.readPort(p).angleDeg])), running: vm.runtime.threads.length > 0};
             track.push(point);
-            if (stopWhen && stopWhen(point, track, hub)) break;
+            if (stopWhen && stopWhen(point, track, hub, {vm, extension})) break;
         }
         return {track, hub, session, vm, extension, connectError};
     } finally {

@@ -1,0 +1,10 @@
+// RotateMotor to a tacho target, then the counters (Brickwright NXT .rxe VM fixture).
+task main()
+{
+    RotateMotor(OUT_A, 75, 360);
+    NumOut(0, LCD_LINE1, MotorTachoCount(OUT_A));
+    NumOut(0, LCD_LINE2, MotorRotationCount(OUT_A));
+    RotateMotor(OUT_A, 50, -180);
+    NumOut(0, LCD_LINE3, MotorRotationCount(OUT_A));
+    NumOut(0, LCD_LINE4, MotorRunState(OUT_A));
+}

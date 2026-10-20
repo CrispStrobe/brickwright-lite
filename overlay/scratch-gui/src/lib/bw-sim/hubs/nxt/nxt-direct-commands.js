@@ -8,7 +8,8 @@
 //   Appendix 1 "Communication protocol" (v1.00): byte 0 the telegram type (0x00 direct command, reply
 //     required; 0x01 system command, reply required; 0x02 reply; 0x80 / 0x81 the same without reply),
 //     byte 1 the command, then its data; over Bluetooth every telegram is preceded by its length as two
-//     bytes, LSB first, the telegram itself at most 64 bytes. System commands GET FIRMWARE VERSION (0x88)
+//     bytes, LSB first, the telegram itself at most 64 bytes. System commands: the flash files a program is
+//     downloaded with (OPEN WRITE 0x81, WRITE 0x83, CLOSE 0x84, DELETE 0x85, …), GET FIRMWARE VERSION (0x88)
 //     and GET DEVICE INFO (0x9B).
 //   Appendix 2 "Direct commands" (v1.00): each command's bytes and its reply (0x02, the command, the
 //     status, then the data) and the status codes.
@@ -32,8 +33,16 @@ export const NXT_CMD = Object.freeze({
     KEEPALIVE: 0x0d, LSGETSTATUS: 0x0e, LSWRITE: 0x0f, LSREAD: 0x10, GETCURRENTPROGRAMNAME: 0x11,
     MESSAGEREAD: 0x13
 });
-/** System commands answered (Appendix 1): GET FIRMWARE VERSION, GET DEVICE INFO. */
-export const NXT_SYS = Object.freeze({GET_FIRMWARE_VERSION: 0x88, GET_DEVICE_INFO: 0x9b});
+/**
+ * System commands answered (Appendix 1): the flash files a program is downloaded with (OPEN READ / WRITE,
+ * READ, WRITE, CLOSE, DELETE, FIND FIRST / NEXT; OPEN WRITE LINEAR as OPEN WRITE), GET FIRMWARE VERSION,
+ * GET DEVICE INFO.
+ */
+export const NXT_SYS = Object.freeze({OPEN_READ: 0x80, OPEN_WRITE: 0x81, READ: 0x82, WRITE: 0x83, CLOSE: 0x84,
+    DELETE: 0x85, FIND_FIRST: 0x86, FIND_NEXT: 0x87, GET_FIRMWARE_VERSION: 0x88, OPEN_WRITE_LINEAR: 0x89,
+    GET_DEVICE_INFO: 0x9b});
+/** A READ answers at most this many data bytes: what fits a 64-byte telegram after its 6-byte head (ours). */
+export const READ_MAX_BYTES = 58;
 
 /**
  * Status codes (BDK Appendix 2 "Error message back to the host"; the firmware's own numbers agree). The
@@ -200,12 +209,65 @@ export const executeTelegram = (telegram, brick) => {
 };
 
 /**
- * System commands (Appendix 1): the version and device info; anything else (files, flash) refused with
- * UNKNOWN_OPCODE (our choice: the firmware's system-command handler leaves an unknown command unanswered).
+ * System commands (Appendix 1), their replies as the firmware's communication module builds them
+ * (docs/NXT-PROTOCOL-FACTS.md §System, docs/NXT-RXE-VM.md §Files): the loader's status byte, then
+ *   OPEN WRITE   (name 20, size ULONG)        → handle                                     (4 bytes)
+ *   WRITE        (handle, data…)              → handle, bytes written UWORD                (6)
+ *   CLOSE        (handle)                     → handle                                     (4)
+ *   DELETE       (name 20)                    → the name, 20 bytes                         (23)
+ *   OPEN READ    (name 20)                    → handle, size ULONG                         (8)
+ *   READ         (handle, count UWORD)        → handle, count UWORD, data zero-padded      (6 + count)
+ *   FIND FIRST   (pattern 20) / FIND NEXT (handle) → handle, name 20, size ULONG; zeros on an error (28)
+ * A telegram too short for its command answers UNDEFINED ERROR (0x8A, ours: the firmware reads its buffer).
+ * Any other system command is refused with UNKNOWN_OPCODE (our choice: the firmware's system-command
+ * handler leaves an unknown command unanswered).
  * GET DEVICE INFO: name 15 bytes (14 characters + terminator), Bluetooth address 7 bytes, 4 bytes the BDK
  * calls the signal strength (the firmware puts one link-quality byte per connection there), free flash ULONG.
  */
+const SYS_DATA = {[NXT_SYS.OPEN_READ]: 20, [NXT_SYS.OPEN_WRITE]: 24, [NXT_SYS.OPEN_WRITE_LINEAR]: 24, [NXT_SYS.READ]: 3,
+    [NXT_SYS.WRITE]: 1, [NXT_SYS.CLOSE]: 1, [NXT_SYS.DELETE]: 20, [NXT_SYS.FIND_FIRST]: 20, [NXT_SYS.FIND_NEXT]: 1};
+const SYS_REPLY = {[NXT_SYS.OPEN_READ]: 5, [NXT_SYS.OPEN_WRITE]: 1, [NXT_SYS.OPEN_WRITE_LINEAR]: 1, [NXT_SYS.READ]: 3,
+    [NXT_SYS.WRITE]: 3, [NXT_SYS.CLOSE]: 1, [NXT_SYS.DELETE]: 20, [NXT_SYS.FIND_FIRST]: 25, [NXT_SYS.FIND_NEXT]: 25};
+const LOADER_UNDEFINED_ERROR = 0x8a;
+
 const systemCommand = (command, t, brick) => {
+    if (command in SYS_DATA) {
+        const d = t.subarray(2);
+        if (d.length < SYS_DATA[command]) return reply(command, LOADER_UNDEFINED_ERROR, Array(SYS_REPLY[command]).fill(0));
+        const found = r => (r.status === 0 ? [r.handle, ...name20(r.name), ...le32(r.size)] : [r.handle, ...Array(24).fill(0)]);
+        switch (command) {
+        case NXT_SYS.OPEN_WRITE: case NXT_SYS.OPEN_WRITE_LINEAR: {
+            const r = brick.fileOpenWrite(readName(d, 0), u32(d, 20));
+            return reply(command, r.status, [r.handle]);
+        }
+        case NXT_SYS.WRITE: {
+            const r = brick.fileWrite(d[0], Array.from(d.subarray(1)));
+            return reply(command, r.status, [r.handle, ...le16(r.count)]);
+        }
+        case NXT_SYS.CLOSE: {
+            const r = brick.fileClose(d[0]);
+            return reply(command, r.status, [r.handle]);
+        }
+        case NXT_SYS.DELETE: return reply(command, brick.fileDelete(readName(d, 0)), name20(readName(d, 0)));
+        case NXT_SYS.OPEN_READ: {
+            const r = brick.fileOpenRead(readName(d, 0));
+            return reply(command, r.status, [r.handle, ...le32(r.size)]);
+        }
+        case NXT_SYS.READ: {
+            const count = Math.min(u16(d, 1), READ_MAX_BYTES);
+            const r = brick.fileRead(d[0], count);
+            return reply(command, r.status, [r.handle, ...le16(count), ...r.data.concat(Array(count).fill(0)).slice(0, count)]);
+        }
+        case NXT_SYS.FIND_FIRST: {
+            const r = brick.fileFindFirst(readName(d, 0));
+            return reply(command, r.status, found(r));
+        }
+        default: { // FIND NEXT
+            const r = brick.fileFindNext(d[0]);
+            return reply(command, r.status, found(r));
+        }
+        }
+    }
     if (command === NXT_SYS.GET_FIRMWARE_VERSION) {
         const v = brick.versions();
         return reply(command, STATUS.SUCCESS, [v.protocol[1], v.protocol[0], v.firmware[1], v.firmware[0]]);
