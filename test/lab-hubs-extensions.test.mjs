@@ -195,6 +195,44 @@ if (!existsSync(missing)) {
     });
     }
 
+    // "turn motor off" honours the stop action (CrispStrobe/extensions PR #55): LWP3 §6.1 StartPower 0 floats and
+    // 127 brakes; §3.27.5 StartSpeed 0 holds the position. Judged from the hub's motor state and the shaft.
+    for (const action of ['float', 'brake', 'hold']) {
+        test(`legopoweredup "turn motor A off" with stop action ${action}: the Technic Hub's motor ends in ${action}`, async () => {
+            const source = `WHEN flag clicked:\n  pup set motor A stop action to ${action}\n  pup set motor A power to 60 %\n` +
+                '  pup turn motor A on\n  wait 1 seconds\n  pup turn motor A off\n';
+            const samples = [];
+            const r = await runLabHubProgram(source, {modelText: modelText('technic-hub-bench.ldr'), timeLimitMs: 2500,
+                onFrame: ({hub, t}) => samples.push({t, ...hub.readPort('A')})});
+            try {
+                assert.deepEqual(errorsBack(r.received), [], 'the hub took every message');
+                const running = samples.filter(p => p.mode === 'speed' || p.mode === 'power');
+                assert.ok(running.length, 'the motor ran');
+                const last = samples.at(-1);
+                assert.equal(last.mode, action, `the motor's state after "off": ${last.mode}`);
+                // Its shaft then: braked and held it stands still; floating it may still be coasting, but slowing.
+                const stop = samples.find(p => p.t > running.at(-1).t);
+                const settled = samples.filter(p => p.t >= stop.t + 500);
+                const turned = settled.at(-1).angleDeg - settled[0].angleDeg;
+                if (action !== 'float') assert.ok(Math.abs(turned) < 2, `${action}: ${turned.toFixed(2)}° after it stopped`);
+            } finally {
+                r.session.dispose();
+            }
+        });
+    }
+
+    test('legopoweredup names the hub it is connected to by its LWP3 System Type (the Technic Hub, 0x80)', async () => {
+        const r = await runLabHubProgram('WHEN flag clicked:\n  pup set motor A power to 10 %\n', {
+            modelText: modelText('technic-hub-bench.ldr'), timeLimitMs: 800});
+        try {
+            const name = String(await r.extension.getHubType());
+            // The Technic Hub's System Type 0x80 (community id; LEGO's document lists 0x00–0x42) is the "Control+ Hub".
+            assert.equal(name, 'Control+ Hub');
+        } finally {
+            r.session.dispose();
+        }
+    });
+
     test('scratch-vm\'s own WeDo 2.0 extension runs the rover until its distance (percent) drops, then floats the motor', async () => {
         let seen = null;
         const r = await runStockHubExtension('wedo2', {modelText: modelText('wedo-milo.ldr'), mat: 'wall',
