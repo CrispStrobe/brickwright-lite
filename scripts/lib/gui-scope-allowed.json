@@ -47,6 +47,7 @@
       "test/bw-sim-bt-hubs-program.test.mjs",
       "test/bw-sim-chain.test.mjs",
       "test/bw-sim-collisions.test.mjs",
+      "test/bw-sim-crane.test.mjs",
       "test/bw-sim-colour-explorer-program.test.mjs",
       "test/bw-sim-dc-motor.test.mjs",
       "test/bw-sim-excavator.test.mjs",

@@ -1,0 +1,20 @@
+DEVICE SPIKE
+
+# Robot Lab: the crane lifts its hook, swings it a quarter turn, lets it down and swings back.
+# Model: Crane. Motor A turns the turntable: an 8-tooth gear on the 28-tooth turntable, so
+# 315 degrees of the motor are a quarter turn of the crane (90 x 28 / 8 = 315).
+# Motor B turns the spindle of a small linear actuator one to one (360 degrees push 1.2 mm);
+# the actuator pushes the boom up. 1800 degrees lift the boom from 30 to about 60 degrees,
+# and the hook at its tip rises about 4 cm. The actuator holds the boom when B stops.
+WHEN flag clicked:
+  set motor stop action A hold
+  set motor stop action B hold
+  set motor speed A 10
+  set motor speed B 100
+  run motor B clockwise 1800 degrees
+  wait 1 seconds
+  run motor A clockwise 315 degrees
+  wait 2 seconds
+  run motor B counterclockwise 1800 degrees
+  wait 1 seconds
+  run motor A counterclockwise 315 degrees
