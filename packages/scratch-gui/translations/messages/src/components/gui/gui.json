@@ -41,6 +41,6 @@
   {
     "id": "gui.gui.robotLabTab",
     "description": "Brickwright Robot Lab (3D LEGO model and physics) tab",
-    "defaultMessage": "Robot Lab"
+    "defaultMessage": "Robots"
   }
 ]
