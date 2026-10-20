@@ -27,7 +27,7 @@ const FIXTURE = JSON.parse(readFileSync(path.join(ROOT, 'test/fixtures/bw-sim/li
 
 test('every model in the list is a shipped file that compiles cleanly, motors and sensors on ports', () => {
     assert.deepEqual(MODELS.map(m => m.id || m.file), ['driving-base.ldr', 'line-follower.ldr', 'wall-stopper.ldr', 'colour-explorer.ldr', 'sumo', 'forklift.ldr', 'maze-runner.ldr',
-        'gearbox.ldr', 'differential.ldr', 'chain-drive.ldr', 'pneumatic-press.ldr', 'drawing-robot.ldr', 'survey-rover.ldr', 'excavator.ldr', 'rcx-bumper-car.ldr', 'rcx-line-follower', 'ev3-wall-stopper.ldr', 'nxt-bumper-bot.ldr',
+        'gearbox.ldr', 'differential.ldr', 'chain-drive.ldr', 'pneumatic-press.ldr', 'drawing-robot.ldr', 'chain-transmission.ldr', 'flywheel-differential.ldr', 'survey-rover.ldr', 'excavator.ldr', 'rcx-bumper-car.ldr', 'rcx-line-follower', 'ev3-wall-stopper.ldr', 'nxt-bumper-bot.ldr',
         'motor-bench.ldr', 'technic-hub-bench.ldr', 'boost-rover.ldr', 'wedo-milo.ldr']);
     // The pane lists entries by key (id, else file): keys are unique, and a file listed twice needs an id.
     const keys = MODELS.map(m => m.id || m.file);
@@ -50,7 +50,7 @@ test('every model in the list is a shipped file that compiles cleanly, motors an
         // The RCX bumper car drives on outputs A and C (its sensors on inputs 1 and 2); the hubless motor bench turns A.
         // The radio hubs (hubs/lwp3, hubs/wedo2): the Technic Hub bench turns A; the BOOST rover drives on the Move Hub's
         // built-in A and B; the WeDo rover drives one wheel on A (its motion sensor on B).
-        const ports = {'survey-rover.ldr': ['A', 'B', 'C'], 'forklift.ldr': ['C'], 'differential.ldr': ['A', 'C'], 'excavator.ldr': ['A', 'B', 'C', 'D', 'E', 'F'],
+        const ports = {'chain-transmission.ldr': ['A'], 'flywheel-differential.ldr': ['A', 'C'], 'survey-rover.ldr': ['A', 'B', 'C'], 'forklift.ldr': ['C'], 'differential.ldr': ['A', 'C'], 'excavator.ldr': ['A', 'B', 'C', 'D', 'E', 'F'],
             'rcx-bumper-car.ldr': ['A', 'C'], 'motor-bench.ldr': ['A'], 'ev3-wall-stopper.ldr': ['B', 'C'],
             'nxt-bumper-bot.ldr': ['B', 'C'], 'technic-hub-bench.ldr': ['A'], 'wedo-milo.ldr': ['A'], 'chain-drive.ldr': ['A'], 'pneumatic-press.ldr': ['A']}[entry.file] || ['A', 'B'];
         assert.deepEqual(mechanism.joints.filter(j => j.motor).map(j => j.motor.port).sort(), ports, `${entry.file}: motors on ${ports}`);

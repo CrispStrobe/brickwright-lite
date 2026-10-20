@@ -85,6 +85,10 @@ export const MODELS = Object.freeze([
     // Pen and paper (architecture M15): the driving base, its castor ball a pen.
     {file: 'drawing-robot.ldr', title: {en: 'Drawing robot', de: 'Malroboter'},
         example: 'drawing-robot.bw', mat: 'plain'},
+    {file: 'chain-transmission.ldr', title: {en: 'Long chain transmission', de: 'Langes Kettengetriebe'},
+        example: 'chain-transmission.bw', mat: 'plain'},
+    {file: 'flywheel-differential.ldr', title: {en: 'Flywheel differential', de: 'Schwungrad-Differenzial'},
+        example: 'flywheel-differential.bw', mat: 'plain'},
     {file: 'survey-rover.ldr', title: {en: 'Survey rover', de: 'Erkundungsrover'},
         example: 'survey-rover.bw', mat: 'plain'},
     {file: 'excavator.ldr', title: {en: 'Excavator', de: 'Bagger'},

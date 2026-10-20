@@ -30,6 +30,7 @@ import SimLabInfo from './sim-lab-info.jsx';
 import SimLabReadings from './sim-lab-readings.jsx';
 import SimLabChallenges from './sim-lab-challenges.jsx';
 import SimLabInstructions from './sim-lab-instructions.jsx';
+import SimLabExamples from './sim-lab-examples.jsx';
 import {INSIGHT_TEXT, issueSentence, fillText} from './sim-lab-insight-text.js';
 import {firmwareRefusalSentence} from './sim-lab-firmware-text.js';
 import {EDITOR_TEXT} from './sim-lab-editor-text.js';
@@ -367,7 +368,7 @@ class SimLabPane extends React.Component {
             mixerOpen: (() => { try { return localStorage.getItem(MIXER_OPEN_KEY) === '1'; } catch { return false; } })(), mixer: {session: null, power: {}},
             // Simulate: sensor rays, the Readings panel, slow motion, and the replay position (null: live)
             showSensors: false, readings: false, timeScale: 1, replayAt: null, replayFrames: 0, readingsTick: 0,
-            challengesOpen: false, challenge: null, challengeResult: null, challengeBest: readBest(),
+            examplesOpen: false, challengesOpen: false, challenge: null, challengeResult: null, challengeBest: readBest(),
             paneWidth: 0, menu: null, drawer: false, paletteDragging: false, infoOpen: false, route: 'scratch',
             paletteOpen: true, paletteShare: null, propsShare: null, propsDocked: true,
             hidden: [], editGroup: null, pick: null, measurement: null, placeColor: null, propsOpen: false, shortcuts: false,
@@ -1021,6 +1022,22 @@ class SimLabPane extends React.Component {
         await this.openText(await response.text(), file, key);
         // A model that comes with an example offers it while the Code tab has no SPIKE program.
         if (!this.disposed) this.setState({info: this.shippedModel()?.example && !this.spikeLoaded() ? this.text.exampleOffer : ''});
+    }
+
+    /** The gallery uses the same model/program loaders as the dropdown and example button. */
+    async openGalleryExample (key, includeProgram) {
+        const entry = this.lib.MODELS.find(m => modelKey(m) === key);
+        if (!entry) throw new Error(this.text.failed);
+        if (this.state.status === 'running') this.pause();
+        if (this.editor) this.teardownEditor();
+        await new Promise(resolve => this.setState({mode: 'simulate', placing: null, selection: [],
+            mat: entry.mat || null, message: ''}, resolve));
+        await this.openShipped(key);
+        if (!this.session || this.state.status === 'failed') throw new Error(this.state.message || this.text.failed);
+        if (includeProgram) await this.loadExample();
+        await new Promise(resolve => this.setState({}, resolve));
+        if (this.state.message) throw new Error(this.state.message);
+        this.setState({examplesOpen: false});
     }
 
     /** The MODELS entry of the model on show, or null for a built or imported one. */
@@ -2512,14 +2529,21 @@ class SimLabPane extends React.Component {
         const groups = this.toolbarGroups();
         const wrap = !this.state.paneWidth || this.state.paneWidth >= WRAP_TOOLBAR_PX;
         const modeWidth = this.modeWords() ? 330 : 3 * (s.size + 2) + 6;
+        const exampleWords = !this.state.paneWidth || this.state.paneWidth >= 440;
+        const examplesWidth = exampleWords ? 108 : s.size + 4;
         // The pane's padding, the mode switch and Help never leave the bar.
-        const {bar, more} = splitToolbar(groups, {width: this.state.paneWidth - 16 - RIGHT_PANE_TOGGLE_PX, coarse, reserved: modeWidth + s.size + 8, wrap});
+        const {bar, more} = splitToolbar(groups, {width: this.state.paneWidth - 16 - RIGHT_PANE_TOGGLE_PX, coarse, reserved: modeWidth + examplesWidth + s.size + 8, wrap});
         const TT = this.ttext;
         return (
             <div role="toolbar" aria-label={TT.toolbar} data-testid="bw-sim-lab-toolbar"
                 style={{display: 'flex', alignItems: 'center', gap: 2, flexWrap: wrap ? 'wrap' : 'nowrap', minWidth: 0, rowGap: 4,
                     paddingRight: RIGHT_PANE_TOGGLE_PX}}>
                 {this.renderModeSwitch()}
+                <button type="button" data-testid="bw-sim-lab-examples" aria-label={TT.actions.examples} title={TT.actions.examples}
+                    disabled={!this.lib || this.state.status === 'loading'} style={{...s.button, display: 'inline-flex', gap: 5, alignItems: 'center', flexShrink: 0}}
+                    onClick={() => { if (this.state.status === 'running') this.pause(); this.setState({examplesOpen: true, menu: null}); }}>
+                    <Icon name="build" />{exampleWords ? <span>{TT.actions.examples}</span> : null}
+                </button>
                 {bar.map(g => (
                     <React.Fragment key={g.id}>
                         <Separator coarse={coarse} />
@@ -2743,6 +2767,11 @@ class SimLabPane extends React.Component {
                 style={{position: 'relative', display: 'flex', flexDirection: 'column', gap: 6, padding: compact ? 6 : 8, height: '100%', width: '100%',
                     flex: '1 1 auto', boxSizing: 'border-box', minWidth: 0, minHeight: 0, background: '#f8fafc'}}>
                 {this.renderToolbar()}
+                {this.state.examplesOpen && this.lib && (
+                    <SimLabExamples models={this.lib.MODELS} locale={this.locale} selected={this.state.shipped}
+                        onChoose={(key, program) => this.openGalleryExample(key, program)}
+                        onClose={() => this.setState({examplesOpen: false})} />
+                )}
                 {this.state.instructions && (
                     <SimLabInstructions lib={this.lib} model={this.state.instructions} locale={this.locale}
                         title={this.editor ? null : this.shippedModel()?.title[this.locale] || this.state.modelFile}

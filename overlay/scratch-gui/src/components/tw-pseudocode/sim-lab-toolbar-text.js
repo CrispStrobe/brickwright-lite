@@ -11,7 +11,7 @@ export const TOOLBAR_TEXT = {
         toolbar: 'Robot Lab tools',
         groups: {mode: 'Mode', run: 'Program', edit: 'Edit', arrange: 'Arrange', view: 'View', show: 'Show', tools: 'Tools', panels: 'Panels', file: 'File'},
         actions: {
-            simulate: 'Simulate', build: 'Build', instructions: 'Instructions',
+            simulate: 'Simulate', build: 'Build', instructions: 'Instructions', examples: 'Examples',
             run: 'Run', pause: 'Pause', reset: 'Reset',
             'mode-move': 'Move with arrows', 'mode-rotate': 'Turn with rings',
             turn: 'Turn 90°', 'turn-back': 'Turn back 90°', tip: 'Tip 90°',
@@ -57,7 +57,7 @@ export const TOOLBAR_TEXT = {
         toolbar: 'Werkzeuge des Roboter-Labors',
         groups: {mode: 'Modus', run: 'Programm', edit: 'Bearbeiten', arrange: 'Anordnen', view: 'Ansicht', show: 'Anzeigen', tools: 'Werkzeuge', panels: 'Leisten', file: 'Datei'},
         actions: {
-            simulate: 'Simulieren', build: 'Bauen', instructions: 'Bauanleitung',
+            simulate: 'Simulieren', build: 'Bauen', instructions: 'Bauanleitung', examples: 'Beispiele',
             run: 'Start', pause: 'Pause', reset: 'Zurücksetzen',
             'mode-move': 'Mit Pfeilen schieben', 'mode-rotate': 'Mit Ringen drehen',
             turn: 'Um 90° drehen', 'turn-back': 'Um 90° zurückdrehen', tip: 'Um 90° kippen',
