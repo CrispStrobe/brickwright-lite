@@ -52,3 +52,67 @@ normal-return Number body. The arithmetic helper specialization retains its
 Number-input requirement; helper names and result annotations supply no proof.
 Unknown operands can still be diagnosed by the importer even when an operation
 has a Number result on normal return. Calls and their effects are not erased.
+
+
+## Number-result composition follow-up candidate
+
+The ordinary typed-formal inspector needs separate evidence for the new source
+reporters. Only the six fixed bitwise selectors and unary `~` contribute Number
+on normal return. Their actual input reporters still execute and undergo the
+source primitive's ownership and coercion checks. This result fact supplies no
+Array body access, Number input loan or native Array coercion. Arithmetic `+`
+remains outside this Number-result rule.
+
+The candidate captures the genuine two source delegates before their adapter
+escapes, then joins their private metadata issuance to the actual registered
+rows, unchanged implementation and current source graph. Replacement delegates,
+unknown selectors and stale source remain refusals. A wrapper may still execute
+a direct source operation under its existing checks without acquiring this
+separate result evidence. Previous score and Console checks remain in force.
+
+The numeric-setter regression installs its adversarial setter from the real
+tracked-owner lookup during the final Array operand validation, after initial
+intrinsic admission. The private row must remain unobserved and the actual
+operation must refuse once while unrelated execution continues. This follow-up
+is SOURCE only until a fresh normal provider and the complete affected modules
+are qualified; the original nine-pass/two-failure episode is retained.
+
+The VM metadata preparer now has a small source-factory bridge. The bridge itself
+issues no type authority and receives no execution arguments. Only functions
+manufactured and privately recorded by the actual source owner can supply the
+new result evidence. Their ordinary dynamic service dispatch, receiver, third
+metadata argument and error propagation remain intact. Observing a replacement
+service method permanently revokes only that wrapper's Number evidence, even
+when the method restores the original before returning. Redirected metadata and
+late registration/row changes remain refusals; a source-only lookup failure
+cannot disable an otherwise valid score producer.
+
+Ownership-sensitive VM tests explicitly disable the helper's method-counting
+wrappers. Its default counting mode is unchanged; disabled runs report that
+call-counter observations are unavailable. The next normal VM installation
+needs the new bridge module as an additional output; it cannot reuse the previous
+installation's source identity or output count. All actual qualification remains
+pending on this SOURCE follow-up.
+
+### Current execution and container origins
+
+Source Number-result evidence also joins the actual cached reporter function,
+argument sockets and native Number result in the active caller. Restoring a
+primitive table entry after another function ran does not renew that evidence.
+A small idempotent installer hook records the Runtime's native primitive and
+category containers and each fresh category block array in private maps. Its
+nonreplaceable accessor only reads those origins; callers cannot register a
+replacement. Callback-capable schema/cache/owner checks precede final native
+membership and private revocation checks. Existing Array operand validation,
+legacy score ownership and direct source execution retain their own guards.
+
+These are source changes pending fresh installed qualification. The complete
+native module remains twelve groups under the existing finite budget; no
+filtered cohort or performance claim follows from source review.
+
+Category identity is issued only for the actual fresh Runtime registration
+literal before publication. Calling the category-fill method with another
+object, including a Proxy, cannot issue that identity. A legitimate refresh
+may update only its already-issued category's fresh native blocks array.
+Potentially trapping entry/metadata checks precede the final original native
+container descriptors, memberships and closed revocation flags.

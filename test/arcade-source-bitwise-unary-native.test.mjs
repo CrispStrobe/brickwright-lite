@@ -5,7 +5,7 @@ import {createRequire} from 'node:module';
 import {INTEGRATED,importGuiDependency} from './helpers/bw-integrated.mjs';
 import {importProjectFiles} from '../overlay/scratch-gui/src/lib/bw-makecode/index.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
-import {runProgram,clearStrayTimers} from './helpers/bw-vm.mjs';
+import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
 const require=createRequire(import.meta.url),root=INTEGRATED+'/node_modules/scratch-vm/src';
 const VM=(await importGuiDependency('scratch-vm/src/index.js')).default;
 const makeArrays=require(root+'/extensions/crispstrobe/adapter.js');
@@ -261,7 +261,8 @@ test('actual source bitwise and unary Number results compose with typeof and ord
  for(const route of ['authored','exported and reimported']){
   let run;
   try{
-   run=await runProgram(next.code,{frames:12});
+   run=await runProgram(next.code,{frames:12,countExtensionCalls:false});
+   assert.equal(run.extensionCallsObserved,false,'genuine production delegates, no counter observation');
    assert.deepEqual(run.errors,[],route);assert.deepEqual(run.creator.warnings,[],route);
    const observed=Object.fromEntries(run.vm.runtime.targets.flatMap(target=>Object.values(target.variables)).map(variable=>[variable.name,BW.decode(variable.value)]));
    assert.equal(observed.entered,2,route);assert.equal(observed.seenBinary,0,route);assert.equal(observed.seenUnary,-1,route);
@@ -282,26 +283,156 @@ test('actual source bitwise and unary Number results compose with typeof and ord
 
 test('owner-callback numeric setters cannot receive private source-operation rows before intrinsic refusal',async()=>{
  for(const unary of [false,true]){
-  const descriptor=Object.getOwnPropertyDescriptor(Array.prototype,'0'),define=Object.defineProperty,ownDescriptor=Object.getOwnPropertyDescriptor;
+  const key=unary?'0':'1',descriptor=Object.getOwnPropertyDescriptor(Array.prototype,key),define=Object.defineProperty,ownDescriptor=Object.getOwnPropertyDescriptor;
   let changed=false,ownerReads=0,privateRowEscaped=false,restore=()=>{};
-  const run=await fixture({unary,op:unary?'~':'|',number:5,before:({runtime})=>{
+  const run=await fixture({unary,op:unary?'~':'|',arrayRight:!unary,number:5,before:({runtime})=>{
    const own=ownDescriptor(runtime,'getOpcodeFunction'),original=runtime.getOpcodeFunction;
    runtime.getOpcodeFunction=function(opcode){const value=original.call(this,opcode);
-    if(opcode==='arrays_createReference'&&++ownerReads===1){
-     changed=true;define(Array.prototype,'0',{configurable:true,set(value){
+    const trace=opcode==='arrays_createReference'?new Error().stack:'';
+    if(opcode==='arrays_createReference'&&/\bat ownerCurrent\b/.test(trace)&&/\bat operand\b/.test(trace)&&++ownerReads===(unary?1:2)){
+     changed=true;define(Array.prototype,key,{configurable:true,set(value){
       if(value&&typeof value==='object'&&ownDescriptor(value,'body')&&ownDescriptor(value,'saved')&&ownDescriptor(value,'identity'))privateRowEscaped=true;
       // Forward the normal assignment without retaining any received value.
-      define(this,'0',{value,writable:true,enumerable:true,configurable:true});
+      define(this,key,{value,writable:true,enumerable:true,configurable:true});
      }});
     }return value;
    };
-   restore=()=>{if(descriptor)define(Array.prototype,'0',descriptor);else delete Array.prototype[0];
+   restore=()=>{if(descriptor)define(Array.prototype,key,descriptor);else delete Array.prototype[key];
     if(own)define(runtime,'getOpcodeFunction',own);else delete runtime.getOpcodeFunction;};
   },after:()=>restore()});
   try{
-   assert.equal(changed,true,'actual tracked-owner callback installs the setter');
+   assert.equal(changed,true,'actual last-operand ownerCurrent callback installs the setter after initial intrinsic admission');
+   assert.equal(ownerReads,unary?1:2,'the last actual Array operand is the injection boundary');
    assert.equal(privateRowEscaped,false);refused(run);
    assert.match(String(run.errors[0]),/operand or operation changed during validation/);
-  }finally{restore();run.close();assert.deepEqual(ownDescriptor(Array.prototype,'0'),descriptor);}
+  }finally{restore();run.close();assert.deepEqual(ownDescriptor(Array.prototype,key),descriptor);}
  }
+});
+
+
+// Real constructors/registration and the unchanged Creator-produced project.
+// The forwarding lookup hook receives only public runtime/opcode metadata, never
+// a copied utility, manufactured ticket, producer result or primitive args.
+async function resultEvidenceFixture(sourceText,{mode}={}){
+ const imported=importProjectFiles({'main.ts':sourceText},{target:'arcade'});assert.deepEqual(imported.unsupported,[]);assert.deepEqual(imported.warnings,[]);
+ let seed,vm;
+ try{
+  seed=await runProgram(imported.code,{frames:0,countExtensionCalls:false});seed.vm.stopAll();seed.vm.quit();
+  vm=new VM();vm.runtime.bwArcadeFrameAuthority='manual';const runtime=vm.runtime,errors=[],marker=new Error('source-only lookup throw'),facts={mode,fired:false,redirectCalls:0,other:0};
+  runtime.on('BLOCKS_ERROR',error=>errors.push(String(error)));
+  const ownLookup=Object.getOwnPropertyDescriptor(runtime,'getOpcodeFunction'),lookup=runtime.getOpcodeFunction;
+  runtime.getOpcodeFunction=function(opcode){const value=Reflect.apply(lookup,this,[opcode]),trace=new Error().stack;
+   if(!facts.fired&&mode==='proxy table capture'&&opcode==='arcade_sourceValueBinary'&&/\bat capture\b/.test(trace)){
+    facts.fired=true;const table=runtime._primitives;facts.originalTable=table;
+    runtime._primitives=new Proxy(table,{getOwnPropertyDescriptor(target,key){
+     if(key==='arcade_sourceValueBinary'&&/\bat sourceNumber\b/.test(new Error().stack)){facts.trapFired=true;runtime.emit('EXTENSION_ADDED',runtime._blockInfo.find(value=>value.id==='arcade'));}
+     return Reflect.getOwnPropertyDescriptor(target,key);
+    }});
+   }
+   if(!facts.fired&&mode==='source lookup throw'&&opcode==='arcade_sourceValueUnary'&&/\bat capture\b/.test(trace)){facts.fired=true;facts.thrown=marker;throw marker;}
+   if(!facts.fired&&opcode==='arcade_sourceValueBinary'&&/\bat sourceNumber\b/.test(trace)){
+    const category=runtime._blockInfo.find(value=>value.id==='arcade');
+    if(mode==='late duplicate'){facts.fired=true;runtime.emit('EXTENSION_ADDED',category);}
+    if(mode==='late row removal'){facts.fired=true;facts.category=category;facts.index=category.blocks.findIndex(value=>value.json?.type===opcode);facts.row=category.blocks.splice(facts.index,1)[0];}
+   }
+   return value;
+  };
+  const arrays=new RegisteredArrays(runtime),arcade=new Arcade(runtime),manager=vm.extensionManager;
+  const ownPrepare=Object.getOwnPropertyDescriptor(manager,'_prepareBlockInfo'),prepare=manager._prepareBlockInfo;
+  if(mode==='redirect metadata'){
+   arcade.metadataString=()=>{facts.redirectCalls++;return 'redirected String';};
+   manager._prepareBlockInfo=function(service,info){if(info.opcode==='sourceValueBinary'){facts.fired=true;info.func='metadataString';}return Reflect.apply(prepare,this,[service,info]);};
+  }
+  for(const [id,extension]of [['arrays',arrays],['arcade',arcade]]){const service=manager._registerInternalExtension(extension);manager._loadedExtensions.set(id,service);}
+  if(mode==='primitive ABA'){
+   const original=runtime._primitives.arcade_sourceValueBinary;
+   runtime._primitives.arcade_sourceValueBinary=function(){facts.fired=true;facts.redirectCalls++;runtime._primitives.arcade_sourceValueBinary=original;return 'foreign cached String';};
+  }
+  if(mode==='delegate ABA'){
+   const original=arcade.sourceValueBinary;
+   arcade.sourceValueBinary=function(){facts.fired=true;facts.redirectCalls++;arcade.sourceValueBinary=original;return 'restored after String';};
+  }
+  const project=seed.creator.project,stage=project.targets.find(target=>target.isStage),id='result_evidence_other';
+  stage.variables[id]=['resultOtherTicks',0];
+  stage.blocks.result_other_hat={opcode:'event_whenflagclicked',parent:null,next:'result_other_forever',inputs:{},fields:{},topLevel:true,shadow:false,x:500,y:10};
+  stage.blocks.result_other_forever={opcode:'control_forever',parent:'result_other_hat',next:null,inputs:{SUBSTACK:[2,'result_other_tick']},fields:{},topLevel:false,shadow:false};
+  stage.blocks.result_other_tick={opcode:'data_changevariableby',parent:'result_other_forever',next:null,inputs:{VALUE:[1,[4,'1']]},fields:{VARIABLE:['resultOtherTicks',id]},topLevel:false,shadow:false};
+  const buffer=Buffer.from(await(await seed.creator.generateSB3()).arrayBuffer());
+  await vm.loadProject(buffer);if(project.stc)runtime.stc=project.stc;runtime.currentStepTime=1000/30;vm.greenFlag();await stepFrames(vm,10);
+  const observed=Object.fromEntries(runtime.targets.flatMap(target=>Object.values(target.variables)).map(variable=>[variable.name,BW.decode(variable.value)]));
+  return {vm,errors,facts,observed,marker,close(){
+   if(facts.row)facts.category.blocks.splice(facts.index,0,facts.row);
+   if(facts.originalTable)runtime._primitives=facts.originalTable;
+   if(ownPrepare)Object.defineProperty(manager,'_prepareBlockInfo',ownPrepare);else delete manager._prepareBlockInfo;
+   if(ownLookup)Object.defineProperty(runtime,'getOpcodeFunction',ownLookup);else delete runtime.getOpcodeFunction;
+   vm.stopAll();vm.quit();clearStrayTimers();
+  }};
+ }catch(error){if(vm){vm.stopAll();vm.quit();}throw error;}finally{if(seed){seed.vm.stopAll();seed.vm.quit();}clearStrayTimers();}
+}
+
+test('source Number result evidence refuses changed implementation, arithmetic plus and unknown selectors without lending Array input authority',async()=>{
+ // Pure producer anchor/idempotence controls do not execute a VM or bless a
+ // caller table; the real VM cases below require the installed actual hook.
+ const producer=readFileSync(new URL('../scripts/apply-vm-overlay.mjs',import.meta.url),'utf8');
+ const begin=producer.indexOf('function patchExtensionResultOrigins(source) {'),end=producer.indexOf("\nlet rt = readFileSync(runtimePath, 'utf8');",begin);
+ assert.ok(begin>=0&&end>begin);
+ const patch=new Function('return ('+producer.slice(begin,end)+'\n);')();
+ const sample='class Runtime extends EventEmitter {\nconstructor(){super();\n        this._primitives = {};\n        this._blockInfo = [];\n}\nregister(categoryInfo){\n        this._blockInfo.push(categoryInfo);\n}\nfill(categoryInfo){\n        categoryInfo.blocks = [];\n}\n}\nmodule.exports = Runtime;';
+ const patched=patch(sample);assert.equal(patch(patched),patched,'Runtime origin patch is exactly idempotent');
+ for(const anchor of ['class Runtime extends EventEmitter {','        this._primitives = {};','        this._blockInfo = [];','        this._blockInfo.push(categoryInfo);','        categoryInfo.blocks = [];','module.exports = Runtime;'])
+  assert.throws(()=>patch(sample.replace(anchor,'')),/origin anchor differs/);
+ assert.throws(()=>patch(patched.replace('const bwResultPrimitiveTable = {};','')),/origin patch is incomplete/);
+ const NativeRuntime=require(root+'/engine/runtime.js'),originProperty=Object.getOwnPropertyDescriptor(NativeRuntime,'sourceResultOrigins');
+ assert.equal(originProperty.writable,false);assert.equal(originProperty.configurable,false);
+ assert.equal(NativeRuntime.sourceResultOrigins({}),null,'no arbitrary runtime origin');
+ const native=new VM();
+ try{
+  const fakeCategory=new Proxy({},{});
+  native.runtime._fillExtensionCategory(fakeCategory,{id:'callerCategory',blocks:[],menus:{},customFieldTypes:{}});
+  assert.equal(NativeRuntime.sourceResultOrigins(native.runtime,fakeCategory),null,'public fill cannot issue a caller-supplied category origin');
+ }finally{native.stopAll();native.quit();clearStrayTimers();}
+ const original='let rows=[5];let entered=0;let seen=99;function hold(value:number){entered+=1;seen=value;}hold(rows&1);';
+ const imported=importProjectFiles({'main.ts':original},{target:'arcade'});assert.deepEqual(imported.unsupported,[]);assert.deepEqual(imported.warnings,[]);
+ for(const mutation of ['changed primitive','arithmetic plus','unknown selector']){
+  let run,restore=()=>{},changedCalls=0;
+  try{
+   run=await runProgram(imported.code,{frames:0,countExtensionCalls:false});
+   const runtime=run.vm.runtime,stage=runtime.targets.find(target=>Object.values(target.blocks._blocks).some(block=>block.opcode==='arcade_sourceValueBinary'));
+   const sourceBlock=Object.values(stage.blocks._blocks).find(block=>block.opcode==='arcade_sourceValueBinary');assert.ok(sourceBlock);
+   run.vm.stopAll();
+   if(mutation==='changed primitive'){
+    const original=runtime._primitives.arcade_sourceValueBinary;assert.equal(typeof original,'function');
+    runtime._primitives.arcade_sourceValueBinary=()=>{changedCalls++;return 0;};
+    restore=()=>{runtime._primitives.arcade_sourceValueBinary=original;};
+   }else{
+    const project=JSON.parse(run.vm.toJSON()),target=project.targets.find(target=>Object.values(target.blocks).some(block=>block.opcode==='arcade_sourceValueBinary'));
+    const operation=Object.values(target.blocks).find(block=>block.opcode==='arcade_sourceValueBinary');
+    operation.fields.OP[0]=mutation==='arithmetic plus'?'+':'~';
+    await run.vm.loadProject(JSON.stringify(project));if(run.creator.project.stc)runtime.stc=run.creator.project.stc;
+   }
+   run.errors.length=0;run.vm.greenFlag();
+   await stepFrames(run.vm,8);
+   const observed=Object.fromEntries(runtime.targets.flatMap(target=>Object.values(target.variables)).map(variable=>[variable.name,BW.decode(variable.value)]));
+   assert.equal(observed.entered,0,mutation);assert.equal(observed.seen,99,mutation);assert.equal(run.errors.length,1,mutation);
+   if(mutation==='changed primitive'){assert.equal(changedCalls,1);assert.match(run.errors[0],/connected input lacks complete primitive domain evidence/);}
+   if(mutation==='arithmetic plus')assert.match(run.errors[0],/connected input lacks complete primitive domain evidence/);
+   if(mutation==='unknown selector')assert.match(run.errors[0],/unsupported fixed binary operator/);
+  }finally{restore();if(run){run.vm.stopAll();run.vm.quit();}clearStrayTimers();}
+ }
+ const input='let rows=[5];let entered=0;let seen=99;function hold(value:number){entered+=1;seen=value;}hold(rows&1);';
+ for(const mode of ['redirect metadata','delegate ABA','primitive ABA','proxy table capture','late duplicate','late row removal']){
+  const run=await resultEvidenceFixture(input,{mode});
+  try{
+   assert.equal(run.facts.fired,true,mode);if(['redirect metadata','delegate ABA','primitive ABA'].includes(mode))assert.equal(run.facts.redirectCalls,1,mode);
+   if(mode==='proxy table capture')assert.notEqual(run.facts.trapFired,true,'replaced table is refused before its descriptor trap can run');
+   assert.equal(run.observed.entered,0,mode);assert.equal(run.observed.seen,99,mode);assert.ok(run.observed.resultOtherTicks>0,mode);
+   assert.equal(run.errors.length,1,mode);assert.match(run.errors[0],/connected input lacks complete primitive domain evidence/,mode);
+  }finally{run.close();}
+ }
+ const score=await resultEvidenceFixture('let entered=0;let seen=99;info.setScore(35);function hold(value:number){entered+=1;seen=value;}hold(info.score());',{mode:'source lookup throw'});
+ try{
+  assert.equal(score.facts.fired,true);assert.equal(score.facts.thrown,score.marker);assert.deepEqual(score.errors,[]);
+  assert.equal(score.observed.entered,1);assert.equal(score.observed.seen,35);assert.ok(score.observed.resultOtherTicks>0);
+ }finally{score.close();}
+
 });
