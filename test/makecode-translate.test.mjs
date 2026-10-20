@@ -332,7 +332,7 @@ const BATCH_1 = [
     ['v = Math.map(v, 0, 10, 0, 100)', 'set v to map v from low 0 high 10 to low 0 high 100', 'microbitplus_map'],
     ['v = Math.min(v, 3)', 'set v to min of v and 3', 'planetemaths_min'],
     ['v = Math.max(v - 1, 0)', 'set v to max of (v - 1) and 0', 'planetemaths_max'],
-    ['v = Math.idiv(v, 4)', 'set v to ((v / 4) bitor 0)', 'bitops_or'],
+    ['v = Math.idiv(v, 4)', 'set v to (((v bitor 0) / (4 bitor 0)) bitor 0)', 'bitops_or'],
     ['if (Math.randomBoolean()) { basic.clearScreen() }', 'IF (pick random 0 to 1) = 1 THEN:', 'operator_random']
 ];
 
@@ -366,7 +366,7 @@ test('a compound argument to abs/floor/sqrt is parenthesised (abs of a - b is |a
     assert.match(creator.decompile(), /abs of \(a - b\)/);
 });
 
-test('Math.idiv truncates toward zero, as its definition (a / b) | 0 does', {skip: canCompile ? false :
+test('Math.idiv truncates its operands and its quotient toward zero, as ((a | 0) / (b | 0)) | 0 does', {skip: canCompile ? false :
     'packages/scratch-gui not integrated'}, () => {
     // `floor of (a / b)` would be -4 for -7 / 2; MakeCode's idiv is -3.
     const {code} = microbitToPseudocode('let q = 0\nq = Math.idiv(0 - 7, 2)\nbasic.showNumber(q)\n');
@@ -374,7 +374,7 @@ test('Math.idiv truncates toward zero, as its definition (a / b) | 0 does', {ski
     creator.parse(code);
     const mp = creator.generateMicroPython();
     assert.ok(mp.ok, JSON.stringify(mp.reasons));
-    assert.match(mp.py, /q = \(int\(\(\(0 - 7\) \/ 2\)\) \| int\(0\)\)/, mp.py);
+    assert.match(mp.py, /q = \(int\(\(\(int\(\(0 - 7\)\) \| int\(0\)\) \/ \(int\(2\) \| int\(0\)\)\)\) \| int\(0\)\)/, mp.py);
 });
 
 test('game.score() is the game\'s score, not a variable nothing ever set', {skip: canCompile ? false :
