@@ -157,6 +157,20 @@ export const DRAG_LINK_BUDGET = 3;
 // is a view that keeps redrawing after an edit; the recompile also drew the 2,054 parts again for a hidden
 // motion overlay when the undo's frame was drawn before it (seconds a frame on SwiftShader).
 export const UNDO_DRAW_BUDGET = 1;
+// Full Build frames a hover and a gizmo drag may draw: no more than the GPU can finish (editor-view3d.js
+// render keeps one frame in flight). Every move used to draw one whether or not the GPU had
+// finished the ones before: 23 for the hover, click and drag here, ~100 s of SwiftShader work queued on a
+// CI runner, which the screenshot after the undo waited behind (118.0 s in run 39317202347, over 120 s in
+// 39326020295 and 39327216331). Allowed: what the moves' wall time fits at the measured full-frame time
+// (rounded up: a frame's time varies by a second or more), plus 2 (the one in flight when they start, and
+// the last). Measured on a Mac: 3 frames in 8.6 s of hover at 4.9 s a frame (budget 4); before the pacing
+// 10 in 36 s at 6.0 s a frame (budget 8), and 23 for these moves in all.
+export const pacedDrawBudget = (wallMs, frameMs) => 2 + Math.ceil(wallMs / frameMs);
+// Undo → its screenshot done (wall). With the frames paced: 6.2-9.3 s on a Mac (SwiftShader, 3.8-4.9 s a
+// full frame: the frame in flight, the undo's, the screenshot's composite). Before: 12-14 s on the Mac, and
+// in CI 118.0 s (run 39317202347), 91.9 s (#1108's merge run) and over the screenshot's 120 s timeout
+// (39326020295, 39327216331). About three times the paced time at CI's 3.5-4.6 s a frame.
+export const UNDO_SHOT_BUDGET_MS = 30000;
 
 /** Counts shader programs linked on the Build view's canvas from now on (read with `linksSince`). */
 const countLinks = page => page.evaluate(() => {
@@ -277,6 +291,8 @@ export const scaleInteractions = async (page, {root, shotsDir, JSZip}) => {
     const box = await page.getByTestId('bw-sim-lab-editor-canvas').boundingBox();
     assert.ok(at[0] > box.x && at[0] < box.x + box.width && at[1] > box.y && at[1] < box.y + box.height, `the beam is on screen: ${at}`);
     // The pointer comes to the beam over the model (hover: picking and highlights on 2,054 parts).
+    await countDraws(page);
+    const movesStart = Date.now();
     await pointerMoves(page);
     for (let i = 10; i >= 0; i--) await page.mouse.move(at[0] - i * 12, at[1] - i * 6);
     results.hover = await pointerMoves(page);
@@ -299,14 +315,29 @@ export const scaleInteractions = async (page, {root, shotsDir, JSZip}) => {
     const handle = await findHandle(page, 'X');
     const dir = [handle.at[0] - handle.centre[0], handle.at[1] - handle.centre[1]];
     const len = Math.hypot(...dir);
+    results.moveDraws = await drawsSince(page);
+    results.moveWallMs = Date.now() - movesStart;
+    // Paced: the moves drew no more frames than the GPU finished (each move used to queue a whole frame).
+    const moveDrawBudget = pacedDrawBudget(results.moveWallMs, buildFrames.median);
+    assert.ok(results.moveDraws <= moveDrawBudget, `a hover, a click and a hover on the gizmo drew the 2,054-part Build view ${results.moveDraws} times ` +
+        `in ${results.moveWallMs} ms (budget ${moveDrawBudget} at ${buildFrames.median.toFixed(0)} ms a frame): frames queued faster than the GPU draws them`);
+    // The deferred frame of those moves is drawn (its first-time shader programs linked) before the drag counts links.
+    await page.waitForFunction(() => !window.__bwSimLab.editView.drawing, null, {timeout: OPEN_BUDGET_MS, polling: 250});
     await pointerMoves(page);
     await countLinks(page);
+    await countDraws(page);
+    const dragStart = Date.now();
     await page.mouse.move(handle.at[0], handle.at[1]);
     await page.mouse.down();
     for (let i = 1; i <= 12; i++) await page.mouse.move(handle.at[0] + dir[0] / len * 10 * i, handle.at[1] + dir[1] / len * 10 * i);
     results.drag = await pointerMoves(page);
     await page.mouse.up();
     results.dragLinks = await linksSince(page);
+    results.dragDraws = await drawsSince(page);
+    results.dragWallMs = Date.now() - dragStart;
+    const dragDrawBudget = pacedDrawBudget(results.dragWallMs, buildFrames.median);
+    assert.ok(results.dragDraws <= dragDrawBudget, `a gizmo drag of 12 moves drew the 2,054-part Build view ${results.dragDraws} times in ${results.dragWallMs} ms ` +
+        `(budget ${dragDrawBudget} at ${buildFrames.median.toFixed(0)} ms a frame): frames queued faster than the GPU draws them`);
     assert.ok(results.dragLinks <= DRAG_LINK_BUDGET, `a gizmo drag of 12 moves linked ${results.dragLinks} shader programs (budget ${DRAG_LINK_BUDGET}): a material made per move?`);
     const p1 = await pose();
     const grid = await page.evaluate(() => window.__bwSimLab.editView.grid);
@@ -325,6 +356,7 @@ export const scaleInteractions = async (page, {root, shotsDir, JSZip}) => {
     assert.deepEqual(await pose(), p0, 'one undo puts the beam back');
     await page.screenshot({path: resolve(shotsDir, 'sim-lab-scale-build.png'), timeout: 120000});
     results.undoShotMs = Date.now() - undoStart;
+    assert.ok(results.undoShotMs < UNDO_SHOT_BUDGET_MS, `the Build view after one undo was on screen in ${results.undoShotMs} ms (budget ${UNDO_SHOT_BUDGET_MS}): GPU work queued before it?`);
     // The pane's recompile after the undo (debounced) has run, and a frame has passed since.
     await page.waitForFunction(() => !window.__bwSimLab._pane.lastInsight.bwBeforeUndo, null, {timeout: OPEN_BUDGET_MS, polling: 250});
     await nextFrames(page);

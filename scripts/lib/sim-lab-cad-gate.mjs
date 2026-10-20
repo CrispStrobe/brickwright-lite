@@ -335,6 +335,13 @@ const grabOn = async (page, id, name, locals) => {
 /** A point in a part's frame (LDU) in the model frame. */
 const modelPoint = (p, local) => [0, 1, 2].map(i => p.rotation[i * 3] * local[0] + p.rotation[i * 3 + 1] * local[1] + p.rotation[i * 3 + 2] * local[2] + p.position[i]);
 /** Strongly red pixels of a screenshot region (PNG decoded in the page). */
+/**
+ * The Build view has drawn what it shows and the GPU has finished it: it keeps one frame in flight
+ * (editor-view3d.js render), so a change made while the GPU is still busy with the frame before is
+ * drawn a frame later, not at once — a screenshot taken straight after the change can miss it.
+ */
+const buildDrawn = page => page.waitForFunction(() => !window.__bwSimLab.editView.drawing, null, {timeout: 30000, polling: 50});
+
 const redPixels = (page, png, clip) => page.evaluate(async ([b64, c]) => {
     const img = new Image();
     img.src = `data:image/png;base64,${b64}`;
@@ -456,6 +463,7 @@ const beamIntoHub = async (page, beamId, {shotsDir}) => {
     const box = await canvas.boundingBox();
     const at = await screenOf(page, beamId);
     const clip = {x: Math.max(box.x, at[0] - 160), y: Math.max(box.y, at[1] - 120), width: 320, height: 240};
+    await buildDrawn(page);
     const redBefore = await redPixels(page, await page.screenshot(), clip);
     // Push down along the Y arrow, as a person does, until the status line says it would go in.
     await page.mouse.down();
@@ -466,6 +474,7 @@ const beamIntoHub = async (page, beamId, {shotsDir}) => {
     }
     assert.match(said, /Would go into SPIKE Prime hub/, 'the status names the hub');
     assert.equal(await page.evaluate(() => window.__bwSimLab.editView.blockedInto), hub);
+    await buildDrawn(page);
     const shot = await page.screenshot({path: resolve(shotsDir, 'sim-lab-build-blocked.png')});
     const redDuring = await redPixels(page, shot, clip);
     assert.ok(redDuring > redBefore + 150, `the beam turns red: ${redBefore} → ${redDuring} red pixels`);

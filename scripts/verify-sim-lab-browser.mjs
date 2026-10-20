@@ -141,7 +141,7 @@ import {hubsInteractions, HUB_DEGREES_TOLERANCE} from './lib/sim-lab-hubs-gate.m
 import {hubsBtInteractions} from './lib/sim-lab-hubs-bt-gate.mjs';
 import {openRobotLabTab, tool, toolbarInteractions} from './lib/sim-lab-toolbar-gate.mjs';
 import {scaleInteractions, OPEN_BUDGET_MS, DRAW_CALL_BUDGET, BUILD_OPEN_BUDGET_MS, IDLE_FRAME_BUDGET_MS, POINTER_MOVE_BUDGET_MS,
-    DRAG_LINK_BUDGET, UNDO_DRAW_BUDGET} from './lib/sim-lab-scale-gate.mjs';
+    DRAG_LINK_BUDGET, UNDO_DRAW_BUDGET, UNDO_SHOT_BUDGET_MS} from './lib/sim-lab-scale-gate.mjs';
 import {brakingBound, judgeWallStop} from './lib/sim-lab-wall-stopper-judge.mjs';
 import {STEP_MS} from '../overlay/scratch-gui/src/lib/bw-sim/hub-bridge.js';
 
@@ -1009,7 +1009,8 @@ try {
             `a pointer move ${r.hover.median.toFixed(1)} ms hovering, ${r.drag.median.toFixed(1)} ms dragging the gizmo (medians, budget ${POINTER_MOVE_BUDGET_MS}); ` +
             `a click on grid beam ${r.picked} selects it (${r.clickMs} ms), its X arrow moves it ${r.dragged} LDU ` +
             `(${r.dragLinks} shader programs linked, budget ${DRAG_LINK_BUDGET}) and one undo puts it back ` +
-            `(${r.undoDraws} frame drawn, budget ${UNDO_DRAW_BUDGET}; on screen ${(r.undoShotMs / 1000).toFixed(1)} s)`);
+            `(${r.undoDraws} frame drawn, budget ${UNDO_DRAW_BUDGET}; on screen ${(r.undoShotMs / 1000).toFixed(1)} s, budget ${UNDO_SHOT_BUDGET_MS / 1000} s); ` +
+            `frames paced to the GPU: ${r.moveDraws} drawn in ${(r.moveWallMs / 1000).toFixed(1)} s of hover and click, ${r.dragDraws} in ${(r.dragWallMs / 1000).toFixed(1)} s of drag`);
         console.log('PASS the hand-made .lxf opens with its unknown, mirrored and uncoloured parts listed; a password-protected .io is refused and the model stays');
         console.log('PASS Save as… → BrickLink Studio (.io) downloads a ZIP whose model.ldr is the model\'s LDraw text, and it reopens to it');
         await page.close();
