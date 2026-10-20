@@ -1,0 +1,19 @@
+DEVICE SPIKE
+
+# Robot Lab: what a pneumatic valve does.
+# Model: Pneumatic cylinder. Motor A turns the lever of a pneumatic valve; two hoses run
+# from its outlets to the two ends of a cylinder. Turn the lever one way and air pushes
+# the cylinder's rod out; turn it the other way and the rod goes back in. In the middle
+# the valve is shut and the rod stays where it is.
+WHEN flag clicked:
+  set motor stop action A hold
+  set motor speed A 20
+  display text "out"
+  run motor A counterclockwise 40 degrees
+  wait 2 seconds
+  display text "in"
+  run motor A clockwise 80 degrees
+  wait 2 seconds
+  display text "shut"
+  run motor A counterclockwise 40 degrees
+  wait 1 seconds

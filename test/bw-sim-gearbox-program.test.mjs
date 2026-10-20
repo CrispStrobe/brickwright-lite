@@ -105,6 +105,23 @@ test('chain drive: the 24T sprocket turns the motor\'s way at 16:24, forward and
     }
 });
 
+test('pneumatic cylinder: motor A turns the valve\'s lever one way and the rod comes out its stroke, the other way and it goes back', async t => {
+    const {modelText, program} = shipped('pneumatic-press.ldr');
+    const {track, issues, mechanism: m} = await runOnSimLab(program, {modelText, timeLimitMs: 9000});
+    assert.deepEqual(issues.filter(i => i.severity === 'error'), []);
+    const air = m.couplings.filter(c => c.kind === 'pneumatic');
+    assert.equal(air.length, 1, 'one cylinder fed by the valve');
+    assert.equal(air[0].valveJoint, m.joints.find(j => j.motor && j.motor.port === 'A').id, 'motor A turns the valve\'s lever');
+    const rod = bodyOf(m, 'rod');
+    const y0 = track.find(f => f.bodies[rod]).bodies[rod].position[1];
+    const ends = track.filter(f => f.bodies[rod]).map(f => [f.t, (f.bodies[rod].position[1] - y0) * 1000]);
+    const top = Math.max(...ends.map(e => e[1]));
+    const last = ends.at(-1)[1];
+    t.diagnostic(`the rod rises ${top.toFixed(1)} mm (the stroke is 48 mm) and ends ${last.toFixed(1)} mm from where it started`);
+    assert.ok(Math.abs(top - 48) < 2, `out by the stroke: ${top.toFixed(1)} mm`);
+    assert.ok(Math.abs(last) < 2, `and back in: ${last.toFixed(1)} mm`);
+});
+
 test('drawing robot: its castor ball is a pen, and the program drives it round a 20 cm square', async t => {
     const {modelText, program} = shipped('drawing-robot.ldr');
     assert.match(modelText, /0 !BW ID ball\r?\n0 !BW PEN\r?\n/, 'the castor ball draws');

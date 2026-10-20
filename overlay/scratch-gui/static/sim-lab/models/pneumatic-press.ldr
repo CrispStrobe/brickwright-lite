@@ -1,0 +1,45 @@
+0 Pneumatic cylinder (Brickwright Robot Lab reference model)
+0 Name: pneumatic-press.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 !BW HOSE h1 valve a cylinder a
+0 !BW HOSE h2 valve b cylinder b
+0 !BW ID motor
+0 !BW PORT A
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ID base
+1 72 0 40 0 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID basePin1
+1 0 20 30 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID basePin2
+1 0 -20 30 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID basePin3
+1 0 80 30 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID basePin4
+1 0 120 30 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub
+1 71 0 130 100 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID hubPin1
+1 0 60 50 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hubPin2
+1 0 -60 50 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motorAxle
+1 4 0 -60 0 0 1 0 1 0 0 0 0 -1 4519.dat
+0 !BW ID valveBeam
+1 71 0 -60 0 1 0 0 0 1 0 0 0 1 32524.dat
+0 !BW ID beamPin1
+1 0 0 -50 20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID beamPin2
+1 0 0 -50 -20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID valve
+1 15 0 -80 0 0 0 -1 1 0 0 0 -1 0 19474-f1.dat
+0 !BW ID valvePin1
+1 0 0 -70 40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID valvePin2
+1 0 0 -70 -40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID cylPin
+1 0 -30 -20 140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID cylinder
+1 72 -40 -20 140 1 0 0 0 1 0 0 0 1 u9145c01.dat
+0 !BW ID rod
+1 15 -40 -220 140 1 0 0 0 1 0 0 0 1 21828c01.dat

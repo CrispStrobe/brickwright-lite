@@ -78,6 +78,9 @@ export const MODELS = Object.freeze([
     // Flexible parts (docs/ROBOT-LAB-UX.md §11): a chain from the motor's 8T to a 24T.
     {file: 'chain-drive.ldr', title: {en: 'Chain drive', de: 'Kettenantrieb'},
         example: 'chain-drive.bw'},
+    // Pneumatics v1 (docs/ROBOT-LAB-UX.md §16): motor A turns a valve's lever; hoses feed a cylinder.
+    {file: 'pneumatic-press.ldr', title: {en: 'Pneumatic cylinder', de: 'Pneumatikzylinder'},
+        example: 'pneumatic-press.bw'},
     // Pen and paper (architecture M15): the driving base, its castor ball a pen.
     {file: 'drawing-robot.ldr', title: {en: 'Drawing robot', de: 'Malroboter'},
         example: 'drawing-robot.bw', mat: 'plain'},

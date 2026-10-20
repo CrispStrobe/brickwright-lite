@@ -485,5 +485,10 @@ The starting values from §6 were kept: every gate reading lies well inside them
 - Left out, and said so: the air supply is ideal (no pump, tank or compressor yet), the air does not
   compress (a shut valve holds rigidly, up to 40 N), and the lever is drawn where the model has it.
   The lumped-pressure network (pumps, tanks, T-pieces) is the next step of M12.
+- Example: **Pneumatic cylinder** (`static/sim-lab/models/pneumatic-press.ldr`, `programs/pneumatic-press.bw`):
+  motor A's axle turns the lever of a valve on a beam on top of it, two hoses feed a cylinder pinned to
+  its side; the program turns the lever 40° one way (the rod comes out), 80° back (in) and to the middle.
 - Tests: `test/bw-sim-pneumatic.test.mjs` (hoses through LDraw and undo, the stroke and p·A, the
-  hose tool's port choice; in the real core one way out by 48 mm, the other way back, shut holds).
+  hose tool's port choice; in the real core one way out by 48 mm, the other way back, shut holds);
+  `test/bw-sim-gearbox-program.test.mjs` runs the example (out 48 mm, back to 0); browser: editor
+  gate step 7 (`--part=editor`), and the example run from the pane (`--part=examples`, 8d).

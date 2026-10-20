@@ -764,6 +764,47 @@ try {
         await fl.close();
         }
 
+        if (runExample('pneumatic-press.ldr')) {
+        // 8d. The Pneumatic cylinder (docs/ROBOT-LAB-UX.md §16): choose it, load its example and Run.
+        // Motor A turns the valve's lever one way (the rod comes out its 48 mm stroke), the other way
+        // (back in) and to the middle (shut); the two hoses are drawn and follow the cylinder.
+        const pn = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+        pn.on('pageerror', error => errors.push(error.message));
+        pn.on('dialog', dialog => dialog.accept());
+        await openSimLab(pn, {program: null});
+        await pn.getByTestId('bw-sim-lab-model').selectOption('pneumatic-press.ldr');
+        await pn.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.modelFile === 'pneumatic-press.ldr' &&
+            window.__bwSimLab._pane.session, null, {timeout: 60000});
+        await pn.getByRole('button', {name: 'Load example program'}).click();
+        await pn.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
+            null, {timeout: 60000});
+        await pn.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.session, null, {timeout: 60000});
+        await pn.evaluate(() => {
+            const s = window.__bwSimLab._pane.session;
+            const rod = s.mechanism.bodies.find(b => b.parts.includes('rod')).id;
+            const rec = window.__bwPneu = {start: s.time, y0: s.core.bodyPose(rod).position[1], max: 0, last: 0, worker: s.worker,
+                couplings: s.mechanism.couplings.filter(c => c.kind === 'pneumatic').length};
+            s.onAdvance(() => {
+                const dy = s.core.bodyPose(rod).position[1] - rec.y0;
+                rec.max = Math.max(rec.max, dy);
+                rec.last = dy;
+            });
+        });
+        await pn.getByTestId('bw-sim-lab-run').click();
+        await pn.waitForFunction(() => window.__bwSimLab._pane.session.time - window.__bwPneu.start > 2500, null, {timeout: wallBudget(2500)});
+        await pn.screenshot({path: resolve(artifacts, 'sim-lab-pneumatic.png'), fullPage: true});
+        await pn.waitForFunction(() => window.__bwSimLab._pane.session.time - window.__bwPneu.start > 8000, null, {timeout: wallBudget(8000)});
+        const air = await pn.evaluate(() => ({...window.__bwPneu, hoses: window.__bwSimLab._pane.view.hoseCount()}));
+        assert.equal(air.worker, true, 'the cylinder ran its physics in the worker');
+        assert.equal(air.couplings, 1, `the valve feeds the cylinder: ${JSON.stringify(air)}`);
+        assert.equal(air.hoses, 2, `both hoses are drawn: ${JSON.stringify(air)}`);
+        assert.ok(Math.abs(air.max - 0.048) <= 0.002, `the rod rose ${air.max} m, not 48 mm: ${JSON.stringify(air)}`);
+        assert.ok(Math.abs(air.last) <= 0.002, `the rod ended ${air.last} m out: ${JSON.stringify(air)}`);
+        console.log(`PASS the Pneumatic cylinder's example program turns the valve's lever: the rod comes out ${(air.max * 1000).toFixed(1)} mm ` +
+            `and goes back in (${(air.last * 1000).toFixed(1)} mm), ${air.hoses} hoses drawn`);
+        await pn.close();
+        }
+
         if (runExample('timed-drive.ldr')) {
         // 8c. Program time IS simulated time (one clock, docs/SIM-LAB-PLAN.md §4.9): `wait 5 seconds`,
         // `start moving`, `wait 2 seconds`, `stop movement` on the driving base. The drive must last

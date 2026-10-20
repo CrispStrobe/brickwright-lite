@@ -419,6 +419,8 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     /** The pens' tips' heights above the floor (m), [] without a pen. */
     const penHeights = () => (pens ? pens.heights() : []);
     return {canvas, render, resize, resetCamera: recentre, dispose, setPorts, setMotion, setOverlay, setSensors, highlight, setMousePreset, penStrokes, penHeights,
+        /** How many pneumatic hoses are drawn (view/hose-layer.js), for the browser gate. */
+        hoseCount: () => (simHoses ? simHoses.count : 0),
         /** The sensor rays as last drawn, {from, to} in world space (metres), for the browser gate. */
         sensorRays: () => (rays.visible ? lastRays.filter(Boolean).map(r => ({...r})) : []),
         /** The pane's view buttons: 'home', 'top', 'front' or 'side'; and Fit. */
