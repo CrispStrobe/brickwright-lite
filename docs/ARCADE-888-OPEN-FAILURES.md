@@ -132,6 +132,21 @@ Not marked known-open. When it fails, rerun only the failed job. Failures seen:
 | #1085 | `scripts/lib/sim-lab-cad-gate.mjs` `focusOn` | expected `['p16']`, got `[]` |
 | #1097 | scale gate | 120 s screenshot timeout |
 
+### unit (3/4): AshFactory collection exhaustion, INTERMITTENT, FIXED
+
+- Test: `test/makecode-arcade-particle-effects.test.mjs`, "actual original AshFactory exhausts its
+  single and multiple color collections without losing particles". Seen on #1121, #1125, #1141
+  and #1133 as `colored 3, coloredSum 12, imageSum 2` against `4, 14, 0`.
+- Root cause: not timing. `AshFactory` seeds its `FastRandom` from platform entropy
+  (`Math.random` through `randomRange(1, 0xFFFF)`), and the original
+  `FastRandom.percentChance(100)` draws `randomRange(0, 100) < 100`, so a draw of 100 keeps a
+  pixel even at 100 percent. 2570 of 65535 seeds (3.9%) keep at least one of the four pixels.
+  The original PXT run and the Lite run each drew an independent seed, so the test failed in
+  about 7.7% of runs. The product matches PXT 4.2.1 and is unchanged.
+- Fix: `runPxtArcade` takes `fixedEntropy`, and the test pins the same entropy on both sides.
+  Seed 1 checks full exhaustion (4, 14, 0). Seed 153 checks the off-by-one case (3, 12, 2) on
+  both sides, which is exactly the CI failure.
+
 ## Already-TODO items owned by other work
 
 These were already `# TODO` before this landing and are not part of this list:

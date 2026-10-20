@@ -248,7 +248,12 @@ sceneAt750 = game.currentScene().allSprites.indexOf(hero) >= 0`;
     assert.deepEqual([events, ghost, countedAt0, sceneAt250, eventsAt250, !!f.state().sprites[hero]], ['rd', true, 0, true, 'r', false]);
 });
 
-test('actual original AshFactory exhausts its single and multiple color collections without losing particles',async()=>{
+// AshFactory seeds its FastRandom from platform entropy (pxsim Math.random), and
+// the original FastRandom.percentChance(100) draws randomRange(0, 100) < 100, so
+// about 3.9% of seeds drop a pixel even at 100 percent kept. Pin the entropy on
+// both sides so the seed, and therefore the expected collection, is known.
+const ashSeedEntropy=seed=>(seed-1+0.5)/65535;
+async function ashFactoryCase(entropy){
     const source=`let bare:particles.ParticleAnchor={x:80,y:60,vx:0,vy:0}
 let defaultFactory=new particles.AshFactory(bare,false)
 let emitted=0
@@ -261,17 +266,37 @@ let coloredSum=0
 for(let i=0;i<8;i++){let particle=coloredFactory.createParticle(hero);if(particle){colored++;coloredSum+=particle.color;}}
 let imageSum=hero.image.getPixel(0,0)+hero.image.getPixel(1,0)+hero.image.getPixel(0,1)+hero.image.getPixel(1,1)
 let done=1;done+=0;`;
-    const original=await runPxtArcade(source,{fakeClock:true});assert.equal(original.emitted,20);assert.equal(original.defaultColorSum,20);assert.equal(original.colored,4);assert.equal(original.coloredSum,14);assert.equal(original.imageSum,0);
-    const f=fixture(),module=f.arcade._inst._particles(),bare={x:80,y:60,vx:0,vy:0};
-    const plain=new module.particles.AshFactory(bare,false);let emitted=0,defaultColorSum=0;
-    for(let i=0;i<25;i++){const particle=plain.createParticle(bare);if(particle){emitted++;defaultColorSum+=particle.color;}}
-    const image=f.arcade.createImage({WIDTH:2,HEIGHT:2});for(const [x,y,c] of [[0,0,2],[1,0,3],[0,1,4],[1,1,5]])f.arcade.drawImage({IMAGE:image,OP:'fillRect',X:x,Y:y,W:1,H:1,COLOR:c});
-    const id=f.arcade.createImageSprite({IMAGE:image,TEMPLATE:'',KIND:'Player'}),hero=f.state().sprites[id],anchor=f.arcade._inst._particleAnchor(hero);
-    const coloredFactory=new module.particles.AshFactory(anchor,true,100);let colored=0,coloredSum=0;
-    for(let i=0;i<8;i++){const particle=coloredFactory.createParticle(anchor);if(particle){colored++;coloredSum+=particle.color;}}
-    const imageSum=hero.image.pixels.reduce((sum,value)=>sum+value,0);
-    assert.deepEqual({emitted,defaultColorSum,colored,coloredSum,imageSum},{emitted:original.emitted,defaultColorSum:original.defaultColorSum,colored:original.colored,coloredSum:original.coloredSum,imageSum:original.imageSum});
-    assert.equal(plain.colors.length,0);assert.equal(coloredFactory.colors.length,0);assert.deepEqual(f.errors,[]);
+
+    const original=await runPxtArcade(source,{fakeClock:true,fixedEntropy:entropy});
+    const random=Math.random;Math.random=()=>entropy;
+    try {
+        const f=fixture(),module=f.arcade._inst._particles(),bare={x:80,y:60,vx:0,vy:0};
+        const plain=new module.particles.AshFactory(bare,false);let emitted=0,defaultColorSum=0;
+        for(let i=0;i<25;i++){const particle=plain.createParticle(bare);if(particle){emitted++;defaultColorSum+=particle.color;}}
+        const image=f.arcade.createImage({WIDTH:2,HEIGHT:2});for(const [x,y,c] of [[0,0,2],[1,0,3],[0,1,4],[1,1,5]])f.arcade.drawImage({IMAGE:image,OP:'fillRect',X:x,Y:y,W:1,H:1,COLOR:c});
+        const id=f.arcade.createImageSprite({IMAGE:image,TEMPLATE:'',KIND:'Player'}),hero=f.state().sprites[id],anchor=f.arcade._inst._particleAnchor(hero);
+        const coloredFactory=new module.particles.AshFactory(anchor,true,100);let colored=0,coloredSum=0;
+        for(let i=0;i<8;i++){const particle=coloredFactory.createParticle(anchor);if(particle){colored++;coloredSum+=particle.color;}}
+        const imageSum=hero.image.pixels.reduce((sum,value)=>sum+value,0);
+        assert.equal(plain.colors.length,0);assert.equal(coloredFactory.colors.length,0);assert.deepEqual(f.errors,[]);
+        return {original:{emitted:original.emitted,defaultColorSum:original.defaultColorSum,colored:original.colored,coloredSum:original.coloredSum,imageSum:original.imageSum},
+            lite:{emitted,defaultColorSum,colored,coloredSum,imageSum}};
+    } finally {Math.random=random;}
+}
+
+test('actual original AshFactory exhausts its single and multiple color collections without losing particles',async()=>{
+    // Seed 1 keeps all four pixels of the 2x2 image at 100 percent.
+    const {original,lite}=await ashFactoryCase(ashSeedEntropy(1));
+    assert.deepEqual(original,{emitted:20,defaultColorSum:20,colored:4,coloredSum:14,imageSum:0});
+    assert.deepEqual(lite,original);
+});
+
+test('actual original AshFactory percentChance(100) off-by-one keeps a pixel for an unlucky seed',async()=>{
+    // Seed 153 draws 100 first: pixel (0,0), color 2, stays in the image. This is
+    // the outcome that unpinned entropy produced intermittently in CI.
+    const {original,lite}=await ashFactoryCase(ashSeedEntropy(153));
+    assert.deepEqual(original,{emitted:20,defaultColorSum:20,colored:3,coloredSum:12,imageSum:2});
+    assert.deepEqual(lite,original);
 });
 
 test('ashes destroy effects execute depleted collection removal and finish destruction',async()=>{
