@@ -24,6 +24,7 @@ import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import {mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
+import {createRequire} from 'node:module';
 
 const url = process.env.PROOF_URL || 'http://localhost:8617/';
 const SHOTS = path.resolve('artifacts/costume-roundtrip');
@@ -56,6 +57,8 @@ const {chromium} = await import('playwright');
 const browser = await chromium.launch(process.env.BW_BROWSER ?
     {executablePath: process.env.BW_BROWSER} : {});
 const errors = [];
+const gifReport = {status: 'NOT_ATTEMPTED', abortedChunkRequests: [],
+    boundary: 'Actual single-file chooser/FileReader/GifReader/native Canvas/PNG storage path. UI drops decoder error identity; multi-file ordering, timer errors and GIF save/reopen remain separate.'};
 
 const open = async () => {
     const page = await browser.newPage({viewport: {width: 1600, height: 1000}, acceptDownloads: true});
@@ -347,9 +350,146 @@ try {
         `${authored.map(c => c.content).join(',')} -> ${reloaded.map(c => c.content).join(',')}`);
     record('no renderer crash and no uncaught page errors across the whole trip',
         errors.length === 0, errors.join(' | ') || 'clean');
+    // New GIF journey starts only after ALL original artwork/performance checks.
+    // It uses the real chooser/FileReader/decoder/native Canvas/storage pipeline.
+    gifReport.status = 'STARTED';
+    gifReport.before = await costumes(page);
+    gifReport.targetID = await page.evaluate(() => window.__vm.editingTarget.id);
+    gifReport.beforeAssets = await page.evaluate(() => window.__vm.editingTarget.getCostumes().map(costume => ({
+        name: costume.name, dataFormat: costume.dataFormat, assetId: costume.assetId,
+        bytes: costume.asset?.data ? Array.from(costume.asset.data) : null
+    })));
+    const gifBuffer = new Uint8Array(1024);
+    const guiRequire = createRequire(new URL('../packages/scratch-gui/package.json', import.meta.url));
+    const {GifWriter} = guiRequire('omggif');
+    const gifWriter = new GifWriter(gifBuffer, 1, 1, {palette: [0xff0000, 0x0000ff]});
+    gifWriter.addFrame(0, 0, 1, 1, new Uint8Array([0]), {delay: 1, disposal: 1});
+    gifWriter.addFrame(0, 0, 1, 1, new Uint8Array([1]), {delay: 1, disposal: 1});
+    const gifBytes = Buffer.from(gifBuffer.slice(0, gifWriter.end()));
+    gifReport.input = {name: 'bw-gif-frames.gif', mimeType: 'image/gif', bytes: Array.from(gifBytes)};
+    // Passive state subscription records actual importer start/close, not a
+    // timer guess or input.value reset. No dispatch or decoder is replaced.
+    await page.evaluate(() => {
+        const store = window.__brickwrightStore;
+        const evidence = window.__bwGifNativeUpload = {attempts: [], current: null};
+        const observe = () => {
+            if (!evidence.current) return;
+            const gui = store.getState().scratchGui;
+            const row = {
+                importing: gui.alerts.alertsList.some(alert => alert.alertId === 'importingAsset'),
+                targetID: window.__vm.editingTarget?.id,
+                costumeCount: window.__vm.editingTarget?.getCostumes().length
+            };
+            const previous = evidence.current.transitions.at(-1);
+            if (!previous || row.importing !== previous.importing || row.targetID !== previous.targetID ||
+                row.costumeCount !== previous.costumeCount) evidence.current.transitions.push(row);
+        };
+        evidence.observe = observe;
+        evidence.unsubscribe = store.subscribe(observe);
+    });
+    const selectGif = async (label, file) => {
+        gifReport.phase = label;
+        await page.evaluate(name => {
+            const evidence = window.__bwGifNativeUpload;
+            const attempt = {label: name, transitions: []};
+            evidence.attempts.push(attempt); evidence.current = attempt; evidence.observe();
+        }, label);
+        await page.getByRole('button', {name: 'Choose a Costume', exact: true}).hover({timeout: 10000});
+        const chooser = page.waitForEvent('filechooser', {timeout: 10000});
+        await page.getByRole('button', {name: 'Upload Costume', exact: true}).click({timeout: 10000});
+        await (await chooser).setFiles(file);
+        await page.waitForFunction(() => {
+            const attempt = window.__bwGifNativeUpload.current;
+            return attempt.transitions.some(row => row.importing) &&
+                attempt.transitions.at(-1).importing === false;
+        }, null, {timeout: 10000});
+    };
+    const nativeCostumes = () => page.evaluate(async originalCount => {
+        const target = window.__vm.editingTarget;
+        const added = target.getCostumes().slice(originalCount);
+        const frames = [];
+        for (const costume of added) {
+            const bytes = costume.asset?.data;
+            const record = {name: costume.name, dataFormat: costume.dataFormat,
+                assetId: costume.assetId, md5: costume.md5, bitmapResolution: costume.bitmapResolution,
+                rotationCenterX: costume.rotationCenterX, rotationCenterY: costume.rotationCenterY,
+                bytes: bytes ? Array.from(bytes) : null};
+            frames.push(record);
+            try {
+                const image = await createImageBitmap(new Blob([bytes], {type: 'image/png'}));
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = image.width; canvas.height = image.height;
+                    const context = canvas.getContext('2d'); context.drawImage(image, 0, 0);
+                    record.width = image.width; record.height = image.height;
+                    record.rgba = Array.from(context.getImageData(0, 0, canvas.width, canvas.height).data);
+                } finally { image.close(); }
+            } catch (error) { record.nativeDecodeError = String(error); }
+        }
+        const allAssets = target.getCostumes().map(costume => ({
+            name: costume.name, dataFormat: costume.dataFormat, assetId: costume.assetId,
+            bytes: costume.asset?.data ? Array.from(costume.asset.data) : null
+        }));
+        return {targetID: target.id, frames, allAssets};
+    }, gifReport.before.length);
+    // webpack.config.js fixes async output to chunks/[name].js; this named
+    // dynamic import must actually request the route once, not pass vacuously.
+    const gifChunk = /\/chunks\/gif-decoder\.js(?:\?.*)?$/;
+    const abortChunk = async route => {
+        gifReport.abortedChunkRequests.push(route.request().url());
+        await route.abort('failed');
+    };
+    try {
+        await page.route(gifChunk, abortChunk);
+        await selectGif('chunk-failure', {name: 'bw-gif-frames.gif', mimeType: 'image/gif', buffer: gifBytes});
+        gifReport.afterChunkFailure = {costumes: await costumes(page), native: await nativeCostumes()};
+        await page.unroute(gifChunk, abortChunk);
+        record('GIF acquisition failure reaches the real upload path exactly once',
+            gifReport.abortedChunkRequests.length === 1, JSON.stringify(gifReport.abortedChunkRequests));
+        record('failed GIF acquisition leaves the actual target and costumes unchanged',
+            gifReport.afterChunkFailure.native.targetID === gifReport.targetID &&
+            JSON.stringify(gifReport.afterChunkFailure.costumes) === JSON.stringify(gifReport.before) &&
+            JSON.stringify(gifReport.afterChunkFailure.native.allAssets) === JSON.stringify(gifReport.beforeAssets));
+
+        await selectGif('real-picker-retry', {name: 'bw-gif-frames.gif', mimeType: 'image/gif', buffer: gifBytes});
+        gifReport.afterRetry = {costumes: await costumes(page), native: await nativeCostumes()};
+        const actualFrames = gifReport.afterRetry.native.frames;
+        // Capture complete original PNG bytes and native RGBA BEFORE verdicts.
+        record('real GIF retry appends exactly two PNG costumes to the original target in order',
+            gifReport.afterRetry.native.targetID === gifReport.targetID && actualFrames.length === 2 &&
+            actualFrames.every((frame, index) => frame.name === `bw-gif-frames${index ? index + 1 : ''}` &&
+                frame.dataFormat === 'png' && frame.bytes?.length > 0));
+        const solid = (frame, rgba) => Array.isArray(frame?.rgba) && frame.rgba.length > 0 &&
+            frame.rgba.length === frame.width * frame.height * 4 &&
+            frame.rgba.every((value, index) => value === rgba[index % 4]);
+        record('native Canvas decodes actual GIF PNG costumes as red then blue',
+            solid(actualFrames[0], [255, 0, 0, 255]) && solid(actualFrames[1], [0, 0, 255, 255]),
+            JSON.stringify(actualFrames.map(frame => ({width: frame.width, height: frame.height,
+                rgba: frame.rgba, nativeDecodeError: frame.nativeDecodeError}))));
+        record('GIF import preserves all original costume content, names and modes',
+            JSON.stringify(gifReport.afterRetry.costumes.slice(0, gifReport.before.length)) === JSON.stringify(gifReport.before) &&
+            JSON.stringify(gifReport.afterRetry.native.allAssets.slice(0, gifReport.beforeAssets.length)) === JSON.stringify(gifReport.beforeAssets));
+
+        record('GIF acquisition retry and native decoding add no uncaught page errors or crash', errors.length === 0, errors.join(' | '));
+        gifReport.status = 'COMPLETE';
+    } finally {
+        await page.unroute(gifChunk, abortChunk);
+        gifReport.observation = await page.evaluate(() => {
+            const evidence = window.__bwGifNativeUpload;
+            evidence.unsubscribe();
+            return {attempts: evidence.attempts,
+                importing: window.__brickwrightStore.getState().scratchGui.alerts.alertsList
+                    .some(alert => alert.alertId === 'importingAsset')};
+        });
+        gifReport.finalCostumes = await costumes(page);
+        gifReport.finalNative = await nativeCostumes();
+        gifReport.pageErrors = [...errors];
+    }
 } catch (e) {
+    gifReport.failure = {phase: gifReport.phase, message: String(e)};
     record('the round trip ran to completion', false, e && e.message);
 } finally {
+    await writeFile(path.join(SHOTS, 'gif-native-upload.json'), `${JSON.stringify(gifReport, null, 2)}\n`);
     await browser.close();
 }
 
