@@ -186,12 +186,13 @@ clock; a physics step's sensor readings hold for the VM's milliseconds inside it
 
 legonxt's upload (DELETE, OPEN WRITE, 32-byte WRITEs, CLOSE) and its *start program* block run the program on the
 Virtual NXT (test: `bw-sim-nxt-rxe-legonxt.test.mjs`, the bumper bot). Its compile step calls `Scratch.fetch`,
-which the CrispStrobe adapter's `Scratch` object (`overlay/scratch-vm/src/extensions/crispstrobe/adapter.js`) does
-not define — so in Brickwright the extension's *compile* block cannot reach the compiler yet (open).
+which the CrispStrobe adapter's `Scratch` object (`overlay/scratch-vm/src/extensions/crispstrobe/adapter.js`)
+provides since 2026-10-20 as TurboWarp and the extension worker do (a fetch wrapper); the same test runs its whole
+workflow block — transpile, compile through `Scratch.fetch` (the network stubbed with the committed `.rxe`),
+upload, start.
 
 ## Open / not modelled
 
-- `Scratch.fetch` for legonxt's compile block (above).
 - NBC's Float/Coast leave the BRAKE bit set with MOTORON off; the brick model (PR #1111's) brakes such a port.
   What the firmware's driver does there decides whether NXC's Float coasts on the Virtual NXT.
 - A regulated command at power 0 (how NXC's RotateMotor ends a move) holds the shaft where the command finds it
