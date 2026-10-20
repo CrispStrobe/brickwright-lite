@@ -4,7 +4,7 @@ const german = {
         "blocksTab": "Blöcke",
         "circuitTab": "Schaltung",
         "fpgaTab": "FPGA",
-        "robotLabTab": "Roboter-Labor"
+        "robotLabTab": "Roboter"
     },
     "chrome": {
         "expand": "Menüleiste und Tab-Beschriftungen anzeigen",

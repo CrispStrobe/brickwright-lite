@@ -27,6 +27,14 @@ import pythonToPseudocode, {Translator} from './sb3-creator-python.js';
 import javascriptToPseudocode from './sb3-creator-javascript.js';
 import {compileArcadeWord} from './arcadeDialect.js';
 import {ROBOTLAB_RUNTIME, robotLabWordFor, robotLabWordsOf, robotLabCallToPseudo} from './robotLabDialect.js';
+// The LEGO hub words (`pup …`, `boost …`, `wedo …`: legopoweredup, legoboostunified, wedo2unified) ride the
+// same door and the same machinery, from their own table (lib/legoHubsDialect.js).
+import {legoHubWordFor, legoHubWordsOf, isLegoHubText} from './legoHubsDialect.js';
+
+/** The `lab` words, then the LEGO hub words, of the given kinds (table order is precedence within each). */
+const wordsOf = kinds => [...robotLabWordsOf(kinds), ...legoHubWordsOf(kinds)];
+/** The entry for a robotlab or LEGO hub opcode, or null. */
+const wordFor = opcode => robotLabWordFor(opcode) || legoHubWordFor(opcode);
 
 // ---- top-level matching (the compiler's own masking rule, which it does not export) ----
 
@@ -54,7 +62,7 @@ const matchTopLevel = (line, re) => {
     return m.indices.map(span => (span ? line.slice(span[0], span[1]) : undefined));
 };
 
-const isLabLine = text => /^(?:lab|when\s+lab)\s/i.test(text);
+const isLabLine = text => /^(?:lab|when\s+lab)\s/i.test(text) || isLegoHubText(text);
 
 // ---- the compiler ------------------------------------------------------------------------
 
@@ -79,7 +87,7 @@ export const withRobotLab = Base => class RobotLabCreator extends Base {
             if (typeof this.refuseSpilledReporter === 'function') this.refuseSpilledReporter(text, s, target);
             return this.parseValue(s, context);
         };
-        for (const entry of robotLabWordsOf(hat ? ['hat'] : ['command'])) {
+        for (const entry of wordsOf(hat ? ['hat'] : ['command'])) {
             const m = matchTopLevel(text, compileArcadeWord(entry).re);
             if (!m) continue;
             const {id, block} = this.createBlock(entry.op, entry.kind === 'hat' ? {topLevel: true} : {});
@@ -99,8 +107,8 @@ export const withRobotLab = Base => class RobotLabCreator extends Base {
     /** `lab …` reporters, read whole: they hold no operator of their own. */
     parseReporter (s, context) {
         const text = String(s).trim();
-        if (/^lab\s/i.test(text)) {
-            for (const entry of robotLabWordsOf(['reporter', 'boolean'])) {
+        if (/^lab\s/i.test(text) || isLegoHubText(text)) {
+            for (const entry of wordsOf(['reporter', 'boolean'])) {
                 const m = matchTopLevel(text, compileArcadeWord(entry).re);
                 if (!m) continue;
                 const id = this.pushBlock(context, entry.op);
@@ -121,19 +129,19 @@ export const withRobotLab = Base => class RobotLabCreator extends Base {
     }
 
     drep (b, blocks) {
-        const entry = b && robotLabWordFor(b.opcode);
+        const entry = b && wordFor(b.opcode);
         if (entry && entry.kind !== 'command' && entry.kind !== 'hat') return this.spellArcade(entry, b, blocks);
         return super.drep(b, blocks);
     }
 
     decompileHat (b, blocks) {
-        const entry = b && robotLabWordFor(b.opcode);
+        const entry = b && wordFor(b.opcode);
         if (entry && entry.kind === 'hat') return this.spellArcade(entry, b, blocks);
         return super.decompileHat(b, blocks);
     }
 
     decompileStackBlock (b, blocks, level) {
-        const entry = b && robotLabWordFor(b.opcode);
+        const entry = b && wordFor(b.opcode);
         if (entry && entry.kind === 'command') return [`${'  '.repeat(level)}${this.spellArcade(entry, b, blocks)}`];
         return super.decompileStackBlock(b, blocks, level);
     }

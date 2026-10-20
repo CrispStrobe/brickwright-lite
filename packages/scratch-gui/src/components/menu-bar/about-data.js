@@ -468,7 +468,7 @@ const ABOUT_GROUPS = [
                 url: 'https://library.ldraw.org',
                 license: 'CC BY 4.0 (some files CC BY 2.0 and CC BY 4.0)',
                 licenseUrl: 'https://creativecommons.org/licenses/by/4.0/',
-                role: 'Part geometry for the Sim Lab (unmodified official parts; credit: The LDraw Parts Library)'
+                role: 'Part geometry for the Sim Lab (unmodified official parts; credit: The LDraw Parts Library). Parts added from the whole catalogue are fetched unmodified from the ldraw-stl mirror (https://github.com/CrispStrobe/ldraw-stl); their authors are named in each file and in the palette\'s catalogue view'
             },
             {
                 name: 'Jolt Physics (JoltPhysics.js, Brickwright fork)',

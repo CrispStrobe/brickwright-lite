@@ -1,0 +1,60 @@
+0 EV3 wall stopper (Brickwright Robot Lab reference model)
+0 Name: ev3-wall-stopper.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 // A MINDSTORMS EV3 brick between two Technic beams 15 (2L pins: brick to beam at the front, beam to motor at the back), two
+0 // EV3 large motors behind it with their drive hubs at the rear (B left, C right) turning 88 mm
+0 // wheels, two free 88 mm wheels on 3L axles turning in the beams, and an EV3 ultrasonic
+0 // sensor (input 4) held between the front of the beams by two axles, looking ahead.
+0 // Forward is LDraw +z.
+0 !BW ID hub
+1 15 0 0 0 1 0 0 0 1 0 0 0 1 95646.dat
+0 !BW ID beamC
+1 0 100 0 60 0 1 0 -1 0 0 0 0 1 32278.dat
+0 !BW ID pinAC
+1 1 110 0 -80 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID pinBC
+1 1 110 0 -40 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID pinCC
+1 0 90 0 40 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID pinDC
+1 0 90 0 80 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motorC
+0 !BW PORT C
+1 15 140 0 -220 -1 0 0 0 1 0 0 0 -1 95658.dat
+0 !BW ID axleC
+1 71 170 0 -220 1 0 0 0 1 0 0 0 1 3705.dat
+0 !BW ID wheelC
+1 15 189.5 0 -220 0 0 1 0 1 0 -1 0 0 49295p01.dat
+0 !BW ID frontAxleC
+1 71 125 0 140 1 0 0 0 1 0 0 0 1 4519.dat
+0 !BW ID frontC
+1 15 129.5 0 140 0 0 1 0 1 0 -1 0 0 49295p01.dat
+0 !BW ID beamB
+1 0 -100 0 60 0 1 0 -1 0 0 0 0 1 32278.dat
+0 !BW ID pinAB
+1 1 -110 0 -80 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID pinBB
+1 1 -110 0 -40 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID pinCB
+1 0 -90 0 40 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID pinDB
+1 0 -90 0 80 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motorB
+0 !BW PORT B
+1 15 -140 0 -220 -1 0 0 0 1 0 0 0 -1 95658.dat
+0 !BW ID axleB
+1 71 -170 0 -220 1 0 0 0 1 0 0 0 1 3705.dat
+0 !BW ID wheelB
+1 15 -189.5 0 -220 0 0 1 0 1 0 -1 0 0 49295p01.dat
+0 !BW ID frontAxleB
+1 71 -125 0 140 1 0 0 0 1 0 0 0 1 4519.dat
+0 !BW ID frontB
+1 15 -129.5 0 140 0 0 1 0 1 0 -1 0 0 49295p01.dat
+0 !BW ID eyeAxleFront
+1 71 0 0 200 1 0 0 0 1 0 0 0 1 3708.dat
+0 !BW ID eyeAxle
+1 71 0 0 160 1 0 0 0 1 0 0 0 1 3708.dat
+0 !BW ID eyes
+0 !BW PORT 4
+1 15 0 0 180 -1 0 0 0 1 0 0 0 -1 95652.dat

@@ -1546,6 +1546,20 @@ sub-file and primitive they reference, and `LDConfig.ldr`.
   in `parts.json` is this project's, authored by measuring the LDraw geometry
   (never copied from BrickLink Studio, LDCad or another connectivity
   database), and is BSD-3-Clause like the rest of the repository.
+- **Parts from the whole catalogue (Robot Lab palette "+"):** where the build
+  allows it (`BW_REMOTE_PARTS_POLICY`, default `allow`), a learner can add any
+  other part of the library at run time. Those files are not in the repository
+  or the app bundle: the app fetches them, unmodified, from the ldraw-stl mirror
+  (https://crispstrobe.github.io/ldraw-stl/library/, built from the same official
+  `complete.zip` by https://github.com/CrispStrobe/ldraw-stl; it mirrors only the
+  CC BY files, with `CAreadme.txt`, `CAlicense.txt` and `CAlicense4.txt`, and
+  states the source release and its sha256 in `manifest.json`). They are kept on
+  the learner's device. The app renders them and saves models as references to
+  them; the metadata it derives from them (connectors, colliders, mass; or a
+  "decoration" without connectors) is this project's, made by
+  `bw-sim/part-meta/derive.js` like the derived entries in `parts.json`. The
+  palette's catalogue view names each added part's files with their author,
+  licence line and source URL.
 
 ## rp2040js — MIT
 

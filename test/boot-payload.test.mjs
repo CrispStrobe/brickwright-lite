@@ -31,7 +31,9 @@ test('boot payload accepts shared lazy engine bytes but rejects eager, absent an
             'bw-arena-3d': 'bw-spike-arena-3d-canvas', '1380.hash': three, 'bw-spike-simulator': 'the 2D arena pane',
             // The Sim Lab: its own chunk (the view's canvas id), Jolt in its own (shared) lazy chunk,
             // the physics worker in its own; the Sim Lab chunk carries neither.
-            'bw-sim-lab': 'bw-sim-lab-3d-canvas bw-sim-part-thumbnails bw-sim-instructions-canvas Kugelrad-Halter', 'bw-sim-jolt': 'JoltInterface_GetPhysicsSystem_',
+            // The Robot Lab's Scratch Link doubles (BLE socket double, BT-classic registry) ride in it too.
+            'bw-sim-lab': 'bw-sim-lab-3d-canvas bw-sim-part-thumbnails bw-sim-instructions-canvas Kugelrad-Halter ' +
+                'the virtual chooser refused this peripheral a virtual peripheral needs an id', 'bw-sim-jolt': 'JoltInterface_GetPhysicsSystem_',
             'bw-sim-physics-worker': 'sim batch before sim load',
             // The Robot Lab editor (pane and toolbar): its own tab's chunk, not the arena pane's.
             'bw-robot-lab': 'bw-sim-lab-toolbar',
@@ -91,12 +93,20 @@ test('boot payload accepts shared lazy engine bytes but rejects eager, absent an
         result = run();
         assert.equal(result.status, 1);
         assert.match(result.stdout, /FAIL the marker for the Robot Lab catalogue's core parts still discriminates/);
-        put('chunks/bw-sim-lab.js', 'bw-sim-lab-3d-canvas bw-sim-part-thumbnails bw-sim-instructions-canvas Kugelrad-Halter');
+        put('chunks/bw-sim-lab.js', 'bw-sim-lab-3d-canvas bw-sim-part-thumbnails bw-sim-instructions-canvas Kugelrad-Halter ' +
+            'the virtual chooser refused this peripheral a virtual peripheral needs an id');
         put('chunks/bw-sim-parts.js', 'Technic-Stein 1 x 1 mit Loch Kugelrad-Halter');
         result = run();
         assert.equal(result.status, 1);
         assert.match(result.stdout, /FAIL the Robot Lab catalogue's core parts are not in chunks\/bw-sim-parts\*\.js/);
         put('chunks/bw-sim-parts.js', 'Technic-Stein 1 x 1 mit Loch');
+        assert.equal(run().status, 0, 'restored');
+        // The Robot Lab's Scratch Link BLE double imported at boot again (render-gui.jsx): refused.
+        put('gui.js', '_bwFontWait the virtual chooser refused this peripheral');
+        result = run();
+        assert.equal(result.status, 1);
+        assert.match(result.stdout, /FAIL the Scratch Link BLE double .*not in the first load/);
+        put('gui.js', '_bwFontWait');
         assert.equal(run().status, 0, 'restored');
         put('chunks/bw-sim-lab.js', 'bw-sim-lab-3d-canvas bw-sim-part-thumbnails Kugelrad-Halter');
         rmSync(join(build, 'chunks/bw-sim-physics-worker.js'));

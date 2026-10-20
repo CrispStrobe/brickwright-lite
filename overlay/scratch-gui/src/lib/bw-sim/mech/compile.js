@@ -373,7 +373,7 @@ export const compile = (model, catalog, opts = {}) => {
 
     // v2: the model's hubs, and what each motor and sensor plugs into ({hub, port}).
     const v2 = opts.version === 2
-        ? bindings(model, knownParts, catalogMap, bodies, jointsResult.jointEntries, sensors, sensorParts, diagnostics) : null;
+        ? bindings(model, knownParts, catalogMap, bodies, jointsResult.jointEntries, sensors, sensorParts, diagnostics, islands.nodeToBody) : null;
 
     // Diagnostics: ensure deterministic order? Sort by code then message
     diagnostics.sort((a, b) => {
@@ -447,14 +447,24 @@ const detectCouplings = (kinds, ctx) => {
  * device per sensor, each on {hub, port}. A port naming a part that is no hub is a warning
  * and plugs into the first hub.
  */
-const bindings = (model, knownParts, catalogMap, bodies, jointEntries, sensors, sensorParts, diagnostics) => {
+const bindings = (model, knownParts, catalogMap, bodies, jointEntries, sensors, sensorParts, diagnostics, nodeToBody = new Map()) => {
     const profiles = new Map();
     for (const pl of knownParts) {
         const profile = partHubProfile(catalogMap.get(pl.part));
         if (profile) profiles.set(pl.id, profile);
     }
     const hubs = [];
-    for (const b of bodies) for (const id of b.parts) if (profiles.has(id)) hubs.push({id, profile: profiles.get(id), body: b.id});
+    // A hub with built-in motors (the BOOST Move Hub) is on several bodies: it is carried by its housing's.
+    const seen = new Set();
+    for (const b of bodies) {
+        for (const id of b.parts) {
+            if (!profiles.has(id) || seen.has(id)) continue;
+            const housing = nodeToBody.get(id);
+            if (housing && housing !== b.id) continue;
+            seen.add(id);
+            hubs.push({id, profile: profiles.get(id), body: b.id});
+        }
+    }
     const firstHub = hubs.length ? hubs[0].id : null;
     const hubOf = (ref, partId) => {
         if (ref.hub === null || ref.hub === undefined) return firstHub;
