@@ -25,10 +25,42 @@ const run = (id, at, {seconds = 400, touching = () => ({})} = {}) => {
 
 const ovalLength = 4 * LINE_OVAL.halfStraight + 2 * Math.PI * LINE_OVAL.radius;
 
-test('every challenge is on a mat that exists, and every such mat but Plain and Warehouse has one', () => {
+test('every challenge is on a mat that exists, and every such mat but Warehouse has one', () => {
     const mats = new Set(MATS.map(m => m.id));
     for (const c of CHALLENGES) assert.ok(mats.has(c.mat), `${c.id} on ${c.mat}`);
-    for (const m of MATS) assert.equal(challengesFor(m.id).length > 0, !['plain', 'warehouse'].includes(m.id), m.id);
+    for (const m of MATS) assert.equal(challengesFor(m.id).length > 0, m.id !== 'warehouse', m.id);
+});
+
+test('draw a square: a closed square stroke is done, squarer is more stars; an open line or a scribble is not', () => {
+    const square = (w, h, gap = 0, n = 40) => {
+        const pts = [];
+        const corners = [[0, 0], [w, 0], [w, h], [0, h], [0, gap]];
+        for (let c = 0; c < 4; c++) {
+            const [a, b] = [corners[c], corners[c + 1]];
+            for (let i = 0; i < n; i++) pts.push([a[0] + (b[0] - a[0]) * i / n, a[1] + (b[1] - a[1]) * i / n]);
+        }
+        pts.push(corners[4]);
+        return pts;
+    };
+    // The robot stands still for 1.5 s with the drawing done (the judge looks once it has stopped).
+    const judge = drawing => {
+        const r = createChallengeRun('draw-square');
+        let out = null;
+        for (let k = 0; k <= 15; k++) out = r.step({tS: 5 + k / 10, points: robotAt([0, 0]), touching: {}, drawing});
+        return out;
+    };
+    const neat = judge([square(0.2, 0.2, 0.01)]);
+    assert.deepEqual([neat.status, neat.stars], ['done', 3]);
+    assert.equal(judge([square(0.2, 0.18, 0.02)]).stars, 2, 'sides 2 cm apart, ending 2 cm off: 21 %');
+    assert.equal(judge([square(0.25, 0.15, 0.04)]).stars, 1);
+    assert.equal(judge([[[0, 0], [0.6, 0]]]).status, 'running', 'a straight line is no square');
+    assert.equal(judge([square(0.05, 0.05)]).status, 'running', 'too small to count');
+    assert.equal(judge([]).progress, 0);
+    // Still moving: not judged yet, even round a closed square.
+    const moving = createChallengeRun('draw-square');
+    let res = null;
+    for (let k = 0; k <= 30; k++) res = moving.step({tS: k / 10, points: robotAt([0.01 * k, 0]), touching: {}, drawing: [square(0.2, 0.2)]});
+    assert.equal(res.status, 'running');
 });
 
 test('oval lap: once around on the line is done; its time earns the stars; leaving the line fails', () => {
