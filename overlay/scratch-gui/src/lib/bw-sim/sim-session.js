@@ -139,7 +139,28 @@ const OWN_FILE = /^0 Author: Brickwright\s*$/m;
 
 export const prepareModel = (text, catalog, {mat = null, autoPorts: plugIn = !OWN_FILE.test(text)} = {}) => {
     const {model: parsedModel, refusals} = parseModel(text, {catalog});
-    const issues = refusals.map(r => ({severity: 'warning', ...r}));
+    // One issue per unknown file, however often it is placed: a real model's cables and hoses are thousands of
+    // segment lines (6,424 on one set), and the Lab lists every issue.
+    const unknownOf = new Map();
+    const issues = [];
+    for (const r of refusals) {
+        const file = r.code === 'unknown-part' ? /'(.+)'/.exec(r.message)?.[1] : null;
+        if (file && unknownOf.has(file)) {
+            const first = unknownOf.get(file);
+            first.count += 1;
+            if (first.lines.length < 20) first.lines.push(r.line);
+            continue;
+        }
+        const issue = {severity: 'warning', ...r};
+        if (file) {
+            Object.assign(issue, {count: 1, lines: [r.line]});
+            unknownOf.set(file, issue);
+        }
+        issues.push(issue);
+    }
+    for (const issue of unknownOf.values()) {
+        if (issue.count > 1) issue.message = `${issue.message} (and ${issue.count - 1} more)`;
+    }
     if (parsedModel.parts.length === 0) {
         issues.push({severity: 'error', code: 'empty-model', message: 'The model has no parts the Sim Lab knows.', parts: []});
         return {model: parsedModel, runModel: parsedModel, mechanism: null, issues};

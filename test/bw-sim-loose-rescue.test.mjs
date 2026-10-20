@@ -64,3 +64,15 @@ test('a model from elsewhere: two parts of different bodies that overlap as buil
     const own = pairOf(prepareModel(text(true), CATALOG).mechanism);
     assert.ok(!own.whole && !own.parts, 'our own file: they collide (the overlap is the builder\'s to see)');
 });
+
+test('an unknown file placed many times is one issue (a cable is thousands of segment lines), with its count and first lines', () => {
+    const lines = ['0 Cable', '1 71 0 0 0 1 0 0 0 1 0 0 0 1 32524.dat'];
+    for (let i = 0; i < 30; i++) lines.push(`1 0 0 ${-10 - i} 0 1 0 0 0 1 0 0 0 1 zz-segment.dat`);
+    const {issues} = prepareModel(lines.join('\n'), CATALOG);
+    const unknown = issues.filter(i => i.code === 'unknown-part');
+    assert.equal(unknown.length, 1);
+    assert.equal(unknown[0].count, 30);
+    assert.equal(unknown[0].line, 3);
+    assert.equal(unknown[0].lines.length, 20);
+    assert.match(unknown[0].message, /and 29 more/);
+});
