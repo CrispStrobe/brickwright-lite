@@ -71,11 +71,15 @@ export const insightInteractions = async (page, {shotsDir}) => {
     assert.equal(await badge(page, 'motorL').textContent(), 'A');
     assert.equal(await badge(page, 'motorR').textContent(), 'B');
     assert.ok(await page.getByTestId('bw-sim-lab-show-ports').isChecked(), '"Show ports" is on in Simulate');
+    // A cable from each plugged-in motor to the hub.
+    await page.waitForFunction(() => window.__bwSimLab._pane.view.overlayStats().cables.length === 2, null, {timeout: 5000});
+    assert.deepEqual((await overlay(page, 'simulate')).cables.slice().sort(), ['motorL', 'motorR'], 'a cable from each motor to the hub');
     assert.equal(await page.getByTestId('bw-sim-lab-show-motion').isChecked(), false, '"Show how it moves" starts off');
     // "Show ports" off hides the badges, on brings them back.
     await page.getByTestId('bw-sim-lab-show-ports').click();
     await page.waitForFunction(() => window.__bwSimLab._pane.view.overlayStats().ports === 0, null, {timeout: 5000});
     assert.equal(await badge(page, 'motorL').isVisible(), false, 'no badge while "Show ports" is off');
+    assert.deepEqual((await overlay(page, 'simulate')).cables, [], 'and no cable');
     await page.getByTestId('bw-sim-lab-show-ports').click();
     await page.waitForFunction(() => window.__bwSimLab._pane.view.overlayStats().ports === 2, null, {timeout: 5000});
     const simBefore = await redPixels(page, canvas);
@@ -97,7 +101,8 @@ export const insightInteractions = async (page, {shotsDir}) => {
     await page.getByTestId('bw-sim-lab-mode-build').click();
     const editor = page.getByTestId('bw-sim-lab-editor-canvas');
     await editor.waitFor({timeout: 60000});
-    await page.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab.editView?.overlayStats().ports === 2,
+    await page.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab.editView?.overlayStats().ports === 2 &&
+        window.__bwSimLab.editView.overlayStats().cables.length === 2,
         null, {timeout: 60000});
     assert.equal(await badge(page, 'motorL').textContent(), 'A');
     const buildBefore = await redPixels(page, editor);

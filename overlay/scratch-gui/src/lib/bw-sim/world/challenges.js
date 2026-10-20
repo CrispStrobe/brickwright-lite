@@ -4,11 +4,12 @@
 // Challenges on the mats (world/mats.js): a goal, a judge and 1-3 stars. A judge sees only
 // what anyone watching the mat could see, so it works for every hub and every program:
 //
-//   obs = {tS, points: [[x, z], ...], touching: {<obstacle id>: boolean}}
+//   obs = {tS, points: [[x, z], ...], touching: {<obstacle id>: boolean}, drawing: [[[x, z], ...], ...]}
 //
 // tS the simulated seconds since the challenge started, points the robot's outline on the floor
 // (the corners of its parts' colliders, world metres, the mats' frame), touching which of the
-// mat's obstacles a part touches now. The pane (sim-lab-pane.jsx) feeds a judge 10 times a
+// mat's obstacles a part touches now, `drawing` what the pens have drawn (view/pen-layer.js, world
+// metres). The pane (sim-lab-pane.jsx) feeds a judge 10 times a
 // simulated second through the Robot Lab API (partOutline, touching). Stars are for how well, never for how: a time, a gap, a margin.
 
 import {LINE_OVAL, MAZE, SUMO, WALL, distanceToOvalCentre} from './mats.js';
@@ -134,10 +135,51 @@ export const CHALLENGES = Object.freeze([
                 return {status: 'running', progress: seen.size / 4, visited: seen.size};
             };
         }
+    },
+    {
+        // Draw a square with a pen (a part marked "Draws on the floor"), then stop: done once the robot has
+        // stood still for STILL_S and its longest stroke goes at least MIN_LENGTH_M and comes back near its
+        // start (judged at rest: a pen behind the wheels loops at each corner, and a loop can pass the start
+        // before the square is done). The stars are for how square it is — its box's two sides alike, and
+        // its end on its start, each as a share of the side.
+        id: 'draw-square', mat: 'plain', timeLimitS: 120, stars: [0.15, 0.35], measure: 'shape',
+        judge: () => {
+            const MIN_LENGTH_M = 0.48;
+            const MIN_SIDE_M = 0.1;
+            const STILL_S = 1;
+            const STILL_M = 0.003;
+            const trail = [];
+            const lengthOf = s => s.reduce((acc, p, i) => (i ? acc + Math.hypot(p[0] - s[i - 1][0], p[1] - s[i - 1][1]) : 0), 0);
+            return obs => {
+                const c = centreOf(obs.points);
+                trail.push({tS: obs.tS, c});
+                while (trail.length > 1 && obs.tS - trail[1].tS >= STILL_S) trail.shift();
+                const still = trail.length > 1 && obs.tS - trail[0].tS >= STILL_S &&
+                    trail.every(t => Math.hypot(t.c[0] - c[0], t.c[1] - c[1]) < STILL_M);
+                let best = null;
+                for (const s of obs.drawing || []) {
+                    const len = lengthOf(s);
+                    if (!best || len > best.len) best = {s, len};
+                }
+                if (!best) return {status: 'running', progress: 0};
+                const progress = Math.min(0.95, best.len / (MIN_LENGTH_M * 1.25));
+                if (!still) return {status: 'running', progress};
+                const xs = best.s.map(p => p[0]);
+                const zs = best.s.map(p => p[1]);
+                const w = Math.max(...xs) - Math.min(...xs);
+                const h = Math.max(...zs) - Math.min(...zs);
+                const side = (w + h) / 2;
+                const gap = Math.hypot(best.s.at(-1)[0] - best.s[0][0], best.s.at(-1)[1] - best.s[0][1]);
+                if (best.len >= MIN_LENGTH_M && side >= MIN_SIDE_M && gap <= 0.3 * side) {
+                    return {status: 'done', value: Math.abs(w - h) / side + gap / side};
+                }
+                return {status: 'running', progress};
+            };
+        }
     }
 ]);
 
-/** The challenges on a mat ('plain' and null have none). */
+/** The challenges on a mat (null has none). */
 export const challengesFor = mat => CHALLENGES.filter(c => c.mat === mat);
 
 /**

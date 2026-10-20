@@ -95,8 +95,12 @@ test('a motor without a port: the issue names it, the sentence says so, Run is w
     // One motor is still on B: the robot can move, so this is not a blocker, but the port badge shows "?".
     assert.equal(mechanism.joints.filter(j => j.motor).length, 1);
     assert.deepEqual(runBlockers(issues, model, CATALOG), []);
-    const ports = Object.fromEntries(portItems(model, CATALOG).map(p => [p.id, p.port]));
+    const items = portItems(model, CATALOG);
+    const ports = Object.fromEntries(items.map(p => [p.id, p.port]));
     assert.deepEqual(ports, {motorL: null, motorR: 'B'});
+    // The plugged-in motor's cable goes to the model's hub; the unplugged one has none.
+    const hub = model.parts.find(p => CATALOG.get(p.part).hubProfile).id;
+    assert.deepEqual(Object.fromEntries(items.map(p => [p.id, p.hub])), {motorL: null, motorR: hub});
 
     // Both ports gone: nothing can move by itself, and Run is warned, naming both motors.
     const none = text.replace(/0 !BW PORT B\r?\n/, '');

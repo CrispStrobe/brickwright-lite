@@ -27,6 +27,15 @@ export const PAN_STEP_SHARE = 0.1;
 /** One + or - zooms by this factor of the distance. */
 export const ZOOM_STEP = 0.8;
 
+/**
+ * The mouse presets (docs/ROBOT-LAB-UX.md §3.7): 'brickwright' (left or middle drag orbits, right
+ * drag pans) and 'studio' (BrickLink Studio and LDD: right drag orbits, middle drag pans). Left drag
+ * on empty space orbits in both.
+ */
+export const MOUSE_PRESETS = Object.freeze({brickwright: 'brickwright', studio: 'studio'});
+/** The mouse button that orbits about the point under the pointer in Build: middle, or right in 'studio'. */
+export const orbitButtonOf = preset => (preset === 'studio' ? 2 : 1);
+
 /** Where each named view looks from (a direction from the target, y up). */
 export const VIEW_DIRECTIONS = {
     home: [1, 0.8, 1.2],
@@ -40,8 +49,9 @@ export const VIEW_DIRECTIONS = {
  * middle button orbits too, the right button pans, the wheel zooms toward the
  * pointer. `MOUSE` is three's enum (passed in, so this module needs no three).
  */
-export const configureOrbitControls = (controls, MOUSE) => {
-    controls.mouseButtons = {LEFT: MOUSE.ROTATE, MIDDLE: MOUSE.ROTATE, RIGHT: MOUSE.PAN};
+export const configureOrbitControls = (controls, MOUSE, preset = 'brickwright') => {
+    controls.mouseButtons = MOUSE_PRESETS[preset] === 'studio' ? {LEFT: MOUSE.ROTATE, MIDDLE: MOUSE.PAN, RIGHT: MOUSE.ROTATE} :
+        {LEFT: MOUSE.ROTATE, MIDDLE: MOUSE.ROTATE, RIGHT: MOUSE.PAN};
     controls.zoomToCursor = true;
     controls.screenSpacePanning = true;
     controls.enableDamping = false;
