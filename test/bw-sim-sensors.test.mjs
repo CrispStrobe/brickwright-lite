@@ -102,6 +102,32 @@ test('force: driven into a wall becomes pressed', () => {
     core2.destroy();
 });
 
+test('force: a wall met askew presses the button on its edge (the face counts, not only the centre)', () => {
+    // The wall's face turned 10° about y: 1.9 mm in front of the button's centre (force 5 there, not
+    // pressed), 1.2 mm in front of a point 4 mm to its side. The NXT bumper bot met the Wall like this
+    // and drove into it forever (CI run 39327216331).
+    const theta = 10 * Math.PI / 180;
+    const n = [Math.cos(theta), 0, -Math.sin(theta)];
+    const h = 0.05;
+    const mech = {
+        version: 1, gravity: [0, 0, 0],
+        bodies: [
+            {id: 'wall', motion: 'static', position: [0.0019 + h * n[0], 0.05, h * n[2]], rotation: [0, Math.sin(theta / 2), 0, Math.cos(theta / 2)],
+                massKg: 0, colliders: [{shape: 'box', halfExtents: [h, h, h]}], parts: []},
+            {id: 'robot', motion: 'dynamic', position: [-0.03, 0.05, 0], rotation: [0, 0, 0, 1], massKg: 1, colliders: [{shape: 'box', halfExtents: [0.02, 0.02, 0.02]}], parts: []}
+        ],
+        joints: [], gears: [], diagnostics: [],
+        sensors: [{port: 'E', kind: 'force', body: 'robot', origin: [0, 0.05, 0], direction: [1, 0, 0]}]
+    };
+    const core = createPhysicsCore(J, mech);
+    const centre = core.castRay([0, 0.05, 0], [1, 0, 0], 0.01, {ignoreBodies: ['robot']});
+    assert.ok(centre && Math.abs(centre.distance - 0.0019) < 0.0002, `the centre's ray meets the wall ${centre && centre.distance} m ahead`);
+    const out = readSensors(core, mech, ['robot']);
+    assert.ok(out.E.pressed, `force ${out.E.force} on the button's edge should be pressed`);
+    assert.ok(out.E.force >= 30 && out.E.force <= 50, `force ${out.E.force} (1.2 mm: about 40)`);
+    core.destroy();
+});
+
 test('hub sees all three through hubState.data.sensors[port] after bridge.tick()', () => {
     const mech = {
         version: 1, gravity: [0, -9.81, 0],
