@@ -231,3 +231,66 @@ brick and two 1 x 2 bricks, one turned a quarter, none of them in the table. It 
 placement against expectations taken from the parts' own connectors: the base's underside
 on the ground plane, every anti-stud of the upper bricks exactly on a stud of the base, at
 the stud pitches the LDD positions name.
+
+## Snap to connections, built (2026-10-21)
+
+The first of the two "later" ways is now the importer's (`model/ldd-snap.js`). A design that has
+no recorded row and is no `grid` part, but is a catalogue part, is placed where its connectors
+meet the parts already placed:
+
+- **Candidates.** The LDD frame of a part is an origin and one of the 24 axis-aligned turns
+  (`ldd-frame.js`). The origins tried are where LDD puts them: the part's origin, each connector,
+  and both ends of each connector line. LDD's habits come first and win a tie: the frame
+  `ldd-frame.js` derives (even a `technic` one, not trusted on its own), then LDraw's frame.
+- **Score.** Every instance of the design is placed by the candidate; each of its connectors that
+  joins an anchor by the connector kinds' own pair rules (pin in pin hole, axle in axle hole, stud
+  in anti-stud — the rules the compiler joins parts by) counts one; each of its holes (or shafts)
+  that shares more than 2 LDU of a line with an anchor's hole (shaft) counts minus one: the part
+  would sit inside its neighbour (a beam slid half its width along its pins). How deep the shafts
+  sit breaks ties. Tread links (`chain-link`) count each other at one pitch apart.
+- **Rounds.** The designs whose best candidate scores at least two connections (and half of their
+  instances) and is not tied with a differently shaped placement are placed; their connectors join
+  the anchors; the next round may place more. A tie is taken last, by the habits above.
+- **Notes.** `lxf-snapped-frame` (a warning, with the connections it found) on each part placed
+  so; `lxf-unplaced-design` (refused) for a catalogue part nothing places.
+- **EV3 elements.** LDD splits the EV3 motors and the touch sensor into a body and a hub or
+  button; `ldraw.xml` names those bodies (names only): 74042 (the large motor's case, LDraw
+  99550c01, unturned inside 95658), 74043 (the medium motor's, 99535c01 in 99455) and 74665 (the
+  touch sensor's, 99385c01 in 95648) are placed as the catalogue parts; the medium motor's hub
+  59158, the touch button 99386 and the cable plugs 60410 are left out with a note
+  (`lxf-absorbed`).
+- **The catalogue first.** The pane derives the parts of the file's design numbers the catalogue
+  lacks before importing (`openModelFile(…, {prepareCatalog})`, `sim-lab.js catalogFor`).
+- **An imported model is from elsewhere**: its LDraw text no longer carries `0 Author:
+  Brickwright`, so its motors and sensors are plugged into ports like any foreign model's.
+
+**Measured on the 13 `.lxf` files of the reference collection** (refused = parts not placed;
+before: the importer of 2026-10-20 with the same catalogue; the oracle column compares each
+placed part, by its connectors within 1.5 LDU, with where LDD's own `ldraw.xml` row would put
+it — used locally only, as above):
+
+| model | placed / refused before | placed / refused after | by connections | agrees with ldraw.xml |
+|---|---|---|---|---|
+| brickpi-rigraptor-tank | 43 / 34 | 61 / 12 | 18 | 59 of 59 |
+| crane-cuber | 760 / 264 | 986 / 26 | 226 | 956 of 969 |
+| mappingrobots-ev3 | 77 / 61 | 119 / 8 | 42 | 108 of 117 |
+| ofdl-wro-2018-junior | 168 / 113 | 246 / 17 | 78 | 221 of 237 |
+| ofdl-wro-2019-junior-all-collect | 240 / 140 | 356 / 20 | 116 | 335 of 351 |
+| ofdl-wro-2019-junior-gripper | 135 / 118 | 235 / 15 | 100 | 218 of 234 |
+| ofdl-wro-2020-junior | 336 / 184 | 500 / 18 | 164 | 471 of 490 |
+| packt-falcon | 198 / 126 | 296 / 13 | 98 | 274 of 292 |
+| packt-gps-car | 225 / 140 | 337 / 14 | 112 | 320 of 333 |
+| packt-grunt | 336 / 176 | 475 / 20 | 135 | 445 of 474 |
+| packt-omnilander | 175 / 212 | 336 / 40 | 161 | 321 of 330 |
+| packt-security-tank | 218 / 172 | 358 / 18 | 140 | 333 of 354 |
+| packt-timmyton-5-7 | 214 / 180 | 361 / 22 | 147 | 348 of 357 |
+
+About 96 % of the placed parts agree with LDD's own mapping. The rest are mostly parts whose
+connectors are symmetric where their shape is not (the EV3 brick's screen side and back, the
+5 × 7 and 5 × 11 frames, some wheels and bent liftarms): any of the placements fits the model's
+connections, and the physics treats them alike. Still refused: parts with no connectors the
+catalogue derives (the pin connector 55615), the rubber tread 53992 and 54725 (not in the LDraw
+library under these numbers), gear racks (they mesh, they do not join), and the rubber feet of
+tread links. Importing takes 0.1–6 s on a loaded Mac. `test/bw-sim-ldd-snap.test.mjs` checks a
+hand-made model: an L-beam (no recorded row) on three pins of two recorded beams, its bone written
+for a frame the importer cannot know, lands on the pins.
