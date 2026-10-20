@@ -1,3 +1,15 @@
+## Robot Lab physics examples and licensed model intake — 2026-10-20
+
+CLAIMED — Codex, continuation of lane/robot-lab-models-20261020 / PR #1138.
+Owner requests >50-piece models with distinct physics principles, auditing the
+Philo/BrickHub downloader corpus, and an examples browser like Circuit's selector.
+Own new model/program/metadata assets, a lazy Robot Lab examples component and its
+pane/toolbar integration, model registry additions, intake/qualification tooling,
+attribution and focused tests/browser gates. Only original or verified commercial-use
+compatible MIT/BSD/Apache/CC-BY/CC-BY-SA/public-domain assets may ship; never NC.
+Preserve other lanes and peer-owned physics/compiler/collider files. Download or
+LDraw parse success alone is not simulation qualification.
+
 ## Robot Lab survey rover model — 2026-10-20
 
 IMPLEMENTED — Codex, lane/robot-lab-models-20261020; draft PR #1138 (depends on #1137). Original compact SPIKE rover:
