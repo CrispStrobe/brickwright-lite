@@ -3882,3 +3882,37 @@ The optional Image Array clone entry analysis now separates opaque root metadata
 An authentic FreeThrow conversion now issues the entry query and accepts the same first clone that previously failed before the query. Its next named refusal is a zero-argument `destroy()` on a sprite alias from an actual overlap callback. Proving that callback origin, every receiver writer and destruction reentry remains necessary; a `Sprite` annotation supplies no authority. Whole-game acceptance and the raw census remain unchanged.
 
 The complete 22 import-request and 13 editor-contract tests pass with their existing mutation controls. The 24-test native-prompt module, actual browser editing and installed native dialogs remain separate pending qualifications. The original notice inventory missed five hyphenated license filenames; preserve the original coverage gap and use the complete inventory for the next qualification.
+
+### Empty ordinary procedure preparation candidate — 2026-10-20
+
+The historical 36 partial translations are stale baseline observations, not a
+current gap count. The fourth complete 225-input attempt also stopped without
+full reports: it recorded 105 subject-begin markers and 104 completed conversion
+markers, then exited with signal 9 after 25.082 seconds of process CPU and
+13.049 seconds of wall time. The launcher did not time out or send that signal.
+All 225 current outcomes remain unobserved; progress markers confer no prefix
+coverage or successful conversion count.
+
+Saved process intervals attribute 13.042 seconds to the interval ending at the
+import return, 8.121 seconds from the import return to the Creator return, and
+2.229 seconds to completed report-wire capture intervals. These are inclusive
+phase intervals, not exclusive function profiles or proof of a particular
+algorithm's contribution. The importer and Creator remain the main cost
+frontier. No execution cap is raised.
+
+A new source candidate avoids ordinary procedure validation work only when the
+complete compiler-owned preparation has no selected ordinary functions. It
+retains declaration identity analysis, callable routes, signature selection,
+escape checks, exclusions and duplicate diagnostics. A local currentness
+admission is taken before analysis and checked after selection; uncertain,
+changed-intrinsic, Throw and unknown inputs use the original path. Selected
+functions still receive the original value graph, defaults and both validation
+calls. Public low-level preparation and validation retain their eager behavior.
+No graph, source/type certificate, callback or truth cache escapes this complete
+operation.
+
+This candidate has not been executed or measured. The extra entry observation
+may cost more on nonempty selections. Full affected controls and a separately
+admitted changed complete-input run are required before selection; there is no
+speed or fit claim. Runtime, exporter and editor differences remain separate
+qualification work.
