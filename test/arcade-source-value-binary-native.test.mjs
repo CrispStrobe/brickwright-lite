@@ -18,11 +18,20 @@ for(const name of ['bw-array-operations.js','bw-primitive-owner.js','bw-values.j
 async function fixture(options={}){
  const vm=new VM(),runtime=vm.runtime,errors=[],effects=[];runtime.on('BLOCKS_ERROR',error=>errors.push(error));
  const ArraysCtor=options.registered?RegisteredArrays:makeArrays(source,null,options.unregistered?null:ops.registerSource(source));
- const arrays=new ArraysCtor(runtime);
- const arcade=new Arcade(runtime);let saved;
+ let arcade,arrays;
+ if(options.captureArrayStop){
+  arcade=new Arcade(runtime);const descriptor=Object.getOwnPropertyDescriptor(runtime,'on'),originalOn=runtime.on,stops=[];
+  runtime.on=function(event,listener){if(event==='PROJECT_STOP_ALL')stops.push(listener);return originalOn.call(this,event,listener);};
+  try{arrays=new ArraysCtor(runtime);}finally{if(descriptor)Object.defineProperty(runtime,'on',descriptor);else delete runtime.on;}
+  assert.equal(stops.length,1,'the Array constructor adds its sole actual binding stop listener to the existing core');
+  options.captureArrayStop(stops[0]);
+ }else{arrays=new ArraysCtor(runtime);arcade=new Arcade(runtime);}
+ let saved;
  const original=arcade.sourceValueBinary;
  arcade.sourceValueBinary=(args,util)=>{saved={args,util};options.before?.({args,util,runtime,arrays,arcade});
-  try{return original.call(arcade,options.copyArgs?{...args}:args,options.copyUtil?{...util}:util);}
+  if(options.copyArgs||options.copyUtil)assert.throws(()=>original.call(arcade,
+   options.copyArgs?{...args}:args,options.copyUtil?{...util}:util),/actual current primitive/);
+  try{return original.call(arcade,args,util);}
   finally{options.after?.();}};
  for(const [id,extension]of [['arrays',arrays],['arcade',arcade]]){
   const loaded=vm.extensionManager._registerInternalExtension(extension);vm.extensionManager._loadedExtensions.set(id,loaded);
@@ -91,21 +100,22 @@ test('source arithmetic refuses foreign canonical Arrays and arbitrary objects b
 });
 
 test('source arithmetic requires the exact current registered operation and cached arguments',async()=>{
- for(const options of [{copyArgs:true},{copyUtil:true},{op:'&'}]){
-  const run=await fixture(options);try{refused(run);}finally{run.close();}
+ for(const options of [{copyArgs:true},{copyUtil:true}]){
+  const run=await fixture(options);try{clean(run);assert.equal(run.stage.variables.result.value,'[object Object]');}finally{run.close();}
  }
+ const unsupported=await fixture({op:'&'});try{refused(unsupported);}finally{unsupported.close();}
  const run=await fixture({text:'!'});
  try{clean(run);assert.throws(()=>run.arcade.sourceValueBinary(run.saved.args,run.saved.util),/current|owner|operation|active/i);}
  finally{run.close();}
 });
 
 test('source arithmetic rechecks body generation after live owner callbacks retire the Array binding',async()=>{
- let ownerReads=0,retired=false,restore;
- const run=await fixture({text:'!',before:({runtime})=>{
+ let ownerReads=0,retired=false,restore,retireArray;
+ const run=await fixture({text:'!',captureArrayStop:listener=>{retireArray=listener;},before:({runtime})=>{
   const original=runtime.getOpcodeFunction;
   runtime.getOpcodeFunction=function(opcode){
    const value=original.call(this,opcode);
-   if(opcode==='arrays_createReference'&&++ownerReads===2){retired=true;this.emit('PROJECT_STOP_ALL');}
+   if(opcode==='arrays_createReference'&&++ownerReads===2){retired=true;retireArray.call(runtime);}
    return value;
   };
   restore=()=>{runtime.getOpcodeFunction=original;};
