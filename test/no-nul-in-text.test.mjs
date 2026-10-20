@@ -61,7 +61,10 @@ export const BINARY_BY_ROLE = {
     // MZ executable (the libre uBASIC interpreter, code-tab BASIC-on-DOS). A DOS
     // .EXE is binary by role exactly like the .com already here — its NUL bytes
     // are the format.
-    firmware: ['bin', 'rom', 'com', 'exe', 'uf2', 'elf', 'rcx'],
+    // `.rxe` joined 2026-10-20 with test/fixtures/nxt-rxe/: a compiled LEGO NXT
+    // executable, NBC's output paired with the .nxc it came from — the bytes the
+    // Virtual NXT's program VM loads, as for .rcx.
+    firmware: ['bin', 'rom', 'com', 'exe', 'uf2', 'elf', 'rcx', 'rxe'],
     wasm: ['wasm'],
     // `.io` (BrickLink Studio) and `.lxf` (LEGO Digital Designer) joined 2026-10-18 with
     // test/fixtures/bw-sim/interop/: both formats ARE ZIP archives (model.ldr / IMAGE100.LXFML

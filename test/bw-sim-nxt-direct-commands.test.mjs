@@ -196,7 +196,7 @@ test('PLAYTONE, KEEPALIVE, GETBATTERYLEVEL, GET FIRMWARE VERSION; errors by stat
     // The power is not range-checked: stored and echoed as sent, the drive limited to ±100 [F §Outputs].
     assert.deepEqual(exec(hub, [0x00, 0x04, 0x00, 120, 0x01, 0, 0, 0x20, ...le32(0)]), [0x02, 0x04, 0x00]);
     assert.equal(exec(hub, [0x00, 0x06, 0x00])[4], 120);
-    // A missing program file: 0xC0 in the firmware (the BDK's list would suggest 0xBD) — and no .rxe runs here.
+    // A missing program file: 0xC0 in the firmware (the BDK's list would suggest 0xBD).
     assert.equal(exec(hub, [0x00, 0x00, ...Array(20).fill(0)])[2], 0xc0, 'STARTPROGRAM: no such file');
     assert.deepEqual(exec(hub, [0x00, 0x01]), [0x02, 0x01, 0xec], 'STOPPROGRAM: no active program');
     const name = exec(hub, [0x00, 0x11]);
@@ -211,7 +211,7 @@ test('PLAYTONE, KEEPALIVE, GETBATTERYLEVEL, GET FIRMWARE VERSION; errors by stat
 
 test('the mailboxes while a program runs: remote inbox read, local inbox echoed; terminated strings only', () => {
     const hub = brick();
-    hub.currentProgramName = () => 'prog.rxe'; // stands in for the .rxe VM that does not exist yet
+    hub.currentProgramName = () => 'prog.rxe'; // stands in for a running program (the .rxe VM: test/bw-sim-nxt-rxe-brick.test.mjs)
     // MESSAGEWRITE inbox 0, size 3, "hi" + terminator.
     assert.deepEqual(exec(hub, [0x00, 0x09, 0x00, 0x03, 0x68, 0x69, 0x00]), [0x02, 0x09, 0x00]);
     assert.equal(exec(hub, [0x00, 0x09, 0x00, 0x02, 0x68, 0x69])[2], 0xc0, 'unterminated: out of range');

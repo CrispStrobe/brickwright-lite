@@ -1,0 +1,9 @@
+// Drive until the ultrasonic sensor on port 4 reads 20 cm or less, then stop (Brickwright NXT .rxe VM fixture).
+task main()
+{
+    SetSensorLowspeed(IN_4);
+    OnFwd(OUT_BC, 50);
+    while (SensorUS(IN_4) > 20);
+    Off(OUT_BC);
+    NumOut(0, LCD_LINE1, SensorUS(IN_4));
+}
