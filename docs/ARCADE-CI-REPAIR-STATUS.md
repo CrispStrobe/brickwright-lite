@@ -18,6 +18,8 @@ Keep runtime ownership guards and original compiler comparisons intact.
 | GUI dependency scope | Add the two actual procedure-model consumers to the allow-list. | Final hosted strict resolver checks; no blanket allowance. |
 | Importer source contracts | Preserve the normal lazy gateway and its intentional bare share-receiver fallback. Whole UI contract module passes all 12 tests. The prompt mutation matches the current call formatting. | Complete native-prompt module on the normal generated GUI checkout; a local incomplete-checkout run is not a pass. Prompt/confirm audits also decode registered Arrays bodies and add explicit detection controls; their whole modules need hosted qualification. |
 | Notices and vendor fixture | Use the canonical renderer, reject the old carrier, and include the actual vendor helper dependency. Both complete modules pass all 13 tests. | Final hosted checks; licence and pin assertions remain unchanged. |
+| Event/state gate | The complete gate-shape module passes all 11 controls at the composed candidate, without changing its scanner or zero baselines. | Final hosted checks. |
+| Foreign iterator/currentness | The retained primary-proof repair separates closed-profile refusal from genuine Array currentness and preserves ABA expiry. Its complete 93-control regression group passed at its tested source boundary. | Final composed hosted execution; never substitute a closed-profile rejection for the real primitive proof. |
 
 The Arrays supplier [#57](https://github.com/CrispStrobe/extensions/pull/57) is
 merged after every enabled check passed at its reviewed head. Lite deliberately
