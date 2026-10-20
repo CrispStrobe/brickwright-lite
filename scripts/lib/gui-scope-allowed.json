@@ -79,6 +79,7 @@
       "test/bw-sim-physics-worker-session.test.mjs",
       "test/bw-sim-physics-worker.test.mjs",
       "test/bw-sim-program-clock.test.mjs",
+      "test/bw-sim-rack-frame.test.mjs",
       "test/bw-sim-rcx-hub.test.mjs",
       "test/bw-sim-rcx-legorcx.test.mjs",
       "test/bw-sim-render-quality.test.mjs",

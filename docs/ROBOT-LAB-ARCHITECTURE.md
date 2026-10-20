@@ -1787,6 +1787,20 @@ motors: A/B wheels, C slew, D boom, E stick, F bucket.
   `test/bw-sim-excavator.test.mjs`; the model is in `test/bw-sim-models-solid.test.mjs` and the
   instructions tests like every MODELS entry.
 
+### The Jolt fork, 1.1.0-bw.4 (2026-10-20): a rack and pinion relative to its frames
+
+`jolt-physics` **1.1.0-bw.4** adds the fork's `RackMeshConstraint` (JoltPhysics `1631b95`, its `BRICKWRIGHT.md`
+section 4). Jolt's `RackAndPinionConstraint` ties the pinion's WORLD rotation rate to the rack's WORLD velocity, which is
+right only while the frame carrying both is at rest: on a turning or driving robot the frame's own motion drove the rack.
+The Forklift's lift motor driven past the carriage's end stop turned the whole machine (36.9° of tip in 6 s, measured),
+and a steering rack on a turning car slid 132 mm in a second and twisted the car. `RackMeshConstraint` holds the same
+equation relative to the frames, (ω_pinion − Ω_Fp)·a = r (v_rack − v_Fr − Ω_Fr × d)·b, with the frames from the pinion's
+hinge and the rack's slider; the core (`'rackAndPinion'` and `'shiftFork'` couplings) hands them over and re-bases the
+drift correction before every step, as for the gear meshes. Now: the Forklift tips 0.17° and stalls against the end; a
+rack on a chassis spinning at 3 rad/s stays put with its pinion held and travels r·θ (8.008 mm for 8.000) with it
+turned; the steering rack stays put and the car keeps its yaw rate (`test/bw-sim-rack-frame.test.mjs`, each with the
+world-rate constraint as the control). A Jolt build without the class falls back to `RackAndPinionConstraint`.
+
 ### The Jolt fork, 1.1.0-bw.3 (2026-10-20): a bounce across two bodies, restitution per material pair
 
 `jolt-physics` is **1.1.0-bw.3** (same pinning as below: `scripts/integrate.mjs` URL + sha512, the GUI lockfile).

@@ -261,6 +261,13 @@ f84ba60 -> fac3a5a9928c8b53a778b0c42d8d91d5e693e4b7 (bw-board #659 light_sensor
 divider model; 393 commits, owner-approved, dependencies unchanged). Exact SHA
 swap across the same 16 pin surfaces; licence hashes unchanged.
 
+## Robot Lab: jolt-physics 1.1.0-bw.4, rack and pinion relative to its frames — 2026-10-20
+
+CLAIMED and done in one PR — Claude (Robot Lab lane; after #1134). jolt-physics 1.1.0-bw.3 -> 1.1.0-bw.4
+(JoltPhysics.js fork release `v1.1.0-bw.4`, tarball sha256 3342ec69...4b26e9, built from 034ab36 with the
+JoltPhysics fork at 1631b95: `RackMeshConstraint`, the rack and pinion relative to the frames carrying them).
+Owns the pin surfaces as for bw.3 and jolt-core.js's 'rackAndPinion'/'shiftFork' builder.
+
 ## Robot Lab physics 2: jolt-physics 1.1.0-bw.3, pair restitution, static rolling resistance — 2026-10-20
 
 CLAIMED and done in one PR — Claude (Robot Lab lane, owner request "fix it all"; follow-up to #1126).
