@@ -13,9 +13,20 @@ installation. The first body still carried its old TODO during that observation;
 its TODO marker is removed in the follow-up. No assertion or product admission
 was changed. Ordinary final-head hosted qualification is still required.
 
-The two other Group D keyboard/pixel cases and every unrelated TODO remain open
-until their own complete modules pass. The table below preserves the original
+The Group D pixel case and every unrelated TODO remain open until their own
+complete modules pass. The table below preserves the original
 foundation failures and counts; it is not a current all-passing inventory.
+
+## Qualified follow-up: keyboard/controller module — 2026-10-20
+
+All four unchanged bodies in `makecode-arcade-keyboard-edges.test.mjs` now report
+actual `ok`: the real Keyboard component, two actual VM/controller lifecycle
+cases, and metadata hat dispatch. The last body retained its old TODO during
+this observation; only that marker is removed in the follow-up. No body or
+assertion changed. Existing listener warnings remain visible. No GUI dependency
+fallback event occurred; no scope exception was added. This is headless installed
+VM evidence, not rendered controller or hardware qualification. Complete final-head
+hosted checks remain required.
 
 ## Root-cause groups
 
