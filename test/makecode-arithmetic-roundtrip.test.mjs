@@ -74,3 +74,32 @@ test('only the full truncating shape is named Math.idiv', {skip}, () => {
         assert.doesNotMatch(roundTrip(expression).exported, /Math\.idiv/, expression);
     }
 });
+
+// A comparison assigned to a variable imports as IF … THEN set 1 ELSE set 0,
+// so it is checked as a whole program: the original and the exported program
+// both run, with the same inputs, and must store and show the same thing.
+// (A probe that read only the last `set w to` line saw the ELSE branch and
+// reported `w = (a & b) == 0` as `set w to 0`; the program never did that.)
+function runProgram (ts, scope) {
+    const shown = [];
+    const basic = {forever: body => body(), showNumber: n => shown.push(n)};
+    const body = ts.replace(/^let (a|b|c) = .*$/gm, '');
+    const w = Function('basic', 'Math', 'a', 'b', 'c', `${body}\nreturn w`)(basic, PXT_MATH, scope.a, scope.b, scope.c);
+    return {w: Number(w), shown};
+}
+
+for (const comparison of ['(a & b) == 0', '(a | b) != 0', '(a ^ b) > 1', '(a + b) == c', '(a & b) < c',
+    '(a | b) <= c', '(a - b) >= c', 'a * b > c + 1', '(a << 1) != b']) {
+    test(`\`w = ${comparison}\` then \`if (w)\` keeps its truth value through import, blocks and export`, {skip}, () => {
+        const source = `let a = 1\nlet b = 2\nlet c = 3\nlet w = false\nbasic.forever(function () {\n    w = ${comparison}\n` +
+            '    if (w) {\n        basic.showNumber(1)\n    } else {\n        basic.showNumber(0)\n    }\n})\n';
+        const imported = microbitToPseudocode(source);
+        assert.deepEqual(imported.unsupported, [], 'the import refused something');
+        const {ts, unsupported} = projectToMakeCodeTs(new SB3Creator().parse(imported.code));
+        assert.deepEqual(unsupported, [], 'the export refused something');
+        for (const scope of [...INPUTS, {a: 3, b: 4, c: 7}, {a: 5, b: 2, c: 0}]) {
+            assert.deepEqual(runProgram(ts, scope), runProgram(source, scope),
+                `${comparison} at ${JSON.stringify(scope)}:\n${imported.code}\n${ts}`);
+        }
+    });
+}
