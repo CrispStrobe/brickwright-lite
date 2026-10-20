@@ -88,6 +88,27 @@ The heavy browser job reports three separate problems that need diagnosis:
   actual block errors, frame resources and controller delivery; preserve both
   required frame colours, Stop behavior and renderer assertions.
 
+The completed light browser shard also fails five live editing journeys:
+
+| Journey | Observed failure | Next acceptance |
+| --- | --- | --- |
+| Rotation and assigned artwork | `verify-arcade-rotation-browser.mjs` times out waiting for edited assigned pixels. | Retain actual assigned-image/project observations; verify edited costume pixels reach the running game and survive both file formats. |
+| Tilemap painter | Saved levels fail runtime checks; adding a level reports a missing startup block. | Diagnose the actual edited block graph and startup chain. Preserve paint, wall/collision, new-level and save/reopen checks. |
+| Tile identity | A real rename/pixel edit fails to update both uses of the source ID. | Retain both actual block payloads and editor identity; preserve shared source identity and export names. |
+| Legacy layout | The initial painted layout runs; the edited run times out. | Compare edited block payloads and actual runtime errors without changing legacy wall semantics. |
+| Sprite placement | Runtime placement is absent and removal leaves the saved placement. | Trace actual Save/write/delete events and the running startup chain; keep unrelated placements and undo/revert behavior. |
+
+The palette candidate defers/coalesces edit observations and fences released
+watchers. Direct inspection remains strict; a permanently invalid graph retains
+its original error in an explicit unavailable preview. Both complete modules
+pass all eight controls. Restoring the old observer makes the four new real
+Blocks engine regressions fail. This establishes the mutation/observation
+boundary, not the browser result. No writer, execution cache, VM intrinsic guard
+or existing browser assertion changes.
+
+Original reports and images are retained. These failures do not yet establish a
+shared cause. Source/VM-only artwork tests do not qualify the live GUI journeys.
+
 These are open failures, not accepted baselines. Wait for the other existing
 checks to finish, then compose the concrete repairs into one normal push.
 

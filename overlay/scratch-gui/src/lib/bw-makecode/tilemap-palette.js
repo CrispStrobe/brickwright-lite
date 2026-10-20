@@ -26,11 +26,31 @@ export function drawTilemapImage (ctx, image, x, y, scale, palette) {
 
 /** Observe actual project edits/load; release also fences already queued callbacks. */
 export function observeTilemapPalette (vm, changed) {
-    let active = true;
-    const refresh = () => { if (active) changed(inspectTilemapPalette(vm)); };
+    let active = true, pending = false;
+    const deliver = () => {
+        if (!active) return;
+        let palette;
+        try { palette = inspectTilemapPalette(vm); }
+        catch (error) {
+            // A persistent malformed project is an unavailable preview, with
+            // its actual error retained. The direct inspector stays strict.
+            palette = {kind: 'unavailable', signature: null, laterChanges: false, colors: null, error,
+                errorMessage: String(error?.message || error)};
+        }
+        changed(palette);
+    };
+    const refresh = () => {
+        if (!active || pending) return;
+        pending = true;
+        // Blocks emits PROJECT_CHANGED while recursively deleting children.
+        // Reading startup chains synchronously can throw into that mutator and
+        // leave its parent pointing at a deleted child. Observe the completed
+        // synchronous batch, coalescing its edit/load notifications.
+        queueMicrotask(() => { pending = false; deliver(); });
+    };
     const subscriptions = [[vm.runtime, 'PROJECT_CHANGED'], [vm, 'PROJECT_LOADED'], [vm, 'targetsUpdate']];
     for (const [source, event] of subscriptions) source.on(event, refresh);
-    refresh();
+    deliver();
     return () => {
         active = false;
         for (const [source, event] of subscriptions) source.removeListener(event, refresh);

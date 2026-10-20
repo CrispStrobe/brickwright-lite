@@ -1,5 +1,24 @@
 # Conversion capabilities and GUI closure ledger
 
+## Current live authoring failures — 2026-10-20
+
+This section supersedes older GUI readiness claims below. Historical counts
+remain 147 translated / 36 partial / one malformed; five full current-corpus
+attempts are incomplete. Component passes do not close these journeys.
+
+| Capability | Current evidence | GUI acceptance still open |
+| --- | --- | --- |
+| Imported animation resource | Actual original/Code/export data and a separate fresh reimport preserve four original frame hashes, dimensions, palette and 100 ms timing in the runtime resource map. | Create/edit/reorder frames in the graphics editor, run the edited costume, save/reopen and export to the genuine MakeCode runtime. Headless resource data is not rendered pixels. |
+| Animation and controller input | The exact browser-control program runs in a real VM: A produces both colours, B stops playback and Right moves the sprite. | The actual browser journey still observes only the initial colour. Diagnose DOM input, clock, errors and every-frame observations before changing its assertions. |
+| Editable assigned images | Initial authoring steps work in the rotation journey. Its final edited-file reimport aborts on an Array intrinsic-surface refusal. | Identify the actual changed intrinsic descriptor and preserve the guard; verify both edited file formats and the running assigned pixels. |
+| Tile painting, identity and placement | The light browser reports failures after painting/renaming, legacy edits and placement save/removal. | Repair actual editor-to-block mutation and startup chains. Preserve qualified tile IDs, walls/collisions, undo/revert and save/reopen. The deferred-observer candidate passes eight controls against the real Blocks engine; restoring the old observer fails all four new regressions. Actual browser authoring remains unqualified. |
+| Native versus MakeCode arithmetic | Native authored Arrays require JavaScript string conversion; the original PXT checks require opaque object conversion. | Add an explicit source-language operator path across Code, Blocks, decompilation and real export, with actual runtime ownership and full native-helper semantic proofs. Selecting the Arcade device alone cannot select the language. |
+
+See [the current failure work packages](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md)
+and [CI repair matrix](ARCADE-CI-REPAIR-STATUS.md) for source paths, original
+failures and concrete acceptance. Keep older native Array text `5` controls in
+their native authoring scope; they do not override genuine PXT comparisons.
+
 ## Array runtime and public pipeline checkpoint — 2026-10-20
 
 The repaired runtime passes64 existing and17 additional native controls, plus

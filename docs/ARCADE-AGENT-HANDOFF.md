@@ -7,6 +7,11 @@ for the exact red-check causes, local complete-module passes and pending hosted
 acceptance. Supplier [#57](https://github.com/CrispStrobe/extensions/pull/57) is
 merged; Lite final composition is still awaiting qualification.
 
+The current hosted campaign also exposes genuine source-language Array coercion
+and live editing failures. Read [their work packages](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md)
+and [the GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md#current-live-authoring-failures--2026-10-20)
+before treating any headless or native authoring result as MakeCode parity.
+
 For the latest functional repair and ordered acceptance work, read
 [the current queue](ARCADE-COMPATIBILITY-NEXT-STEPS.md#current-integration-and-repair-queue--2026-10-20).
 The named-empty Array candidate is additional to the qualified earlier49, and

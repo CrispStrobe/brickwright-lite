@@ -32,6 +32,7 @@ const L10N = {
         'tm.removeTile': 'Remove tile', 'tm.colour': 'Colour {n}', 'tm.save': 'Save', 'tm.revert': 'Revert',
         'tm.paletteStartup': 'Preview uses the project startup palette; later code can change it while running.',
         'tm.paletteUnknown': 'The startup palette is dynamic or conflicting. Gray is an index preview, not the game colors. Edit the palette in Code or Blocks.',
+        'tm.paletteUnavailable': 'The project palette could not be read: {error}. Gray is an index preview, not the game colors.',
         'tm.saved': 'Saved into the block of {target}.', 'tm.saveFailed': 'Could not save: the block is gone or the level is invalid.',
         'tm.unsaved': 'Unsaved changes', 'tm.wallHint': 'Click cells to add walls; click a wall to remove it.',
         'tm.zoom': 'Zoom', 'tm.new': 'New tile map', 'tm.created': 'New tile map added to {target}: a "when green flag clicked" script sets it.',
@@ -56,6 +57,7 @@ const L10N = {
         'tm.removeTile': 'Kachel entfernen', 'tm.colour': 'Farbe {n}', 'tm.save': 'Speichern', 'tm.revert': 'Verwerfen',
         'tm.paletteStartup': 'Die Vorschau verwendet die Projekt-Startpalette; späterer Code kann sie beim Ausführen ändern.',
         'tm.paletteUnknown': 'Die Startpalette ist dynamisch oder widersprüchlich. Grau zeigt nur die Indizes, nicht die Spielfarben. Bearbeite die Palette in Code oder Blöcken.',
+        'tm.paletteUnavailable': 'Die Projektpalette konnte nicht gelesen werden: {error}. Grau zeigt nur die Indizes, nicht die Spielfarben.',
         'tm.saved': 'In den Block von {target} gespeichert.', 'tm.saveFailed': 'Speichern nicht möglich: Der Block fehlt oder das Level ist ungültig.',
         'tm.unsaved': 'Ungespeicherte Änderungen', 'tm.wallHint': 'Klicke Zellen an, um Wände zu setzen; ein Klick auf eine Wand entfernt sie.',
         'tm.zoom': 'Zoom', 'tm.new': 'Neue Kachelkarte', 'tm.created': 'Neue Kachelkarte zu {target} hinzugefügt: Ein Skript „Wenn die grüne Flagge angeklickt“ setzt sie.',
@@ -369,7 +371,9 @@ class TilemapEditor extends React.Component {
                     {this.props.editorTools}
                 <div data-testid="bw-tilemap-palette-state" data-palette-kind={this.state.palette.kind} role="status"
                     style={{fontSize: 12, flexShrink: 0}}>
-                    {!this.state.palette.colors ? t(locale, 'tm.paletteUnknown') :
+                    {this.state.palette.kind === 'unavailable' ? t(locale, 'tm.paletteUnavailable',
+                        {error: this.state.palette.errorMessage}) :
+                        !this.state.palette.colors ? t(locale, 'tm.paletteUnknown') :
                         this.state.palette.laterChanges ? t(locale, 'tm.paletteStartup') : null}
                 </div>
                 <LegacyTileDefinitionEditor vm={this.props.vm} locale={locale} palette={this.state.palette} />
@@ -392,7 +396,9 @@ class TilemapEditor extends React.Component {
                 {this.props.editorTools}
                 <div data-testid="bw-tilemap-palette-state" data-palette-kind={this.state.palette.kind} role="status"
                     style={{fontSize: 12, flexShrink: 0}}>
-                    {!this.state.palette.colors ? t(locale, 'tm.paletteUnknown') :
+                    {this.state.palette.kind === 'unavailable' ? t(locale, 'tm.paletteUnavailable',
+                        {error: this.state.palette.errorMessage}) :
+                        !this.state.palette.colors ? t(locale, 'tm.paletteUnknown') :
                         this.state.palette.laterChanges ? t(locale, 'tm.paletteStartup') : null}
                 </div>
                 <LegacyTileDefinitionEditor vm={this.props.vm} locale={locale} palette={this.state.palette} />

@@ -71,6 +71,21 @@ Code/export/reimport cases, genuine exported PXT compilation, SB3 reload and
 visible creation/editing of the operator blocks. No assertion update, new TODO,
 blanket Array admission or type annotation supplies semantic evidence.
 
+## Live editor mutation work package
+
+The current light browser job fails rotation/assigned-image edits, tilemap
+painting/startup, shared tile identity edits, legacy-layout edits and placement
+save/removal. Initial imports can work while later edits fail; this does not yet
+establish a common cause. Start with the actual saved project/block payloads,
+startup chains and runtime error channels. Check the writer, Blockly event bridge
+and VM block caches before choosing a change. Keep all unrelated blocks,
+qualified tile IDs, palette data, undo/revert and file-format roundtrips.
+
+Use the five existing complete browser journeys listed in
+[the repair matrix](ARCADE-CI-REPAIR-STATUS.md), with all original assertions.
+Also retain the passing actual-VM animation/resource checks as controls;
+headless results do not replace actual authoring and rendered-pixel evidence.
+
 ## Initial JavaScript budget work package
 
 The current production observation is 4,504,776 bytes against the unchanged

@@ -67,14 +67,14 @@ test('unresolved startup palettes show neutral indices and retain authored later
     const conflict = inspectTilemapPalette(vm);assert.equal(conflict.kind,'conflict');assert.equal(conflict.colors,null);
 });
 
-test('actual project edit/load subscriptions refresh projections and release all old or queued callbacks', () => {
+test('actual project edit/load subscriptions refresh projections and release all old or queued callbacks', async () => {
     const {vm,blocks} = fixture(), observed = [], release = observeTilemapPalette(vm,p=>observed.push(p));
     assert.equal(observed.length,1);const queued = [...vm.runtime.listeners.get('PROJECT_CHANGED')][0];
     const edited = [...colors];edited[3]='#abcdef';blocks._blocks.text.fields.TEXT.value=paletteHex(edited);
-    vm.runtime.emit('PROJECT_CHANGED');assert.equal(observed.at(-1).colors[3],'#abcdef');
+    vm.runtime.emit('PROJECT_CHANGED');await Promise.resolve();assert.equal(observed.at(-1).colors[3],'#abcdef');
     assert.notEqual(observed[0].signature,observed.at(-1).signature);
-    vm.emit('PROJECT_LOADED');vm.emit('targetsUpdate');assert.equal(observed.length,4);
-    release();queued();vm.runtime.emit('PROJECT_CHANGED');vm.emit('PROJECT_LOADED');vm.emit('targetsUpdate');
+    vm.emit('PROJECT_LOADED');await Promise.resolve();vm.emit('targetsUpdate');await Promise.resolve();assert.equal(observed.length,4);
+    release();queued();vm.runtime.emit('PROJECT_CHANGED');vm.emit('PROJECT_LOADED');vm.emit('targetsUpdate');await Promise.resolve();
     assert.equal(observed.length,4);assert.equal(vm.runtime.listeners.get('PROJECT_CHANGED').size,0);
     assert.equal(vm.listeners.get('PROJECT_LOADED').size,0);assert.equal(vm.listeners.get('targetsUpdate').size,0);
     const fresh = [], next = observeTilemapPalette(fixture().vm,p=>fresh.push(p));assert.equal(fresh[0].colors[3],'#654321');next();
