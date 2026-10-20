@@ -33,11 +33,20 @@ const intrinsicsCurrent=()=>{
 };
 
 export function createArrayOccurrenceExportAuthority(project,conservativeInput=()=>false){
-    let expired=false,snapshot=null,facts=null;
+    let expired=false,sourceExpired=false,snapshot=null,facts=null;
     if(intrinsicsCurrent())snapshot=physicalUpdateSourceSnapshot(project);
+    // Script/profile acceptance is separate from the physical source context.
+    // A genuine independent primary proof may support more script shapes.
+    const context=!!snapshot;
+    const observeSource=()=>{
+        if(sourceExpired)return false;
+        try{if(!context||!snapshot||!intrinsicsCurrent()||!snapshot.current()||!intrinsicsCurrent())sourceExpired=true;}
+        catch(error){sourceExpired=true;throw error;}
+        return !sourceExpired;
+    };
     const observe=()=>{
         if(expired)return false;
-        try{if(!snapshot||!intrinsicsCurrent()||!snapshot.current()||!intrinsicsCurrent())expired=true;}
+        try{if(!observeSource())expired=true;}
         catch(error){expired=true;throw error;}
         return !expired;
     };
@@ -52,7 +61,7 @@ export function createArrayOccurrenceExportAuthority(project,conservativeInput=(
     // Refusal is sticky too; model construction may not be retried on an edited
     // graph through a retained policy. A fresh policy may independently reprove it.
     if(!facts)expired=true;
-    return Object.freeze({observe,candidate,validateInput(target,node,name){
+    return Object.freeze({observe,observeSource,expireSource(){sourceExpired=true;},candidate,validateInput(target,node,name){
         if(!observe())return false;
         return candidate(target,node,name);
     }});

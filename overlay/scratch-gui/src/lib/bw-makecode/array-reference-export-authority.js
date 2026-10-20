@@ -407,7 +407,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     // - a local reset immediately followed by its definite overwrite.
     // The overwrite value must not read the cell. Every other writer and every
     // other occurrence keeps the full writer set.
-    const resetValue=n=>n?.opcode==='arrays_specialValue'&&exactKeys(n,[],['KIND'])&&['undefined','null'].includes(n.fields?.KIND?.[0]);
+    const resetValue=n=>n?.opcode==='arrays_specialValue'&&exactKeys(n,[],['KIND'])&&Array.isArray(n.fields?.KIND)&&n.fields.KIND.length===2&&n.fields.KIND[1]===null&&['undefined','null'].includes(n.fields.KIND[0]);
     const readsCell=(target,node,c,seen=new Set())=>{
         if(!node||seen.has(node))return false;seen.add(node);if(binding(target,node)===c)return true;
         for(const [name,slot]of Object.entries(node.inputs||{})){if(name.startsWith('SUBSTACK'))continue;
@@ -416,7 +416,19 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         return false;
     };
     const topChain=(scope,node)=>{const seen=new Set();let id=scope.root?.next;while(id&&!seen.has(id)){seen.add(id);const n=block(scope.target,id);if(n===node)return true;id=n?.next;}return false;};
-    let resetFlowReady=false,spriteDataReady=false;
+    let resetFlowReady=false,spriteDataReady=false,sourceDependency=null;
+    const observeSourceDependency=c=>{
+        const dependency=sourceDependency;if(!dependency||!c||dependency.seen.has(c))return;
+        dependency.seen.add(c);
+        if(c.global&&c.types.has(bad))for(const type of c.types)
+            if(type&&typeof type==='object'&&type.array){dependency.mixed=true;dependency.globals.add(c);break;}
+        // Cached unions and initialization short circuits must not conceal
+        // the actual indexed direct-alias writer dependency behind a local.
+        for(let i=0;i<c.writers.length;i++){
+            const value=c.writers[i].value;
+            if(value)observeSourceDependency(value.cell||(value.node&&binding(value.target,value.node)));
+        }
+    };
     const killedReset=(c,w,at)=>{
         if(!resetFlowReady||!resetValue(w.value?.node)||invalid.has(w.node)||w.scope.invalid)return false;
         const scope=owners.get(at);if(!scope||w.scope!==scope||!scope.executedBefore)return false;
@@ -454,6 +466,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     };
     const computingCells=new Set();
     const cellTypesAt=(c,at)=>{
+        observeSourceDependency(c);
         if(!c||c.directBad||!at||computingCells.has(c))return new Set(c?c.types:[bad]);
         const live=c.writers.filter(w=>!killedReset(c,w,at)),guarded=new Set(live.filter(w=>falsyGuarded(c,w,at)));
         if(live.length===c.writers.length&&!guarded.size)return new Set(c.types);
@@ -1087,7 +1100,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         // A literal value (JSON item or literal input) is initialized; it is an
         // Array only through jsonArray, which singleArray still checks.
         if(!value)return false;if(value.jsonArray||value.raw)return true;
-        const initializedCell=(c,scope,at)=>{if(!available(c,scope,at))return false;if(checkingWriterInitialization.has(c))return true;checkingWriterInitialization.add(c);try{const live=c.directBad?c.writers:c.writers.filter(w=>!killedReset(c,w,at));return live.length>0&&live.every(w=>w.value&&(initialized(w.value)||!c.directBad&&falsyGuarded(c,w,at)&&w.value.node?.opcode==='arrays_referenceItem'&&initialized(input(w.value.node,'ARRAY',w.target))));}finally{checkingWriterInitialization.delete(c);}};
+        const initializedCell=(c,scope,at)=>{observeSourceDependency(c);if(!available(c,scope,at))return false;if(checkingWriterInitialization.has(c))return true;checkingWriterInitialization.add(c);try{const live=c.directBad?c.writers:c.writers.filter(w=>!killedReset(c,w,at));return live.length>0&&live.every(w=>w.value&&(initialized(w.value)||!c.directBad&&falsyGuarded(c,w,at)&&w.value.node?.opcode==='arrays_referenceItem'&&initialized(input(w.value.node,'ARRAY',w.target))));}finally{checkingWriterInitialization.delete(c);}};
         if(value.cell)return initializedCell(value.cell,owners.get(value.at),value.at);
         if(!value.node)return false;const {target,node}=value;if(path.has(node))return false;const next=new Set([...path,node]),c=binding(target,node);
         if(c)return initializedCell(c,owners.get(node),node);
@@ -1117,10 +1130,42 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(Object.hasOwn(FRESH_SDK_ARRAYS,node.opcode))return exactKeys(node,FRESH_SDK_ARRAYS[node.opcode]);
         return false;
     };
-    // The old all-writer authority remains the first proof. A separate current
-    // occurrence profile is prepared only for a mixed producer cell; its private
-    // candidates are exact inputs which the conservative proof actually refused.
+    // Retained physical/realm/context obligations apply to mixed-global
+    // dependencies without forcing valid primary proofs into a narrower
+    // straight-line profile. Inventory only already-indexed receiver inputs.
     const mixedArrayCell=[...cells.values()].some(c=>c.types.has(bad)&&[...c.types].some(t=>t&&typeof t==='object'&&t.array));
+    const mixedGlobalCell=[...cells.values()].some(c=>c.global&&c.types.has(bad)&&[...c.types].some(t=>t&&typeof t==='object'&&t.array));
+    const protectedInputs=[];
+    if(mixedGlobalCell)for(let i=0;i<snapshots.length;i++){
+        const {target,node,inputRows}=snapshots[i];if(!Object.hasOwn(schemas,node.opcode))continue;
+        for(let j=0;j<inputRows.length;j++){
+            const name=inputRows[j][0];if(name!=='ARRAY'&&(name!=='OTHER'||node.opcode!=='arrays_referenceConcat'))continue;
+            const previousReset=resetFlowReady,previousDependency=sourceDependency,dependency={mixed:false,seen:new Set(),globals:new Set()};
+            try{resetFlowReady=false;sourceDependency=dependency;
+                const value=input(node,name,target);readInput(value);initialized(value);
+            }finally{resetFlowReady=previousReset;sourceDependency=previousDependency;}
+            if(dependency.mixed){
+                const globals=[];
+                for(const [owner,map]of globalCell.maps)for(const [id,key]of map)
+                    if(dependency.globals.has(cells.get(key)))globals.push({owner,id});
+                protectedInputs.push({target,node,name,globals});
+            }
+        }
+    }
+    const protectedInput=(target,node,name)=>{
+        for(let i=0;i<protectedInputs.length;i++){const r=protectedInputs[i];if(r.target===target&&r.node===node&&r.name===name)return r;}
+        return null;
+    };
+    // Visible slider/list controls write the addressed variable through the
+    // actual GUI variable-utils path. Read-only UI metadata is not a producer
+    // restriction. The full physical snapshot freezes either configuration.
+    const monitorWrites=receiver=>Array.isArray(project.monitors)&&project.monitors.some(monitor=>{
+        if(!monitor?.visible||!['slider','list'].includes(monitor.mode))return false;
+        let owner;
+        if(monitor.spriteName)owner=targets.find(t=>t.name===monitor.spriteName);
+        if(!owner)owner=monitor.targetId?targets.find(t=>t.id===monitor.targetId):targets.find(t=>t.isStage);
+        return receiver.globals.some(binding=>binding.id===monitor.id&&(!owner||binding.owner===owner));
+    });
     const occurrence=mixedArrayCell?createArrayOccurrenceExportAuthority(project,(target,node,name)=>{
         const value=input(node,name,target);return singleArray(readInput(value))&&initialized(value);
     }):null;
@@ -1128,10 +1173,23 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     return Object.freeze({validateInput(target,node,name='ARRAY'){
         // Observe retained occurrence facts before *any* diagnostic early exit.
         // A false/throw observation cannot revive after physical restoration.
-        const occurrenceCurrent=occurrence?occurrence.observe():false;
+        const protectedReceiver=protectedInput(target,node,name);
+        const occurrenceCurrent=occurrence?(protectedReceiver?occurrence.observeSource():occurrence.observe()):false;
+        if(protectedReceiver&&!occurrenceCurrent)return {ok:false,reason:'requires the current physical source context for a mixed global Array proof'};
+        if(protectedReceiver){
+            let writes;
+            try{writes=monitorWrites(protectedReceiver);}
+            catch(error){occurrence.expireSource();throw error;}
+            // A monitor property/reflection trap may have edited source while
+            // being observed. Recheck this new callback boundary before proof.
+            if(!occurrence.observeSource())return {ok:false,reason:'requires the current physical source context for a mixed global Array proof'};
+            if(writes)return {ok:false,reason:'an active monitor can write the actual mixed global Array binding'};
+        }
         if(occurrence?.candidate(target,node,name)&&!occurrenceCurrent)return {ok:false,reason:'requires the current closed occurrence Array producer and complete writer proof'};
-        let current;try{current=live();if(summaryIssued&&effectMetadata()!==originalEffects)summaryExpired=true;}catch(error){summaryExpired=true;if(frameResetUsed)frameResetExpired=true;throw error;}
-        if(!current){summaryExpired=true;if(frameResetUsed)frameResetExpired=true;}
+        // An unrelated-input query may also observe a source failure. Revoke
+        // only after that real false/throw; do not add another observation.
+        let current;try{current=live();if(summaryIssued&&effectMetadata()!==originalEffects){summaryExpired=true;if(protectedInputs.length)occurrence.expireSource();}}catch(error){summaryExpired=true;if(frameResetUsed)frameResetExpired=true;if(protectedInputs.length)occurrence.expireSource();throw error;}
+        if(!current){summaryExpired=true;if(frameResetUsed)frameResetExpired=true;if(protectedInputs.length)occurrence.expireSource();}
         // Only a successfully discounted reset may retain this dependency.
         // False or thrown currentness expires it before any diagnostic exit.
         if(frameResetUsed&&frameResetExpired)current=false;

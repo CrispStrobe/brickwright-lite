@@ -7924,3 +7924,15 @@ This extraction change does not grant an adapter registration token, establish
 an actual primitive operation, or repair stale inert/fake-runtime fixtures.
 Affected module execution and any separate runtime fixture migration remain
 required; no supplier adoption, product, SDK or runtime result is inferred.
+
+
+### Mixed global Array source currentness — 2026-10-20
+
+SOURCE CANDIDATE — existing Arcade conversion lane. Keep independent primary
+Array proofs separate from the narrower closed occurrence profile, while
+retaining sticky physical, intrinsic and global-writer-context obligations.
+Canonical reset tuples and monitor/global binding validation remain mandatory.
+Existing local/caller-frame and all-writer controls stay intact, with explicit
+local-alias and unrelated-global interactions. A source-policy expectation is
+corrected for already-supported Array-only handlers and pauses. Actual affected
+module qualification remains required; no corpus/runtime/UI claim is inferred.
