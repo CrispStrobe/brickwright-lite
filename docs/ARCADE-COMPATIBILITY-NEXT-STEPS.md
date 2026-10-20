@@ -22,6 +22,30 @@ current outcomes remain unobserved.** The historical raw184 result remains
 remains 29 original-compiler passes / 12 failures. Never subtract a component
 test or an unfinished prefix from these counts.
 
+### Newly reproduced public-runtime blocker
+
+Both new authored Code journeys fail during their original runtime execution:
+`Array primitive loan requires its current operation`. Their generated projects
+request only the Arrays extension. Arrays currently depends on an exception
+coordinator initialized by Arcade; the native component fixture initialized that
+coordinator explicitly and therefore missed this normal project configuration.
+Code regeneration and export/reimport were not reached in these two tests.
+
+Implement one private runtime coordinator with an exclusive Arcade capability
+claim. Arrays initialization must establish its own admitted error-routing
+lifecycle. Preserve either extension load order, project replacement, Stop/Start,
+disposal, original Error identity and the existing operation ownership checks.
+Run both complete public journeys and all existing native controls before
+claiming this gap closed. Named JSON/2D allocation is a separate source candidate
+and still needs genuine execution and supplier adoption.
+
+Hosted delivery checks also exposed a stale fetch-policy census and missing
+owned temporary-directory setup for six catalogue fixture tests. The census
+repair passes all13 checks and all11 unchanged mutation controls locally.
+Review the remaining hosted failures from their saved originals, fix their
+actual causes and batch necessary pushes. Do not weaken assertions or repeat
+full-CI requests while these repairs are in progress.
+
 ### Ordered next work
 
 1. Complete the fresh named-empty Array candidate qualification described in

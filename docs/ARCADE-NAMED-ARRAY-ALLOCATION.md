@@ -80,3 +80,18 @@ MakeCode SDK acceptance have not passed from these tests. Source review predicts
 that a named getter can make export/reimport reconstruct through create1D.
 Capture that actual route and support its distinct JSON allocation semantics;
 do not change the emitted factory or omit the getter to conceal a refusal.
+
+## Public execution blocker — 2026-10-20
+
+The two authored public Code journeys now execute through the actual Creator
+and VM. Both fail in their original runtime stage because an Arrays-only
+project has no exception coordinator; the primitive operation cannot acquire a
+current ticket. The native57 fixture explicitly created that coordinator, so
+its passing result did not cover this project initialization boundary.
+Downstream Code/export/reimport remains unattempted for these journeys.
+
+The next repair must initialize a shared private runtime coordinator from the
+admitted Arrays binding while retaining an exclusive Arcade capability claim.
+Extension load order, project replacement, generation cancellation and disposal
+need real lifecycle controls. Preserve all existing native tests and the
+original public failure; no dummy Arcade blocks belong in the test programs.
