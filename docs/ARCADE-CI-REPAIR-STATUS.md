@@ -4,8 +4,10 @@
 
 The saved failures on [#1128](https://github.com/CrispStrobe/brickwright-lite/pull/1128)
 and [#1132](https://github.com/CrispStrobe/brickwright-lite/pull/1132) are caused by
-this development stack. Main is green. The current batch composes the follow-up from #1132 into #1128 for one hosted
-qualification campaign. #1132 is merged into the parent branch by ancestry;
+this development stack. Later repairs on main are composed explicitly below;
+a historical green run does not qualify its latest head. The current batch
+composes the follow-up from #1132 into #1128 for one hosted qualification
+campaign. #1132 is merged into the parent branch by ancestry;
 its work is not yet on main. Do not push its stale head or add another
 `ci:full` request.
 Keep runtime ownership guards and original compiler comparisons intact.
@@ -17,7 +19,7 @@ Keep runtime ownership guards and original compiler comparisons intact.
 | Inert or off-thread Array fixtures | Execute through actual registered blocks, cached inputs and VM threads. Whole reference/table modules pass all 16 tests, zero skips. Strict stale-access errors and unchanged backing contents are checked. | Three other complete modules, 15 tests, retaining original compiler disagreements and TODOs. |
 | Old Arrays carrier | Value and string tests decode the strict registered carrier. Callable controls bind its exact supplier and independent reviewed host/supplier factories; both complete callable modules pass all six tests. Exponentiation uses the same strict reader without changing any of its four test bodies. | Whole exponentiation and affected original-compiler/runtime modules on the current normal installation. |
 | Temporary directory | Unit workflow exports the runner-owned temporary directory; fixtures still require an explicit owned directory. | Final hosted unit step. |
-| GUI dependency scope | Add exactly the two actual procedure-model consumers to the allow-list. Both complete affected modules pass all 13 tests, including the tile artwork roundtrip; the recorded strict scope check passes. | Final hosted checks; no blanket allowance. |
+| GUI dependency scope | Add the actual procedure-model consumers to the allow-list. The current first shard also identifies the new public named-Array roundtrip as an additional real consumer; it is added explicitly. Both complete affected modules pass all 13 tests, including the tile artwork roundtrip; the recorded strict scope check passes. | Final hosted checks; no blanket allowance. |
 | Importer source contracts | Preserve the normal lazy gateway and its intentional bare share-receiver fallback. Whole UI contract module passes all 12 tests. The prompt mutation matches the current call formatting. | Complete native-prompt module on the normal generated GUI checkout; a local incomplete-checkout run is not a pass. Prompt/confirm audits also decode registered Arrays bodies and add explicit detection controls; their whole modules need hosted qualification. |
 | Notices and vendor fixture | Use the canonical renderer, reject the old carrier, and include the actual vendor helper dependency. Both complete modules pass all 13 tests. | Final hosted checks; licence and pin assertions remain unchanged. |
 | Event/state gate | The complete gate-shape module passes all 11 controls at the composed candidate, without changing its scanner or zero baselines. | Final hosted checks. |
@@ -62,13 +64,22 @@ fixture calls an ownership-protected native reporter outside its VM operation.
 The candidate routes its three calls through the existing actual registered-block/
 thread helper, preserving the original aggregate, JSON and alias assertions and
 lifecycle guards. Complete affected-module hosted execution remains required.
-Declared TODO outcomes remain separate from this ordinary failure.
+Declared TODO outcomes remain separate from this ordinary failure. The first
+shard additionally reports two genuine original-PXT disagreements in Array
+coercion: native concatenation produces `52`/`5`, where the original compiled
+runtime produces `[object Object]2`/`[object Object]`. Preserve those original
+comparisons. The native Array authoring checks require their own existing
+JavaScript semantics; a correct repair must model the source language explicitly,
+rather than changing their expected values or all Array coercion globally.
 
 The heavy browser job reports three separate problems that need diagnosis:
 
 - Initial JavaScript exceeds the existing budget by 28,424 bytes. Attribute the
-  increase from the saved webpack statistics and remove unnecessary eager code;
-  preserve the budget.
+  increase before choosing a change; preserve the budget. Saved ownership
+  identifies growth in eagerly required VM authority code. Late intrinsic
+  capture would change its guarantees. Optional GIF/CSV loading needs a
+  separate scoped review of picker timing, parser callbacks and failure cleanup;
+  source bytes are not emitted savings.
 - The Carnival import readiness check times out before recording its document.
   The candidate waits for the actual named import document, then retains it
   before the unchanged native-command assertion. The saved failure screenshot

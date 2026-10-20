@@ -26,18 +26,70 @@ not establish graphics, full-game compatibility or current corpus counts.
 See [the allocation contract](ARCADE-NAMED-ARRAY-ALLOCATION.md) and
 [the current CI repair matrix](ARCADE-CI-REPAIR-STATUS.md).
 
-The next authentic-project check uses the current asynchronous dependency-import
-API with the retained complete resource-bearing project, not just its raw
-TypeScript fragment. The earlier eight-stage success used the legacy import
-path. Preserve that distinction and the actual resolver identity checks. An
-exported file map requires a fresh resolver result for modern asynchronous
-reimport; never reuse the original project's certificate. Explicit synchronous
-reimport can be tested separately. No new hydrator or missing feature is
-justified until the current public path exposes a concrete disagreement.
+The current authentic resource-bearing project has now used the asynchronous
+dependency importer with its original retained identity. Its actual original and
+Code resource documents preserve four animation frames, and export produces the
+five-file project. A separate fresh synchronous reimport now forwards the
+returned resource through the actual artwork installation and application
+helpers. Independent saved-data review confirms the same four original frame
+hashes, dimensions, palette and 100 ms timing in the fresh runtime map, with
+actual installation, load, application, descriptor restoration and Stop/quit. Earlier driver omissions and boot failures remain diagnostic failures,
+with no product-loss conclusion. Original import and export are not repeated
+just to repair the last observation. An exported file map still requires a fresh
+resolver result for modern asynchronous reimport; the original certificate does
+not qualify that different map. Browser animation and rendered pixels remain
+separate acceptance work.
+
+A new complete bounded RAW-input profile retains all five full observation
+graphs in recoverable gzip. Its import interval used about 2.02 CPU seconds and
+its Creator interval about 0.87, including setup and lazy acquisition. Standalone
+profile attribution must distinguish those costs from capture/serialization.
+This single input supplies neither a whole-corpus bottleneck nor a changed
+classification. Do not implement the deferred regex shortcut on this evidence.
+
+## Current original-PXT Array coercion work package
+
+The current original-compiler check in
+`test/makecode-arcade-array-coercion.test.mjs` establishes a source-language
+semantic mismatch. Its canonical Array references concatenate as opaque PXT
+objects, while the native Arrays extension intentionally lends their backing
+bodies for JavaScript primitive conversion. Thus native results `52` and `5`
+disagree with the original compiled results `[object Object]2` and
+`[object Object]`. Keep those original comparisons unchanged.
+
+Implement a source-language operator boundary across import, pseudocode, Blocks,
+runtime, decompilation and export. Do not select semantics from the active device:
+native authored Array projects also use `DEVICE ARCADE`. Do not change generic
+Array coercion or its existing authored roundtrip expectations. Preserve reference
+identity, aliases, current-operation ownership, primitive operand evaluation
+order, exceptions and all export producer proofs. A dedicated MakeCode operator
+route is a candidate design, not yet implemented or qualified.
+
+Acceptance includes the complete original coercion module, its alias/cycle/
+undefined/numeric/comparison cases, native Array regression groups and authored
+Code/export/reimport cases, genuine exported PXT compilation, SB3 reload and
+visible creation/editing of the operator blocks. No assertion update, new TODO,
+blanket Array admission or type annotation supplies semantic evidence.
+
+## Initial JavaScript budget work package
+
+The current production observation is 4,504,776 bytes against the unchanged
+4,476,352-byte budget. Source ownership is useful for attribution, not a measure
+of emitted savings. Eager VM authority code captures intrinsics at startup;
+late capture would change its security and currentness guarantees. Arcade's
+pixel/tile editors and device pane already have lazy boundaries.
+
+The separate documentation claim
+[#1140](https://github.com/CrispStrobe/brickwright-lite/pull/1140) scopes optional
+GIF/CSV parser loading. Land that claim before implementation. Preserve picker
+user activation, parser callbacks and original error identity, disposal and
+cleanup. GIF first-frame timing and synchronous CSV parser throws need explicit
+review. Qualify actual uploads and the existing hosted production ownership gate;
+retain the original over-budget observation and all other chunk checks.
 
 | Priority | Current evidence | Concrete next task and acceptance |
 | --- | --- | --- |
-| 1. Complete conversion assessment | All 151 selected conversion regressions, 31 complete Console/Font source/export controls and 28 CI contract controls pass. Latest full assessment reaches its unchanged CPU bound without a report. A real-input profile failed saving a large observation; its partial samples are diagnostic only. | Measure importer and Creator costs before selecting a change. The proposed negative-regex shortcut is deferred: mutable regexes and observable callbacks require checks whose net saving is unproven. Preserve fallback observations, diagnostics, full input order and existing bounds. Qualify complete affected modules. Obtain and independently read the full 225-input JSON/gzip report before updating counts. |
+| 1. Complete conversion assessment | All 151 selected conversion regressions, 31 complete Console/Font source/export controls and 28 CI contract controls pass. Latest full assessment reaches its unchanged CPU bound without a report. The earlier large-observation profile failure is retained; its changed gzip observer now completes one full RAW-input profile. Independent phase attribution remains required. | Measure importer and Creator costs before selecting a change. The proposed negative-regex shortcut is deferred: mutable regexes and observable callbacks require checks whose net saving is unproven. Preserve fallback observations, diagnostics, full input order and existing bounds. Qualify complete affected modules. Obtain and independently read the full 225-input JSON/gzip report before updating counts. |
 | 2. Native Array semantics | Supplier PR57 is merged; Lite retains the explicit reviewed source pin. The repaired installation, 64 native controls, 17 additional controls and two public roundtrips have independent saved-data review at their exact tested source. Stop/quit cleanup completed. | Preserve these expectations and source identities. Extend actual runtime comparisons when conversion changes affect emitted code; verify unrelated scripts, errors and runtime ownership. These finite scalar cases do not qualify graphics or full games. |
 | 3. Original compiler and simulator | The 41 dependency contexts retain 29 original compiler successes and 12 failures. Six broader controls lack their required original SDK/browser runtime. | Use one final hosted SDK/browser qualification for the actual final candidate, with emitted file maps, assets and dependencies. Preserve original compiler diagnostics. Do not substitute a different SDK or call missing-runtime cases passes. |
 | 4. Diagnostic-led feature work | Historical unsupported constructs are not a fresh census. | Group completed current report diagnostics by construct, source location and project. Implement one family at a time with successful, negative and roundtrip cases. Keep import, Creator, native runtime and original-runtime results separate. |
