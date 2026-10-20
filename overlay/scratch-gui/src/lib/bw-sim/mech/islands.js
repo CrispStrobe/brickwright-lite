@@ -7,7 +7,7 @@
 // Ground added unless opts.ground===false.
 
 import {vecAdd, vecSub, mat3MulVec3, quatMul, quatFromLDrawMat, quatNormalize} from './vec.js';
-import {LDU_M, PART_FRICTION, lduToWorld, partMotorJoint, colliderVolume} from '../contracts.js';
+import {LDU_M, PART_FRICTION, lduToWorld, motorNodeShare, colliderVolume} from '../contracts.js';
 
 /** Fraction of a v1 motor's mass that belongs to the output (turning) body (PartMeta v2: internalJoints[].massFraction). */
 export {MOTOR_OUTPUT_MASS_FRACTION} from '../contracts.js';
@@ -101,10 +101,9 @@ export const buildIslands = (nodes, edges, catalogMap, diagnostics = [], opts = 
             const nodesForPart = nodeIdsInGroup.filter(nid => nodes.get(nid).partId === pid);
             for (const nid of nodesForPart) {
                 const meta = nodes.get(nid).meta;
-                const shaft = partMotorJoint(meta);
-                if (shaft) {
-                    const isOut = nid.endsWith('#out');
-                    totalMassGrams += meta.massGrams * (isOut ? shaft.massFraction : (1 - shaft.massFraction));
+                const share = motorNodeShare(meta, nid);
+                if (share) {
+                    totalMassGrams += meta.massGrams * share.fraction;
                 } else {
                     // Non-motor: include once per distinct part (nodesForPart length should be 1)
                     if (nid !== nodesForPart[0]) continue;
@@ -125,10 +124,9 @@ export const buildIslands = (nodes, edges, catalogMap, diagnostics = [], opts = 
                     const placed = node.placed;
                     const wPos = partWorldPos(placed);
                     let mass = meta.massGrams;
-                    const shaft = partMotorJoint(meta);
-                    if (shaft) {
-                        const isOut = nid.endsWith('#out');
-                        mass *= isOut ? shaft.massFraction : (1 - shaft.massFraction);
+                    const share = motorNodeShare(meta, nid);
+                    if (share) {
+                        mass *= share.fraction;
                     } else {
                         if (nid !== nodesForPart[0]) continue;
                     }
@@ -163,27 +161,26 @@ export const buildIslands = (nodes, edges, catalogMap, diagnostics = [], opts = 
                 const node = nodes.get(nid);
                 const meta = node.meta;
                 const placed = node.placed;
-                const shaft = partMotorJoint(meta);
-                const isMotor = !!shaft;
-                const isOutNode = nid.endsWith('#out');
+                const share = motorNodeShare(meta, nid);
+                const isMotor = !!share;
                 let colliderIndices;
                 if (isMotor) {
-                    const outSet = new Set(shaft.movingColliders || []);
-                    if (isOutNode) colliderIndices = [...outSet];
-                    else colliderIndices = meta.colliders.map((_, idx) => idx).filter(idx => !outSet.has(idx));
+                    // A driven joint's moving side, or the rest of the part (contracts.js motorNodeShare).
+                    colliderIndices = share.colliders;
                 } else {
                     // Non-motor: include all colliders, but if part appears in multiple nodes (shouldn't for non-motor), avoid duplicating colliders multiple times per island
                     // So we include colliders only for first node of that part in this island
                     // We'll handle de-duplication: if we already processed this pid, skip remaining nodes
                     // For non-motor, nodesForPart length should be 1, but if 2 due to bug, we include once
                     if (nid !== nodesForPart[0]) continue;
-                    colliderIndices = meta.colliders.map((_, idx) => idx);
+                    // A part only drawn (a tread link: its sprockets carry it on the floor, kinds/chain.js) has none in the core.
+                    colliderIndices = meta.drawnOnly ? [] : meta.colliders.map((_, idx) => idx);
                 }
                 const pwQuat = partWorldQuat(placed);
                 // This node's share of the part's mass, spread over its colliders by volume: a collider
                 // carries `massKg` (and `part`), so the core puts the body's centre of mass and inertia
                 // where the parts' masses are, not at the colliders' volume centroid (jolt-core.js).
-                const nodeMassKg = meta.massGrams / 1000 * (isMotor ? (isOutNode ? shaft.massFraction : 1 - shaft.massFraction) : 1);
+                const nodeMassKg = meta.massGrams / 1000 * (isMotor ? share.fraction : 1);
                 const nodeVolume = colliderIndices.reduce((acc, idx) => acc + colliderVolume(meta.colliders[idx]), 0);
                 for (const idx of colliderIndices) {
                     const col = meta.colliders[idx];

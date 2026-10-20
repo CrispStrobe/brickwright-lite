@@ -54,18 +54,27 @@ try{
         return hero?{x:hero.x,wallOrder:v.wallOrder,wallCount:v.wallCount,wallColumn:v.wallColumn,wallRow:v.wallRow,sawContact:v.sawContact,afterPause:v.afterPause,secondSawVelocity:v.secondSawVelocity,tileOrder:v.tileOrder,tileColumn:v.tileColumn,tileRow:v.tileRow,sameLocation:v.sameLocation,pixel:p.arcade_imagePixel({IMAGE:p.arcade_spriteImage({ID:v.hero}),X:0,Y:0}),errors:window.__bwTerrainErrors||[]}:null;
     });
     await page.waitForFunction(()=>Object.keys(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState?.sprites||{}).length>0,null,{timeout:30000});
+    const kindBinding=await page.evaluate(()=>{
+        const vm=window.__brickwrightStore.getState().scratchGui.vm;
+        const variables=Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
+        const hero=vm.runtime.bwArcadeDeviceState.sprites[variables.hero];
+        const kind=vm.runtime._primitives.arcade_spriteKindValue({NAME:'Player'});
+        if(!hero || typeof kind!=='number' || hero.kind!==kind)throw new Error('Authored terrain hero must retain its registered numeric Player kind');
+        window.__bwTerrainPlayerKind=kind;return {kind,hero:hero.id};
+    });
+    assert.equal(kindBinding.kind,1000,'selected original SpriteKind.Player');
     const initial=await state();assert.equal(initial.x,20);
     await page.getByTestId('bw-arcade-right').click();
     await page.waitForFunction(()=>{
         const vm=window.__brickwrightStore.getState().scratchGui.vm;
-        const hero=Object.values(vm.runtime.bwArcadeDeviceState?.sprites||{}).find(s=>s.id && s.kind==='Player');
+        const hero=Object.values(vm.runtime.bwArcadeDeviceState?.sprites||{}).find(s=>s.id && s.kind===window.__bwTerrainPlayerKind);
         const variables=vm.runtime.targets.flatMap(t=>Object.values(t.variables));
         return hero?.x===31 && hero?.vx===0 && variables.some(v=>v.name.replace(/^Game_/,'')==='wallOrder' && v.value==='AB');
     },null,{timeout:30000});
     const blocked=await state();assert.equal(blocked.wallOrder,'AB');assert.equal(blocked.wallCount,1);assert.equal(blocked.wallColumn,4);assert.equal(blocked.wallRow,1);assert.equal(blocked.sawContact,true);assert.equal(blocked.afterPause,true);assert.equal(blocked.secondSawVelocity,true);assert.equal(blocked.tileOrder,'');
     const contact=await page.evaluate(()=>{
         const vm=window.__brickwrightStore.getState().scratchGui.vm;
-        const hero=Object.values(vm.runtime.bwArcadeDeviceState.sprites).find(s=>s.id && s.kind==='Player');
+        const hero=Object.values(vm.runtime.bwArcadeDeviceState.sprites).find(s=>s.id && s.kind===window.__bwTerrainPlayerKind);
         return vm.runtime._primitives.arcade_isHittingTile({ID:hero.id,DIRECTION:2});
     });assert.equal(contact,true);
     await page.getByTestId('bw-arcade-a').click();
@@ -86,6 +95,6 @@ try{
     await page.waitForFunction(()=>document.querySelector('[data-testid="bw-code-editor"] .cm-content')?.textContent.includes('arcade set tilemap data'),null,{timeout:30000});
     assert.match(await editor.innerText(),/arcade register wall kind/);assert.match(await editor.innerText(),/arcade register tile kind/);assert.match(await editor.innerText(),/WHEN arcade wall handler/);assert.match(await editor.innerText(),/WHEN arcade tile handler/);assert.match(await editor.innerText(),/arcade event location/);
     assert.deepEqual((await state()).errors,[]);assert.deepEqual(errors,[]);
-    const report={generatedAt:new Date().toISOString(),authoring:'visible Code editor → To blocks → green flag → controller wall callbacks/tile callbacks/reset → From blocks',unsupported:imported.unsupported,initial,blocked,contact,overlap,rendered,final:await state(),errors};
+    const report={generatedAt:new Date().toISOString(),authoring:'visible Code editor → To blocks → green flag → controller wall callbacks/tile callbacks/reset → From blocks',unsupported:imported.unsupported,kindBinding,initial,blocked,contact,overlap,rendered,final:await state(),errors};
     const out=process.argv.includes('--out')?process.argv[process.argv.indexOf('--out')+1]:'test-results/arcade-terrain-events-browser-current.json';fs.writeFileSync(out,JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));
 }finally{await browser?.close();await new Promise(done=>server.close(done));}

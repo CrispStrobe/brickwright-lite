@@ -59,6 +59,9 @@ const redPixels = async (page, at, half = 26) => {
     await page.mouse.move(box.x + 4, box.y + 4);
     // Two frames drawn since the pointer left (the hover highlight is gone), not a fixed sleep.
     await page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
+    // The Build view keeps one frame in flight (editor-view3d.js render): a change made while the
+    // GPU is busy is drawn a frame later. Wait until what it shows is drawn and finished.
+    await page.waitForFunction(() => !window.__bwSimLab.editView || !window.__bwSimLab.editView.drawing, null, {timeout: 30000, polling: 50});
     const png = await page.screenshot({clip: {x: at[0] - half, y: at[1] - half, width: 2 * half, height: 2 * half}});
     return page.evaluate(async b64 => {
         const img = new Image();

@@ -45,6 +45,15 @@ import gdxforIconURL from './gdxfor/gdxfor.png';
 import gdxforInsetIconURL from './gdxfor/gdxfor-small.svg';
 import gdxforConnectionIconURL from './gdxfor/gdxfor-illustration.svg';
 import gdxforConnectionSmallIconURL from './gdxfor/gdxfor-small.svg';
+import {pickLocale, browserLocale} from '../../bw-i18n.js';
+
+// The Robot Lab blocks (scratch-vm crispstrobe/robotlab): what the library card says, in the
+// learner's language, and the category icon (a brick on two wheels).
+const ROBOT_LAB_TEXT = {
+    en: {description: 'Drive the Robot Lab from blocks: load a model, turn its motors, read its sensors and parts.'},
+    de: {description: 'Steuere das Robot Lab mit Blöcken: Modell laden, Motoren drehen, Sensoren und Teile lesen.'}
+};
+const ROBOT_LAB_ICON = 'static/extension-posters/robotlab-badge.svg';
 
 export default [
     {
@@ -85,6 +94,14 @@ export default [
         iconURL: 'static/extension-posters/csp.png',
         insetIconURL: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iOCIgZmlsbD0iIzJFOEVCOCIvPjx0ZXh0IHg9IjI0IiB5PSIyMCIgZm9udC1zaXplPSIxMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZiIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPkdQSU88L3RleHQ+PGcgZmlsbD0iI2ZmZiI+PHJlY3QgeD0iOSIgeT0iMzAiIHdpZHRoPSI0IiBoZWlnaHQ9IjkiLz48cmVjdCB4PSIxNiIgeT0iMzAiIHdpZHRoPSI0IiBoZWlnaHQ9IjkiLz48cmVjdCB4PSIyMyIgeT0iMzAiIHdpZHRoPSI0IiBoZWlnaHQ9IjkiLz48cmVjdCB4PSIzMCIgeT0iMzAiIHdpZHRoPSI0IiBoZWlnaHQ9IjkiLz48cmVjdCB4PSIzNyIgeT0iMzAiIHdpZHRoPSIyIiBoZWlnaHQ9IjkiLz48L2c+PC9zdmc+',
         description: 'Set and read generic GPIO pins (0–7) — lights the Widgets pane strip; round-trips with the DOS Forth bench.',
+        featured: true
+    },
+    {
+        name: 'Robot Lab',
+        extensionId: 'robotlab',
+        iconURL: 'static/extension-posters/robotlab.svg',
+        insetIconURL: ROBOT_LAB_ICON,
+        description: ROBOT_LAB_TEXT[pickLocale(browserLocale(), ROBOT_LAB_TEXT)].description,
         featured: true
     },
     {

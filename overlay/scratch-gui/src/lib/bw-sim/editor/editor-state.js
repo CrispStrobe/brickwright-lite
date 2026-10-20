@@ -41,11 +41,12 @@ const deepFreeze = v => {
 /** A frozen part: `fields` copied (a caller's arrays are never kept). */
 const frozenPart = fields => deepFreeze(copyValue(fields));
 
-/** A frozen model from parts (already frozen), and groups / steps (frozen or not). */
-const makeModel = (version, parts, groups, steps) => {
+/** A frozen model from parts (already frozen), and groups / steps / rubber bands (frozen or not). */
+const makeModel = (version, parts, groups, steps, belts = null) => {
     const out = {version, parts: Object.freeze(parts)};
     if (groups) out.groups = deepFreeze(groups);
     if (steps) out.steps = deepFreeze(steps);
+    if (belts && belts.length) out.belts = deepFreeze(belts);
     return Object.freeze(out);
 };
 /** The editor's own frozen copy of a model given to it (the caller's model is never kept or changed). */
@@ -53,7 +54,8 @@ const importModel = model => {
     const groups = model.groups ? model.groups.map(g => ({id: g.id, name: g.name, parts: g.parts.slice()})) : null;
     // Building steps from `0 STEP` lines ride along; parts deleted since are skipped where they are read.
     const steps = model.steps ? model.steps.map(ids => ids.slice()) : null;
-    return makeModel(model.version, model.parts.map(frozenPart), groups, steps);
+    const belts = model.belts ? model.belts.map(b => ({id: b.id, band: b.band, around: b.around.slice()})) : null;
+    return makeModel(model.version, model.parts.map(frozenPart), groups, steps, belts);
 };
 
 /** The next free part id, as snap.js placePart picks it (`p<n+1>`, then counting up). */
@@ -210,8 +212,18 @@ export const createEditor = ({model, catalog}) => {
 
     const indexOf = id => current.parts.findIndex(p => p.id === id);
     const hasPart = id => current.parts.some(p => p.id === id);
-    /** A new model: `parts` (frozen parts, unchanged ones shared) and the current groups and steps unless given. */
-    const derive = (parts, groups = current.groups || null) => makeModel(current.version, parts, groups, current.steps || null);
+    /**
+     * A new model: `parts` (frozen parts, unchanged ones shared) and the current groups and steps unless
+     * given. A rubber band goes with the parts it is round: one round a part that is gone goes too.
+     */
+    const derive = (parts, groups = current.groups || null, belts = current.belts || null) => {
+        let kept = belts;
+        if (kept && kept.length && parts !== current.parts) {
+            const ids = new Set(parts.map(p => p.id));
+            kept = kept.filter(b => b.around.every(id => ids.has(id)));
+        }
+        return makeModel(current.version, parts, groups, current.steps || null, kept);
+    };
     /** `parts` with the part at `idx` replaced by a frozen copy carrying `changes` (a field set to undefined is removed). */
     const withPart = (parts, idx, changes) => {
         const fields = {...parts[idx], ...changes};
@@ -307,6 +319,20 @@ export const createEditor = ({model, catalog}) => {
                 const gid = nextGroupId({groups});
                 groups.push({id: gid, name: name || `Group ${gid}`, parts: [...toMerge]});
                 next = derive(current.parts, groups);
+            } else if (cmd.type === 'addBelt') {
+                // A rubber band round two or more parts (editor/belt-path.js lays it, kinds/belt.js simulates it).
+                const {around, band} = cmd;
+                if (!Array.isArray(around) || around.length < 2 || new Set(around).size !== around.length) throw new Error('a rubber band goes round at least 2 parts');
+                for (const pid of around) if (!hasPart(pid)) throw new Error(`unknown id '${pid}'`);
+                if (typeof band !== 'string' || !band) throw new Error('bad band');
+                const ids = new Set((current.belts || []).map(b => b.id));
+                let n = 1;
+                while (ids.has(`b${n}`)) n++;
+                next = derive(current.parts, current.groups || null, [...(current.belts || []), {id: `b${n}`, band, around: around.slice()}]);
+            } else if (cmd.type === 'removeBelt') {
+                const {id} = cmd;
+                if (!current.belts || !current.belts.some(b => b.id === id)) throw new Error(`unknown rubber band '${id}'`);
+                next = derive(current.parts, current.groups || null, current.belts.filter(b => b.id !== id));
             } else if (cmd.type === 'ungroup') {
                 const {id} = cmd;
                 if (!current.groups || !current.groups.some(g => g.id === id)) throw new Error(`unknown group '${id}'`);

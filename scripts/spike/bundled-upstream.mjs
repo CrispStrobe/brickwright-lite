@@ -42,7 +42,7 @@ export const ROOT = resolve(here, '../..');
 export const BUNDLES = resolve(ROOT, 'overlay/scratch-vm/src/extensions/crispstrobe');
 
 /** CrispStrobe/extensions commit these sha256s were taken at. */
-export const UPSTREAM_COMMIT = 'd7f51b73b8dab3d2f96330607cb2afcb30bf09fc';
+export const UPSTREAM_COMMIT = '1cf214d1a684a39378111567dd4f1c741d0627d9';
 export const UPSTREAM_REPO = 'CrispStrobe/extensions';
 
 /**
@@ -137,6 +137,8 @@ export const LITE_ONLY = {
         'must not be upstreamed while no default build carries them (docs/PEERS-SECURITY-REVIEW.md).',
     bwgpio: 'Lite-native. Generic GPIO pin blocks (set pin / read pin) that drive the Widgets pane\'s ' +
         'GPIO strip and round-trip with the DOS Forth bench\'s pin!/pin@ words through the Code tab.',
+    robotlab: 'Lite-native. The Robot Lab blocks call runtime.robotLab, the API the app\'s Robot Lab pane ' +
+        'installs over its physics session; without that app there is nothing to steer.',
 };
 
 /**

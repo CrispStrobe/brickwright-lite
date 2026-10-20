@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
+import {createArcadeDiscreteTimers} from './helpers/arcade-discrete-timers.mjs';
 
 for(const [name,call,record] of [
     ['omitted','carnival.customGameOverExpanded("Hello")',['high-score',7]],
@@ -14,10 +15,14 @@ for(const [name,call,record] of [
 ])test('custom carnival '+name+' runs and preserves optional arguments through export/reimport',async()=>{
     const source='info.setScore(7)\n'+call;
     const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
-    const run=await runProgram(imported.code,{frames:0,storage:true});let again;
+    const run=await runProgram(imported.code,{frames:0,storage:true,frameAuthority:'timed'});let again;
+    const finish=async run=>{
+        const clock=createArcadeDiscreteTimers();run.vm.stopAll();run.vm.runtime.bwArcadeProgramClock=clock;
+        run.vm.runtime.updateCurrentMSecs=()=>{run.vm.runtime.currentMSecs=clock.now();};run.vm.greenFlag();
+        await stepFrames(run.vm,1,0);await clock.advanceTo(4000);
+    };
     try {
-        let now=0;run.vm.runtime.updateCurrentMSecs=()=>{run.vm.runtime.currentMSecs=now;};
-        for(let i=0;i<200;i++){await stepFrames(run.vm,1,20);now+=20;}
+        await finish(run);
         assert.deepEqual(run.errors,[]);
         const state=run.vm.runtime.bwArcadeDeviceState;
         assert.ok(state.backgroundImage);assert.ok(state.sceneFrame.pixels.some(c=>c!==0 && c!==15));
@@ -29,12 +34,11 @@ for(const [name,call,record] of [
         if(name==='omitted')assert.match(exported.ts,/undefined, undefined, undefined, undefined\)/);
         assert.equal(JSON.parse(exported.files['pxt.json']).dependencies['arcade-carnival'],'github:microsoft/arcade-carnival#v0.0.7');
         const reimported=arcadeToPseudocode(exported.ts);assert.deepEqual(reimported.unsupported,[]);
-        again=await runProgram(reimported.code,{frames:0,storage:true});
-        let againNow=0;again.vm.runtime.updateCurrentMSecs=()=>{again.vm.runtime.currentMSecs=againNow;};
-        for(let i=0;i<200;i++){await stepFrames(again.vm,1,20);againNow+=20;}
+        again=await runProgram(reimported.code,{frames:0,storage:true,frameAuthority:'timed'});
+        await finish(again);
         assert.deepEqual(again.errors,[]);
         assert.deepEqual(again.vm.runtime.getTargetForStage().bwArcadeSettings.values,values);
-    }finally{run.vm.quit?.();again?.vm.quit?.();}
+    }finally{run.vm.stopAll();run.vm.quit?.();again?.vm.stopAll();again?.vm.quit?.();}
 });
 
 test('custom carnival unsupported scoring, effects, shadowing and arity stay diagnosed',()=>{

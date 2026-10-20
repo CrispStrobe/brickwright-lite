@@ -41,7 +41,7 @@
  *  - Non-finite numbers in JSON: jsonReplacer writes NaN/Infinity/-Infinity/-0
  *    as {bwNumber: '...'}, and decode turns them back into numbers.
  *  - JavaScript operators over these values: compare (== != === !== < > <= >=),
- *    equal, indexOf (by equal), binary (+ - * / %), unary (+ -), truth. Two
+ *    equal, indexOf (by equal), binary (+ - * / % **), unary (+ -), truth. Two
  *    references are equal only when they are the same reference.
  *
  * WHAT IT DOES NOT DO (measured on main, test/bw-values.test.mjs)
@@ -83,6 +83,8 @@ const makeValues = () => {
     "music",
     "sevenseg",
     "buffer",
+    "object",
+    "callable",
   ];
   const scopes = new WeakMap();
   const session =
@@ -213,6 +215,18 @@ const makeValues = () => {
   const binary = (left, op, right) => {
     const a = decode(left);
     const b = decode(right);
+    if (
+      ["&", "|", "^", "<<", ">>", ">>>"].includes(op) &&
+      [a, b].some(
+        (value) =>
+          value !== null &&
+          !["number", "string", "boolean", "undefined"].includes(typeof value)
+      )
+    ) {
+      throw new Error(
+        "Bitwise conversion requires primitive values, not opaque references or objects"
+      );
+    }
     switch (op) {
       case "+":
         return a + b;
@@ -224,6 +238,20 @@ const makeValues = () => {
         return a / b;
       case "%":
         return a % b;
+      case "**":
+        return a ** b;
+      case "&":
+        return a & b;
+      case "|":
+        return a | b;
+      case "^":
+        return a ^ b;
+      case "<<":
+        return a << b;
+      case ">>":
+        return a >> b;
+      case ">>>":
+        return a >>> b;
       default:
         throw new Error("Unknown value arithmetic " + op);
     }
@@ -232,6 +260,17 @@ const makeValues = () => {
     const a = decode(value);
     if (op === "+") return +a;
     if (op === "-") return -a;
+    if (op === "~") {
+      if (
+        a !== null &&
+        !["number", "string", "boolean", "undefined"].includes(typeof a)
+      ) {
+        throw new Error(
+          "Bitwise conversion requires primitive values, not opaque references or objects"
+        );
+      }
+      return ~a;
+    }
     throw new Error("Unknown unary value arithmetic " + op);
   };
   const compare = (left, op, right) => {

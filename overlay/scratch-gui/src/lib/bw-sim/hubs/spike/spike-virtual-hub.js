@@ -281,6 +281,65 @@ export class SpikeVirtualHub {
     }
 
     /**
+     * A direct command from the Robot Lab API (api/robot-lab-api.js) to a motor on this hub:
+     * it goes through the hub's own controller, exactly as a SPIKE block's command does (the
+     * spikeprime extension calls the same `hubState.motors`), so the motor keeps ONE owner and
+     * the last command wins, as between two blocks of one program. SPIKE regulates every
+     * motor, so `power` is the SPIKE app's "start motor at N %" (a speed, N % of the motor's top
+     * speed), not an open-loop duty. Same shape as LabDirectHub.directCommand.
+     */
+    directCommand (port, command = {}) {
+        if (!this.motorPorts.has(port)) return {ok: false, code: 'no-motor', message: `there is no motor on port ${port}`};
+        const motors = this.hubState.motors;
+        const c = command;
+        const finite = v => typeof v === 'number' && Number.isFinite(v);
+        try {
+            if (c.stop !== undefined) {
+                if (!['brake', 'coast', 'hold'].includes(c.stop)) return {ok: false, code: 'bad-command', message: 'stop takes brake, coast, hold'};
+                motors.stop(port, c.stop);
+                return {ok: true};
+            }
+            if (c.power !== undefined) {
+                if (!finite(c.power)) return {ok: false, code: 'bad-command', message: 'power is a number from -100 to 100'};
+                motors.runAtSpeed(port, motors.percentToDps(port, c.power));
+                return {ok: true};
+            }
+            const speed = c.speedDps === undefined ? motors.percentToDps(port, 50) : c.speedDps;
+            if (!finite(speed)) return {ok: false, code: 'bad-command', message: 'speed is a number of degrees per second'};
+            if (c.degrees !== undefined || c.position !== undefined) {
+                const amount = c.degrees !== undefined ? c.degrees : c.position;
+                if (!finite(amount)) return {ok: false, code: 'bad-command', message: 'degrees is a number'};
+                if (c.then !== undefined) motors.setStopAction(port, c.then);
+                const done = c.degrees !== undefined ? motors.runForDegrees(port, amount, speed) : motors.runToPosition(port, amount, speed);
+                return {ok: true, done: Promise.resolve(done).catch(() => 'interrupted')};
+            }
+            if (c.speedDps !== undefined) {
+                motors.runAtSpeed(port, speed);
+                return {ok: true};
+            }
+        } catch (error) {
+            return {ok: false, code: 'refused', message: error.message};
+        }
+        return {ok: false, code: 'bad-command', message: 'a motor command is {power}, {speedDps}, {degrees, speedDps}, {position, speedDps} or {stop}'};
+    }
+
+    /** What a port reports now (a motor's encoder, a sensor's reading), or null. */
+    readPort (port) {
+        const index = this.ports.indexOf(port);
+        if (index < 0) return null;
+        const data = this.hubState.data;
+        if (this.motorPorts.has(port)) {
+            const m = data.motors[index];
+            return {kind: 'motor', angleDeg: Number(m.position) || 0, speedDps: Number(m.measuredDegPerSec) || 0};
+        }
+        const s = data.sensors[index];
+        return s ? {...s} : null;
+    }
+
+    /** The ports with a motor, in plug order. */
+    motorPortIds () { return [...this.motorPorts.keys()]; }
+
+    /**
      * Everything the motor controller reads when it steps, as plain data (structured-clone
      * safe: the controllers' promise resolvers are left out — they decide nothing about
      * the motion), and the route's time.

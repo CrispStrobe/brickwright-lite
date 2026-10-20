@@ -132,3 +132,14 @@ The current evidence leaves clone hardware/firmware compatibility unresolved.
 Next useful discriminator: compare the same bytes on a genuine WeDo hub or
 identify this clone's model and buzzer hardware. Do not silently replace hub
 notes with iPad/Mac audio or present software sample playback as hub output.
+
+## The Robot Lab's virtual WeDo 2.0 hub (2026-10-19)
+
+The Robot Lab simulates a WeDo 2.0 Smart Hub on this protocol, not on LWP3
+(`overlay/scratch-gui/src/lib/bw-sim/hubs/wedo2/`; docs/LWP3-VIRTUAL-HUB-NOTES.md "WeDo 2.0"): the IO service
+`4F0E` with input values `1560`, input command `1563` and output command `1565`, attached IO `1527` on the
+advertised service `1523`, the battery service `180F`. Its byte layouts come from the SDK definitions above and
+scratch-vm's `scratch3_wedo2` (input/output command layouts, how values are read); the tone command is the one this
+note verified (`connectID, 02, 04, frequency, duration`), recorded by the virtual hub, not played. Nothing in this
+note's clone findings is reproduced there: the virtual hub announces its external ports, as a genuine hub does.
+

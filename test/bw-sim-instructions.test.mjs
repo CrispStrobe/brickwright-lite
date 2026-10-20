@@ -101,8 +101,10 @@ for (const {name, text} of MODELS_UNDER_TEST) {
         const at = stepIndex(plan);
         assert.deepEqual([...at.keys()].sort(), model.parts.map(p => p.id).sort(), 'every part exactly once');
         assertBuildable(name, model, plan);
-        // The hub comes first, as on page 1 of a SPIKE manual.
-        assert.ok(plan.steps[0].parts.includes('hub'), `${name}: the hub is in step 1`);
+        // The hub comes first, as on page 1 of a SPIKE manual; a model with no hub (the motor bench,
+        // driven by the Robot Lab itself) starts from its motor.
+        const first = model.parts.some(p => p.id === 'hub') ? 'hub' : 'motor';
+        assert.ok(plan.steps[0].parts.includes(first), `${name}: the ${first} is in step 1`);
         // Steps like a manual's: a few parts each.
         for (const s of plan.steps) assert.ok(s.parts.length <= STEP_MAX, `${name}: step of ${s.parts.length} parts`);
         const mean = model.parts.length / plan.steps.length;
@@ -120,7 +122,8 @@ for (const {name, text} of MODELS_UNDER_TEST) {
             assert.equal(at.get(p.id), Math.max(...joins.map(id => at.get(id))), `${name}: ${p.id} joins ${joins.join(', ')}`);
             checked++;
         }
-        // The RCX bumper car is a studded build: its three pins are all it has (two of them join three parts).
+        // Four at least where a model has them; the RCX bumper car is a studded build whose three pins
+        // are all it has (two join three parts), and the hubless motor bench has a single axle.
         assert.ok(checked >= (fasteners >= 4 ? 4 : 1), `${name}: ${checked} of ${fasteners} pins and axles checked`);
         // Each wheel shares its step with the axle it sits on.
         for (const wheel of model.parts.filter(p => category(model, p.id) === 'wheel')) {

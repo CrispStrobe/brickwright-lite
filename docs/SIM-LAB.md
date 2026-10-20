@@ -2,7 +2,43 @@
 
 The Robot Lab simulates a model built from real LEGO Technic parts and lets a program drive it through the **virtual SPIKE Prime hub**, the same hub the SPIKE arena uses. Scratch blocks, DEVICE SPIKE pseudocode and imported SPIKE 3 programs reach it unchanged: they cannot tell the hub is simulated.
 
-The code and its paths call it **Sim Lab** (`lib/bw-sim/`, `sim-lab-pane.jsx`); the tab the learner sees is **Robot Lab (beta)** / **Roboter-Labor (Beta)**.
+The code and its paths call it **Sim Lab** (`lib/bw-sim/`, `sim-lab-pane.jsx`); the learner sees the **Robot Lab** / **Roboter-Labor** tab.
+
+## Where it lives
+
+The Robot Lab is **its own editor tab**, after Blocks, Costumes, Sounds, Code and Circuit (and FPGA when that is switched on): `components/tw-pseudocode/robot-lab-tab.jsx`, appended last in `gui.jsx` so no existing tab index moves (its own index is 5, or 6 with the FPGA tab). The 3D view fills the tab. The tab costs nothing until it is first shown: the pane and its toolbar arrive then (chunk `bw-robot-lab`), the scene, the catalogue and the 3D views after that (chunk `bw-sim-lab`), the physics in its worker (`bw-sim-physics-worker`, Jolt in `bw-sim-jolt`) — `scripts/verify-boot-payload.mjs` checks all four stay out of the first load and out of the arena's chunk. Once shown, the tab stays mounted: the model, the camera and a running program survive a trip to the Code tab.
+
+**One hub, one world.** The Robot Lab and the SPIKE arena (right pane, **SPIKE arena** button in the Code tab) share one virtual SPIKE hub (`lib/virtual-hub/shared-spike-hub.js`), so they never both drive it. The arena no longer embeds the Lab: it offers **Open in Robot Lab**, which shows the tab. While the Robot Lab holds a session the arena is not mounted and says *“The Robot Lab tab is driving the virtual hub now…”*, with **Show the Robot Lab** and **Use the arena here**; the latter closes the Lab's session (its model is saved with the project first) and the tab then offers **Open the Robot Lab here**. The hand-over is three window events named in `lib/robot-lab-events.js`. *Why not show the Lab inside the arena as well:* two views of one session would need two WebGL contexts and two render loops on school hardware, and the arena's own mat would still be a second world; one session in one place, with a button from the other, is the honest model.
+
+**The program it runs** is the project's, on the green flag (Run), through the project's hub: today the virtual SPIKE Prime, behind the VirtualHub boundary (docs/ROBOT-LAB-ARCHITECTURE.md R1); the tab knows nothing SPIKE-specific, so other hubs plug in at that boundary.
+
+## The toolbar
+
+One row of grouped icon buttons (`sim-lab-toolbar.jsx`, words in `sim-lab-toolbar-text.js`, EN and DE). Every button has its name as its accessible name and a tooltip with the name and the shortcut, e.g. *“Turn 90° (R)”* / *“Um 90° drehen (R)”*, *“Undo (Ctrl+Z)”* / *“Rückgängig (Strg+Z)”*. Icons are inline SVG strokes, as the Code tab's icon is: no icon font, no new dependency.
+
+- **Mode** — a segmented control: **Simulate · Build · Instructions**.
+- **Simulate:** **Run/Pause**, **Reset**; **View**: Home, Fit, Top, Front, Side; **Show**: ports, how it moves (switches); **File** menu (Open a model…, Save as .ldr / .mpd / .io). Under the toolbar one line holds the Model and Mat lists, the program route (desktop), **Load example program** and the status.
+- **Build:** **Edit**: Move with arrows (W), Turn with rings (E), Turn 90° (R), Turn back 90° (Shift+R), Tip 90° (T); **Arrange**: Delete, Duplicate, Copy, Paste, Select all, Group, Ungroup, Cancel (Esc); **Undo / Redo**; **View**: Home, Fit (F), Top, Front, Side, Grid; **Show**: ports, how it moves; **Tools**: mirror ↔ / ⇅, Hide (H), Isolate (I), Show all (Shift+H), Measure (M), Eyedropper (K); **Panels**: Parts, Properties, Shortcuts (?); **File**. Under the toolbar: the selection as a chip, its Port list, the hidden-parts chip, and a one-line hint of what a click will do now.
+- **Help (?)** at the right end holds what used to be the paragraph above everything: what the Lab is, and how to move the view (and, in Build, how to select and the full shortcut sheet).
+- **Narrow panes.** From 1000 px wide the toolbar may take a second row and shows everything; narrower it keeps one row and the rarer tools go to **More** (⋯), with their names and shortcuts; below 720 px the Lab is compact (the parts palette is a drawer over the view, notes fold to one line). Under a finger every button is at least 40 × 40 px.
+- **Side panels (Build).** The parts palette is a panel left of the view and the properties a panel on its right (from 1280 px; narrower they open over the view); both close from the toolbar and are resized with the app's pane divider (`gui/pane-divider.jsx`; double-click closes).
+
+## Moving the view
+
+The same in Simulate and Build (`lib/bw-sim/view/camera-nav.js`):
+
+| Input | Does |
+|---|---|
+| Left-drag on empty space, middle-drag | orbit about the target |
+| Right-drag; Shift+drag in Simulate | pan (in Build, Shift+drag draws a selection box, so Build pans with the right button) |
+| Wheel | zoom toward the pointer |
+| One finger / two fingers | orbit / pinch-zoom and pan |
+| ← → ↑ ↓ on the focused view | orbit 15° (in Build only with nothing selected) |
+| Shift+arrows | pan a tenth of the view |
+| + / − | zoom in / out |
+| Home · Fit (F) · Top · Front · Side | the whole model from that side; Fit keeps the direction |
+
+In Build a press on a part (or on the gizmo) belongs to the part: a drag there moves the part and leaves the camera.
 
 How it is built, and what comes next, is in `docs/SIM-LAB-PLAN.md`.
 
@@ -16,7 +52,7 @@ How it is built, and what comes next, is in `docs/SIM-LAB-PLAN.md`.
    Zones mat) and the **Maze runner** (the base with a distance sensor on port **D** looking ahead and a
    colour sensor on port **C** looking down, for the Maze mat). Each of the last four comes with an
    example program: the examples are below.
-2. Open the SPIKE simulator (**SPIKE arena** button in the Code tab) and pick the **Robot Lab (beta)** tab.
+2. Open the **Robot Lab** tab (or press **Open in Robot Lab** in the SPIKE arena).
 3. Press **Run**. As the arena's Start does, Run connects the program to the virtual hub and starts it on the green flag. **Pause** stops the program and the clock; **Reset** reloads the model.
    The program's clock is the simulation's: `wait 2 seconds` is 2 s of simulated time on every computer. When a computer cannot simulate in real time, the whole program runs slower and the status line says how fast, e.g. *“0.40× real time”* (*“0,40× Echtzeit”*); what the robot does stays the same.
 
@@ -168,6 +204,8 @@ The two waits are what make the moves repeatable: `stop movement` shorts the mot
 
 **RCX bumper car / RCX line follower (2026-10-19).** The first robot on another hub: a LEGO MINDSTORMS **RCX 2.0** (LDraw 76454c02) on two 9 V **mini-motors** 71427 (outputs A left, C right, 56 mm wheels straight on their output axles), a ball castor at the front on two Technic bricks, a **touch sensor** 879 as a bumper on the RCX's top front (input 1) and a **light sensor** 9758 looking down beside the castor (input 2, held by a pin/bush connector with two studs; its eye 8 mm over the floor). It is programmed in **NQC** for the RCX's standard firmware: **Load example program** puts the NQC text into the NQC tab, compiles it with the in-browser NQC and downloads it to the Lab's RCX ("Robot Lab RCX", chosen in the pane's *RCX downloads go to* picker); **Run** starts it, as the RCX's Run button does. The NQC tab's *send to brick* and the RCX blocks' download block go to whichever target is chosen there — the IR tower (a real RCX) stays the default and is never fallen back to. The examples: `rcx-bumper-car.nqc` (Wall mat: forward at power 3 until the bumper is pressed, back 0.3 s, turn 0.2 s, stop) and `rcx-line-follower.nqc` (Line Oval: edge following with `THRESHOLD 41` between white ≈ 51 % and black ≈ 31 %, one lap in about 7 s). The two motors are mirror images, so *forward* is `OnRev(OUT_A); OnFwd(OUT_C)`. Power levels set **torque, not speed**: the firmware drives a motor (p+1) of every 8 ms and floats it the rest, so an unloaded mini-motor turns at its full ~360 rpm at every level — at full power the start lifts the robot's front (its wheels are behind the RCX's centre of mass), which is why the bumper car uses power 3. Tests: `test/bw-sim-rcx-hub.test.mjs`. How the RCX is simulated, its sources and what is missing: `docs/ROBOT-LAB-RCX.md`.
 
+**EV3 wall stopper / NXT bumper bot (2026-10-19).** A LEGO MINDSTORMS **EV3** (LDraw 95646) and an **NXT** (53788), each between two Technic beams 15, with two of their motors behind (EV3 large motors 95658 / NXT motors 53787; B left, C right) on 88 mm wheels and two free 88 mm front wheels. The EV3 looks ahead with its **ultrasonic sensor** (input 4); the NXT's **touch sensor** (input 1) is its bumper. Their blocks reach the Lab's brick the way they reach a real one: over **Scratch Link Bluetooth**, where the Lab answers as *Virtual EV3* / *Virtual NXT* while the scene has that brick, and runs the **direct commands** the blocks send (clean-room from LEGO's EV3 Communication/Firmware Developer Kits and the NXT Bluetooth Developer Kit). **Run** connects the loaded EV3 or NXT extension to the brick and presses the green flag. Examples: `ev3-wall-stopper.bw` (DEVICE EV3: drive at 40 % until the wall is closer than 15 cm, brake) and `nxt-bumper-bot.blocks.json` (legonxt blocks, added to the sprite: both wheels one turn, then drive until the bumper touches). The stock Scratch EV3 blocks drive the EV3 too; the DEVICE EV3 example's extension (EV3 Universal) does not yet send over Scratch Link — an upstream bug. Tests: `test/bw-sim-ev3-direct-commands.test.mjs`, `test/bw-sim-nxt-direct-commands.test.mjs`, `test/bw-sim-ev3-extension-bytes.test.mjs`, `test/bw-sim-bt-hubs-program.test.mjs`; gate `--part=hubs-bt`. Protocol, sources, motor model and what is open: `docs/ROBOT-LAB-EV3-NXT.md`.
+
 `scripts/verify-sim-lab-browser.mjs` runs both examples through the pane's buttons in the built app and judges them the same way.
 
 If no SPIKE program is loaded when you press Run, the pane shows: *“No SPIKE program is loaded yet, so nothing tells the motors to turn. Write one in the Code tab and press ⇦ To blocks (or build it with blocks), then press Run — or drive the robot with the arrows below.”* The clock still runs, and the Drive pad works.
@@ -231,6 +269,71 @@ Not supported: Mecabricks `.zmbx`, LDD `.lxfml` without the ZIP, BrickLink/Rebri
 
 **Saved with the project.** “Save to your computer” stores the model the Lab shows (the Build scene, or the model being simulated) inside the `.sb3`, as its LDraw text, in the `simLab` section of the Brickwright bundle (`lib/bw-project-bundle.js`; record in `bw-sim/model/sim-lab-persist.js`). Opening the project restores it byte-for-byte; a project without one opens the reference driving base. Vanilla Scratch ignores the entry. Saving (`serializeModel` in `bw-sim/model/ldraw-model.js`) writes a flat single-file model (first FILE is main, submodels expanded), not an MPD.
 
+## Steering the Lab from blocks, `lab` words and Python/JS
+
+Owner (2026-10-18): *"all must be steerable also by pseudocode and blocks and other code flavors. motors etc directly by code/blocks. and also the hubs."* The Lab has one API, `lib/bw-sim/api/robot-lab-api.js`, and four ways to reach it — one method list, so a block, a word and a call are the same thing:
+
+| Block (extension **Robot Lab**, `robotlab`) | `lab` word | Python / JS (`_robotlab.…`) |
+|---|---|---|
+| load model [motor-bench] | `lab load model motor-bench` | `loadModel("motor-bench")` |
+| start the simulation | `lab start` | `start()` |
+| stop the simulation | `lab stop` | `stop()` |
+| reset the simulation | `lab reset` | `reset()` |
+| set motor [A] power to [50] % | `lab set motor A power to 50 %` | `setMotorPower("A", 50)` |
+| run motor [A] at [360] °/s | `lab run motor A at 360 degrees per second` | `setMotorSpeed("A", 360)` |
+| run motor [A] for [360] degrees at [180] °/s | `lab run motor A for 360 degrees at 180 degrees per second` | `runMotorDegrees("A", 360, 180)` |
+| stop motor [A] and [brake/coast/hold] | `lab stop motor A brake` | `stopMotor("A", "brake")` |
+| (motor [A] angle) | `(lab motor A angle)` | `motorAngle("A")` |
+| (motor [A] speed) | `(lab motor A speed)` | `motorSpeed("A")` |
+| (sensor [D] value) | `(lab sensor D value)` | `sensorValue("D")` |
+| (part [hub] [x/y/z/heading]) | `(lab part "hub" x)` | `partPosition("hub", "x")` |
+| (Robot Lab status) | `(lab status)` | `status()` |
+| when part [gear] touches [ground] | `WHEN lab part "gear" touches ground:` | `_robotlab.on("robotlab_whenTouch", fn, "gear", "ground")` (events mode) |
+
+- **Blocks**: *Add Extension → Robot Lab*. Every block calls one method of `runtime.robotLab`, which the Lab's pane installs when it opens (the `runtime.nqcCompile` / `runtime.rcxDownload` hook pattern). Before the Robot Lab tab has been opened there is no API: commands do nothing, reporters answer 0, the hat stays quiet and *Robot Lab status* says `not-open` — a program never crashes on a closed Lab. Motor and sensor menus offer the model's ports; any text works too: a port, a motor's part id (its `!BW ID`) or an actuator id (`a0`). EN and DE.
+- **`lab` words** work under any `DEVICE` line (or none). The table is `lib/robotLabDialect.js`, one table for the parser and the decompiler; a part name is "quoted" (`lab part "gear" x`), a bare word in a menu slot is a variable, as everywhere in the dialect. The words are lite's: they are layered on the pinned sb3-creator compiler at its registering door (`lib/robot-lab-pseudocode.js`, `lib/sb3-creator-register-art.js`), which stays byte-identical to upstream.
+- **Python/JS**: the Code tab writes `_robotlab.<method>(…)` and reads it back into the same blocks. The *simulated board* driver binds `_robotlab` to the Lab's API when the program runs in the page beside an open Lab; in the Code tab's console (a Web Worker, Skulpt) there is no Lab to reach, so the driver is neutral — press **⇦ To blocks** and the green flag to run a program in the Lab. Hats need *events* mode (as every extension hat does).
+- **Run** in the Lab presses the green flag for a Robot Lab program as for a SPIKE one; *start the simulation* inside a script never does (no loop). A motor told to turn makes the world run, like holding the drive pad's arrow.
+- **Units**: degrees and degrees per second for motors (the encoder angle, unwrapped), power −100…100 %, positions in cm (world frame, y up), heading in degrees clockwise seen from above (0 at load), distance in cm (−1 when nothing is in range), colour as a word (`red`, `none`), force 0–100.
+
+**Which motors a program may turn directly.**
+- A model **with no hub** (the *Motor bench* model) runs on the Lab's own `lab-direct` hub (`bw-sim/hubs/lab-direct/`), which owns every motor of the model. Its controller is the SPIKE hub's (trajectory generator + PI/damping loop into the DC model, `hubs/spike/spike-motor-controller.js`): power is an open-loop duty; speed and degrees are regulated; *run for degrees* ends when the **encoder** is within 1° of the target and slower than 10 °/s, then brakes (or holds) — never on a clock. Measured: 360 ± 2° (the bound is derived in `test/bw-sim-robot-lab-api.test.mjs`).
+- A motor on a **SPIKE hub port** run from Scratch blocks: the command goes to that hub's own controller, exactly as a SPIKE block's does (one owner per port; the last command wins, as between two blocks). SPIKE regulates every motor, so *power* there is SPIKE's "start motor at N %".
+- A motor on a hub that **runs its own program** (the SPIKE firmware route; the RCX VM when it lands here) is **refused** by name: *"Motor A belongs to the SPIKE Prime hub, whose own program drives it."* Two programs fighting over one port is not something a child can debug, and the hub program is the one the learner chose to run there. (Chosen over "allowed while the hub program is idle": an idle firmware still owns its ports and may start any moment.)
+- Every command crosses the VirtualHub boundary as port data and reaches the motor on the next 5 ms step. With the physics in the worker, a command made while a batch is in flight redoes that batch from the worker's checkpoint, as SPIKE commands always have: part poses are bit-identical to the main-thread run (tested).
+
+**The API for gates and hosts** (`window.__bwSimLab.api`, `runtime.robotLab`): scene — `status()`, `models()`, `loadModel(id | LDraw text)`, `start()`, `stop()`, `reset()`, `setTimeScale(0.1…1)` (slow motion), `camera('home'|'top'|'front'|'side'|'fit' | {follow: partId})`; lists — `motors()`, `sensors()`, `parts()`; control — `setMotor(actuator | part | port, {power} | {speedDps} | {degrees, speedDps, then} | {position, speedDps, then} | {stop: 'brake'|'coast'|'hold'})` → `{ok, done?}` or `{ok: false, code, message}`, `stopMotor(ref, action)`; reads — `encoder(ref)`, `readSensor(ref)`, `pose(partId)` (world position, quaternion, heading), `touching(a, b)`, `onContact(a, b, fn)` (a part, `ground`, or a mat obstacle such as `wall`; checked after every step, edge-triggered; boxes from the compiled colliders with a 1 mm margin). It reads the session only through its public surface and imports nothing from `physics/` or `mech/` (`test/bw-sim-hub-boundary-imports.test.mjs`).
+
+## Powered Up, BOOST and WeDo 2.0 hubs
+
+The Lab simulates the LEGO hubs a program reaches over Bluetooth Low Energy, and the **real** LEGO extensions
+drive them, unchanged: their transport is swapped underneath (docs/LWP3-VIRTUAL-HUB-NOTES.md has the protocol
+coverage and every source).
+
+| Hub | Part | Extension(s) | Example model |
+|---|---|---|---|
+| Technic Hub (Control+) | 22127 | **LEGO Powered Up** (`legopoweredup`) | *Technic Hub motor bench* — motor A turns one full turn and back |
+| BOOST Move Hub (motors A, B built in) | 26910 | **LEGO Boost** (`legoboostunified`), scratch-vm's *LEGO BOOST* | *BOOST rover* — drives ahead with one "AB" block, then spins on the spot |
+| Powered Up Hub (City), SPIKE Essential | 28738, 67351c01 | `legopoweredup` | — (parts and hubs; build your own) |
+| WeDo 2.0 Smart Hub | 19071 | **LEGO WeDo 2.0** (`wedo2unified`), scratch-vm's *LEGO Education WeDo 2.0* | *WeDo 2.0 rover with motion sensor* — drives until the sensor sees the wall |
+
+- **Run** connects the program's LEGO extension to the scene's hub — the extension's own *connect* (its block's
+  function), over whatever connection it is set to: *Web Bluetooth* reaches the hub through the Web Bluetooth shim,
+  *Scratch Link* through a Scratch Link double that answers only while the Lab connects (a real Scratch Link is used
+  any other time) — then presses the green flag. The hubs speak the hub's own bytes: LWP3 for the Powered Up family
+  (LEGO's public document), the WeDo 2.0 GATT service for WeDo. Motors with a tacho are regulated by the hub
+  (StartSpeed, ForDegrees, GotoAbsolutePosition, end states float/brake/hold, MaxPower), WeDo's are not.
+- **Words**: `pup …`, `boost …`, `wedo …` are the three extensions' commands and reporters, one table for the parser
+  and the decompiler (`lib/legoHubsDialect.js`), under any DEVICE line: `pup turn motor A on for 360 degrees`,
+  `boost turn motor A on`, `wait until (wedo distance) < 5`. **⇦ To blocks** makes the real extension's blocks.
+- **Ports**: a motor or sensor part says its port with `!BW PORT`; the Move Hub's motors A and B are inside the hub.
+- **Not modelled**: the extensions' Python/JS calls in the Lab; hats and Boolean blocks as words; Port Mode
+  Information; synchronised (virtual) ports. **Found in the extensions** and fixed upstream (CrispStrobe/extensions
+  `ea3e08e`, vendored): the BOOST blocks sent 10 % max power, a block for "AB" reached A only (a 50 ms rate limit),
+  and they addressed the Move Hub's pre-1.0.00.0224 port map. Now "AB" reaches both — B 50 ms after A (a queue),
+  which turns a rover a little at the start, as on a real hub — and the Lab's Move Hub runs the current firmware
+  (1.0.00.0224) or, as an option, the legacy one (1.0.00.0223); docs/LWP3-VIRTUAL-HUB-NOTES.md "Findings".
+
 ## Seeing the model
 
 Kids cannot read `motor-without-port`; the Lab shows what a model is made of and what is wrong with it (`bw-sim/mech/insight.js` computes it, `bw-sim/view/insight-layer.js` draws it, the words are in `components/tw-pseudocode/sim-lab-insight-text.js`, EN and DE):
@@ -264,14 +367,16 @@ Every derived step is buildable: each new part touches a part built before, dire
 
 Build is a small CAD editor (`bw-sim/editor/editor-view3d.js`; arithmetic in `editor/transform-math.js`). Every change goes through the editor command stack; a change to several parts is one `moveMany`/`batch` command, so one Ctrl+Z undoes it.
 
+How a part finds its connection — the lit holes, the cursor-driven target, hysteresis, Tab, red refusals, turning in the hand, Target-first, keyboard placement and the camera (orbit about the pointer, the view cube) — is specified, with what other LEGO editors do and what is implemented, in [ROBOT-LAB-UX.md](ROBOT-LAB-UX.md) (pure core: `editor/snap.js` `snapAtPointer`; tests: `test/bw-sim-snap-pointer.test.mjs`, `scripts/lib/sim-lab-connect-gate.mjs`).
+
 **Mouse**
 - **Click a part** selects it. If it is in a group, the whole group is selected.
 - **Shift+click** adds or removes a part (or its whole group). **Click empty space** clears the selection; **Esc** also clears.
 - **Shift+drag on empty space** draws a box; parts whose centres lie inside are added to the selection.
 - **Drag a part** slides the selection on the work plane (the floor or the top face of another part), grid-snapped.
 - **Gizmo:** when a part is selected, three coloured arrows (X red, Y green, Z blue) and planes move it along axes or in planes (W for move, E for rotate). Coloured rings turn it (see R/T below). Dragging the gizmo shows the “Moving x…/Turning …” status.
-- **Magnet:** a single part dragged or placed near a matching hole or axle shows a green ghost and snaps there on release (all connector pairs that would connect are counted). **Hold Alt** to turn the magnet off. A pin must be within 0.5 LDU sideways and reach at least 8 LDU into the hole (the compiler's seating rule, below); a placed part that would overlap another is refused (see below).
-- **Camera:** left-drag on empty space or right-drag orbits; middle-drag or Shift+right-drag pans; wheel zooms toward the pointer.
+- **Magnet (connection-first, ROBOT-LAB-UX.md §3):** with a part in hand, the free holes, pins and studs it could join light up near the pointer; the one under the pointer (24 px) is the target and the ghost seats there, green, with every pair it makes counted — or red where it was aimed when it would go into a part. A selection or group snaps too (its pins all seat, or the pose is not offered). **Tab** tries the other spots, **R / [ ] / X** turn it in the hand. **Hold Alt** to turn the magnet off. With nothing in hand the hole under the pointer lights; click a selected part's lit hole, then a palette part, and the part goes in (Target-first). A pin must be within 0.5 LDU sideways and reach at least 8 LDU into the hole (the compiler's seating rule, below); a placed part that would overlap another is refused (see below).
+- **Camera:** left-drag on empty space or middle-drag orbits about the point under the pointer; right-drag pans; wheel (and a trackpad pinch) zooms to the point under the pointer; a trackpad's two-finger scroll orbits, Shift+scroll pans; Build looks from 5° to 175° (under a part too); a double click centres the view on the clicked point; the view cube (bottom right) turns the view to a face, edge or corner; with nothing selected the arrows orbit, Shift+arrows pan and + / − zoom (see *Moving the view*).
 
 **Fingers (tablets: iPad, touch Chromebooks; `editor/touch-gestures.js`)** — Pointer Events with `pointerType === 'touch'`, `touch-action: none` on the canvas; the mouse is unchanged.
 - **One finger on a part** selects it and drags it on the work plane: the mouse's drag (magnet, resting on top, overlap refusal). A **tap** selects just that part.
@@ -290,7 +395,9 @@ Build is a small CAD editor (`bw-sim/editor/editor-view3d.js`; arithmetic in `ed
 - Categories are collapsible and keep their open state across a search.
 
 **Keyboard (onKey)**
-- **R / Shift+R** — turn 90° about the vertical (world Y). If the selection is a single part sitting on a pin or axle, it turns about that connection's axis instead.
+- **R / Shift+R** — turn 90° about the vertical (world Y). If the selection is a single part sitting on a pin or axle, it turns about that connection's axis instead; a part in hand (palette or drag) turns about the connection it would make.
+- **[ / ]** — turn 15° on a round connection (a pin or an axle in a round hole, a ball); refused on an axle in an axle hole and on studs. **X** — flip end for end along the connection.
+- **Tab / Shift+Tab** (a part in hand) — the next / previous way to put it here; **Enter / Space** places it; **Enter on a palette tile** takes the part with the keyboard (the ghost starts on the target nearest the view's centre).
 - **T / Shift+T** — tip 90° about the horizontal axis facing the camera (the closer of world X or Z).
 - **F** — fit the selection (or the whole model) in view; **Home/Top/Front/Side** buttons do the same with fixed directions.
 - **Ctrl+Z / Ctrl+Y** (or Shift+Ctrl+Z) — undo / redo one command step.
@@ -303,19 +410,19 @@ Build is a small CAD editor (`bw-sim/editor/editor-view3d.js`; arithmetic in `ed
 - **Esc** — stop a placing tool or clear the selection.
 - Every key has a button on the build bar (below) for a tablet without a keyboard; only Alt (magnet off) and Shift's 15° ring steps have none.
 
-**Build bar (sim-lab-pane.jsx)**
-- **Move (W) / Turn (E)** toggle the gizmo mode.
+**Build toolbar (sim-lab-pane.jsx, sim-lab-toolbar.jsx; see *The toolbar* above)**
+- **Move with arrows (W) / Turn with rings (E)** toggle the gizmo mode.
 - **Grid** — 1 / 5 / 10 / 20 LDU (default 10 = half a hole pitch).
-- **Turn ↻ (R)**, **Turn ↺ (Shift+R)** and **Tip (T)** — same as the keys (they also turn a part being placed).
+- **Turn 90° (R)**, **Turn back 90° (Shift+R)** and **Tip 90° (T)** — same as the keys (they also turn a part being placed).
 - **Group / Ungroup** — buttons for Ctrl+G / Shift+Ctrl+G (disabled unless the selection qualifies).
 - **Duplicate / Delete** — same as Ctrl+D / Delete.
 - **Copy / Paste / Select all** — same as Ctrl+C / Ctrl+V / Ctrl+A.
 - **Cancel (Esc)** — same as Esc: calls off a drag, stops the placing tool, or clears the selection.
 - **Undo / Redo** — same as Ctrl+Z / Ctrl+Y.
-- **Home / Fit (F) / Top / Front / Side** — camera views.
-- **Save .ldr** — downloads `my-model.ldr` (the editor's current model, title `Robot Lab model`).
-- When one part is selected, a **Port** dropdown (none / A–F) binds a motor or sensor; it is only shown for motors and sensors.
-- The Build and Simulate tabs switch modes; Simulate compiles the built model and starts the session.
+- **Home / Fit (F) / Top / Front / Side** — camera views (Simulate has them too).
+- **File › Save as** — downloads the model as `.ldr`, `.mpd` or `.io` (the editor's current model, title `Robot Lab model`).
+- When one part is selected, a **Port** list (none / A–F) beside the selection chip binds a motor or sensor; it is only shown for motors and sensors.
+- **Simulate / Build** in the mode switch change modes; Simulate compiles the built model and starts the session.
 
 **Overlap and what may sit inside**
 A move, turn or place that would make two solid parts intersect is refused: the status says *“Would go into <target>: let go and it stays where it was”* and on release nothing changes. The test is exact primitive SAT on the PartMeta colliders (box / cylinder / sphere, tolerance 1 LDU), ignoring the parts the move is meant to connect to.
@@ -346,9 +453,12 @@ Groups are declared before the parts, in definition order. Each member carries `
   `gear-on-frame`: the two become one rigid body); gears whose axles turn in
   two separate parts are not coupled (`gear-frames-differ`). The coupling
   works both ways: a blocked output stalls the motor at its torque limit.
-  Limit: exact while the frame does not itself turn about the gear axes; on a
-  frame that does (gears on a turntable) the gears are off by the frame's
-  rate. Test gearboxes: `test/fixtures/bw-sim/gears/`, run by
+  Since 2026-10-19 a mesh is a tooth contact (our fork of the Jolt physics
+  engine): torque is multiplied by the gear ratio (an 8:24 reduction gives
+  three times the torque at the 24T), the teeth push back on the frame that
+  holds the axles (a machine standing free turns the way real ones do, and
+  conserves its angular momentum), and gears on a turning frame (a turntable,
+  a planet carrier) keep their ratio relative to it. Test gearboxes: `test/fixtures/bw-sim/gears/`, run by
   `test/bw-sim-gear-trains.test.mjs` with the motor housing clamped (a static
   body made of model parts is the machine's frame: it does not collide with
   the machine's moving parts).
@@ -403,6 +513,8 @@ From `overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json` (grouped by `cate
 - **sensor (3):** SPIKE colour sensor (37308.dat), SPIKE distance sensor (37316.dat), SPIKE force sensor (37312.dat)
 - **wheel (2):** Wheel 56×14 with medium azure tyre (SPIKE Prime) (39367p01.dat), Wheel 88×14 with medium azure tyre (SPIKE Prime large) (49295p01.dat)
 
+**Radio hubs and their devices (2026-10-19; docs/LWP3-VIRTUAL-HUB-NOTES.md "Devices"):** BOOST Move Hub (26910.dat, its motors A and B built in), Powered Up Hub (28738.dat), Technic Hub (22127.dat), SPIKE Essential hub (67351c01.dat), WeDo 2.0 Smart Hub (19071.dat); Control+ Technic L and XL motors (22169.dat, 22172.dat), BOOST interactive motor (26913.dat), WeDo 2.0 motor (21980.dat); BOOST colour and distance sensor (26912.dat), WeDo 2.0 tilt (20841.dat) and motion (20844.dat) sensors — numbers checked against the LDraw library, connectors derived by `scripts/derive-part-meta.mjs` and completed by hand.
+
 Every connector in that file is checked against the part's LDraw mesh by `test/bw-sim-part-meta.test.mjs`, including where a pin seats: a pin-hole connector's two ends must be where its bore opens and ends (±2 LDU).
 
 **Sensor pin holes, measured (2026-10-17).** The SPIKE colour, force and distance sensors have *blind* side holes (LDraw `p/connhol3.dat`, "Technic Connector Hole One-Sided"): the bore opens on the side face at |x| = 30 LDU (distance sensor: 70) and ends 18 LDU in, at |x| = 12 (52). Their connectors used to sit at the bottom of the bore (|x| = 12 / 52) instead of the middle of the pin seat (|x| = 20 / 60), so a pin through a beam pulled the sensor 8 LDU (3.2 mm) into the beam: the shipped Line follower's sensor was inside its mounting beam, and the Wall stopper and Colour explorer used 3L pins to reach, which would end 12 LDU (Wall stopper) and 20 LDU (Colour explorer) past the bottom of the sensor's blind hole, inside its body. The large motor (54675.dat) had the same error on its side holes (bore |x| 32..50, connector at 32) and two end holes on the wrong end of the housing (z = +12, where there is no bore; the bore is z 132..150). All are now at the measured seat; the Line follower's sensor moved 8 LDU forward (z 152 → 160, still 8.4 mm above the floor) to rest on its beam, and the two examples use ordinary 2L pins. `test/bw-sim-models-solid.test.mjs` checks every shipped model and fixture against the real meshes (no point of a solid part inside another, no pin reaching past its hole).
@@ -454,11 +566,18 @@ Part geometry is a curated subset of the official **LDraw Parts Library** (CC BY
 - `bw-sim-session.test.mjs` — session tick, snapshot, time and yaw.
 - `bw-sim-snap-rotate.test.mjs` — magnet snapping and `rotateAboutSnap`.
 - `bw-sim-snap.test.mjs` — snap candidates (pins, axles, studs, ball).
+- `bw-sim-camera-nav.test.mjs` — the camera keys (arrows orbit, Shift+arrows pan, + / − zoom; modified keys are not camera keys), orbiting keeps target and distance and never goes under the floor, panning carries camera and target sideways, OrbitControls' button set-up, named views frame a sphere from their side.
+- `spike-simulator-pane.test.mjs` — the arena offers **Open in Robot Lab**, stands aside while the Robot Lab drives the shared hub and hands it over either way.
 - `bw-sim-touch.test.mjs` — fingers: tap, drag, long press, long-press drag and pinch from touch event sequences (slop, long-press time, a late lift), one-finger orbit against an independent rotation, pinch zoom and two-finger pan.
 - `bw-sim-world.test.mjs` — mats and obstacles in the compiled mechanism and scene.
 - `bw-sim-linear-actuator.test.mjs` — the small linear actuator from its three parts: stroke from LDraw's assemblies, lead from the measured turns, extension per revolution, self-locking under a hanging load, end stops with the clutch, and a frame–boom–actuator loop against the law of cosines.
 - `bw-sim-turntable.test.mjs` — each turntable pair is one hinge on its axis; slewing turns the turntable by the tooth ratio.
 - `bw-sim-excavator.test.mjs` — the Excavator: couplings from the parts, the boom against the law of cosines, and its example program's dig cycle.
+- `bw-sim-robot-lab-api.test.mjs` — the Robot Lab API and the `lab-direct` hub: a hubless motor turned to 360 ± 2° (bound derived from the controller's window and the motor's time constant), power/speed/hold/coast and an interrupted wait, part poses bit-identical through a redone worker batch, a SPIKE hub from blocks allowed and a hub running its own program refused (EN, DE), sensors, positions and contact with the ground and the wall, neutral answers without a model.
+- `lwp3-virtual-hub.test.mjs`, `wedo2-virtual-hub.test.mjs` (not `bw-sim-*`) — the radio hubs byte by byte against layouts written out from LEGO's LWP3 document and the WeDo sources; StartSpeedForDegrees 360 on the physics; the worker mirror.
+- `lab-hubs-extensions.test.mjs` — the real `legopoweredup`, `legoboostunified` and `wedo2unified` through the Scratch VM, Web Bluetooth and the Scratch Link double, on Jolt: the Technic L motor 360 ± 2°, the BOOST rover drives (its heading the one the 50 ms start skew explains, held while cruising) and spins on both Move Hub firmwares, the WeDo rover stops at the wall (and the judge fails without the stop).
+- `scratch-link-ble-double.test.mjs`, `lego-hubs-dialect.test.mjs` — the Scratch Link BLE double (fall-through, JSON-RPC, manufacturer data) and connectVirtualHub; the `pup`/`boost`/`wedo` words counted against the extensions' getInfo and round-tripped.
+- `robot-lab-dialect.test.mjs` (not `bw-sim-*`) — one method list: every robotlab block is one `lab` word, one `_robotlab` op and one API method; every block round-trips blocks → words → blocks and through Python and JavaScript; the words under any DEVICE; the simulator driver; EN/DE block texts; the blocks with no Lab open.
 
 Plus `test/bw-sim-persist.test.mjs` ↔ `test/project-bundle-archive.test.mjs` (real bundle writer/reader) and `scripts/verify-boot-payload.mjs` (the Sim Lab view stays out of the first load, chunk `bw-sim-lab`; Jolt and the physics worker stay out of that chunk too, chunks `bw-sim-jolt` and `bw-sim-physics-worker`).
 
@@ -466,4 +585,8 @@ Plus `test/bw-sim-persist.test.mjs` ↔ `test/project-bundle-archive.test.mjs` (
 - `npm run verify:sim-lab` — `scripts/verify-sim-lab-browser.mjs` loads the reference driving base with a WebGL view, runs with no program (hint shown, robot stays put, Drive pad moves it), chooses the line-oval mat (robot on the line), checks palette place/snap/undo, palette pictures (drawn, lazily), search, drag from the palette onto the floor and onto a beam hole, Esc cancelling a drag, Build→Simulate compile, a green-flag Scratch program drives with physical encoders, saved model reopens byte-identical, project load replaces the model, no-WebGL fallback still runs.
 - `scripts/lib/sim-lab-insight-gate.mjs` — port badges in both views, "Show how it moves" (overlay objects and red axis pixels) in both, unplugging a motor from its badge lists the issue, the issue selects the motor, the badge's picker plugs it back in, "Before you press Run" with no motor, the issue pulses the motors in Simulate.
 - `scripts/lib/sim-lab-cad-gate.mjs` — `npm run test:sim-lab-cad` places a part on the floor, drags the gizmo, turns with R/ring, slides on the work plane, Shift+multi-select and box-select, groups/ungroups, pins snap from above and beams stack, pushing into the hub is refused.
-- `scripts/lib/sim-lab-touch-gate.mjs` — a school tablet (1024×768, `hasTouch`, real touch through CDP `Input.dispatchTouchEvent`): tap a tile then the floor places a part, one finger drags a part by grid steps and a tile out of the palette, a long press adds to the selection, a long press then drag on open floor box-selects, a finger drags the gizmo's X arrow (x only), the build bar's Select all / Copy / Paste / Turn ↺ / Undo, one finger orbits and two pinch-zoom in Build and Simulate, holding ▲ drives (sliding off keeps driving) and lifting the finger stops both motors.
+- `scripts/lib/sim-lab-api-gate.mjs` (`--part=api`) — a Blocks project of robotlab blocks (built in the VM, saved and reloaded as an `.sb3`) loads the Motor bench and turns its motor 360 ± 2° through `runtime.robotLab`, in the worker; the Motor bench's example in `lab` words, through the UI only (Load example program, Run), turns 360°, rests there through its wait, runs on at 90 °/s and brakes.
+- `scripts/lib/sim-lab-hubs-gate.mjs` (`--part=hubs-ble`) — through the UI only, the three radio-hub examples: Load example program turns their words into the real extensions' blocks, Run connects them (Scratch Link double for Powered Up and WeDo, Web Bluetooth for BOOST): motor A at 360 ± 2° and back, the rover drives ahead and turns, the WeDo rover stops at the wall.
+- `scripts/lib/sim-lab-toolbar-gate.mjs` (`--part=ui`) — the Robot Lab tab is selected and filled by the Lab; Help holds the description; every toolbar control (bar and More) has a name and a tooltip starting with it and giving its shortcut, in English and on a de-DE page in German (*Roboter-Labor*, *Rückgängig (Strg+Z)*); the File menu; every Build action by click and by its key (W/E, R/Shift+R/T, Ctrl+A/Esc, Ctrl+Z/Y, Ctrl+D, Delete, copy/paste, Ctrl+G/Ctrl+Shift+G, H/Shift+H/I, M, K, F, ?) with its effect; in both modes Top/Front/Side/Home frame the model, a left drag on empty space orbits about a fixed target, a right drag pans, Shift+drag pans (Simulate), the wheel zooms, arrows/Shift+arrows/− move the focused view; a drag on a part moves the part and leaves the camera, and with a part selected the arrows leave the camera. The core part reaches the Lab through the arena's **Open in Robot Lab** and checks the arena stands aside.
+- `scripts/lib/sim-lab-layout-gate.mjs` (`--part=layout`) — the tab alone at 1024×768 … 1920×1080, with the stage column beside it at 1024×768 and 1366×768, and with the stage dragged wide so the Lab is ~470 px: the view big enough and wholly visible, primary controls pressable, the toolbar never wider than the pane (More when narrower than 1000 px, its Top view works), the palette (drawer when compact) places a part and Undo removes it.
+- `scripts/lib/sim-lab-touch-gate.mjs` — a school tablet (1024×768, `hasTouch`, real touch through CDP `Input.dispatchTouchEvent`): tap a tile then the floor places a part, one finger drags a part by grid steps and a tile out of the palette, a long press adds to the selection, a long press then drag on open floor box-selects, a finger drags the gizmo's X arrow (x only), the build bar's Select all / Copy / Paste / Turn ↺ / Undo, one finger orbits and two pinch-zoom in Build and Simulate, holding ▲ drives (sliding off keeps driving) and lifting the finger stops both motors; two fingers moving together pan the Simulate view. It starts with the stage column beside the tab (compact), then hides it so the tab takes the whole width.

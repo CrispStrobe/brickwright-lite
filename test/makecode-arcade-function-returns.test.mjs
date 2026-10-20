@@ -1,10 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {runTimedArcadeProgram, restartTimedArcadeRun} from './helpers/arcade-timed-native.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
 import BWValues from '../overlay/scratch-vm/src/util/bw-values.js';
 import {compile} from '../scripts/lib/pxt-node.mjs';
+import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 const vars=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
 async function execute(source,frames=120){const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[],JSON.stringify(imported));const run=await runProgram(imported.code,{frames,uploads:imported.costumes,storage:true});assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);run.imported=imported;return run;}
 async function roundtrip(source,verify,frames=120){
@@ -27,7 +29,13 @@ let missing=pick(10)
 let text=identity("hello, [world]!")
 stopEarly()
 let after=4`;
-    await roundtrip(source,run=>{const v=vars(run);assert.equal(v.answer,17);assert.equal(v.missing,-1);assert.equal(v.text,'hello, [world]!');assert.equal(v.touched,2);assert.equal(Number(v.after),4);});
+    const original=await runPxtArcade(source);
+    assert.equal(original.answer,17);assert.equal(original.missing,-1);
+    assert.equal(original.text,'hello, [world]!');assert.equal(original.touched,2);
+    // The selected SDK eliminates the unused final constant; native still
+    // checks the following statement, while original comparison uses live cells.
+    assert.equal(Object.hasOwn(original,'after'),false);
+    await roundtrip(source,run=>{const v=vars(run);assert.equal(v.answer_,17);assert.equal(v.missing,-1);assert.equal(v.text,'hello, [world]!');assert.equal(v.touched,2);assert.equal(Number(v.after),4);});
 });
 
 test('recursive and mutual-recursive value calls keep independent native frames',async()=>{
@@ -60,11 +68,18 @@ alias.setPixel(0,0,2)`;
 });
 
 test('yielding functions resume with their own parameters and stop cancels pending results',async()=>{
-    const run=await execute(`function delayed(value:number){pause(200);return value+1}
-let result=delayed(6)`,30);assert.equal(vars(run).result,7);
-    run.vm.greenFlag();await stepFrames(run.vm,2);run.vm.stopAll();await stepFrames(run.vm,40);
-    assert.equal(run.vm.runtime.threads.length,0);
-    run.vm.greenFlag();await stepFrames(run.vm,30);assert.equal(vars(run).result,7);
+    const imported=arcadeToPseudocode(`function delayed(value:number){pause(200);return value+1}
+let result=delayed(6)`);assert.deepEqual(imported.unsupported,[]);
+    const run=await runTimedArcadeProgram(imported.code,{milliseconds:199,uploads:imported.costumes});
+    assert.deepEqual(run.errors,[]);assert.equal(BWValues.decode(vars(run).result),undefined);
+    await run.clock.advanceTo(200);assert.equal(vars(run).result,7);
+    const cancelled=await restartTimedArcadeRun(run,100);
+    run.vm.stopAll();await cancelled.advanceTo(400);
+    assert.equal(run.vm.runtime.threads.length,0);assert.equal(BWValues.decode(vars(run).result),undefined);
+    const restarted=await restartTimedArcadeRun(run,199);
+    assert.equal(BWValues.decode(vars(run).result),undefined);
+    await restarted.advanceTo(200);assert.equal(vars(run).result,7);
+    assert.deepEqual(run.errors,[]);run.vm.stopAll();run.vm.quit();
 });
 
 test('a returned function invocation keeps captured cells for later creation handlers',async()=>{
@@ -130,7 +145,29 @@ function delay(n:number){pause(100);return n}
 function take(first:number,second:number){result=first*100+second}
 take(delay(3),delay(4))`;
     const imported=arcadeToPseudocode(source);assert.doesNotMatch(imported.code,/set _mc\d+ to/);
-    await roundtrip(source,run=>assert.equal(vars(run).result,304),60);
+    const runs=[];
+    const check=async run=>{
+        assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
+        assert.equal(vars(run).result,0);
+        await run.clock.advanceTo(100);assert.equal(vars(run).result,0);
+        await run.clock.advanceTo(199);assert.equal(vars(run).result,0);
+        await run.clock.advanceTo(200);assert.equal(vars(run).result,304);
+        assert.deepEqual(run.errors,[]);
+    };
+    const timed=async code=>{
+        const run=await runTimedArcadeProgram(code,{milliseconds:99,uploads:imported.costumes,storage:true});
+        runs.push(run);await check(run);return run;
+    };
+    try{
+        const run=await timed(imported.code);
+        await timed(run.creator.decompile());
+        const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});
+        assert.deepEqual(exported.unsupported,[]);
+        const built=await compile('arcade',exported.files);assert.equal(built.success,true,JSON.stringify(built.diagnostics));
+        const again=arcadeToPseudocode(exported.files);assert.deepEqual(again.unsupported,[]);await timed(again.code);
+        const archive=Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer());await run.vm.loadProject(archive);
+        run.clock=await restartTimedArcadeRun(run,99);await check(run);
+    }finally{for(const run of runs){run.vm.stopAll();run.vm.quit();}}
 });
 
 test('Sprite results preserve identity through local aliases, parameters and forwarding',async()=>{
@@ -154,7 +191,7 @@ identity(friend).y=75`;
         assert.equal(s[0].x,35);assert.equal(s[0].y,40);assert.equal(s[1].x,30);assert.equal(s[1].y,75);
         assert.deepEqual([...s[0].image.pixels],Array(12).fill(7));assert.deepEqual([...s[1].image.pixels],Array(12).fill(2));
     });
-    assert.match(exported.ts,/\): Sprite/);assert.match(exported.ts,/sprite: Sprite/);assert.match(exported.ts,/let hero: Sprite = null/);
+    assert.match(exported.ts,/\): Sprite/);assert.match(exported.ts,/sprite: Sprite/);assert.match(exported.ts,/^let hero: Sprite$/m);assert.doesNotMatch(exported.ts,/^let hero: Sprite = null$/m);
 });
 
 test('direct sprite and projectile returns remain native expressions through MakeCode',async()=>{
@@ -167,9 +204,10 @@ hero.setPosition(30,40)
 friend.setPosition(60,70)
 shot.setPosition(90,80)
 let width=hero.width`;
+    const original=await runPxtArcade(source+'\nlet projectileKind=shot.kind();let projectileX=shot.x;let heroX=hero.x;let friendX=friend.x',{fakeClock:true});
     await roundtrip(source,run=>{
         const s=Object.values(run.vm.runtime.bwArcadeDeviceState.sprites);assert.equal(s.length,3);
-        assert.equal(s[0].x,30);assert.equal(s[1].x,60);assert.equal(s[2].x,90);assert.equal(s[2].kind,'Projectile');
+        assert.equal(s[0].x,original.heroX);assert.equal(s[1].x,original.friendX);assert.equal(s[2].x,original.projectileX);assert.equal(s[2].kind,original.projectileKind);
         assert.equal(Number(vars(run).width),2);
     });
 });

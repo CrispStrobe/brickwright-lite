@@ -41,6 +41,8 @@ const build = process.env.BW_BUILD
  * `chunk` is a prefix under build/chunks/ — production names carry a hash.
  */
 const LAZY = [
+    {what: 'Circuit Playground runtime', marker: 'ID: circuitplayground', chunk: 'ext-circuitplayground',
+        why: 'lazyBuiltinExtensions.circuitplayground in extension-manager.js'},
     {what: 'music extension samples', marker: "'drums/1-snare.mp3'", altMarkers: ['"drums/1-snare.mp3"'],
         chunk: 'ext-music', why: 'lazyBuiltinExtensions.music in overlay/scratch-vm/src/extension-support/extension-manager.js'},
     {what: 'render fonts', marker: 'x-font-ttf', chunk: 'render-fonts',
@@ -49,6 +51,10 @@ const LAZY = [
         why: 'lazyBuiltinExtensions.legonxt in extension-manager.js'},
     {what: 'Arcade runtime (its speech fonts)', marker: 'font12: Adobe SIL OFL 1.1', chunk: 'ext-arcade',
         why: 'lazyBuiltinExtensions.arcade in extension-manager.js'},
+    {what: 'Robot Lab blocks', marker: 'when part [PART] touches [OTHER]', chunk: 'ext-robotlab',
+        why: 'lazyBuiltinExtensions.robotlab in extension-manager.js'},
+    {what: 'Robot Lab tab', marker: 'Open the Robot Lab here', chunk: 'bw-robotlab-tab',
+        why: 'the React.lazy RobotLabTab in components/gui/gui.jsx'},
     {what: 'LEGO SPIKE Prime driver', marker: 'ID: spikeprime\\n', altMarkers: ['ID: spikeprime\n'], chunk: 'ext-spikeprime',
         why: 'lazyBuiltinExtensions.spikeprime in extension-manager.js'},
     // `md5ext` is NOT the marker: the default project and scratch-vm's serializer
@@ -98,9 +104,26 @@ const LAZY = [
     {what: 'the Sim Lab physics worker', marker: 'sim batch before sim load', chunk: 'bw-sim-physics-worker',
         notInChunks: ['bw-spike-simulator', 'bw-sim-lab'],
         why: 'startPhysicsWorker in overlay/scratch-gui/src/lib/bw-sim/sim-lab.js (new Worker(new URL(…)), webpackChunkName "bw-sim-physics-worker")'},
+    // The Robot Lab editor itself (its pane and icon toolbar): its own editor tab loads it when the tab
+    // is first shown (robot-lab-tab.jsx, React.lazy), so it is neither in the boot scripts nor in the
+    // arena pane's chunk any more (the arena only offers "Open in Robot Lab"). The marker is the
+    // toolbar's test id, which only sim-lab-toolbar.jsx carries.
+    {what: 'the Robot Lab editor (pane and toolbar)', marker: 'bw-sim-lab-toolbar', chunk: 'bw-robot-lab',
+        notInChunks: ['bw-spike-simulator'],
+        why: 'React.lazy in overlay/scratch-gui/src/components/tw-pseudocode/robot-lab-tab.jsx (webpackChunkName "bw-robot-lab")'},
     {what: 'the Sim Lab 3D view', marker: 'bw-sim-lab-3d-canvas', chunk: 'bw-sim-lab',
         notInChunks: ['bw-spike-simulator'],
         why: 'the dynamic import in sim-lab-pane.jsx (webpackChunkName "bw-sim-lab")'},
+    // The Robot Lab's Scratch Link doubles (docs/ROBOT-LAB-HUBS-PLAN.md P0): the BLE socket double
+    // (lib/virtual-hub/scratch-link-ble.js) and the BT-classic peripheral registry
+    // (lib/virtual-hub/bt-classic-registry.js) serve only the Lab's virtual hubs, so they come with
+    // the Sim Lab chunk. The first load keeps only the classic URL test and WebSocket wrapper
+    // (spike-classic-scratch-link.js) that SPIKE's 2.x REPL simulation claims through at boot;
+    // render-gui.jsx once imported the BLE double eagerly.
+    {what: 'the Scratch Link BLE double', marker: 'the virtual chooser refused this peripheral', chunk: 'bw-sim-lab',
+        why: 'registerRobotLabBlePeripherals (lib/virtual-hub/lab-ble-peripherals.js) installs it, reached only through sim-lab.js (webpackChunkName "bw-sim-lab")'},
+    {what: 'the BT-classic peripheral registry', marker: 'a virtual peripheral needs an id', chunk: 'bw-sim-lab',
+        why: 'sim-lab.js re-exports registerVirtualClassicPeripheral; boot code imports spike-classic-scratch-link.js, never bt-classic-registry.js'},
     // The Build palette's part pictures (lib/bw-sim/view/part-thumbnails.js): three.js
     // draws them, so they come with the Sim Lab chunk, not with the pane that shows them.
     {what: 'the Sim Lab palette thumbnails', marker: 'bw-sim-part-thumbnails', chunk: 'bw-sim-lab',

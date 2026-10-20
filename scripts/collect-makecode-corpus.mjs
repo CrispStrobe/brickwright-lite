@@ -4,7 +4,7 @@
  * Outputs source files and a provenance manifest; never copies them into the
  * shipped app. Use --snippets to include every API fragment as well.
  *
- * --projects additionally preserves customts/assetjson/package fences as
+ * --projects additionally preserves customts/assetjson/package/jres fences as
  * separate .mkcd projects. It does not replace the original code fragments.
  * node scripts/collect-makecode-corpus.mjs --out DIR [--arcade-docs DIR] [--snippets] [--projects]
  */
@@ -13,7 +13,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {untar, CACHE_DIR} from './sync-makecode-runtime.mjs';
-import {tutorialProjectFiles} from '../overlay/scratch-gui/src/lib/bw-makecode/tutorial-project.js';
+import {tutorialProjectFiles, tutorialEditorProjectFiles, TUTORIAL_EDITOR_POLICY, hasTutorialJres} from '../overlay/scratch-gui/src/lib/bw-makecode/tutorial-project.js';
+import {getTutorialTilemapGenerator, STATIC} from './lib/pxt-node.mjs';
 import {makeCodeProjectFile} from '../overlay/scratch-gui/src/lib/bw-makecode/project-file.js';
 
 const argv = process.argv.slice(2);
@@ -22,8 +23,12 @@ const out = opt('--out');
 const arcadeDocs = opt('--arcade-docs');
 const snippets = argv.includes('--snippets');
 const projects = argv.includes('--projects');
-if (!out || argv.some(a => a.startsWith('--') && !['--out', '--arcade-docs', '--snippets', '--projects'].includes(a))) {
-    console.error('usage: node scripts/collect-makecode-corpus.mjs --out DIR [--arcade-docs DIR] [--snippets] [--projects]');
+const editorPolicy = opt('--editor-policy');
+if (argv.includes('--editor-policy') && !editorPolicy) throw new Error('Missing tutorial editor policy');
+if (editorPolicy && !projects) throw new Error('--editor-policy requires --projects');
+if (editorPolicy && editorPolicy !== TUTORIAL_EDITOR_POLICY) throw new Error('Unsupported tutorial editor policy');
+if (!out || argv.some(a => a.startsWith('--') && !['--out', '--arcade-docs', '--snippets', '--projects', '--editor-policy'].includes(a))) {
+    console.error('usage: node scripts/collect-makecode-corpus.mjs --out DIR [--arcade-docs DIR] [--snippets] [--projects] [--editor-policy pxt-13.2.1]');
     process.exit(2);
 }
 
@@ -31,7 +36,7 @@ const hash = b => crypto.createHash('sha256').update(b).digest('hex');
 const entries = [];
 const collectionFailures = [];
 const seen = new Set();
-function add (target, source, text, origin, license) {
+async function add (target, source, text, origin, license) {
     const blocks = [...text.matchAll(/```(?:blocks|typescript|block)\s*\n([\s\S]*?)```/g)];
     if (!blocks.length) return;
     const selected = snippets ? blocks.map((m, i) => [m[1], i]) :
@@ -52,7 +57,12 @@ function add (target, source, text, origin, license) {
         const [code, index] = selected.at(-1);
         const id = hash(Buffer.from(`${source}#${index}`)).slice(0, 16);
         try {
-            const project = tutorialProjectFiles(text, `${code.trim()}\n`, {target, name: `${target}-${id}`});
+            const jresToTypeScript = hasTutorialJres(text) ? await getTutorialTilemapGenerator(target) : undefined;
+            const useEditorPolicy = !!editorPolicy && target === 'arcade';
+            const targetBytes = useEditorPolicy ? fs.readFileSync(path.join(STATIC, target, 'target.json')) : null;
+            const targetBundle = targetBytes ? JSON.parse(targetBytes) : undefined;
+            const assemble = useEditorPolicy ? tutorialEditorProjectFiles : tutorialProjectFiles;
+            const project = assemble(text, `${code.trim()}\n`, {target, name: `${target}-${id}`, jresToTypeScript, targetBundle, targetBundleSHA256: targetBytes ? hash(targetBytes) : undefined});
             const envelope = makeCodeProjectFile(project.files, {target, name: `${target}-${id}`});
             const projectKey = `${target}:project:${JSON.stringify(project.files)}`;
             if (seen.has(projectKey)) return;
@@ -62,8 +72,9 @@ function add (target, source, text, origin, license) {
             fs.writeFileSync(path.join(out, dir, name), envelope);
             entries.push({file: `${dir}/${name}`, target, source: `${origin}/${source}`,
                 sourceSha256: hash(Buffer.from(text)), sha256: hash(Buffer.from(envelope)),
-                mainKind: 'selected-code-fence', companionFiles: Object.keys(project.files),
-                boundary: 'Selected source with tutorial context; not a complete-game or execution claim.', license});
+                mainKind: 'selected-code-fence', companionFiles: Object.keys(project.files), assembly: project.assembly || null,
+                boundary: 'Selected source with tutorial context; not a complete-game or execution claim.', license,
+                ...(jresToTypeScript ? {jresGeneration: jresToTypeScript.provenance} : {})});
         } catch (error) {
             collectionFailures.push({target, source: `${origin}/${source}`, projectCollection: 'failed',
                 reason: error.message, license});
@@ -75,29 +86,29 @@ const microbitTar = path.join(CACHE_DIR, 'pxt-microbit-9.1.1.tgz');
 if (!fs.existsSync(microbitTar)) throw new Error('pinned micro:bit docs absent; run npm run sync:makecode');
 for (const [name, bytes] of untar(fs.readFileSync(microbitTar))) {
     if (!name.startsWith('docs/') || !name.endsWith('.md')) continue;
-    add('microbit', name, bytes.toString('utf8'),
+    await add('microbit', name, bytes.toString('utf8'),
         'https://registry.npmjs.org/pxt-microbit/-/pxt-microbit-9.1.1.tgz', 'MIT');
 }
 // pxt-arcade's own docs/ tree (the source label in the manifest), not Lite's docs/.
 const PXT_DOCS = 'docs/';
 if (arcadeDocs) {
     const rev = execFileSync('git', ['-C', arcadeDocs, 'rev-parse', 'HEAD'], {encoding: 'utf8'}).trim();
-    function walk (dir) {
+    async function walk (dir) {
         for (const e of fs.readdirSync(dir, {withFileTypes: true})) {
             const f = path.join(dir, e.name);
-            if (e.isDirectory()) walk(f);
+            if (e.isDirectory()) await walk(f);
             else if (e.name.endsWith('.md')) {
                 const rel = path.relative(arcadeDocs, f).replaceAll(path.sep, '/');
-                add('arcade', PXT_DOCS + rel, fs.readFileSync(f, 'utf8'),
+                await add('arcade', PXT_DOCS + rel, fs.readFileSync(f, 'utf8'),
                     `https://github.com/microsoft/pxt-arcade/blob/${rev}`, 'MIT');
             }
         }
     }
-    walk(arcadeDocs);
+    await walk(arcadeDocs);
 }
 entries.sort((a, b) => a.file.localeCompare(b.file));
 fs.mkdirSync(out, {recursive: true});
 fs.writeFileSync(path.join(out, 'manifest.json'), `${JSON.stringify({schema: 'brickwright/makecode-corpus/v1',
-    generatedAt: new Date().toISOString(), snippets, projects, count: entries.length, entries, collectionFailures}, null, 2)}\n`);
+    generatedAt: new Date().toISOString(), snippets, projects, editorPolicy: editorPolicy || null, count: entries.length, entries, collectionFailures}, null, 2)}\n`);
 console.log(`${entries.length} MakeCode files written to ${out}; ${collectionFailures.length} project collections failed`);
 if (collectionFailures.length) process.exitCode = 1;

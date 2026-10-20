@@ -3,7 +3,8 @@ const german = {
     "gui": {
         "blocksTab": "Blöcke",
         "circuitTab": "Schaltung",
-        "fpgaTab": "FPGA"
+        "fpgaTab": "FPGA",
+        "robotLabTab": "Roboter"
     },
     "chrome": {
         "expand": "Menüleiste und Tab-Beschriftungen anzeigen",

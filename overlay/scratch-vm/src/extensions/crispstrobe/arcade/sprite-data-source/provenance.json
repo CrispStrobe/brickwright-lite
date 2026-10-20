@@ -1,0 +1,9 @@
+{
+  "repository": "microsoft/arcade-sprite-data",
+  "ref": "v0.0.5",
+  "revision": "332026d12c46286c7afe59bc4829ccf08471d5b1",
+  "source": "https://github.com/microsoft/arcade-sprite-data/blob/332026d12c46286c7afe59bc4829ccf08471d5b1/main.ts",
+  "license": "MIT",
+  "sourceSha256": "8550e26929a475f95a359a096cda2bf75a59715978d9a2ad8745e77b0eec783d",
+  "licenseSha256": "9906940f61b1f0b533fa7d99baf55178b2808fbe113ea51dfbfad8572ccd5f2b"
+}

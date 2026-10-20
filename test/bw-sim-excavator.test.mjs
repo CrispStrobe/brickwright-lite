@@ -238,16 +238,17 @@ if (!existsSync(missing)) {
         assert.ok(r.low < 0.002, `the bucket only came down to ${r.low} m over the floor`);
         assert.ok(r.raised > 0.05, `the bucket was lifted only ${r.raised} m`);
         // Slew: 315° of the motor through 8T into 28T is 90°; each way within 12° (the base is not
-        // clamped: the swing's reaction turns it a little, and the turntable's gear couples world rates).
+        // clamped: the swing's reaction turns it a little, and the slew mesh slips a little under the
+        // swinging arm).
         assert.ok(Math.abs(r.swingMin + 90) < 12, `one way the turntable swung ${r.swingMin}°`);
         assert.ok(Math.abs(r.swingMax - 90) < 12, `the other way it swung ${r.swingMax}°`);
         assert.ok(Math.abs(r.swingEnd) < 12, `it came back to ${r.swingEnd}°`);
     });
 
-    test('the dig cycle leaves the base where it stands (< 10° of yaw)', {
-        todo: 'gear meshes on a moving frame do not apply the tooth reaction to the frame (Jolt GearConstraint): ' +
-            'angular momentum not conserved — see docs/ROBOT-LAB-VALIDATION.md'
-    }, async t => {
+    // Until 2026-10-19 a todo (the base yawed 15–140°): Jolt's GearConstraint put no tooth reaction on
+    // the frame, so the slew mesh fed the base's yaw. The tooth-contact mesh (GearMeshConstraint, the
+    // Brickwright fork of Jolt) loads the frame and conserves angular momentum; see docs/ROBOT-LAB-VALIDATION.md.
+    test('the dig cycle leaves the base where it stands (< 10° of yaw)', async t => {
         const r = judge(await dig());
         t.diagnostic(`base yawed ${r.baseYaw.toFixed(1)}°`);
         assert.ok(r.baseYaw < 10, `the base turned ${r.baseYaw}° on the floor`);

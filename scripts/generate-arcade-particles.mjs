@@ -31,14 +31,36 @@ const transpile = code => ts.transpileModule(code, {compilerOptions: {
 // Namespaces split across files resolve each other only when transpiled
 // together; fixed.ts and the renamed Math extension stand alone.
 const group = names => files.filter(file => names.includes(file[1])).map(text).join('\n');
+// Match only the actual retained array callsites. AST lowering preserves
+// receiver/argument evaluation order and evaluates each exactly once.
+const particleSources=group(['effects.ts', 'particlefactories.ts', 'particles.ts', 'particleeffects.ts']);
+const ast=ts.createSourceFile('particle-host.ts',particleSources,ts.ScriptTarget.ES2018,true,ts.ScriptKind.TS);
+const expected=new Map([
+    ['removeAt:this.colors:index',1],
+    ['removeElement:scene.allSprites:this',2],
+    ['removeElement:sources:this',2]
+]);
+const seen=new Map();
+const lowered=ts.transform(ast,[context=>{
+    const visit=node=>{
+        if(ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && ['removeAt','removeElement'].includes(node.expression.name.text)) {
+            const receiver=node.expression.expression, method=node.expression.name.text;
+            const identity=`${method}:${receiver.getText(ast)}:${node.arguments.map(arg=>arg.getText(ast)).join(',')}`;
+            if(!expected.has(identity))throw new Error(`Unreviewed particle collection call: ${identity}`);
+            seen.set(identity,(seen.get(identity)||0)+1);
+            return context.factory.createCallExpression(context.factory.createIdentifier(method==='removeAt'?'__removeAt':'__removeElement'),undefined,
+                [ts.visitNode(receiver,visit),...node.arguments.map(arg=>ts.visitNode(arg,visit))]);
+        }
+        return ts.visitEachChild(node,visit,context);
+    };
+    return node=>ts.visitNode(node,visit);
+}]);
+for(const [identity,count] of expected)if(seen.get(identity)!==count)throw new Error(`Particle collection inventory changed: ${identity}`);
+const loweredSource=ts.createPrinter().printFile(lowered.transformed[0]);lowered.dispose();
 let compiled = transpile(group(['fixed.ts'])) +
     transpile(group(['mathUtil.ts']).replace(/\bnamespace Math\b/, 'namespace PxtMath')) + 'Object.assign(Math, PxtMath);\n' +
     // ImageEffect.startScreenEffect pauses inside control.runInParallel: lowered to generators.
-    transpile(lowerFibers(ts, group(['effects.ts', 'particlefactories.ts', 'particles.ts', 'particleeffects.ts']), 'effects.ts').printed);
-// PXT arrays carry removeElement; plain JavaScript arrays do not.
-const removals = compiled.match(/[\w.]+\.removeElement\(/g) || [];
-compiled = compiled.replace(/([\w.]+)\.removeElement\(/g, '__removeElement($1, ');
-if (removals.length !== 4) throw new Error(`expected 4 removeElement calls, found ${removals.length}`);
+    transpile(lowerFibers(ts, loweredSource, 'effects.ts').printed);
 const header = `// Generated from PXT Arcade ${bundle.versions.target}, pxt-common-packages (MIT).\n` +
     `// Copyright (c) Microsoft Corporation. See static/licenses/pxt-common-packages.MIT.txt.\n` +
     `// ${hashes.join('\n// ')}\n// Regenerate: node scripts/generate-arcade-particles.mjs\n`;
@@ -49,7 +71,7 @@ const content = header +
     `Math.idiv = (a, b) => (a / b) | 0;\n` +
     `Math.randomRange = host.randomRange;\n` +
     `const sprites = {Flag: {Destroyed: 2, RelativeToCamera: 512}, BaseSprite: host.BaseSprite};\n` +
-    `const __removeElement = (array, element) => { const index = array ? array.indexOf(element) : -1; if (index >= 0) array.splice(index, 1); return index >= 0; };\n` +
+    `const {removeAt: __removeAt, removeElement: __removeElement} = require('./pxt-particle-collections');\n` +
     compiled +
     `return {particles, effects, Fx, Fx8, FastRandom: Math.FastRandom};\n};\n`;
 const output = resolve(root, 'overlay/scratch-vm/src/extensions/crispstrobe/arcade/particles-pxt.js');

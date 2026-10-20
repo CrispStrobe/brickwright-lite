@@ -66,8 +66,10 @@ const lazy = ({fail = 0} = {}) => {
  * actuators, bucket: derived parts) and the RCX bumper car. Every other shipped model stays core.
  */
 // The RCX bumper car (hubs/rcx/) stands its castor on derived System and Technic bricks and holds its
-// light sensor with a derived pin/bush connector.
-const NEEDS_REST = ['differential.ldr', 'gearbox.ldr', 'excavator.ldr', 'rcx-bumper-car.ldr'];
+// light sensor with a derived pin/bush connector; the EV3 wall stopper and the NXT bumper bot carry their free front
+// wheels on derived axles. The radio-hub examples (hubs/lwp3, hubs/wedo2) are pinned and stacked on derived beams, bricks and axles.
+const NEEDS_REST = ['differential.ldr', 'gearbox.ldr', 'excavator.ldr', 'rcx-bumper-car.ldr', 'ev3-wall-stopper.ldr', 'nxt-bumper-bot.ldr',
+    'technic-hub-bench.ldr', 'boost-rover.ldr', 'wedo-milo.ldr'];
 
 test('the gear-mechanics examples and the Excavator load the rest once and parse with nothing refused', async () => {
     const cat = lazy();

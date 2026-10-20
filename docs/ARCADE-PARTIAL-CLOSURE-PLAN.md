@@ -11,6 +11,106 @@ Suggested prompt: “Continue the Arcade partial closure plan. Refresh the remot
 baseline and LANES.md, take the first unowned unresolved batch, and qualify
 conversion, runtime, authoring and roundtrips without suppressing diagnostics.”
 
+## Current execution frontier — 2026-10-15
+
+The [authentic-project stage ledger](compatibility/arcade-authentic-project-qualification.md)
+now records eleven projects with five bounded native routes each. Both pizza
+contexts include their original helper files, actual splash input and timed
+music. One exact source/current-export startup and Right-input comparison is
+also closed. These controls leave original-runtime, visible authoring and
+whole-game gates open; they do not change the census below. The reviewed private
+Array owner composition remains optional and untyped pending supplier adoption
+and real view/formal/lifecycle proofs.
+
+The immutable 184 raw inputs report **147 translated / 36 partial / one parse
+failure**. At least 20 of those partial rows have actual external asset
+references without their definitions in the raw input. Implementation alone
+cannot close that measured floor while the input omits its real project
+context. Preserve the immutable baseline report, raw bytes and denominator.
+Report a new implementation census separately with its actual source identity;
+never relabel the baseline, invent assets or substitute enriched inputs. The
+original 142/41/1 checkpoint below remains historical evidence.
+
+The latest separate offline whole-project profile at `a32d6ef0a` refreshed the
+same 29 authentic contexts with retained successful original compilation. It
+preserves the earlier `31abb5767` results and all diagnostics. It measured
+**20 clean source/Creator imports, 20 clean current exports and 18 clean complete
+pure routes**. The historical `b1ef5e4ea` profile measured 20/18/16. The complete
+route includes Code feedback, saved current Blocks and assets, current export,
+and reimport/Creator. These are pure stage counts, not game, native execution or
+GUI results.
+Two newly inspected partial-input graphs also produced clean exports; they
+remain partial and are not counted above. The [current eleven-project gap list](compatibility/arcade-current-remaining-project-gaps.md)
+records exact public sources and next capability groups. The same eighteen pure
+passes do not imply native success: the null Sprite sample now has a retained
+five-route native HOLD for silent continuation.
+
+A read-only input audit now verifies that all 20 asset-floor cases have genuine
+nonempty bytes for their referenced resources in retained compiler-resolved
+contexts. Sixteen have successful original compilation; four retain original
+compiler failures. No new acquisition is needed to prepare those exact inputs.
+Availability is not a closure: disclose added genuine files in a separate
+complete-context census and qualify conversion, runtime, current roundtrips and
+visible editing. Preserve unresolved extension revisions and licence boundaries.
+Do not redistribute assets whose applicable terms remain unknown.
+
+Sixteen genuine closures would leave 20 cases from the current 36-case backlog.
+Reaching fewer than 20 therefore also needs at least one further genuine
+implementation closure. Prioritize the existing nine source-blocked projects
+by their actual diagnostics, then verify complete project behavior. A focused
+primitive test or a successful original compilation cannot close a whole case.
+
+Follow-ups retain that baseline rather than invent a new aggregate:
+
+- Tile candidate `653a88dd4` reserves explicit names across all valid current
+  maps before anonymous allocation. Six focused controls pass. The two retained
+  projects with false name-conflict warnings now export/reimport without
+  diagnostics, preserving every encoded tile image and genuine conflict warnings.
+- Freethrow's root-only reimport produced 26 refusals. Preparing the current
+  exported files with their exact retained, pinned `arcade-text` dependency
+  yields no import diagnostics; a separate Creator continuation also has no
+  warnings or error. This does not establish a newly executed full roundtrip.
+- Lyla still needs its unused ordinary helper's explicit parameter contract.
+  Preserve the helper and prove all callers/writers; annotations are constraints,
+  never value producers. The same nine source-blocked contexts remain separate.
+
+Existing `.mkcd` import and CLI paths already accept whole-project file maps.
+Reimport of a current exported root must include its actual declared dependency
+context while preserving edited root/art bytes. Original files and prepared
+sidecars remain distinct. Record every warning, unsupported and error channel;
+missing or unmeasured channels remain unknown rather than empty successes.
+
+The selected-original Array.map observation is closed for its **69 global
+observations**. Preserve the first observer failure and successful cached-binary
+recovery; they did not change the source. No source/native Map implementation
+is qualified by that observation contract.
+
+[PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888) is now at
+CI-only `9133a871b`, awaiting its own checks. The preceding `b190d3e7d` campaign
+closed with successful build, corpus, both browser shards and FPGA, and three
+retained failures in TODO accounting, event observation and Image selection.
+The [handoff](ARCADE-AGENT-HANDOFF.md) identifies the current head and original
+results. A later visible Game Console journey is prepared separately and has
+not run. Do not attribute predecessor successes to the new head.
+
+The resource-factory producer fix now prevents a measured extra invisible
+Player on animation export/reimport. Both affected authentic inputs pass five
+native routes; current frames, pixels and names survive. The earlier erroneous
+saved exports remain held. One further authentic project has its first bounded
+cached-original startup/controller result; its new current export comparison
+is still pending. These controls do not reduce the immutable or whole-project
+counts, and do not close GUI or complete-game requirements.
+
+The six coordinated claims in
+[PR954](https://github.com/CrispStrobe/brickwright-lite/pull/954), head `e978`,
+merged normally at `8205ef07` after their enabled checks passed. Their bounded
+implementations are now in progress; this does not qualify them. The canonical protocol documentation
+claim [PR156](https://github.com/CrispStrobe/sb3-creator/pull/156) is merged,
+without a consumer pin move. Next priorities are actual parameter declarations,
+Map/discard/Throw and owned Sprite/handler-record Array boundaries after their
+claim and supplier gates. Keep every deferred author/edit/run/save/reopen/export
+journey in the [GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md).
+
 ## Locked baseline and meaning of zero
 
 The original corpus has **184 inputs: 142 translated, 41 partial, one parse
@@ -459,3 +559,189 @@ retain discarded temporaries until reset: implement root tracing and reserve
 allocations before copies; an ever-growing historical counter is insufficient.
 PR845 full build timed out and the light B-fixture failure is preserved; obtain
 exact-head complete build/editor proof before acceptance or corpus promotion.
+
+## Authentic terrain recovery and prepared audits — 2026-10-13
+
+Standalone tutorial `jres` fences were omitted from recovered project envelopes.
+The assembler now preserves their original bytes and uses the pinned original
+`pxt.emitTilemapsFromJRes` worker to generate companion TypeScript. Collector,
+recovery and tutorial-to-project CLI callers record worker versions/hash and
+emitter provenance. Conflicting, malformed and unterminated resource fences
+are diagnosed; original main files remain unchanged. Four authentic map
+contexts (Maze, Cherry Pickr, Simple Extensions, Dance Party) compile originally
+and import without native diagnostics. Gameplay/roundtrip qualification is
+being measured separately; these are not changed raw snippets.
+
+The compatibility CLI can separately inspect genuine prepared dependency inputs:
+
+```sh
+node scripts/compat-audit.mjs --target arcade --prepare-extensions --fetch-extensions --out "$PREPARED_REPORT" "$AUTHENTIC_PROJECT_DIR"
+```
+
+Fetching stays explicit. Raw `stage`/`unsupported`/`tally` are preserved;
+`preparedTranslation` and `preparedTally` report the added input layer with
+original/prepared file hashes, package source provenance and explicit failures.
+The resolver is not a compiler or gameplay oracle. A requested preparation or
+prepared parse failure returns a failing CLI status. Compilation, execution,
+behavioural comparisons and GUI evidence remain separate gates.
+
+## Prompt suspension and effective palettes — 2026-10-13
+
+Text and number prompts now suspend the caller scene, serialize concurrent
+prompts, restore on completion or failure, and cancel active/queued work at
+Stop or disposal. Default text and number lengths are 12 and 6; numeric answers
+use the original `parseFloat` semantics, including NaN. Source variables named
+`answer`, `timer`, `loudness` or `username` receive safe dialect names to prevent
+Scratch built-in reporter collisions. Thirteen focused prompt and lifecycle
+checks passed. Optional prompt parameters and the original on-screen keyboard
+remain explicit gaps; these checks do not establish matching prompt artwork.
+
+Dependency preparation now captures the original compiler's effective
+`copts.jres.__palette`, rather than guessing from dependency order or the final
+target settings. Two focused original-compiler/native checks cover dependency
+palettes, reversed dependency order, root overrides and 19200 indexed pixels.
+Actual game comparisons retain separate input timing and frame evidence.
+
+Hosted checks exposed two obsolete controls: an expected namespace Buffer
+refusal, and an old producer pin. The controls now verify actual namespace song
+bytes and requalify the SPIKE artifact against the adopted producer. The nine
+combined dependency, palette and SPIKE controls passed without skips.
+
+### Fresh contextual blocker census
+
+The original 41 unresolved contexts were measured against immutable prompt and
+palette source with unchanged inputs. Original compilation: 26 succeed,
+14 fail and one dependency is unavailable. Thirteen valid contexts import
+without native diagnostics; the remaining valid cases contain seven API/asset
+blockers and six source-parser blockers. Two additional diagnostic-free imports
+have invalid original programs. Keep every row and the raw 184-source census.
+
+Controlled presented-frame paths match exactly for Maze, Court, Flamethrower
+and Froggy; other apps retain animation/physics, randomness, timing or prompt
+display differences. This finite evidence establishes those observed paths,
+not complete games. GUI qualification remains separate. The next source
+clusters are typed SpriteData with genuine root tiles, controller connectivity,
+settings persistence, and reachable custom class/font/scene helper behavior.
+
+### Compiler isolation and fresh context audit — 2026-10-13
+
+The fresh immutable integration audit measures **29 original compiler successes,
+12 original source/configuration failures and zero dependency refusals** across
+the same 41 contexts. Every original main hash is unchanged. Of the valid29,
+15 structurally import without native diagnostics,13 retain API/source-semantics
+gaps and one retains a parser gap. Structural import is a qualification candidate;
+it does not establish gameplay or editor acceptance. No whole-game promotion or
+fewer-than20 checkpoint follows from these counts.
+
+Two earlier internal compiler assertions were reproduced with the same original
+worker and unchanged seven-project sequence. Fresh contexts recover both inputs;
+the original compiler's own reset also recovers that measured sequence. The CLI
+and browser now isolate compile/preparation operations, preserving the immutable
+SDK and actual diagnostics. Browser workers and their Blob URLs are released
+after successful or failed operations. Repeated original binaries and executed
+original programs are checked, independently of native translation.
+
+One authentic project requires ten external packages. The default fetch budget
+now allows16, retaining the existing32MiB total, per-package and file-count
+bounds. The unchanged project compiles with binary bytes matching the prior
+explicit16-package probe. Unknown dependency licences remain explicit and do not
+authorize redistribution. Dependency cycles and budget exhaustion remain tested.
+
+Typed Number/String/NumberArray/Buffer Settings operations now preserve original
+byte codecs, durable project identity and SB3 snapshots. Numeric block shadows
+are interpreted using actual block-input metadata; connected string reporters
+retain type checks. Generic calls and exported nested mixed-value array access
+have original/native and roundtrip controls. The Text Sprite adapter now has focused native/original/editable roundtrip
+qualification; eight valid dependency graphs use it but retain independent
+class, callback and library gaps. Do not count eight completions from one adapter.
+
+## Integration following Text Sprite controls
+
+Text Sprite and asset factory changes are in
+[PR870](https://github.com/CrispStrobe/brickwright-lite/pull/870), with shared
+compiler words in [producer PR115](https://github.com/CrispStrobe/sb3-creator/pull/115).
+The affected integration batch passes17 controls, with zero skips. Authentic
+Smurfy now registers zero tile-overlap handlers in both original MakeCode and
+the real native extension. The former native count1 remains retained as a
+failed receipt. Finite boot/frame observations do not qualify a whole game.
+
+Next owned slices: exact single-background scroller version selection with
+source admission/export, distinct scene/program clocks and hosted Gallery
+authority checks using the actual CI token. All remain unmerged and must pass
+affected original/runtime/roundtrip controls plus exact-head hosted gates.
+After these, implement the older character-animation rules, Story/parser and
+remaining callable/class/string operations in dependency order. Requalify each
+complete authentic project with controller input and GUI editing before changing
+its prepared result; preserve the immutable raw census separately.
+
+## Current ordered work after clocks and primitive strings
+
+Exact legacy background-scroll source/native/export, separate program/scene
+clocks and primitive SDK strings now have focused controls. The Gallery helper
+has an actual hosted read-only-token proof. Whole-game and production-IDE
+qualification remain separate; the immutable raw41 partials/1 parser failure
+are unchanged.
+
+1. Complete exact older character-animation source and export selection.
+2. Replace placeholder SpriteKind IDs with original allocation and initializer
+   order, native numeric membership, captured events and original defaults.
+3. Re-run authentic prepared inputs against the matching345-form producer,
+   retaining unchanged originals, invalid contexts and all named diagnostics.
+4. Execute candidate complete games with controller input; compare original
+   observations and then exercise Blocks/Code/Pixel save/export/reimport.
+5. Continue Story, classes and callable semantics by the remaining actual
+   diagnostics. Promote only complete observed projects, preserving raw counts.
+
+The new owned-game GUI gate is a production-build light-browser step. Pending
+hosted execution cannot be reported as acceptance or a corpus promotion.
+
+## Requalification after numeric kinds
+
+Exact older character-animation selection and numeric SpriteKind allocation now
+have focused original/native/editable roundtrip controls. Scene numeric constants
+and local original particle collection removals are integrated. Prepared source
+qualification on PR877 retains 29 valid / 12 invalid original contexts and improves
+structural admission to 16 valid programs. Twelve valid programs still have
+semantic/API blockers and one has a parser failure. This does not alter the raw
+41 partials or establish full execution for structurally admitted inputs.
+
+The next ordered gates are:
+
+1. Qualify the combined integration on hosted exact-head checks and the production
+   Code/Blocks/Pixel/controller/SB3/export/reimport journey.
+2. Fix default countdown/life-zero loss presentation and real splash input; retain
+   full original screen, sound and controller comparisons.
+3. Implement the claimed native frame phase contract before treating value-only
+   timing controls as complete. Preserve authored waits, shared budgets, scene
+   ownership and debugger behavior.
+4. Qualify complete authentic Maze, Cherry Pickr and Dance Party outcomes, then
+   their editable/persistence/original-compiler roundtrips. Maze's controller win
+   and asset comparisons already match, but its idle loss remains divergent.
+5. Continue source-backed Story, class and callable support from actual diagnostic
+   families. Keep invalid source contexts separate and preserve original bytes.
+
+A genuine completion requires the whole authored project acceptance boundary.
+Raw and prepared counts must remain distinguishable throughout.
+
+## Current checkpoint after HUD and camera integration
+
+The 351-form integration qualifies raw camera offsets, readable sprite flags,
+HUD visibility and ordinary score/lives source bindings. Default and custom
+terminal HUD drawing has 25 passing controls and two explicitly failing initial
+clock comparisons. Fresh selected-SDK structural admission is17/29 valid
+contexts;11 API/semantic blockers and1 parser failure remain.12 compiler
+diagnostic contexts are preserved separately. Historical instance-overlap APIs
+need original version authority; selected-current-SDK refusal alone does not
+prove a historically invalid app. Raw41 partials remain unchanged.
+
+Maze's35 runtime comparisons match original win/loss and presentation. The
+prepared private production GUI journey must now establish actual Code/Blocks,
+Tilemap/Pixel editing, controller victory, saved SB3 reopening and original
+export/reimport. The first owned TextSprite hosted journey failed on a transient
+missing stage during replacement; the source guard is fixed and needs a real
+rerun. These results still do not authorize whole-project promotion.
+
+The next dependency order remains: validated tile-map factory semantics, scoped
+source-loop eligibility and frame phases, then original native dialogs/real
+splash input. Continue Story, classes and callable values from actual diagnostic
+families. Preserve every prior failure and the immutable original inputs.

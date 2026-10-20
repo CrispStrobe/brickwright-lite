@@ -87,10 +87,11 @@ export const freshPortState = () => ({integral: 0, stallMs: 0, active: false});
  * @param {object} x {refDeg, refDps, posDeg, speedDps}: reference and measured angle/speed
  * @param {{noLoadRadPerSec: number, stallTorqueNm: number}} motor the motor's DC spec
  * @param {number} dtMs
+ * @param {number} [limit] the largest |duty| allowed (1; an LWP3 command's MaxPower, lwp3-controller.js)
  * @returns {{duty: number, refDeg: number, saturated: boolean}} the duty, the reference after
- *          the drag limit, and whether the duty hit ±1
+ *          the drag limit, and whether the duty hit ±limit
  */
-export const controlStep = (s, {refDeg, refDps, posDeg, speedDps}, motor, dtMs) => {
+export const controlStep = (s, {refDeg, refDps, posDeg, speedDps}, motor, dtMs, limit = 1) => {
     const dt = dtMs / 1000;
     const ts = motor.stallTorqueNm;
     const eMax = E_MAX_TORQUE * ts / KP;
@@ -102,7 +103,7 @@ export const controlStep = (s, {refDeg, refDps, posDeg, speedDps}, motor, dtMs) 
     const wr = refDps / DEG;
     const w = speedDps / DEG;
     const raw = wr / motor.noLoadRadPerSec + (KP * e + KI * s.integral + KD * (wr - w)) / ts;
-    const duty = Math.max(-1, Math.min(1, raw));
+    const duty = Math.max(-limit, Math.min(limit, raw));
     const saturated = duty !== raw;
     // Anti-windup: integrate only while the duty can still act on it.
     if (!saturated || Math.sign(e) !== Math.sign(raw)) s.integral += e * dt;

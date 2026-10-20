@@ -87,7 +87,7 @@ const SimLabProperties = ({T, lib, editor, view, selectionIds, palette, colourNa
     return (
         <div data-testid="bw-sim-lab-properties-panel" role="region" aria-label={T.properties}
             style={{display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, padding: 8, boxSizing: 'border-box',
-                width: docked ? 236 : 260, maxWidth: '100%', height: '100%', overflowY: 'auto', background: '#fff',
+                width: docked ? '100%' : 260, maxWidth: '100%', height: '100%', overflowY: 'auto', background: '#fff',
                 border: '1px solid #cbd5e1', borderRadius: 8}}>
             <div style={{display: 'flex', alignItems: 'center', gap: 6}}>
                 <strong style={{flex: '1 1 auto'}}>{T.properties}</strong>
@@ -168,6 +168,13 @@ const SimLabProperties = ({T, lib, editor, view, selectionIds, palette, colourNa
                                 onClick={run(() => view?.turnSelectionBy(a, 90))}>{T.plus90}</button>
                         </div>
                     ))}
+                    <div style={{display: 'flex', alignItems: 'center', gap: 4}}>
+                        <span style={{flex: '1 1 auto', color: '#475569'}}>{T.hinge}</span>
+                        <button type="button" style={small} data-testid="bw-sim-lab-prop-hinge-minus" onClick={run(() => view?.fineTurn(-1))}>{T.minus15}</button>
+                        <button type="button" style={small} data-testid="bw-sim-lab-prop-hinge-plus" onClick={run(() => view?.fineTurn(1))}>{T.plus15}</button>
+                        <button type="button" style={small} data-testid="bw-sim-lab-prop-hinge-next" title={T.nextHinge} aria-label={T.nextHinge}
+                            onClick={run(() => view?.nextHinge())}>N</button>
+                    </div>
                 </Section>
             )}
 
@@ -188,6 +195,20 @@ const SimLabProperties = ({T, lib, editor, view, selectionIds, palette, colourNa
                             {!editGroup && <button type="button" style={small} onClick={run(() => view?.ungroupSelection())}>{T.ungroup}</button>}
                         </div>
                     ))}
+                    <button type="button" style={small} data-testid="bw-sim-lab-select-connected" title={T.connect.selectConnected}
+                        onClick={run(() => view?.selectConnected())}>{T.connect.selectConnected}</button>
+                    {parts.length > 1 && (
+                        <button type="button" style={small} data-testid="bw-sim-lab-prop-chain" title={T.chainRoundHelp}
+                            onClick={run(() => view?.chainRoundSelection())}>{T.chainRound}</button>
+                    )}
+                    {parts.length > 1 && (
+                        <button type="button" style={small} data-testid="bw-sim-lab-prop-band" title={T.bandRoundHelp}
+                            onClick={run(() => view?.beltRoundSelection())}>{T.bandRound}</button>
+                    )}
+                    {(editor.model.belts || []).some(b => b.around.some(id => parts.some(p => p.id === id))) && (
+                        <button type="button" style={small} data-testid="bw-sim-lab-prop-band-off"
+                            onClick={run(() => view?.removeBeltsOfSelection())}>{T.bandOff}</button>
+                    )}
                 </Section>
             )}
 

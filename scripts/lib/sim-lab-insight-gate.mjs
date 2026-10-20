@@ -29,6 +29,8 @@ const overlay = (page, which) => page.evaluate(w => {
 
 /** Pixels of the motor-axis red (#dc2626) in a screenshot of the 3D view, decoded by the page. */
 const redPixels = async (page, locator) => {
+    // The Build view keeps one frame in flight (editor-view3d.js render): wait until it has drawn.
+    await page.waitForFunction(() => !window.__bwSimLab.editView || !window.__bwSimLab.editView.drawing, null, {timeout: 30000, polling: 50});
     const png = await locator.screenshot();
     return page.evaluate(async b64 => {
         const img = new Image();

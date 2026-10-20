@@ -67,6 +67,7 @@ const RAW = `https://raw.githubusercontent.com/${REPO}/${remoteSha}`;
 // [source path relative to the sb3-creator repo, local vendored destination]
 const FILES = [
     ['src/utils/sb3Creator.js', path.join(lib, 'sb3-creator.js')],
+    ['src/utils/procedureParameterConstraints.js', path.join(lib, 'procedureParameterConstraints.js')],
     // The referee: reference trace interpreter + comparator (corpus-and-oracles.md).
     ['src/utils/traceOracle.js', path.join(lib, 'trace-oracle.js')],
     ['src/utils/examples.js', path.join(lib, 'sb3-creator-examples.js')],
@@ -92,6 +93,8 @@ const FILES = [
     ['src/utils/cubeDirections.js', path.join(lib, 'cubeDirections.js')],
     // The DEVICE EV3 word table, read by sb3Creator.js in both directions.
     ['src/utils/ev3Dialect.js', path.join(lib, 'ev3Dialect.js')],
+    // Canonical Circuit Playground Express words are part of the shared compiler.
+    ['src/utils/cpxDialect.js', path.join(lib, 'cpxDialect.js')],
     // The MakeCode Arcade / array-reference word table (task E0), the same design.
     ['src/utils/arcadeDialect.js', path.join(lib, 'arcadeDialect.js')],
     ['src/utils/cpxDialect.js', path.join(lib, 'cpxDialect.js')],
