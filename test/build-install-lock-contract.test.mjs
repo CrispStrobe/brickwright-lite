@@ -28,7 +28,19 @@ const inspect=text=>{
  if(order.some(at=>at<0)||order.some((at,i)=>i>0&&at<=order[i-1]))problems.push('actual dependency/install/overlay/manifest order changed');
  return problems;
 };
-const replaceStep=(text,name,edit)=>{const old=step(build(text),name);const changed=edit(old);assert.notEqual(changed,old,'mutation must change the actual step');return text.replace(old,changed);};
+const replaceStep=(text,name,edit)=>{
+ const start=text.indexOf('\n  build:\n')+1;assert.ok(start>0,'actual build job exists');
+ const job=build(text),old=step(job,name),within=job.indexOf(old);
+ assert.ok(within>=0);assert.equal(job.indexOf(old,within+old.length),-1,'selected step body is unique within build');
+ const changed=edit(old);assert.notEqual(changed,old,'mutation must change the actual step');
+ const offset=start+within,result=text.slice(0,offset)+changed+text.slice(offset+old.length);
+ assert.equal(result.slice(0,start),text.slice(0,start),'earlier sibling jobs remain exact');
+ const changedJob=build(result);
+ assert.notEqual(changedJob,job,'mutation must reach the actual build job');
+ assert.equal(step(changedJob,name),changed,'actual selected build step contains the complete mutation');
+ assert.equal(result.slice(start+changedJob.length),text.slice(start+job.length),'later sibling jobs remain exact');
+ return result;
+};
 test('deployable build uses immutable-lock ci then lock-aware transient install with both tracked-input fences',()=>{
  assert.deepEqual(inspect(source),[]);assert.match(manifest,/assert\.equal\(dirty, '', 'Harness tracked source must match its reviewed checkout'\)/);
 });
