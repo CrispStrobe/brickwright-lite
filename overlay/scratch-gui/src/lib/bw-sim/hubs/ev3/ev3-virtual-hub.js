@@ -225,7 +225,8 @@ export class Ev3VirtualHub {
             inputs: s.inputs.map(i => ({...i, probe: i.probe ? {...i.probe} : null})), buttons: [...s.buttons],
             fs: JSON.parse(JSON.stringify(s.fs)), program: s.program ? JSON.parse(JSON.stringify(s.program)) : null,
             lastProgram: s.lastProgram ? JSON.parse(JSON.stringify(s.lastProgram)) : null,
-            vm: this.vm ? this.vm.snapshot() : null};
+            // The VM travels while a program runs (a finished one has nothing left to do, and its image may be gone).
+            vm: this.vm && s.program ? this.vm.snapshot() : null};
     }
 
     importState (state) {
