@@ -12,7 +12,7 @@ export function staticSdkNamespaceReceivers(program, {builtinIdentifiers = []} =
         const names = new Set();
         for (const statement of statements || []) {
             if (statement.type === 'Declaration') for (const declaration of statement.decls) names.add(declaration.name);
-            if (['FunctionDeclaration', 'Class', 'Enum'].includes(statement.type)) names.add(statement.name);
+            if (['FunctionDeclaration', 'Class', 'Enum', 'Namespace'].includes(statement.type)) names.add(statement.name);
         }
         return names;
     };
@@ -21,7 +21,10 @@ export function staticSdkNamespaceReceivers(program, {builtinIdentifiers = []} =
         const visit = node => {
             if (!node || typeof node !== 'object') return;
             if (Array.isArray(node)) { node.forEach(visit); return; }
-            if (['FunctionDeclaration', 'FunctionExpression', 'Class'].includes(node.type)) return;
+            if (['FunctionDeclaration', 'FunctionExpression', 'Class', 'Namespace'].includes(node.type)) return;
+            // A raw var-for-of binding belongs to the surrounding function,
+            // including references before or after the physical loop.
+            if (node.type === 'ForOf' && node.kind === 'var') names.add(node.name);
             if (node.type === 'Declaration' && node.kind === 'var') {
                 for (const declaration of node.decls) names.add(declaration.name);
             }

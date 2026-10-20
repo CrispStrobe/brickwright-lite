@@ -20,6 +20,12 @@ field, a matching variable name, or a cast cannot establish that binding.
 Namespace escapes, root/member writes, dynamic indexing, unknown members and
 reflection involving that root remain outside this proof. A shadow in an
 unrelated local scope does not change a genuine builtin use elsewhere.
+Namespace declarations participate in lexical binding, and raw `var` for-of
+bindings are hoisted within their actual function. A namespace or loop variable
+named `CameraProperty` cannot be mistaken for the builtin enum; unrelated
+namespaces and separate local function scopes do not invalidate a genuine use.
+The function-variable hoist census stops at namespace boundaries, matching the
+resolver’s separate namespace scope.
 
 The enum member is a compile-time numeric constant. Unrelated ordinary calls,
 callbacks, arrays, classes and local writes therefore do not remove its numeric
@@ -30,7 +36,9 @@ It does not require a fixture-wide list of SDK calls or method names.
 The private compiler resolver reuses the existing lexical SDK classifier after
 a structural binding-form check. Residual destructuring declarations, raw
 ForOf, enum/namespace forms not handled by normal lowering, unknown forms,
-dynamic lexical constructs and Throw retain the original conservative path.
+dynamic lexical constructs and Throw retain the original public validation path.
+A private proof declining does not imply a Number diagnostic when that public
+path independently proves the same canonical leaf.
 These are pending binding/completion coverage gaps, not a permanent rejection
 of valid language constructs. Every transformed Program needs a fresh derivation.
 
@@ -44,16 +52,35 @@ changed inputs use the original validator; no retained source certificate, calle
 trust option, callback or graph factory is accepted. This is an internal owned-AST
 contract, not an unforgeable test for arbitrary Proxy objects.
 
-The public source analyser and public validator retain their existing eager,
-exceptional-completion and diagnostic behavior. Default lowering still performs
+The public source analyser and public validator preserve current main’s explicit
+`ordinaryPrimitiveSdkNumbers` opt-in: the six canonical leaves are Number when
+enabled, and remain Opaque by default or with the option false. Their eager,
+exceptional-completion and diagnostic behavior remains authoritative on fallback. Default lowering still performs
 both original validation passes. A negative candidate filter selects the full
 original validator when no CameraProperty member occurs; it grants no fact and
 skips no validation obligation.
 
-## Qualification still required
+## Current composition and qualification still required
 
-This is a source candidate. Its complete new controls and the unchanged affected
-modules require execution. Actual camera import, editable Code, saved projects,
+The composed source passed 53 pure conversion/observer controls and 49 native
+Array controls at their separate observed boundaries. The complete 225-subject
+conversion assessment remains incomplete, so the historical 36 partial results
+are unchanged rather than a current improvement count.
+
+The first composed Camera/default/delete run observed 33 passes and nine
+failures among 42 tests. They exposed stale compiler-only opt-in expectations
+and genuine public enum omissions for casts, physical metadata, unknown source
+and ambient dynamic lexical calls. The proposed successor preserves the public
+opt-in and closes those omissions. Changed-intrinsic and foreign-membership
+fallback controls compare actual original full returns or thrown errors; they
+retain all private source/intrinsic/expiry fences and exact one-pass errors.
+Known harmless namespace, enum and loop forms do not automatically lose the
+main public producer merely because the more conservative private path declines.
+Unknown members, shadows, namespace writes, extraction, aliases and dynamic
+indices retain refusal controls.
+
+This successor is a source candidate. Its complete affected modules require
+fresh execution; the original nine failures remain historical evidence. Actual camera import, editable Code, saved projects,
 export, original-compiler behavior and affected native execution need their own
 observations. No complete-suite, corpus, browser, runtime or performance result
 is inferred from the source change.

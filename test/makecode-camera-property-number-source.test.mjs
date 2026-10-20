@@ -26,13 +26,17 @@ test('actual camera fixture retains its typed helper and complete public import 
     assert.equal(typeof actual.code,'string');assert.match(actual.code,/arcade camera property/);
     assert.match(actual.code,/cameraValue/);assert.match(actual.code,/declare arcade procedure/);
 });
-test('only compiler completed validation gains six canonical numeric leaves and actual scalar forwarding',()=>{
+test('explicit public SDK opt-in and compiler completion share six canonical numeric leaves and scalar forwarding',()=>{
     assert.equal(publicValidate,directPublic,'one unchanged public validator binding');
     for(const name of ['X','Y','Left','Right','Top','Bottom']){
         const source=wrap('','',`CameraProperty.${name}`),ast=parse(source);
         assert.deepEqual(complete(ast,options),[]);
-        assert.ok(diagnostic(publicValidate(ast,options)),'public validator remains on its original graph');
-        assert.deepEqual([...analyseSourceValueProducers(ast,{unboundIsOpaque:true,opaqueDeclarationValues:true,ordinaryPrimitiveSdkNumbers:true}).typesAt(argument(ast))],['Opaque']);
+        assert.deepEqual(publicValidate(ast,options),[],'public SDK opt-in retains the main enum producer');
+        assert.deepEqual([...analyseSourceValueProducers(ast,{unboundIsOpaque:true,opaqueDeclarationValues:true,ordinaryPrimitiveSdkNumbers:true}).typesAt(argument(ast))],['Number']);
+        for(const disabled of [{},{ordinaryPrimitiveSdkNumbers:false}]){
+            assert.ok(diagnostic(publicValidate(ast,disabled)));
+            assert.deepEqual([...analyseSourceValueProducers(ast,{unboundIsOpaque:true,opaqueDeclarationValues:true,...disabled}).typesAt(argument(ast))],['Opaque']);
+        }
         const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);assert.deepEqual(imported.warnings,[]);
     }
     assert.deepEqual(complete(parse(wrap('let picked=CameraProperty.Left;','','picked')),options),[]);
@@ -94,27 +98,47 @@ test('fresh completion observes physical argument declaration metadata and unkno
     assert.deepEqual(complete(ast,options),[],'fresh complete derivation checks actual replacement rather than old node identity');
     assert.equal(Object.hasOwn(ast,'cameraNumberInput'),false,'no certificate is attached to caller AST');
 });
-test('changed constructors prototypes iterator JSON and global alias choose original fallback without getters',()=>{
+test('changed constructors prototypes iterator JSON and global alias preserve full original fallback observations',()=>{
+    const compare=(expected,actual)=>{
+        assert.equal(actual.kind,expected.kind);
+        if(expected.kind==='return')assert.deepEqual(actual.value,expected.value);
+        else{assert.equal(actual.error.name,expected.error.name);assert.equal(actual.error.message,expected.error.message);}
+    };
     const originalGlobal=globalThis;
     for(const[target,key]of [[Array.prototype,'every'],[Array.prototype,'some'],[Map.prototype,'get'],[Set.prototype,'has'],
         [Object.getPrototypeOf(new Map().entries()),'next'],[Object.getPrototypeOf(new Set().values()),'next'],
         [JSON,'stringify']]){
-        const ast=parse(wrap());let calls=0;
-        const result=using(target,key,d=>({...d,value:function(...args){calls++;return apply(d.value,this,args);}}),()=>complete(ast,options));
-        assert.ok(diagnostic(result),'changed intrinsic cannot retain new Camera fact: '+String(key));
+        const observe=validate=>{
+            const ast=parse(wrap());let calls=0;
+            const result=using(target,key,d=>({...d,value:function(...args){calls++;return apply(d.value,this,args);}}),()=>outcome(()=>validate(ast,options)));
+            return{result,calls};
+        };
+        const original=observe(publicValidate),owned=observe(complete);compare(original.result,owned.result);
+        assert.equal(owned.calls,original.calls,'changed intrinsic receives exactly the original fallback observations: '+String(key));
         assert.deepEqual(complete(parse(wrap()),options),[],'fresh initial-realm derivation after restoration');
-        if(key==='get'||key==='has')assert.ok(calls>0,'old original analysis still observes altered intrinsic');
+        if(key==='get'||key==='has')assert.ok(owned.calls>0,'old original analysis still observes altered intrinsic');
     }
-    let globalReads=0;const ast=parse(wrap());
-    const result=using(originalGlobal,'globalThis',d=>({enumerable:d.enumerable,configurable:d.configurable,get(){globalReads++;throw Error('unexpected global alias getter');}}),()=>complete(ast,options));
-    assert.equal(globalReads,0);assert.ok(diagnostic(result));
-    const alias=using(originalGlobal,'globalThis',d=>({...d,value:{}}),()=>complete(parse(wrap()),options));assert.ok(diagnostic(alias));
-    const withToJSON=parse(wrap()),before=descriptor(Object.prototype,'toJSON');let serialized=0;let observed;
-    try{define(Object.prototype,'toJSON',{configurable:true,value(){serialized++;return this;}});observed=complete(withToJSON,options);}
-    finally{if(before)define(Object.prototype,'toJSON',before);else delete Object.prototype.toJSON;}
-    assert.ok(diagnostic(observed));assert.ok(serialized>0,'existing original serializers remain observable on fallback');
+    const globalObservation=(validate,accessor)=>{
+        const ast=parse(wrap());let reads=0;
+        const result=using(originalGlobal,'globalThis',d=>accessor?
+            {enumerable:d.enumerable,configurable:d.configurable,get(){reads++;throw Error('unexpected global alias getter');}}:
+            {...d,value:{}},()=>outcome(()=>validate(ast,options)));
+        return{result,reads};
+    };
+    for(const accessor of [true,false]){
+        const original=globalObservation(publicValidate,accessor),owned=globalObservation(complete,accessor);
+        compare(original.result,owned.result);assert.equal(original.reads,0);assert.equal(owned.reads,0);
+    }
+    const serialization=validate=>{
+        const ast=parse(wrap()),before=descriptor(Object.prototype,'toJSON');let calls=0;let result;
+        try{define(Object.prototype,'toJSON',{configurable:true,value(){calls++;return this;}});result=outcome(()=>validate(ast,options));}
+        finally{if(before)define(Object.prototype,'toJSON',before);else delete Object.prototype.toJSON;}
+        return{result,calls};
+    };
+    const original=serialization(publicValidate),owned=serialization(complete);compare(original.result,owned.result);
+    assert.equal(owned.calls,original.calls);assert.ok(owned.calls>0,'existing original serializers remain observable on fallback');
 });
-test('foreign Set and getter errors retain exact single original observations and cannot revive in one completion',()=>{
+test('foreign Set and getter errors retain exact single original observations and full fallback parity',()=>{
     const marker=new Error('actual caller membership error');let hasCalls=0;
     assert.throws(()=>complete(parse(wrap()),{...options,onlyFunctions:{has(){hasCalls++;throw marker;}}}),error=>error===marker);
     assert.equal(hasCalls,1,'observer fallback never catches and retries original error');
@@ -123,13 +147,20 @@ test('foreign Set and getter errors retain exact single original observations an
         define(ast,'foreign',{enumerable:true,get(){reads++;throw error;}});
         assert.throws(()=>validate(ast,options),value=>value===error);assert.equal(reads,1);
     }
-    const ast=parse(wrap()),leaf=argument(ast),before=leaf.name;let changed=0;let result;
-    result=using(Set.prototype,'has',d=>({...d,value:function(value){
-        if(value==='accept'){changed++;leaf.name=changed===1?'Missing':before;}
-        return apply(d.value,this,[value]);
-    }}),()=>complete(ast,{...options,onlyFunctions:new Set(['accept'])}));
-    leaf.name=before;assert.ok(diagnostic(result),'fallback cannot reopen private Camera derivation after a later restoration');
-    assert.ok(changed>0);assert.deepEqual(complete(ast,options),[],'later invocation performs a fresh complete derivation');
+    const observe=validate=>{
+        const ast=parse(wrap()),leaf=argument(ast),before=leaf.name;let changes=0;let result;
+        result=using(Set.prototype,'has',d=>({...d,value:function(value){
+            if(value==='accept'){changes++;leaf.name=changes===1?'Missing':before;}
+            return apply(d.value,this,[value]);
+        }}),()=>outcome(()=>validate(ast,{...options,onlyFunctions:new Set(['accept'])})));
+        leaf.name=before;assert.ok(changes>0);return{result,changes,ast};
+    };
+    const original=observe(publicValidate),owned=observe(complete);
+    assert.equal(owned.result.kind,original.result.kind);
+    if(original.result.kind==='return')assert.deepEqual(owned.result.value,original.result.value);
+    else{assert.equal(owned.result.error.name,original.result.error.name);assert.equal(owned.result.error.message,original.result.error.message);}
+    assert.equal(owned.changes,original.changes,'private decline preserves the original one-pass observable analysis');
+    assert.deepEqual(complete(owned.ast,options),[],'later invocation performs a fresh complete derivation');
 });
 test('absence public eager Throw defaults and original error options preserve complete validation passes',()=>{
     for(const source of ['function accept(value:number){return value}let result=accept(3);',
