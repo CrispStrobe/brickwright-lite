@@ -50,7 +50,7 @@ WHEN flag clicked:
   set aliasCopy to alias
 ${getter?'  push 5 to array "named"\n  set item to item 0 of array "named"\n':''}  set leftText to (calculate value (alias) op "+" with ("!"))
   set rightText to (calculate value ("!") op "+" with (aliasCopy))
-  set after to 1
+  set after to (0 + 1)
 WHEN flag clicked:
   set ticks to 0
   forever:
