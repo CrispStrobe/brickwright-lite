@@ -100,14 +100,31 @@ test('changed intrinsic admission stays negative after restoration and preserves
     const freeze = Object.freeze;
     const run = prepare => {
         const program = parse('screen.print("hi");'), call = nodes(program).find(node => node.type === 'Call');
-        let calls = 0;
+        const callbacks = []; let error;
         try {
-            Object.freeze = value => {calls++; Object.freeze = freeze; call.args = null; return freeze(value);};
-            const actual = result(() => prepare(program)); assert.equal(calls, 1); return actual;
+            Object.freeze = value => {
+                callbacks.push({value, restored: Object.freeze === freeze});
+                Object.freeze = freeze; call.args = null; return freeze(value);
+            };
+            try {prepare(program);} catch (caught) {error = caught;}
         } finally {Object.freeze = freeze;}
+        // analyseGraph evaluates the OUTER freeze callee before its argument.
+        // Its first nested freeze restores the global, but the already-held
+        // outer callee still invokes this replacement a second time.
+        assert.equal(callbacks.length, 2);
+        assert.ok(Array.isArray(callbacks[0].value)); assert.equal(callbacks[0].value.length, 0);
+        assert.equal(callbacks[0].restored, false); assert.equal(callbacks[1].restored, true);
+        const graph = callbacks[1].value;
+        assert.equal(typeof graph.typesAt, 'function'); assert.equal(typeof graph.unchangedFunctionAt, 'function');
+        assert.equal(graph.localUndefinedDeclarations, callbacks[0].value);
+        assert.ok(Object.isFrozen(graph)); assert.ok(Object.isFrozen(callbacks[0].value));
+        assert.equal(call.args, null); assert.ok(error instanceof TypeError);
+        return {error, callbacks: callbacks.map(({value, restored}) => ({
+            kind: Array.isArray(value) ? 'localUndefinedDeclarations' : 'completedGraph', restored
+        }))};
     };
     const original = run(eager), actual = run(owned);
-    assert.ok(original.error); assert.equal(original.error.name, 'TypeError'); assert.deepEqual(actual, original);
+    assert.deepEqual(actual, original);
     const fresh = parity(parse('let value=1;')); assert.deepEqual(fresh.value.diagnostics, []);
 });
 
