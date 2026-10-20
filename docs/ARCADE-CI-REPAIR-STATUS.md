@@ -68,10 +68,13 @@ synchronous-oracle failure remains recorded. See the
 The optional parser claim #1140 has landed. The CSV-only candidate preserves
 synchronous picker activation and defers the actual parser until selection.
 Its complete eight-control module passes, including the installed Papa parser
-on string inputs. Native file
-uploads, emitted chunk behavior and the unchanged production budget still need
-qualification. GIF is unchanged. None of these observations promotes a corpus
-entry or closes the outstanding browser failures.
+on string inputs. GIF acquisition now also begins only in the GIF upload branch;
+the decoder body and its direct synchronous frame-zero API remain unchanged.
+Nine controls pass with the real reader/decoder under a declared Canvas model,
+including complete ordered frames, retries and exact error identities. Upload
+frame zero is asynchronous after acquisition. Native File/Canvas interaction,
+emitted chunks and the unchanged production budget still need qualification.
+These observations do not promote corpus entries or close browser failures.
 
 ## Final-campaign integration finding — 2026-10-20
 

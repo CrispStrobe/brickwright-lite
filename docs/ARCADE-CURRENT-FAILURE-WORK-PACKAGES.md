@@ -135,10 +135,18 @@ picker synchronously and acquires the actual parser after selection. Synchronous
 parser throws now reject the owning Promise with the same error and an owned
 cleanup attempt; this is an explicit contract change. Its complete eight-control
 module passes, including the installed Papa parser on string inputs. Qualify
-actual native file uploads, chunk-load failure
-and retry, and the existing hosted production ownership gate. Retain the original
-over-budget observation and every other chunk check. GIF remains unchanged;
-its synchronous first-frame boundary still needs separate review.
+actual native file uploads, chunk-load failure and retry, and the existing hosted
+production ownership gate. Retain the original over-budget observation and every
+other chunk check.
+
+GIF acquisition now also belongs to the selected GIF upload. The original decoder
+body and its direct synchronous first-frame API stay intact; the upload receives
+its first frame after asynchronous acquisition. Nine complete controls pass with
+the actual reader/decoder and a declared Canvas model. Each frame settles once,
+all conversions finish before ordered completion, retries use a new acquisition,
+and final callback/error-handler throws retain SameValue identity. Native Canvas,
+FileReader/picker interaction and emitted P17 savings remain separate gates.
+The existing multi-file modal and later decoder-timer error channels are unchanged.
 
 | Priority | Current evidence | Concrete next task and acceptance |
 | --- | --- | --- |
