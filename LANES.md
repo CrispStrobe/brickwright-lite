@@ -6399,6 +6399,14 @@ workflow condition, supplier pin or other owner's section changes are included.
 The current failed unit originals establish a missing workflow census entry;
 metadata refresh and source controls grant no actual guest qualification.
 
+Canonical consumer identity maintenance — 2026-10-20. Under this existing
+claim, the GUI controller and standalone reader now explicitly follow main's
+CUI `989f9541de610d2a742b36867c12df61d36b0c24` selection. Dependency pins,
+package/lock declarations, tests, workflow, limits and disabled actual guards
+are unchanged. Historical originals retain their selected readers; fresh source,
+request, workflow/event, artifact and affected GUI/guest qualification remain
+required before any new actual. This source composition grants no guest result.
+
 The composition consumes the adoption already merged through
 [PR975](https://github.com/CrispStrobe/brickwright-lite/pull/975), with later CUI
 selection from [PR1066](https://github.com/CrispStrobe/brickwright-lite/pull/1066):
