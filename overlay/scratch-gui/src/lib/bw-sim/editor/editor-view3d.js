@@ -605,8 +605,31 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         hoseLayer.draw((model.hoses || []).map(h => ({id: h.id, points: hosePoints(model, catalogMap, h)})));
         invalidate();
     };
+    // Decoration (model.decor: a cable's segments): drawn as the file has it, in its own group (never picked).
+    const decorGroup = new Group();
+    decorGroup.name = 'decor';
+    s.add(decorGroup);
+    let decorDrawnFor = null;
+    const drawDecor = model => {
+        if ((model.decor || null) === decorDrawnFor) return;
+        decorDrawnFor = model.decor || null;
+        for (const mesh of [...decorGroup.children]) {
+            decorGroup.remove(mesh);
+            for (const m of [].concat(mesh.material)) m.dispose();
+        }
+        for (const d of model.decor || []) {
+            let geometry;
+            try { geometry = partGeometry(d.part, read, colors); } catch { continue; }
+            const mesh = new Mesh(geometry, materialsFor(d.color ?? DEFAULT_COLOR).map(m => m.clone()));
+            mesh.matrixAutoUpdate = false;
+            mesh.matrix.copy(worldMatrix(d.position, d.matrix));
+            mesh.name = `decor:${d.part}`;
+            decorGroup.add(mesh);
+        }
+    };
     const rebuild = () => {
         const model = editor.model;
+        drawDecor(model);
         if (model.belts || model.ropes || model.hoses || beltLayer.count || ropeLayer.count || hoseLayer.count) drawBelts(model);
         const instancing = useInstancing(model.parts.length);
         let changed = false;

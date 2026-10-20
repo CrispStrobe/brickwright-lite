@@ -213,26 +213,20 @@ test('a SPIKE hub run from blocks takes direct commands; a hub running its own p
     fw.dispose();
 });
 
-test('an RCX runs its own program in the clean-room VM: the API refuses its motors by name (EN, DE) and still reads them', async () => {
-    // docs/ROBOT-LAB-HUBS-PLAN.md P1's rule covers the RCX hub (P2): RcxVirtualHub has no
-    // directCommand, its outputs belong to the downloaded NQC program.
+test('an RCX takes the Lab\'s motor commands as its IR direct commands do: power and stop; a move by degrees is refused by name', async () => {
+    // RcxVirtualHub.directCommand: Set Power / Set Direction / On-Off-Float on the VM's own output state, beside an
+    // NQC program (the last one wins), so the motor mixer, blocks and words turn an RCX's motors too.
     const {session} = await SimSession.fromText(modelText('rcx-bumper-car.ldr'), {hubState: null, catalog: CATALOG, mat: 'wall'});
     assert.deepEqual(session.hubs.map(h => h.profile), ['rcx']);
     const api = createRobotLabApi(hostFor(session));
-    assert.deepEqual(api.motors().map(m => [m.port, m.direct]).sort(), [['A', false], ['C', false]]);
-    for (const port of ['A', 'C']) {
-        const refused = api.setMotor(port, {power: 50});
-        assert.equal(refused.ok, false);
-        assert.equal(refused.code, 'hub-program');
-        assert.match(refused.message, new RegExp(`Motor ${port} belongs to the MINDSTORMS RCX, whose own program drives it`));
-    }
-    const de = createRobotLabApi(hostFor(session, {locale: () => 'de'})).setMotor('A', {degrees: 90});
-    assert.equal(de.code, 'hub-program');
-    assert.match(de.message, /gehört zum MINDSTORMS-RCX/);
-    // Refused means untouched: no command reached the motor, and reads still answer.
-    await run(session, 300);
-    assert.equal(typeof api.motorAngle('A'), 'number');
-    assert.ok(Math.abs(api.motorAngle('A')) < 1, `A idle at ${api.motorAngle('A')}`);
+    assert.deepEqual(api.motors().map(m => [m.port, m.direct]).sort(), [['A', true], ['C', true]]);
+    assert.equal(api.setMotor('A', {power: 80}).ok, true);
+    await run(session, 400);
+    assert.ok(Math.abs(api.motorAngle('A')) > 30, `A turns: ${api.motorAngle('A')}`);
+    assert.equal(api.stopMotor('A').ok, true);
+    const degrees = api.setMotor('C', {degrees: 90});
+    assert.equal(degrees.ok, false);
+    assert.match(degrees.message || degrees.code, /encoder|refused/);
     session.dispose();
 });
 

@@ -169,6 +169,27 @@ export const createInstructionsView = ({container, model, plan, read, colors, re
         geometry.computeBoundingBox();
         parts.set(placed.id, {mesh, faces, base, lines, placed, xray: null, size: geometry.boundingBox.getSize(new Vector3()).length()});
     }
+    // Decoration (a cable's segments): each piece with the part nearest it, shown from that part's step on.
+    const decorOf = new Map();
+    for (const d of model.decor || []) {
+        let geometry;
+        try { geometry = partGeometry(d.part, read, colors); } catch { continue; }
+        let near = null;
+        let best = Infinity;
+        for (const pl of model.parts) {
+            const dd = (pl.position[0] - d.position[0]) ** 2 + (pl.position[1] - d.position[1]) ** 2 + (pl.position[2] - d.position[2]) ** 2;
+            if (dd < best) { best = dd; near = pl.id; }
+        }
+        if (near === null) continue;
+        const info = colors.get(d.color ?? 16) || colors.get(16);
+        const face = new MeshStandardMaterial({color: new Color(info ? info.value : '#333333').lerp(GREY, GREY_MIX), ...PART_SURFACE});
+        const mesh = new Mesh(geometry, [face, face]);
+        placeMesh(mesh, {position: d.position, rotation: d.matrix});
+        mesh.visible = false;
+        scene.add(mesh);
+        if (!decorOf.has(near)) decorOf.set(near, []);
+        decorOf.get(near).push(mesh);
+    }
     scene.updateMatrixWorld(true);
 
     let current = -1;
@@ -239,6 +260,7 @@ export const createInstructionsView = ({container, model, plan, read, colors, re
                 if (kind) child.material = (isFresh ? highlightEdges : entry.lines)[kind];
             }
             placeMesh(entry.mesh, entry.placed);
+            for (const mesh of decorOf.get(id) || []) mesh.visible = entry.mesh.visible;
             const small = isFresh && entry.size < XRAY_MAX_M;
             const xray = small ? xrayOf(entry) : entry.xray;
             if (xray) xray.visible = small;
@@ -336,6 +358,7 @@ export const createInstructionsView = ({container, model, plan, read, colors, re
         stopFlight();
         clearArrows();
         for (const m of [xrayMaterial, arrowLine, arrowHead]) m.dispose();
+        for (const list of decorOf.values()) for (const mesh of list) mesh.material[0].dispose();
         for (const entry of parts.values()) for (const m of entry.faces) m.dispose();
         for (const set of [highlightEdges, ...lineSets.values()]) for (const m of [...set.edges, ...set.conditional]) m.dispose();
         renderer.dispose();

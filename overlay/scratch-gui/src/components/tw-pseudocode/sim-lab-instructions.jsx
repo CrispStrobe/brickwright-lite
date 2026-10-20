@@ -53,14 +53,15 @@ class SimLabInstructions extends React.Component {
         window.addEventListener('resize', this.onResize);
         this.dialog.current?.focus();
         const {lib, model} = this.props;
-        const {buildSteps, fetchLDrawClosure, parseLDConfig, createInstructionsView, createPartThumbnails, CATALOG, DEFAULT_COLOR} = lib;
+        const {buildSteps, fetchModelDrawing, parseLDConfig, createInstructionsView, createPartThumbnails, CATALOG, DEFAULT_COLOR} = lib;
         this.plan = buildSteps(model, CATALOG);
         if (!this.plan.steps.length) {
             this.setState({status: 'empty'});
             return;
         }
         try {
-            const {read} = await fetchLDrawClosure([...new Set(model.parts.map(p => p.part))], {withConfig: true});
+            // The parts, the decoration (a cable's segments) and the model's own embedded parts.
+            const {read} = await fetchModelDrawing(model, {withConfig: true});
             if (this.disposed) return;
             const colors = parseLDConfig(read('ldconfig.ldr'));
             this.view = createInstructionsView({container: this.box.current, model, plan: this.plan, read, colors});

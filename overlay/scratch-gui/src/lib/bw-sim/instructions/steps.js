@@ -244,8 +244,20 @@ export const stepCorner = (moves, before = VIEWS[0]) => {
     return VIEWS.reduce((best, v) => (score(v) > score(best) + 1e-9 ? v : best), before);
 };
 
-/** Each step's `moves` (insertDirections against what is on its page) and `view`; an attaching sub-assembly moves as one. */
-const withMoves = (plan, directions) => {
+/**
+ * Each step's `moves` (insertDirections against what is on its page) and `view`; an attaching sub-assembly moves
+ * as one. A new part no connection gives a way (a chain link: no connector edges; a part held two ways at once)
+ * comes from away from the built parts it touches (adjacency): a link out of its sprocket.
+ */
+const withMoves = (plan, directions, {adjacency, positions} = {}) => {
+    const awayFrom = (id, onPage) => {
+        if (!adjacency || !positions) return null;
+        const near = [...(adjacency.get(id) || [])].filter(n => onPage.has(n) && positions.has(n));
+        if (!near.length) return null;
+        const c = [0, 1, 2].map(i => near.reduce((sum, n) => sum + positions.get(n)[i], 0) / near.length);
+        const d = vSub(positions.get(id), c);
+        return Math.hypot(...d) > 1e-6 ? vUnit(d).map(v => v || 0) : null;
+    };
     let corner = VIEWS[0];
     plan.steps.forEach((step, n) => {
         const {built, fresh} = stepView(plan, n);
@@ -256,7 +268,14 @@ const withMoves = (plan, directions) => {
             const found = parts.map(id => dirs.get(id)).filter(Boolean);
             if (found.length && found.every(d => vDot(d, found[0]) > 0.99)) for (const id of parts) moves[id] = found[0];
         }
-        for (const id of step.parts) if (dirs.has(id)) moves[id] = dirs.get(id);
+        const onPage = new Set(built);
+        for (const id of step.parts) {
+            if (dirs.has(id)) moves[id] = dirs.get(id);
+            else if (!moves[id]) {
+                const away = awayFrom(id, onPage);
+                if (away) moves[id] = away;
+            }
+        }
         step.moves = moves;
         corner = stepCorner(Object.values(moves), corner);
         step.view = corner;
@@ -612,7 +631,8 @@ export const buildSteps = (model, catalog) => {
         // Parts added since (in the editor) follow in derived steps.
         const rest = allIds.filter(id => !seen.has(id));
         if (rest.length) steps.push(...pinsFirst(deriveSteps({ids: rest, adjacency, metaOf: meta, index, built: seen, pairs}), adjacency, meta, []));
-        return withMoves({source: 'meta', steps: steps.map(s => ({pins: false, ...s})), groups: []}, insertDirections(model, catalog));
+        return withMoves({source: 'meta', steps: steps.map(s => ({pins: false, ...s})), groups: []}, insertDirections(model, catalog),
+            {adjacency, positions: new Map(model.parts.map(p => [p.id, p.position]))});
     }
 
     // Sub-assemblies: groups of two or more parts that hold together on their own.
@@ -622,7 +642,8 @@ export const buildSteps = (model, catalog) => {
     const subSteps = group => deriveSteps({ids: group.parts, adjacency, metaOf: meta, index, pairs})
         .map(step => ({...step, attach: [], subassembly: group.id, loose: false}));
     const steps = pinsFirst(deriveSteps({ids: allIds, adjacency, metaOf: meta, index, groups, subSteps, pairs}), adjacency, meta, groups);
-    return withMoves({source: 'auto', steps, groups}, insertDirections(model, catalog));
+    return withMoves({source: 'auto', steps, groups}, insertDirections(model, catalog),
+        {adjacency, positions: new Map(model.parts.map(p => [p.id, p.position]))});
 };
 
 /**

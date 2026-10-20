@@ -297,6 +297,38 @@ export class Ev3VirtualHub {
         }
     }
 
+    /**
+     * A motor command from the Robot Lab API (hubs/hub-profile.js directCommand): as an EV3 direct command
+     * does it (opOUTPUT_POWER / _SPEED + _START, _STEP_SPEED, _STOP), through this brick's own output calls.
+     * {power} | {speedDps} | {degrees, power|speedDps} (`done` when the move ends) | {position, …} | {stop}.
+     */
+    directCommand (port, c = {}) {
+        const i = EV3_OUTPUTS.indexOf(port);
+        if (i < 0 || this.s.outputs[i].type === EV3_TYPE.none) return {ok: false, code: 'no-motor', message: `no motor on output ${port}`};
+        const finite = v => typeof v === 'number' && Number.isFinite(v);
+        const mask = 1 << i;
+        const p = this.s.outputs[i];
+        if (c.stop !== undefined) {
+            if (!['brake', 'coast', 'hold'].includes(c.stop)) return {ok: false, code: 'bad-command', message: 'stop takes brake, coast, hold'};
+            this.outputStop(0, mask, c.stop !== 'coast');
+            return {ok: true};
+        }
+        const level = finite(c.speedDps) ? {kind: 'speed', value: c.speedDps / this._fullScale(p) * 100} :
+            finite(c.power) ? {kind: 'power', value: c.power} : null;
+        const degrees = finite(c.degrees) ? c.degrees : finite(c.position) ? c.position - p.angleDeg : null;
+        if (!level && degrees === null) return {ok: false, code: 'bad-command', message: 'the EV3 takes power, speedDps, degrees, position or stop'};
+        if (degrees === null) {
+            this.outputSet(0, mask, level.kind, level.value);
+            this.outputStart(0, mask);
+            return {ok: true};
+        }
+        const value = Math.sign(degrees || 1) * Math.abs(level ? level.value : 75);
+        this.outputProfile(0, mask, {regulated: true, unit: 'deg', value, steps: [0, Math.round(Math.abs(degrees)), 0], brake: true});
+        return {ok: true, done: new Promise(resolve => {
+            const off = this.onChange(() => { if (!p.busy) { off(); resolve('done'); } });
+        })};
+    }
+
     outputClearCount (layer, nos) {
         for (const i of this._outputs(layer, nos)) {
             const p = this.s.outputs[i];

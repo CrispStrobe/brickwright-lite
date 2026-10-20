@@ -6673,6 +6673,12 @@
    "license": "Licensed under CC BY 2.0 and CC BY 4.0 : see CAreadme.txt",
    "author": "Joerg Sommerer [Brickaneer]"
   },
+  "parts/88323.dat": {
+   "sha256": "7b99a2484630af22386d392068bc3659bdc79f03f60630cf017ca4b9304ce87f",
+   "release": "G Part UPDATE 2022-04",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Philippe Hurbain [Philo]"
+  },
   "parts/89678.dat": {
    "sha256": "7b56ae687b68e042660d175f55cb3241329b9cbde63b2a3402eb47f1b1cf6093",
    "release": "G Part UPDATE 2025-02",

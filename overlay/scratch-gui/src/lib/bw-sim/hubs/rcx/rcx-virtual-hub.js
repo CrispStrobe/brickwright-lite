@@ -191,6 +191,35 @@ export class RcxVirtualHub {
         for (const fn of [...this.listeners]) fn(this);
     }
 
+    /**
+     * A motor command from the Robot Lab API (hubs/hub-profile.js directCommand): as the RCX's direct
+     * commands over IR do it (Set Power, Set Direction, On / Off / Float), on the VM's own output state.
+     * {power} (|power| to the RCX's 8 levels) | {stop: 'brake'|'coast'}. The outputs have no encoder:
+     * degrees, a position or holding are refused, by name.
+     */
+    directCommand (port, c = {}) {
+        const i = RCX_OUTPUTS.indexOf(port);
+        if (i < 0 || !this.motorPorts.includes(port)) return {ok: false, code: 'no-motor', message: `no motor on output ${port}`};
+        const out = this.vm.s.outputs[i];
+        if (c.stop !== undefined) {
+            if (c.stop === 'hold') return {ok: false, code: 'refused', message: 'an RCX output has no encoder to hold a position'};
+            out.mode = c.stop === 'coast' ? 'float' : 'off';
+            this._changed();
+            return {ok: true};
+        }
+        if (c.degrees !== undefined || c.position !== undefined) return {ok: false, code: 'refused', message: 'an RCX output has no encoder: it takes power and stop'};
+        if (typeof c.power !== 'number' || !Number.isFinite(c.power)) return {ok: false, code: 'bad-command', message: 'the RCX takes power and stop'};
+        if (Math.round(c.power) === 0) {
+            out.mode = 'off';
+        } else {
+            out.mode = 'on';
+            out.direction = c.power < 0 ? -1 : 1;
+            out.power = Math.max(0, Math.min(7, Math.round(Math.abs(c.power) / 100 * 8) - 1));
+        }
+        this._changed();
+        return {ok: true};
+    }
+
     /** The program image, the VM's state and the held inputs: all a mirror needs to redo a batch. */
     exportState () {
         return {timeMs: this.timeMs, image: this.image, vm: this.vm.snapshot(), inputs: this.inputs.map(i => (typeof i === 'object' ? {...i} : i))};

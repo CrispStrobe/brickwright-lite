@@ -6183,6 +6183,81 @@
    }
   },
   {
+   "part": "88323.dat",
+   "name": "Technic chain tread 5 wide reinforced",
+   "category": "gear",
+   "massGrams": 1.4,
+   "connectors": [
+    {
+     "id": "k",
+     "type": "chain-link",
+     "position": [
+      0,
+      0,
+      -15
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "data": {
+      "along": [
+       0,
+       0,
+       -1
+      ],
+      "pitchLdu": 30,
+      "outward": [
+       0,
+       -1,
+       0
+      ],
+      "outerLdu": 14,
+      "widthLdu": 96
+     }
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      48,
+      10.5,
+      22.400000000000002
+     ],
+     "position": [
+      0,
+      -3.5,
+      -16.4
+     ]
+    }
+   ],
+   "drawnOnly": true,
+   "nameDe": "Technic-Kettenglied 5 breit verstärkt",
+   "mirrorOf": {
+    "part": "88323.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  {
    "part": "2909.dat",
    "name": "Technic shock absorber 9L cylinder",
    "category": "other",

@@ -42,8 +42,11 @@ const deepFreeze = v => {
 const frozenPart = fields => deepFreeze(copyValue(fields));
 
 /** A frozen model from parts (already frozen), and groups / steps / rubber bands (frozen or not). */
-const makeModel = (version, parts, groups, steps, belts = null, ropes = null, hoses = null) => {
+const makeModel = (version, parts, groups, steps, belts = null, ropes = null, hoses = null, carried = null) => {
     const out = {version, parts: Object.freeze(parts)};
+    // What the editor does not edit but a save must keep: decoration (a cable's segments) and the parts a file ships.
+    if (carried && carried.decor && carried.decor.length) out.decor = carried.decor;
+    if (carried && carried.files) out.files = carried.files;
     if (groups) out.groups = deepFreeze(groups);
     if (steps) out.steps = deepFreeze(steps);
     if (belts && belts.length) out.belts = deepFreeze(belts);
@@ -59,7 +62,9 @@ const importModel = model => {
     const belts = model.belts ? model.belts.map(b => ({id: b.id, band: b.band, around: b.around.slice()})) : null;
     const ropes = model.ropes ? model.ropes.map(r => ({id: r.id, lengthLdu: r.lengthLdu, around: r.around.slice()})) : null;
     const hoses = model.hoses ? model.hoses.map(h => ({id: h.id, a: {...h.a}, b: {...h.b}})) : null;
-    return makeModel(model.version, model.parts.map(frozenPart), groups, steps, belts, ropes, hoses);
+    const carried = {decor: model.decor ? deepFreeze(model.decor.map(d => ({...d, position: d.position.slice(), matrix: d.matrix.slice()}))) : null,
+        files: model.files ? Object.freeze({...model.files}) : null};
+    return makeModel(model.version, model.parts.map(frozenPart), groups, steps, belts, ropes, hoses, carried);
 };
 
 /** The next free part id, as snap.js placePart picks it (`p<n+1>`, then counting up). */
@@ -224,7 +229,7 @@ export const createEditor = ({model, catalog}) => {
         const ids = parts !== current.parts && ((belts && belts.length) || (ropes && ropes.length) || (hoses && hoses.length)) ? new Set(parts.map(p => p.id)) : null;
         const keep = list => (list && ids ? list.filter(b => b.around.every(id => ids.has(id))) : list);
         const keptHoses = hoses && ids ? hoses.filter(h => ids.has(h.a.part) && ids.has(h.b.part)) : hoses;
-        return makeModel(current.version, parts, groups, current.steps || null, keep(belts), keep(ropes), keptHoses);
+        return makeModel(current.version, parts, groups, current.steps || null, keep(belts), keep(ropes), keptHoses, current);
     };
     /** `parts` with the part at `idx` replaced by a frozen copy carrying `changes` (a field set to undefined is removed). */
     const withPart = (parts, idx, changes) => {

@@ -707,7 +707,7 @@ class SimLabPane extends React.Component {
 
     /** Build mode: the current model (or an empty one) in the editor. */
     async enterBuild () {
-        const {createEditor, createEditorView3D, createPartThumbnails, fetchLDrawClosure, parseLDConfig, CATALOG, DEFAULT_COLOR} = this.lib;
+        const {createEditor, createEditorView3D, createPartThumbnails, fetchLDrawClosure, fetchModelDrawing, parseLDConfig, CATALOG, DEFAULT_COLOR} = this.lib;
         const model = this.session ? this.session.model : {version: 1, parts: []};
         this.pause();
         this.teardown();
@@ -724,7 +724,14 @@ class SimLabPane extends React.Component {
         if (this.disposed) return;
         if (!this.catalogFiles) this.catalogFiles = await fetchLDrawClosure([...CATALOG.keys()], {withConfig: true});
         if (this.disposed) return;
-        const {read} = this.catalogFiles;
+        let {read} = this.catalogFiles;
+        // A model with decoration (a cable's segments) or parts of its own: those files too, its own first.
+        if (model.decor || model.files) {
+            const drawing = await fetchModelDrawing({parts: [], decor: model.decor, files: model.files});
+            if (this.disposed) return;
+            const catalogRead = read;
+            read = path => drawing.read(path) ?? catalogRead(path);
+        }
         this.editor = createEditor({model, catalog: CATALOG});
         const colors = parseLDConfig(read('ldconfig.ldr'));
         try {

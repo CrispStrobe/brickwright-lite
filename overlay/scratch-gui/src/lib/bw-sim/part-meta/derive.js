@@ -1715,7 +1715,7 @@ export const deriveTransmission = ({part, desc, meta, connectors, found, flat, r
  * check the shipped file again, independently.)
  * @returns {string[]} reasons
  */
-export const selfCheck = (meta, flat, {validate, kinds, minEngage = 8}) => {
+export const selfCheck = (meta, flat, {validate, kinds, minEngage = 8, minEnclosed = 0.98, gearSlack = 0}) => {
     const out = [];
     // The seat rule (kinds/pin-axle.js MIN_ENGAGE_LDU) is made for holes at least that deep.
     for (const c of meta.connectors) {
@@ -1724,7 +1724,7 @@ export const selfCheck = (meta, flat, {validate, kinds, minEngage = 8}) => {
     for (const q of validate(meta, {connectorKinds: kinds})) out.push(`invalid: ${q}`);
     const verts = flat.polys.flat();
     const fit = colliderFit(meta.colliders, verts);
-    if (fit.enclosed < 0.98) out.push(`colliders enclose ${(fit.enclosed * 100).toFixed(1)} % of the mesh (< 98 %)`);
+    if (fit.enclosed < minEnclosed) out.push(`colliders enclose ${(fit.enclosed * 100).toFixed(1)} % of the mesh (< ${minEnclosed * 100} %)`);
     if (fit.ratio > 1.1) out.push(`colliders are ${(fit.ratio * 100).toFixed(0)} % of the mesh box (> 110 %)`);
     const holes = meta.connectors.filter(c => c.type === 'pinhole' || c.type === 'axlehole');
     for (let i = 0; i < holes.length; i++) {
@@ -1773,7 +1773,7 @@ export const selfCheck = (meta, flat, {validate, kinds, minEngage = 8}) => {
         // A turntable's ring is moulded with its teeth a little short of the full addendum (the
         // 60T's tip is 0.75 LDU in): 1 LDU, as the metadata test allows for it.
         const tol = meta.gear.type === 'bevel' ? 2 : SHORT_TEETH.has(meta.part) || meta.connectors.some(c => c.type === 'turntable-ring') ? 1 : 0.5;
-        if (Math.abs(tip - want) > tol) out.push(`gear tip radius ${tip.toFixed(2)} ≠ ${teeth}·1.25 + 2.5 (not module 1)`);
+        if (Math.abs(tip - want) > tol + gearSlack) out.push(`gear tip radius ${tip.toFixed(2)} ≠ ${teeth}·1.25 + 2.5 (not module 1)`);
     }
     return out;
 };
