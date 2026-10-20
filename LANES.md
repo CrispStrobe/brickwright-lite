@@ -8107,3 +8107,14 @@ all four fail. No writer, cache, VM authority, source inspector or browser
 assertion change. Existing painter, identity, legacy and placement browser
 journeys still require final-head qualification; rotation's intrinsic-surface
 refusal remains a separate unresolved failure.
+
+
+### Browser animation failure observations — 2026-10-20
+
+Existing Arcade qualification lane. Retain actual controller DOM/input events,
+clock metadata, error channels and frame image observations before the original
+both-colour assertion and on failure. Read selected own data without invoking
+Scratch primitives, mutable accessors or methods from passive observers; unknown
+shapes and callable/private implementations remain explicitly unobserved. All
+original clicks, frame sampling and assertions remain unchanged. Source review
+and syntax checks pass; this is not a browser result or a cause determination.
