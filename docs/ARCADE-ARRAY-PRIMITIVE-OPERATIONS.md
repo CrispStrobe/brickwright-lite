@@ -150,3 +150,26 @@ this birth keep their previous unqualified behavior. Other factories, range
 coercion/loop semantics, derived slice/concat, opaque elements and fresh decoder
 normalization remain separate work. The named-empty component result does not
 qualify these families, public roundtrips or whole games.
+
+
+## Named JSON factory candidate
+
+A separate source candidate covers current `create1D` and `create2D` calls with
+primitive string names and JSON. The host performs the one native parse and
+records the actual fresh Array tree. Only JSON primitive elements and nested
+Arrays can receive a primitive conversion proof at final publication. Object
+entries stay plain JSON values; this path does not decode tagged objects.
+
+The original parser position, name evaluation and catch remain: native syntax
+errors enter the existing `[]` or `[[]]` fallback, which stays unqualified.
+Nonstring inputs, custom parsers and non-Array roots retain legacy behavior.
+The names do not impose dimensionality. Trees beyond the bounded conversion
+profile remain legacy allocations. A failed ownership guard never becomes a
+parse fallback. Current calls, graph/lifetime checks, native descriptors and
+selected named-reference identity remain necessary through publication.
+
+This is unexecuted source, with separate supplier protocol and genuine native
+controls. Explicit supplier publication, canonical carrier adoption, a fresh
+normal installation and the authored Blocks → current Code → TypeScript →
+reimport journey remain pending. Zeros, range and other derived factories are
+outside this candidate; their behavior is not inferred from these controls.

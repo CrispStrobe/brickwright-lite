@@ -7294,3 +7294,15 @@ validation; do not grant primitive eligibility to arbitrary factory bodies.
 Preserve default/unqualified behavior, existing rejection leases and the
 separate derived-reference work. Explicit supplier publication/adoption and
 fresh installed qualification are pending; no source-only runtime claim.
+
+
+### Named JSON Array primitive birthplace candidate — 2026-10-20
+
+SOURCE ONLY — existing coordinated Array runtime lane. Own the operation host,
+a narrow supplier `create1D`/`create2D` parse-outcome request and focused tests.
+Require actual host native parse identities and current-call publication proof;
+no method-name or supplied-body certificate. Preserve original key/RHS/catch,
+nonstring/custom-parser/non-Array legacy behavior and unqualified syntax-error
+fallback. Existing native controls remain unchanged. Supplier publication,
+canonical adoption, fresh installed runtime and public roundtrip acceptance are
+pending. No zeros/range or generic reference conversion expansion.
