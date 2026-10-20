@@ -2,6 +2,11 @@
 
 ## Current integration checkpoint — 2026-10-20
 
+Start with [the current CI repair matrix](ARCADE-CI-REPAIR-STATUS.md#current-batch-and-acceptance-boundary--2026-10-20)
+for the exact red-check causes, local complete-module passes and pending hosted
+acceptance. Supplier [#57](https://github.com/CrispStrobe/extensions/pull/57) is
+merged; Lite final composition is still awaiting qualification.
+
 For the latest functional repair and ordered acceptance work, read
 [the current queue](ARCADE-COMPATIBILITY-NEXT-STEPS.md#current-integration-and-repair-queue--2026-10-20).
 The named-empty Array candidate is additional to the qualified earlier49, and

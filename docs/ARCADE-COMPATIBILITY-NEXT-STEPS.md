@@ -22,6 +22,11 @@ current outcomes remain unobserved.** The historical raw184 result remains
 remains 29 original-compiler passes / 12 failures. Never subtract a component
 test or an unfinished prefix from these counts.
 
+See [the current CI repair matrix](ARCADE-CI-REPAIR-STATUS.md#current-batch-and-acceptance-boundary--2026-10-20)
+for exact local passes and remaining complete-module qualification. Supplier
+[#57](https://github.com/CrispStrobe/extensions/pull/57) is merged; the explicit
+Lite pin remains the reviewed source commit.
+
 ### Arrays runtime: coordinator and replacement lifecycle
 
 Two authored Code journeys reproduced an Arrays-only project failure: the
@@ -543,7 +548,9 @@ authority. Do not strip arbitrary source differences to assert factory equality.
 The two complete codec qualification modules retain six tests and the actual
 host/supplier transport matrix. Wrong pin, changed source, executable carrier,
 legacy carrier and unqualified explicit-source refusals remain covered. This
-is a test-source repair pending qualification, not new callable support.
+is a test-source repair: both complete modules now pass all six controls with
+zero skips. Hosted final-composition checks remain pending; this is not new
+callable support.
 
 ### Exponentiation carrier fixture maintenance
 

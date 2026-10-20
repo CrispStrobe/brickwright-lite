@@ -1,5 +1,36 @@
 # Arcade integration repairs and qualification order
 
+## Current batch and acceptance boundary — 2026-10-20
+
+The saved failures on [#1128](https://github.com/CrispStrobe/brickwright-lite/pull/1128)
+and [#1132](https://github.com/CrispStrobe/brickwright-lite/pull/1132) are caused by
+this development stack. Main is green. Repair these causes together before one
+normal hosted qualification campaign; do not add another `ci:full` request.
+Keep runtime ownership guards and original compiler comparisons intact.
+
+| Failure family | Repair and current evidence | Remaining acceptance |
+| --- | --- | --- |
+| Fetch census | Remove the obsolete workflow fetch row and constant; census follows the shipped source-admission script. | Complete final-composition guard passes all 13 tests, zero skips; hosted checks remain. |
+| Inert Sprite fixtures | Pure extension fixtures use the existing empty-target runtime helper; guest fixtures use real VM runtimes and cleanup. | All six complete modules, 41 tests, including original PXT, webpack and browser dependencies. |
+| Inert or off-thread Array fixtures | Execute through actual registered blocks, cached inputs and VM threads. Whole reference/table modules pass all 16 tests, zero skips. Strict stale-access errors and unchanged backing contents are checked. | Three other complete modules, 15 tests, retaining original compiler disagreements and TODOs. |
+| Old Arrays carrier | Value and string tests decode the strict registered carrier. Callable controls bind its exact supplier and independent reviewed host/supplier factories; both complete callable modules pass all six tests. Exponentiation uses the same strict reader without changing any of its four test bodies. | Whole exponentiation and affected original-compiler/runtime modules on the current normal installation. |
+| Temporary directory | Unit workflow exports the runner-owned temporary directory; fixtures still require an explicit owned directory. | Final hosted unit step. |
+| GUI dependency scope | Add the two actual procedure-model consumers to the allow-list. | Final hosted strict resolver checks; no blanket allowance. |
+| Importer source contracts | Preserve the normal lazy gateway and its intentional bare share-receiver fallback. Whole UI contract module passes all 12 tests. The prompt mutation matches the current call formatting. | Complete native-prompt module on the normal generated GUI checkout; a local incomplete-checkout run is not a pass. Prompt/confirm audits also decode registered Arrays bodies and add explicit detection controls; their whole modules need hosted qualification. |
+| Notices and vendor fixture | Use the canonical renderer, reject the old carrier, and include the actual vendor helper dependency. Both complete modules pass all 13 tests. | Final hosted checks; licence and pin assertions remain unchanged. |
+
+The Arrays supplier [#57](https://github.com/CrispStrobe/extensions/pull/57) is
+merged after every enabled check passed at its reviewed head. Lite deliberately
+retains its explicit reviewed supplier pin; do not silently replace it with the
+merge commit. The normal installation, native 64 + 17 controls and two public
+roundtrips described in the handoff retain their original source boundaries.
+
+**No corpus entries are promoted by these fixture results.** Historical counts
+remain 147 translated / 36 partial / one malformed. A complete current corpus
+report, original SDK comparisons, visible Blocks/Code/artwork authoring and
+complete playable-game checks remain required. Preserve each original failed
+run and do not re-download or replay successful originals for inspection.
+
 ## Registered-carrier CI fixture repair — 2026-10-20
 
 All13 tests in the complete notice-drift and targeted-vendoring modules now pass
@@ -33,10 +64,10 @@ the lifecycle control checks the actual ownership refusal and exact issued
 error for stale reference reads, writes and named access, with unchanged old
 backing contents.
 
-Complete affected modules and their original compiler comparisons still require
-qualification. Existing compiler disagreements, TODOs and original hosted
-failures remain open; this source candidate establishes no runtime or corpus
-result.
+The complete reference/table modules now pass all 16 tests with zero skips.
+The remaining three modules and their original compiler comparisons still
+require qualification. Existing compiler disagreements, TODOs and original
+hosted failures remain open; these fixture controls establish no corpus result.
 
 ## Current areas
 

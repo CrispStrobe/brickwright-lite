@@ -17,9 +17,11 @@ pin, fallback conversion or successful-value authority changes.
 
 New controls cover real authored Arrays-only execution, both actual extension
 load orders, duplicate Arcade rejection, retired facet arguments, shared listener
-ownership and fresh SB3 reload. Source review, fresh normal installation, all
-existing native controls plus these cases, and the public two-case roundtrip
-remain required. No runtime or public feature qualification is claimed here.
+ownership and fresh SB3 reload. Source review and the fresh normal installation are accepted at the tested
+candidate. All 64 existing native controls, 17 additional lifecycle/JSON/parser
+controls and both public Code/export/reimport cases pass, with independent
+saved-result checks. Final composed hosted and visible authoring qualification
+remain required; this does not establish complete games or corpus completion.
 
 ## Robot Lab: cables, Studio mouse, coach marks, Ctrl-glide — 2026-10-20
 
