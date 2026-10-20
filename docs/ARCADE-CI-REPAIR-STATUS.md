@@ -8,6 +8,11 @@ Forty-three actual failures share the flat-native-addition domain refusal.
 The remaining two concern animation helper binding and the closed occurrence
 profile. The lesson corpus is not a completed MakeCode application census.
 
+The later unit-one and unit-two logs add 137 actual failures: 94 operand-domain
+refusals, 41 helper-body/caller refusals, one stale-reference validator mismatch
+and one edited-accessor parser error. Their failing TODO cases are separate.
+These counts describe CI test leaves, not application completion.
+
 The first established cause is a generated unary conversion whose complete
 body returns Number on normal completion. Its captured input can still be
 Undefined, so requiring that input itself to be initialized Number rejects an
@@ -19,7 +24,11 @@ callback that changes the join. No operand permission or Array body access is
 derived from the Number result.
 
 The complete three domain/helper modules and original Number-text module pass
-all 14 tests with zero skips or TODOs on the tested candidate. The original
+all 14 tests with zero skips or TODOs on the tested candidate. The current public-source successor also passes all 23 tests in the five
+complete domain/helper/occurrence modules. The occurrence repair recognizes
+only the six already shipped source binary selectors, with exact operands and
+fields; the original 12 occurrence tests remain unchanged. It supplies scalar
+result facts without lending Number or Array authority. The original
 failing and unsafe intermediate results are retained. The remaining affected
 modules and every final-head hosted check are required; this is no claim that
 all 43 failures or any corpus project are complete.
