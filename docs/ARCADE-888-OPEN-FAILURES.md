@@ -97,16 +97,16 @@ changed. Source of the list: hosted Build run 39297263647 (head f2ecafef1).
 | G | `test/makecode-arcade-buffer-lifetime.test.mjs` | independent Buffer owners in one runtime cannot resolve each other's issued IDs | Kept TODO, unsound to accept as is: `capture`, `arrayCoordinatorReady`, `rejectArrayOperation` and `rejectConditionWait` in `bw-arcade-exceptions.js` resolve ONE owner per runtime. With a second live owner, instance B's array or condition rejection on a thread would be issued through A's signal registry and checked against A's generation. Needs signal and lease routing per owner, not per runtime. |
 | H | `test/makecode-arcade-idiv-source.test.mjs` | idiv actual mutable Number aliases ordinary helpers and captured entry dominance qualify | Kept TODO: not idiv-specific. `function outer(a){function read(){return a};return read()};let q=outer(7)` is refused (`read() as a value`), because a nested function called as a value is unsupported. Needs nested-function closure lifting in `translate-base.js`. |
 | H | `test/makecode-pxt-runtime.test.mjs` | census batch 1: a program using every call comes back from lite and MakeCode compiles it | Kept TODO: the micro:bit import writes `Math.idiv(a,b)` as `((a / b) bitor 0)`, which is not Math.idiv for fractional operands: `Math.idiv(3.5, 0.5)` is idiv(3, 0) = 0, but `(3.5 / 0.5) | 0` is 7. Exporting that shape as Math.idiv is unsound (5f74cb924). The sound fix is to import `((a bitor 0) / (b bitor 0)) bitor 0` and name only that exact shape on export. That contradicts current pinned assertions (`makecode-export-integer-division` 'explicit operand coercions stay connected', `makecode-translate` census batch 1 import line and 'Math.idiv truncates toward zero'), so it needs the owner's decision. |
-| I | `test/makecode-arcade-loop-control.test.mjs` | condition and update side effects agrees with original PXT and complete roundtrips | checks 1 !== 4 |
-| I | `test/makecode-arcade-loop-control.test.mjs` | for continue and update agrees with original PXT and complete roundtrips | updates 0 !== 4 |
-| I | `test/makecode-discarded-map-edited-export.test.mjs` | typed discarded map survives actual Creator export and a current numeric input edit without annotation-derived ingress | 0 !== 1 |
-| I | `test/makecode-export-arcade.test.mjs` | stop blocks and not survive export and re-import, without the run-token machinery | DEVICE ARCADE GLOBAL GameSprite GLOBAL _tokens GLOBAL _stopMark GLOBAL _som_Game GLOBAL _sok_Game GLOBAL Game_n GLOBAL Game_m SPRITE Game: |
+| I | `test/makecode-arcade-loop-control.test.mjs` | condition and update side effects agrees with original PXT and complete roundtrips | Fixed in 63894a733: the inspection domain proof now computes a least fixpoint over flow cycles (`i=advance(i)`). |
+| I | `test/makecode-arcade-loop-control.test.mjs` | for continue and update agrees with original PXT and complete roundtrips | Fixed in 63894a733: the inspection domain proof now computes a least fixpoint over flow cycles (`i=advance(i)`). |
+| I | `test/makecode-discarded-map-edited-export.test.mjs` | typed discarded map survives actual Creator export and a current numeric input edit without annotation-derived ingress | Kept TODO: not yet diagnosed in this pass. |
+| I | `test/makecode-export-arcade.test.mjs` | stop blocks and not survive export and re-import, without the run-token machinery | Kept TODO: not yet diagnosed in this pass. |
 
 ### Integration-only (PR #1085)
 
 | Group | File | Test | Error |
 |---|---|---|---|
-| I | `test/makecode-arcade-legacy-tile-collisions.test.mjs` | legacy collision filters/order, captures, yielding, snapshot indices and scenes match PXT through all roundtrips | 'ABCA' !== 'ABCABC'. Fails only with the stacked PRs merged; tried: none yet; next: compare callback order with #888 alone. |
+| I | `test/makecode-arcade-legacy-tile-collisions.test.mjs` | legacy collision filters/order, captures, yielding, snapshot indices and scenes match PXT through all roundtrips | Fixed in 63894a733 (TODO removed; passes on current main with these fixes). |
 
 ## Browser gates
 
