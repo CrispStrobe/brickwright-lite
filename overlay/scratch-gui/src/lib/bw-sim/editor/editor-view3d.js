@@ -97,6 +97,9 @@ import {
     turnAboutLine, hingeCandidates
 } from './snap.js';
 import {freeOffset, moveVerdict, rayHitParts, restingPosition, solidOverlaps} from './overlap.js';
+import {chainRound} from './chain-path.js';
+import {beltRound, beltPoints, BANDS} from './belt-path.js';
+import {createBeltLayer} from '../view/belt-layer.js';
 import {createSpatialIndex, partBounds} from '../mech/spatial-index.js';
 import {
     DEFAULT_GRID, GRID_STEPS, HOLE_PITCH, IDENTITY, cleanRotation, expandToGroups, facingAxis, gizmoSize, mul3, mulVec3,
@@ -580,8 +583,19 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
      * one only moved keeps its mesh at the new pose; only a new, removed, re-coloured or swapped part
      * makes or drops a mesh, and only then are the instanced batches remade (from the same proxies).
      */
+    // Rubber bands: drawn round their parts as the model has them (editor/belt-path.js).
+    const beltLayer = createBeltLayer();
+    s.add(beltLayer.group);
+    let beltsDrawnFor = null;
+    const drawBelts = model => {
+        if (beltsDrawnFor === model) return;
+        beltsDrawnFor = model;
+        beltLayer.draw((model.belts || []).map(b => ({id: b.id, band: b.band, points: beltPoints(model, catalogMap, b)})));
+        invalidate();
+    };
     const rebuild = () => {
         const model = editor.model;
+        if (model.belts || beltLayer.count) drawBelts(model);
         const instancing = useInstancing(model.parts.length);
         let changed = false;
         if (instancing !== Boolean(instanced) || !meshes.size) {
@@ -1598,6 +1612,39 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         const blocked = blockedBy([move], pairedParts(editor.model, catalogMap, parts[0].id));
         if (blocked) { status({kind: 'refused', reason: 'overlapTurn', target: blocked.target}); return; }
         if (run({type: 'moveMany', moves: [move]}, {turned: 1})) status({kind: 'flipped'});
+    };
+    /**
+     * Chain round the selected gears, or a tread round the selected sprockets (editor/chain-path.js):
+     * the links laid round their pitch circles in one undo step, then selected; refused when a link
+     * would go into a part.
+     */
+    const chainRoundSelection = () => {
+        if (!needSelection()) return;
+        const r = chainRound(editor.model, catalogMap, selection);
+        if (r.error) { status({kind: 'refused', reason: `chain_${r.error}`}); return; }
+        const blocked = r.links.map(l => placeBlockedBy(l.part, l)).find(Boolean);
+        if (blocked) { status({kind: 'refused', reason: 'overlapPlace', target: blocked.target}); return; }
+        const before = new Set(editor.model.parts.map(p => p.id));
+        const commands = r.links.map(l => ({type: 'place', part: l.part, position: l.position, rotation: l.rotation, color: l.color}));
+        if (!run({type: 'batch', commands}, {placed: commands[0].part})) return;
+        setSelection(editor.model.parts.filter(p => !before.has(p.id)).map(p => p.id));
+        status({kind: 'chained', count: commands.length, gears: r.gears.length, tread: r.links[0].part !== '3711.dat'});
+    };
+    /** A rubber band round the selected parts (editor/belt-path.js), one undo step; refused with the reason. */
+    const beltRoundSelection = () => {
+        if (!needSelection()) return;
+        const r = beltRound(editor.model, catalogMap, selection);
+        if (r.error) { status({kind: 'refused', reason: `band_${r.error}`}); return; }
+        if (!run({type: 'addBelt', around: r.around, band: r.band})) return;
+        const band = BANDS.find(b => b.part === r.band);
+        status({kind: 'banded', mm: band.mm, stretch: Math.round(r.lengthLdu / band.restLdu * 10) / 10});
+    };
+    /** Takes off every rubber band round a selected part, one undo step. */
+    const removeBeltsOfSelection = () => {
+        if (!needSelection()) return;
+        const ids = (editor.model.belts || []).filter(b => b.around.some(id => selection.includes(id))).map(b => b.id);
+        if (!ids.length) { status({kind: 'refused', reason: 'band_none'}); return; }
+        if (run({type: 'batch', commands: ids.map(id => ({type: 'removeBelt', id}))})) status({kind: 'unbanded', count: ids.length});
     };
     /** Selects every part joined to the selection through pairs (Studio's "By Connected"). */
     const selectConnected = () => {
@@ -2882,6 +2929,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         measureDot.dispose();
         drawHinge(null);
         hingeLine.dispose();
+        beltLayer.dispose();
         measureDiv.remove();
         clearGhost();
         for (const mesh of meshes.values()) for (const m of [].concat(mesh.material)) m.dispose();
@@ -2930,7 +2978,9 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         get pinnedTarget () { return pinned ? {partId: pinned.partId, connectorId: pinned.connectorId, part: pinned.part} : null; },
         clearTarget: () => setPinned(null),
         /** In hand: place it (the touch ✓), turn it (⟳), the next way (Tab). */
-        placeHeld: () => place(), cycleHeld, fineTurn, flip: flipSelection, selectConnected,
+        placeHeld: () => place(), cycleHeld, fineTurn, flip: flipSelection, selectConnected, chainRoundSelection,
+        /** Rubber bands: one round the selection, or off the selection. */
+        beltRoundSelection, removeBeltsOfSelection,
         /** The hinge tool: the next hinge (N), and a turn of the selection on it (±15° is [ ]). */
         nextHinge, turnOnHinge,
         /** How a scroll is read: 'auto' (wheel or trackpad, guessed), 'mouse' (zoom), 'trackpad' (orbit). */
@@ -2953,6 +3003,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
                 return {left: rect.left + r.left, top: rect.top + r.top, size: r.size};
             },
             animating: () => Boolean(camAnim),
+            /** How many rubber bands are drawn. */
+            bands: () => beltLayer.count,
             /** The hinge [ ] would turn on now (null: none, or not asked for yet): its line, what moves, what stays. */
             hinge: () => {
                 const c = hinge.key === selection.join(',') && hinge.list[hinge.index];
