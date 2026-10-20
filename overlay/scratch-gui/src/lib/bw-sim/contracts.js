@@ -47,9 +47,11 @@ export const LDU_M = 0.0004;
  *  = tooth count), so r = teeth/2 mm = teeth · 1.25 LDU: 8T → 10, 24T → 30,
  *  and 8T + 24T mesh at 40 LDU = 2 holes apart. */
 export const pitchRadiusLdu = teeth => teeth * 1.25;
+/** A part's `gear` pitch radius (LDU): its own `pitchRadiusLdu` (a tread sprocket: the circle its tread's pivots ride on), else from the teeth. */
+export const gearPitchRadius = gear => (gear.pitchRadiusLdu > 0 ? gear.pitchRadiusLdu : pitchRadiusLdu(gear.teeth));
 
 export const CONNECTOR_TYPES = Object.freeze(['pinhole', 'axlehole', 'axle', 'pin', 'stud', 'antistud', 'ball', 'ballsocket']);
-export const GEAR_TYPES = Object.freeze(['spur', 'bevel', 'worm', 'rack']);
+export const GEAR_TYPES = Object.freeze(['spur', 'bevel', 'worm', 'rack', 'sprocket']);
 /** Port ids: hub output letters, and the numbered inputs of the RCX (1–3) and NXT/EV3 (1–4); the hub profile refuses ports it lacks. */
 export const HUB_PORTS = Object.freeze(['A', 'B', 'C', 'D', 'E', 'F', '1', '2', '3', '4']);
 /** What sensors.js measures; 'rotation' is the RCX rotation sensor (the hinge in its hole), 'gyro' the EV3 gyro (its body's yaw);
@@ -183,8 +185,13 @@ export const GROUND_FRICTION = 0.8;
  * @typedef {{
  *   version: 1,
  *   parts: {id: string, part: string, color?: number, position: Vec3, rotation: Mat3, port?: string}[],
- *   groups?: {id: string, name: string, parts: string[]}[]
+ *   groups?: {id: string, name: string, parts: string[]}[],
+ *   belts?: {id: string, band: string, around: string[]}[]
  * }} PlacedModel
+ *
+ * `belts` are rubber bands (docs/ROBOT-LAB-UX.md §12): `band` the LDraw part of its size (85543
+ * …), `around` the parts it goes round, in order. LDraw draws no stretched band, so in LDraw
+ * text each is a `0 !BW BELT <id> <band> <part id> <part id> …` line.
  *
  * PlacedModel v2 (§5.7, for models with several hubs): `version: 2`, and `port` may be
  * {hub?: string, port: string} — the placed id of the hub part it plugs into and that
@@ -371,7 +378,9 @@ export const validatePartMeta = (meta, {connectorKinds = null} = {}) => {
         if (!(Number.isInteger(meta.gear.teeth) && meta.gear.teeth > 0)) out.push(`${p}.gear.teeth: need a positive integer`);
         checkUnit(meta.gear.axis, `${p}.gear.axis`, out);
         if (!isVec(meta.gear.center)) out.push(`${p}.gear.center: not a Vec3`);
+        if (meta.gear.pitchRadiusLdu !== undefined && !(meta.gear.pitchRadiusLdu > 0)) out.push(`${p}.gear.pitchRadiusLdu: a positive number (LDU)`);
     }
+    if (meta.drawnOnly !== undefined && typeof meta.drawnOnly !== 'boolean') out.push(`${p}.drawnOnly: true or false`);
     if (meta.hub && !(Array.isArray(meta.hub.ports) && meta.hub.ports.every(x => HUB_PORTS.includes(x)))) {
         out.push(`${p}.hub.ports: need a list of ${HUB_PORTS.join('|')}`);
     }
@@ -625,6 +634,19 @@ export const validatePlacedModel = (model, catalog) => {
             if (!ref || !ref.port) out.push(`${w}.port: need a port id or {hub, port}`);
             else if (typeof pl.port === 'object' && pl.port.hub !== undefined && !(typeof pl.port.hub === 'string' && model.parts.some(q => q?.id === pl.port.hub))) {
                 out.push(`${w}.port.hub: '${pl.port.hub}' is not a part of this model`);
+            }
+        }
+    }
+    if (model.belts !== undefined) {
+        if (!Array.isArray(model.belts)) out.push('model.belts: not an array');
+        else {
+            uniqueIds(model.belts, 'model.belts', out);
+            const partIds = new Set(model.parts.map(pr => pr.id));
+            for (const b of model.belts) {
+                const wb = `model.belts[${b?.id}]`;
+                if (typeof b?.band !== 'string' || !b.band) out.push(`${wb}.band: the band's part`);
+                if (!Array.isArray(b?.around) || b.around.length < 2) out.push(`${wb}.around: at least 2 parts`);
+                else for (const pid of b.around) if (!partIds.has(pid)) out.push(`${wb}.around: unknown part '${pid}'`);
             }
         }
     }

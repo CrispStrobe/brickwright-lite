@@ -218,7 +218,7 @@ This is cursor-driven. A new pure export, `snapAtPointer(model, catalog, held, r
   - ✅ Select connected (Ctrl+click, and a button in the properties panel's Group section);
   - ◐ the touch offset and button cluster (the 60 px lift applies to a part from the palette, not to dragging a placed part: §7);
   - ✅ keyboard-only placement with aria-live.
-- **P3:** ☐ the mouse preset, ☐ coach marks, ☐ Ctrl-glide for axles in holes, ✅ a Studio-style hinge tool (§10), ☐ flexible parts.
+- **P3:** ☐ the mouse preset, ☐ coach marks, ☐ Ctrl-glide for axles in holes, ✅ a Studio-style hinge tool (§10), ◐ flexible parts (chains and treads: §11; rubber bands: §12; cables to come).
 
 ## 5. Browser-gate acceptance tests
 
@@ -346,3 +346,64 @@ The starting values from §6 were kept: every gate reading lies well inside them
 - Hinges are worked out only when asked for, never on a selection change (a Select all of the
   2,054-part model would search every joint), and a side of more than 400 parts is not offered.
 - Tests: `test/bw-sim-hinge.test.mjs`; gate `scripts/lib/sim-lab-hinge-gate.mjs` (`--part=editor`).
+
+## 11. Chains and treads round gears (2026-10-20)
+
+- The first flexible part: the Technic chain link (3711). Select two or more spur gears side by
+  side in one plane and press **Chain or tread round** in the properties panel: a closed chain runs
+  round the outside of their pitch circles (a gear inside it is not wrapped), its links' pivots
+  16 LDU apart (one link spans two teeth), laid in one undo step and then selected
+  (`lib/bw-sim/editor/chain-path.js`). The pivots are spaced by the link's straight chord, and the
+  chain closes within a fraction of a link's play.
+- Refused, with a reason: fewer than two gears, not spur gears, axles not parallel, not in one
+  plane, gears too close (their teeth would touch), a gear inside the chain, a link that would
+  go into another part.
+- Simulate (`lib/bw-sim/kinds/chain.js`, architecture M6): links join where a pivot of one is on a
+  pivot of the next; a chain goes round a gear when two of its pivots are on the gear's pitch
+  circle. Gears on hinges in one frame then turn the same way at the teeth's ratio (the fork's
+  `GearConstraint` on the two hinges; a step-up is built the other way round, as |mRatio| < 1
+  diverges). The links are welded to the frame: in the core they do not move, but the view runs
+  them round with their first sprocket (`view/chain-motion.js`: each link slides along the loop of
+  the links' places by the chain's travel).
+  So a chain in a Studio or LDraw file works as well: the detector reads the links, not a record
+  of the tool.
+- **Treads**: the same button round two or more tread sprockets (57519, gear type `sprocket`, its
+  pivot circle r = 48.54 LDU: one 30-LDU tread link per tooth of ten) lays the 5-wide tread (57518),
+  its tread face outward. A tread runs on the floor, so its links are `drawnOnly` (no colliders in
+  the core: welded to the frame, they would drag), and each sprocket it wraps gets a wheel collider
+  of the tread's outer radius (r + 14 LDU) with a tyre's grip — architecture M6's approximation. A
+  frame on two such sprockets drives straight on at the tread's outer speed (test, ±20 %).
+  The classic 2.5-wide tread (3873) round its sprocket (32007) is not in yet: LDraw draws 32007's
+  bore as a pin hole, so it could only be an idler.
+- Warnings: a chain round fewer than two gears; gears whose axles sit in different parts; a gear
+  fixed to the frame locks the chain.
+- Tests: `test/bw-sim-chain.test.mjs` (the path, the compile, the real core: 8T→24T turns +1/3,
+  two 8Ts 1:1, links running round, a tread's wheels, a tracked frame driving);
+  `test/bw-sim-part-meta.test.mjs` (the sprocket's teeth from the mesh, its pivot chord the tread's
+  pitch); gate `scripts/lib/sim-lab-chain-gate.mjs` (`--part=editor`).
+
+## 12. Rubber bands (2026-10-20)
+
+- **Rubber band round** in the properties panel puts a band round the selected parts: round a
+  part's circle — its pulley, else a round collider on its hole (a bush, a wheel, a gear: the band
+  sits 2 LDU into it), else a pin or an axle (radius 4) — on parallel axles side by side, round
+  the outside of them (`lib/bw-sim/editor/belt-path.js`). The band is LEGO's 15, 26 or 33 mm one
+  (85543/85545/85546), the one stretched nearest 1.4 times (at most 2.5). Refused when nothing is
+  round, the axles cross, even the smallest band would hang loose or the biggest would snap.
+- LDraw has bands only as fixed rings, so a band is the model's `belts` record ({id, band,
+  around}; `0 !BW BELT <id> <band> <part…>` in LDraw) and its path is drawn as a tube
+  (`view/belt-layer.js`). It goes with a part it is round when that is deleted (and comes back
+  on undo); **Take off rubber band** removes it.
+- Simulate (`lib/bw-sim/kinds/belt.js`, architecture M11):
+  - round parts turning on hinges in one frame it is a **band drive** ('band'): the same way round,
+    ω_i = (r₀ / r_i)·ω₀, as a chain, but with few velocity steps, so it slips under a load a chain
+    would carry;
+  - round two parts on other bodies it is a **spring** ('spring'): slack up to
+    d₀ = (L₀ − π(r₁ + r₂)) / 2 between the circles' centres, beyond that 4k·(d − d₀) (two strands,
+    each k·ΔL), k = 25 N/m for the 15 mm band and softer in proportion for longer ones. The core:
+    a distance constraint free from 0 to d₀, a spring beyond;
+  - Simulate draws each band round its parts where the bodies are, every frame, so a spring band
+    stretches and slackens.
+- Tests: `test/bw-sim-belt.test.mjs` (circles, band choice and refusals, the model and LDraw, the
+  band drive at 1/3 and the spring pulling an arm in the real core); gate step 5 of
+  `scripts/lib/sim-lab-chain-gate.mjs` (`--part=editor`).
