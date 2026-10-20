@@ -1034,6 +1034,12 @@ historical reader. Font-prior formats and bytes remain held. New source, reader
 and request bindings, exact-head CI and affected guest qualification remain
 pending; this pin refresh establishes no new runtime result.
 
+After the bw-circuit-ui bump to `989f9541de610d2a742b36867c12df61d36b0c24`
+(Lite #1122, B27 part faces) both consumers' CUI declarations follow it, so the
+controls check again matches the canonical package, lock and vendor selection.
+Board is unchanged. This adoption also establishes no new runtime result; the
+pending qualification above still applies.
+
 The dependency-free focused check is:
 
 ```sh
