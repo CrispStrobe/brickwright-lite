@@ -75,8 +75,13 @@ try {
     await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
         name: 'carnival-control.mkcd', mimeType: 'application/json', buffer: Buffer.from(project)
     });
-    await page.getByText(/Imported the Arcade game.*carnival-control/).first().waitFor({state: 'visible', timeout});
     const editor = page.locator('[data-testid="bw-code-editor"] .cm-content');
+    // Import completion is the persistent editor document. The notification is
+    // retained below as a separate visible observation, not a readiness signal.
+    await page.waitForFunction(() => {
+        const element = document.querySelector('[data-testid="bw-code-editor"] .cm-content');
+        return element?.cmTile?.root?.view?.state?.doc?.toString().includes('arcade carnival countdown');
+    }, null, {timeout});
     // CodeMirror virtualizes visible lines. Read its actual complete document,
     // and retain the visible projection separately before any content assertion.
     report.importObservation = await editor.evaluate(element => ({
