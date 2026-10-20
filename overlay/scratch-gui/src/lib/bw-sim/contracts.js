@@ -903,8 +903,9 @@ export const dirToWorld = d => [d[0], 0 - d[1], 0 - d[2]];
  *               collide. A noCollide pair not listed is filtered whole. With a fourth element 'collide'
  *               the list is inverted: only those part pairs collide (the shorter of the two lists is
  *               written: two frames of 1,000 and 600 parts kept 1.19 million pairs apart, 2026-10-20).
- *   solver?     {massFloorKg} the lightest a body weighs to the solver (mech/compile.js
- *               FOREIGN_MASS_FLOOR_KG, models from elsewhere only); bodies keep their own massKg.
+ *   solver?     {lightLinks: {massKg, ratio, velocity, position}} more solver iterations for joints
+ *               holding a body below massKg against one ratio times heavier (mech/compile.js
+ *               FOREIGN_LIGHT_LINKS, models from elsewhere only); bodies keep their own massKg.
  * The v1 fields are the derived v1 VIEW (mechanismV1Aliases): `gears` = the gear and
  * rackAndPinion couplings, `sensors` = the devices, `joint.motor` = the actuator's numbers
  * (port without its hub). validateCompiledMechanism checks they agree; mechanismV1(m)

@@ -142,3 +142,22 @@ flung, all three motors turn, and it runs at 13 ms per 5 ms step (headless, CPU)
   pthread workers.
 - **Loading a big set takes 10–26 s** in the app: the library's parts are fetched and derived in the browser on first
   use. That is next.
+
+## Real masses, more iterations for light links (2026-10-20)
+
+Bodies weigh what their parts weigh (each part's LDraw-derived mass, shared out over its colliders; Jolt computes
+centre of mass and inertia from those). A 5 g solver mass floor for models from elsewhere was tried and replaced. Jolt's
+iterative solver loses linkages that hang a 1–3 g liftarm between frames of hundreds of grams; the remedy kept is more
+solver iterations (30 velocity, 10 position) for the joints that hold a body under 10 g against one more than 20 times
+heavier (`mechanism.solver.lightLinks`, models from elsewhere only). Flung bodies over 1 s, every motor at 60 %:
+
+| Model | real masses | real + iterations | 5 g floor |
+|---|---|---|---|
+| 42109 | 24 | 24 | 0 |
+| 42095 | 0 | 0 | 0 |
+| 8275 Bulldozer | 5 (blade jammed) | 5 | 57 |
+| brickhub-322 | 13 | 0 | 0 |
+| odin | 0 | 0 | 10 |
+
+42109 is still open. The part-pair collision filter moves to C++ in the Jolt fork (`PartPairSimShapeFilter`,
+jolt-physics 1.1.0-bw.5); the core uses it when the loaded Jolt has it and the JS filter otherwise.

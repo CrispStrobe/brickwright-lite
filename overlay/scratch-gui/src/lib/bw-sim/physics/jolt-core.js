@@ -248,9 +248,11 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     /** joint id -> its actuator (CompiledMechanism v2): the motorised hinges */
     const actuatorOf = new Map(mechanism.actuators.map(a => [a.joint, a]));
     const dtFixed = 1 / stepHz;
-    // The solver's lightest body (mechanism.solver, mech/compile.js: models from elsewhere): a 1.6 g link between two
-    // hinges on a 760 g frame is a mass ratio Jolt's solver cannot hold (42109 went to NaN).
-    const massFloorKg = experiments.massFloorKg ?? mechanism.solver?.massFloorKg ?? 0;
+    // A lightest weight for the solver (an experiment only: bodies weigh what their parts weigh; see lightLinks below).
+    const massFloorKg = experiments.massFloorKg ?? 0;
+    // Joints holding a light body against a far heavier one solve with more iterations (mechanism.solver.lightLinks,
+    // mech/compile.js: models from elsewhere): {massKg, ratio, velocity, position}.
+    const lightLinks = experiments.lightLinks ?? mechanism.solver?.lightLinks ?? null;
     const LAYER_DYNAMIC = 0;
     const LAYER_STATIC = 1;
     // A static body made of model parts is the machine's own fixed frame (a
@@ -449,7 +451,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             // the centre of mass and the inertia (parallel axis per sub-shape) where the parts' masses
             // are. Without them (a hand-built mechanism) every collider has one density, as before.
             const byMass = b.colliders.every(c => typeof c.massKg === 'number' && c.massKg > 0);
-            for (const col of b.colliders) {
+            for (const [index, col] of b.colliders.entries()) {
                 const pos = col.position ? new J.Vec3(...col.position) : new J.Vec3(0, 0, 0);
                 const rot = col.rotation ? new J.Quat(...col.rotation) : new J.Quat(0, 0, 0, 1);
                 let shapeSettings = null;
@@ -462,7 +464,9 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                     shapeSettings = new J.SphereShapeSettings(col.radius);
                 } else throw new Error(`unknown collider shape ${col.shape}`);
                 if (byMass) shapeSettings.mDensity = col.massKg / colliderVolume(col);
-                compoundSettings.AddShape(pos, rot, shapeSettings, b.colliders.indexOf(col));
+                // The leaf carries its collider index too: the native part filter (PartPairSimShapeFilter) reads it there.
+                shapeSettings.mUserData = index;
+                compoundSettings.AddShape(pos, rot, shapeSettings, index);
             }
             const shapeResult = compoundSettings.Create();
             if (shapeResult.HasError()) {
@@ -531,7 +535,32 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     // phase, so it is installed only when the mechanism has such a pair (measured: 0.19 µs a call, ~2,000
     // calls a step on the 2,054-part stress model, +28 % — which has none).
     let simShapeFilter = null;
-    if (localPairs.size && !experiments.noShapeFilter) {
+    // The Jolt fork's PartPairSimShapeFilter (jolt-physics 1.1.0-bw.5) does the same in C++: no call into JavaScript
+    // per sub-shape pair, and it runs on Jolt's worker threads (the multithreaded build cannot call a JS filter).
+    if (localPairs.size && !experiments.noShapeFilter && typeof J.PartPairSimShapeFilter === 'function' && !experiments.jsShapeFilter) {
+        const partNumbers = new Map();
+        const partNumber = part => {
+            if (!partNumbers.has(part)) partNumbers.set(part, partNumbers.size);
+            return partNumbers.get(part);
+        };
+        simShapeFilter = new J.PartPairSimShapeFilter();
+        const filtered = new Set();
+        for (const [key, {parts, collide}] of localPairs) {
+            const [a, b] = key.split('|');
+            const ia = bodyMap.get(a).bodyID;
+            const ib = bodyMap.get(b).bodyID;
+            simShapeFilter.AddBodyPair(ia, ib, collide);
+            for (const [x, y] of parts) simShapeFilter.AddPartPair(ia, ib, partNumber(x), partNumber(y));
+            filtered.add(a);
+            filtered.add(b);
+        }
+        for (const b of mechanism.bodies) {
+            if (!filtered.has(b.id)) continue;
+            const id = bodyMap.get(b.id).bodyID;
+            b.colliders.forEach((c, i) => simShapeFilter.SetColliderPart(id, i, partNumber(c.part)));
+        }
+        physicsSystem.SetSimShapeFilter(simShapeFilter);
+    } else if (localPairs.size && !experiments.noShapeFilter) {
         const byPtr = new Map();
         for (const b of mechanism.bodies) {
             const e = bodyMap.get(b.id);
@@ -609,6 +638,17 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         const rz = vz + 2 * (qw * iz + iz2);
         return [rx, ry, rz];
     };
+    // A real set's linkages hang 1–3 g liftarms between frames of hundreds of grams; Jolt's iterative solver loses such
+    // chains at its default iterations (parts flung). Measured on five unstable sets, 2026-10-20: these iterations held
+    // more of them than weighing light bodies heavier did (docs/ROBOT-LAB-REAL-MODELS.md).
+    const massOfBody = id => (id === 'world' ? Infinity : mechanism.bodies.find(b => b.id === id)?.massKg ?? Infinity);
+    const lightLink = j => {
+        const ll = lightLinks;
+        if (!ll) return false;
+        const [m1, m2] = [massOfBody(j.body1), massOfBody(j.body2)];
+        const light = Math.min(m1, m2);
+        return light < ll.massKg && Math.max(m1, m2) / light > ll.ratio;
+    };
     for (const j of mechanism.joints) {
         jointMap.set(j.id, j);
         const bodyA = getBodyForId(j.body1);
@@ -640,6 +680,9 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                 // setMotorSteps raises the position steps once the rotor's inertia is on the body).
                 hs.mNumVelocityStepsOverride = MOTOR_VELOCITY_STEPS;
                 hs.mNumPositionStepsOverride = MOTOR_POSITION_STEPS;
+            } else if (lightLink(j)) {
+                hs.mNumVelocityStepsOverride = lightLinks.velocity;
+                hs.mNumPositionStepsOverride = lightLinks.position;
             }
             const constraint = hs.Create(bodyA, bodyB);
             physicsSystem.AddConstraint(constraint);
@@ -688,6 +731,10 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                 sp.mMode = J.ESpringMode_StiffnessAndDamping;
                 sp.mStiffness = spring.stiffness;
                 sp.mDamping = spring.damping;
+            }
+            if (lightLink(j)) {
+                ss.mNumVelocityStepsOverride = lightLinks.velocity;
+                ss.mNumPositionStepsOverride = lightLinks.position;
             }
             const constraint = ss.Create(bodyA, bodyB);
             physicsSystem.AddConstraint(constraint);

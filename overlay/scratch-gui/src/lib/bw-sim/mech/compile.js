@@ -29,11 +29,10 @@ import {freePinWelds} from './free-pins.js';
 import {rescueLoose, weldByContact} from './loose-rescue.js';
 
 /**
- * The lightest body the solver weighs in a model from elsewhere (kg). A real set's linkages are single liftarms of
- * 1–3 g hinged to frames of hundreds of grams; Jolt's solver loses such chains (NaN, parts flung). Measured on seven
- * unstable sets, 2026-10-20: 5 g held four of them.
+ * Solver iterations for the joints of a model from elsewhere that hold a light body (below massKg) against one ratio
+ * times heavier (physics/jolt-core.js lightLinks). Bodies keep their parts' masses.
  */
-export const FOREIGN_MASS_FLOOR_KG = 0.005;
+export const FOREIGN_LIGHT_LINKS = Object.freeze({massKg: 0.01, ratio: 20, velocity: 30, position: 10});
 import {validateLoad, loadBody} from '../world/objects.js';
 import {quatMul, quatConj} from './vec.js';
 
@@ -485,9 +484,9 @@ export const compile = (model, catalog, opts = {}) => {
             [...seatedBodyPairs(graphEdges, islands), ...sharedAxisBodyPairs(graphEdges, islands)])};
     const local = localNoCollide(mechanismV2.bodies, joints, mechanismV2.noCollide, couplingBodyPairs(joints, couplings, kinds), graphEdges, islands, nodes);
     if (local.length) mechanismV2.noCollideParts = local;
-    // A model from elsewhere: the solver weighs no body below FOREIGN_MASS_FLOOR_KG (physics/jolt-core.js), and parts
-    // that overlap as built never collide (mech/collision-filter.js asBuiltOverlaps).
-    if (opts.rescueLoose && opts.massFloor !== false) mechanismV2.solver = {massFloorKg: FOREIGN_MASS_FLOOR_KG};
+    // A model from elsewhere: its light links solve with more iterations (FOREIGN_LIGHT_LINKS, physics/jolt-core.js),
+    // and parts that overlap as built never collide (mech/collision-filter.js asBuiltOverlaps).
+    if (opts.rescueLoose) mechanismV2.solver = {lightLinks: {...FOREIGN_LIGHT_LINKS}};
     if (opts.rescueLoose) {
         const nested = asBuiltOverlaps(mechanismV2.bodies, mechanismV2.noCollide, mechanismV2.noCollideParts);
         if (nested.length) {
