@@ -1,0 +1,76 @@
+# Real motorised LEGO models in the Robot Lab (2026-10-20)
+
+51 motorised sets from the LDraw Official Model Repository (an annotated mirror, anteloc/ldraw-lib; every assembly
+, CC BY 2.0; 55 LDCad-generated sub-files in some of them say
+"Free for non-commercial use", so none of those is shipped), each opened in the built app (its unknown parts fetched
+from the LDraw mirror and derived), every motor run at 60 % for 2 s of simulated time. Not committed: the files
+(only the NXT Tri-bot is a fixture, test/fixtures/model-files). The catalog of sources the owner supplied lists them.
+
+| Model | Family | Outcome | Parts | Motors | Loose groups | Unknown parts |
+|---|---|---|---|---|---|---|
+| 112-2.mpd | Legacy 4.5V | no motor | 69 | 0 | 13 | 7 |
+| 17101-1_Frankie-the-Cat.mpd | BOOST | FAILED: locator.screenshot: Timeout 30000ms exceeded. |  |  |  |  |
+| 17101-1_Vernie.mpd | BOOST | FAILED: locator.screenshot: Timeout 30000ms exceeded. |  |  |  |  |
+| 21323-1.mpd | Powered Up / Control+ | too slow (33 of 2000 ms simulated in 60 s) | 3371 | 1 | 254 | 290 |
+| 31313-1_Spike3r.mpd | Mindstorms EV3 | runs: 2/2 motors turn, moved 0.24 m | 365 | 2 | 16 | 2995 |
+| 31313-1_Track3r.mpd | Mindstorms EV3 | too slow (933 of 2000 ms simulated in 60 s) | 160 | 3 | 15 | 4935 |
+| 42042-1.mpd | Power Functions | too slow (733 of 2000 ms simulated in 60 s) | 1368 | 1 | 93 | 33 |
+| 42042-1_Tower-Crane.mpd | Power Functions | unstable (118 flung, 13 below floor) | 1210 | 1 | 86 | 28 |
+| 42043-1.mpd | Power Functions | too slow (67 of 2000 ms simulated in 60 s) | 2709 | 1 | 65 | 810 |
+| 42043-1_Flatbed-Trailer.mpd | Power Functions | too slow (300 of 2000 ms simulated in 60 s) | 2629 | 1 | 66 | 1686 |
+| 42052-1.mpd | Power Functions | too slow (833 of 2000 ms simulated in 60 s) | 1022 | 1 | 18 | 19 |
+| 42054-1.mpd | Power Functions | too slow (367 of 2000 ms simulated in 60 s) | 1951 | 1 | 43 | 27 |
+| 42055-1.mpd | Power Functions | too slow (200 of 2000 ms simulated in 60 s) | 3699 | 1 | 339 | 141 |
+| 42065-1.mpd | Power Functions | runs: 2/2 motors turn, moved 0.00 m | 351 | 2 | 3 | 14 |
+| 42066-1.mpd | Power Functions | too slow (967 of 2000 ms simulated in 60 s) | 1133 | 1 | 21 | 14 |
+| 42070-1.mpd | Power Functions | FAILED: locator.screenshot: Timeout 23581.331999999937ms exceeded. |  |  |  |  |
+| 42080-1.mpd | Power Functions | too slow (767 of 2000 ms simulated in 60 s) | 940 | 1 | 40 | 104 |
+| 42082-1.mpd | Power Functions | too slow (300 of 2000 ms simulated in 60 s) | 3955 | 1 | 134 | 184 |
+| 42095-1.mpd | Power Functions | runs: 1/2 motors turn, moved 0.01 m | 302 | 2 | 70 | 28 |
+| 42099-1.mpd | Powered Up / Control+ | too slow (767 of 2000 ms simulated in 60 s) | 893 | 3 | 51 | 56 |
+| 42100-1.mpd | Powered Up / Control+ | FAILED: locator.screenshot: Timeout 30000ms exceeded. |  |  |  |  |
+| 42109-1.mpd | Powered Up / Control+ | unstable (1 flung, 1 below floor) | 436 | 2 | 7 | 25 |
+| 42113-1.mpd | Powered Up / Control+ | too slow (633 of 2000 ms simulated in 60 s) | 1613 | 1 | 33 | 543 |
+| 42114-1.mpd | Powered Up / Control+ | FAILED: locator.screenshot: Timeout 22052.986000000034ms exceeded. |  |  |  |  |
+| 42124-1.mpd | Powered Up / Control+ | unstable (21 flung, 0 below floor) | 347 | 2 | 15 | 22 |
+| 42129-1.mpd | Powered Up / Control+ | too slow (200 of 2000 ms simulated in 60 s) | 2016 | 4 | 83 | 125 |
+| 42131-1.mpd | Powered Up / Control+ | too slow (167 of 2000 ms simulated in 60 s) | 3656 | 2 | 80 | 2835 |
+| 45300-1_Milo-with-tilt-sensor.mpd | WeDo 2.0 | BLEW UP (NaN) | 62 | 1 | 10 | 8 |
+| 4558-1.mpd | Legacy 9V trains | no motor | 59 | 0 | 8 | 12 |
+| 4558-1_B-Model-from-Instruction.mpd | Legacy 9V trains | no motor | 57 | 0 | 11 | 16 |
+| 4563-1.mpd | Legacy 9V trains | no motor | 346 | 0 | 83 | 61 |
+| 4565-1.mpd | Legacy 9V trains | too slow (1967 of 2000 ms simulated in 60 s) | 789 | 0 | 114 | 126 |
+| 51515-1_Blast.mpd | Robot Inventor | too slow (700 of 2000 ms simulated in 60 s) | 463 | 4 | 22 | 5437 |
+| 6990-1.mpd | Legacy 9V monorail | no motor | 676 | 0 | 184 | 168 |
+| 75253-1.mpd | BOOST | FAILED: locator.screenshot: Timeout 30000ms exceeded. |  |  |  |  |
+| 7722-1_Combination-with-7865.mpd | Legacy 12V trains | no motor | 373 | 0 | 79 | 138 |
+| 7725-1.mpd | Legacy 12V trains | no motor | 330 | 0 | 11 | 54 |
+| 7730-1.mpd | Legacy 12V trains | no motor | 361 | 0 | 73 | 16 |
+| 7740-1.mpd | Legacy 12V trains | no motor | 563 | 0 | 56 | 120 |
+| 7745-1.mpd | Legacy 12V trains | no motor | 522 | 0 | 65 | 94 |
+| 8054-1_Model-A.mpd | Legacy 4.5V | no motor | 74 | 0 | 10 | 14 |
+| 8054-1_Model-C.mpd | Legacy 4.5V | no motor | 145 | 0 | 5 | 11 |
+| 8054-1_Model-D.mpd | Legacy 4.5V | no motor | 149 | 0 | 5 | 14 |
+| 8110-1.mpd | Power Functions | too slow (367 of 2000 ms simulated in 60 s) | 1848 | 1 | 118 | 257 |
+| 8258-1.mpd | Power Functions | too slow (733 of 2000 ms simulated in 60 s) | 1628 | 1 | 44 | 36 |
+| 8275-1.mpd | Power Functions | too slow (567 of 2000 ms simulated in 60 s) | 1361 | 4 | 29 | 37 |
+| 8527-1_Basket-Tri-bot.mpd | Mindstorms NXT | runs: 0/3 motors turn, moved 0.00 m | 176 | 3 | 0 | 3 |
+| 8527-1_QuickDraw-Tri-bot.mpd | Mindstorms NXT | runs: 1/3 motors turn, moved 0.08 m | 178 | 3 | 0 | 1 |
+| 8527-1_Tri-bot.mpd | Mindstorms NXT | runs: 3/3 motors turn, moved 0.19 m | 229 | 3 | 3 | 1 |
+| 8527-1_Whacker-Tri-bot.mpd | Mindstorms NXT | runs: 2/2 motors turn, moved 0.27 m | 164 | 2 | 1 | 3 |
+| 9397-1_Snowplow.mpd | Power Functions | too slow (833 of 2000 ms simulated in 60 s) | 1127 | 1 | 45 | 130 |
+
+## What the numbers say
+
+- **Too slow (21):** a big Technic set is 140–200 bodies with ~1000 colliders. In a headless profile of 42099 / 42052
+  a 5 ms step costs 40–85 ms (6–10 % of real time): most of it is Jolt's narrow phase in WASM; about a quarter is
+  the JavaScript sim-shape filter (jolt-core.js simShapeFilter) Jolt calls back for every sub-shape pair. Filtering
+  the body pairs that touch as built (beyond the joined ones) gains only 1.4–1.7×. Options, all owner decisions: a
+  native part-pair filter in the Jolt fork (a WASM rebuild), body-level filtering for large models, fewer colliders
+  per derived part, or a reduced-detail mode for large models (simplified colliders, sleeping bodies).
+- **No motor (13):** legacy 4.5 V / 9 V / 12 V train motors, the monorail and the 4.5 V Technic motor (6216m, an
+  obsolete alias file): train motors are bogies with their wheels built in; trains need rails. Not modelled yet.
+- **Page hung (6):** the BOOST sets (75253, Frankie, Vernie) and three of the largest (42070, 42100, 42114): the
+  screenshot after loading timed out, the page busy (to investigate with the speed work).
+- **Unstable (3) / NaN (1):** the Tower Crane flings 118 bodies; the WeDo Milo blows up — to investigate.
+- **Runs (7):** the four NXT Tri-bot variants, Spike3r, the PF racers (some motors stall against loose parts).

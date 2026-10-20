@@ -256,6 +256,19 @@ export const parseModel = (text, {catalog} = {}) => {
     // placed as the catalog's part of that name, or refused once as unknown — never opened up
     // into the primitives it is drawn from.
     const isSubModel = file => fileSections.has(file) && !fileSections.get(file).isPart;
+    /**
+     * The catalogue part a name the catalogue lacks stands for: an MPD's own copy of a library part, renamed as
+     * mirrors and LDCad do it ('42099 - 22169.dat' is 22169.dat, the Technic L motor), and another print of a
+     * part ('54696p02.dat', the motor with another face print: 54696p01.dat, the catalogue's). null if none.
+     */
+    const knownAs = file => {
+        if (!catalogMap) return null;
+        const bare = /^.+? - (.+\.dat)$/.exec(file)?.[1] || file;
+        if (catalogMap.has(bare)) return bare;
+        const printed = /^(.+?)p[0-9a-z]{2}\.dat$/.exec(bare);
+        if (printed) for (const alt of [`${printed[1]}p01.dat`, `${printed[1]}.dat`]) if (catalogMap.has(alt)) return alt;
+        return null;
+    };
 
     // State for main model
     let pendingPort = null; // string or null
@@ -396,6 +409,7 @@ export const parseModel = (text, {catalog} = {}) => {
                     path.pop();
                     continue;
                 }
+                if (catalogMap && !catalogMap.has(parsed.file) && knownAs(parsed.file)) parsed.file = knownAs(parsed.file);
                 if (catalogMap && !catalogMap.has(parsed.file)) {
                     // Drawn where it is, not simulated: the note says so (a part LDraw has that we do not know yet).
                     refusals.push({line: lineNo, code: 'unknown-part', message: `Unknown part '${parsed.fileRaw}' at line ${lineNo}`});
@@ -570,6 +584,7 @@ export const parseModel = (text, {catalog} = {}) => {
                 }
                 continue;
             }
+            if (catalogMap && !catalogMap.has(parsed.file) && knownAs(parsed.file)) parsed.file = knownAs(parsed.file);
             if (catalogMap && !catalogMap.has(parsed.file)) {
                 // Drawn where it is, not simulated: the note says so.
                 refusals.push({line: lineNo, code: 'unknown-part', message: `Unknown part '${parsed.fileRaw}' at line ${lineNo}`});

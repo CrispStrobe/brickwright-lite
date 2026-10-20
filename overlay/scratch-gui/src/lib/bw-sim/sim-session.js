@@ -151,7 +151,7 @@ export const prepareModel = (text, catalog, {mat = null, autoPorts: plugIn = !OW
     const model = wired;
     if (plugged.length) {
         issues.push({severity: 'info', code: 'ports-plugged', parts: plugged.map(p => p.part),
-            message: `Plugged in: ${plugged.map(p => `${p.part} → ${p.port}`).join(', ')}`});
+            message: `Plugged in: ${plugged.map(p => `${p.part} → ${p.hub ? `${p.hub}.` : ''}${p.port}`).join(', ')}`});
     }
     const runModel = start ? placeOnStart(wired, start, driveAnchor(wired, catalog)) : wired;
     // A mat's obstacles (a wall) are static bodies of the scene, compiled with the model.

@@ -62,3 +62,27 @@ test('its three motors are plugged into A, B and C and turn; its sensors into 1,
     for (const a of turned) assert.ok(a > 400, `each motor turns: ${turned}`);
     assert.ok(lowest > floor.position[1] - 0.05, 'nothing falls through the floor');
 });
+
+test('a file\'s own renamed copy of a catalogue part, and another print of one, are the catalogue part', () => {
+    const mpd = [
+        '0 FILE main.ldr', '0 main', '0 Author: someone',
+        '1 71 0 0 0 1 0 0 0 1 0 0 0 1 42099 - 22169.dat',
+        '1 71 100 0 0 1 0 0 0 1 0 0 0 1 54696p02.dat',
+        '0 NOFILE',
+        '0 FILE 42099 - 22169.dat', '0 A copy of the Technic L motor', '0 !LDRAW_ORG Unofficial_Shortcut', '1 16 0 0 0 1 0 0 0 1 0 0 0 1 22169.dat', '0 NOFILE'
+    ].join('\n');
+    const {model, refusals} = parseModel(mpd, {catalog: CATALOG});
+    assert.deepEqual(refusals, []);
+    assert.deepEqual(model.parts.map(p => p.part), ['22169.dat', '54696p01.dat']);
+});
+
+test('with two hubs, each motor the file left unplugged goes into the nearer hub\'s free port', () => {
+    const I = '1 0 0 0 1 0 0 0 1';
+    const text = [
+        '0 two hubs', `1 71 0 0 0 ${I} 22127.dat`, `1 71 1000 0 0 ${I} 22127.dat`,
+        `1 71 100 0 0 ${I} 22169.dat`, `1 71 900 0 0 ${I} 22169.dat`, `1 71 1100 0 0 ${I} 22172.dat`].join('\n');
+    const prep = prepareModel(text, CATALOG);
+    const [h1, h2] = prep.model.parts.filter(p => p.part === '22127.dat').map(p => p.id);
+    const portOf = x => prep.model.parts.find(p => p.position[0] === x).port;
+    assert.deepEqual([portOf(100), portOf(900), portOf(1100)], [{hub: h1, port: 'A'}, {hub: h2, port: 'A'}, {hub: h2, port: 'B'}]);
+});
