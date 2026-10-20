@@ -1,0 +1,19 @@
+// Drive B and C until the touch sensor on input 1 is pressed, then stop and beep.
+DATAF  Touch
+DATA8  Pressed
+DATA32 Loops
+
+vmthread MAIN
+{
+  MOVE32_32(0, Loops)
+  OUTPUT_POWER(0, 6, 30)
+  OUTPUT_START(0, 6)
+Wait:
+  ADD32(Loops, 1, Loops)
+  INPUT_READSI(0, 0, 0, 0, Touch)
+  CP_GTF(Touch, 0.5F, Pressed)
+  JR_FALSE(Pressed, Wait)
+  OUTPUT_STOP(0, 6, 1)
+  SOUND(TONE, 50, 880, 200)
+  SOUND_READY()
+}

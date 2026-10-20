@@ -1,0 +1,20 @@
+// Timed motor commands: a power for one second, then the TIME_POWER and TIME_SPEED cycles.
+DATA32 Timer
+DATA8  Busy
+DATA8  SpeedB
+DATA32 TachoB
+
+vmthread MAIN
+{
+  OUTPUT_POWER(0, 2, 50)
+  OUTPUT_START(0, 2)
+  TIMER_WAIT(1000, Timer)
+  TIMER_READY(Timer)
+  OUTPUT_READ(0, 1, SpeedB, TachoB)
+  OUTPUT_STOP(0, 2, 1)
+  OUTPUT_TIME_POWER(0, 4, 60, 100, 600, 100, 1)
+  OUTPUT_TEST(0, 4, Busy)
+  OUTPUT_READY(0, 4)
+  OUTPUT_TIME_SPEED(0, 6, -30, 0, 500, 0, 0)
+  OUTPUT_READY(0, 6)
+}

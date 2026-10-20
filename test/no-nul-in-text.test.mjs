@@ -63,8 +63,10 @@ export const BINARY_BY_ROLE = {
     // are the format.
     // `.rxe` joined 2026-10-20 with test/fixtures/nxt-rxe/: a compiled LEGO NXT
     // executable, NBC's output paired with the .nxc it came from — the bytes the
-    // Virtual NXT's program VM loads, as for .rcx.
-    firmware: ['bin', 'rom', 'com', 'exe', 'uf2', 'elf', 'rcx', 'rxe'],
+    // Virtual NXT's program VM loads, as for .rcx. `.rbf` joined 2026-10-20 with
+    // test/fixtures/ev3-rbf/: a LEGO EV3 byte-code image, lmsasm's output paired with
+    // the .lms it came from — what the Virtual EV3's program VM loads.
+    firmware: ['bin', 'rom', 'com', 'exe', 'uf2', 'elf', 'rcx', 'rxe', 'rbf'],
     wasm: ['wasm'],
     // `.io` (BrickLink Studio) and `.lxf` (LEGO Digital Designer) joined 2026-10-18 with
     // test/fixtures/bw-sim/interop/: both formats ARE ZIP archives (model.ldr / IMAGE100.LXFML
