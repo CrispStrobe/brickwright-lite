@@ -35,8 +35,8 @@ Sources (LEGO's public developer kits, 2013):
   bytes LE, message counter LE, type `0x00` reply / `0x80` no reply, then the allocation: globals in byte 5
   and the two low bits of byte 6, locals in its six high bits), §4.1 *Direct Replies* (length, the
   command's counter, `0x02` DIRECT_REPLY / `0x04` DIRECT_REPLY_ERROR, then the globals as the body), §4.2
-  worked examples (their hex is in the tests), §3 system commands (answered SYSTEM_REPLY_ERROR /
-  UNKNOWN_SYSTEM_COMMAND: no file system yet).
+  worked examples (their hex is in the tests), §3 system commands (the file transfer: served by the
+  brick's file system since the `.rbf` VM, docs/EV3-RBF-VM.md §System commands).
 - **[FDK]** *LEGO MINDSTORMS EV3 Firmware Developer Kit* — §3.4 *Parameter encoding* (short constant
   `00svvvvv`, short variable `01giiiii`, long constants of 1/2/4 bytes and zero-terminated strings, long
   variables), §4.8 input port operations, §4.9 output port operations, §4.10 sound, §4.11 timers, §4.15 user
@@ -49,7 +49,8 @@ GET_RAW, STOP_ALL, GET_NAME, GET_MODENAME, GET_FIGURES, GET_CHANGES, CLR_CHANGES
 READY_SI, GET_MINMAX, GET_BUMPS; opINPUT_READ, _READSI, _READEXT, _TEST, _READY, _WRITE; opSOUND BREAK, TONE,
 PLAY, REPEAT, SERVICE, opSOUND_TEST, _READY; opUI_DRAW (drawing recorded as events), opUI_WRITE (LED and
 console writes recorded), opUI_READ (battery, versions), opUI_BUTTON; opTIMER_WAIT, _READY, _READ, _READ_US;
-opINFO volume and sleep; opNOP. Outputs of an instruction must name a variable (a constant there is an
+opINFO volume and sleep; opNOP; opFILE LOAD_IMAGE, opPROGRAM_START, opPROGRAM_STOP, opPROGRAM_INFO GET_STATUS and
+GET_PRGRESULT (programs, docs/EV3-RBF-VM.md). Outputs of an instruction must name a variable (a constant there is an
 error, as is a global outside the allocation); an unknown opcode or subcommand ends the command with
 DIRECT_REPLY_ERROR and its globals so far. Blocking instructions (OUTPUT_READY, SOUND_READY, TIMER_READY,
 WAIT_FOR_PRESS: "can change to BUSYBREAK") hold the reply; the session runs one direct command at a time,
@@ -187,9 +188,12 @@ six AA cells.
   LEGO's NXT firmware 1.29 interpreter (facts read from its open-source release), files downloaded with the
   system commands (OPEN WRITE / WRITE / CLOSE / DELETE / FIND), STARTPROGRAM / STOPPROGRAM /
   GETCURRENTPROGRAMNAME, the mailboxes while a program runs; NBC-compiled fixtures drive the bumper bot to
-  the wall. legonxt's upload and *start program* blocks work on it; its *compile* block calls `Scratch.fetch`,
-  which the CrispStrobe adapter does not provide yet (open). The EV3's RBF bytecode VM (the same instruction
-  set, the FDK's §4 in full, plus the program header and subcalls) is the next step.
+  the wall. legonxt's upload and *start program* blocks work on it, and its *compile* block reaches the hosted
+  compiler through the CrispStrobe adapter's `Scratch.fetch`. The **EV3 runs `.rbf` programs**
+  (docs/EV3-RBF-VM.md): a clean-room VM of LEGO's lms2012 byte-code interpreter (objects, sub-calls, arrays,
+  strings; the input/output instructions are the direct commands' own), files downloaded with the system
+  commands, started with opFILE LOAD_IMAGE + opPROGRAM_START; an lmsasm-assembled wall stopper stops the EV3
+  wall stopper before the wall.
 - **NXT words** (DEVICE NXT pseudocode) are not written; the NXT example is blocks.
 - The ultrasonic *listen* modes read 0; buttons are never pressed in the Lab (WAIT_FOR_PRESS waits); EV3
   sync turn ratios and NXT MOTOR_SYNC are simple scalings (our model); the stock EV3 extension reads distance
@@ -202,4 +206,7 @@ six AA cells.
 mirror round trips), `test/bw-sim-ev3-extension-bytes.test.mjs` (ev3comprehensive's own bytes on the brick),
 `test/bw-sim-bt-hubs-program.test.mjs` (the real VM and extensions in the Lab: NXT 360 ± 2° and stop on touch;
 EV3 stop before the wall), `test/bw-sim-nxt-rxe-vm.test.mjs`, `test/bw-sim-nxt-rxe-brick.test.mjs` and
-`test/bw-sim-nxt-rxe-legonxt.test.mjs` (the `.rxe` VM, downloads, the bumper bot on an `.rxe`), the browser gate `npm run verify:sim-lab -- --part=hubs-bt`.
+`test/bw-sim-nxt-rxe-legonxt.test.mjs` (the `.rxe` VM, downloads, the bumper bot on an `.rxe`, legonxt's compile
+route), `test/bw-sim-ev3-rbf-vm.test.mjs`, `test/bw-sim-ev3-rbf-brick.test.mjs` and
+`test/bw-sim-ev3-rbf-ev3comprehensive.test.mjs` (the `.rbf` VM, the system commands, the wall stopper on an
+`.rbf`), the browser gate `npm run verify:sim-lab -- --part=hubs-bt`.
