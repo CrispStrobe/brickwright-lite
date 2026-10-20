@@ -245,7 +245,8 @@ export const buildIslands = (nodes, edges, catalogMap, diagnostics = [], opts = 
         // Its bounce and rolling drag are that part's material's (contracts.js MATERIALS): a tyred wheel's island
         // bounces and rolls like rubber, a beam's like ABS.
         const grip = nodeIdsInGroup.map(nid => nodes.get(nid).meta).find(m => (m.friction ?? PART_FRICTION) === friction);
-        const material = MATERIALS[(grip && grip.material) || PART_MATERIAL] || MATERIALS[PART_MATERIAL];
+        const materialName = grip && MATERIALS[grip.material] ? grip.material : PART_MATERIAL;
+        const material = MATERIALS[materialName];
         const body = {
             id: bodyId,
             motion: 'dynamic',
@@ -255,6 +256,7 @@ export const buildIslands = (nodes, edges, catalogMap, diagnostics = [], opts = 
             colliders,
             parts,
             friction,
+            material: materialName,
             restitution: material.restitution,
             ...(material.rollingResistance > 0 ? {rollingResistance: material.rollingResistance} : {}),
         };
