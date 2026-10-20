@@ -37,6 +37,8 @@
 
 import {buildGraph} from '../mech/graph.js';
 import {partHubProfile} from '../contracts.js';
+import {WRAPPED_GEARS, linksJoin, pivotsOnGear} from '../kinds/chain.js';
+import {placedSpur, placedTooth} from '../kinds/tooth-parts.js';
 
 /** Parts per derived step the walk aims for, and the most it puts in one (unless one part brings more fasteners). */
 export const STEP_TARGET = 4;
@@ -86,12 +88,23 @@ export const partLength = meta => {
 export const partAdjacency = (model, catalog) => {
     const {nodes, edges} = buildGraph(model, catalog, []);
     const adjacency = new Map(model.parts.map(p => [p.id, new Set()]));
+    const join = (a, b) => { adjacency.get(a).add(b); adjacency.get(b).add(a); };
     for (const edge of edges) {
         const a = nodes.get(edge.a.part)?.partId;
         const b = nodes.get(edge.b.part)?.partId;
         if (a === undefined || b === undefined || a === b) continue;
-        adjacency.get(a).add(b);
-        adjacency.get(b).add(a);
+        join(a, b);
+    }
+    // Chain and tread links make no connector edges (kinds/chain.js): a link touches the next one on
+    // its pivot and the sprocket it wraps, so a chain is built link by link round its sprockets.
+    const metaOf = part => (catalog instanceof Map ? catalog.get(part) : catalog[part]);
+    const links = model.parts.flatMap(p => placedTooth(p, metaOf(p.part), 'chain-link', ['along']).map(l => ({id: p.id, l})));
+    if (links.length) {
+        const gears = model.parts.map(p => ({id: p.id, g: placedSpur(p, metaOf(p.part), WRAPPED_GEARS)})).filter(x => x.g);
+        links.forEach((a, i) => {
+            for (const b of links.slice(i + 1)) if (a.id !== b.id && linksJoin(a.l, b.l)) join(a.id, b.id);
+            for (const g of gears) if (pivotsOnGear(a.l, g.g) > 0) join(a.id, g.id);
+        });
     }
     return adjacency;
 };

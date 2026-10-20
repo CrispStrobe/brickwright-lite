@@ -23,6 +23,7 @@
 //   T17 [ on an axle in an axle hole is refused with the quarter-turn rule; on a pin, 15°
 //   T10 a click on a lit hole, then the pin's tile: the same seat as T2
 //   T16 keyboard only: Enter on the tile, Tab to hole 4, Enter
+//   T11b the Studio / LDD mouse: right drag orbits, middle drag slides, a right click puts down the part in hand
 //   T11–T15 camera: a middle drag orbits about the point under it, the wheel and a pinch
 //       zoom to the pointer, Build looks from below (Simulate does not), a double click
 //       centres the view on the clicked point (eased; at once with reduced motion), a trackpad's
@@ -364,6 +365,38 @@ const checks = async (page, {shotsDir, shots}) => {
     const q11b = await screenAt(page, Q);
     assert.ok(dist(q11, q11b) <= 2, `Q stayed under the pointer's start: ${q11} → ${q11b}`);
     out.orbitDriftPx = dist(q11, q11b);
+    // T11b. The Studio / LDD mouse (the shortcut sheet's "Mouse buttons"): a right drag orbits about Q, a middle drag
+    // slides the view; a right click without a drag puts down the part in hand. Then back to the Brickwright mouse.
+    const mousePreset = async value => {
+        await canvas.focus();
+        await page.keyboard.press('?');
+        await page.getByTestId('bw-sim-lab-mouse-preset').selectOption(value);
+        await page.getByTestId('bw-sim-lab-shortcuts-close').click();
+        await page.waitForFunction(v => window.__bwSimLab.editView.mousePreset === v, value);
+    };
+    await mousePreset('studio');
+    const q11c = await screenAt(page, Q);
+    const c11 = await camera(page);
+    await page.mouse.move(q11c[0], q11c[1]);
+    await page.mouse.down({button: 'right'});
+    await page.mouse.move(q11c[0] + 200, q11c[1] + 40, {steps: 20});
+    await page.mouse.up({button: 'right'});
+    const q11d = await screenAt(page, Q);
+    const c11b = await camera(page);
+    assert.ok(dist(q11c, q11d) <= 2 && dist(c11.position, c11b.position) > 1e-3, `Studio: a right drag orbits about Q: ${q11c} → ${q11d}`);
+    await page.mouse.move(q11d[0], q11d[1]);
+    await page.mouse.down({button: 'middle'});
+    await page.mouse.move(q11d[0] + 120, q11d[1], {steps: 12});
+    await page.mouse.up({button: 'middle'});
+    const c11c = await camera(page);
+    assert.ok(dist(c11b.target, c11c.target) > 1e-3 && Math.abs(c11c.distance - c11b.distance) < c11b.distance * 0.01,
+        'Studio: a middle drag slides the view (the target moves, the distance stays)');
+    await arm(page, '2780.dat');
+    await page.mouse.move(q11d[0], q11d[1] + 60);
+    await page.mouse.click(q11d[0], q11d[1] + 60, {button: 'right'});
+    await page.waitForFunction(() => !window.__bwSimLab._pane.state.placing);
+    assert.equal(await count(page), n16, 'a right click puts the part down, placing nothing');
+    await mousePreset('brickwright');
     // T12. The wheel, and a pinch (Ctrl+wheel), at q over the beam: the point there stays within 2 px.
     await tool(page, 'view-home');
     await frames(page);

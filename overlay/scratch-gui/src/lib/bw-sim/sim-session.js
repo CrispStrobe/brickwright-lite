@@ -75,6 +75,12 @@ export const MODELS = Object.freeze([
         example: 'gearbox.bw'},
     {file: 'differential.ldr', title: {en: 'Differential', de: 'Differenzialgetriebe'},
         example: 'differential.bw'},
+    // Flexible parts (docs/ROBOT-LAB-UX.md §11): a chain from the motor's 8T to a 24T.
+    {file: 'chain-drive.ldr', title: {en: 'Chain drive', de: 'Kettenantrieb'},
+        example: 'chain-drive.bw'},
+    // Pen and paper (architecture M15): the driving base, its castor ball a pen.
+    {file: 'drawing-robot.ldr', title: {en: 'Drawing robot', de: 'Malroboter'},
+        example: 'drawing-robot.bw', mat: 'plain'},
     {file: 'excavator.ldr', title: {en: 'Excavator', de: 'Bagger'},
         example: 'excavator.bw', mat: 'plain'},
     // A slewing crane (docs/ROBOT-LAB-ARCHITECTURE.md T1): the turntable on A, the boom luffed by a linear actuator on B.
