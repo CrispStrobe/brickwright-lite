@@ -85,6 +85,12 @@ export const MODELS = Object.freeze([
     // Pen and paper (architecture M15): the driving base, its castor ball a pen.
     {file: 'drawing-robot.ldr', title: {en: 'Drawing robot', de: 'Malroboter'},
         example: 'drawing-robot.bw', mat: 'plain'},
+    {file: 'positioning-arm.ldr', title: {en: 'Two-joint positioning arm', de: 'Zweigelenk-Positionierarm'},
+        example: 'positioning-arm.bw', mat: 'plain'},
+    {file: 'ratio-workbench.ldr', title: {en: 'Three-drive ratio workbench', de: 'Getriebe-Vergleich mit drei Antrieben'},
+        example: 'ratio-workbench.bw', mat: 'plain'},
+    {file: 'rack-shuttle.ldr', title: {en: 'Rack shuttle table', de: 'Zahnstangen-Schiebetisch'},
+        example: 'rack-shuttle.bw', mat: 'plain'},
     {file: 'crank-rocker.ldr', title: {en: 'Motorised crank-rocker', de: 'Motorisierte Kurbelschwinge'},
         example: 'crank-rocker.bw', mat: 'plain'},
     {file: 'parallel-lift.ldr', title: {en: 'Parallel-motion lift', de: 'Parallelogramm-Hebebühne'},

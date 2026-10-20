@@ -163,6 +163,7 @@ import {scaleInteractions, OPEN_BUDGET_MS, DRAW_CALL_BUDGET, BUILD_OPEN_BUDGET_M
 import {brakingBound, judgeWallStop} from './lib/sim-lab-wall-stopper-judge.mjs';
 import {surveyRoverInteractions} from './lib/sim-lab-survey-rover-gate.mjs';
 import {physicsExamplesInteractions, germanPhysicsExamplesInteractions} from './lib/sim-lab-physics-examples-gate.mjs';
+import {judgeExpandedRun} from './lib/sim-lab-expanded-judge.mjs';
 import {mechanicsInteractions, manualMechanicsInteractions} from './lib/sim-lab-mechanics-gate.mjs';
 import {STEP_MS} from '../overlay/scratch-gui/src/lib/bw-sim/hub-bridge.js';
 
@@ -728,6 +729,22 @@ try {
             assert.ok(rec.restMm < 2, `the ${example.name} is not at rest: ${JSON.stringify(rec)}`);
             console.log(`PASS the ${example.name}'s example program, loaded from the pane, ${example.judge(rec)}`);
             await ex.close();
+        }
+
+        if (runExample('expanded-machines.ldr')) {
+            const machines = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            machines.on('pageerror', error => errors.push(error.message));
+            machines.on('dialog', dialog => dialog.accept());
+            await mechanicsInteractions(machines, {openSimLab, models: ['positioning-arm', 'ratio-workbench', 'rack-shuttle'],
+                judge: judgeExpandedRun, simulatedMs: 24000, shotsDir: resolve(artifacts, 'expanded-machines'), timeout: wallBudget(24000)});
+            await machines.close();
+        }
+        if (runExample('expanded-manual.ldr')) {
+            const controls = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            controls.on('pageerror', error => errors.push(error.message));
+            await manualMechanicsInteractions(controls, {openSimLab, models: ['positioning-arm', 'ratio-workbench', 'rack-shuttle'],
+                shotsDir: resolve(artifacts, 'expanded-machines')});
+            await controls.close();
         }
 
         if (runExample('mechanics-manual.ldr')) {

@@ -1,0 +1,64 @@
+0 Two-joint positioning arm — joint angles and reachable workspace
+0 Name: positioning-arm.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 !BW ID motor
+0 !BW PORT A
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ID frame
+1 72 0 40 0 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID framePin1
+1 0 20 30 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID framePin2
+1 0 -20 30 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID crank
+1 4 100 -60 0 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID crankPin1
+1 0 20 -50 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID crankPin2
+1 0 -20 -50 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub
+1 71 0 130 100 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID hubPin-60
+1 0 -60 50 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hubPin60
+1 0 60 50 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID elbowMotor
+0 !BW PORT B
+1 71 200 -100 0 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ID elbowMount180
+1 0 180 -70 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID elbowMount220
+1 0 220 -70 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID forearm
+1 1 280 -160 0 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID forearmPin180
+1 0 180 -150 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID forearmPin220
+1 0 220 -150 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID tip
+1 14 360 -170 0 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID armFoot-60
+1 72 -60 140 60 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID armFootPin-60_0
+1 0 -60 130 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID armFootPin-60_200
+1 0 -60 130 200 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID armFoot60
+1 72 60 140 60 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID armFootPin60_0
+1 0 60 130 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID armFootPin60_200
+1 0 60 130 200 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID armCrossFoot-60
+1 72 0 160 -60 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID armCrossPin-60_-60
+1 0 -60 150 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID armCrossPin60_-60
+1 0 60 150 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID armCrossFoot180
+1 72 0 160 180 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID armCrossPin-60_180
+1 0 -60 150 180 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID armCrossPin60_180
+1 0 60 150 180 0 1 0 1 0 0 0 0 -1 2780.dat

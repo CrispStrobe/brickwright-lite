@@ -169,6 +169,48 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "Brickwright contributors",
         "license": "BSD-3-Clause"
     },
+    "positioning-arm.ldr": {
+        "pieces": 29,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Two independently driven joints position the tip. Compare measured coordinates with the 80 mm / 64 mm serial-arm equations.",
+            "de": "Zwei unabhängig angetriebene Gelenke positionieren die Spitze. Vergleiche die Koordinaten mit den Gleichungen für 80 mm / 64 mm Glieder."
+        },
+        "author": "Brickwright contributors",
+        "license": "BSD-3-Clause"
+    },
+    "ratio-workbench.ldr": {
+        "pieces": 66,
+        "motors": 3,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "Three drives compare idlers (1:1), two compound stages (1:15) and five stages (1:243). Count output turns and direction, not only motor turns.",
+            "de": "Drei Antriebe vergleichen Zwischenräder (1:1), zwei Verbundstufen (1:15) und fünf Stufen (1:243). Zähle Abtriebsumdrehungen und Richtung."
+        },
+        "author": "Brickwright contributors",
+        "license": "BSD-3-Clause"
+    },
+    "rack-shuttle.ldr": {
+        "pieces": 27,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "An 8-tooth pinion translates a guided horizontal table. Compare travel with pitch radius times shaft angle; two turns give 50.27 mm.",
+            "de": "Ein Ritzel mit acht Zähnen verschiebt einen geführten Tisch. Vergleiche den Weg mit Teilkreisradius mal Drehwinkel: zwei Umdrehungen ergeben 50,27 mm."
+        },
+        "author": "Brickwright contributors",
+        "license": "BSD-3-Clause"
+    },
     "crank-rocker.ldr": {
         "pieces": 15,
         "motors": 1,

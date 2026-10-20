@@ -5,11 +5,13 @@ import {mkdirSync, writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {judgeMechanicsRun} from './sim-lab-mechanics-judge.mjs';
 
-export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout}) => {
+const DEFAULT_MACHINES = ['crank-rocker', 'parallel-lift', 'screw-crane', 'pivot-rover'];
+export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout,
+    models = DEFAULT_MACHINES, judge = judgeMechanicsRun, simulatedMs = 18000}) => {
     mkdirSync(shotsDir, {recursive: true});
     await openSimLab(page, {program: null});
     const results = {};
-    for (const id of ['crank-rocker', 'parallel-lift', 'screw-crane', 'pivot-rover']) {
+    for (const id of models) {
         await page.getByTestId('bw-sim-lab-examples').click();
         const gallery = page.getByTestId('bw-sim-examples');
         await gallery.getByRole('searchbox').fill(id);
@@ -38,10 +40,10 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
             });
         });
         await page.getByTestId('bw-sim-lab-run').click();
-        await page.waitForFunction(() => window.__bwSimLab._pane.session.time - window.__bwMechanics.start >= 18000,
-            null, {timeout});
+        await page.waitForFunction(ms => window.__bwSimLab._pane.session.time - window.__bwMechanics.start >= ms,
+            simulatedMs, {timeout});
         const r = await page.evaluate(() => window.__bwMechanics);
-        results[id] = judgeMechanicsRun(id, r);
+        results[id] = judge(id, r);
         const mixer = page.getByTestId('bw-sim-lab-mixer-toggle');
         if (await mixer.getAttribute('aria-expanded') !== 'true') await mixer.click();
         assert.deepEqual(await page.getByTestId('bw-sim-lab-mixer-slider').evaluateAll(es => es.map(e => e.dataset.port).sort()),
@@ -55,11 +57,11 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
     return results;
 };
 
-export const manualMechanicsInteractions = async (page, {openSimLab, shotsDir}) => {
+export const manualMechanicsInteractions = async (page, {openSimLab, shotsDir, models = DEFAULT_MACHINES}) => {
     mkdirSync(shotsDir, {recursive: true});
     await openSimLab(page, {program: null});
     const results = {};
-    for (const id of ['crank-rocker', 'parallel-lift', 'screw-crane', 'pivot-rover']) {
+    for (const id of models) {
         await page.getByTestId('bw-sim-lab-model').selectOption(`${id}.ldr`);
         await page.waitForFunction(file => window.__bwSimLab.status === 'ready' &&
             window.__bwSimLab._pane.state.modelFile === file, `${id}.ldr`, {timeout: 60000});
