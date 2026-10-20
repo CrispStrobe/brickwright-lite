@@ -7,7 +7,7 @@
 // Ground added unless opts.ground===false.
 
 import {vecAdd, vecSub, mat3MulVec3, quatMul, quatFromLDrawMat, quatNormalize} from './vec.js';
-import {LDU_M, PART_FRICTION, lduToWorld, motorNodeShare, colliderVolume} from '../contracts.js';
+import {LDU_M, PART_FRICTION, MATERIALS, PART_MATERIAL, lduToWorld, motorNodeShare, colliderVolume} from '../contracts.js';
 
 /** Fraction of a v1 motor's mass that belongs to the output (turning) body (PartMeta v2: internalJoints[].massFraction). */
 export {MOTOR_OUTPUT_MASS_FRACTION} from '../contracts.js';
@@ -242,6 +242,11 @@ export const buildIslands = (nodes, edges, catalogMap, diagnostics = [], opts = 
         // A rigid island touches the ground with whichever of its parts does; v1 takes
         // the grippiest (a tyred wheel makes its whole island grip like rubber).
         const friction = Math.max(...nodeIdsInGroup.map(nid => nodes.get(nid).meta.friction ?? PART_FRICTION));
+        // Its bounce and rolling drag are that part's material's (contracts.js MATERIALS): a tyred wheel's island
+        // bounces and rolls like rubber, a beam's like ABS.
+        const grip = nodeIdsInGroup.map(nid => nodes.get(nid).meta).find(m => (m.friction ?? PART_FRICTION) === friction);
+        const materialName = grip && MATERIALS[grip.material] ? grip.material : PART_MATERIAL;
+        const material = MATERIALS[materialName];
         const body = {
             id: bodyId,
             motion: 'dynamic',
@@ -251,6 +256,9 @@ export const buildIslands = (nodes, edges, catalogMap, diagnostics = [], opts = 
             colliders,
             parts,
             friction,
+            material: materialName,
+            restitution: material.restitution,
+            ...(material.rollingResistance > 0 ? {rollingResistance: material.rollingResistance} : {}),
         };
         bodies.push(body);
         bodyMap.set(bodyId, body);

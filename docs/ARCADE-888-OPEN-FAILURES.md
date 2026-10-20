@@ -43,10 +43,13 @@ changed. Source of the list: hosted Build run 39297263647 (head f2ecafef1).
 - Tried: Not yet diagnosed.
 - Next: Two extension instances in one runtime; scope the exception owner per instance or test fixture.
 
-### H. `Math.idiv` source/PXT path (2)
+### H. `Math.idiv` source/PXT path (1)
 
-- Tried: Not yet diagnosed.
-- Next: Compare the idiv lowering and the census program with main.
+- Tried: The micro:bit census batch 1 program now passes: Math.idiv imports as
+  `((a | 0) / (b | 0)) | 0` and that exact shape exports back as Math.idiv
+  (owner decision 2026-10-20: Math.idiv imports with real semantics); its
+  `{todo}` is removed.
+- Next: The remaining Arcade source row (helper/captured operands).
 
 ### I. Other export/roundtrip regression (4)
 
@@ -97,7 +100,6 @@ changed. Source of the list: hosted Build run 39297263647 (head f2ecafef1).
 | F | `test/makecode-arcade-image-mutation.test.mjs` | VM mutations isolate clones, update transparent collisions, and release renderer skins | Kept TODO: `probeExtension(Arcade, rt)` builds a second Arcade on the test's runtime, so this is group G (see its counter-example). |
 | G | `test/makecode-arcade-buffer-lifetime.test.mjs` | independent Buffer owners in one runtime cannot resolve each other's issued IDs | Kept TODO, unsound to accept as is: `capture`, `arrayCoordinatorReady`, `rejectArrayOperation` and `rejectConditionWait` in `bw-arcade-exceptions.js` resolve ONE owner per runtime. With a second live owner, instance B's array or condition rejection on a thread would be issued through A's signal registry and checked against A's generation. Needs signal and lease routing per owner, not per runtime. |
 | H | `test/makecode-arcade-idiv-source.test.mjs` | idiv actual mutable Number aliases ordinary helpers and captured entry dominance qualify | Kept TODO: not idiv-specific. `function outer(a){function read(){return a};return read()};let q=outer(7)` is refused (`read() as a value`), because a nested function called as a value is unsupported. Needs nested-function closure lifting in `translate-base.js`. |
-| H | `test/makecode-pxt-runtime.test.mjs` | census batch 1: a program using every call comes back from lite and MakeCode compiles it | Kept TODO: the micro:bit import writes `Math.idiv(a,b)` as `((a / b) bitor 0)`, which is not Math.idiv for fractional operands: `Math.idiv(3.5, 0.5)` is idiv(3, 0) = 0, but `(3.5 / 0.5) | 0` is 7. Exporting that shape as Math.idiv is unsound (5f74cb924). The sound fix is to import `((a bitor 0) / (b bitor 0)) bitor 0` and name only that exact shape on export. That contradicts current pinned assertions (`makecode-export-integer-division` 'explicit operand coercions stay connected', `makecode-translate` census batch 1 import line and 'Math.idiv truncates toward zero'), so it needs the owner's decision. |
 | I | `test/makecode-arcade-loop-control.test.mjs` | condition and update side effects agrees with original PXT and complete roundtrips | Fixed in 63894a733: the inspection domain proof now computes a least fixpoint over flow cycles (`i=advance(i)`). |
 | I | `test/makecode-arcade-loop-control.test.mjs` | for continue and update agrees with original PXT and complete roundtrips | Fixed in 63894a733: the inspection domain proof now computes a least fixpoint over flow cycles (`i=advance(i)`). |
 | I | `test/makecode-discarded-map-edited-export.test.mjs` | typed discarded map survives actual Creator export and a current numeric input edit without annotation-derived ingress | Kept TODO: the export now names the procedure `Game_effect` (sprite-prefixed), but the test requires an exported `effect`. This needs the owner to decide which naming is intended; it is not a proof gap. |
@@ -137,5 +139,5 @@ Not marked known-open. When it fails, rerun only the failed job. Failures seen:
 
 These were already `# TODO` before this landing and are not part of this list:
 
-- Robot Lab lane (`docs/ROBOT-LAB-VALIDATION.md`): rolling resistance; gearbox efficiency under load; motor torque through an 8:24 mesh; dig-cycle base yaw; tilting-table tower; two-cart restitution; universal joint not buildable.
+- Robot Lab lane (`docs/ROBOT-LAB-VALIDATION.md`): gearbox efficiency under load; motor torque through an 8:24 mesh; dig-cycle base yaw; tilting-table tower; two-cart restitution (rolling resistance and the universal joint resolved 2026-10-20).
 - Existing Arcade TODOs (their reasons now point here, per the docs-pointer rule): first HUD callback phase; restored callback phase; do-while `continue` posttest boundary; negative-kind initial overlap frame timing.

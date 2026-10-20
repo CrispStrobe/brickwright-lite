@@ -16,12 +16,146 @@ accept keeps its TODO, and its row records the concrete counter-example. No
 assertion is weakened; refusal suites stay red on wrong input. Paths: the Arcade
 VM overlay and GUI MakeCode libraries the failing tests reach, the listed test
 files (todo options only) and docs/ARCADE-888-OPEN-FAILURES.md.
+## Robot Lab Technic machines: the Crane — 2026-10-20
+
+CLAIMED and done in one PR — Claude (Robot Lab lane, owner goal: Technic projects driven by the hubs).
+The differential and the shifting gearbox already ship (differential.ldr, gearbox.ldr, kinds/transmission.js,
+relativeGear): not rebuilt. New: the Crane (static/sim-lab/models/crane.ldr, scripts/gen-crane-model.mjs,
+programs/crane.bw): a SPIKE hub on the floor, the Excavator's 28T turntable slewed by an 8T on A at low speed,
+a 15L boom luffed by a small linear actuator on B, a hook hanging free on a frictionless pin. No winch (ropes,
+PR #1123, not on main). Tests: test/bw-sim-crane.test.mjs. No physics-core change.
+
+## Arcade slice-result element presence — 2026-10-20
+
+CLAIM CANDIDATE — Codex Arcade Array/export lane. Merge before implementation.
+An unchanged complete four-group, twelve-program pure baseline has two failing
+positive groups and two passing refusal groups. Literal bounded slice results
+lose nested Array presence during export; the importer and Creator retain them.
+This is a specific source/export defect, not a whole corpus classification.
+
+Envelope: `bw-makecode/array-reference-export-authority.js` and its tracked GUI
+mirror, narrowly required existing literal-input proof helpers, focused owned
+pure/native/original-compiler/export and visible authoring controls, capability
+ledger/work-package docs and this lane. Extend only slice-result minimum presence
+under the existing literal-Array owner. The mandatory-callee and occurrence
+initialization claims still grant no new element authority.
+
+Derive lower length at the actual slice occurrence, with exact owned constant
+bound expressions only in a proven monotonic domain. A lower length alone cannot
+justify negative-start/nonnegative-end windows; decline those until a separate
+upper/exact-length proof exists. Do not use later pushes, annotations, nominal
+Array lengths or runtime helper names as facts. Retain complete element unions,
+source initialization/all-writer/alias/reset/currentness checks, result shrink
+ordering and recursive length guards. No positional mixed-slot, concat or
+push-built element-type expansion, convergence shortcut or caller certificate.
+
+Acceptance: complete affected pure authority modules, the full baseline cohort
+including empty/OOB/later-push/shrink/alias/writer/reset refusals, genuine native
+and original slice behavior, current export/reimport and same/fresh SB3. Verify
+visible Blocks/Code bound edits invalidate/refine current export without restoring
+old source. Keep original failures, TODO bodies, corpus order and resource limits.
+No runtime/supplier/pin change, framework guard relaxation, budget/workflow edit,
+complete-corpus retry or inferred reduction of historical partial counts.
+
+## Arcade source bitwise and unary operations — 2026-10-20
+
+CLAIM CANDIDATE — Codex Arcade lane. Merge this claim before implementation.
+The original PXT probe records 370 scalar results across six binary bitwise
+operators, unary complement, primitive values and opaque Array aliases,
+including empty, nested and cyclic collections. This is original behavior
+observation only; it does not establish implemented support or corpus credit.
+
+Envelope: `bw-makecode/arcade-translate.js`, narrowly required source operator
+proof/lowering helpers, `bw-makecode/export-arcade.js`, canonical supplier
+`src/utils/arcadeDialect.js` and its explicit Lite adoption, the Arcade extension
+index, `bw-array-operations.js`, and the primitive-owner/current-number-input/
+exception allow-lists only where the genuine new unary opcode needs ownership.
+Include corresponding tracked mirrors, focused actual parser/VM/original-PXT/
+export controls, existing visible authoring journeys, GUI capability ledger and
+handoff/work-package documentation. No dependency pin moves without a separately
+reviewed canonical supplier adoption.
+
+Use fixed binary selectors and a real single-input source unary reporter. Keep
+native authored Array binary/unary semantics and their opaque-reference refusals
+unchanged. No Array body loan, element traversal, guessed reference, selector
+reporter, foreign-object coercion or relaxed intrinsic/heap/intern/generation/
+current-call admission. Preserve operand order, single evaluation, original
+failures and fiber routing. Exported helper recognition requires complete body,
+binding and all-use proofs; helper names are not authority.
+
+Acceptance: fresh normal-installation and independent saved-data qualification
+for new runtime bytes; complete affected native/Creator/export/original-PXT
+controls including stale/foreign/off-thread and reentrant failure cases; actual
+Blocks/Code creation and fixed-selector edits, save/reopen and exported-file
+reimport. Keep existing resource limits, corpus order, negative controls,
+thresholds and browser assertions. Do not infer complete games or a reduced
+partial count from component tests. No workflow, budget, compiler shortcut,
+late intrinsic capture or complete-corpus classification change is in scope.
+
+## Optional upload parser loading and unchanged P17 budget — 2026-10-20
+
+CLAIMED / DOCS ONLY — Codex GUI integration. This claim must land before
+product implementation. Preserve file-upload and monitor ownership boundaries;
+the existing Arcade tilemap startup claim does not include generic GIF or CSV
+upload behavior.
+
+Envelope: `overlay/scratch-gui/src/lib/file-uploader.js`,
+`overlay/scratch-gui/src/lib/gif-decoder.js`,
+`overlay/scratch-gui/src/lib/import-csv.js`, their tracked package mirrors,
+focused upload/parser boundary controls, and this ledger. Only add the overlay
+needed for a selected candidate. Keep the existing dependencies, parsers and
+actual decoder implementations; do not substitute a reduced parser.
+
+Move optional parser loading to the actual upload action only where the current
+API can preserve its user-visible behavior. Keep the CSV picker creation and
+click synchronous with user activation; parser loading may begin after a file
+is selected. Preserve the actual parser receiver, options, delimiter handling,
+complete/error callbacks, returned data, file removal and original error
+identity. Explicitly test chunk-load failure and retry. Review synchronous
+parser exceptions separately rather than silently converting or swallowing
+them. For GIF, preserve frame order, disposal, transparency, costume/sprite
+upload completion and error handling; the current first-frame callback is
+synchronous, so an async boundary requires an explicit reviewed contract and
+must not be presented as unchanged behavior.
+
+Keep all existing P17 limits, baseline identities, ownership accounting and
+other lazy chunk checks unchanged. No workflow, budget, dependency/pin,
+side-effect declaration, VM authority, artwork validator or renderer change.
+Source-attributed bytes are not emitted savings. A candidate needs complete
+focused controls, actual upload journeys and the existing exact-head hosted
+production/profile build and `I8086_ENFORCE_WEBPACK_BOUNDARY=1 node
+scripts/report-webpack-ownership.mjs` result, with original failure retained.
+Only measured emitted assets can establish that P17 passes; an import scan or
+raw source reduction does not establish fit or faster startup.
+
+
+## Robot Lab MINDSTORMS model limits: NXT sync, NXT buttons, ultrasonic listening — 2026-10-20
+
+CLAIMED with the change — Claude (Robot Lab model limits). NXT MOTOR_SYNC follows LEGO's NXT firmware
+1.29 output driver (pairing, the 100 ms tacho-difference PID, turn term, the pair's tacho limit); the NXT
+hub's buttons (pressButton / readButton) and the VM's ReadButton; sensors.js `usHeard` (another MINDSTORMS
+ultrasonic pinging towards the probe) read by the EV3 listen mode and the NXT event capture. Facts:
+docs/NXT-PROTOCOL-FACTS.md §Sync, §Buttons; docs/ROBOT-LAB-EV3-NXT.md. Tests:
+test/bw-sim-mindstorms-model-limits.test.mjs. Follow-up (after #1127 and #1123): EV3 sync turn ratio and
+buttons, the runtime.robotLab button API and its Lab UI.
+
+## micro:bit importer arithmetic: Math.idiv semantics and bitwise grouping — 2026-10-20
+
+CLAIMED and done in one PR to main — Claude (owner decision 2026-10-20: Math.idiv imports with
+real semantics). Math.idiv(a, b) imports as `(((a bitor 0) / (b bitor 0)) bitor 0)`, pxt's own
+definition (both operands and the quotient truncated), and only that exact shape exports back as
+Math.idiv. Bitwise words and unary minus/bitnot now group compound operands: `(v / 4) | 0` no
+longer comes back as `v / (4 | 0)`, nor `-(a + b)` as `(0 - a) + b`. Files: bw-makecode
+translate-base.js, microbit-translate.js, export.js. Tests:
+test/makecode-arithmetic-roundtrip.test.mjs (both sides evaluated), updated idiv assertions.
+
 ## Robot Lab: cables, Studio mouse, coach marks, Ctrl-glide — 2026-10-20
 
 CLAIMED, stacked for one comprehensive PR (owner: "cables go in a comprehensive PR") on
 lane/robot-lab-flex3-20261020 — Claude (Robot Lab lane). Cables from each plugged-in device to its
 hub (insight layer); the Studio/LDD mouse preset and right click puts down; first-time coach marks;
 Ctrl+drag glides a pin or axle along its hole. docs/ROBOT-LAB-UX.md §13, §14.
+
 
 ## Robot Lab rubber bands — 2026-10-20
 
@@ -44,6 +178,16 @@ lays a closed chain round the selected gears (or a 57518 tread round 57519 sproc
 drawnOnly, each sprocket a wheel of the tread's outer radius); view/chain-motion.js runs the links
 round; properties panel "Chain or tread round". Tests:
 test/bw-sim-chain.test.mjs; gate scripts/lib/sim-lab-chain-gate.mjs (--part=editor).
+
+## Robot Lab hub coverage matrix and test-only gaps — 2026-10-20
+
+CLAIMED and done in one PR to main — Claude (hub coverage lane). New
+`docs/ROBOT-LAB-HUB-COVERAGE.md` (hub x extension x route x code-flavour matrix from code and tests, gaps
+ordered by user impact) and two new test files that drive the REAL bundled extensions against the
+existing virtual hubs: `test/lab-hubs-coverage.test.mjs` (legoboostunified over Scratch Link BLE,
+legopoweredup on the Move Hub and the City Hub) and `test/bw-sim-rcx-legorcx.test.mjs` (legorcx blocks
+sent with its own block into the Lab RCX). No `overlay/scratch-gui/src/lib/bw-sim/**` change: the open
+Robot Lab PRs #1123/#1127/#1129/#1130 own that tree; gaps that need it wait for them to merge.
 
 ## Arcade stale PR integration — 2026-10-19
 
@@ -134,6 +278,17 @@ symbols for dc_motor, ntc, inductor, slide_switch, tilt_sensor, opamp, relay;
 f84ba60 -> fac3a5a9928c8b53a778b0c42d8d91d5e693e4b7 (bw-board #659 light_sensor
 divider model; 393 commits, owner-approved, dependencies unchanged). Exact SHA
 swap across the same 16 pin surfaces; licence hashes unchanged.
+
+## Robot Lab physics 2: jolt-physics 1.1.0-bw.3, pair restitution, static rolling resistance — 2026-10-20
+
+CLAIMED and done in one PR — Claude (Robot Lab lane, owner request "fix it all"; follow-up to #1126).
+jolt-physics 1.1.0-bw.2 -> 1.1.0-bw.3 (JoltPhysics.js fork release `v1.1.0-bw.3`, tarball sha256
+112f6281...df890c, lockfile sha512 integrity; JoltPhysics fork commit a40ff0b): a CCD impact that would
+bounce while the body touches a second body is left to the discrete solve (a brick on two beams turned
+over), and a MaterialPairs restitution table. Owns the pin surfaces (scripts/integrate.mjs,
+packages/scratch-gui/package.json and package-lock.json, THIRD-PARTY-NOTICES.md, the fetch-pinning row)
+and bw-sim's materials and rolling resistance (contracts.js MATERIALS, physics/rolling.js,
+physics/materials.js), plus jolt-core.js's material table install and light-body iterations.
 
 ## Robot Lab: jolt-physics -> Brickwright fork 1.1.0-bw.2 (Jolt master) — 2026-10-19
 
