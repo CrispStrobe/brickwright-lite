@@ -74,3 +74,18 @@ test('an unknown file placed many times is one issue (a cable is thousands of se
     assert.equal(unknown[0].lines.length, 20);
     assert.match(unknown[0].message, /and 29 more/);
 });
+
+test('a model from elsewhere filters every jointed body pair whole (no part-level lists, no shape filter); our own files keep part by part', () => {
+    const tribot = readFileSync(path.join(REPO, 'test/fixtures/model-files/8527-1.mpd'), 'latin1');
+    const foreign = prepareModel(tribot, CATALOG).mechanism;
+    assert.equal(foreign.noCollideParts, undefined, 'no part-level lists');
+    const whole = new Set(foreign.noCollide.map(([a, b]) => `${a}|${b}`));
+    for (const j of foreign.joints.filter(x => x.body2 !== 'world')) {
+        const k = j.body1 < j.body2 ? `${j.body1}|${j.body2}` : `${j.body2}|${j.body1}`;
+        assert.ok(whole.has(k), `joint ${j.id}: ${k} never collides`);
+    }
+    assert.ok(foreign.solver && foreign.solver.lightLinks, 'its light links get more solver iterations');
+    const own = prepareModel(readFileSync(path.join(REPO, 'overlay/scratch-gui/static/sim-lab/models/excavator.ldr'), 'utf8'), CATALOG).mechanism;
+    assert.ok(Array.isArray(own.noCollideParts) && own.noCollideParts.length > 0, 'our own excavator keeps its part-level lists');
+    assert.equal(own.solver, undefined);
+});

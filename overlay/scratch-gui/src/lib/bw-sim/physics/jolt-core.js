@@ -283,7 +283,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     // A pair in `noCollideParts` (mech/collision-filter.js) is filtered PART BY PART instead: it stays
     // enabled here and the SimShapeFilter below drops only its listed part pairs' sub-shape contacts.
     const bodyIndex = new Map(mechanism.bodies.map((b, i) => [b.id, i]));
-    const localPairs = new Map((mechanism.noCollideParts || []).map(([a, b, parts, mode]) => [`${a}|${b}`, {parts, collide: mode === 'collide'}]));
+    // experiments.wholePairs: every noCollide pair filtered whole (no part-level exceptions).
+    const localPairs = new Map(experiments.wholePairs ? [] : (mechanism.noCollideParts || []).map(([a, b, parts, mode]) => [`${a}|${b}`, {parts, collide: mode === 'collide'}]));
     let groupFilter = null;
     if (mechanism.noCollide.length > 0) {
         groupFilter = new J.GroupFilterTable(mechanism.bodies.length);
