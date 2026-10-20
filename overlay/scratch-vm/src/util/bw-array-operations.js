@@ -26,6 +26,7 @@ const methods = new Set(["valueBinary", "create1D", "create2D", "createEmpty", "
 const primitiveKeys=Reflect.ownKeys, primitiveDescriptor=Object.getOwnPropertyDescriptor,primitiveOwn=Object.hasOwn, primitiveFrozen=Object.isFrozen;
 const primitivePrototype=Object.getPrototypeOf, primitiveSame=Object.is;
 const primitiveExtensible=Object.isExtensible;
+const primitiveDiagnosticDefine=Object.defineProperty;
 const primitiveWeakRefConstructor=typeof WeakRef==='function'?WeakRef:null;
 const weakPrototypeDescriptor=primitiveWeakRefConstructor&&primitiveDescriptor(primitiveWeakRefConstructor,'prototype');
 const primitiveWeakRefPrototype=weakPrototypeDescriptor&&primitiveOwn(weakPrototypeDescriptor,'value')?weakPrototypeDescriptor.value:null;
@@ -58,31 +59,73 @@ for(const sample of [[][Symbol.iterator](),new Map().entries(),new Set().values(
 }
 const primitiveIntrinsics=primitiveRoots.map(object=>({object,prototype:primitivePrototype(object),
     keys:primitiveKeys(object),descriptors:primitiveKeys(object).map(key=>primitiveDescriptor(object,key))}));
-const samePrimitiveDescriptor=(actual,saved)=>{
-    if(!actual||!saved)return actual===saved;
+// Only explicit intrinsic-refusal sites request a diagnostic. The sink is local
+// to ONE predicate evaluation: no stale mismatch can annotate a later failure.
+const primitiveRootLabels=['BWValues','JSON','Number','String','Array','Array.prototype','Object','Object.prototype',
+    'Reflect','Function','Function.prototype','WeakMap','WeakMap.prototype','Map','Map.prototype','Set','Set.prototype'];
+const primitiveMismatch=(sink,rootIndex,key,keyPosition,comparison,field,actual,saved)=>{
+    if(sink&&!sink.value)sink.value=primitiveFreeze({__proto__:null,
+        rootIndex,rootLabel:rootIndex<0?'globalThis':rootIndex<primitiveRootLabels.length?primitiveRootLabels[rootIndex]:
+            primitiveIntrinsics[rootIndex].object===primitiveWeakRefConstructor?'WeakRef':
+            primitiveIntrinsics[rootIndex].object===primitiveWeakRefPrototype?'WeakRef.prototype':'iterator-prototype',
+        keyKind:typeof key==='string'?'string':typeof key==='symbol'?'symbol':'none',
+        key:typeof key==='string'?key:null,symbolPosition:typeof key==='symbol'?keyPosition:null,
+        comparison,changedField:field,actualType:typeof actual,savedType:typeof saved,
+        actualFlag:typeof actual==='boolean'?actual:null,savedFlag:typeof saved==='boolean'?saved:null});
+    return false;
+};
+const samePrimitiveDescriptor=(actual,saved,sink,rootIndex=-1,key=null,keyPosition=null)=>{
+    if(!actual||!saved){
+        if(actual===saved)return true;
+        return primitiveMismatch(sink,rootIndex,key,keyPosition,'descriptor-presence',null,!!actual,!!saved);
+    }
     const fields=['value','writable','get','set','configurable','enumerable'];
     for(let i=0;i<fields.length;i++){
-        const key=fields[i],hasActual=primitiveOwn(actual,key),hasSaved=primitiveOwn(saved,key);
-        if(hasActual!==hasSaved||(hasActual&&!primitiveSame(actual[key],saved[key])))return false;
+        const field=fields[i],hasActual=primitiveOwn(actual,field),hasSaved=primitiveOwn(saved,field);
+        if(hasActual!==hasSaved)return primitiveMismatch(sink,rootIndex,key,keyPosition,'descriptor-field-presence',field,hasActual,hasSaved);
+        if(hasActual&&!primitiveSame(actual[field],saved[field]))
+            return primitiveMismatch(sink,rootIndex,key,keyPosition,'descriptor-field',field,actual[field],saved[field]);
     }
     return true;
 };
-const primitiveIntrinsicsCurrent=()=>{
+const primitiveIntrinsicsCurrent=sink=>{
     for(let i=0;i<primitiveGlobals.length;i++){
         const row=primitiveGlobals[i],actual=primitiveDescriptor(primitiveRealm,row.key),saved=row.descriptor;
         if(!actual&&!saved)continue;
-        if(!samePrimitiveDescriptor(actual,saved))return false;
+        if(!samePrimitiveDescriptor(actual,saved,sink,-1,row.key,i))return false;
     }
     for(let i=0;i<primitiveIntrinsics.length;i++){
-        const row=primitiveIntrinsics[i],keys=primitiveKeys(row.object);
-        if(primitivePrototype(row.object)!==row.prototype||keys.length!==row.keys.length)return false;
+        const row=primitiveIntrinsics[i],keys=primitiveKeys(row.object),prototype=primitivePrototype(row.object);
+        if(prototype!==row.prototype)return primitiveMismatch(sink,i,null,null,'prototype-identity',null,prototype,row.prototype);
+        if(keys.length!==row.keys.length)return primitiveMismatch(sink,i,null,null,'own-key-count',null,keys.length,row.keys.length);
         for(let j=0;j<keys.length;j++){
-            if(keys[j]!==row.keys[j])return false;
+            if(keys[j]!==row.keys[j])return primitiveMismatch(sink,i,row.keys[j],j,'own-key-order',null,keys[j],row.keys[j]);
             const actual=primitiveDescriptor(row.object,keys[j]),saved=row.descriptors[j];
-            if(!samePrimitiveDescriptor(actual,saved))return false;
+            if(!samePrimitiveDescriptor(actual,saved,sink,i,keys[j],j))return false;
         }
     }
     return true;
+};
+const primitiveAnnotateIntrinsicFailure=(error,sink)=>{
+    // Refusal is already determined. Only newly-created held-native errors
+    // enter here: no callback, root rescan, proof or exported validation API.
+    if(sink.value)primitiveDiagnosticDefine(error,'bwArrayIntrinsicMismatch',{
+        value:sink.value,writable:false,enumerable:false,configurable:false});
+    return error;
+};
+const primitiveIntrinsicFailure=message=>{
+    const sink={__proto__:null,value:null};
+    if(primitiveIntrinsicsCurrent(sink))return null;
+    return primitiveAnnotateIntrinsicFailure(new primitiveError(message),sink);
+};
+const primitiveBeginIntrinsicFailure=message=>{
+    const sink={__proto__:null,value:null};
+    if(primitiveIntrinsicsCurrent(sink))return null;
+    // Preserve begin's original live Error read/call, including a custom
+    // factory returning any value or throwing. Such results are UNOBSERVED.
+    const errorFactory=Error,error=errorFactory(message);
+    if(errorFactory===primitiveError)primitiveAnnotateIntrinsicFailure(error,sink);
+    return {__proto__:null,error};
 };
 // A replacement notice discards an old binding; it cannot certify an Array
 // birth. Preserve the original live JSON.parse lane without ignoring changes
@@ -370,7 +413,8 @@ function bind(runtime,registration,source,instance) {
     const primitiveLoan=(record,facts)=>{
         const refuse=message=>{if(record)record.primitiveExpired=true;return reject(record,message);};
         if(!record||record.primitiveExpired)return refuse('Array primitive loan requires its current operation');
-        if(!primitiveIntrinsicsCurrent())return refuse('Array primitive intrinsic surface changed');
+        {const error=primitiveIntrinsicFailure('Array operation ownership: Array primitive intrinsic surface changed');
+            if(error){record.primitiveExpired=true;return rejectError(record,error);}}
         if(!graphValid(record))return refuse('current cached operation graph changed');
         if(record.method!=='valueBinary'||record.block.fields?.OP?.value!=='+'||
             !facts||!Object.isFrozen(facts)||facts.runtime!==runtime||facts.opcode!=='valueBinary'||
@@ -476,7 +520,9 @@ function bind(runtime,registration,source,instance) {
             try {
             if(failureCall&&!primitiveOwner.current(util,args))
                 reject(failureRecord,'tracked Array requires its current operation');
-            if((method==='valueBinary'||method==='createReference')&&!primitiveIntrinsicsCurrent())throw Error('Array primitive intrinsic surface changed');
+            if(method==='valueBinary'||method==='createReference'){
+                const failure=primitiveBeginIntrinsicFailure('Array primitive intrinsic surface changed');if(failure)throw failure.error;
+            }
             if(!methods.has(method))throw Error('Array operation method is not registered');
             if(!state.active||state.disposed||!exceptions.arrayCoordinatorReady(runtime)||util?.runtime!==runtime)return undefined;
             const block=primitiveOwner.current(util,args);
@@ -516,8 +562,7 @@ function bind(runtime,registration,source,instance) {
             try {
             const literal=facts?.kind==='literal-ingress',literalBody=facts?.kind==='literal-body',empty=facts?.kind==='empty-allocation',json=facts?.kind==='named-json-parse';
             if(literal){
-                if(!primitiveIntrinsicsCurrent()){
-                    const error=new primitiveError('Array literal intrinsic/value surface changed');
+                const error=primitiveIntrinsicFailure('Array literal intrinsic/value surface changed');if(error){
                     if(record){record.literalExpired=true;record.literalFailure=error;}
                     throw error;
                 }
@@ -692,10 +737,9 @@ function bind(runtime,registration,source,instance) {
         primitive(ticket,facts){
             const record=primitiveApply(primitiveWeakGet,tickets,[ticket]);
             try {
-                if(!primitiveIntrinsicsCurrent()){
-                    if(record)record.primitiveExpired=true;
-                    throw new primitiveError('Array primitive intrinsic surface changed');
-                }
+                {const error=primitiveIntrinsicFailure('Array primitive intrinsic surface changed');if(error){
+                    if(record)record.primitiveExpired=true;throw error;
+                }}
                 if(record&&(record.runtime!==runtime||record.binding!==binding))throw Error('Array primitive ticket belongs to another binding');
                 return primitiveLoan(record,facts);
             }catch(error){if(record)record.primitiveExpired=true;return rejectError(record,error);}
@@ -736,9 +780,9 @@ function bind(runtime,registration,source,instance) {
                 if(record.emptyAttempted&&record.emptyExpired)reject(record,'Named empty allocation proof expired');
                 if(record.jsonAttempted&&record.jsonExpired)reject(record,'Named JSON parse proof expired');
                 if(record.namedSelected&&record.namedExpired)reject(record,'Named primitive selection proof expired');
-                if((record.method==='valueBinary'||record.method==='createReference')&&!primitiveIntrinsicsCurrent()){
-                    record.primitiveExpired=true;
-                    throw new primitiveError('Array primitive intrinsic surface changed before publication');
+                if(record.method==='valueBinary'||record.method==='createReference'){
+                    const error=primitiveIntrinsicFailure('Array primitive intrinsic surface changed before publication');
+                    if(error){record.primitiveExpired=true;throw error;}
                 }
                 if(!graphValid(record))reject(record,'current cached operation graph changed');
                 if(record.primitiveLoans){
@@ -748,7 +792,8 @@ function bind(runtime,registration,source,instance) {
                 scan(record,result);scan(record,facts.body);
                 if(record.method==='createReference'||record.method==='valueBinary'){
                     if(!primitiveIntrinsicsCurrent()||!graphValid(record)||!primitiveIntrinsicsCurrent())reject(record,'Array operation proof expired before publication');
-                    if(!primitiveIntrinsicsCurrent())reject(record,'Array primitive intrinsic surface changed before publication');
+                    {const error=primitiveIntrinsicFailure('Array operation ownership: Array primitive intrinsic surface changed before publication');
+                        if(error)rejectError(record,error);}
                 }
                 const resultIdentity=referenceIdentity(result);
                 const resultBody=lookupIdentity(runtime,resultIdentity);
@@ -757,7 +802,8 @@ function bind(runtime,registration,source,instance) {
                 if(record.method==='createReference'||record.method==='valueBinary'){
                     if(!graphValid(record)||!primitiveIntrinsicsCurrent())reject(record,'Array operation proof expired after result observation');
                     if(record.literalCurrent&&!record.literalCurrent())reject(record,'Array literal allocation changed before enrollment');
-                    if(!primitiveIntrinsicsCurrent())reject(record,'Array primitive intrinsic surface changed before publication');
+                    {const error=primitiveIntrinsicFailure('Array operation ownership: Array primitive intrinsic surface changed before publication');
+                        if(error)rejectError(record,error);}
                 }
                 if(record.emptyAttempted){
                     if(record.emptyExpired||!record.emptyBody||result!==undefined||facts.body!==record.emptyBody||
@@ -783,7 +829,8 @@ function bind(runtime,registration,source,instance) {
                     if(!graphValid(record)||!primitiveIntrinsicsCurrent())reject(record,'Array primitive proof expired at publication barrier');
                     for(let i=0;i<record.primitiveLoans.length;i++)if(!record.primitiveLoans[i].nativeCurrent())
                         reject(record,'Array primitive backing changed before publication');
-                    if(!primitiveIntrinsicsCurrent())reject(record,'Array primitive intrinsic surface changed before publication');
+                    {const error=primitiveIntrinsicFailure('Array operation ownership: Array primitive intrinsic surface changed before publication');
+                        if(error)rejectError(record,error);}
                 }
                 if(record.priorRole){
                     if(record.priorExpired||!record.priorSeen||record.priorPhase!==2)

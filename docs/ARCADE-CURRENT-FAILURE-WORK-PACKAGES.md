@@ -65,6 +65,13 @@ identity, aliases, current-operation ownership, primitive operand evaluation
 order, exceptions and all export producer proofs. A dedicated MakeCode operator
 route is a candidate design, not yet implemented or qualified.
 
+The isolated typed native-helper generator and complete-body recognizer now
+pass their two complete pure test groups, including altered bodies and binding
+escapes. This qualifies syntax recognition only. Operand-domain authority,
+original PXT execution, imported-source operators and native authored
+roundtrips still require their own complete acceptance. Do not infer those
+properties from a helper name or from these parser tests.
+
 Acceptance includes the complete original coercion module, its alias/cycle/
 undefined/numeric/comparison cases, native Array regression groups and authored
 Code/export/reimport cases, genuine exported PXT compilation, SB3 reload and

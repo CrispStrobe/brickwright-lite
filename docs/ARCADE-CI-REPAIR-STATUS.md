@@ -109,8 +109,21 @@ or existing browser assertion changes.
 Original reports and images are retained. These failures do not yet establish a
 shared cause. Source/VM-only artwork tests do not qualify the live GUI journeys.
 
-These are open failures, not accepted baselines. Wait for the other existing
-checks to finish, then compose the concrete repairs into one normal push.
+The last official numeric-authoring check also fails on its unchanged first
+import/run, before editing, compiler comparison, export or reopen. Its saved
+report contains the same Array intrinsic refusal and leaves `saved`, `heroX`
+and `ready` unset. This establishes an initial execution failure, without
+identifying the changed intrinsic or proving the later numeric journeys.
+
+A candidate refusal diagnostic records the first failed descriptor comparison
+as immutable scalar error metadata. It preserves strict refusal decisions,
+existing error messages and custom Error-factory behavior. The rotation
+verifier captures that metadata alongside its original error strings. The
+three new native controls require a fresh composed installation; source review
+alone does not qualify them or establish the polyfill hypothesis.
+
+These are open failures, not accepted baselines. Compose the concrete repairs
+into one normal push; do not repeat the completed campaign for inspection.
 
 ## Registered-carrier CI fixture repair — 2026-10-20
 
