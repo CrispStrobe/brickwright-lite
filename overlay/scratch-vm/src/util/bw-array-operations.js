@@ -266,14 +266,18 @@ function bind(runtime,registration,source,instance) {
         return Object.freeze({begin:refuse,access:refuse,primitive:refuse,finish:refuse});
     }
     const binding=Object.freeze({});
+    let releaseCoordinator=exceptions.attachArrayCoordinator(runtime,binding);
     let state={active:false,disposed:false,generation:0,lastTargets:new Set(runtime.targets)};
     const invalidate=()=>{state.active=false;state.generation++;};
     runtime.on('PROJECT_START',()=>{state.generation++;if(!state.disposed){state.active=true;state.lastTargets=new Set(runtime.targets);}});
     runtime.on('PROJECT_STOP_ALL',invalidate);
-    runtime.on('RUNTIME_DISPOSED',()=>{invalidate();state.disposed=true;});
+    runtime.on('RUNTIME_DISPOSED',()=>{invalidate();state.disposed=true;releaseCoordinator();});
     runtime.on('PROJECT_LOADED',()=>{
         const fresh=runtime.targets.some(target=>target.blocks&&!state.lastTargets.has(target));
-        if(state.disposed&&fresh&&instance()&&registrations.get(registration)===source)state={active:false,disposed:false,generation:state.generation+1,lastTargets:new Set(runtime.targets)};
+        if(state.disposed&&fresh&&instance()&&registrations.get(registration)===source){
+            releaseCoordinator=exceptions.attachArrayCoordinator(runtime,binding);
+            state={active:false,disposed:false,generation:state.generation+1,lastTargets:new Set(runtime.targets)};
+        }
         else invalidate();
     });
     const rejectError=(record,error,kind='constraint')=>{

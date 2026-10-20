@@ -9,7 +9,7 @@ const root=INTEGRATED+'/node_modules/scratch-vm/src/util/';
 const keys={
  'bw-primitive-owner':['beforeInputs','invoke','current','stepNested','handles','permitsNumberInput','captureActiveCall','captureFailureCall','isFailureActive','dispatchArrayFailure','isActiveCall'],
  'bw-array-operations':['registerSource','bind','consumeFailureLease'],
- 'bw-arcade-exceptions':['rejectConditionWait','create','consume','failed','capture','stale','diagnostic','reported','arrayCoordinatorReady','rejectArrayOperation']
+ 'bw-arcade-exceptions':['rejectConditionWait','create','consume','failed','capture','stale','diagnostic','reported','arrayCoordinatorReady','rejectArrayOperation','attachArrayCoordinator']
 };
 function actualEntry(first){
  const priorDescriptor=Object.getOwnPropertyDescriptor(Module,'_cache');

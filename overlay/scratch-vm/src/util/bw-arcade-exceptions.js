@@ -12,7 +12,7 @@ const failureHas=(map,key)=>failureApply(nativeWeakHas,map,[key]);
 const failureDelete=(map,key)=>failureApply(nativeWeakDelete,map,[key]);
 const signalAdd=(set,key)=>failureApply(nativeSetAdd,set,[key]);
 const signalHas=(set,key)=>failureApply(nativeSetHas,set,[key]);
-module.exports=failureFreeze({__proto__:null,rejectConditionWait,create,consume,failed,capture,stale,diagnostic,reported,arrayCoordinatorReady,rejectArrayOperation});
+module.exports=failureFreeze({__proto__:null,rejectConditionWait,create,consume,failed,capture,stale,diagnostic,reported,arrayCoordinatorReady,rejectArrayOperation,attachArrayCoordinator});
 const primitiveOwner = require('./bw-primitive-owner');
 const cachedPrimitiveOwner = require('./bw-cached-primitive-owner');
 const consumeArrayFailureLease=require('./bw-array-operations').consumeFailureLease;
@@ -20,6 +20,7 @@ const consumeArrayFailureLease=require('./bw-array-operations').consumeFailureLe
 // Neither an Error property nor a serialized value can grant exceptional
 // completion. Only the current primitive may issue a signal for this runtime.
 const owners = new WeakMap();
+const coordinatorControls = new WeakMap();
 const signals = new WeakMap();
 const publishedSignals = new WeakSet();
 const failedThreads = new WeakMap();
@@ -40,12 +41,31 @@ function create(runtime, readValue, consumePhysicalUpdate = null) {
             arrayReady:()=>false,
             failure: () => null, captureCaller:()=>null,releaseCaller() {}, rethrow() {}, dispose() {}});
     }
-    if (failureHas(owners,runtime)) throw new Error('Arcade exception runtime already has an owner');
+    if (!failureHas(owners,runtime)) createCoordinator(runtime);
+    return failureGet(coordinatorControls,runtime).claim(readValue,consumePhysicalUpdate);
+}
+
+// Arrays and Arcade share failure lineage, not extension capabilities. The core
+// is installed before PROJECT_START by an admitted extension construction.
+function createCoordinator(runtime) {
     let active = false, disposed = false, generation = 0;
-    const failures = new WeakMap(), edges = new WeakMap();
-    const live = thread => active && !disposed && runtime.threads?.includes(thread) && !thread.isKilled &&
-        thread.status!==thread.constructor.STATUS_DONE && thread.stack?.length>0 &&
-        runtime.targets.includes(thread.target) && thread.blockContainer === thread.target.blocks;
+    let failures = new WeakMap(), edges = new WeakMap();
+    let readValue = null, consumePhysicalUpdate = null, arcadeClaim = null;
+    const attachments = new WeakMap();
+    let attachmentCount = 0, invocation = null;
+    const invocationCurrent = () => invocation === null ||
+        (!disposed && arcadeClaim === invocation.token && generation === invocation.generation);
+    const setCurrent = (map,key,value) => {
+        if (!invocationCurrent()) throw new Error('Arcade exception owner is disposed');
+        return failureSet(map,key,value);
+    };
+    const live = thread => {
+        const observedGeneration = generation;
+        const result = active && !disposed && invocationCurrent() && runtime.threads?.includes(thread) && !thread.isKilled &&
+            thread.status!==thread.constructor.STATUS_DONE && thread.stack?.length>0 &&
+            runtime.targets.includes(thread.target) && thread.blockContainer === thread.target.blocks;
+        return result && active && !disposed && generation === observedGeneration && invocationCurrent();
+    };
     const failure = thread => failureGet(failures,thread) || null;
     const owned = signal => failureGet(signals,signal)?.runtime === runtime;
     const listeners = new Map();
@@ -54,17 +74,19 @@ function create(runtime, readValue, consumePhysicalUpdate = null) {
     const retireLineage = (thread,signal,preserveOriginal=false) => {
         // Mark the complete actual lineage before any cleanup can settle
         // a pending operation. A detached event has no implicit parent.
+        if (!invocationCurrent()) throw new Error('Arcade exception owner is disposed');
+        const retirementFailures = failures, retirementEdges = edges;
         const lineage = [];
-        for (let current = thread; current && !failureHas(failures,current);) {
-            failureSet(failures,current, signal);failureSet(failedThreads,current, {runtime, signal});lineage[lineage.length]=current;
-            const edge = failureGet(edges,current);
+        for (let current = thread; current && !failureHas(retirementFailures,current);) {
+            failureSet(retirementFailures,current, signal);failureSet(failedThreads,current, {runtime, signal});lineage[lineage.length]=current;
+            const edge = failureGet(retirementEdges,current);
             current = edge?.generation === generation ? edge.caller : null;
         }
         try {
             const cleanupErrors = [];
             for (let index=0;index<lineage.length;index++) {
                 const current=lineage[index];
-                const edge = failureGet(edges,current);failureDelete(edges,current);
+                const edge = failureGet(retirementEdges,current);failureDelete(retirementEdges,current);
                 try {edge?.cleanup(signal);} catch (error) {cleanupErrors[cleanupErrors.length]=error;}
                 finally {runtime.sequencer.retireThread(current);}
             }
@@ -84,23 +106,26 @@ function create(runtime, readValue, consumePhysicalUpdate = null) {
         // after an earlier managed call; only their actual cached primitive
         // invocation can retain that caller.
         captureCaller(args,util,opcode='arcade_createObject') {
-            if (!live(util?.thread) || !['arcade_createObject','arcade_callFunction'].includes(opcode)) return null;
+            if (!arcadeClaim || !live(util?.thread) || !['arcade_createObject','arcade_callFunction'].includes(opcode)) return null;
             if (!cachedPrimitiveOwner(runtime,util,args,opcode,[])) return null;
             const lease=Object.freeze({});
-            failureSet(callerLeases,lease,{owner,thread:util.thread,frame:util.thread.peekStackFrame(),generation});
+            setCurrent(callerLeases,lease,{owner,thread:util.thread,frame:util.thread.peekStackFrame(),generation});
             return lease;
         },
         releaseCaller(lease) {if(lease) failureDelete(callerLeases,lease);},
         capture(thread) {
             if (!live(thread) || runtime.sequencer.activeThread !== thread) return null;
+            const observedGeneration = generation;
             const lease=Object.freeze({}), frame=thread.peekStackFrame();
-            failureSet(promiseLeases,lease,{owner,runtime,thread,frame,generation});
+            if (generation !== observedGeneration || !active || disposed || !invocationCurrent()) return null;
+            setCurrent(promiseLeases,lease,{owner,runtime,thread,frame,generation});
             return lease;
         },
         current(lease) {
             const record=failureGet(promiseLeases,lease);
-            return Boolean(record && record.owner===owner && record.generation===generation &&
-                live(record.thread) && record.thread.stackFrames.includes(record.frame));
+            return !!(record && record.owner===owner && record.generation===generation &&
+                live(record.thread) && record.thread.stackFrames.includes(record.frame) &&
+                record.generation===generation && active && !disposed && invocationCurrent());
         },
         rethrow(error) {if (owned(error)) throw error;},
         link(child, caller, cleanup = () => {}, lease = null) {
@@ -115,26 +140,26 @@ function create(runtime, readValue, consumePhysicalUpdate = null) {
                 if (parent === child) throw new Error('Cyclic Arcade exception edge');
             }
             const edge = {caller, cleanup, generation};
-            failureSet(edges,child, edge);
+            setCurrent(edges,child, edge);
             return () => {if (failureGet(edges,child) === edge) failureDelete(edges,child);};
         },
         linkPhysicalUpdate(child,args,util,cleanup) {
             // This consumer is captured by the actual extension constructor.
             // Neither a missing caller nor public tags can mint a root edge.
             if (!live(child) || util?.thread!==undefined || typeof cleanup!=='function' || failureHas(edges,child) ||
-                typeof consumePhysicalUpdate!=='function')
+                !arcadeClaim || typeof consumePhysicalUpdate!=='function')
                 throw new Error('Arcade physical update requires its private current entry');
             const witness=consumePhysicalUpdate(child,args,util);
             if (!witness || witness.target!==child.target || !live(child))
                 throw new Error('Arcade physical update requires its private current entry');
             const edge={caller:null,cleanup,generation};
-            failureSet(edges,child,edge);
+            setCurrent(edges,child,edge);
             return ()=>{if(failureGet(edges,child)===edge)failureDelete(edges,child);};
         },
         raise(args, util) {
             const thread = util?.thread;
             const block = primitiveOwner.current(util, args);
-            if (!live(thread) || util.runtime !== runtime || block?.opcode !== 'arcade_throwValue') {
+            if (!arcadeClaim || !live(thread) || util.runtime !== runtime || block?.opcode !== 'arcade_throwValue') {
                 throw new Error('Arcade Throw requires its current physical primitive');
             }
             // Read while the actual primitive's Number-input loan is live.
@@ -145,7 +170,7 @@ function create(runtime, readValue, consumePhysicalUpdate = null) {
             const signal = new Error('Arcade uncaught thrown value: ' + String(value));
             const record = Object.freeze({owner, runtime, generation, value, target: thread.target,
                 block: block.id, stack: Object.freeze([...thread.stack])});
-            failureSet(signals,signal, record);
+            setCurrent(signals,signal, record);
             retireLineage(thread,signal);
         },
         arrayReady() {return active&&!disposed;},
@@ -167,7 +192,7 @@ function create(runtime, readValue, consumePhysicalUpdate = null) {
             const marker=failureDescriptor(witness,'computationMarker');
             const computation=!!(marker&&failureOwn(marker,'value')&&marker.value===computationMarker);
             const signal=computation?error:new failureError(message.value,{cause:error});
-            failureSet(signals,signal,failureFreeze({owner,runtime,generation,kind:computation?'array-computation':'array-constraint',message:message.value,target:thread.target,block:witness.block,stack:failureStack(thread)}));
+            setCurrent(signals,signal,failureFreeze({owner,runtime,generation,kind:computation?'array-computation':'array-constraint',message:message.value,target:thread.target,block:witness.block,stack:failureStack(thread)}));
             retireLineage(thread,signal,computation);
         },
         rejectPrimitiveFault(args,util,error,lease) {
@@ -179,15 +204,15 @@ function create(runtime, readValue, consumePhysicalUpdate = null) {
             if(!witness)throw Error('Primitive fault requires its private current receipt');
             // Preserve the actual privately issued TypeError, never a public
             // Error tag or copied message. Shared lineage cleanup is unchanged.
-            failureSet(signals,error,Object.freeze({owner,runtime,generation,kind:'primitive-fault',message:error.message,
+            setCurrent(signals,error,Object.freeze({owner,runtime,generation,kind:'primitive-fault',message:error.message,
                 property:witness.property,target:thread.target,block:witness.block,stack:Object.freeze([...thread.stack])}));
             retireLineage(thread,error);
         },
         rejectConditionWait(thread,error) {
             const witness=require('./bw-source-condition-waits').consumeFailure(runtime,thread,error);
-            if(!witness || !live(thread))throw Error('Source condition rejection requires its private current wait');
+            if(!arcadeClaim || !witness || !live(thread))throw Error('Source condition rejection requires its private current wait');
             const signal=new Error(error.message,{cause:error});
-            failureSet(signals,signal,Object.freeze({owner,runtime,generation,kind:'condition-wait',message:error.message,
+            setCurrent(signals,signal,Object.freeze({owner,runtime,generation,kind:'condition-wait',message:error.message,
                 target:thread.target,block:witness.block,stack:Object.freeze([...thread.stack])}));
             retireLineage(thread,signal);
         },
@@ -206,7 +231,7 @@ function create(runtime, readValue, consumePhysicalUpdate = null) {
                 throw new Error('Arcade constraint rejection requires an actual Error diagnostic');
             const prior=failure(thread);if(prior)throw prior;
             const signal=new Error(message.value,{cause:error});
-            failureSet(signals,signal,Object.freeze({owner,runtime,generation,kind:'constraint',message:message.value,
+            setCurrent(signals,signal,Object.freeze({owner,runtime,generation,kind:'constraint',message:message.value,
                 target:thread.target,block:block.id,stack:Object.freeze([...thread.stack])}));
             retireLineage(thread,signal);
         },
@@ -215,11 +240,70 @@ function create(runtime, readValue, consumePhysicalUpdate = null) {
             cancel();disposed = true;
             for (const [event, listener] of listeners) runtime.off(event, listener);
             listeners.clear();
-            if (failureGet(owners,runtime) === owner) failureDelete(owners,runtime);
+            if (failureGet(owners,runtime) === owner) {
+                failureDelete(owners,runtime);failureDelete(coordinatorControls,runtime);
+            }
             // Keep weak tombstones for promises already registered by this
             // owner. A new project must never revive their continuations.
         }
     });
+    const controls = failureFreeze({
+        claim(valueReader, physicalUpdate) {
+            if (disposed || arcadeClaim) throw new Error('Arcade exception runtime already has an owner');
+            const token = failureFreeze({});
+            arcadeClaim = token;readValue = valueReader;consumePhysicalUpdate = physicalUpdate;
+            const claimFailures = failures;
+            const current = () => !disposed && arcadeClaim === token;
+            const requireClaim = () => {
+                if (!current()) throw new Error('Arcade exception owner is disposed');
+            };
+            const invoke = (method,args) => {
+                requireClaim();
+                const previous = invocation;
+                invocation = {token,generation};
+                try {return failureApply(owner[method],owner,args);}
+                finally {invocation = previous;}
+            };
+            // A retired facet cannot acquire a later claim's capabilities. Read
+            // only failure/rethrow observations retain their original tombstones.
+            return failureFreeze({
+                failure: thread => failureGet(claimFailures,thread) || null,
+                rethrow: owner.rethrow,
+                captureCaller(...args) {if (!current()) return null;return invoke('captureCaller',args);},
+                releaseCaller(lease) {if (current()) owner.releaseCaller(lease);},
+                capture(thread) {return current() ? invoke('capture',[thread]) : null;},
+                current(lease) {return current() && owner.current(lease);},
+                link(...args) {return invoke('link',args);},
+                linkPhysicalUpdate(...args) {return invoke('linkPhysicalUpdate',args);},
+                raise(...args) {return invoke('raise',args);},
+                arrayReady() {return current() && owner.arrayReady();},
+                rejectArrayOperation(...args) {return invoke('rejectArrayOperation',args);},
+                rejectPrimitiveFault(...args) {return invoke('rejectPrimitiveFault',args);},
+                rejectConditionWait(...args) {return invoke('rejectConditionWait',args);},
+                rejectConstraint(...args) {return invoke('rejectConstraint',args);},
+                dispose() {
+                    if (!current()) return;
+                    cancel();arcadeClaim = null;readValue = null;consumePhysicalUpdate = null;
+                    failures = new WeakMap();edges = new WeakMap();
+                    if (attachmentCount === 0) owner.dispose();
+                }
+            });
+        },
+        attach(binding) {
+            if (disposed) throw new Error('Array exception coordinator is disposed');
+            const prior = failureGet(attachments,binding);
+            if (prior) return prior;
+            let attached = true;
+            const release = () => {
+                if (!attached) return;
+                attached = false;failureDelete(attachments,binding);attachmentCount--;
+                if (attachmentCount === 0 && !arcadeClaim) owner.dispose();
+            };
+            failureSet(attachments,binding,release);attachmentCount++;
+            return release;
+        }
+    });
+    failureSet(coordinatorControls,runtime,controls);
     failureSet(owners,runtime, owner);
     listen('PROJECT_START', () => {generation++;if (!disposed) active = true;});
     listen('PROJECT_STOP_ALL', cancel);
@@ -259,4 +343,11 @@ function rejectConditionWait(runtime,thread,error) {
     const owner=failureGet(owners,runtime);
     if(!owner)throw Error('Source condition rejection requires the current Arcade exception owner');
     return owner.rejectConditionWait(thread,error);
+}
+
+// Called only by the admitted native Array binding. The release closure remains
+// in that binding's lifecycle and grants no Arcade reader or invocation facet.
+function attachArrayCoordinator(runtime,binding) {
+    if (!failureHas(owners,runtime)) createCoordinator(runtime);
+    return failureGet(coordinatorControls,runtime).attach(binding);
 }
