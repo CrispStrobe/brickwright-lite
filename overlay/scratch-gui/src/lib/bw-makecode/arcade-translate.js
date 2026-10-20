@@ -13,7 +13,7 @@ import {withCompilerOwnedClassResultFlowProof} from './class-callable-result-flo
 import {numberLiteralCode,containsNonFiniteNumberLiteral} from './source-number-literal.js';
 import {lowerMathIdivValues} from './math-idiv-source.js';
 import {lowerConsoleInspectValuesForTranslation} from './lower-console-inspect-values.js';
-import {lowerSdkFontValues} from './lower-sdk-font-values.js';
+import {lowerSdkFontValuesForTranslation} from './lower-sdk-font-values.js';
 import {callableSourceGate} from './callable-source-gate.js';
 import {lowerCallableValues} from './lower-callable-values.js';
 import {validateClassCallablePlan} from './class-callable-plan.js';
@@ -5154,7 +5154,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const throwProgram=throwSource.program;
     const inspectionValues=lowerConsoleInspectValuesForTranslation(throwProgram);
     projectInputDiagnostics.push(...inspectionValues.unsupported);
-    const fontValues = lowerSdkFontValues(inspectionValues.program);
+    const fontValues = lowerSdkFontValuesForTranslation(inspectionValues.program);
     projectInputDiagnostics.push(...fontValues.unsupported);
     const fontSource = lowerLiveFontMetrics(fontValues.program);
     const sharedPreparation = !namedEnabled && !callableEnabled && !classEnabled ? prepareSharedImageArrayTransport(fontSource,{sourceContext:sharedSourceContext}) : null;
