@@ -1,8 +1,48 @@
 import {analyseSourceValueProducers,analyseSourceDeclarationIdentityForPreparation,validateProcedureConstraintSource,validateCompilerOwnedProcedureConstraintSource} from './source-value-producers.js';
+import {declarationIdentityInput} from './declaration-identity-input.js';
 import {TYPES,constraints} from './ordinary-procedure-constraint-metadata.js';
 export {validateProcedureConstraintSource} from './source-value-producers.js';
 import {callableSourceGate} from './callable-source-gate.js';
 import {analyseCallableFlow} from './callable-flow.js';
+const preparationApply=Reflect.apply;
+const preparationMapSize=Object.getOwnPropertyDescriptor(Map.prototype,'size').get;
+// Additional surfaces used by the omitted value-graph/default work. The
+// shared declaration-identity admission remains unchanged. These local rows
+// close iterator and serialization callbacks before selecting the omission.
+const preparationRealm=globalThis,preparationKeys=Reflect.ownKeys;
+const preparationDescriptor=Object.getOwnPropertyDescriptor,preparationPrototype=Object.getPrototypeOf;
+const preparationOwn=Object.hasOwn,preparationSame=Object.is;
+const preparationExtraObjects=[JSON,Number,String,RegExp,Symbol,Math,Boolean,Uint8Array,ArrayBuffer,DataView,
+ Number.prototype,String.prototype,RegExp.prototype,Symbol.prototype,Boolean.prototype,
+ Uint8Array.prototype,preparationPrototype(Uint8Array.prototype),ArrayBuffer.prototype,DataView.prototype];
+for(const iterator of [[][Symbol.iterator](),new Map().entries(),new Set().values(),''[Symbol.iterator]()]){
+ let prototype=preparationPrototype(iterator);
+ while(prototype){if(!preparationExtraObjects.includes(prototype))preparationExtraObjects.push(prototype);prototype=preparationPrototype(prototype);}
+}
+const preparationExtraFields=['value','writable','get','set','enumerable','configurable'];
+const preparationExtraRows=preparationExtraObjects.map(object=>({object,prototype:preparationPrototype(object),
+ keys:preparationKeys(object),fields:preparationKeys(object).map(key=>preparationDescriptor(object,key))}));
+const preparationExtraAliases=['JSON','Number','String','RegExp','Symbol','Math','Boolean','Uint8Array','ArrayBuffer','DataView'].map(key=>({key,row:preparationDescriptor(preparationRealm,key)}));
+const preparationSameDescriptor=(before,now)=>{
+ if(!before||!now)return before===now;
+ for(let i=0;i<preparationExtraFields.length;i++){
+  const key=preparationExtraFields[i],present=preparationOwn(before,key);
+  if(present!==preparationOwn(now,key)||present&&!preparationSame(before[key],now[key]))return false;
+ }
+ return true;
+};
+const preparationExtrasCurrent=()=>{
+ for(let i=0;i<preparationExtraAliases.length;i++){
+  const entry=preparationExtraAliases[i];
+  if(!preparationSameDescriptor(entry.row,preparationDescriptor(preparationRealm,entry.key)))return false;
+ }
+ for(let i=0;i<preparationExtraRows.length;i++){
+  const row=preparationExtraRows[i],keys=preparationKeys(row.object);
+  if(preparationPrototype(row.object)!==row.prototype||keys.length!==row.keys.length)return false;
+  for(let j=0;j<keys.length;j++)if(keys[j]!==row.keys[j]||!preparationSameDescriptor(row.fields[j],preparationDescriptor(row.object,keys[j])))return false;
+ }
+ return true;
+};
 const fail=message=>{throw Error('Procedure parameter constraint: '+message);};
 // Only the bound prefix operation belongs on the executable AST. In particular,
 // the preparation result's Program must never become an enumerable AST child.
@@ -69,6 +109,11 @@ export function prepareProcedureConstraintSourceForTranslation(program,{mode='pr
 }
 
 function prepareConstraints(program,mode,declarationIdentityOnly) {
+ // This admission is local to the complete compiler-owned preparation, before
+ // any analysis. Negative admission stays negative across callbacks/ABA; Throw,
+ // unknown, foreign own-data shapes or changed intrinsics retain the old path.
+ // Public preparation performs no new descriptor or intrinsic observations.
+ const emptyInput=declarationIdentityOnly&&preparationExtrasCurrent()?declarationIdentityInput(program):null;
  const excludedSignature=(messages,message)=>{if(mode==='prototype')messages.push(message);};
  const graph=declarationIdentityOnly?analyseSourceDeclarationIdentityForPreparation(program):
   analyseSourceValueProducers(program,{unboundIsOpaque:true,opaqueDeclarationValues:true});
@@ -95,9 +140,14 @@ function prepareConstraints(program,mode,declarationIdentityOnly) {
  for(const [name,entry]of selected)if(graph.unchangedFunctionAt(entry.fn)!==entry.fn){selected.delete(name);excluded.push('Procedure parameter constraint: '+name+' requires a unique unchanged actual ordinary declaration');}
  const validation={onlyFunctions:new Set(selected.keys()),ordinaryPrimitiveSdkNumbers:mode==='supported-default',sceneClockNumbers:mode==='supported-default'};
  const validate=declarationIdentityOnly?validateCompilerOwnedProcedureConstraintSource:validateProcedureConstraintSource;
- const diagnostics=[...excluded,...validate(program,validation)];
+ // No ordinary function can enter the shared validator's functions Map when
+ // the actual local selection Set is empty. Its completed diagnostic result is
+ // then [], independent of graph values. Preserve all selection/escape/duplicate
+ // work above; do not elide any nonempty or public/uncertain validation.
+ const noOrdinaryObligations=declarationIdentityOnly&&emptyInput?.current()===true&&preparationExtrasCurrent()&&preparationApply(preparationMapSize,selected,[])===0;
+ const diagnostics=[...excluded,...(noOrdinaryObligations?[]:validate(program,validation))];
  for(const name of duplicates)diagnostics.push('Procedure parameter constraint: duplicate ordinary declaration '+name);
- const lowered=diagnostics.length?program:lowerOmittedDefaults(program,selected,graph);
+ const lowered=diagnostics.length||noOrdinaryObligations?program:lowerOmittedDefaults(program,selected,graph);
  if(lowered!==program)diagnostics.push(...validate(lowered,validation));
  return Object.freeze({program:lowered,independentRoutes:Object.freeze([...independent].map(fn=>Object.freeze({name:fn.name,protocol:'existing-numeric-callable'}))),diagnostics:Object.freeze([...diagnostics]),prefix(fn,procedure,parameterName=name=>name){
   const entry=selected.get(fn.source||fn.name);if(!entry||duplicates.has(fn.source||fn.name))return [];
