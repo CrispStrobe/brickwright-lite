@@ -23,6 +23,7 @@ test('an allowed assembly licence cannot override an NC embedded cable or part',
     }
 });
 test('all embedded section notices must be compatible; unrecognised restrictions require review', () => {
+    assert.equal(classifyModelLicense({...source, license: 'MIT', text: '0 FILE custom.dat\n0 !LICENSE CC-BY-SA-4.0'}).shareAlike, true);
     assert.equal(classifyModelLicense({...source, license: 'CC-BY-2.0', text: '0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt'}).status, 'eligible');
     assert.equal(classifyModelLicense({...source, license: 'MIT', text: '0 FILE custom.dat\n0 !LICENSE All rights reserved'}).status, 'review');
 });

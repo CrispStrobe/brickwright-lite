@@ -32,9 +32,8 @@ const SimLabExamples = ({models, locale, selected, onChoose, onClose}) => {
     const mounted = useRef(true);
     useEffect(() => {
         mounted.current = true;
-        const previous = document.activeElement;
         search.current?.focus();
-        return () => { mounted.current = false; previous?.focus?.(); };
+        return () => { mounted.current = false; };
     }, []);
     const choose = async (key, program) => {
         setPending(key); setError('');

@@ -162,6 +162,7 @@ import {scaleInteractions, OPEN_BUDGET_MS, DRAW_CALL_BUDGET, BUILD_OPEN_BUDGET_M
     DRAG_LINK_BUDGET, UNDO_DRAW_BUDGET, UNDO_SHOT_BUDGET_MS} from './lib/sim-lab-scale-gate.mjs';
 import {brakingBound, judgeWallStop} from './lib/sim-lab-wall-stopper-judge.mjs';
 import {surveyRoverInteractions} from './lib/sim-lab-survey-rover-gate.mjs';
+import {physicsExamplesInteractions, germanPhysicsExamplesInteractions} from './lib/sim-lab-physics-examples-gate.mjs';
 import {STEP_MS} from '../overlay/scratch-gui/src/lib/bw-sim/hub-bridge.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -723,6 +724,22 @@ try {
             assert.ok(rec.restMm < 2, `the ${example.name} is not at rest: ${JSON.stringify(rec)}`);
             console.log(`PASS the ${example.name}'s example program, loaded from the pane, ${example.judge(rec)}`);
             await ex.close();
+        }
+
+        if (runExample('physics-workshops.ldr')) {
+            const workshops = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            workshops.on('pageerror', error => errors.push(error.message));
+            workshops.on('dialog', dialog => dialog.accept());
+            const result = await physicsExamplesInteractions(workshops, {openSimLab,
+                shotsDir: resolve(artifacts, 'physics-workshops'), timeout: wallBudget(14000)});
+            console.log(`PASS physics examples browser and chain program: ${JSON.stringify(result)}`);
+            await workshops.close();
+            const german = await browser.newPage({viewport: {width: 1024, height: 768}, hasTouch: true,
+                serviceWorkers: 'block', locale: 'de-DE'});
+            german.on('pageerror', error => errors.push(error.message));
+            await germanPhysicsExamplesInteractions(german, {openSimLab, shotsDir: resolve(artifacts, 'physics-workshops')});
+            console.log('PASS German physics examples browser at tablet size');
+            await german.close();
         }
 
         if (runExample('survey-rover.ldr')) {

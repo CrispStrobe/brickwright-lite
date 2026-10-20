@@ -15,6 +15,6 @@ export const classifyModelLicense = ({text = '', license = '', author = '', sour
     if (!author.trim() || !/^https?:\/\//.test(source)) {
         return {status: 'review', headers, reason: 'Publisher source and author attribution are required.'};
     }
-    return {status: 'eligible', headers, license, shareAlike: /^CC-BY-SA-/i.test(license),
+    return {status: 'eligible', headers, license, shareAlike: [license, ...notices].some(n => /^CC-BY-SA-/i.test(n)),
         reason: 'Compatible declared licence; retain attribution, source, notices and any share-alike terms.'};
 };

@@ -1037,7 +1037,13 @@ class SimLabPane extends React.Component {
         if (includeProgram) await this.loadExample();
         await new Promise(resolve => this.setState({}, resolve));
         if (this.state.message) throw new Error(this.state.message);
-        this.setState({examplesOpen: false});
+        this.closeExamples();
+    }
+
+    closeExamples () {
+        this.setState({examplesOpen: false}, () => {
+            this.root.current?.querySelector('[data-testid="bw-sim-lab-examples"]')?.focus();
+        });
     }
 
     /** The MODELS entry of the model on show, or null for a built or imported one. */
@@ -2770,7 +2776,7 @@ class SimLabPane extends React.Component {
                 {this.state.examplesOpen && this.lib && (
                     <SimLabExamples models={this.lib.MODELS} locale={this.locale} selected={this.state.shipped}
                         onChoose={(key, program) => this.openGalleryExample(key, program)}
-                        onClose={() => this.setState({examplesOpen: false})} />
+                        onClose={() => this.closeExamples()} />
                 )}
                 {this.state.instructions && (
                     <SimLabInstructions lib={this.lib} model={this.state.instructions} locale={this.locale}

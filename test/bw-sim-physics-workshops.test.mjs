@@ -19,7 +19,7 @@ const jointFor = (mech, part) => mech.joints.find(j => j.body1 === mech.bodies.f
     mech.bodies.find(b => b.id === j.body2)?.parts.includes(part));
 const finite = pose => [...pose.position, ...pose.rotation].every(Number.isFinite);
 
-for (const [id, pieces, motors] of [['chain-transmission', 59, 1], ['flywheel-differential', 58, 2]]) {
+for (const [id, pieces, motors] of [['chain-transmission', 59, 1], ['flywheel-differential', 56, 2]]) {
     test(`${id}: >50 useful pieces, connected structure, no overlaps, complete instructions`, () => {
         const {model, mechanism, issues} = prepared(id);
         assert.deepEqual(issues, []);

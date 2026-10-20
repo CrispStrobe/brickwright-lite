@@ -184,7 +184,7 @@ export const MODEL_LESSONS = Object.freeze({
         "license": "BSD-3-Clause"
     },
     "flywheel-differential.ldr": {
-        "pieces": 58,
+        "pieces": 56,
         "motors": 2,
         "hubs": [
             "spike-prime"

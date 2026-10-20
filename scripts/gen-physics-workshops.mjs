@@ -43,13 +43,14 @@ save(chain, 'chain-transmission.ldr', 'Long chain transmission — speed ratio a
 
 // Two flywheels on an open differential. Long half-shafts clear the brake gear;
 // transverse braces close the bearing frames to take the flywheels' reaction torque.
+// Smooth axle joiners act as retaining collars on either side of each three-wheel stack.
 const differential = read('differential.ldr');
+// The large wheels themselves show rotation; remove the original small pointer beams.
+differential.parts = differential.parts.filter(p => !/Pointer$/.test(p.id));
 for (const p of differential.parts) {
     if (/^pinR[1-4]$/.test(p.id)) { p.part = '6558.dat'; p.position[0] = 40; }
     if (p.id === 'leftAxle') { p.part = '50451.dat'; p.position[0] = -175; }
     if (p.id === 'rightAxle') { p.part = '50451.dat'; p.position[0] = 169; }
-    if (p.id === 'leftPointer') p.position[0] = -315;
-    if (p.id === 'rightPointer') p.position[0] = 315;
 }
 for (const x of [-40, 60]) for (const y of [-20, 20]) {
     add(differential.parts, `bearingBrace${x < 0 ? 'L' : 'R'}${y < 0 ? 'Top' : 'Bottom'}`, '32524.dat', [x, y, 0], HOLES_X, 25);
@@ -57,6 +58,7 @@ for (const x of [-40, 60]) for (const y of [-20, 20]) {
 for (const side of [-1, 1]) {
     const name = side < 0 ? 'Left' : 'Right';
     for (const x of [175, 215, 255]) add(differential.parts, `flywheel${name}${x}`, '49295p01.dat', [side * x, -100, 0], ALONG_X, 15);
-    for (const x of [145, 285]) add(differential.parts, `collar${name}${x}`, '3713.dat', [side * x, -100, 0], ALONG_X, 4);
+    add(differential.parts, `collar${name}145`, '6536.dat', [side * 145, -100, 0], I, 4);
+    add(differential.parts, `collar${name}295`, '59443.dat', [side * 295, -100, 0], ALONG_X, 4);
 }
 save(differential, 'flywheel-differential.ldr', 'Flywheel differential — angular inertia and power splitting');

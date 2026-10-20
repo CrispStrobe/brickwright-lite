@@ -63,10 +63,6 @@
 1 4 -175 -100 0 1 0 0 0 1 0 0 0 1 50451.dat
 0 !BW ID rightAxle
 1 4 169 -100 0 1 0 0 0 1 0 0 0 1 50451.dat
-0 !BW ID leftPointer
-1 4 -315 -100 0 0 1 0 -1 0 0 0 0 1 6632.dat
-0 !BW ID rightPointer
-1 4 315 -100 0 0 1 0 -1 0 0 0 0 1 6632.dat
 0 !BW ID base
 1 72 0 40 0 0 0 1 0 1 0 -1 0 0 32278.dat
 0 !BW ID basePin1
@@ -107,9 +103,9 @@
 0 !BW ID flywheelLeft255
 1 15 -255 -100 0 0 0 1 0 1 0 -1 0 0 49295p01.dat
 0 !BW ID collarLeft145
-1 4 -145 -100 0 0 0 1 0 1 0 -1 0 0 3713.dat
-0 !BW ID collarLeft285
-1 4 -285 -100 0 0 0 1 0 1 0 -1 0 0 3713.dat
+1 4 -145 -100 0 1 0 0 0 1 0 0 0 1 6536.dat
+0 !BW ID collarLeft295
+1 4 -295 -100 0 0 0 1 0 1 0 -1 0 0 59443.dat
 0 !BW ID flywheelRight175
 1 15 175 -100 0 0 0 1 0 1 0 -1 0 0 49295p01.dat
 0 !BW ID flywheelRight215
@@ -117,6 +113,6 @@
 0 !BW ID flywheelRight255
 1 15 255 -100 0 0 0 1 0 1 0 -1 0 0 49295p01.dat
 0 !BW ID collarRight145
-1 4 145 -100 0 0 0 1 0 1 0 -1 0 0 3713.dat
-0 !BW ID collarRight285
-1 4 285 -100 0 0 0 1 0 1 0 -1 0 0 3713.dat
+1 4 145 -100 0 1 0 0 0 1 0 0 0 1 6536.dat
+0 !BW ID collarRight295
+1 4 295 -100 0 0 0 1 0 1 0 -1 0 0 59443.dat
