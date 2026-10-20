@@ -38,6 +38,7 @@ import SimLabProperties from './sim-lab-properties.jsx';
 import SimLabShortcuts from './sim-lab-shortcuts.jsx';
 import SimLabCoach from './sim-lab-coach.jsx';
 import SimLabMotorMixer, {MIXER_OPEN_KEY} from './sim-lab-motor-mixer.jsx';
+import {setMixerMotorPower} from './sim-lab-motor-control.js';
 import PaneDivider from '../gui/pane-divider.jsx';
 import {Icon, Popup, Separator, ToolButton, splitToolbar, toolStyles, tooltipOf} from './sim-lab-toolbar.jsx';
 import {TOOLBAR_TEXT} from './sim-lab-toolbar-text.js';
@@ -1809,7 +1810,7 @@ class SimLabPane extends React.Component {
                 angleDeg: enc && enc.ok ? enc.angleDeg : null};
         });
         const setPower = (id, pct) => {
-            const r = pct === 0 ? this.api.stopMotor(id, 'brake') : this.api.setMotor(id, {power: pct});
+            const r = setMixerMotorPower(this.api, id, pct);
             if (r && r.ok === false) return;
             this.setState(st => ({mixer: {session: s, power: {...(st.mixer.session === s ? st.mixer.power : {}), [id]: pct}}}));
         };

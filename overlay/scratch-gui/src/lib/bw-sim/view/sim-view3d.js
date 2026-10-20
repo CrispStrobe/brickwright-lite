@@ -20,6 +20,7 @@ import {createSimHoses} from './hose-layer.js';
 import {addPartLights} from './part-style.js';
 import {createInsightLayer, createPulse, tintMaterial} from './insight-layer.js';
 import {VIEW_DIRECTIONS, applyCameraAction, cameraKeyAction, configureOrbitControls, framePosition} from './camera-nav.js';
+import {modelMeshBounds} from './model-bounds.js';
 
 export class WebGLUnavailableError extends Error {
     constructor (reason) {
@@ -136,11 +137,7 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     const focusCanvas = () => canvas.focus({preventScroll: true});
     canvas.addEventListener('pointerdown', focusCanvas);
 
-    const modelBox = () => {
-        const box = new Box3();
-        for (const mesh of [...built.partMeshes.values(), ...built.hubMeshes.values()]) box.expandByObject(mesh);
-        return box;
-    };
+    const modelBox = () => modelMeshBounds(built);
     const resetCamera = () => {
         const size = renderer.getSize(new Vector2());
         const {position, target} = frameModel(modelBox(), size.x / Math.max(1, size.y));
@@ -444,6 +441,14 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         /** The camera now (for the browser gate to read what a gesture did): position, target, distance (metres). */
         get camera () {
             return {position: camera.position.toArray(), target: controls.target.toArray(), distance: camera.position.distanceTo(controls.target)};
+        },
+        /** World bounds and their projected corners, for camera-framing diagnostics. */
+        framingStats: () => {
+            const box = modelBox();
+            camera.updateMatrixWorld();
+            const corners = [box.min.x, box.max.x].flatMap(x => [box.min.y, box.max.y].flatMap(y =>
+                [box.min.z, box.max.z].map(z => new Vector3(x, y, z).project(camera).toArray())));
+            return {min: box.min.toArray(), max: box.max.toArray(), corners};
         },
         /** What the last frame cost: three's draw calls and triangles, GPU objects, and the instancing (scale gate). */
         // `frames`: frames drawn so far (three counts each render), so a gate can see an idle big model is not redrawn.

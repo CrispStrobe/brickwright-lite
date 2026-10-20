@@ -54,3 +54,56 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
     writeFileSync(resolve(shotsDir, 'measurements.json'), `${JSON.stringify(results, null, 2)}\n`);
     return results;
 };
+
+export const manualMechanicsInteractions = async (page, {openSimLab, shotsDir}) => {
+    mkdirSync(shotsDir, {recursive: true});
+    await openSimLab(page, {program: null});
+    const results = {};
+    for (const id of ['crank-rocker', 'parallel-lift', 'screw-crane', 'pivot-rover']) {
+        await page.getByTestId('bw-sim-lab-model').selectOption(`${id}.ldr`);
+        await page.waitForFunction(file => window.__bwSimLab.status === 'ready' &&
+            window.__bwSimLab._pane.state.modelFile === file, `${id}.ldr`, {timeout: 60000});
+        const framing = await page.evaluate(() => window.__bwSimLab._pane.view.framingStats());
+        assert.ok(framing.corners.every(p => p.every(Number.isFinite) && Math.abs(p[0]) <= 1 && Math.abs(p[1]) <= 1 && Math.abs(p[2]) <= 1),
+            `${id}: initial camera includes the whole model: ${JSON.stringify(framing)}`);
+        const toggle = page.getByTestId('bw-sim-lab-mixer-toggle');
+        if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
+        await page.getByTestId('bw-sim-lab-mixer-stop-all').click();
+        const sliders = page.getByTestId('bw-sim-lab-mixer-slider');
+        const ports = await sliders.evaluateAll(es => es.map(e => e.dataset.port));
+        const angle = port => page.evaluate(p => {
+            const s = window.__bwSimLab._pane.session;
+            return s.core.jointState(s.mechanism.actuators.find(a => a.port === p).joint).angle;
+        }, port);
+        const advance = () => page.evaluate(() => new Promise(done => {
+            const s = window.__bwSimLab._pane.session; const t = s.time;
+            const off = s.onAdvance(() => { if (s.time - t >= 250) { off(); done(); } });
+        }));
+        results[id] = {};
+        for (const port of ports) {
+            const slider = page.locator(`[data-testid="bw-sim-lab-mixer-slider"][data-port="${port}"]`);
+            const before = await angle(port);
+            await slider.focus();
+            await page.keyboard.press('ArrowRight');
+            assert.equal(await slider.inputValue(), '5');
+            await advance();
+            const delta = await angle(port) - before;
+            assert.ok(Math.abs(delta) > 0.03, `${id} motor ${port} responds to its slider: ${delta}`);
+            await page.locator(`[data-testid="bw-sim-lab-mixer-stop"][data-port="${port}"]`).click();
+            assert.equal(await slider.inputValue(), '0');
+            await advance();
+            const stopped = await angle(port);
+            await advance();
+            assert.ok(Math.abs(await angle(port) - stopped) < 3 * Math.PI / 180,
+                `${id}: motor ${port} holds after Stop`);
+            results[id][port] = delta * 180 / Math.PI;
+        }
+        await page.getByTestId('bw-sim-lab-mixer-stop-all').click();
+        assert.ok((await sliders.evaluateAll(es => es.map(e => e.value))).every(v => v === '0'));
+        await page.screenshot({path: resolve(shotsDir, `${id}-manual.png`)});
+        await toggle.click();
+        console.log(`PASS manual motor controls ${id}: ${JSON.stringify(results[id])}`);
+    }
+    writeFileSync(resolve(shotsDir, 'manual-measurements.json'), `${JSON.stringify(results, null, 2)}\n`);
+    return results;
+};

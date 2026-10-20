@@ -163,7 +163,7 @@ import {scaleInteractions, OPEN_BUDGET_MS, DRAW_CALL_BUDGET, BUILD_OPEN_BUDGET_M
 import {brakingBound, judgeWallStop} from './lib/sim-lab-wall-stopper-judge.mjs';
 import {surveyRoverInteractions} from './lib/sim-lab-survey-rover-gate.mjs';
 import {physicsExamplesInteractions, germanPhysicsExamplesInteractions} from './lib/sim-lab-physics-examples-gate.mjs';
-import {mechanicsInteractions} from './lib/sim-lab-mechanics-gate.mjs';
+import {mechanicsInteractions, manualMechanicsInteractions} from './lib/sim-lab-mechanics-gate.mjs';
 import {STEP_MS} from '../overlay/scratch-gui/src/lib/bw-sim/hub-bridge.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -247,7 +247,8 @@ const WORKER_LATENCY = Number((process.argv.find(a => a.startsWith('--worker-lat
  * the whole program slows down instead of running ahead of the world, and the wait has to allow it.
  */
 const wallBudget = simMs => 240000 + Math.ceil(simMs / (1000 / 30)) * (2 * WORKER_LATENCY + 20);
-/** `--examples=a,b` runs only those example robots in the examples part (line-follower, wall-stopper, colour-explorer, survey-rover, forklift, sumo, timed-drive). */
+/** `--examples=a,b` filters the examples part; mechanics-machines runs all four mechanism programs,
+ * mechanics-manual operates their seven motor controls, and physics-workshops checks the example browser. */
 const ONLY_EXAMPLES = (process.argv.find(a => a.startsWith('--examples=')) || '').slice('--examples='.length).split(',').filter(Boolean);
 const runExample = file => !ONLY_EXAMPLES.length || ONLY_EXAMPLES.includes(file.replace(/\.ldr$/, ''));
 
@@ -333,6 +334,8 @@ const PART = (process.argv.find(a => a.startsWith('--part=')) || '--part=all').s
 const PARTS = ['core', 'examples', 'ui', 'tablet', 'layout', 'editor', 'scale', 'api', 'hubs-ble', 'hubs-bt'];
 if (PART !== 'all' && !PARTS.includes(PART)) throw new Error(`--part must be one of ${PARTS.join(', ')} (got ${PART})`);
 const want = part => PART === 'all' || PART === part;
+// A narrow replay of the loaded-motor stop regression; default UI coverage stays complete.
+const MIXER_ONLY = process.argv.includes('--ui-only=mixer');
 
 let browser;
 const errors = [];
@@ -727,6 +730,13 @@ try {
             await ex.close();
         }
 
+        if (runExample('mechanics-manual.ldr')) {
+            const controls = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            controls.on('pageerror', error => errors.push(error.message));
+            await manualMechanicsInteractions(controls, {openSimLab, shotsDir: resolve(artifacts, 'mechanics-machines')});
+            await controls.close();
+        }
+
         if (runExample('mechanics-machines.ldr')) {
             const machines = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
             machines.on('pageerror', error => errors.push(error.message));
@@ -953,7 +963,16 @@ try {
         }
     }
 
-    if (want('ui')) { // the tab, its toolbar and camera; seeing the model, instructions, no-WebGL fallback
+    if (want('ui') && MIXER_ONLY) {
+        const mixer = await browser.newPage({viewport: {width: 1400, height: 950}, serviceWorkers: 'block'});
+        mixer.on('pageerror', error => errors.push(error.message));
+        await openSimLab(mixer, {program: null});
+        const result = await mixerInteractions(mixer, {shotsDir: artifacts});
+        console.log(`PASS loaded-motor mixer, individual stop, Stop all and fold: ${JSON.stringify(result)}`);
+        await mixer.close();
+    }
+
+    if (want('ui') && !MIXER_ONLY) { // the tab, its toolbar and camera; seeing the model, instructions, no-WebGL fallback
         // 15. The Robot Lab tab: icon toolbar (names, tooltips with shortcuts, every action by click and key)
         //     and the movable 3D view (orbit, pan, zoom by mouse and keys; part drags move parts), in English…
         const bar = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});

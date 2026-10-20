@@ -60,7 +60,7 @@ and lift. Programs and models ship with the app's static examples and work offli
 node --import ./scripts/lib/register-gui-scope.mjs scripts/gen-mechanics-machines.mjs
 node --import ./scripts/lib/register-gui-scope.mjs scripts/gen-robot-lab-catalog.mjs
 node --import ./scripts/lib/register-gui-scope.mjs --test test/bw-sim-mechanics-machines.test.mjs
-node scripts/verify-sim-lab-browser.mjs --part=examples --examples=mechanics-machines
+node scripts/verify-sim-lab-browser.mjs --part=examples --examples=mechanics-machines,mechanics-manual
 ```
 
 The tests run every program through the actual Scratch VM, virtual hub and Jolt core. Each build
@@ -75,3 +75,26 @@ The browser gate loads each model and its program through visible Examples contr
 in the physics worker and applies the same independent equations to observed poses. It captures
 the finished assemblies and checks that every motor's mixer control is available. Physical LEGO
 construction and hardware motor acceptance remain separate from these simulator checks.
+
+The manual-control gate opens each model without a program, operates every motor's slider through
+keyboard input, observes its actual encoder motion and tests the individual and Stop all controls.
+Mixer Stop and zero power use position hold on encoder-capable hubs so gravity cannot slowly
+lower a stopped lift. Encoderless RCX and WeDo hubs explicitly refuse hold and use passive brake. The
+ordinary programmable stop API still offers coast, passive brake and hold as separate choices.
+The existing forklift browser gate exposed passive-brake creep after a prolonged manual drive;
+the same hold path is checked on a real rack lift in the API tests.
+It also checks that all eight corners of each model's world bounds are inside the initial camera
+view. The taller crane exposed stale ancestor transforms in Three.js bounds calculation before
+the first draw. World matrices are now synchronised before measuring the model; regression tests
+cover the first frame, a moved/rotated body, separate motor hubs and exclusion of the arena floor.
+
+For a focused replay of the loaded-motor stop check:
+
+```sh
+node scripts/verify-sim-lab-browser.mjs --part=ui --ui-only=mixer
+```
+
+Qualification: 120 mechanism/VM/instruction/library/licence/debug tests, 21 camera/scene/render
+tests and nine Robot Lab API tests pass. Six existing geometry assertions restricted to these
+four builds pass. All four programs, seven manual motor controls, initial camera framing and
+the existing full Robot Lab UI browser gate pass without page errors.

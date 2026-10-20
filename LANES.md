@@ -1,11 +1,17 @@
 ## Motorised mechanics idea catalogue — 2026-10-20
 
-CLAIMED — Codex, lane/robot-lab-models-20261020 / comprehensive draft PR #1138.
+IMPLEMENTED — Codex, lane/robot-lab-models-20261020 / comprehensive draft PR #1138.
 Original motorised crank-rocker, parallel-motion lift, screw crane and steerable
 rover from the supplied mechanics concepts. Qualify intended motion through the
 VM/Jolt and GUI, geometry, stability and building instructions before bundling.
 Preserve all other worktrees and in-progress core changes; compose published fixes.
 Only original or verified commercially compatible assets may ship, never NC.
+Added 15/23/44/30-piece builds with 1/1/2/3 motors, original BSD programs,
+bilingual lessons and library registrations. 150 focused tests and six existing
+geometry assertions pass; all four programs and seven manual motor controls pass
+in the production browser, alongside the existing full Robot Lab UI gate. Fixed
+Three.js initial framing and loaded-motor mixer Stop (encoder hold, brake fallback
+for encoderless hubs). Dependency #1137 and hosted full CI remain release gates.
 
 ## Robot Lab physics examples and licensed model intake — 2026-10-20
 

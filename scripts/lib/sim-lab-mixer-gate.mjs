@@ -48,7 +48,19 @@ export const mixerInteractions = async (page, {shotsDir}) => {
     await page.screenshot({path: resolve(shotsDir, 'sim-lab-mixer.png')});
     await page.locator('[data-testid="bw-sim-lab-mixer-stop"][data-port="C"]').click();
     assert.equal(await sliderC.inputValue(), '0');
-    await advance(page, 200);
+    // A position hold must first decelerate and recover its captured angle. Judge a bounded
+    // physical settling interval, rather than assuming that every input speed settles in 200 ms.
+    const settled = await page.evaluate(() => new Promise(done => {
+        const s = window.__bwSimLab._pane.session;
+        const joint = s.mechanism.actuators.find(a => a.port === 'C').joint;
+        const start = s.time; let previous = start; let stable = 0;
+        const off = s.onAdvance(() => {
+            const elapsed = s.time - previous; previous = s.time;
+            stable = Math.abs(s.core.jointState(joint).velocity) * 180 / Math.PI < 1 ? stable + elapsed : 0;
+            if (stable >= 100 || s.time - start >= 1500) { off(); done({ok: stable >= 100, ms: s.time - start}); }
+        });
+    }));
+    assert.ok(settled.ok, `■ settles under gravity within 1.5 simulated seconds: ${JSON.stringify(settled)}`);
     const c2 = await angleOf(page, 'C');
     await advance(page, 400);
     const c3 = await angleOf(page, 'C');
