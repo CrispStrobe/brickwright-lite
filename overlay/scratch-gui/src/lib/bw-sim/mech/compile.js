@@ -13,7 +13,7 @@
 // mechanism plus hubs, actuators bound to {hub, port}, couplings, devices,
 // body roles and the no-collide pairs; the default is the v1 mechanism.
 
-import {validatePlacedModel, validateCompiledMechanism, GROUND_FRICTION, GROUND_RESTITUTION, MATERIALS, LDU_M, lduToWorld, dirToWorld,
+import {validatePlacedModel, validateCompiledMechanism, GROUND_FRICTION, GROUND_RESTITUTION, GROUND_MATERIAL, MATERIALS, LDU_M, lduToWorld, dirToWorld,
     partHubProfile, partSensor, portRefOf, withBodyRoles, noCollidePairs, couplingBodyPairs, V1_COUPLING_KINDS} from '../contracts.js';
 import {BUILTIN_KINDS} from '../kinds/index.js';
 import {mat3MulVec3, vecAdd, quatNormalize} from './vec.js';
@@ -89,6 +89,7 @@ const makeGround = (bodies, opts = {}) => {
         parts: [],
         friction: GROUND_FRICTION,
         restitution: GROUND_RESTITUTION,
+        material: GROUND_MATERIAL,
         color: opts.groundColor !== undefined ? opts.groundColor : 10,
         ...(opts.mat ? {mat: opts.mat} : {}),
     };
@@ -296,7 +297,10 @@ export const compile = (model, catalog, opts = {}) => {
         body.colliders.push({shape: 'cylinder', radius: w.radiusLdu * LDU_M, halfHeight: Math.max(w.halfWidthLdu, 1) * LDU_M,
             position: c, rotation: q, part: w.part, massKg: TREAD_WHEEL_MASS_KG});
         body.friction = Math.max(body.friction ?? 0, w.friction);
-        body.restitution = MATERIALS.rubber.restitution; // a tread is rubber; its rolling drag is not modelled (docs/ROBOT-LAB-VALIDATION.md "Materials")
+        // A tread's links meet the floor: they bounce and roll like a tread (contracts.js MATERIALS.tread).
+        body.material = 'tread';
+        body.restitution = MATERIALS.tread.restitution;
+        body.rollingResistance = MATERIALS.tread.rollingResistance;
     }
 
     // Bodies final list: islands.bodies plus ground
@@ -357,6 +361,7 @@ export const compile = (model, catalog, opts = {}) => {
                 massKg: 0,
                 colliders: [{shape: 'box', halfExtents: [size[0] / 2, size[1] / 2, size[2] / 2]}],
                 parts: [],
+                material: GROUND_MATERIAL, // a wall of the arena: rigid, as the floor
             };
             if (obs.color !== undefined) body.color = obs.color;
             bodies.push(body);

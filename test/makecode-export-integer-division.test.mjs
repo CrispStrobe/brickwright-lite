@@ -26,7 +26,7 @@ for (const [left, right, expected] of [
     assert.deepEqual(emitter.unsupported, []);
 });
 
-test('explicit operand coercions stay connected around the division', () => {
+test('explicit operand coercions around the division are Math.idiv itself', () => {
     const blocks = {
         left: block('bitops_or', number(1), number(0)),
         right: block('bitops_or', number(0.5), number(0)),
@@ -35,7 +35,7 @@ test('explicit operand coercions stay connected around the division', () => {
     };
     const emitter = new Emitter(blocks);
     const expression = emitter.reporter(blocks.result);
-    assert.equal(expression, '(((1 | 0) / (0.5 | 0)) | 0)');
+    assert.equal(expression, 'Math.idiv(1, 0.5)');
     assert.equal(evaluate(expression), 0);
     assert.deepEqual(emitter.unsupported, []);
 });
