@@ -124,3 +124,21 @@ flung, all three motors turn, and it runs at 13 ms per 5 ms step (headless, CPU)
    brick 2454, the 4.5 V Technic motor 6216m), so they derive like any part. Other `~` files are pieces of a part
    (a cable's or hose's segment, a shock absorber's rod) and stay drawings. Across the 148 models, the
    most-refused files were 3660 (inverted slope, 22 models), the minifig hips and legs (15) and 61409 (12).
+
+## Speed in the app, and multithreading (2026-10-20, measured)
+
+- **Rendering is not the bottleneck.** With the GPU (headless Chromium, ANGLE on Metal), the 4x4 Off-Roader's 949 parts
+  draw at 60 fps. With SwiftShader, which the CI gates use, 0–1 fps: frame rates from the gates say nothing.
+- **The physics worker is.** The 4x4 costs about 20–30 ms of worker time a step in the browser, against 5–9 ms on the
+  bare core in node, and almost all of it is inside Jolt's `Step`. Node's session path costs 12–18 ms: the hub bridge and
+  the worker protocol add little, the rest is the browser. On this shared machine (load average 6–17) every number
+  varies by about 2×.
+- **Jolt's multithreaded build** (cross-origin isolated pages only, COOP + COEP) fails as long as the part-pair filter
+  is JavaScript: Jolt calls `SimShapeFilterJS` from its worker threads, where the JS object does not exist. With the
+  filter off on both sides (a fair comparison; physically wrong), threads make the step 2.2× faster on 42099 (80 → 37 ms)
+  and 1.45× on 42055 (85 → 60 ms). Prerequisites: (1) the part-pair filter in C++ in the Jolt fork, which on its own
+  saves the 5–12 % the JS callback costs; (2) cross-origin isolation from the host (the desktop app can set it; for the
+  website it is a deployment decision); (3) the multithreaded build served unbundled, since webpack's runtime breaks its
+  pthread workers.
+- **Loading a big set takes 10–26 s** in the app: the library's parts are fetched and derived in the browser on first
+  use. That is next.
