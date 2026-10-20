@@ -440,3 +440,21 @@ The starting values from §6 were kept: every gate reading lies well inside them
 - Gates (`--part=editor`): the connect gate's T11b (right drag orbits about the point, middle drag
   slides, a right click puts the part down), `scripts/lib/sim-lab-coach-gate.mjs`, the hinge gate's
   step 6 (an axle glides up its hole); `test/bw-sim-camera-nav.test.mjs` the presets.
+
+## 15. Ropes and winches (2026-10-20)
+
+- **Tie a rope** in the properties panel: select the drum first (something round on an axle: a bush,
+  a pulley, a wheel), then any parts it runs over (sheaves), then the hook last. The rope runs from
+  the drum's centre over the sheaves' centres to the top of the hook, taut as they stand, in one undo
+  step (`lib/bw-sim/editor/rope-path.js`); **Untie rope** takes it off. It is the model's `ropes`
+  record (`0 !BW ROPE <id> <length> <drum> <sheave…> <hook>` in LDraw: LDraw's strings are fixed
+  shapes), drawn as a thin tube (`view/rope-layer.js`), and it goes with a part it is tied to.
+- Simulate (`kinds/rope.js`, `physics/rope.js`, architecture M10's v1 approximation): the last segment
+  is a distance constraint (slack allowed, never longer than the free rope); before each step the
+  free length is the rope's length less what the drum has wound (r·θ, + winds in) and less the other
+  segments where the bodies are now, so a luffing boom pays rope out or in. The tension turns back on
+  the drum (T·r against winding), so its motor feels the load and a free drum is turned by the
+  weight. A part hung on a rope is not a loose part.
+- Tests: `test/bw-sim-rope.test.mjs` (tied taut, LDraw, undo; in the real core a held drum holds the
+  hook, ±6 rad/s winds it up or down by r·Δθ, a free drum pays out under the weight); gate step 6 of
+  `scripts/lib/sim-lab-chain-gate.mjs` (`--part=editor`).

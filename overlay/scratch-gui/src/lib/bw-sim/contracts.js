@@ -186,8 +186,13 @@ export const GROUND_FRICTION = 0.8;
  *   version: 1,
  *   parts: {id: string, part: string, color?: number, position: Vec3, rotation: Mat3, port?: string}[],
  *   groups?: {id: string, name: string, parts: string[]}[],
- *   belts?: {id: string, band: string, around: string[]}[]
+ *   belts?: {id: string, band: string, around: string[]}[],
+ *   ropes?: {id: string, lengthLdu: number, around: string[]}[]
  * }} PlacedModel
+ *
+ * `ropes` are strings from a winch drum over sheaves to a hook (docs/ROBOT-LAB-UX.md §15):
+ * `around` [drum, sheave…, hook], `lengthLdu` the string's length. In LDraw text each is a
+ * `0 !BW ROPE <id> <lengthLdu> <drum> <sheave…> <hook>` line.
  *
  * `belts` are rubber bands (docs/ROBOT-LAB-UX.md §12): `band` the LDraw part of its size (85543
  * …), `around` the parts it goes round, in order. LDraw draws no stretched band, so in LDraw
@@ -648,6 +653,19 @@ export const validatePlacedModel = (model, catalog) => {
                 if (typeof b?.band !== 'string' || !b.band) out.push(`${wb}.band: the band's part`);
                 if (!Array.isArray(b?.around) || b.around.length < 2) out.push(`${wb}.around: at least 2 parts`);
                 else for (const pid of b.around) if (!partIds.has(pid)) out.push(`${wb}.around: unknown part '${pid}'`);
+            }
+        }
+    }
+    if (model.ropes !== undefined) {
+        if (!Array.isArray(model.ropes)) out.push('model.ropes: not an array');
+        else {
+            uniqueIds(model.ropes, 'model.ropes', out);
+            const partIds = new Set(model.parts.map(pr => pr.id));
+            for (const r of model.ropes) {
+                const wr = `model.ropes[${r?.id}]`;
+                if (!(typeof r?.lengthLdu === 'number' && r.lengthLdu > 0)) out.push(`${wr}.lengthLdu: a length (LDU)`);
+                if (!Array.isArray(r?.around) || r.around.length < 2) out.push(`${wr}.around: a drum and a hook at least`);
+                else for (const pid of r.around) if (!partIds.has(pid)) out.push(`${wr}.around: unknown part '${pid}'`);
             }
         }
     }

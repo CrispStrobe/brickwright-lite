@@ -101,6 +101,8 @@ import {chainRound} from './chain-path.js';
 import {mat3MulVec3, vecDot, vecNormalize, vecSub} from '../mech/vec.js';
 import {beltRound, beltPoints, BANDS} from './belt-path.js';
 import {createBeltLayer} from '../view/belt-layer.js';
+import {createRopeLayer, ropesFromModel} from '../view/rope-layer.js';
+import {ropeTie, ropePoints} from './rope-path.js';
 import {createSpatialIndex, partBounds} from '../mech/spatial-index.js';
 import {
     DEFAULT_GRID, GRID_STEPS, HOLE_PITCH, IDENTITY, cleanRotation, expandToGroups, facingAxis, gizmoSize, mul3, mulVec3,
@@ -589,15 +591,18 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     const beltLayer = createBeltLayer();
     s.add(beltLayer.group);
     let beltsDrawnFor = null;
+    const ropeLayer = createRopeLayer();
+    s.add(ropeLayer.group);
     const drawBelts = model => {
         if (beltsDrawnFor === model) return;
         beltsDrawnFor = model;
         beltLayer.draw((model.belts || []).map(b => ({id: b.id, band: b.band, points: beltPoints(model, catalogMap, b)})));
+        ropeLayer.draw(ropesFromModel(model, r => ropePoints(model, catalogMap, r.around)));
         invalidate();
     };
     const rebuild = () => {
         const model = editor.model;
-        if (model.belts || beltLayer.count) drawBelts(model);
+        if (model.belts || model.ropes || beltLayer.count || ropeLayer.count) drawBelts(model);
         const instancing = useInstancing(model.parts.length);
         let changed = false;
         if (instancing !== Boolean(instanced) || !meshes.size) {
@@ -1640,6 +1645,23 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         if (!run({type: 'addBelt', around: r.around, band: r.band})) return;
         const band = BANDS.find(b => b.part === r.band);
         status({kind: 'banded', mm: band.mm, stretch: Math.round(r.lengthLdu / band.restLdu * 10) / 10});
+    };
+    /**
+     * A rope from the first selected part (the drum: round, on an axle) over the middle ones to the last
+     * (the hook), taut as they stand (editor/rope-path.js), one undo step; refused with the reason.
+     */
+    const ropeSelection = () => {
+        if (!needSelection()) return;
+        const r = ropeTie(editor.model, catalogMap, selection);
+        if (r.error) { status({kind: 'refused', reason: `rope_${r.error}`}); return; }
+        if (run({type: 'addRope', around: r.around, lengthLdu: r.lengthLdu})) status({kind: 'roped', cm: Math.round(r.lengthLdu * 0.04 * 10) / 10});
+    };
+    /** Unties every rope from or to a selected part, one undo step. */
+    const removeRopesOfSelection = () => {
+        if (!needSelection()) return;
+        const ids = (editor.model.ropes || []).filter(r => r.around.some(id => selection.includes(id))).map(r => r.id);
+        if (!ids.length) { status({kind: 'refused', reason: 'rope_none'}); return; }
+        if (run({type: 'batch', commands: ids.map(id => ({type: 'removeRope', id}))})) status({kind: 'unroped', count: ids.length});
     };
     /** Takes off every rubber band round a selected part, one undo step. */
     const removeBeltsOfSelection = () => {
@@ -2987,6 +3009,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         drawHinge(null);
         hingeLine.dispose();
         beltLayer.dispose();
+        ropeLayer.dispose();
         measureDiv.remove();
         clearGhost();
         for (const mesh of meshes.values()) for (const m of [].concat(mesh.material)) m.dispose();
@@ -3038,6 +3061,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         placeHeld: () => place(), cycleHeld, fineTurn, flip: flipSelection, selectConnected, chainRoundSelection,
         /** Rubber bands: one round the selection, or off the selection. */
         beltRoundSelection, removeBeltsOfSelection,
+        /** Ropes: one from the first selected part (the drum) to the last (the hook); untied. */
+        ropeSelection, removeRopesOfSelection,
         /** The hinge tool: the next hinge (N), and a turn of the selection on it (±15° is [ ]). */
         nextHinge, turnOnHinge,
         /** How a scroll is read: 'auto' (wheel or trackpad, guessed), 'mouse' (zoom), 'trackpad' (orbit). */
@@ -3071,6 +3096,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             glide: () => lastGlide,
             /** How many rubber bands are drawn. */
             bands: () => beltLayer.count,
+            /** How many ropes are drawn. */
+            ropes: () => ropeLayer.count,
             /** The hinge [ ] would turn on now (null: none, or not asked for yet): its line, what moves, what stays. */
             hinge: () => {
                 const c = hinge.key === selection.join(',') && hinge.list[hinge.index];

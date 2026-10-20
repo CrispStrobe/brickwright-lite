@@ -271,6 +271,7 @@ export const parseModel = (text, {catalog} = {}) => {
     const groupsById = new Map(); // id -> {id, name, parts: []}
     const groupOrder = []; // to preserve order
     const belts = []; // `0 !BW BELT id band part…` lines, checked against the parts at the end
+    const ropes = []; // `0 !BW ROPE id lengthLdu drum sheave… hook` lines, likewise
     const partToGroup = new Map(); // partId -> groupId (for checking duplicate part in two groups)
     // Building steps: `0 STEP` (or `0 ROTSTEP …`) in the main model ends a step (instructions/steps.js).
     const steps = [];
@@ -452,6 +453,13 @@ export const parseModel = (text, {catalog} = {}) => {
             }
             continue;
         }
+        if (/^0\s+!BW\s+ROPE(\s|$)/i.test(trimmed)) {
+            const words = trimmed.split(/\s+/).slice(3);
+            const len = Number(words[1]);
+            if (words.length < 4 || !(len > 0)) refusals.push({line: lineNo, code: 'bad-rope', message: `Bad ROPE at line ${lineNo}`});
+            else ropes.push({line: lineNo, id: words[0], lengthLdu: len, around: words.slice(2)});
+            continue;
+        }
         if (/^0\s+!BW\s+BELT(\s|$)/i.test(trimmed)) {
             const words = trimmed.split(/\s+/).slice(3);
             if (words.length < 4) refusals.push({line: lineNo, code: 'bad-belt', message: `Bad BELT at line ${lineNo}`});
@@ -598,6 +606,17 @@ export const parseModel = (text, {catalog} = {}) => {
         }
         if (kept.length) model.belts = kept;
     }
+    if (ropes.length) {
+        const ids = new Set(parts.map(p => p.id));
+        const kept = [];
+        for (const r of ropes) {
+            const missing = r.around.filter(id => !ids.has(id));
+            if (missing.length) refusals.push({line: r.line, code: 'bad-rope', message: `Rope '${r.id}' runs round unknown parts ${missing.join(', ')}`, parts: missing});
+            else if (kept.some(k => k.id === r.id)) refusals.push({line: r.line, code: 'bad-rope', message: `Duplicate rope '${r.id}' at line ${r.line}`});
+            else kept.push({id: r.id, lengthLdu: r.lengthLdu, around: r.around});
+        }
+        if (kept.length) model.ropes = kept;
+    }
     if (sawStep) {
         // Parts after the last STEP line are the last step; steps with no parts are dropped.
         if (stepParts.length) steps.push(stepParts);
@@ -627,6 +646,7 @@ export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright 
     }
     // Rubber bands (no LDraw part draws a stretched one): one line each, round parts written below.
     for (const b of model.belts || []) lines.push(`0 !BW BELT ${b.id} ${b.band} ${b.around.join(' ')}`);
+    for (const r of model.ropes || []) lines.push(`0 !BW ROPE ${r.id} ${formatNumber(r.lengthLdu)} ${r.around.join(' ')}`);
     // Build a map from part id to group id for quick lookup
     const partGroupMap = new Map();
     if (model.groups) {

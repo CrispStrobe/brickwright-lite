@@ -36,6 +36,7 @@ import { validateCompiledMechanism, upgradeMechanismV1, colliderVolume } from '.
 import { BUILTIN_KINDS } from '../kinds/index.js';
 import { createStateRegistry } from './state-registry.js';
 import { createScrewDrives } from './screw.js';
+import { createRopes } from './rope.js';
 
 let joltPromise = null;
 
@@ -919,6 +920,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     const worms = [];
     /** Linear actuators' screw couplings (physics/screw.js drives them). */
     const screwCouplings = [];
+    /** Ropes (kinds/rope.js): built after the couplings, from the drum's hinge (physics/rope.js). */
+    const ropeCouplings = [];
     /** Driving rings and their clutch gears (kinds/transmission.js): {gear (hinge entry), ring (slider entry), engage, holdNm, engaged}. */
     const dogClutches = [];
     for (const g of mechanism.couplings) {
@@ -935,6 +938,9 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             // kinds/belt.js: a rubber band round pulleys, the chain's coupling with few velocity steps, so it gives under load.
             chainDrive(g.id, jointMap.get(g.joint1), jointMap.get(g.joint2), g.ratio, { velocitySteps: BELT_VELOCITY_STEPS });
             gearInfos.push({ type: 'band', id: g.id, joint1: g.joint1, joint2: g.joint2, ratio: g.ratio });
+        } else if (g.kind === 'rope') {
+            ropeCouplings.push(g);
+            gearInfos.push({ type: 'rope', id: g.id, drumJoint: g.drumJoint });
         } else if (g.kind === 'spring') {
             // kinds/belt.js: a rubber band pulling two bodies together beyond its rest length.
             bandSpring(g);
@@ -1285,6 +1291,11 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     }
     // A linear actuator's pairing of spindle angle and piston position (physics/screw.js).
     if (screws) stateRegistry.register('screws', screws.registrant);
+    const ropes = ropeCouplings.length
+        ? createRopes({ J, couplings: ropeCouplings, hingeMap, jointMap, bodyInterface, bodyIdOf: getBodyIDForId, bodyOf: getBodyForId,
+            physicsSystem, allConstraints, dt: dtFixed })
+        : null;
+    if (ropes) stateRegistry.register('ropes', ropes.registrant);
     if (dogClutches.length) {
         stateRegistry.register('dogClutches', {
             save: () => dogClutches.map(c => c.engaged),
@@ -1362,6 +1373,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                 }
                 if (worms.length) applyWormHolds();
                 if (screws) screws.beforeStep();
+                if (ropes) ropes.beforeStep();
                 if (dogClutches.length) applyDogClutches();
                 // Re-base every mesh's phase on its hinges' angles now (see the gears' header comment).
                 for (const m of meshes) m.constraint.SetConstraints(m.hinge1, m.hinge2);
@@ -1482,6 +1494,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
          * Contacts per body pair since the start (only with {recordContacts: true}):
          * {pairs: {'a|b': manifold-steps}, manifolds}. Rolled back with the checkpoint.
          */
+        /** Each rope's free length (m) and tension (N) now (physics/rope.js); [] without a rope. */
+        ropeState() { ensureAlive(); return ropes ? ropes.state() : []; },
         contactPairs() {
             ensureAlive();
             if (!contactLog) throw new Error('contacts are recorded only with createPhysicsCore(…, {recordContacts: true})');
@@ -1716,6 +1730,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             if (contactListener) { J.destroy(contactListener); contactListener = null; }
             if (simShapeFilter) { J.destroy(simShapeFilter); simShapeFilter = null; }
             if (screws) screws.destroy();
+            if (ropes) ropes.destroy();
             bodyMap.clear(); hingeMap.clear(); sliderMap.clear(); ballMap.clear(); jointMap.clear();
         },
     };

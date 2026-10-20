@@ -19,7 +19,9 @@
 //      turn together, and each is a wheel of the tread's outer radius (it carries the frame);
 //   5. a rubber band round the 8T and the 24T: "Rubber band round" picks the 26 mm band and draws
 //      it; Simulate drives the 24T by it (a 'band' coupling); "Take off rubber band" removes it, Ctrl+Z
-//      puts it back.
+//      puts it back;
+//   6. a winch: a bush on an axle in a beam, a brick below; drum then hook selected, "Tie a rope" ties
+//      them taut and draws the rope; Simulate makes it a 'rope' on the drum's hinge.
 
 import assert from 'node:assert/strict';
 import {resolve} from 'node:path';
@@ -177,5 +179,26 @@ const checks = async (page, {shotsDir}) => {
     await page.keyboard.press('Control+z');
     await page.waitForFunction(() => window.__bwSimLab.editor.model.belts?.length === 1 && window.__bwSimLab.editView.debug.bands() === 1);
     out.band = '26 mm';
+
+    // 6. A rope from a drum to a hook.
+    const winch = await layOut(page, [
+        ['32524.dat', [0, 0, 0], [0, 1, 0, -1, 0, 0, 0, 0, 1]], ['3707.dat', [60, 0, 0], I],
+        ['3713.dat', [50, 0, 0], [0, 0, 1, 0, 1, 0, -1, 0, 0]], ['3001.dat', [50, 200, 0], I]]);
+    await lab(page, () => window.__bwSimLab.editView.frameModel());
+    await select(page, [winch[2], winch[3]]);
+    await openProperties(page);
+    await page.getByTestId('bw-sim-lab-prop-rope').click();
+    await waitKind(page, 'roped');
+    assert.match(await statusText(page), /A rope [\d.,]+ cm long from the drum to the hook/);
+    assert.deepEqual(await lab(page, () => window.__bwSimLab.editor.model.ropes.map(r => r.around)), [[winch[2], winch[3]]]);
+    await page.waitForFunction(() => window.__bwSimLab.editView.debug.ropes() === 1);
+    await page.screenshot({path: resolve(shotsDir, 'sim-lab-rope.png')});
+    await page.getByTestId('bw-sim-lab-mode-simulate').click();
+    await page.waitForFunction(() => window.__bwSimLab.mode === 'simulate' && window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.session,
+        null, {timeout: 60000});
+    const ropeC = await lab(page, () => window.__bwSimLab._pane.session.mechanism.couplings.filter(c => c.kind === 'rope').map(c => ({drum: c.drumJoint, parts: c.parts})));
+    assert.equal(ropeC.length, 1, JSON.stringify(ropeC));
+    assert.ok(ropeC[0].drum, 'the rope winds on the drum\'s hinge');
+    out.rope = true;
     return out;
 };

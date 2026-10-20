@@ -2089,6 +2089,7 @@ class SimLabPane extends React.Component {
         case 'chained': return fill(st.tread ? E.treaded : E.chained, {n: st.count, g: st.gears});
         case 'banded': return fill(E.banded, {mm: st.mm, stretch: this.decimal(st.stretch)});
         case 'gliding': return fill(E.gliding, {ldu: this.decimal(st.ldu)});
+        case 'roped': return fill(E.roped, {cm: this.decimal(st.cm)});
         case 'idle': return ''; // nothing to report; the (i) beside the status explains how to build
         default:
             if (E[st.kind]) return fill(E[st.kind], {n: st.count});

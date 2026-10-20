@@ -175,6 +175,12 @@ export const compile = (model, catalog, opts = {}) => {
         const belts = model.belts.filter(b => b.around.every(id => known.has(id)));
         if (belts.length) filteredModel.belts = belts;
     }
+    // Ropes likewise (kinds/rope.js).
+    if (model.ropes) {
+        const known = new Set(knownParts.map(p => p.id));
+        const ropes = model.ropes.filter(r => r.around.every(id => known.has(id)));
+        if (ropes.length) filteredModel.ropes = ropes;
+    }
 
     // If filtered model has no valid parts, we still need to produce a mechanism with maybe ground only plus diagnostics
     // Build graph (even if empty)
@@ -270,7 +276,9 @@ export const compile = (model, catalog, opts = {}) => {
     // Loose parts: bodies that no joint links, directly or through other bodies, to the
     // body carrying the hub (or, without a hub, to the largest connected group). They are
     // not held by the robot: they fall off or lie where they are.
-    for (const group of looseGroups(islands.bodies, joints, catalogMap, nodes)) {
+    // A part hanging on a rope (kinds/rope.js) is held by it, not loose: the rope links its ends' bodies here.
+    const ropeLinks = detected.couplings.filter(c => c.kind === 'rope').flatMap(c => c.points.map(p => ({type: 'rope', body1: p.body, body2: c.hook.body})));
+    for (const group of looseGroups(islands.bodies, [...joints, ...ropeLinks], catalogMap, nodes)) {
         diagnostics.push({severity: 'warning', code: 'loose-part', message: `Not connected to the rest of the model: ${group.join(', ')}`, parts: group});
     }
 
