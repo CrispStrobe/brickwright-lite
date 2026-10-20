@@ -8,7 +8,7 @@ const require=createRequire(import.meta.url),Module=require('node:module');
 const root=INTEGRATED+'/node_modules/scratch-vm/src/util/';
 const keys={
  'bw-primitive-owner':['beforeInputs','invoke','current','stepNested','handles','permitsNumberInput','captureActiveCall','captureFailureCall','isFailureActive','dispatchArrayFailure','isActiveCall'],
- 'bw-array-operations':['registerSource','bind','consumeFailureLease'],
+ 'bw-array-operations':['registerSource','bind','consumeFailureLease','sourceValueBinary'],
  'bw-arcade-exceptions':['rejectConditionWait','create','consume','failed','capture','stale','diagnostic','reported','arrayCoordinatorReady','rejectArrayOperation','attachArrayCoordinator']
 };
 function actualEntry(first){

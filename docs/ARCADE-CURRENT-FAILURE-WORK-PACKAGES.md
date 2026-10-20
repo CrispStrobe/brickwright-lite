@@ -62,8 +62,10 @@ runtime, decompilation and export. Do not select semantics from the active devic
 native authored Array projects also use `DEVICE ARCADE`. Do not change generic
 Array coercion or its existing authored roundtrip expectations. Preserve reference
 identity, aliases, current-operation ownership, primitive operand evaluation
-order, exceptions and all export producer proofs. A dedicated MakeCode operator
-route is a candidate design, not yet implemented or qualified.
+order, exceptions and all export producer proofs. A dedicated MakeCode runtime reporter, fixed Blocks selector and Code/decompiler
+word are now a source candidate with six actual-VM controls. They still require
+a fresh composed installation. Import/export routing remains blocked below;
+the runtime slice alone does not repair original compiler comparisons.
 
 The isolated typed native-helper generator, complete-body recognizer and
 flat-operand domain model pass all six current pure controls. The two earlier

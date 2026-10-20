@@ -102,6 +102,7 @@
   "scratch-vm/src/util/bw-procedure-constraint-model.js": {
     "tests": [
       "test/animation-native-library-import.test.mjs",
+      "test/arcade-source-value-binary-dialect.test.mjs",
       "test/arrays-named-empty-public-roundtrip.test.mjs",
       "test/arcade-animation-resource-carrier.test.mjs",
       "test/arcade-boolean-question.test.mjs",

@@ -1,7 +1,7 @@
 // Stable entry exports close the owner -> exceptions -> operations CJS cycle.
 // All values are hoisted function declarations, invoked only after boot completes.
 const primitiveFreeze=Object.freeze;
-module.exports=primitiveFreeze({__proto__:null,registerSource,bind,consumeFailureLease});
+module.exports=primitiveFreeze({__proto__:null,registerSource,bind,consumeFailureLease,sourceValueBinary});
 // Opt-in native Array operation ownership, NOT an element/type certificate.
 // Only trusted builtin construction receives a module-held registration token.
 const primitiveOwner = require('./bw-primitive-owner');
@@ -10,6 +10,7 @@ const values = require('./bw-values');
 const exceptions = require('./bw-arcade-exceptions');
 // Close backing/decoder authority before extension or guest coercion effects.
 const valueLookup=values.arrayValue,valueDecode=values.decode,valueReference=values.arrayReference;
+const sourceBinaryOperation=values.binary;
 const identityLookup=values.existingArrayByIdentity;
 const nativeReferenceMetadata=values.hasNativeReferenceMetadata;
 const primitiveJSON=JSON,literalParser=JSON.parse;
@@ -127,6 +128,13 @@ const primitiveBeginIntrinsicFailure=message=>{
     if(errorFactory===primitiveError)primitiveAnnotateIntrinsicFailure(error,sink);
     return {__proto__:null,error};
 };
+// The new opaque arithmetic ingress calls held BWValues functions whose
+// canonical decoder uses the global Boolean constructor. This extra alias
+// fence belongs only to the new opcode; existing primitive-root order and
+// legacy Array operation admission remain unchanged.
+const sourceBooleanDescriptor=primitiveDescriptor(primitiveRealm,'Boolean');
+const sourceIntrinsicsCurrent=()=>primitiveIntrinsicsCurrent()&&
+    samePrimitiveDescriptor(primitiveDescriptor(primitiveRealm,'Boolean'),sourceBooleanDescriptor);
 // A replacement notice discards an old binding; it cannot certify an Array
 // birth. Preserve the original live JSON.parse lane without ignoring changes
 // to the JSON object/global identity, its prototype, or any other intrinsic.
@@ -401,6 +409,7 @@ function bind(runtime,registration,source,instance) {
         if(!primitiveArray(body)||primitiveApply(primitiveSetHas,seen,[body]))return;
         primitiveApply(primitiveSetAdd,seen,[body]);const known=primitiveApply(primitiveWeakGet,bodies,[body]);
         if(known)checkBody(record,body);else primitiveApply(primitiveWeakSet,bodies,[body,{runtime,state,generation:state.generation,
+            sourceOwner:{registration,source,instance:record.instance,boundInstance:record.boundInstance,opcode:record.opcode,primitive:record.primitive},
             primitiveEligible:record.method==='createReference'&&record.literalWitness===true||
                 record.emptyBody===body&&record.emptyCommitted===true}]);
         if(deep)for(const key of Reflect.ownKeys(body)){
@@ -874,7 +883,8 @@ function bind(runtime,registration,source,instance) {
                     // stayed identical through the final callback-free barrier.
                     record.jsonCommitted=true;
                     for(let i=0;i<record.jsonNative.length;i++)primitiveApply(primitiveWeakSet,bodies,[record.jsonNative[i],{
-                        runtime,state,generation:state.generation,primitiveEligible:true}]);
+                        runtime,state,generation:state.generation,primitiveEligible:true,
+                        sourceOwner:{registration,source,instance:record.instance,boundInstance:record.boundInstance,opcode:record.opcode,primitive:record.primitive}}]);
                 }else if(record.emptyAttempted){
                     if(!record.emptyCurrent||!record.emptyCurrent())reject(record,'Named empty allocation changed before enrollment');
                     record.emptyCommitted=true;
@@ -916,3 +926,84 @@ function bind(runtime,registration,source,instance) {
     });
     return service;
 }
+
+
+// PXT RefCollection arithmetic is arithmetic over the canonical opaque value,
+// not JavaScript Array.join. The separate Arcade opcode explicitly selects
+// that language meaning. Native arrays_valueBinary and its loan are unchanged.
+function sourceValueBinary(runtime,args,util) {
+    const fail=message=>{throw new primitiveError('Arcade source arithmetic: '+message);};
+    const opcode='arcade_sourceValueBinary';
+    if(!sourceIntrinsicsCurrent())fail('intrinsic surface changed');
+    const block=primitiveOwner.current(util,args);
+    if(!runtime||util?.runtime!==runtime||block?.opcode!==opcode)fail('requires its current primitive operation');
+    const activeCall=primitiveOwner.captureActiveCall(util,args);
+    if(!activeCall)fail('current cached caller differs');
+    const currentContext=captureContext(util,block);
+    const slots=['LEFT','RIGHT','OP'],descriptors=[];
+    for(let i=0;i<slots.length;i++){
+        const descriptor=primitiveDescriptor(args,slots[i]);
+        if(!descriptor||!primitiveOwn(descriptor,'value'))fail('arguments require own data');
+        descriptors[i]=descriptor;
+    }
+    const op=descriptors[2].value;
+    if(!['+','-','*','/','%','**'].includes(op))fail('unsupported fixed binary operator');
+    if(cachedOwner(runtime,util,args,opcode,['OP'])!==block)fail('cached selector differs');
+    const observed=primitiveObservations(),owned=[];
+    const ownerCurrent=saved=>{const owner=saved.sourceOwner;return owner&&primitiveApply(primitiveWeakGet,registrations,[owner.registration])===owner.source&&
+        owner.instance()===owner.boundInstance&&typeof owner.primitive==='function'&&runtime.getOpcodeFunction(owner.opcode)===owner.primitive;};
+    const operand=value=>{
+        if(!sourceIntrinsicsCurrent())fail('intrinsic surface changed before operand validation');
+        if(value===null||value===primitiveUndefined||['undefined','number','string','boolean'].includes(typeof value))return;
+        if(!value||typeof value!=='object'||!nativeReferenceMetadata(value))fail('unknown object or reference owner');
+        const outer=observed.observe(value),descriptor=observed.field(outer,'bwReference');
+        if(outer.prototype!==Object.prototype||outer.keys.length!==1||outer.keys[0]!=='bwReference'||!descriptor)fail('canonical reference shape differs');
+        const inner=descriptor.value;
+        if(!nativeReferenceMetadata(inner))fail('reference metadata has no native origin');
+        const row=observed.observe(inner),identity=referenceIdentity(value);
+        if(row.prototype!==Object.prototype||!identity)fail('only exact canonical Array references are supported');
+        const body=lookupIdentity(runtime,identity),saved=body&&primitiveApply(primitiveWeakGet,bodies,[body]);
+        if(!primitiveArray(body)||valueDecode(value)!==value)fail('Array canonical heap or intern identity is foreign, stale or unknown');
+        // SDK resource Arrays can have a genuine current canonical heap entry
+        // without ever asking the Arrays factory for a body-reading loan.
+        // Opaque coercion reads no elements and grants no body/Number authority.
+        // A tracked body must still retain ALL of its existing binding fences.
+        if(saved&&(saved.runtime!==runtime||saved.state.disposed||!saved.state.active||saved.generation!==saved.state.generation||!ownerCurrent(saved)))
+            fail('tracked Array body generation or binding is foreign or stale');
+        owned[owned.length]={value,identity,body,saved};
+    };
+    operand(descriptors[0].value);operand(descriptors[1].value);
+    const current=()=>{
+        if(!sourceIntrinsicsCurrent()||!primitiveOwner.isActiveCall(activeCall,util,args)||
+            primitiveOwner.current(util,args)!==block||!currentContext()||
+            cachedOwner(runtime,util,args,opcode,['OP'])!==block)return false;
+        // Run every live runtime/registration callback before the final closed
+        // heap and generation checks. A callback may retire or replace bodies
+        // while returning the expected block or registration object.
+        for(let i=0;i<owned.length;i++)if(owned[i].saved&&!ownerCurrent(owned[i].saved))return false;
+        if(!primitiveOwner.isActiveCall(activeCall,util,args)||primitiveOwner.current(util,args)!==block||!currentContext())return false;
+        for(let i=0;i<slots.length;i++)if(!samePrimitiveDescriptor(primitiveDescriptor(args,slots[i]),descriptors[i]))return false;
+        if(!observed.current())return false;
+        if(!sourceIntrinsicsCurrent())return false;
+        // These held native lookups inspect no user properties or Array items.
+        // There are no runtime/owner callbacks after this publication barrier.
+        for(let i=0;i<owned.length;i++){
+            const item=owned[i],saved=item.saved;
+            if(lookupIdentity(runtime,item.identity)!==item.body||primitiveApply(primitiveWeakGet,bodies,[item.body])!==saved||valueDecode(item.value)!==item.value||
+                saved&&(saved.runtime!==runtime||saved.state.disposed||!saved.state.active||saved.generation!==saved.state.generation))return false;
+        }
+        return sourceIntrinsicsCurrent();
+    };
+    if(!current())fail('operand or operation changed during validation');
+    // Only the held Number adapter may recover a Number from its actual shadow.
+    // Both inputs have already executed; coercion order remains left then right.
+    const left=sourceNumberInput(runtime,args,util,opcode,'LEFT');
+    const right=sourceNumberInput(runtime,args,util,opcode,'RIGHT');
+    if(!current())fail('operation changed during Number input observation');
+    const result=sourceBinaryOperation(left,op,right);
+    if(!current())fail('operand or operation changed during arithmetic');
+    return result;
+}
+
+// Owner publishes its stable exports before this closed dependency is entered.
+const sourceNumberInput=require('./bw-current-number-input');
