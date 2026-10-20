@@ -89,6 +89,8 @@
       "test/bw-sim-sensors.test.mjs",
       "test/bw-sim-session.test.mjs",
       "test/bw-sim-sliders.test.mjs",
+      "test/bw-sim-spike-routes.test.mjs",
+      "test/bw-sim-spike3-python-lab.test.mjs",
       "test/bw-sim-sumo-program.test.mjs",
       "test/bw-sim-turntable.test.mjs",
       "test/bw-sim-universal-joint.test.mjs",
