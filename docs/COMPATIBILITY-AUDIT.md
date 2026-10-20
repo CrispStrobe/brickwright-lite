@@ -1,5 +1,22 @@
 # Conversion compatibility audit
 
+## Latest bounded qualification checkpoint — 2026-10-19
+
+Three complete 225-subject CLI attempts ended without reports; **all 225 current
+outcomes remain unobserved**. The historical 184 raw-input result stays **147 translated / 36
+partial / one malformed**; the 41 original contexts retain 29 compiler successes and 12 failures
+separately. These incomplete episodes do not establish their kill causes,
+a bottleneck or a successful prefix.
+
+C6 ran all 48 native Array controls: 45 passed and three failed. The composed
+supplier/host repair has an independently audited C7 installation (363 outputs,
+179 current VM files) and a complete pass of all 49 native tests, independently audited from the saved results.
+Genuine original/Code/export-reimport comparison remains pending. Supplier final checks, new emitted-map SDK acceptance and visible GUI
+journeys remain separate. The first optional-progress episode passed 44 of 45 tests, including all
+eight new tests. The corrected successor passed all 45 unchanged tests;
+independent saved-data review passes.
+See [the current acceptance checklist](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md#methodical-acceptance-still-required).
+
 `scripts/compat-audit.mjs` and `scripts/conversion-roundtrips.mjs` measure how much of a
 corpus of MakeCode programs Lite's importer, translator and exporter carry. The
 `makecode` CLI converts one project. These tools inspect many. A parsed or stepped project
@@ -351,8 +368,10 @@ silently dropped. Optional compiler/runtime work and normal CLI Git provenance
 remain outside the pure conversion core; default conversion no longer eagerly
 loads the SDK helper.
 
-SOURCE qualification and actual CLI/component results are still pending. The
-first integration covers the reader, shared core and compatibility CLI.
+The reader/shared-core and compact-report component controls and two authored
+raw-input shipped gzip CLI reports have independent saved-data acceptance.
+The complete 225-subject attempts remain incomplete, with all outcomes
+unobserved. This integration covers the reader, shared core and compatibility CLI.
 `conversion-roundtrips.mjs` remains unchanged; sharing this reader and initial
 conversion operation there is an explicit follow-up, followed by its affected
 archive/export controls. Current raw partial counts and complete-context results

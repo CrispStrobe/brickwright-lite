@@ -1,10 +1,27 @@
 # Arcade compatibility: integration and next steps
 
+## Latest bounded qualification checkpoint — 2026-10-19
+
+Three complete 225-subject CLI attempts ended without reports; **all 225 current
+outcomes remain unobserved**. The historical 184 raw-input result stays **147 translated / 36
+partial / one malformed**; the 41 original contexts retain 29 compiler successes and 12 failures
+separately. These incomplete episodes do not establish their kill causes,
+a bottleneck or a successful prefix.
+
+C6 ran all 48 native Array controls: 45 passed and three failed. The composed
+supplier/host repair has an independently audited C7 installation (363 outputs,
+179 current VM files) and a complete pass of all 49 native tests, independently audited from the saved results.
+Genuine original/Code/export-reimport comparison remains pending. Supplier final checks, new emitted-map SDK acceptance and visible GUI
+journeys remain separate. The first optional-progress episode passed 44 of 45 tests, including all
+eight new tests. The corrected successor passed all 45 unchanged tests;
+independent saved-data review passes.
+See [the current acceptance checklist](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md#methodical-acceptance-still-required).
+
 ## Current queue update — 2026-10-19
 
-The dated foundation heads below are historical snapshots. Refresh current [PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888) and main before integration. A newer local composition normally merges the Array, Camera/parser and shared conversion-CLI branches with recent main, preserving other lanes. It still needs final affected runtime and hosted qualification. Supplier [PR52](https://github.com/CrispStrobe/extensions/pull/52) is draft; a successful build does not override its formatting failure or pending checks.
+The dated foundation heads below are historical snapshots. Refresh current [PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888) and main before integration. A newer local composition normally merges the Array, Camera/parser and shared conversion-CLI branches with recent main, preserving other lanes. It still needs final affected runtime and hosted qualification. Supplier [PR #52](https://github.com/CrispStrobe/extensions/pull/52) remains under review. Its earlier formatting failure is retained; the current formatting check succeeds. Refresh every other enabled exact-head check before integration; one successful check does not qualify the supplier.
 
-Use [the current failure work packages](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md) as the ordered repair queue and [the capability ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md) for concrete editor surfaces. Current priorities are the Array circular-module boot/value checks, complete lossless 225-input CLI measurement, then actual remaining producer/parser/runtime families and visible editor/export journeys. Input provenance is independently audited for all 184 raw and 41 complete contexts; conversion and execution are not inferred from that audit. Historical partials remain 36 until a complete measured replacement exists.
+Use [the current failure work packages](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md) as the ordered repair queue and [the capability ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md) for concrete editor surfaces. Current priorities are genuine Array value execution, complete lossless 225-input CLI measurement, then actual remaining producer/parser/runtime families and visible editor/export journeys. Input provenance is independently audited for all 184 raw and 41 complete contexts; conversion and execution are not inferred from that audit. Historical partials remain 36 until a complete measured replacement exists.
 
 
 ## Start here
@@ -21,7 +38,7 @@ compatibility or qualify the pending source as part of `main`.
 ## Integration blocker
 
 The foundation in [PR #888](https://github.com/CrispStrobe/brickwright-lite/pull/888)
-is still open. The current composed head is `f288fd633`. Its observed failures
+is still open. The historical hosted checkpoint was `f288fd633`. Its observed failures
 include the source controls, vendor check, four unit shards, deployable build
 and heavy browser check. The light browser check passed. Refresh the exact
 head and checks before acting; these are observations, not permanent
@@ -73,7 +90,7 @@ initialization remain the authority.
   real input. No uniform speedup or complete-job capacity is established.
 
 The historical raw-source census was 147 translated, 36 partial and one
-malformed input out of 184. A new complete census remains **unmeasured**.
+malformed input out of 184. Three complete current attempts ended without reports; **all 225 current outcomes remain unobserved**.
 Incomplete prefixes and feature tests must never be subtracted from that count.
 Keep the 41 complete project contexts, their original compiler failures, and
 complete-game/GUI qualification in separate ledgers.
@@ -254,7 +271,7 @@ Sampling added measurable overhead and does not establish whole-suite capacity.
 
 The completion ledger remains **184 raw sources plus 41 project contexts**.
 Historical raw results remain **147 translated / 36 partial / 1 malformed**;
-the complete current 225-subject result is **unmeasured**. Focused passes,
+all three complete current 225-subject attempts were incomplete and **all outcomes remain unobserved**. Focused passes,
 fixture improvements and SDK acceptance do not reduce that count.
 ### Tile painter palette projection candidate
 

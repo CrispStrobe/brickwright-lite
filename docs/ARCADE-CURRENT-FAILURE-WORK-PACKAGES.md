@@ -1,5 +1,64 @@
 # Arcade remaining failure work packages
 
+## Latest bounded qualification checkpoint — 2026-10-19
+
+The complete 225-subject CLI assessment has been attempted three times against
+successive candidates. None produced a complete JSON/gzip report, Markdown
+or final summary. The first reached the wall limit; the changed candidate ended
+with SIGKILL near the CPU bound without a launcher kill. The kill cause and a
+performance bottleneck are not established. **All 225 current outcomes remain
+unobserved.** Historical raw results remain **147 translated / 36 partial / one
+malformed out of 184**. All 41 contexts, their 29 original compiler successes,
+12 failures and original dependency conflict remain in the denominator.
+
+The repaired CommonJS export cycle allowed all 48 native Array controls to run:
+**45 passed and three failed**. The composed supplier operation-map and host
+computation-error repairs now have a fresh C7 installation audit of all 363
+outputs and 179 current VM source files. The literal supplier admission and
+complete six-module **49-control episode passed**, with stable guards and independent saved-data acceptance. Genuine original/Code/export-reimport
+execution still must produce Array text `5`, not `[object Object]`. The first genuine three-path attempt stopped before its first context: the test
+helper could not resolve `bw-array-operations`. Extend its existing support-module
+list using the same installed instance and overlay byte-equality check, then
+repeat the unchanged semantic checks on that changed helper. This failure does
+not establish a shipped-app loader defect. Earlier 32-test, 33/7 and
+boot-before-TAP failures remain at their original revisions.
+The explicit supplier revision retains its MPL notice and source identity;
+final enabled hosted checks remain pending.
+
+Compact native-byte observation passed 37 component controls. Optional phase
+progress is separate diagnostic work: its first 45-control episode passed 44
+and failed one existing gzip source-policy check; all eight new controls passed.
+The marker-boundary correction preserves all assertions; the changed-head
+episode passed all 45 tests. Its independent saved-data review passes. Progress prefixes do not establish completed conversion outcomes. The progress-enabled
+225-subject attempt also ended with SIGKILL and no report. Its journal contains
+79 in-memory row markers and begins the 80th subject; the last marker is
+`ROW_WIRE_CAPTURE_BEGIN`. These are diagnostic positions, not qualified app
+outcomes. Inspect the saved phase-cost evidence before choosing another
+optimization; do not retry the same tree or infer a kill cause from its last
+marker.
+
+### Methodical acceptance still required
+
+1. Obtain a complete bounded 225-subject report from a genuinely changed,
+   reviewed candidate. Keep full source/configuration/dependency/resource
+   identity, diagnostic presence, locations and original failures.
+2. Using the independently accepted 49 native-test results, compare genuine
+   original, Code and fresh export/reimport values, errors, unrelated scripts,
+   Stop/restart and runtime-local ownership without changing expected values.
+3. Resolve and compile each freshly emitted MakeCode file map with its actual
+   assets and dependencies. Preserve all compiler diagnostics; retained binary
+   data is distinct from executed reference behavior. Earlier Counter compilation
+   does not qualify a different emitted map.
+4. Exercise real Blocks/Code creation and edits, typed class/callback inputs,
+   Camera selectors and ordinary Array producers; current graphics/palette/tile/
+   sound edits, controller input, save/reopen and current export/reimport must
+   work in the visible editor. Headless artwork and VM controls do not prove
+   rendered colors, usable controls or a working full game.
+5. Reconcile concurrent main/foundation changes and all newer pins/notices;
+   require enabled exact-head hosted checks and affected clean guests before
+   integration. Refresh mutable PR/check state rather than treating dated prose
+   as live remote metadata.
+
 ## Current integration checkpoint — 2026-10-19
 
 The newer Array rejection-routing candidate reproduces its complete normal installation, but its native test episode stops during CommonJS startup before any of the 45 controls run. Node attempts to change the prototype of a frozen early export in the circular module graph. Keep that failure distinct from the preceding completed 33-pass/seven-fail result. The next repair uses immutable export records with an explicit null prototype and adds real loader controls for every entry order; unfreezing or deferring the private dispatcher would change its ownership boundary.
@@ -8,7 +67,7 @@ The newer Array rejection-routing candidate reproduces its complete normal insta
 The compressed report path has also completed an actual two-input CLI run. An independent reader reconstructed every native byte payload and descriptor run and compared the complete returned graphs with the earlier report, allowing only the inventoried generated IDs and input-path identity to differ. Both authored inputs still produce five blocks with the same provided diagnostic channels. This qualifies that report path for those two authored inputs; it is not a complete corpus result.
 
 
-The historical 184-input result remains **147 translated, 36 partial and one malformed**. The complete 225-input run, including all 41 retained contexts, is still unmeasured. No focused count below changes that result.
+The historical 184-input result remains **147 translated, 36 partial and one malformed**. Three complete 225-input attempts ended without reports; all 225 current outcomes remain unobserved. No focused count below changes that result.
 
 | Area | Observed result | Next acceptance |
 | --- | --- | --- |
@@ -31,7 +90,7 @@ The failed foundation campaign recorded 113 unit failures. The symptom groups
 below overlap; they are not independent root causes or corpus counts. Preserve
 original diagnostics. A focused pass establishes only its exercised boundary.
 The historical raw census is 147 translated, 36 partial and one malformed out
-of 184. The current complete 184 raw inputs plus 41 contexts is unmeasured.
+of 184. Two complete current 184-raw-plus-41-context attempts were incomplete; all 225 outcomes remain unobserved.
 
 For each package: retain the first actual failing public pipeline, inspect its
 current physical graph and producers, implement the missing semantics, keep a
@@ -52,7 +111,7 @@ whole result. Unknown and malformed inputs remain explicit.
 | Animation/resource identity | Two resource-name/identity symptoms | Compare actual animation document, current costume/frame resources and every writer across import, Code, save/reopen and export. Repair the first producer/consumer disagreement. Names, annotations and stale Creator caches are not resource identity. |
 | Ordinary symbols and helper defaults | Four symbol-identity symptoms and one default-protocol symptom | Inspect current declaration, call sites, binding ownership and default prologue before changing any naming or initialization rule. Require actual roundtrip and runtime values, plus foreign/duplicate/shadowed negatives. |
 | Procedure names and ABI | Four generated-name/shape expectations and two prefix expectations | Determine whether the implementation or fixture is stale. Verify declarations, parameter order/types, calls, bodies and roundtrip identity before changing expected names. A wider regex alone is insufficient. |
-| Explicit Arrays supplier input | Two tests require `BW_ARRAY_NUMBER_VALUE_SOURCE`; hosted job omitted it | The candidate admits the exact supplier repository/path, pinned commit, decoded bytes/hash, licence and canonical bundle relation, and wires that source explicitly to the unit environment. All 13 admission/workflow controls and the actual shipped CLI admission passed. Both unchanged native modules then ran 32 tests, with five passing and 27 failing. Their generated cases were missed by the initial 18-test catalogue; retain the complete 32-test result. That earlier pinned payload does not consume the number-input or operation-ownership APIs injected by Lite. The number-input and operation hooks are already merged in [extensions PR #48](https://github.com/CrispStrobe/extensions/pull/48), at commit `022ab1682d9477a5d0dc5b7b01e707917d61cd41`. The local candidate now advances that exact pin, receipt, mirror, notice and admission together. A fresh installation was audited across all 363 files, including all 179 current VM source files. Its actual shipped admission command and both unchanged native modules passed all 32 tests without skipped cases or weakened assertions. Independent saved-data review verified all 32 outcomes, the complete installed VM, provenance and resource accounting without replaying the runtime. This does not qualify the full application or hosted workflow. A newer explicitly pinned local candidate now implements operation-owned literal Array text coercion and Arrays-only registered construction. Its fresh normal installation reproduced all 363 outputs, and independent saved-data review accepted that installation. The complete 40 native controls have now run: 33 pass and seven fail, including two regressions in the older 32; genuine original/Code/exported semantics remain pending; the earlier 32-test result applies to the earlier hook pin. A reviewed rejection-routing source follow-up now preserves sealed original-call failure identity and private cleanup, with no value-authority expansion. Its fresh installation passes independent review, but the native episode stops during circular CommonJS startup before any of the 45 controls run. Repair the immutable export shape and qualify the complete controls; there is no 45-control result yet. Keep the tests' missing-input refusal. No arbitrary file, unpinned download, hidden fallback or skipped test. Check `arrays-number-value-ingress-native.test.mjs` and `arrays-operation-host-native.test.mjs`. |
+| Explicit Arrays supplier input | Two tests require `BW_ARRAY_NUMBER_VALUE_SOURCE`; hosted job omitted it | The candidate admits the exact supplier repository/path, pinned commit, decoded bytes/hash, licence and canonical bundle relation, and wires that source explicitly to the unit environment. All 13 admission/workflow controls and the actual shipped CLI admission passed. Both unchanged native modules then ran 32 tests, with five passing and 27 failing. Their generated cases were missed by the initial 18-test catalogue; retain the complete 32-test result. That earlier pinned payload does not consume the number-input or operation-ownership APIs injected by Lite. The number-input and operation hooks are already merged in [extensions PR #48](https://github.com/CrispStrobe/extensions/pull/48), at commit `022ab1682d9477a5d0dc5b7b01e707917d61cd41`. The local candidate now advances that exact pin, receipt, mirror, notice and admission together. A fresh installation was audited across all 363 files, including all 179 current VM source files. Its actual shipped admission command and both unchanged native modules passed all 32 tests without skipped cases or weakened assertions. Independent saved-data review verified all 32 outcomes, the complete installed VM, provenance and resource accounting without replaying the runtime. This does not qualify the full application or hosted workflow. A newer explicitly pinned local candidate now implements operation-owned literal Array text coercion and Arrays-only registered construction. Its fresh normal installation reproduced all 363 outputs, and independent saved-data review accepted that installation. The complete 40 native controls have now run: 33 pass and seven fail, including two regressions in the older 32; genuine original/Code/exported semantics remain pending; the earlier 32-test result applies to the earlier hook pin. A reviewed rejection-routing source follow-up now preserves sealed original-call failure identity and private cleanup, with no value-authority expansion. Its fresh installation passes independent review, but the native episode stops during circular CommonJS startup before any of the 45 controls run. The later three-way export repair ran all 48 controls, with 45 passing and three failing. The composed supplier/host follow-up has a verified C7 installation; all 49 native tests pass with independent saved-data acceptance; genuine-value qualification remains pending. Keep the tests' missing-input refusal. No arbitrary file, unpinned download, hidden fallback or skipped test. Check `arrays-number-value-ingress-native.test.mjs` and `arrays-operation-host-native.test.mjs`. |
 | Import GUI test seams | Shared lazy gateway replaced duplicate inline imports; request fencing changed prompt source | The repaired whole pure UI-contract and request-fence scopes pass. Separately qualify the entire `native-prompt.test.mjs` with its genuine DOM/Babel dependencies and complete shipped-source census. Keep real request identity, answer/cancel, stale requests and deliberate native-prompt/silent-modal negative controls. |
 | Build and source prerequisites | Canonical source prerequisites and a modified GUI lockfile caused required failures | Keep the reviewed prerequisites, supplier mirrors/notices and strict manifest checks. The candidate uses lock-preserving installation; source controls passed. Actual canonical installation, deployable build and exact-head hosted checks still need to pass. |
 | Carnival browser observation | Assertion read a virtualized viewport instead of the full editor document | Qualify the observer reading the actual CodeMirror document while retaining import state and the unchanged semantic assertion. If full Code is wrong, trace that real conversion defect separately. Do not trim the assertion to the visible viewport. |
@@ -93,10 +152,10 @@ whole result. Unknown and malformed inputs remain explicit.
 
 ## Latest bounded source and execution progress
 
-The historical raw denominator remains **184: 147 translated, 36 partial and one malformed input**. The complete 225-input assessment (184 raw inputs plus 41 retained dependency contexts) has not run. Component tests and an installation check do not change those counts.
+The historical raw denominator remains **184: 147 translated, 36 partial and one malformed input**. Two complete 225-input assessments (184 raw inputs plus 41 retained dependency contexts) ended without complete reports; all current outcomes remain unobserved. Component tests and an installation check do not change those counts.
 
 * The earlier Arrays supplier hook pin passed the complete original 32 native controls. A newer, explicitly pinned local candidate implements operation-owned literal Array addition with text, plus eight further controls. Its fresh normal VM installation reproduced all 363 expected outputs, including four current source changes. Independent saved-data acceptance of the installation passes. The complete 40 controls now have 33 passing and seven failing, including two regressions; protocol/policy scopes and original/Code/exported runtime semantics remain required. The earlier observed `[object Object]` instead of `5` failure is retained.
-* The current-call rejection-routing follow-up passes its fresh normal-installation audit. Its native episode fails during circular CommonJS startup before any of the 45 controls run. The immutable export-shape repair and complete native qualification remain pending; this does not replace the retained 33/7 result or wrong-value runtime observations.
+* The three-way CommonJS export repair allowed all 48 native controls to run: 45 passed and three failed. The supplier/host successor has a complete C7 installation audit; all 49 tests passed with independent saved-data acceptance; genuine-value comparison remains pending. Earlier boot-before-TAP, 33/7 and wrong-value observations remain retained.
 * Array coercion remains incomplete for named, dimensional, empty, zero, range, slice and concat construction; fresh serialized aliases after decoder cache misses; and native object elements such as sprites, images, buffers and supported user objects. Implement each producer/value conversion through its real allocation, alias and evaluation semantics. A permanent refusal of valid MakeCode values is not completion. Add real save/reopen controls as those paths become supported.
 * The canonical per-use CameraProperty Number successor and explicit deletion parser/diagnostic correction passed all 42 component controls, independently audited. The actual camera fixture now imports and parses into blocks with clean diagnostics. A diagnostic observer without asset uploads reached export and retained two missing-costume warnings; later Code phases were unattempted. This does not establish an artwork defect or camera runtime acceptance. Qualify the normal asset-upload path, current Code, saved project and exported execution.
 * The initial fixture-wide Camera SDK effect profile has been replaced by compile-time enum-member semantics and the existing lexical resolver, with full compiler-owned validation/currentness and unchanged public eager behavior. This is component-qualified source; normal asset-bearing camera execution and editor journeys remain pending. Deletion is explicitly unsupported rather than silently discarded.
