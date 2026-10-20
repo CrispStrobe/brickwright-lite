@@ -19,6 +19,8 @@ import {
     newMachineConfig, validateMachineConfig
 } from '../../lib/bw-machines/machine-config.js';
 import {localDosboxMachine} from '../../lib/bw-machines/local-dosbox.js';
+import {readDosPackageZip, DOS_PACKAGE_LIMITS} from '../../lib/bw-machines/dos-package-zip.js';
+import {localDosPackage} from '../../lib/bw-machines/local-dos-package.js';
 import {localFreedosVgaMachine} from '../../lib/bw-machines/local-freedos-vga.js';
 import {defaultImageFetcher} from '../../lib/bw-machines/activate.js';
 import {lessonMachines, lessonT} from '../../lib/bw-machines/lessons.js';
@@ -54,6 +56,13 @@ export default function MachineManager({store, onRun, onClose, locale}) {
     const [text, setText] = React.useState('');
     const [localDisk, setLocalDisk] = React.useState(null);
     const [localNativeBlocks, setLocalNativeBlocks] = React.useState(false);
+    const [dosPackageFile, setDosPackageFile] = React.useState(null);
+    const [dosPackageBusy, setDosPackageBusy] = React.useState(false);
+    const dosPackageOwner = React.useRef({mounted:true,epoch:{},file:null,busy:false});
+    React.useEffect(() => {
+        const owner = dosPackageOwner.current; owner.mounted = true;
+        return () => {owner.mounted = false; owner.epoch = {};};
+    }, []);
     const [freeMedia, setFreeMedia] = React.useState({});
     const [freeNativeBlocks, setFreeNativeBlocks] = React.useState(false);
     const t = k => tr(locale, k);
@@ -65,6 +74,19 @@ export default function MachineManager({store, onRun, onClose, locale}) {
 
     React.useEffect(() => { refresh(); }, [refresh]);
 
+    const invalidateDosPackage = () => {
+        const owner = dosPackageOwner.current;
+        const pending = owner.busy;
+        owner.epoch = {}; owner.busy = false;
+        if (owner.mounted) {
+            setDosPackageBusy(false);
+            if (pending) setStatus('DOS package cancelled by another action');
+        }
+    };
+    const closeManager = event => {
+        invalidateDosPackage();
+        if (onClose) onClose(event);
+    };
     const run = async (cfg, opts) => {
         try {
             if (onRun) await onRun(cfg, opts);
@@ -82,6 +104,41 @@ export default function MachineManager({store, onRun, onClose, locale}) {
             await run(cfg, {fetcher: ref => ref.url === 'local-media:disk'
                 ? Promise.resolve({bytes}) : defaultImageFetcher(ref)});
         } catch (e) { setStatus(e.message); }
+    };
+    const selectDosPackage = file => {
+        const owner = dosPackageOwner.current;
+        if (!owner.mounted) return;
+        owner.epoch = {}; owner.file = file; owner.busy = false;
+        setDosPackageFile(file); setDosPackageBusy(false);
+        setStatus(file ? `Selected DOS package: ${file.name}` : '');
+    };
+    const runDosPackage = async () => {
+        const owner = dosPackageOwner.current, file = owner.file, epoch = owner.epoch;
+        if (!owner.mounted || owner.busy || !file) return;
+        const current = () => owner.mounted && owner.epoch === epoch && owner.file === file;
+        owner.busy = true; setDosPackageBusy(true);
+        setStatus('Checking bounded STORED DOS package…');
+        try {
+            if (!Number.isSafeInteger(file.size) || file.size < 22 || file.size > DOS_PACKAGE_LIMITS.rawBytes) {
+                throw new Error('DOS package: select a non-empty STORED ZIP of at most 16 MiB');
+            }
+            const archive = await file.arrayBuffer(); if (!current()) return;
+            const entries = await readDosPackageZip(archive); if (!current()) return;
+            const selected = localDosPackage(entries);
+            setStatus(`DOS package: ${selected.selectedConfig} → ${selected.selectedImage}`);
+            if (typeof onRun !== 'function') throw new Error('DOS package: machine runner unavailable');
+            await onRun(selected.config, {fetcher: async ref => {
+                if (!current()) throw new Error('DOS package selection changed');
+                if (ref.url !== 'local-media:disk') throw new Error('DOS package: no unselected media or network fallback');
+                return {bytes:selected.bytes};
+            }});
+            if (!current()) return;
+            if (onClose) onClose();
+        } catch (error) {
+            if (current()) setStatus(error.message || String(error));
+        } finally {
+            if (current()) {owner.busy = false; setDosPackageBusy(false);}
+        }
     };
     const runFree386 = async () => {
         try {
@@ -163,7 +220,7 @@ export default function MachineManager({store, onRun, onClose, locale}) {
     const primary = {...btn, background: 'linear-gradient(135deg,#4c97ff,#4280d7)', color: '#fff', border: 'none'};
 
     return (
-        <div onClick={onClose} data-testid="bw-machine-manager"
+        <div onClick={closeManager} data-testid="bw-machine-manager"
             style={{...overlayBox, background: 'rgba(0,0,0,0.4)', zIndex: 1000,
                 display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
             <div onClick={stop} style={{background: '#fff', borderRadius: 10, width: 'min(680px, 92vw)',
@@ -172,7 +229,7 @@ export default function MachineManager({store, onRun, onClose, locale}) {
                 <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     padding: '12px 16px', borderBottom: '1px solid #e2e8f0'}}>
                     <strong style={{fontSize: 15}}>{t('title')}</strong>
-                    <button onClick={onClose} style={btn} data-testid="bw-mm-close">{t('close')}</button>
+                    <button onClick={closeManager} style={btn} data-testid="bw-mm-close">{t('close')}</button>
                 </div>
 
                 <div style={{overflowY: 'auto', padding: '8px 16px', flex: 1}}>
@@ -194,11 +251,11 @@ export default function MachineManager({store, onRun, onClose, locale}) {
                                 </div>
                             </div>
                             <div style={{display: 'flex', flexDirection: 'column', gap: 4}}>
-                                <button onClick={() => runLesson(lesson)} style={primary}
+                                <button onClick={() => {invalidateDosPackage(); return runLesson(lesson);}} style={primary}
                                     disabled={lessonBusy === lesson.config.id}
                                     data-testid="bw-mm-lesson-run">{lessonT(locale, 'lessons.run')}</button>
                                 {lesson.coldConfig ? (
-                                    <button onClick={() => runLesson(lesson, true)} style={btn}
+                                    <button onClick={() => {invalidateDosPackage(); return runLesson(lesson, true);}} style={btn}
                                         disabled={lessonBusy === lesson.config.id}
                                         data-testid="bw-mm-lesson-cold">{lesson.coldLabel}</button>
                                 ) : null}
@@ -225,7 +282,7 @@ export default function MachineManager({store, onRun, onClose, locale}) {
                                     {t('nativeBlocks')}
                                 </label>}
                             </div>
-                            <button onClick={() => run(m)} style={primary} data-testid="bw-mm-run">{t('run')}</button>
+                            <button onClick={() => {invalidateDosPackage(); return run(m);}} style={primary} data-testid="bw-mm-run">{t('run')}</button>
                             <button onClick={() => dup(m.id)} style={btn}>{t('dup')}</button>
                             <button onClick={() => del(m.id)} style={{...btn, color: '#b91c1c'}}>{t('del')}</button>
                         </div>
@@ -249,13 +306,25 @@ export default function MachineManager({store, onRun, onClose, locale}) {
                                     if (file) setText(await file.text());
                                 }} />
                         </label>
-                        <button onClick={runLocal} style={primary} data-testid="bw-mm-local-run">Boot disk</button>
+                        <button onClick={() => {invalidateDosPackage(); return runLocal();}} style={primary} data-testid="bw-mm-local-run">Boot disk</button>
                         <label style={{fontSize: 11, color: '#475569'}}>
                             <input type="checkbox" data-testid="bw-mm-local-native-blocks"
                                 checked={localNativeBlocks}
                                 onChange={e => setLocalNativeBlocks(e.target.checked)} />
                             {t('nativeBlocks')}
                         </label>
+                    </div>
+                    <div style={{fontSize: 12, fontWeight: 600, marginBottom: 4}}>Local DOS package (STORED ZIP)</div>
+                    <div style={{fontSize: 11, color: '#64748b', marginBottom: 6}}>
+                        One dosbox.conf and one matching bootable raw HDD image, at most 16 MiB.
+                        Compressed ZIPs, COM/EXE packages and host commands are not supported.
+                        Selected bytes stay in this tab; the existing raw-image chooser remains available.
+                    </div>
+                    <div style={{display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10}}>
+                        <input type="file" accept=".zip" data-testid="bw-mm-dos-package"
+                            onChange={e => selectDosPackage(e.target.files?.[0] || null)} />
+                        <button data-testid="bw-mm-dos-package-run" style={primary}
+                            disabled={!dosPackageFile || dosPackageBusy} onClick={runDosPackage}>Boot package HDD</button>
                     </div>
                     <div style={{fontSize: 12, fontWeight: 600, marginBottom: 4}}>FreeDOS VGA (named 386 profile)</div>
                     <div style={{fontSize: 11, color: '#64748b', marginBottom: 6}}>
@@ -277,7 +346,7 @@ export default function MachineManager({store, onRun, onClose, locale}) {
                                     setFreeMedia(current => ({...current, [slot]: file}));
                                 }} />
                         </label>)}
-                        <button onClick={runFree386} style={primary}
+                        <button onClick={() => {invalidateDosPackage(); return runFree386();}} style={primary}
                             data-testid="bw-mm-free386-run">Boot FreeDOS VGA</button>
                         <label style={{fontSize: 11, color: '#475569'}}>
                             <input type="checkbox" data-testid="bw-mm-free386-native-blocks"
