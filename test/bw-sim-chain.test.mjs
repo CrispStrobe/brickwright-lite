@@ -95,8 +95,8 @@ test('compiled: one chain coupling, the gears turning the same way at 8:24, its 
     assert.ok(Math.abs(Math.abs(chains[0].ratio) - 3) < 1e-9, `ratio ${chains[0].ratio}`);
 });
 
-test('the chain drives: the 24T turns the motor\'s way at 1/3 of its speed, two equal 8Ts at the same speed', async () => {
-    for (const [part, expected] of [['3648.dat', 1 / 3], ['3647.dat', 1]]) {
+test('the chain drives: the 24T turns the motor\'s way at 1/3 of its speed, a 16T at 1/2, two equal 8Ts at the same speed', async () => {
+    for (const [part, expected] of [['3648.dat', 1 / 3], ['3647.dat', 1], ['94925.dat', 0.5]]) {
         const m = bench(part);
         if (part === '3647.dat') m.parts = m.parts.map(p => (p.id === 'g24' ? {...p, position: [40, -60, 0]} : p.id === 'a24' ? {...p, position: [40, -10, 0]} : p));
         const {model} = withChain(m);

@@ -1,0 +1,19 @@
+DEVICE SPIKE
+
+# Robot Lab: what a chain does.
+# Model: Chain drive (motor A turns the 16-tooth sprocket; a Technic chain runs round it
+# and the 24-tooth sprocket five holes further on).
+# A chain turns both sprockets the SAME way (two gears that touch turn opposite ways).
+# The big sprocket has 24 teeth to the small one's 16, so it turns slower: 3 turns of
+# the motor make 2 turns of the big sprocket.
+WHEN flag clicked:
+  set motor speed A 50
+  start motor A forward
+  display text "3:2"
+  wait 4 seconds
+  stop motor A
+  set motor speed A 50
+  start motor A backward
+  display text "back"
+  wait 3 seconds
+  stop motor A
