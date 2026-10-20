@@ -8,6 +8,16 @@ legopoweredup on the Move Hub and the City Hub) and `test/bw-sim-rcx-legorcx.tes
 sent with its own block into the Lab RCX). No `overlay/scratch-gui/src/lib/bw-sim/**` change: the open
 Robot Lab PRs #1123/#1127/#1129/#1130 own that tree; gaps that need it wait for them to merge.
 
+
+## Robot Lab MINDSTORMS model limits: NXT sync, NXT buttons, ultrasonic listening — 2026-10-20
+
+CLAIMED with the change — Claude (Robot Lab model limits). NXT MOTOR_SYNC follows LEGO's NXT firmware
+1.29 output driver (pairing, the 100 ms tacho-difference PID, turn term, the pair's tacho limit); the NXT
+hub's buttons (pressButton / readButton) and the VM's ReadButton; sensors.js `usHeard` (another MINDSTORMS
+ultrasonic pinging towards the probe) read by the EV3 listen mode and the NXT event capture. Facts:
+docs/NXT-PROTOCOL-FACTS.md §Sync, §Buttons; docs/ROBOT-LAB-EV3-NXT.md. Tests:
+test/bw-sim-mindstorms-model-limits.test.mjs. Follow-up (after #1127 and #1123): EV3 sync turn ratio and
+buttons, the runtime.robotLab button API and its Lab UI.
 ## Robot Lab: cables, Studio mouse, coach marks, Ctrl-glide — 2026-10-20
 
 CLAIMED, stacked for one comprehensive PR (owner: "cables go in a comprehensive PR") on
@@ -7384,6 +7394,35 @@ exact-head hosted checks remain mandatory before merge. No new iPad build or
 physical connection acceptance is implied. A rejected native close reports an
 error and blocks reuse of uncertain state; a native call which never settles
 still requires the separately scoped native cancellation/readiness work.
+
+## CAD browser selection failure investigation — 2026-10-19
+
+CLAIMED / candidate — Codex integration, explicit user request to fix the CAD browser error.
+Branch `docs/cad-browser-selection-claim-20261019`. Own only the browser aiming
+and selection helper in `scripts/lib/sim-lab-cad-gate.mjs`, focused controls in
+`test/sim-lab-cad-pointer.test.mjs`, this ledger and
+`docs/INTEGRATION-NEXT-STEPS.md`. Coordinate a separate
+extension before changing the Sim Lab owner's editor, rendering or physics.
+
+Retained robotlab failure: paletteInteractions calls focusOn after dropping a
+beam; its real mouse click leaves selection empty instead of selecting the
+expected placed part. Diagnose against the retained production frontend. Keep
+real pointer interactions, exact part identity, assertions and existing budgets;
+no direct editor selection, blind sleeps, retry-to-green or waived checks.
+Require an affected real-browser regression and all enabled exact-head CI before
+normal matched-head merge. The narrow helper repair and this lane entry ship together; preserve other lanes
+and SPIKE qualification holds. No Sim Lab product or physics source is changed.
+
+Candidate detail: wait two animation frames for hover/resize publication, then
+reproject the same authored face point. Re-aim at most three times per existing
+candidate before trying the next face point; never click to probe or retry a
+failed selection assertion. Require the pointer's DOM target to be the canvas.
+Five source controls cover normal aiming, layout resize, stale status, occlusion
+and finite refusal; original source and three cuts are detected. An authored
+real-browser layout counterexample retains trusted mouse input: original selects
+nothing, candidate selects the expected part. This is helper coverage, not a
+product guest result. The unchanged production frontend's full core/CAD journey
+and all final-head enabled CI checks remain the integration qualification.
 
 ## iOS audit: unwired transaction Stop and publication fences — 2026-10-19
 
