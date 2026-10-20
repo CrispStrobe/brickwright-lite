@@ -366,6 +366,7 @@
       "test/makecode-named-function-native.test.mjs",
       "test/makecode-named-function-routing.test.mjs",
       "test/makecode-namespace-deferred-scope.test.mjs",
+      "test/makecode-nested-array-slice-presence-native.test.mjs",
       "test/makecode-procedure-any-default.test.mjs",
       "test/makecode-procedure-constraint-export.test.mjs",
       "test/makecode-procedure-omitted-flags.test.mjs",
