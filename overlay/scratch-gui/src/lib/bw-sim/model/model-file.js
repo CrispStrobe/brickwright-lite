@@ -9,6 +9,7 @@
 //   .mpd  LDraw multi-part document       open (sub-models flattened), save (one FILE)
 //   .io   BrickLink Studio                open (unencrypted only), save
 //   .lxf  LEGO Digital Designer           open
+//   .lcd  LeoCAD project (binary, 0.x)    open
 //
 // BRICKLINK STUDIO .io: a ZIP archive whose `model.ldr` is the model in plain
 // LDraw with LDraw colour codes (LDraw wiki "IO"; the open-source readers in
@@ -32,18 +33,25 @@
 //
 // LEGO DIGITAL DESIGNER .lxf: a ZIP with `IMAGE100.LXFML` (model/lxf-model.js)
 // and a thumbnail.
+//
+// LEOCAD .lcd: LeoCAD's own binary project file until LeoCAD 0.80 (model/lcd-model.js):
+// the pieces with their LDraw part numbers, colours (LeoCAD's table) and the poses of
+// the building instructions, step by step. It becomes a model from elsewhere (its
+// author is the project's), so its motors and sensors are plugged in as for an MPD.
 
 import JSZip from 'jszip';
 import {serializeModel} from './ldraw-model.js';
 import {LxfError, parseLxfml} from './lxf-model.js';
 import {lddColours} from './ldd-parts.js';
+import {LcdError, leoCadToLdraw} from './lcd-model.js';
 
 /** Formats by extension: what Open accepts and what Save as offers. */
 export const MODEL_FORMATS = Object.freeze({
     ldr: {open: true, save: true, mime: 'text/plain'},
     mpd: {open: true, save: true, mime: 'text/plain'},
     io: {open: true, save: true, mime: 'application/zip'},
-    lxf: {open: true, save: false, mime: 'application/zip'}
+    lxf: {open: true, save: false, mime: 'application/zip'},
+    lcd: {open: true, save: false, mime: 'application/octet-stream'}
 });
 /** The file input's `accept`. */
 export const OPEN_ACCEPT = Object.keys(MODEL_FORMATS).filter(k => MODEL_FORMATS[k].open).map(k => `.${k}`).join(',');
@@ -231,6 +239,21 @@ export const readLxf = async (bytes, {ldconfig, catalog, name = 'model.lxf', tit
 };
 
 /**
+ * A LeoCAD .lcd project as LDraw text.
+ * @param {Uint8Array} bytes
+ * @returns {{text: string, refusals: object[]}}
+ * @throws {ModelFileError} `lcd-unreadable`, `lcd-version`
+ */
+export const readLeoCad = (bytes, {name = 'model.lcd'} = {}) => {
+    try {
+        return leoCadToLdraw(bytes, {name});
+    } catch (error) {
+        if (error instanceof LcdError) throw new ModelFileError(error.code, error.message);
+        throw error;
+    }
+};
+
+/**
  * Open any supported model file as LDraw text.
  * @param {string} name the file's name (its extension picks the reader)
  * @param {Uint8Array} bytes its contents
@@ -244,6 +267,7 @@ export const openModelFile = async (name, bytes, {ldconfig = '', title, catalog}
     if (format === 'ldr' || format === 'mpd') return {text: new TextDecoder().decode(bytes), name, refusals: []};
     if (format === 'io') return {...await readStudioIo(bytes), name: renameTo(name, 'ldr')};
     if (format === 'lxf') return {...await readLxf(bytes, {ldconfig, catalog, name, title}), name: renameTo(name, 'ldr')};
+    if (format === 'lcd') return {...readLeoCad(bytes, {name}), name: renameTo(name, 'ldr')};
     throw new ModelFileError('unsupported-format', `files ending in ${(/\.[^.]*$/.exec(String(name)) || [''])[0] || '(nothing)'} are not model files the Robot Lab opens`);
 };
 

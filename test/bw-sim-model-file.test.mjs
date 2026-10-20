@@ -178,12 +178,12 @@ test('colours: an LDD material is the LEGO colour number LDConfig writes as LEGO
 });
 
 test('the pane offers what the module supports, and words every whole-file refusal in English and German', () => {
-    assert.equal(OPEN_ACCEPT, '.ldr,.mpd,.io,.lxf');
+    assert.equal(OPEN_ACCEPT, '.ldr,.mpd,.io,.lxf,.lcd');
     assert.match(PANE, new RegExp(`const OPEN_ACCEPT = '${OPEN_ACCEPT.replace(/\./g, '\\.')}';`));
     assert.match(PANE, new RegExp(`const SAVE_FORMATS = \\[${SAVE_FORMATS.map(f => `'${f}'`).join(', ')}\\];`));
-    assert.deepEqual(['a.LDR', 'b.mpd', 'c.io', 'd.lxf', 'e.txt'].map(formatOf), ['ldr', 'mpd', 'io', 'lxf', null]);
-    const sources = ['model/model-file.js', 'model/lxf-model.js'].map(f => readFileSync(path.join(SIM, f), 'utf8')).join('\n');
-    const codes = new Set([...sources.matchAll(/new (?:ModelFile|Lxf)Error\('([a-z-]+)'/g)].map(m => m[1]));
+    assert.deepEqual(['a.LDR', 'b.mpd', 'c.io', 'd.lxf', 'f.LCD', 'e.txt'].map(formatOf), ['ldr', 'mpd', 'io', 'lxf', 'lcd', null]);
+    const sources = ['model/model-file.js', 'model/lxf-model.js', 'model/lcd-model.js'].map(f => readFileSync(path.join(SIM, f), 'utf8')).join('\n');
+    const codes = new Set([...sources.matchAll(/new (?:ModelFile|Lxf|Lcd)Error\('([a-z-]+)'/g)].map(m => m[1]));
     assert.ok(codes.size >= 7, [...codes].join());
     for (const code of codes) {
         assert.equal(PANE.split(`'${code}':`).length - 1, 2, `${code}: one sentence per language in the pane's fileErrors`);
