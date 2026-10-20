@@ -12,14 +12,17 @@
 //                    red for motor hinges, blue for free ones; a dot at a ball
 //                    joint;
 //   gear pairs       a violet rod from one gear's centre to the other's, with
-//                    the tooth ratio ("1:3") as a label at its middle.
+//                    the tooth ratio ("1:3") as a label at its middle;
+//   cables           with the port labels: a dark cable arching from each plugged-in
+//                    motor or sensor to its hub (from part centre to part centre: the
+//                    parts have no socket positions, so it says which hub, not where).
 //
 // Everything is anchored: an anchor is a function returning the world point
 // now (a body that moves, a part being dragged), read once per frame, so the
 // overlay follows the simulation. Rods and heads are drawn on top of the parts
 // (no depth test): an axle hidden inside the robot still shows.
 
-import {ConeGeometry, CylinderGeometry, Group, Mesh, MeshBasicMaterial, SphereGeometry, Vector3} from 'three';
+import {ConeGeometry, CylinderGeometry, Group, Mesh, MeshBasicMaterial, QuadraticBezierCurve3, SphereGeometry, TubeGeometry, Vector3} from 'three';
 
 export const INSIGHT_COLORS = Object.freeze({motorAxis: 0xdc2626, axis: 0x2563eb, gear: 0x7c3aed});
 /** Rod radius, metres: thin, but more than a 1 px line. */
@@ -27,6 +30,14 @@ const ROD_RADIUS = 0.0007;
 const HEAD_RADIUS = 0.0022;
 const HEAD_LENGTH = 0.006;
 const UP = new Vector3(0, 1, 0);
+/**
+ * A cable: 1.2 mm thick, LEGO's dark grey, arching up over the model (half its span plus 1.5 cm
+ * above the middle) so it shows even between parts that touch.
+ */
+const CABLE_RADIUS = 0.0012;
+const CABLE_ARCH = 0.5;
+const CABLE_CLEARANCE = 0.015;
+const CABLE_COLOR = 0x3a3f44;
 
 const badgeStyle = (el, extra) => Object.assign(el.style, {
     position: 'absolute', left: '0', top: '0', pointerEvents: 'none', whiteSpace: 'nowrap',
@@ -68,9 +79,20 @@ export const createInsightLayer = ({container, scene, onPortClick = null}) => {
         for (const r of ratios) r.el.remove();
         rods = []; dots = []; ratios = [];
     };
+    // Cables: their own group, shown with the port labels (not the motion overlay), depth-tested.
+    const cableRoot = new Group();
+    cableRoot.name = 'bw-insight-cables';
+    scene.add(cableRoot);
+    const cableMaterial = new MeshBasicMaterial({color: CABLE_COLOR});
+    let cables = []; // {from, to, mesh, at: [Vector3, Vector3]|null}
+    const clearCables = () => {
+        for (const c of cables) { cableRoot.remove(c.mesh); c.mesh.geometry.dispose(); }
+        cables = [];
+    };
     const clearPorts = () => {
         for (const p of ports) p.el.remove();
         ports = [];
+        clearCables();
     };
 
     /**
@@ -101,6 +123,14 @@ export const createInsightLayer = ({container, scene, onPortClick = null}) => {
             }
             dom.appendChild(el);
             ports.push({id: item.id, el, anchor: item.anchor});
+            if (item.port && item.hubAnchor) {
+                const mesh = new Mesh(undefined, cableMaterial);
+                mesh.name = 'bw-insight-cable';
+                mesh.userData.part = item.id;
+                mesh.frustumCulled = false;
+                cableRoot.add(mesh);
+                cables.push({from: item.anchor, to: item.hubAnchor, mesh, at: null});
+            }
         }
     };
 
@@ -192,6 +222,19 @@ export const createInsightLayer = ({container, scene, onPortClick = null}) => {
             if (!show.motion || !pa || !pb) { r.el.style.display = 'none'; continue; }
             place(r.el, a.copy(pa).add(pb).multiplyScalar(0.5), camera, width, height, '-50%');
         }
+        cableRoot.visible = show.ports;
+        for (const c of cables) {
+            const pa = show.ports ? c.from() : null;
+            const pb = pa ? c.to() : null;
+            c.mesh.visible = Boolean(pa && pb);
+            if (!pa || !pb || (c.at && c.at[0].distanceToSquared(pa) < 1e-10 && c.at[1].distanceToSquared(pb) < 1e-10)) continue;
+            // The ends moved: the cable is laid anew, arching over the middle.
+            c.at = [pa.clone(), pb.clone()];
+            const mid = pa.clone().add(pb).multiplyScalar(0.5);
+            mid.y = Math.max(pa.y, pb.y) + pa.distanceTo(pb) * CABLE_ARCH + CABLE_CLEARANCE;
+            c.mesh.geometry.dispose();
+            c.mesh.geometry = new TubeGeometry(new QuadraticBezierCurve3(pa.clone(), mid, pb.clone()), 24, CABLE_RADIUS, 6, false);
+        }
         for (const p of ports) {
             const at = show.ports ? p.anchor() : null;
             if (!at) { p.el.style.display = 'none'; continue; }
@@ -206,13 +249,16 @@ export const createInsightLayer = ({container, scene, onPortClick = null}) => {
         motorAxes: rods.filter(r => r.head && r.mesh.visible && r.mesh.name === 'bw-insight-motor-axis').length,
         balls: dots.filter(d => d.mesh.visible).length,
         gears: rods.filter(r => !r.head && r.mesh.visible).length,
-        ratios: ratios.filter(r => r.el.style.display !== 'none').map(r => r.el.textContent)
+        ratios: ratios.filter(r => r.el.style.display !== 'none').map(r => r.el.textContent),
+        cables: cables.filter(c => c.mesh.visible).map(c => c.mesh.userData.part)
     });
 
     const dispose = () => {
         clearRods();
         clearPorts();
         scene.remove(root);
+        scene.remove(cableRoot);
+        cableMaterial.dispose();
         rodGeometry.dispose();
         headGeometry.dispose();
         dotGeometry.dispose();
