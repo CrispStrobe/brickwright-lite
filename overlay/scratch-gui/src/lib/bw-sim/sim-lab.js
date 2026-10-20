@@ -208,14 +208,24 @@ export const catalogFor = async text => {
     } catch (_) {
         return catalog; // offline: the session reports the parts it cannot find
     }
-    for (const name of unknown) {
-        if (!lib.has(`parts/${name.toLowerCase()}`)) continue;
-        try {
-            await addCatalogPart(name);
-        } catch (_) { /* named by the session as an unknown part */ }
-    }
+    // Several at a time (DERIVE_AT_ONCE): one after the other, each part's file waves and its deriver's start-up made a
+    // big set wait 9 s of mostly idle time (the 4x4 Off-Roader: 62 parts, 2,400 small requests).
+    const todo = unknown.filter(name => lib.has(`parts/${name.toLowerCase()}`));
+    let next = 0;
+    const lane = async () => {
+        while (next < todo.length) {
+            const name = todo[next++];
+            try {
+                await addCatalogPart(name);
+            } catch (_) { /* named by the session as an unknown part */ }
+        }
+    };
+    await Promise.all(Array.from({length: Math.min(DERIVE_AT_ONCE, todo.length)}, lane));
     return catalog;
 };
+
+/** Parts derived at the same time when a model names several the catalogue lacks: the cores but one, at most 6. */
+const DERIVE_AT_ONCE = Math.max(1, Math.min(6, ((globalThis.navigator && globalThis.navigator.hardwareConcurrency) || 2) - 1));
 
 /**
  * Starts physics-worker.js in a Web Worker (webpack emits it as its own chunk, and

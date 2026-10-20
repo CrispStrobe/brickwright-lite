@@ -37,7 +37,9 @@ export const autoPorts = (model, catalog, registry) => {
         const ports = any ? [...HUB_PORTS.filter(id => /\d/.test(id)).map(id => ({id, accepts: ['sensor']})),
             ...HUB_PORTS.filter(id => /[A-F]/.test(id)).map(id => ({id, accepts: ['motor', 'sensor']}))]
             : registry.get(h.profileId).profile.ports;
-        return {...h, any, ports, used: new Set()};
+        // A hub's built-in motors (the BOOST Move hub's A and B: its internal joints) have their ports already.
+        const builtIn = (h.part ? metaOf(h.part.part)?.internalJoints || [] : []).filter(j => j.actuatedBy === 'built-in' && j.port).map(j => j.port);
+        return {...h, any, ports, used: new Set(builtIn)};
     });
     if (!hubs.length) return {model, plugged: []};
     const several = hubs.length > 1;

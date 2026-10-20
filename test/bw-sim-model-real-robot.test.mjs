@@ -86,3 +86,14 @@ test('with two hubs, each motor the file left unplugged goes into the nearer hub
     const portOf = x => prep.model.parts.find(p => p.position[0] === x).port;
     assert.deepEqual([portOf(100), portOf(900), portOf(1100)], [{hub: h1, port: 'A'}, {hub: h2, port: 'A'}, {hub: h2, port: 'B'}]);
 });
+
+test('auto ports: a hub\'s built-in motors keep their ports (BOOST Move hub A and B); an external motor goes to a free one', () => {
+    // Frankie the Cat (17101) would not open: its external motor went to B, beside the hub's own motor B.
+    const boost = ['0 BOOST', '1 71 0 0 0 1 0 0 0 1 0 0 0 1 26910.dat', '1 71 0 -100 0 1 0 0 0 1 0 0 0 1 26913.dat'].join('\n');
+    const {issues, mechanism} = prepareModel(boost, CATALOG);
+    const plugged = issues.find(i => i.code === 'ports-plugged');
+    assert.ok(plugged, 'the external motor is plugged in');
+    assert.doesNotMatch(plugged.message, /→ [AB]\b/, plugged.message);
+    const ports = mechanism.joints.filter(j => j.motor).map(j => j.motor.port);
+    assert.equal(new Set(ports).size, ports.length, `one motor per port: ${ports}`);
+});
