@@ -148,6 +148,9 @@ const engages = (kinds, a, b) => {
 };
 
 const HOLES = new Set(['pinhole', 'axlehole']);
+/** An axle in a pin hole or a pin in an axle hole (either way round): joined, but not as the parts are made to be. */
+const CROSS = new Set(['axle/pinhole', 'pinhole/axle', 'pin/axlehole', 'axlehole/pin']);
+const crossKind = (a, b) => CROSS.has(`${a.type}/${b.type}`);
 const SHAFTS = new Set(['pin', 'axle']);
 /** How much of one line two coaxial line connectors share (LDU), or 0. */
 const sharedLength = (a, b) => {
@@ -176,16 +179,22 @@ export const engagement = (kinds, anchors, connectors) => {
     let n = 0;
     let depth = 0;
     for (const c of connectors) {
-        let hit = false;
+        let hit = 0;
         let clash = false;
         for (const a of anchors.near(c)) {
             if (engages(kinds, c, a)) {
-                hit = true;
+                // A shaft in its own kind of hole (a pin in a pin hole, an axle in an axle hole) counts whole; an axle
+                // in a round hole or a pin in an axle hole half: an axle pin put in back to front meets as many.
+                // And as far as it is seated: a pin half in its hole, half in the beam beside, counts half.
+                const shared = sharedLength(c, a);
+                const shorter = Math.min(c.length || 0, a.length || 0);
+                const seat = shorter > 0 ? Math.min(1, shared / shorter + 0.05) : 1;
+                hit = Math.max(hit, (crossKind(c, a) ? 0.5 : 1) * seat);
                 // How deep: a pin seated in both its holes over its whole length beats one slid half out.
-                depth += sharedLength(c, a);
+                depth += shared;
             } else if (!clash && interpenetrate(c, a)) clash = true;
         }
-        n += (hit ? 1 : 0) - (clash ? 1 : 0);
+        n += hit - (clash ? 1 : 0);
     }
     // The depth only breaks ties: under one connection's worth for the whole part.
     return n + Math.min(depth, 999) / 1000;

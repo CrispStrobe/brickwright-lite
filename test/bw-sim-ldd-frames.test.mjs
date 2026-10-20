@@ -11,7 +11,6 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {lddFrameOf, rowOfFrame, collidersBottom, DERIVED_RULES} from '../overlay/scratch-gui/src/lib/bw-sim/model/ldd-frame.js';
 import {lddToLdraw, parseLxfml} from '../overlay/scratch-gui/src/lib/bw-sim/model/lxf-model.js';
-import {LDD_PARTS} from '../overlay/scratch-gui/src/lib/bw-sim/model/ldd-parts.js';
 import {
     parseLdrawXml, frameOfRow, compareFrames, evaluate, tally, splitOf, symmetriesOf
 } from '../scripts/eval-ldd-frames.mjs';
@@ -25,33 +24,40 @@ const F = [1, 0, 0, 0, -1, 0, 0, 0, -1];
 const near = (a, b, eps = 1e-6) => a.length === b.length && a.every((v, i) => Math.abs(v - b[i]) <= eps);
 
 test('a mapping row is the LDD frame inside the LDraw part: o = 25·F·t, M = F·Rot(axis, angle)', () => {
-    // Worked by hand from the semantics (LeoCAD lc_lxf.cpp): an identity row with t = (−1.2, −0.96, 0.4)
-    // puts LDD's origin 30 LDU along −x, 24 LDU down (LDraw +y) and 10 LDU along −z of the LDraw origin.
+    // Rows made up for this test (not any part's): an identity row with t = (0.4, −0.32, −0.8) puts LDD's
+    // origin 10 LDU along +x, 8 LDU down (LDraw +y) and 20 LDU along +z of the LDraw origin.
     const rows = parseLdrawXml(`<LDrawMapping>
         <!-- <Transformation ldraw="commented.dat" tx="9" ty="9" tz="9" ax="1" ay="0" az="0" angle="0" /> -->
-        <Transformation ldraw="3001.dat" tx="-1.2" ty="-0.96" tz="0.4" ax="1" ay="0" az="0" angle="0" />
-        <Transformation ldraw="4519.dat" tx="1.2" ty="0" tz="0" ax="0" ay="1" az="0" angle="1.570796" />
-        <Transformation ldraw="4519.dat" tx="7" ty="7" tz="7" ax="0" ay="1" az="0" angle="0" />
+        <Transformation ldraw="a.dat" tx="0.4" ty="-0.32" tz="-0.8" ax="1" ay="0" az="0" angle="0" />
+        <Transformation ldraw="b.dat" tx="-0.4" ty="0" tz="0" ax="0" ay="0" az="1" angle="3.141593" />
+        <Transformation ldraw="b.dat" tx="7" ty="7" tz="7" ax="0" ay="1" az="0" angle="0" />
     </LDrawMapping>`);
-    assert.deepEqual([...rows.keys()], ['3001.dat', '4519.dat'], 'comments are skipped; a repeated part keeps its first row');
-    const brick = frameOfRow(rows.get('3001.dat'));
-    assert.ok(near(brick.o, [-30, 24, -10]), String(brick.o));
-    assert.ok(near(brick.M, F));
-    // A quarter turn about LDD y: LDD x (column 0) goes to LDraw +z, LDD z (column 2) to LDraw +x; the
-    // origin is 1.2 LDD units = 30 LDU along LDraw +x: the axle's +x end.
-    const axle = frameOfRow(rows.get('4519.dat'));
-    assert.ok(near(axle.o, [30, 0, 0]), String(axle.o));
-    assert.ok(near(axle.M, [0, 0, 1, 0, -1, 0, 1, 0, 0], 1e-6), String(axle.M));
+    assert.deepEqual([...rows.keys()], ['a.dat', 'b.dat'], 'comments are skipped; a repeated part keeps its first row');
+    const a = frameOfRow(rows.get('a.dat'));
+    assert.ok(near(a.o, [10, 8, 20]), String(a.o));
+    assert.ok(near(a.M, F));
+    // A half turn about LDD z: LDD x (column 0) goes to LDraw −x, LDD y to LDraw +y (down), LDD z to −z; the
+    // origin 0.4 LDD units = 10 LDU along LDraw −x.
+    const b = frameOfRow(rows.get('b.dat'));
+    assert.ok(near(b.o, [-10, 0, 0]), String(b.o));
+    assert.ok(near(b.M, [-1, 0, 0, 0, 1, 0, 0, 0, -1], 1e-5), String(b.M));
 });
 
-test('rowOfFrame is the row lxf-model applies: a recorded row and its frame place a bone identically', () => {
+test('rowOfFrame is the row lxf-model applies: an axis-angle row and its frame place a bone identically', () => {
     const bone = [0, 0, -1, 0, 1, 0, 1, 0, 0, 1.6, 0.4, 0.8]; // a quarter turn about y, moved
-    for (const [design, row] of LDD_PARTS) {
+    // Rows made up for this test: a few turns and offsets.
+    const made = [
+        {translation: [0.4, 0, -0.8], axis: [0, 1, 0], angle: Math.PI / 2},
+        {translation: [0, 0.32, 0.4], axis: [1, 0, 0], angle: -Math.PI / 2},
+        {translation: [1.2, -0.4, 0], axis: [1, 1, 1].map(v => v / Math.sqrt(3)), angle: 2 * Math.PI / 3},
+        {translation: [0, 0, 0], axis: [0, 0, 1], angle: Math.PI}
+    ];
+    for (const row of made) {
         const t = row.translation;
         const frame = frameOfRow({tx: t[0], ty: t[1], tz: t[2], axis: row.axis, angle: row.angle});
-        const a = lddToLdraw(bone, row);
-        const b = lddToLdraw(bone, rowOfFrame(frame));
-        assert.ok(near(a.rotation, b.rotation, 1e-5) && near(a.position, b.position, 1e-3), design);
+        const x = lddToLdraw(bone, row);
+        const y = lddToLdraw(bone, rowOfFrame(frame));
+        assert.ok(near(x.rotation, y.rotation, 1e-5) && near(x.position, y.position, 1e-3), JSON.stringify(row));
     }
 });
 
@@ -87,16 +93,16 @@ test('collidersBottom: the lowest collider corner, rotated colliders included', 
 test('evaluator on a hand-made mapping file: agreement modulo symmetry, and each kind of disagreement', () => {
     // Rows worked out by hand from the vendored LDraw files (static/ldraw/parts), not taken from ldraw.xml:
     //  3001 (brick 2 x 4: studs x ∈ {±10, ±30}, z = ±10, top y = 0, underside y = 24): origin at the
-    //       −x −z cell's bottom (−30, 24, −10), LDraw's yaw → t = F·o/25 = (−1.2, −0.96, 0.4).      agree
-    //  4519 (axle 3, along LDraw x from −30 to 30): origin at the +x end with LDD z = +x (a quarter turn
-    //       about y). The rule picks the −x end with LDD z = −x; the axle's half turn about y maps one
-    //       onto the other.                                                                      agree
+    //       +x +z cell's bottom (30, 24, 10), turned half about y → t = F·o/25 = (1.2, −0.96, −0.4). The
+    //       rule picks the −x −z cell unturned; the brick's half turn about y maps one onto the other.  agree
+    //  4519 (axle 3, along LDraw x from −30 to 30): origin at the −x end with LDD z = −x (a quarter turn
+    //       the other way about y), t = (−1.2, 0, 0) — what the rule picks.                          agree
     //  3005 (brick 1 x 1) with its origin one stud (0.8) off along x.                       translation
     //  3004 (brick 1 x 2, along LDraw x) turned a quarter about y: not a symmetry of it.        rotation
     //  9999x.dat: no such LDraw part.                                                     not-in-library
     const xml = `<LDrawMapping>
-        <Transformation ldraw="3001.dat" tx="-1.2" ty="-0.96" tz="0.4" ax="1" ay="0" az="0" angle="0" />
-        <Transformation ldraw="4519.dat" tx="1.2" ty="0" tz="0" ax="0" ay="1" az="0" angle="1.570796" />
+        <Transformation ldraw="3001.dat" tx="1.2" ty="-0.96" tz="-0.4" ax="0" ay="1" az="0" angle="3.141593" />
+        <Transformation ldraw="4519.dat" tx="-1.2" ty="0" tz="0" ax="0" ay="1" az="0" angle="-1.570796" />
         <Transformation ldraw="3005.dat" tx="0.8" ty="-0.96" tz="0" ax="1" ay="0" az="0" angle="0" />
         <Transformation ldraw="3004.dat" tx="-0.4" ty="-0.96" tz="0" ax="0" ay="1" az="0" angle="1.570796" />
         <Transformation ldraw="9999x.dat" tx="0" ty="0" tz="0" ax="1" ay="0" az="0" angle="0" />
@@ -117,12 +123,12 @@ test('evaluator on a hand-made mapping file: agreement modulo symmetry, and each
 });
 
 test('compareFrames: a symmetry reconciles two frames only when it maps the axes AND the origin', () => {
-    const truth = {o: [30, 0, 0], M: [0, 0, 1, 0, -1, 0, 1, 0, 0]};
-    const flipped = {o: [-30, 0, 0], M: [0, 0, -1, 0, -1, 0, -1, 0, 0]};
+    const truth = {o: [0, 0, 20], M: [1, 0, 0, 0, -1, 0, 0, 0, -1]};
+    const flipped = {o: [0, 0, -20], M: [-1, 0, 0, 0, -1, 0, 0, 0, 1]};
     const halfTurnY = {m: [-1, 0, 0, 0, 1, 0, 0, 0, -1], t: [0, 0, 0]};
     assert.equal(compareFrames(flipped, truth, symmetriesOf({symmetries: [halfTurnY], axial: [], anchor: [0, 0, 0]})).agree, true);
     assert.equal(compareFrames(flipped, truth, symmetriesOf({symmetries: [], axial: [], anchor: [0, 0, 0]})).rotation, false);
-    const shifted = {o: [-29, 0, 0], M: flipped.M};
+    const shifted = {o: [0, 0, -19], M: flipped.M};
     const c = compareFrames(shifted, truth, symmetriesOf({symmetries: [halfTurnY], axial: [], anchor: [0, 0, 0]}), 0.5);
     assert.equal(c.agree, false);
     assert.equal(c.rotation, true);
@@ -141,8 +147,7 @@ ${parts.map(([design, bone], i) => `<Brick refID="${i}" designID="${design}"><Pa
 const placed = (p, c) => [0, 1, 2].map(r => p.rotation[3 * r] * c[0] + p.rotation[3 * r + 1] * c[1] + p.rotation[3 * r + 2] * c[2] + p.position[r]);
 const ofType = (p, type) => CATALOG.get(p.part).connectors.filter(c => c.type === type).map(c => placed(p, c.position));
 
-test('.lxf: bricks outside the recorded table load and stack — every anti-stud lands on a stud', () => {
-    assert.ok(!LDD_PARTS.has('3001') && !LDD_PARTS.has('3004'), 'the test needs designs outside ldd-parts.js');
+test('.lxf: bricks load and stack — every anti-stud lands on a stud', () => {
     // An LDD stack, written by hand in LDD's own terms (y up, 1 unit = 25 LDU, a brick is 0.96 high,
     // a stud pitch 0.8): a 2 x 4 brick on the ground; a 1 x 2 brick on top of it, one pitch along x
     // and one along −z; a second 1 x 2 turned a quarter about y, three pitches along x.

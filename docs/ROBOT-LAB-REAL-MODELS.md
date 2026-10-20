@@ -196,5 +196,6 @@ radarcar 235, brickmixer 544, seesaw 107, sorter3 565, steercar 340, panobot 241
 turntable 107, skyshooter 245; every one has its motors (1–3) turning, none NaN, unknown parts
 0–6, loose 0 except brickmixer (44) and panobot (42).
 
-**LDD `.lxf`**: see ROBOT-LAB-LDD-FRAMES.md "Snap to connections, built": 13 files, the parts
-refused fall from 34–264 to 8–40 per file; 12 of 13 run with their EV3 motors turning.
+**LDD `.lxf`**: see ROBOT-LAB-LDD-FRAMES.md "Snap to connections, built": no per-part table any more
+(frames from geometry where safe, else from the model's connections); 13 files, the parts refused
+fall from 34–264 to 10–40 per file, and all 13 run with their motors turning (1–4 each).

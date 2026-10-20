@@ -12,9 +12,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {axisAngle, lddToLdraw, parseLxfml, lddCataloguePart, LDD_ABSORBED} from '../overlay/scratch-gui/src/lib/bw-sim/model/lxf-model.js';
-import {LDD_PARTS} from '../overlay/scratch-gui/src/lib/bw-sim/model/ldd-parts.js';
-import {rowOfFrame} from '../overlay/scratch-gui/src/lib/bw-sim/model/ldd-frame.js';
+import {axisAngle, parseLxfml, lddCataloguePart} from '../overlay/scratch-gui/src/lib/bw-sim/model/lxf-model.js';
+import {rowOfFrame, importFrame, technicShape} from '../overlay/scratch-gui/src/lib/bw-sim/model/ldd-frame.js';
 import {AXIS_TURNS, candidateFrames} from '../overlay/scratch-gui/src/lib/bw-sim/model/ldd-snap.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -47,15 +46,16 @@ ${parts.map(([design, bone], i) => `<Brick refID="${i}" designID="${design}"><Pa
 // turned onto y, centred 10 above the beams: half in a beam's hole, half standing out (y −30…−10).
 const ROT_Y = [0, 0, 1, 0, 1, 0, -1, 0, 0];
 const PIN_UP = [0, -1, 0, 1, 0, 0, 0, 0, 1];
-const BEAM = LDD_PARTS.get('32524');
-const PIN = LDD_PARTS.get('2780');
+const BEAM = rowOfFrame(importFrame(CATALOG.get('32524.dat')));
+const PIN = rowOfFrame(importFrame(CATALOG.get('2780.dat')));
 const PINS = [[0, -20, -60], [0, -20, -20], [40, -20, 20]];
 // The L-beam (32526: holes at local (0,0,0…80) and (20|40,0,80), axis y) on the pins: unturned, 20 up,
 // its hole (0,0,0) on the first pin, (0,0,40) on the second, (40,0,80) on the third.
 const L_POSE = {rotation: I, position: [0, -20, -60]};
 
 test('a design with no recorded frame is placed where its connectors meet the model\'s', () => {
-    assert.ok(!LDD_PARTS.has('32526'), 'the test needs a design outside ldd-parts.js');
+    assert.equal(technicShape(CATALOG.get('32526.dat')), null, 'the test needs a design not placed by its shape');
+    assert.equal(importFrame(CATALOG.get('32526.dat')), null);
     // The L-beam's LDD frame, as far as the importer is concerned unknown: its origin at the hole (40, 0, 80),
     // its axes LDraw's turned a quarter about x.
     const secret = rowOfFrame({o: [40, 0, 80], M: mul(F, [1, 0, 0, 0, 0, -1, 0, 1, 0])});
@@ -72,8 +72,8 @@ test('a design with no recorded frame is placed where its connectors meet the mo
     const l = model.parts[5];
     assert.deepEqual(l.rotation, L_POSE.rotation, 'the L-beam unturned');
     assert.deepEqual(l.position, L_POSE.position, 'the L-beam on the pins');
-    assert.deepEqual(refusals.map(r => [r.code, r.design]), [['lxf-snapped-frame', '32526']]);
-    assert.match(refusals[0].message, /3 connections over 1 part/);
+    assert.deepEqual(refusals.filter(r => r.code !== 'lxf-derived-frame').map(r => [r.code, r.design]), [['lxf-snapped-frame', '32526']]);
+    assert.match(refusals.find(r => r.code === 'lxf-snapped-frame').message, /3 connections over 1 part/);
 });
 
 test('without the third pin the L-beam could lie either way round: its long arm is on the pins all the same', () => {
@@ -89,22 +89,19 @@ test('without the third pin the L-beam could lie either way round: its long arm 
     // to LDD's habits, ldd-snap.js candidateFrames).
     const holes = CATALOG.get('32526.dat').connectors.slice(0, 5).map(c => mulVec(l.rotation, c.position).map((v, i) => v + l.position[i]));
     for (const p of [[0, -20, -60], [0, -20, -20]]) assert.ok(holes.some(h => h.every((v, i) => Math.abs(v - p[i]) < 1e-6)), `a hole on the pin at ${p}`);
-    assert.deepEqual(refusals.map(r => [r.code, r.design]), [['lxf-snapped-frame', '32526']]);
+    assert.deepEqual(refusals.filter(r => r.code !== 'lxf-derived-frame').map(r => [r.code, r.design]), [['lxf-snapped-frame', '32526']]);
 });
 
-test('the candidates: 24 turns, origins where LDD puts them; EV3 motor bodies are the catalogue motors', () => {
+test('the candidates: 24 turns, origins where LDD puts them; a design number no part has is refused', () => {
     assert.equal(AXIS_TURNS.length, 24);
     const frames = candidateFrames(CATALOG.get('2780.dat'));
     // LDraw's own frame first (a tie goes to it), then 24 turns of: the origin, the pin's centre, its two ends.
     assert.equal(frames.length, 1 + 24 * 3);
     assert.deepEqual(frames[0], {o: [0, 0, 0], M: F, prior: 1});
-    assert.equal(lddCataloguePart('74042', CATALOG), '95658.dat');
-    assert.equal(lddCataloguePart('74043', CATALOG), '99455.dat');
     assert.equal(lddCataloguePart('32526', CATALOG), '32526.dat');
     assert.equal(lddCataloguePart('60410', CATALOG), null);
     const {refusals} = parseLxfml(lxfml([['60410', boneFor(PIN, I, [0, 0, 0])]]), {colours: new Map([[21, 4]]), catalog: CATALOG});
-    assert.deepEqual(refusals.map(r => [r.code, r.severity]), [['lxf-absorbed', 'warning']]);
-    assert.ok(LDD_ABSORBED['59158'] && LDD_ABSORBED['99386']);
+    assert.deepEqual(refusals.map(r => [r.code, r.severity || 'error']), [['lxf-unknown-design', 'error']]);
 });
 
 test('an imported LDD model is a model from elsewhere: not written as ours, so its motors are plugged in', async () => {
@@ -114,4 +111,26 @@ test('an imported LDD model is a model from elsewhere: not written as ours, so i
     const {text} = await openModelFile('robot.lxf', new TextEncoder().encode(xml), {ldconfig, catalog: CATALOG});
     assert.doesNotMatch(text, /^0 Author: Brickwright\s*$/m);
     assert.match(text, /^0 Author: LEGO Digital Designer model \(imported\)\r?$/m);
+});
+
+test('an element LDD builds of several parts is placed whole, as the element\'s design (an EV3 motor: body and hub)', () => {
+    // LDD writes an EV3 motor as one <Brick> (the element, LDraw's part) holding two <Part>s, a body and a hub,
+    // whose design numbers LDraw does not have. Here: the L-beam's element 32526 made of two made-up parts.
+    const secret = rowOfFrame({o: [40, 0, 80], M: mul(F, [1, 0, 0, 0, 0, -1, 0, 1, 0])});
+    const parts = [
+        ['32524', boneFor(BEAM, I, [0, 0, 0])],
+        ['32524', boneFor(BEAM, ROT_Y, [100, 0, 20])],
+        ...PINS.map(p => ['2780', boneFor(PIN, PIN_UP, [p[0], -10, p[2]])])
+    ];
+    const bricks = parts.map(([design, bone], i) => `<Brick refID="${i}" designID="${design}"><Part refID="${i}" designID="${design}" materials="21"><Bone refID="${i}" transformation="${bone}"/></Part></Brick>`);
+    bricks.push(`<Brick refID="9" designID="32526"><Part refID="9" designID="90001" materials="21"><Bone refID="9" transformation="${
+        boneFor(secret, L_POSE.rotation, L_POSE.position)}"/></Part><Part refID="10" designID="90002" materials="21"><Bone refID="10" transformation="${
+        boneFor(secret, L_POSE.rotation, L_POSE.position)}"/></Part></Brick>`);
+    const xml = `<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n<LXFML versionMajor="5" versionMinor="0" name="el"><Bricks>\n${bricks.join('\n')}\n</Bricks></LXFML>`;
+    const {model, refusals} = parseLxfml(xml, {colours: new Map([[21, 4]]), catalog: CATALOG});
+    const l = model.parts.find(p => p.part === '32526.dat');
+    assert.ok(l, 'the element is placed as its own design');
+    assert.deepEqual([l.rotation, l.position], [L_POSE.rotation, L_POSE.position]);
+    assert.deepEqual(refusals.filter(r => r.code !== 'lxf-derived-frame').map(r => [r.code, r.design]),
+        [['lxf-part-of-element', '90002'], ['lxf-snapped-frame', '32526']]);
 });

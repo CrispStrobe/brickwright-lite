@@ -6,17 +6,14 @@
 // runs it), so the few elements it needs are read with a small tag scanner.
 //
 // What is read: LXFML version 5 (LDD 4.x), every <Part> inside <Bricks> with
-// its designID, first material and first <Bone transformation="…">. A design in
-// model/ldd-parts.js's table is placed with its recorded frame. Any other design
-// whose number is a catalogue part (`<designID>.dat`) and whose frame the
-// geometry rule of model/ldd-frame.js derives with confidence (a stud-grid part:
-// brick, plate, tile, slope — docs/ROBOT-LAB-LDD-FRAMES.md) is placed with that
-// derived frame and a warning `lxf-derived-frame`. Any other design that is a catalogue part
-// (its own number, or an EV3 body LDraw draws as part of an assembly: LDD_ASSEMBLIES) is placed
+// its designID, first material and first <Bone transformation="…">. A design that is
+// a catalogue part (`<designID>.dat`) whose frame the geometry rules of model/ldd-frame.js
+// derive with confidence (importFrame: a stud-grid part — brick, plate, tile, slope — or a simple
+// Technic shape: a pin, an axle, a bush, a straight beam; docs/ROBOT-LAB-LDD-FRAMES.md) is placed
+// with that derived frame and a warning `lxf-derived-frame`. Any other catalogue part is placed
 // where its connectors meet the parts already placed (model/ldd-snap.js "snap to connections",
 // warning `lxf-snapped-frame`), or refused as `lxf-unplaced-design` when nothing tells where.
-// A piece LDD keeps apart from its catalogue part, or a cable plug, is left out with a note
-// (`lxf-absorbed`, LDD_ABSORBED). Every other part
+// No per-part frame is recorded (model/ldd-parts.js). Every other part
 // is a refusal with code `lxf-unknown-design` naming the design number; a material LDraw's
 // colour table has no LEGO number for keeps the part in the catalog default
 // colour and says so (`lxf-unknown-material`); a mirrored or stretched bone is
@@ -24,8 +21,8 @@
 // instructions are LDD-only and are not read.
 
 import {det3} from '../contracts.js';
-import {LDD_PARTS, LDD_UNIT_LDU} from './ldd-parts.js';
-import {lddFrameOf, rowOfFrame, DERIVED_RULES} from './ldd-frame.js';
+import {LDD_UNIT_LDU} from './ldd-parts.js';
+import {lddFrameOf, rowOfFrame, importFrame} from './ldd-frame.js';
 import {Anchors, placedConnectors, snapFrames} from './ldd-snap.js';
 import {BUILTIN_KINDS} from '../kinds/index.js';
 import {MAX_COORDINATE} from './ldraw-model.js';
@@ -107,8 +104,8 @@ export const lddToLdraw = (bone, row) => {
 };
 
 /**
- * A design outside the table: the catalogue part of the same number, when the geometry rule
- * derives its LDD frame with a rule trusted for import (ldd-frame.js DERIVED_RULES).
+ * A design placed by its shape: the catalogue part of the same number, when the geometry rule
+ * derives its LDD frame with a rule trusted for import (ldd-frame.js importFrame).
  * @returns {{part: string, translation: number[], rotation: number[]}|null}
  */
 const derivedRow = (design, catalog) => {
@@ -116,43 +113,21 @@ const derivedRow = (design, catalog) => {
     const part = `${design.toLowerCase()}.dat`;
     const meta = catalog.get(part);
     if (!meta) return null;
-    const frame = lddFrameOf(meta);
-    if (!frame || !DERIVED_RULES.has(frame.rule)) return null;
-    return {part, ...rowOfFrame(frame)};
+    const frame = importFrame(meta);
+    return frame ? {part, ...rowOfFrame(frame)} : null;
 };
 
-/**
- * LDD designs that are a catalogue part LDraw draws as an assembly: LDD places the assembly's body,
- * and the LDraw part puts that body at its own origin unturned (LDD's mapping file ldraw.xml names
- * the body: 74042 is 99550c01, the EV3 large motor's case, in 95658; 74043 is 99535c01, the EV3 medium
- * motor's body, in 99455; 74665 is 99385c01, the EV3 touch sensor's body, in 95648 — names only). Their
- * LDD frames are worked out from the model's connections (model/ldd-snap.js).
- */
-export const LDD_ASSEMBLIES = Object.freeze({'74042': '95658.dat', '74043': '99455.dat', '74665': '95648.dat'});
-
-/**
- * LDD designs that are a piece of a catalogue part LDD keeps apart, or a cable: left out, with a note
- * (ldraw.xml names them 99543, the EV3 medium motor's output hub — the catalogue's 99455 has it; 99386,
- * the EV3 touch sensor's button — in 95648; 933c01, a MINDSTORMS cable's plug: cables are drawn, never
- * simulated, and LDD gives only their plugs).
- */
-export const LDD_ABSORBED = Object.freeze({
-    '59158': 'the EV3 medium motor\'s output hub, part of the motor',
-    '99386': 'the EV3 touch sensor\'s button, part of the sensor',
-    '60410': 'a MINDSTORMS cable plug: cables are not simulated'
-});
-
-/** Every design ID an LXFML places (for a caller that loads those parts into the catalogue first). */
+/** Every design ID an LXFML names, of its parts and its elements (for a caller that loads those parts into the catalogue first). */
 export const lxfDesigns = xml => {
     const out = new Set();
-    for (const m of String(xml).matchAll(/<Part\b[^>]*\bdesignID\s*=\s*["']([^"']+)["']/g)) out.add(m[1].trim());
+    for (const m of String(xml).matchAll(/<(?:Part|Brick)\b[^>]*\bdesignID\s*=\s*["']([^"']+)["']/g)) out.add(m[1].trim());
     return [...out];
 };
 
 /** The catalogue part an LDD design is, when it is one with no recorded row (null: none). */
 export const lddCataloguePart = (design, catalog) => {
     if (!catalog || !/^[0-9A-Za-z]+$/.test(design)) return null;
-    const part = LDD_ASSEMBLIES[design] || `${design.toLowerCase()}.dat`;
+    const part = `${design.toLowerCase()}.dat`;
     return catalog.get(part) ? part : null;
 };
 
@@ -171,18 +146,26 @@ export const parseLxfml = (xml, {colours, catalog}) => {
     if (!root || root.name !== 'LXFML') throw new LxfError('lxf-unreadable', 'not an LXFML document');
     const major = Number(root.attrs.versionMajor);
     if (major !== 5) throw new LxfError('lxf-version', `LXFML version ${root.attrs.versionMajor || '?'} is not supported (only version 5, LDD 4)`);
-    // Every <Part> of <Bricks>, in file order: {designID, materials, bone}.
+    // Every <Part> of <Bricks>, in file order: {designID, materials, bone, brick} — brick: the <Brick> (LEGO's
+    // element) around it, {designID, parts: [records]}; an element LDD builds of several parts (an EV3 motor:
+    // its body and its hub) names the element's design, the one LDraw has.
     const records = [];
     let inBricks = false;
     let part = null;
+    let brick = null;
     for (const t of list) {
         if (t.name === 'Bricks') {
             inBricks = t.open && !t.close;
             continue;
         }
         if (!inBricks) continue;
+        if (t.name === 'Brick') {
+            brick = t.open && !t.close ? {designID: String(t.attrs.designID || '').trim(), parts: []} : null;
+            continue;
+        }
         if (t.name === 'Part' && t.open) {
-            part = {designID: t.attrs.designID, materials: t.attrs.materials, bone: null};
+            part = {designID: t.attrs.designID, materials: t.attrs.materials, bone: null, brick};
+            if (brick) brick.parts.push(part);
             if (t.close) { records.push(part); part = null; }
         } else if (t.name === 'Bone' && t.open && part && part.bone === null) {
             part.bone = t.attrs.transformation || '';
@@ -210,15 +193,21 @@ export const parseLxfml = (xml, {colours, catalog}) => {
         return true;
     };
     records.forEach((rec, i) => {
-        const design = String(rec.designID || '').trim();
-        if (LDD_ABSORBED[design]) {
-            refusals.push({severity: 'warning', code: 'lxf-absorbed', design, message: `LDD design ${design} is ${LDD_ABSORBED[design]}; it is left out`});
-            return;
+        let design = String(rec.designID || '').trim();
+        // An element LDD builds of several parts whose own designs no catalogue part has, but the element's design
+        // does: its first part (the body) stands for the element, placed as the element's part; the rest are in it.
+        const el = rec.brick;
+        if (el && el.parts.length > 1 && el.designID && catalog && !lddCataloguePart(design, catalog) && lddCataloguePart(el.designID, catalog)) {
+            if (el.parts[0] !== rec) {
+                refusals.push({severity: 'warning', code: 'lxf-part-of-element', design,
+                    message: `LDD design ${design} is a piece of element ${el.designID}, placed whole; it is left out`});
+                return;
+            }
+            design = el.designID;
         }
-        const row = LDD_PARTS.get(design);
-        const derived = row ? null : derivedRow(design, catalog);
-        const catalogued = row || derived ? null : lddCataloguePart(design, catalog);
-        if (!row && !derived && !catalogued) {
+        const derived = derivedRow(design, catalog);
+        const catalogued = derived ? null : lddCataloguePart(design, catalog);
+        if (!derived && !catalogued) {
             refusals.push({code: 'lxf-unknown-design', design, message: `LDD design ${design || '?'} has no LDraw part in the Robot Lab`});
             return;
         }
@@ -236,12 +225,10 @@ export const parseLxfml = (xml, {colours, catalog}) => {
                 message: `LDD design ${design}: material ${rec.materials || '?'} has no LDraw colour; it is light bluish grey`});
         }
         const item = {design, bone, color};
-        if (row) {
-            put(i, item, row.part, row);
-        } else if (derived) {
+        if (derived) {
             if (put(i, item, derived.part, derived)) {
                 refusals.push({severity: 'warning', code: 'lxf-derived-frame', design,
-                    message: `LDD design ${design}: placed as ${derived.part} with its LDD frame worked out from the part's studs (not from a recorded row)`});
+                    message: `LDD design ${design}: placed as ${derived.part} with its LDD frame worked out from the part's shape`});
             }
         } else {
             if (!pending.has(design)) pending.set(design, {meta: catalog.get(catalogued), part: catalogued, items: []});

@@ -41,7 +41,7 @@
 
 import JSZip from 'jszip';
 import {serializeModel} from './ldraw-model.js';
-import {LxfError, parseLxfml, lxfDesigns, LDD_ASSEMBLIES} from './lxf-model.js';
+import {LxfError, parseLxfml, lxfDesigns} from './lxf-model.js';
 import {lddColours} from './ldd-parts.js';
 import {LcdError, leoCadToLdraw} from './lcd-model.js';
 
@@ -233,7 +233,7 @@ export const readLxf = async (bytes, {ldconfig, catalog, prepareCatalog, name = 
     if (prepareCatalog && catalog) {
         const designs = lxfDesigns(xml).filter(d => /^[0-9A-Za-z]+$/.test(d));
         try {
-            await prepareCatalog(designs.map(d => LDD_ASSEMBLIES[d] || `${d.toLowerCase()}.dat`));
+            await prepareCatalog(designs.map(d => `${d.toLowerCase()}.dat`));
         } catch (_) { /* offline: the designs the catalogue lacks are refused by name */ }
     }
     let parsed;
