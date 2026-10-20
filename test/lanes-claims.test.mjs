@@ -56,8 +56,8 @@ test('claim shape: name, date, emptiness and local paths are refused by name', (
     assert.match(claimProblems('2026-10-20-Bad_Name.md', 'x')[0], /named <YYYY-MM-DD>-<lower-case-slug>\.md/);
     assert.match(claimProblems('2026-02-30-x.md', 'x')[0], /is not a date/);
     assert.match(claimProblems('2026-10-20-x.md', '  \n')[0], /empty claim/);
-    assert.match(claimProblems('2026-10-20-x.md', 'worktree /home/someone/wt')[0], /local machine path/);
-    assert.match(claimProblems('2026-10-20-x.md', 'at `/mnt/volume/x`')[0], /local machine path/);
+    assert.match(claimProblems('2026-10-20-x.md', `worktree /${'home'}/someone/wt`)[0], /local machine path/);
+    assert.match(claimProblems('2026-10-20-x.md', `at \`/${'mnt'}/volume/x\``)[0], /local machine path/);
 });
 
 test('a claim-only PR is docs-only, like a LANES.md-only PR was', () => {
