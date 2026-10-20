@@ -536,7 +536,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         };
     };
     const refreshPorts = () => insight.setPorts(portItems(editor.model, catalogMap).filter(item => !hidden.has(item.id))
-        .map(item => ({...item, label: portLabel(item), anchor: partCentre(item.id)})));
+        .map(item => ({...item, label: portLabel(item), anchor: partCentre(item.id), hubAnchor: item.hub && !hidden.has(item.hub) ? partCentre(item.hub) : null})));
     const fixed = p => (p ? () => new Vector3(...p) : () => null);
     const setMotion = ({joints = [], gears = [], tints = null} = {}) => {
         insight.setMotion({

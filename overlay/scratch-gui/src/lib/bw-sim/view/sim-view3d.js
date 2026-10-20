@@ -275,7 +275,7 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
 
     /** Port badges: items {id, port, label} (motors and sensors). */
     const setPorts = items => {
-        insight.setPorts(items.map(item => ({...item, anchor: partCentre(item.id)})));
+        insight.setPorts(items.map(item => ({...item, anchor: partCentre(item.id), hubAnchor: item.hub ? partCentre(item.hub) : null})));
         dirty = true;
     };
     /** Hinge axes, gear pairs and body tints from insightOf(runModel, mechanism, …). */

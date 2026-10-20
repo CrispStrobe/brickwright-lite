@@ -218,7 +218,7 @@ This is cursor-driven. A new pure export, `snapAtPointer(model, catalog, held, r
   - ✅ Select connected (Ctrl+click, and a button in the properties panel's Group section);
   - ◐ the touch offset and button cluster (the 60 px lift applies to a part from the palette, not to dragging a placed part: §7);
   - ✅ keyboard-only placement with aria-live.
-- **P3:** ☐ the mouse preset, ☐ coach marks, ☐ Ctrl-glide for axles in holes, ✅ a Studio-style hinge tool (§10), ◐ flexible parts (chains and treads: §11; rubber bands: §12; cables to come).
+- **P3:** ☐ the mouse preset, ☐ coach marks, ☐ Ctrl-glide for axles in holes, ✅ a Studio-style hinge tool (§10), ✅ flexible parts (chains and treads: §11; rubber bands: §12; cables: §13).
 
 ## 5. Browser-gate acceptance tests
 
@@ -407,3 +407,16 @@ The starting values from §6 were kept: every gate reading lies well inside them
 - Tests: `test/bw-sim-belt.test.mjs` (circles, band choice and refusals, the model and LDraw, the
   band drive at 1/3 and the spring pulling an arm in the real core); gate step 5 of
   `scripts/lib/sim-lab-chain-gate.mjs` (`--part=editor`).
+
+## 13. Cables (2026-10-20)
+
+- With the port labels ("Show ports", on by default), Build and Simulate draw a dark cable from each
+  plugged-in motor and sensor to the hub its port belongs to: the hub it names (models with several
+  hubs), else the model's first hub (`mech/insight.js` `portItems` → `hub`; `view/insight-layer.js`).
+- It is a diagram, not a part: it arches over the model from part centre to part centre (so it shows
+  between parts that touch), because the parts carry no
+  socket positions, so it says WHICH hub a device is on, not where its plug is. It does not collide,
+  weigh or pull.
+- Gate: the insight gate (`--part=ui`) checks a cable per motor of the driving base, none while
+  "Show ports" is off, and the same two in Build; `test/bw-sim-model-insight.test.mjs` the hub
+  each port item names.
