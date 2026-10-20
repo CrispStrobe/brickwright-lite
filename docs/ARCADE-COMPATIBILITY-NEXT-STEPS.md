@@ -22,22 +22,31 @@ current outcomes remain unobserved.** The historical raw184 result remains
 remains 29 original-compiler passes / 12 failures. Never subtract a component
 test or an unfinished prefix from these counts.
 
-### Newly reproduced public-runtime blocker
+### Arrays runtime: coordinator and replacement lifecycle
 
-Both new authored Code journeys fail during their original runtime execution:
-`Array primitive loan requires its current operation`. Their generated projects
-request only the Arrays extension. Arrays currently depends on an exception
-coordinator initialized by Arcade; the native component fixture initialized that
-coordinator explicitly and therefore missed this normal project configuration.
-Code regeneration and export/reimport were not reached in these two tests.
+Two authored Code journeys reproduced an Arrays-only project failure: the
+exception coordinator was initialized only when Arcade was present. A shared
+private coordinator is implemented as a candidate. A fresh normal installation
+passed its independent saved-output audit. The complete 64-test execution then
+reported **61 passes and three failures**, with no skipped tests or resource
+limit failure. This is not a completed qualification.
 
-Implement one private runtime coordinator with an exclusive Arcade capability
-claim. Arrays initialization must establish its own admitted error-routing
-lifecycle. Preserve either extension load order, project replacement, Stop/Start,
-disposal, original Error identity and the existing operation ownership checks.
-Run both complete public journeys and all existing native controls before
-claiming this gap closed. Named JSON/2D allocation is a separate source candidate
-and still needs genuine execution and supplier adoption.
+Two failures are fixture defects: a literal assignment stores text rather than
+a Number, and a nested-call fixture uses an opcode outside the actual callable
+protocol. Correct these fixtures without changing the runtime rules. The third
+failure is real: after saving and loading an SB3, a named factory rejects the
+expired Array binding it is about to replace. Both raw reload and restored
+project-metadata runs reproduce the same error while an unrelated script keeps
+running. Keep the original failing execution and its captures.
+
+The repair must distinguish discarding an old binding from reading it. A
+replacement notice must grant no authority to the discarded value. Preserve
+current-operation checks for reads, aliases and writes, and verify the actual
+new registry binding before granting native allocation eligibility. Do not clear
+the entire registry or admit stale values. Named JSON allocation and the
+coordinator are composed in a source candidate; their combined supplier adoption,
+fresh installation and complete runtime/Code/export/reload qualification remain
+required.
 
 Hosted delivery checks also exposed a stale fetch-policy census and missing
 owned temporary-directory setup for six catalogue fixture tests. The census
@@ -48,8 +57,11 @@ full-CI requests while these repairs are in progress.
 
 ### Hosted failure families under repair
 
-The observed delivery unit shard contains20 ordinary failures, separate from
-16 declared TODOs. These are CI test results, not the historical36 corpus
+One observed delivery unit shard contains20 ordinary failures, separate from
+16 declared TODOs. Completed reports from the other three shards additionally
+expose obsolete carrier-source readers, mock runtime fixtures, off-thread Array
+observations and source/adoption checks. Preserve their individual original
+failures and classify their causes before changing tests. These are CI test results, not the historical36 corpus
 partials. Preserve the original reports and rerun each complete affected module.
 
 | Family | Observed failures | Required repair and acceptance |
@@ -72,8 +84,9 @@ make the earlier failed run successful.
    [the allocation contract](ARCADE-NAMED-ARRAY-ALLOCATION.md). The original
    connected createEmpty -> namedReference -> text program fails. The candidate
    adds host-created allocation identity and eight real-VM regression groups.
-   Supplier [PR #56](https://github.com/CrispStrobe/extensions/pull/56) and its
-   atomic local pin proposal remain separate from main adoption. The fresh
+   Supplier [PR #56](https://github.com/CrispStrobe/extensions/pull/56) is merged
+   after all seven checks passed. Its atomic Lite pin proposal remains separate
+   from Lite main adoption. The fresh
    normal installation and all57 native controls now pass independent saved-data
    checks, with zero skips. Genuine named-factory Code/export journeys remain
    required; component execution alone is insufficient.
