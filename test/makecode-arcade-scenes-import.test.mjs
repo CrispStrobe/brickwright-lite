@@ -58,9 +58,9 @@ test('scene-aware updates, intervals and buttons are explicit registrations rath
 test('destroyed and overlap callbacks preserve typed mutable sprite arguments',()=>{
     const result=arcadeToPseudocode(setup+'game.pushScene();sprites.onDestroyed(SpriteKind.Player,function(sprite){sprite.x=7});sprites.onOverlap(SpriteKind.Player,SpriteKind.Food,function(sprite,other){sprite=actor;other.y=sprite.x});game.popScene()');
     assert.deepEqual(result.unsupported,[]);
-    assert.match(result.code,/arcade register destroyed kind "Player" as "__bwKindDestroyed1"/);
+    assert.match(result.code,/arcade register destroyed kind \(arcade sprite kind value "Player"\) as "__bwKindDestroyed1"/);
     assert.match(result.code,/WHEN arcade destroyed kind handler "__bwKindDestroyed1" runs:/);
-    assert.match(result.code,/arcade register overlap kind "Player" with kind "Food" as "__bwOverlap1"/);
+    assert.match(result.code,/arcade register overlap kind \(arcade sprite kind value "Player"\) with kind \(arcade sprite kind value "Food"\) as "__bwOverlap1"/);
     assert.match(result.code,/arcade set local sprite to arcade event first/);
     assert.match(result.code,/arcade set local other to arcade event second/);
     assert.match(result.code,/arcade set local sprite to \(actor\)/);
@@ -94,16 +94,30 @@ test('all button enum selectors retain actual PXT numeric values',()=>{
     assert.ok(bad.unsupported.some(note=>note.includes('ControllerButtonEvent.Unknown')));
 });
 
+test('named scene procedures and primitive numeric kinds remain valid event inputs',async()=>{
+    const source='let pushes=0;let destroyed=0;function handler(){pushes++};game.addScenePushHandler(handler);game.pushScene();let kind=7;let hero=sprites.create(img`1`,kind);sprites.onDestroyed(kind,function(sprite){destroyed++;});hero.destroy();';
+    const result=arcadeToPseudocode(source);
+    assert.deepEqual(result.unsupported,[]);
+    assert.match(result.code,/WHEN arcade scene push handler "__bwScenePush1" runs:\n  CALL: \(handler\)/);
+    assert.match(result.code,/arcade register destroyed kind \(kind\)/);
+    const {runProgram}=await import('./helpers/bw-vm.mjs');
+    const run=await runProgram(result.code,{frames:12,uploads:result.costumes,storage:true});
+    const values=Object.fromEntries(run.vm.runtime.targets.flatMap(target=>Object.values(target.variables)).map(value=>[value.name.replace(/^Game_/,''),value.value]));
+    assert.equal(values.pushes,1);
+    assert.equal(values.destroyed,1);
+    assert.deepEqual(run.errors,[]);
+    assert.deepEqual(run.creator.warnings,[]);
+    run.vm.quit();
+});
+
 test('unsupported scene object access, handler identity operations and malformed events retain gaps',()=>{
     for(const [source,api] of [
         ['game.addScenePushHandler(function(oldScene){let saved=oldScene})','addScenePushHandler'],
         ['game.addScenePopHandler(function(oldScene){let saved=oldScene.camera})','addScenePopHandler'],
-        ['function handler(){}game.addScenePushHandler(handler)','addScenePushHandler'],
         ['game.removeScenePushHandler(function(){})','removeScenePushHandler'],
         ['game.pushScene();game.onUpdate(function(extra){})','onUpdate'],
         ['game.pushScene();game.onUpdateInterval(5)','onUpdateInterval'],
         ['game.pushScene();controller.A.onEvent(1,function(extra){})','onEvent'],
-        ['game.pushScene();let kind=0; sprites.onDestroyed(kind,function(sprite){})','onDestroyed'],
         ['game.pushScene();sprites.onOverlap(SpriteKind.Player,SpriteKind.Food,function(a,b,c){})','onOverlap']
     ])assert.ok(arcadeToPseudocode(source).unsupported.some(note=>note.includes(api)),source);
     const object=arcadeToPseudocode('game.pushScene();let saved=game.currentScene();let clock=saved.millis');

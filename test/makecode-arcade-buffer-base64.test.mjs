@@ -1,9 +1,9 @@
+import {createArcadeRuntimeMock} from './helpers/arcade-runtime-mock.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import {createRequire} from 'node:module';
 import {execFileSync} from 'node:child_process';
-import {EventEmitter} from 'node:events';
 import {loadExtensionClass, VM_SRC} from './helpers/bw-extensions.mjs';
 import {runProgram, stepFrames, clearStrayTimers} from './helpers/bw-vm.mjs';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
@@ -12,7 +12,7 @@ const require = createRequire(import.meta.url);
 const BWValues = require(path.join(VM_SRC,'util/bw-values.js'));
 const {PxtBuffer, fromBase64, fromHex, literal, MAX_BUFFER_BYTES} = require('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/buffer.js');
 const fixture = () => {
-    const runtime = new EventEmitter(), errors = []; runtime.startHats = () => [];
+    const runtime = createArcadeRuntimeMock(), errors = [];
     runtime.on('BLOCKS_ERROR', error => errors.push(error));
     return {runtime, errors, native: new (loadExtensionClass('arcade'))(runtime)};
 };

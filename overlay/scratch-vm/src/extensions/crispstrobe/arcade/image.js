@@ -2,14 +2,18 @@
 // participates in collisions only after a nonzero pixel is written.
 module.exports = function imageEngine(palette, initializePxtOperations) {
     const operations = initializePxtOperations();
-    const adapter = image => ({_width: image.width, _height: image.height, data: image.pixels,
-        makeWritable() {}, color: c => Number(c) & 15,
+    const packedCoordinate = value => Math.max(-30000, Math.min(30000, Number(value) | 0));
+    const adapter = image => ({_width: image.width, _height: image.height, _bpp: 4, data: image.pixels,
+        makeWritable() {}, color: c => Number(c) & 255,
+        setPixel(x,y,c) {operations.setPixel(this,packedCoordinate(x),packedCoordinate(y),c);},
         pix: (x, y) => (x | 0) + (y | 0) * image.width,
         inRange: (x, y) => (x | 0) >= 0 && (y | 0) >= 0 && (x | 0) < image.width && (y | 0) < image.height,
         clamp: (x, y) => [Math.max(0, Math.min(image.width - 1, x | 0)), Math.max(0, Math.min(image.height - 1, y | 0))]});
     const draw = (image, operation, ...args) => {
         if (!operations[operation]) return false;
-        operations[operation](adapter(image), ...args.map(value => Number(value) || 0));
+        const numeric=args.map(value => Number(value) || 0);
+        if(operation === 'fillCircle') {numeric[0]=packedCoordinate(numeric[0]);numeric[1]=packedCoordinate(numeric[1]);}
+        operations[operation](adapter(image), ...numeric);
         return true;
     };
     const blit = (image, source, operation, x, y) => {
@@ -145,6 +149,7 @@ module.exports = function imageEngine(palette, initializePxtOperations) {
     const overlapsTwoScaledRotated = (image, x, y, imageSx, imageSy, imageAngle, source, sx, sy, angle) =>
         operations.checkOverlapsTwoScaledRotatedImages(adapter(image), adapter(source),
             collection([x | 0, y | 0, imageSx, imageSy, imageAngle, sx, sy, angle]));
-    return {decode, mutate, scroll, copyFrom, composeFrame, drawLayer, svg, draw, blit, getPixel: (image, x, y) => operations.getPixel(adapter(image), x, y),
+    const equals = (image, other) => operations.equals(adapter(image), other ? adapter(other) : null);
+    return {decode, mutate, scroll, copyFrom, composeFrame, drawLayer, svg, draw, blit, equals, getPixel: (image, x, y) => operations.getPixel(adapter(image), x, y),
         drawScaledRotated, overlapsScaledRotated, overlapsTwoScaledRotated};
 };

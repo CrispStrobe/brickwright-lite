@@ -4,14 +4,16 @@ import {readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {runProgram, projectOpcodes} from './helpers/bw-vm.mjs';
+import {ORIGINAL_SPRITE_KINDS} from './helpers/arcade-original-kind-values.mjs';
+const FIRST_CUSTOM_KIND = Math.max(...Object.values(ORIGINAL_SPRITE_KINDS)) + 1;
 
 test('a pinned onCreated Arcade game imports creation events and callback coordinates', async () => {
     const source = readFileSync(join(import.meta.dirname, 'fixtures/makecode/arcade-created-asteroids.ts'), 'utf8');
     const result = arcadeToPseudocode(source);
-    assert.match(result.code, /arcade register creation kind "Asteroid" as "__bwCreated1"/);
+    assert.match(result.code, /arcade register creation kind \(__bwNamespace_SpriteKind_Asteroid\) as "__bwCreated1"/);
     assert.match(result.code, /WHEN arcade creation handler "__bwCreated1" runs:/);
     assert.match(result.code, /arcade register interval \(1000\) as/);
-    assert.match(result.code, /arcade create template "asteroid" kind "Asteroid"/);
+    assert.match(result.code, /arcade create template "[^"]+" kind \(__bwNamespace_SpriteKind_Asteroid\)/);
     assert.match(result.code, /arcade set [xy] of arcade event first/);
     assert.equal(result.costumes.length, 3, 'the spawn art and both built-in asteroid images arrive');
     assert.match(result.code, /arcade set image of arcade event first to random item of array reference \(asteroids\)/);
@@ -20,6 +22,7 @@ test('a pinned onCreated Arcade game imports creation events and callback coordi
     const run = await runProgram(result.code, {frames: 35, uploads: result.costumes, storage: true});
     assert.deepEqual(run.errors, []);
     const spawned = Object.values(run.vm.runtime.bwArcadeDeviceState.sprites);
+    assert.ok(spawned.every(sprite => sprite.kind === FIRST_CUSTOM_KIND), 'created Asteroid uses the allocated numeric kind');
     assert.ok(spawned.length > 0);
     assert.ok(spawned.every(sprite => sprite.image && sprite.width === sprite.image.width));
 });
@@ -37,7 +40,7 @@ test('onCreated changes the particular spawned handle in the shipped VM', async 
     assert.ok(opcodes.has('arcade_createSprite'));
     assert.ok((run.calls.get('arcade_setSpriteProperty') || 0) >= 2);
     const sprite = Object.values(run.vm.runtime.bwArcadeDeviceState?.sprites || {})
-        .find(value => value.id && value.kind === 'Enemy');
+        .find(value => value.id && value.kind === ORIGINAL_SPRITE_KINDS.Enemy);
     assert.ok(sprite, 'spawned enemy exists');
     assert.equal(sprite.x, 19);
     assert.equal(sprite.vy, 8);
@@ -55,11 +58,11 @@ let count = 0
 for (let i = 0; i < 3; i++) { sprites.create(img\`1\`, SpriteKind.Asteroid) }`;
     const translated = arcadeToPseudocode(source);
     assert.deepEqual(translated.unsupported, []);
-    assert.match(translated.code, /REPEAT 3:\n    set __arcadeCreated to arcade create template/);
+    assert.match(translated.code, /arcade bind sprite kind name "Asteroid" to \(__bwNamespace_SpriteKind_Asteroid\)/);
     const run = await runProgram(translated.code, {frames: 25, uploads: translated.costumes, storage: true});
     assert.deepEqual(run.creator.warnings, []);
     assert.deepEqual(run.errors, []);
     const sprites = Object.values(run.vm.runtime.bwArcadeDeviceState?.sprites || {})
-        .filter(sprite => sprite.id && sprite.kind === 'Asteroid');
+        .filter(sprite => sprite.id && sprite.kind === FIRST_CUSTOM_KIND);
     assert.deepEqual(sprites.map(sprite => sprite.x).sort((a, b) => a - b), [10, 20, 30]);
 });

@@ -35,7 +35,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
-import {ARCADE_DIALECT_OPS} from '../overlay/scratch-gui/src/lib/arcadeDialect.js';
+import {ARCADE_DIALECT_OPS, ARCADE_WORDS} from '../overlay/scratch-gui/src/lib/arcadeDialect.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 
 const corpus = JSON.parse(readFileSync(new URL('./fixtures/makecode/arcade-import-inputs.json', import.meta.url), 'utf8'));
@@ -87,7 +87,28 @@ test('the corpus is what the importer was given by its tests', () => {
     assert.equal(corpus.testFiles.length, 82);
     assert.equal(new Set(corpus.inputs.map(i => i.test)).size, corpus.testFilesTranslating);
     assert.equal(corpus.testFilesTranslating, 68);
-    assert.equal(programs.length, 417);
+    // The 433 inputs are unchanged. Current argument diagnostics distinguish
+    // three formerly identical invalid-call groups (camera, scene counters,
+    // and terrain direction), one additional program per group.
+    assert.equal(programs.length, 421);
+    const splitGroups=[
+        ['let edge=scene.cameraProperty()', 'let edge=scene.cameraProperty(0,1)',
+            'let edge=scene.cameraProperty(CameraProperty.Center)'],
+        ['game.pushScene();let exists=info.hasLife(2)', 'game.pushScene();let exists=info.player3.hasScore(2)'],
+        ['let actor=sprites.create(img`1`,SpriteKind.Player);let x=actor.isHittingTile()',
+            'let actor=sprites.create(img`1`,SpriteKind.Player);let x=actor.isHittingTile(0,1)',
+            'let actor=sprites.create(img`1`,SpriteKind.Player);let x=actor.isHittingTile(CollisionDirection.Center)']
+    ];
+    for(const sources of splitGroups) {
+        const codes=sources.map(source=>{
+            const input=corpus.inputs.find(input=>corpus.sources[input.files]===source);
+            assert.ok(input,'the exact diagnostic fixture remains in the captured corpus');
+            const converted=arcadeToPseudocode(source,input.opts);
+            assert.ok(converted.unsupported.length,'invalid call remains a named refusal');
+            return converted.code;
+        });
+        assert.equal(new Set(codes).size,2,'current diagnostics preserve distinct invalid argument forms');
+    }
     const lines = new Set(programs.flatMap(p => p.code.split('\n').map(l => l.trim()).filter(Boolean)));
     assert.ok(lines.size > 3500, `${lines.size} distinct lines`);
     // Every word family the importer uses is in it (not a corpus of plain Scratch).
@@ -97,14 +118,43 @@ test('the corpus is what the importer was given by its tests', () => {
     }
 });
 
-test('the pinned parser has the Arcade word table (399 opcodes)', () => {
-    // 380 -> 385 with sb3-creator 8472098b (#137 repeat property, #139 font metric, #141 source typeof).
-    // 385 -> 399 with sb3-creator c9be966f (#143 callable words, #146 circle drawing, #147 font values, #148 console inspect).
-    assert.equal(ARCADE_DIALECT_OPS.length, 399);
-    for (const opcode of ['arcade_setPalette', 'arcade_registerInstanceDestroyedHandler',
+test('the pinned parser has the qualified Arcade word table (402 opcodes)', () => {
+    // Canonical compiler adoption 0a63e8db7 adds exactly these three operations
+    // to the previously qualified 399; retain exact spelling checks as well.
+    assert.equal(ARCADE_DIALECT_OPS.length, 402);
+    const qualifiedWords = [
+        {op: 'arcade_declareParameterConstraint', kind: 'command', words: 'declare arcade procedure {PROCEDURE:literal-field} parameter {PARAMETER:literal-field} as {TYPE:Number|Boolean|String|Any}'},
+        {op: 'arcade_throwValue', kind: 'command', words: 'arcade throw {VALUE}'},
+        {op: 'arcade_createOwnedImageSprite', kind: 'reporter', words: 'arcade create owned image {IMAGE} template {TEMPLATE} kind {KIND}'},
+        {op: 'arcade_inspectValue', kind: 'reporter', words: 'arcade inspect value {VALUE} limit {LIMIT}'},
+        {op: 'arcade_sourceTypeOf', kind: 'reporter', words: 'arcade source type of {VALUE}'},
+        {op: 'arcade_fontValue', kind: 'reporter', words: 'arcade font value {FONT:font5|font8|font12}'},
+        {op: 'arcade_fontForText', kind: 'reporter', words: 'arcade font for text {TEXT}'},
+        {op: 'arcade_scaleFont', kind: 'reporter', words: 'arcade scaled font {FONT} by {SIZE}'},
+        {op: 'arcade_printImageFont', kind: 'command', words: 'arcade print {TEXT} on image {IMAGE} x {X} y {Y} color {COLOR} using font {FONT}'},
+        {op: 'arcade_printImageFontCenter', kind: 'command', words: 'arcade print centered {TEXT} on image {IMAGE} y {Y} color {COLOR} using font {FONT}'},
+        {op: 'arcade_drawImageCircle', kind: 'command', words: 'arcade draw image circle {OP:drawCircle|fillCircle} {IMAGE} x {X} y {Y} radius {RADIUS} color {COLOR}'},
+        {op: 'arcade_drawSpriteCircle', kind: 'command', words: 'arcade draw circle {OP:drawCircle|fillCircle} of {ID} x {X} y {Y} radius {RADIUS} color {COLOR}'},
+        {op: 'arcade_buttonRepeatProperty', kind: 'reporter', words: 'arcade player {PLAYER:1|2|3|4} button {BUTTON:A|B|up|down|left|right} repeat property {PROPERTY:repeatDelay|repeatInterval}'},
+        {op: 'arcade_setButtonRepeatProperty', kind: 'command', words: 'arcade set player {PLAYER:1|2|3|4} button {BUTTON:A|B|up|down|left|right} repeat property {PROPERTY:repeatDelay|repeatInterval} to {VALUE}'},
+        {op: 'arcade_setButtonRepeatDefaults', kind: 'command', words: 'arcade set button repeat defaults delay {DELAY} interval {INTERVAL}'}
+    ];
+    for (const expected of qualifiedWords) {
+        const rows = ARCADE_WORDS.filter(row => row.op === expected.op && !row.alias);
+        assert.equal(rows.length, 1, expected.op);
+        assert.deepEqual(rows.map(({op, kind, words}) => ({op, kind, words})), [expected]);
+    }
+    for (const opcode of ['arcade_declareSourceCallable', 'arcade_declareCallable', 'arcade_runCallableDispatch',
+        'arcade_whenCallableDispatched', 'arcade_createCallable', 'arcade_callCallable']) {
+        assert.equal(ARCADE_DIALECT_OPS.includes(opcode), true, 'qualified callable ABI word: ' + opcode);
+    }
+    for (const opcode of ['arcade_declareClass', 'arcade_declareSubclass', 'arcade_createObject',
+        'arcade_objectField', 'arcade_setObjectField', 'arcade_callObjectMethod', 'arcade_whenSourceStarts', 'arcade_sourceWhile', 'arcade_setHudVisibility', 'arcade_cameraDrawOffset', 'arcade_setPalette', 'arcade_registerInstanceDestroyedHandler',
         'arcade_whenRegisteredInstanceDestroyed', 'arcade_startParallelHandler',
         'arcade_whenParallelHandler', 'arcade_carnivalCountdown',
-        'arcade_carnivalGameOver', 'arcade_carnivalCustomGameOver', 'arcade_songPlayable']) assert.ok(ARCADE_DIALECT_OPS.includes(opcode), opcode);
+        'arcade_carnivalGameOver', 'arcade_carnivalCustomGameOver', 'arcade_songPlayable', 'arcade_spriteDataSet',
+        'arcade_spriteDataRead', 'arcade_spriteDataReadBoolean', 'arcade_spriteDataChange', 'arcade_playerConnected',
+        'arcade_declareSourceReference','arcade_clampNumber','arcade_randomNumber','arcade_mathBinary','arcade_percentChance','arcade_sceneMillis','arcade_programMillis','arcade_setBackgroundScrollVersion','arcade_settingsWrite','arcade_settingsRead','arcade_settingsExists','arcade_settingsRemove','arcade_settingsClear']) assert.ok(ARCADE_DIALECT_OPS.includes(opcode), opcode);
 });
 
 test('every program the Arcade importer writes parses, with no unread line and no warning', () => {

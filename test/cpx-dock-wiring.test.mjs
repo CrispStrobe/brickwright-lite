@@ -21,7 +21,7 @@ const manager = read('overlay/scratch-vm/src/extension-support/extension-manager
 const library = read('overlay/scratch-gui/src/lib/libraries/extensions/index.jsx');
 
 test('a DEVICE CPX program gets a button that opens the cpx dock', () => {
-    assert.match(header, /\(vm\.runtime\.bwDeviceId \|\| vm\.runtime\.stc\?\.device\) === 'cpx'/,
+    assert.match(header, /appliedProjectDevice\(vm\.runtime\) === 'cpx'/,
         'the button is not gated on the program being DEVICE CPX');
     assert.match(header, /\.\.\.\(deviceIsCpx \? \[\{\s*handleClick: \(\) => \{ setCircuitView\(\{fullWidth: true, dock: 'cpx'\}\)/,
         'the button opens no cpx dock');
@@ -48,6 +48,6 @@ test('the pane draws the extension\'s state and drives the board only through it
 });
 
 test('Lite knows the circuitplayground extension', () => {
-    assert.match(manager, /circuitplayground: \(\) => require\('\.\.\/extensions\/crispstrobe\/circuitplayground'\)/);
+    assert.match(manager, /circuitplayground: \(\) => import\(\/\* webpackChunkName: "ext-circuitplayground" \*\/ '\.\.\/extensions\/crispstrobe\/circuitplayground\/index\.js'\)/);
     assert.match(library, /extensionId: 'circuitplayground'/);
 });

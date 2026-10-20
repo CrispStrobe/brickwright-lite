@@ -1,7 +1,8 @@
 # Exact Arcade scene-clock Number producer
 
-Status: proposed clarification of the distinct scene/program clock and primitive
-producer lanes. Merge this claim before product changes.
+Status: development source candidate under the merged distinct scene/program
+clock and primitive producer claim. The authored controls below have not yet
+run on this candidate; source availability is not execution qualification.
 
 ## Bounded requirement
 
@@ -89,3 +90,20 @@ packet; SDK preparation, selected originals and edited-export execution need
 their own reserved source-bound plans. Source checks alone qualify none of those
 executions. No unchanged successful original is replayed. This slice makes no
 whole-case promotion, general clock, full compatibility or release claim.
+
+
+## Current candidate entrypoints
+
+The [completion implementation boundary](compatibility/arcade-scene-clock-number-completions.md)
+records separate source candidates, real finite completion receipts and current
+consumer ownership. It uses the existing engine before-input and invoke hooks;
+no engine signature, vocabulary, pin or clock schedule changes. The existing
+info producer census stays unchanged. Actual ordinary argument tickets keep
+their existing protocol; an unproved captured or returned value stays refused.
+
+Focused source, boundary-model and native/current-project controls are authored
+in `test/makecode-scene-clock-number.test.mjs`,
+`test/arcade-scene-clock-number-owner.test.mjs` and
+`test/arcade-scene-clock-number-native.test.mjs`. No passing result, selected
+original comparison, Sparks closure or visible GUI journey is claimed merely
+by adding these files.

@@ -1,7 +1,7 @@
 # Dependency-prepared Arcade import
 
-Status: proposed extension to the merged Arcade extension-project qualification
-lane. Merge this claim before changing the public import boundary.
+Status: claim merged; source implementation candidate. Source controls, actual
+package preparation and visible authoring qualification remain separate gates.
 
 ## Problem and scope
 
@@ -77,3 +77,68 @@ hardware operation, dependency-pin adoption or whole-project promotion.
 
 Free throw's current clean export and unprepared reimport are a regression
 case, not a special-case implementation or permission to prune helper bodies.
+
+## Implemented source boundary
+
+`index.js` exposes `importProjectFilesWithDependencies(files, options)`. It
+captures the current string file map before awaiting and returns those original
+files and main source separately from the internal prepared translation view.
+Options include `target`, `name`, `version`, `animationResources`, explicit
+`fetchExtensions`, optional `fetch`/`baseUrl`, and an optional
+`resolveProjectInputs(target, currentFiles, resolverOptions)` adapter. Node's
+existing resolver implements that adapter. Without one, the helper lazily loads
+`resolveProjectInputsMakeCode` from the browser runtime module. Loading the
+importer does not start an SDK worker.
+
+The async entrypoint prepares Arcade TypeScript by default. Passing
+`prepareDependencies: false`, or supplying another target/language, delegates
+to the existing synchronous reader. Artifact and share wrappers use preparation
+only when explicitly passed `prepareDependencies: true`. Browser file/share
+calls select that route; CLI conversion selects it only with
+`--fetch-extensions`. A resolver receives a separate copy of the captured file
+map; changing that copy refuses instead of changing input authority.
+The actual preparation result also binds its target and original input map,
+normalized identities for every declared alias (including target defaults), and
+each selected package's manifest dependencies. The shared helper reconstructs
+the current declared graph and refuses stale input maps, contradictory package
+or fetched-source identities, extra packages and mismatched transitive bindings.
+A cached adapter cannot return an earlier root's preparation merely because a
+package ID matches. Actual acquisition still owns matching source bytes to the
+requested repository/ref; self-consistent metadata alone is not an independent
+source-authenticity certificate.
+
+`dependencyInputs` records actual declared dependencies, resolved source order,
+preparation provenance, runtime configuration and fetched package facts.
+Resolution, preparation and translation each retain separate diagnostic
+channels, including whether a channel is absent, undefined, null or an array.
+A stage exception carries its stage, original cause and explicit bounded error
+details. Nonempty preparation messages are also presented independently from
+translation warnings. Unsupported translation remains partial.
+
+The browser uses an explicit `resolveProjectInputs` worker message. It calls the
+owned package-loading glue with `projectInputs: true` and `native: false`, and
+returns before the source compiler service. It supplies no firmware-base
+callback. Worker creation, initialization, successful return and failure have
+owned cleanup paths. Error envelopes retain package identities, refusals and
+diagnostics; unavailable oversized or non-data details have a named marker.
+The package resolver refuses conflicting identities for the same declared alias
+and multiple matching source candidates. Distinct aliases remain distinct.
+
+File/share completion checks the current request, current Stage and mounted
+editor before publishing buffers, artwork or status, including failed reads and
+preparation errors. Share intent and Stage are captured before opening the
+asynchronous URL prompt. A superseded prompt answer, cancellation or error
+cannot start preparation or change a newer request. Current prompt failures
+remain visible. A stale lazy module load cannot start preparation. Unmount
+invalidates the request. Dependency provenance is attached to the existing
+`bwMakeCode` record for the unedited imported translation; its existing save/load
+path preserves extra record fields. The CLI also retains its dependency ZIP
+sidecar. Neither record is an input to current-export dependency resolution.
+
+Authored source controls exercise wiring, current snapshots, stage failures,
+diagnostic presence, record save/load, actual worker/glue early-return logic
+against explicit SDK method stubs, and deferred actual editor methods. These
+are not actual SDK preparation, browser, guest, runtime or full compatibility
+results. Free throw's real current export, real matching cached dependencies,
+CLI execution, save/reopen and visible current art/code edits still need their
+own bounded integration qualification.

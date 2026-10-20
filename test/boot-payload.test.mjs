@@ -21,6 +21,7 @@ test('boot payload accepts shared lazy engine bytes but rejects eager, absent an
             'ext-music': "'drums/1-snare.mp3'", 'render-fonts': 'x-font-ttf',
             'ext-legonxt': 'ID: legonxt', 'ext-spikeprime': 'ID: spikeprime\n',
             'ext-arcade': 'font12: Adobe SIL OFL 1.1',
+            'ext-circuitplayground': 'ID: circuitplayground',
             'ext-robotlab': 'when part [PART] touches [OTHER]',
             'bw-robotlab-tab': 'Open the Robot Lab here',
             'asset-library-index': '"name":"Abby"',
@@ -41,6 +42,9 @@ test('boot payload accepts shared lazy engine bytes but rejects eager, absent an
         })) put(`chunks/${name}.js`, bytes);
         let result = run();
         assert.equal(result.status, 0, result.stdout + result.stderr);
+        put('gui.js', '_bwFontWait ID: circuitplayground');
+        result=run();assert.equal(result.status,1);
+        assert.match(result.stdout,/FAIL Circuit Playground runtime .*not in the first load/);
         put('gui.js', `_bwFontWait ${marker}`);
         result = run();
         assert.equal(result.status, 1);

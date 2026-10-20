@@ -1,3 +1,4 @@
+import {createArcadeRuntimeMock} from './helpers/arcade-runtime-mock.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
@@ -5,7 +6,6 @@ import fs from 'node:fs';
 import {chromium} from 'playwright';
 import {createRequire} from 'node:module';
 import {execFileSync} from 'node:child_process';
-import {EventEmitter} from 'node:events';
 import {loadExtensionClass, VM_SRC} from './helpers/bw-extensions.mjs';
 import {runProgram, stepFrames, clearStrayTimers} from './helpers/bw-vm.mjs';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
@@ -13,7 +13,7 @@ import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 const require=createRequire(import.meta.url);
 const {PxtBuffer,fromHex,literal,pack,packedSize,MAX_BUFFER_FORMAT_CHARS,MAX_BUFFER_PACK_STEPS}=require('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/buffer.js');
 const BWValues=require(path.join(VM_SRC,'util/bw-values.js'));
-const fixture=()=>{const runtime=new EventEmitter(),errors=[];runtime.startHats=()=>[];runtime.on('BLOCKS_ERROR',error=>errors.push(error));return {runtime,errors,native:new(loadExtensionClass('arcade'))(runtime)};};
+const fixture=()=>{const runtime=createArcadeRuntimeMock(),errors=[];runtime.on('BLOCKS_ERROR',error=>errors.push(error));return {runtime,errors,native:new(loadExtensionClass('arcade'))(runtime)};};
 
 test('packing helper regeneration checks original parser and bounded repeat/result adaptations',()=>{
     execFileSync(process.execPath,['scripts/generate-arcade-buffer-helpers.mjs','--check'],{stdio:'pipe'});

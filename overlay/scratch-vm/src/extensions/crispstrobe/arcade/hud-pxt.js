@@ -616,6 +616,27 @@ var info;
         }
         return val.toString();
     }
+    function showScore(on) {
+        updateFlag(Visibility.Score, on);
+        updateFlag(Visibility._ExplicitlySetScore, true);
+    }
+    info.showScore = showScore;
+    function showLife(on) {
+        updateFlag(Visibility.Life, on);
+        updateFlag(Visibility._ExplicitlySetLife, true);
+    }
+    info.showLife = showLife;
+    function showCountdown(on) {
+        updateFlag(Visibility.Countdown, on);
+    }
+    info.showCountdown = showCountdown;
+    function updateFlag(flag, on) {
+        initHUD();
+        if (on)
+            infoState.visibilityFlag |= flag;
+        else
+            infoState.visibilityFlag = ~(~infoState.visibilityFlag | flag);
+    }
 })(info || (info = {}));
 
 return {info};

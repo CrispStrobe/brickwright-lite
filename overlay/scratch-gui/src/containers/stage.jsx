@@ -30,6 +30,7 @@ class Stage extends React.Component {
             'handleDoubleClick',
             'handleQuestionAnswered',
             'handleArcadeDialogDismiss',
+            'handleArcadeDialogButtonEdge',
             'onMouseUp',
             'onMouseMove',
             'onMouseDown',
@@ -52,6 +53,7 @@ class Stage extends React.Component {
             dragId: null,
             colorInfo: null,
             question: null,
+            arcadePrompt: null,
             arcadeDialog: null
         };
         if (this.props.vm.renderer) {
@@ -165,6 +167,7 @@ class Stage extends React.Component {
             this.state.colorInfo !== nextState.colorInfo ||
             this.props.isFullScreen !== nextProps.isFullScreen ||
             this.state.question !== nextState.question ||
+            this.state.arcadePrompt !== nextState.arcadePrompt ||
             this.state.arcadeDialog !== nextState.arcadeDialog ||
             this.props.micIndicator !== nextProps.micIndicator ||
             this.props.isStarted !== nextProps.isStarted;
@@ -188,17 +191,27 @@ class Stage extends React.Component {
         this.props.vm.runtime.removeListener('ARCADE_DIALOG', this.arcadeDialogListener);
     }
     questionListener (question) {
-        this.setState({question: question});
+        const prompt = question === null ? null : this.props.vm.runtime.bwArcadeTextPrompt;
+        this.setState({
+            question,
+            arcadePrompt: prompt ? {
+                answerLength: prompt.answerLength,
+                numbersOnly: prompt.numbersOnly
+            } : null
+        });
     }
     arcadeDialogListener (dialog) {
         this.setState({arcadeDialog: dialog});
+    }
+    handleArcadeDialogButtonEdge (button, held) {
+        this.props.vm.runtime.emit('ARCADE_DIALOG_BUTTON_EDGE', button, held);
     }
     handleArcadeDialogDismiss (answer) {
         const dialog = this.state.arcadeDialog;
         if (dialog && dialog.dismiss) dialog.dismiss(answer);
     }
     handleQuestionAnswered (answer) {
-        this.setState({question: null}, () => {
+        this.setState({question: null, arcadePrompt: null}, () => {
             this.props.vm.runtime.emit('ANSWER', answer);
         });
     }
@@ -511,9 +524,11 @@ class Stage extends React.Component {
                 colorInfo={this.state.colorInfo}
                 dragRef={this.setDragCanvas}
                 question={this.state.question}
+                arcadePrompt={this.state.arcadePrompt}
                 arcadeDialog={this.state.arcadeDialog}
                 onDoubleClick={this.handleDoubleClick}
                 onArcadeDialogDismiss={this.handleArcadeDialogDismiss}
+                onArcadeDialogButtonEdge={this.handleArcadeDialogButtonEdge}
                 onQuestionAnswered={this.handleQuestionAnswered}
                 {...props}
             />

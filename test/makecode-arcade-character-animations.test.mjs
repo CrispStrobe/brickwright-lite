@@ -1,3 +1,4 @@
+import BWValues from '../overlay/scratch-vm/src/util/bw-values.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
@@ -114,7 +115,7 @@ for (const [name, source] of Object.entries(SCENARIOS)) {
         const run = await runProgram(imported.code, {frames: 0, uploads: imported.costumes, storage: true});
         try {
             const first = Number(expected[0].at(-1)) * 1000;
-            for (let guard = 0; Number(values(run).frame) < 1; guard++) {
+            for (let guard = 0; !(Number(values(run).frame) >= 1); guard++) {
                 assert.ok(guard < 200, 'the native recording started');
                 await stepFrames(run.vm, 1, first);
             }
@@ -178,4 +179,35 @@ test('character animation diagnostics stay explicit', () => {
         `${SETUP}\ncharacterAnimations.lockFacingDirection(hero, 4)`,
         `${SETUP}\ncharacterAnimations.setController(hero, true, controller.player2)`])
         assert.ok(arcadeToPseudocode(source).unsupported.length, source);
+});
+
+// The regular tests retain the original frame-by-frame comparisons. This
+// control isolates readiness and observes the first physical zero frame once.
+test('native character recordings observe Undefined startup and every original callback frame', async () => {
+    for (const [name, source] of Object.entries(SCENARIOS)) {
+        const count = {walk: 36, run: 34, manual: 32}[name];
+        const imported = arcadeToPseudocode(source);
+        assert.deepEqual(imported.unsupported, []);
+        const run = await runProgram(imported.code, {frames: 0, storage: true, uploads: imported.costumes});
+        try {
+            assert.equal(BWValues.decode(values(run).frame), undefined);
+            for (let guard = 0; !(Number(values(run).frame) >= 1); guard++) {
+                assert.ok(guard < 200, 'native recording starts');
+                await stepFrames(run.vm, 1, 0);
+            }
+            assert.equal(Number(values(run).frame), 1);
+            assert.equal(entries(values(run).trace).length, 1);
+            assert.equal(Number(entries(values(run).trace)[0].at(-1)), 0);
+            await stepFrames(run.vm, count - 1, 20);
+            const rows = entries(values(run).trace);
+            assert.equal(Number(values(run).frame), count);
+            assert.equal(rows.length, count);
+            assert.deepEqual(rows.map(row => Number(row.at(-1))), [0, ...Array(count - 1).fill(0.02)]);
+            await stepFrames(run.vm, 1, 20);
+            assert.equal(values(run).traceDone, true);
+            assert.equal(entries(values(run).trace).length, count);
+            assert.deepEqual(run.errors, []);
+            assert.deepEqual(run.creator.warnings, []);
+        } finally { run.vm.stopAll(); run.vm.quit(); clearStrayTimers(); }
+    }
 });

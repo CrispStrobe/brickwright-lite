@@ -21,6 +21,13 @@
 
 /** name -> {deps, ts}. Every helper's TypeScript, compiled by pxt-arcade in the tests. */
 export const HELPERS = {
+    sdkStrings: {deps: [],ts:`function __bwSdkCharCode(code: any): string { return String.fromCharCode(code) }
+function __bwSdkConcat(left: string, right: any): string { return left.concat(right) }
+`},
+    scratchTimer: {deps: [],ts:`let __bwScratchTimerStart = control.millis()
+function __bwScratchTimer(): number { return (control.millis() - __bwScratchTimerStart) / 1000 }
+function __bwResetScratchTimer() { __bwScratchTimerStart = control.millis() }
+`},
     wait: {deps: [], ts: `class _Wait {
     n: number
     constructor () { this.n = 0 }

@@ -4,11 +4,12 @@ import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arc
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
+import {runTimedArcadeProgram,restartTimedArcadeRun} from './helpers/arcade-timed-native.mjs';
 import {multiPhysicsControllerSource,MULTI_MOVER_SOURCE,TRANSPARENT_PIXEL_SOURCE,WALL_PEER_MUTATION_SOURCE,RETAINED_SPRITE_QUERY_SOURCE} from './fixtures/arcade-multi-physics.mjs';
 
 const values=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(target=>Object.values(target.variables)).map(variable=>[variable.name.replace(/^Game_/,''),variable.value]));
 
-async function verify(source,names,done,{remaining=[]}={}) {
+async function verify(source,names,done,{remaining=[],milliseconds=null}={}) {
     const expected=await runPxtArcade(source,{waitForGlobals:{[done]:true}});
     const check=run=>{
         const actual=values(run);
@@ -17,7 +18,7 @@ async function verify(source,names,done,{remaining=[]}={}) {
     };
     const execute=async imported=>{
         assert.deepEqual(imported.unsupported,remaining);
-        const run=await runProgram(imported.code,{frames:250,uploads:imported.costumes,storage:true});
+        const run=milliseconds===null?await runProgram(imported.code,{frames:250,uploads:imported.costumes,storage:true}):await runTimedArcadeProgram(imported.code,{milliseconds,uploads:imported.costumes,storage:true});
         check(run);return run;
     };
     const imported=arcadeToPseudocode(source),run=await execute(imported);
@@ -28,7 +29,7 @@ async function verify(source,names,done,{remaining=[]}={}) {
     for(const name of names)assert.equal(again[name],expected[name],name+' in exported PXT');
     await execute(arcadeToPseudocode(exported.files));
     await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));
-    run.vm.greenFlag();await stepFrames(run.vm,250);check(run);
+    if(milliseconds===null){run.vm.greenFlag();await stepFrames(run.vm,250);}else await restartTimedArcadeRun(run,milliseconds);check(run);
     return expected;
 }
 
@@ -40,7 +41,7 @@ test('simultaneous fast movers meet without tunneling through Code/SB3 and execu
 });
 
 test('pixel masks reject disjoint pixels inside identical full hitboxes and detect a real shared pixel across all paths',async()=>{
-    const expected=await verify(TRANSPARENT_PIXEL_SOURCE,['disjointPixels','noSpuriousEvent','sharedPixels','eventSeen','callbackIdentity','callbackMask','transparentDone'],'transparentDone');
+    const expected=await verify(TRANSPARENT_PIXEL_SOURCE,['disjointPixels','noSpuriousEvent','sharedPixels','eventSeen','callbackIdentity','callbackMask','transparentDone'],'transparentDone',{milliseconds:1000});
     assert.equal(expected.disjointPixels,false);assert.equal(expected.noSpuriousEvent,true);assert.equal(expected.sharedPixels,true);
 });
 
@@ -59,16 +60,40 @@ test('retained Sprite/Image aliases support explicit overlap queries across susp
 });
 
 
-test('a fast crossing delivers one event, stops its mover and preserves callback geometry across all paths',async()=>{
-    const source='game.onUpdate(function(){pause(20)})\n'+multiPhysicsControllerSource()+`
+const fastCrossingSource=()=>'game.onUpdate(function(){pause(20)})\n'+multiPhysicsControllerSource()+`
 crossingArmed=true
 mover.vx=500
 pause(300)
 let stopped=mover.vx===0
 let geometryConsistent=endFrameTouching===mover.overlapsWith(target)
 let crossingDone=passes===1`;
-    const expected=await verify(source,['fastOverlapSeen','passes','stopped','geometryConsistent','crossingDone'],'crossingDone');
+test('a fast crossing delivers one event, stops its mover and preserves callback geometry across all paths',async()=>{
+    const expected=await verify(fastCrossingSource(),['fastOverlapSeen','passes','stopped','geometryConsistent','crossingDone'],'crossingDone',{milliseconds:1000});
     assert.equal(expected.stopped,true);
     assert.equal(expected.geometryConsistent,true);
     assert.equal(expected.passes,1);
+});
+
+test('native transparent pixel collision waits for actual scene and pause continuations through editable routes',async()=>{
+ const imported=arcadeToPseudocode(TRANSPARENT_PIXEL_SOURCE);assert.deepEqual(imported.unsupported,[]);
+ const check=run=>{const actual=values(run);assert.equal(actual.disjointPixels,false);for(const name of ['noSpuriousEvent','sharedPixels','eventSeen','callbackIdentity','callbackMask','transparentDone'])assert.equal(actual[name],true,name);assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);};
+ const runs=[];
+ try {
+  const execute=async input=>{const run=await runTimedArcadeProgram(input.code,{milliseconds:1000,uploads:input.costumes,storage:true});runs.push(run);check(run);return run;};
+  const run=await execute(imported);await execute({...imported,code:run.creator.decompile()});
+  const exported=projectToArcade(run.creator.project,{costumeSvg:(target,costume)=>run.creator.assets.get(costume.assetId)?.data});assert.deepEqual(exported.unsupported,[]);const again=arcadeToPseudocode(exported.files);assert.deepEqual(again.unsupported,[]);await execute(again);
+  await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));await restartTimedArcadeRun(run,1000);check(run);
+ } finally {for(const run of runs){run.vm.stopAll();run.vm.quit();}}
+});
+
+
+test('native fast crossing waits for actual pause completion through all editable routes',async()=>{
+ const imported=arcadeToPseudocode(fastCrossingSource());assert.deepEqual(imported.unsupported,[]);const runs=[];
+ const check=run=>{const actual=values(run);assert.equal(actual.passes,1);for(const name of ['fastOverlapSeen','stopped','geometryConsistent','crossingDone'])assert.equal(actual[name],true,name);assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);};
+ try {
+  const execute=async input=>{assert.deepEqual(input.unsupported,[]);const run=await runTimedArcadeProgram(input.code,{milliseconds:1000,uploads:input.costumes,storage:true});runs.push(run);check(run);return run;};
+  const run=await execute(imported);await execute({...imported,code:run.creator.decompile()});
+  const exported=projectToArcade(run.creator.project,{costumeSvg:(target,costume)=>run.creator.assets.get(costume.assetId)?.data});assert.deepEqual(exported.unsupported,[]);await execute(arcadeToPseudocode(exported.files));
+  await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));await restartTimedArcadeRun(run,1000);check(run);
+ } finally {for(const run of runs){run.vm.stopAll();run.vm.quit();}}
 });

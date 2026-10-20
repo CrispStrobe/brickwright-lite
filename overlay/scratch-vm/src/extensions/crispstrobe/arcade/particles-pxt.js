@@ -13,7 +13,7 @@ const Math = Object.create(globalThis.Math);
 Math.idiv = (a, b) => (a / b) | 0;
 Math.randomRange = host.randomRange;
 const sprites = {Flag: {Destroyed: 2, RelativeToCamera: 512}, BaseSprite: host.BaseSprite};
-const __removeElement = (array, element) => { const index = array ? array.indexOf(element) : -1; if (index >= 0) array.splice(index, 1); return index >= 0; };
+const {removeAt: __removeAt, removeElement: __removeElement} = require('./pxt-particle-collections');
 function Fx8(v) {
     return ((v * 256) | 0);
 }
@@ -689,7 +689,7 @@ var particles;
             const p = super.createParticle(anchor);
             choice.count--;
             if (choice.count === 0)
-                this.colors.removeAt(index);
+                __removeAt(this.colors, index);
             p.color = choice.color;
             p._y = Fx.iadd(this.galois.randomRange(this.yRange >> 1, this.yRange), p._y);
             p.vx = anchor.vx ? Fx.neg(Fx8(anchor.vx >> 2)) : Fx.zeroFx8;

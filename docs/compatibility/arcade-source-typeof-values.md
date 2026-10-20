@@ -1,7 +1,7 @@
 # Arcade source typeof values
 
-Proposed scope under the source value and managed class lanes. Merge the
-documentation claim before implementing the new authoring reporter.
+Implementation under the merged source value and managed class ownership
+contracts. The consumer candidate keeps the bounded owner rules below.
 
 ## Concrete prerequisite
 
@@ -11,7 +11,9 @@ The corrected Arcade export helper returns scalar values directly and serializes
 raw object aggregates. A selected original execution matched the corrected
 item values. Reimport exposed an existing converter omission: `typeof value`
 became `value`, so an aggregate JSON result became an array reference.
-That failure remains a qualification blocker.
+The source reporter now preserves the discriminator through the qualified
+headless authoring routes; the original omission and reimport failure remain
+part of the qualification record.
 
 Common MakeCode, EV3 and Calliope export use direct named array indexing and
 inherit the common item contract. The new source type operation is scoped to
@@ -93,3 +95,63 @@ The operation must use the existing source frame and managed procedure
 boundaries. This scope adds no scheduler, physical frame phase, class designer
 or independent board service. Feature controls do not promote retained packages
 or claim complete game execution.
+
+## Current implementation candidate
+
+The canonical reporter is `arcade source type of {VALUE}`. Its String result
+is independent of its operand's type in the declaration and export graphs.
+The native service admits primitives and actual current Array, Image, Buffer
+and managed class bodies. It refuses callable and other reference owners.
+Sprite operands remain refused in source conversion and export; a literal
+String equal to a live Sprite handle remains a String.
+
+String operands require source provenance because native Sprite handles share
+their carrier. The service binds the actual reporter from Scratch's current
+cached operation using the identical argument object. It checks the active
+runtime thread and its actual block container before trusting that operation.
+Retained arguments from a killed thread, foreign containers and copied argument
+objects cannot acquire authority. Global array writers and relevant aliases
+are checked across original project targets; unresolved foreign mutations
+produce a named refusal.
+
+The entire original project input graph is captured at source startup,
+including target/container identity, parent and top-level ownership metadata.
+Editing that graph requires a new project start before reporter provenance
+can be reused. This conservative restart boundary is
+an editor limitation, not a claim of live source graph migration. Unknown
+procedure, capture or member provenance remains refused.
+
+Direct owned allocations, aliases and ordinary function results with proven
+producers remain eligible. A field or method annotation alone cannot qualify
+a managed member result: an `as any` write or return may carry another owner.
+Unresolved member-result flow remains refused through variables and returns;
+it does not widen the scalar or reference declaration domains.
+
+## Qualified headless routes
+
+The owned-value matrix and unchanged E15 text-item helper pass native execution,
+Code reconstruction, same and fresh VM SB3, selected original export execution
+and reimport. The matrix also edits the actual reporter's numeric input in the
+block graph, executes that edited SB3 and Code, then exports it. Actual native
+owners are captured per VM before another VM is created.
+
+A numeric shadow uses textual field storage inside Scratch. Number authority
+comes only from the actual unchanged connected numeric literal under the live
+caller and project snapshot checks. A text shadow with identical spelling stays
+String. A staged Array insertion proves every actual local assignment as a
+supported primitive or Array; an opaque alternative remains refused. Mixed
+Array operation receivers retain the existing operation-specific Array view
+without changing declarations or casting independently typed locals.
+
+The first edited-export readiness observer used an incorrect global name.
+The first E15 export also exposed a genuine selected-runtime Array dispatch
+failure for a mixed local receiver. Both failures remain preserved. Corrected
+actual export executions match all 13 adversarial text items, scalar/null/
+Boolean values, JSON aggregate text, missing undefined and Array alias identity.
+
+Focused owner, lowering, export and mutation controls cover disposed/stale/
+foreign owners, current cached caller identity, complete project edits, historical
+array aliases, Sprite-backed class ancestry and unresolved member producers.
+The hosted visible reporter-edit journey remains unqualified. Broad native
+Sprite and callable source typing, live source graph migration and managed
+member-result typing remain separate gaps.

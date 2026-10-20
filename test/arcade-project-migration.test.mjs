@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import install from '../overlay/scratch-gui/src/lib/arcade-project-migration.js';
+import {loadExtensionClass} from './helpers/bw-extensions.mjs';
+import {ARCADE_WORDS, compileArcadeWord} from '../overlay/scratch-gui/src/lib/arcadeDialect.js';
 
 const legacy = (opcode, slot, value) => ({opcode, fields: {}, inputs: {[slot]: [1, [10, value]]}});
 const projectOf = blocks => ({targets: [{name: 'Game', blocks}]});
@@ -67,4 +69,61 @@ test('unrelated projects retain original synchronous return and failures', () =>
     assert.throws(() => vm.deserializeProject(project), actual => actual === error);
     assert.equal(install(null), false);
     assert.equal(install({}), false);
+});
+
+for (const opcode of ['arcade_settingsWrite', 'arcade_settingsRead']) {
+    test(`${opcode} retains its legacy StringArray type and referenced values before native loading`, async () => {
+        const menuName = opcode === 'arcade_settingsWrite' ? 'settingWriteTypes' : 'settingReadTypes';
+        const block = {opcode, fields: {}, inputs: {TYPE: [1, 'menu'], VALUE: [3, 'items', [10, '']]}};
+        const items = {opcode: 'data_variable', fields: {VARIABLE: ['items', 'actual-id']}, inputs: {}};
+        const blocks = {setting: block, items, menu: {opcode: `arcade_menu_${menuName}`,
+            fields: {[menuName]: ['StringArray', null]}, inputs: {}, parent: 'setting', shadow: true, topLevel: false}};
+        const project = projectOf(blocks), zip = {}, calls = [];
+        const vm = {deserializeProject: async (...args) => { calls.push(args); return 'loaded'; }};
+        install(vm);
+        assert.equal(await vm.deserializeProject(project, zip), 'loaded');
+        assert.deepEqual(block.fields.TYPE, ['StringArray', null]);
+        assert.equal(block.inputs.TYPE, undefined);
+        assert.equal(blocks.menu, undefined);
+        assert.equal(blocks.items, items);
+        assert.deepEqual(block.inputs.VALUE, [3, 'items', [10, '']]);
+        assert.equal(calls[0][0], project); assert.equal(calls[0][1], zip);
+    });
+}
+
+for (const input of [[3, 'computed', 'menu'], [1, [10, 'Unknown']], [1, 'missing']]) {
+    test(`invalid legacy Settings type is named before replacing the open project: ${JSON.stringify(input)}`, async () => {
+        let loaded = false;
+        const block = {opcode: 'arcade_settingsWrite', fields: {}, inputs: {TYPE: input}};
+        const vm = {deserializeProject: async () => { loaded = true; }};
+        install(vm);
+        await assert.rejects(vm.deserializeProject(projectOf({setting: block})),
+            /Cannot preserve arcade_settingsWrite\.TYPE in Game, block setting/);
+        assert.equal(loaded, false);
+        assert.deepEqual(block.inputs.TYPE, input);
+        assert.equal(block.fields.TYPE, undefined);
+    });
+}
+
+test('native Settings types remain unchanged without invoking a Number fallback', async () => {
+    const block = {opcode: 'arcade_settingsRead', fields: {TYPE: ['Buffer', null]}, inputs: {KEY: [1, [10, 'bytes']]}};
+    const project = projectOf({setting: block}), before = structuredClone(project);
+    const vm = {deserializeProject: async value => value};
+    install(vm);
+    assert.equal(await vm.deserializeProject(project), project);
+    assert.deepEqual(project, before);
+});
+
+test('Settings compiler field shapes match the actual native non-reporter menus', () => {
+    const Arcade = loadExtensionClass('arcade');
+    const info = new Arcade({on () {}, emit () {}}).getInfo();
+    for (const opcode of ['settingsRead', 'settingsWrite']) {
+        const native = info.blocks.find(block => block.opcode === opcode);
+        const menu = info.menus[native.arguments.TYPE.menu];
+        assert.equal(menu.acceptReporters, false);
+        const canonical = ARCADE_WORDS.find(word => word.op === `arcade_${opcode}`);
+        const slot = compileArcadeWord(canonical).parts.find(part => part.slot === 'TYPE');
+        assert.equal(slot.field, true);
+        assert.deepEqual(slot.choices, menu.items);
+    }
 });
