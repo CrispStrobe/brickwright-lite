@@ -7250,3 +7250,26 @@ and migrate stale compiler-only and fallback assertions against actual public
 validation. Preserve the original 42-test composition failures and all existing
 shadow/write/index/alias/wrong-producer controls. No current corpus, GUI, SDK or
 runtime qualification is inferred; unchanged resource and hosted gates apply.
+
+
+## Arcade console preparation demand — 2026-10-20
+
+SOURCE CANDIDATE / QUALIFICATION PENDING — existing Arcade integration and
+console inspection scope. Preserve the public eager lowering API byte-for-byte
+and add a translator-only zero-call preparation entry. A current own-data
+compiler AST with no lexical inspection candidates consumes no graph domain
+queries and has no declared-Undefined initialization demand. Retain the whole
+clone, reserved-name errors and complete eager fallback for positive calls or
+uncertain/changed input. This is no non-Proxy certificate, cache or new value
+authority. Six focused groups compare outputs/clones, positive calls, eager
+public callbacks, uncertain shapes and changed-intrinsic fallback. No host JS
+or current corpus/performance/runtime qualification has run for this candidate.
+
+The private lowering-input observation also retains the actual root
+`bwProcedureConstraintSource` singleton prefix envelope, including its original
+frozen form and the complete clone made by earlier lowering. The function is
+opaque identity only and is never invoked by this observation. Other function
+leaves, envelope aliases and malformed metadata keep the eager route. Captured
+iteration and primitive-conversion surfaces are checked before omission; the
+original public lowering entry remains eager. Focused controls include actual
+procedure metadata and Throw preparation, and changed iterator/Symbol fallback.
