@@ -75,11 +75,23 @@ test('every issue code in the sources has a child\'s sentence in English and Ger
     assert.deepEqual(stale, [], 'sentences for codes nothing produces');
 });
 
+test('a motor with no port in its file is plugged into a free port, and the note says so (hubs/auto-ports.js)', () => {
+    // The shipped driving base with motor A's port line taken out: A is free, so motorL goes there.
+    const unplugged = DRIVING_BASE.replace(/0 !BW PORT A\r?\n(1 [^\n]*54696p01\.dat)/, '$1');
+    assert.notEqual(unplugged, DRIVING_BASE, 'the port line was removed');
+    const auto = prepareModel(unplugged, CATALOG);
+    assert.equal(auto.model.parts.find(p => p.id === 'motorL').port, undefined, 'the model as written keeps no port');
+    assert.equal(auto.runModel.parts.find(p => p.id === 'motorL').port, 'A', 'the run model has it on A');
+    const note = auto.issues.find(i => i.code === 'ports-plugged');
+    assert.deepEqual([note.severity, note.parts], ['info', ['motorL']]);
+    assert.equal(auto.mechanism.joints.filter(j => j.motor).length, 2, 'both motors drive');
+    assert.match(issueSentence(INSIGHT_TEXT.en, note, () => 'SPIKE medium angular motor'), /plugged into the hub's free ports/);
+});
+
 test('a motor without a port: the issue names it, the sentence says so, Run is warned', () => {
-    // The shipped driving base with motor A's port line taken out.
+    // The shipped driving base with motor A's port line taken out, opened as written (no ports plugged in for it).
     const text = DRIVING_BASE.replace(/0 !BW PORT A\r?\n(1 [^\n]*54696p01\.dat)/, '$1');
-    assert.notEqual(text, DRIVING_BASE, 'the port line was removed');
-    const {model, mechanism, issues} = prepareModel(text, CATALOG);
+    const {model, mechanism, issues} = prepareModel(text, CATALOG, {autoPorts: false});
     const motorL = model.parts.find(p => p.id === 'motorL');
     assert.equal(motorL.port, undefined, 'motorL has no port now');
     const issue = issues.find(i => i.code === 'motor-without-port');
@@ -104,7 +116,7 @@ test('a motor without a port: the issue names it, the sentence says so, Run is w
 
     // Both ports gone: nothing can move by itself, and Run is warned, naming both motors.
     const none = text.replace(/0 !BW PORT B\r?\n/, '');
-    const both = prepareModel(none, CATALOG);
+    const both = prepareModel(none, CATALOG, {autoPorts: false});
     const blockers = runBlockers(both.issues, both.model, CATALOG);
     assert.deepEqual(blockers.map(b => b.code), ['no-motor']);
     assert.deepEqual(blockers[0].parts.slice().sort(), ['motorL', 'motorR']);

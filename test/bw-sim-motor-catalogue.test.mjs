@@ -177,12 +177,14 @@ test('the SPIKE, RCX, NXT/EV3 and Powered Up motors with parts have them; LPF2 i
     assert.equal(new Set(lpf2).size, lpf2.length, `${lpf2}`);
     // The Powered Up / BOOST / WeDo 2.0 motors got their LDraw parts with the LWP3 and WeDo hubs (docs/LWP3-VIRTUAL-HUB-NOTES.md).
     const PUP_PARTS = ['pup-medium-motor', 'boost-interactive-motor', 'technic-large-motor', 'technic-xl-motor'];
+    // The Power Functions M, L and XL motors got theirs for real models from the LDraw library (OMR sets 42065, 42095).
+    const PF_PARTS = ['pf-medium-motor', 'pf-large-motor', 'pf-xl-motor'];
     const WITH_PARTS = id => id.startsWith('spike-') || ['technic-minimotor-71427', 'nxt-motor', 'ev3-large-motor', 'ev3-medium-motor'].includes(id) ||
-        PUP_PARTS.includes(id);
+        PUP_PARTS.includes(id) || PF_PARTS.includes(id);
     for (const d of MOTORS) assert.deepEqual(d.parts.length > 0, WITH_PARTS(d.id), `${d.id}: ${d.parts}`);
     const parts = JSON.parse(readFileSync(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json'), 'utf8')).parts;
     const motorDevices = parts.map(p => p.device).filter(id => id && deviceModels.get(id)?.class === 'motor').sort();
-    assert.deepEqual(motorDevices, ['boost-interactive-motor', 'ev3-large-motor', 'ev3-medium-motor', 'nxt-motor', 'pup-medium-motor',
+    assert.deepEqual(motorDevices, ['boost-interactive-motor', 'ev3-large-motor', 'ev3-medium-motor', 'nxt-motor', 'pf-large-motor', 'pf-medium-motor', 'pf-xl-motor', 'pup-medium-motor',
         'spike-large-angular', 'spike-medium-angular', 'technic-large-motor', 'technic-minimotor-71427', 'technic-xl-motor']);
     // The BOOST Move Hub's two motors are built into the hub part (internal joints actuatedBy 'built-in').
     const moveHub = parts.find(p => p.part === '26910.dat');

@@ -1081,7 +1081,7 @@ class SimLabPane extends React.Component {
         this.opened = {text, name};
         this.teardown();
         this.setState({status: 'loading', message: '', issues: [], blockers: [], modelFile: name, shipped, simMs: 0, rtf: null, view3d: 'loading'});
-        const {SimSession, fetchLDrawClosure, createSimView3D, CATALOG} = this.lib;
+        const {SimSession, fetchModelDrawing, createSimView3D, CATALOG} = this.lib;
         // The SPIKE firmware route (desktop): the emulated hub starts first; the scene then runs
         // in lockstep with it (lib/bw-sim/routes/renode-lockstep).
         let firmware = null;
@@ -1141,7 +1141,8 @@ class SimLabPane extends React.Component {
         if (session.workerError && this.physics && !session.lockstep) { this.physics.terminate(); this.physics = false; }
         let view3d = 'webgl';
         try {
-            const {read} = await fetchLDrawClosure([...new Set(model.parts.map(p => p.part))], {withConfig: true});
+            // The parts, the decoration (a cable's segments) and the model's own embedded parts.
+            const {read} = await fetchModelDrawing(runModel, {withConfig: true});
             if (token !== this.loadToken || this.disposed) return;
             this.view = createSimView3D({container: this.box.current, model: runModel, mechanism: session.mechanism, read, catalog: CATALOG});
             this.view.setMousePreset(this.state.mousePreset);

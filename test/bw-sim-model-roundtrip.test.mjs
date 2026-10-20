@@ -167,9 +167,9 @@ test('found: a direct colour is written as 0x2RRGGBB (other programs read only t
     assert.equal(parseModel(text).model.parts[0].color, 0x2ff8000);
 });
 
-test('found: a sheared matrix with determinant 1 is refused; a rotation written with three decimals opens as the rotation it is', () => {
+test('found: a sheared matrix with determinant 1 is decoration, not a part; a rotation written with three decimals opens as the rotation it is', () => {
     const shear = parseModel(`1 4 0 0 0 1 5 0 0 1 0 0 0 1 32523.dat\n`);
-    assert.deepEqual([shear.model.parts.length, shear.refusals.map(r => r.code)], [0, ['bad-matrix']]);
+    assert.deepEqual([shear.model.parts.length, shear.refusals.map(r => r.code), shear.model.decor.length], [0, [], 1]);
     // 42022 Hot Rod (OMR, MLCad): rows of length² 0.9989 — refused before as det 0.9989.
     const mlcad = parseModel(`1 4 0 0 0 0.674 -0.738 0 -0.738 -0.674 0 0 0 -1 32523.dat\n`);
     assert.deepEqual(mlcad.refusals, []);

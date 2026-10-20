@@ -28,6 +28,7 @@
 // runner.js), one physics step per exchange; `lockstep` says so, and
 // `realTimeFactor` how fast the emulator lets simulated time go.
 
+import {autoPorts} from './hubs/auto-ports.js';
 import {parseModel} from './model/ldraw-model.js';
 import {compile} from './mech/compile.js';
 import {mechanismIssues} from './mech/insight.js';
@@ -125,13 +126,14 @@ export const PROGRAMS_BASE = 'static/sim-lab/programs/';
 /**
  * @param {string} text LDraw
  * @param {Map} catalog
- * @param {{mat?: string}} [options] a mat id (bw-sim/world/mats.js): the floor shows it, the colour
+ * @param {{mat?: string, autoPorts?: boolean}} [options] autoPorts (default true): unplugged motors and sensors go into
+ *        free ports on the run model (hubs/auto-ports.js); mat: a mat id (bw-sim/world/mats.js): the floor shows it, the colour
  *        sensor reads it, a mat with a start pose gets the model placed on that pose, and a mat's
  *        obstacles (a wall) become static bodies the robot and the distance sensor meet
  * @returns {{model, runModel, mechanism, issues}} `model` is the model as authored (what Build edits
  *          and the project saves); `runModel` is where it stands on the mat (what is simulated and drawn)
  */
-export const prepareModel = (text, catalog, {mat = null} = {}) => {
+export const prepareModel = (text, catalog, {mat = null, autoPorts: plugIn = true} = {}) => {
     const {model, refusals} = parseModel(text, {catalog});
     const issues = refusals.map(r => ({severity: 'warning', ...r}));
     if (model.parts.length === 0) {
@@ -140,7 +142,13 @@ export const prepareModel = (text, catalog, {mat = null} = {}) => {
     }
     const matDef = mat ? createMat(mat) : null;
     const start = matDef ? matDef.startPose : null;
-    const runModel = start ? placeOnStart(model, start, driveAnchor(model, catalog)) : model;
+    // Motors and sensors the file left unplugged go into the hub's free ports (hubs/auto-ports.js).
+    const {model: wired, plugged} = plugIn ? autoPorts(model, catalog, hubRegistry) : {model, plugged: []};
+    if (plugged.length) {
+        issues.push({severity: 'info', code: 'ports-plugged', parts: plugged.map(p => p.part),
+            message: `Plugged in: ${plugged.map(p => `${p.part} → ${p.port}`).join(', ')}`});
+    }
+    const runModel = start ? placeOnStart(wired, start, driveAnchor(wired, catalog)) : wired;
     // A mat's obstacles (a wall) are static bodies of the scene, compiled with the model.
     // ...and its loads (a pallet: world/objects.js) dynamic bodies the model moves by contact.
     const mechanism = compile(runModel, catalog, {version: 2, ...(matDef ? {mat, ...(matDef.obstacles.length ? {obstacles: matDef.obstacles} : {}),

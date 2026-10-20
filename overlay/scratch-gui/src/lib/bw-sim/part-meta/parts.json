@@ -129521,6 +129521,740 @@
      ]
     }
    }
+  },
+  {
+   "part": "58120.dat",
+   "name": "Power Functions M motor",
+   "category": "motor",
+   "massGrams": 31,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      20,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      20,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      -20,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      0,
+      -20,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "x0",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      29,
+      29.5,
+      60
+     ],
+     "position": [
+      0,
+      0.5,
+      60
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      9,
+      9,
+      9
+     ],
+     "position": [
+      0,
+      0,
+      10
+     ]
+    }
+   ],
+   "internalJoints": [
+    {
+     "id": "motor",
+     "type": "hinge",
+     "point": [
+      0,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "movingConnectors": [
+      "x0"
+     ],
+     "movingColliders": [
+      1
+     ],
+     "massFraction": 0.1,
+     "actuatedBy": "device"
+    }
+   ],
+   "device": "pf-medium-motor",
+   "nameDe": "Power-Functions-M-Motor",
+   "mirrorOf": {
+    "part": "58120.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  {
+   "part": "99499.dat",
+   "name": "Power Functions L motor",
+   "category": "motor",
+   "massGrams": 42,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      -20,
+      20,
+      130
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      20,
+      20,
+      130
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      20,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      20,
+      0,
+      130
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h4",
+     "type": "pinhole",
+     "position": [
+      -20,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h5",
+     "type": "pinhole",
+     "position": [
+      -20,
+      0,
+      130
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h6",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -20,
+      130
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h7",
+     "type": "pinhole",
+     "position": [
+      20,
+      -20,
+      130
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h8",
+     "type": "pinhole",
+     "position": [
+      0,
+      20,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h9",
+     "type": "pinhole",
+     "position": [
+      -20,
+      20,
+      10
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h10",
+     "type": "pinhole",
+     "position": [
+      20,
+      20,
+      10
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h11",
+     "type": "pinhole",
+     "position": [
+      0,
+      -20,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h12",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -20,
+      10
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h13",
+     "type": "pinhole",
+     "position": [
+      20,
+      -20,
+      10
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x0",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      30,
+      39.5,
+      70
+     ],
+     "position": [
+      0,
+      0,
+      70
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      9,
+      9,
+      9
+     ],
+     "position": [
+      0,
+      0,
+      10
+     ]
+    }
+   ],
+   "internalJoints": [
+    {
+     "id": "motor",
+     "type": "hinge",
+     "point": [
+      0,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "movingConnectors": [
+      "x0"
+     ],
+     "movingColliders": [
+      1
+     ],
+     "massFraction": 0.1,
+     "actuatedBy": "device"
+    }
+   ],
+   "device": "pf-large-motor",
+   "nameDe": "Power-Functions-L-Motor",
+   "mirrorOf": {
+    "part": "99499.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    },
+    "others": [
+     {
+      "m": [
+       1,
+       0,
+       0,
+       0,
+       -1,
+       0,
+       0,
+       0,
+       1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "part": "58121.dat",
+   "name": "Power Functions XL motor",
+   "category": "motor",
+   "massGrams": 69,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      -40,
+      0,
+      110
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      40,
+      0,
+      110
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      -20,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      0,
+      -20,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h4",
+     "type": "pinhole",
+     "position": [
+      20,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h5",
+     "type": "pinhole",
+     "position": [
+      0,
+      20,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h6",
+     "type": "pinhole",
+     "position": [
+      0,
+      -40,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h7",
+     "type": "pinhole",
+     "position": [
+      0,
+      40,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h8",
+     "type": "pinhole",
+     "position": [
+      -40,
+      0,
+      10
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h9",
+     "type": "pinhole",
+     "position": [
+      40,
+      0,
+      10
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x0",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      50,
+      49.36,
+      60
+     ],
+     "position": [
+      0,
+      0,
+      60
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      9,
+      9,
+      9
+     ],
+     "position": [
+      0,
+      0,
+      10
+     ]
+    }
+   ],
+   "internalJoints": [
+    {
+     "id": "motor",
+     "type": "hinge",
+     "point": [
+      0,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "movingConnectors": [
+      "x0"
+     ],
+     "movingColliders": [
+      1
+     ],
+     "massFraction": 0.1,
+     "actuatedBy": "device"
+    }
+   ],
+   "device": "pf-xl-motor",
+   "nameDe": "Power-Functions-XL-Motor",
+   "mirrorOf": {
+    "part": "58121.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
   }
  ]
 }

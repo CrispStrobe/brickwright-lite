@@ -13,7 +13,11 @@
 // page: sub-models nest at most MAX_DEPTH deep (`too-deep`), a model flattens to at
 // most MAX_PARTS parts (`too-many-parts`: nothing is opened), and a coordinate
 // beyond MAX_COORDINATE LDU is `out-of-range`. A part matrix must be a rotation
-// (orthonormal, determinant +1); a mirrored, scaled or sheared one is `bad-matrix`.
+// (orthonormal, determinant +1). A scaled or sheared one is a flexible element's segment (a cable,
+// a hose, a string, a rubber band as LDCad and Studio lay them: one short part stretched along its
+// way, many times) or a mirrored part: it is DECORATION, `model.decor` [{part, color, position,
+// matrix}], drawn as the file has it, never simulated or edited, and written back as it was read.
+// Only a matrix that flattens (determinant ~0) or is not finite is `bad-matrix`.
 
 import {det3} from '../contracts.js';
 
@@ -71,6 +75,8 @@ const orthoError = m => {
  * about 1e-3; a mirror (det −1), a scale or a shear (which can have determinant 1) is not.
  */
 const isProperRotation = m => m.every(Number.isFinite) && det3(m) > 0 && orthoError(m) <= ROTATION_TOLERANCE;
+/** A placement drawn but not simulated: finite, not flat (a stretched segment, a mirrored part). */
+const isDecorMatrix = m => m.every(Number.isFinite) && Math.abs(det3(m)) > 1e-6;
 
 /**
  * The rotation a file meant: as written when it is one to ROTATION_EXACT (so our own files read
@@ -178,6 +184,7 @@ export const parseModel = (text, {catalog} = {}) => {
     const catalogMap = catalog instanceof Map ? catalog : (catalog && typeof catalog === 'object' ? new Map(Object.entries(catalog)) : null);
     const refusals = [];
     const parts = [];
+    const decor = []; // flexible elements' segments and mirrored parts (isDecorMatrix): drawn, not simulated
 
     // Split lines preserving line numbers, handle CRLF/LF
     const rawLines = text.split(/\r?\n/);
@@ -344,6 +351,23 @@ export const parseModel = (text, {catalog} = {}) => {
                 localPendingPort = null;
                 localPendingId = null;
                 if (!isProperRotation(parsed.rotation)) {
+                    if (isDecorMatrix(parsed.rotation)) {
+                        const placedDecor = compose(parentPos, parentRot, parsed);
+                        const colorDecor = parsed.color === MAIN_COLOUR ? parentColor : parsed.color;
+                        if (isSubModel(parsed.file)) {
+                            // A stretched sub-model (LDCad's cable segment): its parts, stretched with it, are decoration.
+                            if (!visited.has(parsed.file) && depth + 1 <= MAX_DEPTH) {
+                                path.push(i + 1);
+                                visited.add(parsed.file);
+                                flattenSubModel(parsed.file, placedDecor.position, placedDecor.rotation, colorDecor, path, visited, depth + 1, result);
+                                visited.delete(parsed.file);
+                                path.pop();
+                            }
+                        } else if (inRange(placedDecor.position)) {
+                            decor.push({part: parsed.file, color: colorDecor, position: placedDecor.position, matrix: placedDecor.rotation});
+                        }
+                        continue;
+                    }
                     refusals.push({line: lineNo, code: 'bad-matrix', message: `Bad matrix at line ${lineNo} det=${det3(parsed.rotation).toFixed(4)}`});
                     continue;
                 }
@@ -373,7 +397,9 @@ export const parseModel = (text, {catalog} = {}) => {
                     continue;
                 }
                 if (catalogMap && !catalogMap.has(parsed.file)) {
+                    // Drawn where it is, not simulated: the note says so (a part LDraw has that we do not know yet).
                     refusals.push({line: lineNo, code: 'unknown-part', message: `Unknown part '${parsed.fileRaw}' at line ${lineNo}`});
+                    decor.push({part: parsed.file, color, position: placed.position, matrix: placed.rotation});
                     continue;
                 }
                 // Id: an explicit !BW ID (once), else one from the path of instances.
@@ -511,7 +537,14 @@ export const parseModel = (text, {catalog} = {}) => {
         const parsed = parseType1(line);
         if (parsed && !parsed.error) {
             if (!isProperRotation(parsed.rotation)) {
-                refusals.push({line: lineNo, code: 'bad-matrix', message: `Bad matrix at line ${lineNo} det=${det3(parsed.rotation).toFixed(4)}`});
+                if (isDecorMatrix(parsed.rotation) && isSubModel(parsed.file)) {
+                    // A stretched sub-model (LDCad's cable segment): its parts, stretched with it, are decoration.
+                    flattenSubModel(parsed.file, parsed.position, parsed.rotation, parsed.color, [idx + 1], new Set([mainName, parsed.file]), 1, []);
+                } else if (isDecorMatrix(parsed.rotation) && inRange(parsed.position)) {
+                    decor.push({part: parsed.file, color: parsed.color, position: parsed.position, matrix: parsed.rotation});
+                } else {
+                    refusals.push({line: lineNo, code: 'bad-matrix', message: `Bad matrix at line ${lineNo} det=${det3(parsed.rotation).toFixed(4)}`});
+                }
                 dropPending();
                 continue;
             }
@@ -538,7 +571,9 @@ export const parseModel = (text, {catalog} = {}) => {
                 continue;
             }
             if (catalogMap && !catalogMap.has(parsed.file)) {
+                // Drawn where it is, not simulated: the note says so.
                 refusals.push({line: lineNo, code: 'unknown-part', message: `Unknown part '${parsed.fileRaw}' at line ${lineNo}`});
+                decor.push({part: parsed.file, color: parsed.color, position: parsed.position, matrix: parsed.rotation});
                 dropPending();
                 continue;
             }
@@ -596,6 +631,12 @@ export const parseModel = (text, {catalog} = {}) => {
     }
 
     const model = {version: 1, parts};
+    if (decor.length) model.decor = decor;
+    // The parts the file ships itself (an MPD's embedded part sections: unofficial parts, LDCad's
+    // cable segments), by name: the views draw them from here, and serializeModel writes them back.
+    const files = {};
+    for (const [key, sec] of fileSections) if (sec.isPart) files[key] = sec.lines.map(l => l.text).join('\n');
+    if (Object.keys(files).length) model.files = files;
     if (groupOrder.length > 0) {
         model.groups = groupOrder.map(gid => groupsById.get(gid));
         // Remove empty groups (should not happen, but for safety, filter out groups with 0 parts? But spec says groups with <2 dissolve, but parser should keep whatever was defined, even if empty, and let validator catch it)
@@ -651,6 +692,9 @@ export const parseModel = (text, {catalog} = {}) => {
  */
 export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright model'} = {}) => {
     const lines = [];
+    // A model that ships parts of its own (model.files) is an MPD: the model, then each part's FILE section.
+    const files = Object.entries(model.files || {});
+    if (files.length) lines.push(`0 FILE ${name}`);
     lines.push(`0 ${title}`);
     lines.push(`0 Name: ${name}`);
     lines.push(`0 Author: Brickwright`);
@@ -707,5 +751,15 @@ export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright 
         lines.push(`1 ${color} ${x} ${y} ${z} ${a} ${b} ${c} ${d} ${e} ${f} ${g} ${h} ${i} ${p.part}`);
     }
     if (stepOf.size && previousStep !== undefined) lines.push('0 STEP');
+    // Decoration (a cable's segments, a mirrored part) as it was read: read back, it is decoration again.
+    for (const d of model.decor || []) {
+        lines.push(`1 ${formatColour(d.color ?? MAIN_COLOUR)} ${[...d.position, ...d.matrix].map(formatNumber).join(' ')} ${d.part}`);
+    }
+    if (files.length) {
+        lines.push('0 NOFILE');
+        for (const [file, text] of files) {
+            lines.push(`0 FILE ${file}`, ...text.split(/\r?\n/).filter(l => !/^\s*0\s+(?:NO)?FILE\b/i.test(l)), '0 NOFILE');
+        }
+    }
     return lines.join('\r\n') + '\r\n';
 };

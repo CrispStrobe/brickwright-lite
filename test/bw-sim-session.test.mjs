@@ -49,7 +49,7 @@ test('prepareModel lists problems instead of throwing', () => {
     const text = [
         '1 71 0 0 0 1 0 0 0 1 0 0 0 1 45601.dat',
         '1 4 0 0 0 1 0 0 0 1 0 0 0 1 not-a-part.dat',
-        '1 4 0 0 0 -1 0 0 0 1 0 0 0 1 32524.dat'
+        '1 4 0 0 0 0 0 0 0 1 0 0 0 1 32524.dat' // flat: a mirrored or stretched line is decoration now
     ].join('\n');
     const {mechanism, issues} = prepareModel(text, CATALOG);
     assert.ok(mechanism, 'the hub alone still compiles');

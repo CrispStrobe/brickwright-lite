@@ -188,8 +188,14 @@ export const GROUND_FRICTION = 0.8;
  *   groups?: {id: string, name: string, parts: string[]}[],
  *   belts?: {id: string, band: string, around: string[]}[],
  *   ropes?: {id: string, lengthLdu: number, around: string[]}[],
- *   hoses?: {id: string, a: {part: string, port: string}, b: {part: string, port: string}}[]
+ *   hoses?: {id: string, a: {part: string, port: string}, b: {part: string, port: string}}[],
+ *   decor?: {part: string, color: number, position: number[], matrix: number[]}[],
+ *   files?: {[name: string]: string}
  * }} PlacedModel
+ *
+ * `decor` is what a file has that is drawn but not simulated: a flexible element's stretched segments
+ * (a cable, a hose, a string), a mirrored part, a part not in the catalogue; `files` are the parts
+ * an MPD ships itself (model/ldraw-model.js).
  *
  * `hoses` are pneumatic tubes from one part's air port to another's (docs/ROBOT-LAB-UX.md §16):
  * `0 !BW HOSE <id> <part> <port> <part> <port>` in LDraw text.
@@ -660,6 +666,19 @@ export const validatePlacedModel = (model, catalog) => {
             }
         }
     }
+    // Decoration (model/ldraw-model.js): drawn as the file has it, never simulated; its parts need not be catalogued.
+    if (model.decor !== undefined) {
+        if (!Array.isArray(model.decor)) out.push('model.decor: not an array');
+        else {
+            model.decor.forEach((d, i) => {
+                if (typeof d?.part !== 'string' || !isVec(d?.position) || !isVec(d?.matrix, 9)) {
+                    out.push(`model.decor[${i}]: {part, color, position: Vec3, matrix: 9 numbers}`);
+                }
+            });
+        }
+    }
+    if (model.files !== undefined && (typeof model.files !== 'object' || model.files === null ||
+        Object.values(model.files).some(t => typeof t !== 'string'))) out.push('model.files: {name: LDraw text}');
     if (model.hoses !== undefined) {
         if (!Array.isArray(model.hoses)) out.push('model.hoses: not an array');
         else {

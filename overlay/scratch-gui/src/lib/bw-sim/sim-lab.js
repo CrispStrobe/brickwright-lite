@@ -38,7 +38,7 @@ export {SimSession, prepareModel, MODELS, MODELS_BASE, PROGRAMS_BASE} from './si
 export {SimLabClock} from './sim-clock.js';
 export {createRobotLabApi} from './api/robot-lab-api.js';
 export {isPortPart} from './contracts.js';
-export {fetchLDrawClosure, LDRAW_BASE} from './ldraw/ldraw-fetch.js';
+export {fetchLDrawClosure, fetchModelDrawing, LDRAW_BASE} from './ldraw/ldraw-fetch.js';
 export {connectVirtualSpike} from '../virtual-hub/connect-virtual-spike.js';
 // Radio hubs (LWP3, WeDo 2.0): the scene's hubs offered to the LEGO extensions, and the connect that picks one.
 export {connectVirtualHub} from '../virtual-hub/connect-virtual-hub.js';

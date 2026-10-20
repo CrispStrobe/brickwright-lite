@@ -71,15 +71,19 @@ const checkOpen = async (name, bytes) => {
         .filter(p => !/need at least 2 members/.test(p));
     if (problems.length) return `half-opened: ${problems.slice(0, 2).join('; ')}`;
     for (const r of prepared.issues) if (!r.code) return `an issue without a code: ${JSON.stringify(r)}`;
-    // Every line of a single-file model that is not a comment is a part or a named refusal.
+    // Every line of a single-file model that is not a comment is a part, decoration (a stretched or
+    // mirrored placement, model.decor) or a named refusal (an unknown part is both: drawn, and named).
     const text = opened.text;
     if (!/^\s*0\s+FILE\s/im.test(text) && (name.endsWith('.ldr'))) {
         const lines = text.split(/\r?\n/);
         const content = new Set(lines.map((l, i) => (l.trim() && !l.trim().startsWith('0') ? i + 1 : 0)).filter(Boolean));
-        const refused = new Set(parseModel(text, {catalog: CATALOG}).refusals
+        const read = parseModel(text, {catalog: CATALOG});
+        const refused = new Set(read.refusals
             .filter(r => content.has(r.line) && r.code !== 'duplicate-id' && r.code !== 'bad-group').map(r => r.line));
-        if (prepared.model.parts.length + refused.size !== content.size) {
-            return `${content.size} part lines, but ${prepared.model.parts.length} parts and ${refused.size} refused lines`;
+        const unknown = read.refusals.filter(r => r.code === 'unknown-part').length;
+        const decor = (read.model.decor || []).length - unknown;
+        if (prepared.model.parts.length + refused.size + decor !== content.size) {
+            return `${content.size} part lines, but ${prepared.model.parts.length} parts, ${decor} decoration and ${refused.size} refused lines`;
         }
     }
     const took = performance.now() - started;

@@ -106,3 +106,24 @@ export const fetchLDrawClosure = async (parts, {fetchImpl = globalThis.fetch, ba
     }
     return {read: p => files.get(p.toLowerCase()), files, missing, fromCatalogue};
 };
+
+/**
+ * Everything a model's pictures need: its parts', its decoration's (model.decor: a cable's segments,
+ * a part not in the catalogue) and the library files its own parts use (model.files: an MPD's
+ * embedded parts) — and a read() that serves those own parts first, by name, under any search dir.
+ * @param {{parts: {part: string}[], decor?: {part: string}[], files?: object}} model
+ * @param {object} [options] as fetchLDrawClosure's
+ */
+export const fetchModelDrawing = async (model, options = {}) => {
+    const own = new Map(Object.entries(model.files || {}).map(([name, text]) => [refKey(name), text]));
+    const names = new Set([...model.parts.map(p => p.part), ...(model.decor || []).map(d => d.part)]);
+    for (const text of own.values()) {
+        for (const line of text.split(/\r?\n/)) {
+            const m = /^\s*1\s+(?:\S+\s+){13}(.+?)\s*$/.exec(line);
+            if (m) names.add(m[1]);
+        }
+    }
+    const closure = await fetchLDrawClosure([...names].filter(n => !own.has(refKey(n))), options);
+    const ownOf = path => own.get(refKey(path).replace(/^(?:parts\/|p\/)/, ''));
+    return {...closure, read: path => ownOf(path) ?? closure.read(path)};
+};
