@@ -1,3 +1,14 @@
+## Expanded mechanics catalogue machines — 2026-10-20
+
+CLAIMED — Codex, existing lane/robot-lab-models-20261020 / comprehensive draft PR #1138.
+Read revision 6 of the 330-idea catalogue (234 additions). Build original two-joint
+positioning arm, rack shuttle and three-channel ratio comparison bench, with motor
+programs, bilingual library lessons, generated instructions and independent physics
+judges. Test real VM/worker programs and manual GUI controls before qualification.
+Preserve peer worktrees and physics ownership. Main's later universal-joint changes
+conflict with the composed dependency core; leave that composition to its owners.
+No external CAD or restricted assets introduced.
+
 ## Motorised mechanics idea catalogue — 2026-10-20
 
 IMPLEMENTED — Codex, lane/robot-lab-models-20261020 / comprehensive draft PR #1138.
