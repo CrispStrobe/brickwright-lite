@@ -12,6 +12,8 @@
 //      new parts, each with its picture;
 //   2. Next and the → key turn the page (the counter and the drawn step follow,
 //      parts built before are on the page, the new ones are orange), ← turns back;
+//      step 2 is the hub's pins on their own (pins first), with its note, both pins drawn
+//      pulled out with an arrow home (the gate runs with reduced motion: no fly-in);
 //   3. the last page is the parts list, counting every part of the model;
 //   4. "Print / Save as PDF" opens a page with one picture per step (each a real
 //      image, decoded) and the parts list;
@@ -89,6 +91,11 @@ export const instructionsInteractions = async (page, {shotsDir}) => {
     assert.equal(second.stats.fresh, first.plan[1]);
     const orange2 = await orangePixels(page, canvas);
     assert.ok(orange2 > 300, `step 2's new parts are orange (${orange2} px)`);
+    const step2 = await page.evaluate(() => window.__bwSimLabInstructions.plan.steps[1]);
+    assert.equal(step2.pins, true, 'step 2 puts the hub\'s pins in first');
+    assert.match((await page.getByTestId('bw-sim-instructions-note').allTextContents()).join(' '), /First push these pins and axles into the model/);
+    assert.equal(second.stats.moved, step2.parts.length, `every pin slides in: ${JSON.stringify(second.stats)}`);
+    assert.equal(second.stats.exploded, true, 'reduced motion: pulled out with arrows, not flying');
     assert.notDeepEqual(second.stats.camera, first.stats.camera, 'the camera frames the new parts of each step');
     await dialog.screenshot({path: resolve(shotsDir, 'sim-lab-instructions-step2.png')});
     await page.keyboard.press('ArrowRight');
@@ -101,7 +108,8 @@ export const instructionsInteractions = async (page, {shotsDir}) => {
     await page.keyboard.press('ArrowLeft');
     await onPage(page, 1);
     assert.equal(await counter.textContent(), `2 / ${first.steps}`);
-    console.log(`PASS Next and → turn to steps 2 and 3, ← back to 2: the counter and the drawn step follow (${orange2} orange px on step 2)`);
+    console.log(`PASS Next and → turn to steps 2 and 3, ← back to 2: the counter and the drawn step follow (${orange2} orange px on step 2); ` +
+        `step 2 puts the hub's ${step2.parts.length} pins in first, each pulled out with its arrow home`);
 
     // ---- 3. the parts list ---------------------------------------------------------------
     for (let n = 2; n <= first.steps; n++) {

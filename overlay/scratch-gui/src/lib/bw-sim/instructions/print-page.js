@@ -23,10 +23,11 @@ const partCell = (row, {withName}) => `<div class="part">` +
  * @param {object} options
  * @param {string} options.lang 'en' | 'de'
  * @param {string} options.title the document's title (the model's name)
- * @param {{step: string, partsNeeded: string, partsList: string, total: string, attach: string, subassembly: string}} options.text
+ * @param {{step: string, partsNeeded: string, partsList: string, total: string, attach: string, subassembly: string, pins: string}} options.text
  *        the learner's language; {n} {total} {name} are filled in
  * @param {Array<{image: string, parts: Array<{thumb: string|null, count: number, length: number|null, name: string}>,
- *                attach: string[], subassembly: string|null}>} options.steps one per step, in order
+ *                attach: string[], subassembly: string|null, pins?: boolean}>} options.steps one per step, in order
+ *        (pins: a step that only puts pins and axles in, instructions/steps.js pinsFirst)
  * @param {Array<{thumb: string|null, count: number, length: number|null, name: string, part: string}>} options.bom
  * @returns {string} an HTML document
  */
@@ -35,7 +36,8 @@ export const instructionsPrintHtml = ({lang, title, text, steps, bom}) => {
     const pages = steps.map((step, i) => {
         const notes = [
             ...(step.subassembly ? [fill(text.subassembly, {name: step.subassembly})] : []),
-            ...step.attach.map(name => fill(text.attach, {name}))
+            ...step.attach.map(name => fill(text.attach, {name})),
+            ...(step.pins && text.pins ? [text.pins] : [])
         ];
         return `<section class="page step" data-step="${i + 1}">` +
             `<header><span class="num">${escapeHtml(fill(text.step, {n: i + 1, total}))}</span>` +

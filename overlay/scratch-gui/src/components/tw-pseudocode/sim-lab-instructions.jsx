@@ -138,11 +138,12 @@ class SimLabInstructions extends React.Component {
             image: this.view.image(i, PRINT_W, PRINT_H),
             parts: this.rows(step.parts).map(cell),
             attach: step.attach.map(id => this.groupName(id)),
-            subassembly: step.subassembly ? this.groupName(step.subassembly) : null
+            subassembly: step.subassembly ? this.groupName(step.subassembly) : null,
+            pins: Boolean(step.pins)
         }));
         const html = lib.instructionsPrintHtml({lang: locale === 'de' ? 'de' : 'en',
             title: fill(T.documentTitle, {name: this.props.title || T.title}),
-            text: {step: T.step, partsNeeded: T.partsNeeded, partsList: T.partsList, total: T.total, attach: T.attach, subassembly: T.subassembly},
+            text: {step: T.step, partsNeeded: T.partsNeeded, partsList: T.partsList, total: T.total, attach: T.attach, subassembly: T.subassembly, pins: T.pins},
             steps, bom: this.rows(this.props.model.parts.map(p => p.id)).map(cell)});
         win.document.open();
         win.document.write(html);
@@ -182,11 +183,12 @@ class SimLabInstructions extends React.Component {
         const notes = [
             ...(step.subassembly ? [fill(T.subassembly, {name: this.groupName(step.subassembly)})] : []),
             ...step.attach.map(id => fill(T.attach, {name: this.groupName(id)})),
-            ...(step.loose ? [T.loose] : [])
+            ...(step.loose ? [T.loose] : []),
+            ...(step.pins ? [T.pins] : [])
         ];
         return (
             <div style={{display: 'flex', flexDirection: 'column', gap: 8, width: 200, flex: 'none'}}>
-                {notes.map(note => <div key={note} style={{fontSize: 13, fontWeight: 600, color: '#1e3a8a'}}>{note}</div>)}
+                {notes.map(note => <div key={note} data-testid="bw-sim-instructions-note" style={{fontSize: 13, fontWeight: 600, color: '#1e3a8a'}}>{note}</div>)}
                 {step.parts.length > 0 && (
                     <div data-testid="bw-sim-instructions-callout"
                         style={{background: '#e0f2fe', border: '2px solid #7dd3fc', borderRadius: 8, padding: 8,
