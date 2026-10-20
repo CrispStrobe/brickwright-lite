@@ -1,6 +1,6 @@
 DEVICE SPIKE
 
-# ORBITAL LOOM, OpenAI, 2026; simulator program by Brickwright contributors.
+# ORBITAL LOOM, CrispStrobe, 2026; BSD-3-Clause.
 # Eightfold: 3 paper turns, 8 pen turns. Reset before drawing again.
 # Paper and pen both turn clockwise viewed from above; motor outputs face opposite ways.
 # Integer speed ratios preserve the nominal curve; independent servos have transient tracking error.
