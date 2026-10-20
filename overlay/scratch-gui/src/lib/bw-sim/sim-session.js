@@ -126,24 +126,29 @@ export const PROGRAMS_BASE = 'static/sim-lab/programs/';
 /**
  * @param {string} text LDraw
  * @param {Map} catalog
- * @param {{mat?: string, autoPorts?: boolean}} [options] autoPorts (default true): unplugged motors and sensors go into
- *        free ports on the run model (hubs/auto-ports.js); mat: a mat id (bw-sim/world/mats.js): the floor shows it, the colour
+ * @param {{mat?: string, autoPorts?: boolean}} [options] autoPorts (default: a file from elsewhere, one without our
+ *        `0 Author: Brickwright`): unplugged motors and sensors go into free ports (hubs/auto-ports.js), in the model
+ *        itself, so Build shows them and a port the builder takes out later stays out; mat: a mat id (bw-sim/world/mats.js): the floor shows it, the colour
  *        sensor reads it, a mat with a start pose gets the model placed on that pose, and a mat's
  *        obstacles (a wall) become static bodies the robot and the distance sensor meet
  * @returns {{model, runModel, mechanism, issues}} `model` is the model as authored (what Build edits
  *          and the project saves); `runModel` is where it stands on the mat (what is simulated and drawn)
  */
-export const prepareModel = (text, catalog, {mat = null, autoPorts: plugIn = true} = {}) => {
-    const {model, refusals} = parseModel(text, {catalog});
+/** A file we wrote ourselves (serializeModel's header): its ports are as the builder left them, unplugged ones too. */
+const OWN_FILE = /^0 Author: Brickwright\s*$/m;
+
+export const prepareModel = (text, catalog, {mat = null, autoPorts: plugIn = !OWN_FILE.test(text)} = {}) => {
+    const {model: parsedModel, refusals} = parseModel(text, {catalog});
     const issues = refusals.map(r => ({severity: 'warning', ...r}));
-    if (model.parts.length === 0) {
+    if (parsedModel.parts.length === 0) {
         issues.push({severity: 'error', code: 'empty-model', message: 'The model has no parts the Sim Lab knows.', parts: []});
-        return {model, runModel: model, mechanism: null, issues};
+        return {model: parsedModel, runModel: parsedModel, mechanism: null, issues};
     }
     const matDef = mat ? createMat(mat) : null;
     const start = matDef ? matDef.startPose : null;
     // Motors and sensors the file left unplugged go into the hub's free ports (hubs/auto-ports.js).
-    const {model: wired, plugged} = plugIn ? autoPorts(model, catalog, hubRegistry) : {model, plugged: []};
+    const {model: wired, plugged} = plugIn ? autoPorts(parsedModel, catalog, hubRegistry) : {model: parsedModel, plugged: []};
+    const model = wired;
     if (plugged.length) {
         issues.push({severity: 'info', code: 'ports-plugged', parts: plugged.map(p => p.part),
             message: `Plugged in: ${plugged.map(p => `${p.part} → ${p.port}`).join(', ')}`});
