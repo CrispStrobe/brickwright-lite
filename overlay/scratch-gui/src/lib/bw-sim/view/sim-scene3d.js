@@ -172,7 +172,8 @@ export const buildSimScene = ({model, mechanism, read, colors, catalog = null, i
     // Ground plane at ground body's top
     const groundBody = mechanism.bodies.find(b => b.motion === 'static' && b.id === 'ground');
     if (groundBody) {
-        const geo = new BoxGeometry(2, 0.02, 2);
+        const he = (groundBody.colliders[0] && groundBody.colliders[0].halfExtents) || [1, 0.01, 1];
+        const geo = new BoxGeometry(he[0] * 2, he[1] * 2, he[2] * 2);
         const mat = new MeshStandardMaterial({color: '#c0c0c0', roughness: 0.9});
         createdGeometries.add(geo);
         createdMaterials.add(mat);

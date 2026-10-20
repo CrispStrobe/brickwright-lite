@@ -36,6 +36,7 @@ import {EDITOR_TEXT} from './sim-lab-editor-text.js';
 import SimLabProperties from './sim-lab-properties.jsx';
 import SimLabShortcuts from './sim-lab-shortcuts.jsx';
 import SimLabCoach from './sim-lab-coach.jsx';
+import SimLabMotorMixer, {MIXER_OPEN_KEY} from './sim-lab-motor-mixer.jsx';
 import PaneDivider from '../gui/pane-divider.jsx';
 import {Icon, Popup, Separator, ToolButton, splitToolbar, toolStyles, tooltipOf} from './sim-lab-toolbar.jsx';
 import {TOOLBAR_TEXT} from './sim-lab-toolbar-text.js';
@@ -363,6 +364,7 @@ class SimLabPane extends React.Component {
             mode: 'simulate', placing: null, selection: [], editorTick: 0, mat: null,
             buildStatus: {kind: 'idle'}, gizmoMode: 'move', grid: 10, recent: [], thumbTick: 0,
             showPorts: true, showMotion: false, blockers: [], portPicker: null, instructions: null, coarse: false,
+            mixerOpen: (() => { try { return localStorage.getItem(MIXER_OPEN_KEY) === '1'; } catch { return false; } })(), mixer: {session: null, power: {}},
             // Simulate: sensor rays, the Readings panel, slow motion, and the replay position (null: live)
             showSensors: false, readings: false, timeScale: 1, replayAt: null, replayFrames: 0, readingsTick: 0,
             challengesOpen: false, challenge: null, challengeResult: null, challengeBest: readBest(),
@@ -1763,6 +1765,34 @@ class SimLabPane extends React.Component {
         this.armChallenge();
     }
 
+    /** The motor mixer (sim-lab-motor-mixer.jsx): every motor of the model, through the Robot Lab API as the blocks use it. */
+    renderMixer (button) {
+        if (!this.api) return null;
+        const s = this.session;
+        const power = this.state.mixer.session === s ? this.state.mixer.power : {};
+        const lang = this.locale === 'de' ? 'de' : 'en';
+        const motors = this.api.motors().map(m => {
+            const enc = this.api.encoder(m.id);
+            return {id: m.id, port: m.port, hub: m.hub, direct: m.direct,
+                hubName: (m.profile && m.profile.name && (m.profile.name[lang] || m.profile.name.en)) || m.hub || '',
+                angleDeg: enc && enc.ok ? enc.angleDeg : null};
+        });
+        const setPower = (id, pct) => {
+            const r = pct === 0 ? this.api.stopMotor(id, 'brake') : this.api.setMotor(id, {power: pct});
+            if (r && r.ok === false) return;
+            this.setState(st => ({mixer: {session: s, power: {...(st.mixer.session === s ? st.mixer.power : {}), [id]: pct}}}));
+        };
+        return (
+            <SimLabMotorMixer motors={motors} power={power} open={this.state.mixerOpen} locale={this.locale} button={button}
+                onToggle={() => this.setState(st => {
+                    try { localStorage.setItem(MIXER_OPEN_KEY, st.mixerOpen ? '0' : '1'); } catch { /* private window: this session only */ }
+                    return {mixerOpen: !st.mixerOpen};
+                })}
+                onPower={setPower} onStop={id => setPower(id, 0)}
+                onStopAll={() => motors.filter(m => m.direct).forEach(m => setPower(m.id, 0))} />
+        );
+    }
+
     renderDrive (button) {
         // The arrow follows the finger (or button) that pressed it: captured, so sliding off does not
         // let go, and it stops when THAT finger lifts or the browser takes it away (another finger on
@@ -2744,6 +2774,7 @@ class SimLabPane extends React.Component {
                     {this.renderDockedProperties(button)}
                 </div>
                 {simulate && this.session && this.session.bridge && !this.session.lockstep && this.spikeScene() && this.renderDrive(button)}
+                {simulate && this.session && !this.session.lockstep && this.renderMixer(button)}
                 {build && this.state.shortcuts && (
                     <SimLabShortcuts T={this.etext} wheelMode={this.state.wheelMode} onWheelMode={mode => this.setWheelMode(mode)}
                         mousePreset={this.state.mousePreset} onMousePreset={preset => this.setMousePreset(preset)}

@@ -121,6 +121,10 @@ const MESH_VELOCITY_STEPS = 120;
  * — 6° (2 mm at the tip) inside the block — and at 13.7–13.9° with 5 to 20 (measured).
  */
 const GEAR_POSITION_STEPS = 10;
+/** How near its limit a joint counts as at its end (m for a slider, rad for a hinge), and the brake (N·m) on a pinion driven into it. */
+const RACK_STOP_M = 0.0005;
+const HINGE_STOP_RAD = 0.01;
+const RACK_STOP_NM = 5;
 
 /** A slider spring (kinds/shock.js) pushes with at most this (N): far beyond a LEGO spring, never the limit. */
 const SPRING_MAX_FORCE_N = 50;
@@ -926,6 +930,16 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     const screwCouplings = [];
     /** Ropes (kinds/rope.js): built after the couplings, from the drum's hinge (physics/rope.js). */
     const ropeCouplings = [];
+    /**
+     * End stops through couplings: gears, chains, bands and racks tie WORLD rates, so with a joint they
+     * drive at its end (a rack's slider limit, a boom hinge's) a motor still driving on is satisfied by
+     * turning the whole frame (the forklift's lift motor, the excavator's boom motor tipped them over).
+     * Each joint with limits is walked through the couplings (gears, chains, bands, racks)
+     * to every hinge that drives it (rate = k·ω(hinge)); at the end, a motor pushing further is held at
+     * speed 0 (it stalls against the end, as a real one does), any other hinge pushing further brakes
+     * with RACK_STOP_NM until it turns back (applyEndStops).
+     */
+    let endStops = [];
     /** Pneumatic cylinders and their valves (kinds/pneumatic.js): driven before each step (physics/air.js). */
     const pneumaticCouplings = [];
     /** Pumps (kinds/pneumatic.js PUMP): their sliders put air into their networks (physics/air.js). */
@@ -1372,6 +1386,85 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         }
     };
 
+    // The end stops (endStops above). A joint's position against its limits: which end it is at, if any.
+    const atEndOf = (jointId, limits) => {
+        const h = hingeMap.get(jointId);
+        const s = h ? null : sliderMap.get(jointId);
+        const x = h ? h.unwrapped : s ? s.position : null;
+        if (x === null) return 0;
+        const tol = h ? HINGE_STOP_RAD : RACK_STOP_M;
+        return x >= limits[1] - tol ? 1 : x <= limits[0] + tol ? -1 : 0;
+    };
+    // Every joint with limits, and the hinges that drive it: the couplings walked from it, rates multiplied.
+    const buildEndStops = () => {
+        const edges = new Map();
+        const link = (a, b, k) => {
+            if (!edges.has(a)) edges.set(a, []);
+            if (!edges.has(b)) edges.set(b, []);
+            edges.get(a).push([b, k]);
+            if (k !== 0) edges.get(b).push([a, 1 / k]);
+        };
+        for (const g of mechanism.couplings || []) {
+            if (['gear', 'chain', 'band', 'relativeGear'].includes(g.kind) && g.joint1 && g.joint2 && g.ratio) link(g.joint1, g.joint2, g.ratio);
+            // (Not a linear actuator's screw: its clutch lets the spindle turn on at the end, physics/screw.js.)
+            else if (['rackAndPinion', 'shiftFork'].includes(g.kind) && g.ratio) link(g.hingeJoint, g.sliderJoint, g.ratio);
+        }
+        const out = [];
+        for (const j of mechanism.joints) {
+            if (!j.limits || !edges.has(j.id)) continue;
+            // rate(j) = k · ω(hinge): walked from j, k(hinge) is 1 / (the product from j to it).
+            const seen = new Map([[j.id, 1]]);
+            const queue = [j.id];
+            while (queue.length) {
+                const at = queue.shift();
+                for (const [next, k] of edges.get(at) || []) {
+                    if (seen.has(next)) continue;
+                    seen.set(next, seen.get(at) * k);
+                    queue.push(next);
+                }
+            }
+            for (const [hingeId, kTo] of seen) {
+                const entry = hingeMap.get(hingeId);
+                if (entry && hingeId !== j.id && kTo !== 0) out.push({ hinge: entry, joint: j.id, k: 1 / kTo, limits: j.limits });
+            }
+        }
+        return out;
+    };
+    const braked = new Set();
+    const applyEndStops = () => {
+        const brake = new Set();
+        for (const st of endStops) {
+            const end = atEndOf(st.joint, st.limits);
+            if (end === 0) continue;
+            const h = st.hinge;
+            if (h.isMotor) {
+                const drive = h.hinge.GetTargetAngularVelocity();
+                if (drive !== 0 && h.hinge.GetMotorState() === J.EMotorState_Velocity && Math.sign(st.k * drive) === end) h.hinge.SetTargetAngularVelocity(0);
+            } else if (Math.sign(st.k * h.velocity) === end) {
+                brake.add(h);
+            }
+        }
+        for (const h of new Set([...braked, ...brake])) {
+            const on = brake.has(h);
+            if (on === braked.has(h)) continue;
+            if (on) braked.add(h); else braked.delete(h);
+            h.hinge.SetMaxFrictionTorque(on ? RACK_STOP_NM : h.frictionNm);
+        }
+    };
+    endStops = buildEndStops();
+    // The brakes are hinge friction, which Jolt's state does not record: a rollback puts them back as they were.
+    if (endStops.length) stateRegistry.register('endStops', {
+        save: () => [...hingeMap].filter(([, h]) => braked.has(h)).map(([id]) => id),
+        restore: ids => {
+            const want = new Set(ids.map(id => hingeMap.get(id)));
+            for (const h of new Set([...braked, ...want])) {
+                const on = want.has(h);
+                if (on) braked.add(h); else braked.delete(h);
+                h.hinge.SetMaxFrictionTorque(on ? RACK_STOP_NM : h.frictionNm);
+            }
+        }
+    });
+
     const core = {
         get time() { ensureAlive(); return timeSteps * dtFixed; },
         step(dtSeconds) {
@@ -1394,6 +1487,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                     entry.slider.SetTargetVelocity(clamp(err * entry.kp, -lim, lim));
                     if (entry.slider.GetMotorState() !== J.EMotorState_Velocity) entry.slider.SetMotorState(J.EMotorState_Velocity);
                 }
+                if (endStops.length) applyEndStops();
                 if (worms.length) applyWormHolds();
                 if (screws) screws.beforeStep();
                 if (ropes) ropes.beforeStep();

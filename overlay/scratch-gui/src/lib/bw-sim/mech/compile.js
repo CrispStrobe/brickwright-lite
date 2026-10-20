@@ -29,6 +29,9 @@ import {freePinWelds} from './free-pins.js';
 import {validateLoad, loadBody} from '../world/objects.js';
 import {quatMul, quatConj} from './vec.js';
 
+/** Half the floor's side (m): the floor is 20 m square. */
+export const FLOOR_HALF_M = 10;
+
 /** Rotate Vec3 v by unit quat q (xyzw) */
 const quatRotateVec = (q, v) => {
     // q * v * q_conj, where v as quat [v,0]
@@ -79,13 +82,15 @@ const makeGround = (bodies, opts = {}) => {
 
     const halfThick = 0.01;
     const centerY = lowest - halfThick;
+    // The floor reaches FLOOR_HALF_M every way: a robot driven about (the drive pad, the motor mixer, a
+    // program) stays on it for minutes; the 2 m floor it had ended in a drop within seconds.
     return {
         id: 'ground',
         motion: 'static',
         position: [0, centerY, 0],
         rotation: [0, 0, 0, 1],
         massKg: 0,
-        colliders: [{shape: 'box', halfExtents: [1, halfThick, 1]}],
+        colliders: [{shape: 'box', halfExtents: [FLOOR_HALF_M, halfThick, FLOOR_HALF_M]}],
         parts: [],
         friction: GROUND_FRICTION,
         color: opts.groundColor !== undefined ? opts.groundColor : 10,

@@ -142,6 +142,7 @@ import assert from 'node:assert/strict';
 import {cadInteractions} from './lib/sim-lab-cad-gate.mjs';
 import {insightInteractions} from './lib/sim-lab-insight-gate.mjs';
 import {instructionsInteractions} from './lib/sim-lab-instructions-gate.mjs';
+import {mixerInteractions} from './lib/sim-lab-mixer-gate.mjs';
 import {touchInteractions} from './lib/sim-lab-touch-gate.mjs';
 import {layoutInteractions, MIN_CANVAS_PX} from './lib/sim-lab-layout-gate.mjs';
 import {editorParityInteractions} from './lib/sim-lab-editor-parity-gate.mjs';
@@ -960,6 +961,15 @@ try {
         await openSimLab(manual, {program: null});
         await instructionsInteractions(manual, {shotsDir: artifacts});
         await manual.close();
+
+        // 10b. The motor mixer: every motor by hand, not only the drive pair (scripts/lib/sim-lab-mixer-gate.mjs).
+        const mixer = await browser.newPage({viewport: {width: 1400, height: 950}, serviceWorkers: 'block'});
+        mixer.on('pageerror', error => errors.push(error.message));
+        await openSimLab(mixer, {program: null});
+        const mx = await mixerInteractions(mixer, {shotsDir: artifacts});
+        console.log(`PASS the motor mixer unfolds a slider per motor of the Forklift (${mx.ports.join(', ')}); motor C's slider clicked to about 60 % ` +
+            `lifts the forks (${mx.lifted.toFixed(0)}° in 0.3 s), its ■ stops it, Stop all stops every motor, and the fold is remembered`);
+        await mixer.close();
 
         const fallback = await browser.newPage({viewport: {width: 1400, height: 900}, serviceWorkers: 'block'});
         fallback.on('pageerror', error => errors.push(error.message));
