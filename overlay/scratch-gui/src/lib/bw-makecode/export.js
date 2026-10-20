@@ -199,6 +199,17 @@ export class Emitter {
     }
 
     /** The numeric literal in this input, or null. */
+    /** The two `x bitor 0` blocks of `((x bitor 0) / (y bitor 0)) bitor 0`, or null. */
+    idivOperands (b) {
+        const truncated = block => (block && block.opcode === 'bitops_or' && this.numberInput(block, 'NUM2') === 0 ? block : null);
+        if (this.numberInput(b, 'NUM2') !== 0) return null;
+        const quotient = this.inputBlock(b, 'NUM1');
+        if (!quotient || quotient.opcode !== 'operator_divide') return null;
+        const left = truncated(this.inputBlock(quotient, 'NUM1'));
+        const right = truncated(this.inputBlock(quotient, 'NUM2'));
+        return left && right ? [left, right] : null;
+    }
+
     numberInput (b, name) {
         const input = b.inputs && b.inputs[name];
         const slot = input && input[1];
@@ -461,10 +472,15 @@ export class Emitter {
         // MakeCode's TypeScript has the operators the pseudocode had to
         // borrow an extension for, so these go back as themselves.
         case 'bitops_and': return `(${v('NUM1')} & ${v('NUM2')})`;
-        // Keep the current conversions: Math.idiv also converts both operands
-        // to signed integers before dividing. Naming (a / b) | 0 as that call
-        // changes fractional and out-of-range inputs.
-        case 'bitops_or': return `(${v('NUM1')} | ${v('NUM2')})`;
+        // ((a | 0) / (b | 0)) | 0 is Math.idiv itself (both operands and the
+        // quotient truncated), which is how the importer writes the call; only
+        // that exact shape goes back as Math.idiv. (a / b) | 0 is not it: it
+        // keeps fractional operands, so it stays a bitwise or.
+        case 'bitops_or': {
+            const idiv = this.idivOperands(b);
+            if (idiv) return `Math.idiv(${this.value(idiv[0], 'NUM1')}, ${this.value(idiv[1], 'NUM1')})`;
+            return `(${v('NUM1')} | ${v('NUM2')})`;
+        }
         case 'bitops_xor': return `(${v('NUM1')} ^ ${v('NUM2')})`;
         case 'bitops_shl': return `(${v('NUM1')} << ${v('NUM2')})`;
         case 'bitops_shr': return `(${v('NUM1')} >> ${v('NUM2')})`;
