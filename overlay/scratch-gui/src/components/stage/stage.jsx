@@ -26,11 +26,13 @@ const StageComponent = props => {
         arcadeDialog,
         micIndicator,
         question,
+        arcadePrompt,
         stageSize,
         useEditorDragStyle,
         onDeactivateColorPicker,
         onDoubleClick,
         onArcadeDialogDismiss,
+        onArcadeDialogButtonEdge,
         onQuestionAnswered,
         ...boxProps
     } = props;
@@ -63,7 +65,7 @@ const StageComponent = props => {
                         }}
                         {...boxProps}
                     />
-                    {arcadeDialog ? <ArcadeDialog dialog={arcadeDialog} onDismiss={onArcadeDialogDismiss} /> : null}
+                    {arcadeDialog ? <ArcadeDialog dialog={arcadeDialog} onDismiss={onArcadeDialogDismiss} onButtonEdge={onArcadeDialogButtonEdge} /> : null}
                     <Box className={styles.monitorWrapper}>
                         <MonitorList
                             draggable={useEditorDragStyle}
@@ -109,6 +111,7 @@ const StageComponent = props => {
                             >
                                 <Question
                                     question={question}
+                                    arcadePrompt={arcadePrompt}
                                     onQuestionAnswered={onQuestionAnswered}
                                 />
                             </div>
@@ -149,9 +152,14 @@ StageComponent.propTypes = {
     micIndicator: PropTypes.bool,
     onDeactivateColorPicker: PropTypes.func,
     onArcadeDialogDismiss: PropTypes.func,
+    onArcadeDialogButtonEdge: PropTypes.func,
     onDoubleClick: PropTypes.func,
     onQuestionAnswered: PropTypes.func,
     question: PropTypes.string,
+    arcadePrompt: PropTypes.shape({
+        answerLength: PropTypes.number.isRequired,
+        numbersOnly: PropTypes.bool.isRequired
+    }),
     stageSize: PropTypes.oneOf(Object.keys(STAGE_DISPLAY_SIZES)).isRequired,
     useEditorDragStyle: PropTypes.bool
 };

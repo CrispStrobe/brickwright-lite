@@ -5,6 +5,7 @@ import path from 'node:path';
 import {createServer} from 'node:http';
 import {chromium} from 'playwright';
 import {compile,STATIC} from '../../scripts/lib/pxt-node.mjs';
+import {preparePxtInitialClock,assertPxtInitialClock,bootstrapPxtProfilerClock} from './pxt-initial-clock.mjs';
 
 // Self-contained for browser serialization. Observe actual presentation, not
 // requested pixels or main/global completion, which can precede the first frame.
@@ -29,10 +30,37 @@ export function observePxtDisplay(sim = globalThis.pxsim) {
     return observer;
 }
 
-export async function runPxtArcade(source, {waitForGlobals = null, dependencies = {device: '*'}, inspectDisplay = false, waitForDisplay = false, buttonActions = null, recordSound = false, recordSongSound = false, waitForMain = true, fakeClock = false} = {}) {
+// Serialized into the original simulator page; only read actual named globals.
+// An absent or ambiguous binding must not satisfy an undefined expectation.
+export function pxtActionGlobalsReady(expected, globals = globalThis.__bwPxtRuntime?.globals || {}) {
+    return Object.entries(expected).every(([name, value]) => {
+        const matches = Object.entries(globals).filter(([key]) => key.replace(/___\d+$/, '') === name);
+        return matches.length === 1 && matches[0][1] === value;
+    });
+}
+
+export function validatePxtActionGlobals(expected) {
+    if (!expected || typeof expected !== 'object' || Array.isArray(expected) || !Object.keys(expected).length ||
+        Object.entries(expected).some(([name, value]) => !name ||
+            !(value === null || ['number', 'string', 'boolean', 'undefined'].includes(typeof value)) ||
+            typeof value === 'number' && Number.isNaN(value))) {
+        throw new Error('Original PXT action wait requires nonempty named primitive globals');
+    }
+}
+
+export async function runPxtArcade(source, {waitForGlobals = null, dependencies = {device: '*'}, inspectDisplay = false, waitForDisplay = false, buttonActions = null, recordSound = false, recordSongSound = false, waitForMain = true, fakeClock = false, inspectImageGlobals = [], observeEntropy = false, onCompilation = null} = {}) {
     if (waitForDisplay && !inspectDisplay) throw new Error('Display readiness requires display inspection');
+    if(onCompilation!==null && typeof onCompilation!=='function')throw new Error('Compilation observer must be a function');
+    for (const action of buttonActions?.steps || []) {
+        if (action.waitForGlobals !== undefined) validatePxtActionGlobals(action.waitForGlobals);
+    }
     const files=typeof source === 'string' ? {'main.ts':source,'pxt.json':JSON.stringify({name:'bw-arcade-oracle',dependencies,files:['main.ts']})} : {...source};
     const built=await compile('arcade',files);
+    // Retain authority from the exact compilation used by this guest, including
+    // rejected inputs. The observer receives copies and cannot alter the guest.
+    if(onCompilation!==null) {
+        await onCompilation(structuredClone({files,built}));
+    }
     if(!built.success)throw new Error(JSON.stringify(built.diagnostics));
     const root=path.join(STATIC,'arcade/sim');
     const server=createServer(async(req,res)=>{
@@ -46,19 +74,24 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
     await new Promise(done=>server.listen(0,'127.0.0.1',done));
     let browser;
     try {
-        browser=await chromium.launch();const page=await browser.newPage();
+        // An explicitly retained browser can qualify the reference helper without
+        // installing another executable. An unset path keeps Playwright's default.
+        browser=await chromium.launch(process.env.BW_PXT_CLOCK_BROWSER_EXECUTABLE ?
+            {executablePath:process.env.BW_PXT_CLOCK_BROWSER_EXECUTABLE} : {});
+        const clockContext=fakeClock ? await browser.newContext() : null;
+        if(clockContext)await preparePxtInitialClock(clockContext);
+        const page=clockContext ? await clockContext.newPage() : await browser.newPage();
         const errors=[],messages=[];page.on('pageerror',error=>errors.push(error.message));
         page.on('console',message=>{if(['error','warning'].includes(message.type()))messages.push(message.text().slice(0,1000));});
-        // A fake clock makes the original's frame times deterministic: its
-        // frame loop pauses max(1, 20 - callback time) ms, so frames are 20 ms.
-        // Installed alone, Playwright's fake clock still flows with real time
-        // and runFor only adds to it, so a slow host stretched the frames (a
-        // fast mover reached the wall inside its first frame). Paused, time
-        // moves only by runFor.
-        if(fakeClock){await page.clock.install({time:0});await page.clock.pauseAt(0);}
+        // Configure the paused context before creating a page. Installing a
+        // flowing clock and later pausing at zero races elapsed host time.
         await page.goto(`http://127.0.0.1:${server.address().port}/simulator.html`);
+        if(fakeClock){
+            await assertPxtInitialClock(page);
+            await bootstrapPxtProfilerClock(page);
+        }
         if (waitForDisplay) await page.evaluate(observePxtDisplay);
-        await page.evaluate(async ({code,recordSound,recordSongSound})=>{
+        await page.evaluate(async ({code,recordSound,recordSongSound,initialButtons,observeEntropy})=>{
             const msg={type:'run',id:'bw-oracle',code,options:{},mute:true};
             pxsim.AudioContextManager.mute(true);
             if(recordSound || recordSongSound){
@@ -79,22 +112,78 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
                     return queue(when,buffer);
                 };
             }
+            if(observeEntropy){
+                // Observe external platform entropy without changing any draw.
+                // Authored probes delimit relevant operations with entropyPhase.
+                window.__bwEntropy=[];window.__bwOriginalRandom=Math.random;
+                Math.random=function(){const value=window.__bwOriginalRandom.call(Math);
+                    const globals=window.__bwPxtRuntime?.globals || {};
+                    const entry=Object.entries(globals).find(([key])=>key.replace(/___\d+$/,'')==='entropyPhase');
+                    if(typeof entry?.[1]==='number' && entry[1]>0)window.__bwEntropy.push({phase:entry[1],value});
+                    return value;
+                };
+            }
             const runtime=new pxsim.Runtime(msg);window.__bwPxtRuntime=runtime;
             await runtime.board.initAsync(msg);
+            for(const {button,held} of initialButtons || []){
+                if(typeof runtime.board.setButton!=="function")throw new Error("Original PXT initial button input unavailable");
+                runtime.board.setButton(button,held);
+            }
             runtime.run(()=>{window.__bwPxtDone=true;});
-        },{code:built.outfiles['binary.js'],recordSound,recordSongSound});
+        },{code:built.outfiles['binary.js'],recordSound,recordSongSound,initialButtons:buttonActions?.initial,observeEntropy});
         if(buttonActions){
-            if(buttonActions.afterGlobals)await page.waitForFunction(expected=>{
+            const inputReady=expected=>{
                 const values=Object.fromEntries(Object.entries(window.__bwPxtRuntime.globals).map(([key,value])=>[key.replace(/___\d+$/,''),value]));
                 return Object.entries(expected).every(([key,value])=>values[key]===value);
-            },buttonActions.afterGlobals,{timeout:20000});
-            for(const action of buttonActions.steps){
-                if(action.delay)await page.waitForTimeout(action.delay);
+            };
+            if(buttonActions.afterGlobals){
+                if(fakeClock){
+                    let elapsed=0;
+                    while(!await page.evaluate(inputReady,buttonActions.afterGlobals)){
+                        if(elapsed>=20000)throw new Error("Original PXT input readiness marker unavailable");
+                        await page.clock.runFor(20);elapsed+=20;
+                    }
+                } else await page.waitForFunction(inputReady,buttonActions.afterGlobals,{timeout:20000});
+            }
+            for(const [index, action] of buttonActions.steps.entries()){
+                if(action.delay){if(fakeClock)await page.clock.runFor(action.delay);else await page.waitForTimeout(action.delay);}
+                // Genuine simulator system-keyboard DOM, not a replaced answer API.
+                if (action.text !== undefined) {
+                    const input = page.locator('input');
+                    if (await input.count() !== 1) throw new Error('Original simulator text prompt is missing or ambiguous');
+                    await input.fill(String(action.text));
+                }
+                if (action.key !== undefined) await page.keyboard.press(action.key);
                 if(action.button!==undefined)await page.evaluate(({button,held})=>{
                     const board=window.__bwPxtRuntime.board;
                     if(typeof board.setButton!=='function')throw new Error('Original PXT board button input unavailable');
                     board.setButton(button,held);
                 },action);
+                // Observe after the genuine input edge. Existing delays remain
+                // before each action, and actions without this option are unchanged.
+                if (action.waitForGlobals !== undefined) {
+                    try {
+                        if (fakeClock) {
+                            let elapsed = 0;
+                            while (!await page.evaluate(pxtActionGlobalsReady, action.waitForGlobals)) {
+                                if (elapsed >= 20000 || errors.length) throw new Error('Original PXT action readiness unavailable');
+                                await page.clock.runFor(20); elapsed += 20;
+                            }
+                        } else await page.waitForFunction(pxtActionGlobalsReady, action.waitForGlobals, {timeout: 20000});
+                    } catch (error) {
+                        const state = await page.evaluate(expected => {
+                            const runtime = window.__bwPxtRuntime;
+                            return {dead: runtime?.dead, running: runtime?.running,
+                                globals: Object.fromEntries(Object.entries(runtime?.globals || {})
+                                    .filter(([key]) => Object.prototype.hasOwnProperty.call(expected, key.replace(/___\d+$/, '')))
+                                    .map(([key, value]) => [key, value === null ||
+                                        ['number', 'string', 'boolean', 'undefined'].includes(typeof value) ? value : {type: typeof value}]))};
+                        }, action.waitForGlobals);
+                        throw new Error('Original PXT input action did not reach observed globals: ' +
+                            JSON.stringify({index, button: action.button, held: action.held, key: action.key,
+                                expected: action.waitForGlobals, errors, messages, state}), {cause: error});
+                    }
+                }
             }
         }
         if(fakeClock){
@@ -136,9 +225,21 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
             } else await page.waitForFunction(baseline => window.__bwPxtDisplayObserver.updates > baseline,
                 displayBaseline, {timeout: 20000});
         }
-        const values=await page.evaluate(({inspectDisplay,recordSound,recordSongSound,waitForDisplay,displayBaseline})=>{
+        const values=await page.evaluate(({inspectDisplay,recordSound,recordSongSound,waitForDisplay,displayBaseline,inspectImageGlobals,observeEntropy})=>{
             const runtime=window.__bwPxtRuntime;
             const result=Object.fromEntries(Object.entries(runtime.globals).filter(([,v])=>v===null || ['number','string','boolean','undefined'].includes(typeof v)).map(([k,v])=>[k.replace(/___\d+$/,''),v]));
+            if(inspectImageGlobals.length){
+                result.$images={};
+                for(const name of inspectImageGlobals){
+                    const matches=Object.entries(runtime.globals).filter(([key])=>key.replace(/___\d+$/,'')===name);
+                    if(matches.length!==1)throw new Error('Original image global is missing or ambiguous: '+name);
+                    const value=matches[0][1];
+                    if(typeof value?._width!=='number' || typeof value?._height!=='number' || !value?.data)throw new Error('Original image global unavailable: '+name);
+                    const pixels=Array.from(value.data);
+                    if(pixels.length!==value._width*value._height)throw new Error('Original image global has incomplete pixels: '+name);
+                    result.$images[name]={width:value._width,height:value._height,pixels};
+                }
+            }
             if(inspectDisplay)result.$display={palette:Array.from(runtime.board.screenState.palette),
                 screen:Array.from(runtime.board.screenState.screen)};
             if(waitForDisplay){
@@ -146,8 +247,9 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
                 window.__bwPxtDisplayObserver.restore();delete window.__bwPxtDisplayObserver;
             }
             if(recordSound || recordSongSound)result.$sound=window.__bwSound;
+            if(observeEntropy){result.$entropy=window.__bwEntropy;Math.random=window.__bwOriginalRandom;delete window.__bwOriginalRandom;delete window.__bwEntropy;}
             runtime.kill();runtime.board.kill();return result;
-        },{inspectDisplay,recordSound,recordSongSound,waitForDisplay,displayBaseline});
+        },{inspectDisplay,recordSound,recordSongSound,waitForDisplay,displayBaseline,inspectImageGlobals,observeEntropy});
         if(errors.length)throw new Error(JSON.stringify(errors));
         return values;
     } finally {await browser?.close();await new Promise(done=>server.close(done));}

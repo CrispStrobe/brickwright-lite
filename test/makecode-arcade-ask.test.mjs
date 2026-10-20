@@ -38,7 +38,7 @@ test('Arcade text prompt options stay visible until their semantics are implemen
 test('Arcade number prompt waits and stores a numeric answer', async () => {
     const translated = arcadeToPseudocode('let n = game.askForNumber("Number?")');
     assert.deepEqual(translated.unsupported, []);
-    assert.match(translated.code, /set n to arcade ask number "Number\?"/);
+    assert.match(translated.code, /set n to \(arcade ask number "Number\?"\)/);
     const creator = new SB3Creator();
     creator.parse(translated.code);
     assert.deepEqual(creator.warnings, []);

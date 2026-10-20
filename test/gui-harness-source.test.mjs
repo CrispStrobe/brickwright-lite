@@ -1,0 +1,36 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtemp, readFile, writeFile, rm} from 'node:fs/promises';
+import {execFileSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
+import path from 'node:path';
+import os from 'node:os';
+import {inspectGuiHarnessSource} from '../scripts/lib/gui-harness-source.mjs';
+
+// Explicit test-platform binding; never fall back to a PATH-resolved command.
+const executable = process.env.BW_GUI_GIT_EXECUTABLE || '/usr/bin/git';
+test('source attestation refuses omitted, relative and non-file executable bindings', () => {
+    for (const input of [undefined, 'git', './git']) assert.throws(() => inspectGuiHarnessSource({root:process.cwd(),executable:input}), /absolute Git executable/);
+    assert.throws(() => inspectGuiHarnessSource({root:process.cwd(),executable:os.tmpdir()}), /regular file/);
+});
+test('explicit Git identity attests the actual clean checkout and rejects tracked edits', async () => {
+    const root=await mkdtemp(path.join(os.tmpdir(),'owned-gui-source-'));
+    const options={cwd:root,encoding:'utf8'};
+    try {
+        execFileSync(executable,['init','--quiet'],options);
+        await writeFile(path.join(root,'owned.txt'),'reviewed\n');
+        execFileSync(executable,['add','owned.txt'],options);
+        execFileSync(executable,['-c','user.name=Owned test','-c','user.email=owned@example.invalid','commit','--quiet','-m','Owned fixture'],options);
+        const observed=inspectGuiHarnessSource({root,executable});
+        assert.equal(observed.sourceSha,execFileSync(executable,['rev-parse','HEAD'],options).trim());
+        assert.match(observed.tool.version,/^git version /);
+        assert.equal(observed.tool.sha256,createHash('sha256').update(await readFile(observed.tool.absolutePath)).digest('hex'));
+        const inherited={GIT_DIR:process.env.GIT_DIR,GIT_WORK_TREE:process.env.GIT_WORK_TREE};
+        try {
+            process.env.GIT_DIR=path.join(root,'not-a-repository');process.env.GIT_WORK_TREE=os.tmpdir();
+            assert.equal(inspectGuiHarnessSource({root,executable}).sourceSha,observed.sourceSha,'ambient repository overrides cannot redirect the actual checkout');
+        } finally {for(const [key,value] of Object.entries(inherited)){if(value===undefined)delete process.env[key];else process.env[key]=value;}}
+        await writeFile(path.join(root,'owned.txt'),'different\n');
+        assert.throws(()=>inspectGuiHarnessSource({root,executable}),/tracked source must match/);
+    } finally {await rm(root,{recursive:true,force:true});}
+});

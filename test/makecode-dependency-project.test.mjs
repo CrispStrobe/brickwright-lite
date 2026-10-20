@@ -166,8 +166,8 @@ test('root galleries retain their original factory keys and bytes during prepara
     assert.equal(prepared.files['images.g.jres'], original['images.g.jres']);
 });
 
-test('namespace song buffers retain their bytes and report the remaining native conversion gap', {skip}, async () => {
-    const original = filesFor('let song = music.createSong(atlas.theme)', {atlas: 'github:example/songs#v1'});
+test('namespace song buffers retain their bytes through native conversion and execution', {skip}, async () => {
+    const original = filesFor('let song = music.createSong(atlas.theme)\nlet songBytes=atlas.theme.toHex()', {atlas: 'github:example/songs#v1'});
     const sources = {'example/songs/v1/pxt.json': JSON.stringify({dependencies: {device: '*'}, assetPack: true, files: ['songs.jres']}),
         'example/songs/v1/songs.jres': JSON.stringify({theme: {mimeType: 'application/mkcd-song', dataEncoding: 'hex', data: '00780004080100'},
             '*': {namespace: 'mySongs', mimeType: 'application/mkcd-song', dataEncoding: 'hex'}})};
@@ -177,6 +177,10 @@ test('namespace song buffers retain their bytes and report the remaining native 
     const prepared = prepareArcadeDependencyInputs(original, resolved);
     assert.match(prepared.files[prepared.provenance[0].path], /hex`00780004080100`/);
     const native = arcadeToPseudocode(prepared.files);
-    assert.ok(native.unsupported.some(message => /hex.*literal not translated/.test(message)), JSON.stringify(native.unsupported));
-    assert.ok(native.unsupported.some(message => /music.createSong requires/.test(message)), JSON.stringify(native.unsupported));
+    assert.deepEqual(native.unsupported,[]);
+    const run=await runProgram(native.code,{frames:12});
+    assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
+    const observed=run.vm.runtime.targets.flatMap(target=>Object.values(target.variables))
+        .find(variable=>variable.name==='songBytes'||variable.name==='Game_songBytes');
+    assert.equal(observed?.value,'00780004080100');
 });

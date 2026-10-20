@@ -37,5 +37,10 @@
     "id": "gui.gui.fpgaTab",
     "description": "Brickwright FPGA/HDL surface tab",
     "defaultMessage": "FPGA"
+  },
+  {
+    "id": "gui.gui.robotLabTab",
+    "description": "Brickwright Robot Lab (3D LEGO model and physics) tab",
+    "defaultMessage": "Robots"
   }
 ]

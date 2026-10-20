@@ -13,7 +13,8 @@
  * over transports that were working. So most of what is asserted here is what
  * the module must NOT do.
  */
-import {test, describe, beforeEach} from 'node:test';
+import {test, describe, beforeEach, afterEach} from 'node:test';
+import {readFileSync} from 'node:fs';
 import assert from 'node:assert/strict';
 import {resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -56,12 +57,28 @@ const {default: installScratchLinkBridge, isScratchLinkUrl, transportPreference,
     await import(`${LIB}/native-scratch-link-bridge.js`);
 
 const LINK = 'ws://127.0.0.1:20111/scratch/ble';
+let WrappedSocket;
 
+const sockets = [];
+const openSocket = (...args) => {
+    const socket = new window.WebSocket(...args);
+    sockets.push(socket);
+    return socket;
+};
+const flush = () => new Promise(resolve => setImmediate(resolve));
+const defaultTauri = window.__TAURI__;
 beforeEach(() => { built.length = 0; invoked.length = 0; store.clear(); });
+afterEach(async () => {
+    for (const socket of sockets.splice(0)) socket.close();
+    await flush();
+    window.__TAURI__ = defaultTauri;
+    if (WrappedSocket) window.WebSocket = WrappedSocket;
+});
 
 describe('installing the fallback', () => {
     test('it installs in the app', () => {
         assert.equal(installScratchLinkBridge(), 'installed');
+        WrappedSocket = window.WebSocket;
         assert.equal(window.WebSocket.__bwScratchLinkBridge, true);
     });
 
@@ -79,20 +96,20 @@ describe('installing the fallback', () => {
 
 describe('nothing that worked before is taken over', () => {
     test('a non-scratch-link URL gets the REAL socket, untouched', () => {
-        const ws = new window.WebSocket('wss://example.com/game');
+        const ws = openSocket('wss://example.com/game');
         assert.ok(ws instanceof FakeWebSocket, 'a project\'s own WebSocket must not be intercepted');
         assert.equal(invoked.length, 0, 'and must never reach the native bridge');
     });
 
     test('a scratch-link URL still tries the REAL socket first', () => {
-        new window.WebSocket(LINK);
+        openSocket(LINK);
         assert.equal(built.length, 1, 'the socket route must be attempted, not bypassed');
         assert.equal(built[0].url, LINK);
         assert.equal(invoked.length, 0, 'the bridge must not be opened while the socket may still succeed');
     });
 
     test('a socket that opens keeps ownership — send goes to it, not the bridge', () => {
-        const facade = new window.WebSocket(LINK);
+        const facade = openSocket(LINK);
         const real = built[0];
         real.onopen(new Event('open'));
         facade.send('{"method":"discover"}');
@@ -103,7 +120,7 @@ describe('nothing that worked before is taken over', () => {
 
 describe('the bridge takes over only when the socket cannot', () => {
     test('a socket that closes before opening hands over', async () => {
-        new window.WebSocket(LINK);
+        openSocket(LINK);
         built[0].onclose({code: 1006, wasClean: false});
         await new Promise(r => setTimeout(r, 10));
         assert.ok(invoked.some(i => i.cmd === 'scratchlink_bridge_open'),
@@ -111,7 +128,7 @@ describe('the bridge takes over only when the socket cannot', () => {
     });
 
     test('a socket error hands over too', async () => {
-        new window.WebSocket(LINK);
+        openSocket(LINK);
         built[0].onerror(new Event('error'));
         await new Promise(r => setTimeout(r, 10));
         assert.ok(invoked.some(i => i.cmd === 'scratchlink_bridge_open'));
@@ -125,7 +142,7 @@ describe('the transport is selectable, so it is a path and not just a net', () =
 
     test('"socket" restores exactly the old behaviour — bridge never consulted', async () => {
         store.set('bw-scratchlink-transport', 'socket');
-        const ws = new window.WebSocket(LINK);
+        const ws = openSocket(LINK);
         assert.ok(ws instanceof FakeWebSocket, 'socket-only must return the real socket itself');
         built[0].onclose && built[0].onclose({code: 1006});
         await new Promise(r => setTimeout(r, 10));
@@ -134,7 +151,7 @@ describe('the transport is selectable, so it is a path and not just a net', () =
 
     test('"native" goes straight to the native path, no socket attempted', async () => {
         store.set('bw-scratchlink-transport', 'native');
-        new window.WebSocket(LINK);
+        openSocket(LINK);
         await new Promise(r => setTimeout(r, 10));
         assert.equal(built.length, 0, 'bridge-only must not dial a socket at all');
         assert.ok(invoked.some(i => i.cmd === 'scratchlink_bridge_open'));
@@ -176,7 +193,7 @@ describe('BLE and Bluetooth Classic are different backends, and stay so', () => 
 
     test('a bt URL opens the bridge as bt, not as ble', async () => {
         store.set('bw-scratchlink-transport', 'native');
-        new window.WebSocket('ws://127.0.0.1:20111/scratch/bt');
+        openSocket('ws://127.0.0.1:20111/scratch/bt');
         await new Promise(r => setTimeout(r, 10));
         const open = invoked.find(i => i.cmd === 'scratchlink_bridge_open');
         assert.ok(open, 'the bridge must open');
@@ -186,9 +203,255 @@ describe('BLE and Bluetooth Classic are different backends, and stay so', () => 
 
     test('a ble URL still opens as ble', async () => {
         store.set('bw-scratchlink-transport', 'native');
-        new window.WebSocket(LINK);
+        openSocket(LINK);
         await new Promise(r => setTimeout(r, 10));
         const open = invoked.find(i => i.cmd === 'scratchlink_bridge_open');
         assert.equal(open.args.kind, 'ble');
     });
+});
+
+
+const deferred = () => {
+    let resolve;
+    let reject;
+    const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
+    return {promise, resolve, reject};
+};
+let harnessId = 0;
+const freshBridge = async (invoke, listen = async () => () => {}) => {
+    window.__TAURI__ = {core: {invoke}, event: {listen}};
+    // Each case owns an independent native transition queue, as a fresh page does.
+    const source = readFileSync(resolve(LIB, 'native-scratch-link-bridge.js'), 'utf8');
+    const moduleSource = source + '\n// case ' + ++harnessId;
+    const moduleUrl = 'data:text/javascript;base64,' + Buffer.from(moduleSource).toString('base64');
+    return import(moduleUrl);
+};
+
+describe('native cancellation and reconnect ownership', () => {
+    test('closing during listener registration never opens native and releases the late listener', async () => {
+        const registration = deferred();
+        const calls = [];
+        let released = 0;
+        const {BridgedSocket} = await freshBridge(async name => calls.push(name), () => registration.promise);
+        const socket = new BridgedSocket();
+        let opened = 0;
+        let closed = 0;
+        socket.onopen = () => opened++;
+        socket.onclose = () => closed++;
+        const opening = socket._start();
+        socket.close();
+        registration.resolve(() => released++);
+        await opening;
+        await flush();
+        assert.equal(socket.readyState, 3);
+        assert.equal(opened, 0);
+        assert.equal(closed, 1);
+        assert.equal(released, 1);
+        assert.ok(!calls.includes('scratchlink_bridge_open'));
+    });
+
+    test('closing during native open waits for it, cleans up once, and never reports open', async () => {
+        const nativeOpen = deferred();
+        const calls = [];
+        let released = 0;
+        const {BridgedSocket} = await freshBridge(name => {
+            calls.push(name);
+            return name === 'scratchlink_bridge_open' ? nativeOpen.promise : Promise.resolve();
+        }, async () => () => released++);
+        const socket = new BridgedSocket();
+        let opened = 0;
+        socket.onopen = () => opened++;
+        const opening = socket._start();
+        await flush();
+        assert.deepEqual(calls, ['scratchlink_bridge_open']);
+        socket.close();
+        nativeOpen.resolve();
+        await opening;
+        await flush();
+        assert.equal(opened, 0);
+        assert.equal(socket.readyState, 3);
+        assert.equal(released, 1);
+        assert.deepEqual(calls, ['scratchlink_bridge_open', 'scratchlink_bridge_close']);
+    });
+
+    test('failed native open releases its listener and partial session before a successful retry', async () => {
+        const calls = [];
+        let fail = true;
+        let released = 0;
+        const {BridgedSocket} = await freshBridge(async name => {
+            calls.push(name);
+            if (name === 'scratchlink_bridge_open' && fail) throw new Error('permission denied');
+        }, async () => () => released++);
+        const first = new BridgedSocket();
+        let errors = 0;
+        let closes = 0;
+        first.onerror = () => errors++;
+        first.onclose = () => closes++;
+        await first._start();
+        assert.equal(first.readyState, 3);
+        assert.equal(errors, 1);
+        assert.equal(closes, 1);
+        assert.equal(released, 1);
+        assert.deepEqual(calls, ['scratchlink_bridge_open', 'scratchlink_bridge_close']);
+        fail = false;
+        const next = new BridgedSocket();
+        await next._start();
+        assert.equal(next.readyState, 1);
+        next.close();
+        await flush();
+        assert.equal(released, 2);
+    });
+
+    test('an immediate reconnect waits for the old close and ignores old notifications', async () => {
+        const nativeClose = deferred();
+        const calls = [];
+        const listeners = [];
+        const {BridgedSocket} = await freshBridge(name => {
+            calls.push(name);
+            return name === 'scratchlink_bridge_close' ? nativeClose.promise : Promise.resolve();
+        }, async (name, listener) => { listeners.push(listener); return () => {}; });
+        const old = new BridgedSocket();
+        let oldMessages = 0;
+        old.onmessage = () => oldMessages++;
+        await old._start();
+        old.close();
+        const next = new BridgedSocket();
+        let newMessages = 0;
+        next.onmessage = () => newMessages++;
+        const opening = next._start();
+        await flush();
+        assert.equal(calls.filter(name => name === 'scratchlink_bridge_open').length, 1);
+        nativeClose.resolve();
+        await opening;
+        assert.equal(next.readyState, 1);
+        listeners[0]({payload: 'stale'});
+        listeners[1]({payload: 'current'});
+        assert.equal(oldMessages, 0);
+        assert.equal(newMessages, 1);
+        const count = calls.length;
+        old.close();
+        await flush();
+        assert.equal(calls.length, count, 'a repeated old close cannot reach the new native session');
+        next.close();
+        await flush();
+    });
+
+    test('native close failure is reported and prevents an unsafe new open', async () => {
+        const calls = [];
+        const {BridgedSocket} = await freshBridge(async name => {
+            calls.push(name);
+            if (name === 'scratchlink_bridge_close') throw new Error('close failed');
+        });
+        const first = new BridgedSocket();
+        let errors = 0;
+        first.onerror = () => errors++;
+        await first._start();
+        first.close();
+        await flush();
+        const next = new BridgedSocket();
+        await next._start();
+        assert.equal(next.readyState, 3);
+        assert.equal(errors, 1);
+        assert.equal(calls.filter(name => name === 'scratchlink_bridge_open').length, 1);
+    });
+
+    test('closing an unopened real socket cancels fallback even after late failure events', async () => {
+        const calls = [];
+        const bridge = await freshBridge(async name => calls.push(name));
+        window.WebSocket = FakeWebSocket;
+        bridge.default();
+        const facade = new window.WebSocket(LINK);
+        const real = built.at(-1);
+        const lateFailure = real.onerror;
+        const lateClose = real.onclose;
+        facade.close();
+        lateFailure(new Event('error'));
+        lateClose({code: 1006});
+        await flush();
+        assert.equal(real.closed, true);
+        assert.equal(facade.readyState, 3);
+        assert.ok(!calls.includes('scratchlink_bridge_open'));
+        window.WebSocket = WrappedSocket;
+    });
+
+    test('a live native owner cannot be replaced by a second socket', async () => {
+        const calls = [];
+        const {BridgedSocket} = await freshBridge(async name => calls.push(name));
+        const first = new BridgedSocket();
+        await first._start();
+        const second = new BridgedSocket();
+        await second._start();
+        assert.equal(first.readyState, 1);
+        assert.equal(second.readyState, 3);
+        assert.deepEqual(calls, ['scratchlink_bridge_open']);
+        first.close();
+        await flush();
+    });
+
+    test('failed event registration never opens native or closes a different owner', async () => {
+        const calls = [];
+        const {BridgedSocket} = await freshBridge(async name => calls.push(name), async () => undefined);
+        const socket = new BridgedSocket();
+        await socket._start();
+        assert.equal(socket.readyState, 3);
+        assert.deepEqual(calls, []);
+    });
+
+    test('starting twice shares one registration and one native open', async () => {
+        const calls = [];
+        let registrations = 0;
+        const {BridgedSocket} = await freshBridge(async name => calls.push(name), async () => {
+            registrations++;
+            return () => {};
+        });
+        const socket = new BridgedSocket();
+        await Promise.all([socket._start(), socket._start()]);
+        assert.equal(registrations, 1);
+        assert.deepEqual(calls, ['scratchlink_bridge_open']);
+        socket.close();
+        await flush();
+    });
+
+    test('a rejected send closes the owning session and releases its listener', async () => {
+        const calls = [];
+        let released = 0;
+        const {BridgedSocket} = await freshBridge(async name => {
+            calls.push(name);
+            if (name === 'scratchlink_bridge_send') throw new Error('session disappeared');
+        }, async () => () => released++);
+        const socket = new BridgedSocket();
+        let closed = 0;
+        socket.onclose = () => closed++;
+        await socket._start();
+        socket.send('first');
+        await flush();
+        socket.send('after failure');
+        assert.equal(socket.readyState, 3);
+        assert.equal(released, 1);
+        assert.equal(closed, 1);
+        assert.deepEqual(calls, ['scratchlink_bridge_open', 'scratchlink_bridge_send', 'scratchlink_bridge_close']);
+    });
+
+    test('late real-socket opening cannot replace a bridge which already took over', async () => {
+        const calls = [];
+        const bridge = await freshBridge(async name => calls.push(name));
+        window.WebSocket = FakeWebSocket;
+        bridge.default();
+        const facade = new window.WebSocket(LINK);
+        const real = built.at(-1);
+        let opened = 0;
+        facade.onopen = () => opened++;
+        real.onerror(new Event('error'));
+        await flush();
+        real.onopen(new Event('open'));
+        facade.send('native frame');
+        await flush();
+        assert.equal(opened, 1);
+        assert.equal(real.closed, true);
+        assert.deepEqual(real.sent, []);
+        assert.ok(calls.includes('scratchlink_bridge_send'));
+        facade.close();
+        await flush();
+    });
+
 });

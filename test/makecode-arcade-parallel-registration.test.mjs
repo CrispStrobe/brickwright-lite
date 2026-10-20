@@ -18,9 +18,14 @@ test('parallel launch preserves call timing, live captures, nested fibers and ca
   run.vm.postIOData('keyboard',{key:' ',isDown:true});run.vm.postIOData('keyboard',{key:' ',isDown:false});
   await waitCompleted(run,2);assert.equal(values(run).trace,expected.trace);
  };
- const execute=async imported=>{assert.deepEqual(imported.unsupported,[]);const run=await runProgram(imported.code,{frames:3,uploads:imported.costumes,storage:true});await exercise(run);return run;};
- const imported=arcadeToPseudocode(source);assert.match(imported.code,/arcade run parallel as/);assert.equal((imported.code.match(/WHEN flag clicked:/g)||[]).length,1);
- const run=await execute(imported);await execute({...imported,code:run.creator.decompile()});
+ const execute=async imported=>{assert.deepEqual(imported.unsupported,[]);const run=await runProgram(imported.code,{frames:3,uploads:imported.costumes,storage:true,retainExtensionTimers:true});await exercise(run);return run;};
+ const imported=arcadeToPseudocode(source);assert.match(imported.code,/arcade run parallel as/);assert.equal((imported.code.match(/WHEN arcade source starts:/g)||[]).length,1);
+ const run=await execute(imported);
+ const blocks=run.creator.project.targets.flatMap(t=>Object.values(t.blocks));
+ assert.equal(blocks.filter(b=>b.opcode==='arcade_whenSourceStarts'&&b.topLevel).length,1,'actual source startup owns initialization');
+ assert.equal(blocks.filter(b=>b.opcode==='event_whenflagclicked').length,0,'source fibers do not gain ordinary flag scheduling');
+ assert.ok(blocks.some(b=>b.opcode==='arcade_whenParallelHandler'&&b.topLevel),'parallel work uses real service hats');
+ await execute({...imported,code:run.creator.decompile()});
  const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});assert.deepEqual(exported.unsupported,[]);
  const oracle=await runPxtArcade(exported.ts+input,{waitForGlobals:{completed:2}});assert.equal(oracle.trace,expected.trace);
  await execute(arcadeToPseudocode(exported.files));
@@ -40,7 +45,8 @@ pause(60)
 game.popScene()`;
  const expected=await runPxtArcade(source,{waitForGlobals:{completed:2}});assert.equal(expected.total,26);
  const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
- const run=await runProgram(imported.code,{frames:3,uploads:imported.costumes,storage:true});await waitCompleted(run,2);assert.equal(values(run).total,expected.total);
+ // Scene push/pop leaves the real source wait timers alive after helper setup.
+ const run=await runProgram(imported.code,{frames:3,uploads:imported.costumes,storage:true,retainExtensionTimers:true});await waitCompleted(run,2);assert.equal(values(run).total,expected.total);
 });
 test('invalid parallel callbacks and shadowed control bindings remain explicit diagnostics',()=>{
  for(const source of ['control.runInParallel(1)','control.runInParallel(function(a){})','control.runInParallel(function(){},1)','let control=1;control.runInParallel(function(){})','function f(control:number){control.runInParallel(function(){})};f(1)'])assert.ok(arcadeToPseudocode(source).unsupported.length,source);

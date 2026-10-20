@@ -15,7 +15,7 @@ test('a call omitting an optional argument passes undefined explicitly and runs'
 repeatIt("Hello")`;
     const translated = arcadeToPseudocode(source);
     assert.deepEqual(translated.unsupported, []);
-    assert.match(translated.code, /repeatIt "Hello" \(undefined value\)/);
+    assert.match(translated.code, /CALL: \(repeatIt \("Hello"\) \(undefined value\)\)/);
     const creator = new SB3Creator();
     creator.parse(translated.code);
     assert.ok(projectOpcodes(creator.project).has('procedures_call'));

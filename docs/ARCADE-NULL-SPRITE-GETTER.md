@@ -74,3 +74,15 @@ Keep existing Sprite/Image capabilities, Arrays, source admission, dependency
 pins, supplier schema and other owners' exception work unchanged. No whole-case
 promotion, full SDK, original presentation or release claim follows from this
 bounded contract.
+
+### Bounded current-artwork control
+
+The authored current-artwork control now passes source, Code, same-session SB3,
+fresh-session SB3 and current export/reimport routes using one live VM at a time.
+It retains the saved project and SVG inventory, the saved ZIP hash, the created
+actor, the physical x-getter failure and the absence of later actor effects.
+The separate positive control retains current position and velocity behavior.
+The ZIP bytes were not retained by this control, so its result does not claim
+an independent ZIP extraction audit. These fixture observations do not qualify
+the authentic full project, visible editors, physical presentation or selected
+original behavior for y, width or height.

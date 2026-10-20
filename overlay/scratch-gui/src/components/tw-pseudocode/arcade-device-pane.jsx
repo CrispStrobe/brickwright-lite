@@ -115,6 +115,7 @@ const ArcadeDevicePane = ({vm}) => {
             const controllers = state.controllerButtons || (state.controllerButtons = {});
             Object.assign(controllers[playerRef.current] || (controllers[playerRef.current] = {}), buttons);
         }
+        vm.runtime.emit('ARCADE_CONTROLLER_INPUT', playerRef.current, name, isDown);
         // Legacy keyboard blocks, dialog controls and button hats belong to player one.
         if (playerRef.current !== 1) {
             vm.runtime.emit('ARCADE_PLAYER_BUTTON_EDGE', playerRef.current, name, isDown);

@@ -55,3 +55,26 @@ undefined/null, Image, callable and lifetime protocols remain intact.
 This work grants no new source callback/class/SDK domain, canonical word or
 complete-game promotion. Raw corpus counts and authenticated complete-context
 qualification remain separate observations.
+
+## Candidate implementation checkpoint
+
+The shared runtime interpreter now has an explicit opcode/input-role table.
+Existing managed consumers retain their checks, while the four Array value
+operations receive only their listed value sockets. Fixed Font selector
+ownership uses the same extracted cached-operation checker with its existing
+error contract. The engine overlay migrates only recognized prior ownership
+markers and refuses unknown shapes; reapplication is idempotent.
+
+The separate [supplier PR48](https://github.com/CrispStrobe/extensions/pull/48)
+adds the optional host hook. Sixteen supplier controls and two independent
+source reviews pass. Candidate canonical source loaded through the production
+adapter and modified native runtime passes nine current-block cases, correcting
+four retained baseline failures. Six role/migration controls and thirteen
+existing managed/Font controls pass. The first native attempt lacked the new
+support module in the test loader; that failure is preserved and the loader now
+requires matching installed bytes for the new shared modules too.
+
+This checkpoint does not update the shipped supplier pin or generated bundle.
+Saved-project, edited export/reimport, original and hosted GUI qualification
+remain separate gates. It does not resolve wider Array construction or write
+input boundaries.

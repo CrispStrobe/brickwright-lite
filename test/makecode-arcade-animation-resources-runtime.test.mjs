@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {EventEmitter} from 'node:events';
+import {createArcadeRuntimeMock, startArcadeProject} from './helpers/arcade-runtime-mock.mjs';
 import {createRequire} from 'node:module';
 import {loadExtensionClass, VM_SRC} from './helpers/bw-extensions.mjs';
 const BWValues = createRequire(import.meta.url)(VM_SRC + '/util/bw-values');
@@ -8,7 +8,7 @@ const Arcade = loadExtensionClass('arcade');
 const palette = [null, '#ffffff', '#ff2121', '#ff93c4', '#ff8135', '#fff609', '#249ca3', '#78dc52',
     '#003fad', '#87f2ff', '#8e2ec4', '#a4839f', '#5c406c', '#e5cdc4', '#91463d', '#000000'];
 function setup() {
-    const runtime = new EventEmitter(), arcade = new Arcade(runtime), errors = [];
+    const runtime = createArcadeRuntimeMock(), arcade = new Arcade(runtime), errors = [];
     runtime.on('BLOCKS_ERROR', message => errors.push(message));
     const resource = {id: 'art:walk', name: 'Walk', width: 1, height: 1, palette: palette.slice(), revision: 1,
         frames: [{id: 'red', durationMs: 100, pixels: new Uint8Array([2])},
@@ -197,7 +197,7 @@ test('fresh resource lookup owns each array, image, pixels and palette independe
     assert.equal(right.pixels[0], 2, 'previous lookup retains its image');
     assert.deepEqual(g.errors, []);
     const other = setup(); assert.equal(other.arcade._image(edited[0]), null);
-    g.runtime.emit('PROJECT_START'); assert.equal(g.arcade._image(edited[0]), null);
+    startArcadeProject(g.runtime); assert.equal(g.arcade._image(edited[0]), null);
     const reset = g.arcade.animationAssetFreshFrames({RESOURCE: g.resource.id});
     assert.equal(g.arcade._image(BWValues.arrayValue(g.runtime, reset)[0]).pixels[0], 4);
     g.runtime.emit('PROJECT_LOADED');

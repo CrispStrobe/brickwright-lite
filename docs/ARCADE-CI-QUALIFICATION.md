@@ -12,10 +12,10 @@ success. Retain that failure; do not report the job as a passed build.
 
 The build job keeps integrated preparation, source and provenance guards,
 mutation proofs, webpack, emitted-distribution checks and the sole Pages
-artifact upload. Two required unit matrix legs prepare the same integrated
+artifact upload. Four required unit matrix legs prepare the same integrated
 inputs and partition the complete non-corpus suite. Corpus and browser/FPGA
 jobs retain their own acceptance contracts. Deploy requires all those jobs.
-The external main-publication audit also requires both named unit legs.
+The external main-publication audit also requires all four named unit legs.
 No timeout, test assertion, skip-pointer rule or distribution guard is relaxed.
 
 `test/unit-shards.test.mjs` checks preparation equality between build and unit,
@@ -23,7 +23,7 @@ so a later preparation edit must be carried to both jobs. This intentional
 setup duplication avoids exchanging a mutable dependency/build tree between
 jobs. Unit artifacts contain TAP, per-file census and GUI-resolution records;
 unit jobs cannot produce the Pages artifact. Matrix fail-fast is disabled so
-one failure preserves the other leg's result.
+one failure preserves the other legs’ results.
 
 ## Selection and reproduction
 
@@ -34,30 +34,30 @@ exactly one shard. Index/count is one-based, validated and bounded; unsupported,
 invalid or empty selections fail explicitly. Full local commands remain full.
 
 ```sh
-node scripts/list-tests.mjs fast --shard 1/2
-node scripts/list-tests.mjs fast --shard 2/2
-BW_TEST_SHARD=1/2 npm run test:fast:shard
-BW_TEST_SHARD=2/2 npm run test:fast:shard
+for leg in 1 2 3 4; do
+  node scripts/list-tests.mjs fast --shard "$leg/4"
+done
+BW_TEST_SHARD=1/4 npm run test:fast:shard
 npm run test:fast
 ```
 
 Each CI leg checks its actual selected files, not the complete fast list:
 
 ```sh
-node scripts/check-test-run.mjs --set fast --shard 1/2 --tap /tmp/unit.tap --census test-results/fast.census.json --max-stdout-bytes 0
+node scripts/check-test-run.mjs --set fast --shard 1/4 --tap /tmp/unit.tap --census test-results/fast.census.json --max-stdout-bytes 0
 node scripts/check-gui-scope.mjs --log test-results/fast.gui-scope.tsv
 ```
 
 The auditor still rejects vanished/empty/unexpected files, missing summaries,
 uncounted failures, raw stdout transport writers and undocumented skips. Tests
 exercise missing-file, wrong-shard, failure and skip adversaries against the
-actual auditor. `gen-ci-skips.mjs` reads both new unit names and historical
+actual auditor. `gen-ci-skips.mjs` reads all four current unit names and both historical unit names and historical
 build/corpus jobs; existing generated historical evidence is not rewritten.
 
 ## Qualification still required
 
 Source controls establish partition and gate behavior, not observed hosted
-runtime or throughput. Obtain every enabled exact-head check, both complete
+runtime or throughput. Obtain every enabled exact-head check, all four complete
 unit censuses, completed emitted-build guards and the visible editor journey
 before acceptance. Preserve named failures and compare measured durations.
 No whole-app MakeCode compatibility promotion follows from sharding CI.
@@ -90,3 +90,25 @@ Code actions menu. The script now opens that menu and handles action/event
 promises together so failure observation and screenshot recording can complete.
 The original artifact contains SB3 and a reached screenshot but no failure JSON;
 preserve that absence. Fresh full GUI export/original-runtime proof is required.
+
+
+## Four required legs after a later unit cancellation — 2026-10-15
+
+The earlier two-leg qualification does not establish that the growing suite
+still fits its unchanged job budget. A later required unit job started at
+09:00:48 UTC, began its unit step at 09:06:50, and was canceled at 09:31:03.
+Its census is incomplete and must not be reported as a passing full suite.
+
+The four-way filename partition retains the complete fast set and the same
+30-minute job bounds, integrated preparation, per-file census, skip and GUI
+resolution audits. Modulo four exactly refines the previous modulo-two split:
+old leg 1 is new legs 1 and 3; old leg 2 is new legs 2 and 4. Every file runs
+once. Corpus and full local selection remain unchanged. Pages needs the matrix
+job to succeed; external main admission requires all four exact current names.
+Missing, failed, canceled, skipped or unfinished legs block admission even if
+the two historical job names passed. The skip collector retains historical
+names for evidence without treating them as current admission authority.
+
+Focused partition and gate controls do not establish hosted completion or a
+speedup. Fresh complete four-leg censuses and all other enabled checks remain
+required before acceptance; no source compatibility count changes.

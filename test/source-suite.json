@@ -10,6 +10,7 @@
   "i8086-pseudocode-examples.test.mjs",
   "lego-spike-roundtrip.test.mjs",
   "no-tracked-package-examples.test.mjs",
+  "overlay-packages-pairs.test.mjs",
   "project-bundle-archive.test.mjs",
   "project-bundle-integrity.test.mjs",
   "project-bundle-roundtrip.test.mjs",
