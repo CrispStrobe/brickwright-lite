@@ -106,7 +106,7 @@ changed. Source of the list: hosted Build run 39297263647 (head f2ecafef1).
 
 | Group | File | Test | Error |
 |---|---|---|---|
-| I | `test/makecode-arcade-legacy-tile-collisions.test.mjs` | legacy collision filters/order, captures, yielding, snapshot indices and scenes match PXT through all roundtrips | Fixed in 63894a733 (TODO removed; passes on current main with these fixes). |
+| I | `test/makecode-arcade-legacy-tile-collisions.test.mjs` | legacy collision filters/order, captures, yielding, snapshot indices and scenes match PXT through all roundtrips | 'ABCA' !== 'ABCABC'. Kept TODO: intermittent in hosted CI. On #1125's head b9a7359be it failed in one Build run (shard 4) and passed in the next; it passes locally. The callback order depends on timing, so it needs a deterministic frame/callback schedule before the TODO can go. |
 
 ## Browser gates
 
