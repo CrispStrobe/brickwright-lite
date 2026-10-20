@@ -31,7 +31,7 @@ const add = (a, b) => a.map((x, i) => x + b[i]);
 const tidy = v => Math.round(v * 1e6) / 1e6 || 0;
 
 /** Andrew's monotone chain: the convex hull of 2D points, counter-clockwise, no repeat of the first. */
-const hull = points => {
+export const hull = points => {
     const p = points.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
     const turn = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
     const lower = [];

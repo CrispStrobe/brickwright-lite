@@ -185,8 +185,13 @@ export const GROUND_FRICTION = 0.8;
  * @typedef {{
  *   version: 1,
  *   parts: {id: string, part: string, color?: number, position: Vec3, rotation: Mat3, port?: string}[],
- *   groups?: {id: string, name: string, parts: string[]}[]
+ *   groups?: {id: string, name: string, parts: string[]}[],
+ *   belts?: {id: string, band: string, around: string[]}[]
  * }} PlacedModel
+ *
+ * `belts` are rubber bands (docs/ROBOT-LAB-UX.md §12): `band` the LDraw part of its size (85543
+ * …), `around` the parts it goes round, in order. LDraw draws no stretched band, so in LDraw
+ * text each is a `0 !BW BELT <id> <band> <part id> <part id> …` line.
  *
  * PlacedModel v2 (§5.7, for models with several hubs): `version: 2`, and `port` may be
  * {hub?: string, port: string} — the placed id of the hub part it plugs into and that
@@ -629,6 +634,19 @@ export const validatePlacedModel = (model, catalog) => {
             if (!ref || !ref.port) out.push(`${w}.port: need a port id or {hub, port}`);
             else if (typeof pl.port === 'object' && pl.port.hub !== undefined && !(typeof pl.port.hub === 'string' && model.parts.some(q => q?.id === pl.port.hub))) {
                 out.push(`${w}.port.hub: '${pl.port.hub}' is not a part of this model`);
+            }
+        }
+    }
+    if (model.belts !== undefined) {
+        if (!Array.isArray(model.belts)) out.push('model.belts: not an array');
+        else {
+            uniqueIds(model.belts, 'model.belts', out);
+            const partIds = new Set(model.parts.map(pr => pr.id));
+            for (const b of model.belts) {
+                const wb = `model.belts[${b?.id}]`;
+                if (typeof b?.band !== 'string' || !b.band) out.push(`${wb}.band: the band's part`);
+                if (!Array.isArray(b?.around) || b.around.length < 2) out.push(`${wb}.around: at least 2 parts`);
+                else for (const pid of b.around) if (!partIds.has(pid)) out.push(`${wb}.around: unknown part '${pid}'`);
             }
         }
     }

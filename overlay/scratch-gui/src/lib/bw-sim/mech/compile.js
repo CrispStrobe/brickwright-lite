@@ -169,6 +169,12 @@ export const compile = (model, catalog, opts = {}) => {
     }
 
     const filteredModel = {version: 1, parts: knownParts};
+    // Rubber bands round known parts only (kinds/belt.js reads them).
+    if (model.belts) {
+        const known = new Set(knownParts.map(p => p.id));
+        const belts = model.belts.filter(b => b.around.every(id => known.has(id)));
+        if (belts.length) filteredModel.belts = belts;
+    }
 
     // If filtered model has no valid parts, we still need to produce a mechanism with maybe ground only plus diagnostics
     // Build graph (even if empty)
@@ -221,7 +227,7 @@ export const compile = (model, catalog, opts = {}) => {
         gearResult = buildGears(nodes, islands, jointsResult.joints, catalogMap, gearDiagnostics, jointsResult.jointEntries, kinds);
         if (gearResult.lockedPairs.length === 0) {
             // Registered coupling detectors (kinds/worm.js, kinds/rack.js): their welds re-run the fixpoint too.
-            detected = detectCouplings(kinds, {nodes, islands, joints: jointsResult.joints, jointEntries: jointsResult.jointEntries, catalog: catalogMap});
+            detected = detectCouplings(kinds, {nodes, islands, joints: jointsResult.joints, jointEntries: jointsResult.jointEntries, catalog: catalogMap, model: filteredModel});
             if (detected.welds.length === 0) break;
             // A lock a detector found (a worm or a rack fixed to its partner's frame) is said once, here.
             for (const d of detected.diagnostics) if (d.code === 'gear-on-frame') diagnostics.push(d);
