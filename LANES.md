@@ -1,3 +1,14 @@
+## Orbital loom import and live drawing — 2026-10-20
+
+CLAIMED — Codex, existing model-design lane / comprehensive draft PR #1138.
+Owner supplied a 210-piece CC BY 4.0 epicycle drawing-machine prototype. Preserve
+source attribution and changes; qualify actual platter gearing and both motors,
+replace the static predicted preview with pose-driven drawing on rotating paper,
+and register only after structural/program/browser tests. Envelope: original or
+adapted model/program assets, focused double-bevel parallel mesh support in gear
+inference/metadata, generic moving-surface drawing metadata/view, tests and notices.
+Do not independently edit peer-owned compile/Jolt/collider implementation files.
+
 ## Expanded mechanics catalogue machines — 2026-10-20
 
 CLAIMED — Codex, existing lane/robot-lab-models-20261020 / comprehensive draft PR #1138.
