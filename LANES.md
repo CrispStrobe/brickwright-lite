@@ -5,12 +5,14 @@ two drive motors and an independently tilting distance-sensor head, LDraw model,
 example program, three model registries, focused physics/program/instruction tests
 and documentation. Based on main plus the flex4 model-support lane. Preserve
 peer-owned physics/compiler/collider work; no simulator changes in this lane. Production GUI build,
-76 focused controls, all-motor stress bench and GUI worker/program/mixer/instructions
+79 focused controls, all-motor stress bench and GUI worker/program/mixer/instructions
 checks pass. The head needs position hold under gravity; the example homes it and
 holds after each move. Browser measurements: 100.18 mm outward, 0.16 mm return
 error, head ±30.3°, 15 instruction steps / 28 parts. All printable step images
 decode; the evidence screenshot captures the viewport to avoid Chromium's long-page
-capture failure. Full mesh collision check remains in progress; no merge claimed.
+capture failure. Five rover-only real-mesh/hole checks also pass with the existing assertions.
+The broader all-model mesh run was stopped after seven minutes; no full-suite or
+hosted-CI pass and no merge claimed.
 
 ## Robot Lab: cables, Studio mouse, coach marks, Ctrl-glide — 2026-10-20
 
