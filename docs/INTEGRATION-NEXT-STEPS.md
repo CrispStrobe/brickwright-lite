@@ -191,3 +191,51 @@ only. Machine paths, acquisition receipts, originals, transcripts and access
 details belong in ignored local `CLAUDE.md` files or the private evidence store.
 Never commit or publish those inputs. Check the local ignored handoff before
 using retained artifacts, so that a successful original is acquired only once.
+
+### CAD browser selection repair and remaining integration queue
+
+1. **Land the CAD helper repair, PR1101.** Hover/status layout can resize the
+   canvas between projecting a part and clicking it. The candidate waits for
+   rendering, checks the projection again, and re-aims before any click. It also
+   refuses points covered by another DOM element. The real pointer interaction,
+   exact selected-part assertion and original budgets remain unchanged; no editor
+   or physics source changes. Run
+   `node --test test/sim-lab-cad-pointer.test.mjs` and the affected production
+   browser gate, `node scripts/verify-sim-lab-browser.mjs --part=core`, against an
+   admitted integrated build. Require every enabled exact-head check before
+   matched-head merge. Keep the original failed browser job and the authored
+   layout counterexample; do not retry an old head to replace its failure.
+2. **Qualify the Stop-race fix, PR1099.** Candidate
+   `cf855981e5772a17609f7863e1d7224a27fb542c` has 74 session tests and five
+   detected source mutations. Its official frontend was acquired and independently
+   verified; the actual CI checkout matches its whole tree. Check the ignored
+   local handoff before acquiring anything. After the CAD repair lands, normally
+   merge main into the owned source branch, preserve original failures, and
+   refresh the final head's checks and artifact/source binding. Then qualify
+   installed own-NuttX dual save/load/restart/upload and six-motor upload with
+   Stop during frame publication, queued Stop, normal controls and distinct guest
+   recovery. Verify session, clock, configuration and backend cleanup. The old
+   installed app cannot qualify this changed source; frontend verification alone
+   is insufficient. Do not broaden or relax the standalone binder silently.
+3. **Qualify the terminal startup reason, PR1100.** Candidate
+   `cf8d140ac289184ccd24595be5860200919e5e21` records a closed native-only
+   RSP failure reason without exposing backend text or changing public errors,
+   deadlines or teardown. Refresh full native CI; bind a fresh installed package
+   to the final source, then observe cold startup and Stop/reset/closure with
+   distinct normal recovery. The existing original error remains
+   `operation-failed`; another unchanged old-app run adds no attribution.
+   `unavailable` still combines several I/O stages and does not establish TCP
+   refusal or a child-exit cause. This is a diagnostic candidate, not a startup fix.
+4. **Keep packaging and release holds explicit.** PR1044 still needs an installed
+   active-asset-map proof and resolution of its enabled CI failures. PR1078 is
+   deferred despite passing source CI; optional SDK/namespace infrastructure is
+   not the next SPIKE prerequisite. Refresh their current heads before acting.
+   Complete the remaining G02 matrix before G03/G05 and qualified delivery above.
+   Retain PR1011 release ownership and PR1043's instrument owner; the actual
+   instrument campaign remains after TestFlight. No source-only check, old app,
+   unsigned artifact or passing prefix closes these tasks.
+
+Machine paths, raw originals and acquisition identities remain in the ignored
+local handoff and private evidence store. Public candidates contain neither
+private receipts nor transcripts. A new agent should start with this queue,
+refresh GitHub, and read the ignored handoff to avoid duplicate one-shot intakes.
