@@ -1,5 +1,35 @@
 # Arcade integration repairs and qualification order
 
+## Current shard-four export repair — 2026-10-20
+
+At `340f9eb0e`, build and lesson-corpus checks pass; unit shard four reports
+45 actual failing tests, with eight failing TODO cases counted separately.
+Forty-three actual failures share the flat-native-addition domain refusal.
+The remaining two concern animation helper binding and the closed occurrence
+profile. The lesson corpus is not a completed MakeCode application census.
+
+The first established cause is a generated unary conversion whose complete
+body returns Number on normal completion. Its captured input can still be
+Undefined, so requiring that input itself to be initialized Number rejects an
+ordinary counter. The private export analysis now recognizes the exact body,
+binding and every use, retaining operand traversal and currentness. In a program
+with a native Array join, each unary input must additionally have a complete
+primitive-only writer domain: implicit object conversion must not hide a
+callback that changes the join. No operand permission or Array body access is
+derived from the Number result.
+
+The complete three domain/helper modules and original Number-text module pass
+all 14 tests with zero skips or TODOs on the tested candidate. The original
+failing and unsafe intermediate results are retained. The remaining affected
+modules and every final-head hosted check are required; this is no claim that
+all 43 failures or any corpus project are complete.
+
+The circuit fixed-point repair is separately proposed in
+[Circuit UI #101](https://github.com/CrispStrobe/bw-circuit-ui/pull/101):
+42 affected tests pass, while the exact original loader fails six of the same
+controls. Hosted acceptance, canonical adoption and new supplier measurements
+remain pending. Do not restamp expected provenance in place of those results.
+
 ## Supplier adoption guard follow-up — 2026-10-20
 
 The arithmetic supplier adoption at `74f89846` exposed one further exact-pin
