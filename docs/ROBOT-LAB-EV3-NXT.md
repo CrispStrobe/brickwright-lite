@@ -133,6 +133,21 @@ low (estimated raw 183: legonxt's *touch pressed?* compares the normalized value
   power-on — no direct command resets it (docs/NXT-PROTOCOL-FACTS.md §Outputs). The 360° acceptance is a
   port's first move, so its TachoCount.
 
+## NXT motor sync, buttons and listening
+
+- **MOTOR_SYNC** follows LEGO's NXT firmware 1.29 output driver (docs/NXT-PROTOCOL-FACTS.md §Sync): the
+  pair (A+B, else A+C, else B+C) runs on power, and every 100 ms a PID on the difference of the two block
+  tacho counts, plus a turn term that grows with turn ratio · power, slows the first and speeds the second.
+  Turn ratio 0 keeps the counts together under uneven load; 50 stops one wheel; 100 spins in place; a tacho
+  limit ends the pair together. A port synchronised alone runs unregulated, as on the brick.
+- **Buttons**: `pressButton(index, down)` on the NXT hub (0 exit, 1 right, 2 left, 3 enter) and `readButton`;
+  the VM's ReadButton reads them, releases counted short or long (2 s) as the firmware does (§Buttons).
+- **Listening**: sensors.js gives every MINDSTORMS ultrasonic probe `usHeard`, how many other MINDSTORMS
+  ultrasonic sensors in the scene ping towards it (within 2.55 m, a 30° half-angle cone, nothing in between;
+  both estimated). The EV3's listen mode (2) reads 1 while one is heard; the NXT's event capture (command 3)
+  reads 1 in its first measurement byte (estimated: the HDK names the mode, not its reading). Every sensor in
+  the scene counts as pinging: the scene does not know another sensor's mode (our model).
+
 ## Sensors in the scene
 
 The probes are sensors.js's (a ray for distance, colour and touch). A MINDSTORMS ultrasonic sensor also gets
@@ -191,9 +206,10 @@ six AA cells.
   which the CrispStrobe adapter does not provide yet (open). The EV3's RBF bytecode VM (the same instruction
   set, the FDK's §4 in full, plus the program header and subcalls) is the next step.
 - **NXT words** (DEVICE NXT pseudocode) are not written; the NXT example is blocks.
-- The ultrasonic *listen* modes read 0; buttons are never pressed in the Lab (WAIT_FOR_PRESS waits); EV3
-  sync turn ratios and NXT MOTOR_SYNC are simple scalings (our model); the stock EV3 extension reads distance
-  in inches (its mode 1) and caps it at 100.
+- The NXT's MOTOR_SYNC, its buttons and both ultrasonic listen modes are modelled (see *NXT motor sync,
+  buttons and listening*). Still open: EV3 sync turn ratios are a simple scaling (our model), the EV3's
+  buttons are never pressed in the Lab (WAIT_FOR_PRESS waits), and no Lab UI or `runtime.robotLab` call
+  presses a button yet; the stock EV3 extension reads distance in inches (its mode 1) and caps it at 100.
 
 ## Tests and gate
 
@@ -202,4 +218,5 @@ six AA cells.
 mirror round trips), `test/bw-sim-ev3-extension-bytes.test.mjs` (ev3comprehensive's own bytes on the brick),
 `test/bw-sim-bt-hubs-program.test.mjs` (the real VM and extensions in the Lab: NXT 360 ± 2° and stop on touch;
 EV3 stop before the wall), `test/bw-sim-nxt-rxe-vm.test.mjs`, `test/bw-sim-nxt-rxe-brick.test.mjs` and
-`test/bw-sim-nxt-rxe-legonxt.test.mjs` (the `.rxe` VM, downloads, the bumper bot on an `.rxe`), the browser gate `npm run verify:sim-lab -- --part=hubs-bt`.
+`test/bw-sim-nxt-rxe-legonxt.test.mjs` (the `.rxe` VM, downloads, the bumper bot on an `.rxe`),
+`test/bw-sim-mindstorms-model-limits.test.mjs` (NXT sync, buttons, ultrasonic listening), the browser gate `npm run verify:sim-lab -- --part=hubs-bt`.
