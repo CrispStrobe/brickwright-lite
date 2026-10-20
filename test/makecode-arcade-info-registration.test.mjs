@@ -4,6 +4,7 @@ import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arc
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
+import {runTimedArcadeProgram} from './helpers/arcade-timed-native.mjs';
 import {INFO_REGISTRATION_SOURCE as source} from './fixtures/arcade-info-registration.mjs';
 const values=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
 async function execute(imported){
@@ -28,21 +29,24 @@ test('life and countdown registrations retain replacement, shared captures and p
 test('invalid life/countdown callbacks and shadowed info namespace remain diagnosed',()=>{
  for(const source of ['info.onLifeZero(1)','info.onLifeZero(function(a){})','info.onCountdownEnd(function(){},1)','info.player3.onLifeZero(function(a){})','let info=1;info.onLifeZero(function(){})','function f(info:number){info.onCountdownEnd(function(){})};f(1)'])assert.ok(arcadeToPseudocode(source).unsupported.length,source);
 });
-test('life zero and countdown end due in one frame: the life events come first, as in the original HUD pass',async()=>{
- // A zero countdown is due in the original's first HUD pass together with the
- // zeroed lives; a 100 ms first frame makes the 80 ms countdown due with them.
+test('life events precede zero and elapsed countdown completion, as in the original HUD pass',async()=>{
  const zero=source.replace('info.startCountdown(0.08)','info.startCountdown(0)');
  const expected=await runPxtArcade(zero,{waitForGlobals:{ready:true,timerHits:1},fakeClock:true});
  assert.equal(expected.trace,'L9M10T10');
- for(const [name,code,ms] of [['zero countdown',zero,20],['one long frame',source,100]]){
-  const imported=arcadeToPseudocode(code+'\nlet setupDone=true');assert.deepEqual(imported.unsupported,[]);
-  const run=await runProgram(imported.code,{frames:0,storage:true});
-  // Zero-length steps until the program has set its lives and countdown; the
-  // next frame is the first that can raise either event.
-  for(let guard=0;values(run).setupDone!==true;guard++){assert.ok(guard<50,name+': setup ran');await stepFrames(run.vm,1,0);}
-  assert.equal(values(run).trace,'',name+': nothing raised before the frame');
-  await stepFrames(run.vm,1,ms);
-  assert.equal(values(run).trace,'L9M10T10',name);assert.equal(values(run).timerHits,1,name);
-  assert.deepEqual(run.errors,[],name);
+ await observeHudOrder(expected.trace);
+
+});
+
+// A physical zero-delta first frame is still a HUD pass. Observe the actual
+// shared pause/frame clock instead of assuming setup never delivers a frame.
+async function observeHudOrder(expectedTrace) {
+ for(const [name,code,deadline] of [['zero',source.replace('info.startCountdown(0.08)','info.startCountdown(0)'),0],['elapsed',source,100]]) {
+  const imported=arcadeToPseudocode(code);assert.deepEqual(imported.unsupported,[]);
+  const run=await runTimedArcadeProgram(imported.code,{milliseconds:deadline,storage:true});
+  try { assert.equal(values(run).trace,expectedTrace,name);assert.equal(values(run).timerHits,1,name);assert.deepEqual(run.errors,[]); }
+  finally {run.vm.stopAll();run.vm.quit();}
  }
+}
+test('native life and countdown ordering follows the actual zero and elapsed frame deadlines',async()=>{
+ await observeHudOrder('L9M10T10');
 });

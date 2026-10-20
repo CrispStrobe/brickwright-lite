@@ -1,6 +1,6 @@
+import {createArcadeRuntimeMock} from './helpers/arcade-runtime-mock.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {EventEmitter} from 'node:events';
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
 import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
@@ -13,8 +13,8 @@ const hex=colors.map(color=>color.slice(1)).join('');
 const other=[...colors];other[0]='#010203';other[1]='#654321';other[2]='#fedcba';
 const otherHex=other.map(color=>color.slice(1)).join('');
 function fixture(){
- const runtime=new EventEmitter(),skins=new Map(),drawables=new Map();let skinId=0,drawableId=0;
- runtime.requestRedraw=()=>{};runtime.startHats=()=>[];
+ const runtime=createArcadeRuntimeMock(),skins=new Map(),drawables=new Map();let skinId=0,drawableId=0;
+ runtime.requestRedraw=()=>{};
  runtime.renderer={createSVGSkin(svg){const id=++skinId;skins.set(id,svg);return id;},
   updateSVGSkin(id,svg){assert.ok(skins.has(id));skins.set(id,svg);},destroySkin(id){skins.delete(id);},
   createDrawable(group){const id=++drawableId;drawables.set(id,{group});return id;},destroyDrawable(id){drawables.delete(id);},

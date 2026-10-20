@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync} from 'node:fs';
+import {spawnSync} from 'node:child_process';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import test from 'node:test';
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -7,6 +10,70 @@ const build = read('.github/workflows/build.yml');
 const focused = read('.github/workflows/debugger.yml');
 const qualification = read('.github/workflows/cycle-core-qualification.yml');
 const pkg = JSON.parse(read('package.json'));
+
+function browserInstallScript() {
+    const step = /- name: Install Playwright browser([\s\S]*?)(?=\n\s{6}- name:)/.exec(build)?.[1];
+    assert.ok(step, 'required browser installation step exists');
+    const lines = step.split('\n');
+    const start = lines.findIndex(line => /^\s{8}run: \|$/.test(line));
+    assert.notEqual(start, -1);
+    const body = [];
+    for (const line of lines.slice(start + 1)) {
+        if (line.startsWith('          ')) body.push(line.slice(10));
+        else if (!line.trim()) body.push('');
+        else break;
+    }
+    return body.join('\n');
+}
+
+function runBrowserInstallWithRegistryUnavailable(hasLocalCli) {
+    const cwd = mkdtempSync(join(tmpdir(), 'bw-browser-install-'));
+    const commandLog = join(cwd, 'commands');
+    try {
+        mkdirSync(join(cwd, 'bin'));
+        mkdirSync(join(cwd, 'node_modules/.bin'), {recursive: true});
+        const executable = (name, body) => writeFileSync(join(cwd, name), '#!/bin/sh\n' + body + '\n', {mode: 0o755});
+        // Deny package resolution. These fixtures exercise workflow delegation,
+        // not Chromium installation, apt, or browser acceptance.
+        for (const command of ['npm', 'npx']) executable('bin/' + command,
+            'echo registry-request >> "$BW_INSTALL_COMMAND_LOG"\nexit 97');
+        executable('bin/sudo', 'exec "$@"');
+        executable('bin/timeout', 'echo "bound $1 $2" >> "$BW_INSTALL_COMMAND_LOG"\nshift 2\nexec "$@"');
+        if (hasLocalCli) executable('node_modules/.bin/playwright',
+            'echo "playwright $*" >> "$BW_INSTALL_COMMAND_LOG"');
+        // This Linux workflow runs Bash explicitly. Bind the interpreter rather
+        // than letting the fixture's PATH select a different shell. A missing
+        // interpreter remains an execution error, never a passing setup test.
+        const result = spawnSync('/bin/bash', ['-e', '-c', browserInstallScript()], {
+            cwd,
+            env: {...process.env, PATH: join(cwd, 'bin') + ':/usr/bin:/bin', BW_INSTALL_COMMAND_LOG: commandLog},
+            encoding: 'utf8', timeout: 5000
+        });
+        let commands = '';
+        try {commands = readFileSync(commandLog, 'utf8');} catch (error) {
+            if (error.code !== 'ENOENT') throw error;
+        }
+        return {result, commands};
+    } finally {rmSync(cwd, {recursive: true, force: true});}
+}
+
+test('browser setup uses the locked CLI when package resolution is unavailable', () => {
+    const lock = JSON.parse(read('package-lock.json'));
+    assert.equal(lock.packages[''].devDependencies.playwright, pkg.devDependencies.playwright);
+    assert.equal(lock.packages['node_modules/playwright'].bin.playwright, 'cli.js');
+    const {result, commands} = runBrowserInstallWithRegistryUnavailable(true);
+    assert.equal(result.status, 0, result.stderr);
+    assert.doesNotMatch(commands, /registry-request/);
+    assert.equal(commands.split('\n').filter(line => line.startsWith('bound ')).length, 2);
+    assert.match(commands, /playwright install-deps chromium/);
+    assert.match(commands, /playwright install chromium/);
+});
+
+test('missing local browser CLI fails without installing an unreviewed replacement', () => {
+    const {result, commands} = runBrowserInstallWithRegistryUnavailable(false);
+    assert.notEqual(result.status, 0);
+    assert.equal(commands, '', 'neither package resolution nor browser setup may start');
+});
 
 test('required browser acceptance cannot become a soft deployment gate', () => {
     const install = /- name: Install Playwright browser([\s\S]*?)(?=\n\s{6}- name:)/.exec(build)?.[1];

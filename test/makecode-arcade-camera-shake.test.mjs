@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {createRequire} from 'node:module';
 import {runInNewContext} from 'node:vm';
-import {EventEmitter} from 'node:events';
+import {createArcadeRuntimeMock, startArcadeProject} from './helpers/arcade-runtime-mock.mjs';
 import {STATIC} from '../scripts/lib/pxt-node.mjs';
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
@@ -24,7 +24,7 @@ test('native shake matches original PXT damping, replacement, cancellation and d
     const context={screen:{width:160,height:120},game:{currentScene:()=>({})},control:{millis:()=>now},Math:math};
     runInNewContext(js,context);
     const original=new context.scene.Camera();
-    const runtime=new EventEmitter(),native=new Arcade(runtime);
+    const runtime=createArcadeRuntimeMock(),native=new Arcade(runtime);
     original.offsetX=120;original.offsetY=40;
     native.centerCameraAt({X:200,Y:100});
     const oldRandom=Math.random;
@@ -45,12 +45,12 @@ test('native shake matches original PXT damping, replacement, cancellation and d
             original.shake(amplitude,duration);native.cameraShake({AMPLITUDE:amplitude,DURATION:duration});check();
         }
         original.shake(4,500);native.cameraShake({AMPLITUDE:4,DURATION:500});check();
-        runtime.emit('PROJECT_START');assert.equal(native._camera().shakeStartTime,undefined);assert.equal(native._camera().drawOffsetX,0);
+        startArcadeProject(runtime);assert.equal(native._camera().shakeStartTime,undefined);assert.equal(native._camera().drawOffsetX,0);
     } finally {Math.random=oldRandom;}
 });
 
 test('frame shake moves world drawables while camera-relative HUD and world coordinates stay fixed',()=>{
-    const native=new Arcade(new EventEmitter());
+    const native=new Arcade(createArcadeRuntimeMock());
     const image=native.createImage({WIDTH:2,HEIGHT:2});
     const hero=native.createImageSprite({IMAGE:image,TEMPLATE:'',KIND:'Player'});
     const hud=native.createImageSprite({IMAGE:image,TEMPLATE:'',KIND:'Food'});

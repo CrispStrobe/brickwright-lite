@@ -16,7 +16,27 @@ class Question extends React.Component {
         };
     }
     handleChange (e) {
-        this.setState({answer: e.target.value});
+        let answer = e.target.value;
+        const prompt = this.props.arcadePrompt;
+        if (prompt) {
+            // The Arcade system keyboard limits the raw input before number cleanup.
+            answer = answer.slice(0, prompt.answerLength);
+            if (prompt.numbersOnly) {
+                let cleaned = '';
+                for (const character of answer) {
+                    if (character === '-') {
+                        if (cleaned.length !== 0) continue;
+                    } else if (character === '.') {
+                        if (cleaned.includes('.')) continue;
+                    } else if (!/[0-9]/.test(character)) {
+                        continue;
+                    }
+                    cleaned += character;
+                }
+                answer = cleaned;
+            }
+        }
+        this.setState({answer});
     }
     handleKeyPress (event) {
         if (event.key === 'Enter') this.handleSubmit();
@@ -29,6 +49,7 @@ class Question extends React.Component {
             <QuestionComponent
                 answer={this.state.answer}
                 question={this.props.question}
+                arcadePrompt={this.props.arcadePrompt}
                 onChange={this.handleChange}
                 onClick={this.handleSubmit}
                 onKeyPress={this.handleKeyPress}
@@ -39,6 +60,10 @@ class Question extends React.Component {
 
 Question.propTypes = {
     onQuestionAnswered: PropTypes.func.isRequired,
+    arcadePrompt: PropTypes.shape({
+        answerLength: PropTypes.number.isRequired,
+        numbersOnly: PropTypes.bool.isRequired
+    }),
     question: PropTypes.string
 };
 

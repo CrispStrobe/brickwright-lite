@@ -35,7 +35,7 @@ test('unknown exports, collisions, private bindings and lexical namespace shadow
   ['namespace sprites { export const create=3 }',/conflicts with a built-in/],
   ['namespace sprites {let secret=3} let n=sprites.secret',/private/],
   ['namespace sprites {let secret=3} namespace sprites {export function read(){return secret}}let n=sprites.read()',/private to another/],
-  ['let n=sprites.custom();namespace sprites {export function custom(){return 3}}',/before initialization/],
+  ['let n=sprites.custom();namespace sprites {export function custom(){return value}export let value=3}',/before initialization/],
   ['namespace game {export function f(){return 1}}let fn=game.f',/runtime function value/],
   ['namespace game {export function f(){return 1}}let obj=game',/runtime object/]
  ]) {const result=lower(source);assert.equal(result.program,null,source);assert.ok(result.unsupported.some(x=>reason.test(x)),JSON.stringify(result.unsupported));}

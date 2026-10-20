@@ -19,6 +19,7 @@ import {join} from 'node:path';
 
 import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
 import {SOURCE, REPO} from './helpers/bw-integrated.mjs';
+import {ORIGINAL_SPRITE_KINDS} from './helpers/arcade-original-kind-values.mjs';
 import {
     ARCADE_PALETTE,
     parseImageLiteral,
@@ -118,9 +119,9 @@ test('a real Arcade game becomes sprites, costumes and scripts', async () => {
     assert.deepEqual(out.sprites, ['Game', 'mySprite', 'gegner', 'einfangen', 'background']);
     assert.equal(out.costumes.length, 4, 'three instance templates and the background retain artwork');
     assert.match(out.code, /arcade register button "up" event \(2049\)/);
-    assert.match(out.code, /arcade register overlap kind "Enemy" with kind "Player"/);
+    assert.match(out.code, /arcade register overlap kind \(arcade sprite kind value "Enemy"\) with kind \(arcade sprite kind value "Player"\)/);
     assert.match(out.code, /arcade change score player \(1\) by/);
-    assert.match(out.code, /arcade create template "gegner" kind "Enemy"/);
+    assert.match(out.code, /arcade create template "gegner" kind \(arcade sprite kind value "Enemy"\)/);
     assert.match(out.code, /arcade set vx of gegner to/);
     assert.match(out.code, /arcade set background image/);
 });
@@ -131,7 +132,7 @@ test('timed spawns preserve their own positions, artwork and native velocities',
     assert.deepEqual(run.errors, []);
     assert.deepEqual(run.creator.warnings, []);
     const state = run.vm.runtime.bwArcadeDeviceState;
-    const enemies = Object.values(state.sprites).filter(sprite => sprite.kind === 'Enemy');
+    const enemies = Object.values(state.sprites).filter(sprite => sprite.kind === ORIGINAL_SPRITE_KINDS.Enemy);
     assert.ok(enemies.length >= 2,'interval first fires immediately, then again after2500ms');
     const enemy = enemies.at(-1);
     assert.ok(enemies[0].x < enemy.x,'the earlier instance has continued moving');
@@ -202,11 +203,11 @@ test('the translation compiles into the sprites and blocks it names', {skip: can
         }
     }
     for (const expected of [
-        'event_whenflagclicked', 'arcade_registerButtonHandler', 'arcade_registerIntervalHandler',
+        'arcade_whenSourceStarts', 'arcade_registerButtonHandler', 'arcade_registerIntervalHandler',
         'arcade_registerUpdateHandler', 'arcade_registerOverlapHandler', 'arcade_whenRegisteredOverlap', 'arcade_createSprite',
         'arcade_setSpriteProperty', 'arcade_setSpriteAutoDestroy',
         'arcade_setBackgroundImage', 'arcade_frameImage', 'arcade_spriteProperty',
-        'arcade_changePlayerScore', 'operator_random'
+        'arcade_changePlayerScore', 'arcade_mathBinary', 'arcade_spriteKindValue'
     ]) {
         assert.ok(ops.has(expected), `${expected} is missing — a mapping compiled to silence`);
     }
@@ -297,8 +298,8 @@ game.onUpdate(function(){if(controller.left.isPressed()){seenLeft=true};if(contr
     assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
 });
 
-test('sprite dimensions and edges use the decoded image geometry', () => {
-    const {code, unsupported} = arcadeToPseudocode(`
+test('sprite dimensions and edges use the decoded image geometry', async () => {
+    const {code, unsupported, costumes} = arcadeToPseudocode(`
         let hero = sprites.create(img\`
             1 1 1 1
             1 1 1 1
@@ -312,10 +313,14 @@ test('sprite dimensions and edges use the decoded image geometry', () => {
 
     for(const property of ['left','right','top','bottom','width','height'])
         assert.match(code,new RegExp(`arcade property ${property} of hero`));
-    assert.match(code,/arcade set local __bwValue/);
-    assert.match(code,/arcade change score player \(1\) by \(1\)/);
+    assert.match(code,/arcade set local __bwPxtValue\d+/);
     assert.doesNotMatch(code,/\) and \(|\) or \(/,'logical guards must use lazy branches');
     assert.deepEqual(unsupported, []);
+    const run=await runProgram(code,{frames:2,uploads:costumes,storage:true});
+    const sprite=Object.values(run.vm.runtime.bwArcadeDeviceState.sprites)[0];
+    assert.equal(sprite.width,4);assert.equal(sprite.height,2);
+    assert.ok(run.vm.runtime.bwArcadeDeviceState.score>0,'the actual geometry guard executes its score change');
+    assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
 });
 
 test('action animations preserve their real objects, frame images and attachments', async () => {
@@ -433,7 +438,7 @@ game.onUpdate(function(){paddle.x=10;ball.vy=-50})`);
     assert.deepEqual(imported.unsupported,[]);
     const run=await runProgram(imported.code,{frames:2,uploads:imported.costumes,storage:true});
     const sprites=Object.values(run.vm.runtime.bwArcadeDeviceState.sprites);
-    assert.equal(sprites.find(s=>s.kind==='Food').x,10);assert.equal(sprites.find(s=>s.kind==='Player').vy,-50);
+    assert.equal(sprites.find(s=>s.kind===ORIGINAL_SPRITE_KINDS.Food).x,10);assert.equal(sprites.find(s=>s.kind===ORIGINAL_SPRITE_KINDS.Player).vy,-50);
     assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
 });
 

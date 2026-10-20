@@ -3,6 +3,7 @@ const BlockType = require('../../extension-support/block-type');
 const TargetType = require('../../extension-support/target-type');
 const Cast = require('../../util/cast');
 const BWValues = require('../../util/bw-values');
+const currentNumberInput = require('../../util/bw-current-number-input');
 const formatMessage = require('format-message');
 
 // Older bundled extensions sometimes use stable English menu values directly
@@ -84,17 +85,24 @@ const programClockBindings = runtime => {
 // extension CLASS (the scratch-vm ExtensionManager instantiates it with `new Cls(runtime)`).
 // TurboWarp modules self-register via Scratch.extensions.register; Xcratch modules export
 // { blockClass, entry }. Both converge on an object with getInfo() + opcode methods.
-module.exports = function makeCrispExtension (source, dependencies = null) {
+module.exports = function makeCrispExtension (source, dependencies = null, arrayRegistration = null) {
     return class CrispStrobeExtension {
         constructor (runtime) {
             this.runtime = runtime;
-            let captured = null;
+            let captured = null, inst = null;
             const Scratch = {
                 BlockType, ArgumentType, TargetType, Cast, BWValues,
+                BWNumberInput: (args, util, opcode, name) => currentNumberInput(runtime, args, util, opcode, name),
                 translate: Object.assign(m => (m && typeof m === 'object' ? (m.default || '') : m), { setup: () => {} }),
                 extensions: { register: inst => { captured = inst; }, unsandboxed: true, isPenguinMod: false },
                 vm: runtime && runtime.emit ? { runtime } : {}, runtime
             };
+            // Only a trusted module-held registration may install Array guards.
+            // Existing two-argument callers retain the ordinary adapter path.
+            if (arrayRegistration !== null) {
+                const service = require('../../util/bw-array-operations').bind(runtime, arrayRegistration, source, () => inst);
+                Object.defineProperty(Scratch, 'BWArrayOperations', {value: service, enumerable: true});
+            }
             // Trusted built-ins opt into modules with their compiled closures intact.
             if (dependencies !== null) Scratch.BWExtensionDependencies = dependencies;
             // Yes/no questions an extension can wait for (task E7). In the desktop/iOS app
@@ -118,7 +126,7 @@ module.exports = function makeCrispExtension (source, dependencies = null) {
             const mod = { exports: {} };
             run(Scratch, mod, mod.exports, ...programClockBindings(runtime));
             const xcx = mod.exports && (mod.exports.blockClass || (mod.exports.default && mod.exports.default.blockClass));
-            const inst = captured || (xcx && new xcx(runtime)) ||
+            inst = captured || (xcx && new xcx(runtime)) ||
                 (typeof mod.exports === 'function' ? new mod.exports(runtime) : mod.exports);
             // delegate getInfo + every opcode method onto this
             this._inst = inst;
@@ -128,6 +136,20 @@ module.exports = function makeCrispExtension (source, dependencies = null) {
                 }
             }
         }
-        getInfo () { return localizeLegacyMenus(this._inst.getInfo()); }
+        getInfo () {
+            const info = localizeLegacyMenus(this._inst.getInfo());
+            // Only Arcade's supplied module closure owns this optional hook.
+            // Ordinary adapters and the separate Array token path are unchanged.
+            if (typeof dependencies?.bindScoreAdapterInfo === 'function') {
+                dependencies.bindScoreAdapterInfo(info, this, this._inst);
+            }
+            if (typeof dependencies?.bindSceneClockAdapterInfo === 'function') {
+                dependencies.bindSceneClockAdapterInfo(info, this, this._inst);
+            }
+            if (typeof dependencies?.bindNullSpriteAdapterInfo === 'function') {
+                dependencies.bindNullSpriteAdapterInfo(info, this, this._inst);
+            }
+            return info;
+        }
     };
 };

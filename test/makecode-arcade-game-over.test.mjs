@@ -5,6 +5,7 @@ import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arc
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram, stepFrames, clearStrayTimers, projectOpcodes} from './helpers/bw-vm.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
+import {createArcadeDiscreteTimers} from './helpers/arcade-discrete-timers.mjs';
 
 const PALETTE = ['#000000', '#ffffff', '#ff2121', '#ff93c4', '#ff8135', '#fff609', '#249ca3', '#78dc52',
     '#003fad', '#87f2ff', '#8e2ec4', '#a4839f', '#5c406c', '#e5cdc4', '#91463d', '#000000'];
@@ -84,7 +85,7 @@ test('a win shows the original dialog and plays the original win sound', async (
     } finally { clearStrayTimers(); }
 });
 
-test('a button press after the dialog restarts the program; earlier presses do not', async () => {
+test('a button press after the dialog restarts the program; earlier presses do not', async t => {
     const source = `scene.setBackgroundColor(9)
 let ended = false
 game.onUpdateInterval(100, function () {
@@ -94,28 +95,42 @@ game.onUpdateInterval(100, function () {
     }
 })`;
     const imported = arcadeToPseudocode(source);
-    const run = await runProgram(imported.code, {frames: 6, storage: true, uploads: imported.costumes});
+    const run = await runProgram(imported.code, {frames: 0, storage: true, uploads: imported.costumes, frameAuthority: 'timed'});
+    const clock = createArcadeDiscreteTimers();
+    run.vm.stopAll(); run.vm.runtime.bwArcadeProgramClock = clock;
+    run.vm.runtime.updateCurrentMSecs = () => { run.vm.runtime.currentMSecs = clock.now(); };
+    run.vm.greenFlag();
+    await stepFrames(run.vm, 1, 0); await clock.advanceTo(200);
+    const restarts = [];
+    run.vm.runtime.on('PROJECT_START', () => restarts.push(clock.now()));
     const press = async () => {
         run.vm.postIOData('keyboard', {key: ' ', isDown: true});
-        await stepFrames(run.vm, 2);
+        await clock.advanceTo(clock.now() + 20);
         run.vm.postIOData('keyboard', {key: ' ', isDown: false});
-        await stepFrames(run.vm, 2);
+        await clock.advanceTo(clock.now() + 20);
     };
     try {
         assert.ok(run.vm.runtime.bwArcadeDeviceState.backgroundImage, 'game over shows the last frame as background');
         await press();
         assert.ok(run.vm.runtime.bwArcadeDeviceState.backgroundImage, 'a press before the cursor appears is ignored');
-        await stepFrames(run.vm, 30);
-        // The restarted program reaches its own game over again after 100 ms,
-        // so the fresh scene is read two frames after the press.
+        assert.deepEqual(restarts, [], 'early input cannot restart the program');
+        await clock.advanceTo(1200);
+        // The selected SDK waits 400ms before the dialog and 500ms before the
+        // next genuine button press. Its onUpdateInterval starts with timer 0,
+        // so the unchanged source immediately enters game over again on the
+        // restarted scene's initial frame. PROJECT_START observes the actual
+        // restart; a transient background-absence assertion is not valid.
         run.vm.postIOData('keyboard', {key: ' ', isDown: true});
-        await stepFrames(run.vm, 2);
+        await clock.advanceTo(1220);
         assert.deepEqual(run.errors, []);
         const state = run.vm.runtime.bwArcadeDeviceState;
-        assert.ok(!state.backgroundImage, 'the program restarted in a fresh scene');
-        assert.equal(state.backgroundColor, 9);
+        assert.equal(restarts.length, 1, 'late genuine input restarts the program exactly once');
+        assert.equal(state.elapsedMs, 0, 'the restarted source has reached its initial game-over scene');
+        assert.ok(state.backgroundImage, 'unchanged interval source immediately enters game over again');
+        t.diagnostic(JSON.stringify({restartTimes: restarts, sceneMillis: state.elapsedMs, background: !!state.backgroundImage, threads: run.vm.runtime.threads.length,
+            boundary: 'Actual native PROJECT_START/input lifecycle; initial-zero interval authority is retained selected MIT gameutil.ts, not an original host restart observation.'}));
         run.vm.postIOData('keyboard', {key: ' ', isDown: false});
-    } finally { clearStrayTimers(); }
+    } finally { run.vm.stopAll(); run.vm.quit(); clearStrayTimers(); }
 });
 
 const CONFIGURED = `game.setGameOverEffect(false, effects.dissolve)

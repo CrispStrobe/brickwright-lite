@@ -2,8 +2,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
-import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
+import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
+import {createArcadeDiscreteTimers} from './helpers/arcade-discrete-timers.mjs';
+const liveRuns=new Set();
+test.afterEach(()=>{for(const run of liveRuns){run.vm.stopAll();run.vm.quit();}liveRuns.clear();clearStrayTimers();});
+async function timedRun(code,uploads,frames=40,archive){
+ const run=await runProgram(code,{frames:0,uploads,storage:true,frameAuthority:'timed'});liveRuns.add(run);
+ if(archive){run.vm.stopAll();await run.vm.loadProject(archive);}
+ const clock=createArcadeDiscreteTimers();run.vm.stopAll();run.vm.runtime.bwArcadeProgramClock=clock;
+ run.vm.runtime.updateCurrentMSecs=()=>{run.vm.runtime.currentMSecs=clock.now();};run.vm.greenFlag();run.clock=clock;
+ await stepFrames(run.vm,1,0);await clock.advanceTo(frames*20);return run;
+}
 const value=(run,name)=>run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).find(v=>v.name===name)?.value;
 const observer=`let bubble:Sprite=null
 let creations=0
@@ -46,19 +56,19 @@ const cases=[
 ];
 async function execute(source,frames=40){
  const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[],JSON.stringify(imported.unsupported));
- const run=await runProgram(imported.code,{frames,uploads:imported.costumes,storage:true});
+ const run=await timedRun(imported.code,imported.costumes,frames);
  assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);return {...run,imported};
 }
 for(const [name,body,created,destroyed,alive] of cases)test('native legacy bubble equals original IDs and complete frame: '+name,async()=>{
  const source=observer+setup+body;
- const original=await runPxtArcade(source+capture);
+ const original=await runPxtArcade(source+capture,{fakeClock:true});
  const run=await execute(source);
  assert.equal(original.creations,created);assert.equal(original.destructions,destroyed);
  assert.equal(value(run,'creations'),created);assert.equal(value(run,'destructions'),destroyed);
  const state=run.vm.runtime.bwArcadeDeviceState;
  assert.equal(original.raster.length,19200);
  assert.deepEqual([...state.sceneFrame.pixels],Array.from(original.raster,ch=>parseInt(ch,16)));
- const native=Object.values(state.sprites).filter(s=>s.kind==='-1');assert.equal(native.length,alive?1:0);
+ const native=Object.values(state.sprites).filter(s=>s.kind===-1);assert.equal(native.length,alive?1:0);
  if(alive){
   const b=native[0];assert.deepEqual([b.pxtId,b.x,b.y,b.z,b.width,b.height,b.flags],
    [original.bid,original.bx,original.by,original.bz,original.bw,original.bh,original.flags]);
@@ -84,14 +94,14 @@ let sampled=bubble.image.getPixel(2,2)
 let later=sprites.create(img\`6\`,SpriteKind.Food)
 `;
 test('blank native creation callbacks yield before flags, pixels, owner position and caller continuation',async()=>{
- const original=await runPxtArcade(yielding+capture);
+ const original=await runPxtArcade(yielding+capture,{fakeClock:true});
  const run=await execute(yielding);
  for(const name of ['blank','beforeX','order','completed','sampled'])assert.equal(value(run,name),original[name],name);
  assert.deepEqual([original.blank,original.beforeX,original.completed],[0,80,12]);
  const state=run.vm.runtime.bwArcadeDeviceState;
  assert.deepEqual([...state.sceneFrame.pixels],Array.from(original.raster,ch=>parseInt(ch,16)));
- assert.deepEqual(Object.values(state.sprites).map(s=>[s.kind,s.pxtId]),[['Player',0],['-1',1],['Enemy',2],['Food',3]]);
- const b=Object.values(state.sprites).find(s=>s.kind==='-1');
+ assert.deepEqual(Object.values(state.sprites).map(s=>[s.kind,s.pxtId]),[[1000,0],[-1,1],[1002,2],[1001,3]]);
+ const b=Object.values(state.sprites).find(s=>s.kind===-1);
  assert.deepEqual([b.x,b.y,b.z,b.flags],[original.bx,original.by,original.bz,original.flags]);
 });
 test('native bubble callbacks and pixels survive Code, Blocks, saved SB3 and original exported execution',async()=>{
@@ -99,13 +109,17 @@ test('native bubble callbacks and pixels survive Code, Blocks, saved SB3 and ori
  const expected=[...run.vm.runtime.bwArcadeDeviceState.sceneFrame.pixels];
  const out=projectToArcade(run.creator.project,{costumeSvg:(target,costume)=>run.creator.assets.get(costume.assetId)?.data});
  assert.deepEqual(out.unsupported,[]);
- const original=await runPxtArcade({...out.files,'main.ts':out.files['main.ts']+capture});
+ const original=await runPxtArcade({...out.files,'main.ts':out.files['main.ts']+capture},{fakeClock:true});
  assert.deepEqual(expected,Array.from(original.raster,ch=>parseInt(ch,16)));
  const again=await execute(out.files);assert.deepEqual([...again.vm.runtime.bwArcadeDeviceState.sceneFrame.pixels],expected);
- const code=await runProgram(run.creator.decompile(),{frames:40,uploads:run.imported.costumes,storage:true});assert.deepEqual(code.errors,[]);
+ const code=await timedRun(run.creator.decompile(),run.imported.costumes);assert.deepEqual(code.errors,[]);
  assert.deepEqual([...code.vm.runtime.bwArcadeDeviceState.sceneFrame.pixels],expected);
- const saved=await run.vm.saveProjectSb3();await run.vm.loadProject(Buffer.from(await saved.arrayBuffer()));
- run.vm.greenFlag();await stepFrames(run.vm,40);assert.deepEqual(run.errors,[]);
+ const saved=await run.vm.saveProjectSb3(),archive=Buffer.from(await saved.arrayBuffer());
+ const fresh=await timedRun('SPRITE Placeholder:\nWHEN flag clicked:\n  hide',[],40,archive);
+ assert.deepEqual([...fresh.vm.runtime.bwArcadeDeviceState.sceneFrame.pixels],expected);
+ assert.equal(value(fresh,'creations'),1);assert.equal(value(fresh,'completed'),12);assert.deepEqual(fresh.errors,[]);
+ await run.vm.loadProject(archive);
+ run.vm.greenFlag();await stepFrames(run.vm,1,0);await run.clock.advanceTo(run.clock.now()+800);assert.deepEqual(run.errors,[]);
  assert.deepEqual([...run.vm.runtime.bwArcadeDeviceState.sceneFrame.pixels],expected);
  assert.equal(value(run,'creations'),1);assert.equal(value(run,'completed'),12);
 });
@@ -118,7 +132,7 @@ let afterReplacement=order
 actor.say("")
 let afterClear=order
 `;
- const original=await runPxtArcade(source+capture);const run=await execute(source);
+ const original=await runPxtArcade(source+capture,{fakeClock:true});const run=await execute(source);
  assert.deepEqual([original.afterReplacement,original.afterClear,original.creations,original.destructions],[12,1212,2,2]);
  for(const name of ['afterReplacement','afterClear','creations','destructions'])assert.equal(value(run,name),original[name],name);
  assert.deepEqual([...run.vm.runtime.bwArcadeDeviceState.sceneFrame.pixels],Array.from(original.raster,ch=>parseInt(ch,16)));
@@ -130,7 +144,7 @@ actor.say("Hi",1,2,5)
 pause(150)
 let afterExpiry=order
 `;
- const original=await runPxtArcade(source+capture);const run=await execute(source);
+ const original=await runPxtArcade(source+capture,{fakeClock:true});const run=await execute(source);
  assert.deepEqual([original.afterExpiry,original.creations,original.destructions],[12,1,1]);
  for(const name of ['afterExpiry','creations','destructions'])assert.equal(value(run,name),original[name],name);
  assert.deepEqual([...run.vm.runtime.bwArcadeDeviceState.sceneFrame.pixels],Array.from(original.raster,ch=>parseInt(ch,16)));
@@ -142,9 +156,9 @@ actor.say("Hi",undefined,2,5)
 let sampled=replacement.getPixel(2,2)
 let shared=bubble.image==replacement
 `;
- const original=await runPxtArcade(source+capture);const run=await execute(source);
+ const original=await runPxtArcade(source+capture,{fakeClock:true});const run=await execute(source);
  assert.equal(original.shared,true);assert.equal(Boolean(value(run,'shared')),true);assert.equal(value(run,'sampled'),original.sampled);
  assert.deepEqual([...run.vm.runtime.bwArcadeDeviceState.sceneFrame.pixels],Array.from(original.raster,ch=>parseInt(ch,16)));
- const native=Object.values(run.vm.runtime.bwArcadeDeviceState.sprites).find(s=>s.kind==='-1');
+ const native=Object.values(run.vm.runtime.bwArcadeDeviceState.sprites).find(s=>s.kind===-1);
  assert.deepEqual([native.width,native.height],[original.bw,original.bh]);
 });

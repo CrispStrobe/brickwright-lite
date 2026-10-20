@@ -187,3 +187,23 @@ stage doesn't "spill" out from under its rounded corners. instead, shift these o
     0% { opacity: 1; }
     100% { opacity: 0; }
 }
+
+/* Native Arcade pixels remain visible; this is only an accessible controller. */
+.arcade-dialog-native-controls {
+    position: fixed;
+    bottom: .5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10001;
+    display: flex;
+    gap: .5rem;
+}
+.arcade-dialog-accessible-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
