@@ -119,6 +119,8 @@ const MESH_VELOCITY_STEPS = 120;
  * — 6° (2 mm at the tip) inside the block — and at 13.7–13.9° with 5 to 20 (measured).
  */
 const GEAR_POSITION_STEPS = 10;
+/** A slider spring (kinds/shock.js) pushes with at most this (N): far beyond a LEGO spring, never the limit. */
+const SPRING_MAX_FORCE_N = 50;
 /** A rubber band's drive: few velocity steps, so it slips under a load a chain would carry. */
 const BELT_VELOCITY_STEPS = 4;
 
@@ -644,14 +646,23 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             ss.mLimitsMin = j.limits ? j.limits[0] : -1e6;
             ss.mLimitsMax = j.limits ? j.limits[1] : 1e6;
             if (typeof j.frictionN === 'number') ss.mMaxFrictionForce = j.frictionN;
-            const maxForce = typeof j.maxForceN === 'number' ? j.maxForceN : 0;
+            // A spring (kinds/shock.js): a position motor whose spring is the spring's stiffness and damping.
+            const spring = j.spring && j.spring.stiffness > 0 ? j.spring : null;
+            const maxForce = spring ? SPRING_MAX_FORCE_N : typeof j.maxForceN === 'number' ? j.maxForceN : 0;
             ss.mMotorSettings.mMinForceLimit = -maxForce;
             ss.mMotorSettings.mMaxForceLimit = maxForce;
+            if (spring) {
+                const sp = ss.mMotorSettings.mSpringSettings;
+                sp.mMode = J.ESpringMode_StiffnessAndDamping;
+                sp.mStiffness = spring.stiffness;
+                sp.mDamping = spring.damping;
+            }
             const constraint = ss.Create(bodyA, bodyB);
             physicsSystem.AddConstraint(constraint);
             allConstraints.push(constraint);
             const slider = J.castObject(constraint, J.SliderConstraint);
-            slider.SetMotorState(J.EMotorState_Off);
+            slider.SetMotorState(spring ? J.EMotorState_Position : J.EMotorState_Off);
+            if (spring) slider.SetTargetPosition(spring.restM);
             sliderMap.set(j.id, {
                 slider, constraint, bodyA, bodyB,
                 bodyAID: getBodyIDForId(j.body1),
@@ -660,7 +671,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                 localAxis1: toLocal(j.body1, j.axis), localAxis2: toLocal(j.body2, j.axis),
                 position: 0, velocity: 0,
                 maxForce, maxSpeed: typeof j.maxSpeedMPerSec === 'number' ? j.maxSpeedMPerSec : Infinity,
-                mode: 'coast', target: 0, targetSpeed: null, kp: 10,
+                mode: spring ? 'spring' : 'coast', target: 0, targetSpeed: null, kp: 10,
             });
             J.destroy(ss);
         } else if (j.type === 'ball') {
@@ -1297,6 +1308,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
      */
     const setSliderMotor = (jointId, entry, cmd) => {
         if (!cmd || typeof cmd.mode !== 'string') throw new Error(`invalid motor command for ${jointId}`);
+        if (entry.mode === 'spring') throw new Error(`slider ${jointId} is a spring (a shock absorber), not a motor`);
         if (cmd.maxForceN !== undefined) {
             if (typeof cmd.maxForceN !== 'number' || !Number.isFinite(cmd.maxForceN) || cmd.maxForceN < 0) throw new Error(`maxForceN must be a non-negative number`);
             applySliderForce(entry, cmd.maxForceN);

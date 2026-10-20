@@ -200,7 +200,7 @@ export const compile = (model, catalog, opts = {}) => {
     let jointsResult;
     let gearResult;
     let gearDiagnostics;
-    let detected = {couplings: [], diagnostics: [], limits: [], wheels: []};
+    let detected = {couplings: [], diagnostics: [], limits: [], wheels: [], springs: []};
     // Every weld merges two islands, so this settles in at most one pass per node.
     for (let pass = 0; pass <= nodes.size + 1; pass++) {
         islands = buildIslands(nodes, graphEdges, catalogMap, diagnostics, opts, extraRigidPairs);
@@ -255,6 +255,11 @@ export const compile = (model, catalog, opts = {}) => {
         const j = joints.find(x => x.id === joint);
         if (!j) continue;
         j.limits = j.limits ? [Math.max(j.limits[0], limits[0]), Math.min(j.limits[1], limits[1])] : limits.slice();
+    }
+    // A detector may put a spring on a slider (kinds/shock.js): it pushes towards restM (m) with stiffness (N/m), damped.
+    for (const {joint, restM, stiffness, damping} of detected.springs) {
+        const j = joints.find(x => x.id === joint);
+        if (j && j.type === 'slider') j.spring = {restM, stiffness, damping};
     }
     // Detected couplings get ids after the gears'; those of a kind the v1 contract has
     // (rackAndPinion) are in the v1 `gears` too, after the meshes (contracts.js mechanismV1Aliases).
@@ -454,7 +459,7 @@ const seatedBodyPairs = (edges, islands) => {
 
 /** Every registered coupling detector, in registration order (registry/kinds.js CouplingKindRegistry). */
 const detectCouplings = (kinds, ctx) => {
-    const out = {couplings: [], welds: [], diagnostics: [], limits: [], wheels: []};
+    const out = {couplings: [], welds: [], diagnostics: [], limits: [], wheels: [], springs: []};
     for (const module of kinds.couplings.detectors()) {
         const r = module.detect(ctx) || {};
         for (const c of r.couplings || []) out.couplings.push({...c, kind: module.kind});
@@ -462,6 +467,7 @@ const detectCouplings = (kinds, ctx) => {
         out.diagnostics.push(...(r.diagnostics || []));
         out.limits.push(...(r.limits || []));
         out.wheels.push(...(r.wheels || []));
+        out.springs.push(...(r.springs || []));
     }
     return out;
 };
