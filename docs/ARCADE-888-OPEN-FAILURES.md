@@ -136,5 +136,5 @@ Not marked known-open. When it fails, rerun only the failed job. Failures seen:
 
 These were already `# TODO` before this landing and are not part of this list:
 
-- Robot Lab lane (`docs/ROBOT-LAB-VALIDATION.md`): rolling resistance; gearbox efficiency under load; motor torque through an 8:24 mesh; dig-cycle base yaw; tilting-table tower; two-cart restitution; universal joint not buildable.
+- Robot Lab lane (`docs/ROBOT-LAB-VALIDATION.md`): gearbox efficiency under load; motor torque through an 8:24 mesh; dig-cycle base yaw; tilting-table tower; two-cart restitution (rolling resistance and the universal joint resolved 2026-10-20).
 - Existing Arcade TODOs (their reasons now point here, per the docs-pointer rule): first HUD callback phase; restored callback phase; do-while `continue` posttest boundary; negative-kind initial overlap frame timing.

@@ -35,16 +35,17 @@ export const DIRECT_COMMAND_REPLY = 0x00;
 export const DIRECT_COMMAND_NO_REPLY = 0x80;
 export const DIRECT_REPLY = 0x02;
 export const DIRECT_REPLY_ERROR = 0x04;
-/** System commands [CDK §3]: not direct commands; answered as errors (SYSTEM_REPLY_ERROR 0x05). */
+/** System commands [CDK §3]: file transfer, served by hubs/ev3/ev3-system-commands.js. */
 export const SYSTEM_COMMAND_REPLY = 0x01;
 export const SYSTEM_COMMAND_NO_REPLY = 0x81;
+export const SYSTEM_REPLY = 0x03;
 export const SYSTEM_REPLY_ERROR = 0x05;
-/** System reply status UNKNOWN_SYSTEM_COMMAND [CDK §3: "#define UNKNOWN_SYSTEM_COMMAND 0x0A"]. */
+/** System reply status 0x0A [CDK §3.1: UNKNOWN_ERROR], what a system command the brick lacks is answered with. */
 export const UNKNOWN_SYSTEM_COMMAND = 0x0a;
 
 /** Opcodes the executor knows [FDK §4]. */
 export const OP = Object.freeze({
-    NOP: 0x01, INFO: 0x7c, UI_FLUSH: 0x80, UI_READ: 0x81, UI_WRITE: 0x82, UI_BUTTON: 0x83, UI_DRAW: 0x84,
+    NOP: 0x01, PROGRAM_STOP: 0x02, PROGRAM_START: 0x03, PROGRAM_INFO: 0x0c, INFO: 0x7c, UI_FLUSH: 0x80, UI_READ: 0x81, UI_WRITE: 0x82, UI_BUTTON: 0x83, UI_DRAW: 0x84,
     TIMER_WAIT: 0x85, TIMER_READY: 0x86, TIMER_READ: 0x87, TIMER_READ_US: 0x8f,
     SOUND: 0x94, SOUND_TEST: 0x95, SOUND_READY: 0x96,
     INPUT_DEVICE_LIST: 0x98, INPUT_DEVICE: 0x99, INPUT_READ: 0x9a, INPUT_TEST: 0x9b, INPUT_READY: 0x9c,
@@ -53,7 +54,7 @@ export const OP = Object.freeze({
     OUTPUT_SPEED: 0xa5, OUTPUT_START: 0xa6, OUTPUT_POLARITY: 0xa7, OUTPUT_READ: 0xa8, OUTPUT_TEST: 0xa9,
     OUTPUT_READY: 0xaa, OUTPUT_STEP_POWER: 0xac, OUTPUT_TIME_POWER: 0xad, OUTPUT_STEP_SPEED: 0xae,
     OUTPUT_TIME_SPEED: 0xaf, OUTPUT_STEP_SYNC: 0xb0, OUTPUT_TIME_SYNC: 0xb1, OUTPUT_CLR_COUNT: 0xb2,
-    OUTPUT_GET_COUNT: 0xb3, OUTPUT_PRG_STOP: 0xb4
+    OUTPUT_GET_COUNT: 0xb3, OUTPUT_PRG_STOP: 0xb4, FILE: 0xc0
 });
 
 /** opINPUT_DEVICE subcommands [FDK §4.8]. */
@@ -69,6 +70,7 @@ const T16 = '16';
 const T32 = '32';
 const TF = 'F';
 const TS = 'S';
+export const PARAM_TYPES = Object.freeze({T8, T16, T32, TF, TS, ARRAY: 'ARRAY'});
 
 /**
  * Argument lists: [direction, type] per parameter, 'in' read, 'out' written to the variable the
@@ -183,6 +185,12 @@ class Memory {
  */
 const SUBS = 'sub';
 const table = new Map();
+/**
+ * The instruction table, shared with the program VM (routes/ev3-vm/ev3-vm.js), which executes these
+ * instructions from an `.rbf` against the same brick: opcode → {name, args, run} or {name, sub: {code → …}}.
+ */
+export const INSTRUCTIONS = table;
+export const SUBCOMMANDS = SUBS;
 const def = (op, name, args, run) => table.set(op, {name, args, run});
 const defSub = (op, name, subs) => table.set(op, {name, [SUBS]: subs});
 
@@ -195,6 +203,24 @@ defSub(OP.INFO, 'opINFO', {
     0x05: {name: 'SET_VOLUME', args: ins(T8), run: (brick, [v]) => brick.setVolume(v)},
     0x06: {name: 'GET_MINUTES', args: outs(T8), run: (brick, a, ret) => ret(brick.sleepMinutes())},
     0x07: {name: 'SET_MINUTES', args: ins(T8), run: (brick, [v]) => brick.setSleepMinutes(v)}
+});
+
+// ---- programs [FDK §4.1, §4.14; CDK §4.2.1] ----------------------------------------------------
+// A host starts a downloaded program the way the CDK's example does: opFILE LOAD_IMAGE into the user
+// slot, then opPROGRAM_START with the size and image address LOAD_IMAGE returned (docs/EV3-RBF-VM.md).
+def(OP.PROGRAM_STOP, 'opPROGRAM_STOP', ins(T16), (brick, [slot]) => brick.programStop(slot));
+def(OP.PROGRAM_START, 'opPROGRAM_START', ins(T16, T32, T32, T8), (brick, [slot, size, ip, debug]) => brick.programStart(slot, size, ip, debug));
+defSub(OP.PROGRAM_INFO, 'opPROGRAM_INFO', {
+    0x16: {name: 'GET_STATUS', args: [['in', T16], ['out', T8]], run: (brick, [slot], ret) => ret(brick.programStatus(slot))},
+    0x18: {name: 'GET_PRGRESULT', args: [['in', T16], ['out', T8]], run: (brick, [slot], ret) => ret(brick.programResult(slot))}
+});
+defSub(OP.FILE, 'opFILE', {
+    // A filename the brick refuses, or a slot that is busy, leaves the outputs as they were; a file that
+    // is not there gives size 0 and address 0 (which PROGRAM_START does not start).
+    0x08: {name: 'LOAD_IMAGE', args: [['in', T16], ['in', TS], ['out', T32], ['out', T32]], run: (brick, [slot, name], ret) => {
+        const image = brick.loadImage(slot, name);
+        if (image) ret(image.size, image.ip);
+    }}
 });
 
 // ---- user interface [FDK §4.15] --------------------------------------------------------------
@@ -540,8 +566,8 @@ export const stepDirectCommand = (ctx, brick) => {
 };
 
 /**
- * A system command [CDK §3] the executor does not serve: answered SYSTEM_REPLY_ERROR /
- * UNKNOWN_SYSTEM_COMMAND when a reply is asked (file transfer is L2's, docs/ROBOT-LAB-EV3-NXT.md).
+ * A system command [CDK §3] no brick serves: answered SYSTEM_REPLY_ERROR / UNKNOWN_SYSTEM_COMMAND when a
+ * reply is asked. The Virtual EV3 serves its file commands in hubs/ev3/ev3-system-commands.js.
  */
 export const systemCommandReply = frame => (frame.type === SYSTEM_COMMAND_REPLY ?
     Uint8Array.from([5, 0, frame.counter & 0xff, frame.counter >> 8, SYSTEM_REPLY_ERROR, frame.code[0] ?? 0, UNKNOWN_SYSTEM_COMMAND]) : null);

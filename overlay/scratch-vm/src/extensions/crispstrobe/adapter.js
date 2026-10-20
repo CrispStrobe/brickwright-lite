@@ -95,7 +95,9 @@ module.exports = function makeCrispExtension (source, dependencies = null, array
                 BWNumberInput: (args, util, opcode, name) => currentNumberInput(runtime, args, util, opcode, name),
                 translate: Object.assign(m => (m && typeof m === 'object' ? (m.default || '') : m), { setup: () => {} }),
                 extensions: { register: inst => { captured = inst; }, unsandboxed: true, isPenguinMod: false },
-                vm: runtime && runtime.emit ? { runtime } : {}, runtime
+                vm: runtime && runtime.emit ? { runtime } : {}, runtime,
+                // TurboWarp's Scratch.fetch, as the extension worker gives it (legonxt's compile block).
+                fetch: (...a) => fetch(...a)
             };
             // Only a trusted module-held registration may install Array guards.
             // Existing two-argument callers retain the ordinary adapter path.
