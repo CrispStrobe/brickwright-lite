@@ -78,6 +78,34 @@ unchanged complete mutation prover detects all11 injected failures. Final
 integration heads still need the enabled hosted checks; local repairs do not
 make the earlier failed run successful.
 
+### What the historical 36 partials require
+
+A fresh saved-report inventory retains all 36 exact historical members and
+original diagnostics. The planning families overlap: 20 mention assets or
+resources, 23 mention sprite/handle/camera/tile routes, 24 mention extension or
+dependency work, and one mentions Creator structure. These are historical
+symptoms, not counts of currently missing APIs. Current source already contains
+many of the corresponding routes.
+
+Prioritize authentic project context after the Array lifecycle repairs:
+
+1. Join each affected source to its original project revision, configuration,
+   dependency revisions and resource files. Record unavailable inputs explicitly.
+2. Pass the complete original files through the normal dependency/resource import
+   APIs. Preserve resource names, IDs, bytes and provenance. A raw `main.ts`
+   cannot supply an absent animation, tile set or song.
+3. Diagnose a remaining failure with those real inputs before adding an API or
+   changing the parser. Implement the causal missing behavior; retain diagnostics
+   for resources that were never provided.
+4. Verify the connected Code and Blocks, editable artwork, actual VM behavior,
+   SB3 save/reload, MakeCode export and reimport for each implemented family.
+5. Publish new counts only from complete reports. Keep raw-source and complete
+   project-context results separate; missing input is not a successful conversion.
+
+The exact member list, original URLs and local recovery paths are private.
+The public contracts in this document and the GUI capability ledger describe
+implementation and acceptance without publishing that corpus inventory.
+
 ### Ordered next work
 
 1. Complete the fresh named-empty Array candidate qualification described in
