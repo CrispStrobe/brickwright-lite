@@ -76,8 +76,12 @@ test('the pure decision, over a synthetic closure', () => {
     assert.match(out[6], /^summary=1 file\(s\): test 1$/);
 });
 
+// A test file no gate names. (test/a.test.mjs is not one: test/gate-coverage.test.mjs,
+// which a gate runs, uses 'a.test.mjs' as fixture text, and the scope rightly counts it.)
+const UNNAMED = 'test/zz-ci-browser-scope-unnamed-sample.test.mjs';
 test('the CLI prints GITHUB_OUTPUT lines, and build.yml wires them', () => {
-    const r = spawnSync(process.execPath, ['scripts/ci-browser-scope.mjs'], {cwd: ROOT, input: 'test/a.test.mjs\nLANES.md\n', encoding: 'utf8'});
+    assert.ok(![...ctx.texts.values()].some(t => mentions(t, needlesOf(UNNAMED))), 'the sample must be named by no gate');
+    const r = spawnSync(process.execPath, ['scripts/ci-browser-scope.mjs'], {cwd: ROOT, input: `${UNNAMED}\nLANES.md\n`, encoding: 'utf8'});
     assert.equal(r.status, 0, r.stderr);
     assert.match(r.stdout, /^heavy=false\nlight=false\nrobotlab=false\nfpga=false\nbrowser=false\nany=false\nsummary=/);
     const yml = readFileSync(path.join(ROOT, '.github/workflows/build.yml'), 'utf8');
