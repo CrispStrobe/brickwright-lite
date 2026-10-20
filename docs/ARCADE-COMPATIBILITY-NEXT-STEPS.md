@@ -70,7 +70,7 @@ partials. Preserve the original reports and rerun each complete affected module.
 | Browser gate shape | 1 | Wait for the persistent imported editor document; retain notification as a separate observation. All11 source gate-shape tests pass; actual browser result remains required. |
 | Sprite physics/viewport fixture | 3 | Replace EventEmitter-only fixture with a real admitted runtime and cleanup. Preserve physics expectations and inert metadata guards. |
 | Lazy Array values | 5 | Replace off-thread primitive calls in observers with real VM reads or exact backing inspection. Preserve value, staging and identity expectations and native refusal tests. |
-| Array occurrence authority | 5 | Trace primary/occurrence authority and currentness on the actual physical graph. Fix the causal ownership defect and retain every negative mutation/ABA assertion. |
+| Array occurrence authority | 5 | The repair passes all93 tests in three complete modules, with zero skips. It preserves independent primary proofs, alias/reset handling and read-only monitor UI while expiring observed physical/metadata failures. Final integration and hosted checks remain required. |
 
 The delivery build also failed its fetch-pinning test. Its census repair keeps
 all other tracked inputs and thresholds, passes all13 checks locally, and the
