@@ -4508,6 +4508,27 @@ executed in 20 green main runs, five files recorded nowhere.
 
 ## Steps that run elsewhere
 
+- i80386-hdd-gui-actual.yml :: inventory :: Owned metadata-only `x86-hdd-gui-inventory` label path, absent from the current 19-run window. Historical failed runs 39106669518 and 39111308927 are consumed and their originals already audited; never replay them to populate this census. A new request/source/workflow/event requires separate admission; no successful runtime inventory or actual is inferred. 2026-10-19 Codex x86.
+- i80386-hdd-gui-actual.yml :: Refuse unreviewed inventory before setup or input retrieval :: Owned metadata-only `x86-hdd-gui-inventory` label path, absent from the current 19-run window. Historical failed runs 39106669518 and 39111308927 are consumed and their originals already audited; never replay them to populate this census. A new request/source/workflow/event requires separate admission; no successful runtime inventory or actual is inferred. 2026-10-19 Codex x86.
+- i80386-hdd-gui-actual.yml :: Install unchanged selected packages and Chromium without frontend build :: Owned metadata-only `x86-hdd-gui-inventory` label path, absent from the current 19-run window. Historical failed runs 39106669518 and 39111308927 are consumed and their originals already audited; never replay them to populate this census. A new request/source/workflow/event requires separate admission; no successful runtime inventory or actual is inferred. 2026-10-19 Codex x86.
+- i80386-hdd-gui-actual.yml :: Install externally selected immutable template and record observations :: Owned metadata-only `x86-hdd-gui-inventory` label path, absent from the current 19-run window. Historical failed runs 39106669518 and 39111308927 are consumed and their originals already audited; never replay them to populate this census. A new request/source/workflow/event requires separate admission; no successful runtime inventory or actual is inferred. 2026-10-19 Codex x86.
+- i80386-hdd-gui-actual.yml :: font-bridge :: Owned `x86-hdd-gui-font-bridge` label condition: source/job guards are enabled in this proposal, while exact source/prior/request/workflow/resource/event admission and explicit consumer selection remain required. No bridge observation or official delivery is qualified; never dispatch it to populate the census. 2026-10-19 Codex x86.
+- i80386-hdd-gui-actual.yml :: Refuse unreviewed bridge before setup or input retrieval :: Owned `x86-hdd-gui-font-bridge` label condition: source/job guards are enabled in this proposal, while exact source/prior/request/workflow/resource/event admission and explicit consumer selection remain required. No bridge observation or official delivery is qualified; never dispatch it to populate the census. 2026-10-19 Codex x86.
+- i80386-hdd-gui-actual.yml :: Install unchanged selected packages and Chromium for bridge observation :: Owned `x86-hdd-gui-font-bridge` label condition: source/job guards are enabled in this proposal, while exact source/prior/request/workflow/resource/event admission and explicit consumer selection remain required. No bridge observation or official delivery is qualified; never dispatch it to populate the census. 2026-10-19 Codex x86.
+- i80386-hdd-gui-actual.yml :: Install externally selected immutable bridge request :: Owned `x86-hdd-gui-font-bridge` label condition: source/job guards are enabled in this proposal, while exact source/prior/request/workflow/resource/event admission and explicit consumer selection remain required. No bridge observation or official delivery is qualified; never dispatch it to populate the census. 2026-10-19 Codex x86.
+- i80386-hdd-gui-actual.yml :: Record bounded read-only font bridge without credentials :: Owned `x86-hdd-gui-font-bridge` label condition: source/job guards are enabled in this proposal, while exact source/prior/request/workflow/resource/event admission and explicit consumer selection remain required. No bridge observation or official delivery is qualified; never dispatch it to populate the census. 2026-10-19 Codex x86.
+- i80386-hdd-gui-actual.yml :: actual :: Intentionally disabled source-only actual path: the current job condition is literal false and ACTUAL_ENABLED remains false. No genuine hosted actual is qualified. Exact source/runtime/resource/request/event admission and separate activation plus one clean affected browser/guest qualification remain required; do not enable or dispatch it to populate the census. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: Install empty Python cache prefix and refuse unreviewed actual source :: Intentionally disabled source-only actual path: the current job condition is literal false and ACTUAL_ENABLED remains false. No genuine hosted actual is qualified. Exact source/runtime/resource/request/event admission and separate activation plus one clean affected browser/guest qualification remain required; do not enable or dispatch it to populate the census. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: Repeat inventory installation exactly, without frontend build :: Intentionally disabled source-only actual path: the current job condition is literal false and ACTUAL_ENABLED remains false. No genuine hosted actual is qualified. Exact source/runtime/resource/request/event admission and separate activation plus one clean affected browser/guest qualification remain required; do not enable or dispatch it to populate the census. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: Install externally admitted request and refuse runtime/source drift :: Intentionally disabled source-only actual path: the current job condition is literal false and ACTUAL_ENABLED remains false. No genuine hosted actual is qualified. Exact source/runtime/resource/request/event admission and separate activation plus one clean affected browser/guest qualification remain required; do not enable or dispatch it to populate the census. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: Prepare unchanged authenticated free media once :: Intentionally disabled source-only actual path: the current job condition is literal false and ACTUAL_ENABLED remains false. No genuine hosted actual is qualified. Exact source/runtime/resource/request/event admission and separate activation plus one clean affected browser/guest qualification remain required; do not enable or dispatch it to populate the census. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: One official frontend acquisition and two serial genuine UI scenarios :: Intentionally disabled source-only actual path: the current job condition is literal false and ACTUAL_ENABLED remains false. No genuine hosted actual is qualified. Exact source/runtime/resource/request/event admission and separate activation plus one clean affected browser/guest qualification remain required; do not enable or dispatch it to populate the census. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: font-discovery :: Owned metadata-only `x86-hdd-gui-font-discovery` label condition: source/job guards are enabled but the exact request, current executing workflow, all-enabled source CI and one distinct event still require independent admission. No font-discovery event is inferred from source controls; preserve consumed inventory events and actual false. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: Refuse unreviewed discovery before setup or input retrieval :: Owned metadata-only `x86-hdd-gui-font-discovery` label condition: source/job guards are enabled but the exact request, current executing workflow, all-enabled source CI and one distinct event still require independent admission. No font-discovery event is inferred from source controls; preserve consumed inventory events and actual false. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: Install unchanged selected packages and Chromium for font observation :: Owned metadata-only `x86-hdd-gui-font-discovery` label condition: source/job guards are enabled but the exact request, current executing workflow, all-enabled source CI and one distinct event still require independent admission. No font-discovery event is inferred from source controls; preserve consumed inventory events and actual false. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: Install externally selected immutable discovery request :: Owned metadata-only `x86-hdd-gui-font-discovery` label condition: source/job guards are enabled but the exact request, current executing workflow, all-enabled source CI and one distinct event still require independent admission. No font-discovery event is inferred from source controls; preserve consumed inventory events and actual false. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: Record bounded read-only font discovery without credentials :: Owned metadata-only `x86-hdd-gui-font-discovery` label condition: source/job guards are enabled but the exact request, current executing workflow, all-enabled source CI and one distinct event still require independent admission. No font-discovery event is inferred from source controls; preserve consumed inventory events and actual false. 2026-10-18 Codex x86.
+
 Every workflow step and job must run somewhere the readings can see (plan T14, T13's rule one
 level up). `scripts/gen-ci-steps.mjs --fetch` reads the jobs API for the last runs of every
 workflow into docs/generated/ci-step-census.json; test/ci-step-census.test.mjs reddens on a
@@ -6265,9 +6286,38 @@ A separately guarded font-discovery source continuation now collects bounded
 read-only package, configuration, alias and font-file observations. Its own
 request/original/independent-reader formats remain observation-only. A distinct
 conditional hosted job now enables that collector in the source candidate.
-Its final-head request/event admission and original observations remain pending;
-the request is unpublished, no discovery event was sent, and actual stays disabled. The original required roster and missing
+The separately admitted source79af font event failed during collection; its sole
+retained original passed independent delivery validation as failed and incomplete.
+That event is consumed and cannot be replayed. Actual stays disabled. The original required roster and missing
 paths remain held. See the matching guide for selection and qualification gates.
+A separate disabled exact-entry font-chain source slice now adds closed request,
+original and inner-reader formats, typed parent/link/file witnesses and bounded
+alternatives traversal. Existing discovery/delivery v1 code and its baseline
+remain held. The new guard is false; there is no hosted chain job, official
+outer-delivery path, new input or event. Its strict parent policy refuses the
+retained mode040777 parent; manufactured positives do not qualify that layout.
+Raw source-command sidecars remain separate from inner descriptor validation.
+See the guide for source controls and the remaining trust/delivery gates.
+A separately disabled bridge-only continuation observes an explicitly selected
+alternatives child referenced by a stable incomplete historical alias. Its
+separate versioned request retains and pins prior discovery bytes; the reader
+regrades them independently. It cannot establish the old font entry's current
+association or reobserve its writable parent. Existing chain starting roots,
+strict parent/terminal policy, caps and actual guards remain held. That inner-only
+checkpoint includes no activation, input, event or consumer adoption.
+A separate bridge delivery source slice adds independently selected official
+metadata and ZIP/raw-source joins, with metadata-only grading before archive
+access and separate mode/version policy. The bridge source proposal now enables
+only its source guard and exact owned-label job predicate. Actual and chain stay
+disabled. No official observation or acquisition is approved.
+Its scoped census and dated conditional pointers preserve every other workflow's
+readings and all consumed failures. Original discovery/delivery consumers remain held.
+A scoped old-chain reader repair now requires successful link witnesses before
+deriving another hop and successful parents before accepting child observations.
+The old partial-prefix counterexamples remain retained; valid failed final
+witnesses stay supported. Only `verify_font_chain`, new focused controls and
+this lane's documentation change. Controller, bridge reader, formats, caps,
+baseline, workflows and all guards remain held; source qualification is pending.
 A separate delivery reader now joins externally selected official metadata,
 workflow proof and the bounded original ZIP before grading a retained discovery
 observation. Missing request/observation or raw evidence refuses. This is
@@ -6282,8 +6332,10 @@ names, special file types and ignored directory payloads before any inflation.
 The complete header census preserves existing limits, required files, TAR and
 actual v3/v4 semantics. This is a source repair; clean affected GUI/guest
 qualification remains pending.
-The explicit consumer CUI expectation now follows main
-PR1066 at `fe89e3425bf323b1acd9e3f98df6a7383e9b836b`; no dependency writer changed.
+The explicit consumer CUI expectation now follows the composed main selection
+`bda0157410a6704ae859a19398a8a742cdfae50b`; root and GUI package/lock and
+vendor declarations remain unchanged. Historical requests require fresh source
+selection; all guards and actual qualification remain held.
 
 
 
@@ -6304,11 +6356,12 @@ build/browser pipeline; do not introduce another provisioning framework or
 change unrelated workflows.
 
 
-PROPOSED SCOPED CENSUS EXTENSION — Codex x86, 2026-10-18. Extend this
+CLAIMED SCOPED CENSUS EXTENSION — Codex x86, 2026-10-18. Extend this
 merged claim only to `docs/generated/ci-step-census.json`, refreshed with the
 existing `scripts/gen-ci-steps.mjs --fetch --workflow i80386-hdd-gui-actual.yml`
-scoped generator, plus this lane's exact conditional-step pointers. Merge this
-claim before writing the generated census. Retain every unrelated workflow's
+scoped generator, plus this lane's exact conditional-step pointers. Claim
+[PR1079](https://github.com/CrispStrobe/brickwright-lite/pull/1079) merged before
+the scoped refresh. Retain every unrelated workflow's
 dated readings and main provenance. No generator, census test, gate baseline,
 workflow condition, supplier pin or other owner's section changes are included.
 The current failed unit originals establish a missing workflow census entry;
