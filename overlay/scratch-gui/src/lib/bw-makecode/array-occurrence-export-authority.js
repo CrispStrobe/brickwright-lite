@@ -173,6 +173,9 @@ function build(project){
         const binary={operator_add:['NUM1','NUM2'],operator_subtract:['NUM1','NUM2'],operator_multiply:['NUM1','NUM2'],operator_divide:['NUM1','NUM2'],operator_mod:['NUM1','NUM2']};
         if(binary[n.opcode]&&schema(n,binary[n.opcode])&&binary[n.opcode].every(k=>primitive(input(n,k))))return scalar;
         if(n.opcode==='arrays_valueBinary'&&schema(n,['LEFT','RIGHT'],['OP'])&&field(n,'OP',['+','-','*','/','%','**','&','|','^','<<','>>','>>>'])&&usable(input(n,'LEFT'))&&usable(input(n,'RIGHT')))return scalar;
+        // Existing source arithmetic only reads the closed scalar/Array cells.
+        // Its scalar result lends no Array, Number or input/body authority.
+        if(n.opcode==='arcade_sourceValueBinary'&&schema(n,['LEFT','RIGHT'],['OP'])&&field(n,'OP',['+','-','*','/','%','**'])&&usable(input(n,'LEFT'))&&usable(input(n,'RIGHT')))return scalar;
         if(n.opcode==='arrays_valueUnary'&&schema(n,['VALUE'],['OP'])&&field(n,'OP',['+','-','~'])&&usable(input(n,'VALUE')))return scalar;
         if(n.opcode==='arrays_valueCompare'&&schema(n,['LEFT','RIGHT'],['OP'])&&field(n,'OP',['===','!==','==','!=','<','<=','>','>='])&&usable(input(n,'LEFT'))&&usable(input(n,'RIGHT')))return scalar;
         if(n.opcode==='arrays_valueTruthy'&&schema(n,['VALUE'])&&usable(input(n,'VALUE')))return scalar;
