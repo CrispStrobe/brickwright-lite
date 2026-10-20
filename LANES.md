@@ -1,6 +1,6 @@
 ## Robot Lab physics examples and licensed model intake — 2026-10-20
 
-CLAIMED — Codex, continuation of lane/robot-lab-models-20261020 / PR #1138.
+IMPLEMENTED — Codex, lane/robot-lab-models-20261020 / draft PR #1138, depends on #1137.
 Owner requests >50-piece models with distinct physics principles, auditing the
 Philo/BrickHub downloader corpus, and an examples browser like Circuit's selector.
 Own new model/program/metadata assets, a lazy Robot Lab examples component and its
@@ -9,6 +9,14 @@ attribution and focused tests/browser gates. Only original or verified commercia
 compatible MIT/BSD/Apache/CC-BY/CC-BY-SA/public-domain assets may ship; never NC.
 Preserve other lanes and peer-owned physics/compiler/collider files. Download or
 LDraw parse success alone is not simulation qualification.
+Original 59-piece chain transmission and 56-piece flywheel differential added;
+107 focused tests pass on the peer's df2b9947b core. Production build and English/German
+gallery/worker browser gate pass. The toolbar browser filters physics and >50 pieces,
+opens models/programs in Simulate or Build, and restores keyboard focus on close.
+Notebook: 26 native MPDs acquired, 23 HTTP 403 failures, 19 duplicates of the peer's
+corpus, 7 additional checks recorded; zero external models newly vendored/qualified.
+An NC embedded section overrides the Rodent page's otherwise compatible notice.
+Peer still owns the 148-model bench and parts-gap ranking; no duplicate corpus run.
 
 ## Robot Lab survey rover model — 2026-10-20
 
