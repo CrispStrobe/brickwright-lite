@@ -19,7 +19,7 @@ import {inspectCallableExportGraph,createCallableLexicalEmitter,renderCallableSi
 import {namedArrayItemExportAuthority} from './named-array-item-export-authority.js';
 import {NAMED_ARRAY_GET_SOURCE} from './named-array-item-helpers.js';
 import {sourceReferenceProject} from './source-reference-project.js';
-import {scalarExportFlow} from './scalar-export-flow.js';
+import {scalarExportFlow,closedRemovalScalarAddition} from './scalar-export-flow.js';
 import {sourceScalarProject} from './source-scalar-project.js';
 import {prepareObjectClassExport} from './object-class-export.js';
 import {STRING_ARRAY_SETTINGS_PATH,STRING_ARRAY_SETTINGS_SOURCE} from './string-array-settings.generated.js';
@@ -1397,6 +1397,12 @@ class ArcadeEmitter {
                         return `(${this.arrayValue(b,'LEFT')} + ${this.arrayValue(b,'RIGHT')})`;
                 }catch(error){this.note(error.message);}
             }
+            // A genuine removal reporter returns a scalar even when its
+            // receiver contains nested/cyclic Arrays. No join is needed for
+            // this closed scalar calculation. Variables/captures are refused
+            // by this separate proof; inferred writer flow is not authority.
+            if(!source&&!unary&&!compare&&op==='+'&&closedRemovalScalarAddition(this.blocks,b))
+                return `(<any>(${this.arrayValue(b,'LEFT')}) + <any>(${this.arrayValue(b,'RIGHT')}))`;
             const key=(unary?'Unary':compare?'Compare':source?'SourceBinary':'Binary')+names[op];
             if(!this.valueOperationHelpers.has(key)){
                 let name='__bw'+key;

@@ -81,3 +81,27 @@ export function scalarExportFlow(project, isBoolean, sourceCells = new Map()) {
     const primitive=key=>{const values=[...(types.get(key)||[])];return values.length>0 && values.every(value=>['number','boolean','string','undefined','null'].includes(value));};
     return {types,type,primitive,variables,definitions};
 }
+
+
+// A narrow scalar calculation, independent of variable/captured writer flow.
+// Reporter kinds here have primitive results on normal return. Array removal
+// may still run effects or throw; this proof never evaluates it or reads an
+// Array body. In particular no variable/local/captured/parameter is admitted.
+export function closedRemovalScalarAddition(blocks,block) {
+    const child=name=>typeof block?.inputs?.[name]?.[1]==='string'?blocks[block.inputs[name][1]]:null;
+    if(![child('LEFT'),child('RIGHT')].some(node=>node?.opcode==='arrays_referenceRemove'))return false;
+    const active=new Set();
+    const input=(parent,name)=>{
+        const value=parent?.inputs?.[name]?.[1];
+        if(Array.isArray(value))return [4,5,6,7,8,10].includes(value[0])&&
+            (typeof value[1]==='string'||typeof value[1]==='number');
+        if(typeof value!=='string')return false;
+        const node=blocks[value];if(!node||active.has(node))return false;
+        if(['math_number','bw_numberLiteral','text','bw_stringLiteral','arrays_referenceRemove'].includes(node.opcode))return true;
+        const slots={operator_add:['NUM1','NUM2'],operator_subtract:['NUM1','NUM2'],operator_multiply:['NUM1','NUM2'],
+            operator_divide:['NUM1','NUM2'],operator_mod:['NUM1','NUM2']}[node.opcode];
+        if(!slots)return false;
+        active.add(node);const result=slots.every(slot=>input(node,slot));active.delete(node);return result;
+    };
+    return input(block,'LEFT')&&input(block,'RIGHT');
+}
