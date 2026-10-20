@@ -544,3 +544,12 @@ The two complete codec qualification modules retain six tests and the actual
 host/supplier transport matrix. Wrong pin, changed source, executable carrier,
 legacy carrier and unqualified explicit-source refusals remain covered. This
 is a test-source repair pending qualification, not new callable support.
+
+### Exponentiation carrier fixture maintenance
+
+The exponentiation module still decoded the former one-argument Arrays carrier,
+so it failed before its tests ran. Its fixture now requires the exact registered
+carrier syntax through the shared source parser. All four test bodies remain
+unchanged, including the original PXT comparisons, Code/export/reimport and
+fresh SB3 reload, special numbers and the named Sprite conversion gap. These
+comparisons remain pending qualification; source decoding alone is not parity.

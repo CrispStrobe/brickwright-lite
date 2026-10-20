@@ -8027,3 +8027,10 @@ registered Arrays carrier and explicit supplier pin. Host and supplier complete
 codec factories have independent reviewed hashes because host-only allocation
 origin bookkeeping is intentional. Callable behavioral controls and all source
 rejection controls remain required. No product, pin or value authority changes.
+
+## Arcade exponentiation carrier fixture — 2026-10-20
+
+Test-only maintenance in the existing Arcade lane: decode the current Arrays
+carrier with the strict registered-source parser. All exponentiation behavior,
+original PXT comparisons and conversion-gap assertions remain unchanged. No
+product or pin changes; complete module qualification remains required.

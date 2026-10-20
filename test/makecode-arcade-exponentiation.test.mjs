@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import {registeredArraysSource} from '../scripts/lib/arrays-carrier.mjs';
 import BW from '../overlay/scratch-vm/src/util/bw-values.js';
 import {loadExtensionClass,stubRuntime} from './helpers/bw-extensions.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
@@ -8,7 +9,8 @@ import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export
 import {runProgram,stepFrames,clearStrayTimers,projectOpcodes} from './helpers/bw-vm.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 const vars=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
-const bundled=JSON.parse(fs.readFileSync(new URL('../overlay/scratch-vm/src/extensions/crispstrobe/arrays/index.js',import.meta.url),'utf8').match(/makeExt\(("(?:[^"\\]|\\.)*")\)/)[1]);
+const bundled=registeredArraysSource(fs.readFileSync(new URL('../overlay/scratch-vm/src/extensions/crispstrobe/arrays/index.js',import.meta.url),'utf8'));
+assert.equal(typeof bundled,'string','exponentiation requires the canonical registered Arrays carrier');
 const start=bundled.indexOf('  const makeValues = () => {'),end=bundled.indexOf('\n  };\n',start);
 const fallback=new Function(`${bundled.slice(start,end+5)}\nreturn makeValues();`)();
 
