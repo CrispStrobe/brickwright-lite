@@ -24,6 +24,8 @@ import {fileURLToPath} from 'node:url';
 import {parseModel, serializeModel} from '../overlay/scratch-gui/src/lib/bw-sim/model/ldraw-model.js';
 import {MODELS, MODELS_BASE, catalogFrom} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {buildGraph} from '../overlay/scratch-gui/src/lib/bw-sim/mech/graph.js';
+import {WRAPPED_GEARS, linksJoin, pivotsOnGear} from '../overlay/scratch-gui/src/lib/bw-sim/kinds/chain.js';
+import {placedSpur, placedTooth} from '../overlay/scratch-gui/src/lib/bw-sim/kinds/tooth-parts.js';
 import {createEditor} from '../overlay/scratch-gui/src/lib/bw-sim/editor/editor-state.js';
 import {buildSteps, stepView, partsList, partLength, STEP_MAX, mirrorPairs, partAdjacency} from '../overlay/scratch-gui/src/lib/bw-sim/instructions/steps.js';
 
@@ -53,6 +55,15 @@ const touching = model => {
         const b = nodes.get(e.b.part).partId;
         if (a !== b) { out.get(a).add(b); out.get(b).add(a); }
     }
+    // A chain or tread link holds on by its pivots, not by a connector edge: it touches the next link
+    // on its pivot and the sprocket it rides on (kinds/chain.js).
+    const links = model.parts.flatMap(p => placedTooth(p, CATALOG.get(p.part), 'chain-link', ['along']).map(l => ({id: p.id, l})));
+    const gears = model.parts.map(p => ({id: p.id, g: placedSpur(p, CATALOG.get(p.part), WRAPPED_GEARS)})).filter(x => x.g);
+    const join = (a, b) => { out.get(a).add(b); out.get(b).add(a); };
+    links.forEach((a, i) => {
+        for (const b of links.slice(i + 1)) if (linksJoin(a.l, b.l)) join(a.id, b.id);
+        for (const g of gears) if (pivotsOnGear(a.l, g.g) > 0) join(a.id, g.id);
+    });
     return out;
 };
 const category = (model, id) => CATALOG.get(model.parts.find(p => p.id === id).part).category;
@@ -179,7 +190,7 @@ const mirroredStructural = model => {
 const DRIVING_BASES = MODELS_UNDER_TEST.filter(m => /!BW ID motorL\b/.test(m.text));
 test('the mirrored-pair check covers the fixture and every shipped driving base', () => {
     assert.deepEqual(DRIVING_BASES.map(m => m.name),
-        ['S1 driving base (test fixture)', 'driving-base.ldr', 'line-follower.ldr', 'wall-stopper.ldr', 'colour-explorer.ldr', 'maze-runner.ldr', 'excavator.ldr']);
+        ['S1 driving base (test fixture)', 'driving-base.ldr', 'line-follower.ldr', 'wall-stopper.ldr', 'colour-explorer.ldr', 'maze-runner.ldr', 'drawing-robot.ldr', 'excavator.ldr']);
 });
 
 for (const {name, text} of DRIVING_BASES) {
