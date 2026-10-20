@@ -76,11 +76,13 @@ try {
         name: 'carnival-control.mkcd', mimeType: 'application/json', buffer: Buffer.from(project)
     });
     const editor = page.locator('[data-testid="bw-code-editor"] .cm-content');
-    // Import completion is the persistent editor document. The notification is
-    // retained below as a separate visible observation, not a readiness signal.
+    // Import completion is the persistent document for this named project. Do
+    // not require the native command as a readiness signal: that is the
+    // independent capability assertion below, after retaining observations.
     await page.waitForFunction(() => {
         const element = document.querySelector('[data-testid="bw-code-editor"] .cm-content');
-        return element?.cmTile?.root?.view?.state?.doc?.toString().includes('arcade carnival countdown');
+        return element?.cmTile?.root?.view?.state?.doc?.toString()
+            .includes('# Imported from MakeCode Arcade: Carnival browser control');
     }, null, {timeout});
     // CodeMirror virtualizes visible lines. Read its actual complete document,
     // and retain the visible projection separately before any content assertion.
@@ -88,7 +90,7 @@ try {
         fullCode: element.cmTile.root.view.state.doc.toString(),
         visibleCode: element.innerText
     }));
-    report.importObservation.statusText = await page.getByText(/Imported the Arcade game.*carnival-control/).first().innerText();
+    report.importObservation.statusText = await page.getByText(/Imported the Arcade game.*Carnival browser control/).first().innerText();
     report.importObservation.projectContext = await page.evaluate(() => {
         const gui = window.__brickwrightStore.getState().scratchGui;
         return {phase: 'before To blocks; not an imported Blocks project',

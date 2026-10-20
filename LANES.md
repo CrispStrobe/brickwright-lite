@@ -8081,3 +8081,13 @@ confirm scans decode the strict registered Arrays carrier as well as existing
 legacy carriers. Added controls require bundled calls to be reported; prior
 scanner scope, reviewed ledgers and thresholds remain unchanged. Product and
 dependency pins are untouched. Complete hosted module qualification is pending.
+
+
+### Carnival browser observation readiness — 2026-10-20
+
+Existing Arcade qualification lane: separate readiness of the named imported
+editor document from the unchanged native-command capability assertion. The
+current full library translation must be retained before its missing native
+command is reported. Match the actual project title in the status observation.
+No translation, runtime, known-open entry, assertion or timeout change; hosted
+browser execution remains required. The native Carnival capability stays open.

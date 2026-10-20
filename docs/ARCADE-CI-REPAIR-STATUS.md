@@ -5,8 +5,9 @@
 The saved failures on [#1128](https://github.com/CrispStrobe/brickwright-lite/pull/1128)
 and [#1132](https://github.com/CrispStrobe/brickwright-lite/pull/1132) are caused by
 this development stack. Main is green. The current batch composes the follow-up from #1132 into #1128 for one hosted
-qualification campaign. Keep #1132 parked while that campaign is pending; do
-not push its stale head or add another `ci:full` request.
+qualification campaign. #1132 is merged into the parent branch by ancestry;
+its work is not yet on main. Do not push its stale head or add another
+`ci:full` request.
 Keep runtime ownership guards and original compiler comparisons intact.
 
 | Failure family | Repair and current evidence | Remaining acceptance |
@@ -39,8 +40,10 @@ run and do not re-download or replay successful originals for inspection.
 The exact-head hosted x86 controls reported one additional composition failure:
 the app's seven canonical Circuit UI declarations already select the newer B27
 revision, while the GUI audit controller and reader still require the previous
-revision. Both consumer declarations now explicitly follow the existing app
-selection. Dependency pins, drift assertions, workflow activation guards and
+revision. Main has since landed [#1136](https://github.com/CrispStrobe/brickwright-lite/pull/1136),
+which makes both consumer declarations explicitly follow the existing app
+selection. The integration branch includes that normal merge and the separate
+CAD pointer repair from [#1131](https://github.com/CrispStrobe/brickwright-lite/pull/1131). Dependency pins, drift assertions, workflow activation guards and
 limits are unchanged. Historical originals keep their historical readers; a
 new actual observation needs a fresh complete source/request/event/artifact
 envelope and the existing affected qualification.
@@ -51,6 +54,31 @@ reader control reached the diagnostic CPU limit. Its original failure is
 retained, with no assertion or limit change. The complete hosted module remains
 required at the repaired final head. This source-selection repair establishes
 no new browser or guest result.
+
+## Additional failures from the current campaign — 2026-10-20
+
+The completed third unit shard has one ordinary failure: the named Array item
+fixture calls an ownership-protected native reporter outside its VM operation.
+The candidate routes its three calls through the existing actual registered-block/
+thread helper, preserving the original aggregate, JSON and alias assertions and
+lifecycle guards. Complete affected-module hosted execution remains required.
+Declared TODO outcomes remain separate from this ordinary failure.
+
+The heavy browser job reports three separate problems that need diagnosis:
+
+- Initial JavaScript exceeds the existing budget by 28,424 bytes. Attribute the
+  increase from the saved webpack statistics and remove unnecessary eager code;
+  preserve the budget.
+- The Carnival import readiness check times out before recording its document.
+  The candidate waits for the actual named import document, then retains it
+  before the unchanged native-command assertion. The saved failure screenshot
+  shows a complete library translation; native Carnival support stays open.
+- The animation controller journey observes only the initial colour. Diagnose
+  actual block errors, frame resources and controller delivery; preserve both
+  required frame colours, Stop behavior and renderer assertions.
+
+These are open failures, not accepted baselines. Wait for the other existing
+checks to finish, then compose the concrete repairs into one normal push.
 
 ## Registered-carrier CI fixture repair — 2026-10-20
 
