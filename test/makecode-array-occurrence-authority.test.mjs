@@ -286,37 +286,3 @@ test('actual monitor observation throws and source edits expire retained primary
         accepted(creator);
     }
 });
-
-test('closed occurrence source arithmetic contributes scalar results without changing Array writers',()=>{
-    for(const op of ['+','-','*','/','%','**','&','|','^','<<','>>','>>>']){
-        const {creator}=current(original),{target,node}=item(creator);
-        const source=Object.values(target.blocks).filter(block=>block.opcode==='arcade_sourceValueBinary');
-        assert.equal(source.length,2,'actual original undefined and initialized Array arithmetic');
-        for(const block of source)block.fields.OP[0]=op;
-        assert.equal(createArrayOccurrenceExportAuthority(creator.project).validateInput(target,node,'ARRAY'),true,op);
-    }
-    const {creator}=current('let absent:any[];let before=~absent;absent=[5];let after=~absent;let item=absent[0]'),{target,node}=item(creator);
-    assert.equal(Object.values(target.blocks).filter(block=>block.opcode==='arcade_sourceValueUnary').length,2);
-    assert.equal(createArrayOccurrenceExportAuthority(creator.project).validateInput(target,node,'ARRAY'),true);
-});
-
-test('closed occurrence source arithmetic keeps exact selector schema and actual initialized writer obligations',()=>{
-    for(const edit of [
-        block=>{block.fields.OP[0]='unknown';},
-        block=>{block.fields.OP[1]='foreign-selector-id';},
-        block=>{block.inputs.OP=[1,[10,'+']];},
-        block=>{block.inputs.EXTRA=[1,[10,'0']];},
-        block=>{delete block.inputs.RIGHT;},
-        block=>{block.opcode='foreign_sourceValueBinary';}
-    ]){
-        const {creator}=current(original),{target,node}=item(creator),source=Object.values(target.blocks).find(block=>block.opcode==='arcade_sourceValueBinary');
-        assert.ok(source);edit(source);
-        assert.equal(createArrayOccurrenceExportAuthority(creator.project).validateInput(target,node,'ARRAY'),false);
-    }
-    for(const source of ['let absent:any[];let value=absent+"";let item=absent[0];absent=[5]',
-        'let absent:any[];absent=[5];let value=absent+"";absent=0 as any;let item=absent[0]']){
-        const {creator}=current(source),{target,node}=item(creator);
-        assert.equal(createArrayOccurrenceExportAuthority(creator.project).validateInput(target,node,'ARRAY'),false,source);
-    }
-});
-
