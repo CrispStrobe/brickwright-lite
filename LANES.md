@@ -7,6 +7,59 @@ destroyed-runner emit guard, and a gate that waits for the running phase), and t
 physics-engine fixture's stall depended on frame timing. Details:
 docs/ARCADE-888-OPEN-FAILURES.md. Tests: test/debug-panel-runner-ownership.test.mjs,
 test/makecode-arcade-physics-engine-stall.test.mjs.
+## Optional upload parser loading and unchanged P17 budget — 2026-10-20
+
+CLAIMED / DOCS ONLY — Codex GUI integration. This claim must land before
+product implementation. Preserve file-upload and monitor ownership boundaries;
+the existing Arcade tilemap startup claim does not include generic GIF or CSV
+upload behavior.
+
+Envelope: `overlay/scratch-gui/src/lib/file-uploader.js`,
+`overlay/scratch-gui/src/lib/gif-decoder.js`,
+`overlay/scratch-gui/src/lib/import-csv.js`, their tracked package mirrors,
+focused upload/parser boundary controls, and this ledger. Only add the overlay
+needed for a selected candidate. Keep the existing dependencies, parsers and
+actual decoder implementations; do not substitute a reduced parser.
+
+Move optional parser loading to the actual upload action only where the current
+API can preserve its user-visible behavior. Keep the CSV picker creation and
+click synchronous with user activation; parser loading may begin after a file
+is selected. Preserve the actual parser receiver, options, delimiter handling,
+complete/error callbacks, returned data, file removal and original error
+identity. Explicitly test chunk-load failure and retry. Review synchronous
+parser exceptions separately rather than silently converting or swallowing
+them. For GIF, preserve frame order, disposal, transparency, costume/sprite
+upload completion and error handling; the current first-frame callback is
+synchronous, so an async boundary requires an explicit reviewed contract and
+must not be presented as unchanged behavior.
+
+Keep all existing P17 limits, baseline identities, ownership accounting and
+other lazy chunk checks unchanged. No workflow, budget, dependency/pin,
+side-effect declaration, VM authority, artwork validator or renderer change.
+Source-attributed bytes are not emitted savings. A candidate needs complete
+focused controls, actual upload journeys and the existing exact-head hosted
+production/profile build and `I8086_ENFORCE_WEBPACK_BOUNDARY=1 node
+scripts/report-webpack-ownership.mjs` result, with original failure retained.
+Only measured emitted assets can establish that P17 passes; an import scan or
+raw source reduction does not establish fit or faster startup.
+
+
+## Robot Lab MINDSTORMS model limits: NXT sync, NXT buttons, ultrasonic listening — 2026-10-20
+
+CLAIMED with the change — Claude (Robot Lab model limits). NXT MOTOR_SYNC follows LEGO's NXT firmware
+1.29 output driver (pairing, the 100 ms tacho-difference PID, turn term, the pair's tacho limit); the NXT
+hub's buttons (pressButton / readButton) and the VM's ReadButton; sensors.js `usHeard` (another MINDSTORMS
+ultrasonic pinging towards the probe) read by the EV3 listen mode and the NXT event capture. Facts:
+docs/NXT-PROTOCOL-FACTS.md §Sync, §Buttons; docs/ROBOT-LAB-EV3-NXT.md. Tests:
+test/bw-sim-mindstorms-model-limits.test.mjs. Follow-up (after #1127 and #1123): EV3 sync turn ratio and
+buttons, the runtime.robotLab button API and its Lab UI.
+
+## Robot Lab: cables, Studio mouse, coach marks, Ctrl-glide — 2026-10-20
+
+CLAIMED, stacked for one comprehensive PR (owner: "cables go in a comprehensive PR") on
+lane/robot-lab-flex3-20261020 — Claude (Robot Lab lane). Cables from each plugged-in device to its
+hub (insight layer); the Studio/LDD mouse preset and right click puts down; first-time coach marks;
+Ctrl+drag glides a pin or axle along its hole. docs/ROBOT-LAB-UX.md §13, §14.
 
 ## Robot Lab rubber bands — 2026-10-20
 
@@ -7376,6 +7429,35 @@ exact-head hosted checks remain mandatory before merge. No new iPad build or
 physical connection acceptance is implied. A rejected native close reports an
 error and blocks reuse of uncertain state; a native call which never settles
 still requires the separately scoped native cancellation/readiness work.
+
+## CAD browser selection failure investigation — 2026-10-19
+
+CLAIMED / candidate — Codex integration, explicit user request to fix the CAD browser error.
+Branch `docs/cad-browser-selection-claim-20261019`. Own only the browser aiming
+and selection helper in `scripts/lib/sim-lab-cad-gate.mjs`, focused controls in
+`test/sim-lab-cad-pointer.test.mjs`, this ledger and
+`docs/INTEGRATION-NEXT-STEPS.md`. Coordinate a separate
+extension before changing the Sim Lab owner's editor, rendering or physics.
+
+Retained robotlab failure: paletteInteractions calls focusOn after dropping a
+beam; its real mouse click leaves selection empty instead of selecting the
+expected placed part. Diagnose against the retained production frontend. Keep
+real pointer interactions, exact part identity, assertions and existing budgets;
+no direct editor selection, blind sleeps, retry-to-green or waived checks.
+Require an affected real-browser regression and all enabled exact-head CI before
+normal matched-head merge. The narrow helper repair and this lane entry ship together; preserve other lanes
+and SPIKE qualification holds. No Sim Lab product or physics source is changed.
+
+Candidate detail: wait two animation frames for hover/resize publication, then
+reproject the same authored face point. Re-aim at most three times per existing
+candidate before trying the next face point; never click to probe or retry a
+failed selection assertion. Require the pointer's DOM target to be the canvas.
+Five source controls cover normal aiming, layout resize, stale status, occlusion
+and finite refusal; original source and three cuts are detected. An authored
+real-browser layout counterexample retains trusted mouse input: original selects
+nothing, candidate selects the expected part. This is helper coverage, not a
+product guest result. The unchanged production frontend's full core/CAD journey
+and all final-head enabled CI checks remain the integration qualification.
 
 ## iOS audit: unwired transaction Stop and publication fences — 2026-10-19
 

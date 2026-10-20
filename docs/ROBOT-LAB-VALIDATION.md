@@ -174,11 +174,11 @@ Measured at 200 Hz on 2026-10-19.
 | 20 | shipped `wall-stopper.ldr` + a 2 cm wall | distance sensor | ray distance D/cos ψ, mm; −1 outside 50 … 2000 mm: 30 mm → −1, 100, 300, 319.3 (20°), 391.6 (40°), 800, 1732.1 (1.5 m at 30°), 2.2 m → −1 | 100, 300, 319, 392, 800, 1732, −1 / −1 | 1 mm | pass |
 | 21 | shipped `colour-explorer.ldr` on `colour-zones` | colour sensor | mat layout: white 10, red 9, yellow 7, green 6, blue 3, border black 0, off-mat white; white reflection 100·(1 − h/32 mm), h = 16.4 mm → 48.8 | all colours right; reflection 48 | exact; ±2 | pass |
 | 22 | `tilt-table-tower.ldr` | tower tips at tan θ = (b/2)/h | COM 72.75 LDU above the table (catalogue colliders), half base 10 LDU: θc = 7.83° | tips at 7.38° one way, −7.43° the other (stood at 6.01° / −5.93°) | 0.5° (the 0.5° steps) | pass (was todo: 10.00° / 6.45°; margin 0.1°) |
-| 23 | `carts.ldr` (robot pushes cart 1 into cart 2) | momentum in a collision | Σ m·v conserved (masses from the catalogue: 54.6 g each) | 7.413 → 7.387 g·m/s (−0.35 %) | 1 % (damping, 50 ms) | pass |
-| 24 | `carts.ldr` | restitution | no body sets one: Jolt's 0, the carts leave together | e = 0.235 | e ≤ 0.05 | **todo** |
-| 24c | `carts.ldr`, all mass in the bumper bodies (control) | the same | e = 0 | e = 0.010 | e ≤ 0.05 | pass |
-| 25 | `carts.ldr`, cart 2 coasting | rolling resistance | a ≥ c_rr·g, c_rr ≥ 0.005 (rubber on a hard floor) | a = 0.0038 m/s² = 0.05·v (Jolt's default damping only) | — | **todo** |
-| 26 | universal joint | ω2/ω1 = cos β/(1 − sin²β cos²θ) | — | not buildable: no cross/fork connector or coupling kind | — | **todo** |
+| 23 | `carts.ldr` (robot pushes cart 1 into cart 2) | momentum in a collision | Σ m·v changes only by the rolling resistance's impulse Σ m·(a0 + 0.05·v)·dt over the 70 ms window (a0 from cart 1 coasting alone; masses from the catalogue: 54.6 g each) | 6.525 → 5.611 g·m/s, impulse 0.951: 0.67 % off (2026-10-20) | 1 % | pass (was: Σ m·v conserved, 7.413 → 7.387, before rolling resistance) |
+| 24 | `carts.ldr` | restitution | they meet at 0.12 m/s, below the 1 m/s bounce threshold: they leave together | e = 0.065 (0.235 before rolling resistance) | e ≤ 0.05 | **todo** |
+| 24c | `carts.ldr`, all mass in the bumper bodies (control) | the same | e = 0 | e = 0.000 | e ≤ 0.05 | pass |
+| 25 | `carts.ldr`, cart 2 coasting | rolling resistance | a = c_rr·g·M/(M + ΣI/r²) + 0.05·v = 0.1378 m/s² (c_rr 0.02, M 54.6 g, ΣI/r² 24 g) | 0.1377 m/s²; stops, never rolls back | 5 % | pass (2026-10-20; was todo: 0.0038 m/s², damping only) |
+| 26 | universal joint (`test/bw-sim-universal-joint.test.mjs`) | ω2/ω1 = cos β/(1 − sin²β cos²θ) | at 30° / 45°: 0.866…1.155 / 0.707…1.414; tan φ = tan θ / cos β; two in phase: constant | 0.8660…1.1547 / 0.7071…1.4142; angle within 0.047° / 0.156°; two in phase within 0.026 % | 0.5 % beyond a step's change; 0.25°; 1 % | pass (2026-10-20; was todo: not buildable) |
 
 Not built in this round: a crank-slider (needs a frame that holds the smooth toggle joint's
 slide bores at the coupler's height), a scissor lift, a Watt's linkage, and a spur–bevel–worm train
@@ -218,17 +218,52 @@ platform"; the arena still has no slope (round 1, 7d).
    The 20 g solver mass floor that gears and actuators use does not apply: in a collision the floored
    mass is the mass, and row 23's momentum would not be conserved. With the carts' mass moved into the bumper body (control 24c) e = 0.01. Momentum
    is conserved either way (23). This is round 1's bug 2 (soft pin chains), seen in a collision.
-10. **No rolling resistance (25).** A free cart loses only Jolt's default 0.05 s⁻¹ damping
-    (a = 0.05·v, a c_rr of about 0.0006 at 0.11 m/s), 10× less than a tyre on a hard floor. A coasting
-    robot rolls about 10× too far. This is a model gap: rolling resistance would need a per-tyre
-    torque c_rr·N·r (or wheel-body damping) in the core, and N, each tyre's normal load, is not read
-    today (the core's contact listener sees contact points, not impulses). Still open.
-11. **No universal joint (26).** The catalogue has the U-joint's ends but no part or connector for the
-    cross, and no coupling kind joins two ends. This needs a new connector kind (a cross in two forks:
-    two perpendicular hinges through one body, or a Jolt `SixDOF` with two rotations free).
+10. **No rolling resistance (25). Resolved 2026-10-20** (`physics/rolling.js`, section "Materials" below):
+    a tyred wheel on a hinge gets c_rr·N·r against its roll, N read from its axle's constraint impulse.
+    The cart now slows at 0.1377 m/s² for 0.1378 predicted (was 0.0038, damping only).
+11. **No universal joint (26). Resolved 2026-10-20** (`kinds/universal-joint.js`, `physics/universal-joint.js`):
+    a 'uj-fork' connector on each end, a 'universalJoint' coupling, built as a cross body on two
+    perpendicular hinges (a SixDOF/SwingTwist with the twist locked would be a constant-velocity joint,
+    not a Cardan). The single joint follows the closed form, two in phase are constant-velocity.
 
 Passing rows 12–14, 17–21 and 23 check the gear kinematics (including the worm's direction), the DC
 motor model's operating point against Philo's numbers, rack force transmission, differential
 steering, the IMU's yaw and gyro, the encoders, and the distance and colour sensor models. No product
 code was changed in round 2. Every discrepancy is in `jolt-core.js` (7, 8, 10), in the body model
 (9: `joints.js`/`islands.js`), or in the catalogue and kinds (11), and other lanes own all of them.
+
+## Materials: restitution and rolling resistance (2026-10-20)
+
+`contracts.js MATERIALS`, `physics/rolling.js`, `test/bw-sim-materials.test.mjs`, rows 23–25 above.
+
+| material | friction | restitution e | c_rr | source |
+|---|---|---|---|---|
+| ABS (every part unless its catalogue entry says otherwise) | 0.4 | 0.1 | — | e: estimate, held low (below) |
+| rubber (`"material": "rubber"`: the tyred SPIKE wheels; a tread's sprockets get its e) | 1 | 0.05 | 0.02 | c_rr: rubber on hard floors 0.010–0.025, drum-rig deceleration method (Hungarian Journal of Industry and Chemistry, "Laboratory Measurement of Rolling Resistance Coefficient under Different Conditions") |
+| the floor (a printed mat) | 0.8 | 0 | — | — |
+
+- **Bounce.** A body's restitution is its grippiest part's material's (the part it touches the ground with).
+  Jolt combines two bodies' e as max(e1, e2): with the floor at 0 a part bounces off it with its own e.
+  Measured: a 2 × 2 brick dropped 20 cm leaves the floor at 0.103 of its landing speed and rebounds to
+  1.03 % of the height at 2 kHz (e² = 1 %; 0.72 % at the app's 200 Hz, where the 1.5 mm flight is nine
+  steps). Impacts slower than `LEGO_MIN_BOUNCE_SPEED_M_S` = 1 m/s (Jolt's default, set explicitly) do not
+  bounce: no driving calibration moves (SPIKE wheels at full speed: 0.5 m/s).
+- **Why e is low (open).** A real ABS brick on a hard table bounces with e ≈ 0.4 (estimate). With that,
+  the round-1 drop tests (a 2 × 4 brick from 20 cm, 50 cm, 1 m across two loose beams) failed: the brick
+  turned over. Diagnosis (measured, CCD off as the control): a body that moves more than a quarter of its
+  inner radius in a step is resolved by Jolt's continuous collision (`EMotionQuality_LinearCast`, which the
+  tunnelling test needs), and its contact impulse, restitution included, is applied at the average contact
+  point with the ONE body it hits first (`PhysicsSystem::JobFindCCDContacts`/`JobResolveCCDContacts`).
+  Landing across two bodies, that point is off the centre of mass: a spin. With CCD disabled the same drop
+  bounces straight up. With e 0.2 and 0.3 the brick still turned over from 50 cm; 0.1 lands flat from
+  every height. The fix belongs in our Jolt fork (resolve the CCD contact against every body hit at the
+  same time of impact, or leave the bounce to the next step's full contact solve); until then e stays 0.1.
+- **Rolling resistance.** For each dynamic body with `rollingResistance` (its grippiest part rubber) that
+  turns on a hinge and has a cylinder coaxial with it: r = that cylinder's reach, N = m·(g + a·up) − F·up
+  from the previous step's hinge impulses (`HingeConstraint.GetTotalLambdaPosition`) and the body's
+  vertical acceleration, and before every step a torque c_rr·N·r against its roll, capped at what its own
+  inertia can absorb in a step (so it stops and never rolls back). It is checkpointed (the worker's
+  rollback). Measured: four wheels under a block carry its weight (sum within 1 %), nothing in free fall;
+  the coasting cart's deceleration 0.1377 m/s² for 0.1378. Not modelled: rolling resistance holding a
+  wheel still on a slope, treads, hard-plastic wheels without a tyre.
+

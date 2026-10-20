@@ -16,6 +16,7 @@ vendored. Section names below (`§Statuses`, `§Outputs`, …) are what the code
 | **HDK-A7** | LEGO, *NXT Ultrasonic Sensor I²C Communication Protocol* (HDK Appendix 7, v1.00, © 2006), same place | `8ae39d8` | LEGO's document | ultrasonic registers and commands |
 | **FW** | `schodet/nxt-firmware` ("NXT Improved Firmware", derived from LEGO's open-source NXT firmware 1.29) | `f309220` | LEGO Open Source License (MPL-1.0-based) plus other open licences per file | remote-command handler (`src/c_cmd.c`), status numbers (`src/c_cmd.iom`), system commands (`src/c_comm.c`), output flags (`src/c_output.iom`, `src/c_output.c`), versions (`src/c_loader.iom`), sleep default (`src/c_ui.c`), low-speed buffer (`src/c_lowspeed.iom`) |
 | **FWD** | `dlech/nxt-firmware` (the same lineage) | `99b10c1` | as FW | the output driver (`AT91SAM7S256/Source/d_output.c`) |
+| **FW129** | LEGO MINDSTORMS NXT firmware 1.29 as LEGO released it: the `lego-1.29` tag of `schodet/nxt-firmware`, `AT91SAM7S256/Source/` (the same tree docs/NXT-RXE-VM.md reads) | `495cc1d` | LEGO Open Source License | §Sync, §Buttons |
 | **NP** | `schodet/nxt-python` | `fdc1b04` | GPL-3.0 | cross-check of layouts as a host sends/parses them |
 | **NBC** | John Hansen's NBC/NXC headers (`NBCCommon.h`, `NXCDefs.h`, version 63) as shipped in `CrispStrobe/legacy-lego-compiler` `bin/nbc_includes/` | `f2a7723` | MPL-1.1 (the wrapper repo is MIT) | cross-check of status, output and I²C constants |
 | **NXOS** | `danderson/nxos` (`nxos/base/drivers/radar.h`) | `bbed11a` | GPL-2.0 (file header) | ultrasonic address convention |
@@ -123,6 +124,33 @@ reset at 0x21: FW `:867–1015`); the Virtual NXT does not implement them (0xBE)
 
 nxt-python's host-side `turn()` computes its target as the current TachoCount plus the limit — the same
 reading (NP `nxt/motor.py:151`).
+
+## §Sync (MOTOR_SYNC in the output driver)
+
+Read for behaviour only; the Lab's code (`hubs/nxt/nxt-virtual-hub.js`) is ours. All FW129 references are
+`AT91SAM7S256/Source/<file>:<line>` at `495cc1d`.
+
+| Fact | Value | Source |
+|---|---|---|
+| Pairing | the lower port is the first: A with B, else A with C; B with C only when A is not synchronised; a port synchronised alone gets no regulation | FW129 `d_output.c:1359–1405`, `:743–766` |
+| Synchronised means | MOTORON and REGULATED with regulation MOTOR_SYNC on a mode update; MOTORON off disables regulation | FW129 `c_output.c:98–124`, `d_output.c:200–227` |
+| Enabling it | clears the shared sync state (error, error sum, last error, turn term) unless the port is ramping down | FW129 `d_output.c:210–220` |
+| Period | the regulation runs every 100 one-millisecond ticks | FW129 `d_output.c:31`, `:158–163` |
+| Error | first's BlockTachoCount minus the second's, plus the turn term, limited to ±500 | FW129 `d_output.c:865`, `:904–916` |
+| Turn term | grows each period by `2 · (t · 100 / 100)`: `t` the turn ratio itself while neither has moved, else ratio · power / 100 of the port the ratio's sign and the power's direction select (MAX_CAPTURE_COUNT 100, input scale 100) | FW129 `d_output.c:867–904`, `d_output.h:28`, `d_output.c:23` |
+| PID | P = error · 96/32, D = (error − last) · 32/32, I = (sum of errors, limited to ±900) · 32/32; correction = (P + I + D) / 4 | FW129 `d_output.c:929–946`, `d_output.h:23–26` |
+| Output | the first runs at power − correction, the second at power + correction, each limited to ±100 and, with a turn ratio, to ± its own power; this is the PWM level, not a speed set point | FW129 `d_output.c:948–1040` |
+| Tacho limit | with a turn ratio both stop when the selected motor reaches its count (ratio > 0: the second going forwards, the first backwards; ratio < 0 the other way round); without one when either does | FW129 `d_output.c:1198–1356` |
+
+## §Buttons
+
+| Fact | Value | Source |
+|---|---|---|
+| Buttons | BTN1..BTN4 = indices 0..3; the UI reads BTN1 as exit, BTN2 right, BTN3 left, BTN4 enter | FW129 `c_button.iom:20–27`, `c_ui.c:395–412` |
+| Counting | a release after more than LONG_TIME (1000 ticks of the 2 ms button prescaler: 2 s) counts as a long release, else short; RelCnt = short + long | FW129 `c_button.c:22–26`, `:84–125` |
+| ReadButton (system call) | arguments: result, index, pressed, count, reset; pressed = PRESSED_STATE, count = RelCnt, reset clears RelCnt, ShortRelCnt and LongRelCnt; an index ≥ 4 is ERR_INVALID_PORT with FALSE and 0 | FW129 `c_cmd.c:6802–6840` |
+
+No direct command reads a button (BDK-A2 lists none).
 
 ## §Inputs
 

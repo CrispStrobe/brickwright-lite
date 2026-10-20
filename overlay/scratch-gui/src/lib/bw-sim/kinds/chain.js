@@ -31,9 +31,10 @@
 // Topologies: a gear rigidly on F cannot turn, so the chain locks it with the others (welded,
 // the 'gear-on-frame' warning); gears in different frames get the 'chain-frames-differ'
 // warning and no coupling; links round fewer than two gears, 'chain-not-round-gears'.
-// The physics core couples the two hinges' relative rates (the fork's GearConstraint with
-// both hinges), which also holds for two equal sprockets, where a tooth contact on the line
-// of centres would be at infinity.
+// The physics core couples them as it does a gear mesh (the fork's GearMeshConstraint: a tooth
+// contact, here outside the two sprockets on their line of centres, as an internal gear's), except
+// two equal sprockets, whose contact would be at infinity: those get the GearConstraint on both
+// hinges, exact at 1:1 (physics/jolt-core.js).
 import {vecAdd, vecSub, vecDot, vecLen, vecScale, vecNormalize} from '../mech/vec.js';
 import {dirToWorld} from '../contracts.js';
 import {gearHinges, parallelAxes} from './gear-mesh.js';
@@ -91,6 +92,8 @@ export const restsOnTeeth = (link, gear) => {
     return vecLen(vecAdd(p.d, vecScale(e, t))) >= gear.r - CHAIN_ON_PITCH_LDU;
 };
 
+/** Whether two links join: a pivot of one on a pivot of the other. */
+export const linksJoin = (a, b) => joined(a, b);
 const joined = (a, b) => linkPivots(a).some(p => linkPivots(b).some(q => vecLen(vecSub(p, q)) <= CHAIN_JOIN_LDU));
 
 /** Links grouped into chains (pivot on pivot), each a list of links, in the order given. */

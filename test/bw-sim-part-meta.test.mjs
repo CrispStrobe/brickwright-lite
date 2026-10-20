@@ -465,6 +465,24 @@ test('a rack\'s teeth: tips one module beyond the pitch line, along the toothed 
     }
 });
 
+test('a universal joint end\'s fork: its pin holes on the fork axis through the pivot, the axle hole on the shaft side', () => {
+    // LDraw draws each fork pin hole as 2 LDU rings (the cross's arm ends) on ±x, square to the shaft; the
+    // pivot is where both of a fork's holes are centred (kinds/universal-joint.js).
+    const ends = META.parts.flatMap(p => p.connectors.filter(c => c.type === 'uj-fork').map(c => [p, c]));
+    assert.deepEqual(ends.map(([p]) => p.part).sort(), ['3712.dat', '575.dat', '62520.dat']);
+    for (const [p, c] of ends) {
+        const rings = circularFeatures(flat.get(p.part).primitives).filter(f => Math.abs(f.radius - 2) <= 0.1)
+            .filter(f => Math.abs(dot(f.axis, c.axis)) >= PARALLEL);
+        const on = rings.map(r => sub(r.center, c.position)).filter(d => len(d.map((v, i) => v - dot(d, c.axis) * c.axis[i])) <= POS_EPS);
+        const sides = new Set(on.map(d => Math.sign(dot(d, c.axis))));
+        assert.ok(sides.has(1) && sides.has(-1), `${p.part}: pin-hole rings on both arms of the fork through ${c.position} (found ${on.length})`);
+        const hole = p.connectors.find(k => k.type === 'axlehole');
+        assert.ok(dot(sub(hole.position, c.position), c.data.shaft) > 10, `${p.part}: the axle hole lies along data.shaft from the pivot`);
+        assert.ok(len(sub(hole.position, c.position).map((v, i) => v - dot(sub(hole.position, c.position), c.data.shaft) * c.data.shaft[i])) <= POS_EPS,
+            `${p.part}: the axle hole is on the shaft line`);
+    }
+});
+
 test('the SPIKE wheel is 56 mm across', () => {
     const b = bounds(flat.get('39367p01.dat').polys);
     assert.equal((b.max[0] - b.min[0]) * 0.4, 56);
