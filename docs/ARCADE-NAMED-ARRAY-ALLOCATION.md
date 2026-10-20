@@ -95,3 +95,18 @@ admitted Arrays binding while retaining an exclusive Arcade capability claim.
 Extension load order, project replacement, generation cancellation and disposal
 need real lifecycle controls. Preserve all existing native tests and the
 original public failure; no dummy Arcade blocks belong in the test programs.
+
+## Next JSON producer qualification
+
+The named JSON supplier protocol candidate passes its complete34 controls:
+26 existing controls and eight new groups. Its first run retained three failing
+observer expectations; the correction distinguishes the original registry
+preflight from publication and preserves deferred property-key coercion. Product
+code stayed unchanged between those two runs.
+
+The matching host implementation and ten native JSON allocation/currentness
+groups still need execution through the exact pinned supplier, a fresh normal
+installation and the public authoring/export journeys. Malformed JSON must
+retain each original factory fallback and actual Error behavior; custom parsers,
+nonarray JSON, object elements and legacy/no-ticket cases must keep their
+separate semantics. Protocol success is not runtime or MakeCode acceptance.
