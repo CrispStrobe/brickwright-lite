@@ -11,18 +11,24 @@ assert.equal(readFileSync(root+'/util/bw-array-operations.js','utf8'),readFileSy
 
 async function fixture(mode,factory='create1D'){
  const vm=new VM(),runtime=vm.runtime,errors=[],events=[];
- const nativeJSON=JSON,nativeParse=JSON.parse,parseDescriptor=Object.getOwnPropertyDescriptor(JSON,'parse');
- const globalDescriptor=Object.getOwnPropertyDescriptor(globalThis,'JSON'),stringifyDescriptor=Object.getOwnPropertyDescriptor(JSON,'stringify');
- const jsonPrototype=Object.getPrototypeOf(JSON);let restored=false;
+ const nativeJSON=JSON,nativeParse=JSON.parse;
+ const jsonKeys=Reflect.ownKeys(nativeJSON),jsonDescriptors=Object.getOwnPropertyDescriptors(nativeJSON);
+ const globalDescriptor=Object.getOwnPropertyDescriptor(globalThis,'JSON'),stringifyDescriptor=jsonDescriptors.stringify;
+ const jsonPrototype=Object.getPrototypeOf(nativeJSON);let restored=false;
  const restore=()=>{
   Object.defineProperty(globalThis,'JSON',globalDescriptor);
   Object.setPrototypeOf(nativeJSON,jsonPrototype);
-  // Deletion/reinsertion also changes property order. Restore both original
-  // string keys in native order before testing the strict publication fence.
-  delete nativeJSON.parse;delete nativeJSON.stringify;
-  Object.defineProperty(nativeJSON,'parse',parseDescriptor);
-  Object.defineProperty(nativeJSON,'stringify',stringifyDescriptor);
+  // Restore the entire native surface, including engine-specific methods
+  // and symbols. Readding only parse/stringify changes native key order.
+  for(const key of Reflect.ownKeys(nativeJSON)){
+   assert.equal(Reflect.deleteProperty(nativeJSON,key),true,'fixture JSON keys must be configurable');
+  }
+  for(const key of jsonKeys)Object.defineProperty(nativeJSON,key,jsonDescriptors[key]);
   delete Object.prototype.arrayParserControl;
+  assert.deepEqual(Reflect.ownKeys(nativeJSON),jsonKeys,'fixture restores exact native JSON key order');
+  assert.deepEqual(Object.getOwnPropertyDescriptors(nativeJSON),jsonDescriptors,'fixture restores exact native JSON descriptors');
+  assert.equal(Object.getPrototypeOf(nativeJSON),jsonPrototype);
+  assert.deepEqual(Object.getOwnPropertyDescriptor(globalThis,'JSON'),globalDescriptor);
   restored=true;
  };
  runtime.on('BLOCKS_ERROR',error=>errors.push(error));
