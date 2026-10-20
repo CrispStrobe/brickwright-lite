@@ -149,7 +149,7 @@ export const closureOf = (root, entries) => {
 
 /**
  * The strings a gate script would use to name `file`: {file: whole names,
- * substring match} and {dir: directories that hold it, matched only where the
+ * matched as a whole name, so a.test.mjs is not named by data.test.mjs} and {dir: directories that hold it, matched only where the
  * text names the directory itself — closing quote, or `/` then a quote or
  * `${` — so naming test/fixtures/a/x does not name test/fixtures/b).
  */
@@ -168,7 +168,7 @@ export const needlesOf = file => {
 
 const escape = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 export const mentions = (text, {files, dirs}) =>
-    files.some(n => text.includes(n)) || dirs.some(d => new RegExp(escape(d) + '(?:[`\'"]|/[`\'"]|/\\$\\{)').test(text));
+    files.some(n => new RegExp('(?<![\\w.-])' + escape(n) + '(?![\\w-])').test(text)) || dirs.some(d => new RegExp('(?<![\\w.-])' + escape(d) + '(?:[`\'"]|/[`\'"]|/\\$\\{)').test(text));
 
 /**
  * The decision. Pure: `ctx` is {shards, browserShards, reach: Map<file, Set<label>>,

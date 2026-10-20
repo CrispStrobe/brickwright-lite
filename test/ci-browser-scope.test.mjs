@@ -67,6 +67,9 @@ test('the pure decision, over a synthetic closure', () => {
     assert.ok(mentions("join(ROOT, 'test/fixtures/thing', name)", needlesOf('test/fixtures/thing/y.bin')), 'a directory a gate joins onto');
     assert.ok(mentions('`${ROOT}/test/fixtures/thing/${n}`', needlesOf('test/fixtures/thing/y.bin')));
     assert.ok(!mentions("'test/fixtures/thing/x.bin'", needlesOf('test/fixtures/y.bin')), 'naming a file is not naming its parent');
+    assert.ok(!mentions("node --test test/data.test.mjs", needlesOf('test/a.test.mjs')), 'a.test.mjs is not named by data.test.mjs');
+    assert.ok(mentions("node --test test/a.test.mjs", needlesOf('test/a.test.mjs')));
+    assert.ok(mentions("import x from '../test/helpers/h.mjs'", needlesOf('test/helpers/h.mjs')));
     assert.deepEqual([...entriesOf('npm run v -- --x && node scripts/b.mjs', {v: 'node scripts/a.mjs'})].sort(), ['scripts/a.mjs', 'scripts/b.mjs']);
     const out = outputLines(decide(['test/z.test.mjs'], synthetic), synthetic);
     assert.deepEqual(out.slice(0, 6), ['heavy=false', 'light=false', 'robotlab=false', 'fpga=false', 'browser=false', 'any=false']);
