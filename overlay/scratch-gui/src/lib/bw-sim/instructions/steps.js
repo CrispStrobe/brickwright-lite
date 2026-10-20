@@ -198,8 +198,39 @@ const pinsFirst = (steps, adjacency, meta, groups) => {
         for (;;) {
             const fasteners = rest.filter(id => isFastener(meta(id)));
             const covers = new Set([...rest.filter(id => !isFastener(meta(id))), ...attached]);
+            const fastenerSet = new Set(fasteners);
+            const reachesCover = id => {
+                const seen = new Set([id]); const queue = [id];
+                while (queue.length) {
+                    for (const n of adjacency.get(queue.shift()) || []) {
+                        if (covers.has(n)) return true;
+                        if (fastenerSet.has(n) && !seen.has(n)) { seen.add(n); queue.push(n); }
+                    }
+                }
+                return false;
+            };
             // Pins in the model so far that a part of this step goes onto.
-            const first = covers.size ? fasteners.filter(f => touches(f, built) && touches(f, covers)) : [];
+            // A perpendicular pin-hole connector followed by a stud half-pin is two insertion
+            // stages before the plate. Walk the remaining fasteners rather than burying both with it.
+            const first = [];
+            const selected = new Set();
+            const seeds = covers.size ? fasteners.filter(f => touches(f, built) && reachesCover(f)) : [];
+            for (const seed of seeds) {
+                if (selected.has(seed)) continue;
+                const unit = new Set([seed]); const queue = [seed];
+                while (queue.length) {
+                    for (const n of adjacency.get(queue.shift()) || []) {
+                        // A bush held only by its axle goes in with that axle. A stud half-pin
+                        // also touches the plate it will carry, so it remains a separate stage.
+                        if (fastenerSet.has(n) && !unit.has(n) && !selected.has(n) &&
+                            [...(adjacency.get(n) || [])].every(id => isFastener(meta(id)))) {
+                            unit.add(n); queue.push(n);
+                        }
+                    }
+                }
+                if (first.length && first.length + unit.size > STEP_MAX) break;
+                for (const id of unit) { first.push(id); selected.add(id); }
+            }
             if (first.length) {
                 pieces.push({parts: first, pins: true});
                 for (const id of first) built.add(id);

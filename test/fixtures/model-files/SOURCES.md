@@ -44,3 +44,15 @@ above, the LDraw.org OMR. Nothing in the files is changed.
   with a clear licence) would make this a test.
 - **LeoCAD:** its repository (GPL-2.0) has no sample or test models (the only `.ldr` is
   `resources/ldconfig.ldr`, the colour table).
+
+## ORBITAL LOOM (bundled adapted Robot Lab example)
+
+- File: `overlay/scratch-gui/static/sim-lab/models/orbital-loom.ldr` (202 LEGO pieces).
+- Author/credit: **ORBITAL LOOM, OpenAI, 2026**; adaptation by Brickwright contributors.
+- Source: owner-supplied `orbital_loom_bricks_only.mpd`, version 1.0, 2026-10-20, 210 pieces.
+- Source SHA256: `d2e22ef40af389d6e1580b3ace65968e390fd6eadac0488aee318adddbb0f539`.
+- Licence: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); supplied README and changes
+  retained at `static/sim-lab/licenses/orbital-loom.txt`. No NC terms.
+- Changes: shared 3L mounting pins, bearing clearance pins, shorter drive axle, canonical hub,
+  explicit ports/IDs and pose-driven virtual paper/marker attachments. Source geometry proportions
+  and gearing retained. Controller/preview/PDF remain unbundled references.

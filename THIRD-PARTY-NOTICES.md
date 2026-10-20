@@ -2421,3 +2421,13 @@ https://github.com/CrispStrobe/extensions/blob/0c4e3b4a0cee57d65474082938c352818
 and content hash. This scopes the adoption to Circuit Playground; it does not
 advance other extension sources. MPL-2.0 text:
 https://www.mozilla.org/en-US/MPL/2.0/. MIT text: https://opensource.org/licenses/MIT.
+
+## ORBITAL LOOM drawing-machine assembly
+
+**ORBITAL LOOM, OpenAI, 2026** — [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+The owner supplied the original bricks-only MPD. The bundled 202-piece adaptation replaces paired
+mounting pins, changes bearing clearance pins and the drive axle, uses a device-aware hub reference,
+and adds explicit motor ports plus live virtual paper/marker bindings. It retains the original
+gearing and proportions. The original README/licence and modification notice are bundled at
+`static/sim-lab/licenses/orbital-loom.txt`. LDraw parts retain their separately recorded authors
+and licences. The supplied predicted drawing and Pybricks program are not bundled as simulator output.

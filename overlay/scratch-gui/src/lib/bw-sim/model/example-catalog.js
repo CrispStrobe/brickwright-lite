@@ -169,6 +169,62 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "Brickwright contributors",
         "license": "BSD-3-Clause"
     },
+    "orbital-loom.ldr": {
+        "pieces": 202,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Fivefold pattern: 1 paper turns and 5 pen turns trace a live curve on rotating paper. Two motors, a 20:60 mesh and an offset crank.",
+            "de": "Fünffach-Muster: 1 Papierumdrehungen und 5 Stiftumdrehungen zeichnen eine Kurve auf rotierendem Papier. Zwei Motoren, 20:60-Getriebe und versetzte Kurbel."
+        },
+        "author": "ORBITAL LOOM, OpenAI, 2026; adapted by Brickwright",
+        "license": "CC-BY-4.0"
+    },
+    "orbital-loom-sevenfold": {
+        "pieces": 202,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Sevenfold pattern: 2 paper turns and 7 pen turns trace a live curve on rotating paper. Two motors, a 20:60 mesh and an offset crank.",
+            "de": "Siebenfach-Muster: 2 Papierumdrehungen und 7 Stiftumdrehungen zeichnen eine Kurve auf rotierendem Papier. Zwei Motoren, 20:60-Getriebe und versetzte Kurbel."
+        },
+        "author": "ORBITAL LOOM, OpenAI, 2026; adapted by Brickwright",
+        "license": "CC-BY-4.0"
+    },
+    "orbital-loom-elevenfold": {
+        "pieces": 202,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Elevenfold pattern: 4 paper turns and 11 pen turns trace a live curve on rotating paper. Two motors, a 20:60 mesh and an offset crank.",
+            "de": "Elffach-Muster: 4 Papierumdrehungen und 11 Stiftumdrehungen zeichnen eine Kurve auf rotierendem Papier. Zwei Motoren, 20:60-Getriebe und versetzte Kurbel."
+        },
+        "author": "ORBITAL LOOM, OpenAI, 2026; adapted by Brickwright",
+        "license": "CC-BY-4.0"
+    },
+    "orbital-loom-eightfold": {
+        "pieces": 202,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Eightfold pattern: 3 paper turns and 8 pen turns trace a live curve on rotating paper. Two motors, a 20:60 mesh and an offset crank.",
+            "de": "Achtfach-Muster: 3 Papierumdrehungen und 8 Stiftumdrehungen zeichnen eine Kurve auf rotierendem Papier. Zwei Motoren, 20:60-Getriebe und versetzte Kurbel."
+        },
+        "author": "ORBITAL LOOM, OpenAI, 2026; adapted by Brickwright",
+        "license": "CC-BY-4.0"
+    },
     "positioning-arm.ldr": {
         "pieces": 29,
         "motors": 2,

@@ -1,0 +1,15 @@
+DEVICE SPIKE
+
+# ORBITAL LOOM, OpenAI, 2026; simulator program by Brickwright contributors.
+# Elevenfold: 4 paper turns, 11 pen turns. Reset before drawing again.
+# Paper and pen both turn clockwise viewed from above; motor outputs face opposite ways.
+# Integer speed ratios preserve the nominal curve; independent servos have transient tracking error.
+WHEN flag clicked:
+  set motor stop action A hold
+  set motor speed A 12
+  run motor A counterclockwise 4320 degrees
+
+WHEN flag clicked:
+  set motor stop action B hold
+  set motor speed B 11
+  run motor B counterclockwise 3960 degrees

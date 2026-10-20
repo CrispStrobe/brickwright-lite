@@ -3619,6 +3619,12 @@
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Steffen [Steffen]"
   },
+  "p/stug8.dat": {
+   "sha256": "8303b4e4650569892eec6187d4bc09cb73e93be5f2bc26cd9136e6ad8a3a0b58",
+   "release": "G Primitive UPDATE 2011-01",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "[PTadmin]"
+  },
   "p/stugel-2x2.dat": {
    "sha256": "b9fcc070d081f4618756f26824aaf6e0b3f678bdc5b10e1fa62490f2e9454ca4",
    "release": "G Primitive UPDATE 2024-05",
@@ -6685,6 +6691,18 @@
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Vincent Messenet [Cheenzo]"
   },
+  "parts/90498.dat": {
+   "sha256": "84827c92d9bedec854d7bc1fedb2211483d33b00758d55d2b5b5200f7eb56c7a",
+   "release": "G Part UPDATE 2011-02",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Philippe Hurbain [Philo]"
+  },
+  "parts/91405.dat": {
+   "sha256": "f27cffb935c362f49dbfc5e2d8602bdecc95ec38b7721d365a6ca9683b2cbf70",
+   "release": "G Part UPDATE 2010-03",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Donald Sutter [technog]"
+  },
   "parts/91988.dat": {
    "sha256": "873411a516fab0f053bbbf77cfd8d9babc64647d6432400a42a0026635debb42",
    "release": "G Part UPDATE 2012-02",
@@ -8142,6 +8160,24 @@
    "release": "G Subpart UPDATE 2013-01",
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Philippe Hurbain [Philo]"
+  },
+  "parts/s/90498s01.dat": {
+   "sha256": "ef2c042dddf004ac933349d8651a1b83339a0ffa182c83ea0e4b2e23fdc5ce4a",
+   "release": "G Subpart UPDATE 2011-02",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Philippe Hurbain [Philo]"
+  },
+  "parts/s/91405s01.dat": {
+   "sha256": "05cf8ad69696201fef407b3be7a8a252a06e1f6af977389b60b9a1e448f5c55e",
+   "release": "G Subpart UPDATE 2010-03",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Donald Sutter [technog]"
+  },
+  "parts/s/91405s02.dat": {
+   "sha256": "af628bb3455b80a3c07cd6053060ce34ffabdb3443efdb6067ef8c840f88b598",
+   "release": "G Subpart UPDATE 2010-03",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Donald Sutter [technog]"
   },
   "parts/s/98138s01.dat": {
    "sha256": "dff4bf55eb5b4d6a8f3889fc208b5946a8f7b139e297a1edb67e2f976fc165b9",

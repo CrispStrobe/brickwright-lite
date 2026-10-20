@@ -163,6 +163,7 @@ import {scaleInteractions, OPEN_BUDGET_MS, DRAW_CALL_BUDGET, BUILD_OPEN_BUDGET_M
 import {brakingBound, judgeWallStop} from './lib/sim-lab-wall-stopper-judge.mjs';
 import {surveyRoverInteractions} from './lib/sim-lab-survey-rover-gate.mjs';
 import {physicsExamplesInteractions, germanPhysicsExamplesInteractions} from './lib/sim-lab-physics-examples-gate.mjs';
+import {loomInteractions} from './lib/sim-lab-loom-gate.mjs';
 import {judgeExpandedRun} from './lib/sim-lab-expanded-judge.mjs';
 import {mechanicsInteractions, manualMechanicsInteractions} from './lib/sim-lab-mechanics-gate.mjs';
 import {STEP_MS} from '../overlay/scratch-gui/src/lib/bw-sim/hub-bridge.js';
@@ -729,6 +730,15 @@ try {
             assert.ok(rec.restMm < 2, `the ${example.name} is not at rest: ${JSON.stringify(rec)}`);
             console.log(`PASS the ${example.name}'s example program, loaded from the pane, ${example.judge(rec)}`);
             await ex.close();
+        }
+
+        if (runExample('orbital-loom.ldr')) {
+            const loom = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            loom.on('pageerror', error => errors.push(error.message));
+            loom.on('dialog', dialog => dialog.accept());
+            await loomInteractions(loom, {openSimLab, shotsDir: resolve(artifacts, 'orbital-loom'), timeout: wallBudget(40000)});
+            await manualMechanicsInteractions(loom, {openSimLab, models: ['orbital-loom'], shotsDir: resolve(artifacts, 'orbital-loom')});
+            await loom.close();
         }
 
         if (runExample('expanded-machines.ldr')) {

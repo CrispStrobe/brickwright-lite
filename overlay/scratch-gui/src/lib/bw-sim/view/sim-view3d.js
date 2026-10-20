@@ -15,6 +15,7 @@ import {buildSimScene, applySnapshot} from './sim-scene3d.js';
 import {createChainMotion} from './chain-motion.js';
 import {createSimBelts} from './belt-layer.js';
 import {createPenLayer} from './pen-layer.js';
+import {sampleDrawingSnapshot} from './drawing-sampler.js';
 import {createSimRopes} from './rope-layer.js';
 import {createSimHoses} from './hose-layer.js';
 import {addPartLights} from './part-style.js';
@@ -320,6 +321,9 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     // page busy for nothing. Small models are drawn every frame, as always.
     const onDemand = Boolean(built.instanced);
     let dirty = true;
+    const sampleDrawing = snapshot => {
+        if (sampleDrawingSnapshot({built, pens, snapshot})) dirty = true;
+    };
     let lastBodies = null;
     // Float64: the camera matrix is doubles, and a float32 copy differs from it in nearly every
     // element, so "the camera moved" was true every frame and an idle big model was redrawn forever
@@ -421,7 +425,7 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     const penStrokes = () => (pens ? pens.strokes() : []);
     /** The pens' tips' heights above the floor (m), [] without a pen. */
     const penHeights = () => (pens ? pens.heights() : []);
-    return {canvas, render, resize, resetCamera: recentre, dispose, setPorts, setMotion, setOverlay, setSensors, highlight, setMousePreset, penStrokes, penHeights,
+    return {canvas, render, sampleDrawing, resize, resetCamera: recentre, dispose, setPorts, setMotion, setOverlay, setSensors, highlight, setMousePreset, penStrokes, penHeights,
         /** How many pneumatic hoses are drawn (view/hose-layer.js), for the browser gate. */
         hoseCount: () => (simHoses ? simHoses.count : 0),
         /** The sensor rays as last drawn, {from, to} in world space (metres), for the browser gate. */

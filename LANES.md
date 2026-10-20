@@ -1,6 +1,6 @@
 ## Orbital loom import and live drawing — 2026-10-20
 
-CLAIMED — Codex, existing model-design lane / comprehensive draft PR #1138.
+IMPLEMENTED / browser qualification in progress — Codex, existing model-design lane / comprehensive draft PR #1138.
 Owner supplied a 210-piece CC BY 4.0 epicycle drawing-machine prototype. Preserve
 source attribution and changes; qualify actual platter gearing and both motors,
 replace the static predicted preview with pose-driven drawing on rotating paper,
@@ -9,9 +9,17 @@ adapted model/program assets, focused double-bevel parallel mesh support in gear
 inference/metadata, generic moving-surface drawing metadata/view, tests and notices.
 Do not independently edit peer-owned compile/Jolt/collider implementation files.
 
+202-piece adaptation / 2 motors; four ratio presets; original CC BY 4.0 credit
+retained. Paired pins and over-inserted axle corrected; 11x5 frame collision
+widths, double-bevel spur contact and moving-paper ink supported. 231 focused
+tests and six detailed mesh/fastener assertions pass. Ink now samples physics
+updates independently of rendering (11 focused sampling tests pass); final
+production-browser replay remains in progress. The instruction planner handles
+chained pin/half-pin mounts and bounded callouts; the loom manual has 99 steps.
+
 ## Expanded mechanics catalogue machines — 2026-10-20
 
-CLAIMED — Codex, existing lane/robot-lab-models-20261020 / comprehensive draft PR #1138.
+IMPLEMENTED — Codex, existing lane/robot-lab-models-20261020 / comprehensive draft PR #1138.
 Read revision 6 of the 330-idea catalogue (234 additions). Build original two-joint
 positioning arm, rack shuttle and three-channel ratio comparison bench, with motor
 programs, bilingual library lessons, generated instructions and independent physics
@@ -19,6 +27,10 @@ judges. Test real VM/worker programs and manual GUI controls before qualificatio
 Preserve peer worktrees and physics ownership. Main's later universal-joint changes
 conflict with the composed dependency core; leave that composition to its owners.
 No external CAD or restricted assets introduced.
+
+29-piece arm / 2 motors, 66-piece gear workbench / 3 motors, 27-piece shuttle / 1
+motor. Independent VM/worker equations, detailed geometry, building instructions
+and all six manual controls pass, with initial framing checked in the GUI.
 
 ## Motorised mechanics idea catalogue — 2026-10-20
 

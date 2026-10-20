@@ -394,6 +394,12 @@ export const validatePartMeta = (meta, {connectorKinds = null} = {}) => {
         checkUnit(meta.gear.axis, `${p}.gear.axis`, out);
         if (!isVec(meta.gear.center)) out.push(`${p}.gear.center: not a Vec3`);
         if (meta.gear.pitchRadiusLdu !== undefined && !(meta.gear.pitchRadiusLdu > 0)) out.push(`${p}.gear.pitchRadiusLdu: a positive number (LDU)`);
+        if (meta.gear.meshesAs !== undefined && (!Array.isArray(meta.gear.meshesAs) ||
+            !meta.gear.meshesAs.length || !meta.gear.meshesAs.every(t => GEAR_TYPES.includes(t)) ||
+            !meta.gear.meshesAs.includes(meta.gear.type))) out.push(`${p}.gear.meshesAs: supported profiles including the native type`);
+        if (meta.gear.faceWidthLdu !== undefined && !(isNum(meta.gear.faceWidthLdu) && meta.gear.faceWidthLdu > 0)) {
+            out.push(`${p}.gear.faceWidthLdu: a positive finite tooth-face width`);
+        }
     }
     if (meta.drawnOnly !== undefined && typeof meta.drawnOnly !== 'boolean') out.push(`${p}.drawnOnly: true or false`);
     if (meta.hub && !(Array.isArray(meta.hub.ports) && meta.hub.ports.every(x => HUB_PORTS.includes(x)))) {
@@ -633,6 +639,15 @@ export const validatePlacedModel = (model, catalog) => {
     if (model.version !== 1 && model.version !== 2) out.push(`model.version: expected 1, got ${model.version}`);
     if (!Array.isArray(model.parts)) return [...out, 'model.parts: not an array'];
     uniqueIds(model.parts, 'model.parts', out);
+    if (model.drawings !== undefined) {
+        if (!Array.isArray(model.drawings)) out.push('model.drawings: not an array');
+        else for (const d of model.drawings) {
+            if (!model.parts.some(p => p.id === d?.surface) || !model.parts.some(p => p.id === d?.pen) || d.surface === d.pen ||
+                !isVec(d.tip) || !isVec(d.center) || !(isNum(d.radiusLdu) && d.radiusLdu > 0)) {
+                out.push('model.drawings: distinct existing surface/pen, finite local tip/centre and positive radius required');
+            }
+        }
+    }
     const has = catalog instanceof Map ? k => catalog.has(k) : k => catalog && Object.hasOwn(catalog, k);
     for (const pl of model.parts) {
         const w = `model.parts[${pl?.id}]`;

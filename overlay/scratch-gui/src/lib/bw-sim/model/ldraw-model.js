@@ -276,6 +276,7 @@ export const parseModel = (text, {catalog} = {}) => {
     let pendingId = null;
     let pendingGroup = null; // groupId or null
     const seenIds = new Set();
+    const drawings = [];
     // Ids the main model gives explicitly: a generated id (p<n>) never takes one of them.
     const reservedIds = new Set();
     for (const {text: line} of mainLines) {
@@ -494,6 +495,17 @@ export const parseModel = (text, {catalog} = {}) => {
             }
             continue;
         }
+        if (/^0\s+!BW\s+DRAW(\s|$)/i.test(trimmed)) {
+            // Flat-model binding: paper part, pen carrier, carrier-local tip, paper-local centre, radius (LDU).
+            const words = trimmed.split(/\s+/).slice(3);
+            const values = words.slice(2).map(Number);
+            if (words.length !== 9 || !words.slice(2).every(w => NUMBER.test(w)) ||
+                !values.every(n => Number.isFinite(n) && Math.abs(n) <= MAX_COORDINATE) || values[6] <= 0) {
+                refusals.push({line: lineNo, code: 'bad-drawing', message: `Bad DRAW at line ${lineNo}`});
+            } else drawings.push({line: lineNo, surface: words[0], pen: words[1], tip: values.slice(0, 3),
+                center: values.slice(3, 6), radiusLdu: values[6]});
+            continue;
+        }
         if (/^0\s+!BW\s+HOSE(\s|$)/i.test(trimmed)) {
             const w = trimmed.split(/\s+/).slice(3);
             if (w.length !== 5) refusals.push({line: lineNo, code: 'bad-hose', message: `Bad HOSE at line ${lineNo}`});
@@ -646,6 +658,21 @@ export const parseModel = (text, {catalog} = {}) => {
     }
 
     const model = {version: 1, parts};
+    // Keep a supplied model's attribution when Build edits or exports a derivative.
+    const header = mainLines.map(l => l.text);
+    const author = header.map(l => /^0\s+Author:\s*(.+)$/i.exec(l)?.[1]?.trim()).find(Boolean);
+    const license = header.map(l => /^0\s+!LICENSE\s+(.+)$/i.exec(l)?.[1]?.trim()).find(Boolean);
+    if ((author && author !== 'Brickwright') || license) model.attribution = {author: author || '', license: license || ''};
+    if (drawings.length) {
+        const ids = new Set(parts.map(p => p.id));
+        model.drawings = [];
+        for (const {line, ...drawing} of drawings) {
+            if (!ids.has(drawing.surface) || !ids.has(drawing.pen) || drawing.surface === drawing.pen) {
+                refusals.push({line, code: 'bad-drawing', message: `DRAW needs distinct existing surface and pen parts at line ${line}`});
+            } else model.drawings.push(drawing);
+        }
+        if (!model.drawings.length) delete model.drawings;
+    }
     if (decor.length) model.decor = decor;
     // The parts the file ships itself (an MPD's embedded part sections: unofficial parts, LDCad's
     // cable segments), by name: the views draw them from here, and serializeModel writes them back.
@@ -712,7 +739,11 @@ export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright 
     if (files.length) lines.push(`0 FILE ${name}`);
     lines.push(`0 ${title}`);
     lines.push(`0 Name: ${name}`);
-    lines.push(`0 Author: Brickwright`);
+    lines.push(`0 Author: ${model.attribution?.author || 'Brickwright'}`);
+    if (model.attribution?.license) lines.push(`0 !LICENSE ${model.attribution.license}`);
+    for (const d of model.drawings || []) {
+        lines.push(`0 !BW DRAW ${d.surface} ${d.pen} ${[...d.tip, ...d.center, d.radiusLdu].map(formatNumber).join(' ')}`);
+    }
     lines.push(`0 !LDRAW_ORG Unofficial_Model`);
     // Groups: output 0 !BW GROUP lines first
     if (model.groups) {

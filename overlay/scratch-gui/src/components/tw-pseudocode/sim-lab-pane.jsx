@@ -1003,6 +1003,8 @@ class SimLabPane extends React.Component {
 
     teardown () {
         this.stopClock();
+        if (this.unsubscribeDrawing) this.unsubscribeDrawing();
+        this.unsubscribeDrawing = null;
         if (this.view) { try { this.view.dispose(); } catch { /* a lost context may already be gone */ } }
         this.view = null;
         if (this.session) this.session.dispose();
@@ -1176,6 +1178,13 @@ class SimLabPane extends React.Component {
             const {read} = await fetchModelDrawing(runModel, {withConfig: true});
             if (token !== this.loadToken || this.disposed) return;
             this.view = createSimView3D({container: this.box.current, model: runModel, mechanism: session.mechanism, read, catalog: CATALOG});
+            if (runModel.drawings?.length) {
+                this.unsubscribeDrawing = session.onAdvance(() => {
+                    if (this.session === session && this.view && this.state.replayAt === null) {
+                        this.view.sampleDrawing(session.snapshot());
+                    }
+                });
+            }
             this.view.setMousePreset(this.state.mousePreset);
             this.view.canvas.setAttribute('aria-label', this.t('canvasLabel'));
             this.view.setPorts(insight.ports.map(item => ({...item, label: this.portLabelText(item)})));

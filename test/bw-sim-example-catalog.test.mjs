@@ -17,12 +17,12 @@ test('gallery metadata counts the actual models, motors and hubs and covers ever
         assert.equal(d.motors, p.mechanism.actuators.length, m.file);
         assert.deepEqual(d.hubs, [...new Set(p.mechanism.hubs.map(h => h.profile))]);
         assert.ok(d.description.en && d.description.de && EXAMPLE_TOPICS[d.topic]);
-        assert.equal(d.license, 'BSD-3-Clause');
+        assert.equal(d.license, m.file === 'orbital-loom.ldr' ? 'CC-BY-4.0' : 'BSD-3-Clause');
     }
 });
 test('filter physics, translated descriptions, hubs, and genuinely larger models', () => {
     const large = filterModelExamples(MODELS, MODEL_LESSONS, {size: 'large'});
-    assert.deepEqual(large.map(m => m.file).sort(), ['chain-transmission.ldr', 'excavator.ldr', 'flywheel-differential.ldr', 'ratio-workbench.ldr']);
+    assert.deepEqual(large.map(m => m.id || m.file).sort(), ['chain-transmission.ldr', 'excavator.ldr', 'flywheel-differential.ldr', 'orbital-loom-eightfold', 'orbital-loom-elevenfold', 'orbital-loom-sevenfold', 'orbital-loom.ldr', 'ratio-workbench.ldr']);
     assert.deepEqual(filterModelExamples(MODELS, MODEL_LESSONS, {query: 'Schwungrad', locale: 'de'}).map(m => m.file), ['flywheel-differential.ldr']);
     assert.deepEqual(filterModelExamples(MODELS, MODEL_LESSONS, {topic: 'chains', size: 'large'}).map(m => m.file), ['chain-transmission.ldr']);
     assert.equal(filterModelExamples(MODELS, MODEL_LESSONS, {query: 'no-such-model-123'}).length, 0);
