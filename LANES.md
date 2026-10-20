@@ -1,3 +1,70 @@
+## Arcade slice-result element presence — 2026-10-20
+
+CLAIM CANDIDATE — Codex Arcade Array/export lane. Merge before implementation.
+An unchanged complete four-group, twelve-program pure baseline has two failing
+positive groups and two passing refusal groups. Literal bounded slice results
+lose nested Array presence during export; the importer and Creator retain them.
+This is a specific source/export defect, not a whole corpus classification.
+
+Envelope: `bw-makecode/array-reference-export-authority.js` and its tracked GUI
+mirror, narrowly required existing literal-input proof helpers, focused owned
+pure/native/original-compiler/export and visible authoring controls, capability
+ledger/work-package docs and this lane. Extend only slice-result minimum presence
+under the existing literal-Array owner. The mandatory-callee and occurrence
+initialization claims still grant no new element authority.
+
+Derive lower length at the actual slice occurrence, with exact owned constant
+bound expressions only in a proven monotonic domain. A lower length alone cannot
+justify negative-start/nonnegative-end windows; decline those until a separate
+upper/exact-length proof exists. Do not use later pushes, annotations, nominal
+Array lengths or runtime helper names as facts. Retain complete element unions,
+source initialization/all-writer/alias/reset/currentness checks, result shrink
+ordering and recursive length guards. No positional mixed-slot, concat or
+push-built element-type expansion, convergence shortcut or caller certificate.
+
+Acceptance: complete affected pure authority modules, the full baseline cohort
+including empty/OOB/later-push/shrink/alias/writer/reset refusals, genuine native
+and original slice behavior, current export/reimport and same/fresh SB3. Verify
+visible Blocks/Code bound edits invalidate/refine current export without restoring
+old source. Keep original failures, TODO bodies, corpus order and resource limits.
+No runtime/supplier/pin change, framework guard relaxation, budget/workflow edit,
+complete-corpus retry or inferred reduction of historical partial counts.
+
+## Arcade source bitwise and unary operations — 2026-10-20
+
+CLAIM CANDIDATE — Codex Arcade lane. Merge this claim before implementation.
+The original PXT probe records 370 scalar results across six binary bitwise
+operators, unary complement, primitive values and opaque Array aliases,
+including empty, nested and cyclic collections. This is original behavior
+observation only; it does not establish implemented support or corpus credit.
+
+Envelope: `bw-makecode/arcade-translate.js`, narrowly required source operator
+proof/lowering helpers, `bw-makecode/export-arcade.js`, canonical supplier
+`src/utils/arcadeDialect.js` and its explicit Lite adoption, the Arcade extension
+index, `bw-array-operations.js`, and the primitive-owner/current-number-input/
+exception allow-lists only where the genuine new unary opcode needs ownership.
+Include corresponding tracked mirrors, focused actual parser/VM/original-PXT/
+export controls, existing visible authoring journeys, GUI capability ledger and
+handoff/work-package documentation. No dependency pin moves without a separately
+reviewed canonical supplier adoption.
+
+Use fixed binary selectors and a real single-input source unary reporter. Keep
+native authored Array binary/unary semantics and their opaque-reference refusals
+unchanged. No Array body loan, element traversal, guessed reference, selector
+reporter, foreign-object coercion or relaxed intrinsic/heap/intern/generation/
+current-call admission. Preserve operand order, single evaluation, original
+failures and fiber routing. Exported helper recognition requires complete body,
+binding and all-use proofs; helper names are not authority.
+
+Acceptance: fresh normal-installation and independent saved-data qualification
+for new runtime bytes; complete affected native/Creator/export/original-PXT
+controls including stale/foreign/off-thread and reentrant failure cases; actual
+Blocks/Code creation and fixed-selector edits, save/reopen and exported-file
+reimport. Keep existing resource limits, corpus order, negative controls,
+thresholds and browser assertions. Do not infer complete games or a reduced
+partial count from component tests. No workflow, budget, compiler shortcut,
+late intrinsic capture or complete-corpus classification change is in scope.
+
 ## Optional upload parser loading and unchanged P17 budget — 2026-10-20
 
 CLAIMED / DOCS ONLY — Codex GUI integration. This claim must land before
