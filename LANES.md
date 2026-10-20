@@ -1,10 +1,16 @@
 ## Robot Lab survey rover model — 2026-10-20
 
-IMPLEMENTED; local qualification in progress — Codex, lane/robot-lab-models-20261020. Original compact SPIKE rover:
+IMPLEMENTED — Codex, lane/robot-lab-models-20261020; draft PR #1138 (depends on #1137). Original compact SPIKE rover:
 two drive motors and an independently tilting distance-sensor head, LDraw model,
 example program, three model registries, focused physics/program/instruction tests
 and documentation. Based on main plus the flex4 model-support lane. Preserve
-peer-owned physics/compiler/collider work; no simulator changes in this lane.
+peer-owned physics/compiler/collider work; no simulator changes in this lane. Production GUI build,
+76 focused controls, all-motor stress bench and GUI worker/program/mixer/instructions
+checks pass. The head needs position hold under gravity; the example homes it and
+holds after each move. Browser measurements: 100.18 mm outward, 0.16 mm return
+error, head ±30.3°, 15 instruction steps / 28 parts. All printable step images
+decode; the evidence screenshot captures the viewport to avoid Chromium's long-page
+capture failure. Full mesh collision check remains in progress; no merge claimed.
 
 ## Robot Lab: cables, Studio mouse, coach marks, Ctrl-glide — 2026-10-20
 
