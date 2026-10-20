@@ -21,6 +21,7 @@ export const EDITOR_TEXT = {
         port: 'Port', none: 'none',
         position: 'Position (LDU, 20 = one hole)', positionMany: 'Move all by (LDU)', x: 'X', y: 'Y ↑', z: 'Z',
         rotation: 'Rotation (°)', turnAbout: 'Turn about {axis}', minus90: '−90°', plus90: '+90°',
+        hinge: 'On its hinge', minus15: '−15°', plus15: '+15°', nextHinge: 'Next hinge (N)',
         group: 'Group', notInGroup: 'Not in a group', groupName: 'Name', editGroup: 'Edit inside', leaveGroup: 'Leave group (Esc)',
         ungroup: 'Ungroup',
         align: 'Line up', alignAxis: 'Direction', axisX: 'Left – right', axisY: 'Down – up', axisZ: 'Back – front',
@@ -44,7 +45,7 @@ export const EDITOR_TEXT = {
             ]],
             ['Keyboard', [
                 ['W / E', 'move / turn with the handles'], ['R, Shift+R', 'turn 90° (about the pin or axle it sits on, or the up axis)'], ['T, Shift+T', 'tip 90°'],
-                ['[ / ]', 'turn 15° on a pin, a round hole or a ball'], ['X', 'flip end for end'],
+                ['[ / ]', 'turn 15° on a pin, a round hole or a ball, with what hangs off it'], ['N', 'next hinge'], ['X', 'flip end for end'],
                 ['Tab / Shift+Tab (holding a part)', 'the next / previous spot'], ['Enter / Space (holding a part)', 'place it'],
                 ['Enter on a palette part', 'take it; Tab picks the spot, Enter places'],
                 ['Shift (while turning)', '15° steps'], ['Alt (while moving)', 'no magnet'],
@@ -108,7 +109,10 @@ export const EDITOR_TEXT = {
             measureFirst: 'Measuring: click the first point (holes and pins snap)', measureSecond: 'Now click the second point',
             measured: '{ldu} LDU = {studs} studs = {mm} mm. Click again to measure anew, Esc stops.',
             groupEdit: 'Inside group “{name}”: click its parts one by one, Esc leaves', groupLeft: 'Left group “{name}”',
-            turnedBy: 'Turned {deg}°', clipboardUnknown: 'The clipboard holds LDraw parts this lab does not have.'
+            turnedBy: 'Turned {deg}°', clipboardUnknown: 'The clipboard holds LDraw parts this lab does not have.',
+            hinged: '{n} parts turned {deg}° on the hinge ({i} of {of}; N: next hinge)',
+            hingeShown: 'Hinge {i} of {of}: {n} parts turn with [ and ]',
+            hingeNone: 'No hinge here: the selection sits on no single pin, axle in a round hole or ball.'
         }
     },
     de: {
@@ -124,6 +128,7 @@ export const EDITOR_TEXT = {
         port: 'Port', none: 'keiner',
         position: 'Position (LDU, 20 = ein Loch)', positionMany: 'Alle verschieben um (LDU)', x: 'X', y: 'Y ↑', z: 'Z',
         rotation: 'Drehung (°)', turnAbout: 'Um {axis} drehen', minus90: '−90°', plus90: '+90°',
+        hinge: 'Im Gelenk', minus15: '−15°', plus15: '+15°', nextHinge: 'Nächstes Gelenk (N)',
         group: 'Gruppe', notInGroup: 'In keiner Gruppe', groupName: 'Name', editGroup: 'Innen bearbeiten', leaveGroup: 'Gruppe verlassen (Esc)',
         ungroup: 'Gruppe lösen',
         align: 'Ausrichten', alignAxis: 'Richtung', axisX: 'Links – rechts', axisY: 'Unten – oben', axisZ: 'Hinten – vorne',
@@ -147,7 +152,7 @@ export const EDITOR_TEXT = {
             ]],
             ['Tastatur', [
                 ['W / E', 'mit den Griffen schieben / drehen'], ['R, Umschalt+R', 'um 90° drehen (um den Pin oder die Achse, auf der es sitzt, sonst um die Hochachse)'], ['T, Umschalt+T', 'um 90° kippen'],
-                ['[ / ]', 'um 15° drehen auf einem Pin, in einem runden Loch oder auf einer Kugel'], ['X', 'umwenden'],
+                ['[ / ]', 'um 15° drehen auf einem Pin, in einem runden Loch oder auf einer Kugel, mit allem, was daran hängt'], ['N', 'nächstes Gelenk'], ['X', 'umwenden'],
                 ['Tab / Umschalt+Tab (Teil in der Hand)', 'nächste / vorige Stelle'], ['Eingabe / Leertaste (Teil in der Hand)', 'setzen'],
                 ['Eingabe auf einem Teil der Teileliste', 'in die Hand nehmen; Tab wählt die Stelle, Eingabe setzt'],
                 ['Umschalt (beim Drehen)', '15°-Schritte'], ['Alt (beim Schieben)', 'ohne Magnet'],
@@ -210,7 +215,10 @@ export const EDITOR_TEXT = {
             measureFirst: 'Messen: klicke den ersten Punkt an (Löcher und Pins rasten ein)', measureSecond: 'Jetzt den zweiten Punkt anklicken',
             measured: '{ldu} LDU = {studs} Noppen = {mm} mm. Nochmal klicken misst neu, Esc beendet.',
             groupEdit: 'In der Gruppe „{name}“: klicke ihre Teile einzeln an, Esc verlässt sie', groupLeft: 'Gruppe „{name}“ verlassen',
-            turnedBy: 'Um {deg}° gedreht', clipboardUnknown: 'In der Zwischenablage sind LDraw-Teile, die es hier nicht gibt.'
+            turnedBy: 'Um {deg}° gedreht', clipboardUnknown: 'In der Zwischenablage sind LDraw-Teile, die es hier nicht gibt.',
+            hinged: '{n} Teile um {deg}° im Gelenk gedreht ({i} von {of}; N: nächstes Gelenk)',
+            hingeShown: 'Gelenk {i} von {of}: {n} Teile drehen sich mit [ und ]',
+            hingeNone: 'Kein Gelenk hier: Die Auswahl sitzt auf keinem einzelnen Pin, keiner Achse in einem runden Loch und keiner Kugel.'
         },
         colourNames: {
             15: 'Weiß', 0: 'Schwarz', 71: 'Hellgrau', 72: 'Dunkelgrau', 4: 'Rot', 320: 'Dunkelrot', 25: 'Orange', 191: 'Hellorange',

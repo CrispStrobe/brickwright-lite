@@ -218,7 +218,7 @@ This is cursor-driven. A new pure export, `snapAtPointer(model, catalog, held, r
   - ✅ Select connected (Ctrl+click, and a button in the properties panel's Group section);
   - ◐ the touch offset and button cluster (the 60 px lift applies to a part from the palette, not to dragging a placed part: §7);
   - ✅ keyboard-only placement with aria-live.
-- **P3:** ☐ the mouse preset, ☐ coach marks, ☐ Ctrl-glide for axles in holes, ☐ a Studio-style hinge tool, ☐ flexible parts.
+- **P3:** ☐ the mouse preset, ☐ coach marks, ☐ Ctrl-glide for axles in holes, ✅ a Studio-style hinge tool (§10), ☐ flexible parts.
 
 ## 5. Browser-gate acceptance tests
 
@@ -328,3 +328,21 @@ The starting values from §6 were kept: every gate reading lies well inside them
 - Tests: `test/bw-sim-challenges.test.mjs` (each challenge won, each way of losing, on made-up runs);
   gate `scripts/lib/sim-lab-challenges-gate.mjs` (`--part=ui`): the Wall stopper's own program
   wins "Stop at the wall"; on the sumo mat, driving straight on leaves the ring.
+
+## 10. The hinge tool (2026-10-20)
+
+- A selection turns on its **hinge**: one round connection line next to it (a pin or an axle in a
+  round hole, a ball in its socket). Cut every joint on that line and the selection comes free
+  with everything that hangs off it; that side turns, the other stays (`hingeCandidates` in
+  `lib/bw-sim/editor/snap.js`). Studio's hinge tool turns "around a shared connection point" and
+  carries the connected side the same way.
+- Two parts held at two places stay together (a joint is cut only when all its pairs are round
+  and on the line), and the side that stays must be more than the pins on the line, so an arm
+  pinned through two holes has no hinge.
+- **[ / ]** turn the selection and what hangs off it 15° on its hinge, collision-checked, one undo
+  step. **N** shows the hinge as a green line on its axis; pressed again it steps to the next one
+  (LDD's Tab through pivots; Tab stays keyboard focus here), Shift+N back. The fewest moving parts
+  come first. The properties panel's Rotation section has the same as buttons (−15°, +15°, N).
+- Hinges are worked out only when asked for, never on a selection change (a Select all of the
+  2,054-part model would search every joint), and a side of more than 400 parts is not offered.
+- Tests: `test/bw-sim-hinge.test.mjs`; gate `scripts/lib/sim-lab-hinge-gate.mjs` (`--part=editor`).
