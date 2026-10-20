@@ -120,3 +120,30 @@ remain unchanged. Supplier private-operation tracking corrections and explicit
 supplier adoption are separate changes. A fresh combined normal installation,
 complete native execution and the unchanged original/Code/exported semantic
 journey remain required; no full-game or GUI acceptance follows from source.
+
+
+## Named empty allocation source candidate
+
+SOURCE CANDIDATE — not installed or qualified. A current registered
+`createEmpty` call with its original primitive String name may request one
+actual empty Array from the host. The host creates the body itself after the
+current-call, raw-input, graph and intrinsic checks; it records identity and
+empty native state before returning it. A private reservation is not enrollment.
+Completion must supply the same body with unchanged keys, descriptors,
+prototype, length and extensibility after all callback-capable observations.
+Only that completed birth can receive primitive eligibility.
+
+The selected eligible body of `namedReference` must agree with both the actual
+named binding at completion and the closed result-identity lookup. This adds no
+reference prototype, generic Cast or user coercion rule. Mutations and primitive
+loans still use the existing runtime/generation and publication barriers.
+Failures use the existing opaque rejection-only witness and private lease;
+replay, foreign/copy context, expiry and changed body cannot mint eligibility.
+A guard failure does not promise atomic rollback of the supplier registry.
+
+No host, no successful host ticket, or a non-String name keeps the existing
+allocation without this new provenance. A qualified allocation request with a
+missing host result fails explicitly. Older supplier sources that never request
+this birth keep their previous unqualified behavior. Other factories, range
+coercion/loop semantics, derived slice/concat, opaque elements and fresh decoder
+normalization remain separate work. No runtime or whole-game result is claimed.

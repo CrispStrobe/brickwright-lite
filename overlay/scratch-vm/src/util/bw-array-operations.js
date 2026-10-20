@@ -279,6 +279,8 @@ function bind(runtime,registration,source,instance) {
     const rejectError=(record,error,kind='constraint')=>{
         if(record?.method==='valueBinary')record.primitiveExpired=true;
         if(record?.method==='createReference')record.literalExpired=true;
+        if(record?.method==='createEmpty')record.emptyExpired=true;
+        if(record?.namedSelected)record.namedExpired=true;
         if(record?.method==='createReference'&&!record.literalFailure)record.literalFailure=error;
         // Only this bound service can issue a lease. Already adopted signals
         // cannot pass ownsActualCall after retirement and are rethrown unchanged.
@@ -321,7 +323,8 @@ function bind(runtime,registration,source,instance) {
         if(!primitiveArray(body)||primitiveApply(primitiveSetHas,seen,[body]))return;
         primitiveApply(primitiveSetAdd,seen,[body]);const known=primitiveApply(primitiveWeakGet,bodies,[body]);
         if(known)checkBody(record,body);else primitiveApply(primitiveWeakSet,bodies,[body,{runtime,state,generation:state.generation,
-            primitiveEligible:record.method==='createReference'&&record.literalWitness===true}]);
+            primitiveEligible:record.method==='createReference'&&record.literalWitness===true||
+                record.emptyBody===body&&record.emptyCommitted===true}]);
         if(deep)for(const key of Reflect.ownKeys(body)){
             if(key==='length')continue;
             const descriptor=ownData(body,key);
@@ -429,10 +432,11 @@ function bind(runtime,registration,source,instance) {
     };
     const service=Object.freeze({
         begin(method,args,util){
-            const failureCall=(method==='valueBinary'||method==='createReference')&&
+            const failureCall=(method==='valueBinary'||method==='createReference'||method==='createEmpty')&&
                 primitiveOwner.captureFailureCall(runtime,'arrays_'+method);
             const failureRecord=failureCall?{runtime,binding,failureOnly:true,failureCall,
-                state,generation:state.generation,instance,boundInstance:instance(),method,closed:false}:null;
+                state,generation:state.generation,instance,boundInstance:instance(),method,closed:false,
+                emptyExpired:false,namedSelected:null,namedExpired:false}:null;
             try {
             if(failureCall&&!primitiveOwner.current(util,args))
                 reject(failureRecord,'tracked Array requires its current operation');
@@ -446,14 +450,18 @@ function bind(runtime,registration,source,instance) {
             const previous=inflight.get(runtime);
             if(previous&&!previous.closed&&previous.thread===util.thread)reject(previous,'current Array operation cannot be reentered');
             const actualCall=primitiveOwner.captureActiveCall(util,args);if(!actualCall)return undefined;
-            const ticket=Object.freeze({}),record={runtime,binding,actualCall,blockId:block.id,opcode:block.opcode,metadataUnchanged:captureContext(util,block),state,generation:state.generation,args,util,thread:util.thread,root:util.thread.peekStack(),block,primitive:runtime.getOpcodeFunction(block.opcode),instance,boundInstance,method,closed:false,previous};
+            const ticket=Object.freeze({}),record={runtime,binding,actualCall,blockId:block.id,opcode:block.opcode,metadataUnchanged:captureContext(util,block),state,generation:state.generation,args,util,thread:util.thread,root:util.thread.peekStack(),block,primitive:runtime.getOpcodeFunction(block.opcode),instance,boundInstance,method,closed:false,previous,
+                // Own definitions bypass inherited getters/setters before the
+                // new birth/selection paths can reach their intrinsic fences.
+                emptyAttempted:false,emptyExpired:false,emptyBody:null,emptyCurrent:null,emptyCommitted:false,
+                namedSelectionSeen:false,namedSelected:null,namedRaw:undefined,namedExpired:false};
             tickets.set(ticket,record);inflight.set(runtime,record);return ticket;
             }catch(error){return rejectError(failureRecord,error);}
         },
         access(ticket,facts){
             const record=primitiveApply(primitiveWeakGet,tickets,[ticket]);
             try {
-            const literal=facts?.kind==='literal-ingress',literalBody=facts?.kind==='literal-body';
+            const literal=facts?.kind==='literal-ingress',literalBody=facts?.kind==='literal-body',empty=facts?.kind==='empty-allocation';
             if(literal){
                 if(!primitiveIntrinsicsCurrent()){
                     const error=new primitiveError('Array literal intrinsic/value surface changed');
@@ -471,6 +479,33 @@ function bind(runtime,registration,source,instance) {
             if(record&&!ownsActualCall(record))reject(null,'operation ticket is stale');
             if(record&&!graphValid(record))reject(record,'current cached operation graph changed');
             if(!facts||facts.runtime!==runtime||!Object.isFrozen(facts)||record&&facts.opcode!==record.method)reject(record,'actual supplier access binding differs');
+            if(empty){
+                // Reserve once before scanning raw metadata. A recursive request
+                // cannot obtain a second body while this request is in flight.
+                const name=record&&primitiveDescriptor(record.args,'NAME');
+                if(!record||record.method!=='createEmpty'||record.emptyAttempted||record.emptyExpired||
+                    !name||!primitiveOwn(name,'value')||typeof name.value!=='string'||
+                    facts.slot!=='NAME'||facts.raw!==name.value||facts.name!==name.value||
+                    facts.body!==undefined||facts.parent!==undefined||facts.key!==undefined)
+                    reject(record,'Named empty allocation request differs');
+                record.emptyAttempted=true;
+            }
+            if(record?.method==='namedReference'&&facts.kind==='alias'&&facts.slot==='NAME'&&
+                facts.parent===undefined&&facts.key===undefined){
+                const selected=primitiveApply(primitiveWeakGet,bodies,[facts.body]);
+                if(record.namedSelectionSeen){
+                    if(record.namedSelected&&(facts.body!==record.namedSelected||facts.raw!==record.namedRaw||facts.name!==record.namedRaw))
+                        reject(record,'Named primitive selection changed');
+                }else{
+                    record.namedSelectionSeen=true;
+                    if(selected?.primitiveEligible){
+                        const name=primitiveDescriptor(record.args,'NAME');
+                        if(!name||!primitiveOwn(name,'value')||typeof name.value!=='string'||facts.raw!==name.value||facts.name!==name.value)
+                            reject(record,'Named primitive selection requires its original String name');
+                        record.namedSelected=facts.body;record.namedRaw=name.value;
+                    }
+                }
+            }
             if(literalBody){
                 if(!record||record.method!=='createReference'||!record.literalWitness||record.literalExpired||record.literalBody||
                     facts.raw!==record.args.VALUES||!primitiveArray(facts.body)||!primitiveArray(facts.parsed)||facts.body===facts.parsed||
@@ -511,6 +546,18 @@ function bind(runtime,registration,source,instance) {
             if(facts.kind==='escape'&&facts.body&&primitiveApply(primitiveWeakHas,bodies,[facts.body]))reject(record,'tracked Array cannot escape to a legacy callback');
             if(record&&(record.method==='createReference'||record.method==='valueBinary')&&
                 (!primitiveIntrinsicsCurrent()||!graphValid(record)||!primitiveIntrinsicsCurrent()))reject(record,'Array operation proof expired during input observation');
+            if(empty){
+                // No raw observation follows this fence before the actual host
+                // literal allocation and its private native descriptor snapshot.
+                if(record.emptyExpired||!graphValid(record)||!primitiveIntrinsicsCurrent())
+                    reject(record,'Named empty allocation proof expired');
+                const body=[],native=new primitiveWeakMapConstructor(),observed=primitiveObservations(native);
+                primitiveApply(primitiveWeakSet,native,[body,true]);observed.observe(body);
+                record.emptyBody=body;record.emptyCurrent=()=>primitiveExtensible(body)&&observed.nativeCurrent();
+                return body;
+            }
+            if(record?.namedSelected&&(!graphValid(record)||!primitiveIntrinsicsCurrent()))
+                reject(record,'Named primitive selection proof expired');
             if(literal)record.literalWitness=true;
             }catch(error){return rejectError(record,error);}
         },
@@ -538,7 +585,7 @@ function bind(runtime,registration,source,instance) {
             // native Error identity/subtype. A prior private signal is rethrown by
             // rejectError unchanged; the ticket is closed exactly once in either case.
             const completionStatus=facts&&typeof facts==='object'&&primitiveDescriptor(facts,'status');
-            if((record.method==='valueBinary'||record.method==='createReference')&&
+            if((record.method==='valueBinary'||record.method==='createReference'||record.method==='createEmpty'&&record.emptyAttempted||record.namedSelected)&&
                 completionStatus&&primitiveOwn(completionStatus,'value')&&completionStatus.value==='throw'){
                 try {
                     const runtimeField=primitiveDescriptor(facts,'runtime'),opcodeField=primitiveDescriptor(facts,'opcode'),errorField=primitiveDescriptor(facts,'error');
@@ -558,6 +605,8 @@ function bind(runtime,registration,source,instance) {
             if(facts?.status==='throw'){close();return;}
             try {
                 if(record.method==='createReference'&&record.literalExpired)throw record.literalFailure||new primitiveError('Array literal allocation proof expired');
+                if(record.emptyAttempted&&record.emptyExpired)reject(record,'Named empty allocation proof expired');
+                if(record.namedSelected&&record.namedExpired)reject(record,'Named primitive selection proof expired');
                 if((record.method==='valueBinary'||record.method==='createReference')&&!primitiveIntrinsicsCurrent()){
                     record.primitiveExpired=true;
                     throw new primitiveError('Array primitive intrinsic surface changed before publication');
@@ -581,6 +630,16 @@ function bind(runtime,registration,source,instance) {
                     if(record.literalCurrent&&!record.literalCurrent())reject(record,'Array literal allocation changed before enrollment');
                     if(!primitiveIntrinsicsCurrent())reject(record,'Array primitive intrinsic surface changed before publication');
                 }
+                if(record.emptyAttempted){
+                    if(record.emptyExpired||!record.emptyBody||result!==undefined||facts.body!==record.emptyBody||
+                        !graphValid(record)||!primitiveIntrinsicsCurrent())
+                        reject(record,'Named empty allocation/body differs');
+                }
+                if(record.namedSelected){
+                    if(record.namedExpired||facts.body!==record.namedSelected||
+                        !graphValid(record)||!primitiveIntrinsicsCurrent())
+                        reject(record,'Named primitive reference/body differs');
+                }
                 // GLOBAL publication barrier: finish every potentially trapping
                 // loan observation before checking ANY trusted native row. No
                 // graph/raw/reference/WeakRef callbacks occur after this fence.
@@ -592,7 +651,16 @@ function bind(runtime,registration,source,instance) {
                         reject(record,'Array primitive backing changed before publication');
                     if(!primitiveIntrinsicsCurrent())reject(record,'Array primitive intrinsic surface changed before publication');
                 }
-                if(allocationMethods.has(record.method)&&Array.isArray(facts.body)){
+                // This last native-only check follows every raw/context/graph
+                // observation. No callback can replace or fill the birth body
+                // between this check and its private eligibility enrollment.
+                if(record.emptyAttempted){
+                    if(!record.emptyCurrent||!record.emptyCurrent())reject(record,'Named empty allocation changed before enrollment');
+                    record.emptyCommitted=true;
+                    // Use the private body, not another completion-field read,
+                    // after the last callback-free native snapshot check.
+                    enrollAllocation(record,record.emptyBody,false);
+                }else if(allocationMethods.has(record.method)&&Array.isArray(facts.body)){
                     // Validate before enrolling anything; a failed completion
                     // must never leave an eligible foreign body behind.
                     if(resultIdentity&&resultBody!==facts.body)reject(record,'completed allocation/body differs');
@@ -603,7 +671,19 @@ function bind(runtime,registration,source,instance) {
                     enrollAllocation(record,facts.body,
                         ['createReference','create1D','create2D','createEmpty','createZeros','createRange'].includes(record.method));
                 }
-                if(resultIdentity){
+                if(record.namedSelected){
+                    // checkBody/current graph can call runtime/thread hooks.
+                    // Finish ALL such callbacks before the fresh closed lookup;
+                    // registering this selected reference must not call them again.
+                    checkBody(record,resultBody);
+                    if(record.namedExpired||!graphValid(record)||!primitiveIntrinsicsCurrent())
+                        reject(record,'Named primitive reference proof expired before publication');
+                    const body=lookupIdentity(runtime,resultIdentity);
+                    if(body!==record.namedSelected||!primitiveIntrinsicsCurrent())
+                        reject(record,'Named primitive reference/body differs at publication');
+                    const key=resultKey,weak=new primitiveWeakRefConstructor(body);
+                    primitiveApply(primitiveMapSet,references,[key,weak]);if(collected)primitiveApply(primitiveFinalizationRegister,collected,[body,{key,weak}]);
+                }else if(resultIdentity){
                     const body=resultBody;
                     if(body&&primitiveApply(primitiveWeakHas,bodies,[body])){
                         checkBody(record,body);const key=resultKey,weak=new primitiveWeakRefConstructor(body);

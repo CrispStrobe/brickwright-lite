@@ -31,8 +31,8 @@ test('the exact decoded pinned source and installed mirror produce one explicit 
     const original = JSON.parse(wrapper.slice(ARRAYS_PREFIX.length, -ARRAYS_SUFFIX.length));
     const provenance = admitArraysNumberValueTestSource(root), actual = fs.readFileSync(path.join(root, ARRAYS_INPUT.outputSource));
     assert.equal(actual.toString('utf8'), original, 'complete original body, not a stub or source label');
-    assert.equal(actual.length, 108862); assert.equal(sha(actual), expectedRecord.sha256);
-    assert.equal(provenance.supplier.commit, '1c7eb396173673c858e6c80a66529cb9dce87553');
+    assert.equal(actual.length, 109672); assert.equal(sha(actual), expectedRecord.sha256);
+    assert.equal(provenance.supplier.commit, 'd7eb7e4c50275bd375b37b64d84ba60e59f17564');
     assert.equal(provenance.supplier.licence, 'MPL-2.0'); assert.equal(provenance.installedCanonicalMirrorEqual, true);
     assert.deepEqual(provenance.inputs.map(r => r.path), [pins, receipt, carrier, mirror, notice]);
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root, ARRAYS_INPUT.outputDirectory, 'provenance.json'))), provenance);
@@ -76,7 +76,7 @@ test('a missing or changed installed mirror and missing MPL source notice cannot
         root => fs.unlinkSync(path.join(root, mirror)),
         root => put(root, mirror, fs.readFileSync(path.join(root, mirror), 'utf8') + '\n'),
         root => put(root, notice, fs.readFileSync(path.join(root, notice), 'utf8').replace('## arrays-values — MPL-2.0', '## other — MPL-2.0')),
-        root => put(root, notice, fs.readFileSync(path.join(root, notice), 'utf8').replaceAll('extensions/blob/1c7eb396173673c858e6c80a66529cb9dce87553/', 'extensions/blob/0000000000000000000000000000000000000000/'))
+        root => put(root, notice, fs.readFileSync(path.join(root, notice), 'utf8').replaceAll('extensions/blob/d7eb7e4c50275bd375b37b64d84ba60e59f17564/', 'extensions/blob/0000000000000000000000000000000000000000/'))
     ]) fixture(root => {change(root); rejected(root, /ENOENT|ARRAY_INPUT_(INSTALLED_MIRROR_MISMATCH|NOTICE_LICENCE)/);});
     fixture(root => {const results = path.join(root, 'test-results'); fs.symlinkSync(path.join(root, 'elsewhere'), results); rejected(root, /ARRAY_INPUT_RESULTS_DIRECTORY/);});
 });
