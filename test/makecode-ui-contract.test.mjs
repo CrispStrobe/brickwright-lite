@@ -58,14 +58,19 @@ test('file and share imports use one lazy gateway and all exporters share its ch
     for (const signature of ['openArtefactFile (file) {', 'async openMakeCodeShare () {']) {
         const body = scopeAfter(source, signature);
         assert.equal([...body.matchAll(/await this\.makeCodeImportModule\(\)/g)].length, 1, signature);
-        assert.equal([...body.matchAll(lazy)].length, 0, 'imports delegate to the gateway');
+        const share = signature.startsWith('async openMakeCodeShare');
+        assert.equal([...body.matchAll(lazy)].length, share ? 1 : 0,
+            'only the self-contained share receiver has one direct lazy fallback');
+        if (share) assert.match(body,
+            /this\.makeCodeImportModule\s*\?\s*await this\.makeCodeImportModule\(\)\s*:\s*await import\(/,
+            'the normal component uses its gateway; only an absent gateway selects the bare-receiver fallback');
     }
     for (const signature of ['async exportMakeCode () {', 'async makeCodeSubject () {',
         'async boardSubjects (source) {', 'async exportBoardsMakeCode (source) {',
         'async arcadeFromStage () {', 'async exportArcade () {']) {
         assert.equal([...scopeAfter(source, signature).matchAll(lazy)].length, 1, signature);
     }
-    assert.equal(chunks.length, 7, 'one gateway and six export/subject loaders');
+    assert.equal(chunks.length, 8, 'one gateway, one share-only fallback and six export/subject loaders');
     assert.deepEqual([...new Set(chunks)], ['bw-makecode'], 'all paths use one chunk');
     assert.doesNotMatch(source, /^import .*bw-makecode\/(?:index|export-arcade)\.js/m,
         'the shared gateway must remain lazy');

@@ -239,8 +239,8 @@ const SITES = [
     {
         name: 'MakeCode share link (pseudocode-importer openMakeCodeShare)',
         file: IMPORTER,
-        reverts: [s => s.replace("url = await promptAsync(this.L.mcSharePrompt,'');",
-            "url = window.prompt(this.L.mcSharePrompt,'');")],
+        reverts: [s => s.replace(/await promptAsync\(this\.L\.mcSharePrompt,\s*''\)/,
+            "window.prompt(this.L.mcSharePrompt, '')")],
         answers: {ok: [' https://makecode.com/_abc '], cancel: [null]},
         expect: {ok: 'https://makecode.com/_abc', cancel: null},
         async drive (helper, src, answers) {
