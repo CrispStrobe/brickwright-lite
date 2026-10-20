@@ -1,3 +1,4 @@
+import {validateProcedureParameterConstraints} from './procedureParameterConstraints.js';
 import JSZip from 'jszip';
 // Auto-generated hardware-extension registry (scripts/gen-runtime-registry.mjs). Covers all
 // the LEGO/hardware extensions declaratively so the pluggable driver "works for all of them".
@@ -2501,6 +2502,17 @@ class SB3Creator {
             inputs,
             fields
         };
+        // Inputs are parsed before this wrapper is registered. Their root
+        // reporters and menu shadows now belong to this immediate input owner;
+        // descendants already belong to their own wrappers. Only adopt blocks
+        // built in this expression context, never target/project references.
+        for (const input of Object.values(inputs)) {
+            for (const child of input.slice(1)) {
+                if (typeof child === 'string' && context.extraBlocks[child]) {
+                    context.extraBlocks[child].parent = id;
+                }
+            }
+        }
         return id;
     }
 
@@ -2635,7 +2647,11 @@ class SB3Creator {
         for (const p of parts) {
             if (p.literal !== undefined) continue;
             const text = groups[g++];
-            if (p.referenceType) {
+            if (p.literalField) {
+                let value;try{value=JSON.parse(text);}catch{return null;}
+                if(typeof value!=='string'||!value)return null;
+                slots.push([p,value]);
+            } else if (p.referenceType) {
                 let type;
                 try {type = JSON.parse(text);} catch {return null;}
                 // Grammar is portable; project class ownership is validated by
@@ -5314,19 +5330,7 @@ class SB3Creator {
     // Parse a boolean condition expression into a block id.
     parseCondition(conditionStr, context) {
         let s = this.stripOuterParens((conditionStr || '').trim());
-        const push = (op, inputs = {}, fields = {}) => {
-            const id = this.pushBlock(context, op, inputs, fields);
-            // Condition children were parsed before their wrapper existed.
-            // Attach each newly owned reporter/shadow to its actual input owner.
-            for (const input of Object.values(inputs)) {
-                for (const child of input.slice(1)) {
-                    if (typeof child === 'string' && context.extraBlocks[child]) {
-                        context.extraBlocks[child].parent = id;
-                    }
-                }
-            }
-            return id;
-        };
+        const push = (op, inputs = {}, fields = {}) => this.pushBlock(context, op, inputs, fields);
 
         // Keypad phrase sugar (oracle parity, stc-compiler dec1f17): rewrite
         // to the canonical compare BEFORE any other parsing, so the blocks
@@ -8230,6 +8234,7 @@ class SB3Creator {
             this.project.stc = this.project.boards[0].stc;
             this._board = null;
         }
+        try{validateProcedureParameterConstraints(this.project);}catch(error){throw new ParseError('Procedure parameter constraint: '+error.message);}
         this.validateReferences();
         this.syncExtensions();
         for (const t of this.project.targets) this.layoutScripts(t);
@@ -8800,6 +8805,7 @@ class SB3Creator {
 
     // Decompile a whole project back into pseudocode.
     decompile(project = this.project) {
+        try{validateProcedureParameterConstraints(project);}catch(error){throw new ParseError('Procedure parameter constraint: '+error.message);}
         project = this.refreshCallableSourceBindings(project);
         const out = [];
         const stage = project.targets.find(t => t.isStage);

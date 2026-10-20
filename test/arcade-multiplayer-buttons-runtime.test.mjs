@@ -12,14 +12,18 @@ test('multiplayer slot installation/replacement, direct override and player iden
  ext.pushScene({});register(ext,'child');dispatch(ext,2,2049);assert.notStrictEqual(events.at(-1).player,parent);
  ext.popScene({});dispatch(ext,2,2049);assert.strictEqual(events.at(-1).player,parent);assert.equal(events.at(-1).token,'new');
 });
-test('independent press/release states, short taps and default repeat boundaries follow PXT',()=>{
+test('independent press/release states, short taps and default repeat boundaries follow PXT',async()=>{
  const {ext,events}=setup();for(const event of [2049,2048,2054])register(ext,String(event),event);
- ext._state().controllerButtons[3]={a:true};[...ext._sceneButtons(1/30)];assert.equal(events.at(-1).token,'2049');
- for(let i=0;i<15;i++)[...ext._sceneButtons(1/30)];assert.equal(events.length,1);
- [...ext._sceneButtons(1/30)];assert.equal(events.at(-1).token,'2054');
- ext._state().controllerButtons[3].a=false;[...ext._sceneButtons(1/30)];assert.equal(events.at(-1).token,'2048');
- const before=events.length;ext._controllerButtonEdge(4,'a',true);ext._controllerButtonEdge(4,'a',false);assert.deepEqual(events.slice(before).map(e=>e.token),['2049','2048']);
- [...ext._sceneButtons(1/30)];assert.equal(events.length,before+2);
+ // Control events enqueue their callbacks. Drain the real continuation queue
+ // without advancing controller time or replacing its dispatch implementation.
+ const settle=()=>new Promise(resolve=>setImmediate(resolve));
+ const frame=async()=>{[...ext._sceneButtons(1/30)];await settle();};
+ ext._state().controllerButtons[3]={a:true};await frame();assert.equal(events.at(-1).token,'2049');
+ for(let i=0;i<15;i++)await frame();assert.equal(events.length,1);
+ await frame();assert.equal(events.at(-1).token,'2054');
+ ext._state().controllerButtons[3].a=false;await frame();assert.equal(events.at(-1).token,'2048');
+ const before=events.length;ext._controllerButtonEdge(4,'a',true);ext._controllerButtonEdge(4,'a',false);await settle();assert.deepEqual(events.slice(before).map(e=>e.token),['2049','2048']);
+ await frame();assert.equal(events.length,before+2);
  const player=ext.playerLookup({MODE:'number',VALUE:3});assert.equal(ext.playerButtonPressed({PLAYER:player,BUTTON:0}),false);
  ext._state().controllerButtons[3].a=true;assert.equal(ext.playerButtonPressed({PLAYER:player,BUTTON:0}),true);
  assert.equal(ext.playerButtonPressed({PLAYER:'missing',BUTTON:0}),false);

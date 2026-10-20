@@ -13,7 +13,7 @@ victim = sprites.create(img\`1\`, SpriteKind.Enemy)`;
 test('kind destruction callbacks retain their sprite handle and roundtrip to PXT', async () => {
     const imported = arcadeToPseudocode(source);
     assert.deepEqual(imported.unsupported, []);
-    assert.match(imported.code, /arcade register destroyed kind "Enemy" as/);
+    assert.match(imported.code, /arcade register destroyed kind \(arcade sprite kind value "Enemy"\) as/);
     assert.match(imported.code, /arcade set local s to arcade event first/);
     assert.match(imported.code, /arcade property x of arcade local s/);
     const creator = new SB3Creator();
@@ -21,7 +21,7 @@ test('kind destruction callbacks retain their sprite handle and roundtrip to PXT
     for (const costume of imported.costumes) creator.applyCustomSVG(costume.sprite, costume.svg);
     assert.deepEqual(creator.warnings, []);
     assert.ok(projectOpcodes(creator.project).has('arcade_whenRegisteredKindDestroyed'));
-    assert.match(creator.decompile(), /arcade register destroyed kind "Enemy" as/);
+    assert.match(creator.decompile(), /arcade register destroyed kind \(arcade sprite kind value "Enemy"\) as/);
     const exported = projectToArcade(creator.project, {costumeSvg: (target, costume) => {
         const asset = creator.assets.get(costume.assetId);
         return asset?.type === 'svg' ? asset.data : null;
@@ -97,7 +97,8 @@ alias.destroy()`;
     }});
     assert.deepEqual(exported.unsupported, []);
     assert.match(exported.ts, /first\.onDestroyed\(function \(\) \{/);
-    assert.match(exported.ts, /let alias: Sprite = null/);
+    assert.match(exported.ts, /^let alias: Sprite\s*$/m);
+    assert.match(exported.ts, /^\s*alias = null\s*$/m, 'the authored initializer follows typed source preinitialization');
     if (hasRuntime('arcade')) {
         const compiled = await compile('arcade', exported.files);
         assert.equal(compiled.success, true, JSON.stringify(compiled.diagnostics));

@@ -1,9 +1,9 @@
+import {createArcadeRuntimeMock} from './helpers/arcade-runtime-mock.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {execFileSync} from 'node:child_process';
 import path from 'node:path';
-import {EventEmitter} from 'node:events';
 import {loadExtensionClass, VM_SRC} from './helpers/bw-extensions.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 import {runProgram, stepFrames, clearStrayTimers} from './helpers/bw-vm.mjs';
@@ -13,7 +13,7 @@ const {PxtBuffer, NumberFormat, MAX_BUFFER_BYTES, fromHex, fromArray, concatArra
 const BWValues = require(path.join(VM_SRC,'util/bw-values.js'));
 const formats = Object.keys(NumberFormat).filter(name=>!/^\d+$/.test(name));
 const fixture = () => {
-    const runtime=new EventEmitter(), errors=[];runtime.startHats=()=>[];runtime.on('BLOCKS_ERROR',error=>errors.push(error));
+    const runtime=createArcadeRuntimeMock(), errors=[];runtime.on('BLOCKS_ERROR',error=>errors.push(error));
     return {runtime, errors, native:new (loadExtensionClass('arcade'))(runtime)};
 };
 

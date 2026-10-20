@@ -119,9 +119,67 @@ Source controls alone establish neither whole-project idempotence nor runtime,
 visible editor, reference-rendering, audio, fullcase or corpus qualification.
 The implementation must preserve honest fallback when this proof cannot close.
 
+## First source candidate
+
+The initial implementation admits exact, nonempty rectangular `img` literal
+Arrays in the entry prefix before calls, registrations, branches or repeated
+execution. Selections are finite constant numeric expressions, including the
+existing literal round and positive-wrap form. It resolves actual lexical
+bindings, all declaration and write sites, Image aliases and a closed set of
+existing native operations. Unknown receiver or extension effects retain
+ordinary staging. A whole-Array alias also retains ordinary staging for now;
+it does not silently gain a different resource identity.
+
+A private origin scalar survives ordinary compiler rewrites. After unique,
+accessor-free source admission, generated identifier sharing is materialized
+as an occurrence tree before final translator inference. Every edge, value and
+statement stays in order. Final binding, initialization, use, writer and literal
+proofs run on that actual tree. A duplicate origin, edit, lost carrier or failed
+projection uses the same current source with ordinary staging and an explicit
+refusal. No exporter or artwork callback is called as an optimization probe.
+
+The initial route leaves named function, callable and class protocol plans on
+their existing path. Their private identity facts require separate coordinated
+projection integration. Array-map and image-query facts are instead computed
+on the exact current input for each ordinary pass chain. The focused controls
+exercise source and public artifacts; they do not qualify native mutation,
+lifecycle, original SDK execution or the authentic conversion-growth witness.
+In particular, this bounded domain is not a claim that all seven backings of
+that project already qualify. The original connected growth and all other
+conversion growth remain open until the actual current input is measured.
+
+The first public controls exposed a separate named-handle setup rewrite that
+cloned the Program root and lost its private resource fact. The successor
+keeps the original root for a no-op rewrite. Actual ordered sprite creation
+receives an occurrence projection and complete resource reproof before that
+route issues its own node facts. Failed reproof leaves the outer current AST
+available to the existing generic route. The original failed run is retained;
+its ordinary Array output does not qualify shared transport.
+
+### Declarations without initializers
+
+The transport effect census distinguishes an actual declaration without an
+initializer from an unknown writer. It still requires concrete supported writers
+and refuses unknown compound or update writes. An annotation cannot create an
+Image, Array or Sprite producer. The declaration and every early read, method
+call, alias and later assignment remain in their original order; transport does
+not initialize the cell or turn an ordinary failing access into success. Native
+error behavior and the authentic application remain separate qualification gates.
+
+### Builtin kind allocation prefix
+
+An exact unshadowed, unwritten zero-argument `SpriteKind.create()` initializer
+may precede the selected literal Array. The call stays in its actual declaration
+and original evaluation order, including left-to-right initializers in a
+multiple-declaration statement. Transport neither computes nor replaces the
+allocated kind value. Extracted methods, namespace escapes, computed or generic
+calls, constructor syntax and arguments refuse this prefix. An earlier callback
+registration or other effect still prevents the literal backing from qualifying.
+The focused source and public roundtrip controls preserve both allocations;
+native kind allocation and the authentic application require their own evidence.
 ## Selected native-source non-exposure intersection
 
-Coordinated amendment: claim pending qualified normal merge. Extend the owned
+Coordinated amendment: the scope claim is merged. Extend the owned
 source intersection to `dependency-project.js` only for a private receipt issued
 inside actual dependency preparation, plus a focused adjacent private effect
 helper if needed. The existing native-source admission comparison, resolver,
@@ -160,3 +218,195 @@ callback parameters, mixed receiver writers and currentness after lowering.
 Retain the complete authentic seven-backing failure and all art/body channels;
 focused controls alone do not close it. Existing native alias/clone/restart,
 current-edit, fresh export/reimport and visible-editor gates remain required.
+
+
+## Selected Text geometry effects
+
+The private selected-source receipt may establish an actual Text Sprite receiver
+through the complete admitted library and every current receiver writer. For
+that receiver only, plain assignments to the inherited `left`, `right`, `top`
+and `bottom` setters can retain the shared-frame non-exposure proof. These
+existing setters update Sprite position and the existing movement/render path;
+they do not obtain the private backing Array. Preserve each original write,
+its value, ordering and ordinary diagnostics. This issues no primitive value
+fact and adds no runtime feature.
+
+Computed, compound, update and delete forms, mixed or unknown receivers, other
+properties and unknown effects continue through ordinary fallback. Geometry
+effect admission does not admit later music, Buffer, controller or callback
+effects, and does not qualify an entire game or a new runtime execution.
+
+
+## Fixed music playback non-exposure
+
+An exact current, unshadowed SDK `music.play` call with two arguments and a
+fixed `music.PlaybackMode` member may preserve shared-frame non-exposure. The
+existing native command accepts only a current-runtime music reference from
+its private registry, or preserves its existing error before playback. It
+does not acquire the backing Array through an ordinary Image or Array value.
+
+This effect rule does not prove a valid playable, issue a Number or reference
+producer, silence errors, move calls or remove retained bodies. A whole backing
+Array argument still refuses transport. Dynamic modes, other music APIs,
+changed or escaped SDK roots, unknown effects and calls before initialization
+retain ordinary fallback. Native playback and later authentic effects remain
+separate qualifications.
+
+
+Every actual SDK `music.play` member occurrence must be the callee of that
+exact admitted command. Extracted, returned, captured, stored or passed method
+values retain ordinary fallback, even if a later direct call is valid. This
+closes the command-only effect profile without restricting other SDK namespaces
+or adding a runtime function-alias feature.
+
+## Optional ordinary Image Array clone entry effect
+
+An exact ordinary `.clone()` call may use a separate, optional entry proof.
+It does not turn its ordinary Array into a resource or issue an Image value
+fact to the generic producer. The generic missing-element `Undefined` domain
+is unchanged.
+
+The entry slice follows actual immutable ordinary calls from the program entry,
+with actual argument binding, literal and empty Image Array allocations, pushes,
+aliases and finite constant selections in original statement order. Internal
+kind-reset statements write their actual binding to Undefined; they are not
+skipped. An exact
+constant Boolean branch may be followed; unknown branches and loops refuse.
+Every possible ordinary entry of a physical clone must be observed with a
+present Image. Callback-owned, recursive or unknown entries cannot borrow a
+later startup. The same graph supplies lexical bindings, declarations, physical
+allocation sites and immutable callees; it does not issue a generic Image fact.
+
+A separate privately built current-source effect profile permits only its
+listed non-interfering native operations during this walk. Literal Buffer
+construction is entry traversal, not Buffer value authority or global F
+permission. Exact stored-handler registrations preserve their complete bodies.
+Tracked Array aliases and writers must be stable before a registration, and
+subsequent binding reads refuse callback-writable or incomplete writer paths.
+Yielding music calls stop this entry walk. No callback execution is simulated.
+The whole F census still rejects unknown effects in any retained body.
+
+A completed earlier exact entry may remain an effect fact after a later unknown
+operation stops the walk; every possible caller must still be accounted for.
+This does not admit that later operation or authorize a whole resource plan.
+Escaped arrays/functions, unknown heap writers, missing/mixed elements and
+unproved entries retain ordinary fallback. Stateful kind results never become
+invented constant indices. Private clone results cannot promote an ordinary
+backing Array to a resource.
+
+Profiles and entry queries share one Program graph and validate currentness
+before/after synchronous derivation. Only ordinary dense Arrays with the
+parser's known parameter metadata may reach existing graph traversal; caller
+method shadows and null prototypes refuse this optional slice. Retained internal
+lookups expire when that
+derivation returns. Public physical-call queries keep sticky AST and private
+source currentness; restoring an edited AST cannot revive a proof. Compiler
+cloning/lowering still requires the existing fresh final resource proof.
+
+These source controls await affected execution. They do not qualify native
+behavior, fresh SDK preparation or a complete library roundtrip.
+
+
+The optional Image-entry profile observes opaque function identities in metadata
+with the existing physical source snapshot. It never invokes those functions or
+uses their properties or closure state as evidence. A host function in executable
+syntax still refuses the profile. Metadata cannot supply a missing entry, index,
+receiver, or effect. Replacing a metadata identity, container, or descriptor
+expires the profile permanently after observation; restoration cannot revive it.
+Unconsumed properties on an opaque function grant no facts. The stricter original
+source-origin snapshot and private source handoff remain unchanged.
+
+Metadata that entry or lexical/value helpers actually consume remains data:
+optional/default parameter and type metadata have checked container roles and
+function-free descriptor subgraphs. Opaque identities cannot substitute for
+those containers or their nested values. Their data edits retain the same
+sticky currentness fence.
+
+The complete executable body, including nested metadata, must also remain
+host-function-free before helpers run. Only unconsumed Program-level metadata
+can retain opaque function identities; callback-body serialization cannot invoke
+an opaque function through a serializer hook.
+
+If the graph selects whole-Program serialization for a throw-tagged object,
+the complete Program must be function-free too. This check covers ignored
+metadata tags as well as executable throw statements before that helper runs.
+
+Consumed metadata and serializer domains also refuse BigInt data before helpers,
+so unsupported source data cannot escape the optional profile as a serialization
+exception. Unconsumed root metadata still supplies no facts.
+
+
+### Exact overlap-destroy non-exposure slice
+
+The private F effect census may prove one physical zero-argument `destroy()`
+call from an actual unmodified `sprites.onOverlap` callback argument. It follows
+all current lexical writers and aliases, and requires the incoming assignment
+to dominate every immutable direct call entry. Startup null and missing
+initializers remain unchanged; no annotation, variable spelling, kind number,
+raw ID, or general Sprite value/token supplies proof.
+
+This is an exact-call boolean only. It adds no generic Sprite producer, field,
+callable or serialization authority. Mixed/unknown writes, extracted procedures
+or registrations, early ordinary entries and copied/stale calls refuse. Final
+compiler output must be re-proved on its actual current nodes.
+
+Destroy remains an effectful callback/reentry barrier for Image-entry analysis.
+This narrow slice refuses any explicit destroyed-handler registration rather
+than interpreting it as harmless. Whole-source unknown-effect and backing-Array
+escape checks remain mandatory; no body is removed and no callback is run by
+analysis. Focused source controls do not establish native or full-game coverage.
+
+This initial call-entry proof accepts only zero-formal ordinary helper procedures
+and exact zero-argument calls, without optional/default/rest/generic metadata.
+It does not hide unused argument or default-initializer effects behind a call
+entry. Callback parameters remain the exact two incoming overlap parameters.
+
+### Private callback Image-entry invariant
+
+A separate optional invariant can cover an exact indexed Image clone reached
+through an actual overlap callback and immutable ordinary procedure calls.
+The callback remains arbitrarily repeatable; its ordinary entry count is never
+made finite. The proof uses the same current lexical/all-writer/allocation graph
+and the actual startup visit to the exact SDK registration. A single completed
+registration must follow every concrete Array initializer, alias writer and
+push needed by the selected present Image. Other or early entries refuse.
+
+Only complete cells at that boundary are retained. Every possible use and writer
+of the protected allocation is checked across the complete retained Program:
+later rebinding, length/index writes, pushes, unknown calls receiving the Array
+and escaped aliases refuse. A scalar index dependency with a callback writer
+also refuses. The original index expression and all declarations, calls and
+clone operations retain their order; no kind counter or missing value becomes
+zero. All ordinary root entries still need their actual finite visit evidence.
+
+Destroy and yielding calls do not restore the ordinary entry environment. Only
+this distinct globally closed allocation invariant may survive reentry; any
+callback able to mutate or acquire it prevents that proof. No callback runs in
+the analysis. Unknown bodies retain the ordinary full-source F refusal. The
+result is only a same-Program exact-call non-exposure Boolean: no generic Image,
+Number, Sprite, missing-element narrowing, handler value or Array resource
+promotion follows. Mutation permanently expires the private query.
+
+### Exact game-over lifecycle profile for F
+
+An exact current direct `game.gameOver` call with one primitive Boolean literal
+may supply a private lifecycle profile to the complete shared-frame F proof.
+The profile validates the canonical callee and codec only. Full retained-body,
+backing-reference, writer, initialization and entry checks remain the sole
+resource authority. Unknown scene hooks and backing captures retain ordinary
+fallback; no new callback or value domain follows.
+
+Game over may yield, invoke scene handlers, return ordinarily or restart the
+program. Keep its actual call, all following statements, callbacks and errors.
+It is neither a disjoint operation nor a terminal-control-flow assumption.
+The private lifecycle map is separate from ordinary Image-entry call facts:
+entry traversal still stops there and cannot borrow a later initialization or
+invent an Image invariant. No runtime, epoch or cache lifetime changes follow.
+The existing program-start reset and fresh initializer must preserve resource
+identity; Stop alone is not a cache-reset proof. Changed nodes or source and
+failed currentness observations permanently expire the consumed profile.
+
+This intentionally revises the earlier unsupported game-over source control.
+Source and public resource roundtrip controls do not establish native restart,
+pending-callback cleanup, genuine SDK, visible GUI or whole-game compatibility.
+Those affected lifecycle and artifact qualifications remain separate gates.

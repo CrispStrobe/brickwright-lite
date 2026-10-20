@@ -21,7 +21,9 @@ import {licenceOf, REDISTRIBUTABLE} from './extension-licence.js';
 export const RAW_BASE = 'https://raw.githubusercontent.com/';
 
 /** Bounds on what one compile may fetch. */
-export const FETCH_LIMITS = Object.freeze({extensions: 8, filesPerExtension: 64,
+// Authentic Arcade projects in the compatibility corpus need ten packages.
+// Keep finite graph/file/byte bounds while allowing their complete dependency set.
+export const FETCH_LIMITS = Object.freeze({extensions: 16, filesPerExtension: 64,
     bytesPerExtension: 8 * 1024 * 1024, bytesTotal: 32 * 1024 * 1024,
     bytesPerManifest: 256 * 1024, bytesPerLicence: 256 * 1024});
 

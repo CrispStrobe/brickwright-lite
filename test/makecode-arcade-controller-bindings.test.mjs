@@ -1,3 +1,4 @@
+import {ORIGINAL_SPRITE_KINDS as Kinds} from './helpers/arcade-original-kind-values.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
@@ -79,8 +80,8 @@ controller.A.onEvent(ControllerButtonEvent.Pressed,function(){let shot=sprites.c
 game.onUpdateInterval(1000,function(){let food=sprites.createProjectile(img\`44\`,0,0,SpriteKind.Food);food.setPosition(80,70)})`,async run=>{
         const count=run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).find(v=>v.name==='count');assert.equal(Number(count.value),2);
         run.vm.postIOData('keyboard',{key:' ',isDown:true});await stepFrames(run.vm,3);run.vm.postIOData('keyboard',{key:' ',isDown:false});
-        const shot=sprites(run).find(s=>s.kind==='Projectile');assert.equal(shot.x,42);assert.equal(shot.y,35);assert.ok(shot.lifespan>1800);
-        await stepFrames(run.vm,30);const food=sprites(run).find(s=>s.kind==='Food');assert.equal(food.x,80);assert.equal(food.y,70);
+        const shot=sprites(run).find(s=>s.kind===Kinds.Projectile);assert.equal(shot.x,42);assert.equal(shot.y,35);assert.ok(shot.lifespan>1800);
+        await stepFrames(run.vm,30);const food=sprites(run).find(s=>s.kind===Kinds.Food);assert.equal(food.x,80);assert.equal(food.y,70);
     });
 });
 
@@ -90,8 +91,10 @@ test('projectile kind zero follows PXT defaulting and numeric builtins retain id
 let player=sprites.createProjectile(img\`2\`,0,0,SpriteKind.Player)
 let food=sprites.createProjectile(img\`3\`,0,0,2)
 let enemy=sprites.createProjectile(img\`4\`,0,0,3)`,async run=>{
-        assert.deepEqual(sprites(run).map(s=>s.kind),['Projectile','Projectile','Food','Enemy']);
+        assert.deepEqual(sprites(run).map(s=>s.kind),[Kinds.Projectile,Kinds.Player,2,3]);
     });
     const imported=arcadeToPseudocode(`let kind=4;let sprite=sprites.create(img\`1\`,kind)`);
-    assert.ok(imported.unsupported.some(gap=>gap.includes('kind expression support')));
+    assert.deepEqual(imported.unsupported,[],'a numeric dynamic kind is a supported actual kind value');
+    const dynamic=await runProgram(imported.code,{frames:1,uploads:imported.costumes,storage:true});
+    assert.deepEqual(dynamic.errors,[]);assert.equal(sprites(dynamic)[0].kind,4);
 });

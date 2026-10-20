@@ -1207,3 +1207,84 @@ export const connectionLine = (model, catalog, id) => {
     if (!sameLine) return {axis: l0.axis, point: l0.point, round: false, many: true, shaft: l0.shaft, hole: l0.hole};
     return {axis: l0.axis.slice(), point: l0.point.slice(), round: lines.every(l => l.round), many: false, shaft: l0.shaft, hole: l0.hole};
 };
+
+/** At most this many parts turn on a hinge: a bigger side is not offered (and not searched further). */
+export const HINGE_MAX_PARTS = 400;
+
+const onLine = (l, axis, point) => Math.abs(vecDot(l.axis, axis)) >= COS_1 - 1e-12 &&
+    vecLen(vecSub(vecSub(point, l.point), vecScale(l.axis, vecDot(vecSub(point, l.point), l.axis)))) <= 0.5 + 1e-9;
+
+/**
+ * Where a selection can turn on the model like a hinge (Studio's hinge tool, LDD's pivots):
+ * [{axis, point, moving: [ids], fixed: [ids]}], the fewest moving parts first. A hinge is one
+ * round connection line (a pin or an axle in a round hole, a ball in its socket) next to the
+ * selection: cut every joint on it and the selection comes free with everything that hangs
+ * off it (`moving`, the selection first), while the parts across the line (`fixed`) stay. A
+ * joint between two parts is cut only when all their pairs are round and on that line (two
+ * parts held at two places stay together), and the fixed side must be more than the pins on the
+ * line, so an arm pinned at two holes has no hinge.
+ * @param {{parts: object[]}} model
+ * @param {Map|object} catalog
+ * @param {string[]} ids the selection
+ * @param {{maxParts?: number}} [opts]
+ */
+export const hingeCandidates = (model, catalog, ids, {maxParts = HINGE_MAX_PARTS} = {}) => {
+    const catalogMap = asCatalogMap(catalog);
+    const cache = cacheFor(model, catalogMap);
+    if (!ids.length || ids.length > maxParts || ids.some(id => !cache.byId.has(id))) return [];
+    // partId → Map(partner id → [{axis, point, round, shaft (this part's connector is the shaft)}]) of the pairs between them
+    const joints = new Map();
+    const jointsOf = id => {
+        let m = joints.get(id);
+        if (m) return m;
+        m = new Map();
+        const pl = cache.byId.get(id);
+        const mine = connsOf(cache, pl);
+        partnersOf(model, cache, pl).forEach((ps, i) => {
+            for (const p of ps) {
+                const [shaft, hole] = p.mineIsShaft ? [mine[i], p.other] : [p.other, mine[i]];
+                if (!m.has(p.partId)) m.set(p.partId, []);
+                m.get(p.partId).push({axis: hole.axis, point: hole.position, round: isRoundJoin(shaft.type, hole.type), shaft: p.mineIsShaft});
+            }
+        });
+        joints.set(id, m);
+        return m;
+    };
+    // The round lines on the selection's joints and its partners' joints (an axle the selected wheel sits on).
+    const lines = [];
+    const near = new Set(ids);
+    for (const id of ids) for (const other of jointsOf(id).keys()) near.add(other);
+    for (const id of near) {
+        for (const pairs of jointsOf(id).values()) {
+            for (const pr of pairs) {
+                if (pr.round && !lines.some(l => onLine(l, pr.axis, pr.point))) lines.push({axis: pr.axis, point: pr.point});
+            }
+        }
+    }
+    const out = [];
+    for (const line of lines) {
+        const cut = (a, b) => jointsOf(a).get(b).every(pr => pr.round && onLine(line, pr.axis, pr.point));
+        const moving = new Set(ids);
+        const fixed = new Set();
+        const queue = [...ids];
+        let ok = true;
+        while (queue.length && ok) {
+            const id = queue.shift();
+            for (const other of jointsOf(id).keys()) {
+                if (moving.has(other)) continue;
+                if (cut(id, other)) { fixed.add(other); continue; }
+                moving.add(other);
+                queue.push(other);
+                if (moving.size > maxParts) { ok = false; break; }
+            }
+        }
+        // Something across the line must stay (a part reached around it moves after all), and more
+        // than the pins and axles on the line itself (an arm held by two pins is not hinged on one).
+        for (const id of moving) fixed.delete(id);
+        const onlyShaft = id => [...jointsOf(id)].every(([other, prs]) => moving.has(other) && prs.every(pr => pr.shaft && onLine(line, pr.axis, pr.point)));
+        if (!ok || !fixed.size || [...fixed].every(onlyShaft)) continue;
+        if (out.some(c => c.moving.length === moving.size && c.moving.every(id => moving.has(id)))) continue;
+        out.push({axis: line.axis.slice(), point: line.point.slice(), moving: [...moving], fixed: [...fixed]});
+    }
+    return out.sort((a, b) => a.moving.length - b.moving.length);
+};

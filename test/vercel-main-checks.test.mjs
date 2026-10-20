@@ -101,7 +101,7 @@ test('Build guard uses the tested documentation-aware selector without changing 
     assert.match(guard, /\[ "\$EVENT" != "push" \] \|\| \[ "\$REF" != "refs\/heads\/main" \]/);
     assert.match(guard, /node scripts\/verify-vercel-main-checks\.mjs "\$SHA" --superseded >> "\$GITHUB_OUTPUT"/);
     assert.doesNotMatch(guard, /superseded=true/);
-    assert.deepEqual(REQUIRED_BUILD_JOBS, ['build', 'unit (1/2)', 'unit (2/2)', 'browser (light)', 'browser (heavy)', 'corpus', 'fpga surface (flag-on)']);
+    assert.deepEqual(REQUIRED_BUILD_JOBS, ['build', 'unit (1/4)', 'unit (2/4)', 'unit (3/4)', 'unit (4/4)', 'browser (light)', 'browser (heavy)', 'corpus', 'fpga surface (flag-on)']);
 });
 
 test('three executable supersession mutants fail the real selector assertions', async () => {
@@ -252,4 +252,20 @@ test('three executable security mutants fail their real admission assertions wit
     assert.throws(() => assert.ok(missing.problems.length > 0), assert.AssertionError,
         'missing-browser-job bypass mutant must red');
     assert.equal(readFileSync(new URL('../scripts/verify-vercel-main-checks.mjs', import.meta.url), 'utf8'), original);
+});
+
+
+test('every four-way unit leg is required independently; historical two-way success cannot substitute', () => {
+    const legs = REQUIRED_BUILD_JOBS.filter(name => name.startsWith('unit ('));
+    assert.equal(legs.length, 4);
+    const historical = ['unit (1/2)', 'unit (2/2)'].map(name => ({name, status: 'completed', conclusion: 'success'}));
+    for (const name of legs) {
+        const remaining = jobs.filter(job => job.name !== name);
+        assert.ok(validationProblems([run('build')], [...remaining, ...historical], sha).includes(`${name} has not succeeded`));
+        for (const conclusion of ['failure', 'cancelled', 'skipped', null]) {
+            const changed = jobs.map(job => job.name === name ? {...job, conclusion,
+                status: conclusion === null ? 'in_progress' : 'completed'} : job);
+            assert.ok(validationProblems([run('build')], changed, sha).includes(`${name} has not succeeded`));
+        }
+    }
 });

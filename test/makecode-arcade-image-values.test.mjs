@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {EventEmitter} from 'node:events';
+import {createArcadeRuntimeMock, startArcadeProject} from './helpers/arcade-runtime-mock.mjs';
 import BWValues from '../overlay/scratch-vm/src/util/bw-values.js';
 import {runPxtCore} from './helpers/pxt-core-runtime.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
@@ -61,7 +61,7 @@ let untouched=cloned.getPixel(0,0)`;
 });
 
 test('image lookups reject ordinary ID text, foreign scopes and wrong resource kinds',()=>{
-    const Arcade=loadExtensionClass('arcade'),a=new EventEmitter(),b=new EventEmitter();
+    const Arcade=loadExtensionClass('arcade'),a=createArcadeRuntimeMock(),b=createArcadeRuntimeMock();
     const first=new Arcade(a),other=new Arcade(b),image=first.createImage({WIDTH:2,HEIGHT:1}),foreign=other.createImage({WIDTH:2,HEIGHT:1});
     assert.ok(BWValues.isReference(image));assert.equal(image.bwReference.kind,'image');
     assert.equal(String(image),'[object Object]');
@@ -71,5 +71,5 @@ test('image lookups reject ordinary ID text, foreign scopes and wrong resource k
         first.mutateImage({IMAGE:invalid,OP:'fill',COLOR:2});assert.equal(first.cloneImage({IMAGE:invalid}),'');
     }
     assert.equal(first.imagePixel({IMAGE:image,X:0,Y:0}),7);
-    a.emit('PROJECT_START');assert.equal(first.cloneImage({IMAGE:image}),'');
+    startArcadeProject(a);assert.equal(first.cloneImage({IMAGE:image}),'');
 });

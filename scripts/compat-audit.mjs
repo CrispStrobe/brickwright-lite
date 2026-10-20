@@ -8,7 +8,7 @@
  * TurboWarp is clean-room only: the .sb3 mode is a Scratch-format check, with no
  * TurboWarp-specific cases and no TurboWarp-sourced inputs.
  * Usage: node scripts/compat-audit.mjs [--target microbit|arcade] [--out report.json]
- *        [--corpus-commit SHA] [--compile] [--fetch-extensions] [--execute] [--limit N] file-or-directory [...]
+ *        [--corpus-commit SHA] [--compile] [--prepare-extensions] [--fetch-extensions] [--execute] [--limit N] file-or-directory [...]
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -114,6 +114,7 @@ let corpusCommit = null;
 let markdown = null;
 let doCompile = false;
 let fetchExtensions = false;
+let prepareExtensions = false;
 let execute = false;
 let limit = Infinity;
 const inputs = [];
@@ -126,13 +127,14 @@ for (let i = 0; i < args.length; i++) {
     else if (a === '--limit') limit = Number(args[++i]);
     else if (a === '--compile') doCompile = true;
     else if (a === '--fetch-extensions') fetchExtensions = true;
+    else if (a === '--prepare-extensions') prepareExtensions = true;
     else if (a === '--execute') execute = true;
     else if (a.startsWith('-')) throw new Error(`unknown option ${a}`);
     else inputs.push(a);
 }
 if (!inputs.length || !['microbit', 'arcade', 'calliopemini', 'ev3', 'adafruit'].includes(target) ||
     !Number.isFinite(limit) && limit !== Infinity || limit < 0) {
-    console.error('usage: node scripts/compat-audit.mjs [--target microbit|arcade] [--out report.json] [--markdown report.md] [--corpus-commit SHA] [--compile] [--fetch-extensions] [--execute] [--limit N] file-or-directory [...]');
+    console.error('usage: node scripts/compat-audit.mjs [--target microbit|arcade] [--out report.json] [--markdown report.md] [--corpus-commit SHA] [--compile] [--prepare-extensions] [--fetch-extensions] [--execute] [--limit N] file-or-directory [...]');
     process.exit(2);
 }
 
@@ -143,7 +145,7 @@ function collect (name) {
         (inputs.includes(name) && path.extname(name).toLowerCase() === '.png') ? [name] : [];
 }
 
-if (fetchExtensions && !doCompile) throw new Error('--fetch-extensions requires --compile');
+if (fetchExtensions && !doCompile && !prepareExtensions) throw new Error('--fetch-extensions requires --compile or --prepare-extensions');
 
 if (corpusCommit !== null && !/^[a-f0-9]{40}$/i.test(corpusCommit)) throw new Error('--corpus-commit requires a full immutable commit SHA');
 const files = [...new Set(inputs.flatMap(collect))].slice(0, limit);
@@ -205,6 +207,17 @@ async function makecode (file) {
         row.reason = normalize(error);
     }
     row.staticTranslation = {status: row.stage};
+    if (prepareExtensions && row.target === 'arcade') {
+        try {
+            if (!imported.files?.['pxt.json']) throw new Error('Preparation requires complete original project files');
+            const {auditPreparedArcade} = await import('./lib/arcade-prepared-audit.mjs');
+            row.preparedTranslation = (await auditPreparedArcade(imported.files, {fetchExtensions})).report;
+        } catch (error) {
+            row.preparedTranslation = {stage:'preparation-failed',reason:normalize(error),
+                code:error.code || null,extensions:error.extensions || [],refused:error.refused || [],
+                boundary:'Preparation failure retained separately from the unchanged raw translation.'};
+        }
+    }
     if (doCompile && preCompile) row.compile = preCompile;
     else if (doCompile) {
         if (!hasRuntime(row.target)) row.compile = {status: 'unavailable', reason: 'run npm run sync:makecode'};
@@ -333,7 +346,13 @@ for (const file of files) {
 }
 const report = {schema: 'brickwright/compat-audit/v1', generatedAt: new Date().toISOString(),
     provenance: finishProvenance(provenance),
-    compilerPolicy: {extensionFetching: fetchExtensions ? 'explicitly-enabled' : 'offline'},
+    compilerPolicy: {extensionFetching: fetchExtensions ? 'explicitly-enabled' : 'offline',
+        preparedInputs: prepareExtensions ? 'separately-audited' : 'not-requested'},
+    preparedTally: rows.reduce((counts,row)=>{
+        const status=row.preparedTranslation?.stage;
+        if(status)counts[status]=(counts[status] || 0)+1;
+        return counts;
+    },{}),
     qualificationBoundary: 'Static translation, original compilation, and runtime smoke are independent; stepped is not behavioral equivalence.',
     gapRanking: rankGaps(rows, row => [
         ...(row.unsupported || []).map(x => `${row.target}: ${x}`),
@@ -377,5 +396,6 @@ if (markdown) {
         ...(failed.length ? [] : ['| none | none |']), ''];
     fs.writeFileSync(markdown, lines.join('\n'));
 }
-console.log(JSON.stringify({count: report.count, tally, report: out}, null, 2));
-process.exitCode = rows.some(r => ['read-failed', 'parse-failed', 'missing-assets', 'unsupported-blocks'].includes(r.stage)) ? 1 : 0;
+console.log(JSON.stringify({count: report.count, tally, preparedTally:report.preparedTally, report: out}, null, 2));
+process.exitCode = rows.some(r => ['read-failed', 'parse-failed', 'missing-assets', 'unsupported-blocks'].includes(r.stage) ||
+    ['preparation-failed','parse-failed'].includes(r.preparedTranslation?.stage)) ? 1 : 0;

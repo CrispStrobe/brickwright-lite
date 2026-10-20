@@ -1,3 +1,4 @@
+import {ORIGINAL_SPRITE_KINDS as Kinds} from './helpers/arcade-original-kind-values.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -50,14 +51,14 @@ test('a pinned fire game keeps named handles and both event parameters', () => {
     const result = arcadeToPseudocode(source);
     assert.match(result.code, /set mySprite to \(arcade create template/);
     assert.match(result.code, /set fireSource to \(arcade create template/);
-    assert.match(result.code, /arcade register creation kind "FireSource" as "__bwCreated1"/);
+    assert.match(result.code, /arcade register creation kind \(__bwNamespace_SpriteKind_FireSource\) as "__bwCreated1"/);
     assert.match(result.code, /WHEN arcade creation handler "__bwCreated1" runs:/);
     assert.match(result.code, /arcade register interval \(500\) as "__bwInterval1"/);
     assert.match(result.code, /WHEN arcade interval handler "__bwInterval1" runs:/);
-    assert.match(result.code, /arcade register overlap kind "Player" with kind "FireSource" as/);
+    assert.match(result.code, /arcade register overlap kind \(arcade sprite kind value "Player"\) with kind \(__bwNamespace_SpriteKind_FireSource\) as/);
     assert.match(result.code, /arcade set local otherSprite to arcade event second/);
     assert.match(result.code, /arcade destroy arcade local otherSprite/);
-    assert.match(result.code, /arcade set position of \(arcade event first\) x \(pick random 0 to 160\) y \(pick random 0 to 120\)/);
+    assert.match(result.code, /arcade set position of \(arcade event first\) x \(arcade math randomRange first \(\(0 \+ \(0\)\)\) second \(\(0 \+ \(160\)\)\)\) y \(arcade math randomRange first \(\(0 \+ \(0\)\)\) second \(\(0 \+ \(120\)\)\)\)/);
     assert.equal(result.costumes.length, 2);
     assert.match(result.code, /arcade keep mySprite in screen \(compare value \(0\) op "<" with \(1\)\)/);
     assert.match(result.code, /arcade start countdown 3/);
@@ -93,7 +94,7 @@ game.onUpdate(function () { frames += 1; lifeNow = info.life(); if (frames >= 12
     assert.ok((run.calls.get('arcade_destroySprite') || 0) >= 1);
     const live = Object.values(run.vm.runtime.bwArcadeDeviceState?.sprites || {}).filter(s => s.id);
     assert.equal(live.length, 1);
-    assert.equal(live[0].kind, 'Player');
+    assert.equal(live[0].kind, Kinds.Player);
     assert.equal(run.vm.runtime.bwArcadeDeviceState.players[0].life, oracle.lifeNow);
     const exported = projectToArcade(run.creator.project, {costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});
     assert.deepEqual(exported.unsupported, []);
@@ -112,21 +113,28 @@ WHEN flag clicked:
     const run = await runProgram(code, {frames: 60, uploads: [pixelCostume('Game')], storage: true});
     assert.deepEqual(run.errors, []);
     const state = run.vm.runtime.bwArcadeDeviceState;
-    const hero = Object.values(state.sprites).find(sprite => sprite.id && sprite.kind === 'Player');
+    const hero = Object.values(state.sprites).find(sprite => sprite.id && sprite.kind === Kinds.Player);
     // The pinned PXT simulator clamps a 16-wide sprite at x 999 to 153 (measured).
     assert.equal(hero.x, 153);
     assert.equal(state.countdownActive, false);
     assert.notEqual(state.gameOver, true);
 });
 
-test('an active countdown ends the game after its VM frames', async () => {
+test('an active countdown enters the original game-over scene at expiration', async () => {
     const code = `DEVICE ARCADE
 SPRITE Game:
 WHEN flag clicked:
   arcade start countdown 1`;
     const run = await runProgram(code, {frames: 35});
     assert.deepEqual(run.errors, []);
-    assert.equal(run.vm.runtime.bwArcadeDeviceState?.gameOver, true);
+    const extension=run.vm.runtime._arcadeFramePhase.ext;
+    assert.equal(extension._runtime,run.vm.runtime,'observe this real VM instance');
+    assert.equal(extension._gameOverState().over,true,'the actual original terminal operation has begun');
+    assert.equal(extension._sceneStack.length,1,'game over owns its new scene');
+    assert.equal(extension._sceneStack[0].state.countdown,0);
+    assert.equal(extension._sceneStack[0].state.countdownActive,false);
+    run.vm.stopAll();
+    run.vm.quit();
 });
 
 test('MakeCode countdown callback runs at zero and can continue the game', async () => {

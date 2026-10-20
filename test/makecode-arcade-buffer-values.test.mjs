@@ -1,6 +1,6 @@
+import {createArcadeRuntimeMock} from './helpers/arcade-runtime-mock.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {EventEmitter} from 'node:events';
 import {createRequire} from 'node:module';
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
 import {runProgram, stepFrames, clearStrayTimers} from './helpers/bw-vm.mjs';
@@ -67,8 +67,8 @@ test('dynamic hex decoding and literal identity match executed original MakeCode
   const original = await runPxtArcade('let odd = Buffer.fromHex("abc").toHex()\nlet empty = Buffer.fromHex("").length\nlet same = hex`0102` === hex`0102`\nlet different = hex`0102` === hex`0103`');
   assert.equal(fromHex('abc').toHex(), original.odd);
   assert.equal(fromHex('').length, original.empty);
-  const Arcade = loadExtensionClass('arcade'), runtime = new EventEmitter();
-  runtime.startHats = () => [];
+  const Arcade = loadExtensionClass('arcade'), runtime = createArcadeRuntimeMock();
+
   const native = new Arcade(runtime);
   const first = native.bufferLiteral({HEX:'0102'});
   assert.equal(first === native.bufferLiteral({HEX:'0102'}), original.same);
@@ -79,7 +79,7 @@ test('dynamic hex decoding and literal identity match executed original MakeCode
 
 test('Buffer references reject foreign runtimes and expired heaps with explicit diagnostics', () => {
   const Arcade = loadExtensionClass('arcade');
-  const make = () => {const runtime = new EventEmitter(), errors=[]; runtime.startHats=()=>[];runtime.on('BLOCKS_ERROR', e=>errors.push(e));return {runtime,errors,native:new Arcade(runtime)};};
+  const make = () => {const runtime = createArcadeRuntimeMock(), errors=[]; runtime.on('BLOCKS_ERROR', e=>errors.push(e));return {runtime,errors,native:new Arcade(runtime)};};
   const a=make(), b=make(), ref=a.native.createBuffer({SIZE:8});
   assert.equal(a.native.bufferLength({BUFFER:ref}),8);
   b.native.bufferLength({BUFFER:ref}); assert.equal(b.errors.length,1);
@@ -104,7 +104,7 @@ test('all sixteen numeric menu blocks export genuine NumberFormat members, and d
 
 test('one literal source site retains its identity while distinct source sites stay distinct', async () => {
   const original=await runPxtArcade('function make(){return hex`0102`}\nlet a=make()\nlet b=make()\nlet same=a===b');
-  const Arcade=loadExtensionClass('arcade'), runtime=new EventEmitter();runtime.startHats=()=>[];
+  const Arcade=loadExtensionClass('arcade'), runtime=createArcadeRuntimeMock();
   const native=new Arcade(runtime), util=block=>({target:{id:'owner'},thread:{peekStack:()=>block}});
   const a=native.bufferLiteral({HEX:'0102'},util('one'));
   assert.equal(a===native.bufferLiteral({HEX:'0102'},util('one')),original.same);
@@ -123,7 +123,7 @@ test('song playback consumes shared mutable Buffer bytes and exports matching or
   const events=[0,0,4,0,2,24,28,8,0,12,0,1,31];
   const hex=Buffer.from([0,...u16(120),4,8,1,1,0,0,...u16(instrument.length),...instrument,...u16(events.length),...events]).toString('hex');
   const noteOffset=7+4+instrument.length+2+5;
-  const Arcade=loadExtensionClass('arcade'), runtime=new EventEmitter();runtime.startHats=()=>[];
+  const Arcade=loadExtensionClass('arcade'), runtime=createArcadeRuntimeMock();
   const native=new Arcade(runtime), ref=native.bufferFromHex({HEX:hex}), song=native.songFromBuffer({BUFFER:ref});
   const playable=native._musicValue(song,'Playable');
   assert.equal(playable.buf,native._buffer(ref),'createSong keeps the actual buffer, rather than a hex snapshot');
@@ -270,7 +270,7 @@ WHEN flag clicked:
 
 test('native Buffer equality handles explicit null but rejects foreign or stale references', () => {
   const Arcade = loadExtensionClass('arcade');
-  const make = () => {const runtime = new EventEmitter(),errors=[];runtime.startHats=()=>[];runtime.on('BLOCKS_ERROR',e=>errors.push(e));return {runtime,errors,native:new Arcade(runtime)};};
+  const make = () => {const runtime = createArcadeRuntimeMock(),errors=[];runtime.on('BLOCKS_ERROR',e=>errors.push(e));return {runtime,errors,native:new Arcade(runtime)};};
   const a=make(),b=make(),ref=a.native.bufferFromHex({HEX:'0102'});
   assert.equal(a.native.bufferEquals({BUFFER:null,OTHER:null}),true);
   assert.equal(a.native.bufferEquals({BUFFER:ref,OTHER:null}),false);

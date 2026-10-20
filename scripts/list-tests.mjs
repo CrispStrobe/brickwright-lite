@@ -4,7 +4,7 @@
  *
  * `npm test` runs everything. CI splits the suite in two: the `corpus` job runs
  * the two lesson walks (every bench in the catalog, solved twice over — ~14 CPU
- * minutes), and two required unit shards partition the rest as `test:fast:shard`.
+ * minutes), and required unit shards partition the rest as `test:fast:shard`.
  * The local `test:fast` command still runs the complete non-corpus suite. Both the npm
  * scripts and scripts/check-test-run.mjs (which verifies that every file handed
  * to `node --test` actually reported tests) read the split from HERE, so the

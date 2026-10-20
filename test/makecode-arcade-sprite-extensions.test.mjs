@@ -1,3 +1,4 @@
+import BWValues from '../overlay/scratch-vm/src/util/bw-values.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
@@ -33,7 +34,7 @@ async function compare(fixture, {inspectDisplay = false} = {}) {
     // frame's delta time; nothing moves before it, so every step up to and
     // including frame 0 uses the original's frame-0 time.
     const first = Number(expected[0].at(-1)) * 1000;
-    for (let guard = 0; Number(values(run).frame) < 1; guard++) {
+    for (let guard = 0; !(Number(values(run).frame) >= 1); guard++) {
         assert.ok(guard < 200, 'the native recording started');
         await stepFrames(run.vm, 1, first);
     }
@@ -130,4 +131,22 @@ test('darts and corgio diagnostics stay explicit', () => {
         'let c = corgio.create(SpriteKind.Player)\nc.setTrace()',
         'let c = corgio.create()'])
         assert.ok(arcadeToPseudocode(source).unsupported.length, source);
+});
+
+
+test('native sprite extension recordings observe Undefined startup and the initial zero frame',async()=>{
+ const counts={dartThrow:40,dartWindStop:30,dartArrowKeys:20,corgiRun:45,corgiJump:60};
+ for(const [name,fixture]of Object.entries(EXTENSION_TRAJECTORIES)){
+  const imported=arcadeToPseudocode(fixture.source(false));assert.deepEqual(imported.unsupported,[]);
+  const run=await runProgram(imported.code,{frames:0,storage:true,uploads:imported.costumes});
+  try{
+   assert.equal(BWValues.decode(values(run).frame),undefined);
+   for(const button of fixture.pressed)run.vm.postIOData('keyboard',{key:KEYS[button],isDown:true});
+   for(let guard=0;!(Number(values(run).frame)>=1);guard++){assert.ok(guard<200,'native recording starts');await stepFrames(run.vm,1,0);}
+   assert.equal(Number(values(run).frame),1);assert.equal(entries(values(run).trace).length,1);assert.equal(Number(entries(values(run).trace)[0].at(-1)),0);
+   await stepFrames(run.vm,counts[name]-1,20);
+   assert.equal(Number(values(run).frame),counts[name]);assert.equal(entries(values(run).trace).length,counts[name]);
+   assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
+  }finally{run.vm.stopAll();run.vm.quit();clearStrayTimers();}
+ }
 });

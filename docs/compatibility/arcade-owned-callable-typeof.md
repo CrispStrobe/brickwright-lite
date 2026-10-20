@@ -100,3 +100,27 @@ Public admission waits for independent source/current-graph review, affected
 native and authoring controls, exact original qualification and every enabled
 final-head check. No full-game, general higher-order callback, broader library,
 hosted GUI or release claim follows from this bounded lane.
+
+
+## Qualified bounded implementation
+
+Source and current editable blocks now preserve selected MakeCode reflection
+for owned callable values: a captured action reports `object`, while a
+noncapturing label reports `function`. Actual producer/writer, resource, graph,
+capture-use and runtime lifetime checks remain required. Constructor-only
+startup typing comes from a current registered ordinary class allocation and
+its actual arguments. Uninvoked reflection qualifies only the bounded pure
+scalar return body; it does not execute that body to establish support.
+
+One hundred affected native/pure controls passed independent review. The
+source and genuinely edited export both compiled and executed in the selected
+MakeCode runtime with unchanged consumed SDK/bridge bytes. The source observed
+3/4/7 and the edited callback observed 9/16/7, retaining action/label reflection.
+Code, same/fresh saved projects and current export/reimport preserve those
+values. The composed branch also passed the affected callable and shared
+numeric controls using its current VM projection.
+
+This does not admit arbitrary function annotations, opaque callbacks, Sprite
+String carriers, general class inheritance or every uninvoked callback body.
+A visible browser journey that authors callable factories and reflection from
+scratch remains a GUI qualification item. No new word or supplier pin is added.

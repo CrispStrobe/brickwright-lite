@@ -2,8 +2,8 @@
 
 ## Claim and observed gap
 
-Proposed narrow editor ownership contract. Merge this claim before source
-implementation. This repairs the displayed loop arrow of VM-generated extension
+Merged narrow editor ownership contract. The development source candidate is
+not yet execution-qualified. This repairs the displayed loop arrow of VM-generated extension
 blocks; it changes no program or VM execution semantics.
 
 The pinned VM generates a custom loop block image using
@@ -78,3 +78,15 @@ This lane closes a presentation/resource defect only. Device-load observation,
 CLI package resolution, generated browser code provenance and remaining Arcade
 conversion gaps keep their separate gates. See the
 [Arcade handoff](ARCADE-AGENT-HANDOFF.md).
+
+## Development source boundary
+
+The candidate passes the current workspace `options.pathToMedia` and original
+VM metadata through static extension registration. A pure helper clones only
+the exact final generated LOOP-arrow row; default extension colors and other
+icons retain their existing theme behavior. Dynamic factories stay separate.
+Focused controls are authored for immutable JSON, theme/base paths, malformed
+lookalikes, current registration rebuilds and source mirrors. They have not yet
+run on this candidate. Real ScratchBlocks flyout/workspace rebuilding and the
+fresh official artifact journey above remain required; method-boundary fixtures
+do not qualify those visible routes.

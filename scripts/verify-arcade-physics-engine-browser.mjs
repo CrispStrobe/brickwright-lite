@@ -73,6 +73,10 @@ try{
     const cycles=[];
     for(let cycle=0;cycle<2;cycle++){
         await page.getByTestId('bw-arcade-a').click();await waitValue('capObserved',40);
+        // A zero-delta initial frame can observe the velocity cap before any
+        // displacement. Wait for the game's own position observation too;
+        // a stalled engine still fails this bound.
+        await page.waitForFunction(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).some(v=>v.name.replace(/^Game_/,'')==='oldX' && Number(v.value)>20),null,{timeout:30000});
         const capped=await state();assert.equal(capped.phase,1);assert.equal(capped.capObserved,40);assert.ok(capped.oldX>20);assert.ok(capped.oldX<65);
         await page.getByTestId('bw-arcade-b').click();await waitValue('replacementObserved',true);
         const replaced=await state();assert.equal(replaced.phase,2);assert.equal(replaced.oldX,replaced.freezeX);assert.ok(replaced.newX>82);
