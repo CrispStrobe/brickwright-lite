@@ -458,3 +458,18 @@ parse failure. Complete lines and any failed partial write remain available;
 normal completion closes the journal once. A killed process has no invented
 success footer. Full reports remain mandatory before census claims. This
 option neither raises execution limits nor makes an incomplete run successful.
+
+### Compact capture native-brand candidate
+
+An unqualified compact-observer candidate uses captured Node native brand checks
+to skip impossible Map, Set and byte-view slot probes on ordinary records. A
+positive brand still runs the original complete collection or byte operation.
+The existing v1 observer and compact descriptor, sharing, byte and bound rules
+remain the comparison contracts. This requires explicit `node:util` admission;
+there is no prototype, constructor, tag or source annotation shortcut. Normal
+module initialization is assumed, as with the held native observer operations.
+
+The saved diagnostic contains incomplete process-CPU phase intervals, not a
+function-level exception profile. This candidate has no measured speed or
+complete-census fit result. Earlier incomplete attempts and their unknown
+conversion outcomes remain retained.

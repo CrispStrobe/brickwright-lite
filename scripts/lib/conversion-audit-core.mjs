@@ -1,6 +1,7 @@
 /** Actual conversion shared by the audit CLI and bounded conversion consumers.
  * No filesystem, process, compiler, SDK or runtime helper is imported here.
  */
+import {types as observationNativeTypes} from 'node:util';
 import {importProjectFiles, importProjectFilesWithDependencies} from '../../overlay/scratch-gui/src/lib/bw-makecode/index.js';
 import {encodeObservationBytePayload, appendObservationByteField} from './conversion-observation-codec.mjs';
 export {expandConversionObservationGraph} from './conversion-observation-codec.mjs';
@@ -20,6 +21,17 @@ const typedSlots = ['buffer','byteOffset','byteLength'].map(key => descriptor(ty
 const viewSlots = ['buffer','byteOffset','byteLength'].map(key => descriptor(DataView.prototype, key).get);
 const ByteView = Uint8Array;
 const nativeIterator = (method, input) => {try {return observeApply(method, input, []);} catch {return null;}};
+// Compact representation only: nonthrowing native brand predicates avoid
+// allocating wrong-receiver exceptions on ordinary graph records. They read
+// native slots, not prototypes, constructors, tags or supplied properties.
+// Capture in the same normal initial realm as the existing slot operations.
+// Positive membership only selects the ORIGINAL complete operation below;
+// it never supplies entries, byte contents or descriptor/value authority.
+const compactIsMap = observationNativeTypes.isMap;
+const compactIsSet = observationNativeTypes.isSet;
+const compactIsArrayBuffer = observationNativeTypes.isArrayBuffer;
+const compactIsTypedArray = observationNativeTypes.isTypedArray;
+const compactIsDataView = observationNativeTypes.isDataView;
 const nativeBytes = input => {
     try {const length = observeApply(arrayBufferLength, input, []); return new ByteView(input, 0, length);}
     catch { /* Try typed-array and DataView brands without input getters. */ }
@@ -265,9 +277,10 @@ function observeConversionGraph (root, compactBytes) {
         const id = nodes.length; known.set(input, id); const node = {id, kind: 'object', fields: []}; nodes.push(node);
         let byteSnapshot = null; let compactIndexCount = -1;
         if (typeof input === 'function') {node.kind = 'callable'; node.implementation = 'unobserved'; return {ref: id};}
-        const mapIterator = nativeIterator(mapEntries, input);
-        const setIterator = mapIterator ? null : nativeIterator(setValues, input);
-        const bytes = mapIterator || setIterator ? null : nativeBytes(input);
+        const mapIterator = !compactBytes || compactIsMap(input) ? nativeIterator(mapEntries, input) : null;
+        const setIterator = mapIterator || (compactBytes && !compactIsSet(input)) ? null : nativeIterator(setValues, input);
+        const bytes = mapIterator || setIterator || (compactBytes &&
+            !compactIsArrayBuffer(input) && !compactIsTypedArray(input) && !compactIsDataView(input)) ? null : nativeBytes(input);
         if (mapIterator || setIterator) {
             node.kind = mapIterator ? 'map' : 'set'; node.entries = [];
             const iterator = mapIterator || setIterator, next = mapIterator ? mapNext : setNext;
