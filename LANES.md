@@ -1,4 +1,12 @@
-<<<<<<< HEAD
+## Motorised mechanics idea catalogue — 2026-10-20
+
+CLAIMED — Codex, lane/robot-lab-models-20261020 / comprehensive draft PR #1138.
+Original motorised crank-rocker, parallel-motion lift, screw crane and steerable
+rover from the supplied mechanics concepts. Qualify intended motion through the
+VM/Jolt and GUI, geometry, stability and building instructions before bundling.
+Preserve all other worktrees and in-progress core changes; compose published fixes.
+Only original or verified commercially compatible assets may ship, never NC.
+
 ## Robot Lab physics examples and licensed model intake — 2026-10-20
 
 IMPLEMENTED — Codex, lane/robot-lab-models-20261020 / draft PR #1138, depends on #1137.
@@ -36,7 +44,6 @@ decode; the evidence screenshot captures the viewport to avoid Chromium's long-p
 capture failure. Five rover-only real-mesh/hole checks also pass with the existing assertions.
 The broader all-model mesh run was stopped after seven minutes; no full-suite or
 hosted-CI pass and no merge claimed.
-=======
 ## Optional upload parser loading and unchanged P17 budget — 2026-10-20
 
 CLAIMED / DOCS ONLY — Codex GUI integration. This claim must land before
@@ -83,7 +90,6 @@ ultrasonic pinging towards the probe) read by the EV3 listen mode and the NXT ev
 docs/NXT-PROTOCOL-FACTS.md §Sync, §Buttons; docs/ROBOT-LAB-EV3-NXT.md. Tests:
 test/bw-sim-mindstorms-model-limits.test.mjs. Follow-up (after #1127 and #1123): EV3 sync turn ratio and
 buttons, the runtime.robotLab button API and its Lab UI.
->>>>>>> origin/main
 
 ## Robot Lab: cables, Studio mouse, coach marks, Ctrl-glide — 2026-10-20
 
