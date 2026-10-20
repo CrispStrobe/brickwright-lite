@@ -37,12 +37,22 @@ import { BUILTIN_KINDS } from '../kinds/index.js';
 import { createStateRegistry } from './state-registry.js';
 import { createScrewDrives } from './screw.js';
 import { createRopes } from './rope.js';
+import { buildUniversalJoint } from './universal-joint.js';
+import { createRollingResistance } from './rolling.js';
 
 let joltPromise = null;
 
 /** Contact tolerances at LEGO scale, metres (see the PhysicsSettings block below). */
 export const LEGO_SPECULATIVE_CONTACT_M = 0.002;
 export const LEGO_PENETRATION_SLOP_M = 0.0002;
+/**
+ * Impacts slower than this (m/s, along the contact normal) do not bounce, whatever the bodies'
+ * restitution (Jolt's mMinVelocityForRestitution; this is its default, set here on purpose). A part
+ * dropped from 5 cm or more bounces with its material's e (contracts.js MATERIALS); a robot driving
+ * into a wall (SPIKE wheels at full speed: 0.5 m/s) or a part settling does not: at those speeds a
+ * LEGO build's own give (pins, clutch) takes the energy, and every driving calibration stays as it was.
+ */
+export const LEGO_MIN_BOUNCE_SPEED_M_S = 1;
 
 /**
  * Jolt's WebAssembly (3 MB of JavaScript) is imported here, on first use, and not at the
@@ -241,7 +251,9 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     // inside the frame's hole: noCollide). It stays a layer of its own so the
     // ground and obstacles (LAYER_STATIC, no parts) remain distinguishable.
     const LAYER_FRAME = 2;
-    const NUM_OBJECT_LAYERS = 3;
+    // The core's own helper bodies that touch nothing (a universal joint's cross: physics/universal-joint.js).
+    const LAYER_GHOST = 3;
+    const NUM_OBJECT_LAYERS = 4;
 
     const joltSettings = new J.JoltSettings();
     const maxBodies = Math.max(32, mechanism.bodies.length + 16);
@@ -274,6 +286,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     bpInterface.MapObjectToBroadPhaseLayer(LAYER_DYNAMIC, new J.BroadPhaseLayer(0));
     bpInterface.MapObjectToBroadPhaseLayer(LAYER_STATIC, new J.BroadPhaseLayer(1));
     bpInterface.MapObjectToBroadPhaseLayer(LAYER_FRAME, new J.BroadPhaseLayer(1));
+    bpInterface.MapObjectToBroadPhaseLayer(LAYER_GHOST, new J.BroadPhaseLayer(0));
 
     const ovbFilter = new J.ObjectVsBroadPhaseLayerFilterTable(bpInterface, 2, objectLayerPairFilter, NUM_OBJECT_LAYERS);
 
@@ -298,6 +311,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         ps.mSpeculativeContactDistance = LEGO_SPECULATIVE_CONTACT_M;
         ps.mPenetrationSlop = LEGO_PENETRATION_SLOP_M;
         ps.mLinearCastThreshold = 0.25;
+        ps.mMinVelocityForRestitution = LEGO_MIN_BOUNCE_SPEED_M_S;
         physicsSystem.SetPhysicsSettings(ps);
         J.destroy(ps);
     }
@@ -1026,6 +1040,15 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             // rotation by physics/screw.js, once the joint states are known (below).
             screwCouplings.push(g);
             gearInfos.push({ type: 'screw', id: g.id, hingeJoint: g.hingeJoint, sliderJoint: g.sliderJoint, ratio: g.ratio });
+        } else if (g.kind === 'universalJoint') {
+            // kinds/universal-joint.js: a cross on two hinges between the two ends (physics/universal-joint.js).
+            const uj = buildUniversalJoint({ J, c: g, bodyInterface, physicsSystem, bodyOf: getBodyForId, layer: LAYER_GHOST });
+            allBodyIDs.push(uj.bodyID);
+            allConstraints.push(...uj.constraints);
+            // The ends' shafts get a gear's inertia floor: a bare axle (~1e-8 kg·m²) on each side of the cross let a
+            // load on the output stall the drive by turns (the solver's chain end → cross → end did not converge).
+            for (const bid of [g.body1, g.body2]) floorInertia(bid);
+            gearInfos.push({ type: 'universalJoint', id: g.id, body1: g.body1, body2: g.body2 });
         } else if (g.kind === 'turntable') {
             // kinds/turntable.js emits none; a hand-built mechanism naming the kind has nothing to build.
         } else throw new Error(`no physics builder for coupling kind '${g.kind}' (${g.id})`);
@@ -1214,6 +1237,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     const screws = screwCouplings.length
         ? createScrewDrives({ J, couplings: screwCouplings, hingeMap, sliderMap, jointMap, bodyInterface, bodyIdOf: getBodyIDForId, bodyOf: id => (bodyMap.get(id) || {}).body || null, dt: dtFixed })
         : null;
+    // Tyres' rolling resistance (physics/rolling.js), applied before every step.
+    const rolling = createRollingResistance({ J, mechanism, bodyMap, hingeMap, bodyInterface, dt: dtFixed, inertiaOf });
     if (screws) for (const d of screws.drives) floorInertia(mechanism.joints.find(j => j.id === d.c.hingeJoint)[d.sign > 0 ? 'body2' : 'body1']);
 
     /** A slider motor's force limit: in Jolt's MotorSettings, which SaveState does not record. */
@@ -1301,6 +1326,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             physicsSystem, allConstraints, dt: dtFixed })
         : null;
     if (ropes) stateRegistry.register('ropes', ropes.registrant);
+    if (rolling) stateRegistry.register('rolling', rolling.registrant);
     if (dogClutches.length) {
         stateRegistry.register('dogClutches', {
             save: () => dogClutches.map(c => c.engaged),
@@ -1380,6 +1406,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                 if (screws) screws.beforeStep();
                 if (ropes) ropes.beforeStep();
                 if (dogClutches.length) applyDogClutches();
+                if (rolling) rolling.apply();
                 // Re-base every mesh's phase on its hinges' angles now (see the gears' header comment).
                 for (const m of meshes) m.constraint.SetConstraints(m.hinge1, m.hinge2);
                 joltInterface.Step(dtFixed, 1);
@@ -1485,6 +1512,15 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             }
             entry.rotorInertia = I;
             setMotorSteps(entry, j);
+        },
+        /**
+         * A tyred wheel's rolling resistance (physics/rolling.js) as of the last step: {load (N, the
+         * floor's normal force), radius (m), crr}, or null for a body that does not roll.
+         */
+        rollingWheel(bodyId) {
+            ensureAlive();
+            const w = rolling && rolling.wheels.find(x => x.id === bodyId);
+            return w ? { load: w.load, radius: w.radius, crr: w.crr } : null;
         },
         /** A hinge: {angle, velocity} (rad, rad/s); a slider: {position, velocity} (m, m/s), body2 relative to body1 along the axis, zero at t = 0. */
         jointState(jointId) {
@@ -1736,6 +1772,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             if (simShapeFilter) { J.destroy(simShapeFilter); simShapeFilter = null; }
             if (screws) screws.destroy();
             if (ropes) ropes.destroy();
+            if (rolling) rolling.destroy();
             bodyMap.clear(); hingeMap.clear(); sliderMap.clear(); ballMap.clear(); jointMap.clear();
         },
     };

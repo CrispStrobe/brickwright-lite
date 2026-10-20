@@ -73,7 +73,9 @@ export const ev3SensorSi = (type, mode, state) => {
         const mm = Number(probe.rangeMm ?? probe.distance);
         // Nothing echoes within reach, or beyond the sensor's 255 cm.
         const none = !(mm >= 0) || mm > US_NOTHING_CM * 10;
-        if (mode === 2) return [0];
+        // Listen (mode 2, "US-LISTEN", 0..1): 1 while another ultrasonic sensor's ping is heard
+        // (sensors.js usHeard: the scene's other MINDSTORMS ultrasonic sensors pinging towards this one).
+        if (mode === 2) return [Number(probe.usHeard) > 0 ? 1 : 0];
         // The sensor resolves 0.1 cm (and 0.1 in).
         if (mode === 1 || mode === 4 || mode === 6) return [none ? US_NOTHING_IN : Math.round(mm / 25.4 * 10) / 10];
         return [none ? US_NOTHING_CM : Math.round(mm) / 10];
@@ -93,13 +95,14 @@ export const ev3SensorSi = (type, mode, state) => {
 export const ev3SensorPct = (type, mode, state) => {
     const [v] = ev3SensorSi(type, mode, state);
     if (type === EV3_TYPE.touch) return [mode === 1 ? clamp(v, 0, 100) : v ? 100 : 0];
+    if (type === EV3_TYPE.ultrasonic && mode === 2) return [v ? 100 : 0];
     if (type === EV3_TYPE.ultrasonic) return [clamp(Math.round(v * 100 / (mode === 1 ? US_NOTHING_IN : US_NOTHING_CM)), 0, 100)];
     if (type === EV3_TYPE.color && mode === 2) return [Math.round(v * 100 / 7)];
     return [clamp(Math.round(v), -100, 100)];
 };
 
 /** RAW: integers of the SI values (the EV3 sensors are digital: their raw is their value). */
-export const ev3SensorRaw = (type, mode, state) => ev3SensorSi(type, mode, state).map(v => Math.round(type === EV3_TYPE.ultrasonic ? v * 10 : v));
+export const ev3SensorRaw = (type, mode, state) => ev3SensorSi(type, mode, state).map(v => Math.round(type === EV3_TYPE.ultrasonic && mode !== 2 ? v * 10 : v));
 
 /** The SI range of a mode (GET_MINMAX). */
 export const ev3SensorMinMax = (type, mode) => {
