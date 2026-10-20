@@ -4,8 +4,9 @@
 
 The saved failures on [#1128](https://github.com/CrispStrobe/brickwright-lite/pull/1128)
 and [#1132](https://github.com/CrispStrobe/brickwright-lite/pull/1132) are caused by
-this development stack. Main is green. Repair these causes together before one
-normal hosted qualification campaign; do not add another `ci:full` request.
+this development stack. Main is green. The current batch composes the follow-up from #1132 into #1128 for one hosted
+qualification campaign. Keep #1132 parked while that campaign is pending; do
+not push its stale head or add another `ci:full` request.
 Keep runtime ownership guards and original compiler comparisons intact.
 
 | Failure family | Repair and current evidence | Remaining acceptance |
@@ -15,7 +16,7 @@ Keep runtime ownership guards and original compiler comparisons intact.
 | Inert or off-thread Array fixtures | Execute through actual registered blocks, cached inputs and VM threads. Whole reference/table modules pass all 16 tests, zero skips. Strict stale-access errors and unchanged backing contents are checked. | Three other complete modules, 15 tests, retaining original compiler disagreements and TODOs. |
 | Old Arrays carrier | Value and string tests decode the strict registered carrier. Callable controls bind its exact supplier and independent reviewed host/supplier factories; both complete callable modules pass all six tests. Exponentiation uses the same strict reader without changing any of its four test bodies. | Whole exponentiation and affected original-compiler/runtime modules on the current normal installation. |
 | Temporary directory | Unit workflow exports the runner-owned temporary directory; fixtures still require an explicit owned directory. | Final hosted unit step. |
-| GUI dependency scope | Add the two actual procedure-model consumers to the allow-list. | Final hosted strict resolver checks; no blanket allowance. |
+| GUI dependency scope | Add exactly the two actual procedure-model consumers to the allow-list. Both complete affected modules pass all 13 tests, including the tile artwork roundtrip; the recorded strict scope check passes. | Final hosted checks; no blanket allowance. |
 | Importer source contracts | Preserve the normal lazy gateway and its intentional bare share-receiver fallback. Whole UI contract module passes all 12 tests. The prompt mutation matches the current call formatting. | Complete native-prompt module on the normal generated GUI checkout; a local incomplete-checkout run is not a pass. Prompt/confirm audits also decode registered Arrays bodies and add explicit detection controls; their whole modules need hosted qualification. |
 | Notices and vendor fixture | Use the canonical renderer, reject the old carrier, and include the actual vendor helper dependency. Both complete modules pass all 13 tests. | Final hosted checks; licence and pin assertions remain unchanged. |
 | Event/state gate | The complete gate-shape module passes all 11 controls at the composed candidate, without changing its scanner or zero baselines. | Final hosted checks. |
