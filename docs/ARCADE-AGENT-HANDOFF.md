@@ -27,6 +27,18 @@ diagnostics and Stop/quit completion. Final hosted checks, SDK compilation and
 visible authoring remain pending. This does not change the historical36-partial
 count or establish complete-game parity.
 
+A later source-arithmetic candidate has a separately accepted normal installation,
+six passing VM controls, three passing intrinsic-refusal controls and one passing
+importer writer-union control. The original combined native episode retains its
+two fixture failures; its corrected six-test successor passes separately.
+Original SDK export/runtime acceptance is still failed, and the native export
+oracle reaches compilation but rejects asynchronous execution in its synchronous
+oracle. The CSV-only eight-control module passes with the installed Papa parser on
+string inputs; native File/browser and emitted-size qualification remain pending. Read the
+[current work package](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md#current-original-pxt-array-coercion-work-package)
+for the remaining causal repairs and original-runtime acceptance; these results
+do not replace the earlier regression cohorts or qualify the browser failures.
+
 Main has been normally merged into the current integration successor, including
 [PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888) and the latest
 Robot Lab and NXT changes. Supplier [PR52](https://github.com/CrispStrobe/extensions/pull/52)

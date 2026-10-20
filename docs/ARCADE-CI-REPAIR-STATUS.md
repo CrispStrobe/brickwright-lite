@@ -37,6 +37,33 @@ report, original SDK comparisons, visible Blocks/Code/artwork authoring and
 complete playable-game checks remain required. Preserve each original failed
 run and do not re-download or replay successful originals for inspection.
 
+## Source arithmetic and optional parser checkpoint — 2026-10-20
+
+A fresh normal installation reproduces all 364 expected VM files, including five
+changed files. Its saved-data review is accepted. The six complete source
+arithmetic VM controls pass, including opaque resource references, operation
+ownership, late binding retirement and changed decoder dependencies. The three
+intrinsic-refusal diagnostic controls passed in the earlier combined episode;
+that episode also retained two fixture failures. A separate corrected six-test
+episode passes. The complete importer writer-union control also passes. These
+are separate observations, not one clean combined run or a full regression run.
+
+Original SDK acceptance remains open. Initial import and captured-Code results
+match the original runtime, but the complete three-group module fails during
+export and exported execution, then reaches its CPU limit. A native Array export
+oracle confirms native values, aliases, export and compilation of the full file
+map; its separate synchronous PXT execution rejects an asynchronous operation.
+It is not a passing original-runtime oracle. Preserve those failures and use the
+[ordered semantic work package](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md#current-original-pxt-array-coercion-work-package).
+
+The optional parser claim #1140 has landed. The CSV-only candidate preserves
+synchronous picker activation and defers the actual parser until selection.
+Its complete eight-control module passes, including the installed Papa parser
+on string inputs. Native file
+uploads, emitted chunk behavior and the unchanged production budget still need
+qualification. GIF is unchanged. None of these observations promotes a corpus
+entry or closes the outstanding browser failures.
+
 ## Final-campaign integration finding — 2026-10-20
 
 The exact-head hosted x86 controls reported one additional composition failure:
@@ -119,8 +146,10 @@ A candidate refusal diagnostic records the first failed descriptor comparison
 as immutable scalar error metadata. It preserves strict refusal decisions,
 existing error messages and custom Error-factory behavior. The rotation
 and numeric verifiers capture that metadata alongside their original error strings. The
-three new native controls require a fresh composed installation; source review
-alone does not qualify them or establish the polyfill hypothesis.
+three new native controls passed on the fresh composed installation. They
+qualify the refusal observations at that runtime boundary; the exact changed
+intrinsic in the failing browser still requires hosted observation. They do not
+establish the polyfill hypothesis.
 
 These are open failures, not accepted baselines. Compose the concrete repairs
 into one normal push; do not repeat the completed campaign for inspection.

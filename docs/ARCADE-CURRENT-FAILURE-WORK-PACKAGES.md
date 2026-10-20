@@ -57,43 +57,45 @@ bodies for JavaScript primitive conversion. Thus native results `52` and `5`
 disagree with the original compiled results `[object Object]2` and
 `[object Object]`. Keep those original comparisons unchanged.
 
-Implement a source-language operator boundary across import, pseudocode, Blocks,
-runtime, decompilation and export. Do not select semantics from the active device:
-native authored Array projects also use `DEVICE ARCADE`. Do not change generic
-Array coercion or its existing authored roundtrip expectations. Preserve reference
-identity, aliases, current-operation ownership, primitive operand evaluation
-order, exceptions and all export producer proofs. A dedicated MakeCode runtime reporter, fixed Blocks selector and Code/decompiler
-word are now a source candidate with six actual-VM controls. They still require
-a fresh composed installation. Import/export routing remains blocked below;
-the runtime slice alone does not repair original compiler comparisons.
+The candidate now separates source arithmetic from native authored Array
+addition across the runtime word, Blocks selector and frontend routing. The six
+complete source arithmetic VM controls pass on a fresh normal installation;
+three separate intrinsic-refusal controls also pass. A complete importer control
+passes for scalar/Array writer unions and refuses opaque alternatives without
+broadening the existing strict Array-reference proof. Actual Creator selector
+and decompiler controls pass separately. None is a full-suite or SDK result.
 
-The isolated typed native-helper generator, complete-body recognizer and
-flat-operand domain model pass all six current pure controls. The two earlier
-failed candidates remain diagnostic failures: the first mixed helper identity
-with ambient effects, and the second confused formal parameter references
-with calls to their containing helper. The correction retains both independent
-closure checks and every original assertion.
+The complete helper/domain group now passes seven pure controls, including the
+actual exported named-Array getter. Its private analysis reuses the existing
+complete named-helper proof, preserves actual call operands and models only
+proved normal primitive returns. It refuses supplied private tags, aggregate
+JSON text, unknown calls and unproved global or indexed writers. The original
+parser and its errors still execute; no helper name supplies operand authority.
 
-The full candidate remains blocked by an authentic exported named-Array getter.
-Its canonical parse helper returns a primitive for the actual numeric writer,
-but a path-insensitive model includes the unreachable JSON result and loses
-flatness. Reuse the existing exact canonical helper and complete binding/call
-proof. A private domain model may account for the proved non-String primitive
-input domain; actual parser execution, coercion and errors must stay intact.
-JSON text can produce aggregates and cannot gain flat-Array authority.
-Keep global parser bindings, all alias writers and indexed property effects
-closed. Add the retained getter export as a positive control and an aggregate
-JSON-text writer as a negative before fresh runtime qualification.
+The genuine original-SDK three-group module remains failed. Initial imported
+and captured-Code execution reach matching original results, but an export
+scaffold containing `Array.removeElement` is rejected by the native flat-domain
+proof. The separate reference/SB3 group exposes an Array-operation failure; the
+complete attempt ends at its diagnostic CPU limit. Keep these observations
+separate and retain every original comparison. The first repair belongs to the
+actual source producer/effect model; the second needs its actual primitive and
+ownership context. Do not exempt a helper by spelling or silence its error.
 
-These component tests do not qualify original PXT execution, the complete
-import/export composition or native authored roundtrips. Do not infer those
-properties from a helper name or from parser tests.
+A separate native export oracle retains the authored empty, one-element and
+two-element text results in both operand orders, the item result and actual
+alias identity. Native execution, export and full-file compilation pass. The
+unchanged synchronous PXT oracle then rejects an asynchronous operation while
+executing the exact emitted TypeScript. That final stage has not passed. Use an
+original runtime scheduler that supports the emitted program, or prove a valid
+synchronous program boundary; do not replace original shims with a shortcut.
 
-Acceptance includes the complete original coercion module, its alias/cycle/
-undefined/numeric/comparison cases, native Array regression groups and authored
-Code/export/reimport cases, genuine exported PXT compilation, SB3 reload and
-visible creation/editing of the operator blocks. No assertion update, new TODO,
-blanket Array admission or type annotation supplies semantic evidence.
+Next acceptance is the complete original coercion module and native export
+oracle on the corrected source, followed by unchanged native Array regressions,
+authored Code/export/reimport cases, SB3 reload and visible creation/editing of
+the operator blocks. Browser intrinsic diagnostics must identify the exact
+changed descriptor under the failing journey. Native diagnostic success cannot
+supply that browser observation. No assertion update, new TODO, blanket Array
+admission, raised limit or type annotation supplies semantic evidence.
 
 ## Live editor mutation work package
 
@@ -120,11 +122,15 @@ pixel/tile editors and device pane already have lazy boundaries.
 
 The separate documentation claim
 [#1140](https://github.com/CrispStrobe/brickwright-lite/pull/1140) scopes optional
-GIF/CSV parser loading. Land that claim before implementation. Preserve picker
-user activation, parser callbacks and original error identity, disposal and
-cleanup. GIF first-frame timing and synchronous CSV parser throws need explicit
-review. Qualify actual uploads and the existing hosted production ownership gate;
-retain the original over-budget observation and all other chunk checks.
+GIF/CSV parser loading has landed. The CSV-only source candidate opens the
+picker synchronously and acquires the actual parser after selection. Synchronous
+parser throws now reject the owning Promise with the same error and an owned
+cleanup attempt; this is an explicit contract change. Its complete eight-control
+module passes, including the installed Papa parser on string inputs. Qualify
+actual native file uploads, chunk-load failure
+and retry, and the existing hosted production ownership gate. Retain the original
+over-budget observation and every other chunk check. GIF remains unchanged;
+its synchronous first-frame boundary still needs separate review.
 
 | Priority | Current evidence | Concrete next task and acceptance |
 | --- | --- | --- |
