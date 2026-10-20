@@ -106,7 +106,7 @@ const TEXT = {
         challengesTitle: 'Challenges', challengeStart: 'Start', challengeRestart: 'Start again', challengeAgain: 'Try again',
         challengeOthers: 'All challenges', challengeReady: 'Press Run to begin.', challengeTime: '{s} s',
         challengeStars: '{n} of 3 stars', challengeBest: 'Best: {n} of 3 stars, {text}',
-        challengeMeasure: {time: '{v} s', gap: '{v} cm to the wall', overshoot: '{v} cm past the edge'},
+        challengeMeasure: {time: '{v} s', gap: '{v} cm to the wall', overshoot: '{v} cm past the edge', shape: '{v} % off a square'},
         challengeWhy: {offTrack: 'The robot left the line.', touched: 'The robot touched the wall.',
             leftRing: 'The robot left the ring.', timeUp: 'Time is up.'},
         challenges: {
@@ -114,7 +114,8 @@ const TEXT = {
             'wall-stop': {title: 'Stop at the wall', goal: 'Drive at the wall and stop close to it without touching it.'},
             'sumo-stay': {title: 'Stay in the ring', goal: 'Keep the robot inside the ring for 30 seconds.'},
             'maze-goal': {title: 'Through the maze', goal: 'Find the way to the green square.'},
-            'zones-tour': {title: 'Four corners', goal: 'Drive into all four coloured corners, in any order.'}
+            'zones-tour': {title: 'Four corners', goal: 'Drive into all four coloured corners, in any order.'},
+            'draw-square': {title: 'Draw a square', goal: 'Mark a part "Draws on the floor" and drive a square: the squarer, the more stars.'}
         },
         kinds: {distance: 'Distance', color: 'Colour', force: 'Force', touch: 'Touch', light: 'Light', rotation: 'Rotation', tilt: 'Tilt', motion: 'Motion'},
         replay: 'Replay', replayHelp: 'Look back at the last seconds. Run goes on from now.', replayNow: 'now', speedValue: '{n}×',
@@ -218,7 +219,7 @@ const TEXT = {
         challengesTitle: 'Aufgaben', challengeStart: 'Starten', challengeRestart: 'Neu starten', challengeAgain: 'Nochmal',
         challengeOthers: 'Alle Aufgaben', challengeReady: 'Drücke Start, um zu beginnen.', challengeTime: '{s} s',
         challengeStars: '{n} von 3 Sternen', challengeBest: 'Bestes: {n} von 3 Sternen, {text}',
-        challengeMeasure: {time: '{v} s', gap: '{v} cm bis zur Wand', overshoot: '{v} cm über den Rand'},
+        challengeMeasure: {time: '{v} s', gap: '{v} cm bis zur Wand', overshoot: '{v} cm über den Rand', shape: '{v} % neben einem Quadrat'},
         challengeWhy: {offTrack: 'Der Roboter hat die Linie verlassen.', touched: 'Der Roboter hat die Wand berührt.',
             leftRing: 'Der Roboter hat den Ring verlassen.', timeUp: 'Die Zeit ist um.'},
         challenges: {
@@ -226,7 +227,8 @@ const TEXT = {
             'wall-stop': {title: 'Halt an der Wand', goal: 'Fahre auf die Wand zu und halte dicht davor, ohne sie zu berühren.'},
             'sumo-stay': {title: 'Im Ring bleiben', goal: 'Halte den Roboter 30 Sekunden lang im Ring.'},
             'maze-goal': {title: 'Durchs Labyrinth', goal: 'Finde den Weg zum grünen Feld.'},
-            'zones-tour': {title: 'Vier Ecken', goal: 'Fahre in alle vier farbigen Ecken, in beliebiger Reihenfolge.'}
+            'zones-tour': {title: 'Vier Ecken', goal: 'Fahre in alle vier farbigen Ecken, in beliebiger Reihenfolge.'},
+            'draw-square': {title: 'Zeichne ein Quadrat', goal: 'Markiere ein Teil „Malt auf den Boden“ und fahre ein Quadrat: Je quadratischer, desto mehr Sterne.'}
         },
         kinds: {distance: 'Abstand', color: 'Farbe', force: 'Kraft', touch: 'Berührung', light: 'Licht', rotation: 'Drehung', tilt: 'Neigung', motion: 'Bewegung'},
         replay: 'Wiederholung', replayHelp: 'Auf die letzten Sekunden zurückschauen. Start geht ab jetzt weiter.', replayNow: 'jetzt', speedValue: '{n}×',
@@ -1654,7 +1656,9 @@ class SimLabPane extends React.Component {
         for (const o of this.lib.createMat(this.state.mat || 'plain').obstacles) {
             touching[o.id] = parts.some(p => api.touching(p.id, o.id));
         }
-        return {tS, points, touching};
+        // What the pens have drawn (view/pen-layer.js), for "Draw a square".
+        const drawing = this.view && this.view.penStrokes ? this.view.penStrokes() : [];
+        return {tS, points, touching, drawing};
     }
 
     judgeChallenge () {

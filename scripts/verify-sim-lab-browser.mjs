@@ -942,7 +942,8 @@ try {
         await openSimLab(ch, {program: null});
         const c = await challengesInteractions(ch, {shotsDir: artifacts});
         console.log(`PASS challenges: "Stop at the wall" won by the Wall stopper's program (${c.wallStars} stars, ${c.wallGapCm} cm left) and kept as ` +
-            `the best; "Stay in the ring" moves the robot to the sumo mat, where driving straight on leaves the ring after ${c.sumoLostAtS.toFixed(1)} s`);
+            `the best; "Stay in the ring" moves the robot to the sumo mat, where driving straight on leaves the ring after ${c.sumoLostAtS.toFixed(1)} s; ` +
+            `the Drawing robot's program draws a square for "Draw a square" (${c.squareStars} stars, ${c.squareOff} % off)`);
         await ch.close();
         // 27. Pen and paper (scripts/lib/sim-lab-pen-gate.mjs): the castor ball draws the driving base's track.
         const penPage = await browser.newPage({viewport: {width: 1280, height: 800}, serviceWorkers: 'block'});

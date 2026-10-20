@@ -315,8 +315,10 @@ The starting values from §6 were kept: every gate reading lies well inside them
 
 - One per mat (`lib/bw-sim/world/challenges.js`): **One lap** (line oval), **Stop at the wall**,
   **Stay in the ring** (sumo, 30 s), **Through the maze** (to the green cell), **Four corners**
-  (colour zones). Plain and Warehouse have none yet.
-- A judge sees only what someone watching the mat would: the robot's outline on the floor (its
+  (colour zones), **Draw a square** (plain: a part marked "Draws on the floor" draws it; judged
+  once the robot has stopped, the stars for its two sides alike and its end on its start; the
+  Drawing robot's program earns 2). Warehouse has none yet.
+- A judge sees only what someone watching the mat would: what the pens drew, the robot's outline on the floor (its
   parts' collider corners, `partOutline` in the Robot Lab API), which mat obstacles it touches,
   and the simulated time. So it works for every hub, firmware and language.
 - Stars are for how well: a time, the gap to the wall, how far parts went past the ring. The
