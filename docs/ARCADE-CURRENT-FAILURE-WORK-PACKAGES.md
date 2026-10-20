@@ -1,5 +1,23 @@
 # Arcade remaining failure work packages
 
+## Active work order — 2026-10-20
+
+This section supersedes the dated observations below. Read the
+[current handoff](ARCADE-AGENT-HANDOFF.md#current-integration-checkpoint--2026-10-20)
+for their qualification boundaries. Historical raw counts remain 147 translated,
+36 partial and one malformed; **there is no complete current 225-input report**.
+Five full-input attempts remain incomplete. Do not count diagnostic prefixes as
+successful applications or infer a reduced partial count from component tests.
+
+| Priority | Current evidence | Concrete next task and acceptance |
+| --- | --- | --- |
+| 1. Complete conversion assessment | All 131 selected conversion controls and 28 CI contract controls pass. Complete controller-button module: 20 pass. Latest full assessment reaches its unchanged CPU bound without a report. A real-input profile failed saving a large observation; its partial samples are diagnostic only. | Target measured importer/Creator work with semantics-preserving changes; keep public fallback observations, all diagnostics, full input order and existing bounds. Qualify complete affected modules. Obtain and independently read the full 225-input JSON/gzip report before updating counts. |
+| 2. Native Array semantics | Supplier PR52 merged with all seven enabled checks successful. Fresh installation, all 49 native controls and three genuine original/Code/export-reimport executions pass independent saved-data review. Array text remains `5`; Stop/quit cleanup completed. | Preserve these expectations and source identities. Extend actual runtime comparisons when conversion changes affect emitted code; verify unrelated scripts, errors and runtime ownership. These finite scalar cases do not qualify graphics or full games. |
+| 3. Original compiler and simulator | The 41 dependency contexts retain 29 original compiler successes and 12 failures. Six broader controls lack their required original SDK/browser runtime. | Use one final hosted SDK/browser qualification for the actual final candidate, with emitted file maps, assets and dependencies. Preserve original compiler diagnostics. Do not substitute a different SDK or call missing-runtime cases passes. |
+| 4. Diagnostic-led feature work | Historical unsupported constructs are not a fresh census. | Group completed current report diagnostics by construct, source location and project. Implement one family at a time with successful, negative and roundtrip cases. Keep import, Creator, native runtime and original-runtime results separate. |
+| 5. Visible parity | Component and native tests provide no new visible authoring qualification. | Follow the [GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md): create and edit in Blocks and Code, edit graphics/tiles/animation/sound, steer through controllers, save and reopen in a fresh session, then export and import into MakeCode. Retain unsupported-element navigation. |
+| 6. Landing | Current main has been normally composed with the integration work; candidate source still needs final qualification. | Refresh main, preserve other owners' work, run every enabled check at the final head and affected clean guests, then use a matched-head normal merge. Avoid repeated `ci:full` requests during component development. |
+
 ## Latest bounded qualification checkpoint — 2026-10-19
 
 The complete 225-subject CLI assessment has been attempted three times against

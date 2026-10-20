@@ -19,29 +19,37 @@ unchanged scalar/Array expectations and completed Stop/quit cleanup. Their
 independent saved-data review also passed. These finite runtime results do not
 qualify graphics, audio, browser authoring or complete games.
 
-The fourth complete 225-input CLI attempt ended with SIGKILL after 25.08 CPU
+The composed candidate now passes all 131 selected conversion component tests,
+including the Camera reconciliation and compiler-owned empty procedure
+preparation controls. The six complete CI contract modules pass all 28 tests.
+The complete controller-button module separately passes all 20 tests after its
+parsed-delete control was updated to the parser's actual Unary representation.
+These results do not replace SDK, browser or full-corpus qualification.
+
+The fifth complete 225-input CLI attempt ended with SIGKILL after 25.03 CPU
 seconds and did not produce a complete report. **The historical result remains
 147 translated / 36 partial / one malformed; current full-corpus outcomes are
 still unmeasured.** Do not subtract component passes or completed progress rows
-from that count. Saved phase timings identify conversion work as the principal
-cost: approximately 13.04 CPU seconds in import and 8.12 in Creator, compared
-with 2.23 in report capture. These timings cover the observed prefix, not all
-225 inputs or an isolated algorithm benchmark.
+from that count. An independent saved-data check accepted the incomplete-run
+diagnostics. Its inclusive conversion intervals account for 21.04 CPU seconds;
+report-wire capture accounts for 2.34. These are prefix process intervals, not
+exclusive function costs or a benchmark of the full input set.
 
-The original 42 Camera controls on the reconciled candidate exposed nine
-failures. Main intentionally added public enum Number producers, so older
-public-Opaque expectations need explicit migration. Computed/cast members and
-uncertain source also need real producer checks. Preserve shadowing, mutation,
-indexing and alias rejection; compare a declined private proof with the actual
-public fallback instead of assuming that fallback must reject a numeric enum.
+A single real slow input was profiled next. Both importer and Creator returned,
+but saving the full Creator observation exceeded the diagnostic file limit.
+The diagnostic therefore failed; its retained partial profile may identify hot
+functions, but supplies no successful conversion, corpus or speed claim. Keep
+the original failure and separate observer sampling from product sampling.
 
-Next, qualify the narrow procedure-preparation optimization and Camera
-reconciliation, then obtain the complete unchanged 225-input report. Group its
-actual diagnostics by construct and source location, implement each family,
-and qualify Code, Blocks, graphics, controller, save/reopen and export/reimport
-journeys. Keep browser gates for candidates that need them; do not repeatedly
-request `ci:full` while working through component failures. All enabled final
-checks and affected guest qualification remain required before merging.
+Next, improve the measured conversion costs without changing the input set,
+diagnostics, assertions or execution bounds, then obtain the complete unchanged
+225-input report. Group its actual diagnostics by construct and source location,
+implement each family, and qualify Code, Blocks, graphics, controller,
+save/reopen and export/reimport journeys. Six broader SDK controls currently
+lack the original compiler/browser runtime and remain pending for one final
+hosted qualification. Keep browser gates for candidates that need them; do not
+repeatedly request `ci:full` during component work. All enabled final checks and
+affected guest qualification remain required before merging.
 
 The ignored local handoff holds source identities, original evidence, commands
 and active ownership. The dated notes below are historical and retain their
