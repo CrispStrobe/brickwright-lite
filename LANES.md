@@ -1,3 +1,14 @@
+## Robot Lab guided example lessons — 2026-10-21
+
+CLAIMED — Codex, current model-design lane / draft PR #1138. User explicitly asks
+for in-app explanations and lessons following Circuit's example intros. Add lazy,
+offline, bilingual lessons for every registered physical model and preset, with
+what to observe, experiments, physical explanation, predictions/answers and links
+between related mechanisms. Expose reading from example cards and the current
+model, alongside the simulation; preserve model/program loading and responsive
+controls. Verify lesson coverage, content references, EN/DE loading and retry,
+selected-model changes, visibility while running and small-screen layout.
+
 ## Pulse Percussion and original dynamics machine — 2026-10-21
 
 CLAIMED — Codex, existing model-design lane / draft PR #1138. Qualify the supplied
