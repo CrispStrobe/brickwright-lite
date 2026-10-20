@@ -358,3 +358,16 @@ qualification tracked separately.
 - Notice inventory: five hyphenated notice filenames were absent from the earlier inventory. Their current primary bytes and scopes are retained separately; they do not retroactively extend the earlier guarded inputs.
 
 Keep the original failures and immutable census. A successful component suite does not replace the outstanding selected-project, edited-export, native lifecycle or visible-editor gates.
+
+## Vendor and mirror follow-up — 2026-10-20
+
+The next hosted campaign passed the PXT and x86 controls, but found three
+composition omissions in the new source arithmetic word: the canonical compiler
+supplier lacked its dialect row, the tracked GUI package mirror lacked that row,
+and the generated authoring vocabulary had not been refreshed. The debugger
+focused job reports only the mirror mismatch; vendor freshness also reports
+the supplier mismatch and stale generated vocabulary. Their original failures
+are retained. Refresh the mirror and generated file, then deliver the identical
+fixed-selector row to the canonical supplier and explicitly adopt its qualified
+revision. Do not add a divergence exception or relax the identity tests. Final
+composed hosted checks and affected browser qualification remain required.
