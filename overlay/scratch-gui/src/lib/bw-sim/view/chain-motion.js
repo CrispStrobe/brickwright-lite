@@ -4,12 +4,13 @@
 // Chain links that run round in Simulate (kinds/chain.js welds them to the sprockets' frame:
 // the physics does not move them). Each drawn frame, the chain's first sprocket's turn relative
 // to that frame says how far the chain has run, and every link slides that far along the loop
-// the links make (link k takes the pose of the place k + u along it, u in links: positions
+// the links make (link k takes the pose of the place k + u along it, u in links — a link is a chord of
+// the pitch circle, so one link is 2·asin(pitch / 2r) of the sprocket's turn — positions
 // interpolated, rotations slerped between neighbours). Drawing only: the bodies, the contacts
 // and the snapshot stay as the core made them.
 
 import {Quaternion, Vector3} from 'three';
-import {pitchRadiusLdu, dirToWorld} from '../contracts.js';
+import {gearPitchRadius, dirToWorld} from '../contracts.js';
 
 const JOIN_LDU = 2;
 
@@ -90,7 +91,7 @@ export const createChainMotion = ({model, mechanism, catalog, built}) => {
         // The way round: a positive turn about the gear's axis moves its pitch circle along a × (p − c).
         const axisLdu = mulVec(gear.rotation, gearMeta.gear.axis);
         const centre = mulVec(gear.rotation, gearMeta.gear.center).map((x, i) => x + gear.position[i]);
-        const r = pitchRadiusLdu(gearMeta.gear.teeth);
+        const r = gearPitchRadius(gearMeta.gear);
         const onGear = order.find(l => {
             const d = sub(l.pivots[0], centre);
             const axial = dot(d, axisLdu);
@@ -103,7 +104,7 @@ export const createChainMotion = ({model, mechanism, catalog, built}) => {
         const al = new Vector3(...dirToWorld(axisLdu)).applyQuaternion(frameGroup.quaternion.clone().invert()).normalize();
         const meshes = order.map(l => built.partMeshes.get(l.id));
         loops.push({meshes, base: meshes.map(m => ({p: m.position.clone(), q: m.quaternion.clone()})), frameGroup, gearGroup, q0,
-            axis: [al.x, al.y, al.z], perLinkRad: linkConn(byId.get(order[0].id)).data.pitchLdu / r, sense, turned: 0, last: 0});
+            axis: [al.x, al.y, al.z], perLinkRad: 2 * Math.asin(Math.min(1, linkConn(byId.get(order[0].id)).data.pitchLdu / (2 * r))), sense, turned: 0, last: 0});
     }
     if (!loops.length) return null;
     const rel = new Quaternion();

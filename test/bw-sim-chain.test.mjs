@@ -162,13 +162,13 @@ test('in Simulate the links run round: a sprocket turned by one link\'s angle pu
     });
     const motion = createChainMotion({model, mechanism: mech, catalog: CATALOG, built: {bodyGroups, partMeshes}});
     assert.equal(motion.loops, 1);
-    // Turn the first gear of the coupling (the 24T: g24 sorts first) by one link: 16 LDU of its 30 LDU pitch radius.
+    // Turn the first gear of the coupling (the 24T: g24 sorts first) by one link: a 16 LDU chord of its 30 LDU pitch circle.
     const gearBody = mech.bodies.find(b => b.parts.includes('g24'));
     const g = bodyGroups.get(gearBody.id);
     const axis = new Vector3(0, 1, 0); // the gears' axles are vertical (LDraw y), world y
     const steps = 8;
     for (let i = 1; i <= steps; i++) {
-        g.quaternion.copy(new Quaternion().setFromAxisAngle(axis, (16 / 30) * i / steps).multiply(new Quaternion(...gearBody.rotation)));
+        g.quaternion.copy(new Quaternion().setFromAxisAngle(axis, 2 * Math.asin(8 / 30) * i / steps).multiply(new Quaternion(...gearBody.rotation)));
         motion.update();
     }
     const xs = links.map(l => Math.round(partMeshes.get(l.id).position.x * 1e6) / 1e6);
@@ -250,4 +250,41 @@ test('a tracked frame drives: a motor on one sprocket moves it along at the trea
     assert.ok(Math.abs(turned) > omega * seconds * 0.8, `the sprocket turned ${turned} rad`);
     assert.ok(Math.abs(along - expected) / expected < 0.2, `moved ${along.toFixed(4)} m along, the tread's outer face ran ${expected.toFixed(4)} m`);
     assert.ok(Math.abs(p1[0] - p0[0]) < 0.2 * along, `straight on: ${(p1[0] - p0[0]).toFixed(4)} m sideways`);
+});
+
+test('a tread\'s links run round at its sprocket\'s pivot circle: one tooth\'s turn moves each one place', async () => {
+    const {Group, Mesh, Quaternion, Vector3} = await import('three');
+    const {createChainMotion} = await import('../overlay/scratch-gui/src/lib/bw-sim/view/chain-motion.js');
+    const m = treadBench();
+    const r = chainRound(m, CATALOG, ['s1', 's2']);
+    const model = {...m, parts: [...m.parts, ...r.links.map((l, i) => ({id: `t${i}`, ...l}))]};
+    const mech = compile(model, CATALOG, {version: 2});
+    const links = model.parts.filter(p => p.part === '57518.dat');
+    const bodyGroups = new Map(mech.bodies.map(b => {
+        const g = new Group();
+        g.position.set(...b.position);
+        g.quaternion.set(...b.rotation);
+        return [b.id, g];
+    }));
+    const frame = mech.bodies.find(b => b.parts.includes(links[0].id));
+    const partMeshes = new Map(links.map((l, k) => {
+        const mesh = new Mesh();
+        mesh.position.set(k, 0, 0);
+        bodyGroups.get(frame.id).add(mesh);
+        return [l.id, mesh];
+    }));
+    const motion = createChainMotion({model, mechanism: mech, catalog: CATALOG, built: {bodyGroups, partMeshes}});
+    const coupling = mech.couplings.find(c => c.kind === 'chain');
+    const gearBody = mech.bodies.find(b => b.parts.includes(coupling.parts[0]));
+    const g = bodyGroups.get(gearBody.id);
+    // One tooth of ten: 36° about the sprocket's axle (LDraw x, world x).
+    for (let i = 1; i <= 6; i++) {
+        g.quaternion.copy(new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), (2 * Math.PI / 10) * i / 6).multiply(new Quaternion(...gearBody.rotation)));
+        motion.update();
+    }
+    const n = links.length;
+    const delta = links.map((l, k) => ((((partMeshes.get(l.id).position.x - k) % n) + n) % n));
+    // within the closed tread's play: its links sit a fraction of an LDU off the 30 LDU pitch
+    assert.ok(delta.every(d => Math.abs(d - delta[0]) < 2e-3) && [1, n - 1].includes(Math.round(delta[0])) && Math.abs(delta[0] - Math.round(delta[0])) < 2e-3,
+        `each link moved one place: ${delta.map(d => d.toFixed(3))}`);
 });
