@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 export const EXAMPLE_TOPICS = Object.freeze({
+    linkages: {en: 'Linkages & motion conversion', de: 'Gestänge und Bewegungswandlung'},
     motion: {en: 'Motion & traction', de: 'Bewegung & Haftung'},
     sensing: {en: 'Sensors & feedback', de: 'Sensoren & Regelung'},
     forces: {en: 'Forces & gravity', de: 'Kräfte & Schwerkraft'},

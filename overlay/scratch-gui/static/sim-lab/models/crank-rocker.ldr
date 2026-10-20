@@ -1,0 +1,35 @@
+0 crank-rocker — Brickwright motorised mechanics
+0 Name: crank-rocker.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 !BW ID motor
+0 !BW PORT A
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ID frame
+1 72 0 40 0 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID framePin1
+1 0 20 30 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID framePin2
+1 0 -20 30 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID crank
+1 4 0 -60 0 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID crankPin1
+1 0 20 -50 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID crankPin2
+1 0 -20 -50 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID pinB
+1 71 40 -70 0 0 1 0 1 0 0 0 0 -1 3673.dat
+0 !BW ID coupler
+1 14 90 -80 -33.166248 -0.552771 0 0.833333 0 1 0 -0.833333 0 -0.552771 32524.dat
+0 !BW ID pinC
+1 71 123.333333 -90 -55.27708 0 1 0 1 0 0 0 0 -1 3673.dat
+0 !BW ID rocker
+1 1 115.555556 -100 -36.851387 -0.921285 0 0.388889 0 1 0 -0.388889 0 -0.921285 32316.dat
+0 !BW ID axleD
+1 4 100 -30 0 0 1 0 1 0 0 0 0 -1 3707.dat
+0 !BW ID hub
+1 71 0 130 100 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID hubPin-60
+1 0 -60 50 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hubPin60
+1 0 60 50 0 0 1 0 1 0 0 0 0 -1 2780.dat

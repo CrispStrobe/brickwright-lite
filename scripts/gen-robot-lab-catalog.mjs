@@ -7,6 +7,10 @@ const root = new URL('../', import.meta.url);
 const catalog = catalogFrom(JSON.parse(readFileSync(new URL('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json', root))));
 // The topic and challenge describe an observable physical effect, not just the model's shape.
 const lessons = {
+    'crank-rocker': ['linkages', 'A rotating crank makes the output rock. Compare its measured angle with the four-bar loop equation.', 'Eine umlaufende Kurbel bewegt die Schwinge. Vergleiche ihren Winkel mit der Viergelenk-Gleichung.'],
+    'parallel-lift': ['linkages', 'Equal side links keep the tray level while its path curves. Physical stops limit the lifting sweep.', 'Gleich lange Seiten halten die Bühne waagerecht, obwohl sie einer Kurve folgt. Anschläge begrenzen den Hub.'],
+    'screw-crane': ['forces', 'Motor A lifts the boom through a screw actuator; C slews it through an 8:28 reduction. Compare turns, extension and boom height.', 'Motor A hebt den Ausleger über eine Spindel; C schwenkt ihn mit 8:28-Untersetzung. Vergleiche Umdrehungen, Hub und Höhe.'],
+    'pivot-rover': ['motion', 'A/B drive; C steers the front bogie within ±20°. Free front half-shafts allow different wheel speeds. Compare pivot steering with Ackermann geometry.', 'A/B fahren; C lenkt den Drehschemel innerhalb ±20°. Freie vordere Halbachsen erlauben unterschiedliche Raddrehzahlen. Vergleiche mit Ackermann-Lenkung.'],
     'driving-base': ['motion', 'Differential steering: vary the wheel speeds to change the turning radius.', 'Differenziallenkung: Ändere die Raddrehzahlen und damit den Kurvenradius.'],
     'line-follower': ['sensing', 'Feedback control: use reflected light to steer along a line.', 'Regelung: Nutze reflektiertes Licht, um einer Linie zu folgen.'],
     'wall-stopper': ['sensing', 'Stopping distance: compare the distance reading with the braking motion.', 'Anhalteweg: Vergleiche den Abstandsmesswert mit der Bremsbewegung.'],

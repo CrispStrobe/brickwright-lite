@@ -169,6 +169,62 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "Brickwright contributors",
         "license": "BSD-3-Clause"
     },
+    "crank-rocker.ldr": {
+        "pieces": 15,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "A rotating crank makes the output rock. Compare its measured angle with the four-bar loop equation.",
+            "de": "Eine umlaufende Kurbel bewegt die Schwinge. Vergleiche ihren Winkel mit der Viergelenk-Gleichung."
+        },
+        "author": "Brickwright contributors",
+        "license": "BSD-3-Clause"
+    },
+    "parallel-lift.ldr": {
+        "pieces": 23,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Equal side links keep the tray level while its path curves. Physical stops limit the lifting sweep.",
+            "de": "Gleich lange Seiten halten die Bühne waagerecht, obwohl sie einer Kurve folgt. Anschläge begrenzen den Hub."
+        },
+        "author": "Brickwright contributors",
+        "license": "BSD-3-Clause"
+    },
+    "screw-crane.ldr": {
+        "pieces": 44,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "Motor A lifts the boom through a screw actuator; C slews it through an 8:28 reduction. Compare turns, extension and boom height.",
+            "de": "Motor A hebt den Ausleger über eine Spindel; C schwenkt ihn mit 8:28-Untersetzung. Vergleiche Umdrehungen, Hub und Höhe."
+        },
+        "author": "Brickwright contributors",
+        "license": "BSD-3-Clause"
+    },
+    "pivot-rover.ldr": {
+        "pieces": 30,
+        "motors": 3,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "motion",
+        "description": {
+            "en": "A/B drive; C steers the front bogie within ±20°. Free front half-shafts allow different wheel speeds. Compare pivot steering with Ackermann geometry.",
+            "de": "A/B fahren; C lenkt den Drehschemel innerhalb ±20°. Freie vordere Halbachsen erlauben unterschiedliche Raddrehzahlen. Vergleiche mit Ackermann-Lenkung."
+        },
+        "author": "Brickwright contributors",
+        "license": "BSD-3-Clause"
+    },
     "chain-transmission.ldr": {
         "pieces": 59,
         "motors": 1,
