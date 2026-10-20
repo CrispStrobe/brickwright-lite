@@ -1,6 +1,6 @@
 ## Robot Lab survey rover model — 2026-10-20
 
-CLAIMED — Codex, lane/robot-lab-models-20261020. Original compact SPIKE rover:
+IMPLEMENTED; local qualification in progress — Codex, lane/robot-lab-models-20261020. Original compact SPIKE rover:
 two drive motors and an independently tilting distance-sensor head, LDraw model,
 example program, three model registries, focused physics/program/instruction tests
 and documentation. Based on main plus the flex4 model-support lane. Preserve

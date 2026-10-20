@@ -12,6 +12,29 @@ The Robot Lab is **its own editor tab**, after Blocks, Costumes, Sounds, Code an
 
 **The program it runs** is the project's, on the green flag (Run), through the project's hub: today the virtual SPIKE Prime, behind the VirtualHub boundary (docs/ROBOT-LAB-ARCHITECTURE.md R1); the tab knows nothing SPIKE-specific, so other hubs plug in at that boundary.
 
+## Survey rover: three motors and a nodding sensor head
+
+Choose **Survey rover** / **Erkundungsrover**, load its example program and press
+Run on the Plain mat. Motors **A/B** drive the wheels; **C** tilts the distance
+sensor on **D**. The rover homes its head, drives 10 cm to a survey point, looks
+30° up and 30° down, returns the head to level, and reverses 10 cm to its start.
+The Readings panel shows D; the example demonstrates movement and head positioning,
+without using distance readings to navigate. Keep manual head movements within
+±30° so the sensor cable does not wind around the motor.
+
+The original 30-part model uses catalogue parts and a rear ball castor to support
+the head's weight. The head uses **hold** after each positioning move: passive
+braking alone lets gravity turn it. Instructions are generated from its actual
+connections, including separate pin-insertion steps. Every motor is available to
+the motor mixer, Robot Lab blocks and the API.
+
+`test/bw-sim-survey-rover.test.mjs` checks the connections and solid overlaps,
+instruction continuity, all three motors under load, independent API control,
+and the shipped program through the Scratch VM and virtual SPIKE hub. It measures
+the outward trip, return position, head travel and chassis stability; an omitted
+return trip must fail its position judge. These are simulation checks, not a
+physical LEGO build qualification.
+
 ## The toolbar
 
 One row of grouped icon buttons (`sim-lab-toolbar.jsx`, words in `sim-lab-toolbar-text.js`, EN and DE). Every button has its name as its accessible name and a tooltip with the name and the shortcut, e.g. *“Turn 90° (R)”* / *“Um 90° drehen (R)”*, *“Undo (Ctrl+Z)”* / *“Rückgängig (Strg+Z)”*. Icons are inline SVG strokes, as the Code tab's icon is: no icon font, no new dependency.

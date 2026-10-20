@@ -52,6 +52,7 @@
       "test/bw-sim-dc-motor.test.mjs",
       "test/bw-sim-excavator.test.mjs",
       "test/bw-sim-forklift.test.mjs",
+      "test/bw-sim-survey-rover.test.mjs",
       "test/bw-sim-gear-trains.test.mjs",
       "test/bw-sim-gearbox-program.test.mjs",
       "test/bw-sim-gearbox.test.mjs",

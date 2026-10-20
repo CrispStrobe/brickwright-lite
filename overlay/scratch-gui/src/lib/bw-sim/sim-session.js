@@ -85,6 +85,8 @@ export const MODELS = Object.freeze([
     // Pen and paper (architecture M15): the driving base, its castor ball a pen.
     {file: 'drawing-robot.ldr', title: {en: 'Drawing robot', de: 'Malroboter'},
         example: 'drawing-robot.bw', mat: 'plain'},
+    {file: 'survey-rover.ldr', title: {en: 'Survey rover', de: 'Erkundungsrover'},
+        example: 'survey-rover.bw', mat: 'plain'},
     {file: 'excavator.ldr', title: {en: 'Excavator', de: 'Bagger'},
         example: 'excavator.bw', mat: 'plain'},
     // The LEGO MINDSTORMS RCX (hubs/rcx/, docs/ROBOT-LAB-RCX.md): its examples are NQC (`.nqc`), compiled
