@@ -122,6 +122,8 @@ const MESH_VELOCITY_STEPS = 120;
 const GEAR_POSITION_STEPS = 10;
 /** A slider spring (kinds/shock.js) pushes with at most this (N): far beyond a LEGO spring, never the limit. */
 const SPRING_MAX_FORCE_N = 50;
+/** A chain whose sprockets' ratio is this close to 1 is driven 1:1 by the GearConstraint (kinds/chain.js). */
+const CHAIN_EQUAL = 1e-3;
 /** A rubber band's drive: few velocity steps, so it slips under a load a chain would carry. */
 const BELT_VELOCITY_STEPS = 4;
 
@@ -930,13 +932,16 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             gearInfos.push({ type: 'gear', id: g.id, joint1: g.joint1, joint2: g.joint2, ratio: g.ratio });
         } else if (g.kind === 'chain') {
             // kinds/chain.js: a chain round two gears in one frame turns them the same way at the teeth's
-            // ratio. The fork's GearConstraint on the two hinges' relative rates (torque × ratio), not a tooth
-            // contact: for two equal sprockets that contact would sit at infinity on the line of centres.
-            chainDrive(g.id, jointMap.get(g.joint1), jointMap.get(g.joint2), g.ratio);
+            // ratio: the tooth contact a gear mesh has (GearMeshConstraint), its point outside the two on the
+            // line of centres (as an internal gear's). Two equal sprockets would put it at infinity: those get
+            // the fork's GearConstraint on the two hinges (exact at 1:1, but measured 27 % off at 16:24).
+            if (Math.abs(Math.abs(g.ratio) - 1) < CHAIN_EQUAL) chainDrive(g.id, jointMap.get(g.joint1), jointMap.get(g.joint2), g.ratio);
+            else hingeMesh(g.id, jointMap.get(g.joint1), jointMap.get(g.joint2), g.ratio);
             gearInfos.push({ type: 'chain', id: g.id, joint1: g.joint1, joint2: g.joint2, ratio: g.ratio });
         } else if (g.kind === 'band') {
             // kinds/belt.js: a rubber band round pulleys, the chain's coupling with few velocity steps, so it gives under load.
-            chainDrive(g.id, jointMap.get(g.joint1), jointMap.get(g.joint2), g.ratio, { velocitySteps: BELT_VELOCITY_STEPS });
+            if (Math.abs(Math.abs(g.ratio) - 1) < CHAIN_EQUAL) chainDrive(g.id, jointMap.get(g.joint1), jointMap.get(g.joint2), g.ratio, { velocitySteps: BELT_VELOCITY_STEPS });
+            else hingeMesh(g.id, jointMap.get(g.joint1), jointMap.get(g.joint2), g.ratio, { velocitySteps: BELT_VELOCITY_STEPS });
             gearInfos.push({ type: 'band', id: g.id, joint1: g.joint1, joint2: g.joint2, ratio: g.ratio });
         } else if (g.kind === 'rope') {
             ropeCouplings.push(g);

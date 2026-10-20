@@ -88,3 +88,38 @@ test('differential: the held side stops, the other turns twice the casing; drive
     assert.ok(relErr(held.l, 2 * held.c) <= REL_TOL, `left = 2 × casing (${held.l / held.c})`);
     assert.ok(relErr(along.l + along.r, 2 * along.c) <= REL_TOL, 'left + right = 2 × casing');
 });
+
+test('chain drive: the 24T sprocket turns the motor\'s way at 16:24, forward and back', async t => {
+    const {modelText, program} = shipped('chain-drive.ldr');
+    const {track, issues, mechanism: m} = await runOnSimLab(program, {modelText, timeLimitMs: 8000});
+    assert.deepEqual(issues.filter(i => i.severity === 'error'), []);
+    assert.equal(m.couplings.filter(c => c.kind === 'chain').length, 1, 'one chain');
+    const motor = m.joints.find(j => j.motor && j.motor.port === 'A');
+    const driven = m.joints.find(j => j.type === 'hinge' && (j.body2 === bodyOf(m, 'drivenAxle') || j.body1 === bodyOf(m, 'drivenAxle')));
+    const expected = partTeeth(modelText, 'sprocketSmall') / partTeeth(modelText, 'sprocketBig');
+    for (const [t0, t1, way] of [[1000, 3800, 'forward'], [4800, 6800, 'back']]) {
+        const ratio = rate(track, driven.id, t0, t1) / rate(track, motor.id, t0, t1);
+        t.diagnostic(`${way}: driven/motor ${ratio.toFixed(4)} (want +${expected.toFixed(4)})`);
+        assert.ok(Math.abs(rate(track, motor.id, t0, t1)) > 2, `${way}: the motor turns`);
+        assert.ok(relErr(ratio, expected) <= REL_TOL, `${way}: ${ratio} = +${expected}, the same way round`);
+    }
+});
+
+test('drawing robot: its castor ball is a pen, and the program drives it round a 20 cm square', async t => {
+    const {modelText, program} = shipped('drawing-robot.ldr');
+    assert.match(modelText, /0 !BW ID ball\r?\n0 !BW PEN\r?\n/, 'the castor ball draws');
+    const {track, issues, mechanism: m} = await runOnSimLab(program, {modelText, timeLimitMs: 25000});
+    assert.deepEqual(issues.filter(i => i.severity === 'error'), []);
+    // The square is the robot's: the hub, between the wheels, drives its sides; the ball behind them
+    // swings round each corner on the turn (its line is the square with loops at the corners).
+    const at = id => track.filter(f => f.bodies[id]).map(f => [f.bodies[id].position[0] * 100, f.bodies[id].position[2] * 100]);
+    const spanOf = path => [0, 1].map(k => Math.max(...path.map(p => p[k])) - Math.min(...path.map(p => p[k])));
+    const centre = at(bodyOf(m, 'hub'));
+    const ball = at(bodyOf(m, 'ball'));
+    const span = spanOf(centre);
+    const gap = Math.hypot(centre.at(-1)[0] - centre[0][0], centre.at(-1)[1] - centre[0][1]);
+    t.diagnostic(`the robot's square spans ${span.map(v => v.toFixed(1)).join(' × ')} cm and ends ${gap.toFixed(1)} cm from its start; the ball's line ${spanOf(ball).map(v => v.toFixed(1)).join(' × ')} cm`);
+    for (const v of span) assert.ok(v > 17 && v < 26, `a square about 20 cm across: ${span}`);
+    assert.ok(gap < 10, `it comes round near where it started (the turns stop a little late): ${gap.toFixed(1)} cm`);
+    assert.ok(spanOf(ball).every((v, k) => v > span[k]), 'the ball\'s line swings wider at the corners');
+});

@@ -360,9 +360,10 @@ The starting values from §6 were kept: every gate reading lies well inside them
   go into another part.
 - Simulate (`lib/bw-sim/kinds/chain.js`, architecture M6): links join where a pivot of one is on a
   pivot of the next; a chain goes round a gear when two of its pivots are on the gear's pitch
-  circle. Gears on hinges in one frame then turn the same way at the teeth's ratio (the fork's
-  `GearConstraint` on the two hinges; a step-up is built the other way round, as |mRatio| < 1
-  diverges). The links are welded to the frame: in the core they do not move, but the view runs
+  circle. Gears on hinges in one frame then turn the same way at the teeth's ratio (the core couples
+  them as a gear mesh, the tooth contact outside the two sprockets on their line of centres; two
+  equal sprockets, whose contact would be at infinity, get the fork's `GearConstraint` on both
+  hinges, exact at 1:1 — it was measured 27 % off at 16:24, so it is used for nothing else). The links are welded to the frame: in the core they do not move, but the view runs
   them round with their first sprocket (`view/chain-motion.js`: each link slides along the loop of
   the links' places by the chain's travel).
   So a chain in a Studio or LDraw file works as well: the detector reads the links, not a record
@@ -377,8 +378,11 @@ The starting values from §6 were kept: every gate reading lies well inside them
   bore as a pin hole, so it could only be an idler.
 - Warnings: a chain round fewer than two gears; gears whose axles sit in different parts; a gear
   fixed to the frame locks the chain.
-- Tests: `test/bw-sim-chain.test.mjs` (the path, the compile, the real core: 8T→24T turns +1/3,
-  two 8Ts 1:1, links running round, a tread's wheels, a tracked frame driving);
+- Example models: **Chain drive** (the motor's 16T and a 24T, its program turns it both ways) and
+  **Drawing robot** (the driving base, its castor ball a pen; its program draws a square), in the
+  model list (`sim-session.js` MODELS; `test/bw-sim-gearbox-program.test.mjs` runs both programs).
+- Tests: `test/bw-sim-chain.test.mjs` (the path, the compile, the real core: 8T→24T turns +1/3, a
+  16T +1/2, two 8Ts 1:1, links running round, a tread's wheels, a tracked frame driving);
   `test/bw-sim-part-meta.test.mjs` (the sprocket's teeth from the mesh, its pivot chord the tread's
   pitch); gate `scripts/lib/sim-lab-chain-gate.mjs` (`--part=editor`).
 
