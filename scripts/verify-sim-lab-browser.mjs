@@ -161,6 +161,7 @@ import {openRobotLabTab, tool, toolbarInteractions} from './lib/sim-lab-toolbar-
 import {scaleInteractions, OPEN_BUDGET_MS, DRAW_CALL_BUDGET, BUILD_OPEN_BUDGET_MS, IDLE_FRAME_BUDGET_MS, POINTER_MOVE_BUDGET_MS,
     DRAG_LINK_BUDGET, UNDO_DRAW_BUDGET, UNDO_SHOT_BUDGET_MS} from './lib/sim-lab-scale-gate.mjs';
 import {brakingBound, judgeWallStop} from './lib/sim-lab-wall-stopper-judge.mjs';
+import {surveyRoverInteractions} from './lib/sim-lab-survey-rover-gate.mjs';
 import {STEP_MS} from '../overlay/scratch-gui/src/lib/bw-sim/hub-bridge.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -244,7 +245,7 @@ const WORKER_LATENCY = Number((process.argv.find(a => a.startsWith('--worker-lat
  * the whole program slows down instead of running ahead of the world, and the wait has to allow it.
  */
 const wallBudget = simMs => 240000 + Math.ceil(simMs / (1000 / 30)) * (2 * WORKER_LATENCY + 20);
-/** `--examples=a,b` runs only those example robots in the examples part (line-follower, wall-stopper, colour-explorer, forklift, sumo, timed-drive). */
+/** `--examples=a,b` runs only those example robots in the examples part (line-follower, wall-stopper, colour-explorer, survey-rover, forklift, sumo, timed-drive). */
 const ONLY_EXAMPLES = (process.argv.find(a => a.startsWith('--examples=')) || '').slice('--examples='.length).split(',').filter(Boolean);
 const runExample = file => !ONLY_EXAMPLES.length || ONLY_EXAMPLES.includes(file.replace(/\.ldr$/, ''));
 
@@ -722,6 +723,16 @@ try {
             assert.ok(rec.restMm < 2, `the ${example.name} is not at rest: ${JSON.stringify(rec)}`);
             console.log(`PASS the ${example.name}'s example program, loaded from the pane, ${example.judge(rec)}`);
             await ex.close();
+        }
+
+        if (runExample('survey-rover.ldr')) {
+            const rover = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            rover.on('pageerror', error => errors.push(error.message));
+            rover.on('dialog', dialog => dialog.accept());
+            const result = await surveyRoverInteractions(rover, {openSimLab,
+                shotsDir: resolve(artifacts, 'survey-rover'), timeout: wallBudget(13000)});
+            console.log(`PASS Survey rover: ${JSON.stringify(result)}`);
+            await rover.close();
         }
 
         if (runExample('forklift.ldr')) {

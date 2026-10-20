@@ -117,6 +117,10 @@ test('Survey rover: the actual example drives 10 cm, nods both ways, homes the h
     assert.deepEqual(result.run.unsupported, []);
     const r = judge(result);
     t.diagnostic(JSON.stringify(r));
+    const distances = result.track.map(f => f.readings.D.distance).filter(Number.isFinite);
+    t.diagnostic(`distance sensor range: ${Math.min(...distances)}..${Math.max(...distances)}`);
+    assert.ok(distances.length > 20, 'the moving sensor reports through the hub');
+    assert.ok(distances.some(d => d > 0) && distances.some(d => d === -1), 'the tilting sensor sees both floor and open space');
     assert.ok(r.outward > 0.085 && r.outward < 0.12, '10 cm outward');
     assert.ok(r.returned < 0.015, 'returns within 15 mm');
     assert.ok(r.low < -25 && r.high > 25 && r.low > -35 && r.high < 35, 'head nods +/-30 degrees');

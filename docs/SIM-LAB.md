@@ -22,7 +22,7 @@ The Readings panel shows D; the example demonstrates movement and head positioni
 without using distance readings to navigate. Keep manual head movements within
 ±30° so the sensor cable does not wind around the motor.
 
-The original 30-part model uses catalogue parts and a rear ball castor to support
+The original 28-part model uses catalogue parts and a rear ball castor to support
 the head's weight. The head uses **hold** after each positioning move: passive
 braking alone lets gravity turn it. Instructions are generated from its actual
 connections, including separate pin-insertion steps. Every motor is available to
