@@ -81,6 +81,35 @@ export const PART_FRICTION = 0.4;
 export const GROUND_FRICTION = 0.8;
 
 /**
+ * What a part is made of (PartMeta `material`, default PART_MATERIAL): the surface numbers the physics
+ * core gives the body that part makes its island touch the ground with (mech/islands.js: the grippiest
+ * part's). docs/ROBOT-LAB-VALIDATION.md "Materials" has the sources and the limits.
+ *   friction            Coulomb coefficient (Jolt combines two bodies' as √(μ1·μ2)); a part's own
+ *                       `friction` still wins over its material's.
+ *   restitution         e, the speed ratio of a bounce (rebound height = e²·drop height). Jolt combines two
+ *                       bodies' as max(e1, e2), so the floor is 0 (GROUND_RESTITUTION) and a part's own e is
+ *                       the pair's. Estimates, not measurements, and held LOW on purpose: ABS 0.1 (on a hard table a
+ *                       brick bounces more, e ≈ 0.4, but Jolt's continuous collision resolves a fast body's impact at
+ *                       ONE body's contact point, so a part landing across two others at once gets a spurious spin
+ *                       from any larger e: a 2 × 4 brick dropped 20–100 cm across two loose beams turned over with
+ *                       e 0.2–0.4 and lands flat with 0.1, measured; docs/ROBOT-LAB-VALIDATION.md "Materials"),
+ *                       a LEGO tyre 0.05 (soft rubber on a hollow rim). Only impacts faster than
+ *                       physics/jolt-core.js LEGO_MIN_BOUNCE_SPEED_M_S bounce.
+ *   rollingResistance   c_rr, the rolling drag over the normal load (physics/rolling.js: a torque c_rr·N·r on a
+ *                       tyred wheel's body). Rubber on a hard floor 0.010–0.025 (a drum rig's deceleration
+ *                       method: Hungarian Journal of Industry and Chemistry, "Laboratory Measurement of Rolling
+ *                       Resistance Coefficient under Different Conditions", hjic.mk.uni-pannon.hu/index.php/hjic/article/view/1197);
+ *                       a LEGO tyre on a vinyl mat 0.02. Hard plastic rolling on its rim is not modelled (0).
+ */
+export const MATERIALS = Object.freeze({
+    abs: Object.freeze({friction: PART_FRICTION, restitution: 0.1, rollingResistance: 0}),
+    rubber: Object.freeze({friction: 1, restitution: 0.05, rollingResistance: 0.02})
+});
+export const PART_MATERIAL = 'abs';
+/** The floor (a printed mat on a table) takes the bounce out of nothing: with Jolt's max rule a part's own e counts. */
+export const GROUND_RESTITUTION = 0;
+
+/**
  * @typedef {[number, number, number]} Vec3
  * @typedef {[number, number, number, number]} Quat   x, y, z, w (unit)
  * @typedef {[number, number, number, number, number, number, number, number, number]} Mat3
@@ -133,6 +162,7 @@ export const GROUND_FRICTION = 0.8;
  *   massGrams: number,
  *   friction?: number,            Coulomb friction coefficient of the part surface, 0..2;
  *                                 default PART_FRICTION (hard plastic). A tyred wheel is ~1.
+ *   material?: string,            a MATERIALS key (default PART_MATERIAL 'abs'); a tyred wheel is 'rubber'
  *   connectors: Connector[],
  *   colliders: Collider[],
  *   gear?: {type: string, teeth: number, axis: Vec3, center: Vec3},
@@ -243,7 +273,8 @@ export const portRefOf = placed => {
  *   gravity: Vec3,
  *   bodies: {id: string, motion: 'static'|'dynamic', position: Vec3, rotation: Quat,
  *            massKg: number, com?: Vec3, colliders: Collider[], parts: string[],
- *            friction?: number, restitution?: number, color?: number, mat?: string}[],
+ *            friction?: number, restitution?: number, rollingResistance?: number, color?: number, mat?: string}[],
+ *     (restitution 0..1 and rollingResistance ≥ 0: MATERIALS; c_rr acts on a body that turns on a hinge)
  *   joints: ({id: string, type: 'hinge', body1: string, body2: string, point: Vec3, axis: Vec3,
  *             motor?: {port: string, maxTorqueNm: number, maxSpeedRadPerSec: number, deviceId?: number}} |
  *            {id: string, type: 'slider', body1: string, body2: string, point: Vec3, axis: Vec3} |
@@ -344,6 +375,9 @@ export const validatePartMeta = (meta, {connectorKinds = null} = {}) => {
     }
     if (meta.friction !== undefined && !(isNum(meta.friction) && meta.friction >= 0 && meta.friction <= 2)) {
         out.push(`${p}.friction: need a number in 0..2`);
+    }
+    if (meta.material !== undefined && !Object.prototype.hasOwnProperty.call(MATERIALS, meta.material)) {
+        out.push(`${p}.material: '${meta.material}' is not one of ${Object.keys(MATERIALS).join('|')}`);
     }
     if (!Array.isArray(meta.connectors)) out.push(`${p}.connectors: not an array`);
     else {
@@ -718,6 +752,10 @@ const checkMechanismV1 = (m, out, v2 = false, jointTypes = JOINT_TYPES_V1) => {
         if (!Array.isArray(b?.parts)) out.push(`${w}.parts: not an array`);
         if (b?.color !== undefined && !(Number.isInteger(b.color) && b.color >= 0 && b.color <= 10)) out.push(`${w}.color: need an integer 0..10`);
         if (b?.mat !== undefined && typeof b.mat !== 'string') out.push(`${w}.mat: need a string`);
+        if (b?.restitution !== undefined && !(isNum(b.restitution) && b.restitution >= 0 && b.restitution <= 1)) out.push(`${w}.restitution: need a number in 0..1`);
+        if (b?.rollingResistance !== undefined && !(isNum(b.rollingResistance) && b.rollingResistance >= 0 && b.rollingResistance < 1)) {
+            out.push(`${w}.rollingResistance: need a number in 0..1`);
+        }
     });
     const joints = new Map();
     uniqueIds(m.joints, 'joints', out);
