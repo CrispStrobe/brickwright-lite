@@ -213,7 +213,7 @@ export function lowerNativeArrayBinaryHelpers(program,profile=GENERATED_HELPER_P
     }
     const rewrite=node=>{
         if(!node||typeof node!=='object')return node;
-        if(Array.isArray(node))return node.filter(value=>!removed.has(value)).map(rewrite);
+        if(Array.isArray(node)){const next=mapGeneratedSourceArray(node,rewrite);return node.some(value=>removed.has(value))?next.filter((value,index)=>!removed.has(node[index])):next;}
         if(calls.has(node))return {type:'NativeArrayValueBinary',op:'+',left:rewrite(node.args[0]),right:rewrite(node.args[1])};
         return Object.fromEntries(Object.entries(node).map(([key,value])=>[key,metadata.has(key)?value:rewrite(value)]));
     };
