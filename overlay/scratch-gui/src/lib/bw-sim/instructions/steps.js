@@ -18,8 +18,8 @@
 //     bush on an axle, counts with it as one cluster) goes in the step where
 //     the second thing it joins is placed: a pin with the beam it holds on, an
 //     axle with the wheel it carries; one that joins only one part goes with it;
-//   - steps hold about STEP_TARGET parts, at most STEP_MAX unless one part
-//     brings more fasteners with it;
+//   - steps hold about STEP_TARGET parts; long fastener clusters are split
+//     into connected pages of at most STEP_MAX parts;
 //   - an editor group (`0 !BW GROUP`) whose parts hold together is a
 //     sub-assembly: built in its own steps (drawn alone) right before the step
 //     that attaches it to the model.
@@ -53,7 +53,7 @@ import {partHubProfile} from '../contracts.js';
 import {WRAPPED_GEARS, linksJoin, pivotsOnGear} from '../kinds/chain.js';
 import {placedSpur, placedTooth} from '../kinds/tooth-parts.js';
 
-/** Parts per derived step the walk aims for, and the most it puts in one (unless one part brings more fasteners). */
+/** Parts per derived step the walk aims for, and the maximum per insertion page. */
 export const STEP_TARGET = 4;
 export const STEP_MAX = 6;
 
@@ -220,7 +220,7 @@ const pinsFirst = (steps, adjacency, meta, groups) => {
                 const unit = new Set([seed]); const queue = [seed];
                 while (queue.length) {
                     for (const n of adjacency.get(queue.shift()) || []) {
-                        // A bush held only by its axle goes in with that axle. A stud half-pin
+                        // Retaining bushes follow their axle in connected insertion order. A stud half-pin
                         // also touches the plate it will carry, so it remains a separate stage.
                         if (fastenerSet.has(n) && !unit.has(n) && !selected.has(n) &&
                             [...(adjacency.get(n) || [])].every(id => isFastener(meta(id)))) {
@@ -232,7 +232,11 @@ const pinsFirst = (steps, adjacency, meta, groups) => {
                 for (const id of unit) { first.push(id); selected.add(id); }
             }
             if (first.length) {
-                pieces.push({parts: first, pins: true});
+                // Long shafts can carry more collars than fit on one manual page.
+                // Breadth-first order keeps each chunk attached to the shaft already placed.
+                for (let i = 0; i < first.length; i += STEP_MAX) {
+                    pieces.push({parts: first.slice(i, i + STEP_MAX), pins: true});
+                }
                 for (const id of first) built.add(id);
                 rest = rest.filter(id => !first.includes(id));
                 continue;

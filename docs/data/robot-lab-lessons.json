@@ -1,0 +1,1430 @@
+{
+  "version": 1,
+  "profiles": {
+    "driving-base": {
+      "en": {
+        "what": "Two driven wheels share one chassis. Their speed difference changes the path.",
+        "try": [
+          "Reset, load the example program and run it. Watch the path rather than only the encoder values.",
+          "Stop the program. Use equal motor settings, then make one wheel slower.",
+          "Reset and reverse both wheels. Predict the curve before moving."
+        ],
+        "why": "Each wheel covers its own distance. Equal wheel speeds produce translation; a difference rotates the chassis. Opposite speeds can turn it nearly on the spot.",
+        "matters": "The same geometry steers mobile robots and tracked vehicles.",
+        "question": "What happens when one wheel travels farther than the other?",
+        "answer": "The chassis curves toward the slower wheel. Equal magnitudes in opposite directions largely cancel translation.",
+        "further": [
+          "Compare a broad curve with a tight turn.",
+          "Try the pivot-steered rover: its front wheels steer mechanically."
+        ]
+      },
+      "de": {
+        "what": "Zwei angetriebene Räder tragen dasselbe Fahrgestell. Ihre Drehzahldifferenz verändert den Weg.",
+        "try": [
+          "Zurücksetzen, Beispielprogramm laden und starten. Beobachte den Weg, nicht nur die Encoderwerte.",
+          "Stoppe das Programm. Wähle gleiche Motorwerte und mache dann ein Rad langsamer.",
+          "Setze zurück und kehre beide Räder um. Sage die Kurve vorher."
+        ],
+        "why": "Jedes Rad legt seinen eigenen Weg zurück. Gleiche Raddrehzahlen verschieben das Fahrgestell; unterschiedliche drehen es. Entgegengesetzte Drehzahlen erlauben fast eine Drehung auf der Stelle.",
+        "matters": "So lenken mobile Roboter und Kettenfahrzeuge.",
+        "question": "Was geschieht, wenn ein Rad mehr Weg zurücklegt?",
+        "answer": "Das Fahrgestell fährt zur langsameren Seite. Gleiche Beträge in entgegengesetzter Richtung heben die Verschiebung weitgehend auf.",
+        "further": [
+          "Vergleiche eine weite und eine enge Kurve.",
+          "Vergleiche den Rover mit mechanischer Vorderachslenkung."
+        ]
+      },
+      "formula": {
+        "en": "v = (vR + vL) / 2;  yaw rate = (vR − vL) / track width",
+        "de": "v = (vR + vL) / 2;  Gierrate = (vR − vL) / Spurweite"
+      },
+      "related": [
+        "pivot-rover.ldr"
+      ]
+    },
+    "boost-rover": {
+      "en": {
+        "what": "Two driven wheels share one chassis. Their speed difference changes the path.",
+        "try": [
+          "Reset, load the example program and run it. Watch the path rather than only the encoder values.",
+          "Stop the program. Use equal motor settings, then make one wheel slower.",
+          "Reset and reverse both wheels. Predict the curve before moving."
+        ],
+        "why": "Each wheel covers its own distance. Equal wheel speeds produce translation; a difference rotates the chassis. Opposite speeds can turn it nearly on the spot.",
+        "matters": "The same geometry steers mobile robots and tracked vehicles.",
+        "question": "What happens when one wheel travels farther than the other?",
+        "answer": "The chassis curves toward the slower wheel. Equal magnitudes in opposite directions largely cancel translation.",
+        "further": [
+          "Compare a broad curve with a tight turn.",
+          "Try the pivot-steered rover: its front wheels steer mechanically."
+        ]
+      },
+      "de": {
+        "what": "Zwei angetriebene Räder tragen dasselbe Fahrgestell. Ihre Drehzahldifferenz verändert den Weg.",
+        "try": [
+          "Zurücksetzen, Beispielprogramm laden und starten. Beobachte den Weg, nicht nur die Encoderwerte.",
+          "Stoppe das Programm. Wähle gleiche Motorwerte und mache dann ein Rad langsamer.",
+          "Setze zurück und kehre beide Räder um. Sage die Kurve vorher."
+        ],
+        "why": "Jedes Rad legt seinen eigenen Weg zurück. Gleiche Raddrehzahlen verschieben das Fahrgestell; unterschiedliche drehen es. Entgegengesetzte Drehzahlen erlauben fast eine Drehung auf der Stelle.",
+        "matters": "So lenken mobile Roboter und Kettenfahrzeuge.",
+        "question": "Was geschieht, wenn ein Rad mehr Weg zurücklegt?",
+        "answer": "Das Fahrgestell fährt zur langsameren Seite. Gleiche Beträge in entgegengesetzter Richtung heben die Verschiebung weitgehend auf.",
+        "further": [
+          "Vergleiche eine weite und eine enge Kurve.",
+          "Vergleiche den Rover mit mechanischer Vorderachslenkung."
+        ]
+      },
+      "formula": {
+        "en": "v = (vR + vL) / 2;  yaw rate = (vR − vL) / track width",
+        "de": "v = (vR + vL) / 2;  Gierrate = (vR − vL) / Spurweite"
+      },
+      "related": [
+        "pivot-rover.ldr"
+      ]
+    },
+    "sumo": {
+      "en": {
+        "what": "Two driven wheels share one chassis. Their speed difference changes the path.",
+        "try": [
+          "Reset, load the example program and run it. Watch the path rather than only the encoder values.",
+          "Stop the program. Use equal motor settings, then make one wheel slower.",
+          "Reset and reverse both wheels. Predict the curve before moving."
+        ],
+        "why": "Each wheel covers its own distance. Equal wheel speeds produce translation; a difference rotates the chassis. Opposite speeds can turn it nearly on the spot.",
+        "matters": "The same geometry steers mobile robots and tracked vehicles.",
+        "question": "What happens when one wheel travels farther than the other?",
+        "answer": "The chassis curves toward the slower wheel. Equal magnitudes in opposite directions largely cancel translation.",
+        "further": [
+          "Compare a broad curve with a tight turn.",
+          "Try the pivot-steered rover: its front wheels steer mechanically."
+        ]
+      },
+      "de": {
+        "what": "Zwei angetriebene Räder tragen dasselbe Fahrgestell. Ihre Drehzahldifferenz verändert den Weg.",
+        "try": [
+          "Zurücksetzen, Beispielprogramm laden und starten. Beobachte den Weg, nicht nur die Encoderwerte.",
+          "Stoppe das Programm. Wähle gleiche Motorwerte und mache dann ein Rad langsamer.",
+          "Setze zurück und kehre beide Räder um. Sage die Kurve vorher."
+        ],
+        "why": "Jedes Rad legt seinen eigenen Weg zurück. Gleiche Raddrehzahlen verschieben das Fahrgestell; unterschiedliche drehen es. Entgegengesetzte Drehzahlen erlauben fast eine Drehung auf der Stelle.",
+        "matters": "So lenken mobile Roboter und Kettenfahrzeuge.",
+        "question": "Was geschieht, wenn ein Rad mehr Weg zurücklegt?",
+        "answer": "Das Fahrgestell fährt zur langsameren Seite. Gleiche Beträge in entgegengesetzter Richtung heben die Verschiebung weitgehend auf.",
+        "further": [
+          "Vergleiche eine weite und eine enge Kurve.",
+          "Vergleiche den Rover mit mechanischer Vorderachslenkung."
+        ]
+      },
+      "formula": {
+        "en": "v = (vR + vL) / 2;  yaw rate = (vR − vL) / track width",
+        "de": "v = (vR + vL) / 2;  Gierrate = (vR − vL) / Spurweite"
+      },
+      "related": [
+        "pivot-rover.ldr"
+      ]
+    },
+    "line-follower": {
+      "en": {
+        "what": "A light sensor measures reflected brightness while the drive motors steer.",
+        "try": [
+          "Select the example with its line mat and run from Reset.",
+          "Watch the sensor reading as it crosses the line edge.",
+          "Change the threshold or steering correction in the program, then Reset and compare."
+        ],
+        "why": "The controller repeatedly measures, compares with a target and changes motor output. Excessive correction makes the robot zigzag; insufficient correction loses the edge.",
+        "matters": "Feedback compensates for a path that is not known in advance.",
+        "question": "Why does a faster correction not always improve tracking?",
+        "answer": "A large correction can overshoot the edge before the next measurement, making the next correction reverse it.",
+        "further": [
+          "Compare gentle and aggressive correction at the same speed.",
+          "Try distance feedback in the wall-stopper."
+        ]
+      },
+      "de": {
+        "what": "Ein Lichtsensor misst die reflektierte Helligkeit, während die Motoren lenken.",
+        "try": [
+          "Wähle das Beispiel mit seiner Linienmatte und starte nach Zurücksetzen.",
+          "Beobachte den Sensorwert am Rand der Linie.",
+          "Ändere Schwelle oder Lenkkorrektur im Programm, setze zurück und vergleiche."
+        ],
+        "why": "Der Regler misst wiederholt, vergleicht mit einem Sollwert und verändert die Motorleistung. Eine zu starke Korrektur erzeugt Zickzack; eine zu schwache verliert die Kante.",
+        "matters": "Rückkopplung folgt einem Weg, der vorher nicht vollständig bekannt ist.",
+        "question": "Warum ist eine stärkere Korrektur nicht immer besser?",
+        "answer": "Der Roboter kann die Kante vor der nächsten Messung überschießen. Die folgende Korrektur muss ihn wieder zurücklenken.",
+        "further": [
+          "Vergleiche sanfte und starke Korrektur bei gleicher Geschwindigkeit.",
+          "Erkunde die Abstandsregelung beim Wandstopper."
+        ]
+      },
+      "formula": {
+        "en": "error = measured reflection − target reflection",
+        "de": "Regelfehler = gemessene Reflexion − Sollwert"
+      },
+      "related": [
+        "wall-stopper.ldr"
+      ]
+    },
+    "rcx-line-follower": {
+      "en": {
+        "what": "A light sensor measures reflected brightness while the drive motors steer.",
+        "try": [
+          "Select the example with its line mat and run from Reset.",
+          "Watch the sensor reading as it crosses the line edge.",
+          "Change the threshold or steering correction in the program, then Reset and compare."
+        ],
+        "why": "The controller repeatedly measures, compares with a target and changes motor output. Excessive correction makes the robot zigzag; insufficient correction loses the edge.",
+        "matters": "Feedback compensates for a path that is not known in advance.",
+        "question": "Why does a faster correction not always improve tracking?",
+        "answer": "A large correction can overshoot the edge before the next measurement, making the next correction reverse it.",
+        "further": [
+          "Compare gentle and aggressive correction at the same speed.",
+          "Try distance feedback in the wall-stopper."
+        ]
+      },
+      "de": {
+        "what": "Ein Lichtsensor misst die reflektierte Helligkeit, während die Motoren lenken.",
+        "try": [
+          "Wähle das Beispiel mit seiner Linienmatte und starte nach Zurücksetzen.",
+          "Beobachte den Sensorwert am Rand der Linie.",
+          "Ändere Schwelle oder Lenkkorrektur im Programm, setze zurück und vergleiche."
+        ],
+        "why": "Der Regler misst wiederholt, vergleicht mit einem Sollwert und verändert die Motorleistung. Eine zu starke Korrektur erzeugt Zickzack; eine zu schwache verliert die Kante.",
+        "matters": "Rückkopplung folgt einem Weg, der vorher nicht vollständig bekannt ist.",
+        "question": "Warum ist eine stärkere Korrektur nicht immer besser?",
+        "answer": "Der Roboter kann die Kante vor der nächsten Messung überschießen. Die folgende Korrektur muss ihn wieder zurücklenken.",
+        "further": [
+          "Vergleiche sanfte und starke Korrektur bei gleicher Geschwindigkeit.",
+          "Erkunde die Abstandsregelung beim Wandstopper."
+        ]
+      },
+      "formula": {
+        "en": "error = measured reflection − target reflection",
+        "de": "Regelfehler = gemessene Reflexion − Sollwert"
+      },
+      "related": [
+        "wall-stopper.ldr"
+      ]
+    },
+    "wall-stopper": {
+      "en": {
+        "what": "Distance feedback changes a moving robot’s commands near an obstacle.",
+        "try": [
+          "Use the example’s supplied mat and program, then Reset and run.",
+          "Compare the distance reading with the actual gap at the front of the robot.",
+          "Change the stopping threshold or speed and repeat from the same start."
+        ],
+        "why": "A range measurement comes from the sensor position and direction. The chassis still moves while commands and braking take effect. A safe threshold must allow for sensor mounting and motion.",
+        "matters": "Mobile robots need space to react before reaching a wall.",
+        "question": "Does a sensor reading of 5 cm mean every front part is 5 cm from the wall?",
+        "answer": "No. The sensor can sit behind the foremost part, and its ray measures along its own direction.",
+        "further": [
+          "Compare two speeds using one threshold.",
+          "For the maze, inspect why a turn changes the next ray direction."
+        ]
+      },
+      "de": {
+        "what": "Eine Abstandsrückmeldung verändert die Fahrbefehle nahe einem Hindernis.",
+        "try": [
+          "Nutze Matte und Programm des Beispiels, setze zurück und starte.",
+          "Vergleiche den Sensorwert mit dem wirklichen Abstand der Roboterfront.",
+          "Ändere Stoppschwelle oder Geschwindigkeit und starte erneut gleich."
+        ],
+        "why": "Die Entfernung wird vom Sensorort in Blickrichtung gemessen. Während Befehle und Bremsung wirken, fährt das Fahrgestell weiter. Die Schwelle muss Montageort und Bewegung berücksichtigen.",
+        "matters": "Mobile Roboter brauchen Reaktionsweg vor einer Wand.",
+        "question": "Sind bei 5 cm Sensorwert alle vorderen Teile 5 cm von der Wand entfernt?",
+        "answer": "Nein. Der Sensor kann hinter dem vordersten Teil sitzen und misst entlang seines eigenen Strahls.",
+        "further": [
+          "Vergleiche zwei Geschwindigkeiten mit derselben Schwelle.",
+          "Beobachte im Labyrinth, wie eine Drehung die Messrichtung verändert."
+        ]
+      },
+      "formula": {
+        "en": "reaction travel ≈ speed × response time",
+        "de": "Reaktionsweg ≈ Geschwindigkeit × Reaktionszeit"
+      },
+      "related": [
+        "survey-rover.ldr"
+      ]
+    },
+    "ev3-wall-stopper": {
+      "en": {
+        "what": "Distance feedback changes a moving robot’s commands near an obstacle.",
+        "try": [
+          "Use the example’s supplied mat and program, then Reset and run.",
+          "Compare the distance reading with the actual gap at the front of the robot.",
+          "Change the stopping threshold or speed and repeat from the same start."
+        ],
+        "why": "A range measurement comes from the sensor position and direction. The chassis still moves while commands and braking take effect. A safe threshold must allow for sensor mounting and motion.",
+        "matters": "Mobile robots need space to react before reaching a wall.",
+        "question": "Does a sensor reading of 5 cm mean every front part is 5 cm from the wall?",
+        "answer": "No. The sensor can sit behind the foremost part, and its ray measures along its own direction.",
+        "further": [
+          "Compare two speeds using one threshold.",
+          "For the maze, inspect why a turn changes the next ray direction."
+        ]
+      },
+      "de": {
+        "what": "Eine Abstandsrückmeldung verändert die Fahrbefehle nahe einem Hindernis.",
+        "try": [
+          "Nutze Matte und Programm des Beispiels, setze zurück und starte.",
+          "Vergleiche den Sensorwert mit dem wirklichen Abstand der Roboterfront.",
+          "Ändere Stoppschwelle oder Geschwindigkeit und starte erneut gleich."
+        ],
+        "why": "Die Entfernung wird vom Sensorort in Blickrichtung gemessen. Während Befehle und Bremsung wirken, fährt das Fahrgestell weiter. Die Schwelle muss Montageort und Bewegung berücksichtigen.",
+        "matters": "Mobile Roboter brauchen Reaktionsweg vor einer Wand.",
+        "question": "Sind bei 5 cm Sensorwert alle vorderen Teile 5 cm von der Wand entfernt?",
+        "answer": "Nein. Der Sensor kann hinter dem vordersten Teil sitzen und misst entlang seines eigenen Strahls.",
+        "further": [
+          "Vergleiche zwei Geschwindigkeiten mit derselben Schwelle.",
+          "Beobachte im Labyrinth, wie eine Drehung die Messrichtung verändert."
+        ]
+      },
+      "formula": {
+        "en": "reaction travel ≈ speed × response time",
+        "de": "Reaktionsweg ≈ Geschwindigkeit × Reaktionszeit"
+      },
+      "related": [
+        "survey-rover.ldr"
+      ]
+    },
+    "maze-runner": {
+      "en": {
+        "what": "Distance feedback changes a moving robot’s commands near an obstacle.",
+        "try": [
+          "Use the example’s supplied mat and program, then Reset and run.",
+          "Compare the distance reading with the actual gap at the front of the robot.",
+          "Change the stopping threshold or speed and repeat from the same start."
+        ],
+        "why": "A range measurement comes from the sensor position and direction. The chassis still moves while commands and braking take effect. A safe threshold must allow for sensor mounting and motion.",
+        "matters": "Mobile robots need space to react before reaching a wall.",
+        "question": "Does a sensor reading of 5 cm mean every front part is 5 cm from the wall?",
+        "answer": "No. The sensor can sit behind the foremost part, and its ray measures along its own direction.",
+        "further": [
+          "Compare two speeds using one threshold.",
+          "For the maze, inspect why a turn changes the next ray direction."
+        ]
+      },
+      "de": {
+        "what": "Eine Abstandsrückmeldung verändert die Fahrbefehle nahe einem Hindernis.",
+        "try": [
+          "Nutze Matte und Programm des Beispiels, setze zurück und starte.",
+          "Vergleiche den Sensorwert mit dem wirklichen Abstand der Roboterfront.",
+          "Ändere Stoppschwelle oder Geschwindigkeit und starte erneut gleich."
+        ],
+        "why": "Die Entfernung wird vom Sensorort in Blickrichtung gemessen. Während Befehle und Bremsung wirken, fährt das Fahrgestell weiter. Die Schwelle muss Montageort und Bewegung berücksichtigen.",
+        "matters": "Mobile Roboter brauchen Reaktionsweg vor einer Wand.",
+        "question": "Sind bei 5 cm Sensorwert alle vorderen Teile 5 cm von der Wand entfernt?",
+        "answer": "Nein. Der Sensor kann hinter dem vordersten Teil sitzen und misst entlang seines eigenen Strahls.",
+        "further": [
+          "Vergleiche zwei Geschwindigkeiten mit derselben Schwelle.",
+          "Beobachte im Labyrinth, wie eine Drehung die Messrichtung verändert."
+        ]
+      },
+      "formula": {
+        "en": "reaction travel ≈ speed × response time",
+        "de": "Reaktionsweg ≈ Geschwindigkeit × Reaktionszeit"
+      },
+      "related": [
+        "survey-rover.ldr"
+      ]
+    },
+    "colour-explorer": {
+      "en": {
+        "what": "The robot combines colour measurements with wheel motion to explore a marked surface.",
+        "try": [
+          "Run the supplied example on its colour-zone mat.",
+          "Observe where the colour sensor points when a decision changes the motion.",
+          "Reset and change one colour-dependent action in the code."
+        ],
+        "why": "A colour measurement describes the patch beneath the sensor, not the whole robot. A program turns that local observation into a navigation decision.",
+        "matters": "This is a simple form of event-driven autonomous navigation.",
+        "question": "Will a colour change happen as soon as a wheel reaches the patch?",
+        "answer": "Only when the sensor’s own footprint reaches it. Its offset from the wheels matters.",
+        "further": [
+          "Compare a sensor event with the drive-axle position.",
+          "Try reflected-light control along a line."
+        ]
+      },
+      "de": {
+        "what": "Der Roboter verbindet Farbmessungen mit Radbewegungen auf einer markierten Fläche.",
+        "try": [
+          "Starte das Beispiel auf seiner Farbzonenmatte.",
+          "Beobachte die Blickstelle des Farbsensors, wenn sich die Fahrentscheidung ändert.",
+          "Setze zurück und ändere eine farbabhängige Aktion im Code."
+        ],
+        "why": "Die Messung beschreibt die Stelle unter dem Sensor, nicht den ganzen Roboter. Das Programm macht daraus eine Navigationsentscheidung.",
+        "matters": "So entsteht eine einfache ereignisgesteuerte Navigation.",
+        "question": "Ändert sich die Farbe schon, wenn ein Rad die Fläche erreicht?",
+        "answer": "Erst wenn der Messfleck des Sensors sie erreicht. Sein Abstand zu den Rädern spielt eine Rolle.",
+        "further": [
+          "Vergleiche ein Sensorereignis mit der Position der Antriebsachse.",
+          "Erkunde Helligkeitsregelung an einer Linie."
+        ]
+      },
+      "formula": "",
+      "related": [
+        "line-follower.ldr"
+      ]
+    },
+    "forklift": {
+      "en": {
+        "what": "A pinion pushes a guided rack, turning motor rotation into straight travel.",
+        "try": [
+          "Reset and run the supplied out-and-back program.",
+          "Count motor turns and compare them with rack travel.",
+          "Stop the program and use a low manual speed to approach a travel stop."
+        ],
+        "why": "At the gear’s pitch circle, tangential distance becomes rack displacement. The guide prevents unwanted sideways motion. At a physical stop the mechanism stalls instead of moving through the end of the rail.",
+        "matters": "Rack drives appear in lifting equipment, machine slides and steering.",
+        "question": "If the pinion turns twice as far, what happens before reaching the stop?",
+        "answer": "The ideal rack travel doubles. A stop limits the actual travel, so encoder rotation alone is not enough evidence.",
+        "further": [
+          "Compare lifting against gravity with a horizontal shuttle.",
+          "Explain why a larger pinion gives more travel per turn but less force for the same torque."
+        ]
+      },
+      "de": {
+        "what": "Ein Ritzel schiebt eine geführte Zahnstange und macht aus Drehung eine geradlinige Bewegung.",
+        "try": [
+          "Setze zurück und starte die Hin-und-zurück-Bewegung des Beispiels.",
+          "Zähle Motorumdrehungen und vergleiche den Zahnstangenweg.",
+          "Stoppe das Programm und nähere dich mit kleiner manueller Geschwindigkeit einem Endanschlag."
+        ],
+        "why": "Der Tangentialweg am Teilkreis wird zum Zahnstangenweg. Die Führung verhindert seitliches Ausweichen. Am Anschlag bleibt der Mechanismus stehen, statt durch das Ende der Schiene zu fahren.",
+        "matters": "Zahnstangen werden in Hebezeugen, Maschinenschlitten und Lenkungen genutzt.",
+        "question": "Was geschieht bei doppeltem Ritzelwinkel vor dem Anschlag?",
+        "answer": "Der ideale Zahnstangenweg verdoppelt sich. Ein Anschlag begrenzt den wirklichen Weg; der Encoderwert allein genügt daher nicht.",
+        "further": [
+          "Vergleiche Heben gegen die Schwerkraft mit dem waagerechten Schlitten.",
+          "Warum liefert ein größeres Ritzel mehr Weg, aber bei gleichem Drehmoment weniger Kraft?"
+        ]
+      },
+      "formula": {
+        "en": "travel = pitch radius × angle in radians;  8T pinion: r = 4 mm",
+        "de": "Weg = Teilkreisradius × Winkel im Bogenmaß;  Ritzel mit 8 Zähnen: r = 4 mm"
+      },
+      "related": [
+        "rack-shuttle.ldr",
+        "screw-crane.ldr"
+      ]
+    },
+    "rack-shuttle": {
+      "en": {
+        "what": "A pinion pushes a guided rack, turning motor rotation into straight travel.",
+        "try": [
+          "Reset and run the supplied out-and-back program.",
+          "Count motor turns and compare them with rack travel.",
+          "Stop the program and use a low manual speed to approach a travel stop."
+        ],
+        "why": "At the gear’s pitch circle, tangential distance becomes rack displacement. The guide prevents unwanted sideways motion. At a physical stop the mechanism stalls instead of moving through the end of the rail.",
+        "matters": "Rack drives appear in lifting equipment, machine slides and steering.",
+        "question": "If the pinion turns twice as far, what happens before reaching the stop?",
+        "answer": "The ideal rack travel doubles. A stop limits the actual travel, so encoder rotation alone is not enough evidence.",
+        "further": [
+          "Compare lifting against gravity with a horizontal shuttle.",
+          "Explain why a larger pinion gives more travel per turn but less force for the same torque."
+        ]
+      },
+      "de": {
+        "what": "Ein Ritzel schiebt eine geführte Zahnstange und macht aus Drehung eine geradlinige Bewegung.",
+        "try": [
+          "Setze zurück und starte die Hin-und-zurück-Bewegung des Beispiels.",
+          "Zähle Motorumdrehungen und vergleiche den Zahnstangenweg.",
+          "Stoppe das Programm und nähere dich mit kleiner manueller Geschwindigkeit einem Endanschlag."
+        ],
+        "why": "Der Tangentialweg am Teilkreis wird zum Zahnstangenweg. Die Führung verhindert seitliches Ausweichen. Am Anschlag bleibt der Mechanismus stehen, statt durch das Ende der Schiene zu fahren.",
+        "matters": "Zahnstangen werden in Hebezeugen, Maschinenschlitten und Lenkungen genutzt.",
+        "question": "Was geschieht bei doppeltem Ritzelwinkel vor dem Anschlag?",
+        "answer": "Der ideale Zahnstangenweg verdoppelt sich. Ein Anschlag begrenzt den wirklichen Weg; der Encoderwert allein genügt daher nicht.",
+        "further": [
+          "Vergleiche Heben gegen die Schwerkraft mit dem waagerechten Schlitten.",
+          "Warum liefert ein größeres Ritzel mehr Weg, aber bei gleichem Drehmoment weniger Kraft?"
+        ]
+      },
+      "formula": {
+        "en": "travel = pitch radius × angle in radians;  8T pinion: r = 4 mm",
+        "de": "Weg = Teilkreisradius × Winkel im Bogenmaß;  Ritzel mit 8 Zähnen: r = 4 mm"
+      },
+      "related": [
+        "rack-shuttle.ldr",
+        "screw-crane.ldr"
+      ]
+    },
+    "gearbox": {
+      "en": {
+        "what": "A gear train changes output speed, direction and available torque.",
+        "try": [
+          "Reset and run the example. Identify the input and each physical output.",
+          "Count output motion while the input completes a known number of turns.",
+          "Compare the available transmissions; stop before changing a gearbox selection."
+        ],
+        "why": "A mesh relates angular speeds by the inverse tooth counts. Compound stages multiply their ratios; an intermediate idler changes the path and direction without adding a reduction by itself.",
+        "matters": "Transmissions trade speed for torque and choose useful operating ranges.",
+        "question": "Do five 1:3 reductions produce 1:15?",
+        "answer": "No. Their ratios multiply: (1/3)^5 = 1/243. Adding the ratios would describe the mechanism incorrectly.",
+        "further": [
+          "In the workbench compare +1, +1/15 and −1/243 outputs.",
+          "In the gearbox compare both selector positions."
+        ]
+      },
+      "de": {
+        "what": "Ein Getriebe verändert Abtriebsdrehzahl, Drehrichtung und verfügbares Drehmoment.",
+        "try": [
+          "Setze zurück und starte. Finde den Eingang und die wirklichen Abtriebe.",
+          "Zähle die Abtriebsbewegung bei einer bekannten Zahl von Eingangsumdrehungen.",
+          "Vergleiche die vorhandenen Übersetzungen; stoppe vor dem Umschalten."
+        ],
+        "why": "Beim Zahneingriff sind die Winkelgeschwindigkeiten umgekehrt proportional zu den Zähnezahlen. Verbundstufen multiplizieren ihre Verhältnisse. Ein Zwischenrad verändert Weg und Richtung, fügt allein aber keine Untersetzung hinzu.",
+        "matters": "Getriebe tauschen Drehzahl gegen Drehmoment und wählen passende Arbeitsbereiche.",
+        "question": "Ergeben fünf Untersetzungen 1:3 insgesamt 1:15?",
+        "answer": "Nein. Die Verhältnisse multiplizieren sich: (1/3)^5 = 1/243. Ihre Summe beschreibt dieses Getriebe nicht.",
+        "further": [
+          "Vergleiche am Prüfstand die Abtriebe +1, +1/15 und −1/243.",
+          "Vergleiche am Schaltgetriebe beide Stellungen."
+        ]
+      },
+      "formula": {
+        "en": "ωout / ωin = (−1)^meshes × product(driver teeth / driven teeth)",
+        "de": "ωAus / ωEin = (−1)^Eingriffe × Produkt(treibende Zähne / getriebene Zähne)"
+      },
+      "related": [
+        "ratio-workbench.ldr",
+        "chain-transmission.ldr"
+      ]
+    },
+    "ratio-workbench": {
+      "en": {
+        "what": "A gear train changes output speed, direction and available torque.",
+        "try": [
+          "Reset and run the example. Identify the input and each physical output.",
+          "Count output motion while the input completes a known number of turns.",
+          "Compare the available transmissions; stop before changing a gearbox selection."
+        ],
+        "why": "A mesh relates angular speeds by the inverse tooth counts. Compound stages multiply their ratios; an intermediate idler changes the path and direction without adding a reduction by itself.",
+        "matters": "Transmissions trade speed for torque and choose useful operating ranges.",
+        "question": "Do five 1:3 reductions produce 1:15?",
+        "answer": "No. Their ratios multiply: (1/3)^5 = 1/243. Adding the ratios would describe the mechanism incorrectly.",
+        "further": [
+          "In the workbench compare +1, +1/15 and −1/243 outputs.",
+          "In the gearbox compare both selector positions."
+        ]
+      },
+      "de": {
+        "what": "Ein Getriebe verändert Abtriebsdrehzahl, Drehrichtung und verfügbares Drehmoment.",
+        "try": [
+          "Setze zurück und starte. Finde den Eingang und die wirklichen Abtriebe.",
+          "Zähle die Abtriebsbewegung bei einer bekannten Zahl von Eingangsumdrehungen.",
+          "Vergleiche die vorhandenen Übersetzungen; stoppe vor dem Umschalten."
+        ],
+        "why": "Beim Zahneingriff sind die Winkelgeschwindigkeiten umgekehrt proportional zu den Zähnezahlen. Verbundstufen multiplizieren ihre Verhältnisse. Ein Zwischenrad verändert Weg und Richtung, fügt allein aber keine Untersetzung hinzu.",
+        "matters": "Getriebe tauschen Drehzahl gegen Drehmoment und wählen passende Arbeitsbereiche.",
+        "question": "Ergeben fünf Untersetzungen 1:3 insgesamt 1:15?",
+        "answer": "Nein. Die Verhältnisse multiplizieren sich: (1/3)^5 = 1/243. Ihre Summe beschreibt dieses Getriebe nicht.",
+        "further": [
+          "Vergleiche am Prüfstand die Abtriebe +1, +1/15 und −1/243.",
+          "Vergleiche am Schaltgetriebe beide Stellungen."
+        ]
+      },
+      "formula": {
+        "en": "ωout / ωin = (−1)^meshes × product(driver teeth / driven teeth)",
+        "de": "ωAus / ωEin = (−1)^Eingriffe × Produkt(treibende Zähne / getriebene Zähne)"
+      },
+      "related": [
+        "ratio-workbench.ldr",
+        "chain-transmission.ldr"
+      ]
+    },
+    "chain-drive": {
+      "en": {
+        "what": "A closed chain transfers rotation between sprockets on separate shafts.",
+        "try": [
+          "Reset and run the example. Watch a link pass around both sprockets.",
+          "Compare input and output turns through the full forward-and-reverse motion.",
+          "Predict what a larger driven sprocket does before changing a design."
+        ],
+        "why": "The same chain speed passes both pitch circles. A larger sprocket advances through fewer turns for that chain travel. An uncrossed chain keeps both shafts turning in the same direction.",
+        "matters": "Chains transmit motion across distances that a direct gear mesh cannot span.",
+        "question": "Does an uncrossed chain reverse the output like one external gear mesh?",
+        "answer": "No. Its two sprockets turn the same way. The speed ratio comes from their tooth counts.",
+        "further": [
+          "Compare the long 16:24 chain with the smaller 8:24 example.",
+          "Explain why correct chain length and shaft spacing both matter."
+        ]
+      },
+      "de": {
+        "what": "Eine geschlossene Kette überträgt die Drehung zwischen getrennten Wellen.",
+        "try": [
+          "Setze zurück und starte. Verfolge ein Glied um beide Kettenräder.",
+          "Vergleiche Eingangs- und Abtriebsumdrehungen während der Hin- und Rückbewegung.",
+          "Sage vor einer Designänderung die Wirkung eines größeren Abtriebsrads vorher."
+        ],
+        "why": "An beiden Teilkreisen läuft dieselbe Kettengeschwindigkeit vorbei. Das größere Kettenrad braucht für diesen Weg weniger Umdrehungen. Eine ungekreuzte Kette erhält die Drehrichtung.",
+        "matters": "Ketten übertragen Bewegung über Abstände, die ein direkter Zahneingriff nicht überbrückt.",
+        "question": "Kehrt eine ungekreuzte Kette die Richtung wie ein einzelner äußerer Zahneingriff um?",
+        "answer": "Nein. Beide Kettenräder drehen gleichsinnig. Das Drehzahlverhältnis folgt aus ihren Zähnezahlen.",
+        "further": [
+          "Vergleiche die lange 16:24-Kette mit dem kleinen 8:24-Beispiel.",
+          "Warum müssen Kettenlänge und Wellenabstand zusammenpassen?"
+        ]
+      },
+      "formula": {
+        "en": "ωout / ωin = input sprocket teeth / output sprocket teeth",
+        "de": "ωAus / ωEin = Zähne des Antriebsritzels / Zähne des Abtriebsritzels"
+      },
+      "related": [
+        "chain-transmission.ldr",
+        "ratio-workbench.ldr"
+      ]
+    },
+    "chain-transmission": {
+      "en": {
+        "what": "A closed chain transfers rotation between sprockets on separate shafts.",
+        "try": [
+          "Reset and run the example. Watch a link pass around both sprockets.",
+          "Compare input and output turns through the full forward-and-reverse motion.",
+          "Predict what a larger driven sprocket does before changing a design."
+        ],
+        "why": "The same chain speed passes both pitch circles. A larger sprocket advances through fewer turns for that chain travel. An uncrossed chain keeps both shafts turning in the same direction.",
+        "matters": "Chains transmit motion across distances that a direct gear mesh cannot span.",
+        "question": "Does an uncrossed chain reverse the output like one external gear mesh?",
+        "answer": "No. Its two sprockets turn the same way. The speed ratio comes from their tooth counts.",
+        "further": [
+          "Compare the long 16:24 chain with the smaller 8:24 example.",
+          "Explain why correct chain length and shaft spacing both matter."
+        ]
+      },
+      "de": {
+        "what": "Eine geschlossene Kette überträgt die Drehung zwischen getrennten Wellen.",
+        "try": [
+          "Setze zurück und starte. Verfolge ein Glied um beide Kettenräder.",
+          "Vergleiche Eingangs- und Abtriebsumdrehungen während der Hin- und Rückbewegung.",
+          "Sage vor einer Designänderung die Wirkung eines größeren Abtriebsrads vorher."
+        ],
+        "why": "An beiden Teilkreisen läuft dieselbe Kettengeschwindigkeit vorbei. Das größere Kettenrad braucht für diesen Weg weniger Umdrehungen. Eine ungekreuzte Kette erhält die Drehrichtung.",
+        "matters": "Ketten übertragen Bewegung über Abstände, die ein direkter Zahneingriff nicht überbrückt.",
+        "question": "Kehrt eine ungekreuzte Kette die Richtung wie ein einzelner äußerer Zahneingriff um?",
+        "answer": "Nein. Beide Kettenräder drehen gleichsinnig. Das Drehzahlverhältnis folgt aus ihren Zähnezahlen.",
+        "further": [
+          "Vergleiche die lange 16:24-Kette mit dem kleinen 8:24-Beispiel.",
+          "Warum müssen Kettenlänge und Wellenabstand zusammenpassen?"
+        ]
+      },
+      "formula": {
+        "en": "ωout / ωin = input sprocket teeth / output sprocket teeth",
+        "de": "ωAus / ωEin = Zähne des Antriebsritzels / Zähne des Abtriebsritzels"
+      },
+      "related": [
+        "chain-transmission.ldr",
+        "ratio-workbench.ldr"
+      ]
+    },
+    "differential": {
+      "en": {
+        "what": "A differential shares carrier motion between two outputs that can turn at different speeds.",
+        "try": [
+          "Reset and run. Watch both outputs as the second motor changes its command.",
+          "Compare a held output with a turning output.",
+          "Record both output speeds and compare their average with the carrier."
+        ],
+        "why": "The equal side gears constrain the sum of their speeds. They do not force equal speeds. In the flywheel example, inertia resists changes in the outputs while the differential still enforces its kinematics.",
+        "matters": "A vehicle differential lets inner and outer wheels follow different path lengths.",
+        "question": "If one equal side gear is held, does the other turn at the carrier speed?",
+        "answer": "It turns at twice the carrier speed. Their average must equal the carrier speed.",
+        "further": [
+          "Compare transient acceleration with steady motion.",
+          "Distinguish the driven pinion speed from the carrier speed."
+        ]
+      },
+      "de": {
+        "what": "Ein Differenzial verteilt die Bewegung des Korbs auf zwei unterschiedlich schnelle Abtriebe.",
+        "try": [
+          "Setze zurück und starte. Beobachte beide Abtriebe bei wechselndem Befehl des zweiten Motors.",
+          "Vergleiche einen gehaltenen und einen drehenden Abtrieb.",
+          "Notiere beide Drehzahlen und vergleiche ihren Mittelwert mit dem Korb."
+        ],
+        "why": "Gleich große Seitenräder legen die Summe ihrer Drehzahlen fest, nicht deren Gleichheit. Im Schwungradbeispiel widersetzt sich die Trägheit Drehzahländerungen; die Getriebekinematik gilt trotzdem.",
+        "matters": "Ein Fahrzeugdifferenzial lässt innere und äußere Räder verschiedene Wege zurücklegen.",
+        "question": "Dreht bei einem festgehaltenen Seitenrad das andere mit Korbdrehzahl?",
+        "answer": "Es dreht doppelt so schnell. Der Mittelwert beider Drehzahlen muss der Korbdrehzahl entsprechen.",
+        "further": [
+          "Vergleiche Beschleunigungsphasen mit gleichförmiger Bewegung.",
+          "Unterscheide Ritzeldrehzahl und Korbdrehzahl."
+        ]
+      },
+      "formula": {
+        "en": "(ωleft + ωright) / 2 = ωcarrier",
+        "de": "(ωLinks + ωRechts) / 2 = ωTräger"
+      },
+      "related": [
+        "flywheel-differential.ldr",
+        "pivot-rover.ldr"
+      ]
+    },
+    "flywheel-differential": {
+      "en": {
+        "what": "A differential shares carrier motion between two outputs that can turn at different speeds.",
+        "try": [
+          "Reset and run. Watch both outputs as the second motor changes its command.",
+          "Compare a held output with a turning output.",
+          "Record both output speeds and compare their average with the carrier."
+        ],
+        "why": "The equal side gears constrain the sum of their speeds. They do not force equal speeds. In the flywheel example, inertia resists changes in the outputs while the differential still enforces its kinematics.",
+        "matters": "A vehicle differential lets inner and outer wheels follow different path lengths.",
+        "question": "If one equal side gear is held, does the other turn at the carrier speed?",
+        "answer": "It turns at twice the carrier speed. Their average must equal the carrier speed.",
+        "further": [
+          "Compare transient acceleration with steady motion.",
+          "Distinguish the driven pinion speed from the carrier speed."
+        ]
+      },
+      "de": {
+        "what": "Ein Differenzial verteilt die Bewegung des Korbs auf zwei unterschiedlich schnelle Abtriebe.",
+        "try": [
+          "Setze zurück und starte. Beobachte beide Abtriebe bei wechselndem Befehl des zweiten Motors.",
+          "Vergleiche einen gehaltenen und einen drehenden Abtrieb.",
+          "Notiere beide Drehzahlen und vergleiche ihren Mittelwert mit dem Korb."
+        ],
+        "why": "Gleich große Seitenräder legen die Summe ihrer Drehzahlen fest, nicht deren Gleichheit. Im Schwungradbeispiel widersetzt sich die Trägheit Drehzahländerungen; die Getriebekinematik gilt trotzdem.",
+        "matters": "Ein Fahrzeugdifferenzial lässt innere und äußere Räder verschiedene Wege zurücklegen.",
+        "question": "Dreht bei einem festgehaltenen Seitenrad das andere mit Korbdrehzahl?",
+        "answer": "Es dreht doppelt so schnell. Der Mittelwert beider Drehzahlen muss der Korbdrehzahl entsprechen.",
+        "further": [
+          "Vergleiche Beschleunigungsphasen mit gleichförmiger Bewegung.",
+          "Unterscheide Ritzeldrehzahl und Korbdrehzahl."
+        ]
+      },
+      "formula": {
+        "en": "(ωleft + ωright) / 2 = ωcarrier",
+        "de": "(ωLinks + ωRechts) / 2 = ωTräger"
+      },
+      "related": [
+        "flywheel-differential.ldr",
+        "pivot-rover.ldr"
+      ]
+    },
+    "pneumatic-press": {
+      "en": {
+        "what": "A motor changes a valve that sends compressed air to a piston.",
+        "try": [
+          "Reset and run the valve sequence. Watch the piston change direction.",
+          "Compare the motor’s valve motion with the cylinder stroke.",
+          "Stop and change the valve command; observe whether the piston follows immediately."
+        ],
+        "why": "The valve chooses the pressure connections. Pressure acts over piston area to create force; moving the valve is not the same as directly commanding piston position.",
+        "matters": "Pneumatics separate a small control motion from a force-producing actuator.",
+        "question": "Does twice the valve angle necessarily give twice the piston extension?",
+        "answer": "No. The valve changes air flow paths. Pressure, load, time and the cylinder’s travel limits decide the resulting motion.",
+        "further": [
+          "Compare extension and retraction.",
+          "Compare an air cylinder with the screw-driven crane."
+        ]
+      },
+      "de": {
+        "what": "Ein Motor verstellt ein Ventil, das Druckluft zu einem Kolben leitet.",
+        "try": [
+          "Setze zurück und starte die Ventilfolge. Beobachte den Richtungswechsel des Kolbens.",
+          "Vergleiche die Ventilbewegung des Motors mit dem Zylinderhub.",
+          "Stoppe und ändere den Ventilbefehl. Folgt der Kolben sofort?"
+        ],
+        "why": "Das Ventil wählt die Druckanschlüsse. Druck erzeugt über die Kolbenfläche eine Kraft. Das Verstellen des Ventils ist kein direkter Positionsbefehl für den Kolben.",
+        "matters": "Pneumatik trennt eine kleine Steuerbewegung von einem kraftvollen Antrieb.",
+        "question": "Ergibt der doppelte Ventilwinkel unbedingt den doppelten Hub?",
+        "answer": "Nein. Das Ventil verändert Luftwege. Druck, Last, Zeit und Endanschläge bestimmen die Bewegung.",
+        "further": [
+          "Vergleiche Ausfahren und Einfahren.",
+          "Vergleiche den Luftzylinder mit dem Spindelkran."
+        ]
+      },
+      "formula": {
+        "en": "force ≈ pressure difference × piston area",
+        "de": "Kraft ≈ Druckdifferenz × Kolbenfläche"
+      },
+      "related": [
+        "screw-crane.ldr"
+      ]
+    },
+    "drawing-robot": {
+      "en": {
+        "what": "A pen carried by a moving robot leaves a trace of its actual path.",
+        "try": [
+          "Reset to clear the ink and run the drawing program.",
+          "Compare straight segments with turns.",
+          "Change one wheel speed or distance, Reset and compare the resulting curve."
+        ],
+        "why": "The pen follows a point attached to the chassis. If that point is offset from the drive axle, turning the chassis also sweeps the pen around the axle.",
+        "matters": "Tool placement matters when robots draw, weld or inspect a surface.",
+        "question": "Do the pen and drive-axle midpoint always draw the same path?",
+        "answer": "No. An offset point follows a different arc during a turn, even though both belong to one rigid chassis.",
+        "further": [
+          "Compare wheel-path drawing with rotating-paper drawing.",
+          "Predict the effect of moving a pen farther from the axle."
+        ]
+      },
+      "de": {
+        "what": "Ein vom Roboter getragener Stift zeichnet seinen tatsächlichen Weg.",
+        "try": [
+          "Setze zurück, um die Spur zu löschen, und starte das Zeichenprogramm.",
+          "Vergleiche gerade Abschnitte mit Kurven.",
+          "Ändere eine Raddrehzahl oder Strecke, setze zurück und vergleiche die neue Kurve."
+        ],
+        "why": "Der Stift folgt einem fest am Fahrgestell sitzenden Punkt. Liegt er neben der Antriebsachse, schwenkt er bei einer Drehung um diese Achse.",
+        "matters": "Die Werkzeugposition ist beim Zeichnen, Schweißen und Prüfen wichtig.",
+        "question": "Zeichnen Stift und Mittelpunkt der Antriebsachse immer denselben Weg?",
+        "answer": "Nein. Ein versetzter Punkt beschreibt beim Drehen einen anderen Bogen, obwohl beide zum starren Fahrgestell gehören.",
+        "further": [
+          "Vergleiche fahrendes Zeichnen mit rotierendem Papier.",
+          "Was bewirkt ein größerer Abstand des Stifts zur Achse?"
+        ]
+      },
+      "formula": "",
+      "related": [
+        "orbital-loom.ldr"
+      ]
+    },
+    "crank-rocker": {
+      "en": {
+        "what": "A rotating crank drives a coupler and a rocker through a closed four-bar linkage.",
+        "try": [
+          "Reset and run. Compare the continuously turning crank with the rocking output.",
+          "Find the two extremes of the output and watch its changing speed between them.",
+          "For Tidal Trio, compare Wave, Together, Alternating and Reverse Wave from Reset."
+        ],
+        "why": "All four link lengths constrain the loop at once. The output angle is a nonlinear function of crank angle. Tidal Trio uses 16/48/32/48 mm links and a rocker sweep near 63.07°; three crank phase offsets create a travelling pattern.",
+        "matters": "Linkages turn simple rotary drives into useful repeated motions.",
+        "question": "Does a 120° crank offset mean a 120° rocker offset?",
+        "answer": "No. The nonlinear four-bar relation changes the rocker angle and speed throughout each cycle.",
+        "further": [
+          "Compare equal crank-phase spacing with equal time spacing of rocker peaks.",
+          "Compare the nearly parallel tray of the lift."
+        ]
+      },
+      "de": {
+        "what": "Eine umlaufende Kurbel treibt über eine Koppel eine Schwinge in einem geschlossenen Viergelenk an.",
+        "try": [
+          "Setze zurück und starte. Vergleiche die umlaufende Kurbel mit dem schwingenden Abtrieb.",
+          "Finde beide Endlagen und beobachte die wechselnde Geschwindigkeit dazwischen.",
+          "Vergleiche beim Gezeiten-Trio Welle, Gleichlauf, Abwechselnd und Gegenwelle jeweils nach Zurücksetzen."
+        ],
+        "why": "Alle vier Gliedlängen bestimmen gemeinsam die geschlossene Schleife. Der Ausgangswinkel hängt nichtlinear vom Kurbelwinkel ab. Das Trio hat 16/48/32/48-mm-Glieder und etwa 63,07° Schwingbereich; drei Kurbelphasen erzeugen ein wanderndes Muster.",
+        "matters": "Gelenkgetriebe machen aus einfachen Drehantrieben nützliche wiederholte Bewegungen.",
+        "question": "Bedeuten 120° Kurbelversatz auch 120° Schwingenversatz?",
+        "answer": "Nein. Die nichtlineare Viergelenkbeziehung verändert Winkel und Geschwindigkeit der Schwinge während des Umlaufs.",
+        "further": [
+          "Vergleiche gleiche Kurbelphasen mit den Zeitabständen der Schwingenspitzen.",
+          "Vergleiche die fast parallele Plattform des Hebers."
+        ]
+      },
+      "formula": {
+        "en": "crank vector + coupler vector = fixed-pivot vector + rocker vector",
+        "de": "Kurbelvektor + Koppelvektor = Festlagervektor + Schwingenvektor"
+      },
+      "related": [
+        "tidal-trio.ldr",
+        "parallel-lift.ldr"
+      ]
+    },
+    "tidal-trio": {
+      "en": {
+        "what": "A rotating crank drives a coupler and a rocker through a closed four-bar linkage.",
+        "try": [
+          "Reset and run. Compare the continuously turning crank with the rocking output.",
+          "Find the two extremes of the output and watch its changing speed between them.",
+          "For Tidal Trio, compare Wave, Together, Alternating and Reverse Wave from Reset."
+        ],
+        "why": "All four link lengths constrain the loop at once. The output angle is a nonlinear function of crank angle. Tidal Trio uses 16/48/32/48 mm links and a rocker sweep near 63.07°; three crank phase offsets create a travelling pattern.",
+        "matters": "Linkages turn simple rotary drives into useful repeated motions.",
+        "question": "Does a 120° crank offset mean a 120° rocker offset?",
+        "answer": "No. The nonlinear four-bar relation changes the rocker angle and speed throughout each cycle.",
+        "further": [
+          "Compare equal crank-phase spacing with equal time spacing of rocker peaks.",
+          "Compare the nearly parallel tray of the lift."
+        ]
+      },
+      "de": {
+        "what": "Eine umlaufende Kurbel treibt über eine Koppel eine Schwinge in einem geschlossenen Viergelenk an.",
+        "try": [
+          "Setze zurück und starte. Vergleiche die umlaufende Kurbel mit dem schwingenden Abtrieb.",
+          "Finde beide Endlagen und beobachte die wechselnde Geschwindigkeit dazwischen.",
+          "Vergleiche beim Gezeiten-Trio Welle, Gleichlauf, Abwechselnd und Gegenwelle jeweils nach Zurücksetzen."
+        ],
+        "why": "Alle vier Gliedlängen bestimmen gemeinsam die geschlossene Schleife. Der Ausgangswinkel hängt nichtlinear vom Kurbelwinkel ab. Das Trio hat 16/48/32/48-mm-Glieder und etwa 63,07° Schwingbereich; drei Kurbelphasen erzeugen ein wanderndes Muster.",
+        "matters": "Gelenkgetriebe machen aus einfachen Drehantrieben nützliche wiederholte Bewegungen.",
+        "question": "Bedeuten 120° Kurbelversatz auch 120° Schwingenversatz?",
+        "answer": "Nein. Die nichtlineare Viergelenkbeziehung verändert Winkel und Geschwindigkeit der Schwinge während des Umlaufs.",
+        "further": [
+          "Vergleiche gleiche Kurbelphasen mit den Zeitabständen der Schwingenspitzen.",
+          "Vergleiche die fast parallele Plattform des Hebers."
+        ]
+      },
+      "formula": {
+        "en": "crank vector + coupler vector = fixed-pivot vector + rocker vector",
+        "de": "Kurbelvektor + Koppelvektor = Festlagervektor + Schwingenvektor"
+      },
+      "related": [
+        "tidal-trio.ldr",
+        "parallel-lift.ldr"
+      ]
+    },
+    "parallel-lift": {
+      "en": {
+        "what": "A parallelogram linkage carries a tray while keeping its orientation nearly constant.",
+        "try": [
+          "Reset and run the lift cycle.",
+          "Watch the tray edge as it rises and moves sideways.",
+          "Compare the motion of a point on the tray with the links rotating below it."
+        ],
+        "why": "Equal opposite sides preserve the tray’s orientation. Its position still follows an arc: keeping an object level does not make its path vertical.",
+        "matters": "Parallel linkages guide trays, lamps and handling mechanisms.",
+        "question": "Must a level tray move straight up?",
+        "answer": "No. Orientation and path are different constraints. Here the tray stays level while its support links sweep arcs.",
+        "further": [
+          "Sketch the tray’s curved path.",
+          "Compare this lift with the straight rack shuttle."
+        ]
+      },
+      "de": {
+        "what": "Ein Parallelogramm trägt eine Plattform und hält ihre Orientierung annähernd konstant.",
+        "try": [
+          "Setze zurück und starte den Hubzyklus.",
+          "Beobachte die Plattformkante beim Anheben und seitlichen Versetzen.",
+          "Vergleiche einen Punkt der Plattform mit den rotierenden Stützgliedern."
+        ],
+        "why": "Gleich lange gegenüberliegende Seiten erhalten die Plattformorientierung. Ihre Position folgt dennoch einem Bogen: waagerecht bleiben bedeutet nicht senkrecht fahren.",
+        "matters": "Parallelführungen bewegen Plattformen, Lampen und Handhabungsgeräte.",
+        "question": "Muss eine waagerechte Plattform gerade nach oben fahren?",
+        "answer": "Nein. Orientierung und Bahn sind verschiedene Bedingungen. Hier bleibt die Plattform waagerecht, während ihre Stützen Kreisbögen durchlaufen.",
+        "further": [
+          "Skizziere die gekrümmte Plattformbahn.",
+          "Vergleiche mit dem geradlinigen Zahnstangenschlitten."
+        ]
+      },
+      "formula": "",
+      "related": [
+        "rack-shuttle.ldr",
+        "crank-rocker.ldr"
+      ]
+    },
+    "screw-crane": {
+      "en": {
+        "what": "A lifting mechanism combines rotating links with screw-driven linear motion.",
+        "try": [
+          "Reset and run the example sequence.",
+          "Separate turntable motion from the lifting actuator’s motion.",
+          "Compare actuator extension with the height change at the end of the boom."
+        ],
+        "why": "A screw turns rotation into a small linear displacement. The boom linkage then converts that stroke into an angle and tip height. Leverage varies with pose, so equal motor increments need not give equal tip-height increments.",
+        "matters": "Cranes and excavators combine transmission and linkage geometry to handle loads.",
+        "question": "Will doubling actuator extension always double boom-tip rise?",
+        "answer": "No. The actuator is part of a changing triangle. Its angle and mechanical advantage vary with the pose.",
+        "further": [
+          "Compare early and late portions of a lift.",
+          "Try the rack lift, whose direct pitch law is simpler."
+        ]
+      },
+      "de": {
+        "what": "Ein Hebemechanismus verbindet drehende Glieder mit einem spindelgetriebenen Linearantrieb.",
+        "try": [
+          "Setze zurück und starte die Beispielsequenz.",
+          "Trenne Drehtellerbewegung und Hubbewegung des Aktuators.",
+          "Vergleiche die Aktuatorlänge mit der Höhe der Auslegerspitze."
+        ],
+        "why": "Eine Spindel macht aus Drehung einen kleinen linearen Weg. Das Auslegergetriebe wandelt ihn in Winkel und Spitzenhöhe um. Die Hebelwirkung verändert sich mit der Pose; gleiche Motorschritte liefern daher nicht immer gleiche Höhenzuwächse.",
+        "matters": "Krane und Bagger verbinden Übersetzung und Gelenkgeometrie für Lastbewegungen.",
+        "question": "Ergibt doppeltes Ausfahren immer die doppelte Spitzenhöhe?",
+        "answer": "Nein. Der Aktuator gehört zu einem veränderlichen Dreieck. Winkel und mechanischer Vorteil ändern sich mit der Pose.",
+        "further": [
+          "Vergleiche Anfang und Ende eines Hubes.",
+          "Erkunde die einfachere Teilkreisbeziehung beim Zahnstangenheber."
+        ]
+      },
+      "formula": {
+        "en": "screw travel = turns × lead;  boom height also depends on linkage pose",
+        "de": "Spindelweg = Umdrehungen × Gewindesteigung;  Auslegerhöhe hängt auch von der Gelenkstellung ab"
+      },
+      "related": [
+        "forklift.ldr",
+        "parallel-lift.ldr"
+      ]
+    },
+    "excavator": {
+      "en": {
+        "what": "A lifting mechanism combines rotating links with screw-driven linear motion.",
+        "try": [
+          "Reset and run the example sequence.",
+          "Separate turntable motion from the lifting actuator’s motion.",
+          "Compare actuator extension with the height change at the end of the boom."
+        ],
+        "why": "A screw turns rotation into a small linear displacement. The boom linkage then converts that stroke into an angle and tip height. Leverage varies with pose, so equal motor increments need not give equal tip-height increments.",
+        "matters": "Cranes and excavators combine transmission and linkage geometry to handle loads.",
+        "question": "Will doubling actuator extension always double boom-tip rise?",
+        "answer": "No. The actuator is part of a changing triangle. Its angle and mechanical advantage vary with the pose.",
+        "further": [
+          "Compare early and late portions of a lift.",
+          "Try the rack lift, whose direct pitch law is simpler."
+        ]
+      },
+      "de": {
+        "what": "Ein Hebemechanismus verbindet drehende Glieder mit einem spindelgetriebenen Linearantrieb.",
+        "try": [
+          "Setze zurück und starte die Beispielsequenz.",
+          "Trenne Drehtellerbewegung und Hubbewegung des Aktuators.",
+          "Vergleiche die Aktuatorlänge mit der Höhe der Auslegerspitze."
+        ],
+        "why": "Eine Spindel macht aus Drehung einen kleinen linearen Weg. Das Auslegergetriebe wandelt ihn in Winkel und Spitzenhöhe um. Die Hebelwirkung verändert sich mit der Pose; gleiche Motorschritte liefern daher nicht immer gleiche Höhenzuwächse.",
+        "matters": "Krane und Bagger verbinden Übersetzung und Gelenkgeometrie für Lastbewegungen.",
+        "question": "Ergibt doppeltes Ausfahren immer die doppelte Spitzenhöhe?",
+        "answer": "Nein. Der Aktuator gehört zu einem veränderlichen Dreieck. Winkel und mechanischer Vorteil ändern sich mit der Pose.",
+        "further": [
+          "Vergleiche Anfang und Ende eines Hubes.",
+          "Erkunde die einfachere Teilkreisbeziehung beim Zahnstangenheber."
+        ]
+      },
+      "formula": {
+        "en": "screw travel = turns × lead;  boom height also depends on linkage pose",
+        "de": "Spindelweg = Umdrehungen × Gewindesteigung;  Auslegerhöhe hängt auch von der Gelenkstellung ab"
+      },
+      "related": [
+        "forklift.ldr",
+        "parallel-lift.ldr"
+      ]
+    },
+    "pivot-rover": {
+      "en": {
+        "what": "Two rear drives propel the rover while a third motor turns its front bogie.",
+        "try": [
+          "Reset and run both programmed curves.",
+          "Watch the front axle angle separately from the rear wheel speeds.",
+          "Stop, use a small manual steering angle and then drive gently."
+        ],
+        "why": "The angled front bogie guides the chassis while the rear wheels provide traction. This is wagon-style steering rather than an ideal Ackermann linkage.",
+        "matters": "Mechanical steering and differential wheel-speed steering solve the same navigation task differently.",
+        "question": "If the steering angle changes sign, what should happen to the curve?",
+        "answer": "At the same forward drive direction, the curve changes side. Reversing travel also reverses the relation between heading change and displacement.",
+        "further": [
+          "Compare left and right turns from the same Reset pose.",
+          "Compare with the differential-steered driving base."
+        ]
+      },
+      "de": {
+        "what": "Zwei hintere Antriebe bewegen den Rover; ein dritter Motor dreht das vordere Drehgestell.",
+        "try": [
+          "Setze zurück und starte beide programmierten Kurven.",
+          "Beobachte den Vorderachswinkel unabhängig von den Hinterraddrehzahlen.",
+          "Stoppe, wähle einen kleinen manuellen Lenkwinkel und fahre langsam."
+        ],
+        "why": "Das schräg gestellte Vordergestell führt das Fahrzeug, während die Hinterräder antreiben. Dies ist eine Drehschemellenkung und keine ideale Ackermann-Lenkung.",
+        "matters": "Mechanische Lenkung und Differenziallenkung lösen dieselbe Navigationsaufgabe unterschiedlich.",
+        "question": "Was sollte beim Vorzeichenwechsel des Lenkwinkels geschehen?",
+        "answer": "Bei gleicher Vorwärtsfahrt wechselt die Kurve die Seite. Beim Rückwärtsfahren ändert sich auch die Beziehung zwischen Richtungsänderung und Weg.",
+        "further": [
+          "Vergleiche Links- und Rechtskurve aus derselben Startpose.",
+          "Vergleiche den differenzialgelenkten Grundroboter."
+        ]
+      },
+      "formula": "",
+      "related": [
+        "driving-base.ldr"
+      ]
+    },
+    "positioning-arm": {
+      "en": {
+        "what": "Two independently driven joints position the end of an 80 mm / 64 mm serial arm.",
+        "try": [
+          "Reset and run the sequence.",
+          "Compare the two elbow postures near the same tip position.",
+          "Stop and change one joint slightly; watch how both tip coordinates change."
+        ],
+        "why": "The elbow is carried by the shoulder. Its angle adds to the shoulder angle when calculating the forearm direction. Two different joint configurations can reach nearly the same point.",
+        "matters": "Robot arms must solve geometry as well as control motor angles.",
+        "question": "Do shoulder and elbow angles act in the same fixed frame?",
+        "answer": "No. The elbow’s reference frame rotates with the shoulder, so the forearm uses the sum of the two angles.",
+        "further": [
+          "Predict what happens near a fully extended posture.",
+          "Compare position with orientation: this arm does not independently set a tool angle."
+        ]
+      },
+      "de": {
+        "what": "Zwei unabhängig angetriebene Gelenke positionieren das Ende eines 80/64-mm-Arms.",
+        "try": [
+          "Setze zurück und starte die Folge.",
+          "Vergleiche die zwei Ellbogenhaltungen nahe derselben Spitzenposition.",
+          "Stoppe und ändere ein Gelenk leicht. Beobachte beide Spitzenkoordinaten."
+        ],
+        "why": "Die Schulter trägt den Ellbogen. Für die Unterarmrichtung addiert sich sein Winkel zum Schulterwinkel. Zwei verschiedene Gelenkhaltungen können fast denselben Punkt erreichen.",
+        "matters": "Roboterarme müssen neben der Motorregelung auch Geometrie lösen.",
+        "question": "Wirken Schulter- und Ellbogenwinkel im selben festen Bezugssystem?",
+        "answer": "Nein. Das Bezugssystem des Ellbogens dreht mit der Schulter. Für den Unterarm gilt daher die Summe beider Winkel.",
+        "further": [
+          "Sage die Wirkung einer fast gestreckten Haltung vorher.",
+          "Unterscheide Position und Orientierung: dieser Arm stellt keinen Werkzeugwinkel unabhängig ein."
+        ]
+      },
+      "formula": {
+        "en": "x = 80 cos(A) + 64 cos(A+B)\ny = 80 sin(A) + 64 sin(A+B)  [mm]",
+        "de": "x = 80 cos(A) + 64 cos(A+B)\ny = 80 sin(A) + 64 sin(A+B)  [mm]"
+      },
+      "related": [
+        "tidal-trio.ldr"
+      ]
+    },
+    "orbital-loom": {
+      "en": {
+        "what": "One motor turns the paper and a second carries an offset pen crank. Ink follows actual simulated poses.",
+        "try": [
+          "Reset to clear the paper, then run the selected pattern.",
+          "Watch the pen in the room frame and the trace in the paper frame.",
+          "Reset and compare the Fivefold, Sevenfold, Elevenfold and Eightfold examples."
+        ],
+        "why": "The pen path must be expressed relative to rotating paper. Rational turn ratios allow both axes to return to their starting phase together. Independent servos create small transient phase errors.",
+        "matters": "Changing reference frames explains apparent motion in rotating systems and robot tooling.",
+        "question": "Will moving only the pen reproduce the same drawing?",
+        "answer": "No. The rotating paper changes the coordinates in which the trace is recorded. Both measured motions are needed.",
+        "further": [
+          "Compare the predicted closure with the last point of actual ink.",
+          "Virtual paper and ink do not model friction, slip or real marker pressure."
+        ]
+      },
+      "de": {
+        "what": "Ein Motor dreht das Papier, ein zweiter die versetzte Stiftkurbel. Die Spur folgt tatsächlichen Simulationsposen.",
+        "try": [
+          "Setze zurück, um das Papier zu leeren, und starte das gewählte Muster.",
+          "Vergleiche den Stift im Raum mit seiner Spur auf dem Papier.",
+          "Vergleiche nach Zurücksetzen die Fünf-, Sieben-, Elf- und Achtfach-Beispiele."
+        ],
+        "why": "Die Stiftbahn muss relativ zum rotierenden Papier beschrieben werden. Rationale Umlaufverhältnisse erlauben gemeinsame Phasenrückkehr. Unabhängige Servos erzeugen kleine vorübergehende Phasenfehler.",
+        "matters": "Bezugssystemwechsel erklärt scheinbare Bewegungen rotierender Systeme und Roboterwerkzeuge.",
+        "question": "Entsteht dieselbe Zeichnung, wenn sich nur der Stift bewegt?",
+        "answer": "Nein. Das Papier verändert das Bezugssystem, in dem die Spur aufgezeichnet wird. Beide gemessenen Bewegungen sind erforderlich.",
+        "further": [
+          "Vergleiche die erwartete Schließung mit dem letzten tatsächlichen Tintenpunkt.",
+          "Virtuelles Papier modelliert weder Reibung noch Rutschen oder echten Stiftdruck."
+        ]
+      },
+      "formula": {
+        "en": "paper coordinates = R(−paper angle) × (axis offset + R(pen angle) × crank vector)",
+        "de": "Papierkoordinaten = R(−Papierwinkel) × (Achsversatz + R(Stiftwinkel) × Kurbelvektor)"
+      },
+      "related": [
+        "drawing-robot.ldr",
+        "tidal-trio.ldr"
+      ]
+    },
+    "survey-rover": {
+      "en": {
+        "what": "Two wheel motors move the chassis; a third tilts its distance-sensor head.",
+        "try": [
+          "Reset and run the short out-and-back survey.",
+          "Watch the sensor head when the motor changes between motion and holding.",
+          "Stop the program, change its head angle gently and compare the sensing direction."
+        ],
+        "why": "Gravity exerts a torque on the offset head. An active position hold can oppose it; merely braking a motor does not guarantee a fixed angle. Sensor direction changes with the head pose.",
+        "matters": "Robot sensors need stable mounting and a known viewing direction.",
+        "question": "Is a zero speed command always the same as holding a position?",
+        "answer": "No. Holding uses position feedback to provide a balancing torque. Passive braking can allow gravity-driven drift.",
+        "further": [
+          "Compare the head while driving and while stationary.",
+          "Relate the distance reading to the ray direction, not just the chassis heading."
+        ]
+      },
+      "de": {
+        "what": "Zwei Radmotoren bewegen das Fahrgestell; ein dritter neigt den Abstandssensorkopf.",
+        "try": [
+          "Setze zurück und starte die kurze Erkundungsfahrt.",
+          "Beobachte den Kopf beim Wechsel von Bewegung zu Halten.",
+          "Stoppe, ändere den Kopfwinkel vorsichtig und vergleiche die Messrichtung."
+        ],
+        "why": "Die Schwerkraft erzeugt am versetzten Kopf ein Drehmoment. Aktives Positionshalten wirkt dagegen; bloßes Bremsen garantiert keinen festen Winkel. Die Sensorrichtung ändert sich mit der Kopfpose.",
+        "matters": "Robotersensoren brauchen eine stabile Montage und eine bekannte Blickrichtung.",
+        "question": "Ist Drehzahl null immer dasselbe wie Positionshalten?",
+        "answer": "Nein. Halten erzeugt über Positionsrückkopplung ein Ausgleichsmoment. Bei passivem Bremsen kann die Schwerkraft den Kopf verdrehen.",
+        "further": [
+          "Vergleiche den Kopf während der Fahrt und im Stillstand.",
+          "Beziehe den Sensorwert auf den Strahl, nicht nur auf die Fahrgestellrichtung."
+        ]
+      },
+      "formula": {
+        "en": "gravity torque = mass × gravity × perpendicular lever arm",
+        "de": "Schwerkraftmoment = Masse × Erdbeschleunigung × senkrechter Hebelarm"
+      },
+      "related": [
+        "wall-stopper.ldr",
+        "centrifugal-governor.ldr"
+      ]
+    },
+    "rcx-bumper-car": {
+      "en": {
+        "what": "A contact sensor changes the drive commands when the robot touches an obstacle.",
+        "try": [
+          "Use the supplied example and obstacle mat. Reset and run.",
+          "Watch the touch reading when the bumper reaches the obstacle.",
+          "Compare contact-triggered reversal with the distance-triggered wall-stopper."
+        ],
+        "why": "Contact feedback is an event at the bumper, followed by a programmed reaction. The location of the contact surface and sensor travel determine when the event happens.",
+        "matters": "Bumpers are a simple way to detect a failed path or physical contact.",
+        "question": "Can this contact sensor stop the robot before any physical contact occurs?",
+        "answer": "No. It detects contact. Detecting an obstacle in advance requires a suitable non-contact sensor.",
+        "further": [
+          "Compare the bumper’s position with the body front.",
+          "Experiment with a lower approach speed."
+        ]
+      },
+      "de": {
+        "what": "Ein Kontaktsensor verändert die Fahrbefehle, sobald der Roboter ein Hindernis berührt.",
+        "try": [
+          "Nutze Beispiel und Hindernismatte. Setze zurück und starte.",
+          "Beobachte den Tasterwert beim Berühren des Hindernisses.",
+          "Vergleiche den Kontakt-Rückwärtslauf mit dem Abstands-Wandstopper."
+        ],
+        "why": "Der Kontakt am Stoßfänger löst eine programmierte Reaktion aus. Kontaktfläche und Sensorweg bestimmen den Auslösezeitpunkt.",
+        "matters": "Stoßfänger erkennen auf einfache Weise einen blockierten Weg oder eine Berührung.",
+        "question": "Kann dieser Sensor den Roboter vor jeder Berührung stoppen?",
+        "answer": "Nein. Er erkennt Kontakt. Für eine vorherige Hinderniserkennung ist ein geeigneter berührungsloser Sensor nötig.",
+        "further": [
+          "Vergleiche Stoßfänger und Gehäusefront.",
+          "Erprobe eine niedrigere Annäherungsgeschwindigkeit."
+        ]
+      },
+      "formula": "",
+      "related": [
+        "wall-stopper.ldr"
+      ]
+    },
+    "nxt-bumper-bot": {
+      "en": {
+        "what": "A contact sensor changes the drive commands when the robot touches an obstacle.",
+        "try": [
+          "Use the supplied example and obstacle mat. Reset and run.",
+          "Watch the touch reading when the bumper reaches the obstacle.",
+          "Compare contact-triggered reversal with the distance-triggered wall-stopper."
+        ],
+        "why": "Contact feedback is an event at the bumper, followed by a programmed reaction. The location of the contact surface and sensor travel determine when the event happens.",
+        "matters": "Bumpers are a simple way to detect a failed path or physical contact.",
+        "question": "Can this contact sensor stop the robot before any physical contact occurs?",
+        "answer": "No. It detects contact. Detecting an obstacle in advance requires a suitable non-contact sensor.",
+        "further": [
+          "Compare the bumper’s position with the body front.",
+          "Experiment with a lower approach speed."
+        ]
+      },
+      "de": {
+        "what": "Ein Kontaktsensor verändert die Fahrbefehle, sobald der Roboter ein Hindernis berührt.",
+        "try": [
+          "Nutze Beispiel und Hindernismatte. Setze zurück und starte.",
+          "Beobachte den Tasterwert beim Berühren des Hindernisses.",
+          "Vergleiche den Kontakt-Rückwärtslauf mit dem Abstands-Wandstopper."
+        ],
+        "why": "Der Kontakt am Stoßfänger löst eine programmierte Reaktion aus. Kontaktfläche und Sensorweg bestimmen den Auslösezeitpunkt.",
+        "matters": "Stoßfänger erkennen auf einfache Weise einen blockierten Weg oder eine Berührung.",
+        "question": "Kann dieser Sensor den Roboter vor jeder Berührung stoppen?",
+        "answer": "Nein. Er erkennt Kontakt. Für eine vorherige Hinderniserkennung ist ein geeigneter berührungsloser Sensor nötig.",
+        "further": [
+          "Vergleiche Stoßfänger und Gehäusefront.",
+          "Erprobe eine niedrigere Annäherungsgeschwindigkeit."
+        ]
+      },
+      "formula": "",
+      "related": [
+        "wall-stopper.ldr"
+      ]
+    },
+    "wedo-milo": {
+      "en": {
+        "what": "A one-motor WeDo rover rolls on one driven wheel and two front ball castors. Its forward-looking distance sensor can stop it before a wall.",
+        "try": [
+          "Reset and load the rover example on its wall mat. Predict where it will stop.",
+          "Run and watch the distance reading decrease as the driven wheel moves the chassis.",
+          "Reset, use a low manual motor setting, then Stop. Compare manual stopping with the sensor-controlled program."
+        ],
+        "why": "The distance sensor provides feedback about the environment. The program stops the drive when its condition is met; fixed running time alone would depend on speed and starting position. This WeDo motor has no encoder, so it cannot provide a measured shaft-position hold.",
+        "matters": "Obstacle detection links a sensor condition to a physical action.",
+        "question": "If the rover starts farther from the wall, should a distance-triggered program need a longer drive time?",
+        "answer": "Yes, it travels farther before reaching the same sensor condition. A fixed-time program would instead stop after the same duration, at a different distance.",
+        "further": [
+          "Compare with the two-motor wall stopper and its distance reading.",
+          "Identify which port drives the motor and which carries the distance sensor."
+        ]
+      },
+      "de": {
+        "what": "Ein WeDo-Rover fährt mit einem angetriebenen Rad und zwei vorderen Kugelrollen. Sein nach vorn gerichteter Abstandssensor kann ihn vor einer Wand stoppen.",
+        "try": [
+          "Setze zurück und lade das Rover-Beispiel mit seiner Wand-Unterlage. Sage voraus, wo es anhält.",
+          "Starte und beobachte, wie der Abstandswert beim Fahren kleiner wird.",
+          "Setze zurück, fahre mit kleinem Motorwert von Hand und drücke Stop. Vergleiche das mit dem sensorgesteuerten Programm."
+        ],
+        "why": "Der Abstandssensor meldet den Zustand der Umgebung zurück. Das Programm stoppt den Antrieb bei seiner Bedingung. Eine feste Fahrzeit hinge dagegen von Drehzahl und Startposition ab. Dieser WeDo-Motor hat keinen Encoder und kann deshalb keine gemessene Wellenposition halten.",
+        "matters": "Hinderniserkennung verbindet eine Sensorbedingung mit einer sichtbaren physikalischen Handlung.",
+        "question": "Muss ein abstandsgesteuertes Programm länger fahren, wenn der Rover weiter von der Wand entfernt startet?",
+        "answer": "Ja. Er legt mehr Weg zurück, bevor dieselbe Sensorbedingung erfüllt ist. Ein zeitgesteuertes Programm würde nach derselben Dauer bei einem anderen Abstand anhalten.",
+        "further": [
+          "Vergleiche mit dem Wandstopper mit zwei Motoren und seiner Abstandsanzeige.",
+          "Bestimme den Motoranschluss und den Anschluss des Abstandssensors."
+        ]
+      },
+      "formula": "",
+      "related": [
+        "wall-stopper.ldr",
+        "survey-rover.ldr"
+      ]
+    },
+    "technic-hub-bench": {
+      "en": {
+        "what": "This hub or motor bench exposes the port-to-motion relationship with a small mechanism.",
+        "try": [
+          "Reset and load the example when available.",
+          "Stop the program and operate one motor slider at a low setting.",
+          "Compare direction, speed and the response after Stop."
+        ],
+        "why": "A motor command acts through the supported port and mechanism. Motor families differ in feedback: encoder-equipped motors can report angle and hold a target; an encoderless motor cannot gain that feedback merely from a program.",
+        "matters": "Understanding the port boundary helps compare LEGO hub generations honestly.",
+        "question": "Can software alone turn an encoderless motor into a measured position servo?",
+        "answer": "No. A position loop needs a position measurement or another suitable feedback source.",
+        "further": [
+          "Identify the motor and hub used by this model.",
+          "Compare its controls with the SPIKE survey rover."
+        ]
+      },
+      "de": {
+        "what": "Dieser Hub- oder Motorprüfstand macht den Zusammenhang zwischen Anschluss und Bewegung sichtbar.",
+        "try": [
+          "Setze zurück und lade das vorhandene Beispiel.",
+          "Stoppe das Programm und bewege einen Motorregler mit kleinem Wert.",
+          "Vergleiche Richtung, Drehzahl und Verhalten nach Stop."
+        ],
+        "why": "Ein Motorbefehl wirkt über den unterstützten Anschluss und Mechanismus. Motorfamilien unterscheiden sich in ihrer Rückmeldung: Encoder liefern Winkel und erlauben Positionshalten. Ein Motor ohne Encoder erhält diese Messung nicht allein durch ein Programm.",
+        "matters": "So lassen sich LEGO-Hubgenerationen sachlich vergleichen.",
+        "question": "Macht Software allein aus einem encoderlosen Motor einen gemessenen Positionsservo?",
+        "answer": "Nein. Ein Positionsregelkreis benötigt eine Positionsmessung oder eine andere geeignete Rückmeldung.",
+        "further": [
+          "Bestimme Motor und Hub dieses Modells.",
+          "Vergleiche seine Bedienung mit dem SPIKE-Erkundungsrover."
+        ]
+      },
+      "formula": "",
+      "related": [
+        "survey-rover.ldr"
+      ]
+    },
+    "motor-bench": {
+      "en": {
+        "what": "This hub or motor bench exposes the port-to-motion relationship with a small mechanism.",
+        "try": [
+          "Reset and load the example when available.",
+          "Stop the program and operate one motor slider at a low setting.",
+          "Compare direction, speed and the response after Stop."
+        ],
+        "why": "A motor command acts through the supported port and mechanism. Motor families differ in feedback: encoder-equipped motors can report angle and hold a target; an encoderless motor cannot gain that feedback merely from a program.",
+        "matters": "Understanding the port boundary helps compare LEGO hub generations honestly.",
+        "question": "Can software alone turn an encoderless motor into a measured position servo?",
+        "answer": "No. A position loop needs a position measurement or another suitable feedback source.",
+        "further": [
+          "Identify the motor and hub used by this model.",
+          "Compare its controls with the SPIKE survey rover."
+        ]
+      },
+      "de": {
+        "what": "Dieser Hub- oder Motorprüfstand macht den Zusammenhang zwischen Anschluss und Bewegung sichtbar.",
+        "try": [
+          "Setze zurück und lade das vorhandene Beispiel.",
+          "Stoppe das Programm und bewege einen Motorregler mit kleinem Wert.",
+          "Vergleiche Richtung, Drehzahl und Verhalten nach Stop."
+        ],
+        "why": "Ein Motorbefehl wirkt über den unterstützten Anschluss und Mechanismus. Motorfamilien unterscheiden sich in ihrer Rückmeldung: Encoder liefern Winkel und erlauben Positionshalten. Ein Motor ohne Encoder erhält diese Messung nicht allein durch ein Programm.",
+        "matters": "So lassen sich LEGO-Hubgenerationen sachlich vergleichen.",
+        "question": "Macht Software allein aus einem encoderlosen Motor einen gemessenen Positionsservo?",
+        "answer": "Nein. Ein Positionsregelkreis benötigt eine Positionsmessung oder eine andere geeignete Rückmeldung.",
+        "further": [
+          "Bestimme Motor und Hub dieses Modells.",
+          "Vergleiche seine Bedienung mit dem SPIKE-Erkundungsrover."
+        ]
+      },
+      "formula": "",
+      "related": [
+        "survey-rover.ldr"
+      ]
+    },
+    "pulse-percussion": {
+      "en": {
+        "what": "One shaft drives three phased pegs. Each peg lifts a free beater and releases it onto a fixed strike bar.",
+        "try": [
+          "Reset and run the three tempo stages. Watch a beater, its peg and the strike bar.",
+          "Count each channel’s drops during two shaft revolutions at one speed.",
+          "Compare the short-short-long rhythm at the three speeds."
+        ],
+        "why": "Peg contact raises the beater; after release, gravity returns it. Mechanical 0°/90°/180° indexing sets the rhythm. Speed changes tempo while the phase pattern stays fixed. The app visualises impacts rather than synthesising sound.",
+        "matters": "Cams coordinate repeated contact events with one drive, as in mechanical sequencers.",
+        "question": "Does doubling shaft speed change the 90°/90°/180° spacing into equal spacing?",
+        "answer": "No. The angular spacing is fixed by the physical pegs. At steady speed, all time intervals halve, preserving the short-short-long pattern.",
+        "further": [
+          "Distinguish a turning shaft from a genuinely lifted and released beater.",
+          "The model does not predict tuned pitch, loudness, friction or real acoustic quality."
+        ]
+      },
+      "de": {
+        "what": "Eine Welle treibt drei versetzte Stifte an. Jeder hebt einen freien Schlägel und lässt ihn auf einen festen Balken fallen.",
+        "try": [
+          "Setze zurück und starte die drei Tempostufen. Beobachte Schlägel, Stift und Schlagbalken.",
+          "Zähle die Schläge jedes Kanals bei zwei Wellenumdrehungen einer Stufe.",
+          "Vergleiche den Kurz-kurz-lang-Rhythmus bei drei Drehzahlen."
+        ],
+        "why": "Der Stiftkontakt hebt den Schlägel; nach der Freigabe führt ihn die Schwerkraft zurück. Die mechanische 0°/90°/180°-Teilung bestimmt den Rhythmus. Drehzahl verändert das Tempo, nicht die Phasenfolge. Die App zeigt die Stöße und erzeugt keinen Klang.",
+        "matters": "Nocken koordinieren wiederholte Kontakte mit nur einem Antrieb, etwa in mechanischen Ablaufsteuerungen.",
+        "question": "Werden aus 90°/90°/180° bei doppelter Drehzahl gleich große Abstände?",
+        "answer": "Nein. Die Winkelabstände sind durch die Stifte vorgegeben. Bei gleichförmiger Fahrt halbieren sich alle Zeitabstände; kurz-kurz-lang bleibt erhalten.",
+        "further": [
+          "Unterscheide eine drehende Welle vom wirklichen Heben und Freigeben eines Schlägels.",
+          "Das Modell sagt weder Tonhöhe noch Lautstärke, Reibung oder echte Klangqualität voraus."
+        ]
+      },
+      "formula": {
+        "en": "event interval = phase gap / shaft angular speed",
+        "de": "Zeitabstand = Phasenabstand / Winkelgeschwindigkeit der Welle"
+      },
+      "related": [
+        "tidal-trio.ldr"
+      ]
+    },
+    "centrifugal-governor": {
+      "en": {
+        "what": "Two freely hinged arms rotate with a motor-driven crossbar. Higher speed makes them swing outward against gravity.",
+        "try": [
+          "Reset and run the three speed stages. Compare the average arm tilt while allowing for oscillation.",
+          "Watch the arms swing after the rotor stops.",
+          "Compare forward and reverse rotation at the middle speed."
+        ],
+        "why": "A rotating arm needs centripetal acceleration. In the rotating frame its outward inertial effect competes with gravity. The speed enters squared. This is a governor mechanism demonstrator; the arms do not automatically regulate the motor.",
+        "matters": "Mechanical governors use this speed-sensitive motion as part of a feedback linkage.",
+        "question": "At equal speed magnitude, should reversing rotation pull the arms inward instead?",
+        "answer": "No. The centrifugal term depends on angular speed squared. Forward and reverse have the same ideal steady equilibrium; transitions and oscillations can differ.",
+        "further": [
+          "Compare a doubled low speed with the change in mean tilt.",
+          "A real distributed arm is not a point mass: use the simple formula as an approximation."
+        ]
+      },
+      "de": {
+        "what": "Zwei frei gelagerte Arme drehen mit einem motorisierten Querträger. Höhere Drehzahl schwenkt sie gegen die Schwerkraft nach außen.",
+        "try": [
+          "Setze zurück und starte die drei Drehzahlstufen. Vergleiche den mittleren Ausschlag trotz Schwingungen.",
+          "Beobachte die Arme nach dem Rotorstopp.",
+          "Vergleiche Vorwärts- und Rückwärtslauf bei mittlerer Drehzahl."
+        ],
+        "why": "Ein rotierender Arm benötigt Zentripetalbeschleunigung. Im mitrotierenden System konkurriert die nach außen gerichtete Trägheitswirkung mit der Schwerkraft. Die Drehzahl geht quadratisch ein. Dies ist ein Reglermechanismus-Modell; die Arme regeln den Motor nicht automatisch.",
+        "matters": "Mechanische Fliehkraftregler nutzen diese drehzahlabhängige Bewegung als Teil einer Rückkopplung.",
+        "question": "Sollte die umgekehrte Drehrichtung bei gleichem Drehzahlbetrag die Arme nach innen ziehen?",
+        "answer": "Nein. Der Fliehkraftterm hängt vom Quadrat der Winkelgeschwindigkeit ab. Die ideale stationäre Gleichgewichtslage ist gleich; Übergänge und Schwingungen können verschieden sein.",
+        "further": [
+          "Vergleiche verdoppelte niedrige Drehzahl mit der Änderung des mittleren Winkels.",
+          "Ein ausgedehnter Arm ist keine Punktmasse: die einfache Formel ist eine Näherung."
+        ]
+      },
+      "formula": {
+        "en": "point-mass approximation: tan(tilt) ≈ ω² × radius / g",
+        "de": "Punktmassen-Näherung: tan(Neigung) ≈ ω² × Radius / g"
+      },
+      "related": [
+        "survey-rover.ldr",
+        "flywheel-differential.ldr"
+      ]
+    }
+  }
+}

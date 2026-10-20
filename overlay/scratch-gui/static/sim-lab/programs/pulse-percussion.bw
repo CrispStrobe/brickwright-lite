@@ -1,0 +1,14 @@
+DEVICE SPIKE
+
+# PULSE PERCUSSION, CrispStrobe — BSD-3-Clause.
+# Reset first. One shaft controls the 0/90/180-degree peg phases mechanically.
+# Two revolutions each at about 15, 30 and 45 rpm; every channel drops twice per stage.
+WHEN flag clicked:
+  set motor stop action A hold
+  set motor speed A 8
+  run motor A clockwise 720 degrees
+  set motor speed A 16
+  run motor A clockwise 720 degrees
+  set motor speed A 24
+  run motor A clockwise 720 degrees
+  wait 2 seconds

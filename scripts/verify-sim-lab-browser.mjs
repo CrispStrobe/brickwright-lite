@@ -163,6 +163,8 @@ import {scaleInteractions, OPEN_BUDGET_MS, DRAW_CALL_BUDGET, BUILD_OPEN_BUDGET_M
 import {brakingBound, judgeWallStop} from './lib/sim-lab-wall-stopper-judge.mjs';
 import {surveyRoverInteractions} from './lib/sim-lab-survey-rover-gate.mjs';
 import {physicsExamplesInteractions, germanPhysicsExamplesInteractions} from './lib/sim-lab-physics-examples-gate.mjs';
+import {dynamicsInteractions} from './lib/sim-lab-dynamics-gate.mjs';
+import {lessonInteractions, germanLessonInteractions} from './lib/sim-lab-lesson-gate.mjs';
 import {tidalInteractions, tidalInstructionsInteractions} from './lib/sim-lab-tidal-gate.mjs';
 import {loomInteractions} from './lib/sim-lab-loom-gate.mjs';
 import {judgeExpandedRun} from './lib/sim-lab-expanded-judge.mjs';
@@ -731,6 +733,23 @@ try {
             assert.ok(rec.restMm < 2, `the ${example.name} is not at rest: ${JSON.stringify(rec)}`);
             console.log(`PASS the ${example.name}'s example program, loaded from the pane, ${example.judge(rec)}`);
             await ex.close();
+        }
+
+        if (runExample('dynamics-machines.ldr')) {
+            const dynamics = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            dynamics.on('pageerror', error => errors.push(error.message)); dynamics.on('dialog', dialog => dialog.accept());
+            await dynamicsInteractions(dynamics, {openSimLab, shotsDir: resolve(artifacts, 'dynamics-machines'), timeout: wallBudget(48000)});
+            await dynamics.close();
+        }
+        if (runExample('lessons.ldr')) {
+            const lesson = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            lesson.on('pageerror', error => errors.push(error.message)); lesson.on('dialog', dialog => dialog.accept());
+            await lessonInteractions(lesson, {openSimLab, shotsDir: resolve(artifacts, 'lessons')});
+            await lesson.close();
+            const german = await browser.newPage({viewport: {width: 1024, height: 900}, hasTouch: true, serviceWorkers: 'block', locale: 'de-DE'});
+            german.on('pageerror', error => errors.push(error.message)); german.on('dialog', dialog => dialog.accept());
+            await germanLessonInteractions(german, {openSimLab, shotsDir: resolve(artifacts, 'lessons')});
+            await german.close();
         }
 
         if (ONLY_EXAMPLES.length && runExample('tidal-instructions.ldr')) {

@@ -70,3 +70,17 @@ above, the LDraw.org OMR. Nothing in the files is changed.
   eight-piece pinned hub mount, explicit ports, connected instructions and four native programs.
 - App notice: `static/sim-lab/licenses/tidal-trio.txt`. LDraw part authors/licences are unchanged.
   Source Python, PDF, predicted GIF and preview are not newly bundled as app behaviour.
+
+## PULSE PERCUSSION (bundled adapted Robot Lab model)
+
+- Source: owner's original `pulse_percussion_complete.zip`, 120-piece, one-motor assembly.
+- Exact flat LDraw and initial README are archived in `pulse-percussion-source/`.
+  Flat LDraw SHA256: `d9dd175a8a5b3f193bc5163ef5887367a6797d9cf9a92777896885016c9945bb`.
+- Copyright (c) 2026 CrispStrobe / BSD-3-Clause, as instructed by the owner for their
+  original designs. This supersedes the generated download's OpenAI/CC BY wording;
+  raw fixture bytes retain their original headers for reproducibility.
+- `scripts/adapt-pulse-percussion.mjs` checks that hash and adds ten pinned console
+  support pieces, canonical hub spelling, explicit motor port and stable part IDs.
+  Bundle: 130 pieces / motor A. App notice: `static/sim-lab/licenses/pulse-percussion.txt`.
+- Downloaded controller/generator code and predicted animation are not executed
+  or bundled as app behaviour. Referenced LDraw authors/licences are unchanged.

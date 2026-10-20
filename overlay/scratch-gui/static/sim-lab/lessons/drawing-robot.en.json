@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "drawing-robot",
+  "language": "en",
+  "what": "A pen carried by a moving robot leaves a trace of its actual path. The trailing pen traces the geometry of motion and turning.",
+  "try": [
+    "Reset to clear the ink and run the drawing program.",
+    "Compare straight segments with turns.",
+    "Change one wheel speed or distance, Reset and compare the resulting curve."
+  ],
+  "why": "The pen follows a point attached to the chassis. If that point is offset from the drive axle, turning the chassis also sweeps the pen around the axle.",
+  "matters": "Tool placement matters when robots draw, weld or inspect a surface.",
+  "question": "Do the pen and drive-axle midpoint always draw the same path?",
+  "answer": "No. An offset point follows a different arc during a turn, even though both belong to one rigid chassis.",
+  "further": [
+    "Compare wheel-path drawing with rotating-paper drawing.",
+    "Predict the effect of moving a pen farther from the axle."
+  ],
+  "formula": "",
+  "related": [
+    "orbital-loom.ldr"
+  ]
+}

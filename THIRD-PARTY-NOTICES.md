@@ -2429,3 +2429,13 @@ The owner confirmed these supplied designs are their own original work and speci
 and licence. Their generated download README/header wording is superseded for these assemblies.
 The bundled notices identify simulator adaptations. Referenced LDraw geometry retains the separate
 authors and licences recorded above. No supplied predicted animation is presented as physics output.
+
+## Original Robot Lab assembly: PULSE PERCUSSION, governor and lesson content
+
+Copyright (c) 2026 CrispStrobe. BSD-3-Clause.
+Pulse Percussion is the owner's original design; their requested credit and licence
+supersede generated download header wording. Its bundled notice identifies the
+simulator adaptation. The centrifugal governor and bilingual Robot Lab lesson
+prose are original work under the same licence. Referenced LDraw geometry retains
+its own authors and licences above. No NC-licensed model or predicted animation
+is included as functioning simulation content.

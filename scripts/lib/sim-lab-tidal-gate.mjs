@@ -15,14 +15,16 @@ export const tidalInteractions = async (page, opts) => {
 };
 
 export const tidalInstructionsInteractions = async (page, opts) => {
+    const piecesExpected = opts.pieces || 226;
+    const prefix = opts.prefix || 'tidal';
     await page.getByTestId('bw-sim-lab-instructions').click();
     const dialog = page.getByTestId('bw-sim-instructions');
     await dialog.waitFor();
     await page.waitForFunction(() => window.__bwSimLabInstructions?.status === 'ready' &&
         window.__bwSimLabInstructions.stats?.step === 0, null, {timeout: 30000});
     const steps = await page.evaluate(() => window.__bwSimLabInstructions.steps);
-    assert.ok(steps > 30 && steps < 226);
-    await dialog.screenshot({path: resolve(opts.shotsDir, 'tidal-instructions-first.png')});
+    assert.ok(steps > (opts.minSteps ?? 30) && steps < piecesExpected);
+    await dialog.screenshot({path: resolve(opts.shotsDir, `${prefix}-instructions-first.png`)});
     for(let n=1;n<=steps;n++){
         await page.keyboard.press('ArrowRight');
         await page.waitForFunction(want => {
@@ -32,8 +34,8 @@ export const tidalInstructionsInteractions = async (page, opts) => {
     }
     const bom=page.getByTestId('bw-sim-instructions-bom');await bom.waitFor();
     const pieces=await bom.getByTestId('bw-sim-instructions-part').evaluateAll(es=>es.reduce((n,e)=>n+Number(e.dataset.count),0));
-    assert.equal(pieces,226);
-    await dialog.screenshot({path:resolve(opts.shotsDir,'tidal-instructions-bom.png')});
+    assert.equal(pieces,piecesExpected);
+    await dialog.screenshot({path:resolve(opts.shotsDir,`${prefix}-instructions-bom.png`)});
     await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});
-    console.log(`PASS tidal trio instructions: ${steps} connected pages and ${pieces}-piece bill of materials`);
+    console.log(`PASS ${prefix} instructions: ${steps} connected pages and ${pieces}-piece bill of materials`);
 };

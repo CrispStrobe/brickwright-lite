@@ -22,7 +22,7 @@ test('gallery metadata counts the actual models, motors and hubs and covers ever
 });
 test('filter physics, translated descriptions, hubs, and genuinely larger models', () => {
     const large = filterModelExamples(MODELS, MODEL_LESSONS, {size: 'large'});
-    assert.deepEqual(large.map(m => m.id || m.file).sort(), ['chain-transmission.ldr', 'excavator.ldr', 'flywheel-differential.ldr', 'orbital-loom-eightfold', 'orbital-loom-elevenfold', 'orbital-loom-sevenfold', 'orbital-loom.ldr', 'ratio-workbench.ldr', 'tidal-trio-alternating', 'tidal-trio-reverse', 'tidal-trio-together', 'tidal-trio.ldr']);
+    assert.deepEqual(large.map(m => m.id || m.file).sort(), ['chain-transmission.ldr', 'excavator.ldr', 'flywheel-differential.ldr', 'orbital-loom-eightfold', 'orbital-loom-elevenfold', 'orbital-loom-sevenfold', 'orbital-loom.ldr', 'pulse-percussion.ldr', 'ratio-workbench.ldr', 'tidal-trio-alternating', 'tidal-trio-reverse', 'tidal-trio-together', 'tidal-trio.ldr']);
     assert.deepEqual(filterModelExamples(MODELS, MODEL_LESSONS, {query: 'Schwungrad', locale: 'de'}).map(m => m.file), ['flywheel-differential.ldr']);
     assert.deepEqual(filterModelExamples(MODELS, MODEL_LESSONS, {topic: 'chains', size: 'large'}).map(m => m.file), ['chain-transmission.ldr']);
     assert.equal(filterModelExamples(MODELS, MODEL_LESSONS, {query: 'no-such-model-123'}).length, 0);

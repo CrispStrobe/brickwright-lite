@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "wedo-milo",
+  "language": "de",
+  "what": "Ein WeDo-Rover fährt mit einem angetriebenen Rad und zwei vorderen Kugelrollen. Sein nach vorn gerichteter Abstandssensor kann ihn vor einer Wand stoppen. Eine Abstandsrückmeldung stoppt einen Rover mit einem Motor.",
+  "try": [
+    "Setze zurück und lade das Rover-Beispiel mit seiner Wand-Unterlage. Sage voraus, wo es anhält.",
+    "Starte und beobachte, wie der Abstandswert beim Fahren kleiner wird.",
+    "Setze zurück, fahre mit kleinem Motorwert von Hand und drücke Stop. Vergleiche das mit dem sensorgesteuerten Programm."
+  ],
+  "why": "Der Abstandssensor meldet den Zustand der Umgebung zurück. Das Programm stoppt den Antrieb bei seiner Bedingung. Eine feste Fahrzeit hinge dagegen von Drehzahl und Startposition ab. Dieser WeDo-Motor hat keinen Encoder und kann deshalb keine gemessene Wellenposition halten.",
+  "matters": "Hinderniserkennung verbindet eine Sensorbedingung mit einer sichtbaren physikalischen Handlung.",
+  "question": "Muss ein abstandsgesteuertes Programm länger fahren, wenn der Rover weiter von der Wand entfernt startet?",
+  "answer": "Ja. Er legt mehr Weg zurück, bevor dieselbe Sensorbedingung erfüllt ist. Ein zeitgesteuertes Programm würde nach derselben Dauer bei einem anderen Abstand anhalten.",
+  "further": [
+    "Vergleiche mit dem Wandstopper mit zwei Motoren und seiner Abstandsanzeige.",
+    "Bestimme den Motoranschluss und den Anschluss des Abstandssensors."
+  ],
+  "formula": "",
+  "related": [
+    "wall-stopper.ldr",
+    "survey-rover.ldr"
+  ]
+}

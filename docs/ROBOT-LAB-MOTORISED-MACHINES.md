@@ -101,3 +101,5 @@ Qualification: 120 mechanism/VM/instruction/library/licence/debug tests, 21 came
 tests and nine Robot Lab API tests pass. Six existing geometry assertions restricted to these
 four builds pass. All four programs, seven manual motor controls, initial camera framing and
 the existing full Robot Lab UI browser gate pass without page errors.
+
+All examples now have [guided English/German lessons](ROBOT-LAB-LESSONS-AND-DYNAMICS.md), including the new percussion and centrifugal-governor experiments.

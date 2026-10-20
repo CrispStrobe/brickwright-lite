@@ -142,6 +142,26 @@ for (const {name, text} of MODELS_UNDER_TEST) {
             const joins = [...adj.get(p.id)];
             assert.ok(joins.length >= 1, `${name}: ${p.id} holds something`);
             if (joins.length > 2) continue;
+            // A retaining bush supported only by a shaft may slide onto that shaft on
+            // a following page; it does not need to precede the shaft that holds it.
+            if (/bush/i.test(CATALOG.get(p.part).name) && joins.every(id => category(model, id) === 'axle')) {
+                const support = Math.min(...joins.map(id => at.get(id)));
+                assert.ok(support <= at.get(p.id) && at.get(p.id) - support <= 3,
+                    `${name}: ${p.id} follows its fastener support within three pages`);
+                checked++;
+                continue;
+            }
+            // A perpendicular pin/hole connector has two insertion stages: it can
+            // seat on an existing axle before a later beam slides onto its pin,
+            // or seat in a beam before receiving the axle. Connectivity above
+            // independently verifies its support on the installation page.
+            if (/perpendicular pin hole/.test(CATALOG.get(p.part).name)) {
+                const ends = joins.map(id => at.get(id));
+                if (Math.min(...ends) <= at.get(p.id) && at.get(p.id) <= Math.max(...ends)) {
+                    checked++;
+                    continue;
+                }
+            }
             beforeOrWith(plan, at.get(p.id), Math.max(...joins.map(id => at.get(id))), `${name}: ${p.id} joins ${joins.join(', ')}`);
             checked++;
         }

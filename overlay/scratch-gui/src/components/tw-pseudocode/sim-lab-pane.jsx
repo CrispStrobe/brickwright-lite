@@ -31,6 +31,7 @@ import SimLabReadings from './sim-lab-readings.jsx';
 import SimLabChallenges from './sim-lab-challenges.jsx';
 import SimLabInstructions from './sim-lab-instructions.jsx';
 import SimLabExamples from './sim-lab-examples.jsx';
+import SimLabLesson from './sim-lab-lesson.jsx';
 import {INSIGHT_TEXT, issueSentence, fillText} from './sim-lab-insight-text.js';
 import {firmwareRefusalSentence} from './sim-lab-firmware-text.js';
 import {EDITOR_TEXT} from './sim-lab-editor-text.js';
@@ -369,7 +370,7 @@ class SimLabPane extends React.Component {
             mixerOpen: (() => { try { return localStorage.getItem(MIXER_OPEN_KEY) === '1'; } catch { return false; } })(), mixer: {session: null, power: {}},
             // Simulate: sensor rays, the Readings panel, slow motion, and the replay position (null: live)
             showSensors: false, readings: false, timeScale: 1, replayAt: null, replayFrames: 0, readingsTick: 0,
-            examplesOpen: false, challengesOpen: false, challenge: null, challengeResult: null, challengeBest: readBest(),
+            examplesOpen: false, lessonKey: null, challengesOpen: false, challenge: null, challengeResult: null, challengeBest: readBest(),
             paneWidth: 0, menu: null, drawer: false, paletteDragging: false, infoOpen: false, route: 'scratch',
             paletteOpen: true, paletteShare: null, propsShare: null, propsDocked: true,
             hidden: [], editGroup: null, pick: null, measurement: null, placeColor: null, propsOpen: false, shortcuts: false,
@@ -1024,7 +1025,7 @@ class SimLabPane extends React.Component {
         }
         await this.openText(await response.text(), file, key);
         // A model that comes with an example offers it while the Code tab has no SPIKE program.
-        if (!this.disposed) this.setState({info: this.shippedModel()?.example && !this.spikeLoaded() ? this.text.exampleOffer : ''});
+        if (!this.disposed) this.setState({...(this.state.lessonKey ? {lessonKey: key} : {}), info: this.shippedModel()?.example && !this.spikeLoaded() ? this.text.exampleOffer : ''});
     }
 
     /** The gallery uses the same model/program loaders as the dropdown and example button. */
@@ -2591,6 +2592,16 @@ class SimLabPane extends React.Component {
     }
 
     /** Below the toolbar in Simulate: the model, the mat, the program route, the example, and the status. */
+    renderLessonToggle () {
+        if (!this.shippedModel()) return null;
+        const label = this.locale === 'de' ? 'Modell-Lektion' : 'Model lesson';
+        return <button type="button" data-testid="bw-sim-lab-lesson" aria-label={label} title={label} aria-expanded={Boolean(this.state.lessonKey)}
+            style={{minHeight: this.state.coarse ? 40 : 28, border: '1px solid #94a3b8', borderRadius: 6, background: '#fff', color: '#0f172a', padding: '3px 8px', flexShrink: 0}}
+            onClick={() => this.setState({lessonKey: this.state.lessonKey ? null : this.state.shipped})}>
+            {this.locale === 'de' ? 'Lektion' : 'Lesson'}
+        </button>;
+    }
+
     renderSimulateRow () {
         const {status, simMs, modelFile, shipped} = this.state;
         const busy = status === 'loading';
@@ -2612,6 +2623,7 @@ class SimLabPane extends React.Component {
         const runtime = this.props.vm && this.props.vm.runtime;
         return (
             <div data-testid="bw-sim-lab-context" style={{display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minWidth: 0, fontSize: 12}}>
+                {this.renderLessonToggle()}
                 <label style={labelled} title={T.model}>{icon('build')}
                     <select data-testid="bw-sim-lab-model" disabled={busy || !this.lib} value={shipped || ''} aria-label={T.model} style={field}
                         onChange={e => e.target.value && this.openShipped(e.target.value)}>
@@ -2679,6 +2691,7 @@ class SimLabPane extends React.Component {
         const selectionText = sel ? TT.selectedOne.replace('{name}', this.partName(sel.part)) : TT.selectedMany.replace('{n}', selection.length);
         return (
             <div data-testid="bw-sim-lab-context" style={{display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, minHeight: 26, fontSize: 12}}>
+                {this.renderLessonToggle()}
                 {selection.length > 0 && (
                     <span data-testid="bw-sim-lab-selection" title={sel ? this.t('selectedOne', {name: this.partName(sel.part)}) : this.t('selectedMany', {n: selection.length})}
                         style={{...chip, background: '#dbeafe', color: '#1e3a8a', fontWeight: 600, maxWidth: '40%', overflow: 'hidden', textOverflow: 'ellipsis'}}>
@@ -2786,6 +2799,7 @@ class SimLabPane extends React.Component {
                 {this.state.examplesOpen && this.lib && (
                     <SimLabExamples models={this.lib.MODELS} locale={this.locale} selected={this.state.shipped}
                         onChoose={(key, program) => this.openGalleryExample(key, program)}
+                        onLesson={key => this.setState({examplesOpen: false, lessonKey: key})}
                         onClose={() => this.closeExamples()} />
                 )}
                 {this.state.instructions && (
@@ -2825,6 +2839,14 @@ class SimLabPane extends React.Component {
                         )}
                     </div>
                     {this.renderDockedProperties(button)}
+                    {this.state.lessonKey && this.lib && (() => {
+                        const entry = this.lib.MODELS.find(m => modelKey(m) === this.state.lessonKey);
+                        return entry && <SimLabLesson key={this.state.lessonKey} entry={entry} models={this.lib.MODELS} locale={this.locale}
+                            overlay={this.state.paneWidth < 900} onLoad={(key, program) => this.openGalleryExample(key, program)}
+                            onRelated={key => this.setState({lessonKey: key})}
+                            onClose={() => this.setState({lessonKey: null}, () => (this.root.current?.querySelector('[data-testid="bw-sim-lab-lesson"]') || this.root.current?.querySelector('[data-testid="bw-sim-lab-examples"]'))?.focus())} />;
+                    })()}
+
                 </div>
                 {simulate && this.session && this.session.bridge && !this.session.lockstep && this.spikeScene() && this.renderDrive(button)}
                 {simulate && this.session && !this.session.lockstep && this.renderMixer(button)}

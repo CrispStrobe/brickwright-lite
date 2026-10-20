@@ -9,17 +9,17 @@ export const EXAMPLES_TEXT = {
     en: {title: 'Robot Lab examples', search: 'Search models and physics', topics: 'Physics topic', all: 'All topics',
         size: 'Model size', anySize: 'Any piece count', large: 'More than 50 pieces', small: 'Up to 50 pieces',
         close: 'Close examples', open: 'Open model', program: 'Open model + program', pieces: 'pieces', motors: 'motors',
-        count: '{n} models', empty: 'No models match these filters.', loading: 'Opening…',
+        lesson: 'Read lesson', count: '{n} models', empty: 'No models match these filters.', loading: 'Opening…',
         hint: 'Choose a mechanism to explore. Opening a model replaces the current build; opening its program also replaces the code.'},
     de: {title: 'Beispiele im Roboter-Labor', search: 'Modelle und Physik suchen', topics: 'Physikthema', all: 'Alle Themen',
         size: 'Modellgröße', anySize: 'Beliebige Teilezahl', large: 'Mehr als 50 Teile', small: 'Bis zu 50 Teile',
         close: 'Beispiele schließen', open: 'Modell öffnen', program: 'Modell + Programm öffnen', pieces: 'Teile', motors: 'Motoren',
-        count: '{n} Modelle', empty: 'Keine Modelle passen zu diesen Filtern.', loading: 'Wird geöffnet…',
+        lesson: 'Lektion lesen', count: '{n} Modelle', empty: 'Keine Modelle passen zu diesen Filtern.', loading: 'Wird geöffnet…',
         hint: 'Wähle einen Mechanismus zum Erkunden. Ein Modell ersetzt den aktuellen Bau; sein Programm ersetzt auch den Code.'}
 };
 const button = {minHeight: 40, border: '1px solid #94a3b8', borderRadius: 6, padding: '6px 10px', background: '#fff', color: '#0f172a', cursor: 'pointer'};
 
-const SimLabExamples = ({models, locale, selected, onChoose, onClose}) => {
+const SimLabExamples = ({models, locale, selected, onChoose, onLesson, onClose}) => {
     const lang = locale === 'de' ? 'de' : 'en';
     const T = EXAMPLES_TEXT[lang];
     const [query, setQuery] = useState('');
@@ -90,6 +90,7 @@ const SimLabExamples = ({models, locale, selected, onChoose, onClose}) => {
                                     <p style={{fontSize: 12, margin: '0 0 8px', color: '#475569'}}>{d.pieces} {T.pieces} · {d.motors} {T.motors} · {d.hubs.join(', ')}</p>
                                     <small style={{color: '#475569', marginBottom: 10}}>{d.author} · {d.license}</small>
                                     <div style={{display: 'flex', flexWrap: 'wrap', gap: 6}}>
+                                        <button type="button" style={button} disabled={Boolean(pending)} onClick={() => onLesson(key)} aria-label={`${T.lesson}: ${title}`}>{T.lesson}</button>
                                         <button type="button" style={button} disabled={Boolean(pending)} onClick={() => choose(key, false)} aria-label={`${T.open}: ${title}`}>
                                             {pending === key ? T.loading : T.open}
                                         </button>
@@ -110,6 +111,7 @@ SimLabExamples.propTypes = {
     locale: PropTypes.string,
     selected: PropTypes.string,
     onChoose: PropTypes.func.isRequired,
+    onLesson: PropTypes.func.isRequired,
     onClose: PropTypes.func.isRequired
 };
 export default SimLabExamples;

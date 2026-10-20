@@ -1,6 +1,6 @@
 ## Robot Lab guided example lessons — 2026-10-21
 
-CLAIMED — Codex, current model-design lane / draft PR #1138. User explicitly asks
+IMPLEMENTED / locally qualified — Codex, current model-design lane / draft PR #1138. User explicitly asks
 for in-app explanations and lessons following Circuit's example intros. Add lazy,
 offline, bilingual lessons for every registered physical model and preset, with
 what to observe, experiments, physical explanation, predictions/answers and links
@@ -8,10 +8,15 @@ between related mechanisms. Expose reading from example cards and the current
 model, alongside the simulation; preserve model/program loading and responsive
 controls. Verify lesson coverage, content references, EN/DE loading and retry,
 selected-model changes, visibility while running and small-screen layout.
+41 registered choices / 33 distinct machines; 82 complete offline lesson assets.
+English/German reader, prediction reveal, real program loading, fetch retry,
+preset following, related links and narrow tablet Build drawer pass in the
+production browser. Formula labels are translated as well as prose. All 16
+existing layout cases pass. Original lesson content: CrispStrobe / BSD-3-Clause.
 
 ## Pulse Percussion and original dynamics machine — 2026-10-21
 
-CLAIMED — Codex, existing model-design lane / draft PR #1138. Qualify the supplied
+IMPLEMENTED / locally qualified — Codex, existing model-design lane / draft PR #1138. Qualify the supplied
 one-motor percussion mechanism with actual peg contact, gravity release and strikes;
 connect its console, repair genuine design or collision gaps, and add native programs,
 bilingual library entries and connected instructions. Then construct an original
@@ -21,6 +26,18 @@ LDraw authors/licences and exact source provenance. Do not execute downloaded co
 Preserve peer worktrees and protected Jolt/compiler/collision implementation files.
 Only locally qualified models join the offline library; hosted CI/integration remain
 release gates. No audio output or physical hardware success is inferred from CAD.
+Pulse: 130 pieces / A, three physical gravity beaters, 18.3 mm lift,
+89/91/180-degree strike spacing, 64 connected instruction pages. Original governor:
+34 pieces / A, two free arms, 7/26/47-degree mean tilt across its speed stages,
+27 degrees in reverse, 14 connected pages. Both actual VM/worker programs, manual
+controls, stops, initial framing and complete bills pass. Correct smooth round
+pin 3673 collider to an axial cylinder using official geometry; negative control
+reproduces false contacts with the former box. Bound long-shaft/bush instruction
+clusters to six parts per page. Ten new cases, 95 instruction/catalogue cases,
+six focused detailed geometry assertions and 18 notice checks pass. The initial
+202-case broad regression had two failures; both are corrected and rechecked.
+No independent edits to the four peer-owned implementation files. Main merge
+and hosted CI remain release gates; keep this PR draft for owner composition.
 
 ## Tidal Trio phase-machine adaptation — 2026-10-20
 

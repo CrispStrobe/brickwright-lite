@@ -169,6 +169,34 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "Brickwright contributors",
         "license": "BSD-3-Clause"
     },
+    "pulse-percussion.ldr": {
+        "pieces": 130,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "One camshaft lifts and releases three gravity beaters. Compare shaft phase, falling motion and tempo.",
+            "de": "Eine Nockenwelle hebt drei Schwerkraftschlägel und gibt sie frei. Vergleiche Wellenphase, Fallbewegung und Tempo."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "centrifugal-governor.ldr": {
+        "pieces": 34,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "Free arms swing outward as the rotor speeds up. Compare angular speed squared with gravity; reverse and compare again.",
+            "de": "Freie Arme schwingen bei höherer Drehzahl nach außen. Vergleiche das Quadrat der Winkelgeschwindigkeit mit der Schwerkraft und kehre die Drehrichtung um."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
     "tidal-trio.ldr": {
         "pieces": 226,
         "motors": 3,
