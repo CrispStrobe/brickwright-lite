@@ -74,3 +74,28 @@ from the LDraw mirror and derived), every motor run at 60 % for 2 s of simulated
   screenshot after loading timed out, the page busy (to investigate with the speed work).
 - **Unstable (3) / NaN (1):** the Tower Crane flings 118 bodies; the WeDo Milo blows up — to investigate.
 - **Runs (7):** the four NXT Tri-bot variants, Spike3r, the PF racers (some motors stall against loose parts).
+
+## Speed: what it was (2026-10-20, later the same day)
+
+The narrow phase was not the cause. A/B on the headless bench (CPU time per 5 ms step, every motor at 60 %, the
+release build; `createPhysicsCore(..., {experiments})` holds the switches):
+
+| Model | before | sleeping | contact cache | 4 velocity / 1 position steps | no shape filter | Discrete for bodies of > 8 colliders |
+|---|---|---|---|---|---|---|
+| 42099 4x4 Off-Roader | 280–600 ms | same | same | same | 127 ms, 67 bodies flung | **10–15 ms**, nothing flung |
+| 8275 Bulldozer | 90–165 ms | same | slower | slower, 92 flung | 140 ms, 91 flung | **22–32 ms**, nothing flung |
+| 42052 Heavy Lift Helicopter | 250–530 ms | | | | | **15–21 ms** |
+
+Every moving body was continuous-collision swept (`EMotionQuality_LinearCast`). Jolt sweeps a body that moves more
+than a quarter of its inner radius in a step, and a compound's inner radius is its thinnest sub-shape, so a
+500-part frame was swept against everything near it nearly every step. Bodies of more than `CCD_MAX_COLLIDERS` (8)
+colliders are now Discrete; single parts keep the sweep that stops a dropped brick passing through a beam. Timings
+range because other agents loaded the machine (load average 15–25); each row's columns ran interleaved in one
+process.
+
+Also found with Jolt's debug build: the core destroyed two of the bindings' static temporaries (the compound
+`ShapeResult`, and `GetSurfaceNormal`'s `Vec3` under every sensor-ray hit). The release build went on with a
+damaged heap. Both are fixed, and `test/bw-sim-jolt-debug-build.test.mjs` runs bundled models on the debug build.
+
+Not shipped yet: merging a big body's boxes into fewer (a voxel merge, 676 → 567 boxes on the 4x4, 786 → 251 on
+42052). It flings bodies on two of three models, so it needs more work.
