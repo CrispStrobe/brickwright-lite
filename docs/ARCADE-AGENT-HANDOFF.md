@@ -4,7 +4,7 @@
 
 Main has been normally merged into the current integration successor, including
 [PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888) and the latest
-Robot Lab changes. Supplier [PR52](https://github.com/CrispStrobe/extensions/pull/52)
+Robot Lab and NXT changes. Supplier [PR52](https://github.com/CrispStrobe/extensions/pull/52)
 merged after all seven enabled checks passed. Its explicit Array dependency
 identity is preserved in the integration candidate. These local candidate
 changes have not yet landed as a qualified Lite release.
@@ -19,12 +19,21 @@ unchanged scalar/Array expectations and completed Stop/quit cleanup. Their
 independent saved-data review also passed. These finite runtime results do not
 qualify graphics, audio, browser authoring or complete games.
 
-The composed candidate now passes all 131 selected conversion component tests,
-including the Camera reconciliation and compiler-owned empty procedure
-preparation controls. The six complete CI contract modules pass all 28 tests.
-The complete controller-button module separately passes all 20 tests after its
-parsed-delete control was updated to the parser's actual Unary representation.
-These results do not replace SDK, browser or full-corpus qualification.
+The delivery candidate passes all 151 selected conversion regression tests,
+including Camera reconciliation, compiler-owned empty procedure preparation and
+the complete controller-button module. The complete Console and Font source
+and export modules pass all 31 tests. All six CI contract modules pass their 28
+tests. Final hosted SDK/browser and affected guest qualification remain pending;
+these component results do not establish full-corpus compatibility.
+
+Two subsequent experiments tried omitting unused Console and Font producer
+graphs. Their 18- and 27-test groups passed; independent saved-data review also
+accepted all 68 full outputs across two diagnostic episodes using fixed real inputs,
+with all five input snapshots unchanged. However, the balanced timing episode
+showed overhead in the unused Font cases and mixed Console results. Both
+experiments were normally reverted from the delivery candidate. Their commits,
+tests and original evidence remain available; do not reintroduce them as proven
+performance improvements. Measure selection costs as well as the work omitted.
 
 The fifth complete 225-input CLI attempt ended with SIGKILL after 25.03 CPU
 seconds and did not produce a complete report. **The historical result remains

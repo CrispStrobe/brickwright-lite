@@ -9,9 +9,18 @@ for their qualification boundaries. Historical raw counts remain 147 translated,
 Five full-input attempts remain incomplete. Do not count diagnostic prefixes as
 successful applications or infer a reduced partial count from component tests.
 
+The unused Console/Font analysis experiments passed output-parity controls but
+were reverted after balanced real-input timings showed Font overhead and mixed
+Console results. Keep those rejected selections and their evidence. The next
+measured candidate is the query-only image-reference analysis: determine whether
+it can be omitted when no actual `indexOf`/`removeElement` demand exists, while
+preserving positive-query inference, resource decoding and changed-input
+fallback. Later full image-reference inference must remain intact. This is a
+scoped investigation, not an accepted speedup or a completed corpus gate.
+
 | Priority | Current evidence | Concrete next task and acceptance |
 | --- | --- | --- |
-| 1. Complete conversion assessment | All 131 selected conversion controls and 28 CI contract controls pass. Complete controller-button module: 20 pass. Latest full assessment reaches its unchanged CPU bound without a report. A real-input profile failed saving a large observation; its partial samples are diagnostic only. | Target measured importer/Creator work with semantics-preserving changes; keep public fallback observations, all diagnostics, full input order and existing bounds. Qualify complete affected modules. Obtain and independently read the full 225-input JSON/gzip report before updating counts. |
+| 1. Complete conversion assessment | All 151 selected conversion regressions, 31 complete Console/Font source/export controls and 28 CI contract controls pass. Latest full assessment reaches its unchanged CPU bound without a report. A real-input profile failed saving a large observation; its partial samples are diagnostic only. | Target measured importer/Creator work with semantics-preserving changes; keep public fallback observations, all diagnostics, full input order and existing bounds. Qualify complete affected modules. Obtain and independently read the full 225-input JSON/gzip report before updating counts. |
 | 2. Native Array semantics | Supplier PR52 merged with all seven enabled checks successful. Fresh installation, all 49 native controls and three genuine original/Code/export-reimport executions pass independent saved-data review. Array text remains `5`; Stop/quit cleanup completed. | Preserve these expectations and source identities. Extend actual runtime comparisons when conversion changes affect emitted code; verify unrelated scripts, errors and runtime ownership. These finite scalar cases do not qualify graphics or full games. |
 | 3. Original compiler and simulator | The 41 dependency contexts retain 29 original compiler successes and 12 failures. Six broader controls lack their required original SDK/browser runtime. | Use one final hosted SDK/browser qualification for the actual final candidate, with emitted file maps, assets and dependencies. Preserve original compiler diagnostics. Do not substitute a different SDK or call missing-runtime cases passes. |
 | 4. Diagnostic-led feature work | Historical unsupported constructs are not a fresh census. | Group completed current report diagnostics by construct, source location and project. Implement one family at a time with successful, negative and roundtrip cases. Keep import, Creator, native runtime and original-runtime results separate. |
