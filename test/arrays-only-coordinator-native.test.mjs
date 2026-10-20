@@ -24,7 +24,7 @@ WHEN flag clicked:
   set alias to (reference to named array ("only"))
   set result to (calculate value (alias) op "+" with ("!"))
   set reverse to (calculate value ("!") op "+" with (alias))
-  set after to 1
+  set after to (0 + 1)
 WHEN flag clicked:
   set ticks to 0
   forever:
@@ -163,22 +163,23 @@ async function retirementFixture(actualError,cleanupError,changedBooleanGuard=fa
  const arrays=new Arrays(runtime),original=arrays.valueBinary;
  arrays.valueBinary=(args,util)=>{actualArgs=args;actualUtil=util;try{return original(args,util);}finally{if(changedBooleanGuard)restoreBoolean();}};
  const loaded=vm.extensionManager._registerInternalExtension(arrays);vm.extensionManager._loadedExtensions.set('arrays',loaded);
- const bridge={getInfo:()=>({id:'arcade',name:'Native cancellation lineage',blocks:[{opcode:'callFunction',blockType:'command',text:'invoke'},{opcode:'middle',blockType:'command',text:'nested invoke'}]}),
+ const bridge={getInfo:()=>({id:'arcade',name:'Native cancellation lineage',blocks:[{opcode:'callFunction',blockType:'command',text:'invoke'}]}),
  callFunction(args,util){
+  if(util.thread.peekStack()===middleId){
+   child=runtime._pushThread(childId,util.target,{stackClick:false});
+   owner.link(child,util.thread,()=>{
+    cleanups++;cleanupOrder.push('child');
+    owner.dispose();owner=exceptions.create(runtime,()=>{throw Error('replacement Throw reader must not run');});
+    throw cleanupError;
+   });
+   primitiveOwner.stepNested(util,args,child);
+   const failure=initialOwner.failure(child)||initialOwner.failure(util.thread);if(failure)initialOwner.rethrow(failure);
+   return;
+  }
   middle=runtime._pushThread(middleId,util.target,{stackClick:false});
   owner.link(middle,util.thread,()=>{cleanups++;cleanupOrder.push('parent');});
   primitiveOwner.stepNested(util,args,middle);
   const failure=initialOwner.failure(middle)||initialOwner.failure(util.thread);if(failure)initialOwner.rethrow(failure);
- },
- middle(args,util){
-  child=runtime._pushThread(childId,util.target,{stackClick:false});
-  owner.link(child,util.thread,()=>{
-   cleanups++;cleanupOrder.push('child');
-   owner.dispose();owner=exceptions.create(runtime,()=>{throw Error('replacement Throw reader must not run');});
-   throw cleanupError;
-  });
-  primitiveOwner.stepNested(util,args,child);
-  const failure=initialOwner.failure(child)||initialOwner.failure(util.thread);if(failure)initialOwner.rethrow(failure);
  }};
  const linked=vm.extensionManager._registerInternalExtension(bridge);vm.extensionManager._loadedExtensions.set('arcade',linked);
  const probe={getInfo:()=>({id:'throwprobe',name:'Native computation error',blocks:[{opcode:'value',blockType:'reporter',text:'value'}]}),value(){return {toString(){
@@ -202,7 +203,7 @@ async function retirementFixture(actualError,cleanupError,changedBooleanGuard=fa
  const allocation=add('arrays_createReference',setup);blocks[setup].inputs.VALUE=[1,allocation];blocks[allocation].inputs.VALUES=[1,text('[5]',allocation)];
  const invoke=add('arcade_callFunction',setup);blocks[setup].next=invoke;
  const after=add('data_setvariableto',invoke,null,{VALUE:[1,[10,'1']]},{VARIABLE:['after','after']});blocks[invoke].next=after;
- middleId=add('arcade_middle',null);
+ middleId=add('arcade_callFunction',null);
  childId=add('data_setvariableto',null,null,{}, {VARIABLE:['result','result']});
  const call=add('arrays_valueBinary',childId,null,{}, {OP:['+',null]});blocks[childId].inputs.VALUE=[1,call];
  const left=add('data_variable',call,null,{}, {VARIABLE:['array','array']}),right=add('throwprobe_value',call);blocks[call].inputs={LEFT:[1,left],RIGHT:[1,right]};

@@ -173,3 +173,11 @@ controls. Explicit supplier publication, canonical carrier adoption, a fresh
 normal installation and the authored Blocks → current Code → TypeScript →
 reimport journey remain pending. Zeros, range and other derived factories are
 outside this candidate; their behavior is not inferred from these controls.
+
+### Coordinator regression scope
+
+The Arrays-only coordinator controls require genuine callable frames and an
+explicit arithmetic Number marker; a numeric-looking Scratch literal retains
+its string value. The initial 64-test run had 61 passes and three failures.
+Reload ownership remains pending a separate complete-state diagnostic; these
+control corrections do not establish a runtime fix or qualify public reload.

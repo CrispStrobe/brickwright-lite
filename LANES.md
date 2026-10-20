@@ -7306,3 +7306,12 @@ nonstring/custom-parser/non-Array legacy behavior and unqualified syntax-error
 fallback. Existing native controls remain unchanged. Supplier publication,
 canonical adoption, fresh installed runtime and public roundtrip acceptance are
 pending. No zeros/range or generic reference conversion expansion.
+
+### Arrays-only coordinator control reconciliation — 2026-10-20
+
+SOURCE CANDIDATE in the existing Array ownership lane. Preserve the complete
+57-test prefix and all seven coordinator titles. Use an explicit numeric
+operation for the authored Number marker, and use the admitted callable opcode
+for both physical nested cancellation frames. The original 61-pass/3-failure
+run is retained. SB3 reload ownership remains unresolved; compare complete
+actual reload observations before a product change or qualification claim.
