@@ -1,0 +1,14 @@
+// Motors by time: on, reverse, float, regulated, off (Brickwright NXT .rxe VM fixture).
+task main()
+{
+    OnFwd(OUT_A, 75);
+    Wait(500);
+    OnRev(OUT_A, 50);
+    Wait(500);
+    Float(OUT_A);
+    Wait(200);
+    OnFwdReg(OUT_B, 40, OUT_REGMODE_SPEED);
+    Wait(500);
+    Off(OUT_AB);
+    Wait(100);
+}

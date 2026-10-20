@@ -39,12 +39,23 @@
 //
 // INPUTS: SETINPUTMODE's type and mode; GETINPUTVALUES's raw / normalized / scaled values from
 // devices/nxt-sensors.js; the ultrasonic sensor as an I2C device (LSWRITE / LSGETSTATUS / LSREAD).
+//
+// PROGRAMS (docs/NXT-RXE-VM.md): a `.rxe` downloaded with the system commands (hubs/nxt/nxt-files.js)
+// runs on STARTPROGRAM in the clean-room VM (routes/nxt-vm/nxt-vm.js), in 1 ms ticks on the Lab's clock
+// inside advanceTo(); it reaches the ports through the same brick state the direct commands use
+// (`_programIo`: its output updates go through setOutputState, its sensor reads through getInputValues).
+// A program's end — normal, STOPPROGRAM, or an error — resets the devices as the brick does: every output
+// off and floating with its counters cleared, every input unconfigured. A running program's state (the
+// VM's snapshot, plain data) travels with exportState() to the physics worker's mirror.
 
 import {NXT_PROFILE, NXT_OUTPUTS, NXT_INPUTS} from './profile.js';
 import {dcMotorFor} from '../../devices/dc-motors.js';
 import {freshOutput, readEncoder, driveOpen, drivePassive, driveRegulated, driveHold} from '../mindstorms-output.js';
 import {MODE, REGULATION, RUN_STATE, STATUS} from './nxt-direct-commands.js';
 import {NXT_SENSOR_TYPE, nxtAnalog, nxtScaled, usRead, usWrite, usFreshState, US_I2C_ADDRESS} from '../../devices/nxt-sensors.js';
+import {NxtVm} from '../../routes/nxt-vm/nxt-vm.js';
+import {UPDATE} from '../../routes/nxt-vm/nxt-bytecodes.js';
+import * as files from './nxt-files.js';
 
 /** Regulated speed at power 100, °/s: the NXT motor's no-load speed at 9 V (Philo: 170 rpm). */
 export const FULL_SCALE_DPS = 1020;
@@ -65,7 +76,7 @@ const freshPort = () => ({
     ...freshOutput(), device: null,
     power: 0, mode: 0, regulation: 0, turnRatio: 0, runState: RUN_STATE.IDLE, tachoLimit: 0,
     tachoZero: 0, blockZero: 0, rotationZero: 0, moveStartDeg: 0, targetDeg: 0, stalledMs: 0, lastProgressDeg: 0,
-    holdDeg: null
+    holdDeg: null, zeroHoldDeg: null
 });
 
 const freshInput = () => ({device: null, type: NXT_SENSOR_TYPE.none, mode: 0, probe: null, valid: false,
@@ -78,7 +89,7 @@ const MESSAGES_PER_QUEUE = 5;
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
 export class NxtVirtualHub {
-    constructor ({id = 'hub'} = {}) {
+    constructor ({id = 'hub', vm: vmOptions = {}} = {}) {
         this.id = id;
         this.profile = NXT_PROFILE;
         this.s = {
@@ -86,8 +97,13 @@ export class NxtVirtualHub {
             outputs: NXT_OUTPUTS.map(freshPort),
             inputs: NXT_INPUTS.map(freshInput),
             toneEndMs: 0, keepAliveMs: 0,
-            queues: Array.from({length: MESSAGE_QUEUES}, () => [])
+            queues: Array.from({length: MESSAGE_QUEUES}, () => []),
+            ...files.freshFiles(),
+            program: null, lastProgram: null
         };
+        /** The program VM (routes/nxt-vm), or null before the first STARTPROGRAM. Options: {vm: {instrPerMs, seed}}. */
+        this.vm = null;
+        this.vmOptions = vmOptions;
         this.specs = new Map();
         this.events = [];
         this.listeners = new Set();
@@ -133,6 +149,11 @@ export class NxtVirtualHub {
         const dtMs = tMs - this.s.timeMs;
         this.s.timeMs = tMs;
         if (!(dtMs > 0)) return;
+        // A running program first, up to the end of the step (its sensor reads hold the last step's readings).
+        if (this.s.program && this.vm) {
+            this.vm.advanceTo(tMs, this._programIo());
+            if (this.vm.status !== 'running') this._programEnded(this.vm.s.ending);
+        }
         this.s.outputs.forEach((port, i) => {
             if (port.device) this._drive(i, port, dtMs);
         });
@@ -189,6 +210,13 @@ export class NxtVirtualHub {
             }
             return;
         }
+        // Speed regulation to zero holds the shaft where the command found it (our model: the firmware's
+        // speed loop at set speed 0, no ramp outside RAMPUP / RAMPDOWN) — how NXC's RotateMotor ends a move.
+        if (regulated && level === 0) {
+            if (port.zeroHoldDeg === null || port.zeroHoldDeg === undefined) port.zeroHoldDeg = port.angleDeg;
+            driveHold(port, port.zeroHoldDeg, spec, dtMs);
+            return;
+        }
         if (regulated) driveRegulated(port, level / 100 * FULL_SCALE_DPS, spec, dtMs, ACCEL_DPS2);
         else driveOpen(port, level, port.mode & MODE.BRAKE ? 'brake' : 'coast');
     }
@@ -220,7 +248,19 @@ export class NxtVirtualHub {
         }
     }
 
-    publish () { this._changed(); }
+    publish () {
+        this._drainProgram();
+        this._changed();
+    }
+
+    /** The program's display and error events into the brick's log (its tones and sounds are there already). */
+    _drainProgram () {
+        if (!this.vm) return;
+        for (const {kind, t, ...rest} of this.vm.drainEvents()) {
+            if (kind === 'tone' || kind === 'sound') continue;
+            this.event(kind === 'display' ? 'display' : `program-${kind}`, {...rest, tick: t});
+        }
+    }
 
     onChange (fn) {
         this.listeners.add(fn);
@@ -229,10 +269,21 @@ export class NxtVirtualHub {
 
     _changed () { for (const fn of [...this.listeners]) fn(this); }
 
-    exportState () { return JSON.parse(JSON.stringify(this.s)); }
+    exportState () {
+        const out = JSON.parse(JSON.stringify(this.s));
+        out.vm = this.vm ? this.vm.snapshot() : null;
+        return out;
+    }
 
     importState (state) {
-        this.s = JSON.parse(JSON.stringify(state));
+        const {vm, ...rest} = state;
+        this.s = JSON.parse(JSON.stringify(rest));
+        if (!vm) this.vm = null;
+        else {
+            if (!this.vm) this.vm = new NxtVm(this.vmOptions);
+            const image = this.s.program ? this.s.files[this.s.program.name] : null;
+            this.vm.restore(vm, image);
+        }
         this.s.outputs.forEach((port, i) => {
             if (port.device && !this.specs.has(i)) this.specs.set(i, dcMotorFor({device: port.device, ids: {}}).motor);
         });
@@ -266,6 +317,7 @@ export class NxtVirtualHub {
         const p = this.s.outputs[i];
         Object.assign(p, {power, mode, regulation, turnRatio, runState, tachoLimit});
         p.holdDeg = null;
+        p.zeroHoldDeg = null;
         if (tachoLimit > 0) {
             // The new target is the previous one plus the limit, in the power's direction (firmware
             // output driver); TachoCount is not reset.
@@ -358,7 +410,7 @@ export class NxtVirtualHub {
     }
 
     event (kind, detail) {
-        this.events.push({t: this.s.timeMs, kind, ...detail});
+        this.events.push({...detail, t: this.s.timeMs, kind});
         if (this.events.length > EVENT_LOG) this.events.splice(0, this.events.length - EVENT_LOG);
     }
 
@@ -376,15 +428,139 @@ export class NxtVirtualHub {
         this.event('sound-stop', {});
     }
 
+    // ---- programs (docs/NXT-RXE-VM.md) ----------------------------------------------------------------
+
     /**
-     * No .rxe programs run on this brick yet (L2: docs/ROBOT-LAB-EV3-NXT.md): every program file is
-     * missing, which the firmware answers with OUT_OF_RANGE (the BDK's list suggests FILE_NOT_FOUND).
+     * STARTPROGRAM: a missing file is OUT_OF_RANGE (the firmware's answer; the BDK's list suggests
+     * FILE_NOT_FOUND). A file that exists is accepted at once; a running program is stopped first. A file
+     * the VM refuses (ERR_VER, ERR_FILE, …) never runs: like the brick, the command still succeeded — the
+     * refusal is in `lastProgram` and the events.
      */
-    startProgram () { return STATUS.OUT_OF_RANGE; }
+    startProgram (name) {
+        const bytes = this.s.files[name];
+        if (!bytes) return STATUS.OUT_OF_RANGE;
+        if (this.s.program) {
+            this.vm.abort();
+            this._programEnded('abort');
+        }
+        if (!this.vm) this.vm = new NxtVm(this.vmOptions);
+        this.s.queues = Array.from({length: MESSAGE_QUEUES}, () => []);
+        const r = this.vm.start(bytes, {name, tick: Math.floor(this.s.timeMs)});
+        if (!r.ok) {
+            this.s.lastProgram = {name, how: 'error', error: this.vm.error};
+            this.event('program-refused', {name, status: r.status, detail: r.detail});
+        } else {
+            this.s.program = {name};
+            this.event('program-start', {name});
+        }
+        this._changed();
+        return STATUS.SUCCESS;
+    }
 
-    stopProgram () { return STATUS.NO_PROGRAM; }
+    stopProgram () {
+        if (!this.s.program) return STATUS.NO_PROGRAM;
+        this.vm.abort();
+        this._programEnded('abort');
+        return STATUS.SUCCESS;
+    }
 
-    currentProgramName () { return null; }
+    currentProgramName () { return this.s.program ? this.s.program.name : null; }
+
+    /** The program is over: the brick resets its devices (outputs off, floating, counters cleared; inputs unconfigured). */
+    _programEnded (how) {
+        const name = this.s.program ? this.s.program.name : null;
+        this.s.lastProgram = {name, how, error: this.vm ? this.vm.error : null};
+        this.s.program = null;
+        this.s.queues = Array.from({length: MESSAGE_QUEUES}, () => []);
+        this.s.outputs.forEach((p, i) => {
+            this.setOutputState(i, {power: 0, mode: 0, regulation: 0, turnRatio: 0, runState: RUN_STATE.IDLE, tachoLimit: 0});
+            p.tachoZero = p.blockZero = p.rotationZero = p.targetDeg = p.angleDeg;
+        });
+        this.s.inputs.forEach((x, i) => this.setInputMode(i, NXT_SENSOR_TYPE.none, 0));
+        this._drainProgram();
+        this.event('program-end', {name, how, error: this.vm ? this.vm.error : null});
+        this._changed();
+    }
+
+    /** What the program VM reaches of the brick (routes/nxt-vm/nxt-vm.js NxtIo). */
+    _programIo () {
+        if (this._io) return this._io;
+        this._io = {
+            outputStatus: i => {
+                const p = this.s.outputs[i];
+                const o = this.getOutputState(i);
+                return {runState: p.runState, tachoCount: o.tachoCount, blockTachoCount: o.blockTachoCount,
+                    rotationCount: o.rotationCount, actualSpeed: clamp(Math.round((p.measuredDps || 0) / FULL_SCALE_DPS * 100), -100, 100)};
+            },
+            applyOutput: (i, o, flags) => this.applyProgramOutput(i, o, flags),
+            inputValues: i => this.getInputValues(i),
+            setInputMode: (i, type, mode) => this.setInputMode(i, type, mode),
+            resetInputScaled: i => this.resetInputScaledValue(i),
+            playTone: (frequency, ms) => this.playTone(frequency, ms),
+            playFile: (name, loop) => this.playSoundFile(loop, name),
+            stopSound: () => this.stopSound(),
+            soundState: () => (this.s.toneEndMs > this.s.timeMs ? {state: 0x03, flags: 0x02} : {state: 0x00, flags: 0x00}),
+            lsWrite: (i, bytes, rx) => this.lsWrite(i, bytes, rx),
+            lsStatus: i => this.lsGetStatus(i),
+            lsRead: i => this.lsRead(i),
+            messageWrite: (q, bytes) => this.messageWrite(q, bytes),
+            messageRead: (q, remove) => this.messageRead(q, remove),
+            keepAlive: () => this.keepAlive()
+        };
+        return this._io;
+    }
+
+    /**
+     * The output module applying a program's updates (its FLAGS field; docs/NXT-RXE-VM.md §Outputs): the
+     * counter resets, then mode / speed / tacho limit as one SETOUTPUTSTATE would set them — a new tacho
+     * limit only with UPDATE_TACHO_LIMIT (it adds to the previous move's target).
+     */
+    applyProgramOutput (i, o, flags) {
+        const p = this.s.outputs[i];
+        if (flags & UPDATE.RESET_ROTATION_COUNT) p.rotationZero = p.angleDeg;
+        if (flags & UPDATE.RESET_COUNT) {
+            p.tachoZero = p.angleDeg;
+            p.targetDeg = p.angleDeg;
+        }
+        if (flags & UPDATE.RESET_BLOCK_COUNT) p.blockZero = p.angleDeg;
+        if (!(flags & (UPDATE.MODE | UPDATE.SPEED | UPDATE.TACHO_LIMIT))) return;
+        const state = {power: o.power, mode: o.mode, regulation: o.regMode, turnRatio: o.turnRatio, runState: o.runState,
+            tachoLimit: o.tachoLimit};
+        if (flags & UPDATE.TACHO_LIMIT) this.setOutputState(i, state);
+        else {
+            Object.assign(p, {power: state.power, mode: state.mode, regulation: state.regulation, turnRatio: state.turnRatio,
+                runState: state.runState});
+            p.holdDeg = null;
+            p.zeroHoldDeg = null;
+            this._changed();
+        }
+    }
+
+    // ---- flash files (system commands; hubs/nxt/nxt-files.js) -----------------------------------------
+
+    fileOpenWrite (name, size) { return files.openWrite(this.s, name, size); }
+
+    fileWrite (handle, bytes) { return files.write(this.s, handle, bytes); }
+
+    fileClose (handle) { return files.close(this.s, handle); }
+
+    fileDelete (name) { return files.remove(this.s, name, this.currentProgramName()); }
+
+    fileOpenRead (name) { return files.openRead(this.s, name); }
+
+    fileRead (handle, count) { return files.read(this.s, handle, count); }
+
+    fileFindFirst (pattern) { return files.findFirst(this.s, pattern); }
+
+    fileFindNext (handle) { return files.findNext(this.s, handle); }
+
+    /** Puts a file straight into flash (a test's or a host's shortcut for a completed download). */
+    putFile (name, bytes) {
+        const r = files.openWrite(this.s, name, bytes.length);
+        if (r.status !== files.LOADER.SUCCESS) return r.status;
+        files.write(this.s, r.handle, Array.from(bytes));
+        return files.close(this.s, r.handle).status;
+    }
 
     /**
      * The mailboxes, as the firmware keeps them: they exist only while a program runs (else NO_PROGRAM);
@@ -422,10 +598,10 @@ export class NxtVirtualHub {
      */
     versions () { return {protocol: [1, 124], firmware: [1, 29]}; }
 
-    deviceInfo () { return {name: 'Virtual NXT', address: [0, 0, 0, 0, 0, 0], signal: 0, freeFlash: 65536}; }
+    deviceInfo () { return {name: 'Virtual NXT', address: [0, 0, 0, 0, 0, 0], signal: 0, freeFlash: files.freeFlash(this.s)}; }
 }
 
 export const nxtHub = Object.freeze({
     profile: NXT_PROFILE,
-    createVirtualHub: ({id} = {}) => new NxtVirtualHub({id})
+    createVirtualHub: ({id, vm} = {}) => new NxtVirtualHub({id, vm})
 });

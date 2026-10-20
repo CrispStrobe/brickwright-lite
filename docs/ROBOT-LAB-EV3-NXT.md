@@ -183,10 +183,13 @@ six AA cells.
   DEVICE EV3 wall-stop scenario is `{todo}` in `test/bw-sim-bt-hubs-program.test.mjs`; the bytes the
   extension would send are executed and checked in `test/bw-sim-ev3-extension-bytes.test.mjs`, and the stock
   `ev3` extension drives the same robot.
-- **L2, programs on the brick**: the EV3's RBF bytecode VM (the same instruction set, the FDK's §4 in full,
-  plus the program header and subcalls) and the NXT's `.rxe` VM (LEGO's *Executable File Specification*,
-  v2.0, in the NXT SDK) are the next step. legonxt's compiled route uses a hosted NXC compiler (network) and
-  is kept out of tests.
+- **L2, programs on the brick**: the **NXT runs `.rxe` programs** (docs/NXT-RXE-VM.md): a clean-room VM of
+  LEGO's NXT firmware 1.29 interpreter (facts read from its open-source release), files downloaded with the
+  system commands (OPEN WRITE / WRITE / CLOSE / DELETE / FIND), STARTPROGRAM / STOPPROGRAM /
+  GETCURRENTPROGRAMNAME, the mailboxes while a program runs; NBC-compiled fixtures drive the bumper bot to
+  the wall. legonxt's upload and *start program* blocks work on it; its *compile* block calls `Scratch.fetch`,
+  which the CrispStrobe adapter does not provide yet (open). The EV3's RBF bytecode VM (the same instruction
+  set, the FDK's §4 in full, plus the program header and subcalls) is the next step.
 - **NXT words** (DEVICE NXT pseudocode) are not written; the NXT example is blocks.
 - The ultrasonic *listen* modes read 0; buttons are never pressed in the Lab (WAIT_FOR_PRESS waits); EV3
   sync turn ratios and NXT MOTOR_SYNC are simple scalings (our model); the stock EV3 extension reads distance
@@ -198,4 +201,5 @@ six AA cells.
 `test/bw-sim-nxt-direct-commands.test.mjs` (frames written out from the kits, replies, errors, blocking,
 mirror round trips), `test/bw-sim-ev3-extension-bytes.test.mjs` (ev3comprehensive's own bytes on the brick),
 `test/bw-sim-bt-hubs-program.test.mjs` (the real VM and extensions in the Lab: NXT 360 ± 2° and stop on touch;
-EV3 stop before the wall), the browser gate `npm run verify:sim-lab -- --part=hubs-bt`.
+EV3 stop before the wall), `test/bw-sim-nxt-rxe-vm.test.mjs`, `test/bw-sim-nxt-rxe-brick.test.mjs` and
+`test/bw-sim-nxt-rxe-legonxt.test.mjs` (the `.rxe` VM, downloads, the bumper bot on an `.rxe`), the browser gate `npm run verify:sim-lab -- --part=hubs-bt`.
