@@ -205,6 +205,42 @@ const nested = (bA, cA, bB, cB) => cA.some(x => cB.some(y => {
     });
 }));
 
+/** A body's colliders by part (cached per body object). */
+const byPartCache = new WeakMap();
+const collidersByPart = body => {
+    if (!byPartCache.has(body)) {
+        const m = new Map();
+        for (const c of body.colliders) {
+            if (!m.has(c.part)) m.set(c.part, []);
+            m.get(c.part).push(c);
+        }
+        byPartCache.set(body, m);
+    }
+    return byPartCache.get(body);
+};
+/** Each part's world bounding box [lo, hi] (from the oriented boxes obbOf makes; cached per body object). */
+const boxCache = new WeakMap();
+const partBoxes = body => {
+    if (!boxCache.has(body)) {
+        const m = new Map();
+        for (const [part, cols] of collidersByPart(body)) {
+            const lo = [Infinity, Infinity, Infinity];
+            const hi = [-Infinity, -Infinity, -Infinity];
+            for (const c of cols) {
+                const o = obbOf(body, c);
+                for (let i = 0; i < 3; i++) {
+                    const r = o.axes.reduce((sum, ax, k) => sum + Math.abs(ax[i]) * o.half[k], 0);
+                    lo[i] = Math.min(lo[i], o.centre[i] - r);
+                    hi[i] = Math.max(hi[i], o.centre[i] + r);
+                }
+            }
+            m.set(part, [lo, hi]);
+        }
+        boxCache.set(body, m);
+    }
+    return boxCache.get(body);
+};
+
 /** Touching counts as apart: faces in contact at zero gap (0.5 LDU = 0.2 mm, the contact slop) never interpenetrate. */
 const APART_M = 0.0002;
 const apart = (x, y) => x[1] <= y[0] + APART_M || y[1] <= x[0] + APART_M;
@@ -322,23 +358,39 @@ export const localNoCollide = (bodies, joints, noCollide, coupled, edges, island
             if (agree) motion = {kind, point, axis: a0};
         }
         // Parts the motion can never bring together: what it keeps fixed separates them.
-        const never = (cx, cy) => {
-            if (!motion) return false;
+        // Each part's bands under the motion, once per body pair (not once per part pair: a 400-body set spent
+        // most of a 40 s compile recomputing them).
+        const perps = motion && motion.kind === 'slider' ? perpendiculars(motion.axis) : null;
+        const bandsOf = (body, cols) => {
+            if (!motion) return null;
             const {kind, point, axis} = motion;
-            if (kind === 'hinge') {
-                return apart(intervalAlong(bA, cx, point, axis), intervalAlong(bB, cy, point, axis)) ||
-                    apart(radialBand(bA, cx, point, axis), radialBand(bB, cy, point, axis));
-            }
-            if (kind === 'slider') return perpendiculars(axis).some(u => apart(intervalAlong(bA, cx, point, u), intervalAlong(bB, cy, point, u)));
-            return apart(pointBand(bA, cx, point), pointBand(bB, cy, point));
+            if (kind === 'hinge') return [intervalAlong(body, cols, point, axis), radialBand(body, cols, point, axis)];
+            if (kind === 'slider') return perps.map(u => intervalAlong(body, cols, point, u));
+            return [pointBand(body, cols, point)];
+        };
+        const colsA = collidersByPart(bA);
+        const colsB = collidersByPart(bB);
+        const boxA = partBoxes(bA);
+        const boxB = partBoxes(bB);
+        const bandsA = new Map(pa.map(x => [x, bandsOf(bA, colsA.get(x))]));
+        const bandsB = new Map(pb.map(y => [y, bandsOf(bB, colsB.get(y))]));
+        // Apart under the motion: a hinge's axial or radial band, any of a slider's two cross directions, a ball's band.
+        const never = (x, y) => {
+            if (!motion) return false;
+            const ba = bandsA.get(x);
+            const bb = bandsB.get(y);
+            if (motion.kind === 'hinge' || motion.kind === 'slider') return ba.some((band, i) => apart(band, bb[i]));
+            return apart(ba[0], bb[0]);
         };
         const excluded = [];
         let all = true;
         for (const x of pa) {
-            const cx = bA.colliders.filter(c => c.part === x);
             for (const y of pb) {
-                const cy = bB.colliders.filter(c => c.part === y);
-                if (seatedHere.has(`${x}\n${y}`) || never(cx, cy) || nested(bA, cx, bB, cy)) excluded.push([x, y]);
+                const a = boxA.get(x);
+                const b = boxB.get(y);
+                // Disjoint bounding boxes cannot nest (a separating axis exists): skip the box-by-box test.
+                const overlap = [0, 1, 2].every(i => a[0][i] < b[1][i] && b[0][i] < a[1][i]);
+                if (seatedHere.has(`${x}\n${y}`) || never(x, y) || (overlap && nested(bA, colsA.get(x), bB, colsB.get(y)))) excluded.push([x, y]);
                 else all = false;
             }
         }
