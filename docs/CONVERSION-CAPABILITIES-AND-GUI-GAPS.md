@@ -12,12 +12,42 @@ attempts are incomplete. Component passes do not close these journeys.
 | Animation and controller input | The exact browser-control program runs in a real VM: A produces both colours, B stops playback and Right moves the sprite. | The actual browser journey still observes only the initial colour. Diagnose DOM input, clock, errors and every-frame observations before changing its assertions. |
 | Editable assigned images | Initial authoring steps work in the rotation journey. Its final edited-file reimport aborts on an Array intrinsic-surface refusal. | Identify the actual changed intrinsic descriptor and preserve the guard; verify both edited file formats and the running assigned pixels. |
 | Tile painting, identity and placement | The light browser reports failures after painting/renaming, legacy edits and placement save/removal. | Repair actual editor-to-block mutation and startup chains. Preserve qualified tile IDs, walls/collisions, undo/revert and save/reopen. The deferred-observer candidate passes eight controls against the real Blocks engine; restoring the old observer fails all four new regressions. Actual browser authoring remains unqualified. |
-| Native versus MakeCode arithmetic | Native authored Arrays require JavaScript string conversion; the original PXT checks require opaque object conversion. | Add an explicit source-language operator path across Code, Blocks, decompilation and real export, with actual runtime ownership and full native-helper semantic proofs. Selecting the Arcade device alone cannot select the language. |
+| Native versus MakeCode arithmetic | The distinct source reporter passes actual Creator/decompile, importer and six VM controls. Native Array export has a separate original-PXT value/alias oracle. | Create/edit both operator families in visible Blocks and Code, save/reopen and export/reimport. The complete original coercion module still needs final hosted qualification; selecting the Arcade device alone never selects arithmetic semantics. |
 
 See [the current failure work packages](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md)
 and [CI repair matrix](ARCADE-CI-REPAIR-STATUS.md) for source paths, original
 failures and concrete acceptance. Keep older native Array text `5` controls in
 their native authoring scope; they do not override genuine PXT comparisons.
+
+## Source arithmetic and native Array export authoring — 2026-10-20
+
+The Arcade reporter `arcade_sourceValueBinary` has a fixed Blocks selector for
+`+`, `-`, `*`, `/`, `%` and `**`. Its shared
+[Code word](../overlay/scratch-gui/src/lib/arcadeDialect.js) is:
+
+```text
+arcade source value (a) op "+" with (b)
+```
+
+This models opaque MakeCode Array arithmetic. The existing `calculate value`
+word retains native JavaScript Array conversion. Import routing keeps their
+semantics separate, including Array/primitive writer alternatives; unknown
+opaque alternatives refuse. Neither an Arcade device selection nor a type
+annotation grants Array ownership or native flat-element proof. Existing
+bitwise restrictions remain.
+
+Actual Creator/decompiler controls, the importer union control and six current
+VM controls pass in separate complete episodes. Native export preserves empty,
+`[5]` and primitive-writer Array text in both operand orders and alias identity:
+its full files compile, and its exact TypeScript executes in the original PXT
+Runtime with a bare-board/core fixture. That finite oracle observes zero
+background child fibers; it is not full Arcade-board or game qualification.
+The [current work package](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md#current-original-pxt-array-coercion-work-package)
+retains the original failures and complete SDK-module acceptance still pending.
+
+Visible palette creation, all six menu edits, Code regeneration, save/reopen
+and edited export/reimport remain browser acceptance tasks. Headless block
+construction and decompilation do not establish those interactions.
 
 ## Array runtime and public pipeline checkpoint — 2026-10-20
 
