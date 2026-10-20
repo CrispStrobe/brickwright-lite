@@ -113,6 +113,7 @@
       "test/arcade-info-player-score-number-native.test.mjs",
       "test/arcade-inline-animation-artwork.test.mjs",
       "test/arcade-native-animation-staging.test.mjs",
+      "test/arcade-native-scalar-add-export.test.mjs",
       "test/arcade-null-sprite-getter-native.test.mjs",
       "test/arcade-owned-text-game-original.test.mjs",
       "test/arcade-project-palette-authoring.test.mjs",
