@@ -154,6 +154,18 @@ Loads: a 50 g weight with a hook loop (world `load`, §5.5); collision hook–lo
 dynamic–dynamic contact (M14 prerequisite).
 Hard: rope over a moving boom tip (M10 approx), sway (the hook body on a rope swings: real,
 and it is the fun part), worm self-locking holding the load when the motor stops.
+*As built (2026-10-20, `crane.ldr`, `scripts/gen-crane-model.mjs`):* slewing and luffing, no hoist yet.
+A SPIKE hub on the floor carries the Excavator's 28T turntable (8T on motor A, run at 10 % speed: a
+direct 8:28 slew tips a loaded upper at full power) and posts; a 15L boom is luffed by a small linear
+actuator (motor B, 1:1:1 to the spindle; the screw self-locks, so the boom holds with B stopped: 0.01 mm
+of sag in 1 s); a hook (5L link + Technic brick 1 x 4) hangs on a frictionless pin at the tip. The
+winch waits for ropes (M10, PR #1123): a drum on the upper and a rope over the tip then replace the
+fixed link. The luffing range is the actuator's travel (120–180 LDU, the slider's limits −8/+16 mm from
+the build: the boom from about 4° to past 70°); past an end the actuator's own slip clutch (the screw
+coupling's 60 N) lets motor B turn on while the boom stays, as on the real model (physics/screw.js). The
+end stops of lane/robot-lab-flex4 deliberately leave linear actuators out (they walk gears, chains, bands,
+racks and shift forks only), so they do not stop motor B here.
+`test/bw-sim-crane.test.mjs`.
 
 **T2 Shifting gearbox (Schaltgetriebe) — 2-speed then 4-speed, as on the 8448/8880 cars.**
 Mechanisms: M8 driving ring + clutch gears, M1 spur pairs, shift via changeover catch or a
