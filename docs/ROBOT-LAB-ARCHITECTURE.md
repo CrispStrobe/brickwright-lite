@@ -162,8 +162,9 @@ of sag in 1 s); a hook (5L link + Technic brick 1 x 4) hangs on a frictionless p
 winch waits for ropes (M10, PR #1123): a drum on the upper and a rope over the tip then replace the
 fixed link. The luffing range is the actuator's travel (120–180 LDU, the slider's limits −8/+16 mm from
 the build: the boom from about 4° to past 70°); past an end the actuator's own slip clutch (the screw
-coupling's 60 N) lets motor B turn on while the boom stays. The end stops of lane/robot-lab-flex4 (a
-pushing motor's target to 0 at a limited joint its gears drive) would stop motor B there instead.
+coupling's 60 N) lets motor B turn on while the boom stays, as on the real model (physics/screw.js). The
+end stops of lane/robot-lab-flex4 deliberately leave linear actuators out (they walk gears, chains, bands,
+racks and shift forks only), so they do not stop motor B here.
 `test/bw-sim-crane.test.mjs`.
 
 **T2 Shifting gearbox (Schaltgetriebe) — 2-speed then 4-speed, as on the 8448/8880 cars.**
