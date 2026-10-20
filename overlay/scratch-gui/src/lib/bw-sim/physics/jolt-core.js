@@ -248,6 +248,9 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     /** joint id -> its actuator (CompiledMechanism v2): the motorised hinges */
     const actuatorOf = new Map(mechanism.actuators.map(a => [a.joint, a]));
     const dtFixed = 1 / stepHz;
+    // The solver's lightest body (mechanism.solver, mech/compile.js: models from elsewhere): a 1.6 g link between two
+    // hinges on a 760 g frame is a mass ratio Jolt's solver cannot hold (42109 went to NaN).
+    const massFloorKg = experiments.massFloorKg ?? mechanism.solver?.massFloorKg ?? 0;
     const LAYER_DYNAMIC = 0;
     const LAYER_STATIC = 1;
     // A static body made of model parts is the machine's own fixed frame (a
@@ -278,7 +281,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     // A pair in `noCollideParts` (mech/collision-filter.js) is filtered PART BY PART instead: it stays
     // enabled here and the SimShapeFilter below drops only its listed part pairs' sub-shape contacts.
     const bodyIndex = new Map(mechanism.bodies.map((b, i) => [b.id, i]));
-    const localPairs = new Map((mechanism.noCollideParts || []).map(([a, b, parts]) => [`${a}|${b}`, parts]));
+    const localPairs = new Map((mechanism.noCollideParts || []).map(([a, b, parts, mode]) => [`${a}|${b}`, {parts, collide: mode === 'collide'}]));
     let groupFilter = null;
     if (mechanism.noCollide.length > 0) {
         groupFilter = new J.GroupFilterTable(mechanism.bodies.length);
@@ -498,9 +501,10 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             // docs/ROBOT-LAB-ARCHITECTURE.md ("Motion quality").
             const sweep = !experiments.discrete && b.colliders.length <= (experiments.ccdMaxColliders ?? CCD_MAX_COLLIDERS);
             bcs.mMotionQuality = sweep ? J.EMotionQuality_LinearCast : J.EMotionQuality_Discrete;
+            if (experiments.maxLinearVelocity) bcs.mMaxLinearVelocity = experiments.maxLinearVelocity;
             bcs.mOverrideMassProperties = J.EOverrideMassProperties_CalculateInertia;
             const mp = bcs.mMassPropertiesOverride;
-            mp.mMass = b.massKg;
+            mp.mMass = Math.max(b.massKg, massFloorKg);
             bcs.mMassPropertiesOverride = mp;
         }
         if (typeof b.friction === 'number') bcs.mFriction = b.friction;
@@ -510,7 +514,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
 
         const body = bodyInterface.CreateBody(bcs);
         const bodyID = body.GetID();
-        if (b.motion === 'dynamic') fixSmallInertia(body, b.massKg);
+        if (b.motion === 'dynamic') fixSmallInertia(body, Math.max(b.massKg, massFloorKg));
         bodyInterface.AddBody(bodyID, J.EActivation_Activate);
         bodyMap.set(b.id, { body, bodyID, motionType, layer, shape });
         allBodyIDs.push(bodyID);
@@ -544,14 +548,15 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             byPtr.set(J.getPointer(e.body), info);
             e.filterInfo = info;
         }
-        for (const [key, parts] of localPairs) {
+        // Each entry lists the part pairs kept apart, or ('collide') the only ones that may meet.
+        for (const [key, {parts, collide}] of localPairs) {
             const [a, b] = key.split('|');
             const ia = bodyMap.get(a).filterInfo;
             const ib = bodyMap.get(b).filterInfo;
             const pa = J.getPointer(bodyMap.get(a).body);
             const pb = J.getPointer(bodyMap.get(b).body);
-            (ia.local || (ia.local = new Map())).set(pb, new Set(parts.map(([x, y]) => `${x}\n${y}`)));
-            (ib.local || (ib.local = new Map())).set(pa, new Set(parts.map(([x, y]) => `${y}\n${x}`)));
+            (ia.local || (ia.local = new Map())).set(pb, {set: new Set(parts.map(([x, y]) => `${x}\n${y}`)), collide});
+            (ib.local || (ib.local = new Map())).set(pa, {set: new Set(parts.map(([x, y]) => `${y}\n${x}`)), collide});
         }
         /** The collider index of a sub-shape pointer pair, or −1 for the whole compound (Jolt asks before descending). */
         const colliderOf = (info, shapePtr, subIdPtr) => {
@@ -562,13 +567,13 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         simShapeFilter = new J.SimShapeFilterJS();
         simShapeFilter.ShouldCollide = (body1, shape1, sub1, body2, shape2, sub2) => {
             const i1 = byPtr.get(body1);
-            const parts = i1 && i1.local && i1.local.get(body2);
-            if (!parts) return true;
+            const pair = i1 && i1.local && i1.local.get(body2);
+            if (!pair) return true;
             const c1 = colliderOf(i1, shape1, sub1);
             const i2 = byPtr.get(body2);
             const c2 = colliderOf(i2, shape2, sub2);
             if (c1 < 0 || c2 < 0) return true;
-            return !parts.has(`${i1.parts[c1]}\n${i2.parts[c2]}`);
+            return pair.set.has(`${i1.parts[c1]}\n${i2.parts[c2]}`) === pair.collide;
         };
         physicsSystem.SetSimShapeFilter(simShapeFilter);
     }

@@ -26,7 +26,14 @@ import {buildJoints} from './joints.js';
 import {buildGears} from './gears.js';
 import {sharedAxisBodyPairs, localNoCollide, asBuiltOverlaps} from './collision-filter.js';
 import {freePinWelds} from './free-pins.js';
-import {rescueLoose} from './loose-rescue.js';
+import {rescueLoose, weldByContact} from './loose-rescue.js';
+
+/**
+ * The lightest body the solver weighs in a model from elsewhere (kg). A real set's linkages are single liftarms of
+ * 1–3 g hinged to frames of hundreds of grams; Jolt's solver loses such chains (NaN, parts flung). Measured on seven
+ * unstable sets, 2026-10-20: 5 g held four of them.
+ */
+export const FOREIGN_MASS_FLOOR_KG = 0.005;
 import {validateLoad, loadBody} from '../world/objects.js';
 import {quatMul, quatConj} from './vec.js';
 
@@ -215,6 +222,15 @@ export const compile = (model, catalog, opts = {}) => {
     // joints and gears from the graph plus the welds found so far; the gear pass's
     // other diagnostics are kept from the final pass only.
     const extraRigidPairs = [];
+    // ...and a group still connected to nothing is welded to what it touches most (mech/loose-rescue.js weldByContact).
+    if (opts.rescueLoose) {
+        const welded = weldByContact(nodes, graphEdges);
+        if (welded.pairs.length) {
+            extraRigidPairs.push(...welded.pairs);
+            diagnostics.push({severity: 'warning', code: 'seated-loosely', parts: welded.groups.flat(),
+                message: `Held where they touch the rest: ${welded.groups.map(g => g.length).join(', ')} parts`});
+        }
+    }
     const firstNodeOf = (islandsNow, bodyId) => {
         for (const [nid, bid] of islandsNow.nodeToBody.entries()) if (bid === bodyId) return nid;
         return null;
@@ -469,7 +485,9 @@ export const compile = (model, catalog, opts = {}) => {
             [...seatedBodyPairs(graphEdges, islands), ...sharedAxisBodyPairs(graphEdges, islands)])};
     const local = localNoCollide(mechanismV2.bodies, joints, mechanismV2.noCollide, couplingBodyPairs(joints, couplings, kinds), graphEdges, islands, nodes);
     if (local.length) mechanismV2.noCollideParts = local;
-    // A model from elsewhere: parts that overlap as built never collide (mech/collision-filter.js asBuiltOverlaps).
+    // A model from elsewhere: the solver weighs no body below FOREIGN_MASS_FLOOR_KG (physics/jolt-core.js), and parts
+    // that overlap as built never collide (mech/collision-filter.js asBuiltOverlaps).
+    if (opts.rescueLoose && opts.massFloor !== false) mechanismV2.solver = {massFloorKg: FOREIGN_MASS_FLOOR_KG};
     if (opts.rescueLoose) {
         const nested = asBuiltOverlaps(mechanismV2.bodies, mechanismV2.noCollide, mechanismV2.noCollideParts);
         if (nested.length) {
@@ -477,7 +495,12 @@ export const compile = (model, catalog, opts = {}) => {
             const byKey = new Map((mechanismV2.noCollideParts || []).map(e => [`${e[0]}|${e[1]}`, e]));
             for (const [a, b, parts] of nested) {
                 const k = `${a}|${b}`;
-                if (byKey.has(k)) byKey.get(k)[2].push(...parts);
+                const e = byKey.get(k);
+                if (e && e[3] === 'collide') {
+                    // An inverted entry lists the pairs that collide: these no longer do.
+                    const drop = new Set(parts.map(([x, y]) => `${x}\n${y}`));
+                    e[2] = e[2].filter(([x, y]) => !drop.has(`${x}\n${y}`));
+                } else if (e) e[2].push(...parts);
                 else {
                     if (!pairs.has(k)) { mechanismV2.noCollide.push([a, b]); pairs.add(k); }
                     byKey.set(k, [a, b, parts]);

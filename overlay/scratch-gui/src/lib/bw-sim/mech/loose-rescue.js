@@ -102,3 +102,125 @@ export const rescueLoose = (nodes, edges) => {
     }
     return {edges: added, groups};
 };
+
+/** Parts a coupling holds, not the connector graph (kinds/chain.js: chain and tread links): never welded, nor welded to. */
+const COUPLED = new Set(['chain-link']);
+const coupled = n => n.connectors.some(c => COUPLED.has(c.type));
+
+/** How far apart two parts' boxes may be and still touch (LDU): half a plate's rounding. */
+export const TOUCH_LDU = 1;
+
+/** A node's colliders as model-frame axis-aligned boxes [min, max] (LDU). */
+const boxesOf = n => (n.meta.colliders || []).map(c => {
+    const he = c.shape === 'box' ? c.halfExtents : c.shape === 'cylinder' ? [c.radius, c.halfHeight, c.radius] : [c.radius, c.radius, c.radius];
+    const p0 = c.position || [0, 0, 0];
+    const R = n.placed.rotation;
+    const lo = [Infinity, Infinity, Infinity];
+    const hi = [-Infinity, -Infinity, -Infinity];
+    for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
+        const l = [p0[0] + sx * he[0], p0[1] + sy * he[1], p0[2] + sz * he[2]];
+        for (let i = 0; i < 3; i++) {
+            const w = R[i * 3] * l[0] + R[i * 3 + 1] * l[1] + R[i * 3 + 2] * l[2] + n.placed.position[i];
+            lo[i] = Math.min(lo[i], w);
+            hi[i] = Math.max(hi[i], w);
+        }
+    }
+    return [lo, hi];
+});
+const touchVolume = (a, b) => {
+    let v = 1;
+    for (let i = 0; i < 3; i++) {
+        const d = Math.min(a[1][i], b[1][i]) - Math.max(a[0][i], b[0][i]) + TOUCH_LDU;
+        if (d <= 0) return 0;
+        v *= d;
+    }
+    return v;
+};
+
+/**
+ * The last resort for a model from elsewhere: a group still connected to nothing (after rescueLoose) is welded to
+ * the part outside it that it touches most. It is held in the real set by something we do not read (a part's
+ * connector we derive wrongly, a clip, a panel's tab); welded it may lock a motion, but the model holds together
+ * instead of falling apart. Groups of parts with no connectors at all (tyres, plugs, stickers) are left to
+ * kinds/tyre.js, which knows a tyre goes on its rim; chain and tread links (COUPLED) to kinds/chain.js.
+ * @returns {{pairs: Array<[string, string]>, groups: string[][]}} node pairs to weld, and each welded group's part ids
+ */
+export const weldByContact = (nodes, edges) => {
+    const parent = new Map([...nodes.keys()].map(id => [id, id]));
+    const find = x => {
+        while (parent.get(x) !== x) { parent.set(x, parent.get(parent.get(x))); x = parent.get(x); }
+        return x;
+    };
+    const union = (a, b) => { const ra = find(a); const rb = find(b); if (ra !== rb) parent.set(ra, rb); };
+    for (const e of edges) if (parent.has(e.a.part) && parent.has(e.b.part)) union(e.a.part, e.b.part);
+    const byPart = new Map();
+    for (const n of nodes.values()) {
+        if (byPart.has(n.partId)) union(byPart.get(n.partId), n.id); else byPart.set(n.partId, n.id);
+    }
+    const boxes = new Map([...nodes.values()].map(n => [n.id, boxesOf(n)]));
+    // A grid of CELL LDU over every box, to find a box's neighbours.
+    const CELL = 40;
+    const grid = new Map();
+    for (const [id, bs] of boxes) {
+        for (const [lo, hi] of bs) {
+            for (let x = Math.floor(lo[0] / CELL); x <= Math.floor(hi[0] / CELL); x++) {
+                for (let y = Math.floor(lo[1] / CELL); y <= Math.floor(hi[1] / CELL); y++) {
+                    for (let z = Math.floor(lo[2] / CELL); z <= Math.floor(hi[2] / CELL); z++) {
+                        const k = `${x},${y},${z}`;
+                        if (!grid.has(k)) grid.set(k, new Set());
+                        grid.get(k).add(id);
+                    }
+                }
+            }
+        }
+    }
+    const neighbours = id => {
+        const out = new Set();
+        for (const [lo, hi] of boxes.get(id)) {
+            for (let x = Math.floor((lo[0] - TOUCH_LDU) / CELL); x <= Math.floor((hi[0] + TOUCH_LDU) / CELL); x++) {
+                for (let y = Math.floor((lo[1] - TOUCH_LDU) / CELL); y <= Math.floor((hi[1] + TOUCH_LDU) / CELL); y++) {
+                    for (let z = Math.floor((lo[2] - TOUCH_LDU) / CELL); z <= Math.floor((hi[2] + TOUCH_LDU) / CELL); z++) {
+                        for (const o of grid.get(`${x},${y},${z}`) || []) out.add(o);
+                    }
+                }
+            }
+        }
+        return out;
+    };
+    const pairs = [];
+    const groups = [];
+    for (let pass = 0; pass < 8; pass++) {
+        const members = new Map();
+        for (const id of nodes.keys()) {
+            const r = find(id);
+            if (!members.has(r)) members.set(r, []);
+            members.get(r).push(id);
+        }
+        if (members.size < 2) break;
+        const main = [...members.entries()].sort((a, b) => b[1].length - a[1].length || (a[0] < b[0] ? -1 : 1))[0][0];
+        let joined = false;
+        for (const [root, ids] of [...members.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
+            if (root === main || find(root) !== root) continue;
+            if (ids.every(id => !nodes.get(id).connectors.length)) continue;
+            // A tread's links welded to each other and to its sprockets make the track a rigid loop that ties the
+            // sprockets together (the Bulldozer 8275 flew apart).
+            if (ids.some(id => coupled(nodes.get(id)))) continue;
+            let best = null;
+            for (const id of ids) {
+                for (const o of neighbours(id)) {
+                    if (find(o) === root || coupled(nodes.get(o))) continue;
+                    let v = 0;
+                    for (const a of boxes.get(id)) for (const b of boxes.get(o)) v += touchVolume(a, b);
+                    if (v > 0 && (!best || v > best.v || (v === best.v && `${id}|${o}` < best.key))) best = {v, id, o, key: `${id}|${o}`};
+                }
+            }
+            if (!best) continue;
+            pairs.push([best.id, best.o]);
+            groups.push([...new Set(ids.map(id => nodes.get(id).partId))]);
+            union(best.id, best.o);
+            joined = true;
+        }
+        if (!joined) break;
+    }
+    return {pairs, groups};
+};

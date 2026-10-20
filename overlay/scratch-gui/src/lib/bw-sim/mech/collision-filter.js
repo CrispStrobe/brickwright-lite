@@ -383,7 +383,7 @@ export const localNoCollide = (bodies, joints, noCollide, coupled, edges, island
             return apart(ba[0], bb[0]);
         };
         const excluded = [];
-        let all = true;
+        const included = [];
         for (const x of pa) {
             for (const y of pb) {
                 const a = boxA.get(x);
@@ -391,10 +391,11 @@ export const localNoCollide = (bodies, joints, noCollide, coupled, edges, island
                 // Disjoint bounding boxes cannot nest (a separating axis exists): skip the box-by-box test.
                 const overlap = [0, 1, 2].every(i => a[0][i] < b[1][i] && b[0][i] < a[1][i]);
                 if (seatedHere.has(`${x}\n${y}`) || never(x, y) || (overlap && nested(bA, colsA.get(x), bB, colsB.get(y)))) excluded.push([x, y]);
-                else all = false;
+                else included.push([x, y]);
             }
         }
-        if (!all) out.push([A, B, excluded]);
+        // The shorter list: the pairs kept apart, or (inverted, 'collide') the only ones that may meet.
+        if (included.length) out.push(excluded.length > included.length ? [A, B, included, 'collide'] : [A, B, excluded]);
     }
     return out;
 };
@@ -449,7 +450,8 @@ const boxDepth = (A, B) => {
  */
 export const asBuiltOverlaps = (bodies, noCollide, noCollideParts = []) => {
     const whole = new Set(noCollide.map(([a, b]) => `${a}|${b}`));
-    const local = new Map(noCollideParts.map(([a, b, parts]) => [`${a}|${b}`, new Set(parts.map(([x, y]) => `${x}\n${y}`))]));
+    const local = new Map(noCollideParts.map(([a, b, parts, mode]) => [`${a}|${b}`, {set: new Set(parts.map(([x, y]) => `${x}\n${y}`)), collide: mode === 'collide'}]));
+    const keptApart = (k, x, y) => { const e = local.get(k); return Boolean(e) && e.set.has(`${x}\n${y}`) !== e.collide; };
     const boxes = [];
     for (const b of bodies) {
         if (b.motion === 'static') continue;
@@ -466,7 +468,7 @@ export const asBuiltOverlaps = (bodies, noCollide, noCollideParts = []) => {
             const [x, y] = A.body < B.body ? [A, B] : [B, A];
             const k = `${x.body}|${y.body}`;
             if (whole.has(k) && !local.has(k)) continue;
-            if (local.get(k)?.has(`${x.part}\n${y.part}`)) continue;
+            if (keptApart(k, x.part, y.part)) continue;
             if (boxDepth(A, B) <= AS_BUILT_DEPTH_M) continue;
             if (!found.has(k)) found.set(k, new Set());
             found.get(k).add(`${x.part}\n${y.part}`);

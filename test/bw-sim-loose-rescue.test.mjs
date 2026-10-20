@@ -15,6 +15,7 @@ import {REPO} from './helpers/bw-integrated.mjs';
 const SIM = path.join(REPO, 'overlay', 'scratch-gui', 'src/lib/bw-sim');
 const {prepareModel, catalogFrom} = await import(path.join(SIM, 'sim-session.js'));
 const {RESCUE} = await import(path.join(SIM, 'mech/loose-rescue.js'));
+const {asBuiltOverlaps} = await import(path.join(SIM, 'mech/collision-filter.js'));
 const CATALOG = catalogFrom(JSON.parse(readFileSync(path.join(SIM, 'part-meta/parts.json'), 'utf8')));
 
 // Two 7L beams (32524: holes along z, axes along y, 20 LDU deep), one above the other, and two friction pins
@@ -42,27 +43,24 @@ test('our own file: the same pins 3 LDU off are loose (the builder fixes it)', (
     assert.ok(!codes(issues).includes('seated-loosely'));
 });
 
-test(`a model from elsewhere: pins further off than ${RESCUE.lateralLdu} LDU are not joined`, () => {
+test(`a model from elsewhere: pins further off than ${RESCUE.lateralLdu} LDU make no near-miss joint, but what they touch holds them`, () => {
     const {issues} = prepareModel(twoBeams(RESCUE.lateralLdu + 1, false), CATALOG);
-    assert.ok(codes(issues).includes('loose-part'));
+    assert.ok(!codes(issues).includes('loose-part'), `nothing loose: ${codes(issues)}`);
+    const seated = issues.filter(i => i.code === 'seated-loosely');
+    assert.ok(seated.some(i => /touch/.test(i.message)), 'welded where they touch (weldByContact), not seated on a near-miss');
+    assert.ok(!seated.some(i => /almost fit/.test(i.message)));
 });
 
-test('a model from elsewhere: two parts of different bodies that overlap as built never collide with each other', () => {
-    // Beam B 10 LDU beside beam A: their 18 LDU wide boxes overlap by 8 LDU (3.2 mm); nothing joins them.
-    const text = own => [
-        '0 Overlap', ...(own ? ['0 Author: Brickwright'] : []),
-        '1 71 0 0 0 1 0 0 0 1 0 0 0 1 32524.dat',
-        '1 72 10 0 0 1 0 0 0 1 0 0 0 1 32524.dat'
-    ].join('\n');
-    const pairOf = m => {
-        const [a, b] = m.bodies.filter(x => x.motion === 'dynamic').map(x => x.id).sort();
-        return {a, b, whole: m.noCollide.some(([x, y]) => x === a && y === b), parts: (m.noCollideParts || []).find(([x, y]) => x === a && y === b)};
-    };
-    const foreign = pairOf(prepareModel(text(false), CATALOG).mechanism);
-    assert.ok(foreign.whole, 'the pair is a noCollide pair');
-    assert.ok(foreign.parts && foreign.parts[2].length === 1, 'filtered part by part: the two overlapping beams');
-    const own = pairOf(prepareModel(text(true), CATALOG).mechanism);
-    assert.ok(!own.whole && !own.parts, 'our own file: they collide (the overlap is the builder\'s to see)');
+test('as built: colliders of two bodies overlapping 3 mm are kept apart; touching, already filtered, or listed ones are not added', () => {
+    const body = (id, x) => ({id, motion: 'dynamic', position: [x, 0, 0], rotation: [0, 0, 0, 1], massKg: 0.01,
+        colliders: [{shape: 'box', halfExtents: [0.004, 0.004, 0.004], part: `${id}p`}], parts: [`${id}p`]});
+    assert.deepEqual(asBuiltOverlaps([body('a', 0), body('b', 0.005)], []), [['a', 'b', [['ap', 'bp']]]], '3 mm deep');
+    assert.deepEqual(asBuiltOverlaps([body('a', 0), body('b', 0.0079)], []), [], '0.1 mm: touching, not nested');
+    assert.deepEqual(asBuiltOverlaps([body('a', 0), body('b', 0.005)], [['a', 'b']]), [], 'a whole noCollide pair');
+    assert.deepEqual(asBuiltOverlaps([body('a', 0), body('b', 0.005)], [['a', 'b']], [['a', 'b', [['ap', 'bp']]]]), [], 'already kept apart');
+    // An inverted entry ('collide': only the listed pairs meet): a listed pair still needs keeping apart.
+    assert.deepEqual(asBuiltOverlaps([body('a', 0), body('b', 0.005)], [['a', 'b']], [['a', 'b', [['ap', 'bp']], 'collide']]),
+        [['a', 'b', [['ap', 'bp']]]]);
 });
 
 test('an unknown file placed many times is one issue (a cable is thousands of segment lines), with its count and first lines', () => {

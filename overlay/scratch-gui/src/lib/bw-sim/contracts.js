@@ -900,7 +900,11 @@ export const dirToWorld = d => [d[0], 0 - d[1], 0 - d[2]];
  *   noCollideParts? [[bodyA, bodyB, [[partA, partB], …]]] a noCollide pair filtered PART BY PART
  *               (mech/collision-filter.js localNoCollide): only those part pairs (partA's colliders
  *               on bodyA, partB's on bodyB: colliders carry `part`) are kept apart, the others
- *               collide. A noCollide pair not listed is filtered whole.
+ *               collide. A noCollide pair not listed is filtered whole. With a fourth element 'collide'
+ *               the list is inverted: only those part pairs collide (the shorter of the two lists is
+ *               written: two frames of 1,000 and 600 parts kept 1.19 million pairs apart, 2026-10-20).
+ *   solver?     {massFloorKg} the lightest a body weighs to the solver (mech/compile.js
+ *               FOREIGN_MASS_FLOOR_KG, models from elsewhere only); bodies keep their own massKg.
  * The v1 fields are the derived v1 VIEW (mechanismV1Aliases): `gears` = the gear and
  * rackAndPinion couplings, `sensors` = the devices, `joint.motor` = the actuator's numbers
  * (port without its hub). validateCompiledMechanism checks they agree; mechanismV1(m)
@@ -1136,7 +1140,8 @@ const validateMechanismV2 = (m, kinds, out) => {
         if (!Array.isArray(m.noCollideParts)) out.push('mechanism.noCollideParts: not an array');
         else {
             m.noCollideParts.forEach((entry, i) => {
-                const ok = Array.isArray(entry) && entry.length === 3 && pairs.has(`${entry[0]}|${entry[1]}`) && Array.isArray(entry[2]) &&
+                const ok = Array.isArray(entry) && (entry.length === 3 || (entry.length === 4 && entry[3] === 'collide')) &&
+                    pairs.has(`${entry[0]}|${entry[1]}`) && Array.isArray(entry[2]) &&
                     entry[2].every(pp => Array.isArray(pp) && pp.length === 2 && typeof pp[0] === 'string' && typeof pp[1] === 'string');
                 if (!ok) out.push(`noCollideParts[${i}]: need [bodyA, bodyB, [[partA, partB], …]] of a noCollide pair`);
             });
